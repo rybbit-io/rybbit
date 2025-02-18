@@ -24,7 +24,7 @@
     "@tanstack/react-query-devtools": "^5.64.2",
     "@types/country-flag-icons": "^1.2.2",
     "@uidotdev/usehooks": "^2.4.1",
-    "better-auth": "^1.1.16",
+    "better-auth": "^1.1.18",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "countries-list": "^3.1.1",
