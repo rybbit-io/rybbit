@@ -28,7 +28,7 @@
   "devDependencies": {
     "@types/pg": "^8.11.11",
     "@types/luxon": "^3.4.2",
-    "@types/node": "^20.10.0",
+    "@types/node": "^22.13.8",
     "@types/node-cron": "^3.0.11",
     "ts-node-dev": "^2.0.0",
     "typescript": "^5.7.3"
