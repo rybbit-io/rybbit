@@ -27,7 +27,7 @@
     "@tanstack/react-table": "^8.21.2",
     "@types/country-flag-icons": "^1.2.2",
     "@uidotdev/usehooks": "^2.4.1",
-    "better-auth": "^1.1.16",
+    "better-auth": "^1.2.2",
     "boring-avatars": "^1.11.2",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
