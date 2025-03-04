@@ -20,7 +20,7 @@
     "fastify-better-auth": "^1.0.1",
     "luxon": "^3.5.0",
     "node-cron": "^3.0.3",
-    "pg": "^8.13.1",
+    "pg": "^8.13.3",
     "postgres": "^3.4.5",
     "ua-parser-js": "^2.0.0",
     "undici": "^7.3.0"
