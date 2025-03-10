@@ -31,7 +31,7 @@
     "postgres": "^3.4.5",
     "stripe": "^17.7.0",
     "ua-parser-js": "^2.0.0",
-    "undici": "^7.3.0"
+    "undici": "^7.4.0"
   },
   "devDependencies": {
     "@types/luxon": "^3.4.2",
