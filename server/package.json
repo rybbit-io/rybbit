@@ -41,6 +41,6 @@
     "drizzle-kit": "^0.30.5",
     "ts-node-dev": "^2.0.0",
     "tsx": "^4.19.3",
-    "typescript": "^5.7.3"
+    "typescript": "^5.8.2"
   }
 }
