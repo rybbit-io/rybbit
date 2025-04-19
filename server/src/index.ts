@@ -11,7 +11,7 @@ import { getEvents } from "./api/analytics/getEvents.js";
 import { getFunnel } from "./api/analytics/getFunnel.js";
 import { getFunnels } from "./api/analytics/getFunnels.js";
 import { getLiveSessionLocations } from "./api/analytics/getLiveSessionLocations.js";
-import { getLiveUsercount } from "./api/analytics/getLiveUsercount.js";
+import { getLiveUserCount } from "./api/analytics/getLiveUserCount.js";
 import { getOverview } from "./api/analytics/getOverview.js";
 import { getOverviewBucketed } from "./api/analytics/getOverviewBucketed.js";
 import { getRetention } from "./api/analytics/getRetention.js";
@@ -41,6 +41,7 @@ import { auth } from "./lib/auth.js";
 import { publicSites } from "./lib/publicSites.js";
 import { trackEvent } from "./tracker/trackEvent.js";
 import { extractSiteId, isSitePublic } from "./utils.js";
+import { handleMessage } from "./api/ai/handleMessage.js";
 
 // Import Stripe handlers
 import { createCheckoutSession } from "./api/stripe/createCheckoutSession.js";
@@ -181,7 +182,7 @@ server.addHook("onRequest", async (request, reply) => {
 });
 
 // Analytics
-server.get("/live-user-count/:site", getLiveUsercount);
+server.get("/live-user-count/:site", getLiveUserCount);
 server.get("/overview/:site", getOverview);
 server.get("/overview-bucketed/:site", getOverviewBucketed);
 server.get("/single-col/:site", getSingleCol);
@@ -200,6 +201,8 @@ server.get("/recent-events/:site", getEvents);
 server.post("/funnel/:site", getFunnel);
 server.post("/funnel/create/:site", createFunnel);
 server.delete("/report/:reportId", deleteReport);
+
+server.post("/handle-message", handleMessage);
 
 // Administrative
 server.post("/add-site", addSite);

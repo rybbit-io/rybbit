@@ -9,7 +9,7 @@ import {
 import { getUserHasAccessToSitePublic } from "../../lib/auth-utils.js";
 import { FilterParameter } from "./types.js";
 
-interface GenericRequest {
+interface GetSingleColRequest {
   Params: {
     site: string;
   };
@@ -32,10 +32,17 @@ type GetSingleColResponse = {
   bounce_rate?: number;
 }[];
 
-const getQuery = (request: FastifyRequest<GenericRequest>) => {
-  const { startDate, endDate, timezone, filters, parameter, limit, minutes } =
-    request.query;
-  const site = request.params.site;
+const getQuery = (request: GetSingleColRequest["Params"] & GetSingleColRequest["Querystring"]) => {
+  const {
+    startDate,
+    endDate,
+    timezone,
+    site,
+    filters,
+    parameter,
+    limit,
+    minutes,
+  } = request;
 
   const filterStatement = getFilterStatement(filters);
 
@@ -145,8 +152,24 @@ const getQuery = (request: FastifyRequest<GenericRequest>) => {
   // `;
 };
 
+export async function fetchSingleCol(params: GetSingleColRequest["Params"] & GetSingleColRequest["Querystring"]) {
+  const query = getQuery(params);
+
+  try {
+    const result = await clickhouse.query({
+      query,
+      format: "JSONEachRow",
+    });
+
+    return await processResults<GetSingleColResponse[number]>(result);
+  } catch (error) {
+    console.error(`Error fetching ${params.parameter}:`, error);
+    return null;
+  }
+}
+
 export async function getSingleCol(
-  req: FastifyRequest<GenericRequest>,
+  req: FastifyRequest<GetSingleColRequest>,
   res: FastifyReply
 ) {
   const { parameter } = req.query;
@@ -157,18 +180,10 @@ export async function getSingleCol(
     return res.status(403).send({ error: "Forbidden" });
   }
 
-  const query = getQuery(req);
-
-  try {
-    const result = await clickhouse.query({
-      query,
-      format: "JSONEachRow",
-    });
-
-    const data = await processResults<GetSingleColResponse[number]>(result);
-    return res.send({ data });
-  } catch (error) {
-    console.error(`Error fetching ${parameter}:`, error);
+  const data = await fetchSingleCol({ ...req.query, ...req.params });
+  if (!data) {
     return res.status(500).send({ error: `Failed to fetch ${parameter}` });
   }
+
+  return res.send({ data });
 }

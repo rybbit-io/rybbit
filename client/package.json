@@ -9,6 +9,8 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@assistant-ui/react": "^0.9.5",
+    "@assistant-ui/react-markdown": "^0.9.2",
     "@better-auth/stripe": "^1.2.3",
     "@nivo/bar": "^0.88.0",
     "@nivo/calendar": "^0.88.0",
@@ -66,6 +68,8 @@
     "react-globe.gl": "^2.33.2",
     "react-leaflet": "^5.0.0",
     "react-select": "^5.10.0",
+    "recharts": "^2.15.3",
+    "remark-gfm": "^4.0.1",
     "sonner": "^2.0.1",
     "spinners-react": "^1.0.10",
     "tailwind-merge": "^2.6.0",
@@ -85,5 +89,8 @@
     "postcss": "^8",
     "tailwindcss": "^3.4.1",
     "typescript": "^5"
+  },
+  "overrides": {
+    "react-is": "^19.0.0"
   }
 }
