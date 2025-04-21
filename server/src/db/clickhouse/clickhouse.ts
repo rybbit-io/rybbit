@@ -1,14 +1,34 @@
 import { createClient } from "@clickhouse/client";
 
-export const clickhouse = createClient({
-  host: process.env.CLICKHOUSE_HOST,
-  database: process.env.CLICKHOUSE_DB,
-  password: process.env.CLICKHOUSE_PASSWORD,
-});
+export const createClickhouseClient = ({ readonly = false } = {}) => {
+  return createClient({
+    host: process.env.CLICKHOUSE_HOST,
+    database: process.env.CLICKHOUSE_DB,
+    username: readonly
+      ? process.env.CLICKHOUSE_READONLY_USER
+      : process.env.CLICKHOUSE_USER,
+    password: readonly
+      ? process.env.CLICKHOUSE_READONLY_PASSWORD
+      : process.env.CLICKHOUSE_PASSWORD,
+  });
+};
+
+// Default client with write permissions
+export const clickhouseAdmin = createClickhouseClient();
+
+// Readonly client
+export const clickhouse = createClickhouseClient({ readonly: true });
 
 export const initializeClickhouse = async () => {
+  await clickhouse.command({
+    query: `CREATE USER IF NOT EXISTS ${process.env.CLICKHOUSE_READONLY_USER} IDENTIFIED BY '${process.env.CLICKHOUSE_READONLY_PASSWORD}';`,
+  });
+  await clickhouse.command({
+    query: `GRANT SELECT ON ${process.env.CLICKHOUSE_DB}.* TO ${process.env.CLICKHOUSE_READONLY_USER};`,
+  });
+
   // Create events table
-  await clickhouse.exec({
+  await clickhouse.command({
     query: `
       CREATE TABLE IF NOT EXISTS events (
         site_id UInt16,
@@ -49,7 +69,7 @@ export const initializeClickhouse = async () => {
       `,
   });
 
-  await clickhouse.exec({
+  await clickhouse.command({
     query: `
     CREATE TABLE IF NOT EXISTS sessions
     (
@@ -82,7 +102,7 @@ export const initializeClickhouse = async () => {
     ORDER BY (site_id, session_id);
     `,
   });
-  await clickhouse.exec({
+  await clickhouse.command({
     query: `
     CREATE MATERIALIZED VIEW IF NOT EXISTS sessions_mv
     TO sessions

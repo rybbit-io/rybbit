@@ -60,6 +60,8 @@ services:
       - CLICKHOUSE_HOST=http://clickhouse:8123
       - CLICKHOUSE_DB=analytics
       - CLICKHOUSE_PASSWORD=frog
+      - CLICKHOUSE_READONLY_USER=readonly
+      - CLICKHOUSE_READONLY_PASSWORD=frog
       - POSTGRES_HOST=postgres
       - POSTGRES_PORT=5432
       - POSTGRES_DB=analytics

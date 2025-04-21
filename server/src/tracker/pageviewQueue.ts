@@ -1,5 +1,5 @@
 import { DateTime } from "luxon";
-import clickhouse from "../db/clickhouse/clickhouse.js";
+import clickhouse, { clickhouseAdmin } from "../db/clickhouse/clickhouse.js";
 import { TrackingPayload } from "../types.js";
 import { getDeviceType } from "../utils.js";
 import { getChannel } from "./getChannel.js";
@@ -114,7 +114,7 @@ class PageviewQueue {
     console.info("bulk insert: ", processedPageviews.length);
     // Bulk insert into database
     try {
-      await clickhouse.insert({
+      await clickhouseAdmin.insert({
         table: "events",
         values: processedPageviews,
         format: "JSONEachRow",
