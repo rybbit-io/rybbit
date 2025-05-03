@@ -92,7 +92,6 @@ services:
     environment:
       - NODE_ENV=production
       - NEXT_PUBLIC_BACKEND_URL=${BASE_URL}
-      - CLOUD=${CLOUD}
     depends_on:
       - backend
     restart: unless-stopped
