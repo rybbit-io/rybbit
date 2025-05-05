@@ -29,9 +29,9 @@ services:
       - clickhouse-data:/var/lib/clickhouse
       - ./clickhouse_config:/etc/clickhouse-server/config.d
     environment:
-      - CLICKHOUSE_DB=analytics
-      - CLICKHOUSE_USER=default
-      - CLICKHOUSE_PASSWORD=frog
+      - CLICKHOUSE_DB=${CLICKHOUSE_DB:-analytics}
+      - CLICKHOUSE_USER=${CLICKHOUSE_USER:-default}
+      - CLICKHOUSE_PASSWORD=${CLICKHOUSE_PASSWORD:-frog}
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8123/ping"]
       interval: 3s
@@ -44,9 +44,9 @@ services:
     image: postgres:latest
     container_name: postgres
     environment:
-      POSTGRES_USER: frog
-      POSTGRES_PASSWORD: frog
-      POSTGRES_DB: analytics
+      - POSTGRES_USER=${POSTGRES_USER:-frog}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-frog}
+      - POSTGRES_DB=${POSTGRES_DB:-analytics}
     volumes:
       - postgres-data:/var/lib/postgresql/data
     restart: unless-stopped
@@ -59,13 +59,13 @@ services:
     environment:
       - NODE_ENV=production
       - CLICKHOUSE_HOST=http://clickhouse:8123
-      - CLICKHOUSE_DB=analytics
-      - CLICKHOUSE_PASSWORD=frog
+      - CLICKHOUSE_DB=${CLICKHOUSE_DB:-analytics}
+      - CLICKHOUSE_PASSWORD=${CLICKHOUSE_PASSWORD:-frog}
       - POSTGRES_HOST=postgres
       - POSTGRES_PORT=5432
-      - POSTGRES_DB=analytics
-      - POSTGRES_USER=frog
-      - POSTGRES_PASSWORD=frog
+      - POSTGRES_DB=${POSTGRES_DB:-analytics}
+      - POSTGRES_USER=${POSTGRES_USER:-frog}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-frog}
       - BETTER_AUTH_SECRET=${BETTER_AUTH_SECRET}
       - BASE_URL=${BASE_URL}
       - DISABLE_SIGNUP=${DISABLE_SIGNUP}
