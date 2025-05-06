@@ -47,6 +47,7 @@ const BROWSER_TO_LOGO: Record<string, string> = {
   "Coc Coc": "CocCoc.svg",
   "Huawei Browser": "Huawei.svg",
   IE: "IE.svg",
+  Quark: "Quark.svg",
 };
 
 export function Browser({ browser }: { browser: string }) {
