@@ -8,7 +8,7 @@ services:
       - "443:443"
       - "443:443/udp" # Needed for HTTP/3
     volumes:
-      - ./Caddyfile:/etc/caddy/Caddyfile # Mount Caddy config file
+      - ../Caddyfile:/etc/caddy/Caddyfile # Mount Caddy config file
       - caddy_data:/data # Mount persistent data volume for certs etc.
       - caddy_config:/config # Mount persistent config volume
     environment:
@@ -27,7 +27,7 @@ services:
       - "9000:9000"
     volumes:
       - clickhouse-data:/var/lib/clickhouse
-      - ./clickhouse_config:/etc/clickhouse-server/config.d
+      - ../clickhouse_config:/etc/clickhouse-server/config.d
     environment:
       - CLICKHOUSE_DB=analytics
       - CLICKHOUSE_USER=default
@@ -50,13 +50,11 @@ services:
     volumes:
       - postgres-data:/var/lib/postgresql/data
     restart: unless-stopped
-    ports:
-      - "5432:5432"
 
   backend:
     container_name: backend
     build:
-      context: ./server
+      context: ../server
       dockerfile: Dockerfile
     environment:
       - NODE_ENV=production
@@ -85,27 +83,22 @@ services:
       postgres:
         condition: service_started
     restart: unless-stopped
-    ports:
-      - "3001:3001"
 
   client:
     container_name: client
     build:
-      context: ./client
+      context: ../client
       dockerfile: Dockerfile
       args:
         NEXT_PUBLIC_BACKEND_URL: ${BASE_URL}
         NEXT_PUBLIC_CLOUD: ${CLOUD}
     environment:
       - NODE_ENV=production
-      - NEXT_PUBLIC_DEMO=true
       - NEXT_PUBLIC_BACKEND_URL=${BASE_URL}
       - NEXT_PUBLIC_CLOUD=${CLOUD}
     depends_on:
       - backend
     restart: unless-stopped
-    ports:
-      - "3002:3002"
 
 volumes:
   clickhouse-data:
