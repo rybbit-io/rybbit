@@ -48,6 +48,7 @@ const BROWSER_TO_LOGO: Record<string, string> = {
   "Huawei Browser": "Huawei.svg",
   IE: "IE.svg",
   Quark: "Quark.svg",
+  "MIUI Browser": "Miui.png",
 };
 
 export function Browser({ browser }: { browser: string }) {
