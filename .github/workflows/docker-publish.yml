@@ -11,11 +11,11 @@ jobs:
       matrix:
         include:
           - platform: linux/amd64
-            runner: ubuntu-24.04
+            runner: ubuntu-22.04
           - platform: linux/arm64
-            runner: ubuntu-24.04-arm
+            runner: ubuntu-22.04-arm
 
-    runs-on: ${{ matrix.runner || 'ubuntu-24.04' }}
+    runs-on: ${{ matrix.runner || 'ubuntu-22.04' }}
 
     permissions:
       contents: read
