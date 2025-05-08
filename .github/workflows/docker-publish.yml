@@ -2,8 +2,7 @@ name: Docker Publish
 
 on:
   push:
-    branches:
-      - master
+    tags: ["v*"]
 
 jobs:
   build-and-push:
