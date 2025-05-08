@@ -7,22 +7,11 @@
 <p align="center">Open Source Web & Product Analytics</p>
 
 <p align="center">
-  <a href="https://rybbit.io" target="_blank">
-    <img src="https://img.shields.io/static/v1?label=website&message=view&color=green" alt="website">
-</a>
-<a href="https://demo.rybbit.io/1" target="_blank">
-    <img src="https://img.shields.io/static/v1?label=demo&message=view&color=green" alt="Demo">
-</a>
-<a href="https://rybbit.io/docs" target="_blank">
-    <img src="https://img.shields.io/badge/docs-view-green" alt="Documentation">
-</a>
-<a href="https://discord.gg/DEhGb4hYBj" target="_blank">
-    <img src="https://img.shields.io/badge/discord-join-green.svg?logo=discord&logoColor=white" alt="Discord">
-</a>
-<a href="https://github.com/rybbit-io/rybbit?tab=AGPL-3.0-1-ov-file" target="_blank">
-    <img src="https://img.shields.io/static/v1?label=license&message=AGPL-3&color=green" alt="License">
-</a>
-
+    <a href="https://rybbit.io" target="_blank"><img src="https://img.shields.io/static/v1?label=website&message=view&color=green" alt="website"></a>
+    <a href="https://demo.rybbit.io/1" target="_blank"><img src="https://img.shields.io/static/v1?label=demo&message=view&color=green" alt="Demo"></a>
+    <a href="https://rybbit.io/docs" target="_blank"><img src="https://img.shields.io/badge/docs-view-green" alt="Documentation"></a>
+    <a href="https://discord.gg/DEhGb4hYBj" target="_blank"><img src="https://img.shields.io/badge/discord-join-green.svg?logo=discord&logoColor=white" alt="Discord"></a>
+    <a href="https://github.com/rybbit-io/rybbit?tab=AGPL-3.0-1-ov-file" target="_blank"><img src="https://img.shields.io/static/v1?label=license&message=AGPL-3&color=green" alt="License"></a>
 </p>
 
 </p>
