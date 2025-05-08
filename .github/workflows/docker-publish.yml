@@ -6,17 +6,7 @@ on:
 
 jobs:
   build-and-push:
-
-    strategy:
-      matrix:
-        include:
-          - platform: linux/amd64
-            runner: ubuntu-22.04
-          - platform: linux/arm64
-            runner: ubuntu-22.04-arm
-
-    runs-on: ${{ matrix.runner || 'ubuntu-22.04' }}
-
+    runs-on: ubuntu-latest
     permissions:
       contents: read
       packages: write
@@ -25,8 +15,15 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      # 1) Register QEMU emulators for cross-platform builds
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v2
+
+      # 2) Create and use a Docker Buildx builder instance
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
+        with:
+          buildkitd-flags: --debug
 
       - name: Log in to GitHub Container Registry
         uses: docker/login-action@v3
@@ -39,24 +36,22 @@ jobs:
         id: meta_backend
         uses: docker/metadata-action@v5
         with:
-          # Images will be ghcr.io/rybbit-io/rybbit-backend
           images: ghcr.io/${{ github.repository_owner }}/rybbit-backend
           tags: |
-            type=ref,event=branch  # Creates tag like :master
-            type=sha               # Creates tag like :<commit_sha_short>
-            # Tags 'master' branch pushes additionally with 'latest'
-            type=raw,value=latest,enable=${{ github.ref == format('refs/heads/{0}', 'master') }}
+            type=ref,event=branch
+            type=sha
+            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/master' }}
 
-      - name: Build and push Backend Docker image
+      - name: Build and push Backend Docker image (multi-arch)
         uses: docker/build-push-action@v6
         with:
-          context: ./server #
+          context: ./server
           file: ./server/Dockerfile
           push: true
-          platforms: ${{ matrix.platform }}   # linux/amd64 or linux/arm64
+          platforms: linux/amd64,linux/arm64
           tags: ${{ steps.meta_backend.outputs.tags }}
           labels: ${{ steps.meta_backend.outputs.labels }}
-          # # Optional: Enable build cache for potentially faster builds
+          # Optional: enable build cache for speed
           # cache-from: type=gha,scope=${{ github.workflow }}-backend
           # cache-to: type=gha,scope=${{ github.workflow }}-backend,mode=max
 
@@ -64,23 +59,21 @@ jobs:
         id: meta_client
         uses: docker/metadata-action@v5
         with:
-          # Images will be ghcr.io/rybbit-io/rybbit-client
           images: ghcr.io/${{ github.repository_owner }}/rybbit-client
           tags: |
             type=ref,event=branch
             type=sha
-            # Tags 'master' branch pushes additionally with 'latest'
-            type=raw,value=latest,enable=${{ github.ref == format('refs/heads/{0}', 'master') }}
+            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/master' }}
 
-      - name: Build and push Client Docker image
+      - name: Build and push Client Docker image (multi-arch)
         uses: docker/build-push-action@v6
         with:
           context: ./client
           file: ./client/Dockerfile
           push: true
-          platforms: ${{ matrix.platform }}   # linux/amd64 or linux/arm64
+          platforms: linux/amd64,linux/arm64
           tags: ${{ steps.meta_client.outputs.tags }}
           labels: ${{ steps.meta_client.outputs.labels }}
-          # # Optional: Enable build cache for potentially faster builds
+          # Optional: enable build cache for speed
           # cache-from: type=gha,scope=${{ github.workflow }}-client
           # cache-to: type=gha,scope=${{ github.workflow }}-client,mode=max
