@@ -27,6 +27,10 @@ You can either sign up for our hosted service at https://rybbit.io or <a href="h
 
 Learn more about Rybbit by reading our <a href="https://rybbit.io/docs">documentation</a> .
 
+For docker deployment on cloud service:
+
+[![Deploy on Sealos](https://sealos.io/Deploy-on-Sealos.svg)](https://template.sealos.io/deploy?templateName=rybbit)
+
 <h2>Key Features</h2>
 
 - All key web analytics metrics including sessions, unique users, pageviews, bounce rate, session duration
