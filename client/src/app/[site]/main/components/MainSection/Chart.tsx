@@ -1,13 +1,19 @@
 "use client";
 import { nivoTheme } from "@/lib/nivo";
 import { StatType, TimeBucket, useStore } from "@/lib/store";
-import { ResponsiveLine } from "@nivo/line";
+import { ResponsiveLine, CustomLayer, CustomLayerProps } from "@nivo/line";
+import type { ScaleLinear } from '@nivo/scales'
 import { DateTime } from "luxon";
 import { formatSecondsAsMinutesAndSeconds } from "../../../../../lib/utils";
 import { APIResponse } from "../../../../../api/types";
 import { GetOverviewBucketedResponse } from "../../../../../api/analytics/useGetOverviewBucketed";
 import { Time } from "../../../../../components/DateSelector/types";
 import { useWindowSize } from "@uidotdev/usehooks";
+
+type DashedLineProps = Omit<CustomLayerProps, 'xScale' | 'yScale'> & {
+  xScale: ScaleLinear<number>
+  yScale: ScaleLinear<number>
+}
 
 export const formatter = Intl.NumberFormat("en", { notation: "compact" });
 
@@ -76,7 +82,7 @@ const getMin = (time: Time, bucket: TimeBucket) => {
   return undefined;
 };
 
-const formatTooltipValue = (value: number, selectedStat: StatType) => {
+const formatTooltipValue = (value: number, selectedStat: StatType): string => {
   if (selectedStat === "bounce_rate") {
     return `${value.toFixed(1)}%`;
   }
@@ -128,16 +134,93 @@ export function Chart({
             : undefined,
       };
     })
-    .filter((e) => e !== null);
+    .filter((e) => e !== null) || [];
+
+  const displayDashed = time.mode === "day" && // display dashed only if current mode it DAY
+    time.day === DateTime.now().toISODate() && // display dashed only if day its TODAY
+    bucket === "hour" && // display dashed only if its by hours representation
+    formattedData.length > 1; // display dashed only if there two and more datapoints
+
+  const baseGradient = {
+    offset: 0,
+    color: "hsl(var(--dataviz))",
+  };
+
+  const croppedData = formattedData.slice(0, -1);
+
+  // add original data and styles to chart
+  const chartPropsData = [{
+    id: "croppedData",
+    data: displayDashed ? croppedData : formattedData,
+  }];
+  const chartPropsDefs = [{
+    id: "croppedData",
+    type: "linearGradient",
+    colors: [
+      { ...baseGradient, opacity: 1 },
+      { offset: 100, color: baseGradient.color, opacity: 0 },
+    ],
+  }];
+  const chartPropsFill = [{
+    id: "croppedData",
+    match: {
+      id: "croppedData"
+    },
+  }];
+
+  // add dashed data and styles to chart
+  if (displayDashed) {
+    chartPropsData.push({
+      id: "dashedData",
+      data: [croppedData.at(-1)!, formattedData.at(-1)!],
+    });
+    chartPropsDefs.push({
+      id: "dashedData",
+      type: "linearGradient",
+      colors: [
+        { ...baseGradient, opacity: 0.35 },
+        { offset: 100, color: baseGradient.color, opacity: 0 },
+      ],
+    });
+    chartPropsFill.push({
+      id: "dashedData",
+      match: {
+        id: "dashedData"
+      },
+    });
+  }
+
+  const DashedLine: CustomLayer = ({
+    series,
+    lineGenerator,
+    xScale,
+    yScale,
+  }: DashedLineProps) => {
+    return series.map(({ id, data, color }) => (
+      <path
+        key={id.toString()}
+        d={
+          lineGenerator(
+            data.map(d => ({
+              x: xScale(d.data.x as number),
+              y: yScale(d.data.y as number),
+            }))
+          )!
+        }
+        fill="none"
+        stroke={color}
+        style={
+          id === "dashedData"
+            ? { strokeDasharray: "3, 6", strokeWidth: 3 }
+            : { strokeWidth: 2 }
+        }
+      />
+    ));
+  }
 
   return (
     <ResponsiveLine
-      data={[
-        {
-          id: "1",
-          data: formattedData ?? [],
-        },
-      ]}
+      data={chartPropsData}
       theme={nivoTheme}
       margin={{ top: 10, right: 10, bottom: 25, left: 35 }}
       xScale={{
@@ -204,17 +287,8 @@ export function Chart({
       enableArea={true}
       areaBaselineValue={0}
       areaOpacity={0.3}
-      defs={[
-        {
-          id: "gradient",
-          type: "linearGradient",
-          colors: [
-            { offset: 0, color: "hsl(var(--dataviz))", opacity: 1 },
-            { offset: 100, color: "hsl(var(--dataviz))", opacity: 0 },
-          ],
-        },
-      ]}
-      fill={[{ match: (d) => d.id === "1", id: "gradient" }]}
+      defs={chartPropsDefs}
+      fill={chartPropsFill}
       sliceTooltip={({ slice }: any) => {
         const currentY = Number(slice.points[0].data.yFormatted);
         const previousY = Number(slice.points[0].data.previousY) || 0;
@@ -253,6 +327,18 @@ export function Chart({
           </div>
         );
       }}
+      layers={[
+        "grid",
+        "markers",
+        "axes",
+        "areas",
+        "crosshair",
+        (displayDashed ? DashedLine : "lines"),
+        "slices",
+        "points",
+        "mesh",
+        "legends",
+      ]}
     />
   );
 }
