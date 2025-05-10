@@ -69,6 +69,7 @@ services:
       - BETTER_AUTH_SECRET=${BETTER_AUTH_SECRET}
       - BASE_URL=${BASE_URL}
       - DISABLE_SIGNUP=${DISABLE_SIGNUP}
+      - ALLOW_EMAIL_CHANGE=${ALLOW_EMAIL_CHANGE}
       # below is only for rybbit cloud
       - CLOUD=${CLOUD}
       - STRIPE_SECRET_KEY=${STRIPE_SECRET_KEY}
