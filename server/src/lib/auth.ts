@@ -6,7 +6,7 @@ import { eq } from "drizzle-orm";
 import pg from "pg";
 import { db } from "../db/postgres/postgres.js";
 import * as schema from "../db/postgres/schema.js";
-import { DISABLE_SIGNUP, IS_CLOUD } from "./const.js";
+import { ALLOW_EMAIL_CHANGE, DISABLE_SIGNUP } from "./const.js";
 
 dotenv.config();
 
@@ -51,6 +51,9 @@ export let auth: AuthType | null = betterAuth({
   user: {
     deleteUser: {
       enabled: true,
+    },
+    changeEmail: {
+      enabled: ALLOW_EMAIL_CHANGE,
     },
   },
   plugins: pluginList,

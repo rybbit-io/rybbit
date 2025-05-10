@@ -4,6 +4,7 @@ dotenv.config();
 
 export const IS_CLOUD = process.env.CLOUD === "true";
 export const DISABLE_SIGNUP = process.env.DISABLE_SIGNUP === "true";
+export const ALLOW_EMAIL_CHANGE = process.env.ALLOW_EMAIL_CHANGE === "true";
 
 // Trial constants
 export const TRIAL_DURATION_DAYS = 14;
