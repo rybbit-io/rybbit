@@ -506,7 +506,7 @@ export default function SignupPage() {
           <CardContent>
             <div className="flex flex-col gap-6">
               <p className="text-center">New account registration is currently disabled. If you have an account, you can
-                {" "}<Link href="/signin" className="underline">sign in</Link>.
+                {" "}<Link href="/login" className="underline">sign in</Link>.
               </p>
             </div>
           </CardContent>
