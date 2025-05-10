@@ -205,10 +205,17 @@ const getQuery = (request: FastifyRequest<GenericRequest>) => {
     `;
   }
 
+  const valueExpression =
+  parameter === "browser"
+    ? `concat(${getSqlParam(parameter)}, ' (', browser_version, ')' )`
+    : parameter === "operating_system"
+    ? `concat(${getSqlParam(parameter)}, ' (', operating_system_version, ')' )`
+    : getSqlParam(parameter);
+
   return `
     WITH PageStats AS (
       SELECT
-        ${getSqlParam(parameter)} as value,
+        ${valueExpression} as value,
         COUNT(distinct(session_id)) as unique_sessions,
         COUNT() as pageviews
       FROM events

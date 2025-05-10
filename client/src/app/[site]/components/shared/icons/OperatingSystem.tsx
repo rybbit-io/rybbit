@@ -17,11 +17,27 @@ const OS_TO_LOGO: Record<string, string> = {
 };
 
 export function OperatingSystem({ os = "" }: { os?: string }) {
+  /*
+    In `os` variable we have something like "Windows (10)",
+    so we need to get "Windows" only to get the logo.
+  */
+  const splittedLabel = os.split(" ");
+
+  let logoKey = os
+  
+  if (splittedLabel.length > 1) {
+    const elementsToJoin = splittedLabel.slice(0, -1);
+
+    logoKey = elementsToJoin.join(" ");
+  }
+  
+  const logo = OS_TO_LOGO[logoKey];  
+
   return (
     <>
-      {OS_TO_LOGO[os] ? (
+      {logo ? (
         <Image
-          src={`/operating-systems/${OS_TO_LOGO[os]}`}
+          src={`/operating-systems/${logo}`}
           alt={os || "Other"}
           className="w-4 h-4"
           width={16}
