@@ -50,11 +50,27 @@ const BROWSER_TO_LOGO= {
 };
 
 export function Browser({ browser }) {
+  /*
+    In `browser` variable we have something like "Chrome Headless (156)",
+    so we need to get "Chrome Headless" only to get the logo.
+  */
+  const splittedLabel = browser.split(" ");
+
+  let logoKey = browser
+  
+  if (splittedLabel.length > 1) {
+    const elementsToJoin = splittedLabel.slice(0, -1);
+
+    logoKey = elementsToJoin.join(" ");
+  }
+  
+  const logo = BROWSER_TO_LOGO[logoKey];  
+
   return (
     <>
-      {BROWSER_TO_LOGO[browser] ? (
+      {logo ? (
         <Image
-          src={`/browsers/${BROWSER_TO_LOGO[browser]}`}
+          src={`/browsers/${logo}`}
           alt={browser || "Other"}
           className="w-4 h-4"
           width={16}
