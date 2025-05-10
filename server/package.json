@@ -39,7 +39,7 @@
   },
   "devDependencies": {
     "@types/luxon": "^3.4.2",
-    "@types/node": "^20.10.0",
+    "@types/node": "^22.15.17",
     "@types/node-cron": "^3.0.11",
     "@types/pg": "^8.11.11",
     "@types/sqlstring": "^2.3.2",
