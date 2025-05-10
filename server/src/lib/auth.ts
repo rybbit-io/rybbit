@@ -1,18 +1,19 @@
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
-import { admin, organization } from "better-auth/plugins";
+import { admin, organization, username } from "better-auth/plugins";
 import dotenv from "dotenv";
 import { eq } from "drizzle-orm";
 import pg from "pg";
 import { db } from "../db/postgres/postgres.js";
 import * as schema from "../db/postgres/schema.js";
-import { DISABLE_SIGNUP, IS_CLOUD } from "./const.js";
+import { DISABLE_SIGNUP } from "./const.js";
 
 dotenv.config();
 
 type AuthType = ReturnType<typeof betterAuth> | null;
 
 const pluginList = [
+  username(),
   admin(),
   organization({
     // Allow users to create organizations
