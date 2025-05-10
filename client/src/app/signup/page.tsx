@@ -1,7 +1,7 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { GithubLogo, GoogleLogo } from "@phosphor-icons/react/dist/ssr";
@@ -17,6 +17,7 @@ import {
   Sparkles,
   User,
 } from "lucide-react";
+import Image from "next/image";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
@@ -26,7 +27,7 @@ import { Logo } from "../../components/Logo";
 import { Alert, AlertDescription, AlertTitle } from "../../components/ui/alert";
 import { useSetPageTitle } from "../../hooks/useSetPageTitle";
 import { authClient } from "../../lib/auth";
-import { IS_CLOUD } from "../../lib/const";
+import { DISABLE_SIGNUP, IS_CLOUD } from "../../lib/const";
 import { userStore } from "../../lib/userStore";
 import { cn } from "../../lib/utils";
 
@@ -492,6 +493,28 @@ export default function SignupPage() {
 
   // Calculate progress percentage
   const progressPercentage = ((currentStep - 1) / 3) * 100;
+
+  if(DISABLE_SIGNUP) {
+    return (
+      <div className="flex justify-center items-center h-screen w-full">
+        <Card className="w-full max-w-sm p-1">
+          <CardHeader>
+            <Image src="/rybbit.png" alt="Rybbit" width={32} height={32} />
+            <CardTitle className="text-2xl flex justify-center">
+              Sign Up Disabled
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-col gap-6">
+              <p className="text-center">New account registration is currently disabled. If you have an account, you can
+                {" "}<Link href="/login" className="underline">sign in</Link>.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
 
   return (
     <div className="flex justify-center items-center min-h-screen bg-background p-4 relative overflow-hidden">

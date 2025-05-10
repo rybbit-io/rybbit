@@ -13,7 +13,7 @@ import { useState } from "react";
 import { Alert, AlertDescription, AlertTitle } from "../../components/ui/alert";
 import { useSetPageTitle } from "../../hooks/useSetPageTitle";
 import { authClient } from "../../lib/auth";
-import { IS_CLOUD } from "../../lib/const";
+import { DISABLE_SIGNUP, IS_CLOUD } from "../../lib/const";
 import { userStore } from "../../lib/userStore";
 
 export default function Page() {
@@ -150,13 +150,15 @@ export default function Page() {
                   <AlertDescription>{error}</AlertDescription>
                 </Alert>
               )}
-
-              <div className="text-center text-sm">
-                Don't have an account?{" "}
-                <Link href="/signup" className="underline">
-                  Sign up
-                </Link>
-              </div>
+              
+              {!DISABLE_SIGNUP && (
+                <div className="text-center text-sm">
+                  Don't have an account?{" "}
+                  <Link href="/signup" className="underline">
+                    Sign up
+                  </Link>
+                </div>
+              )}
             </div>
           </form>
         </CardContent>

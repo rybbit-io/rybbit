@@ -199,13 +199,13 @@ export default function Subscribe() {
                     <div className="flex gap-3 mb-2 text-sm">
                       <button
                         onClick={() => setIsAnnual(false)}
-                        className={cn("px-3 py-1 rounded-full transition-colors", !isAnnual ? "bg-emerald-500/20 text-emerald-400 font-medium" : "text-neutral-400 hover:text-neutral-200")}
+                        className={cn("px-3 py-1 rounded-full transition-colors cursor-pointer", !isAnnual ? "bg-emerald-500/20 text-emerald-400 font-medium" : "text-neutral-400 hover:text-neutral-200")}
                       >
                         Monthly
                       </button>
                       <button
                         onClick={() => setIsAnnual(true)}
-                        className={cn("px-3 py-1 rounded-full transition-colors", isAnnual ? "bg-emerald-500/20 text-emerald-400 font-medium" : "text-neutral-400 hover:text-neutral-200")}
+                        className={cn("px-3 py-1 rounded-full transition-colors cursor-pointer", isAnnual ? "bg-emerald-500/20 text-emerald-400 font-medium" : "text-neutral-400 hover:text-neutral-200")}
                       >
                         Annual
                         <span className="ml-1 text-xs text-emerald-500">
@@ -267,7 +267,7 @@ export default function Subscribe() {
 
               <button
                 onClick={handleSubscribe}
-                className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-medium px-5 py-3 rounded-xl shadow-lg shadow-emerald-900/20 transform hover:-translate-y-0.5 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-opacity-50 disabled:opacity-50 disabled:pointer-events-none"
+                className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-medium px-5 py-3 rounded-xl shadow-lg shadow-emerald-900/20 transform hover:-translate-y-0.5 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-opacity-50 disabled:opacity-50 disabled:pointer-events-none cursor-pointer"
                 disabled={isLoading}
               >
                 {isLoading

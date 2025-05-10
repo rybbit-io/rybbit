@@ -45,11 +45,11 @@ export let auth: AuthType | null = betterAuth({
       clientSecret: process.env.GITHUB_CLIENT_SECRET!,
     },
   },
-  deleteUser: {
-    enabled: true,
-  },
   user: {
     deleteUser: {
+      enabled: true,
+    },
+    changeEmail: {
       enabled: true,
     },
   },
@@ -104,9 +104,6 @@ export function initAuth(allowedOrigins: string[]) {
       //   clientSecret: process.env.TWITTER_CLIENT_SECRET!,
       // },
     },
-    deleteUser: {
-      enabled: true,
-    },
     user: {
       additionalFields: {
         monthlyEventCount: {
@@ -139,6 +136,9 @@ export function initAuth(allowedOrigins: string[]) {
             throw error; // Re-throw to prevent user deletion if cleanup fails
           }
         },
+      },
+      changeEmail: {
+        enabled: true,
       },
     },
     plugins: pluginList,
