@@ -4,6 +4,7 @@ import { db } from "../../db/postgres/postgres.js";
 import { member, user } from "../../db/postgres/schema.js";
 
 import { randomBytes } from "crypto";
+import { IS_CLOUD } from "../../lib/const.js";
 
 function generateId(len = 32) {
   const alphabet =
@@ -56,7 +57,7 @@ export async function addUserToOrganization(
       where: eq(member.userId, foundUser.id),
     });
 
-    if (foundMember.length > 0) {
+    if (foundMember.length > 0 && IS_CLOUD) {
       return reply
         .status(400)
         .send({ error: "user is already in an organization" });
