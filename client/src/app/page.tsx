@@ -13,6 +13,7 @@ import { AddSite } from "./components/AddSite";
 import { CreateOrganizationDialog } from "../components/CreateOrganizationDialog";
 import { FreeTrialBanner } from "../components/FreeTrialBanner";
 import { useSetPageTitle } from "../hooks/useSetPageTitle";
+import { OrganizationSelector } from "./components/OrganizationSelector";
 
 export default function Home() {
   useSetPageTitle("Rybbit · Home");
@@ -45,12 +46,21 @@ export default function Home() {
     refetchSites();
   };
 
+  // Organization filtering
+  const [filterOrganizationId, setFilterOrganizationId] = useState<string>();
+
   return (
     <StandardPage>
       <FreeTrialBanner />
       <div className="flex justify-between items-center mb-4">
         <div className="text-2xl font-bold">Websites</div>
-        <AddSite disabled={hasNoOrganizations || disabled} />
+        <div className="flex items-center gap-2">
+          <OrganizationSelector
+            filterOrganizationId={filterOrganizationId}
+            setFilterOrganizationId={setFilterOrganizationId}
+          />
+          <AddSite disabled={hasNoOrganizations || disabled} />
+        </div>
       </div>
       {/* Organization required message */}
       {hasNoOrganizations && <NoOrganization />}
@@ -58,15 +68,21 @@ export default function Home() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {/* Sites list */}
 
-        {sites?.map((site) => {
-          return (
-            <SiteCard
-              key={site.siteId}
-              siteId={site.siteId}
-              domain={site.domain}
-            />
-          );
-        })}
+        {sites
+          ?.filter((site) =>
+            filterOrganizationId === undefined
+              ? true
+              : site.organizationId === filterOrganizationId
+          )
+          .map((site) => {
+            return (
+              <SiteCard
+                key={site.siteId}
+                siteId={site.siteId}
+                domain={site.domain}
+              />
+            );
+          })}
 
         {/* No websites message */}
         {!hasNoOrganizations &&

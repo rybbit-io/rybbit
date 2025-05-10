@@ -24,6 +24,7 @@ export type GetSitesResponse = {
   createdBy: string;
   public: boolean;
   saltUserIds: boolean;
+  organizationId: string;
   overMonthlyLimit?: boolean;
   monthlyEventCount?: number;
   eventLimit?: number;
