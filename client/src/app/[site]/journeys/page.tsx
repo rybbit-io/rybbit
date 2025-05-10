@@ -470,7 +470,7 @@ export default function JourneysPage() {
 
           {data?.journeys?.length && data?.journeys?.length > 0 ? (
             <div className="overflow-x-auto">
-              <svg ref={svgRef} className="w-full h-[1000px]" />
+              <svg ref={svgRef} />
             </div>
           ) : null}
         </CardContent>
