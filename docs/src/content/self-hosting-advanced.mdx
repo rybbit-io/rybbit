@@ -138,6 +138,7 @@ services:
       - BETTER_AUTH_SECRET=${BETTER_AUTH_SECRET}
       - BASE_URL=${BASE_URL}
       - DISABLE_SIGNUP=${DISABLE_SIGNUP}
+      - ALLOW_EMAIL_CHANGE=${ALLOW_EMAIL_CHANGE}
     depends_on:
       rybbit_clickhouse:
         condition: service_healthy
@@ -174,6 +175,7 @@ DOMAIN_NAME=domain.tld
 BASE_URL=https://domain.tld
 BETTER_AUTH_SECRET=long_random_string
 DISABLE_SIGNUP=false
+ALLOW_EMAIL_CHANGE=false
 HOST_BACKEND_PORT=3001
 HOST_CLIENT_PORT=3002
 ```
