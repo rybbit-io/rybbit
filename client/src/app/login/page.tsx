@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { GithubLogo, GoogleLogo } from "@phosphor-icons/react/dist/ssr";
+import { GithubLogo, GoogleLogo, SignIn } from "@phosphor-icons/react/dist/ssr";
 import { AlertCircle } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
@@ -13,7 +13,7 @@ import { useState } from "react";
 import { Alert, AlertDescription, AlertTitle } from "../../components/ui/alert";
 import { useSetPageTitle } from "../../hooks/useSetPageTitle";
 import { authClient } from "../../lib/auth";
-import { IS_CLOUD } from "../../lib/const";
+import { IS_CLOUD, IS_OIDC_ENABLED } from "../../lib/const";
 import { userStore } from "../../lib/userStore";
 
 export default function Page() {
@@ -56,6 +56,16 @@ export default function Page() {
     try {
       await authClient.signIn.social({
         provider,
+      });
+    } catch (error) {
+      setError(String(error));
+    }
+  };
+
+  const handleOAuthSignIn = async (providerId: "oidc") => {
+    try {
+      await authClient.signIn.oauth2({
+        providerId,
       });
     } catch (error) {
       setError(String(error));
@@ -114,7 +124,7 @@ export default function Page() {
                 {isLoading ? "Logging in..." : "Login"}
               </Button>
 
-              {IS_CLOUD && (
+              {(IS_CLOUD || IS_OIDC_ENABLED) && (
                 <>
                   <div className="relative flex justify-center text-xs uppercase">
                     <span className="bg-background px-2 text-muted-foreground">
@@ -123,22 +133,37 @@ export default function Page() {
                   </div>
 
                   <div className="flex flex-col gap-2">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => handleSocialSignIn("google")}
-                    >
-                      <GoogleLogo weight="bold" />
-                      Google
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => handleSocialSignIn("github")}
-                    >
-                      <GithubLogo weight="bold" />
-                      GitHub
-                    </Button>
+                    {/* Only show social login if cloud */}
+                    {IS_CLOUD && (
+                      <>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => handleSocialSignIn("google")}
+                        >
+                          <GoogleLogo weight="bold" />
+                          Google
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => handleSocialSignIn("github")}
+                        >
+                          <GithubLogo weight="bold" />
+                          GitHub
+                        </Button>
+                      </>
+                    )}
+                    {IS_OIDC_ENABLED && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => handleOAuthSignIn("oidc")}
+                      >
+                        <SignIn weight="bold" />
+                        OIDC
+                      </Button>
+                    )}
                   </div>
                 </>
               )}

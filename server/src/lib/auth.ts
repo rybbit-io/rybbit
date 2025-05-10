@@ -1,6 +1,6 @@
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
-import { admin, organization } from "better-auth/plugins";
+import { admin, genericOAuth, organization } from "better-auth/plugins";
 import dotenv from "dotenv";
 import { eq } from "drizzle-orm";
 import pg from "pg";
@@ -19,6 +19,18 @@ const pluginList = [
     allowUserToCreateOrganization: true,
     // Set the creator role to owner
     creatorRole: "owner",
+  }),
+  genericOAuth({
+    config: [
+      {
+        providerId: "oidc",
+        clientId: process.env.OIDC_CLIENT_ID!,
+        clientSecret: process.env.OIDC_CLIENT_SECRET!,
+        discoveryUrl: process.env.OIDC_DISCOVERY_URL!,
+        redirectURI: process.env.BASE_URL + "/api/auth/oauth2/callback/oidc",
+        scopes: ["openid", "profile", "email", "offline_access"],
+      },
+    ],
   }),
 ];
 

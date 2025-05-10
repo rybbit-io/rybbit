@@ -15,6 +15,7 @@ export default {
   "self-hosting": "",
   "self-hosting-advanced": "",
   "self-hosting-nginx": "",
+  "self-hosting-oidc": "",
   _5: {
     type: "separator",
     title: "SDKs",

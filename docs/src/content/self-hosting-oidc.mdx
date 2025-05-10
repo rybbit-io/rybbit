@@ -1,0 +1,22 @@
+import { Callout } from 'nextra/components'
+
+# OIDC Configuration
+
+This guide covers OpenID Connect configuration options for self-hosting Rybbit.
+
+1. Configure the application with your identity provider
+<Callout type="info">
+  The redirect url is: https://base-url/api/auth/oauth2/callback/oidc
+</Callout>
+
+2. Adapt environment
+Set the values from your identity provider in the .env and enable OIDC
+```
+NEXT_PUBLIC_OIDC_ENABLED=true
+OIDC_CLIENT_ID=client_id
+OIDC_CLIENT_SECRET=client_secret
+OIDC_DISCOVERY_URL=https://issuer/.well-known/openid-configuration
+```
+
+
+3. Restart the application
