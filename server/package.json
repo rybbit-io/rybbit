@@ -19,7 +19,7 @@
     "@better-auth/stripe": "^1.2.7",
     "@clickhouse/client": "^1.10.1",
     "@fastify/cors": "^10.0.2",
-    "@fastify/one-line-logger": "^1.4.0",
+    "@fastify/one-line-logger": "^2.0.2",
     "@fastify/static": "^8.0.4",
     "@maxmind/geoip2-node": "^6.0.0",
     "better-auth": "^1.2.7",
