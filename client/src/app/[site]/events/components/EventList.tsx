@@ -6,6 +6,7 @@ import { memo, useState } from "react";
 import { EventName } from "../../../../api/analytics/useGetEventNames";
 import { useGetEventProperties } from "../../../../api/analytics/useGetEventProperties";
 import { NothingFound } from "../../../../components/NothingFound";
+import { cn } from "../../../../lib/utils";
 import { EventProperties } from "./EventProperties";
 
 // Skeleton component for EventList
@@ -42,18 +43,14 @@ const EventListSkeleton = memo(
         {Array.from({ length: 10 }).map((_, index) => (
           <div
             key={index}
-            className={`relative ${
-              size === "small" ? "h-6" : "h-9"
-            } flex items-center`}
+            className={cn("relative flex items-center", size === "small" ? "h-6" : "h-9")}
           >
             <div
               className="absolute inset-0 bg-neutral-800 py-2 rounded-md animate-pulse"
               style={{ width: `${widths[index]}%` }}
             ></div>
             <div
-              className={`z-5 mx-2 flex justify-between items-center ${
-                size === "small" ? "text-xs" : "text-sm"
-              } w-full`}
+              className={cn("z-5 mx-2 flex justify-between items-center w-full", size === "small" ? "text-xs" : "text-sm")}
             >
               <div className="flex items-center gap-1">
                 <div className="h-4 w-4 bg-neutral-800 rounded animate-pulse mr-1"></div>
@@ -63,9 +60,7 @@ const EventListSkeleton = memo(
                 ></div>
               </div>
               <div
-                className={`${
-                  size === "small" ? "text-xs" : "text-sm"
-                } flex gap-2`}
+                className={cn("flex gap-2", size === "small" ? "text-xs" : "text-sm")}
               >
                 <div
                   className="h-4 bg-neutral-800 rounded animate-pulse"
@@ -131,9 +126,7 @@ export function EventList({
           <div key={event.eventName} className="flex flex-col">
             {/* Event Row */}
             <div
-              className={`relative ${
-                size === "small" ? "h-6" : "h-9"
-              } flex items-center cursor-pointer hover:bg-neutral-850 group px-2 rounded-md`}
+              className={cn("relative flex items-center cursor-pointer hover:bg-neutral-850 group px-2 rounded-md", size === "small" ? "h-6" : "h-9")}
               onClick={() => handleEventClick(event.eventName)}
             >
               <div
@@ -141,9 +134,7 @@ export function EventList({
                 style={{ width: `${percentage}%` }}
               ></div>
               <div
-                className={`z-10 flex justify-between items-center ${
-                  size === "small" ? "text-xs" : "text-sm"
-                } w-full`}
+                className={cn("z-10 flex justify-between items-center w-full", size === "small" ? "text-xs" : "text-sm")}
               >
                 <div className="font-medium truncate max-w-[70%] flex items-center gap-1">
                   {isExpanded ? (
@@ -154,9 +145,7 @@ export function EventList({
                   {event.eventName}
                 </div>
                 <div
-                  className={`text-sm flex gap-2 ${
-                    size === "small" ? "text-xs" : "text-sm"
-                  }`}
+                  className={cn("text-sm flex gap-2", size === "small" ? "text-xs" : "text-sm")}
                 >
                   <div className="hidden group-hover:block text-neutral-400">
                     {Math.round(percentage * 10) / 10}%

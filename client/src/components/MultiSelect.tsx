@@ -1,5 +1,5 @@
 import { forwardRef } from "react";
-import { Props as ReactSelectProps, GroupBase } from "react-select";
+import { GroupBase, Props as ReactSelectProps } from "react-select";
 
 import Creatable from "react-select/creatable";
 
@@ -21,7 +21,7 @@ export const MultiSelect = forwardRef<any, MultiSelectProps<any>>(
         isMulti
         unstyled
         closeMenuOnSelect={false}
-        className={className}
+        className={cn(className)}
         classNames={{
           control: ({ isFocused }) =>
             cn(

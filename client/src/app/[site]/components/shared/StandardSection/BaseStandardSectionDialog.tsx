@@ -1,10 +1,8 @@
-import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
-  DialogTitle,
-  DialogTrigger,
+  DialogTitle
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import {
@@ -12,21 +10,20 @@ import {
   flexRender,
   getCoreRowModel,
   getSortedRowModel,
-  useReactTable,
   SortingState,
+  useReactTable,
 } from "@tanstack/react-table";
 import { useDebounce } from "@uidotdev/usehooks";
 import {
-  Search,
-  SquareArrowOutUpRight,
-  ChevronUp,
   ChevronDown,
-  Expand,
+  ChevronUp,
+  Search,
+  SquareArrowOutUpRight
 } from "lucide-react";
 import { ReactNode, useMemo, useState } from "react";
 import { SingleColResponse } from "../../../../../api/analytics/useSingleCol";
 import { addFilter, FilterParameter } from "../../../../../lib/store";
-import { formatSecondsAsMinutesAndSeconds } from "../../../../../lib/utils";
+import { cn, formatSecondsAsMinutesAndSeconds } from "../../../../../lib/utils";
 
 interface BaseStandardSectionDialogProps {
   title: string;
@@ -200,7 +197,7 @@ export function BaseStandardSectionDialog({
             <Input
               type="text"
               placeholder={`Filter ${data.length} items...`}
-              className="pl-9 bg-neutral-900 border-neutral-700  text-xs"
+              className="pl-9 bg-neutral-900 border-neutral-700 text-xs"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
@@ -214,18 +211,14 @@ export function BaseStandardSectionDialog({
                       <th
                         key={header.id}
                         scope="col"
-                        className={`px-2 py-1 font-medium whitespace-nowrap cursor-pointer select-none ${
-                          index === 0 ? "text-left" : "text-right"
-                        }`}
+                        className={cn("px-2 py-1 font-medium whitespace-nowrap cursor-pointer select-none", index === 0 ? "text-left" : "text-right")}
                         style={{
                           minWidth: header.id === "user_id" ? "100px" : "auto",
                         }}
                         onClick={header.column.getToggleSortingHandler()}
                       >
                         <div
-                          className={`flex items-center gap-1 ${
-                            index === 0 ? "" : "justify-end"
-                          }`}
+                          className={cn("flex items-center gap-1", index !== 0 && "justify-end")}
                         >
                           {header.isPlaceholder
                             ? null
@@ -248,9 +241,7 @@ export function BaseStandardSectionDialog({
                   return (
                     <tr
                       key={row.id}
-                      className={`border-b border-neutral-800 hover:bg-neutral-850 cursor-pointer group ${
-                        rowIndex % 2 === 0 ? "bg-neutral-900" : "bg-neutral-950"
-                      }`}
+                      className={cn("border-b border-neutral-800 hover:bg-neutral-850 cursor-pointer group", rowIndex % 2 === 0 ? "bg-neutral-900" : "bg-neutral-950")}
                       onClick={() =>
                         addFilter({
                           parameter: filterParameter,
@@ -262,9 +253,7 @@ export function BaseStandardSectionDialog({
                       {row.getVisibleCells().map((cell, cellIndex) => (
                         <td
                           key={cell.id}
-                          className={`px-2 py-2 relative ${
-                            cellIndex === 0 ? "" : "text-right"
-                          }`}
+                          className={cn("px-2 py-2 relative", cellIndex !== 0 && "text-right")}
                         >
                           {cellIndex === 0 && (
                             <div

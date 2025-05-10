@@ -1,15 +1,16 @@
 import { Check } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
 import { useGetSite, useGetSites } from "../../../../api/admin/sites";
+import { Favicon } from "../../../../components/Favicon";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "../../../../components/ui/dropdown-menu";
-import { userStore } from "../../../../lib/userStore";
 import { resetStore, useStore } from "../../../../lib/store";
-import { Favicon } from "../../../../components/Favicon";
+import { userStore } from "../../../../lib/userStore";
+import { cn } from "../../../../lib/utils";
 
 function SiteSelectorContent() {
   const { data: sites } = useGetSites();
@@ -29,9 +30,7 @@ function SiteSelectorContent() {
               resetStore();
               router.push(`/${site.siteId}`);
             }}
-            className={`flex items-center justify-between ${
-              isSelected ? "bg-neutral-800" : ""
-            }`}
+            className={cn("flex items-center justify-between", isSelected && "bg-neutral-800")}
           >
             <div className="flex items-center gap-2">
               <Favicon domain={site.domain} className="w-4 h-4" />

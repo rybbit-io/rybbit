@@ -3,13 +3,12 @@
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn, formatSecondsAsMinutesAndSeconds } from "@/lib/utils";
 import NumberFlow from "@number-flow/react";
-import { useGetOverview } from "../../../../../api/analytics/useGetOverview";
-import { StatType, useStore } from "../../../../../lib/store";
-import { useGetOverviewBucketed } from "../../../../../api/analytics/useGetOverviewBucketed";
-import { SparklinesChart } from "./SparklinesChart";
-import { TrendingDown } from "lucide-react";
-import { TrendingUp } from "lucide-react";
+import { TrendingDown, TrendingUp } from "lucide-react";
 import { useState } from "react";
+import { useGetOverview } from "../../../../../api/analytics/useGetOverview";
+import { useGetOverviewBucketed } from "../../../../../api/analytics/useGetOverviewBucketed";
+import { StatType, useStore } from "../../../../../lib/store";
+import { SparklinesChart } from "./SparklinesChart";
 
 const ChangePercentage = ({
   current,
@@ -35,12 +34,7 @@ const ChangePercentage = ({
 
   return (
     <div
-      className={cn(
-        "text-xs flex items-center gap-1",
-        (reverseColor ? -change : change) > 0
-          ? "text-green-400"
-          : "text-red-400"
-      )}
+      className={cn("text-xs flex items-center gap-1", (reverseColor ? -change : change) > 0 ? "text-green-400" : "text-red-400")}
     >
       {change > 0 ? (
         <TrendingUp className="w-4 h-4" />
@@ -86,15 +80,12 @@ const Stat = ({
 
   return (
     <div
-      className={cn(
-        "flex flex-col cursor-pointer border-r border-neutral-800 last:border-r-0 text-nowrap",
-        selectedStat === id && "bg-neutral-850"
-      )}
+      className={cn("flex flex-col cursor-pointer border-r border-neutral-800 last:border-r-0 text-nowrap", selectedStat === id && "bg-neutral-850")}
       onClick={() => setSelectedStat(id)}
       onMouseEnter={() => setIsHovering(true)}
       onMouseLeave={() => setIsHovering(false)}
     >
-      <div className={cn("flex flex-col px-3 py-2")}>
+      <div className="flex flex-col px-3 py-2">
         <div className="text-sm font-medium text-muted-foreground">{title}</div>
         <div className="text-2xl font-medium flex gap-2 items-center justify-between">
           {isLoading ? (

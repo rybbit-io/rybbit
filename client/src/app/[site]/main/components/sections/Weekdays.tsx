@@ -25,6 +25,7 @@ import {
   TooltipTrigger,
 } from "../../../../../components/ui/tooltip";
 import { StatType, useStore } from "../../../../../lib/store";
+import { cn } from "../../../../../lib/utils";
 
 export function Weekdays() {
   const { site } = useStore();
@@ -263,7 +264,7 @@ export function Weekdays() {
                           <Tooltip key={day}>
                             <TooltipTrigger asChild>
                               <div
-                                className={`flex-1 mx-0.5 ${colorClass} hover:ring-1 hover:ring-emerald-300 transition-all rounded-sm my-0.5`}
+                                className={cn("flex-1 mx-0.5 hover:ring-1 hover:ring-emerald-300 transition-all rounded-sm my-0.5", colorClass)}
                               />
                             </TooltipTrigger>
                             <TooltipContent className="flex flex-col gap-1 p-2">
