@@ -6,6 +6,7 @@ import {
 } from "@/components/ui/accordion";
 import { Tilt_Warp } from "next/font/google";
 import Link from "next/link";
+import { cn } from "../lib/utils";
 import { AdvancedFilters } from "./components/Cards/AdvancedFilters";
 import { EventTracking } from "./components/Cards/EventTracking";
 import { Funnels } from "./components/Cards/Funnels";
@@ -35,7 +36,7 @@ export default function IndexPage() {
   return (
     <div className="flex flex-col items-center justify-center overflow-x-hidden">
       <h1
-        className={`text-4xl md:text-5xl lg:text-7xl font-semibold pt-16 md:pt-24 px-4 tracking-tight max-w-4xl text-center text-transparent bg-clip-text bg-gradient-to-b from-white via-gray-100 to-gray-400 ${tilt_wrap.className}`}
+        className={cn("text-4xl md:text-5xl lg:text-7xl font-semibold pt-16 md:pt-24 px-4 tracking-tight max-w-4xl text-center text-transparent bg-clip-text bg-gradient-to-b from-white via-gray-100 to-gray-400", tilt_wrap.className)}
       >
         The Open Source Google Analytics Replacement
       </h1>

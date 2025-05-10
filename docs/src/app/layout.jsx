@@ -1,13 +1,14 @@
 /* eslint-env node */
 import { Tilt_Warp } from "next/font/google";
 import Image from "next/image";
-import { Footer, Layout, Navbar } from "nextra-theme-docs";
-import "nextra-theme-docs/style.css";
-import { Head, Banner } from "nextra/components";
-import { getPageMap } from "nextra/page-map";
-import "./globals.css";
-import { SmallLogo } from "./components/Logo";
 import Link from "next/link";
+import { Layout, Navbar } from "nextra-theme-docs";
+import "nextra-theme-docs/style.css";
+import { Head } from "nextra/components";
+import { getPageMap } from "nextra/page-map";
+import { cn } from "../lib/utils";
+import { SmallLogo } from "./components/Logo";
+import "./globals.css";
 
 const tilt_wrap = Tilt_Warp({
   subsets: ["latin"],
@@ -70,7 +71,7 @@ export default async function RootLayout({ children }) {
     <Navbar
       logo={
         <div
-          className={`text-2xl flex items-center gap-1.5 ${tilt_wrap.className}`}
+          className={cn("text-2xl flex items-center gap-1.5", tilt_wrap.className)}
         >
           <Image src="/rybbit.png" alt="Rybbit" width={30} height={30} />
           rybbit.
