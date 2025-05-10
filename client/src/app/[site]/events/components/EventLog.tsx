@@ -2,9 +2,9 @@
 
 import { useCallback, useEffect, useRef } from "react";
 import { useGetEventsInfinite } from "../../../../api/analytics/useGetEvents";
+import { NothingFound } from "../../../../components/NothingFound";
 import { formatter } from "../../../../lib/utils";
 import { EventLogItem, EventLogItemSkeleton } from "./EventLogItem";
-import { NothingFound } from "../../../../components/NothingFound";
 
 export function EventLog() {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -90,7 +90,7 @@ export function EventLog() {
   return (
     <div className="space-y-1">
       {/* Event list */}
-      <div ref={containerRef} className={`max-h-[80vh] overflow-y-auto pr-2`}>
+      <div ref={containerRef} className="max-h-[80vh] overflow-y-auto pr-2">
         {allEvents.map((event, index) => (
           <EventLogItem key={`${event.timestamp}-${index}`} event={event} />
         ))}

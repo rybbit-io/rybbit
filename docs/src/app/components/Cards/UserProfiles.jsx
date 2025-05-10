@@ -1,8 +1,9 @@
-import { CountryFlag } from "../Country";
-import { Browser } from "../Browser";
-import { OperatingSystem } from "../OperatingSystem";
-import { Laptop } from "lucide-react";
 import Avatar from "boring-avatars";
+import { Laptop } from "lucide-react";
+import { cn } from "../../../lib/utils";
+import { Browser } from "../Browser";
+import { CountryFlag } from "../Country";
+import { OperatingSystem } from "../OperatingSystem";
 
 
 
@@ -83,7 +84,7 @@ export function UserProfiles() {
                 return (
                   <div 
                     key={i} 
-                    className={`w-3 h-3 rounded-sm ${bgColor}`}
+                    className={cn("w-3 h-3 rounded-sm", bgColor)}
                     title={`${activityLevel} visits`}
                   />
                 );

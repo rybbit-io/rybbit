@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { cn } from "../lib/utils";
 
 export function Favicon({
   domain,
@@ -13,9 +14,7 @@ export function Favicon({
   if (imageError) {
     return (
       <div
-        className={`${
-          className ?? "w-4 h-4"
-        } bg-neutral-700 rounded-full flex items-center justify-center text-xs font-medium text-white`}
+      className={cn("bg-neutral-700 rounded-full flex items-center justify-center text-xs font-medium text-white", className ?? "w-4 h-4")}
       >
         {firstLetter}
       </div>
@@ -25,7 +24,7 @@ export function Favicon({
   return (
     <img
       src={`https://icons.duckduckgo.com/ip3/${domain}.ico`}
-      className={className ?? "w-4 h-4"}
+      className={cn(className ?? "w-4 h-4")}
       alt={`Favicon for ${domain}`}
       onError={() => setImageError(true)}
     />

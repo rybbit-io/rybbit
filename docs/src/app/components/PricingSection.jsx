@@ -1,9 +1,10 @@
 "use client";
 
-import Link from "next/link";
 import { Slider } from "@/components/ui/slider";
 import { Check } from "lucide-react";
+import Link from "next/link";
 import { useState } from "react";
+import { cn } from "../../lib/utils";
 
 // Available event tiers for the slider
 const EVENT_TIERS = [
@@ -114,21 +115,13 @@ export function PricingSection() {
                     <div className="flex gap-3 mb-2 text-sm">
                       <button
                         onClick={() => setIsAnnual(false)}
-                        className={`px-3 py-1 rounded-full transition-colors cursor-pointer ${
-                          !isAnnual
-                            ? "bg-emerald-500/20 text-emerald-400 font-medium"
-                            : "text-neutral-400 hover:text-neutral-200"
-                        } `}
+                        className={cn("px-3 py-1 rounded-full transition-colors cursor-pointer", !isAnnual ? "bg-emerald-500/20 text-emerald-400 font-medium" : "text-neutral-400 hover:text-neutral-200")}
                       >
                         Monthly
                       </button>
                       <button
                         onClick={() => setIsAnnual(true)}
-                        className={`px-3 py-1 rounded-full transition-colors cursor-pointer ${
-                          isAnnual
-                            ? "bg-emerald-500/20 text-emerald-400 font-medium"
-                            : "text-neutral-400 hover:text-neutral-200"
-                        }`}
+                        className={cn("px-3 py-1 rounded-full transition-colors cursor-pointer", isAnnual ? "bg-emerald-500/20 text-emerald-400 font-medium" : "text-neutral-400 hover:text-neutral-200")}
                       >
                         Annual
                         <span className="ml-1 text-xs text-emerald-500">
@@ -167,11 +160,7 @@ export function PricingSection() {
                   {EVENT_TIERS.map((tier, index) => (
                     <span
                       key={index}
-                      className={
-                        eventLimitIndex === index
-                          ? "font-bold text-emerald-400"
-                          : ""
-                      }
+                      className={cn(eventLimitIndex === index && "font-bold text-emerald-400")}
                     >
                       {index === EVENT_TIERS.length - 1
                         ? "10M+"

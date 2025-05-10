@@ -1,21 +1,21 @@
 "use client";
 
-import { Event } from "../../../../api/analytics/useGetEvents";
-import { DateTime } from "luxon";
-import { Browser } from "../../components/shared/icons/Browser";
-import { CountryFlag } from "../../components/shared/icons/CountryFlag";
-import { OperatingSystem } from "../../components/shared/icons/OperatingSystem";
-import { getCountryName } from "../../../../lib/utils";
-import { Laptop, Smartphone, FileText, MousePointerClick } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { Badge } from "@/components/ui/badge";
+import { FileText, Laptop, MousePointerClick, Smartphone } from "lucide-react";
+import { DateTime } from "luxon";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { memo } from "react";
+import { Event } from "../../../../api/analytics/useGetEvents";
+import { getCountryName } from "../../../../lib/utils";
+import { Browser } from "../../components/shared/icons/Browser";
+import { CountryFlag } from "../../components/shared/icons/CountryFlag";
+import { OperatingSystem } from "../../components/shared/icons/OperatingSystem";
 
 // DeviceIcon component for displaying mobile/desktop icons
 function DeviceIcon({ deviceType }: { deviceType: string }) {
@@ -210,7 +210,7 @@ export const EventLogItemSkeleton = memo(() => {
           <div className="flex items-center gap-2 flex-grow">
             <div className="h-4 w-4 bg-neutral-800 rounded-sm animate-pulse flex-shrink-0"></div>
             <div
-              className={`h-4 w-40 bg-neutral-800 rounded animate-pulse flex-shrink-0`}
+              className="h-4 w-40 bg-neutral-800 rounded animate-pulse flex-shrink-0"
             ></div>
             <div className="flex space-x-1 flex-shrink-0">
               <div className="h-4 w-4 bg-neutral-800 rounded-sm animate-pulse"></div>

@@ -29,6 +29,7 @@ import { useSetPageTitle } from "../../hooks/useSetPageTitle";
 import { authClient } from "../../lib/auth";
 import { DISABLE_SIGNUP, IS_CLOUD } from "../../lib/const";
 import { userStore } from "../../lib/userStore";
+import { cn } from "../../lib/utils";
 
 // Animation variants for step transitions
 const contentVariants = {
@@ -547,26 +548,10 @@ export default function SignupPage() {
               {[1, 2, 3, 4].map((step) => (
                 <div
                   key={step}
-                  className={`flex items-center space-x-3 py-3 ${
-                    currentStep === step
-                      ? "text-emerald-400 font-medium"
-                      : currentStep > step
-                      ? "text-muted-foreground"
-                      : "text-muted-foreground/60"
-                  }`}
+                  className={cn("flex items-center space-x-3 py-3", currentStep === step ? "text-emerald-400 font-medium" : currentStep > step ? "text-muted-foreground" : "text-muted-foreground/60")}                  
                 >
                   <div
-                    className={`
-                      flex items-center justify-center w-8 h-8 rounded-full 
-                      ${
-                        currentStep === step
-                          ? "bg-emerald-600 text-primary-foreground"
-                          : currentStep > step
-                          ? "bg-emerald-600/20 text-emerald-400"
-                          : "bg-muted-foreground/20 text-muted-foreground"
-                      }
-                      transition-all duration-300
-                    `}
+                    className={cn("flex items-center justify-center w-8 h-8 rounded-full transition-all duration-300", currentStep === step ? "bg-emerald-600 text-primary-foreground" : currentStep > step ? "bg-emerald-600/20 text-emerald-400" : "bg-muted-foreground/20 text-muted-foreground")}                    
                   >
                     {currentStep > step ? (
                       <Check className="h-4 w-4" />

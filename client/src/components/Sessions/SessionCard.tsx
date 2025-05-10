@@ -1,29 +1,27 @@
-import { memo, useState } from "react";
-import { DateTime } from "luxon";
-import { Browser } from "../../app/[site]/components/shared/icons/Browser";
-import { CountryFlag } from "../../app/[site]/components/shared/icons/CountryFlag";
-import { OperatingSystem } from "../../app/[site]/components/shared/icons/OperatingSystem";
-import { formatter, getCountryName } from "../../lib/utils";
-import {
-  Laptop,
-  Smartphone,
-  ChevronDown,
-  ChevronRight,
-  ArrowRight,
-  Clock,
-  FileText,
-  MousePointerClick,
-} from "lucide-react";
-import Avatar from "boring-avatars";
-import { GetSessionsResponse } from "../../api/analytics/userSessions";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { SessionDetails } from "./SessionDetails";
+import {
+  ArrowRight,
+  ChevronDown,
+  ChevronRight,
+  FileText,
+  Laptop,
+  MousePointerClick,
+  Smartphone
+} from "lucide-react";
+import { DateTime } from "luxon";
+import { memo, useState } from "react";
+import { GetSessionsResponse } from "../../api/analytics/userSessions";
+import { Browser } from "../../app/[site]/components/shared/icons/Browser";
+import { CountryFlag } from "../../app/[site]/components/shared/icons/CountryFlag";
+import { OperatingSystem } from "../../app/[site]/components/shared/icons/OperatingSystem";
+import { cn, formatter, getCountryName } from "../../lib/utils";
 import { Badge } from "../ui/badge";
+import { SessionDetails } from "./SessionDetails";
 
 interface SessionCardProps {
   session: GetSessionsResponse[number];
@@ -274,22 +272,20 @@ export const SessionCardSkeleton = memo(() => {
 
           {/* Entry/Exit paths with randomized widths */}
           <div className="items-center ml-3 flex-1 min-w-0 hidden md:flex">
-            <Skeleton className={`h-3 max-w-[200px] ${getRandomWidth()}`} />
+            <Skeleton className={cn("h-3 max-w-[200px]", getRandomWidth())} />
             <div className="mx-2 flex-shrink-0">
               <Skeleton className="h-3 w-3" />
             </div>
-            <Skeleton className={`h-3 max-w-[200px] ${getRandomWidth()}`} />
+            <Skeleton className={cn("h-3 max-w-[200px]", getRandomWidth())} />
           </div>
 
           {/* Time */}
           <div className="flex items-center gap-4">
             {/* Date/time skeleton */}
-            <Skeleton className={`h-3 ${getRandomTimeWidth()}`} />
+            <Skeleton className={cn("h-3", getRandomTimeWidth())} />
 
             {/* Duration skeleton */}
-            <Skeleton
-              className={`h-3 ${getRandomDurationWidth()} hidden md:block`}
-            />
+            <Skeleton className={cn("h-3", getRandomDurationWidth(), "hidden md:block")} />
           </div>
 
           {/* Expand icon */}

@@ -8,6 +8,7 @@ import { useEffect, useState } from "react";
 import { Toaster } from "../components/ui/sonner";
 import { TooltipProvider } from "../components/ui/tooltip";
 import { userStore } from "../lib/userStore";
+import { cn } from "../lib/utils";
 import "./globals.css";
 
 const inter = Inter({ subsets: ["latin"] });
@@ -85,7 +86,7 @@ export default function RootLayout({
     <html lang="en" className="dark">
       <TooltipProvider>
         <body
-          className={`${inter.className} bg-background text-foreground h-full`}
+          className={cn("bg-background text-foreground h-full", inter.className)}
         >
           <QueryProvider>{children}</QueryProvider>
           <Toaster />

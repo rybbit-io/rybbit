@@ -29,6 +29,7 @@ import { toast } from "sonner";
 import { getStartAndEndDate } from "../../../../api/utils";
 import { ThreeDotLoader } from "../../../../components/Loaders";
 import { useGetRegionName } from "../../../../lib/geo";
+import { cn } from "../../../../lib/utils";
 import {
   filterTypeToLabel,
   getParameterNameLabel,
@@ -178,12 +179,7 @@ export function FunnelRow({ funnel }: FunnelRowProps) {
                         {getParameterNameLabel(filter.parameter)}
                       </span>
                       <span
-                        className={`mx-1 ${
-                          filter.type === "not_equals" ||
-                          filter.type === "not_contains"
-                            ? "text-red-400"
-                            : "text-emerald-400"
-                        }`}
+                        className={cn("mx-1", filter.type === "not_equals" || filter.type === "not_contains" ? "text-red-400" : "text-emerald-400")}
                       >
                         {filterTypeToLabel(filter.type)}
                       </span>

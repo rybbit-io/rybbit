@@ -1,7 +1,7 @@
 "use client";
 
-import * as React from "react";
 import { Check, Copy } from "lucide-react";
+import * as React from "react";
 
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -28,11 +28,7 @@ export function CodeSnippet({
   return (
     <div className="relative">
       <pre
-        className={cn(
-          "overflow-x-auto rounded-lg border-neutral-500 bg-muted p-3 text-wrap",
-          "font-mono text-sm",
-          className
-        )}
+        className={cn("overflow-x-auto rounded-lg border-neutral-500 bg-muted p-3 text-wrap font-mono text-sm", className)}
         {...props}
       >
         {language && (

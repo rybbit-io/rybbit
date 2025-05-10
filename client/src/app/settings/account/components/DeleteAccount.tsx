@@ -1,7 +1,10 @@
 "use client";
 
+import { useQueryClient } from "@tanstack/react-query";
+import { AlertTriangle } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { Button } from "../../../../components/ui/button";
+import { toast } from "sonner";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -13,13 +16,11 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "../../../../components/ui/alert-dialog";
-import { authClient } from "../../../../lib/auth";
-import { AlertTriangle } from "lucide-react";
-import { toast } from "sonner";
+import { Button } from "../../../../components/ui/button";
 import { Input } from "../../../../components/ui/input";
 import { Label } from "../../../../components/ui/label";
-import { useRouter } from "next/navigation";
-import { useQueryClient } from "@tanstack/react-query";
+import { authClient } from "../../../../lib/auth";
+import { cn } from "../../../../lib/utils";
 
 export function DeleteAccount() {
   const [isDeleting, setIsDeleting] = useState(false);
@@ -107,7 +108,7 @@ export function DeleteAccount() {
             placeholder="••••••••"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            className={`mt-1 ${passwordError ? "border-red-500" : ""}`}
+            className={cn("mt-1", passwordError && "border-red-500")}
             disabled={isDeleting}
           />
           {passwordError && (

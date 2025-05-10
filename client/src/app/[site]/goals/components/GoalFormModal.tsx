@@ -1,6 +1,14 @@
 "use client";
 
+import { zodResolver } from "@hookform/resolvers/zod";
+import { FileText, MousePointerClick } from "lucide-react";
 import { useState } from "react";
+import { useForm } from "react-hook-form";
+import * as z from "zod";
+import { useCreateGoal } from "../../../../api/analytics/useCreateGoal";
+import { Goal } from "../../../../api/analytics/useGetGoals";
+import { useUpdateGoal } from "../../../../api/analytics/useUpdateGoal";
+import { Button } from "../../../../components/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -18,23 +26,9 @@ import {
   FormMessage,
 } from "../../../../components/ui/form";
 import { Input } from "../../../../components/ui/input";
-import { Button } from "../../../../components/ui/button";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "../../../../components/ui/select";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm } from "react-hook-form";
-import * as z from "zod";
-import { Goal } from "../../../../api/analytics/useGetGoals";
-import { useCreateGoal } from "../../../../api/analytics/useCreateGoal";
-import { useUpdateGoal } from "../../../../api/analytics/useUpdateGoal";
-import { Switch } from "../../../../components/ui/switch";
 import { Label } from "../../../../components/ui/label";
-import { FileText, MousePointerClick } from "lucide-react";
+import { Switch } from "../../../../components/ui/switch";
+import { cn } from "../../../../lib/utils";
 
 // Define form schema
 const formSchema = z
@@ -226,9 +220,7 @@ export default function GoalFormModal({
                           variant={
                             field.value === "path" ? "default" : "outline"
                           }
-                          className={`flex-1 flex items-center justify-center gap-2 ${
-                            field.value === "path" ? "border-blue-500" : ""
-                          }`}
+                          className={cn("flex-1 flex items-center justify-center gap-2", field.value === "path" && "border-blue-500")}
                           onClick={() => field.onChange("path")}
                         >
                           <FileText className="w-4 h-4 text-blue-500" />
@@ -239,9 +231,7 @@ export default function GoalFormModal({
                           variant={
                             field.value === "event" ? "default" : "outline"
                           }
-                          className={`flex-1 flex items-center justify-center gap-2 ${
-                            field.value === "event" ? "border-amber-500" : ""
-                          }`}
+                          className={cn("flex-1 flex items-center justify-center gap-2", field.value === "event" && "border-amber-500")}
                           onClick={() => field.onChange("event")}
                         >
                           <MousePointerClick className="w-4 h-4 text-amber-500" />

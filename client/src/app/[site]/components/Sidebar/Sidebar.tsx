@@ -1,22 +1,22 @@
 "use client";
-import { CursorClick, Funnel, Target } from "@phosphor-icons/react/dist/ssr";
+import { Funnel, Target } from "@phosphor-icons/react/dist/ssr";
 import {
-  ChartBarDecreasing,
   Earth,
   LayoutDashboard,
   LayoutGrid,
+  Map,
+  MousePointerClick,
   Rewind,
   Settings,
-  User,
-  Map,
   Split,
-  MousePointerClick,
+  User
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useGetSite } from "../../../../api/admin/sites";
 import { SiteSettings } from "../../../../components/SiteSettings/SiteSettings";
 import { authClient } from "../../../../lib/auth";
+import { cn } from "../../../../lib/utils";
 import LiveUserCount from "./LiveUserCount";
 import { SiteSelector } from "./SiteSelector";
 
@@ -145,13 +145,7 @@ function SidebarLink({
 }) {
   return (
     <Link href={href} className="focus:outline-none">
-      <div
-        className={`px-3 py-2 rounded-lg transition-colors w-full ${
-          active
-            ? "bg-neutral-800 text-white"
-            : "text-neutral-200 hover:text-white hover:bg-neutral-800/50"
-        }`}
-      >
+      <div className={cn("px-3 py-2 rounded-lg transition-colors w-full", active ? "bg-neutral-800 text-white" : "text-neutral-200 hover:text-white hover:bg-neutral-800/50")}>
         <div className="flex items-center gap-2">
           {icon}
           <span className="text-sm">{label}</span>

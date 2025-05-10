@@ -1,4 +1,5 @@
 /* eslint-disable @next/next/no-img-element */
+import { cn } from "@/lib/utils";
 import { Suspense } from "react";
 import {
   enrichTweet,
@@ -7,8 +8,6 @@ import {
   type TwitterComponents,
 } from "react-tweet";
 import { getTweet, type Tweet } from "react-tweet/api";
-
-import { cn } from "@/lib/utils";
 
 interface TwitterIconProps {
   className?: string;
@@ -23,7 +22,7 @@ const Twitter = ({ className, ...props }: TwitterIconProps) => (
     height="1em"
     width="1em"
     xmlns="http://www.w3.org/2000/svg"
-    className={className}
+    className={cn(className)}
     {...props}
   >
     <g>
@@ -37,7 +36,7 @@ const Verified = ({ className, ...props }: TwitterIconProps) => (
   <svg
     aria-label="Verified Account"
     viewBox="0 0 24 24"
-    className={className}
+    className={cn(className)}
     {...props}
   >
     <g fill="currentColor">
@@ -68,10 +67,7 @@ export const TweetSkeleton = ({
   [key: string]: unknown;
 }) => (
   <div
-    className={cn(
-      "flex size-full max-h-max min-w-72 flex-col gap-2 rounded-lg border p-4",
-      className
-    )}
+    className={cn("flex size-full max-h-max min-w-72 flex-col gap-2 rounded-lg border p-4", className)}
     {...props}
   >
     <div className="flex flex-row gap-2">
@@ -90,10 +86,7 @@ export const TweetNotFound = ({
   [key: string]: unknown;
 }) => (
   <div
-    className={cn(
-      "flex size-full flex-col items-center justify-center gap-2 rounded-lg border p-4",
-      className
-    )}
+    className={cn("flex size-full flex-col items-center justify-center gap-2 rounded-lg border p-4", className)}
     {...props}
   >
     <h3>Tweet not found</h3>
@@ -239,10 +232,7 @@ export const MagicTweet = ({
   const enrichedTweet = enrichTweet(tweet);
   return (
     <div
-      className={cn(
-        "relative flex size-full max-w-lg flex-col gap-2 overflow-hidden rounded-lg border p-4 backdrop-blur-md bg-neutral-900",
-        className
-      )}
+      className={cn("relative flex size-full max-w-lg flex-col gap-2 overflow-hidden rounded-lg border p-4 backdrop-blur-md bg-neutral-900", className)}
       {...props}
     >
       <TweetHeader tweet={enrichedTweet} />
