@@ -91,8 +91,8 @@ services:
       dockerfile: Dockerfile
       args:
         NEXT_PUBLIC_BACKEND_URL: ${BASE_URL}
-        NEXT_PUBLIC_CLOUD: ${CLOUD}
         NEXT_PUBLIC_DISABLE_SIGNUP: ${DISABLE_SIGNUP}
+        NEXT_PUBLIC_CLOUD: ${CLOUD}
     environment:
       - NODE_ENV=production
       - NEXT_PUBLIC_BACKEND_URL=${BASE_URL}
