@@ -3,4 +3,5 @@ export const BACKEND_URL =
     ? "http://localhost:3001"
     : `${process.env.NEXT_PUBLIC_BACKEND_URL}/api`;
 export const IS_CLOUD = process.env.NEXT_PUBLIC_CLOUD === "true";
+export const IS_OIDC_ENABLED = process.env.NEXT_PUBLIC_OIDC_ENABLED === "false";
 export const IS_DEMO = process.env.NEXT_PUBLIC_DEMO === "true";
