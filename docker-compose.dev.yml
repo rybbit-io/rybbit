@@ -73,7 +73,7 @@ services:
       - DISABLE_SIGNUP=${DISABLE_SIGNUP}
       - OIDC_CLIENT_ID=${OIDC_CLIENT_ID}
       - OIDC_CLIENT_SECRET=${OIDC_CLIENT_SECRET}
-      - OIDC_ISSUER=${OIDC_ISSUER}
+      - OIDC_DISCOVERY_URL=${OIDC_DISCOVERY_URL}
       # below is only for rybbit cloud
       - CLOUD=${CLOUD}
       - STRIPE_SECRET_KEY=${STRIPE_SECRET_KEY}
@@ -99,6 +99,7 @@ services:
       args:
         NEXT_PUBLIC_BACKEND_URL: ${BASE_URL}
         NEXT_PUBLIC_CLOUD: ${CLOUD}
+        NEXT_PUBLIC_OIDC_ENABLED: ${NEXT_PUBLIC_OIDC_ENABLED}
     environment:
       - NODE_ENV=production
       - NEXT_PUBLIC_DEMO=true

@@ -74,7 +74,7 @@ services:
       - DISABLE_SIGNUP=${DISABLE_SIGNUP}
       - OIDC_CLIENT_ID=${OIDC_CLIENT_ID}
       - OIDC_CLIENT_SECRET=${OIDC_CLIENT_SECRET}
-      - OIDC_ISSUER=${OIDC_ISSUER}
+      - OIDC_DISCOVERY_URL=${OIDC_DISCOVERY_URL}
     depends_on:
       clickhouse:
         condition: service_healthy

@@ -27,6 +27,7 @@ const pluginList = [
         clientId: process.env.OIDC_CLIENT_ID!,
         clientSecret: process.env.OIDC_CLIENT_SECRET!,
         discoveryUrl: process.env.OIDC_DISCOVERY_URL!,
+        redirectURI: process.env.BASE_URL + "/api/auth/oauth2/callback/oidc",
         scopes: ["openid", "profile", "email", "offline_access"],
       },
     ],
