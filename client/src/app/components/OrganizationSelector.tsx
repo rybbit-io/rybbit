@@ -1,71 +1,18 @@
-import { Building2, Check, FunnelPlus, FunnelX } from "lucide-react";
+import { Building2, FunnelPlus } from "lucide-react";
+import { Dispatch, SetStateAction } from "react";
 import { useUserOrganizations } from "../../api/admin/organizations";
 import {
   DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
   DropdownMenuTrigger,
 } from "../../components/ui/dropdown-menu";
-import { Dispatch, SetStateAction } from "react";
-import { useGetSites } from "@/api/admin/sites";
+import { OrganizationSelectorContent } from "./OrganizationSelectorContent";
 
-function OrganizationSelectorContent({
-  filterOrganizationId,
-  setFilterOrganizationId,
-}: {
+export type OrganizationSelectorProps = {
   filterOrganizationId?: string;
   setFilterOrganizationId: Dispatch<SetStateAction<string | undefined>>;
-}) {
-  const { data: organizations } = useUserOrganizations();
-  const { data: sites } = useGetSites();
+};
 
-  return (
-    <DropdownMenuContent align="start">
-      <DropdownMenuItem
-        onClick={() => {
-          setFilterOrganizationId(undefined);
-        }}
-        className={`flex items-center justify-between ${
-          !filterOrganizationId ? "bg-neutral-800" : ""
-        }`}
-      >
-        <div className="flex items-center gap-2">
-          <FunnelX className="w-4 h-4" />
-          <span>Show all</span>
-        </div>
-        {!filterOrganizationId && <Check size={16} />}
-      </DropdownMenuItem>
-      {organizations?.map((organization) => {
-        const isSelected = organization.id === filterOrganizationId;
-        const siteCount = sites?.filter(
-          (site) => site.organizationId === organization.id
-        ).length;
-        return (
-          <DropdownMenuItem
-            key={organization.id}
-            onClick={() => {
-              setFilterOrganizationId(organization.id);
-            }}
-            className={`flex items-center justify-between ${
-              isSelected ? "bg-neutral-800" : ""
-            }`}
-          >
-            <div className="flex items-center gap-2">
-              <Building2 className="w-4 h-4" />
-              <span>{organization.name} ({siteCount})</span>
-            </div>
-            {isSelected && <Check size={16} />}
-          </DropdownMenuItem>
-        );
-      })}
-    </DropdownMenuContent>
-  );
-}
-
-export function OrganizationSelector(props: {
-  filterOrganizationId?: string;
-  setFilterOrganizationId: Dispatch<SetStateAction<string | undefined>>;
-}) {
+export function OrganizationSelector(props: OrganizationSelectorProps) {
   const { data: organizations, isLoading: isLoadingOrganizations } =
     useUserOrganizations();
 
