@@ -1,6 +1,13 @@
-import { Theme } from "@nivo/core";
+import { Theme } from "@nivo/theming";
 
-export const nivoTheme: Theme = {
+type RecursivePartial<T> = {
+  [P in keyof T]?:
+    T[P] extends (infer U)[] ? RecursivePartial<U>[] :
+    T[P] extends object | undefined ? RecursivePartial<T[P]> :
+    T[P];
+};
+
+export const nivoTheme: RecursivePartial<Theme> = {
   axis: {
     legend: {
       text: {

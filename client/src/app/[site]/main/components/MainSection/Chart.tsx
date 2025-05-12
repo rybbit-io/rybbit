@@ -1,19 +1,14 @@
 "use client";
 import { nivoTheme } from "@/lib/nivo";
 import { StatType, TimeBucket, useStore } from "@/lib/store";
-import { ResponsiveLine, CustomLayer, CustomLayerProps } from "@nivo/line";
-import type { ScaleLinear } from '@nivo/scales'
-import { DateTime } from "luxon";
-import { formatSecondsAsMinutesAndSeconds } from "../../../../../lib/utils";
-import { APIResponse } from "../../../../../api/types";
-import { GetOverviewBucketedResponse } from "../../../../../api/analytics/useGetOverviewBucketed";
-import { Time } from "../../../../../components/DateSelector/types";
+import { LineCustomSvgLayer, LineCustomSvgLayerProps, LineSeries, ResponsiveLine } from "@nivo/line";
+import { Theme } from "@nivo/theming";
 import { useWindowSize } from "@uidotdev/usehooks";
-
-type DashedLineProps = Omit<CustomLayerProps, 'xScale' | 'yScale'> & {
-  xScale: ScaleLinear<number>
-  yScale: ScaleLinear<number>
-}
+import { DateTime } from "luxon";
+import { GetOverviewBucketedResponse } from "../../../../../api/analytics/useGetOverviewBucketed";
+import { APIResponse } from "../../../../../api/types";
+import { Time } from "../../../../../components/DateSelector/types";
+import { formatSecondsAsMinutesAndSeconds } from "../../../../../lib/utils";
 
 export const formatter = Intl.NumberFormat("en", { notation: "compact" });
 
@@ -197,38 +192,27 @@ export function Chart({
     });
   }
 
-  const DashedLine: CustomLayer = ({
+  const DashedLine: LineCustomSvgLayer<LineSeries> = ({
     series,
     lineGenerator,
     xScale,
     yScale,
-  }: DashedLineProps) => {
+  }: LineCustomSvgLayerProps<LineSeries>) => {
     return series.map(({ id, data, color }) => (
       <path
-        key={id.toString()}
-        d={
-          lineGenerator(
-            data.map(d => ({
-              x: xScale(d.data.x as number),
-              y: yScale(d.data.y as number),
-            }))
-          )!
-        }
+        key={id}
+        d={lineGenerator(data.map(d => ({ x: xScale(d.data.x), y: yScale(d.data.y) })))!}
         fill="none"
         stroke={color}
-        style={
-          id === "dashedData"
-            ? { strokeDasharray: "3, 6", strokeWidth: 3 }
-            : { strokeWidth: 2 }
-        }
+        style={id === "dashedData" ? { strokeDasharray: "3, 6", strokeWidth: 3 } : { strokeWidth: 2 }}
       />
-    ));
+    ))
   }
 
   return (
     <ResponsiveLine
       data={chartPropsData}
-      theme={nivoTheme}
+      theme={nivoTheme as Theme}
       margin={{ top: 10, right: 10, bottom: 25, left: 35 }}
       xScale={{
         type: "time",

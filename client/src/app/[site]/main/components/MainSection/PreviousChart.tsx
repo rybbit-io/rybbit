@@ -2,10 +2,11 @@
 import { nivoTheme } from "@/lib/nivo";
 import { useStore } from "@/lib/store";
 import { ResponsiveLine } from "@nivo/line";
+import { Theme } from "@nivo/theming";
 import { DateTime } from "luxon";
 import { useMemo } from "react";
-import { APIResponse } from "../../../../../api/types";
 import { GetOverviewBucketedResponse } from "../../../../../api/analytics/useGetOverviewBucketed";
+import { APIResponse } from "../../../../../api/types";
 import { Time } from "../../../../../components/DateSelector/types";
 
 const getMin = (time: Time) => {
@@ -53,7 +54,7 @@ export function PreviousChart({
           data: formattedData ?? [],
         },
       ]}
-      theme={nivoTheme}
+      theme={nivoTheme as Theme}
       margin={{ top: 10, right: 10, bottom: 25, left: 35 }}
       xScale={{
         type: "time",

@@ -1,6 +1,7 @@
 "use client";
 import { nivoTheme } from "@/lib/nivo";
 import { ResponsiveLine } from "@nivo/line";
+import { Theme } from "@nivo/theming";
 import { DateTime } from "luxon";
 
 export const formatter = Intl.NumberFormat("en", { notation: "compact" });
@@ -35,7 +36,7 @@ export function SparklinesChart({
           data: formattedData ?? [],
         },
       ]}
-      theme={nivoTheme}
+      theme={nivoTheme as Theme}
       margin={{ top: 5, right: 0, bottom: 0, left: 0 }}
       xScale={{
         type: "time",

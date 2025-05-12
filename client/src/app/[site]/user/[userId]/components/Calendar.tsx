@@ -1,8 +1,9 @@
-import { DateTime } from "luxon";
-import { Calendar, ResponsiveCalendar } from "@nivo/calendar";
+import { ResponsiveCalendar } from "@nivo/calendar";
+import { Theme } from "@nivo/theming";
 import _ from "lodash";
-import { nivoTheme } from "../../../../../lib/nivo";
+import { DateTime } from "luxon";
 import { UserSessionCountResponse } from "../../../../../api/analytics/userSessions";
+import { nivoTheme } from "../../../../../lib/nivo";
 
 export const VisitCalendar = ({
   sessionCount,
@@ -35,7 +36,7 @@ export const VisitCalendar = ({
   return (
     <ResponsiveCalendar
       data={data}
-      theme={nivoTheme}
+      theme={nivoTheme as Theme}
       from={data.at(-1)?.day ?? ""}
       to={data[0]?.day}
       emptyColor={"hsl(var(--neutral-750))"}
