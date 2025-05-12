@@ -92,13 +92,15 @@ async function getUserSubscriptionInfo(userData: {
       // No active subscription, use default limit and start of current month
       return [DEFAULT_EVENT_LIMIT, getStartOfMonth()];
     }
+    
+    const subscription = subscriptions.data[0];
+    const subscriptionItem = subscription.items.data[0];
 
-    const sub = subscriptions.data[0];
-    const priceId = sub.items.data[0]?.price.id;
+    const priceId = subscription.items.data[0]?.price.id;
 
     if (!priceId) {
       console.error(
-        `Subscription item price ID not found for user ${userData.id}, sub ${sub.id}`
+        `Subscription item price ID not found for user ${userData.id}, sub ${subscription.id}`
       );
       return [DEFAULT_EVENT_LIMIT, getStartOfMonth()];
     }
@@ -119,10 +121,10 @@ async function getUserSubscriptionInfo(userData: {
     const currentMonthStart = getStartOfMonth();
     let periodStart = currentMonthStart;
 
-    if (sub.current_period_start) {
+    if (subscriptionItem.current_period_start) {
       // Convert subscription start timestamp to DateTime
       const subscriptionStartDate = DateTime.fromSeconds(
-        sub.current_period_start
+        subscriptionItem.current_period_start
       );
       const currentMonth = DateTime.now().startOf("month");
 
@@ -141,7 +143,7 @@ async function getUserSubscriptionInfo(userData: {
     }
 
     // Include subscription info for logging purposes
-    const interval = sub.items.data[0]?.price.recurring?.interval || "unknown";
+    const interval = subscription.items.data[0]?.price.recurring?.interval || "unknown";
     console.log(
       `[Monthly Usage Checker] User ${userData.email} has a ${interval} subscription.`
     );
