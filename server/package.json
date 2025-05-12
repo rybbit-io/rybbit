@@ -34,7 +34,7 @@
     "sqlstring": "^2.3.3",
     "stripe": "^17.7.0",
     "ua-parser-js": "^2.0.0",
-    "undici": "^7.3.0",
+    "undici": "^7.9.0",
     "zod": "^3.24.3"
   },
   "devDependencies": {
