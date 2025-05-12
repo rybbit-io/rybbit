@@ -3,6 +3,7 @@
 import SessionsList from "@/components/Sessions/SessionsList";
 import Avatar from "boring-avatars";
 import {
+  ArrowLeft,
   Calendar,
   CalendarCheck,
   Clock,
@@ -14,10 +15,11 @@ import {
   Tablet,
 } from "lucide-react";
 import { DateTime } from "luxon";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { useUserInfo } from "../../../../api/analytics/userInfo";
 import { useGetUserSessionCount } from "../../../../api/analytics/userSessions";
 import { MobileSidebar } from "../../../../components/MobileSidebar";
+import { Button } from "../../../../components/ui/button";
 import { useSetPageTitle } from "../../../../hooks/useSetPageTitle";
 import { useGetRegionName } from "../../../../lib/geo";
 import {
@@ -33,6 +35,7 @@ import { VisitCalendar } from "./components/Calendar";
 export default function UserPage() {
   useSetPageTitle("Rybbit · User");
 
+  const router = useRouter()
   const { userId } = useParams();
   const { site } = useParams();
 
@@ -42,8 +45,16 @@ export default function UserPage() {
 
   const { getRegionName } = useGetRegionName();
 
+  const handleBackClick = () => {
+    router.push(`/${site}/users`);
+  };
+
   return (
     <div className="p-2 md:p-4 max-w-[1300px] mx-auto space-y-3">
+      <Button onClick={handleBackClick} className="w-full sm:w-max">
+        <ArrowLeft className="h-4 w-4" />
+        Back to Users
+      </Button>
       <div className="mb-4">
         <h1 className="text-2xl font-bold mb-4 flex items-center gap-2">
           <div>

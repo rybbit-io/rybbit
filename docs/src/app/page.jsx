@@ -36,7 +36,10 @@ export default function IndexPage() {
   return (
     <div className="flex flex-col items-center justify-center overflow-x-hidden">
       <h1
-        className={cn("text-4xl md:text-5xl lg:text-7xl font-semibold pt-16 md:pt-24 px-4 tracking-tight max-w-4xl text-center text-transparent bg-clip-text bg-gradient-to-b from-white via-gray-100 to-gray-400", tilt_wrap.className)}
+        className={cn(
+          "text-4xl md:text-5xl lg:text-7xl font-semibold pt-16 md:pt-24 px-4 tracking-tight max-w-4xl text-center text-transparent bg-clip-text bg-gradient-to-b from-white via-gray-100 to-gray-400",
+          tilt_wrap.className
+        )}
       >
         The Open Source Google Analytics Replacement
       </h1>
@@ -149,6 +152,10 @@ export default function IndexPage() {
             <TweetCard id="1920425974954381456" />
             <TweetCard id="1919290867451404670" />
             <TweetCard id="1920192156960239683" />
+
+            <TweetCard id="1920899082253434950" />
+            <TweetCard id="1921928423284629758" />
+            <TweetCard id="1921878010417848443" />
           </div>
         </div>
       </section>

@@ -34,29 +34,33 @@ export const VisitCalendar = ({
     1;
 
   return (
-    <ResponsiveCalendar
-      data={data}
-      theme={nivoTheme as Theme}
-      from={data.at(-1)?.day ?? ""}
-      to={data[0]?.day}
-      emptyColor={"hsl(var(--neutral-750))"}
-      colors={["#10452A", "#006D32", "#3E9058", "#3CD456"]}
-      margin={{ top: 20, right: 0, bottom: 1, left: 20 }}
-      monthBorderColor="rgba(0, 0, 0, 0)"
-      daySpacing={3}
-      dayBorderColor="rgba(0, 0, 0, 0)"
-      maxValue={maxValue}
-      tooltip={({ value, day }) => {
-        return (
-          <div className="bg-neutral-900 p-2 rounded-md border border-neutral-800 text-sm">
-            {value}{" "}
-            <span className="text-neutral-300">
-              session{Number(value) > 1 && "s"} on
-            </span>{" "}
-            {day}
-          </div>
-        );
-      }}
-    />
+    <div style={{ width: "100%", overflowX: "auto", height: "150px" }}>
+      <div style={{ minWidth: "600px", height: "100%" }}>
+        <ResponsiveCalendar
+          data={data}
+          theme={nivoTheme as Theme}
+          from={data.at(-1)?.day ?? ""}
+          to={data[0]?.day}
+          emptyColor={"hsl(var(--neutral-750))"}
+          colors={["#10452A", "#006D32", "#3E9058", "#3CD456"]}
+          margin={{ top: 20, right: 0, bottom: 1, left: 20 }}
+          monthBorderColor="rgba(0, 0, 0, 0)"
+          daySpacing={3}
+          dayBorderColor="rgba(0, 0, 0, 0)"
+          maxValue={maxValue}
+          tooltip={({ value, day }) => {
+            return (
+              <div className="bg-neutral-900 p-2 rounded-md border border-neutral-800 text-sm">
+                {value}{" "}
+                <span className="text-neutral-300">
+                  session{Number(value) > 1 && "s"} on
+                </span>{" "}
+                {day}
+              </div>
+            );
+          }}
+        />
+      </div>
+    </div>
   );
 };
