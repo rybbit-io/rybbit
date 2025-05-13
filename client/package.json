@@ -64,7 +64,7 @@
     "react": "^19.0.0",
     "react-countup": "^6.5.3",
     "react-day-picker": "^8.10.1",
-    "react-dom": "^19.0.0",
+    "react-dom": "^19.1.0",
     "react-globe.gl": "^2.33.2",
     "react-hook-form": "^7.56.1",
     "react-leaflet": "^5.0.0",
