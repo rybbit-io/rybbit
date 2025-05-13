@@ -94,6 +94,7 @@ export function SubHeader({
               variant="outline"
               size="icon"
               onClick={goBack}
+              disabled={time.mode === "last-24-hours"}
               className="rounded-r-none h-8 w-8 sm:h-9 sm:w-9"
             >
               <ChevronLeft />

@@ -28,20 +28,46 @@ export function useSingleCol({
 }): UseQueryResult<APIResponse<SingleColResponse[]>> {
   const { time, previousTime, site, filters } = useStore();
   const timeToUse = periodTime === "previous" ? previousTime : time;
-  const { startDate, endDate } = getStartAndEndDate(timeToUse);
 
-  return useQuery({
-    queryKey: [parameter, timeToUse, site, filters, limit, useFilters],
-    queryFn: () => {
-      const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-      return authedFetch(`${BACKEND_URL}/single-col/${site}`, {
-        startDate,
-        endDate,
-        timezone,
+  // Check if we're using last-24-hours mode
+  const isPast24HoursMode = timeToUse.mode === "last-24-hours";
+
+  // Determine the query parameters based on mode
+  const queryParams = isPast24HoursMode
+    ? {
+        // Past minutes approach
+        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+        parameter,
+        limit,
+        minutes: periodTime === "previous" ? 48 * 60 : 24 * 60,
+        filters: useFilters ? filters : undefined,
+      }
+    : {
+        // Regular date-based approach
+        ...getStartAndEndDate(timeToUse),
+        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
         parameter,
         limit,
         filters: useFilters ? filters : undefined,
-      }).then((res) => res.json());
+      };
+
+  // Use a consistent query key format that includes the mode
+  const queryKey = [
+    parameter,
+    timeToUse,
+    site,
+    filters,
+    limit,
+    useFilters,
+    isPast24HoursMode ? "past-minutes" : "date-range",
+  ];
+
+  return useQuery({
+    queryKey,
+    queryFn: () => {
+      return authedFetch(`${BACKEND_URL}/single-col/${site}`, queryParams).then(
+        (res) => res.json()
+      );
     },
     staleTime: Infinity,
     placeholderData: (_, query: any) => {
@@ -66,10 +92,10 @@ export function useSingleColRealtime({
   limit?: number;
   minutes?: number;
 }): UseQueryResult<APIResponse<SingleColResponse[]>> {
-  const { time, previousTime, site, filters } = useStore();
+  const { site } = useStore();
 
   return useQuery({
-    queryKey: [parameter, site, limit, minutes],
+    queryKey: [parameter, site, limit, minutes, "realtime"],
     queryFn: () => {
       const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
       return authedFetch(`${BACKEND_URL}/single-col/${site}`, {

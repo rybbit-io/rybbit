@@ -1,4 +1,3 @@
-
 # Next.js
 
 Next.js is a popular React framework that enables features like server-side rendering and static site generation. This guide explains how to integrate Rybbit with your Next.js application.
@@ -13,7 +12,7 @@ Create or modify your layout file (either `app/layout.js` or `pages/_app.js` dep
 
 ```jsx
 // For App Router (Next.js 13+)
-import Script from 'next/script'
+import Script from "next/script"
 
 export default function RootLayout({ children }) {
   return (
@@ -34,7 +33,7 @@ export default function RootLayout({ children }) {
 
 ```jsx
 // For Pages Router
-import Script from 'next/script'
+import Script from "next/script"
 
 function MyApp({ Component, pageProps }) {
   return (
@@ -51,4 +50,3 @@ function MyApp({ Component, pageProps }) {
 
 export default MyApp
 ```
-

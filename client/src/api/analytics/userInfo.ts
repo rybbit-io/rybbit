@@ -26,8 +26,6 @@ export function useUserInfo(siteId: number, userId: string) {
   return useQuery<UserInfo>({
     queryKey: ["user-info", userId, siteId],
     queryFn: () => {
-      console.info("Fetching user info");
-
       return authedFetch(`${BACKEND_URL}/user/info/${userId}/${siteId}`)
         .then((res) => res.json())
         .then((res) => res.data);

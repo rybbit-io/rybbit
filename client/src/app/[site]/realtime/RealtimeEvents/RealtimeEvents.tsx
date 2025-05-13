@@ -180,7 +180,7 @@ export function RealtimeEvents() {
   return (
     <div
       className="overflow-y-auto p-2"
-      style={{ height: "calc(100vh - 50px)" }}
+      style={{ height: "calc(100vh - 100px)" }}
     >
       {data.map((event: Event, index: number) => (
         <EventCard key={`${event.timestamp}-${index}`} event={event} />
@@ -230,7 +230,7 @@ function EventCardSkeleton() {
   return (
     <div
       className="overflow-y-auto p-2"
-      style={{ height: "calc(100vh - 50px)" }}
+      style={{ height: "calc(100vh - 100px)" }}
     >
       {skeletons}
     </div>

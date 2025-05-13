@@ -10,7 +10,13 @@ import { APIResponse } from "../../../../../api/types";
 import { Time } from "../../../../../components/DateSelector/types";
 
 const getMin = (time: Time) => {
-  if (time.mode === "day") {
+  if (time.mode === "last-24-hours") {
+    return DateTime.now()
+      .setZone("UTC")
+      .minus({ hours: 48 })
+      .startOf("hour")
+      .toJSDate();
+  } else if (time.mode === "day") {
     const dayDate = DateTime.fromISO(time.day).startOf("day");
     return dayDate.toJSDate();
   } else if (time.mode === "week") {
@@ -39,12 +45,22 @@ export function PreviousChart({
 }) {
   const { previousTime: time, selectedStat } = useStore();
 
-  const formattedData = data?.data?.map((e) => ({
-    x: DateTime.fromSQL(e.time).toUTC().toFormat("yyyy-MM-dd HH:mm:ss"),
-    y: e[selectedStat],
-  }));
+  const size = (data?.data.length ?? 0 / 2) + 1;
+  const formattedData = data?.data
+    ?.map((e) => {
+      const timestamp = DateTime.fromSQL(e.time).toUTC();
+      return {
+        x: timestamp.toFormat("yyyy-MM-dd HH:mm:ss"),
+        y: e[selectedStat],
+      };
+    })
+    .slice(0, size);
 
-  const min = useMemo(() => getMin(time), [data]);
+  const min = useMemo(() => getMin(time), [time]);
+  const max24Hours =
+    time.mode === "last-24-hours"
+      ? DateTime.now().setZone("UTC").minus({ hours: 24 }).toJSDate()
+      : undefined;
 
   return (
     <ResponsiveLine
@@ -62,6 +78,7 @@ export function PreviousChart({
         precision: "second",
         useUTC: true,
         min,
+        max: max24Hours,
       }}
       yScale={{
         type: "linear",
@@ -82,15 +99,18 @@ export function PreviousChart({
         truncateTickAt: 0,
         tickValues: 0,
         format: (value) => {
-          if (time.mode === "day") {
-            return DateTime.fromJSDate(value).toFormat("ha");
+          const localTime = DateTime.fromJSDate(value).toLocal();
+
+          if (time.mode === "last-24-hours" || time.mode === "day") {
+            return localTime.toFormat("ha");
           } else if (time.mode === "range") {
-            return DateTime.fromJSDate(value).toFormat("MMM d");
+            return localTime.toFormat("MMM d");
           } else if (time.mode === "week") {
-            return DateTime.fromJSDate(value).toFormat("MMM d");
+            return localTime.toFormat("MMM d");
           } else if (time.mode === "month") {
-            return DateTime.fromJSDate(value).toFormat("MMM d");
+            return localTime.toFormat("MMM d");
           }
+          return "";
         },
       }}
       axisLeft={{

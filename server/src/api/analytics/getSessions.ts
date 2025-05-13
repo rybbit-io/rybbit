@@ -38,12 +38,15 @@ export interface GetSessionsRequest {
     site: string;
   };
   Querystring: {
-    startDate: string;
-    endDate: string;
+    startDate?: string;
+    endDate?: string;
     timezone: string;
     filters: string;
     page: number;
     userId?: string;
+    minutes?: string;
+    pastMinutesStart?: string;
+    pastMinutesEnd?: string;
   };
 }
 
@@ -51,7 +54,17 @@ export async function getSessions(
   req: FastifyRequest<GetSessionsRequest>,
   res: FastifyReply
 ) {
-  const { startDate, endDate, timezone, filters, page, userId } = req.query;
+  const {
+    startDate,
+    endDate,
+    timezone,
+    filters,
+    page,
+    userId,
+    minutes,
+    pastMinutesStart,
+    pastMinutesEnd,
+  } = req.query;
   const site = req.params.site;
   const userHasAccessToSite = await getUserHasAccessToSitePublic(req, site);
   if (!userHasAccessToSite) {
@@ -59,9 +72,23 @@ export async function getSessions(
   }
 
   const filterStatement = getFilterStatement(filters);
-  const timeStatement = getTimeStatement({
-    date: { startDate, endDate, timezone },
-  });
+
+  // Handle specific past minutes range if provided
+  const pastMinutesRange =
+    pastMinutesStart && pastMinutesEnd
+      ? { start: Number(pastMinutesStart), end: Number(pastMinutesEnd) }
+      : undefined;
+
+  // Set up time parameters
+  const timeParams = pastMinutesRange
+    ? { pastMinutesRange }
+    : minutes
+    ? { pastMinutes: Number(minutes) }
+    : startDate && endDate
+    ? { date: { startDate, endDate, timezone } }
+    : {};
+
+  const timeStatement = getTimeStatement(timeParams);
 
   const query = `
   WITH AggregatedSessions AS (

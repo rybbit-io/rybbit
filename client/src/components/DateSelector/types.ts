@@ -34,10 +34,15 @@ export type AllTimeMode = {
   mode: "all-time";
 };
 
+export type Past24HoursMode = {
+  mode: "last-24-hours";
+};
+
 export type Time =
   | DateMode
   | DateRangeMode
   | WeekMode
   | MonthMode
   | YearMode
-  | AllTimeMode;
+  | AllTimeMode
+  | Past24HoursMode;

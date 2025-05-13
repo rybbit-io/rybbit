@@ -20,7 +20,7 @@ export default {
     title: "SDKs",
   },
   web: "",
-  _7: {
+  _6: {
     type: "separator",
     title: "Settings",
   },
@@ -29,7 +29,7 @@ export default {
   "enhanced-privacy": "",
   "changing-domains": "",
   "deleting-sites": "",
-  _8: {
+  _7: {
     type: "separator",
     title: "Other",
   },

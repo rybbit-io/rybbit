@@ -435,7 +435,11 @@ export default function JourneysPage() {
         <MobileSidebar />
       </div>
       <div className="flex justify-end items-center gap-2 mb-2">
-        <DateSelector time={time} setTime={setTime} />
+        <DateSelector
+          time={time}
+          setTime={setTime}
+          past24HoursEnabled={false}
+        />
         <Select
           value={steps.toString()}
           onValueChange={(value) => setSteps(Number(value))}

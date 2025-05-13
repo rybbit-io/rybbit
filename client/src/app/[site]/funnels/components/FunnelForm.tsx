@@ -61,7 +61,6 @@ export function FunnelForm({
   saveError,
   funnelData,
 }: FunnelFormProps) {
-  console.info(funnelData);
   const [showFilters, setShowFilters] = useState(filters.length > 0);
   // State to track which event steps have property filtering enabled
   const [useProperties, setUseProperties] = useState<boolean[]>(() =>
