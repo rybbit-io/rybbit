@@ -2,7 +2,6 @@
 
 import { nivoTheme } from "@/lib/nivo";
 import { ResponsiveLine } from "@nivo/line";
-import { Theme } from "@nivo/theming";
 import { DateTime } from "luxon";
 import { useMemo } from "react";
 import {
@@ -138,7 +137,7 @@ export function RetentionChart({ data, isLoading, mode }: RetentionChartProps) {
     <div className="h-[400px]">
       <ResponsiveLine
         data={chartData}
-        theme={nivoTheme as Theme}
+        theme={nivoTheme}
         margin={{ top: 20, right: 120, bottom: 30, left: 40 }}
         xScale={{
           type: "linear",

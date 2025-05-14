@@ -96,7 +96,7 @@ async function getUserSubscriptionInfo(userData: {
     const subscription = subscriptions.data[0];
     const subscriptionItem = subscription.items.data[0];
 
-    const priceId = subscription.items.data[0]?.price.id;
+    const priceId = subscriptionItem.price.id;
 
     if (!priceId) {
       console.error(
@@ -143,7 +143,7 @@ async function getUserSubscriptionInfo(userData: {
     }
 
     // Include subscription info for logging purposes
-    const interval = subscription.items.data[0]?.price.recurring?.interval || "unknown";
+    const interval = subscriptionItem.price.recurring?.interval || "unknown";
     console.log(
       `[Monthly Usage Checker] User ${userData.email} has a ${interval} subscription.`
     );

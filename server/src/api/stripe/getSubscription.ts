@@ -52,7 +52,7 @@ export async function getSubscriptionInner(userId: string) {
       const subscription = subscriptions.data[0];
       const subscriptionItem = subscription.items.data[0];
 
-      const priceId = subscription.items.data[0]?.price.id;
+      const priceId = subscriptionItem.price.id;
 
       if (!priceId) {
         throw new Error("Subscription item price ID not found");
@@ -65,28 +65,28 @@ export async function getSubscriptionInner(userId: string) {
         console.error("Plan details not found for price ID:", priceId);
         // Still return the basic subscription info even if local plan details missing
         return {
-          id: subscription.id,
-          planName: "Unknown Plan", // Indicate missing details
-          status: subscription.status,
-          currentPeriodEnd: new Date(subscriptionItem.current_period_end * 1000),
-          cancelAtPeriodEnd: subscription.cancel_at_period_end,
-          eventLimit: 0, // Unknown limit
-          monthlyEventCount: user.monthlyEventCount,
-          interval: subscription.items.data[0]?.price.recurring?.interval ?? "unknown",
-        };
+					id: subscription.id,
+					planName: "Unknown Plan", // Indicate missing details
+					status: subscription.status,
+					currentPeriodEnd: new Date(subscriptionItem.current_period_end * 1000),
+					cancelAtPeriodEnd: subscription.cancel_at_period_end,
+					eventLimit: 0, // Unknown limit
+					monthlyEventCount: user.monthlyEventCount,
+					interval: subscriptionItem.price.recurring?.interval ?? "unknown",
+				};
       }
 
       // 4. Format and return the subscription data
       const responseData = {
-        id: subscription.id,
-        planName: planDetails.name,
-        status: subscription.status,
-        currentPeriodEnd: new Date(subscriptionItem.current_period_end * 1000),
-        cancelAtPeriodEnd: subscription.cancel_at_period_end,
-        eventLimit: planDetails.limits.events,
-        monthlyEventCount: user.monthlyEventCount,
-        interval: subscription.items.data[0]?.price.recurring?.interval ?? "unknown",
-      };
+				id: subscription.id,
+				planName: planDetails.name,
+				status: subscription.status,
+				currentPeriodEnd: new Date(subscriptionItem.current_period_end * 1000),
+				cancelAtPeriodEnd: subscription.cancel_at_period_end,
+				eventLimit: planDetails.limits.events,
+				monthlyEventCount: user.monthlyEventCount,
+				interval: subscriptionItem.price.recurring?.interval ?? "unknown",
+			};
 
       return responseData;
     }

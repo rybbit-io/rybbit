@@ -1,5 +1,4 @@
 import { ResponsiveBar } from "@nivo/bar";
-import { Theme } from "@nivo/theming";
 import { DateTime } from "luxon";
 import { useMemo } from "react";
 import { useGetOverviewBucketedPastMinutes } from "../../../../api/analytics/useGetOverviewBucketed";
@@ -47,7 +46,7 @@ export function RealtimeChart() {
       valueScale={{ type: "linear" }}
       indexScale={{ type: "band", round: true }}
       colors={["hsl(var(--amber-200))"]}
-      theme={nivoTheme as Theme}
+      theme={nivoTheme}
       axisTop={null}
       axisRight={null}
       axisBottom={null}

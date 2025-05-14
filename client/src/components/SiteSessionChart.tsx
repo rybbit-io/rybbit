@@ -1,6 +1,5 @@
 import { nivoTheme } from "@/lib/nivo";
 import { ResponsiveLine } from "@nivo/line";
-import { Theme } from "@nivo/theming";
 import { DateTime } from "luxon";
 import { useMemo } from "react";
 import { GetOverviewBucketedResponse } from "../api/analytics/useGetOverviewBucketed";
@@ -76,7 +75,7 @@ export function SiteSessionChart({
         enableArea={true}
         areaOpacity={0.3}
         colors={["hsl(var(--accent-400))"]}
-        theme={nivoTheme as Theme}
+        theme={nivoTheme}
         defs={[
           {
             id: "gradientA",

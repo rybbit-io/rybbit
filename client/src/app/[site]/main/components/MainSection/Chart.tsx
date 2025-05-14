@@ -2,7 +2,6 @@
 import { nivoTheme } from "@/lib/nivo";
 import { StatType, TimeBucket, useStore } from "@/lib/store";
 import { LineCustomSvgLayer, LineCustomSvgLayerProps, LineSeries, ResponsiveLine } from "@nivo/line";
-import { Theme } from "@nivo/theming";
 import { useWindowSize } from "@uidotdev/usehooks";
 import { DateTime } from "luxon";
 import { GetOverviewBucketedResponse } from "../../../../../api/analytics/useGetOverviewBucketed";
@@ -255,7 +254,7 @@ export function Chart({
   return (
     <ResponsiveLine
       data={chartPropsData}
-      theme={nivoTheme as Theme}
+      theme={nivoTheme}
       margin={{ top: 10, right: 10, bottom: 25, left: 35 }}
       xScale={{
         type: "time",
