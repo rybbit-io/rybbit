@@ -12,7 +12,7 @@ This Helm chart deploys the Rybbit self-hosted analytics platform on Kubernetes.
 
 ### Using OCI Registry
 
-The chart is available in a OCI registry. To install:
+The chart is available in an OCI registry. To install:
 
 ```bash
 # Install the chart
@@ -27,9 +27,79 @@ helm install rybbit oci://harbor.lag0.com.br/library/rybbit -f values.yaml
 
 ## Configuration
 
+### Example Values
+
+Here's a complete example of a production configuration:
+
+```yaml
+client:
+  image:
+    tag: sha-446bb2b
+  env:
+    NEXT_PUBLIC_BACKEND_URL: "https://rybbit.yourdomain.com"
+    NEXT_PUBLIC_DISABLE_SIGNUP: "false"
+
+backend:
+  image:
+    tag: sha-446bb2b
+  env:
+    BASE_URL: "https://rybbit.yourdomain.com"
+    DISABLE_SIGNUP: "false"
+    
+secrets:
+  annotations:
+    kustomize.toolkit.fluxcd.io/prune: disabled
+
+ingress:
+  enabled: true  
+  className: "nginx"
+  annotations:
+    kubernetes.io/ingress.class: nginx
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+  hosts:
+    - host: rybbit.yourdomain.com
+      paths:
+        - path: /
+          pathType: Prefix
+  tls:
+    - secretName: your-rybbit-certificate
+      hosts:
+        - rybbit.yourdomain.com
+```
 The following table lists the configurable parameters of the Rybbit chart and their default values.
 
-### Backend Configuration
+### FluxCD example:
+```
+apiVersion: source.toolkit.fluxcd.io/v1beta2
+kind: OCIRepository
+metadata:
+  name: rybbit
+  namespace: rybbit
+spec:
+  interval: 10m
+  url: oci://harbor.lag0.com.br/library/rybbit
+  ref:
+    semver: ">=0.3.0"
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: rybbit
+  namespace: rybbit
+spec:
+  releaseName: rybbit
+  targetNamespace: rybbit
+  install:
+    createNamespace: true
+  interval: 30m
+  chartRef:
+    kind: OCIRepository
+    name: rybbit
+  values:
+    <replace_me_with_values_from_previous_example>
+```
+
+### Backend Values
 
 | Parameter | Description | Default |
 |-----------|-------------|---------|
@@ -51,7 +121,7 @@ The following table lists the configurable parameters of the Rybbit chart and th
 | `client.resources` | Client pod resource requests and limits | See values.yaml |
 | `client.env` | Client environment variables | See values.yaml |
 
-### PostgreSQL Configuration
+### PostgreSQL Values
 
 | Parameter | Description | Default |
 |-----------|-------------|---------|
@@ -69,7 +139,7 @@ The following table lists the configurable parameters of the Rybbit chart and th
 | `postgres.persistence.size` | Size of PostgreSQL PVC | `10Gi` |
 | `postgres.persistence.annotations` | Annotations for PostgreSQL PVC | `{}` |
 
-### ClickHouse Configuration
+### ClickHouse Values
 
 | Parameter | Description | Default |
 |-----------|-------------|---------|
@@ -87,7 +157,7 @@ The following table lists the configurable parameters of the Rybbit chart and th
 | `clickhouse.persistence.size` | Size of ClickHouse PVC | `20Gi` |
 | `clickhouse.persistence.annotations` | Annotations for ClickHouse PVC | `{}` |
 
-### Ingress Configuration
+### Ingress Values
 
 | Parameter | Description | Default |
 |-----------|-------------|---------|
@@ -125,7 +195,7 @@ backend:
 
 ### Secret Annotations
 
-You can add custom annotations to the secrets. This is useful for integrating with external secret management systems:
+You can add custom annotations to the secrets.:
 
 ```yaml
 secrets:
@@ -185,43 +255,6 @@ Key persistence options:
 - `accessMode`: Access mode for the PVC (ReadWriteOnce, ReadWriteMany, ReadOnlyMany)
 - `size`: Size of the persistent volume
 - `annotations`: Custom annotations for the PVC
-
-## Ingress
-
-The chart supports ingress configuration for exposing the application. To enable ingress:
-
-```yaml
-ingress:
-  enabled: true
-  className: "nginx"
-  annotations:
-    kubernetes.io/ingress.class: nginx
-  hosts:
-    - host: your-domain.com
-      paths:
-        - path: /
-          pathType: Prefix
-  tls:
-    - secretName: your-domain-tls
-      hosts:
-        - your-domain.com
-```
-
-## Troubleshooting
-
-### Common Issues
-
-1. **Database Connection Issues**
-   - Verify that the database passwords in the secret match your configuration
-   - Check that the database services are running and accessible
-
-2. **Ingress Issues**
-   - Ensure your ingress controller is properly configured
-   - Verify that the ingress annotations match your ingress controller requirements
-
-3. **Resource Issues**
-   - Check if pods are being scheduled (kubectl get pods)
-   - Verify resource requests and limits are appropriate for your cluster
 
 ## Support
 

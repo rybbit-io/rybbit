@@ -2,5 +2,5 @@ apiVersion: v2
 name: rybbit
 description: A Helm chart for Rybbit self-hosted analytics
 type: application
-version: 0.2.5
+version: 0.3.6
 appVersion: "1.0.0" 
