@@ -1,17 +1,23 @@
-# Caddyfile
-# Use the domain name passed from docker-compose environment
 {$DOMAIN_NAME} {
-    # Enable compression
+
     encode zstd gzip
 
     handle_path /api/* {
-        reverse_proxy backend:3001
+        reverse_proxy backend:3001 {
+            header_up X-Forwarded-For {remote_host}
+            header_up X-Real-IP {remote_host}
+            header_up X-Forwarded-Proto {scheme}
+            header_up X-Forwarded-Host {host}
+        }
     }
 
-
-    # Proxy all other requests to the client service
     handle {
-        reverse_proxy client:3002
+        reverse_proxy client:3002 {
+            header_up X-Forwarded-For {remote_host}
+            header_up X-Real-IP {remote_host}
+            header_up X-Forwarded-Proto {scheme}
+            header_up X-Forwarded-Host {host}
+        }
     }
 
-} 
+}
