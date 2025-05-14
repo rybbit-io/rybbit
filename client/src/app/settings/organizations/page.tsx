@@ -258,15 +258,18 @@ export default function Organizations() {
 
   if (!data?.length) {
     return (
-      <NoOrganization message="You need to create or be added to an organization before you can manage your organizations." />
+      <NoOrganization title="No Organization" message="You need to create or be added to an organization before you can manage your organizations." />
     );
   }
 
   return (
-    <div className="flex flex-col gap-6">
-      {data?.map((organization) => (
-        <Organization key={organization.id} org={organization} />
-      ))}
-    </div>
+    <>
+      <div className="flex flex-col gap-6">
+        {data?.map((organization) => (
+          <Organization key={organization.id} org={organization} />
+        ))}
+        <NoOrganization title="Add Organization" message="You can add additional organizations to only share some sites." />
+      </div>
+    </>
   );
 }
