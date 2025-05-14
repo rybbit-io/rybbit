@@ -24,16 +24,16 @@ spec:
             - name: NODE_ENV
               value: {{ .Values.backend.env.NODE_ENV | quote }}
             - name: CLICKHOUSE_HOST
-              value: http://{{ .Release.Name }}-clickhouse:8123
+              value: http://{{ .Release.Name }}-clickhouse.{{ .Release.Namespace }}.svc.cluster.local:8123
             - name: CLICKHOUSE_DB
               value: {{ .Values.clickhouse.db | quote }}
             - name: CLICKHOUSE_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: {{ .Release.Name }}-secrets
+                  name: rybbit-secrets
                   key: clickhouse-password
             - name: POSTGRES_HOST
-              value: {{ .Release.Name }}-postgres
+              value: {{ .Release.Name }}-postgres.{{ .Release.Namespace }}.svc.cluster.local
             - name: POSTGRES_PORT
               value: "5432"
             - name: POSTGRES_DB
@@ -41,17 +41,17 @@ spec:
             - name: POSTGRES_USER
               valueFrom:
                 secretKeyRef:
-                  name: {{ .Release.Name }}-secrets
+                  name: rybbit-secrets
                   key: postgres-user
             - name: POSTGRES_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: {{ .Release.Name }}-secrets
+                  name: rybbit-secrets
                   key: postgres-password
             - name: BETTER_AUTH_SECRET
               valueFrom:
                 secretKeyRef:
-                  name: {{ .Release.Name }}-secrets
+                  name: rybbit-secrets
                   key: better-auth-secret
             - name: BASE_URL
               value: {{ .Values.backend.env.BASE_URL | quote }}

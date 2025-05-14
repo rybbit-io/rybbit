@@ -26,12 +26,12 @@ spec:
             - name: CLICKHOUSE_USER
               valueFrom:
                 secretKeyRef:
-                  name: {{ .Release.Name }}-secrets
+                  name: rybbit-secrets
                   key: clickhouse-user
             - name: CLICKHOUSE_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: {{ .Release.Name }}-secrets
+                  name: rybbit-secrets
                   key: clickhouse-password
           ports:
             - containerPort: 8123

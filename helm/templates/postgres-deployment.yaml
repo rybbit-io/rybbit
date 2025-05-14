@@ -24,12 +24,12 @@ spec:
             - name: POSTGRES_USER
               valueFrom:
                 secretKeyRef:
-                  name: {{ .Release.Name }}-secrets
+                  name: rybbit-secrets
                   key: postgres-user
             - name: POSTGRES_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: {{ .Release.Name }}-secrets
+                  name: rybbit-secrets
                   key: postgres-password
             - name: POSTGRES_DB
               value: {{ .Values.postgres.db | quote }}

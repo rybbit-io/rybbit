@@ -15,11 +15,13 @@ backend:
       memory: 128Mi
   env:
     NODE_ENV: production
-    CLICKHOUSE_HOST: http://clickhouse:8123
+    CLICKHOUSE_HOST: http://rybbit-clickhouse.rybbit.svc.cluster.local:8123
     CLICKHOUSE_DB: analytics
+
     # setting this here is insecure, recommended to let commented out
     # so the chart will create and use a random strong password secret
     # CLICKHOUSE_PASSWORD: frog
+    
     POSTGRES_HOST: postgres
     POSTGRES_PORT: 5432
     POSTGRES_DB: analytics
