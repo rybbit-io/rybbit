@@ -12,7 +12,7 @@ This Helm chart deploys the Rybbit self-hosted analytics platform on Kubernetes.
 
 ### Using OCI Registry
 
-The chart is available in an OCI registry. To install:
+The chart is available in a OCI registry. To install:
 
 ```bash
 # Install the chart
@@ -121,6 +121,16 @@ The backend uses a secret for authentication. This is automatically generated on
 backend:
   env:
     BETTER_AUTH_SECRET: "your-custom-secret"
+```
+
+### Secret Annotations
+
+You can add custom annotations to the secrets. This is useful for integrating with external secret management systems:
+
+```yaml
+secrets:
+  annotations:
+    kustomize.toolkit.fluxcd.io/prune: disabled
 ```
 
 ## Upgrading

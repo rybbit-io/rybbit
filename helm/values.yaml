@@ -27,6 +27,13 @@ backend:
     BASE_URL: ""
     DISABLE_SIGNUP: ""
 
+secrets:
+  annotations: {}
+  # Example:
+  # kustomize.toolkit.fluxcd.io/prune: disabled
+  # external-secrets.io/secret-store-ref: "vault-backend"
+  # external-secrets.io/target-secret-name: "rybbit-secrets"
+
 client:
   image:
     repository: ghcr.io/rybbit-io/rybbit-client
