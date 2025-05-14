@@ -12,7 +12,7 @@ This Helm chart deploys the Rybbit self-hosted analytics platform on Kubernetes.
 
 ### Using OCI Registry
 
-The chart is available in our OCI registry. To install:
+The chart is available in a OCI registry. To install:
 
 ```bash
 # Install the chart
