@@ -7,7 +7,7 @@ export const DISABLE_SIGNUP = process.env.DISABLE_SIGNUP === "true";
 
 // Trial constants
 export const TRIAL_DURATION_DAYS = 14;
-export const TRIAL_EVENT_LIMIT = 100000;
+export const TRIAL_EVENT_LIMIT = 1_000_000;
 
 // Define a type for the plan objects
 export interface StripePlan {

@@ -5,13 +5,15 @@ import { processResults } from "../api/analytics/utils.js";
 import { clickhouse } from "../db/clickhouse/clickhouse.js";
 import { db } from "../db/postgres/postgres.js";
 import { member, sites, user } from "../db/postgres/schema.js";
-import { getStripePrices, StripePlan } from "../lib/const.js";
+import {
+  getStripePrices,
+  StripePlan,
+  TRIAL_EVENT_LIMIT,
+} from "../lib/const.js";
 import { stripe } from "../lib/stripe.js";
 
 // Default event limit for users without an active subscription
 const DEFAULT_EVENT_LIMIT = 0;
-
-const TRIAL_EVENT_LIMIT = 100_000;
 
 // Global set to track site IDs that have exceeded their monthly limits
 export const sitesOverLimit = new Set<number>();
@@ -93,12 +95,14 @@ async function getUserSubscriptionInfo(userData: {
       return [DEFAULT_EVENT_LIMIT, getStartOfMonth()];
     }
 
-    const sub = subscriptions.data[0];
-    const priceId = sub.items.data[0]?.price.id;
+    const subscription = subscriptions.data[0];
+    const subscriptionItem = subscription.items.data[0];
+
+    const priceId = subscriptionItem.price.id;
 
     if (!priceId) {
       console.error(
-        `Subscription item price ID not found for user ${userData.id}, sub ${sub.id}`
+        `Subscription item price ID not found for user ${userData.id}, sub ${subscription.id}`
       );
       return [DEFAULT_EVENT_LIMIT, getStartOfMonth()];
     }
@@ -119,10 +123,10 @@ async function getUserSubscriptionInfo(userData: {
     const currentMonthStart = getStartOfMonth();
     let periodStart = currentMonthStart;
 
-    if (sub.current_period_start) {
+    if (subscriptionItem.current_period_start) {
       // Convert subscription start timestamp to DateTime
       const subscriptionStartDate = DateTime.fromSeconds(
-        sub.current_period_start
+        subscriptionItem.current_period_start
       );
       const currentMonth = DateTime.now().startOf("month");
 
@@ -141,7 +145,7 @@ async function getUserSubscriptionInfo(userData: {
     }
 
     // Include subscription info for logging purposes
-    const interval = sub.items.data[0]?.price.recurring?.interval || "unknown";
+    const interval = subscriptionItem.price.recurring?.interval || "unknown";
     console.log(
       `[Monthly Usage Checker] User ${userData.email} has a ${interval} subscription.`
     );

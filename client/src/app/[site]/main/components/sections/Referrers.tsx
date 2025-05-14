@@ -10,6 +10,7 @@ import { Card, CardContent } from "../../../../../components/ui/card";
 import { StandardSection } from "../../../components/shared/StandardSection/StandardSection";
 import { Button } from "../../../../../components/ui/button";
 import { Expand } from "lucide-react";
+import { Favicon } from "../../../../../components/Favicon";
 
 type Tab =
   | "referrers"
@@ -62,10 +63,7 @@ export function Referrers() {
               getLink={(e) => `https://${e.value}`}
               getLabel={(e) => (
                 <div className="flex items-center">
-                  <img
-                    className="w-4 mr-2"
-                    src={`https://www.google.com/s2/favicons?domain=${e.value}&sz=32`}
-                  />
+                  <Favicon domain={e.value} className="w-4 mr-2" />
                   {e.value ? e.value : "Direct"}
                 </div>
               )}

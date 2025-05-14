@@ -42,7 +42,7 @@ const getQuery = (request: FastifyRequest<GenericRequest>) => {
   const filterStatement = getFilterStatement(filters);
   const timeStatement = getTimeStatement(
     minutes
-      ? { pastMinutes: minutes }
+      ? { pastMinutes: Number(minutes) }
       : {
           date: { startDate, endDate, timezone },
         }

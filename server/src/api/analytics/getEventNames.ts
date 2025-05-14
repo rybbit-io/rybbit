@@ -17,10 +17,11 @@ export interface GetEventNamesRequest {
     site: string;
   };
   Querystring: {
-    startDate: string;
-    endDate: string;
+    startDate?: string;
+    endDate?: string;
     timezone: string;
     filters?: string;
+    minutes?: string;
   };
 }
 
@@ -28,16 +29,18 @@ export async function getEventNames(
   req: FastifyRequest<GetEventNamesRequest>,
   res: FastifyReply
 ) {
-  const { startDate, endDate, timezone, filters } = req.query;
+  const { startDate, endDate, timezone, filters, minutes } = req.query;
   const site = req.params.site;
   const userHasAccessToSite = await getUserHasAccessToSitePublic(req, site);
   if (!userHasAccessToSite) {
     return res.status(403).send({ error: "Forbidden" });
   }
 
-  const timeStatement = getTimeStatement({
-    date: { startDate, endDate, timezone },
-  });
+  const timeStatement = getTimeStatement(
+    minutes
+      ? { pastMinutes: Number(minutes) }
+      : { date: { startDate, endDate, timezone } }
+  );
 
   const filterStatement = filters ? getFilterStatement(filters) : "";
 

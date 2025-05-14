@@ -189,7 +189,7 @@ async function validateOrigin(siteId: string, requestOrigin?: string) {
       if (normalizedOriginHost !== normalizedSiteDomain) {
         return {
           success: false,
-          error: `Origin mismatch. Expected: ${siteDomain}, Received: ${requestOrigin}`,
+          error: `Origin mismatch. Received: ${requestOrigin}`,
         };
       }
 

@@ -1,9 +1,10 @@
 "use client";
 
-import { EventProperty } from "../../../../api/analytics/useGetEventProperties";
 import NumberFlow from "@number-flow/react";
 import { Info } from "lucide-react";
 import { memo } from "react";
+import { EventProperty } from "../../../../api/analytics/useGetEventProperties";
+import { cn } from "../../../../lib/utils";
 
 interface EventPropertiesProps {
   properties: EventProperty[];
@@ -67,9 +68,7 @@ export function EventProperties({
 
   return (
     <div
-      className={`flex flex-col gap-4 ${
-        size === "small" ? "max-h-[30vh]" : "max-h-[60vh]"
-      } overflow-y-auto pr-2`}
+      className={cn("flex flex-col gap-4 overflow-y-auto pr-2", size === "small" ? "max-h-[30vh]" : "max-h-[60vh]")}
     >
       {sortedKeys.map((key) => {
         // Sort property values by count (descending)
@@ -78,9 +77,7 @@ export function EventProperties({
         return (
           <div
             key={key}
-            className={`flex flex-col gap-1 ${
-              size === "small" ? "text-xs" : "text-sm"
-            }`}
+            className={cn("flex flex-col gap-1", size === "small" ? "text-xs" : "text-sm")}
           >
             {/* Property Key Header */}
             <div className="font-semibold  text-primary py-1 border-b border-neutral-800">
@@ -95,9 +92,7 @@ export function EventProperties({
                 return (
                   <div
                     key={`${property.propertyKey}-${property.propertyValue}`}
-                    className={`relative ${
-                      size === "small" ? "h-6" : "h-8"
-                    } flex items-center hover:bg-neutral-850 group px-2 rounded-md`}
+                    className={cn("relative flex items-center hover:bg-neutral-850 group px-2 rounded-md", size === "small" ? "h-6" : "h-8")}
                   >
                     <div
                       className="absolute inset-0 bg-dataviz py-2 opacity-25 rounded-md"
@@ -151,16 +146,12 @@ const EventPropertiesSkeleton = memo(
 
     return (
       <div
-        className={`flex flex-col gap-4 ${
-          size === "small" ? "max-h-[30vh]" : "max-h-[60vh]"
-        } overflow-y-auto pr-2`}
+        className={cn("flex flex-col gap-4 overflow-y-auto pr-2", size === "small" ? "max-h-[30vh]" : "max-h-[60vh]")}
       >
         {Array.from({ length: groupCount }).map((_, groupIndex) => (
           <div
             key={groupIndex}
-            className={`flex flex-col gap-1 ${
-              size === "small" ? "text-xs" : "text-sm"
-            }`}
+            className={cn("flex flex-col gap-1", size === "small" ? "text-xs" : "text-sm")}
           >
             {/* Property Key Header Skeleton */}
             <div className="font-semibold py-1 border-b border-neutral-800">
@@ -181,9 +172,7 @@ const EventPropertiesSkeleton = memo(
                   return (
                     <div
                       key={propIndex}
-                      className={`relative ${
-                        size === "small" ? "h-6" : "h-8"
-                      } flex items-center px-2 rounded-md`}
+                      className={cn("relative flex items-center px-2 rounded-md", size === "small" ? "h-6" : "h-8")}
                     >
                       <div
                         className="absolute inset-0 bg-neutral-800 py-2 opacity-25 rounded-md animate-pulse"

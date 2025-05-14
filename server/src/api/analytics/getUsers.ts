@@ -28,14 +28,17 @@ export interface GetUsersRequest {
     site: string;
   };
   Querystring: {
-    startDate: string;
-    endDate: string;
+    startDate?: string;
+    endDate?: string;
     timezone: string;
     filters: string;
     page?: string;
     pageSize?: string;
     sortBy?: string;
     sortOrder?: string;
+    minutes?: string;
+    pastMinutesStart?: string;
+    pastMinutesEnd?: string;
   };
 }
 
@@ -52,6 +55,9 @@ export async function getUsers(
     pageSize = "20",
     sortBy = "last_seen",
     sortOrder = "desc",
+    minutes,
+    pastMinutesStart,
+    pastMinutesEnd,
   } = req.query;
   const site = req.params.site;
 
@@ -75,11 +81,24 @@ export async function getUsers(
   const actualSortBy = validSortFields.includes(sortBy) ? sortBy : "last_seen";
   const actualSortOrder = sortOrder === "asc" ? "ASC" : "DESC";
 
+  // Handle specific past minutes range if provided
+  const pastMinutesRange =
+    pastMinutesStart && pastMinutesEnd
+      ? { start: Number(pastMinutesStart), end: Number(pastMinutesEnd) }
+      : undefined;
+
+  // Set up time parameters
+  const timeParams = pastMinutesRange
+    ? { pastMinutesRange }
+    : minutes
+    ? { pastMinutes: Number(minutes) }
+    : startDate && endDate
+    ? { date: { startDate, endDate, timezone } }
+    : {};
+
   // Generate filter statement and time statement
   const filterStatement = getFilterStatement(filters);
-  const timeStatement = getTimeStatement({
-    date: { startDate, endDate, timezone },
-  });
+  const timeStatement = getTimeStatement(timeParams);
 
   const query = `
 WITH AggregatedUsers AS (

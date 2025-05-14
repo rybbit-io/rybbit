@@ -88,29 +88,65 @@ const fillDateParamsSchema = z.object({
 
 /**
  * Schema for parameters to getTimeStatement() function
- * Either date or pastMinutes must be provided
+ * Either date, pastMinutes, or pastMinutesRange must be provided
  */
 const timeStatementParamsSchema = z
   .object({
-    date: dateParamsSchema.optional(),
+    date: fillDateParamsSchema.optional(),
     pastMinutes: z.number().nonnegative().optional(),
+    pastMinutesRange: z
+      .object({
+        start: z.number().nonnegative(),
+        end: z.number().nonnegative(),
+      })
+      .optional()
+      .refine((data) => !data || data.start > data.end, {
+        message: "start must be greater than end (start = older, end = newer)",
+      }),
   })
-  .refine((data) => data.date !== undefined || data.pastMinutes !== undefined, {
-    message: "Either date or pastMinutes must be provided",
+  .refine(
+    (data) =>
+      data.date !== undefined ||
+      data.pastMinutes !== undefined ||
+      data.pastMinutesRange !== undefined,
+    {
+      message: "Either date, pastMinutes, or pastMinutesRange must be provided",
+    }
+  )
+  // Set default empty objects if schema validation fails
+  .catch({
+    date: undefined,
+    pastMinutes: undefined,
+    pastMinutesRange: undefined,
   });
 
 /**
  * Schema for parameters to getTimeStatementFill() function
- * Either date or pastMinutes must be provided
+ * Either date, pastMinutes, or pastMinutesRange must be provided
  */
 const timeStatementFillParamsSchema = z
   .object({
     date: fillDateParamsSchema.optional(),
     pastMinutes: z.number().nonnegative().optional(),
+    pastMinutesRange: z
+      .object({
+        start: z.number().nonnegative(),
+        end: z.number().nonnegative(),
+      })
+      .optional()
+      .refine((data) => !data || data.start > data.end, {
+        message: "start must be greater than end (start = older, end = newer)",
+      }),
   })
-  .refine((data) => data.date !== undefined || data.pastMinutes !== undefined, {
-    message: "Either date or pastMinutes must be provided",
-  });
+  .refine(
+    (data) =>
+      data.date !== undefined ||
+      data.pastMinutes !== undefined ||
+      data.pastMinutesRange !== undefined,
+    {
+      message: "Either date, pastMinutes, or pastMinutesRange must be provided",
+    }
+  );
 
 // =============================================================================
 // BUCKET RELATED SCHEMAS

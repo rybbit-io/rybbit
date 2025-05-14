@@ -36,29 +36,30 @@ export function StandardSection({
     parameter: filterParameter,
   });
 
-  const {
-    data: previousData,
-    isLoading: previousIsLoading,
-    isFetching: previousIsFetching,
-  } = useSingleCol({
-    parameter: filterParameter,
-    periodTime: "previous",
-  });
+  // const {
+  //   data: previousData,
+  //   isLoading: previousIsLoading,
+  //   isFetching: previousIsFetching,
+  // } = useSingleCol({
+  //   parameter: filterParameter,
+  //   periodTime: "previous",
+  // });
 
   // Create combined loading state
-  const loading = isLoading || previousIsLoading;
+  const loading = isLoading;
+  // const loading = isLoading || previousIsLoading;
 
   // For potential additional features that use previous data
-  const previousDataMap = useMemo(() => {
-    return previousData?.data?.reduce((acc, curr) => {
-      acc[getKey(curr)] = curr;
-      return acc;
-    }, {} as Record<string, SingleColResponse>);
-  }, [previousData, getKey]);
+  // const previousDataMap = useMemo(() => {
+  //   return previousData?.data?.reduce((acc, curr) => {
+  //     acc[getKey(curr)] = curr;
+  //     return acc;
+  //   }, {} as Record<string, SingleColResponse>);
+  // }, [previousData, getKey]);
 
   return (
     <>
-      {(isFetching || previousIsFetching) && (
+      {isFetching && (
         <div className="absolute top-[-8px] left-0 w-full h-full">
           <CardLoader />
         </div>

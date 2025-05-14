@@ -44,7 +44,8 @@ export function TrialPlan() {
             Trial Plan <Clock className="ml-2 h-5 w-5 text-blue-500" />
           </CardTitle>
           <CardDescription>
-            You are currently on a 14-day free trial with up to 100,000 events.
+            You are currently on a 14-day free trial with up to 1,000,000
+            events.
           </CardDescription>
         </CardHeader>
         <CardContent>

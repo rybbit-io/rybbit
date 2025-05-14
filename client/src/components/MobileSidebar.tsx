@@ -14,6 +14,7 @@ import {
 
 import { Menu } from "lucide-react";
 import { VisuallyHidden } from "radix-ui";
+import { Favicon } from "./Favicon";
 
 export function MobileSidebar() {
   const pathname = usePathname();
@@ -36,13 +37,7 @@ export function MobileSidebar() {
           <Sidebar />
         </SheetContent>
       </Sheet>
-      {site && (
-        <img
-          className="w-6 h-6"
-          src={`https://www.google.com/s2/favicons?domain=${site.domain}&sz=64`}
-          alt={site.domain}
-        />
-      )}
+      {site && <Favicon domain={site.domain} className="w-6 h-6" />}
     </div>
   );
 }

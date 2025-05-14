@@ -4,10 +4,7 @@ import { db } from "../../db/postgres/postgres.js";
 import { member } from "../../db/postgres/schema.js";
 import { getSitesUserHasAccessTo } from "../../lib/auth-utils.js";
 import { getSubscriptionInner } from "../stripe/getSubscription.js";
-import { IS_CLOUD } from "../../lib/const.js";
-
-// Default event limit for users without an active subscription
-const DEFAULT_EVENT_LIMIT = 100_000;
+import { IS_CLOUD, TRIAL_EVENT_LIMIT } from "../../lib/const.js";
 
 export async function getSites(req: FastifyRequest, reply: FastifyReply) {
   try {
@@ -50,7 +47,7 @@ export async function getSites(req: FastifyRequest, reply: FastifyReply) {
         const subscription = await getSubscriptionInner(ownerId);
 
         const monthlyEventCount = subscription?.monthlyEventCount || 0;
-        const eventLimit = subscription?.eventLimit || DEFAULT_EVENT_LIMIT;
+        const eventLimit = subscription?.eventLimit || TRIAL_EVENT_LIMIT;
 
         return {
           ...site,

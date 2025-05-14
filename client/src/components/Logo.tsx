@@ -1,5 +1,6 @@
 import { Tilt_Warp } from "next/font/google";
 import Image from "next/image";
+import { cn } from "../lib/utils";
 
 const tilt_wrap = Tilt_Warp({
   subsets: ["latin"],
@@ -14,7 +15,7 @@ export function Logo({
   if (size === "small") {
     return (
       <div
-        className={`flex items-center gap-1.5 ${tilt_wrap.className} text-lg`}
+        className={cn("flex items-center gap-1.5 text-lg", tilt_wrap.className)}
       >
         <Image src="/rybbit.png" alt="Rybbit" width={22} height={22} />
         rybbit.
@@ -25,7 +26,7 @@ export function Logo({
   if (size === "medium") {
     return (
       <div
-        className={`flex items-center gap-1.5 ${tilt_wrap.className} text-xl`}
+        className={cn("flex items-center gap-1.5 text-xl", tilt_wrap.className)}
       >
         <Image src="/rybbit.png" alt="Rybbit" width={24} height={24} />
         rybbit.
@@ -36,7 +37,7 @@ export function Logo({
   if (size === "large") {
     return (
       <div
-        className={`flex items-center gap-1.5 ${tilt_wrap.className} text-2xl`}
+        className={cn("flex items-center gap-1.5 text-2xl", tilt_wrap.className)}
       >
         <Image src="/rybbit.png" alt="Rybbit" width={27} height={27} />
         rybbit.
@@ -47,7 +48,7 @@ export function Logo({
   if (size === "xlarge") {
     return (
       <div
-        className={`flex items-center gap-2 ${tilt_wrap.className} text-3xl`}
+        className={cn("flex items-center gap-2 text-3xl", tilt_wrap.className)}
       >
         <Image src="/rybbit.png" alt="Rybbit" width={34} height={34} />
         rybbit.
@@ -58,7 +59,7 @@ export function Logo({
   if (size === "xxlarge") {
     return (
       <div
-        className={`flex items-center gap-2 ${tilt_wrap.className} text-4xl`}
+        className={cn("flex items-center gap-2 text-4xl", tilt_wrap.className)}
       >
         <Image src="/rybbit.png" alt="Rybbit" width={38} height={38} />
         rybbit.

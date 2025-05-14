@@ -11,7 +11,6 @@ import {
   CardTitle,
 } from "../../../../components/ui/card";
 import { Input } from "../../../../components/ui/input";
-import { IS_CLOUD } from "../../../../lib/const";
 import { ChangePassword } from "./ChangePassword";
 import { DeleteAccount } from "./DeleteAccount";
 
@@ -20,10 +19,8 @@ export function AccountInner({
 }: {
   session: ReturnType<typeof authClient.useSession>;
 }) {
-  const [username, setUsername] = useState(session.data?.user.username ?? "");
   const [email, setEmail] = useState(session.data?.user.email ?? "");
   const [name, setName] = useState(session.data?.user.name ?? "");
-  const [isUpdatingUsername, setIsUpdatingUsername] = useState(false);
   const [isUpdatingEmail, setIsUpdatingEmail] = useState(false);
   const [isUpdatingName, setIsUpdatingName] = useState(false);
 
@@ -52,36 +49,6 @@ export function AccountInner({
       );
     } finally {
       setIsUpdatingName(false);
-    }
-  };
-
-  const handleUsernameUpdate = async () => {
-    if (!username) {
-      toast.error("Username cannot be empty");
-      return;
-    }
-
-    try {
-      setIsUpdatingUsername(true);
-      const response = await authClient.updateUser({
-        username,
-      });
-
-      if (response.error) {
-        throw new Error(response.error.message || "Failed to update username");
-      }
-
-      toast.success("Username updated successfully");
-
-      // Reload the page to refresh the session
-      globalThis.location.reload();
-    } catch (error) {
-      console.error("Error updating username:", error);
-      toast.error(
-        error instanceof Error ? error.message : "Failed to update username"
-      );
-    } finally {
-      setIsUpdatingUsername(false);
     }
   };
 
@@ -127,55 +94,27 @@ export function AccountInner({
           <CardTitle className="text-xl">Account</CardTitle>
         </CardHeader>
         <CardContent className="space-y-6">
-          {IS_CLOUD ? (
-            <div className="space-y-2">
-              <h4 className="text-sm font-medium">Name</h4>
-              <p className="text-xs text-neutral-500">
-                Update your name displayed across the platform
-              </p>
-              <div className="flex space-x-2">
-                <Input
-                  id="name"
-                  value={name}
-                  onChange={({ target }) => setName(target.value)}
-                  placeholder="name"
-                />
-                <Button
-                  variant="outline"
-                  onClick={handleNameUpdate}
-                  disabled={isUpdatingName || name === session.data?.user.name}
-                >
-                  {isUpdatingName ? "Updating..." : "Update"}
-                </Button>
-              </div>
+          <div className="space-y-2">
+            <h4 className="text-sm font-medium">Name</h4>
+            <p className="text-xs text-neutral-500">
+              Update your name displayed across the platform
+            </p>
+            <div className="flex space-x-2">
+              <Input
+                id="name"
+                value={name}
+                onChange={({ target }) => setName(target.value)}
+                placeholder="name"
+              />
+              <Button
+                variant="outline"
+                onClick={handleNameUpdate}
+                disabled={isUpdatingName || name === session.data?.user.name}
+              >
+                {isUpdatingName ? "Updating..." : "Update"}
+              </Button>
             </div>
-          ) : (
-            <div className="space-y-2">
-              <h4 className="text-sm font-medium">Username</h4>
-              <p className="text-xs text-neutral-500">
-                Update your username displayed across the platform
-              </p>
-              <div className="flex space-x-2">
-                <Input
-                  id="username"
-                  value={username}
-                  onChange={({ target }) => setUsername(target.value)}
-                  placeholder="username"
-                />
-                <Button
-                  variant="outline"
-                  onClick={handleUsernameUpdate}
-                  disabled={
-                    isUpdatingUsername ||
-                    username === session.data?.user.username
-                  }
-                >
-                  {isUpdatingUsername ? "Updating..." : "Update"}
-                </Button>
-              </div>
-            </div>
-          )}
-
+          </div>
           <div className="space-y-2">
             <h4 className="text-sm font-medium">Email</h4>
             <p className="text-xs text-neutral-500">

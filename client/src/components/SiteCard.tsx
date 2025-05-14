@@ -6,6 +6,7 @@ import { SiteSessionChart } from "./SiteSessionChart";
 import { SiteSettings } from "./SiteSettings/SiteSettings";
 import { Button } from "./ui/button";
 import { Skeleton } from "./ui/skeleton";
+import { Favicon } from "./Favicon";
 
 interface SiteCardProps {
   siteId: number;
@@ -71,17 +72,7 @@ export function SiteCard({ siteId, domain }: SiteCardProps) {
           href={`/${siteId}`}
           className="group flex gap-3 items-center duration-200"
         >
-          <img
-            className="w-6 h-6"
-            src={`https://www.google.com/s2/favicons?domain=${domain}&sz=64`}
-            alt={domain}
-            onError={(e) => {
-              const target = e.target as HTMLImageElement;
-              target.src =
-                "https://placehold.co/48/374151/FFFFFF?text=" +
-                domain.charAt(0).toUpperCase();
-            }}
-          />
+          <Favicon domain={domain} className="w-6 h-6" />
           <span className="text-lg font-medium truncate group-hover:underline transition-all">
             {domain}
           </span>

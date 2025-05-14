@@ -10,6 +10,8 @@ import SqlString from "sqlstring";
 export function getTimeStatement({
   date,
   pastMinutes,
+  minutes,
+  pastMinutesRange,
 }: {
   date?: {
     startDate?: string;
@@ -18,26 +20,33 @@ export function getTimeStatement({
     table?: "events" | "sessions";
   };
   pastMinutes?: number;
+  minutes?: number; // Alternative name for pastMinutes for compatibility
+  pastMinutesRange?: { start: number; end: number };
 }) {
+  // For backward compatibility, support both minutes and pastMinutes
+  const actualPastMinutes = pastMinutes || minutes;
+
   // Sanitize inputs with Zod
-  const sanitized = validateTimeStatementParams({ date, pastMinutes });
+  const sanitized = validateTimeStatementParams({
+    date,
+    pastMinutes: actualPastMinutes,
+    pastMinutesRange,
+  });
 
   if (sanitized.date) {
-    const { startDate, endDate, timezone, table } = sanitized.date;
+    const { startDate, endDate, timezone } = sanitized.date;
     if (!startDate && !endDate) {
       return "";
     }
 
-    const col = (table ?? "events") === "events" ? "timestamp" : "session_end";
-
     // Use SqlString.escape for date and timezone values
-    return `AND ${col} >= toTimeZone(
+    return `AND timestamp >= toTimeZone(
       toStartOfDay(toDateTime(${SqlString.escape(
         startDate
       )}, ${SqlString.escape(timezone)})),
       'UTC'
       )
-      AND ${col} < if(
+      AND timestamp < if(
         toDate(${SqlString.escape(endDate)}) = toDate(now(), ${SqlString.escape(
       timezone
     )}),
@@ -50,12 +59,27 @@ export function getTimeStatement({
         )
       )`;
   }
+
+  // Handle specific range of past minutes
+  if (sanitized.pastMinutesRange) {
+    const { start, end } = sanitized.pastMinutesRange;
+    return `AND timestamp > now() - interval ${SqlString.escape(
+      start
+    )} minute AND timestamp <= now() - interval ${SqlString.escape(
+      end
+    )} minute`;
+  }
+
+  // Handle standard past minutes
   if (sanitized.pastMinutes) {
     // Use SqlString.escape for pastMinutes (it handles numbers)
     return `AND timestamp > now() - interval ${SqlString.escape(
       sanitized.pastMinutes
     )} minute`;
   }
+
+  // If no valid time parameters were provided, return empty string
+  return "";
 }
 
 export async function processResults<T>(

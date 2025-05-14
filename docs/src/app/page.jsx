@@ -6,6 +6,7 @@ import {
 } from "@/components/ui/accordion";
 import { Tilt_Warp } from "next/font/google";
 import Link from "next/link";
+import { cn } from "../lib/utils";
 import { AdvancedFilters } from "./components/Cards/AdvancedFilters";
 import { EventTracking } from "./components/Cards/EventTracking";
 import { Funnels } from "./components/Cards/Funnels";
@@ -18,6 +19,7 @@ import { UserSessions } from "./components/Cards/UserSessions";
 import { Integrations } from "./components/integrations";
 import { Logo } from "./components/Logo";
 import { PricingSection } from "./components/PricingSection";
+import { TweetCard } from "./components/Tweet";
 
 const tilt_wrap = Tilt_Warp({
   subsets: ["latin"],
@@ -34,7 +36,10 @@ export default function IndexPage() {
   return (
     <div className="flex flex-col items-center justify-center overflow-x-hidden">
       <h1
-        className={`text-4xl md:text-5xl lg:text-7xl font-semibold pt-16 md:pt-24 px-4 tracking-tight max-w-4xl text-center text-transparent bg-clip-text bg-gradient-to-b from-white via-gray-100 to-gray-400 ${tilt_wrap.className}`}
+        className={cn(
+          "text-4xl md:text-5xl lg:text-7xl font-semibold pt-16 md:pt-24 px-4 tracking-tight max-w-4xl text-center text-transparent bg-clip-text bg-gradient-to-b from-white via-gray-100 to-gray-400",
+          tilt_wrap.className
+        )}
       >
         The Open Source Google Analytics Replacement
       </h1>
@@ -45,12 +50,12 @@ export default function IndexPage() {
 
       <div className="flex flex-col sm:flex-row my-8 md:my-10 items-center justify-center gap-4 md:gap-6 text-base md:text-lg px-4">
         <Link href="https://app.rybbit.io/signup" className="w-full sm:w-auto">
-          <button className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-500 text-white font-medium px-5 py-3 rounded-lg shadow-lg shadow-emerald-900/20 transform hover:-translate-y-0.5 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-opacity-50">
+          <button className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-500 text-white font-medium px-5 py-3 rounded-lg shadow-lg shadow-emerald-900/20 transform hover:-translate-y-0.5 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-opacity-50 cursor-pointer">
             Track your Site
           </button>
         </Link>
         <Link href="https://demo.rybbit.io/1" className="w-full sm:w-auto">
-          <button className="w-full sm:w-auto bg-neutral-800 hover:bg-neutral-700 text-white font-medium px-5 py-3 rounded-lg border border-neutral-600 transform hover:-translate-y-0.5 transition-all duration-200 hover:border-neutral-400 focus:outline-none focus:ring-2 focus:ring-neutral-400 focus:ring-opacity-50">
+          <button className="w-full sm:w-auto bg-neutral-800 hover:bg-neutral-700 text-white font-medium px-5 py-3 rounded-lg border border-neutral-600 transform hover:-translate-y-0.5 transition-all duration-200 hover:border-neutral-400 focus:outline-none focus:ring-2 focus:ring-neutral-400 focus:ring-opacity-50 cursor-pointer">
             View Live Demo
           </button>
         </Link>
@@ -120,40 +125,40 @@ export default function IndexPage() {
         </div>
       </section>
 
+      <Integrations />
+
       {/* Testimonial Section */}
       <section className="py-10 md:py-16 w-full">
-        <div className="max-w-4xl mx-auto px-4">
-          <div className="relative bg-neutral-800/20 backdrop-blur-sm border border-neutral-700 rounded-xl shadow-lg overflow-hidden">
-            {/* Background glow effects - toned down */}
-            <div className="absolute -right-40 -top-40 w-60 h-60 bg-emerald-500/10 rounded-full blur-3xl"></div>
-            <div className="absolute -left-20 -bottom-20 w-40 h-40 bg-indigo-500/10 rounded-full blur-3xl"></div>
-
-            {/* Quote mark - smaller */}
-            <div className="absolute top-4 left-4 md:top-6 md:left-6 text-6xl md:text-7xl leading-none font-serif text-emerald-600/25">
-              "
+        <div className="max-w-7xl mx-auto px-4">
+          <div className="text-center mb-10 md:mb-16">
+            <div className="inline-block bg-emerald-900/30 text-emerald-400 px-3 py-1 rounded-full text-sm font-medium mb-4">
+              User Testimonials
             </div>
+            <h2 className="text-3xl md:text-5xl font-bold tracking-tight">
+              What People Are Saying
+            </h2>
+            <p className="mt-4 text-base md:text-xl text-neutral-300 max-w-2xl mx-auto">
+              See what others think about Rybbit Analytics
+            </p>
+          </div>
 
-            {/* Testimonial content */}
-            <div className="relative z-10 p-6 md:p-10 text-center">
-              <p className="text-lg md:text-2xl font-medium mb-6 text-white mx-auto max-w-2xl leading-relaxed">
-                Rybbit has completely transformed how we understand our users.
-                The real-time data is incredible, and I've finally ditched
-                Google Analytics for something that respects privacy.
-              </p>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 justify-center">
+            <TweetCard id="1920470706761929048" />
+            <TweetCard id="1920379817113088341" />
+            <TweetCard id="1920318739335033226" />
+            <TweetCard id="1920258312177594500" />
+            <TweetCard id="1919793785384386576" />
+            <TweetCard id="1920316582875496449" />
+            <TweetCard id="1920425974954381456" />
+            <TweetCard id="1919290867451404670" />
+            <TweetCard id="1920192156960239683" />
 
-              <div className="inline-block relative">
-                <div className="absolute inset-0 bg-emerald-500/10 blur-sm rounded-full"></div>
-                <div className="relative bg-neutral-900/60 backdrop-blur-sm border border-neutral-700 rounded-full px-5 py-2">
-                  <p className="font-semibold text-white">Chris Weaver</p>
-                  <p className="text-sm text-neutral-400">CEO at Onyx AI</p>
-                </div>
-              </div>
-            </div>
+            <TweetCard id="1920899082253434950" />
+            <TweetCard id="1921928423284629758" />
+            <TweetCard id="1921878010417848443" />
           </div>
         </div>
       </section>
-
-      <Integrations />
 
       {/* Pricing Section */}
       <PricingSection />
@@ -351,7 +356,7 @@ export default function IndexPage() {
                   href="https://app.rybbit.io/signup"
                   className="w-full sm:w-auto"
                 >
-                  <button className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-500 text-white font-medium px-6 md:px-8 py-3 md:py-4 rounded-lg shadow-lg shadow-emerald-900/20 transform hover:-translate-y-0.5 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-opacity-50">
+                  <button className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-500 text-white font-medium px-6 md:px-8 py-3 md:py-4 rounded-lg shadow-lg shadow-emerald-900/20 transform hover:-translate-y-0.5 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-opacity-50 cursor-pointer">
                     Track your site now
                   </button>
                 </Link>

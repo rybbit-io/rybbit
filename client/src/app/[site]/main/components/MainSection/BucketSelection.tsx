@@ -12,6 +12,24 @@ import { DateTime } from "luxon";
 import { Time } from "../../../../../components/DateSelector/types";
 
 const getOptions = (time: Time) => {
+  if (time.mode === "last-24-hours") {
+    return (
+      <SelectContent>
+        <SelectItem size="sm" value="minute">
+          Minute
+        </SelectItem>
+        <SelectItem size="sm" value="five_minutes">
+          5 Minutes
+        </SelectItem>
+        <SelectItem size="sm" value="fifteen_minutes">
+          15 Minutes
+        </SelectItem>
+        <SelectItem size="sm" value="hour">
+          Hour
+        </SelectItem>
+      </SelectContent>
+    );
+  }
   if (time.mode === "day") {
     return (
       <SelectContent>
@@ -33,6 +51,9 @@ const getOptions = (time: Time) => {
   if (time.mode === "week") {
     return (
       <SelectContent>
+        <SelectItem size="sm" value="fifteen_minutes">
+          15 Minutes
+        </SelectItem>
         <SelectItem size="sm" value="hour">
           Hour
         </SelectItem>
@@ -45,6 +66,9 @@ const getOptions = (time: Time) => {
   if (time.mode === "month") {
     return (
       <SelectContent>
+        <SelectItem size="sm" value="hour">
+          Hour
+        </SelectItem>
         <SelectItem size="sm" value="day">
           Day
         </SelectItem>
@@ -78,6 +102,21 @@ const getOptions = (time: Time) => {
 
     return (
       <SelectContent>
+        {timeRangeLength <= 7 && (
+          <SelectItem size="sm" value="five_minutes">
+            5 Minutes
+          </SelectItem>
+        )}
+        {timeRangeLength <= 14 && (
+          <>
+            <SelectItem size="sm" value="ten_minutes">
+              10 Minutes
+            </SelectItem>
+            <SelectItem size="sm" value="fifteen_minutes">
+              15 Minutes
+            </SelectItem>
+          </>
+        )}
         {timeRangeLength <= 30 && (
           <SelectItem size="sm" value="hour">
             Hour

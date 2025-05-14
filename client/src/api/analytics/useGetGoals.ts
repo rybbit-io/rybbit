@@ -5,7 +5,8 @@ import {
   GOALS_PAGE_FILTERS,
   useStore,
 } from "../../lib/store";
-import { authedFetch } from "../utils";
+import { authedFetch, getStartAndEndDate } from "../utils";
+import { getQueryTimeParams } from "./utils";
 
 export interface Goal {
   goalId: number;
@@ -43,27 +44,42 @@ export function useGetGoals({
   sort = "createdAt",
   order = "desc",
   enabled = true,
+  minutes,
 }: {
-  startDate: string;
-  endDate: string;
+  startDate?: string;
+  endDate?: string;
   page?: number;
   pageSize?: number;
   sort?: "goalId" | "name" | "goalType" | "createdAt";
   order?: "asc" | "desc";
   enabled?: boolean;
+  minutes?: number;
 }) {
-  const { site } = useStore();
+  const { site, time } = useStore();
   const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-
   const filteredFilters = getFilteredFilters(GOALS_PAGE_FILTERS);
+
+  // If startDate and endDate are not provided, use time from store
+  let timeParams: Record<string, string> = {};
+
+  if (minutes) {
+    // If minutes is explicitly provided, use it
+    timeParams = { minutes: minutes.toString(), timezone };
+  } else if (!startDate || !endDate) {
+    // Otherwise get time parameters from the store's time
+    // This will handle last-24-hours mode automatically
+    const queryParams = getQueryTimeParams(time);
+    timeParams = Object.fromEntries(new URLSearchParams(queryParams));
+  } else {
+    // Use explicitly provided dates if available
+    timeParams = { startDate, endDate, timezone };
+  }
 
   return useQuery({
     queryKey: [
       "goals",
       site,
-      startDate,
-      endDate,
-      timezone,
+      timeParams,
       filteredFilters,
       page,
       pageSize,
@@ -72,9 +88,7 @@ export function useGetGoals({
     ],
     queryFn: async () => {
       return authedFetch(`${BACKEND_URL}/goals/${site}`, {
-        startDate,
-        endDate,
-        timezone,
+        ...timeParams,
         filteredFilters,
         page,
         pageSize,
@@ -83,5 +97,33 @@ export function useGetGoals({
       }).then((res) => res.json());
     },
     enabled: !!site && enabled,
+  });
+}
+
+/**
+ * Hook to get goals data for the past X minutes
+ */
+export function useGetGoalsPastMinutes({
+  minutes = 24 * 60,
+  page = 1,
+  pageSize = 10,
+  sort = "createdAt",
+  order = "desc",
+  enabled = true,
+}: {
+  minutes?: number;
+  page?: number;
+  pageSize?: number;
+  sort?: "goalId" | "name" | "goalType" | "createdAt";
+  order?: "asc" | "desc";
+  enabled?: boolean;
+}) {
+  return useGetGoals({
+    minutes,
+    page,
+    pageSize,
+    sort,
+    order,
+    enabled,
   });
 }

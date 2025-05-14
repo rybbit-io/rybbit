@@ -72,7 +72,11 @@ export function Funnel({
             <span>Conversion from previous step</span>
           </div>
         </div>
-        <DateSelector time={time} setTime={setTime} />
+        <DateSelector
+          time={time}
+          setTime={setTime}
+          past24HoursEnabled={false}
+        />
       </div>
 
       {isError ? (

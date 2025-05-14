@@ -1,34 +1,33 @@
+import CopyText from "@/components/CopyText";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import Avatar from "boring-avatars";
+import {
+  ArrowRight,
+  Clock,
+  FileText,
+  Loader2,
+  Monitor,
+  MousePointerClick,
+  Smartphone,
+  Tablet
+} from "lucide-react";
 import { DateTime } from "luxon";
+import Link from "next/link";
+import { useParams } from "next/navigation";
+import { memo, useMemo } from "react";
+import {
+  GetSessionsResponse,
+  PageviewEvent,
+  useGetSessionDetailsInfinite,
+} from "../../api/analytics/userSessions";
 import { Browser } from "../../app/[site]/components/shared/icons/Browser";
 import { CountryFlag } from "../../app/[site]/components/shared/icons/CountryFlag";
 import { OperatingSystem } from "../../app/[site]/components/shared/icons/OperatingSystem";
-import { getCountryName, getLanguageName } from "../../lib/utils";
-import {
-  MonitorSmartphone,
-  Clock,
-  FileText,
-  MousePointerClick,
-  ArrowRight,
-  Loader2,
-  Smartphone,
-  Monitor,
-  Tablet,
-} from "lucide-react";
-import Avatar from "boring-avatars";
-import {
-  useGetSessionDetailsInfinite,
-  PageviewEvent,
-  GetSessionsResponse,
-} from "../../api/analytics/userSessions";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Badge } from "@/components/ui/badge";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import Link from "next/link";
-import CopyText from "@/components/CopyText";
-import { memo, useMemo } from "react";
+import { cn, getCountryName, getLanguageName } from "../../lib/utils";
 import { Button } from "../ui/button";
-import { useParams } from "next/navigation";
 
 // Component to display a single pageview or event
 function PageviewItem({
@@ -73,9 +72,7 @@ function PageviewItem({
         )}
         {/* Connecting line */}
         <div
-          className={`flex items-center justify-center w-8 h-8 rounded-full ${
-            isEvent ? "bg-amber-900/30" : "bg-blue-900/30"
-          } border ${isEvent ? "border-amber-500/50" : "border-blue-500/50"}`}
+          className={cn("flex items-center justify-center w-8 h-8 rounded-full border", isEvent ? "bg-amber-900/30 border-amber-500/50" : "bg-blue-900/30 border-blue-500/50")}
         >
           <span className="text-sm font-medium">{index + 1}</span>
         </div>
@@ -200,14 +197,14 @@ const SessionDetailsTimelineSkeleton = memo(
                 <div className="flex items-center">
                   <Skeleton className="h-4 w-4 mr-3" />
                   <Skeleton
-                    className={`h-4 ${getRandomWidth()} max-w-md mr-4`}
+                    className={cn("h-4", getRandomWidth(), "max-w-md mr-4")}
                   />
                   <Skeleton className="h-3 w-16 flex-shrink-0 ml-auto" />
                 </div>
                 <div className="mt-1 pl-7">
                   {Math.random() > 0.5 && (
                     <Skeleton
-                      className={`h-3 ${Math.random() > 0.7 ? "w-48" : "w-32"}`}
+                      className={cn("h-3", Math.random() > 0.7 ? "w-48" : "w-32")}
                     />
                   )}
                 </div>

@@ -1,0 +1,52 @@
+# Next.js
+
+Next.js is a popular React framework that enables features like server-side rendering and static site generation. This guide explains how to integrate Rybbit with your Next.js application.
+
+## How to Add Rybbit to Next.js
+
+### 1. Install the Script
+
+Next.js provides a built-in [Script component](https://nextjs.org/docs/app/building-your-application/optimizing/scripts) that handles script loading efficiently. This is the recommended approach.
+
+Create or modify your layout file (either `app/layout.js` or `pages/_app.js` depending on your Next.js version):
+
+```jsx
+// For App Router (Next.js 13+)
+import Script from "next/script"
+
+export default function RootLayout({ children }) {
+  return (
+    <html lang="en">
+      <head />
+      <body>
+        {children}
+        <Script
+          src="https://app.rybbit.io/api/script.js"
+          data-site-id="YOUR_SITE_ID"
+          strategy="afterInteractive"
+        />
+      </body>
+    </html>
+  )
+}
+```
+
+```jsx
+// For Pages Router
+import Script from "next/script"
+
+function MyApp({ Component, pageProps }) {
+  return (
+    <>
+      <Component {...pageProps} />
+      <Script
+        src="https://app.rybbit.io/api/script.js"
+        data-site-id="YOUR_SITE_ID"
+        strategy="afterInteractive"
+      />
+    </>
+  )
+}
+
+export default MyApp
+```

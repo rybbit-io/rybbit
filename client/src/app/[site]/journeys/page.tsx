@@ -44,6 +44,7 @@ export default function JourneysPage() {
     steps,
     timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
     time,
+    limit: maxJourneys,
   });
 
   const svgRef = useRef<SVGSVGElement>(null);
@@ -54,21 +55,10 @@ export default function JourneysPage() {
     const svg = d3.select(svgRef.current);
     svg.selectAll("*").remove();
 
-    const width = 1400;
-    const height = 1000;
-    const margin = { top: 30, right: 10, bottom: 30, left: 10 };
-    const innerWidth = width - margin.left - margin.right;
-    const innerHeight = height - margin.top - margin.bottom;
+    // Get container width for responsive sizing
+    const containerWidth = svgRef.current.parentElement?.clientWidth || 1000;
 
-    // Create the main group element
-    const g = svg
-      .attr("width", width)
-      .attr("height", height)
-      .append("g")
-      .attr("transform", `translate(${margin.left},${margin.top})`);
-
-    // Create a Sankey diagram
-    // First, build nodes and links from journey data
+    // Build nodes first to calculate dimensions properly
     const nodes: any[] = [];
     const links: any[] = [];
 
@@ -108,6 +98,48 @@ export default function JourneysPage() {
       }
     });
 
+    // Calculate dimensions based on node distribution
+    const nodesByStep = d3.group(nodes, (d) => d.step);
+
+    // Calculate max nodes per step for height calculation
+    const maxNodesInAnyStep = Math.max(
+      ...Array.from(nodesByStep.values()).map((stepNodes) => stepNodes.length)
+    );
+
+    // Width calculation that fills available space but doesn't shrink below minimum
+    const minStepWidth = 300; // Minimum width per step
+    const minTotalWidth = minStepWidth * steps; // Minimum total width
+
+    // Calculate step width based on available space
+    const stepWidth = Math.max(
+      minStepWidth,
+      containerWidth / steps // Use full container width if it's large enough
+    );
+
+    // Calculate total width based on step width
+    const width = stepWidth * steps;
+
+    const minHeight = 500;
+
+    // Calculate height based on maximum node cardinality in any step
+    const baseNodeHeight = 60; // Height per node
+    const nodeSpacing = 20; // Spacing between nodes
+    const height = Math.max(
+      minHeight,
+      (baseNodeHeight + nodeSpacing) * maxNodesInAnyStep + 100 // 100px for margins
+    );
+
+    const margin = { top: 30, right: 30, bottom: 30, left: 30 };
+    const innerWidth = width - margin.left - margin.right;
+    const innerHeight = height - margin.top - margin.bottom;
+
+    // Create the main group element
+    const g = svg
+      .attr("width", width)
+      .attr("height", height)
+      .append("g")
+      .attr("transform", `translate(${margin.left},${margin.top})`);
+
     // Track incoming and outgoing links for each node
     links.forEach((link) => {
       const sourceNode = nodes.find((n) => n.id === link.source);
@@ -116,12 +148,6 @@ export default function JourneysPage() {
       if (sourceNode) sourceNode.outgoingLinks.push(link);
       if (targetNode) targetNode.incomingLinks.push(link);
     });
-
-    // Create scales for each step
-    const stepWidth = innerWidth / steps;
-
-    // Group nodes by step
-    const nodesByStep = d3.group(nodes, (d) => d.step);
 
     // Position nodes vertically within each step
     nodesByStep.forEach((stepNodes, step) => {
@@ -247,9 +273,13 @@ export default function JourneysPage() {
         const sourceX = source.x + 10; // End of source bar (x + width)
         const targetX = target.x; // Start of target bar
 
+        // Control points at 1/3 and 2/3 of the distance between nodes
+        const controlPoint1X = sourceX + stepWidth / 3;
+        const controlPoint2X = targetX - stepWidth / 3;
+
         return `M ${sourceX},${sourceY} 
-                C ${sourceX + stepWidth / 3},${sourceY} 
-                  ${targetX - stepWidth / 3},${targetY} 
+                C ${controlPoint1X},${sourceY} 
+                  ${controlPoint2X},${targetY} 
                   ${targetX},${targetY}`;
       })
       .attr("fill", "none")
@@ -405,7 +435,11 @@ export default function JourneysPage() {
         <MobileSidebar />
       </div>
       <div className="flex justify-end items-center gap-2 mb-2">
-        <DateSelector time={time} setTime={setTime} />
+        <DateSelector
+          time={time}
+          setTime={setTime}
+          past24HoursEnabled={false}
+        />
         <Select
           value={steps.toString()}
           onValueChange={(value) => setSteps(Number(value))}
@@ -429,7 +463,7 @@ export default function JourneysPage() {
             <SelectValue placeholder="Max journeys" />
           </SelectTrigger>
           <SelectContent>
-            {[10, 25, 50, 100].map((count) => (
+            {[10, 25, 50, 100, 150, 200].map((count) => (
               <SelectItem key={count} value={count.toString()}>
                 {count} journeys
               </SelectItem>
@@ -469,8 +503,9 @@ export default function JourneysPage() {
           )}
 
           {data?.journeys?.length && data?.journeys?.length > 0 ? (
-            <div className="overflow-x-auto">
-              <svg ref={svgRef} className="w-full h-[1000px]" />
+            <div className="overflow-x-auto w-full">
+              <svg ref={svgRef} className="min-w-full" />
+              {/* <svg ref={svgRef} className="w-full h-[1000px]" /> */}
             </div>
           ) : null}
         </CardContent>

@@ -2,9 +2,10 @@
 
 import { Switch } from "@/components/ui/switch";
 import { useState } from "react";
+import { useSetPageTitle } from "../../../hooks/useSetPageTitle";
+import { cn } from "../../../lib/utils";
 import { MapComponent } from "../components/shared/Map";
 import { SubHeader } from "../components/SubHeader/SubHeader";
-import { useSetPageTitle } from "../../../hooks/useSetPageTitle";
 
 export default function MapPage() {
   useSetPageTitle("Rybbit · Map");
@@ -19,7 +20,7 @@ export default function MapPage() {
       <div className="absolute bottom-2 md:bottom-4 left-2 md:left-4 z-50">
         <div className="flex items-center gap-3 bg-neutral-900 rounded-md px-3 py-2 text-sm">
           <span
-            className={mapMode === "total" ? "text-white" : "text-neutral-400"}
+            className={cn(mapMode === "total" ? "text-white" : "text-neutral-400")}
           >
             Total Visits
           </span>
@@ -31,9 +32,7 @@ export default function MapPage() {
             className="data-[state=checked]:bg-accent-400"
           />
           <span
-            className={
-              mapMode === "perCapita" ? "text-white" : "text-neutral-400"
-            }
+            className={cn(mapMode === "perCapita" ? "text-white" : "text-neutral-400")}
           >
             Per Capita
           </span>

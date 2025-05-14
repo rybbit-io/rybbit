@@ -1,6 +1,6 @@
-import { Theme } from "@nivo/core";
+import { PartialTheme } from "@nivo/theming";
 
-export const nivoTheme: Theme = {
+export const nivoTheme: PartialTheme = {
   axis: {
     legend: {
       text: {

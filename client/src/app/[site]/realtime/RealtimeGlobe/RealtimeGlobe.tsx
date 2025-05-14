@@ -132,7 +132,7 @@ export const World = ({ width }: { width: number }) => {
         }}
         ref={globeEl as any}
         width={width ?? 0}
-        height={(size.height ?? 0) - 50}
+        height={(size.height ?? 0) - 100}
         globeOffset={[
           windowWidth && windowWidth > 768 ? -100 : 0,
           windowWidth && windowWidth > 768 ? 0 : 100,

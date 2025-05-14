@@ -3,14 +3,18 @@ import NumberFlow from "@number-flow/react";
 import { round } from "lodash";
 import {
   AlertCircle,
-  Expand,
   Info,
   RefreshCcw,
   SquareArrowOutUpRight,
 } from "lucide-react";
 import { ReactNode } from "react";
 import { SingleColResponse } from "../../../../../api/analytics/useSingleCol";
-import { addFilter, FilterParameter } from "../../../../../lib/store";
+import {
+  addFilter,
+  FilterParameter,
+  removeFilter,
+  useStore,
+} from "../../../../../lib/store";
 import { BaseStandardSectionDialog } from "./BaseStandardSectionDialog";
 import { Skeleton } from "./Skeleton";
 
@@ -31,17 +35,28 @@ export const Row = ({
   getLink?: (item: SingleColResponse) => string;
   filterParameter: FilterParameter;
 }) => {
+  const filters = useStore((state) => state.filters);
+
   return (
     <div
       key={getKey(e)}
       className="relative h-6 flex items-center cursor-pointer hover:bg-neutral-850 group"
-      onClick={() =>
-        addFilter({
-          parameter: filterParameter,
-          value: [getValue(e)],
-          type: "equals",
-        })
-      }
+      onClick={() => {
+        const foundFilter = filters.find(
+          (f) =>
+            f.parameter === filterParameter &&
+            f.value.some((v) => v === getValue(e))
+        );
+        if (foundFilter) {
+          removeFilter(foundFilter);
+        } else {
+          addFilter({
+            parameter: filterParameter,
+            value: [getValue(e)],
+            type: "equals",
+          });
+        }
+      }}
     >
       <div
         className="absolute inset-0 bg-dataviz py-2 opacity-25 rounded-md"

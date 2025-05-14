@@ -208,8 +208,8 @@ rybbit.init({
 
 If a page's path matches a pattern in the `maskPatterns` array, the pageview event **will** be sent, but the `pathname` property in the tracked data will be **replaced** by the pattern string itself. This is useful for grouping similar pages or hiding sensitive information like IDs in URLs while still tracking the view.
 
-<Callout>
-**Priority:** If a path matches both a `skipPatterns` and a `maskPatterns` pattern, **skipping takes priority**.
+<Callout type="warning">
+If a path matches both a `skipPatterns` and a `maskPatterns` pattern, **skipping takes priority**.
 </Callout>
 
 **Examples:**

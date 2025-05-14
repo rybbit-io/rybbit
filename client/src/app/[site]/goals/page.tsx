@@ -1,7 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { useGetGoals } from "../../../api/analytics/useGetGoals";
+import {
+  useGetGoals,
+  useGetGoalsPastMinutes,
+} from "../../../api/analytics/useGetGoals";
 import { getStartAndEndDate } from "../../../api/utils";
 import { NothingFound } from "../../../components/NothingFound";
 import { GOALS_PAGE_FILTERS, useStore } from "../../../lib/store";
@@ -14,21 +17,20 @@ export default function GoalsPage() {
   useSetPageTitle("Rybbit · Goals");
 
   const { time, site } = useStore();
-  const { startDate, endDate } = getStartAndEndDate(time);
+  const isPast24HoursMode = time.mode === "last-24-hours";
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 9; // Show 9 cards (3x3 grid)
 
-  // Handle the case where startDate or endDate might be null (for 'all-time' mode)
-  const queryStartDate = startDate || "2020-01-01"; // Default fallback date
-  const queryEndDate = endDate || new Date().toISOString().split("T")[0]; // Today
-
-  // Fetch goals data with pagination
-  const { data: goalsData, isLoading } = useGetGoals({
-    startDate: queryStartDate,
-    endDate: queryEndDate,
-    page: currentPage,
-    pageSize,
-  });
+  // Use the appropriate hook based on the mode
+  const { data: goalsData, isLoading } = isPast24HoursMode
+    ? useGetGoalsPastMinutes({
+        page: currentPage,
+        pageSize,
+      })
+    : useGetGoals({
+        page: currentPage,
+        pageSize,
+      });
 
   // Handle page change
   const handlePageChange = (newPage: number) => {

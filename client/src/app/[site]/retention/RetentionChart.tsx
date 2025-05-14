@@ -1,14 +1,14 @@
 "use client";
 
 import { nivoTheme } from "@/lib/nivo";
+import { ResponsiveLine } from "@nivo/line";
+import { DateTime } from "luxon";
+import { useMemo } from "react";
 import {
   ProcessedRetentionData,
   RetentionMode,
 } from "../../../api/analytics/useGetRetention";
-import { ResponsiveLine } from "@nivo/line";
-import { useMemo } from "react";
 import { Skeleton } from "../../../components/ui/skeleton";
-import { DateTime } from "luxon";
 
 interface RetentionChartProps {
   data: ProcessedRetentionData | undefined;
@@ -202,14 +202,14 @@ export function RetentionChart({ data, isLoading, mode }: RetentionChartProps) {
 
           // Find the original cohort date by matching the formatted label
           const cohortEntry = chartData.find(
-            (series) => series.id === point.serieId
+            (series) => series.id === point.seriesId
           );
           const cohortIndex = cohortEntry ? chartData.indexOf(cohortEntry) : -1;
           const originalCohortKey =
             cohortIndex >= 0 && cohortKeys && cohortKeys[cohortIndex];
 
           // Format full date for tooltip
-          let cohortDateDisplay = point.serieId;
+          let cohortDateDisplay = point.seriesId;
           if (originalCohortKey) {
             if (mode === "day") {
               cohortDateDisplay =
@@ -238,7 +238,7 @@ export function RetentionChart({ data, isLoading, mode }: RetentionChartProps) {
             <div className="text-sm bg-neutral-850 p-2 rounded-md border border-neutral-800 shadow-md">
               <div
                 className="font-medium mb-1"
-                style={{ color: point.serieColor }}
+                style={{ color: point.seriesColor }}
               >
                 Cohort: {cohortDateDisplay}
               </div>

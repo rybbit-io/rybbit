@@ -18,7 +18,6 @@ import { useState } from "react";
 
 export function AddUser({ refetch }: { refetch: () => void }) {
   const [open, setOpen] = useState(false);
-  const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -42,8 +41,7 @@ export function AddUser({ refetch }: { refetch: () => void }) {
           method: "POST",
           body: JSON.stringify({
             email,
-            username,
-            name: username,
+            name: "",
             password,
             isAdmin,
           }),
@@ -67,7 +65,6 @@ export function AddUser({ refetch }: { refetch: () => void }) {
           setOpen(isOpen);
           setPassword("");
           setConfirmPassword("");
-          setUsername("");
           setEmail("");
           setError("");
           setIsAdmin(false);
@@ -80,15 +77,6 @@ export function AddUser({ refetch }: { refetch: () => void }) {
           <DialogHeader>
             <DialogTitle>Add User</DialogTitle>
           </DialogHeader>
-          <div className="grid w-full items-center gap-1.5">
-            <Label htmlFor="name">Username</Label>
-            <Input
-              id="username"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              placeholder="Username"
-            />
-          </div>
           <div className="grid w-full items-center gap-1.5">
             <Label htmlFor="email">Email</Label>
             <Input
@@ -144,9 +132,7 @@ export function AddUser({ refetch }: { refetch: () => void }) {
             <Button
               type="submit"
               onClick={handleSubmit}
-              disabled={
-                !password || !confirmPassword || !passwordsMatch || !username
-              }
+              disabled={!password || !confirmPassword || !passwordsMatch}
             >
               Create
             </Button>

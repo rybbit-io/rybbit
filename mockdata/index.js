@@ -1,11 +1,10 @@
 const { createClient } = require("@clickhouse/client");
-const crypto = require("crypto");
 const { DateTime } = require("luxon");
 const { faker } = require("@faker-js/faker");
 require("dotenv").config();
 
 const clickhouse = createClient({
-  host: process.env.CLICKHOUSE_HOST,
+  url: process.env.CLICKHOUSE_HOST,
   database: process.env.CLICKHOUSE_DB,
   password: process.env.CLICKHOUSE_PASSWORD,
 });

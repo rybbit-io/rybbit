@@ -1,0 +1,28 @@
+import { Steps } from "nextra/components"
+
+# Shopify
+
+Rybbit can be integrated with your Shopify store to capture events, track conversions, and analyze user behavior.
+
+## How to Add Rybbit to Shopify
+
+<Steps>
+### 1. Retrieve Your Tracking Script
+
+Navigate to your Rybbit dashboard to obtain your code snippet.
+
+```html
+<script
+  src="https://app.rybbit.io/api/script.js"
+  data-site-id="YOUR_SITE_ID"
+  async
+></script>
+```
+
+### 2. Add the Snippet to Your Shopify Store
+
+- In Shopify, go to **Online Store > Themes** and click **Edit code** from the settings dropdown beside the **Customize** button.
+- Open `theme.liquid` in the **Layout** folder.
+- Just before the closing `</head>` tag, insert your snippet.
+- Save the file to apply the changes to your live store.
+</Steps>

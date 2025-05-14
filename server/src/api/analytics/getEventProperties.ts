@@ -18,11 +18,12 @@ export interface GetEventPropertiesRequest {
     site: string;
   };
   Querystring: {
-    startDate: string;
-    endDate: string;
+    startDate?: string;
+    endDate?: string;
     timezone: string;
     eventName: string;
     filters?: string;
+    minutes?: string;
   };
 }
 
@@ -30,7 +31,8 @@ export async function getEventProperties(
   req: FastifyRequest<GetEventPropertiesRequest>,
   res: FastifyReply
 ) {
-  const { startDate, endDate, timezone, eventName, filters } = req.query;
+  const { startDate, endDate, timezone, eventName, filters, minutes } =
+    req.query;
   const site = req.params.site;
   const userHasAccessToSite = await getUserHasAccessToSitePublic(req, site);
   if (!userHasAccessToSite) {
@@ -41,9 +43,11 @@ export async function getEventProperties(
     return res.status(400).send({ error: "Event name is required" });
   }
 
-  const timeStatement = getTimeStatement({
-    date: { startDate, endDate, timezone },
-  });
+  const timeStatement = getTimeStatement(
+    minutes
+      ? { pastMinutes: Number(minutes) }
+      : { date: { startDate, endDate, timezone } }
+  );
 
   const filterStatement = filters ? getFilterStatement(filters) : "";
 

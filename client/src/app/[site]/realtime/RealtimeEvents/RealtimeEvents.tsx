@@ -5,13 +5,13 @@ import {
 } from "@/components/ui/tooltip";
 import { FileText, Laptop, MousePointerClick, Smartphone } from "lucide-react";
 import { DateTime } from "luxon";
+import Link from "next/link";
 import { Event, useGetEvents } from "../../../../api/analytics/useGetEvents";
 import { Skeleton } from "../../../../components/ui/skeleton";
-import { getCountryName } from "../../../../lib/utils";
+import { cn, getCountryName } from "../../../../lib/utils";
 import { Browser } from "../../components/shared/icons/Browser";
 import { CountryFlag } from "../../components/shared/icons/CountryFlag";
 import { OperatingSystem } from "../../components/shared/icons/OperatingSystem";
-import Link from "next/link";
 
 // DeviceIcon component for displaying mobile/desktop icons
 function DeviceIcon({ deviceType }: { deviceType: string }) {
@@ -180,7 +180,7 @@ export function RealtimeEvents() {
   return (
     <div
       className="overflow-y-auto p-2"
-      style={{ height: "calc(100vh - 50px)" }}
+      style={{ height: "calc(100vh - 100px)" }}
     >
       {data.map((event: Event, index: number) => (
         <EventCard key={`${event.timestamp}-${index}`} event={event} />
@@ -207,7 +207,7 @@ function EventCardSkeleton() {
         <div className="flex items-center gap-2">
           <Skeleton className="h-4 w-4 rounded-sm" />
         </div>
-        <Skeleton className={`h-4 ${getRandomWidth()}`} />
+        <Skeleton className={cn("h-4", getRandomWidth())} />
       </div>
 
       {/* Details row */}
@@ -230,7 +230,7 @@ function EventCardSkeleton() {
   return (
     <div
       className="overflow-y-auto p-2"
-      style={{ height: "calc(100vh - 50px)" }}
+      style={{ height: "calc(100vh - 100px)" }}
     >
       {skeletons}
     </div>

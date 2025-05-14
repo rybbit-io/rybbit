@@ -42,14 +42,14 @@ Manually tracks outbound link clicks. Useful for programmatic navigation or cust
 
 ```javascript
 // Track a programmatic navigation to an external site
-window.rybbit.trackOutbound("https://example.com", "Example Site", "_blank"); */}
-```
+window.rybbit.trackOutbound("https://example.com", "Example Site", "_blank");
+``` */}
 
-## Typescript Support
+## TypeScript Support
 
-Put this as file `rybbit.d.ts` anywhere in your project to avoid having to do `(window as any).rybbit.event()` everywhere.
+Put this as `rybbit.d.ts` anywhere in your project to avoid having to do `(window as any).rybbit.event()` everywhere.
 
-```ts
+```typescript
 interface Rybbit {
     /**
      * Tracks a page view
@@ -71,3 +71,4 @@ declare global {
 }
 
 export {};
+```
