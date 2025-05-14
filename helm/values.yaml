@@ -17,12 +17,18 @@ backend:
     NODE_ENV: production
     CLICKHOUSE_HOST: http://clickhouse:8123
     CLICKHOUSE_DB: analytics
-    CLICKHOUSE_PASSWORD: frog
+    # setting this here is insecure, recommended to let commented out
+    # so the chart will create and use a random strong password secret
+    # CLICKHOUSE_PASSWORD: frog
     POSTGRES_HOST: postgres
     POSTGRES_PORT: 5432
     POSTGRES_DB: analytics
     POSTGRES_USER: frog
+
+    # setting this here is insecure, recommended to let commented out
+    # so the chart will create and use a random strong password secret
     # POSTGRES_PASSWORD: frog
+
     BETTER_AUTH_SECRET: ""
     BASE_URL: ""
     DISABLE_SIGNUP: ""
@@ -65,7 +71,11 @@ postgres:
       cpu: 100m
       memory: 128Mi
   user: frog
+
+  # setting this here is insecure, recommended to let commented out
+  # so the chart will create and use a random strong password secret
   # password: frog
+
   db: analytics
   persistence:
     enabled: true
@@ -89,7 +99,11 @@ clickhouse:
       memory: 128Mi
   db: analytics
   user: default
+  
+  # setting this here is insecure, recommended to let commented out
+  # so the chart will create and use a random strong password secret
   # password: frog
+
   persistence:
     enabled: true
     storageClass: ""
