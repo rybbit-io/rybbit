@@ -83,6 +83,12 @@ services:
         condition: service_healthy
       postgres:
         condition: service_started
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:3001/health"]
+      interval: 3s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
     restart: unless-stopped
 
   client:
