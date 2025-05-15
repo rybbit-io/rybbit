@@ -260,6 +260,7 @@ if (IS_CLOUD) {
 }
 
 server.post("/track", trackEvent);
+server.get("/health", (_, reply) => reply.send("OK"));
 
 const start = async () => {
   try {
