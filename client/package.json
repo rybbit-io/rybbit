@@ -70,7 +70,7 @@
     "react-select": "5.10.1",
     "sonner": "2.0.3",
     "spinners-react": "1.0.11",
-    "tailwind-merge": "2.6.0",
+    "tailwind-merge": "3.3.0",
     "tailwindcss-animate": "1.0.7",
     "three": "0.176.0",
     "zod": "3.24.4",
