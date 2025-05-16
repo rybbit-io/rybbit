@@ -11,7 +11,7 @@ export async function initializeCronJobs() {
     cron.schedule("*/5 * * * *", updateUsersMonthlyUsage);
     updateUsersMonthlyUsage();
   }
-  cron.schedule("*/60 * * * * *", cleanupOldSessions);
+  cron.schedule("*/60 * * * *", cleanupOldSessions);
 
   console.log("Cron jobs initialized successfully");
 }
