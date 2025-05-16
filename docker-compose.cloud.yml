@@ -20,8 +20,8 @@ services:
       - client
 
   clickhouse:
-    image: clickhouse/clickhouse-server:25.4.2
     container_name: clickhouse
+    image: clickhouse/clickhouse-server:25.4.2
     ports:
       - "8123:8123"
       - "9000:9000"
@@ -43,29 +43,21 @@ services:
   postgres:
     image: postgres:17.4
     container_name: postgres
-    ports:
-      - "5432:5432"
     environment:
       - POSTGRES_USER=${POSTGRES_USER:-frog}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-frog}
       - POSTGRES_DB=${POSTGRES_DB:-analytics}
     volumes:
       - postgres-data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
-      interval: 3s
-      timeout: 5s
-      retries: 5
-      start_period: 10s
     restart: unless-stopped
+    ports:
+      - "5432:5432"
 
   backend:
     container_name: backend
     build:
       context: ./server
       dockerfile: Dockerfile
-    ports:
-      - "3001:3001"
     environment:
       - NODE_ENV=production
       - CLICKHOUSE_HOST=http://clickhouse:8123
@@ -92,13 +84,9 @@ services:
         condition: service_healthy
       postgres:
         condition: service_started
-    healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:3001/health"]
-      interval: 3s
-      timeout: 5s
-      retries: 5
-      start_period: 10s
     restart: unless-stopped
+    ports:
+      - "3001:3001"
 
   client:
     container_name: client
