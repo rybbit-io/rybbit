@@ -77,7 +77,7 @@ export function AddMemberDialog({
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button size="sm" variant="outline" className="ml-2">
+        <Button size="sm" variant="outline">
           <UserPlus className="h-4 w-4 mr-1" />
           Add Member
         </Button>

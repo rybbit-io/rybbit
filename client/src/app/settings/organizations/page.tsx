@@ -87,7 +87,7 @@ function Organization({ org }: { org: UserOrganization }) {
     <>
       <Card className="w-full">
         <CardHeader className="pb-2">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between flex-wrap gap-2">
             <CardTitle className="text-xl">
               {org.name}
               <span className="text-sm font-normal text-muted-foreground ml-2">
@@ -95,7 +95,7 @@ function Organization({ org }: { org: UserOrganization }) {
               </span>
             </CardTitle>
 
-            <div className="flex items-center">
+            <div className="flex items-center gap-2">
               {isOwner && (
                 <>
                   <AddMemberDialog

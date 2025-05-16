@@ -27,7 +27,7 @@ export default function SettingsLayout({
 
   return (
     <StandardPage>
-      <div className=" grid grid-cols-[200px_1fr] gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-[200px_1fr] gap-6">
         <div className="flex flex-col gap-2">
           <Button
             variant={selectedTab === "account" ? "default" : "ghost"}

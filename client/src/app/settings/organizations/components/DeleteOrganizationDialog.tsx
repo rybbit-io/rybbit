@@ -53,7 +53,7 @@ export function DeleteOrganizationDialog({
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button size="sm" variant="destructive" className="ml-2">
+        <Button size="sm" variant="destructive">
           <Trash className="h-4 w-4 mr-1" />
           Delete
         </Button>

@@ -56,7 +56,7 @@ export function EditOrganizationDialog({
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button size="sm" variant="outline" className="ml-2">
+        <Button size="sm" variant="outline">
           <Edit className="h-4 w-4 mr-1" />
           Edit
         </Button>
