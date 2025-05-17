@@ -1,0 +1,59 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-backend
+  labels:
+    app: {{ .Release.Name }}-backend
+spec:
+  replicas: {{ .Values.backend.replicaCount }}
+  selector:
+    matchLabels:
+      app: {{ .Release.Name }}-backend
+  template:
+    metadata:
+      labels:
+        app: {{ .Release.Name }}-backend
+    spec:
+      containers:
+        - name: backend
+          image: "{{ .Values.backend.image.repository }}:{{ .Values.backend.image.tag }}"
+          imagePullPolicy: {{ .Values.backend.image.pullPolicy }}
+          resources:
+            {{- toYaml .Values.backend.resources | nindent 12 }}
+          env:
+            - name: NODE_ENV
+              value: {{ .Values.backend.env.NODE_ENV | quote }}
+            - name: CLICKHOUSE_HOST
+              value: http://{{ .Release.Name }}-clickhouse.{{ .Release.Namespace }}.svc.cluster.local:8123
+            - name: CLICKHOUSE_DB
+              value: {{ .Values.clickhouse.db | quote }}
+            - name: CLICKHOUSE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: rybbit-secrets
+                  key: clickhouse-password
+            - name: POSTGRES_HOST
+              value: {{ .Release.Name }}-postgres.{{ .Release.Namespace }}.svc.cluster.local
+            - name: POSTGRES_PORT
+              value: "5432"
+            - name: POSTGRES_DB
+              value: {{ .Values.postgres.db | quote }}
+            - name: POSTGRES_USER
+              valueFrom:
+                secretKeyRef:
+                  name: rybbit-secrets
+                  key: postgres-user
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: rybbit-secrets
+                  key: postgres-password
+            - name: BETTER_AUTH_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: rybbit-secrets
+                  key: better-auth-secret
+            - name: BASE_URL
+              value: {{ .Values.backend.env.BASE_URL | quote }}
+            - name: DISABLE_SIGNUP
+              value: {{ .Values.backend.env.DISABLE_SIGNUP | quote }} 

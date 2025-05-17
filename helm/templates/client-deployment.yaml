@@ -1,0 +1,27 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-client
+  labels:
+    app: {{ .Release.Name }}-client
+spec:
+  replicas: {{ .Values.client.replicaCount }}
+  selector:
+    matchLabels:
+      app: {{ .Release.Name }}-client
+  template:
+    metadata:
+      labels:
+        app: {{ .Release.Name }}-client
+    spec:
+      containers:
+        - name: client
+          image: "{{ .Values.client.image.repository }}:{{ .Values.client.image.tag }}"
+          imagePullPolicy: {{ .Values.client.image.pullPolicy }}
+          resources:
+            {{- toYaml .Values.client.resources | nindent 12 }}
+          env:
+            {{- range $key, $value := .Values.client.env }}
+            - name: {{ $key }}
+              value: {{ $value | quote }}
+            {{- end }} 

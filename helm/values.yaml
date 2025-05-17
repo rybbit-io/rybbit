@@ -1,0 +1,129 @@
+# Default values for rybbit chart
+
+backend:
+  image:
+    repository: ghcr.io/rybbit-io/rybbit-backend
+    tag: latest
+    pullPolicy: IfNotPresent
+  replicaCount: 1
+  resources:
+    limits:
+      cpu: 1000m
+      memory: 2Gi
+    requests:
+      cpu: 10m
+      memory: 128Mi
+  env:
+    NODE_ENV: production
+    CLICKHOUSE_HOST: http://rybbit-clickhouse.rybbit.svc.cluster.local:8123
+    CLICKHOUSE_DB: analytics
+
+    # setting this here is insecure, recommended to let commented out
+    # so the chart will create and use a random strong password secret
+    # CLICKHOUSE_PASSWORD: frog
+    
+    POSTGRES_HOST: postgres
+    POSTGRES_PORT: 5432
+    POSTGRES_DB: analytics
+    POSTGRES_USER: frog
+
+    # setting this here is insecure, recommended to let commented out
+    # so the chart will create and use a random strong password secret
+    # POSTGRES_PASSWORD: frog
+
+    BETTER_AUTH_SECRET: ""
+    BASE_URL: ""
+    DISABLE_SIGNUP: ""
+
+secrets:
+  annotations: {}
+  # Example:
+  # kustomize.toolkit.fluxcd.io/prune: disabled
+  # external-secrets.io/secret-store-ref: "vault-backend"
+  # external-secrets.io/target-secret-name: "rybbit-secrets"
+
+client:
+  image:
+    repository: ghcr.io/rybbit-io/rybbit-client
+    tag: latest
+    pullPolicy: IfNotPresent
+  replicaCount: 1
+  resources:
+    limits:
+      cpu: 1000m
+      memory: 2Gi
+    requests:
+      cpu: 100m
+      memory: 128Mi
+  env:
+    NODE_ENV: production
+    NEXT_PUBLIC_BACKEND_URL: ""
+
+postgres:
+  image:
+    repository: postgres
+    tag: 17.4
+    pullPolicy: IfNotPresent
+  replicaCount: 1
+  resources:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+    requests:
+      cpu: 100m
+      memory: 128Mi
+  user: frog
+
+  # setting this here is insecure, recommended to let commented out
+  # so the chart will create and use a random strong password secret
+  # password: frog
+
+  db: analytics
+  persistence:
+    enabled: true
+    storageClass: ""
+    accessMode: ReadWriteOnce
+    size: 10Gi
+    annotations: {}
+
+clickhouse:
+  image:
+    repository: clickhouse/clickhouse-server
+    tag: 25.4.2
+    pullPolicy: IfNotPresent
+  replicaCount: 1
+  resources:
+    limits:
+      cpu: 500m
+      memory: 2Gi
+    requests:
+      cpu: 10m
+      memory: 128Mi
+  db: analytics
+  user: default
+  
+  # setting this here is insecure, recommended to let commented out
+  # so the chart will create and use a random strong password secret
+  # password: frog
+
+  persistence:
+    enabled: true
+    storageClass: ""
+    accessMode: ReadWriteOnce
+    size: 20Gi
+    annotations: {}
+
+ingress:
+  enabled: false
+  className: ""
+  annotations:
+    kubernetes.io/ingress.class: nginx
+  hosts:
+    - host: chart-example.local
+      paths:
+        - path: /
+          pathType: Prefix
+  tls:
+    - secretName: chart-example-tls
+      hosts:
+        - chart-example.local 
