@@ -11,8 +11,31 @@ on:
       - master # Trigger workflow on pull requests to master branch
 
 jobs:
+
+  check:
+
+    name: Permission check
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Try login to GHCR
+        id: login_check
+        continue-on-error: true
+        run: |
+          echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+
+      - name: Fail if login fails
+        if: steps.login_check.outcome != 'success'
+        run: |
+          echo "You do not have permission to log in to GHCR"
+          exit 1
+
   client:
     name: Build Client Images
+
+    needs:
+      - check # Wait for permission check before running the client job
 
     permissions:
       contents: read # Allows reading repository contents
@@ -94,6 +117,9 @@ jobs:
 
   backend:
     name: Build Backend Images
+
+    needs:
+      - check # Wait for permission check before running the client job
 
     permissions:
       contents: read # Allows reading repository contents
