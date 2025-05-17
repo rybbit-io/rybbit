@@ -1,0 +1,61 @@
+---
+title: Advanced Analytics with FrogStats
+date: 2024-01-20
+description: Dive deeper into FrogStats' advanced features for power users
+tags: ['advanced', 'features', 'analytics']
+author: FrogStats Team
+---
+
+# Advanced Analytics with FrogStats
+
+While FrogStats is easy to get started with, it also offers powerful features for advanced users.
+
+## Custom Events
+
+Track specific user actions with custom events:
+
+```js
+frogStats.trackEvent('button_click', {
+  buttonId: 'signup',
+  location: 'hero_section'
+});
+```
+
+## User Identification
+
+Connect user behaviors across sessions:
+
+```js
+frogStats.identify('user123', {
+  plan: 'premium',
+  signupDate: '2023-10-15'
+});
+```
+
+## Conversion Funnels
+
+Create custom funnels to track user journeys through your site:
+
+1. Go to **Funnels** in your dashboard
+2. Click **Create New Funnel**
+3. Add the steps in your conversion path
+4. Analyze drop-offs at each stage
+
+## Cohort Analysis
+
+Group users based on common characteristics or behaviors:
+
+- Compare retention rates between different signup methods
+- Analyze usage patterns between free and paid users
+- Track how feature adoption affects retention
+
+## API Access
+
+For the most advanced use cases, our API gives you direct access to your data:
+
+```bash
+curl -X GET "https://api.frogstats.com/v1/stats"
+  -H "Authorization: Bearer YOUR_API_KEY"
+```
+
+Stay data-driven with these powerful tools from FrogStats! 

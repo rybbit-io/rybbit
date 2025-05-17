@@ -10,8 +10,8 @@ export default {
     type: "page",
     title: "Pricing",
   },
-  // blog: {
-  //   type: 'page',
-  //   title: 'Blog'
-  // }
+  blog: {
+    type: "page",
+    title: "Blog",
+  },
 };
