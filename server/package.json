@@ -42,7 +42,7 @@
   "devDependencies": {
     "@types/luxon": "3.6.2",
     "@types/node": "20.14.8",
-    "@types/pg": "8.15.1",
+    "@types/pg": "8.15.2",
     "@types/sqlstring": "2.3.2",
     "drizzle-kit": "0.31.1",
     "ts-node-dev": "2.0.0",
