@@ -15,6 +15,7 @@
 
 </p>
 
+
 <a href="https://rybbit.io/" target="_blank">Rybbit</a> is the modern open source and privacy friendly alternative to Google Analytics. It takes only a couple minutes to setup and is super intuitive to use.
 
 <p align="center">
