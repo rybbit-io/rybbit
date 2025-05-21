@@ -3,6 +3,7 @@
       <level>warning</level>
       <console>true</console>
   </logger>
+  <!-- Disable all major logs -->
   <query_thread_log remove="remove"/>
   <query_log remove="remove"/>
   <text_log remove="remove"/>
@@ -11,4 +12,7 @@
   <asynchronous_metric_log remove="remove"/>
   <session_log remove="remove"/>
   <part_log remove="remove"/>
+
+  <!-- Disable asynchronous metric collection https://discord.com/channels/1363575999329075351/1363744950243688508/1370877077737439312-->
+  <asynchronous_metrics_update_period_s>0</asynchronous_metrics_update_period_s>
 </clickhouse>
