@@ -1,10 +1,10 @@
 import { Resend } from "resend";
-import { IS_CLOUD } from "./const.js";
+import { RESEND_API_KEY, RESEND_FROM_EMAIL } from "./const.js";
 
 let resend: Resend | undefined;
 
-if (IS_CLOUD) {
-  resend = new Resend(process.env.RESEND_API_KEY);
+if (RESEND_API_KEY !== false) {
+  resend = new Resend(RESEND_API_KEY);
 }
 
 export const sendEmail = async (
@@ -19,7 +19,7 @@ export const sendEmail = async (
   }
   try {
     const response = await resend.emails.send({
-      from: "Rybbit <onboarding@app.rybbit.io>",
+      from: RESEND_FROM_EMAIL,
       to: email,
       subject,
       html,

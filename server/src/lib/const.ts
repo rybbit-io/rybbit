@@ -3,6 +3,8 @@ import dotenv from "dotenv";
 dotenv.config();
 
 export const IS_CLOUD = process.env.CLOUD === "true";
+export const RESEND_API_KEY = process.env.RESEND_API_KEY ?? false;
+export const RESEND_FROM_EMAIL = process.env.RESEND_FROM_EMAIL ?? "Rybbit <onboarding@app.rybbit.io>";
 export const DISABLE_SIGNUP = process.env.DISABLE_SIGNUP === "true";
 
 // Trial constants
