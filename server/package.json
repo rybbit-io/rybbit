@@ -41,7 +41,7 @@
   },
   "devDependencies": {
     "@types/luxon": "3.6.2",
-    "@types/node": "20.14.8",
+    "@types/node": "22.15.21",
     "@types/pg": "8.15.1",
     "@types/sqlstring": "2.3.2",
     "drizzle-kit": "0.31.1",
