@@ -34,7 +34,7 @@
     "@radix-ui/themes": "3.2.1",
     "@react-three/drei": "10.0.7",
     "@react-three/fiber": "9.1.2",
-    "@tanstack/react-query": "5.76.0",
+    "@tanstack/react-query": "5.76.2",
     "@tanstack/react-query-devtools": "5.76.0",
     "@tanstack/react-table": "8.21.3",
     "@types/country-flag-icons": "1.2.2",
