@@ -19,6 +19,15 @@ function SiteSelectorContent() {
   const router = useRouter();
   const currentSiteId = Number(pathname.split("/")[1]);
 
+  function handleChange(siteId: number) {
+    if (currentSiteId === siteId) {
+      window.location.reload();
+      return;
+    }
+    resetStore();
+    router.push(`/${siteId}`);
+  }
+
   return (
     <DropdownMenuContent align="start">
       {sites?.map((site) => {
@@ -26,10 +35,7 @@ function SiteSelectorContent() {
         return (
           <DropdownMenuItem
             key={site.siteId}
-            onClick={() => {
-              resetStore();
-              router.push(`/${site.siteId}`);
-            }}
+            onClick={() => handleChange(site.siteId)}
             className={cn("flex items-center justify-between", isSelected && "bg-neutral-800")}
           >
             <div className="flex items-center gap-2">
