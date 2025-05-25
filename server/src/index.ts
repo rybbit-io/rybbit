@@ -266,7 +266,7 @@ if (IS_CLOUD) {
 }
 
 server.post("/track", trackEvent);
-server.get("/health", (_, reply) => reply.send("OK"));
+server.get("/health", { logLevel: 'silent' }, (_, reply) => reply.send("OK"));
 
 const start = async () => {
   try {
