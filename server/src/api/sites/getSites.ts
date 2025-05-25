@@ -7,7 +7,7 @@ import {
   getSitesUserHasAccessTo,
   getUserGodMode,
 } from "../../lib/auth-utils.js";
-import { IS_CLOUD, TRIAL_EVENT_LIMIT } from "../../lib/const.js";
+import { IS_CLOUD, DEFAULT_EVENT_LIMIT } from "../../lib/const.js";
 import { processResults } from "../analytics/utils.js";
 import { getSubscriptionInner } from "../stripe/getSubscription.js";
 
@@ -91,7 +91,7 @@ export async function getSites(req: FastifyRequest, reply: FastifyReply) {
         const subscription = await getSubscriptionInner(ownerId);
 
         const monthlyEventCount = subscription?.monthlyEventCount || 0;
-        const eventLimit = subscription?.eventLimit || TRIAL_EVENT_LIMIT;
+        const eventLimit = subscription?.eventLimit || DEFAULT_EVENT_LIMIT;
 
         return {
           ...site,

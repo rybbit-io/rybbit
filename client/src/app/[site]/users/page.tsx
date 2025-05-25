@@ -38,6 +38,7 @@ import { Browser } from "../components/shared/icons/Browser";
 import { CountryFlag } from "../components/shared/icons/CountryFlag";
 import { OperatingSystem } from "../components/shared/icons/OperatingSystem";
 import { SubHeader } from "../components/SubHeader/SubHeader";
+import { DisabledOverlay } from "../../../components/DisabledOverlay";
 
 // Set up column helper
 const columnHelper = createColumnHelper<UsersResponse>();
@@ -276,108 +277,110 @@ export default function UsersPage() {
   }
 
   return (
-    <div className="p-2 md:p-4 max-w-[1400px] mx-auto space-y-3">
-      <SubHeader availableFilters={USER_PAGE_FILTERS} />
-      <div className="rounded-md border border-neutral-800 bg-neutral-900">
-        <div className="relative overflow-x-auto">
-          <table className="w-full text-sm text-left">
-            <thead className="bg-neutral-850 text-neutral-400 ">
-              {table.getHeaderGroups().map((headerGroup) => (
-                <tr key={headerGroup.id}>
-                  {headerGroup.headers.map((header) => (
-                    <th
-                      key={header.id}
-                      scope="col"
-                      className="px-3 py-1 font-medium whitespace-nowrap"
-                      style={{
-                        minWidth: header.id === "user_id" ? "100px" : "auto",
-                      }}
-                    >
-                      {header.isPlaceholder
-                        ? null
-                        : flexRender(
-                            header.column.columnDef.header,
-                            header.getContext()
-                          )}
-                    </th>
-                  ))}
-                </tr>
-              ))}
-            </thead>
-            <tbody>
-              {isLoading ? (
-                Array.from({ length: 15 }).map((_, index) => (
-                  <tr
-                    key={index}
-                    className="border-b border-neutral-800 animate-pulse"
-                  >
-                    {Array.from({ length: columns.length }).map(
-                      (_, cellIndex) => (
-                        <td key={cellIndex} className="px-3 py-3">
-                          <div className="h-4 bg-neutral-800 rounded"></div>
-                        </td>
-                      )
-                    )}
-                  </tr>
-                ))
-              ) : table.getRowModel().rows.length === 0 ? (
-                <tr>
-                  <td
-                    colSpan={columns.length}
-                    className="px-3 py-8 text-center text-neutral-400"
-                  >
-                    No users found
-                  </td>
-                </tr>
-              ) : (
-                table.getRowModel().rows.map((row) => {
-                  const userId = row.original.user_id;
-                  const href = `/${site}/user/${userId}`;
-
-                  return (
-                    <tr
-                      key={row.id}
-                      className="border-b border-neutral-800 hover:bg-neutral-800 cursor-pointer group"
-                    >
-                      {row.getVisibleCells().map((cell) => (
-                        <td key={cell.id} className="px-3 py-3 relative">
-                          <Link
-                            href={href}
-                            className="absolute inset-0 z-10"
-                            aria-label={`View user ${userId}`}
-                          >
-                            <span className="sr-only">View user details</span>
-                          </Link>
-                          <span className="relative z-0">
-                            {flexRender(
-                              cell.column.columnDef.cell,
-                              cell.getContext()
+    <DisabledOverlay>
+      <div className="p-2 md:p-4 max-w-[1400px] mx-auto space-y-3">
+        <SubHeader availableFilters={USER_PAGE_FILTERS} />
+        <div className="rounded-md border border-neutral-800 bg-neutral-900">
+          <div className="relative overflow-x-auto">
+            <table className="w-full text-sm text-left">
+              <thead className="bg-neutral-850 text-neutral-400 ">
+                {table.getHeaderGroups().map((headerGroup) => (
+                  <tr key={headerGroup.id}>
+                    {headerGroup.headers.map((header) => (
+                      <th
+                        key={header.id}
+                        scope="col"
+                        className="px-3 py-1 font-medium whitespace-nowrap"
+                        style={{
+                          minWidth: header.id === "user_id" ? "100px" : "auto",
+                        }}
+                      >
+                        {header.isPlaceholder
+                          ? null
+                          : flexRender(
+                              header.column.columnDef.header,
+                              header.getContext()
                             )}
-                          </span>
-                        </td>
-                      ))}
+                      </th>
+                    ))}
+                  </tr>
+                ))}
+              </thead>
+              <tbody>
+                {isLoading ? (
+                  Array.from({ length: 15 }).map((_, index) => (
+                    <tr
+                      key={index}
+                      className="border-b border-neutral-800 animate-pulse"
+                    >
+                      {Array.from({ length: columns.length }).map(
+                        (_, cellIndex) => (
+                          <td key={cellIndex} className="px-3 py-3">
+                            <div className="h-4 bg-neutral-800 rounded"></div>
+                          </td>
+                        )
+                      )}
                     </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
-        </div>
+                  ))
+                ) : table.getRowModel().rows.length === 0 ? (
+                  <tr>
+                    <td
+                      colSpan={columns.length}
+                      className="px-3 py-8 text-center text-neutral-400"
+                    >
+                      No users found
+                    </td>
+                  </tr>
+                ) : (
+                  table.getRowModel().rows.map((row) => {
+                    const userId = row.original.user_id;
+                    const href = `/${site}/user/${userId}`;
 
-        {/* Pagination */}
-        <div className="border-t border-neutral-800">
-          <div className="px-4 py-3">
-            <TablePagination
-              table={table}
-              data={{ items: data?.data || [], total: data?.totalCount || 0 }}
-              pagination={pagination}
-              setPagination={setPagination}
-              isLoading={isLoading}
-              itemName="users"
-            />
+                    return (
+                      <tr
+                        key={row.id}
+                        className="border-b border-neutral-800 hover:bg-neutral-800 cursor-pointer group"
+                      >
+                        {row.getVisibleCells().map((cell) => (
+                          <td key={cell.id} className="px-3 py-3 relative">
+                            <Link
+                              href={href}
+                              className="absolute inset-0 z-10"
+                              aria-label={`View user ${userId}`}
+                            >
+                              <span className="sr-only">View user details</span>
+                            </Link>
+                            <span className="relative z-0">
+                              {flexRender(
+                                cell.column.columnDef.cell,
+                                cell.getContext()
+                              )}
+                            </span>
+                          </td>
+                        ))}
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Pagination */}
+          <div className="border-t border-neutral-800">
+            <div className="px-4 py-3">
+              <TablePagination
+                table={table}
+                data={{ items: data?.data || [], total: data?.totalCount || 0 }}
+                pagination={pagination}
+                setPagination={setPagination}
+                isLoading={isLoading}
+                itemName="users"
+              />
+            </div>
           </div>
         </div>
       </div>
-    </div>
+    </DisabledOverlay>
   );
 }

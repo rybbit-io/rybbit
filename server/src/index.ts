@@ -61,6 +61,7 @@ import { getConfig } from "./api/getConfig.js";
 import { getPageTitles } from "./api/analytics/getPageTitles.js";
 import { getAdminSites } from "./api/admin/getAdminSites.js";
 import { getAdminUsers } from "./api/admin/getAdminUsers.js";
+import { getOrgEventCount } from "./api/analytics/getOrgEventCount.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -228,6 +229,7 @@ server.delete("/goal/:goalId", deleteGoal);
 server.put("/goal/update", updateGoal);
 server.get("/events/names/:site", getEventNames);
 server.get("/events/properties/:site", getEventProperties);
+server.get("/org-event-count/:organizationId", getOrgEventCount);
 
 // Administrative
 server.get("/config", getConfig);

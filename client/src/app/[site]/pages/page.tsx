@@ -4,14 +4,14 @@ import {
   PageTitleItem,
   useGetPageTitlesPaginated,
 } from "@/api/analytics/useGetPageTitles";
+import { TablePagination } from "@/components/pagination";
 import { useSetPageTitle } from "@/hooks/useSetPageTitle";
 import { useStore } from "@/lib/store";
 import { useEffect, useState } from "react";
+import { DisabledOverlay } from "../../../components/DisabledOverlay";
 import { SubHeader } from "../components/SubHeader/SubHeader";
 import { PageListItem } from "./components/PageListItem";
 import { PageListSkeleton } from "./components/PageListSkeleton";
-import { TablePagination } from "@/components/pagination";
-import { createColumnHelper } from "@tanstack/react-table";
 
 // Number of items per page
 const PAGE_SIZE = 10;
@@ -111,45 +111,47 @@ export default function Pages() {
   ]);
 
   return (
-    <div className="p-2 md:p-4 max-w-[1100px] mx-auto space-y-3">
-      <SubHeader />
+    <DisabledOverlay>
+      <div className="p-2 md:p-4 max-w-[1100px] mx-auto space-y-3">
+        <SubHeader />
 
-      {isLoading ? (
-        <PageListSkeleton count={pagination.pageSize} />
-      ) : isErrorPages ? (
-        <div className="text-center p-8 text-destructive">
-          <p>Error loading pages data</p>
-          <p className="text-sm">{pagesError?.toString()}</p>
-        </div>
-      ) : pagesDataArray && pagesDataArray.length > 0 ? (
-        <>
-          {pagesDataArray.map((pageItem: PageTitleItem, index: number) => (
-            <PageListItem
-              key={`${pageItem.value}-${index}-${pagination.pageIndex}`}
-              pageData={{
-                value: pageItem.pathname,
-                title: pageItem.value,
-                count: pageItem.count,
-                percentage: pageItem.percentage,
-              }}
-            />
-          ))}
-          {totalPages > 0 && (
-            <TablePagination
-              table={table}
-              data={{ items: pagesDataArray || [], total: totalCount || 0 }}
-              pagination={pagination}
-              setPagination={setPagination}
-              isLoading={isLoading}
-              itemName="pages"
-            />
-          )}
-        </>
-      ) : !isLoadingPages && !isFetching ? (
-        <div className="text-center py-12 text-muted-foreground">
-          <p>No pages data found for the selected period.</p>
-        </div>
-      ) : null}
-    </div>
+        {isLoading ? (
+          <PageListSkeleton count={pagination.pageSize} />
+        ) : isErrorPages ? (
+          <div className="text-center p-8 text-destructive">
+            <p>Error loading pages data</p>
+            <p className="text-sm">{pagesError?.toString()}</p>
+          </div>
+        ) : pagesDataArray && pagesDataArray.length > 0 ? (
+          <>
+            {pagesDataArray.map((pageItem: PageTitleItem, index: number) => (
+              <PageListItem
+                key={`${pageItem.value}-${index}-${pagination.pageIndex}`}
+                pageData={{
+                  value: pageItem.pathname,
+                  title: pageItem.value,
+                  count: pageItem.count,
+                  percentage: pageItem.percentage,
+                }}
+              />
+            ))}
+            {totalPages > 0 && (
+              <TablePagination
+                table={table}
+                data={{ items: pagesDataArray || [], total: totalCount || 0 }}
+                pagination={pagination}
+                setPagination={setPagination}
+                isLoading={isLoading}
+                itemName="pages"
+              />
+            )}
+          </>
+        ) : !isLoadingPages && !isFetching ? (
+          <div className="text-center py-12 text-muted-foreground">
+            <p>No pages data found for the selected period.</p>
+          </div>
+        ) : null}
+      </div>
+    </DisabledOverlay>
   );
 }

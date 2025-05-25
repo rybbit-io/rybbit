@@ -18,6 +18,7 @@ import { useEffect, useRef, useState } from "react";
 import { useGetSite } from "../../../api/admin/sites";
 import { DateSelector } from "../../../components/DateSelector/DateSelector";
 import { DateRangeMode, Time } from "../../../components/DateSelector/types";
+import { DisabledOverlay } from "../../../components/DisabledOverlay";
 import { MobileSidebar } from "../../../components/MobileSidebar";
 import { useSetPageTitle } from "../../../hooks/useSetPageTitle";
 import { timeZone } from "../../../lib/dateTimeUtils";
@@ -431,86 +432,88 @@ export default function JourneysPage() {
   }, [data, steps, maxJourneys, siteMetadata]);
 
   return (
-    <div className="container mx-auto p-2 md:p-4">
-      <div className="md:hidden mb-2">
-        <MobileSidebar />
+    <DisabledOverlay>
+      <div className="container mx-auto p-2 md:p-4">
+        <div className="md:hidden mb-2">
+          <MobileSidebar />
+        </div>
+        <div className="flex justify-end items-center gap-2 mb-2">
+          <DateSelector
+            time={time}
+            setTime={setTime}
+            past24HoursEnabled={false}
+          />
+          <Select
+            value={steps.toString()}
+            onValueChange={(value) => setSteps(Number(value))}
+          >
+            <SelectTrigger className="w-[120px]">
+              <SelectValue placeholder="Number of steps" />
+            </SelectTrigger>
+            <SelectContent>
+              {[2, 3, 4, 5, 6, 7, 8, 9, 10].map((step) => (
+                <SelectItem key={step} value={step.toString()}>
+                  {step} steps
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select
+            value={maxJourneys.toString()}
+            onValueChange={(value) => setMaxJourneys(Number(value))}
+          >
+            <SelectTrigger className="w-[140px]">
+              <SelectValue placeholder="Max journeys" />
+            </SelectTrigger>
+            <SelectContent>
+              {[10, 25, 50, 100, 150, 200].map((count) => (
+                <SelectItem key={count} value={count.toString()}>
+                  {count} journeys
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <Card className="w-full">
+          <CardHeader className="flex flex-row items-center justify-between">
+            <CardTitle>User Journeys</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {isLoading && (
+              <div className="flex flex-col space-y-4">
+                <Skeleton className="h-[1000px] w-full rounded-md" />
+              </div>
+            )}
+
+            {error && (
+              <Alert variant="destructive">
+                <AlertCircle className="h-4 w-4" />
+                <AlertTitle>Error</AlertTitle>
+                <AlertDescription>
+                  Failed to load journey data. Please try again.
+                </AlertDescription>
+              </Alert>
+            )}
+
+            {data?.journeys?.length === 0 && !isLoading && !error && (
+              <Alert>
+                <AlertCircle className="h-4 w-4" />
+                <AlertTitle>No Data</AlertTitle>
+                <AlertDescription>
+                  No journey data found for the selected criteria.
+                </AlertDescription>
+              </Alert>
+            )}
+
+            {data?.journeys?.length && data?.journeys?.length > 0 ? (
+              <div className="overflow-x-auto w-full">
+                <svg ref={svgRef} className="min-w-full" />
+                {/* <svg ref={svgRef} className="w-full h-[1000px]" /> */}
+              </div>
+            ) : null}
+          </CardContent>
+        </Card>
       </div>
-      <div className="flex justify-end items-center gap-2 mb-2">
-        <DateSelector
-          time={time}
-          setTime={setTime}
-          past24HoursEnabled={false}
-        />
-        <Select
-          value={steps.toString()}
-          onValueChange={(value) => setSteps(Number(value))}
-        >
-          <SelectTrigger className="w-[120px]">
-            <SelectValue placeholder="Number of steps" />
-          </SelectTrigger>
-          <SelectContent>
-            {[2, 3, 4, 5, 6, 7, 8, 9, 10].map((step) => (
-              <SelectItem key={step} value={step.toString()}>
-                {step} steps
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Select
-          value={maxJourneys.toString()}
-          onValueChange={(value) => setMaxJourneys(Number(value))}
-        >
-          <SelectTrigger className="w-[140px]">
-            <SelectValue placeholder="Max journeys" />
-          </SelectTrigger>
-          <SelectContent>
-            {[10, 25, 50, 100, 150, 200].map((count) => (
-              <SelectItem key={count} value={count.toString()}>
-                {count} journeys
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
-      <Card className="w-full">
-        <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle>User Journeys</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {isLoading && (
-            <div className="flex flex-col space-y-4">
-              <Skeleton className="h-[1000px] w-full rounded-md" />
-            </div>
-          )}
-
-          {error && (
-            <Alert variant="destructive">
-              <AlertCircle className="h-4 w-4" />
-              <AlertTitle>Error</AlertTitle>
-              <AlertDescription>
-                Failed to load journey data. Please try again.
-              </AlertDescription>
-            </Alert>
-          )}
-
-          {data?.journeys?.length === 0 && !isLoading && !error && (
-            <Alert>
-              <AlertCircle className="h-4 w-4" />
-              <AlertTitle>No Data</AlertTitle>
-              <AlertDescription>
-                No journey data found for the selected criteria.
-              </AlertDescription>
-            </Alert>
-          )}
-
-          {data?.journeys?.length && data?.journeys?.length > 0 ? (
-            <div className="overflow-x-auto w-full">
-              <svg ref={svgRef} className="min-w-full" />
-              {/* <svg ref={svgRef} className="w-full h-[1000px]" /> */}
-            </div>
-          ) : null}
-        </CardContent>
-      </Card>
-    </div>
+    </DisabledOverlay>
   );
 }

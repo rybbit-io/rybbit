@@ -1,7 +1,7 @@
 "use client";
 
 import { Slider } from "@/components/ui/slider";
-import { Check } from "lucide-react";
+import { Check, X } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 import { cn } from "../../lib/utils";
@@ -24,8 +24,21 @@ const PRO_FEATURES = [
   "Unlimited team members",
   "Real-time analytics",
   "Custom events",
-  "Funnels & user flows",
+  "Sessions",
+  "Funnels",
+  "Goals",
+  "User flows",
   "All features",
+];
+
+// Define free plan features
+const FREE_FEATURES = [
+  { feature: "Up to 3 websites", included: true },
+  { feature: "Basic features", included: true },
+  { feature: "Custom events", included: true },
+  // { feature: "Team members", included: false },
+  // { feature: "Real-time analytics", included: false },
+  // { feature: "Funnels & user flows", included: false },
 ];
 
 export const formatter = Intl.NumberFormat("en", {
@@ -80,132 +93,202 @@ export function PricingSection() {
           </p>
         </div>
 
-        {/* Pricing card with background gradients */}
-        <div className="relative max-w-lg mx-auto mb-10">
-          {/* Background gradients - overlapping circles for organic feel */}
-          <div className="absolute top-0 left-0 w-[400px] h-[400px] bg-emerald-500/30 rounded-full blur-[80px] opacity-60"></div>
-          <div className="absolute top-20 left-20 w-[300px] h-[300px] bg-emerald-600/20 rounded-full blur-[70px] opacity-40"></div>
-
-          <div className="absolute bottom-0 right-0 w-[350px] h-[350px] bg-blue-500/30 rounded-full blur-[80px] opacity-50"></div>
-          <div className="absolute bottom-40 right-20 w-[250px] h-[250px] bg-indigo-500/20 rounded-full blur-[75px] opacity-40"></div>
-
-          <div className="absolute top-1/4 right-0 w-[200px] h-[200px] bg-purple-500/30 rounded-full blur-[70px] opacity-40"></div>
-
-          <div className="absolute bottom-1/3 left-0 w-[220px] h-[220px] bg-emerald-400/20 rounded-full blur-[70px] opacity-50"></div>
-
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[350px] h-[350px] bg-indigo-400/20 rounded-full blur-[80px] opacity-40"></div>
-
-          {/* Card with relative positioning and higher z-index */}
-          <div className="relative z-10 bg-neutral-800/50 rounded-xl border border-neutral-700 overflow-hidden backdrop-blur-sm shadow-xl">
-            <div className="p-6">
-              {/* Slider section */}
-              <div className="mb-6">
-                <div className="flex justify-between mb-3 items-center">
-                  <div>
-                    <h3 className="font-semibold mb-2">Events per month</h3>
-                    <div className="text-3xl font-bold text-emerald-400 hidden md:block">
-                      {eventLimit.toLocaleString()}
+        {/* Two card layout */}
+        <div className="flex flex-col lg:flex-row gap-6 max-w-6xl mx-auto justify-center items-start">
+          {/* Free Plan Card */}
+          <div className="w-full lg:w-70 flex-shrink-0 md:h-[666px] h-full">
+            <div className="bg-neutral-800/30 rounded-xl border border-neutral-700 overflow-hidden backdrop-blur-sm shadow-lg h-full">
+              <div className="p-6">
+                <div className="md:mb-[74px] mb-6">
+                  <div className="flex justify-between mb-3 items-center">
+                    <div>
+                      <h3 className="font-semibold mb-2">Free</h3>
+                      <div className="text-2xl font-bold text-emerald-400">
+                        10K
+                      </div>
+                      <p className="text-neutral-400 text-sm">events/month</p>
                     </div>
-                    <div className="text-3xl font-bold text-emerald-400 md:hidden">
-                      {isNaN(eventLimit) ? "10M+" : formatter(eventLimit)}
-                    </div>
-                  </div>
-                  <div className="flex flex-col items-end">
-                    {/* Billing toggle */}
-                    <div className="flex gap-3 mb-2 text-sm">
-                      <button
-                        onClick={() => setIsAnnual(false)}
-                        className={cn("px-3 py-1 rounded-full transition-colors cursor-pointer", !isAnnual ? "bg-emerald-500/20 text-emerald-400 font-medium" : "text-neutral-400 hover:text-neutral-200")}
-                      >
-                        Monthly
-                      </button>
-                      <button
-                        onClick={() => setIsAnnual(true)}
-                        className={cn("px-3 py-1 rounded-full transition-colors cursor-pointer", isAnnual ? "bg-emerald-500/20 text-emerald-400 font-medium" : "text-neutral-400 hover:text-neutral-200")}
-                      >
-                        Annual
-                        <span className="ml-1 text-xs text-emerald-500">
-                          -17%
-                        </span>
-                      </button>
-                    </div>
-                    <div className="text-right h-10">
-                      {prices.custom ? (
-                        <></>
-                      ) : (
-                        <>
-                          <span className="text-3xl font-bold">
-                            $
-                            {isAnnual
-                              ? Math.round(prices.annual / 12)
-                              : prices.monthly}
-                          </span>
-                          <span className="ml-1 text-neutral-400">/month</span>
-                        </>
-                      )}
-                    </div>
+                    {/* <div className="flex flex-col items-end">
+                      <div className="text-right">
+                        <span className="text-3xl font-bold">$0</span>
+                        <p className="text-neutral-400 text-sm mt-1">Forever</p>
+                      </div>
+                    </div> */}
                   </div>
                 </div>
 
-                <Slider
-                  defaultValue={[0]}
-                  max={EVENT_TIERS.length - 1}
-                  min={0}
-                  step={1}
-                  onValueChange={handleSliderChange}
-                  className="mb-3"
-                />
-
-                <div className="flex justify-between text-xs text-neutral-400">
-                  {EVENT_TIERS.map((tier, index) => (
-                    <span
-                      key={index}
-                      className={cn(eventLimitIndex === index && "font-bold text-emerald-400")}
-                    >
-                      {index === EVENT_TIERS.length - 1
-                        ? "10M+"
-                        : tier >= 1_000_000
-                        ? `${tier / 1_000_000}M`
-                        : `${tier / 1_000}K`}
-                    </span>
-                  ))}
-                </div>
-              </div>
-
-              <div className="space-y-4 mb-6">
-                {PRO_FEATURES.map((feature, i) => (
-                  <div key={i} className="flex items-center">
-                    <Check className="h-4 w-4 text-emerald-400 mr-3 shrink-0" />
-                    <span>{feature}</span>
-                  </div>
-                ))}
-              </div>
-
-              {prices.custom ? (
-                <Link
-                  href="https://www.rybbit.io/contact"
-                  className="w-full block"
-                >
-                  <button className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-medium px-5 py-3 rounded-lg shadow-lg shadow-emerald-900/20 transform hover:-translate-y-0.5 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-opacity-50 cursor-pointer">
-                    Contact us
-                  </button>
-                </Link>
-              ) : (
                 <Link
                   href="https://app.rybbit.io/signup"
                   className="w-full block"
                 >
-                  <button className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-medium px-5 py-3 rounded-lg shadow-lg shadow-emerald-900/20 transform hover:-translate-y-0.5 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-opacity-50 cursor-pointer">
-                    Start your 14 day free trial
+                  <button className="w-full bg-neutral-700 hover:bg-neutral-600 text-white font-medium px-5 py-3 rounded-lg border border-neutral-600 transform hover:-translate-y-0.5 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-neutral-400 focus:ring-opacity-50 cursor-pointer">
+                    Start for free
                   </button>
                 </Link>
-              )}
+                <div className="space-y-3 mt-6 mb-3">
+                  {FREE_FEATURES.map((item, i) => (
+                    <div key={i} className="flex items-center">
+                      {item.included ? (
+                        <Check className="h-4 w-4 text-emerald-400 mr-3 shrink-0" />
+                      ) : (
+                        <X className="h-4 w-4 text-neutral-500 mr-3 shrink-0" />
+                      )}
+                      <span
+                        className={cn(
+                          item.included ? "text-white" : "text-neutral-500"
+                        )}
+                      >
+                        {item.feature}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
 
-              <p className="text-center text-sm text-neutral-400 mt-4">
-                {prices.custom
-                  ? "Email us at hello@rybbit.io for custom pricing"
-                  : "We don't ask for your credit card"}
-              </p>
+          {/* Pro Plan Card */}
+          <div className="relative w-full lg:w-96 flex-shrink-0">
+            {/* Background gradients - overlapping circles for organic feel */}
+            <div className="absolute top-0 left-0 w-[400px] h-[400px] bg-emerald-500/30 rounded-full blur-[80px] opacity-60"></div>
+            <div className="absolute top-20 left-20 w-[300px] h-[300px] bg-emerald-600/20 rounded-full blur-[70px] opacity-40"></div>
+
+            <div className="absolute bottom-0 right-0 w-[350px] h-[350px] bg-blue-500/30 rounded-full blur-[80px] opacity-50"></div>
+            <div className="absolute bottom-40 right-20 w-[250px] h-[250px] bg-indigo-500/20 rounded-full blur-[75px] opacity-40"></div>
+
+            <div className="absolute top-1/4 right-0 w-[200px] h-[200px] bg-purple-500/30 rounded-full blur-[70px] opacity-40"></div>
+
+            <div className="absolute bottom-1/3 left-0 w-[220px] h-[220px] bg-emerald-400/20 rounded-full blur-[70px] opacity-50"></div>
+
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[350px] h-[350px] bg-indigo-400/20 rounded-full blur-[80px] opacity-40"></div>
+
+            {/* Card with relative positioning and higher z-index */}
+            <div className="relative z-10 bg-neutral-800/50 rounded-xl border border-neutral-700 overflow-hidden backdrop-blur-sm shadow-xl">
+              <div className="p-6">
+                {/* Slider section */}
+                <div className="mb-6">
+                  <div className="flex justify-between mb-3 items-center">
+                    <div>
+                      <h3 className="font-semibold mb-2">Pro</h3>
+                      <div className="text-3xl font-bold text-emerald-400 hidden md:block">
+                        {eventLimit.toLocaleString()}
+                      </div>
+                      <div className="text-3xl font-bold text-emerald-400 md:hidden">
+                        {isNaN(eventLimit) ? "10M+" : formatter(eventLimit)}
+                      </div>
+                      <p className="text-neutral-400 text-sm">events/month</p>
+                    </div>
+                    <div className="flex flex-col items-end">
+                      {/* Billing toggle */}
+                      <div className="flex gap-3 mb-1 text-sm -mt-5">
+                        <button
+                          onClick={() => setIsAnnual(false)}
+                          className={cn(
+                            "px-3 py-1 rounded-full transition-colors cursor-pointer",
+                            !isAnnual
+                              ? "bg-emerald-500/20 text-emerald-400 font-medium"
+                              : "text-neutral-400 hover:text-neutral-200"
+                          )}
+                        >
+                          Monthly
+                        </button>
+                        <button
+                          onClick={() => setIsAnnual(true)}
+                          className={cn(
+                            "px-3 py-1 rounded-full transition-colors cursor-pointer",
+                            isAnnual
+                              ? "bg-emerald-500/20 text-emerald-400 font-medium"
+                              : "text-neutral-400 hover:text-neutral-200"
+                          )}
+                        >
+                          Annual
+                          <span className="ml-1 text-xs text-emerald-500">
+                            -17%
+                          </span>
+                        </button>
+                      </div>
+                      <div className="text-right h-10">
+                        {prices.custom ? (
+                          <></>
+                        ) : (
+                          <>
+                            <span className="text-3xl font-bold">
+                              $
+                              {isAnnual
+                                ? Math.round(prices.annual / 12)
+                                : prices.monthly}
+                            </span>
+                            <span className="ml-1 text-neutral-400">
+                              /month
+                            </span>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  <Slider
+                    defaultValue={[0]}
+                    max={EVENT_TIERS.length - 1}
+                    min={0}
+                    step={1}
+                    onValueChange={handleSliderChange}
+                    className="mb-3"
+                  />
+
+                  <div className="flex justify-between text-xs text-neutral-400">
+                    {EVENT_TIERS.map((tier, index) => (
+                      <span
+                        key={index}
+                        className={cn(
+                          eventLimitIndex === index &&
+                            "font-bold text-emerald-400"
+                        )}
+                      >
+                        {index === EVENT_TIERS.length - 1
+                          ? "10M+"
+                          : tier >= 1_000_000
+                          ? `${tier / 1_000_000}M`
+                          : `${tier / 1_000}K`}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+
+                {prices.custom ? (
+                  <Link
+                    href="https://www.rybbit.io/contact"
+                    className="w-full block"
+                  >
+                    <button className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-medium px-5 py-3 rounded-lg shadow-lg shadow-emerald-900/20 transform hover:-translate-y-0.5 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-opacity-50 cursor-pointer">
+                      Contact us
+                    </button>
+                  </Link>
+                ) : (
+                  <Link
+                    href="https://app.rybbit.io/signup"
+                    className="w-full block"
+                  >
+                    <button className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-medium px-5 py-3 rounded-lg shadow-lg shadow-emerald-900/20 transform hover:-translate-y-0.5 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-opacity-50 cursor-pointer">
+                      Try for free
+                    </button>
+                  </Link>
+                )}
+                <div className="space-y-4 my-6">
+                  {PRO_FEATURES.map((feature, i) => (
+                    <div key={i} className="flex items-center">
+                      <Check className="h-4 w-4 text-emerald-400 mr-3 shrink-0" />
+                      <span>{feature}</span>
+                    </div>
+                  ))}
+                </div>
+
+                <p className="text-center text-sm text-neutral-400 mt-4">
+                  {prices.custom
+                    ? "Email us at hello@rybbit.io for custom pricing"
+                    : "We don't ask for your credit card"}
+                </p>
+              </div>
             </div>
           </div>
         </div>

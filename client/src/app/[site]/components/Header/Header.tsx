@@ -1,6 +1,6 @@
 "use client";
 
-import { FreeTrialBanner } from "../../../../components/FreeTrialBanner";
+import { FreePlanBanner } from "../../../../components/FreePlanBanner";
 import { userStore } from "../../../../lib/userStore";
 import { NoData } from "./NoData";
 import { UsageBanners } from "./UsageBanners";
@@ -12,7 +12,7 @@ export function Header() {
     <div className="flex flex-col">
       {user && (
         <div className="flex flex-col px-4">
-          <FreeTrialBanner />
+          <FreePlanBanner />
           <UsageBanners />
           <NoData />
         </div>

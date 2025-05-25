@@ -4,7 +4,7 @@ import { BACKEND_URL } from "../../../../lib/const";
 interface SubscriptionData {
   id: string;
   planName: string;
-  status: "expired" | "active" | "trialing";
+  status: "expired" | "active" | "trialing" | "free";
   currentPeriodEnd: string;
   currentPeriodStart: string;
   monthlyEventCount: number;

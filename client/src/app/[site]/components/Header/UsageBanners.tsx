@@ -58,7 +58,7 @@ export function UsageBanners() {
                   Upgrade your plan to continue collecting analytics.
                 </AlertDescription>
                 <Button variant="default" asChild>
-                  <Link href="/settings/subscription">
+                  <Link href="/subscribe">
                     Upgrade Plan <ArrowRight className="ml-1 h-3 w-3" />
                   </Link>
                 </Button>
@@ -100,7 +100,7 @@ export function UsageBanners() {
                   className="bg-white hover:bg-white/90 text-neutral-100 border-white/20 hover:border-white/30 py-1 h-auto text-sm"
                   asChild
                 >
-                  <Link href="/settings/subscription">
+                  <Link href="/subscribe">
                     Upgrade Plan <ArrowRight className="ml-1 h-3 w-3" />
                   </Link>
                 </Button>

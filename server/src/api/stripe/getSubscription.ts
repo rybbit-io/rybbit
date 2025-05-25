@@ -4,12 +4,12 @@ import Stripe from "stripe";
 import { db } from "../../db/postgres/postgres.js";
 import { user as userSchema } from "../../db/postgres/schema.js";
 import {
+  DEFAULT_EVENT_LIMIT,
   getStripePrices,
   StripePlan,
-  TRIAL_DURATION_DAYS,
-  TRIAL_EVENT_LIMIT,
 } from "../../lib/const.js";
 import { stripe } from "../../lib/stripe.js";
+import { DateTime } from "luxon";
 
 // Function to find plan details by price ID
 function findPlanDetails(priceId: string): StripePlan | undefined {
@@ -18,6 +18,14 @@ function findPlanDetails(priceId: string): StripePlan | undefined {
       plan.priceId === priceId ||
       (plan.annualDiscountPriceId && plan.annualDiscountPriceId === priceId)
   );
+}
+
+function getStartOfMonth() {
+  return DateTime.now().startOf("month").toJSDate();
+}
+
+function getStartOfNextMonth() {
+  return DateTime.now().startOf("month").plus({ months: 1 }).toJSDate();
 }
 
 export async function getSubscriptionInner(userId: string) {
@@ -102,41 +110,39 @@ export async function getSubscriptionInner(userId: string) {
 
   // If we get here, the user has no active paid subscription
   // Check if they're in the trial period
-  const createdAt = new Date(user.createdAt);
-  const now = new Date();
-  const trialEndDate = new Date(createdAt);
-  trialEndDate.setDate(trialEndDate.getDate() + TRIAL_DURATION_DAYS);
+  // const createdAt = new Date(user.createdAt);
+  // const now = new Date();
+  // const trialEndDate = new Date(createdAt);
+  // trialEndDate.setDate(trialEndDate.getDate() + TRIAL_DURATION_DAYS);
 
-  const isInTrialPeriod = now < trialEndDate;
+  // const isInTrialPeriod = now < trialEndDate;
 
-  if (isInTrialPeriod) {
-    // User is in trial period
-    return {
-      id: null,
-      planName: "trial",
-      status: "trialing",
-      currentPeriodEnd: trialEndDate,
-      currentPeriodStart: createdAt,
-      eventLimit: TRIAL_EVENT_LIMIT,
-      monthlyEventCount: user.monthlyEventCount,
-      interval: "month",
-      isTrial: true,
-      trialDaysRemaining: Math.ceil(
-        (trialEndDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)
-      ),
-    };
-  }
+  // if (isInTrialPeriod) {
+  //   // User is in trial period
+  //   return {
+  //     id: null,
+  //     planName: "trial",
+  //     status: "trialing",
+  //     currentPeriodEnd: trialEndDate,
+  //     currentPeriodStart: createdAt,
+  //     eventLimit: TRIAL_EVENT_LIMIT,
+  //     monthlyEventCount: user.monthlyEventCount,
+  //     interval: "month",
+  //     isTrial: true,
+  //     trialDaysRemaining: Math.ceil(
+  //       (trialEndDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)
+  //     ),
+  //   };
+  // }
 
-  // User has no subscription and trial has ended - return null
   return {
     id: null,
     planName: "free",
-    status: "expired",
-    currentPeriodEnd: null,
-    currentPeriodStart: null,
-    eventLimit: 0,
+    status: "free",
+    currentPeriodEnd: getStartOfNextMonth(),
+    currentPeriodStart: getStartOfMonth(),
+    eventLimit: DEFAULT_EVENT_LIMIT,
     monthlyEventCount: user.monthlyEventCount,
-    isTrial: false,
     trialDaysRemaining: 0,
   };
 }

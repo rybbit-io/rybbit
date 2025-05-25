@@ -25,6 +25,7 @@ import { Tabs, TabsList, TabsTrigger } from "../../../components/ui/tabs";
 import { RetentionChart } from "./RetentionChart";
 import { NothingFound } from "../../../components/NothingFound";
 import { useSetPageTitle } from "../../../hooks/useSetPageTitle";
+import { DisabledOverlay } from "../../../components/DisabledOverlay";
 
 // Available time range options (in days)
 const RANGE_OPTIONS = [
@@ -107,13 +108,19 @@ export default function RetentionPage() {
 
       // If same month, don't repeat month name
       if (startDate.month === endDate.month) {
-        return `${startDate.toFormat("MMM dd")} - ${endDate.toFormat("dd, yyyy")}`;
+        return `${startDate.toFormat("MMM dd")} - ${endDate.toFormat(
+          "dd, yyyy"
+        )}`;
       } else if (startDate.year === endDate.year) {
         // Different months, same year
-        return `${startDate.toFormat("MMM dd")} - ${endDate.toFormat("MMM dd, yyyy")}`;
+        return `${startDate.toFormat("MMM dd")} - ${endDate.toFormat(
+          "MMM dd, yyyy"
+        )}`;
       } else {
         // Different years
-        return `${startDate.toFormat("MMM dd, yyyy")} - ${endDate.toFormat("MMM dd, yyyy")}`;
+        return `${startDate.toFormat("MMM dd, yyyy")} - ${endDate.toFormat(
+          "MMM dd, yyyy"
+        )}`;
       }
     }
   };
@@ -211,91 +218,93 @@ export default function RetentionPage() {
       : [];
 
   return (
-    <div className="p-2 md:p-4 max-w-[1300px] mx-auto flex flex-col gap-3">
-      {/* Single Card containing both chart and grid */}
-      <FilterControls />
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between pb-2">
-          <CardTitle>Retention</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          {isLoading ? (
-            <ThreeDotLoader />
-          ) : data ? (
-            <RetentionChart data={data} isLoading={false} mode={mode} />
-          ) : null}
-        </CardContent>
-      </Card>
-      <Card className="pt-3">
-        <CardContent className="space-y-6 px-2">
-          <div>
+    <DisabledOverlay>
+      <div className="p-2 md:p-4 max-w-[1300px] mx-auto flex flex-col gap-3">
+        {/* Single Card containing both chart and grid */}
+        <FilterControls />
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle>Retention</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-6">
             {isLoading ? (
               <ThreeDotLoader />
             ) : data ? (
-              <div className="overflow-x-auto">
-                <div
-                  className="inline-grid gap-px bg-neutral-900 rounded-lg shadow-lg"
-                  style={{
-                    gridTemplateColumns: `minmax(120px, auto) repeat(${
-                      data.maxPeriods + 1
-                    }, minmax(80px, auto))`,
-                  }}
-                >
-                  {/* Header Row */}
-                  <div className="p-2 text-sm font-semibold bg-neutral-900 text-neutral-100 text-center sticky left-0 z-10 border-b border-r border-neutral-700">
-                    Cohort
-                  </div>
-                  {periodHeaders.map((header) => (
-                    <div
-                      key={header}
-                      className="p-2 text-sm bg-neutral-900 text-neutral-100 text-center border-b border-neutral-700"
-                    >
-                      {header}
-                    </div>
-                  ))}
-
-                  {/* Data Rows */}
-                  {cohortKeys.map((cohortPeriod) => (
-                    <Fragment key={cohortPeriod}>
-                      {/* Cohort Info Cell */}
-                      <div className="py-2 px-2 bg-neutral-900 text-sm sticky left-0 z-10 border-r border-neutral-800">
-                        <div className="whitespace-nowrap text-neutral-100">
-                          {formatDate(cohortPeriod)}
-                        </div>
-                        <div className="text-xs text-neutral-300 mt-1 whitespace-nowrap">
-                          {data.cohorts[cohortPeriod].size.toLocaleString()}{" "}
-                          users
-                        </div>
-                      </div>
-                      {/* Retention Cells */}
-                      {data.cohorts[cohortPeriod].percentages.map(
-                        (percentage: number | null, index: number) => {
-                          const { backgroundColor, textColor } =
-                            getRetentionColor(percentage);
-                          return (
-                            <div
-                              key={`${cohortPeriod}-period-${index}`}
-                              className="m-[2px] text-center flex items-center justify-center font-medium transition-colors duration-150 bg-neutral-900 rounded-md"
-                              style={{
-                                backgroundColor,
-                                color: textColor,
-                              }}
-                            >
-                              {percentage !== null
-                                ? `${percentage.toFixed(1)}%`
-                                : "-"}
-                            </div>
-                          );
-                        }
-                      )}
-                    </Fragment>
-                  ))}
-                </div>
-              </div>
+              <RetentionChart data={data} isLoading={false} mode={mode} />
             ) : null}
-          </div>
-        </CardContent>
-      </Card>
-    </div>
+          </CardContent>
+        </Card>
+        <Card className="pt-3">
+          <CardContent className="space-y-6 px-2">
+            <div>
+              {isLoading ? (
+                <ThreeDotLoader />
+              ) : data ? (
+                <div className="overflow-x-auto">
+                  <div
+                    className="inline-grid gap-px bg-neutral-900 rounded-lg shadow-lg"
+                    style={{
+                      gridTemplateColumns: `minmax(120px, auto) repeat(${
+                        data.maxPeriods + 1
+                      }, minmax(80px, auto))`,
+                    }}
+                  >
+                    {/* Header Row */}
+                    <div className="p-2 text-sm font-semibold bg-neutral-900 text-neutral-100 text-center sticky left-0 z-10 border-b border-r border-neutral-700">
+                      Cohort
+                    </div>
+                    {periodHeaders.map((header) => (
+                      <div
+                        key={header}
+                        className="p-2 text-sm bg-neutral-900 text-neutral-100 text-center border-b border-neutral-700"
+                      >
+                        {header}
+                      </div>
+                    ))}
+
+                    {/* Data Rows */}
+                    {cohortKeys.map((cohortPeriod) => (
+                      <Fragment key={cohortPeriod}>
+                        {/* Cohort Info Cell */}
+                        <div className="py-2 px-2 bg-neutral-900 text-sm sticky left-0 z-10 border-r border-neutral-800">
+                          <div className="whitespace-nowrap text-neutral-100">
+                            {formatDate(cohortPeriod)}
+                          </div>
+                          <div className="text-xs text-neutral-300 mt-1 whitespace-nowrap">
+                            {data.cohorts[cohortPeriod].size.toLocaleString()}{" "}
+                            users
+                          </div>
+                        </div>
+                        {/* Retention Cells */}
+                        {data.cohorts[cohortPeriod].percentages.map(
+                          (percentage: number | null, index: number) => {
+                            const { backgroundColor, textColor } =
+                              getRetentionColor(percentage);
+                            return (
+                              <div
+                                key={`${cohortPeriod}-period-${index}`}
+                                className="m-[2px] text-center flex items-center justify-center font-medium transition-colors duration-150 bg-neutral-900 rounded-md"
+                                style={{
+                                  backgroundColor,
+                                  color: textColor,
+                                }}
+                              >
+                                {percentage !== null
+                                  ? `${percentage.toFixed(1)}%`
+                                  : "-"}
+                              </div>
+                            );
+                          }
+                        )}
+                      </Fragment>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    </DisabledOverlay>
   );
 }

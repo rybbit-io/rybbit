@@ -4,15 +4,15 @@ import { Plus } from "lucide-react";
 import { useState } from "react";
 import { useUserOrganizations } from "../api/admin/organizations";
 import { useGetSites } from "../api/admin/sites";
+import { CreateOrganizationDialog } from "../components/CreateOrganizationDialog";
+import { FreePlanBanner } from "../components/FreePlanBanner";
 import { NoOrganization } from "../components/NoOrganization";
 import { SiteCard } from "../components/SiteCard";
 import { StandardPage } from "../components/StandardPage";
 import { Button } from "../components/ui/button";
 import { Card, CardDescription, CardTitle } from "../components/ui/card";
-import { AddSite } from "./components/AddSite";
-import { CreateOrganizationDialog } from "../components/CreateOrganizationDialog";
-import { FreeTrialBanner } from "../components/FreeTrialBanner";
 import { useSetPageTitle } from "../hooks/useSetPageTitle";
+import { AddSite } from "./components/AddSite";
 
 export default function Home() {
   useSetPageTitle("Rybbit · Home");
@@ -47,7 +47,7 @@ export default function Home() {
 
   return (
     <StandardPage>
-      <FreeTrialBanner />
+      <FreePlanBanner />
       <div className="flex justify-between items-center my-4">
         <div className="text-2xl font-bold">{sites?.length} Websites</div>
         <AddSite disabled={hasNoOrganizations || disabled} />

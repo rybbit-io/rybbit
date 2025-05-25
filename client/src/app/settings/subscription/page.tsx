@@ -9,6 +9,7 @@ import { NoOrganization } from "../../../components/NoOrganization";
 import { TrialPlan } from "./components/TrialPlan";
 import { ExpiredTrialPlan } from "./components/ExpiredTrialPlan";
 import { useSetPageTitle } from "../../../hooks/useSetPageTitle";
+import { FreePlan } from "./components/FreePlan";
 
 export default function SubscriptionPage() {
   useSetPageTitle("Rybbit · Subscription");
@@ -37,6 +38,11 @@ export default function SubscriptionPage() {
     // Check if trial expired
     if (activeSubscription.status === "expired") {
       return <ExpiredTrialPlan message={activeSubscription.message} />;
+    }
+
+    // Check if user is on free plan
+    if (activeSubscription.status === "free") {
+      return <FreePlan />;
     }
 
     if (activeSubscription.isTrial) {

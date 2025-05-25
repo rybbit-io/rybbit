@@ -1,14 +1,17 @@
 import { Shield } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
+import { DateTime } from "luxon";
 import { Alert } from "../../../../components/ui/alert";
 import { Button } from "../../../../components/ui/button";
 import { Card, CardContent } from "../../../../components/ui/card";
 import { Progress } from "../../../../components/ui/progress";
+import { useUserOrganizations } from "../../../../api/admin/organizations";
 import { BACKEND_URL } from "../../../../lib/const";
 import { getStripePrices } from "../../../../lib/stripe";
 import { formatDate } from "../utils/planUtils";
 import { useStripeSubscription } from "../utils/useStripeSubscription";
+import { UsageChart } from "../../../../components/UsageChart";
 
 export function ProPlan() {
   const {
@@ -17,6 +20,15 @@ export function ProPlan() {
     error: subscriptionError,
     refetch,
   } = useStripeSubscription();
+
+  const { data: organizations } = useUserOrganizations();
+
+  // Get the first organization (assuming user is part of one organization for now)
+  const organizationId = organizations?.[0]?.id;
+
+  // Get last 30 days of data for the chart
+  const endDate = DateTime.now().toISODate();
+  const startDate = DateTime.now().minus({ days: 30 }).toISODate();
 
   const [isProcessing, setIsProcessing] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
@@ -188,6 +200,19 @@ export function ProPlan() {
                 )}
               </div>
             </div>
+
+            {organizationId && (
+              <div className="space-y-2">
+                <h3 className="font-medium text-sm text-neutral-400 mb-2">
+                  Last 30 Days
+                </h3>
+                <UsageChart
+                  organizationId={organizationId}
+                  startDate={startDate}
+                  endDate={endDate}
+                />
+              </div>
+            )}
 
             {isAnnualPlan && (
               <div className="pt-2 pb-0 px-3 bg-emerald-50 dark:bg-emerald-900/20 rounded-md border border-emerald-100 dark:border-emerald-800">

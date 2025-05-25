@@ -5,13 +5,13 @@ import {
   useGetGoals,
   useGetGoalsPastMinutes,
 } from "../../../api/analytics/useGetGoals";
-import { getStartAndEndDate } from "../../../api/utils";
+import { DisabledOverlay } from "../../../components/DisabledOverlay";
 import { NothingFound } from "../../../components/NothingFound";
+import { useSetPageTitle } from "../../../hooks/useSetPageTitle";
 import { GOALS_PAGE_FILTERS, useStore } from "../../../lib/store";
 import { SubHeader } from "../components/SubHeader/SubHeader";
 import CreateGoalButton from "./components/CreateGoalButton";
 import GoalsList from "./components/GoalsList";
-import { useSetPageTitle } from "../../../hooks/useSetPageTitle";
 
 export default function GoalsPage() {
   useSetPageTitle("Rybbit · Goals");
@@ -83,37 +83,39 @@ export default function GoalsPage() {
   );
 
   return (
-    <div className="p-2 md:p-4 max-w-[1400px] mx-auto space-y-3">
-      <SubHeader availableFilters={GOALS_PAGE_FILTERS} />
-      <div className="flex items-center justify-between">
-        <div />
-        <CreateGoalButton siteId={Number(site)} />
-      </div>
-
-      {isLoading ? (
-        <div className="space-y-3">
-          {Array(3)
-            .fill(0)
-            .map((_, index) => (
-              <GoalCardSkeleton key={`skeleton-${index}`} />
-            ))}
+    <DisabledOverlay>
+      <div className="p-2 md:p-4 max-w-[1400px] mx-auto space-y-3">
+        <SubHeader availableFilters={GOALS_PAGE_FILTERS} />
+        <div className="flex items-center justify-between">
+          <div />
+          <CreateGoalButton siteId={Number(site)} />
         </div>
-      ) : !goalsData || goalsData.data.length === 0 ? (
-        <NothingFound
-          title={"No goals found"}
-          description={
-            "Create your first conversion goal to start tracking important user actions."
-          }
-          action={<CreateGoalButton siteId={Number(site)} />}
-        />
-      ) : (
-        <GoalsList
-          goals={goalsData.data}
-          siteId={Number(site)}
-          paginationMeta={goalsData.meta}
-          onPageChange={handlePageChange}
-        />
-      )}
-    </div>
+
+        {isLoading ? (
+          <div className="space-y-3">
+            {Array(3)
+              .fill(0)
+              .map((_, index) => (
+                <GoalCardSkeleton key={`skeleton-${index}`} />
+              ))}
+          </div>
+        ) : !goalsData || goalsData.data.length === 0 ? (
+          <NothingFound
+            title={"No goals found"}
+            description={
+              "Create your first conversion goal to start tracking important user actions."
+            }
+            action={<CreateGoalButton siteId={Number(site)} />}
+          />
+        ) : (
+          <GoalsList
+            goals={goalsData.data}
+            siteId={Number(site)}
+            paginationMeta={goalsData.meta}
+            onPageChange={handlePageChange}
+          />
+        )}
+      </div>
+    </DisabledOverlay>
   );
 }

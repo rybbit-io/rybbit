@@ -5,10 +5,12 @@ dotenv.config();
 export const IS_CLOUD = process.env.CLOUD === "true";
 export const DISABLE_SIGNUP = process.env.DISABLE_SIGNUP === "true";
 
-// Trial constants
-export const TRIAL_DURATION_DAYS = 14;
-export const TRIAL_EVENT_LIMIT = 1_000_000;
+// Trial constants (commented out as we're replacing with free tier)
+// export const TRIAL_DURATION_DAYS = 14;
+// export const TRIAL_EVENT_LIMIT = 100000;
 
+// Default event limit for the free tier (10,000 events per month)
+export const DEFAULT_EVENT_LIMIT = 10_000;
 // Define a type for the plan objects
 export interface StripePlan {
   priceId: string;

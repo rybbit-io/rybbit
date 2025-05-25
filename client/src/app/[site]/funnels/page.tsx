@@ -9,6 +9,7 @@ import { NothingFound } from "../../../components/NothingFound";
 import { CreateFunnelDialog } from "./components/CreateFunnel";
 import { FunnelRow } from "./components/FunnelRow";
 import { useSetPageTitle } from "../../../hooks/useSetPageTitle";
+import { DisabledOverlay } from "../../../components/DisabledOverlay";
 
 // Skeleton for the funnel row component
 const FunnelRowSkeleton = () => (
@@ -82,34 +83,36 @@ export default function FunnelsPage() {
   }
 
   return (
-    <div className="p-2 md:p-4 max-w-[1300px] mx-auto space-y-3">
-      <div className="flex justify-between items-center mb-3">
-        <div>
-          <MobileSidebar />
+    <DisabledOverlay>
+      <div className="p-2 md:p-4 max-w-[1300px] mx-auto space-y-3">
+        <div className="flex justify-between items-center mb-3">
+          <div>
+            <MobileSidebar />
+          </div>
+          <CreateFunnelDialog />
         </div>
-        <CreateFunnelDialog />
-      </div>
 
-      {error ? (
-        <div className="p-4 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 rounded-lg">
-          Failed to load funnels:{" "}
-          {error instanceof Error ? error.message : "Unknown error"}
-        </div>
-      ) : funnels?.length ? (
-        <div className="space-y-4">
-          {funnels.map((funnel: SavedFunnel) => (
-            <FunnelRow key={funnel.id} funnel={funnel} />
-          ))}
-        </div>
-      ) : (
-        <NothingFound
-          title={"No funnels yet"}
-          description={
-            "Create your first funnel to track conversions through your site's user journey"
-          }
-          action={<CreateFunnelDialog />}
-        />
-      )}
-    </div>
+        {error ? (
+          <div className="p-4 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 rounded-lg">
+            Failed to load funnels:{" "}
+            {error instanceof Error ? error.message : "Unknown error"}
+          </div>
+        ) : funnels?.length ? (
+          <div className="space-y-4">
+            {funnels.map((funnel: SavedFunnel) => (
+              <FunnelRow key={funnel.id} funnel={funnel} />
+            ))}
+          </div>
+        ) : (
+          <NothingFound
+            title={"No funnels yet"}
+            description={
+              "Create your first funnel to track conversions through your site's user journey"
+            }
+            action={<CreateFunnelDialog />}
+          />
+        )}
+      </div>
+    </DisabledOverlay>
   );
 }
