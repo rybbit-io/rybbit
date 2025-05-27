@@ -64,3 +64,53 @@ function MyApp({ Component, pageProps }) {
 export default MyApp
 ```
 </Steps>
+
+### (optional) 4. Rewrite the script serving to bypass ad blockers
+
+While Rybbit is not using any cookied based tracking and is fully compliant
+with GDPR, CCPA, and other privacy regulations, some ad blockers may still agressively
+block it no matter how the tracking is implemented or operated.
+
+With Next.js's [rewrites](https://nextjs.org/docs/app/api-reference/config/next-config-js/rewrites) feature, you can rewrite the script serving to reduce the chance of being blocked by ad blockers.
+
+```dotenv
+# .env
+
+# use this value if you are self-hosting Rybbit
+NEXT_PUBLIC_RYBBIT_HOST=https://your-hosted-rybbit-instance.com
+
+# use this value if you are using the Rybbit hosted tracking
+NEXT_PUBLIC_RYBBIT_HOST=https://app.rybbit.io
+```
+
+```js
+// next.config.js
+module.exports = {
+  // ... other configurations
+  async rewrites() {
+    return [
+      {
+        source: "/api/script.js",
+        destination: `${process.env.NEXT_PUBLIC_RYBBIT_HOST}/api/script.js`,
+      },
+      {
+        source: "/api/track",
+        destination: `${process.env.NEXT_PUBLIC_RYBBIT_HOST}/api/track`,
+      },
+    ]
+  },
+}
+```
+
+and where you are using the script:
+
+```jsx
+// app/layout.js or pages/_app.js
+<Script
+  src="/api/script.js"
+  data-site-id="YOUR_SITE_ID"
+  strategy="afterInteractive"
+/>
+```
+
+Note that this rewrite will consume the bandwidth of your server, as all tracking requests will be proxied through your Next.js application. Consider this when evaluating your hosting costs and server capacity requirements.
