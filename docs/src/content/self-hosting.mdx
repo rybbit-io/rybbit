@@ -33,6 +33,13 @@ Configure your domain's DNS settings to point to your VPS's public IP address. T
     *   **Host/Name:** Your desired subdomain (e.g., `tracking`) or `@` for the root domain.
     *   **Value:** Your VPS's IPv4 address.
     *   **TTL:** Default or a low value (e.g., 300 seconds) for faster updates.
+    *   **Proxy Status:** When using Cloudflare, either:
+        * Set to "DNS only" (recommended for most setups)
+        * Or if keeping the proxy enabled, set SSL/TLS encryption mode to "Full" or "Full (strict)" in your Cloudflare dashboard under SSL/TLS settings
+
+<Callout type="warning">
+  If you keep Cloudflare's proxy enabled and your domain has other services not running on HTTPS, using Full or Full (strict) mode might cause issues with those services. In such cases, either use "DNS only" mode or ensure all your services support HTTPS.
+</Callout>
 
 DNS changes might take some time to propagate globally. Use [DNS Checker](https://dnschecker.org/) to verify.
 
