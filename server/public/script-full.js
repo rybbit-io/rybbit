@@ -4,7 +4,7 @@
   const ANALYTICS_HOST = scriptTag.getAttribute("src").split("/script.js")[0];
 
   // Check if the user has opted out of tracking via localStorage
-  if (localStorage.getItem("disable-rybbit") !== null) {
+  if (window.__RYBBIT_OPTOUT__ || localStorage.getItem("disable-rybbit") !== null) {
     // Create a no-op implementation to ensure the API still works
     window.rybbit = {
       pageview: () => {},
