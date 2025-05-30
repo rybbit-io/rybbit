@@ -13,6 +13,10 @@
       identify: () => {},
       clearUserId: () => {},
       getUserId: () => null,
+      setGlobalProperties: () => {},
+      updateGlobalProperties: () => {},
+      clearGlobalProperties: () => {},
+      getGlobalProperties: () => ({}),
     };
     return;
   }
@@ -77,6 +81,28 @@
     }
   } catch (e) {
     // localStorage not available, ignore
+  }
+
+  // Add global properties management
+  let globalProperties = {};
+
+  // Load stored global properties from localStorage on script initialization
+  try {
+    const storedGlobalProperties = localStorage.getItem(
+      "rybbit-global-properties"
+    );
+    if (storedGlobalProperties) {
+      globalProperties = JSON.parse(storedGlobalProperties);
+    }
+  } catch (e) {
+    // localStorage not available or invalid JSON, ignore
+    globalProperties = {};
+  }
+
+  // Helper function to merge global properties with event properties
+  function mergeProperties(eventProperties = {}) {
+    const merged = { ...globalProperties, ...eventProperties };
+    return Object.keys(merged).length > 0 ? merged : null;
   }
 
   // Helper function to convert wildcard pattern to regex
@@ -166,6 +192,9 @@
       pathname = maskMatch;
     }
 
+    // Merge global properties with event-specific properties
+    const mergedProperties = mergeProperties(properties);
+
     const payload = {
       site_id: SITE_ID,
       hostname: url.hostname,
@@ -178,11 +207,12 @@
       referrer: document.referrer,
       type: eventType,
       event_name: eventName,
-      properties:
-        eventType === "custom_event" || eventType === "outbound"
-          ? JSON.stringify(properties)
-          : undefined,
     };
+
+    // Add properties if there are any (global or event-specific)
+    if (mergedProperties) {
+      payload.properties = JSON.stringify(mergedProperties);
+    }
 
     // Add custom user ID only if it's set
     if (customUserId) {
@@ -273,6 +303,58 @@
     },
 
     getUserId: () => customUserId,
+
+    // New methods for global properties management
+    setGlobalProperties: (properties) => {
+      if (
+        typeof properties !== "object" ||
+        properties === null ||
+        Array.isArray(properties)
+      ) {
+        console.error("Global properties must be a non-null object");
+        return;
+      }
+      globalProperties = { ...properties };
+      try {
+        localStorage.setItem(
+          "rybbit-global-properties",
+          JSON.stringify(globalProperties)
+        );
+      } catch (e) {
+        console.warn("Could not persist global properties to localStorage");
+      }
+    },
+
+    updateGlobalProperties: (properties) => {
+      if (
+        typeof properties !== "object" ||
+        properties === null ||
+        Array.isArray(properties)
+      ) {
+        console.error("Properties must be a non-null object");
+        return;
+      }
+      globalProperties = { ...globalProperties, ...properties };
+      try {
+        localStorage.setItem(
+          "rybbit-global-properties",
+          JSON.stringify(globalProperties)
+        );
+      } catch (e) {
+        console.warn("Could not persist global properties to localStorage");
+      }
+    },
+
+    clearGlobalProperties: () => {
+      globalProperties = {};
+      try {
+        localStorage.removeItem("rybbit-global-properties");
+      } catch (e) {
+        // localStorage not available, ignore
+      }
+    },
+
+    getGlobalProperties: () => ({ ...globalProperties }),
   };
 
   if (autoTrackPageview) {

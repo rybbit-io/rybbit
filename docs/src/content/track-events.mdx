@@ -68,6 +68,60 @@ if (currentUserId) {
 }
 ```
 
+## Global Properties
+
+Global properties are custom data that are automatically sent with every pageview and event. They're perfect for setting context that applies to all tracking calls, such as user subscription status, app version, or feature flags.
+
+### `window.rybbit.setGlobalProperties(properties)`
+
+Sets global properties that will be sent with all subsequent pageviews and events. This replaces any existing global properties.
+
+*   `properties` (Object): An object containing key-value pairs to be sent with every tracking call.
+
+```javascript
+// Set global properties
+window.rybbit.setGlobalProperties({
+  hasSubscription: true,
+  appVersion: "1.23",
+  userTier: "premium"
+});
+
+// All subsequent pageviews and events will include these properties
+window.rybbit.pageview(); // Will include global properties
+window.rybbit.event("Button Clicked"); // Will include global properties
+```
+
+### `window.rybbit.updateGlobalProperties(properties)`
+
+Updates existing global properties by merging with new ones. Existing keys are overwritten, new keys are added.
+
+```javascript
+// Update specific global properties
+window.rybbit.updateGlobalProperties({
+  appVersion: "1.24", // Updates existing
+  newFeature: true    // Adds new
+});
+```
+
+### `window.rybbit.clearGlobalProperties()`
+
+Clears all global properties.
+
+```javascript
+// Clear all global properties
+window.rybbit.clearGlobalProperties();
+```
+
+### `window.rybbit.getGlobalProperties()`
+
+Returns a copy of the current global properties.
+
+```javascript
+// Get current global properties
+const currentGlobals = window.rybbit.getGlobalProperties();
+console.log(currentGlobals);
+```
+
 {/* ### `window.rybbit.trackOutbound(url, text, target)`
 
 Manually tracks outbound link clicks. Useful for programmatic navigation or custom link handling.
@@ -81,7 +135,9 @@ Manually tracks outbound link clicks. Useful for programmatic navigation or cust
 window.rybbit.trackOutbound("https://example.com", "Example Site", "_blank");
 ``` */}
 
-## User Identification Example
+## Examples
+
+### User Identification Example
 
 Here's a typical workflow for user identification:
 
@@ -118,6 +174,72 @@ function checkUserStatus() {
 }
 ```
 
+### Global Properties Example
+
+```javascript
+// Set global context when app loads
+window.rybbit.setGlobalProperties({
+  appVersion: "1.23",
+  environment: "production",
+  hasSubscription: false
+});
+
+// When user subscribes
+function handleSubscription() {
+  window.rybbit.updateGlobalProperties({
+    hasSubscription: true,
+    subscriptionTier: "premium"
+  });
+  
+  // This event will include all global properties plus event-specific ones
+  window.rybbit.event("Subscription Purchased", {
+    plan: "yearly",
+    amount: 99.99
+  });
+  // Sent properties: { 
+  //   appVersion: "1.23", 
+  //   environment: "production", 
+  //   hasSubscription: true, 
+  //   subscriptionTier: "premium",
+  //   plan: "yearly", 
+  //   amount: 99.99 
+  // }
+}
+
+// Pageviews now automatically include global properties
+window.rybbit.pageview();
+// Sent properties: { 
+//   appVersion: "1.23", 
+//   environment: "production", 
+//   hasSubscription: true, 
+//   subscriptionTier: "premium" 
+// }
+```
+
+### Property Merging
+
+Event-specific properties take precedence over global properties when there are conflicts:
+
+```javascript
+// Set global properties
+window.rybbit.setGlobalProperties({
+  userId: "global_123",
+  source: "app"
+});
+
+// Track event with conflicting properties
+window.rybbit.event("Button Clicked", {
+  userId: "event_456", // This overrides the global userId
+  buttonType: "primary"
+});
+
+// Final properties sent: {
+//   userId: "event_456",  // Event property overrides global
+//   source: "app",        // Global property included
+//   buttonType: "primary" // Event-specific property
+// }
+```
+
 ## TypeScript Support
 
 Put this as `rybbit.d.ts` anywhere in your project to avoid having to do `(window as any).rybbit.event()` everywhere.
@@ -152,6 +274,30 @@ interface Rybbit {
      * @returns The current user ID or null if not set
      */
     getUserId: () => string | null;
+
+    /**
+     * Sets global properties that will be sent with all tracking calls
+     * Replaces any existing global properties
+     * @param properties Object containing key-value pairs
+     */
+    setGlobalProperties: (properties: Record<string, any>) => void;
+
+    /**
+     * Updates existing global properties by merging with new ones
+     * @param properties Object containing key-value pairs to merge
+     */
+    updateGlobalProperties: (properties: Record<string, any>) => void;
+
+    /**
+     * Clears all global properties
+     */
+    clearGlobalProperties: () => void;
+
+    /**
+     * Gets a copy of the current global properties
+     * @returns Object containing current global properties
+     */
+    getGlobalProperties: () => Record<string, any>;
 }
 
 declare global {
