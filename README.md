@@ -11,6 +11,7 @@
     <a href="https://rybbit.io/docs" target="_blank">Documentation</a> |
     <a href="https://discord.gg/DEhGb4hYBj" target="_blank">Discord</a> |
     <a href="https://github.com/rybbit-io/rybbit?tab=AGPL-3.0-1-ov-file" target="_blank">License (AGPL-3)</a>
+    <a href="https://github.com/rybbit-io/contribute.md" target="_blank">Contribute</a>
 </p>
 
 </p>
