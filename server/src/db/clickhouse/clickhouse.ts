@@ -4,6 +4,7 @@ import { IS_CLOUD } from "../../lib/const.js";
 export const clickhouse = createClient({
   url: process.env.CLICKHOUSE_HOST,
   database: process.env.CLICKHOUSE_DB,
+  username: process.env.CLICKHOUSE_USER,
   password: process.env.CLICKHOUSE_PASSWORD,
 });
 
