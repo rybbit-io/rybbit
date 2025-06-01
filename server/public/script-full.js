@@ -15,6 +15,18 @@
     });
   };
 
+  // Load rrweb library dynamically from CDN
+  const loadRrweb = () => {
+    return new Promise((resolve, reject) => {
+      const script = document.createElement("script");
+      script.src =
+        "https://cdn.jsdelivr.net/npm/rrweb@2.0.0-alpha.18/dist/rrweb.min.js";
+      script.onload = () => resolve();
+      script.onerror = () => reject(new Error("Failed to load rrweb library"));
+      document.head.appendChild(script);
+    });
+  };
+
   // Initialize web vitals loading
   loadWebVitals()
     .then(() => {
@@ -23,6 +35,23 @@
     .catch((e) => {
       console.warn("Failed to load web vitals library:", e);
     });
+
+  // Initialize rrweb loading if session replay is enabled
+  const enableSessionReplay =
+    scriptTag.getAttribute("data-enable-replay") === "true";
+  console.log(`[REPLAY] Session replay enabled: ${enableSessionReplay}`);
+
+  if (enableSessionReplay) {
+    console.log("[REPLAY] Loading rrweb library...");
+    loadRrweb()
+      .then(() => {
+        console.log("[REPLAY] rrweb library loaded successfully");
+        initSessionReplay();
+      })
+      .catch((e) => {
+        console.error("[REPLAY ERROR] Failed to load rrweb library:", e);
+      });
+  }
 
   // Check if the user has opted out of tracking via localStorage
   if (localStorage.getItem("disable-rybbit") !== null) {
@@ -43,15 +72,21 @@
     return;
   }
 
-  const SITE_ID =
+  const SITE_ID_STRING =
     scriptTag.getAttribute("data-site-id") || scriptTag.getAttribute("site-id");
 
-  if (!SITE_ID || isNaN(Number(SITE_ID))) {
+  if (!SITE_ID_STRING || isNaN(Number(SITE_ID_STRING))) {
     console.error(
       "Please provide a valid site ID using the data-site-id attribute"
     );
     return;
   }
+
+  // Convert to number to match backend Zod schema expectation
+  const SITE_ID = Number(SITE_ID_STRING);
+  console.log(
+    `[REPLAY] Site ID converted from string "${SITE_ID_STRING}" to number ${SITE_ID}`
+  );
 
   const debounceDuration = scriptTag.getAttribute("data-debounce")
     ? Math.max(0, parseInt(scriptTag.getAttribute("data-debounce")))
@@ -64,6 +99,27 @@
     scriptTag.getAttribute("data-track-query") !== "false";
   const trackOutbound =
     scriptTag.getAttribute("data-track-outbound") !== "false";
+
+  // Session replay configuration
+  const replaySampleRate = parseFloat(
+    scriptTag.getAttribute("data-replay-sample-rate") || "1.0"
+  );
+  const replayMaxDuration = parseInt(
+    scriptTag.getAttribute("data-replay-max-duration") || "300000"
+  ); // 5 minutes default
+  const replayMaskInputs =
+    scriptTag.getAttribute("data-replay-mask-inputs") !== "false";
+  const replayMaskSelectors =
+    scriptTag.getAttribute("data-replay-mask-selectors") ||
+    "input[type='password'], input[type='email'], .sensitive, [data-sensitive]";
+
+  // Log replay configuration
+  console.log("[REPLAY] Configuration:", {
+    sampleRate: replaySampleRate,
+    maxDuration: replayMaxDuration,
+    maskInputs: replayMaskInputs,
+    maskSelectors: replayMaskSelectors,
+  });
 
   let skipPatterns = [];
   try {
@@ -99,6 +155,15 @@
   } catch (e) {
     // localStorage not available, ignore
   }
+
+  // Session replay state
+  let replayRecorder = null;
+  let replayEvents = [];
+  let replaySessionId = null;
+  let replayStartTime = null;
+  let replayBatchTimeout = null;
+  const REPLAY_BATCH_SIZE = 50;
+  const REPLAY_BATCH_INTERVAL = 5000; // 5 seconds
 
   // Helper function to convert wildcard pattern to regex
   function patternToRegex(pattern) {
@@ -338,6 +403,202 @@
     }
   };
 
+  // Session replay functions
+  const shouldStartReplay = () => {
+    const randomValue = Math.random();
+    const shouldStart = randomValue < replaySampleRate;
+    console.log(
+      `[REPLAY] shouldStartReplay() called - random: ${randomValue.toFixed(4)}, sampleRate: ${replaySampleRate}, result: ${shouldStart}`
+    );
+    return shouldStart;
+  };
+
+  const sendReplayEvents = (events, isComplete = false) => {
+    if (!events.length) {
+      console.log("[REPLAY] sendReplayEvents called with empty events array");
+      return;
+    }
+
+    const payload = {
+      site_id: SITE_ID,
+      session_id: replaySessionId,
+      events: events,
+      is_complete: isComplete,
+      timestamp: new Date().toISOString(),
+    };
+
+    // Add custom user ID if available
+    if (customUserId) {
+      payload.user_id = customUserId;
+    }
+
+    const payloadSize = JSON.stringify(payload).length;
+    console.log(
+      `[REPLAY] Sending ${events.length} events (${payloadSize} bytes) to ${ANALYTICS_HOST}/replay/ingest, isComplete: ${isComplete}`
+    );
+
+    fetch(`${ANALYTICS_HOST}/replay/ingest`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
+      mode: "cors",
+      keepalive: true,
+    })
+      .then((response) => {
+        if (response.ok) {
+          console.log(`[REPLAY] Successfully sent ${events.length} events`);
+        } else {
+          console.error(
+            `[REPLAY ERROR] Failed to send events - Status: ${response.status} ${response.statusText}`
+          );
+        }
+      })
+      .catch((error) => {
+        console.error("[REPLAY ERROR] Network error sending events:", error);
+      });
+  };
+
+  const batchReplayEvents = () => {
+    if (replayEvents.length >= REPLAY_BATCH_SIZE) {
+      const eventsToSend = replayEvents.splice(0, REPLAY_BATCH_SIZE);
+      console.log(
+        `[REPLAY] Batching ${eventsToSend.length} events (batch size reached)`
+      );
+      sendReplayEvents(eventsToSend);
+    }
+
+    // Schedule next batch
+    if (replayBatchTimeout) {
+      clearTimeout(replayBatchTimeout);
+    }
+    replayBatchTimeout = setTimeout(() => {
+      if (replayEvents.length > 0) {
+        const eventsToSend = replayEvents.splice(0);
+        console.log(
+          `[REPLAY] Batching ${eventsToSend.length} events (timeout reached)`
+        );
+        sendReplayEvents(eventsToSend);
+      }
+    }, REPLAY_BATCH_INTERVAL);
+  };
+
+  const stopReplay = () => {
+    console.log("[REPLAY] Stopping replay recording");
+
+    if (replayRecorder) {
+      console.log("[REPLAY] Calling rrweb recorder stop function");
+      replayRecorder();
+      replayRecorder = null;
+    }
+
+    // Send remaining events
+    if (replayEvents.length > 0) {
+      console.log(
+        `[REPLAY] Sending final ${replayEvents.length} events before stopping`
+      );
+      sendReplayEvents(replayEvents, true);
+      replayEvents = [];
+    }
+
+    if (replayBatchTimeout) {
+      clearTimeout(replayBatchTimeout);
+      replayBatchTimeout = null;
+      console.log("[REPLAY] Cleared batch timeout");
+    }
+
+    console.log("[REPLAY] Replay recording stopped");
+  };
+
+  const initSessionReplay = () => {
+    console.log("[REPLAY] initSessionReplay() called");
+
+    if (typeof rrweb === "undefined") {
+      console.warn("[REPLAY WARNING] rrweb library not available");
+      return;
+    }
+
+    if (!shouldStartReplay()) {
+      console.log("[REPLAY] Replay not started due to sample rate");
+      return;
+    }
+
+    try {
+      replaySessionId = crypto.randomUUID
+        ? crypto.randomUUID()
+        : "xxxx-xxxx-4xxx-yxxx".replace(/[xy]/g, function (c) {
+            const r = (Math.random() * 16) | 0;
+            const v = c === "x" ? r : (r & 0x3) | 0x8;
+            return v.toString(16);
+          });
+      replayStartTime = Date.now();
+
+      console.log(
+        `[REPLAY] Generated session ID: ${replaySessionId}, start time: ${new Date(replayStartTime).toISOString()}`
+      );
+
+      // Parse mask selectors
+      const maskSelectors = replayMaskSelectors
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean);
+
+      console.log("[REPLAY] Parsed mask selectors:", maskSelectors);
+
+      const recordOptions = {
+        emit(event) {
+          console.log(
+            `[REPLAY] Event emitted - type: ${event.type}, timestamp: ${event.timestamp}`
+          );
+          replayEvents.push(event);
+          batchReplayEvents();
+        },
+        maskAllInputs: replayMaskInputs,
+        maskTextSelector: maskSelectors.join(","),
+        maskInputSelector: replayMaskInputs ? "input" : "",
+        blockSelector: ".rybbit-no-record, [data-rybbit-no-record]",
+        sampling: {
+          mousemove: true,
+          mouseInteraction: true,
+          scroll: 150, // Sample every 150ms
+          input: "last", // Only record the final input value
+        },
+        recordCanvas: false, // Disable canvas recording for performance
+        collectFonts: false, // Disable font collection for performance
+      };
+
+      console.log(
+        "[REPLAY] Starting rrweb.record() with options:",
+        recordOptions
+      );
+
+      replayRecorder = rrweb.record(recordOptions);
+
+      console.log("[REPLAY] rrweb recording started successfully");
+
+      // Stop recording after max duration
+      setTimeout(() => {
+        console.log(
+          `[REPLAY] Max duration (${replayMaxDuration}ms) reached, stopping replay`
+        );
+        stopReplay();
+      }, replayMaxDuration);
+
+      // Stop recording on page unload
+      window.addEventListener("beforeunload", () => {
+        console.log("[REPLAY] Page unloading, stopping replay");
+        stopReplay();
+      });
+      window.addEventListener("pagehide", () => {
+        console.log("[REPLAY] Page hiding, stopping replay");
+        stopReplay();
+      });
+    } catch (e) {
+      console.error("[REPLAY ERROR] Error initializing session replay:", e);
+    }
+  };
+
   const trackPageview = () => track("pageview");
 
   const debouncedTrackPageview =
@@ -411,6 +672,44 @@
     },
 
     getUserId: () => customUserId,
+
+    // Session replay methods
+    startReplay: () => {
+      console.log(
+        `[REPLAY] Public API startReplay() called - enableSessionReplay: ${enableSessionReplay}, rrweb available: ${typeof rrweb !== "undefined"}, recorder active: ${replayRecorder !== null}`
+      );
+      if (
+        enableSessionReplay &&
+        typeof rrweb !== "undefined" &&
+        !replayRecorder
+      ) {
+        initSessionReplay();
+      } else {
+        console.warn(
+          "[REPLAY WARNING] Cannot start replay - conditions not met"
+        );
+      }
+    },
+
+    stopReplay: () => {
+      console.log("[REPLAY] Public API stopReplay() called");
+      stopReplay();
+    },
+
+    isReplayActive: () => {
+      const isActive = replayRecorder !== null;
+      console.log(
+        `[REPLAY] Public API isReplayActive() called - result: ${isActive}`
+      );
+      return isActive;
+    },
+
+    getReplaySessionId: () => {
+      console.log(
+        `[REPLAY] Public API getReplaySessionId() called - result: ${replaySessionId}`
+      );
+      return replaySessionId;
+    },
   };
 
   if (autoTrackPageview) {

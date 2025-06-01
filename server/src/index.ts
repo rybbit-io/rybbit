@@ -31,6 +31,9 @@ import { getPerformanceTimeSeries } from "./api/analytics/getPerformanceTimeSeri
 import { getRetention } from "./api/analytics/getRetention.js";
 import { getSession } from "./api/analytics/getSession.js";
 import { getSessions } from "./api/analytics/getSessions.js";
+import { ingestReplayEvents } from "./api/replay/ingestEvents.js";
+import { getReplaySessions } from "./api/replay/getSessions.js";
+import { getReplaySession } from "./api/replay/getSession.js";
 import { getSingleCol } from "./api/analytics/getSingleCol.js";
 import { getUserInfo } from "./api/analytics/getUserInfo.js";
 import { getUserSessionCount } from "./api/analytics/getUserSessionCount.js";
@@ -129,6 +132,7 @@ const PUBLIC_ROUTES: string[] = [
   "/api/auth/callback/google",
   "/api/auth/callback/github",
   "/api/stripe/webhook",
+  "/api/replay/ingest",
 ];
 
 // Define analytics routes that can be public
@@ -161,6 +165,8 @@ const ANALYTICS_ROUTES = [
   "/api/performance/time-series/",
   "/api/performance/by-path/",
   "/api/performance/by-dimension/",
+  "/api/replay/sessions/",
+  "/api/replay/session/",
 ];
 
 server.addHook("onRequest", async (request, reply) => {
@@ -248,6 +254,11 @@ server.get("/api/performance/overview/:site", getPerformanceOverview);
 server.get("/api/performance/time-series/:site", getPerformanceTimeSeries);
 server.get("/api/performance/by-path/:site", getPerformanceByPath);
 server.get("/api/performance/by-dimension/:site", getPerformanceByDimension);
+
+// Session Replay
+server.post("/api/replay/ingest", ingestReplayEvents);
+server.get("/api/replay/sessions/:site", getReplaySessions);
+server.get("/api/replay/session/:sessionId/:site", getReplaySession);
 
 // Administrative
 server.get("/api/config", getConfig);

@@ -34,6 +34,7 @@
     "pg": "8.16.0",
     "postgres": "3.4.5",
     "resend": "^4.5.1",
+    "rrweb": "^2.0.0-alpha.4",
     "sqlstring": "2.3.3",
     "stripe": "18.1.0",
     "ua-parser-js": "2.0.3",

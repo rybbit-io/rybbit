@@ -11,17 +11,17 @@ import {
   Settings,
   Split,
   User,
-  File,
+  Video,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useGetSite } from "../../../../api/admin/sites";
 import { SiteSettings } from "../../../../components/SiteSettings/SiteSettings";
 import { authClient } from "../../../../lib/auth";
+import { IS_CLOUD } from "../../../../lib/const";
 import { cn } from "../../../../lib/utils";
 import LiveUserCount from "./LiveUserCount";
 import { SiteSelector } from "./SiteSelector";
-import { IS_CLOUD } from "../../../../lib/const";
 
 export function Sidebar() {
   const session = authClient.useSession();
@@ -105,6 +105,12 @@ export function Sidebar() {
           active={isActiveTab("sessions")}
           href={getTabPath("sessions")}
           icon={<Rewind className="w-4 h-4" />}
+        />
+        <SidebarLink
+          label="Replays"
+          active={isActiveTab("replays")}
+          href={getTabPath("replays")}
+          icon={<Video className="w-4 h-4" />}
         />
         <SidebarLink
           label="Users"
