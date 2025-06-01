@@ -1,0 +1,19 @@
+{{- if .Values.clickhouse.persistence.enabled }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ .Release.Name }}-clickhouse-pvc
+  {{- with .Values.clickhouse.persistence.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  accessModes:
+    - {{ .Values.clickhouse.persistence.accessMode | quote }}
+  {{- if .Values.clickhouse.persistence.storageClass }}
+  storageClassName: {{ .Values.clickhouse.persistence.storageClass | quote }}
+  {{- end }}
+  resources:
+    requests:
+      storage: {{ .Values.clickhouse.persistence.size | quote }}
+{{- end }} 

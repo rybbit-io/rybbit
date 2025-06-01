@@ -1,0 +1,31 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Release.Name }}-backend
+  labels:
+    app: {{ .Release.Name }}-backend
+spec:
+  type: ClusterIP
+  ports:
+    - port: 80
+      targetPort: 3001
+      protocol: TCP
+      name: http
+  selector:
+    app: {{ .Release.Name }}-backend
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Release.Name }}-client
+  labels:
+    app: {{ .Release.Name }}-client
+spec:
+  type: ClusterIP
+  ports:
+    - port: 80
+      targetPort: 3002
+      protocol: TCP
+      name: http
+  selector:
+    app: {{ .Release.Name }}-client 

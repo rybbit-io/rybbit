@@ -1,0 +1,50 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-clickhouse
+  labels:
+    app: {{ .Release.Name }}-clickhouse
+spec:
+  replicas: {{ .Values.clickhouse.replicaCount }}
+  selector:
+    matchLabels:
+      app: {{ .Release.Name }}-clickhouse
+  template:
+    metadata:
+      labels:
+        app: {{ .Release.Name }}-clickhouse
+    spec:
+      containers:
+        - name: clickhouse
+          image: "{{ .Values.clickhouse.image.repository }}:{{ .Values.clickhouse.image.tag }}"
+          imagePullPolicy: {{ .Values.clickhouse.image.pullPolicy }}
+          resources:
+            {{- toYaml .Values.clickhouse.resources | nindent 12 }}
+          env:
+            - name: CLICKHOUSE_DB
+              value: {{ .Values.clickhouse.db | quote }}
+            - name: CLICKHOUSE_USER
+              valueFrom:
+                secretKeyRef:
+                  name: rybbit-secrets
+                  key: clickhouse-user
+            - name: CLICKHOUSE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: rybbit-secrets
+                  key: clickhouse-password
+          ports:
+            - containerPort: 8123
+            - containerPort: 9000
+          volumeMounts:
+            - name: clickhouse-data
+              mountPath: /var/lib/clickhouse
+            - name: clickhouse-config
+              mountPath: /etc/clickhouse-server/config.d
+      volumes:
+        - name: clickhouse-data
+          persistentVolumeClaim:
+            claimName: {{ .Release.Name }}-clickhouse-pvc
+        - name: clickhouse-config
+          configMap:
+            name: {{ .Release.Name }}-clickhouse-config 
