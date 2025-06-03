@@ -5,6 +5,7 @@
   "main": "dist/index.js",
   "type": "module",
   "scripts": {
+    "pack-script": "terser --compress --mangle < public/script-full.js | tr -d '\\n' > public/script.js",
     "dev": "tsc && node dist/index.js",
     "build": "tsc",
     "start": "node dist/index.js",
@@ -46,6 +47,7 @@
     "@types/pg": "8.15.1",
     "@types/sqlstring": "2.3.2",
     "drizzle-kit": "0.31.1",
+    "terser": "^5.40.0",
     "ts-node-dev": "2.0.0",
     "tsx": "4.19.4",
     "typescript": "5.8.3"

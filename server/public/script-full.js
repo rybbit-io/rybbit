@@ -1,4 +1,5 @@
 // Rybbit Analytics Script
+// NOTE: script.js is generated via `npm run pack-script` from the `server` directory
 (function () {
   const scriptTag = document.currentScript;
   const ANALYTICS_HOST = scriptTag.getAttribute("src").split("/script.js")[0];
@@ -24,8 +25,8 @@
       console.warn("Failed to load web vitals library:", e);
     });
 
-  // Check if the user has opted out of tracking via localStorage
-  if (localStorage.getItem("disable-rybbit") !== null) {
+  // Check if the user has opted out of tracking
+  if (!window.__RYBBIT_OPTOUT__ && localStorage.getItem("disable-rybbit") !== null) {
     // Create a no-op implementation to ensure the API still works
     window.rybbit = {
       pageview: () => {},
