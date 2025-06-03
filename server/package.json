@@ -5,9 +5,9 @@
   "main": "dist/index.js",
   "type": "module",
   "scripts": {
-    "pack-script": "terser --compress --mangle < public/script-full.js | tr -d '\\n' > public/script.js",
-    "dev": "tsc && node dist/index.js",
-    "build": "tsc",
+    "pack-script": "bash -c 'if [ public/script-full.js -nt public/script.js ]; then terser --compress --mangle < public/script-full.js | tr -d \"\\n\" > public/script.js; else echo \"script.js up to date\"; fi'",
+    "dev": "tsc && npm run pack-script && node dist/index.js",
+    "build": "tsc && npm run pack-script",
     "start": "node dist/index.js",
     "db:generate": "drizzle-kit generate --config=drizzle.config.ts",
     "db:migrate": "drizzle-kit migrate --config=drizzle.config.ts",
