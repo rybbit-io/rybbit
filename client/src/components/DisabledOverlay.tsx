@@ -60,7 +60,7 @@ export const DisabledOverlay: React.FC<DisabledOverlayProps> = ({
 
   const disabled = subscription?.eventLimit === DEFAULT_EVENT_LIMIT;
 
-  if (!disabled) {
+  if (!disabled || site?.siteId == 904) {
     return <>{children}</>;
   }
 
