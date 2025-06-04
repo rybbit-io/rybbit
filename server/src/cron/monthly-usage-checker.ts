@@ -55,9 +55,10 @@ async function getOrganizationSubscriptionInfo(orgData: {
   createdAt: string;
   name: string;
 }): Promise<[number, string | null]> {
-  if (orgData.name === "tomato 2") {
-    return [Infinity, getStartOfMonth()];
+  if (orgData.name === "Zam" || orgData.name === "tomato 2") {
+    return [1_000_000_000, getStartOfMonth()];
   }
+
   if (!orgData.stripeCustomerId) {
     // No Stripe customer ID, use default limit and start of current month
     return [DEFAULT_EVENT_LIMIT, getStartOfMonth()];
