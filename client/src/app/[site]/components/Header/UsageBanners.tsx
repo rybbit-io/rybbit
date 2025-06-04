@@ -11,7 +11,7 @@ import { Button } from "../../../../components/ui/button";
 export function UsageBanners() {
   const { site, subscription } = useCurrentSite();
 
-  if (!site) return null;
+  if (!site || site.siteId == 904) return null;
 
   // Format numbers with commas
   const formatNumber = (num: number = 0) => {
