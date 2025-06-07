@@ -43,6 +43,7 @@ export async function middleware(request: NextRequest) {
       "admin",
       "organization",
       "account",
+      "trpc-test",
       "_next",
       "api",
     ];

@@ -14,6 +14,7 @@ import { Card, CardDescription, CardTitle } from "../components/ui/card";
 import { useSetPageTitle } from "../hooks/useSetPageTitle";
 import { authClient } from "../lib/auth";
 import { AddSite } from "./components/AddSite";
+import Link from "next/link";
 
 export default function Home() {
   useSetPageTitle("Rybbit · Home");
@@ -65,8 +66,14 @@ export default function Home() {
   return (
     <StandardPage>
       <div className="flex justify-between items-center my-4">
-        <div>
+        <div className="flex items-center gap-4">
           <OrganizationSelector />
+          {/* Temporary link for testing tRPC */}
+          <Link href="/test-trpc">
+            <Button variant="outline" size="sm">
+              Test tRPC
+            </Button>
+          </Link>
         </div>
         {/* <div className="text-2xl font-bold">{sites?.length} Websites</div> */}
         <AddSite disabled={!canAddSites} />

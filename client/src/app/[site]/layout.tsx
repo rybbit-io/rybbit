@@ -9,6 +9,7 @@ import { useSyncStateWithUrl } from "../../lib/urlParams";
 import { Header } from "./components/Header/Header";
 import { Sidebar } from "./components/Sidebar/Sidebar";
 import { Footer } from "../components/Footer";
+import { TRPCTest } from "../../components/TRPCTest";
 
 export default function SiteLayout({
   children,
@@ -55,6 +56,7 @@ export default function SiteLayout({
             {/* <div className="px-4 py-2 max-w-[1400px] mx-auto w-full mb-4"> */}
             <Header />
             <div>{children}</div>
+            <TRPCTest />
             {!pathname.includes("/map") && !pathname.includes("/realtime") && (
               <Footer />
             )}

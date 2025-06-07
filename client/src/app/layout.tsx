@@ -11,6 +11,7 @@ import { useStopImpersonation } from "@/hooks/useStopImpersonation";
 import { ReactScan } from "./ReactScan";
 import { OrganizationInitializer } from "../components/OrganizationInitializer";
 import { AuthenticationGuard } from "../components/AuthenticationGuard";
+import { TRPCProvider } from "../components/TRPCProvider";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -32,11 +33,13 @@ export default function RootLayout({
             inter.className
           )}
         >
-          <QueryProvider>
-            <OrganizationInitializer />
-            <AuthenticationGuard />
-            {children}
-          </QueryProvider>
+          <TRPCProvider>
+            <QueryProvider>
+              <OrganizationInitializer />
+              <AuthenticationGuard />
+              {children}
+            </QueryProvider>
+          </TRPCProvider>
           <Toaster />
         </body>
       </TooltipProvider>

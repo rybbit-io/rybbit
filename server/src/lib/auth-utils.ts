@@ -128,7 +128,31 @@ export async function getUserHasAccessToSitePublic(
     getSitesUserHasAccessTo(req),
     isSitePublic(siteId),
   ]);
-  return sites.some((site) => site.siteId === Number(siteId)) || isPublic;
+
+  console.log(
+    "🔍 DEBUG: getUserHasAccessToSitePublic - siteId:",
+    siteId,
+    "type:",
+    typeof siteId
+  );
+  console.log(
+    "🔍 DEBUG: getUserHasAccessToSitePublic - Number(siteId):",
+    Number(siteId)
+  );
+  console.log(
+    "🔍 DEBUG: getUserHasAccessToSitePublic - user sites:",
+    sites.map((s) => ({ siteId: s.siteId, domain: s.domain }))
+  );
+  console.log("🔍 DEBUG: getUserHasAccessToSitePublic - isPublic:", isPublic);
+
+  const hasAccess =
+    sites.some((site) => site.siteId === Number(siteId)) || isPublic;
+  console.log(
+    "🔍 DEBUG: getUserHasAccessToSitePublic - final result:",
+    hasAccess
+  );
+
+  return hasAccess;
 }
 
 export async function getUserHasAccessToSite(

@@ -4,6 +4,9 @@ import { toNodeHandler } from "better-auth/node";
 import Fastify from "fastify";
 import { dirname, join } from "path";
 import { fileURLToPath } from "url";
+import { fastifyTRPCPlugin } from "@trpc/server/adapters/fastify";
+import { appRouter } from "./trpc/router.js";
+import { createContext } from "./trpc/context.js";
 import { getAdminSites } from "./api/admin/getAdminSites.js";
 import { getAdminOrganizations } from "./api/admin/getAdminOrganizations.js";
 import { createFunnel } from "./api/analytics/createFunnel.js";
@@ -120,6 +123,15 @@ server.register(
   { auth: auth! }
 );
 
+// Register tRPC
+server.register(fastifyTRPCPlugin, {
+  prefix: "/trpc",
+  trpcOptions: {
+    router: appRouter,
+    createContext,
+  },
+});
+
 const PUBLIC_ROUTES: string[] = [
   "/api/health",
   "/api/track",
@@ -129,6 +141,7 @@ const PUBLIC_ROUTES: string[] = [
   "/api/auth/callback/google",
   "/api/auth/callback/github",
   "/api/stripe/webhook",
+  "/trpc", // Allow tRPC routes to handle their own auth
 ];
 
 // Define analytics routes that can be public
