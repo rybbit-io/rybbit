@@ -47,7 +47,9 @@ export function Sites() {
     return sites.filter((site) => {
       const lowerSearchQuery = searchQuery.toLowerCase();
       return (
-        site.domain.toLowerCase().includes(lowerSearchQuery) ||
+        site.domains.some((domain) =>
+          domain.toLowerCase().includes(lowerSearchQuery)
+        ) ||
         (site.organizationOwnerEmail &&
           site.organizationOwnerEmail.toLowerCase().includes(lowerSearchQuery))
       );
@@ -82,7 +84,7 @@ export function Sites() {
         cell: ({ row }) => (
           <div className="font-medium">
             <Link
-              href={`https://${row.original.domain}`}
+              href={`https://${row.original.domains[0]}`}
               target="_blank"
               className="hover:underline"
             >

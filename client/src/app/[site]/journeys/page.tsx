@@ -52,7 +52,8 @@ export default function JourneysPage() {
   const svgRef = useRef<SVGSVGElement>(null);
 
   useEffect(() => {
-    if (!data?.journeys || !svgRef.current || !siteMetadata?.domain) return;
+    if (!data?.journeys || !svgRef.current || !siteMetadata?.domains?.[0])
+      return;
 
     const svg = d3.select(svgRef.current);
     svg.selectAll("*").remove();
@@ -401,7 +402,7 @@ export default function JourneysPage() {
     const pathLinks = nodeGroups
       .append("a") // Append 'a' element for the link
       // Construct the URL using the domain from siteMetadata and the path from the node name
-      .attr("xlink:href", (d) => `https://${siteMetadata.domain}${d.name}`)
+      .attr("xlink:href", (d) => `https://${siteMetadata.domains[0]}${d.name}`)
       .attr("target", "_blank") // Open link in a new tab
       .attr("rel", "noopener noreferrer"); // Security best practice for target="_blank"
 

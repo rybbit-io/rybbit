@@ -42,7 +42,7 @@ export async function getSite(
     return reply.status(200).send({
       siteId: site.siteId,
       name: site.name,
-      domain: site.domain,
+      domains: site.domains,
       createdAt: site.createdAt,
       updatedAt: site.updatedAt,
       createdBy: site.createdBy,

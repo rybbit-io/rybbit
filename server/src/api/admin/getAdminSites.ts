@@ -77,7 +77,7 @@ export async function getAdminSites(
   const enrichedSites = sitesData.map((site) => {
     return {
       siteId: site.siteId,
-      domain: site.domain,
+      domains: site.domains,
       createdAt: site.createdAt,
       public: site.public,
       eventsLast24Hours: siteEventMap.get(site.siteId) || 0,

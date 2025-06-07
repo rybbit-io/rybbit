@@ -8,7 +8,7 @@ import { authClient } from "../../lib/auth";
 export type SiteResponse = {
   siteId: number;
   name: string;
-  domain: string;
+  domains: string[];
   createdAt: string;
   updatedAt: string;
   createdBy: string;
@@ -22,7 +22,7 @@ export type SiteResponse = {
 export type GetSitesResponse = {
   siteId: number;
   name: string;
-  domain: string;
+  domains: string[];
   createdAt: string;
   updatedAt: string;
   createdBy: string;
@@ -50,7 +50,7 @@ export type GetSitesFromOrgResponse = {
   sites: Array<{
     siteId: number;
     name: string;
-    domain: string;
+    domains: string[];
     createdAt: string;
     updatedAt: string;
     createdBy: string;
@@ -84,7 +84,7 @@ export function useGetSitesFromOrg(organizationId?: string) {
 }
 
 export function addSite(
-  domain: string,
+  domains: string,
   name: string,
   organizationId: string,
   settings?: {
@@ -96,7 +96,7 @@ export function addSite(
   return authedFetchWithError<{ siteId: number }>(`${BACKEND_URL}/add-site`, {
     method: "POST",
     body: JSON.stringify({
-      domain,
+      domains,
       name,
       organizationId,
       public: settings?.isPublic || false,
@@ -115,12 +115,12 @@ export function deleteSite(siteId: number) {
   });
 }
 
-export function changeSiteDomain(siteId: number, newDomain: string) {
+export function changeSiteDomain(siteId: number, newDomains: string) {
   return authedFetchWithError(`${BACKEND_URL}/change-site-domain`, {
     method: "POST",
     body: JSON.stringify({
       siteId,
-      newDomain,
+      newDomains,
     }),
     headers: {
       "Content-Type": "application/json",

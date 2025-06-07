@@ -183,13 +183,13 @@ async function validateOrigin(siteId: string, requestOrigin?: string) {
     const numericSiteId =
       typeof siteId === "string" ? parseInt(siteId, 10) : siteId;
 
-    // Get the domain associated with this site
-    const siteDomain = siteConfig.getSiteDomain(numericSiteId);
+    // Get the domains associated with this site
+    const siteDomains = siteConfig.getSiteDomains(numericSiteId);
 
-    if (!siteDomain) {
+    if (!siteDomains || siteDomains.length === 0) {
       return {
         success: false,
-        error: "Site not found or has no registered domain",
+        error: "Site not found or has no registered domains",
       };
     }
 
@@ -207,10 +207,14 @@ async function validateOrigin(siteId: string, requestOrigin?: string) {
 
       // Normalize domains by removing 'www.' prefix if present
       const normalizedOriginHost = originUrl.hostname.replace(/^www\./, "");
-      const normalizedSiteDomain = siteDomain.replace(/^www\./, "");
 
-      // Check if the normalized domains match
-      if (normalizedOriginHost !== normalizedSiteDomain) {
+      // Check if the normalized origin matches any of the site's domains
+      const isAllowed = siteDomains.some((domain) => {
+        const normalizedSiteDomain = domain.replace(/^www\./, "");
+        return normalizedOriginHost === normalizedSiteDomain;
+      });
+
+      if (!isAllowed) {
         return {
           success: false,
           error: `Origin mismatch. Received: ${requestOrigin}`,

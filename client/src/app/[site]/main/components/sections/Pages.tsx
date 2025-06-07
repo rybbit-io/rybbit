@@ -55,7 +55,7 @@ export function Pages() {
               getLabel={(e) =>
                 truncateString(e.value, MAX_LABEL_LENGTH) || "Other"
               }
-              getLink={(e) => `https://${siteMetadata?.domain}${e.value}`}
+              getLink={(e) => `https://${siteMetadata?.domains?.[0]}${e.value}`}
               expanded={expanded}
               close={close}
             />
@@ -71,7 +71,7 @@ export function Pages() {
               }
               // getLink={(e) =>
               //   e.pathname
-              //     ? `https://${siteMetadata?.domain}${e.pathname}`
+              //     ? `https://${siteMetadata?.domains?.[0]}${e.pathname}`
               //     : "#"
               // }
               expanded={expanded}
@@ -87,7 +87,7 @@ export function Pages() {
               getLabel={(e) =>
                 truncateString(e.value, MAX_LABEL_LENGTH) || "Other"
               }
-              getLink={(e) => `https://${siteMetadata?.domain}${e.value}`}
+              getLink={(e) => `https://${siteMetadata?.domains?.[0]}${e.value}`}
               expanded={expanded}
               close={close}
             />
@@ -101,7 +101,7 @@ export function Pages() {
               getLabel={(e) =>
                 truncateString(e.value, MAX_LABEL_LENGTH) || "Other"
               }
-              getLink={(e) => `https://${siteMetadata?.domain}${e.value}`}
+              getLink={(e) => `https://${siteMetadata?.domains?.[0]}${e.value}`}
               expanded={expanded}
               close={close}
             />

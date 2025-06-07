@@ -20,7 +20,7 @@ export interface AdminOrganizationData {
   sites: {
     siteId: number;
     name: string;
-    domain: string;
+    domains: string[];
     createdAt: string;
     eventsLast24Hours: number;
   }[];

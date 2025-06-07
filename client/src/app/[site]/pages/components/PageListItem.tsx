@@ -79,8 +79,8 @@ export function PageListItem({
     : isLoadingRegular;
 
   // External URL for the page
-  const pageUrl = siteMetadata?.domain
-    ? `https://${siteMetadata.domain}${pageData.value}`
+  const pageUrl = siteMetadata?.domains?.[0]
+    ? `https://${siteMetadata.domains[0]}${pageData.value}`
     : "";
 
   // Fetch page metadata using TanStack Query

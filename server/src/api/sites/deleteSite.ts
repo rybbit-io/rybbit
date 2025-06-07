@@ -3,7 +3,6 @@ import { FastifyReply, FastifyRequest } from "fastify";
 import { clickhouse } from "../../db/clickhouse/clickhouse.js";
 import { db } from "../../db/postgres/postgres.js";
 import { sites } from "../../db/postgres/schema.js";
-import { loadAllowedDomains } from "../../lib/allowedDomains.js";
 import { getUserHasAdminAccessToSite } from "../../lib/auth-utils.js";
 import { siteConfig } from "../../lib/siteConfig.js";
 
@@ -25,7 +24,7 @@ export async function deleteSite(
   await clickhouse.command({
     query: `DELETE FROM events WHERE site_id = ${id}`,
   });
-  await loadAllowedDomains();
+  // Site domains are now managed through siteConfig cache
 
   // Remove the site from the siteConfig cache
   siteConfig.removeSite(Number(id));

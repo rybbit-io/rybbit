@@ -56,7 +56,6 @@ import { getUserOrganizations } from "./api/user/getUserOrganizations.js";
 import { listOrganizationMembers } from "./api/user/listOrganizationMembers.js";
 import { initializeCronJobs } from "./cron/index.js";
 import { initializeClickhouse } from "./db/clickhouse/clickhouse.js";
-import { allowList, loadAllowedDomains } from "./lib/allowedDomains.js";
 import { getSessionFromReq, mapHeaders } from "./lib/auth-utils.js";
 import { auth } from "./lib/auth.js";
 import { IS_CLOUD } from "./lib/const.js";
@@ -79,7 +78,17 @@ const server = Fastify({
 
 server.register(cors, {
   origin: (origin, callback) => {
-    if (!origin || allowList.includes(normalizeOrigin(origin))) {
+    if (!origin) {
+      callback(null, true);
+      return;
+    }
+
+    const normalizedOrigin = normalizeOrigin(origin);
+
+    // Check if origin matches any site domain
+    const isAllowed = siteConfig.isAnyDomainAllowed(normalizedOrigin);
+
+    if (isAllowed) {
       callback(null, true);
     } else {
       callback(new Error("Not allowed by CORS"), false);
@@ -291,7 +300,6 @@ const start = async () => {
     console.info("Starting server...");
     // Initialize the database
     await Promise.all([initializeClickhouse()]);
-    await loadAllowedDomains();
 
     // Load site configurations cache
     await siteConfig.loadSiteConfigs();

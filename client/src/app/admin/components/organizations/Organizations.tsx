@@ -80,7 +80,9 @@ export function Organizations() {
       return (
         org.name.toLowerCase().includes(lowerSearchQuery) ||
         org.sites.some((site) =>
-          site.domain.toLowerCase().includes(lowerSearchQuery)
+          site.domains.some((domain) =>
+            domain.toLowerCase().includes(lowerSearchQuery)
+          )
         ) ||
         org.members.some(
           (member) =>
@@ -460,7 +462,7 @@ export function Organizations() {
                                   >
                                     <div className="flex flex-col">
                                       <span className="font-medium">
-                                        {site.domain}
+                                        {site.domains[0]}
                                       </span>
                                       <span className="text-xs text-neutral-400">
                                         {site.eventsLast24Hours.toLocaleString()}{" "}

@@ -52,7 +52,7 @@ export const sites = pgTable(
   {
     siteId: serial("site_id").primaryKey().notNull(),
     name: text("name").notNull(),
-    domain: text("domain").notNull().unique(),
+    domains: text("domains").array().notNull(),
     createdAt: timestamp("created_at").defaultNow(),
     updatedAt: timestamp("updated_at").defaultNow(),
     createdBy: text("created_by")

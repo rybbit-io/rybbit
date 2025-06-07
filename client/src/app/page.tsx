@@ -82,7 +82,7 @@ export default function Home() {
             <SiteCard
               key={site.siteId}
               siteId={site.siteId}
-              domain={site.domain}
+              domain={site.domains[0]}
             />
           );
         })}

@@ -37,6 +37,21 @@ function isValidDomain(domain: string): boolean {
   return domainRegex.test(domain);
 }
 
+/**
+ * Validates a comma-separated list of domains
+ */
+function isValidDomains(domainsString: string): boolean {
+  if (!domainsString.trim()) {
+    return false;
+  }
+
+  const domains = domainsString.split(",").map((d) => d.trim());
+  return (
+    domains.length > 0 &&
+    domains.every((domain) => domain && isValidDomain(domain))
+  );
+}
+
 export function AddSite({
   trigger,
   disabled,
@@ -56,7 +71,7 @@ export function AddSite({
   const finalDisabled = disabled || isDisabledDueToLimit;
 
   const [open, setOpen] = useState(false);
-  const [domain, setDomain] = useState("");
+  const [domains, setDomains] = useState("");
   const [isPublic, setIsPublic] = useState(false);
   const [saltUserIds, setSaltUserIds] = useState(false);
   const [error, setError] = useState("");
@@ -70,15 +85,17 @@ export function AddSite({
     }
 
     // Validate before attempting to add
-    if (!isValidDomain(domain)) {
+    if (!isValidDomains(domains)) {
       setError(
-        "Invalid domain format. Must be a valid domain like example.com or sub.example.com"
+        "Invalid domain format. Must be valid domains like example.com or example.com, app.example.com"
       );
       return;
     }
 
     try {
-      await addSite(domain, domain, activeOrganization.id, {
+      // Use the first domain as the site name if no explicit name is provided
+      const firstDomain = domains.split(",")[0].trim();
+      await addSite(domains, firstDomain, activeOrganization.id, {
         isPublic,
         saltUserIds,
       });
@@ -92,7 +109,7 @@ export function AddSite({
   };
 
   const resetForm = () => {
-    setDomain("");
+    setDomains("");
     setError("");
     setIsPublic(false);
     setSaltUserIds(false);
@@ -148,17 +165,20 @@ export function AddSite({
           <div className="grid gap-4 py-2">
             <div className="grid w-full items-center gap-1.5">
               <Label
-                htmlFor="domain"
+                htmlFor="domains"
                 className="text-sm font-medium text-white"
               >
-                Domain
+                Domains
               </Label>
               <Input
-                id="domain"
-                value={domain}
-                onChange={(e) => setDomain(e.target.value.toLowerCase())}
-                placeholder="example.com or sub.example.com"
+                id="domains"
+                value={domains}
+                onChange={(e) => setDomains(e.target.value.toLowerCase())}
+                placeholder="example.com, app.example.com"
               />
+              <p className="text-xs text-muted-foreground">
+                Enter one or more domains separated by commas
+              </p>
             </div>
             {/* Public Analytics Setting */}
             <div className="flex items-center justify-between">
@@ -220,7 +240,7 @@ export function AddSite({
               type="submit"
               variant={"success"}
               onClick={handleSubmit}
-              disabled={!domain}
+              disabled={!domains.trim()}
             >
               Add
             </Button>

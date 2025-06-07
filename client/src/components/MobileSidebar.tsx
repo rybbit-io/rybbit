@@ -37,7 +37,7 @@ export function MobileSidebar() {
           <Sidebar />
         </SheetContent>
       </Sheet>
-      {site && <Favicon domain={site.domain} className="w-6 h-6" />}
+      {site && <Favicon domain={site.domains[0]} className="w-6 h-6" />}
     </div>
   );
 }

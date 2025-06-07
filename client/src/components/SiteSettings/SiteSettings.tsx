@@ -75,7 +75,7 @@ export function SiteSettingsInner({
     userOrganizationsData?.[0]?.role === "member";
 
   const router = useRouter();
-  const [newDomain, setNewDomain] = useState(siteMetadata.domain);
+  const [newDomain, setNewDomain] = useState(siteMetadata.domains.join(", "));
   const [isChangingDomain, setIsChangingDomain] = useState(false);
   const [isPublic, setIsPublic] = useState(siteMetadata.public || false);
   const [isChangingPublic, setIsChangingPublic] = useState(false);
@@ -90,21 +90,21 @@ export function SiteSettingsInner({
   const [activeTab, setActiveTab] = useState("script");
 
   const handleDomainChange = async () => {
-    if (!newDomain) {
-      toast.error("Domain cannot be empty");
+    if (!newDomain.trim()) {
+      toast.error("Domains cannot be empty");
       return;
     }
 
     try {
       setIsChangingDomain(true);
       await changeSiteDomain(siteMetadata.siteId, newDomain);
-      toast.success("Domain updated successfully");
+      toast.success("Domains updated successfully");
       router.refresh();
       setDialogOpen(false);
       refetch();
     } catch (error) {
-      console.error("Error changing domain:", error);
-      toast.error("Failed to update domain");
+      console.error("Error changing domains:", error);
+      toast.error("Failed to update domains");
     } finally {
       setIsChangingDomain(false);
     }
@@ -195,7 +195,7 @@ export function SiteSettingsInner({
         <DialogHeader>
           <DialogTitle>Site Settings</DialogTitle>
           <DialogDescription>
-            Manage settings for {siteMetadata.domain}
+            Manage settings for {siteMetadata.domains[0]}
           </DialogDescription>
         </DialogHeader>
         <Tabs value={activeTab} onValueChange={setActiveTab} className="pb-4">
@@ -285,24 +285,25 @@ export function SiteSettingsInner({
             <div className="space-y-3">
               <div>
                 <h4 className="text-sm font-semibold text-foreground">
-                  Change Domain
+                  Change Domains
                 </h4>
                 <p className="text-xs text-muted-foreground">
-                  Update the domain for this site
+                  Update the domains for this site (comma-separated for multiple
+                  domains)
                 </p>
               </div>
               <div className="flex space-x-2">
                 <Input
                   value={newDomain}
                   onChange={(e) => setNewDomain(e.target.value.toLowerCase())}
-                  placeholder="example.com"
+                  placeholder="example.com, app.example.com"
                 />
                 <Button
                   variant="outline"
                   onClick={handleDomainChange}
                   disabled={
                     isChangingDomain ||
-                    newDomain === siteMetadata.domain ||
+                    newDomain === siteMetadata.domains.join(", ") ||
                     disabled
                   }
                 >

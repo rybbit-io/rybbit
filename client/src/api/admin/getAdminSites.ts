@@ -4,7 +4,7 @@ import { authedFetchWithError } from "../utils";
 
 export interface AdminSiteData {
   siteId: number;
-  domain: string;
+  domains: string[];
   createdAt: string;
   public: boolean;
   eventsLast24Hours: number;

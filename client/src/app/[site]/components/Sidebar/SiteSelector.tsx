@@ -40,8 +40,8 @@ function SiteSelectorContent() {
                 )}
               >
                 <div className="flex items-center gap-2">
-                  <Favicon domain={site.domain} className="w-4 h-4" />
-                  <span>{site.domain}</span>
+                  <Favicon domain={site.domains[0]} className="w-4 h-4" />
+                  <span>{site.domains[0]}</span>
                 </div>
                 {isSelected && <Check size={16} />}
               </DropdownMenuItem>
@@ -75,8 +75,8 @@ export function SiteSelector() {
       <DropdownMenuTrigger unstyled>
         {site ? (
           <div className="flex gap-2 border border-neutral-800 rounded-lg py-1.5 px-3 justify-start cursor-pointer hover:bg-neutral-800/50 transition-colors h-[36px]">
-            <Favicon domain={site.domain} className="w-5 h-5" />
-            <div className="text-white truncate text-sm">{site.domain}</div>
+            <Favicon domain={site.domains[0]} className="w-5 h-5" />
+            <div className="text-white truncate text-sm">{site.domains[0]}</div>
           </div>
         ) : (
           <div className="flex gap-2 border border-neutral-800 rounded-lg py-1.5 px-3 justify-start items-center h-[36px] animate-pulse">

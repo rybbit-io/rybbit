@@ -49,7 +49,7 @@ export interface AdminOrganizationData {
   sites: {
     siteId: number;
     name: string;
-    domain: string;
+    domains: string[];
     createdAt: string;
     eventsLast24Hours: number;
   }[];
@@ -114,7 +114,7 @@ export async function getAdminOrganizations(
       .select({
         siteId: sites.siteId,
         name: sites.name,
-        domain: sites.domain,
+        domains: sites.domains,
         createdAt: sites.createdAt,
         organizationId: sites.organizationId,
       })
@@ -171,7 +171,7 @@ export async function getAdminOrganizations(
         orgSitesMap.get(site.organizationId)?.push({
           siteId: site.siteId,
           name: site.name,
-          domain: site.domain,
+          domains: site.domains,
           createdAt: site.createdAt,
           eventsLast24Hours: siteEventMap.get(site.siteId) || 0,
         });

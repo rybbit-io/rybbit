@@ -201,7 +201,7 @@ export function PerformanceTable({ dimension, title }: PerformanceTableProps) {
                   {displayValue}
                   {dimension === "pathname" && value && (
                     <a
-                      href={`https://${siteMetadata?.domain}${value}`}
+                      href={`https://${siteMetadata?.domains?.[0]}${value}`}
                       target="_blank"
                       onClick={(e) => e.stopPropagation()}
                     >

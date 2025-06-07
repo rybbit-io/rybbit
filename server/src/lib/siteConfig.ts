@@ -5,7 +5,7 @@ import { sites } from "../db/postgres/schema.js";
 interface SiteConfigData {
   public: boolean;
   saltUserIds: boolean;
-  domain: string;
+  domains: string[];
   blockBots: boolean;
 }
 
@@ -20,7 +20,7 @@ class SiteConfig {
           siteId: sites.siteId,
           public: sites.public,
           saltUserIds: sites.saltUserIds,
-          domain: sites.domain,
+          domains: sites.domains,
           blockBots: sites.blockBots,
         })
         .from(sites);
@@ -33,7 +33,7 @@ class SiteConfig {
         this.siteConfigMap.set(site.siteId, {
           public: site.public || false,
           saltUserIds: site.saltUserIds || false,
-          domain: site.domain || "",
+          domains: site.domains || [],
           blockBots: site.blockBots === undefined ? true : site.blockBots,
         });
       }
@@ -74,12 +74,42 @@ class SiteConfig {
   }
 
   /**
-   * Get the domain of a site
+   * Get all domains of a site
    */
-  getSiteDomain(siteId: string | number): string {
+  getSiteDomains(siteId: string | number): string[] {
     const numericSiteId = Number(siteId);
     const config = this.siteConfigMap.get(numericSiteId);
-    return config?.domain || "";
+    return config?.domains || [];
+  }
+
+  /**
+   * Check if a domain is allowed for a site
+   */
+  isDomainAllowed(siteId: string | number, domain: string): boolean {
+    const numericSiteId = Number(siteId);
+    const config = this.siteConfigMap.get(numericSiteId);
+    return config?.domains.includes(domain) || false;
+  }
+
+  /**
+   * Get the primary domain of a site (first domain in the array)
+   */
+  getPrimaryDomain(siteId: string | number): string {
+    const numericSiteId = Number(siteId);
+    const config = this.siteConfigMap.get(numericSiteId);
+    return config?.domains[0] || "";
+  }
+
+  /**
+   * Check if a domain is allowed across all sites (for CORS)
+   */
+  isAnyDomainAllowed(domain: string): boolean {
+    for (const config of this.siteConfigMap.values()) {
+      if (config.domains.includes(domain)) {
+        return true;
+      }
+    }
+    return false;
   }
 
   /**
@@ -89,7 +119,7 @@ class SiteConfig {
     const config = this.siteConfigMap.get(siteId) || {
       public: false,
       saltUserIds: false,
-      domain: "",
+      domains: [],
       blockBots: true,
     };
     config.public = isPublic;
@@ -103,7 +133,7 @@ class SiteConfig {
     const config = this.siteConfigMap.get(siteId) || {
       public: false,
       saltUserIds: false,
-      domain: "",
+      domains: [],
       blockBots: true,
     };
     config.saltUserIds = saltUserIds;
@@ -117,7 +147,7 @@ class SiteConfig {
     const config = this.siteConfigMap.get(siteId) || {
       public: false,
       saltUserIds: false,
-      domain: "",
+      domains: [],
       blockBots: true,
     };
     config.blockBots = blockBots;
@@ -125,16 +155,16 @@ class SiteConfig {
   }
 
   /**
-   * Update the domain of a site in the cache
+   * Update the domains of a site in the cache
    */
-  updateSiteDomain(siteId: number, domain: string): void {
+  updateSiteDomains(siteId: number, domains: string[]): void {
     const config = this.siteConfigMap.get(siteId) || {
       public: false,
       saltUserIds: false,
-      domain: "",
+      domains: [],
       blockBots: true,
     };
-    config.domain = domain;
+    config.domains = domains;
     this.siteConfigMap.set(siteId, config);
   }
 

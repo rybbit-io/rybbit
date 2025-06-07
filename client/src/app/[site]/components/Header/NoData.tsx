@@ -19,7 +19,7 @@ export function NoData() {
               <span className="relative inline-flex h-3 w-3 rounded-full bg-green-500"></span>
             </span>
             <div className="font-medium">
-              Waiting for analytics from {siteMetadata?.domain}...
+              Waiting for analytics from {siteMetadata?.domains?.[0]}...
             </div>
           </div>
           <div className="text-xs text-muted-foreground">
