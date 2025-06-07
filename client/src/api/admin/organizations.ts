@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
-import { BACKEND_URL } from "../../lib/const";
+import { BACKEND_URL } from "@/lib/const";
 import { authedFetchWithError } from "../utils";
-import { authClient } from "../../lib/auth";
+import { authClient } from "@/lib/auth";
 
 export type UserOrganization = {
   id: string;
@@ -39,6 +39,17 @@ export function useOrganizationInvitations(organizationId: string) {
       }
 
       return invitations.data;
+    },
+  });
+}
+
+export function useGetOrganizationApiKey(organizationId: string) {
+  return useQuery({
+    queryKey: ["get-org-api-key", organizationId],
+    queryFn: () => {
+      return authedFetchWithError<{ apiKey: string }>(
+        `${BACKEND_URL}/get-org-api-key/${organizationId}`
+      );
     },
   });
 }

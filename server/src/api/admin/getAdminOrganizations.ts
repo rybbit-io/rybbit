@@ -155,7 +155,7 @@ export async function getAdminOrganizations(
         siteEventMap.set(Number(event.site_id), event.total_events);
       }
     } catch (clickhouseError) {
-      console.warn(
+      console.error(
         "ClickHouse query failed, continuing without event counts:",
         clickhouseError
       );
