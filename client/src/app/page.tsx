@@ -14,9 +14,16 @@ import { Card, CardDescription, CardTitle } from "../components/ui/card";
 import { useSetPageTitle } from "../hooks/useSetPageTitle";
 import { authClient } from "../lib/auth";
 import { AddSite } from "./components/AddSite";
+import { useTRPC } from "../trpc/trpc";
+import { useQuery } from "@tanstack/react-query";
 
 export default function Home() {
   useSetPageTitle("Rybbit · Home");
+
+  const trpc = useTRPC();
+  const userQuery = useQuery(trpc.getUserById.queryOptions("id_bilbo"));
+
+  console.log(userQuery.data);
 
   const { data: activeOrganization, isPending } =
     authClient.useActiveOrganization();

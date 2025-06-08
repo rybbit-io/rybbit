@@ -1,5 +1,6 @@
 import { siteConfig } from "./lib/siteConfig.js";
 import * as psl from "psl";
+import UAParser from "ua-parser-js";
 
 export function getDeviceType(
   screenWidth: number,

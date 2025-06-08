@@ -63,6 +63,12 @@ import { IS_CLOUD } from "./lib/const.js";
 import { siteConfig } from "./lib/siteConfig.js";
 import { trackEvent } from "./tracker/trackEvent.js";
 import { extractSiteId, isSitePublic, normalizeOrigin } from "./utils.js";
+import {
+  fastifyTRPCPlugin,
+  FastifyTRPCPluginOptions,
+} from "@trpc/server/adapters/fastify";
+import { createContext } from "./context.js";
+import { appRouter, type AppRouter } from "./router.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -86,6 +92,18 @@ server.register(cors, {
     }
   },
   credentials: true,
+});
+
+server.register(fastifyTRPCPlugin, {
+  prefix: "/api/trpc",
+  trpcOptions: {
+    router: appRouter,
+    createContext,
+    onError({ path, error }) {
+      // report to error monitoring
+      console.error(`Error in tRPC handler on path '${path}':`, error);
+    },
+  } satisfies FastifyTRPCPluginOptions<AppRouter>["trpcOptions"],
 });
 
 // Serve static files
@@ -129,6 +147,7 @@ const PUBLIC_ROUTES: string[] = [
   "/api/auth/callback/google",
   "/api/auth/callback/github",
   "/api/stripe/webhook",
+  "/trpc", // TRPC routes handle their own authentication
 ];
 
 // Define analytics routes that can be public
@@ -189,7 +208,7 @@ server.addHook("onRequest", async (request, reply) => {
     const session = await getSessionFromReq(request);
 
     if (!session) {
-      return reply.status(401).send({ error: "Unauthorized" });
+      return reply.status(401).send({ error: "Unauthorized onrequest" });
     }
 
     // Attach session user info to request

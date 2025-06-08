@@ -12,6 +12,7 @@
     "dev": "tsc --watch",
     "clean": "rm -rf dist"
   },
+  "dependencies": {},
   "devDependencies": {
     "@types/node": "^20.10.6",
     "typescript": "^5.3.3"

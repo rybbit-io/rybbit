@@ -6,3 +6,4 @@ export * from "./funnels";
 export * from "./pagination";
 export * from "./analytics";
 export * from "./events";
+export * from "./trpc";
