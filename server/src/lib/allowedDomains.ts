@@ -34,17 +34,20 @@ export const loadAllowedDomains = async () => {
       ...domains.map(({ domain }) => normalizeOrigin(domain)),
     ];
 
-    // Load regex patterns from ALLOWED_ORIGINS environment variable
-    if (process.env.ALLOWED_ORIGINS) {
+    // Load regex patterns from ALLOWED_ORIGIN_PATTERNS environment variable
+    if (process.env.ALLOWED_ORIGIN_PATTERNS) {
       try {
-        const regexPatterns = process.env.ALLOWED_ORIGINS.split(",").map(
-          pattern => pattern.trim()
-        );
+        const regexPatterns = process.env.ALLOWED_ORIGIN_PATTERNS.split(
+          ","
+        ).map((pattern) => pattern.trim());
         allowedOriginRegexes = regexPatterns.map(
-          pattern => new RegExp(pattern)
+          (pattern) => new RegExp(pattern)
         );
       } catch (error) {
-        console.error("Error parsing ALLOWED_ORIGINS regex patterns:", error);
+        console.error(
+          "Error parsing ALLOWED_ORIGIN_PATTERNS regex patterns:",
+          error
+        );
         allowedOriginRegexes = [];
       }
     }
