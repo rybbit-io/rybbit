@@ -1,32 +1,26 @@
-// Rybbit Analytics Script
-// NOTE: script.js is generated via `npm run pack-script` from the `server` directory
+import { Metric, getCLS, getFCP, getINP, getLCP, getTTFB } from "web-vitals";
+import type { TrackingPayload, WebVitalsData } from "./types.ts";
+
+declare global {
+  interface Window {
+    __RYBBIT_OPTOUT__?: boolean;
+    rybbit?: {
+      pageview: () => void;
+      event: (name: string, properties?: Record<string, any>) => void;
+      trackOutbound: (url: string, text?: string, target?: string) => void;
+      identify: (userId: string) => void;
+      clearUserId: () => void;
+      getUserId: () => string | null;
+    };
+  }
+}
+
 (function () {
   const scriptTag = document.currentScript;
-  const ANALYTICS_HOST = scriptTag.getAttribute("src").split("/script.js")[0];
-
-  // Load Web Vitals library dynamically from CDN
-  const loadWebVitals = () => {
-    return new Promise((resolve, reject) => {
-      const script = document.createElement("script");
-      script.src = "https://unpkg.com/web-vitals@3/dist/web-vitals.iife.js";
-      script.onload = () => resolve();
-      script.onerror = () =>
-        reject(new Error("Failed to load web-vitals library"));
-      document.head.appendChild(script);
-    });
-  };
-
-  // Initialize web vitals loading
-  loadWebVitals()
-    .then(() => {
-      initWebVitals();
-    })
-    .catch((e) => {
-      console.warn("Failed to load web vitals library:", e);
-    });
+  const ANALYTICS_HOST = scriptTag?.getAttribute("src")?.split("/script.js")[0];
 
   // Check if the user has opted out of tracking
-  if (!window.__RYBBIT_OPTOUT__ && localStorage.getItem("disable-rybbit") !== null) {
+  if (!window.__RYBBIT_OPTOUT__ || !localStorage.getItem("disable-rybbit")) {
     // Create a no-op implementation to ensure the API still works
     window.rybbit = {
       pageview: () => {},
@@ -55,7 +49,7 @@
   }
 
   const debounceDuration = scriptTag.getAttribute("data-debounce")
-    ? Math.max(0, parseInt(scriptTag.getAttribute("data-debounce")))
+    ? Math.max(0, parseInt(scriptTag.getAttribute("data-debounce") || "0"))
     : 500;
 
   const autoTrackPageview =
@@ -66,7 +60,7 @@
   const trackOutbound =
     scriptTag.getAttribute("data-track-outbound") !== "false";
 
-  let skipPatterns = [];
+  let skipPatterns: string[] = [];
   try {
     const skipAttr = scriptTag.getAttribute("data-skip-patterns");
     if (skipAttr) {
@@ -77,7 +71,7 @@
     console.error("Error parsing data-skip-patterns:", e);
   }
 
-  let maskPatterns = [];
+  let maskPatterns: string[] = [];
   try {
     const maskAttr = scriptTag.getAttribute("data-mask-patterns");
     if (maskAttr) {
@@ -89,7 +83,7 @@
   }
 
   // Add user ID management
-  let customUserId = null;
+  let customUserId: string | null = null;
 
   // Load stored user ID from localStorage on script initialization
   try {
@@ -102,7 +96,7 @@
   }
 
   // Helper function to convert wildcard pattern to regex
-  function patternToRegex(pattern) {
+  function patternToRegex(pattern: string): RegExp {
     // Use a safer approach by replacing wildcards with unique tokens first
     const DOUBLE_WILDCARD_TOKEN = "__DOUBLE_ASTERISK_TOKEN__";
     const SINGLE_WILDCARD_TOKEN = "__SINGLE_ASTERISK_TOKEN__";
@@ -126,7 +120,10 @@
     return new RegExp("^" + regexPattern + "$");
   }
 
-  function findMatchingPattern(path, patterns) {
+  function findMatchingPattern(
+    path: string,
+    patterns: string[]
+  ): string | null {
     for (const pattern of patterns) {
       try {
         const regex = patternToRegex(pattern);
@@ -140,16 +137,18 @@
     return null;
   }
 
-  function debounce(func, wait) {
-    let timeout;
-    return (...args) => {
+  function debounce(func: (...args: any[]) => any, wait: number) {
+    let timeout: ReturnType<typeof setTimeout> | undefined;
+    return (...args: any[]) => {
       clearTimeout(timeout);
+      // TODO(goldflag): vet that the use of 'this' was as intended, or if we've shadowed it
+      // @ts-ignore
       timeout = setTimeout(() => func.apply(this, args), wait);
     };
   }
 
   // Check if a URL is an outbound link
-  function isOutboundLink(url) {
+  function isOutboundLink(url: string) {
     try {
       const currentHost = window.location.hostname;
       const linkHost = new URL(url).hostname;
@@ -181,7 +180,7 @@
       pathname = maskMatch;
     }
 
-    const payload = {
+    const payload: TrackingPayload = {
       site_id: SITE_ID,
       hostname: url.hostname,
       pathname: pathname,
@@ -202,7 +201,7 @@
   };
 
   // Helper function to send tracking data
-  const sendTrackingData = (payload) => {
+  const sendTrackingData = (payload: TrackingPayload) => {
     fetch(`${ANALYTICS_HOST}/track`, {
       method: "POST",
       headers: {
@@ -214,7 +213,11 @@
     }).catch(console.error);
   };
 
-  const track = (eventType = "pageview", eventName = "", properties = {}) => {
+  const track = (
+    eventType = "pageview",
+    eventName = "",
+    properties: Record<string, any> = {}
+  ) => {
     if (
       eventType === "custom_event" &&
       (!eventName || typeof eventName !== "string")
@@ -230,7 +233,7 @@
       return; // Skip tracking due to pattern match
     }
 
-    const payload = {
+    const payload: TrackingPayload = {
       ...basePayload,
       type: eventType,
       event_name: eventName,
@@ -244,7 +247,7 @@
   };
 
   // Web vitals collection state
-  let webVitalsData = {
+  let webVitalsData: WebVitalsData = {
     lcp: null,
     cls: null,
     inp: null,
@@ -252,7 +255,7 @@
     ttfb: null,
   };
   let webVitalsSent = false;
-  let webVitalsTimeout = null;
+  let webVitalsTimeout: ReturnType<typeof setTimeout> | null = null;
 
   // Check if all metrics are collected and send if ready
   const checkAndSendWebVitals = () => {
@@ -283,7 +286,7 @@
       return; // Skip web vitals tracking due to pattern match
     }
 
-    const payload = {
+    const payload: TrackingPayload = {
       ...basePayload,
       type: "performance",
       event_name: "web-vitals",
@@ -299,43 +302,42 @@
   };
 
   // Individual metric collectors
-  const collectMetric = (metric) => {
+  const collectMetric = (metric: Metric) => {
     if (webVitalsSent) return;
 
-    webVitalsData[metric.name.toLowerCase()] = metric.value;
+    webVitalsData[metric.name.toLowerCase() as keyof WebVitalsData] =
+      metric.value;
     checkAndSendWebVitals();
   };
 
   // Initialize web vitals tracking if available
   const initWebVitals = () => {
-    if (typeof webVitals !== "undefined") {
-      try {
-        // Track Core Web Vitals
-        webVitals.getLCP(collectMetric);
-        webVitals.getCLS(collectMetric);
-        webVitals.getINP(collectMetric);
+    try {
+      // Track Core Web Vitals
+      getLCP(collectMetric);
+      getCLS(collectMetric);
+      getINP(collectMetric);
 
-        // Track additional metrics
-        webVitals.getFCP(collectMetric);
-        webVitals.getTTFB(collectMetric);
+      // Track additional metrics
+      getFCP(collectMetric);
+      getTTFB(collectMetric);
 
-        // Set a timeout to send metrics even if not all are collected
-        // This handles cases where some metrics might not fire (e.g., no user interactions for INP)
-        webVitalsTimeout = setTimeout(() => {
-          if (!webVitalsSent) {
-            sendWebVitals();
-          }
-        }, 20000);
+      // Set a timeout to send metrics even if not all are collected
+      // This handles cases where some metrics might not fire (e.g., no user interactions for INP)
+      webVitalsTimeout = setTimeout(() => {
+        if (!webVitalsSent) {
+          sendWebVitals();
+        }
+      }, 20000);
 
-        // Also send on page unload to capture any remaining metrics
-        window.addEventListener("beforeunload", () => {
-          if (!webVitalsSent) {
-            sendWebVitals();
-          }
-        });
-      } catch (e) {
-        console.warn("Error initializing web vitals tracking:", e);
-      }
+      // Also send on page unload to capture any remaining metrics
+      window.addEventListener("beforeunload", () => {
+        if (!webVitalsSent) {
+          sendWebVitals();
+        }
+      });
+    } catch (e) {
+      console.warn("Error initializing web vitals tracking:", e);
     }
   };
 
@@ -350,12 +352,16 @@
   document.addEventListener("click", function (e) {
     // First check for custom events via data attributes
     let target = e.target;
-    while (target && target !== document) {
+    while (
+      target &&
+      target instanceof HTMLElement &&
+      target !== document.documentElement
+    ) {
       if (target.hasAttribute("data-rybbit-event")) {
         const eventName = target.getAttribute("data-rybbit-event");
         if (eventName) {
           // Collect additional properties from data-rybbit-prop-* attributes
-          const properties = {};
+          const properties: Record<string, string> = {};
           for (const attr of target.attributes) {
             if (attr.name.startsWith("data-rybbit-prop-")) {
               const propName = attr.name.replace("data-rybbit-prop-", "");
@@ -368,10 +374,13 @@
       }
       target = target.parentElement;
     }
-    
+
     // Then check for outbound links
     if (trackOutbound) {
-      const link = e.target.closest("a");
+      const link =
+        e.target && e.target instanceof HTMLElement
+          ? e.target.closest("a")
+          : null;
       if (!link || !link.href) return;
 
       if (isOutboundLink(link.href)) {
@@ -388,12 +397,16 @@
     const originalPushState = history.pushState;
     const originalReplaceState = history.replaceState;
 
-    history.pushState = function (...args) {
+    history.pushState = function (
+      ...args: Parameters<typeof history.pushState>
+    ) {
       originalPushState.apply(this, args);
       debouncedTrackPageview();
     };
 
-    history.replaceState = function (...args) {
+    history.replaceState = function (
+      ...args: Parameters<typeof history.replaceState>
+    ) {
       originalReplaceState.apply(this, args);
       debouncedTrackPageview();
     };
@@ -405,12 +418,13 @@
 
   window.rybbit = {
     pageview: trackPageview,
-    event: (name, properties = {}) => track("custom_event", name, properties),
-    trackOutbound: (url, text = "", target = "_self") =>
+    event: (name: string, properties: Record<string, any> = {}) =>
+      track("custom_event", name, properties),
+    trackOutbound: (url: string, text = "", target = "_self") =>
       track("outbound", "", { url, text, target }),
 
     // New methods for user identification
-    identify: (userId) => {
+    identify: (userId: string) => {
       if (typeof userId !== "string" || userId.trim() === "") {
         console.error("User ID must be a non-empty string");
         return;
@@ -439,4 +453,6 @@
   if (autoTrackPageview) {
     trackPageview();
   }
+
+  initWebVitals();
 })();
