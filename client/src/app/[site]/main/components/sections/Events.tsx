@@ -10,7 +10,7 @@ import {
   CardContent,
   CardLoader,
 } from "../../../../../components/ui/card";
-import { useGetEventNames } from "../../../../../api/analytics/useGetEventNames";
+import { useGetEventNames } from "../../../../../api/analytics/events/useGetEventNames";
 import { EventList } from "../../../events/components/EventList";
 
 type Tab = "events";

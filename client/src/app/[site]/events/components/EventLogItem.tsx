@@ -11,7 +11,7 @@ import { DateTime } from "luxon";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { memo } from "react";
-import { Event } from "../../../../api/analytics/useGetEvents";
+import { Event } from "../../../../api/analytics/events/useGetEvents";
 import { getCountryName } from "../../../../lib/utils";
 import { Browser } from "../../components/shared/icons/Browser";
 import { CountryFlag } from "../../components/shared/icons/CountryFlag";
@@ -209,9 +209,7 @@ export const EventLogItemSkeleton = memo(() => {
           {/* Left side content */}
           <div className="flex items-center gap-2 flex-grow">
             <div className="h-4 w-4 bg-neutral-800 rounded-sm animate-pulse flex-shrink-0"></div>
-            <div
-              className="h-4 w-40 bg-neutral-800 rounded animate-pulse flex-shrink-0"
-            ></div>
+            <div className="h-4 w-40 bg-neutral-800 rounded animate-pulse flex-shrink-0"></div>
             <div className="flex space-x-1 flex-shrink-0">
               <div className="h-4 w-4 bg-neutral-800 rounded-sm animate-pulse"></div>
               <div className="h-4 w-4 bg-neutral-800 rounded-sm animate-pulse"></div>

@@ -20,7 +20,10 @@ declare global {
   const ANALYTICS_HOST = scriptTag?.getAttribute("src")?.split("/script.js")[0];
 
   // Check if the user has opted out of tracking
-  if (!window.__RYBBIT_OPTOUT__ || !localStorage.getItem("disable-rybbit")) {
+  if (
+    !!window.__RYBBIT_OPTOUT__ ||
+    localStorage.getItem("disable-rybbit") !== null
+  ) {
     // Create a no-op implementation to ensure the API still works
     window.rybbit = {
       pageview: () => {},

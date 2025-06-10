@@ -4,7 +4,7 @@ import {
   PageTitleItem,
   useGetPageTitlesPaginated,
 } from "@/api/analytics/useGetPageTitles";
-import { TablePagination } from "@/components/pagination";
+import { Pagination } from "@/components/pagination";
 import { useSetPageTitle } from "@/hooks/useSetPageTitle";
 import { useStore } from "@/lib/store";
 import { useEffect, useState } from "react";
@@ -137,7 +137,7 @@ export default function Pages() {
               />
             ))}
             {totalPages > 0 && (
-              <TablePagination
+              <Pagination
                 table={table}
                 data={{ items: pagesDataArray || [], total: totalCount || 0 }}
                 pagination={pagination}

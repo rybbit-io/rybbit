@@ -2,17 +2,15 @@ import { FastifyRequest, FastifyReply } from "fastify";
 import clickhouse from "../../db/clickhouse/clickhouse.js";
 import { DateTime } from "luxon";
 import { getTimeStatement } from "./utils.js";
+import { FilterParams } from "@rybbit/shared";
 
 export const getJourneys = async (
   request: FastifyRequest<{
     Params: { site: string };
-    Querystring: {
+    Querystring: FilterParams<{
       steps?: string;
-      startDate?: string;
-      endDate?: string;
-      timeZone?: string;
       limit?: string;
-    };
+    }>;
   }>,
   reply: FastifyReply
 ) => {
@@ -42,18 +40,7 @@ export const getJourneys = async (
     }
 
     // Time conditions using getTimeStatement
-    const timeStatement = getTimeStatement({
-      date:
-        startDate || endDate
-          ? {
-              startDate:
-                startDate || DateTime.now().minus({ days: 30 }).toISODate(),
-              endDate: endDate || DateTime.now().toISODate(),
-              timeZone,
-              table: "events",
-            }
-          : undefined,
-    });
+    const timeStatement = getTimeStatement(request.query);
 
     // Query to find sequences of events (journeys) for each user
     const result = await clickhouse.query({

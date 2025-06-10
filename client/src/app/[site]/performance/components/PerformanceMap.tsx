@@ -1,6 +1,6 @@
 "use client";
 
-import { useGetPerformanceByDimension } from "@/api/analytics/useGetPerformanceByDimension";
+import { useGetPerformanceByDimension } from "@/api/analytics/performance/useGetPerformanceByDimension";
 import { useMeasure } from "@uidotdev/usehooks";
 import { scalePow } from "d3-scale";
 import { Feature, GeoJsonObject } from "geojson";

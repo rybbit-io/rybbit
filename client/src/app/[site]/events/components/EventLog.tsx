@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef } from "react";
-import { useGetEventsInfinite } from "../../../../api/analytics/useGetEvents";
+import { useGetEventsInfinite } from "../../../../api/analytics/events/useGetEvents";
 import { NothingFound } from "../../../../components/NothingFound";
 import { formatter } from "../../../../lib/utils";
 import { EventLogItem, EventLogItemSkeleton } from "./EventLogItem";

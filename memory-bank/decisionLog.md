@@ -128,3 +128,27 @@ User requested to add support for the past 24-hour mode to useGetPerformanceTime
   - [`SiteCard.tsx`](client/src/components/SiteCard.tsx:1) - Replaced `useGetOverviewPastMinutes` with `useGetOverview`
   - [`Overview.tsx`](client/src/app/[site]/main/components/MainSection/Overview.tsx:1) - Replaced both instances of `useGetOverviewPastMinutes` with `useGetOverview`
 - **Impact**: Eliminated TypeScript errors and completed hook consolidation across the codebase
+
+[2025-06-09 17:59:00] - **Generic Interface Implementation: FilterParams Type Conversion**
+
+## Decision
+
+Converted the `FilterParams` interface into a generic type using intersection types to allow extending with additional properties.
+
+## Rationale
+
+User requested to make the existing `FilterParams` interface generic so it could be extended with additional properties like `FilterParams<{something: number}>`. The original interface-based approach with `extends` didn't properly merge the generic type parameter, causing TypeScript errors when trying to access properties from the generic type.
+
+## Implementation Details
+
+- Changed from `export interface FilterParams<T = {}> extends BaseParams {}` to `export type FilterParams<T = {}> = BaseParams & T`
+- Used intersection types (`&`) instead of interface extension to properly merge the base properties with the generic type parameter
+- Maintained `BaseParams` interface for the core filtering properties (startDate, endDate, timeZone, filters, pastMinutesStart, pastMinutesEnd)
+- Added `OverviewParams<T>` as an alias for backward compatibility
+- This allows proper type safety when using `FilterParams<{bucket: TimeBucket}>` where both base properties and the `bucket` property are accessible
+
+## Impact
+
+- Enables type-safe extension of filtering parameters across the analytics API
+- Maintains backward compatibility with existing code
+- Fixes TypeScript errors in files like [`getPerformanceTimeSeries.ts`](server/src/api/analytics/performance/getPerformanceTimeSeries.ts:187) that use extended filter parameters

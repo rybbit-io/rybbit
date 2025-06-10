@@ -6,6 +6,7 @@ import {
   processResults,
 } from "./utils.js";
 import { getUserHasAccessToSitePublic } from "../../lib/auth-utils.js";
+import { FilterParams } from "@rybbit/shared";
 
 export type GetUsersResponse = {
   user_id: string;
@@ -27,18 +28,12 @@ export interface GetUsersRequest {
   Params: {
     site: string;
   };
-  Querystring: {
-    startDate?: string;
-    endDate?: string;
-    timeZone: string;
-    filters: string;
+  Querystring: FilterParams<{
     page?: string;
     pageSize?: string;
     sortBy?: string;
     sortOrder?: string;
-    pastMinutesStart?: string;
-    pastMinutesEnd?: string;
-  };
+  }>;
 }
 
 export async function getUsers(
@@ -79,22 +74,9 @@ export async function getUsers(
   const actualSortBy = validSortFields.includes(sortBy) ? sortBy : "last_seen";
   const actualSortOrder = sortOrder === "asc" ? "ASC" : "DESC";
 
-  // Handle specific past minutes range if provided
-  const pastMinutesRange =
-    pastMinutesStart && pastMinutesEnd
-      ? { start: Number(pastMinutesStart), end: Number(pastMinutesEnd) }
-      : undefined;
-
-  // Set up time parameters
-  const timeParams = pastMinutesRange
-    ? { pastMinutesRange }
-    : startDate && endDate
-      ? { date: { startDate, endDate, timeZone } }
-      : {};
-
   // Generate filter statement and time statement
   const filterStatement = getFilterStatement(filters);
-  const timeStatement = getTimeStatement(timeParams);
+  const timeStatement = getTimeStatement(req.query);
 
   const query = `
 WITH AggregatedUsers AS (

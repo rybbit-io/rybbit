@@ -36,7 +36,7 @@ interface PaginationProps<TData> {
   itemName?: string;
 }
 
-export function TablePagination<TData>({
+export function Pagination<TData>({
   table,
   data,
   pagination,
@@ -46,7 +46,7 @@ export function TablePagination<TData>({
 }: PaginationProps<TData>) {
   return (
     <div className="flex items-center justify-between">
-      <div className="text-sm text-neutral-400">
+      <div className="hidden text-sm text-neutral-400 md:block">
         {isLoading ? (
           <span>Loading {itemName}...</span>
         ) : (
@@ -72,7 +72,7 @@ export function TablePagination<TData>({
         )}
       </div>
       <div className="flex items-center space-x-2">
-        <div className="mr-4 flex items-center space-x-2">
+        <div className="mr-4 hidden items-center space-x-2 md:flex">
           <span className="text-sm text-neutral-400">Page size:</span>
           <Select
             value={pagination.pageSize.toString()}

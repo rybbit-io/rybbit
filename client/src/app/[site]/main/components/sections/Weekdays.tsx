@@ -21,17 +21,16 @@ import {
 import {
   Tooltip,
   TooltipContent,
-  TooltipProvider,
   TooltipTrigger,
 } from "../../../../../components/ui/tooltip";
 import { StatType, useStore } from "../../../../../lib/store";
 import { cn } from "../../../../../lib/utils";
 
 import {
-  shortDayNames,
-  longDayNames,
-  hourLabels,
   formatLocalTime,
+  hourLabels,
+  longDayNames,
+  shortDayNames,
 } from "../../../../../lib/dateTimeUtils";
 
 export function Weekdays() {
@@ -216,89 +215,85 @@ export function Weekdays() {
             </SelectContent>
           </Select>
         </div>
-        <TooltipProvider delayDuration={0}>
-          <div className="flex mt-1 p-2">
-            <div className="w-12">
-              {/* Empty top-left cell */}
-              <div className="h-5"></div>
+        <div className="flex mt-1 p-2">
+          <div className="w-12">
+            {/* Empty top-left cell */}
+            <div className="h-5"></div>
 
-              {/* Time labels - only display every other hour */}
-              {Array(24)
-                .fill(0)
-                .map((_, hour) => (
-                  <div
-                    key={hour}
-                    className="h-4 text-xs flex items-center justify-end pr-2 text-neutral-400"
-                  >
-                    {hour % 2 === 1 ? hourLabels[hour] : ""}
-                  </div>
-                ))}
-            </div>
-
-            <div className="flex-1">
-              {/* Day labels */}
-              <div className="flex h-5">
-                {shortDayNames.map((day, i) => (
-                  <div
-                    key={i}
-                    className="flex-1 text-center text-xs text-neutral-400"
-                  >
-                    {day}
-                  </div>
-                ))}
-              </div>
-
-              {/* Heatmap grid */}
-              {Array(24)
-                .fill(0)
-                .map((_, hour) => (
-                  <div key={hour} className="flex h-4">
-                    {Array(7)
-                      .fill(0)
-                      .map((_, day) => {
-                        const value =
-                          heatmapData &&
-                          heatmapData.length > day &&
-                          Array.isArray(heatmapData[day]) &&
-                          heatmapData[day].length > hour
-                            ? heatmapData[day][hour]
-                            : 0;
-                        const colorClass =
-                          value > 0
-                            ? getColorIntensity(value)
-                            : "bg-neutral-800";
-                        return (
-                          <Tooltip key={day}>
-                            <TooltipTrigger asChild>
-                              <div
-                                className={cn(
-                                  "flex-1 mx-0.5 hover:ring-1 hover:ring-emerald-300 transition-all rounded-sm my-0.5",
-                                  colorClass
-                                )}
-                              />
-                            </TooltipTrigger>
-                            <TooltipContent className="flex flex-col gap-1 p-2">
-                              <div className="font-medium text-sm">
-                                {longDayNames[day]} {formatLocalTime(hour, 0)} -{" "}
-                                {formatLocalTime(hour, 59)}
-                              </div>
-                              <div className="flex items-center gap-2">
-                                <span className="font-semibold">
-                                  {formatMetricValue(value)}
-                                </span>
-                                <span className="text-neutral-400 text-xs">
-                                  {getMetricDisplayName(metric)}
-                                </span>
-                              </div>
-                            </TooltipContent>
-                          </Tooltip>
-                        );
-                      })}
-                  </div>
-                ))}
-            </div>
+            {/* Time labels - only display every other hour */}
+            {Array(24)
+              .fill(0)
+              .map((_, hour) => (
+                <div
+                  key={hour}
+                  className="h-4 text-xs flex items-center justify-end pr-2 text-neutral-400"
+                >
+                  {hour % 2 === 1 ? hourLabels[hour] : ""}
+                </div>
+              ))}
           </div>
-        </TooltipProvider>
+
+          <div className="flex-1">
+            {/* Day labels */}
+            <div className="flex h-5">
+              {shortDayNames.map((day, i) => (
+                <div
+                  key={i}
+                  className="flex-1 text-center text-xs text-neutral-400"
+                >
+                  {day}
+                </div>
+              ))}
+            </div>
+
+            {/* Heatmap grid */}
+            {Array(24)
+              .fill(0)
+              .map((_, hour) => (
+                <div key={hour} className="flex h-4">
+                  {Array(7)
+                    .fill(0)
+                    .map((_, day) => {
+                      const value =
+                        heatmapData &&
+                        heatmapData.length > day &&
+                        Array.isArray(heatmapData[day]) &&
+                        heatmapData[day].length > hour
+                          ? heatmapData[day][hour]
+                          : 0;
+                      const colorClass =
+                        value > 0 ? getColorIntensity(value) : "bg-neutral-800";
+                      return (
+                        <Tooltip key={day}>
+                          <TooltipTrigger asChild>
+                            <div
+                              className={cn(
+                                "flex-1 mx-0.5 hover:ring-1 hover:ring-emerald-300 transition-all rounded-sm my-0.5",
+                                colorClass
+                              )}
+                            />
+                          </TooltipTrigger>
+                          <TooltipContent className="flex flex-col gap-1 p-2">
+                            <div className="font-medium text-sm">
+                              {longDayNames[day]} {formatLocalTime(hour, 0)} -{" "}
+                              {formatLocalTime(hour, 59)}
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <span className="font-semibold">
+                                {formatMetricValue(value)}
+                              </span>
+                              <span className="text-neutral-400 text-xs">
+                                {getMetricDisplayName(metric)}
+                              </span>
+                            </div>
+                          </TooltipContent>
+                        </Tooltip>
+                      );
+                    })}
+                </div>
+              ))}
+          </div>
+        </div>
       </CardContent>
     </Card>
   );

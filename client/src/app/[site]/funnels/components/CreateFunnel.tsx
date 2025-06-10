@@ -4,7 +4,7 @@ import {
   FunnelStep,
   useGetFunnel,
   useSaveFunnel,
-} from "@/api/analytics/useGetFunnel";
+} from "../../../../api/analytics/funnels/useGetFunnel";
 import { Time } from "@/components/DateSelector/types";
 import { Button } from "@/components/ui/button";
 import {

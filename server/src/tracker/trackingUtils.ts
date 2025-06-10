@@ -218,18 +218,23 @@ function getUserId(
 
 // Helper function to get IP address
 const getIpAddress = (request: FastifyRequest): string => {
-  // Check for proxied IP addresses
-  const forwardedFor = request.headers["x-forwarded-for"];
-  if (forwardedFor && typeof forwardedFor === "string") {
-    return forwardedFor.split(",")[0].trim();
-  }
-
-  // Check for Cloudflare
   const cfConnectingIp = request.headers["cf-connecting-ip"];
   if (cfConnectingIp && typeof cfConnectingIp === "string") {
-    return cfConnectingIp;
+    return cfConnectingIp.trim();
   }
 
-  // Fallback to direct IP
+  const forwardedFor = request.headers["x-forwarded-for"];
+  if (forwardedFor && typeof forwardedFor === "string") {
+    const ips = forwardedFor
+      .split(",")
+      .map((ip) => ip.trim())
+      .filter(Boolean);
+    if (ips.length > 0) {
+      // Return rightmost IP - the last proxy before reaching our server
+      // This is the most trustworthy IP in the chain
+      return ips[ips.length - 1];
+    }
+  }
+
   return request.ip;
 };

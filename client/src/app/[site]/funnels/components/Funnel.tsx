@@ -1,10 +1,9 @@
 "use client";
 
-import { FunnelResponse } from "@/api/analytics/useGetFunnel";
 import { DateSelector } from "@/components/DateSelector/DateSelector";
 import { Time } from "@/components/DateSelector/types";
 import { round } from "lodash";
-import { ArrowDown, ArrowRight, ChevronRight } from "lucide-react";
+import { FunnelResponse } from "../../../../api/analytics/funnels/useGetFunnel";
 
 export type FunnelChartData = {
   stepName: string;

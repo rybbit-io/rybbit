@@ -28,7 +28,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { TablePagination } from "@/components/pagination";
+import { Pagination } from "@/components/pagination";
 import { authClient } from "@/lib/auth";
 import { userStore } from "@/lib/userStore";
 import {
@@ -554,7 +554,7 @@ export function Organizations() {
       </div>
 
       <div className="mt-4">
-        <TablePagination
+        <Pagination
           table={paginationController}
           data={
             table.getRowModel().rows.length > 0

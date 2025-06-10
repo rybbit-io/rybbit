@@ -8,22 +8,17 @@ import {
   getTimeStatement,
   processResults,
 } from "./utils.js";
+import { FilterParams } from "@rybbit/shared";
 
 interface GetSingleColRequest {
   Params: {
     site: string;
   };
-  Querystring: {
-    startDate: string;
-    endDate: string;
-    pastMinutesStart?: number;
-    pastMinutesEnd?: number;
-    timeZone: string;
-    filters: string;
+  Querystring: FilterParams<{
     parameter: FilterParameter;
     limit?: number;
     page?: number;
-  };
+  }>;
 }
 
 type GetSingleColResponse = {
@@ -74,20 +69,7 @@ const getQuery = (
   } = request.query;
 
   const filterStatement = getFilterStatement(filters);
-
-  // Handle specific past minutes range if provided
-  const pastMinutesRange =
-    pastMinutesStart && pastMinutesEnd
-      ? { start: Number(pastMinutesStart), end: Number(pastMinutesEnd) }
-      : undefined;
-
-  const timeStatement = getTimeStatement(
-    pastMinutesRange
-      ? { pastMinutesRange }
-      : {
-          date: { startDate, endDate, timeZone },
-        }
-  );
+  const timeStatement = getTimeStatement(request.query);
 
   let validatedLimit: number | null = null;
   if (!isCountQuery && limit !== undefined) {

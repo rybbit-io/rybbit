@@ -1,7 +1,7 @@
 "use client";
 
 import { Table } from "@tanstack/react-table";
-import { TablePagination } from "@/components/pagination";
+import { Pagination } from "@/components/pagination";
 
 interface AdminTablePaginationProps<TData> {
   table: Table<TData>;
@@ -21,7 +21,7 @@ export function AdminTablePagination<TData>({
   itemName,
 }: AdminTablePaginationProps<TData>) {
   return (
-    <TablePagination
+    <Pagination
       table={table}
       data={data}
       pagination={pagination}

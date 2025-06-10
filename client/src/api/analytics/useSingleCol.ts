@@ -1,6 +1,5 @@
 import { FilterParameter } from "@rybbit/shared";
 import { useQuery, UseQueryResult } from "@tanstack/react-query";
-import { timeZone } from "../../lib/dateTimeUtils";
 import { useStore } from "../../lib/store";
 import { APIResponse } from "../types";
 import { authedFetch, getQueryParams } from "../utils";
@@ -62,54 +61,6 @@ export function useSingleCol({
         data: APIResponse<SingleColResponse[]>;
       }>(`/single-col/${site}`, queryParams);
       return response.data;
-    },
-    staleTime: Infinity,
-    placeholderData: (_, query: any) => {
-      if (!query?.queryKey) return undefined;
-      const prevQueryKey = query.queryKey as [string, string, string];
-      const [, , prevSite] = prevQueryKey;
-
-      if (prevSite === site) {
-        return query.state.data;
-      }
-      return undefined;
-    },
-  });
-}
-
-export function useSingleColRealtime({
-  parameter,
-  limit = 1000,
-  pastMinutesStart = 30,
-  pastMinutesEnd = 0,
-}: {
-  parameter: FilterParameter;
-  limit?: number;
-  pastMinutesStart?: number;
-  pastMinutesEnd?: number;
-}): UseQueryResult<APIResponse<SingleColResponse[]>> {
-  const { site } = useStore();
-
-  return useQuery({
-    queryKey: [
-      parameter,
-      site,
-      limit,
-      pastMinutesStart,
-      pastMinutesEnd,
-      "realtime",
-    ],
-    queryFn: () => {
-      return authedFetch<APIResponse<SingleColResponse[]>>(
-        `/single-col/${site}`,
-        {
-          timeZone,
-          parameter,
-          limit,
-          pastMinutesStart,
-          pastMinutesEnd,
-        }
-      );
     },
     staleTime: Infinity,
     placeholderData: (_, query: any) => {

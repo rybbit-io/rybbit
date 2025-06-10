@@ -1,5 +1,5 @@
+import { FilterParams } from "@rybbit/shared";
 import { z } from "zod";
-import { Filter, FilterParameter, FilterType } from "./types.js";
 
 // =============================================================================
 // TIME RELATED SCHEMAS
@@ -116,26 +116,91 @@ const timeStatementParamsSchema = z
   });
 
 /**
- * Schema for parameters to getTimeStatementFill() function
- * Either date or pastMinutesRange must be provided
+ * Schema for FilterParams used in getTimeStatementFill() function
  */
-const timeStatementFillParamsSchema = z
+const filterParamsTimeStatementFillSchema = z
   .object({
-    date: fillDateParamsSchema.optional(),
-    pastMinutesRange: z
-      .object({
-        start: z.number().nonnegative(),
-        end: z.number().nonnegative(),
-      })
+    startDate: z
+      .string()
+      .regex(dateRegex, { message: "Invalid date format. Use YYYY-MM-DD" })
       .optional()
-      .refine((data) => !data || data.start > data.end, {
-        message: "start must be greater than end (start = older, end = newer)",
+      .refine((date) => !date || !isNaN(Date.parse(date)), {
+        message: "Invalid date value",
       }),
+    endDate: z
+      .string()
+      .regex(dateRegex, { message: "Invalid date format. Use YYYY-MM-DD" })
+      .optional()
+      .refine((date) => !date || !isNaN(Date.parse(date)), {
+        message: "Invalid date value",
+      }),
+    timeZone: z
+      .string()
+      .min(1, { message: "Time zone cannot be empty" })
+      .optional()
+      .refine(
+        (tz) => {
+          if (!tz) return true;
+          try {
+            // Test if time zone is valid by attempting to format a date with it
+            Intl.DateTimeFormat(undefined, { timeZone: tz });
+            return true;
+          } catch (e) {
+            return false;
+          }
+        },
+        { message: "Invalid time zone" }
+      ),
+    pastMinutesStart: z
+      .union([z.string(), z.number()])
+      .optional()
+      .transform((val) => {
+        if (val === undefined) return undefined;
+        const num = typeof val === "string" ? Number(val) : val;
+        return isNaN(num) ? undefined : num;
+      })
+      .refine((val) => val === undefined || val >= 0, {
+        message: "pastMinutesStart must be non-negative",
+      }),
+    pastMinutesEnd: z
+      .union([z.string(), z.number()])
+      .optional()
+      .transform((val) => {
+        if (val === undefined) return undefined;
+        const num = typeof val === "string" ? Number(val) : val;
+        return isNaN(num) ? undefined : num;
+      })
+      .refine((val) => val === undefined || val >= 0, {
+        message: "pastMinutesEnd must be non-negative",
+      }),
+    filters: z.string().optional(),
   })
   .refine(
-    (data) => data.date !== undefined || data.pastMinutesRange !== undefined,
+    (data) => {
+      const hasDateParams = data.startDate && data.endDate && data.timeZone;
+      const hasPastMinutesParams =
+        data.pastMinutesStart !== undefined &&
+        data.pastMinutesEnd !== undefined;
+      return hasDateParams || hasPastMinutesParams;
+    },
     {
-      message: "Either date or pastMinutesRange must be provided",
+      message:
+        "Either (startDate, endDate, timeZone) or (pastMinutesStart, pastMinutesEnd) must be provided",
+    }
+  )
+  .refine(
+    (data) => {
+      if (
+        data.pastMinutesStart !== undefined &&
+        data.pastMinutesEnd !== undefined
+      ) {
+        return data.pastMinutesStart > data.pastMinutesEnd;
+      }
+      return true;
+    },
+    {
+      message:
+        "pastMinutesStart must be greater than pastMinutesEnd (start = older, end = newer)",
     }
   );
 
@@ -225,17 +290,17 @@ export function validateTimeStatementParams(params: unknown) {
 }
 
 /**
- * Validates and sanitizes parameters for getTimeStatementFill()
- * @param params Raw time parameters
+ * Validates and sanitizes FilterParams for getTimeStatementFill()
+ * @param params FilterParams object
  * @param bucket Raw bucket parameter
  * @returns Validated parameters and bucket
  */
 export function validateTimeStatementFillParams(
-  params: unknown,
+  params: FilterParams,
   bucket: unknown
 ) {
-  const validatedParams = timeStatementFillParamsSchema.parse(params);
   const validatedBucket = timeBucketSchema.parse(bucket);
+  const validatedParams = filterParamsTimeStatementFillSchema.parse(params);
 
   return {
     params: validatedParams,

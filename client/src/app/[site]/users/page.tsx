@@ -24,7 +24,7 @@ import { useParams } from "next/navigation";
 import { useState } from "react";
 import { useGetUsers, UsersResponse } from "../../../api/analytics/users";
 import { Button } from "../../../components/ui/button";
-import { TablePagination } from "../../../components/pagination";
+import { Pagination } from "../../../components/pagination";
 import {
   Tooltip,
   TooltipContent,
@@ -113,25 +113,42 @@ export default function UsersPage() {
     columnHelper.accessor("user_id", {
       header: "User ID",
       cell: (info) => (
-        <div className="] truncate flex items-center gap-2 text-neutral-250">
-          <Avatar
-            size={20}
-            name={info.getValue() as string}
-            variant="marble"
-            colors={["#92A1C6", "#146A7C", "#F0AB3D", "#C271B4", "#C20D90"]}
-          />
-          {info.getValue().slice(0, 6)}
-        </div>
+        <Link href={`/${site}/user/${info.getValue()}`}>
+          <div className=" truncate flex items-center gap-2 text-neutral-250 hover:text-neutral-100 hover:underline">
+            <Avatar
+              size={20}
+              name={info.getValue() as string}
+              variant="marble"
+              colors={["#92A1C6", "#146A7C", "#F0AB3D", "#C271B4", "#C20D90"]}
+            />
+            {info.getValue().slice(0, 6)}
+          </div>
+        </Link>
       ),
     }),
     columnHelper.accessor("country", {
       header: "Country",
-      cell: (info) => (
-        <div className="flex items-center gap-2 whitespace-nowrap">
-          <CountryFlag country={info.getValue() || ""} />
-          {info.getValue() ? getCountryName(info.getValue()) : "Unknown"}
-        </div>
-      ),
+      cell: (info) => {
+        return (
+          <div className="flex items-center gap-2 whitespace-nowrap">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <CountryFlag country={info.getValue() || ""} />
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>
+                  {info.getValue()
+                    ? getCountryName(info.getValue())
+                    : "Unknown"}
+                </p>
+              </TooltipContent>
+            </Tooltip>
+            {info.row.original.city ||
+              info.row.original.region ||
+              getCountryName(info.getValue())}
+          </div>
+        );
+      },
     }),
     columnHelper.accessor("browser", {
       header: "Browser",
@@ -143,7 +160,7 @@ export default function UsersPage() {
       ),
     }),
     columnHelper.accessor("operating_system", {
-      header: "Operating System",
+      header: "OS",
       cell: (info) => (
         <div className="flex items-center gap-2 whitespace-nowrap">
           <OperatingSystem os={info.getValue() || ""} />
@@ -152,7 +169,7 @@ export default function UsersPage() {
       ),
     }),
     columnHelper.accessor("device_type", {
-      header: "Device Type",
+      header: "Device",
       cell: (info) => {
         const deviceType = info.getValue();
         return (
@@ -160,7 +177,6 @@ export default function UsersPage() {
             {deviceType === "Desktop" && <Monitor className="w-4 h-4" />}
             {deviceType === "Mobile" && <Smartphone className="w-4 h-4" />}
             {deviceType === "Tablet" && <Tablet className="w-4 h-4" />}
-            {deviceType || "Unknown"}
           </div>
         );
       },
@@ -204,16 +220,14 @@ export default function UsersPage() {
 
         return (
           <div className="whitespace-nowrap">
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <span>{relativeTime}</span>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>{formattedDate}</p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span>{relativeTime}</span>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>{formattedDate}</p>
+              </TooltipContent>
+            </Tooltip>
           </div>
         );
       },
@@ -231,16 +245,14 @@ export default function UsersPage() {
 
         return (
           <div className="whitespace-nowrap">
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <span>{relativeTime}</span>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>{formattedDate}</p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span>{relativeTime}</span>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>{formattedDate}</p>
+              </TooltipContent>
+            </Tooltip>
           </div>
         );
       },
@@ -339,17 +351,17 @@ export default function UsersPage() {
                     return (
                       <tr
                         key={row.id}
-                        className="border-b border-neutral-800 hover:bg-neutral-800 cursor-pointer group"
+                        className="border-b border-neutral-800  group"
                       >
                         {row.getVisibleCells().map((cell) => (
                           <td key={cell.id} className="px-3 py-3 relative">
-                            <Link
+                            {/* <Link
                               href={href}
                               className="absolute inset-0 z-10"
                               aria-label={`View user ${userId}`}
                             >
                               <span className="sr-only">View user details</span>
-                            </Link>
+                            </Link> */}
                             <span className="relative z-0">
                               {flexRender(
                                 cell.column.columnDef.cell,
@@ -369,7 +381,7 @@ export default function UsersPage() {
           {/* Pagination */}
           <div className="border-t border-neutral-800">
             <div className="px-4 py-3">
-              <TablePagination
+              <Pagination
                 table={table}
                 data={{ items: data?.data || [], total: data?.totalCount || 0 }}
                 pagination={pagination}

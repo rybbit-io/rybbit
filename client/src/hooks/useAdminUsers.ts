@@ -88,7 +88,6 @@ export function useAdminUsers() {
       await authClient.admin.impersonateUser({
         userId,
       });
-      console.log("impersonated");
       router.push("/");
       // Redirect to home after impersonation
       return true;

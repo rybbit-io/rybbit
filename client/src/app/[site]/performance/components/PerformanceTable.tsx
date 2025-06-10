@@ -31,14 +31,10 @@ import { useGetSite } from "../../../../api/admin/sites";
 import {
   PerformanceByDimensionItem,
   useGetPerformanceByDimension,
-} from "../../../../api/analytics/useGetPerformanceByDimension";
-import { TablePagination } from "../../../../components/pagination";
+} from "../../../../api/analytics/performance/useGetPerformanceByDimension";
+import { Pagination } from "../../../../components/pagination";
 import { FilterParameter } from "@rybbit/shared";
-import {
-  useStore,
-  addFilter,
-  removeFilter,
-} from "../../../../lib/store";
+import { useStore, addFilter, removeFilter } from "../../../../lib/store";
 import { PerformanceMetric, usePerformanceStore } from "../performanceStore";
 import {
   formatMetricValue,
@@ -505,7 +501,7 @@ export function PerformanceTable({ dimension, title }: PerformanceTableProps) {
 
           {totalPages > 1 && (
             <div className="mt-4">
-              <TablePagination
+              <Pagination
                 table={paginationController}
                 data={paginationData}
                 pagination={pagination}

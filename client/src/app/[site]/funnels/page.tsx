@@ -1,6 +1,9 @@
 "use client";
 
-import { SavedFunnel, useGetFunnels } from "@/api/analytics/useGetFunnels";
+import {
+  SavedFunnel,
+  useGetFunnels,
+} from "../../../api/analytics/funnels/useGetFunnels";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useStore } from "@/lib/store";
 import { ArrowRight, FilterIcon } from "lucide-react";

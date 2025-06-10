@@ -6,7 +6,10 @@ import {
 import { FileText, Laptop, MousePointerClick, Smartphone } from "lucide-react";
 import { DateTime } from "luxon";
 import Link from "next/link";
-import { Event, useGetEvents } from "../../../../api/analytics/useGetEvents";
+import {
+  Event,
+  useGetEvents,
+} from "../../../../api/analytics/events/useGetEvents";
 import { Skeleton } from "../../../../components/ui/skeleton";
 import { cn, getCountryName } from "../../../../lib/utils";
 import { Browser } from "../../components/shared/icons/Browser";

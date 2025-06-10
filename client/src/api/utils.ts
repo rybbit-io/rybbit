@@ -68,13 +68,26 @@ export async function authedFetch<T>(
 ): Promise<T> {
   const fullUrl = url.startsWith("http") ? url : `${BACKEND_URL}${url}`;
 
+  // Process params to handle arrays correctly for backend JSON parsing
+  let processedParams = params;
+  if (params) {
+    processedParams = { ...params };
+    Object.entries(processedParams).forEach(([key, value]) => {
+      if (Array.isArray(value)) {
+        // Convert arrays to JSON strings for backend parsing
+        processedParams![key] = JSON.stringify(value);
+      }
+    });
+  }
+
   try {
     const response = await axios({
       url: fullUrl,
-      params,
+      params: processedParams,
       withCredentials: true,
       ...config,
     });
+
     return response.data;
   } catch (error: any) {
     if (error?.response?.data?.error) {

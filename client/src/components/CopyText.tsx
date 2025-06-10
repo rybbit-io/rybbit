@@ -1,7 +1,6 @@
 import {
   Tooltip,
   TooltipContent,
-  TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
@@ -63,26 +62,27 @@ export function CopyText({
       </span>
 
       {showCopyButton && (
-        <TooltipProvider>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <button
-                onClick={handleCopy}
-                className={cn("p-1 rounded-md transition-colors text-gray-400 hover:text-gray-200 hover:bg-neutral-800 focus:outline-none", copyButtonClassName)}
-                aria-label="Copy to clipboard"
-              >
-                {copied ? (
-                  <Check className="h-3.5 w-3.5 text-green-500" />
-                ) : (
-                  <Copy className="h-3.5 w-3.5" />
-                )}
-              </button>
-            </TooltipTrigger>
-            <TooltipContent>
-              <p>{copied ? "Copied!" : tooltipText}</p>
-            </TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              onClick={handleCopy}
+              className={cn(
+                "p-1 rounded-md transition-colors text-gray-400 hover:text-gray-200 hover:bg-neutral-800 focus:outline-none",
+                copyButtonClassName
+              )}
+              aria-label="Copy to clipboard"
+            >
+              {copied ? (
+                <Check className="h-3.5 w-3.5 text-green-500" />
+              ) : (
+                <Copy className="h-3.5 w-3.5" />
+              )}
+            </button>
+          </TooltipTrigger>
+          <TooltipContent>
+            <p>{copied ? "Copied!" : tooltipText}</p>
+          </TooltipContent>
+        </Tooltip>
       )}
     </div>
   );

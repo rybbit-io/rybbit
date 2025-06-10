@@ -1,13 +1,14 @@
+import { FilterParams } from "@rybbit/shared";
 import { FastifyReply, FastifyRequest } from "fastify";
+import SqlString from "sqlstring";
 import clickhouse from "../../db/clickhouse/clickhouse.js";
+import { getUserHasAccessToSitePublic } from "../../lib/auth-utils.js";
+import { validateTimeStatementFillParams } from "./query-validation.js";
 import {
   getFilterStatement,
   getTimeStatement,
   processResults,
 } from "./utils.js";
-import SqlString from "sqlstring";
-import { getUserHasAccessToSitePublic } from "../../lib/auth-utils.js";
-import { validateTimeStatementFillParams } from "./query-validation.js";
 
 const TimeBucketToFn = {
   minute: "toStartOfMinute",
@@ -33,23 +34,16 @@ const bucketIntervalMap = {
   year: "1 YEAR",
 } as const;
 
-function getTimeStatementFill(
-  {
-    date,
-    pastMinutesRange,
-  }: {
-    date?: { startDate: string; endDate: string; timeZone: string };
-    pastMinutesRange?: { start: number; end: number };
-  },
-  bucket: TimeBucket
-) {
-  const { params, bucket: validatedBucket } = validateTimeStatementFillParams(
-    { date, pastMinutesRange },
-    bucket
-  );
+function getTimeStatementFill(params: FilterParams, bucket: TimeBucket) {
+  const { params: validatedParams, bucket: validatedBucket } =
+    validateTimeStatementFillParams(params, bucket);
 
-  if (params.date) {
-    const { startDate, endDate, timeZone } = params.date;
+  if (
+    validatedParams.startDate &&
+    validatedParams.endDate &&
+    validatedParams.timeZone
+  ) {
+    const { startDate, endDate, timeZone } = validatedParams;
     return `WITH FILL FROM toTimeZone(
       toDateTime(${
         TimeBucketToFn[validatedBucket]
@@ -74,8 +68,11 @@ function getTimeStatementFill(
       ) STEP INTERVAL ${bucketIntervalMap[validatedBucket]}`;
   }
   // For specific past minutes range - convert to exact timestamps for better performance
-  if (params.pastMinutesRange) {
-    const { start, end } = params.pastMinutesRange;
+  if (
+    validatedParams.pastMinutesStart !== undefined &&
+    validatedParams.pastMinutesEnd !== undefined
+  ) {
+    const { pastMinutesStart: start, pastMinutesEnd: end } = validatedParams;
 
     // Calculate exact timestamps in JavaScript to avoid runtime ClickHouse calculations
     const now = new Date();
@@ -113,28 +110,24 @@ function getTimeStatementFill(
   return "";
 }
 
-const getQuery = ({
-  startDate,
-  endDate,
-  timeZone,
-  bucket,
-  filters,
-  pastMinutesRange,
-}: {
-  startDate: string;
-  endDate: string;
-  timeZone: string;
-  bucket: TimeBucket;
-  filters: string;
-  pastMinutesRange?: { start: number; end: number };
-}) => {
+const getQuery = (params: FilterParams<{ bucket: TimeBucket }>) => {
+  const {
+    startDate,
+    endDate,
+    timeZone,
+    bucket,
+    filters,
+    pastMinutesStart,
+    pastMinutesEnd,
+  } = params;
   const filterStatement = getFilterStatement(filters);
 
-  const isAllTime = !startDate && !endDate && !pastMinutesRange;
+  const pastMinutesRange =
+    pastMinutesStart !== undefined && pastMinutesEnd !== undefined
+      ? { start: Number(pastMinutesStart), end: Number(pastMinutesEnd) }
+      : undefined;
 
-  const timeParams = pastMinutesRange
-    ? { pastMinutesRange }
-    : { date: { startDate, endDate, timeZone } };
+  const isAllTime = !startDate && !endDate && !pastMinutesRange;
 
   const query = `
 SELECT
@@ -167,12 +160,12 @@ FROM
         WHERE 
             site_id = {siteId:Int32}
             ${filterStatement}
-            ${getTimeStatement(timeParams)}
+            ${getTimeStatement(params)}
             AND type = 'pageview'
         GROUP BY session_id
     )
     GROUP BY time ORDER BY time ${
-      isAllTime ? "" : getTimeStatementFill(timeParams, bucket)
+      isAllTime ? "" : getTimeStatementFill(params, bucket)
     }
 ) AS session_stats
 FULL JOIN
@@ -187,10 +180,10 @@ FULL JOIN
     WHERE
         site_id = {siteId:Int32}
         ${filterStatement}
-        ${getTimeStatement(timeParams)}
+        ${getTimeStatement(params)}
         AND type = 'pageview'
     GROUP BY time ORDER BY time ${
-      isAllTime ? "" : getTimeStatementFill(timeParams, bucket)
+      isAllTime ? "" : getTimeStatementFill(params, bucket)
     }
 ) AS page_stats
 USING time
@@ -217,15 +210,9 @@ export async function getOverviewBucketed(
     Params: {
       site: string;
     };
-    Querystring: {
-      startDate: string;
-      endDate: string;
-      timeZone: string;
+    Querystring: FilterParams<{
       bucket: TimeBucket;
-      filters: string;
-      pastMinutesStart?: number;
-      pastMinutesEnd?: number;
-    };
+    }>;
   }>,
   res: FastifyReply
 ) {
@@ -257,7 +244,8 @@ export async function getOverviewBucketed(
     timeZone,
     bucket,
     filters,
-    pastMinutesRange,
+    pastMinutesStart,
+    pastMinutesEnd,
   });
 
   try {

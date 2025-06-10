@@ -1,16 +1,17 @@
 "use client";
 
-import { FilterParameter } from "@rybbit/shared";
 import { Button } from "@/components/ui/button";
+import { FilterParameter } from "@rybbit/shared";
 import { AlertCircle, Info, RefreshCcw } from "lucide-react";
 import { ReactNode } from "react";
 import { usePaginatedSingleCol } from "../../../../../api/analytics/usePaginatedSingleCol";
 import { SingleColResponse } from "../../../../../api/analytics/useSingleCol";
 import { CardLoader } from "../../../../../components/ui/card";
-import { StandardSectionDialog } from "./StandardSectionDialog";
 import { Row } from "./Row";
 import { Skeleton } from "./Skeleton";
-import { useWindowSize } from "@uidotdev/usehooks";
+import { StandardSectionDialog } from "./StandardSectionDialog";
+
+const MAX_ITEMS_TO_DISPLAY = 10;
 
 export function StandardSection({
   title,
@@ -52,10 +53,6 @@ export function StandardSection({
   const ratio = itemsForDisplay?.[0]?.percentage
     ? 100 / itemsForDisplay[0].percentage
     : 1;
-
-  const { width } = useWindowSize();
-
-  const MAX_ITEMS_TO_DISPLAY = width && width < 768 ? 10 : Infinity;
 
   return (
     <>

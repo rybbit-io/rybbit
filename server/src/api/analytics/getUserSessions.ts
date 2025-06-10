@@ -66,9 +66,7 @@ export async function getUserSessions(
   }
 
   const filterStatement = getFilterStatement(filters);
-  const timeStatement = getTimeStatement({
-    date: { startDate, endDate, timeZone },
-  });
+  const timeStatement = getTimeStatement(req.query);
 
   const query = `
 SELECT
