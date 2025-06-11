@@ -29,7 +29,7 @@
     "@rybbit/shared": "file:../shared",
     "better-auth": "1.2.7",
     "dotenv": "16.5.0",
-    "drizzle-orm": "0.43.1",
+    "drizzle-orm": "0.44.2",
     "fastify": "5.3.3",
     "fastify-better-auth": "1.0.4",
     "isbot": "^5.1.28",
