@@ -13,7 +13,7 @@
 	// },
 
 	// Use 'forwardPorts' to make a list of ports inside the container available locally.
-	"forwardPorts": [3001,3002],
+	"forwardPorts": [3001,3002,3003],
 
 	"runServices": [
 		// "caddy",
@@ -31,7 +31,8 @@
 	"customizations": {
 		"vscode": {
 			"extensions": [
-				"dbaeumer.vscode-eslint"
+				"dbaeumer.vscode-eslint",
+				"unifiedjs.vscode-mdx"
 			]
 		}
 	},
@@ -41,6 +42,9 @@
 		},
 		"3002": {
 			"label": "Client"
+		},
+		"3003": {
+			"label": "Docs"
 		}
 	}
 

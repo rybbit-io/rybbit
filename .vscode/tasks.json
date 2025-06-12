@@ -191,5 +191,47 @@
             "dependsOrder": "sequence",
             "problemMatcher": []
         },
+        /*
+         * Docs
+         */
+        {
+            "label": "Install Docs (NPM)",
+            "type": "shell",
+            "command": "npm ci --legacy-peer-deps",
+            "options": {
+                "cwd": "${workspaceFolder}/docs",
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "Run Docs (Dev)",
+            "type": "shell",
+            "command": "npm run dev",
+            "options": {
+                "cwd": "${workspaceFolder}/docs",
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "Build Docs",
+            "type": "shell",
+            "command": "npm run build",
+            "options": {
+                "cwd": "${workspaceFolder}/docs",
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "Run Docs",
+            "type": "shell",
+            "command": "npm run start",
+            "options": {
+                "cwd": "${workspaceFolder}/docs",
+            },
+            "dependsOn": [
+                "Build Docs",
+            ],
+            "problemMatcher": []
+        }
     ]
 }
