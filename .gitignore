@@ -43,3 +43,6 @@ coverage/
 .env.production 
 
 .cursor/
+
+# Drizzle
+drizzle/
