@@ -1,0 +1,48 @@
+// For format details, see https://aka.ms/devcontainer.json. For config options, see the
+// README at: https://github.com/devcontainers/templates/tree/main/src/javascript-node
+{
+	"name": "Rybbit",
+	// Or use a Dockerfile or Docker Compose file. More info: https://containers.dev/guide/dockerfile
+	"dockerComposeFile": ["compose.dev.yaml"],
+	"workspaceFolder": "/workspace",
+  	"service": "dev",
+
+	// Features to add to the dev container. More info: https://containers.dev/features.
+	// "features": {},
+
+	// Use 'forwardPorts' to make a list of ports inside the container available locally.
+	//"forwardPorts": [443,80],
+
+	"runServices": [
+		"caddy",
+		"clickhouse",
+		"postgres"
+	]
+
+	
+
+	// Use 'postCreateCommand' to run commands after the container is created.
+	//"postCreateCommand": "npm install",
+
+	// Configure tool-specific properties.
+	// "customizations": {
+	// 	"vscode": {
+	// 		"extensions": [
+	// 			"hbenl.vscode-mocha-test-adapter",
+	// 			"dbaeumer.vscode-eslint",
+	// 			"unifiedjs.vscode-mdx"
+	// 		]
+	// 	}
+	// },
+	// "portsAttributes": {
+	// 	"3000": {
+	// 		"label": "Docusaurus"
+	// 	},
+	// 	"9078": {
+	// 		"label": "App"
+	// 	}
+	// }
+
+	// Uncomment to connect as root instead. More info: https://aka.ms/dev-containers-non-root.
+	// "remoteUser": "root"
+}
