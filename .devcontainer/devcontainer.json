@@ -8,40 +8,41 @@
   	"service": "dev",
 
 	// Features to add to the dev container. More info: https://containers.dev/features.
-	// "features": {},
+	// "features": {
+	// 	"ghcr.io/robbert229/devcontainer-features/postgresql-client:1": "1.0.0"
+	// },
 
 	// Use 'forwardPorts' to make a list of ports inside the container available locally.
-	//"forwardPorts": [443,80],
+	"forwardPorts": [3001,3002],
 
 	"runServices": [
-		"caddy",
+		// "caddy",
 		"clickhouse",
 		"postgres"
-	]
-
-	
+	],
 
 	// Use 'postCreateCommand' to run commands after the container is created.
-	//"postCreateCommand": "npm install",
+	"postCreateCommand": "./.devcontainer/postCreate.sh",
+
+	// uncomment to keep clickhouse/postgres running after closing vscode
+	//"shutdownAction": "none",
 
 	// Configure tool-specific properties.
-	// "customizations": {
-	// 	"vscode": {
-	// 		"extensions": [
-	// 			"hbenl.vscode-mocha-test-adapter",
-	// 			"dbaeumer.vscode-eslint",
-	// 			"unifiedjs.vscode-mdx"
-	// 		]
-	// 	}
-	// },
-	// "portsAttributes": {
-	// 	"3000": {
-	// 		"label": "Docusaurus"
-	// 	},
-	// 	"9078": {
-	// 		"label": "App"
-	// 	}
-	// }
+	"customizations": {
+		"vscode": {
+			"extensions": [
+				"dbaeumer.vscode-eslint"
+			]
+		}
+	},
+	"portsAttributes": {
+		"3001": {
+			"label": "Backend"
+		},
+		"3002": {
+			"label": "Client"
+		}
+	}
 
 	// Uncomment to connect as root instead. More info: https://aka.ms/dev-containers-non-root.
 	// "remoteUser": "root"
