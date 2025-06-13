@@ -1,0 +1,164 @@
+import { Callout } from 'nextra/components'
+import { Steps } from 'nextra/components'
+
+# Development
+
+This guide covers the basics required to start developing for Rybbit.
+
+<Callout type="info">
+  It is recommended to use the [Devcontainer](#devcontainer) setup as it handles configuring all Preqequisties, environment, initial setup, and debugging.
+</Callout>
+
+## Prerequisites
+
+Rybbit depends on these external datasources:
+
+* [Postgres 17.4](https://www.postgresql.org/)
+* [Clickhouse 25.4.2](https://clickhouse.com/)
+
+Additionally, the development environment must have these applications installed:
+
+* [Node.js](https://nodejs.org/) 20 or later
+* [NPM](https://docs.npmjs.com/downloading-and-installing-node-js-and-npm) 10.8.0 or later
+
+<Callout type="info">
+  If developing in a non-docker/devcontainer environment consider managing Node/NPM versions using a [manager application](https://docs.npmjs.com/downloading-and-installing-node-js-and-npm#osx-or-linux-node-version-managers) rather than directly installed Node.JS/NPM.
+</Callout>
+
+Unlike in the production version of Rybbit, **Caddy** should **not** be used during development.
+
+## General Setup
+
+### Initial Setup
+
+<Steps>
+#### 1. Clone the Rybbit repository
+
+```bash
+git clone https://github.com/rybbit-io/rybbit .
+```
+
+#### 2. Generate Environmental variables
+
+Use the [setup script](/docs/self-hosting-advanced#setup-script-options) to generate a `.env`. Use `localhost` as the domain name.
+
+If developing in a non-docker/devcontainer environment you will need to configure postgres/clickhouse yourself using the variables generated in the file.
+
+#### 3. Setup Postgres and Clickhouse
+
+Use the `docker-compose.yml` file in the repository as a reference for creating Postgres and Clickhouse services. Use the generated `.env` with the final compose stack you create.
+
+#### 4. Install NPM Dependencies
+
+Navigate into each of the below directories, from the repository root, and run
+
+```shell
+npm install
+```
+
+* `{repositoryRoot}/client`
+* `{repositoryRoot}/server`
+* `{repositoryRoot}/shared`
+
+#### 5. Generate Shared code
+
+From `{repositoryRoot}/shared` run the following command to create shared code
+
+```shell
+npm run build
+```
+
+#### 6. Initialize Postgres Database
+
+From `{repositoryRoot}/server` run the following command to create and populate the database
+
+```shell
+npm run db:push
+```
+</Steps>
+
+### Run Rybbit
+
+Start the Backend service by navigating to `{repositoryRoot}/server` and running the command
+
+```shell
+npm run dev
+```
+
+Then, start the Client service by navigating to `{repositoryRoot}/client` and running the command
+
+```shell
+npm run dev
+```
+
+The development Client enables debugging client source files in the browser.
+
+## Devcontainer
+
+The Rybbit repository includes a [Devcontainer](https://containers.dev/) definition that can be used with [VS Code](https://code.visualstudio.com/) and other IDEs that implement the Devcontainer specification.
+
+The Devcontainer handles **full setup of a development environment and all dependencies.** It is recommend to use this instead of [General Setup](#general-setup) for an easier and more complete development experience.
+
+The instructions below assume you are using **VS Code** for development. If you are using another IDE reference `.devcontainer/tasks.json` in the repository to see what commands are being run.
+
+### Setup
+
+<Steps>
+#### 1. Clone the Rybbit repository
+
+```bash
+git clone https://github.com/rybbit-io/rybbit .
+```
+
+#### 2. Open Devcontainer
+
+<Callout type="info">
+  You will need the [Dev Containers](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-containers) extension installed.
+</Callout>
+
+Open the repository in VS Code. You should be prompted to re-open the workspace in a **Dev Container**. If no prompt appears open the Command Palette and run `Dev Containers: Rebuild and Reopen in Container`.
+
+This will create a compose stack (see `.decontainer/compose.dev.yaml`) with Postgres and Clickhouse configured, as well as development container for Rybbit code. This may take some time.
+
+#### 3. Init Project
+
+After the workspace re-opens in the Dev Container you need to **Run Tasks** to initialize the clean project. From the Command Palette run 
+
+```
+Tasks: Run Tasks > Init Clean Project
+```
+
+</Steps>
+
+### Run Rybbit
+
+To run Rybbit in development mode (watch files, generate client source maps, etc...) use the Command Palette
+
+```
+Tasks: Run Tasks > Run Rybbit (Dev)
+```
+
+To run Rybbit in with production files use the Command Palette
+
+```
+Tasks: Run Tasks > Run Rybbit (Build First)
+```
+
+### Debug Rybbit
+
+To run Rybbit and use VS Code for debugging the Backend service:
+
+<Steps>
+#### 1. Run Rybbit Client
+
+Use the Command Palette
+
+```
+Tasks: Run Tasks > Run Client (Dev)
+```
+
+#### 2. Launch Debug Profile
+
+Use the **Run and Debug** pane and launch **Debug Backend**
+
+</Steps>
