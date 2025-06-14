@@ -5,7 +5,7 @@ import {
   CardContent,
   CardHeader,
   CardTitle,
-} from "../../../components/ui/card";
+} from "@/components/ui/card";
 import {
   Table,
   TableBody,
@@ -13,18 +13,19 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "../../../components/ui/table";
-import { authClient } from "../../../lib/auth";
+} from "@/components/ui/table";
+import { authClient } from "@/lib/auth";
 
-import { useOrganizationMembers } from "../../../api/admin/auth";
-import { useOrganizationInvitations } from "../../../api/admin/organizations";
-import { NoOrganization } from "../../../components/NoOrganization";
+import { useOrganizationMembers } from "@/api/admin/auth";
+import { useOrganizationInvitations } from "@/api/admin/organizations";
+import { NoOrganization } from "@/components/NoOrganization";
 import { InviteMemberDialog } from "./components/InviteMemberDialog";
-import { useSetPageTitle } from "../../../hooks/useSetPageTitle";
+import { useSetPageTitle } from "@/hooks/useSetPageTitle";
 import { EditOrganizationDialog } from "./components/EditOrganizationDialog";
 import { DeleteOrganizationDialog } from "./components/DeleteOrganizationDialog";
 import { RemoveMemberDialog } from "./components/RemoveMemberDialog";
 import { Invitations } from "./components/Invitations";
+import { ApiKey } from "@/app/organization/members/components/ApiKey";
 
 // Types for our component
 export type Organization = {
@@ -69,6 +70,9 @@ function Organization({
 
   const isOwner = members?.data.find(
     (member) => member.role === "owner" && member.userId === data?.user?.id
+  );
+  const isAdmin = members?.data.find(
+    (member) => member.role === "admin" && member.userId === data?.user?.id
   );
 
   const handleRefresh = () => {
@@ -183,6 +187,8 @@ function Organization({
       </Card>
 
       <Invitations organizationId={org.id} isOwner={!!isOwner} />
+
+      <ApiKey organizationId={org.id} isOwnerOrAdmin={!!isOwner || !!isAdmin} />
     </>
   );
 }

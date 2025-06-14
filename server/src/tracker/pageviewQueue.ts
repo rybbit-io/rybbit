@@ -129,7 +129,7 @@ class PageviewQueue {
       };
     });
 
-    console.info("bulk insert: ", processedPageviews.length);
+    console.log("bulk insert: ", processedPageviews.length);
     // Bulk insert into database
     try {
       await clickhouse.insert({

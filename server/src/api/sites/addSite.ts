@@ -1,6 +1,7 @@
 import { FastifyReply, FastifyRequest } from "fastify";
+import { eq } from "drizzle-orm";
 import { db } from "../../db/postgres/postgres.js";
-import { sites } from "../../db/postgres/schema.js";
+import { sites, organization } from "../../db/postgres/schema.js";
 import { loadAllowedDomains } from "../../lib/allowedDomains.js";
 import { getSessionFromReq } from "../../lib/auth-utils.js";
 import { siteConfig } from "../../lib/siteConfig.js";
@@ -95,6 +96,12 @@ export async function addSite(
     // Update allowed domains
     await loadAllowedDomains();
 
+    const siteOrganization = await db
+      .select({ apiKey: organization.apiKey })
+      .from(organization)
+      .where(eq(organization.id, organizationId))
+      .limit(1);
+
     // Update siteConfig cache with the new site
     siteConfig.addSite(newSite[0].siteId, {
       public: newSite[0].public || false,
@@ -102,6 +109,7 @@ export async function addSite(
       domain: newSite[0].domain,
       blockBots:
         newSite[0].blockBots === undefined ? true : newSite[0].blockBots,
+      apiKey: siteOrganization[0].apiKey,
     });
 
     return reply.status(201).send(newSite[0]);

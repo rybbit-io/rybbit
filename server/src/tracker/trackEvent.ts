@@ -112,10 +112,7 @@ async function updateSession(
   // Insert new session with Drizzle
   const insertData = {
     sessionId: payload.sessionId,
-    siteId:
-      typeof payload.site_id === "string"
-        ? parseInt(payload.site_id, 10)
-        : payload.site_id,
+    siteId: parseInt(payload.site_id, 10),
     userId: payload.userId,
     hostname: payload.hostname || null,
     startTime: new Date(payload.timestamp || Date.now()),
@@ -168,7 +165,7 @@ async function validateOrigin(siteId: string, requestOrigin?: string) {
   try {
     // If origin checking is disabled, return success
     if (DISABLE_ORIGIN_CHECK) {
-      console.info(
+      console.log(
         `[Tracking] Origin check disabled. Allowing request for site ${siteId} from origin: ${
           requestOrigin || "none"
         }`
@@ -180,8 +177,7 @@ async function validateOrigin(siteId: string, requestOrigin?: string) {
     await siteConfig.ensureInitialized();
 
     // Convert siteId to number
-    const numericSiteId =
-      typeof siteId === "string" ? parseInt(siteId, 10) : siteId;
+    const numericSiteId = parseInt(siteId, 10);
 
     // Get the domain associated with this site
     const siteDomain = siteConfig.getSiteDomain(numericSiteId);
@@ -257,7 +253,7 @@ export async function trackEvent(request: FastifyRequest, reply: FastifyReply) {
     );
 
     if (!originValidation.success) {
-      console.warn(
+      console.error(
         `[Tracking] Request rejected for site ${validatedPayload.site_id}: ${originValidation.error}`
       );
       return reply.status(403).send({

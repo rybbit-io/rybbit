@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { authedFetch } from "../utils";
-import { authClient } from "../../lib/auth";
+import { authClient } from "@/lib/auth";
 
 type UserOrganization = {
   id: string;
@@ -38,6 +38,17 @@ export function useOrganizationInvitations(organizationId: string) {
       }
 
       return invitations.data;
+    },
+  });
+}
+
+export function useGetOrganizationApiKey(organizationId: string) {
+  return useQuery({
+    queryKey: ["get-org-api-key", organizationId],
+    queryFn: () => {
+      return authedFetch<{ apiKey: string }>(
+        `/get-org-api-key/${organizationId}`
+      );
     },
   });
 }

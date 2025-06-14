@@ -42,7 +42,7 @@ import {
   useGetSite,
   useGetSitesFromOrg,
 } from "@/api/admin/sites";
-import { useUserOrganizations } from "../../api/admin/organizations";
+import { useUserOrganizations } from "@/api/admin/organizations";
 import { ScriptBuilder } from "./ScriptBuilder";
 
 export function SiteSettings({

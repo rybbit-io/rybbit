@@ -1,8 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
-import { useStore } from "../../lib/store";
+import { useStore } from "@/lib/store";
 import { authedFetch } from "../utils";
 import { usePathname } from "next/navigation";
-import { authClient } from "../../lib/auth";
+import { authClient } from "@/lib/auth";
 
 export type SiteResponse = {
   siteId: number;
@@ -167,8 +167,7 @@ export function useGetSite(siteId?: string | number) {
       }
 
       // Use regular fetch instead of authedFetch to support public sites
-      const data = await authedFetch<SiteResponse>(`/get-site/${siteIdToUse}`);
-      return data;
+      return await authedFetch<SiteResponse>(`/get-site/${siteIdToUse}`);
     },
     staleTime: 60000, // 1 minute
     enabled: !!siteId,

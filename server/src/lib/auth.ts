@@ -16,9 +16,7 @@ type AuthType = ReturnType<typeof betterAuth> | null;
 const pluginList = [
   admin(),
   organization({
-    // Allow users to create organizations
     allowUserToCreateOrganization: true,
-    // Set the creator role to owner
     creatorRole: "owner",
     sendInvitationEmail: async (invitation) => {
       const inviteLink = `${process.env.BASE_URL}/invitation?invitationId=${invitation.invitation.id}&organization=${invitation.organization.name}&inviterEmail=${invitation.inviter.user.email}`;

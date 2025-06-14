@@ -61,6 +61,8 @@ import { IS_CLOUD } from "./lib/const.js";
 import { siteConfig } from "./lib/siteConfig.js";
 import { trackEvent } from "./tracker/trackEvent.js";
 import { extractSiteId, isSitePublic, normalizeOrigin } from "./utils.js";
+import { getOrganizationApiKey } from "./api/user/getOrganizationApiKey.js";
+import { trackServerEvent } from "./tracker/trackServerEvent.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -163,6 +165,34 @@ const ANALYTICS_ROUTES = [
   "/api/performance/by-dimension/",
 ];
 
+server.addHook("preValidation", async (request, reply) => {
+  const { url, method } = request.raw;
+
+  if (url === "/api/track-server" && method === "POST") {
+    const apiKey = request.headers["x-api-key"] as string;
+
+    if (!apiKey) {
+      return;
+    }
+
+    let siteIdFromPayload: string | undefined;
+
+    if (request.body && typeof request.body === "object" && (request.body as any).site_id) {
+      siteIdFromPayload = String((request.body as any).site_id);
+    }
+
+    if (!siteIdFromPayload) {
+      return;
+    }
+
+    await siteConfig.ensureInitialized();
+    const expectedApiKey = siteConfig.getSiteApiKey(siteIdFromPayload);
+
+    request.providedApiKey = apiKey;
+    request.correctApiKey = !!expectedApiKey && apiKey === expectedApiKey;
+  }
+});
+
 server.addHook("onRequest", async (request, reply) => {
   const { url } = request.raw;
 
@@ -262,6 +292,7 @@ server.get(
   listOrganizationMembers
 );
 server.get("/api/user/organizations", getUserOrganizations);
+server.get("/api/get-org-api-key/:organizationId", getOrganizationApiKey);
 
 if (IS_CLOUD) {
   // Stripe Routes
@@ -280,13 +311,14 @@ if (IS_CLOUD) {
 }
 
 server.post("/api/track", trackEvent);
+server.post("/api/track-server", trackServerEvent);
 server.get("/api/health", { logLevel: "silent" }, (_, reply) =>
   reply.send("OK")
 );
 
 const start = async () => {
   try {
-    console.info("Starting server...");
+    console.log("Starting server...");
     // Initialize the database
     await Promise.all([initializeClickhouse()]);
     await loadAllowedDomains();
@@ -309,5 +341,7 @@ start();
 declare module "fastify" {
   interface FastifyRequest {
     user?: any; // Or define a more specific user type
+    providedApiKey?: string;
+    correctApiKey?: boolean;
   }
 }
