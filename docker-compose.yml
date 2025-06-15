@@ -86,6 +86,7 @@ services:
       - BETTER_AUTH_SECRET=${BETTER_AUTH_SECRET}
       - BASE_URL=${BASE_URL}
       - DISABLE_SIGNUP=${DISABLE_SIGNUP}
+      - ALLOWED_ORIGIN_PATTERNS=${ALLOWED_ORIGIN_PATTERNS:-}
     depends_on:
       clickhouse:
         condition: service_healthy
