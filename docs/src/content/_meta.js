@@ -17,7 +17,7 @@ export default {
   "self-hosting": "",
   "self-hosting-manual": "",
   "self-hosting-advanced": "",
-  "self-hosting-nginx": "",
+  "self-hosting-guides": "Self-hosting Guides",
   "v1-migration": "",
   _6: {
     type: "separator",

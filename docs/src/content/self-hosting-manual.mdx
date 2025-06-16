@@ -240,6 +240,15 @@ Data is automatically persisted in Docker volumes:
 - `rybbit_clickhouse-data`: Analytics data
 - `rybbit_postgres-data`: User accounts and site configurations
 
+## Advanced Configurations
+
+For specific reverse proxy setups, see our detailed guides:
+
+- **[Custom Nginx Setup](/docs/self-hosting-guides/custom-nginx)** - Complete Nginx configuration with SSL
+- **[Nginx Proxy Manager](/docs/self-hosting-guides/nginx-proxy-manager)** - NPM setup without port exposure
+
+These guides provide step-by-step instructions for integrating Rybbit with your existing infrastructure.
+
 ## Troubleshooting
 
 ### Services won't start
@@ -266,5 +275,5 @@ docker compose ps
 Both postgres and clickhouse should show "healthy" status.
 
 <Callout type="info">
-For more advanced configurations and troubleshooting, see our [Advanced Self-Hosting Guide](/docs/self-hosting-advanced) and [Nginx Setup Guide](/docs/self-hosting-nginx).
+For more advanced configurations and setup script options, see our [Advanced Self-Hosting Guide](/docs/self-hosting-advanced).
 </Callout>
