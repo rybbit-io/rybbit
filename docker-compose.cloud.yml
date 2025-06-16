@@ -1,5 +1,5 @@
 services:
-  rybbit-caddy:
+  caddy:
     image: caddy:2.10.0
     container_name: caddy
     restart: unless-stopped
@@ -19,7 +19,7 @@ services:
       - backend
       - client
 
-  rybbit-clickhouse:
+  clickhouse:
     container_name: clickhouse
     image: clickhouse/clickhouse-server:25.4.2
     ports:
@@ -48,7 +48,7 @@ services:
       start_period: 10s
     restart: unless-stopped
 
-  rybbit-postgres:
+  postgres:
     image: postgres:17.4
     container_name: postgres
     environment:
@@ -61,7 +61,7 @@ services:
     ports:
       - "5432:5432"
 
-  rybbit-backend:
+  backend:
     container_name: backend
     build:
       context: .
@@ -97,7 +97,7 @@ services:
     ports:
       - "3001:3001"
 
-  rybbit-client:
+  client:
     container_name: client
     build:
       context: .
