@@ -10,7 +10,7 @@ This guide explains how to integrate Rybbit with your Astro application for anal
 The most common way to add a global script like Rybbit's to an Astro site is by including it in a common layout component that is used across your pages, or directly within the `<head>` of your pages if you don't use a shared layout.
 
 <Steps>
-### 1. Retrieve Your Tracking Script
+### Retrieve Your Tracking Script
 
 Navigate to your Rybbit dashboard to obtain your code snippet. It will look like this:
 
@@ -24,7 +24,7 @@ Navigate to your Rybbit dashboard to obtain your code snippet. It will look like
 ```
 Remember to replace `YOUR_SITE_ID` with your actual Site ID.
 
-### 2. Add the Snippet to a Common Layout or Page Head
+### Add the Snippet to a Common Layout or Page Head
 
 **Using a Common Layout (Recommended):**
 
@@ -71,7 +71,7 @@ Make sure to replace `YOUR_SITE_ID` with your actual Site ID.
 
 If you don't have a common layout, you can add the script to the `<head>` of each `.astro` page file in your `src/pages/` directory. However, using a layout is more maintainable.
 
-### 3. Verify Installation
+### Verify Installation
 
 After building and deploying your Astro site, open your Rybbit dashboard to check if data is being received. You can also inspect your browser's network tab to confirm that `script.js` is loaded on your pages.
 </Steps>

@@ -1,5 +1,6 @@
 import { Callout } from 'nextra/components'
 import { Steps } from 'nextra/components'
+import { Tabs } from 'nextra/components'
 
 # Manual Docker Compose Setup
 
@@ -14,19 +15,18 @@ This guide is for users who want to manually set up Rybbit using Docker Compose 
 ## Setup Steps
 
 <Steps>
-
-### 1. Clone the Repository
+### Clone the Repository
 
 ```bash
 git clone https://github.com/rybbit-io/rybbit.git
 cd rybbit
 ```
 
-### 2. Create Environment File
+### Create Environment File
 
 Create a `.env` file in the root directory with the following content:
 
-```env
+```bash
 # Required: Your domain and base URL
 DOMAIN_NAME=your.domain.com
 BASE_URL=https://your.domain.com
@@ -56,10 +56,10 @@ openssl rand -hex 32
 ```
 </Callout>
 
-### 3. Choose Your Setup Method
+### Choose Your Setup Method
 
-#### Option A: With Built-in Caddy (Automatic SSL)
-
+<Tabs items={['Built-in Caddy (Automatic SSL)', 'Without Caddy']}>
+  <Tabs.Tab>
 If you don't have a reverse proxy and want automatic SSL certificates, use the default docker-compose.yml:
 
 ```bash
@@ -70,9 +70,8 @@ This will:
 - Start all services including Caddy
 - Automatically obtain SSL certificates
 - Make your app available at `https://your.domain.com`
-
-#### Option B: Without Caddy (Custom Reverse Proxy)
-
+ </Tabs.Tab>
+  <Tabs.Tab>
 If you have your own reverse proxy (Nginx, Traefik, Coolify, etc.), you need to exclude Caddy and expose the ports:
 
 1. **Option B1: Modify the .env file**
@@ -103,8 +102,11 @@ If you have your own reverse proxy (Nginx, Traefik, Coolify, etc.), you need to 
    ```bash
    docker compose up -d backend client clickhouse postgres
    ```
+  </Tabs.Tab>
+</Tabs>
 
-### 4. Configure Your Reverse Proxy
+
+### Configure Your Reverse Proxy
 
 If you're using your own reverse proxy, configure it to:
 - Proxy requests to `/api/*` to `http://localhost:3001`
@@ -112,7 +114,8 @@ If you're using your own reverse proxy, configure it to:
 
 Example configurations:
 
-#### Nginx
+<Tabs items={['Nginx', 'Traefik']}>
+  <Tabs.Tab>
 ```nginx
 server {
     listen 80;
@@ -143,10 +146,9 @@ server {
     }
 }
 ```
-
-#### Traefik Labels
-Add these labels to your services in docker-compose.override.yml:
-```yaml
+ </Tabs.Tab>
+  <Tabs.Tab>
+```yml
 services:
   backend:
     labels:
@@ -162,8 +164,10 @@ services:
       - "traefik.http.routers.rybbit-client.tls.certresolver=letsencrypt"
       - "traefik.http.services.rybbit-client.loadbalancer.server.port=3002"
 ```
+  </Tabs.Tab>
+</Tabs>
 
-### 5. Start the Services
+### Start the Services
 
 ```bash
 # Start all services
@@ -173,7 +177,7 @@ docker compose up -d
 docker compose up -d backend client clickhouse postgres
 ```
 
-### 6. Verify Setup
+### Verify Setup
 
 Check that all services are running:
 ```bash
@@ -185,7 +189,7 @@ Monitor logs:
 docker compose logs -f
 ```
 
-### 7. Create Admin Account
+### Create Admin Account
 
 Navigate to `https://your.domain.com/signup` and create your admin account.
 
