@@ -1,7 +1,7 @@
 services:
-  caddy:
+  rybbit-caddy:
     image: caddy:2.10.0
-    container_name: caddy
+    container_name: rybbit-caddy
     restart: unless-stopped
     ports:
       - "80:80"
@@ -16,11 +16,11 @@ services:
       # Email is configured via Caddyfile global options
       - DOMAIN_NAME=${DOMAIN_NAME}
     depends_on:
-      - backend
-      - client
+      - rybbit-backend
+      - rybbit-client
 
-  clickhouse:
-    container_name: clickhouse
+  rybbit-clickhouse:
+    container_name: rybbit-clickhouse
     image: clickhouse/clickhouse-server:25.4.2
     ports:
       - "8123:8123"
@@ -48,9 +48,9 @@ services:
       start_period: 10s
     restart: unless-stopped
 
-  postgres:
+  rybbit-postgres:
     image: postgres:17.4
-    container_name: postgres
+    container_name: rybbit-postgres
     environment:
       - POSTGRES_USER=${POSTGRES_USER:-frog}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-frog}
@@ -65,20 +65,20 @@ services:
       start_period: 10s
     restart: unless-stopped
 
-  backend:
+  rybbit-backend:
     image: ghcr.io/rybbit-io/rybbit-backend:${IMAGE_TAG:-latest}
-    container_name: backend
+    container_name: rybbit-backend
     build:
       context: .
       dockerfile: server/Dockerfile
     ports:
-      - "${HOST_BACKEND_PORT}"
+      - "${HOST_BACKEND_PORT:-127.0.0.1:3001:3001}"
     environment:
       - NODE_ENV=production
-      - CLICKHOUSE_HOST=http://clickhouse:8123
+      - CLICKHOUSE_HOST=http://rybbit-clickhouse:8123
       - CLICKHOUSE_DB=${CLICKHOUSE_DB:-analytics}
       - CLICKHOUSE_PASSWORD=${CLICKHOUSE_PASSWORD:-frog}
-      - POSTGRES_HOST=postgres
+      - POSTGRES_HOST=rybbit-postgres
       - POSTGRES_PORT=5432
       - POSTGRES_DB=${POSTGRES_DB:-analytics}
       - POSTGRES_USER=${POSTGRES_USER:-frog}
@@ -87,9 +87,9 @@ services:
       - BASE_URL=${BASE_URL}
       - DISABLE_SIGNUP=${DISABLE_SIGNUP}
     depends_on:
-      clickhouse:
+      rybbit-clickhouse:
         condition: service_healthy
-      postgres:
+      rybbit-postgres:
         condition: service_started
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:3001/api/health"]
@@ -99,9 +99,9 @@ services:
       start_period: 10s
     restart: unless-stopped
 
-  client:
+  rybbit-client:
     image: ghcr.io/rybbit-io/rybbit-client:${IMAGE_TAG:-latest}
-    container_name: client
+    container_name: rybbit-client
     build:
       context: .
       dockerfile: client/Dockerfile
@@ -109,13 +109,13 @@ services:
         NEXT_PUBLIC_BACKEND_URL: ${BASE_URL}
         NEXT_PUBLIC_DISABLE_SIGNUP: ${DISABLE_SIGNUP}
     ports:
-      - "${HOST_CLIENT_PORT}"
+      - "${HOST_CLIENT_PORT:-127.0.0.1:3002:3002}"
     environment:
       - NODE_ENV=production
       - NEXT_PUBLIC_BACKEND_URL=${BASE_URL}
       - NEXT_PUBLIC_DISABLE_SIGNUP=${DISABLE_SIGNUP}
     depends_on:
-      - backend
+      - rybbit-backend
     restart: unless-stopped
 
 volumes:
