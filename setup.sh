@@ -91,28 +91,37 @@ fi
 # Create or overwrite the .env file
 echo "Creating .env file..."
 
-# Update port mappings based on webserver choice
-if [ "$USE_WEBSERVER" = "false" ]; then
-  # When not using the built-in webserver, expose ports to all interfaces
-  # Using quotes to ensure the string is passed as-is to Docker Compose
-  HOST_BACKEND_PORT="\"${BACKEND_PORT}:3001\""
-  HOST_CLIENT_PORT="\"${CLIENT_PORT}:3002\""
-else
-  # Keep ports only accessible via localhost when using Caddy
-  HOST_BACKEND_PORT="\"127.0.0.1:${BACKEND_PORT}:3001\""
-  HOST_CLIENT_PORT="\"127.0.0.1:${CLIENT_PORT}:3002\""
-fi
-
+# Start building the .env file with required variables
 cat > .env << EOL
-# Variables configured by setup.sh
+# Required variables configured by setup.sh
 DOMAIN_NAME=${DOMAIN_NAME}
 BASE_URL=${BASE_URL}
 BETTER_AUTH_SECRET=${BETTER_AUTH_SECRET}
-USE_WEBSERVER=${USE_WEBSERVER}
-HOST_BACKEND_PORT=${HOST_BACKEND_PORT}
-HOST_CLIENT_PORT=${HOST_CLIENT_PORT}
 DISABLE_SIGNUP=false
 EOL
+
+# Only add port variables if using custom ports or no webserver
+if [ "$USE_WEBSERVER" = "false" ]; then
+  # When not using the built-in webserver, expose ports to all interfaces
+  if [ "$BACKEND_PORT" != "3001" ] || [ "$CLIENT_PORT" != "3002" ]; then
+    # Custom ports specified
+    echo "HOST_BACKEND_PORT=\"${BACKEND_PORT}:3001\"" >> .env
+    echo "HOST_CLIENT_PORT=\"${CLIENT_PORT}:3002\"" >> .env
+  else
+    # Default ports, just expose them
+    echo "HOST_BACKEND_PORT=\"3001:3001\"" >> .env
+    echo "HOST_CLIENT_PORT=\"3002:3002\"" >> .env
+  fi
+elif [ "$BACKEND_PORT" != "3001" ] || [ "$CLIENT_PORT" != "3002" ]; then
+  # Using webserver but with custom ports - bind to localhost only
+  echo "HOST_BACKEND_PORT=\"127.0.0.1:${BACKEND_PORT}:3001\"" >> .env
+  echo "HOST_CLIENT_PORT=\"127.0.0.1:${CLIENT_PORT}:3002\"" >> .env
+fi
+
+# Add USE_WEBSERVER only if it's false (since true is the default behavior)
+if [ "$USE_WEBSERVER" = "false" ]; then
+  echo "USE_WEBSERVER=false" >> .env
+fi
 
 echo ".env file created successfully with domain ${DOMAIN_NAME}."
 if [ "$USE_WEBSERVER" = "false" ]; then

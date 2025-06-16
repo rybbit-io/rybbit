@@ -1,9 +1,9 @@
 import { Steps } from 'nextra/components'
 import { Callout } from 'nextra/components'
 
-# Self Hosting Guide
+# Quick Start
 
-This guide will walk you through setting up your own instance of Rybbit.
+This guide will walk you through setting up your own instance of Rybbit using our setup script. If you want to manually setup Rybbit using the Docker Compose file, check out our [Manual Docker Compose Setup](/docs/self-hosting-manual) guide.
 
 ## Prerequisites
 
@@ -14,7 +14,6 @@ Before you begin, ensure you have the following:
     We use Hetzner for everything. [Use our referral link](https://hetzner.cloud/?ref=QEdVqVpTLBDP) to get a 20 dollars of credits. It should last you almost half a year. The AMD CX11 is a good choice for ~$4/month.
     
 -   **A Domain Name:** You'll need a domain or subdomain (e.g., `tracking.yourdomain.com`) pointed to your VPS's IP address. HTTPS is required because browsers block tracking scripts served over insecure HTTP.
--   **Git:** Needed to clone the repository.
 
 <Callout type="info">
   This guide has been tested on Ubuntu 24 LTS (x86_64). If your server is ARM, it must be at least ARMv8.2-A for Clickhouse support.
@@ -23,7 +22,7 @@ Before you begin, ensure you have the following:
 ## Setup Steps
 
 <Steps>
-### 1. Point Your Domain to Your VPS
+### Point Your Domain to Your VPS
 
 Configure your domain's DNS settings to point to your VPS's public IP address. This usually involves:
 
@@ -32,7 +31,6 @@ Configure your domain's DNS settings to point to your VPS's public IP address. T
 3.  Adding an `A` record:
     *   **Host/Name:** Your desired subdomain (e.g., `tracking`) or `@` for the root domain.
     *   **Value:** Your VPS's IPv4 address.
-    *   **TTL:** Default or a low value (e.g., 300 seconds) for faster updates.
     *   **Proxy Status:** When using Cloudflare, either:
         * Set to "DNS only" (recommended for most setups)
         * Or if keeping the proxy enabled, set SSL/TLS encryption mode to "Full" or "Full (strict)" in your Cloudflare dashboard under SSL/TLS settings
@@ -43,14 +41,14 @@ Configure your domain's DNS settings to point to your VPS's public IP address. T
 
 DNS changes might take some time to propagate globally. Use [DNS Checker](https://dnschecker.org/) to verify.
 
-### 2. Install Docker Engine
+### Install Docker Engine
 
 Connect to your VPS via SSH.
 
 Follow the official Docker Engine installation instructions for your Linux distribution:
 [https://docs.docker.com/engine/install/](https://docs.docker.com/engine/install/)
 
-### 3. Clone the Rybbit Repository
+### Clone the Rybbit Repository
 
 Clone the project repository from GitHub (Git is usually pre-installed on most server distributions):
 ```bash
@@ -58,7 +56,7 @@ git clone https://github.com/rybbit-io/rybbit.git
 cd rybbit
 ```
 
-### 4. Run the Setup Script
+### Run the Setup Script
 
 The repository includes a setup script that configures the necessary environment variables (including generating a secure secret) and starts the application using Docker Compose.
 
@@ -77,10 +75,12 @@ Run the setup script, replacing `your.domain.name` with the domain or subdomain 
 The script will create a `.env` file and then build and start the containers. This might take a few minutes the first time.
 
 <Callout type="info">
-  By default, we assume you are on a blank VPS and automatically setup a Caddy webserver. If you want to use your own webserver, checkout the [Advanced Self-Hosting Guide](/docs/self-hosting-advanced#using-your-own-web-server).
+  By default, we assume you are on a blank VPS and automatically setup a Caddy webserver. If you want to use your own webserver or need more control over the setup, check out:
+  - [Manual Docker Compose Setup](/docs/self-hosting-manual) - For users with existing reverse proxies or deployment tools
+  - [Advanced Self-Hosting Guide](/docs/self-hosting-advanced) - For custom configurations and Nginx setup
 </Callout>
 
-### 5. Sign Up
+### Sign Up
 
 Once the services are running and DNS has propagated, Caddy (the webserver) will automatically obtain an SSL certificate for your domain.
 

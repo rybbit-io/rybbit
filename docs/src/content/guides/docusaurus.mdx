@@ -10,11 +10,11 @@ This guide explains how to integrate Rybbit with your Docusaurus v2+ website for
 Docusaurus provides a configuration option to add scripts or tags to the `<head>` of every page, which is the recommended way to include Rybbit.
 
 <Steps>
-### 1. Retrieve Your Tracking Script Details
+### Retrieve Your Tracking Script Details
 
 Navigate to your Rybbit dashboard to obtain your **Site ID**. The script source will be `https://app.rybbit.io/api/script.js`.
 
-### 2. Modify `docusaurus.config.js`
+### Modify `docusaurus.config.js`
 
 Open your `docusaurus.config.js` (or `docusaurus.config.ts` if using TypeScript) file, which is typically located at the root of your Docusaurus project.
 
@@ -69,7 +69,7 @@ module.exports = config;
 ```
 Make sure to replace `YOUR_SITE_ID` with your actual Site ID from your Rybbit dashboard.
 
-### 3. Verify Installation
+### Verify Installation
 
 After rebuilding and deploying your Docusaurus site (e.g., `npm run build` and `npm run serve`, or your deployment process), open your Rybbit dashboard to check if data is being received. You can also inspect your browser's network tab to confirm that `script.js` is loaded on your pages.
 </Steps>

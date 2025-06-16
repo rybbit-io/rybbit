@@ -10,7 +10,7 @@ This guide explains how to integrate Rybbit with your Bubble.io application to t
 Bubble allows you to add custom code, including JavaScript snippets, to the header of your pages.
 
 <Steps>
-### 1. Retrieve Your Tracking Script
+### Retrieve Your Tracking Script
 
 Navigate to your Rybbit dashboard to obtain your code snippet. It will look like this:
 
@@ -24,24 +24,24 @@ Navigate to your Rybbit dashboard to obtain your code snippet. It will look like
 ```
 Remember to replace `YOUR_SITE_ID` with your actual Site ID.
 
-### 2. Access Your Bubble App Settings
+### Access Your Bubble App Settings
 
 -   Open your Bubble application in the editor.
 -   Navigate to the **Settings** tab in the left-hand sidebar.
 -   Go to the **SEO / metatags** sub-tab.
 
-### 3. Add the Snippet to the Page Header
+### Add the Snippet to the Page Header
 
 -   Scroll down to the section titled **"Script/meta tags in header"**.
 -   Paste your Rybbit tracking snippet into this box. This will add the script to the `<head>` section of every page in your Bubble app.
 
 Alternatively, some Bubble plans or configurations might offer a dedicated section for "Advanced Settings" or "Custom Code" where header scripts can be placed globally or on specific pages. The "SEO / metatags" header script section is generally the most common place for global scripts.
 
-### 4. Deploy Your App
+### Deploy Your App
 
 -   After adding the script, ensure you deploy your Bubble application to the live version for the changes to take effect.
 
-### 5. Verify Installation
+### Verify Installation
 
 Open your live Bubble application and navigate through a few pages. Then, check your Rybbit dashboard to see if data is being received. You can also inspect your browser's network tab to confirm that `script.js` is loaded.
 </Steps>
@@ -58,17 +58,17 @@ Open your live Bubble application and navigate through a few pages. Then, check 
 You can track custom events in Bubble by using a workflow action that runs JavaScript.
 
 <Steps>
-### 1. Create a Workflow
+### Create a Workflow
 
 -   In the Bubble editor, go to the **Workflow** tab.
 -   Create a new workflow triggered by the event you want to track (e.g., "When Button A is clicked", "When a user's data changes", "When a page is loaded" and a certain condition is met).
 
-### 2. Add "Run JavaScript" Action
+### Add "Run JavaScript" Action
 
 -   Within your workflow, add a new action.
 -   Search for and select the **"Run JavaScript"** action (this might be provided by a free official Bubble plugin or a community plugin if not available by default; ensure you have a way to execute arbitrary JS).
 
-### 3. Add Rybbit Tracking Code
+### Add Rybbit Tracking Code
 
 -   In the "Run JavaScript" action's code block, add your Rybbit event tracking code:
 
@@ -99,7 +99,7 @@ if (typeof window.rybbit !== 'undefined') {
 }
 ```
 
-### 4. Test Your Event
+### Test Your Event
 
 -   Preview your Bubble app and trigger the workflow.
 -   Check your Rybbit dashboard to see if the custom event data is being received.
