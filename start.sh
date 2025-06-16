@@ -17,7 +17,7 @@ source .env
 
 if [ "$USE_WEBSERVER" = "false" ]; then
   # Start without the caddy service when using --no-webserver
-  docker compose start rybbit-backend rybbit-client rybbit-clickhouse rybbit-postgres
+  docker compose start backend client clickhouse postgres
 else
   # Start all services including caddy
   docker compose start

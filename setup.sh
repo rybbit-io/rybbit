@@ -138,7 +138,7 @@ fi
 echo "Building and starting Docker services..."
 if [ "$USE_WEBSERVER" = "false" ]; then
   # Start without the caddy service when using --no-webserver
-  docker compose up -d rybbit-backend rybbit-client rybbit-clickhouse rybbit-postgres
+  docker compose up -d backend client clickhouse postgres
 else
   # Start all services including caddy
   docker compose up -d

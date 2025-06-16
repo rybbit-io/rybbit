@@ -84,7 +84,7 @@ If you have your own reverse proxy (Nginx, Traefik, Coolify, etc.), you need to 
 
    Then start without Caddy:
    ```bash
-   docker compose up -d rybbit-backend rybbit-client rybbit-clickhouse rybbit-postgres
+   docker compose up -d backend client clickhouse postgres
    ```
 
 2. **Option B2: Use docker-compose.override.yml**
@@ -101,7 +101,7 @@ If you have your own reverse proxy (Nginx, Traefik, Coolify, etc.), you need to 
 
    Then start without Caddy:
    ```bash
-   docker compose up -d rybbit-backend rybbit-client rybbit-clickhouse rybbit-postgres
+   docker compose up -d backend client clickhouse postgres
    ```
 
 ### 4. Configure Your Reverse Proxy
@@ -195,11 +195,11 @@ Navigate to `https://your.domain.com/signup` and create your admin account.
 
 Rybbit consists of these services:
 
-- **rybbit-client**: Next.js frontend (port 3002)
-- **rybbit-backend**: Node.js API server (port 3001)
-- **rybbit-postgres**: User data and configuration
-- **rybbit-clickhouse**: Analytics data storage
-- **rybbit-caddy**: Reverse proxy with automatic SSL (optional)
+- **client**: Next.js frontend (port 3002)
+- **backend**: Node.js API server (port 3001)
+- **postgres**: User data and configuration
+- **clickhouse**: Analytics data storage
+- **caddy**: Reverse proxy with automatic SSL (optional)
 
 ## Common Configurations
 

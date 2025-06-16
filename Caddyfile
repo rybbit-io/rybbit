@@ -5,13 +5,13 @@
     encode zstd gzip
 
     handle /api/* {
-        reverse_proxy rybbit-backend:3001
+        reverse_proxy backend:3001
     }
 
 
     # Proxy all other requests to the client service
     handle {
-        reverse_proxy rybbit-client:3002
+        reverse_proxy client:3002
     }
 
 } 
