@@ -10,7 +10,7 @@ This guide explains how to integrate Rybbit with your Remix application for anal
 The recommended way to add a script that should appear on every page in a Remix application is by including it in your root layout file, typically `app/root.tsx` (or `app/root.jsx`).
 
 <Steps>
-### 1. Retrieve Your Tracking Script
+### Retrieve Your Tracking Script
 
 Navigate to your Rybbit dashboard to obtain your code snippet. It will look like this:
 
@@ -23,7 +23,7 @@ Navigate to your Rybbit dashboard to obtain your code snippet. It will look like
 ```
 Remember to replace `YOUR_SITE_ID` with your actual Site ID.
 
-### 2. Add the Snippet to `app/root.tsx`
+### Add the Snippet to `app/root.tsx`
 
 Open your `app/root.tsx` (or `app/root.jsx`) file. This file defines the root HTML structure for your application. Add the Rybbit tracking snippet within the `<head>` section of the returned JSX.
 
@@ -65,7 +65,7 @@ export default function App() {
 ```
 Make sure to replace `YOUR_SITE_ID` with your actual Site ID. You can define it as a constant or directly in the script tag.
 
-### 3. Verify Installation
+### Verify Installation
 
 After restarting your Remix development server or deploying your application, open your Rybbit dashboard to check if data is being received. You can also inspect your browser's network tab to confirm that `script.js` is loaded.
 </Steps>

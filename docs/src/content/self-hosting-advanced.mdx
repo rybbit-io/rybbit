@@ -33,7 +33,7 @@ Examples:
 
 ## Using Your Own Web Server
 
-If you prefer to use your own web server (such as Nginx or Apache) instead of the built-in Caddy server, you can use the `--no-webserver` flag:
+If you prefer to use your own web server instead of the built-in Caddy server, you can use the `--no-webserver` flag:
 
 ```bash
 ./setup.sh your.domain.name --no-webserver
@@ -44,169 +44,35 @@ This will:
 - Expose the backend service on host port 3001 (or your custom port)
 - Expose the client service on host port 3002 (or your custom port)
 
-You'll need to configure your web server to proxy requests to these services. Here's an example Nginx configuration:
+<Callout type="info">
+For detailed configuration examples with Nginx, Traefik, NPM, and other reverse proxies, see our [Manual Docker Compose Setup](/docs/self-hosting-manual) guide.
+</Callout>
 
-```nginx
-server {
-    listen 80;
-    server_name your.domain.name;
-    return 301 https://$host$request_uri;
-}
+## Environment Variables
 
-server {
-    listen 443 ssl;
-    server_name your.domain.name;
+The setup script creates a minimal `.env` file with only the essential variables:
 
-    # SSL configuration (using Let's Encrypt)
-    ssl_certificate /etc/letsencrypt/live/your.domain.name/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/your.domain.name/privkey.pem;
-
-    # API requests - adjust port if you customized it
-    location /api/ {
-        proxy_pass http://localhost:3001;  # or your custom port
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-    }
-
-    # Client app - adjust port if you customized it
-    location / {
-        proxy_pass http://localhost:3002;  # or your custom port
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-    }
-}
-```
-
-For a detailed step-by-step guide on setting up Nginx with SSL certificates using Certbot, see our [Nginx Setup Guide](/docs/self-hosting-nginx).
-
-## Docker Compose setup with NPM, without exposing ports
-_this setup assumes you have [NPM docker](https://nginxproxymanager.com) up and running and are capable of creating SSL certs for your local hosts. Ideally, also use Technitium to create a DNS entry_
-
-Note, of course you can use any othert proxy of your choice, sa long you can somehow put it on the same network as Rybbit Docker and edit location rules.
-
-1. Create a `docker-compose.yml` file in your project folder with these contents:
-```
-services:
-  rybbit_clickhouse:
-    image: clickhouse/clickhouse-server:25.4.2
-    container_name: rybbit_clickhouse
-    volumes:
-      - ./clickhouse-data:/var/lib/clickhouse
-      - ./clickhouse_config:/etc/clickhouse-server/config.d
-    environment:
-      - CLICKHOUSE_DB=${CLICKHOUSE_DB:-analytics}
-      - CLICKHOUSE_USER=${CLICKHOUSE_USER:-default}
-      - CLICKHOUSE_PASSWORD=${CLICKHOUSE_PASSWORD:-frog}
-    healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8123/ping"]
-      interval: 3s
-      timeout: 5s
-      retries: 5
-      start_period: 10s
-    restart: unless-stopped
-    networks:
-      - internal
-
-  rybbit_postgres:
-    image: postgres:17.4
-    container_name: rybbit_postgres
-    environment:
-      - POSTGRES_USER=${POSTGRES_USER:-frog}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-frog}
-      - POSTGRES_DB=${POSTGRES_DB:-analytics}
-    volumes:
-      - ./postgres-data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
-      interval: 3s
-      timeout: 5s
-      retries: 5
-      start_period: 10s
-    restart: unless-stopped
-    networks:
-      - internal
-
-  rybbit_backend:
-    image: ghcr.io/rybbit-io/rybbit-backend:${IMAGE_TAG:-latest}
-    container_name: rybbit_backend
-    environment:
-      - NODE_ENV=production
-      - CLICKHOUSE_HOST=http://rybbit_clickhouse:8123
-      - CLICKHOUSE_DB=${CLICKHOUSE_DB:-analytics}
-      - CLICKHOUSE_PASSWORD=${CLICKHOUSE_PASSWORD:-frog}
-      - POSTGRES_HOST=rybbit_postgres
-      - POSTGRES_PORT=5432
-      - POSTGRES_DB=${POSTGRES_DB:-analytics}
-      - POSTGRES_USER=${POSTGRES_USER:-frog}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-frog}
-      - BETTER_AUTH_SECRET=${BETTER_AUTH_SECRET}
-      - BASE_URL=${BASE_URL}
-      - DISABLE_SIGNUP=${DISABLE_SIGNUP}
-    depends_on:
-      rybbit_clickhouse:
-        condition: service_healthy
-      rybbit_postgres:
-        condition: service_started
-    healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:3001/api/health"]
-      interval: 3s
-      timeout: 5s
-      retries: 5
-      start_period: 10s
-    restart: unless-stopped
-    networks:
-      - internal
-      - npm_proxy
-
-  rybbit_client:
-    image: ghcr.io/rybbit-io/rybbit-client:${IMAGE_TAG:-latest}
-    container_name: rybbit_client
-    environment:
-      - NODE_ENV=production
-      - NEXT_PUBLIC_BACKEND_URL=${BASE_URL}
-      - NEXT_PUBLIC_DISABLE_SIGNUP=${DISABLE_SIGNUP}
-    depends_on:
-      - rybbit_backend
-    restart: unless-stopped
-    networks:
-      - internal
-      - npm_proxy
-
-networks:
-  internal:
-    driver: bridge
-  npm_proxy:
-    external: true
-```
-
-2. Create an `.env` file with these contents (edit them adequately)
-```
-DOMAIN_NAME=domain.tld
-BASE_URL=https://domain.tld
-BETTER_AUTH_SECRET=long_random_string
+```env
+DOMAIN_NAME=your.domain.com
+BASE_URL=https://your.domain.com
+BETTER_AUTH_SECRET=generated_secret
 DISABLE_SIGNUP=false
-HOST_BACKEND_PORT=3001
-HOST_CLIENT_PORT=3002
 ```
 
-4. Optionally, copy the folder https://github.com/rybbit-io/rybbit/tree/master/clickhouse_config to your project (this is not strictly necessary but allows for greater control over clickhouse and might be necessary if you run into networking issues)
+Optional variables that can be added:
 
-5. Make sure to create your external network `npm_proxy` and make sure NPM is on it as well
+```env
+# Database configuration (uses defaults if not specified)
+CLICKHOUSE_PASSWORD=frog
+POSTGRES_USER=frog
+POSTGRES_PASSWORD=frog
+POSTGRES_DB=analytics
+CLICKHOUSE_DB=analytics
 
-6. Create your NPM host entry for `rybbit_client` (point it to port 3002) and in that host, add a custom location for `/api`, pointing it to `rybbit_backend` port 3001. 
+# Custom image tags
+IMAGE_TAG=latest
 
-Hint: In the Custom Location add a custom rule:
+# Port mapping (only needed for custom ports or --no-webserver)
+HOST_BACKEND_PORT="3001:3001"
+HOST_CLIENT_PORT="3002:3002"
 ```
-location /api/ {
-    proxy_pass http://rybbit_backend:3001;
-}
-```
-_Note: Path rewriting is no longer needed as the backend now expects requests with the `/api/` prefix._
-
-7. run `docker compose up -d` (or separately pull and up)
-
-8. Navigate to domain.tld and register your admin Account.
