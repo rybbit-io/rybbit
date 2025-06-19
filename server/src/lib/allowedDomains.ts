@@ -7,6 +7,7 @@ import dotenv from "dotenv";
 dotenv.config();
 
 export let allowList: string[] = [];
+export let allowedOriginRegexes: RegExp[] = [];
 
 export const loadAllowedDomains = async () => {
   try {
@@ -32,10 +33,43 @@ export const loadAllowedDomains = async () => {
       normalizeOrigin(process.env.BASE_URL || ""),
       ...domains.map(({ domain }) => normalizeOrigin(domain)),
     ];
+
+    // Load regex patterns from ALLOWED_ORIGIN_PATTERNS environment variable
+    if (process.env.ALLOWED_ORIGIN_PATTERNS) {
+      try {
+        const regexPatterns = process.env.ALLOWED_ORIGIN_PATTERNS.split(
+          ","
+        ).map((pattern) => pattern.trim());
+        allowedOriginRegexes = regexPatterns.map(
+          (pattern) => new RegExp(pattern)
+        );
+      } catch (error) {
+        console.error(
+          "Error parsing ALLOWED_ORIGIN_PATTERNS regex patterns:",
+          error
+        );
+        allowedOriginRegexes = [];
+      }
+    }
   } catch (error) {
     console.error("Error loading allowed domains:", error);
     // Set default values in case of error
     allowList = ["localhost", normalizeOrigin(process.env.BASE_URL || "")];
+    allowedOriginRegexes = [];
     initAuth(allowList);
   }
+};
+
+export const isOriginAllowed = (origin: string): boolean => {
+  const normalizedOrigin = normalizeOrigin(origin);
+
+  // Check against the regular allow list
+  if (allowList.includes(normalizedOrigin)) {
+    return true;
+  }
+
+  // Check against regex patterns
+  const regexMatch = allowedOriginRegexes.some((regex) => regex.test(origin));
+
+  return regexMatch;
 };

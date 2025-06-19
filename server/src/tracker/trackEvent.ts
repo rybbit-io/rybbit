@@ -6,7 +6,7 @@ import {
   createBasePayload,
   getExistingSession,
   isSiteOverLimit,
-  TotalTrackingPayload,
+  TotalTrackingPayload
 } from "./trackingUtils.js";
 import { db } from "../db/postgres/postgres.js";
 import { activeSessions } from "../db/postgres/schema.js";
@@ -15,6 +15,7 @@ import { getDeviceType, normalizeOrigin } from "../utils.js";
 import { pageviewQueue } from "./pageviewQueue.js";
 import { siteConfig } from "../lib/siteConfig.js";
 import { DISABLE_ORIGIN_CHECK } from "./const.js";
+import { isOriginAllowed } from "../lib/allowedDomains.js";
 
 // Define Zod schema for validation
 export const trackingPayloadSchema = z.discriminatedUnion("type", [
@@ -202,6 +203,11 @@ async function validateOrigin(siteId: string, requestOrigin?: string, apiKey?: s
         success: false,
         error: "Origin header required",
       };
+    }
+
+    // Check if the origin is allowed by regex patterns (e.g., browser extensions)
+    if (isOriginAllowed(requestOrigin)) {
+      return { success: true };
     }
 
     try {
