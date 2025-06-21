@@ -1,8 +1,8 @@
-import { parseScriptConfig } from './config.js';
-import { Tracker } from './tracking.js';
-import { WebVitalsCollector } from './webVitals.js';
-import { debounce, isOutboundLink } from './utils.js';
-import { RybbitAPI, WebVitalsData } from './types.js';
+import { parseScriptConfig } from "./config.js";
+import { Tracker } from "./tracking.js";
+import { WebVitalsCollector } from "./webVitals.js";
+import { debounce, isOutboundLink } from "./utils.js";
+import { RybbitAPI, WebVitalsData } from "./types.js";
 
 declare global {
   interface Window {
@@ -14,12 +14,15 @@ declare global {
 (function () {
   const scriptTag = document.currentScript as HTMLScriptElement;
   if (!scriptTag) {
-    console.error('Could not find current script tag');
+    console.error("Could not find current script tag");
     return;
   }
 
   // Check if user has opted out
-  if (window.__RYBBIT_OPTOUT__ || localStorage.getItem('disable-rybbit') !== null) {
+  if (
+    window.__RYBBIT_OPTOUT__ ||
+    localStorage.getItem("disable-rybbit") !== null
+  ) {
     // Create no-op implementation
     window.rybbit = {
       pageview: () => {},
@@ -43,33 +46,59 @@ declare global {
 
   // Initialize web vitals if enabled
   if (config.enableWebVitals) {
-    const webVitalsCollector = new WebVitalsCollector((vitals: WebVitalsData) => {
-      tracker.trackWebVitals(vitals);
-    });
+    const webVitalsCollector = new WebVitalsCollector(
+      (vitals: WebVitalsData) => {
+        tracker.trackWebVitals(vitals);
+      }
+    );
     webVitalsCollector.initialize();
+  }
+
+  // Initialize error tracking if enabled
+  if (config.trackErrors) {
+    // Global error handler for uncaught errors
+    window.addEventListener("error", (event) => {
+      tracker.trackError(event.error || new Error(event.message), {
+        filename: event.filename,
+        lineno: event.lineno,
+        colno: event.colno,
+      });
+    });
+
+    // Global handler for unhandled promise rejections
+    window.addEventListener("unhandledrejection", (event) => {
+      const error =
+        event.reason instanceof Error
+          ? event.reason
+          : new Error(String(event.reason));
+      tracker.trackError(error, {
+        type: "unhandledrejection",
+      });
+    });
   }
 
   // Create debounced pageview tracker
   const trackPageview = () => tracker.trackPageview();
-  const debouncedTrackPageview = config!.debounceDuration > 0
-    ? debounce(trackPageview, config!.debounceDuration)
-    : trackPageview;
+  const debouncedTrackPageview =
+    config!.debounceDuration > 0
+      ? debounce(trackPageview, config!.debounceDuration)
+      : trackPageview;
 
   // Setup event listeners
   function setupEventListeners() {
     // Track custom events and outbound links
-    document.addEventListener('click', function (e) {
+    document.addEventListener("click", function (e) {
       let target = e.target as HTMLElement;
-      
+
       // Check for custom events via data attributes
       while (target && target !== document.documentElement) {
-        if (target.hasAttribute('data-rybbit-event')) {
-          const eventName = target.getAttribute('data-rybbit-event');
+        if (target.hasAttribute("data-rybbit-event")) {
+          const eventName = target.getAttribute("data-rybbit-event");
           if (eventName) {
             const properties: Record<string, string> = {};
             for (const attr of target.attributes) {
-              if (attr.name.startsWith('data-rybbit-prop-')) {
-                const propName = attr.name.replace('data-rybbit-prop-', '');
+              if (attr.name.startsWith("data-rybbit-prop-")) {
+                const propName = attr.name.replace("data-rybbit-prop-", "");
                 properties[propName] = attr.value;
               }
             }
@@ -82,12 +111,14 @@ declare global {
 
       // Check for outbound links
       if (config!.trackOutbound) {
-        const link = (e.target as HTMLElement).closest('a') as HTMLAnchorElement;
+        const link = (e.target as HTMLElement).closest(
+          "a"
+        ) as HTMLAnchorElement;
         if (link?.href && isOutboundLink(link.href)) {
           tracker.trackOutbound(
             link.href,
-            link.innerText || link.textContent || '',
-            link.target || '_self'
+            link.innerText || link.textContent || "",
+            link.target || "_self"
           );
         }
       }
@@ -108,17 +139,17 @@ declare global {
         debouncedTrackPageview();
       };
 
-      window.addEventListener('popstate', debouncedTrackPageview);
-      window.addEventListener('hashchange', debouncedTrackPageview);
+      window.addEventListener("popstate", debouncedTrackPageview);
+      window.addEventListener("hashchange", debouncedTrackPageview);
     }
   }
 
   // Setup public API
   window.rybbit = {
     pageview: () => tracker.trackPageview(),
-    event: (name: string, properties: Record<string, any> = {}) => 
+    event: (name: string, properties: Record<string, any> = {}) =>
       tracker.trackEvent(name, properties),
-    trackOutbound: (url: string, text: string = '', target: string = '_self') =>
+    trackOutbound: (url: string, text: string = "", target: string = "_self") =>
       tracker.trackOutbound(url, text, target),
     identify: (userId: string) => tracker.identify(userId),
     clearUserId: () => tracker.clearUserId(),

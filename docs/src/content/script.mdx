@@ -21,6 +21,7 @@ You can customize the script's behavior using `data-*` attributes on the `<scrip
 | `data-track-spa`  | `string`   | `"true"`| Set to `"false"` to disable automatic pageview tracking for single page applications (React, Vue, etc). You will need to manually call `window.rybbit.pageview()` or `window.rybbit.track()` for all but the initial pageview. |
 | `data-track-query`| `string`   | `"true"`| Set to `"false"` to disable tracking of URL query strings. This enhances privacy by preventing potentially sensitive information in query parameters from being stored in your analytics data. |
 | `data-track-outbound` | `string` | `"true"` | Set to `"false"` to disable automatic tracking of outbound link clicks. |
+| `data-track-errors` | `string` | `"false"` | Set to `"true"` to enable automatic tracking of JavaScript errors and unhandled promise rejections. Only tracks errors from the same origin to avoid noise from third-party scripts. |
 | `data-web-vitals` | `string`   | `"false"`| Set to `"true"` to enable Web Vitals performance metrics collection (LCP, CLS, INP, FCP, TTFB). Web Vitals are disabled by default to reduce script size and network requests. |
 | `data-skip-patterns` | `string` | `[]`   | A JSON string array of URL path patterns to ignore. Pageviews matching these patterns won't be tracked. Supports two types of wildcards: `*` (matches within a segment) and `**` (matches across segments). |
 | `data-mask-patterns` | `string` | `[]`   | A JSON string array of URL path patterns to mask for privacy. Pageviews matching these patterns will be tracked, but the actual URL path will be replaced with the pattern itself in analytics data. Supports the same wildcards as `data-skip-patterns`. |
@@ -54,6 +55,7 @@ data-mask-patterns='["/users/*/settings", "/accounts/**", "/orders/*/details"]'
   data-skip-patterns='["/admin/**", "/preview/*"]'
   data-mask-patterns='["/users/*/profile", "/orders/**"]'
   data-track-query="false"
+  data-track-errors="true"
   data-web-vitals="true"
   data-debounce="300"
 ></script>
@@ -77,4 +79,32 @@ Web Vitals are disabled by default to keep the script lightweight. When enabled 
   data-web-vitals="true"
 ></script>
 ```
+
+## Error Tracking
+
+Error tracking is disabled by default to keep the script lightweight and respect user privacy. When enabled with `data-track-errors="true"`, the script will:
+
+- Automatically capture JavaScript errors and unhandled promise rejections
+- Filter out errors from third-party scripts (only tracks errors from your domain)
+- Truncate error messages and stack traces to prevent excessive data storage
+- Send error data to your analytics dashboard for monitoring
+
+**Enable Error Tracking:**
+```html
+<script
+  src="https://app.rybbit.io/api/script.js"
+  async
+  data-site-id="YOUR_SITE_ID"
+  data-track-errors="true"
+></script>
+```
+
+Error data includes:
+- Error type (TypeError, ReferenceError, etc.)
+- Error message (truncated to 500 characters)
+- Stack trace (truncated to 2000 characters)
+- File location and line/column numbers
+- Session information for debugging
+
+**Privacy Note:** Error tracking only captures errors originating from your website's domain to avoid noise from browser extensions, third-party scripts, or other external sources.
 

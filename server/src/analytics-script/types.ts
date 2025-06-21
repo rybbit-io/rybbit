@@ -7,6 +7,7 @@ export interface ScriptConfig {
   trackQuerystring: boolean;
   trackOutbound: boolean;
   enableWebVitals: boolean;
+  trackErrors: boolean;
   skipPatterns: string[];
   maskPatterns: string[];
   apiKey?: string;
@@ -27,7 +28,7 @@ export interface BasePayload {
 }
 
 export interface TrackingPayload extends BasePayload {
-  type: 'pageview' | 'custom_event' | 'outbound' | 'performance';
+  type: "pageview" | "custom_event" | "outbound" | "performance" | "error";
   event_name?: string;
   properties?: string;
   // Web vitals metrics

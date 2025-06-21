@@ -1,6 +1,7 @@
 "use client";
 import { Funnel, Target } from "@phosphor-icons/react/dist/ssr";
 import {
+  AlertTriangle,
   Earth,
   Gauge,
   LayoutDashboard,
@@ -123,6 +124,12 @@ export function Sidebar() {
           active={isActiveTab("events")}
           href={getTabPath("events")}
           icon={<MousePointerClick className="w-4 h-4" />}
+        />
+        <SidebarLink
+          label="Errors"
+          active={isActiveTab("errors")}
+          href={getTabPath("errors")}
+          icon={<AlertTriangle className="w-4 h-4" />}
         />
         {/* <SidebarLink
           label="Reports"

@@ -18,6 +18,7 @@ export function ScriptBuilder({ siteId }: ScriptBuilderProps) {
   const [autoTrack, setAutoTrack] = useState(true);
   const [trackQuery, setTrackQuery] = useState(true);
   const [trackOutbound, setTrackOutbound] = useState(true);
+  const [trackErrors, setTrackErrors] = useState(false);
   const [webVitals, setWebVitals] = useState(false);
   const [skipPatterns, setSkipPatterns] = useState<string[]>([]);
   const [skipPatternsText, setSkipPatternsText] = useState("");
@@ -109,6 +110,11 @@ export function ScriptBuilder({ siteId }: ScriptBuilderProps) {
     !trackOutbound
       ? `
     data-track-outbound="false"`
+      : ""
+  }${
+    trackErrors
+      ? `
+    data-track-errors="true"`
       : ""
   }${
     skipPatterns.length > 0
@@ -208,6 +214,28 @@ export function ScriptBuilder({ siteId }: ScriptBuilderProps) {
                 id="trackQuery"
                 checked={trackQuery}
                 onCheckedChange={setTrackQuery}
+              />
+            </div>
+          </div>
+
+          {/* Track Errors Option */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <div>
+                <Label
+                  htmlFor="trackErrors"
+                  className="text-sm font-medium text-foreground block"
+                >
+                  Track JavaScript errors
+                </Label>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Automatically capture and track JavaScript errors on your site
+                </p>
+              </div>
+              <Switch
+                id="trackErrors"
+                checked={trackErrors}
+                onCheckedChange={setTrackErrors}
               />
             </div>
           </div>

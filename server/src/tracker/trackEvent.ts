@@ -99,6 +99,64 @@ export const trackingPayloadSchema = z.discriminatedUnion("type", [
       ttfb: z.number().min(0).nullable().optional(),
     })
     .strict(),
+  z
+    .object({
+      type: z.literal("error"),
+      site_id: z.string().min(1),
+      hostname: z.string().max(253).optional(),
+      pathname: z.string().max(2048).optional(),
+      querystring: z.string().max(2048).optional(),
+      screenWidth: z.number().int().positive().optional(),
+      screenHeight: z.number().int().positive().optional(),
+      language: z.string().max(35).optional(),
+      page_title: z.string().max(512).optional(),
+      referrer: z.string().max(2048).optional(),
+      event_name: z.string().min(1).max(256), // Error type (TypeError, ReferenceError, etc.)
+      properties: z
+        .string()
+        .max(4096) // Larger limit for error details
+        .refine(
+          (val) => {
+            try {
+              const parsed = JSON.parse(val);
+              // Validate error-specific properties
+              if (typeof parsed.message !== "string") return false;
+              if (parsed.stack && typeof parsed.stack !== "string")
+                return false;
+              if (parsed.fileName && typeof parsed.fileName !== "string")
+                return false;
+              if (parsed.lineNumber && typeof parsed.lineNumber !== "number")
+                return false;
+              if (
+                parsed.columnNumber &&
+                typeof parsed.columnNumber !== "number"
+              )
+                return false;
+
+              // Apply truncation limits
+              if (parsed.message && parsed.message.length > 500) {
+                parsed.message = parsed.message.substring(0, 500);
+              }
+              if (parsed.stack && parsed.stack.length > 2000) {
+                parsed.stack = parsed.stack.substring(0, 2000);
+              }
+
+              return true;
+            } catch (e) {
+              return false;
+            }
+          },
+          {
+            message:
+              "Properties must be valid JSON with error fields (message, stack, fileName, lineNumber, columnNumber)",
+          }
+        ),
+      user_id: z.string().max(255).optional(),
+      api_key: z.string().max(35).optional(), // rb_ prefix + 32 hex chars
+      ip_address: z.string().ip().optional(), // Custom IP for geolocation
+      user_agent: z.string().max(512).optional(), // Custom user agent
+    })
+    .strict(),
 ]);
 
 // Update session for both pageviews and events
@@ -306,7 +364,8 @@ export async function trackEvent(request: FastifyRequest, reply: FastifyReply) {
         );
         return reply.status(429).send({
           success: false,
-          error: "Rate limit exceeded. Maximum 20 requests per second per API key.",
+          error:
+            "Rate limit exceeded. Maximum 20 requests per second per API key.",
         });
       }
     }
