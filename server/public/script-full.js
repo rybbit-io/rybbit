@@ -410,8 +410,8 @@
         hostname: url.hostname,
         pathname,
         querystring: this.config.trackQuerystring ? url.search : "",
-        screenWidth: window.innerWidth,
-        screenHeight: window.innerHeight,
+        screenWidth: screen.width,
+        screenHeight: screen.height,
         language: navigator.language,
         page_title: document.title,
         referrer: document.referrer
