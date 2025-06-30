@@ -29,7 +29,7 @@
     "@maxmind/geoip2-node": "6.1.0",
     "@rybbit/shared": "file:../shared",
     "better-auth": "1.2.7",
-    "dotenv": "16.5.0",
+    "dotenv": "17.0.0",
     "drizzle-orm": "0.43.1",
     "fastify": "5.3.3",
     "fastify-better-auth": "1.0.4",
