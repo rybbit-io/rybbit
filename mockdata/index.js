@@ -19,14 +19,14 @@ console.log(
 );
 
 // Site ID to use
-const SITE_ID = 5;
+const SITE_ID = 1;
 
 // Generate 10,000 unique user IDs
 const userIds = Array.from({ length: 10000 }, () => faker.string.uuid());
 
 // Website details
-const SITE_NAME = "ShopEase";
-const SITE_DOMAIN = "shopease.com";
+const SITE_NAME = "Retri";
+const SITE_DOMAIN = "retri.com";
 
 // Generate products for consistent paths
 const products = Array.from({ length: 50 }, (_, index) => {
@@ -409,6 +409,48 @@ function weightedRandom(items) {
   return items[0]; // Fallback
 }
 
+// Helper function to get channel from referrer
+function getChannelFromReferrer(referrer) {
+  if (!referrer || referrer === "") {
+    return "Direct";
+  }
+  
+  if (referrer.includes("google.com")) {
+    return "Organic Search";
+  }
+  
+  if (referrer.includes("bing.com") || referrer.includes("yahoo.com")) {
+    return "Organic Search";
+  }
+  
+  if (referrer.includes("facebook.com") || referrer.includes("instagram.com")) {
+    return "Social";
+  }
+  
+  if (referrer.includes("twitter.com") || referrer.includes("tiktok.com")) {
+    return "Social";
+  }
+  
+  if (referrer.includes("pinterest.com")) {
+    return "Social";
+  }
+  
+  if (referrer.includes("youtube.com")) {
+    return "Video";
+  }
+  
+  if (referrer.includes(`email.${SITE_DOMAIN}`)) {
+    return "Email";
+  }
+  
+  if (referrer.includes("retailmenot.com") || referrer.includes("slickdeals.net")) {
+    return "Affiliate";
+  }
+  
+  // Default to referral for all other external sites
+  return "Referral";
+}
+
 // Helper function to generate a UUID
 function generateUUID() {
   return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, function (c) {
@@ -565,8 +607,13 @@ function generateSessionEventsOptimized(
       screen_width: screenWidth,
       screen_height: screenHeight,
       device_type: deviceType,
-      country: country,
-      iso_3166_2: iso3166,
+      country: country.slice(0, 2), // Ensure exactly 2 characters for FixedString(2)
+      region: iso3166,
+      city: faker.location.city(),
+      lat: faker.location.latitude(),
+      lon: faker.location.longitude(),
+      channel: getChannelFromReferrer(referrer || initialReferrer),
+      url_parameters: {}, // Empty object for structured parameters
       timestamp: currentTime.toFormat(dateFormat),
       pathname: pathname,
       querystring: querystring || "",
@@ -574,7 +621,7 @@ function generateSessionEventsOptimized(
       referrer: referrer || "",
       type: type,
       event_name: eventName || "",
-      properties: props || "",
+      props: props || {},
     };
   }
 
@@ -638,13 +685,13 @@ function generateSessionEventsOptimized(
       currentTime = currentTime.plus({ seconds: 2 });
 
       // Simplified properties creation - avoid building complex objects
-      const productProps = JSON.stringify({
+      const productProps = {
         product_id: currentProduct.id,
         product_name: currentProduct.name,
         category: currentProduct.category,
         price: currentProduct.price,
         currency: "USD",
-      });
+      };
 
       createEvent(
         currentPath.path,
@@ -668,14 +715,14 @@ function generateSessionEventsOptimized(
           "",
           "custom_event",
           "add-to-cart",
-          JSON.stringify({
+          {
             product_id: currentProduct.id,
             product_name: currentProduct.name,
             category: currentProduct.category,
             price: currentProduct.price,
             quantity: 1,
             currency: "USD",
-          })
+          }
         );
       }
     }
@@ -693,11 +740,11 @@ function generateSessionEventsOptimized(
         "",
         "custom_event",
         "view-cart",
-        JSON.stringify({
+        {
           items_count: cartItems.length,
           value: cartTotal,
           currency: "USD",
-        })
+        }
       );
     }
     // Purchase flow - simplified for speed
@@ -718,11 +765,11 @@ function generateSessionEventsOptimized(
         "",
         "custom_event",
         "begin-checkout",
-        JSON.stringify({
+        {
           items_count: cartItems.length,
           value: cartTotal,
           currency: "USD",
-        })
+        }
       );
 
       // Purchase - simplify condition
@@ -744,14 +791,14 @@ function generateSessionEventsOptimized(
           "",
           "custom_event",
           "purchase",
-          JSON.stringify({
+          {
             transaction_id: transactionId,
             value: cartTotal,
             tax: (parseFloat(cartTotal) * 0.08).toFixed(2),
             shipping: "9.99",
             currency: "USD",
             items_count: cartItems.length,
-          })
+          }
         );
 
         hasPurchased = true;
@@ -1266,7 +1313,7 @@ async function generateEventsForDay(date, targetEventsCount) {
 
           try {
             await clickhouse.insert({
-              table: "pageviews",
+              table: "events",
               values: batch,
               format: "JSONEachRow",
             });
