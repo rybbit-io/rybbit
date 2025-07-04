@@ -31,7 +31,7 @@
     "@mongodb-js/zstd": "^2.0.1",
     "@rybbit/shared": "file:../shared",
     "better-auth": "1.2.12",
-    "dotenv": "16.5.0",
+    "dotenv": "17.0.1",
     "drizzle-orm": "0.43.1",
     "fastify": "5.3.3",
     "fastify-better-auth": "1.1.0",
