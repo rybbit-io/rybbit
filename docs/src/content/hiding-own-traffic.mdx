@@ -32,10 +32,10 @@ There are several ways to disable Rybbit tracking to hide your own visits from a
     203.0.113.45
 
     # Your office network (CIDR)
-    10.0.0.0/8
+    203.0.113.0/24
 
     # IP range for your team
-    192.168.1.10-192.168.1.20
+    198.51.100.10-198.51.100.20
 
     # IPv6 address
     2001:db8::1
@@ -43,11 +43,23 @@ There are several ways to disable Rybbit tracking to hide your own visits from a
 
     ### Key Features
 
-    - **Server-side filtering**: Traffic is blocked before it reaches your analytics, ensuring 100% accuracy
+    - **Server-side filtering**: Traffic is blocked before it reaches your analytics, providing highly accurate exclusion
     - **Multiple formats**: Supports individual IPs, CIDR notation, and ranges
     - **IPv4 and IPv6**: Full support for both IP versions
-    - **Real-time updates**: Changes take effect immediately
+    - **Near real-time updates**: Changes take effect within seconds
     - **No browser dependency**: Works regardless of browser or device
+
+    <Callout type="info">
+    **IP Stability Note**: IP addresses can change due to factors like mobile networks, VPN usage, ISP changes, and IPv6 privacy extensions. You may need to periodically update your excluded IPs to maintain effective filtering.
+    </Callout>
+
+    <Callout type="info">
+    **Dynamic IP Addresses**: If you frequently use VPNs, mobile networks, or have a dynamic IP address that changes regularly, consider these approaches:
+    - Use CIDR ranges that cover your typical IP pool (consult your ISP or VPN provider)
+    - Combine IP exclusion with browser extensions for comprehensive coverage
+    - Check your current IP periodically and update exclusions as needed
+    - For corporate networks, exclude the entire office IP range rather than individual addresses
+    </Callout>
 
     <Callout type="warning">
     **Note**: IPv6 range notation (e.g., `2001:db8::1-2001:db8::ff`) is not supported. Use CIDR notation instead (e.g., `2001:db8::/32`).
@@ -114,4 +126,4 @@ Multiple methods are available for hiding your own traffic, each with different 
 - **Browser extensions** offer convenience by automatically working across all your Rybbit-enabled websites  
 - **localStorage method** gives granular control for specific websites or temporary disabling
 
-For most users, **IP exclusion is recommended** as it provides 100% accuracy and works across all devices accessing your site from the excluded IP addresses. The other methods work at the browser level and may be useful for additional flexibility or temporary exclusions.
+For most users, **IP exclusion is recommended** as it provides highly accurate filtering for all devices accessing your site from the excluded IP addresses. The other methods work at the browser level and may be useful for additional flexibility or temporary exclusions.
