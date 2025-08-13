@@ -9,7 +9,7 @@ const COMPARISON_FEATURES = [
     features: [
       {
         name: "Monthly events",
-        free: "3,000",
+        free: "10,000",
         pro: "100K - 10M+",
       },
       {

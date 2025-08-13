@@ -3,11 +3,13 @@ import { Readable } from "stream";
 import { gunzipSync } from "zlib";
 import { compress as zstdCompress, decompress as zstdDecompress } from "@mongodb-js/zstd";
 import { IS_CLOUD } from "../../lib/const.js";
+import { createServiceLogger } from "../../lib/logger/logger.js";
 
 class R2StorageService {
   private client: S3Client | null = null;
   private bucketName: string = "";
   private enabled: boolean = false;
+  private logger = createServiceLogger("r2-storage");
 
   constructor() {
     // Only initialize R2 in cloud environment
@@ -24,9 +26,9 @@ class R2StorageService {
       });
       this.bucketName = process.env.R2_BUCKET_NAME || "rybbit";
       this.enabled = true;
-      console.log("[R2Storage] Initialized with bucket:", this.bucketName);
+      this.logger.info({ bucket: this.bucketName }, "R2Storage initialized");
     } else {
-      console.log("[R2Storage] Not enabled - missing IS_CLOUD or R2 credentials");
+      this.logger.debug("R2Storage not enabled - missing IS_CLOUD or R2 credentials");
     }
   }
 

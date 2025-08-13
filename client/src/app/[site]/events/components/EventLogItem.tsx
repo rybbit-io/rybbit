@@ -6,7 +6,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { FileText, Laptop, MousePointerClick, Smartphone } from "lucide-react";
+import { ExternalLink, FileText, Laptop, MousePointerClick, Smartphone } from "lucide-react";
 import { DateTime } from "luxon";
 import Link from "next/link";
 import { useParams } from "next/navigation";
@@ -49,8 +49,9 @@ export function EventLogItem({ event }: EventLogItemProps) {
     zone: "utc",
   }).toLocal();
 
-  // Determine if it's a pageview or custom event
+  // Determine event type
   const isPageview = event.type === "pageview";
+  const isOutbound = event.type === "outbound";
 
   const fullPath = `https://${event.hostname}${event.pathname}${
     event.querystring ? `${event.querystring}` : ""
@@ -77,6 +78,8 @@ export function EventLogItem({ event }: EventLogItemProps) {
             <div className="flex-shrink-0">
               {isPageview ? (
                 <FileText className="w-4 h-4 text-blue-500" />
+              ) : isOutbound ? (
+                <ExternalLink className="w-4 h-4 text-purple-500" />
               ) : (
                 <MousePointerClick className="w-4 h-4 text-amber-500" />
               )}
@@ -97,6 +100,22 @@ export function EventLogItem({ event }: EventLogItemProps) {
                     )}
                   </div>
                 </Link>
+              ) : isOutbound ? (
+                // For outbound events, show the destination URL from properties
+                eventProperties.url ? (
+                  <Link href={eventProperties.url} target="_blank" rel="noopener noreferrer">
+                    <div
+                      className="text-sm truncate hover:underline text-purple-400"
+                      title={eventProperties.url}
+                    >
+                      {truncatePath(eventProperties.url)}
+                    </div>
+                  </Link>
+                ) : (
+                  <div className="text-sm font-medium truncate text-purple-400">
+                    Outbound Link
+                  </div>
+                )
               ) : (
                 <div className="text-sm font-medium truncate">
                   {event.event_name}

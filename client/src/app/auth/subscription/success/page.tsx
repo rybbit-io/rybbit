@@ -22,7 +22,7 @@ export default function StripeSuccessPage() {
   }, [router]);
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center">
+    <div className="min-h-dvh flex flex-col items-center justify-center">
       <div className="text-center">
         <h1 className="text-2xl font-bold mb-4">Payment Successful!</h1>
         <div className="mb-4">
@@ -31,9 +31,7 @@ export default function StripeSuccessPage() {
         <p className="text-lg text-neutral-600 dark:text-neutral-400">
           Your subscription has been processed successfully.
         </p>
-        <p className="text-neutral-600 dark:text-neutral-400 mt-2">
-          Redirecting you to your subscription details...
-        </p>
+        <p className="text-neutral-600 dark:text-neutral-400 mt-2">Redirecting you to your subscription details...</p>
       </div>
     </div>
   );

@@ -21,7 +21,7 @@ export default function Subscribe() {
 
   // Redirect if already subscribed
   if (subscription?.status === "active") {
-    router.push("/organization/subscription");
+    router.push("/settings/organization/subscription");
   }
 
   // Get the active organization ID
@@ -40,8 +40,7 @@ export default function Subscribe() {
   });
 
   // Calculate total events over the past 30 days
-  const totalEvents =
-    eventCountData?.data?.reduce((sum, day) => sum + day.event_count, 0) || 0;
+  const totalEvents = eventCountData?.data?.reduce((sum, day) => sum + day.event_count, 0) || 0;
 
   return (
     <StandardPage>
@@ -49,10 +48,7 @@ export default function Subscribe() {
         <PricingHeader />
 
         {/* Pricing Card */}
-        <PricingCard
-          stripePrices={getStripePrices()}
-          isLoggedIn={!!sessionData?.user}
-        />
+        <PricingCard stripePrices={getStripePrices()} isLoggedIn={!!sessionData?.user} />
 
         {/* Usage Stats and Chart */}
         {organizationId && (
@@ -61,24 +57,16 @@ export default function Subscribe() {
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-2">
                   <TrendingUp className="h-5 w-5 text-blue-400" />
-                  <h3 className="font-semibold text-lg">
-                    Your Usage (Last 30 Days)
-                  </h3>
+                  <h3 className="font-semibold text-lg">Your Usage (Last 30 Days)</h3>
                 </div>
                 <div className="text-right">
-                  <p className="text-2xl font-bold text-blue-300">
-                    {totalEvents.toLocaleString()}
-                  </p>
+                  <p className="text-2xl font-bold text-blue-300">{totalEvents.toLocaleString()}</p>
                   <p className="text-xs text-neutral-400">total events</p>
                 </div>
               </div>
 
               <div className="p-1">
-                <UsageChart
-                  organizationId={organizationId}
-                  startDate={startDate}
-                  endDate={endDate}
-                />
+                <UsageChart organizationId={organizationId} startDate={startDate} endDate={endDate} />
               </div>
             </div>
           </div>

@@ -129,6 +129,53 @@ export const initializeClickhouse = async () => {
       `,
   });
 
+  // Create uptime monitor events table
+  await clickhouse.exec({
+    query: `
+      CREATE TABLE IF NOT EXISTS monitor_events (
+        monitor_id UInt32,
+        organization_id String,
+        timestamp DateTime,
+        
+        -- Monitor metadata
+        monitor_type LowCardinality(String), -- 'http', 'tcp'
+        monitor_url String,
+        monitor_name String,
+        region LowCardinality(String) DEFAULT 'local',
+        
+        -- Response data
+        status LowCardinality(String), -- 'success', 'failure', 'timeout'
+        status_code Nullable(UInt16), -- HTTP status code
+        response_time_ms UInt32,
+        
+        -- HTTP timing breakdown (all in milliseconds)
+        dns_time_ms Nullable(UInt32),
+        tcp_time_ms Nullable(UInt32),
+        tls_time_ms Nullable(UInt32),
+        ttfb_ms Nullable(UInt32), -- Time to first byte
+        transfer_time_ms Nullable(UInt32),
+        
+        -- Validation results
+        validation_errors Array(String), -- Array of failed validation rules
+        
+        -- Response metadata (for HTTP)
+        response_headers Map(String, String),
+        response_size_bytes Nullable(UInt32),
+        
+        -- TCP specific
+        port Nullable(UInt16),
+        
+        -- Error information
+        error_message Nullable(String),
+        error_type Nullable(String) -- 'dns_failure', 'connection_timeout', 'ssl_error', etc.
+      )
+      ENGINE = MergeTree()
+      PARTITION BY toYYYYMM(timestamp)
+      ORDER BY (organization_id, monitor_id, timestamp)
+      SETTINGS ttl_only_drop_parts = 1
+    `,
+  });
+
   if (IS_CLOUD) {
     await clickhouse.exec({
       query: `

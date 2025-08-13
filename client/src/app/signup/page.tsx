@@ -326,7 +326,7 @@ export default function SignupPage() {
 
   if (configs?.disableSignup) {
     return (
-      <div className="flex justify-center items-center h-screen w-full">
+      <div className="flex justify-center items-center h-dvh w-full">
         <Card className="w-full max-w-sm p-1">
           <CardHeader>
             <Image src="/rybbit.svg" alt="Rybbit" width={32} height={32} />
@@ -349,7 +349,7 @@ export default function SignupPage() {
   }
 
   return (
-    <div className="flex justify-center items-center h-screen w-full p-4 ">
+    <div className="flex justify-center items-center h-dvh w-full p-4 ">
       <div className="flex flex-col items-center bg-background relative">
         {/* Suspense boundary for the URL parameter handler */}
         <Suspense fallback={null}>

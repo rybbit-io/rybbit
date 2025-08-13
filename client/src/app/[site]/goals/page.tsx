@@ -10,6 +10,7 @@ import { GOALS_PAGE_FILTERS, useStore } from "../../../lib/store";
 import { SubHeader } from "../components/SubHeader/SubHeader";
 import CreateGoalButton from "./components/CreateGoalButton";
 import GoalsList from "./components/GoalsList";
+import { Target } from "lucide-react";
 
 export default function GoalsPage() {
   useSetPageTitle("Rybbit · Goals");
@@ -123,6 +124,7 @@ export default function GoalsPage() {
           </div>
         ) : !goalsData || goalsData.data.length === 0 ? (
           <NothingFound
+            icon={<Target className="w-10 h-10" />}
             title={"No goals found"}
             description={"Create your first conversion goal to start tracking important user actions."}
             action={<CreateGoalButton siteId={Number(site)} />}

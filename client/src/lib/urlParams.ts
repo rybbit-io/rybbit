@@ -165,17 +165,7 @@ export const useSyncStateWithUrl = () => {
   const searchParams = useSearchParams();
   const pathname = usePathname();
   const router = useRouter();
-  const {
-    time,
-    bucket,
-    selectedStat,
-    filters,
-    setTime,
-    setBucket,
-    setSelectedStat,
-    setFilters,
-    site,
-  } = useStore();
+  const { time, bucket, selectedStat, filters, setTime, setBucket, setSelectedStat, setFilters, site } = useStore();
 
   // Use a ref to track if we've already loaded from URL
   // This prevents overriding user changes if the effect re-runs
@@ -243,19 +233,19 @@ export const useSyncStateWithUrl = () => {
     const newSearch = params.toString();
 
     // Only update if the search params have changed to avoid infinite loops
-    const currentSearch = searchParams.toString();
+    // Create a copy of current search params without the embed param for comparison
+    const currentParamsForComparison = new URLSearchParams(searchParams);
+    currentParamsForComparison.delete("embed");
+    const currentSearch = currentParamsForComparison.toString();
+
     if (newSearch !== currentSearch) {
+      // Preserve the embed param if it exists
+      const embedParam = searchParams.get("embed");
+      if (embedParam) {
+        params.set("embed", embedParam);
+      }
       // Replace the current URL with the new one to avoid adding to history
-      router.replace(`${pathname}?${newSearch}`);
+      router.replace(`${pathname}?${params.toString()}`);
     }
-  }, [
-    time,
-    bucket,
-    selectedStat,
-    filters,
-    pathname,
-    router,
-    site,
-    searchParams,
-  ]); // Added searchParams
+  }, [time, bucket, selectedStat, filters, pathname, router, site, searchParams]); // Added searchParams
 };

@@ -1,0 +1,37 @@
+[Unit]
+Description=Rybbit Monitor Agent
+Documentation=https://github.com/rybbit/monitor-agent
+After=network.target
+
+[Service]
+Type=simple
+User=rybbit
+Group=rybbit
+WorkingDirectory=/opt/rybbit-monitor-agent
+ExecStart=/usr/bin/node /opt/rybbit-monitor-agent/dist/index.js
+Restart=always
+RestartSec=10
+
+# Environment
+Environment="NODE_ENV=production"
+EnvironmentFile=/opt/rybbit-monitor-agent/.env
+
+# Security
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/opt/rybbit-monitor-agent/logs
+
+# Resource limits
+LimitNOFILE=65536
+MemoryLimit=1G
+CPUQuota=100%
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=rybbit-monitor-agent
+
+[Install]
+WantedBy=multi-user.target

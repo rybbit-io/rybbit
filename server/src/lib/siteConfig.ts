@@ -1,5 +1,7 @@
 import { db } from "../db/postgres/postgres.js";
 import { sites } from "../db/postgres/schema.js";
+import { logger } from "./logger/logger.js";
+import { matchesCIDR, matchesRange } from "./ipUtils.js";
 
 // Site configuration interface
 interface SiteConfigData {
@@ -7,6 +9,7 @@ interface SiteConfigData {
   saltUserIds: boolean;
   domain: string;
   blockBots: boolean;
+  excludedIPs: string[];
   apiKey?: string | null;
 }
 
@@ -23,6 +26,7 @@ class SiteConfig {
           saltUserIds: sites.saltUserIds,
           domain: sites.domain,
           blockBots: sites.blockBots,
+          excludedIPs: sites.excludedIPs,
           apiKey: sites.apiKey,
         })
         .from(sites);
@@ -37,6 +41,7 @@ class SiteConfig {
           saltUserIds: site.saltUserIds || false,
           domain: site.domain || "",
           blockBots: site.blockBots === undefined ? true : site.blockBots,
+          excludedIPs: Array.isArray(site.excludedIPs) ? site.excludedIPs : [],
           apiKey: site.apiKey,
         });
       }
@@ -153,6 +158,26 @@ class SiteConfig {
   }
 
   /**
+   * Get excluded IPs for a site
+   */
+  getExcludedIPs(siteId: string | number): string[] {
+    const numericSiteId = Number(siteId);
+    const config = this.siteConfigMap.get(numericSiteId);
+    return config?.excludedIPs || [];
+  }
+
+  /**
+   * Update the excluded IPs of a site in the cache
+   */
+  updateSiteExcludedIPs(siteId: number, excludedIPs: string[]): void {
+    const config = this.siteConfigMap.get(siteId);
+    if (config) {
+      config.excludedIPs = excludedIPs;
+      this.siteConfigMap.set(siteId, config);
+    }
+  }
+
+  /**
    * Add a new site to the cache
    */
   addSite(siteId: number, config: SiteConfigData): void {
@@ -174,6 +199,58 @@ class SiteConfig {
       await this.loadSiteConfigs();
     }
   }
+
+  /**
+   * Check if an IP address matches any of the excluded IPs/ranges
+   */
+  isIPExcluded(ipAddress: string, siteId: string | number): boolean {
+    const excludedIPs = this.getExcludedIPs(siteId);
+    if (!excludedIPs || excludedIPs.length === 0) {
+      return false;
+    }
+
+    for (const excludedPattern of excludedIPs) {
+      if (this.matchesIPPattern(ipAddress, excludedPattern)) {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
+  /**
+   * Check if an IP address matches a specific pattern
+   * Supports:
+   * - Single IP: 192.168.1.1, 2001:db8::1
+   * - CIDR notation: 192.168.1.0/24, 2001:db8::/32
+   * - Range notation: 192.168.1.1-192.168.1.10 (IPv4 only, IPv6 ranges not supported)
+   */
+  private matchesIPPattern(ipAddress: string, pattern: string): boolean {
+    try {
+      const trimmedPattern = pattern.trim();
+
+      // Single IP match
+      if (!trimmedPattern.includes("/") && !trimmedPattern.includes("-")) {
+        return ipAddress === trimmedPattern;
+      }
+
+      // CIDR notation
+      if (trimmedPattern.includes("/")) {
+        return matchesCIDR(ipAddress, trimmedPattern);
+      }
+
+      // Range notation
+      if (trimmedPattern.includes("-")) {
+        return matchesRange(ipAddress, trimmedPattern);
+      }
+
+      return false;
+    } catch (error) {
+      logger.warn(error as Error, `Invalid IP pattern: ${pattern}`);
+      return false;
+    }
+  }
+
 }
 
 // Singleton instance

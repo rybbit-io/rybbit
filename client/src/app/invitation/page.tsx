@@ -8,18 +8,8 @@ import { ThreeDotLoader } from "../../components/Loaders";
 import { TopBar } from "../../components/TopBar";
 import { Alert, AlertDescription, AlertTitle } from "../../components/ui/alert";
 import { Button } from "../../components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "../../components/ui/card";
-import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from "../../components/ui/tabs";
+import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../components/ui/tabs";
 import { authClient } from "../../lib/auth";
 import { Login } from "./components/login";
 import { Signup } from "./components/signup";
@@ -33,19 +23,11 @@ function AuthComponent() {
     <Card className="w-full max-w-md p-1">
       <CardHeader>
         <Image src="/rybbit.svg" alt="Rybbit" width={32} height={32} />
-        <CardTitle className="text-2xl flex justify-center">
-          Join {organization}
-        </CardTitle>
-        <p className="text-center text-sm text-muted-foreground mt-2">
-          You've been invited by {inviterEmail}
-        </p>
+        <CardTitle className="text-2xl flex justify-center">Join {organization}</CardTitle>
+        <p className="text-center text-sm text-muted-foreground mt-2">You've been invited by {inviterEmail}</p>
       </CardHeader>
       <CardContent>
-        <Tabs
-          defaultValue="login"
-          value={activeTab}
-          onValueChange={(v) => setActiveTab(v as "login" | "signup")}
-        >
+        <Tabs defaultValue="login" value={activeTab} onValueChange={(v) => setActiveTab(v as "login" | "signup")}>
           <TabsList className="grid w-full grid-cols-2 mb-6">
             <TabsTrigger value="signup">Sign Up</TabsTrigger>
             <TabsTrigger value="login">Login</TabsTrigger>
@@ -95,24 +77,16 @@ function AcceptInvitationInner() {
     <Card className="w-full max-w-md">
       <CardHeader>
         <Image src="/rybbit.svg" alt="Rybbit" width={32} height={32} />
-        <CardTitle className="text-2xl flex justify-center">
-          Invitation
-        </CardTitle>
+        <CardTitle className="text-2xl flex justify-center">Invitation</CardTitle>
       </CardHeader>
       <CardContent>
         <div className="flex flex-col gap-4">
           <p className="text-center">
-            You have been invited to join{" "}
-            <span className="font-bold">{organization}</span> by{" "}
+            You have been invited to join <span className="font-bold">{organization}</span> by{" "}
             <span className="font-bold">{inviterEmail}</span>
           </p>
 
-          <Button
-            onClick={acceptInvitation}
-            disabled={isLoading}
-            variant="success"
-            className="w-full"
-          >
+          <Button onClick={acceptInvitation} disabled={isLoading} variant="success" className="w-full">
             {isLoading ? "Accepting..." : "Accept Invitation"}
           </Button>
 
@@ -132,22 +106,12 @@ function AcceptInvitationInner() {
 function InvitationContent() {
   const { data: sessionData, isPending } = authClient.useSession();
 
-  return (
-    <>
-      {isPending ? (
-        <ThreeDotLoader />
-      ) : !sessionData?.user ? (
-        <AuthComponent />
-      ) : (
-        <AcceptInvitationInner />
-      )}
-    </>
-  );
+  return <>{isPending ? <ThreeDotLoader /> : !sessionData?.user ? <AuthComponent /> : <AcceptInvitationInner />}</>;
 }
 
 export default function AcceptInvitation() {
   return (
-    <div className="flex flex-col min-h-screen">
+    <div className="flex flex-col min-h-dvh">
       <TopBar />
 
       <div className="flex justify-center items-center flex-grow p-4">

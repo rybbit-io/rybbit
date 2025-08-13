@@ -18,6 +18,7 @@ export interface SessionDetails {
   screen_width: number;
   screen_height: number;
   referrer: string;
+  channel: string;
   session_end: string;
   session_start: string;
   session_duration: number;
@@ -102,6 +103,7 @@ SELECT
     any(screen_width) as screen_width,
     any(screen_height) as screen_height,
     any(referrer) as referrer,
+    any(channel) as channel,
     min(timestamp) as session_start,
     max(timestamp) as session_end,
     dateDiff('second', min(timestamp), max(timestamp)) as session_duration,

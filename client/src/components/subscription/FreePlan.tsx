@@ -3,14 +3,7 @@ import { useRouter } from "next/navigation";
 import { DateTime } from "luxon";
 import { Alert, AlertDescription, AlertTitle } from "../ui/alert";
 import { Button } from "../ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "../ui/card";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "../ui/card";
 import { Progress } from "../ui/progress";
 import { DEFAULT_EVENT_LIMIT } from "../../lib/subscription/constants";
 import { useStripeSubscription } from "../../lib/subscription/useStripeSubscription";
@@ -45,7 +38,7 @@ export function FreePlan() {
         <CardHeader>
           <CardTitle className="flex items-center">Free Plan</CardTitle>
           <CardDescription>
-            You are on the Free plan with up to 3,000 events per month.
+            You are on the Free plan with up to {DEFAULT_EVENT_LIMIT.toLocaleString()} events per month.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -55,8 +48,8 @@ export function FreePlan() {
                 <AlertTriangle className="h-4 w-4 text-red-500 dark:text-red-400" />
                 <AlertTitle>Event Limit Exceeded</AlertTitle>
                 <AlertDescription>
-                  You have exceeded your monthly event limit. Please upgrade to
-                  a Pro plan to continue collecting analytics.
+                  You have exceeded your monthly event limit. Please upgrade to a Pro plan to continue collecting
+                  analytics.
                 </AlertDescription>
               </Alert>
             ) : (
@@ -65,8 +58,7 @@ export function FreePlan() {
                   <AlertTriangle className="h-4 w-4 text-amber-500 dark:text-amber-400" />
                   <AlertTitle>Approaching Limit</AlertTitle>
                   <AlertDescription>
-                    You are approaching your monthly event limit. Consider
-                    upgrading to a paid plan for higher limits.
+                    You are approaching your monthly event limit. Consider upgrading to a paid plan for higher limits.
                   </AlertDescription>
                 </Alert>
               )
@@ -82,26 +74,15 @@ export function FreePlan() {
                       {currentUsage.toLocaleString()} / {limit.toLocaleString()}
                     </span>
                   </div>
-                  <Progress
-                    value={percentageUsed}
-                    className={
-                      isNearLimit ? "bg-amber-100 dark:bg-amber-900" : ""
-                    }
-                  />
+                  <Progress value={percentageUsed} className={isNearLimit ? "bg-amber-100 dark:bg-amber-900" : ""} />
                 </div>
               </div>
             </div>
 
             {organizationId && (
               <div className="space-y-2">
-                <h3 className="font-medium text-sm text-neutral-400 mb-2">
-                  Last 30 Days
-                </h3>
-                <UsageChart
-                  organizationId={organizationId}
-                  startDate={startDate}
-                  endDate={endDate}
-                />
+                <h3 className="font-medium text-sm text-neutral-400 mb-2">Last 30 Days</h3>
+                <UsageChart organizationId={organizationId} startDate={startDate} endDate={endDate} />
               </div>
             )}
           </div>

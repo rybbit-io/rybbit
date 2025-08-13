@@ -6,32 +6,34 @@ import { fileURLToPath } from "url";
 import { clickhouse } from "../db/clickhouse/clickhouse.js";
 import { IS_CLOUD, DISABLE_TELEMETRY, SECRET } from "../lib/const.js";
 import { processResults } from "../api/analytics/utils.js";
+import { createServiceLogger } from "../lib/logger/logger.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 class TelemetryService {
   private telemetryTask: cron.ScheduledTask | null = null;
+  private logger = createServiceLogger("telemetry");
 
   constructor() {}
 
   private initializeTelemetryCron() {
     // Only initialize if not cloud and telemetry is not disabled
     if (!IS_CLOUD && !DISABLE_TELEMETRY) {
-      console.info("[TelemetryService] Initializing telemetry cron");
+      this.logger.info("Initializing telemetry cron");
       // Schedule telemetry to run every 24 hours at midnight
       this.telemetryTask = cron.schedule("0 0 * * *", async () => {
         try {
           await this.collectAndSendTelemetry();
         } catch (error) {
-          console.error("[TelemetryService] Error during telemetry collection:", error);
+          this.logger.error(error as Error, "Error during telemetry collection");
         }
       });
 
       // Run immediately on startup
       this.collectAndSendTelemetry();
 
-      console.log("[TelemetryService] Telemetry collection initialized (runs daily at midnight)");
+      this.logger.info("Telemetry collection initialized (runs daily at midnight)");
     }
   }
 
@@ -84,7 +86,7 @@ class TelemetryService {
       const data = await processResults<{ size_gb: number }>(result);
       return data[0]?.size_gb || 0;
     } catch (error) {
-      console.error("Error getting ClickHouse size:", error);
+      this.logger.error(error as Error, "Error getting ClickHouse size");
       return 0;
     }
   }
@@ -108,10 +110,10 @@ class TelemetryService {
       });
 
       if (!response.ok) {
-        console.error("Failed to send telemetry:", response.status, response.statusText);
+        this.logger.error(`Failed to send telemetry: ${response.status} ${response.statusText}`);
       }
     } catch (error) {
-      console.error("Error sending telemetry:", error);
+      this.logger.error(error as Error, "Error sending telemetry");
     }
   }
 
@@ -138,9 +140,9 @@ class TelemetryService {
       };
 
       await this.sendTelemetry(telemetryData);
-      console.log("[TelemetryService] Telemetry sent successfully");
+      this.logger.info("Telemetry sent successfully");
     } catch (error) {
-      console.error("Error collecting telemetry:", error);
+      this.logger.error(error as Error, "Error collecting telemetry");
     }
   }
 
@@ -148,7 +150,7 @@ class TelemetryService {
   public stopTelemetryCron() {
     if (this.telemetryTask) {
       this.telemetryTask.stop();
-      console.log("[TelemetryService] Telemetry collection cron stopped");
+      this.logger.info("Telemetry collection cron stopped");
     }
   }
 

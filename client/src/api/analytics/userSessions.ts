@@ -36,6 +36,8 @@ export type GetSessionsResponse = {
   exit_page: string;
   pageviews: number;
   events: number;
+  errors: number;
+  outbound: number;
 }[];
 
 export function useGetSessionsInfinite(userId?: string) {
@@ -105,11 +107,20 @@ export interface SessionDetails {
   screen_width: number;
   screen_height: number;
   referrer: string;
+  channel: string;
   session_end: string;
   session_start: string;
   pageviews: number;
   entry_page: string;
   exit_page: string;
+}
+
+export interface SessionEventProps {
+  [key: string]: unknown;
+
+  // Error-specific props
+  message?: string;
+  stack?: string;
 }
 
 export interface SessionEvent {
@@ -121,7 +132,7 @@ export interface SessionEvent {
   referrer: string;
   type: string;
   event_name?: string;
-  props?: string;
+  props?: SessionEventProps;
 }
 
 export interface SessionPageviewsAndEvents {

@@ -1,9 +1,4 @@
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import {
   createColumnHelper,
@@ -14,13 +9,7 @@ import {
   useReactTable,
 } from "@tanstack/react-table";
 import { useDebounce, useIntersectionObserver } from "@uidotdev/usehooks";
-import {
-  ChevronDown,
-  ChevronUp,
-  Loader2,
-  Search,
-  SquareArrowOutUpRight,
-} from "lucide-react";
+import { ChevronDown, ChevronUp, Loader2, Search, SquareArrowOutUpRight } from "lucide-react";
 import { ReactNode, useEffect, useMemo, useState } from "react";
 import { useInfiniteSingleCol } from "../../../../../api/analytics/useInfiniteSingleCol";
 import { SingleColResponse } from "../../../../../api/analytics/useSingleCol";
@@ -57,25 +46,15 @@ export function StandardSectionDialog({
   expanded,
   close,
 }: StandardSectionDialogProps) {
-  const {
-    data,
-    isLoading,
-    isFetching,
-    error,
-    refetch,
-    fetchNextPage,
-    hasNextPage,
-    isFetchingNextPage,
-  } = useInfiniteSingleCol({
-    parameter: filterParameter,
-    limit: 100,
-  });
+  const { data, isLoading, isFetching, error, refetch, fetchNextPage, hasNextPage, isFetchingNextPage } =
+    useInfiniteSingleCol({
+      parameter: filterParameter,
+      limit: 100,
+    });
 
   const [searchTerm, setSearchTerm] = useState("");
   const debouncedSearchTerm = useDebounce(searchTerm, 200);
-  const [sorting, setSorting] = useState<SortingState>([
-    { id: "count", desc: true },
-  ]);
+  const [sorting, setSorting] = useState<SortingState>([{ id: "count", desc: true }]);
 
   // Use the intersection observer hook
   const [ref, entry] = useIntersectionObserver({
@@ -97,14 +76,9 @@ export function StandardSectionDialog({
     const labelFnToUse = getFilterLabel || getValue;
 
     return allItems.filter((item: SingleColResponse) => {
-      const label =
-        typeof labelFnToUse(item) === "string"
-          ? (labelFnToUse(item) as string)
-          : labelFnToUse(item);
+      const label = typeof labelFnToUse(item) === "string" ? (labelFnToUse(item) as string) : labelFnToUse(item);
 
-      return String(label)
-        .toLowerCase()
-        .includes(debouncedSearchTerm.toLowerCase());
+      return String(label).toLowerCase().includes(debouncedSearchTerm.toLowerCase());
     });
   }, [allItems, getFilterLabel, getValue, debouncedSearchTerm]);
 
@@ -116,13 +90,9 @@ export function StandardSectionDialog({
           <div className="flex flex-row gap-1 items-center text-left">
             {getLabel(row.original)}
             {getLink && (
-              <a
-                href={getLink(row.original)}
-                target="_blank"
-                onClick={(e) => e.stopPropagation()}
-              >
+              <a href={getLink(row.original)} target="_blank" onClick={(e) => e.stopPropagation()}>
                 <SquareArrowOutUpRight
-                  className="w-3 h-3 text-neutral-300 hover:text-neutral-100"
+                  className="ml-0.5 w-3.5 h-3.5 text-neutral-300 hover:text-neutral-100"
                   strokeWidth={3}
                 />
               </a>
@@ -133,17 +103,13 @@ export function StandardSectionDialog({
       columnHelper.accessor("count", {
         header: "Sessions",
         cell: (info) => (
-          <div className="flex flex-row gap-1 items-center sm:justify-end">
-            {info.getValue().toLocaleString()}
-          </div>
+          <div className="flex flex-row gap-1 items-center sm:justify-end">{info.getValue().toLocaleString()}</div>
         ),
       }),
       columnHelper.accessor("percentage", {
         header: "Session %",
         cell: (info) => (
-          <div className="flex flex-row gap-1 items-center sm:justify-end">
-            {info.getValue().toFixed(1)}%
-          </div>
+          <div className="flex flex-row gap-1 items-center sm:justify-end">{info.getValue().toFixed(1)}%</div>
         ),
       }),
     ];
@@ -151,16 +117,13 @@ export function StandardSectionDialog({
     // Only check for additional columns if we have data
     if (filteredData.length > 0) {
       const hasPageviews =
-        filteredData[0]?.pageviews !== undefined &&
-        filteredData[0]?.pageviews_percentage !== undefined;
+        filteredData[0]?.pageviews !== undefined && filteredData[0]?.pageviews_percentage !== undefined;
       if (hasPageviews) {
         cols.push(
           columnHelper.accessor("pageviews", {
             header: "Pageviews",
             cell: (info) => (
-              <div className="flex flex-row gap-1 items-center sm:justify-end">
-                {info.getValue()?.toLocaleString()}
-              </div>
+              <div className="flex flex-row gap-1 items-center sm:justify-end">{info.getValue()?.toLocaleString()}</div>
             ),
           }) as any
         );
@@ -168,9 +131,7 @@ export function StandardSectionDialog({
           columnHelper.accessor("pageviews_percentage", {
             header: "Pageviews %",
             cell: (info) => (
-              <div className="flex flex-row gap-1 items-center sm:justify-end">
-                {info.getValue()?.toFixed(1)}%
-              </div>
+              <div className="flex flex-row gap-1 items-center sm:justify-end">{info.getValue()?.toFixed(1)}%</div>
             ),
           }) as any
         );
@@ -182,11 +143,7 @@ export function StandardSectionDialog({
           columnHelper.accessor("time_on_page_seconds", {
             header: "Duration",
             cell: (info) => (
-              <div className="text-right">
-                {formatSecondsAsMinutesAndSeconds(
-                  Math.round(info.getValue() ?? 0)
-                )}
-              </div>
+              <div className="text-right">{formatSecondsAsMinutesAndSeconds(Math.round(info.getValue() ?? 0))}</div>
             ),
           }) as any
         );
@@ -198,21 +155,10 @@ export function StandardSectionDialog({
 
   // Fetch next page when intersection observer detects the target is visible
   useEffect(() => {
-    if (
-      entry?.isIntersecting &&
-      hasNextPage &&
-      !isFetchingNextPage &&
-      !isLoading
-    ) {
+    if (entry?.isIntersecting && hasNextPage && !isFetchingNextPage && !isLoading) {
       fetchNextPage();
     }
-  }, [
-    entry?.isIntersecting,
-    fetchNextPage,
-    hasNextPage,
-    isFetchingNextPage,
-    isLoading,
-  ]);
+  }, [entry?.isIntersecting, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading]);
 
   // Set up table instance
   const table = useReactTable({
@@ -276,18 +222,10 @@ export function StandardSectionDialog({
                         }}
                         onClick={header.column.getToggleSortingHandler()}
                       >
-                        <div
-                          className={cn(
-                            "flex items-center gap-1",
-                            index !== 0 && "justify-end"
-                          )}
-                        >
+                        <div className={cn("flex items-center gap-1", index !== 0 && "justify-end")}>
                           {header.isPlaceholder
                             ? null
-                            : flexRender(
-                                header.column.columnDef.header,
-                                header.getContext()
-                              )}
+                            : flexRender(header.column.columnDef.header, header.getContext())}
                           {{
                             asc: <ChevronUp className="h-3 w-3" />,
                             desc: <ChevronDown className="h-3 w-3" />,
@@ -316,19 +254,10 @@ export function StandardSectionDialog({
                       }
                     >
                       {row.getVisibleCells().map((cell, cellIndex) => (
-                        <td
-                          key={cell.id}
-                          className={cn(
-                            "px-2 py-2 relative",
-                            cellIndex !== 0 && "text-right"
-                          )}
-                        >
+                        <td key={cell.id} className={cn("px-2 py-2 relative", cellIndex !== 0 && "text-right")}>
                           {cellIndex === 0 && <div></div>}
                           <span className="relative z-0">
-                            {flexRender(
-                              cell.column.columnDef.cell,
-                              cell.getContext()
-                            )}
+                            {flexRender(cell.column.columnDef.cell, cell.getContext())}
                           </span>
                         </td>
                       ))}
@@ -348,9 +277,7 @@ export function StandardSectionDialog({
                   </div>
                 )}
                 {!hasNextPage && !isFetchingNextPage && (
-                  <div className="text-neutral-500 text-xs">
-                    All items loaded
-                  </div>
+                  <div className="text-neutral-500 text-xs">All items loaded</div>
                 )}
               </div>
             )}

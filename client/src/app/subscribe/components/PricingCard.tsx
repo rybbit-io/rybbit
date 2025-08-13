@@ -5,13 +5,7 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { BACKEND_URL } from "@/lib/const";
 import { authClient } from "@/lib/auth";
-import {
-  EVENT_TIERS,
-  PRO_FEATURES,
-  StripePrice,
-  findPriceForTier,
-  formatEventTier,
-} from "./utils";
+import { EVENT_TIERS, PRO_FEATURES, StripePrice, findPriceForTier, formatEventTier } from "./utils";
 
 interface PricingCardProps {
   stripePrices: StripePrice[];
@@ -46,11 +40,7 @@ export function PricingCard({ stripePrices, isLoggedIn }: PricingCardProps) {
       return;
     }
 
-    const selectedTierPrice = findPriceForTier(
-      eventLimit,
-      isAnnual ? "year" : "month",
-      stripePrices
-    );
+    const selectedTierPrice = findPriceForTier(eventLimit, isAnnual ? "year" : "month", stripePrices);
 
     if (!selectedTierPrice) {
       toast.error("Selected pricing plan not found. Please adjust the slider.");
@@ -61,25 +51,22 @@ export function PricingCard({ stripePrices, isLoggedIn }: PricingCardProps) {
     try {
       // Use NEXT_PUBLIC_BACKEND_URL if available, otherwise use relative path for same-origin requests
       const baseUrl = window.location.origin;
-      const successUrl = `${baseUrl}/organization/subscription?session_id={CHECKOUT_SESSION_ID}`;
+      const successUrl = `${baseUrl}/settings/organization/subscription?session_id={CHECKOUT_SESSION_ID}`;
       const cancelUrl = `${baseUrl}/subscribe`;
 
-      const response = await fetch(
-        `${BACKEND_URL}/stripe/create-checkout-session`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          credentials: "include", // Send cookies
-          body: JSON.stringify({
-            priceId: selectedTierPrice.priceId,
-            successUrl: successUrl,
-            cancelUrl: cancelUrl,
-            organizationId: activeOrg.id,
-          }),
-        }
-      );
+      const response = await fetch(`${BACKEND_URL}/stripe/create-checkout-session`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: "include", // Send cookies
+        body: JSON.stringify({
+          priceId: selectedTierPrice.priceId,
+          successUrl: successUrl,
+          cancelUrl: cancelUrl,
+          organizationId: activeOrg.id,
+        }),
+      });
 
       const data = await response.json();
 
@@ -104,10 +91,8 @@ export function PricingCard({ stripePrices, isLoggedIn }: PricingCardProps) {
   }
 
   // Get pricing information
-  const monthlyPrice =
-    findPriceForTier(eventLimit, "month", stripePrices)?.price || 0;
-  const annualPrice =
-    findPriceForTier(eventLimit, "year", stripePrices)?.price || 0;
+  const monthlyPrice = findPriceForTier(eventLimit, "month", stripePrices)?.price || 0;
+  const annualPrice = findPriceForTier(eventLimit, "year", stripePrices)?.price || 0;
   const isCustomTier = eventLimit === "Custom";
 
   return (
@@ -120,9 +105,7 @@ export function PricingCard({ stripePrices, isLoggedIn }: PricingCardProps) {
               <div>
                 <h3 className="font-semibold mb-2">Events per month</h3>
                 <div className="text-3xl font-bold text-emerald-400">
-                  {typeof eventLimit === "number"
-                    ? eventLimit.toLocaleString()
-                    : eventLimit}
+                  {typeof eventLimit === "number" ? eventLimit.toLocaleString() : eventLimit}
                 </div>
               </div>
               <div className="flex flex-col items-end">
@@ -158,8 +141,7 @@ export function PricingCard({ stripePrices, isLoggedIn }: PricingCardProps) {
                   ) : (
                     <>
                       <span className="text-3xl font-bold">
-                        $
-                        {isAnnual ? Math.round(annualPrice / 12) : monthlyPrice}
+                        ${isAnnual ? Math.round(annualPrice / 12) : monthlyPrice}
                       </span>
                       <span className="ml-1 text-neutral-400">/month</span>
                     </>
@@ -179,12 +161,7 @@ export function PricingCard({ stripePrices, isLoggedIn }: PricingCardProps) {
 
             <div className="flex justify-between text-xs text-neutral-400">
               {EVENT_TIERS.map((tier, index) => (
-                <span
-                  key={index}
-                  className={cn(
-                    eventLimitIndex === index && "font-bold text-emerald-400"
-                  )}
-                >
+                <span key={index} className={cn(eventLimitIndex === index && "font-bold text-emerald-400")}>
                   {formatEventTier(tier)}
                 </span>
               ))}
@@ -205,17 +182,11 @@ export function PricingCard({ stripePrices, isLoggedIn }: PricingCardProps) {
             className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-medium px-5 py-3 rounded-xl shadow-lg shadow-emerald-900/20 transform hover:-translate-y-0.5 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-opacity-50 disabled:opacity-50 disabled:pointer-events-none cursor-pointer"
             disabled={isLoading}
           >
-            {isLoading
-              ? "Processing..."
-              : isCustomTier
-              ? "Contact us"
-              : "Subscribe Now"}
+            {isLoading ? "Processing..." : isCustomTier ? "Contact us" : "Subscribe Now"}
           </button>
 
           <p className="text-center text-sm text-neutral-400 mt-4">
-            {isCustomTier
-              ? "Email us at hello@rybbit.io for custom pricing"
-              : "Secure checkout powered by Stripe."}
+            {isCustomTier ? "Email us at hello@rybbit.io for custom pricing" : "Secure checkout powered by Stripe."}
           </p>
         </div>
       </div>

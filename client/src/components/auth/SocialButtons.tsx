@@ -1,7 +1,7 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import { GithubLogo, GoogleLogo } from "@phosphor-icons/react/dist/ssr";
+import { SiGoogle, SiGithub } from "@icons-pack/react-simple-icons";
 import { authClient } from "@/lib/auth";
 import { IS_CLOUD } from "@/lib/const";
 
@@ -12,17 +12,10 @@ interface SocialButtonsProps {
   className?: string;
 }
 
-export function SocialButtons({
-  onError,
-  callbackURL,
-  mode = "signin",
-  className = "",
-}: SocialButtonsProps) {
+export function SocialButtons({ onError, callbackURL, mode = "signin", className = "" }: SocialButtonsProps) {
   if (!IS_CLOUD) return null;
 
-  const handleSocialAuth = async (
-    provider: "google" | "github" | "twitter"
-  ) => {
+  const handleSocialAuth = async (provider: "google" | "github" | "twitter") => {
     try {
       await authClient.signIn.social({
         provider,
@@ -46,7 +39,7 @@ export function SocialButtons({
           onClick={() => handleSocialAuth("google")}
           className="transition-all duration-300 hover:bg-muted bg-neutral-800/50 border-neutral-700"
         >
-          <GoogleLogo weight="bold" className="mr-2" />
+          <SiGoogle />
           Google
         </Button>
         <Button
@@ -55,7 +48,7 @@ export function SocialButtons({
           onClick={() => handleSocialAuth("github")}
           className="transition-all duration-300 hover:bg-muted bg-neutral-800/50 border-neutral-700"
         >
-          <GithubLogo weight="bold" className="mr-2" />
+          <SiGithub />
           GitHub
         </Button>
       </div>

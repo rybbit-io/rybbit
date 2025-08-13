@@ -76,7 +76,7 @@ export async function getEvents(
       FROM events
       WHERE
         site_id = {siteId:Int32}
-        AND (type = 'custom_event' OR type = 'pageview')
+        AND (type = 'custom_event' OR type = 'pageview' OR type = 'outbound')
         ${timeStatement}
         ${filterStatement}
     `;
@@ -112,7 +112,7 @@ export async function getEvents(
       FROM events
       WHERE
         site_id = {siteId:Int32}
-        AND (type = 'custom_event' OR type = 'pageview')
+        AND (type = 'custom_event' OR type = 'pageview' OR type = 'outbound')
         ${timeStatement}
         ${filterStatement}
       ORDER BY timestamp DESC

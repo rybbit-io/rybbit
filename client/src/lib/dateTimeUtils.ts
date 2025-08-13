@@ -2,8 +2,7 @@ import { TimeBucket } from "@rybbit/shared";
 import { DateTime, Duration, DurationLikeObject, Settings } from "luxon";
 
 // Detect user locale from the browser environment (fallback to 'en-US' on server)
-export const userLocale =
-  typeof navigator !== "undefined" ? navigator.language : "en-US";
+export const userLocale = typeof navigator !== "undefined" ? navigator.language : "en-US";
 
 // Detect whether the user prefers 12-hour time format (true = 12h, false = 24h)
 const resolved = new Intl.DateTimeFormat(userLocale, {
@@ -12,7 +11,7 @@ const resolved = new Intl.DateTimeFormat(userLocale, {
 export const hour12 = resolved.hourCycle === "h12";
 
 // Detect user's timezone (not exported but used internally)
-export const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+export const timeZone = Intl.DateTimeFormat(userLocale).resolvedOptions().timeZone;
 
 // Set default locale for Luxon globally
 Settings.defaultLocale = userLocale;
@@ -24,25 +23,14 @@ Settings.defaultLocale = userLocale;
  * @param format - The weekday format: "narrow" | "short" | "long".
  * @returns An array of localized weekday names from Monday to Sunday.
  */
-function getLocalizedWeekdayNames(
-  locale: string,
-  format: "narrow" | "short" | "long" = "long"
-): string[] {
+function getLocalizedWeekdayNames(locale: string, format: "narrow" | "short" | "long" = "long"): string[] {
   const formatter = new Intl.DateTimeFormat(locale, { weekday: format });
 
   // Fallback in case Intl fails
   const fallback: Record<"narrow" | "short" | "long", string[]> = {
     narrow: ["M", "T", "W", "T", "F", "S", "S"],
     short: ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"],
-    long: [
-      "Monday",
-      "Tuesday",
-      "Wednesday",
-      "Thursday",
-      "Friday",
-      "Saturday",
-      "Sunday",
-    ],
+    long: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"],
   };
 
   const today = new Date();
@@ -68,10 +56,7 @@ function getLocalizedWeekdayNames(
  * @param options - Intl.DateTimeFormat options (e.g., { hour: "numeric", hour12: true }).
  * @returns An array of 24 formatted hour strings.
  */
-function getLocalizedTimeLabels(
-  locale: string,
-  options: Intl.DateTimeFormatOptions
-): string[] {
+function getLocalizedTimeLabels(locale: string, options: Intl.DateTimeFormatOptions): string[] {
   const formatter = new Intl.DateTimeFormat(locale, options);
 
   return Array.from({ length: 24 }, (_, hour) => {
@@ -98,8 +83,7 @@ export function formatDuration(duration: number): string {
   }
 
   // Choose which units to show: only "seconds" or both "minutes" and "seconds".
-  const keys: (keyof DurationLikeObject)[] =
-    duration > 59 ? ["minutes", "seconds"] : ["seconds"];
+  const keys: (keyof DurationLikeObject)[] = duration > 59 ? ["minutes", "seconds"] : ["seconds"];
 
   // Convert to Luxon duration object and format to human-readable string.
   const luxonDuration = Duration.fromObject(units)
@@ -152,16 +136,10 @@ export const formatLocalTime = (hour: number, minute: number): string => {
 // --- Precomputed localized data ---
 
 // Full weekday names (e.g., "Monday", "Tuesday")
-export const longDayNames: string[] = getLocalizedWeekdayNames(
-  userLocale,
-  "long"
-);
+export const longDayNames: string[] = getLocalizedWeekdayNames(userLocale, "long");
 
 // Short weekday names (e.g., "Mon", "Tue")
-export const shortDayNames: string[] = getLocalizedWeekdayNames(
-  userLocale,
-  "short"
-);
+export const shortDayNames: string[] = getLocalizedWeekdayNames(userLocale, "short");
 
 // Hour-only labels (e.g., "00", "01", "02", "1 AM", "2 PM")
 export const hourLabels: string[] = getLocalizedTimeLabels(userLocale, {
@@ -177,13 +155,7 @@ export const hourMinuteLabels: string[] = getLocalizedTimeLabels(userLocale, {
 });
 
 export const formatChartDateTime = (dt: DateTime, bucket: TimeBucket) => {
-  const showMinutes = [
-    "minute",
-    "five_minutes",
-    "ten_minutes",
-    "fifteen_minutes",
-    "hour",
-  ].includes(bucket);
+  const showMinutes = ["minute", "five_minutes", "ten_minutes", "fifteen_minutes", "hour"].includes(bucket);
   const options: Intl.DateTimeFormatOptions = {
     month: "short",
     day: "numeric",
@@ -198,12 +170,7 @@ export const formatChartDateTime = (dt: DateTime, bucket: TimeBucket) => {
     options.hour = undefined;
     options.month = "long";
   }
-  if (
-    bucket === "fifteen_minutes" ||
-    bucket === "ten_minutes" ||
-    bucket === "five_minutes" ||
-    bucket === "minute"
-  ) {
+  if (bucket === "fifteen_minutes" || bucket === "ten_minutes" || bucket === "five_minutes" || bucket === "minute") {
     options.minute = "numeric";
     options.hour = "numeric";
   }

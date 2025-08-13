@@ -1,17 +1,18 @@
 "use client";
 
+import { ChartColumnDecreasing } from "lucide-react";
 import { DateTime } from "luxon"; // Import Luxon for date formatting
 import { Fragment, useMemo, useState } from "react";
 import { RetentionMode, useGetRetention } from "../../../api/analytics/useGetRetention";
+import { DisabledOverlay } from "../../../components/DisabledOverlay";
 import { ThreeDotLoader } from "../../../components/Loaders";
-import { MobileSidebar } from "../../../components/MobileSidebar";
+import { NothingFound } from "../../../components/NothingFound";
 import { Card, CardContent, CardHeader, CardTitle } from "../../../components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../../components/ui/select";
 import { Tabs, TabsList, TabsTrigger } from "../../../components/ui/tabs";
-import { RetentionChart } from "./RetentionChart";
-import { NothingFound } from "../../../components/NothingFound";
 import { useSetPageTitle } from "../../../hooks/useSetPageTitle";
-import { DisabledOverlay } from "../../../components/DisabledOverlay";
+import { MobileSidebar } from "../components/Sidebar/MobileSidebar";
+import { RetentionChart } from "./RetentionChart";
 
 // Available time range options (in days)
 const RANGE_OPTIONS = [
@@ -171,6 +172,7 @@ export default function RetentionPage() {
     return (
       <div className="p-2 md:p-4 max-w-[1300px] mx-auto flex flex-col gap-3">
         <NothingFound
+          icon={<ChartColumnDecreasing className="w-10 h-10" />}
           title={"No retention data available"}
           description={"Try selecting a different time range or make sure you have tracking data in the system."}
         />

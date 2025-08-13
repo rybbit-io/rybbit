@@ -31,6 +31,7 @@ import {
   useGetSitesFromOrg,
 } from "@/api/admin/sites";
 import { normalizeDomain } from "@/lib/utils";
+import { IPExclusionManager } from "./IPExclusionManager";
 
 interface SiteConfigurationProps {
   siteMetadata: SiteResponse;
@@ -213,6 +214,9 @@ export function SiteConfiguration({
           onCheckedChange={handleBlockBotsToggle}
         />
       </div>
+
+      {/* IP Exclusions Section */}
+      <IPExclusionManager siteId={siteMetadata.siteId} disabled={disabled} />
 
       {/* Domain Settings Section */}
       <div className="space-y-3">

@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { authedFetch, getStartAndEndDate } from "../utils";
 import { Time } from "../../components/DateSelector/types";
+import { timeZone } from "../../lib/dateTimeUtils";
 
 export interface JourneyParams {
   siteId?: number;
@@ -20,13 +21,7 @@ export interface JourneysResponse {
   journeys: Journey[];
 }
 
-export const useJourneys = ({
-  siteId,
-  steps = 3,
-  timeZone = "UTC",
-  time,
-  limit = 100,
-}: JourneyParams) => {
+export const useJourneys = ({ siteId, steps = 3, time, limit = 100 }: JourneyParams) => {
   const { startDate, endDate } = getStartAndEndDate(time);
 
   return useQuery<JourneysResponse>({

@@ -1,6 +1,6 @@
 import { useEffect, useMemo } from "react";
 import { useIntersectionObserver } from "@uidotdev/usehooks";
-import { Loader2 } from "lucide-react";
+import { Loader2, Video } from "lucide-react";
 import { NothingFound } from "../../../../components/NothingFound";
 import { ReplayCard, ReplayCardSkeleton } from "./ReplayCard";
 import {
@@ -12,17 +12,11 @@ import { ScrollArea } from "../../../../components/ui/scroll-area";
 import { Input } from "../../../../components/ui/input";
 
 export function ReplayList() {
-  const { sessionId, setSessionId, minDuration, setMinDuration } =
-    useReplayStore();
+  const { sessionId, setSessionId, minDuration, setMinDuration } = useReplayStore();
 
-  const {
-    data,
-    isLoading,
-    error,
-    fetchNextPage,
-    hasNextPage,
-    isFetchingNextPage,
-  } = useGetSessionReplays({ minDuration });
+  const { data, isLoading, error, fetchNextPage, hasNextPage, isFetchingNextPage } = useGetSessionReplays({
+    minDuration,
+  });
 
   // Use the intersection observer hook for infinite scroll
   const [ref, entry] = useIntersectionObserver({
@@ -44,26 +38,13 @@ export function ReplayList() {
 
   // Fetch next page when intersection observer detects the target is visible
   useEffect(() => {
-    if (
-      entry?.isIntersecting &&
-      hasNextPage &&
-      !isFetchingNextPage &&
-      !isLoading
-    ) {
+    if (entry?.isIntersecting && hasNextPage && !isFetchingNextPage && !isLoading) {
       fetchNextPage();
     }
-  }, [
-    entry?.isIntersecting,
-    fetchNextPage,
-    hasNextPage,
-    isFetchingNextPage,
-    isLoading,
-  ]);
+  }, [entry?.isIntersecting, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading]);
 
   if (error) {
-    return (
-      <div className="text-red-500 p-4">Error: {(error as Error).message}</div>
-    );
+    return <div className="text-red-500 p-4">Error: {(error as Error).message}</div>;
   }
 
   return (
@@ -86,21 +67,17 @@ export function ReplayList() {
       <div className="rounded-lg border border-neutral-800 flex flex-col">
         <ScrollArea className="h-[calc(100vh-178px)]">
           {isLoading ? (
-            Array.from({ length: 20 }).map((_, index) => (
-              <ReplayCardSkeleton key={`loading-${index}`} />
-            ))
+            Array.from({ length: 20 }).map((_, index) => <ReplayCardSkeleton key={`loading-${index}`} />)
           ) : flattenedData.length === 0 ? (
             <NothingFound
+              icon={<Video className="w-10 h-10" />}
               title={"No session replays found"}
               description={"Try a different date range or filter"}
             />
           ) : (
             <>
               {flattenedData.map((replay: SessionReplayListItem, index) => (
-                <ReplayCard
-                  key={`${replay.session_id}-${index}`}
-                  replay={replay}
-                />
+                <ReplayCard key={`${replay.session_id}-${index}`} replay={replay} />
               ))}
 
               {/* Infinite scroll anchor and loading indicator */}
@@ -111,13 +88,9 @@ export function ReplayList() {
                     Loading more replays...
                   </div>
                 )}
-                {!hasNextPage &&
-                  !isFetchingNextPage &&
-                  flattenedData.length > 0 && (
-                    <div className="text-neutral-500 text-xs">
-                      All replays loaded
-                    </div>
-                  )}
+                {!hasNextPage && !isFetchingNextPage && flattenedData.length > 0 && (
+                  <div className="text-neutral-500 text-xs">All replays loaded</div>
+                )}
               </div>
             </>
           )}

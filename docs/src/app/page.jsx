@@ -1,7 +1,7 @@
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Tilt_Warp } from "next/font/google";
 import Link from "next/link";
-import { CheckCircle, ExternalLink } from "lucide-react";
+import { CheckCircle } from "lucide-react";
 import { cn } from "../lib/utils";
 import { GitHubStarButton } from "@/components/GitHubStarButton";
 import { AdvancedFilters } from "./components/Cards/AdvancedFilters";
@@ -102,12 +102,12 @@ export default function IndexPage() {
         >
           The Open Source Google Analytics Replacement
         </h1>
-        <h2 className="text-lg md:text-2xl pt-4 md:pt-6 px-4 tracking-tight max-w-3xl text-center text-neutral-300">
+        <h2 className="text-lg md:text-2xl pt-4 md:pt-6 px-4 tracking-tight max-w-4xl text-center text-neutral-300">
           Next-gen, open source, lightweight, cookieless web & product analytics for everyone.
         </h2>
 
-        <div className="flex flex-col items-center my-8 md:my-10 gap-4 md:gap-6 text-base md:text-lg px-4">
-          <div>
+        <div className="flex flex-col items-center my-8 md:my-10">
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 md:gap-6 text-base md:text-lg px-4">
             <Link
               href="https://app.rybbit.io/signup"
               className="w-full sm:w-auto"
@@ -115,33 +115,38 @@ export default function IndexPage() {
               data-rybbit-prop-location="hero"
             >
               <button className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-500 text-white font-medium px-5 py-3 rounded-lg shadow-lg shadow-emerald-900/20 transform hover:-translate-y-0.5 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-opacity-50 cursor-pointer">
-                Track your site for free
+                Track your site
+              </button>
+            </Link>
+            <Link href="https://demo.rybbit.io/21" className="w-full sm:w-auto" data-rybbit-event="demo">
+              <button className="w-full sm:w-auto bg-neutral-800 hover:bg-neutral-700 text-white font-medium px-5 py-3 rounded-lg border border-neutral-600 transform hover:-translate-y-0.5 transition-all duration-200 hover:border-neutral-400 focus:outline-none focus:ring-2 focus:ring-neutral-400 focus:ring-opacity-50 cursor-pointer">
+                See live demo
               </button>
             </Link>
           </div>
-          <div className="text-neutral-400 text-xs md:text-sm flex items-center justify-center gap-2">
+          <p className="text-neutral-400 text-xs md:text-sm flex items-center justify-center gap-2 mt-6">
             <CheckCircle className="w-3 h-3 md:w-4 md:h-4" />
-            No credit card required • 3,000 free events/month
-          </div>
-          {/* <Link href="https://demo.rybbit.io/21" className="w-full sm:w-auto" data-rybbit-event="demo">
-            <button className="w-full sm:w-auto bg-neutral-800 hover:bg-neutral-700 text-white font-medium px-5 py-3 rounded-lg border border-neutral-600 transform hover:-translate-y-0.5 transition-all duration-200 hover:border-neutral-400 focus:outline-none focus:ring-2 focus:ring-neutral-400 focus:ring-opacity-50 cursor-pointer">
-              View Live Demo
-            </button>
-          </Link> */}
+            First 10,000 events/m are free. No credit card required.
+          </p>
         </div>
 
         <div className="relative w-full max-w-[1300px] mb-10 px-4">
           {/* Background gradients - overlapping circles for organic feel */}
           <div className="absolute top-0 left-0 w-[550px] h-[550px] bg-emerald-500/40 rounded-full blur-[80px] opacity-70"></div>
           <div className="absolute top-20 left-20 w-[400px] h-[400px] bg-emerald-600/30 rounded-full blur-[70px] opacity-50"></div>
+
           <div className="absolute bottom-0 right-0 w-[500px] h-[500px] bg-blue-500/40 rounded-full blur-[80px] opacity-60"></div>
           <div className="absolute bottom-40 right-20 w-[350px] h-[350px] bg-indigo-500/30 rounded-full blur-[75px] opacity-50"></div>
+
           <div className="absolute top-1/4 right-0 w-[320px] h-[320px] bg-purple-500/40 rounded-full blur-[70px] opacity-50"></div>
           <div className="absolute top-1/3 right-20 w-[250px] h-[250px] bg-violet-500/30 rounded-full blur-[65px] opacity-40"></div>
+
           <div className="absolute bottom-1/3 left-0 w-[320px] h-[320px] bg-emerald-400/30 rounded-full blur-[70px] opacity-60"></div>
           <div className="absolute bottom-1/4 left-20 w-[240px] h-[240px] bg-teal-400/25 rounded-full blur-[65px] opacity-50"></div>
+
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[450px] h-[450px] bg-indigo-400/30 rounded-full blur-[80px] opacity-50"></div>
           <div className="absolute top-1/2 left-1/2 -translate-x-1/3 -translate-y-1/3 w-[350px] h-[350px] bg-sky-400/20 rounded-full blur-[75px] opacity-40"></div>
+
           {/* Iframe container with responsive visibility */}
           <div className="relative z-10 rounded-lg overflow-hidden border-8 border-neutral-100/5 shadow-2xl shadow-emerald-900/10">
             {/* Remove mobile message and show iframe on all devices */}
@@ -154,18 +159,92 @@ export default function IndexPage() {
               title="Rybbit Analytics Demo"
             ></iframe>
           </div>
-          <div className="flex items-center justify-center">
-            <Link
-              href="https://demo.rybbit.io/21"
-              className="text-neutral-400 hover:text-neutral-200 text-sm flex items-center gap-1 mt-4"
-              data-rybbit-event="demo"
-              target="_blank"
-            >
-              View full demo site
-              <ExternalLink className="w-4 h-4" />
-            </Link>
-          </div>
         </div>
+
+        {/* Logo Section */}
+        <section className="py-12 md:py-16 w-full">
+          <div className="max-w-6xl mx-auto px-4">
+            <div className="text-center mb-10 md:mb-12">
+              <p className="text-neutral-400 text-sm uppercase tracking-wider font-medium">
+                Trusted by 2000+ companies worldwide
+              </p>
+            </div>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-8 items-center justify-items-center">
+              <div className="flex items-center justify-center">
+                <Image
+                  src="/logos/vanguard.webp"
+                  alt="Vanguard"
+                  width={120}
+                  height={40}
+                  className="opacity-60 hover:opacity-100 transition-opacity invert"
+                />
+              </div>
+              <div className="flex items-center justify-center">
+                <Image
+                  src="/logos/ustwo.svg"
+                  alt="ustwo"
+                  width={100}
+                  height={40}
+                  className="opacity-60 hover:opacity-100 transition-opacity invert"
+                />
+              </div>
+              <div className="flex items-center justify-center">
+                <Image
+                  src="/logos/tilaa.svg"
+                  alt="Tilaa"
+                  width={100}
+                  height={40}
+                  className="opacity-60 hover:opacity-100 transition-opacity invert"
+                />
+              </div>
+              <div className="flex items-center justify-center">
+                <Image
+                  src="/logos/strawpoll.svg"
+                  alt="StrawPoll"
+                  width={120}
+                  height={40}
+                  className="opacity-60 hover:opacity-100 transition-opacity invert"
+                />
+              </div>
+              <div className="flex items-center justify-center">
+                <Image
+                  src="/logos/mydramalist.png"
+                  alt="MyDramaList"
+                  width={120}
+                  height={40}
+                  className="opacity-60 hover:opacity-100 transition-opacity"
+                />
+              </div>
+              <div className="flex items-center justify-center">
+                <Image
+                  src="/logos/dtelecom.svg"
+                  alt="DTelecom"
+                  width={100}
+                  height={40}
+                  className="opacity-60 hover:opacity-100 transition-opacity grayscale"
+                />
+              </div>
+              <div className="flex items-center justify-center">
+                <Image
+                  src="/logos/onyx.webp"
+                  alt="Onyx"
+                  width={100}
+                  height={40}
+                  className="opacity-60 hover:opacity-100 transition-opacity invert"
+                />
+              </div>
+              <div className="flex items-center justify-center">
+                <Image
+                  src="/logos/apc.webp"
+                  alt="Apc"
+                  width={90}
+                  height={30}
+                  className="opacity-60 hover:opacity-100 transition-opacity invert grayscale"
+                />
+              </div>
+            </div>
+          </div>
+        </section>
 
         <section className="py-14 md:py-20 w-full max-w-7xl px-4">
           <div className="text-center mb-10 md:mb-16">
@@ -389,7 +468,7 @@ export default function IndexPage() {
                 It's time to switch to analytics that's made for you
               </h2>
               <p className="text-base md:text-xl text-neutral-300 mb-6 md:mb-10 max-w-3xl mx-auto">
-                The first 3,000 events a month are free
+                The first 10,000 events a month are free
               </p>
 
               <div className="flex flex-col sm:flex-row items-center justify-center gap-4 md:gap-6 mb-6 md:mb-8 w-full sm:w-auto">

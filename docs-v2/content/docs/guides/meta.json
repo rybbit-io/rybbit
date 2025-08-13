@@ -1,0 +1,29 @@
+{
+  "title": "Integration Guides",
+  "pages": [
+    "angular",
+    "astro",
+    "bubble",
+    "docusaurus",
+    "drupal",
+    "framer",
+    "google-tag-manager",
+    "hugo",
+    "jekyll",
+    "laravel",
+    "react/vite-cra",
+    "react/next-js",
+    "react/gatsby",
+    "react/remix",
+    "shopify",
+    "squarespace",
+    "svelte/vite",
+    "svelte/sveltekit",
+    "vue/vite",
+    "vue/nuxt",
+    "webflow",
+    "wix",
+    "woocommerce",
+    "wordpress"
+  ]
+}

@@ -8,10 +8,12 @@ import { db } from "../db/postgres/postgres.js";
 import { organization, sites } from "../db/postgres/schema.js";
 import { getStripePrices, StripePlan, DEFAULT_EVENT_LIMIT, IS_CLOUD } from "../lib/const.js";
 import { stripe } from "../lib/stripe.js";
+import { createServiceLogger } from "../lib/logger/logger.js";
 
 class UsageService {
   private sitesOverLimit = new Set<number>();
   private usageCheckTask: cron.ScheduledTask | null = null;
+  private logger = createServiceLogger("usage-checker");
 
   constructor() {
     this.initializeUsageCheckCron();
@@ -27,14 +29,14 @@ class UsageService {
         try {
           await this.updateOrganizationsMonthlyUsage();
         } catch (error) {
-          console.error("[UsageCheckerService] Error during usage check:", error);
+          this.logger.error(error as Error, "Error during usage check");
         }
       });
 
       // Run immediately on startup
       this.updateOrganizationsMonthlyUsage();
 
-      console.log("[UsageCheckerService] Monthly usage check cron initialized (runs every 30 minutes)");
+      this.logger.info("Monthly usage check cron initialized (runs every 30 minutes)");
     }
   }
 
@@ -71,7 +73,7 @@ class UsageService {
 
       return siteRecords.map((record) => record.siteId);
     } catch (error) {
-      console.error(`Error getting sites for organization ${organizationId}:`, error);
+      this.logger.error(error as Error, `Error getting sites for organization ${organizationId}`);
       return [];
     }
   }
@@ -113,7 +115,9 @@ class UsageService {
       const priceId = subscriptionItem.price.id;
 
       if (!priceId) {
-        console.error(`Subscription item price ID not found for organization ${orgData.id}, sub ${subscription.id}`);
+        this.logger.error(
+          `Subscription item price ID not found for organization ${orgData.id}, sub ${subscription.id}`,
+        );
         return [DEFAULT_EVENT_LIMIT, this.getStartOfMonth()];
       }
 
@@ -141,23 +145,23 @@ class UsageService {
         // This ensures we don't count events from before they subscribed (e.g., during their free trial)
         if (subscriptionStartDate >= currentMonth) {
           periodStart = subscriptionStartDate.toISODate() as string;
-          console.log(
-            `[Monthly Usage Checker] Organization ${orgData.name} subscribed during current month on ${periodStart}. Using subscription start date for counting.`,
+          this.logger.info(
+            `Organization ${orgData.name} subscribed during current month on ${periodStart}. Using subscription start date for counting.`,
           );
         } else {
-          console.log(
-            `[Monthly Usage Checker] Organization ${orgData.name} subscription started before current month. Using month start for counting.`,
+          this.logger.info(
+            `Organization ${orgData.name} subscription started before current month. Using month start for counting.`,
           );
         }
       }
 
       // Include subscription info for logging purposes
       const interval = subscriptionItem.price.recurring?.interval || "unknown";
-      console.log(`[Monthly Usage Checker] Organization ${orgData.name} has a ${interval} subscription.`);
+      this.logger.info(`Organization ${orgData.name} has a ${interval} subscription.`);
 
       return [eventLimit, periodStart];
     } catch (error: any) {
-      console.error(`Error fetching Stripe subscription info for organization ${orgData.name}:`, error);
+      this.logger.error(error as Error, `Error fetching Stripe subscription info for organization ${orgData.name}`);
       // Fallback to default limit and current month start on Stripe API error
       return [DEFAULT_EVENT_LIMIT, this.getStartOfMonth()];
     }
@@ -187,7 +191,7 @@ class UsageService {
       const rows = await processResults<{ count: string }>(result);
       return parseInt(rows[0].count, 10);
     } catch (error) {
-      console.error(`Error querying ClickHouse for pageviews for sites ${siteIds}:`, error);
+      this.logger.error(error as Error, `Error querying ClickHouse for pageviews for sites ${siteIds}`);
       return 0;
     }
   }
@@ -196,7 +200,7 @@ class UsageService {
    * Updates monthly event usage for all organizations
    */
   public async updateOrganizationsMonthlyUsage(): Promise<void> {
-    console.log("[Monthly Usage Checker] Starting check of monthly event usage for organizations...");
+    this.logger.info("Starting check of monthly event usage for organizations...");
 
     try {
       // Get all organizations (both with and without Stripe customer IDs)
@@ -242,8 +246,8 @@ class UsageService {
             for (const siteId of siteIds) {
               this.sitesOverLimit.add(siteId);
             }
-            console.log(
-              `[Monthly Usage Checker] Organization ${orgData.name} is over limit. Added ${siteIds.length} sites to blocked list.`,
+            this.logger.info(
+              `Organization ${orgData.name} is over limit. Added ${siteIds.length} sites to blocked list.`,
             );
           } else {
             for (const siteId of siteIds) {
@@ -254,21 +258,19 @@ class UsageService {
           // Format additional date info for logging if available
           const periodInfo = periodStart ? `period started ${periodStart}` : "this month";
 
-          console.log(
-            `[Monthly Usage Checker] Updated organization ${
+          this.logger.info(
+            `Updated organization ${
               orgData.name
             }: ${pageviewCount.toLocaleString()} events, limit ${eventLimit.toLocaleString()}, ${periodInfo}`,
           );
         } catch (error) {
-          console.error(`[Monthly Usage Checker] Error processing organization ${orgData.id}:`, error);
+          this.logger.error(error as Error, `Error processing organization ${orgData.id}`);
         }
       }
 
-      console.log(
-        `[Monthly Usage Checker] Completed monthly event usage check. ${this.sitesOverLimit.size} sites are over their limit.`,
-      );
+      this.logger.info(`Completed monthly event usage check. ${this.sitesOverLimit.size} sites are over their limit.`);
     } catch (error) {
-      console.error("[Monthly Usage Checker] Error updating monthly usage:", error);
+      this.logger.error(error as Error, "Error updating monthly usage");
     }
   }
 
@@ -278,7 +280,7 @@ class UsageService {
   public stopUsageCheckCron() {
     if (this.usageCheckTask) {
       this.usageCheckTask.stop();
-      console.log("[UsageCheckerService] Monthly usage check cron stopped");
+      this.logger.info("Monthly usage check cron stopped");
     }
   }
 }

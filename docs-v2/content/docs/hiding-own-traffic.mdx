@@ -1,0 +1,73 @@
+---
+title: Hiding Your Own Traffic
+description: Prevent your own visits from being tracked in analytics
+---
+
+import { Tabs, Tab } from 'fumadocs-ui/components/tabs';
+import { Steps, Step } from 'fumadocs-ui/components/steps';
+import { Callout } from 'fumadocs-ui/components/callout';
+
+
+There are several ways to disable Rybbit tracking to hide your own visits from analytics.
+
+<Tabs items={['Browser Extensions', 'localStorage Method']}>
+<Tab value="Browser Extensions">
+**Browser Extensions (Recommended)**: The easiest way to disable tracking using community-maintained browser extensions.
+
+### Available Extensions
+
+- **[Chrome Extension](https://chrome.google.com/webstore/detail/gofnfdfidbkpellionhpmkejgaajieoo)**: Install from the Chrome Web Store
+- **[Firefox Extension](https://addons.mozilla.org/en-US/firefox/addon/rybbit-opt-out/)**: Install from Firefox Add-ons
+
+These extensions automatically disable Rybbit tracking on all websites where you have Rybbit installed, without requiring any manual configuration.
+
+<Callout type="info">
+**Self-hosted users**: These extensions require Rybbit version 1.1.0 or higher. If you're running an older version, please update your installation or use the localStorage method.
+</Callout>
+
+*These extensions are community-maintained by [@davidfiala](https://github.com/davidfiala).*
+</Tab>
+
+<Tab value="localStorage Method">
+**localStorage Method**: Manual configuration using your browser's developer console for more granular control.
+
+<Steps>
+<Step>
+### Open your browser's developer console
+
+Press **F12** or right-click the page and select "Inspect"
+
+Navigate to the "Console" tab
+</Step>
+
+<Step>
+### Disable tracking
+
+Enter this command to disable tracking:
+
+```js
+localStorage.setItem('disable-rybbit', 'true');
+```
+</Step>
+
+<Step>
+### Re-enable tracking (when needed)
+
+If you want to re-enable tracking later, enter:
+
+```js
+localStorage.removeItem('disable-rybbit');
+```
+</Step>
+</Steps>
+</Tab>
+</Tabs>
+
+## Summary
+
+Both methods are useful for developers testing sites or site owners who don't want to track their own visits:
+
+- **Browser extensions** provide the most convenient solution, automatically working across all your Rybbit-enabled websites
+- **localStorage method** offers more granular control for specific websites or temporary disabling
+
+Once disabled through either method, the Rybbit script will not send any tracking data while preserving the API functions to prevent JavaScript errors.

@@ -1,0 +1,93 @@
+---
+title: Troubleshooting
+description: Docker cleanup and troubleshooting guide for Rybbit
+---
+
+import { Steps, Step } from 'fumadocs-ui/components/steps';
+import { Callout } from 'fumadocs-ui/components/callout';
+
+
+## Full Docker Cleanup
+
+If you encounter issues with Docker containers, images, or volumes and need to start fresh, you can perform a complete Docker cleanup. This will remove all containers, images, volumes, and custom networks.
+
+<Callout type="warn">
+**Warning**: This will remove ALL Docker containers, images, and volumes on your system, not just Rybbit-related ones. Make sure you don't have other important Docker containers running.
+</Callout>
+
+### Steps for Complete Docker Cleanup
+
+<Steps>
+<Step>
+### Remove your environment file
+```bash
+rm .env
+```
+</Step>
+
+<Step>
+### Stop all running containers:
+```bash
+docker stop $(docker ps -q)
+```
+</Step>
+
+<Step>
+### Remove all containers (both running and stopped):
+```bash
+docker rm -f $(docker ps -aq)
+```
+</Step>
+
+<Step>
+### Remove all images:
+```bash
+docker rmi -f $(docker images -q)
+```
+</Step>
+
+<Step>
+### Remove all volumes:
+```bash
+docker volume rm -f $(docker volume ls -q)
+```
+</Step>
+
+<Step>
+### Remove all custom networks (preserves default networks):
+```bash
+docker network rm $(docker network ls | grep -v "bridge\|host\|none" | awk '{print $1}')
+```
+</Step>
+</Steps>
+
+### Alternative: Rybbit-Specific Cleanup
+
+If you only want to clean up Rybbit-related Docker resources without affecting other containers, use these commands instead:
+
+```bash
+# Stop and remove Rybbit containers
+docker-compose down
+
+# Remove Rybbit images
+docker-compose down --rmi all
+
+# Remove Rybbit volumes (this will delete your data!)
+docker-compose down --volumes
+
+# Complete Rybbit cleanup
+docker-compose down --rmi all --volumes --remove-orphans
+```
+
+### After Cleanup
+
+Once you've completed the cleanup, you can restart Rybbit by following the setup instructions:
+
+```bash
+# Copy environment file
+cp .env.example .env
+
+# Edit .env with your configuration
+# Then start the services
+docker-compose up -d
+```

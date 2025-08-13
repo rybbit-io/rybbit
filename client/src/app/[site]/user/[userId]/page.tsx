@@ -17,7 +17,6 @@ import { DateTime } from "luxon";
 import { useParams, useRouter } from "next/navigation";
 import { useUserInfo } from "../../../../api/analytics/userInfo";
 import { useGetUserSessionCount } from "../../../../api/analytics/userSessions";
-import { MobileSidebar } from "../../../../components/MobileSidebar";
 import { Button } from "../../../../components/ui/button";
 import { Skeleton } from "../../../../components/ui/skeleton";
 import { useSetPageTitle } from "../../../../hooks/useSetPageTitle";
@@ -29,6 +28,7 @@ import { CountryFlag } from "../../components/shared/icons/CountryFlag";
 import { OperatingSystem } from "../../components/shared/icons/OperatingSystem";
 import { VisitCalendar } from "./components/Calendar";
 import { Avatar } from "../../../../components/Avatar";
+import { MobileSidebar } from "../../components/Sidebar/MobileSidebar";
 
 export default function UserPage() {
   useSetPageTitle("Rybbit · User");
@@ -98,47 +98,31 @@ export default function UserPage() {
                   {data?.country ? getCountryName(data.country) : "N/A"}
                 </div>
                 <span className=" text-neutral-100">Region:</span>
-                <div className="text-neutral-300">
-                  {data?.region ? getRegionName(data.region) : "N/A"}
-                </div>
+                <div className="text-neutral-300">{data?.region ? getRegionName(data.region) : "N/A"}</div>
                 <span className=" text-neutral-100">City:</span>
                 <div className="text-neutral-300">{data?.city ?? "N/A"}</div>
                 <span className=" text-neutral-100">Language:</span>
-                <div className="text-neutral-300">
-                  {data?.language ? getLanguageName(data.language) : "N/A"}
-                </div>
+                <div className="text-neutral-300">{data?.language ? getLanguageName(data.language) : "N/A"}</div>
               </div>
               <div className="grid grid-cols-[110px_1fr] gap-2">
                 <span className=" text-neutral-100">Device Type:</span>
                 <div className="text-neutral-300 flex gap-1 items-center">
-                  {data?.device_type === "Desktop" && (
-                    <Monitor className="w-4 h-4" />
-                  )}
-                  {data?.device_type === "Mobile" && (
-                    <Smartphone className="w-4 h-4" />
-                  )}
-                  {data?.device_type === "Tablet" && (
-                    <Tablet className="w-4 h-4" />
-                  )}
+                  {data?.device_type === "Desktop" && <Monitor className="w-4 h-4" />}
+                  {data?.device_type === "Mobile" && <Smartphone className="w-4 h-4" />}
+                  {data?.device_type === "Tablet" && <Tablet className="w-4 h-4" />}
                   {data?.device_type}
                 </div>
                 <span className=" text-neutral-100">Browser:</span>
                 <div className="flex gap-1 text-neutral-300 items-center">
                   <Browser browser={data?.browser || "Unknown"} />
                   {data?.browser}
-                  {data?.browser_version && (
-                    <span className="ml-1">v{data?.browser_version}</span>
-                  )}
+                  {data?.browser_version && <span className="ml-1">v{data?.browser_version}</span>}
                 </div>
                 <span className="text-neutral-100">OS:</span>
                 <div className="flex gap-1 text-neutral-300 items-center">
                   <OperatingSystem os={data?.operating_system || ""} />
                   {data?.operating_system}
-                  {data?.operating_system_version && (
-                    <span className="ml-1">
-                      v{data?.operating_system_version}
-                    </span>
-                  )}
+                  {data?.operating_system_version && <span className="ml-1">v{data?.operating_system_version}</span>}
                 </div>
                 <span className="text-neutral-100">Screen Size:</span>
                 <div className="flex gap-1 text-neutral-300">
@@ -173,9 +157,7 @@ export default function UserPage() {
                   <Clock className="w-4 h-4" />
                   Avg. Session Duration
                 </div>
-                <div className="font-semibold">
-                  {data?.duration ? formatDuration(data.duration) : "N/A"}
-                </div>
+                <div className="font-semibold">{data?.duration ? formatDuration(data.duration) : "N/A"}</div>
               </div>
               <div className="bg-neutral-900 p-3 rounded-lg flex flex-col gap-1 border border-neutral-800  flex-grow">
                 <div className="text-xs text-neutral-400 flex items-center gap-1">

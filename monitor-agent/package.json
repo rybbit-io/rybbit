@@ -1,0 +1,33 @@
+{
+  "name": "rybbit-monitor-agent",
+  "version": "1.0.0",
+  "description": "Regional monitoring agent for Rybbit uptime monitoring",
+  "main": "dist/index.js",
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "docker:build": "docker build -t monitor-agent .",
+    "docker:run": "docker run -p 3000:3000 --env-file .env monitor-agent"
+  },
+  "dependencies": {
+    "fastify": "^4.25.0",
+    "@fastify/cors": "^8.5.0",
+    "undici": "^6.2.0",
+    "dns-packet": "^5.6.1",
+    "ping": "^0.4.4",
+    "nodemailer": "^6.9.8",
+    "pino": "^8.17.0",
+    "pino-pretty": "^10.3.0",
+    "dotenv": "^16.3.1",
+    "zod": "^3.22.4"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "@types/nodemailer": "^6.4.14",
+    "@types/ping": "^0.4.4",
+    "tsx": "^4.6.0",
+    "typescript": "^5.3.0"
+  }
+}

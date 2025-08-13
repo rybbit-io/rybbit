@@ -1,0 +1,24 @@
+FROM node:20-alpine
+
+# Install required system packages
+RUN apk add --no-cache \
+    curl \
+    bind-tools \
+    iputils-ping
+
+WORKDIR /app
+
+# Copy package files
+COPY package*.json ./
+
+# Install all dependencies (including dev)
+RUN npm ci
+
+# Copy source code
+COPY . .
+
+# Expose port
+EXPOSE 3003
+
+# Run in development mode with hot reloading
+CMD ["npm", "run", "dev"]

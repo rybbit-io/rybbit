@@ -17,6 +17,8 @@
   <strong><a href="https://demo.rybbit.io/1">🔍 View Live Demo</a></strong> - See Rybbit running on a real-life production site with over a million visits a month.
 </p>
 
+<img width="1313" height="807" alt="image" src="https://github.com/user-attachments/assets/6e39e7cd-60ea-41a7-8add-ba6af624917e" />
+
 <hr>
 
 ## 🚀 Getting Started
