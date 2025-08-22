@@ -98,8 +98,8 @@ From any Vue component or method, you can track custom events:
 
 <script setup>
 function trackCustomEvent() {
-  if (window.rybbit && typeof window.rybbit.trackEvent === 'function') {
-    window.rybbit.trackEvent('custom_vue_action', { detail: 'User performed a client-side Vue action' });
+  if (window.rybbit && typeof window.rybbit.event === 'function') {
+    window.rybbit.event('custom_vue_action', { detail: 'User performed a client-side Vue action' });
   }
 }
 </script>

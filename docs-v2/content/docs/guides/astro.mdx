@@ -94,7 +94,7 @@ After building and deploying your Astro site, open your Rybbit dashboard to chec
     // In a client-side script, perhaps in your common layout or a global script file
     document.addEventListener('astro:after-swap', () => {
       if (window.rybbit) {
-        window.rybbit.trackPageview();
+        window.rybbit.pageview();
       }
     });
     ```
@@ -115,7 +115,7 @@ You can track custom events from client-side JavaScript within your Astro site. 
 <script>
   document.getElementById('my-astro-button')?.addEventListener('click', () => {
     if (window.rybbit) {
-      window.rybbit.trackEvent('astro_button_click', { source: 'MyButton.astro' });
+      window.rybbit.event('astro_button_click', { source: 'MyButton.astro' });
     }
   });
 </script>
@@ -132,7 +132,7 @@ import React from 'react';
 export default function MyReactIsland() {
   const handleClick = () => {
     if (window.rybbit) {
-      window.rybbit.trackEvent('react_island_click', { island: 'MyReactIsland' });
+      window.rybbit.event('react_island_click', { island: 'MyReactIsland' });
     }
   };
   return <button onClick={handleClick}>Click Me (React Island)</button>;

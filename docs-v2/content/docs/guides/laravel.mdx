@@ -3,10 +3,13 @@ title: Laravel
 description: Integrate Rybbit Analytics with your Laravel application using Blade templates
 ---
 
+import { Steps, Step } from 'fumadocs-ui/components/steps';
 
 Integrating Rybbit Analytics with your Laravel application is straightforward. You'll typically add the Rybbit tracking script to your main Blade layout file.
 
-## 1. Get Your Tracking Script
+<Steps>
+<Step>
+### Get Your Tracking Script
 
 First, you'll need your Rybbit tracking script. You can find this in your Rybbit dashboard under **Site Settings > Tracking Code**. It will look something like this:
 
@@ -15,8 +18,10 @@ First, you'll need your Rybbit tracking script. You can find this in your Rybbit
 ```
 
 Replace `YOUR_SITE_ID` with your actual Site ID from your Rybbit dashboard.
+</Step>
 
-## 2. Locate Your Main Blade Layout File
+<Step>
+### Locate Your Main Blade Layout File
 
 In a standard Laravel application, you'll have a main layout file that other Blade views extend. This file is often located at:
 
@@ -25,8 +30,10 @@ In a standard Laravel application, you'll have a main layout file that other Bla
 - If you're using Laravel Jetstream or Breeze, the main layout file might be in a slightly different location within `resources/views/`.
 
 Identify the primary layout file that wraps most or all of your site's pages.
+</Step>
 
-## 3. Add the Tracking Script to the Layout
+<Step>
+### Add the Tracking Script to the Layout
 
 Open your main Blade layout file. Paste the Rybbit tracking script just before the closing `</body>` tag.
 
@@ -66,8 +73,10 @@ If you prefer not to use the config helper immediately, you can hardcode the val
     @endif
 ```
 Remember to replace placeholders with your actual script URL and Site ID.
+</Step>
 
-## 4. Configure Environment Variables (Recommended)
+<Step>
+### Configure Environment Variables (Recommended)
 
 It's best practice to store your Rybbit Site ID and instance URL in your `.env` file and access them via Laravel's configuration.
 
@@ -97,12 +106,16 @@ return [
 Now, the Blade template code from Step 3 using `config('services.rybbit.instance_url')` and `config('services.rybbit.site_id')` will work correctly.
 
 Make sure to run `php artisan config:clear` if you've cached your configuration.
+</Step>
 
-## 5. Verify Integration
+<Step>
+### Verify Integration
 
 - Deploy your Laravel application to your production environment (or set `APP_ENV=production` locally for testing, but be mindful of tracking local data).
 - Open your live Laravel website in a browser.
 - Navigate through a few pages.
 - Check your Rybbit dashboard for incoming data. It might take a few minutes for the first events to appear.
+</Step>
+</Steps>
 
 That's it! Rybbit Analytics is now integrated with your Laravel application and will only track visits in your production environment.

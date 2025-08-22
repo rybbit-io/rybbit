@@ -3,13 +3,14 @@ title: "Wix"
 description: "Integrate Rybbit Analytics with your Wix website using custom code snippets."
 ---
 
+import { Steps, Step } from 'fumadocs-ui/components/steps';
 import { Callout } from "fumadocs-ui/components/callout";
-
-# Wix
 
 Integrating Rybbit Analytics with your Wix website involves adding a custom code snippet to your site's tracking tools.
 
-## 1. Get Your Tracking Script
+<Steps>
+<Step>
+### Get Your Tracking Script
 
 First, you'll need your Rybbit tracking script. You can find this in your Rybbit dashboard under **Site Settings > Tracking Code**. It will look something like this:
 
@@ -18,16 +19,20 @@ First, you'll need your Rybbit tracking script. You can find this in your Rybbit
 ```
 
 Replace `YOUR_SITE_ID` with your actual Site ID from your Rybbit dashboard.
+</Step>
 
-## 2. Go to Wix Dashboard
+<Step>
+### Go to Wix Dashboard
 
 Log in to your Wix account and select the site you want to track.
 
 From your site's dashboard, navigate to:
 
 - **Settings** (usually in the left-hand sidebar)
+</Step>
 
-## 3. Access Tracking Tools / Custom Code
+<Step>
+### Access Tracking Tools / Custom Code
 
 In the Settings menu, look for a section related to tracking or advanced settings. This is often called:
 
@@ -37,15 +42,19 @@ In the Settings menu, look for a section related to tracking or advanced setting
 <Callout type="info">
   To add custom code, you'll need a Wix Premium plan and a connected domain. This feature is typically not available on free Wix plans.
 </Callout>
+</Step>
 
-## 4. Add New Custom Code
+<Step>
+### Add New Custom Code
 
 Once in the Tracking Tools or Custom Code section:
 
 - Click on **+ New Tool** or **+ Add Custom Code**.
 - Choose **Custom** from the list of options if prompted.
+</Step>
 
-## 5. Configure the Custom Code
+<Step>
+### Configure the Custom Code
 
 You'll be presented with a form to add your code:
 
@@ -54,17 +63,23 @@ You'll be presented with a form to add your code:
 - **Add Code to Pages:** Select **All pages** to track your entire site.
   - You might have an option to **Load code once** or **Load code on each new page**. Choose the option that best reflects loading the script on every page view.
 - **Place Code in:** Choose **Body - end**. This is generally recommended for analytics scripts to avoid impacting perceived page load speed. Some Wix versions might offer "Head" or "Body - start" as well. "Body - end" is usually the best choice.
+</Step>
 
-## 6. Apply Changes
+<Step>
+### Apply Changes
 
 Click **Apply** or **Save** to add the custom code to your site.
+</Step>
 
-## 7. Verify Integration
+<Step>
+### Verify Integration
 
 After applying the changes, Rybbit Analytics should start tracking visitors on your Wix site.
 
 - Open your Wix website in a new browser tab or incognito window.
 - Navigate through a few pages.
 - Check your Rybbit dashboard for incoming data. It might take a few minutes for the first events to appear.
+</Step>
+</Steps>
 
 That's it! Rybbit Analytics is now integrated with your Wix website.

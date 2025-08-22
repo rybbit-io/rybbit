@@ -97,7 +97,7 @@ import React from 'react';
 const MyInteractiveButton = ({ buttonText, eventName, eventData }) => {
   const handleClick = () => {
     if (typeof window !== 'undefined' && window.rybbit) {
-      window.rybbit.trackEvent(eventName || 'gatsby_button_click', eventData || {});
+      window.rybbit.event(eventName || 'gatsby_button_click', eventData || {});
     }
   };
 

@@ -8,6 +8,7 @@ import { useState, Suspense } from "react";
 import { useAdminPermission } from "../app/admin/hooks/useAdminPermission";
 import { cn } from "../lib/utils";
 import { useEmbedablePage } from "../app/[site]/utils";
+import { IS_CLOUD } from "../lib/const";
 
 function AppSidebarContent() {
   const pathname = usePathname();
@@ -44,7 +45,7 @@ function AppSidebarContent() {
           active={pathname.startsWith("/uptime")}
           expanded={isExpanded}
         /> */}
-        {isAdmin && (
+        {isAdmin && IS_CLOUD && (
           <SidebarLink
             href="/admin"
             icon={<ShieldUser className="w-5 h-5" />}

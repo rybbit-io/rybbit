@@ -63,7 +63,7 @@ Add the following script towards the end of the file, or within a relevant produ
     const rybbitProduct = {{ product | json }};
     const rybbitCurrentVariant = {{ product.selected_or_first_available_variant | json }};
 
-    window.rybbit.trackEvent('view_item', {
+    window.rybbit.event('view_item', {
       item_id: rybbitCurrentVariant.sku || rybbitCurrentVariant.id,
       item_name: rybbitProduct.title,
       item_variant: rybbitCurrentVariant.title === 'Default Title' ? null : rybbitCurrentVariant.title,
@@ -99,7 +99,7 @@ document.addEventListener('DOMContentLoaded', function() {
         quantity = parseInt(quantityInput.value, 10);
       }
 
-      window.rybbit.trackEvent('add_to_cart', {
+      window.rybbit.event('add_to_cart', {
         item_id: rybbitCurrentVariant.sku || rybbitCurrentVariant.id,
         item_name: rybbitProduct.title,
         item_variant: rybbitCurrentVariant.title === 'Default Title' ? null : rybbitCurrentVariant.title,
@@ -158,7 +158,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
       });
 
-      window.rybbit.trackEvent('begin_checkout', {
+      window.rybbit.event('begin_checkout', {
         currency: rybbitCart.currency,
         value: parseFloat(rybbitCart.total_price) / 100,
         items: items
@@ -192,7 +192,7 @@ Scroll down to the **Order status page** section. In the **Additional scripts** 
       });
     });
 
-    window.rybbit.trackEvent('purchase', {
+    window.rybbit.event('purchase', {
       transaction_id: rybbitCheckout.order_number,
       value: parseFloat(rybbitCheckout.total_price),
       tax: parseFloat(rybbitCheckout.tax_price),

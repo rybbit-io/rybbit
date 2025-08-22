@@ -13,7 +13,7 @@ import { UserProfiles } from "@/components/Cards/UserProfiles";
 import { UserSessions } from "@/components/Cards/UserSessions";
 import { SessionReplay } from "@/components/Cards/SessionReplay";
 import { WebVitals } from "@/components/Cards/WebVitals";
-import { Integrations } from "@/components/Integrations";
+import { Integrations } from "@/components/Integration";
 import { PricingSection } from "@/components/PricingSection";
 import { TweetCard } from "@/components/Tweet";
 import Image from "next/image";

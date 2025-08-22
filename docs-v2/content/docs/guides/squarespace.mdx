@@ -3,13 +3,14 @@ title: "Squarespace"
 description: "Integrate Rybbit Analytics with your Squarespace website using the Code Injection feature."
 ---
 
+import { Steps, Step } from 'fumadocs-ui/components/steps';
 import { Callout } from "fumadocs-ui/components/callout";
-
-# Squarespace
 
 Integrating Rybbit Analytics with your Squarespace website is straightforward. You'll need to use Squarespace's "Code Injection" feature to add the Rybbit tracking script to your site.
 
-## 1. Get Your Tracking Script
+<Steps>
+<Step>
+### Get Your Tracking Script
 
 First, you'll need your Rybbit tracking script. You can find this in your Rybbit dashboard under **Site Settings > Tracking Code**. It will look something like this:
 
@@ -18,16 +19,20 @@ First, you'll need your Rybbit tracking script. You can find this in your Rybbit
 ```
 
 Replace `YOUR_SITE_ID` with your actual Site ID from your Rybbit dashboard.
+</Step>
 
-## 2. Go to Squarespace Settings
+<Step>
+### Go to Squarespace Settings
 
 Log in to your Squarespace account and go to the website you want to track.
 
 From the main dashboard (Home Menu), navigate to:
 
 - **Settings**
+</Step>
 
-## 3. Access Code Injection
+<Step>
+### Access Code Injection
 
 In the Settings panel, find and click on:
 
@@ -37,25 +42,33 @@ In the Settings panel, find and click on:
 <Callout type="info">
   The Code Injection feature is available on Squarespace Business and Commerce plans. It may not be available on Personal plans.
 </Callout>
+</Step>
 
-## 4. Paste Your Tracking Script
+<Step>
+### Paste Your Tracking Script
 
 In the Code Injection settings, you'll see several fields (Header, Footer, Lock Page, Order Confirmation Page).
 
 For sitewide tracking, paste your Rybbit tracking script into the **Footer** text area. This ensures the script loads after your page content, which is generally better for perceived page load performance.
 
 Alternatively, you can place it in the **Header**, which might track users who leave before the page fully loads, but could slightly impact initial page load speed. For most analytics purposes, the Footer is recommended.
+</Step>
 
-## 5. Save Changes
+<Step>
+### Save Changes
 
 After pasting the script, click the **Save** button at the top of the Code Injection panel.
+</Step>
 
-## 6. Verify Integration
+<Step>
+### Verify Integration
 
 Once you've saved the changes, Rybbit Analytics should start tracking visitors on your Squarespace site.
 
 - Open your Squarespace website in a new browser tab or incognito window.
 - Navigate through a few pages.
 - Check your Rybbit dashboard for incoming data. It might take a few minutes for the first events to appear.
+</Step>
+</Steps>
 
 That's it! Rybbit Analytics is now integrated with your Squarespace website.

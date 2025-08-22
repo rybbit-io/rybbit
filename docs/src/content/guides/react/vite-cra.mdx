@@ -79,7 +79,7 @@ Once the script is installed, you can track custom events from any of your React
 function MyComponent() {
   const handleButtonClick = () => {
     if (window.rybbit) {
-      window.rybbit.trackEvent('button_click', { category: 'CTA', label: 'Learn More' });
+      window.rybbit.event('button_click', { category: 'CTA', label: 'Learn More' });
     }
   };
 

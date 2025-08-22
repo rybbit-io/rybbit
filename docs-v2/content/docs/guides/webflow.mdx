@@ -65,7 +65,7 @@ You can track custom events in Webflow by adding custom JavaScript code, either 
       if (specialButton) {
         specialButton.addEventListener('click', function() {
           if (typeof window.rybbit !== 'undefined') {
-            window.rybbit.trackEvent('webflow_button_click', {
+            window.rybbit.event('webflow_button_click', {
               button_id: 'my-special-button',
               button_text: specialButton.textContent || specialButton.innerText,
               page_path: window.location.pathname
@@ -97,7 +97,7 @@ You can track custom events in Webflow by adding custom JavaScript code, either 
           // For Webflow's native form handling, you might need to hook into its success state if possible,
           // or track the click on the submit button itself.
           if (typeof window.rybbit !== 'undefined') {
-            window.rybbit.trackEvent('webflow_form_submit', {
+            window.rybbit.event('webflow_form_submit', {
               form_id: 'contact-form',
               // You can try to get form field values here if needed, but be mindful of PII.
             });

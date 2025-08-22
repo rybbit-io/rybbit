@@ -38,7 +38,7 @@ Navigate to your Rybbit dashboard to obtain your code snippet.
 </Steps>
 
 <Callout type="info">
-  **Page View Tracking in Framer**: Framer sites often behave like Single Page Applications (SPAs). Rybbit's tracking script is designed to automatically detect URL changes and track them as page views. If you use Framer's navigation features (like links between pages or components that change the URL), Rybbit should capture these. If you notice page views are not tracked correctly after navigation, you might need to manually trigger `window.rybbit.trackPageview()` using a Framer code override or code component when a "virtual" page change occurs. Test the default behavior first.
+  **Page View Tracking in Framer**: Framer sites often behave like Single Page Applications (SPAs). Rybbit's tracking script is designed to automatically detect URL changes and track them as page views. If you use Framer's navigation features (like links between pages or components that change the URL), Rybbit should capture these. If you notice page views are not tracked correctly after navigation, you might need to manually trigger `window.rybbit.pageview()` using a Framer code override or code component when a "virtual" page change occurs. Test the default behavior first.
 </Callout>
 
 ## Custom Event Tracking in Framer
@@ -59,7 +59,7 @@ export function withRybbitTracking(Component: ComponentType): ComponentType {
     return (props) => {
         const handleClick = () => {
             if (typeof window !== "undefined" && window.rybbit) {
-                window.rybbit.trackEvent('framer_button_click', {
+                window.rybbit.event('framer_button_click', {
                     buttonName: props.text || 'Unnamed Button',
                     page: props.currentPage?.name || 'Unknown Page'
                 });
@@ -87,7 +87,7 @@ import React from "react"
 export function MyInteractiveComponent(props) {
     const handleInteraction = () => {
         if (typeof window !== "undefined" && window.rybbit) {
-            window.rybbit.trackEvent('framer_component_interaction', {
+            window.rybbit.event('framer_component_interaction', {
                 componentName: 'MyInteractiveComponent',
                 detail: 'User interacted'
             });

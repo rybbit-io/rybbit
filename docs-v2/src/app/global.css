@@ -1,12 +1,21 @@
-@import 'tailwindcss';
-@import 'fumadocs-ui/css/neutral.css';
-@import 'fumadocs-ui/css/preset.css';
+@import "tailwindcss";
+@import "fumadocs-ui/css/neutral.css";
+@import "fumadocs-ui/css/preset.css";
+
+:root {
+  --color-fd-primary: rgb(16 185 129); /* emerald-500 */
+}
+
+.dark {
+  --color-fd-primary: rgb(16 185 129); /* emerald-500 */
+}
 
 body {
   font-family: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
 }
 
-code, pre {
+code,
+pre {
   font-family: ui-monospace, SFMono-Regular, "SF Mono", Consolas, "Liberation Mono", Menlo, monospace;
 }
 

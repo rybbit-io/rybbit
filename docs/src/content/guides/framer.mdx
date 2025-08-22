@@ -52,7 +52,7 @@ export function withRybbitTracking(Component: ComponentType): ComponentType {
     return (props) => {
         const handleClick = () => {
             if (typeof window !== "undefined" && window.rybbit) {
-                window.rybbit.trackEvent('framer_button_click', {
+                window.rybbit.event('framer_button_click', {
                     buttonName: props.text || 'Unnamed Button',
                     page: props.currentPage?.name || 'Unknown Page'
                 });
@@ -80,7 +80,7 @@ import React from "react"
 export function MyInteractiveComponent(props) {
     const handleInteraction = () => {
         if (typeof window !== "undefined" && window.rybbit) {
-            window.rybbit.trackEvent('framer_component_interaction', {
+            window.rybbit.event('framer_component_interaction', {
                 componentName: 'MyInteractiveComponent',
                 detail: 'User interacted'
             });

@@ -16,19 +16,14 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "../../../../components/ui/dialog";
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "../../../../components/ui/form";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "../../../../components/ui/form";
 import { Input } from "../../../../components/ui/input";
 import { Label } from "../../../../components/ui/label";
 import { Switch } from "../../../../components/ui/switch";
 import { cn } from "../../../../lib/utils";
 import { useUpdateGoal } from "../../../../api/analytics/goals/useUpdateGoal";
+import { InputWithSuggestions, SuggestionOption } from "../../../../components/ui/input-with-suggestions";
+import { useSingleCol } from "../../../../api/analytics/useSingleCol";
 
 // Define form schema
 const formSchema = z
@@ -65,22 +60,42 @@ interface GoalFormModalProps {
   trigger: React.ReactNode;
 }
 
-export default function GoalFormModal({
-  siteId,
-  goal,
-  trigger,
-}: GoalFormModalProps) {
+export default function GoalFormModal({ siteId, goal, trigger }: GoalFormModalProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [useProperties, setUseProperties] = useState(
     !!goal?.config.eventPropertyKey && !!goal?.config.eventPropertyValue
   );
 
+  // Fetch suggestions for paths and events
+  const { data: pathsData } = useSingleCol({
+    parameter: "pathname",
+    limit: 1000,
+    useFilters: false,
+  });
+
+  const { data: eventsData } = useSingleCol({
+    parameter: "event_name",
+    limit: 1000,
+    useFilters: false,
+  });
+
+  // Transform data into SuggestionOption format
+  const pathSuggestions: SuggestionOption[] =
+    pathsData?.data?.map((item) => ({
+      value: item.value,
+      label: item.value,
+    })) || [];
+
+  const eventSuggestions: SuggestionOption[] =
+    eventsData?.data?.map((item) => ({
+      value: item.value,
+      label: item.value,
+    })) || [];
+
   // Reinitialize useProperties when goal changes or modal opens
   useEffect(() => {
     if (isOpen) {
-      setUseProperties(
-        !!goal?.config.eventPropertyKey && !!goal?.config.eventPropertyValue
-      );
+      setUseProperties(!!goal?.config.eventPropertyKey && !!goal?.config.eventPropertyValue);
     }
   }, [isOpen, goal?.config.eventPropertyKey, goal?.config.eventPropertyValue]);
 
@@ -104,9 +119,7 @@ export default function GoalFormModal({
             eventName: goal.config.eventName || "",
             eventPropertyKey: goal.config.eventPropertyKey || "",
             eventPropertyValue:
-              goal.config.eventPropertyValue !== undefined
-                ? String(goal.config.eventPropertyValue)
-                : "",
+              goal.config.eventPropertyValue !== undefined ? String(goal.config.eventPropertyValue) : "",
           },
         }
       : {
@@ -231,9 +244,7 @@ export default function GoalFormModal({
                       <div className="flex gap-3 mt-1">
                         <Button
                           type="button"
-                          variant={
-                            field.value === "path" ? "default" : "outline"
-                          }
+                          variant={field.value === "path" ? "default" : "outline"}
                           className={cn(
                             "flex-1 flex items-center justify-center gap-2",
                             field.value === "path" && "border-blue-500"
@@ -245,9 +256,7 @@ export default function GoalFormModal({
                         </Button>
                         <Button
                           type="button"
-                          variant={
-                            field.value === "event" ? "default" : "outline"
-                          }
+                          variant={field.value === "event" ? "default" : "outline"}
                           className={cn(
                             "flex-1 flex items-center justify-center gap-2",
                             field.value === "event" && "border-amber-500"
@@ -273,15 +282,15 @@ export default function GoalFormModal({
                   <FormItem>
                     <FormLabel>Path Pattern</FormLabel>
                     <FormControl>
-                      <Input
+                      <InputWithSuggestions
+                        suggestions={pathSuggestions}
                         placeholder="/checkout/complete or /product/*/view"
                         {...field}
                       />
                     </FormControl>
                     <FormMessage />
                     <div className="text-xs text-gray-500 mt-1">
-                      Use * to match a single path segment. Use ** to match
-                      across segments.
+                      Use * to match a single path segment. Use ** to match across segments.
                     </div>
                   </FormItem>
                 )}
@@ -297,7 +306,8 @@ export default function GoalFormModal({
                     <FormItem>
                       <FormLabel>Event Name</FormLabel>
                       <FormControl>
-                        <Input
+                        <InputWithSuggestions
+                          suggestions={eventSuggestions}
                           placeholder="e.g., sign_up_completed"
                           {...field}
                         />
@@ -309,14 +319,8 @@ export default function GoalFormModal({
 
                 <div className="mt-4">
                   <div className="flex items-center space-x-2 mb-4">
-                    <Switch
-                      id="use-properties"
-                      checked={useProperties}
-                      onCheckedChange={setUseProperties}
-                    />
-                    <Label htmlFor="use-properties">
-                      Match specific event property
-                    </Label>
+                    <Switch id="use-properties" checked={useProperties} onCheckedChange={setUseProperties} />
+                    <Label htmlFor="use-properties">Match specific event property</Label>
                   </div>
 
                   {useProperties && (
@@ -358,16 +362,8 @@ export default function GoalFormModal({
               <Button variant="outline" type="button" onClick={onClose}>
                 Cancel
               </Button>
-              <Button
-                type="submit"
-                disabled={createGoal.isPending || updateGoal.isPending}
-                variant="success"
-              >
-                {createGoal.isPending || updateGoal.isPending
-                  ? "Saving..."
-                  : isEditMode
-                  ? "Update"
-                  : "Create"}
+              <Button type="submit" disabled={createGoal.isPending || updateGoal.isPending} variant="success">
+                {createGoal.isPending || updateGoal.isPending ? "Saving..." : isEditMode ? "Update" : "Create"}
               </Button>
             </div>
           </form>

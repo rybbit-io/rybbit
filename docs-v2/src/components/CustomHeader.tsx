@@ -27,6 +27,9 @@ export function CustomHeader() {
             <Link href="/docs" className="text-sm font-base text-neutral-400 hover:text-white transition-colors">
               Docs
             </Link>
+            <Link href="/blog" className="text-sm font-base text-neutral-400 hover:text-white transition-colors">
+              Blog
+            </Link>
             <a
               href="https://demo.rybbit.io/21"
               target="_blank"
@@ -104,6 +107,13 @@ export function CustomHeader() {
               onClick={() => setMobileMenuOpen(false)}
             >
               Docs
+            </Link>
+            <Link
+              href="/blog"
+              className="block rounded-md px-3 py-2 text-base font-medium text-neutral-300 hover:bg-neutral-800 hover:text-white"
+              onClick={() => setMobileMenuOpen(false)}
+            >
+              Blog
             </Link>
             <a
               href="https://demo.rybbit.io/21"

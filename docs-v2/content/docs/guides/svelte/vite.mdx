@@ -67,7 +67,7 @@ Deploy your application and check your Rybbit dashboard for incoming data. You c
 </Steps>
 
 <Callout type="info">
-  **SPA Page View Tracking**: Rybbit's script is designed to automatically track route changes in client-side Svelte SPAs using common routers (like `svelte-routing` or `svelte-spa-router`). If page views aren't tracked correctly after navigation, you might need to manually trigger `window.rybbit.trackPageview()` after each route change, using your router's specific API for navigation events.
+  **SPA Page View Tracking**: Rybbit's script is designed to automatically track route changes in client-side Svelte SPAs using common routers (like `svelte-routing` or `svelte-spa-router`). If page views aren't tracked correctly after navigation, you might need to manually trigger `window.rybbit.pageview()` after each route change, using your router's specific API for navigation events.
 </Callout>
 
 ## Custom Event Tracking
@@ -79,7 +79,7 @@ From any Svelte component, you can track custom events:
   function handleClientAction() {
     // Ensure running in browser, though for client-side Svelte this is usually the case
     if (typeof window !== 'undefined' && window.rybbit) {
-      window.rybbit.trackEvent('user_action_svelte_vite', { component: 'MySvelteViteComponent' });
+      window.rybbit.event('user_action_svelte_vite', { component: 'MySvelteViteComponent' });
     }
   }
 </script>

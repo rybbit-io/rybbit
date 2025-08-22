@@ -74,7 +74,7 @@ You can track custom events in Bubble by using a workflow action that runs JavaS
 
 ```javascript
 if (typeof window.rybbit !== 'undefined') {
-  window.rybbit.trackEvent('bubble_event_name', {
+  window.rybbit.event('bubble_event_name', {
     // You can use Bubble's dynamic expressions here to pass data
     // For example: 'User Email': Current User's Email,
     // 'Clicked Element': This Button's Text (if applicable)
@@ -92,7 +92,7 @@ Replace `'bubble_event_name'` with a descriptive name for your event. You can us
 // let itemCategory = "Dynamic Category from Bubble";
 
 if (typeof window.rybbit !== 'undefined') {
-  window.rybbit.trackEvent('item_interaction', {
+  window.rybbit.event('item_interaction', {
     name: itemName,       // Replace with actual dynamic data
     category: itemCategory // Replace with actual dynamic data
   });

@@ -81,7 +81,7 @@ From any Vue component within your Nuxt.js application, you can track custom eve
 <script setup>
 function trackCustomEvent() {
   if (process.client && window.rybbit) { // Ensure running on client and rybbit exists
-    window.rybbit.trackEvent('nuxt_interaction', { detail: 'User clicked important button' });
+    window.rybbit.event('nuxt_interaction', { detail: 'User clicked important button' });
   }
 }
 </script>

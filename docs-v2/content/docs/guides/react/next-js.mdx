@@ -122,7 +122,7 @@ Note that this rewrite will consume the bandwidth of your server, as all trackin
 
 
 <Callout type="info">
-  **Page View Tracking in Next.js**: Rybbit's tracking script is designed to automatically detect route changes when using Next.js's `&lt;Link&gt;` component or `router.push()` and track them as page views. If you encounter a rare scenario where page views are not being tracked correctly after client-side navigation, you might need to manually trigger page views using `window.rybbit.trackPageview()`. However, test the default behavior first, as manual tracking is typically not necessary.
+  **Page View Tracking in Next.js**: Rybbit's tracking script is designed to automatically detect route changes when using Next.js's `&lt;Link&gt;` component or `router.push()` and track them as page views. If you encounter a rare scenario where page views are not being tracked correctly after client-side navigation, you might need to manually trigger page views using `window.rybbit.pageview()`. However, test the default behavior first, as manual tracking is typically not necessary.
 </Callout>
 
 ## Custom Event Tracking
@@ -138,8 +138,8 @@ Once the Rybbit script is loaded via the Next.js `Script` component, you can tra
 // declare global {
 //   interface Window {
 //     rybbit?: {
-//       trackEvent: (eventName: string, eventData?: Record<string, any>) => void;
-//       trackPageview: () => void;
+//       event: (eventName: string, eventData?: Record<string, any>) => void;
+//       pageview: () => void;
 //       // Add other methods if you use them
 //     };
 //   }
@@ -147,8 +147,8 @@ Once the Rybbit script is loaded via the Next.js `Script` component, you can tra
 
 export default function MyButton({ title }) {
   const handleClick = () => {
-    if (typeof window !== 'undefined' && window.rybbit && typeof window.rybbit.trackEvent === 'function') {
-      window.rybbit.trackEvent('button_click', { buttonTitle: title });
+    if (typeof window !== 'undefined' && window.rybbit && typeof window.rybbit.event === 'function') {
+      window.rybbit.event('button_click', { buttonTitle: title });
     } else {
       console.warn('Rybbit tracking not available.');
     }

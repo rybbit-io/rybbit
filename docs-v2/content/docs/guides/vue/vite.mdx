@@ -69,7 +69,7 @@ Deploy your application and check your Rybbit dashboard for incoming data. You c
 </Steps>
 
 <Callout type="info">
-  **SPA Page View Tracking**: Rybbit's script is designed to automatically track route changes in SPAs using Vue Router. If page views aren't tracked correctly after navigation, you might need to manually trigger them using `window.rybbit.trackPageview()` after each route change. This can be done using Vue Router's navigation guards:
+  **SPA Page View Tracking**: Rybbit's script is designed to automatically track route changes in SPAs using Vue Router. If page views aren't tracked correctly after navigation, you might need to manually trigger them using `window.rybbit.pageview()` after each route change. This can be done using Vue Router's navigation guards:
   ```javascript
   // Example with Vue Router in your router setup file (e.g., src/router/index.js)
   import { createRouter, createWebHistory } from 'vue-router';
@@ -81,8 +81,8 @@ Deploy your application and check your Rybbit dashboard for incoming data. You c
   });
 
   router.afterEach((to, from) => {
-    if (window.rybbit && typeof window.rybbit.trackPageview === 'function') {
-      window.rybbit.trackPageview();
+    if (window.rybbit && typeof window.rybbit.pageview === 'function') {
+      window.rybbit.pageview();
     }
   });
 
@@ -102,8 +102,8 @@ From any Vue component or method, you can track custom events:
 
 <script setup>
 function trackCustomEvent() {
-  if (window.rybbit && typeof window.rybbit.trackEvent === 'function') {
-    window.rybbit.trackEvent('custom_vue_action', { detail: 'User performed a client-side Vue action' });
+  if (window.rybbit && typeof window.rybbit.event === 'function') {
+    window.rybbit.event('custom_vue_action', { detail: 'User performed a client-side Vue action' });
   }
 }
 </script>

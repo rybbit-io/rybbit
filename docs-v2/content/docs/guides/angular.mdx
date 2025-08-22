@@ -91,7 +91,7 @@ After building and deploying your application, open your Rybbit dashboard to che
   //   filter(event => event instanceof NavigationEnd)
   // ).subscribe(() => {{
   //   if (window.rybbit) {{
-  //     window.rybbit.trackPageview();
+  //     window.rybbit.pageview();
   //   }}
   // }});
   ```
@@ -110,8 +110,8 @@ import { Component } from '@angular/core';
 declare global {
   interface Window {
     rybbit?: {
-      trackEvent: (eventName: string, eventData?: Record<string, any>) => void;
-      trackPageview: () => void;
+      event: (eventName: string, eventData?: Record<string, any>) => void;
+      pageview: () => void;
       // Add other methods if you use them
     };
   }
@@ -123,8 +123,8 @@ declare global {
 }})
 export class MyFeatureComponent {{
   onFeatureClick(): void {{
-    if (window.rybbit && typeof window.rybbit.trackEvent === 'function') {{
-      window.rybbit.trackEvent('feature_used', {{ featureName: 'Amazing Feature' }});
+    if (window.rybbit && typeof window.rybbit.event === 'function') {{
+      window.rybbit.event('feature_used', {{ featureName: 'Amazing Feature' }});
     }} else {{
       console.warn('Rybbit tracking not available.');
     }}

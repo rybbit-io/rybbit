@@ -75,7 +75,7 @@ From any Svelte component, you can track custom events:
   function handleClientAction() {
     // Ensure running in browser, though for client-side Svelte this is usually the case
     if (typeof window !== 'undefined' && window.rybbit) {
-      window.rybbit.trackEvent('user_action_svelte_vite', { component: 'MySvelteViteComponent' });
+      window.rybbit.event('user_action_svelte_vite', { component: 'MySvelteViteComponent' });
     }
   }
 </script>

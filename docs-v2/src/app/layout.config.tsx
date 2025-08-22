@@ -18,23 +18,23 @@ export const baseOptions: BaseLayoutProps = {
   },
   // see https://fumadocs.dev/docs/ui/navigation/links
   links: [
-    {
-      text: "Pricing",
-      url: "/pricing",
-    },
-    {
-      text: "Docs",
-      url: "/docs",
-    },
+    //   {
+    //     text: "Pricing",
+    //     url: "/pricing",
+    //   },
+    //   {
+    //     text: "Docs",
+    //     url: "/docs",
+    //   },
     {
       text: "Demo",
       url: "https://demo.rybbit.io/21",
       external: true,
     },
-    {
-      text: "GitHub",
-      url: "https://github.com/rybbit-io/rybbit",
-      external: true,
-    },
+    //   {
+    //     text: "GitHub",
+    //     url: "https://github.com/rybbit-io/rybbit",
+    //     external: true,
+    //   },
   ],
 };

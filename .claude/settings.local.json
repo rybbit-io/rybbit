@@ -32,7 +32,8 @@
       "Bash(npm init:*)",
       "Bash(cp:*)",
       "Bash(-print)",
-      "Bash(python3:*)"
+      "Bash(python3:*)",
+      "WebFetch(domain:github.com)"
     ]
   },
   "enableAllProjectMcpServers": false

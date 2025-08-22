@@ -22,10 +22,9 @@ export const World = ({ width }: { width: number }) => {
 
   const [minutes] = useAtom(minutesAtom);
 
-  const {
-    data: liveSessionLocations,
-    isLoading: isLiveSessionLocationsLoading,
-  } = useGetLiveSessionLocations(Number(minutes));
+  const { data: liveSessionLocations, isLoading: isLiveSessionLocationsLoading } = useGetLiveSessionLocations(
+    Number(minutes)
+  );
 
   const { data: countries = { features: [] } } = useQuery({
     queryKey: ["countries"],
@@ -35,15 +34,10 @@ export const World = ({ width }: { width: number }) => {
     },
   });
 
-  const highest =
-    liveSessionLocations?.reduce((acc, curr) => Math.max(acc, curr.count), 0) ??
-    1;
+  const highest = liveSessionLocations?.reduce((acc, curr) => Math.max(acc, curr.count), 0) ?? 1;
 
   const normalized = 5 / Number(minutes);
-  const weightColor = scaleSequentialSqrt(interpolateYlOrRd).domain([
-    0,
-    highest * normalized * 15,
-  ]);
+  const weightColor = scaleSequentialSqrt(interpolateYlOrRd).domain([0, highest * normalized * 15]);
 
   useEffect(() => {
     // Auto-rotate
@@ -59,17 +53,17 @@ export const World = ({ width }: { width: number }) => {
   const updateAltitude = useCallback(
     debounce(() => {
       if (!globeEl.current) return;
-  
+
       const controls = globeEl.current.controls();
       const distance = Math.round(controls.getDistance());
-  
-      const low = 0.001, mid = 0.005, high = 0.02;
-      const near = 300, far = 600;
-      const nextAlt =
-        distance <= near ? low :
-        distance >= far ? high :
-        mid;
-  
+
+      const low = 0.001,
+        mid = 0.005,
+        high = 0.02;
+      const near = 300,
+        far = 600;
+      const nextAlt = distance <= near ? low : distance >= far ? high : mid;
+
       // set only if changed
       if (nextAlt !== hexAltitude) {
         setHexAltitude(nextAlt);
@@ -84,9 +78,9 @@ export const World = ({ width }: { width: number }) => {
     // Limit distance maximal distance
     controls.maxDistance = 900;
     // Subscribe on change event
-    controls.addEventListener('end', updateAltitude);
+    controls.addEventListener("end", updateAltitude);
     return () => {
-      controls.removeEventListener('end', updateAltitude);
+      controls.removeEventListener("end", updateAltitude);
       updateAltitude.cancel(); // cancel any pending call
     };
   }, [globeEl, updateAltitude]);
@@ -132,11 +126,8 @@ export const World = ({ width }: { width: number }) => {
         }}
         ref={globeEl as any}
         width={width ?? 0}
-        height={(size.height ?? 0) - 100}
-        globeOffset={[
-          windowWidth && windowWidth > 768 ? -100 : 0,
-          windowWidth && windowWidth > 768 ? 0 : 100,
-        ]}
+        height={size.height ?? 0}
+        globeOffset={[windowWidth && windowWidth > 768 ? -100 : 0, windowWidth && windowWidth > 768 ? 0 : 100]}
         atmosphereColor="rgba(170, 170, 200, 1)"
         globeMaterial={oceanBlueMaterial}
         hexPolygonsData={countries.features}
