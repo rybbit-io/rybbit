@@ -61,7 +61,7 @@ function getFormattedPrice(eventLimit: number | string) {
 
 export function PricingSection() {
   const [eventLimitIndex, setEventLimitIndex] = useState(0); // Default to 100k (index 0)
-  const [isAnnual, setIsAnnual] = useState(true);
+  const [isAnnual, setIsAnnual] = useState(false);
 
   const eventLimit = EVENT_TIERS[eventLimitIndex];
   const prices = getFormattedPrice(eventLimit);
@@ -196,7 +196,7 @@ export function PricingSection() {
                                 ? prices.monthly
                                 : 0}
                             </span>
-                            <span className="ml-1 text-neutral-400">/month</span>
+                            <span className="ml-1 text-neutral-400">{isAnnual ? "/year" : "/month"}</span>
                           </>
                         )}
                       </div>
