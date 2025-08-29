@@ -65,6 +65,8 @@ interface OutboundLinksListProps {
   outboundLinks: OutboundLink[];
   isLoading: boolean;
   size?: "small" | "large";
+  /** Maximum height of the list container in pixels */
+  maxHeight?: number;
 }
 
 // Function to truncate URL for display
@@ -94,7 +96,12 @@ function truncateUrl(url: string, maxLength: number = 60) {
   }
 }
 
-export function OutboundLinksList({ outboundLinks, isLoading, size = "small" }: OutboundLinksListProps) {
+export function OutboundLinksList({
+  outboundLinks,
+  isLoading,
+  size = "small",
+  maxHeight = 344,
+}: OutboundLinksListProps) {
   if (isLoading) {
     return <OutboundLinksListSkeleton size={size} />;
   }
@@ -112,7 +119,7 @@ export function OutboundLinksList({ outboundLinks, isLoading, size = "small" }: 
   const totalCount = outboundLinks.reduce((sum, link) => sum + link.count, 0);
 
   return (
-    <div className="flex flex-col gap-2">
+    <div className="flex flex-col gap-2 overflow-y-auto pr-2" style={{ maxHeight }}>
       {outboundLinks.map((link, index) => {
         const percentage = (link.count / totalCount) * 100;
         const lastClicked = DateTime.fromSQL(link.lastClicked, {

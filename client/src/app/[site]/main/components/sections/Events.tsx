@@ -1,10 +1,13 @@
 import { useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../../../../components/ui/basic-tabs";
 import { Card, CardContent, CardLoader } from "../../../../../components/ui/card";
+import { Button } from "../../../../../components/ui/button";
 import { useGetEventNames } from "../../../../../api/analytics/events/useGetEventNames";
 import { EventList } from "../../../events/components/EventList";
 import { OutboundLinksList } from "../../../events/components/OutboundLinksList";
+import { OutboundLinksDialog } from "./OutboundLinksDialog";
 import { useGetOutboundLinks } from "../../../../../api/analytics/events/useGetOutboundLinks";
+import { Expand } from "lucide-react";
 
 type Tab = "events" | "outbound";
 
@@ -31,6 +34,8 @@ function Events_() {
 
 function OutboundLinks() {
   const { data: outboundLinksData, isLoading: isLoadingOutboundLinks } = useGetOutboundLinks();
+  const [expanded, setExpanded] = useState(false);
+  const close = () => setExpanded(false);
 
   return (
     <>
@@ -42,9 +47,22 @@ function OutboundLinks() {
       <div className="relative">
         <div className="flex flex-row gap-2 justify-between pr-1 text-xs text-neutral-400 mb-2">
           <div>Outbound Links</div>
-          <div>Clicks</div>
+          <div className="flex items-center gap-2">
+            <div>Clicks</div>
+            <Button size="smIcon" onClick={() => setExpanded(true)}>
+              <Expand />
+            </Button>
+          </div>
         </div>
-        <OutboundLinksList outboundLinks={outboundLinksData || []} isLoading={isLoadingOutboundLinks} />
+        <OutboundLinksList
+          outboundLinks={(outboundLinksData || []).slice(0, 10)}
+          isLoading={isLoadingOutboundLinks}
+        />
+        <OutboundLinksDialog
+          outboundLinks={outboundLinksData || []}
+          expanded={expanded}
+          close={close}
+        />
       </div>
     </>
   );
