@@ -54,7 +54,7 @@ The setup script creates a minimal `.env` file with only the essential variables
 
 ```env
 DOMAIN_NAME=your.domain.com
-BASE_URL=https://your.domain.com
+BASE_URL=https://${DOMAIN_NAME}
 BETTER_AUTH_SECRET=generated_secret
 DISABLE_SIGNUP=false
 ```
