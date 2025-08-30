@@ -134,7 +134,7 @@ Create a `.env` file in the same directory:
 ```bash
 # Required: Your domain and base URL
 DOMAIN_NAME=your.domain.com
-BASE_URL=https://your.domain.com
+BASE_URL=https://${DOMAIN_NAME}
 
 # Required: Authentication secret (generate a random 32+ character string)
 BETTER_AUTH_SECRET=your_generated_secret_here
