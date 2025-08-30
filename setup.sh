@@ -75,8 +75,6 @@ if [ -z "$DOMAIN_NAME" ]; then
   exit 1
 fi
 
-BASE_URL="https://${DOMAIN_NAME}"
-
 # Generate a secure random secret for BETTER_AUTH_SECRET
 # Uses OpenSSL if available, otherwise falls back to /dev/urandom
 if command -v openssl &> /dev/null; then
@@ -95,7 +93,7 @@ echo "Creating .env file..."
 cat > .env << EOL
 # Required variables configured by setup.sh
 DOMAIN_NAME=${DOMAIN_NAME}
-BASE_URL=${BASE_URL}
+BASE_URL=https://${DOMAIN_NAME}
 BETTER_AUTH_SECRET=${BETTER_AUTH_SECRET}
 DISABLE_SIGNUP=false
 EOL
