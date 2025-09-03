@@ -9,6 +9,7 @@ import { Events } from "./components/sections/Events";
 import { Pages } from "./components/sections/Pages";
 import { Referrers } from "./components/sections/Referrers";
 import { Weekdays } from "./components/sections/Weekdays";
+import { DndContext } from "@dnd-kit/core";
 
 export default function MainPage() {
   const { site } = useStore();
@@ -28,12 +29,14 @@ function MainPageContent() {
       <SubHeader />
       <MainSection />
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 mt-4">
-        <Devices />
-        <Pages />
-        <Referrers />
-        <Countries />
-        <Events />
-        <Weekdays />
+        <DndContext>
+          <Devices />
+          <Pages />
+          <Referrers />
+          <Countries />
+          <Events />
+          <Weekdays />
+        </DndContext>
       </div>
     </div>
   );
