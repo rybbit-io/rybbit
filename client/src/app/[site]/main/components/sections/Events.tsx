@@ -1,10 +1,10 @@
 import { useState } from "react";
+import { useGetEventNames } from "../../../../../api/analytics/events/useGetEventNames";
+import { useGetOutboundLinks } from "../../../../../api/analytics/events/useGetOutboundLinks";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../../../../components/ui/basic-tabs";
 import { Card, CardContent, CardLoader } from "../../../../../components/ui/card";
-import { useGetEventNames } from "../../../../../api/analytics/events/useGetEventNames";
 import { EventList } from "../../../events/components/EventList";
 import { OutboundLinksList } from "../../../events/components/OutboundLinksList";
-import { useGetOutboundLinks } from "../../../../../api/analytics/events/useGetOutboundLinks";
 
 type Tab = "events" | "outbound";
 
@@ -54,7 +54,7 @@ export function Events() {
   const [tab, setTab] = useState<Tab>("events");
 
   return (
-    <Card>
+    <Card className="h-[405px]">
       <CardContent className="mt-2">
         <Tabs defaultValue="events" value={tab} onValueChange={(value) => setTab(value as Tab)}>
           <TabsList>
