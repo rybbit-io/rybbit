@@ -9,7 +9,23 @@ import { Events } from "./components/sections/Events";
 import { Pages } from "./components/sections/Pages";
 import { Referrers } from "./components/sections/Referrers";
 import { Weekdays } from "./components/sections/Weekdays";
-import { DndContext } from "@dnd-kit/core";
+import { DndContext, useDraggable } from "@dnd-kit/core";
+
+function Draggable(props) {
+  const {attributes, listeners, setNodeRef, transform} = useDraggable({
+    id: 'draggable',
+  });
+  const style = transform ? {
+    transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`,
+  } : undefined;
+
+  
+  return (
+    <button ref={setNodeRef} style={style} {...listeners} {...attributes}>
+      {props.children}
+    </button>
+  );
+}
 
 export default function MainPage() {
   const { site } = useStore();
@@ -30,12 +46,14 @@ function MainPageContent() {
       <MainSection />
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 mt-4">
         <DndContext>
-          <Devices />
-          <Pages />
-          <Referrers />
-          <Countries />
-          <Events />
-          <Weekdays />
+          <Draggable>
+            <Devices />
+            <Pages />
+            <Referrers />
+            <Countries />
+            <Events />
+            <Weekdays />
+          </Draggable>
         </DndContext>
       </div>
     </div>
