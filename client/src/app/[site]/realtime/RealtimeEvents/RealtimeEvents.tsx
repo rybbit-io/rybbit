@@ -30,7 +30,7 @@ function truncatePath(path: string, maxLength: number = 31) {
 }
 
 // Function to build content based on event type
-function buildContent(event: Event, isPageview: boolean, isOutbound: boolean) {
+function buildContent(event: Event, isPageview: boolean, isOutbound: boolean): ReactNode {
   let fullPath = `https://${event.hostname}${event.pathname}${event.querystring ? `${event.querystring}` : ""}`;
   let content = <div>{event.event_name}</div>;
   let title = event.pathname;
