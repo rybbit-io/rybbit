@@ -1,5 +1,5 @@
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { FileText, Laptop, MousePointerClick, Smartphone } from "lucide-react";
+import { ExternalLink, FileText, Laptop, MousePointerClick, Smartphone, TriangleAlert } from "lucide-react";
 import { DateTime } from "luxon";
 import Link from "next/link";
 import { Event, useGetEvents } from "../../../../api/analytics/events/useGetEvents";
@@ -29,6 +29,47 @@ function truncatePath(path: string, maxLength: number = 31) {
   return `${path.substring(0, maxLength)}...`;
 }
 
+// Function to build content based on event type
+function buildContent(event: Event, isPageview: boolean, isOutbound: boolean) {
+  let fullPath = `https://${event.hostname}${event.pathname}${event.querystring ? `${event.querystring}` : ""}`;
+  let content = <div>{event.event_name}</div>;
+  let title = event.pathname;
+
+  let truncatedUrl = truncatePath(`${event.pathname}${event.querystring ? `${event.querystring}` : ""}`);
+  if (isOutbound) {
+    try {
+      const props = JSON.parse(event.properties);
+      if (props?.url) {
+        fullPath = props.url;
+        truncatedUrl = truncatePath(props.url);
+        title = props.url;
+      }
+    } catch (e) {
+      console.error("Failed to parse event properties:", e);
+    }
+  }
+
+  if (isPageview || isOutbound) {
+    content = (
+      <div>
+        <Link href={fullPath} target="_blank" rel="noopener noreferrer">
+          <div
+            className="text-sm truncate hover:underline "
+            title={title}
+            style={{
+              maxWidth: "calc(min(100vw, 1150px) - 250px)"
+            }}
+          >
+            {truncatedUrl}
+          </div>
+        </Link>
+      </div>
+    );
+  }
+
+  return content;
+}
+
 function EventCard({ event }: { event: Event }) {
   // Parse event timestamp
   const eventTime = DateTime.fromSQL(event.timestamp, {
@@ -37,38 +78,29 @@ function EventCard({ event }: { event: Event }) {
 
   // Determine if it's a pageview or custom event
   const isPageview = event.type === "pageview";
+  const isError = event.type === "error";
+  const isEvent = event.type === "custom_event";
+  const isOutbound = event.type === "outbound";
 
-  const fullPath = `https://${event.hostname}${event.pathname}${event.querystring ? `${event.querystring}` : ""}`;
+  const content = buildContent(event, isPageview, isOutbound);
 
   return (
     <Link href={`user/${event.user_id}`} target="_blank" rel="noopener noreferrer">
       <div className="mb-3 rounded-lg bg-neutral-850/50 border border-neutral-800 overflow-hidden p-3 flex flex-col filter backdrop-blur-sm hover:bg-neutral-800/70 transition-all duration-200">
         <div className="flex items-center gap-2 text-sm text-neutral-100 mb-2">
           <div className="flex items-center gap-2">
-            {isPageview ? (
-              <FileText className="w-4 h-4 text-blue-500" />
-            ) : (
+            {isEvent ? (
               <MousePointerClick className="w-4 h-4 text-amber-500" />
+            ) : isError ? (
+              <TriangleAlert className="w-4 h-4 text-red-500" />
+            ) : isOutbound ? (
+              <ExternalLink className="w-4 h-4 text-purple-500" />
+            ) : (
+              <FileText className="w-4 h-4 text-blue-500" />
             )}
           </div>
 
-          {event.type === "pageview" ? (
-            <div>
-              <Link href={fullPath} target="_blank" rel="noopener noreferrer">
-                <div
-                  className="text-sm truncate hover:underline "
-                  title={event.pathname}
-                  style={{
-                    maxWidth: "calc(min(100vw, 1150px) - 250px)",
-                  }}
-                >
-                  {truncatePath(`${event.pathname}${event.querystring ? `${event.querystring}` : ""}`)}
-                </div>
-              </Link>
-            </div>
-          ) : (
-            <div>{event.event_name}</div>
-          )}
+          { content }
         </div>
         <div className="flex items-center gap-2">
           <div className="flex space-x-2 items-center ml-6">
