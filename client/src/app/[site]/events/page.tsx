@@ -37,12 +37,11 @@ export default function EventsPage() {
               <CardTitle>Outbound Clicks</CardTitle>
             </CardHeader>
             <CardContent className="flex-1 min-h-0 overflow-hidden p-0">
-              <div className="h-full min-h-0 overflow-y-auto p-4">
+              <div className="h-full min-h-0 p-4 pt-0">
                 <OutboundLinksList 
                   outboundLinks={outboundLinksData || []} 
                   isLoading={isLoadingOutboundLinks} 
                   size="large"
-                  fullHeight
                 />
               </div>
             </CardContent>
