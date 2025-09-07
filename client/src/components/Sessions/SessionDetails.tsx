@@ -29,6 +29,7 @@ import { Button } from "../ui/button";
 import { hour12 } from "../../lib/dateTimeUtils";
 import { useGetRegionName } from "../../lib/geo";
 import { Avatar } from "../Avatar";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 // Component to display a single pageview or event
 function PageviewItem({
@@ -160,7 +161,19 @@ function PageviewItem({
                       variant="outline"
                       className="px-1.5 py-0 h-5 text-xs bg-neutral-800 text-neutral-100 font-medium"
                     >
-                      <span className="text-neutral-300 font-light mr-1">{key}:</span> {String(value)}
+                      <span className="text-neutral-300 font-light mr-1">{key}:</span>{" "}
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <span className="truncate">
+                            {(typeof value === 'object') ? JSON.stringify(value) : String(value)}
+                          </span>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <span className="max-w-7xl">
+                            {(typeof value === 'object') ? JSON.stringify(value) : String(value)}
+                          </span>
+                        </TooltipContent>
+                      </Tooltip>
                     </Badge>
                   ))}
                 </span>
