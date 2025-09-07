@@ -9,6 +9,7 @@ import { useGetOverview } from "../../../../../api/analytics/useGetOverview";
 import { useGetOverviewBucketed } from "../../../../../api/analytics/useGetOverviewBucketed";
 import { StatType, useStore } from "../../../../../lib/store";
 import { SparklinesChart } from "./SparklinesChart";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 const ChangePercentage = ({
   current,
@@ -126,11 +127,23 @@ const Stat = ({
               ) : (
                 <span>
                   {
-                    <NumberFlow
-                      respectMotionPreference={false}
-                      value={decimals ? Number(value.toFixed(decimals)) : value}
-                      format={{ notation: "compact" }}
-                    />
+                    <Tooltip>
+                      <TooltipTrigger>
+                        <NumberFlow
+                          respectMotionPreference={false}
+                          value={decimals ? Number(value.toFixed(decimals)) : value}
+                          format={{ notation: "compact" }}
+                        />
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <NumberFlow
+                          respectMotionPreference={false}
+                          value={decimals ? Number(value.toFixed(decimals)) : value}
+                          format={{ notation: "standard" }}
+                        />
+                        {postfix && <span>{postfix}</span>}
+                      </TooltipContent>
+                    </Tooltip>
                   }
                   {postfix && <span>{postfix}</span>}
                 </span>
