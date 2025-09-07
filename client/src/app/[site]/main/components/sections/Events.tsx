@@ -32,10 +32,8 @@ function Events_() {
   );
 }
 
-function OutboundLinks() {
+function OutboundLinks({ expanded, close }: { expanded: boolean; close: () => void }) {
   const { data: outboundLinksData, isLoading: isLoadingOutboundLinks } = useGetOutboundLinks();
-  const [expanded, setExpanded] = useState(false);
-  const close = () => setExpanded(false);
 
   return (
     <>
@@ -47,11 +45,8 @@ function OutboundLinks() {
       <div className="relative">
         <div className="flex flex-row gap-2 justify-between pr-1 text-xs text-neutral-400 mb-2">
           <div>Outbound Links</div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2"> 
             <div>Clicks</div>
-            <Button size="smIcon" onClick={() => setExpanded(true)}>
-              <Expand />
-            </Button>
           </div>
         </div>
         <OutboundLinksList
@@ -70,20 +65,30 @@ function OutboundLinks() {
 
 export function Events() {
   const [tab, setTab] = useState<Tab>("events");
+  const [expandedOutbound, setExpandedOutbound] = useState(false);
 
   return (
     <Card>
       <CardContent className="mt-2">
         <Tabs defaultValue="events" value={tab} onValueChange={(value) => setTab(value as Tab)}>
-          <TabsList>
-            <TabsTrigger value="events">Custom Events</TabsTrigger>
-            <TabsTrigger value="outbound">Outbound Links</TabsTrigger>
-          </TabsList>
+          <div className="flex flex-row gap-2 justify-between items-center">
+            <div className="overflow-x-auto">
+              <TabsList>
+                <TabsTrigger value="events">Custom Events</TabsTrigger>
+                <TabsTrigger value="outbound">Outbound Links</TabsTrigger>
+              </TabsList>
+            </div>
+            {tab === "outbound" && (
+              <Button size="smIcon" onClick={() => setExpandedOutbound(true)}>
+                <Expand className="w-4 h-4" />
+              </Button>
+            )}
+          </div>
           <TabsContent value="events">
             <Events_ />
           </TabsContent>
           <TabsContent value="outbound">
-            <OutboundLinks />
+            <OutboundLinks expanded={expandedOutbound} close={() => setExpandedOutbound(false)} />
           </TabsContent>
         </Tabs>
       </CardContent>
