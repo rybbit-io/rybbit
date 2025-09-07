@@ -23,7 +23,7 @@ export default function EventsPage() {
         <SubHeader availableFilters={EVENT_FILTERS} />
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 items-stretch">
-          <Card className="h-full">
+          <Card className="h-auto lg:h-full">
             <CardHeader>
               <CardTitle>Custom Events</CardTitle>
             </CardHeader>
@@ -32,12 +32,12 @@ export default function EventsPage() {
             </CardContent>
           </Card>
 
-          <Card className="h-full min-h-0 flex flex-col overflow-hidden" style={{ contain: "size" }}>
+          <Card className="h-auto lg:h-full lg:min-h-0 flex flex-col overflow-hidden lg:[contain:size]">
             <CardHeader>
               <CardTitle>Outbound Clicks</CardTitle>
             </CardHeader>
-            <CardContent className="flex-1 min-h-0 overflow-hidden p-0">
-              <div className="h-full min-h-0 p-4 pt-0">
+            <CardContent className="lg:flex-1 lg:min-h-0 overflow-hidden p-0">
+              <div className="h-auto lg:h-full lg:min-h-0 p-4 pt-0">
                 <OutboundLinksList 
                   outboundLinks={outboundLinksData || []} 
                   isLoading={isLoadingOutboundLinks} 
