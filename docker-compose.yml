@@ -44,6 +44,8 @@ services:
       retries: 5
       start_period: 10s
     restart: unless-stopped
+    mem_limit: 6g
+    cpus: 3.0
 
   postgres:
     image: postgres:17.4
@@ -61,6 +63,8 @@ services:
       retries: 5
       start_period: 10s
     restart: unless-stopped
+    mem_limit: 4g
+    cpus: 2.0
 
   # redis:
   #   image: redis:7-alpine
@@ -111,6 +115,8 @@ services:
       retries: 5
       start_period: 10s
     restart: unless-stopped
+    mem_limit: 2g
+    cpus: 2.0
 
   client:
     image: ghcr.io/rybbit-io/rybbit-client:${IMAGE_TAG:-latest}
@@ -130,6 +136,8 @@ services:
     depends_on:
       - backend
     restart: unless-stopped
+    mem_limit: 1g
+    cpus: 1.0
 
 volumes:
   clickhouse-data:

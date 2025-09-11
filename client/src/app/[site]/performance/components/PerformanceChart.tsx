@@ -200,7 +200,6 @@ export function PerformanceChart() {
               className={cn("text-lg font-semibold flex items-center gap-1.5 opacity-75", tilt_wrap.className)}
             >
               <Image src="/rybbit.svg" alt="Rybbit" width={20} height={20} />
-              rybbit.io
             </Link>
           </div>
           <div className="flex items-center space-x-4">

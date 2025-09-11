@@ -105,16 +105,6 @@ export default function Page() {
           </form>
         </CardContent>
       </Card>
-      <div className="text-xs text-muted-foreground">
-        <a
-          href="https://rybbit.io"
-          target="_blank"
-          rel="noopener"
-          title="Rybbit - Open Source Privacy-Focused Web Analytics"
-        >
-          Open source web analytics powered by Rybbit
-        </a>
-      </div>
     </div>
   );
 }

@@ -408,19 +408,6 @@ export default function SignupPage() {
             <AuthError error={error} />
           </div>
         </Card>
-
-        {!IS_CLOUD && (
-          <div className="text-xs text-muted-foreground relative z-10 mt-8">
-            <a
-              href="https://rybbit.io"
-              target="_blank"
-              rel="noopener"
-              title="Rybbit - Open Source Privacy-Focused Web Analytics"
-            >
-              Open source web analytics powered by Rybbit
-            </a>
-          </div>
-        )}
       </div>
     </div>
   );
