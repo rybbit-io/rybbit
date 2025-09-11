@@ -3,7 +3,7 @@ import { useEffect } from "react";
 export const useSetPageTitle = (title: string) => {
   useEffect(() => {
     if (title) {
-      title.replace("Rybbit", "Vision Analytics")
+      title = title.replace("Rybbit", "Vision Analytics")
       document.title = title;
     }
   }, [title]);
