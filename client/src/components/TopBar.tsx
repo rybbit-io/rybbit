@@ -21,7 +21,7 @@ export function TopBar() {
       <div className="flex items-center justify-between flex-1">
         <div className="flex items-center space-x-4">
           <Link href={session ? "/" : "https://rybbit.io"}>
-            <Image src="/rybbit-text.svg" alt="Rybbit" width={100} height={22} />
+            <Image src="/rybbit.svg" alt="Rybbit" width={100} height={22} />
           </Link>
         </div>
         {session ? (
