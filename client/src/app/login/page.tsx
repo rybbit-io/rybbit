@@ -105,6 +105,16 @@ export default function Page() {
           </form>
         </CardContent>
       </Card>
+      <div className="text-xs text-muted-foreground">
+        <a
+          href="https://visionias.in"
+          target="_blank"
+          rel="noopener"
+        >
+          Vision web analytics powered by Rybbit
+        </a>
+      </div>
+    </div>
     </div>
   );
 }

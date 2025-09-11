@@ -81,7 +81,6 @@ export function MainSection() {
                 )}
               >
                 <Image src="/rybbit.svg" alt="Rybbit" width={20} height={20} />
-                rybbit.io
               </Link>
             </div>
             <span className="text-sm text-neutral-200">
