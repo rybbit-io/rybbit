@@ -111,7 +111,7 @@ export default function Page() {
           target="_blank"
           rel="noopener"
         >
-          Vision web analytics powered by Rybbit
+          Vision Analytics | powered by Rybbit
         </a>
       </div>
     </div>
