@@ -1,0 +1,18 @@
+# Development-specific configuration
+services:
+  monitor-agent:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    volumes:
+      # Mount source code for hot reloading
+      - ./src:/app/src:ro
+      - ./package.json:/app/package.json:ro
+      - ./tsconfig.json:/app/tsconfig.json:ro
+      # Exclude node_modules
+      - /app/node_modules
+    environment:
+      # Development overrides
+      - LOG_LEVEL=debug
+      - NODE_ENV=development
+    command: npm run dev

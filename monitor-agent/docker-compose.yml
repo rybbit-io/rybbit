@@ -1,0 +1,92 @@
+services:
+  monitor-agent:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: rybbit-monitor-agent
+    ports:
+      - "${PORT:-3003}:3003"
+    environment:
+      # Server Configuration
+      - PORT=${PORT:-3003}
+      - HOST=${HOST:-0.0.0.0}
+
+      # Region Configuration
+      - REGION=${REGION:-us-east}
+
+      # Security
+      - ALLOWED_IPS=${ALLOWED_IPS:-}
+
+      # Monitoring Defaults
+      - DEFAULT_TIMEOUT_MS=${DEFAULT_TIMEOUT_MS:-30000}
+      - MAX_TIMEOUT_MS=${MAX_TIMEOUT_MS:-60000}
+
+      # Logging
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+
+    # Use .env file if it exists
+    env_file:
+      - .env
+
+    restart: unless-stopped
+
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3003/health"]
+      interval: 30s
+      timeout: 10s
+      start_period: 40s
+      retries: 3
+
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 512M
+        reservations:
+          cpus: "0.25"
+          memory: 256M
+
+    # Logging configuration
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+    # Network configuration
+    networks:
+      - monitor-network
+
+  # Caddy reverse proxy for HTTPS
+  caddy:
+    image: caddy:2.10.0
+    container_name: rybbit-monitor-caddy
+    ports:
+      - "443:443"
+      - "80:80"
+      - "443:443/udp" # Needed for HTTP/3
+    volumes:
+      - ./Caddyfile${ENABLE_IP_WHITELIST:+.whitelist}:/etc/caddy/Caddyfile
+      - caddy_data:/data
+      - caddy_config:/config
+    environment:
+      - DOMAIN_NAME=${DOMAIN_NAME}
+      - ALLOWED_IPS=${ALLOWED_IPS}
+    depends_on:
+      - monitor-agent
+    restart: unless-stopped
+    networks:
+      - monitor-network
+    profiles:
+      - with-ssl
+
+networks:
+  monitor-network:
+    driver: bridge
+
+# Volumes for persistent data
+volumes:
+  monitor-data:
+  caddy_data:
+  caddy_config:

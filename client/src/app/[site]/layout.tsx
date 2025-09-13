@@ -2,19 +2,15 @@
 import { useWindowSize } from "@uidotdev/usehooks";
 import { usePathname } from "next/navigation";
 import { useEffect } from "react";
-import { useGetSite, useSiteHasData } from "../../api/admin/sites";
+import { AppSidebar } from "../../components/AppSidebar";
 import { TopBar } from "../../components/TopBar";
 import { useStore } from "../../lib/store";
 import { useSyncStateWithUrl } from "../../lib/urlParams";
+import { Footer } from "../components/Footer";
 import { Header } from "./components/Header/Header";
 import { Sidebar } from "./components/Sidebar/Sidebar";
-import { Footer } from "../components/Footer";
 
-export default function SiteLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function SiteLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { setSite, site } = useStore();
 
@@ -22,11 +18,7 @@ export default function SiteLayout({
   useSyncStateWithUrl();
 
   useEffect(() => {
-    if (
-      pathname.includes("/") &&
-      pathname.split("/")[1] !== site &&
-      !isNaN(Number(pathname.split("/")[1]))
-    ) {
+    if (pathname.includes("/") && pathname.split("/")[1] !== site && !isNaN(Number(pathname.split("/")[1]))) {
       setSite(pathname.split("/")[1]);
     }
   }, [pathname]);
@@ -44,8 +36,8 @@ export default function SiteLayout({
   }
 
   return (
-    <div className="flex flex-col h-screen">
-      <TopBar />
+    <div className="flex flex-row h-dvh">
+      <AppSidebar />
       <div className="flex flex-1 overflow-hidden">
         <div className="hidden md:flex">
           <Sidebar />
@@ -55,9 +47,9 @@ export default function SiteLayout({
             {/* <div className="px-4 py-2 max-w-[1400px] mx-auto w-full mb-4"> */}
             <Header />
             <div>{children}</div>
-            {!pathname.includes("/map") &&
-              !pathname.includes("/realtime") &&
-              !pathname.includes("/replay") && <Footer />}
+            {!pathname.includes("/map") && !pathname.includes("/realtime") && !pathname.includes("/replay") && (
+              <Footer />
+            )}
           </div>
         </div>
       </div>

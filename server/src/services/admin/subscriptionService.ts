@@ -27,7 +27,7 @@ function findPlanDetails(priceId: string): StripePlan | undefined {
  * @param includeFullDetails Whether to include full subscription details (periods, limits, etc.)
  * @returns Map of customer ID to subscription data
  */
-export async function fetchSubscriptionsForCustomers(
+async function fetchSubscriptionsForCustomers(
   stripeCustomerIds: Set<string>,
   includeFullDetails = false,
 ): Promise<Map<string, SubscriptionData>> {

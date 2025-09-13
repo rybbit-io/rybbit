@@ -111,8 +111,8 @@ declare global {
 }})
 export class MyFeatureComponent {{
   onFeatureClick(): void {{
-    if (window.rybbit && typeof window.rybbit.trackEvent === 'function') {{
-      window.rybbit.trackEvent('feature_used', {{ featureName: 'Amazing Feature' }});
+    if (window.rybbit && typeof window.rybbit.event === 'function') {{
+      window.rybbit.event('feature_used', {{ featureName: 'Amazing Feature' }});
     }} else {{
       console.warn('Rybbit tracking not available.');
     }}

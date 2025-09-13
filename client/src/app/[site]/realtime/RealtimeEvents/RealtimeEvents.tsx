@@ -1,15 +1,8 @@
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { FileText, Laptop, MousePointerClick, Smartphone } from "lucide-react";
 import { DateTime } from "luxon";
 import Link from "next/link";
-import {
-  Event,
-  useGetEvents,
-} from "../../../../api/analytics/events/useGetEvents";
+import { Event, useGetEvents } from "../../../../api/analytics/events/useGetEvents";
 import { Skeleton } from "../../../../components/ui/skeleton";
 import { cn, getCountryName } from "../../../../lib/utils";
 import { Browser } from "../../components/shared/icons/Browser";
@@ -45,16 +38,10 @@ function EventCard({ event }: { event: Event }) {
   // Determine if it's a pageview or custom event
   const isPageview = event.type === "pageview";
 
-  const fullPath = `https://${event.hostname}${event.pathname}${
-    event.querystring ? `${event.querystring}` : ""
-  }`;
+  const fullPath = `https://${event.hostname}${event.pathname}${event.querystring ? `${event.querystring}` : ""}`;
 
   return (
-    <Link
-      href={`user/${event.user_id}`}
-      target="_blank"
-      rel="noopener noreferrer"
-    >
+    <Link href={`user/${event.user_id}`} target="_blank" rel="noopener noreferrer">
       <div className="mb-3 rounded-lg bg-neutral-850/50 border border-neutral-800 overflow-hidden p-3 flex flex-col filter backdrop-blur-sm hover:bg-neutral-800/70 transition-all duration-200">
         <div className="flex items-center gap-2 text-sm text-neutral-100 mb-2">
           <div className="flex items-center gap-2">
@@ -75,11 +62,7 @@ function EventCard({ event }: { event: Event }) {
                     maxWidth: "calc(min(100vw, 1150px) - 250px)",
                   }}
                 >
-                  {truncatePath(
-                    `${event.pathname}${
-                      event.querystring ? `${event.querystring}` : ""
-                    }`
-                  )}
+                  {truncatePath(`${event.pathname}${event.querystring ? `${event.querystring}` : ""}`)}
                 </div>
               </Link>
             </div>
@@ -173,18 +156,11 @@ export function RealtimeEvents() {
   }
 
   if (!data || data.length === 0) {
-    return (
-      <div className="text-sm text-gray-400 p-4 text-center">
-        No events recorded yet
-      </div>
-    );
+    return <div className="text-sm text-gray-400 p-4 text-center">No events recorded yet</div>;
   }
 
   return (
-    <div
-      className="overflow-y-auto p-2"
-      style={{ height: "calc(100vh - 100px)" }}
-    >
+    <div className="overflow-y-auto p-2" style={{ height: "100vh" }}>
       {data.map((event: Event, index: number) => (
         <EventCard key={`${event.timestamp}-${index}`} event={event} />
       ))}
@@ -231,10 +207,7 @@ function EventCardSkeleton() {
   ));
 
   return (
-    <div
-      className="overflow-y-auto p-2"
-      style={{ height: "calc(100vh - 100px)" }}
-    >
+    <div className="overflow-y-auto p-2" style={{ height: "100vh" }}>
       {skeletons}
     </div>
   );

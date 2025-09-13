@@ -1,7 +1,10 @@
+import { createServiceLogger } from "../../lib/logger/logger.js";
 import { apiKeyRateLimiter } from "../../lib/rateLimiter.js";
 import { siteConfig } from "../../lib/siteConfig.js";
 import { normalizeOrigin } from "../../utils.js";
 import { DISABLE_ORIGIN_CHECK } from "../tracker/const.js";
+
+const logger = createServiceLogger("request-validation");
 
 /**
  * Result of API key validation
@@ -43,16 +46,17 @@ export async function validateApiKey(
     }
 
     if (site.apiKey && apiKey === site.apiKey) {
-      console.info(`[Validation] Valid API key for site ${siteId}`);
+      logger.info({ siteId }, "Valid API key for site");
       return { success: true };
     }
 
     return { success: false, error: "Invalid API key" };
   } catch (error) {
-    console.error("Error validating API key:", error);
+    logger.error(error, "Error validating API key");
     return { success: false, error: "Failed to validate API key" };
   }
 }
+
 
 /**
  * Validates if the request's origin matches the registered domain for the site
@@ -62,15 +66,14 @@ export async function validateApiKey(
  */
 export async function validateOrigin(
   siteId: string | number,
-  requestOrigin?: string
+  requestOrigin?: string,
 ): Promise<OriginValidationResult> {
   try {
     // If origin checking is disabled, return success
     if (DISABLE_ORIGIN_CHECK) {
-      console.info(
-        `[Validation] Origin check disabled. Allowing request for site ${siteId} from origin: ${
-          requestOrigin || "none"
-        }`
+      logger.info(
+        { siteId, origin: requestOrigin || "none" },
+        "Origin check disabled, allowing request"
       );
       return { success: true };
     }
@@ -107,15 +110,21 @@ export async function validateOrigin(
       const normalizedOriginHost = normalizeOrigin(requestOrigin);
       const normalizedSiteDomain = normalizeOrigin(`https://${siteDomain}`);
 
-      // Check if the normalized domains match
-      if (normalizedOriginHost !== normalizedSiteDomain) {
-        return {
-          success: false,
-          error: `Origin mismatch. Received: ${requestOrigin}`,
-        };
+      // Check for exact match first
+      if (normalizedOriginHost === normalizedSiteDomain) {
+        return { success: true };
       }
 
-      return { success: true };
+      // Always allow subdomains - check if origin is a subdomain of site domain
+      if (normalizedOriginHost.endsWith(`.${normalizedSiteDomain}`)) {
+        return { success: true };
+      }
+
+      // If we get here, neither exact match nor valid subdomain
+      return {
+        success: false,
+        error: `Origin mismatch. Received: ${requestOrigin}`,
+      };
     } catch (error) {
       return {
         success: false,
@@ -123,7 +132,7 @@ export async function validateOrigin(
       };
     }
   } catch (error) {
-    console.error("Error validating origin:", error);
+    logger.error(error, "Error validating origin");
     return {
       success: false,
       error: "Internal error validating origin",

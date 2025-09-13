@@ -1,6 +1,7 @@
 import { DateTime } from "luxon";
 import { clickhouse } from "../../db/clickhouse/clickhouse.js";
 import { getLocation } from "../../db/geolocation/geolocation.js";
+import { createServiceLogger } from "../../lib/logger/logger.js";
 import { getDeviceType } from "../../utils.js";
 import { getChannel } from "./getChannel.js";
 import { clearSelfReferrer, getAllUrlParams } from "./utils.js";
@@ -37,6 +38,7 @@ class PageviewQueue {
   private batchSize = 5000;
   private interval = 10000;
   private processing = false;
+  private logger = createServiceLogger("pageview-queue");
 
   constructor() {
     // Start processing interval
@@ -71,7 +73,7 @@ class PageviewQueue {
         geoData[ip] = { data: locationData };
       });
     } catch (error) {
-      console.error("Error getting geo data:", error);
+      this.logger.error(error, "Error getting geo data");
     }
 
     // Process each pageview with its geo data
@@ -127,7 +129,7 @@ class PageviewQueue {
       };
     });
 
-    console.info("bulk insert: ", processedPageviews.length);
+    this.logger.info({ count: processedPageviews.length }, "Bulk insert to ClickHouse");
     // Bulk insert into database
     try {
       await clickhouse.insert({
@@ -136,7 +138,7 @@ class PageviewQueue {
         format: "JSONEachRow",
       });
     } catch (error) {
-      console.error("Error processing pageview queue:", error);
+      this.logger.error(error, "Error processing pageview queue");
     } finally {
       this.processing = false;
     }

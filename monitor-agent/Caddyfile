@@ -1,0 +1,11 @@
+# Caddyfile for Rybbit Monitor Agent
+{$DOMAIN_NAME} {
+    # Enable compression
+    encode zstd gzip
+
+    # Set max request body size
+    request_body max_size 10MB
+
+    # Reverse proxy to monitor agent
+    reverse_proxy monitor-agent:3003
+}

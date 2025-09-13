@@ -8,9 +8,9 @@ import { Filters } from "./Filters/Filters";
 
 import { DateSelector } from "../../../../components/DateSelector/DateSelector";
 import { Time } from "../../../../components/DateSelector/types";
-import { MobileSidebar } from "../../../../components/MobileSidebar";
 import { NewFilterButton } from "./Filters/NewFilterButton";
 import { LiveUserCount } from "./LiveUserCount";
+import { MobileSidebar } from "../Sidebar/MobileSidebar";
 
 const canGoForward = (time: Time) => {
   const currentDay = DateTime.now().startOf("day");
@@ -37,11 +37,7 @@ const canGoForward = (time: Time) => {
   return false;
 };
 
-export function SubHeader({
-  availableFilters,
-}: {
-  availableFilters?: FilterParameter[];
-}) {
+export function SubHeader({ availableFilters }: { availableFilters?: FilterParameter[] }) {
   const { time, setTime } = useStore();
 
   return (

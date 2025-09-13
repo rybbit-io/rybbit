@@ -50,14 +50,12 @@ export default function Page() {
   };
 
   return (
-    <div className="flex flex-col justify-between items-center h-screen w-full p-4">
+    <div className="flex flex-col justify-between items-center h-dvh w-full p-4">
       <div></div>
       <Card className="w-full max-w-sm p-1">
         <CardHeader>
           <Image src="/rybbit.svg" alt="Rybbit" width={32} height={32} />
-          <CardTitle className="text-2xl flex justify-center">
-            Sign in
-          </CardTitle>
+          <CardTitle className="text-2xl flex justify-center">Sign in</CardTitle>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit}>
@@ -81,10 +79,7 @@ export default function Page() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 rightElement={
-                  <Link
-                    href="/reset-password"
-                    className="text-xs text-muted-foreground hover:text-primary"
-                  >
+                  <Link href="/reset-password" className="text-xs text-muted-foreground hover:text-primary">
                     Forgot password?
                   </Link>
                 }

@@ -88,6 +88,23 @@ if (currentUserId) {
 }
 ```
 
+### `window.rybbit.error(error, properties)`
+
+Tracks a custom error with optional properties.
+
+*   `error` (instanceof Error): The error class
+*   `properties` (Object, Optional): An object containing custom data (max 2KB characters). Only strings and numbers are allowed in this object. Specifically `filename`, `lineno`, `colno` and additional arbitrary keys can be passed.
+
+```javascript
+// Track custom error
+window.rybbit.error(new Error('Some error message'), {
+  lineno: 123,
+  colno: 58,
+  filename: 'index.js',
+  customProp: 'something',
+})
+```
+
 {/* ### `window.rybbit.trackOutbound(url, text, target)`
 
 Manually tracks outbound link clicks. Useful for programmatic navigation or custom link handling.
@@ -180,6 +197,13 @@ interface Rybbit {
      * @param target Optional target attribute of the link
      */
     trackOutbound: (url: string, text?: string, target?: string) => void;
+
+    /**
+     * Manaully tracks an error, that wasn't caused by the application
+     * @param error The Error Object or a subclass of an Error
+     * @param properties Optional information about the error
+     */
+    error: (error: Error, properties?: Record<string, any>) => void;
 }
 
 declare global {

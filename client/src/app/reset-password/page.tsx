@@ -80,16 +80,12 @@ export default function ResetPasswordPage() {
   };
 
   return (
-    <div className="flex justify-center items-center h-screen w-full p-4">
+    <div className="flex justify-center items-center h-dvh w-full p-4">
       <Card className="w-full max-w-sm p-1">
         <CardHeader>
           <Image src="/rybbit.svg" alt="Rybbit" width={32} height={32} />
           <CardTitle className="text-2xl flex justify-center">
-            {resetSuccess
-              ? "Password Reset Successful"
-              : otpSent
-              ? "Enter OTP Code"
-              : "Reset Password"}
+            {resetSuccess ? "Password Reset Successful" : otpSent ? "Enter OTP Code" : "Reset Password"}
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -100,23 +96,18 @@ export default function ResetPasswordPage() {
               </div>
               <div className="text-center space-y-2">
                 <h3 className="text-xl font-medium text-green-500">Success!</h3>
-                <p className="text-muted-foreground">
-                  Your password has been reset successfully.
-                </p>
+                <p className="text-muted-foreground">Your password has been reset successfully.</p>
               </div>
               <div className="w-full rounded-md bg-neutral-800/30 p-3 mt-4">
                 <div className="flex justify-center">
-                  <p className="text-sm text-muted-foreground">
-                    Redirecting to login page...
-                  </p>
+                  <p className="text-sm text-muted-foreground">Redirecting to login page...</p>
                 </div>
               </div>
             </div>
           ) : otpSent ? (
             <form onSubmit={handleResetPassword} className="space-y-4">
               <p className="text-sm text-muted-foreground">
-                We've sent a verification code to {email}. Please enter the code
-                below along with your new password.
+                We've sent a verification code to {email}. Please enter the code below along with your new password.
               </p>
 
               <AuthInput
@@ -139,10 +130,7 @@ export default function ResetPasswordPage() {
                 onChange={(e) => setNewPassword(e.target.value)}
               />
 
-              <AuthButton
-                isLoading={isLoading}
-                loadingText="Resetting password..."
-              >
+              <AuthButton isLoading={isLoading} loadingText="Resetting password...">
                 Reset Password
               </AuthButton>
 
@@ -161,8 +149,7 @@ export default function ResetPasswordPage() {
           ) : (
             <form onSubmit={handleRequestOTP} className="space-y-4">
               <p className="text-sm text-muted-foreground">
-                Enter your email address and we'll send you a verification code
-                to reset your password.
+                Enter your email address and we'll send you a verification code to reset your password.
               </p>
 
               <AuthInput

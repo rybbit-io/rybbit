@@ -2,7 +2,7 @@ import { parseScriptConfig } from "./config.js";
 import { Tracker } from "./tracking.js";
 import { WebVitalsCollector } from "./webVitals.js";
 import { debounce, isOutboundLink } from "./utils.js";
-import { RybbitAPI, WebVitalsData } from "./types.js";
+import { RybbitAPI, WebVitalsData, ErrorProperties } from "./types.js";
 
 declare global {
   interface Window {
@@ -27,6 +27,7 @@ declare global {
     window.rybbit = {
       pageview: () => {},
       event: () => {},
+      error: () => {},
       trackOutbound: () => {},
       identify: () => {},
       clearUserId: () => {},
@@ -160,6 +161,8 @@ declare global {
     pageview: () => tracker.trackPageview(),
     event: (name: string, properties: Record<string, any> = {}) =>
       tracker.trackEvent(name, properties),
+    error: (error: Error, properties: ErrorProperties = {}) =>
+      tracker.trackError(error, properties),
     trackOutbound: (url: string, text: string = "", target: string = "_self") =>
       tracker.trackOutbound(url, text, target),
     identify: (userId: string) => tracker.identify(userId),

@@ -1,17 +1,45 @@
-import { S3Client, PutObjectCommand, GetObjectCommand, DeleteObjectCommand } from "@aws-sdk/client-s3";
+import {
+  S3Client,
+  PutObjectCommand,
+  GetObjectCommand,
+  DeleteObjectCommand,
+  GetObjectCommandOutput,
+} from "@aws-sdk/client-s3";
+import { NodeHttpHandler } from "@smithy/node-http-handler";
 import { Readable } from "stream";
 import { gunzipSync } from "zlib";
 import { compress as zstdCompress, decompress as zstdDecompress } from "@mongodb-js/zstd";
 import { IS_CLOUD } from "../../lib/const.js";
+import { createServiceLogger } from "../../lib/logger/logger.js";
 
 class R2StorageService {
   private client: S3Client | null = null;
   private bucketName: string = "";
   private enabled: boolean = false;
+  private logger = createServiceLogger("r2-storage");
 
   constructor() {
     // Only initialize R2 in cloud environment
     if (IS_CLOUD && process.env.R2_ACCESS_KEY_ID && process.env.R2_SECRET_ACCESS_KEY) {
+      // Create a custom HTTP handler that strips checksum headers
+      const httpHandler = new NodeHttpHandler();
+      const originalHandle = httpHandler.handle.bind(httpHandler);
+
+      httpHandler.handle = async (request: any, options?: any) => {
+        const response = await originalHandle(request, options);
+
+        // Wrap the response to strip checksum headers
+        return {
+          ...response,
+          response: {
+            ...response.response,
+            headers: Object.fromEntries(
+              Object.entries(response.response.headers).filter(([key]) => !key.toLowerCase().includes("checksum")),
+            ),
+          },
+        };
+      };
+
       this.client = new S3Client({
         region: "auto",
         endpoint: `https://${process.env.R2_ACCOUNT_ID}.r2.cloudflarestorage.com`,
@@ -21,12 +49,15 @@ class R2StorageService {
         },
         // Required for R2 compatibility
         forcePathStyle: true,
+        // Use our custom HTTP handler
+        requestHandler: httpHandler,
       });
+
       this.bucketName = process.env.R2_BUCKET_NAME || "rybbit";
       this.enabled = true;
-      console.log("[R2Storage] Initialized with bucket:", this.bucketName);
+      this.logger.info({ bucket: this.bucketName }, "R2Storage initialized");
     } else {
-      console.log("[R2Storage] Not enabled - missing IS_CLOUD or R2 credentials");
+      this.logger.debug("R2Storage not enabled - missing IS_CLOUD or R2 credentials");
     }
   }
 
@@ -56,8 +87,8 @@ class R2StorageService {
           Bucket: this.bucketName,
           Key: key,
           Body: compressed,
-          ContentType: "application/json",
-          ContentEncoding: "zstd",
+          ContentType: "application/octet-stream", // Binary data, not JSON
+          // Don't set ContentEncoding - that triggers automatic decompression
           Metadata: {
             siteId: siteId.toString(),
             sessionId: sessionId,
@@ -105,18 +136,45 @@ class R2StorageService {
 
       const buffer = Buffer.concat(chunks);
 
-      // Detect compression based on file extension
-      let decompressed: Buffer;
-      if (key.endsWith(".zst")) {
-        decompressed = await zstdDecompress(buffer);
-      } else if (key.endsWith(".gz")) {
-        decompressed = gunzipSync(buffer);
-      } else {
-        // Assume zstd for unknown extensions
-        decompressed = await zstdDecompress(buffer);
+      // Check if data is already JSON (uncompressed)
+      // This happens when ContentEncoding was set to "zstd" and R2 auto-decompressed it
+      const bufferStr = buffer.toString("utf8", 0, Math.min(buffer.length, 100));
+      const isLikelyJSON = bufferStr.trimStart().startsWith("[") || bufferStr.trimStart().startsWith("{");
+
+      if (isLikelyJSON) {
+        try {
+          // Try parsing as JSON first
+          return JSON.parse(buffer.toString());
+        } catch (e) {
+          // Not valid JSON, proceed with decompression
+        }
       }
 
-      return JSON.parse(decompressed.toString());
+      // Try to decompress based on file extension
+      let decompressed: Buffer;
+
+      try {
+        if (key.endsWith(".zst")) {
+          decompressed = await zstdDecompress(buffer);
+        } else if (key.endsWith(".gz")) {
+          decompressed = gunzipSync(buffer);
+        } else {
+          // Assume zstd for unknown extensions
+          decompressed = await zstdDecompress(buffer);
+        }
+        return JSON.parse(decompressed.toString());
+      } catch (decompressionError: any) {
+        // If decompression fails and we haven't tried JSON yet, try it now
+        if (!isLikelyJSON) {
+          try {
+            return JSON.parse(buffer.toString());
+          } catch (jsonError) {
+            // Data is truly corrupted, throw the original error
+            throw decompressionError;
+          }
+        }
+        throw decompressionError;
+      }
     } catch (error) {
       console.error("[R2Storage] Failed to retrieve batch:", error);
       throw error;

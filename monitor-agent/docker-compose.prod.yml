@@ -1,0 +1,65 @@
+# Production deployment with multiple regions
+# Usage: REGION=us-east docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+
+services:
+  monitor-agent:
+    image: ${DOCKER_REGISTRY:-docker.io}/${DOCKER_IMAGE:-rybbit/monitor-agent}:${REGION:-latest}
+    restart: always
+    
+    # Production logging
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "10"
+        labels: "region,service"
+    
+    # Health monitoring
+    labels:
+      - "prometheus.io/scrape=true"
+      - "prometheus.io/port=3003"
+      - "prometheus.io/path=/metrics"
+      - "region=${REGION}"
+      - "service=monitor-agent"
+    
+    # Production resource limits
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 1G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+      
+      # Restart policy
+      restart_policy:
+        condition: any
+        delay: 5s
+        max_attempts: 3
+        window: 120s
+
+  # Caddy with automatic SSL
+  caddy:
+    image: caddy:2.10.0
+    container_name: rybbit-monitor-caddy-${REGION}
+    ports:
+      - "443:443"
+      - "80:80"
+      - "443:443/udp" # Needed for HTTP/3
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile
+      - caddy_data:/data
+      - caddy_config:/config
+    environment:
+      - DOMAIN_NAME=${DOMAIN_NAME}
+      - ALLOWED_IPS=${ALLOWED_IPS}
+    depends_on:
+      - monitor-agent
+    restart: always
+    networks:
+      - monitor-network
+
+volumes:
+  caddy_data:
+  caddy_config:

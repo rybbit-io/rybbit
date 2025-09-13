@@ -105,7 +105,7 @@ You can track custom events from client-side JavaScript within your Astro site. 
 <script>
   document.getElementById('my-astro-button')?.addEventListener('click', () => {
     if (window.rybbit) {
-      window.rybbit.trackEvent('astro_button_click', { source: 'MyButton.astro' });
+      window.rybbit.event('astro_button_click', { source: 'MyButton.astro' });
     }
   });
 </script>
@@ -122,7 +122,7 @@ import React from 'react';
 export default function MyReactIsland() {
   const handleClick = () => {
     if (window.rybbit) {
-      window.rybbit.trackEvent('react_island_click', { island: 'MyReactIsland' });
+      window.rybbit.event('react_island_click', { island: 'MyReactIsland' });
     }
   };
   return <button onClick={handleClick}>Click Me (React Island)</button>;

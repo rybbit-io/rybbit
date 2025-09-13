@@ -21,7 +21,19 @@
       "Bash(cat:*)",
       "Bash(find:*)",
       "Bash(clickhouse-client:*)",
-      "Bash(curl:*)"
+      "Bash(curl:*)",
+      "Bash(npm uninstall:*)",
+      "Bash(pkill:*)",
+      "Bash(psql:*)",
+      "Bash(source .env)",
+      "Bash(POSTGRES_PASSWORD=carbink node src/test-pgboss.js)",
+      "Bash(tsc)",
+      "Bash(touch:*)",
+      "Bash(npm init:*)",
+      "Bash(cp:*)",
+      "Bash(-print)",
+      "Bash(python3:*)",
+      "WebFetch(domain:github.com)"
     ]
   },
   "enableAllProjectMcpServers": false

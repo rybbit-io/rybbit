@@ -11,7 +11,7 @@ export const SECRET = process.env.BETTER_AUTH_SECRET;
 // export const TRIAL_DURATION_DAYS = 14;
 // export const TRIAL_EVENT_LIMIT = 100000;
 
-export const DEFAULT_EVENT_LIMIT = 3_000;
+export const DEFAULT_EVENT_LIMIT = 10_000;
 
 // Define a type for the plan objects
 export interface StripePlan {

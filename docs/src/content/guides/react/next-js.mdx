@@ -143,8 +143,8 @@ Once the Rybbit script is loaded via the Next.js `Script` component, you can tra
 
 export default function MyButton({ title }) {
   const handleClick = () => {
-    if (typeof window !== 'undefined' && window.rybbit && typeof window.rybbit.trackEvent === 'function') {
-      window.rybbit.trackEvent('button_click', { buttonTitle: title });
+    if (typeof window !== 'undefined' && window.rybbit && typeof window.rybbit.event === 'function') {
+      window.rybbit.event('button_click', { buttonTitle: title });
     } else {
       console.warn('Rybbit tracking not available.');
     }

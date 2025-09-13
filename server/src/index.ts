@@ -10,6 +10,7 @@ import { getAdminSites } from "./api/admin/getAdminSites.js";
 import { getEventNames } from "./api/analytics/events/getEventNames.js";
 import { getEventProperties } from "./api/analytics/events/getEventProperties.js";
 import { getEvents } from "./api/analytics/events/getEvents.js";
+import { getOutboundLinks } from "./api/analytics/events/getOutboundLinks.js";
 import { createFunnel } from "./api/analytics/funnels/createFunnel.js";
 import { deleteFunnel } from "./api/analytics/funnels/deleteFunnel.js";
 import { getFunnel } from "./api/analytics/funnels/getFunnel.js";
@@ -51,10 +52,12 @@ import { changeSiteSalt } from "./api/sites/changeSiteSalt.js";
 import { deleteSite } from "./api/sites/deleteSite.js";
 import { getSite } from "./api/sites/getSite.js";
 import { getSiteApiConfig } from "./api/sites/getSiteApiConfig.js";
+import { getSiteExcludedIPs } from "./api/sites/getSiteExcludedIPs.js";
 import { getSiteHasData } from "./api/sites/getSiteHasData.js";
 import { getSiteIsPublic } from "./api/sites/getSiteIsPublic.js";
 import { getSitesFromOrg } from "./api/sites/getSitesFromOrg.js";
 import { updateSiteApiConfig } from "./api/sites/updateSiteApiConfig.js";
+import { updateSiteExcludedIPs } from "./api/sites/updateSiteExcludedIPs.js";
 import { createCheckoutSession } from "./api/stripe/createCheckoutSession.js";
 import { createPortalSession } from "./api/stripe/createPortalSession.js";
 import { getSubscription } from "./api/stripe/getSubscription.js";
@@ -77,10 +80,64 @@ import { extractSiteId, isSitePublic } from "./utils.js";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
+const hasAxiom = !!(process.env.AXIOM_DATASET && process.env.AXIOM_TOKEN);
+
 const server = Fastify({
   logger: {
-    transport: {
-      target: "@fastify/one-line-logger",
+    level: process.env.LOG_LEVEL || (process.env.NODE_ENV === "development" ? "debug" : "info"),
+    transport:
+      process.env.NODE_ENV === "production" && IS_CLOUD && hasAxiom
+        ? {
+            targets: [
+              // Send to Axiom
+              {
+                target: "@axiomhq/pino",
+                level: process.env.LOG_LEVEL || "info",
+                options: {
+                  dataset: process.env.AXIOM_DATASET,
+                  token: process.env.AXIOM_TOKEN,
+                },
+              },
+              // Pretty print to stdout for Docker logs
+              {
+                target: "pino-pretty",
+                level: process.env.LOG_LEVEL || "info",
+                options: {
+                  colorize: true,
+                  singleLine: true,
+                  translateTime: "HH:MM:ss",
+                  ignore: "pid,hostname,name",
+                  destination: 1, // stdout
+                },
+              },
+            ],
+          }
+        : process.env.NODE_ENV === "development"
+          ? {
+              target: "pino-pretty",
+              options: {
+                colorize: true,
+                singleLine: true,
+                translateTime: "HH:MM:ss",
+                ignore: "pid,hostname,name",
+              },
+            }
+          : undefined, // Production without Axiom - plain JSON to stdout
+    serializers: {
+      req(request) {
+        return {
+          method: request.method,
+          url: request.url,
+          path: request.url,
+          parameters: request.params,
+          headers: request.headers,
+        };
+      },
+      res(reply) {
+        return {
+          statusCode: reply.statusCode,
+        };
+      },
     },
   },
   maxParamLength: 1500,
@@ -89,7 +146,7 @@ const server = Fastify({
 });
 
 server.register(cors, {
-  origin: (origin, callback) => {
+  origin: (_origin, callback) => {
     callback(null, true);
 
     // if (!origin || allowList.includes(normalizeOrigin(origin))) {
@@ -177,6 +234,7 @@ const ANALYTICS_ROUTES = [
   "/api/analytics/events/names/",
   "/api/analytics/events/properties/",
   "/api/events/",
+  "/api/events/outbound/",
   "/api/get-site",
   "/api/performance/overview/",
   "/api/performance/time-series/",
@@ -230,7 +288,7 @@ server.get("/api/script.js", async (_, reply) => reply.sendFile("script.js"));
 server.get("/api/replay.js", async (_, reply) => reply.sendFile("rrweb.min.js"));
 server.get("/api/metrics.js", async (_, reply) => reply.sendFile("web-vitals.iife.js"));
 
-// Analytics
+// WEB & PRODUCT ANALYTICS
 
 // This endpoint gets called a lot so we don't want to log it
 server.get("/api/live-user-count/:site", { logLevel: "silent" }, getLiveUsercount);
@@ -263,6 +321,7 @@ server.delete("/api/goal/:goalId", deleteGoal);
 server.put("/api/goal/update", updateGoal);
 server.get("/api/events/names/:site", getEventNames);
 server.get("/api/events/properties/:site", getEventProperties);
+server.get("/api/events/outbound/:site", getOutboundLinks);
 server.get("/api/org-event-count/:organizationId", getOrgEventCount);
 
 // Performance Analytics
@@ -287,9 +346,50 @@ server.get("/api/get-sites-from-org/:organizationId", getSitesFromOrg);
 server.get("/api/get-site/:id", getSite);
 server.get("/api/site/:siteId/api-config", getSiteApiConfig);
 server.post("/api/site/:siteId/api-config", updateSiteApiConfig);
+server.get("/api/site/:siteId/excluded-ips", getSiteExcludedIPs);
+server.post("/api/site/:siteId/excluded-ips", updateSiteExcludedIPs);
 server.get("/api/list-organization-members/:organizationId", listOrganizationMembers);
 server.get("/api/user/organizations", getUserOrganizations);
 server.post("/api/add-user-to-organization", addUserToOrganization);
+
+// UPTIME MONITORING
+// Only register uptime routes when IS_CLOUD is true (Redis is available)
+if (IS_CLOUD) {
+  // Dynamically import uptime modules only when needed
+  const { getMonitors } = await import("./api/uptime/getMonitors.js");
+  const { getMonitor } = await import("./api/uptime/getMonitor.js");
+  const { createMonitor } = await import("./api/uptime/createMonitor.js");
+  const { updateMonitor } = await import("./api/uptime/updateMonitor.js");
+  const { deleteMonitor } = await import("./api/uptime/deleteMonitor.js");
+  const { getMonitorEvents } = await import("./api/uptime/getMonitorEvents.js");
+  const { getMonitorStats } = await import("./api/uptime/getMonitorStats.js");
+  const { getMonitorUptimeBuckets } = await import("./api/uptime/getMonitorUptimeBuckets.js");
+  const { getMonitorStatus } = await import("./api/uptime/getMonitorStatus.js");
+  const { getMonitorUptime } = await import("./api/uptime/getMonitorUptime.js");
+  const { getRegions } = await import("./api/uptime/getRegions.js");
+  const { incidentsRoutes } = await import("./api/uptime/incidents.js");
+  const { notificationRoutes } = await import("./api/uptime/notifications.js");
+
+  server.get("/api/uptime/monitors", getMonitors);
+  server.get("/api/uptime/monitors/:monitorId", getMonitor);
+  server.post("/api/uptime/monitors", createMonitor);
+  server.put("/api/uptime/monitors/:monitorId", updateMonitor);
+  server.delete("/api/uptime/monitors/:monitorId", deleteMonitor);
+  server.get("/api/uptime/monitors/:monitorId/events", getMonitorEvents);
+  server.get("/api/uptime/monitors/:monitorId/stats", getMonitorStats);
+  server.get("/api/uptime/monitors/:monitorId/status", getMonitorStatus);
+  server.get("/api/uptime/monitors/:monitorId/uptime", getMonitorUptime);
+  server.get("/api/uptime/monitors/:monitorId/buckets", getMonitorUptimeBuckets);
+  server.get("/api/uptime/regions", getRegions);
+  
+  // Register incidents routes
+  server.register(incidentsRoutes);
+  
+  // Register notification routes
+  server.register(notificationRoutes);
+}
+
+// STRIPE & ADMIN
 
 if (IS_CLOUD) {
   // Stripe Routes
@@ -316,8 +416,27 @@ const start = async () => {
 
     telemetryService.startTelemetryCron();
 
-    // Start the server
+    // Start the server first
     await server.listen({ port: 3001, host: "0.0.0.0" });
+    server.log.info("Server is listening on http://0.0.0.0:3001");
+
+    // Test Axiom logging
+    if (hasAxiom) {
+      server.log.info({ axiom: true, dataset: process.env.AXIOM_DATASET }, "Axiom logging is configured");
+    }
+
+    // if (process.env.NODE_ENV === "production") {
+    //   // Initialize uptime monitoring service in the background (non-blocking)
+    //   uptimeService
+    //     .initialize()
+    //     .then(() => {
+    //       server.log.info("Uptime monitoring service initialized successfully");
+    //     })
+    //     .catch((error) => {
+    //       server.log.error("Failed to initialize uptime service:", error);
+    //       // Continue running without uptime monitoring
+    //     });
+    // }
   } catch (err) {
     server.log.error(err);
     process.exit(1);
@@ -325,6 +444,47 @@ const start = async () => {
 };
 
 start();
+
+// Graceful shutdown
+let isShuttingDown = false;
+
+const shutdown = async (signal: string) => {
+  if (isShuttingDown) {
+    server.log.warn(`${signal} received during shutdown, forcing exit...`);
+    process.exit(1);
+  }
+
+  isShuttingDown = true;
+  server.log.info(`${signal} received, shutting down gracefully...`);
+
+  // Set a timeout to force exit if shutdown takes too long
+  const forceExitTimeout = setTimeout(() => {
+    server.log.error("Shutdown timeout exceeded, forcing exit...");
+    process.exit(1);
+  }, 10000); // 10 second timeout
+
+  try {
+    // Stop accepting new connections
+    await server.close();
+    server.log.info("Server closed");
+
+    // Shutdown uptime service
+    // await uptimeService.shutdown();
+    // server.log.info("Uptime service shut down");
+
+    // Clear the timeout since we're done
+    clearTimeout(forceExitTimeout);
+
+    process.exit(0);
+  } catch (error) {
+    server.log.error(error, "Error during shutdown");
+    clearTimeout(forceExitTimeout);
+    process.exit(1);
+  }
+};
+
+process.on("SIGTERM", () => shutdown("SIGTERM"));
+process.on("SIGINT", () => shutdown("SIGINT"));
 
 declare module "fastify" {
   interface FastifyRequest {

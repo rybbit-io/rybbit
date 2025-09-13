@@ -60,13 +60,12 @@ export function SiteCard({ siteId, domain }: SiteCardProps) {
   const hasData = (overviewData?.data?.sessions || 0) > 0;
 
   // Show skeleton when loading or not yet in view, but not if we've already loaded data previously
-  const showSkeleton =
-    (isLoading || isOverviewLoading || !isInView) && !hasLoadedData.current;
+  const showSkeleton = (isLoading || isOverviewLoading || !isInView) && !hasLoadedData.current;
 
   return (
     <div
       ref={ref}
-      className="flex flex-col rounded-lg bg-neutral-900/70 p-4 border border-neutral-800 shadow-lg hover:shadow-xl hover:border-neutral-700 transition-all duration-300 hover:translate-y-[-2px]"
+      className="flex flex-col rounded-lg bg-neutral-900/70 p-4 border border-neutral-850 shadow-lg hover:shadow-xl hover:border-neutral-800 transition-all duration-300 hover:translate-y-[-2px]"
     >
       {showSkeleton ? (
         <>
@@ -100,14 +99,9 @@ export function SiteCard({ siteId, domain }: SiteCardProps) {
       ) : (
         <>
           <div className="flex justify-between items-center">
-            <Link
-              href={`/${siteId}`}
-              className="group flex gap-3 items-center duration-200"
-            >
+            <Link href={`/${siteId}`} className="group flex gap-3 items-center duration-200">
               <Favicon domain={domain} className="w-6 h-6" />
-              <span className="text-lg font-medium truncate group-hover:underline transition-all">
-                {domain}
-              </span>
+              <span className="text-lg font-medium truncate group-hover:underline transition-all">{domain}</span>
             </Link>
           </div>
 
@@ -115,9 +109,7 @@ export function SiteCard({ siteId, domain }: SiteCardProps) {
             <SiteSessionChart data={data?.data ?? []} height={110} />
             {!hasData && (
               <div className="absolute inset-0 flex items-center justify-center bg-neutral-900/70 backdrop-blur-sm">
-                <span className="text-sm text-neutral-400">
-                  No data available
-                </span>
+                <span className="text-sm text-neutral-400">No data available</span>
               </div>
             )}
           </div>
@@ -125,32 +117,22 @@ export function SiteCard({ siteId, domain }: SiteCardProps) {
           <div className="grid grid-cols-3 gap-2 mt-2">
             <div className="flex flex-col gap-1 items-center bg-neutral-800/50 rounded-md p-2 hover:bg-neutral-800 transition-colors">
               <div className="text-xs text-neutral-400">Sessions</div>
-              <div className="font-semibold">
-                {overviewData?.data?.sessions?.toLocaleString() || "0"}
-              </div>
+              <div className="font-semibold">{overviewData?.data?.sessions?.toLocaleString() || "0"}</div>
             </div>
 
             <div className="flex flex-col gap-1 items-center bg-neutral-800/50 rounded-md p-2 hover:bg-neutral-800 transition-colors">
               <div className="text-xs text-neutral-400">Users</div>
-              <div className="font-semibold">
-                {overviewData?.data?.users?.toLocaleString() || "0"}
-              </div>
+              <div className="font-semibold">{overviewData?.data?.users?.toLocaleString() || "0"}</div>
             </div>
 
-            <Link
-              href={`/${siteId}`}
-              className="flex items-center justify-center"
-            >
+            <Link href={`/${siteId}`} className="flex items-center justify-center">
               <Button
                 variant="outline"
                 size="sm"
                 className="w-full h-full border-neutral-700 bg-neutral-800/50 hover:bg-neutral-800 hover:text-blue-400 transition-all"
               >
                 <span className="mr-1">View</span>
-                <ArrowRight
-                  size={14}
-                  className="transition-transform group-hover:translate-x-0.5"
-                />
+                <ArrowRight size={14} className="transition-transform group-hover:translate-x-0.5" />
               </Button>
             </Link>
           </div>

@@ -4,7 +4,6 @@ import NumberFlow from "@number-flow/react";
 import { useMeasure } from "@uidotdev/usehooks";
 import { useAtom } from "jotai";
 import { useGetLiveUsercount } from "../../../api/analytics/useLiveUserCount";
-import { MobileSidebar } from "../../../components/MobileSidebar";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../../components/ui/select";
 import { useSetPageTitle } from "../../../hooks/useSetPageTitle";
 import { RealtimeChart } from "./RealtimeChart/RealtimeChart";
@@ -12,6 +11,7 @@ import { RealtimeEvents } from "./RealtimeEvents/RealtimeEvents";
 import { World } from "./RealtimeGlobe/RealtimeGlobe";
 import { minutesAtom, MinutesType } from "./realtimeStore";
 import { DisabledOverlay } from "../../../components/DisabledOverlay";
+import { MobileSidebar } from "../components/Sidebar/MobileSidebar";
 
 export default function RealtimePage() {
   useSetPageTitle("Rybbit · Realtime");

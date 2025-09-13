@@ -31,6 +31,7 @@ import { memo, useMemo } from "react";
 import { Browser } from "../../components/shared/icons/Browser";
 import { CountryFlag } from "../../components/shared/icons/CountryFlag";
 import { OperatingSystem } from "../../components/shared/icons/OperatingSystem";
+import { useParams } from "next/navigation";
 
 interface ErrorDetailsProps {
   errorMessage: string;
@@ -57,6 +58,7 @@ function truncateText(text: string | null, maxLength: number = 50) {
 // Component to display individual error event
 function ErrorEventItem({ errorEvent }: { errorEvent: ErrorEvent }) {
   const { getRegionName } = useGetRegionName();
+  const { site } = useParams();
 
   const getFullLocation = (event: ErrorEvent) => {
     let location = "";
@@ -161,10 +163,12 @@ function ErrorEventItem({ errorEvent }: { errorEvent: ErrorEvent }) {
           {errorEvent.user_id && (
             <Tooltip>
               <TooltipTrigger asChild>
-                <Badge variant="outline" className="text-xs">
-                  <User className="w-3 h-3 mr-1" />
-                  {errorEvent.user_id.substring(0, 8)}
-                </Badge>
+                <Link href={`/${site}/user/${errorEvent.user_id}`}>
+                  <Badge variant="outline" className="text-xs">
+                    <User className="w-3 h-3 mr-1" />
+                    {errorEvent.user_id.substring(0, 8)}
+                  </Badge>
+                </Link>
               </TooltipTrigger>
               <TooltipContent>User ID: {errorEvent.user_id}</TooltipContent>
             </Tooltip>

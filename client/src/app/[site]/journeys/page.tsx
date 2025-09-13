@@ -13,9 +13,9 @@ import { useGetSite } from "../../../api/admin/sites";
 import { DateSelector } from "../../../components/DateSelector/DateSelector";
 import { DateRangeMode, Time } from "../../../components/DateSelector/types";
 import { DisabledOverlay } from "../../../components/DisabledOverlay";
-import { MobileSidebar } from "../../../components/MobileSidebar";
 import { useSetPageTitle } from "../../../hooks/useSetPageTitle";
 import { timeZone } from "../../../lib/dateTimeUtils";
+import { MobileSidebar } from "../components/Sidebar/MobileSidebar";
 
 const MAX_LINK_HEIGHT = 100;
 

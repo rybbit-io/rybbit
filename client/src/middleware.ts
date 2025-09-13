@@ -11,14 +11,8 @@ export async function middleware(request: NextRequest) {
   }
 
   // Handle GitHub OAuth callback redirect
-  if (
-    path.includes("/auth/callback/github") ||
-    path.includes("/auth/callback/google")
-  ) {
-    const redirectUrl = new URL(
-      `/api${path}${request.nextUrl.search}`,
-      request.url
-    );
+  if (path.includes("/auth/callback/github") || path.includes("/auth/callback/google")) {
+    const redirectUrl = new URL(`/api${path}${request.nextUrl.search}`, request.url);
     const response = NextResponse.redirect(redirectUrl);
     response.headers.set("Cache-Control", "no-store, max-age=0");
     return response;
@@ -43,6 +37,8 @@ export async function middleware(request: NextRequest) {
       "admin",
       "organization",
       "account",
+      "uptime",
+      "settings",
       "_next",
       "api",
     ];
@@ -51,9 +47,7 @@ export async function middleware(request: NextRequest) {
     }
 
     // Add cache control headers to make sure the redirect isn't cached
-    const response = NextResponse.redirect(
-      new URL(`/${siteId}/main`, request.url)
-    );
+    const response = NextResponse.redirect(new URL(`/${siteId}/main`, request.url));
     response.headers.set("Cache-Control", "no-store, max-age=0");
     return response;
   }

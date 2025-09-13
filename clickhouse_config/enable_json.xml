@@ -1,5 +1,0 @@
-<clickhouse>
-    <settings>
-        <enable_json_type>1</enable_json_type>
-    </settings>
-</clickhouse>

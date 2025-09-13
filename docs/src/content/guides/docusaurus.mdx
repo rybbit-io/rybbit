@@ -91,7 +91,7 @@ import React from 'react';
 export default function MyCustomButton({ children, eventName, eventData }) {
   const handleClick = () => {
     if (typeof window !== 'undefined' && window.rybbit) {
-      window.rybbit.trackEvent(eventName || 'docusaurus_custom_click', eventData || {});
+      window.rybbit.event(eventName || 'docusaurus_custom_click', eventData || {});
     }
   };
 
@@ -129,7 +129,7 @@ export function onRouteUpdate({location, previousLocation}) {
   document.querySelectorAll('a[target="_blank"]').forEach(link => {
     link.addEventListener('click', () => {
       if (window.rybbit) {
-        window.rybbit.trackEvent('external_link_click', { href: link.href });
+        window.rybbit.event('external_link_click', { href: link.href });
       }
     });
   });

@@ -85,7 +85,7 @@ From any Svelte component within your SvelteKit app, you can track custom events
 <script>
   function handleAction() {
     if (typeof window !== 'undefined' && window.rybbit) {
-      window.rybbit.trackEvent('user_action_sveltekit', { component: 'MySvelteKitComponent' });
+      window.rybbit.event('user_action_sveltekit', { component: 'MySvelteKitComponent' });
     }
   }
 </script>

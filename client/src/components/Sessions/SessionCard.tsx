@@ -1,16 +1,6 @@
 import { Skeleton } from "@/components/ui/skeleton";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
-import {
-  ArrowRight,
-  ChevronDown,
-  ChevronRight,
-  FileText,
-  MousePointerClick,
-} from "lucide-react";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { ArrowRight, ChevronDown, ChevronRight, ExternalLink, FileText, MousePointerClick, TriangleAlert } from "lucide-react";
 import { DateTime } from "luxon";
 import { memo, useState } from "react";
 import { GetSessionsResponse } from "../../api/analytics/userSessions";
@@ -65,24 +55,15 @@ export function SessionCard({ session, onClick, userId }: SessionCardProps) {
       <div className="p-3 cursor-pointer" onClick={handleCardClick}>
         <div className="flex items-center gap-2">
           <div className="hidden md:flex items-center gap-2">
-            <span className="text-xs font-mono text-gray-400">
-              {truncatedUserId}
-            </span>
+            <span className="text-xs font-mono text-gray-400">{truncatedUserId}</span>
           </div>
 
           {/* Icons section */}
           <div className="flex space-x-2 items-center md:ml-3">
             {session.country && (
-              <CountryFlagTooltipIcon
-                country={session.country}
-                city={session.city}
-                region={session.region}
-              />
+              <CountryFlagTooltipIcon country={session.country} city={session.city} region={session.region} />
             )}
-            <BrowserTooltipIcon
-              browser={session.browser || "Unknown"}
-              browser_version={session.browser_version}
-            />
+            <BrowserTooltipIcon browser={session.browser || "Unknown"} browser_version={session.browser_version} />
             <OperatingSystemTooltipIcon
               operating_system={session.operating_system || ""}
               operating_system_version={session.operating_system_version}
@@ -94,10 +75,7 @@ export function SessionCard({ session, onClick, userId }: SessionCardProps) {
             />
             <Tooltip>
               <TooltipTrigger asChild>
-                <Badge
-                  variant="outline"
-                  className="flex items-center gap-1 bg-neutral-800 text-gray-300"
-                >
+                <Badge variant="outline" className="flex items-center gap-1 bg-neutral-800 text-gray-300">
                   <FileText className="w-4 h-4 text-blue-500" />
                   <span>{formatter(session.pageviews)}</span>
                 </Badge>
@@ -106,15 +84,30 @@ export function SessionCard({ session, onClick, userId }: SessionCardProps) {
             </Tooltip>
             <Tooltip>
               <TooltipTrigger asChild>
-                <Badge
-                  variant="outline"
-                  className="flex items-center gap-1 bg-neutral-800 text-gray-300"
-                >
+                <Badge variant="outline" className="flex items-center gap-1 bg-neutral-800 text-gray-300">
                   <MousePointerClick className="w-4 h-4 text-amber-500" />
                   <span>{formatter(session.events)}</span>
                 </Badge>
               </TooltipTrigger>
               <TooltipContent>Events</TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Badge variant="outline" className="flex items-center gap-1 bg-neutral-800 text-gray-300">
+                  <TriangleAlert className="w-4 h-4 text-red-500" />
+                  <span>{formatter(session.errors)}</span>
+                </Badge>
+              </TooltipTrigger>
+              <TooltipContent>Errors</TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Badge variant="outline" className="flex items-center gap-1 bg-neutral-800 text-gray-300">
+                  <ExternalLink className="w-4 h-4 text-purple-500" />
+                  <span>{formatter(session.outbound)}</span>
+                </Badge>
+              </TooltipTrigger>
+              <TooltipContent>Outbound Clicks</TooltipContent>
             </Tooltip>
           </div>
 
@@ -179,17 +172,7 @@ export function SessionCard({ session, onClick, userId }: SessionCardProps) {
 export const SessionCardSkeleton = memo(() => {
   // Function to get a random width class for skeletons
   const getRandomWidth = () => {
-    const widths = [
-      "w-16",
-      "w-20",
-      "w-24",
-      "w-28",
-      "w-32",
-      "w-36",
-      "w-40",
-      "w-44",
-      "w-48",
-    ];
+    const widths = ["w-16", "w-20", "w-24", "w-28", "w-32", "w-36", "w-40", "w-44", "w-48"];
     return widths[Math.floor(Math.random() * widths.length)];
   };
 
@@ -207,10 +190,7 @@ export const SessionCardSkeleton = memo(() => {
 
   // Create multiple skeletons for a realistic loading state
   const skeletons = Array.from({ length: 10 }).map((_, index) => (
-    <div
-      className="mb-3 rounded-lg bg-neutral-900 border border-neutral-800 overflow-hidden"
-      key={index}
-    >
+    <div className="mb-3 rounded-lg bg-neutral-900 border border-neutral-800 overflow-hidden" key={index}>
       <div className="p-3">
         <div className="flex items-center gap-2">
           {/* Avatar and User ID */}
@@ -224,10 +204,10 @@ export const SessionCardSkeleton = memo(() => {
             <Skeleton className="h-4 w-4 rounded-sm flex-shrink-0" />
             <Skeleton className="h-4 w-4 rounded-sm flex-shrink-0" />
             <Skeleton className="h-4 w-4 rounded-sm" />
-            {/* Badge skeleton for pageviews */}
-            <Skeleton className="h-[21px] w-8 rounded-sm" />
-            {/* Badge skeleton for events */}
-            <Skeleton className="h-[21px] w-8 rounded-sm" />
+            <Skeleton className="h-[21px] w-12 rounded-sm" />
+            <Skeleton className="h-[21px] w-12 rounded-sm" />
+            <Skeleton className="h-[21px] w-12 rounded-sm" />
+            <Skeleton className="h-[21px] w-12 rounded-sm" />
           </div>
 
           {/* Entry/Exit paths with randomized widths */}
@@ -245,9 +225,7 @@ export const SessionCardSkeleton = memo(() => {
             <Skeleton className={cn("h-3", getRandomTimeWidth())} />
 
             {/* Duration skeleton */}
-            <Skeleton
-              className={cn("h-3", getRandomDurationWidth(), "hidden md:block")}
-            />
+            <Skeleton className={cn("h-3", getRandomDurationWidth(), "hidden md:block")} />
           </div>
 
           {/* Expand icon */}

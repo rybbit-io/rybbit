@@ -12,6 +12,7 @@ import { ReplayPlayer } from "./components/player/ReplayPlayer";
 import { NothingFound } from "../../../components/NothingFound";
 import { ReplayBreadcrumbs } from "./components/ReplayBreadcrumbs";
 import { useReplayStore } from "./components/replayStore";
+import { Video } from "lucide-react";
 
 export default function SessionReplayPage() {
   useSetPageTitle("Rybbit · Session Replay");
@@ -31,6 +32,7 @@ export default function SessionReplayPage() {
         <EnableSessionReplay />
         {hasNoReplays ? (
           <NothingFound
+            icon={<Video className="w-10 h-10" />}
             title={"No session replays found"}
             description={"Replays will appear here once session replay is enabled."}
           />

@@ -2,26 +2,14 @@
 import { TimeBucket } from "@rybbit/shared";
 import { nivoTheme } from "@/lib/nivo";
 import { StatType, useStore } from "@/lib/store";
-import {
-  LineCustomSvgLayer,
-  LineCustomSvgLayerProps,
-  LineSeries,
-  ResponsiveLine,
-} from "@nivo/line";
+import { LineCustomSvgLayer, LineCustomSvgLayerProps, LineSeries, ResponsiveLine } from "@nivo/line";
 import { useWindowSize } from "@uidotdev/usehooks";
 import { DateTime } from "luxon";
 import { GetOverviewBucketedResponse } from "../../../../../api/analytics/useGetOverviewBucketed";
 import { APIResponse } from "../../../../../api/types";
 import { Time } from "../../../../../components/DateSelector/types";
-import {
-  formatSecondsAsMinutesAndSeconds,
-  formatter,
-} from "../../../../../lib/utils";
-import {
-  userLocale,
-  hour12,
-  formatChartDateTime,
-} from "../../../../../lib/dateTimeUtils";
+import { formatSecondsAsMinutesAndSeconds, formatter } from "../../../../../lib/utils";
+import { userLocale, hour12, formatChartDateTime } from "../../../../../lib/dateTimeUtils";
 
 const getMax = (time: Time, bucket: TimeBucket) => {
   const now = DateTime.now();
@@ -47,12 +35,7 @@ const getMax = (time: Time, bucket: TimeBucket) => {
       });
     return now < dayDate ? dayDate.toJSDate() : undefined;
   } else if (time.mode === "range") {
-    if (
-      bucket === "day" ||
-      bucket === "week" ||
-      bucket === "month" ||
-      bucket === "year"
-    ) {
+    if (bucket === "day" || bucket === "week" || bucket === "month" || bucket === "year") {
       return undefined;
     }
     const rangeDate = DateTime.fromISO(time.endDate)
@@ -150,10 +133,7 @@ export function Chart({
 
   // When the current period has more datapoints than the previous period,
   // we need to shift the previous datapoints to the right by the difference in length
-  const lengthDiff = Math.max(
-    (data?.data?.length ?? 0) - (previousData?.data?.length ?? 0),
-    0
-  );
+  const lengthDiff = Math.max((data?.data?.length ?? 0) - (previousData?.data?.length ?? 0), 0);
 
   const formattedData =
     data?.data
@@ -169,16 +149,10 @@ export function Chart({
         return {
           x: timestamp.toFormat("yyyy-MM-dd HH:mm:ss"),
           y: e[selectedStat],
-          previousY:
-            i >= lengthDiff &&
-            previousData?.data?.[i - lengthDiff][selectedStat],
+          previousY: i >= lengthDiff && previousData?.data?.[i - lengthDiff][selectedStat],
           currentTime: timestamp,
           previousTime:
-            i >= lengthDiff
-              ? DateTime.fromSQL(
-                  previousData?.data?.[i - lengthDiff]?.time ?? ""
-                ).toUTC()
-              : undefined,
+            i >= lengthDiff ? DateTime.fromSQL(previousData?.data?.[i - lengthDiff]?.time ?? "").toUTC() : undefined,
         };
       })
       .filter((e) => e !== null) || [];
@@ -191,10 +165,8 @@ export function Chart({
     (time.mode === "month" && time.month !== currentMonthStr) || // do not display in month mode if month is not current
     (time.mode === "day" && time.day !== currentDayStr) || // do not display in day mode if day is not current
     (time.mode === "range" && time.endDate !== currentDayStr) || // do not display in range mode if end date is not current day
-    (time.mode === "day" &&
-      (bucket === "minute" || bucket === "five_minutes")) || // do not display in day mode if bucket is minute or five_minutes
-    (time.mode === "past-minutes" &&
-      (bucket === "minute" || bucket === "five_minutes")); // do not display in 24-hour mode if bucket is minute or five_minutes
+    (time.mode === "day" && (bucket === "minute" || bucket === "five_minutes")) || // do not display in day mode if bucket is minute or five_minutes
+    (time.mode === "past-minutes" && (bucket === "minute" || bucket === "five_minutes")); // do not display in 24-hour mode if bucket is minute or five_minutes
   const displayDashed = formattedData.length >= 2 && !shouldNotDisplay;
 
   const baseGradient = {
@@ -261,18 +233,10 @@ export function Chart({
     return series.map(({ id, data, color }) => (
       <path
         key={id}
-        d={
-          lineGenerator(
-            data.map((d) => ({ x: xScale(d.data.x), y: yScale(d.data.y) }))
-          )!
-        }
+        d={lineGenerator(data.map((d) => ({ x: xScale(d.data.x), y: yScale(d.data.y) })))!}
         fill="none"
         stroke={color}
-        style={
-          id === "dashedData"
-            ? { strokeDasharray: "3, 6", strokeWidth: 3 }
-            : { strokeWidth: 2 }
-        }
+        style={id === "dashedData" ? { strokeDasharray: "3, 6", strokeWidth: 3 } : { strokeWidth: 2 }}
       />
     ));
   };
@@ -281,7 +245,7 @@ export function Chart({
     <ResponsiveLine
       data={chartPropsData}
       theme={nivoTheme}
-      margin={{ top: 10, right: 15, bottom: 25, left: 35 }}
+      margin={{ top: 10, right: 15, bottom: 30, left: 40 }}
       xScale={{
         type: "time",
         format: "%Y-%m-%d %H:%M:%S",
@@ -297,21 +261,20 @@ export function Chart({
         reverse: false,
         max: Math.max(max, 1),
       }}
-      enableGridX={false}
+      enableGridX={true}
       enableGridY={true}
       gridYValues={Y_TICK_VALUES}
       yFormat=" >-.2f"
       axisTop={null}
       axisRight={null}
       axisBottom={{
-        tickSize: 0,
+        tickSize: 5,
         tickPadding: 10,
         tickRotation: 0,
         truncateTickAt: 0,
         tickValues: Math.min(
           maxTicks,
-          time.mode === "day" ||
-            (time.mode === "past-minutes" && time.pastMinutesStart === 1440)
+          time.mode === "day" || (time.mode === "past-minutes" && time.pastMinutesStart === 1440)
             ? 24
             : Math.min(12, data?.data?.length ?? 0)
         ),
@@ -330,7 +293,7 @@ export function Chart({
         },
       }}
       axisLeft={{
-        tickSize: 0,
+        tickSize: 5,
         tickPadding: 10,
         tickRotation: 0,
         truncateTickAt: 0,
@@ -362,10 +325,7 @@ export function Chart({
             <div
               className="text-lg font-medium"
               style={{
-                color:
-                  diffPercentage > 0
-                    ? "hsl(var(--green-400))"
-                    : "hsl(var(--red-400))",
+                color: diffPercentage > 0 ? "hsl(var(--green-400))" : "hsl(var(--red-400))",
               }}
             >
               {diffPercentage > 0 ? "+" : ""}

@@ -3,13 +3,13 @@
 import { SavedFunnel, useGetFunnels } from "../../../api/analytics/funnels/useGetFunnels";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useStore } from "@/lib/store";
-import { ArrowRight, FilterIcon } from "lucide-react";
-import { MobileSidebar } from "../../../components/MobileSidebar";
+import { ArrowRight, FilterIcon, Funnel } from "lucide-react";
 import { NothingFound } from "../../../components/NothingFound";
 import { CreateFunnelDialog } from "./components/CreateFunnel";
 import { FunnelRow } from "./components/FunnelRow";
 import { useSetPageTitle } from "../../../hooks/useSetPageTitle";
 import { DisabledOverlay } from "../../../components/DisabledOverlay";
+import { MobileSidebar } from "../components/Sidebar/MobileSidebar";
 
 // Skeleton for the funnel row component
 const FunnelRowSkeleton = () => (
@@ -104,6 +104,7 @@ export default function FunnelsPage() {
           </div>
         ) : (
           <NothingFound
+            icon={<Funnel className="w-10 h-10" />}
             title={"No funnels yet"}
             description={"Create your first funnel to track conversions through your site's user journey"}
             action={<CreateFunnelDialog />}

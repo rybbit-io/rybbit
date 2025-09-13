@@ -84,7 +84,7 @@ export function clearSelfReferrer(referrer: string, hostname: string): string {
 // Create base tracking payload from request
 export function createBasePayload(
   request: FastifyRequest,
-  eventType: "pageview" | "custom_event" | "performance" | "error" = "pageview",
+  eventType: "pageview" | "custom_event" | "performance" | "error" | "outbound" = "pageview",
   validatedBody: ValidatedTrackingPayload,
 ): TotalTrackingPayload {
   // Use custom user agent if provided, otherwise fall back to header

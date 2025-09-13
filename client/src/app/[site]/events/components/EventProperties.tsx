@@ -5,6 +5,7 @@ import { Info } from "lucide-react";
 import { memo } from "react";
 import { EventProperty } from "../../../../api/analytics/events/useGetEventProperties";
 import { cn } from "../../../../lib/utils";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface EventPropertiesProps {
   properties: EventProperty[];
@@ -63,9 +64,6 @@ export function EventProperties({
     return sumB - sumA;
   });
 
-  // Find the highest count to calculate percentages for values
-  const maxCount = Math.max(...properties.map((prop) => prop.count));
-
   return (
     <div
       className={cn(
@@ -93,7 +91,9 @@ export function EventProperties({
             {/* Property Values */}
             <div className="pl-4 flex flex-col gap-2">
               {values.map((property) => {
-                const percentage = (property.count / maxCount) * 100;
+                const totalCount = properties.filter(event => event.propertyKey === property.propertyKey)
+                  .reduce((sum, event) => sum + event.count, 0);
+                const percentage = (property.count / totalCount) * 100;
 
                 return (
                   <div
@@ -109,7 +109,18 @@ export function EventProperties({
                     ></div>
                     <div className="z-10 flex justify-between items-center w-full">
                       <div className="truncate max-w-[70%]">
-                        {property.propertyValue}
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <div className="flex items-center">
+                              {property.propertyValue}
+                            </div>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p className="max-w-7xl">
+                              {property.propertyValue}
+                            </p>
+                          </TooltipContent>
+                        </Tooltip>
                       </div>
                       <div className="flex gap-2">
                         <div className="hidden group-hover:block text-neutral-400">

@@ -44,7 +44,7 @@ function rybbit_track_view_product() {
     ?>
     <script type="text/javascript">
         if (typeof window.rybbit !== 'undefined') {
-            window.rybbit.trackEvent('view_item', <?php echo json_encode($product_data); ?>);
+            window.rybbit.event('view_item', <?php echo json_encode($product_data); ?>);
         }
     </script>
     <?php
@@ -87,7 +87,7 @@ function rybbit_track_add_to_cart_script() {
                 if (typeof window.rybbit !== 'undefined') {
                     const eventData = <?php echo json_encode($product_data); ?>;
                     eventData.quantity = quantity > 0 ? quantity : 1;
-                    window.rybbit.trackEvent('add_to_cart', eventData);
+                    window.rybbit.event('add_to_cart', eventData);
                 }
             });
         }
@@ -108,7 +108,7 @@ function rybbit_ajax_add_to_cart_tracker() {
                 const quantity = $button.data('quantity') || 1; // Or $button.closest('.product').find('input.qty').val()
                 // Note: Getting full product details here via AJAX might be needed for price, name, SKU
                 // This example sends basic info. For more details, you might need another AJAX call or pass data via $button.data attributes
-                window.rybbit.trackEvent('add_to_cart', {
+                window.rybbit.event('add_to_cart', {
                     item_id: productId,
                     quantity: quantity,
                     source: 'ajax_add_to_cart'
@@ -153,7 +153,7 @@ function rybbit_track_begin_checkout() {
     ?>
     <script type="text/javascript">
         if (typeof window.rybbit !== 'undefined') {
-            window.rybbit.trackEvent('begin_checkout', <?php echo json_encode($checkout_data); ?>);
+            window.rybbit.event('begin_checkout', <?php echo json_encode($checkout_data); ?>);
         }
     </script>
     <?php
@@ -198,7 +198,7 @@ function rybbit_track_purchase( $order_id ) {
     ?>
     <script type="text/javascript">
         if (typeof window.rybbit !== 'undefined') {
-            window.rybbit.trackEvent('purchase', <?php echo json_encode($purchase_data); ?>);
+            window.rybbit.event('purchase', <?php echo json_encode($purchase_data); ?>);
         }
     </script>
     <?php

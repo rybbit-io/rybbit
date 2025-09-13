@@ -5,18 +5,13 @@ import { clickhouse } from "../../db/clickhouse/clickhouse.js";
 import { db } from "../../db/postgres/postgres.js";
 import { member, sites, user } from "../../db/postgres/schema.js";
 import { getIsUserAdmin } from "../../lib/auth-utils.js";
-import { DEFAULT_EVENT_LIMIT } from "../../lib/const.js";
+import { logger } from "../../lib/logger/logger.js";
 import { getOrganizationSubscriptions } from "../../services/admin/subscriptionService.js";
 
 // Define event count result type
 interface EventCountResult {
   site_id: string;
   total_events: number;
-}
-
-
-function getStartOfNextMonth() {
-  return DateTime.now().startOf("month").plus({ months: 1 }).toJSDate();
 }
 
 export interface AdminOrganizationData {
@@ -134,7 +129,7 @@ export async function getAdminOrganizations(request: FastifyRequest, reply: Fast
         siteEventMap.set(Number(event.site_id), event.total_events);
       }
     } catch (clickhouseError) {
-      console.warn("ClickHouse query failed, continuing without event counts:", clickhouseError);
+      logger.warn(clickhouseError as Error, "ClickHouse query failed, continuing without event counts");
     }
 
     // Create map of organization IDs to their sites with event counts

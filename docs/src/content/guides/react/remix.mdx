@@ -86,7 +86,7 @@ Once the Rybbit script is installed and loaded, you can track custom events from
 export default function MyFeatureRoute() {
   const handleButtonClick = () => {
     if (typeof window !== "undefined" && window.rybbit) {
-      window.rybbit.trackEvent('remix_feature_click', { feature: 'Special Offer' });
+      window.rybbit.event('remix_feature_click', { feature: 'Special Offer' });
     }
   };
 

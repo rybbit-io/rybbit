@@ -102,6 +102,8 @@ export async function addSite(
       domain: newSite[0].domain,
       blockBots:
         newSite[0].blockBots === undefined ? true : newSite[0].blockBots,
+      excludedIPs: Array.isArray(newSite[0].excludedIPs) ? newSite[0].excludedIPs : [],
+      apiKey: newSite[0].apiKey,
     });
 
     return reply.status(201).send(newSite[0]);

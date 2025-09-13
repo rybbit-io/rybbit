@@ -2,6 +2,7 @@ import type { City, SubdivisionsRecord } from "@maxmind/geoip2-node";
 import { Reader } from "@maxmind/geoip2-node";
 import { readFile } from "fs/promises";
 import path from "path";
+import { logger } from "../../lib/logger/logger.js";
 
 // Adjust path to find the database relative to project root
 const dbPath = path.join(process.cwd(), "GeoLite2-City.mmdb");
@@ -27,7 +28,7 @@ interface ExtendedReader extends Reader {
 async function loadDatabase(dbPath: string) {
   const dbBuffer = await readFile(dbPath);
   reader = Reader.openBuffer(dbBuffer);
-  console.log("GeoIP database loaded successfully");
+  logger.info("GeoIP database loaded successfully");
 }
 
 await loadDatabase(dbPath);

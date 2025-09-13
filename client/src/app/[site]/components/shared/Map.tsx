@@ -31,9 +31,11 @@ interface TooltipPosition {
 export function MapComponent({
   height,
   mode = "total",
+  mapView: controlledMapView,
 }: {
   height: string;
   mode?: "total" | "perCapita";
+  mapView?: "countries" | "subdivisions";
 }) {
   const {
     data: countryData,
@@ -59,16 +61,15 @@ export function MapComponent({
     }
   }, [countryData, subdivisionData]);
 
-  const [tooltipContent, setTooltipContent] = useState<TooltipContent | null>(
-    null
-  );
+  const [tooltipContent, setTooltipContent] = useState<TooltipContent | null>(null);
   const [tooltipPosition, setTooltipPosition] = useState<TooltipPosition>({
     x: 0,
     y: 0,
   });
-  const [mapView, setMapView] = useState<"countries" | "subdivisions">(
-    "countries"
-  );
+  const [internalMapView, setInternalMapView] = useState<"countries" | "subdivisions">("countries");
+
+  // Use controlled value if provided, otherwise use internal state
+  const mapView = controlledMapView ?? internalMapView;
 
   // Track which feature is currently hovered to control opacity without conflicts
   const [hoveredId, setHoveredId] = useState<string | null>(null);
@@ -95,8 +96,7 @@ export function MapComponent({
       const countryCode = item.value?.split("-")[0];
       const population = getCountryPopulation(countryCode);
       // For subdivisions, we divide by 10x the population since regions are smaller
-      const perCapitaValue =
-        population > 0 ? item.count / (population / 10) : 0;
+      const perCapitaValue = population > 0 ? item.count / (population / 10) : 0;
       return {
         ...item,
         perCapita: perCapitaValue,
@@ -106,18 +106,14 @@ export function MapComponent({
 
   const colorScale = useMemo(() => {
     if (mapView === "countries" && !processedCountryData) return () => "#eee";
-    if (mapView === "subdivisions" && !processedSubdivisionData)
-      return () => "#eee";
+    if (mapView === "subdivisions" && !processedSubdivisionData) return () => "#eee";
 
-    const dataToUse =
-      mapView === "countries" ? processedCountryData : processedSubdivisionData;
+    const dataToUse = mapView === "countries" ? processedCountryData : processedSubdivisionData;
 
     // Get computed values from CSS variables
     const getComputedColor = (cssVar: string) => {
       // Get the HSL values from CSS
-      const hslValues = getComputedStyle(document.documentElement)
-        .getPropertyValue(cssVar)
-        .trim();
+      const hslValues = getComputedStyle(document.documentElement).getPropertyValue(cssVar).trim();
       return `hsl(${hslValues})`;
     };
 
@@ -146,34 +142,20 @@ export function MapComponent({
   const { data: countriesGeoData } = useCountries();
 
   const handleStyle = (feature: Feature | undefined) => {
-    const borderColors = [
-      "#377eb8",
-      "#ff7f00",
-      "#4daf4a",
-      "#1abc9c",
-      "#984ea3",
-    ];
+    const borderColors = ["#377eb8", "#ff7f00", "#4daf4a", "#1abc9c", "#984ea3"];
     const isCountryView = mapView === "countries";
-    const dataKey = isCountryView
-      ? feature?.properties?.["ISO_A2"]
-      : feature?.properties?.["iso_3166_2"];
-    const borderKey = isCountryView
-      ? feature?.properties?.["BORDER"]
-      : feature?.properties?.["border"];
+    const dataKey = isCountryView ? feature?.properties?.["ISO_A2"] : feature?.properties?.["iso_3166_2"];
+    const borderKey = isCountryView ? feature?.properties?.["BORDER"] : feature?.properties?.["border"];
 
     // Use the processed data that includes per capita metrics
-    const dataToUse = isCountryView
-      ? processedCountryData
-      : processedSubdivisionData;
+    const dataToUse = isCountryView ? processedCountryData : processedSubdivisionData;
 
     const foundData = dataToUse?.find(({ value }: any) => value === dataKey);
 
     // Use count or per capita value based on mode
-    const metricValue =
-      mode === "perCapita" ? foundData?.perCapita || 0 : foundData?.count || 0;
+    const metricValue = mode === "perCapita" ? foundData?.perCapita || 0 : foundData?.count || 0;
 
-    const color =
-      metricValue > 0 ? colorScale(metricValue) : "rgba(140, 140, 140, 0.5)";
+    const color = metricValue > 0 ? colorScale(metricValue) : "rgba(140, 140, 140, 0.5)";
 
     return {
       color: color,
@@ -189,21 +171,15 @@ export function MapComponent({
     layer.on({
       mouseover: () => {
         const isCountryView = mapView === "countries";
-        const code = isCountryView
-          ? feature.properties?.["ISO_A2"]
-          : feature.properties?.["iso_3166_2"];
+        const code = isCountryView ? feature.properties?.["ISO_A2"] : feature.properties?.["iso_3166_2"];
 
         // Mark this feature as hovered so handleStyle increases opacity
         setHoveredId(code);
 
-        const name = isCountryView
-          ? feature.properties?.["ADMIN"]
-          : feature.properties?.["name"];
+        const name = isCountryView ? feature.properties?.["ADMIN"] : feature.properties?.["name"];
 
         // Use the processed data that includes per capita metrics
-        const dataToUse = isCountryView
-          ? processedCountryData
-          : processedSubdivisionData;
+        const dataToUse = isCountryView ? processedCountryData : processedSubdivisionData;
 
         const foundData = dataToUse?.find(({ value }: any) => value === code);
         const count = foundData?.count || 0;
@@ -225,14 +201,10 @@ export function MapComponent({
       },
       click: () => {
         const isCountryView = mapView === "countries";
-        const code = isCountryView
-          ? feature.properties?.["ISO_A2"]
-          : feature.properties?.["iso_3166_2"];
+        const code = isCountryView ? feature.properties?.["ISO_A2"] : feature.properties?.["iso_3166_2"];
 
         // Set filter based on the current map view
-        const filterParameter: FilterParameter = isCountryView
-          ? "country"
-          : "region";
+        const filterParameter: FilterParameter = isCountryView ? "country" : "region";
 
         addFilter({
           parameter: filterParameter,
@@ -247,18 +219,14 @@ export function MapComponent({
     const map = useMapEvent("zoomend", () => {
       const newMapView = map.getZoom() >= 5 ? "subdivisions" : "countries";
       if (newMapView !== mapView) {
-        setMapView(newMapView);
+        setInternalMapView(newMapView);
         setTooltipContent(null);
       }
     });
     return null;
   };
 
-  const isLoading =
-    isCountryLoading ||
-    isSubdivisionLoading ||
-    isCountryFetching ||
-    isSubdivisionFetching;
+  const isLoading = isCountryLoading || isSubdivisionLoading || isCountryFetching || isSubdivisionFetching;
 
   const [ref, { height: resolvedHeight }] = useMeasure();
 
@@ -283,9 +251,7 @@ export function MapComponent({
         <div className="absolute inset-0 bg-neutral-900/30 backdrop-blur-sm z-10 flex items-center justify-center">
           <div className="flex flex-col items-center gap-2">
             <div className="h-8 w-8 rounded-full border-2 border-accent-400 border-t-transparent animate-spin"></div>
-            <span className="text-sm text-neutral-300">
-              Loading map data...
-            </span>
+            <span className="text-sm text-neutral-300">Loading map data...</span>
           </div>
         </div>
       )}
@@ -334,25 +300,17 @@ export function MapComponent({
           }}
         >
           <div className="font-sm flex items-center gap-1">
-            {tooltipContent.code && (
-              <CountryFlag country={tooltipContent.code.slice(0, 2)} />
-            )}
+            {tooltipContent.code && <CountryFlag country={tooltipContent.code.slice(0, 2)} />}
             {tooltipContent.name}
           </div>
           <div>
-            <span className="font-bold text-accent-400">
-              {tooltipContent.count.toLocaleString()}
-            </span>{" "}
-            <span className="text-neutral-300">
-              ({tooltipContent.percentage.toFixed(1)}%) sessions
-            </span>
+            <span className="font-bold text-accent-400">{tooltipContent.count.toLocaleString()}</span>{" "}
+            <span className="text-neutral-300">({tooltipContent.percentage.toFixed(1)}%) sessions</span>
           </div>
           {mode === "perCapita" && mapView === "countries" && (
             <div className="text-sm text-neutral-300">
-              <span className="font-bold text-accent-400">
-                {round(tooltipContent.perCapita ?? 0, 2)}
-              </span>{" "}
-              per million people
+              <span className="font-bold text-accent-400">{round(tooltipContent.perCapita ?? 0, 2)}</span> per million
+              people
             </div>
           )}
         </div>

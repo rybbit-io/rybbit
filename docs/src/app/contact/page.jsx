@@ -86,6 +86,25 @@ export default function Contact() {
         </div>
       </div>
 
+      <div className="bg-neutral-800/30 border border-neutral-700/50 rounded-xl p-6 mb-8">
+        <h2 className="text-xl font-medium mb-3">White-Labeling & Custom Solutions</h2>
+        <p className="mb-4">
+          Looking to white-label Rybbit for your organization or need a custom
+          analytics solution? We offer tailored implementations to meet your
+          specific requirements.
+        </p>
+        <p className="mb-4">
+          Contact us at{" "}
+          <a
+            href="mailto:hello@rybbit.io"
+            className="text-neutral-300 hover:text-white transition-colors underline"
+          >
+            hello@rybbit.io
+          </a>{" "}
+          to discuss your needs.
+        </p>
+      </div>
+
       <div className="bg-neutral-800/30 border border-neutral-700/50 rounded-xl p-6">
         <h2 className="text-xl font-medium mb-3">Open Source Contributions</h2>
         <p className="mb-4">
