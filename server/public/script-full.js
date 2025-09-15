@@ -145,41 +145,67 @@
               timestamp: event.timestamp || Date.now()
             });
           },
-          recordCanvas: true,
-          // Record canvas elements
+          recordCanvas: false,
+          // Disable canvas recording to save space
           collectFonts: true,
-          // Collect font info for better replay
-          checkoutEveryNms: 3e4,
-          // Checkout every 30 seconds
-          checkoutEveryNth: 200,
-          // Checkout every 200 events
+          // Keep font collection (minimal overhead ~1-2KB)
+          checkoutEveryNms: 6e4,
+          // Checkout every 60 seconds (less frequent)
+          checkoutEveryNth: 300,
+          // Checkout every 300 events (less frequent)
           maskAllInputs: true,
           // Mask all input values for privacy
           maskInputOptions: {
             password: true,
             email: true
           },
+          // Aggressively slim DOM to reduce storage
           slimDOMOptions: {
-            script: false,
+            script: true,
+            // Remove script content
             comment: true,
+            // Remove comments
             headFavicon: true,
+            // Remove favicon
             headWhitespace: true,
+            // Remove whitespace in head
             headMetaDescKeywords: true,
+            // Remove meta description/keywords
             headMetaSocial: true,
+            // Remove social meta tags
             headMetaRobots: true,
+            // Remove robots meta
             headMetaHttpEquiv: true,
+            // Remove http-equiv meta
             headMetaAuthorship: true,
+            // Remove authorship meta
             headMetaVerification: true
+            // Remove verification meta
           },
+          // Balanced sampling for good replay quality vs storage
           sampling: {
-            // Optional: reduce recording frequency to save bandwidth
             mousemove: false,
-            // Don't record every mouse move
+            // Disable mouse move tracking (this saves significant space)
             mouseInteraction: true,
-            scroll: 150,
-            // Sample scroll events every 150ms
-            input: "last"
+            // Keep mouse clicks/hovers (minimal overhead)
+            scroll: 200,
+            // Sample scroll every 200ms for smooth replay
+            input: "last",
             // Only record the final input value
+            media: 800
+            // Sample media interactions every 800ms
+          },
+          // Block elements with heavy animations or frequent updates
+          blockClass: "rr-block",
+          blockSelector: ".spinner, .skeleton, .loading, [data-loading], .animate-pulse, .animate-spin, .animate-bounce",
+          ignoreClass: "rr-ignore",
+          ignoreSelector: ".progress-bar, .carousel, .slider",
+          // Keep inline stylesheets for accurate replay
+          inlineStylesheet: true,
+          // Optimize canvas data URLs if canvas recording is ever enabled
+          dataURLOptions: {
+            type: "image/webp",
+            quality: 0.6
           }
         });
         this.isRecording = true;
