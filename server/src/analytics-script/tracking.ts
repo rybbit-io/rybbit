@@ -6,10 +6,12 @@ export class Tracker {
   private config: ScriptConfig;
   private customUserId: string | null = null;
   private sessionReplayRecorder?: SessionReplayRecorder;
+  private isOverLimit: boolean | null = null; // null = not checked yet
 
   constructor(config: ScriptConfig) {
     this.config = config;
     this.loadUserId();
+    this.checkOverLimit(); // Initial check (non-blocking)
 
     if (config.enableSessionReplay) {
       this.initializeSessionReplay();
@@ -27,6 +29,32 @@ export class Tracker {
     }
   }
 
+  private async checkOverLimit(): Promise<void> {
+    // Only check once per session
+    if (this.isOverLimit !== null) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`${this.config.analyticsHost}/is-over-limit/${this.config.siteId}`, {
+        method: "GET",
+        mode: "cors",
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        this.isOverLimit = data.isOverLimit === true;
+      } else {
+        // On failure, assume not over limit to avoid blocking
+        this.isOverLimit = false;
+      }
+    } catch (error) {
+      // Silently fail - assume not over limit to avoid blocking
+      console.debug("Failed to check limit status:", error);
+      this.isOverLimit = false;
+    }
+  }
+
   private async initializeSessionReplay(): Promise<void> {
     try {
       this.sessionReplayRecorder = new SessionReplayRecorder(this.config, this.customUserId || "", batch =>
@@ -39,6 +67,13 @@ export class Tracker {
   }
 
   private async sendSessionReplayBatch(batch: SessionReplayBatch): Promise<void> {
+    // Only block if site is explicitly over limit (true)
+    // Allow through if null (not checked yet) or false (not over limit)
+    if (this.isOverLimit === true) {
+      console.debug("Site is over limit, skipping session replay");
+      return;
+    }
+
     try {
       // Include API key if configured
       if (this.config.apiKey) {
@@ -105,6 +140,13 @@ export class Tracker {
   }
 
   async sendTrackingData(payload: TrackingPayload): Promise<void> {
+    // Only block if site is explicitly over limit (true)
+    // Allow through if null (not checked yet) or false (not over limit)
+    if (this.isOverLimit === true) {
+      console.debug("Site is over limit, skipping tracking");
+      return;
+    }
+
     try {
       await fetch(`${this.config.analyticsHost}/track`, {
         method: "POST",

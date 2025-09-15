@@ -54,6 +54,7 @@ import { getSite } from "./api/sites/getSite.js";
 import { getSiteApiConfig } from "./api/sites/getSiteApiConfig.js";
 import { getSiteExcludedIPs } from "./api/sites/getSiteExcludedIPs.js";
 import { getSiteHasData } from "./api/sites/getSiteHasData.js";
+import { getIsOverLimit } from "./api/sites/getIsOverLimit.js";
 import { getSiteIsPublic } from "./api/sites/getSiteIsPublic.js";
 import { getSitesFromOrg } from "./api/sites/getSitesFromOrg.js";
 import { updateSiteApiConfig } from "./api/sites/updateSiteApiConfig.js";
@@ -207,6 +208,7 @@ const PUBLIC_ROUTES: string[] = [
   "/api/stripe/webhook",
   "/api/session-replay/record",
   "/api/admin/telemetry",
+  "/api/is-over-limit/",
 ];
 
 // Define analytics routes that can be public
@@ -302,6 +304,7 @@ server.get("/api/error-bucketed/:site", getErrorBucketed);
 server.get("/api/retention/:site", getRetention);
 server.get("/api/site-has-data/:site", getSiteHasData);
 server.get("/api/site-is-public/:site", getSiteIsPublic);
+server.get("/api/is-over-limit/:site", getIsOverLimit);
 server.get("/api/sessions/:site", getSessions);
 server.get("/api/session/:sessionId/:site", getSession);
 server.get("/api/events/:site", getEvents);

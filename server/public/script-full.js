@@ -263,10 +263,13 @@
 
   // tracking.ts
   var Tracker = class {
+    // null = not checked yet
     constructor(config) {
       this.customUserId = null;
+      this.isOverLimit = null;
       this.config = config;
       this.loadUserId();
+      this.checkOverLimit();
       if (config.enableSessionReplay) {
         this.initializeSessionReplay();
       }
@@ -278,6 +281,26 @@
           this.customUserId = storedUserId;
         }
       } catch (e2) {
+      }
+    }
+    async checkOverLimit() {
+      if (this.isOverLimit !== null) {
+        return;
+      }
+      try {
+        const response = await fetch(`${this.config.analyticsHost}/is-over-limit/${this.config.siteId}`, {
+          method: "GET",
+          mode: "cors"
+        });
+        if (response.ok) {
+          const data = await response.json();
+          this.isOverLimit = data.isOverLimit === true;
+        } else {
+          this.isOverLimit = false;
+        }
+      } catch (error) {
+        console.debug("Failed to check limit status:", error);
+        this.isOverLimit = false;
       }
     }
     async initializeSessionReplay() {
@@ -293,6 +316,10 @@
       }
     }
     async sendSessionReplayBatch(batch) {
+      if (this.isOverLimit === true) {
+        console.debug("Site is over limit, skipping session replay");
+        return;
+      }
       try {
         if (this.config.apiKey) {
           batch.apiKey = this.config.apiKey;
@@ -345,6 +372,10 @@
       return payload;
     }
     async sendTrackingData(payload) {
+      if (this.isOverLimit === true) {
+        console.debug("Site is over limit, skipping tracking");
+        return;
+      }
       try {
         await fetch(`${this.config.analyticsHost}/track`, {
           method: "POST",
