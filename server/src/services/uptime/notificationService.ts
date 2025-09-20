@@ -36,7 +36,12 @@ interface Incident {
 export class NotificationService {
   private logger = createServiceLogger("notification-service");
 
-  async sendTestNotification(channel: NotificationChannel, monitor: Monitor, incident: Incident, eventType: "down" | "recovery"): Promise<void> {
+  async sendTestNotification(
+    channel: NotificationChannel,
+    monitor: Monitor,
+    incident: Incident,
+    eventType: "down" | "recovery"
+  ): Promise<void> {
     try {
       if (channel.type === "email" && channel.config.email) {
         await this.sendEmailNotification(channel.config.email, monitor, incident, eventType);
@@ -48,7 +53,7 @@ export class NotificationService {
           channel.config.slackChannel,
           monitor,
           incident,
-          eventType,
+          eventType
         );
       } else if (channel.type === "sms" && channel.config.phoneNumber) {
         await this.sendSMSNotification(channel.config.phoneNumber, monitor, incident, eventType);
@@ -65,12 +70,12 @@ export class NotificationService {
       const channels = await db.query.notificationChannels.findMany({
         where: and(
           eq(notificationChannels.organizationId, monitor.organizationId),
-          eq(notificationChannels.enabled, true),
+          eq(notificationChannels.enabled, true)
         ),
       });
 
       // Filter channels that should receive notifications for this monitor
-      const relevantChannels = channels.filter((channel) => {
+      const relevantChannels = channels.filter(channel => {
         // Check if channel triggers for this event type
         if (!channel.triggerEvents?.includes(eventType)) {
           return false;
@@ -87,7 +92,7 @@ export class NotificationService {
 
       // Check cooldown for each channel
       const now = new Date();
-      const channelsToNotify = relevantChannels.filter((channel) => {
+      const channelsToNotify = relevantChannels.filter(channel => {
         if (!channel.lastNotifiedAt) return true;
 
         const lastNotified = new Date(channel.lastNotifiedAt);
@@ -108,7 +113,7 @@ export class NotificationService {
               channel.config.slackChannel,
               monitor,
               incident,
-              eventType,
+              eventType
             );
           } else if (channel.type === "sms" && channel.config.phoneNumber) {
             await this.sendSMSNotification(channel.config.phoneNumber, monitor, incident, eventType);
@@ -132,7 +137,7 @@ export class NotificationService {
     email: string,
     monitor: Monitor,
     incident: Incident,
-    eventType: "down" | "recovery",
+    eventType: "down" | "recovery"
   ): Promise<void> {
     const monitorName =
       monitor.name || monitor.httpConfig?.url || `${monitor.tcpConfig?.host}:${monitor.tcpConfig?.port}`;
@@ -185,7 +190,7 @@ export class NotificationService {
     webhookUrl: string,
     monitor: Monitor,
     incident: Incident,
-    eventType: "down" | "recovery",
+    eventType: "down" | "recovery"
   ): Promise<void> {
     const monitorName =
       monitor.name || monitor.httpConfig?.url || `${monitor.tcpConfig?.host}:${monitor.tcpConfig?.port}`;
@@ -270,7 +275,7 @@ export class NotificationService {
     slackChannel: string | undefined,
     monitor: Monitor,
     incident: Incident,
-    eventType: "down" | "recovery",
+    eventType: "down" | "recovery"
   ): Promise<void> {
     const monitorName =
       monitor.name || monitor.httpConfig?.url || `${monitor.tcpConfig?.host}:${monitor.tcpConfig?.port}`;
@@ -365,7 +370,7 @@ export class NotificationService {
     phoneNumber: string,
     monitor: Monitor,
     incident: Incident,
-    eventType: "down" | "recovery",
+    eventType: "down" | "recovery"
   ): Promise<void> {
     const monitorName =
       monitor.name || monitor.httpConfig?.url || `${monitor.tcpConfig?.host}:${monitor.tcpConfig?.port}`;
@@ -376,16 +381,13 @@ export class NotificationService {
       message = `🔴 ALERT: ${monitorName} is DOWN in ${region}`;
       if (incident.lastError) {
         // Truncate error to fit SMS limits
-        const truncatedError = incident.lastError.length > 50 
-          ? incident.lastError.substring(0, 47) + "..."
-          : incident.lastError;
+        const truncatedError =
+          incident.lastError.length > 50 ? incident.lastError.substring(0, 47) + "..." : incident.lastError;
         message += ` - ${truncatedError}`;
       }
     } else {
       const duration = incident.endTime
-        ? DateTime.fromSQL(incident.endTime)
-            .diff(DateTime.fromSQL(incident.startTime))
-            .toFormat("h'h' m'm'")
+        ? DateTime.fromSQL(incident.endTime).diff(DateTime.fromSQL(incident.startTime)).toFormat("h'h' m'm'")
         : "Unknown";
       message = `✅ RECOVERY: ${monitorName} is UP in ${region} after ${duration} downtime`;
     }
@@ -396,7 +398,7 @@ export class NotificationService {
     }
 
     const result = await sendSMS(phoneNumber, message);
-    
+
     if (!result.success) {
       throw new Error(result.error || "Failed to send SMS");
     }

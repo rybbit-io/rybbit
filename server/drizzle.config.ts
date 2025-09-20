@@ -9,7 +9,7 @@ export default defineConfig({
   dialect: "postgresql",
   dbCredentials: {
     host: process.env.POSTGRES_HOST || "postgres",
-    port: process.env.POSTGRES_PORT || 5432,
+    port: parseInt(process.env.POSTGRES_PORT || "5432"),
     database: process.env.POSTGRES_DB || "analytics",
     user: process.env.POSTGRES_USER || "frog",
     password: process.env.POSTGRES_PASSWORD || "frog",

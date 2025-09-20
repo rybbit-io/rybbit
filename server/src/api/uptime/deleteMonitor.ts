@@ -43,7 +43,7 @@ export async function deleteMonitor(request: FastifyRequest<DeleteMonitorParams>
     await uptimeService.onMonitorDeleted(Number(monitorId));
 
     // Delete monitor and related records in a transaction
-    await db.transaction(async (tx) => {
+    await db.transaction(async tx => {
       // Delete monitor status first
       await tx.delete(uptimeMonitorStatus).where(eq(uptimeMonitorStatus.monitorId, Number(monitorId)));
 

@@ -19,31 +19,31 @@ function getMobileAppCategory(appId: string): { type: string; isPaid: boolean } 
   const appIdLower = appId.toLowerCase();
 
   // Check against our defined app ID lists
-  if (socialAppIds.some((id) => appIdLower.includes(id))) {
+  if (socialAppIds.some(id => appIdLower.includes(id))) {
     return { type: "Organic Social", isPaid: false };
   }
 
-  if (videoAppIds.some((id) => appIdLower.includes(id))) {
+  if (videoAppIds.some(id => appIdLower.includes(id))) {
     return { type: "Organic Video", isPaid: false };
   }
 
-  if (searchAppIds.some((id) => appIdLower.includes(id))) {
+  if (searchAppIds.some(id => appIdLower.includes(id))) {
     return { type: "Organic Search", isPaid: false };
   }
 
-  if (emailAppIds.some((id) => appIdLower.includes(id))) {
+  if (emailAppIds.some(id => appIdLower.includes(id))) {
     return { type: "Email", isPaid: false };
   }
 
-  if (shoppingAppIds.some((id) => appIdLower.includes(id))) {
+  if (shoppingAppIds.some(id => appIdLower.includes(id))) {
     return { type: "Organic Shopping", isPaid: false };
   }
 
-  if (newsAppIds.some((id) => appIdLower.includes(id))) {
+  if (newsAppIds.some(id => appIdLower.includes(id))) {
     return { type: "News", isPaid: false };
   }
 
-  if (productivityAppIds.some((id) => appIdLower.includes(id))) {
+  if (productivityAppIds.some(id => appIdLower.includes(id))) {
     return { type: "Productivity", isPaid: false };
   }
 
@@ -99,7 +99,7 @@ function isSelfReferral(referringDomain: string, hostname: string): boolean {
 function getChannelDetails(
   referrer: string,
   querystring: string,
-  hostname?: string,
+  hostname?: string
 ): {
   channel: string;
   sourceType: string;

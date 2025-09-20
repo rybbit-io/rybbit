@@ -599,16 +599,7 @@ const emailSources = [
   "campaign",
 ];
 
-const smsSources = [
-  "sms",
-  "text",
-  "twilio",
-  "message",
-  "whatsapp",
-  "viber",
-  "line",
-  "imessage",
-];
+const smsSources = ["sms", "text", "twilio", "message", "whatsapp", "viber", "line", "imessage"];
 
 // Medium types
 const socialMediums = [
@@ -1100,14 +1091,10 @@ export function getSourceType(source: string): string {
   const lowerSource = source.toLowerCase();
 
   // Check domains first
-  if (searchDomains.some((domain) => lowerSource.includes(domain)))
-    return "search";
-  if (socialDomains.some((domain) => lowerSource.includes(domain)))
-    return "social";
-  if (videoDomains.some((domain) => lowerSource.includes(domain)))
-    return "video";
-  if (shoppingDomains.some((domain) => lowerSource.includes(domain)))
-    return "shopping";
+  if (searchDomains.some(domain => lowerSource.includes(domain))) return "search";
+  if (socialDomains.some(domain => lowerSource.includes(domain))) return "social";
+  if (videoDomains.some(domain => lowerSource.includes(domain))) return "video";
+  if (shoppingDomains.some(domain => lowerSource.includes(domain))) return "shopping";
 
   // Check source names
   if (searchSources.includes(lowerSource)) return "search";
@@ -1185,8 +1172,5 @@ export function isPaidTraffic(medium: string, source: string): boolean {
     "pinterest ads",
   ];
 
-  return (
-    paidMediums.some((pm) => lowerMedium.includes(pm)) ||
-    paidSources.some((ps) => lowerSource.includes(ps))
-  );
+  return paidMediums.some(pm => lowerMedium.includes(pm)) || paidSources.some(ps => lowerSource.includes(ps));
 }

@@ -20,7 +20,7 @@ export class SessionReplayQueryService {
       offset?: number;
       userId?: string;
       minDuration?: number;
-    } & Pick<FilterParams, "startDate" | "endDate" | "timeZone" | "pastMinutesStart" | "pastMinutesEnd" | "filters">,
+    } & Pick<FilterParams, "startDate" | "endDate" | "timeZone" | "pastMinutesStart" | "pastMinutesEnd" | "filters">
   ): Promise<SessionReplayListItem[]> {
     const { limit = 50, offset = 0, userId, minDuration } = options;
 
@@ -164,7 +164,7 @@ export class SessionReplayQueryService {
 
     // Group events by batch key for efficient R2 retrieval
     const eventsByBatch = new Map<string | null, EventRow[]>();
-    eventsResults.forEach((event) => {
+    eventsResults.forEach(event => {
       const key = event.event_data_key;
       if (!eventsByBatch.has(key)) {
         eventsByBatch.set(key, []);

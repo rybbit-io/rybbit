@@ -7,11 +7,7 @@ if (IS_CLOUD) {
   resend = new Resend(process.env.RESEND_API_KEY);
 }
 
-export const sendEmail = async (
-  email: string,
-  subject: string,
-  html: string
-) => {
+export const sendEmail = async (email: string, subject: string, html: string) => {
   if (!resend) {
     return;
     // not sure how to handle self hosted instances without resend
@@ -158,9 +154,5 @@ export const sendInvitationEmail = async (
       </body>
     </html>
   `;
-  await sendEmail(
-    email,
-    "You're Invited to Join an Organization on Rybbit",
-    html
-  );
+  await sendEmail(email, "You're Invited to Join an Organization on Rybbit", html);
 };

@@ -1,19 +1,9 @@
 "use client";
 
-import {
-  FunnelStep,
-  useGetFunnel,
-  useSaveFunnel,
-} from "../../../../api/analytics/funnels/useGetFunnel";
+import { FunnelStep, useGetFunnel, useSaveFunnel } from "../../../../api/analytics/funnels/useGetFunnel";
 import { Time } from "@/components/DateSelector/types";
 import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Plus } from "lucide-react";
 import { DateTime } from "luxon";
 import { useState } from "react";
@@ -54,7 +44,7 @@ export function CreateFunnelDialog() {
     error,
     isLoading: isPending,
   } = useGetFunnel(
-    steps.some((step) => !step.value)
+    steps.some(step => !step.value)
       ? undefined
       : {
           steps,
@@ -66,16 +56,12 @@ export function CreateFunnelDialog() {
   );
 
   // Funnel save mutation
-  const {
-    mutate: saveFunnel,
-    isPending: isSaving,
-    error: saveError,
-  } = useSaveFunnel();
+  const { mutate: saveFunnel, isPending: isSaving, error: saveError } = useSaveFunnel();
 
   // Query funnel without saving
   const handleQueryFunnel = () => {
     // Validate steps have values
-    const hasEmptySteps = steps.some((step) => !step.value);
+    const hasEmptySteps = steps.some(step => !step.value);
     if (hasEmptySteps) {
       alert("All steps must have values");
       return;
@@ -91,7 +77,7 @@ export function CreateFunnelDialog() {
     }
 
     // Validate steps have values
-    const hasEmptySteps = steps.some((step) => !step.value);
+    const hasEmptySteps = steps.some(step => !step.value);
     if (hasEmptySteps) {
       alert("All steps must have values");
       return;
@@ -109,21 +95,15 @@ export function CreateFunnelDialog() {
       endDate = time.day;
     } else if (time.mode === "week") {
       startDate = time.week;
-      const endDateValue = DateTime.fromISO(time.week)
-        .plus({ days: 6 })
-        .toISODate();
+      const endDateValue = DateTime.fromISO(time.week).plus({ days: 6 }).toISODate();
       endDate = endDateValue || DateTime.now().toISODate();
     } else if (time.mode === "month") {
       startDate = time.month;
-      const endDateValue = DateTime.fromISO(time.month)
-        .endOf("month")
-        .toISODate();
+      const endDateValue = DateTime.fromISO(time.month).endOf("month").toISODate();
       endDate = endDateValue || DateTime.now().toISODate();
     } else if (time.mode === "year") {
       startDate = time.year;
-      const endDateValue = DateTime.fromISO(time.year)
-        .endOf("year")
-        .toISODate();
+      const endDateValue = DateTime.fromISO(time.year).endOf("year").toISODate();
       endDate = endDateValue || DateTime.now().toISODate();
     } else {
       // Fall back to last 7 days for all-time
@@ -147,7 +127,7 @@ export function CreateFunnelDialog() {
           // Optional: Show success message
           toast?.success("Funnel saved successfully");
         },
-        onError: (error) => {
+        onError: error => {
           // Show error but don't close dialog
           toast?.error(`Failed to save funnel: ${error.message}`);
         },

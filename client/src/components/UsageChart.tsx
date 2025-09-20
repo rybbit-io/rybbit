@@ -14,12 +14,7 @@ interface UsageChartProps {
   timeZone?: string;
 }
 
-export function UsageChart({
-  organizationId,
-  startDate,
-  endDate,
-  timeZone = "UTC",
-}: UsageChartProps) {
+export function UsageChart({ organizationId, startDate, endDate, timeZone = "UTC" }: UsageChartProps) {
   const { width } = useWindowSize();
 
   // Fetch the data inside the component
@@ -35,7 +30,7 @@ export function UsageChart({
 
   const formattedData =
     data?.data
-      ?.map((e) => {
+      ?.map(e => {
         // Parse timestamp properly - now it's a date instead of datetime
         const timestamp = DateTime.fromSQL(e.event_date).toUTC();
 
@@ -50,7 +45,7 @@ export function UsageChart({
           currentTime: timestamp,
         };
       })
-      .filter((e) => e !== null) || [];
+      .filter(e => e !== null) || [];
 
   const chartData = [
     {
@@ -59,14 +54,12 @@ export function UsageChart({
     },
   ];
 
-  const maxValue = Math.max(...formattedData.map((d) => d.y), 1);
+  const maxValue = Math.max(...formattedData.map(d => d.y), 1);
 
   if (isLoading) {
     return (
       <div className="h-48 flex items-center justify-center">
-        <div className="text-sm text-muted-foreground">
-          Loading usage data...
-        </div>
+        <div className="text-sm text-muted-foreground">Loading usage data...</div>
       </div>
     );
   }
@@ -74,9 +67,7 @@ export function UsageChart({
   if (error) {
     return (
       <div className="h-48 flex items-center justify-center">
-        <div className="text-sm text-muted-foreground">
-          Failed to load usage data
-        </div>
+        <div className="text-sm text-muted-foreground">Failed to load usage data</div>
       </div>
     );
   }
@@ -112,7 +103,7 @@ export function UsageChart({
           tickRotation: 0,
           truncateTickAt: 0,
           tickValues: Math.min(maxTicks, 10),
-          format: (value) => {
+          format: value => {
             const dt = DateTime.fromJSDate(value).setLocale(userLocale);
             return dt.toFormat("MMM d");
           },

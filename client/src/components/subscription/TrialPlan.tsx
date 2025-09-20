@@ -2,25 +2,14 @@ import { ArrowRight, Clock } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { Alert, AlertDescription, AlertTitle } from "../ui/alert";
 import { Button } from "../ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "../ui/card";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "../ui/card";
 import { Progress } from "../ui/progress";
 import { TRIAL_EVENT_LIMIT } from "../../lib/subscription/constants";
 import { formatDate } from "../../lib/subscription/planUtils";
 import { useStripeSubscription } from "../../lib/subscription/useStripeSubscription";
 
 export function TrialPlan() {
-  const {
-    data: activeSubscription,
-    isLoading,
-    error: subscriptionError,
-  } = useStripeSubscription();
+  const { data: activeSubscription, isLoading, error: subscriptionError } = useStripeSubscription();
 
   const router = useRouter();
 
@@ -28,9 +17,7 @@ export function TrialPlan() {
 
   const currentUsage = activeSubscription?.monthlyEventCount || 0;
   const daysRemaining = activeSubscription?.trialDaysRemaining || 0;
-  const trialEndDate = activeSubscription?.currentPeriodEnd
-    ? new Date(activeSubscription.currentPeriodEnd)
-    : null;
+  const trialEndDate = activeSubscription?.currentPeriodEnd ? new Date(activeSubscription.currentPeriodEnd) : null;
 
   return (
     <div className="space-y-6">
@@ -39,10 +26,7 @@ export function TrialPlan() {
           <CardTitle className="flex items-center">
             Trial Plan <Clock className="ml-2 h-5 w-5 text-blue-500" />
           </CardTitle>
-          <CardDescription>
-            You are currently on a 14-day free trial with up to 1,000,000
-            events.
-          </CardDescription>
+          <CardDescription>You are currently on a 14-day free trial with up to 1,000,000 events.</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="space-y-6 p-2">
@@ -56,10 +40,7 @@ export function TrialPlan() {
                     {trialEndDate && <> on {formatDate(trialEndDate)}</>}
                   </>
                 ) : (
-                  <>
-                    Your trial ends today. Subscribe to continue tracking visits
-                    again.
-                  </>
+                  <>Your trial ends today. Subscribe to continue tracking visits again.</>
                 )}
               </AlertDescription>
             </Alert>
@@ -71,16 +52,10 @@ export function TrialPlan() {
                   <div className="flex justify-between mb-1">
                     <span className="text-sm">Events</span>
                     <span className="text-sm">
-                      {currentUsage.toLocaleString()} /{" "}
-                      {TRIAL_EVENT_LIMIT.toLocaleString()}
+                      {currentUsage.toLocaleString()} / {TRIAL_EVENT_LIMIT.toLocaleString()}
                     </span>
                   </div>
-                  <Progress
-                    value={Math.min(
-                      (currentUsage / TRIAL_EVENT_LIMIT) * 100,
-                      100
-                    )}
-                  />
+                  <Progress value={Math.min((currentUsage / TRIAL_EVENT_LIMIT) * 100, 100)} />
                 </div>
               </div>
             </div>

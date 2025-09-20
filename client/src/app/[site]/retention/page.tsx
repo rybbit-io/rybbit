@@ -127,7 +127,7 @@ export default function RetentionPage() {
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              {RANGE_OPTIONS.map((option) => (
+              {RANGE_OPTIONS.map(option => (
                 <SelectItem key={option.value} value={option.value}>
                   {option.label}
                 </SelectItem>
@@ -217,7 +217,7 @@ export default function RetentionPage() {
                     <div className="p-2 text-sm font-semibold bg-neutral-900 text-neutral-100 text-center sticky left-0 z-10 border-b border-r border-neutral-700">
                       Cohort
                     </div>
-                    {periodHeaders.map((header) => (
+                    {periodHeaders.map(header => (
                       <div
                         key={header}
                         className="p-2 text-sm bg-neutral-900 text-neutral-100 text-center border-b border-neutral-700"
@@ -227,7 +227,7 @@ export default function RetentionPage() {
                     ))}
 
                     {/* Data Rows */}
-                    {cohortKeys.map((cohortPeriod) => (
+                    {cohortKeys.map(cohortPeriod => (
                       <Fragment key={cohortPeriod}>
                         {/* Cohort Info Cell */}
                         <div className="py-2 px-2 bg-neutral-900 text-sm sticky left-0 z-10 border-r border-neutral-800">

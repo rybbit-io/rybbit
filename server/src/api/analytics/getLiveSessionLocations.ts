@@ -31,9 +31,7 @@ WITH stuff AS (
         events
     WHERE
         site_id = {site:Int32}
-        AND timestamp > now() - interval ${SqlString.escape(
-          Number(req.query.time)
-        )} minute
+        AND timestamp > now() - interval ${SqlString.escape(Number(req.query.time))} minute
     GROUP BY
         session_id
 )

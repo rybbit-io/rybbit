@@ -39,10 +39,7 @@ export function usePaginatedSingleCol({
   return useQuery({
     queryKey: [parameter, time, site, filters, limit, page, additionalFilters],
     queryFn: async () => {
-      const response = await authedFetch<{ data: PaginatedResponse }>(
-        `/single-col/${site}`,
-        queryParams
-      );
+      const response = await authedFetch<{ data: PaginatedResponse }>(`/single-col/${site}`, queryParams);
       return response.data;
     },
     staleTime: 60_000,

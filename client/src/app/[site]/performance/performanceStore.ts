@@ -11,11 +11,9 @@ type PerformanceStore = {
   setSelectedPerformanceMetric: (metric: PerformanceMetric) => void;
 };
 
-export const usePerformanceStore = create<PerformanceStore>((set) => ({
+export const usePerformanceStore = create<PerformanceStore>(set => ({
   selectedPercentile: "p90",
-  setSelectedPercentile: (percentile) =>
-    set({ selectedPercentile: percentile }),
+  setSelectedPercentile: percentile => set({ selectedPercentile: percentile }),
   selectedPerformanceMetric: "lcp",
-  setSelectedPerformanceMetric: (metric) =>
-    set({ selectedPerformanceMetric: metric }),
+  setSelectedPerformanceMetric: metric => set({ selectedPerformanceMetric: metric }),
 }));

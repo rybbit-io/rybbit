@@ -1,11 +1,7 @@
 "use client";
 
 import { Badge } from "@/components/ui/badge";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { ExternalLink, FileText, Laptop, MousePointerClick, Smartphone } from "lucide-react";
 import { DateTime } from "luxon";
 import Link from "next/link";
@@ -53,9 +49,7 @@ export function EventLogItem({ event }: EventLogItemProps) {
   const isPageview = event.type === "pageview";
   const isOutbound = event.type === "outbound";
 
-  const fullPath = `https://${event.hostname}${event.pathname}${
-    event.querystring ? `${event.querystring}` : ""
-  }`;
+  const fullPath = `https://${event.hostname}${event.pathname}${event.querystring ? `${event.querystring}` : ""}`;
 
   // Parse event properties if they exist
   let eventProperties: Record<string, any> = {};
@@ -89,37 +83,23 @@ export function EventLogItem({ event }: EventLogItemProps) {
             <div className="min-w-0 max-w-[40%]">
               {isPageview ? (
                 <Link href={fullPath} target="_blank" rel="noopener noreferrer">
-                  <div
-                    className="text-sm truncate hover:underline"
-                    title={event.pathname}
-                  >
-                    {truncatePath(
-                      `${event.pathname}${
-                        event.querystring ? `${event.querystring}` : ""
-                      }`
-                    )}
+                  <div className="text-sm truncate hover:underline" title={event.pathname}>
+                    {truncatePath(`${event.pathname}${event.querystring ? `${event.querystring}` : ""}`)}
                   </div>
                 </Link>
               ) : isOutbound ? (
                 // For outbound events, show the destination URL from properties
                 eventProperties.url ? (
                   <Link href={eventProperties.url} target="_blank" rel="noopener noreferrer">
-                    <div
-                      className="text-sm truncate hover:underline text-purple-400"
-                      title={eventProperties.url}
-                    >
+                    <div className="text-sm truncate hover:underline text-purple-400" title={eventProperties.url}>
                       {truncatePath(eventProperties.url)}
                     </div>
                   </Link>
                 ) : (
-                  <div className="text-sm font-medium truncate text-purple-400">
-                    Outbound Link
-                  </div>
+                  <div className="text-sm font-medium truncate text-purple-400">Outbound Link</div>
                 )
               ) : (
-                <div className="text-sm font-medium truncate">
-                  {event.event_name}
-                </div>
+                <div className="text-sm font-medium truncate">{event.event_name}</div>
               )}
             </div>
 
@@ -170,10 +150,7 @@ export function EventLogItem({ event }: EventLogItemProps) {
             </div>
 
             {/* User ID */}
-            <Link
-              href={`/${site}/user/${event.user_id}`}
-              className="flex-shrink-0"
-            >
+            <Link href={`/${site}/user/${event.user_id}`} className="flex-shrink-0">
               <Tooltip>
                 <TooltipTrigger asChild>
                   <span className="text-sm font-mono text-neutral-400 hover:text-neutral-300">
@@ -188,9 +165,7 @@ export function EventLogItem({ event }: EventLogItemProps) {
           </div>
 
           {/* Timestamp (right-aligned) */}
-          <div className="text-sm flex-shrink-0 text-neutral-400 ml-auto">
-            {eventTime.toRelative()}
-          </div>
+          <div className="text-sm flex-shrink-0 text-neutral-400 ml-auto">{eventTime.toRelative()}</div>
         </div>
 
         {/* Bottom row with event properties */}
@@ -206,12 +181,12 @@ export function EventLogItem({ event }: EventLogItemProps) {
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <span className="truncate">
-                      {(typeof value === 'object') ? JSON.stringify(value) : String(value)}
+                      {typeof value === "object" ? JSON.stringify(value) : String(value)}
                     </span>
                   </TooltipTrigger>
                   <TooltipContent>
                     <span className="max-w-7xl">
-                      {(typeof value === 'object') ? JSON.stringify(value) : String(value)}
+                      {typeof value === "object" ? JSON.stringify(value) : String(value)}
                     </span>
                   </TooltipContent>
                 </Tooltip>
@@ -256,15 +231,13 @@ export const EventLogItemSkeleton = memo(() => {
         {/* Bottom row skeleton (properties) - show randomly */}
         {Math.random() > 0.5 && (
           <div className="flex flex-wrap gap-1 mt-1 ml-6">
-            {Array.from({ length: Math.floor(Math.random() * 4) + 1 }).map(
-              (_, i) => (
-                <div
-                  key={i}
-                  className="h-5 bg-neutral-800 rounded animate-pulse"
-                  style={{ width: `${Math.random() * 60 + 40}px` }}
-                ></div>
-              )
-            )}
+            {Array.from({ length: Math.floor(Math.random() * 4) + 1 }).map((_, i) => (
+              <div
+                key={i}
+                className="h-5 bg-neutral-800 rounded animate-pulse"
+                style={{ width: `${Math.random() * 60 + 40}px` }}
+              ></div>
+            ))}
           </div>
         )}
       </div>

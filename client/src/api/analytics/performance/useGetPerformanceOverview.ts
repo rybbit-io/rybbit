@@ -22,13 +22,7 @@ export type GetPerformanceOverviewResponse = {
 
 type PeriodTime = "current" | "previous";
 
-export function useGetPerformanceOverview({
-  periodTime,
-  site,
-}: {
-  periodTime?: PeriodTime;
-  site?: number | string;
-}) {
+export function useGetPerformanceOverview({ periodTime, site }: { periodTime?: PeriodTime; site?: number | string }) {
   const { time, previousTime, filters } = useStore();
   const { selectedPercentile } = usePerformanceStore();
   const timeToUse = periodTime === "previous" ? previousTime : time;
@@ -39,18 +33,9 @@ export function useGetPerformanceOverview({
   });
 
   return useQuery({
-    queryKey: [
-      "performance-overview",
-      timeToUse,
-      site,
-      filters,
-      selectedPercentile,
-    ],
+    queryKey: ["performance-overview", timeToUse, site, filters, selectedPercentile],
     queryFn: () => {
-      return authedFetch<{ data: GetPerformanceOverviewResponse }>(
-        `/performance/overview/${site}`,
-        queryParams
-      );
+      return authedFetch<{ data: GetPerformanceOverviewResponse }>(`/performance/overview/${site}`, queryParams);
     },
     staleTime: Infinity,
     placeholderData: (_, query: any) => {

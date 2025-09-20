@@ -15,10 +15,7 @@ export function Footer() {
       <Link href="https://rybbit.io/docs" className="hover:text-neutral-300">
         Docs
       </Link>
-      <Link
-        href="https://github.com/rybbit-io/rybbit"
-        className="hover:text-neutral-300"
-      >
+      <Link href="https://github.com/rybbit-io/rybbit" className="hover:text-neutral-300">
         Github
       </Link>
     </div>

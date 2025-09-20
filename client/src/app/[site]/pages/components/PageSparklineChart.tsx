@@ -14,12 +14,7 @@ interface PageSparklineChartProps {
   isLoading: boolean;
 }
 
-export function PageSparklineChart({
-  data,
-  isHovering,
-  pageTitle,
-  isLoading,
-}: PageSparklineChartProps) {
+export function PageSparklineChart({ data, isHovering, pageTitle, isLoading }: PageSparklineChartProps) {
   if (isLoading) {
     return (
       <div className="h-full w-full flex items-center justify-center animate-pulse">
@@ -30,11 +25,11 @@ export function PageSparklineChart({
 
   // Format the chart data
   const sparklineData = data?.data
-    ?.filter((e) => {
+    ?.filter(e => {
       // Filter out dates from the future
       return DateTime.fromSQL(e.time).toUTC() <= DateTime.now();
     })
-    .map((e) => ({
+    .map(e => ({
       x: DateTime.fromSQL(e.time).toUTC().toFormat("yyyy-MM-dd HH:mm:ss"),
       y: e.sessions || 0,
       time: DateTime.fromSQL(e.time).toUTC(),
@@ -104,9 +99,7 @@ export function PageSparklineChart({
         return (
           <div className="text-sm bg-neutral-900 border border-neutral-700 p-2 rounded-md shadow-md">
             <div className="flex items-center justify-between gap-3">
-              <div className="text-neutral-200">
-                {formatDateTime(timestamp)}
-              </div>
+              <div className="text-neutral-200">{formatDateTime(timestamp)}</div>
               <div className="font-medium">{value.toLocaleString()}</div>
             </div>
           </div>

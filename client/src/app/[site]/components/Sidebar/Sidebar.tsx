@@ -4,28 +4,27 @@ import {
   ChartColumnDecreasing,
   Earth,
   File,
+  Funnel,
   Gauge,
   LayoutDashboard,
-  LayoutGrid,
   Map,
-  Target,
   MousePointerClick,
   Rewind,
   Settings,
   Split,
+  Target,
   User,
   Video,
-  Funnel,
 } from "lucide-react";
 import { usePathname } from "next/navigation";
+import { Suspense } from "react";
 import { useGetSite } from "../../../../api/admin/sites";
 import { Sidebar as SidebarComponents } from "../../../../components/sidebar/Sidebar";
 import { SiteSettings } from "../../../../components/SiteSettings/SiteSettings";
 import { authClient } from "../../../../lib/auth";
 import { IS_CLOUD } from "../../../../lib/const";
-import { SiteSelector } from "./SiteSelector";
 import { useEmbedablePage } from "../../utils";
-import { Suspense } from "react";
+import { SiteSelector } from "./SiteSelector";
 
 function SidebarContent() {
   const session = authClient.useSession();

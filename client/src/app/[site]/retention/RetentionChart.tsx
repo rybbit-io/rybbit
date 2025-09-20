@@ -4,10 +4,7 @@ import { nivoTheme } from "@/lib/nivo";
 import { ResponsiveLine } from "@nivo/line";
 import { DateTime } from "luxon";
 import { useMemo } from "react";
-import {
-  ProcessedRetentionData,
-  RetentionMode,
-} from "../../../api/analytics/useGetRetention";
+import { ProcessedRetentionData, RetentionMode } from "../../../api/analytics/useGetRetention";
 import { Skeleton } from "../../../components/ui/skeleton";
 
 interface RetentionChartProps {
@@ -99,7 +96,7 @@ export function RetentionChart({ data, isLoading, mode }: RetentionChartProps) {
 
       return {
         id: formattedDate,
-        data: points.filter((point) => point.y !== null), // Remove null points
+        data: points.filter(point => point.y !== null), // Remove null points
         color: cohortColors[index % cohortColors.length],
       };
     });
@@ -112,9 +109,7 @@ export function RetentionChart({ data, isLoading, mode }: RetentionChartProps) {
   if (!data || chartData.length === 0) {
     return (
       <div className="h-[400px] flex items-center justify-center">
-        <div className="text-neutral-400 text-sm">
-          No retention data available
-        </div>
+        <div className="text-neutral-400 text-sm">No retention data available</div>
       </div>
     );
   }
@@ -122,11 +117,7 @@ export function RetentionChart({ data, isLoading, mode }: RetentionChartProps) {
   // Calculate max Y value with a little headroom
   const maxY = Math.min(
     100,
-    Math.max(
-      ...chartData.flatMap((series) =>
-        series.data.map((d) => (typeof d.y === "number" ? d.y : 0))
-      )
-    ) * 1.1
+    Math.max(...chartData.flatMap(series => series.data.map(d => (typeof d.y === "number" ? d.y : 0)))) * 1.1
   );
 
   return (
@@ -152,13 +143,13 @@ export function RetentionChart({ data, isLoading, mode }: RetentionChartProps) {
           tickPadding: 5,
           tickRotation: 0,
           tickValues: chartData.length,
-          format: (value) => `${value}`,
+          format: value => `${value}`,
         }}
         axisLeft={{
           tickSize: 5,
           tickPadding: 5,
           tickRotation: 0,
-          format: (value) => `${value}%`,
+          format: value => `${value}%`,
         }}
         enableGridX={true}
         gridXValues={Array.from({ length: data.maxPeriods + 1 }, (_, i) => i)}
@@ -197,12 +188,9 @@ export function RetentionChart({ data, isLoading, mode }: RetentionChartProps) {
           const xValue = point.data.x as number;
 
           // Find the original cohort date by matching the formatted label
-          const cohortEntry = chartData.find(
-            (series) => series.id === point.seriesId
-          );
+          const cohortEntry = chartData.find(series => series.id === point.seriesId);
           const cohortIndex = cohortEntry ? chartData.indexOf(cohortEntry) : -1;
-          const originalCohortKey =
-            cohortIndex >= 0 && cohortKeys && cohortKeys[cohortIndex];
+          const originalCohortKey = cohortIndex >= 0 && cohortKeys && cohortKeys[cohortIndex];
 
           // Format full date for tooltip
           let cohortDateDisplay = point.seriesId;
@@ -214,33 +202,25 @@ export function RetentionChart({ data, isLoading, mode }: RetentionChartProps) {
               const endDate = startDate.plus({ days: 6 });
 
               if (startDate.month === endDate.month) {
-                cohortDateDisplay = `${startDate.toFormat("MMM dd"
-                )} - ${endDate.toFormat("dd, yyyy")}`;
+                cohortDateDisplay = `${startDate.toFormat("MMM dd")} - ${endDate.toFormat("dd, yyyy")}`;
               } else if (startDate.year === endDate.year) {
-                cohortDateDisplay = `${startDate.toFormat("MMM dd"
-                )} - ${endDate.toFormat("MMM dd, yyyy")}`;
+                cohortDateDisplay = `${startDate.toFormat("MMM dd")} - ${endDate.toFormat("MMM dd, yyyy")}`;
               } else {
-                cohortDateDisplay = `${startDate.toFormat("MMM dd, yyyy"
-                )} - ${endDate.toFormat("MMM dd, yyyy")}`;
+                cohortDateDisplay = `${startDate.toFormat("MMM dd, yyyy")} - ${endDate.toFormat("MMM dd, yyyy")}`;
               }
             }
           }
 
           return (
             <div className="text-sm bg-neutral-850 p-2 rounded-md border border-neutral-800 shadow-md">
-              <div
-                className="font-medium mb-1"
-                style={{ color: point.seriesColor }}
-              >
+              <div className="font-medium mb-1" style={{ color: point.seriesColor }}>
                 Cohort: {cohortDateDisplay}
               </div>
               <div className="flex justify-between w-48 text-neutral-200">
                 <span>
                   {mode === "day" ? "Day" : "Week"} {xValue}
                 </span>
-                <span className="font-medium">
-                  {value !== null ? `${value.toFixed(1)}%` : "-"}
-                </span>
+                <span className="font-medium">{value !== null ? `${value.toFixed(1)}%` : "-"}</span>
               </div>
             </div>
           );

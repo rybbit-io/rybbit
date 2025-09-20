@@ -38,7 +38,7 @@ const formSchema = z
     }),
   })
   .refine(
-    (data) => {
+    data => {
       if (data.goalType === "path") {
         return !!data.config.pathPattern;
       } else if (data.goalType === "event") {
@@ -81,13 +81,13 @@ export default function GoalFormModal({ siteId, goal, trigger }: GoalFormModalPr
 
   // Transform data into SuggestionOption format
   const pathSuggestions: SuggestionOption[] =
-    pathsData?.data?.map((item) => ({
+    pathsData?.data?.map(item => ({
       value: item.value,
       label: item.value,
     })) || [];
 
   const eventSuggestions: SuggestionOption[] =
-    eventsData?.data?.map((item) => ({
+    eventsData?.data?.map(item => ({
       value: item.value,
       label: item.value,
     })) || [];
@@ -184,7 +184,7 @@ export default function GoalFormModal({ siteId, goal, trigger }: GoalFormModalPr
   return (
     <Dialog
       open={isOpen}
-      onOpenChange={(open) => {
+      onOpenChange={open => {
         setIsOpen(open);
         if (!open) {
           form.reset();

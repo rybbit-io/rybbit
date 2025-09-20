@@ -1,12 +1,7 @@
 import { FastifyRequest } from "fastify";
 import { FastifyReply } from "fastify";
 import { clickhouse } from "../../../db/clickhouse/clickhouse.js";
-import {
-  getTimeStatement,
-  processResults,
-  getFilterStatement,
-  patternToRegex,
-} from "../utils.js";
+import { getTimeStatement, processResults, getFilterStatement, patternToRegex } from "../utils.js";
 import { getUserHasAccessToSitePublic } from "../../../lib/auth-utils.js";
 import SqlString from "sqlstring";
 import { Filter } from "../types.js";
@@ -49,9 +44,7 @@ export async function getFunnel(
 
   // Validate request
   if (!steps || steps.length < 2) {
-    return reply
-      .status(400)
-      .send({ error: "At least 2 steps are required for a funnel" });
+    return reply.status(400).send({ error: "At least 2 steps are required for a funnel" });
   }
 
   // Check user access to site
@@ -70,48 +63,33 @@ export async function getFunnel(
     });
 
     // Get filter conditions using the existing utility function
-    const filterConditions =
-      filters && filters.length > 0
-        ? getFilterStatement(JSON.stringify(filters))
-        : "";
+    const filterConditions = filters && filters.length > 0 ? getFilterStatement(JSON.stringify(filters)) : "";
 
     // Build conditional statements for each step
-    const stepConditions = steps.map((step) => {
+    const stepConditions = steps.map(step => {
       if (step.type === "page") {
         // Use pattern matching for page paths to support wildcards
-        return `type = 'pageview' AND match(pathname, ${SqlString.escape(
-          patternToRegex(step.value)
-        )})`;
+        return `type = 'pageview' AND match(pathname, ${SqlString.escape(patternToRegex(step.value))})`;
       } else {
         // Start with the base event match condition
-        let eventClause = `type = 'custom_event' AND event_name = ${SqlString.escape(
-          step.value
-        )}`;
+        let eventClause = `type = 'custom_event' AND event_name = ${SqlString.escape(step.value)}`;
 
         // Add property matching if both key and value are provided
         if (step.eventPropertyKey && step.eventPropertyValue !== undefined) {
           // Access the sub-column directly for native JSON type
-          const propValueAccessor = `props.${SqlString.escapeId(
-            step.eventPropertyKey
-          )}`;
+          const propValueAccessor = `props.${SqlString.escapeId(step.eventPropertyKey)}`;
 
           // Comparison needs to handle the dynamic type returned
           // Let ClickHouse handle the comparison based on the provided value type
           if (typeof step.eventPropertyValue === "string") {
-            eventClause += ` AND toString(${propValueAccessor}) = ${SqlString.escape(
-              step.eventPropertyValue
-            )}`;
+            eventClause += ` AND toString(${propValueAccessor}) = ${SqlString.escape(step.eventPropertyValue)}`;
           } else if (typeof step.eventPropertyValue === "number") {
             // Use toFloat64 or toInt* depending on expected number type
-            eventClause += ` AND toFloat64OrNull(${propValueAccessor}) = ${SqlString.escape(
-              step.eventPropertyValue
-            )}`;
+            eventClause += ` AND toFloat64OrNull(${propValueAccessor}) = ${SqlString.escape(step.eventPropertyValue)}`;
           } else if (typeof step.eventPropertyValue === "boolean") {
             // Booleans might be stored as 0/1 or true/false in JSON
             // Comparing toUInt8 seems robust
-            eventClause += ` AND toUInt8OrNull(${propValueAccessor}) = ${
-              step.eventPropertyValue ? 1 : 0
-            }`;
+            eventClause += ` AND toUInt8OrNull(${propValueAccessor}) = ${step.eventPropertyValue ? 1 : 0}`;
           }
         }
 
@@ -218,8 +196,6 @@ export async function getFunnel(
     return reply.send({ data });
   } catch (error) {
     console.error("Error executing funnel query:", error);
-    return reply
-      .status(500)
-      .send({ error: "Failed to execute funnel analysis" });
+    return reply.status(500).send({ error: "Failed to execute funnel analysis" });
   }
 }

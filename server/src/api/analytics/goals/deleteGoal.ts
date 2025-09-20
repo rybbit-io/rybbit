@@ -25,10 +25,7 @@ export async function deleteGoal(
     }
 
     // Check user access to the site
-    const userHasAccessToSite = await getUserHasAccessToSite(
-      request,
-      goalToDelete.siteId.toString()
-    );
+    const userHasAccessToSite = await getUserHasAccessToSite(request, goalToDelete.siteId.toString());
 
     if (!userHasAccessToSite) {
       return reply.status(403).send({ error: "Forbidden" });

@@ -36,7 +36,7 @@ export default function GoalsPage() {
     },
     getPageCount: () => goalsData?.meta?.totalPages || 1,
     setPageIndex: (index: number) => {
-      setPagination((prev) => ({ ...prev, pageIndex: index }));
+      setPagination(prev => ({ ...prev, pageIndex: index }));
       // Scroll to top of page when changing pages
       window.scrollTo({
         top: 0,
@@ -45,13 +45,13 @@ export default function GoalsPage() {
     },
     previousPage: () => {
       if (pagination.pageIndex > 0) {
-        setPagination((prev) => ({ ...prev, pageIndex: prev.pageIndex - 1 }));
+        setPagination(prev => ({ ...prev, pageIndex: prev.pageIndex - 1 }));
         window.scrollTo({ top: 0, behavior: "smooth" });
       }
     },
     nextPage: () => {
       if (goalsData?.meta && pagination.pageIndex + 1 < goalsData.meta.totalPages) {
-        setPagination((prev) => ({ ...prev, pageIndex: prev.pageIndex + 1 }));
+        setPagination(prev => ({ ...prev, pageIndex: prev.pageIndex + 1 }));
         window.scrollTo({ top: 0, behavior: "smooth" });
       }
     },

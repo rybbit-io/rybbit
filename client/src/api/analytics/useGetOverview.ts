@@ -21,11 +21,7 @@ type UseGetOverviewOptions = {
     | { mode: "range"; startDate: string; endDate: string };
 };
 
-export function useGetOverview({
-  periodTime,
-  site,
-  overrideTime,
-}: UseGetOverviewOptions) {
+export function useGetOverview({ periodTime, site, overrideTime }: UseGetOverviewOptions) {
   const { time, previousTime, filters } = useStore();
 
   // Use overrideTime if provided, otherwise use store time
@@ -39,10 +35,7 @@ export function useGetOverview({
   return useQuery({
     queryKey,
     queryFn: () => {
-      return authedFetch<{ data: GetOverviewResponse }>(
-        `/overview/${site}`,
-        queryParams
-      );
+      return authedFetch<{ data: GetOverviewResponse }>(`/overview/${site}`, queryParams);
     },
     staleTime: 60_000,
     placeholderData: (_, query: any) => {

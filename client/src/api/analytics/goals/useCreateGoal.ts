@@ -22,20 +22,14 @@ export function useCreateGoal() {
   const queryClient = useQueryClient();
 
   return useMutation<CreateGoalResponse, Error, CreateGoalRequest>({
-    mutationFn: async (goalData) => {
+    mutationFn: async goalData => {
       try {
-        return await authedFetch<CreateGoalResponse>(
-          "/goal/create",
-          undefined,
-          {
-            method: "POST",
-            data: goalData,
-          }
-        );
+        return await authedFetch<CreateGoalResponse>("/goal/create", undefined, {
+          method: "POST",
+          data: goalData,
+        });
       } catch (error) {
-        throw new Error(
-          error instanceof Error ? error.message : "Failed to create goal"
-        );
+        throw new Error(error instanceof Error ? error.message : "Failed to create goal");
       }
     },
     onSuccess: (_, variables) => {

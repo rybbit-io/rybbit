@@ -1,6 +1,14 @@
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { ArrowRight, ChevronDown, ChevronRight, ExternalLink, FileText, MousePointerClick, TriangleAlert } from "lucide-react";
+import {
+  ArrowRight,
+  ChevronDown,
+  ChevronRight,
+  ExternalLink,
+  FileText,
+  MousePointerClick,
+  TriangleAlert,
+} from "lucide-react";
 import { DateTime } from "luxon";
 import { memo, useState } from "react";
 import { GetSessionsResponse } from "../../api/analytics/userSessions";

@@ -54,9 +54,7 @@ export class WebVitalsCollector {
     this.data[metricName] = metric.value;
 
     // Check if all metrics are collected
-    const allCollected = Object.values(this.data).every(
-      (value) => value !== null
-    );
+    const allCollected = Object.values(this.data).every(value => value !== null);
     if (allCollected) {
       this.sendData();
     }

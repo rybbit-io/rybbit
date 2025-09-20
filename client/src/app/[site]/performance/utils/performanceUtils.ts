@@ -14,10 +14,7 @@ const PERFORMANCE_THRESHOLDS = {
 /**
  * Get the appropriate color class for a performance metric value based on Web Vitals thresholds
  */
-export const getMetricColor = (
-  metric: PerformanceMetric,
-  value: number
-): string => {
+export const getMetricColor = (metric: PerformanceMetric, value: number): string => {
   const thresholds = PERFORMANCE_THRESHOLDS[metric];
 
   if (!thresholds) {
@@ -39,10 +36,7 @@ export const getMetricColor = (
 /**
  * Format a performance metric value for display
  */
-export const formatMetricValue = (
-  metric: PerformanceMetric,
-  value: number
-): string => {
+export const formatMetricValue = (metric: PerformanceMetric, value: number): string => {
   if (metric === "cls") {
     return round(value, 3).toString();
   }
@@ -55,10 +49,7 @@ export const formatMetricValue = (
 /**
  * Get the appropriate unit for a performance metric value
  */
-export const getMetricUnit = (
-  metric: PerformanceMetric,
-  value: number
-): string => {
+export const getMetricUnit = (metric: PerformanceMetric, value: number): string => {
   if (metric === "cls") return "";
   if (value >= 1000) return "s";
   return "ms";

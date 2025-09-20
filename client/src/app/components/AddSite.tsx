@@ -1,7 +1,7 @@
 "use client";
 import { Button } from "@/components/ui/button";
 import { AlertCircle, AppWindow, Plus } from "lucide-react";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { addSite, useGetSitesFromOrg } from "../../api/admin/sites";
 import { Alert, AlertDescription, AlertTitle } from "../../components/ui/alert";
 import {
@@ -32,9 +32,22 @@ export function AddSite({ trigger, disabled }: { trigger?: React.ReactNode; disa
   const { data: sites, refetch } = useGetSitesFromOrg(activeOrganization?.id);
   const { data: subscription } = useStripeSubscription();
 
-  // Disable if user is on free plan and has 3+ sites
-  const isDisabledDueToLimit = subscription?.status !== "active" && (sites?.sites?.length || 0) >= 3 && IS_CLOUD;
-  const finalDisabled = disabled || isDisabledDueToLimit;
+  const isOverSiteLimit = useMemo(() => {
+    const numberOfSites = sites?.sites?.length || 0;
+    if (!IS_CLOUD) {
+      return false;
+    }
+    if (subscription?.status !== "active" && numberOfSites >= 3) {
+      return true;
+    }
+    if (!subscription?.isPro && numberOfSites >= 10) {
+      return true;
+    }
+
+    return false;
+  }, [subscription, sites]);
+
+  const finalDisabled = disabled || isOverSiteLimit;
 
   const [open, setOpen] = useState(false);
   const [domain, setDomain] = useState("");
@@ -83,7 +96,7 @@ export function AddSite({ trigger, disabled }: { trigger?: React.ReactNode; disa
   };
 
   // Show upgrade message if disabled due to limit
-  if (isDisabledDueToLimit) {
+  if (isOverSiteLimit) {
     return (
       <Tooltip>
         <TooltipTrigger asChild>
@@ -94,7 +107,9 @@ export function AddSite({ trigger, disabled }: { trigger?: React.ReactNode; disa
             </Button>
           </span>
         </TooltipTrigger>
-        <TooltipContent>Upgrade to Pro to add more websites</TooltipContent>
+        <TooltipContent>
+          You have reached the limit of {subscription?.isPro ? 10 : 3} websites. Upgrade to add more websites
+        </TooltipContent>
       </Tooltip>
     );
   }
@@ -103,7 +118,7 @@ export function AddSite({ trigger, disabled }: { trigger?: React.ReactNode; disa
     <div>
       <Dialog
         open={open}
-        onOpenChange={(isOpen) => {
+        onOpenChange={isOpen => {
           setOpen(isOpen);
           if (isOpen) {
             resetForm();
@@ -135,7 +150,7 @@ export function AddSite({ trigger, disabled }: { trigger?: React.ReactNode; disa
               <Input
                 id="domain"
                 value={domain}
-                onChange={(e) => setDomain(e.target.value.toLowerCase())}
+                onChange={e => setDomain(e.target.value.toLowerCase())}
                 placeholder="example.com or sub.example.com"
               />
             </div>

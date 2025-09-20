@@ -56,7 +56,7 @@ export function useGetFunnel(config?: FunnelRequest, debounce?: boolean) {
       configToUse?.startDate,
       configToUse?.endDate,
       configToUse?.filters,
-      configToUse?.steps.map((s) => s.value + s.type),
+      configToUse?.steps.map(s => s.value + s.type),
     ],
     queryFn: async () => {
       if (!configToUse) {
@@ -69,14 +69,10 @@ export function useGetFunnel(config?: FunnelRequest, debounce?: boolean) {
         timeZone,
       };
       try {
-        const response = await authedFetch<{ data: FunnelResponse[] }>(
-          `/funnel/${site}`,
-          undefined,
-          {
-            method: "POST",
-            data: fullConfig,
-          }
-        );
+        const response = await authedFetch<{ data: FunnelResponse[] }>(`/funnel/${site}`, undefined, {
+          method: "POST",
+          data: fullConfig,
+        });
 
         return response.data;
       } catch (error) {
@@ -94,12 +90,8 @@ export function useSaveFunnel() {
   const { site } = useStore();
   const queryClient = useQueryClient();
 
-  return useMutation<
-    { success: boolean; funnelId: number },
-    Error,
-    SaveFunnelRequest
-  >({
-    mutationFn: async (funnelConfig) => {
+  return useMutation<{ success: boolean; funnelId: number }, Error, SaveFunnelRequest>({
+    mutationFn: async funnelConfig => {
       // Add time zone to the request
       const fullConfig = {
         ...funnelConfig,

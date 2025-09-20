@@ -69,10 +69,7 @@ export const filterTypeToLabel = (type: FilterType) => {
   }
 };
 
-export function getParameterValueLabel(
-  filter: Filter,
-  getRegionName: (region: string) => string | undefined
-) {
+export function getParameterValueLabel(filter: Filter, getRegionName: (region: string) => string | undefined) {
   const formatValue = (value: string) => {
     if (filter.parameter === "country") {
       return getCountryName(value);

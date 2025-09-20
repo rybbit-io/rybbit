@@ -87,7 +87,7 @@ export async function getAdminOrganizations(request: FastifyRequest, reply: Fast
     }
 
     // Get all sites for all organizations
-    const allOrgIds = organizationsData.map((org) => org.id);
+    const allOrgIds = organizationsData.map(org => org.id);
     const orgSites = await db
       .select({
         siteId: sites.siteId,
@@ -153,7 +153,7 @@ export async function getAdminOrganizations(request: FastifyRequest, reply: Fast
     const orgSubscriptionMap = await getOrganizationSubscriptions(organizationsData, true);
 
     // Build the final response with subscription data
-    const enrichedOrganizations: AdminOrganizationData[] = organizationsData.map((org) => {
+    const enrichedOrganizations: AdminOrganizationData[] = organizationsData.map(org => {
       const subscriptionData = orgSubscriptionMap.get(org.id)!; // Non-null assertion since service always returns data
 
       return {

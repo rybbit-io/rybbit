@@ -30,8 +30,7 @@ export function FreeTrialBanner() {
           <Clock className="h-4 w-4 mr-2 text-blue-500 dark:text-blue-400 flex-shrink-0" />
           <span>
             Free trial: <strong>{daysRemaining}</strong> days remaining – Using{" "}
-            <strong>{formatNumber(eventsUsed)}</strong> of{" "}
-            {formatNumber(eventLimit)} events
+            <strong>{formatNumber(eventsUsed)}</strong> of {formatNumber(eventLimit)} events
           </span>
         </div>
         <Button
@@ -59,14 +58,12 @@ export function FreeTrialBanner() {
               Your Free Trial Has Ended
             </AlertTitle>
             <div className="mb-2 text-sm text-amber-700 dark:text-amber-400">
-              Your 14-day free trial has expired. Subscribe to continue tracking
-              visits again.
+              Your 14-day free trial has expired. Subscribe to continue tracking visits again.
             </div>
 
             <div className="flex flex-col space-y-2 sm:flex-row sm:space-y-0 sm:space-x-2 items-start sm:items-center">
               <AlertDescription className="text-sm text-amber-700 dark:text-amber-400">
-                Choose a subscription plan to continue collecting analytics
-                data.
+                Choose a subscription plan to continue collecting analytics data.
               </AlertDescription>
               <Button
                 className="bg-amber-500 hover:bg-amber-600 text-white border-amber-400 hover:border-amber-500 py-1 h-auto text-sm"

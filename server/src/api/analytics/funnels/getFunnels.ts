@@ -29,7 +29,7 @@ export async function getFunnels(
       .orderBy(funnelsTable.createdAt);
 
     // Transform the records to a more frontend-friendly structure
-    const funnels = funnelRecords.map((record) => {
+    const funnels = funnelRecords.map(record => {
       const data = record.data as any;
       return {
         id: record.reportId,

@@ -10,79 +10,66 @@ import { cn } from "../../../../lib/utils";
 import { EventProperties } from "./EventProperties";
 
 // Skeleton component for EventList
-const EventListSkeleton = memo(
-  ({ size = "small" }: { size?: "small" | "large" }) => {
-    // Generate widths following Pareto principle with top item at 100%
-    const widths = Array.from({ length: 10 }, (_, i) => {
-      if (i === 0) {
-        // First item always has 100% width
-        return 100;
-      } else if (i === 1) {
-        // Second item gets large width (60-80%)
-        return 60 + Math.random() * 20;
-      } else {
-        // Remaining 8 items get progressively smaller widths (10-40%)
-        const factor = 1 - (i - 2) / 8; // Creates a declining factor from 1 to 0.125
-        return 10 + factor * 30; // Creates widths from ~40% down to ~15%
-      }
-    });
+const EventListSkeleton = memo(({ size = "small" }: { size?: "small" | "large" }) => {
+  // Generate widths following Pareto principle with top item at 100%
+  const widths = Array.from({ length: 10 }, (_, i) => {
+    if (i === 0) {
+      // First item always has 100% width
+      return 100;
+    } else if (i === 1) {
+      // Second item gets large width (60-80%)
+      return 60 + Math.random() * 20;
+    } else {
+      // Remaining 8 items get progressively smaller widths (10-40%)
+      const factor = 1 - (i - 2) / 8; // Creates a declining factor from 1 to 0.125
+      return 10 + factor * 30; // Creates widths from ~40% down to ~15%
+    }
+  });
 
-    // Generate random widths for label and value placeholders
-    const labelWidths = Array.from({ length: 10 }, (_, i) => {
-      // First few items get wider labels
-      return i < 3 ? 75 + Math.random() * 100 : 40 + Math.random() * 60;
-    });
+  // Generate random widths for label and value placeholders
+  const labelWidths = Array.from({ length: 10 }, (_, i) => {
+    // First few items get wider labels
+    return i < 3 ? 75 + Math.random() * 100 : 40 + Math.random() * 60;
+  });
 
-    const valueWidths = Array.from(
-      { length: 10 },
-      () => 20 + Math.random() * 40 // Between 20px and 60px
-    );
+  const valueWidths = Array.from(
+    { length: 10 },
+    () => 20 + Math.random() * 40 // Between 20px and 60px
+  );
 
-    return (
-      <div className="flex flex-col gap-2 pr-2">
-        {Array.from({ length: 10 }).map((_, index) => (
+  return (
+    <div className="flex flex-col gap-2 pr-2">
+      {Array.from({ length: 10 }).map((_, index) => (
+        <div key={index} className={cn("relative flex items-center", size === "small" ? "h-6" : "h-9")}>
           <div
-            key={index}
+            className="absolute inset-0 bg-neutral-800 py-2 rounded-md animate-pulse"
+            style={{ width: `${widths[index]}%` }}
+          ></div>
+          <div
             className={cn(
-              "relative flex items-center",
-              size === "small" ? "h-6" : "h-9"
+              "z-5 mx-2 flex justify-between items-center w-full",
+              size === "small" ? "text-xs" : "text-sm"
             )}
           >
-            <div
-              className="absolute inset-0 bg-neutral-800 py-2 rounded-md animate-pulse"
-              style={{ width: `${widths[index]}%` }}
-            ></div>
-            <div
-              className={cn(
-                "z-5 mx-2 flex justify-between items-center w-full",
-                size === "small" ? "text-xs" : "text-sm"
-              )}
-            >
-              <div className="flex items-center gap-1">
-                <div className="h-4 w-4 bg-neutral-800 rounded animate-pulse mr-1"></div>
-                <div
-                  className="h-4 bg-neutral-800 rounded animate-pulse"
-                  style={{ width: `${labelWidths[index]}px` }}
-                ></div>
-              </div>
+            <div className="flex items-center gap-1">
+              <div className="h-4 w-4 bg-neutral-800 rounded animate-pulse mr-1"></div>
               <div
-                className={cn(
-                  "flex gap-2",
-                  size === "small" ? "text-xs" : "text-sm"
-                )}
-              >
-                <div
-                  className="h-4 bg-neutral-800 rounded animate-pulse"
-                  style={{ width: `${valueWidths[index]}px` }}
-                ></div>
-              </div>
+                className="h-4 bg-neutral-800 rounded animate-pulse"
+                style={{ width: `${labelWidths[index]}px` }}
+              ></div>
+            </div>
+            <div className={cn("flex gap-2", size === "small" ? "text-xs" : "text-sm")}>
+              <div
+                className="h-4 bg-neutral-800 rounded animate-pulse"
+                style={{ width: `${valueWidths[index]}px` }}
+              ></div>
             </div>
           </div>
-        ))}
-      </div>
-    );
-  }
-);
+        </div>
+      ))}
+    </div>
+  );
+});
 
 interface EventListProps {
   events: EventName[];
@@ -90,19 +77,14 @@ interface EventListProps {
   size?: "small" | "large";
 }
 
-export function EventList({
-  events,
-  isLoading,
-  size = "small",
-}: EventListProps) {
+export function EventList({ events, isLoading, size = "small" }: EventListProps) {
   const [expandedEvent, setExpandedEvent] = useState<string | null>(null);
 
   const handleEventClick = (eventName: string) => {
     setExpandedEvent(expandedEvent === eventName ? null : eventName);
   };
 
-  const { data: eventPropertiesData, isLoading: isLoadingProperties } =
-    useGetEventProperties(expandedEvent);
+  const { data: eventPropertiesData, isLoading: isLoadingProperties } = useGetEventProperties(expandedEvent);
 
   if (isLoading) {
     return <EventListSkeleton size={size} />;
@@ -126,10 +108,7 @@ export function EventList({
         </a>
       </div>
     ) : (
-      <NothingFound
-        title={"No custom events found"}
-        description={"Try a different date range or filter"}
-      />
+      <NothingFound title={"No custom events found"} description={"Try a different date range or filter"} />
     );
   }
 
@@ -138,7 +117,7 @@ export function EventList({
 
   return (
     <div className="flex flex-col gap-2">
-      {events.map((event) => {
+      {events.map(event => {
         const percentage = (event.count / totalCount) * 100;
         const isExpanded = expandedEvent === event.eventName;
 
@@ -164,32 +143,15 @@ export function EventList({
               >
                 <div className="font-medium truncate max-w-[70%] flex items-center gap-1">
                   {isExpanded ? (
-                    <ChevronDown
-                      className="h-4 w-4 text-neutral-400 hover:text-neutral-100"
-                      strokeWidth={3}
-                    />
+                    <ChevronDown className="h-4 w-4 text-neutral-400 hover:text-neutral-100" strokeWidth={3} />
                   ) : (
-                    <ChevronRight
-                      className="h-4 w-4 text-neutral-400 hover:text-neutral-100"
-                      strokeWidth={3}
-                    />
+                    <ChevronRight className="h-4 w-4 text-neutral-400 hover:text-neutral-100" strokeWidth={3} />
                   )}
                   {event.eventName}
                 </div>
-                <div
-                  className={cn(
-                    "text-sm flex gap-2",
-                    size === "small" ? "text-xs" : "text-sm"
-                  )}
-                >
-                  <div className="hidden group-hover:block text-neutral-400">
-                    {Math.round(percentage * 10) / 10}%
-                  </div>
-                  <NumberFlow
-                    respectMotionPreference={false}
-                    value={event.count}
-                    format={{ notation: "compact" }}
-                  />
+                <div className={cn("text-sm flex gap-2", size === "small" ? "text-xs" : "text-sm")}>
+                  <div className="hidden group-hover:block text-neutral-400">{Math.round(percentage * 10) / 10}%</div>
+                  <NumberFlow respectMotionPreference={false} value={event.count} format={{ notation: "compact" }} />
                 </div>
               </div>
             </div>

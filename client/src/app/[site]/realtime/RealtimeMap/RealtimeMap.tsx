@@ -28,15 +28,10 @@ interface TooltipPosition {
 }
 
 export function RealtimeMap() {
-  const {
-    data: liveSessionLocations,
-    isLoading: isLiveSessionLocationsLoading,
-  } = useGetLiveSessionLocations();
+  const { data: liveSessionLocations, isLoading: isLiveSessionLocationsLoading } = useGetLiveSessionLocations();
   const { data: countriesGeoData } = useCountries();
   const [currentZoom, setCurrentZoom] = useState(1.5); // Initial zoom level
-  const [tooltipContent, setTooltipContent] = useState<TooltipContent | null>(
-    null
-  );
+  const [tooltipContent, setTooltipContent] = useState<TooltipContent | null>(null);
   const [tooltipPosition, setTooltipPosition] = useState<TooltipPosition>({
     x: 0,
     y: 0,
@@ -46,7 +41,7 @@ export function RealtimeMap() {
   const radiusScale = useMemo(() => {
     if (!liveSessionLocations?.length) return () => 0;
 
-    const maxCount = Math.max(...liveSessionLocations.map((loc) => loc.count));
+    const maxCount = Math.max(...liveSessionLocations.map(loc => loc.count));
 
     // Use sqrt scale to make small values more visible
     // This directly scales radius (not area) which makes small circles more noticeable
@@ -92,7 +87,7 @@ export function RealtimeMap() {
     <div>
       <div
         className="w-full h-[600px] rounded-lg overflow-hidden border border-neutral-850"
-        onMouseMove={(e) => {
+        onMouseMove={e => {
           if (tooltipContent) {
             setTooltipPosition({
               x: e.clientX,
@@ -129,7 +124,7 @@ export function RealtimeMap() {
                 weight: 0,
               }}
               eventHandlers={{
-                mouseover: (e) => {
+                mouseover: e => {
                   setTooltipContent({
                     count: location.count,
                     city: location.city,
@@ -142,7 +137,7 @@ export function RealtimeMap() {
                 mouseout: () => {
                   setTooltipContent(null);
                 },
-                mousemove: (e) => {
+                mousemove: e => {
                   setTooltipPosition({
                     x: e.originalEvent.clientX,
                     y: e.originalEvent.clientY,
@@ -164,9 +159,7 @@ export function RealtimeMap() {
             }}
           >
             <div className="font-sm">
-              <span className="font-bold text-accent-400">
-                {tooltipContent.count.toLocaleString()}
-              </span>{" "}
+              <span className="font-bold text-accent-400">{tooltipContent.count.toLocaleString()}</span>{" "}
               <span className="text-neutral-300">
                 active {tooltipContent.count === 1 ? "user" : "users"}
                 {tooltipContent.city ? ` from ${tooltipContent.city}` : ""}

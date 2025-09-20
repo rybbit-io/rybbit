@@ -96,7 +96,7 @@ export const World = ({ width }: { width: number }) => {
   );
 
   const liveSessionLocationsData = useMemo(() => {
-    return liveSessionLocations?.map((e) => ({
+    return liveSessionLocations?.map(e => ({
       lat: e.lat,
       lng: e.lon,
       count: Math.max(1, e.count / highest),
@@ -142,8 +142,8 @@ export const World = ({ width }: { width: number }) => {
         hexPolygonColor={(e: any) => {
           return randomShader(e.properties.ISO_A2);
         }}
-        hexTopColor={(d) => weightColor(d.sumWeight)}
-        hexSideColor={(d) => weightColor(d.sumWeight)}
+        hexTopColor={d => weightColor(d.sumWeight)}
+        hexSideColor={d => weightColor(d.sumWeight)}
         // @ts-ignore
         // hexPolygonLabel={(props: any) => {
         //   console.info(props);

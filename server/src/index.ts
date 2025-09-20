@@ -45,10 +45,7 @@ import { getSessionReplayEvents } from "./api/sessionReplay/getSessionReplayEven
 import { getSessionReplays } from "./api/sessionReplay/getSessionReplays.js";
 import { recordSessionReplay } from "./api/sessionReplay/recordSessionReplay.js";
 import { addSite } from "./api/sites/addSite.js";
-import { changeSiteBlockBots } from "./api/sites/changeSiteBlockBots.js";
-import { changeSiteDomain } from "./api/sites/changeSiteDomain.js";
-import { changeSitePublic } from "./api/sites/changeSitePublic.js";
-import { changeSiteSalt } from "./api/sites/changeSiteSalt.js";
+import { updateSiteConfig } from "./api/sites/updateSiteConfig.js";
 import { deleteSite } from "./api/sites/deleteSite.js";
 import { getSite } from "./api/sites/getSite.js";
 import { getSiteApiConfig } from "./api/sites/getSiteApiConfig.js";
@@ -57,17 +54,17 @@ import { getSiteHasData } from "./api/sites/getSiteHasData.js";
 import { getSiteIsPublic } from "./api/sites/getSiteIsPublic.js";
 import { getSitesFromOrg } from "./api/sites/getSitesFromOrg.js";
 import { updateSiteApiConfig } from "./api/sites/updateSiteApiConfig.js";
-import { updateSiteExcludedIPs } from "./api/sites/updateSiteExcludedIPs.js";
 import { createCheckoutSession } from "./api/stripe/createCheckoutSession.js";
 import { createPortalSession } from "./api/stripe/createPortalSession.js";
 import { getSubscription } from "./api/stripe/getSubscription.js";
+import { previewSubscriptionUpdate } from "./api/stripe/previewSubscriptionUpdate.js";
+import { updateSubscription } from "./api/stripe/updateSubscription.js";
 import { handleWebhook } from "./api/stripe/webhook.js";
 import { addUserToOrganization } from "./api/user/addUserToOrganization.js";
 import { getUserOrganizations } from "./api/user/getUserOrganizations.js";
 import { listOrganizationMembers } from "./api/user/listOrganizationMembers.js";
 import { initializeClickhouse } from "./db/clickhouse/clickhouse.js";
 import { initPostgres } from "./db/postgres/initPostgres.js";
-import { loadAllowedDomains } from "./lib/allowedDomains.js";
 import { getSessionFromReq, mapHeaders } from "./lib/auth-utils.js";
 import { auth } from "./lib/auth.js";
 import { IS_CLOUD } from "./lib/const.js";
@@ -75,7 +72,8 @@ import { siteConfig } from "./lib/siteConfig.js";
 import { trackEvent } from "./services/tracker/trackEvent.js";
 // need to import telemetry service here to start it
 import { telemetryService } from "./services/telemetryService.js";
-import { extractSiteId, isSitePublic } from "./utils.js";
+import { extractSiteId } from "./utils.js";
+import { getTrackingConfig } from "./api/sites/getTrackingConfig.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -148,12 +146,6 @@ const server = Fastify({
 server.register(cors, {
   origin: (_origin, callback) => {
     callback(null, true);
-
-    // if (!origin || allowList.includes(normalizeOrigin(origin))) {
-    //   callback(null, true);
-    // } else {
-    //   callback(new Error("Not allowed by CORS"), false);
-    // }
   },
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
   allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
@@ -168,7 +160,7 @@ server.register(fastifyStatic, {
 
 server.register(
   async (fastify, options) => {
-    await fastify.register((fastify) => {
+    await fastify.register(fastify => {
       const authHandler = toNodeHandler(options.auth);
 
       fastify.addContentTypeParser(
@@ -176,7 +168,7 @@ server.register(
         /* c8 ignore next 3 */
         (_request, _payload, done) => {
           done(null, null);
-        },
+        }
       );
 
       fastify.all("/api/auth/*", async (request, reply: any) => {
@@ -189,7 +181,7 @@ server.register(
       });
     });
   },
-  { auth: auth! },
+  { auth: auth! }
 );
 
 const PUBLIC_ROUTES: string[] = [
@@ -207,6 +199,7 @@ const PUBLIC_ROUTES: string[] = [
   "/api/stripe/webhook",
   "/api/session-replay/record",
   "/api/admin/telemetry",
+  "/api/site/:siteId/tracking-config",
 ];
 
 // Define analytics routes that can be public
@@ -254,15 +247,15 @@ server.addHook("onRequest", async (request, reply) => {
   let processedUrl = url;
 
   // Bypass auth for public routes (now including the prepended /api)
-  if (PUBLIC_ROUTES.some((route) => processedUrl.includes(route))) {
+  if (PUBLIC_ROUTES.some(route => processedUrl.includes(route))) {
     return;
   }
 
   // Check if it's an analytics route and get site ID (now including the prepended /api)
-  if (ANALYTICS_ROUTES.some((route) => processedUrl.startsWith(route))) {
+  if (ANALYTICS_ROUTES.some(route => processedUrl.startsWith(route))) {
     const siteId = extractSiteId(processedUrl);
 
-    if (siteId && (await isSitePublic(siteId))) {
+    if (siteId && (await siteConfig.getConfig(siteId))?.public) {
       // Skip auth check for public sites
       return;
     }
@@ -337,17 +330,14 @@ server.get("/api/session-replay/:sessionId/:site", getSessionReplayEvents);
 // Administrative
 server.get("/api/config", getConfig);
 server.post("/api/add-site", addSite);
-server.post("/api/change-site-domain", changeSiteDomain);
-server.post("/api/change-site-public", changeSitePublic);
-server.post("/api/change-site-salt", changeSiteSalt);
-server.post("/api/change-site-block-bots", changeSiteBlockBots);
+server.post("/api/update-site-config", updateSiteConfig);
 server.post("/api/delete-site/:id", deleteSite);
 server.get("/api/get-sites-from-org/:organizationId", getSitesFromOrg);
 server.get("/api/get-site/:id", getSite);
 server.get("/api/site/:siteId/api-config", getSiteApiConfig);
 server.post("/api/site/:siteId/api-config", updateSiteApiConfig);
+server.get("/api/site/:siteId/tracking-config", getTrackingConfig);
 server.get("/api/site/:siteId/excluded-ips", getSiteExcludedIPs);
-server.post("/api/site/:siteId/excluded-ips", updateSiteExcludedIPs);
 server.get("/api/list-organization-members/:organizationId", listOrganizationMembers);
 server.get("/api/user/organizations", getUserOrganizations);
 server.post("/api/add-user-to-organization", addUserToOrganization);
@@ -381,10 +371,10 @@ if (IS_CLOUD) {
   server.get("/api/uptime/monitors/:monitorId/uptime", getMonitorUptime);
   server.get("/api/uptime/monitors/:monitorId/buckets", getMonitorUptimeBuckets);
   server.get("/api/uptime/regions", getRegions);
-  
+
   // Register incidents routes
   server.register(incidentsRoutes);
-  
+
   // Register notification routes
   server.register(notificationRoutes);
 }
@@ -395,6 +385,8 @@ if (IS_CLOUD) {
   // Stripe Routes
   server.post("/api/stripe/create-checkout-session", createCheckoutSession);
   server.post("/api/stripe/create-portal-session", createPortalSession);
+  server.post("/api/stripe/preview-subscription-update", previewSubscriptionUpdate);
+  server.post("/api/stripe/update-subscription", updateSubscription);
   server.get("/api/stripe/subscription", getSubscription);
   server.post("/api/stripe/webhook", { config: { rawBody: true } }, handleWebhook); // Use rawBody parser config for webhook
 
@@ -412,7 +404,7 @@ server.get("/api/health", { logLevel: "silent" }, (_, reply) => reply.send("OK")
 const start = async () => {
   try {
     console.info("Starting server...");
-    await Promise.all([initializeClickhouse(), loadAllowedDomains(), siteConfig.loadSiteConfigs(), initPostgres()]);
+    await Promise.all([initializeClickhouse(), initPostgres()]);
 
     telemetryService.startTelemetryCron();
 

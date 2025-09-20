@@ -6,9 +6,9 @@ import { processResults } from "../api/analytics/utils.js";
 import { clickhouse } from "../db/clickhouse/clickhouse.js";
 import { db } from "../db/postgres/postgres.js";
 import { organization, sites } from "../db/postgres/schema.js";
-import { getStripePrices, StripePlan, DEFAULT_EVENT_LIMIT, IS_CLOUD } from "../lib/const.js";
-import { stripe } from "../lib/stripe.js";
+import { DEFAULT_EVENT_LIMIT, getStripePrices, IS_CLOUD, StripePlan } from "../lib/const.js";
 import { createServiceLogger } from "../lib/logger/logger.js";
+import { stripe } from "../lib/stripe.js";
 
 class UsageService {
   private sitesOverLimit = new Set<number>();
@@ -71,7 +71,7 @@ class UsageService {
         .from(sites)
         .where(eq(sites.organizationId, organizationId));
 
-      return siteRecords.map((record) => record.siteId);
+      return siteRecords.map(record => record.siteId);
     } catch (error) {
       this.logger.error(error as Error, `Error getting sites for organization ${organizationId}`);
       return [];
@@ -116,16 +116,13 @@ class UsageService {
 
       if (!priceId) {
         this.logger.error(
-          `Subscription item price ID not found for organization ${orgData.id}, sub ${subscription.id}`,
+          `Subscription item price ID not found for organization ${orgData.id}, sub ${subscription.id}`
         );
         return [DEFAULT_EVENT_LIMIT, this.getStartOfMonth()];
       }
 
       // Find corresponding plan details from constants
-      const planDetails = getStripePrices().find(
-        (plan: StripePlan) =>
-          plan.priceId === priceId || (plan.annualDiscountPriceId && plan.annualDiscountPriceId === priceId),
-      );
+      const planDetails = getStripePrices().find((plan: StripePlan) => plan.priceId === priceId);
 
       // Get the event limit from the plan
       const eventLimit = planDetails
@@ -146,11 +143,11 @@ class UsageService {
         if (subscriptionStartDate >= currentMonth) {
           periodStart = subscriptionStartDate.toISODate() as string;
           this.logger.info(
-            `Organization ${orgData.name} subscribed during current month on ${periodStart}. Using subscription start date for counting.`,
+            `Organization ${orgData.name} subscribed during current month on ${periodStart}. Using subscription start date for counting.`
           );
         } else {
           this.logger.info(
-            `Organization ${orgData.name} subscription started before current month. Using month start for counting.`,
+            `Organization ${orgData.name} subscription started before current month. Using month start for counting.`
           );
         }
       }
@@ -247,7 +244,7 @@ class UsageService {
               this.sitesOverLimit.add(siteId);
             }
             this.logger.info(
-              `Organization ${orgData.name} is over limit. Added ${siteIds.length} sites to blocked list.`,
+              `Organization ${orgData.name} is over limit. Added ${siteIds.length} sites to blocked list.`
             );
           } else {
             for (const siteId of siteIds) {
@@ -261,7 +258,7 @@ class UsageService {
           this.logger.info(
             `Updated organization ${
               orgData.name
-            }: ${pageviewCount.toLocaleString()} events, limit ${eventLimit.toLocaleString()}, ${periodInfo}`,
+            }: ${pageviewCount.toLocaleString()} events, limit ${eventLimit.toLocaleString()}, ${periodInfo}`
           );
         } catch (error) {
           this.logger.error(error as Error, `Error processing organization ${orgData.id}`);

@@ -1,13 +1,7 @@
 "use client";
 
 import { useStore } from "@/lib/store";
-import {
-  SelectItem,
-  Select,
-  SelectContent,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { SelectItem, Select, SelectContent, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DateTime } from "luxon";
 import { Time } from "./DateSelector/types";
 
@@ -114,10 +108,7 @@ const getOptions = (time: Time) => {
   }
 
   if (time.mode === "range") {
-    const timeRangeLength = DateTime.fromISO(time.endDate).diff(
-      DateTime.fromISO(time.startDate),
-      "days"
-    ).days;
+    const timeRangeLength = DateTime.fromISO(time.endDate).diff(DateTime.fromISO(time.startDate), "days").days;
 
     return (
       <SelectContent>

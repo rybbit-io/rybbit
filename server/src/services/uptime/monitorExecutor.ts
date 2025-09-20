@@ -82,7 +82,7 @@ export class MonitorExecutor {
         removeOnFail: {
           count: 100,
         },
-      },
+      }
     );
 
     // Set up event listeners
@@ -94,7 +94,7 @@ export class MonitorExecutor {
       this.logger.error(err as Error, `Job ${job?.id} failed`);
     });
 
-    this.worker.on("error", (err) => {
+    this.worker.on("error", err => {
       this.logger.error(err as Error, "Worker error");
     });
 
@@ -107,7 +107,7 @@ export class MonitorExecutor {
     // });
 
     // Wait for worker to be ready
-    await new Promise<void>((resolve) => {
+    await new Promise<void>(resolve => {
       if (this.worker) {
         this.worker.once("ready", () => {
           resolve();
@@ -241,7 +241,7 @@ export class MonitorExecutor {
         where: and(
           inArray(agentRegions.code, globalRegions),
           eq(agentRegions.enabled, true),
-          eq(agentRegions.isHealthy, true),
+          eq(agentRegions.isHealthy, true)
         ),
       });
 
@@ -251,8 +251,8 @@ export class MonitorExecutor {
       }
 
       // Execute checks in parallel across all regions
-      const regionPromises = regions.map((region) =>
-        this.executeAgentCheck(monitor, region).catch((error) => {
+      const regionPromises = regions.map(region =>
+        this.executeAgentCheck(monitor, region).catch(error => {
           this.logger.error(error as Error, `Error executing check in region ${region.code}`);
           return {
             region: region.code,
@@ -269,7 +269,7 @@ export class MonitorExecutor {
               },
             } as HttpCheckResult,
           };
-        }),
+        })
       );
 
       const regionResults = await Promise.all(regionPromises);
@@ -285,11 +285,11 @@ export class MonitorExecutor {
       }
 
       // Update monitor status based on the majority of regions
-      const successCount = regionResults.filter((r) => r.result.status === "success").length;
+      const successCount = regionResults.filter(r => r.result.status === "success").length;
       const overallStatus = successCount > regionResults.length / 2 ? "success" : "failure";
 
       // Use the average response time from successful checks
-      const successfulResults = regionResults.filter((r) => r.result.status === "success");
+      const successfulResults = regionResults.filter(r => r.result.status === "success");
       const avgResponseTime =
         successfulResults.length > 0
           ? successfulResults.reduce((sum, r) => sum + r.result.responseTimeMs, 0) / successfulResults.length
@@ -307,7 +307,7 @@ export class MonitorExecutor {
       await this.updateMonitorStatus(monitor.id, aggregatedResult);
 
       this.logger.info(
-        `✅ Global monitor check completed: ${monitor.id} - ${overallStatus} (${regionResults.length} regions)`,
+        `✅ Global monitor check completed: ${monitor.id} - ${overallStatus} (${regionResults.length} regions)`
       );
     } catch (error) {
       this.logger.error(error as Error, `Error processing global monitor check ${monitor.id}`);
@@ -316,7 +316,7 @@ export class MonitorExecutor {
 
   private async executeAgentCheck(
     monitor: any,
-    region: any,
+    region: any
   ): Promise<{ region: string; result: HttpCheckResult | TcpCheckResult }> {
     const jobId = `${monitor.id}-${Date.now()}-${region.code}`;
 
@@ -374,7 +374,7 @@ export class MonitorExecutor {
   private async storeMonitorEvent(
     monitor: any,
     result: HttpCheckResult | TcpCheckResult,
-    regionCode: string = "local",
+    regionCode: string = "local"
   ): Promise<void> {
     // Helper to ensure timing values are non-negative or undefined
     const sanitizeTiming = (value: number | undefined): number | undefined => {
@@ -469,7 +469,7 @@ export class MonitorExecutor {
         currentStatus,
         result,
         consecutiveFailures,
-        consecutiveSuccesses,
+        consecutiveSuccesses
       );
     } catch (error) {
       this.logger.error(error as Error, "Failed to update monitor status");
@@ -482,7 +482,7 @@ export class MonitorExecutor {
     currentStatus: string,
     result: HttpCheckResult | TcpCheckResult,
     consecutiveFailures: number,
-    consecutiveSuccesses: number,
+    consecutiveSuccesses: number
   ): Promise<void> {
     try {
       // Get monitor details for incident creation
@@ -500,7 +500,7 @@ export class MonitorExecutor {
         where: and(
           eq(uptimeIncidents.monitorId, monitorId),
           eq(uptimeIncidents.status, "active"),
-          eq(uptimeIncidents.region, "local"),
+          eq(uptimeIncidents.region, "local")
         ),
       });
 
@@ -541,7 +541,7 @@ export class MonitorExecutor {
         await this.notificationService.sendIncidentNotifications(
           monitor,
           { ...activeIncident, status: "resolved", endTime: now },
-          "recovery",
+          "recovery"
         );
       }
       // Status remains DOWN (Update failure count)
@@ -563,7 +563,7 @@ export class MonitorExecutor {
   private async handleRegionalIncident(
     monitor: any,
     region: string,
-    result: HttpCheckResult | TcpCheckResult,
+    result: HttpCheckResult | TcpCheckResult
   ): Promise<void> {
     try {
       const currentStatus = result.status === "success" ? "up" : "down";
@@ -614,7 +614,7 @@ export class MonitorExecutor {
         where: and(
           eq(uptimeIncidents.monitorId, monitor.id),
           eq(uptimeIncidents.status, "active"),
-          eq(uptimeIncidents.region, region),
+          eq(uptimeIncidents.region, region)
         ),
       });
 
@@ -651,14 +651,14 @@ export class MonitorExecutor {
           })
           .where(eq(uptimeIncidents.id, activeIncident.id));
         this.logger.info(
-          `Resolved incident ${activeIncident.id} for monitor ${monitor.id} (${monitor.name}) in region ${region}`,
+          `Resolved incident ${activeIncident.id} for monitor ${monitor.id} (${monitor.name}) in region ${region}`
         );
 
         // Send recovery notifications for regional incident
         await this.notificationService.sendIncidentNotifications(
           monitor,
           { ...activeIncident, status: "resolved", endTime: now },
-          "recovery",
+          "recovery"
         );
       }
       // If check failed and there's already an active incident, update it

@@ -3,10 +3,11 @@
 import { ArrowRight, Sparkles } from "lucide-react";
 import Link from "next/link";
 import { Button } from "../../../../components/ui/button";
+import { DEMO_HOSTNAME } from "../../../../lib/const";
 
 export function DemoSignupBanner() {
   // Only show on demo.rybbit.io and not in an iframe
-  if (typeof window === "undefined" || window.location.host !== "demo.rybbit.io") {
+  if (typeof window === "undefined" || window.location.host !== DEMO_HOSTNAME) {
     return null;
   }
 

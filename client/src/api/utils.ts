@@ -32,10 +32,7 @@ export function getStartAndEndDate(time: Time) {
   return { startDate: time.day, endDate: time.day };
 }
 
-export function getQueryParams(
-  time: Time,
-  additionalParams: Record<string, any> = {}
-): Record<string, any> {
+export function getQueryParams(time: Time, additionalParams: Record<string, any> = {}): Record<string, any> {
   if (time.mode === "past-minutes") {
     return {
       timeZone,

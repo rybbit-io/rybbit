@@ -22,9 +22,7 @@ export function useGetFunnels(siteId?: string | number) {
         return [];
       }
       try {
-        const response = await authedFetch<{ data: SavedFunnel[] }>(
-          `/funnels/${siteId}`
-        );
+        const response = await authedFetch<{ data: SavedFunnel[] }>(`/funnels/${siteId}`);
         return response.data;
       } catch (error) {
         throw new Error("Failed to fetch funnels");

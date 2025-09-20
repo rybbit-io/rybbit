@@ -1,8 +1,4 @@
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { Check, Copy } from "lucide-react";
 import { ReactNode, useEffect, useState } from "react";
@@ -57,9 +53,7 @@ export function CopyText({
 
   return (
     <div className={cn("flex items-center gap-1.5 group", className)}>
-      <span className="font-mono text-sm truncate">
-        {children || displayText}
-      </span>
+      <span className="font-mono text-sm truncate">{children || displayText}</span>
 
       {showCopyButton && (
         <Tooltip>
@@ -72,11 +66,7 @@ export function CopyText({
               )}
               aria-label="Copy to clipboard"
             >
-              {copied ? (
-                <Check className="h-3.5 w-3.5 text-green-500" />
-              ) : (
-                <Copy className="h-3.5 w-3.5" />
-              )}
+              {copied ? <Check className="h-3.5 w-3.5 text-green-500" /> : <Copy className="h-3.5 w-3.5" />}
             </button>
           </TooltipTrigger>
           <TooltipContent>

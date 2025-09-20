@@ -11,12 +11,7 @@ interface CodeSnippetProps extends React.HTMLAttributes<HTMLPreElement> {
   language?: string;
 }
 
-export function CodeSnippet({
-  code,
-  language,
-  className,
-  ...props
-}: CodeSnippetProps) {
+export function CodeSnippet({ code, language, className, ...props }: CodeSnippetProps) {
   const [hasCopied, setHasCopied] = React.useState(false);
 
   const copyToClipboard = React.useCallback(async () => {
@@ -28,20 +23,16 @@ export function CodeSnippet({
   return (
     <div className="relative">
       <pre
-        className={cn("overflow-x-auto rounded-lg border-neutral-500 bg-muted p-3 text-wrap font-mono text-sm", className)}
+        className={cn(
+          "overflow-x-auto rounded-lg border-neutral-500 bg-muted p-3 text-wrap font-mono text-sm",
+          className
+        )}
         {...props}
       >
-        {language && (
-          <div className="mb-1 text-xs text-muted-foreground">{language}</div>
-        )}
+        {language && <div className="mb-1 text-xs text-muted-foreground">{language}</div>}
         <code className="relative rounded bg-muted p-0">{code}</code>
       </pre>
-      <Button
-        size="icon"
-        variant="ghost"
-        className="absolute right-3 top-3 h-6 w-6"
-        onClick={copyToClipboard}
-      >
+      <Button size="icon" variant="ghost" className="absolute right-3 top-3 h-6 w-6" onClick={copyToClipboard}>
         {hasCopied ? <Check className="size-3" /> : <Copy className="size-3" />}
         <span className="sr-only">Copy code</span>
       </Button>

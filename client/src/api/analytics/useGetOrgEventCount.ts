@@ -26,10 +26,7 @@ async function getOrgEventCount({
   if (endDate) params.append("endDate", endDate);
   if (timeZone) params.append("timeZone", timeZone);
 
-  return authedFetch(
-    `/org-event-count/${organizationId}`,
-    Object.fromEntries(params)
-  );
+  return authedFetch(`/org-event-count/${organizationId}`, Object.fromEntries(params));
 }
 
 export function useGetOrgEventCount({

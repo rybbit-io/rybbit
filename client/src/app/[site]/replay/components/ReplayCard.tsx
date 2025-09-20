@@ -37,9 +37,7 @@ export function ReplayCard({ replay }: { replay: SessionReplayListItem }) {
   const startTime = DateTime.fromSQL(replay.start_time, {
     zone: "utc",
   }).toLocal();
-  const duration = replay.duration_ms
-    ? Math.ceil(replay.duration_ms / 1000)
-    : null;
+  const duration = replay.duration_ms ? Math.ceil(replay.duration_ms / 1000) : null;
 
   const formatDuration = (seconds: number) => {
     const minutes = Math.floor(seconds / 60);
@@ -62,9 +60,7 @@ export function ReplayCard({ replay }: { replay: SessionReplayListItem }) {
         {/* <div className="text-xs text-neutral-500">
           {replay.user_id.slice(0, 10)}...
         </div> */}
-        <div className="text-xs  text-neutral-400">
-          {startTime.toRelative()}
-        </div>
+        <div className="text-xs  text-neutral-400">{startTime.toRelative()}</div>
         {duration && (
           <div className="flex items-center gap-1 text-neutral-400 text-xs">
             <Clock className="w-3 h-3" />
@@ -74,22 +70,12 @@ export function ReplayCard({ replay }: { replay: SessionReplayListItem }) {
       </div>
 
       <div className="text-xs text-neutral-200 truncate mb-2">
-        {replay.page_url
-          .replace("https://", "")
-          .replace("http://", "")
-          .replace("www.", "")}
+        {replay.page_url.replace("https://", "").replace("http://", "").replace("www.", "")}
       </div>
 
       <div className="flex items-center gap-2 text-sm text-neutral-400">
-        <CountryFlagTooltipIcon
-          country={replay.country}
-          city={replay.city}
-          region={replay.region}
-        />
-        <BrowserTooltipIcon
-          browser={replay.browser}
-          browser_version={replay.browser_version}
-        />
+        <CountryFlagTooltipIcon country={replay.country} city={replay.city} region={replay.region} />
+        <BrowserTooltipIcon browser={replay.browser} browser_version={replay.browser_version} />
         <OperatingSystemTooltipIcon
           operating_system={replay.operating_system}
           operating_system_version={replay.operating_system_version}
@@ -100,10 +86,7 @@ export function ReplayCard({ replay }: { replay: SessionReplayListItem }) {
           screen_height={replay.screen_height}
         />
 
-        <Badge
-          variant="outline"
-          className="flex items-center gap-1 bg-neutral-800 text-gray-300"
-        >
+        <Badge variant="outline" className="flex items-center gap-1 bg-neutral-800 text-gray-300">
           <MousePointerClick className="w-4 h-4 text-amber-500" />
           <span>{formatter(replay.event_count)}</span>
         </Badge>

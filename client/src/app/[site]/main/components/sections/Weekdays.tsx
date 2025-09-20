@@ -34,7 +34,7 @@ export function Weekdays() {
       .map(() => Array(24).fill(0));
 
     // Process each data point
-    data.data.forEach((item) => {
+    data.data.forEach(item => {
       if (!item || !item.time) return;
 
       // Parse the timestamp
@@ -149,7 +149,7 @@ export function Weekdays() {
             </TabsList>
           </Tabs>
 
-          <Select value={metric} onValueChange={(value) => setMetric(value as StatType)}>
+          <Select value={metric} onValueChange={value => setMetric(value as StatType)}>
             <SelectTrigger className="w-[160px]" size="sm">
               <SelectValue placeholder="Select metric" />
             </SelectTrigger>

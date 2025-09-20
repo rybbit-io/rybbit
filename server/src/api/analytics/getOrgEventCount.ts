@@ -33,14 +33,10 @@ export async function getOrgEventCount(
     const userSites = await getSitesUserHasAccessTo(req);
 
     // Filter to only sites in the requested organization
-    const orgSites = userSites.filter(
-      (site) => site.organizationId === organizationId
-    );
+    const orgSites = userSites.filter(site => site.organizationId === organizationId);
 
     if (orgSites.length === 0) {
-      return res
-        .status(403)
-        .send({ error: "No access to organization or no sites found" });
+      return res.status(403).send({ error: "No access to organization or no sites found" });
     }
 
     const siteIds = orgSites.map((site: any) => site.siteId);
@@ -106,8 +102,6 @@ export async function getOrgEventCount(
     return res.send({ data });
   } catch (error) {
     console.error("Error fetching organization event count:", error);
-    return res
-      .status(500)
-      .send({ error: "Failed to fetch organization event count" });
+    return res.status(500).send({ error: "Failed to fetch organization event count" });
   }
 }

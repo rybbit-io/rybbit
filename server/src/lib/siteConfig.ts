@@ -1,3 +1,4 @@
+import { eq, or } from "drizzle-orm";
 import { db } from "../db/postgres/postgres.js";
 import { sites } from "../db/postgres/schema.js";
 import { logger } from "./logger/logger.js";
@@ -5,22 +6,51 @@ import { matchesCIDR, matchesRange } from "./ipUtils.js";
 
 // Site configuration interface
 interface SiteConfigData {
+  id: string | null;
+  siteId: number;
   public: boolean;
   saltUserIds: boolean;
   domain: string;
   blockBots: boolean;
   excludedIPs: string[];
   apiKey?: string | null;
+  sessionReplay: boolean;
+  webVitals: boolean;
+  trackErrors: boolean;
+  trackOutbound: boolean;
+  trackUrlParams: boolean;
+  trackInitialPageView: boolean;
+  trackSpaNavigation: boolean;
 }
 
 class SiteConfig {
-  private siteConfigMap: Map<number, SiteConfigData> = new Map();
-  private initialized: boolean = false;
+  private cache = new Map<string, { data: SiteConfigData; expires: number }>();
+  private cacheTTL = 60 * 1000; // 1 minute TTL
 
-  async loadSiteConfigs() {
+  /**
+   * Helper to determine if the input is a numeric siteId or string id
+   */
+  private isNumericId(id: string | number): boolean {
+    return typeof id === "number" || /^\d+$/.test(id);
+  }
+
+  /**
+   * Get site by either siteId or id
+   */
+  private async getSiteByAnyId(siteIdOrId: string | number): Promise<SiteConfigData | undefined> {
+    const cacheKey = String(siteIdOrId);
+    const cached = this.cache.get(cacheKey);
+
+    if (cached && cached.expires > Date.now()) {
+      return cached.data;
+    }
+
     try {
-      const allSites = await db
+      const isNumeric = this.isNumericId(siteIdOrId);
+
+      const [site] = await db
         .select({
+          id: sites.id,
           siteId: sites.siteId,
           public: sites.public,
           saltUserIds: sites.saltUserIds,
@@ -28,183 +58,119 @@ class SiteConfig {
           blockBots: sites.blockBots,
           excludedIPs: sites.excludedIPs,
           apiKey: sites.apiKey,
+          sessionReplay: sites.sessionReplay,
+          webVitals: sites.webVitals,
+          trackErrors: sites.trackErrors,
+          trackOutbound: sites.trackOutbound,
+          trackUrlParams: sites.trackUrlParams,
+          trackInitialPageView: sites.trackInitialPageView,
+          trackSpaNavigation: sites.trackSpaNavigation,
         })
-        .from(sites);
+        .from(sites)
+        .where(isNumeric ? eq(sites.siteId, Number(siteIdOrId)) : eq(sites.id, String(siteIdOrId)))
+        .limit(1);
 
-      // Reset the map
-      this.siteConfigMap.clear();
-
-      // Populate the map with site IDs and their configuration
-      for (const site of allSites) {
-        this.siteConfigMap.set(site.siteId, {
-          public: site.public || false,
-          saltUserIds: site.saltUserIds || false,
-          domain: site.domain || "",
-          blockBots: site.blockBots === undefined ? true : site.blockBots,
-          excludedIPs: Array.isArray(site.excludedIPs) ? site.excludedIPs : [],
-          apiKey: site.apiKey,
-        });
+      if (!site) {
+        return undefined;
       }
 
-      this.initialized = true;
+      const configData: SiteConfigData = {
+        id: site.id,
+        siteId: site.siteId,
+        public: site.public || false,
+        saltUserIds: site.saltUserIds || false,
+        domain: site.domain || "",
+        blockBots: site.blockBots === undefined ? true : site.blockBots,
+        excludedIPs: Array.isArray(site.excludedIPs) ? site.excludedIPs : [],
+        apiKey: site.apiKey,
+        sessionReplay: site.sessionReplay || false,
+        webVitals: site.webVitals || false,
+        trackErrors: site.trackErrors || false,
+        trackOutbound: site.trackOutbound || true,
+        trackUrlParams: site.trackUrlParams || true,
+        trackInitialPageView: site.trackInitialPageView || true,
+        trackSpaNavigation: site.trackSpaNavigation || true,
+      };
+
+      this.cache.set(cacheKey, {
+        data: configData,
+        expires: Date.now() + this.cacheTTL,
+      });
+
+      return configData;
     } catch (error) {
-      console.error("Error loading site configurations:", error);
-      this.initialized = false;
+      logger.error(error as Error, `Error fetching site configuration for ${siteIdOrId}`);
+      return undefined;
     }
-  }
-
-  /**
-   * Check if a site is public without hitting the database
-   */
-  isSitePublic(siteId: string | number): boolean {
-    const numericSiteId = Number(siteId);
-    const config = this.siteConfigMap.get(numericSiteId);
-    return config?.public || false;
-  }
-
-  /**
-   * Check if a site has user ID salting enabled
-   */
-  shouldSaltUserIds(siteId: string | number): boolean {
-    const numericSiteId = Number(siteId);
-    const config = this.siteConfigMap.get(numericSiteId);
-    return config?.saltUserIds || false;
-  }
-
-  /**
-   * Check if a site has bot blocking enabled
-   */
-  shouldBlockBots(siteId: string | number): boolean {
-    const numericSiteId = Number(siteId);
-    const config = this.siteConfigMap.get(numericSiteId);
-    // Default to true if configuration is not found (safeguard)
-    return config?.blockBots !== false;
-  }
-
-  /**
-   * Get the domain of a site
-   */
-  getSiteDomain(siteId: string | number): string {
-    const numericSiteId = Number(siteId);
-    const config = this.siteConfigMap.get(numericSiteId);
-    return config?.domain || "";
   }
 
   /**
    * Get the full site configuration
    */
-  getSiteConfig(siteId: string | number): SiteConfigData | undefined {
-    const numericSiteId = Number(siteId);
-    return this.siteConfigMap.get(numericSiteId);
+  async getConfig(siteIdOrId?: string | number): Promise<SiteConfigData | undefined> {
+    if (!siteIdOrId) return undefined;
+    return this.getSiteByAnyId(siteIdOrId);
   }
 
-  /**
-   * Update the public status of a site in the cache
-   */
-  updateSitePublicStatus(siteId: number, isPublic: boolean): void {
-    const config = this.siteConfigMap.get(siteId);
-    if (!config) {
-      return;
-    }
-    config.public = isPublic;
-    this.siteConfigMap.set(siteId, config);
-  }
+  async updateConfig(siteIdOrId: number | string, config: Partial<SiteConfigData>): Promise<void> {
+    try {
+      const isNumeric = this.isNumericId(siteIdOrId);
+      await db
+        .update(sites)
+        .set(config)
+        .where(isNumeric ? eq(sites.siteId, Number(siteIdOrId)) : eq(sites.id, String(siteIdOrId)));
 
-  /**
-   * Update the salt user IDs setting of a site in the cache
-   */
-  updateSiteSaltSetting(siteId: number, saltUserIds: boolean): void {
-    const config = this.siteConfigMap.get(siteId);
-    if (!config) {
-      return;
-    }
-    config.saltUserIds = saltUserIds;
-    this.siteConfigMap.set(siteId, config);
-  }
-
-  /**
-   * Update the bot blocking setting of a site in the cache
-   */
-  updateSiteBlockBotsSetting(siteId: number, blockBots: boolean): void {
-    const config = this.siteConfigMap.get(siteId);
-    if (!config) {
-      return;
-    }
-    config.blockBots = blockBots;
-    this.siteConfigMap.set(siteId, config);
-  }
-
-  /**
-   * Update the domain of a site in the cache
-   */
-  updateSiteDomain(siteId: number, domain: string): void {
-    const config = this.siteConfigMap.get(siteId);
-    if (!config) {
-      return;
-    }
-    config.domain = domain;
-    this.siteConfigMap.set(siteId, config);
-  }
-
-  /**
-   * Update the API key of a site in the cache
-   */
-  updateSiteApiKey(siteId: number, apiKey: string | null): void {
-    const config = this.siteConfigMap.get(siteId);
-    if (config) {
-      config.apiKey = apiKey;
-      this.siteConfigMap.set(siteId, config);
+      // Invalidate cache after update
+      this.cache.delete(String(siteIdOrId));
+    } catch (error) {
+      logger.error(error as Error, `Error updating site configuration for ${siteIdOrId}`);
     }
   }
 
   /**
-   * Get excluded IPs for a site
+   * Add a new site
    */
-  getExcludedIPs(siteId: string | number): string[] {
-    const numericSiteId = Number(siteId);
-    const config = this.siteConfigMap.get(numericSiteId);
-    return config?.excludedIPs || [];
-  }
-
-  /**
-   * Update the excluded IPs of a site in the cache
-   */
-  updateSiteExcludedIPs(siteId: number, excludedIPs: string[]): void {
-    const config = this.siteConfigMap.get(siteId);
-    if (config) {
-      config.excludedIPs = excludedIPs;
-      this.siteConfigMap.set(siteId, config);
+  async addSite(config: Omit<SiteConfigData, "siteId">): Promise<void> {
+    try {
+      await db.insert(sites).values({
+        id: config.id,
+        name: "", // This would need to be provided
+        domain: config.domain,
+        public: config.public,
+        saltUserIds: config.saltUserIds,
+        blockBots: config.blockBots,
+        excludedIPs: config.excludedIPs,
+        apiKey: config.apiKey,
+        createdBy: "", // This would need to be provided
+      });
+    } catch (error) {
+      logger.error(error as Error, `Error adding site`);
     }
   }
 
   /**
-   * Add a new site to the cache
+   * Remove a site
    */
-  addSite(siteId: number, config: SiteConfigData): void {
-    this.siteConfigMap.set(siteId, config);
-  }
+  async removeSite(siteIdOrId: number | string): Promise<void> {
+    try {
+      const isNumeric = this.isNumericId(siteIdOrId);
 
-  /**
-   * Remove a site from the cache
-   */
-  removeSite(siteId: number): void {
-    this.siteConfigMap.delete(siteId);
-  }
+      await db.delete(sites).where(isNumeric ? eq(sites.siteId, Number(siteIdOrId)) : eq(sites.id, String(siteIdOrId)));
 
-  /**
-   * Ensure the cache is initialized
-   */
-  async ensureInitialized() {
-    if (!this.initialized) {
-      await this.loadSiteConfigs();
+      // Invalidate cache after deletion
+      this.cache.delete(String(siteIdOrId));
+    } catch (error) {
+      logger.error(error as Error, `Error removing site ${siteIdOrId}`);
     }
   }
 
   /**
    * Check if an IP address matches any of the excluded IPs/ranges
    */
-  isIPExcluded(ipAddress: string, siteId: string | number): boolean {
-    const excludedIPs = this.getExcludedIPs(siteId);
+  async isIPExcluded(ipAddress: string, siteIdOrId?: string | number): Promise<boolean> {
+    if (!siteIdOrId) return false; // If no site specified, don't exclude any IPs
+    const config = await this.getSiteByAnyId(siteIdOrId);
+    const excludedIPs = config?.excludedIPs || [];
     if (!excludedIPs || excludedIPs.length === 0) {
       return false;
     }
@@ -250,7 +216,6 @@ class SiteConfig {
       return false;
     }
   }
-
 }
 
 // Singleton instance

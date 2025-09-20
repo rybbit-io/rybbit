@@ -48,19 +48,11 @@ async function getIncidents(params?: GetIncidentsParams) {
 }
 
 async function acknowledgeIncident(incidentId: number) {
-  return authedFetch(
-    `/uptime/incidents/${incidentId}/acknowledge`,
-    undefined,
-    { method: 'PATCH', data: {} }
-  );
+  return authedFetch(`/uptime/incidents/${incidentId}/acknowledge`, undefined, { method: "PATCH", data: {} });
 }
 
 async function resolveIncident(incidentId: number) {
-  return authedFetch(
-    `/uptime/incidents/${incidentId}/resolve`,
-    undefined,
-    { method: 'PATCH', data: {} }
-  );
+  return authedFetch(`/uptime/incidents/${incidentId}/resolve`, undefined, { method: "PATCH", data: {} });
 }
 
 // Hooks

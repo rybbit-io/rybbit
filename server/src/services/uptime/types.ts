@@ -53,7 +53,7 @@ export interface ValidationRule {
 export interface MonitorEvent {
   monitor_id: number;
   organization_id: string;
-  timestamp: string;  // ClickHouse DateTime format: YYYY-MM-DD HH:MM:SS
+  timestamp: string; // ClickHouse DateTime format: YYYY-MM-DD HH:MM:SS
   monitor_type: string;
   monitor_url: string;
   monitor_name: string;

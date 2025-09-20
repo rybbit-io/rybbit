@@ -11,13 +11,7 @@ interface UseReplayPlayerProps {
 
 export const useReplayPlayer = ({ data, width, height }: UseReplayPlayerProps) => {
   const playerContainerRef = useRef<HTMLDivElement>(null);
-  const {
-    setPlayer,
-    setCurrentTime,
-    setIsPlaying,
-    setDuration,
-    setActivityPeriods,
-  } = useReplayStore();
+  const { setPlayer, setCurrentTime, setIsPlaying, setDuration, setActivityPeriods } = useReplayStore();
 
   useEffect(() => {
     if (data?.events && playerContainerRef.current) {
@@ -48,7 +42,7 @@ export const useReplayPlayer = ({ data, width, height }: UseReplayPlayerProps) =
           // Validate that current time doesn't exceed duration
           const currentTime = event.payload;
           const playerDuration = newPlayer.getMetaData().totalTime;
-          
+
           if (playerDuration && currentTime > playerDuration) {
             // If we've exceeded duration, pause and set to end
             newPlayer.pause();
@@ -77,7 +71,7 @@ export const useReplayPlayer = ({ data, width, height }: UseReplayPlayerProps) =
 
         // Handle page visibility changes to prevent tab-switching issues
         let wasPlayingBeforeHidden = false;
-        
+
         handleVisibilityChange = () => {
           if (document.hidden) {
             // Tab became hidden - pause if playing and remember state
@@ -97,7 +91,7 @@ export const useReplayPlayer = ({ data, width, height }: UseReplayPlayerProps) =
               if (playerDuration) {
                 setDuration(playerDuration);
               }
-              
+
               // Resume playback
               newPlayer.play();
               setIsPlaying(true);
@@ -106,8 +100,7 @@ export const useReplayPlayer = ({ data, width, height }: UseReplayPlayerProps) =
           }
         };
 
-        document.addEventListener('visibilitychange', handleVisibilityChange);
-
+        document.addEventListener("visibilitychange", handleVisibilityChange);
       } catch (error) {
         console.error("Failed to initialize rrweb player:", error);
         return;
@@ -122,7 +115,7 @@ export const useReplayPlayer = ({ data, width, height }: UseReplayPlayerProps) =
           playerContainerRef.current.innerHTML = "";
         }
         if (handleVisibilityChange) {
-          document.removeEventListener('visibilitychange', handleVisibilityChange);
+          document.removeEventListener("visibilitychange", handleVisibilityChange);
         }
         setPlayer(null);
       };

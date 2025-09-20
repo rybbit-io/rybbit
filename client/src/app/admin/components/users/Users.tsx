@@ -67,14 +67,10 @@ export function Users() {
           table={
             {
               getColumn: (columnId: string) => {
-                const getFilterValue = () =>
-                  columnFilters.find((filter) => filter.id === columnId)
-                    ?.value ?? "";
+                const getFilterValue = () => columnFilters.find(filter => filter.id === columnId)?.value ?? "";
 
                 const setFilterValue = (value: string) => {
-                  const newFilters = columnFilters.filter(
-                    (filter) => filter.id !== columnId
-                  );
+                  const newFilters = columnFilters.filter(filter => filter.id !== columnId);
                   if (value) {
                     newFilters.push({ id: columnId, value });
                   }
@@ -110,13 +106,10 @@ export function Users() {
           table={
             {
               getCanPreviousPage: () => pagination.pageIndex > 0,
-              getCanNextPage: () =>
-                pagination.pageIndex <
-                Math.ceil(total / pagination.pageSize) - 1,
+              getCanNextPage: () => pagination.pageIndex < Math.ceil(total / pagination.pageSize) - 1,
               getPageCount: () => Math.ceil(total / pagination.pageSize),
               getState: () => ({ pagination }),
-              setPageIndex: (index: number) =>
-                setPagination({ ...pagination, pageIndex: index }),
+              setPageIndex: (index: number) => setPagination({ ...pagination, pageIndex: index }),
               previousPage: () =>
                 setPagination({
                   ...pagination,
@@ -125,10 +118,7 @@ export function Users() {
               nextPage: () =>
                 setPagination({
                   ...pagination,
-                  pageIndex: Math.min(
-                    Math.ceil(total / pagination.pageSize) - 1,
-                    pagination.pageIndex + 1
-                  ),
+                  pageIndex: Math.min(Math.ceil(total / pagination.pageSize) - 1, pagination.pageIndex + 1),
                 }),
             } as any
           }

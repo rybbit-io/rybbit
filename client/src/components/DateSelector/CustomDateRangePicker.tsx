@@ -5,32 +5,18 @@ import { DateRange } from "react-day-picker";
 
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import { Time } from "./types";
 
-export function CustomDateRangePicker({
-  className,
-  setTime,
-}: {
-  className?: string;
-  setTime: (time: Time) => void;
-}) {
+export function CustomDateRangePicker({ className, setTime }: { className?: string; setTime: (time: Time) => void }) {
   const [date, setDate] = React.useState<DateRange | undefined>();
 
   return (
     <div className={cn("grid gap-2", className)}>
       <Popover>
         <PopoverTrigger asChild>
-          <Button
-            id="date"
-            variant={"ghost"}
-            className={cn("justify-start text-left font-normal px-2")}
-          >
+          <Button id="date" variant={"ghost"} className={cn("justify-start text-left font-normal px-2")}>
             Custom Range
           </Button>
         </PopoverTrigger>
@@ -40,7 +26,7 @@ export function CustomDateRangePicker({
             mode="range"
             defaultMonth={date?.from}
             selected={date}
-            onSelect={(range) => {
+            onSelect={range => {
               setDate(range);
               if (!range) return;
               if (range?.to) {

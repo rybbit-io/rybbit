@@ -29,6 +29,7 @@ import { Button } from "../ui/button";
 import { hour12 } from "../../lib/dateTimeUtils";
 import { useGetRegionName } from "../../lib/geo";
 import { Avatar } from "../Avatar";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 // Component to display a single pageview or event
 function PageviewItem({
@@ -76,10 +77,10 @@ function PageviewItem({
             isEvent
               ? "bg-amber-900/30 border-amber-500/50"
               : isError
-              ? "bg-red-900/30 border-red-500/50"
-              : isOutbound
-              ? "bg-purple-900/30 border-purple-500/50"
-              : "bg-blue-900/30 border-blue-500/50"
+                ? "bg-red-900/30 border-red-500/50"
+                : isOutbound
+                  ? "bg-purple-900/30 border-purple-500/50"
+                  : "bg-blue-900/30 border-blue-500/50"
           )}
         >
           <span className="text-sm font-medium">{index + 1}</span>
@@ -119,11 +120,7 @@ function PageviewItem({
                 </div>
               </Link>
             ) : isOutbound && item.props?.url ? (
-              <Link
-                href={String(item.props.url)}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
+              <Link href={String(item.props.url)} target="_blank" rel="noopener noreferrer">
                 <div
                   className="text-sm truncate hover:underline text-purple-400"
                   title={String(item.props.url)}
@@ -135,7 +132,7 @@ function PageviewItem({
                 </div>
               </Link>
             ) : (
-              <div className="text-sm truncate">{item.event_name || 'Outbound Click'}</div>
+              <div className="text-sm truncate">{item.event_name || "Outbound Click"}</div>
             )}
           </div>
 
@@ -160,7 +157,19 @@ function PageviewItem({
                       variant="outline"
                       className="px-1.5 py-0 h-5 text-xs bg-neutral-800 text-neutral-100 font-medium"
                     >
-                      <span className="text-neutral-300 font-light mr-1">{key}:</span> {String(value)}
+                      <span className="text-neutral-300 font-light mr-1">{key}:</span>{" "}
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <span className="truncate">
+                            {typeof value === "object" ? JSON.stringify(value) : String(value)}
+                          </span>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <span className="max-w-7xl">
+                            {typeof value === "object" ? JSON.stringify(value) : String(value)}
+                          </span>
+                        </TooltipContent>
+                      </Tooltip>
                     </Badge>
                   ))}
                 </span>
@@ -291,7 +300,7 @@ export function SessionDetails({ session, userId }: SessionDetailsProps) {
   // Flatten all events into a single array
   const allEvents = useMemo(() => {
     if (!sessionDetailsData?.pages) return [];
-    return sessionDetailsData.pages.flatMap((page) => page.data?.events || []);
+    return sessionDetailsData.pages.flatMap(page => page.data?.events || []);
   }, [sessionDetailsData?.pages]);
 
   // Get session details from the first page

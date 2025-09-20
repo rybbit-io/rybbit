@@ -1,21 +1,13 @@
 import { ResultSet } from "@clickhouse/client";
 import { FilterParams } from "@rybbit/shared";
 import SqlString from "sqlstring";
-import {
-  filterParamSchema,
-  validateFilters,
-  validateTimeStatementParams,
-} from "./query-validation.js";
+import { filterParamSchema, validateFilters, validateTimeStatementParams } from "./query-validation.js";
 import { FilterParameter, FilterType } from "./types.js";
 
 export function getTimeStatement(
-  params: Pick<
-    FilterParams,
-    "startDate" | "endDate" | "timeZone" | "pastMinutesStart" | "pastMinutesEnd"
-  >
+  params: Pick<FilterParams, "startDate" | "endDate" | "timeZone" | "pastMinutesStart" | "pastMinutesEnd">
 ) {
-  const { startDate, endDate, timeZone, pastMinutesStart, pastMinutesEnd } =
-    params;
+  const { startDate, endDate, timeZone, pastMinutesStart, pastMinutesEnd } = params;
 
   // Construct the legacy format for validation
   const pastMinutesRange =
@@ -23,10 +15,7 @@ export function getTimeStatement(
       ? { start: Number(pastMinutesStart), end: Number(pastMinutesEnd) }
       : undefined;
 
-  const date =
-    startDate && endDate && timeZone
-      ? { startDate, endDate, timeZone }
-      : undefined;
+  const date = startDate && endDate && timeZone ? { startDate, endDate, timeZone } : undefined;
 
   // Sanitize inputs with Zod
   const sanitized = validateTimeStatementParams({
@@ -42,20 +31,14 @@ export function getTimeStatement(
 
     // Use SqlString.escape for date and timeZone values
     return `AND timestamp >= toTimeZone(
-      toStartOfDay(toDateTime(${SqlString.escape(
-        startDate
-      )}, ${SqlString.escape(timeZone)})),
+      toStartOfDay(toDateTime(${SqlString.escape(startDate)}, ${SqlString.escape(timeZone)})),
       'UTC'
       )
       AND timestamp < if(
-        toDate(${SqlString.escape(endDate)}) = toDate(now(), ${SqlString.escape(
-          timeZone
-        )}),
+        toDate(${SqlString.escape(endDate)}) = toDate(now(), ${SqlString.escape(timeZone)}),
         now(),
         toTimeZone(
-          toStartOfDay(toDateTime(${SqlString.escape(
-            endDate
-          )}, ${SqlString.escape(timeZone)})) + INTERVAL 1 DAY,
+          toStartOfDay(toDateTime(${SqlString.escape(endDate)}, ${SqlString.escape(timeZone)})) + INTERVAL 1 DAY,
           'UTC'
         )
       )`;
@@ -71,10 +54,7 @@ export function getTimeStatement(
     const endTimestamp = new Date(now.getTime() - end * 60 * 1000);
 
     // Format as YYYY-MM-DD HH:MM:SS without milliseconds for ClickHouse
-    const startIso = startTimestamp
-      .toISOString()
-      .slice(0, 19)
-      .replace("T", " ");
+    const startIso = startTimestamp.toISOString().slice(0, 19).replace("T", " ");
     const endIso = endTimestamp.toISOString().slice(0, 19).replace("T", " ");
 
     return `AND timestamp > toDateTime(${SqlString.escape(startIso)}) AND timestamp <= toDateTime(${SqlString.escape(endIso)})`;
@@ -84,9 +64,7 @@ export function getTimeStatement(
   return "";
 }
 
-export async function processResults<T>(
-  results: ResultSet<"JSONEachRow">
-): Promise<T[]> {
+export async function processResults<T>(results: ResultSet<"JSONEachRow">): Promise<T[]> {
   const data: T[] = await results.json();
   for (const row of data) {
     for (const key in row) {
@@ -175,11 +153,8 @@ export function getFilterStatement(filters: string) {
   return (
     "AND " +
     filtersArray
-      .map((filter) => {
-        const x =
-          filter.type === "contains" || filter.type === "not_contains"
-            ? "%"
-            : "";
+      .map(filter => {
+        const x = filter.type === "contains" || filter.type === "not_contains" ? "%" : "";
 
         if (filter.parameter === "entry_page") {
           if (filter.value.length === 1) {
@@ -192,17 +167,12 @@ export function getFilterStatement(filters: string) {
                 FROM events 
                 GROUP BY session_id
               ) 
-              WHERE entry_pathname ${filterTypeToOperator(
-                filter.type
-              )} ${SqlString.escape(x + filter.value[0] + x)}
+              WHERE entry_pathname ${filterTypeToOperator(filter.type)} ${SqlString.escape(x + filter.value[0] + x)}
             )`;
           }
 
           const valuesWithOperator = filter.value.map(
-            (value) =>
-              `entry_pathname ${filterTypeToOperator(
-                filter.type
-              )} ${SqlString.escape(x + value + x)}`
+            value => `entry_pathname ${filterTypeToOperator(filter.type)} ${SqlString.escape(x + value + x)}`
           );
 
           return `session_id IN (
@@ -229,17 +199,12 @@ export function getFilterStatement(filters: string) {
                 FROM events 
                 GROUP BY session_id
               ) 
-              WHERE exit_pathname ${filterTypeToOperator(
-                filter.type
-              )} ${SqlString.escape(x + filter.value[0] + x)}
+              WHERE exit_pathname ${filterTypeToOperator(filter.type)} ${SqlString.escape(x + filter.value[0] + x)}
             )`;
           }
 
           const valuesWithOperator = filter.value.map(
-            (value) =>
-              `exit_pathname ${filterTypeToOperator(
-                filter.type
-              )} ${SqlString.escape(x + value + x)}`
+            value => `exit_pathname ${filterTypeToOperator(filter.type)} ${SqlString.escape(x + value + x)}`
           );
 
           return `session_id IN (
@@ -262,10 +227,8 @@ export function getFilterStatement(filters: string) {
         }
 
         const valuesWithOperator = filter.value.map(
-          (value) =>
-            `${getSqlParam(filter.parameter)} ${filterTypeToOperator(
-              filter.type
-            )} ${SqlString.escape(x + value + x)}`
+          value =>
+            `${getSqlParam(filter.parameter)} ${filterTypeToOperator(filter.type)} ${SqlString.escape(x + value + x)}`
         );
 
         return `(${valuesWithOperator.join(" OR ")})`;
@@ -322,4 +285,3 @@ export const bucketIntervalMap = {
   month: "1 MONTH",
   year: "1 YEAR",
 } as const;
-

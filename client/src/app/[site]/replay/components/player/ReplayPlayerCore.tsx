@@ -9,13 +9,7 @@ interface ReplayPlayerCoreProps {
   isPlaying: boolean;
 }
 
-export function ReplayPlayerCore({
-  data,
-  width,
-  height,
-  onPlayPause,
-  isPlaying,
-}: ReplayPlayerCoreProps) {
+export function ReplayPlayerCore({ data, width, height, onPlayPause, isPlaying }: ReplayPlayerCoreProps) {
   const { playerContainerRef } = useReplayPlayer({ data, width, height });
 
   return (
@@ -27,11 +21,8 @@ export function ReplayPlayerCore({
           position: "relative",
         }}
       />
-      
-      <ReplayPlayerOverlay 
-        onPlayPause={onPlayPause}
-        isPlaying={isPlaying}
-      />
+
+      <ReplayPlayerOverlay onPlayPause={onPlayPause} isPlaying={isPlaying} />
     </div>
   );
 }

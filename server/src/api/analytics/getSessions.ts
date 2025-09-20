@@ -1,10 +1,6 @@
 import { FastifyReply, FastifyRequest } from "fastify";
 import { clickhouse } from "../../db/clickhouse/clickhouse.js";
-import {
-  getFilterStatement,
-  getTimeStatement,
-  processResults,
-} from "./utils.js";
+import { getFilterStatement, getTimeStatement, processResults } from "./utils.js";
 import { getUserHasAccessToSitePublic } from "../../lib/auth-utils.js";
 import { FilterParams } from "@rybbit/shared";
 
@@ -50,10 +46,7 @@ export interface GetSessionsRequest {
   }>;
 }
 
-export async function getSessions(
-  req: FastifyRequest<GetSessionsRequest>,
-  res: FastifyReply
-) {
+export async function getSessions(req: FastifyRequest<GetSessionsRequest>, res: FastifyReply) {
   const { filters, page, userId } = req.query;
   const site = req.params.site;
   const userHasAccessToSite = await getUserHasAccessToSitePublic(req, site);

@@ -1,10 +1,6 @@
 import { FastifyReply, FastifyRequest } from "fastify";
 import { clickhouse } from "../../../db/clickhouse/clickhouse.js";
-import {
-  getFilterStatement,
-  getTimeStatement,
-  processResults,
-} from "../utils.js";
+import { getFilterStatement, getTimeStatement, processResults } from "../utils.js";
 import { getUserHasAccessToSitePublic } from "../../../lib/auth-utils.js";
 import { PerformanceOverviewMetrics } from "../types.js";
 import { FilterParams } from "@rybbit/shared";
@@ -49,10 +45,7 @@ export interface PerformanceOverviewRequest {
   Querystring: FilterParams;
 }
 
-export async function getPerformanceOverview(
-  req: FastifyRequest<PerformanceOverviewRequest>,
-  res: FastifyReply
-) {
+export async function getPerformanceOverview(req: FastifyRequest<PerformanceOverviewRequest>, res: FastifyReply) {
   const site = req.params.site;
   const userHasAccessToSite = await getUserHasAccessToSitePublic(req, site);
   if (!userHasAccessToSite) {
@@ -74,8 +67,6 @@ export async function getPerformanceOverview(
     return res.send({ data: data[0] });
   } catch (error) {
     console.error("Error fetching performance overview:", error);
-    return res
-      .status(500)
-      .send({ error: "Failed to fetch performance overview" });
+    return res.status(500).send({ error: "Failed to fetch performance overview" });
   }
 }

@@ -117,7 +117,7 @@ export default function ResetPasswordPage() {
                 placeholder="000000"
                 required
                 value={otp}
-                onChange={(e) => setOtp(e.target.value)}
+                onChange={e => setOtp(e.target.value)}
               />
 
               <AuthInput
@@ -127,7 +127,7 @@ export default function ResetPasswordPage() {
                 placeholder="••••••••"
                 required
                 value={newPassword}
-                onChange={(e) => setNewPassword(e.target.value)}
+                onChange={e => setNewPassword(e.target.value)}
               />
 
               <AuthButton isLoading={isLoading} loadingText="Resetting password...">
@@ -159,7 +159,7 @@ export default function ResetPasswordPage() {
                 placeholder="example@email.com"
                 required
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                onChange={e => setEmail(e.target.value)}
               />
 
               <AuthButton isLoading={isLoading} loadingText="Sending code...">

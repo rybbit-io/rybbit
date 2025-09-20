@@ -1,17 +1,16 @@
 "use client";
 
 import { authClient } from "@/lib/auth";
-import { getStripePrices } from "@/lib/stripe";
-import { useRouter } from "next/navigation";
-import { DateTime } from "luxon";
 import { TrendingUp } from "lucide-react";
-import { StandardPage } from "../../components/StandardPage";
-import { useStripeSubscription } from "../../lib/subscription/useStripeSubscription";
+import { DateTime } from "luxon";
+import { useRouter } from "next/navigation";
 import { useGetOrgEventCount } from "../../api/analytics/useGetOrgEventCount";
+import { StandardPage } from "../../components/StandardPage";
 import { UsageChart } from "../../components/UsageChart";
-import { PricingHeader } from "./components/PricingHeader";
-import { PricingCard } from "./components/PricingCard";
+import { useStripeSubscription } from "../../lib/subscription/useStripeSubscription";
 import { FAQSection } from "./components/FAQSection";
+import { PricingCard } from "./components/PricingCard";
+import { PricingHeader } from "./components/PricingHeader";
 
 export default function Subscribe() {
   const { data: sessionData } = authClient.useSession();
@@ -48,7 +47,7 @@ export default function Subscribe() {
         <PricingHeader />
 
         {/* Pricing Card */}
-        <PricingCard stripePrices={getStripePrices()} isLoggedIn={!!sessionData?.user} />
+        <PricingCard isLoggedIn={!!sessionData?.user} />
 
         {/* Usage Stats and Chart */}
         {organizationId && (

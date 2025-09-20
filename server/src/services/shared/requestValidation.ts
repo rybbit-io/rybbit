@@ -28,18 +28,14 @@ export interface OriginValidationResult {
  * @param apiKey The API key from the payload
  * @returns An object with success status and optional error message
  */
-export async function validateApiKey(
-  siteId: string | number,
-  apiKey?: string
-): Promise<ApiKeyValidationResult> {
+export async function validateApiKey(siteId: string | number, apiKey?: string): Promise<ApiKeyValidationResult> {
   if (!apiKey) {
     return { success: false };
   }
 
   try {
-    await siteConfig.ensureInitialized();
     const numericSiteId = typeof siteId === "string" ? parseInt(siteId, 10) : siteId;
-    const site = await siteConfig.getSiteConfig(numericSiteId);
+    const site = await siteConfig.getConfig(numericSiteId);
 
     if (!site) {
       return { success: false, error: "Site not found" };
@@ -54,89 +50,6 @@ export async function validateApiKey(
   } catch (error) {
     logger.error(error, "Error validating API key");
     return { success: false, error: "Failed to validate API key" };
-  }
-}
-
-
-/**
- * Validates if the request's origin matches the registered domain for the site
- * @param siteId The site ID from the tracking payload
- * @param requestOrigin The origin header from the request
- * @returns An object with success status and optional error message
- */
-export async function validateOrigin(
-  siteId: string | number,
-  requestOrigin?: string,
-): Promise<OriginValidationResult> {
-  try {
-    // If origin checking is disabled, return success
-    if (DISABLE_ORIGIN_CHECK) {
-      logger.info(
-        { siteId, origin: requestOrigin || "none" },
-        "Origin check disabled, allowing request"
-      );
-      return { success: true };
-    }
-
-    // Ensure site config is initialized
-    await siteConfig.ensureInitialized();
-
-    // Convert siteId to number
-    const numericSiteId = typeof siteId === "string" ? parseInt(siteId, 10) : siteId;
-
-    // Get the site configuration
-    const site = await siteConfig.getSiteConfig(numericSiteId);
-
-    if (!site) {
-      return {
-        success: false,
-        error: "Site not found",
-      };
-    }
-
-    // If no origin header, reject the request
-    if (!requestOrigin) {
-      return {
-        success: false,
-        error: "Origin header required",
-      };
-    }
-
-    try {
-      // Get the domain associated with this site
-      const siteDomain = site.domain;
-
-      // Normalize domains by removing all subdomain prefixes
-      const normalizedOriginHost = normalizeOrigin(requestOrigin);
-      const normalizedSiteDomain = normalizeOrigin(`https://${siteDomain}`);
-
-      // Check for exact match first
-      if (normalizedOriginHost === normalizedSiteDomain) {
-        return { success: true };
-      }
-
-      // Always allow subdomains - check if origin is a subdomain of site domain
-      if (normalizedOriginHost.endsWith(`.${normalizedSiteDomain}`)) {
-        return { success: true };
-      }
-
-      // If we get here, neither exact match nor valid subdomain
-      return {
-        success: false,
-        error: `Origin mismatch. Received: ${requestOrigin}`,
-      };
-    } catch (error) {
-      return {
-        success: false,
-        error: `Invalid origin format: ${requestOrigin}`,
-      };
-    }
-  } catch (error) {
-    logger.error(error, "Error validating origin");
-    return {
-      success: false,
-      error: "Internal error validating origin",
-    };
   }
 }
 

@@ -4,13 +4,9 @@ import { DateTime } from "luxon";
 import { UserSessionCountResponse } from "../../../../../api/analytics/userSessions";
 import { nivoTheme } from "../../../../../lib/nivo";
 
-export const VisitCalendar = ({
-  sessionCount,
-}: {
-  sessionCount: UserSessionCountResponse[];
-}) => {
+export const VisitCalendar = ({ sessionCount }: { sessionCount: UserSessionCountResponse[] }) => {
   const data = sessionCount
-    .map((e) => ({
+    .map(e => ({
       value: e.sessions,
       day: DateTime.fromSQL(e.date ?? 0)
         .toLocal()
@@ -18,19 +14,13 @@ export const VisitCalendar = ({
     }))
     .reverse();
 
-  const maxValue = _.get(
-    _.sortBy(data, "value")[Math.floor(data.length * 0.95)],
-    "value"
-  );
+  const maxValue = _.get(_.sortBy(data, "value")[Math.floor(data.length * 0.95)], "value");
 
   if (data.length === 0) {
     return null;
   }
 
-  const numYears =
-    DateTime.fromISO(data[0].day ?? "").year -
-    DateTime.fromISO(data.at(-1)?.day ?? "").year +
-    1;
+  const numYears = DateTime.fromISO(data[0].day ?? "").year - DateTime.fromISO(data.at(-1)?.day ?? "").year + 1;
 
   return (
     <div style={{ width: "100%", overflowX: "auto", height: "150px" }}>
@@ -50,11 +40,7 @@ export const VisitCalendar = ({
           tooltip={({ value, day }) => {
             return (
               <div className="bg-neutral-900 p-2 rounded-md border border-neutral-800 text-sm">
-                {value}{" "}
-                <span className="text-neutral-300">
-                  session{Number(value) > 1 && "s"} on
-                </span>{" "}
-                {day}
+                {value} <span className="text-neutral-300">session{Number(value) > 1 && "s"} on</span> {day}
               </div>
             );
           }}

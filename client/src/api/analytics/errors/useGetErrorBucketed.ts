@@ -29,11 +29,9 @@ export function useGetErrorBucketed({
   return useQuery({
     queryKey: ["error-bucketed", time, site, filters, bucket, errorMessage],
     queryFn: () => {
-      return authedFetch<any>(`/error-bucketed/${site}`, queryParams).then(
-        (res) => {
-          return res.data;
-        }
-      );
+      return authedFetch<any>(`/error-bucketed/${site}`, queryParams).then(res => {
+        return res.data;
+      });
     },
     enabled: enabled && !!errorMessage && !!site,
     staleTime: Infinity,

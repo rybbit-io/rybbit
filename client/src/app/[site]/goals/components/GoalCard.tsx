@@ -15,11 +15,7 @@ import {
 } from "../../../../components/ui/alert-dialog";
 import { Button } from "../../../../components/ui/button";
 import GoalFormModal from "./GoalFormModal";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "../../../../components/ui/tooltip";
+import { Tooltip, TooltipContent, TooltipTrigger } from "../../../../components/ui/tooltip";
 import { Goal } from "../../../../api/analytics/goals/useGetGoals";
 
 interface GoalCardProps {
@@ -72,17 +68,14 @@ export default function GoalCard({ goal, siteId }: GoalCardProps) {
             <div className="mt-1">
               <span className="text-xs text-neutral-400 mr-2">Pattern:</span>
               <code className="text-xs bg-neutral-800 px-1 py-0.5 rounded">
-                {goal.goalType === "path"
-                  ? goal.config.pathPattern
-                  : goal.config.eventName}
+                {goal.goalType === "path" ? goal.config.pathPattern : goal.config.eventName}
               </code>
 
               {goal.goalType === "event" && goal.config.eventPropertyKey && (
                 <div className="mt-1 text-xs text-neutral-400">
                   Property:{" "}
                   <code className="text-xs bg-neutral-800 px-1 py-0.5 rounded text-neutral-100">
-                    {goal.config.eventPropertyKey}:{" "}
-                    {String(goal.config.eventPropertyValue)}
+                    {goal.config.eventPropertyKey}: {String(goal.config.eventPropertyValue)}
                   </code>
                 </div>
               )}
@@ -93,15 +86,11 @@ export default function GoalCard({ goal, siteId }: GoalCardProps) {
           <div className="flex-1 flex justify-center">
             <div className="grid grid-cols-2 gap-4">
               <div className="text-center">
-                <div className="font-bold text-base">
-                  {goal.total_conversions.toLocaleString()}
-                </div>
+                <div className="font-bold text-base">{goal.total_conversions.toLocaleString()}</div>
                 <div className="text-xs text-neutral-400">Conversions</div>
               </div>
               <div className="text-center">
-                <div className="font-bold text-base">
-                  {(goal.conversion_rate * 100).toFixed(2)}%
-                </div>
+                <div className="font-bold text-base">{(goal.conversion_rate * 100).toFixed(2)}%</div>
                 <div className="text-xs text-neutral-400">Conversion Rate</div>
               </div>
             </div>
@@ -118,11 +107,7 @@ export default function GoalCard({ goal, siteId }: GoalCardProps) {
                 </Button>
               }
             />
-            <Button
-              onClick={() => setIsDeleteDialogOpen(true)}
-              variant="ghost"
-              size="smIcon"
-            >
+            <Button onClick={() => setIsDeleteDialogOpen(true)} variant="ghost" size="smIcon">
               <Trash2 className="h-4 w-4" />
             </Button>
           </div>
@@ -137,18 +122,12 @@ export default function GoalCard({ goal, siteId }: GoalCardProps) {
       </div>
 
       {/* Delete Confirmation Dialog */}
-      <AlertDialog
-        open={isDeleteDialogOpen}
-        onOpenChange={setIsDeleteDialogOpen}
-      >
+      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>
-              Are you sure you want to delete this goal?
-            </AlertDialogTitle>
+            <AlertDialogTitle>Are you sure you want to delete this goal?</AlertDialogTitle>
             <AlertDialogDescription>
-              This action cannot be undone. This will permanently delete the
-              goal and remove it from all reports.
+              This action cannot be undone. This will permanently delete the goal and remove it from all reports.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

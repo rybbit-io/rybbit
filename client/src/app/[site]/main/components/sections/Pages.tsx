@@ -4,12 +4,7 @@ import { useStore } from "@/lib/store";
 import { Expand } from "lucide-react";
 import { useState } from "react";
 import { useGetSite } from "../../../../../api/admin/sites";
-import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from "../../../../../components/ui/basic-tabs";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../../../../components/ui/basic-tabs";
 import { Button } from "../../../../../components/ui/button";
 import { Card, CardContent } from "../../../../../components/ui/card";
 import { truncateString } from "../../../../../lib/utils";
@@ -30,11 +25,7 @@ export function Pages() {
   return (
     <Card className="h-[405px]">
       <CardContent className="mt-2">
-        <Tabs
-          defaultValue="pages"
-          value={tab}
-          onValueChange={(value) => setTab(value as Tab)}
-        >
+        <Tabs defaultValue="pages" value={tab} onValueChange={value => setTab(value as Tab)}>
           <div className="flex flex-row gap-2 justify-between items-center">
             <div className="overflow-x-auto">
               <TabsList>
@@ -53,12 +44,10 @@ export function Pages() {
             <StandardSection
               filterParameter="pathname"
               title="Pages"
-              getValue={(e) => e.value}
-              getKey={(e) => e.value}
-              getLabel={(e) =>
-                truncateString(e.value, MAX_LABEL_LENGTH) || "Other"
-              }
-              getLink={(e) => `https://${siteMetadata?.domain}${e.value}`}
+              getValue={e => e.value}
+              getKey={e => e.value}
+              getLabel={e => truncateString(e.value, MAX_LABEL_LENGTH) || "Other"}
+              getLink={e => `https://${siteMetadata?.domain}${e.value}`}
               expanded={expanded}
               close={close}
             />
@@ -67,11 +56,9 @@ export function Pages() {
             <StandardSection
               filterParameter="page_title"
               title="Page Title"
-              getValue={(e) => e.value}
-              getKey={(e) => e.value}
-              getLabel={(e) =>
-                truncateString(e.value, MAX_LABEL_LENGTH) || "Other"
-              }
+              getValue={e => e.value}
+              getKey={e => e.value}
+              getLabel={e => truncateString(e.value, MAX_LABEL_LENGTH) || "Other"}
               // getLink={(e) =>
               //   e.pathname
               //     ? `https://${siteMetadata?.domain}${e.pathname}`
@@ -85,12 +72,10 @@ export function Pages() {
             <StandardSection
               filterParameter="entry_page"
               title="Entry Pages"
-              getValue={(e) => e.value}
-              getKey={(e) => e.value}
-              getLabel={(e) =>
-                truncateString(e.value, MAX_LABEL_LENGTH) || "Other"
-              }
-              getLink={(e) => `https://${siteMetadata?.domain}${e.value}`}
+              getValue={e => e.value}
+              getKey={e => e.value}
+              getLabel={e => truncateString(e.value, MAX_LABEL_LENGTH) || "Other"}
+              getLink={e => `https://${siteMetadata?.domain}${e.value}`}
               expanded={expanded}
               close={close}
             />
@@ -99,12 +84,10 @@ export function Pages() {
             <StandardSection
               filterParameter="exit_page"
               title="Exit Pages"
-              getValue={(e) => e.value}
-              getKey={(e) => e.value}
-              getLabel={(e) =>
-                truncateString(e.value, MAX_LABEL_LENGTH) || "Other"
-              }
-              getLink={(e) => `https://${siteMetadata?.domain}${e.value}`}
+              getValue={e => e.value}
+              getKey={e => e.value}
+              getLabel={e => truncateString(e.value, MAX_LABEL_LENGTH) || "Other"}
+              getLink={e => `https://${siteMetadata?.domain}${e.value}`}
               expanded={expanded}
               close={close}
             />
@@ -113,9 +96,9 @@ export function Pages() {
             <StandardSection
               filterParameter="hostname"
               title="Hostnames"
-              getValue={(e) => e.value}
-              getKey={(e) => e.value}
-              getLabel={(e) => e.value}
+              getValue={e => e.value}
+              getKey={e => e.value}
+              getLabel={e => e.value}
               expanded={expanded}
               close={close}
             />

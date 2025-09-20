@@ -47,7 +47,10 @@ export const apiKeyRateLimiter = new ApiKeyRateLimiter();
 
 // Clean up expired entries every 5 minutes
 if (IS_CLOUD) {
-  setInterval(() => {
-    apiKeyRateLimiter.cleanup();
-  }, 5 * 60 * 1000);
+  setInterval(
+    () => {
+      apiKeyRateLimiter.cleanup();
+    },
+    5 * 60 * 1000
+  );
 }

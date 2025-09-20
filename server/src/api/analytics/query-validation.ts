@@ -23,21 +23,21 @@ const dateParamsSchema = z.object({
     .string()
     .regex(dateRegex, { message: "Invalid date format. Use YYYY-MM-DD" })
     .optional()
-    .refine((date) => !date || !isNaN(Date.parse(date)), {
+    .refine(date => !date || !isNaN(Date.parse(date)), {
       message: "Invalid date value",
     }),
   endDate: z
     .string()
     .regex(dateRegex, { message: "Invalid date format. Use YYYY-MM-DD" })
     .optional()
-    .refine((date) => !date || !isNaN(Date.parse(date)), {
+    .refine(date => !date || !isNaN(Date.parse(date)), {
       message: "Invalid date value",
     }),
   timeZone: z
     .string()
     .min(1, { message: "Time zone cannot be empty" })
     .refine(
-      (tz) => {
+      tz => {
         try {
           // Test if time zone is valid by attempting to format a date with it
           Intl.DateTimeFormat(undefined, { timeZone: tz });
@@ -59,21 +59,21 @@ const fillDateParamsSchema = z.object({
     .string()
     .regex(dateRegex, { message: "Invalid date format. Use YYYY-MM-DD" })
     .optional()
-    .refine((date) => !date || !isNaN(Date.parse(date)), {
+    .refine(date => !date || !isNaN(Date.parse(date)), {
       message: "Invalid date value",
     }),
   endDate: z
     .string()
     .regex(dateRegex, { message: "Invalid date format. Use YYYY-MM-DD" })
     .optional()
-    .refine((date) => !date || !isNaN(Date.parse(date)), {
+    .refine(date => !date || !isNaN(Date.parse(date)), {
       message: "Invalid date value",
     }),
   timeZone: z
     .string()
     .min(1, { message: "Time zone cannot be empty" })
     .refine(
-      (tz) => {
+      tz => {
         try {
           // Test if time zone is valid by attempting to format a date with it
           Intl.DateTimeFormat(undefined, { timeZone: tz });
@@ -99,16 +99,13 @@ const timeStatementParamsSchema = z
         end: z.number().nonnegative(),
       })
       .optional()
-      .refine((data) => !data || data.start > data.end, {
+      .refine(data => !data || data.start > data.end, {
         message: "start must be greater than end (start = older, end = newer)",
       }),
   })
-  .refine(
-    (data) => data.date !== undefined || data.pastMinutesRange !== undefined,
-    {
-      message: "Either date or pastMinutesRange must be provided",
-    }
-  )
+  .refine(data => data.date !== undefined || data.pastMinutesRange !== undefined, {
+    message: "Either date or pastMinutesRange must be provided",
+  })
   // Set default empty objects if schema validation fails
   .catch({
     date: undefined,
@@ -124,14 +121,14 @@ const filterParamsTimeStatementFillSchema = z
       .string()
       .regex(dateRegex, { message: "Invalid date format. Use YYYY-MM-DD" })
       .optional()
-      .refine((date) => !date || !isNaN(Date.parse(date)), {
+      .refine(date => !date || !isNaN(Date.parse(date)), {
         message: "Invalid date value",
       }),
     endDate: z
       .string()
       .regex(dateRegex, { message: "Invalid date format. Use YYYY-MM-DD" })
       .optional()
-      .refine((date) => !date || !isNaN(Date.parse(date)), {
+      .refine(date => !date || !isNaN(Date.parse(date)), {
         message: "Invalid date value",
       }),
     timeZone: z
@@ -139,7 +136,7 @@ const filterParamsTimeStatementFillSchema = z
       .min(1, { message: "Time zone cannot be empty" })
       .optional()
       .refine(
-        (tz) => {
+        tz => {
           if (!tz) return true;
           try {
             // Test if time zone is valid by attempting to format a date with it
@@ -154,53 +151,46 @@ const filterParamsTimeStatementFillSchema = z
     pastMinutesStart: z
       .union([z.string(), z.number()])
       .optional()
-      .transform((val) => {
+      .transform(val => {
         if (val === undefined) return undefined;
         const num = typeof val === "string" ? Number(val) : val;
         return isNaN(num) ? undefined : num;
       })
-      .refine((val) => val === undefined || val >= 0, {
+      .refine(val => val === undefined || val >= 0, {
         message: "pastMinutesStart must be non-negative",
       }),
     pastMinutesEnd: z
       .union([z.string(), z.number()])
       .optional()
-      .transform((val) => {
+      .transform(val => {
         if (val === undefined) return undefined;
         const num = typeof val === "string" ? Number(val) : val;
         return isNaN(num) ? undefined : num;
       })
-      .refine((val) => val === undefined || val >= 0, {
+      .refine(val => val === undefined || val >= 0, {
         message: "pastMinutesEnd must be non-negative",
       }),
     filters: z.string().optional(),
   })
   .refine(
-    (data) => {
+    data => {
       const hasDateParams = data.startDate && data.endDate && data.timeZone;
-      const hasPastMinutesParams =
-        data.pastMinutesStart !== undefined &&
-        data.pastMinutesEnd !== undefined;
+      const hasPastMinutesParams = data.pastMinutesStart !== undefined && data.pastMinutesEnd !== undefined;
       return hasDateParams || hasPastMinutesParams;
     },
     {
-      message:
-        "Either (startDate, endDate, timeZone) or (pastMinutesStart, pastMinutesEnd) must be provided",
+      message: "Either (startDate, endDate, timeZone) or (pastMinutesStart, pastMinutesEnd) must be provided",
     }
   )
   .refine(
-    (data) => {
-      if (
-        data.pastMinutesStart !== undefined &&
-        data.pastMinutesEnd !== undefined
-      ) {
+    data => {
+      if (data.pastMinutesStart !== undefined && data.pastMinutesEnd !== undefined) {
         return data.pastMinutesStart > data.pastMinutesEnd;
       }
       return true;
     },
     {
-      message:
-        "pastMinutesStart must be greater than pastMinutesEnd (start = older, end = newer)",
+      message: "pastMinutesStart must be greater than pastMinutesEnd (start = older, end = newer)",
     }
   );
 
@@ -230,12 +220,7 @@ const timeBucketSchema = z.enum([
 /**
  * Schema for filter type values
  */
-const filterTypeSchema = z.enum([
-  "equals",
-  "not_equals",
-  "contains",
-  "not_contains",
-]);
+const filterTypeSchema = z.enum(["equals", "not_equals", "contains", "not_contains"]);
 
 /**
  * Schema for filter parameter values
@@ -295,10 +280,7 @@ export function validateTimeStatementParams(params: unknown) {
  * @param bucket Raw bucket parameter
  * @returns Validated parameters and bucket
  */
-export function validateTimeStatementFillParams(
-  params: FilterParams,
-  bucket: unknown
-) {
+export function validateTimeStatementFillParams(params: FilterParams, bucket: unknown) {
   const validatedBucket = timeBucketSchema.parse(bucket);
   const validatedParams = filterParamsTimeStatementFillSchema.parse(params);
 

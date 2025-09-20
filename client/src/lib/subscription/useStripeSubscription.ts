@@ -8,6 +8,7 @@ interface SubscriptionData {
   status: "expired" | "active" | "trialing" | "free";
   currentPeriodEnd: string;
   currentPeriodStart: string;
+  createdAt: string;
   monthlyEventCount: number;
   eventLimit: number;
   interval: string;
@@ -15,6 +16,7 @@ interface SubscriptionData {
   isTrial?: boolean;
   trialDaysRemaining?: number;
   message?: string; // For expired trial message
+  isPro?: boolean;
 }
 
 export function useStripeSubscription() {
@@ -25,16 +27,13 @@ export function useStripeSubscription() {
       return null;
     }
 
-    const response = await fetch(
-      `${BACKEND_URL}/stripe/subscription?organizationId=${activeOrg.id}`,
-      {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        credentials: "include",
-      }
-    );
+    const response = await fetch(`${BACKEND_URL}/stripe/subscription?organizationId=${activeOrg.id}`, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      credentials: "include",
+    });
 
     if (!response.ok) {
       if (response.status === 401) {

@@ -1,10 +1,12 @@
 import { ArrowRight, Crown, ExternalLink } from "lucide-react";
 import Link from "next/link";
-import React, { ReactNode } from "react";
+import React, { ReactNode, useMemo } from "react";
 import { useCurrentSite } from "../api/admin/sites";
 import { DEFAULT_EVENT_LIMIT } from "../lib/subscription/constants";
 import { Button } from "./ui/button";
 import { authClient } from "../lib/auth";
+import { DEMO_HOSTNAME } from "../lib/const";
+import { DateTime } from "luxon";
 
 interface DisabledOverlayProps {
   children: ReactNode;
@@ -14,20 +16,23 @@ interface DisabledOverlayProps {
   borderRadius?: number;
   showMessage?: boolean;
   style?: React.CSSProperties;
+  requiredPlan?: "pro" | "standard";
 }
 
-function ownerMessage(message: string, featurePath?: string) {
+function ownerMessage(message: string, featurePath?: string, requiredPlan?: "pro" | "standard") {
   return (
     <div className="bg-neutral-900 rounded-lg  border border-neutral-700 shadow-xl flex flex-col gap-3 p-4">
       <div className="flex gap-3">
         <Crown className="h-5 w-5 text-amber-500 flex-shrink-0" />
         <div className="flex-1 space-y-1">
           <p className="text-sm text-muted-foreground">
-            Upgrade to <span className="font-medium text-foreground">Pro</span> to unlock {message}
+            Upgrade to{" "}
+            <span className="font-medium text-foreground">{requiredPlan === "pro" ? "Pro" : "Standard"}</span> to unlock{" "}
+            {message}
           </p>
           {featurePath && (
             <Link
-              href={`https://demo.rybbit.io/21/${featurePath}`}
+              href={`https://${DEMO_HOSTNAME}/21/${featurePath}`}
               target="_blank"
               className="text-sm text-neutral-100 hover:underline flex items-center gap-1"
             >
@@ -46,7 +51,7 @@ function ownerMessage(message: string, featurePath?: string) {
   );
 }
 
-function userMessage(message: string, featurePath?: string) {
+function userMessage(message: string, featurePath?: string, requiredPlan?: "pro" | "standard") {
   return (
     <div className="bg-neutral-900 rounded-lg  border border-neutral-700 shadow-xl flex flex-col gap-3 p-4">
       <div className="flex gap-3">
@@ -58,7 +63,7 @@ function userMessage(message: string, featurePath?: string) {
           </p>
           {featurePath && (
             <Link
-              href={`https://demo.rybbit.io/21/${featurePath}`}
+              href={`https://${DEMO_HOSTNAME}/21/${featurePath}`}
               target="_blank"
               className="text-sm text-neutral-100 hover:underline flex items-center gap-1"
             >
@@ -80,14 +85,25 @@ export const DisabledOverlay: React.FC<DisabledOverlayProps> = ({
   borderRadius = 0,
   showMessage = true,
   style,
+  requiredPlan = "standard",
 }) => {
   const { subscription, site } = useCurrentSite();
 
   const { data } = authClient.useSession();
 
-  const disabled = subscription?.eventLimit === DEFAULT_EVENT_LIMIT;
+  const { data: organization } = authClient.useActiveOrganization();
 
-  if (!disabled || data?.user?.role === "admin") {
+  const disabled = useMemo(() => {
+    if (requiredPlan === "pro") {
+      if (organization?.createdAt && DateTime.fromJSDate(organization?.createdAt) < DateTime.fromISO("2025-09-19")) {
+        return false;
+      }
+      return !subscription?.isPro;
+    }
+    return subscription?.eventLimit === DEFAULT_EVENT_LIMIT;
+  }, [subscription, requiredPlan]);
+
+  if (!disabled || data?.user?.role === "admin" || globalThis.location.hostname === DEMO_HOSTNAME) {
     return <>{children}</>;
   }
 
@@ -101,7 +117,9 @@ export const DisabledOverlay: React.FC<DisabledOverlayProps> = ({
       <div className="absolute inset-0 flex items-center justify-center z-10" style={borderRadiusStyle}>
         {showMessage && (
           <div className="flex items-center justify-center">
-            {site?.isOwner ? ownerMessage(message, featurePath) : userMessage(message, featurePath)}
+            {site?.isOwner
+              ? ownerMessage(message, featurePath, requiredPlan)
+              : userMessage(message, featurePath, requiredPlan)}
           </div>
         )}
       </div>

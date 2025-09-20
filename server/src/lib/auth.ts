@@ -22,13 +22,13 @@ const pluginList = [
     allowUserToCreateOrganization: true,
     // Set the creator role to owner
     creatorRole: "owner",
-    sendInvitationEmail: async (invitation) => {
+    sendInvitationEmail: async invitation => {
       const inviteLink = `${process.env.BASE_URL}/invitation?invitationId=${invitation.invitation.id}&organization=${invitation.organization.name}&inviterEmail=${invitation.inviter.user.email}`;
       await sendInvitationEmail(
         invitation.email,
         invitation.inviter.user.email,
         invitation.organization.name,
-        inviteLink,
+        inviteLink
       );
     },
   }),
@@ -188,24 +188,6 @@ export function initAuth(allowedOrigins: string[]) {
           type: "number",
           defaultValue: 0,
           required: false,
-        },
-      },
-      deleteUser: {
-        enabled: true,
-        // Add a hook to run before deleting a user
-        // i dont think this works
-        beforeDelete: async (user) => {
-          // Delete all memberships for this user first
-          console.log(`Cleaning up memberships for user ${user.id} before deletion`);
-          try {
-            // Delete member records for this user
-            await db.delete(schema.member).where(eq(schema.member.userId, user.id));
-
-            console.log(`Successfully removed memberships for user ${user.id}`);
-          } catch (error) {
-            console.error(`Error removing memberships for user ${user.id}:`, error);
-            throw error; // Re-throw to prevent user deletion if cleanup fails
-          }
         },
       },
       changeEmail: {

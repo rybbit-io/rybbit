@@ -26,7 +26,7 @@ export default function SessionReplayPage() {
   const [ref, { height: resolvedHeight, width: resolvedWidth }] = useMeasure();
 
   return (
-    <DisabledOverlay message="Replay" featurePath="replay">
+    <DisabledOverlay message="Replay" featurePath="replay" requiredPlan="pro">
       <div className="p-2 md:p-4 max-w-[2000px] mx-auto flex flex-col gap-1 overflow-y-hidden">
         <SubHeader availableFilters={SESSION_REPLAY_PAGE_FILTERS} />
         <EnableSessionReplay />

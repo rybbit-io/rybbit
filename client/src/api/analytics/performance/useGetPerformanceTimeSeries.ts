@@ -1,9 +1,5 @@
 import { Filter, TimeBucket } from "@rybbit/shared";
-import {
-  UseQueryOptions,
-  UseQueryResult,
-  useQuery,
-} from "@tanstack/react-query";
+import { UseQueryOptions, UseQueryResult, useQuery } from "@tanstack/react-query";
 import { usePerformanceStore } from "../../../app/[site]/performance/performanceStore";
 import { useStore } from "../../../lib/store";
 import { APIResponse } from "../../types";
@@ -47,16 +43,9 @@ export function useGetPerformanceTimeSeries({
   site: number | string;
   bucket?: TimeBucket;
   dynamicFilters?: Filter[];
-  props?: Partial<
-    UseQueryOptions<APIResponse<GetPerformanceTimeSeriesResponse>>
-  >;
+  props?: Partial<UseQueryOptions<APIResponse<GetPerformanceTimeSeriesResponse>>>;
 }): UseQueryResult<APIResponse<GetPerformanceTimeSeriesResponse>> {
-  const {
-    time,
-    previousTime,
-    filters: globalFilters,
-    bucket: storeBucket,
-  } = useStore();
+  const { time, previousTime, filters: globalFilters, bucket: storeBucket } = useStore();
   const { selectedPerformanceMetric } = usePerformanceStore();
 
   const timeToUse = periodTime === "previous" ? previousTime : time;
@@ -69,14 +58,7 @@ export function useGetPerformanceTimeSeries({
   });
 
   return useQuery({
-    queryKey: [
-      "performance-time-series",
-      timeToUse,
-      bucketToUse,
-      site,
-      combinedFilters,
-      selectedPerformanceMetric,
-    ],
+    queryKey: ["performance-time-series", timeToUse, bucketToUse, site, combinedFilters, selectedPerformanceMetric],
     queryFn: () => {
       return authedFetch<APIResponse<GetPerformanceTimeSeriesResponse>>(
         `/performance/time-series/${site}`,
@@ -85,14 +67,7 @@ export function useGetPerformanceTimeSeries({
     },
     placeholderData: (_, query: any) => {
       if (!query?.queryKey) return undefined;
-      const [, , , prevSite] = query.queryKey as [
-        string,
-        any,
-        TimeBucket,
-        string | number,
-        Filter[],
-        string
-      ];
+      const [, , , prevSite] = query.queryKey as [string, any, TimeBucket, string | number, Filter[], string];
 
       if (prevSite === site) {
         return query.state.data;

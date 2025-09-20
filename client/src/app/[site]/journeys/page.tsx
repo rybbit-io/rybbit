@@ -58,12 +58,12 @@ export default function JourneysPage() {
     const nodes: any[] = [];
     const links: any[] = [];
 
-    data?.journeys?.slice(0, maxJourneys).forEach((journey) => {
+    data?.journeys?.slice(0, maxJourneys).forEach(journey => {
       for (let i = 0; i < journey.path.length; i++) {
         const stepName = journey.path[i];
         const stepKey = `${i}_${stepName}`;
 
-        if (!nodes.find((n) => n.id === stepKey)) {
+        if (!nodes.find(n => n.id === stepKey)) {
           nodes.push({
             id: stepKey,
             name: stepName,
@@ -77,7 +77,7 @@ export default function JourneysPage() {
           const sourceKey = stepKey;
           const targetKey = `${i + 1}_${journey.path[i + 1]}`;
 
-          const existingLink = links.find((l) => l.source === sourceKey && l.target === targetKey);
+          const existingLink = links.find(l => l.source === sourceKey && l.target === targetKey);
 
           if (existingLink) {
             existingLink.value += journey.count;
@@ -93,10 +93,10 @@ export default function JourneysPage() {
     });
 
     // Calculate dimensions based on node distribution
-    const nodesByStep = d3.group(nodes, (d) => d.step);
+    const nodesByStep = d3.group(nodes, d => d.step);
 
     // Calculate max nodes per step for height calculation
-    const maxNodesInAnyStep = Math.max(...Array.from(nodesByStep.values()).map((stepNodes) => stepNodes.length));
+    const maxNodesInAnyStep = Math.max(...Array.from(nodesByStep.values()).map(stepNodes => stepNodes.length));
 
     // Width calculation that fills available space but doesn't shrink below minimum
     const minStepWidth = 300; // Minimum width per step
@@ -133,9 +133,9 @@ export default function JourneysPage() {
       .attr("transform", `translate(${margin.left},${margin.top})`);
 
     // Track incoming and outgoing links for each node
-    links.forEach((link) => {
-      const sourceNode = nodes.find((n) => n.id === link.source);
-      const targetNode = nodes.find((n) => n.id === link.target);
+    links.forEach(link => {
+      const sourceNode = nodes.find(n => n.id === link.source);
+      const targetNode = nodes.find(n => n.id === link.target);
 
       if (sourceNode) sourceNode.outgoingLinks.push(link);
       if (targetNode) targetNode.incomingLinks.push(link);
@@ -153,11 +153,11 @@ export default function JourneysPage() {
     });
 
     // Find the maximum link value for scaling
-    const maxLinkValue = d3.max(links, (link) => link.value) || 1;
+    const maxLinkValue = d3.max(links, link => link.value) || 1;
     const linkWidthScale = d3.scaleLinear().domain([0, maxLinkValue]).range([1, MAX_LINK_HEIGHT]);
 
     // Calculate node heights based on connected links
-    nodes.forEach((node) => {
+    nodes.forEach(node => {
       // Sum the values of incoming and outgoing links
       const incomingValue = node.incomingLinks.reduce((sum: number, link: any) => sum + link.value, 0);
       const outgoingValue = node.outgoingLinks.reduce((sum: number, link: any) => sum + link.value, 0);
@@ -173,7 +173,7 @@ export default function JourneysPage() {
       node.count = node.step === 0 ? outgoingValue : incomingValue;
 
       // Store percentage - find the corresponding journey data
-      const matchingJourney = data?.journeys?.find((journey) => {
+      const matchingJourney = data?.journeys?.find(journey => {
         // Compare path at this step with node name
         return journey.path[node.step] === node.name;
       });
@@ -183,7 +183,7 @@ export default function JourneysPage() {
     });
 
     // Calculate link positions along each node
-    nodes.forEach((node) => {
+    nodes.forEach(node => {
       // Sort links by value (descending) for consistent ordering
       node.incomingLinks.sort((a: any, b: any) => b.value - a.value);
       node.outgoingLinks.sort((a: any, b: any) => b.value - a.value);
@@ -234,9 +234,9 @@ export default function JourneysPage() {
       .data(links)
       .join("path")
       .attr("class", "link")
-      .attr("d", (d) => {
-        const source = nodes.find((n) => n.id === d.source);
-        const target = nodes.find((n) => n.id === d.target);
+      .attr("d", d => {
+        const source = nodes.find(n => n.id === d.source);
+        const target = nodes.find(n => n.id === d.target);
 
         if (!source || !target) return "";
 
@@ -259,7 +259,7 @@ export default function JourneysPage() {
       })
       .attr("fill", "none")
       .attr("stroke", "hsl(var(--accent-500))")
-      .attr("stroke-width", (d) => linkWidthScale(d.value))
+      .attr("stroke-width", d => linkWidthScale(d.value))
       .attr("opacity", 0.6)
       .attr("data-id", (d, i) => `link-${i}`) // Add unique identifier for each link
       // Add hover effects
@@ -268,8 +268,8 @@ export default function JourneysPage() {
         const hoveredLinkId = hoveredLink.attr("data-id");
 
         // Find source and target nodes for this link
-        const source = nodes.find((n) => n.id === d.source);
-        const target = nodes.find((n) => n.id === d.target);
+        const source = nodes.find(n => n.id === d.source);
+        const target = nodes.find(n => n.id === d.target);
 
         // Make all other links more transparent
         d3.selectAll(".link")
@@ -315,20 +315,20 @@ export default function JourneysPage() {
       })
       // Add tooltips showing the exact count
       .append("title")
-      .text((d) => `Count: ${d.value}`);
+      .text(d => `Count: ${d.value}`);
 
     const nodeGroups = g
       .selectAll(".node")
       .data(nodes)
       .join("g")
       .attr("class", "node")
-      .attr("transform", (d) => `translate(${d.x},${d.y - d.height / 2})`);
+      .attr("transform", d => `translate(${d.x},${d.y - d.height / 2})`);
 
     nodeGroups
       .append("rect")
       .attr("class", "node-bar")
       .attr("width", 10)
-      .attr("height", (d) => d.height)
+      .attr("height", d => d.height)
       .attr("fill", "hsl(var(--neutral-500))")
       .attr("rx", 2) // Rounded corners
       .attr("ry", 2);
@@ -338,8 +338,8 @@ export default function JourneysPage() {
       .append("rect")
       .attr("class", "node-card")
       .attr("x", 18)
-      .attr("y", (d) => d.height / 2 - 17) // Position above the vertical center, taller card
-      .attr("width", (d) => {
+      .attr("y", d => d.height / 2 - 17) // Position above the vertical center, taller card
+      .attr("width", d => {
         // Find the width needed for both lines
         const pathText = d.name;
         const statsText = `${d.count} (${d.percentage.toFixed(1)}%)`;
@@ -360,7 +360,7 @@ export default function JourneysPage() {
     const pathLinks = nodeGroups
       .append("a") // Append 'a' element for the link
       // Construct the URL using the domain from siteMetadata and the path from the node name
-      .attr("xlink:href", (d) => `https://${siteMetadata.domain}${d.name}`)
+      .attr("xlink:href", d => `https://${siteMetadata.domain}${d.name}`)
       .attr("target", "_blank") // Open link in a new tab
       .attr("rel", "noopener noreferrer"); // Security best practice for target="_blank"
 
@@ -368,8 +368,8 @@ export default function JourneysPage() {
       .append("text")
       .attr("class", "node-text node-link-text")
       .attr("x", 23)
-      .attr("y", (d) => d.height / 2 - 2)
-      .text((d) => d.name)
+      .attr("y", d => d.height / 2 - 2)
+      .text(d => d.name)
       .attr("font-size", "12px")
       .attr("fill", "white")
       .attr("text-anchor", "start")
@@ -380,8 +380,8 @@ export default function JourneysPage() {
       .append("text")
       .attr("class", "node-text node-count-text")
       .attr("x", 23) // Same left padding
-      .attr("y", (d) => d.height / 2 + 12) // Position for second line
-      .text((d) => `${d.count.toLocaleString()}`)
+      .attr("y", d => d.height / 2 + 12) // Position for second line
+      .text(d => `${d.count.toLocaleString()}`)
       .attr("font-size", "11px") // Slightly smaller font
       .attr("fill", "hsl(var(--neutral-300))")
       .attr("text-anchor", "start");
@@ -398,24 +398,24 @@ export default function JourneysPage() {
         </div>
         <div className="flex justify-end items-center gap-2 mb-2">
           <DateSelector time={time} setTime={setTime} pastMinutesEnabled={false} />
-          <Select value={steps.toString()} onValueChange={(value) => setSteps(Number(value))}>
+          <Select value={steps.toString()} onValueChange={value => setSteps(Number(value))}>
             <SelectTrigger className="w-[120px]">
               <SelectValue placeholder="Number of steps" />
             </SelectTrigger>
             <SelectContent>
-              {[2, 3, 4, 5, 6, 7, 8, 9, 10].map((step) => (
+              {[2, 3, 4, 5, 6, 7, 8, 9, 10].map(step => (
                 <SelectItem key={step} value={step.toString()}>
                   {step} steps
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
-          <Select value={maxJourneys.toString()} onValueChange={(value) => setMaxJourneys(Number(value))}>
+          <Select value={maxJourneys.toString()} onValueChange={value => setMaxJourneys(Number(value))}>
             <SelectTrigger className="w-[140px]">
               <SelectValue placeholder="Max journeys" />
             </SelectTrigger>
             <SelectContent>
-              {[10, 25, 50, 100, 150, 200].map((count) => (
+              {[10, 25, 50, 100, 150, 200].map(count => (
                 <SelectItem key={count} value={count.toString()}>
                   {count} journeys
                 </SelectItem>

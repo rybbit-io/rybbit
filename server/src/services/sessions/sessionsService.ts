@@ -25,20 +25,18 @@ class SessionsService {
 
     this.logger.info("Session cleanup cron initialized (runs every minute)");
   }
-  async getExistingSession(userId: string, siteId: string) {
-    const siteIdNumber = parseInt(siteId, 10);
-
+  async getExistingSession(userId: string, siteId: number) {
     const [existingSession] = await db
       .select()
       .from(activeSessions)
-      .where(and(eq(activeSessions.userId, userId), eq(activeSessions.siteId, siteIdNumber)))
+      .where(and(eq(activeSessions.userId, userId), eq(activeSessions.siteId, siteId)))
       .limit(1);
 
     return existingSession || null;
   }
 
-  async updateSession(payload: { userId: string; site_id: string }): Promise<{ sessionId: string }> {
-    const existingSession = await this.getExistingSession(payload.userId, payload.site_id);
+  async updateSession({ userId, siteId }: { userId: string; siteId: number }): Promise<{ sessionId: string }> {
+    const existingSession = await this.getExistingSession(userId, siteId);
 
     if (existingSession) {
       await db
@@ -50,11 +48,10 @@ class SessionsService {
       return { sessionId: existingSession.sessionId };
     }
 
-    // Insert new session with Drizzle - only include columns that exist in schema
     const insertData = {
       sessionId: crypto.randomUUID(),
-      siteId: typeof payload.site_id === "string" ? parseInt(payload.site_id, 10) : payload.site_id,
-      userId: payload.userId,
+      siteId,
+      userId,
       startTime: new Date(),
       lastActivity: new Date(),
     };

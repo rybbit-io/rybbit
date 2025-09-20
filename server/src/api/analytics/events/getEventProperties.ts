@@ -1,10 +1,6 @@
 import { FastifyReply, FastifyRequest } from "fastify";
 import { clickhouse } from "../../../db/clickhouse/clickhouse.js";
-import {
-  getTimeStatement,
-  processResults,
-  getFilterStatement,
-} from "../utils.js";
+import { getTimeStatement, processResults, getFilterStatement } from "../utils.js";
 import { getUserHasAccessToSitePublic } from "../../../lib/auth-utils.js";
 import { FilterParams } from "@rybbit/shared";
 
@@ -23,19 +19,8 @@ export interface GetEventPropertiesRequest {
   }>;
 }
 
-export async function getEventProperties(
-  req: FastifyRequest<GetEventPropertiesRequest>,
-  res: FastifyReply
-) {
-  const {
-    startDate,
-    endDate,
-    timeZone,
-    eventName,
-    filters,
-    pastMinutesStart,
-    pastMinutesEnd,
-  } = req.query;
+export async function getEventProperties(req: FastifyRequest<GetEventPropertiesRequest>, res: FastifyReply) {
+  const { startDate, endDate, timeZone, eventName, filters, pastMinutesStart, pastMinutesEnd } = req.query;
   const site = req.params.site;
   const userHasAccessToSite = await getUserHasAccessToSitePublic(req, site);
   if (!userHasAccessToSite) {
@@ -79,8 +64,7 @@ export async function getEventProperties(
       },
     });
 
-    const data =
-      await processResults<GetEventPropertiesResponse[number]>(result);
+    const data = await processResults<GetEventPropertiesResponse[number]>(result);
     return res.send({ data });
   } catch (error) {
     console.error("Generated Query:", query);

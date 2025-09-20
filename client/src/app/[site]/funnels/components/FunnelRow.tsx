@@ -7,12 +7,7 @@ import { ConfirmationModal } from "@/components/ConfirmationModal";
 import { DateRangeMode, Time } from "@/components/DateSelector/types";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import {
   ArrowRight,
   ChevronDown,
@@ -109,14 +104,10 @@ export function FunnelRow({ funnel }: FunnelRowProps) {
           <div className="mt-1 text-xs text-neutral-400 flex flex-col gap-3">
             {/* Steps visualization */}
             <div className="flex flex-wrap gap-1">
-              <h3 className="font-medium text-neutral-100 text-base mr-2">
-                {funnel.name}
-              </h3>
+              <h3 className="font-medium text-neutral-100 text-base mr-2">{funnel.name}</h3>
               {funnel.steps.map((step, index) => (
                 <div key={index} className="flex items-center">
-                  {index > 0 && (
-                    <ArrowRight className="h-3 w-3 mx-1 text-neutral-400" />
-                  )}
+                  {index > 0 && <ArrowRight className="h-3 w-3 mx-1 text-neutral-400" />}
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <span className="rounded bg-neutral-100 dark:bg-neutral-800 px-1.5 py-0.5 whitespace-nowrap overflow-hidden text-ellipsis flex items-center cursor-default">
@@ -128,35 +119,26 @@ export function FunnelRow({ funnel }: FunnelRowProps) {
                         <span className="max-w-[120px] overflow-hidden text-ellipsis inline-block">
                           {step.name || step.value}
                           {step.type === "event" && step.eventPropertyKey && (
-                            <span className="text-xs text-yellow-400 ml-1">
-                              *
-                            </span>
+                            <span className="text-xs text-yellow-400 ml-1">*</span>
                           )}
                         </span>
                       </span>
                     </TooltipTrigger>
                     <TooltipContent side="bottom" className="text-xs">
                       <div>
-                        <span className="font-semibold">
-                          {step.type === "page" ? "Page" : "Event"}:
-                        </span>{" "}
-                        {step.value}
+                        <span className="font-semibold">{step.type === "page" ? "Page" : "Event"}:</span> {step.value}
                       </div>
                       {step.name && (
                         <div>
-                          <span className="font-semibold">Label:</span>{" "}
-                          {step.name}
+                          <span className="font-semibold">Label:</span> {step.name}
                         </div>
                       )}
-                      {step.type === "event" &&
-                        step.eventPropertyKey &&
-                        step.eventPropertyValue !== undefined && (
-                          <div>
-                            <span className="font-semibold">Property:</span>{" "}
-                            {step.eventPropertyKey} ={" "}
-                            {String(step.eventPropertyValue)}
-                          </div>
-                        )}
+                      {step.type === "event" && step.eventPropertyKey && step.eventPropertyValue !== undefined && (
+                        <div>
+                          <span className="font-semibold">Property:</span> {step.eventPropertyKey} ={" "}
+                          {String(step.eventPropertyValue)}
+                        </div>
+                      )}
                     </TooltipContent>
                   </Tooltip>
                 </div>
@@ -173,14 +155,11 @@ export function FunnelRow({ funnel }: FunnelRowProps) {
                       key={index}
                       className="rounded bg-neutral-100 dark:bg-neutral-800 px-1.5 py-0.5 whitespace-nowrap overflow-hidden text-ellipsis flex items-center cursor-default"
                     >
-                      <span className="text-neutral-300">
-                        {getParameterNameLabel(filter.parameter)}
-                      </span>
+                      <span className="text-neutral-300">{getParameterNameLabel(filter.parameter)}</span>
                       <span
                         className={cn(
                           "mx-1",
-                          filter.type === "not_equals" ||
-                            filter.type === "not_contains"
+                          filter.type === "not_equals" || filter.type === "not_contains"
                             ? "text-red-400"
                             : "text-emerald-400"
                         )}
@@ -188,9 +167,7 @@ export function FunnelRow({ funnel }: FunnelRowProps) {
                         {filterTypeToLabel(filter.type)}
                       </span>
                       <span className="text-neutral-100 max-w-[100px] overflow-hidden text-ellipsis inline-block">
-                        {filter.value.length > 0
-                          ? getParameterValueLabel(filter, getRegionName)
-                          : "empty"}
+                        {filter.value.length > 0 ? getParameterValueLabel(filter, getRegionName) : "empty"}
                       </span>
                     </span>
                   ))}
@@ -206,7 +183,7 @@ export function FunnelRow({ funnel }: FunnelRowProps) {
             <Button
               variant="ghost"
               size="icon"
-              onClick={(e) => {
+              onClick={e => {
                 e.stopPropagation();
                 setIsEditModalOpen(true);
               }}
@@ -218,7 +195,7 @@ export function FunnelRow({ funnel }: FunnelRowProps) {
             <Button
               variant="ghost"
               size="icon"
-              onClick={(e) => {
+              onClick={e => {
                 e.stopPropagation();
                 setIsDeleteModalOpen(true);
               }}
@@ -227,11 +204,7 @@ export function FunnelRow({ funnel }: FunnelRowProps) {
             </Button>
 
             <Button variant="ghost" size="icon" onClick={handleExpand}>
-              {expanded ? (
-                <ChevronUp strokeWidth={3} />
-              ) : (
-                <ChevronDown strokeWidth={3} />
-              )}
+              {expanded ? <ChevronUp strokeWidth={3} /> : <ChevronDown strokeWidth={3} />}
             </Button>
           </div>
         </div>
@@ -245,22 +218,12 @@ export function FunnelRow({ funnel }: FunnelRowProps) {
               <ThreeDotLoader className="h-[400px]" />
             ) : isError ? (
               <div className="text-red-500 p-4 text-center">
-                Error loading funnel:{" "}
-                {error instanceof Error ? error.message : "Unknown error"}
+                Error loading funnel: {error instanceof Error ? error.message : "Unknown error"}
               </div>
             ) : data && data.length > 0 ? (
-              <Funnel
-                data={data}
-                isError={isError}
-                error={error}
-                isPending={isPending}
-                time={time}
-                setTime={setTime}
-              />
+              <Funnel data={data} isError={isError} error={error} isPending={isPending} time={time} setTime={setTime} />
             ) : (
-              <div className="text-center p-6 text-neutral-500">
-                No funnel data available
-              </div>
+              <div className="text-center p-6 text-neutral-500">No funnel data available</div>
             )}
           </div>
         </div>
@@ -281,11 +244,7 @@ export function FunnelRow({ funnel }: FunnelRowProps) {
 
       {/* Edit Funnel Modal */}
       {isEditModalOpen && (
-        <EditFunnelDialog
-          funnel={funnel}
-          isOpen={isEditModalOpen}
-          onClose={() => setIsEditModalOpen(false)}
-        />
+        <EditFunnelDialog funnel={funnel} isOpen={isEditModalOpen} onClose={() => setIsEditModalOpen(false)} />
       )}
     </Card>
   );

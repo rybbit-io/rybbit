@@ -112,7 +112,7 @@ export function OutboundLinksList({ outboundLinks, isLoading, size = "small" }: 
   const totalCount = outboundLinks.reduce((sum, link) => sum + link.count, 0);
 
   return (
-    <div className="flex flex-col gap-2">
+    <div className="flex flex-col gap-2 pr-2 overflow-y-auto max-h-[60vh] h-auto lg:h-full lg:min-h-0 lg:max-h-full">
       {outboundLinks.map((link, index) => {
         const percentage = (link.count / totalCount) * 100;
         const lastClicked = DateTime.fromSQL(link.lastClicked, {

@@ -23,19 +23,19 @@ describe("WebVitalsCollector", () => {
     mockMetricCallbacks = new Map();
 
     // Setup mocks to capture callbacks
-    vi.mocked(onLCP).mockImplementation((callback) => {
+    vi.mocked(onLCP).mockImplementation(callback => {
       mockMetricCallbacks.set(onLCP, callback);
     });
-    vi.mocked(onCLS).mockImplementation((callback) => {
+    vi.mocked(onCLS).mockImplementation(callback => {
       mockMetricCallbacks.set(onCLS, callback);
     });
-    vi.mocked(onINP).mockImplementation((callback) => {
+    vi.mocked(onINP).mockImplementation(callback => {
       mockMetricCallbacks.set(onINP, callback);
     });
-    vi.mocked(onFCP).mockImplementation((callback) => {
+    vi.mocked(onFCP).mockImplementation(callback => {
       mockMetricCallbacks.set(onFCP, callback);
     });
-    vi.mocked(onTTFB).mockImplementation((callback) => {
+    vi.mocked(onTTFB).mockImplementation(callback => {
       mockMetricCallbacks.set(onTTFB, callback);
     });
 
@@ -153,10 +153,7 @@ describe("WebVitalsCollector", () => {
 
     collector.initialize();
 
-    expect(consoleSpy).toHaveBeenCalledWith(
-      "Error initializing web vitals tracking:",
-      expect.any(Error)
-    );
+    expect(consoleSpy).toHaveBeenCalledWith("Error initializing web vitals tracking:", expect.any(Error));
 
     consoleSpy.mockRestore();
   });

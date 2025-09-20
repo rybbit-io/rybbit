@@ -33,9 +33,7 @@ export async function createFunnel(
 
   // Validate request
   if (!steps || steps.length < 2) {
-    return reply
-      .status(400)
-      .send({ error: "At least 2 steps are required for a funnel" });
+    return reply.status(400).send({ error: "At least 2 steps are required for a funnel" });
   }
 
   if (!name) {
@@ -62,9 +60,7 @@ export async function createFunnel(
       }
 
       if (existingFunnel.siteId !== Number(site)) {
-        return reply
-          .status(403)
-          .send({ error: "Funnel does not belong to this site" });
+        return reply.status(403).send({ error: "Funnel does not belong to this site" });
       }
 
       // Update existing funnel

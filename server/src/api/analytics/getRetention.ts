@@ -50,9 +50,7 @@ export const getRetention = async (
 WITH UserFirstPeriod AS (
     SELECT
         user_id,
-        ${periodFunction}(min(timestamp)${
-          retentionMode === "week" ? ", 1" : ""
-        }) AS cohort_period
+        ${periodFunction}(min(timestamp)${retentionMode === "week" ? ", 1" : ""}) AS cohort_period
     FROM events
     WHERE site_id = {siteId:UInt16}
     -- Use the configurable time range
@@ -62,9 +60,7 @@ WITH UserFirstPeriod AS (
 PeriodActivity AS (
     SELECT DISTINCT
         user_id,
-        ${periodFunction}(timestamp${
-          retentionMode === "week" ? ", 1" : ""
-        }) AS activity_period
+        ${periodFunction}(timestamp${retentionMode === "week" ? ", 1" : ""}) AS activity_period
     FROM events
     WHERE site_id = {siteId:UInt16}
     -- Match the date range filter
@@ -121,20 +117,15 @@ ORDER BY
 };
 
 // Process raw retention data into a grid-friendly format
-function processRetentionData(
-  rawData: RetentionDataRow[]
-): Omit<ProcessedRetentionData, "mode" | "range"> {
+function processRetentionData(rawData: RetentionDataRow[]): Omit<ProcessedRetentionData, "mode" | "range"> {
   if (!rawData || rawData.length === 0) {
     return { cohorts: {}, maxPeriods: 0 };
   }
 
-  const processedCohorts: Record<
-    string,
-    { size: number; percentages: (number | null)[] }
-  > = {};
+  const processedCohorts: Record<string, { size: number; percentages: (number | null)[] }> = {};
   let maxPeriodDiff = 0;
 
-  rawData.forEach((row) => {
+  rawData.forEach(row => {
     if (!processedCohorts[row.cohort_period]) {
       processedCohorts[row.cohort_period] = {
         size: row.cohort_size,
@@ -142,14 +133,10 @@ function processRetentionData(
       };
     }
     // Ensure array is long enough, filling gaps with null
-    while (
-      processedCohorts[row.cohort_period].percentages.length <=
-      row.period_difference
-    ) {
+    while (processedCohorts[row.cohort_period].percentages.length <= row.period_difference) {
       processedCohorts[row.cohort_period].percentages.push(null);
     }
-    processedCohorts[row.cohort_period].percentages[row.period_difference] =
-      row.retention_percentage;
+    processedCohorts[row.cohort_period].percentages[row.period_difference] = row.retention_percentage;
 
     if (row.period_difference > maxPeriodDiff) {
       maxPeriodDiff = row.period_difference;
@@ -159,7 +146,7 @@ function processRetentionData(
   // Ensure all percentage arrays have the same length for grid alignment
   const finalMaxPeriods = Math.max(maxPeriodDiff, 0);
 
-  Object.values(processedCohorts).forEach((cohort) => {
+  Object.values(processedCohorts).forEach(cohort => {
     // Ensure all cohorts have the same number of periods
     while (cohort.percentages.length <= finalMaxPeriods) {
       cohort.percentages.push(null);

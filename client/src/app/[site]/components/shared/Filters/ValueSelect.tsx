@@ -40,9 +40,9 @@ export function ValueSelect({
   const suggestions = useMemo(() => {
     return (
       data?.data
-        ?.map((item) => item.value)
+        ?.map(item => item.value)
         .filter(Boolean)
-        .map((val) => ({
+        .map(val => ({
           value: val,
           label: getValueLabel(val),
         })) || []
@@ -56,7 +56,7 @@ export function ValueSelect({
 
   return (
     <MultiSelect
-      value={value.map((val) => ({
+      value={value.map(val => ({
         value: val,
         label: getValueLabel(val),
       }))}

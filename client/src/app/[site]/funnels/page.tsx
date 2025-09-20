@@ -75,7 +75,7 @@ export default function FunnelsPage() {
           </div>
           <Skeleton className="h-10 w-32" />
         </div>
-        {[1, 2, 3].map((i) => (
+        {[1, 2, 3].map(i => (
           <FunnelRowSkeleton key={i} />
         ))}
       </div>

@@ -122,10 +122,10 @@ export async function getMonitorUptimeBuckets(
       timeout_checks: number;
       uptime_percentage: number;
     }> = [];
-    
+
     for (let i = 0; i < days; i++) {
       const date = new Date(nowInTz);
-      
+
       if (bucket === "hour") {
         // For hourly buckets, generate 24 buckets per day
         for (let h = 0; h < 24; h++) {
@@ -134,7 +134,7 @@ export async function getMonitorUptimeBuckets(
           if (date <= nowInTz) {
             allBuckets.push({
               bucket_time: date.toISOString(),
-              bucket_formatted: date.toISOString().slice(0, 13) + ':00:00',
+              bucket_formatted: date.toISOString().slice(0, 13) + ":00:00",
               total_checks: 0,
               successful_checks: 0,
               failed_checks: 0,
@@ -150,9 +150,8 @@ export async function getMonitorUptimeBuckets(
         const diff = date.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1); // Monday as start
         date.setDate(diff);
         date.setHours(0, 0, 0, 0);
-        
-        if (allBuckets.length === 0 || 
-            !allBuckets.some(b => b.bucket_formatted === date.toISOString().slice(0, 10))) {
+
+        if (allBuckets.length === 0 || !allBuckets.some(b => b.bucket_formatted === date.toISOString().slice(0, 10))) {
           allBuckets.push({
             bucket_time: date.toISOString(),
             bucket_formatted: date.toISOString().slice(0, 10),
@@ -180,9 +179,7 @@ export async function getMonitorUptimeBuckets(
     }
 
     // Merge actual data with empty buckets
-    const bucketsMap = new Map(
-      buckets.map((b: any) => [b.bucket_formatted, b])
-    );
+    const bucketsMap = new Map(buckets.map((b: any) => [b.bucket_formatted, b]));
 
     const mergedBuckets = allBuckets.map(emptyBucket => {
       const actualData = bucketsMap.get(emptyBucket.bucket_formatted);
@@ -190,9 +187,7 @@ export async function getMonitorUptimeBuckets(
     });
 
     // Sort by bucket_time ascending (oldest first) for frontend display
-    mergedBuckets.sort((a, b) => 
-      new Date(a.bucket_time).getTime() - new Date(b.bucket_time).getTime()
-    );
+    mergedBuckets.sort((a, b) => new Date(a.bucket_time).getTime() - new Date(b.bucket_time).getTime());
 
     return reply.status(200).send({
       buckets: mergedBuckets,

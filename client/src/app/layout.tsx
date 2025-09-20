@@ -14,11 +14,7 @@ import { AuthenticationGuard } from "../components/AuthenticationGuard";
 
 const inter = Inter({ subsets: ["latin"] });
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   // Use the hook to expose stopImpersonating globally
   useStopImpersonation();
 
@@ -26,12 +22,7 @@ export default function RootLayout({
     <html lang="en" className="dark">
       <ReactScan />
       <TooltipProvider>
-        <body
-          className={cn(
-            "bg-background text-foreground h-full",
-            inter.className
-          )}
-        >
+        <body className={cn("bg-background text-foreground h-full", inter.className)}>
           <QueryProvider>
             <OrganizationInitializer />
             <AuthenticationGuard />

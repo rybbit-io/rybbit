@@ -55,13 +55,13 @@ class PageviewQueue {
 
     // Get batch of pageviews
     const batch = this.queue.splice(0, this.batchSize);
-    const ips = [...new Set(batch.map((pv) => pv.ipAddress))];
+    const ips = [...new Set(batch.map(pv => pv.ipAddress))];
 
     let geoData: Record<string, { data: any }> = {};
 
     try {
       // Process each IP to get geo data using local implementation
-      const geoPromises = ips.map(async (ip) => {
+      const geoPromises = ips.map(async ip => {
         const locationData = await getLocation(ip);
         return { ip, locationData };
       });
@@ -77,7 +77,7 @@ class PageviewQueue {
     }
 
     // Process each pageview with its geo data
-    const processedPageviews = batch.map((pv) => {
+    const processedPageviews = batch.map(pv => {
       const dataForIp = geoData?.[pv.ipAddress];
 
       const countryCode = dataForIp?.data?.countryIso || "";

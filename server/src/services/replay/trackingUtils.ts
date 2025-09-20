@@ -32,7 +32,7 @@ export async function parseTrackingData(
   hostname: string,
   language: string,
   screenWidth: number,
-  screenHeight: number,
+  screenHeight: number
 ): Promise<TrackingData> {
   // Parse user agent
   const ua = UAParser(userAgent);

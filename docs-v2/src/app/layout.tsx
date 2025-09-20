@@ -1,6 +1,7 @@
 import "@/app/global.css";
 import { RootProvider } from "fumadocs-ui/provider";
 import { Inter } from "next/font/google";
+import Script from "next/script";
 import type { ReactNode } from "react";
 import type { Metadata } from "next";
 
@@ -76,10 +77,23 @@ const isDev = process.env.NODE_ENV === "development";
 export default function Layout({ children }: { children: ReactNode }) {
   return (
     <html lang="en" suppressHydrationWarning className="dark">
-      <script
+      <head>
+        <Script
+          id="gtm-script"
+          strategy="afterInteractive"
+          dangerouslySetInnerHTML={{
+            __html: `(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+})(window,document,'script','dataLayer','GTM-NB4M75CR');`,
+          }}
+        />
+      </head>
+      <Script
         src="https://demo.rybbit.io/api/script.js"
-        data-site-id="21"
-        defer
+        data-site-id="3c8487f0427d"
+        strategy="afterInteractive"
         data-session-replay="true"
         data-web-vitals="true"
         data-track-errors="true"
@@ -87,9 +101,20 @@ export default function Layout({ children }: { children: ReactNode }) {
         {...(isDev && {
           "data-api-key": process.env.NEXT_PUBLIC_RYBBIT_API_KEY,
         })}
-      ></script>
-      <script async src="https://scripts.simpleanalyticscdn.com/latest.js"></script>
+      />
+      <Script
+        src="https://scripts.simpleanalyticscdn.com/latest.js"
+        strategy="afterInteractive"
+      />
       <body className={`flex flex-col min-h-screen ${inter.variable} font-sans`}>
+        <noscript>
+          <iframe
+            src="https://www.googletagmanager.com/ns.html?id=GTM-NB4M75CR"
+            height="0"
+            width="0"
+            style={{ display: "none", visibility: "hidden" }}
+          ></iframe>
+        </noscript>
         <RootProvider
           theme={{
             forcedTheme: "dark",

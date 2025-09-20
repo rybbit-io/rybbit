@@ -19,10 +19,7 @@ export type GetUserSessionCountResponse = {
   sessions: number;
 }[];
 
-export async function getUserSessionCount(
-  req: FastifyRequest<GetUserSessionCountRequest>,
-  res: FastifyReply
-) {
+export async function getUserSessionCount(req: FastifyRequest<GetUserSessionCountRequest>, res: FastifyReply) {
   const { site } = req.params;
   const { userId, timeZone = "UTC" } = req.query;
 
@@ -57,16 +54,13 @@ export async function getUserSessionCount(
       },
     });
 
-    const data =
-      await processResults<GetUserSessionCountResponse[number]>(result);
+    const data = await processResults<GetUserSessionCountResponse[number]>(result);
 
     return res.send({
       data,
     });
   } catch (error) {
     console.error("Error fetching user session count:", error);
-    return res
-      .status(500)
-      .send({ error: "Failed to fetch user session count" });
+    return res.status(500).send({ error: "Failed to fetch user session count" });
   }
 }

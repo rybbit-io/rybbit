@@ -1,30 +1,14 @@
 "use client";
 
-import {
-  ErrorEvent,
-  useGetErrorEventsInfinite,
-} from "@/api/analytics/errors/useGetErrorEvents";
+import { ErrorEvent, useGetErrorEventsInfinite } from "@/api/analytics/errors/useGetErrorEvents";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { userLocale } from "@/lib/dateTimeUtils";
 import { useGetRegionName } from "@/lib/geo";
 import { getCountryName } from "@/lib/utils";
-import {
-  AlertTriangle,
-  Code,
-  Hash,
-  Laptop,
-  Loader2,
-  Smartphone,
-  TriangleAlert,
-  User,
-} from "lucide-react";
+import { AlertTriangle, Code, Hash, Laptop, Loader2, Smartphone, TriangleAlert, User } from "lucide-react";
 import { DateTime } from "luxon";
 import Link from "next/link";
 import { memo, useMemo } from "react";
@@ -75,9 +59,7 @@ function ErrorEventItem({ errorEvent }: { errorEvent: ErrorEvent }) {
   };
 
   const formatTimestamp = (timestamp: string) => {
-    return DateTime.fromSQL(timestamp, { zone: "utc" })
-      .setLocale(userLocale)
-      .toRelative();
+    return DateTime.fromSQL(timestamp, { zone: "utc" }).setLocale(userLocale).toRelative();
   };
 
   return (
@@ -85,9 +67,7 @@ function ErrorEventItem({ errorEvent }: { errorEvent: ErrorEvent }) {
       {/* Header with timestamp and basic info */}
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-4">
-          <span className="text-sm text-neutral-200">
-            {formatTimestamp(errorEvent.timestamp)}
-          </span>
+          <span className="text-sm text-neutral-200">{formatTimestamp(errorEvent.timestamp)}</span>
           <div className="flex items-center gap-2">
             {errorEvent.country && (
               <Tooltip>
@@ -107,8 +87,7 @@ function ErrorEventItem({ errorEvent }: { errorEvent: ErrorEvent }) {
                 <TooltipContent>
                   <p>
                     {errorEvent.browser}
-                    {errorEvent.browser_version &&
-                      ` ${errorEvent.browser_version}`}
+                    {errorEvent.browser_version && ` ${errorEvent.browser_version}`}
                   </p>
                 </TooltipContent>
               </Tooltip>
@@ -121,8 +100,7 @@ function ErrorEventItem({ errorEvent }: { errorEvent: ErrorEvent }) {
                 <TooltipContent>
                   <p>
                     {errorEvent.operating_system}
-                    {errorEvent.operating_system_version &&
-                      ` ${errorEvent.operating_system_version}`}
+                    {errorEvent.operating_system_version && ` ${errorEvent.operating_system_version}`}
                   </p>
                 </TooltipContent>
               </Tooltip>
@@ -182,9 +160,7 @@ function ErrorEventItem({ errorEvent }: { errorEvent: ErrorEvent }) {
           <TriangleAlert className="w-4 h-4 mt-0.5 flex-shrink-0" />
           <div className="flex-1 min-w-0">
             <p className="text-sm font-medium mb-1">Error</p>
-            <p className="text-sm text-neutral-300 break-words">
-              {errorEvent.message || "No message available"}
-            </p>
+            <p className="text-sm text-neutral-300 break-words">{errorEvent.message || "No message available"}</p>
           </div>
         </div>
       </div>
@@ -195,9 +171,7 @@ function ErrorEventItem({ errorEvent }: { errorEvent: ErrorEvent }) {
           <div className="flex items-start gap-2">
             <Code className="w-4 h-4 text-neutral-100 mt-0.5 flex-shrink-0" />
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-neutral-100 mb-1">
-                Stack Trace:
-              </p>
+              <p className="text-sm font-medium text-neutral-100 mb-1">Stack Trace:</p>
               {/* File and line info */}
               {(errorEvent.fileName || errorEvent.lineNumber) && (
                 <div className="mb-2">
@@ -208,14 +182,11 @@ function ErrorEventItem({ errorEvent }: { errorEvent: ErrorEvent }) {
                       target="_blank"
                       rel="noopener noreferrer"
                     >
-                      {errorEvent.fileName && (
-                        <span>{truncateText(errorEvent.fileName, 100)}</span>
-                      )}
+                      {errorEvent.fileName && <span>{truncateText(errorEvent.fileName, 100)}</span>}
                       {errorEvent.lineNumber && (
                         <span className="text-neutral-100">
                           :{errorEvent.lineNumber}
-                          {errorEvent.columnNumber &&
-                            `:${errorEvent.columnNumber}`}
+                          {errorEvent.columnNumber && `:${errorEvent.columnNumber}`}
                         </span>
                       )}
                     </Link>
@@ -247,7 +218,7 @@ export function ErrorDetails({ errorMessage }: ErrorDetailsProps) {
   // Flatten all error events into a single array
   const allErrorEvents = useMemo(() => {
     if (!errorEventsData?.pages) return [];
-    return errorEventsData.pages.flatMap((page) => page.data?.data || []);
+    return errorEventsData.pages.flatMap(page => page.data?.data || []);
   }, [errorEventsData?.pages]);
 
   // Get total count from the first page
@@ -258,29 +229,22 @@ export function ErrorDetails({ errorMessage }: ErrorDetailsProps) {
       <div className="p-4 bg-neutral-900 border-t border-neutral-800">
         <div className="space-y-3">
           {Array.from({ length: 3 }).map((_, index) => (
-            <div
-              key={index}
-              className="border border-neutral-800 rounded-lg p-4 bg-neutral-900/50"
-            >
+            <div key={index} className="border border-neutral-800 rounded-lg p-4 bg-neutral-900/50">
               {/* Header with timestamp and icons */}
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-4">
                   <Skeleton className="h-4 w-20" /> {/* Timestamp */}
                   <div className="flex items-center gap-2">
-                    <Skeleton className="h-4 w-4 rounded" />{" "}
-                    {/* Country flag */}
-                    <Skeleton className="h-4 w-4 rounded" />{" "}
-                    {/* Browser icon */}
+                    <Skeleton className="h-4 w-4 rounded" /> {/* Country flag */}
+                    <Skeleton className="h-4 w-4 rounded" /> {/* Browser icon */}
                     <Skeleton className="h-4 w-4 rounded" /> {/* OS icon */}
                     <Skeleton className="h-4 w-4 rounded" /> {/* Device icon */}
                   </div>
                   <Skeleton className="h-4 w-48" /> {/* URL */}
                 </div>
                 <div className="flex items-center gap-2">
-                  <Skeleton className="h-5 w-16 rounded-full" />{" "}
-                  {/* Session badge */}
-                  <Skeleton className="h-5 w-16 rounded-full" />{" "}
-                  {/* User badge */}
+                  <Skeleton className="h-5 w-16 rounded-full" /> {/* Session badge */}
+                  <Skeleton className="h-5 w-16 rounded-full" /> {/* User badge */}
                 </div>
               </div>
 
@@ -290,10 +254,8 @@ export function ErrorDetails({ errorMessage }: ErrorDetailsProps) {
                   <Skeleton className="h-4 w-4 mt-0.5" /> {/* Error icon */}
                   <div className="flex-1 min-w-0">
                     <Skeleton className="h-4 w-12 mb-1" /> {/* "Error" label */}
-                    <Skeleton className="h-4 w-full mb-1" />{" "}
-                    {/* Error message line 1 */}
-                    <Skeleton className="h-4 w-3/4" />{" "}
-                    {/* Error message line 2 */}
+                    <Skeleton className="h-4 w-full mb-1" /> {/* Error message line 1 */}
+                    <Skeleton className="h-4 w-3/4" /> {/* Error message line 2 */}
                   </div>
                 </div>
               </div>
@@ -304,12 +266,9 @@ export function ErrorDetails({ errorMessage }: ErrorDetailsProps) {
                   <div className="flex items-start gap-2">
                     <Skeleton className="h-4 w-4 mt-0.5" /> {/* Code icon */}
                     <div className="flex-1 min-w-0">
-                      <Skeleton className="h-4 w-20 mb-1" />{" "}
-                      {/* "Stack Trace:" label */}
-                      <Skeleton className="h-4 w-64 mb-2" />{" "}
-                      {/* File name and line */}
-                      <Skeleton className="h-16 w-full rounded" />{" "}
-                      {/* Stack trace code block */}
+                      <Skeleton className="h-4 w-20 mb-1" /> {/* "Stack Trace:" label */}
+                      <Skeleton className="h-4 w-64 mb-2" /> {/* File name and line */}
+                      <Skeleton className="h-16 w-full rounded" /> {/* Stack trace code block */}
                     </div>
                   </div>
                 </div>
@@ -339,9 +298,7 @@ export function ErrorDetails({ errorMessage }: ErrorDetailsProps) {
         <div className="text-center text-neutral-400">
           <AlertTriangle className="w-6 h-6 mx-auto mb-2" />
           <p>No error events found</p>
-          <p className="text-sm">
-            This error may have occurred outside the current time range.
-          </p>
+          <p className="text-sm">This error may have occurred outside the current time range.</p>
         </div>
       </div>
     );
@@ -350,10 +307,7 @@ export function ErrorDetails({ errorMessage }: ErrorDetailsProps) {
   return (
     <div className="p-4 bg-neutral-900 border-t border-neutral-800 space-y-3 max-h-[70vh] overflow-y-auto">
       {allErrorEvents.map((errorEvent, index) => (
-        <ErrorEventItem
-          key={`${errorEvent.session_id}-${errorEvent.timestamp}-${index}`}
-          errorEvent={errorEvent}
-        />
+        <ErrorEventItem key={`${errorEvent.session_id}-${errorEvent.timestamp}-${index}`} errorEvent={errorEvent} />
       ))}
 
       {hasNextPage && (

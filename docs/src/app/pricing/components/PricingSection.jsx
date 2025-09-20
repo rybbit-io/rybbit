@@ -79,7 +79,7 @@ export function PricingSection() {
           <div className="inline-block bg-emerald-900/30 text-emerald-400 px-3 py-1 rounded-full text-sm font-medium mb-4">
             Simple Pricing
           </div>
-          <h2 className="text-3xl md:text-4xl font-bold">Transparent Pricing</h2>
+          <h2 className="text-3xl md:text-4xl font-bold">Pricing</h2>
           <p className="mt-4 text-neutral-300 max-w-2xl mx-auto">
             Privacy-friendly analytics with all the features you need to grow
           </p>

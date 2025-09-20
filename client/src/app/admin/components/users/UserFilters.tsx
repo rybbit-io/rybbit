@@ -4,13 +4,7 @@ import { Search } from "lucide-react";
 import { Table } from "@tanstack/react-table";
 import { AdminUser } from "@/types/admin";
 import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 interface UserFiltersProps {
   table: Table<AdminUser>;
@@ -24,16 +18,14 @@ export function UserFilters({ table }: UserFiltersProps) {
         <Input
           placeholder="Filter by email..."
           value={(table.getColumn("email")?.getFilterValue() as string) ?? ""}
-          onChange={(e) =>
-            table.getColumn("email")?.setFilterValue(e.target.value)
-          }
+          onChange={e => table.getColumn("email")?.setFilterValue(e.target.value)}
           className="pl-9 bg-neutral-900 border-neutral-700"
         />
       </div>
       <div className="w-full md:w-48">
         <Select
           value={(table.getColumn("role")?.getFilterValue() as string) ?? ""}
-          onValueChange={(value) => {
+          onValueChange={value => {
             if (value === "all") {
               table.getColumn("role")?.setFilterValue("");
             } else {

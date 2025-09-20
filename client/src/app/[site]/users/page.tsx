@@ -98,7 +98,7 @@ export default function UsersPage() {
   const columns = [
     columnHelper.accessor("user_id", {
       header: "User ID",
-      cell: (info) => (
+      cell: info => (
         <Link href={`/${site}/user/${info.getValue()}`}>
           <div className=" truncate flex items-center gap-2 text-neutral-250 hover:text-neutral-100 hover:underline">
             <Avatar size={20} name={info.getValue() as string} />
@@ -109,7 +109,7 @@ export default function UsersPage() {
     }),
     columnHelper.accessor("country", {
       header: "Country",
-      cell: (info) => {
+      cell: info => {
         return (
           <div className="flex items-center gap-2 whitespace-nowrap">
             <Tooltip>
@@ -127,7 +127,7 @@ export default function UsersPage() {
     }),
     columnHelper.accessor("browser", {
       header: "Browser",
-      cell: (info) => (
+      cell: info => (
         <div className="flex items-center gap-2 whitespace-nowrap">
           <Browser browser={info.getValue() || "Unknown"} />
           {info.getValue() || "Unknown"}
@@ -136,7 +136,7 @@ export default function UsersPage() {
     }),
     columnHelper.accessor("operating_system", {
       header: "OS",
-      cell: (info) => (
+      cell: info => (
         <div className="flex items-center gap-2 whitespace-nowrap">
           <OperatingSystem os={info.getValue() || ""} />
           {info.getValue() || "Unknown"}
@@ -145,7 +145,7 @@ export default function UsersPage() {
     }),
     columnHelper.accessor("device_type", {
       header: "Device",
-      cell: (info) => {
+      cell: info => {
         const deviceType = info.getValue();
         return (
           <div className="flex items-center gap-2 whitespace-nowrap">
@@ -158,19 +158,19 @@ export default function UsersPage() {
     }),
     columnHelper.accessor("pageviews", {
       header: ({ column }) => <SortHeader column={column}>Pageviews</SortHeader>,
-      cell: (info) => <div className="whitespace-nowrap">{info.getValue().toLocaleString()}</div>,
+      cell: info => <div className="whitespace-nowrap">{info.getValue().toLocaleString()}</div>,
     }),
     columnHelper.accessor("events", {
       header: ({ column }) => <SortHeader column={column}>Events</SortHeader>,
-      cell: (info) => <div className="whitespace-nowrap">{info.getValue().toLocaleString()}</div>,
+      cell: info => <div className="whitespace-nowrap">{info.getValue().toLocaleString()}</div>,
     }),
     columnHelper.accessor("sessions", {
       header: ({ column }) => <SortHeader column={column}>Sessions</SortHeader>,
-      cell: (info) => <div className="whitespace-nowrap">{info.getValue().toLocaleString()}</div>,
+      cell: info => <div className="whitespace-nowrap">{info.getValue().toLocaleString()}</div>,
     }),
     columnHelper.accessor("last_seen", {
       header: ({ column }) => <SortHeader column={column}>Last Seen</SortHeader>,
-      cell: (info) => {
+      cell: info => {
         const date = DateTime.fromSQL(info.getValue(), {
           zone: "utc",
         }).toLocal();
@@ -193,7 +193,7 @@ export default function UsersPage() {
     }),
     columnHelper.accessor("first_seen", {
       header: ({ column }) => <SortHeader column={column}>First Seen</SortHeader>,
-      cell: (info) => {
+      cell: info => {
         const date = DateTime.fromSQL(info.getValue(), {
           zone: "utc",
         }).toLocal();
@@ -247,9 +247,9 @@ export default function UsersPage() {
           <div className="relative overflow-x-auto">
             <table className="w-full text-sm text-left">
               <thead className="bg-neutral-850 text-neutral-400 ">
-                {table.getHeaderGroups().map((headerGroup) => (
+                {table.getHeaderGroups().map(headerGroup => (
                   <tr key={headerGroup.id}>
-                    {headerGroup.headers.map((header) => (
+                    {headerGroup.headers.map(header => (
                       <th
                         key={header.id}
                         scope="col"
@@ -282,13 +282,13 @@ export default function UsersPage() {
                     </td>
                   </tr>
                 ) : (
-                  table.getRowModel().rows.map((row) => {
+                  table.getRowModel().rows.map(row => {
                     const userId = row.original.user_id;
                     const href = `/${site}/user/${userId}`;
 
                     return (
                       <tr key={row.id} className="border-b border-neutral-800  group">
-                        {row.getVisibleCells().map((cell) => (
+                        {row.getVisibleCells().map(cell => (
                           <td key={cell.id} className="px-3 py-3 relative">
                             {/* <Link
                               href={href}

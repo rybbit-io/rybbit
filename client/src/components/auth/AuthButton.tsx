@@ -10,14 +10,7 @@ interface AuthButtonProps {
   className?: string;
   onClick?: () => void;
   type?: "button" | "submit" | "reset";
-  variant?:
-    | "default"
-    | "destructive"
-    | "outline"
-    | "secondary"
-    | "ghost"
-    | "link"
-    | "success";
+  variant?: "default" | "destructive" | "outline" | "secondary" | "ghost" | "link" | "success";
 }
 
 export function AuthButton({
@@ -30,13 +23,7 @@ export function AuthButton({
   variant = "success",
 }: AuthButtonProps) {
   return (
-    <Button
-      type={type}
-      className={`w-full ${className}`}
-      disabled={isLoading}
-      variant={variant}
-      onClick={onClick}
-    >
+    <Button type={type} className={`w-full ${className}`} disabled={isLoading} variant={variant} onClick={onClick}>
       {isLoading ? loadingText : children}
     </Button>
   );

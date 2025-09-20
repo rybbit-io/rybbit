@@ -22,13 +22,7 @@ import { ApiKeyManager } from "./ApiKeyManager";
 import { ScriptBuilder } from "./ScriptBuilder";
 import { SiteConfiguration } from "./SiteConfiguration";
 
-export function SiteSettings({
-  siteId,
-  trigger,
-}: {
-  siteId: number;
-  trigger?: React.ReactNode;
-}) {
+export function SiteSettings({ siteId, trigger }: { siteId: number; trigger?: React.ReactNode }) {
   const { data: siteMetadata, isLoading, error } = useGetSite(siteId);
 
   if (isLoading || !siteMetadata || error) {
@@ -38,17 +32,9 @@ export function SiteSettings({
   return <SiteSettingsInner siteMetadata={siteMetadata} trigger={trigger} />;
 }
 
-function SiteSettingsInner({
-  siteMetadata,
-  trigger,
-}: {
-  siteMetadata: SiteResponse;
-  trigger?: React.ReactNode;
-}) {
+function SiteSettingsInner({ siteMetadata, trigger }: { siteMetadata: SiteResponse; trigger?: React.ReactNode }) {
   const { data: userOrganizationsData } = useUserOrganizations();
-  const disabled =
-    !userOrganizationsData?.[0]?.role ||
-    userOrganizationsData?.[0]?.role === "member";
+  const disabled = !userOrganizationsData?.[0]?.role || userOrganizationsData?.[0]?.role === "member";
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("script");
@@ -66,12 +52,10 @@ function SiteSettingsInner({
           </Button>
         )}
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[500px]">
+      <DialogContent className="sm:max-w-[750px]">
         <DialogHeader>
           <DialogTitle>Site Settings</DialogTitle>
-          <DialogDescription>
-            Manage settings for {siteMetadata.domain}
-          </DialogDescription>
+          <DialogDescription>Manage settings for {siteMetadata.domain}</DialogDescription>
         </DialogHeader>
         <Tabs value={activeTab} onValueChange={setActiveTab} className="pb-4">
           <TabsList className="grid w-full grid-cols-3">
@@ -80,26 +64,16 @@ function SiteSettingsInner({
             <TabsTrigger value="settings">Site Settings</TabsTrigger>
           </TabsList>
 
-          <TabsContent
-            value="script"
-            className="pt-4 space-y-4 max-h-[70vh] overflow-y-auto"
-          >
-            <ScriptBuilder siteId={siteMetadata.siteId} />
+          <TabsContent value="script" className="pt-4 space-y-4 max-h-[70vh] overflow-y-auto">
+            <ScriptBuilder siteId={siteMetadata.id ?? String(siteMetadata.siteId)} />
           </TabsContent>
 
-          <TabsContent
-            value="apikey"
-            className="pt-4 space-y-4 max-h-[70vh] overflow-y-auto"
-          >
+          <TabsContent value="apikey" className="pt-4 space-y-4 max-h-[70vh] overflow-y-auto">
             <ApiKeyManager siteId={siteMetadata.siteId} disabled={disabled} />
           </TabsContent>
 
           <TabsContent value="settings">
-            <SiteConfiguration
-              siteMetadata={siteMetadata}
-              disabled={disabled}
-              onClose={() => setDialogOpen(false)}
-            />
+            <SiteConfiguration siteMetadata={siteMetadata} disabled={disabled} onClose={() => setDialogOpen(false)} />
           </TabsContent>
         </Tabs>
 

@@ -1,10 +1,7 @@
 import { FastifyReply, FastifyRequest } from "fastify";
 import { clickhouse } from "../../db/clickhouse/clickhouse.js";
 
-export async function getSiteHasData(
-  request: FastifyRequest<{ Params: { site: string } }>,
-  reply: FastifyReply
-) {
+export async function getSiteHasData(request: FastifyRequest<{ Params: { site: string } }>, reply: FastifyReply) {
   const { site } = request.params;
 
   try {
@@ -17,7 +14,7 @@ export async function getSiteHasData(
           siteId: Number(site),
         },
       })
-      .then((res) => res.json());
+      .then(res => res.json());
 
     const hasData = pageviewsData[0].count > 0;
     return {

@@ -32,10 +32,7 @@ type UseGetSessionReplaysOptions = {
   minDuration?: number;
 };
 
-export function useGetSessionReplays({
-  limit = 20,
-  minDuration = 30,
-}: UseGetSessionReplaysOptions = {}) {
+export function useGetSessionReplays({ limit = 20, minDuration = 30 }: UseGetSessionReplaysOptions = {}) {
   const { time, site, filters } = useStore();
 
   return useInfiniteQuery({
@@ -49,18 +46,12 @@ export function useGetSessionReplays({
         minDuration,
       };
 
-      const response = await authedFetch<SessionReplayListResponse>(
-        `/session-replay/list/${site}`,
-        queryParams
-      );
+      const response = await authedFetch<SessionReplayListResponse>(`/session-replay/list/${site}`, queryParams);
       return response;
     },
     initialPageParam: 0,
     getNextPageParam: (lastPage, allPages) => {
-      const totalFetched = allPages.reduce(
-        (acc, page) => acc + (page.data?.length || 0),
-        0
-      );
+      const totalFetched = allPages.reduce((acc, page) => acc + (page.data?.length || 0), 0);
       return lastPage.data?.length === limit ? totalFetched : undefined;
     },
     staleTime: 1000 * 60 * 5, // 5 minutes

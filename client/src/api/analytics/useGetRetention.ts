@@ -12,10 +12,7 @@ export interface ProcessedRetentionData {
 
 export type RetentionMode = "day" | "week";
 
-export function useGetRetention(
-  mode: RetentionMode = "week",
-  range: number = 90
-) {
+export function useGetRetention(mode: RetentionMode = "week", range: number = 90) {
   const { site } = useStore();
   return useQuery<ProcessedRetentionData>({
     queryKey: ["retention", site, mode, range],

@@ -40,19 +40,15 @@ export function StandardSection({
   hasSubrow?: boolean;
   getSubrowLabel?: (item: SingleColResponse) => ReactNode;
 }) {
-  const { data, isLoading, isFetching, error, refetch } = usePaginatedSingleCol(
-    {
-      parameter: filterParameter,
-      limit: 100,
-      page: 1,
-    }
-  );
+  const { data, isLoading, isFetching, error, refetch } = usePaginatedSingleCol({
+    parameter: filterParameter,
+    limit: 100,
+    page: 1,
+  });
 
   const itemsForDisplay = data?.data;
 
-  const ratio = itemsForDisplay?.[0]?.percentage
-    ? 100 / itemsForDisplay[0].percentage
-    : 1;
+  const ratio = itemsForDisplay?.[0]?.percentage ? 100 / itemsForDisplay[0].percentage : 1;
 
   return (
     <>
@@ -68,9 +64,7 @@ export function StandardSection({
           <div className="py-6 flex-1 flex flex-col items-center justify-center gap-3 transition-all">
             <AlertCircle className="text-amber-400 w-8 h-8" />
             <div className="text-center">
-              <div className="text-neutral-100 font-medium mb-1">
-                Failed to load data
-              </div>
+              <div className="text-neutral-100 font-medium mb-1">Failed to load data</div>
               <div className="text-sm text-neutral-400 max-w-md mx-auto mb-3">
                 {error.message || "An error occurred while fetching data"}
               </div>
@@ -93,7 +87,7 @@ export function StandardSection({
             {itemsForDisplay?.length ? (
               itemsForDisplay
                 .slice(0, MAX_ITEMS_TO_DISPLAY)
-                .map((e) => (
+                .map(e => (
                   <Row
                     key={getKey(e)}
                     e={e}

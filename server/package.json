@@ -18,7 +18,9 @@
     "db:pull": "drizzle-kit pull --config=drizzle.config.ts",
     "db:drop": "drizzle-kit drop --config=drizzle.config.ts",
     "db:check": "drizzle-kit check --config=drizzle.config.ts",
-    "knip": "knip"
+    "knip": "knip",
+    "format": "prettier --write \"src/**/*.{js,ts,json,md}\"",
+    "format:check": "prettier --check \"src/**/*.{js,ts,json,md}\""
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.842.0",
@@ -67,6 +69,7 @@
     "jsdom": "^26.1.0",
     "knip": "^5.60.2",
     "pino-pretty": "^13.1.1",
+    "prettier": "^3.6.2",
     "terser": "^5.40.0",
     "typescript": "^5.8.3",
     "vitest": "^3.2.2"

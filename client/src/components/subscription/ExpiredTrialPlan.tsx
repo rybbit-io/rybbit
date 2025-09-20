@@ -2,14 +2,7 @@ import { AlertTriangle, ArrowRight } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { Alert, AlertDescription, AlertTitle } from "../ui/alert";
 import { Button } from "../ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "../ui/card";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "../ui/card";
 
 interface ExpiredTrialPlanProps {
   message?: string;
@@ -18,8 +11,7 @@ interface ExpiredTrialPlanProps {
 export function ExpiredTrialPlan({ message }: ExpiredTrialPlanProps) {
   const router = useRouter();
 
-  const defaultMessage =
-    "Your 14-day free trial has ended. You need to subscribe to continue tracking visits again.";
+  const defaultMessage = "Your 14-day free trial has ended. You need to subscribe to continue tracking visits again.";
 
   return (
     <div className="space-y-6">
@@ -27,8 +19,7 @@ export function ExpiredTrialPlan({ message }: ExpiredTrialPlanProps) {
         <CardHeader>
           <CardTitle>Trial Expired</CardTitle>
           <CardDescription>
-            Your free trial has expired. Subscribe to a plan to continue
-            tracking visits again.
+            Your free trial has expired. Subscribe to a plan to continue tracking visits again.
           </CardDescription>
         </CardHeader>
         <CardContent>

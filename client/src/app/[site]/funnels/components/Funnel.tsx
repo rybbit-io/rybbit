@@ -22,17 +22,10 @@ interface FunnelProps {
   setTime: (time: Time) => void;
 }
 
-export function Funnel({
-  data,
-  isError,
-  error,
-  isPending,
-  time,
-  setTime,
-}: FunnelProps) {
+export function Funnel({ data, isError, error, isPending, time, setTime }: FunnelProps) {
   // Prepare chart data
   const chartData =
-    data?.map((step) => ({
+    data?.map(step => ({
       stepName: step.step_name,
       visitors: step.visitors,
       conversionRate: step.conversion_rate,
@@ -71,39 +64,26 @@ export function Funnel({
             <span>Conversion from previous step</span>
           </div>
         </div>
-        <DateSelector
-          time={time}
-          setTime={setTime}
-          pastMinutesEnabled={false}
-        />
+        <DateSelector time={time} setTime={setTime} pastMinutesEnabled={false} />
       </div>
 
       {isError ? (
         <div className="h-[400px] flex items-center justify-center">
           <div className="text-red-500">
-            Error:{" "}
-            {error instanceof Error
-              ? error.message
-              : "Failed to analyze funnel"}
+            Error: {error instanceof Error ? error.message : "Failed to analyze funnel"}
           </div>
         </div>
       ) : data && chartData.length > 0 ? (
         <div className="space-y-0">
           {chartData.map((step, index) => {
             // Calculate the percentage width for the bar
-            const ratio = firstStep?.visitors
-              ? step.visitors / firstStep.visitors
-              : 0;
+            const ratio = firstStep?.visitors ? step.visitors / firstStep.visitors : 0;
             const barWidth = Math.max(ratio * maxBarWidth, 0);
 
             // For step 2+, calculate the number of users who dropped off
             const prevStep = index > 0 ? chartData[index - 1] : null;
-            const droppedUsers = prevStep
-              ? prevStep.visitors - step.visitors
-              : 0;
-            const dropoffPercent = prevStep
-              ? (droppedUsers / prevStep.visitors) * 100
-              : 0;
+            const droppedUsers = prevStep ? prevStep.visitors - step.visitors : 0;
+            const dropoffPercent = prevStep ? (droppedUsers / prevStep.visitors) * 100 : 0;
 
             return (
               <div key={step.stepNumber} className="relative pb-6">
@@ -120,12 +100,8 @@ export function Funnel({
                   {/* Metrics */}
                   <div className="flex-shrink-0 min-w-[130px] mr-4">
                     <div className="flex items-baseline">
-                      <span className="text-lg font-semibold">
-                        {step.visitors.toLocaleString()}
-                      </span>
-                      <span className="text-sm text-neutral-400 ml-1">
-                        users
-                      </span>
+                      <span className="text-lg font-semibold">{step.visitors.toLocaleString()}</span>
+                      <span className="text-sm text-neutral-400 ml-1">users</span>
                     </div>
                   </div>
 
@@ -136,9 +112,7 @@ export function Funnel({
                       <div
                         className="absolute h-full rounded-md"
                         style={{
-                          width: `${
-                            (step.visitors / prevStep.visitors) * 100
-                          }%`,
+                          width: `${(step.visitors / prevStep.visitors) * 100}%`,
                           background: `repeating-linear-gradient(
                               45deg,
                               rgba(16, 185, 129, 0.25),
@@ -155,9 +129,7 @@ export function Funnel({
                       style={{ width: `${barWidth}%` }}
                     ></div>
                     <div className="absolute top-2 right-2 z-20">
-                      <div className="text-base font-semibold">
-                        {round(step.conversionRate, 2)}%
-                      </div>
+                      <div className="text-base font-semibold">{round(step.conversionRate, 2)}%</div>
                     </div>
                   </div>
                 </div>
@@ -174,9 +146,7 @@ export function Funnel({
                   <div className="pl-8 flex">
                     <div className="min-w-[180px] mr-4">
                       <div className="flex items-baseline text-orange-500">
-                        <span className="text-sm font-medium">
-                          {droppedUsers.toLocaleString()} dropped
-                        </span>
+                        <span className="text-sm font-medium">{droppedUsers.toLocaleString()} dropped</span>
                         {/* <span className="text-sm text-neutral-400 ml-1">
                             ({dropoffPercent.toFixed(2)}%)
                           </span> */}
@@ -191,9 +161,7 @@ export function Funnel({
       ) : (
         <div className="h-[400px] flex items-center justify-center">
           <div className="text-neutral-400 text-sm">
-            {isPending
-              ? "Analyzing funnel..."
-              : "Configure your funnel steps and click 'Analyze Funnel'"}
+            {isPending ? "Analyzing funnel..." : "Configure your funnel steps and click 'Analyze Funnel'"}
           </div>
         </div>
       )}

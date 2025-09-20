@@ -1,3 +1,71 @@
-# So minified script is not formatted
+# Dependencies
+node_modules/
+.pnp/
+.yarn/
+
+# Build outputs
+dist/
+build/
+.next/
+out/
+
+# Environment variables
+.env
+.env.*
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Testing
+coverage/
+.nyc_output/
+
+# Cache
+.cache/
+.turbo/
+.parcel-cache/
+
+# Version control
+.git/
+
+# IDE
+.idea/
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Package files
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# Minified files
+*.min.js
+*.min.css
 **/script.js
+
+# Documentation
 **/*.mdx
+
+# Generated files
+*.generated.*
+tsconfig.tsbuildinfo
+
+# Database
+*.db
+*.sqlite
+
+# Binaries
+*.exe
+*.dll
+*.so
+*.dylib

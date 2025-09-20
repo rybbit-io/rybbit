@@ -59,7 +59,7 @@
   }
 
   // config.ts
-  function parseScriptConfig(scriptTag) {
+  async function parseScriptConfig(scriptTag) {
     const src = scriptTag.getAttribute("src");
     if (!src) {
       console.error("Script src attribute is missing");
@@ -71,48 +71,60 @@
       return null;
     }
     const siteId = scriptTag.getAttribute("data-site-id") || scriptTag.getAttribute("site-id");
-    if (!siteId || isNaN(Number(siteId))) {
-      console.error(
-        "Please provide a valid site ID using the data-site-id attribute"
-      );
+    if (!siteId) {
+      console.error("Please provide a valid site ID using the data-site-id attribute");
       return null;
     }
+    const skipPatterns = parseJsonSafely(scriptTag.getAttribute("data-skip-patterns"), []);
+    const maskPatterns = parseJsonSafely(scriptTag.getAttribute("data-mask-patterns"), []);
     const debounceDuration = scriptTag.getAttribute("data-debounce") ? Math.max(0, parseInt(scriptTag.getAttribute("data-debounce"))) : 500;
-    const skipPatterns = parseJsonSafely(
-      scriptTag.getAttribute("data-skip-patterns"),
-      []
-    );
-    const maskPatterns = parseJsonSafely(
-      scriptTag.getAttribute("data-mask-patterns"),
-      []
-    );
-    const apiKey = scriptTag.getAttribute("data-api-key") || void 0;
-    const sessionReplayBatchSize = scriptTag.getAttribute(
-      "data-replay-batch-size"
-    ) ? Math.max(1, parseInt(scriptTag.getAttribute("data-replay-batch-size"))) : 250;
-    const sessionReplayBatchInterval = scriptTag.getAttribute(
-      "data-replay-batch-interval"
-    ) ? Math.max(
-      1e3,
-      parseInt(scriptTag.getAttribute("data-replay-batch-interval"))
-    ) : 5e3;
-    return {
+    const sessionReplayBatchSize = scriptTag.getAttribute("data-replay-batch-size") ? Math.max(1, parseInt(scriptTag.getAttribute("data-replay-batch-size"))) : 250;
+    const sessionReplayBatchInterval = scriptTag.getAttribute("data-replay-batch-interval") ? Math.max(1e3, parseInt(scriptTag.getAttribute("data-replay-batch-interval"))) : 5e3;
+    const defaultConfig = {
       analyticsHost,
       siteId,
       debounceDuration,
-      autoTrackPageview: scriptTag.getAttribute("data-auto-track-pageview") !== "false",
-      autoTrackSpa: scriptTag.getAttribute("data-track-spa") !== "false",
-      trackQuerystring: scriptTag.getAttribute("data-track-query") !== "false",
-      trackOutbound: scriptTag.getAttribute("data-track-outbound") !== "false",
-      enableWebVitals: scriptTag.getAttribute("data-web-vitals") === "true",
-      trackErrors: scriptTag.getAttribute("data-track-errors") === "true",
-      enableSessionReplay: scriptTag.getAttribute("data-session-replay") === "true",
       sessionReplayBatchSize,
       sessionReplayBatchInterval,
       skipPatterns,
       maskPatterns,
-      apiKey
+      // Default all tracking to true initially (will be updated from API)
+      autoTrackPageview: true,
+      autoTrackSpa: true,
+      trackQuerystring: true,
+      trackOutbound: true,
+      enableWebVitals: false,
+      trackErrors: false,
+      enableSessionReplay: false
     };
+    try {
+      const configUrl = `${analyticsHost}/site/${siteId}/tracking-config`;
+      const response = await fetch(configUrl, {
+        method: "GET",
+        // Include credentials if needed for authentication
+        credentials: "omit"
+      });
+      if (response.ok) {
+        const apiConfig = await response.json();
+        return {
+          ...defaultConfig,
+          // Map API field names to script config field names
+          autoTrackPageview: apiConfig.trackInitialPageView ?? defaultConfig.autoTrackPageview,
+          autoTrackSpa: apiConfig.trackSpaNavigation ?? defaultConfig.autoTrackSpa,
+          trackQuerystring: apiConfig.trackUrlParams ?? defaultConfig.trackQuerystring,
+          trackOutbound: apiConfig.trackOutbound ?? defaultConfig.trackOutbound,
+          enableWebVitals: apiConfig.webVitals ?? defaultConfig.enableWebVitals,
+          trackErrors: apiConfig.trackErrors ?? defaultConfig.trackErrors,
+          enableSessionReplay: apiConfig.sessionReplay ?? defaultConfig.enableSessionReplay
+        };
+      } else {
+        console.warn("Failed to fetch tracking config from API, using defaults");
+        return defaultConfig;
+      }
+    } catch (error) {
+      console.warn("Error fetching tracking config:", error);
+      return defaultConfig;
+    }
   }
 
   // sessionReplay.ts
@@ -160,14 +172,14 @@
               timestamp: event.timestamp || Date.now()
             });
           },
-          recordCanvas: true,
-          // Record canvas elements
+          recordCanvas: false,
+          // Disable canvas recording to reduce data
           collectFonts: true,
-          // Collect font info for better replay
-          checkoutEveryNms: 3e4,
-          // Checkout every 30 seconds
-          checkoutEveryNth: 200,
-          // Checkout every 200 events
+          // Disable font collection to reduce data
+          checkoutEveryNms: 6e4,
+          // Checkout every 60 seconds (was 30)
+          checkoutEveryNth: 500,
+          // Checkout every 500 events (was 200)
           maskAllInputs: true,
           // Mask all input values for privacy
           maskInputOptions: {
@@ -187,14 +199,27 @@
             headMetaVerification: true
           },
           sampling: {
-            // Optional: reduce recording frequency to save bandwidth
+            // Aggressive sampling to reduce data volume
             mousemove: false,
-            // Don't record every mouse move
-            mouseInteraction: true,
-            scroll: 150,
-            // Sample scroll events every 150ms
-            input: "last"
+            // Don't record mouse moves at all
+            mouseInteraction: {
+              MouseUp: false,
+              MouseDown: false,
+              Click: true,
+              // Only record clicks
+              ContextMenu: false,
+              DblClick: true,
+              Focus: true,
+              Blur: true,
+              TouchStart: false,
+              TouchEnd: false
+            },
+            scroll: 500,
+            // Sample scroll events every 500ms (was 150)
+            input: "last",
             // Only record the final input value
+            media: 800
+            // Sample media interactions less frequently
           }
         });
         this.isRecording = true;
@@ -309,22 +334,16 @@
     }
     async sendSessionReplayBatch(batch) {
       try {
-        if (this.config.apiKey) {
-          batch.apiKey = this.config.apiKey;
-        }
-        await fetch(
-          `${this.config.analyticsHost}/session-replay/record/${this.config.siteId}`,
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json"
-            },
-            body: JSON.stringify(batch),
-            mode: "cors",
-            keepalive: false
-            // Disable keepalive for large session replay requests
-          }
-        );
+        await fetch(`${this.config.analyticsHost}/session-replay/record/${this.config.siteId}`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify(batch),
+          mode: "cors",
+          keepalive: false
+          // Disable keepalive for large session replay requests
+        });
       } catch (error) {
         console.error("Failed to send session replay batch:", error);
         throw error;
@@ -357,9 +376,6 @@
       if (this.customUserId) {
         payload.user_id = this.customUserId;
       }
-      if (this.config.apiKey) {
-        payload.api_key = this.config.apiKey;
-      }
       return payload;
     }
     async sendTrackingData(payload) {
@@ -379,9 +395,7 @@
     }
     track(eventType, eventName = "", properties = {}) {
       if (eventType === "custom_event" && (!eventName || typeof eventName !== "string")) {
-        console.error(
-          "Event name is required and must be a string for custom events"
-        );
+        console.error("Event name is required and must be a string for custom events");
         return;
       }
       const basePayload = this.createBasePayload();
@@ -526,26 +540,26 @@
     }, true);
   };
   var n = (e2, t2, n2, i2) => {
-    let s2, o2;
+    let o2, s2;
     return (r2) => {
-      t2.value >= 0 && (r2 || i2) && (o2 = t2.value - (s2 ?? 0), (o2 || void 0 === s2) && (s2 = t2.value, t2.delta = o2, t2.rating = ((e3, t3) => e3 > t3[1] ? "poor" : e3 > t3[0] ? "needs-improvement" : "good")(t2.value, n2), e2(t2)));
+      t2.value >= 0 && (r2 || i2) && (s2 = t2.value - (o2 ?? 0), (s2 || void 0 === o2) && (o2 = t2.value, t2.delta = s2, t2.rating = ((e3, t3) => e3 > t3[1] ? "poor" : e3 > t3[0] ? "needs-improvement" : "good")(t2.value, n2), e2(t2)));
     };
   };
   var i = (e2) => {
     requestAnimationFrame(() => requestAnimationFrame(() => e2()));
   };
-  var s = () => {
+  var o = () => {
     const e2 = performance.getEntriesByType("navigation")[0];
     if (e2 && e2.responseStart > 0 && e2.responseStart < performance.now()) return e2;
   };
-  var o = () => {
-    const e2 = s();
+  var s = () => {
+    const e2 = o();
     return e2?.activationStart ?? 0;
   };
   var r = (t2, n2 = -1) => {
-    const i2 = s();
+    const i2 = o();
     let r2 = "navigate";
-    e >= 0 ? r2 = "back-forward-cache" : i2 && (document.prerendering || o() > 0 ? r2 = "prerender" : document.wasDiscarded ? r2 = "restore" : i2.type && (r2 = i2.type.replace(/_/g, "-")));
+    e >= 0 ? r2 = "back-forward-cache" : i2 && (document.prerendering || s() > 0 ? r2 = "prerender" : document.wasDiscarded ? r2 = "restore" : i2.type && (r2 = i2.type.replace(/_/g, "-")));
     return { name: t2, value: n2, rating: "good", delta: 0, entries: [], id: `v5-${Date.now()}-${Math.floor(8999999999999 * Math.random()) + 1e12}`, navigationType: r2 };
   };
   var c = /* @__PURE__ */ new WeakMap();
@@ -584,130 +598,127 @@
     };
   };
   var u = -1;
-  var l = /* @__PURE__ */ new Set();
-  var m = () => "hidden" !== document.visibilityState || document.prerendering ? 1 / 0 : 0;
-  var p = (e2) => {
-    if ("hidden" === document.visibilityState) {
-      if ("visibilitychange" === e2.type) for (const e3 of l) e3();
-      isFinite(u) || (u = "visibilitychange" === e2.type ? e2.timeStamp : 0, removeEventListener("prerenderingchange", p, true));
-    }
+  var l = () => "hidden" !== document.visibilityState || document.prerendering ? 1 / 0 : 0;
+  var m = (e2) => {
+    "hidden" === document.visibilityState && u > -1 && (u = "visibilitychange" === e2.type ? e2.timeStamp : 0, v());
+  };
+  var g = () => {
+    addEventListener("visibilitychange", m, true), addEventListener("prerenderingchange", m, true);
   };
   var v = () => {
+    removeEventListener("visibilitychange", m, true), removeEventListener("prerenderingchange", m, true);
+  };
+  var p = () => {
     if (u < 0) {
-      const e2 = o(), n2 = document.prerendering ? void 0 : globalThis.performance.getEntriesByType("visibility-state").filter((t2) => "hidden" === t2.name && t2.startTime > e2)[0]?.startTime;
-      u = n2 ?? m(), addEventListener("visibilitychange", p, true), addEventListener("prerenderingchange", p, true), t(() => {
+      const e2 = s(), n2 = document.prerendering ? void 0 : globalThis.performance.getEntriesByType("visibility-state").filter((t2) => "hidden" === t2.name && t2.startTime > e2)[0]?.startTime;
+      u = n2 ?? l(), g(), t(() => {
         setTimeout(() => {
-          u = m();
+          u = l(), g();
         });
       });
     }
     return { get firstHiddenTime() {
       return u;
-    }, onHidden(e2) {
-      l.add(e2);
     } };
   };
-  var g = (e2) => {
+  var y = (e2) => {
     document.prerendering ? addEventListener("prerenderingchange", () => e2(), true) : e2();
   };
-  var y = [1800, 3e3];
-  var E = (e2, s2 = {}) => {
-    g(() => {
-      const c2 = v();
+  var b = [1800, 3e3];
+  var P = (e2, o2 = {}) => {
+    y(() => {
+      const c2 = p();
       let a2, d2 = r("FCP");
       const f2 = h("paint", (e3) => {
-        for (const t2 of e3) "first-contentful-paint" === t2.name && (f2.disconnect(), t2.startTime < c2.firstHiddenTime && (d2.value = Math.max(t2.startTime - o(), 0), d2.entries.push(t2), a2(true)));
+        for (const t2 of e3) "first-contentful-paint" === t2.name && (f2.disconnect(), t2.startTime < c2.firstHiddenTime && (d2.value = Math.max(t2.startTime - s(), 0), d2.entries.push(t2), a2(true)));
       });
-      f2 && (a2 = n(e2, d2, y, s2.reportAllChanges), t((t2) => {
-        d2 = r("FCP"), a2 = n(e2, d2, y, s2.reportAllChanges), i(() => {
+      f2 && (a2 = n(e2, d2, b, o2.reportAllChanges), t((t2) => {
+        d2 = r("FCP"), a2 = n(e2, d2, b, o2.reportAllChanges), i(() => {
           d2.value = performance.now() - t2.timeStamp, a2(true);
         });
       }));
     });
   };
-  var b = [0.1, 0.25];
-  var L = (e2, s2 = {}) => {
-    const o2 = v();
-    E(f(() => {
-      let c2, f2 = r("CLS", 0);
-      const u2 = a(s2, d), l2 = (e3) => {
-        for (const t2 of e3) u2.h(t2);
-        u2.i > f2.value && (f2.value = u2.i, f2.entries = u2.o, c2());
-      }, m2 = h("layout-shift", l2);
-      m2 && (c2 = n(e2, f2, b, s2.reportAllChanges), o2.onHidden(() => {
-        l2(m2.takeRecords()), c2(true);
+  var T = [0.1, 0.25];
+  var E = (e2, o2 = {}) => {
+    P(f(() => {
+      let s2, c2 = r("CLS", 0);
+      const f2 = a(o2, d), u2 = (e3) => {
+        for (const t2 of e3) f2.h(t2);
+        f2.i > c2.value && (c2.value = f2.i, c2.entries = f2.o, s2());
+      }, l2 = h("layout-shift", u2);
+      l2 && (s2 = n(e2, c2, T, o2.reportAllChanges), document.addEventListener("visibilitychange", () => {
+        "hidden" === document.visibilityState && (u2(l2.takeRecords()), s2(true));
       }), t(() => {
-        u2.i = 0, f2 = r("CLS", 0), c2 = n(e2, f2, b, s2.reportAllChanges), i(() => c2());
-      }), setTimeout(c2));
+        f2.i = 0, c2 = r("CLS", 0), s2 = n(e2, c2, T, o2.reportAllChanges), i(() => s2());
+      }), setTimeout(s2));
     }));
   };
-  var P = 0;
-  var T = 1 / 0;
   var _ = 0;
-  var M = (e2) => {
-    for (const t2 of e2) t2.interactionId && (T = Math.min(T, t2.interactionId), _ = Math.max(_, t2.interactionId), P = _ ? (_ - T) / 7 + 1 : 0);
+  var L = 1 / 0;
+  var M = 0;
+  var C = (e2) => {
+    for (const t2 of e2) t2.interactionId && (L = Math.min(L, t2.interactionId), M = Math.max(M, t2.interactionId), _ = M ? (M - L) / 7 + 1 : 0);
   };
-  var w;
-  var C = () => w ? P : performance.interactionCount ?? 0;
-  var I = () => {
-    "interactionCount" in performance || w || (w = h("event", M, { type: "event", buffered: true, durationThreshold: 0 }));
+  var I;
+  var w = () => I ? _ : performance.interactionCount ?? 0;
+  var F = () => {
+    "interactionCount" in performance || I || (I = h("event", C, { type: "event", buffered: true, durationThreshold: 0 }));
   };
-  var F = 0;
-  var k = class {
+  var k = 0;
+  var A = class {
     constructor() {
       __publicField(this, "u", []);
       __publicField(this, "l", /* @__PURE__ */ new Map());
       __publicField(this, "m");
-      __publicField(this, "p");
+      __publicField(this, "v");
     }
-    v() {
-      F = C(), this.u.length = 0, this.l.clear();
+    p() {
+      k = w(), this.u.length = 0, this.l.clear();
     }
-    L() {
-      const e2 = Math.min(this.u.length - 1, Math.floor((C() - F) / 50));
+    P() {
+      const e2 = Math.min(this.u.length - 1, Math.floor((w() - k) / 50));
       return this.u[e2];
     }
     h(e2) {
       if (this.m?.(e2), !e2.interactionId && "first-input" !== e2.entryType) return;
       const t2 = this.u.at(-1);
       let n2 = this.l.get(e2.interactionId);
-      if (n2 || this.u.length < 10 || e2.duration > t2.P) {
-        if (n2 ? e2.duration > n2.P ? (n2.entries = [e2], n2.P = e2.duration) : e2.duration === n2.P && e2.startTime === n2.entries[0].startTime && n2.entries.push(e2) : (n2 = { id: e2.interactionId, entries: [e2], P: e2.duration }, this.l.set(n2.id, n2), this.u.push(n2)), this.u.sort((e3, t3) => t3.P - e3.P), this.u.length > 10) {
+      if (n2 || this.u.length < 10 || e2.duration > t2.T) {
+        if (n2 ? e2.duration > n2.T ? (n2.entries = [e2], n2.T = e2.duration) : e2.duration === n2.T && e2.startTime === n2.entries[0].startTime && n2.entries.push(e2) : (n2 = { id: e2.interactionId, entries: [e2], T: e2.duration }, this.l.set(n2.id, n2), this.u.push(n2)), this.u.sort((e3, t3) => t3.T - e3.T), this.u.length > 10) {
           const e3 = this.u.splice(10);
           for (const t3 of e3) this.l.delete(t3.id);
         }
-        this.p?.(n2);
+        this.v?.(n2);
       }
     }
   };
-  var A = (e2) => {
+  var B = (e2) => {
     const t2 = globalThis.requestIdleCallback || setTimeout;
-    "hidden" === document.visibilityState ? e2() : (e2 = f(e2), addEventListener("visibilitychange", e2, { once: true, capture: true }), t2(() => {
-      e2(), removeEventListener("visibilitychange", e2, { capture: true });
+    "hidden" === document.visibilityState ? e2() : (e2 = f(e2), document.addEventListener("visibilitychange", e2, { once: true }), t2(() => {
+      e2(), document.removeEventListener("visibilitychange", e2);
     }));
   };
-  var B = [200, 500];
+  var N = [200, 500];
   var S = (e2, i2 = {}) => {
-    if (!globalThis.PerformanceEventTiming || !("interactionId" in PerformanceEventTiming.prototype)) return;
-    const s2 = v();
-    g(() => {
-      I();
-      let o2, c2 = r("INP");
-      const d2 = a(i2, k), f2 = (e3) => {
-        A(() => {
-          for (const t3 of e3) d2.h(t3);
-          const t2 = d2.L();
-          t2 && t2.P !== c2.value && (c2.value = t2.P, c2.entries = t2.entries, o2());
+    globalThis.PerformanceEventTiming && "interactionId" in PerformanceEventTiming.prototype && y(() => {
+      F();
+      let o2, s2 = r("INP");
+      const c2 = a(i2, A), d2 = (e3) => {
+        B(() => {
+          for (const t3 of e3) c2.h(t3);
+          const t2 = c2.P();
+          t2 && t2.T !== s2.value && (s2.value = t2.T, s2.entries = t2.entries, o2());
         });
-      }, u2 = h("event", f2, { durationThreshold: i2.durationThreshold ?? 40 });
-      o2 = n(e2, c2, B, i2.reportAllChanges), u2 && (u2.observe({ type: "first-input", buffered: true }), s2.onHidden(() => {
-        f2(u2.takeRecords()), o2(true);
+      }, f2 = h("event", d2, { durationThreshold: i2.durationThreshold ?? 40 });
+      o2 = n(e2, s2, N, i2.reportAllChanges), f2 && (f2.observe({ type: "first-input", buffered: true }), document.addEventListener("visibilitychange", () => {
+        "hidden" === document.visibilityState && (d2(f2.takeRecords()), o2(true));
       }), t(() => {
-        d2.v(), c2 = r("INP"), o2 = n(e2, c2, B, i2.reportAllChanges);
+        c2.p(), s2 = r("INP"), o2 = n(e2, s2, N, i2.reportAllChanges);
       }));
     });
   };
-  var N = class {
+  var q = class {
     constructor() {
       __publicField(this, "m");
     }
@@ -715,41 +726,39 @@
       this.m?.(e2);
     }
   };
-  var q = [2500, 4e3];
-  var x = (e2, s2 = {}) => {
-    g(() => {
-      const c2 = v();
+  var x = [2500, 4e3];
+  var O = (e2, o2 = {}) => {
+    y(() => {
+      const c2 = p();
       let d2, u2 = r("LCP");
-      const l2 = a(s2, N), m2 = (e3) => {
-        s2.reportAllChanges || (e3 = e3.slice(-1));
-        for (const t2 of e3) l2.h(t2), t2.startTime < c2.firstHiddenTime && (u2.value = Math.max(t2.startTime - o(), 0), u2.entries = [t2], d2());
-      }, p2 = h("largest-contentful-paint", m2);
-      if (p2) {
-        d2 = n(e2, u2, q, s2.reportAllChanges);
-        const o2 = f(() => {
-          m2(p2.takeRecords()), p2.disconnect(), d2(true);
-        }), c3 = (e3) => {
-          e3.isTrusted && (A(o2), removeEventListener(e3.type, c3, { capture: true }));
-        };
-        for (const e3 of ["keydown", "click", "visibilitychange"]) addEventListener(e3, c3, { capture: true });
+      const l2 = a(o2, q), m2 = (e3) => {
+        o2.reportAllChanges || (e3 = e3.slice(-1));
+        for (const t2 of e3) l2.h(t2), t2.startTime < c2.firstHiddenTime && (u2.value = Math.max(t2.startTime - s(), 0), u2.entries = [t2], d2());
+      }, g2 = h("largest-contentful-paint", m2);
+      if (g2) {
+        d2 = n(e2, u2, x, o2.reportAllChanges);
+        const s2 = f(() => {
+          m2(g2.takeRecords()), g2.disconnect(), d2(true);
+        });
+        for (const e3 of ["keydown", "click", "visibilitychange"]) addEventListener(e3, () => B(s2), { capture: true, once: true });
         t((t2) => {
-          u2 = r("LCP"), d2 = n(e2, u2, q, s2.reportAllChanges), i(() => {
+          u2 = r("LCP"), d2 = n(e2, u2, x, o2.reportAllChanges), i(() => {
             u2.value = performance.now() - t2.timeStamp, d2(true);
           });
         });
       }
     });
   };
-  var H = [800, 1800];
-  var O = (e2) => {
-    document.prerendering ? g(() => O(e2)) : "complete" !== document.readyState ? addEventListener("load", () => O(e2), true) : setTimeout(e2);
+  var $ = [800, 1800];
+  var D = (e2) => {
+    document.prerendering ? y(() => D(e2)) : "complete" !== document.readyState ? addEventListener("load", () => D(e2), true) : setTimeout(e2);
   };
-  var $ = (e2, i2 = {}) => {
-    let c2 = r("TTFB"), a2 = n(e2, c2, H, i2.reportAllChanges);
-    O(() => {
-      const d2 = s();
-      d2 && (c2.value = Math.max(d2.responseStart - o(), 0), c2.entries = [d2], a2(true), t(() => {
-        c2 = r("TTFB", 0), a2 = n(e2, c2, H, i2.reportAllChanges), a2(true);
+  var H = (e2, i2 = {}) => {
+    let c2 = r("TTFB"), a2 = n(e2, c2, $, i2.reportAllChanges);
+    D(() => {
+      const d2 = o();
+      d2 && (c2.value = Math.max(d2.responseStart - s(), 0), c2.entries = [d2], a2(true), t(() => {
+        c2 = r("TTFB", 0), a2 = n(e2, c2, $, i2.reportAllChanges), a2(true);
       }));
     });
   };
@@ -771,11 +780,11 @@
     }
     initialize() {
       try {
-        x(this.collectMetric.bind(this));
-        L(this.collectMetric.bind(this));
-        S(this.collectMetric.bind(this));
+        O(this.collectMetric.bind(this));
         E(this.collectMetric.bind(this));
-        $(this.collectMetric.bind(this));
+        S(this.collectMetric.bind(this));
+        P(this.collectMetric.bind(this));
+        H(this.collectMetric.bind(this));
         this.timeout = setTimeout(() => {
           if (!this.sent) {
             this.sendData();
@@ -794,9 +803,7 @@
       if (this.sent) return;
       const metricName = metric.name.toLowerCase();
       this.data[metricName] = metric.value;
-      const allCollected = Object.values(this.data).every(
-        (value) => value !== null
-      );
+      const allCollected = Object.values(this.data).every((value) => value !== null);
       if (allCollected) {
         this.sendData();
       }
@@ -818,7 +825,7 @@
   };
 
   // index.ts
-  (function() {
+  (async function() {
     const scriptTag = document.currentScript;
     if (!scriptTag) {
       console.error("Could not find current script tag");
@@ -829,6 +836,8 @@
         pageview: () => {
         },
         event: () => {
+        },
+        error: () => {
         },
         trackOutbound: () => {
         },
@@ -845,17 +854,15 @@
       };
       return;
     }
-    const config = parseScriptConfig(scriptTag);
+    const config = await parseScriptConfig(scriptTag);
     if (!config) {
       return;
     }
     const tracker = new Tracker(config);
     if (config.enableWebVitals) {
-      const webVitalsCollector = new WebVitalsCollector(
-        (vitals) => {
-          tracker.trackWebVitals(vitals);
-        }
-      );
+      const webVitalsCollector = new WebVitalsCollector((vitals) => {
+        tracker.trackWebVitals(vitals);
+      });
       webVitalsCollector.initialize();
     }
     if (config.trackErrors) {
@@ -896,15 +903,9 @@
           target = target.parentElement;
         }
         if (config.trackOutbound) {
-          const link = e2.target.closest(
-            "a"
-          );
+          const link = e2.target.closest("a");
           if (link?.href && isOutboundLink(link.href)) {
-            tracker.trackOutbound(
-              link.href,
-              link.innerText || link.textContent || "",
-              link.target || "_self"
-            );
+            tracker.trackOutbound(link.href, link.innerText || link.textContent || "", link.target || "_self");
           }
         }
       });

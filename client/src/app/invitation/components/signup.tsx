@@ -59,7 +59,7 @@ export function Signup({ inviterEmail, organization }: SignupProps) {
           placeholder="email@example.com"
           required
           value={email}
-          onChange={(e) => setEmail(e.target.value)}
+          onChange={e => setEmail(e.target.value)}
         />
 
         <AuthInput
@@ -69,7 +69,7 @@ export function Signup({ inviterEmail, organization }: SignupProps) {
           placeholder="••••••••"
           required
           value={password}
-          onChange={(e) => setPassword(e.target.value)}
+          onChange={e => setPassword(e.target.value)}
         />
 
         <AuthButton isLoading={isLoading} loadingText="Creating account...">
