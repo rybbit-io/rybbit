@@ -33,7 +33,8 @@
       "Bash(cp:*)",
       "Bash(-print)",
       "Bash(python3:*)",
-      "WebFetch(domain:github.com)"
+      "WebFetch(domain:github.com)",
+      "WebSearch"
     ]
   },
   "enableAllProjectMcpServers": false

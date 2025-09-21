@@ -25,14 +25,6 @@ type TotalPayload = TrackingPayload & {
   ttfb?: number;
 };
 
-const getParsedProperties = (properties: string | undefined) => {
-  try {
-    return properties ? JSON.parse(properties) : undefined;
-  } catch (error) {
-    return undefined;
-  }
-};
-
 class PageviewQueue {
   private queue: TotalPayload[] = [];
   private batchSize = 5000;
@@ -118,7 +110,7 @@ class PageviewQueue {
         lon: longitude || 0,
         type: pv.type || "pageview",
         event_name: pv.event_name || "",
-        props: getParsedProperties(pv.properties),
+        props: pv.properties || null,
         url_parameters: allUrlParams,
         // Performance metrics (only included for performance events)
         lcp: pv.lcp || null,
