@@ -218,10 +218,216 @@ HOST_CLIENT_PORT="8081:3002"
 
 ### Using with Coolify
 
-In Coolify, you can:
-1. Create a new service with the docker-compose.yml
-2. Set the environment variables in Coolify's interface
-3. Use Coolify's built-in proxy by exposing ports 3001 and 3002
+Since Coolify uses Traefik instead of Caddy as proxy, some modifications have to be made in a `docker-compose.yaml` file to avoid conflicts. Specifically, you need to:
+
+- remove Caddy service and volumes
+- add network labels to all services
+- remove `build` and `ports` properties from backend and client services
+
+Here's a modified version of docker-compose that works on Coolify:
+
+```yaml
+services:
+  clickhouse:
+    container_name: clickhouse
+    image: clickhouse/clickhouse-server:25.4.2
+    volumes:
+      - clickhouse-data:/var/lib/clickhouse
+    configs:
+      - source: clickhouse_network
+        target: /etc/clickhouse-server/config.d/network.xml
+      - source: clickhouse_json
+        target: /etc/clickhouse-server/config.d/enable_json.xml
+      - source: clickhouse_logging
+        target: /etc/clickhouse-server/config.d/logging_rules.xml
+      - source: clickhouse_user_logging
+        target: /etc/clickhouse-server/config.d/user_logging.xml
+    environment:
+      - CLICKHOUSE_DB=${CLICKHOUSE_DB:-analytics}
+      - CLICKHOUSE_USER=${CLICKHOUSE_USER:-default}
+      - CLICKHOUSE_PASSWORD=${CLICKHOUSE_PASSWORD:-frog}
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "wget",
+          "--no-verbose",
+          "--tries=1",
+          "--spider",
+          "http://localhost:8123/ping",
+        ]
+      interval: 3s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    restart: unless-stopped
+    labels:
+      - traefik.enable=false
+
+  postgres:
+    image: postgres:17.4
+    container_name: postgres
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER:-frog}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-frog}
+      - POSTGRES_DB=${POSTGRES_DB:-analytics}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 3s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    restart: unless-stopped
+    labels:
+      - traefik.enable=false
+
+  # redis:
+  #   image: redis:7-alpine
+  #   container_name: redis
+  #   ports:
+  #     - "127.0.0.1:6379:6379"
+  #   volumes:
+  #     - redis-data:/data
+  #   restart: unless-stopped
+  #   command: ["redis-server", "--appendonly", "yes"]
+
+  backend:
+    image: ghcr.io/rybbit-io/rybbit-backend:${IMAGE_TAG:-latest}
+    container_name: backend
+    environment:
+      - NODE_ENV=production
+      - CLICKHOUSE_HOST=http://clickhouse:8123
+      - CLICKHOUSE_DB=${CLICKHOUSE_DB:-analytics}
+      - CLICKHOUSE_PASSWORD=${CLICKHOUSE_PASSWORD:-frog}
+      - POSTGRES_HOST=postgres
+      - POSTGRES_PORT=5432
+      - POSTGRES_DB=${POSTGRES_DB:-analytics}
+      - POSTGRES_USER=${POSTGRES_USER:-frog}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-frog}
+      - BETTER_AUTH_SECRET=${BETTER_AUTH_SECRET}
+      - BASE_URL=${BASE_URL}
+      - DOMAIN_NAME=${DOMAIN_NAME}
+      - DISABLE_SIGNUP=${DISABLE_SIGNUP}
+      - DISABLE_TELEMETRY=${DISABLE_TELEMETRY}
+      # # Redis configuration
+      # - REDIS_HOST=redis
+      # - REDIS_PORT=6379
+    depends_on:
+      clickhouse:
+        condition: service_healthy
+      postgres:
+        condition: service_started
+      # redis:
+      #   condition: service_started
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "wget",
+          "--no-verbose",
+          "--tries=1",
+          "--spider",
+          "http://127.0.0.1:3001/api/health",
+        ]
+      interval: 3s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    restart: unless-stopped
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=coolify
+      - traefik.http.routers.rybbit-backend.entrypoints=https
+      - traefik.http.routers.rybbit-backend.tls=true
+      - traefik.http.routers.rybbit-backend.rule=Host(`${DOMAIN_NAME}`) && (Path(`/api`) || PathPrefix(`/api/`))
+      - traefik.http.services.rybbit-backend.loadbalancer.server.port=3001
+      - traefik.http.routers.rybbit-backend.priority=100
+      - traefik.http.middlewares.rybbit-forward-headers.headers.customrequestheaders.X-Forwarded-Proto=https
+      - traefik.http.middlewares.rybbit-forward-headers.headers.customrequestheaders.X-Forwarded-Host=${DOMAIN_NAME}
+      - traefik.http.routers.rybbit-backend.middlewares=rybbit-forward-headers
+
+  client:
+    image: ghcr.io/rybbit-io/rybbit-client:${IMAGE_TAG:-latest}
+    container_name: client
+    environment:
+      - NODE_ENV=production
+      - NEXT_PUBLIC_BACKEND_URL=${BASE_URL}
+      - NEXT_PUBLIC_DISABLE_SIGNUP=${DISABLE_SIGNUP}
+      - DOMAIN_NAME=${DOMAIN_NAME}
+    depends_on:
+      - backend
+    restart: unless-stopped
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=coolify
+      - traefik.http.routers.rybbit-client.entrypoints=https
+      - traefik.http.routers.rybbit-client.tls=true
+      - traefik.http.routers.rybbit-client.rule=Host(`${DOMAIN_NAME}`)
+      - traefik.http.services.rybbit-client.loadbalancer.server.port=3002
+      - traefik.http.routers.rybbit-client.priority=10
+
+volumes:
+  clickhouse-data:
+  postgres-data:
+  redis-data:
+
+configs:
+  clickhouse_network:
+    content: |
+      <clickhouse>
+          <listen_host>0.0.0.0</listen_host>
+      </clickhouse>
+
+  clickhouse_json:
+    content: |
+      <clickhouse>
+          <settings>
+              <enable_json_type>1</enable_json_type>
+          </settings>
+      </clickhouse>
+
+  clickhouse_logging:
+    content: |
+      <clickhouse>
+        <logger>
+            <level>warning</level>
+            <console>true</console>
+        </logger>
+        <query_thread_log remove="remove"/>
+        <query_log remove="remove"/>
+        <text_log remove="remove"/>
+        <trace_log remove="remove"/>
+        <metric_log remove="remove"/>
+        <asynchronous_metric_log remove="remove"/>
+        <session_log remove="remove"/>
+        <part_log remove="remove"/>
+        <latency_log remove="remove"/>
+        <processors_profile_log remove="remove"/>
+      </clickhouse>
+
+  clickhouse_user_logging:
+    content: |
+      <clickhouse>
+        <profiles>
+          <default>
+            <log_queries>0</log_queries>
+            <log_query_threads>0</log_query_threads>
+            <log_processors_profiles>0</log_processors_profiles>
+          </default>
+        </profiles>
+      </clickhouse>
+```
+
+To deploy Rybbit on Coolify, you need to:
+1. Create a new project and resource using `docker-compose.yaml` file provided above
+2. Make sure "Escape special characters in labels" option is unchecked when adding docker-compose file so that env variables in labels are read properly
+3. Set the environment variables in Coolify's interface
+4. Add a domain for `client` service in Coolify's interface
+5. Deploy all services
+
+Note: you don't need to add a domain for `backend` service in Coolify since client and backend services share the same domain.
 
 ### Using with Nginx Proxy Manager
 
