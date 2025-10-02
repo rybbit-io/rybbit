@@ -1,4 +1,4 @@
-name: Docker Publish
+name: Docker Publish to AWS ECR
 
 on:
   push:
@@ -9,6 +9,11 @@ on:
   pull_request:
     branches:
       - master
+
+env:
+  AWS_REGION: ${{ secrets.AWS_REGION }}
+  AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
+  ECR_REGISTRY: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com
 
 jobs:
   build-client:
@@ -29,29 +34,36 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: docker/setup-buildx-action@v3
-      - name: Log in to GitHub Container Registry
-        uses: docker/login-action@v3
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
         with:
-          registry: ghcr.io
-          username: ${{ github.repository_owner }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        uses: aws-actions/amazon-ecr-login@v1
+
+      - name: Ensure ECR repository exists
+        run: |
+          aws ecr describe-repositories --repository-names rybbit-client >/dev/null 2>&1 || \
+            aws ecr create-repository --repository-name rybbit-client || true
+
       - name: Set env vars
         run: |
-          # Define platform pair (e.g., linux-amd64) and save to environment variables
           platform=${{ matrix.platform }}
           echo "PLATFORM_PAIR=${platform//\//-}" >> $GITHUB_ENV
 
-          # Define repository owner in lowercase for GHCR and save to env
           echo "REPO_OWNER=$(echo ${{ github.repository_owner }} | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
 
-          # Set short git commit SHA then save to env
           calculatedSha=$(git rev-parse --short HEAD)
           echo "COMMIT_SHORT_SHA=$calculatedSha" >> $GITHUB_ENV
       - name: Extract metadata
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ghcr.io/${{ env.REPO_OWNER }}/rybbit-client
+          images: ${{ env.ECR_REGISTRY }}/rybbit-client
       - name: Build (no push on purpose)
         id: build
         uses: docker/build-push-action@v6
@@ -60,13 +72,11 @@ jobs:
           file: ./client/Dockerfile
           platforms: ${{ matrix.platform }}
           labels: ${{ steps.meta.outputs.labels }}
-          outputs: type=image,"name=ghcr.io/${{ env.REPO_OWNER }}/rybbit-client",push-by-digest=true,name-canonical=true
+          outputs: type=image,"name=${{ env.ECR_REGISTRY }}/rybbit-client",push-by-digest=true,name-canonical=true
           push: "${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}"
       - name: Export digests
         run: |
-          # Create a temporary directory to store digests
           mkdir -p /tmp/digests
-          # Save the digests of client images
           echo "${{ steps.build.outputs.digest }}" > /tmp/digests/client-${{ env.PLATFORM_PAIR }}
       - uses: actions/upload-artifact@v4
         with:
@@ -92,29 +102,36 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: docker/setup-buildx-action@v3
-      - name: Log in to GitHub Container Registry
-        uses: docker/login-action@v3
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
         with:
-          registry: ghcr.io
-          username: ${{ github.repository_owner }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        uses: aws-actions/amazon-ecr-login@v1
+
+      - name: Ensure ECR repository exists
+        run: |
+          aws ecr describe-repositories --repository-names rybbit-backend >/dev/null 2>&1 || \
+            aws ecr create-repository --repository-name rybbit-backend || true
+
       - name: Set env vars
         run: |
-          # Define platform pair (e.g., linux-amd64) and save to environment variables
           platform=${{ matrix.platform }}
           echo "PLATFORM_PAIR=${platform//\//-}" >> $GITHUB_ENV
 
-          # Define repository owner in lowercase for GHCR and save to env
           echo "REPO_OWNER=$(echo ${{ github.repository_owner }} | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
 
-          # Set short git commit SHA then save to env
           calculatedSha=$(git rev-parse --short HEAD)
           echo "COMMIT_SHORT_SHA=$calculatedSha" >> $GITHUB_ENV
       - name: Extract metadata
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ghcr.io/${{ env.REPO_OWNER }}/rybbit-backend
+          images: ${{ env.ECR_REGISTRY }}/rybbit-backend
       - name: Build (no push on purpose)
         id: build
         uses: docker/build-push-action@v6
@@ -123,13 +140,11 @@ jobs:
           file: ./server/Dockerfile
           platforms: ${{ matrix.platform }}
           labels: ${{ steps.meta.outputs.labels }}
-          outputs: type=image,"name=ghcr.io/${{ env.REPO_OWNER }}/rybbit-backend",push-by-digest=true,name-canonical=true
+          outputs: type=image,"name=${{ env.ECR_REGISTRY }}/rybbit-backend",push-by-digest=true,name-canonical=true
           push: "${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}"
       - name: Export digests
         run: |
-          # Create a temporary directory to store digests
           mkdir -p /tmp/digests
-          # Save the digests of backend images
           echo "${{ steps.build.outputs.digest }}" > /tmp/digests/backend-${{ env.PLATFORM_PAIR }}
       - uses: actions/upload-artifact@v4
         with:
@@ -138,7 +153,7 @@ jobs:
           retention-days: 1
 
   publish-images:
-    name: Merge & Push Multi-arch Manifests
+    name: Merge & Push Multi-arch Manifests to ECR
     permissions:
       contents: read
       packages: write
@@ -155,36 +170,29 @@ jobs:
           path: /tmp/digests
           pattern: "digests-*"
           merge-multiple: true
-      - name: Set env vars
-        run: |
-          # Define repository owner in lowercase for GHCR and save to env
-          echo "REPO_OWNER=$(echo ${{ github.repository_owner }} | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
-      - name: Log in to GitHub Container Registry
-        uses: docker/login-action@v3
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
         with:
-          registry: ghcr.io
-          username: ${{ github.repository_owner }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+      - name: Login to Amazon ECR
+        uses: aws-actions/amazon-ecr-login@v1
       - uses: docker/setup-buildx-action@v3
       - name: Metadata client
         id: meta-client
         uses: docker/metadata-action@v5
         with:
-          images: ghcr.io/${{ env.REPO_OWNER }}/rybbit-client
+          images: ${{ env.ECR_REGISTRY }}/rybbit-client
           tags: |
-            # Add 'latest' tag only if this is a version tag (e.g., v1.2.3)
             ${{ startsWith(github.ref, 'refs/tags/v') && 'type=raw,value=latest,priority=901' || '' }}
 
-            # Add the version tag itself (e.g., v1.2.3)
             ${{ startsWith(github.ref, 'refs/tags/v') && format('type=raw,value={0},priority=900', github.ref_name) || '' }}
 
-            # For pull requests, add PR number tag
             ${{ github.event_name == 'pull_request' && format('type=raw,value=pr-{0},priority=850', github.event.number) || '' }}
 
-            # Always add 'edge' tag for build on latest commit indicator
             type=edge,priority=800
 
-            # Always add short SHA tag for traceability
             type=sha,priority=700
       - name: Push manifest client
         working-directory: /tmp/digests
@@ -193,13 +201,11 @@ jobs:
         run: |
           digests=""
 
-          # Collect all the digests for the client component
           for file in client-*; do
             digest=$(cat "$file")
-            digests+="ghcr.io/${{ env.REPO_OWNER }}/rybbit-client@${digest} "
+            digests+="${{ env.ECR_REGISTRY }}/rybbit-client@${digest} "
           done
 
-          # Create a manifest list and push to GHCR
           docker buildx imagetools create \
             $(jq -cr '.tags | map("-t " + .) | join(" ")' <<< "$TAGS_JSON") \
             $digests
@@ -207,21 +213,16 @@ jobs:
         id: meta-backend
         uses: docker/metadata-action@v5
         with:
-          images: ghcr.io/${{ env.REPO_OWNER }}/rybbit-backend
+          images: ${{ env.ECR_REGISTRY }}/rybbit-backend
           tags: |
-            # Add 'latest' tag only if this is a version tag (e.g., v1.2.3)
             ${{ startsWith(github.ref, 'refs/tags/v') && 'type=raw,value=latest,priority=901' || '' }}
 
-            # Add the version tag itself (e.g., v1.2.3)
             ${{ startsWith(github.ref, 'refs/tags/v') && format('type=raw,value={0},priority=900', github.ref_name) || '' }}
 
-            # For pull requests, add PR number tag
             ${{ github.event_name == 'pull_request' && format('type=raw,value=pr-{0},priority=850', github.event.number) || '' }}
 
-            # Always add 'edge' tag for build on latest commit indicator
             type=edge,priority=800
 
-            # Always add short SHA tag for traceability
             type=sha,priority=700
       - name: Push manifest backend
         working-directory: /tmp/digests
@@ -230,23 +231,19 @@ jobs:
         run: |
           digests=""
 
-          # Collect all the digests for the backend component
           for file in backend-*; do
             digest=$(cat "$file")
-            digests+="ghcr.io/${{ env.REPO_OWNER }}/rybbit-backend@${digest} "
+            digests+="${{ env.ECR_REGISTRY }}/rybbit-backend@${digest} "
           done
 
-          # Create a manifest list and push to GHCR
           docker buildx imagetools create \
             $(jq -cr '.tags | map("-t " + .) | join(" ")' <<< "$TAGS_JSON") \
             $digests
       - name: Inspect client images
         run: |
-          # Inspect the client image to verify the push
           echo "Inspecting client..."
-          docker buildx imagetools inspect ghcr.io/${{ env.REPO_OWNER }}/rybbit-client:${{ steps.meta-client.outputs.version }}
+          docker buildx imagetools inspect ${{ env.ECR_REGISTRY }}/rybbit-client:${{ steps.meta-client.outputs.version }}
       - name: Inspect backend images
         run: |-
-          # Inspect the backend image to verify the push
           echo "Inspecting backend..."
-          docker buildx imagetools inspect ghcr.io/${{ env.REPO_OWNER }}/rybbit-backend:${{ steps.meta-backend.outputs.version }}
+          docker buildx imagetools inspect ${{ env.ECR_REGISTRY }}/rybbit-backend:${{ steps.meta-backend.outputs.version }}
