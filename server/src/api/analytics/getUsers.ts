@@ -1,10 +1,6 @@
 import { FastifyReply, FastifyRequest } from "fastify";
 import { clickhouse } from "../../db/clickhouse/clickhouse.js";
-import {
-  getFilterStatement,
-  getTimeStatement,
-  processResults,
-} from "./utils.js";
+import { getFilterStatement, getTimeStatement, processResults } from "./utils.js";
 import { getUserHasAccessToSitePublic } from "../../lib/auth-utils.js";
 import { FilterParams } from "@rybbit/shared";
 
@@ -36,10 +32,7 @@ export interface GetUsersRequest {
   }>;
 }
 
-export async function getUsers(
-  req: FastifyRequest<GetUsersRequest>,
-  res: FastifyReply
-) {
+export async function getUsers(req: FastifyRequest<GetUsersRequest>, res: FastifyReply) {
   const {
     startDate,
     endDate,
@@ -64,13 +57,7 @@ export async function getUsers(
   const offset = (pageNum - 1) * pageSizeNum;
 
   // Validate sort parameters
-  const validSortFields = [
-    "first_seen",
-    "last_seen",
-    "pageviews",
-    "sessions",
-    "events",
-  ];
+  const validSortFields = ["first_seen", "last_seen", "pageviews", "sessions", "events"];
   const actualSortBy = validSortFields.includes(sortBy) ? sortBy : "last_seen";
   const actualSortOrder = sortOrder === "asc" ? "ASC" : "DESC";
 
@@ -144,9 +131,7 @@ WHERE
     ]);
 
     const data = await processResults<GetUsersResponse[number]>(result);
-    const countData = await processResults<{ total_count: number }>(
-      countResult
-    );
+    const countData = await processResults<{ total_count: number }>(countResult);
     const totalCount = countData[0]?.total_count || 0;
 
     return res.send({

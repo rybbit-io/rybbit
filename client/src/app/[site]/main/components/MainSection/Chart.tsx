@@ -26,12 +26,12 @@ const getMax = (time: Time, bucket: TimeBucket) => {
           bucket === "hour"
             ? 59
             : bucket === "fifteen_minutes"
-            ? 14
-            : bucket === "ten_minutes"
-            ? 9
-            : bucket === "five_minutes"
-            ? 4
-            : 0,
+              ? 14
+              : bucket === "ten_minutes"
+                ? 9
+                : bucket === "five_minutes"
+                  ? 4
+                  : 0,
       });
     return now < dayDate ? dayDate.toJSDate() : undefined;
   } else if (time.mode === "range") {
@@ -45,12 +45,12 @@ const getMax = (time: Time, bucket: TimeBucket) => {
           bucket === "hour"
             ? 59
             : bucket === "fifteen_minutes"
-            ? 14
-            : bucket === "ten_minutes"
-            ? 9
-            : bucket === "five_minutes"
-            ? 4
-            : 0,
+              ? 14
+              : bucket === "ten_minutes"
+                ? 9
+                : bucket === "five_minutes"
+                  ? 4
+                  : 0,
       });
     return now < rangeDate ? rangeDate.toJSDate() : undefined;
   } else if (time.mode === "week") {
@@ -155,7 +155,7 @@ export function Chart({
             i >= lengthDiff ? DateTime.fromSQL(previousData?.data?.[i - lengthDiff]?.time ?? "").toUTC() : undefined,
         };
       })
-      .filter((e) => e !== null) || [];
+      .filter(e => e !== null) || [];
 
   const currentDayStr = DateTime.now().toISODate();
   const currentMonthStr = DateTime.now().toFormat("yyyy-MM-01");
@@ -233,7 +233,7 @@ export function Chart({
     return series.map(({ id, data, color }) => (
       <path
         key={id}
-        d={lineGenerator(data.map((d) => ({ x: xScale(d.data.x), y: yScale(d.data.y) })))!}
+        d={lineGenerator(data.map(d => ({ x: xScale(d.data.x), y: yScale(d.data.y) })))!}
         fill="none"
         stroke={color}
         style={id === "dashedData" ? { strokeDasharray: "3, 6", strokeWidth: 3 } : { strokeWidth: 2 }}
@@ -278,7 +278,7 @@ export function Chart({
             ? 24
             : Math.min(12, data?.data?.length ?? 0)
         ),
-        format: (value) => {
+        format: value => {
           const dt = DateTime.fromJSDate(value).setLocale(userLocale);
           if (time.mode === "past-minutes") {
             if (time.pastMinutesStart < 1440) {

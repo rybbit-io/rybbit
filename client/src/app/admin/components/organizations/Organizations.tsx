@@ -60,12 +60,12 @@ export function Organizations() {
     if (!searchQuery.trim()) return organizations;
 
     const lowerSearchQuery = searchQuery.toLowerCase();
-    return organizations.filter((org) => {
+    return organizations.filter(org => {
       return (
         org.name.toLowerCase().includes(lowerSearchQuery) ||
-        org.sites.some((site) => site.domain.toLowerCase().includes(lowerSearchQuery)) ||
+        org.sites.some(site => site.domain.toLowerCase().includes(lowerSearchQuery)) ||
         org.members.some(
-          (member) =>
+          member =>
             member.email.toLowerCase().includes(lowerSearchQuery) ||
             member.name.toLowerCase().includes(lowerSearchQuery)
         )
@@ -151,7 +151,7 @@ export function Organizations() {
       {
         id: "eventsLast24Hours",
         header: ({ column }) => <SortableHeader column={column}>24h Events</SortableHeader>,
-        accessorFn: (row) => row.sites.reduce((total, site) => total + Number(site.eventsLast24Hours || 0), 0),
+        accessorFn: row => row.sites.reduce((total, site) => total + Number(site.eventsLast24Hours || 0), 0),
         cell: ({ row }) => {
           const total = row.original.sites.reduce((sum, site) => sum + Number(site.eventsLast24Hours || 0), 0);
           return total.toLocaleString();
@@ -160,19 +160,19 @@ export function Organizations() {
       {
         id: "subscription",
         header: ({ column }) => <SortableHeader column={column}>Subscription</SortableHeader>,
-        accessorFn: (row) => row.subscription.planName,
+        accessorFn: row => row.subscription.planName,
         cell: ({ row }) => formatSubscriptionStatus(row.original.subscription),
       },
       {
         id: "sites",
         header: ({ column }) => <SortableHeader column={column}>Sites</SortableHeader>,
-        accessorFn: (row) => row.sites.length,
+        accessorFn: row => row.sites.length,
         cell: ({ row }) => <Badge variant="outline">{row.original.sites.length}</Badge>,
       },
       {
         id: "members",
         header: ({ column }) => <SortableHeader column={column}>Members</SortableHeader>,
-        accessorFn: (row) => row.members.length,
+        accessorFn: row => row.members.length,
         cell: ({ row }) => <Badge variant="outline">{row.original.members.length}</Badge>,
       },
     ],
@@ -236,7 +236,7 @@ export function Organizations() {
   return (
     <AdminLayout title="Organizations">
       <GrowthChart data={organizations || []} title="Organizations" color="#8b5cf6" />
-      
+
       <div className="mb-4">
         <SearchInput
           placeholder="Search by name, slug, domain, or member email..."
@@ -248,9 +248,9 @@ export function Organizations() {
       <div className="rounded-md border border-neutral-700">
         <Table>
           <TableHeader>
-            {table.getHeaderGroups().map((headerGroup) => (
+            {table.getHeaderGroups().map(headerGroup => (
               <TableRow key={headerGroup.id}>
-                {headerGroup.headers.map((header) => (
+                {headerGroup.headers.map(header => (
                   <TableHead key={header.id} className={header.id === "expand" ? "w-8" : ""}>
                     {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
                   </TableHead>
@@ -291,10 +291,10 @@ export function Organizations() {
                   </TableRow>
                 ))
             ) : paginatedOrganizations && paginatedOrganizations.length > 0 ? (
-              paginatedOrganizations.map((row) => (
+              paginatedOrganizations.map(row => (
                 <>
                   <TableRow key={row.id} className="group">
-                    {row.getVisibleCells().map((cell) => (
+                    {row.getVisibleCells().map(cell => (
                       <TableCell key={cell.id}>{flexRender(cell.column.columnDef.cell, cell.getContext())}</TableCell>
                     ))}
                   </TableRow>
@@ -350,7 +350,7 @@ export function Organizations() {
                             </div>
                             {row.original.sites.length > 0 ? (
                               <div className="flex flex-wrap gap-2">
-                                {row.original.sites.map((site) => (
+                                {row.original.sites.map(site => (
                                   <Link
                                     key={site.siteId}
                                     href={`/${site.siteId}`}
@@ -380,7 +380,7 @@ export function Organizations() {
                             </div>
                             {row.original.members.length > 0 ? (
                               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                                {row.original.members.map((member) => (
+                                {row.original.members.map(member => (
                                   <div
                                     key={member.userId}
                                     className="p-3 border border-neutral-700 rounded flex items-center justify-between"

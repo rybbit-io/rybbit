@@ -27,7 +27,7 @@ function AuthComponent() {
         <p className="text-center text-sm text-muted-foreground mt-2">You've been invited by {inviterEmail}</p>
       </CardHeader>
       <CardContent>
-        <Tabs defaultValue="login" value={activeTab} onValueChange={(v) => setActiveTab(v as "login" | "signup")}>
+        <Tabs defaultValue="login" value={activeTab} onValueChange={v => setActiveTab(v as "login" | "signup")}>
           <TabsList className="grid w-full grid-cols-2 mb-6">
             <TabsTrigger value="signup">Sign Up</TabsTrigger>
             <TabsTrigger value="login">Login</TabsTrigger>

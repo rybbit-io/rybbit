@@ -14,23 +14,18 @@ interface ErrorSparklineChartProps {
   isLoading: boolean;
 }
 
-export function ErrorSparklineChart({
-  data,
-  isHovering,
-  errorMessage,
-  isLoading,
-}: ErrorSparklineChartProps) {
+export function ErrorSparklineChart({ data, isHovering, errorMessage, isLoading }: ErrorSparklineChartProps) {
   const chartData = useMemo(() => {
     if (!data || data.length === 0) {
       return [];
     }
 
     return data
-      .filter((e) => {
+      .filter(e => {
         // Filter out dates from the future
         return DateTime.fromSQL(e.time).toUTC() <= DateTime.now();
       })
-      .map((e) => ({
+      .map(e => ({
         time: DateTime.fromSQL(e.time).toUTC().toFormat("yyyy-MM-dd HH:mm:ss"),
         errors: e.error_count || 0,
       }));
@@ -79,11 +74,7 @@ export function ErrorSparklineChart({
         value: number;
         data: { time: string; errors: number };
       }) => {
-        const currentTime = DateTime.fromFormat(
-          data.time,
-          "yyyy-MM-dd HH:mm:ss",
-          { zone: "utc" }
-        ).toLocal();
+        const currentTime = DateTime.fromFormat(data.time, "yyyy-MM-dd HH:mm:ss", { zone: "utc" }).toLocal();
         const currentY = Number(value);
 
         return (
@@ -91,13 +82,10 @@ export function ErrorSparklineChart({
             className="bg-neutral-850 p-2 rounded-md text-xs border border-neutral-750 shadow-lg"
             style={{ zIndex: 9999, position: "relative" }}
           >
-            <div className="font-semibold mb-1 text-neutral-200">
-              {formatDateTime(currentTime)}
-            </div>
+            <div className="font-semibold mb-1 text-neutral-200">{formatDateTime(currentTime)}</div>
             <div className="flex justify-between items-center">
               <span className="font-medium text-red-400">
-                {currentY.toLocaleString()}{" "}
-                {currentY === 1 ? "error" : "errors"}
+                {currentY.toLocaleString()} {currentY === 1 ? "error" : "errors"}
               </span>
             </div>
           </div>

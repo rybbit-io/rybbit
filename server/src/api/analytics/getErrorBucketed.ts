@@ -4,49 +4,27 @@ import SqlString from "sqlstring";
 import { clickhouse } from "../../db/clickhouse/clickhouse.js";
 import { getUserHasAccessToSitePublic } from "../../lib/auth-utils.js";
 import { validateTimeStatementFillParams } from "./query-validation.js";
-import {
-  getFilterStatement,
-  getTimeStatement,
-  TimeBucketToFn,
-  bucketIntervalMap,
-  processResults,
-} from "./utils.js";
+import { getFilterStatement, getTimeStatement, TimeBucketToFn, bucketIntervalMap, processResults } from "./utils.js";
 import { TimeBucket } from "./types.js";
 
 function getTimeStatementFill(params: FilterParams, bucket: TimeBucket) {
-  const { params: validatedParams, bucket: validatedBucket } =
-    validateTimeStatementFillParams(params, bucket);
+  const { params: validatedParams, bucket: validatedBucket } = validateTimeStatementFillParams(params, bucket);
 
-  if (
-    validatedParams.startDate &&
-    validatedParams.endDate &&
-    validatedParams.timeZone
-  ) {
+  if (validatedParams.startDate && validatedParams.endDate && validatedParams.timeZone) {
     const { startDate, endDate, timeZone } = validatedParams;
     return `WITH FILL FROM ${
-        TimeBucketToFn[validatedBucket]
-      }(toDateTime(${SqlString.escape(startDate)}, ${SqlString.escape(
-        timeZone
-      )}))
+      TimeBucketToFn[validatedBucket]
+    }(toDateTime(${SqlString.escape(startDate)}, ${SqlString.escape(timeZone)}))
       TO if(
-        toDate(${SqlString.escape(endDate)}) = toDate(now(), ${SqlString.escape(
-          timeZone
-        )}),
-        ${TimeBucketToFn[validatedBucket]}(toTimeZone(now(), ${SqlString.escape(
-          timeZone
-        )})),
-        ${
-          TimeBucketToFn[validatedBucket]
-        }(toDateTime(${SqlString.escape(endDate)}, ${SqlString.escape(
+        toDate(${SqlString.escape(endDate)}) = toDate(now(), ${SqlString.escape(timeZone)}),
+        ${TimeBucketToFn[validatedBucket]}(toTimeZone(now(), ${SqlString.escape(timeZone)})),
+        ${TimeBucketToFn[validatedBucket]}(toDateTime(${SqlString.escape(endDate)}, ${SqlString.escape(
           timeZone
         )})) + INTERVAL 1 DAY
       ) STEP INTERVAL ${bucketIntervalMap[validatedBucket]}`;
   }
   // For specific past minutes range - convert to exact timestamps for better performance
-  if (
-    validatedParams.pastMinutesStart !== undefined &&
-    validatedParams.pastMinutesEnd !== undefined
-  ) {
+  if (validatedParams.pastMinutesStart !== undefined && validatedParams.pastMinutesEnd !== undefined) {
     return `WITH FILL FROM now() - INTERVAL ${validatedParams.pastMinutesStart} MINUTE
       TO now() - INTERVAL ${validatedParams.pastMinutesEnd} MINUTE
       STEP INTERVAL ${bucketIntervalMap[validatedBucket]}`;
@@ -70,17 +48,12 @@ export type GetErrorBucketedResponse = {
   error_count: number;
 }[];
 
-export async function getErrorBucketed(
-  req: FastifyRequest<GetErrorBucketedRequest>,
-  res: FastifyReply
-) {
+export async function getErrorBucketed(req: FastifyRequest<GetErrorBucketedRequest>, res: FastifyReply) {
   const site = req.params.site;
   const { bucket, errorMessage } = req.query;
 
   if (!errorMessage) {
-    return res
-      .status(400)
-      .send({ error: "errorMessage parameter is required" });
+    return res.status(400).send({ error: "errorMessage parameter is required" });
   }
 
   const numericSiteId = Number(site);
@@ -117,7 +90,7 @@ export async function getErrorBucketed(
       query_params: {
         siteId: numericSiteId,
         errorMessage: errorMessage,
-        timeZone: req.query.timeZone || 'UTC',
+        timeZone: req.query.timeZone || "UTC",
       },
     });
 

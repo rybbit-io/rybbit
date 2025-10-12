@@ -37,7 +37,7 @@ export function Sites() {
   const filteredSites = useMemo(() => {
     if (!sites) return [];
 
-    return sites.filter((site) => {
+    return sites.filter(site => {
       const lowerSearchQuery = searchQuery.toLowerCase();
       return (
         site.domain.toLowerCase().includes(lowerSearchQuery) ||
@@ -103,15 +103,15 @@ export function Sites() {
       {
         id: "subscription",
         header: ({ column }) => <SortableHeader column={column}>Subscription</SortableHeader>,
-        accessorFn: (row) => row.subscription.planName,
+        accessorFn: row => row.subscription.planName,
         cell: ({ row }) => {
           const subscription = row.original.subscription;
           const statusColor =
             subscription.status === "active"
               ? "default"
               : subscription.status === "canceled"
-              ? "destructive"
-              : "secondary";
+                ? "destructive"
+                : "secondary";
           return <Badge variant={statusColor}>{subscription.planName}</Badge>;
         },
       },
@@ -159,9 +159,9 @@ export function Sites() {
       <div className="rounded-md border border-neutral-700">
         <Table>
           <TableHeader>
-            {table.getHeaderGroups().map((headerGroup) => (
+            {table.getHeaderGroups().map(headerGroup => (
               <TableRow key={headerGroup.id}>
-                {headerGroup.headers.map((header) => (
+                {headerGroup.headers.map(header => (
                   <TableHead key={header.id}>
                     {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
                   </TableHead>
@@ -208,9 +208,9 @@ export function Sites() {
                 </TableCell>
               </TableRow>
             ) : (
-              table.getRowModel().rows.map((row) => (
+              table.getRowModel().rows.map(row => (
                 <TableRow key={row.id}>
-                  {row.getVisibleCells().map((cell) => (
+                  {row.getVisibleCells().map(cell => (
                     <TableCell key={cell.id}>{flexRender(cell.column.columnDef.cell, cell.getContext())}</TableCell>
                   ))}
                 </TableRow>

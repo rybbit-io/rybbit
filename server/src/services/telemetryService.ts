@@ -22,13 +22,17 @@ class TelemetryService {
     if (!IS_CLOUD && !DISABLE_TELEMETRY) {
       this.logger.info("Initializing telemetry cron");
       // Schedule telemetry to run every 24 hours at midnight
-      this.telemetryTask = cron.schedule("0 0 * * *", async () => {
-        try {
-          await this.collectAndSendTelemetry();
-        } catch (error) {
-          this.logger.error(error as Error, "Error during telemetry collection");
-        }
-      });
+      this.telemetryTask = cron.schedule(
+        "0 0 * * *",
+        async () => {
+          try {
+            await this.collectAndSendTelemetry();
+          } catch (error) {
+            this.logger.error(error as Error, "Error during telemetry collection");
+          }
+        },
+        { timezone: "UTC" }
+      );
 
       // Run immediately on startup
       this.collectAndSendTelemetry();

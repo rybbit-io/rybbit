@@ -47,29 +47,18 @@ export function useGetEvents(count = 10) {
     queryFn: () =>
       authedFetch<{ data: Event[] }>(`/events/${site}`, {
         count,
-      }).then((res) => res.data),
+      }).then(res => res.data),
   });
 }
 
 // New hook with pagination and filtering support
 export function useGetEventsInfinite(options: GetEventsOptions = {}) {
   const { site, time, filters } = useStore();
-  const { startDate, endDate } = options.time
-    ? getStartAndEndDate(options.time)
-    : getStartAndEndDate(time);
+  const { startDate, endDate } = options.time ? getStartAndEndDate(options.time) : getStartAndEndDate(time);
   const pageSize = options.pageSize || 20;
 
   return useInfiniteQuery<EventsResponse, Error>({
-    queryKey: [
-      "events-infinite",
-      site,
-      startDate,
-      endDate,
-      timeZone,
-      filters,
-      pageSize,
-      options.isRealtime,
-    ],
+    queryKey: ["events-infinite", site, startDate, endDate, timeZone, filters, pageSize, options.isRealtime],
     initialPageParam: 1,
     queryFn: async ({ pageParam }) => {
       const params: Record<string, any> = {
@@ -90,10 +79,7 @@ export function useGetEventsInfinite(options: GetEventsOptions = {}) {
         params.count = options.count;
       }
 
-      const response = await authedFetch<EventsResponse>(
-        `/events/${site}`,
-        params
-      );
+      const response = await authedFetch<EventsResponse>(`/events/${site}`, params);
       return response;
     },
     getNextPageParam: (lastPage: EventsResponse) => {

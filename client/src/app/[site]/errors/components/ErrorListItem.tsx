@@ -24,11 +24,10 @@ export function ErrorListItem({ errorData }: ErrorListItemProps) {
   };
 
   // Get error bucketed data for sparkline
-  const { data: errorBucketedData, isLoading: isLoadingBucketed } =
-    useGetErrorBucketed({
-      errorMessage: errorData.value,
-      enabled: true,
-    });
+  const { data: errorBucketedData, isLoading: isLoadingBucketed } = useGetErrorBucketed({
+    errorMessage: errorData.value,
+    enabled: true,
+  });
 
   return (
     <div
@@ -40,12 +39,8 @@ export function ErrorListItem({ errorData }: ErrorListItemProps) {
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center w-full gap-4">
           {/* Left side: Error message with icon */}
           <div className="flex-1 min-w-0 space-y-1">
-            <h3 className="text-sm font-medium truncate">
-              {errorData.errorName || "JavaScript Error"}
-            </h3>
-            <p className="text-xs text-muted-foreground">
-              {truncateString(errorData.value, MAX_ERROR_MESSAGE_LENGTH)}
-            </p>
+            <h3 className="text-sm font-medium truncate">{errorData.errorName || "JavaScript Error"}</h3>
+            <p className="text-xs text-muted-foreground">{truncateString(errorData.value, MAX_ERROR_MESSAGE_LENGTH)}</p>
           </div>
 
           {/* Right side: Sparkline chart and error statistics */}
@@ -65,23 +60,17 @@ export function ErrorListItem({ errorData }: ErrorListItemProps) {
               {/* Occurrences */}
               <div className="text-center min-w-[80px]">
                 <div>
-                  <span className="text-base font-semibold">
-                    {errorData.count.toLocaleString()}
-                  </span>
+                  <span className="text-base font-semibold">{errorData.count.toLocaleString()}</span>
                 </div>
                 <div>
-                  <span className="text-xs text-foreground/70">
-                    occurrences
-                  </span>
+                  <span className="text-xs text-foreground/70">occurrences</span>
                 </div>
               </div>
 
               {/* Sessions affected */}
               <div className="text-center min-w-[80px]">
                 <div>
-                  <span className="text-base font-semibold">
-                    {errorData.sessionCount.toLocaleString()}
-                  </span>
+                  <span className="text-base font-semibold">{errorData.sessionCount.toLocaleString()}</span>
                 </div>
                 <div>
                   <span className="text-xs text-foreground/70">sessions</span>
@@ -91,15 +80,9 @@ export function ErrorListItem({ errorData }: ErrorListItemProps) {
               {/* Expand/Collapse icon */}
               <div className="ml-2 flex-shrink-0 flex">
                 {expanded ? (
-                  <ChevronDown
-                    className="w-4 h-4 text-gray-400"
-                    strokeWidth={3}
-                  />
+                  <ChevronDown className="w-4 h-4 text-gray-400" strokeWidth={3} />
                 ) : (
-                  <ChevronRight
-                    className="w-4 h-4 text-gray-400"
-                    strokeWidth={3}
-                  />
+                  <ChevronRight className="w-4 h-4 text-gray-400" strokeWidth={3} />
                 )}
               </div>
             </div>

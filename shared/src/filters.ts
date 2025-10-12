@@ -24,10 +24,13 @@ export type FilterParameter =
   | "exit_page"
   | "dimensions"
   | "browser_version"
-  | "operating_system_version";
+  | "operating_system_version"
+  | "user_id"
+  | "lat"
+  | "lon";
 
 export interface Filter {
   parameter: FilterParameter;
-  value: string[];
+  value: (string | number)[];
   type: FilterType;
 }

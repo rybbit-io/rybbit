@@ -95,7 +95,7 @@ export function DeleteAccount() {
             type="password"
             placeholder="••••••••"
             value={password}
-            onChange={(e) => setPassword(e.target.value)}
+            onChange={e => setPassword(e.target.value)}
             className={cn("mt-1", passwordError && "border-red-500")}
             disabled={isDeleting}
           />
@@ -107,7 +107,7 @@ export function DeleteAccount() {
             Cancel
           </AlertDialogCancel>
           <AlertDialogAction
-            onClick={(e) => {
+            onClick={e => {
               e.preventDefault();
               handleAccountDeletion();
             }}

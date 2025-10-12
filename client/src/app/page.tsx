@@ -18,14 +18,9 @@ import { AddSite } from "./components/AddSite";
 export default function Home() {
   useSetPageTitle("Rybbit · Home");
 
-  const { data: activeOrganization, isPending } =
-    authClient.useActiveOrganization();
+  const { data: activeOrganization, isPending } = authClient.useActiveOrganization();
 
-  const {
-    data: sites,
-    refetch: refetchSites,
-    isLoading: isLoadingSites,
-  } = useGetSitesFromOrg(activeOrganization?.id);
+  const { data: sites, refetch: refetchSites, isLoading: isLoadingSites } = useGetSitesFromOrg(activeOrganization?.id);
 
   const {
     data: userOrganizationsData,
@@ -37,22 +32,18 @@ export default function Home() {
   const isLoading = isLoadingOrganizations || isPending || isLoadingSites;
 
   // Check if user has organizations
-  const hasOrganizations =
-    Array.isArray(userOrganizationsData) && userOrganizationsData.length > 0;
+  const hasOrganizations = Array.isArray(userOrganizationsData) && userOrganizationsData.length > 0;
   const hasNoOrganizations = !isLoading && !hasOrganizations;
 
   // Check user permissions for the active organization
-  const activeOrgMembership = userOrganizationsData?.find(
-    (org) => org.id === activeOrganization?.id
-  );
+  const activeOrgMembership = userOrganizationsData?.find(org => org.id === activeOrganization?.id);
 
   const isUserMember = activeOrgMembership?.role === "member";
   const canAddSites = hasOrganizations && !isUserMember;
 
   // Check if we should show sites content
   const shouldShowSites = hasOrganizations && !isLoading;
-  const hasNoSites =
-    shouldShowSites && (!sites?.sites || sites.sites.length === 0);
+  const hasNoSites = shouldShowSites && (!sites?.sites || sites.sites.length === 0);
 
   const [createOrgDialogOpen, setCreateOrgDialogOpen] = useState(false);
 
@@ -77,23 +68,15 @@ export default function Home() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {/* Sites list */}
 
-        {sites?.sites?.map((site) => {
-          return (
-            <SiteCard
-              key={site.siteId}
-              siteId={site.siteId}
-              domain={site.domain}
-            />
-          );
+        {sites?.sites?.map(site => {
+          return <SiteCard key={site.siteId} siteId={site.siteId} domain={site.domain} />;
         })}
 
         {/* No websites message */}
         {hasNoSites && (
           <Card className="col-span-full p-6 flex flex-col items-center text-center">
             <CardTitle className="mb-2 text-xl">No websites yet</CardTitle>
-            <CardDescription className="mb-4">
-              Add your first website to start tracking analytics
-            </CardDescription>
+            <CardDescription className="mb-4">Add your first website to start tracking analytics</CardDescription>
             <AddSite
               trigger={
                 <Button variant="success" disabled={!canAddSites}>

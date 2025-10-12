@@ -182,23 +182,17 @@ describe("Tracker", () => {
         })
       );
 
-      const body = JSON.parse(
-        vi.mocked(global.fetch).mock.calls[0][1]!.body as string
-      );
+      const body = JSON.parse(vi.mocked(global.fetch).mock.calls[0][1]!.body as string);
       expect(body.event_name).toBe("button_click");
       expect(body.properties).toBe(JSON.stringify({ button: "submit" }));
     });
 
     it("should validate custom event name", () => {
-      const consoleSpy = vi
-        .spyOn(console, "error")
-        .mockImplementation(() => {});
+      const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
 
       tracker.trackEvent("", {});
       expect(global.fetch).not.toHaveBeenCalled();
-      expect(consoleSpy).toHaveBeenCalledWith(
-        "Event name is required and must be a string for custom events"
-      );
+      expect(consoleSpy).toHaveBeenCalledWith("Event name is required and must be a string for custom events");
 
       consoleSpy.mockRestore();
     });
@@ -206,9 +200,7 @@ describe("Tracker", () => {
     it("should track outbound link", async () => {
       tracker.trackOutbound("https://external.com", "External Link", "_blank");
 
-      const body = JSON.parse(
-        vi.mocked(global.fetch).mock.calls[0][1]!.body as string
-      );
+      const body = JSON.parse(vi.mocked(global.fetch).mock.calls[0][1]!.body as string);
       expect(body.type).toBe("outbound");
       expect(body.properties).toBe(
         JSON.stringify({
@@ -230,9 +222,7 @@ describe("Tracker", () => {
 
       tracker.trackWebVitals(vitals);
 
-      const body = JSON.parse(
-        vi.mocked(global.fetch).mock.calls[0][1]!.body as string
-      );
+      const body = JSON.parse(vi.mocked(global.fetch).mock.calls[0][1]!.body as string);
       expect(body.type).toBe("performance");
       expect(body.event_name).toBe("web-vitals");
       expect(body.lcp).toBe(2500);
@@ -240,20 +230,15 @@ describe("Tracker", () => {
     });
 
     it("should handle fetch errors gracefully", async () => {
-      const consoleSpy = vi
-        .spyOn(console, "error")
-        .mockImplementation(() => {});
+      const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
       vi.mocked(global.fetch).mockRejectedValue(new Error("Network error"));
 
       tracker.trackPageview();
 
       // Wait for async operation
-      await new Promise((resolve) => setTimeout(resolve, 0));
+      await new Promise(resolve => setTimeout(resolve, 0));
 
-      expect(consoleSpy).toHaveBeenCalledWith(
-        "Failed to send tracking data:",
-        expect.any(Error)
-      );
+      expect(consoleSpy).toHaveBeenCalledWith("Failed to send tracking data:", expect.any(Error));
 
       consoleSpy.mockRestore();
     });
@@ -263,13 +248,10 @@ describe("Tracker", () => {
         // Enable error tracking for this test
         const errorConfig = { ...config, trackErrors: true };
         const tracker = new Tracker(errorConfig);
-        const sendSpy = vi
-          .spyOn(tracker, "sendTrackingData")
-          .mockResolvedValue();
+        const sendSpy = vi.spyOn(tracker, "sendTrackingData").mockResolvedValue();
 
         const error = new Error("Test error");
-        error.stack =
-          "Error: Test error\n    at https://example.com/app.js:10:5";
+        error.stack = "Error: Test error\n    at https://example.com/app.js:10:5";
 
         tracker.trackError(error, {
           filename: "https://example.com/app.js",
@@ -289,9 +271,7 @@ describe("Tracker", () => {
       it("should filter out third-party errors by filename", () => {
         const errorConfig = { ...config, trackErrors: true };
         const tracker = new Tracker(errorConfig);
-        const sendSpy = vi
-          .spyOn(tracker, "sendTrackingData")
-          .mockResolvedValue();
+        const sendSpy = vi.spyOn(tracker, "sendTrackingData").mockResolvedValue();
 
         // Mock window.location.origin to ensure we have a proper origin for comparison
         Object.defineProperty(window, "location", {
@@ -319,13 +299,10 @@ describe("Tracker", () => {
       it("should filter out third-party errors by stack trace", () => {
         const errorConfig = { ...config, trackErrors: true };
         const tracker = new Tracker(errorConfig);
-        const sendSpy = vi
-          .spyOn(tracker, "sendTrackingData")
-          .mockResolvedValue();
+        const sendSpy = vi.spyOn(tracker, "sendTrackingData").mockResolvedValue();
 
         const error = new Error("Third party error");
-        error.stack =
-          "Error: Third party error\n    at https://ads.google.com/script.js:1:1";
+        error.stack = "Error: Third party error\n    at https://ads.google.com/script.js:1:1";
 
         tracker.trackError(error, {
           lineno: 1,
@@ -338,13 +315,9 @@ describe("Tracker", () => {
       it("should track errors with unknown origin (e.g., NetworkError)", () => {
         const errorConfig = { ...config, trackErrors: true };
         const tracker = new Tracker(errorConfig);
-        const sendSpy = vi
-          .spyOn(tracker, "sendTrackingData")
-          .mockResolvedValue();
+        const sendSpy = vi.spyOn(tracker, "sendTrackingData").mockResolvedValue();
 
-        const error = new Error(
-          "NetworkError when attempting to fetch resource"
-        );
+        const error = new Error("NetworkError when attempting to fetch resource");
         error.name = "TypeError";
         // Clear stack to avoid test environment paths
         error.stack = undefined;
@@ -365,13 +338,10 @@ describe("Tracker", () => {
       it("should handle invalid filename URLs gracefully", () => {
         const errorConfig = { ...config, trackErrors: true };
         const tracker = new Tracker(errorConfig);
-        const sendSpy = vi
-          .spyOn(tracker, "sendTrackingData")
-          .mockResolvedValue();
+        const sendSpy = vi.spyOn(tracker, "sendTrackingData").mockResolvedValue();
 
         const error = new Error("Test error");
-        error.stack =
-          "Error: Test error\n    at https://example.com/app.js:10:5";
+        error.stack = "Error: Test error\n    at https://example.com/app.js:10:5";
 
         tracker.trackError(error, {
           filename: "invalid-url",
@@ -395,23 +365,16 @@ describe("Tracker", () => {
     it("should identify user", () => {
       tracker.identify("user-456");
 
-      expect(window.localStorage.setItem).toHaveBeenCalledWith(
-        "rybbit-user-id",
-        "user-456"
-      );
+      expect(window.localStorage.setItem).toHaveBeenCalledWith("rybbit-user-id", "user-456");
       expect(tracker.getUserId()).toBe("user-456");
     });
 
     it("should validate user ID", () => {
-      const consoleSpy = vi
-        .spyOn(console, "error")
-        .mockImplementation(() => {});
+      const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
 
       tracker.identify("");
       expect(window.localStorage.setItem).not.toHaveBeenCalled();
-      expect(consoleSpy).toHaveBeenCalledWith(
-        "User ID must be a non-empty string"
-      );
+      expect(consoleSpy).toHaveBeenCalledWith("User ID must be a non-empty string");
 
       consoleSpy.mockRestore();
     });
@@ -420,9 +383,7 @@ describe("Tracker", () => {
       tracker.identify("user-789");
       tracker.clearUserId();
 
-      expect(window.localStorage.removeItem).toHaveBeenCalledWith(
-        "rybbit-user-id"
-      );
+      expect(window.localStorage.removeItem).toHaveBeenCalledWith("rybbit-user-id");
       expect(tracker.getUserId()).toBeNull();
     });
 
@@ -433,9 +394,7 @@ describe("Tracker", () => {
       });
 
       tracker.identify("user-123");
-      expect(consoleSpy).toHaveBeenCalledWith(
-        "Could not persist user ID to localStorage"
-      );
+      expect(consoleSpy).toHaveBeenCalledWith("Could not persist user ID to localStorage");
 
       consoleSpy.mockRestore();
     });

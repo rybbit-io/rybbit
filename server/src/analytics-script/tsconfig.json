@@ -12,12 +12,6 @@
     "noEmit": true,
     "types": ["vitest/globals"]
   },
-  "include": [
-    "*.ts"
-  ],
-  "exclude": [
-    "node_modules",
-    "*.test.ts",
-    "build.js"
-  ]
+  "include": ["*.ts"],
+  "exclude": ["node_modules", "*.test.ts", "build.js"]
 }

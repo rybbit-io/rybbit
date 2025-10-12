@@ -1,10 +1,6 @@
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { timeZone } from "../../lib/dateTimeUtils";
-import {
-  getFilteredFilters,
-  SESSION_PAGE_FILTERS,
-  useStore,
-} from "../../lib/store";
+import { getFilteredFilters, SESSION_PAGE_FILTERS, useStore } from "../../lib/store";
 import { APIResponse } from "../types";
 import { authedFetch, getQueryParams } from "../utils";
 
@@ -38,10 +34,11 @@ export type GetSessionsResponse = {
   events: number;
   errors: number;
   outbound: number;
+  ip: string;
 }[];
 
 export function useGetSessionsInfinite(userId?: string) {
-  const { time, site, filters } = useStore();
+  const { time, site } = useStore();
 
   // Get the appropriate time parameters using getQueryParams
   const timeParams = getQueryParams(time);
@@ -72,16 +69,10 @@ export function useGetSessionsInfinite(userId?: string) {
         requestParams.endDate = timeParams.endDate;
       }
 
-      return authedFetch<APIResponse<GetSessionsResponse>>(
-        `/sessions/${site}`,
-        requestParams
-      );
+      return authedFetch<APIResponse<GetSessionsResponse>>(`/sessions/${site}`, requestParams);
     },
     initialPageParam: 1,
-    getNextPageParam: (
-      lastPage: APIResponse<GetSessionsResponse>,
-      allPages
-    ) => {
+    getNextPageParam: (lastPage: APIResponse<GetSessionsResponse>, allPages) => {
       // If we have data and it's a full page (100 items), there might be more
       if (lastPage?.data && lastPage.data.length === 100) {
         return allPages.length + 1;
@@ -113,6 +104,7 @@ export interface SessionDetails {
   pageviews: number;
   entry_page: string;
   exit_page: string;
+  ip: string;
 }
 
 export interface SessionEventProps {
@@ -174,13 +166,10 @@ export function useGetSessionDetailsInfinite(sessionId: string | null) {
         queryParams.minutes = minutes;
       }
 
-      return authedFetch<APIResponse<SessionPageviewsAndEvents>>(
-        `/session/${sessionId}/${site}`,
-        queryParams
-      );
+      return authedFetch<APIResponse<SessionPageviewsAndEvents>>(`/session/${sessionId}/${site}`, queryParams);
     },
     initialPageParam: 0,
-    getNextPageParam: (lastPage) => {
+    getNextPageParam: lastPage => {
       if (lastPage?.data?.pagination?.hasMore) {
         return lastPage.data.pagination.offset + lastPage.data.pagination.limit;
       }
@@ -202,13 +191,10 @@ export function useGetUserSessionCount(userId: string) {
   return useQuery<APIResponse<UserSessionCountResponse[]>>({
     queryKey: ["user-session-count", userId, site],
     queryFn: () => {
-      return authedFetch<APIResponse<UserSessionCountResponse[]>>(
-        `/user/session-count/${site}`,
-        {
-          userId,
-          timeZone,
-        }
-      );
+      return authedFetch<APIResponse<UserSessionCountResponse[]>>(`/user/session-count/${site}`, {
+        userId,
+        timeZone,
+      });
     },
     staleTime: Infinity,
   });

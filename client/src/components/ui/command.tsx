@@ -51,7 +51,10 @@ function CommandDialog({
 
 function CommandInput({ className, ...props }: React.ComponentProps<typeof CommandPrimitive.Input>) {
   return (
-    <div data-slot="command-input-wrapper" className="flex h-9 items-center gap-2 border-b border-neutral-200 px-3 dark:border-neutral-800">
+    <div
+      data-slot="command-input-wrapper"
+      className="flex h-9 items-center gap-2 border-b border-neutral-200 px-3 dark:border-neutral-800"
+    >
       <SearchIcon className="h-4 w-4 shrink-0 opacity-50" />
       <CommandPrimitive.Input
         data-slot="command-input"
@@ -76,7 +79,13 @@ function CommandList({ className, ...props }: React.ComponentProps<typeof Comman
 }
 
 function CommandEmpty({ ...props }: React.ComponentProps<typeof CommandPrimitive.Empty>) {
-  return <CommandPrimitive.Empty data-slot="command-empty" className="py-6 text-center text-sm text-neutral-500 dark:text-neutral-400" {...props} />;
+  return (
+    <CommandPrimitive.Empty
+      data-slot="command-empty"
+      className="py-6 text-center text-sm text-neutral-500 dark:text-neutral-400"
+      {...props}
+    />
+  );
 }
 
 function CommandGroup({ className, ...props }: React.ComponentProps<typeof CommandPrimitive.Group>) {

@@ -1,13 +1,7 @@
 import { Filter, FilterParameter, FilterType } from "@rybbit/shared";
 import { Trash } from "lucide-react";
 import { Button } from "../../../../../components/ui/button";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "../../../../../components/ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../../../../components/ui/select";
 import { FilterOptions, OperatorOptions } from "./const";
 import { ValueSelect } from "./ValueSelect";
 
@@ -23,13 +17,13 @@ export function FilterComponent({
   availableFilters?: FilterParameter[];
 }) {
   const availableFilterOptions = availableFilters
-    ? FilterOptions.filter((option) => availableFilters?.includes(option.value))
+    ? FilterOptions.filter(option => availableFilters?.includes(option.value))
     : FilterOptions;
 
   return (
     <div className="grid grid-cols-[220px_auto] md:grid-cols-[160px_100px_250px_auto] gap-2">
       <Select
-        onValueChange={(value) => {
+        onValueChange={value => {
           updateFilter(
             {
               ...filter,
@@ -45,7 +39,7 @@ export function FilterComponent({
           <SelectValue placeholder="Filter" />
         </SelectTrigger>
         <SelectContent>
-          {availableFilterOptions.map((option) => (
+          {availableFilterOptions.map(option => (
             <SelectItem key={option.value} value={option.value}>
               <div className="flex items-center gap-2">
                 {option.icon}
@@ -57,7 +51,7 @@ export function FilterComponent({
       </Select>
       <Select
         value={filter.type}
-        onValueChange={(value) => {
+        onValueChange={value => {
           updateFilter(
             {
               ...filter,
@@ -71,7 +65,7 @@ export function FilterComponent({
           <SelectValue placeholder="Operator" />
         </SelectTrigger>
         <SelectContent>
-          {OperatorOptions.map((option) => (
+          {OperatorOptions.map(option => (
             <SelectItem key={option.value} value={option.value}>
               {option.label}
             </SelectItem>
@@ -79,7 +73,7 @@ export function FilterComponent({
         </SelectContent>
       </Select>
       <ValueSelect
-        onChange={(value) => {
+        onChange={value => {
           updateFilter({ ...filter, value: value }, index);
         }}
         parameter={filter.parameter}

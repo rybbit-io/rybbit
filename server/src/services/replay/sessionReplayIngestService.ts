@@ -6,6 +6,7 @@ import { parseTrackingData } from "./trackingUtils.js";
 import { sessionsService } from "../sessions/sessionsService.js";
 import { userIdService } from "../userId/userIdService.js";
 import { r2Storage } from "../storage/r2StorageService.js";
+import { siteConfig } from "../../lib/siteConfig.js";
 
 export interface RequestMetadata {
   userAgent: string;
@@ -27,28 +28,25 @@ export class SessionReplayIngestService {
     const { userId: clientUserId, events, metadata } = request;
 
     // Generate user ID server-side if not provided by client
-    const userId = clientUserId && clientUserId.trim() 
-      ? clientUserId.trim()
-      : userIdService.generateUserId(
-          requestMeta?.ipAddress || "",
-          requestMeta?.userAgent || "",
-          siteId
-        );
+    const userId =
+      clientUserId && clientUserId.trim()
+        ? clientUserId.trim()
+        : await userIdService.generateUserId(requestMeta?.ipAddress || "", requestMeta?.userAgent || "", siteId);
 
     // Get or create a session ID from the sessions service
     const { sessionId } = await sessionsService.updateSession({
       userId,
-      site_id: siteId.toString(),
+      siteId,
     });
 
     // Check if R2 storage is enabled for cloud deployments
     let r2BatchKey: string | null = null;
     let eventDataArray: any[] = [];
-    
+
     if (r2Storage.isEnabled()) {
       // Extract event data for R2 storage
       eventDataArray = events.map(event => event.data);
-      
+
       try {
         // Store event data batch in R2
         r2BatchKey = await r2Storage.storeBatch(siteId, sessionId, eventDataArray);
@@ -61,7 +59,7 @@ export class SessionReplayIngestService {
     // Prepare events for batch insert
     const eventsToInsert = events.map((event, index) => {
       const serializedData = JSON.stringify(event.data);
-      
+
       if (r2BatchKey) {
         // R2 storage: store metadata only in ClickHouse
         return {
@@ -110,13 +108,7 @@ export class SessionReplayIngestService {
 
     // Update or insert metadata
     if (metadata) {
-      await this.updateSessionMetadata(
-        siteId,
-        sessionId,
-        userId,
-        metadata,
-        requestMeta
-      );
+      await this.updateSessionMetadata(siteId, sessionId, userId, metadata, requestMeta);
     }
   }
 
@@ -185,9 +177,7 @@ export class SessionReplayIngestService {
 
     // Calculate duration
     const startTime = new Date(sessionReplayData.start_time);
-    const endTime = sessionReplayData.end_time
-      ? new Date(sessionReplayData.end_time)
-      : null;
+    const endTime = sessionReplayData.end_time ? new Date(sessionReplayData.end_time) : null;
     const durationMs = endTime ? endTime.getTime() - startTime.getTime() : null;
 
     // Insert or update metadata
@@ -198,12 +188,8 @@ export class SessionReplayIngestService {
           site_id: siteId,
           session_id: sessionId,
           user_id: userId,
-          start_time: DateTime.fromJSDate(startTime).toFormat(
-            "yyyy-MM-dd HH:mm:ss"
-          ),
-          end_time: endTime
-            ? DateTime.fromJSDate(endTime).toFormat("yyyy-MM-dd HH:mm:ss")
-            : null,
+          start_time: DateTime.fromJSDate(startTime).toFormat("yyyy-MM-dd HH:mm:ss"),
+          end_time: endTime ? DateTime.fromJSDate(endTime).toFormat("yyyy-MM-dd HH:mm:ss") : null,
           duration_ms: durationMs,
           event_count: sessionReplayData.event_count || 0,
           compressed_size_bytes: sessionReplayData.compressed_size_bytes || 0,
@@ -218,10 +204,8 @@ export class SessionReplayIngestService {
           operating_system: trackingData.operatingSystem || "",
           operating_system_version: trackingData.operatingSystemVersion || "",
           language: trackingData.language || "",
-          screen_width:
-            sessionReplayData.screen_width || metadata?.viewportWidth || 0,
-          screen_height:
-            sessionReplayData.screen_height || metadata?.viewportHeight || 0,
+          screen_width: sessionReplayData.screen_width || metadata?.viewportWidth || 0,
+          screen_height: sessionReplayData.screen_height || metadata?.viewportHeight || 0,
           device_type: trackingData.deviceType || "",
           channel: trackingData.channel || "",
           hostname: trackingData.hostname || "",

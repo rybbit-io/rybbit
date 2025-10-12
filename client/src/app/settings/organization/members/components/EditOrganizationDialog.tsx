@@ -21,10 +21,7 @@ interface EditOrganizationDialogProps {
   onSuccess: () => void;
 }
 
-export function EditOrganizationDialog({
-  organization,
-  onSuccess,
-}: EditOrganizationDialogProps) {
+export function EditOrganizationDialog({ organization, onSuccess }: EditOrganizationDialogProps) {
   const [name, setName] = useState(organization.name);
   const [isLoading, setIsLoading] = useState(false);
   const [open, setOpen] = useState(false);
@@ -64,9 +61,7 @@ export function EditOrganizationDialog({
       <DialogContent className="max-w-lg">
         <DialogHeader>
           <DialogTitle>Edit Organization</DialogTitle>
-          <DialogDescription>
-            Update the details of your organization.
-          </DialogDescription>
+          <DialogDescription>Update the details of your organization.</DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-4">
           <div className="grid gap-2">
@@ -74,9 +69,7 @@ export function EditOrganizationDialog({
             <Input
               id="name"
               value={name}
-              onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                setName(e.target.value)
-              }
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setName(e.target.value)}
             />
           </div>
         </div>

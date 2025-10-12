@@ -71,7 +71,57 @@ export function Footer() {
 
           {/* Product Links */}
           <div className="space-y-4">
-            <h3 className="text-sm font-semibold text-white">Product</h3>
+            <h3 className="text-sm font-semibold text-white">Comparisons</h3>
+            <ul className="space-y-2 text-sm">
+              <li>
+                <Link href="/compare/google-analytics" className="text-neutral-400 hover:text-white transition-colors">
+                  vs Google Analytics
+                </Link>
+              </li>
+              <li>
+                <Link
+                  href="/compare/cloudflare-analytics"
+                  className="text-neutral-400 hover:text-white transition-colors"
+                >
+                  vs Cloudflare Analytics
+                </Link>
+              </li>
+              <li>
+                <Link href="/compare/plausible" className="text-neutral-400 hover:text-white transition-colors">
+                  vs Plausible
+                </Link>
+              </li>
+              <li>
+                <Link href="/compare/umami" className="text-neutral-400 hover:text-white transition-colors">
+                  vs Umami
+                </Link>
+              </li>
+              <li>
+                <Link href="/compare/fathom" className="text-neutral-400 hover:text-white transition-colors">
+                  vs Fathom
+                </Link>
+              </li>
+              <li>
+                <Link href="/compare/simpleanalytics" className="text-neutral-400 hover:text-white transition-colors">
+                  vs Simple Analytics
+                </Link>
+              </li>
+              <li>
+                <Link href="/compare/matomo" className="text-neutral-400 hover:text-white transition-colors">
+                  vs Matomo
+                </Link>
+              </li>
+              <li>
+                <Link href="/compare/posthog" className="text-neutral-400 hover:text-white transition-colors">
+                  vs PostHog
+                </Link>
+              </li>
+            </ul>
+          </div>
+
+          {/* Resources */}
+          <div className="space-y-4">
+            <h3 className="text-sm font-semibold text-white">Resources</h3>
             <ul className="space-y-2 text-sm">
               <li>
                 <Link href="/docs" className="text-neutral-400 hover:text-white transition-colors">
@@ -83,33 +133,6 @@ export function Footer() {
                   Pricing
                 </Link>
               </li>
-              <li>
-                <a
-                  href="https://app.rybbit.io"
-                  className="text-neutral-400 hover:text-white transition-colors"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  Login
-                </a>
-              </li>
-              <li>
-                <a
-                  href="https://app.rybbit.io/signup"
-                  className="text-neutral-400 hover:text-white transition-colors"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  Sign Up
-                </a>
-              </li>
-            </ul>
-          </div>
-
-          {/* Resources */}
-          <div className="space-y-4">
-            <h3 className="text-sm font-semibold text-white">Resources</h3>
-            <ul className="space-y-2 text-sm">
               <li>
                 <Link href="/blog" className="text-neutral-400 hover:text-white transition-colors">
                   Blog
@@ -158,6 +181,16 @@ export function Footer() {
                 </Link>
               </li>
               <li>
+                <Link href="/terms-and-conditions" className="text-neutral-400 hover:text-white transition-colors">
+                  Terms and Conditions
+                </Link>
+              </li>
+              <li>
+                <Link href="/security" className="text-neutral-400 hover:text-white transition-colors">
+                  Security
+                </Link>
+              </li>
+              <li>
                 <a href="mailto:hello@rybbit.io" className="text-neutral-400 hover:text-white transition-colors">
                   Support
                 </a>
@@ -170,7 +203,12 @@ export function Footer() {
         <div className="pt-8 border-t border-neutral-800">
           <div className="flex flex-col md:flex-row items-center justify-between gap-4">
             <div className="text-sm text-neutral-400">© {new Date().getFullYear()} Rybbit. All rights reserved.</div>
-            <div className="text-sm text-neutral-400">Made with ❤️ by frogs</div>
+            <div className="text-sm text-neutral-400">
+              Made with ❤️ by frogs{" "}
+              <a href="https://tomato.gg" target="_blank" title="Tomato.gg">
+                🐸🍅
+              </a>
+            </div>
           </div>
         </div>
       </div>

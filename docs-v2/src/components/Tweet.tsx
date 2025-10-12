@@ -1,37 +1,16 @@
 /* eslint-disable @next/next/no-img-element */
 import { cn } from "@/lib/utils";
 import { Suspense } from "react";
-import {
-  enrichTweet,
-  type TweetProps,
-  type TwitterComponents,
-} from "react-tweet";
+import { enrichTweet, type TweetProps } from "react-tweet";
 import { getTweet, type Tweet } from "react-tweet/api";
-import { TweetHeader, TweetBody, TweetMedia } from './TweetClient';
+import { TweetBody, TweetHeader, TweetMedia } from "./TweetClient";
 
-const Skeleton = ({
-  className,
-  ...props
-}: React.HTMLAttributes<HTMLDivElement>) => {
-  return (
-    <div className={cn("rounded-md bg-primary/10", className)} {...props} />
-  );
+const Skeleton = ({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) => {
+  return <div className={cn("rounded-md bg-primary/10", className)} {...props} />;
 };
 
-export const TweetSkeleton = ({
-  className,
-  ...props
-}: {
-  className?: string;
-  [key: string]: unknown;
-}) => (
-  <div
-    className={cn(
-      "flex size-full max-h-max min-w-72 flex-col gap-2 rounded-lg border p-4",
-      className
-    )}
-    {...props}
-  >
+export const TweetSkeleton = ({ className, ...props }: { className?: string; [key: string]: unknown }) => (
+  <div className={cn("flex size-full max-h-max min-w-72 flex-col gap-2 rounded-lg border p-4", className)} {...props}>
     <div className="flex flex-row gap-2">
       <Skeleton className="size-10 shrink-0 rounded-full" />
       <Skeleton className="h-10 w-full" />
@@ -40,37 +19,21 @@ export const TweetSkeleton = ({
   </div>
 );
 
-export const TweetNotFound = ({
-  className,
-  ...props
-}: {
-  className?: string;
-  [key: string]: unknown;
-}) => (
+export const TweetNotFound = ({ className, ...props }: { className?: string; [key: string]: unknown }) => (
   <div
-    className={cn(
-      "flex size-full flex-col items-center justify-center gap-2 rounded-lg border p-4",
-      className
-    )}
+    className={cn("flex size-full flex-col items-center justify-center gap-2 rounded-lg border p-4", className)}
     {...props}
   >
     <h3>Tweet not found</h3>
   </div>
 );
 
-export const MagicTweet = ({
-  tweet,
-  className,
-  ...props
-}: {
-  tweet: Tweet;
-  className?: string;
-}) => {
+export const MagicTweet = ({ tweet, className, ...props }: { tweet: Tweet; className?: string }) => {
   const enrichedTweet = enrichTweet(tweet);
   return (
     <div
       className={cn(
-        "relative flex size-full max-w-lg flex-col gap-2 overflow-hidden rounded-lg p-4 backdrop-blur-md bg-neutral-900",
+        "relative flex size-full max-w-lg flex-col gap-2 overflow-hidden rounded-lg p-4 backdrop-blur-md bg-neutral-800/20 border border-neutral-800/50",
         className
       )}
       {...props}
@@ -99,7 +62,7 @@ export const TweetCard = async ({
   className?: string;
 }) => {
   const tweet = id
-    ? await getTweet(id).catch((err) => {
+    ? await getTweet(id).catch(err => {
         if (onError) {
           onError(err);
         } else {

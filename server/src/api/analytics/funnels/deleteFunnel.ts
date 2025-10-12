@@ -25,24 +25,17 @@ export async function deleteFunnel(
     }
 
     if (!funnel.siteId) {
-      return reply
-        .status(400)
-        .send({ error: "Invalid funnel: missing site ID" });
+      return reply.status(400).send({ error: "Invalid funnel: missing site ID" });
     }
 
     // Check user access to site
-    const userHasAccessToSite = await getUserHasAccessToSite(
-      request,
-      funnel.siteId.toString()
-    );
+    const userHasAccessToSite = await getUserHasAccessToSite(request, funnel.siteId.toString());
     if (!userHasAccessToSite) {
       return reply.status(403).send({ error: "Forbidden" });
     }
 
     // Delete the funnel
-    await db
-      .delete(funnelsTable)
-      .where(eq(funnelsTable.reportId, parseInt(funnelId)));
+    await db.delete(funnelsTable).where(eq(funnelsTable.reportId, parseInt(funnelId)));
 
     return reply.status(200).send({ success: true });
   } catch (error) {

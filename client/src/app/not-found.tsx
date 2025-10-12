@@ -18,19 +18,14 @@ export default function NotFound() {
           <div className="flex items-center justify-center">
             <BarChart3 className="h-24 w-24 text-neutral-400" />
           </div>
-          <h1 className="text-6xl font-bold text-neutral-900 dark:text-neutral-100">
-            404
-          </h1>
+          <h1 className="text-6xl font-bold text-neutral-900 dark:text-neutral-100">404</h1>
         </div>
 
         {/* Error Message */}
         <div className="space-y-2 max-w-md">
-          <h2 className="text-2xl font-semibold text-neutral-800 dark:text-neutral-200">
-            Page Not Found
-          </h2>
+          <h2 className="text-2xl font-semibold text-neutral-800 dark:text-neutral-200">Page Not Found</h2>
           <p className="text-neutral-600 dark:text-neutral-400 leading-relaxed">
-            The page you're looking for doesn't exist or has been moved. Let's
-            get you back to analyzing your data.
+            The page you're looking for doesn't exist or has been moved. Let's get you back to analyzing your data.
           </p>
         </div>
 
@@ -44,10 +39,7 @@ export default function NotFound() {
           </Button>
 
           <Button asChild variant="outline" size="lg">
-            <Link
-              href="javascript:history.back()"
-              className="flex items-center gap-2"
-            >
+            <Link href="javascript:history.back()" className="flex items-center gap-2">
               <ArrowLeft className="h-4 w-4" />
               Go Back
             </Link>
@@ -56,9 +48,7 @@ export default function NotFound() {
 
         {/* Help Links */}
         <div className="pt-8 space-y-2">
-          <p className="text-sm text-neutral-500 dark:text-neutral-400">
-            Need help? Check out our resources:
-          </p>
+          <p className="text-sm text-neutral-500 dark:text-neutral-400">Need help? Check out our resources:</p>
           <div className="flex flex-wrap justify-center gap-4 text-sm">
             <Link
               href="https://rybbit.io/docs"

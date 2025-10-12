@@ -4,6 +4,7 @@ import Link from "next/link";
 import { CheckCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { GitHubStarButton } from "@/components/GitHubStarButton";
+import { TrackedButton } from "@/components/TrackedButton";
 import { EventTracking } from "@/components/Cards/EventTracking";
 import { GoalConversion } from "@/components/Cards/GoalConversion";
 import { RealTimeAnalytics } from "@/components/Cards/RealTimeAnalytics";
@@ -106,21 +107,22 @@ export default function HomePage() {
 
         <div className="flex flex-col items-center my-8 md:my-10">
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 md:gap-6 text-base md:text-lg px-4">
-            <Link
+            <TrackedButton
               href="https://app.rybbit.io/signup"
-              className="w-full sm:w-auto"
-              data-rybbit-event="signup"
-              data-rybbit-prop-location="hero"
+              eventName="signup"
+              eventProps={{ location: "hero", button_text: "Track your site" }}
+              className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-500 text-white font-medium px-5 py-3 rounded-lg shadow-lg shadow-emerald-900/20 transform hover:-translate-y-0.5 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-opacity-50 cursor-pointer"
             >
-              <button className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-500 text-white font-medium px-5 py-3 rounded-lg shadow-lg shadow-emerald-900/20 transform hover:-translate-y-0.5 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-opacity-50 cursor-pointer">
-                Track your site
-              </button>
-            </Link>
-            <Link href="https://demo.rybbit.io/21" className="w-full sm:w-auto" data-rybbit-event="demo">
-              <button className="w-full sm:w-auto bg-neutral-800 hover:bg-neutral-700 text-white font-medium px-5 py-3 rounded-lg border border-neutral-600 transform hover:-translate-y-0.5 transition-all duration-200 hover:border-neutral-400 focus:outline-none focus:ring-2 focus:ring-neutral-400 focus:ring-opacity-50 cursor-pointer">
-                See live demo
-              </button>
-            </Link>
+              Track your site
+            </TrackedButton>
+            <TrackedButton
+              href="https://demo.rybbit.io/21"
+              eventName="demo"
+              eventProps={{ location: "hero", button_text: "See live demo" }}
+              className="w-full sm:w-auto bg-neutral-800 hover:bg-neutral-700 text-white font-medium px-5 py-3 rounded-lg border border-neutral-600 transform hover:-translate-y-0.5 transition-all duration-200 hover:border-neutral-400 focus:outline-none focus:ring-2 focus:ring-neutral-400 focus:ring-opacity-50 cursor-pointer"
+            >
+              See live demo
+            </TrackedButton>
           </div>
           <p className="text-neutral-400 text-xs md:text-sm flex items-center justify-center gap-2 mt-6">
             <CheckCircle className="w-3 h-3 md:w-4 md:h-4" />
@@ -168,6 +170,17 @@ export default function HomePage() {
               </p>
             </div>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-8 items-center justify-items-center">
+              <div className="flex items-center justify-center">
+                <Link href="https://onyx.app" target="_blank">
+                  <Image
+                    src="/logos/onyx.webp"
+                    alt="Onyx"
+                    width={100}
+                    height={40}
+                    className="opacity-60 hover:opacity-100 transition-opacity invert"
+                  />
+                </Link>
+              </div>
               <div className="flex items-center justify-center">
                 <Image
                   src="/logos/vanguard.webp"
@@ -222,15 +235,7 @@ export default function HomePage() {
                   className="opacity-60 hover:opacity-100 transition-opacity grayscale"
                 />
               </div>
-              <div className="flex items-center justify-center">
-                <Image
-                  src="/logos/onyx.webp"
-                  alt="Onyx"
-                  width={100}
-                  height={40}
-                  className="opacity-60 hover:opacity-100 transition-opacity invert"
-                />
-              </div>
+
               <div className="flex items-center justify-center">
                 <Image
                   src="/logos/apc.webp"
@@ -324,9 +329,9 @@ export default function HomePage() {
               </p>
             </div>
 
-            <div className="bg-neutral-800/20 backdrop-blur-sm border border-neutral-700 rounded-xl overflow-hidden">
+            <div className="bg-neutral-800/20 backdrop-blur-sm border border-neutral-800/50 rounded-xl overflow-hidden">
               <Accordion type="single" collapsible className="w-full">
-                <AccordionItem value="item-1" className="border-b border-neutral-700/50">
+                <AccordionItem value="item-1" className="border-b border-neutral-800/50">
                   <AccordionTrigger className="px-6 py-4 text-base md:text-lg font-medium hover:text-emerald-400 transition-colors">
                     Is Rybbit GDPR and CCPA compliant?
                   </AccordionTrigger>
@@ -338,7 +343,7 @@ export default function HomePage() {
                   </AccordionContent>
                 </AccordionItem>
 
-                <AccordionItem value="item-2" className="border-b border-neutral-700/50">
+                <AccordionItem value="item-2" className="border-b border-neutral-800/50">
                   <AccordionTrigger className="px-6 py-4 text-base md:text-lg font-medium hover:text-emerald-400 transition-colors">
                     Rybbit vs. Google Analytics
                   </AccordionTrigger>
@@ -359,7 +364,7 @@ export default function HomePage() {
                   </AccordionContent>
                 </AccordionItem>
 
-                <AccordionItem value="item-3" className="border-b border-neutral-700/50">
+                <AccordionItem value="item-3" className="border-b border-neutral-800/50">
                   <AccordionTrigger className="px-6 py-4 text-base md:text-lg font-medium hover:text-emerald-400 transition-colors">
                     Rybbit vs. Plausible/Umami/Simple Analytics
                   </AccordionTrigger>
@@ -375,7 +380,7 @@ export default function HomePage() {
                     </p>
                   </AccordionContent>
                 </AccordionItem>
-                <AccordionItem value="item-4" className="border-b border-neutral-700/50">
+                <AccordionItem value="item-4" className="border-b border-neutral-800/50">
                   <AccordionTrigger className="px-6 py-4 text-base md:text-lg font-medium hover:text-emerald-400 transition-colors">
                     Rybbit vs. Posthog/Mixpanel/Amplitude
                   </AccordionTrigger>
@@ -392,7 +397,7 @@ export default function HomePage() {
                   </AccordionContent>
                 </AccordionItem>
 
-                <AccordionItem value="item-5" className="border-b border-neutral-700/50">
+                <AccordionItem value="item-5" className="border-b border-neutral-800/50">
                   <AccordionTrigger className="px-6 py-4 text-base md:text-lg font-medium hover:text-emerald-400 transition-colors">
                     Can I self-host Rybbit?
                   </AccordionTrigger>
@@ -406,7 +411,7 @@ export default function HomePage() {
                   </AccordionContent>
                 </AccordionItem>
 
-                <AccordionItem value="item-6" className="border-b border-neutral-700/50">
+                <AccordionItem value="item-6" className="border-b border-neutral-800/50">
                   <AccordionTrigger className="px-6 py-4 text-base md:text-lg font-medium hover:text-emerald-400 transition-colors">
                     How easy is it to set up Rybbit?
                   </AccordionTrigger>
@@ -442,7 +447,7 @@ export default function HomePage() {
                     for either personal or business use.
                   </AccordionContent>
                 </AccordionItem>
-                <AccordionItem value="item-9" className="border-t border-neutral-700/50">
+                <AccordionItem value="item-9" className="border-t border-neutral-800/50">
                   <AccordionTrigger className="px-6 py-4 text-base md:text-lg font-medium hover:text-emerald-400 transition-colors">
                     What counts as an event?
                   </AccordionTrigger>
@@ -471,15 +476,14 @@ export default function HomePage() {
               </p>
 
               <div className="flex flex-col sm:flex-row items-center justify-center gap-4 md:gap-6 mb-6 md:mb-8 w-full sm:w-auto">
-                <Link href="https://app.rybbit.io/signup" className="w-full sm:w-auto">
-                  <button
-                    data-rybbit-event="signup"
-                    data-rybbit-prop-location="bottom"
-                    className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-500 text-white text-lg font-medium px-6 md:px-8 py-3 md:py-4 rounded-lg shadow-lg shadow-emerald-900/20 transform hover:-translate-y-0.5 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-opacity-50 cursor-pointer"
-                  >
-                    Track your site for free
-                  </button>
-                </Link>
+                <TrackedButton
+                  href="https://app.rybbit.io/signup"
+                  eventName="signup"
+                  eventProps={{ location: "bottom_cta", button_text: "Track your site for free" }}
+                  className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-500 text-white text-lg font-medium px-6 md:px-8 py-3 md:py-4 rounded-lg shadow-lg shadow-emerald-900/20 transform hover:-translate-y-0.5 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-opacity-50 cursor-pointer"
+                >
+                  Track your site for free
+                </TrackedButton>
                 {/* <Link href="https://docs.tomato.gg" className="w-full sm:w-auto">
                   <button className="w-full sm:w-auto bg-neutral-800 hover:bg-neutral-700 text-white font-medium px-6 md:px-8 py-3 md:py-4 rounded-lg border border-neutral-600 transform hover:-translate-y-0.5 transition-all duration-200 hover:border-neutral-400 focus:outline-none focus:ring-2 focus:ring-neutral-400 focus:ring-opacity-50">
                     View Documentation

@@ -46,7 +46,7 @@ export function ReplayPlayerTopbar() {
   };
 
   const pageViewEvents = useMemo(() => {
-    return data?.events?.filter((event) => event.type === 4);
+    return data?.events?.filter(event => event.type === 4);
   }, [data?.events]);
 
   // Get the current page URL based on the replay currentTime
@@ -90,11 +90,7 @@ export function ReplayPlayerTopbar() {
             region={metadata.region}
             className="w-4 h-4"
           />
-          <BrowserTooltipIcon
-            browser={metadata.browser}
-            browser_version={metadata.browser_version}
-            size={13}
-          />
+          <BrowserTooltipIcon browser={metadata.browser} browser_version={metadata.browser_version} size={13} />
           <OperatingSystemTooltipIcon
             operating_system={metadata.operating_system}
             operating_system_version={metadata.operating_system_version}

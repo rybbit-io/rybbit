@@ -3,6 +3,7 @@
   "pages": [
     "index",
     "roadmap",
+    "architecture",
     "---Tracking---",
     "script",
     "track-events",

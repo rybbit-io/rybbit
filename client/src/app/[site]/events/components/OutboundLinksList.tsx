@@ -1,10 +1,11 @@
 "use client";
 
 import NumberFlow from "@number-flow/react";
-import { ExternalLink, Info } from "lucide-react";
+import { Info } from "lucide-react";
 import { DateTime } from "luxon";
 import { memo } from "react";
 import { OutboundLink } from "../../../../api/analytics/events/useGetOutboundLinks";
+import { Favicon } from "../../../../components/Favicon";
 import { cn } from "../../../../lib/utils";
 
 // Skeleton component for OutboundLinksList
@@ -112,7 +113,7 @@ export function OutboundLinksList({ outboundLinks, isLoading, size = "small" }: 
   const totalCount = outboundLinks.reduce((sum, link) => sum + link.count, 0);
 
   return (
-    <div className="flex flex-col gap-2">
+    <div className="flex flex-col gap-2 overflow-y-auto max-h-[60vh] h-auto lg:h-full lg:min-h-0 lg:max-h-full">
       {outboundLinks.map((link, index) => {
         const percentage = (link.count / totalCount) * 100;
         const lastClicked = DateTime.fromSQL(link.lastClicked, {
@@ -135,6 +136,7 @@ export function OutboundLinksList({ outboundLinks, isLoading, size = "small" }: 
               className={cn("z-10 flex justify-between items-center w-full", size === "small" ? "text-xs" : "text-sm")}
             >
               <div className="font-medium truncate max-w-[70%] flex items-center gap-1">
+                <Favicon domain={new URL(link.url).hostname} className="w-4 mr-1" />
                 <a
                   href={link.url}
                   target="_blank"

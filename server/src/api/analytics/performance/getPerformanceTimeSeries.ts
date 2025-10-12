@@ -1,46 +1,28 @@
 import { FastifyReply, FastifyRequest } from "fastify";
 import { clickhouse } from "../../../db/clickhouse/clickhouse.js";
-import {
-  getFilterStatement,
-  getTimeStatement,
-  processResults,
-  TimeBucketToFn,
-  bucketIntervalMap,
-} from "../utils.js";
+import { getFilterStatement, getTimeStatement, processResults, TimeBucketToFn, bucketIntervalMap } from "../utils.js";
 import SqlString from "sqlstring";
 import { getUserHasAccessToSitePublic } from "../../../lib/auth-utils.js";
 import { validateTimeStatementFillParams } from "../query-validation.js";
 import { TimeBucket, PerformanceTimeSeriesPoint } from "../types.js";
 import { FilterParams } from "@rybbit/shared";
 
-
 function getTimeStatementFill(params: FilterParams, bucket: TimeBucket) {
-  const { params: validatedParams, bucket: validatedBucket } =
-    validateTimeStatementFillParams(params, bucket);
+  const { params: validatedParams, bucket: validatedBucket } = validateTimeStatementFillParams(params, bucket);
 
-  if (
-    validatedParams.startDate &&
-    validatedParams.endDate &&
-    validatedParams.timeZone
-  ) {
+  if (validatedParams.startDate && validatedParams.endDate && validatedParams.timeZone) {
     const { startDate, endDate, timeZone } = validatedParams;
     return `WITH FILL FROM toTimeZone(
-      toDateTime(${
-        TimeBucketToFn[validatedBucket]
-      }(toDateTime(${SqlString.escape(startDate)}, ${SqlString.escape(
+      toDateTime(${TimeBucketToFn[validatedBucket]}(toDateTime(${SqlString.escape(startDate)}, ${SqlString.escape(
         timeZone
       )}))),
       'UTC'
       )
       TO if(
-        toDate(${SqlString.escape(endDate)}) = toDate(now(), ${SqlString.escape(
-          timeZone
-        )}),
+        toDate(${SqlString.escape(endDate)}) = toDate(now(), ${SqlString.escape(timeZone)}),
         now(),
         toTimeZone(
-          toDateTime(${
-            TimeBucketToFn[validatedBucket]
-          }(toDateTime(${SqlString.escape(endDate)}, ${SqlString.escape(
+          toDateTime(${TimeBucketToFn[validatedBucket]}(toDateTime(${SqlString.escape(endDate)}, ${SqlString.escape(
             timeZone
           )}))) + INTERVAL 1 DAY,
           'UTC'
@@ -48,10 +30,7 @@ function getTimeStatementFill(params: FilterParams, bucket: TimeBucket) {
       ) STEP INTERVAL ${bucketIntervalMap[validatedBucket]}`;
   }
   // For specific past minutes range - convert to exact timestamps for better performance
-  if (
-    validatedParams.pastMinutesStart !== undefined &&
-    validatedParams.pastMinutesEnd !== undefined
-  ) {
+  if (validatedParams.pastMinutesStart !== undefined && validatedParams.pastMinutesEnd !== undefined) {
     const { pastMinutesStart: start, pastMinutesEnd: end } = validatedParams;
 
     // Calculate exact timestamps in JavaScript to avoid runtime ClickHouse calculations
@@ -60,10 +39,7 @@ function getTimeStatementFill(params: FilterParams, bucket: TimeBucket) {
     const endTimestamp = new Date(now.getTime() - end * 60 * 1000);
 
     // Format as YYYY-MM-DD HH:MM:SS without milliseconds for ClickHouse
-    const startIso = startTimestamp
-      .toISOString()
-      .slice(0, 19)
-      .replace("T", " ");
+    const startIso = startTimestamp.toISOString().slice(0, 19).replace("T", " ");
     const endIso = endTimestamp.toISOString().slice(0, 19).replace("T", " ");
 
     return ` WITH FILL 
@@ -91,25 +67,14 @@ function getTimeStatementFill(params: FilterParams, bucket: TimeBucket) {
 }
 
 const getQuery = (params: FilterParams<{ bucket: TimeBucket }>) => {
-  const {
-    startDate,
-    endDate,
-    timeZone,
-    bucket,
-    filters,
-    pastMinutesStart,
-    pastMinutesEnd,
-  } = params;
+  const { startDate, endDate, timeZone, bucket, filters, pastMinutesStart, pastMinutesEnd } = params;
   const filterStatement = getFilterStatement(filters);
 
-  const isAllTime =
-    !startDate && !endDate && !pastMinutesStart && !pastMinutesEnd;
+  const isAllTime = !startDate && !endDate && !pastMinutesStart && !pastMinutesEnd;
 
   const query = `
 SELECT
-    toDateTime(${
-      TimeBucketToFn[bucket]
-    }(toTimeZone(timestamp, ${SqlString.escape(timeZone)}))) AS time,
+    toDateTime(${TimeBucketToFn[bucket]}(toTimeZone(timestamp, ${SqlString.escape(timeZone)}))) AS time,
     quantile(0.5)(lcp) AS lcp_p50,
     quantile(0.75)(lcp) AS lcp_p75,
     quantile(0.9)(lcp) AS lcp_p90,
@@ -137,9 +102,7 @@ WHERE
     AND type = 'performance'
     ${filterStatement}
     ${getTimeStatement(params)}
-GROUP BY time ORDER BY time ${
-    isAllTime ? "" : getTimeStatementFill(params, bucket)
-  }`;
+GROUP BY time ORDER BY time ${isAllTime ? "" : getTimeStatementFill(params, bucket)}`;
 
   return query;
 };
@@ -177,8 +140,6 @@ export async function getPerformanceTimeSeries(
     return res.send({ data });
   } catch (error) {
     console.error("Error fetching performance time series:", error);
-    return res
-      .status(500)
-      .send({ error: "Failed to fetch performance time series" });
+    return res.status(500).send({ error: "Failed to fetch performance time series" });
   }
 }

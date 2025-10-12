@@ -9,7 +9,7 @@ import { authClient } from "../lib/auth";
 import { Button } from "./ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "./ui/dropdown-menu";
 import { Skeleton } from "./ui/skeleton";
-import { IS_CLOUD } from "../lib/const";
+import { DEMO_HOSTNAME, IS_CLOUD } from "../lib/const";
 
 export function TopBar() {
   const { data: session, isPending } = authClient.useSession();
@@ -63,7 +63,7 @@ export function TopBar() {
         ) : (
           <Link
             href={
-              typeof window !== "undefined" && globalThis.location.hostname === "demo.rybbit.io"
+              typeof window !== "undefined" && globalThis.location.hostname === DEMO_HOSTNAME
                 ? "https://app.rybbit.io/signup"
                 : "/signup"
             }

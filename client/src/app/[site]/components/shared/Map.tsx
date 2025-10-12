@@ -57,7 +57,7 @@ export function MapComponent({
 
   useEffect(() => {
     if (countryData || subdivisionData) {
-      setDataVersion((prev) => prev + 1);
+      setDataVersion(prev => prev + 1);
     }
   }, [countryData, subdivisionData]);
 
@@ -234,7 +234,7 @@ export function MapComponent({
 
   return (
     <div
-      onMouseMove={(e) => {
+      onMouseMove={e => {
         if (tooltipContent) {
           setTooltipPosition({
             x: e.clientX,

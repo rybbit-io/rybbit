@@ -39,7 +39,7 @@ export interface SessionReplayMetadata {
   hostname: string;
   referrer: string;
   hasReplayData: boolean;
-  recordingStatus: 'recording' | 'completed' | 'failed';
+  recordingStatus: "recording" | "completed" | "failed";
   createdAt: Date;
 }
 

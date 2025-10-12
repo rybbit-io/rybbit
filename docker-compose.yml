@@ -121,12 +121,14 @@ services:
       args:
         NEXT_PUBLIC_BACKEND_URL: ${BASE_URL}
         NEXT_PUBLIC_DISABLE_SIGNUP: ${DISABLE_SIGNUP}
+        NEXT_PUBLIC_MAPBOX_TOKEN: ${MAPBOX_TOKEN}
     ports:
       - "${HOST_CLIENT_PORT:-127.0.0.1:3002:3002}"
     environment:
       - NODE_ENV=production
       - NEXT_PUBLIC_BACKEND_URL=${BASE_URL}
       - NEXT_PUBLIC_DISABLE_SIGNUP=${DISABLE_SIGNUP}
+      - NEXT_PUBLIC_MAPBOX_TOKEN=${MAPBOX_TOKEN}
     depends_on:
       - backend
     restart: unless-stopped

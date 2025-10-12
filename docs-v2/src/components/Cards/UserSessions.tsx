@@ -1,8 +1,8 @@
-import { Clock, FileText, MousePointerClick, Laptop } from "lucide-react";
-import { CountryFlag } from "../Country";
-import { Browser } from "../Browser";
-import { OperatingSystem } from "../OperatingSystem";
 import Avatar from "boring-avatars";
+import { Clock, Eye, Laptop, MousePointerClick } from "lucide-react";
+import { Browser } from "../Browser";
+import { CountryFlag } from "../Country";
+import { OperatingSystem } from "../OperatingSystem";
 import { Card } from "./Card";
 
 export function UserSessions() {
@@ -22,9 +22,7 @@ export function UserSessions() {
             />
             <div>
               <div className="text-sm">2c49ae3</div>
-              <div className="text-xs text-neutral-400">
-                Today, 14:22 - 14:36 (14m)
-              </div>
+              <div className="text-xs text-neutral-400">Today, 14:22 - 14:36 (14m)</div>
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -37,7 +35,7 @@ export function UserSessions() {
         {/*         
         <div className="flex gap-2 mb-3">
           <div className="flex items-center gap-1 text-xs bg-blue-500/20 text-blue-400 px-2 py-1 rounded">
-            <FileText className="w-3 h-3" />
+            <Eye className="w-3 h-3" />
             <span>Pageviews: 5</span>
           </div>
           <div className="flex items-center gap-1 text-xs bg-amber-500/20 text-amber-400 px-2 py-1 rounded">
@@ -59,7 +57,7 @@ export function UserSessions() {
 
             <div className="flex flex-col ml-3 flex-1">
               <div className="flex items-center flex-1 py-1">
-                <FileText className="w-4 h-4 text-blue-500 mr-3" />
+                <Eye className="w-4 h-4 text-blue-500 mr-3" />
                 <div className="flex-1 min-w-0 mr-4">
                   <div className="text-sm truncate">/home</div>
                 </div>
@@ -93,15 +91,11 @@ export function UserSessions() {
               <div className="flex items-center pl-7 mt-1">
                 <div className="flex flex-wrap gap-2">
                   <div className="px-1.5 py-0 h-5 text-xs bg-neutral-800 rounded border border-neutral-700">
-                    <span className="text-neutral-400 font-light mr-1">
-                      button_id:
-                    </span>
+                    <span className="text-neutral-400 font-light mr-1">button_id:</span>
                     <span>pricing</span>
                   </div>
                   <div className="px-1.5 py-0 h-5 text-xs bg-neutral-800 rounded border border-neutral-700">
-                    <span className="text-neutral-400 font-light mr-1">
-                      section:
-                    </span>
+                    <span className="text-neutral-400 font-light mr-1">section:</span>
                     <span>features</span>
                   </div>
                 </div>
@@ -120,7 +114,7 @@ export function UserSessions() {
 
             <div className="flex flex-col ml-3 flex-1">
               <div className="flex items-center flex-1 py-1">
-                <FileText className="w-4 h-4 text-blue-500 mr-3" />
+                <Eye className="w-4 h-4 text-blue-500 mr-3" />
                 <div className="flex-1 min-w-0 mr-4">
                   <div className="text-sm truncate">/pricing</div>
                 </div>
@@ -155,15 +149,11 @@ export function UserSessions() {
               <div className="flex items-center pl-7 mt-1">
                 <div className="flex flex-wrap gap-2">
                   <div className="px-1.5 py-0 h-5 text-xs bg-neutral-800 rounded border border-neutral-700">
-                    <span className="text-neutral-400 font-light mr-1">
-                      form_id:
-                    </span>
+                    <span className="text-neutral-400 font-light mr-1">form_id:</span>
                     <span>contact-form</span>
                   </div>
                   <div className="px-1.5 py-0 h-5 text-xs bg-neutral-800 rounded border border-neutral-700">
-                    <span className="text-neutral-400 font-light mr-1">
-                      success:
-                    </span>
+                    <span className="text-neutral-400 font-light mr-1">success:</span>
                     <span>true</span>
                   </div>
                 </div>

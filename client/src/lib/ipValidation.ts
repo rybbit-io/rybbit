@@ -21,11 +21,11 @@ export interface IPValidationResult {
 export function validateIPPattern(pattern: string): IPValidationResult {
   try {
     const trimmedPattern = pattern.trim();
-    
+
     if (!trimmedPattern) {
       return { valid: true }; // Empty is valid (will be filtered out)
     }
-    
+
     // Single IP
     if (!trimmedPattern.includes("/") && !trimmedPattern.includes("-")) {
       return validateSingleIP(trimmedPattern);
@@ -91,7 +91,7 @@ function validateCIDR(cidr: string): IPValidationResult {
 
 /**
  * Validate range notation (IPv4 only)
- * 
+ *
  * NOTE: Range notation is only supported for IPv4 addresses.
  * IPv6 range notation is not supported due to the complexity of proper
  * numerical comparison of 128-bit addresses. Use CIDR notation instead
@@ -119,9 +119,9 @@ function validateRange(range: string): IPValidationResult {
     try {
       new Address6(startIP);
       new Address6(endIP);
-      return { 
-        valid: false, 
-        error: "IPv6 range notation not supported. Use CIDR notation instead (e.g., 2001:db8::/32)" 
+      return {
+        valid: false,
+        error: "IPv6 range notation not supported. Use CIDR notation instead (e.g., 2001:db8::/32)",
       };
     } catch {
       return { valid: false, error: "Invalid IP addresses in range" };

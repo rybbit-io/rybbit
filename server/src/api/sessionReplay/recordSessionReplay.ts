@@ -2,7 +2,7 @@ import { FastifyReply, FastifyRequest } from "fastify";
 import { z } from "zod";
 import { siteConfig } from "../../lib/siteConfig.js";
 import { SessionReplayIngestService } from "../../services/replay/sessionReplayIngestService.js";
-import { validateApiKey, validateOrigin } from "../../services/shared/requestValidation.js";
+import { validateApiKey } from "../../services/shared/requestValidation.js";
 import { usageService } from "../../services/usageService.js";
 import { RecordSessionReplayRequest } from "../../types/sessionReplay.js";
 import { getIpAddress } from "../../utils.js";
@@ -15,7 +15,7 @@ const recordSessionReplaySchema = z.object({
       type: z.union([z.string(), z.number()]),
       data: z.any(),
       timestamp: z.number(),
-    }),
+    })
   ),
   metadata: z
     .object({
@@ -33,10 +33,20 @@ export async function recordSessionReplay(
     Params: { site: string };
     Body: RecordSessionReplayRequest;
   }>,
-  reply: FastifyReply,
+  reply: FastifyReply
 ) {
   try {
-    const siteId = Number(request.params.site);
+    // Get the site configuration to get the numeric siteId
+    const { siteId, excludedIPs, sessionReplay } = (await siteConfig.getConfig(request.params.site)) ?? {};
+
+    if (!sessionReplay) {
+      logger.info(`[SessionReplay] Skipping event for site ${siteId} - session replay not enabled`);
+      return reply.status(200).send({ success: true, message: "Session replay not enabled" });
+    }
+
+    if (!siteId) {
+      throw new Error(`Site not found: ${request.params.site}`);
+    }
 
     // Check if the site has exceeded its monthly limit
     if (usageService.isSiteOverLimit(Number(siteId))) {
@@ -73,26 +83,10 @@ export async function recordSessionReplay(
     //   }
     // }
 
-    // If no valid API key, validate origin
-    if (!apiKeyValidation.success) {
-      const originValidation = await validateOrigin(siteId, request.headers.origin as string);
-
-      if (!originValidation.success) {
-        logger.warn(`[SessionReplay] Request rejected for site ${siteId}: ${originValidation.error}`);
-        return reply.status(403).send({
-          success: false,
-          error: originValidation.error,
-        });
-      }
-    }
-
-    // Make sure the site config is loaded
-    await siteConfig.ensureInitialized();
-
     // Check if the IP should be excluded from tracking
     const requestIP = getIpAddress(request);
 
-    if (siteConfig.isIPExcluded(requestIP, siteId)) {
+    if (excludedIPs && excludedIPs.includes(requestIP)) {
       logger.info(`[SessionReplay] IP ${requestIP} excluded from tracking for site ${siteId}`);
       return reply.status(200).send({
         success: true,
@@ -120,6 +114,6 @@ export async function recordSessionReplay(
       return reply.status(400).send({ error: error.errors });
     }
     logger.error(error as Error, "Error recording session replay");
-    return reply.status(500).send({ error: "Internal server error" });
+    return reply.status(500).send({ error });
   }
 }

@@ -53,7 +53,7 @@ function Organization({
   const { refetch: refetchInvitations } = useOrganizationInvitations(org.id);
   const { data } = authClient.useSession();
 
-  const isOwner = members?.data.find((member) => member.role === "owner" && member.userId === data?.user?.id);
+  const isOwner = members?.data.find(member => member.role === "owner" && member.userId === data?.user?.id);
 
   const handleRefresh = () => {
     refetch();
@@ -71,7 +71,11 @@ function Organization({
               {isOwner && (
                 <>
                   {IS_CLOUD ? (
-                    <InviteMemberDialog organizationId={org.id} onSuccess={handleRefresh} />
+                    <InviteMemberDialog
+                      organizationId={org.id}
+                      onSuccess={handleRefresh}
+                      memberCount={members?.data?.length || 0}
+                    />
                   ) : (
                     <CreateUserDialog organizationId={org.id} onSuccess={handleRefresh} />
                   )}

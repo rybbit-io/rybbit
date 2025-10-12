@@ -5,14 +5,11 @@ export const formatTime = (ms: number): string => {
   return `${minutes}:${seconds.toString().padStart(2, "0")}`;
 };
 
-export const calculateActivityPeriods = (
-  events: any[],
-  totalDuration: number
-): { start: number; end: number }[] => {
+export const calculateActivityPeriods = (events: any[], totalDuration: number): { start: number; end: number }[] => {
   if (!events || events.length === 0) return [];
 
   // Filter for user interaction events (mouse moves, clicks, etc.)
-  const interactionEvents = events.filter((event) => {
+  const interactionEvents = events.filter(event => {
     const eventType = parseInt(event.type.toString());
     // Type 3 = IncrementalSnapshot (includes mouse moves, clicks, etc.)
     return eventType === 3;
@@ -27,9 +24,7 @@ export const calculateActivityPeriods = (
     const nextEvent = interactionEvents[i + 1];
 
     const currentTime = currentEvent.timestamp - firstEventTime;
-    const nextTime = nextEvent
-      ? nextEvent.timestamp - firstEventTime
-      : totalDuration;
+    const nextTime = nextEvent ? nextEvent.timestamp - firstEventTime : totalDuration;
 
     if (nextTime - currentTime <= inactivityThreshold) {
       periods.push({

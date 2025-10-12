@@ -7,13 +7,7 @@ import { getCountryName } from "../../lib/utils";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../ui/tooltip";
 
 // DeviceIcon component for displaying mobile/desktop icons
-function DeviceIcon({
-  deviceType,
-  size = 16,
-}: {
-  deviceType: string;
-  size?: number;
-}) {
+function DeviceIcon({ deviceType, size = 16 }: { deviceType: string; size?: number }) {
   const type = deviceType.toLowerCase();
 
   if (type.includes("mobile") || type.includes("tablet")) {
@@ -34,11 +28,7 @@ export function CountryFlagTooltipIcon({
   region: string;
   className?: string;
 }) {
-  const getFullLocation = <
-    T extends { country: string; city: string; region: string }
-  >(
-    session: T
-  ) => {
+  const getFullLocation = <T extends { country: string; city: string; region: string }>(session: T) => {
     let location = "";
     if (session.city) {
       location += `${session.city}, `;
@@ -139,9 +129,7 @@ export function DeviceTypeTooltipIcon({
       <TooltipContent>
         <p>
           {device_type || "Unknown device"}
-          {screen_width &&
-            screen_height &&
-            ` ${screen_width} x ${screen_height}`}
+          {screen_width && screen_height && ` ${screen_width} x ${screen_height}`}
         </p>
       </TooltipContent>
     </Tooltip>

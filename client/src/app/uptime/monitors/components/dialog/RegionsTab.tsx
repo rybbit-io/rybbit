@@ -38,7 +38,7 @@ export function RegionsTab() {
   // Set monitoring type on mount
   useEffect(() => {
     form.setValue("monitoringType", monitoringType);
-    
+
     // For local monitoring, ensure "local" is selected
     if (!IS_CLOUD) {
       form.setValue("selectedRegions", ["local"]);
@@ -113,7 +113,7 @@ export function RegionsTab() {
                               <FormControl>
                                 <Checkbox
                                   checked={isSelected}
-                                  onCheckedChange={(checked) => {
+                                  onCheckedChange={checked => {
                                     if (!isDisabled) {
                                       let newValue: string[];
                                       if (checked) {

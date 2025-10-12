@@ -8,21 +8,11 @@ import { useGetPerformanceOverview } from "../../../../api/analytics/performance
 import { Card, CardContent, CardLoader } from "../../../../components/ui/card";
 import { useStore } from "../../../../lib/store";
 import { PerformanceMetric, usePerformanceStore } from "../performanceStore";
-import {
-  formatMetricValue,
-  getMetricColor,
-  getMetricUnit,
-} from "../utils/performanceUtils";
+import { formatMetricValue, getMetricColor, getMetricUnit } from "../utils/performanceUtils";
 import { PercentileSelector } from "./PercentileSelector";
 import { MetricTooltip } from "./shared/MetricTooltip";
 
-const ChangePercentage = ({
-  current,
-  previous,
-}: {
-  current: number;
-  previous: number;
-}) => {
+const ChangePercentage = ({ current, previous }: { current: number; previous: number }) => {
   const change = ((current - previous) / previous) * 100;
 
   if (previous === 0) {
@@ -38,17 +28,8 @@ const ChangePercentage = ({
 
   // For performance metrics, lower is better, so we reverse the color logic
   return (
-    <div
-      className={cn(
-        "text-xs flex items-center gap-1",
-        change < 0 ? "text-green-400" : "text-red-400"
-      )}
-    >
-      {change > 0 ? (
-        <TrendingUp className="w-4 h-4" />
-      ) : (
-        <TrendingDown className="w-4 h-4" />
-      )}
+    <div className={cn("text-xs flex items-center gap-1", change < 0 ? "text-green-400" : "text-red-400")}>
+      {change > 0 ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
       {Math.abs(change).toFixed(1)}%
     </div>
   );
@@ -67,11 +48,7 @@ const Stat = ({
   previous: number;
   isLoading: boolean;
 }) => {
-  const {
-    selectedPerformanceMetric,
-    setSelectedPerformanceMetric,
-    selectedPercentile,
-  } = usePerformanceStore();
+  const { selectedPerformanceMetric, setSelectedPerformanceMetric, selectedPercentile } = usePerformanceStore();
 
   return (
     <div
@@ -115,14 +92,12 @@ export function PerformanceOverview() {
   const { site } = useStore();
   const { selectedPercentile } = usePerformanceStore();
 
-  const {
-    data: overviewData,
-    isLoading: isOverviewLoading,
-    isFetching,
-  } = useGetPerformanceOverview({ site });
+  const { data: overviewData, isLoading: isOverviewLoading, isFetching } = useGetPerformanceOverview({ site });
 
-  const { data: overviewDataPrevious, isLoading: isOverviewLoadingPrevious } =
-    useGetPerformanceOverview({ site, periodTime: "previous" });
+  const { data: overviewDataPrevious, isLoading: isOverviewLoadingPrevious } = useGetPerformanceOverview({
+    site,
+    periodTime: "previous",
+  });
 
   const isLoading = isOverviewLoading || isOverviewLoadingPrevious;
 

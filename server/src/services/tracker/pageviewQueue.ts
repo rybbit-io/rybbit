@@ -4,25 +4,10 @@ import { getLocation } from "../../db/geolocation/geolocation.js";
 import { createServiceLogger } from "../../lib/logger/logger.js";
 import { getDeviceType } from "../../utils.js";
 import { getChannel } from "./getChannel.js";
-import { clearSelfReferrer, getAllUrlParams } from "./utils.js";
-import { TrackingPayload } from "./types.js";
+import { clearSelfReferrer, getAllUrlParams, TotalTrackingPayload } from "./utils.js";
 
-type TotalPayload = TrackingPayload & {
-  userId: string;
-  timestamp: string;
+type TotalPayload = TotalTrackingPayload & {
   sessionId: string;
-  ua: UAParser.IResult;
-  referrer: string;
-  ipAddress: string;
-  type?: string;
-  event_name?: string;
-  properties?: string;
-  // Performance metrics
-  lcp?: number;
-  cls?: number;
-  inp?: number;
-  fcp?: number;
-  ttfb?: number;
 };
 
 const getParsedProperties = (properties: string | undefined) => {
@@ -55,13 +40,13 @@ class PageviewQueue {
 
     // Get batch of pageviews
     const batch = this.queue.splice(0, this.batchSize);
-    const ips = [...new Set(batch.map((pv) => pv.ipAddress))];
+    const ips = [...new Set(batch.map(pv => pv.ipAddress))];
 
     let geoData: Record<string, { data: any }> = {};
 
     try {
       // Process each IP to get geo data using local implementation
-      const geoPromises = ips.map(async (ip) => {
+      const geoPromises = ips.map(async ip => {
         const locationData = await getLocation(ip);
         return { ip, locationData };
       });
@@ -77,7 +62,7 @@ class PageviewQueue {
     }
 
     // Process each pageview with its geo data
-    const processedPageviews = batch.map((pv) => {
+    const processedPageviews = batch.map(pv => {
       const dataForIp = geoData?.[pv.ipAddress];
 
       const countryCode = dataForIp?.data?.countryIso || "";
@@ -126,6 +111,7 @@ class PageviewQueue {
         inp: pv.inp || null,
         fcp: pv.fcp || null,
         ttfb: pv.ttfb || null,
+        ip: pv.storeIp ? pv.ipAddress : null,
       };
     });
 

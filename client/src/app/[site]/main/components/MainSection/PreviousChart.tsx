@@ -46,7 +46,7 @@ export function PreviousChart({
 
   const size = (data?.data.length ?? 0 / 2) + 1;
   const formattedData = data?.data
-    ?.map((e) => {
+    ?.map(e => {
       const timestamp = DateTime.fromSQL(e.time).toUTC();
       return {
         x: timestamp.toFormat("yyyy-MM-dd HH:mm:ss"),
@@ -97,7 +97,7 @@ export function PreviousChart({
         tickRotation: 0,
         truncateTickAt: 0,
         tickValues: 0,
-        format: (value) => {
+        format: value => {
           const localTime = DateTime.fromJSDate(value).toLocal();
 
           if ((time.mode === "past-minutes" && time.pastMinutesStart >= 1440) || time.mode === "day") {

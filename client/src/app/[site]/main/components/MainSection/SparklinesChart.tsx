@@ -23,7 +23,7 @@ export function SparklinesChart({
         currentTime: DateTime.fromSQL(e.time),
       };
     })
-    .filter((e) => e !== null);
+    .filter(e => e !== null);
 
   return (
     <ResponsiveLine
@@ -75,7 +75,7 @@ export function SparklinesChart({
         },
       ]}
       curve="step"
-      fill={[{ match: (d) => d.id === "1", id: "gradient" }]}
+      fill={[{ match: d => d.id === "1", id: "gradient" }]}
       sliceTooltip={() => null}
       enableCrosshair={false}
     />

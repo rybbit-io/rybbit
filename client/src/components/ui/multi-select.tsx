@@ -40,21 +40,21 @@ export function MultiSelect({
   const [open, setOpen] = React.useState(false);
   const [search, setSearch] = React.useState("");
 
-  const selected = React.useMemo(() => options.filter((option) => value.includes(option.value)), [options, value]);
+  const selected = React.useMemo(() => options.filter(option => value.includes(option.value)), [options, value]);
 
   const handleSelect = (option: MultiSelectOption) => {
-    const newValue = value.includes(option.value) ? value.filter((v) => v !== option.value) : [...value, option.value];
+    const newValue = value.includes(option.value) ? value.filter(v => v !== option.value) : [...value, option.value];
     onValueChange?.(newValue);
   };
 
   const handleRemove = (option: MultiSelectOption) => {
-    onValueChange?.(value.filter((v) => v !== option.value));
+    onValueChange?.(value.filter(v => v !== option.value));
   };
 
   const filteredOptions = React.useMemo(() => {
     if (!search) return options;
     const searchLower = search.toLowerCase();
-    return options.filter((option) => option.label.toLowerCase().includes(searchLower));
+    return options.filter(option => option.label.toLowerCase().includes(searchLower));
   }, [options, search]);
 
   return (
@@ -69,23 +69,23 @@ export function MultiSelect({
         >
           <div className="flex gap-1 flex-wrap">
             {selected.length > 0 ? (
-              selected.map((option) => (
+              selected.map(option => (
                 <Badge key={option.value} variant="secondary" className={cn("mr-1", badgeClassName)}>
                   {option.label}
                   <button
                     className="ml-1 ring-offset-background rounded-full outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
-                    onKeyDown={(e) => {
+                    onKeyDown={e => {
                       if (e.key === "Enter") {
                         e.preventDefault();
                         e.stopPropagation();
                         handleRemove(option);
                       }
                     }}
-                    onMouseDown={(e) => {
+                    onMouseDown={e => {
                       e.preventDefault();
                       e.stopPropagation();
                     }}
-                    onClick={(e) => {
+                    onClick={e => {
                       e.preventDefault();
                       e.stopPropagation();
                       handleRemove(option);
@@ -108,7 +108,7 @@ export function MultiSelect({
           <CommandList>
             <CommandEmpty>{emptyText}</CommandEmpty>
             <CommandGroup>
-              {filteredOptions.map((option) => {
+              {filteredOptions.map(option => {
                 const isSelected = value.includes(option.value);
                 return (
                   <CommandItem

@@ -11,10 +11,7 @@ interface SiteSessionChartProps {
   height?: number | string;
 }
 
-export function SiteSessionChart({
-  data,
-  height = 100,
-}: SiteSessionChartProps) {
+export function SiteSessionChart({ data, height = 100 }: SiteSessionChartProps) {
   const chartData = useMemo(() => {
     if (!data || data.length === 0) {
       return [{ id: "sessions", data: [] }];
@@ -23,11 +20,9 @@ export function SiteSessionChart({
     return [
       {
         id: "sessions",
-        data: data.map((point) => {
+        data: data.map(point => {
           return {
-            x: DateTime.fromSQL(point.time)
-              .toUTC()
-              .toFormat("yyyy-MM-dd HH:mm:ss"),
+            x: DateTime.fromSQL(point.time).toUTC().toFormat("yyyy-MM-dd HH:mm:ss"),
             y: point.sessions,
             currentTime: DateTime.fromSQL(point.time),
           };
@@ -59,7 +54,7 @@ export function SiteSessionChart({
           tickPadding: 5,
           tickRotation: 0,
           tickValues: 3,
-          format: (value) => {
+          format: value => {
             const time = DateTime.fromJSDate(value);
             return time.toFormat(hour12 ? "ha" : "HH:mm");
           },
@@ -97,9 +92,7 @@ export function SiteSessionChart({
             <div className="bg-neutral-800 border-neutral-700 border p-2 rounded-md">
               <div className="text-xs mb-1">Sessions</div>
               <div className="flex justify-between text-xs w-20">
-                <div className="text-muted-foreground">
-                  { currentTime.toFormat(hour12 ? "ha" : "HH:mm") }
-                </div>
+                <div className="text-muted-foreground">{currentTime.toFormat(hour12 ? "ha" : "HH:mm")}</div>
                 <div className="font-medium">{currentY.toLocaleString()}</div>
               </div>
             </div>

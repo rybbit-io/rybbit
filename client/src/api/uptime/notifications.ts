@@ -37,11 +37,7 @@ async function createChannel(data: {
   triggerEvents?: string[];
   cooldownMinutes?: number;
 }) {
-  return authedFetch(
-    `/uptime/notification-channels`,
-    undefined,
-    { method: 'POST', data }
-  );
+  return authedFetch(`/uptime/notification-channels`, undefined, { method: "POST", data });
 }
 
 async function updateChannel(
@@ -55,29 +51,16 @@ async function updateChannel(
     cooldownMinutes?: number;
   }
 ) {
-  return authedFetch(
-    `/uptime/notification-channels/${id}`,
-    undefined,
-    { method: 'PUT', data }
-  );
+  return authedFetch(`/uptime/notification-channels/${id}`, undefined, { method: "PUT", data });
 }
 
 async function deleteChannel(id: number) {
-  return authedFetch(
-    `/uptime/notification-channels/${id}`,
-    undefined,
-    { method: 'DELETE' }
-  );
+  return authedFetch(`/uptime/notification-channels/${id}`, undefined, { method: "DELETE" });
 }
 
 async function testChannel(id: number) {
-  return authedFetch(
-    `/uptime/notification-channels/${id}/test`,
-    undefined,
-    { method: 'POST', data: {} }
-  );
+  return authedFetch(`/uptime/notification-channels/${id}/test`, undefined, { method: "POST", data: {} });
 }
-
 
 // Hooks
 export function useNotificationChannels() {
@@ -102,8 +85,7 @@ export function useUpdateChannel() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ id, data }: { id: number; data: Parameters<typeof updateChannel>[1] }) =>
-      updateChannel(id, data),
+    mutationFn: ({ id, data }: { id: number; data: Parameters<typeof updateChannel>[1] }) => updateChannel(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["notification-channels"] });
     },

@@ -92,7 +92,7 @@ export function GeneralTab({ form, monitor, isEdit, monitorType }: GeneralTabPro
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      {HTTP_METHODS.map((method) => (
+                      {HTTP_METHODS.map(method => (
                         <SelectItem key={method} value={method}>
                           {method}
                         </SelectItem>
@@ -115,7 +115,7 @@ export function GeneralTab({ form, monitor, isEdit, monitorType }: GeneralTabPro
                       type="number"
                       {...field}
                       value={field.value || ""}
-                      onChange={(e) => field.onChange(e.target.value ? parseInt(e.target.value) : undefined)}
+                      onChange={e => field.onChange(e.target.value ? parseInt(e.target.value) : undefined)}
                     />
                   </FormControl>
                   <FormMessage />
@@ -154,7 +154,7 @@ export function GeneralTab({ form, monitor, isEdit, monitorType }: GeneralTabPro
                     type="number"
                     {...field}
                     value={field.value || ""}
-                    onChange={(e) => field.onChange(e.target.value ? parseInt(e.target.value) : undefined)}
+                    onChange={e => field.onChange(e.target.value ? parseInt(e.target.value) : undefined)}
                   />
                 </FormControl>
                 <FormMessage />
@@ -172,7 +172,7 @@ export function GeneralTab({ form, monitor, isEdit, monitorType }: GeneralTabPro
           <FormItem>
             <FormLabel>Check Interval</FormLabel>
             <Select
-              onValueChange={(value) => field.onChange(parseInt(value))}
+              onValueChange={value => field.onChange(parseInt(value))}
               value={field.value?.toString()}
               defaultValue={field.value?.toString()}
             >
@@ -182,7 +182,7 @@ export function GeneralTab({ form, monitor, isEdit, monitorType }: GeneralTabPro
                 </SelectTrigger>
               </FormControl>
               <SelectContent>
-                {INTERVAL_OPTIONS.map((option) => (
+                {INTERVAL_OPTIONS.map(option => (
                   <SelectItem key={option.value} value={option.value.toString()}>
                     {option.label}
                   </SelectItem>

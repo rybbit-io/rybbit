@@ -4,26 +4,20 @@ import { sites } from "../../db/postgres/schema.js";
 import { eq, and } from "drizzle-orm";
 import { getUserHasAdminAccessToSite } from "../../lib/auth-utils.js";
 
-export async function getSiteApiConfig(
-  request: FastifyRequest,
-  reply: FastifyReply
-) {
+export async function getSiteApiConfig(request: FastifyRequest<{ Params: { siteId: string } }>, reply: FastifyReply) {
   try {
     if (!request.user) {
       return reply.status(401).send({ success: false, error: "Unauthorized" });
     }
 
-    const { siteId } = request.params as { siteId: string };
+    const { siteId } = request.params;
     const parsedSiteId = parseInt(siteId, 10);
-    
+
     if (isNaN(parsedSiteId)) {
       return reply.status(400).send({ success: false, error: "Invalid site ID" });
     }
 
-    const userHasAdminAccessToSite = await getUserHasAdminAccessToSite(
-      request,
-      String(parsedSiteId)
-    );
+    const userHasAdminAccessToSite = await getUserHasAdminAccessToSite(request, String(parsedSiteId));
     if (!userHasAdminAccessToSite) {
       return reply.status(403).send({ error: "Forbidden" });
     }

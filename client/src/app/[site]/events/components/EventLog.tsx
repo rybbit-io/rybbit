@@ -11,27 +11,13 @@ export function EventLog() {
   const loadMoreRef = useRef<HTMLDivElement>(null);
 
   // Fetch events with infinite scrolling
-  const {
-    data,
-    isLoading,
-    isError,
-    fetchNextPage,
-    hasNextPage,
-    isFetchingNextPage,
-  } = useGetEventsInfinite({
+  const { data, isLoading, isError, fetchNextPage, hasNextPage, isFetchingNextPage } = useGetEventsInfinite({
     pageSize: 100,
   });
 
-  // Remove console.log
-
   // Handle scroll for infinite loading
   const handleScroll = useCallback(() => {
-    if (
-      !loadMoreRef.current ||
-      !containerRef.current ||
-      !hasNextPage ||
-      isFetchingNextPage
-    ) {
+    if (!loadMoreRef.current || !containerRef.current || !hasNextPage || isFetchingNextPage) {
       return;
     }
 
@@ -58,7 +44,7 @@ export function EventLog() {
   }, [handleScroll]);
 
   // Flatten all pages of data
-  const allEvents = data?.pages.flatMap((page) => page.data) || [];
+  const allEvents = data?.pages.flatMap(page => page.data) || [];
 
   if (isLoading) {
     return (
@@ -71,20 +57,11 @@ export function EventLog() {
   }
 
   if (isError) {
-    return (
-      <div className="text-center py-8 text-neutral-400">
-        Error loading events. Please try again.
-      </div>
-    );
+    return <div className="text-center py-8 text-neutral-400">Error loading events. Please try again.</div>;
   }
 
   if (allEvents.length === 0) {
-    return (
-      <NothingFound
-        title={"No events found"}
-        description={"Try a different date range or filter"}
-      />
-    );
+    return <NothingFound title={"No events found"} description={"Try a different date range or filter"} />;
   }
 
   return (
@@ -110,8 +87,7 @@ export function EventLog() {
       {/* Pagination info */}
       {data?.pages[0]?.pagination && (
         <div className="text-center text-xs text-neutral-400 pt-2">
-          Showing {allEvents.length} of{" "}
-          {formatter(data.pages[0].pagination.total)} events
+          Showing {allEvents.length} of {formatter(data.pages[0].pagination.total)} events
         </div>
       )}
     </div>

@@ -11,7 +11,7 @@ interface GoalsListProps {
 export default function GoalsList({ goals, siteId }: GoalsListProps) {
   return (
     <div className="flex flex-col gap-3">
-      {goals.map((goal) => (
+      {goals.map(goal => (
         <GoalCard key={goal.goalId} goal={goal} siteId={siteId} />
       ))}
     </div>

@@ -1,18 +1,18 @@
+import { sql } from "drizzle-orm";
 import {
   boolean,
+  check,
+  foreignKey,
+  index,
   integer,
   jsonb,
   pgTable,
+  real,
   serial,
   text,
   timestamp,
-  foreignKey,
   unique,
-  real,
-  check,
-  index,
 } from "drizzle-orm/pg-core";
-import { sql } from "drizzle-orm";
 
 // User table
 export const user = pgTable(
@@ -31,11 +31,15 @@ export const user = pgTable(
     banned: boolean(),
     banReason: text(),
     banExpires: timestamp({ mode: "string" }),
+    // deprecated
     stripeCustomerId: text(),
+    // deprecated
     overMonthlyLimit: boolean().default(false),
+    // deprecated
     monthlyEventCount: integer().default(0),
+    sendAutoEmailReports: boolean().default(true),
   },
-  (table) => [unique("user_username_unique").on(table.username), unique("user_email_unique").on(table.email)],
+  table => [unique("user_username_unique").on(table.username), unique("user_email_unique").on(table.email)]
 );
 
 export const verification = pgTable("verification", {
@@ -51,6 +55,8 @@ export const verification = pgTable("verification", {
 export const sites = pgTable(
   "sites",
   {
+    id: text("id").$defaultFn(() => sql`encode(gen_random_bytes(6), 'hex')`),
+    // deprecated - keeping as primary key for backwards compatibility
     siteId: serial("site_id").primaryKey().notNull(),
     name: text("name").notNull(),
     domain: text("domain").notNull(),
@@ -64,9 +70,17 @@ export const sites = pgTable(
     saltUserIds: boolean().default(false),
     blockBots: boolean().default(true).notNull(),
     excludedIPs: jsonb("excluded_ips").default([]), // Array of IP addresses/ranges to exclude
+    sessionReplay: boolean().default(false),
+    webVitals: boolean().default(false),
+    trackErrors: boolean().default(false),
+    trackOutbound: boolean().default(true),
+    trackUrlParams: boolean().default(true),
+    trackInitialPageView: boolean().default(true),
+    trackSpaNavigation: boolean().default(true),
+    trackIp: boolean().default(false),
     apiKey: text("api_key"), // Format: rb_{32_hex_chars} = 35 chars total
   },
-  (table) => [
+  table => [
     foreignKey({
       columns: [table.createdBy],
       foreignColumns: [user.id],
@@ -77,7 +91,7 @@ export const sites = pgTable(
       foreignColumns: [organization.id],
       name: "sites_organization_id_organization_id_fk",
     }),
-  ],
+  ]
 );
 
 // Active sessions table
@@ -99,7 +113,7 @@ export const funnels = pgTable(
     createdAt: timestamp("created_at", { mode: "string" }).defaultNow(),
     updatedAt: timestamp("updated_at", { mode: "string" }).defaultNow(),
   },
-  (table) => [
+  table => [
     foreignKey({
       columns: [table.siteId],
       foreignColumns: [sites.siteId],
@@ -110,7 +124,7 @@ export const funnels = pgTable(
       foreignColumns: [user.id],
       name: "funnels_user_id_user_id_fk",
     }),
-  ],
+  ]
 );
 
 export const account = pgTable(
@@ -130,13 +144,13 @@ export const account = pgTable(
     createdAt: timestamp({ mode: "string" }).notNull(),
     updatedAt: timestamp({ mode: "string" }).notNull(),
   },
-  (table) => [
+  table => [
     foreignKey({
       columns: [table.userId],
       foreignColumns: [user.id],
       name: "account_userId_user_id_fk",
     }),
-  ],
+  ]
 );
 
 export const organization = pgTable(
@@ -152,7 +166,7 @@ export const organization = pgTable(
     monthlyEventCount: integer().default(0),
     overMonthlyLimit: boolean().default(false),
   },
-  (table) => [unique("organization_slug_unique").on(table.slug)],
+  table => [unique("organization_slug_unique").on(table.slug)]
 );
 
 export const member = pgTable(
@@ -164,7 +178,7 @@ export const member = pgTable(
     role: text().notNull(),
     createdAt: timestamp({ mode: "string" }).notNull(),
   },
-  (table) => [
+  table => [
     foreignKey({
       columns: [table.organizationId],
       foreignColumns: [organization.id],
@@ -175,7 +189,7 @@ export const member = pgTable(
       foreignColumns: [user.id],
       name: "member_userId_user_id_fk",
     }),
-  ],
+  ]
 );
 
 export const invitation = pgTable(
@@ -189,7 +203,7 @@ export const invitation = pgTable(
     status: text().notNull(),
     expiresAt: timestamp({ mode: "string" }).notNull(),
   },
-  (table) => [
+  table => [
     foreignKey({
       columns: [table.inviterId],
       foreignColumns: [user.id],
@@ -200,7 +214,7 @@ export const invitation = pgTable(
       foreignColumns: [organization.id],
       name: "invitation_organizationId_organization_id_fk",
     }),
-  ],
+  ]
 );
 
 export const session = pgTable(
@@ -217,14 +231,14 @@ export const session = pgTable(
     impersonatedBy: text(),
     activeOrganizationId: text(),
   },
-  (table) => [
+  table => [
     foreignKey({
       columns: [table.userId],
       foreignColumns: [user.id],
       name: "session_userId_user_id_fk",
     }),
     unique("session_token_unique").on(table.token),
-  ],
+  ]
 );
 
 // Goals table for tracking conversion goals
@@ -246,13 +260,13 @@ export const goals = pgTable(
     }>(),
     createdAt: timestamp("created_at", { mode: "string" }).defaultNow(),
   },
-  (table) => [
+  table => [
     foreignKey({
       columns: [table.siteId],
       foreignColumns: [sites.siteId],
       name: "goals_site_id_sites_site_id_fk",
     }),
-  ],
+  ]
 );
 
 // Telemetry table for tracking self-hosted instances
@@ -356,7 +370,7 @@ export const uptimeMonitors = pgTable(
       .notNull()
       .references(() => user.id),
   },
-  (table) => [
+  table => [
     foreignKey({
       columns: [table.organizationId],
       foreignColumns: [organization.id],
@@ -367,7 +381,7 @@ export const uptimeMonitors = pgTable(
       foreignColumns: [user.id],
       name: "uptime_monitors_created_by_user_id_fk",
     }),
-  ],
+  ]
 );
 
 // Monitor status tracking
@@ -389,7 +403,7 @@ export const uptimeMonitorStatus = pgTable(
     averageResponseTime24h: real("average_response_time_24h"),
     updatedAt: timestamp("updated_at", { mode: "string" }).defaultNow(),
   },
-  (table) => [
+  table => [
     foreignKey({
       columns: [table.monitorId],
       foreignColumns: [uptimeMonitors.id],
@@ -400,7 +414,7 @@ export const uptimeMonitorStatus = pgTable(
     check("uptime_monitor_status_uptime_7d_check", sql`uptime_percentage_7d >= 0 AND uptime_percentage_7d <= 100`),
     check("uptime_monitor_status_uptime_30d_check", sql`uptime_percentage_30d >= 0 AND uptime_percentage_30d <= 100`),
     index("uptime_monitor_status_updated_at_idx").on(table.updatedAt),
-  ],
+  ]
 );
 
 // Alert configuration (scaffolding)
@@ -421,13 +435,13 @@ export const uptimeAlerts = pgTable(
     enabled: boolean("enabled").default(true),
     createdAt: timestamp("created_at", { mode: "string" }).defaultNow(),
   },
-  (table) => [
+  table => [
     foreignKey({
       columns: [table.monitorId],
       foreignColumns: [uptimeMonitors.id],
       name: "uptime_alerts_monitor_id_uptime_monitors_id_fk",
     }),
-  ],
+  ]
 );
 
 // Alert history (scaffolding)
@@ -445,7 +459,7 @@ export const uptimeAlertHistory = pgTable(
     resolvedAt: timestamp("resolved_at", { mode: "string" }),
     alertData: jsonb("alert_data"), // Context about what triggered the alert
   },
-  (table) => [
+  table => [
     foreignKey({
       columns: [table.alertId],
       foreignColumns: [uptimeAlerts.id],
@@ -456,7 +470,7 @@ export const uptimeAlertHistory = pgTable(
       foreignColumns: [uptimeMonitors.id],
       name: "uptime_alert_history_monitor_id_uptime_monitors_id_fk",
     }),
-  ],
+  ]
 );
 
 // Agent regions for VPS-based monitoring
@@ -504,7 +518,7 @@ export const uptimeIncidents = pgTable(
     createdAt: timestamp("created_at", { mode: "string" }).defaultNow(),
     updatedAt: timestamp("updated_at", { mode: "string" }).defaultNow(),
   },
-  (table) => [
+  table => [
     foreignKey({
       columns: [table.organizationId],
       foreignColumns: [organization.id],
@@ -525,7 +539,7 @@ export const uptimeIncidents = pgTable(
       foreignColumns: [user.id],
       name: "uptime_incidents_resolved_by_user_id_fk",
     }),
-  ],
+  ]
 );
 
 // Notification channels table
@@ -569,7 +583,7 @@ export const notificationChannels = pgTable(
       .notNull()
       .references(() => user.id),
   },
-  (table) => [
+  table => [
     foreignKey({
       columns: [table.organizationId],
       foreignColumns: [organization.id],
@@ -580,5 +594,5 @@ export const notificationChannels = pgTable(
       foreignColumns: [user.id],
       name: "notification_channels_created_by_user_id_fk",
     }),
-  ],
+  ]
 );

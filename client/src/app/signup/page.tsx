@@ -182,7 +182,7 @@ export default function SignupPage() {
                 placeholder="email@example.com"
                 required
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                onChange={e => setEmail(e.target.value)}
               />
 
               <AuthInput
@@ -192,7 +192,7 @@ export default function SignupPage() {
                 placeholder="••••••••"
                 required
                 value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                onChange={e => setPassword(e.target.value)}
               />
 
               <AuthButton
@@ -239,7 +239,7 @@ export default function SignupPage() {
                   type="text"
                   placeholder="Acme Inc."
                   value={orgName}
-                  onChange={(e) => handleOrgNameChange(e.target.value)}
+                  onChange={e => handleOrgNameChange(e.target.value)}
                   required
                   className="h-10 transition-all bg-neutral-800/50 border-neutral-700"
                 />
@@ -294,7 +294,7 @@ export default function SignupPage() {
                   type="text"
                   placeholder="example.com or sub.example.com"
                   value={domain}
-                  onChange={(e) => setDomain(e.target.value.toLowerCase())}
+                  onChange={e => setDomain(e.target.value.toLowerCase())}
                   required
                   className="h-10 transition-all bg-neutral-800/50 border-neutral-700"
                 />
@@ -384,8 +384,8 @@ export default function SignupPage() {
                     currentStep === step
                       ? "bg-emerald-600 text-primary-foreground"
                       : currentStep > step
-                      ? "bg-emerald-600/20 text-emerald-400 border-2 border-emerald-600/40"
-                      : "bg-muted-foreground/20 text-muted-foreground border-2 border-muted-foreground/40"
+                        ? "bg-emerald-600/20 text-emerald-400 border-2 border-emerald-600/40"
+                        : "bg-muted-foreground/20 text-muted-foreground border-2 border-muted-foreground/40"
                   )}
                 >
                   {currentStep > step ? <Check className="h-5 w-5" /> : step}

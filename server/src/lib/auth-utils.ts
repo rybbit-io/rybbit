@@ -1,10 +1,10 @@
+import { and, eq, inArray } from "drizzle-orm";
 import { FastifyRequest } from "fastify";
-import { auth } from "./auth.js";
-import { sites, member, user } from "../db/postgres/schema.js";
-import { inArray, eq, and } from "drizzle-orm";
-import { db } from "../db/postgres/postgres.js";
-import { isSitePublic } from "../utils.js";
 import NodeCache from "node-cache";
+import { db } from "../db/postgres/postgres.js";
+import { member, sites, user } from "../db/postgres/schema.js";
+import { auth } from "./auth.js";
+import { siteConfig } from "./siteConfig.js";
 
 export function mapHeaders(headers: any) {
   const entries = Object.entries(headers);
@@ -56,15 +56,8 @@ export async function getSitesUserHasAccessTo(req: FastifyRequest, adminOnly = f
   // Check if we have a cached promise
   const cached = sitesAccessCache.get<Promise<any[]>>(cacheKey);
   if (cached) {
-    // console.log(
-    //   `[Cache HIT] getSitesUserHasAccessTo for userId: ${userId}, adminOnly: ${adminOnly}`
-    // );
     return cached;
   }
-
-  // console.log(
-  //   `[Cache MISS] getSitesUserHasAccessTo for userId: ${userId}, adminOnly: ${adminOnly}`
-  // );
 
   // Create new promise and cache it
   const promise = (async () => {
@@ -88,8 +81,8 @@ export async function getSitesUserHasAccessTo(req: FastifyRequest, adminOnly = f
 
       // Extract organization IDs
       const organizationIds = memberRecords
-        .filter((record) => !adminOnly || record.role !== "member")
-        .map((record) => record.organizationId);
+        .filter(record => !adminOnly || record.role !== "member")
+        .map(record => record.organizationId);
 
       // Get sites for these organizations
       const siteRecords = await db.select().from(sites).where(inArray(sites.organizationId, organizationIds));
@@ -111,18 +104,21 @@ export async function getSitesUserHasAccessTo(req: FastifyRequest, adminOnly = f
 
 // for routes that are potentially public
 export async function getUserHasAccessToSitePublic(req: FastifyRequest, siteId: string | number) {
-  const [sites, isPublic] = await Promise.all([getSitesUserHasAccessTo(req), isSitePublic(siteId)]);
-  return sites.some((site) => site.siteId === Number(siteId)) || isPublic;
+  const [sites, isPublic] = await Promise.all([
+    getSitesUserHasAccessTo(req),
+    (await siteConfig.getConfig(siteId))?.public,
+  ]);
+  return sites.some(site => site.siteId === Number(siteId)) || isPublic;
 }
 
 export async function getUserHasAccessToSite(req: FastifyRequest, siteId: string | number) {
   const sites = await getSitesUserHasAccessTo(req);
-  return sites.some((site) => site.siteId === Number(siteId));
+  return sites.some(site => site.siteId === Number(siteId));
 }
 
 export async function getUserHasAdminAccessToSite(req: FastifyRequest, siteId: string | number) {
   const sites = await getSitesUserHasAccessTo(req, true);
-  return sites.some((site) => site.siteId === Number(siteId));
+  return sites.some(site => site.siteId === Number(siteId));
 }
 
 export async function getUserIsInOrg(req: FastifyRequest, organizationId: string) {

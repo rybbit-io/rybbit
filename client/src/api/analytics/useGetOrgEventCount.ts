@@ -3,6 +3,9 @@ import { authedFetch } from "../utils";
 
 export type OrgEventCountResponse = {
   event_date: string;
+  pageview_count: number;
+  custom_event_count: number;
+  performance_count: number;
   event_count: number;
 }[];
 
@@ -26,10 +29,7 @@ async function getOrgEventCount({
   if (endDate) params.append("endDate", endDate);
   if (timeZone) params.append("timeZone", timeZone);
 
-  return authedFetch(
-    `/org-event-count/${organizationId}`,
-    Object.fromEntries(params)
-  );
+  return authedFetch(`/org-event-count/${organizationId}`, Object.fromEntries(params));
 }
 
 export function useGetOrgEventCount({

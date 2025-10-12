@@ -25,7 +25,7 @@ export default function MapPage() {
             <span className={cn(mapView === "countries" ? "text-white" : "text-neutral-400")}>Countries</span>
             <Switch
               checked={mapView === "subdivisions"}
-              onCheckedChange={(checked) => setMapView(checked ? "subdivisions" : "countries")}
+              onCheckedChange={checked => setMapView(checked ? "subdivisions" : "countries")}
               className="data-[state=checked]:bg-accent-400"
             />
             <span className={cn(mapView === "subdivisions" ? "text-white" : "text-neutral-400")}>Subdivisions</span>
@@ -34,7 +34,7 @@ export default function MapPage() {
             <span className={cn(mapMode === "total" ? "text-white" : "text-neutral-400")}>Total Visits</span>
             <Switch
               checked={mapMode === "perCapita"}
-              onCheckedChange={(checked) => setMapMode(checked ? "perCapita" : "total")}
+              onCheckedChange={checked => setMapMode(checked ? "perCapita" : "total")}
               className="data-[state=checked]:bg-accent-400"
             />
             <span className={cn(mapMode === "perCapita" ? "text-white" : "text-neutral-400")}>Per Capita</span>

@@ -7,7 +7,6 @@ export interface SavedFunnel {
   id: number;
   name: string;
   steps: FunnelStep[];
-  filters?: Filter[];
   createdAt: string;
   updatedAt: string;
   conversionRate: number | null;
@@ -22,9 +21,7 @@ export function useGetFunnels(siteId?: string | number) {
         return [];
       }
       try {
-        const response = await authedFetch<{ data: SavedFunnel[] }>(
-          `/funnels/${siteId}`
-        );
+        const response = await authedFetch<{ data: SavedFunnel[] }>(`/funnels/${siteId}`);
         return response.data;
       } catch (error) {
         throw new Error("Failed to fetch funnels");

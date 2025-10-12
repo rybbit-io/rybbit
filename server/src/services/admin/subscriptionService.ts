@@ -1,6 +1,6 @@
-import { getStripePrices, StripePlan, DEFAULT_EVENT_LIMIT } from "../../lib/const.js";
-import { stripe } from "../../lib/stripe.js";
 import { DateTime } from "luxon";
+import { DEFAULT_EVENT_LIMIT, getStripePrices } from "../../lib/const.js";
+import { stripe } from "../../lib/stripe.js";
 
 export interface SubscriptionData {
   id: string;
@@ -13,14 +13,6 @@ export interface SubscriptionData {
   interval?: string;
 }
 
-// Function to find plan details by price ID
-function findPlanDetails(priceId: string): StripePlan | undefined {
-  return getStripePrices().find(
-    (plan: StripePlan) =>
-      plan.priceId === priceId || (plan.annualDiscountPriceId && plan.annualDiscountPriceId === priceId),
-  );
-}
-
 /**
  * Fetches subscription data for multiple Stripe customer IDs
  * @param stripeCustomerIds Set of Stripe customer IDs to fetch subscriptions for
@@ -29,7 +21,7 @@ function findPlanDetails(priceId: string): StripePlan | undefined {
  */
 async function fetchSubscriptionsForCustomers(
   stripeCustomerIds: Set<string>,
-  includeFullDetails = false,
+  includeFullDetails = false
 ): Promise<Map<string, SubscriptionData>> {
   const subscriptionMap = new Map<string, SubscriptionData>();
 
@@ -57,7 +49,7 @@ async function fetchSubscriptionsForCustomers(
           const priceId = subscriptionItem.price.id;
 
           if (priceId) {
-            const planDetails = findPlanDetails(priceId);
+            const planDetails = getStripePrices().find(plan => plan.priceId === priceId);
 
             const subscriptionData: SubscriptionData = {
               id: subscription.id,
@@ -85,7 +77,7 @@ async function fetchSubscriptionsForCustomers(
 
       // Rate limiting: wait 50ms between requests (20 req/s)
       if (hasMore) {
-        await new Promise((resolve) => setTimeout(resolve, 50));
+        await new Promise(resolve => setTimeout(resolve, 50));
       }
     }
   } catch (error) {
@@ -103,12 +95,12 @@ async function fetchSubscriptionsForCustomers(
  */
 export async function getOrganizationSubscriptions(
   organizations: Array<{ id: string; stripeCustomerId?: string | null }>,
-  includeFullDetails = false,
+  includeFullDetails = false
 ): Promise<
   Map<string, SubscriptionData & { planName: string; status: string; eventLimit: number; currentPeriodEnd: Date }>
 > {
-  const orgsWithStripe = organizations.filter((org) => org.stripeCustomerId);
-  const stripeCustomerIds = new Set(orgsWithStripe.map((org) => org.stripeCustomerId!));
+  const orgsWithStripe = organizations.filter(org => org.stripeCustomerId);
+  const stripeCustomerIds = new Set(orgsWithStripe.map(org => org.stripeCustomerId!));
 
   const subscriptionMap = await fetchSubscriptionsForCustomers(stripeCustomerIds, includeFullDetails);
 

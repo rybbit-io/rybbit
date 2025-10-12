@@ -3,13 +3,7 @@ import { DateTime } from "luxon";
 import { create } from "zustand";
 import { Time } from "../components/DateSelector/types";
 
-export type StatType =
-  | "pageviews"
-  | "sessions"
-  | "users"
-  | "pages_per_session"
-  | "bounce_rate"
-  | "session_duration";
+export type StatType = "pageviews" | "sessions" | "users" | "pages_per_session" | "bounce_rate" | "session_duration";
 
 export const SESSION_PAGE_FILTERS: FilterParameter[] = [
   "hostname",
@@ -32,6 +26,9 @@ export const SESSION_PAGE_FILTERS: FilterParameter[] = [
   "utm_campaign",
   "utm_term",
   "utm_content",
+  "user_id",
+  "lat",
+  "lon",
 ];
 
 export const SESSION_REPLAY_PAGE_FILTERS: FilterParameter[] = [
@@ -47,6 +44,7 @@ export const SESSION_REPLAY_PAGE_FILTERS: FilterParameter[] = [
   "device_type",
   "referrer",
   "channel",
+  "user_id",
 ];
 
 export const EVENT_FILTERS: FilterParameter[] = [
@@ -80,6 +78,7 @@ export const EVENT_FILTERS: FilterParameter[] = [
   "entry_page",
   "exit_page",
   "dimensions",
+  "user_id",
 ];
 
 export const GOALS_PAGE_FILTERS: FilterParameter[] = [
@@ -112,6 +111,31 @@ export const USER_PAGE_FILTERS: FilterParameter[] = [
   "city",
   "device_type",
   "referrer",
+  "user_id",
+];
+
+export const JOURNEY_PAGE_FILTERS: FilterParameter[] = [
+  "browser",
+  "operating_system",
+  "language",
+  "country",
+  "region",
+  "city",
+  "device_type",
+  "referrer",
+  "hostname",
+  // "channel",
+  // "utm_source",
+  // "utm_medium",
+  // "utm_campaign",
+  // "utm_term",
+  // "utm_content",
+  "entry_page",
+  "exit_page",
+  "dimensions",
+  "browser_version",
+  "operating_system_version",
+  "user_id",
 ];
 
 type Store = {
@@ -128,9 +152,9 @@ type Store = {
   setFilters: (filters: Filter[]) => void;
 };
 
-export const useStore = create<Store>((set) => ({
+export const useStore = create<Store>(set => ({
   site: "",
-  setSite: (site) => {
+  setSite: site => {
     // Get current URL search params to check for stored state
     let urlParams: URLSearchParams | null = null;
     if (typeof window !== "undefined") {
@@ -143,7 +167,7 @@ export const useStore = create<Store>((set) => ({
     const hasStatInUrl = urlParams?.has("stat");
 
     // Only set defaults if not present in URL
-    set((state) => ({
+    set(state => ({
       site,
       time: hasTimeInUrl
         ? state.time
@@ -192,11 +216,7 @@ export const useStore = create<Store>((set) => ({
         pastMinutesEnd: time.pastMinutesEnd + timeDiff,
       };
     } else if (time.mode === "range") {
-      const timeRangeLength =
-        DateTime.fromISO(time.endDate).diff(
-          DateTime.fromISO(time.startDate),
-          "days"
-        ).days + 1;
+      const timeRangeLength = DateTime.fromISO(time.endDate).diff(DateTime.fromISO(time.startDate), "days").days + 1;
 
       if (timeRangeLength > 180) {
         bucketToUse = "month";
@@ -208,12 +228,8 @@ export const useStore = create<Store>((set) => ({
 
       previousTime = {
         mode: "range",
-        startDate:
-          DateTime.fromISO(time.startDate)
-            .minus({ days: timeRangeLength })
-            .toISODate() ?? "",
-        endDate:
-          DateTime.fromISO(time.startDate).minus({ days: 1 }).toISODate() ?? "",
+        startDate: DateTime.fromISO(time.startDate).minus({ days: timeRangeLength }).toISODate() ?? "",
+        endDate: DateTime.fromISO(time.startDate).minus({ days: 1 }).toISODate() ?? "",
       };
     } else if (time.mode === "week") {
       bucketToUse = "day";
@@ -225,8 +241,7 @@ export const useStore = create<Store>((set) => ({
       bucketToUse = "day";
       previousTime = {
         mode: "month",
-        month:
-          DateTime.fromISO(time.month).minus({ months: 1 }).toISODate() ?? "",
+        month: DateTime.fromISO(time.month).minus({ months: 1 }).toISODate() ?? "",
       };
     } else if (time.mode === "year") {
       bucketToUse = "month";
@@ -250,16 +265,15 @@ export const useStore = create<Store>((set) => ({
     }
   },
   bucket: "hour",
-  setBucket: (bucket) => set({ bucket }),
+  setBucket: bucket => set({ bucket }),
   selectedStat: "users",
-  setSelectedStat: (stat) => set({ selectedStat: stat }),
+  setSelectedStat: stat => set({ selectedStat: stat }),
   filters: [],
-  setFilters: (filters) => set({ filters }),
+  setFilters: filters => set({ filters }),
 }));
 
 export const resetStore = () => {
-  const { setSite, setTime, setBucket, setSelectedStat, setFilters } =
-    useStore.getState();
+  const { setSite, setTime, setBucket, setSelectedStat, setFilters } = useStore.getState();
   setSite("");
   setTime({ mode: "day", day: DateTime.now().toISODate() });
   setBucket("hour");
@@ -287,8 +301,7 @@ export const goBack = () => {
     setTime(
       {
         mode: "range",
-        startDate:
-          startDate.minus({ days: daysBetweenStartAndEnd }).toISODate() ?? "",
+        startDate: startDate.minus({ days: daysBetweenStartAndEnd }).toISODate() ?? "",
         endDate: startDate.toISODate() ?? "",
       },
       false
@@ -305,8 +318,7 @@ export const goBack = () => {
     setTime(
       {
         mode: "month",
-        month:
-          DateTime.fromISO(time.month).minus({ months: 1 }).toISODate() ?? "",
+        month: DateTime.fromISO(time.month).minus({ months: 1 }).toISODate() ?? "",
       },
       false
     );
@@ -345,8 +357,7 @@ export const goForward = () => {
     setTime(
       {
         mode: "range",
-        startDate:
-          startDate.plus({ days: daysBetweenStartAndEnd }).toISODate() ?? "",
+        startDate: startDate.plus({ days: daysBetweenStartAndEnd }).toISODate() ?? "",
         // Cap the end date at today
         endDate: proposedEndDate.toISODate() ?? "",
       },
@@ -364,8 +375,7 @@ export const goForward = () => {
     setTime(
       {
         mode: "month",
-        month:
-          DateTime.fromISO(time.month).plus({ months: 1 }).toISODate() ?? "",
+        month: DateTime.fromISO(time.month).plus({ months: 1 }).toISODate() ?? "",
       },
       false
     );
@@ -382,20 +392,20 @@ export const goForward = () => {
 
 export const addFilter = (filter: Filter) => {
   const { filters, setFilters } = useStore.getState();
-  const filterExists = filters.some(
-    (f) =>
-      f.parameter === filter.parameter &&
-      f.type === filter.type &&
-      JSON.stringify(f.value) === JSON.stringify(filter.value)
+  const filterExists = filters.findIndex(
+    f => f.parameter === filter.parameter && f.type === filter.type
+    // JSON.stringify(f.value) === JSON.stringify(filter.value)
   );
-  if (!filterExists) {
+  if (filterExists === -1) {
     setFilters([...filters, filter]);
+  } else {
+    setFilters(filters.map((f, i) => (i === filterExists ? filter : f)));
   }
 };
 
 export const removeFilter = (filter: Filter) => {
   const { filters, setFilters } = useStore.getState();
-  setFilters(filters.filter((f) => f !== filter));
+  setFilters(filters.filter(f => f !== filter));
 };
 
 export const updateFilter = (filter: Filter, index: number) => {
@@ -405,5 +415,5 @@ export const updateFilter = (filter: Filter, index: number) => {
 
 export const getFilteredFilters = (parameters: FilterParameter[]) => {
   const { filters } = useStore.getState();
-  return filters.filter((f) => parameters.includes(f.parameter));
+  return filters.filter(f => parameters.includes(f.parameter));
 };

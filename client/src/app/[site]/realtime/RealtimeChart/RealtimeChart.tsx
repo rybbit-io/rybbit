@@ -27,10 +27,8 @@ export function RealtimeChart() {
       return [];
     }
 
-    return data.data.map((point) => ({
-      time: DateTime.fromSQL(point.time)
-        .toUTC()
-        .toFormat("yyyy-MM-dd HH:mm:ss"),
+    return data.data.map(point => ({
+      time: DateTime.fromSQL(point.time).toUTC().toFormat("yyyy-MM-dd HH:mm:ss"),
       users: point.users,
     }));
   }, [data]);
@@ -61,28 +59,14 @@ export function RealtimeChart() {
       enableLabel={false}
       enableGridX={false}
       enableGridY={false}
-      tooltip={({
-        id,
-        value,
-        data,
-      }: {
-        id: string | number;
-        value: number;
-        data: { time: string; users: number };
-      }) => {
-        const currentTime = DateTime.fromFormat(
-          data.time,
-          "yyyy-MM-dd HH:mm:ss",
-          { zone: "utc" }
-        ).toLocal();
+      tooltip={({ id, value, data }: { id: string | number; value: number; data: { time: string; users: number } }) => {
+        const currentTime = DateTime.fromFormat(data.time, "yyyy-MM-dd HH:mm:ss", { zone: "utc" }).toLocal();
         const currentY = Number(value);
 
         return (
           <div className="bg-neutral-950 p-2 rounded-md text-xs">
             <div className="font-semibold mb-1">
-              {currentTime.isValid
-                ? currentTime.toFormat("h:mm")
-                : "Invalid Time"}
+              {currentTime.isValid ? currentTime.toFormat("h:mm") : "Invalid Time"}
             </div>
             <div className="flex justify-between items-center">
               <span className="font-medium">{currentY.toLocaleString()}</span>

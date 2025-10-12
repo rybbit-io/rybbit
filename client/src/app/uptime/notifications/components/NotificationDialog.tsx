@@ -69,13 +69,13 @@ export function NotificationDialog() {
         slackChannel: editingChannel.config?.slackChannel || "",
         phoneNumber: editingChannel.config?.phoneNumber || "",
       });
-      setSelectedMonitorIds(editingChannel.monitorIds?.map((id) => id.toString()) || []);
+      setSelectedMonitorIds(editingChannel.monitorIds?.map(id => id.toString()) || []);
     }
   }, [isDialogOpen, editingChannel, reset]);
 
   const monitorOptions = React.useMemo(() => {
     if (!monitorsData) return [];
-    return monitorsData.map((monitor) => ({
+    return monitorsData.map(monitor => ({
       value: monitor.id.toString(),
       label:
         monitor.name ||
@@ -97,7 +97,7 @@ export function NotificationDialog() {
     if (selectedType === "sms" && data.phoneNumber) config.phoneNumber = data.phoneNumber;
 
     try {
-      const monitorIds = selectedMonitorIds.length > 0 ? selectedMonitorIds.map((id) => parseInt(id, 10)) : null;
+      const monitorIds = selectedMonitorIds.length > 0 ? selectedMonitorIds.map(id => parseInt(id, 10)) : null;
 
       if (editingChannel) {
         await updateChannel.mutateAsync({
@@ -286,8 +286,8 @@ export function NotificationDialog() {
                   ? "Updating..."
                   : "Update Channel"
                 : createChannel.isPending
-                ? "Creating..."
-                : "Create Channel"}
+                  ? "Creating..."
+                  : "Create Channel"}
             </Button>
           </div>
         </form>

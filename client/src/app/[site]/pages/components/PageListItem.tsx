@@ -23,10 +23,7 @@ type PageListItemProps = {
   isLoading?: boolean;
 };
 
-export function PageListItem({
-  pageData,
-  isLoading = false,
-}: PageListItemProps) {
+export function PageListItem({ pageData, isLoading = false }: PageListItemProps) {
   const [isHovering, setIsHovering] = useState(false);
   const [thumbnailError, setThumbnailError] = useState(false);
   const { data: siteMetadata } = useGetSite();
@@ -42,54 +39,43 @@ export function PageListItem({
   };
 
   // Regular bucketed data for sparklines
-  const { data: regularData, isLoading: isLoadingRegular } =
-    useGetOverviewBucketed({
-      site,
-      bucket,
-      dynamicFilters: [pageSpecificFilter],
-      props: {
-        enabled: !isPastMinutesMode,
-      },
-    });
+  const { data: regularData, isLoading: isLoadingRegular } = useGetOverviewBucketed({
+    site,
+    bucket,
+    dynamicFilters: [pageSpecificFilter],
+    props: {
+      enabled: !isPastMinutesMode,
+    },
+  });
 
   // Past minutes data for sparklines
-  const { data: pastMinutesData, isLoading: isLoadingPastMinutes } =
-    useGetOverviewBucketed({
-      site,
-      bucket,
-      dynamicFilters: [
-        {
-          parameter: "pathname",
-          type: "equals",
-          value: [pageData.value],
-        },
-      ],
-      props: {
-        enabled: isPastMinutesMode,
+  const { data: pastMinutesData, isLoading: isLoadingPastMinutes } = useGetOverviewBucketed({
+    site,
+    bucket,
+    dynamicFilters: [
+      {
+        parameter: "pathname",
+        type: "equals",
+        value: [pageData.value],
       },
-    });
+    ],
+    props: {
+      enabled: isPastMinutesMode,
+    },
+  });
 
   // Use the appropriate data source based on mode
   const pageTrafficData = isPastMinutesMode ? pastMinutesData : regularData;
-  const isLoadingTrafficData = isPastMinutesMode
-    ? isLoadingPastMinutes
-    : isLoadingRegular;
+  const isLoadingTrafficData = isPastMinutesMode ? isLoadingPastMinutes : isLoadingRegular;
 
   // External URL for the page
-  const pageUrl = siteMetadata?.domain
-    ? `https://${siteMetadata.domain}${pageData.value}`
-    : "";
+  const pageUrl = siteMetadata?.domain ? `https://${siteMetadata.domain}${pageData.value}` : "";
 
   // Fetch page metadata using TanStack Query
-  const {
-    data: metadata,
-    isLoading: isLoadingMetadata,
-    isError: isMetadataError,
-  } = usePageMetadata(pageUrl);
+  const { data: metadata, isLoading: isLoadingMetadata, isError: isMetadataError } = usePageMetadata(pageUrl);
 
   // Get thumbnail URL from metadata
-  const thumbnailUrl =
-    !thumbnailError && !isMetadataError ? metadata?.image : null;
+  const thumbnailUrl = !thumbnailError && !isMetadataError ? metadata?.image : null;
 
   // Handle image error
   const handleImageError = () => {
@@ -97,11 +83,7 @@ export function PageListItem({
   };
 
   return (
-    <Card
-      className="w-full mb-3"
-      onMouseEnter={() => setIsHovering(true)}
-      onMouseLeave={() => setIsHovering(false)}
-    >
+    <Card className="w-full mb-3" onMouseEnter={() => setIsHovering(true)} onMouseLeave={() => setIsHovering(false)}>
       <CardContent className="p-3">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center w-full gap-4">
           {/* Left side: Page title/path with thumbnail */}
@@ -120,10 +102,7 @@ export function PageListItem({
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2">
                 <h3 className="text-base font-medium truncate">
-                  {truncateString(
-                    pageData.title || pageData.value,
-                    MAX_TITLE_LENGTH
-                  )}
+                  {truncateString(pageData.title || pageData.value, MAX_TITLE_LENGTH)}
                 </h3>
                 {pageUrl && (
                   <Link
@@ -136,9 +115,7 @@ export function PageListItem({
                   </Link>
                 )}
               </div>
-              <p className="text-sm text-muted-foreground truncate">
-                {pageData.value}
-              </p>
+              <p className="text-sm text-muted-foreground truncate">{pageData.value}</p>
             </div>
           </div>
 
@@ -157,16 +134,12 @@ export function PageListItem({
             {/* Session count and duration */}
             <div className="text-right min-w-[120px]">
               <div>
-                <span className="text-base font-semibold">
-                  {pageData.count.toLocaleString()}
-                </span>
+                <span className="text-base font-semibold">{pageData.count.toLocaleString()}</span>
                 <span className="text-xs text-foreground/70"> sessions</span>
               </div>
               {pageData.time_on_page_seconds !== undefined && (
                 <div>
-                  <span className="text-base font-semibold">
-                    {formatShortDuration(pageData.time_on_page_seconds)}{" "}
-                  </span>
+                  <span className="text-base font-semibold">{formatShortDuration(pageData.time_on_page_seconds)} </span>
                   <span className="text-xs text-foreground/70">avg time</span>
                 </div>
               )}

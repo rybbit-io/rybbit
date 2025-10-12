@@ -67,7 +67,7 @@ export default function Page() {
                 placeholder="example@email.com"
                 required
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                onChange={e => setEmail(e.target.value)}
               />
 
               <AuthInput
@@ -77,7 +77,7 @@ export default function Page() {
                 placeholder="••••••••"
                 required
                 value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                onChange={e => setPassword(e.target.value)}
                 rightElement={
                   <Link href="/reset-password" className="text-xs text-muted-foreground hover:text-primary">
                     Forgot password?

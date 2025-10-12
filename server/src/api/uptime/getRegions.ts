@@ -4,10 +4,7 @@ import { db } from "../../db/postgres/postgres.js";
 import { agentRegions } from "../../db/postgres/schema.js";
 import { getSessionFromReq } from "../../lib/auth-utils.js";
 
-export async function getRegions(
-  request: FastifyRequest,
-  reply: FastifyReply
-) {
+export async function getRegions(request: FastifyRequest, reply: FastifyReply) {
   const session = await getSessionFromReq(request);
   const userId = session?.user?.id;
 
@@ -35,7 +32,7 @@ export async function getRegions(
       name: region.name,
       isHealthy: region.isHealthy ?? true,
       lastHealthCheck: region.lastHealthCheck,
-      isLocal: region.code === 'local',
+      isLocal: region.code === "local",
     }));
 
     return reply.send({

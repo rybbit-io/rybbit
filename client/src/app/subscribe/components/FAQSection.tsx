@@ -13,8 +13,7 @@ const FAQ_ITEMS: FAQItem[] = [
   },
   {
     question: "Can I change my plan later?",
-    answer:
-      "Absolutely. You can upgrade, downgrade, or cancel your plan at any time through your account settings.",
+    answer: "Absolutely. You can upgrade, downgrade, or cancel your plan at any time through your account settings.",
   },
   {
     question: "What happens if I go over my event limit?",
@@ -29,10 +28,7 @@ export function FAQSection() {
       <h3 className="text-xl font-semibold mb-4">Frequently Asked Questions</h3>
 
       {FAQ_ITEMS.map((faq, index) => (
-        <div
-          key={index}
-          className="bg-neutral-800/20 p-5 rounded-lg border border-neutral-700"
-        >
+        <div key={index} className="bg-neutral-800/20 p-5 rounded-lg border border-neutral-700">
           <h4 className="font-medium mb-2">{faq.question}</h4>
           <p className="text-neutral-300">{faq.answer}</p>
         </div>

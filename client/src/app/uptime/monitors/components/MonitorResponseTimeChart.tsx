@@ -49,7 +49,7 @@ export function MonitorResponseTimeChart({
 
   useEffect(() => {
     if (monitorType === "http") {
-      setVisibleMetrics(new Set(HTTP_METRICS.map((m) => m.key)));
+      setVisibleMetrics(new Set(HTTP_METRICS.map(m => m.key)));
     } else {
       setVisibleMetrics(new Set(["response_time_ms"]));
     }
@@ -62,7 +62,7 @@ export function MonitorResponseTimeChart({
   });
 
   const toggleMetric = (metricKey: string) => {
-    setVisibleMetrics((prev) => {
+    setVisibleMetrics(prev => {
       const newSet = new Set(prev);
       if (newSet.has(metricKey)) {
         newSet.delete(metricKey);
@@ -131,7 +131,7 @@ export function MonitorResponseTimeChart({
 
     // For HTTP, show stacked timing metrics
     // Order matters for stacking - DNS first, then connection, TLS, and finally transfer
-    return HTTP_METRICS.filter((metric) => visibleMetrics.has(metric.key)).map((metric) => ({
+    return HTTP_METRICS.filter(metric => visibleMetrics.has(metric.key)).map(metric => ({
       id: metric.label,
       color: metric.color,
       data: processedData
@@ -218,7 +218,7 @@ export function MonitorResponseTimeChart({
             {/* Metric toggles for HTTP monitors */}
             {monitorType === "http" && (
               <div className="flex items-center gap-2">
-                {HTTP_METRICS.map((metric) => {
+                {HTTP_METRICS.map(metric => {
                   const isVisible = visibleMetrics.has(metric.key);
                   return (
                     <button
@@ -254,7 +254,7 @@ export function MonitorResponseTimeChart({
 
         {isLoadingMonitor || isLoading ? (
           <Skeleton className="w-full h-[400px] rounded-md" />
-        ) : data.length === 0 || data.every((series) => series.data.length === 0) ? (
+        ) : data.length === 0 || data.every(series => series.data.length === 0) ? (
           <div className="h-[400px] w-full flex items-center justify-center">
             <div className="text-center text-neutral-500">
               <p className="text-lg font-medium">No data available</p>
@@ -299,9 +299,9 @@ export function MonitorResponseTimeChart({
                 tickRotation: 0,
                 truncateTickAt: 0,
                 tickValues: 5,
-                format: (value) => `${value}ms`,
+                format: value => `${value}ms`,
               }}
-              colors={(d) => d.color}
+              colors={d => d.color}
               lineWidth={1}
               enablePoints={false}
               useMesh={true}

@@ -1,62 +1,30 @@
 "use client";
 
+import { ConfirmationModal } from "@/components/ConfirmationModal";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { ArrowRight, ChevronDown, ChevronUp, Copy, Edit, Eye, MousePointerClick, Trash2 } from "lucide-react";
+import { useState } from "react";
+import { toast } from "sonner";
 import { useDeleteFunnel } from "../../../../api/analytics/funnels/useDeleteFunnel";
 import { useGetFunnel } from "../../../../api/analytics/funnels/useGetFunnel";
 import { SavedFunnel } from "../../../../api/analytics/funnels/useGetFunnels";
-import { ConfirmationModal } from "@/components/ConfirmationModal";
-import { DateRangeMode, Time } from "@/components/DateSelector/types";
-import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
-import {
-  ArrowRight,
-  ChevronDown,
-  ChevronUp,
-  Edit,
-  FileText,
-  FilterIcon,
-  MousePointerClick,
-  Trash2,
-} from "lucide-react";
-import { DateTime } from "luxon";
-import { useState } from "react";
-import { toast } from "sonner";
-import { getStartAndEndDate } from "../../../../api/utils";
 import { ThreeDotLoader } from "../../../../components/Loaders";
-import { useGetRegionName } from "../../../../lib/geo";
-import { cn } from "../../../../lib/utils";
-import {
-  filterTypeToLabel,
-  getParameterNameLabel,
-  getParameterValueLabel,
-} from "../../components/shared/Filters/utils";
 import { EditFunnelDialog } from "./EditFunnel";
 import { Funnel } from "./Funnel";
+import { EventIcon, PageviewIcon } from "../../../../components/EventIcons";
 
 interface FunnelRowProps {
   funnel: SavedFunnel;
+  index: number;
 }
 
-export function FunnelRow({ funnel }: FunnelRowProps) {
-  const [expanded, setExpanded] = useState(false);
+export function FunnelRow({ funnel, index }: FunnelRowProps) {
+  const [expanded, setExpanded] = useState(index === 0);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const { getRegionName } = useGetRegionName();
-
-  // Time state for funnel visualization - default to last 7 days
-  const [time, setTime] = useState<Time>({
-    mode: "range",
-    startDate: DateTime.now().minus({ days: 7 }).toISODate(),
-    endDate: DateTime.now().toISODate(),
-    wellKnown: "Last 7 days",
-  } as DateRangeMode);
-
-  const { startDate, endDate } = getStartAndEndDate(time);
+  const [isCloneModalOpen, setIsCloneModalOpen] = useState(false);
 
   // Funnel data fetching
   const {
@@ -69,9 +37,6 @@ export function FunnelRow({ funnel }: FunnelRowProps) {
     expanded
       ? {
           steps: funnel.steps,
-          startDate,
-          endDate,
-          filters: funnel.filters,
         }
       : undefined
   );
@@ -95,9 +60,6 @@ export function FunnelRow({ funnel }: FunnelRowProps) {
     }
   };
 
-  // Check if funnel has filters
-  const hasFilters = funnel.filters && funnel.filters.length > 0;
-
   return (
     <Card className="mb-4 overflow-hidden">
       {/* Header row (always visible) */}
@@ -109,129 +71,104 @@ export function FunnelRow({ funnel }: FunnelRowProps) {
           <div className="mt-1 text-xs text-neutral-400 flex flex-col gap-3">
             {/* Steps visualization */}
             <div className="flex flex-wrap gap-1">
-              <h3 className="font-medium text-neutral-100 text-base mr-2">
-                {funnel.name}
-              </h3>
+              <h3 className="font-medium text-neutral-100 text-base mr-2">{funnel.name}</h3>
               {funnel.steps.map((step, index) => (
                 <div key={index} className="flex items-center">
-                  {index > 0 && (
-                    <ArrowRight className="h-3 w-3 mx-1 text-neutral-400" />
-                  )}
+                  {index > 0 && <ArrowRight className="h-3 w-3 mx-1 text-neutral-400" />}
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <span className="rounded bg-neutral-100 dark:bg-neutral-800 px-1.5 py-0.5 whitespace-nowrap overflow-hidden text-ellipsis flex items-center cursor-default">
                         {step.type === "page" ? (
-                          <FileText className="h-3 w-3 mr-1 text-blue-400" />
+                          <PageviewIcon className="h-3 w-3 mr-1" />
                         ) : (
-                          <MousePointerClick className="h-3 w-3 mr-1 text-amber-400" />
+                          <EventIcon className="h-3 w-3 mr-1" />
                         )}
                         <span className="max-w-[120px] overflow-hidden text-ellipsis inline-block">
                           {step.name || step.value}
                           {step.type === "event" && step.eventPropertyKey && (
-                            <span className="text-xs text-yellow-400 ml-1">
-                              *
-                            </span>
+                            <span className="text-xs text-yellow-400 ml-1">*</span>
                           )}
                         </span>
                       </span>
                     </TooltipTrigger>
                     <TooltipContent side="bottom" className="text-xs">
                       <div>
-                        <span className="font-semibold">
-                          {step.type === "page" ? "Page" : "Event"}:
-                        </span>{" "}
-                        {step.value}
+                        <span className="font-semibold">{step.type === "page" ? "Page" : "Event"}:</span> {step.value}
                       </div>
                       {step.name && (
                         <div>
-                          <span className="font-semibold">Label:</span>{" "}
-                          {step.name}
+                          <span className="font-semibold">Label:</span> {step.name}
                         </div>
                       )}
-                      {step.type === "event" &&
-                        step.eventPropertyKey &&
-                        step.eventPropertyValue !== undefined && (
-                          <div>
-                            <span className="font-semibold">Property:</span>{" "}
-                            {step.eventPropertyKey} ={" "}
-                            {String(step.eventPropertyValue)}
-                          </div>
-                        )}
+                      {step.type === "event" && step.eventPropertyKey && step.eventPropertyValue !== undefined && (
+                        <div>
+                          <span className="font-semibold">Property:</span> {step.eventPropertyKey} ={" "}
+                          {String(step.eventPropertyValue)}
+                        </div>
+                      )}
                     </TooltipContent>
                   </Tooltip>
                 </div>
               ))}
             </div>
-
-            {/* Filters visualization */}
-            {hasFilters && (
-              <div className="flex items-center gap-1">
-                <FilterIcon className="h-3 w-3 text-neutral-400" />
-                <div className="flex flex-wrap gap-1">
-                  {funnel.filters?.map((filter, index) => (
-                    <span
-                      key={index}
-                      className="rounded bg-neutral-100 dark:bg-neutral-800 px-1.5 py-0.5 whitespace-nowrap overflow-hidden text-ellipsis flex items-center cursor-default"
-                    >
-                      <span className="text-neutral-300">
-                        {getParameterNameLabel(filter.parameter)}
-                      </span>
-                      <span
-                        className={cn(
-                          "mx-1",
-                          filter.type === "not_equals" ||
-                            filter.type === "not_contains"
-                            ? "text-red-400"
-                            : "text-emerald-400"
-                        )}
-                      >
-                        {filterTypeToLabel(filter.type)}
-                      </span>
-                      <span className="text-neutral-100 max-w-[100px] overflow-hidden text-ellipsis inline-block">
-                        {filter.value.length > 0
-                          ? getParameterValueLabel(filter, getRegionName)
-                          : "empty"}
-                      </span>
-                    </span>
-                  ))}
-                </div>
-              </div>
-            )}
           </div>
         </div>
 
         <div className="flex items-center gap-4">
           <div className="flex">
             {/* Edit button */}
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={(e) => {
-                e.stopPropagation();
-                setIsEditModalOpen(true);
-              }}
-            >
-              <Edit className="h-4 w-4" />
-            </Button>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={e => {
+                    e.stopPropagation();
+                    setIsEditModalOpen(true);
+                  }}
+                >
+                  <Edit className="h-4 w-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Edit Funnel</TooltipContent>
+            </Tooltip>
+
+            {/* Clone button */}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={e => {
+                    e.stopPropagation();
+                    setIsCloneModalOpen(true);
+                  }}
+                >
+                  <Copy className="h-4 w-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Clone Funnel</TooltipContent>
+            </Tooltip>
 
             {/* Delete button */}
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={(e) => {
-                e.stopPropagation();
-                setIsDeleteModalOpen(true);
-              }}
-            >
-              <Trash2 className="h-4 w-4" />
-            </Button>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={e => {
+                    e.stopPropagation();
+                    setIsDeleteModalOpen(true);
+                  }}
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Delete Funnel</TooltipContent>
+            </Tooltip>
 
             <Button variant="ghost" size="icon" onClick={handleExpand}>
-              {expanded ? (
-                <ChevronUp strokeWidth={3} />
-              ) : (
-                <ChevronDown strokeWidth={3} />
-              )}
+              {expanded ? <ChevronUp strokeWidth={3} /> : <ChevronDown strokeWidth={3} />}
             </Button>
           </div>
         </div>
@@ -245,22 +182,12 @@ export function FunnelRow({ funnel }: FunnelRowProps) {
               <ThreeDotLoader className="h-[400px]" />
             ) : isError ? (
               <div className="text-red-500 p-4 text-center">
-                Error loading funnel:{" "}
-                {error instanceof Error ? error.message : "Unknown error"}
+                Error loading funnel: {error instanceof Error ? error.message : "Unknown error"}
               </div>
             ) : data && data.length > 0 ? (
-              <Funnel
-                data={data}
-                isError={isError}
-                error={error}
-                isPending={isPending}
-                time={time}
-                setTime={setTime}
-              />
+              <Funnel data={data} steps={funnel.steps} isError={isError} error={error} isPending={isPending} />
             ) : (
-              <div className="text-center p-6 text-neutral-500">
-                No funnel data available
-              </div>
+              <div className="text-center p-6 text-neutral-500">No funnel data available</div>
             )}
           </div>
         </div>
@@ -281,10 +208,16 @@ export function FunnelRow({ funnel }: FunnelRowProps) {
 
       {/* Edit Funnel Modal */}
       {isEditModalOpen && (
+        <EditFunnelDialog funnel={funnel} isOpen={isEditModalOpen} onClose={() => setIsEditModalOpen(false)} />
+      )}
+
+      {/* Clone Funnel Modal */}
+      {isCloneModalOpen && (
         <EditFunnelDialog
           funnel={funnel}
-          isOpen={isEditModalOpen}
-          onClose={() => setIsEditModalOpen(false)}
+          isOpen={isCloneModalOpen}
+          onClose={() => setIsCloneModalOpen(false)}
+          isCloneMode={true}
         />
       )}
     </Card>

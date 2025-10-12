@@ -8,7 +8,7 @@ import { memoize, debounce } from "lodash";
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import Globe from "react-globe.gl";
 import { MeshPhongMaterial } from "three";
-import { useGetLiveSessionLocations } from "../../../../api/analytics/useGetLiveSessionLocations";
+import { useGetSessionLocations } from "../../../../api/analytics/useGetSessionLocations";
 import { useAtom } from "jotai";
 import { minutesAtom } from "../realtimeStore";
 
@@ -20,11 +20,7 @@ export const World = ({ width }: { width: number }) => {
   const globeEl = useRef<any>(null);
   const size = useWindowSize();
 
-  const [minutes] = useAtom(minutesAtom);
-
-  const { data: liveSessionLocations, isLoading: isLiveSessionLocationsLoading } = useGetLiveSessionLocations(
-    Number(minutes)
-  );
+  const { data: liveSessionLocations, isLoading: isLiveSessionLocationsLoading } = useGetSessionLocations();
 
   const { data: countries = { features: [] } } = useQuery({
     queryKey: ["countries"],
@@ -36,7 +32,7 @@ export const World = ({ width }: { width: number }) => {
 
   const highest = liveSessionLocations?.reduce((acc, curr) => Math.max(acc, curr.count), 0) ?? 1;
 
-  const normalized = 5 / Number(minutes);
+  const normalized = 5 / Number(30);
   const weightColor = scaleSequentialSqrt(interpolateYlOrRd).domain([0, highest * normalized * 15]);
 
   useEffect(() => {
@@ -96,7 +92,7 @@ export const World = ({ width }: { width: number }) => {
   );
 
   const liveSessionLocationsData = useMemo(() => {
-    return liveSessionLocations?.map((e) => ({
+    return liveSessionLocations?.map(e => ({
       lat: e.lat,
       lng: e.lon,
       count: Math.max(1, e.count / highest),
@@ -142,8 +138,8 @@ export const World = ({ width }: { width: number }) => {
         hexPolygonColor={(e: any) => {
           return randomShader(e.properties.ISO_A2);
         }}
-        hexTopColor={(d) => weightColor(d.sumWeight)}
-        hexSideColor={(d) => weightColor(d.sumWeight)}
+        hexTopColor={d => weightColor(d.sumWeight)}
+        hexSideColor={d => weightColor(d.sumWeight)}
         // @ts-ignore
         // hexPolygonLabel={(props: any) => {
         //   console.info(props);

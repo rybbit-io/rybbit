@@ -1,10 +1,6 @@
 import { FastifyReply, FastifyRequest } from "fastify";
 import { clickhouse } from "../../db/clickhouse/clickhouse.js";
-import {
-  getFilterStatement,
-  getTimeStatement,
-  processResults,
-} from "./utils.js";
+import { getFilterStatement, getTimeStatement, processResults } from "./utils.js";
 import { getUserHasAccessToSitePublic } from "../../lib/auth-utils.js";
 import { FilterParameter } from "./types.js";
 import { FilterParams } from "@rybbit/shared";
@@ -74,18 +70,8 @@ export interface OverviewRequest {
   Querystring: FilterParams;
 }
 
-export async function getOverview(
-  req: FastifyRequest<OverviewRequest>,
-  res: FastifyReply
-) {
-  const {
-    startDate,
-    endDate,
-    timeZone,
-    filters,
-    pastMinutesStart,
-    pastMinutesEnd,
-  } = req.query;
+export async function getOverview(req: FastifyRequest<OverviewRequest>, res: FastifyReply) {
+  const { startDate, endDate, timeZone, filters, pastMinutesStart, pastMinutesEnd } = req.query;
   const site = req.params.site;
   const userHasAccessToSite = await getUserHasAccessToSitePublic(req, site);
   if (!userHasAccessToSite) {

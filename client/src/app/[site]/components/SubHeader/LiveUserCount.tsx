@@ -1,9 +1,5 @@
 import { useGetLiveUsercount } from "../../../../api/analytics/useLiveUserCount";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "../../../../components/ui/tooltip";
+import { Tooltip, TooltipContent, TooltipTrigger } from "../../../../components/ui/tooltip";
 import NumberFlow from "@number-flow/react";
 
 export function LiveUserCount() {
@@ -21,12 +17,7 @@ export function LiveUserCount() {
       <Tooltip>
         <TooltipTrigger>
           <span className="text-sm text-neutral-200 ml-1 font-medium">
-            {
-              <NumberFlow
-                respectMotionPreference={false}
-                value={data?.count ?? 0}
-              />
-            }
+            {<NumberFlow respectMotionPreference={false} value={data?.count ?? 0} />}
             <span className="ml-1"></span>
           </span>
         </TooltipTrigger>

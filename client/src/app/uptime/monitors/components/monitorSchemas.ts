@@ -78,7 +78,7 @@ export const createMonitorSchema = z
     selectedRegions: z.array(z.string()).optional(),
   })
   .refine(
-    (data) => {
+    data => {
       if (data.monitorType === "http") {
         return data.httpConfig !== undefined && data.httpConfig.url !== "";
       }
@@ -92,7 +92,7 @@ export const createMonitorSchema = z
     }
   )
   .refine(
-    (data) => {
+    data => {
       if (data.monitoringType === "global") {
         return data.selectedRegions && data.selectedRegions.length > 0;
       }
