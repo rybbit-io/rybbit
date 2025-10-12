@@ -2,7 +2,7 @@
 
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { ExternalLink, Eye, Laptop, MousePointerClick, Smartphone } from "lucide-react";
+import { Laptop, Smartphone } from "lucide-react";
 import { DateTime } from "luxon";
 import Link from "next/link";
 import { useParams } from "next/navigation";
@@ -12,7 +12,7 @@ import { getCountryName } from "../../../../lib/utils";
 import { Browser } from "../../components/shared/icons/Browser";
 import { CountryFlag } from "../../components/shared/icons/CountryFlag";
 import { OperatingSystem } from "../../components/shared/icons/OperatingSystem";
-import { EventIcon, PageviewIcon } from "../../../../components/EventIcons";
+import { EventIcon, OutboundLinkIcon, PageviewIcon } from "../../../../components/EventIcons";
 
 // DeviceIcon component for displaying mobile/desktop icons
 function DeviceIcon({ deviceType }: { deviceType: string }) {
@@ -74,7 +74,7 @@ export function EventLogItem({ event }: EventLogItemProps) {
               {isPageview ? (
                 <PageviewIcon />
               ) : isOutbound ? (
-                <ExternalLink className="w-4 h-4 text-purple-500" />
+                <OutboundLinkIcon />
               ) : (
                 <EventIcon />
               )}

@@ -4,7 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { ArrowRight, Clock, ExternalLink, Loader2, Monitor, Smartphone, Tablet, TriangleAlert } from "lucide-react";
+import { ArrowRight, Clock, Loader2, Monitor, Smartphone, Tablet } from "lucide-react";
 import { DateTime } from "luxon";
 import Link from "next/link";
 import { useParams } from "next/navigation";
@@ -17,7 +17,7 @@ import { formatDuration, hour12 } from "../../lib/dateTimeUtils";
 import { useGetRegionName } from "../../lib/geo";
 import { cn, getCountryName, getLanguageName } from "../../lib/utils";
 import { Avatar } from "../Avatar";
-import { EventIcon, PageviewIcon } from "../EventIcons";
+import { ErrorIcon, EventIcon, OutboundLinkIcon, PageviewIcon } from "../EventIcons";
 import { Button } from "../ui/button";
 
 // Component to display a single pageview or event
@@ -82,9 +82,9 @@ function PageviewItem({
             {isEvent ? (
               <EventIcon />
             ) : isError ? (
-              <TriangleAlert className="w-4 h-4 text-red-500" />
+              <ErrorIcon />
             ) : isOutbound ? (
-              <ExternalLink className="w-4 h-4 text-purple-500" />
+              <OutboundLinkIcon />
             ) : (
               <PageviewIcon />
             )}
