@@ -5,8 +5,10 @@ set -e
 
 # Default values
 USE_WEBSERVER="true"
+GENERATE_PASSWORDS="true"
 BACKEND_PORT="3001"
 CLIENT_PORT="3002"
+FORCE="false"
 
 # Help function
 show_help() {
@@ -18,8 +20,31 @@ show_help() {
   echo "  --no-webserver          Disable the built-in Caddy webserver"
   echo "  --backend-port <port>   Set custom host port for backend (default: 3001)"
   echo "  --client-port <port>    Set custom host port for client (default: 3002)"
+  echo "  --insecure              Do not generate random password for database and clickhouse"
+  echo "  --force                 Force override of the .env file"
   echo "  --help                  Show this help message"
 }
+
+generate_secret() {
+  # Generate a secure random secret
+  # Uses OpenSSL if available, otherwise falls back to /dev/urandom
+
+  local length="$1"
+  if [[ -z "$length" || ! "$length" =~ ^[0-9]+$ || "$length" -le 0 ]]; then
+    echo "Usage: generate_secret <length>" >&2
+    return 1
+  fi
+
+  if command -v openssl &> /dev/null; then
+    openssl rand -hex $((length/2 + length%2)) | cut -c1-"$length"
+  elif [ -e /dev/urandom ]; then
+    head -c 512 /dev/urandom | tr -dc A-Za-z0-9 | head -c "$length"
+  else
+    echo "Error: Could not generate secure secret. Please install openssl or ensure /dev/urandom is available." >&2
+    return 1
+  fi
+}
+
 
 # Parse arguments
 while [[ "$#" -gt 0 ]]; do
@@ -28,6 +53,14 @@ while [[ "$#" -gt 0 ]]; do
       USE_WEBSERVER="false"
       shift
       ;;
+    --insecure) 
+      GENERATE_PASSWORDS="false"
+      shift
+      ;;
+    --force) 
+      FORCE="true"
+      shift
+      ;;         
     --backend-port)
       if [[ -z "$2" || "$2" =~ ^- ]]; then
         echo "Error: --backend-port requires a port number"
@@ -75,17 +108,19 @@ if [ -z "$DOMAIN_NAME" ]; then
   exit 1
 fi
 
+# Domain
 BASE_URL="https://${DOMAIN_NAME}"
 
-# Generate a secure random secret for BETTER_AUTH_SECRET
-# Uses OpenSSL if available, otherwise falls back to /dev/urandom
-if command -v openssl &> /dev/null; then
-    BETTER_AUTH_SECRET=$(openssl rand -hex 32)
-elif [ -e /dev/urandom ]; then
-    BETTER_AUTH_SECRET=$(head /dev/urandom | tr -dc A-Za-z0-9 | head -c 32)
-else
-    echo "Error: Could not generate secure secret. Please install openssl or ensure /dev/urandom is available." >&2
-    exit 1
+# Generate secret for better auth
+BETTER_AUTH_SECRET=$(generate_secret 32)
+
+# Check if .env exists
+# We don't want to override the passwords by accident.
+if [ -f ".env" ] && [ "$FORCE" != "true" ]; then
+  echo "Error: setup already performed: .env file exists"
+  echo "  Please use --force to override."
+  echo "  CAUTION: This action will override the passwords. Make sure to back them up!"
+  exit 1
 fi
 
 # Create or overwrite the .env file
@@ -99,6 +134,13 @@ BASE_URL=${BASE_URL}
 BETTER_AUTH_SECRET=${BETTER_AUTH_SECRET}
 DISABLE_SIGNUP=false
 EOL
+
+# Generate database and clickhouse passwords (by default).
+# Omit this step if user passed --insecure
+if [ "$GENERATE_PASSWORDS" = "true" ]; then
+  echo "CLICKHOUSE_PASSWORD=$(generate_secret 16)" >> .env
+  echo "POSTGRES_PASSWORD=$(generate_secret 16)" >> .env
+fi
 
 # Only add port variables if using custom ports or no webserver
 if [ "$USE_WEBSERVER" = "false" ]; then
