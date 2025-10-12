@@ -66,22 +66,11 @@ const BROWSER_TO_LOGO: Record<string, string> = {
   Waterfox: "Waterfox.svg",
 };
 
-export function Browser({
-  browser,
-  size = 16,
-}: {
-  browser: string;
-  size?: number;
-}) {
+export function Browser({ browser, size = 16 }: { browser: string; size?: number }) {
   return (
     <>
       {BROWSER_TO_LOGO[browser] ? (
-        <Image
-          src={`/browsers/${BROWSER_TO_LOGO[browser]}`}
-          alt={browser || "Other"}
-          width={size}
-          height={size}
-        />
+        <Image src={`/browsers/${BROWSER_TO_LOGO[browser]}`} alt={browser || "Other"} width={size} height={size} />
       ) : (
         <Compass width={size} height={size} />
       )}

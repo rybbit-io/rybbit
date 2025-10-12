@@ -1,37 +1,14 @@
 import { DateTime } from "luxon";
 import { useMemo, useState } from "react";
 import { useGetOverviewBucketed } from "../../../../../api/analytics/useGetOverviewBucketed";
-import {
-  Tabs,
-  TabsList,
-  TabsTrigger,
-} from "../../../../../components/ui/basic-tabs";
-import {
-  Card,
-  CardContent,
-  CardLoader,
-} from "../../../../../components/ui/card";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "../../../../../components/ui/select";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "../../../../../components/ui/tooltip";
+import { Tabs, TabsList, TabsTrigger } from "../../../../../components/ui/basic-tabs";
+import { Card, CardContent, CardLoader } from "../../../../../components/ui/card";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../../../../components/ui/select";
+import { Tooltip, TooltipContent, TooltipTrigger } from "../../../../../components/ui/tooltip";
 import { StatType, useStore } from "../../../../../lib/store";
 import { cn } from "../../../../../lib/utils";
 
-import {
-  formatLocalTime,
-  hourLabels,
-  longDayNames,
-  shortDayNames,
-} from "../../../../../lib/dateTimeUtils";
+import { formatLocalTime, hourLabels, longDayNames, shortDayNames } from "../../../../../lib/dateTimeUtils";
 
 export function Weekdays() {
   const { site, time } = useStore();
@@ -57,7 +34,7 @@ export function Weekdays() {
       .map(() => Array(24).fill(0));
 
     // Process each data point
-    data.data.forEach((item) => {
+    data.data.forEach(item => {
       if (!item || !item.time) return;
 
       // Parse the timestamp
@@ -104,8 +81,7 @@ export function Weekdays() {
 
   // Get color intensity based on value
   const getColorIntensity = (value: number) => {
-    if (maxValue === 0 || !isFinite(value) || isNaN(value))
-      return "bg-neutral-800";
+    if (maxValue === 0 || !isFinite(value) || isNaN(value)) return "bg-neutral-800";
 
     // Calculate intensity level 1-10
     const ratio = value / maxValue;
@@ -173,10 +149,7 @@ export function Weekdays() {
             </TabsList>
           </Tabs>
 
-          <Select
-            value={metric}
-            onValueChange={(value) => setMetric(value as StatType)}
-          >
+          <Select value={metric} onValueChange={value => setMetric(value as StatType)}>
             <SelectTrigger className="w-[160px]" size="sm">
               <SelectValue placeholder="Select metric" />
             </SelectTrigger>
@@ -185,9 +158,7 @@ export function Weekdays() {
               <SelectItem value="pageviews">Pageviews</SelectItem>
               <SelectItem value="sessions">Sessions</SelectItem>
               <SelectItem value="bounce_rate">Bounce Rate</SelectItem>
-              <SelectItem value="pages_per_session">
-                Pages per Session
-              </SelectItem>
+              <SelectItem value="pages_per_session">Pages per Session</SelectItem>
               <SelectItem value="session_duration">Session Duration</SelectItem>
             </SelectContent>
           </Select>
@@ -201,10 +172,7 @@ export function Weekdays() {
             {Array(24)
               .fill(0)
               .map((_, hour) => (
-                <div
-                  key={hour}
-                  className="h-4 text-xs flex items-center justify-end pr-2 text-neutral-400"
-                >
+                <div key={hour} className="h-4 text-xs flex items-center justify-end pr-2 text-neutral-400">
                   {hour % 2 === 1 ? hourLabels[hour] : ""}
                 </div>
               ))}
@@ -214,10 +182,7 @@ export function Weekdays() {
             {/* Day labels */}
             <div className="flex h-5">
               {shortDayNames.map((day, i) => (
-                <div
-                  key={i}
-                  className="flex-1 text-center text-xs text-neutral-400"
-                >
+                <div key={i} className="flex-1 text-center text-xs text-neutral-400">
                   {day}
                 </div>
               ))}
@@ -238,8 +203,7 @@ export function Weekdays() {
                         heatmapData[day].length > hour
                           ? heatmapData[day][hour]
                           : 0;
-                      const colorClass =
-                        value > 0 ? getColorIntensity(value) : "bg-neutral-800";
+                      const colorClass = value > 0 ? getColorIntensity(value) : "bg-neutral-800";
                       return (
                         <Tooltip key={day}>
                           <TooltipTrigger asChild>
@@ -252,16 +216,11 @@ export function Weekdays() {
                           </TooltipTrigger>
                           <TooltipContent className="flex flex-col gap-1 p-2">
                             <div className="font-medium text-sm">
-                              {longDayNames[day]} {formatLocalTime(hour, 0)} -{" "}
-                              {formatLocalTime(hour, 59)}
+                              {longDayNames[day]} {formatLocalTime(hour, 0)} - {formatLocalTime(hour, 59)}
                             </div>
                             <div className="flex items-center gap-2">
-                              <span className="font-semibold">
-                                {formatMetricValue(value)}
-                              </span>
-                              <span className="text-neutral-400 text-xs">
-                                {getMetricDisplayName(metric)}
-                              </span>
+                              <span className="font-semibold">{formatMetricValue(value)}</span>
+                              <span className="text-neutral-400 text-xs">{getMetricDisplayName(metric)}</span>
                             </div>
                           </TooltipContent>
                         </Tooltip>

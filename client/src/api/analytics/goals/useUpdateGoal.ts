@@ -25,20 +25,14 @@ export function useUpdateGoal() {
   const { site } = useStore();
 
   return useMutation<UpdateGoalResponse, Error, UpdateGoalRequest>({
-    mutationFn: async (goalData) => {
+    mutationFn: async goalData => {
       try {
-        return await authedFetch<UpdateGoalResponse>(
-          "/goal/update",
-          undefined,
-          {
-            method: "PUT",
-            data: goalData,
-          }
-        );
+        return await authedFetch<UpdateGoalResponse>("/goal/update", undefined, {
+          method: "PUT",
+          data: goalData,
+        });
       } catch (error) {
-        throw new Error(
-          error instanceof Error ? error.message : "Failed to update goal"
-        );
+        throw new Error(error instanceof Error ? error.message : "Failed to update goal");
       }
     },
     onSuccess: () => {

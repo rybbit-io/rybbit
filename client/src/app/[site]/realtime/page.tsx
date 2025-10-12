@@ -38,7 +38,7 @@ export default function RealtimePage() {
                   </span>
                 </div>
                 Visitors in the last{" "}
-                <Select value={minutes} onValueChange={(value) => setMinutes(value as MinutesType)}>
+                <Select value={minutes} onValueChange={value => setMinutes(value as MinutesType)}>
                   <SelectTrigger>
                     <SelectValue placeholder="Select a time period" />
                   </SelectTrigger>

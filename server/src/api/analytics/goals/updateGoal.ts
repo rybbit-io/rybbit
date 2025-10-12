@@ -13,12 +13,10 @@ const eventConfigSchema = z
   .object({
     eventName: z.string().min(1, "Event name cannot be empty"),
     eventPropertyKey: z.string().optional(),
-    eventPropertyValue: z
-      .union([z.string(), z.number(), z.boolean()])
-      .optional(),
+    eventPropertyValue: z.union([z.string(), z.number(), z.boolean()]).optional(),
   })
   .refine(
-    (data) => {
+    data => {
       // If one property matching field is provided, both must be provided
       if (data.eventPropertyKey && data.eventPropertyValue === undefined) {
         return false;
@@ -29,8 +27,7 @@ const eventConfigSchema = z
       return true;
     },
     {
-      message:
-        "Both eventPropertyKey and eventPropertyValue must be provided together or omitted together",
+      message: "Both eventPropertyKey and eventPropertyValue must be provided together or omitted together",
     }
   );
 
@@ -45,13 +42,11 @@ const updateGoalSchema = z
       pathPattern: z.string().optional(),
       eventName: z.string().optional(),
       eventPropertyKey: z.string().optional(),
-      eventPropertyValue: z
-        .union([z.string(), z.number(), z.boolean()])
-        .optional(),
+      eventPropertyValue: z.union([z.string(), z.number(), z.boolean()]).optional(),
     }),
   })
   .refine(
-    (data) => {
+    data => {
       if (data.goalType === "path") {
         return !!data.config.pathPattern;
       } else if (data.goalType === "event") {
@@ -89,16 +84,11 @@ export async function updateGoal(
 
     // Check if the goal belongs to the specified site
     if (existingGoal.siteId !== siteId) {
-      return reply
-        .status(403)
-        .send({ error: "Goal does not belong to the specified site" });
+      return reply.status(403).send({ error: "Goal does not belong to the specified site" });
     }
 
     // Check user access to site
-    const userHasAccessToSite = await getUserHasAccessToSite(
-      request,
-      siteId.toString()
-    );
+    const userHasAccessToSite = await getUserHasAccessToSite(request, siteId.toString());
     if (!userHasAccessToSite) {
       return reply.status(403).send({ error: "Forbidden" });
     }

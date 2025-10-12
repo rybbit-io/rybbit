@@ -165,7 +165,7 @@ export default function NotificationsPage() {
                         </TableCell>
                       </TableRow>
                     ))
-                  : data?.channels?.map((channel) => {
+                  : data?.channels?.map(channel => {
                       const config = CHANNEL_CONFIG[channel.type];
                       const Icon = config.icon;
                       return (

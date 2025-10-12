@@ -14,19 +14,31 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { UserPlus } from "lucide-react";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Alert } from "../../../../../components/ui/alert";
 import { authClient } from "../../../../../lib/auth";
+import { useStripeSubscription } from "../../../../../lib/subscription/useStripeSubscription";
+import { IS_CLOUD } from "../../../../../lib/const";
+import { Tooltip, TooltipContent, TooltipTrigger } from "../../../../../components/ui/tooltip";
 
 interface InviteMemberDialogProps {
   organizationId: string;
   onSuccess: () => void;
+  memberCount: number;
 }
 
-export function InviteMemberDialog({ organizationId, onSuccess }: InviteMemberDialogProps) {
+export function InviteMemberDialog({ organizationId, onSuccess, memberCount }: InviteMemberDialogProps) {
+  const { data: subscription } = useStripeSubscription();
+
+  const isOverMemberLimit = useMemo(() => {
+    if (!IS_CLOUD) return false;
+    const limit = subscription?.status !== "active" ? 1 : subscription?.isPro ? 10 : 3;
+    return memberCount >= limit;
+  }, [subscription, memberCount]);
+
   const [email, setEmail] = useState("");
-  const [role, setRole] = useState<"admin" | "member">("member");
+  const [role, setRole] = useState<"admin" | "member" | "owner">("member");
 
   const [isLoading, setIsLoading] = useState(false);
   const [open, setOpen] = useState(false);
@@ -59,6 +71,23 @@ export function InviteMemberDialog({ organizationId, onSuccess }: InviteMemberDi
     }
   };
 
+  if (isOverMemberLimit) {
+    return (
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <span>
+            <Button disabled size="sm" variant="outline" title="Upgrade to Pro to add more members">
+              <UserPlus className="h-4 w-4 mr-1" />
+              Invite Member
+            </Button>
+          </span>
+        </TooltipTrigger>
+        <TooltipContent>
+          You have reached the limit of {subscription?.isPro ? 10 : 3} members. Upgrade to add more members
+        </TooltipContent>
+      </Tooltip>
+    );
+  }
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
@@ -85,7 +114,7 @@ export function InviteMemberDialog({ organizationId, onSuccess }: InviteMemberDi
           </div>
           <div className="grid gap-2">
             <Label htmlFor="role">Role</Label>
-            <Select value={role} onValueChange={(value) => setRole(value as "admin" | "member")}>
+            <Select value={role} onValueChange={value => setRole(value as "admin" | "member")}>
               <SelectTrigger>
                 <SelectValue placeholder="Select a role" />
               </SelectTrigger>

@@ -27,12 +27,8 @@ export async function getSessionReplays(
       startDate: request.query.startDate,
       endDate: request.query.endDate,
       timeZone: request.query.timeZone,
-      pastMinutesStart: request.query.pastMinutesStart
-        ? Number(request.query.pastMinutesStart)
-        : undefined,
-      pastMinutesEnd: request.query.pastMinutesEnd
-        ? Number(request.query.pastMinutesEnd)
-        : undefined,
+      pastMinutesStart: request.query.pastMinutesStart ? Number(request.query.pastMinutesStart) : undefined,
+      pastMinutesEnd: request.query.pastMinutesEnd ? Number(request.query.pastMinutesEnd) : undefined,
       filters: filters || "",
     });
 

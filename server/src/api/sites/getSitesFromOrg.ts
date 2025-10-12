@@ -31,33 +31,22 @@ export async function getSitesFromOrg(
       db
         .select()
         .from(member)
-        .where(
-          and(
-            eq(member.organizationId, organizationId),
-            eq(member.userId, userId)
-          )
-        )
+        .where(and(eq(member.organizationId, organizationId), eq(member.userId, userId)))
         .limit(1),
       db.select().from(sites).where(eq(sites.organizationId, organizationId)),
-      db
-        .select()
-        .from(organization)
-        .where(eq(organization.id, organizationId))
-        .limit(1),
+      db.select().from(organization).where(eq(organization.id, organizationId)).limit(1),
     ]);
 
     // If not admin, verify user is a member of the organization
     if (!isOwner && memberCheck.length === 0) {
-      return res
-        .status(403)
-        .send({ error: "Access denied to this organization" });
+      return res.status(403).send({ error: "Access denied to this organization" });
     }
 
     // Query session counts for the sites
     const sessionCountMap = new Map<number, number>();
 
     if (sitesData.length > 0) {
-      const siteIds = sitesData.map((site) => site.siteId);
+      const siteIds = sitesData.map(site => site.siteId);
 
       const sessionCountsResult = await clickhouse.query({
         query: `
@@ -75,11 +64,7 @@ export async function getSitesFromOrg(
 
       if (Array.isArray(sessionCounts)) {
         sessionCounts.forEach((row: any) => {
-          if (
-            row &&
-            typeof row.site_id === "number" &&
-            typeof row.total_sessions === "number"
-          ) {
+          if (row && typeof row.site_id === "number" && typeof row.total_sessions === "number") {
             sessionCountMap.set(Number(row.site_id), row.total_sessions);
           }
         });
@@ -101,16 +86,14 @@ export async function getSitesFromOrg(
     }
 
     // Enhance sites data with session counts and subscription info
-    const enhancedSitesData = sitesData.map((site) => ({
+    const enhancedSitesData = sitesData.map(site => ({
       ...site,
       sessionsLast24Hours: sessionCountMap.get(site.siteId) || 0,
-      isOwner: isOwner,
+      isOwner: memberCheck[0]?.role !== "member",
     }));
 
     // Sort by sessions descending
-    enhancedSitesData.sort(
-      (a, b) => b.sessionsLast24Hours - a.sessionsLast24Hours
-    );
+    enhancedSitesData.sort((a, b) => b.sessionsLast24Hours - a.sessionsLast24Hours);
 
     return res.status(200).send({
       organization: orgInfo[0] || null,
@@ -121,6 +104,7 @@ export async function getSitesFromOrg(
         overMonthlyLimit: monthlyEventCount > eventLimit,
         planName: subscription?.planName || "free",
         status: subscription?.status || "free",
+        isPro: subscription?.planName.includes("pro") || false,
       },
     });
   } catch (err) {

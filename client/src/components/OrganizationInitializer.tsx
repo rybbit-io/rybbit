@@ -6,15 +6,10 @@ import { useUserOrganizations } from "../api/admin/organizations";
 
 function OrganizationInitializerInner() {
   const { data: organizations } = useUserOrganizations();
-  const { data: activeOrganization, isPending: isPendingActiveOrganization } =
-    authClient.useActiveOrganization();
+  const { data: activeOrganization, isPending: isPendingActiveOrganization } = authClient.useActiveOrganization();
 
   useEffect(() => {
-    if (
-      !isPendingActiveOrganization &&
-      !activeOrganization &&
-      organizations?.length
-    ) {
+    if (!isPendingActiveOrganization && !activeOrganization && organizations?.length) {
       authClient.organization.setActive({
         organizationId: organizations?.[0]?.id,
       });

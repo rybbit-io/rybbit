@@ -49,6 +49,12 @@ export function getParameterNameLabel(parameter: FilterParameter) {
       return "Browser Version";
     case "operating_system_version":
       return "OS Version";
+    case "user_id":
+      return "User ID";
+    case "lat":
+      return "Lat";
+    case "lon":
+      return "Lon";
     default:
       return parameter;
   }
@@ -69,16 +75,13 @@ export const filterTypeToLabel = (type: FilterType) => {
   }
 };
 
-export function getParameterValueLabel(
-  filter: Filter,
-  getRegionName: (region: string) => string | undefined
-) {
-  const formatValue = (value: string) => {
+export function getParameterValueLabel(filter: Filter, getRegionName: (region: string) => string | undefined) {
+  const formatValue = (value: string | number) => {
     if (filter.parameter === "country") {
-      return getCountryName(value);
+      return getCountryName(value as string);
     }
     if (filter.parameter === "region") {
-      return getRegionName(value);
+      return getRegionName(value as string);
     }
     return value;
   };

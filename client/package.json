@@ -7,7 +7,9 @@
     "build": "next build",
     "start": "next start -p 3002",
     "lint": "next lint",
-    "knip": "knip"
+    "knip": "knip",
+    "format": "prettier --write \"src/**/*.{js,jsx,ts,tsx,json,css,scss,md}\"",
+    "format:check": "prettier --check \"src/**/*.{js,jsx,ts,tsx,json,css,scss,md}\""
   },
   "dependencies": {
     "@hookform/resolvers": "5.0.1",
@@ -47,7 +49,6 @@
     "class-variance-authority": "0.7.1",
     "clsx": "2.1.1",
     "cmdk": "^1.1.1",
-    "countries-list": "3.1.1",
     "country-flag-icons": "1.5.19",
     "d3": "7.9.0",
     "date-fns": "^4.1.0",
@@ -60,6 +61,7 @@
     "lodash": "4.17.21",
     "lucide-react": "0.510.0",
     "luxon": "3.6.1",
+    "mapbox-gl": "^3.15.0",
     "next": "15.3.2",
     "next-themes": "0.4.6",
     "react": "19.1.0",
@@ -76,6 +78,7 @@
     "tailwind-merge": "2.6.0",
     "tailwindcss-animate": "1.0.7",
     "three": "0.176.0",
+    "unique-names-generator": "^4.7.1",
     "zod": "3.24.4",
     "zustand": "5.0.4"
   },
@@ -85,9 +88,11 @@
     "@types/leaflet": "1.9.17",
     "@types/lodash": "4.17.16",
     "@types/luxon": "3.6.2",
+    "@types/mapbox-gl": "^3.4.1",
     "@types/node": "^20.14.8",
     "@types/react": "19",
     "knip": "^5.60.2",
+    "prettier": "^3.6.2",
     "tailwindcss": "3.4.1",
     "typescript": "^5.8.3"
   }

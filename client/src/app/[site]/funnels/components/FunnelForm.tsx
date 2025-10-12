@@ -1,29 +1,22 @@
-import { Time } from "@/components/DateSelector/types";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { InputWithSuggestions, SuggestionOption } from "@/components/ui/input-with-suggestions";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ListFilterPlus, Plus, Save, Trash2 } from "lucide-react";
+import { Plus, Save, Trash2 } from "lucide-react";
 import { useState } from "react";
-import { ThreeDotLoader } from "../../../../components/Loaders";
-import { Filter } from "@rybbit/shared";
-import { FilterComponent } from "../../components/shared/Filters/FilterComponent";
-import { Funnel } from "./Funnel";
-import { Switch } from "../../../../components/ui/switch";
-import { Label } from "../../../../components/ui/label";
 import { FunnelResponse, FunnelStep } from "../../../../api/analytics/funnels/useGetFunnel";
 import { useSingleCol } from "../../../../api/analytics/useSingleCol";
+import { ThreeDotLoader } from "../../../../components/Loaders";
+import { Label } from "../../../../components/ui/label";
+import { Switch } from "../../../../components/ui/switch";
+import { Funnel } from "./Funnel";
 
 interface FunnelFormProps {
   name: string;
   setName: (name: string) => void;
   steps: FunnelStep[];
   setSteps: (steps: FunnelStep[]) => void;
-  time: Time;
-  setTime: (time: Time) => void;
-  filters: Filter[];
-  setFilters: (filters: Filter[]) => void;
   onSave: () => void;
   onCancel: () => void;
   onQuery: () => void;
@@ -41,10 +34,6 @@ export function FunnelForm({
   setName,
   steps,
   setSteps,
-  time,
-  setTime,
-  filters,
-  setFilters,
   onSave,
   onCancel,
   onQuery,
@@ -56,10 +45,9 @@ export function FunnelForm({
   saveError,
   funnelData,
 }: FunnelFormProps) {
-  const [showFilters, setShowFilters] = useState(filters.length > 0);
   // State to track which event steps have property filtering enabled
   const [useProperties, setUseProperties] = useState<boolean[]>(() =>
-    steps.map((step) => !!step.eventPropertyKey && step.eventPropertyValue !== undefined)
+    steps.map(step => !!step.eventPropertyKey && step.eventPropertyValue !== undefined)
   );
 
   // Fetch suggestions for paths and events
@@ -77,13 +65,13 @@ export function FunnelForm({
 
   // Transform data into SuggestionOption format
   const pathSuggestions: SuggestionOption[] =
-    pathsData?.data?.map((item) => ({
+    pathsData?.data?.map(item => ({
       value: item.value,
       label: item.value,
     })) || [];
 
   const eventSuggestions: SuggestionOption[] =
-    eventsData?.data?.map((item) => ({
+    eventsData?.data?.map(item => ({
       value: item.value,
       label: item.value,
     })) || [];
@@ -150,39 +138,12 @@ export function FunnelForm({
     }
   };
 
-  // Handle filter operations
-  const updateFilter = (filter: Filter | null, index: number) => {
-    if (filter === null) {
-      const newFilters = [...filters];
-      newFilters.splice(index, 1);
-      setFilters(newFilters);
-      return;
-    }
-    const newFilters = [...filters];
-    newFilters[index] = filter;
-    setFilters(newFilters);
-  };
-
-  const addFilter = () => {
-    setFilters([
-      ...filters,
-      {
-        parameter: "pathname",
-        type: "equals",
-        value: [],
-      },
-    ]);
-    setShowFilters(true);
-  };
-
   let funnelArea = null;
   if (funnelData && funnelData.length) {
-    funnelArea = (
-      <Funnel data={funnelData} isError={isError} error={error} isPending={isPending} time={time} setTime={setTime} />
-    );
+    funnelArea = <Funnel data={funnelData} isError={isError} error={error} isPending={isPending} steps={steps} />;
   }
 
-  if (steps.some((step) => !step.value)) {
+  if (steps.some(step => !step.value)) {
     funnelArea = (
       <div className="flex items-center justify-center bg-neutral-50 dark:bg-neutral-900 rounded-lg h-full">
         <div className="text-center p-6">
@@ -210,7 +171,7 @@ export function FunnelForm({
         <div className="space-y-4">
           <div>
             <label className="text-sm font-medium mb-1 block">Funnel Name</label>
-            <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Enter funnel name" />
+            <Input value={name} onChange={e => setName(e.target.value)} placeholder="Enter funnel name" />
           </div>
 
           {/* Funnel Steps in a boxed container */}
@@ -231,10 +192,7 @@ export function FunnelForm({
                     <div className="flex-shrink-0 w-6 h-6 rounded-full border border-neutral-400 bg-neutral-750 flex items-center justify-center text-xs mt-2">
                       {index + 1}
                     </div>
-                    <Select
-                      value={step.type}
-                      onValueChange={(value) => updateStepType(index, value as "page" | "event")}
-                    >
+                    <Select value={step.type} onValueChange={value => updateStepType(index, value as "page" | "event")}>
                       <SelectTrigger className="min-w-[80px] max-w-[80px] dark:border-neutral-700">
                         <SelectValue placeholder="Type" />
                       </SelectTrigger>
@@ -251,7 +209,7 @@ export function FunnelForm({
                           placeholder={step.type === "page" ? "Path (e.g. /pricing)" : "Event name"}
                           value={step.value}
                           className="dark:border-neutral-700"
-                          onChange={(e) => updateStep(index, "value", e.target.value)}
+                          onChange={e => updateStep(index, "value", e.target.value)}
                         />
                         {step.type === "page" && (
                           <div className="text-xs text-neutral-500 mt-1">
@@ -264,7 +222,7 @@ export function FunnelForm({
                         placeholder="Label (optional)"
                         className="dark:border-neutral-700"
                         value={step.name || ""}
-                        onChange={(e) => updateStep(index, "name", e.target.value)}
+                        onChange={e => updateStep(index, "name", e.target.value)}
                       />
 
                       {/* Property filtering for event steps */}
@@ -273,7 +231,7 @@ export function FunnelForm({
                           <div className="flex items-center space-x-2">
                             <Switch
                               checked={useProperties[index]}
-                              onCheckedChange={(checked) => togglePropertyFiltering(index, checked)}
+                              onCheckedChange={checked => togglePropertyFiltering(index, checked)}
                               id={`use-properties-${index}`}
                             />
                             <Label htmlFor={`use-properties-${index}`}>Filter by event property</Label>
@@ -285,13 +243,13 @@ export function FunnelForm({
                                 placeholder="Property key"
                                 className="dark:border-neutral-700"
                                 value={step.eventPropertyKey || ""}
-                                onChange={(e) => updateStep(index, "eventPropertyKey", e.target.value)}
+                                onChange={e => updateStep(index, "eventPropertyKey", e.target.value)}
                               />
                               <Input
                                 placeholder="Property value"
                                 className="dark:border-neutral-700"
                                 value={step.eventPropertyValue !== undefined ? String(step.eventPropertyValue) : ""}
-                                onChange={(e) => updateStep(index, "eventPropertyValue", e.target.value)}
+                                onChange={e => updateStep(index, "eventPropertyValue", e.target.value)}
                               />
                             </div>
                           )}
@@ -306,34 +264,6 @@ export function FunnelForm({
                 </div>
               ))}
             </CardContent>
-          </Card>
-
-          {/* Filters Section */}
-          <Card className="border border-neutral-200 dark:border-neutral-800">
-            <CardHeader className="p-3 flex flex-row justify-between items-center">
-              <CardTitle className="text-base">Funnel Filters</CardTitle>
-              {!showFilters && (
-                <Button variant="outline" size="sm" onClick={addFilter}>
-                  <ListFilterPlus className="mr-2 h-4 w-4" />
-                  Add Filters
-                </Button>
-              )}
-            </CardHeader>
-            {showFilters && (
-              <CardContent className="p-3 space-y-4">
-                <div className="flex flex-col gap-2">
-                  {filters.map((filter, index) => (
-                    <FilterComponent key={index} filter={filter} index={index} updateFilter={updateFilter} />
-                  ))}
-                </div>
-                <div className="flex justify-between">
-                  <Button variant="ghost" size="sm" onClick={addFilter} className="gap-1">
-                    <Plus className="w-3 h-3" />
-                    Add Filter
-                  </Button>
-                </div>
-              </CardContent>
-            )}
           </Card>
         </div>
         {funnelArea}

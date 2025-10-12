@@ -36,8 +36,7 @@ interface TooltipPosition {
 export function PerformanceMap({ height }: { height: string }) {
   const params = useParams();
   const site = params.site as string;
-  const { selectedPercentile, selectedPerformanceMetric } =
-    usePerformanceStore();
+  const { selectedPercentile, selectedPerformanceMetric } = usePerformanceStore();
 
   const {
     data: performanceData,
@@ -54,13 +53,11 @@ export function PerformanceMap({ height }: { height: string }) {
 
   useEffect(() => {
     if (performanceData) {
-      setDataVersion((prev) => prev + 1);
+      setDataVersion(prev => prev + 1);
     }
   }, [performanceData]);
 
-  const [tooltipContent, setTooltipContent] = useState<TooltipContent | null>(
-    null
-  );
+  const [tooltipContent, setTooltipContent] = useState<TooltipContent | null>(null);
   const [tooltipPosition, setTooltipPosition] = useState<TooltipPosition>({
     x: 0,
     y: 0,
@@ -102,9 +99,7 @@ export function PerformanceMap({ height }: { height: string }) {
         return "rgba(34, 197, 94, 0.8)"; // Green for good performance
       } else if (clampedValue <= thresholds.needs_improvement) {
         // Interpolate between green and yellow for needs improvement
-        const ratio =
-          (clampedValue - thresholds.good) /
-          (thresholds.needs_improvement - thresholds.good);
+        const ratio = (clampedValue - thresholds.good) / (thresholds.needs_improvement - thresholds.good);
         const greenComponent = Math.round(34 + (251 - 34) * ratio);
         const redComponent = Math.round(197 + (191 - 197) * ratio);
         const blueComponent = Math.round(94 + (36 - 94) * ratio);
@@ -120,15 +115,10 @@ export function PerformanceMap({ height }: { height: string }) {
   const handleStyle = (feature: Feature | undefined) => {
     const countryCode = feature?.properties?.["ISO_A2"];
 
-    const foundData = processedPerformanceData?.find(
-      (item: any) => item.country === countryCode
-    );
+    const foundData = processedPerformanceData?.find((item: any) => item.country === countryCode);
 
     const metricValue = foundData?.metricValue || 0;
-    const color =
-      foundData && metricValue > 0
-        ? colorScale(metricValue)
-        : "rgba(140, 140, 140, 0.3)";
+    const color = foundData && metricValue > 0 ? colorScale(metricValue) : "rgba(140, 140, 140, 0.3)";
 
     return {
       color: color,
@@ -149,9 +139,7 @@ export function PerformanceMap({ height }: { height: string }) {
         // Mark this feature as hovered
         setHoveredId(countryCode);
 
-        const foundData = processedPerformanceData?.find(
-          (item: any) => item.country === countryCode
-        );
+        const foundData = processedPerformanceData?.find((item: any) => item.country === countryCode);
 
         if (foundData) {
           setTooltipContent({
@@ -197,7 +185,7 @@ export function PerformanceMap({ height }: { height: string }) {
 
   return (
     <div
-      onMouseMove={(e) => {
+      onMouseMove={e => {
         if (tooltipContent) {
           setTooltipPosition({
             x: e.clientX,
@@ -214,9 +202,7 @@ export function PerformanceMap({ height }: { height: string }) {
         <div className="absolute inset-0 bg-neutral-900/30 backdrop-blur-sm z-10 flex items-center justify-center">
           <div className="flex flex-col items-center gap-2">
             <div className="h-8 w-8 rounded-full border-2 border-accent-400 border-t-transparent animate-spin"></div>
-            <span className="text-sm text-neutral-300">
-              Loading performance data...
-            </span>
+            <span className="text-sm text-neutral-300">Loading performance data...</span>
           </div>
         </div>
       )}
@@ -253,28 +239,18 @@ export function PerformanceMap({ height }: { height: string }) {
           }}
         >
           <div className="font-sm flex items-center gap-1 mb-2">
-            {tooltipContent.code && (
-              <CountryFlag country={tooltipContent.code} />
-            )}
+            {tooltipContent.code && <CountryFlag country={tooltipContent.code} />}
             <span className="font-medium">{tooltipContent.name}</span>
           </div>
 
           {tooltipContent.eventCount > 0 ? (
             <>
               <div className="mb-2">
-                <span className="text-neutral-300">
-                  {tooltipContent.metricName}:{" "}
-                </span>
+                <span className="text-neutral-300">{tooltipContent.metricName}: </span>
                 {tooltipContent.metricValue !== null ? (
                   <span className="font-bold text-accent-400">
-                    {formatMetricValue(
-                      selectedPerformanceMetric,
-                      tooltipContent.metricValue
-                    )}
-                    {getMetricUnit(
-                      selectedPerformanceMetric,
-                      tooltipContent.metricValue
-                    )}
+                    {formatMetricValue(selectedPerformanceMetric, tooltipContent.metricValue)}
+                    {getMetricUnit(selectedPerformanceMetric, tooltipContent.metricValue)}
                   </span>
                 ) : (
                   <span className="text-neutral-400">No data</span>
@@ -283,17 +259,13 @@ export function PerformanceMap({ height }: { height: string }) {
 
               <div className="text-xs">
                 <div className="text-neutral-300">
-                  <span className="font-bold text-accent-400">
-                    {tooltipContent.eventCount.toLocaleString()}
-                  </span>{" "}
+                  <span className="font-bold text-accent-400">{tooltipContent.eventCount.toLocaleString()}</span>{" "}
                   performance events
                 </div>
               </div>
             </>
           ) : (
-            <div className="text-neutral-400 text-xs">
-              No performance data available
-            </div>
+            <div className="text-neutral-400 text-xs">No performance data available</div>
           )}
         </div>
       )}

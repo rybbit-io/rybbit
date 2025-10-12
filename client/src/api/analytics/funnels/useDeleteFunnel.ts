@@ -8,15 +8,11 @@ export function useDeleteFunnel() {
   const queryClient = useQueryClient();
 
   return useMutation<{ success: boolean }, Error, number>({
-    mutationFn: async (reportId) => {
+    mutationFn: async reportId => {
       try {
-        return await authedFetch<{ success: boolean }>(
-          `/funnel/${reportId}`,
-          undefined,
-          {
-            method: "DELETE",
-          }
-        );
+        return await authedFetch<{ success: boolean }>(`/funnel/${reportId}`, undefined, {
+          method: "DELETE",
+        });
       } catch (error) {
         console.error(error);
         throw new Error("Failed to delete funnel");

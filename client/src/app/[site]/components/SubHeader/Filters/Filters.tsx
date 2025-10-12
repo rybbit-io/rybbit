@@ -1,32 +1,19 @@
 import { FilterParameter, FilterType } from "@rybbit/shared";
 import { X } from "lucide-react";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "../../../../../components/ui/tooltip";
+import { Tooltip, TooltipContent, TooltipTrigger } from "../../../../../components/ui/tooltip";
 import { useGetRegionName } from "../../../../../lib/geo";
 import { removeFilter, updateFilter, useStore } from "../../../../../lib/store";
 import { cn } from "../../../../../lib/utils";
-import {
-  filterTypeToLabel,
-  getParameterNameLabel,
-  getParameterValueLabel,
-} from "../../shared/Filters/utils";
+import { filterTypeToLabel, getParameterNameLabel, getParameterValueLabel } from "../../shared/Filters/utils";
 
-export function Filters({
-  availableFilters,
-}: {
-  availableFilters?: FilterParameter[];
-}) {
+export function Filters({ availableFilters }: { availableFilters?: FilterParameter[] }) {
   const { filters } = useStore();
   const { getRegionName } = useGetRegionName();
 
   return (
     <div className="flex gap-2 flex-wrap">
       {filters.map((filter, i) => {
-        const disabled =
-          availableFilters && !availableFilters.includes(filter.parameter);
+        const disabled = availableFilters && !availableFilters.includes(filter.parameter);
 
         return (
           <Tooltip key={filter.parameter}>
@@ -43,19 +30,13 @@ export function Filters({
                   disabled ? "bg-neutral-900" : "bg-neutral-850"
                 )}
               >
-                <div
-                  className={cn(
-                    disabled ? "text-neutral-500" : "text-neutral-300"
-                  )}
-                >
+                <div className={cn(disabled ? "text-neutral-500" : "text-neutral-300")}>
                   {getParameterNameLabel(filter.parameter)}
                 </div>
                 <div
                   className={cn(
                     "text-emerald-400 font-medium cursor-pointer whitespace-nowrap",
-                    (filter.type === "not_equals" ||
-                      filter.type === "not_contains") &&
-                      "text-red-400"
+                    (filter.type === "not_equals" || filter.type === "not_contains") && "text-red-400"
                   )}
                   onClick={() => {
                     let newType: FilterType = "equals";
@@ -74,12 +55,7 @@ export function Filters({
                 >
                   {filterTypeToLabel(filter.type)}
                 </div>
-                <div
-                  className={cn(
-                    "text-neutral-100 font-medium whitespace-nowrap",
-                    disabled && "text-neutral-500"
-                  )}
-                >
+                <div className={cn("text-neutral-100 font-medium whitespace-nowrap", disabled && "text-neutral-500")}>
                   {getParameterValueLabel(filter, getRegionName)}
                 </div>
                 <div

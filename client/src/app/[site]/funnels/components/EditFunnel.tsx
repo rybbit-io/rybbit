@@ -1,54 +1,25 @@
 "use client";
 
-import {
-  FunnelStep,
-  useGetFunnel,
-  useSaveFunnel,
-} from "../../../../api/analytics/funnels/useGetFunnel";
-import { SavedFunnel } from "../../../../api/analytics/funnels/useGetFunnels";
-import { Time } from "@/components/DateSelector/types";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { DateTime } from "luxon";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { getStartAndEndDate } from "../../../../api/utils";
-import { Filter } from "@rybbit/shared";
+import { FunnelStep, useGetFunnel, useSaveFunnel } from "../../../../api/analytics/funnels/useGetFunnel";
+import { SavedFunnel } from "../../../../api/analytics/funnels/useGetFunnels";
 import { FunnelForm } from "./FunnelForm";
 
 interface EditFunnelDialogProps {
   funnel: SavedFunnel;
   isOpen: boolean;
   onClose: () => void;
+  isCloneMode?: boolean;
 }
 
-export function EditFunnelDialog({
-  funnel,
-  isOpen,
-  onClose,
-}: EditFunnelDialogProps) {
-  // Time state - initialized from funnel configuration
-  const [time, setTime] = useState<Time>({
-    mode: "range",
-    startDate: DateTime.now().minus({ days: 7 }).toISODate(),
-    endDate: DateTime.now().toISODate(),
-    wellKnown: "Last 7 days",
-  });
-
+export function EditFunnelDialog({ funnel, isOpen, onClose, isCloneMode = false }: EditFunnelDialogProps) {
   // Funnel steps state - initialized from funnel
   const [steps, setSteps] = useState<FunnelStep[]>(funnel.steps);
 
-  // Funnel filters state - initialized from funnel
-  const [filters, setFilters] = useState<Filter[]>(funnel.filters || []);
-
-  // Funnel name - initialized from funnel
-  const [name, setName] = useState(funnel.name);
-
-  const { startDate, endDate } = getStartAndEndDate(time);
+  // Funnel name - initialized from funnel, with "(Copy)" suffix for clone mode
+  const [name, setName] = useState(isCloneMode ? `${funnel.name} (Copy)` : funnel.name);
 
   // Funnel analysis query
   const {
@@ -59,31 +30,24 @@ export function EditFunnelDialog({
   } = useGetFunnel(
     {
       steps,
-      startDate,
-      endDate,
-      filters,
     },
     true
   );
 
   // Funnel save mutation
-  const {
-    mutate: saveFunnel,
-    isPending: isSaving,
-    error: saveError,
-  } = useSaveFunnel();
+  const { mutate: saveFunnel, isPending: isSaving, error: saveError } = useSaveFunnel();
 
   // Query funnel without saving
   const handleQueryFunnel = () => {
     // Validate steps have values
-    const hasEmptySteps = steps.some((step) => !step.value);
+    const hasEmptySteps = steps.some(step => !step.value);
     if (hasEmptySteps) {
       alert("All steps must have values");
       return;
     }
   };
 
-  // Update funnel
+  // Update or clone funnel
   const handleUpdateFunnel = () => {
     // Validate name
     if (!name.trim()) {
@@ -92,66 +56,29 @@ export function EditFunnelDialog({
     }
 
     // Validate steps have values
-    const hasEmptySteps = steps.some((step) => !step.value);
+    const hasEmptySteps = steps.some(step => !step.value);
     if (hasEmptySteps) {
       alert("All steps must have values");
       return;
     }
 
-    // Get dates based on time selection
-    let startDate = "",
-      endDate = "";
-
-    if (time.mode === "range") {
-      startDate = time.startDate;
-      endDate = time.endDate;
-    } else if (time.mode === "day") {
-      startDate = time.day;
-      endDate = time.day;
-    } else if (time.mode === "week") {
-      startDate = time.week;
-      const endDateValue = DateTime.fromISO(time.week)
-        .plus({ days: 6 })
-        .toISODate();
-      endDate = endDateValue || DateTime.now().toISODate();
-    } else if (time.mode === "month") {
-      startDate = time.month;
-      const endDateValue = DateTime.fromISO(time.month)
-        .endOf("month")
-        .toISODate();
-      endDate = endDateValue || DateTime.now().toISODate();
-    } else if (time.mode === "year") {
-      startDate = time.year;
-      const endDateValue = DateTime.fromISO(time.year)
-        .endOf("year")
-        .toISODate();
-      endDate = endDateValue || DateTime.now().toISODate();
-    } else {
-      // Fall back to last 7 days for all-time
-      startDate = DateTime.now().minus({ days: 7 }).toISODate();
-      endDate = DateTime.now().toISODate();
-    }
-
-    // Update funnel with the report ID
+    // Update funnel with the report ID (or create new if cloning)
     saveFunnel(
       {
         steps,
-        startDate,
-        endDate,
         name,
-        reportId: funnel.id,
-        filters: filters.length > 0 ? filters : undefined,
+        reportId: isCloneMode ? undefined : funnel.id,
       },
       {
         onSuccess: () => {
           // Close dialog on successful save
           onClose();
           // Show success message
-          toast?.success("Funnel updated successfully");
+          toast?.success(isCloneMode ? "Funnel cloned successfully" : "Funnel updated successfully");
         },
-        onError: (error) => {
+        onError: error => {
           // Show error but don't close dialog
-          toast?.error(`Failed to update funnel: ${error.message}`);
+          toast?.error(`Failed to ${isCloneMode ? "clone" : "update"} funnel: ${error.message}`);
         },
       }
     );
@@ -164,10 +91,10 @@ export function EditFunnelDialog({
   }, []);
 
   return (
-    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+    <Dialog open={isOpen} onOpenChange={open => !open && onClose()}>
       <DialogContent className="max-w-[95vw]">
         <DialogHeader>
-          <DialogTitle>Edit Funnel</DialogTitle>
+          <DialogTitle>{isCloneMode ? "Clone Funnel" : "Edit Funnel"}</DialogTitle>
         </DialogHeader>
 
         <FunnelForm
@@ -175,14 +102,10 @@ export function EditFunnelDialog({
           setName={setName}
           steps={steps}
           setSteps={setSteps}
-          time={time}
-          setTime={setTime}
-          filters={filters}
-          setFilters={setFilters}
           onSave={handleUpdateFunnel}
           onCancel={onClose}
           onQuery={handleQueryFunnel}
-          saveButtonText="Update Funnel"
+          saveButtonText={isCloneMode ? "Clone Funnel" : "Update Funnel"}
           isSaving={isSaving}
           isError={isError}
           isPending={isPending}

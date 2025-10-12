@@ -38,8 +38,8 @@ const PlatformLogo = ({ name, logo, path }: { name: string; logo: string; path: 
       <div
         className={cn(
           "flex items-center justify-center h-20 w-20 mx-2 my-2",
-          "bg-neutral-800/40 backdrop-blur-sm rounded-lg p-4",
-          "border border-neutral-700 hover:border-neutral-500 transition-colors duration-200",
+          "bg-neutral-800/50 backdrop-blur-sm rounded-lg p-4",
+          "border border-neutral-700/50 hover:border-neutral-500 transition-colors duration-200",
           "cursor-pointer hover:scale-105 transition-transform"
         )}
       >

@@ -50,7 +50,7 @@ export function validateIPPattern(pattern: string): { valid: boolean; error?: st
 
     // Range notation (IPv4 only)
     if (trimmedPattern.includes("-")) {
-      const [startIP, endIP] = trimmedPattern.split("-").map((ip) => ip.trim());
+      const [startIP, endIP] = trimmedPattern.split("-").map(ip => ip.trim());
       if (!startIP || !endIP) {
         return { valid: false, error: "Invalid range format" };
       }
@@ -112,7 +112,7 @@ export function matchesCIDR(ipAddress: string, cidr: string): boolean {
  */
 export function matchesRange(ipAddress: string, range: string): boolean {
   try {
-    const [startIP, endIP] = range.split("-").map((ip) => ip.trim());
+    const [startIP, endIP] = range.split("-").map(ip => ip.trim());
 
     // Try IPv4 first
     try {

@@ -13,7 +13,6 @@ interface EventCountResult {
   total_events: number;
 }
 
-
 export async function getAdminSites(request: FastifyRequest, reply: FastifyReply) {
   const isAdmin = await getIsUserAdmin(request);
 
@@ -106,7 +105,7 @@ export async function getAdminSites(request: FastifyRequest, reply: FastifyReply
   }
 
   // Combine all data
-  const enrichedSites = sitesData.map((site) => {
+  const enrichedSites = sitesData.map(site => {
     const subscription = site.organizationId
       ? orgSubscriptionMap.get(site.organizationId)
       : { planName: "free", status: "free" };

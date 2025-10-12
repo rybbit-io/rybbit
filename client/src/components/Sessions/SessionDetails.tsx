@@ -3,18 +3,8 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import {
-  ArrowRight,
-  Clock,
-  ExternalLink,
-  FileText,
-  Loader2,
-  Monitor,
-  MousePointerClick,
-  Smartphone,
-  Tablet,
-  TriangleAlert,
-} from "lucide-react";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { ArrowRight, Clock, ExternalLink, Loader2, Monitor, Smartphone, Tablet, TriangleAlert } from "lucide-react";
 import { DateTime } from "luxon";
 import Link from "next/link";
 import { useParams } from "next/navigation";
@@ -23,12 +13,12 @@ import { GetSessionsResponse, SessionEvent, useGetSessionDetailsInfinite } from 
 import { Browser } from "../../app/[site]/components/shared/icons/Browser";
 import { CountryFlag } from "../../app/[site]/components/shared/icons/CountryFlag";
 import { OperatingSystem } from "../../app/[site]/components/shared/icons/OperatingSystem";
-import { cn, getCountryName, getLanguageName } from "../../lib/utils";
-import { formatDuration } from "../../lib/dateTimeUtils";
-import { Button } from "../ui/button";
-import { hour12 } from "../../lib/dateTimeUtils";
+import { formatDuration, hour12 } from "../../lib/dateTimeUtils";
 import { useGetRegionName } from "../../lib/geo";
+import { cn, getCountryName, getLanguageName } from "../../lib/utils";
 import { Avatar } from "../Avatar";
+import { EventIcon, PageviewIcon } from "../EventIcons";
+import { Button } from "../ui/button";
 
 // Component to display a single pageview or event
 function PageviewItem({
@@ -76,10 +66,10 @@ function PageviewItem({
             isEvent
               ? "bg-amber-900/30 border-amber-500/50"
               : isError
-              ? "bg-red-900/30 border-red-500/50"
-              : isOutbound
-              ? "bg-purple-900/30 border-purple-500/50"
-              : "bg-blue-900/30 border-blue-500/50"
+                ? "bg-red-900/30 border-red-500/50"
+                : isOutbound
+                  ? "bg-purple-900/30 border-purple-500/50"
+                  : "bg-blue-900/30 border-blue-500/50"
           )}
         >
           <span className="text-sm font-medium">{index + 1}</span>
@@ -90,13 +80,13 @@ function PageviewItem({
         <div className="flex items-center flex-1 py-1">
           <div className="flex-shrink-0 mr-3">
             {isEvent ? (
-              <MousePointerClick className="w-4 h-4 text-amber-500" />
+              <EventIcon />
             ) : isError ? (
               <TriangleAlert className="w-4 h-4 text-red-500" />
             ) : isOutbound ? (
               <ExternalLink className="w-4 h-4 text-purple-500" />
             ) : (
-              <FileText className="w-4 h-4 text-blue-500" />
+              <PageviewIcon />
             )}
           </div>
 
@@ -119,11 +109,7 @@ function PageviewItem({
                 </div>
               </Link>
             ) : isOutbound && item.props?.url ? (
-              <Link
-                href={String(item.props.url)}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
+              <Link href={String(item.props.url)} target="_blank" rel="noopener noreferrer">
                 <div
                   className="text-sm truncate hover:underline text-purple-400"
                   title={String(item.props.url)}
@@ -135,7 +121,7 @@ function PageviewItem({
                 </div>
               </Link>
             ) : (
-              <div className="text-sm truncate">{item.event_name || 'Outbound Click'}</div>
+              <div className="text-sm truncate">{item.event_name || "Outbound Click"}</div>
             )}
           </div>
 
@@ -160,7 +146,19 @@ function PageviewItem({
                       variant="outline"
                       className="px-1.5 py-0 h-5 text-xs bg-neutral-800 text-neutral-100 font-medium"
                     >
-                      <span className="text-neutral-300 font-light mr-1">{key}:</span> {String(value)}
+                      <span className="text-neutral-300 font-light mr-1">{key}:</span>{" "}
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <span className="truncate">
+                            {typeof value === "object" ? JSON.stringify(value) : String(value)}
+                          </span>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <span className="max-w-7xl">
+                            {typeof value === "object" ? JSON.stringify(value) : String(value)}
+                          </span>
+                        </TooltipContent>
+                      </Tooltip>
                     </Badge>
                   ))}
                 </span>
@@ -291,7 +289,7 @@ export function SessionDetails({ session, userId }: SessionDetailsProps) {
   // Flatten all events into a single array
   const allEvents = useMemo(() => {
     if (!sessionDetailsData?.pages) return [];
-    return sessionDetailsData.pages.flatMap((page) => page.data?.events || []);
+    return sessionDetailsData.pages.flatMap(page => page.data?.events || []);
   }, [sessionDetailsData?.pages]);
 
   // Get session details from the first page
@@ -401,8 +399,8 @@ export function SessionDetails({ session, userId }: SessionDetailsProps) {
                 <div className="space-y-3">
                   {sessionDetails?.user_id && (
                     <div className="flex items-center gap-2">
-                      <div className="h-7 w-7 bg-neutral-800 rounded-full flex items-center justify-center flex-shrink-0">
-                        <Avatar size={24} name={sessionDetails.user_id} />
+                      <div className="h-10 w-10 bg-neutral-800 rounded-full flex items-center justify-center flex-shrink-0">
+                        <Avatar size={40} id={sessionDetails.user_id} />
                       </div>
                       <div>
                         <div className="text-sm text-neutral-400 flex items-center">
@@ -503,6 +501,12 @@ export function SessionDetails({ session, userId }: SessionDetailsProps) {
                       </span>
                     </div>
                   ) : null}
+                  {sessionDetails?.ip && (
+                    <div className="flex items-center gap-2 text-sm">
+                      <span className="font-medium text-neutral-300 min-w-[80px]">IP:</span>
+                      <span className="text-neutral-400">{sessionDetails.ip}</span>
+                    </div>
+                  )}
                 </div>
               </div>
 

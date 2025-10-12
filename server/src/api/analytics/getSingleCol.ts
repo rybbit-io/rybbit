@@ -2,12 +2,7 @@ import { FastifyReply, FastifyRequest } from "fastify";
 import { clickhouse } from "../../db/clickhouse/clickhouse.js";
 import { getUserHasAccessToSitePublic } from "../../lib/auth-utils.js";
 import { FilterParameter } from "./types.js";
-import {
-  getFilterStatement,
-  getSqlParam,
-  getTimeStatement,
-  processResults,
-} from "./utils.js";
+import { getFilterStatement, getSqlParam, getTimeStatement, processResults } from "./utils.js";
 import { FilterParams } from "@rybbit/shared";
 
 interface GetSingleColRequest {
@@ -52,21 +47,9 @@ type GetSingleColPaginatedResponse = {
   totalCount: number;
 };
 
-const getQuery = (
-  request: FastifyRequest<GetSingleColRequest>,
-  isCountQuery: boolean = false
-) => {
-  const {
-    startDate,
-    endDate,
-    timeZone,
-    filters,
-    parameter,
-    limit,
-    page,
-    pastMinutesStart,
-    pastMinutesEnd,
-  } = request.query;
+const getQuery = (request: FastifyRequest<GetSingleColRequest>, isCountQuery: boolean = false) => {
+  const { startDate, endDate, timeZone, filters, parameter, limit, page, pastMinutesStart, pastMinutesEnd } =
+    request.query;
 
   const filterStatement = getFilterStatement(filters);
   const timeStatement = getTimeStatement(request.query);
@@ -78,12 +61,7 @@ const getQuery = (
       validatedLimit = parsedLimit;
     }
   }
-  const limitStatement =
-    !isCountQuery && validatedLimit
-      ? `LIMIT ${validatedLimit}`
-      : isCountQuery
-        ? ""
-        : "LIMIT 100";
+  const limitStatement = !isCountQuery && validatedLimit ? `LIMIT ${validatedLimit}` : isCountQuery ? "" : "LIMIT 100";
 
   let validatedOffset: number | null = null;
   if (!isCountQuery && page !== undefined) {
@@ -93,8 +71,7 @@ const getQuery = (
       validatedOffset = pageOffset;
     }
   }
-  const offsetStatement =
-    !isCountQuery && validatedOffset ? `OFFSET ${validatedOffset}` : "";
+  const offsetStatement = !isCountQuery && validatedOffset ? `OFFSET ${validatedOffset}` : "";
 
   if (parameter === "event_name") {
     if (isCountQuery) {
@@ -341,10 +318,7 @@ const getQuery = (
   `;
 };
 
-export async function getSingleCol(
-  req: FastifyRequest<GetSingleColRequest>,
-  res: FastifyReply
-) {
+export async function getSingleCol(req: FastifyRequest<GetSingleColRequest>, res: FastifyReply) {
   const { parameter, page } = req.query;
   const site = req.params.site;
 

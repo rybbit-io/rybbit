@@ -105,7 +105,7 @@ export const createMonitorSchema = z
     selectedRegions: z.array(z.string()).default([]),
   })
   .refine(
-    (data) => {
+    data => {
       if (data.monitorType === "http") {
         return data.httpConfig !== undefined;
       }
@@ -116,7 +116,7 @@ export const createMonitorSchema = z
     },
     {
       message: "Monitor type specific configuration is required",
-    },
+    }
   );
 
 // Update monitor schema (similar to create but with optional fields)
@@ -136,7 +136,7 @@ export const getMonitorsQuerySchema = z.object({
   organizationId: z.string().optional(),
   enabled: z
     .enum(["true", "false"])
-    .transform((val) => val === "true")
+    .transform(val => val === "true")
     .optional(),
   monitorType: z.enum(["http", "tcp"]).optional(),
   limit: z.string().transform(Number).pipe(z.number().int().positive().max(100)).default("50"),

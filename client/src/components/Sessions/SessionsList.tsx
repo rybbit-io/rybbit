@@ -12,7 +12,7 @@ export default function SessionsList({ userId }: { userId?: string }) {
   // Combine all pages of data
   const flattenedData = useMemo(() => {
     if (!data) return [];
-    return data.pages.flatMap((page) => page.data || []);
+    return data.pages.flatMap(page => page.data || []);
   }, [data]);
 
   // Reference for the scroll container

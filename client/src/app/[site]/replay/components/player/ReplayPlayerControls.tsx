@@ -1,13 +1,7 @@
 import { Pause, Play } from "lucide-react";
 import { ActivitySlider } from "../../../../../components/ui/activity-slider";
 import { Button } from "../../../../../components/ui/button";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "../../../../../components/ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../../../../components/ui/select";
 import { formatTime, PLAYBACK_SPEEDS } from "./utils/replayUtils";
 
 interface ReplayPlayerControlsProps {
@@ -38,12 +32,7 @@ export function ReplayPlayerControls({
   return (
     <div className="border border-neutral-800 p-2 pb-3 bg-neutral-900 rounded-b-lg pt-6">
       <div className="flex items-center">
-        <Button
-          variant="ghost"
-          size="smIcon"
-          onClick={onPlayPause}
-          disabled={!player}
-        >
+        <Button variant="ghost" size="smIcon" onClick={onPlayPause} disabled={!player}>
           {isPlaying ? (
             <Pause className="w-4 h-4" fill="currentColor" />
           ) : (
@@ -71,7 +60,7 @@ export function ReplayPlayerControls({
             <SelectValue />
           </SelectTrigger>
           <SelectContent size="sm">
-            {PLAYBACK_SPEEDS.map((speed) => (
+            {PLAYBACK_SPEEDS.map(speed => (
               <SelectItem key={speed.value} value={speed.value} size="sm">
                 {speed.label}
               </SelectItem>

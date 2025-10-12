@@ -66,7 +66,7 @@ export function StandardSectionDialog({
   // Flatten the pages data
   const allItems = useMemo(() => {
     if (!data) return [];
-    return data.pages.flatMap((page) => page.data);
+    return data.pages.flatMap(page => page.data);
   }, [data]);
 
   // Filter data based on search term
@@ -90,7 +90,7 @@ export function StandardSectionDialog({
           <div className="flex flex-row gap-1 items-center text-left">
             {getLabel(row.original)}
             {getLink && (
-              <a href={getLink(row.original)} target="_blank" onClick={(e) => e.stopPropagation()}>
+              <a href={getLink(row.original)} target="_blank" onClick={e => e.stopPropagation()}>
                 <SquareArrowOutUpRight
                   className="ml-0.5 w-3.5 h-3.5 text-neutral-300 hover:text-neutral-100"
                   strokeWidth={3}
@@ -102,13 +102,13 @@ export function StandardSectionDialog({
       }),
       columnHelper.accessor("count", {
         header: "Sessions",
-        cell: (info) => (
+        cell: info => (
           <div className="flex flex-row gap-1 items-center sm:justify-end">{info.getValue().toLocaleString()}</div>
         ),
       }),
       columnHelper.accessor("percentage", {
         header: "Session %",
-        cell: (info) => (
+        cell: info => (
           <div className="flex flex-row gap-1 items-center sm:justify-end">{info.getValue().toFixed(1)}%</div>
         ),
       }),
@@ -122,7 +122,7 @@ export function StandardSectionDialog({
         cols.push(
           columnHelper.accessor("pageviews", {
             header: "Pageviews",
-            cell: (info) => (
+            cell: info => (
               <div className="flex flex-row gap-1 items-center sm:justify-end">{info.getValue()?.toLocaleString()}</div>
             ),
           }) as any
@@ -130,7 +130,7 @@ export function StandardSectionDialog({
         cols.push(
           columnHelper.accessor("pageviews_percentage", {
             header: "Pageviews %",
-            cell: (info) => (
+            cell: info => (
               <div className="flex flex-row gap-1 items-center sm:justify-end">{info.getValue()?.toFixed(1)}%</div>
             ),
           }) as any
@@ -142,7 +142,7 @@ export function StandardSectionDialog({
         cols.push(
           columnHelper.accessor("time_on_page_seconds", {
             header: "Duration",
-            cell: (info) => (
+            cell: info => (
               <div className="text-right">{formatSecondsAsMinutesAndSeconds(Math.round(info.getValue() ?? 0))}</div>
             ),
           }) as any
@@ -200,14 +200,14 @@ export function StandardSectionDialog({
             placeholder={`Filter ${allItems.length} items...`}
             className="pl-9 bg-neutral-900 border-neutral-700 text-xs"
             value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
+            onChange={e => setSearchTerm(e.target.value)}
           />
         </div>
         <div className="flex flex-col gap-2 overflow-x-auto">
           <div className="max-h-[80vh] overflow-y-auto">
             <table className="w-full text-xs text-left min-w-max">
               <thead className="bg-neutral-900 text-neutral-400 sticky top-0 z-10">
-                {table.getHeaderGroups().map((headerGroup) => (
+                {table.getHeaderGroups().map(headerGroup => (
                   <tr key={headerGroup.id}>
                     {headerGroup.headers.map((header, index) => (
                       <th

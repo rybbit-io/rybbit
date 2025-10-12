@@ -1,20 +1,12 @@
 import { Building2 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { authClient } from "../lib/auth";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "./ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
 import { useUserOrganizations } from "../api/admin/organizations";
 
 export function OrganizationSelector() {
-  const { data: organizations, isLoading: isLoadingOrganizations } =
-    useUserOrganizations();
-  const { data: activeOrganization, isPending } =
-    authClient.useActiveOrganization();
+  const { data: organizations, isLoading: isLoadingOrganizations } = useUserOrganizations();
+  const { data: activeOrganization, isPending } = authClient.useActiveOrganization();
 
   // Local state to handle the delay when switching organizations
   const [selectedOrgId, setSelectedOrgId] = useState<string | null>(null);
@@ -71,7 +63,7 @@ export function OrganizationSelector() {
         <SelectValue placeholder="Select an organization" />
       </SelectTrigger>
       <SelectContent>
-        {organizations?.map((org) => (
+        {organizations?.map(org => (
           <SelectItem key={org.id} value={org.id}>
             <div className="flex items-center">
               <Building2 className="h-4 w-4 mr-2 text-muted-foreground" />

@@ -16,11 +16,7 @@ export const useReplayKeyboardShortcuts = ({
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       // Only handle hotkeys when the player exists and focus is not on an input/textarea
-      if (
-        !player ||
-        event.target instanceof HTMLInputElement ||
-        event.target instanceof HTMLTextAreaElement
-      ) {
+      if (!player || event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement) {
         return;
       }
 

@@ -11,13 +11,7 @@ import { ReplayPlayerCore } from "./ReplayPlayerCore";
 import { SKIP_SECONDS } from "./utils/replayUtils";
 import { ReplayPlayerTopbar } from "./ReplayPlayerTopbar";
 
-export function ReplayPlayer({
-  width,
-  height,
-}: {
-  width: number;
-  height: number;
-}) {
+export function ReplayPlayer({ width, height }: { width: number; height: number }) {
   const params = useParams();
   const siteId = Number(params.site);
   const {
@@ -34,10 +28,7 @@ export function ReplayPlayer({
     resetPlayerState,
   } = useReplayStore();
 
-  const { data, isLoading, error } = useGetSessionReplayEvents(
-    siteId,
-    sessionId
-  );
+  const { data, isLoading, error } = useGetSessionReplayEvents(siteId, sessionId);
 
   // Reset player state when session changes
   useEffect(() => {
@@ -101,9 +92,7 @@ export function ReplayPlayer({
   if (error) {
     return (
       <div className="flex flex-col items-center justify-center h-full p-8">
-        <div className="text-red-500 mb-4">
-          Error loading replay: {(error as Error).message}
-        </div>
+        <div className="text-red-500 mb-4">Error loading replay: {(error as Error).message}</div>
       </div>
     );
   }
@@ -117,18 +106,9 @@ export function ReplayPlayer({
   }
 
   return (
-    <div
-      className="flex flex-col bg-neutral-950 overflow-hidden"
-      style={{ width: width, height: height }}
-    >
+    <div className="flex flex-col bg-neutral-950 overflow-hidden" style={{ width: width, height: height }}>
       <ReplayPlayerTopbar />
-      <ReplayPlayerCore
-        data={data}
-        width={width}
-        height={height}
-        onPlayPause={handlePlayPause}
-        isPlaying={isPlaying}
-      />
+      <ReplayPlayerCore data={data} width={width} height={height} onPlayPause={handlePlayPause} isPlaying={isPlaying} />
 
       <ReplayPlayerControls
         player={player}

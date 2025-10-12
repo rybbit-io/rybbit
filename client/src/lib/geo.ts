@@ -5,11 +5,7 @@ export type { Subdivisions, Country } from "./geoStore";
 
 // Hook-based access (for components that need reactive updates)
 export const useSubdivisions = () => {
-  const {
-    subdivisions,
-    isLoadingSubdivisions: isLoading,
-    subdivisionsError: error,
-  } = useGeoStore();
+  const { subdivisions, isLoadingSubdivisions: isLoading, subdivisionsError: error } = useGeoStore();
 
   return {
     data: subdivisions,
@@ -19,11 +15,7 @@ export const useSubdivisions = () => {
 };
 
 export const useCountries = () => {
-  const {
-    countries,
-    isLoadingCountries: isLoading,
-    countriesError: error,
-  } = useGeoStore();
+  const { countries, isLoadingCountries: isLoading, countriesError: error } = useGeoStore();
 
   return {
     data: countries,

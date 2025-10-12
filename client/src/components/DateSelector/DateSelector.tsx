@@ -17,9 +17,7 @@ const getLabel = (time: Time) => {
     if (time.wellKnown) {
       return `${time.wellKnown}`;
     }
-    const startFormatted = DateTime.fromISO(time.startDate).toFormat(
-      "EEEE, MMM d"
-    );
+    const startFormatted = DateTime.fromISO(time.startDate).toFormat("EEEE, MMM d");
     const endFormatted = DateTime.fromISO(time.endDate).toFormat("EEEE, MMM d");
     return `${startFormatted} - ${endFormatted}`;
   }
@@ -45,26 +43,18 @@ const getLabel = (time: Time) => {
     if (time.week === DateTime.now().startOf("week").toISODate()) {
       return "This Week";
     }
-    if (
-      time.week ===
-      DateTime.now().minus({ weeks: 1 }).startOf("week").toISODate()
-    ) {
+    if (time.week === DateTime.now().minus({ weeks: 1 }).startOf("week").toISODate()) {
       return "Last Week";
     }
     const startDate = DateTime.fromISO(time.week).toFormat("EEEE, MMM d");
-    const endDate = DateTime.fromISO(time.week)
-      .endOf("week")
-      .toFormat("EEEE, MMM d");
+    const endDate = DateTime.fromISO(time.week).endOf("week").toFormat("EEEE, MMM d");
     return `${startDate} - ${endDate}`;
   }
   if (time.mode === "month") {
     if (time.month === DateTime.now().startOf("month").toISODate()) {
       return "This Month";
     }
-    if (
-      time.month ===
-      DateTime.now().minus({ months: 1 }).startOf("month").toISODate()
-    ) {
+    if (time.month === DateTime.now().minus({ months: 1 }).startOf("month").toISODate()) {
       return "Last Month";
     }
     return DateTime.fromISO(time.month).toFormat("MMMM yyyy");
@@ -91,10 +81,7 @@ export function DateSelector({
 }) {
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger
-        className="text-xs sm:text-sm p-2 sm:p-3 h-8 sm:h-9"
-        variant={"default"}
-      >
+      <DropdownMenuTrigger className="text-xs sm:text-sm p-2 sm:p-3 h-8 sm:h-9" variant={"default"}>
         <Calendar className="hidden sm:block w-4 h-4" />
         {getLabel(time)}
       </DropdownMenuTrigger>

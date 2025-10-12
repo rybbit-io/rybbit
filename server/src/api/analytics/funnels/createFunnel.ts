@@ -15,7 +15,6 @@ type Funnel = {
   steps: FunnelStep[];
   name: string;
   reportId?: number; // Optional report ID for updates
-  filters?: Filter[]; // Optional filters for the funnel
 };
 
 export async function createFunnel(
@@ -27,15 +26,13 @@ export async function createFunnel(
   }>,
   reply: FastifyReply
 ) {
-  const { steps, name, reportId, filters } = request.body;
+  const { steps, name, reportId } = request.body;
   const { site } = request.params;
   const userId = request.user?.id;
 
   // Validate request
   if (!steps || steps.length < 2) {
-    return reply
-      .status(400)
-      .send({ error: "At least 2 steps are required for a funnel" });
+    return reply.status(400).send({ error: "At least 2 steps are required for a funnel" });
   }
 
   if (!name) {
@@ -62,9 +59,7 @@ export async function createFunnel(
       }
 
       if (existingFunnel.siteId !== Number(site)) {
-        return reply
-          .status(403)
-          .send({ error: "Funnel does not belong to this site" });
+        return reply.status(403).send({ error: "Funnel does not belong to this site" });
       }
 
       // Update existing funnel
@@ -74,7 +69,6 @@ export async function createFunnel(
           data: {
             name,
             steps,
-            filters,
           },
           updatedAt: new Date().toISOString(),
         })
@@ -94,7 +88,6 @@ export async function createFunnel(
           data: {
             name,
             steps,
-            filters,
           },
         })
         .returning({ reportId: funnelsTable.reportId });

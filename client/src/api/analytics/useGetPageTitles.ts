@@ -35,9 +35,7 @@ export function useGetPageTitlesPaginated({
   limit = 10,
   page = 1,
   useFilters = true,
-}: UseGetPageTitlesOptions): UseQueryResult<
-  APIResponse<PageTitlesPaginatedResponse>
-> {
+}: UseGetPageTitlesOptions): UseQueryResult<APIResponse<PageTitlesPaginatedResponse>> {
   const { time, site, filters } = useStore();
 
   const queryParams = {
@@ -50,10 +48,7 @@ export function useGetPageTitlesPaginated({
   return useQuery({
     queryKey: ["page-titles", time, site, filters, limit, page],
     queryFn: () => {
-      return authedFetch<APIResponse<PageTitlesPaginatedResponse>>(
-        `/page-titles/${site}`,
-        queryParams
-      );
+      return authedFetch<APIResponse<PageTitlesPaginatedResponse>>(`/page-titles/${site}`, queryParams);
     },
     staleTime: Infinity,
   });

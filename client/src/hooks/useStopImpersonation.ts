@@ -14,7 +14,6 @@ export function useStopImpersonation() {
       window.stopImpersonating = async () => {
         try {
           await authClient.admin.stopImpersonating();
-          console.log("Successfully stopped impersonating. Reloading page...");
           window.location.href = "/admin";
           return true;
         } catch (err) {

@@ -66,8 +66,7 @@ export const useGeoStore = create<GeoStore>((set, get) => ({
       set({ subdivisions: data, isLoadingSubdivisions: false });
     } catch (error) {
       set({
-        subdivisionsError:
-          error instanceof Error ? error.message : "Unknown error",
+        subdivisionsError: error instanceof Error ? error.message : "Unknown error",
         isLoadingSubdivisions: false,
       });
     }
@@ -82,8 +81,7 @@ export const useGeoStore = create<GeoStore>((set, get) => ({
       set({ countries: data, isLoadingCountries: false });
     } catch (error) {
       set({
-        countriesError:
-          error instanceof Error ? error.message : "Unknown error",
+        countriesError: error instanceof Error ? error.message : "Unknown error",
         isLoadingCountries: false,
       });
     }
@@ -91,11 +89,7 @@ export const useGeoStore = create<GeoStore>((set, get) => ({
 
   getRegionName: (region: string) => {
     const { subdivisions } = get();
-    return (
-      subdivisions?.features.find(
-        (feature) => feature.properties.iso_3166_2 === region
-      )?.properties.name ?? ""
-    );
+    return subdivisions?.features.find(feature => feature.properties.iso_3166_2 === region)?.properties.name ?? "";
   },
 }));
 

@@ -27,7 +27,7 @@ export function ReplayList() {
 
   const flattenedData = useMemo(() => {
     if (!data) return [];
-    return data.pages.flatMap((page) => page.data || []);
+    return data.pages.flatMap(page => page.data || []);
   }, [data]);
 
   useEffect(() => {
@@ -57,7 +57,7 @@ export function ReplayList() {
               type="number"
               value={minDuration}
               inputSize="sm"
-              onChange={(e) => setMinDuration(Number(e.target.value))}
+              onChange={e => setMinDuration(Number(e.target.value))}
               className="w-16"
             />
             <div className="text-xs text-neutral-400">s</div>

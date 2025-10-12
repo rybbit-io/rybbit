@@ -1,11 +1,7 @@
 import { AlertTriangle, ArrowRight } from "lucide-react";
 import Link from "next/link";
 import { useCurrentSite } from "../../../../api/admin/sites";
-import {
-  Alert,
-  AlertDescription,
-  AlertTitle,
-} from "../../../../components/ui/alert";
+import { Alert, AlertDescription, AlertTitle } from "../../../../components/ui/alert";
 import { Button } from "../../../../components/ui/button";
 
 export function UsageBanners() {
@@ -37,14 +33,9 @@ export function UsageBanners() {
         <div className="flex items-start space-x-3">
           <AlertTriangle className="h-5 w-5 mt-0.5" />
           <div className="flex-1">
-            <AlertTitle className="text-base font-semibold mb-1">
-              Event Limit Exceeded
-            </AlertTitle>
+            <AlertTitle className="text-base font-semibold mb-1">Event Limit Exceeded</AlertTitle>
             <div className="mb-2 text-sm">
-              <strong>
-                {formatNumber(subscription.monthlyEventCount || 0)}
-              </strong>{" "}
-              events used of{" "}
+              <strong>{formatNumber(subscription.monthlyEventCount || 0)}</strong> events used of{" "}
               <strong>{formatNumber(subscription.eventLimit)}</strong>
             </div>
 
@@ -61,8 +52,8 @@ export function UsageBanners() {
               </div>
             ) : (
               <AlertDescription className="text-sm">
-                This site has exceeded its monthly event limit. Please contact
-                your organization owner to upgrade the plan.
+                This site has exceeded its monthly event limit. Please contact your organization owner to upgrade the
+                plan.
               </AlertDescription>
             )}
           </div>
@@ -82,10 +73,7 @@ export function UsageBanners() {
               Approaching Event Limit
             </AlertTitle>
             <div className="mb-2 text-sm text-amber-700 dark:text-amber-400">
-              <strong>
-                {formatNumber(subscription?.monthlyEventCount || 0)}
-              </strong>{" "}
-              events used of{" "}
+              <strong>{formatNumber(subscription?.monthlyEventCount || 0)}</strong> events used of{" "}
               <strong>{formatNumber(subscription?.eventLimit || 0)}</strong>
             </div>
 
@@ -102,8 +90,7 @@ export function UsageBanners() {
               </div>
             ) : (
               <AlertDescription className="text-sm text-amber-700 dark:text-amber-400">
-                This site is approaching its monthly event limit. You may want
-                to notify your organization owner.
+                This site is approaching its monthly event limit. You may want to notify your organization owner.
               </AlertDescription>
             )}
           </div>

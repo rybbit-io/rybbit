@@ -10,10 +10,7 @@ dotenv.config();
 
 const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
 
-export async function handleWebhook(
-  request: FastifyRequest,
-  reply: FastifyReply
-) {
+export async function handleWebhook(request: FastifyRequest, reply: FastifyReply) {
   if (!webhookSecret) {
     console.error("Stripe webhook secret is not configured.");
     return reply.status(500).send({ error: "Webhook secret not configured." });
@@ -29,11 +26,7 @@ export async function handleWebhook(
       return reply.status(400).send("Webhook error: No raw body available");
     }
 
-    event = (stripe as Stripe).webhooks.constructEvent(
-      rawBody,
-      sig as string,
-      webhookSecret
-    );
+    event = (stripe as Stripe).webhooks.constructEvent(rawBody, sig as string, webhookSecret);
   } catch (err: any) {
     console.error(`Webhook signature verification failed: ${err.message}`);
     return reply.status(400).send(`Webhook Error: ${err.message}`);
@@ -61,22 +54,16 @@ export async function handleWebhook(
 
             // If the organization doesn't have the customer ID yet, update it
             if (existingOrg.length === 0) {
-              console.log(
-                `Updating organization ${organizationId} with Stripe customer ID ${stripeCustomerId}`
-              );
+              console.log(`Updating organization ${organizationId} with Stripe customer ID ${stripeCustomerId}`);
               await db
                 .update(organization)
                 .set({ stripeCustomerId: stripeCustomerId })
                 .where(eq(organization.id, organizationId));
             } else {
-              console.log(
-                `Organization ${existingOrg[0].id} already has Stripe customer ID ${stripeCustomerId}`
-              );
+              console.log(`Organization ${existingOrg[0].id} already has Stripe customer ID ${stripeCustomerId}`);
             }
           } catch (dbError: any) {
-            console.error(
-              `Database error updating organization with Stripe customer ID: ${dbError.message}`
-            );
+            console.error(`Database error updating organization with Stripe customer ID: ${dbError.message}`);
             // Decide if you should still return 200 to Stripe or signal an error
           }
         } else {

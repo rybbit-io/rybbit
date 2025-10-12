@@ -1,12 +1,7 @@
 "use client";
 import { ChevronRight, Expand, Globe } from "lucide-react";
 import { useState } from "react";
-import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from "../../../../../components/ui/basic-tabs";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../../../../components/ui/basic-tabs";
 import { Card, CardContent } from "../../../../../components/ui/card";
 import { getCountryName, getLanguageName } from "../../../../../lib/utils";
 import { StandardSection } from "../../../components/shared/StandardSection/StandardSection";
@@ -46,11 +41,7 @@ export function Countries() {
   return (
     <Card className="h-[405px]">
       <CardContent className="mt-2">
-        <Tabs
-          defaultValue="countries"
-          value={tab}
-          onValueChange={(value) => setTab(value as Tab)}
-        >
+        <Tabs defaultValue="countries" value={tab} onValueChange={value => setTab(value as Tab)}>
           <div className="flex flex-row gap-2 justify-between items-center">
             <TabsList>
               <TabsTrigger value="countries">Countries</TabsTrigger>
@@ -71,10 +62,10 @@ export function Countries() {
             <StandardSection
               filterParameter="country"
               title="Countries"
-              getValue={(e) => e.value}
-              getKey={(e) => e.value}
-              getFilterLabel={(e) => getCountryName(e.value)}
-              getLabel={(e) => {
+              getValue={e => e.value}
+              getKey={e => e.value}
+              getFilterLabel={e => getCountryName(e.value)}
+              getLabel={e => {
                 return (
                   <div className="flex gap-2 items-center">
                     <CountryFlag country={e.value} />
@@ -90,21 +81,21 @@ export function Countries() {
             <StandardSection
               filterParameter="region"
               title="Regions"
-              getValue={(e) => e.value}
-              getKey={(e) => e.value}
-              getFilterLabel={(e) => {
+              getValue={e => e.value}
+              getKey={e => e.value}
+              getFilterLabel={e => {
                 const region = subdivisions?.features.find(
-                  (feature) => feature.properties.iso_3166_2 === e.value
+                  feature => feature.properties.iso_3166_2 === e.value
                 )?.properties;
                 return region?.name ?? "";
               }}
-              getLabel={(e) => {
+              getLabel={e => {
                 if (!e.value) {
                   return "Unknown";
                 }
 
                 const region = subdivisions?.features.find(
-                  (feature) => feature.properties.iso_3166_2 === e.value
+                  feature => feature.properties.iso_3166_2 === e.value
                 )?.properties;
 
                 const countryCode = e.value.split("-")[0];
@@ -126,9 +117,9 @@ export function Countries() {
             <StandardSection
               filterParameter="city"
               title="Cities"
-              getValue={(e) => e.value}
-              getKey={(e) => e.value}
-              getLabel={(e) => {
+              getValue={e => e.value}
+              getKey={e => e.value}
+              getLabel={e => {
                 if (!e.value || e.value === "-") {
                   return "Unknown";
                 }
@@ -136,17 +127,14 @@ export function Countries() {
                 const { country, region, city } = getCountryCity(e.value) ?? {};
 
                 const region_ = subdivisions?.features.find(
-                  (feature) =>
-                    feature.properties.iso_3166_2 === `${country}-${region}`
+                  feature => feature.properties.iso_3166_2 === `${country}-${region}`
                 )?.properties;
 
                 return (
                   <div className="flex gap-2 items-center">
                     <CountryFlag country={country} />
                     {country}
-                    {region_?.name && (
-                      <ChevronRight className="w-4 h-4 mx-[-4px]" />
-                    )}
+                    {region_?.name && <ChevronRight className="w-4 h-4 mx-[-4px]" />}
                     {region_?.name}
                     {city && <ChevronRight className="w-4 h-4 mx-[-4px]" />}
                     {city}
@@ -161,10 +149,10 @@ export function Countries() {
             <StandardSection
               filterParameter="language"
               title="Languages"
-              getValue={(e) => e.value}
-              getKey={(e) => e.value}
-              getFilterLabel={(e) => getLanguageName(e.value) ?? ""}
-              getLabel={(e) => (
+              getValue={e => e.value}
+              getKey={e => e.value}
+              getFilterLabel={e => getLanguageName(e.value) ?? ""}
+              getLabel={e => (
                 <div className="flex gap-2 items-center">
                   {getCountryFromLanguage(e.value) ? (
                     <CountryFlag country={getCountryFromLanguage(e.value)!} />

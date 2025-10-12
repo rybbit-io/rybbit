@@ -1,10 +1,6 @@
 import { FastifyReply, FastifyRequest } from "fastify";
 import { clickhouse } from "../../../db/clickhouse/clickhouse.js";
-import {
-  processResults,
-  getTimeStatement,
-  getFilterStatement,
-} from "../utils.js";
+import { processResults, getTimeStatement, getFilterStatement } from "../utils.js";
 import { getUserHasAccessToSitePublic } from "../../../lib/auth-utils.js";
 import { FilterParams } from "@rybbit/shared";
 
@@ -36,20 +32,9 @@ interface GetEventsRequest {
   }>;
 }
 
-export async function getEvents(
-  req: FastifyRequest<GetEventsRequest>,
-  res: FastifyReply
-) {
+export async function getEvents(req: FastifyRequest<GetEventsRequest>, res: FastifyReply) {
   const { site } = req.params;
-  const {
-    startDate,
-    endDate,
-    timeZone,
-    filters,
-    page = "1",
-    pageSize = "20",
-    count,
-  } = req.query;
+  const { startDate, endDate, timeZone, filters, page = "1", pageSize = "20", count } = req.query;
 
   const userHasAccessToSite = await getUserHasAccessToSitePublic(req, site);
   if (!userHasAccessToSite) {
@@ -62,9 +47,7 @@ export async function getEvents(
 
   // Get time and filter statements if parameters are provided
   const timeStatement =
-    startDate || endDate
-      ? getTimeStatement(req.query)
-      : "AND timestamp > now() - INTERVAL 30 MINUTE"; // Default to last 30 minutes if no time range specified
+    startDate || endDate ? getTimeStatement(req.query) : "AND timestamp > now() - INTERVAL 30 MINUTE"; // Default to last 30 minutes if no time range specified
 
   const filterStatement = filters ? getFilterStatement(filters) : "";
 
@@ -129,8 +112,7 @@ export async function getEvents(
       },
     });
 
-    const events =
-      await processResults<GetEventsResponse[number]>(eventsResult);
+    const events = await processResults<GetEventsResponse[number]>(eventsResult);
 
     return res.send({
       data: events,

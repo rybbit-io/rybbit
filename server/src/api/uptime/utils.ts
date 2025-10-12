@@ -8,5 +8,5 @@ export async function getUserOrganizations(userId: string) {
     .from(member)
     .where(eq(member.userId, userId));
 
-  return userOrgs.map((org) => org.organizationId);
+  return userOrgs.map(org => org.organizationId);
 }

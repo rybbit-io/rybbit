@@ -4,10 +4,7 @@ import { eq } from "drizzle-orm";
 import { member, organization } from "../../db/postgres/schema.js";
 import { getSessionFromReq } from "../../lib/auth-utils.js";
 
-export const getUserOrganizations = async (
-  request: FastifyRequest,
-  reply: FastifyReply
-) => {
+export const getUserOrganizations = async (request: FastifyRequest, reply: FastifyReply) => {
   try {
     const session = await getSessionFromReq(request);
 

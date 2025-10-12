@@ -31,7 +31,7 @@ import { useGetSessionReplayEvents } from "../../../../api/analytics/sessionRepl
 import { ScrollArea } from "../../../../components/ui/scroll-area";
 import { cn } from "../../../../lib/utils";
 import { useReplayStore } from "./replayStore";
-import { Avatar } from "../../../../components/Avatar";
+import { Avatar, generateName } from "../../../../components/Avatar";
 import Link from "next/link";
 import { Button } from "../../../../components/ui/button";
 
@@ -71,10 +71,7 @@ export function ReplayBreadcrumbs() {
   const siteId = Number(params.site);
   const { sessionId, player, setCurrentTime } = useReplayStore();
 
-  const { data, isLoading, error } = useGetSessionReplayEvents(
-    siteId,
-    sessionId
-  );
+  const { data, isLoading, error } = useGetSessionReplayEvents(siteId, sessionId);
 
   // Group consecutive events of the same type
   const groupedEvents = useMemo(() => {
@@ -91,7 +88,7 @@ export function ReplayBreadcrumbs() {
 
     let currentGroup: (typeof groups)[0] | null = null;
 
-    data.events.forEach((event) => {
+    data.events.forEach(event => {
       const eventTypeStr = String(event.type);
       const subType = eventTypeStr === "3" ? event.data?.source : undefined;
 
@@ -151,9 +148,7 @@ export function ReplayBreadcrumbs() {
 
   const getEventDescription = (event: any) => {
     const eventTypeStr = String(event.type);
-    const eventInfo = EVENT_TYPE_INFO[
-      eventTypeStr as keyof typeof EVENT_TYPE_INFO
-    ] || {
+    const eventInfo = EVENT_TYPE_INFO[eventTypeStr as keyof typeof EVENT_TYPE_INFO] || {
       name: `Unknown (${eventTypeStr})`,
       icon: Globe,
       color: "text-gray-400",
@@ -161,10 +156,7 @@ export function ReplayBreadcrumbs() {
 
     // For incremental snapshots, get more detail
     if (eventTypeStr === "3" && event.data?.source !== undefined) {
-      const incrementalType =
-        INCREMENTAL_TYPES[
-          event.data.source as keyof typeof INCREMENTAL_TYPES
-        ] || "Unknown";
+      const incrementalType = INCREMENTAL_TYPES[event.data.source as keyof typeof INCREMENTAL_TYPES] || "Unknown";
       return `${incrementalType}`;
     }
 
@@ -184,8 +176,7 @@ export function ReplayBreadcrumbs() {
 
   const getEventIcon = (event: any) => {
     const eventTypeStr = String(event.type);
-    const eventInfo =
-      EVENT_TYPE_INFO[eventTypeStr as keyof typeof EVENT_TYPE_INFO];
+    const eventInfo = EVENT_TYPE_INFO[eventTypeStr as keyof typeof EVENT_TYPE_INFO];
 
     // Special icons for specific incremental snapshot types
     if (eventTypeStr === "3" && event.data?.source !== undefined) {
@@ -232,8 +223,7 @@ export function ReplayBreadcrumbs() {
 
   const getEventColor = (event: any) => {
     const eventTypeStr = String(event.type);
-    const eventInfo =
-      EVENT_TYPE_INFO[eventTypeStr as keyof typeof EVENT_TYPE_INFO];
+    const eventInfo = EVENT_TYPE_INFO[eventTypeStr as keyof typeof EVENT_TYPE_INFO];
     return eventInfo?.color || "text-gray-400";
   };
 
@@ -267,13 +257,10 @@ export function ReplayBreadcrumbs() {
     <div className="flex flex-col gap-2">
       <div className="rounded-lg border border-neutral-800 bg-neutral-900 flex items-center justify-between gap-2 p-2 text-xs text-neutral-200">
         <div className="flex items-center gap-2">
-          <Avatar name={data.metadata.user_id} size={20} />
-          {data.metadata.user_id.slice(0, 20)}
+          <Avatar id={data.metadata.user_id} size={20} />
+          {generateName(data.metadata.user_id)}
         </div>
-        <Link
-          href={`/${siteId}/user/${data.metadata.user_id}`}
-          className="flex items-center gap-2"
-        >
+        <Link href={`/${siteId}/user/${data.metadata.user_id}`} className="flex items-center gap-2">
           <Button size="sm">View User</Button>
         </Link>
       </div>
@@ -307,20 +294,15 @@ export function ReplayBreadcrumbs() {
                   </div>
                   <Icon className={cn("w-4 h-4 flex-shrink-0", color)} />
                   <div className="flex-1 min-w-0">
-                    <div className="text-xs text-neutral-200 font-medium truncate">
-                      {description}
-                    </div>
+                    <div className="text-xs text-neutral-200 font-medium truncate">{description}</div>
                     {group.count > 1 && durationMs > 0 && (
                       <div className="text-xs text-neutral-500 mt-0.5">
-                        {Duration.fromMillis(durationMs).toFormat("s.SSS")}s
-                        duration
+                        {Duration.fromMillis(durationMs).toFormat("s.SSS")}s duration
                       </div>
                     )}
                   </div>
                   {group.count > 5 && (
-                    <div className="text-xs text-neutral-500 bg-neutral-800 px-1.5 py-0.5 rounded">
-                      {group.count}
-                    </div>
+                    <div className="text-xs text-neutral-500 bg-neutral-800 px-1.5 py-0.5 rounded">{group.count}</div>
                   )}
                 </div>
               );

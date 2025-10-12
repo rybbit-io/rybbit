@@ -48,7 +48,7 @@ const formatUptime = (seconds?: number) => {
 };
 
 const formatInterval = (seconds?: number) => {
-  const interval = INTERVAL_OPTIONS.find((interval) => interval.value === seconds);
+  const interval = INTERVAL_OPTIONS.find(interval => interval.value === seconds);
   return interval?.label || `${seconds}s`;
 };
 

@@ -32,7 +32,7 @@ export function PerformanceChart() {
   const [visiblePercentiles, setVisiblePercentiles] = useState<Set<string>>(new Set(["P50", "P75", "P90", "P99"]));
 
   const togglePercentile = (percentile: string) => {
-    setVisiblePercentiles((prev) => {
+    setVisiblePercentiles(prev => {
       const newSet = new Set(prev);
       if (newSet.has(percentile)) {
         newSet.delete(percentile);
@@ -71,7 +71,7 @@ export function PerformanceChart() {
           p99: item[`${selectedPerformanceMetric}_p99`] ?? null,
         };
       })
-      .filter((e) => e !== null) ?? [];
+      .filter(e => e !== null) ?? [];
 
   // Create separate data series for each percentile - using shades of blue
   const percentileColors = {
@@ -86,43 +86,43 @@ export function PerformanceChart() {
       id: "P50",
       color: percentileColors.p50,
       data: processedData
-        .map((item) => ({
+        .map(item => ({
           x: item.time,
           y: item.p50,
         }))
-        .filter((point) => point.y !== null),
+        .filter(point => point.y !== null),
     },
     {
       id: "P75",
       color: percentileColors.p75,
       data: processedData
-        .map((item) => ({
+        .map(item => ({
           x: item.time,
           y: item.p75,
         }))
-        .filter((point) => point.y !== null),
+        .filter(point => point.y !== null),
     },
     {
       id: "P90",
       color: percentileColors.p90,
       data: processedData
-        .map((item) => ({
+        .map(item => ({
           x: item.time,
           y: item.p90,
         }))
-        .filter((point) => point.y !== null),
+        .filter(point => point.y !== null),
     },
     {
       id: "P99",
       color: percentileColors.p99,
       data: processedData
-        .map((item) => ({
+        .map(item => ({
           x: item.time,
           y: item.p99,
         }))
-        .filter((point) => point.y !== null),
+        .filter(point => point.y !== null),
     },
-  ].filter((series) => series.data.length > 0 && visiblePercentiles.has(series.id));
+  ].filter(series => series.data.length > 0 && visiblePercentiles.has(series.id));
 
   const formatXAxisValue = (value: any) => {
     const dt = DateTime.fromJSDate(value).setLocale(userLocale);
@@ -206,7 +206,7 @@ export function PerformanceChart() {
           <div className="flex items-center space-x-4">
             <span className="text-sm text-neutral-200">{METRIC_LABELS[selectedPerformanceMetric]}</span>
             <div className="flex items-center space-x-2">
-              {(["P50", "P75", "P90", "P99"] as const).map((percentile) => {
+              {(["P50", "P75", "P90", "P99"] as const).map(percentile => {
                 const colors = {
                   P50: "hsl(var(--indigo-100))", // light blue
                   P75: "hsl(var(--indigo-300))", // medium blue
@@ -283,9 +283,9 @@ export function PerformanceChart() {
                 tickRotation: 0,
                 truncateTickAt: 0,
                 tickValues: 5,
-                format: (value) => formatMetricValue(selectedPerformanceMetric, value),
+                format: value => formatMetricValue(selectedPerformanceMetric, value),
               }}
-              colors={(d) => d.color}
+              colors={d => d.color}
               enableTouchCrosshair={true}
               enablePoints={false}
               useMesh={true}

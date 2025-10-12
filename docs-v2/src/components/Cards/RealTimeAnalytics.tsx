@@ -1,12 +1,11 @@
 "use client";
 
-import { Clock, FileText, MousePointerClick } from "lucide-react";
-import { CountryFlag } from "../Country";
+import { Clock, Eye, Laptop, MousePointerClick, Smartphone } from "lucide-react";
+import { useEffect, useState } from "react";
 import { Browser } from "../Browser";
+import { CountryFlag } from "../Country";
 import { OperatingSystem } from "../OperatingSystem";
-import { Laptop, Smartphone } from "lucide-react";
 import { Card } from "./Card";
-import { useState, useEffect } from "react";
 
 // Mock event templates
 const eventTemplates = [
@@ -109,20 +108,18 @@ function EventCard({ event, index, isNew }: { event: Event; index: number; isNew
   }, [isNew]);
 
   return (
-    <div 
+    <div
       className="absolute w-full rounded-lg bg-neutral-800/50 overflow-hidden p-3 flex flex-col transition-all duration-500"
       style={{
-        transform: isAnimating && index === 0 
-          ? `translateY(-82px)` 
-          : `translateY(${index * 82}px)`,
-        opacity: isAnimating && index === 0 ? 0 : (index < 4 ? 1 : 0),
+        transform: isAnimating && index === 0 ? `translateY(-82px)` : `translateY(${index * 82}px)`,
+        opacity: isAnimating && index === 0 ? 0 : index < 4 ? 1 : 0,
         zIndex: 10 - index,
       }}
     >
       <div className="flex items-center gap-2 text-sm text-neutral-100 mb-2">
         <div className="flex items-center gap-2">
           {isPageview ? (
-            <FileText className="w-4 h-4 text-blue-500" />
+            <Eye className="w-4 h-4 text-blue-500" />
           ) : (
             <MousePointerClick className="w-4 h-4 text-amber-500" />
           )}
@@ -143,11 +140,7 @@ function EventCard({ event, index, isNew }: { event: Event; index: number; isNew
             <OperatingSystem os={event.operating_system || ""} />
           </div>
           <div>
-            {event.device_type === "Mobile" ? (
-              <Smartphone className="w-4 h-4" />
-            ) : (
-              <Laptop className="w-4 h-4" />
-            )}
+            {event.device_type === "Mobile" ? <Smartphone className="w-4 h-4" /> : <Laptop className="w-4 h-4" />}
           </div>
         </div>
 
@@ -176,24 +169,21 @@ export function RealTimeAnalytics() {
         isNew: true,
       };
 
-      setEvents((prevEvents) => {
+      setEvents(prevEvents => {
         // Add new event at the beginning and keep only last 4 events
         const updatedEvents = [newEvent, ...prevEvents.slice(0, 3)].map((event, index) => ({
           ...event,
           isNew: index === 0,
           // Update timestamps
-          timestamp: index === 0 ? "just now" : 
-                     index === 1 ? "30 sec ago" : 
-                     index === 2 ? "1 min ago" : 
-                     "2 min ago"
+          timestamp: index === 0 ? "just now" : index === 1 ? "30 sec ago" : index === 2 ? "1 min ago" : "2 min ago",
         }));
         return updatedEvents;
       });
 
-      setNextId((prev) => prev + 1);
-      
+      setNextId(prev => prev + 1);
+
       // Randomly update online count
-      setOnlineCount((prev) => {
+      setOnlineCount(prev => {
         const change = Math.random() > 0.5 ? 1 : -1;
         return Math.max(15, Math.min(45, prev + change));
       });

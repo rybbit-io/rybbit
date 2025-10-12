@@ -1,9 +1,5 @@
 import { FilterParameter } from "@rybbit/shared";
-import {
-  useInfiniteQuery,
-  UseInfiniteQueryResult,
-  InfiniteData,
-} from "@tanstack/react-query";
+import { useInfiniteQuery, UseInfiniteQueryResult, InfiniteData } from "@tanstack/react-query";
 import { SingleColResponse } from "@/api/analytics/useSingleCol";
 import { authedFetch, getQueryParams } from "@/api/utils";
 import { timeZone } from "@/lib/dateTimeUtils";
@@ -24,9 +20,7 @@ export function useInfiniteSingleCol({
   parameter,
   limit = 25,
   useFilters = true,
-}: UseInfiniteSingleColOptions): UseInfiniteQueryResult<
-  InfiniteData<InfinitePaginatedResponse>
-> {
+}: UseInfiniteSingleColOptions): UseInfiniteQueryResult<InfiniteData<InfinitePaginatedResponse>> {
   const { time, site, filters } = useStore();
 
   return useInfiniteQuery({
@@ -49,10 +43,7 @@ export function useInfiniteSingleCol({
     getNextPageParam: (lastPage, allPages) => {
       // If we've fetched all items, don't get next page
       const totalItems = lastPage.totalCount;
-      const fetchedItemCount = allPages.reduce(
-        (acc, page) => acc + page.data.length,
-        0
-      );
+      const fetchedItemCount = allPages.reduce((acc, page) => acc + page.data.length, 0);
 
       if (fetchedItemCount >= totalItems) {
         return undefined;

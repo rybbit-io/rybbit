@@ -46,7 +46,7 @@ export const initializeClickhouse = async () => {
       `,
   });
 
-  // Add performance metric columns if they don't exist
+  // Add columns to the events table
   await clickhouse.exec({
     query: `
       ALTER TABLE events
@@ -54,7 +54,8 @@ export const initializeClickhouse = async () => {
         ADD COLUMN IF NOT EXISTS cls Nullable(Float64),
         ADD COLUMN IF NOT EXISTS inp Nullable(Float64),
         ADD COLUMN IF NOT EXISTS fcp Nullable(Float64),
-        ADD COLUMN IF NOT EXISTS ttfb Nullable(Float64)
+        ADD COLUMN IF NOT EXISTS ttfb Nullable(Float64),
+        ADD COLUMN IF NOT EXISTS ip Nullable(String)
     `,
   });
 

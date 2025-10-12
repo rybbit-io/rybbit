@@ -13,13 +13,8 @@ interface AdminLayoutProps {
   showStopImpersonating?: boolean;
 }
 
-export function AdminLayout({
-  children,
-  title,
-  showStopImpersonating = false,
-}: AdminLayoutProps) {
-  const { isAdmin, isImpersonating, isCheckingAdmin, stopImpersonating } =
-    useAdminPermission();
+export function AdminLayout({ children, title, showStopImpersonating = false }: AdminLayoutProps) {
+  const { isAdmin, isImpersonating, isCheckingAdmin, stopImpersonating } = useAdminPermission();
 
   // If not admin, show access denied
   if (!isAdmin && !isCheckingAdmin) {

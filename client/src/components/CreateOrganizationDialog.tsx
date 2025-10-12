@@ -117,7 +117,7 @@ export function CreateOrganizationDialog({ open, onOpenChange, onSuccess, trigge
                 type="text"
                 placeholder="Acme Inc."
                 value={name}
-                onChange={(e) => handleNameChange(e.target.value)}
+                onChange={e => handleNameChange(e.target.value)}
                 required
               />
             </div>

@@ -42,7 +42,7 @@ function getLocalizedWeekdayNames(locale: string, format: "narrow" | "short" | "
     date.setDate(today.getDate() + ((day - today.getDay() + 7) % 7));
 
     const parts = formatter.formatToParts(date);
-    const weekday = parts.find((part) => part.type === "weekday");
+    const weekday = parts.find(part => part.type === "weekday");
 
     return weekday?.value ?? fallback[format][i];
   });

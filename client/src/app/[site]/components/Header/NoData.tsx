@@ -73,7 +73,7 @@ export function NoData() {
             <div className="text-xs text-muted-foreground">Place this snippet in the &lt;head&gt; of your website:</div>
             <CodeSnippet
               language="HTML"
-              code={`<script\n    src="${globalThis.location.origin}/api/script.js"\n    data-site-id="${siteMetadata?.siteId}"\n    defer\n></script>`}
+              code={`<script\n    src="${globalThis.location.origin}/api/script.js"\n    data-site-id="${siteMetadata?.id ?? siteMetadata?.siteId}"\n    defer\n></script>`}
               className="text-xs"
             />
             <span className="text-xs text-muted-foreground">

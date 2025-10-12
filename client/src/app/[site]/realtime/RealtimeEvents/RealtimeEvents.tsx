@@ -1,8 +1,10 @@
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { Laptop, Smartphone } from "lucide-react";
 import { ExternalLink, FileText, Laptop, MousePointerClick, Smartphone, TriangleAlert } from "lucide-react";
 import { DateTime } from "luxon";
 import Link from "next/link";
 import { Event, useGetEvents } from "../../../../api/analytics/events/useGetEvents";
+import { EventIcon, PageviewIcon } from "../../../../components/EventIcons";
 import { Skeleton } from "../../../../components/ui/skeleton";
 import { cn, getCountryName } from "../../../../lib/utils";
 import { Browser } from "../../components/shared/icons/Browser";
@@ -88,6 +90,7 @@ function EventCard({ event }: { event: Event }) {
     <Link href={`user/${event.user_id}`} target="_blank" rel="noopener noreferrer">
       <div className="mb-3 rounded-lg bg-neutral-850/50 border border-neutral-800 overflow-hidden p-3 flex flex-col filter backdrop-blur-sm hover:bg-neutral-800/70 transition-all duration-200">
         <div className="flex items-center gap-2 text-sm text-neutral-100 mb-2">
+          <div className="flex items-center gap-2">{isPageview ? <PageviewIcon /> : <EventIcon />}</div>
           <div className="flex items-center gap-2">
             {isEvent ? (
               <MousePointerClick className="w-4 h-4 text-amber-500" />

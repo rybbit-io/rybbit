@@ -1,10 +1,6 @@
 import { FastifyReply, FastifyRequest } from "fastify";
 import { clickhouse } from "../../db/clickhouse/clickhouse.js";
-import {
-  getFilterStatement,
-  getTimeStatement,
-  processResults,
-} from "./utils.js";
+import { getFilterStatement, getTimeStatement, processResults } from "./utils.js";
 import { getUserHasAccessToSitePublic } from "../../lib/auth-utils.js";
 
 // Individual pageview type
@@ -53,10 +49,7 @@ export interface GetUserSessionsRequest {
   };
 }
 
-export async function getUserSessions(
-  req: FastifyRequest<GetUserSessionsRequest>,
-  res: FastifyReply
-) {
+export async function getUserSessions(req: FastifyRequest<GetUserSessionsRequest>, res: FastifyReply) {
   const { startDate, endDate, timeZone, site, filters } = req.query;
   const userId = req.params.userId;
 
@@ -105,7 +98,7 @@ ORDER BY timestamp ASC
     // Group pageviews by session
     const sessions: Record<string, GroupedSession> = {};
 
-    pageviews.forEach((pageview) => {
+    pageviews.forEach(pageview => {
       const {
         session_id,
         timestamp,
@@ -151,15 +144,12 @@ ORDER BY timestamp ASC
       });
 
       // Sort pageviews by timestamp in descending order
-      sessions[session_id].pageviews.sort(
-        (a, b) =>
-          new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
-      );
+      sessions[session_id].pageviews.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
     });
 
     // Calculate duration for each session and convert to array
     const groupedSessions = Object.values(sessions)
-      .map((session) => {
+      .map(session => {
         // Calculate duration in seconds
         const firstTime = new Date(session.firstTimestamp).getTime();
         const lastTime = new Date(session.lastTimestamp).getTime();
@@ -167,11 +157,7 @@ ORDER BY timestamp ASC
 
         return session;
       })
-      .sort(
-        (a, b) =>
-          new Date(b.lastTimestamp).getTime() -
-          new Date(a.lastTimestamp).getTime()
-      );
+      .sort((a, b) => new Date(b.lastTimestamp).getTime() - new Date(a.lastTimestamp).getTime());
 
     return res.send({ data: groupedSessions });
   } catch (error) {

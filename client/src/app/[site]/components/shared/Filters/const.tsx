@@ -10,6 +10,7 @@ import {
   Link,
   LogIn,
   LogOut,
+  MapPin,
   MapPinHouse,
   MapPinned,
   Maximize,
@@ -22,6 +23,7 @@ import {
   TabletSmartphone,
   Tag,
   Target,
+  User,
 } from "lucide-react";
 import React from "react";
 
@@ -49,6 +51,11 @@ export const FilterOptions: {
     label: "Hostname",
     value: "hostname",
     icon: <Server className="h-4 w-4" />,
+  },
+  {
+    label: "User ID",
+    value: "user_id",
+    icon: <User className="h-4 w-4" />,
   },
   {
     label: "Event Name",
@@ -149,6 +156,16 @@ export const FilterOptions: {
     label: "UTM Term",
     value: "utm_term",
     icon: <Tag className="h-4 w-4" />,
+  },
+  {
+    label: "Lat",
+    value: "lat",
+    icon: <MapPin className="h-4 w-4" />,
+  },
+  {
+    label: "Lon",
+    value: "lon",
+    icon: <MapPin className="h-4 w-4" />,
   },
 ];
 

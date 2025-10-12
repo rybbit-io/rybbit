@@ -55,11 +55,11 @@ export function IPExclusionManager({ siteId, disabled = false }: IPExclusionMana
 
   const handleSave = async () => {
     // Filter out empty entries and validate
-    const filteredIPs = ipList.filter((ip) => ip.trim() !== "");
+    const filteredIPs = ipList.filter(ip => ip.trim() !== "");
     const invalidIPs: string[] = [];
     const validationErrors: string[] = [];
 
-    filteredIPs.forEach((ip) => {
+    filteredIPs.forEach(ip => {
       const validation = validateIPPattern(ip);
       if (!validation.valid) {
         invalidIPs.push(ip);
@@ -117,7 +117,7 @@ export function IPExclusionManager({ siteId, disabled = false }: IPExclusionMana
           <div key={index} className="flex items-center space-x-2">
             <Input
               value={ip}
-              onChange={(e) => updateIPField(index, e.target.value)}
+              onChange={e => updateIPField(index, e.target.value)}
               placeholder="e.g., 192.168.1.1 or 10.0.0.0/24"
               disabled={disabled}
               className={!validateIPPattern(ip).valid && ip.trim() !== "" ? "border-red-500" : ""}

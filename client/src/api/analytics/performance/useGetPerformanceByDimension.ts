@@ -96,10 +96,7 @@ export function useGetPerformanceByDimension({
       sortOrder,
     ],
     queryFn: async () => {
-      const response = await authedFetch<{ data: any }>(
-        `/performance/by-dimension/${site}`,
-        queryParams
-      );
+      const response = await authedFetch<{ data: any }>(`/performance/by-dimension/${site}`, queryParams);
       return response.data;
     },
     staleTime: Infinity,

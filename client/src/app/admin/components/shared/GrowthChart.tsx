@@ -16,8 +16,8 @@ export function GrowthChart({ data, title, color = "#3b82f6" }: GrowthChartProps
 
     // Group data by date
     const dailyCounts = new Map<string, number>();
-    
-    data.forEach((item) => {
+
+    data.forEach(item => {
       const date = parseUtcTimestamp(item.createdAt).toFormat("yyyy-MM-dd");
       dailyCounts.set(date, (dailyCounts.get(date) || 0) + 1);
     });
@@ -42,9 +42,7 @@ export function GrowthChart({ data, title, color = "#3b82f6" }: GrowthChartProps
     return (
       <div className="bg-neutral-900 border border-neutral-700 rounded-lg p-3 sm:p-6 mb-6">
         <h3 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4">{title} Growth</h3>
-        <div className="h-48 sm:h-64 flex items-center justify-center text-neutral-400 text-sm">
-          No data available
-        </div>
+        <div className="h-48 sm:h-64 flex items-center justify-center text-neutral-400 text-sm">No data available</div>
       </div>
     );
   }
@@ -55,11 +53,11 @@ export function GrowthChart({ data, title, color = "#3b82f6" }: GrowthChartProps
       <div className="h-48 sm:h-64">
         <ResponsiveLine
           data={chartData}
-          margin={{ 
-            top: 20, 
-            right: 10, 
-            bottom: 50, 
-            left: 45 
+          margin={{
+            top: 20,
+            right: 10,
+            bottom: 50,
+            left: 45,
           }}
           xScale={{
             type: "time",

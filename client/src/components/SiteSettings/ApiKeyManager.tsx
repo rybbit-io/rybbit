@@ -20,26 +20,18 @@ import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import Link from "next/link";
 
-import {
-  useGenerateApiKey,
-  useGetApiConfig,
-  useRevokeApiKey,
-} from "../../api/admin/apiKey";
+import { useGenerateApiKey, useGetApiConfig, useRevokeApiKey } from "../../api/admin/apiKey";
 
 interface ApiKeyManagerProps {
   siteId: number;
   disabled?: boolean;
 }
 
-export function ApiKeyManager({
-  siteId,
-  disabled = false,
-}: ApiKeyManagerProps) {
+export function ApiKeyManager({ siteId, disabled = false }: ApiKeyManagerProps) {
   const [showApiKey, setShowApiKey] = useState(false);
 
   // API key hooks
-  const { data: apiConfig, isLoading: isLoadingApiConfig } =
-    useGetApiConfig(siteId);
+  const { data: apiConfig, isLoading: isLoadingApiConfig } = useGetApiConfig(siteId);
   const generateApiKey = useGenerateApiKey();
   const revokeApiKey = useRevokeApiKey();
 
@@ -60,11 +52,7 @@ export function ApiKeyManager({
             localhost
           </Link>
           , server-side applications, or mobile apps using the{" "}
-          <Link
-            href="https://rybbit.io/docs/api"
-            target="_blank"
-            className="text-indigo-300 hover:underline"
-          >
+          <Link href="https://rybbit.io/docs/api" target="_blank" className="text-indigo-300 hover:underline">
             API endpoint
           </Link>
           .
@@ -82,11 +70,7 @@ export function ApiKeyManager({
               <div className="relative">
                 <Input
                   type={showApiKey ? "text" : "password"}
-                  value={
-                    showApiKey && apiKey
-                      ? apiKey
-                      : "rb_••••••••••••••••••••••••••••••••••"
-                  }
+                  value={showApiKey && apiKey ? apiKey : "rb_••••••••••••••••••••••••••••••••••"}
                   readOnly
                   className="pr-20 font-mono text-xs"
                 />
@@ -98,11 +82,7 @@ export function ApiKeyManager({
                     onClick={() => setShowApiKey(!showApiKey)}
                     className="h-7 px-2"
                   >
-                    {showApiKey ? (
-                      <EyeOff className="h-3 w-3" />
-                    ) : (
-                      <Eye className="h-3 w-3" />
-                    )}
+                    {showApiKey ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
                   </Button>
                   {apiKey && (
                     <Button
@@ -125,11 +105,7 @@ export function ApiKeyManager({
           <div className="space-y-4">
             <AlertDialog>
               <AlertDialogTrigger asChild>
-                <Button
-                  variant="destructive"
-                  size="sm"
-                  disabled={disabled || revokeApiKey.isPending}
-                >
+                <Button variant="destructive" size="sm" disabled={disabled || revokeApiKey.isPending}>
                   Revoke API Key
                 </Button>
               </AlertDialogTrigger>
@@ -137,8 +113,8 @@ export function ApiKeyManager({
                 <AlertDialogHeader>
                   <AlertDialogTitle>Revoke API Key?</AlertDialogTitle>
                   <AlertDialogDescription>
-                    This will immediately invalidate the current API key. Any
-                    applications using this key will stop working.
+                    This will immediately invalidate the current API key. Any applications using this key will stop
+                    working.
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>

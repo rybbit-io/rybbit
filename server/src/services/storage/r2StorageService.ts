@@ -34,7 +34,7 @@ class R2StorageService {
           response: {
             ...response.response,
             headers: Object.fromEntries(
-              Object.entries(response.response.headers).filter(([key]) => !key.toLowerCase().includes("checksum")),
+              Object.entries(response.response.headers).filter(([key]) => !key.toLowerCase().includes("checksum"))
             ),
           },
         };
@@ -95,7 +95,7 @@ class R2StorageService {
             eventCount: eventDataArray.length.toString(),
             compression: "zstd",
           },
-        }),
+        })
       );
 
       return key;
@@ -119,7 +119,7 @@ class R2StorageService {
         new GetObjectCommand({
           Bucket: this.bucketName,
           Key: key,
-        }),
+        })
       );
 
       if (!response.Body) {
@@ -194,7 +194,7 @@ class R2StorageService {
         new DeleteObjectCommand({
           Bucket: this.bucketName,
           Key: key,
-        }),
+        })
       );
     } catch (error) {
       console.error("[R2Storage] Failed to delete batch:", error);

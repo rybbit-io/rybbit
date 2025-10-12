@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { Star } from "lucide-react";
+import { trackAdEvent } from "../lib/trackAdEvent";
 
 export function GitHubStarButton() {
   const [starCount, setStarCount] = useState<string | null>(null);
@@ -28,7 +29,7 @@ export function GitHubStarButton() {
   }, []);
 
   return (
-    <div className="mb-6 md:mb-8">
+    <div className="mb-6 md:mb-8" onClick={() => trackAdEvent("github")}>
       <a
         href="https://github.com/rybbit-io/rybbit"
         target="_blank"

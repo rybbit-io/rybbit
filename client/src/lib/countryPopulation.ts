@@ -208,7 +208,6 @@ export function getCountryPopulation(countryCode: string): number {
   const normalizedCode = countryCode.slice(0, 2).toUpperCase();
 
   // Use 1 million as default if country not found or has 0 pop
-  const population =
-    countryPopulations[normalizedCode] || countryPopulations.XX || 1;
+  const population = countryPopulations[normalizedCode] || countryPopulations.XX || 1;
   return Math.max(population, 0.001); // Ensure a minimum population to avoid division by zero
 }

@@ -13,14 +13,10 @@ export function AuthenticationGuard() {
 
   // Extract potential siteId from path like /{siteId} or /{siteId}/something
   const pathSegments = pathname.split("/").filter(Boolean);
-  const potentialSiteId =
-    pathSegments.length > 0 && !isNaN(Number(pathSegments[0]))
-      ? pathSegments[0]
-      : undefined;
+  const potentialSiteId = pathSegments.length > 0 && !isNaN(Number(pathSegments[0])) ? pathSegments[0] : undefined;
 
   // Use Tanstack Query to check if site is public
-  const { data: isPublicSite, isLoading: isCheckingPublic } =
-    useGetSiteIsPublic(potentialSiteId);
+  const { data: isPublicSite, isLoading: isCheckingPublic } = useGetSiteIsPublic(potentialSiteId);
 
   useEffect(() => {
     // Only redirect if:
@@ -28,13 +24,7 @@ export function AuthenticationGuard() {
     // 2. User is not logged in
     // 3. Not on a public route
     // 4. Not on a public site
-    if (
-      !isPending &&
-      !isCheckingPublic &&
-      !user &&
-      !publicRoutes.includes(pathname) &&
-      !isPublicSite
-    ) {
+    if (!isPending && !isCheckingPublic && !user && !publicRoutes.includes(pathname) && !isPublicSite) {
       redirect("/login");
     }
   }, [isPending, user, pathname, isCheckingPublic, isPublicSite]);

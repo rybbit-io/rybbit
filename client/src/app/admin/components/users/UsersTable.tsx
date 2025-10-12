@@ -15,14 +15,7 @@ import {
   SortingState,
   ColumnFiltersState,
 } from "@tanstack/react-table";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { UserTableSkeleton } from "./UserTableSkeleton";
 import { userStore } from "@/lib/userStore";
 import { SortableHeader } from "../shared/SortableHeader";
@@ -59,41 +52,28 @@ export function UsersTable({
     () => [
       {
         accessorKey: "id",
-        header: ({ column }) => (
-          <SortableHeader column={column}>User ID</SortableHeader>
-        ),
-        cell: ({ row }) => (
-          <div className="font-mono">{row.getValue("id")}</div>
-        ),
+        header: ({ column }) => <SortableHeader column={column}>User ID</SortableHeader>,
+        cell: ({ row }) => <div className="font-mono">{row.getValue("id")}</div>,
       },
       {
         accessorKey: "name",
-        header: ({ column }) => (
-          <SortableHeader column={column}>Name</SortableHeader>
-        ),
+        header: ({ column }) => <SortableHeader column={column}>Name</SortableHeader>,
         cell: ({ row }) => row.getValue("name") || "N/A",
       },
       {
         accessorKey: "email",
-        header: ({ column }) => (
-          <SortableHeader column={column}>Email</SortableHeader>
-        ),
+        header: ({ column }) => <SortableHeader column={column}>Email</SortableHeader>,
         cell: ({ row }) => row.getValue("email"),
       },
       {
         accessorKey: "role",
-        header: ({ column }) => (
-          <SortableHeader column={column}>Role</SortableHeader>
-        ),
+        header: ({ column }) => <SortableHeader column={column}>Role</SortableHeader>,
         cell: ({ row }) => row.getValue("role") || "user",
       },
       {
         accessorKey: "createdAt",
-        header: ({ column }) => (
-          <SortableHeader column={column}>Created At</SortableHeader>
-        ),
-        cell: ({ row }) =>
-          new Date(row.getValue("createdAt")).toLocaleDateString(),
+        header: ({ column }) => <SortableHeader column={column}>Created At</SortableHeader>,
+        cell: ({ row }) => new Date(row.getValue("createdAt")).toLocaleDateString(),
       },
       {
         id: "actions",
@@ -126,16 +106,10 @@ export function UsersTable({
       globalFilter,
     },
     pageCount: data ? Math.ceil(data.total / pagination.pageSize) : -1,
-    onSortingChange: (updater) =>
-      setSorting(typeof updater === "function" ? updater(sorting) : updater),
-    onColumnFiltersChange: (updater) =>
-      setColumnFilters(
-        typeof updater === "function" ? updater(columnFilters) : updater
-      ),
-    onPaginationChange: (updater) =>
-      setPagination(
-        typeof updater === "function" ? updater(pagination) : updater
-      ),
+    onSortingChange: updater => setSorting(typeof updater === "function" ? updater(sorting) : updater),
+    onColumnFiltersChange: updater =>
+      setColumnFilters(typeof updater === "function" ? updater(columnFilters) : updater),
+    onPaginationChange: updater => setPagination(typeof updater === "function" ? updater(pagination) : updater),
     onGlobalFilterChange: setGlobalFilter,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
@@ -150,16 +124,11 @@ export function UsersTable({
     <div className="rounded-md border border-neutral-700">
       <Table>
         <TableHeader>
-          {table.getHeaderGroups().map((headerGroup) => (
+          {table.getHeaderGroups().map(headerGroup => (
             <TableRow key={headerGroup.id}>
-              {headerGroup.headers.map((header) => (
+              {headerGroup.headers.map(header => (
                 <TableHead key={header.id}>
-                  {header.isPlaceholder
-                    ? null
-                    : flexRender(
-                        header.column.columnDef.header,
-                        header.getContext()
-                      )}
+                  {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
                 </TableHead>
               ))}
             </TableRow>
@@ -175,12 +144,10 @@ export function UsersTable({
               </TableCell>
             </TableRow>
           ) : (
-            table.getRowModel().rows.map((row) => (
+            table.getRowModel().rows.map(row => (
               <TableRow key={row.id}>
-                {row.getVisibleCells().map((cell) => (
-                  <TableCell key={cell.id}>
-                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                  </TableCell>
+                {row.getVisibleCells().map(cell => (
+                  <TableCell key={cell.id}>{flexRender(cell.column.columnDef.cell, cell.getContext())}</TableCell>
                 ))}
               </TableRow>
             ))
