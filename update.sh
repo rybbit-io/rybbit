@@ -36,7 +36,7 @@ source .env
 
 if [ "$USE_WEBSERVER" = "false" ]; then
   # Start without the caddy service when using --no-webserver
-  docker compose up -d backend client clickhouse postgres
+  docker compose --profile essential up -d
 else
   # Start all services including caddy
   docker compose up -d
