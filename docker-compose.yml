@@ -21,6 +21,7 @@ services:
 
   clickhouse:
     container_name: clickhouse
+    profiles: [essential]
     image: clickhouse/clickhouse-server:25.4.2
     volumes:
       - clickhouse-data:/var/lib/clickhouse
@@ -48,6 +49,7 @@ services:
   postgres:
     image: postgres:17.4
     container_name: postgres
+    profiles: [essential]
     environment:
       - POSTGRES_USER=${POSTGRES_USER:-frog}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-frog}
@@ -75,6 +77,7 @@ services:
   backend:
     image: ghcr.io/rybbit-io/rybbit-backend:${IMAGE_TAG:-latest}
     container_name: backend
+    profiles: [essential]
     build:
       context: .
       dockerfile: server/Dockerfile
@@ -115,6 +118,7 @@ services:
   client:
     image: ghcr.io/rybbit-io/rybbit-client:${IMAGE_TAG:-latest}
     container_name: client
+    profiles: [essential]
     build:
       context: .
       dockerfile: client/Dockerfile
