@@ -38,7 +38,7 @@
     "better-auth": "1.3.27",
     "bullmq": "^5.56.5",
     "dotenv": "16.5.0",
-    "drizzle-orm": "0.43.1",
+    "drizzle-orm": "0.44.6",
     "fastify": "5.3.3",
     "fastify-better-auth": "1.1.0",
     "ip-address": "^10.0.1",
