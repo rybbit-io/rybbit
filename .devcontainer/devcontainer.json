@@ -1,0 +1,53 @@
+// For format details, see https://aka.ms/devcontainer.json. For config options, see the
+// README at: https://github.com/devcontainers/templates/tree/main/src/javascript-node
+{
+	"name": "Rybbit",
+	// Or use a Dockerfile or Docker Compose file. More info: https://containers.dev/guide/dockerfile
+	"dockerComposeFile": ["compose.dev.yaml"],
+	"workspaceFolder": "/workspace",
+  	"service": "dev",
+
+	// Features to add to the dev container. More info: https://containers.dev/features.
+	// "features": {
+	// 	"ghcr.io/robbert229/devcontainer-features/postgresql-client:1": "1.0.0"
+	// },
+
+	// Use 'forwardPorts' to make a list of ports inside the container available locally.
+	"forwardPorts": [3001,3002,3003],
+
+	"runServices": [
+		// "caddy",
+		"clickhouse",
+		"postgres"
+	],
+
+	// Use 'postCreateCommand' to run commands after the container is created.
+	"postCreateCommand": "./.devcontainer/postCreate.sh",
+
+	// uncomment to keep clickhouse/postgres running after closing vscode
+	//"shutdownAction": "none",
+
+	// Configure tool-specific properties.
+	"customizations": {
+		"vscode": {
+			"extensions": [
+				"dbaeumer.vscode-eslint",
+				"unifiedjs.vscode-mdx"
+			]
+		}
+	},
+	"portsAttributes": {
+		"3001": {
+			"label": "Backend"
+		},
+		"3002": {
+			"label": "Client"
+		},
+		"3003": {
+			"label": "Docs"
+		}
+	}
+
+	// Uncomment to connect as root instead. More info: https://aka.ms/dev-containers-non-root.
+	// "remoteUser": "root"
+}

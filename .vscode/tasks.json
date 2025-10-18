@@ -1,0 +1,237 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        /*
+         * Install Dependencies
+         */
+        {
+            "label": "Install Client (NPM)",
+            "type": "shell",
+            "command": "npm install --legacy-peer-deps",
+            "options": {
+                "cwd": "${workspaceFolder}/client",
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "Install Backend (NPM)",
+            "type": "shell",
+            "command": "npm install",
+            "options": {
+                "cwd": "${workspaceFolder}/server",
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "Install Shared (NPM)",
+            "type": "shell",
+            "command": "npm install",
+            "options": {
+                "cwd": "${workspaceFolder}/shared",
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "Install Rybbit (NPM)",
+            "dependsOn": [
+                "Install Backend (NPM)",
+                "Install Client (NPM)",
+                "Install Shared (NPM)"
+            ],
+            "problemMatcher": []
+        },
+        /*
+         * Database
+         */
+        {
+            "label": "Migrate Database",
+            "type": "shell",
+            "command": "npm run db:push -- --force",
+            "dependsOn": [
+                "Install Backend (NPM)",
+            ],
+            "options": {
+                "cwd": "${workspaceFolder}/server",
+            },
+            "problemMatcher": []
+        },
+        /*
+         * Init/Clean Setup
+         */
+        {
+            "label": "Init Clean Project",
+            "dependsOn": [
+                "Migrate Database",
+                "Install Client (NPM)",
+                "Install Shared (NPM)"
+            ],
+            "problemMatcher": []
+        },
+        /*
+         * Run Services (Dev)
+         */
+        {
+            "label": "Run Backend (Dev)",
+            "type": "shell",
+            "command": "npm run dev",
+            "options": {
+                "cwd": "${workspaceFolder}/server",
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "Run Client (Dev)",
+            "type": "shell",
+            "command": "npm run dev",
+            "options": {
+                "cwd": "${workspaceFolder}/client",
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "Run Shared (Dev)",
+            "type": "shell",
+            "command": "npm run dev",
+            "options": {
+                "cwd": "${workspaceFolder}/shared",
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "Run Rybbit (Dev)",
+            "dependsOn": [
+                "Run Backend (Dev)",
+                "Run Client (Dev)",
+            ],
+            "problemMatcher": []
+        },
+        /*
+         * Build Services
+         */
+        {
+            "label": "Build Backend (Prod)",
+            "type": "shell",
+            "command": "npm run build",
+            "options": {
+                "cwd": "${workspaceFolder}/server",
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "Build Backend (Dev)",
+            "type": "shell",
+            "command": "node_modules/.bin/tsc",
+            "options": {
+                "cwd": "${workspaceFolder}/server",
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "Build Client (Prod)",
+            "type": "shell",
+            "command": "npm run build",
+            "options": {
+                "cwd": "${workspaceFolder}/client",
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "Build Shared",
+            "type": "shell",
+            "command": "npm run build",
+            "options": {
+                "cwd": "${workspaceFolder}/shared",
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "Build Rybbit",
+            "dependsOn": [
+                "Build Backend (Prod)",
+                "Build Client (Prod)",
+                "Build Shared"
+            ],
+            "problemMatcher": []
+        },
+        /*
+         * Run Services (Prod)
+         */
+        {
+            "label": "Run Backend",
+            "type": "shell",
+            "command": "npm run start",
+            "options": {
+                "cwd": "${workspaceFolder}/server",
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "Run Client",
+            "type": "shell",
+            "command": "npm run start",
+            "options": {
+                "cwd": "${workspaceFolder}/client",
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "Run Rybbit",
+            "dependsOn": [
+                "Run Backend",
+                "Run Client",
+            ],
+            "problemMatcher": []
+        },
+        {
+            "label": "Run Rybbit (Build First)",
+            "dependsOn": [
+                "Build Rybbit",
+                "Run Rybbit",
+            ],
+            "dependsOrder": "sequence",
+            "problemMatcher": []
+        },
+        /*
+         * Docs
+         */
+        {
+            "label": "Install Docs (NPM)",
+            "type": "shell",
+            "command": "npm ci --legacy-peer-deps",
+            "options": {
+                "cwd": "${workspaceFolder}/docs",
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "Run Docs (Dev)",
+            "type": "shell",
+            "command": "npm run dev",
+            "options": {
+                "cwd": "${workspaceFolder}/docs",
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "Build Docs",
+            "type": "shell",
+            "command": "npm run build",
+            "options": {
+                "cwd": "${workspaceFolder}/docs",
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "Run Docs",
+            "type": "shell",
+            "command": "npm run start",
+            "options": {
+                "cwd": "${workspaceFolder}/docs",
+            },
+            "dependsOn": [
+                "Build Docs",
+            ],
+            "problemMatcher": []
+        }
+    ]
+}
