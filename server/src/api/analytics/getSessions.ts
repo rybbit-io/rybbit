@@ -74,7 +74,7 @@ export async function getSessions(req: FastifyRequest<GetSessionsRequest>, res: 
 
   const timeStatement = getTimeStatement(req.query);
 
-  const query = \`
+  const query = `
   WITH AggregatedSessions AS (
       SELECT
           session_id,
@@ -115,8 +115,8 @@ export async function getSessions(req: FastifyRequest<GetSessionsRequest>, res: 
       FROM events
       WHERE
           site_id = {siteId:Int32}
-          \${userId ? \` AND user_id = {userId:String}\` : ""}
-          \${timeStatement}
+          ${userId ? ` AND user_id = {userId:String}` : ""}
+          ${timeStatement}
       GROUP BY
           session_id,
           user_id
@@ -124,9 +124,9 @@ export async function getSessions(req: FastifyRequest<GetSessionsRequest>, res: 
   )
   SELECT *
   FROM AggregatedSessions
-  WHERE 1 = 1 \${filterStatement}
+  WHERE 1 = 1 ${filterStatement}
   LIMIT {limit:Int32} OFFSET {offset:Int32}
-  \`;
+  `;
 
   try {
     const effectiveLimit = limit || 100;
