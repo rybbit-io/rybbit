@@ -8,6 +8,7 @@ import { logger } from "./logger/logger.js";
 export interface SiteConfigData {
   id: string | null;
   siteId: number;
+  organizationId: string | null;
   public: boolean;
   saltUserIds: boolean;
   domain: string;
@@ -53,6 +54,7 @@ class SiteConfig {
         .select({
           id: sites.id,
           siteId: sites.siteId,
+          organizationId: sites.organizationId,
           public: sites.public,
           saltUserIds: sites.saltUserIds,
           domain: sites.domain,
@@ -79,6 +81,7 @@ class SiteConfig {
       const configData: SiteConfigData = {
         id: site.id,
         siteId: site.siteId,
+        organizationId: site.organizationId,
         public: site.public || false,
         saltUserIds: site.saltUserIds || false,
         domain: site.domain || "",
@@ -113,6 +116,72 @@ class SiteConfig {
   async getConfig(siteIdOrId?: string | number): Promise<SiteConfigData | undefined> {
     if (!siteIdOrId) return undefined;
     return this.getSiteByAnyId(siteIdOrId);
+  }
+
+  /**
+   * Get site configuration by API key
+   */
+  async getConfigByApiKey(apiKey: string): Promise<SiteConfigData | undefined> {
+    try {
+      const [site] = await db
+        .select({
+          id: sites.id,
+          siteId: sites.siteId,
+          organizationId: sites.organizationId,
+          public: sites.public,
+          saltUserIds: sites.saltUserIds,
+          domain: sites.domain,
+          blockBots: sites.blockBots,
+          excludedIPs: sites.excludedIPs,
+          apiKey: sites.apiKey,
+          sessionReplay: sites.sessionReplay,
+          webVitals: sites.webVitals,
+          trackErrors: sites.trackErrors,
+          trackOutbound: sites.trackOutbound,
+          trackUrlParams: sites.trackUrlParams,
+          trackInitialPageView: sites.trackInitialPageView,
+          trackSpaNavigation: sites.trackSpaNavigation,
+          trackIp: sites.trackIp,
+        })
+        .from(sites)
+        .where(eq(sites.apiKey, apiKey))
+        .limit(1);
+
+      if (!site) {
+        return undefined;
+      }
+
+      const configData: SiteConfigData = {
+        id: site.id,
+        siteId: site.siteId,
+        organizationId: site.organizationId,
+        public: site.public || false,
+        saltUserIds: site.saltUserIds || false,
+        domain: site.domain || "",
+        blockBots: site.blockBots === undefined ? true : site.blockBots,
+        excludedIPs: Array.isArray(site.excludedIPs) ? site.excludedIPs : [],
+        apiKey: site.apiKey,
+        sessionReplay: site.sessionReplay || false,
+        webVitals: site.webVitals || false,
+        trackErrors: site.trackErrors || false,
+        trackOutbound: site.trackOutbound || true,
+        trackUrlParams: site.trackUrlParams || true,
+        trackInitialPageView: site.trackInitialPageView || true,
+        trackSpaNavigation: site.trackSpaNavigation || true,
+        trackIp: site.trackIp || false,
+      };
+
+      // Cache by siteId for future getConfig() calls
+      this.cache.set(String(site.siteId), {
+        data: configData,
+        expires: Date.now() + this.cacheTTL,
+      });
+
+      return configData;
+    } catch (error) {
+      logger.error(error as Error, `Error fetching site configuration by API key`);
+      return undefined;
+    }
   }
 
   async updateConfig(siteIdOrId: number | string, config: Partial<SiteConfigData>): Promise<void> {

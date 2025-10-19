@@ -1,0 +1,208 @@
+---
+title: REST API v1
+description: Programmatic analytics access for server-side tracking, mobile apps, and integrations
+---
+
+# Rybbit API v1 Guide
+
+Straightforward overview of the REST API living at `/api/v1`. Every call must include your **Site API key** in `X-API-Key`.
+
+## Authentication
+
+**Unified Authentication System**: Use the same `rb_*` API key for both browser tracking and REST API v1.
+
+- **Obtain your API key**: Navigate to Site Settings → API Key in the Rybbit dashboard
+- **Single key for everything**: The same key works for browser tracking scripts and REST API
+- **Auto-linking**: On first API v1 request, a Project is automatically created and linked to your Site
+- Send the key on every request:
+
+```http
+X-API-Key: rb_XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+```
+
+Missing or invalid keys return `401`. Keys must start with `rb_` prefix. Rate limiting is set to **20 requests per second per API key** and returns `429` when exceeded.
+
+## 1. Ingesting events
+
+Send analytics events with `POST /api/v1/events`. Provide at least one visitor identifier (`session_id`, `anon_id`, or `user_id`) so Rybbit can deduplicate people.
+
+```bash
+curl https://api.rybbit.app/api/v1/events \
+  -H "X-API-Key: $RYBBIT_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "timestamp": "2025-10-14T10:01:02Z",
+    "page_url": "https://example.com/pricing",
+    "session_id": "sess_123",
+    "metadata": {
+      "source": "ads",
+      "action": "click"
+    }
+  }'
+```
+
+Post an array to batch up to 500 items. The response states how many records were accepted. Duplicate payloads are silently skipped thanks to automatic idempotency keys.
+
+## 2. Event analytics
+
+Quick answers about event volume:
+
+- `GET /api/v1/events/stats/summary?from=&to=` — totals and first/last seen timestamps.
+- `GET /api/v1/events/stats/daily?from=&to=` — daily rollup (events + unique visitors) ready for charts.
+- `GET /api/v1/events?limit=&page=&from=&to=` — raw event debug listing with pagination.
+
+## 3. Visitors directory
+
+List anonymised visitors (hashed identifiers) together with activity history:
+
+```bash
+curl "https://api.rybbit.app/api/v1/users?limit=50&page=1" \
+  -H "X-API-Key: $RYBBIT_API_KEY"
+```
+
+Response fields:
+
+- `visitor_id` — stable hash across events/sessions.
+- `visits`, `sessions` — totals in the selected window.
+- `first_seen`, `last_seen` — ISO timestamps.
+- `pagination` — standard `page`, `limit`, `total`.
+
+Filter with `from` / `to` (ISO 8601) to narrow a time range.
+
+## 4. Managing funnels
+
+Create conversion funnels with ordered steps:
+
+```bash
+curl https://api.rybbit.app/api/v1/funnels \
+  -H "X-API-Key: $RYBBIT_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Checkout flow",
+    "steps": [
+      { "key": "landing", "name": "Landing page", "page_pattern": "/landing" },
+      { "key": "checkout", "name": "Checkout", "page_pattern": "/checkout" },
+      { "key": "success", "name": "Success", "page_pattern": "/success" }
+    ]
+  }'
+```
+
+Essential routes:
+
+- `GET /api/v1/funnels` — list funnels.
+- `GET /api/v1/funnels/{id}` — fetch a funnel with steps.
+- `PATCH /api/v1/funnels/{id}` — rename, toggle, or steps.
+- `DELETE /api/v1/funnels/{id}` — drop a funnel.
+- `GET /api/v1/funnels/{id}/stats?from=&to=` — per-step visitors, conversions, drop-off, conversion rate.
+
+## 5. Dashboard statistics
+
+Use these endpoints to power charts and KPI cards:
+
+```bash
+curl "https://api.rybbit.app/api/v1/stats/overview?granularity=daily&from=2025-01-01&to=2025-01-31" \
+  -H "X-API-Key: $RYBBIT_API_KEY"
+```
+
+- `/stats/overview` — visits and unique visitors (daily, monthly, yearly via `granularity`).
+- `/stats/pages` — top 50 pages with visit/visitor counts and first/last seen timestamps (optional `path` / `page_url` filters).
+- `/stats/realtime` — last five minutes snapshot (active visitors/sessions + top pages).
+
+## Listening to Realtime Visitors
+
+For live dashboards or alerting, subscribe to the Server-Sent Events stream:
+
+```bash
+curl -N https://api.rybbit.app/api/v1/realtime/visitors \
+  -H "X-API-Key: $RYBBIT_API_KEY"
+```
+
+Each `update` event contains the same payload as `/stats/realtime`. Remember to reconnect automatically in case of network interruptions.
+
+## Complete API Reference
+
+### Events API
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/v1/events` | POST | Ingest single or batch events (up to 500) |
+| `/api/v1/events` | GET | List events with pagination (`limit`, `page`, `from`, `to`) |
+| `/api/v1/events/stats/summary` | GET | Get aggregated event statistics |
+| `/api/v1/events/stats/daily` | GET | Get daily time series of events |
+
+### Funnels API
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/v1/funnels` | POST | Create a new funnel with steps |
+| `/api/v1/funnels` | GET | List all funnels |
+| `/api/v1/funnels/{id}` | GET | Get funnel details with steps |
+| `/api/v1/funnels/{id}` | PATCH | Update funnel name, status, or steps |
+| `/api/v1/funnels/{id}` | DELETE | Delete a funnel (204 No Content) |
+| `/api/v1/funnels/{id}/stats` | GET | Get conversion statistics (visitors, drop-offs, rates) |
+
+### Stats API
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/v1/stats/overview` | GET | Overview with granularity (`daily`, `monthly`, `yearly`) |
+| `/api/v1/stats/pages` | GET | Page-level statistics with visits and unique visitors |
+| `/api/v1/stats/realtime` | GET | Real-time active visitors (last 5 minutes) |
+
+### Users API
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/v1/users` | GET | List unique visitors with pagination (limit 1-200) |
+
+### Realtime API
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/v1/realtime/visitors` | GET | Server-Sent Events stream of real-time visitor data |
+
+## Query Parameters
+
+Common parameters across endpoints:
+
+- `from` — ISO 8601 timestamp (e.g., `2025-01-01T00:00:00Z`)
+- `to` — ISO 8601 timestamp
+- `limit` — Records per page (default varies by endpoint)
+- `page` — Page number (starts at 1)
+- `granularity` — Time bucket: `daily`, `monthly`, `yearly` (stats only)
+
+## Response Format
+
+All endpoints return JSON with this structure:
+
+```json
+{
+  "data": [...],
+  "pagination": {
+    "limit": 50,
+    "page": 1,
+    "total": 1234
+  }
+}
+```
+
+Error responses:
+
+```json
+{
+  "error": "Error message",
+  "details": [
+    {
+      "path": ["field"],
+      "message": "Validation error"
+    }
+  ]
+}
+```
+
+## Additional Resources
+
+- OpenAPI contract: `openapi/rybbit-api.v1.yaml`
+- Architecture notes: `ARCHITECTURE-NOTES.md`
+- Minimal tracking snippet: `examples/js/snippet.js`
+- Complete endpoint descriptions: See PR_DESCRIPTION.md for detailed usage

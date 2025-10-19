@@ -74,7 +74,7 @@ export async function getSessions(req: FastifyRequest<GetSessionsRequest>, res: 
 
   const timeStatement = getTimeStatement(req.query);
 
-  const query = `
+  const query = \`
   WITH AggregatedSessions AS (
       SELECT
           session_id,
@@ -93,6 +93,8 @@ export async function getSessions(req: FastifyRequest<GetSessionsRequest>, res: 
           argMin(referrer, timestamp) AS referrer,
           argMin(channel, timestamp) AS channel,
           argMin(hostname, timestamp) AS hostname,
+          argMin(page_title, timestamp) AS page_title,
+          argMin(querystring, timestamp) AS querystring,
           argMin(url_parameters, timestamp)['utm_source'] AS utm_source,
           argMin(url_parameters, timestamp)['utm_medium'] AS utm_medium,
           argMin(url_parameters, timestamp)['utm_campaign'] AS utm_campaign,
@@ -113,8 +115,8 @@ export async function getSessions(req: FastifyRequest<GetSessionsRequest>, res: 
       FROM events
       WHERE
           site_id = {siteId:Int32}
-          ${userId ? ` AND user_id = {userId:String}` : ""}
-          ${timeStatement}
+          \${userId ? \` AND user_id = {userId:String}\` : ""}
+          \${timeStatement}
       GROUP BY
           session_id,
           user_id
@@ -122,19 +124,22 @@ export async function getSessions(req: FastifyRequest<GetSessionsRequest>, res: 
   )
   SELECT *
   FROM AggregatedSessions
-  WHERE 1 = 1 ${filterStatement}
+  WHERE 1 = 1 \${filterStatement}
   LIMIT {limit:Int32} OFFSET {offset:Int32}
-  `;
+  \`;
 
   try {
+    const effectiveLimit = limit || 100;
+    const effectivePage = page || 1;
+
     const result = await clickhouse.query({
       query,
       format: "JSONEachRow",
       query_params: {
         siteId: Number(site),
         userId,
-        limit: limit || 100,
-        offset: (page - 1) * (limit || 100),
+        limit: effectiveLimit,
+        offset: (effectivePage - 1) * effectiveLimit,
       },
     });
 

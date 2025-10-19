@@ -61,11 +61,14 @@ export async function parseScriptConfig(scriptTag: HTMLScriptElement): Promise<S
 
   try {
     // Fetch configuration from API
-    const configUrl = `${analyticsHost}/site/${siteId}/tracking-config`;
+    const configUrl = `${analyticsHost}/api/site/${siteId}/tracking-config`;
     const response = await fetch(configUrl, {
       method: "GET",
       // Include credentials if needed for authentication
       credentials: "omit",
+      headers: {
+        "Content-Type": "application/json",
+      },
     });
 
     if (response.ok) {

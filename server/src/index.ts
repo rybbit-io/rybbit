@@ -76,6 +76,8 @@ import { telemetryService } from "./services/telemetryService.js";
 import { weeklyReportService } from "./services/weekyReports/weeklyReportService.js";
 import { extractSiteId } from "./utils.js";
 import { getTrackingConfig } from "./api/sites/getTrackingConfig.js";
+import { apiV1Routes } from "./api/v1/index.js";
+import type { ProjectRecord } from "./services/projects/projectService.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -125,12 +127,22 @@ const server = Fastify({
           : undefined, // Production without Axiom - plain JSON to stdout
     serializers: {
       req(request) {
+        const headers = { ...request.headers };
+
+        // Mask sensitive data in headers
+        if (headers['x-api-key'] && typeof headers['x-api-key'] === 'string') {
+          headers['x-api-key'] = headers['x-api-key'].substring(0, 8) + '***';
+        }
+        if (headers['authorization']) {
+          headers['authorization'] = '***';
+        }
+
         return {
           method: request.method,
           url: request.url,
           path: request.url,
           parameters: request.params,
-          headers: request.headers,
+          headers,
         };
       },
       res(reply) {
@@ -202,6 +214,7 @@ const PUBLIC_ROUTES: string[] = [
   "/api/session-replay/record",
   "/api/admin/telemetry",
   "/api/site/:siteId/tracking-config",
+  "/api/v1",
 ];
 
 // Define analytics routes that can be public
@@ -345,6 +358,8 @@ server.get("/api/user/organizations", getUserOrganizations);
 server.post("/api/add-user-to-organization", addUserToOrganization);
 server.post("/api/user/account-settings", updateAccountSettings);
 
+// Project API v1
+server.register(apiV1Routes, { prefix: "/api/v1" });
 // UPTIME MONITORING
 // Only register uptime routes when IS_CLOUD is true (Redis is available)
 // if (IS_CLOUD) {
@@ -487,5 +502,6 @@ process.on("SIGINT", () => shutdown("SIGINT"));
 declare module "fastify" {
   interface FastifyRequest {
     user?: any; // Or define a more specific user type
+    project?: ProjectRecord;
   }
 }

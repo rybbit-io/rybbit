@@ -1,0 +1,868 @@
+openapi: 3.1.0
+info:
+  title: Rybbit Tracking API
+  version: 1.0.0
+  description: >
+    REST API for ingesting analytics events, managing funnels, retrieving statistics, and
+    consuming realtime visitor telemetry for Rybbit projects.
+servers:
+  - url: https://api.rybbit.app/api/v1
+    description: Production API endpoint
+  - url: http://localhost:4000/api/v1
+    description: Local development endpoint
+tags:
+  - name: Events
+    description: Ingestion and querying of tracked events
+  - name: Funnels
+    description: Manage conversion funnels and retrieve stats
+  - name: Stats
+    description: Aggregated analytics and realtime metrics
+  - name: Realtime
+    description: Server-sent events for live visitor monitoring
+  - name: Users
+    description: Anonymised visitor listings and activity
+components:
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
+  schemas:
+    ErrorResponse:
+      type: object
+      required:
+        - error
+      properties:
+        error:
+          type: string
+          example: Invalid API key
+        details:
+          type: array
+          items:
+            type: object
+          description: Optional validation error details
+    EventInput:
+      type: object
+      required:
+        - timestamp
+      properties:
+        timestamp:
+          type: string
+          format: date-time
+          example: 2025-10-14T10:01:02Z
+        page_url:
+          type: string
+          format: uri
+          example: https://example.com/pricing
+        path:
+          type: string
+          example: /pricing
+        referrer:
+          type: string
+          example: https://google.com
+        session_id:
+          type: string
+          example: sess_123
+        anon_id:
+          type: string
+          example: anon_456
+        user_id:
+          type: string
+          example: user_789
+        funnel_id:
+          type: string
+          example: fun_001
+        step:
+          type: string
+          example: step_checkout
+        metadata:
+          type: object
+          additionalProperties: true
+          example:
+            source: ads
+            action: click
+        country:
+          type: string
+          example: FR
+        city:
+          type: string
+          example: Paris
+        device:
+          type: string
+          example: desktop
+        idempotency_key:
+          type: string
+          description: Optional client-generated idempotency key
+      anyOf:
+        - required: [session_id]
+        - required: [anon_id]
+        - required: [user_id]
+      description: >
+        Event payload. One of `session_id`, `anon_id`, or `user_id` must be supplied so visitors can be deduplicated.
+    EventIngestResponse:
+      type: object
+      required:
+        - accepted
+        - skipped
+        - total
+      properties:
+        accepted:
+          type: integer
+          example: 58
+        skipped:
+          type: integer
+          example: 2
+        total:
+          type: integer
+          example: 60
+    EventListItem:
+      type: object
+      properties:
+        id:
+          type: string
+          example: evt_abc123
+        timestamp:
+          type: string
+          format: date-time
+        page_url:
+          type: string
+          format: uri
+          nullable: true
+        path:
+          type: string
+          nullable: true
+        referrer:
+          type: string
+          nullable: true
+        funnel_id:
+          type: string
+          nullable: true
+        step:
+          type: string
+          nullable: true
+        metadata:
+          type: object
+          additionalProperties: true
+    EventSummary:
+      type: object
+      properties:
+        totalEvents:
+          type: integer
+        uniqueVisitors:
+          type: integer
+        uniqueSessions:
+          type: integer
+        firstSeen:
+          type: string
+          format: date-time
+          nullable: true
+        lastSeen:
+          type: string
+          format: date-time
+          nullable: true
+    EventDailyPoint:
+      type: object
+      properties:
+        date:
+          type: string
+          format: date-time
+        events:
+          type: integer
+        uniqueVisitors:
+          type: integer
+    ProjectUser:
+      type: object
+      properties:
+        visitor_id:
+          type: string
+        visits:
+          type: integer
+        sessions:
+          type: integer
+        first_seen:
+          type: string
+          format: date-time
+          nullable: true
+        last_seen:
+          type: string
+          format: date-time
+          nullable: true
+    PaginationMeta:
+      type: object
+      properties:
+        limit:
+          type: integer
+        page:
+          type: integer
+    FunnelStep:
+      type: object
+      required:
+        - key
+        - name
+      properties:
+        id:
+          type: string
+          readOnly: true
+        key:
+          type: string
+          example: step_signup
+        name:
+          type: string
+          example: Signup page
+        order:
+          type: integer
+          example: 1
+        page_pattern:
+          type: string
+          nullable: true
+          example: /signup
+    Funnel:
+      type: object
+      required:
+        - id
+        - name
+        - is_active
+        - created_at
+        - updated_at
+        - steps
+      properties:
+        id:
+          type: string
+          example: fun_001
+        name:
+          type: string
+          example: Checkout flow
+        description:
+          type: string
+          nullable: true
+        is_active:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        steps:
+          type: array
+          items:
+            $ref: "#/components/schemas/FunnelStep"
+    FunnelStats:
+      type: object
+      required:
+        - funnelId
+        - totalVisitors
+        - steps
+      properties:
+        funnelId:
+          type: string
+        totalVisitors:
+          type: integer
+          example: 120
+        steps:
+          type: array
+          items:
+            type: object
+            properties:
+              stepKey:
+                type: string
+              name:
+                type: string
+              visits:
+                type: integer
+              conversions:
+                type: integer
+              dropOff:
+                type: integer
+              conversionRate:
+                type: number
+                format: float
+              order:
+                type: integer
+    OverviewPoint:
+      type: object
+      properties:
+        period:
+          type: string
+          format: date-time
+        visits:
+          type: integer
+        uniqueVisitors:
+          type: integer
+    PageStats:
+      type: object
+      properties:
+        path:
+          type: string
+          nullable: true
+        pageUrl:
+          type: string
+          nullable: true
+        visits:
+          type: integer
+        uniqueVisitors:
+          type: integer
+        firstSeen:
+          type: string
+          format: date-time
+          nullable: true
+        lastSeen:
+          type: string
+          format: date-time
+          nullable: true
+    RealtimeStats:
+      type: object
+      properties:
+        activeVisitors:
+          type: integer
+        activeSessions:
+          type: integer
+        topPages:
+          type: array
+          items:
+            type: object
+            properties:
+              path:
+                type: string
+                nullable: true
+              pageUrl:
+                type: string
+                nullable: true
+              visits:
+                type: integer
+        updatedAt:
+          type: string
+          format: date-time
+  responses:
+    UnauthorizedError:
+      description: Unauthorized
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+paths:
+  /events:
+    post:
+      tags: [Events]
+      summary: Ingest analytics events
+      security:
+        - ApiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              oneOf:
+                - $ref: "#/components/schemas/EventInput"
+                - type: array
+                  items:
+                    $ref: "#/components/schemas/EventInput"
+            examples:
+              singleEvent:
+                summary: Single event ingestion
+                value:
+                  timestamp: 2025-10-14T10:01:02Z
+                  page_url: https://example.com/pricing
+                  session_id: sess_123
+                  metadata:
+                    source: ads
+                    action: click
+              batch:
+                summary: Batch ingestion
+                value:
+                  - timestamp: 2025-10-14T10:01:02Z
+                    session_id: sess_123
+                  - timestamp: 2025-10-14T10:01:07Z
+                    anon_id: anon_456
+                    path: /checkout
+      responses:
+        "202":
+          description: Events accepted for processing
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EventIngestResponse"
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Missing or invalid API key
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "429":
+          description: Rate limit exceeded for this project
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    get:
+      tags: [Events]
+      summary: List recent events (debug)
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+            maximum: 200
+        - name: from
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - name: to
+          in: query
+          schema:
+            type: string
+            format: date-time
+      responses:
+        "200":
+          description: Paginated list of events
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/EventListItem"
+                  pagination:
+                    $ref: "#/components/schemas/PaginationMeta"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+  /events/stats/summary:
+    get:
+      tags: [Events]
+      summary: Event summary metrics
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - name: from
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - name: to
+          in: query
+          schema:
+            type: string
+            format: date-time
+      responses:
+        "200":
+          description: Aggregate event metrics for the project
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: "#/components/schemas/EventSummary"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+  /events/stats/daily:
+    get:
+      tags: [Events]
+      summary: Daily event counts and unique visitors
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - name: from
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - name: to
+          in: query
+          schema:
+            type: string
+            format: date-time
+      responses:
+        "200":
+          description: Daily time series of events and visitors
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/EventDailyPoint"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+  /funnels:
+    post:
+      tags: [Funnels]
+      summary: Create a new funnel
+      security:
+        - ApiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - name
+                - steps
+              properties:
+                name:
+                  type: string
+                description:
+                  type: string
+                  nullable: true
+                is_active:
+                  type: boolean
+                  default: true
+                steps:
+                  type: array
+                  items:
+                    $ref: "#/components/schemas/FunnelStep"
+            example:
+              name: Checkout flow
+              description: "3-step e-commerce checkout"
+              steps:
+                - key: landing
+                  name: Landing page
+                  page_pattern: /landing
+                - key: checkout
+                  name: Checkout
+                  page_pattern: /checkout
+                - key: success
+                  name: Success
+                  page_pattern: /success
+      responses:
+        "201":
+          description: Funnel created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: "#/components/schemas/Funnel"
+        "400":
+          description: Invalid payload
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    get:
+      tags: [Funnels]
+      summary: List funnels
+      security:
+        - ApiKeyAuth: []
+      responses:
+        "200":
+          description: Funnel collection
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Funnel"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+  /funnels/{id}:
+    get:
+      tags: [Funnels]
+      summary: Retrieve a funnel
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Funnel details
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: "#/components/schemas/Funnel"
+        "404":
+          description: Funnel not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    patch:
+      tags: [Funnels]
+      summary: Update a funnel
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                description:
+                  type: string
+                  nullable: true
+                is_active:
+                  type: boolean
+                steps:
+                  type: array
+                  items:
+                    $ref: "#/components/schemas/FunnelStep"
+      responses:
+        "200":
+          description: Updated funnel
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: "#/components/schemas/Funnel"
+        "404":
+          description: Funnel not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    delete:
+      tags: [Funnels]
+      summary: Delete a funnel
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: Funnel deleted
+        "404":
+          description: Funnel not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /funnels/{id}/stats:
+    get:
+      tags: [Funnels]
+      summary: Fetch funnel statistics
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: from
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - name: to
+          in: query
+          schema:
+            type: string
+            format: date-time
+      responses:
+        "200":
+          description: Funnel stats
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: "#/components/schemas/FunnelStats"
+        "404":
+          description: Funnel not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /stats/overview:
+    get:
+      tags: [Stats]
+      summary: Time-series overview
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - name: granularity
+          in: query
+          schema:
+            type: string
+            enum: [daily, monthly, yearly]
+            default: daily
+        - name: from
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - name: to
+          in: query
+          schema:
+            type: string
+            format: date-time
+      responses:
+        "200":
+          description: Overview time series
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/OverviewPoint"
+  /stats/pages:
+    get:
+      tags: [Stats]
+      summary: Page level stats
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - name: path
+          in: query
+          schema:
+            type: string
+        - name: page_url
+          in: query
+          schema:
+            type: string
+            format: uri
+        - name: from
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - name: to
+          in: query
+          schema:
+            type: string
+            format: date-time
+      responses:
+        "200":
+          description: Page statistics
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/PageStats"
+  /stats/realtime:
+    get:
+      tags: [Stats]
+      summary: Realtime snapshot
+      security:
+        - ApiKeyAuth: []
+      responses:
+        "200":
+          description: Realtime counts
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: "#/components/schemas/RealtimeStats"
+  /users:
+    get:
+      tags: [Users]
+      summary: List anonymised visitors
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+            maximum: 200
+        - name: from
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - name: to
+          in: query
+          schema:
+            type: string
+            format: date-time
+      responses:
+        "200":
+          description: Paginated visitor list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/ProjectUser"
+                  pagination:
+                    $ref: "#/components/schemas/PaginationMeta"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+  /realtime/visitors:
+    get:
+      tags: [Realtime]
+      summary: Server-sent events stream of active visitors
+      security:
+        - ApiKeyAuth: []
+      responses:
+        "200":
+          description: Stream of realtime visitor snapshots
+          headers:
+            Content-Type:
+              schema:
+                type: string
+                example: text/event-stream
+          content:
+            text/event-stream:
+              schema:
+                type: string
+                example: |
+                  event: update
+                  data: {"activeVisitors":5,"activeSessions":3,"topPages":[{"path":"/","visits":10}],"updatedAt":"2024-12-01T10:00:00.000Z"}
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"

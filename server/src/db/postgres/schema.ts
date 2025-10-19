@@ -5,6 +5,7 @@ import {
   foreignKey,
   index,
   integer,
+  date,
   jsonb,
   pgTable,
   real,
@@ -266,6 +267,193 @@ export const goals = pgTable(
       foreignColumns: [sites.siteId],
       name: "goals_site_id_sites_site_id_fk",
     }),
+  ]
+);
+
+export const projects = pgTable(
+  "projects",
+  {
+    id: text("id")
+      .$defaultFn(() => sql`encode(gen_random_bytes(8), 'hex')`)
+      .primaryKey()
+      .notNull(),
+    organizationId: text("organization_id")
+      .notNull()
+      .references(() => organization.id),
+    name: text("name").notNull(),
+    apiKeyHash: text("api_key_hash").notNull(),
+    createdAt: timestamp("created_at", { mode: "string" }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { mode: "string" }).defaultNow().notNull(),
+    metadata: jsonb("metadata").$type<Record<string, unknown>>().default(sql`'{}'::jsonb`),
+    isActive: boolean("is_active").default(true).notNull(),
+  },
+  table => [
+    index("projects_org_idx").on(table.organizationId),
+    unique("projects_api_key_hash_unique").on(table.apiKeyHash),
+  ]
+);
+
+export const projectFunnels = pgTable(
+  "project_funnels",
+  {
+    id: text("id")
+      .$defaultFn(() => sql`encode(gen_random_bytes(8), 'hex')`)
+      .primaryKey()
+      .notNull(),
+    projectId: text("project_id")
+      .notNull()
+      .references(() => projects.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    description: text("description"),
+    isActive: boolean("is_active").default(true).notNull(),
+    createdAt: timestamp("created_at", { mode: "string" }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { mode: "string" }).defaultNow().notNull(),
+  },
+  table => [index("project_funnels_project_idx").on(table.projectId)]
+);
+
+export const projectFunnelSteps = pgTable(
+  "project_funnel_steps",
+  {
+    id: text("id")
+      .$defaultFn(() => sql`encode(gen_random_bytes(8), 'hex')`)
+      .primaryKey()
+      .notNull(),
+    funnelId: text("funnel_id")
+      .notNull()
+      .references(() => projectFunnels.id, { onDelete: "cascade" }),
+    stepOrder: integer("step_order").notNull(),
+    stepKey: text("step_key").notNull(),
+    name: text("name").notNull(),
+    pagePattern: text("page_pattern"),
+    createdAt: timestamp("created_at", { mode: "string" }).defaultNow().notNull(),
+  },
+  table => [
+    index("project_funnel_steps_funnel_idx").on(table.funnelId),
+    unique("project_funnel_steps_key_unique").on(table.funnelId, table.stepKey),
+  ]
+);
+
+export const projectEvents = pgTable(
+  "project_events",
+  {
+    id: text("id")
+      .$defaultFn(() => sql`encode(gen_random_bytes(12), 'hex')`)
+      .primaryKey()
+      .notNull(),
+    projectId: text("project_id")
+      .notNull()
+      .references(() => projects.id, { onDelete: "cascade" }),
+    occurredAt: timestamp("occurred_at", { mode: "string" }).notNull(),
+    sessionHash: text("session_hash"),
+    userHash: text("user_hash"),
+    pageUrl: text("page_url"),
+    path: text("path"),
+    referrer: text("referrer"),
+    country: text("country"),
+    city: text("city"),
+    device: text("device"),
+    funnelId: text("funnel_id").references(() => projectFunnels.id, { onDelete: "set null" }),
+    stepKey: text("step_key"),
+    metadata: jsonb("metadata").$type<Record<string, unknown>>().default(sql`'{}'::jsonb`),
+    idempotencyKey: text("idempotency_key").notNull(),
+    createdAt: timestamp("created_at", { mode: "string" }).defaultNow().notNull(),
+  },
+  table => [
+    index("project_events_project_timestamp_idx").on(table.projectId, table.occurredAt),
+    index("project_events_project_page_idx").on(table.projectId, table.pageUrl),
+    unique("project_events_idempotency_unique").on(table.projectId, table.idempotencyKey),
+  ]
+);
+
+export const pageAggDaily = pgTable(
+  "page_agg_daily",
+  {
+    projectId: text("project_id")
+      .notNull()
+      .references(() => projects.id, { onDelete: "cascade" }),
+    pagePath: text("page_path"),
+    pageUrl: text("page_url"),
+    eventDate: date("event_date").notNull(),
+    visits: integer("visits").default(0).notNull(),
+    uniqueVisitors: integer("unique_visitors").default(0).notNull(),
+    conversions: integer("conversions").default(0).notNull(),
+    firstSeenAt: timestamp("first_seen_at", { mode: "string" }),
+    lastSeenAt: timestamp("last_seen_at", { mode: "string" }),
+    createdAt: timestamp("created_at", { mode: "string" }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { mode: "string" }).defaultNow().notNull(),
+  },
+  table => [
+    unique("page_agg_daily_unique").on(table.projectId, table.pagePath, table.pageUrl, table.eventDate),
+    index("page_agg_daily_project_date_idx").on(table.projectId, table.eventDate),
+    index("page_agg_daily_project_path_idx").on(table.projectId, table.pagePath),
+  ]
+);
+
+export const projectOverviewDaily = pgTable(
+  "project_overview_daily",
+  {
+    projectId: text("project_id")
+      .notNull()
+      .references(() => projects.id, { onDelete: "cascade" }),
+    eventDate: date("event_date").notNull(),
+    visits: integer("visits").default(0).notNull(),
+    uniqueVisitors: integer("unique_visitors").default(0).notNull(),
+    firstSeenAt: timestamp("first_seen_at", { mode: "string" }),
+    lastSeenAt: timestamp("last_seen_at", { mode: "string" }),
+    createdAt: timestamp("created_at", { mode: "string" }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { mode: "string" }).defaultNow().notNull(),
+  },
+  table => [
+    unique("project_overview_daily_unique").on(table.projectId, table.eventDate),
+    index("project_overview_daily_project_date_idx").on(table.projectId, table.eventDate),
+  ]
+);
+
+export const projectVisitorsDaily = pgTable(
+  "project_visitors_daily",
+  {
+    projectId: text("project_id")
+      .notNull()
+      .references(() => projects.id, { onDelete: "cascade" }),
+    eventDate: date("event_date").notNull(),
+    visitorHash: text("visitor_hash").notNull(),
+    firstSeenAt: timestamp("first_seen_at", { mode: "string" }),
+    lastSeenAt: timestamp("last_seen_at", { mode: "string" }),
+    createdAt: timestamp("created_at", { mode: "string" }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { mode: "string" }).defaultNow().notNull(),
+  },
+  table => [
+    unique("project_visitors_daily_unique").on(table.projectId, table.eventDate, table.visitorHash),
+    index("project_visitors_daily_project_date_idx").on(table.projectId, table.eventDate),
+  ]
+);
+
+export const projectPageVisitorsDaily = pgTable(
+  "project_page_visitors_daily",
+  {
+    projectId: text("project_id")
+      .notNull()
+      .references(() => projects.id, { onDelete: "cascade" }),
+    eventDate: date("event_date").notNull(),
+    pagePath: text("page_path"),
+    pageUrl: text("page_url"),
+    visitorHash: text("visitor_hash").notNull(),
+    firstSeenAt: timestamp("first_seen_at", { mode: "string" }),
+    lastSeenAt: timestamp("last_seen_at", { mode: "string" }),
+    createdAt: timestamp("created_at", { mode: "string" }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { mode: "string" }).defaultNow().notNull(),
+  },
+  table => [
+    unique("project_page_visitors_daily_unique").on(
+      table.projectId,
+      table.eventDate,
+      table.pagePath,
+      table.pageUrl,
+      table.visitorHash
+    ),
+    index("project_page_visitors_daily_project_date_idx").on(table.projectId, table.eventDate),
+    index("project_page_visitors_daily_project_path_idx").on(table.projectId, table.pagePath),
   ]
 );
 
