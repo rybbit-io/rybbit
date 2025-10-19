@@ -98,11 +98,14 @@
       enableSessionReplay: false
     };
     try {
-      const configUrl = `${analyticsHost}/site/${siteId}/tracking-config`;
+      const configUrl = `${analyticsHost}/api/site/${siteId}/tracking-config`;
       const response = await fetch(configUrl, {
         method: "GET",
         // Include credentials if needed for authentication
-        credentials: "omit"
+        credentials: "omit",
+        headers: {
+          "Content-Type": "application/json"
+        }
       });
       if (response.ok) {
         const apiConfig = await response.json();

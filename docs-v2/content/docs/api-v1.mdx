@@ -3,7 +3,13 @@ title: REST API v1
 description: Programmatic analytics access for server-side tracking, mobile apps, and integrations
 ---
 
+import { Callout } from 'fumadocs-ui/components/callout';
+
 # Rybbit API v1 Guide
+
+<Callout type="warn" title="API v1 Status: Beta">
+**API v1 currently has limited data.** The tracking system writes to ClickHouse while API v1 reads from PostgreSQL. For production use with full historical data, use the [legacy API endpoints](/docs/api) which include automatic gap filling and access to all analytics data. API v1 is in beta and being prepared for full production rollout.
+</Callout>
 
 Straightforward overview of the REST API living at `/api/v1`. Every call must include your **Site API key** in `X-API-Key`.
 
