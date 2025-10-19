@@ -36,6 +36,7 @@ These are the attributes you can pass to the script tag.
 | :---------------- | :--------- | :------ | :---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `data-skip-patterns` | `string` | `[]`   | A JSON string array of URL path patterns to ignore. Pageviews matching these patterns won't be tracked. Supports two types of wildcards: `*` (matches within a segment) and `**` (matches across segments). |
 | `data-mask-patterns` | `string` | `[]`   | A JSON string array of URL path patterns to mask for privacy. Pageviews matching these patterns will be tracked, but the actual URL path will be replaced with the pattern itself in analytics data. Supports the same wildcards as `data-skip-patterns`. |
+| `data-replay-mask-text-selectors` | `string` | `[]` | A JSON string array of CSS selectors for elements whose text content should be masked in session replays. Useful for hiding sensitive user data like names, emails, or addresses. Example: `'[".user-name", "#email"]'`. Only applies when session replay is enabled in site settings. |
 | `data-debounce`   | `string`   | `"500"`| The delay (in milliseconds) before tracking a pageview after URL changes via the History API (`pushState`, `replaceState`). Set to `0` to disable debouncing. |
 
 
@@ -65,6 +66,25 @@ data-mask-patterns='["/users/*/settings", "/accounts/**", "/orders/*/details"]'
   data-site-id="456"
   data-skip-patterns='["/admin/**", "/preview/*"]'
   data-mask-patterns='["/users/*/profile", "/orders/**"]'
+  data-replay-mask-text-selectors='[".user-name", "#email"]'
   data-debounce="300"
 ></script>
+```
+
+## Session Replay Privacy
+
+When session replay is enabled in your site settings, you can protect sensitive user information by masking text content in replays using the `data-replay-mask-text-selectors` attribute.
+
+**Common use cases:**
+- User names in navigation or profile sections
+- Email addresses displayed in UI
+- Personal information (addresses, phone numbers)
+- Order numbers or transaction details
+
+Masked text will appear as asterisks (`********`) in session replays, ensuring sensitive data is never recorded.
+
+**Example:**
+```html
+<!-- Mask user names and email displays -->
+data-replay-mask-text-selectors='[".username", "#user-email", "[data-private]"]'
 ```

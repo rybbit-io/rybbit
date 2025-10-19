@@ -56,15 +56,13 @@ describe("parseScriptConfig", () => {
       maskPatterns: [],
       sessionReplayBatchInterval: 5000,
       sessionReplayBatchSize: 250,
+      sessionReplayMaskTextSelectors: [],
     });
 
     expect(global.fetch).toHaveBeenCalledWith(
-      "https://analytics.example.com/api/site/123/tracking-config",
+      "https://analytics.example.com/site/123/tracking-config",
       {
         method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-        },
         credentials: "omit",
       }
     );
@@ -97,6 +95,7 @@ describe("parseScriptConfig", () => {
       maskPatterns: [],
       sessionReplayBatchInterval: 5000,
       sessionReplayBatchSize: 250,
+      sessionReplayMaskTextSelectors: [],
     });
 
     expect(consoleWarnSpy).toHaveBeenCalledWith(
@@ -128,6 +127,7 @@ describe("parseScriptConfig", () => {
       maskPatterns: [],
       sessionReplayBatchInterval: 5000,
       sessionReplayBatchSize: 250,
+      sessionReplayMaskTextSelectors: [],
     });
 
     expect(consoleWarnSpy).toHaveBeenCalledWith(
@@ -315,5 +315,20 @@ describe("parseScriptConfig", () => {
     const config = await parseScriptConfig(mockScriptTag);
     expect(config?.sessionReplayBatchSize).toBe(500);
     expect(config?.sessionReplayBatchInterval).toBe(10000);
+  });
+
+  it("should parse session replay mask text selectors", async () => {
+    mockScriptTag.setAttribute("src", "https://analytics.example.com/script.js");
+    mockScriptTag.setAttribute("data-site-id", "123");
+    mockScriptTag.setAttribute("data-replay-mask-text-selectors", '[".user-name", ".email-address", "[data-sensitive]"]');
+
+    // Mock successful API response
+    (global.fetch as any).mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({}),
+    });
+
+    const config = await parseScriptConfig(mockScriptTag);
+    expect(config?.sessionReplayMaskTextSelectors).toEqual([".user-name", ".email-address", "[data-sensitive]"]);
   });
 });
