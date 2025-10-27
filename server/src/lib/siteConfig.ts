@@ -16,6 +16,7 @@ export interface SiteConfigData {
   excludedCountries: string[];
   apiKey?: string | null;
   privateLinkKey?: string | null;
+  organizationId?: string | null;
   sessionReplay: boolean;
   webVitals: boolean;
   trackErrors: boolean;
@@ -63,6 +64,7 @@ class SiteConfig {
           excludedCountries: sites.excludedCountries,
           apiKey: sites.apiKey,
           privateLinkKey: sites.privateLinkKey,
+          organizationId: sites.organizationId,
           sessionReplay: sites.sessionReplay,
           webVitals: sites.webVitals,
           trackErrors: sites.trackErrors,
@@ -91,6 +93,7 @@ class SiteConfig {
         excludedCountries: Array.isArray(site.excludedCountries) ? site.excludedCountries : [],
         apiKey: site.apiKey,
         privateLinkKey: site.privateLinkKey,
+        organizationId: site.organizationId,
         sessionReplay: site.sessionReplay || false,
         webVitals: site.webVitals || false,
         trackErrors: site.trackErrors || false,
@@ -119,6 +122,82 @@ class SiteConfig {
   async getConfig(siteIdOrId?: string | number): Promise<SiteConfigData | undefined> {
     if (!siteIdOrId) return undefined;
     return this.getSiteByAnyId(siteIdOrId);
+  }
+
+  /**
+   * Get site configuration by API key
+   */
+  async getConfigByApiKey(apiKey: string): Promise<SiteConfigData | undefined> {
+    const cacheKey = `apikey_${apiKey}`;
+    const cached = this.cache.get(cacheKey);
+
+    if (cached && cached.expires > Date.now()) {
+      return cached.data;
+    }
+
+    try {
+      const [site] = await db
+        .select({
+          id: sites.id,
+          siteId: sites.siteId,
+          public: sites.public,
+          saltUserIds: sites.saltUserIds,
+          domain: sites.domain,
+          blockBots: sites.blockBots,
+          excludedIPs: sites.excludedIPs,
+          excludedCountries: sites.excludedCountries,
+          apiKey: sites.apiKey,
+          privateLinkKey: sites.privateLinkKey,
+          organizationId: sites.organizationId,
+          sessionReplay: sites.sessionReplay,
+          webVitals: sites.webVitals,
+          trackErrors: sites.trackErrors,
+          trackOutbound: sites.trackOutbound,
+          trackUrlParams: sites.trackUrlParams,
+          trackInitialPageView: sites.trackInitialPageView,
+          trackSpaNavigation: sites.trackSpaNavigation,
+          trackIp: sites.trackIp,
+        })
+        .from(sites)
+        .where(eq(sites.apiKey, apiKey))
+        .limit(1);
+
+      if (!site) {
+        return undefined;
+      }
+
+      const configData: SiteConfigData = {
+        id: site.id,
+        siteId: site.siteId,
+        public: site.public || false,
+        saltUserIds: site.saltUserIds || false,
+        domain: site.domain || "",
+        blockBots: site.blockBots === undefined ? true : site.blockBots,
+        excludedIPs: Array.isArray(site.excludedIPs) ? site.excludedIPs : [],
+        excludedCountries: Array.isArray(site.excludedCountries) ? site.excludedCountries : [],
+        apiKey: site.apiKey,
+        privateLinkKey: site.privateLinkKey,
+        organizationId: site.organizationId,
+        sessionReplay: site.sessionReplay || false,
+        webVitals: site.webVitals || false,
+        trackErrors: site.trackErrors || false,
+        trackOutbound: site.trackOutbound || true,
+        trackUrlParams: site.trackUrlParams || true,
+        trackInitialPageView: site.trackInitialPageView || true,
+        trackSpaNavigation: site.trackSpaNavigation || true,
+        trackIp: site.trackIp || false,
+      };
+
+      this.cache.set(cacheKey, {
+        data: configData,
+        expires: Date.now() + this.cacheTTL,
+      });
+
+      return configData;
+    } catch (error) {
+      logger.error(error as Error, "Error fetching site configuration by API key");
+      return undefined;
+    }
   }
 
   async updateConfig(siteIdOrId: number | string, config: Partial<SiteConfigData>): Promise<void> {
