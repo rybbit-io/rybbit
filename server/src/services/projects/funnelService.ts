@@ -10,7 +10,11 @@ export interface FunnelStepInput {
   key: string;
   name: string;
   order?: number;
+  stepType?: 'page' | 'event';
   pagePattern?: string;
+  eventName?: string;
+  eventPropertyKey?: string;
+  eventPropertyValue?: string | number | boolean;
 }
 
 export interface FunnelInput {
@@ -33,7 +37,11 @@ export interface FunnelRecord {
     key: string;
     name: string;
     order: number;
+    stepType: string;
     pagePattern: string | null;
+    eventName: string | null;
+    eventPropertyKey: string | null;
+    eventPropertyValue: string | number | boolean | null;
   }>;
 }
 
@@ -116,7 +124,11 @@ export async function createFunnel(projectId: string, input: FunnelInput): Promi
           stepOrder: step.order,
           stepKey: step.key,
           name: step.name,
+          stepType: step.stepType ?? 'page',
           pagePattern: step.pagePattern,
+          eventName: step.eventName,
+          eventPropertyKey: step.eventPropertyKey,
+          eventPropertyValue: step.eventPropertyValue,
         }))
       )
       .returning();
@@ -169,7 +181,11 @@ export async function updateFunnel(projectId: string, funnelId: string, input: P
             stepOrder: step.order,
             stepKey: step.key,
             name: step.name,
+            stepType: step.stepType ?? 'page',
             pagePattern: step.pagePattern,
+            eventName: step.eventName,
+            eventPropertyKey: step.eventPropertyKey,
+            eventPropertyValue: step.eventPropertyValue,
           }))
         )
         .returning();
@@ -235,6 +251,18 @@ export async function getFunnelStats(
     };
   }
 
+  // NOTE: Current implementation works with project_events table in PostgreSQL
+  // This table stores events that were pre-associated with funnel_id and step_key during ingestion
+  //
+  // For custom event tracking with event_name and property filtering (like ClickHouse approach),
+  // we would need either:
+  // 1. Add columns: type, event_name, event_properties to project_events table
+  // 2. OR establish a link between projects and sites to query ClickHouse
+  //
+  // For now, this implementation supports:
+  // - Page-based funnels (when events are ingested with step_key matching page patterns)
+  // - Event-based funnels will require the schema extension mentioned above
+
   const filters = [
     eq(projectEvents.projectId, projectId),
     eq(projectEvents.funnelId, funnelId),
@@ -296,7 +324,11 @@ export function normaliseSteps(steps: FunnelStepInput[]): NormalisedFunnelStep[]
       key: step.key,
       name: step.name,
       order: step.order ?? index,
+      stepType: step.stepType,
       pagePattern: step.pagePattern,
+      eventName: step.eventName,
+      eventPropertyKey: step.eventPropertyKey,
+      eventPropertyValue: step.eventPropertyValue,
     }))
     .sort((a, b) => a.order - b.order)
     .map((step, index) => ({
@@ -322,7 +354,11 @@ function mapStepRecord(step: typeof projectFunnelSteps.$inferSelect): FunnelReco
     key: step.stepKey,
     name: step.name,
     order: step.stepOrder,
+    stepType: step.stepType ?? 'page',
     pagePattern: step.pagePattern ?? null,
+    eventName: step.eventName ?? null,
+    eventPropertyKey: step.eventPropertyKey ?? null,
+    eventPropertyValue: (step.eventPropertyValue as string | number | boolean) ?? null,
   };
 }
 

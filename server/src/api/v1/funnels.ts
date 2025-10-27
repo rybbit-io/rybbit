@@ -20,11 +20,25 @@ import {
 
 const stepSchema = z.preprocess(
   (data: any) => {
-    // Normalize camelCase pagePattern to snake_case page_pattern
+    // Normalize camelCase to snake_case
     if (data && typeof data === 'object') {
+      const normalized: any = { ...data };
       if (data.pagePattern && !data.page_pattern) {
-        return { ...data, page_pattern: data.pagePattern };
+        normalized.page_pattern = data.pagePattern;
       }
+      if (data.stepType && !data.step_type) {
+        normalized.step_type = data.stepType;
+      }
+      if (data.eventName && !data.event_name) {
+        normalized.event_name = data.eventName;
+      }
+      if (data.eventPropertyKey && !data.event_property_key) {
+        normalized.event_property_key = data.eventPropertyKey;
+      }
+      if (data.eventPropertyValue !== undefined && data.event_property_value === undefined) {
+        normalized.event_property_value = data.eventPropertyValue;
+      }
+      return normalized;
     }
     return data;
   },
@@ -32,8 +46,16 @@ const stepSchema = z.preprocess(
     key: z.string().min(1).max(64),
     name: z.string().min(1).max(128),
     order: z.number().int().nonnegative().optional(),
+    step_type: z.enum(['page', 'event']).optional().default('page'),
+    stepType: z.enum(['page', 'event']).optional(), // Accept but will be normalized by preprocess
     page_pattern: z.string().max(2048).optional(),
     pagePattern: z.string().max(2048).optional(), // Accept but will be normalized by preprocess
+    event_name: z.string().max(128).optional(),
+    eventName: z.string().max(128).optional(), // Accept but will be normalized by preprocess
+    event_property_key: z.string().max(128).optional(),
+    eventPropertyKey: z.string().max(128).optional(), // Accept but will be normalized by preprocess
+    event_property_value: z.union([z.string(), z.number(), z.boolean()]).optional(),
+    eventPropertyValue: z.union([z.string(), z.number(), z.boolean()]).optional(), // Accept but will be normalized by preprocess
   })
 );
 

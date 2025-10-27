@@ -325,7 +325,11 @@ export const projectFunnelSteps = pgTable(
     stepOrder: integer("step_order").notNull(),
     stepKey: text("step_key").notNull(),
     name: text("name").notNull(),
+    stepType: text("step_type").default("page"),
     pagePattern: text("page_pattern"),
+    eventName: text("event_name"),
+    eventPropertyKey: text("event_property_key"),
+    eventPropertyValue: jsonb("event_property_value").$type<string | number | boolean>(),
     createdAt: timestamp("created_at", { mode: "string" }).defaultNow().notNull(),
   },
   table => [

@@ -13,7 +13,11 @@ export function mapFunnelSteps(steps: any[]): any[] {
     key: step.key,
     name: step.name,
     order: step.order,
+    step_type: step.stepType,
     page_pattern: step.pagePattern,
+    event_name: step.eventName,
+    event_property_key: step.eventPropertyKey,
+    event_property_value: step.eventPropertyValue,
   }));
 }
 
@@ -28,7 +32,11 @@ export function normalizeStepInput(steps: any[]): any[] {
     key: step.key,
     name: step.name,
     order: step.order ?? undefined,
+    stepType: step.step_type ?? step.stepType ?? 'page',
     pagePattern: step.page_pattern ?? step.pagePattern ?? undefined,
+    eventName: step.event_name ?? step.eventName ?? undefined,
+    eventPropertyKey: step.event_property_key ?? step.eventPropertyKey ?? undefined,
+    eventPropertyValue: step.event_property_value ?? step.eventPropertyValue ?? undefined,
   }));
 }
 

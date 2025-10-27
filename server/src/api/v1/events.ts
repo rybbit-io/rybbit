@@ -46,6 +46,54 @@ const statsQuerySchema = z.object({
 });
 
 export async function registerEventRoutes(server: FastifyInstance) {
+  // GET /api/v1/events/names - List available event names
+  server.get("/names", async (request, reply) => {
+    const validated = validateProjectAndRequest(request, reply, statsQuerySchema);
+    if (!validated) return;
+
+    const { project, data } = validated;
+
+    // NOTE: project_events table does not currently have an event_name column
+    // Event names can be stored in metadata.event_name field
+    //
+    // For full event tracking support similar to ClickHouse, consider:
+    // 1. Adding event_name, event_type columns to project_events
+    // 2. OR querying ClickHouse if a project <-> site link exists
+    //
+    // For now, we attempt to extract event names from metadata
+
+    try {
+      const rows = await listEvents(project.id, {
+        limit: 1000,
+        offset: 0,
+        from: data.from,
+        to: data.to,
+      });
+
+      // Extract unique event names from metadata
+      const eventCounts = new Map<string, number>();
+
+      rows.forEach(row => {
+        const eventName = (row.metadata as any)?.event_name;
+        if (eventName && typeof eventName === 'string') {
+          eventCounts.set(eventName, (eventCounts.get(eventName) || 0) + 1);
+        }
+      });
+
+      const eventNames = Array.from(eventCounts.entries())
+        .map(([name, count]) => ({ name, count }))
+        .sort((a, b) => b.count - a.count);
+
+      return reply.send({
+        data: eventNames,
+        note: "Event names are extracted from metadata.event_name. For better performance, consider adding a dedicated event_name column to project_events table.",
+      });
+    } catch (error) {
+      request.log.error(error, "Failed to fetch event names");
+      return reply.status(500).send({ error: "Failed to fetch event names" });
+    }
+  });
+
   server.post("/", { config: { rateLimit: false } }, async (request, reply) => {
     if (!validateProjectContext(request, reply)) return;
 
