@@ -1,0 +1,249 @@
+---
+title: Custom Nginx Setup
+description: Set up Rybbit with your own Nginx installation instead of using the built-in Caddy server
+---
+
+import { Steps, Step } from 'fumadocs-ui/components/steps';
+import { Callout } from 'fumadocs-ui/components/callout';
+
+
+This guide shows you how to set up Rybbit with your own Nginx installation instead of using the built-in Caddy server.
+
+## Prerequisites
+
+- Existing Nginx installation
+- SSL certificates (Let's Encrypt recommended)
+- Domain pointed to your server
+- Rybbit running with `--no-webserver` flag
+
+## Setup Steps
+
+<Steps>
+<Step>
+### Run Rybbit without Caddy
+
+First, set up Rybbit to expose ports without the built-in webserver:
+
+```bash
+./setup.sh your.domain.name --no-webserver
+```
+
+Optionally, include a Mapbox token for globe visualizations:
+
+```bash
+./setup.sh your.domain.name --no-webserver --mapbox-token YOUR_MAPBOX_TOKEN
+```
+
+This will expose:
+- Backend service on port 3001
+- Client service on port 3002
+</Step>
+
+<Step>
+### Configure Nginx
+
+Create or update your Nginx configuration file (usually in `/etc/nginx/sites-available/`):
+
+```nginx
+server {
+    listen 80;
+    server_name your.domain.name;
+    return 301 https://$host$request_uri;
+}
+
+server {
+    listen 443 ssl http2;
+    server_name your.domain.name;
+
+    # SSL configuration (using Let's Encrypt)
+    ssl_certificate /etc/letsencrypt/live/your.domain.name/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/your.domain.name/privkey.pem;
+    
+    # Modern SSL configuration
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_ciphers ECDHE-RSA-AES128-GCM-SHA256:ECDHE-RSA-AES256-GCM-SHA384;
+    ssl_prefer_server_ciphers off;
+    
+    # Security headers
+    add_header X-Frame-Options "SAMEORIGIN" always;
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header X-XSS-Protection "1; mode=block" always;
+
+    # API requests
+    location /api/ {
+        proxy_pass http://localhost:3001;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-Forwarded-Host $server_name;
+        
+        # Timeouts
+        proxy_connect_timeout 60s;
+        proxy_send_timeout 60s;
+        proxy_read_timeout 60s;
+    }
+
+    # Client app
+    location / {
+        proxy_pass http://localhost:3002;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-Forwarded-Host $server_name;
+        
+        # Timeouts
+        proxy_connect_timeout 60s;
+        proxy_send_timeout 60s;
+        proxy_read_timeout 60s;
+    }
+}
+```
+</Step>
+
+<Step>
+### Enable the Site
+
+Enable your Nginx configuration:
+
+```bash
+# Create symlink to enable the site
+sudo ln -s /etc/nginx/sites-available/your-site /etc/nginx/sites-enabled/
+
+# Test the configuration
+sudo nginx -t
+
+# Reload Nginx
+sudo systemctl reload nginx
+```
+</Step>
+
+<Step>
+### Verify Setup
+
+Check that everything is working:
+
+```bash
+# Check Nginx status
+sudo systemctl status nginx
+
+# Check Rybbit services
+docker compose ps
+
+# Test the website
+curl -I https://your.domain.name
+```
+</Step>
+</Steps>
+
+## SSL Certificate Setup with Certbot
+
+If you need to set up SSL certificates with Let's Encrypt:
+
+<Steps>
+<Step>
+### Install Certbot
+
+```bash
+# Ubuntu/Debian
+sudo apt update
+sudo apt install certbot python3-certbot-nginx
+
+# CentOS/RHEL
+sudo yum install certbot python3-certbot-nginx
+```
+</Step>
+
+<Step>
+### Obtain Certificate
+
+```bash
+sudo certbot --nginx -d your.domain.name
+```
+</Step>
+
+<Step>
+### Auto-renewal
+
+Set up automatic renewal:
+
+```bash
+# Test renewal
+sudo certbot renew --dry-run
+
+# Check existing cron job
+sudo crontab -l
+```
+
+Certbot usually sets up auto-renewal automatically, but you can add this cron job if needed:
+
+```bash
+0 12 * * * /usr/bin/certbot renew --quiet
+```
+</Step>
+</Steps>
+
+## Custom Ports
+
+If you need to use custom ports for Rybbit:
+
+```bash
+./setup.sh your.domain.name --no-webserver --backend-port 8080 --client-port 8081
+
+# With Mapbox token
+./setup.sh your.domain.name --no-webserver --backend-port 8080 --client-port 8081 --mapbox-token YOUR_MAPBOX_TOKEN
+```
+
+Update your Nginx configuration accordingly:
+
+```nginx
+location /api/ {
+    proxy_pass http://localhost:8080;  # Custom backend port
+    # ... rest of config
+}
+
+location / {
+    proxy_pass http://localhost:8081;  # Custom client port
+    # ... rest of config
+}
+```
+
+## Troubleshooting
+
+### Common Issues
+
+**502 Bad Gateway**: Check if Rybbit services are running:
+```bash
+docker compose ps
+docker compose logs
+```
+
+**SSL Certificate Issues**: Verify certificate paths:
+```bash
+sudo certbot certificates
+```
+
+**Permission Denied**: Check Nginx error logs:
+```bash
+sudo tail -f /var/log/nginx/error.log
+```
+
+### Logs
+
+Monitor logs for debugging:
+
+```bash
+# Nginx access logs
+sudo tail -f /var/log/nginx/access.log
+
+# Nginx error logs
+sudo tail -f /var/log/nginx/error.log
+
+# Rybbit logs
+docker compose logs -f
+```
+
+<Callout type="info">
+For step-by-step Nginx installation and SSL setup, see our [Nginx Setup Guide](/docs/self-hosting-nginx).
+</Callout>

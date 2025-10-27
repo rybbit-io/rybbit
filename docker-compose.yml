@@ -1,5 +1,6 @@
 services:
   caddy:
+    profiles: ["with-webserver"]
     image: caddy:2.10.0
     container_name: caddy
     restart: unless-stopped
@@ -120,7 +121,6 @@ services:
 volumes:
   clickhouse-data:
   postgres-data:
-  redis-data:
   caddy_data: # Persistent volume for Caddy's certificates and state
   caddy_config: # Persistent volume for Caddy's configuration cache (optional but good practice)
 

@@ -4,12 +4,15 @@ import { Button } from "@/components/ui/button";
 import { FilterParameter } from "@rybbit/shared";
 import { AlertCircle, Info, RefreshCcw } from "lucide-react";
 import { ReactNode } from "react";
-import { usePaginatedSingleCol } from "../../../../../api/analytics/usePaginatedSingleCol";
+import { usePaginatedSingleCol } from "../../../../../api/analytics/useSingleCol";
 import { SingleColResponse } from "../../../../../api/analytics/useSingleCol";
 import { CardLoader } from "../../../../../components/ui/card";
 import { Row } from "./Row";
 import { Skeleton } from "./Skeleton";
 import { StandardSectionDialog } from "./StandardSectionDialog";
+import { Tooltip, TooltipContent, TooltipTrigger } from "../../../../../components/ui/tooltip";
+import Link from "next/link";
+import { IS_CLOUD } from "../../../../../lib/const";
 
 const MAX_ITEMS_TO_DISPLAY = 10;
 
@@ -81,7 +84,26 @@ export function StandardSection({
         ) : (
           <div className="flex flex-col gap-2 overflow-x-hidden">
             <div className="flex flex-row gap-2 justify-between pr-1 text-xs text-neutral-400">
-              <div>{title}</div>
+              <div className="flex flex-row gap-1 items-center">
+                {title}
+                {IS_CLOUD && ["Countries", "Regions", "Cities"].includes(title) && (
+                  <Tooltip>
+                    <TooltipTrigger>
+                      <Info className="w-3 h-3" />
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      Geolocation by{" "}
+                      <Link
+                        href="https://ipapi.is/"
+                        target="_blank"
+                        className="text-emerald-400 hover:text-emerald-300"
+                      >
+                        ipapi.is
+                      </Link>
+                    </TooltipContent>
+                  </Tooltip>
+                )}
+              </div>
               <div>{countLabel || "Sessions"}</div>
             </div>
             {itemsForDisplay?.length ? (

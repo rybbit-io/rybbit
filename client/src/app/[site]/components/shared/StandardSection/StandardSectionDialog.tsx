@@ -11,7 +11,7 @@ import {
 import { useDebounce, useIntersectionObserver } from "@uidotdev/usehooks";
 import { ChevronDown, ChevronUp, Loader2, Search, SquareArrowOutUpRight } from "lucide-react";
 import { ReactNode, useEffect, useMemo, useState } from "react";
-import { useInfiniteSingleCol } from "../../../../../api/analytics/useInfiniteSingleCol";
+import { useInfiniteSingleCol } from "../../../../../api/analytics/useSingleCol";
 import { SingleColResponse } from "../../../../../api/analytics/useSingleCol";
 import { FilterParameter } from "@rybbit/shared";
 import { addFilter } from "../../../../../lib/store";
@@ -144,6 +144,18 @@ export function StandardSectionDialog({
             header: "Duration",
             cell: info => (
               <div className="text-right">{formatSecondsAsMinutesAndSeconds(Math.round(info.getValue() ?? 0))}</div>
+            ),
+          }) as any
+        );
+      }
+
+      const hasBounceRate = filteredData[0]?.bounce_rate !== undefined;
+      if (hasBounceRate) {
+        cols.push(
+          columnHelper.accessor("bounce_rate", {
+            header: "Bounce Rate",
+            cell: info => (
+              <div className="flex flex-row gap-1 items-center sm:justify-end">{info.getValue()?.toFixed(1)}%</div>
             ),
           }) as any
         );

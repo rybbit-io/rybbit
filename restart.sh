@@ -21,10 +21,10 @@ source .env
 # Start the appropriate services with updated environment variables
 if [ "$USE_WEBSERVER" = "false" ]; then
   # Start without the caddy service when using --no-webserver
-  docker compose up -d backend client clickhouse postgres --force-recreate
+  docker compose up -d --force-recreate
 else
   # Start all services including caddy
-  docker compose up -d --force-recreate
+  docker compose --profile with-webserver up -d --force-recreate
 fi
 
 echo "Services restarted. You can monitor logs with: docker compose logs -f" 

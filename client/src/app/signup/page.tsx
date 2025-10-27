@@ -4,6 +4,7 @@ import { AuthButton } from "@/components/auth/AuthButton";
 import { AuthError } from "@/components/auth/AuthError";
 import { AuthInput } from "@/components/auth/AuthInput";
 import { SocialButtons } from "@/components/auth/SocialButtons";
+import { Turnstile } from "@/components/auth/Turnstile";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -54,6 +55,7 @@ export default function SignupPage() {
   // Step 1: Account creation
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [turnstileToken, setTurnstileToken] = useState<string>("");
 
   // Step 2: Organization creation
   const [orgName, setOrgName] = useState("");
@@ -81,11 +83,27 @@ export default function SignupPage() {
     setError("");
 
     try {
-      const { data, error } = await authClient.signUp.email({
-        email,
-        name: email.split("@")[0], // Use email prefix as default name
-        password,
-      });
+      // Validate Turnstile token if in cloud mode
+      if (IS_CLOUD && !turnstileToken) {
+        setError("Please complete the captcha verification");
+        setIsLoading(false);
+        return;
+      }
+
+      const { data, error } = await authClient.signUp.email(
+        {
+          email,
+          name: email.split("@")[0], // Use email prefix as default name
+          password,
+        },
+        {
+          onRequest: context => {
+            if (IS_CLOUD && turnstileToken) {
+              context.headers.set("x-captcha-response", turnstileToken);
+            }
+          },
+        }
+      );
 
       if (data?.user) {
         userStore.setState({
@@ -195,12 +213,22 @@ export default function SignupPage() {
                 onChange={e => setPassword(e.target.value)}
               />
 
+              {IS_CLOUD && (
+                <Turnstile
+                  onSuccess={token => setTurnstileToken(token)}
+                  onError={() => setTurnstileToken("")}
+                  onExpire={() => setTurnstileToken("")}
+                  className="flex justify-center"
+                />
+              )}
+
               <AuthButton
                 isLoading={isLoading}
                 loadingText="Creating account..."
                 onClick={handleAccountSubmit}
                 type="button"
                 className="mt-6 transition-all duration-300 h-11"
+                disabled={IS_CLOUD ? !turnstileToken || isLoading : isLoading}
               >
                 Continue
                 <ArrowRight className="ml-2 h-4 w-4" />

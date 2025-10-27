@@ -14,10 +14,10 @@ const TimelineSlider = React.forwardRef<
     className={cn("relative flex w-full touch-none select-none items-center", className)}
     {...props}
   >
-    <SliderPrimitive.Track className="relative h-0.5 w-full grow overflow-hidden rounded-full bg-neutral-800/50">
-      <SliderPrimitive.Range className="absolute h-full bg-accent-400" />
+    <SliderPrimitive.Track className="relative h-0.5 w-full grow overflow-hidden rounded-full bg-neutral-800">
+      <SliderPrimitive.Range className="absolute h-full bg-accent-500" />
     </SliderPrimitive.Track>
-    <SliderPrimitive.Thumb className="block h-2.5 w-2.5 rounded-full border border-accent-400 bg-accent-400 shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-400 focus-visible:ring-offset-2 focus-visible:ring-offset-neutral-900 disabled:pointer-events-none disabled:opacity-50 hover:scale-125 hover:shadow-md cursor-grab active:cursor-grabbing active:scale-110" />
+    <SliderPrimitive.Thumb className="block h-2.5 w-2.5 rounded-full border border-accent-300 bg-accent-300 shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-400 focus-visible:ring-offset-2 focus-visible:ring-offset-neutral-900 disabled:pointer-events-none disabled:opacity-50 hover:scale-125 hover:shadow-md cursor-grab active:cursor-grabbing active:scale-110" />
   </SliderPrimitive.Root>
 ));
 TimelineSlider.displayName = SliderPrimitive.Root.displayName;

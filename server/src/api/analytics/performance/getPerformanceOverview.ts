@@ -1,7 +1,6 @@
 import { FastifyReply, FastifyRequest } from "fastify";
 import { clickhouse } from "../../../db/clickhouse/clickhouse.js";
 import { getFilterStatement, getTimeStatement, processResults } from "../utils.js";
-import { getUserHasAccessToSitePublic } from "../../../lib/auth-utils.js";
 import { PerformanceOverviewMetrics } from "../types.js";
 import { FilterParams } from "@rybbit/shared";
 
@@ -47,10 +46,6 @@ export interface PerformanceOverviewRequest {
 
 export async function getPerformanceOverview(req: FastifyRequest<PerformanceOverviewRequest>, res: FastifyReply) {
   const site = req.params.site;
-  const userHasAccessToSite = await getUserHasAccessToSitePublic(req, site);
-  if (!userHasAccessToSite) {
-    return res.status(403).send({ error: "Forbidden" });
-  }
 
   const query = getQuery(req.query);
 

@@ -1,7 +1,7 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { authClient } from "@/lib/auth";
 import { BACKEND_URL } from "@/lib/const";
-import { getStripePrices } from "@/lib/stripe";
+import { getStripePrices, STRIPE_TIERS } from "@/lib/stripe";
 import { usePreviewSubscriptionUpdate, useUpdateSubscription } from "@/lib/subscription/useSubscriptionMutations";
 import { cn } from "@/lib/utils";
 import { Loader2 } from "lucide-react";
@@ -16,16 +16,6 @@ interface PlanDialogProps {
   currentPlanName?: string;
   hasActiveSubscription?: boolean;
 }
-
-const EVENT_TIERS = [
-  { events: 100_000, label: "100k" },
-  { events: 250_000, label: "250k" },
-  { events: 500_000, label: "500k" },
-  { events: 1_000_000, label: "1M" },
-  { events: 2_000_000, label: "2M" },
-  { events: 5_000_000, label: "5M" },
-  { events: 10_000_000, label: "10M" },
-];
 
 export function PlanDialog({ open, onOpenChange, currentPlanName, hasActiveSubscription }: PlanDialogProps) {
   const [isAnnual, setIsAnnual] = useState(false);
@@ -188,7 +178,7 @@ export function PlanDialog({ open, onOpenChange, currentPlanName, hasActiveSubsc
                   <p className="text-sm text-neutral-400">{subtitle}</p>
                 </div>
                 <div className="space-y-2">
-                  {EVENT_TIERS.map(tier => {
+                  {STRIPE_TIERS.map(tier => {
                     const plan = getPriceForTier(tier.events, type);
                     if (!plan) return null;
                     const isCurrent = isCurrentPlan(plan.name);
@@ -216,7 +206,7 @@ export function PlanDialog({ open, onOpenChange, currentPlanName, hasActiveSubsc
                           </div>
                         </div>
                         <div className="text-neutral-100 font-medium flex items-center gap-2">
-                          {tier.label} events <span className="text-neutral-400 text-xs font-normal">/ month</span>
+                          {tier.shortName} events <span className="text-neutral-400 text-xs font-normal">/ month</span>
                           {isLoading && <Loader2 className="w-4 h-4 animate-spin" />}
                         </div>
                       </div>

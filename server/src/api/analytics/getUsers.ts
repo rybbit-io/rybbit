@@ -1,7 +1,6 @@
 import { FastifyReply, FastifyRequest } from "fastify";
 import { clickhouse } from "../../db/clickhouse/clickhouse.js";
 import { getFilterStatement, getTimeStatement, processResults } from "./utils.js";
-import { getUserHasAccessToSitePublic } from "../../lib/auth-utils.js";
 import { FilterParams } from "@rybbit/shared";
 
 export type GetUsersResponse = {
@@ -47,11 +46,6 @@ export async function getUsers(req: FastifyRequest<GetUsersRequest>, res: Fastif
     pastMinutesEnd,
   } = req.query;
   const site = req.params.site;
-
-  const userHasAccessToSite = await getUserHasAccessToSitePublic(req, site);
-  if (!userHasAccessToSite) {
-    return res.status(403).send({ error: "Forbidden" });
-  }
 
   const pageNum = parseInt(page, 10);
   const pageSizeNum = parseInt(pageSize, 10);

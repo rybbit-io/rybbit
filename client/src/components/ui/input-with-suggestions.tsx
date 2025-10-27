@@ -63,7 +63,7 @@ export const InputWithSuggestions = React.forwardRef<HTMLInputElement, InputWith
     };
 
     return (
-      <div ref={wrapperRef} className="relative w-full">
+      <div ref={wrapperRef} className="relative">
         <Input
           ref={ref}
           value={value}

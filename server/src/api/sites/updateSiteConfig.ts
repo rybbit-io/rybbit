@@ -34,6 +34,16 @@ const updateSiteConfigSchema = z.object({
     )
     .optional(),
   excludedIPs: z.array(z.string().trim().min(1)).max(100).optional(),
+  excludedCountries: z
+    .array(
+      z
+        .string()
+        .trim()
+        .length(2)
+        .regex(/^[A-Z]{2}$/, "Country code must be a 2-letter ISO code (e.g., US, GB, CN)")
+    )
+    .max(250)
+    .optional(),
 
   // Analytics features
   sessionReplay: z.boolean().optional(),
@@ -109,6 +119,7 @@ export async function updateSiteConfig(
       "blockBots",
       "domain",
       "excludedIPs",
+      "excludedCountries",
       "sessionReplay",
       "webVitals",
       "trackErrors",

@@ -3,7 +3,7 @@ import NumberFlow from "@number-flow/react";
 import { round } from "lodash";
 import { ChevronDown, ChevronRight, SquareArrowOutUpRight } from "lucide-react";
 import { ReactNode, useState, useCallback } from "react";
-import { usePaginatedSingleCol } from "../../../../../api/analytics/usePaginatedSingleCol";
+import { usePaginatedSingleCol } from "../../../../../api/analytics/useSingleCol";
 import { SingleColResponse } from "../../../../../api/analytics/useSingleCol";
 import { addFilter, removeFilter, useStore } from "../../../../../lib/store";
 

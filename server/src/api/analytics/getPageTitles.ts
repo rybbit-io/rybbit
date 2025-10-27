@@ -1,6 +1,5 @@
 import { FastifyReply, FastifyRequest } from "fastify";
 import { clickhouse } from "../../db/clickhouse/clickhouse.js";
-import { getUserHasAccessToSitePublic } from "../../lib/auth-utils.js";
 import { getFilterStatement, getTimeStatement, processResults } from "./utils.js";
 import { FilterParams } from "@rybbit/shared";
 
@@ -124,11 +123,6 @@ const getPageTitlesQuery = (request: FastifyRequest<GetPageTitlesRequest>, isCou
 export async function getPageTitles(req: FastifyRequest<GetPageTitlesRequest>, res: FastifyReply) {
   const site = req.params.site;
   const { page } = req.query;
-
-  const userHasAccessToSite = await getUserHasAccessToSitePublic(req, site);
-  if (!userHasAccessToSite) {
-    return res.status(403).send({ error: "Forbidden" });
-  }
 
   const isPaginatedRequest = page !== undefined; // True if page is present
 

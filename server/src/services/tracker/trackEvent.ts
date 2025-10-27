@@ -288,6 +288,27 @@ export async function trackEvent(request: FastifyRequest, reply: FastifyReply) {
       }
     }
 
+    // Check if the country should be excluded from tracking
+    if (siteConfiguration.excludedCountries && siteConfiguration.excludedCountries.length > 0) {
+      const { getLocation } = await import("../../db/geolocation/geolocation.js");
+      const locationResults = await getLocation([requestIP]);
+      const locationData = locationResults[requestIP];
+
+      if (locationData?.countryIso) {
+        const isCountryExcluded = await siteConfig.isCountryExcluded(locationData.countryIso, validatedPayload.site_id);
+        if (isCountryExcluded) {
+          logger.info(
+            { siteId: validatedPayload.site_id, country: locationData.countryIso },
+            "Country excluded from tracking"
+          );
+          return reply.status(200).send({
+            success: true,
+            message: "Event not tracked - country excluded",
+          });
+        }
+      }
+    }
+
     // Create base payload for the event using validated data
     const payload = await createBasePayload(
       request, // Pass request for IP/UA

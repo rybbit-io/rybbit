@@ -17,50 +17,72 @@ const getQuery = (params: FilterParams) => {
   const filterStatement = getFilterStatement(params.filters);
   const timeStatement = getTimeStatement(params);
 
-  return `SELECT
-      session_stats.sessions,
-      session_stats.pages_per_session,
-      session_stats.bounce_rate * 100 AS bounce_rate,
-      session_stats.session_duration,
-      page_stats.pageviews,
-      page_stats.users  
+  return `
+    WITH
+    -- First, calculate total pageviews per session (no filters except time)
+    AllSessionPageviews AS (
+        SELECT
+            session_id,
+            COUNT(CASE WHEN type = 'pageview' THEN 1 END) AS total_pageviews_in_session
+        FROM events
+        WHERE
+            site_id = {siteId:Int32}
+            ${timeStatement}
+        GROUP BY session_id
+    ),
+    -- Then get session data with filters applied
+    FilteredSessions AS (
+        SELECT
+            session_id,
+            MIN(timestamp) AS start_time,
+            MAX(timestamp) AS end_time
+        FROM events
+        WHERE
+            site_id = {siteId:Int32}
+            ${filterStatement}
+            ${timeStatement}
+        GROUP BY session_id
+    ),
+    -- Join to get sessions with their total pageviews
+    SessionsWithPageviews AS (
+        SELECT
+            fs.session_id,
+            fs.start_time,
+            fs.end_time,
+            asp.total_pageviews_in_session
+        FROM FilteredSessions fs
+        LEFT JOIN AllSessionPageviews asp ON fs.session_id = asp.session_id
+    )
+    SELECT
+        session_stats.sessions,
+        session_stats.pages_per_session,
+        session_stats.bounce_rate * 100 AS bounce_rate,
+        session_stats.session_duration,
+        page_stats.pageviews,
+        page_stats.users
     FROM
     (
         -- Session-level metrics
         SELECT
             COUNT() AS sessions,
-            AVG(pages_in_session) AS pages_per_session,
-            sumIf(1, pages_in_session = 1) / COUNT() AS bounce_rate,
+            AVG(total_pageviews_in_session) AS pages_per_session,
+            sumIf(1, total_pageviews_in_session = 1) / COUNT() AS bounce_rate,
             AVG(end_time - start_time) AS session_duration
-        FROM
-            (
-                -- One row per session
-                SELECT
-                    session_id,
-                    MIN(timestamp) AS start_time,
-                    MAX(timestamp) AS end_time,
-                    COUNT(CASE WHEN type = 'pageview' THEN 1 END) AS pages_in_session
-                FROM events
-                WHERE
-                    site_id = {siteId:Int32}
-                    ${filterStatement}
-                    ${timeStatement}
-                GROUP BY session_id
-            )
-        ) AS session_stats
-        CROSS JOIN
-        (
-            -- Page-level and user-level metrics
-            SELECT
-                COUNT(CASE WHEN type = 'pageview' THEN 1 END) AS pageviews,
-                COUNT(DISTINCT user_id)    AS users
-            FROM events
-            WHERE 
-                site_id = {siteId:Int32}
-                ${filterStatement}
-                ${timeStatement}
-                -- AND type = 'pageview'
-        ) AS page_stats`;
+        FROM SessionsWithPageviews
+    ) AS session_stats
+    CROSS JOIN
+    (
+        -- Page-level and user-level metrics
+        SELECT
+            COUNT(CASE WHEN type = 'pageview' THEN 1 END) AS pageviews,
+            COUNT(DISTINCT user_id)    AS users
+        FROM events
+        WHERE
+            site_id = {siteId:Int32}
+            ${filterStatement}
+            ${timeStatement}
+            -- AND type = 'pageview'
+    ) AS page_stats`;
 };
 
 export interface OverviewRequest {
@@ -73,10 +95,6 @@ export interface OverviewRequest {
 export async function getOverview(req: FastifyRequest<OverviewRequest>, res: FastifyReply) {
   const { startDate, endDate, timeZone, filters, pastMinutesStart, pastMinutesEnd } = req.query;
   const site = req.params.site;
-  const userHasAccessToSite = await getUserHasAccessToSitePublic(req, site);
-  if (!userHasAccessToSite) {
-    return res.status(403).send({ error: "Forbidden" });
-  }
 
   const query = getQuery({
     startDate,

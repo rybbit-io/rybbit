@@ -2,7 +2,6 @@ import { FastifyReply, FastifyRequest } from "fastify";
 import { clickhouse } from "../../../db/clickhouse/clickhouse.js";
 import { getFilterStatement, getTimeStatement, processResults, TimeBucketToFn, bucketIntervalMap } from "../utils.js";
 import SqlString from "sqlstring";
-import { getUserHasAccessToSitePublic } from "../../../lib/auth-utils.js";
 import { validateTimeStatementFillParams } from "../query-validation.js";
 import { TimeBucket, PerformanceTimeSeriesPoint } from "../types.js";
 import { FilterParams } from "@rybbit/shared";
@@ -119,11 +118,6 @@ export async function getPerformanceTimeSeries(
   res: FastifyReply
 ) {
   const site = req.params.site;
-
-  const userHasAccessToSite = await getUserHasAccessToSitePublic(req, site);
-  if (!userHasAccessToSite) {
-    return res.status(403).send({ error: "Forbidden" });
-  }
 
   const query = getQuery(req.query);
 

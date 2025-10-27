@@ -104,7 +104,7 @@ export function DateSelector({
 }) {
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger className="text-xs sm:text-sm p-2 sm:p-3 h-8 sm:h-9" variant={"default"}>
+      <DropdownMenuTrigger size={"sm"}>
         <Calendar className="hidden sm:block w-4 h-4" />
         {getLabel(time)}
       </DropdownMenuTrigger>

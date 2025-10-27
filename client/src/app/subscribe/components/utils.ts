@@ -1,16 +1,8 @@
 // Common utility functions and constants for subscription components
 
-export interface StripePrice {
-  priceId: string;
-  price: number;
-  name: string;
-  interval: string;
-  limits: {
-    events: number;
-  };
-}
+import { getStripePrices, STRIPE_TIERS } from "../../../lib/stripe";
 
-export const EVENT_TIERS = [100_000, 250_000, 500_000, 1_000_000, 2_000_000, 5_000_000, 10_000_000, "Custom"];
+export const EVENT_TIERS = [...STRIPE_TIERS.map(tier => tier.events), "Custom"];
 
 export const STANDARD_FEATURES = [
   "Up to 10 websites",
@@ -44,13 +36,14 @@ export const FREE_FEATURES = [
   "6 month data retention",
 ];
 
+const stripePrices = getStripePrices();
+
 // Find the appropriate price for a tier at current event limit
 export function findPriceForTier(
   eventLimit: number | string,
   interval: "month" | "year",
-  stripePrices: StripePrice[],
   planType: "standard" | "pro" = "standard"
-): StripePrice | null {
+) {
   // Check if we have a custom tier
   if (eventLimit === "Custom") {
     return null;
@@ -71,7 +64,7 @@ export function findPriceForTier(
   );
 
   // Find a plan that matches or exceeds the event limit
-  const matchingPlan = plans.find(plan => plan.limits.events >= eventLimitValue);
+  const matchingPlan = plans.find(plan => plan.events >= eventLimitValue);
   const selectedPlan = matchingPlan || plans[plans.length - 1] || null;
 
   // Return the matching plan or the highest tier available
@@ -84,5 +77,5 @@ export function formatEventTier(tier: number | string): string {
     return tier;
   }
 
-  return tier >= 1_000_000 ? `${tier / 1_000_000}M` : `${tier / 1_000}K`;
+  return tier >= 1_000_000 ? `${tier / 1_000_000}M` : `${tier / 1_000}k`;
 }

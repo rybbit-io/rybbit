@@ -4,13 +4,13 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 interface SiteConfigData {
   id: string;
   siteId: number;
-  organizationId: string | null;
   domain: string;
   apiKey?: string | null;
   public: boolean;
   saltUserIds: boolean;
   blockBots: boolean;
   excludedIPs: string[];
+  excludedCountries: string[];
   sessionReplay: boolean;
   webVitals: boolean;
   trackErrors: boolean;
@@ -21,36 +21,17 @@ interface SiteConfigData {
   trackIp: boolean;
 }
 
-const {
-  rateLimiterMock,
-  siteConfigMock,
-  loggerInfoMock,
-  loggerErrorMock,
-} = vi.hoisted(() => ({
-  rateLimiterMock: {
-    isAllowed: vi.fn(),
-  },
-  siteConfigMock: {
-    getConfig: vi.fn(),
-  },
-  loggerInfoMock: vi.fn(),
-  loggerErrorMock: vi.fn(),
-}));
-
-vi.mock("../../lib/logger/logger.js", () => ({
-  createServiceLogger: () => ({
-    info: loggerInfoMock,
-    error: loggerErrorMock,
-  }),
-}));
-
 // Mock dependencies
 vi.mock("../../lib/rateLimiter.js", () => ({
-  apiKeyRateLimiter: rateLimiterMock,
+  apiKeyRateLimiter: {
+    isAllowed: vi.fn(),
+  },
 }));
 
 vi.mock("../../lib/siteConfig.js", () => ({
-  siteConfig: siteConfigMock,
+  siteConfig: {
+    getSiteConfig: vi.fn(),
+  },
 }));
 
 vi.mock("../../utils.js", () => ({
@@ -91,13 +72,13 @@ describe("validateApiKey", () => {
     const mockSite: SiteConfigData = {
       id: "test-id",
       siteId: 1,
-      organizationId: "test-org-id",
       apiKey: "valid-api-key",
       domain: "example.com",
       public: true,
       saltUserIds: false,
       blockBots: true,
       excludedIPs: [],
+      excludedCountries: [],
       sessionReplay: false,
       webVitals: false,
       trackErrors: false,
@@ -110,23 +91,28 @@ describe("validateApiKey", () => {
 
     vi.mocked(siteConfig.getConfig).mockResolvedValue(mockSite);
 
+    // Mock console.info to avoid output during tests
+    const consoleSpy = vi.spyOn(console, "info").mockImplementation(() => {});
+
     const result = await validateApiKey(1, "valid-api-key");
 
     expect(result).toEqual({ success: true });
-    expect(loggerInfoMock).toHaveBeenCalledWith({ siteId: 1 }, "Valid API key for site");
+    expect(consoleSpy).toHaveBeenCalledWith("[Validation] Valid API key for site 1");
+
+    consoleSpy.mockRestore();
   });
 
   it("should return success false when API key does not match", async () => {
     const mockSite: SiteConfigData = {
       id: "test-id",
       siteId: 1,
-      organizationId: "test-org-id",
       apiKey: "valid-api-key",
       domain: "example.com",
       public: true,
       saltUserIds: false,
       blockBots: true,
       excludedIPs: [],
+      excludedCountries: [],
       sessionReplay: false,
       webVitals: false,
       trackErrors: false,
@@ -148,13 +134,13 @@ describe("validateApiKey", () => {
     const mockSite: SiteConfigData = {
       id: "test-id",
       siteId: 123,
-      organizationId: "test-org-id",
       apiKey: "test-key",
       domain: "example.com",
       public: true,
       saltUserIds: false,
       blockBots: true,
       excludedIPs: [],
+      excludedCountries: [],
       sessionReplay: false,
       webVitals: false,
       trackErrors: false,
@@ -178,7 +164,6 @@ describe("validateApiKey", () => {
         SiteConfigData,
         | "id"
         | "siteId"
-        | "organizationId"
         | "domain"
         | "public"
         | "saltUserIds"
@@ -194,12 +179,12 @@ describe("validateApiKey", () => {
       > = {
       id: "test-id",
       siteId: 1,
-      organizationId: "test-org-id",
       domain: "example.com",
       public: true,
       saltUserIds: false,
       blockBots: true,
       excludedIPs: [],
+      excludedCountries: [],
       sessionReplay: false,
       webVitals: false,
       trackErrors: false,
@@ -220,10 +205,14 @@ describe("validateApiKey", () => {
   it("should handle errors during validation", async () => {
     vi.mocked(siteConfig.getConfig).mockRejectedValue(new Error("Database error"));
 
+    const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+
     const result = await validateApiKey(1, "test-key");
 
     expect(result).toEqual({ success: false, error: "Failed to validate API key" });
-    expect(loggerErrorMock).toHaveBeenCalledWith(expect.any(Error), "Error validating API key");
+    expect(consoleSpy).toHaveBeenCalledWith("Error validating API key:", expect.any(Error));
+
+    consoleSpy.mockRestore();
   });
 });
 

@@ -1,7 +1,6 @@
 import { FastifyReply, FastifyRequest } from "fastify";
 import { clickhouse } from "../../db/clickhouse/clickhouse.js";
 import { processResults } from "./utils.js";
-import { getUserHasAccessToSitePublic } from "../../lib/auth-utils.js";
 import SqlString from "sqlstring";
 
 export interface GetUserSessionCountRequest {
@@ -22,11 +21,6 @@ export type GetUserSessionCountResponse = {
 export async function getUserSessionCount(req: FastifyRequest<GetUserSessionCountRequest>, res: FastifyReply) {
   const { site } = req.params;
   const { userId, timeZone = "UTC" } = req.query;
-
-  const userHasAccessToSite = await getUserHasAccessToSitePublic(req, site);
-  if (!userHasAccessToSite) {
-    return res.status(403).send({ error: "Forbidden" });
-  }
 
   if (!userId) {
     return res.status(400).send({ error: "userId is required" });

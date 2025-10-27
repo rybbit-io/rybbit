@@ -37,19 +37,13 @@ export async function parseTrackingData(
   // Parse user agent
   const ua = UAParser(userAgent);
 
-  // Get geolocation data
-  let geoData: any = {};
-  try {
-    geoData = await getLocation(ipAddress);
-  } catch (error) {
-    console.error("Error getting geo data for session replay:", error);
-  }
+  const geoData = await getLocation([ipAddress], true);
 
-  const countryCode = geoData?.countryIso || "";
-  const regionCode = geoData?.subdivisions?.[0]?.isoCode || "";
-  const latitude = geoData?.latitude || 0;
-  const longitude = geoData?.longitude || 0;
-  const city = geoData?.city || "";
+  const countryCode = geoData?.[ipAddress]?.countryIso || "";
+  const regionCode = geoData?.[ipAddress]?.region || "";
+  const latitude = geoData?.[ipAddress]?.latitude || 0;
+  const longitude = geoData?.[ipAddress]?.longitude || 0;
+  const city = geoData?.[ipAddress]?.city || "";
 
   // Clear self-referrer if it's from the same domain
   if (referrer && hostname) {

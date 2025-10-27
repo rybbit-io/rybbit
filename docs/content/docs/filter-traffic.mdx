@@ -1,0 +1,118 @@
+---
+title: Filter Traffic
+description: Block traffic from specific IP addresses or countries to improve analytics accuracy
+---
+
+import { Callout } from 'fumadocs-ui/components/callout';
+
+Rybbit provides server-side filtering to exclude traffic from your analytics. This helps you maintain accurate data by blocking unwanted visits, bot traffic, or your own pageviews.
+
+## IP Exclusion
+
+Block traffic from specific IP addresses or ranges at the server level. For detailed information on IP exclusion including setup instructions, supported formats (CIDR, ranges), and best practices, see [Hiding Your Own Traffic](/docs/hiding-own-traffic).
+
+**Quick overview:**
+- Supports single IPs, CIDR notation, and IPv4 ranges
+- Maximum 100 IP exclusions per site
+- Works at server level before data reaches your database
+- Configure in Site Settings → IP Exclusions section
+
+## Country Exclusion
+
+Block all traffic from specific countries to filter out unwanted analytics data or comply with regional requirements.
+
+### Setting Up Country Exclusion
+
+1. **Navigate to Site Settings**: Go to your site's settings page in the Rybbit dashboard
+2. **Find Country Exclusions section**: Scroll down to the "Country Exclusions" configuration
+3. **Select countries to exclude**: Use the searchable dropdown to select countries you want to block
+
+### How It Works
+
+When an event is received, Rybbit:
+1. Extracts the visitor's IP address
+2. Performs a GeoIP lookup using the MaxMind GeoLite2 database
+3. Checks if the country matches your exclusion list
+4. Blocks the event if the country is excluded (returns 200 response but doesn't track)
+
+### Supported Country Codes
+
+All countries are supported using 2-letter ISO country codes (ISO 3166-1 alpha-2):
+
+- **Examples**: `US` (United States), `GB` (United Kingdom), `CN` (China), `RU` (Russia), `IN` (India), `DE` (Germany)
+- **Case-insensitive**: Both `US` and `us` are accepted
+- **Maximum**: Up to 250 countries can be excluded
+
+### Use Cases
+
+- **Filter bot traffic**: Block countries known for generating bot traffic
+- **Privacy compliance**: Exclude regions for data protection requirements
+- **Analytics accuracy**: Remove traffic from regions where your service isn't available
+- **Development testing**: Block production traffic from specific regions during testing
+
+### Key Features
+
+- **Server-side filtering**: Traffic is blocked before it reaches your analytics database
+- **GeoIP-based**: Uses MaxMind GeoLite2 for accurate country detection
+- **Near real-time updates**: Changes take effect within 60 seconds (cache TTL)
+- **No browser dependency**: Works regardless of browser or device
+- **Applies to all events**: Blocks pageviews, custom events, session replay, and performance metrics
+
+<Callout type="warning">
+**Private IP addresses**: Country exclusion won't work for private IP addresses (e.g., `127.0.0.1`, `192.168.x.x`, `10.x.x.x`, `172.16.x.x`) as these cannot be geolocated. This includes localhost and Docker container IPs during local development.
+</Callout>
+
+<Callout type="info">
+**Testing locally**: To test country exclusion during development, send events with a public IP address using the `ip_address` field in your event payload. The GeoIP lookup will use the custom IP instead of the request IP.
+
+Example:
+```bash
+curl -X POST http://localhost:3000/track \
+  -H "Content-Type: application/json" \
+  -d '{
+    "type": "pageview",
+    "site_id": "your-site-id",
+    "ip_address": "8.8.8.8",
+    "url": "https://example.com/test"
+  }'
+```
+</Callout>
+
+<Callout type="info">
+**VPNs and proxies**: Visitors using VPNs or proxies will be detected based on the VPN/proxy server location, not their actual physical location.
+</Callout>
+
+## Combining Filters
+
+You can use both IP and country exclusions together for comprehensive filtering:
+
+- **IP exclusions** are checked first, then **country exclusions**
+- Both filters work at the server level before data reaches your database
+- Excluded events return a `200` status code but with a message indicating they were not tracked
+
+## API Access
+
+Both IP and country exclusions can be managed via the API:
+
+### Get Excluded IPs
+```bash
+GET /api/site/:siteId/excluded-ips
+```
+
+### Get Excluded Countries
+```bash
+GET /api/site/:siteId/excluded-countries
+```
+
+### Update Site Configuration
+```bash
+POST /api/site/:siteId/config
+Content-Type: application/json
+
+{
+  "excludedIPs": ["192.168.1.0/24", "10.0.0.1"],
+  "excludedCountries": ["US", "GB", "CN"]
+}
+```
+
+See the [API documentation](/docs/api) for more details on authentication and request formats.

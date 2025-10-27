@@ -34,13 +34,30 @@ function SidebarContent() {
 
   // Check which tab is active based on the current path
   const getTabPath = (tabName: string) => {
-    return `/${pathname.split("/")[1]}/${tabName.toLowerCase()}${embed ? "?embed=true" : ""}`;
+    const segments = pathname.split("/").filter(Boolean);
+    const siteId = segments[0];
+
+    // Check if second segment is a private key (12 hex chars)
+    const hasPrivateKey = segments.length > 1 && /^[a-f0-9]{12}$/i.test(segments[1]);
+    const privateKey = hasPrivateKey ? segments[1] : null;
+
+    // Build path: /siteId/[privateKey]/tabName
+    const basePath = privateKey
+      ? `/${siteId}/${privateKey}/${tabName.toLowerCase()}`
+      : `/${siteId}/${tabName.toLowerCase()}`;
+
+    return `${basePath}${embed ? "?embed=true" : ""}`;
   };
 
   const isActiveTab = (tabName: string) => {
     if (!pathname.includes("/")) return false;
 
-    const route = pathname.split("/")[2] || "main";
+    const segments = pathname.split("/").filter(Boolean);
+    // Check if we have a private key (second segment is 12 hex chars)
+    const hasPrivateKey = segments.length > 1 && /^[a-f0-9]{12}$/i.test(segments[1]);
+
+    // Route is either segments[1] (no key) or segments[2] (with key)
+    const route = hasPrivateKey ? (segments[2] || "main") : (segments[1] || "main");
     return route === tabName.toLowerCase();
   };
 

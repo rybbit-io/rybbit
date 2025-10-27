@@ -9,6 +9,7 @@ export type FunnelStep = {
   value: string;
   name?: string;
   type: "page" | "event";
+  hostname?: string;
   eventPropertyKey?: string;
   eventPropertyValue?: string | number | boolean;
 };

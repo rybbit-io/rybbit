@@ -21,6 +21,7 @@ import {
   SiWix,
   SiWoocommerce,
   SiWordpress,
+  SiMintlify,
 } from "@icons-pack/react-simple-icons";
 import React from "react";
 import { useGetSite, useSiteHasData } from "../../../../api/admin/sites";
@@ -189,6 +190,12 @@ export function NoData() {
                   title="Laravel"
                   description=""
                   href="https://rybbit.io/docs/guides/laravel"
+                />
+                <Card
+                  icon={<SiMintlify className="w-5 h-5" />}
+                  title="Mintlify"
+                  description=""
+                  href="https://rybbit.io/docs/guides/mintlify"
                 />
                 <Card
                   icon={<SiShopify className="w-5 h-5" />}

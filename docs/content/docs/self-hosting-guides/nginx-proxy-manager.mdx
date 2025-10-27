@@ -1,0 +1,346 @@
+---
+title: Nginx Proxy Manager (NPM) Setup
+description: Set up Rybbit with Nginx Proxy Manager without exposing ports directly to the host
+---
+
+import { Steps, Step } from 'fumadocs-ui/components/steps';
+import { Callout } from 'fumadocs-ui/components/callout';
+
+
+This guide shows you how to set up Rybbit with Nginx Proxy Manager without exposing ports directly to the host.
+
+## Prerequisites
+
+- [Nginx Proxy Manager](https://nginxproxymanager.com) already running
+- Basic knowledge of Docker networks
+- Domain name pointed to your server
+
+<Callout type="info">
+This setup assumes you have NPM running and are capable of creating SSL certificates. You can also use any other reverse proxy as long as you can put it on the same Docker network as Rybbit.
+</Callout>
+
+## Setup Steps
+
+<Steps>
+<Step>
+### Create Custom Docker Compose
+
+Create a new directory for your Rybbit installation and create a `docker-compose.yml` file:
+
+```yaml
+services:
+  rybbit_clickhouse:
+    image: clickhouse/clickhouse-server:25.4.2
+    container_name: rybbit_clickhouse
+    volumes:
+      - ./clickhouse-data:/var/lib/clickhouse
+      - ./clickhouse_config:/etc/clickhouse-server/config.d
+    environment:
+      - CLICKHOUSE_DB=${CLICKHOUSE_DB:-analytics}
+      - CLICKHOUSE_USER=${CLICKHOUSE_USER:-default}
+      - CLICKHOUSE_PASSWORD=${CLICKHOUSE_PASSWORD:-frog}
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8123/ping"]
+      interval: 3s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    restart: unless-stopped
+    networks:
+      - internal
+
+  rybbit_postgres:
+    image: postgres:17.4
+    container_name: rybbit_postgres
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER:-frog}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-frog}
+      - POSTGRES_DB=${POSTGRES_DB:-analytics}
+    volumes:
+      - ./postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 3s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    restart: unless-stopped
+    networks:
+      - internal
+
+  rybbit_backend:
+    image: ghcr.io/rybbit-io/rybbit-backend:${IMAGE_TAG:-latest}
+    container_name: rybbit_backend
+    environment:
+      - NODE_ENV=production
+      - CLICKHOUSE_HOST=http://rybbit_clickhouse:8123
+      - CLICKHOUSE_DB=${CLICKHOUSE_DB:-analytics}
+      - CLICKHOUSE_PASSWORD=${CLICKHOUSE_PASSWORD:-frog}
+      - POSTGRES_HOST=rybbit_postgres
+      - POSTGRES_PORT=5432
+      - POSTGRES_DB=${POSTGRES_DB:-analytics}
+      - POSTGRES_USER=${POSTGRES_USER:-frog}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-frog}
+      - BETTER_AUTH_SECRET=${BETTER_AUTH_SECRET}
+      - BASE_URL=${BASE_URL}
+      - DISABLE_SIGNUP=${DISABLE_SIGNUP}
+      - MAPBOX_TOKEN=${MAPBOX_TOKEN}
+    depends_on:
+      rybbit_clickhouse:
+        condition: service_healthy
+      rybbit_postgres:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:3001/api/health"]
+      interval: 3s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    restart: unless-stopped
+    networks:
+      - internal
+      - npm_proxy
+
+  rybbit_client:
+    image: ghcr.io/rybbit-io/rybbit-client:${IMAGE_TAG:-latest}
+    container_name: rybbit_client
+    environment:
+      - NODE_ENV=production
+      - NEXT_PUBLIC_BACKEND_URL=${BASE_URL}
+      - NEXT_PUBLIC_DISABLE_SIGNUP=${DISABLE_SIGNUP}
+    depends_on:
+      - rybbit_backend
+    restart: unless-stopped
+    networks:
+      - internal
+      - npm_proxy
+
+networks:
+  internal:
+    driver: bridge
+  npm_proxy:
+    external: true
+
+volumes:
+  clickhouse-data:
+  postgres-data:
+```
+</Step>
+
+<Step>
+### Configure Environment
+
+Create a `.env` file in the same directory:
+
+```bash
+# Required: Your domain and base URL
+DOMAIN_NAME=your.domain.com
+BASE_URL=https://your.domain.com
+
+# Required: Authentication secret (generate a random 32+ character string)
+BETTER_AUTH_SECRET=your_generated_secret_here
+
+# Optional: Disable new user signups after creating admin account
+DISABLE_SIGNUP=false
+
+# Optional but recommended: Mapbox token for globe visualizations
+MAPBOX_TOKEN=your_mapbox_token
+
+# Optional: Custom image tag
+IMAGE_TAG=latest
+```
+
+<Callout type="info">
+Generate a secure `BETTER_AUTH_SECRET` using: `openssl rand -hex 32`
+</Callout>
+</Step>
+
+<Step>
+### Setup Docker Network
+
+Create the external network that NPM uses (if it doesn't exist):
+
+```bash
+docker network create npm_proxy
+```
+
+Make sure your NPM container is connected to this network:
+
+```bash
+# Check if NPM is on the network
+docker network inspect npm_proxy
+
+# If needed, connect NPM to the network
+docker network connect npm_proxy <npm_container_name>
+```
+</Step>
+
+<Step>
+### Copy ClickHouse Config (Optional)
+
+Optionally, copy the ClickHouse configuration for better control:
+
+```bash
+# If you cloned the main repo, copy the config
+cp -r /path/to/rybbit/clickhouse_config ./
+
+# Or download it directly
+curl -L https://github.com/rybbit-io/rybbit/archive/master.tar.gz | tar -xz --strip=2 rybbit-master/clickhouse_config
+```
+</Step>
+
+<Step>
+### Start Services
+
+Start all Rybbit services:
+
+```bash
+docker compose up -d
+```
+
+Verify all services are running:
+
+```bash
+docker compose ps
+```
+</Step>
+
+<Step>
+### Configure NPM
+
+In your Nginx Proxy Manager interface:
+
+1. **Create Proxy Host**:
+   - Domain Names: `your.domain.com`
+   - Scheme: `http`
+   - Forward Hostname/IP: `rybbit_client`
+   - Forward Port: `3002`
+   - Enable "Cache Assets", "Block Common Exploits", "Websockets Support"
+
+2. **Add Custom Location**:
+   - Location: `/api`
+   - Scheme: `http`
+   - Forward Hostname/IP: `rybbit_backend`
+   - Forward Port: `3001`
+
+3. **Advanced Configuration** (in the custom location):
+   ```nginx
+   location /api/ {
+       proxy_pass http://rybbit_backend:3001;
+       proxy_set_header Host $host;
+       proxy_set_header X-Real-IP $remote_addr;
+       proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+       proxy_set_header X-Forwarded-Proto $scheme;
+   }
+   ```
+
+4. **SSL Configuration**:
+   - Enable SSL
+   - Request a new SSL certificate with Let's Encrypt
+   - Enable "Force SSL" and "HTTP/2 Support"
+</Step>
+
+<Step>
+### Access Rybbit
+
+Navigate to `https://your.domain.com` and create your admin account.
+</Step>
+</Steps>
+
+## Alternative Proxy Configurations
+
+### Traefik
+
+If you're using Traefik instead, add these labels to your services:
+
+```yaml
+services:
+  rybbit_backend:
+    # ... existing config
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.rybbit-api.rule=Host(`your.domain.com`) && PathPrefix(`/api`)"
+      - "traefik.http.routers.rybbit-api.tls.certresolver=letsencrypt"
+      - "traefik.http.services.rybbit-api.loadbalancer.server.port=3001"
+      - "traefik.docker.network=traefik_proxy"
+  
+  rybbit_client:
+    # ... existing config
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.rybbit-client.rule=Host(`your.domain.com`)"
+      - "traefik.http.routers.rybbit-client.tls.certresolver=letsencrypt"
+      - "traefik.http.services.rybbit-client.loadbalancer.server.port=3002"
+      - "traefik.docker.network=traefik_proxy"
+
+networks:
+  traefik_proxy:
+    external: true
+```
+
+### Cloudflare Tunnel
+
+For Cloudflare Tunnel, create a tunnel configuration:
+
+```yaml
+tunnel: your-tunnel-id
+credentials-file: /path/to/credentials.json
+
+ingress:
+  - hostname: your.domain.com
+    path: /api
+    service: http://rybbit_backend:3001
+  - hostname: your.domain.com
+    service: http://rybbit_client:3002
+  - service: http_status:404
+```
+
+## Troubleshooting
+
+### Common Issues
+
+**NPM can't reach containers**:
+- Verify both NPM and Rybbit are on the same network
+- Check container names match the proxy configuration
+
+**SSL certificate issues**:
+- Ensure domain is pointed to your server
+- Check NPM logs for certificate generation errors
+
+**502 Bad Gateway**:
+- Verify Rybbit services are healthy: `docker compose ps`
+- Check container logs: `docker compose logs`
+
+### Networking
+
+Check network connectivity:
+
+```bash
+# List all networks
+docker network ls
+
+# Inspect the npm_proxy network
+docker network inspect npm_proxy
+
+# Check which containers are connected
+docker ps --format "table {{.Names}}\t{{.Networks}}"
+```
+
+### Logs
+
+Monitor logs for debugging:
+
+```bash
+# Rybbit services
+docker compose logs -f
+
+# Specific service
+docker compose logs -f rybbit_backend
+
+# NPM logs (adjust container name)
+docker logs -f nginx-proxy-manager
+```
+
+<Callout type="warning">
+Remember to regularly backup your data volumes (`clickhouse-data` and `postgres-data`) and your `.env` file.
+</Callout>

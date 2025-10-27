@@ -2,13 +2,13 @@ import { FilterParams } from "@rybbit/shared";
 import { FastifyReply, FastifyRequest } from "fastify";
 import SqlString from "sqlstring";
 import { clickhouse } from "../../../db/clickhouse/clickhouse.js";
-import { getUserHasAccessToSitePublic } from "../../../lib/auth-utils.js";
 import { getFilterStatement, getTimeStatement, patternToRegex, processResults } from "../utils.js";
 
 type FunnelStep = {
   value: string;
   name?: string;
   type: "page" | "event";
+  hostname?: string;
   eventPropertyKey?: string;
   eventPropertyValue?: string | number | boolean;
 };
@@ -43,11 +43,6 @@ export async function getFunnel(
     return reply.status(400).send({ error: "At least 2 steps are required for a funnel" });
   }
 
-  const userHasAccessToSite = await getUserHasAccessToSitePublic(request, site);
-  if (!userHasAccessToSite) {
-    return reply.status(403).send({ error: "Forbidden" });
-  }
-
   try {
     const filterStatement = getFilterStatement(request.query.filters);
 
@@ -55,12 +50,14 @@ export async function getFunnel(
 
     // Build conditional statements for each step
     const stepConditions = steps.map(step => {
+      let condition = "";
+
       if (step.type === "page") {
         // Use pattern matching for page paths to support wildcards
-        return `type = 'pageview' AND match(pathname, ${SqlString.escape(patternToRegex(step.value))})`;
+        condition = `type = 'pageview' AND match(pathname, ${SqlString.escape(patternToRegex(step.value))})`;
       } else {
         // Start with the base event match condition
-        let eventClause = `type = 'custom_event' AND event_name = ${SqlString.escape(step.value)}`;
+        condition = `type = 'custom_event' AND event_name = ${SqlString.escape(step.value)}`;
 
         // Add property matching if both key and value are provided
         if (step.eventPropertyKey && step.eventPropertyValue !== undefined) {
@@ -70,19 +67,24 @@ export async function getFunnel(
           // Comparison needs to handle the dynamic type returned
           // Let ClickHouse handle the comparison based on the provided value type
           if (typeof step.eventPropertyValue === "string") {
-            eventClause += ` AND toString(${propValueAccessor}) = ${SqlString.escape(step.eventPropertyValue)}`;
+            condition += ` AND toString(${propValueAccessor}) = ${SqlString.escape(step.eventPropertyValue)}`;
           } else if (typeof step.eventPropertyValue === "number") {
             // Use toFloat64 or toInt* depending on expected number type
-            eventClause += ` AND toFloat64OrNull(${propValueAccessor}) = ${SqlString.escape(step.eventPropertyValue)}`;
+            condition += ` AND toFloat64OrNull(${propValueAccessor}) = ${SqlString.escape(step.eventPropertyValue)}`;
           } else if (typeof step.eventPropertyValue === "boolean") {
             // Booleans might be stored as 0/1 or true/false in JSON
             // Comparing toUInt8 seems robust
-            eventClause += ` AND toUInt8OrNull(${propValueAccessor}) = ${step.eventPropertyValue ? 1 : 0}`;
+            condition += ` AND toUInt8OrNull(${propValueAccessor}) = ${step.eventPropertyValue ? 1 : 0}`;
           }
         }
-
-        return eventClause;
       }
+
+      // Add hostname filtering if specified
+      if (step.hostname) {
+        condition += ` AND hostname = ${SqlString.escape(step.hostname)}`;
+      }
+
+      return condition;
     });
 
     // Build the funnel query - first part to calculate visitors at each step
@@ -96,7 +98,8 @@ export async function getFunnel(
         pathname,
         event_name,
         type,
-        props
+        props,
+        hostname
       FROM events
       WHERE
         site_id = {siteId:Int32}

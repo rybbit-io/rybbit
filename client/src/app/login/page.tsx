@@ -9,10 +9,12 @@ import { useSetPageTitle } from "../../hooks/useSetPageTitle";
 import { authClient } from "../../lib/auth";
 import { userStore } from "../../lib/userStore";
 import { useConfigs } from "../../lib/configs";
+import { IS_CLOUD } from "../../lib/const";
 import { AuthInput } from "@/components/auth/AuthInput";
 import { AuthButton } from "@/components/auth/AuthButton";
 import { AuthError } from "@/components/auth/AuthError";
 import { SocialButtons } from "@/components/auth/SocialButtons";
+import { Turnstile } from "@/components/auth/Turnstile";
 
 export default function Page() {
   const { configs, isLoading: isLoadingConfigs } = useConfigs();
@@ -21,6 +23,7 @@ export default function Page() {
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string>();
+  const [turnstileToken, setTurnstileToken] = useState<string>("");
   const router = useRouter();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -28,11 +31,28 @@ export default function Page() {
     setIsLoading(true);
 
     setError("");
+
+    // Validate Turnstile token if in cloud mode and production
+    if (IS_CLOUD && process.env.NODE_ENV === "production" && !turnstileToken) {
+      setError("Please complete the captcha verification");
+      setIsLoading(false);
+      return;
+    }
+
     try {
-      const { data, error } = await authClient.signIn.email({
-        email,
-        password,
-      });
+      const { data, error } = await authClient.signIn.email(
+        {
+          email,
+          password,
+        },
+        {
+          onRequest: context => {
+            if (IS_CLOUD && process.env.NODE_ENV === "production" && turnstileToken) {
+              context.headers.set("x-captcha-response", turnstileToken);
+            }
+          },
+        }
+      );
       if (data?.user) {
         userStore.setState({
           user: data.user,
@@ -48,6 +68,8 @@ export default function Page() {
     }
     setIsLoading(false);
   };
+
+  const turnstileEnabled = IS_CLOUD && process.env.NODE_ENV === "production";
 
   return (
     <div className="flex flex-col justify-between items-center h-dvh w-full p-4">
@@ -85,7 +107,20 @@ export default function Page() {
                 }
               />
 
-              <AuthButton isLoading={isLoading} loadingText="Logging in...">
+              {turnstileEnabled && (
+                <Turnstile
+                  onSuccess={token => setTurnstileToken(token)}
+                  onError={() => setTurnstileToken("")}
+                  onExpire={() => setTurnstileToken("")}
+                  className="flex justify-center"
+                />
+              )}
+
+              <AuthButton
+                isLoading={isLoading}
+                loadingText="Logging in..."
+                disabled={turnstileEnabled ? !turnstileToken || isLoading : isLoading}
+              >
                 Login
               </AuthButton>
 

@@ -1,6 +1,5 @@
 import { FastifyReply, FastifyRequest } from "fastify";
 import { clickhouse } from "../../db/clickhouse/clickhouse.js";
-import { getUserHasAccessToSitePublic } from "../../lib/auth-utils.js";
 import { FilterParameter } from "./types.js";
 import { getFilterStatement, getSqlParam, getTimeStatement, processResults } from "./utils.js";
 import { FilterParams } from "@rybbit/shared";
@@ -27,6 +26,7 @@ type GetSingleColResponse = {
   pageviews?: number; // pageviews of this specific page when it was an entry/exit
   pageviews_percentage?: number;
   time_on_page_seconds?: number; // avg time on this page when it was an entry/exit
+  bounce_rate?: number; // percentage of sessions that were bounces (single pageview)
 }[];
 
 // This type represents a single item in the array returned *within* the data property
@@ -39,6 +39,7 @@ type SingleColItem = {
   pageviews?: number;
   pageviews_percentage?: number;
   time_on_page_seconds?: number;
+  bounce_rate?: number;
 };
 
 // This is the structure the API will now send
@@ -114,7 +115,7 @@ const getQuery = (request: FastifyRequest<GetSingleColRequest>, isCountQuery: bo
       FROM events
       WHERE
           site_id = {siteId:Int32}
-          AND page_title IS NOT NULL 
+          AND page_title IS NOT NULL
           AND page_title <> ''
           -- AND type = 'pageview'
           ${filterStatement}
@@ -127,18 +128,46 @@ const getQuery = (request: FastifyRequest<GetSingleColRequest>, isCountQuery: bo
     }
 
     return `
-      WITH TitleStats AS (
-        ${corePageTitleLogic}
+      WITH SessionPageCounts AS (
+          SELECT
+              session_id,
+              COUNT() as pageviews_in_session
+          FROM events
+          WHERE
+              site_id = {siteId:Int32}
+              AND type = 'pageview'
+              ${timeStatement}
+          GROUP BY session_id
+      ),
+      TitleStatsWithSessions AS (
+          SELECT
+              e.page_title as value,
+              e.pathname as pathname,
+              e.session_id,
+              spc.pageviews_in_session
+          FROM events e
+          LEFT JOIN SessionPageCounts spc ON e.session_id = spc.session_id
+          WHERE
+              e.site_id = {siteId:Int32}
+              AND e.page_title IS NOT NULL
+              AND e.page_title <> ''
+              ${filterStatement}
+              ${timeStatement}
       )
       SELECT
           value,       -- This is page_title
-          pathname,    -- This is the representative pathname
-          unique_sessions as count,
+          any(pathname) as pathname,    -- This is the representative pathname
+          COUNT(DISTINCT session_id) as count,
           ROUND(
-              unique_sessions * 100.0 / SUM(unique_sessions) OVER (), 
+              COUNT(DISTINCT session_id) * 100.0 / SUM(COUNT(DISTINCT session_id)) OVER (),
               2
-          ) as percentage
-      FROM TitleStats
+          ) as percentage,
+          ROUND(
+              countIf(DISTINCT session_id, pageviews_in_session = 1) * 100.0 / nullIf(COUNT(DISTINCT session_id), 0),
+              2
+          ) as bounce_rate
+      FROM TitleStatsWithSessions
+      GROUP BY value
       ORDER BY count DESC
       ${limitStatement}
       ${offsetStatement};
@@ -151,11 +180,25 @@ const getQuery = (request: FastifyRequest<GetSingleColRequest>, isCountQuery: bo
     const rowNumFilter = isEntry ? "row_num = 1" : "row_num = 1";
 
     const baseCteQuery = `
-      RelevantEvents AS (
-          SELECT *
+      SessionPageCounts AS (
+          SELECT
+              session_id,
+              COUNT() as pageviews_in_session
           FROM events
           WHERE
               site_id = {siteId:Int32}
+              AND type = 'pageview'
+              ${timeStatement}
+          GROUP BY session_id
+      ),
+      RelevantEvents AS (
+          SELECT
+              e.*,
+              spc.pageviews_in_session
+          FROM events e
+          LEFT JOIN SessionPageCounts spc ON e.session_id = spc.session_id
+          WHERE
+              e.site_id = {siteId:Int32}
               -- AND type = 'pageview'
               ${filterStatement}
               ${timeStatement}
@@ -165,6 +208,7 @@ const getQuery = (request: FastifyRequest<GetSingleColRequest>, isCountQuery: bo
               session_id,
               pathname,
               timestamp,
+              pageviews_in_session,
               leadInFrame(timestamp) OVER (PARTITION BY session_id ORDER BY timestamp ROWS BETWEEN CURRENT ROW AND 1 FOLLOWING) as next_timestamp,
               row_number() OVER (PARTITION BY session_id ORDER BY timestamp ${orderDirection}) as row_num
           FROM RelevantEvents
@@ -176,6 +220,7 @@ const getQuery = (request: FastifyRequest<GetSingleColRequest>, isCountQuery: bo
               timestamp,
               next_timestamp,
               row_num,
+              pageviews_in_session,
               if(isNull(next_timestamp), 0, dateDiff('second', timestamp, next_timestamp)) as time_diff_seconds
           FROM EventTimes
       ),
@@ -189,7 +234,8 @@ const getQuery = (request: FastifyRequest<GetSingleColRequest>, isCountQuery: bo
               pathname,
               count(DISTINCT session_id) as unique_sessions,
               count() as visits,
-              avg(if(time_diff_seconds < 0, 0, if(time_diff_seconds > 1800, 1800, time_diff_seconds))) as avg_time_on_page_seconds
+              avg(if(time_diff_seconds < 0, 0, if(time_diff_seconds > 1800, 1800, time_diff_seconds))) as avg_time_on_page_seconds,
+              countIf(DISTINCT session_id, pageviews_in_session = 1) as bounced_sessions
           FROM FilteredDurations
           WHERE pathname IS NOT NULL AND pathname <> ''
           GROUP BY pathname
@@ -206,12 +252,13 @@ const getQuery = (request: FastifyRequest<GetSingleColRequest>, isCountQuery: bo
     return `
     WITH ${baseCteQuery}
     SELECT
-        pathname as value, 
+        pathname as value,
         unique_sessions as count,
         round((unique_sessions / sum(unique_sessions) OVER ()) * 100, 2) as percentage,
         visits as pageviews,
         round((visits / sum(visits) OVER ()) * 100, 2) as pageviews_percentage,
-        avg_time_on_page_seconds as time_on_page_seconds
+        avg_time_on_page_seconds as time_on_page_seconds,
+        round((bounced_sessions / nullIf(unique_sessions, 0)) * 100, 2) as bounce_rate
     FROM PathStats
     ORDER BY unique_sessions DESC
     ${limitStatement}
@@ -220,15 +267,28 @@ const getQuery = (request: FastifyRequest<GetSingleColRequest>, isCountQuery: bo
 
   if (parameter === "pathname") {
     const baseCteQuery = `
-      EventTimes AS (
+      SessionPageCounts AS (
           SELECT
               session_id,
-              pathname,
-              timestamp,
-              leadInFrame(timestamp) OVER (PARTITION BY session_id ORDER BY timestamp ROWS BETWEEN CURRENT ROW AND 1 FOLLOWING) as next_timestamp
+              COUNT() as pageviews_in_session
           FROM events
-          WHERE 
-            site_id = {siteId:Int32}
+          WHERE
+              site_id = {siteId:Int32}
+              AND type = 'pageview'
+              ${timeStatement}
+          GROUP BY session_id
+      ),
+      EventTimes AS (
+          SELECT
+              e.session_id,
+              e.pathname,
+              e.timestamp,
+              spc.pageviews_in_session,
+              leadInFrame(e.timestamp) OVER (PARTITION BY e.session_id ORDER BY e.timestamp ROWS BETWEEN CURRENT ROW AND 1 FOLLOWING) as next_timestamp
+          FROM events e
+          LEFT JOIN SessionPageCounts spc ON e.session_id = spc.session_id
+          WHERE
+            e.site_id = {siteId:Int32}
             -- AND type = 'pageview'
             ${filterStatement}
             ${timeStatement}
@@ -239,6 +299,7 @@ const getQuery = (request: FastifyRequest<GetSingleColRequest>, isCountQuery: bo
               pathname,
               timestamp,
               next_timestamp,
+              pageviews_in_session,
               if(isNull(next_timestamp), 0, dateDiff('second', timestamp, next_timestamp)) as time_diff_seconds
           FROM EventTimes
       ),
@@ -247,7 +308,8 @@ const getQuery = (request: FastifyRequest<GetSingleColRequest>, isCountQuery: bo
               pathname,
               count() as visits,
               count(DISTINCT session_id) as unique_sessions,
-              avg(if(time_diff_seconds < 0, 0, if(time_diff_seconds > 1800, 1800, time_diff_seconds))) as avg_time_on_page_seconds
+              avg(if(time_diff_seconds < 0, 0, if(time_diff_seconds > 1800, 1800, time_diff_seconds))) as avg_time_on_page_seconds,
+              countIf(DISTINCT session_id, pageviews_in_session = 1) as bounced_sessions
           FROM PageDurations
           GROUP BY pathname
       )
@@ -266,7 +328,8 @@ const getQuery = (request: FastifyRequest<GetSingleColRequest>, isCountQuery: bo
         round((unique_sessions / sum(unique_sessions) OVER ()) * 100, 2) as percentage,
         visits as pageviews,
         round((visits / sum(visits) OVER ()) * 100, 2) as pageviews_percentage,
-        avg_time_on_page_seconds as time_on_page_seconds
+        avg_time_on_page_seconds as time_on_page_seconds,
+        round((bounced_sessions / nullIf(unique_sessions, 0)) * 100, 2) as bounce_rate
     FROM PathStats
     ORDER BY unique_sessions DESC
     ${limitStatement}
@@ -290,27 +353,40 @@ const getQuery = (request: FastifyRequest<GetSingleColRequest>, isCountQuery: bo
   }
 
   return `
-    WITH PageStats AS (
-      SELECT
-        ${sqlParam} as value,
-        COUNT(distinct(session_id)) as unique_sessions,
-        COUNT() as pageviews
-      FROM events
-      WHERE
-          site_id = {siteId:Int32}
-          AND ${sqlParam} IS NOT NULL
-          AND ${sqlParam} <> ''
-          ${filterStatement}
-          ${timeStatement}
-      GROUP BY value
+    WITH SessionPageCounts AS (
+        SELECT
+            session_id,
+            COUNT() as pageviews_in_session
+        FROM events
+        WHERE
+            site_id = {siteId:Int32}
+            AND type = 'pageview'
+            ${timeStatement}
+        GROUP BY session_id
+    ),
+    SessionData AS (
+        SELECT
+            ${sqlParam} as value,
+            e.session_id,
+            spc.pageviews_in_session
+        FROM events e
+        LEFT JOIN SessionPageCounts spc ON e.session_id = spc.session_id
+        WHERE
+            e.site_id = {siteId:Int32}
+            AND ${sqlParam} IS NOT NULL
+            AND ${sqlParam} <> ''
+            ${filterStatement}
+            ${timeStatement}
     )
     SELECT
-      value,
-      unique_sessions as count,
-      round((unique_sessions / sum(unique_sessions) OVER ()) * 100, 2) as percentage,
-      pageviews,
-      round((pageviews / sum(pageviews) OVER ()) * 100, 2) as pageviews_percentage
-    FROM PageStats
+        value,
+        COUNT(DISTINCT session_id) as count,
+        round((COUNT(DISTINCT session_id) / sum(COUNT(DISTINCT session_id)) OVER ()) * 100, 2) as percentage,
+        COUNT() as pageviews,
+        round((COUNT() / sum(COUNT()) OVER ()) * 100, 2) as pageviews_percentage,
+        round((countIf(DISTINCT session_id, pageviews_in_session = 1) / nullIf(COUNT(DISTINCT session_id), 0)) * 100, 2) as bounce_rate
+    FROM SessionData
+    GROUP BY value
     ORDER BY count desc
     ${limitStatement}
     ${offsetStatement};
@@ -320,11 +396,6 @@ const getQuery = (request: FastifyRequest<GetSingleColRequest>, isCountQuery: bo
 export async function getSingleCol(req: FastifyRequest<GetSingleColRequest>, res: FastifyReply) {
   const { parameter, page } = req.query;
   const site = req.params.site;
-
-  const userHasAccessToSite = await getUserHasAccessToSitePublic(req, site);
-  if (!userHasAccessToSite) {
-    return res.status(403).send({ error: "Forbidden" });
-  }
 
   const isPaginatedRequest = page !== undefined;
 

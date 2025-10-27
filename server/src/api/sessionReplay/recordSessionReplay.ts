@@ -37,7 +37,7 @@ export async function recordSessionReplay(
 ) {
   try {
     // Get the site configuration to get the numeric siteId
-    const { siteId, excludedIPs, sessionReplay } = (await siteConfig.getConfig(request.params.site)) ?? {};
+    const { siteId, excludedIPs, excludedCountries, sessionReplay } = (await siteConfig.getConfig(request.params.site)) ?? {};
 
     if (!sessionReplay) {
       logger.info(`[SessionReplay] Skipping event for site ${siteId} - session replay not enabled`);
@@ -92,6 +92,24 @@ export async function recordSessionReplay(
         success: true,
         message: "Session replay not recorded - IP excluded",
       });
+    }
+
+    // Check if the country should be excluded from tracking
+    if (excludedCountries && excludedCountries.length > 0) {
+      const { getLocation } = await import("../../db/geolocation/geolocation.js");
+      const locationResults = await getLocation([requestIP]);
+      const locationData = locationResults[requestIP];
+
+      if (locationData?.countryIso) {
+        const isCountryExcluded = await siteConfig.isCountryExcluded(locationData.countryIso, request.params.site);
+        if (isCountryExcluded) {
+          logger.info(`[SessionReplay] Country ${locationData.countryIso} excluded from tracking for site ${siteId}`);
+          return reply.status(200).send({
+            success: true,
+            message: "Session replay not recorded - country excluded",
+          });
+        }
+      }
     }
 
     // Extract request metadata for tracking

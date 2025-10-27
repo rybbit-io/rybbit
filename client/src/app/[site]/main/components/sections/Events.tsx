@@ -21,7 +21,7 @@ function Events_() {
           <CardLoader />
         </div>
       )}
-      <div className="relative">
+      <div className="relative max-h-[344px] overflow-y-auto">
         <div className="flex flex-row gap-2 justify-between pr-1 text-xs text-neutral-400 mb-2">
           <div>Custom Events</div>
           <div>Count</div>
@@ -59,7 +59,7 @@ export function Events() {
   const [expandedOutbound, setExpandedOutbound] = useState(false);
 
   return (
-    <Card>
+    <Card className="h-[405px]">
       <CardContent className="mt-2">
         <Tabs defaultValue="events" value={tab} onValueChange={value => setTab(value as Tab)}>
           <div className="flex flex-row gap-2 justify-between items-center">

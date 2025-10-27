@@ -1,0 +1,180 @@
+---
+title: Self-Hosting Quick Start
+description: Set up your own instance of Rybbit using our setup script
+---
+
+import { Steps, Step } from 'fumadocs-ui/components/steps';
+import { Callout } from 'fumadocs-ui/components/callout';
+
+# Quick Start
+
+This guide will walk you through setting up your own instance of Rybbit using our setup script. If you want to manually setup Rybbit using the Docker Compose file, check out our [Manual Docker Compose Setup](/docs/self-hosting-guides/self-hosting-manual) guide.
+
+## Prerequisites
+
+Before you begin, ensure you have the following:
+
+-   **A Server:** Try to get one with at least 2GB of RAM.
+
+    We use Hetzner for everything. [Use our referral link](https://hetzner.cloud/?ref=QEdVqVpTLBDP) to get a 20 dollars of credits. It should last you almost half a year. The AMD CX11 is a good choice for ~$4/month.
+    
+-   **A Domain Name:** You'll need a domain or subdomain (e.g., `tracking.yourdomain.com`) pointed to your VPS's IP address. HTTPS is required because browsers block tracking scripts served over insecure HTTP.
+
+<Callout type="info">
+  This guide has been tested on Ubuntu 24 LTS (x86_64). If your server is ARM, it must be at least ARMv8.2-A for Clickhouse support.
+</Callout>
+
+## Setup Steps
+
+<Steps>
+<Step>
+### Point Your Domain to Your VPS
+
+Configure your domain's DNS settings to point to your VPS's public IP address. This usually involves:
+
+1.  Finding your VPS's public IPv4 address (from your hosting provider, e.g., Hetzner).
+2.  Logging into your domain registrar or DNS provider (e.g., GoDaddy, Namecheap, Cloudflare).
+3.  Adding an `A` record:
+    *   **Host/Name:** Your desired subdomain (e.g., `tracking`) or `@` for the root domain.
+    *   **Value:** Your VPS's IPv4 address.
+    *   **Proxy Status:** When using Cloudflare, either:
+        * Set to "DNS only" (recommended for most setups)
+        * Or if keeping the proxy enabled, set SSL/TLS encryption mode to "Full" or "Full (strict)" in your Cloudflare dashboard under SSL/TLS settings
+
+<Callout type="warning">
+  If you keep Cloudflare's proxy enabled and your domain has other services not running on HTTPS, using Full or Full (strict) mode might cause issues with those services. In such cases, either use "DNS only" mode or ensure all your services support HTTPS.
+</Callout>
+
+DNS changes might take some time to propagate globally. Use [DNS Checker](https://dnschecker.org/) to verify.
+</Step>
+
+<Step>
+### Install Docker Engine
+
+Connect to your VPS via SSH.
+
+Follow the official Docker Engine installation instructions for your Linux distribution:
+[https://docs.docker.com/engine/install/](https://docs.docker.com/engine/install/)
+</Step>
+
+<Step>
+### Clone the Rybbit Repository
+
+Clone the project repository from GitHub (Git is usually pre-installed on most server distributions):
+```bash
+git clone https://github.com/rybbit-io/rybbit.git
+cd rybbit
+```
+</Step>
+
+<Step>
+### Run the Setup Script
+
+The repository includes a setup script that configures the necessary environment variables (including generating a secure secret) and starts the application using Docker Compose.
+
+<Callout type="warning">
+  Important: Make all scripts executable before proceeding!
+  ```bash
+  chmod +x *.sh
+  ```
+</Callout>
+
+Run the setup script, replacing `your.domain.name` with the domain or subdomain you configured in the prerequisites:
+
+```bash
+./setup.sh your.domain.name
+```
+
+If you want to enable 3D map visualizations, you can add the `--mapbox-token` flag:
+
+```bash
+./setup.sh your.domain.name --mapbox-token YOUR_MAPBOX_TOKEN
+```
+
+
+The script will create a `.env` file and then build and start the containers. This might take a few minutes the first time.
+
+<Callout type="info">
+  By default, we assume you are on a blank VPS and automatically setup a Caddy webserver. If you want to use your own webserver or need more control over the setup, check out:
+  - [Manual Docker Compose Setup](/docs/self-hosting-guides/self-hosting-manual) - For users with existing reverse proxies or deployment tools
+  - [Advanced Self-Hosting Guide](/docs/self-hosting-guides/self-hosting-advanced) - For custom configurations and Nginx setup
+</Callout>
+</Step>
+
+<Step>
+### Sign Up
+
+Once the services are running and DNS has propagated, Caddy (the webserver) will automatically obtain an SSL certificate for your domain.
+
+Open your browser and navigate to `https://your.domain.name/signup` (using the domain you provided to the setup script).
+
+Create your admin account. You can then log in and start adding your websites!
+</Step>
+</Steps>
+
+## Managing Your Installation
+
+### Helper Scripts
+
+Rybbit comes with helper scripts to manage your installation:
+
+- **restart.sh**: Restart all services (useful when you've changed .env settings)
+  ```bash
+  ./restart.sh
+  ```
+
+- **update.sh**: Update to the latest version by pulling new code and rebuilding containers
+  ```bash
+  git pull
+  ./update.sh
+  ```
+
+### Docker Compose Commands
+
+You can also manage services directly with Docker Compose:
+
+- **Stop all services**:
+  ```bash
+  docker compose stop
+  ```
+
+- **Stop and remove containers** (preserves data):
+  ```bash
+  docker compose down
+  ```
+
+- **Start services** (if you used setup.sh with default webserver):
+  ```bash
+  docker compose --profile with-webserver up -d
+  ```
+
+- **Start services** (if you used setup.sh with --no-webserver):
+  ```bash
+  docker compose up -d
+  ```
+
+- **View logs**:
+  ```bash
+  docker compose logs -f
+  ```
+
+<Callout>
+If you are using your self-hosted Rybbit without anyone else, you can disable new user signups by setting `DISABLE_SIGNUP=true` in the `.env` file at the root of the repository.
+</Callout>
+
+## Anonymous Usage Telemetry
+
+To help us improve Rybbit, self-hosted instances automatically send anonymous usage statistics to our cloud service. This includes:
+
+- Number of rows in each ClickHouse table
+- Total database size
+- Your Rybbit version
+- A hashed instance identifier
+
+No personal data, website content, or visitor information is ever collected.
+
+<Callout type="info">
+You can completely disable telemetry by adding `DISABLE_TELEMETRY=true` to your `.env` file and restarting your services.
+</Callout>
+
+If you run into any issues or need help, feel free to join our Discord community!

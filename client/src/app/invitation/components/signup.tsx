@@ -3,10 +3,12 @@
 import { useState } from "react";
 import { authClient } from "../../../lib/auth";
 import { userStore } from "../../../lib/userStore";
+import { IS_CLOUD } from "../../../lib/const";
 import { AuthInput } from "@/components/auth/AuthInput";
 import { AuthButton } from "@/components/auth/AuthButton";
 import { AuthError } from "@/components/auth/AuthError";
 import { SocialButtons } from "@/components/auth/SocialButtons";
+import { Turnstile } from "@/components/auth/Turnstile";
 
 interface SignupProps {
   inviterEmail?: string | null;
@@ -18,6 +20,7 @@ export function Signup({ inviterEmail, organization }: SignupProps) {
   const [error, setError] = useState<string>("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [turnstileToken, setTurnstileToken] = useState<string>("");
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -25,11 +28,27 @@ export function Signup({ inviterEmail, organization }: SignupProps) {
     setError("");
 
     try {
-      const { data, error } = await authClient.signUp.email({
-        email,
-        name: email.split("@")[0], // Use email prefix as default name
-        password,
-      });
+      // Validate Turnstile token if in cloud mode
+      if (IS_CLOUD && !turnstileToken) {
+        setError("Please complete the captcha verification");
+        setIsLoading(false);
+        return;
+      }
+
+      const { data, error } = await authClient.signUp.email(
+        {
+          email,
+          name: email.split("@")[0], // Use email prefix as default name
+          password,
+        },
+        {
+          onRequest: context => {
+            if (IS_CLOUD && turnstileToken) {
+              context.headers.set("x-captcha-response", turnstileToken);
+            }
+          },
+        }
+      );
 
       if (data?.user) {
         userStore.setState({
@@ -72,7 +91,20 @@ export function Signup({ inviterEmail, organization }: SignupProps) {
           onChange={e => setPassword(e.target.value)}
         />
 
-        <AuthButton isLoading={isLoading} loadingText="Creating account...">
+        {IS_CLOUD && (
+          <Turnstile
+            onSuccess={token => setTurnstileToken(token)}
+            onError={() => setTurnstileToken("")}
+            onExpire={() => setTurnstileToken("")}
+            className="flex justify-center"
+          />
+        )}
+
+        <AuthButton
+          isLoading={isLoading}
+          loadingText="Creating account..."
+          disabled={IS_CLOUD ? !turnstileToken || isLoading : isLoading}
+        >
           Sign Up to Accept Invitation
         </AuthButton>
 

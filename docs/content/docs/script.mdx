@@ -1,0 +1,90 @@
+---
+title: Tracking Script
+description: How to install and configure the Rybbit tracking script
+---
+
+
+To start tracking user activity on your website, add the Rybbit tracking script to your site's HTML.
+
+## Installation
+The webpage should give you this script tag like this when you first add a website. Place it within the `<head>` section of your website. Include it on every page you wish to track.
+
+```html
+<script src="https://app.rybbit.io/api/script.js" async data-site-id="YOUR_SITE_ID"></script>
+```
+If you are self-hosting Rybbit `app.rybbit.io` will be domain of your Rybbit instance.
+
+## Configuration
+
+### Site Settings Configuration
+
+Most tracking options are configured through your site settings in the Rybbit dashboard. The script automatically fetches these settings when it loads:
+
+- **Automatic Initial Pageview**: Track the first pageview when the script loads
+- **SPA Navigation**: Automatically track navigation in single-page applications
+- **URL Parameters**: Include or exclude query strings from tracked URLs
+- **Outbound Links**: Track clicks to external websites
+- **Error Tracking**: Capture JavaScript errors and unhandled promise rejections
+- **Session Replay**: Record user interactions for debugging and UX analysis
+- **Web Vitals**: Collect Core Web Vitals performance metrics
+
+### Script Attributes
+
+These are the attributes you can pass to the script tag.
+
+| Attribute         | Type       | Default | Description                                                                                                                                                             |
+| :---------------- | :--------- | :------ | :---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `data-skip-patterns` | `string` | `[]`   | A JSON string array of URL path patterns to ignore. Pageviews matching these patterns won't be tracked. Supports two types of wildcards: `*` (matches within a segment) and `**` (matches across segments). |
+| `data-mask-patterns` | `string` | `[]`   | A JSON string array of URL path patterns to mask for privacy. Pageviews matching these patterns will be tracked, but the actual URL path will be replaced with the pattern itself in analytics data. Supports the same wildcards as `data-skip-patterns`. |
+| `data-replay-mask-text-selectors` | `string` | `[]` | A JSON string array of CSS selectors for elements whose text content should be masked in session replays. Useful for hiding sensitive user data like names, emails, or addresses. Example: `'[".user-name", "#email"]'`. Only applies when session replay is enabled in site settings. |
+| `data-debounce`   | `string`   | `"500"`| The delay (in milliseconds) before tracking a pageview after URL changes via the History API (`pushState`, `replaceState`). Set to `0` to disable debouncing. |
+
+
+### Pattern Matching Details
+
+For `data-skip-patterns` and `data-mask-patterns`, two types of wildcards are supported:
+- `*` - Matches any characters within a single path segment (doesn't match across `/`)
+- `**` - Matches any characters across multiple path segments (includes `/`)
+
+Examples:
+- `/admin/*` matches `/admin/dashboard` but not `/admin/users/list`
+- `/admin/**` matches both `/admin/dashboard` and `/admin/users/list`
+- `/blog/*/comments` matches `/blog/post-123/comments` but not `/blog/category/post/comments`
+
+Example usage:
+```html
+data-skip-patterns='["/admin/**", "/blog/drafts/*", "/preview/**"]'
+data-mask-patterns='["/users/*/settings", "/accounts/**", "/orders/*/details"]'
+```
+
+**Example with debugging overrides:**
+
+```html
+<script
+  src="https://api.rybbit.io/api/script.js"
+  async
+  data-site-id="456"
+  data-skip-patterns='["/admin/**", "/preview/*"]'
+  data-mask-patterns='["/users/*/profile", "/orders/**"]'
+  data-replay-mask-text-selectors='[".user-name", "#email"]'
+  data-debounce="300"
+></script>
+```
+
+## Session Replay Privacy
+
+When session replay is enabled in your site settings, you can protect sensitive user information by masking text content in replays using the `data-replay-mask-text-selectors` attribute.
+
+**Common use cases:**
+- User names in navigation or profile sections
+- Email addresses displayed in UI
+- Personal information (addresses, phone numbers)
+- Order numbers or transaction details
+
+Masked text will appear as asterisks (`********`) in session replays, ensuring sensitive data is never recorded.
+
+**Example:**
+```html
+<!-- Mask user names and email displays -->
+data-replay-mask-text-selectors='[".username", "#user-email", "[data-private]"]'
+```

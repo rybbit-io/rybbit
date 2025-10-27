@@ -1,7 +1,6 @@
 import { FastifyReply, FastifyRequest } from "fastify";
 import { clickhouse } from "../../../db/clickhouse/clickhouse.js";
 import { processResults, getTimeStatement, getFilterStatement } from "../utils.js";
-import { getUserHasAccessToSitePublic } from "../../../lib/auth-utils.js";
 import { FilterParams } from "@rybbit/shared";
 
 export type GetEventsResponse = {
@@ -35,11 +34,6 @@ interface GetEventsRequest {
 export async function getEvents(req: FastifyRequest<GetEventsRequest>, res: FastifyReply) {
   const { site } = req.params;
   const { startDate, endDate, timeZone, filters, page = "1", pageSize = "20", count } = req.query;
-
-  const userHasAccessToSite = await getUserHasAccessToSitePublic(req, site);
-  if (!userHasAccessToSite) {
-    return res.status(403).send({ error: "Forbidden" });
-  }
 
   // Use count if provided (for backward compatibility), otherwise use pageSize
   const limit = count ? parseInt(count, 10) : parseInt(pageSize, 10);

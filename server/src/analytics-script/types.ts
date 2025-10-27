@@ -11,6 +11,7 @@ export interface ScriptConfig {
   enableSessionReplay: boolean;
   sessionReplayBatchSize: number;
   sessionReplayBatchInterval: number;
+  sessionReplayMaskTextSelectors: string[];
   skipPatterns: string[];
   maskPatterns: string[];
 }

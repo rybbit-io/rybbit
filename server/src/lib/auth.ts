@@ -1,6 +1,6 @@
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
-import { admin, emailOTP, organization } from "better-auth/plugins";
+import { admin, emailOTP, organization, captcha } from "better-auth/plugins";
 import dotenv from "dotenv";
 import { asc, eq } from "drizzle-orm";
 import pg from "pg";
@@ -8,7 +8,7 @@ import pg from "pg";
 import { db } from "../db/postgres/postgres.js";
 import * as schema from "../db/postgres/schema.js";
 import { user } from "../db/postgres/schema.js";
-import { DISABLE_SIGNUP } from "./const.js";
+import { DISABLE_SIGNUP, IS_CLOUD } from "./const.js";
 import { sendEmail, sendInvitationEmail } from "./email/email.js";
 
 dotenv.config();
@@ -82,6 +82,15 @@ const pluginList = [
       }
     },
   }),
+  // Add Cloudflare Turnstile captcha (cloud only)
+  ...(IS_CLOUD && process.env.TURNSTILE_SECRET_KEY && process.env.NODE_ENV === "production"
+    ? [
+        captcha({
+          provider: "cloudflare-turnstile",
+          secretKey: process.env.TURNSTILE_SECRET_KEY,
+        }),
+      ]
+    : []),
 ];
 
 export let auth: AuthType | null = betterAuth({

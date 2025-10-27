@@ -12,14 +12,28 @@ import { Sidebar } from "./components/Sidebar/Sidebar";
 
 export default function SiteLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const { setSite, site } = useStore();
+  const { setSite, site, setPrivateKey } = useStore();
 
   // Sync store state with URL parameters
   useSyncStateWithUrl();
 
   useEffect(() => {
-    if (pathname.includes("/") && pathname.split("/")[1] !== site && !isNaN(Number(pathname.split("/")[1]))) {
-      setSite(pathname.split("/")[1]);
+    const segments = pathname.split("/").filter(Boolean);
+
+    if (segments.length > 0) {
+      const siteId = segments[0];
+
+      // Update site if it's different and is a number
+      if (siteId !== site && !isNaN(Number(siteId))) {
+        setSite(siteId);
+      }
+
+      // Check if second segment is a private key (12 hex chars)
+      if (segments.length > 1 && /^[a-f0-9]{12}$/i.test(segments[1])) {
+        setPrivateKey(segments[1]);
+      } else {
+        setPrivateKey(null);
+      }
     }
   }, [pathname]);
 

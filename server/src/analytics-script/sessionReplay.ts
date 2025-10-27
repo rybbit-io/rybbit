@@ -10,6 +10,7 @@ declare global {
         checkoutEveryNth?: number;
         maskAllInputs?: boolean;
         maskInputOptions?: any;
+        maskTextSelector?: string;
         slimDOMOptions?: any;
         sampling?: any;
         recordCanvas?: boolean;
@@ -69,8 +70,8 @@ export class SessionReplayRecorder {
     }
 
     try {
-      this.stopRecordingFn = window.rrweb.record({
-        emit: event => {
+      const recordingOptions: any = {
+        emit: (event: any) => {
           this.addEvent({
             type: event.type,
             data: event.data,
@@ -116,7 +117,14 @@ export class SessionReplayRecorder {
           input: "last", // Only record the final input value
           media: 800, // Sample media interactions less frequently
         },
-      });
+      };
+
+      // Add custom text masking selectors if configured
+      if (this.config.sessionReplayMaskTextSelectors && this.config.sessionReplayMaskTextSelectors.length > 0) {
+        recordingOptions.maskTextSelector = this.config.sessionReplayMaskTextSelectors.join(', ');
+      }
+
+      this.stopRecordingFn = window.rrweb.record(recordingOptions);
 
       this.isRecording = true;
       this.setupBatchTimer();

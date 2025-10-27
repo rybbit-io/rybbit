@@ -104,11 +104,29 @@ export async function getSitesUserHasAccessTo(req: FastifyRequest, adminOnly = f
 
 // for routes that are potentially public
 export async function getUserHasAccessToSitePublic(req: FastifyRequest, siteId: string | number) {
-  const [sites, isPublic] = await Promise.all([
+  const [sites, config] = await Promise.all([
     getSitesUserHasAccessTo(req),
-    (await siteConfig.getConfig(siteId))?.public,
+    siteConfig.getConfig(siteId),
   ]);
-  return sites.some(site => site.siteId === Number(siteId)) || isPublic;
+
+  // Check if user has direct access to the site
+  const hasDirectAccess = sites.some(site => site.siteId === Number(siteId));
+  if (hasDirectAccess) {
+    return true;
+  }
+
+  // Check if site is public
+  if (config?.public) {
+    return true;
+  }
+
+  // Check if a valid private key was provided in the header
+  const privateKey = req.headers["x-private-key"];
+  if (privateKey && typeof privateKey === "string" && config?.privateLinkKey === privateKey) {
+    return true;
+  }
+
+  return false;
 }
 
 export async function getUserHasAccessToSite(req: FastifyRequest, siteId: string | number) {

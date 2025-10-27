@@ -26,16 +26,16 @@ export function calculateWindowSize(startTime: DateTime, endTime: DateTime): num
  * Available window size options for the dropdown
  */
 export const WINDOW_SIZE_OPTIONS = [
-  { value: 1, label: "1 minute" },
-  { value: 5, label: "5 minutes" },
-  { value: 15, label: "15 minutes" },
-  { value: 30, label: "30 minutes" },
-  { value: 60, label: "1 hour" },
-  { value: 180, label: "3 hours" },
-  { value: 360, label: "6 hours" },
-  { value: 720, label: "12 hours" },
-  { value: 1440, label: "1 day" },
-  { value: 4320, label: "3 days" },
+  { value: 1, label: "1m" },
+  { value: 5, label: "5m" },
+  { value: 15, label: "15m" },
+  { value: 30, label: "30m" },
+  { value: 60, label: "1h" },
+  { value: 180, label: "3h" },
+  { value: 360, label: "6h" },
+  { value: 720, label: "12h" },
+  { value: 1440, label: "1d" },
+  { value: 4320, label: "3d" },
 ];
 
 /**

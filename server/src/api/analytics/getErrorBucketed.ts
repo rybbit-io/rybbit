@@ -2,7 +2,6 @@ import { FilterParams } from "@rybbit/shared";
 import { FastifyReply, FastifyRequest } from "fastify";
 import SqlString from "sqlstring";
 import { clickhouse } from "../../db/clickhouse/clickhouse.js";
-import { getUserHasAccessToSitePublic } from "../../lib/auth-utils.js";
 import { validateTimeStatementFillParams } from "./query-validation.js";
 import { getFilterStatement, getTimeStatement, TimeBucketToFn, bucketIntervalMap, processResults } from "./utils.js";
 import { TimeBucket } from "./types.js";
@@ -57,12 +56,6 @@ export async function getErrorBucketed(req: FastifyRequest<GetErrorBucketedReque
   }
 
   const numericSiteId = Number(site);
-  const hasAccess = await getUserHasAccessToSitePublic(req, numericSiteId);
-
-  if (!hasAccess) {
-    return res.status(403).send({ error: "Access denied" });
-  }
-
   const filterStatement = getFilterStatement(req.query.filters);
   const timeStatement = getTimeStatement(req.query);
   const timeStatementFill = getTimeStatementFill(req.query, bucket);

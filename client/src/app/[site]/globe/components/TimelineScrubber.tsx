@@ -139,7 +139,7 @@ export function TimelineScrubber() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center gap-2 text-xs text-neutral-400 h-[66px] w-full">
+      <div className="flex items-center justify-center gap-2 text-xs text-neutral-400 h-[70px] w-full">
         <div className="w-4 h-4 border-2 border-neutral-600 border-t-accent-500 rounded-full animate-spin" />
         <span>Loading sessions...</span>
       </div>
@@ -166,13 +166,13 @@ export function TimelineScrubber() {
           return (
             <div
               key={index}
-              className="flex-1 transition-all duration-150 cursor-pointer hover:opacity-80"
               style={{
                 height: `${heightPercentage}%`,
-                backgroundColor: isActive ? "hsl(var(--accent-600))" : "rgba(115, 115, 115, 0.4)",
+                backgroundColor: isActive ? "hsl(var(--accent-600))" : "rgba(100, 100, 100, 0.5)",
                 minHeight: count > 0 ? "2px" : "0px",
                 opacity: isCalculating ? 0.5 : 1,
               }}
+              className="flex-1 transition-all duration-150 cursor-pointer"
               title={`${count} session${count !== 1 ? "s" : ""}`}
               onClick={() => {
                 setLocalSliderIndex(index);
@@ -186,21 +186,21 @@ export function TimelineScrubber() {
       </div>
       <TimelineSlider value={[localSliderIndex]} max={timeWindows.length - 1} onValueChange={handleSliderChange} />
 
-      <div className="flex items-center justify-between mt-1">
-        <div className="flex items-center gap-1 w-full">
+      <div className="flex items-center justify-between mt-2">
+        <div className="flex items-center gap-1 bg-neutral-800/50 pr-2.5 pl-1 rounded-full">
           <button
             onClick={() => setIsPlaying(!isPlaying)}
-            className="p-1.5 rounded hover:bg-neutral-800 transition-colors"
+            className="p-1.5 rounded"
             aria-label={isPlaying ? "Pause" : "Play"}
           >
-            {isPlaying ? <Pause className="w-4 h-4 text-neutral-300" /> : <Play className="w-4 h-4 text-neutral-300" />}
+            {isPlaying ? <Pause className="w-4 h-4 text-neutral-100" /> : <Play className="w-4 h-4 text-neutral-100" />}
           </button>
-          <span className="text-xs text-neutral-400 min-w-[80px]">
+          <span className="text-xs text-neutral-100">
             {displayTime ? formatTimelineTime(displayTime, windowSize) : ""}
           </span>
         </div>
-        <div className="flex items-center gap-3">
-          <div className="text-xs text-neutral-400 flex items-center gap-1 whitespace-nowrap">
+        <div className="flex items-center gap-3 bg-neutral-800/50 px-2.5 py-1 rounded-full">
+          <div className="text-xs text-neutral-100 flex items-center gap-1 whitespace-nowrap">
             <span className="font-bold text-accent-400">
               {activeSessions.length.toLocaleString()} / {allSessions.length.toLocaleString()}
             </span>{" "}

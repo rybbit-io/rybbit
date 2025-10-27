@@ -1,0 +1,30 @@
+{
+  "title": "Documentation",
+  "pages": [
+    "index",
+    "roadmap",
+    "architecture",
+    "---Tracking---",
+    "script",
+    "track-events",
+    "sdks",
+    "guides",
+    "api",
+    "api-v1",
+    "localhost-tracking",
+    "hiding-own-traffic",
+    "filter-traffic",
+    "---Self-hosting---",
+    "self-hosting",
+    "troubleshooting",
+    "self-hosting-guides",
+    "v1-migration",
+    "---Settings---",
+    "inviting-users",
+    "site-settings",
+    "---Other---",
+    "definitions",
+    "privacy",
+    "contact"
+  ]
+}

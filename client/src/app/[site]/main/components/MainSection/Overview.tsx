@@ -145,7 +145,7 @@ const Stat = ({
           )}
         </div>
       </div>
-      <div className="h-[40px] mt-[-16]">
+      <div className="h-[40px] -mt-4">
         <SparklinesChart data={sparklinesData} isHovering={isHovering} />
       </div>
     </div>

@@ -18,7 +18,7 @@ function TabButton({ active, onClick, icon, label }: TabButtonProps) {
       className={cn(
         "h-[24px] inline-flex items-center justify-center whitespace-nowrap rounded px-2 py-1 text-xs font-medium transition-all",
         "focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-neutral-400",
-        active ? "bg-white/10 text-white" : "text-neutral-400 hover:text-neutral-200 hover:bg-white/[0.03]"
+        active ? "bg-neutral-800/50 text-white" : "text-neutral-200 hover:text-neutral-100 hover:bg-neutral-800/50"
       )}
     >
       {icon}
@@ -33,12 +33,12 @@ export default function MapViewSelector() {
   return (
     <div className="flex items-center gap-2 overflow-x-auto w-full">
       <button
-        className="text-xs font-medium rounded-lg bg-neutral-900/60 text-neutral-200 backdrop-blur-sm p-1.5 border border-white/10 hover:bg-neutral-700/60 hover:text-white transition-all"
+        className="text-xs font-medium rounded-lg bg-neutral-900/70 text-neutral-200 backdrop-blur-sm p-1.5 border border-neutral-800/50 hover:bg-neutral-800 hover:text-white transition-all"
         onClick={() => setMapMode(mapMode === "2D" ? "3D" : "2D")}
       >
         {mapMode === "2D" ? "2D" : "3D"}
       </button>
-      <div className="flex items-center gap-0.5 rounded-lg bg-neutral-900/40 backdrop-blur-sm p-0.5 border border-white/10">
+      <div className="flex items-center gap-0.5 rounded-lg bg-neutral-900/50 backdrop-blur-sm p-0.5 border border-neutral-800/50">
         <TabButton
           active={mapView === "timeline"}
           onClick={() => setMapView("timeline")}

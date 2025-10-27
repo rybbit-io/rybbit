@@ -243,12 +243,6 @@ const SessionDetailsTimelineSkeleton = memo(({ itemCount }: { itemCount: number 
 
       {/* Timeline tab skeleton */}
       <div className="mb-4">
-        <div className="flex gap-2 mb-3">
-          <Skeleton className="h-6 w-32 rounded-sm" />
-          <Skeleton className="h-6 w-28 rounded-sm" />
-          <Skeleton className="h-6 w-28 rounded-sm" />
-        </div>
-
         {/* Timeline items skeleton */}
         {Array.from({ length: Math.min(itemCount, 100) }).map((_, i) => (
           <div key={i} className="flex mb-3">

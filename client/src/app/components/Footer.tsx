@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { IS_CLOUD } from "../../lib/const";
 
 export function Footer() {
   const APP_VERSION = process.env.NEXT_PUBLIC_APP_VERSION;
@@ -18,6 +19,11 @@ export function Footer() {
       <Link href="https://github.com/rybbit-io/rybbit" className="hover:text-neutral-300">
         Github
       </Link>
+      {IS_CLOUD && (
+        <Link href="https://ipapi.is/" className="hover:text-neutral-300" target="_blank">
+          Geolocation by ipapi.is
+        </Link>
+      )}
     </div>
   );
 }

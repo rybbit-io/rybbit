@@ -1,7 +1,6 @@
 import { FastifyReply, FastifyRequest } from "fastify";
 import { clickhouse } from "../../db/clickhouse/clickhouse.js";
 import { getFilterStatement, getTimeStatement, processResults } from "./utils.js";
-import { getUserHasAccessToSitePublic } from "../../lib/auth-utils.js";
 import { FilterParams } from "@rybbit/shared";
 
 export type GetSessionsResponse = {
@@ -56,21 +55,17 @@ export interface GetSessionsRequest {
 export async function getSessions(req: FastifyRequest<GetSessionsRequest>, res: FastifyReply) {
   const { filters, page, userId, limit } = req.query;
   const site = req.params.site;
-  const userHasAccessToSite = await getUserHasAccessToSitePublic(req, site);
-  if (!userHasAccessToSite) {
-    return res.status(403).send({ error: "Forbidden" });
-  }
 
   let filterStatement = getFilterStatement(filters);
 
   // Transform filter statement to use extracted UTM columns instead of map access
   // since the CTE already extracts utm_source, utm_medium, etc. as separate columns
   filterStatement = filterStatement
-    .replace(/url_parameters\['utm_source'\]/g, 'utm_source')
-    .replace(/url_parameters\['utm_medium'\]/g, 'utm_medium')
-    .replace(/url_parameters\['utm_campaign'\]/g, 'utm_campaign')
-    .replace(/url_parameters\['utm_term'\]/g, 'utm_term')
-    .replace(/url_parameters\['utm_content'\]/g, 'utm_content');
+    .replace(/url_parameters\['utm_source'\]/g, "utm_source")
+    .replace(/url_parameters\['utm_medium'\]/g, "utm_medium")
+    .replace(/url_parameters\['utm_campaign'\]/g, "utm_campaign")
+    .replace(/url_parameters\['utm_term'\]/g, "utm_term")
+    .replace(/url_parameters\['utm_content'\]/g, "utm_content");
 
   const timeStatement = getTimeStatement(req.query);
 

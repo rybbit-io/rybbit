@@ -52,6 +52,19 @@ export async function middleware(request: NextRequest) {
     return response;
   }
 
+  // Check if we're on a site route with a private key: /{siteId}/{privateKey}
+  const privateKeyRoutePattern = /^\/([^/]+\/[a-f0-9]{12})$/i;
+  const privateKeyMatch = path.match(privateKeyRoutePattern);
+
+  if (privateKeyMatch) {
+    const siteAndKey = privateKeyMatch[1]; // e.g., "123/abc123def456"
+
+    // Redirect to /main while preserving the private key in the path
+    const response = NextResponse.redirect(new URL(`/${siteAndKey}/main`, request.url));
+    response.headers.set("Cache-Control", "no-store, max-age=0");
+    return response;
+  }
+
   return NextResponse.next();
 }
 

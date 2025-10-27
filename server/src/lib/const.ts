@@ -153,6 +153,24 @@ const STRIPE_PRICES: StripePlan[] = [
       replays: 1_000_000,
     },
   },
+  {
+    name: "standard20m",
+    priceId: "price_1SKXvkDFVprnAny2cnF3yDyB",
+    interval: "month",
+    limits: {
+      events: 20_000_000,
+      replays: 2_000_000,
+    },
+  },
+  {
+    name: "standard20m-annual",
+    priceId: "price_1SKXxHDFVprnAny2fHARdc3Z",
+    interval: "year",
+    limits: {
+      events: 20_000_000,
+      replays: 2_000_000,
+    },
+  },
   // Pro tiers
   {
     priceId: "price_1S8szIDFVprnAny2Hg7cxG5b",
@@ -280,6 +298,24 @@ const STRIPE_PRICES: StripePlan[] = [
       replays: 1_000_000,
     },
   },
+  {
+    priceId: "price_1SKXw0DFVprnAny2Au9JTwnX",
+    name: "pro20m",
+    interval: "month",
+    limits: {
+      events: 20_000_000,
+      replays: 2_000_000,
+    },
+  },
+  {
+    priceId: "price_1SKXwcDFVprnAny2HCEv46PG",
+    name: "pro20m-annual",
+    interval: "year",
+    limits: {
+      events: 20_000_000,
+      replays: 2_000_000,
+    },
+  },
 ];
 
 const TEST_TO_PRICE_ID = {
@@ -311,6 +347,10 @@ const TEST_TO_PRICE_ID = {
   "pro5m-annual": "price_1S8klTDFVprnAny2Na9XXAEI",
   pro10m: "price_1S8kkKDFVprnAny2WDjO98bN",
   "pro10m-annual": "price_1S8kl3DFVprnAny2Xdhho4F0",
+  standard20m: "price_1SKtYyDFVprnAny2ZT1K2gVP",
+  "standard20m-annual": "price_1SKtZ8DFVprnAny2HwSpfzS8",
+  pro20m: "price_1SKtYZDFVprnAny2WUpCtCzm",
+  "pro20m-annual": "price_1SKtYkDFVprnAny2ikpbKAA6",
 };
 
 export const getStripePrices = () => {

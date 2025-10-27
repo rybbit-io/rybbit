@@ -50,6 +50,7 @@ import { deleteSite } from "./api/sites/deleteSite.js";
 import { getSite } from "./api/sites/getSite.js";
 import { getSiteApiConfig } from "./api/sites/getSiteApiConfig.js";
 import { getSiteExcludedIPs } from "./api/sites/getSiteExcludedIPs.js";
+import { getSiteExcludedCountries } from "./api/sites/getSiteExcludedCountries.js";
 import { getSiteHasData } from "./api/sites/getSiteHasData.js";
 import { getSiteIsPublic } from "./api/sites/getSiteIsPublic.js";
 import { getSitesFromOrg } from "./api/sites/getSitesFromOrg.js";
@@ -66,7 +67,7 @@ import { listOrganizationMembers } from "./api/user/listOrganizationMembers.js";
 import { updateAccountSettings } from "./api/user/updateAccountSettings.js";
 import { initializeClickhouse } from "./db/clickhouse/clickhouse.js";
 import { initPostgres } from "./db/postgres/initPostgres.js";
-import { getSessionFromReq, mapHeaders } from "./lib/auth-utils.js";
+import { getSessionFromReq, getUserHasAccessToSitePublic, mapHeaders } from "./lib/auth-utils.js";
 import { auth } from "./lib/auth.js";
 import { IS_CLOUD } from "./lib/const.js";
 import { siteConfig } from "./lib/siteConfig.js";
@@ -78,6 +79,8 @@ import { extractSiteId } from "./utils.js";
 import { getTrackingConfig } from "./api/sites/getTrackingConfig.js";
 import { apiV1Routes } from "./api/v1/index.js";
 import type { ProjectRecord } from "./services/projects/projectService.js";
+import { updateSitePrivateLinkConfig } from "./api/sites/updateSitePrivateLinkConfig.js";
+import { getSitePrivateLinkConfig } from "./api/sites/getSitePrivateLinkConfig.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -162,7 +165,7 @@ server.register(cors, {
     callback(null, true);
   },
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
-  allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
+  allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With", "x-captcha-response", "x-private-key"],
   credentials: true,
 });
 
@@ -270,9 +273,15 @@ server.addHook("onRequest", async (request, reply) => {
   if (ANALYTICS_ROUTES.some(route => processedUrl.startsWith(route))) {
     const siteId = extractSiteId(processedUrl);
 
-    if (siteId && (await siteConfig.getConfig(siteId))?.public) {
-      // Skip auth check for public sites
-      return;
+    if (siteId) {
+      // Check all access methods: direct access, public site, or valid private key
+      const hasAccess = await getUserHasAccessToSitePublic(request, siteId);
+
+      if (hasAccess) {
+        // User has access via: direct access, public site, or valid private key
+        // Skip auth requirement and allow the request through
+        return;
+      }
     }
   }
 
@@ -280,7 +289,7 @@ server.addHook("onRequest", async (request, reply) => {
     const session = await getSessionFromReq(request);
 
     if (!session) {
-      return reply.status(401).send({ error: "Unauthorized 1" });
+      return reply.status(401).send({ error: "Unauthorized" });
     }
 
     // Attach session user info to request
@@ -351,8 +360,11 @@ server.get("/api/get-sites-from-org/:organizationId", getSitesFromOrg);
 server.get("/api/get-site/:id", getSite);
 server.get("/api/site/:siteId/api-config", getSiteApiConfig);
 server.post("/api/site/:siteId/api-config", updateSiteApiConfig);
+server.get("/api/site/:siteId/private-link-config", getSitePrivateLinkConfig);
+server.post("/api/site/:siteId/private-link-config", updateSitePrivateLinkConfig);
 server.get("/api/site/:siteId/tracking-config", getTrackingConfig);
 server.get("/api/site/:siteId/excluded-ips", getSiteExcludedIPs);
+server.get("/api/site/:siteId/excluded-countries", getSiteExcludedCountries);
 server.get("/api/list-organization-members/:organizationId", listOrganizationMembers);
 server.get("/api/user/organizations", getUserOrganizations);
 server.post("/api/add-user-to-organization", addUserToOrganization);

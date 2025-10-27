@@ -6,50 +6,9 @@ import { z } from "zod";
 // =============================================================================
 
 /**
- * Schema for table parameter in time queries
- */
-const tableSchema = z.enum(["events", "sessions"]).optional();
-
-/**
  * Date validation regex for YYYY-MM-DD format
  */
 const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
-
-/**
- * Schema for date parameters with time zone
- */
-const dateParamsSchema = z.object({
-  startDate: z
-    .string()
-    .regex(dateRegex, { message: "Invalid date format. Use YYYY-MM-DD" })
-    .optional()
-    .refine(date => !date || !isNaN(Date.parse(date)), {
-      message: "Invalid date value",
-    }),
-  endDate: z
-    .string()
-    .regex(dateRegex, { message: "Invalid date format. Use YYYY-MM-DD" })
-    .optional()
-    .refine(date => !date || !isNaN(Date.parse(date)), {
-      message: "Invalid date value",
-    }),
-  timeZone: z
-    .string()
-    .min(1, { message: "Time zone cannot be empty" })
-    .refine(
-      tz => {
-        try {
-          // Test if time zone is valid by attempting to format a date with it
-          Intl.DateTimeFormat(undefined, { timeZone: tz });
-          return true;
-        } catch (e) {
-          return false;
-        }
-      },
-      { message: "Invalid time zone" }
-    ),
-  table: tableSchema,
-});
 
 /**
  * Schema for simplified date parameters without table
@@ -253,6 +212,16 @@ export const filterParamSchema = z.enum([
   "user_id",
   "lat",
   "lon",
+  "timezone",
+  "vpn",
+  "crawler",
+  "datacenter",
+  "company",
+  "company_type",
+  "company_domain",
+  "asn_org",
+  "asn_type",
+  "asn_domain",
 ]);
 
 /**

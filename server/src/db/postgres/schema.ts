@@ -71,6 +71,7 @@ export const sites = pgTable(
     saltUserIds: boolean().default(false),
     blockBots: boolean().default(true).notNull(),
     excludedIPs: jsonb("excluded_ips").default([]), // Array of IP addresses/ranges to exclude
+    excludedCountries: jsonb("excluded_countries").default([]), // Array of ISO country codes to exclude (e.g., ["US", "GB"])
     sessionReplay: boolean().default(false),
     webVitals: boolean().default(false),
     trackErrors: boolean().default(false),
@@ -80,6 +81,7 @@ export const sites = pgTable(
     trackSpaNavigation: boolean().default(true),
     trackIp: boolean().default(false),
     apiKey: text("api_key"), // Format: rb_{32_hex_chars} = 35 chars total
+    privateLinkKey: text("private_link_key"),
   },
   table => [
     foreignKey({

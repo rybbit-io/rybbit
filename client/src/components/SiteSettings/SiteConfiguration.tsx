@@ -24,6 +24,7 @@ import { Switch } from "@/components/ui/switch";
 import { deleteSite, SiteResponse, updateSiteConfig, useGetSitesFromOrg } from "@/api/admin/sites";
 import { normalizeDomain } from "@/lib/utils";
 import { IPExclusionManager } from "./IPExclusionManager";
+import { CountryExclusionManager } from "./CountryExclusionManager";
 import { useStripeSubscription } from "../../lib/subscription/useStripeSubscription";
 import { Badge } from "../ui/badge";
 import { IS_CLOUD } from "../../lib/const";
@@ -300,6 +301,9 @@ export function SiteConfiguration({ siteMetadata, disabled = false, onClose }: S
 
       {/* IP Exclusions Section */}
       <IPExclusionManager siteId={siteMetadata.siteId} disabled={disabled} />
+
+      {/* Country Exclusions Section */}
+      <CountryExclusionManager siteId={siteMetadata.siteId} disabled={disabled} />
 
       {/* Domain Settings Section */}
       <div className="space-y-3">

@@ -1,7 +1,6 @@
 import { FastifyReply, FastifyRequest } from "fastify";
 import { clickhouse } from "../../../db/clickhouse/clickhouse.js";
 import { getTimeStatement, processResults, getFilterStatement } from "../utils.js";
-import { getUserHasAccessToSitePublic } from "../../../lib/auth-utils.js";
 import { FilterParams } from "@rybbit/shared";
 
 export type GetEventNamesResponse = {
@@ -21,10 +20,6 @@ export interface GetEventNamesRequest {
 export async function getEventNames(req: FastifyRequest<GetEventNamesRequest>, res: FastifyReply) {
   const { startDate, endDate, timeZone, filters, pastMinutesStart, pastMinutesEnd } = req.query;
   const site = req.params.site;
-  const userHasAccessToSite = await getUserHasAccessToSitePublic(req, site);
-  if (!userHasAccessToSite) {
-    return res.status(403).send({ error: "Forbidden" });
-  }
 
   const timeStatement = getTimeStatement(req.query);
 

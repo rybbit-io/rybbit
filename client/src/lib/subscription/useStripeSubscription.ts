@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { authClient } from "@/lib/auth";
-import { BACKEND_URL } from "../const";
+import { BACKEND_URL, IS_CLOUD } from "../const";
 
 interface SubscriptionData {
   id: string;
@@ -24,7 +24,7 @@ export function useStripeSubscription() {
   const { data: activeOrg } = authClient.useActiveOrganization();
 
   const fetchSubscription = async () => {
-    if (!activeOrg) {
+    if (!activeOrg || !IS_CLOUD) {
       return null;
     }
 

@@ -2,7 +2,6 @@ import { FastifyReply, FastifyRequest } from "fastify";
 import { db } from "../../../db/postgres/postgres.js";
 import { goals } from "../../../db/postgres/schema.js";
 import { clickhouse } from "../../../db/clickhouse/clickhouse.js";
-import { getUserHasAccessToSitePublic } from "../../../lib/auth-utils.js";
 import { eq, desc, asc, sql } from "drizzle-orm";
 import { getFilterStatement, getTimeStatement, processResults, patternToRegex } from "../utils.js";
 import SqlString from "sqlstring";
@@ -57,12 +56,6 @@ export async function getGoals(
 
   if (isNaN(pageSizeNumber) || pageSizeNumber < 1 || pageSizeNumber > 100) {
     return reply.status(400).send({ error: "Invalid page size, must be between 1 and 100" });
-  }
-
-  // Check user access to site
-  const userHasAccessToSite = await getUserHasAccessToSitePublic(request, site);
-  if (!userHasAccessToSite) {
-    return reply.status(403).send({ error: "Forbidden" });
   }
 
   try {

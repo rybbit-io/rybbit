@@ -1,0 +1,4 @@
+{
+  "title": "Self-Hosting Guides",
+  "pages": ["custom-nginx", "nginx-proxy-manager", "self-hosting-advanced", "self-hosting-manual"]
+}

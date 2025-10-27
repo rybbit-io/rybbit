@@ -1,0 +1,194 @@
+---
+title: Track Custom Events
+description: How to track custom events with Rybbit
+---
+
+
+The script exposes a global object `window.rybbit` with functions for manual tracking of events, as well as the ability to track events using data attributes on HTML elements.
+
+## Using Data Attributes
+
+You can track custom events by adding data attributes to any HTML element:
+
+```html
+<!-- Basic event tracking -->
+<button data-rybbit-event="signup_clicked">Sign Up</button>
+
+<!-- Event with custom properties -->
+<button 
+  data-rybbit-event="purchase_click" 
+  data-rybbit-prop-product="premium" 
+  data-rybbit-prop-price="49.99"
+>
+  Buy Now
+</button>
+```
+
+This approach requires no JavaScript and works on any clickable element.
+
+## Available Functions
+
+### `window.rybbit.event(eventName, properties)`
+
+Tracks a custom event with optional properties.
+
+*   `eventName` (String): The name of the custom event (max 255 characters).
+*   `properties` (Object, Optional): An object containing custom data (max 2KB characters). Only strings numbers are supported as values.
+
+```javascript
+// Track a simple custom event
+window.rybbit.event("Signup Button Clicked");
+
+// Track a custom event with properties
+window.rybbit.event("Item Added To Cart", {
+  itemId: "PROD123",
+  price: 49.99,
+  category: "Clothing"
+});
+```
+
+### `window.rybbit.pageview()`
+
+Tracks a pageview. Useful when `data-track-spa` is set to `"false"` or when you need to manually trigger a pageview.
+
+```javascript
+// Track a pageview
+window.rybbit.pageview();
+```
+
+### `window.rybbit.identify(userId)`
+
+Sets a custom user ID for tracking logged-in users across devices and sessions.
+
+*   `userId` (String): The unique identifier for the user. This will be stored in localStorage and persist across browser sessions. **Note: Custom user IDs are stored exactly as provided without any hashing or modification.**
+
+```javascript
+// Identify a user when they log in
+window.rybbit.identify("user_12345");
+
+// All subsequent events and pageviews will be associated with this user ID
+```
+
+### `window.rybbit.clearUserId()`
+
+Clears the stored user ID. Useful when a user logs out.
+
+```javascript
+// Clear user identification when user logs out
+window.rybbit.clearUserId();
+```
+
+### `window.rybbit.getUserId()`
+
+Returns the currently set user ID, or `null` if none is set.
+
+```javascript
+// Check if a user is identified
+const currentUserId = window.rybbit.getUserId();
+if (currentUserId) {
+  console.log('Current user:', currentUserId);
+} else {
+  console.log('No user identified');
+}
+```
+
+## User Identification Example
+
+Here's a typical workflow for user identification:
+
+```javascript
+// When user logs in
+function handleLogin(userData) {
+  // Set user identification
+  window.rybbit.identify(userData.id);
+  
+  // Track login event
+  window.rybbit.event("User Login", {
+    method: "email",
+    plan: userData.plan
+  });
+}
+
+// When user logs out
+function handleLogout() {
+  // Track logout event
+  window.rybbit.event("User Logout");
+  
+  // Clear user identification
+  window.rybbit.clearUserId();
+}
+
+// Check identification status
+function checkUserStatus() {
+  const userId = window.rybbit.getUserId();
+  if (userId) {
+    console.log("User is identified:", userId);
+  } else {
+    console.log("Anonymous user");
+  }
+}
+```
+
+## TypeScript Support
+
+Put this as `rybbit.d.ts` anywhere in your project to avoid having to do `(window as any).rybbit.event()` everywhere.
+
+```typescript
+interface Rybbit {
+    /**
+     * Tracks a page view
+     */
+    pageview: () => void;
+
+    /**
+     * Tracks a custom event
+     * @param name Name of the event
+     * @param properties Optional properties for the event
+     */
+    event: (name: string, properties?: Record<string, any>) => void;
+
+    /**
+     * Sets a custom user ID for tracking logged-in users
+     * @param userId The user ID to set (will be stored in localStorage)
+     */
+    identify: (userId: string) => void;
+
+    /**
+     * Clears the stored user ID
+     */
+    clearUserId: () => void;
+
+    /**
+     * Gets the currently set user ID
+     * @returns The current user ID or null if not set
+     */
+    getUserId: () => string | null;
+
+    /**
+     * Manually tracks outbound link clicks
+     * @param url The URL of the outbound link
+     * @param text Optional text content of the link
+     * @param target Optional target attribute of the link
+     */
+    trackOutbound: (url: string, text?: string, target?: string) => void;
+}
+
+declare global {
+    interface Window {
+        rybbit: Rybbit;
+    }
+}
+
+export {};
+```
+
+## Server-Side Tracking
+
+For tracking events from server-side applications, mobile apps, or any platform outside the browser, you can use the HTTP API. This is useful for:
+
+- Server-side event tracking (Node.js, Python, Go, etc.)
+- Mobile app analytics (iOS, Android, Flutter)
+- Backend integrations and webhooks
+- Scenarios where the JavaScript snippet can't be used
+
+See the [API documentation](/docs/api) for detailed examples in multiple languages including authentication, parameters, and rate limiting information.

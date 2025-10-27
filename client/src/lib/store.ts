@@ -8,6 +8,8 @@ export type StatType = "pageviews" | "sessions" | "users" | "pages_per_session" 
 type Store = {
   site: string;
   setSite: (site: string) => void;
+  privateKey: string | null;
+  setPrivateKey: (privateKey: string | null) => void;
   time: Time;
   previousTime: Time;
   setTime: (time: Time, changeBucket?: boolean) => void;
@@ -54,6 +56,8 @@ export const useStore = create<Store>(set => ({
       selectedStat: hasStatInUrl ? state.selectedStat : "users",
     }));
   },
+  privateKey: null,
+  setPrivateKey: privateKey => set({ privateKey }),
   time: {
     mode: "day",
     day: DateTime.now().toISODate(),

@@ -53,19 +53,17 @@ export function NewFilterButton({ availableFilters }: { availableFilters?: Filte
       }}
       open={open}
     >
-      <DropdownMenuTrigger asChild>
-        <Button
-          className="text-xs sm:text-sm h-8 sm:h-9 px-3 p-2 sm:p-3"
-          onClick={() => {
-            if (localFilters.length === 0) {
-              addLocalFilter();
-            }
-            setOpen(true);
-          }}
-        >
-          <ListFilterPlus className="w-4 h-4" />
-          Filter
-        </Button>
+      <DropdownMenuTrigger
+        size={"sm"}
+        onClick={() => {
+          if (localFilters.length === 0) {
+            addLocalFilter();
+          }
+          setOpen(true);
+        }}
+      >
+        <ListFilterPlus className="w-4 h-4" />
+        Filter
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" className="flex flex-col p-0 max-w-[95vw]">
         <div className="flex flex-col gap-2 p-3">

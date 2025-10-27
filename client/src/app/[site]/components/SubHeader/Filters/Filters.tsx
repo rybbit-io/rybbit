@@ -35,7 +35,7 @@ export function Filters({ availableFilters }: { availableFilters?: FilterParamet
                 </div>
                 <div
                   className={cn(
-                    "text-emerald-400 font-medium cursor-pointer whitespace-nowrap",
+                    "text-emerald-400 font cursor-pointer whitespace-nowrap",
                     (filter.type === "not_equals" || filter.type === "not_contains") && "text-red-400"
                   )}
                   onClick={() => {

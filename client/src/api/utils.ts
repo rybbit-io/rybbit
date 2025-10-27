@@ -3,6 +3,7 @@ import { Time } from "../components/DateSelector/types";
 import axios, { AxiosRequestConfig } from "axios";
 import { BACKEND_URL } from "../lib/const";
 import { timeZone } from "../lib/dateTimeUtils";
+import { useStore } from "../lib/store";
 
 export function getStartAndEndDate(time: Time) {
   if (time.mode === "range") {
@@ -69,12 +70,20 @@ export async function authedFetch<T>(
     });
   }
 
+  // Get private key from store and add to headers if present
+  const privateKey = useStore.getState().privateKey;
+  const headers = {
+    ...config.headers,
+    ...(privateKey ? { "x-private-key": privateKey } : {}),
+  };
+
   try {
     const response = await axios({
       url: fullUrl,
       params: processedParams,
       withCredentials: true,
       ...config,
+      headers,
     });
 
     return response.data;
