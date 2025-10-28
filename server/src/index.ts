@@ -9,6 +9,7 @@ import { getAdminOrganizations } from "./api/admin/getAdminOrganizations.js";
 import { getAdminSites } from "./api/admin/getAdminSites.js";
 import { getEventNames } from "./api/analytics/events/getEventNames.js";
 import { getEventProperties } from "./api/analytics/events/getEventProperties.js";
+import { getEventPropertyBreakdown } from "./api/analytics/events/getEventPropertyBreakdown.js";
 import { getEvents } from "./api/analytics/events/getEvents.js";
 import { getOutboundLinks } from "./api/analytics/events/getOutboundLinks.js";
 import { createFunnel } from "./api/analytics/funnels/createFunnel.js";
@@ -338,6 +339,7 @@ server.delete("/api/goal/:goalId", deleteGoal);
 server.put("/api/goal/update", updateGoal);
 server.get("/api/events/names/:site", getEventNames);
 server.get("/api/events/properties/:site", getEventProperties);
+server.get("/api/events/property-breakdown/:site", getEventPropertyBreakdown);
 server.get("/api/events/outbound/:site", getOutboundLinks);
 server.get("/api/org-event-count/:organizationId", getOrgEventCount);
 
