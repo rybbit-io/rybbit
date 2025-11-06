@@ -90,9 +90,9 @@ perform_backup() {
     # -z: compress during transfer
     # --delete: remove files in dest that don't exist in source
     # --stats: show transfer statistics
-    # -e "ssh -s sftp": Use SFTP subsystem (required for Hetzner Storage Box restricted shell)
+    # --rsync-path="rsync --fake-super": Use fake super for preserving permissions without root
 
-    if rsync -avz --delete --stats -e "ssh -s sftp" \
+    if rsync -avz --delete --stats --rsync-path="rsync --fake-super" \
         "$volume_path/" \
         "${STORAGE_BOX_HOST}:${backup_dir}/" 2>&1 | tee -a "$LOG_FILE"; then
         log "Backup completed successfully"

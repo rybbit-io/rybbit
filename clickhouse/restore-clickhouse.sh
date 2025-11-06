@@ -179,8 +179,8 @@ perform_restore() {
 
     # Restore from storage box
     log "Restoring data from storage box..."
-    # Use SFTP subsystem (required for Hetzner Storage Box restricted shell)
-    if rsync -avz --stats -e "ssh -s sftp" \
+    # Use --rsync-path for compatibility with Hetzner Storage Box
+    if rsync -avz --stats --rsync-path="rsync --fake-super" \
         "${STORAGE_BOX_HOST}:${backup_dir}/" \
         "$volume_path/" 2>&1 | tee -a "$LOG_FILE"; then
         log "Restore completed successfully"
