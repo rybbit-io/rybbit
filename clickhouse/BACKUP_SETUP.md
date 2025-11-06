@@ -124,6 +124,14 @@ ssh box "ls -lh /home/clickhouse-backups/"
 
 ## Restore from Backup
 
+The restore script works in two scenarios:
+
+### Scenario 1: Restore to existing server (disaster recovery)
+Container and volume already exist, you're restoring old data.
+
+### Scenario 2: Restore to fresh server (new setup)
+No container yet, you want to populate the volume before first run.
+
 ### List available backups
 
 ```bash
@@ -139,13 +147,32 @@ This will show all available backups with their sizes.
 /home/rybbit/clickhouse/restore-clickhouse.sh 2025-11-04
 ```
 
-**Warning**: This will:
-1. Stop the ClickHouse container
-2. Create a safety backup of current data (stored on local disk)
-3. Replace all current data with backup data
-4. Restart the ClickHouse container
+**What happens:**
+1. **Checks prerequisites** (Docker, rsync, SSH access)
+2. **Creates volume if needed** (for fresh server scenario)
+3. **Stops container if it exists** (skips if no container)
+4. **Creates safety backup** of current data (if volume has data)
+5. **Restores backup data** from storage box
+6. **Starts container if it exists** (otherwise shows you how to start it)
 
 You will be prompted to confirm before proceeding.
+
+### Fresh server setup example
+
+```bash
+# On new server with git repo cloned
+cd /home/rybbit
+
+# Set up SSH access to storage box
+cp ~/.ssh/id_rsa /root/.ssh/
+cp ~/.ssh/config /root/.ssh/
+
+# Restore data (creates volume automatically)
+/home/rybbit/clickhouse/restore-clickhouse.sh 2025-11-05
+
+# Now start the container with pre-populated data
+docker compose -f clickhouse/docker-compose.clickhouse.yml up -d
+```
 
 ## Troubleshooting
 

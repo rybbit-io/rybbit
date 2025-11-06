@@ -18,7 +18,7 @@ LOG_FILE="/var/log/clickhouse-restore.log"
 
 # Functions
 log() {
-    echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*" | tee -a "$LOG_FILE"
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*" | tee -a "$LOG_FILE" 2>/dev/null || echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*"
 }
 
 error() {
@@ -46,6 +46,44 @@ list_backups() {
     exit 0
 }
 
+# Check prerequisites
+check_prerequisites() {
+    log "Checking prerequisites..."
+
+    # Check if docker is installed
+    if ! command -v docker &> /dev/null; then
+        error "Docker is not installed"
+    fi
+
+    # Check if rsync is installed
+    if ! command -v rsync &> /dev/null; then
+        error "rsync is not installed. Install with: apt install rsync"
+    fi
+
+    # Check SSH connectivity to storage box
+    if ! ssh -o ConnectTimeout=10 "$STORAGE_BOX_HOST" "echo 'SSH connection successful'" &> /dev/null; then
+        error "Cannot connect to storage box via SSH. Check ~/.ssh/config and keys."
+    fi
+
+    log "All prerequisites satisfied"
+}
+
+# Ensure volume exists (create if needed)
+ensure_volume_exists() {
+    if docker volume ls --format '{{.Name}}' | grep -q "^${VOLUME_NAME}$"; then
+        log "Volume '$VOLUME_NAME' already exists"
+    else
+        log "Volume '$VOLUME_NAME' does not exist, creating it..."
+        docker volume create "$VOLUME_NAME" || error "Failed to create volume"
+        log "Volume created successfully"
+    fi
+}
+
+# Check if container exists
+container_exists() {
+    docker ps -a --format '{{.Names}}' | grep -q "^${CONTAINER_NAME}$"
+}
+
 # Get Docker volume path on host
 get_volume_path() {
     docker volume inspect "$VOLUME_NAME" --format '{{ .Mountpoint }}' 2>/dev/null || error "Failed to find volume: $VOLUME_NAME"
@@ -64,8 +102,13 @@ check_backup_exists() {
     log "Backup found: $backup_dir"
 }
 
-# Stop ClickHouse container
+# Stop ClickHouse container (if it exists)
 stop_container() {
+    if ! container_exists; then
+        log "Container does not exist, skipping stop"
+        return 0
+    fi
+
     log "Stopping ClickHouse container..."
 
     if docker ps --format '{{.Names}}' | grep -q "^${CONTAINER_NAME}$"; then
@@ -76,8 +119,14 @@ stop_container() {
     fi
 }
 
-# Start ClickHouse container
+# Start ClickHouse container (if it exists)
 start_container() {
+    if ! container_exists; then
+        log "Container does not exist, skipping start"
+        log "You can now start your container with: docker compose up -d"
+        return 0
+    fi
+
     log "Starting ClickHouse container..."
 
     if ! docker ps --format '{{.Names}}' | grep -q "^${CONTAINER_NAME}$"; then
@@ -115,12 +164,17 @@ perform_restore() {
 
     # Create a backup of current data (just in case)
     local current_backup="${volume_path}.pre-restore-$(date '+%Y%m%d-%H%M%S')"
-    log "Creating safety backup of current data: $current_backup"
-    cp -r "$volume_path" "$current_backup" || log "Warning: Failed to create safety backup"
+    if [ -d "$volume_path" ] && [ "$(ls -A "$volume_path" 2>/dev/null)" ]; then
+        log "Creating safety backup of current data: $current_backup"
+        cp -r "$volume_path" "$current_backup" || log "Warning: Failed to create safety backup"
+    else
+        log "Volume is empty, skipping safety backup"
+        current_backup="N/A (volume was empty)"
+    fi
 
     # Clear existing data
     log "Clearing existing data in volume..."
-    rm -rf "${volume_path:?}"/* || error "Failed to clear existing data"
+    rm -rf "${volume_path:?}"/* "${volume_path:?}"/.[!.]* "${volume_path:?}"/..?* 2>/dev/null || true
 
     # Restore from storage box
     log "Restoring data from storage box..."
@@ -172,8 +226,14 @@ main() {
 
     log "Restore date: $backup_date"
 
+    # Check prerequisites
+    check_prerequisites
+
     # Check if backup exists
     check_backup_exists "$backup_date"
+
+    # Ensure volume exists (create if needed)
+    ensure_volume_exists
 
     # Confirm restore
     confirm_restore "$backup_date"
@@ -183,13 +243,13 @@ main() {
     volume_path=$(get_volume_path)
     log "Volume path: $volume_path"
 
-    # Stop container
+    # Stop container (if it exists)
     stop_container
 
     # Perform restore
     perform_restore "$volume_path" "$backup_date"
 
-    # Start container
+    # Start container (if it exists)
     start_container
 
     log "========================================="
@@ -197,8 +257,15 @@ main() {
     log "========================================="
     echo ""
     echo "ClickHouse has been restored from backup: $backup_date"
-    echo "Check the container logs to verify everything is working:"
-    echo "  docker logs -f $CONTAINER_NAME"
+
+    if container_exists; then
+        echo "Check the container logs to verify everything is working:"
+        echo "  docker logs -f $CONTAINER_NAME"
+    else
+        echo "Container does not exist yet. Start it with:"
+        echo "  docker compose -f clickhouse/docker-compose.clickhouse.yml up -d"
+        echo "Or use your main docker-compose setup."
+    fi
 }
 
 # Run main function

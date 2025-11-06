@@ -1,22 +1,10 @@
 [Unit]
 Description=Daily ClickHouse Backup Timer
-Documentation=https://github.com/rybbit-io/rybbit
 Requires=clickhouse-backup.service
 
 [Timer]
-# Run daily at midnight
 OnCalendar=daily
-# Run at 00:00:00 (midnight) every day
-# Alternative formats:
-# OnCalendar=*-*-* 00:00:00
-# OnCalendar=00:00:00
-
-# If the system was offline when the timer should have triggered,
-# run the backup as soon as possible after boot
 Persistent=true
-
-# How precise the timer needs to be (1 minute is fine for daily backups)
-AccuracySec=1min
 
 [Install]
 WantedBy=timers.target

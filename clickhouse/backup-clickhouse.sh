@@ -18,7 +18,7 @@ LOG_FILE="/var/log/clickhouse-backup.log"
 
 # Functions
 log() {
-    echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*" | tee -a "$LOG_FILE"
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*" | tee -a "$LOG_FILE" 2>/dev/null || echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*"
 }
 
 error() {

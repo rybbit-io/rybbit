@@ -1,38 +1,20 @@
 [Unit]
 Description=ClickHouse Backup to Hetzner Storage Box
-Documentation=https://github.com/rybbit-io/rybbit
 After=docker.service
 Requires=docker.service
-ConditionPathExists=/home/rybbit/clickhouse/backup-clickhouse.sh
 
 [Service]
 Type=oneshot
 User=root
-Group=root
 WorkingDirectory=/home/rybbit
-
-# Execute the backup script from git repo
 ExecStart=/bin/bash /home/rybbit/clickhouse/backup-clickhouse.sh
-
-# Logging
 StandardOutput=journal
 StandardError=journal
-SyslogIdentifier=clickhouse-backup
 
 # Resource limits
 CPUQuota=50%
 MemoryLimit=2G
 IOWeight=100
-
-# Security hardening
-PrivateTmp=yes
-NoNewPrivileges=yes
-
-# Restart policy (don't restart on failure for oneshot services)
-Restart=no
-
-# Timeout after 6 hours (adjust based on your data size)
-TimeoutStartSec=6h
 
 [Install]
 WantedBy=multi-user.target
