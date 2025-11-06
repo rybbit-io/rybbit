@@ -4,8 +4,8 @@ This guide walks you through setting up automated daily backups of your ClickHou
 
 ## Overview
 
-- **Backup Method**: Volume snapshot using rsync (no downtime)
-- **Schedule**: Daily at midnight (with random 0-30 min delay)
+- **Backup Method**: Compressed tar archives transferred via SCP
+- **Schedule**: Daily at midnight
 - **Retention**: Last 14 backups
 - **Destination**: Hetzner Storage Box (`u506048.your-storagebox.de`)
 
@@ -14,16 +14,11 @@ This guide walks you through setting up automated daily backups of your ClickHou
 ✅ SSH key authentication configured for storage box (already done via `~/.ssh/config`)
 ✅ Docker and ClickHouse container running
 ✅ Sufficient storage space on storage box (recommend 1TB+ for session replay data)
+✅ tar and scp installed (usually pre-installed on Linux)
 
 ## Installation Steps
 
-### 1. Install rsync (if not already installed)
-
-```bash
-apt update && apt install rsync -y
-```
-
-### 2. Set up files
+### 1. Set up files
 
 Since you're already on the ClickHouse server with the git repo:
 
@@ -35,7 +30,7 @@ cd /home/rybbit
 chmod +x clickhouse/backup-clickhouse.sh
 chmod +x clickhouse/restore-clickhouse.sh
 
-# Copy only systemd files to /etc/systemd/system
+# Copy systemd files to /etc/systemd/system
 # (scripts will run directly from /home/rybbit/clickhouse/)
 cp clickhouse/clickhouse-backup.service /etc/systemd/system/
 cp clickhouse/clickhouse-backup.timer /etc/systemd/system/
@@ -43,15 +38,15 @@ chmod 644 /etc/systemd/system/clickhouse-backup.service
 chmod 644 /etc/systemd/system/clickhouse-backup.timer
 ```
 
-### 3. Test SSH connection to storage box
+### 2. Test SSH connection to storage box
 
 ```bash
 ssh box "pwd"
 ```
 
-You should see `/home` output (Hetzner storage boxes use a restricted shell).
+You should see `/home` output.
 
-### 4. Enable and start the backup timer
+### 3. Enable and start the backup timer
 
 ```bash
 # Reload systemd to recognize new files
@@ -67,7 +62,7 @@ systemctl start clickhouse-backup.timer
 systemctl status clickhouse-backup.timer
 ```
 
-### 5. Run your first backup (optional - test before waiting for midnight)
+### 4. Run your first backup (optional - test before waiting for midnight)
 
 ```bash
 # Manually trigger a backup to test everything works
@@ -118,7 +113,12 @@ systemctl start clickhouse-backup.service
 # SSH into storage box and list backups
 ssh box "ls -lh /home/clickhouse-backups/"
 
-# Or use the restore script
+# Shows files like:
+# clickhouse-backup-2025-11-06.tar.gz
+# clickhouse-backup-2025-11-05.tar.gz
+# etc.
+
+# Or use the restore script (shows formatted list)
 /home/rybbit/clickhouse/restore-clickhouse.sh
 ```
 
@@ -148,14 +148,17 @@ This will show all available backups with their sizes.
 ```
 
 **What happens:**
-1. **Checks prerequisites** (Docker, rsync, SSH access)
+1. **Checks prerequisites** (Docker, tar, scp, SSH access)
 2. **Creates volume if needed** (for fresh server scenario)
 3. **Stops container if it exists** (skips if no container)
 4. **Creates safety backup** of current data (if volume has data)
-5. **Restores backup data** from storage box
-6. **Starts container if it exists** (otherwise shows you how to start it)
+5. **Downloads compressed archive** from storage box to `/tmp`
+6. **Extracts archive** to volume
+7. **Starts container if it exists** (otherwise shows you how to start it)
 
 You will be prompted to confirm before proceeding.
+
+**Note**: The restore process downloads the entire backup archive before extracting, so ensure you have sufficient disk space in `/tmp`.
 
 ### Fresh server setup example
 
@@ -191,14 +194,9 @@ cat /var/log/clickhouse-backup.log
 
 ### Common issues:
 
-1. **"rsync is not installed"**
+1. **"Cannot connect to storage box via SSH"**
    ```bash
-   apt install rsync -y
-   ```
-
-2. **"Cannot connect to storage box via SSH"**
-   ```bash
-   # Test SSH connection (use pwd, not echo - restricted shell)
+   # Test SSH connection
    ssh box "pwd"
 
    # Check SSH config
@@ -206,6 +204,16 @@ cat /var/log/clickhouse-backup.log
 
    # Verify systemd service runs as root and has access to /root/.ssh/
    ls -la /root/.ssh/
+
+   # Test SCP
+   echo "test" > /tmp/test.txt
+   scp /tmp/test.txt box:/home/test.txt
+   ssh box "rm /home/test.txt"
+   ```
+
+2. **"tar is not installed"** (unlikely)
+   ```bash
+   apt install tar -y
    ```
 
 3. **"Failed to find volume: clickhouse-data"**
@@ -220,11 +228,20 @@ cat /var/log/clickhouse-backup.log
 4. **"Permission denied"**
    ```bash
    # Ensure scripts are executable
-   chmod +x /root/backup-clickhouse.sh
-   chmod +x /root/restore-clickhouse.sh
+   chmod +x /home/rybbit/clickhouse/backup-clickhouse.sh
+   chmod +x /home/rybbit/clickhouse/restore-clickhouse.sh
    ```
 
-5. **Timer not running**
+5. **"No space left on device"**
+   ```bash
+   # Check local disk space (for tar archive creation)
+   df -h /tmp
+
+   # Check storage box space
+   ssh box "df -h"
+   ```
+
+6. **Timer not running**
    ```bash
    # Reload systemd
    systemctl daemon-reload
@@ -240,11 +257,21 @@ cat /var/log/clickhouse-backup.log
 ssh box "df -h"
 ```
 
-### Manually test rsync
+### Manually test backup
 
 ```bash
-# Test rsync to storage box
-rsync -avz --dry-run /var/lib/docker/volumes/clickhouse-data/_data/ box:/home/test-backup/
+# Test creating a tar archive
+tar -czf /tmp/test-backup.tar.gz -C /var/lib/docker/volumes/clickhouse-data/_data .
+
+# Check size
+ls -lh /tmp/test-backup.tar.gz
+
+# Test upload to storage box
+scp /tmp/test-backup.tar.gz box:/home/test-backup.tar.gz
+
+# Clean up
+rm /tmp/test-backup.tar.gz
+ssh box "rm /home/test-backup.tar.gz"
 ```
 
 ## Disk Space Estimates
@@ -255,11 +282,15 @@ ClickHouse data size depends heavily on:
 - Retention period (currently 30 days)
 
 **Recommendations**:
-- Monitor initial backup size
-- Ensure storage box has at least 2-3x your current data size
-- With 14-day retention, you need ~14x daily backup size
+- Monitor initial backup size (compressed tar.gz archives)
+- Compression typically reduces size by 50-70% (depends on data type)
+- Ensure storage box has at least 2-3x your current uncompressed data size
+- With 14-day retention, you need ~7-14x compressed backup size
 
-**Example**: If ClickHouse data is 50GB, you need ~700GB storage box space (50GB × 14 days).
+**Example**:
+- ClickHouse data: 50GB uncompressed
+- Compressed archive: ~15-25GB (varies by data)
+- 14 days retention: ~210-350GB storage box space needed
 
 ## Configuration Changes
 
@@ -335,10 +366,17 @@ systemctl status clickhouse-backup.timer
 ## Performance Notes
 
 - **Backup time**: Depends on data size and network speed
-  - First backup: Full transfer (can take hours for large datasets)
-  - Subsequent backups: Only changed files (much faster)
+  - Compression phase: CPU-intensive (creates tar.gz archive)
+  - Upload phase: Network-bound (SCP transfer)
+  - Total time: Can take hours for large datasets (e.g., 100GB+ data)
 
-- **Network impact**: Backups use compression (`rsync -z`)
+- **Disk space**: Temporary archive stored in `/tmp` during backup
+  - Requires free space equal to compressed archive size
+  - Archive is deleted after successful upload
+
+- **Network impact**:
+  - Transfers compressed data only
+  - SCP provides built-in compression and encryption
 
 - **Server impact**:
   - CPU limited to 50% (CPUQuota in service file)

@@ -35,9 +35,10 @@ list_backups() {
 
     ssh "$STORAGE_BOX_HOST" "
         cd $BACKUP_BASE_DIR 2>/dev/null || { echo 'No backups found'; exit 1; }
-        ls -1d 20[0-9][0-9]-[0-9][0-9]-[0-9][0-9] 2>/dev/null | sort -r | while read dir; do
-            size=\$(du -sh \"\$dir\" 2>/dev/null | cut -f1)
-            echo \"  \$dir  (\$size)\"
+        ls -1 clickhouse-backup-*.tar.gz 2>/dev/null | sort -r | while read file; do
+            size=\$(du -sh \"\$file\" 2>/dev/null | cut -f1)
+            date=\$(echo \"\$file\" | sed 's/clickhouse-backup-//;s/.tar.gz//')
+            echo \"  \$date  (\$size)\"
         done
     " || error "Failed to list backups"
 
@@ -55,9 +56,14 @@ check_prerequisites() {
         error "Docker is not installed"
     fi
 
-    # Check if rsync is installed
-    if ! command -v rsync &> /dev/null; then
-        error "rsync is not installed. Install with: apt install rsync"
+    # Check if tar is installed
+    if ! command -v tar &> /dev/null; then
+        error "tar is not installed"
+    fi
+
+    # Check if scp is installed
+    if ! command -v scp &> /dev/null; then
+        error "scp is not installed"
     fi
 
     # Check SSH connectivity to storage box
@@ -93,14 +99,14 @@ get_volume_path() {
 # Check if backup exists
 check_backup_exists() {
     local backup_date="$1"
-    local backup_dir="${BACKUP_BASE_DIR}/${backup_date}"
+    local backup_file="clickhouse-backup-${backup_date}.tar.gz"
 
-    log "Checking if backup exists: $backup_dir"
-    if ! ssh "$STORAGE_BOX_HOST" "test -d $backup_dir"; then
-        error "Backup not found: $backup_dir"
+    log "Checking if backup exists: ${BACKUP_BASE_DIR}/${backup_file}"
+    if ! ssh "$STORAGE_BOX_HOST" "test -f ${BACKUP_BASE_DIR}/${backup_file}"; then
+        error "Backup not found: ${backup_file}"
     fi
 
-    log "Backup found: $backup_dir"
+    log "Backup found: ${backup_file}"
 }
 
 # Stop ClickHouse container (if it exists)
@@ -153,14 +159,15 @@ start_container() {
     fi
 }
 
-# Perform restore using rsync
+# Perform restore using scp + tar
 perform_restore() {
     local volume_path="$1"
     local backup_date="$2"
-    local backup_dir="${BACKUP_BASE_DIR}/${backup_date}"
+    local backup_file="clickhouse-backup-${backup_date}.tar.gz"
+    local temp_backup="/tmp/${backup_file}"
 
     log "Starting restore from backup..."
-    log "Source: ${STORAGE_BOX_HOST}:${backup_dir}"
+    log "Source: ${STORAGE_BOX_HOST}:${BACKUP_BASE_DIR}/${backup_file}"
     log "Destination: $volume_path"
 
     # Create a backup of current data (just in case)
@@ -173,21 +180,30 @@ perform_restore() {
         current_backup="N/A (volume was empty)"
     fi
 
+    # Download backup from storage box
+    log "Downloading backup from storage box..."
+    if ! scp "${STORAGE_BOX_HOST}:${BACKUP_BASE_DIR}/${backup_file}" "$temp_backup" 2>&1 | tee -a "$LOG_FILE"; then
+        rm -f "$temp_backup"
+        error "Download failed"
+    fi
+
+    local archive_size=$(du -h "$temp_backup" | cut -f1)
+    log "Download completed (size: $archive_size)"
+
     # Clear existing data
     log "Clearing existing data in volume..."
     rm -rf "${volume_path:?}"/* "${volume_path:?}"/.[!.]* "${volume_path:?}"/..?* 2>/dev/null || true
 
-    # Restore from storage box
-    log "Restoring data from storage box..."
-    # Use --rsync-path for compatibility with Hetzner Storage Box
-    if rsync -avz --stats --rsync-path="rsync --fake-super" \
-        "${STORAGE_BOX_HOST}:${backup_dir}/" \
-        "$volume_path/" 2>&1 | tee -a "$LOG_FILE"; then
+    # Extract archive to volume
+    log "Extracting backup archive..."
+    if tar -xzf "$temp_backup" -C "$volume_path" 2>&1 | tee -a "$LOG_FILE"; then
         log "Restore completed successfully"
         log "Safety backup retained at: $current_backup"
+        rm -f "$temp_backup"
         return 0
     else
-        error "Restore failed with exit code: ${PIPESTATUS[0]}"
+        rm -f "$temp_backup"
+        error "Failed to extract archive"
     fi
 }
 

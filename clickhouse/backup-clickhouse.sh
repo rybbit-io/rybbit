@@ -40,9 +40,14 @@ check_prerequisites() {
         error "Docker is not installed"
     fi
 
-    # Check if rsync is installed
-    if ! command -v rsync &> /dev/null; then
-        error "rsync is not installed. Install with: apt install rsync"
+    # Check if tar is installed
+    if ! command -v tar &> /dev/null; then
+        error "tar is not installed"
+    fi
+
+    # Check if scp is installed
+    if ! command -v scp &> /dev/null; then
+        error "scp is not installed"
     fi
 
     # Check if container exists
@@ -64,41 +69,36 @@ check_prerequisites() {
     log "All prerequisites satisfied"
 }
 
-# Create backup directory on storage box
-create_backup_dir() {
-    local backup_date="$1"
-    local backup_dir="${BACKUP_BASE_DIR}/${backup_date}"
-
-    log "Creating backup directory on storage box: $backup_dir"
-    ssh "$STORAGE_BOX_HOST" "mkdir -p $backup_dir" || error "Failed to create backup directory"
-
-    echo "$backup_dir"
-}
-
-# Perform backup using rsync
+# Perform backup using tar + scp
 perform_backup() {
     local volume_path="$1"
-    local backup_dir="$2"
+    local backup_date="$2"
+    local backup_file="clickhouse-backup-${backup_date}.tar.gz"
+    local temp_backup="/tmp/${backup_file}"
 
-    log "Starting rsync backup..."
+    log "Starting backup..."
     log "Source: $volume_path"
-    log "Destination: ${STORAGE_BOX_HOST}:${backup_dir}"
+    log "Destination: ${STORAGE_BOX_HOST}:${BACKUP_BASE_DIR}/${backup_file}"
 
-    # Use rsync with compression and progress
-    # -a: archive mode (preserves permissions, timestamps, etc.)
-    # -v: verbose
-    # -z: compress during transfer
-    # --delete: remove files in dest that don't exist in source
-    # --stats: show transfer statistics
-    # --rsync-path="rsync --fake-super": Use fake super for preserving permissions without root
+    # Create compressed tar archive
+    log "Creating compressed archive..."
+    if tar -czf "$temp_backup" -C "$volume_path" . 2>&1 | tee -a "$LOG_FILE"; then
+        local archive_size=$(du -h "$temp_backup" | cut -f1)
+        log "Archive created successfully (size: $archive_size)"
+    else
+        rm -f "$temp_backup"
+        error "Failed to create archive"
+    fi
 
-    if rsync -avz --delete --stats --rsync-path="rsync --fake-super" \
-        "$volume_path/" \
-        "${STORAGE_BOX_HOST}:${backup_dir}/" 2>&1 | tee -a "$LOG_FILE"; then
-        log "Backup completed successfully"
+    # Upload to storage box using scp
+    log "Uploading to storage box..."
+    if scp "$temp_backup" "${STORAGE_BOX_HOST}:${BACKUP_BASE_DIR}/${backup_file}" 2>&1 | tee -a "$LOG_FILE"; then
+        log "Upload completed successfully"
+        rm -f "$temp_backup"
         return 0
     else
-        error "Backup failed with exit code: ${PIPESTATUS[0]}"
+        rm -f "$temp_backup"
+        error "Upload failed with exit code: ${PIPESTATUS[0]}"
     fi
 }
 
@@ -106,12 +106,12 @@ perform_backup() {
 rotate_backups() {
     log "Rotating old backups (keeping last $RETENTION_DAYS backups)..."
 
-    # List all backup directories, sort, and delete old ones
+    # List all backup files, sort, and delete old ones
     ssh "$STORAGE_BOX_HOST" "
         cd $BACKUP_BASE_DIR 2>/dev/null || exit 0
-        ls -1d 20[0-9][0-9]-[0-9][0-9]-[0-9][0-9] 2>/dev/null | sort -r | tail -n +$((RETENTION_DAYS + 1)) | while read dir; do
-            echo \"Removing old backup: \$dir\"
-            rm -rf \"\$dir\"
+        ls -1 clickhouse-backup-*.tar.gz 2>/dev/null | sort -r | tail -n +$((RETENTION_DAYS + 1)) | while read file; do
+            echo \"Removing old backup: \$file\"
+            rm -f \"\$file\"
         done
     " || log "Warning: Failed to rotate some backups"
 
@@ -135,12 +135,12 @@ main() {
     volume_path=$(get_volume_path)
     log "Found volume path: $volume_path"
 
-    # Create backup directory
-    local backup_dir
-    backup_dir=$(create_backup_dir "$backup_date")
+    # Ensure backup directory exists on storage box
+    log "Ensuring backup directory exists on storage box..."
+    ssh "$STORAGE_BOX_HOST" "mkdir -p $BACKUP_BASE_DIR" || error "Failed to create backup directory"
 
     # Perform backup
-    perform_backup "$volume_path" "$backup_dir"
+    perform_backup "$volume_path" "$backup_date"
 
     # Rotate old backups
     rotate_backups
