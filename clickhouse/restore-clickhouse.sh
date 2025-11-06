@@ -35,9 +35,9 @@ list_backups() {
 
     ssh "$STORAGE_BOX_HOST" "
         cd $BACKUP_BASE_DIR 2>/dev/null || { echo 'No backups found'; exit 1; }
-        ls -1 clickhouse-backup-*.tar.gz 2>/dev/null | sort -r | while read file; do
+        ls -1 clickhouse-backup-*.tar 2>/dev/null | sort -r | while read file; do
             size=\$(du -sh \"\$file\" 2>/dev/null | cut -f1)
-            date=\$(echo \"\$file\" | sed 's/clickhouse-backup-//;s/.tar.gz//')
+            date=\$(echo \"\$file\" | sed 's/clickhouse-backup-//;s/.tar//')
             echo \"  \$date  (\$size)\"
         done
     " || error "Failed to list backups"
@@ -99,7 +99,7 @@ get_volume_path() {
 # Check if backup exists
 check_backup_exists() {
     local backup_date="$1"
-    local backup_file="clickhouse-backup-${backup_date}.tar.gz"
+    local backup_file="clickhouse-backup-${backup_date}.tar"
 
     log "Checking if backup exists: ${BACKUP_BASE_DIR}/${backup_file}"
     if ! ssh "$STORAGE_BOX_HOST" "test -f ${BACKUP_BASE_DIR}/${backup_file}"; then
@@ -163,7 +163,7 @@ start_container() {
 perform_restore() {
     local volume_path="$1"
     local backup_date="$2"
-    local backup_file="clickhouse-backup-${backup_date}.tar.gz"
+    local backup_file="clickhouse-backup-${backup_date}.tar"
     local temp_backup="/tmp/${backup_file}"
 
     log "Starting restore from backup..."
@@ -194,9 +194,9 @@ perform_restore() {
     log "Clearing existing data in volume..."
     rm -rf "${volume_path:?}"/* "${volume_path:?}"/.[!.]* "${volume_path:?}"/..?* 2>/dev/null || true
 
-    # Extract archive to volume
+    # Extract archive to volume (no decompression - ClickHouse data is already compressed)
     log "Extracting backup archive..."
-    if tar -xzf "$temp_backup" -C "$volume_path" 2>&1 | tee -a "$LOG_FILE"; then
+    if tar -xf "$temp_backup" -C "$volume_path" 2>&1 | tee -a "$LOG_FILE"; then
         log "Restore completed successfully"
         log "Safety backup retained at: $current_backup"
         rm -f "$temp_backup"

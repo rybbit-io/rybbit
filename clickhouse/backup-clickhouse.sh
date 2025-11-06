@@ -73,21 +73,29 @@ check_prerequisites() {
 perform_backup() {
     local volume_path="$1"
     local backup_date="$2"
-    local backup_file="clickhouse-backup-${backup_date}.tar.gz"
+    local backup_file="clickhouse-backup-${backup_date}.tar"
     local temp_backup="/tmp/${backup_file}"
 
     log "Starting backup..."
     log "Source: $volume_path"
     log "Destination: ${STORAGE_BOX_HOST}:${BACKUP_BASE_DIR}/${backup_file}"
 
-    # Create compressed tar archive
-    log "Creating compressed archive..."
-    if tar -czf "$temp_backup" -C "$volume_path" . 2>&1 | tee -a "$LOG_FILE"; then
+    # Create tar archive (no compression - ClickHouse data is already compressed)
+    # --ignore-failed-read: Continue even if files are deleted/changed during backup (normal for live DB)
+    log "Creating tar archive..."
+    if tar -cf "$temp_backup" --ignore-failed-read -C "$volume_path" . 2>&1 | tee -a "$LOG_FILE"; then
         local archive_size=$(du -h "$temp_backup" | cut -f1)
         log "Archive created successfully (size: $archive_size)"
     else
-        rm -f "$temp_backup"
-        error "Failed to create archive"
+        local tar_exit=$?
+        # Exit code 1 means "some files differ" which is normal for live databases
+        if [ $tar_exit -eq 1 ]; then
+            local archive_size=$(du -h "$temp_backup" | cut -f1)
+            log "Archive created with warnings (size: $archive_size) - this is normal for live databases"
+        else
+            rm -f "$temp_backup"
+            error "Failed to create archive (exit code: $tar_exit)"
+        fi
     fi
 
     # Upload to storage box using scp
@@ -109,7 +117,7 @@ rotate_backups() {
     # List all backup files, sort, and delete old ones
     ssh "$STORAGE_BOX_HOST" "
         cd $BACKUP_BASE_DIR 2>/dev/null || exit 0
-        ls -1 clickhouse-backup-*.tar.gz 2>/dev/null | sort -r | tail -n +$((RETENTION_DAYS + 1)) | while read file; do
+        ls -1 clickhouse-backup-*.tar 2>/dev/null | sort -r | tail -n +$((RETENTION_DAYS + 1)) | while read file; do
             echo \"Removing old backup: \$file\"
             rm -f \"\$file\"
         done
