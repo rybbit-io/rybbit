@@ -15,10 +15,6 @@ OnCalendar=daily
 # run the backup as soon as possible after boot
 Persistent=true
 
-# Add a random delay of 0-30 minutes to avoid all timers firing at once
-# (useful if you have multiple servers)
-RandomizedDelaySec=30min
-
 # How precise the timer needs to be (1 minute is fine for daily backups)
 AccuracySec=1min
 
