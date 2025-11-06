@@ -33,14 +33,25 @@ list_backups() {
     echo "Available backups:"
     echo "=================="
 
-    ssh "$STORAGE_BOX_HOST" "
-        cd $BACKUP_BASE_DIR 2>/dev/null || { echo 'No backups found'; exit 1; }
-        ls -1 clickhouse-backup-*.tar 2>/dev/null | sort -r | while read file; do
-            size=\$(du -sh \"\$file\" 2>/dev/null | cut -f1)
-            date=\$(echo \"\$file\" | sed 's/clickhouse-backup-//;s/.tar//')
-            echo \"  \$date  (\$size)\"
-        done
-    " || error "Failed to list backups"
+    # Use sftp to list files (works with Hetzner Storage Box restricted shell)
+    echo "ls ${BACKUP_BASE_DIR}/clickhouse-backup-*.tar" | sftp -b - "$STORAGE_BOX_HOST" 2>/dev/null | grep "clickhouse-backup-" | while read -r line; do
+        # Extract filename from sftp output
+        filename=$(echo "$line" | awk '{print $NF}')
+        if [[ "$filename" == clickhouse-backup-*.tar ]]; then
+            date=$(echo "$filename" | sed 's/clickhouse-backup-//;s/.tar//')
+            # Get file size
+            size=$(echo "$line" | awk '{print $5}')
+            # Convert bytes to human readable
+            if [ "$size" -gt 1073741824 ]; then
+                size_hr="$(awk "BEGIN {printf \"%.1f\", $size/1073741824}")GB"
+            elif [ "$size" -gt 1048576 ]; then
+                size_hr="$(awk "BEGIN {printf \"%.1f\", $size/1048576}")MB"
+            else
+                size_hr="$(awk "BEGIN {printf \"%.1f\", $size/1024}")KB"
+            fi
+            echo "  $date  ($size_hr)"
+        fi
+    done | sort -r
 
     echo ""
     echo "Usage: $0 YYYY-MM-DD"
