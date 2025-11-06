@@ -112,12 +112,9 @@ check_backup_exists() {
     local backup_date="$1"
     local backup_file="clickhouse-backup-${backup_date}.tar"
 
-    log "Checking if backup exists: ${BACKUP_BASE_DIR}/${backup_file}"
-    if ! ssh "$STORAGE_BOX_HOST" "test -f ${BACKUP_BASE_DIR}/${backup_file}"; then
-        error "Backup not found: ${backup_file}"
-    fi
-
-    log "Backup found: ${backup_file}"
+    log "Will attempt to restore from: ${BACKUP_BASE_DIR}/${backup_file}"
+    # Note: We can't easily check file existence with Hetzner's restricted shell
+    # SCP will fail with a clear error if the file doesn't exist
 }
 
 # Stop ClickHouse container (if it exists)
