@@ -56,7 +56,8 @@ check_prerequisites() {
     fi
 
     # Check SSH connectivity to storage box
-    if ! ssh -o ConnectTimeout=10 "$STORAGE_BOX_HOST" "echo 'SSH connection successful'" &> /dev/null; then
+    # Use 'pwd' command which is supported by Hetzner storage box's restricted shell
+    if ! ssh -o ConnectTimeout=10 "$STORAGE_BOX_HOST" "pwd" &> /dev/null; then
         error "Cannot connect to storage box via SSH. Check ~/.ssh/config and keys."
     fi
 

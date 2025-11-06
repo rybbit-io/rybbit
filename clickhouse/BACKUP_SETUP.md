@@ -46,10 +46,10 @@ chmod 644 /etc/systemd/system/clickhouse-backup.timer
 ### 3. Test SSH connection to storage box
 
 ```bash
-ssh box "echo 'Connection successful!'"
+ssh box "pwd"
 ```
 
-You should see "Connection successful!" output.
+You should see `/home` output (Hetzner storage boxes use a restricted shell).
 
 ### 4. Enable and start the backup timer
 
@@ -198,14 +198,14 @@ cat /var/log/clickhouse-backup.log
 
 2. **"Cannot connect to storage box via SSH"**
    ```bash
-   # Test SSH connection
-   ssh box "echo test"
+   # Test SSH connection (use pwd, not echo - restricted shell)
+   ssh box "pwd"
 
    # Check SSH config
-   cat ~/.ssh/config
+   cat /root/.ssh/config
 
-   # Check SSH key
-   ssh-add -L
+   # Verify systemd service runs as root and has access to /root/.ssh/
+   ls -la /root/.ssh/
    ```
 
 3. **"Failed to find volume: clickhouse-data"**
