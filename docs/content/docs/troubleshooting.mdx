@@ -98,7 +98,7 @@ Regular web analytics events take up almost no space in Clickhouse, so it is ver
 
 ### 1. You are using session replay
 
-On self-hosted instances where we don't have access to S3 compatiable object storage, session replays are stored in Clickhouse. Each session replay is at least 1000x the data footprint of the web analytics events. So it's very easy to run out of disk space. 
+On self-hosted instances where we don't have access to S3 compatible object storage, session replays are stored in Clickhouse. Each session replay is at least 1000x the data footprint of the web analytics events. So it's very easy to run out of disk space. 
 
 We have a 30 day retention policy for session replays events, so if you turn off session replay, your disk space will slowly come back. If you need to immediately free up space, you can truncate the session replays table:
 
