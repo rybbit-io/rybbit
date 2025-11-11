@@ -136,7 +136,7 @@ export const auth = betterAuth({
   },
   plugins: pluginList,
   trustedOrigins: process.env.NODE_ENV === "production"
-    ? [] // Empty array allows all origins in production for multi-domain support
+    ? ["*"] // Wildcard to allow all origins in production for multi-domain support
     : ["http://localhost:3002"],
   advanced: {
     useSecureCookies: process.env.NODE_ENV === "production", // don't mark Secure in dev
