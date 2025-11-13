@@ -1,0 +1,172 @@
+---
+title: Performance Dashboard
+description: How to use the performance dashboard in Rybbit Analytics
+---
+
+## The Performance Tab
+
+The Performance tab tracks Core Web Vitals and other speed metrics. Site performance directly affects user experience, conversions, and SEO rankings. This tab shows you exactly how your site performs for real users.
+
+<img src="/blog/rybbit_performance_dashboard.png" alt="Rybbit's dashboard" />
+
+### Web Vitals Dashboard
+
+The top of the Performance tab displays your three Core Web Vitals scores with color-coded indicators.
+
+#### Largest Contentful Paint (LCP)
+
+LCP measures how long the main content takes to load. Users see blank screens while LCP is happening, so faster is better.
+
+
+- **Good**: Under 2.5 seconds
+- **Needs Improvement**: 2.5-4 seconds.   
+- **Poor**: Over 4 seconds
+
+Rybbit shows you:
+- Your median LCP
+- Distribution of LCP scores
+- LCP by page
+- LCP by device type
+- LCP trends over time
+
+#### Interaction to Next Paint (INP)
+
+INP measures how quickly your site responds to user interactions like clicks, taps, and keypresses. Lower numbers mean more responsive interfaces.
+
+- **Good**: Under 200 milliseconds
+- **Needs Improvement**: 200-500 milliseconds
+- **Poor**: Over 500 milliseconds
+
+Check INP to identify:
+- Slow-responding buttons
+- Laggy form inputs
+- Delayed navigation
+- Overall interactivity issues
+
+#### Cumulative Layout Shift (CLS)
+
+CLS measures visual stability. How much does content jump around while loading? Low scores mean stable pages where elements don't shift unexpectedly.
+
+- **Good**: Under 0.1
+- **Needs Improvement**: 0.1-0.25
+- **Poor**: Over 0.25
+
+High CLS often comes from:
+- Images without dimensions
+- Ads or embeds loading late
+- Fonts swapping in
+- Dynamically injected content
+
+### Performance by Page
+
+Scroll down to see performance metrics broken down by page. Some pages might perform great while others drag down your averages.
+
+The table shows each page with:
+- Average LCP
+- Average INP
+- Average CLS
+- Number of samples
+
+Sort by any metric to find your slowest pages. These pages should be your optimization priorities.
+
+### Performance by Device
+
+Device type significantly affects performance. Mobile devices often show worse metrics than desktop.
+
+Compare performance across:
+- Desktop
+- Mobile
+- Tablet
+
+If mobile performance lags far behind desktop, prioritize mobile optimization. Most traffic comes from mobile devices now, so mobile performance matters more than ever.
+
+### Performance by Browser
+
+Different browsers handle performance differently. Check if certain browsers struggle with your site.
+
+Sometimes you'll find browser-specific issues. Maybe Safari loads slowly while Chrome performs well. This points to specific optimization opportunities.
+
+### Performance Trends
+
+The Performance tab includes trend charts showing how your metrics change over time.
+
+Watch these trends after making changes:
+- Did your optimization improve LCP?
+- Did adding new features hurt INP?
+- Has CLS gotten worse over time?
+
+Trends reveal whether you're moving in the right direction.
+
+### Real User vs Lab Data
+
+Rybbit collects real user performance data—what actual visitors experience on actual devices over actual connections. This differs from lab testing tools that simulate performance.
+
+Real user data shows:
+- Actual device performance (old phones, new laptops)
+- Real network conditions (slow mobile, cable)
+- Geographic variations
+- Browser diversity
+
+Lab tests are useful for debugging, but real user data tells you what actually happens.
+
+### Using Performance Data
+
+Here's how to act on performance metrics:
+
+**Find Problem Pages**: Sort by worst LCP/INP/CLS and fix those pages first. High-traffic pages with poor performance hurt the most.
+
+**Prioritize Mobile**: If mobile metrics lag, focus optimization efforts there. Most users browse on mobile now.
+
+**Set Performance Budgets**: Track your median metrics and set goals. Aim to improve by specific amounts each quarter.
+
+**Monitor After Changes**: Deploy changes, then watch the Performance tab. Do metrics improve or worsen?
+
+**Fix the Worst First**: A few terrible pages drag down your averages more than many slightly slow pages. Fix the worst performers for maximum impact.
+
+### Common Performance Fixes
+
+Based on what you see in the Performance tab:
+
+**For High LCP**:
+- Optimize images (compress, use modern formats)
+- Reduce server response time
+- Remove render-blocking resources
+- Use CDN for static assets
+- Implement lazy loading
+
+**For High INP**:
+- Reduce JavaScript execution time
+- Split long tasks into smaller chunks
+- Defer non-critical scripts
+- Optimize event handlers
+- Remove unused JavaScript
+
+**For High CLS**:
+- Add width/height to images and videos
+- Reserve space for ads and embeds
+- Avoid injecting content above existing content
+- Use font-display: optional
+- Size containers before loading content
+
+### Performance Impact on Business
+
+Why performance matters:
+
+**Conversions**: Amazon found every 100ms of latency costs them 1% in sales. Faster sites convert better.
+
+**SEO**: Google uses Core Web Vitals as ranking signals. Better performance means better rankings.
+
+**User Satisfaction**: Users abandon slow sites. 53% of mobile users leave pages that take over 3 seconds to load.
+
+**Revenue**: For e-commerce, performance directly affects the bottom line. Faster checkouts mean more completed purchases.
+
+The Performance tab gives you the data to prove performance investments pay off.
+
+---
+
+Questions about any feature?
+
+- **Documentation**: [rybbit.com/docs](https://rybbit.com/docs)
+- **Discord Community**: Join 385+ members at [discord.gg/DEhGb4hYBj](https://discord.gg/DEhGb4hYBj)
+- **Twitter/X**: [@yang_frog](https://x.com/yang_frog)
+- **GitHub**: [github.com/rybbit-io/rybbit](https://github.com/rybbit-io/rybbit)
