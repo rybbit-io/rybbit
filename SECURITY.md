@@ -4,16 +4,17 @@
 
 | Version | Supported                     |
 | ------- | ----------------------------- |
-| 0.1.x   | :negative_squared_cross_mark: |
-| 1.x     | :white_check_mark:            |
+| 0.1.x   | ❌ |
+| 1.x     | ❌ |
+| 2.x     | ✅ |
 
 ## Reporting a Vulnerability
 
-We currently support the latest patch versions of the 1.x release line. Older versions are not actively maintained and may contain unpatched vulnerabilities.
+We currently support the latest patch versions of the 2.x release line. Older versions are not actively maintained and may contain unpatched vulnerabilities.
 
 We take security seriously. If you discover a vulnerability in our software, we request that you responsibly disclose it by emailing us directly.
 
-**Email:** hello [@] rybbit.com
+**Email:** [hello@rybbit.com](mailto:hello@rybbit.com)
 
 Please include as much detail as possible to help us understand and resolve the issue quickly. This includes:
 
