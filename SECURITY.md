@@ -14,7 +14,7 @@ We currently support the latest patch versions of the 2.x release line. Older ve
 
 We take security seriously. If you discover a vulnerability in our software, we request that you responsibly disclose it by emailing us directly.
 
-**Email:** [hello@rybbit.com](mailto:hello@rybbit.com)
+**Email:** hello @ rybbit.com
 
 Please include as much detail as possible to help us understand and resolve the issue quickly. This includes:
 
