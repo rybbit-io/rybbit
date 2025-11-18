@@ -124,7 +124,9 @@ class PageviewQueue {
         format: "JSONEachRow",
       });
     } catch (error) {
-      this.logger.error(error, "Error processing pageview queue");
+      this.logger.error(error, `Error processing pageview queue, re-adding ${batch.length} items to the start of the queue`);
+      // Re-queue the failed batch so it can be retried on the next interval
+      this.queue.unshift(...batch);
     } finally {
       this.processing = false;
     }
