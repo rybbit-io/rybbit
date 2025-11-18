@@ -2,10 +2,14 @@ import { FilterParameter } from "@rybbit/shared";
 import {
   AppWindow,
   Brain,
+  Bug,
+  Building,
+  Clock,
   FileText,
   Flag,
   FolderInput,
   Globe,
+  Hotel,
   Languages,
   Link,
   LogIn,
@@ -20,6 +24,7 @@ import {
   Radio,
   Search,
   Server,
+  Shield,
   TabletSmartphone,
   Tag,
   Target,
@@ -31,6 +36,7 @@ export const FilterOptions: {
   label: string;
   value: FilterParameter;
   icon: React.ReactNode;
+  cloudOnly?: boolean;
 }[] = [
   {
     label: "Path",
@@ -50,7 +56,7 @@ export const FilterOptions: {
   {
     label: "Hostname",
     value: "hostname",
-    icon: <Server className="h-4 w-4" />,
+    icon: <Hotel className="h-4 w-4" />,
   },
   {
     label: "User ID",
@@ -166,6 +172,65 @@ export const FilterOptions: {
     label: "Lon",
     value: "lon",
     icon: <MapPin className="h-4 w-4" />,
+  },
+  {
+    label: "Timezone",
+    value: "timezone",
+    icon: <Clock className="h-4 w-4" />,
+  },
+  {
+    label: "VPN",
+    value: "vpn",
+    icon: <Shield className="h-4 w-4" />,
+    cloudOnly: true,
+  },
+  {
+    label: "Crawler",
+    value: "crawler",
+    icon: <Bug className="h-4 w-4" />,
+    cloudOnly: true,
+  },
+  {
+    label: "Datacenter",
+    value: "datacenter",
+    icon: <Server className="h-4 w-4" />,
+    cloudOnly: true,
+  },
+  {
+    label: "Company",
+    value: "company",
+    icon: <Building className="h-4 w-4" />,
+    cloudOnly: true,
+  },
+  {
+    label: "Company Type",
+    value: "company_type",
+    icon: <Building className="h-4 w-4" />,
+    cloudOnly: true,
+  },
+  {
+    label: "Company Domain",
+    value: "company_domain",
+    icon: <Building className="h-4 w-4" />,
+    cloudOnly: true,
+  },
+  {
+    label: "ASN Org",
+    value: "asn_org",
+    icon: <Building className="h-4 w-4" />,
+    cloudOnly: true,
+  },
+  {
+    label: "ASN Type",
+    value: "asn_type",
+    icon: <Building className="h-4 w-4" />,
+    cloudOnly: true,
+  },
+  {
+    label: "ASN Domain",
+    value: "asn_domain",
+    icon: <Building className="h-4 w-4" />,
+    cloudOnly: true,
   },
 ];
 

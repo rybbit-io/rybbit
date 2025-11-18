@@ -1,6 +1,5 @@
 import { FastifyReply, FastifyRequest } from "fastify";
 import { clickhouse } from "../../db/clickhouse/clickhouse.js";
-import { getUserHasAccessToSitePublic } from "../../lib/auth-utils.js";
 import { processResults } from "./utils.js";
 
 // Define the expected shape of a single data row from the query
@@ -35,11 +34,6 @@ export const getRetention = async (
 
   // Validate range parameter (between 7-365 days)
   const timeRange = Math.min(365, Math.max(7, parseInt(range) || 90));
-
-  const userHasAccessToSite = await getUserHasAccessToSitePublic(req, site);
-  if (!userHasAccessToSite) {
-    return res.status(403).send({ error: "Forbidden" });
-  }
 
   // Build the appropriate SQL based on the retention mode
   const periodFunction = retentionMode === "day" ? "toDate" : "toStartOfWeek";

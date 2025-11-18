@@ -1,7 +1,6 @@
 import { FastifyReply, FastifyRequest } from "fastify";
 import { clickhouse } from "../../db/clickhouse/clickhouse.js";
 import { getFilterStatement, getTimeStatement, processResults } from "./utils.js";
-import { getUserHasAccessToSitePublic } from "../../lib/auth-utils.js";
 import { FilterParams } from "@rybbit/shared";
 
 export type GetUsersResponse = {
@@ -16,6 +15,7 @@ export type GetUsersResponse = {
   pageviews: number;
   events: number;
   sessions: number;
+  hostname: string;
   last_seen: string;
   first_seen: string;
 }[];
@@ -26,31 +26,21 @@ export interface GetUsersRequest {
   };
   Querystring: FilterParams<{
     page?: string;
-    pageSize?: string;
-    sortBy?: string;
-    sortOrder?: string;
+    page_size?: string;
+    sort_by?: string;
+    sort_order?: string;
   }>;
 }
 
 export async function getUsers(req: FastifyRequest<GetUsersRequest>, res: FastifyReply) {
   const {
-    startDate,
-    endDate,
-    timeZone,
     filters,
     page = "1",
-    pageSize = "20",
-    sortBy = "last_seen",
-    sortOrder = "desc",
-    pastMinutesStart,
-    pastMinutesEnd,
+    page_size: pageSize = "20",
+    sort_by: sortBy = "last_seen",
+    sort_order: sortOrder = "desc",
   } = req.query;
   const site = req.params.site;
-
-  const userHasAccessToSite = await getUserHasAccessToSitePublic(req, site);
-  if (!userHasAccessToSite) {
-    return res.status(403).send({ error: "Forbidden" });
-  }
 
   const pageNum = parseInt(page, 10);
   const pageSizeNum = parseInt(pageSize, 10);
@@ -62,8 +52,8 @@ export async function getUsers(req: FastifyRequest<GetUsersRequest>, res: Fastif
   const actualSortOrder = sortOrder === "asc" ? "ASC" : "DESC";
 
   // Generate filter statement and time statement
-  const filterStatement = getFilterStatement(filters);
   const timeStatement = getTimeStatement(req.query);
+  const filterStatement = getFilterStatement(filters, Number(site), timeStatement);
 
   const query = `
 WITH AggregatedUsers AS (
@@ -74,11 +64,15 @@ WITH AggregatedUsers AS (
         argMax(city, timestamp) AS city,
         argMax(language, timestamp) AS language,
         argMax(browser, timestamp) AS browser,
+        argMax(browser_version, timestamp) AS browser_version,
         argMax(operating_system, timestamp) AS operating_system,
+        argMax(operating_system_version, timestamp) AS operating_system_version,
         argMax(device_type, timestamp) AS device_type,
         argMax(screen_width, timestamp) AS screen_width, 
         argMax(screen_height, timestamp) AS screen_height,
         argMin(referrer, timestamp) AS referrer,
+        argMax(channel, timestamp) AS channel,
+        argMin(hostname, timestamp) AS hostname,
         countIf(type = 'pageview') AS pageviews,
         countIf(type = 'custom_event') AS events,
         count(distinct session_id) AS sessions,

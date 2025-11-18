@@ -5,6 +5,7 @@ import { useMemo } from "react";
 import { GetOverviewBucketedResponse } from "../api/analytics/useGetOverviewBucketed";
 import { formatter } from "../lib/utils";
 import { hour12 } from "../lib/dateTimeUtils";
+import { ChartTooltip } from "./charts/ChartTooltip";
 
 interface SiteSessionChartProps {
   data: GetOverviewBucketedResponse;
@@ -89,13 +90,15 @@ export function SiteSessionChart({ data, height = 100 }: SiteSessionChartProps) 
           const currentTime = slice.points[0].data.currentTime as DateTime;
 
           return (
-            <div className="bg-neutral-800 border-neutral-700 border p-2 rounded-md">
-              <div className="text-xs mb-1">Sessions</div>
-              <div className="flex justify-between text-xs w-20">
-                <div className="text-muted-foreground">{currentTime.toFormat(hour12 ? "ha" : "HH:mm")}</div>
-                <div className="font-medium">{currentY.toLocaleString()}</div>
+            <ChartTooltip>
+              <div className="p-2">
+                <div className="text-xs mb-1">Sessions</div>
+                <div className="flex justify-between text-xs w-20">
+                  <div className="text-muted-foreground">{currentTime.toFormat(hour12 ? "ha" : "HH:mm")}</div>
+                  <div className="font-medium">{currentY.toLocaleString()}</div>
+                </div>
               </div>
-            </div>
+            </ChartTooltip>
           );
         }}
       />

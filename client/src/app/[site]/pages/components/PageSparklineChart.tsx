@@ -6,6 +6,7 @@ import { hour12, userLocale } from "@/lib/dateTimeUtils";
 import { nivoTheme } from "@/lib/nivo";
 import { ResponsiveLine } from "@nivo/line";
 import { DateTime } from "luxon";
+import { ChartTooltip } from "@/components/charts/ChartTooltip";
 
 interface PageSparklineChartProps {
   data: APIResponse<GetOverviewBucketedResponse> | undefined;
@@ -97,12 +98,14 @@ export function PageSparklineChart({ data, isHovering, pageTitle, isLoading }: P
         const timestamp = point.data.time as DateTime;
 
         return (
-          <div className="text-sm bg-neutral-900 border border-neutral-700 p-2 rounded-md shadow-md">
-            <div className="flex items-center justify-between gap-3">
-              <div className="text-neutral-200">{formatDateTime(timestamp)}</div>
-              <div className="font-medium">{value.toLocaleString()}</div>
+          <ChartTooltip>
+            <div className="p-2">
+              <div className="flex items-center justify-between gap-3">
+                <div>{formatDateTime(timestamp)}</div>
+                <div className="font-medium">{value.toLocaleString()}</div>
+              </div>
             </div>
-          </div>
+          </ChartTooltip>
         );
       }}
     />

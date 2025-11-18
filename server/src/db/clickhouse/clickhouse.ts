@@ -36,7 +36,9 @@ export const initializeClickhouse = async () => {
         screen_width UInt16,
         screen_height UInt16,
         device_type LowCardinality(String),
+        -- either 'pageview', 'custom_event', 'performance', 'outbound_link', 'error'
         type LowCardinality(String) DEFAULT 'pageview',
+        -- only for custom_event
         event_name String,
         props JSON
       )
@@ -55,9 +57,35 @@ export const initializeClickhouse = async () => {
         ADD COLUMN IF NOT EXISTS inp Nullable(Float64),
         ADD COLUMN IF NOT EXISTS fcp Nullable(Float64),
         ADD COLUMN IF NOT EXISTS ttfb Nullable(Float64),
-        ADD COLUMN IF NOT EXISTS ip Nullable(String)
+        ADD COLUMN IF NOT EXISTS ip Nullable(String),
+        ADD COLUMN IF NOT EXISTS timezone LowCardinality(String) DEFAULT ''
     `,
   });
+
+  if (IS_CLOUD) {
+    await clickhouse.exec({
+      query: `
+        ALTER TABLE events
+          ADD COLUMN IF NOT EXISTS company String DEFAULT '',
+          ADD COLUMN IF NOT EXISTS company_domain String DEFAULT '',
+          ADD COLUMN IF NOT EXISTS company_type LowCardinality(String) DEFAULT '',
+          ADD COLUMN IF NOT EXISTS company_abuse_score Nullable(Float64),
+  
+          ADD COLUMN IF NOT EXISTS asn Nullable(UInt32),
+          ADD COLUMN IF NOT EXISTS asn_org String DEFAULT '',
+          ADD COLUMN IF NOT EXISTS asn_domain String DEFAULT '',
+          ADD COLUMN IF NOT EXISTS asn_type LowCardinality(String) DEFAULT '',
+          ADD COLUMN IF NOT EXISTS asn_abuse_score Nullable(Float64),
+  
+          ADD COLUMN IF NOT EXISTS vpn LowCardinality(String) DEFAULT '',
+          ADD COLUMN IF NOT EXISTS crawler LowCardinality(String) DEFAULT '',
+          ADD COLUMN IF NOT EXISTS datacenter LowCardinality(String) DEFAULT '',
+          ADD COLUMN IF NOT EXISTS is_proxy Nullable(Boolean),
+          ADD COLUMN IF NOT EXISTS is_tor Nullable(Boolean),
+          ADD COLUMN IF NOT EXISTS is_satellite Nullable(Boolean)
+      `,
+    });
+  }
 
   // Create session replay tables
   await clickhouse.exec({

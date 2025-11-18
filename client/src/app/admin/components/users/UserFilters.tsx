@@ -14,12 +14,12 @@ export function UserFilters({ table }: UserFiltersProps) {
   return (
     <div className="flex flex-col md:flex-row gap-4">
       <div className="relative flex-1">
-        <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-neutral-400" />
+        <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-neutral-500 dark:text-neutral-400" />
         <Input
           placeholder="Filter by email..."
           value={(table.getColumn("email")?.getFilterValue() as string) ?? ""}
           onChange={e => table.getColumn("email")?.setFilterValue(e.target.value)}
-          className="pl-9 bg-neutral-900 border-neutral-700"
+          className="pl-9 bg-neutral-50 dark:bg-neutral-900 border-neutral-100 dark:border-neutral-800"
         />
       </div>
       <div className="w-full md:w-48">

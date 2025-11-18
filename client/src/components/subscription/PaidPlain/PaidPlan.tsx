@@ -144,8 +144,10 @@ export function PaidPlan() {
           <div className="space-y-6 mt-3 p-2">
             <div className="flex justify-between items-start">
               <div className="space-y-1">
-                <p className="text-3xl font-bold">{currentPlanDetails?.name || activeSubscription.planName}</p>
-                <p className="text text-gray-300">{getFormattedPrice()}</p>
+                <p className="text-3xl font-bold">{currentPlanDetails?.name || activeSubscription.planName} </p>
+                <p className="text text-neutral-600 dark:text-neutral-300">
+                  {getFormattedPrice()} • {activeSubscription.eventLimit.toLocaleString()} events
+                </p>
                 {isAnnualPlan && (
                   <div className="mt-2 text-sm text-emerald-400">
                     <p>You save by paying annually (2 months free)</p>
@@ -164,7 +166,7 @@ export function PaidPlan() {
             </div>
 
             <div className="space-y-2">
-              <h3 className="font-medium mb-2">Usage</h3>
+              <h3 className="font-medium mb-2">Usage this month</h3>
               <div className="space-y-4">
                 <div>
                   <div className="flex justify-between mb-1">

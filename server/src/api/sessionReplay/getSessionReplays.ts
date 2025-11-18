@@ -24,11 +24,11 @@ export async function getSessionReplays(
       offset: offset ? Number(offset) : 0,
       userId: userId || undefined,
       minDuration: minDuration ? Number(minDuration) : undefined,
-      startDate: request.query.startDate,
-      endDate: request.query.endDate,
-      timeZone: request.query.timeZone,
-      pastMinutesStart: request.query.pastMinutesStart ? Number(request.query.pastMinutesStart) : undefined,
-      pastMinutesEnd: request.query.pastMinutesEnd ? Number(request.query.pastMinutesEnd) : undefined,
+      start_date: request.query.start_date,
+      end_date: request.query.end_date,
+      time_zone: request.query.time_zone,
+      past_minutes_start: request.query.past_minutes_start ? Number(request.query.past_minutes_start) : undefined,
+      past_minutes_end: request.query.past_minutes_end ? Number(request.query.past_minutes_end) : undefined,
       filters: filters || "",
     });
 

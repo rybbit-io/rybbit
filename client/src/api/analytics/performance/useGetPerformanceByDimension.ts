@@ -76,8 +76,8 @@ export function useGetPerformanceByDimension({
     page,
     percentile: selectedPercentile,
     filters: useFilters ? [...filters, ...additionalFilters] : undefined,
-    sortBy,
-    sortOrder,
+    sort_by: sortBy,
+    sort_order: sortOrder,
     dimension,
   });
 

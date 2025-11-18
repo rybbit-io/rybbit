@@ -64,7 +64,7 @@ export default function OrganizationSubscriptionPage() {
       return <TrialPlan />;
     }
 
-    if (activeSubscription.appSumoPlan) {
+    if (activeSubscription.planName.startsWith("appsumo")) {
       return <AppSumoPlan />;
     }
 

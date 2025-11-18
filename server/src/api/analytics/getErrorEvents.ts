@@ -1,6 +1,5 @@
 import { FastifyReply, FastifyRequest } from "fastify";
 import { clickhouse } from "../../db/clickhouse/clickhouse.js";
-import { getUserHasAccessToSitePublic } from "../../lib/auth-utils.js";
 import { getFilterStatement, getTimeStatement, processResults } from "./utils.js";
 import { FilterParams } from "@rybbit/shared";
 
@@ -47,11 +46,10 @@ type ErrorEventsPaginatedResponse = {
 };
 
 const getErrorEventsQuery = (request: FastifyRequest<GetErrorEventsRequest>, isCountQuery: boolean = false) => {
-  const { startDate, endDate, timeZone, filters, errorMessage, limit, page, pastMinutesStart, pastMinutesEnd } =
-    request.query;
+  const { filters, limit, page } = request.query;
 
-  const filterStatement = getFilterStatement(filters);
   const timeStatement = getTimeStatement(request.query);
+  const filterStatement = getFilterStatement(filters, Number(request.params.site), timeStatement);
 
   let validatedLimit: number | null = null;
   if (!isCountQuery && limit !== undefined) {
@@ -138,11 +136,6 @@ export async function getErrorEvents(req: FastifyRequest<GetErrorEventsRequest>,
 
   if (!errorMessage) {
     return res.status(400).send({ error: "errorMessage parameter is required" });
-  }
-
-  const userHasAccessToSite = await getUserHasAccessToSitePublic(req, site);
-  if (!userHasAccessToSite) {
-    return res.status(403).send({ error: "Forbidden" });
   }
 
   const isPaginatedRequest = page !== undefined;

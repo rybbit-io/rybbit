@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
-import { getFilteredFilters, GOALS_PAGE_FILTERS, useStore } from "../../../lib/store";
+import { getFilteredFilters, useStore } from "../../../lib/store";
+import { GOALS_PAGE_FILTERS } from "../../../lib/filterGroups";
 import { authedFetch, getQueryParams } from "../../utils";
 
 export interface Goal {
@@ -55,7 +56,7 @@ export function useGetGoals({
         ...timeParams,
         filters: filteredFilters,
         page,
-        pageSize,
+        page_size: pageSize,
         sort,
         order,
       });

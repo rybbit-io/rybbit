@@ -15,12 +15,12 @@ import { r2Storage } from "../storage/r2StorageService.js";
 export class SessionReplayQueryService {
   async getSessionReplayList(
     siteId: number,
-    options: {
+    options: FilterParams<{
       limit?: number;
       offset?: number;
       userId?: string;
       minDuration?: number;
-    } & Pick<FilterParams, "startDate" | "endDate" | "timeZone" | "pastMinutesStart" | "pastMinutesEnd" | "filters">
+    }>
   ): Promise<SessionReplayListItem[]> {
     const { limit = 50, offset = 0, userId, minDuration } = options;
 
@@ -249,7 +249,7 @@ export class SessionReplayQueryService {
         SELECT *
         FROM session_replay_metadata
         FINAL
-        WHERE site_id = {siteId:UInt16} 
+        WHERE site_id = {siteId:UInt16}
           AND session_id = {sessionId:String}
         LIMIT 1
       `,
@@ -259,5 +259,58 @@ export class SessionReplayQueryService {
 
     const results = await processResults<SessionReplayMetadata>(result);
     return results[0] || null;
+  }
+
+  /**
+   * Delete a session replay and all associated data
+   * This includes:
+   * - Events from session_replay_events table
+   * - Metadata from session_replay_metadata table
+   * - R2 stored data (if enabled)
+   */
+  async deleteSessionReplay(siteId: number, sessionId: string): Promise<void> {
+    // First, get all R2 keys for this session if R2 is enabled
+    if (r2Storage.isEnabled()) {
+      try {
+        const r2KeysResult = await clickhouse.query({
+          query: `
+            SELECT DISTINCT event_data_key
+            FROM session_replay_events
+            WHERE site_id = {siteId:UInt16}
+              AND session_id = {sessionId:String}
+              AND event_data_key IS NOT NULL
+          `,
+          query_params: { siteId, sessionId },
+          format: "JSONEachRow",
+        });
+
+        const r2Keys = await processResults<{ event_data_key: string }>(r2KeysResult);
+
+        // Delete all R2 batches in parallel
+        await Promise.all(r2Keys.map((row) => r2Storage.deleteBatch(row.event_data_key)));
+      } catch (error) {
+        console.error(`Failed to delete R2 data for session ${sessionId}:`, error);
+        // Continue with ClickHouse deletion even if R2 fails
+      }
+    }
+
+    // Delete from ClickHouse tables
+    await clickhouse.command({
+      query: `
+        DELETE FROM session_replay_events
+        WHERE site_id = {siteId:UInt16}
+          AND session_id = {sessionId:String}
+      `,
+      query_params: { siteId, sessionId },
+    });
+
+    await clickhouse.command({
+      query: `
+        DELETE FROM session_replay_metadata
+        WHERE site_id = {siteId:UInt16}
+          AND session_id = {sessionId:String}
+      `,
+      query_params: { siteId, sessionId },
+    });
   }
 }

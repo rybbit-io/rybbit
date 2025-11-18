@@ -17,37 +17,21 @@ import {
   AlertDialogTrigger,
 } from "../../../../components/ui/alert-dialog";
 import { Button } from "../../../../components/ui/button";
-import { Input } from "../../../../components/ui/input";
-import { Label } from "../../../../components/ui/label";
 import { authClient } from "../../../../lib/auth";
-import { cn } from "../../../../lib/utils";
 
 export function DeleteAccount() {
   const [isDeleting, setIsDeleting] = useState(false);
-  const [password, setPassword] = useState("");
   const [isOpen, setIsOpen] = useState(false);
-  const [passwordError, setPasswordError] = useState("");
   const router = useRouter();
   const queryClient = useQueryClient();
 
   const handleAccountDeletion = async () => {
-    if (!password) {
-      setPasswordError("Password is required to delete your account");
-      return;
-    }
-
     try {
       setIsDeleting(true);
-      setPasswordError("");
-      const response = await authClient.deleteUser({
-        password,
-      });
+      const response = await authClient.deleteUser();
 
       if (response.error) {
         toast.error(`Failed to delete account: ${response.error.message || "Unknown error"}`);
-        if (response.error.message && response.error.message.toLowerCase().includes("password")) {
-          setPasswordError("Incorrect password");
-        }
         return;
       }
       queryClient.clear();
@@ -63,8 +47,6 @@ export function DeleteAccount() {
 
   const handleClose = () => {
     setIsOpen(false);
-    setPassword("");
-    setPasswordError("");
   };
 
   return (
@@ -85,22 +67,6 @@ export function DeleteAccount() {
             servers.
           </AlertDialogDescription>
         </AlertDialogHeader>
-
-        <div className="py-1">
-          <Label htmlFor="password" className="text-sm font-medium">
-            Enter your password to confirm
-          </Label>
-          <Input
-            id="password"
-            type="password"
-            placeholder="••••••••"
-            value={password}
-            onChange={e => setPassword(e.target.value)}
-            className={cn("mt-1", passwordError && "border-red-500")}
-            disabled={isDeleting}
-          />
-          {passwordError && <p className="text-sm text-red-500 mt-1">{passwordError}</p>}
-        </div>
 
         <AlertDialogFooter>
           <AlertDialogCancel onClick={handleClose} disabled={isDeleting}>

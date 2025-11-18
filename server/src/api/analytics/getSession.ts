@@ -1,6 +1,5 @@
 import { FastifyReply, FastifyRequest } from "fastify";
 import { clickhouse } from "../../db/clickhouse/clickhouse.js";
-import { getUserHasAccessToSitePublic } from "../../lib/auth-utils.js";
 import { processResults } from "./utils.js";
 
 export interface SessionDetails {
@@ -69,11 +68,6 @@ export async function getSession(req: FastifyRequest<GetSessionRequest>, res: Fa
   const limit = req.query.limit ? parseInt(req.query.limit) : 100;
   const offset = req.query.offset ? parseInt(req.query.offset) : 0;
   const minutes = req.query.minutes ? parseInt(req.query.minutes) : undefined;
-
-  const userHasAccessToSite = await getUserHasAccessToSitePublic(req, site);
-  if (!userHasAccessToSite) {
-    return res.status(403).send({ error: "Forbidden" });
-  }
 
   // Add time filter if minutes is provided
   const timeFilter = minutes ? `timestamp > now() - interval ${minutes} minute` : "";

@@ -26,16 +26,16 @@ export function Filters({ availableFilters }: { availableFilters?: FilterParamet
               <div
                 key={filter.parameter}
                 className={cn(
-                  "px-2 py-1 rounded-lg text-neutral-400 flex items-center gap-1 text-sm",
-                  disabled ? "bg-neutral-900" : "bg-neutral-850"
+                  "px-2 py-1 rounded-lg text-neutral-500 dark:text-neutral-400 flex items-center gap-1 text-sm",
+                  disabled ? "bg-neutral-200 dark:bg-neutral-900" : "bg-neutral-100 dark:bg-neutral-850"
                 )}
               >
-                <div className={cn(disabled ? "text-neutral-500" : "text-neutral-300")}>
+                <div className={cn(disabled ? "text-neutral-400 dark:text-neutral-500" : "text-neutral-600 dark:text-neutral-300")}>
                   {getParameterNameLabel(filter.parameter)}
                 </div>
                 <div
                   className={cn(
-                    "text-emerald-400 font-medium cursor-pointer whitespace-nowrap",
+                    "text-emerald-400 font cursor-pointer whitespace-nowrap",
                     (filter.type === "not_equals" || filter.type === "not_contains") && "text-red-400"
                   )}
                   onClick={() => {
@@ -55,11 +55,11 @@ export function Filters({ availableFilters }: { availableFilters?: FilterParamet
                 >
                   {filterTypeToLabel(filter.type)}
                 </div>
-                <div className={cn("text-neutral-100 font-medium whitespace-nowrap", disabled && "text-neutral-500")}>
+                <div className={cn("text-neutral-900 dark:text-neutral-100 font-medium whitespace-nowrap", disabled && "text-neutral-400 dark:text-neutral-500")}>
                   {getParameterValueLabel(filter, getRegionName)}
                 </div>
                 <div
-                  className="text-neutral-400 cursor-pointer hover:text-neutral-200"
+                  className="text-neutral-500 dark:text-neutral-400 cursor-pointer hover:text-neutral-700 dark:hover:text-neutral-200"
                   onClick={() => removeFilter(filter)}
                 >
                   <X size={16} strokeWidth={3} />

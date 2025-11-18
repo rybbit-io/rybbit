@@ -115,7 +115,7 @@ function EventCard({ event }: { event: Event }) {
           {/* <div className="flex items-center ml-3 flex-1 min-w-0">
             <Tooltip>
               <TooltipTrigger asChild>
-                <span className="text-xs text-gray-400 truncate max-w-[200px] inline-block">
+                <span className="text-xs text-neutral-400 truncate max-w-[200px] inline-block">
                   {truncatePath(
                     isPageview && event.page_title
                       ? event.page_title
@@ -134,8 +134,8 @@ function EventCard({ event }: { event: Event }) {
           </div> */}
 
           {/* Time information */}
-          <div className="flex items-center text-xs text-gray-300">
-            <span className="text-gray-400">{eventTime.toRelative()}</span>
+          <div className="flex items-center text-xs text-neutral-300">
+            <span className="text-neutral-400">{eventTime.toRelative()}</span>
           </div>
         </div>
       </div>
@@ -151,7 +151,7 @@ export function RealtimeEvents() {
   }
 
   if (!data || data.length === 0) {
-    return <div className="text-sm text-gray-400 p-4 text-center">No events recorded yet</div>;
+    return <div className="text-sm text-neutral-400 p-4 text-center">No events recorded yet</div>;
   }
 
   return (

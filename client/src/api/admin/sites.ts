@@ -117,6 +117,7 @@ export function updateSiteConfig(
     saltUserIds?: boolean;
     blockBots?: boolean;
     excludedIPs?: string[];
+    excludedCountries?: string[];
     sessionReplay?: boolean;
     webVitals?: boolean;
     trackErrors?: boolean;

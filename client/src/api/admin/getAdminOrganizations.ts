@@ -22,6 +22,7 @@ export interface AdminOrganizationData {
     domain: string;
     createdAt: string;
     eventsLast24Hours: number;
+    eventsLast30Days: number;
   }[];
   members: {
     userId: string;

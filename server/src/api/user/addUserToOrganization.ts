@@ -1,10 +1,10 @@
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { FastifyReply, FastifyRequest } from "fastify";
 import { db } from "../../db/postgres/postgres.js";
 import { member, user } from "../../db/postgres/schema.js";
 
 import { randomBytes } from "crypto";
-import { getUserIsInOrg } from "../../lib/auth-utils.js";
+import { getIsUserAdmin, getUserIsInOrg } from "../../lib/auth-utils.js";
 
 function generateId(len = 32) {
   const alphabet = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
@@ -28,8 +28,12 @@ export async function addUserToOrganization(request: FastifyRequest<AddUserToOrg
   try {
     const { email, role, organizationId } = request.body;
 
-    const userIsInOrg = await getUserIsInOrg(request, organizationId);
-    if (!userIsInOrg || (userIsInOrg.role !== "admin" && userIsInOrg.role !== "owner")) {
+    const [userIsInOrg, isAdmin] = await Promise.all([
+      getUserIsInOrg(request, organizationId),
+      getIsUserAdmin(request),
+    ]);
+
+    if (!isAdmin && (!userIsInOrg || (userIsInOrg.role !== "admin" && userIsInOrg.role !== "owner"))) {
       return reply.status(401).send({ error: "Unauthorized" });
     }
 
@@ -54,12 +58,13 @@ export async function addUserToOrganization(request: FastifyRequest<AddUserToOrg
       return reply.status(404).send({ error: "User not found" });
     }
 
-    const foundMember = await db.query.member.findMany({
-      where: eq(member.userId, foundUser.id),
+    // Check if user is already a member of this specific organization
+    const existingMember = await db.query.member.findFirst({
+      where: and(eq(member.userId, foundUser.id), eq(member.organizationId, organizationId)),
     });
 
-    if (foundMember.length > 0) {
-      return reply.status(400).send({ error: "user is already in an organization" });
+    if (existingMember) {
+      return reply.status(400).send({ error: "User is already a member of this organization" });
     }
 
     await db.insert(member).values([

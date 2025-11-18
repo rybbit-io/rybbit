@@ -6,6 +6,7 @@ import { dirname, join } from "path";
 import { fileURLToPath } from "url";
 import { collectTelemetry } from "./api/admin/collectTelemetry.js";
 import { getAdminOrganizations } from "./api/admin/getAdminOrganizations.js";
+import { getAdminServiceEventCount } from "./api/admin/getAdminServiceEventCount.js";
 import { getAdminSites } from "./api/admin/getAdminSites.js";
 import { getEventNames } from "./api/analytics/events/getEventNames.js";
 import { getEventProperties } from "./api/analytics/events/getEventProperties.js";
@@ -14,6 +15,7 @@ import { getOutboundLinks } from "./api/analytics/events/getOutboundLinks.js";
 import { createFunnel } from "./api/analytics/funnels/createFunnel.js";
 import { deleteFunnel } from "./api/analytics/funnels/deleteFunnel.js";
 import { getFunnel } from "./api/analytics/funnels/getFunnel.js";
+import { getFunnelStepSessions } from "./api/analytics/funnels/getFunnelStepSessions.js";
 import { getFunnels } from "./api/analytics/funnels/getFunnels.js";
 import { getErrorBucketed } from "./api/analytics/getErrorBucketed.js";
 import { getErrorEvents } from "./api/analytics/getErrorEvents.js";
@@ -28,7 +30,7 @@ import { getPageTitles } from "./api/analytics/getPageTitles.js";
 import { getRetention } from "./api/analytics/getRetention.js";
 import { getSession } from "./api/analytics/getSession.js";
 import { getSessions } from "./api/analytics/getSessions.js";
-import { getSingleCol } from "./api/analytics/getSingleCol.js";
+import { getMetric } from "./api/analytics/getMetric.js";
 import { getUserInfo } from "./api/analytics/getUserInfo.js";
 import { getUserSessionCount } from "./api/analytics/getUserSessionCount.js";
 import { getUserSessions } from "./api/analytics/getUserSessions.js";
@@ -36,6 +38,7 @@ import { getUsers } from "./api/analytics/getUsers.js";
 import { createGoal } from "./api/analytics/goals/createGoal.js";
 import { deleteGoal } from "./api/analytics/goals/deleteGoal.js";
 import { getGoals } from "./api/analytics/goals/getGoals.js";
+import { getGoalSessions } from "./api/analytics/goals/getGoalSessions.js";
 import { updateGoal } from "./api/analytics/goals/updateGoal.js";
 import { getPerformanceByDimension } from "./api/analytics/performance/getPerformanceByDimension.js";
 import { getPerformanceOverview } from "./api/analytics/performance/getPerformanceOverview.js";
@@ -44,16 +47,16 @@ import { getConfig } from "./api/getConfig.js";
 import { getSessionReplayEvents } from "./api/sessionReplay/getSessionReplayEvents.js";
 import { getSessionReplays } from "./api/sessionReplay/getSessionReplays.js";
 import { recordSessionReplay } from "./api/sessionReplay/recordSessionReplay.js";
+import { deleteSessionReplay } from "./api/sessionReplay/deleteSessionReplay.js";
 import { addSite } from "./api/sites/addSite.js";
 import { updateSiteConfig } from "./api/sites/updateSiteConfig.js";
 import { deleteSite } from "./api/sites/deleteSite.js";
 import { getSite } from "./api/sites/getSite.js";
-import { getSiteApiConfig } from "./api/sites/getSiteApiConfig.js";
 import { getSiteExcludedIPs } from "./api/sites/getSiteExcludedIPs.js";
+import { getSiteExcludedCountries } from "./api/sites/getSiteExcludedCountries.js";
 import { getSiteHasData } from "./api/sites/getSiteHasData.js";
 import { getSiteIsPublic } from "./api/sites/getSiteIsPublic.js";
 import { getSitesFromOrg } from "./api/sites/getSitesFromOrg.js";
-import { updateSiteApiConfig } from "./api/sites/updateSiteApiConfig.js";
 import { createCheckoutSession } from "./api/stripe/createCheckoutSession.js";
 import { createPortalSession } from "./api/stripe/createPortalSession.js";
 import { getSubscription } from "./api/stripe/getSubscription.js";
@@ -64,9 +67,12 @@ import { addUserToOrganization } from "./api/user/addUserToOrganization.js";
 import { getUserOrganizations } from "./api/user/getUserOrganizations.js";
 import { listOrganizationMembers } from "./api/user/listOrganizationMembers.js";
 import { updateAccountSettings } from "./api/user/updateAccountSettings.js";
+import { listApiKeys } from "./api/user/listApiKeys.js";
+import { createApiKey } from "./api/user/createApiKey.js";
+import { deleteApiKey } from "./api/user/deleteApiKey.js";
 import { initializeClickhouse } from "./db/clickhouse/clickhouse.js";
 import { initPostgres } from "./db/postgres/initPostgres.js";
-import { getSessionFromReq, mapHeaders } from "./lib/auth-utils.js";
+import { getSessionFromReq, getUserHasAccessToSitePublic, mapHeaders } from "./lib/auth-utils.js";
 import { auth } from "./lib/auth.js";
 import { IS_CLOUD } from "./lib/const.js";
 import { siteConfig } from "./lib/siteConfig.js";
@@ -76,6 +82,14 @@ import { telemetryService } from "./services/telemetryService.js";
 import { weeklyReportService } from "./services/weekyReports/weeklyReportService.js";
 import { extractSiteId } from "./utils.js";
 import { getTrackingConfig } from "./api/sites/getTrackingConfig.js";
+import { updateSitePrivateLinkConfig } from "./api/sites/updateSitePrivateLinkConfig.js";
+import { getSitePrivateLinkConfig } from "./api/sites/getSitePrivateLinkConfig.js";
+import { connectGSC } from "./api/gsc/connect.js";
+import { gscCallback } from "./api/gsc/callback.js";
+import { getGSCStatus } from "./api/gsc/status.js";
+import { disconnectGSC } from "./api/gsc/disconnect.js";
+import { getGSCData } from "./api/gsc/getData.js";
+import { selectGSCProperty } from "./api/gsc/selectProperty.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -130,7 +144,6 @@ const server = Fastify({
           url: request.url,
           path: request.url,
           parameters: request.params,
-          headers: request.headers,
         };
       },
       res(reply) {
@@ -150,7 +163,7 @@ server.register(cors, {
     callback(null, true);
   },
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
-  allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
+  allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With", "x-captcha-response", "x-private-key"],
   credentials: true,
 });
 
@@ -198,7 +211,9 @@ const PUBLIC_ROUTES: string[] = [
   "/api/auth",
   "/api/auth/callback/google",
   "/api/auth/callback/github",
+  "/api/gsc/callback",
   "/api/stripe/webhook",
+  "/api/as/webhook",
   "/api/session-replay/record",
   "/api/admin/telemetry",
   "/api/site/:siteId/tracking-config",
@@ -210,7 +225,7 @@ const ANALYTICS_ROUTES = [
   "/api/overview/",
   "/api/overview-bucketed/",
   "/api/error-bucketed/",
-  "/api/single-col/",
+  "/api/metric/",
   "/api/page-titles/",
   "/api/retention/",
   "/api/site-has-data/",
@@ -223,9 +238,11 @@ const ANALYTICS_ROUTES = [
   "/api/session-locations/",
   "/api/funnels/",
   "/api/funnel/",
+  "/api/funnel/:stepNumber/sessions/",
   "/api/journeys/",
   "/api/goals/",
   "/api/goal/",
+  "/api/goals/:goalId/sessions/",
   "/api/analytics/events/names/",
   "/api/analytics/events/properties/",
   "/api/events/",
@@ -239,6 +256,7 @@ const ANALYTICS_ROUTES = [
   "/api/error-events/",
   "/api/error-bucketed/",
   "/api/session-replay/",
+  "/api/gsc/data/",
 ];
 
 server.addHook("onRequest", async (request, reply) => {
@@ -257,9 +275,15 @@ server.addHook("onRequest", async (request, reply) => {
   if (ANALYTICS_ROUTES.some(route => processedUrl.startsWith(route))) {
     const siteId = extractSiteId(processedUrl);
 
-    if (siteId && (await siteConfig.getConfig(siteId))?.public) {
-      // Skip auth check for public sites
-      return;
+    if (siteId) {
+      // Check all access methods: direct access, public site, or valid private key
+      const hasAccess = await getUserHasAccessToSitePublic(request, siteId);
+
+      if (hasAccess) {
+        // User has access via: direct access, public site, or valid private key
+        // Skip auth requirement and allow the request through
+        return;
+      }
     }
   }
 
@@ -267,7 +291,7 @@ server.addHook("onRequest", async (request, reply) => {
     const session = await getSessionFromReq(request);
 
     if (!session) {
-      return reply.status(401).send({ error: "Unauthorized 1" });
+      return reply.status(401).send({ error: "Unauthorized" });
     }
 
     // Attach session user info to request
@@ -289,7 +313,7 @@ server.get("/api/metrics.js", async (_, reply) => reply.sendFile("web-vitals.iif
 server.get("/api/live-user-count/:site", { logLevel: "silent" }, getLiveUsercount);
 server.get("/api/overview/:site", getOverview);
 server.get("/api/overview-bucketed/:site", getOverviewBucketed);
-server.get("/api/single-col/:site", getSingleCol);
+server.get("/api/metric/:site", getMetric);
 server.get("/api/page-titles/:site", getPageTitles);
 server.get("/api/error-names/:site", getErrorNames);
 server.get("/api/error-events/:site", getErrorEvents);
@@ -308,9 +332,11 @@ server.get("/api/session-locations/:site", getSessionLocations);
 server.get("/api/funnels/:site", getFunnels);
 server.get("/api/journeys/:site", getJourneys);
 server.post("/api/funnel/:site", getFunnel);
+server.post("/api/funnel/:stepNumber/sessions/:site", getFunnelStepSessions);
 server.post("/api/funnel/create/:site", createFunnel);
 server.delete("/api/funnel/:funnelId", deleteFunnel);
 server.get("/api/goals/:site", getGoals);
+server.get("/api/goals/:goalId/sessions/:site", getGoalSessions);
 server.post("/api/goal/create", createGoal);
 server.delete("/api/goal/:goalId", deleteGoal);
 server.put("/api/goal/update", updateGoal);
@@ -328,6 +354,7 @@ server.get("/api/performance/by-dimension/:site", getPerformanceByDimension);
 server.post("/api/session-replay/record/:site", recordSessionReplay);
 server.get("/api/session-replay/list/:site", getSessionReplays);
 server.get("/api/session-replay/:sessionId/:site", getSessionReplayEvents);
+server.delete("/api/session-replay/:sessionId/:site", deleteSessionReplay);
 
 // Administrative
 server.get("/api/config", getConfig);
@@ -336,14 +363,26 @@ server.post("/api/update-site-config", updateSiteConfig);
 server.post("/api/delete-site/:id", deleteSite);
 server.get("/api/get-sites-from-org/:organizationId", getSitesFromOrg);
 server.get("/api/get-site/:id", getSite);
-server.get("/api/site/:siteId/api-config", getSiteApiConfig);
-server.post("/api/site/:siteId/api-config", updateSiteApiConfig);
+server.get("/api/site/:siteId/private-link-config", getSitePrivateLinkConfig);
+server.post("/api/site/:siteId/private-link-config", updateSitePrivateLinkConfig);
 server.get("/api/site/:siteId/tracking-config", getTrackingConfig);
 server.get("/api/site/:siteId/excluded-ips", getSiteExcludedIPs);
+server.get("/api/site/:siteId/excluded-countries", getSiteExcludedCountries);
 server.get("/api/list-organization-members/:organizationId", listOrganizationMembers);
 server.get("/api/user/organizations", getUserOrganizations);
 server.post("/api/add-user-to-organization", addUserToOrganization);
 server.post("/api/user/account-settings", updateAccountSettings);
+server.get("/api/user/api-keys", listApiKeys);
+server.post("/api/user/api-keys", createApiKey);
+server.delete("/api/user/api-keys/:keyId", deleteApiKey);
+
+// GOOGLE SEARCH CONSOLE
+server.get("/api/gsc/connect/:site", connectGSC);
+server.get("/api/gsc/callback", gscCallback);
+server.get("/api/gsc/status/:site", getGSCStatus);
+server.delete("/api/gsc/disconnect/:site", disconnectGSC);
+server.post("/api/gsc/select-property/:site", selectGSCProperty);
+server.get("/api/gsc/data/:site", getGSCData);
 
 // UPTIME MONITORING
 // Only register uptime routes when IS_CLOUD is true (Redis is available)
@@ -396,7 +435,15 @@ if (IS_CLOUD) {
   // Admin Routes
   server.get("/api/admin/sites", getAdminSites);
   server.get("/api/admin/organizations", getAdminOrganizations);
+  server.get("/api/admin/service-event-count", getAdminServiceEventCount);
   server.post("/api/admin/telemetry", collectTelemetry);
+
+  // AppSumo Routes
+  const { activateAppSumoLicense } = await import("./api/as/activate.js");
+  const { handleAppSumoWebhook } = await import("./api/as/webhook.js");
+
+  server.post("/api/as/activate", activateAppSumoLicense);
+  server.post("/api/as/webhook", handleAppSumoWebhook);
 }
 
 server.post("/track", trackEvent);

@@ -3,41 +3,42 @@ import { Time } from "../components/DateSelector/types";
 import axios, { AxiosRequestConfig } from "axios";
 import { BACKEND_URL } from "../lib/const";
 import { timeZone } from "../lib/dateTimeUtils";
+import { useStore } from "../lib/store";
 
-export function getStartAndEndDate(time: Time) {
+function getStartAndEndDate(time: Time) {
   if (time.mode === "range") {
-    return { startDate: time.startDate, endDate: time.endDate };
+    return { start_date: time.startDate, end_date: time.endDate };
   }
   if (time.mode === "week") {
     return {
-      startDate: time.week,
-      endDate: DateTime.fromISO(time.week).endOf("week").toISODate(),
+      start_date: time.week,
+      end_date: DateTime.fromISO(time.week).endOf("week").toISODate(),
     };
   }
   if (time.mode === "month") {
     return {
-      startDate: time.month,
-      endDate: DateTime.fromISO(time.month).endOf("month").toISODate(),
+      start_date: time.month,
+      end_date: DateTime.fromISO(time.month).endOf("month").toISODate(),
     };
   }
   if (time.mode === "year") {
     return {
-      startDate: time.year,
-      endDate: DateTime.fromISO(time.year).endOf("year").toISODate(),
+      start_date: time.year,
+      end_date: DateTime.fromISO(time.year).endOf("year").toISODate(),
     };
   }
   if (time.mode === "all-time" || time.mode === "past-minutes") {
-    return { startDate: null, endDate: null };
+    return { start_date: null, end_date: null };
   }
-  return { startDate: time.day, endDate: time.day };
+  return { start_date: time.day, end_date: time.day };
 }
 
 export function getQueryParams(time: Time, additionalParams: Record<string, any> = {}): Record<string, any> {
   if (time.mode === "past-minutes") {
     return {
-      timeZone,
-      pastMinutesStart: time.pastMinutesStart,
-      pastMinutesEnd: time.pastMinutesEnd,
+      time_zone: timeZone,
+      past_minutes_start: time.pastMinutesStart,
+      past_minutes_end: time.pastMinutesEnd,
       ...additionalParams,
     };
   }
@@ -45,7 +46,7 @@ export function getQueryParams(time: Time, additionalParams: Record<string, any>
   // Regular date-based approach
   return {
     ...getStartAndEndDate(time),
-    timeZone,
+    time_zone: timeZone,
     ...additionalParams,
   };
 }
@@ -69,12 +70,20 @@ export async function authedFetch<T>(
     });
   }
 
+  // Get private key from store and add to headers if present
+  const privateKey = useStore.getState().privateKey;
+  const headers = {
+    ...config.headers,
+    ...(privateKey ? { "x-private-key": privateKey } : {}),
+  };
+
   try {
     const response = await axios({
       url: fullUrl,
       params: processedParams,
       withCredentials: true,
       ...config,
+      headers,
     });
 
     return response.data;

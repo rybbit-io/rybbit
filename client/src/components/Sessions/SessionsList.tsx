@@ -1,55 +1,58 @@
-import { useEffect, useMemo, useRef } from "react";
-import { useGetSessionsInfinite } from "../../api/analytics/userSessions";
-import { SessionCard, SessionCardSkeleton } from "./SessionCard";
-import { Button } from "../ui/button";
+import { ChevronLeft, ChevronRight, Rewind } from "lucide-react";
+import { GetSessionsResponse } from "../../api/analytics/useGetUserSessions";
 import { NothingFound } from "../NothingFound";
-import { Rewind } from "lucide-react";
+import { Button } from "../ui/button";
+import { SessionCard, SessionCardSkeleton } from "./SessionCard";
 
-export default function SessionsList({ userId }: { userId?: string }) {
-  // Get sessions data with infinite loading
-  const { data, isLoading, error, fetchNextPage, hasNextPage, isFetchingNextPage } = useGetSessionsInfinite(userId);
+interface SessionsListProps {
+  sessions: GetSessionsResponse;
+  isLoading: boolean;
+  page: number;
+  onPageChange: (page: number) => void;
+  hasNextPage: boolean;
+  hasPrevPage: boolean;
+  emptyMessage?: string;
+  userId?: string;
+}
 
-  // Combine all pages of data
-  const flattenedData = useMemo(() => {
-    if (!data) return [];
-    return data.pages.flatMap(page => page.data || []);
-  }, [data]);
-
-  // Reference for the scroll container
-  const containerRef = useRef<HTMLDivElement>(null);
-
-  if (error) return <div className="text-red-500 p-4">Error: {(error as Error).message}</div>;
+export function SessionsList({
+  sessions,
+  isLoading,
+  page,
+  onPageChange,
+  hasNextPage,
+  hasPrevPage,
+  emptyMessage = "Try a different date range or filter",
+  userId,
+}: SessionsListProps) {
+  if (sessions.length === 0 && !isLoading) {
+    return (
+      <div className="overflow-auto space-y-3">
+        <NothingFound icon={<Rewind className="w-10 h-10" />} title={"No sessions found"} description={emptyMessage} />
+      </div>
+    );
+  }
 
   return (
-    <div ref={containerRef} className="overflow-auto ">
+    <div className="overflow-auto space-y-3">
+      {/* Pagination controls */}
+      <div className="flex items-center justify-end gap-2">
+        <Button variant="ghost" size="smIcon" onClick={() => onPageChange(page - 1)} disabled={!hasPrevPage}>
+          <ChevronLeft className="h-4 w-4" />
+        </Button>
+        <span className="text-sm text-neutral-500 dark:text-neutral-400">Page {page}</span>
+        <Button variant="ghost" size="smIcon" onClick={() => onPageChange(page + 1)} disabled={!hasNextPage}>
+          <ChevronRight className="h-4 w-4" />
+        </Button>
+      </div>
+
+      {/* Session cards */}
       {isLoading ? (
-        // Show skeleton cards while loading
         <SessionCardSkeleton />
-      ) : flattenedData.length === 0 ? (
-        <NothingFound
-          icon={<Rewind className="w-10 h-10" />}
-          title={"No sessions found"}
-          description={"Try a different date range or filter"}
-        />
       ) : (
-        // Render session cards with more robust key generation
-        flattenedData.map((session, index) => (
+        sessions.map((session, index) => (
           <SessionCard key={`${session.session_id}-${index}`} session={session} userId={userId} />
         ))
-      )}
-
-      {isFetchingNextPage && (
-        <div className="">
-          <SessionCardSkeleton key="loading-more" />
-        </div>
-      )}
-
-      {hasNextPage && (
-        <div className="flex justify-center py-2">
-          <Button onClick={() => fetchNextPage()} className="w-full" variant="success">
-            Load more
-          </Button>
-        </div>
       )}
     </div>
   );

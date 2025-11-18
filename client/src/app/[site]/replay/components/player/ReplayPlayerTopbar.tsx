@@ -19,13 +19,13 @@ export function ReplayPlayerTopbar() {
 
   if (!data?.metadata) {
     return (
-      <div className="border border-neutral-800 bg-neutral-900 px-2 py-2 rounded-t-lg overflow-hidden">
+      <div className="border border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-900 px-2 py-2 rounded-t-lg overflow-hidden">
         <div className="flex items-center justify-between min-w-0">
           <div className="flex items-center gap-2 min-w-0 flex-1">
-            <div className="h-4 w-32 bg-neutral-700 rounded animate-pulse" />
+            <div className="h-4 w-32 bg-neutral-150 dark:bg-neutral-700 rounded animate-pulse" />
           </div>
           <div className="flex items-center gap-1 flex-shrink-0 ml-2">
-            <div className="h-4 w-24 bg-neutral-700 rounded animate-pulse" />
+            <div className="h-4 w-24 bg-neutral-150 dark:bg-neutral-700 rounded animate-pulse" />
           </div>
         </div>
       </div>
@@ -70,11 +70,11 @@ export function ReplayPlayerTopbar() {
   }, [pageViewEvents, currentTime, metadata.page_url]);
 
   return (
-    <div className="border border-neutral-800 bg-neutral-900 px-2 py-2 rounded-t-lg overflow-hidden">
+    <div className="border border-neutral-100 dark:border-neutral-800 bg-white dark:bg-neutral-900 px-2 py-2 rounded-t-lg overflow-hidden">
       <div className="flex items-center justify-between min-w-0">
         {/* Left side: Page path with external link */}
         <Link
-          className="text-xs text-neutral-300 truncate flex-1 min-w-0 flex items-center hover:underline"
+          className="text-xs text-neutral-700 dark:text-neutral-300 truncate flex-1 min-w-0 flex items-center hover:underline"
           href={pageUrl}
           target="_blank"
           title={`Open ${pageUrl} in new tab`}
@@ -83,7 +83,7 @@ export function ReplayPlayerTopbar() {
         </Link>
 
         {/* Right side: Screen dimensions */}
-        <div className="flex items-center gap-2 text-xs text-neutral-400 flex-shrink-0 ml-2">
+        <div className="flex items-center gap-2 text-xs text-neutral-600 dark:text-neutral-400 flex-shrink-0 ml-2">
           <CountryFlagTooltipIcon
             country={metadata.country}
             city={metadata.city}

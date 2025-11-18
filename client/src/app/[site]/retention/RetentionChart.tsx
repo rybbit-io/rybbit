@@ -1,11 +1,12 @@
 "use client";
 
-import { nivoTheme } from "@/lib/nivo";
+import { useNivoTheme } from "@/lib/nivo";
 import { ResponsiveLine } from "@nivo/line";
 import { DateTime } from "luxon";
 import { useMemo } from "react";
 import { ProcessedRetentionData, RetentionMode } from "../../../api/analytics/useGetRetention";
 import { Skeleton } from "../../../components/ui/skeleton";
+import { useTheme } from "next-themes";
 
 interface RetentionChartProps {
   data: ProcessedRetentionData | undefined;
@@ -35,12 +36,12 @@ const cohortColors = [
 const RetentionChartSkeleton = () => (
   <div className="h-[400px] flex items-center justify-center">
     <div className="w-full space-y-3">
-      <Skeleton className="h-[300px] w-full bg-neutral-900 rounded-md animate-pulse" />
+      <Skeleton className="h-[300px] w-full bg-neutral-100 dark:bg-neutral-900 rounded-md animate-pulse" />
       <div className="flex items-center justify-between px-6">
         {Array.from({ length: 6 }).map((_, i) => (
           <Skeleton
             key={i}
-            className="h-4 w-12 bg-neutral-700/50 animate-pulse"
+            className="h-4 w-12 bg-neutral-150/50 dark:bg-neutral-700/50 animate-pulse"
             style={{
               animationDelay: `${i * 100}ms`,
               opacity: 0.3 + i * 0.1,
@@ -53,6 +54,9 @@ const RetentionChartSkeleton = () => (
 );
 
 export function RetentionChart({ data, isLoading, mode }: RetentionChartProps) {
+  const { resolvedTheme } = useTheme();
+  const nivoTheme = useNivoTheme();
+
   // Get cohort keys once for both chart data and tooltip
   const cohortKeys = useMemo(() => {
     if (!data || !data.cohorts) return [];
@@ -109,7 +113,7 @@ export function RetentionChart({ data, isLoading, mode }: RetentionChartProps) {
   if (!data || chartData.length === 0) {
     return (
       <div className="h-[400px] flex items-center justify-center">
-        <div className="text-neutral-400 text-sm">No retention data available</div>
+        <div className="text-neutral-500 dark:text-neutral-400 text-sm">No retention data available</div>
       </div>
     );
   }
@@ -180,7 +184,7 @@ export function RetentionChart({ data, isLoading, mode }: RetentionChartProps) {
                 },
               },
             ],
-            itemTextColor: "hsl(var(--neutral-200))",
+            itemTextColor: resolvedTheme === "dark" ? "hsl(var(--neutral-200))" : "hsl(var(--neutral-700))",
           },
         ]}
         tooltip={({ point }) => {
@@ -212,11 +216,11 @@ export function RetentionChart({ data, isLoading, mode }: RetentionChartProps) {
           }
 
           return (
-            <div className="text-sm bg-neutral-850 p-2 rounded-md border border-neutral-800 shadow-md">
+            <div className="text-sm bg-neutral-150 dark:bg-neutral-850 p-2 rounded-md border border-neutral-300 dark:border-neutral-800 shadow-md">
               <div className="font-medium mb-1" style={{ color: point.seriesColor }}>
                 Cohort: {cohortDateDisplay}
               </div>
-              <div className="flex justify-between w-48 text-neutral-200">
+              <div className="flex justify-between w-48 text-neutral-700 dark:text-neutral-200">
                 <span>
                   {mode === "day" ? "Day" : "Week"} {xValue}
                 </span>

@@ -12,7 +12,7 @@ import {
   pixelBasedPreset,
 } from "@react-email/components";
 import * as React from "react";
-import type { OrganizationReport, SingleColData } from "../../../services/weekyReports/weeklyReportTypes.js";
+import type { OrganizationReport, MetricData } from "../../../services/weekyReports/weeklyReportTypes.js";
 
 interface WeeklyReportEmailProps {
   userName: string;
@@ -38,8 +38,8 @@ interface TopListItemProps {
 
 interface TopListSectionProps {
   title: string;
-  items: SingleColData[];
-  renderLabel: (item: SingleColData) => React.ReactNode;
+  items: MetricData[];
+  renderLabel: (item: MetricData) => React.ReactNode;
   showFavicon?: boolean;
   labelClassName?: string;
   className?: string;
@@ -446,7 +446,7 @@ export const WeeklyReportEmail = ({ userName, organizationReport }: WeeklyReport
                 This weekly report covers the last 7 days of analytics data.
               </Text>
               <Text className="text-mutedText text-xs mb-3">
-                <Link href="https://rybbit.io/settings/account" className="text-brand no-underline">
+                <Link href="https://app.rybbit.io/settings/account" className="text-brand no-underline">
                   Unsubscribe from weekly reports
                 </Link>
               </Text>

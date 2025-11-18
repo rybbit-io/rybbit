@@ -8,7 +8,19 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatDistanceToNow } from "date-fns";
 import { parseUtcTimestamp } from "@/lib/dateTimeUtils";
-import { ChevronDown, ChevronRight, User, Building2, CreditCard, UserCheck, ExternalLink } from "lucide-react";
+import { formatter } from "@/lib/utils";
+import { DateTime } from "luxon";
+import {
+  ChevronDown,
+  ChevronRight,
+  User,
+  Building2,
+  CreditCard,
+  UserCheck,
+  ExternalLink,
+  Activity,
+  Zap,
+} from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Pagination } from "@/components/pagination";
@@ -27,6 +39,12 @@ import { SearchInput } from "../shared/SearchInput";
 import { ErrorAlert } from "../shared/ErrorAlert";
 import { AdminLayout } from "../shared/AdminLayout";
 import { GrowthChart } from "../shared/GrowthChart";
+import { OverviewCards } from "../shared/OverviewCards";
+import { ServiceUsageChart } from "../shared/ServiceUsageChart";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
+import { CopyText } from "../../../../components/CopyText";
 
 export function Organizations() {
   const router = useRouter();
@@ -39,6 +57,64 @@ export function Organizations() {
     pageIndex: 0,
     pageSize: 50,
   });
+
+  // Filter states
+  const [showZeroEvents, setShowZeroEvents] = useState(true);
+  const [showFreeUsers, setShowFreeUsers] = useState(true);
+  const [showOnlyOverLimit, setShowOnlyOverLimit] = useState(false);
+
+  // Time period for service usage chart
+  const [timePeriod, setTimePeriod] = useState<"30d" | "60d" | "120d" | "all">("30d");
+
+  // Calculate date range based on time period
+  const { startDate, endDate } = useMemo(() => {
+    const now = DateTime.now();
+    const end = now.toFormat("yyyy-MM-dd");
+
+    if (timePeriod === "all") {
+      // For all time, start from May 2025
+      const start = "2025-05-01";
+      return { startDate: start, endDate: end };
+    }
+
+    const days = timePeriod === "30d" ? 30 : timePeriod === "60d" ? 60 : 120;
+    const start = now.minus({ days }).toFormat("yyyy-MM-dd");
+
+    return { startDate: start, endDate: end };
+  }, [timePeriod]);
+
+  // Calculate stats from organizations data
+  const stats = useMemo(() => {
+    if (!organizations) {
+      return {
+        totalOrganizations: 0,
+        activeOrganizations: 0,
+        paidOrganizations: 0,
+        totalEventsLast30Days: 0,
+      };
+    }
+
+    const totalOrganizations = organizations.length;
+
+    // Count organizations with at least 1 event in past 30 days
+    const activeOrganizations = organizations.filter(org => org.sites.some(site => site.eventsLast30Days > 0)).length;
+
+    // Count paid organizations (with a subscription)
+    const paidOrganizations = organizations.filter(org => org.subscription.planName !== "free").length;
+
+    // Sum all events from past 30 days
+    const totalEventsLast30Days = organizations.reduce(
+      (total, org) => total + org.sites.reduce((sum, site) => sum + Number(site.eventsLast30Days), 0),
+      0
+    );
+
+    return {
+      totalOrganizations,
+      activeOrganizations,
+      paidOrganizations,
+      totalEventsLast30Days,
+    };
+  }, [organizations]);
 
   const toggleExpand = useCallback(
     (orgId: string) => {
@@ -53,25 +129,45 @@ export function Organizations() {
     [expandedOrgs]
   );
 
-  // Filter organizations based on search query
+  // Filter organizations based on search query and filter toggles
   const filteredOrganizations = useMemo(() => {
     if (!organizations) return [];
 
-    if (!searchQuery.trim()) return organizations;
+    let filtered = organizations;
 
-    const lowerSearchQuery = searchQuery.toLowerCase();
-    return organizations.filter(org => {
-      return (
-        org.name.toLowerCase().includes(lowerSearchQuery) ||
-        org.sites.some(site => site.domain.toLowerCase().includes(lowerSearchQuery)) ||
-        org.members.some(
-          member =>
-            member.email.toLowerCase().includes(lowerSearchQuery) ||
-            member.name.toLowerCase().includes(lowerSearchQuery)
-        )
-      );
-    });
-  }, [organizations, searchQuery]);
+    // Apply search filter
+    if (searchQuery.trim()) {
+      const lowerSearchQuery = searchQuery.toLowerCase();
+      filtered = filtered.filter(org => {
+        return (
+          org.name.toLowerCase().includes(lowerSearchQuery) ||
+          org.sites.some(site => site.domain.toLowerCase().includes(lowerSearchQuery)) ||
+          org.members.some(
+            member =>
+              member.email.toLowerCase().includes(lowerSearchQuery) ||
+              member.name.toLowerCase().includes(lowerSearchQuery)
+          )
+        );
+      });
+    }
+
+    // Filter out organizations with 0 events in last 30 days
+    if (!showZeroEvents) {
+      filtered = filtered.filter(org => org.sites.some(site => site.eventsLast30Days > 0));
+    }
+
+    // Filter out free users
+    if (!showFreeUsers) {
+      filtered = filtered.filter(org => org.subscription.planName !== "free");
+    }
+
+    // Show only organizations over their event limit
+    if (showOnlyOverLimit) {
+      filtered = filtered.filter(org => org.overMonthlyLimit);
+    }
+
+    return filtered;
+  }, [organizations, searchQuery, showZeroEvents, showFreeUsers, showOnlyOverLimit]);
 
   // Impersonation handler
   const handleImpersonate = useCallback(
@@ -129,10 +225,7 @@ export function Organizations() {
       {
         accessorKey: "createdAt",
         header: ({ column }) => <SortableHeader column={column}>Created</SortableHeader>,
-        cell: ({ row }) =>
-          formatDistanceToNow(parseUtcTimestamp(row.getValue("createdAt")).toJSDate(), {
-            addSuffix: true,
-          }),
+        cell: ({ row }) => <div>{parseUtcTimestamp(row.getValue("createdAt")).toRelative()}</div>,
       },
       {
         accessorKey: "monthlyEventCount",
@@ -142,7 +235,7 @@ export function Organizations() {
           const isOverLimit = row.original.overMonthlyLimit;
           return (
             <div className={`font-medium ${isOverLimit ? "text-red-400" : ""}`}>
-              {count?.toLocaleString() || 0}
+              {formatter(count || 0)}
               {isOverLimit && <span className="text-red-400 ml-1">⚠️</span>}
             </div>
           );
@@ -154,7 +247,16 @@ export function Organizations() {
         accessorFn: row => row.sites.reduce((total, site) => total + Number(site.eventsLast24Hours || 0), 0),
         cell: ({ row }) => {
           const total = row.original.sites.reduce((sum, site) => sum + Number(site.eventsLast24Hours || 0), 0);
-          return total.toLocaleString();
+          return formatter(total);
+        },
+      },
+      {
+        id: "eventsLast30Days",
+        header: ({ column }) => <SortableHeader column={column}>30d Events</SortableHeader>,
+        accessorFn: row => row.sites.reduce((total, site) => total + Number(site.eventsLast30Days || 0), 0),
+        cell: ({ row }) => {
+          const total = row.original.sites.reduce((sum, site) => sum + Number(site.eventsLast30Days || 0), 0);
+          return formatter(total);
         },
       },
       {
@@ -167,13 +269,13 @@ export function Organizations() {
         id: "sites",
         header: ({ column }) => <SortableHeader column={column}>Sites</SortableHeader>,
         accessorFn: row => row.sites.length,
-        cell: ({ row }) => <Badge variant="outline">{row.original.sites.length}</Badge>,
+        cell: ({ row }) => row.original.sites.length,
       },
       {
         id: "members",
         header: ({ column }) => <SortableHeader column={column}>Members</SortableHeader>,
         accessorFn: row => row.members.length,
-        cell: ({ row }) => <Badge variant="outline">{row.original.members.length}</Badge>,
+        cell: ({ row }) => row.original.members.length,
       },
     ],
     [toggleExpand]
@@ -227,15 +329,93 @@ export function Organizations() {
 
   if (isError) {
     return (
-      <AdminLayout title="Organizations">
+      <AdminLayout>
         <ErrorAlert message="Failed to load organizations data. Please try again later." />
       </AdminLayout>
     );
   }
 
   return (
-    <AdminLayout title="Organizations">
-      <GrowthChart data={organizations || []} title="Organizations" color="#8b5cf6" />
+    <AdminLayout>
+      <OverviewCards
+        isLoading={isLoading}
+        cards={[
+          {
+            title: "Total Organizations",
+            value: stats.totalOrganizations,
+            icon: Building2,
+          },
+          {
+            title: "Active Organizations",
+            value: stats.activeOrganizations,
+            icon: Activity,
+            description: "With events in past 30 days",
+          },
+          {
+            title: "Paid Organizations",
+            value: stats.paidOrganizations,
+            icon: CreditCard,
+          },
+          {
+            title: "Total Events (30d)",
+            value: stats.totalEventsLast30Days,
+            icon: Zap,
+          },
+        ]}
+      />
+
+      <Tabs defaultValue="growth" className="mb-6">
+        <div className="flex items-center justify-between mb-2">
+          <TabsList>
+            <TabsTrigger value="growth">Organization Growth</TabsTrigger>
+            <TabsTrigger value="usage">Service Usage</TabsTrigger>
+          </TabsList>
+        </div>
+        <TabsContent value="growth">
+          <GrowthChart data={organizations} color="#8b5cf6" title="Organizations" />
+        </TabsContent>
+        <TabsContent value="usage">
+          <div className="flex items-center gap-1 bg-neutral-100 dark:bg-neutral-800 p-1 rounded-lg">
+            <Button
+              size="sm"
+              variant={timePeriod === "30d" ? "default" : "ghost"}
+              onClick={() => setTimePeriod("30d")}
+              className="h-7 text-xs"
+            >
+              30d
+            </Button>
+            <Button
+              size="sm"
+              variant={timePeriod === "60d" ? "default" : "ghost"}
+              onClick={() => setTimePeriod("60d")}
+              className="h-7 text-xs"
+            >
+              60d
+            </Button>
+            <Button
+              size="sm"
+              variant={timePeriod === "120d" ? "default" : "ghost"}
+              onClick={() => setTimePeriod("120d")}
+              className="h-7 text-xs"
+            >
+              120d
+            </Button>
+            <Button
+              size="sm"
+              variant={timePeriod === "all" ? "default" : "ghost"}
+              onClick={() => setTimePeriod("all")}
+              className="h-7 text-xs"
+            >
+              All Time
+            </Button>
+          </div>
+          <ServiceUsageChart
+            startDate={startDate}
+            endDate={endDate}
+            title={`Service-wide Usage - ${timePeriod === "all" ? "All Time" : `Last ${timePeriod}`}`}
+          />
+        </TabsContent>
+      </Tabs>
 
       <div className="mb-4">
         <SearchInput
@@ -245,7 +425,28 @@ export function Organizations() {
         />
       </div>
 
-      <div className="rounded-md border border-neutral-700">
+      <div className="flex items-center gap-6 mb-4 p-4 bg-neutral-50 dark:bg-neutral-900 border border-neutral-100 dark:border-neutral-800 rounded-lg">
+        <div className="flex items-center gap-2">
+          <Switch id="show-zero-events" checked={showZeroEvents} onCheckedChange={setShowZeroEvents} />
+          <Label htmlFor="show-zero-events" className="text-sm cursor-pointer">
+            Show orgs with 0 events (30d)
+          </Label>
+        </div>
+        <div className="flex items-center gap-2">
+          <Switch id="show-free-users" checked={showFreeUsers} onCheckedChange={setShowFreeUsers} />
+          <Label htmlFor="show-free-users" className="text-sm cursor-pointer">
+            Show free users
+          </Label>
+        </div>
+        <div className="flex items-center gap-2">
+          <Switch id="show-only-over-limit" checked={showOnlyOverLimit} onCheckedChange={setShowOnlyOverLimit} />
+          <Label htmlFor="show-only-over-limit" className="text-sm cursor-pointer">
+            Only over limit
+          </Label>
+        </div>
+      </div>
+
+      <div className="rounded-md border border-neutral-100 dark:border-neutral-800">
         <Table>
           <TableHeader>
             {table.getHeaderGroups().map(headerGroup => (
@@ -283,6 +484,9 @@ export function Organizations() {
                       <Skeleton className="h-5 w-20" />
                     </TableCell>
                     <TableCell>
+                      <Skeleton className="h-5 w-20" />
+                    </TableCell>
+                    <TableCell>
                       <Skeleton className="h-5 w-16" />
                     </TableCell>
                     <TableCell>
@@ -300,32 +504,35 @@ export function Organizations() {
                   </TableRow>
                   {expandedOrgs.has(row.original.id) && (
                     <TableRow>
-                      <TableCell colSpan={columns.length} className="bg-neutral-900 py-4 px-8">
+                      <TableCell colSpan={columns.length} className="bg-neutral-50 dark:bg-neutral-900 py-4 px-8">
                         <div className="space-y-6">
                           {/* Subscription Details */}
+                          <CopyText text={row.original.id}></CopyText>
                           <div>
                             <div className="flex items-center gap-2 text-sm font-semibold mb-3">
                               <CreditCard className="h-4 w-4" />
                               Subscription Details
                             </div>
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 border border-neutral-700 rounded">
+                            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 p-4 border border-neutral-100 dark:border-neutral-800 rounded">
                               <div>
-                                <div className="text-xs text-neutral-400 uppercase tracking-wide">Plan</div>
+                                <div className="text-xs text-neutral-500 dark:text-neutral-400 uppercase tracking-wide">Plan</div>
                                 <div className="font-medium">{row.original.subscription.planName}</div>
                               </div>
                               <div>
-                                <div className="text-xs text-neutral-400 uppercase tracking-wide">Status</div>
+                                <div className="text-xs text-neutral-500 dark:text-neutral-400 uppercase tracking-wide">Status</div>
                                 <div className="font-medium">{row.original.subscription.status}</div>
                               </div>
                               <div>
-                                <div className="text-xs text-neutral-400 uppercase tracking-wide">Event Limit</div>
+                                <div className="text-xs text-neutral-500 dark:text-neutral-400 uppercase tracking-wide">Event Limit</div>
                                 <div className="font-medium">
-                                  {row.original.subscription.eventLimit?.toLocaleString() || "Unlimited"}
+                                  {row.original.subscription.eventLimit
+                                    ? formatter(row.original.subscription.eventLimit)
+                                    : "Unlimited"}
                                 </div>
                               </div>
                               {row.original.subscription.currentPeriodEnd && (
                                 <div>
-                                  <div className="text-xs text-neutral-400 uppercase tracking-wide">Period End</div>
+                                  <div className="text-xs text-neutral-500 dark:text-neutral-400 uppercase tracking-wide">Period End</div>
                                   <div className="font-medium">
                                     {formatDistanceToNow(new Date(row.original.subscription.currentPeriodEnd), {
                                       addSuffix: true,
@@ -335,7 +542,7 @@ export function Organizations() {
                               )}
                               {row.original.subscription.cancelAtPeriodEnd && (
                                 <div>
-                                  <div className="text-xs text-neutral-400 uppercase tracking-wide">Cancellation</div>
+                                  <div className="text-xs text-neutral-500 dark:text-neutral-400 uppercase tracking-wide">Cancellation</div>
                                   <div className="font-medium text-orange-400">Cancels at period end</div>
                                 </div>
                               )}
@@ -355,12 +562,13 @@ export function Organizations() {
                                     key={site.siteId}
                                     href={`/${site.siteId}`}
                                     target="_blank"
-                                    className="inline-flex items-center gap-2 px-3 py-2 bg-neutral-800 hover:bg-neutral-700 border border-neutral-600 rounded-md text-sm transition-colors"
+                                    className="inline-flex items-center gap-2 px-3 py-2 bg-neutral-100 dark:bg-neutral-800 hover:bg-neutral-200 dark:hover:bg-neutral-700 border border-neutral-200 dark:border-neutral-700 rounded-md text-sm transition-colors"
                                   >
                                     <div className="flex flex-col">
                                       <span className="font-medium">{site.domain}</span>
-                                      <span className="text-xs text-neutral-400">
-                                        {site.eventsLast24Hours.toLocaleString()} events (24h)
+                                      <span className="text-xs text-neutral-500 dark:text-neutral-400">
+                                        {formatter(site.eventsLast24Hours)} events (24h) ·{" "}
+                                        {formatter(site.eventsLast30Days)} (30d)
                                       </span>
                                     </div>
                                     <ExternalLink className="h-3 w-3" />
@@ -368,7 +576,7 @@ export function Organizations() {
                                 ))}
                               </div>
                             ) : (
-                              <div className="text-neutral-400 p-4 border border-neutral-700 rounded">No sites</div>
+                              <div className="text-neutral-500 dark:text-neutral-400 p-4 border border-neutral-100 dark:border-neutral-800 rounded">No sites</div>
                             )}
                           </div>
 
@@ -383,32 +591,35 @@ export function Organizations() {
                                 {row.original.members.map(member => (
                                   <div
                                     key={member.userId}
-                                    className="p-3 border border-neutral-700 rounded flex items-center justify-between"
+                                    className="p-3 border border-neutral-100 dark:border-neutral-800 rounded flex items-center justify-between"
                                   >
-                                    <div>
-                                      <div className="font-medium">{member.name}</div>
-                                      <div className="text-sm text-neutral-400">{member.email}</div>
-                                      <div className="text-xs text-neutral-500 mt-1">
+                                    <div className="flex flex-col gap-1">
+                                      <div className="font-medium flex items-center gap-2">
+                                        {member.name}{" "}
                                         <Badge variant="outline" className="text-xs">
                                           {member.role}
                                         </Badge>
                                       </div>
+                                      <div className="text-sm text-neutral-700 dark:text-neutral-200">{member.email}</div>
+                                      <div className="text-xs text-neutral-500 dark:text-neutral-400">
+                                        <CopyText text={member.userId} className="text-xs"></CopyText>
+                                      </div>
+                                      <Button
+                                        onClick={() => handleImpersonate(member.userId)}
+                                        size="sm"
+                                        variant="outline"
+                                        className="flex items-center gap-1"
+                                        disabled={member.userId === userStore.getState().user?.id}
+                                      >
+                                        <UserCheck className="h-3 w-3" />
+                                        Impersonate
+                                      </Button>
                                     </div>
-                                    <Button
-                                      onClick={() => handleImpersonate(member.userId)}
-                                      size="sm"
-                                      variant="outline"
-                                      className="flex items-center gap-1"
-                                      disabled={member.userId === userStore.getState().user?.id}
-                                    >
-                                      <UserCheck className="h-3 w-3" />
-                                      Impersonate
-                                    </Button>
                                   </div>
                                 ))}
                               </div>
                             ) : (
-                              <div className="text-neutral-400 p-4 border border-neutral-700 rounded">No members</div>
+                              <div className="text-neutral-500 dark:text-neutral-400 p-4 border border-neutral-100 dark:border-neutral-800 rounded">No members</div>
                             )}
                           </div>
                         </div>

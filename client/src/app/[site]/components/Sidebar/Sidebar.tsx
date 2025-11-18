@@ -2,14 +2,11 @@
 import {
   AlertTriangle,
   ChartColumnDecreasing,
-  Earth,
   File,
   Funnel,
   Gauge,
-  Globe,
   Globe2,
   LayoutDashboard,
-  Map,
   MousePointerClick,
   Rewind,
   Settings,
@@ -37,19 +34,36 @@ function SidebarContent() {
 
   // Check which tab is active based on the current path
   const getTabPath = (tabName: string) => {
-    return `/${pathname.split("/")[1]}/${tabName.toLowerCase()}${embed ? "?embed=true" : ""}`;
+    const segments = pathname.split("/").filter(Boolean);
+    const siteId = segments[0];
+
+    // Check if second segment is a private key (12 hex chars)
+    const hasPrivateKey = segments.length > 1 && /^[a-f0-9]{12}$/i.test(segments[1]);
+    const privateKey = hasPrivateKey ? segments[1] : null;
+
+    // Build path: /siteId/[privateKey]/tabName
+    const basePath = privateKey
+      ? `/${siteId}/${privateKey}/${tabName.toLowerCase()}`
+      : `/${siteId}/${tabName.toLowerCase()}`;
+
+    return `${basePath}${embed ? "?embed=true" : ""}`;
   };
 
   const isActiveTab = (tabName: string) => {
     if (!pathname.includes("/")) return false;
 
-    const route = pathname.split("/")[2] || "main";
+    const segments = pathname.split("/").filter(Boolean);
+    // Check if we have a private key (second segment is 12 hex chars)
+    const hasPrivateKey = segments.length > 1 && /^[a-f0-9]{12}$/i.test(segments[1]);
+
+    // Route is either segments[1] (no key) or segments[2] (with key)
+    const route = hasPrivateKey ? segments[2] || "main" : segments[1] || "main";
     return route === tabName.toLowerCase();
   };
 
   return (
-    <div className="w-56 bg-neutral-900 border-r border-neutral-850 flex flex-col h-dvh">
-      <div className="flex flex-col p-3 border-b border-neutral-800">
+    <div className="w-56 bg-neutral-50 border-r border-neutral-150 dark:bg-neutral-900 dark:border-neutral-850 flex flex-col h-dvh">
+      <div className="flex flex-col p-3 border-b border-neutral-200 dark:border-neutral-800">
         <SiteSelector />
       </div>
       <div className="flex flex-col p-3 pt-1">
@@ -66,12 +80,14 @@ function SidebarContent() {
           href={getTabPath("realtime")}
           icon={<Earth className="w-4 h-4" />}
         /> */}
-        {/* <SidebarComponents.Item
-          label="Map"
-          active={isActiveTab("map")}
-          href={getTabPath("map")}
-          icon={<Map className="w-4 h-4" />}
-        /> */}
+        {/* {!IS_CLOUD && (
+          <SidebarComponents.Item
+            label="Map"
+            active={isActiveTab("map")}
+            href={getTabPath("map")}
+            icon={<Map className="w-4 h-4" />}
+          />
+        )} */}
         <SidebarComponents.Item
           label="Globe"
           active={isActiveTab("globe")}
@@ -164,7 +180,7 @@ function SidebarContent() {
             <SiteSettings
               siteId={site?.siteId ?? 0}
               trigger={
-                <div className="px-3 py-2 rounded-lg transition-colors w-full text-neutral-200 hover:text-white hover:bg-neutral-800/50 cursor-pointer">
+                <div className="px-3 py-2 rounded-lg transition-colors w-full text-neutral-700 hover:text-neutral-900 hover:bg-neutral-150 dark:text-neutral-200 dark:hover:text-white dark:hover:bg-neutral-800/50 cursor-pointer">
                   <div className="flex items-center gap-2">
                     <Settings className="h-4 w-4" />
                     <span className="text-sm">Site Settings</span>

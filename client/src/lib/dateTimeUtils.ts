@@ -168,7 +168,7 @@ export const formatChartDateTime = (dt: DateTime, bucket: TimeBucket) => {
   if (bucket === "day") {
     options.minute = undefined;
     options.hour = undefined;
-    options.month = "long";
+    options.weekday = "short";
   }
   if (bucket === "fifteen_minutes" || bucket === "ten_minutes" || bucket === "five_minutes" || bucket === "minute") {
     options.minute = "numeric";

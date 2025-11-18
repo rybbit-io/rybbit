@@ -23,6 +23,8 @@ import { AdminLayout } from "../shared/AdminLayout";
 import { GrowthChart } from "../shared/GrowthChart";
 import Link from "next/link";
 import { Favicon } from "../../../../components/Favicon";
+import { parseUtcTimestamp } from "../../../../lib/dateTimeUtils";
+import { formatter } from "../../../../lib/utils";
 
 export function Sites() {
   const { data: sites, isLoading, isError } = useAdminSites();
@@ -75,13 +77,7 @@ export function Sites() {
       {
         accessorKey: "createdAt",
         header: ({ column }) => <SortableHeader column={column}>Created</SortableHeader>,
-        cell: ({ row }) => (
-          <div>
-            {formatDistanceToNow(row.getValue("createdAt"), {
-              addSuffix: true,
-            })}
-          </div>
-        ),
+        cell: ({ row }) => <div>{parseUtcTimestamp(row.getValue("createdAt")).toRelative()}</div>,
       },
       {
         accessorKey: "public",
@@ -93,12 +89,12 @@ export function Sites() {
       {
         accessorKey: "eventsLast24Hours",
         header: ({ column }) => <SortableHeader column={column}>Events (24h)</SortableHeader>,
-        cell: ({ row }) => <div>{Number(row.getValue("eventsLast24Hours")).toLocaleString()}</div>,
+        cell: ({ row }) => <div>{formatter(Number(row.getValue("eventsLast24Hours")))}</div>,
       },
       {
         accessorKey: "eventsLast30Days",
         header: ({ column }) => <SortableHeader column={column}>Events (30d)</SortableHeader>,
-        cell: ({ row }) => <div>{Number(row.getValue("eventsLast30Days")).toLocaleString()}</div>,
+        cell: ({ row }) => <div>{formatter(Number(row.getValue("eventsLast30Days")))}</div>,
       },
       {
         id: "subscription",
@@ -142,21 +138,21 @@ export function Sites() {
 
   if (isError) {
     return (
-      <AdminLayout title="Sites">
+      <AdminLayout>
         <ErrorAlert message="Failed to load sites data. Please try again later." />
       </AdminLayout>
     );
   }
 
   return (
-    <AdminLayout title="Sites">
-      <GrowthChart data={sites || []} title="Sites" color="#10b981" />
+    <AdminLayout>
+      <GrowthChart data={sites} title="Sites" color="#10b981" />
 
       <div className="mb-4">
         <SearchInput placeholder="Search by domain or owner email..." value={searchQuery} onChange={setSearchQuery} />
       </div>
 
-      <div className="rounded-md border border-neutral-700">
+      <div className="rounded-md border border-neutral-100 dark:border-neutral-800">
         <Table>
           <TableHeader>
             {table.getHeaderGroups().map(headerGroup => (

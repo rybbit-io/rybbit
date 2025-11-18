@@ -2,13 +2,13 @@ import { FilterParams } from "@rybbit/shared";
 import { FastifyReply, FastifyRequest } from "fastify";
 import SqlString from "sqlstring";
 import { clickhouse } from "../../../db/clickhouse/clickhouse.js";
-import { getUserHasAccessToSitePublic } from "../../../lib/auth-utils.js";
 import { getFilterStatement, getTimeStatement, patternToRegex, processResults } from "../utils.js";
 
 type FunnelStep = {
   value: string;
   name?: string;
   type: "page" | "event";
+  hostname?: string;
   eventPropertyKey?: string;
   eventPropertyValue?: string | number | boolean;
 };
@@ -43,24 +43,24 @@ export async function getFunnel(
     return reply.status(400).send({ error: "At least 2 steps are required for a funnel" });
   }
 
-  const userHasAccessToSite = await getUserHasAccessToSitePublic(request, site);
-  if (!userHasAccessToSite) {
-    return reply.status(403).send({ error: "Forbidden" });
-  }
-
   try {
-    const filterStatement = getFilterStatement(request.query.filters);
-
     const timeStatement = getTimeStatement(request.query);
+    const filterStatement = getFilterStatement(request.query.filters, Number(site), timeStatement);
 
     // Build conditional statements for each step
     const stepConditions = steps.map(step => {
+      let condition = "";
+
       if (step.type === "page") {
         // Use pattern matching for page paths to support wildcards
-        return `type = 'pageview' AND match(pathname, ${SqlString.escape(patternToRegex(step.value))})`;
+        const regex = patternToRegex(step.value);
+        // Manually escape single quotes in the regex and wrap in quotes
+        // Don't use SqlString.escape() as it doesn't preserve the regex correctly
+        const safeRegex = regex.replace(/'/g, "\\'");
+        condition = `type = 'pageview' AND match(pathname, '${safeRegex}')`;
       } else {
         // Start with the base event match condition
-        let eventClause = `type = 'custom_event' AND event_name = ${SqlString.escape(step.value)}`;
+        condition = `type = 'custom_event' AND event_name = ${SqlString.escape(step.value)}`;
 
         // Add property matching if both key and value are provided
         if (step.eventPropertyKey && step.eventPropertyValue !== undefined) {
@@ -70,50 +70,55 @@ export async function getFunnel(
           // Comparison needs to handle the dynamic type returned
           // Let ClickHouse handle the comparison based on the provided value type
           if (typeof step.eventPropertyValue === "string") {
-            eventClause += ` AND toString(${propValueAccessor}) = ${SqlString.escape(step.eventPropertyValue)}`;
+            condition += ` AND toString(${propValueAccessor}) = ${SqlString.escape(step.eventPropertyValue)}`;
           } else if (typeof step.eventPropertyValue === "number") {
             // Use toFloat64 or toInt* depending on expected number type
-            eventClause += ` AND toFloat64OrNull(${propValueAccessor}) = ${SqlString.escape(step.eventPropertyValue)}`;
+            condition += ` AND toFloat64OrNull(${propValueAccessor}) = ${SqlString.escape(step.eventPropertyValue)}`;
           } else if (typeof step.eventPropertyValue === "boolean") {
             // Booleans might be stored as 0/1 or true/false in JSON
             // Comparing toUInt8 seems robust
-            eventClause += ` AND toUInt8OrNull(${propValueAccessor}) = ${step.eventPropertyValue ? 1 : 0}`;
+            condition += ` AND toUInt8OrNull(${propValueAccessor}) = ${step.eventPropertyValue ? 1 : 0}`;
           }
         }
-
-        return eventClause;
       }
+
+      // Add hostname filtering if specified
+      if (step.hostname) {
+        condition += ` AND hostname = ${SqlString.escape(step.hostname)}`;
+      }
+
+      return condition;
     });
 
-    // Build the funnel query - first part to calculate visitors at each step
+    // Build the funnel query - session-based tracking
     const query = `
     WITH
-    -- Get all user actions in the time period
-    UserActions AS (
+    -- Get all session actions in the time period
+    SessionActions AS (
       SELECT
-        user_id,
+        session_id,
         timestamp,
         pathname,
         event_name,
         type,
-        props
+        props,
+        hostname
       FROM events
       WHERE
         site_id = {siteId:Int32}
         ${timeStatement}
         ${filterStatement}
-        AND user_id != ''
     ),
-    -- Initial step (all users who completed step 1)
+    -- Initial step (all sessions who completed step 1)
     Step1 AS (
       SELECT DISTINCT
-        user_id,
+        session_id,
         min(timestamp) as step_time
-      FROM UserActions
+      FROM SessionActions
       WHERE ${stepConditions[0]}
-      GROUP BY user_id
+      GROUP BY session_id
     )
-    
+
     -- Calculate each funnel step
     ${steps
       .slice(1)
@@ -121,19 +126,19 @@ export async function getFunnel(
         (step, index) => `
     , Step${index + 2} AS (
       SELECT DISTINCT
-        s${index + 1}.user_id,
-        min(ua.timestamp) as step_time
+        s${index + 1}.session_id,
+        min(sa.timestamp) as step_time
       FROM Step${index + 1} s${index + 1}
-      JOIN UserActions ua ON s${index + 1}.user_id = ua.user_id
-      WHERE 
-        ua.timestamp > s${index + 1}.step_time
+      JOIN SessionActions sa ON s${index + 1}.session_id = sa.session_id
+      WHERE
+        sa.timestamp > s${index + 1}.step_time
         AND ${stepConditions[index + 1]}
-      GROUP BY s${index + 1}.user_id
+      GROUP BY s${index + 1}.session_id
     )
     `
       )
       .join("")}
-    
+
     -- Calculate visitor count for each step
     , StepCounts AS (
       ${steps
@@ -142,7 +147,7 @@ export async function getFunnel(
           SELECT
             ${index + 1} as step_number,
             ${SqlString.escape(step.name || step.value)} as step_name,
-            count(DISTINCT user_id) as visitors
+            count(DISTINCT session_id) as visitors
           FROM Step${index + 1}
         `
         )

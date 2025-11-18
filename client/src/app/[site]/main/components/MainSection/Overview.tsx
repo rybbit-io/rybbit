@@ -97,8 +97,8 @@ const Stat = ({
   return (
     <div
       className={cn(
-        "flex flex-col cursor-pointer border-r border-neutral-800 last:border-r-0 text-nowrap",
-        selectedStat === id && "bg-neutral-850"
+        "flex flex-col cursor-pointer border-r border-neutral-100 dark:border-neutral-800 last:border-r-0 text-nowrap",
+        selectedStat === id && "bg-neutral-0 dark:bg-neutral-850"
       )}
       onClick={() => setSelectedStat(id)}
       onMouseEnter={() => setIsHovering(true)}
@@ -145,7 +145,7 @@ const Stat = ({
           )}
         </div>
       </div>
-      <div className="h-[40px] mt-[-16]">
+      <div className="h-[40px] -mt-4">
         <SparklinesChart data={sparklinesData} isHovering={isHovering} />
       </div>
     </div>

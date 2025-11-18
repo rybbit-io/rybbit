@@ -1,7 +1,6 @@
 import { AlertTriangle, ArrowRight } from "lucide-react";
 import Link from "next/link";
 import { useCurrentSite } from "../../../../api/admin/sites";
-import { Alert, AlertDescription, AlertTitle } from "../../../../components/ui/alert";
 import { Button } from "../../../../components/ui/button";
 
 export function UsageBanners() {
@@ -21,7 +20,6 @@ export function UsageBanners() {
   };
 
   const usagePercentage = getUsagePercentage();
-  const isNearLimit = usagePercentage >= 90 && !subscription?.overMonthlyLimit;
 
   if (
     subscription?.monthlyEventCount &&
@@ -29,73 +27,50 @@ export function UsageBanners() {
     subscription.monthlyEventCount > subscription.eventLimit
   ) {
     return (
-      <Alert variant="destructive" className="p-4 mt-4">
-        <div className="flex items-start space-x-3">
-          <AlertTriangle className="h-5 w-5 mt-0.5" />
-          <div className="flex-1">
-            <AlertTitle className="text-base font-semibold mb-1">Event Limit Exceeded</AlertTitle>
-            <div className="mb-2 text-sm">
-              <strong>{formatNumber(subscription.monthlyEventCount || 0)}</strong> events used of{" "}
-              <strong>{formatNumber(subscription.eventLimit)}</strong>
-            </div>
-
-            {site.isOwner ? (
-              <div className="flex flex-col space-y-2 sm:flex-row sm:space-y-0 sm:space-x-2 items-start sm:items-center">
-                <AlertDescription className="text-sm">
-                  Upgrade your plan to continue collecting analytics.
-                </AlertDescription>
-                <Button variant="success" asChild size="sm">
-                  <Link href="/subscribe">
-                    Upgrade Plan <ArrowRight className="ml-1 h-3 w-3" />
-                  </Link>
-                </Button>
-              </div>
-            ) : (
-              <AlertDescription className="text-sm">
-                This site has exceeded its monthly event limit. Please contact your organization owner to upgrade the
-                plan.
-              </AlertDescription>
-            )}
-          </div>
+      <div className="mt-4 px-4 py-3 rounded-lg border border-red-300 dark:border-red-400/30 bg-red-100/80 dark:bg-red-900/20 text-sm flex gap-4 items-center">
+        <AlertTriangle className="h-5 w-5 text-red-600 dark:text-red-400 flex-shrink-0" />
+        <div className="flex-1">
+          <span className="text-red-700 dark:text-red-300 font-medium">
+            Monthly event limit exceeded: <strong>{formatNumber(subscription.monthlyEventCount || 0)}</strong> of{" "}
+            <strong>{formatNumber(subscription.eventLimit)}</strong> events used.{" "}
+            {site.isOwner
+              ? "Upgrade your plan to continue collecting analytics."
+              : "Please contact your organization owner to upgrade."}
+          </span>
         </div>
-      </Alert>
+        {site.isOwner && (
+          <Button variant="success" size="sm" asChild>
+            <Link href="/settings/organization/subscription">
+              Upgrade <ArrowRight className="ml-1 h-3 w-3" />
+            </Link>
+          </Button>
+        )}
+      </div>
     );
   }
 
-  // If approaching limit (>90%), show warning banner
-  if (isNearLimit) {
+  // Approaching limit (90-100%)
+  if (usagePercentage >= 90) {
     return (
-      <Alert className="mt-4 p-4 bg-amber-50 border-amber-200 dark:bg-amber-900/20 dark:border-amber-800">
-        <div className="flex items-start space-x-3">
-          <AlertTriangle className="h-5 w-5 mt-0.5 text-amber-500" />
-          <div className="flex-1">
-            <AlertTitle className="text-base font-semibold mb-1 text-amber-700 dark:text-amber-400">
-              Approaching Event Limit
-            </AlertTitle>
-            <div className="mb-2 text-sm text-amber-700 dark:text-amber-400">
-              <strong>{formatNumber(subscription?.monthlyEventCount || 0)}</strong> events used of{" "}
-              <strong>{formatNumber(subscription?.eventLimit || 0)}</strong>
-            </div>
-
-            {site.isOwner ? (
-              <div className="flex flex-col space-y-2 sm:flex-row sm:space-y-0 sm:space-x-2 items-start sm:items-center">
-                <AlertDescription className="text-sm text-amber-700 dark:text-amber-400">
-                  Consider upgrading your plan to avoid interruptions.
-                </AlertDescription>
-                <Button asChild variant="success" size="sm">
-                  <Link href="/subscribe">
-                    Upgrade Plan <ArrowRight className="ml-1 h-3 w-3" />
-                  </Link>
-                </Button>
-              </div>
-            ) : (
-              <AlertDescription className="text-sm text-amber-700 dark:text-amber-400">
-                This site is approaching its monthly event limit. You may want to notify your organization owner.
-              </AlertDescription>
-            )}
-          </div>
+      <div className="mt-4 px-4 py-3 rounded-lg border border-amber-300 dark:border-amber-400/30 bg-amber-100/80 dark:bg-amber-900/20 text-sm flex gap-4 items-center">
+        <AlertTriangle className="h-5 w-5 text-amber-600 dark:text-amber-400 flex-shrink-0" />
+        <div className="flex-1">
+          <span className="text-amber-700 dark:text-amber-300 font-medium">
+            Approaching monthly event limit: <strong>{formatNumber(subscription?.monthlyEventCount || 0)}</strong> of{" "}
+            <strong>{formatNumber(subscription?.eventLimit || 0)}</strong> events used.{" "}
+            {site.isOwner
+              ? "Consider upgrading to avoid interruptions."
+              : "You may want to notify your organization owner."}
+          </span>
         </div>
-      </Alert>
+        {site.isOwner && (
+          <Button variant="success" size="sm" asChild>
+            <Link href="/settings/organization/subscription">
+              Upgrade <ArrowRight className="ml-1 h-3 w-3" />
+            </Link>
+          </Button>
+        )}
+      </div>
     );
   }
 

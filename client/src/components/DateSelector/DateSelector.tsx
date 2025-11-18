@@ -12,11 +12,34 @@ import { DateTime } from "luxon";
 import { CustomDateRangePicker } from "./CustomDateRangePicker";
 import { Time } from "./types";
 
+// Convert wellKnown kebab-case to display labels
+const wellKnownLabels: Record<string, string> = {
+  today: "Today",
+  yesterday: "Yesterday",
+  "last-3-days": "Last 3 Days",
+  "last-7-days": "Last 7 Days",
+  "last-14-days": "Last 14 Days",
+  "last-30-days": "Last 30 Days",
+  "last-60-days": "Last 60 Days",
+  "last-30-minutes": "Last 30 Minutes",
+  "last-1-hour": "Last 1 Hour",
+  "last-6-hours": "Last 6 Hours",
+  "last-24-hours": "Last 24 Hours",
+  "this-week": "This Week",
+  "last-week": "Last Week",
+  "this-month": "This Month",
+  "last-month": "Last Month",
+  "this-year": "This Year",
+  "all-time": "All Time",
+};
+
 const getLabel = (time: Time) => {
+  // Check for wellKnown preset first
+  if (time.wellKnown && wellKnownLabels[time.wellKnown]) {
+    return wellKnownLabels[time.wellKnown];
+  }
+
   if (time.mode === "range") {
-    if (time.wellKnown) {
-      return `${time.wellKnown}`;
-    }
     const startFormatted = DateTime.fromISO(time.startDate).toFormat("EEEE, MMM d");
     const endFormatted = DateTime.fromISO(time.endDate).toFormat("EEEE, MMM d");
     return `${startFormatted} - ${endFormatted}`;
@@ -81,7 +104,7 @@ export function DateSelector({
 }) {
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger className="text-xs sm:text-sm p-2 sm:p-3 h-8 sm:h-9" variant={"default"}>
+      <DropdownMenuTrigger size={"sm"}>
         <Calendar className="hidden sm:block w-4 h-4" />
         {getLabel(time)}
       </DropdownMenuTrigger>
@@ -91,6 +114,7 @@ export function DateSelector({
             setTime({
               mode: "day",
               day: DateTime.now().toISODate(),
+              wellKnown: "today",
             })
           }
         >
@@ -102,7 +126,7 @@ export function DateSelector({
               mode: "range",
               startDate: DateTime.now().minus({ days: 2 }).toISODate(),
               endDate: DateTime.now().toISODate(),
-              wellKnown: "Last 3 days",
+              wellKnown: "last-3-days",
             })
           }
         >
@@ -114,7 +138,7 @@ export function DateSelector({
               mode: "range",
               startDate: DateTime.now().minus({ days: 6 }).toISODate(),
               endDate: DateTime.now().toISODate(),
-              wellKnown: "Last 7 days",
+              wellKnown: "last-7-days",
             })
           }
         >
@@ -126,7 +150,7 @@ export function DateSelector({
               mode: "range",
               startDate: DateTime.now().minus({ days: 13 }).toISODate(),
               endDate: DateTime.now().toISODate(),
-              wellKnown: "Last 14 days",
+              wellKnown: "last-14-days",
             })
           }
         >
@@ -138,7 +162,7 @@ export function DateSelector({
               mode: "range",
               startDate: DateTime.now().minus({ days: 29 }).toISODate(),
               endDate: DateTime.now().toISODate(),
-              wellKnown: "Last 30 days",
+              wellKnown: "last-30-days",
             })
           }
         >
@@ -150,7 +174,7 @@ export function DateSelector({
               mode: "range",
               startDate: DateTime.now().minus({ days: 59 }).toISODate(),
               endDate: DateTime.now().toISODate(),
-              wellKnown: "Last 60 days",
+              wellKnown: "last-60-days",
             })
           }
         >
@@ -165,6 +189,7 @@ export function DateSelector({
                   mode: "past-minutes",
                   pastMinutesStart: 30,
                   pastMinutesEnd: 0,
+                  wellKnown: "last-30-minutes",
                 })
               }
             >
@@ -176,6 +201,7 @@ export function DateSelector({
                   mode: "past-minutes",
                   pastMinutesStart: 60,
                   pastMinutesEnd: 0,
+                  wellKnown: "last-1-hour",
                 })
               }
             >
@@ -187,6 +213,7 @@ export function DateSelector({
                   mode: "past-minutes",
                   pastMinutesStart: 360,
                   pastMinutesEnd: 0,
+                  wellKnown: "last-6-hours",
                 })
               }
             >
@@ -198,6 +225,7 @@ export function DateSelector({
                   mode: "past-minutes",
                   pastMinutesStart: 1440,
                   pastMinutesEnd: 0,
+                  wellKnown: "last-24-hours",
                 })
               }
             >
@@ -211,6 +239,7 @@ export function DateSelector({
             setTime({
               mode: "week",
               week: DateTime.now().startOf("week").toISODate(),
+              wellKnown: "this-week",
             })
           }
         >
@@ -221,6 +250,7 @@ export function DateSelector({
             setTime({
               mode: "month",
               month: DateTime.now().startOf("month").toISODate(),
+              wellKnown: "this-month",
             })
           }
         >
@@ -231,6 +261,7 @@ export function DateSelector({
             setTime({
               mode: "year",
               year: DateTime.now().startOf("year").toISODate(),
+              wellKnown: "this-year",
             })
           }
         >
@@ -240,6 +271,7 @@ export function DateSelector({
           onClick={() =>
             setTime({
               mode: "all-time",
+              wellKnown: "all-time",
             })
           }
         >

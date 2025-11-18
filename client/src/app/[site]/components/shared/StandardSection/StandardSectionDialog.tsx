@@ -1,6 +1,15 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+  TableSortIndicator,
+} from "@/components/ui/table";
+import {
   createColumnHelper,
   flexRender,
   getCoreRowModel,
@@ -9,10 +18,10 @@ import {
   useReactTable,
 } from "@tanstack/react-table";
 import { useDebounce, useIntersectionObserver } from "@uidotdev/usehooks";
-import { ChevronDown, ChevronUp, Loader2, Search, SquareArrowOutUpRight } from "lucide-react";
+import { Loader2, Search, SquareArrowOutUpRight } from "lucide-react";
 import { ReactNode, useEffect, useMemo, useState } from "react";
-import { useInfiniteSingleCol } from "../../../../../api/analytics/useInfiniteSingleCol";
-import { SingleColResponse } from "../../../../../api/analytics/useSingleCol";
+import { useInfiniteMetric } from "../../../../../api/analytics/useGetMetric";
+import { MetricResponse } from "../../../../../api/analytics/useGetMetric";
 import { FilterParameter } from "@rybbit/shared";
 import { addFilter } from "../../../../../lib/store";
 import { cn, formatSecondsAsMinutesAndSeconds } from "../../../../../lib/utils";
@@ -20,18 +29,18 @@ import { cn, formatSecondsAsMinutesAndSeconds } from "../../../../../lib/utils";
 interface StandardSectionDialogProps {
   title: string;
   ratio: number;
-  getKey: (item: SingleColResponse) => string;
-  getLabel: (item: SingleColResponse) => ReactNode;
-  getValue: (item: SingleColResponse) => string;
-  getFilterLabel?: (item: SingleColResponse) => string;
-  getLink?: (item: SingleColResponse) => string;
+  getKey: (item: MetricResponse) => string;
+  getLabel: (item: MetricResponse) => ReactNode;
+  getValue: (item: MetricResponse) => string;
+  getFilterLabel?: (item: MetricResponse) => string;
+  getLink?: (item: MetricResponse) => string;
   countLabel?: string;
   filterParameter: FilterParameter;
   expanded?: boolean;
   close: () => void;
 }
 
-const columnHelper = createColumnHelper<SingleColResponse>();
+const columnHelper = createColumnHelper<MetricResponse>();
 
 export function StandardSectionDialog({
   title,
@@ -47,7 +56,7 @@ export function StandardSectionDialog({
   close,
 }: StandardSectionDialogProps) {
   const { data, isLoading, isFetching, error, refetch, fetchNextPage, hasNextPage, isFetchingNextPage } =
-    useInfiniteSingleCol({
+    useInfiniteMetric({
       parameter: filterParameter,
       limit: 100,
     });
@@ -75,7 +84,7 @@ export function StandardSectionDialog({
 
     const labelFnToUse = getFilterLabel || getValue;
 
-    return allItems.filter((item: SingleColResponse) => {
+    return allItems.filter((item: MetricResponse) => {
       const label = typeof labelFnToUse(item) === "string" ? (labelFnToUse(item) as string) : labelFnToUse(item);
 
       return String(label).toLowerCase().includes(debouncedSearchTerm.toLowerCase());
@@ -92,7 +101,7 @@ export function StandardSectionDialog({
             {getLink && (
               <a href={getLink(row.original)} target="_blank" onClick={e => e.stopPropagation()}>
                 <SquareArrowOutUpRight
-                  className="ml-0.5 w-3.5 h-3.5 text-neutral-300 hover:text-neutral-100"
+                  className="ml-0.5 w-3.5 h-3.5 text-neutral-600 hover:text-neutral-900 dark:text-neutral-300 dark:hover:text-neutral-100"
                   strokeWidth={3}
                 />
               </a>
@@ -148,6 +157,18 @@ export function StandardSectionDialog({
           }) as any
         );
       }
+
+      const hasBounceRate = filteredData[0]?.bounce_rate !== undefined;
+      if (hasBounceRate) {
+        cols.push(
+          columnHelper.accessor("bounce_rate", {
+            header: "Bounce Rate",
+            cell: info => (
+              <div className="flex flex-row gap-1 items-center sm:justify-end">{info.getValue()?.toFixed(1)}%</div>
+            ),
+          }) as any
+        );
+      }
     }
 
     return cols;
@@ -179,7 +200,7 @@ export function StandardSectionDialog({
       <Dialog open={expanded} onOpenChange={close}>
         <DialogContent className="max-w-[1000px] w-[calc(100vw-2rem)] p-2 sm:p-4">
           <div className="flex justify-center items-center h-40">
-            <Loader2 className="h-8 w-8 animate-spin text-neutral-400" />
+            <Loader2 className="h-8 w-8 animate-spin text-neutral-600 dark:text-neutral-400" />
           </div>
         </DialogContent>
       </Dialog>
@@ -189,99 +210,93 @@ export function StandardSectionDialog({
 
   return (
     <Dialog open={expanded} onOpenChange={close}>
-      <DialogContent className="max-w-[1000px] w-[calc(100vw-2rem)] p-2 sm:p-4">
+      <DialogContent className="max-w-[1000px] w-[100vw] max-h-[1000px] h-[calc(100vh-2rem)] p-2 sm:p-4 flex flex-col gap-2">
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
         </DialogHeader>
-        <div className="relative">
-          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-neutral-400" />
-          <Input
-            type="text"
-            placeholder={`Filter ${allItems.length} items...`}
-            className="pl-9 bg-neutral-900 border-neutral-700 text-xs"
-            value={searchTerm}
-            onChange={e => setSearchTerm(e.target.value)}
-          />
-        </div>
-        <div className="flex flex-col gap-2 overflow-x-auto">
-          <div className="max-h-[80vh] overflow-y-auto">
-            <table className="w-full text-xs text-left min-w-max">
-              <thead className="bg-neutral-900 text-neutral-400 sticky top-0 z-10">
-                {table.getHeaderGroups().map(headerGroup => (
-                  <tr key={headerGroup.id}>
-                    {headerGroup.headers.map((header, index) => (
-                      <th
-                        key={header.id}
-                        scope="col"
+        <Input
+          type="text"
+          placeholder={`Filter ${allItems.length} items...`}
+          className="bg-white dark:bg-neutral-900 border-neutral-200 dark:border-neutral-700 text-xs"
+          value={searchTerm}
+          inputSize="sm"
+          onChange={e => setSearchTerm(e.target.value)}
+        />
+        <div className="max-h-[85vh] overflow-auto relative overflow-x-auto">
+          <table className="w-full text-xs text-left min-w-max">
+            <thead className="sticky top-0 z-10 bg-neutral-100 dark:bg-neutral-850 [&_tr]:border-b-0">
+              {table.getHeaderGroups().map(headerGroup => (
+                <tr key={headerGroup.id} className="border-b-0">
+                  {headerGroup.headers.map((header, index) => (
+                    <th
+                      key={header.id}
+                      className={cn(
+                        "h-8 px-2 text-left align-middle font-medium text-neutral-500 dark:text-neutral-400 first:rounded-l-lg last:rounded-r-lg",
+                        "font-medium whitespace-nowrap cursor-pointer select-none",
+                        index === 0 ? "text-left" : "text-right"
+                      )}
+                      style={{
+                        minWidth: header.id === "user_id" ? "100px" : "auto",
+                      }}
+                      onClick={header.column.getToggleSortingHandler()}
+                    >
+                      <div className={cn("flex items-center gap-1", index !== 0 && "justify-end")}>
+                        {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
+                        <TableSortIndicator sortDirection={header.column.getIsSorted()} />
+                      </div>
+                    </th>
+                  ))}
+                </tr>
+              ))}
+            </thead>
+            <tbody className="[&_tr:last-child]:border-0 bg-white dark:bg-neutral-900">
+              {table.getRowModel().rows.map(row => {
+                return (
+                  <tr
+                    key={row.id}
+                    className="border-b border-b-neutral-100 transition-colors hover:bg-neutral-100/50 dark:border-b-neutral-800 dark:hover:bg-neutral-800/20 cursor-pointer group"
+                    onClick={() =>
+                      addFilter({
+                        parameter: filterParameter,
+                        value: [getValue(row.original)],
+                        type: "equals",
+                      })
+                    }
+                  >
+                    {row.getVisibleCells().map((cell, cellIndex) => (
+                      <td
+                        key={cell.id}
                         className={cn(
-                          "px-2 py-1 font-medium whitespace-nowrap cursor-pointer select-none",
-                          index === 0 ? "text-left" : "text-right"
+                          "p-2 align-middle [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]",
+                          "relative",
+                          cellIndex !== 0 && "text-right"
                         )}
-                        style={{
-                          minWidth: header.id === "user_id" ? "100px" : "auto",
-                        }}
-                        onClick={header.column.getToggleSortingHandler()}
                       >
-                        <div className={cn("flex items-center gap-1", index !== 0 && "justify-end")}>
-                          {header.isPlaceholder
-                            ? null
-                            : flexRender(header.column.columnDef.header, header.getContext())}
-                          {{
-                            asc: <ChevronUp className="h-3 w-3" />,
-                            desc: <ChevronDown className="h-3 w-3" />,
-                          }[header.column.getIsSorted() as string] ?? null}
-                        </div>
-                      </th>
+                        <span className="relative z-0">
+                          {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                        </span>
+                      </td>
                     ))}
                   </tr>
-                ))}
-              </thead>
-              <tbody>
-                {table.getRowModel().rows.map((row, rowIndex) => {
-                  return (
-                    <tr
-                      key={row.id}
-                      className={cn(
-                        "border-b border-neutral-800 hover:bg-neutral-850 cursor-pointer group",
-                        rowIndex % 2 === 0 ? "bg-neutral-900" : "bg-neutral-950"
-                      )}
-                      onClick={() =>
-                        addFilter({
-                          parameter: filterParameter,
-                          value: [getValue(row.original)],
-                          type: "equals",
-                        })
-                      }
-                    >
-                      {row.getVisibleCells().map((cell, cellIndex) => (
-                        <td key={cell.id} className={cn("px-2 py-2 relative", cellIndex !== 0 && "text-right")}>
-                          {cellIndex === 0 && <div></div>}
-                          <span className="relative z-0">
-                            {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                          </span>
-                        </td>
-                      ))}
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+                );
+              })}
+            </tbody>
+          </table>
 
-            {/* Infinite scroll loading indicator and observer anchor */}
-            {filteredData.length > 0 && (
-              <div ref={ref} className="py-4 flex justify-center">
-                {isFetchingNextPage && (
-                  <div className="flex items-center gap-2 text-neutral-400 text-xs">
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    Loading more...
-                  </div>
-                )}
-                {!hasNextPage && !isFetchingNextPage && (
-                  <div className="text-neutral-500 text-xs">All items loaded</div>
-                )}
-              </div>
-            )}
-          </div>
+          {/* Infinite scroll loading indicator and observer anchor */}
+          {filteredData.length > 0 && (
+            <div ref={ref} className="py-4 flex justify-center">
+              {isFetchingNextPage && (
+                <div className="flex items-center gap-2 text-neutral-600 dark:text-neutral-400 text-xs">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Loading more...
+                </div>
+              )}
+              {!hasNextPage && !isFetchingNextPage && (
+                <div className="text-neutral-500 dark:text-neutral-500 text-xs">All items loaded</div>
+              )}
+            </div>
+          )}
         </div>
       </DialogContent>
     </Dialog>

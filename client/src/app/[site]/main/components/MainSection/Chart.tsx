@@ -1,6 +1,6 @@
 "use client";
 import { TimeBucket } from "@rybbit/shared";
-import { nivoTheme } from "@/lib/nivo";
+import { useNivoTheme } from "@/lib/nivo";
 import { StatType, useStore } from "@/lib/store";
 import { LineCustomSvgLayer, LineCustomSvgLayerProps, LineSeries, ResponsiveLine } from "@nivo/line";
 import { useWindowSize } from "@uidotdev/usehooks";
@@ -10,6 +10,7 @@ import { APIResponse } from "../../../../../api/types";
 import { Time } from "../../../../../components/DateSelector/types";
 import { formatSecondsAsMinutesAndSeconds, formatter } from "../../../../../lib/utils";
 import { userLocale, hour12, formatChartDateTime } from "../../../../../lib/dateTimeUtils";
+import { ChartTooltip } from "../../../../../components/charts/ChartTooltip";
 
 const getMax = (time: Time, bucket: TimeBucket) => {
   const now = DateTime.now();
@@ -128,6 +129,7 @@ export function Chart({
 }) {
   const { time, bucket, selectedStat } = useStore();
   const { width } = useWindowSize();
+  const nivoTheme = useNivoTheme();
 
   const maxTicks = Math.round((width ?? Infinity) / 75);
 
@@ -318,31 +320,42 @@ export function Chart({
         const previousTime = slice.points[0].data.previousTime as DateTime;
 
         const diff = currentY - previousY;
-        const diffPercentage = previousY ? (diff / previousY) * 100 : 9999;
+        const diffPercentage = previousY ? (diff / previousY) * 100 : null;
 
         return (
-          <div className="text-sm bg-neutral-850 p-2 rounded-md border border-neutral-750">
-            <div
-              className="text-lg font-medium"
-              style={{
-                color: diffPercentage > 0 ? "hsl(var(--green-400))" : "hsl(var(--red-400))",
-              }}
-            >
-              {diffPercentage > 0 ? "+" : ""}
-              {diffPercentage.toFixed(2)}%
-            </div>
-
-            <div className="flex justify-between text-sm w-40">
-              <div>{formatChartDateTime(currentTime, bucket)}</div>
-              <div>{formatTooltipValue(currentY, selectedStat)}</div>
-            </div>
-            {previousTime && (
-              <div className="flex justify-between text-sm text-muted-foreground">
-                <div>{formatChartDateTime(previousTime, bucket)}</div>
-                <div>{formatTooltipValue(previousY, selectedStat)}</div>
+          <ChartTooltip>
+            {diffPercentage !== null && (
+              <div
+                className="text-base font-medium px-2 pt-1.5 pb-1"
+                style={{
+                  color: diffPercentage > 0 ? "hsl(var(--green-400))" : "hsl(var(--red-400))",
+                }}
+              >
+                {diffPercentage > 0 ? "+" : ""}
+                {diffPercentage.toFixed(2)}%
               </div>
             )}
-          </div>
+            <div className="w-full h-[1px] bg-neutral-100 dark:bg-neutral-750"></div>
+
+            <div className="m-2">
+              <div className="flex justify-between text-sm w-40">
+                <div className="flex items-center gap-2">
+                  <div className="w-1 h-3 rounded-[3px] bg-dataviz" />
+                  {formatChartDateTime(currentTime, bucket)}
+                </div>
+                <div>{formatTooltipValue(currentY, selectedStat)}</div>
+              </div>
+              {previousTime && (
+                <div className="flex justify-between text-sm text-muted-foreground">
+                  <div className="flex items-center gap-2">
+                    <div className="w-1 h-3 rounded-[3px] bg-neutral-200 dark:bg-neutral-750" />
+                    {formatChartDateTime(previousTime, bucket)}
+                  </div>
+                  <div>{formatTooltipValue(previousY, selectedStat)}</div>
+                </div>
+              )}
+            </div>
+          </ChartTooltip>
         );
       }}
       layers={[

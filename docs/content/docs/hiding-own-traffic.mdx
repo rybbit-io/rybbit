@@ -1,0 +1,134 @@
+---
+title: Hiding your own traffic
+description: Prevent your own visits from being tracked in analytics
+---
+
+import { Tabs, Tab } from 'fumadocs-ui/components/tabs';
+import { Steps, Step } from 'fumadocs-ui/components/steps';
+import { Callout } from 'fumadocs-ui/components/callout';
+
+
+
+There are several ways to disable Rybbit tracking to hide your own visits from analytics.
+
+<Tabs items={['IP Exclusion', 'Browser Extensions', 'localStorage Method']}>
+  <Tab>
+    **IP Exclusion (Recommended)**: Block traffic from specific IP addresses or ranges at the server level for complete accuracy.
+
+    ### Setting Up IP Exclusion
+
+    1. **Navigate to Site Settings**: Go to your site's settings page in the Rybbit dashboard
+    2. **Find IP Exclusions section**: Scroll down to the "IP Exclusions" configuration
+    3. **Add your IP addresses**: Enter the IP addresses or ranges you want to exclude
+
+    ### Supported IP Formats
+
+    Rybbit supports multiple IP exclusion formats:
+
+    - **Single IPv4**: `192.168.1.1`
+    - **Single IPv6**: `2001:db8::1`, `::1`
+    - **CIDR notation**: `192.168.1.0/24`, `2001:db8::/32`
+    - **IPv4 ranges**: `192.168.1.1-192.168.1.10` (IPv4 only)
+
+    ### Examples
+
+    ```
+    # Your home IP address
+    203.0.113.45
+
+    # Your office network (CIDR)
+    203.0.113.0/24
+
+    # IP range for your team
+    198.51.100.10-198.51.100.20
+
+    # IPv6 address
+    2001:db8::1
+    ```
+
+    ### Key Features
+
+    - **Server-side filtering**: Traffic is blocked before it reaches your analytics, providing highly accurate exclusion
+    - **Multiple formats**: Supports individual IPs, CIDR notation, and ranges
+    - **IPv4 and IPv6**: Full support for both IP versions
+    - **Near real-time updates**: Changes take effect within seconds
+    - **No browser dependency**: Works regardless of browser or device
+
+    <Callout type="info">
+    **IP Stability Note**: IP addresses can change due to factors like mobile networks, VPN usage, ISP changes, and IPv6 privacy extensions. You may need to periodically update your excluded IPs to maintain effective filtering.
+    </Callout>
+
+    <Callout type="info">
+    **Dynamic IP Addresses**: If you frequently use VPNs, mobile networks, or have a dynamic IP address that changes regularly, consider these approaches:
+    - Use CIDR ranges that cover your typical IP pool (consult your ISP or VPN provider)
+    - Combine IP exclusion with browser extensions for comprehensive coverage
+    - Check your current IP periodically and update exclusions as needed
+    - For corporate networks, exclude the entire office IP range rather than individual addresses
+    </Callout>
+
+    <Callout type="warning">
+    **Note**: IPv6 range notation (e.g., `2001:db8::1-2001:db8::ff`) is not supported. Use CIDR notation instead (e.g., `2001:db8::/32`).
+    </Callout>
+
+    <Callout type="info">
+    **Finding your IP**: You can find your current IP address by visiting sites like [whatismyipaddress.com](https://whatismyipaddress.com) or [ipinfo.io](https://ipinfo.io).
+    </Callout>
+  </Tab>
+
+  <Tab>
+    **Browser Extensions**: Easy client-side solution using community-maintained browser extensions.
+
+    ### Available Extensions
+
+    - **[Chrome Extension](https://chrome.google.com/webstore/detail/gofnfdfidbkpellionhpmkejgaajieoo)**: Install from the Chrome Web Store
+    - **[Firefox Extension](https://addons.mozilla.org/en-US/firefox/addon/rybbit-opt-out/)**: Install from Firefox Add-ons
+
+    These extensions automatically disable Rybbit tracking on all websites where you have Rybbit installed, without requiring any manual configuration.
+
+    <Callout type="info">
+    **Self-hosted users**: These extensions require Rybbit version 1.1.0 or higher. If you're running an older version, please update your installation or use the localStorage method.
+    </Callout>
+
+    *These extensions are community-maintained by [@davidfiala](https://github.com/davidfiala).*
+  </Tab>
+  
+  <Tab>
+    **localStorage Method**: Manual configuration using your browser's developer console for more granular control.
+
+    <Steps>
+
+    ### 1. Open your browser's developer console
+
+    Press **F12** or right-click the page and select "Inspect"
+
+    Navigate to the "Console" tab
+
+    ### 2. Disable tracking
+
+    Enter this command to disable tracking:
+
+    ```js
+    localStorage.setItem('disable-rybbit', 'true');
+    ```
+
+    ### 3. Re-enable tracking (when needed)
+
+    If you want to re-enable tracking later, enter:
+
+    ```js
+    localStorage.removeItem('disable-rybbit');
+    ```
+
+    </Steps>
+  </Tab>
+</Tabs>
+
+## Summary
+
+Multiple methods are available for hiding your own traffic, each with different advantages:
+
+- **IP exclusion** provides the most accurate solution by blocking traffic at the server level, working regardless of browser or device
+- **Browser extensions** offer convenience by automatically working across all your Rybbit-enabled websites  
+- **localStorage method** gives granular control for specific websites or temporary disabling
+
+For most users, **IP exclusion is recommended** as it provides highly accurate filtering for all devices accessing your site from the excluded IP addresses. The other methods work at the browser level and may be useful for additional flexibility or temporary exclusions.

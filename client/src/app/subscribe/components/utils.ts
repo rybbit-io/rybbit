@@ -1,56 +1,74 @@
 // Common utility functions and constants for subscription components
 
-export interface StripePrice {
-  priceId: string;
-  price: number;
-  name: string;
-  interval: string;
-  limits: {
-    events: number;
-  };
-}
+import {
+  FREE_SITE_LIMIT,
+  STANDARD_SITE_LIMIT,
+  STANDARD_TEAM_LIMIT,
+  PRO_SITE_LIMIT,
+  PRO_TEAM_LIMIT,
+} from "../../../lib/const";
+import { getStripePrices, STRIPE_TIERS } from "../../../lib/stripe";
 
-export const EVENT_TIERS = [100_000, 250_000, 500_000, 1_000_000, 2_000_000, 5_000_000, 10_000_000, "Custom"];
+export const EVENT_TIERS = [...STRIPE_TIERS.map(tier => tier.events), "Custom"];
 
 export const STANDARD_FEATURES = [
-  "Up to 10 websites",
-  "Up to 3 team members",
-  "Web vitals",
+  "Everything in Free",
+  `Up to ${STANDARD_SITE_LIMIT} websites`,
+  `Up to ${STANDARD_TEAM_LIMIT} team members`,
   "Funnels",
   "Goals",
-  "Error tracking",
   "Journeys",
+  "Web vitals",
+  "Error tracking",
   "User profiles",
   "Retention",
+  "Sessions",
+  "Email reports",
   "2 year data retention",
-  "Standard support",
+  "Email support",
 ];
 
 export const PRO_FEATURES = [
   "Everything in Standard",
+  `Up to ${PRO_SITE_LIMIT} websites`,
+  `Up to ${PRO_TEAM_LIMIT} team members`,
+  "Session replays",
+  "5 year data retention",
+  "Priority support",
+];
+
+export const ENTERPRISE_FEATURES = [
+  "Everything in Pro",
   "Unlimited websites",
   "Unlimited team members",
-  "Session replays",
-  "5+ year data retention",
-  "Priority support",
+  "Single Sign-On (SSO)",
+  "Infinite data retention",
+  "Dedicated isolated instance",
+  "On-premise Installation",
+  "Custom Features",
+  "Whitelabeling",
+  "Manual invoicing",
+  "Uptime SLA",
+  "Enterprise support",
+  "Slack/live chat support",
 ];
 
 export const FREE_FEATURES = [
   "1 user",
-  "Up to 3 websites",
-  "Cookieless tracking",
+  `${FREE_SITE_LIMIT} website`,
   "Web analytics dashboard",
   "Custom events",
   "6 month data retention",
 ];
 
+const stripePrices = getStripePrices();
+
 // Find the appropriate price for a tier at current event limit
 export function findPriceForTier(
   eventLimit: number | string,
   interval: "month" | "year",
-  stripePrices: StripePrice[],
   planType: "standard" | "pro" = "standard"
-): StripePrice | null {
+) {
   // Check if we have a custom tier
   if (eventLimit === "Custom") {
     return null;
@@ -71,7 +89,7 @@ export function findPriceForTier(
   );
 
   // Find a plan that matches or exceeds the event limit
-  const matchingPlan = plans.find(plan => plan.limits.events >= eventLimitValue);
+  const matchingPlan = plans.find(plan => plan.events >= eventLimitValue);
   const selectedPlan = matchingPlan || plans[plans.length - 1] || null;
 
   // Return the matching plan or the highest tier available
@@ -84,5 +102,5 @@ export function formatEventTier(tier: number | string): string {
     return tier;
   }
 
-  return tier >= 1_000_000 ? `${tier / 1_000_000}M` : `${tier / 1_000}K`;
+  return tier >= 1_000_000 ? `${tier / 1_000_000}M` : `${tier / 1_000}k`;
 }

@@ -6,12 +6,20 @@ export const IS_CLOUD = process.env.CLOUD === "true";
 export const DISABLE_SIGNUP = process.env.DISABLE_SIGNUP === "true";
 export const DISABLE_TELEMETRY = process.env.DISABLE_TELEMETRY === "true";
 export const SECRET = process.env.BETTER_AUTH_SECRET;
+export const MAPBOX_TOKEN = process.env.MAPBOX_TOKEN;
 
 // Trial constants (commented out as we're replacing with free tier)
 // export const TRIAL_DURATION_DAYS = 14;
 // export const TRIAL_EVENT_LIMIT = 100000;
 
-export const DEFAULT_EVENT_LIMIT = 10_000;
+export const DEFAULT_EVENT_LIMIT = 3_000;
+
+// AppSumo tier limits (lifetime plans with standard features, no replays)
+export const APPSUMO_TIER_LIMITS = {
+  "1": 20_000,
+  "2": 100_000,
+  "3": 250_000,
+} as const;
 
 // Define a type for the plan objects
 export interface StripePlan {
@@ -152,6 +160,24 @@ const STRIPE_PRICES: StripePlan[] = [
       replays: 1_000_000,
     },
   },
+  {
+    name: "standard20m",
+    priceId: "price_1SKXvkDFVprnAny2cnF3yDyB",
+    interval: "month",
+    limits: {
+      events: 20_000_000,
+      replays: 2_000_000,
+    },
+  },
+  {
+    name: "standard20m-annual",
+    priceId: "price_1SKXxHDFVprnAny2fHARdc3Z",
+    interval: "year",
+    limits: {
+      events: 20_000_000,
+      replays: 2_000_000,
+    },
+  },
   // Pro tiers
   {
     priceId: "price_1S8szIDFVprnAny2Hg7cxG5b",
@@ -279,6 +305,24 @@ const STRIPE_PRICES: StripePlan[] = [
       replays: 1_000_000,
     },
   },
+  {
+    priceId: "price_1SKXw0DFVprnAny2Au9JTwnX",
+    name: "pro20m",
+    interval: "month",
+    limits: {
+      events: 20_000_000,
+      replays: 2_000_000,
+    },
+  },
+  {
+    priceId: "price_1SKXwcDFVprnAny2HCEv46PG",
+    name: "pro20m-annual",
+    interval: "year",
+    limits: {
+      events: 20_000_000,
+      replays: 2_000_000,
+    },
+  },
 ];
 
 const TEST_TO_PRICE_ID = {
@@ -310,6 +354,10 @@ const TEST_TO_PRICE_ID = {
   "pro5m-annual": "price_1S8klTDFVprnAny2Na9XXAEI",
   pro10m: "price_1S8kkKDFVprnAny2WDjO98bN",
   "pro10m-annual": "price_1S8kl3DFVprnAny2Xdhho4F0",
+  standard20m: "price_1SKtYyDFVprnAny2ZT1K2gVP",
+  "standard20m-annual": "price_1SKtZ8DFVprnAny2HwSpfzS8",
+  pro20m: "price_1SKtYZDFVprnAny2WUpCtCzm",
+  "pro20m-annual": "price_1SKtYkDFVprnAny2ikpbKAA6",
 };
 
 export const getStripePrices = () => {

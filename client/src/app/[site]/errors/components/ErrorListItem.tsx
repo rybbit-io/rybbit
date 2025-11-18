@@ -31,7 +31,7 @@ export function ErrorListItem({ errorData }: ErrorListItemProps) {
 
   return (
     <div
-      className="mb-3 rounded-lg bg-neutral-900 border border-neutral-800"
+      className="mb-3 rounded-lg bg-white dark:bg-neutral-900 border border-neutral-100 dark:border-neutral-800"
       onMouseEnter={() => setIsHovering(true)}
       onMouseLeave={() => setIsHovering(false)}
     >
@@ -80,9 +80,9 @@ export function ErrorListItem({ errorData }: ErrorListItemProps) {
               {/* Expand/Collapse icon */}
               <div className="ml-2 flex-shrink-0 flex">
                 {expanded ? (
-                  <ChevronDown className="w-4 h-4 text-gray-400" strokeWidth={3} />
+                  <ChevronDown className="w-4 h-4 text-neutral-500 dark:text-neutral-400" strokeWidth={3} />
                 ) : (
-                  <ChevronRight className="w-4 h-4 text-gray-400" strokeWidth={3} />
+                  <ChevronRight className="w-4 h-4 text-neutral-500 dark:text-neutral-400" strokeWidth={3} />
                 )}
               </div>
             </div>

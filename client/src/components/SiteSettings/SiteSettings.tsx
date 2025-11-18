@@ -18,7 +18,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 import { SiteResponse, useGetSite } from "@/api/admin/sites";
 import { useUserOrganizations } from "../../api/admin/organizations";
-import { ApiKeyManager } from "./ApiKeyManager";
 import { ScriptBuilder } from "./ScriptBuilder";
 import { SiteConfiguration } from "./SiteConfiguration";
 
@@ -58,18 +57,13 @@ function SiteSettingsInner({ siteMetadata, trigger }: { siteMetadata: SiteRespon
           <DialogDescription>Manage settings for {siteMetadata.domain}</DialogDescription>
         </DialogHeader>
         <Tabs value={activeTab} onValueChange={setActiveTab} className="pb-4">
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="settings">Site Settings</TabsTrigger>
             <TabsTrigger value="script">Tracking Script</TabsTrigger>
-            <TabsTrigger value="apikey">API Key</TabsTrigger>
           </TabsList>
 
           <TabsContent value="script" className="pt-4 space-y-4 max-h-[70vh] overflow-y-auto">
             <ScriptBuilder siteId={siteMetadata.id ?? String(siteMetadata.siteId)} />
-          </TabsContent>
-
-          <TabsContent value="apikey" className="pt-4 space-y-4 max-h-[70vh] overflow-y-auto">
-            <ApiKeyManager siteId={siteMetadata.siteId} disabled={disabled} />
           </TabsContent>
 
           <TabsContent value="settings">

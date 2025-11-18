@@ -1,7 +1,7 @@
 "use client";
 
 import { Skeleton } from "@/components/ui/skeleton";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableSortIndicator } from "@/components/ui/table";
 import {
   createColumnHelper,
   flexRender,
@@ -11,9 +11,6 @@ import {
   useReactTable,
 } from "@tanstack/react-table";
 import {
-  ChevronDown,
-  ChevronsUpDown,
-  ChevronUp,
   Monitor,
   Smartphone,
   Tablet,
@@ -145,7 +142,7 @@ export function PerformanceTable({ dimension, title }: PerformanceTableProps) {
 
           return (
             <div
-              className="text-white max-w-[300px] truncate flex items-center gap-2 cursor-pointer hover:underline"
+              className="text-neutral-900 dark:text-white max-w-[300px] truncate flex items-center gap-2 cursor-pointer hover:underline"
               onClick={handleClick}
             >
               {dimension === "country" && value ? (
@@ -184,7 +181,7 @@ export function PerformanceTable({ dimension, title }: PerformanceTableProps) {
                       onClick={e => e.stopPropagation()}
                     >
                       <SquareArrowOutUpRight
-                        className="ml-0.5 w-3.5 h-3.5 text-neutral-300 hover:text-neutral-100"
+                        className="w-3.5 h-3.5 text-neutral-600 dark:text-neutral-300 hover:text-neutral-900 dark:hover:text-neutral-100"
                         strokeWidth={3}
                       />
                     </a>
@@ -197,72 +194,54 @@ export function PerformanceTable({ dimension, title }: PerformanceTableProps) {
       }),
       columnHelper.accessor(`lcp_${selectedPercentile}`, {
         header: () => (
-          <div className="flex items-center justify-center gap-1">
+          <div className="flex items-center gap-1">
             LCP
             <MetricTooltip metric="lcp" />
           </div>
         ),
-        cell: info => (
-          <div className="text-center">
-            <MetricCell metric="lcp" value={info.getValue() as number} percentile={selectedPercentile} />
-          </div>
-        ),
+        cell: info => <MetricCell metric="lcp" value={info.getValue() as number} percentile={selectedPercentile} />,
       }),
       columnHelper.accessor(`cls_${selectedPercentile}`, {
         header: () => (
-          <div className="flex items-center justify-center gap-1">
+          <div className="flex items-center gap-1">
             CLS
             <MetricTooltip metric="cls" />
           </div>
         ),
-        cell: info => (
-          <div className="text-center">
-            <MetricCell metric="cls" value={info.getValue() as number} percentile={selectedPercentile} />
-          </div>
-        ),
+        cell: info => <MetricCell metric="cls" value={info.getValue() as number} percentile={selectedPercentile} />,
       }),
       columnHelper.accessor(`inp_${selectedPercentile}`, {
         header: () => (
-          <div className="flex items-center justify-center gap-1">
+          <div className="flex items-center gap-1">
             INP
             <MetricTooltip metric="inp" />
           </div>
         ),
-        cell: info => (
-          <div className="text-center">
-            <MetricCell metric="inp" value={info.getValue() as number} percentile={selectedPercentile} />
-          </div>
-        ),
+        cell: info => <MetricCell metric="inp" value={info.getValue() as number} percentile={selectedPercentile} />,
       }),
       columnHelper.accessor(`fcp_${selectedPercentile}`, {
         header: () => (
-          <div className="flex items-center justify-center gap-1">
+          <div className="flex items-center gap-1">
             FCP
             <MetricTooltip metric="fcp" />
           </div>
         ),
-        cell: info => (
-          <div className="text-center">
-            <MetricCell metric="fcp" value={info.getValue() as number} percentile={selectedPercentile} />
-          </div>
-        ),
+        cell: info => <MetricCell metric="fcp" value={info.getValue() as number} percentile={selectedPercentile} />,
       }),
       columnHelper.accessor(`ttfb_${selectedPercentile}`, {
         header: () => (
-          <div className="flex items-center justify-center gap-1">
+          <div className="flex items-center gap-1">
             TTFB
             <MetricTooltip metric="ttfb" />
           </div>
         ),
-        cell: info => (
-          <div className="text-center">
-            <MetricCell metric="ttfb" value={info.getValue() as number} percentile={selectedPercentile} />
-          </div>
-        ),
+        cell: info => <MetricCell metric="ttfb" value={info.getValue() as number} percentile={selectedPercentile} />,
       }),
       columnHelper.accessor("event_count", {
         header: "Events",
-        cell: info => <div className="text-center text-neutral-300">{info.getValue()?.toLocaleString() ?? 0}</div>,
+        cell: info => (
+          <div className="text-neutral-600 dark:text-neutral-300">{info.getValue()?.toLocaleString() ?? 0}</div>
+        ),
       }),
     ],
     [selectedPercentile]
@@ -321,33 +300,33 @@ export function PerformanceTable({ dimension, title }: PerformanceTableProps) {
       {isLoading ? (
         <Table>
           <TableHeader>
-            <TableRow className="border-neutral-800">
-              <TableHead className="text-neutral-300">
+            <TableRow className="border-neutral-300 dark:border-neutral-800">
+              <TableHead className="text-neutral-600 dark:text-neutral-300">
                 <Skeleton className="h-4 w-20" />
               </TableHead>
-              <TableHead className="text-neutral-300 text-center">
+              <TableHead className="text-neutral-600 dark:text-neutral-300 text-center">
                 <Skeleton className="h-4 w-8 mx-auto" />
               </TableHead>
-              <TableHead className="text-neutral-300 text-center">
+              <TableHead className="text-neutral-600 dark:text-neutral-300 text-center">
                 <Skeleton className="h-4 w-8 mx-auto" />
               </TableHead>
-              <TableHead className="text-neutral-300 text-center">
+              <TableHead className="text-neutral-600 dark:text-neutral-300 text-center">
                 <Skeleton className="h-4 w-8 mx-auto" />
               </TableHead>
-              <TableHead className="text-neutral-300 text-center">
+              <TableHead className="text-neutral-600 dark:text-neutral-300 text-center">
                 <Skeleton className="h-4 w-8 mx-auto" />
               </TableHead>
-              <TableHead className="text-neutral-300 text-center">
+              <TableHead className="text-neutral-600 dark:text-neutral-300 text-center">
                 <Skeleton className="h-4 w-10 mx-auto" />
               </TableHead>
-              <TableHead className="text-neutral-300 text-center">
+              <TableHead className="text-neutral-600 dark:text-neutral-300 text-center">
                 <Skeleton className="h-4 w-12 mx-auto" />
               </TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {Array.from({ length: 10 }).map((_, i) => (
-              <TableRow key={i} className="border-neutral-800">
+              <TableRow key={i}>
                 <TableCell>
                   <div className="flex items-center gap-2">
                     <Skeleton className="h-4 w-4 rounded" />
@@ -355,32 +334,32 @@ export function PerformanceTable({ dimension, title }: PerformanceTableProps) {
                   </div>
                 </TableCell>
                 <TableCell>
-                  <div className="text-center">
+                  <div>
                     <Skeleton className="h-4 w-12 mx-auto" />
                   </div>
                 </TableCell>
                 <TableCell>
-                  <div className="text-center">
+                  <div>
                     <Skeleton className="h-4 w-10 mx-auto" />
                   </div>
                 </TableCell>
                 <TableCell>
-                  <div className="text-center">
+                  <div>
                     <Skeleton className="h-4 w-12 mx-auto" />
                   </div>
                 </TableCell>
                 <TableCell>
-                  <div className="text-center">
+                  <div>
                     <Skeleton className="h-4 w-12 mx-auto" />
                   </div>
                 </TableCell>
                 <TableCell>
-                  <div className="text-center">
+                  <div>
                     <Skeleton className="h-4 w-12 mx-auto" />
                   </div>
                 </TableCell>
                 <TableCell>
-                  <div className="text-center">
+                  <div>
                     <Skeleton className="h-4 w-16 mx-auto" />
                   </div>
                 </TableCell>
@@ -393,30 +372,23 @@ export function PerformanceTable({ dimension, title }: PerformanceTableProps) {
           <Table>
             <TableHeader>
               {table.getHeaderGroups().map(headerGroup => (
-                <TableRow key={headerGroup.id} className="border-neutral-800">
+                <TableRow key={headerGroup.id}>
                   {headerGroup.headers.map(header => (
                     <TableHead
                       key={header.id}
-                      className={`text-neutral-300 ${
+                      className={`text-neutral-600 dark:text-neutral-300 ${
                         header.column.getCanSort()
                           ? "cursor-pointer hover:text-white transition-colors select-none"
                           : ""
                       }`}
                       onClick={header.column.getToggleSortingHandler()}
                     >
-                      <div className="flex items-center justify-center gap-1">
+                      <div className="flex items-center gap-1">
                         {flexRender(header.column.columnDef.header, header.getContext())}
-                        {header.column.getCanSort() && (
-                          <div className="flex flex-col">
-                            {header.column.getIsSorted() === "asc" ? (
-                              <ChevronUp className="h-3 w-3 text-blue-400" />
-                            ) : header.column.getIsSorted() === "desc" ? (
-                              <ChevronDown className="h-3 w-3 text-blue-400" />
-                            ) : (
-                              <ChevronsUpDown className="h-3 w-3 text-neutral-600" />
-                            )}
-                          </div>
-                        )}
+                        <TableSortIndicator
+                          sortDirection={header.column.getIsSorted()}
+                          canSort={header.column.getCanSort()}
+                        />
                       </div>
                     </TableHead>
                   ))}
@@ -426,13 +398,13 @@ export function PerformanceTable({ dimension, title }: PerformanceTableProps) {
             <TableBody>
               {table.getRowModel().rows.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={columns.length} className="text-center text-neutral-500 py-8">
+                  <TableCell colSpan={columns.length} className="text-neutral-500 py-8">
                     No performance data available
                   </TableCell>
                 </TableRow>
               ) : (
                 table.getRowModel().rows.map(row => (
-                  <TableRow key={row.id} className="border-neutral-800 hover:bg-neutral-900/50">
+                  <TableRow key={row.id}>
                     {row.getVisibleCells().map(cell => (
                       <TableCell key={cell.id}>{flexRender(cell.column.columnDef.cell, cell.getContext())}</TableCell>
                     ))}

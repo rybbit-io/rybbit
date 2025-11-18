@@ -1,22 +1,25 @@
-import { PartialTheme } from "@nivo/theming";
+"use client";
 
-export const nivoTheme: PartialTheme = {
+import { PartialTheme } from "@nivo/theming";
+import { useTheme } from "next-themes";
+
+export const getNivoTheme = (isDark: boolean = true): PartialTheme => ({
   axis: {
     legend: {
       text: {
-        fill: "hsl(var(--neutral-400))",
+        fill: isDark ? "hsl(var(--neutral-400))" : "hsl(var(--neutral-600))",
       },
     },
     ticks: {
       line: {},
       text: {
-        fill: "hsl(var(--neutral-400))",
+        fill: isDark ? "hsl(var(--neutral-400))" : "hsl(var(--neutral-500))",
       },
     },
   },
   grid: {
     line: {
-      stroke: "hsl(var(--neutral-800))",
+      stroke: isDark ? "hsl(var(--neutral-800))" : "hsl(var(--neutral-100))",
       strokeWidth: 1,
     },
   },
@@ -26,22 +29,31 @@ export const nivoTheme: PartialTheme = {
     },
     container: {
       backdropFilter: "blur( 7px )",
-      background: "rgb(40, 40, 40, 0.8)",
-      color: "rgb(255, 255, 255)",
+      background: isDark ? "rgb(40, 40, 40, 0.8)" : "rgb(245, 245, 245, 0.8)",
+      color: isDark ? "rgb(255, 255, 255)" : "rgb(0, 0, 0)",
     },
   },
-  crosshair: { line: { stroke: "hsl(var(--neutral-50))" } },
+  crosshair: { line: { stroke: isDark ? "hsl(var(--neutral-50))" : "hsl(var(--neutral-900))" } },
   annotations: {
     text: {
-      fill: "hsl(var(--neutral-400))",
+      fill: isDark ? "hsl(var(--neutral-400))" : "hsl(var(--neutral-600))",
     },
   },
   text: {
-    fill: "hsl(var(--neutral-400))",
+    fill: isDark ? "hsl(var(--neutral-400))" : "hsl(var(--neutral-600))",
   },
   labels: {
     text: {
-      fill: "hsl(var(--neutral-400))",
+      fill: isDark ? "hsl(var(--neutral-400))" : "hsl(var(--neutral-600))",
     },
   },
+});
+
+// Custom hook that automatically uses the resolved theme
+export const useNivoTheme = (): PartialTheme => {
+  const { resolvedTheme } = useTheme();
+  return getNivoTheme(resolvedTheme === "dark");
 };
+
+// Export default dark theme for backwards compatibility
+export const nivoTheme: PartialTheme = getNivoTheme(true);

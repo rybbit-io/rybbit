@@ -4,7 +4,7 @@ import { useMeasure } from "@uidotdev/usehooks";
 import { useGetSessionReplays } from "../../../api/analytics/sessionReplay/useGetSessionReplays";
 import { DisabledOverlay } from "../../../components/DisabledOverlay";
 import { useSetPageTitle } from "../../../hooks/useSetPageTitle";
-import { SESSION_REPLAY_PAGE_FILTERS } from "../../../lib/store";
+import { SESSION_REPLAY_PAGE_FILTERS } from "../../../lib/filterGroups";
 import { SubHeader } from "../components/SubHeader/SubHeader";
 import { EnableSessionReplay } from "./components/EnableSessionReplay";
 import { ReplayList } from "./components/ReplayList";

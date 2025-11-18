@@ -8,7 +8,7 @@ import { processResults } from "../../api/analytics/utils.js";
 import { createServiceLogger } from "../../lib/logger/logger.js";
 import { sendWeeklyReportEmail } from "../../lib/email/email.js";
 import { IS_CLOUD } from "../../lib/const.js";
-import type { OverviewData, SingleColData, SiteReport, OrganizationReport } from "./weeklyReportTypes.js";
+import type { OverviewData, MetricData, SiteReport, OrganizationReport } from "./weeklyReportTypes.js";
 
 class WeeklyReportService {
   private cronTask: cron.ScheduledTask | null = null;
@@ -87,7 +87,7 @@ class WeeklyReportService {
     startDate: string,
     endDate: string,
     limit: number = 5
-  ): Promise<SingleColData[]> {
+  ): Promise<MetricData[]> {
     try {
       let query = "";
 
@@ -212,7 +212,7 @@ class WeeklyReportService {
         },
       });
 
-      return await processResults<SingleColData>(result);
+      return await processResults<MetricData>(result);
     } catch (error) {
       this.logger.error({ error, siteId, parameter }, "Error fetching top N data");
       return [];

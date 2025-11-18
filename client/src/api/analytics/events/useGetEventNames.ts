@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
-import { useStore, getFilteredFilters, EVENT_FILTERS } from "../../../lib/store";
+import { getFilteredFilters, useStore } from "../../../lib/store";
+import { EVENT_FILTERS } from "../../../lib/filterGroups";
 import { authedFetch, getQueryParams } from "../../utils";
 
 export type EventName = {

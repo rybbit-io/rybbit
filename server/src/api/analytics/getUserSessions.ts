@@ -1,7 +1,7 @@
+import { FilterParams } from "@rybbit/shared";
 import { FastifyReply, FastifyRequest } from "fastify";
 import { clickhouse } from "../../db/clickhouse/clickhouse.js";
 import { getFilterStatement, getTimeStatement, processResults } from "./utils.js";
-import { getUserHasAccessToSitePublic } from "../../lib/auth-utils.js";
 
 // Individual pageview type
 type Pageview = {
@@ -37,29 +37,20 @@ type GroupedSession = {
 };
 
 export interface GetUserSessionsRequest {
-  Querystring: {
-    startDate: string;
-    endDate: string;
-    timeZone: string;
+  Querystring: FilterParams<{
     site: string;
-    filters: string;
-  };
+  }>;
   Params: {
     userId: string;
   };
 }
 
 export async function getUserSessions(req: FastifyRequest<GetUserSessionsRequest>, res: FastifyReply) {
-  const { startDate, endDate, timeZone, site, filters } = req.query;
+  const { site, filters } = req.query;
   const userId = req.params.userId;
 
-  const userHasAccessToSite = await getUserHasAccessToSitePublic(req, site);
-  if (!userHasAccessToSite) {
-    return res.status(403).send({ error: "Forbidden" });
-  }
-
-  const filterStatement = getFilterStatement(filters);
   const timeStatement = getTimeStatement(req.query);
+  const filterStatement = getFilterStatement(filters, Number(site), timeStatement);
 
   const query = `
 SELECT

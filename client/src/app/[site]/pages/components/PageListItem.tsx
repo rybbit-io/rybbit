@@ -2,7 +2,7 @@
 
 import { useGetSite } from "@/api/admin/sites";
 import { useGetOverviewBucketed } from "@/api/analytics/useGetOverviewBucketed";
-import { SingleColResponse } from "@/api/analytics/useSingleCol";
+import { MetricResponse } from "@/api/analytics/useGetMetric";
 import { usePageMetadata } from "@/api/usePageMetadata";
 import { Card, CardContent } from "@/components/ui/card";
 import { Filter } from "@rybbit/shared";
@@ -19,7 +19,7 @@ import { PageSparklineChart } from "./PageSparklineChart";
 const MAX_TITLE_LENGTH = 90;
 
 type PageListItemProps = {
-  pageData: SingleColResponse;
+  pageData: MetricResponse;
   isLoading?: boolean;
 };
 
@@ -89,7 +89,7 @@ export function PageListItem({ pageData, isLoading = false }: PageListItemProps)
           {/* Left side: Page title/path with thumbnail */}
           <div className="flex gap-3 flex-1 min-w-0">
             {thumbnailUrl && !isLoadingMetadata && (
-              <div className="hidden sm:block flex-shrink-0 h-12 w-16 relative rounded-md overflow-hidden border border-neutral-800">
+              <div className="hidden sm:block flex-shrink-0 h-12 w-16 relative rounded-md overflow-hidden border border-neutral-100 dark:border-neutral-800">
                 <img
                   src={thumbnailUrl}
                   alt={`Thumbnail for ${pageData.title || pageData.value}`}

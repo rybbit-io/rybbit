@@ -18,46 +18,46 @@ import {
 import { Badge } from "./ui/badge";
 import { Favicon } from "./Favicon";
 
-const getChannelIcon = (channel: string) => {
+export const getChannelIcon = (channel: string) => {
   switch (channel) {
     case "Direct":
-      return <Link className="w-4 h-4 text-gray-400" />;
+      return <Link className="w-4 h-4 text-neutral-500 dark:text-neutral-400" />;
     case "Organic Search":
-      return <Search className="w-4 h-4 text-gray-400" />;
+      return <Search className="w-4 h-4 text-neutral-500 dark:text-neutral-400" />;
     case "Referral":
-      return <ExternalLink className="w-4 h-4 text-gray-400" />;
+      return <ExternalLink className="w-4 h-4 text-neutral-500 dark:text-neutral-400" />;
     case "Organic Social":
-      return <Users className="w-4 h-4 text-gray-400" />;
+      return <Users className="w-4 h-4 text-neutral-500 dark:text-neutral-400" />;
     case "Email":
-      return <Mail className="w-4 h-4 text-gray-400" />;
+      return <Mail className="w-4 h-4 text-neutral-500 dark:text-neutral-400" />;
     case "Unknown":
-      return <HelpCircle className="w-4 h-4 text-gray-400" />;
+      return <HelpCircle className="w-4 h-4 text-neutral-500 dark:text-neutral-400" />;
     case "Paid Search":
-      return <Search className="w-4 h-4 text-gray-400" />;
+      return <Search className="w-4 h-4 text-neutral-500 dark:text-neutral-400" />;
     case "Paid Unknown":
-      return <DollarSign className="w-4 h-4 text-gray-400" />;
+      return <DollarSign className="w-4 h-4 text-neutral-500 dark:text-neutral-400" />;
     case "Paid Social":
-      return <Users className="w-4 h-4 text-gray-400" />;
+      return <Users className="w-4 h-4 text-neutral-500 dark:text-neutral-400" />;
     case "Display":
-      return <Monitor className="w-4 h-4 text-gray-400" />;
+      return <Monitor className="w-4 h-4 text-neutral-500 dark:text-neutral-400" />;
     case "Organic Video":
-      return <Video className="w-4 h-4 text-gray-400" />;
+      return <Video className="w-4 h-4 text-neutral-500 dark:text-neutral-400" />;
     case "Affiliate":
-      return <Handshake className="w-4 h-4 text-gray-400" />;
+      return <Handshake className="w-4 h-4 text-neutral-500 dark:text-neutral-400" />;
     case "Content":
-      return <FileText className="w-4 h-4 text-gray-400" />;
+      return <FileText className="w-4 h-4 text-neutral-500 dark:text-neutral-400" />;
     case "Organic Shopping":
-      return <ShoppingCart className="w-4 h-4 text-gray-400" />;
+      return <ShoppingCart className="w-4 h-4 text-neutral-500 dark:text-neutral-400" />;
     case "Event":
-      return <Calendar className="w-4 h-4 text-gray-400" />;
+      return <Calendar className="w-4 h-4 text-neutral-500 dark:text-neutral-400" />;
     case "Audio":
-      return <Headphones className="w-4 h-4 text-gray-400" />;
+      return <Headphones className="w-4 h-4 text-neutral-500 dark:text-neutral-400" />;
     default:
       return null;
   }
 };
 
-const getDisplayName = (hostname: string): string => {
+export const getDisplayName = (hostname: string): string => {
   // Handle Google domains with startsWith
   if (hostname.startsWith("google.") || hostname.startsWith("www.google.")) {
     return "Google";
@@ -119,7 +119,7 @@ const getDisplayName = (hostname: string): string => {
   return commonSites[hostname] || hostname;
 };
 
-const extractDomain = (url: string): string | null => {
+export const extractDomain = (url: string): string | null => {
   try {
     if (!url || url === "direct") return null;
     if (url.startsWith("android-app://")) {
@@ -139,7 +139,7 @@ export function Channel({ channel, referrer }: { channel: string; referrer: stri
   if (domain) {
     const displayName = getDisplayName(domain);
     return (
-      <Badge className="flex items-center gap-1 bg-neutral-800 text-gray-300">
+      <Badge className="flex items-center gap-1 bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-300">
         <Favicon domain={domain} className="w-4 h-4" />
         <span>{displayName}</span>
       </Badge>
@@ -147,7 +147,7 @@ export function Channel({ channel, referrer }: { channel: string; referrer: stri
   }
 
   return (
-    <Badge className="flex items-center gap-1 bg-neutral-800 text-gray-300">
+    <Badge className="flex items-center gap-1 bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-300">
       {getChannelIcon(channel)}
       <span>{channel}</span>
     </Badge>

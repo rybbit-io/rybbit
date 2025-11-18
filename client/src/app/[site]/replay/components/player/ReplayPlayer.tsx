@@ -106,7 +106,7 @@ export function ReplayPlayer({ width, height }: { width: number; height: number 
   }
 
   return (
-    <div className="flex flex-col bg-neutral-950 overflow-hidden" style={{ width: width, height: height }}>
+    <div className="flex flex-col overflow-hidden" style={{ width: width, height: height }}>
       <ReplayPlayerTopbar />
       <ReplayPlayerCore data={data} width={width} height={height} onPlayPause={handlePlayPause} isPlaying={isPlaying} />
 

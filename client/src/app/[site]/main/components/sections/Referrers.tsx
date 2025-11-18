@@ -32,9 +32,11 @@ export function Referrers() {
                 <TabsTrigger value="utm_content">Content</TabsTrigger>
               </TabsList>
             </div>
-            <Button size="smIcon" onClick={() => setExpanded(!expanded)}>
-              <Expand className="w-4 h-4" />
-            </Button>
+            <div className="w-7">
+              <Button size="smIcon" onClick={() => setExpanded(!expanded)}>
+                <Expand className="w-4 h-4" />
+              </Button>
+            </div>
           </div>
           <TabsContent value="referrers">
             <StandardSection

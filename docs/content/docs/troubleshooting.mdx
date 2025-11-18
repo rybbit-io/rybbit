@@ -1,0 +1,116 @@
+---
+title: Troubleshooting
+description: Docker cleanup and troubleshooting guide for Rybbit
+---
+
+import { Steps, Step } from 'fumadocs-ui/components/steps';
+import { Callout } from 'fumadocs-ui/components/callout';
+
+
+## Full Docker Cleanup
+
+If you encounter issues with Docker containers, images, or volumes and need to start fresh, you can perform a complete Docker cleanup. This will remove all containers, images, volumes, and custom networks.
+
+<Callout type="warn">
+**Warning**: This will remove ALL Docker containers, images, and volumes on your system, not just Rybbit-related ones. Make sure you don't have other important Docker containers running.
+</Callout>
+
+### Steps for Complete Docker Cleanup
+
+<Steps>
+<Step>
+### Remove your environment file
+```bash
+rm .env
+```
+</Step>
+
+<Step>
+### Stop all running containers:
+```bash
+docker stop $(docker ps -q)
+```
+</Step>
+
+<Step>
+### Remove all containers (both running and stopped):
+```bash
+docker rm -f $(docker ps -aq)
+```
+</Step>
+
+<Step>
+### Remove all images:
+```bash
+docker rmi -f $(docker images -q)
+```
+</Step>
+
+<Step>
+### Remove all volumes:
+```bash
+docker volume rm -f $(docker volume ls -q)
+```
+</Step>
+
+<Step>
+### Remove all custom networks (preserves default networks):
+```bash
+docker network rm $(docker network ls | grep -v "bridge\|host\|none" | awk '{print $1}')
+```
+</Step>
+</Steps>
+
+### Alternative: Rybbit-Specific Cleanup
+
+If you only want to clean up Rybbit-related Docker resources without affecting other containers, use these commands instead:
+
+```bash
+# Stop and remove Rybbit containers
+docker-compose down
+
+# Remove Rybbit images
+docker-compose down --rmi all
+
+# Remove Rybbit volumes (this will delete your data!)
+docker-compose down --volumes
+
+# Complete Rybbit cleanup
+docker-compose down --rmi all --volumes --remove-orphans
+```
+
+### After Cleanup
+
+Once you've completed the cleanup, you can restart Rybbit by following the setup instructions:
+
+```bash
+# Copy environment file
+cp .env.example .env
+
+# Edit .env with your configuration
+# Then start the services
+docker-compose up -d
+```
+
+## I ran out of disk space
+
+Regular web analytics events take up almost no space in Clickhouse, so it is very unlikely that you ran out of disk space from from this. There are two main reasons why you might have run out of disk space:
+
+### 1. You are using session replay
+
+On self-hosted instances where we don't have access to S3 compatible object storage, session replays are stored in Clickhouse. Each session replay is at least 1000x the data footprint of the web analytics events. So it's very easy to run out of disk space. 
+
+We have a 30 day retention policy for session replays events, so if you turn off session replay, your disk space will slowly come back. If you need to immediately free up space, you can truncate the session replays table:
+
+```bash
+docker exec -it clickhouse clickhouse-client --database analytics
+
+TRUNCATE TABLE session_replay_events;
+TRUNCATE TABLE session_replay_metadata;
+```
+
+### 2. You didn't mount the Clickhouse log suppression configs
+
+In our [docker-compose.yml](https://github.com/rybbit-io/rybbit/blob/master/docker-compose.ymlg), we have a config for Clickhouse that suppresses logs. Clickhouse stores a ton of logs in the log tables by default. This will quickly fill up your disk space if left unchecked.
+
+If you follow the standard installation process, the configs are already mounted for you. If you rolled your own Docker setup, you need to mount the configs manually.

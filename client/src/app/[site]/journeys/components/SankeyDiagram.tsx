@@ -1,6 +1,7 @@
 "use client";
 
 import * as d3 from "d3";
+import { useTheme } from "next-themes";
 import { useEffect, useRef } from "react";
 
 const MAX_LINK_HEIGHT = 100;
@@ -20,9 +21,18 @@ interface SankeyDiagramProps {
 
 export function SankeyDiagram({ journeys, steps, maxJourneys, domain }: SankeyDiagramProps) {
   const svgRef = useRef<SVGSVGElement>(null);
+  const { theme } = useTheme();
 
   useEffect(() => {
     if (!journeys || !svgRef.current || !domain) return;
+
+    // Define theme-based colors
+    const isDark = theme === "dark";
+    const linkColor = isDark ? "hsl(var(--neutral-500))" : "hsl(var(--neutral-400))";
+    const nodeBubbleBg = isDark ? "hsl(var(--neutral-850))" : "hsl(var(--neutral-100))";
+    const nodeBubbleBorder = isDark ? "hsl(var(--neutral-700))" : "hsl(var(--neutral-200))";
+    const pathTextColor = isDark ? "white" : "hsl(var(--neutral-900))";
+    const countTextColor = isDark ? "hsl(var(--neutral-300))" : "hsl(var(--neutral-600))";
 
     const svg = d3.select(svgRef.current);
     svg.selectAll("*").remove();
@@ -217,7 +227,7 @@ export function SankeyDiagram({ journeys, steps, maxJourneys, domain }: SankeyDi
                   ${targetX},${targetY}`;
       })
       .attr("fill", "none")
-      .attr("stroke", "hsl(var(--neutral-500))")
+      .attr("stroke", linkColor)
       .attr("stroke-width", d => linkWidthScale(d.value))
       .attr("opacity", 0.2)
       .attr("data-source", d => d.source)
@@ -250,7 +260,7 @@ export function SankeyDiagram({ journeys, steps, maxJourneys, domain }: SankeyDi
             const linkSource = d3.select(this).attr("data-source");
             const linkTarget = d3.select(this).attr("data-target");
             const thisLinkId = `${linkSource}|||${linkTarget}`;
-            return connectedLinkIds.has(thisLinkId) ? "hsl(var(--emerald-600))" : "hsl(var(--neutral-500))";
+            return connectedLinkIds.has(thisLinkId) ? "hsl(var(--emerald-600))" : linkColor;
           });
 
         d3.selectAll(".node-rect").attr("opacity", function (nodeData: any) {
@@ -266,7 +276,7 @@ export function SankeyDiagram({ journeys, steps, maxJourneys, domain }: SankeyDi
         });
       })
       .on("mouseleave", function () {
-        d3.selectAll(".link").attr("opacity", 0.2).attr("stroke", "hsl(var(--neutral-500))");
+        d3.selectAll(".link").attr("opacity", 0.2).attr("stroke", linkColor);
         d3.selectAll(".node-rect").attr("opacity", 1);
         d3.selectAll(".node-bubble").attr("opacity", 1);
         d3.selectAll(".node-text").attr("opacity", 1);
@@ -306,8 +316,8 @@ export function SankeyDiagram({ journeys, steps, maxJourneys, domain }: SankeyDi
         return textWidth + 10;
       })
       .attr("height", 41)
-      .attr("fill", "hsl(var(--neutral-850))")
-      .attr("stroke", "hsl(var(--neutral-700))")
+      .attr("fill", nodeBubbleBg)
+      .attr("stroke", nodeBubbleBorder)
       .attr("stroke-width", 1)
       .attr("rx", 4)
       .attr("ry", 4)
@@ -327,7 +337,7 @@ export function SankeyDiagram({ journeys, steps, maxJourneys, domain }: SankeyDi
       .attr("y", 21)
       .text(d => d.name)
       .attr("font-size", "12px")
-      .attr("fill", "white")
+      .attr("fill", pathTextColor)
       .attr("text-anchor", "start")
       .style("text-decoration", "none");
 
@@ -348,7 +358,7 @@ export function SankeyDiagram({ journeys, steps, maxJourneys, domain }: SankeyDi
       .attr("y", 37)
       .text(d => `${d.count.toLocaleString()} (${d.percentage.toFixed(1)}%)`)
       .attr("font-size", "11px")
-      .attr("fill", "hsl(var(--neutral-300))")
+      .attr("fill", countTextColor)
       .attr("text-anchor", "start");
 
     // Node hover effects
@@ -394,7 +404,7 @@ export function SankeyDiagram({ journeys, steps, maxJourneys, domain }: SankeyDi
             const linkSource = d3.select(this).attr("data-source");
             const linkTarget = d3.select(this).attr("data-target");
             const thisLinkId = `${linkSource}|||${linkTarget}`;
-            return connectedLinkIds.has(thisLinkId) ? "hsl(var(--emerald-600))" : "hsl(var(--neutral-500))";
+            return connectedLinkIds.has(thisLinkId) ? "hsl(var(--emerald-600))" : linkColor;
           });
 
         d3.selectAll(".node-rect").attr("opacity", function (nodeData: any) {
@@ -410,12 +420,12 @@ export function SankeyDiagram({ journeys, steps, maxJourneys, domain }: SankeyDi
         });
       })
       .on("mouseleave", function () {
-        d3.selectAll(".link").attr("opacity", 0.2).attr("stroke", "hsl(var(--neutral-500))");
+        d3.selectAll(".link").attr("opacity", 0.2).attr("stroke", linkColor);
         d3.selectAll(".node-rect").attr("opacity", 1);
         d3.selectAll(".node-bubble").attr("opacity", 1);
         d3.selectAll(".node-text").attr("opacity", 1);
       });
-  }, [journeys, steps, maxJourneys, domain]);
+  }, [journeys, steps, maxJourneys, domain, theme]);
 
   return (
     <div className="overflow-x-auto w-full">

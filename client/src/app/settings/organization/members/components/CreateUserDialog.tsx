@@ -18,8 +18,8 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { Alert } from "../../../../../components/ui/alert";
 import { authClient } from "../../../../../lib/auth";
-import { authedFetch } from "../../../../../api/utils";
 import { validateEmail } from "../../../../../lib/auth-utils";
+import { useAddUserToOrganization } from "../../../../../api/admin/organizations";
 
 interface CreateUserDialogProps {
   organizationId: string;
@@ -32,9 +32,10 @@ export function CreateUserDialog({ organizationId, onSuccess }: CreateUserDialog
   const [password, setPassword] = useState("");
   const [role, setRole] = useState<"admin" | "member">("member");
 
-  const [isLoading, setIsLoading] = useState(false);
   const [open, setOpen] = useState(false);
   const [error, setError] = useState("");
+
+  const addUserToOrganization = useAddUserToOrganization();
 
   const resetState = (open = false) => {
     setOpen(open);
@@ -61,7 +62,6 @@ export function CreateUserDialog({ organizationId, onSuccess }: CreateUserDialog
       return;
     }
 
-    setIsLoading(true);
     try {
       await authClient.admin.createUser({
         email,
@@ -69,13 +69,10 @@ export function CreateUserDialog({ organizationId, onSuccess }: CreateUserDialog
         password,
       });
 
-      await authedFetch("/add-user-to-organization", undefined, {
-        method: "POST",
-        data: {
-          email,
-          role,
-          organizationId,
-        },
+      await addUserToOrganization.mutateAsync({
+        email,
+        role,
+        organizationId,
       });
 
       toast.success(`User created successfully`);
@@ -83,8 +80,6 @@ export function CreateUserDialog({ organizationId, onSuccess }: CreateUserDialog
       resetState();
     } catch (error: any) {
       setError(error.message || "Failed to create user");
-    } finally {
-      setIsLoading(false);
     }
   };
 
@@ -150,8 +145,8 @@ export function CreateUserDialog({ organizationId, onSuccess }: CreateUserDialog
           <Button variant="outline" onClick={() => resetState(false)}>
             Cancel
           </Button>
-          <Button onClick={handleInvite} disabled={isLoading} variant="success">
-            {isLoading ? "Inviting..." : "Invite"}
+          <Button onClick={handleInvite} disabled={addUserToOrganization.isPending} variant="success">
+            {addUserToOrganization.isPending ? "Creating..." : "Create User"}
           </Button>
         </DialogFooter>
       </DialogContent>

@@ -2,7 +2,6 @@ import { eq } from "drizzle-orm";
 import { FastifyReply, FastifyRequest } from "fastify";
 import { db } from "../../../db/postgres/postgres.js";
 import { funnels as funnelsTable } from "../../../db/postgres/schema.js";
-import { getUserHasAccessToSitePublic } from "../../../lib/auth-utils.js";
 
 export async function getFunnels(
   request: FastifyRequest<{
@@ -13,12 +12,6 @@ export async function getFunnels(
   reply: FastifyReply
 ) {
   const { site } = request.params;
-
-  // Check user access to site
-  const userHasAccessToSite = await getUserHasAccessToSitePublic(request, site);
-  if (!userHasAccessToSite) {
-    return reply.status(403).send({ error: "Forbidden" });
-  }
 
   try {
     // Fetch all funnels for the site

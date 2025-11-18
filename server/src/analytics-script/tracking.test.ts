@@ -87,6 +87,7 @@ describe("Tracker", () => {
       enableSessionReplay: false,
       sessionReplayBatchSize: 50,
       sessionReplayBatchInterval: 5000,
+      sessionReplayMaskTextSelectors: [],
       skipPatterns: [],
       maskPatterns: [],
     };

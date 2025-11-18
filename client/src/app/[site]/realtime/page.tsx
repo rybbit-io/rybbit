@@ -3,7 +3,7 @@
 import NumberFlow from "@number-flow/react";
 import { useMeasure } from "@uidotdev/usehooks";
 import { useAtom } from "jotai";
-import { useGetLiveUsercount } from "../../../api/analytics/useLiveUserCount";
+import { useGetLiveUsercount } from "../../../api/analytics/useGetLiveUserCount";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../../components/ui/select";
 import { useSetPageTitle } from "../../../hooks/useSetPageTitle";
 import { RealtimeChart } from "./RealtimeChart/RealtimeChart";
@@ -30,7 +30,7 @@ export default function RealtimePage() {
           <MobileSidebar />
           <div className="flex flex-col p-2 md:p-3 bg-neutral-900 rounded-lg shadow-lg border border-neutral-750 w-[300px] md:w-[400px]">
             <div className="p-2">
-              <div className="text-sm text-gray-400 flex gap-2 text-nowrap items-center">
+              <div className="text-sm text-neutral-400 flex gap-2 text-nowrap items-center">
                 <div className="flex justify-center">
                   <span className="relative flex h-3 w-3">
                     <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-green-400 opacity-75"></span>

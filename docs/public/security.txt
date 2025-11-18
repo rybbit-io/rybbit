@@ -1,0 +1,8 @@
+# security.txt for rybbit.com       
+# We accept vulnerability reports. We do not offer monetary or bug bounty rewards.
+
+Canonical: https://rybbit.com/.well-known/security.txt
+Contact: mailto:hello@rybbit.com
+Preferred-Languages: en
+Expires: 2027-01-01T00:00:00Z
+

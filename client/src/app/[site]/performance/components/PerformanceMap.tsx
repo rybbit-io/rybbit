@@ -2,12 +2,16 @@
 
 import { useGetPerformanceByDimension } from "@/api/analytics/performance/useGetPerformanceByDimension";
 import { useMeasure } from "@uidotdev/usehooks";
-import { scalePow } from "d3-scale";
-import { Feature, GeoJsonObject } from "geojson";
-import { Layer } from "leaflet";
-import "leaflet/dist/leaflet.css";
-import { useEffect, useMemo, useState } from "react";
-import { GeoJSON, MapContainer } from "react-leaflet";
+import { Feature } from "geojson";
+import "ol/ol.css";
+import { useEffect, useMemo, useRef, useState } from "react";
+import Map from "ol/Map";
+import View from "ol/View";
+import { fromLonLat } from "ol/proj";
+import VectorLayer from "ol/layer/Vector";
+import VectorSource from "ol/source/Vector";
+import GeoJSON from "ol/format/GeoJSON";
+import { Style, Fill, Stroke } from "ol/style";
 import { useCountries } from "../../../../lib/geo";
 import { addFilter } from "../../../../lib/store";
 import { CountryFlag } from "../../components/shared/icons/CountryFlag";
@@ -19,6 +23,7 @@ import {
   getMetricUnit,
   METRIC_LABELS_SHORT,
 } from "../utils/performanceUtils";
+import type { FeatureLike } from "ol/Feature";
 
 interface TooltipContent {
   name: string;
@@ -66,6 +71,11 @@ export function PerformanceMap({ height }: { height: string }) {
   // Track which feature is currently hovered to control opacity without conflicts
   const [hoveredId, setHoveredId] = useState<string | null>(null);
 
+  const mapRef = useRef<HTMLDivElement>(null);
+  const mapInstanceRef = useRef<Map | null>(null);
+  const vectorLayerRef = useRef<VectorLayer<VectorSource> | null>(null);
+  const processedPerformanceDataRef = useRef<any>(null);
+
   // Process performance data to get the selected metric values
   const processedPerformanceData = useMemo(() => {
     if (!performanceData?.data) return null;
@@ -81,6 +91,11 @@ export function PerformanceMap({ height }: { height: string }) {
       };
     });
   }, [performanceData?.data, selectedPercentile, selectedPerformanceMetric]);
+
+  // Update ref when data changes
+  useEffect(() => {
+    processedPerformanceDataRef.current = processedPerformanceData;
+  }, [processedPerformanceData]);
 
   // Create color scale from green (good) to red (poor) based on Web Vitals thresholds
   const colorScale = useMemo(() => {
@@ -112,34 +127,43 @@ export function PerformanceMap({ height }: { height: string }) {
 
   const { data: countriesGeoData } = useCountries();
 
-  const handleStyle = (feature: Feature | undefined) => {
-    const countryCode = feature?.properties?.["ISO_A2"];
+  const isLoadingData = isLoading || isFetching;
 
-    const foundData = processedPerformanceData?.find((item: any) => item.country === countryCode);
+  const [ref, { height: resolvedHeight }] = useMeasure();
 
-    const metricValue = foundData?.metricValue || 0;
-    const color = foundData && metricValue > 0 ? colorScale(metricValue) : "rgba(140, 140, 140, 0.3)";
+  const zoom = resolvedHeight ? Math.log2(resolvedHeight / 400) + 1 : 1;
 
-    return {
-      color: color,
-      weight: 1,
-      fill: true,
-      fillColor: color,
-      // Increase opacity if this feature is currently hovered
-      fillOpacity: hoveredId === countryCode ? 0.9 : 0.6,
-    };
-  };
+  // Initialize map
+  useEffect(() => {
+    if (!mapRef.current) return;
 
-  const handleEachFeature = (feature: Feature, layer: Layer) => {
-    layer.on({
-      mouseover: () => {
-        const countryCode = feature.properties?.["ISO_A2"];
-        const countryName = feature.properties?.["ADMIN"];
+    const map = new Map({
+      target: mapRef.current,
+      view: new View({
+        center: fromLonLat([3, 40]),
+        zoom: zoom,
+      }),
+      controls: [],
+    });
 
-        // Mark this feature as hovered
+    mapInstanceRef.current = map;
+
+    // Handle pointer move for hover effects
+    map.on("pointermove", (evt) => {
+      if (evt.dragging) {
+        return;
+      }
+
+      const pixel = map.getEventPixel(evt.originalEvent);
+      const feature = map.forEachFeatureAtPixel(pixel, (feature) => feature);
+
+      if (feature) {
+        const countryCode = feature.get("ISO_A2");
+        const countryName = feature.get("ADMIN");
+
         setHoveredId(countryCode);
 
-        const foundData = processedPerformanceData?.find((item: any) => item.country === countryCode);
+        const foundData = processedPerformanceDataRef.current?.find((item: any) => item.country === countryCode);
 
         if (foundData) {
           setTooltipContent({
@@ -158,14 +182,29 @@ export function PerformanceMap({ height }: { height: string }) {
             metricName: METRIC_LABELS_SHORT[selectedPerformanceMetric],
           });
         }
-      },
-      mouseout: () => {
-        // Clear hover state
+
+        // Update tooltip position
+        const [x, y] = evt.pixel;
+        const rect = mapRef.current?.getBoundingClientRect();
+        if (rect) {
+          setTooltipPosition({
+            x: rect.left + x,
+            y: rect.top + y,
+          });
+        }
+      } else {
         setHoveredId(null);
         setTooltipContent(null);
-      },
-      click: () => {
-        const countryCode = feature.properties?.["ISO_A2"];
+      }
+    });
+
+    // Handle click for filtering
+    map.on("click", (evt) => {
+      const pixel = map.getEventPixel(evt.originalEvent);
+      const feature = map.forEachFeatureAtPixel(pixel, (feature) => feature);
+
+      if (feature) {
+        const countryCode = feature.get("ISO_A2");
 
         // Add country filter
         addFilter({
@@ -173,65 +212,125 @@ export function PerformanceMap({ height }: { height: string }) {
           value: [countryCode],
           type: "equals",
         });
+      }
+    });
+
+    return () => {
+      map.setTarget(undefined);
+    };
+  }, []);
+
+  // Update zoom when height changes
+  useEffect(() => {
+    if (mapInstanceRef.current && zoom) {
+      mapInstanceRef.current.getView().setZoom(zoom);
+    }
+  }, [zoom]);
+
+  // Update vector layer when geo data changes
+  useEffect(() => {
+    if (!mapInstanceRef.current) return;
+    if (!countriesGeoData) return;
+
+    // Wait for performance data to be available
+    if (!processedPerformanceData) return;
+
+    // Remove existing layer
+    if (vectorLayerRef.current) {
+      mapInstanceRef.current.removeLayer(vectorLayerRef.current);
+    }
+
+    // Create new vector source with GeoJSON data
+    const vectorSource = new VectorSource({
+      features: new GeoJSON().readFeatures(countriesGeoData, {
+        featureProjection: "EPSG:3857",
+      }),
+    });
+
+    // Create new vector layer with inline style function
+    const vectorLayer = new VectorLayer({
+      source: vectorSource,
+      style: (feature) => {
+        const countryCode = feature.get("ISO_A2");
+
+        const foundData = processedPerformanceDataRef.current?.find((item: any) => item.country === countryCode);
+
+        const metricValue = foundData?.metricValue || 0;
+
+        let fillColor: string;
+        let strokeColor: string;
+
+        if (foundData && metricValue > 0) {
+          // Get the color from the scale (already has opacity built in)
+          const baseColor = colorScale(metricValue);
+
+          if (hoveredId === countryCode) {
+            // Increase opacity on hover
+            fillColor = baseColor.replace(/,\s*([\d.]+)\)$/, (match, opacity) => {
+              const newOpacity = Math.min(parseFloat(opacity) + 0.2, 1);
+              return `, ${newOpacity})`;
+            });
+          } else {
+            // Use the color directly from the scale
+            fillColor = baseColor;
+          }
+          strokeColor = baseColor;
+        } else {
+          fillColor = "rgba(140, 140, 140, 0.2)";
+          strokeColor = "rgba(140, 140, 140, 0.3)";
+        }
+
+        return new Style({
+          fill: new Fill({
+            color: fillColor,
+          }),
+          stroke: new Stroke({
+            color: strokeColor,
+            width: 1,
+          }),
+        });
       },
     });
-  };
 
-  const isLoadingData = isLoading || isFetching;
+    vectorLayerRef.current = vectorLayer;
+    mapInstanceRef.current.addLayer(vectorLayer);
+  }, [countriesGeoData, dataVersion, selectedPercentile, selectedPerformanceMetric, colorScale, processedPerformanceData]);
 
-  const [ref, { height: resolvedHeight }] = useMeasure();
-
-  const zoom = resolvedHeight ? Math.log2(resolvedHeight / 400) + 1 : 1;
+  // Update styles when hoveredId changes (without recreating the layer)
+  useEffect(() => {
+    if (vectorLayerRef.current) {
+      vectorLayerRef.current.changed();
+    }
+  }, [hoveredId]);
 
   return (
     <div
-      onMouseMove={e => {
-        if (tooltipContent) {
-          setTooltipPosition({
-            x: e.clientX,
-            y: e.clientY,
-          });
-        }
-      }}
       style={{
         height: height,
       }}
       ref={ref}
     >
       {isLoadingData && (
-        <div className="absolute inset-0 bg-neutral-900/30 backdrop-blur-sm z-10 flex items-center justify-center">
+        <div className="absolute inset-0 bg-neutral-100/30 dark:bg-neutral-900/30 backdrop-blur-sm z-10 flex items-center justify-center">
           <div className="flex flex-col items-center gap-2">
             <div className="h-8 w-8 rounded-full border-2 border-accent-400 border-t-transparent animate-spin"></div>
-            <span className="text-sm text-neutral-300">Loading performance data...</span>
+            <span className="text-sm text-neutral-600 dark:text-neutral-300">Loading performance data...</span>
           </div>
         </div>
       )}
-      {countriesGeoData && (
-        <MapContainer
-          preferCanvas={true}
-          attributionControl={false}
-          zoomControl={false}
-          center={[40, 3]}
-          zoom={zoom}
-          style={{
-            height: "100%",
-            background: "none",
-            cursor: "default",
-            outline: "none",
-            zIndex: "1",
-          }}
-        >
-          <GeoJSON
-            key={`performance-countries-${dataVersion}-${selectedPercentile}-${selectedPerformanceMetric}`}
-            data={countriesGeoData as GeoJsonObject}
-            style={handleStyle}
-            onEachFeature={handleEachFeature}
-          />
-        </MapContainer>
-      )}
+      <div
+        ref={mapRef}
+        style={{
+          height: "100%",
+          width: "100%",
+          background: "none",
+          cursor: "default",
+          outline: "none",
+        }}
+      />
       {tooltipContent && (
         <div
-          className="fixed z-50 bg-neutral-1000 text-white rounded-md p-3 shadow-lg text-sm pointer-events-none max-w-xs"
+          className="fixed z-50 bg-white dark:bg-neutral-1000 text-neutral-900 dark:text-white rounded-md p-3 shadow-lg text-sm pointer-events-none max-w-xs border border-neutral-300 dark:border-transparent"
           style={{
             left: tooltipPosition.x,
             top: tooltipPosition.y - 10,
@@ -246,7 +345,7 @@ export function PerformanceMap({ height }: { height: string }) {
           {tooltipContent.eventCount > 0 ? (
             <>
               <div className="mb-2">
-                <span className="text-neutral-300">{tooltipContent.metricName}: </span>
+                <span className="text-neutral-600 dark:text-neutral-300">{tooltipContent.metricName}: </span>
                 {tooltipContent.metricValue !== null ? (
                   <span className="font-bold text-accent-400">
                     {formatMetricValue(selectedPerformanceMetric, tooltipContent.metricValue)}
@@ -258,14 +357,14 @@ export function PerformanceMap({ height }: { height: string }) {
               </div>
 
               <div className="text-xs">
-                <div className="text-neutral-300">
+                <div className="text-neutral-600 dark:text-neutral-300">
                   <span className="font-bold text-accent-400">{tooltipContent.eventCount.toLocaleString()}</span>{" "}
                   performance events
                 </div>
               </div>
             </>
           ) : (
-            <div className="text-neutral-400 text-xs">No performance data available</div>
+            <div className="text-neutral-500 dark:text-neutral-400 text-xs">No performance data available</div>
           )}
         </div>
       )}

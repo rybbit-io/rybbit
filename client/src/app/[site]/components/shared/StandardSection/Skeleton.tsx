@@ -1,6 +1,6 @@
 import { memo } from "react";
 
-export const Skeleton = memo(() => {
+export const StandardSkeleton = memo(() => {
   // Generate widths following Pareto principle with top item at 100%
   const widths = Array.from({ length: 10 }, (_, i) => {
     if (i === 0) {
@@ -29,26 +29,22 @@ export const Skeleton = memo(() => {
 
   return (
     <>
-      <div className="flex flex-row gap-2 justify-between pr-1 text-xs text-neutral-400">
-        <div className="h-4 bg-neutral-800 rounded animate-pulse w-16"></div>
-        <div className="h-4 bg-neutral-800 rounded animate-pulse w-12"></div>
-      </div>
       {Array.from({ length: 10 }).map((_, index) => (
         <div key={index} className="relative h-6 flex items-center">
           <div
-            className="absolute inset-0 bg-neutral-800 py-2 rounded-md animate-pulse"
+            className="absolute inset-0 bg-neutral-150/50 dark:bg-neutral-800 py-2 rounded-md animate-pulse"
             style={{ width: `${widths[index]}%` }}
           ></div>
           <div className="z-5 mx-2 flex justify-between items-center text-sm w-full">
             <div className="flex items-center gap-1">
               <div
-                className="h-4 bg-neutral-800 rounded animate-pulse"
+                className="h-4 bg-neutral-150 dark:bg-neutral-800 rounded animate-pulse"
                 style={{ width: `${labelWidths[index]}px` }}
               ></div>
             </div>
             <div className="text-sm flex gap-2">
               <div
-                className="h-4 bg-neutral-800 rounded animate-pulse"
+                className="h-4 bg-neutral-150 dark:bg-neutral-800 rounded animate-pulse"
                 style={{ width: `${valueWidths[index]}px` }}
               ></div>
             </div>

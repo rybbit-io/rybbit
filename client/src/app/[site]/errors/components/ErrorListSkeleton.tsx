@@ -10,7 +10,7 @@ export function ErrorListSkeleton({ count = 5 }: ErrorListSkeletonProps) {
   return (
     <>
       {Array.from({ length: count }).map((_, index) => (
-        <div key={index} className="mb-3 rounded-lg bg-neutral-900 border border-neutral-800">
+        <div key={index} className="mb-3 rounded-lg bg-white dark:bg-neutral-900 border border-neutral-100 dark:border-neutral-800">
           <div className="p-3">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center w-full gap-4">
               {/* Left side: Error name and message */}

@@ -42,34 +42,18 @@ class PageviewQueue {
     const batch = this.queue.splice(0, this.batchSize);
     const ips = [...new Set(batch.map(pv => pv.ipAddress))];
 
-    let geoData: Record<string, { data: any }> = {};
-
-    try {
-      // Process each IP to get geo data using local implementation
-      const geoPromises = ips.map(async ip => {
-        const locationData = await getLocation(ip);
-        return { ip, locationData };
-      });
-
-      const results = await Promise.all(geoPromises);
-
-      // Format results to match expected structure
-      results.forEach(({ ip, locationData }) => {
-        geoData[ip] = { data: locationData };
-      });
-    } catch (error) {
-      this.logger.error(error, "Error getting geo data");
-    }
+    const geoData = await getLocation(ips);
 
     // Process each pageview with its geo data
     const processedPageviews = batch.map(pv => {
       const dataForIp = geoData?.[pv.ipAddress];
 
-      const countryCode = dataForIp?.data?.countryIso || "";
-      const regionCode = dataForIp?.data?.subdivisions?.[0]?.isoCode || "";
-      const latitude = dataForIp?.data?.latitude || 0;
-      const longitude = dataForIp?.data?.longitude || 0;
-      const city = dataForIp?.data?.city || "";
+      const countryCode = dataForIp?.countryIso || "";
+      const regionCode = dataForIp?.region || "";
+      const latitude = dataForIp?.latitude || 0;
+      const longitude = dataForIp?.longitude || 0;
+      const city = dataForIp?.city || "";
+      const timezone = dataForIp?.timeZone || "";
 
       // Check if referrer is from the same domain and clear it if so
       let referrer = clearSelfReferrer(pv.referrer || "", pv.hostname || "");
@@ -112,6 +96,22 @@ class PageviewQueue {
         fcp: pv.fcp || null,
         ttfb: pv.ttfb || null,
         ip: pv.storeIp ? pv.ipAddress : null,
+        timezone: timezone,
+        company: dataForIp?.company?.name || "",
+        company_domain: dataForIp?.company?.domain || "",
+        company_type: dataForIp?.company?.type || "",
+        company_abuse_score: dataForIp?.company?.abuseScore ?? null,
+        asn: dataForIp?.asn?.asn || null,
+        asn_org: dataForIp?.asn?.org || "",
+        asn_domain: dataForIp?.asn?.domain || "",
+        asn_type: dataForIp?.asn?.type || "",
+        asn_abuse_score: dataForIp?.asn?.abuseScore ?? null,
+        vpn: dataForIp?.vpn || "",
+        crawler: dataForIp?.crawler || "",
+        datacenter: dataForIp?.datacenter || "",
+        is_proxy: dataForIp?.isProxy ?? null,
+        is_tor: dataForIp?.isTor ?? null,
+        is_satellite: dataForIp?.isSatellite ?? null,
       };
     });
 

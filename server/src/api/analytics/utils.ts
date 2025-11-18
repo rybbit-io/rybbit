@@ -5,17 +5,17 @@ import { filterParamSchema, validateFilters, validateTimeStatementParams } from 
 import { FilterParameter, FilterType } from "./types.js";
 
 export function getTimeStatement(
-  params: Pick<FilterParams, "startDate" | "endDate" | "timeZone" | "pastMinutesStart" | "pastMinutesEnd">
+  params: Pick<FilterParams, "start_date" | "end_date" | "time_zone" | "past_minutes_start" | "past_minutes_end">
 ) {
-  const { startDate, endDate, timeZone, pastMinutesStart, pastMinutesEnd } = params;
+  const { start_date, end_date, time_zone, past_minutes_start, past_minutes_end } = params;
 
   // Construct the legacy format for validation
   const pastMinutesRange =
-    pastMinutesStart !== undefined && pastMinutesEnd !== undefined
-      ? { start: Number(pastMinutesStart), end: Number(pastMinutesEnd) }
+    past_minutes_start !== undefined && past_minutes_end !== undefined
+      ? { start: Number(past_minutes_start), end: Number(past_minutes_end) }
       : undefined;
 
-  const date = startDate && endDate && timeZone ? { startDate, endDate, timeZone } : undefined;
+  const date = start_date && end_date && time_zone ? { start_date, end_date, time_zone } : undefined;
 
   // Sanitize inputs with Zod
   const sanitized = validateTimeStatementParams({
@@ -24,21 +24,21 @@ export function getTimeStatement(
   });
 
   if (sanitized.date) {
-    const { startDate, endDate, timeZone } = sanitized.date;
-    if (!startDate && !endDate) {
+    const { start_date, end_date, time_zone } = sanitized.date;
+    if (!start_date && !end_date) {
       return "";
     }
 
     // Use SqlString.escape for date and timeZone values
     return `AND timestamp >= toTimeZone(
-      toStartOfDay(toDateTime(${SqlString.escape(startDate)}, ${SqlString.escape(timeZone)})),
+      toStartOfDay(toDateTime(${SqlString.escape(start_date)}, ${SqlString.escape(time_zone)})),
       'UTC'
       )
       AND timestamp < if(
-        toDate(${SqlString.escape(endDate)}) = toDate(now(), ${SqlString.escape(timeZone)}),
+        toDate(${SqlString.escape(end_date)}) = toDate(now(), ${SqlString.escape(time_zone)}),
         now(),
         toTimeZone(
-          toStartOfDay(toDateTime(${SqlString.escape(endDate)}, ${SqlString.escape(timeZone)})) + INTERVAL 1 DAY,
+          toStartOfDay(toDateTime(${SqlString.escape(end_date)}, ${SqlString.escape(time_zone)})) + INTERVAL 1 DAY,
           'UTC'
         )
       )`;
@@ -138,7 +138,7 @@ export const getSqlParam = (parameter: FilterParameter) => {
   return filterParamSchema.parse(parameter);
 };
 
-export function getFilterStatement(filters: string) {
+export function getFilterStatement(filters: string, siteId?: number, timeStatement?: string) {
   if (!filters) {
     return "";
   }
@@ -150,6 +150,10 @@ export function getFilterStatement(filters: string) {
     return "";
   }
 
+  const siteIdFilter = siteId ? `site_id = ${siteId}` : "";
+  // Strip leading "AND " from timeStatement since we'll be constructing WHERE clauses
+  const timeFilter = timeStatement ? timeStatement.replace(/^AND\s+/i, "").trim() : "";
+
   return (
     "AND " +
     filtersArray
@@ -157,7 +161,30 @@ export function getFilterStatement(filters: string) {
         const x = filter.type === "contains" || filter.type === "not_contains" ? "%" : "";
         const isNumericParam = filter.parameter === "lat" || filter.parameter === "lon";
 
+        // Handle event_name as a session-level filter
+        // This ensures we filter to sessions containing the event, but still count all pageviews in those sessions
+        if (filter.parameter === "event_name") {
+          const whereClause = [siteIdFilter, timeFilter].filter(Boolean).join(" AND ");
+          const eventNameCondition =
+            filter.value.length === 1
+              ? `event_name ${filterTypeToOperator(filter.type)} ${SqlString.escape(x + filter.value[0] + x)}`
+              : `(${filter.value.map(value => `event_name ${filterTypeToOperator(filter.type)} ${SqlString.escape(x + value + x)}`).join(" OR ")})`;
+
+          const finalWhere = whereClause
+            ? `WHERE ${whereClause} AND ${eventNameCondition}`
+            : `WHERE ${eventNameCondition}`;
+
+          return `session_id IN (
+            SELECT DISTINCT session_id
+            FROM events
+            ${finalWhere}
+          )`;
+        }
+
         if (filter.parameter === "entry_page") {
+          const whereClause = [siteIdFilter, timeFilter].filter(Boolean).join(" AND ");
+          const whereStatement = whereClause ? `WHERE ${whereClause}` : "";
+
           if (filter.value.length === 1) {
             return `session_id IN (
               SELECT session_id
@@ -166,6 +193,7 @@ export function getFilterStatement(filters: string) {
                   session_id,
                   argMin(pathname, timestamp) AS entry_pathname
                 FROM events
+                ${whereStatement}
                 GROUP BY session_id
               )
               WHERE entry_pathname ${filterTypeToOperator(filter.type)} ${SqlString.escape(x + filter.value[0] + x)}
@@ -183,6 +211,7 @@ export function getFilterStatement(filters: string) {
                 session_id,
                 argMin(pathname, timestamp) AS entry_pathname
               FROM events
+              ${whereStatement}
               GROUP BY session_id
             )
             WHERE (${valuesWithOperator.join(" OR ")})
@@ -190,6 +219,9 @@ export function getFilterStatement(filters: string) {
         }
 
         if (filter.parameter === "exit_page") {
+          const whereClause = [siteIdFilter, timeFilter].filter(Boolean).join(" AND ");
+          const whereStatement = whereClause ? `WHERE ${whereClause}` : "";
+
           if (filter.value.length === 1) {
             return `session_id IN (
               SELECT session_id
@@ -198,6 +230,7 @@ export function getFilterStatement(filters: string) {
                   session_id,
                   argMax(pathname, timestamp) AS exit_pathname
                 FROM events
+                ${whereStatement}
                 GROUP BY session_id
               )
               WHERE exit_pathname ${filterTypeToOperator(filter.type)} ${SqlString.escape(x + filter.value[0] + x)}
@@ -215,6 +248,7 @@ export function getFilterStatement(filters: string) {
                 session_id,
                 argMax(pathname, timestamp) AS exit_pathname
               FROM events
+              ${whereStatement}
               GROUP BY session_id
             )
             WHERE (${valuesWithOperator.join(" OR ")})

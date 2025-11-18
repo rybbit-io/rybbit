@@ -1,6 +1,5 @@
 import { Filter, TimeBucket } from "@rybbit/shared";
 import { UseQueryOptions, UseQueryResult, useQuery } from "@tanstack/react-query";
-import { timeZone } from "../../lib/dateTimeUtils";
 import { useStore } from "../../lib/store";
 import { APIResponse } from "../types";
 import { authedFetch, getQueryParams } from "../utils";
@@ -45,7 +44,6 @@ export function useGetOverviewBucketed({
 
   // Use getQueryParams utility to handle conditional logic
   const queryParams = getQueryParams(timeToUse, {
-    timeZone,
     bucket,
     filters: combinedFilters,
   });

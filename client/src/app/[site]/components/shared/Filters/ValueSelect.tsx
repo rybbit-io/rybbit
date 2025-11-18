@@ -2,7 +2,7 @@
 
 import { FilterParameter } from "@rybbit/shared";
 import { useMemo } from "react";
-import { useSingleCol } from "../../../../../api/analytics/useSingleCol";
+import { useMetric } from "../../../../../api/analytics/useGetMetric";
 import { MultiSelect } from "../../../../../components/MultiSelect";
 import { useGetRegionName } from "../../../../../lib/geo";
 import { getCountryName, getLanguageName } from "../../../../../lib/utils";
@@ -16,7 +16,7 @@ export function ValueSelect({
   value: (string | number)[];
   onChange: (values: (string | number)[]) => void;
 }) {
-  const { data, isFetching } = useSingleCol({
+  const { data, isFetching } = useMetric({
     parameter,
     limit: 1000,
     useFilters: false,

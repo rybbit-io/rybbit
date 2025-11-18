@@ -81,7 +81,7 @@ export function Weekdays() {
 
   // Get color intensity based on value
   const getColorIntensity = (value: number) => {
-    if (maxValue === 0 || !isFinite(value) || isNaN(value)) return "bg-neutral-800";
+    if (maxValue === 0 || !isFinite(value) || isNaN(value)) return "bg-neutral-200 dark:bg-neutral-800";
 
     // Calculate intensity level 1-10
     const ratio = value / maxValue;
@@ -172,7 +172,7 @@ export function Weekdays() {
             {Array(24)
               .fill(0)
               .map((_, hour) => (
-                <div key={hour} className="h-4 text-xs flex items-center justify-end pr-2 text-neutral-400">
+                <div key={hour} className="h-4 text-xs flex items-center justify-end pr-2 text-neutral-600 dark:text-neutral-400">
                   {hour % 2 === 1 ? hourLabels[hour] : ""}
                 </div>
               ))}
@@ -182,7 +182,7 @@ export function Weekdays() {
             {/* Day labels */}
             <div className="flex h-5">
               {shortDayNames.map((day, i) => (
-                <div key={i} className="flex-1 text-center text-xs text-neutral-400">
+                <div key={i} className="flex-1 text-center text-xs text-neutral-600 dark:text-neutral-400">
                   {day}
                 </div>
               ))}
@@ -203,7 +203,7 @@ export function Weekdays() {
                         heatmapData[day].length > hour
                           ? heatmapData[day][hour]
                           : 0;
-                      const colorClass = value > 0 ? getColorIntensity(value) : "bg-neutral-800";
+                      const colorClass = value > 0 ? getColorIntensity(value) : "bg-neutral-200 dark:bg-neutral-800";
                       return (
                         <Tooltip key={day}>
                           <TooltipTrigger asChild>

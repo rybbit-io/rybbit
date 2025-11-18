@@ -16,7 +16,7 @@ export function ReplayPlayerCore({ data, width, height, onPlayPause, isPlaying }
     <div className="flex-1 flex items-center justify-center overflow-hidden relative">
       <div
         ref={playerContainerRef}
-        className="w-full bg-black rounded-lg shadow-2xl [&_.rr-player]:!bg-black"
+        className="w-full bg-black shadow-2xl [&_.rr-player]:!bg-black"
         style={{
           position: "relative",
         }}

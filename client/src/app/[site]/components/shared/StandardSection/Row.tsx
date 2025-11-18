@@ -3,8 +3,8 @@ import NumberFlow from "@number-flow/react";
 import { round } from "lodash";
 import { ChevronDown, ChevronRight, SquareArrowOutUpRight } from "lucide-react";
 import { ReactNode, useState, useCallback } from "react";
-import { usePaginatedSingleCol } from "../../../../../api/analytics/usePaginatedSingleCol";
-import { SingleColResponse } from "../../../../../api/analytics/useSingleCol";
+import { usePaginatedMetric } from "../../../../../api/analytics/useGetMetric";
+import { MetricResponse } from "../../../../../api/analytics/useGetMetric";
 import { addFilter, removeFilter, useStore } from "../../../../../lib/store";
 
 // Custom hook for filter handling logic
@@ -42,12 +42,12 @@ const RowItem = ({
   onFilterToggle,
   leftContent,
 }: {
-  item: SingleColResponse;
+  item: MetricResponse;
   ratio: number;
-  getKey: (item: SingleColResponse) => string;
-  getLabel: (item: SingleColResponse) => ReactNode;
-  getValue: (item: SingleColResponse) => string;
-  getLink?: (item: SingleColResponse) => string;
+  getKey: (item: MetricResponse) => string;
+  getLabel: (item: MetricResponse) => ReactNode;
+  getValue: (item: MetricResponse) => string;
+  getLink?: (item: MetricResponse) => string;
   filterParameter: FilterParameter;
   onFilterToggle: (parameter: FilterParameter, value: string) => void;
   leftContent?: ReactNode;
@@ -55,28 +55,30 @@ const RowItem = ({
   return (
     <div
       key={getKey(item)}
-      className="relative h-6 flex items-center cursor-pointer hover:bg-neutral-850 group"
+      className="relative h-6 flex items-center cursor-pointer hover:bg-neutral-150/50 dark:hover:bg-neutral-850 group"
       onClick={() => onFilterToggle(filterParameter, getValue(item))}
     >
       <div
         className="absolute inset-0 bg-dataviz py-2 opacity-25 rounded-md"
         style={{ width: `${item.percentage * ratio}%` }}
       ></div>
-      <div className="z-10 mx-2 flex justify-between items-center text-xs w-full">
-        <div className="flex items-center gap-1">
+      <div className="z-10 mx-2 flex justify-between items-center text-xs w-full gap-2">
+        <div className="flex items-center gap-1 min-w-0 flex-1">
           {leftContent}
-          {getLabel(item)}
+          <span className="truncate">{getLabel(item)}</span>
           {getLink && (
-            <a href={getLink(item)} target="_blank" onClick={e => e.stopPropagation()}>
+            <a href={getLink(item)} target="_blank" onClick={e => e.stopPropagation()} className="flex-shrink-0">
               <SquareArrowOutUpRight
-                className="ml-0.5 w-3.5 h-3.5 text-neutral-300 hover:text-neutral-100"
+                className="ml-0.5 w-3.5 h-3.5 text-neutral-600 hover:text-neutral-900 dark:text-neutral-300 dark:hover:text-neutral-100"
                 strokeWidth={3}
               />
             </a>
           )}
         </div>
-        <div className="text-xs flex gap-2">
-          <div className="hidden group-hover:block text-neutral-400">{round(item.percentage, 1)}%</div>
+        <div className="text-xs flex gap-2 flex-shrink-0">
+          <div className="hidden group-hover:block text-neutral-600 dark:text-neutral-400">
+            {round(item.percentage, 1)}%
+          </div>
           <NumberFlow respectMotionPreference={false} value={item.count} format={{ notation: "compact" }} />
         </div>
       </div>
@@ -92,17 +94,17 @@ const Subrows = ({
   filterValue,
   getSubrowLabel,
 }: {
-  getKey: (item: SingleColResponse) => string;
-  getValue: (item: SingleColResponse) => string;
-  getLink?: (item: SingleColResponse) => string;
+  getKey: (item: MetricResponse) => string;
+  getValue: (item: MetricResponse) => string;
+  getLink?: (item: MetricResponse) => string;
   filterParameter: FilterParameter;
   filterValue: string;
-  getSubrowLabel?: (item: SingleColResponse) => ReactNode;
+  getSubrowLabel?: (item: MetricResponse) => ReactNode;
 }) => {
   const toggleFilter = useFilterToggle();
   const parameter = (filterParameter + "_version") as FilterParameter;
 
-  const { data, isLoading, isFetching } = usePaginatedSingleCol({
+  const { data, isLoading, isFetching } = usePaginatedMetric({
     parameter,
     limit: 10,
     page: 1,
@@ -153,14 +155,14 @@ export const Row = ({
   getSubrowLabel,
   hasSubrow,
 }: {
-  e: SingleColResponse;
+  e: MetricResponse;
   ratio: number;
-  getKey: (item: SingleColResponse) => string;
-  getLabel: (item: SingleColResponse) => ReactNode;
-  getValue: (item: SingleColResponse) => string;
-  getLink?: (item: SingleColResponse) => string;
+  getKey: (item: MetricResponse) => string;
+  getLabel: (item: MetricResponse) => ReactNode;
+  getValue: (item: MetricResponse) => string;
+  getLink?: (item: MetricResponse) => string;
   filterParameter: FilterParameter;
-  getSubrowLabel?: (item: SingleColResponse) => ReactNode;
+  getSubrowLabel?: (item: MetricResponse) => ReactNode;
   hasSubrow?: boolean;
 }) => {
   const toggleFilter = useFilterToggle();
@@ -170,7 +172,7 @@ export const Row = ({
 
   const expandIcon = hasSubrow ? (
     <Icon
-      className="w-4 h-4 text-neutral-400 hover:text-neutral-100"
+      className="w-4 h-4 text-neutral-600 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-neutral-100"
       strokeWidth={3}
       onClick={e => {
         e.stopPropagation();

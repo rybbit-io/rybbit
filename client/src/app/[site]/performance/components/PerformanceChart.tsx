@@ -2,21 +2,22 @@
 
 import { Card, CardContent, CardLoader } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { nivoTheme } from "@/lib/nivo";
+import { useNivoTheme } from "@/lib/nivo";
 import { ResponsiveLine } from "@nivo/line";
 import { DateTime } from "luxon";
 import { Tilt_Warp } from "next/font/google";
-import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";
 import { useGetPerformanceTimeSeries } from "../../../../api/analytics/performance/useGetPerformanceTimeSeries";
 import { BucketSelection } from "../../../../components/BucketSelection";
+import { RybbitLogo } from "../../../../components/RybbitLogo";
 import { authClient } from "../../../../lib/auth";
 import { formatChartDateTime, hour12, userLocale } from "../../../../lib/dateTimeUtils";
 import { useStore } from "../../../../lib/store";
 import { cn } from "../../../../lib/utils";
 import { usePerformanceStore } from "../performanceStore";
 import { formatMetricValue, getMetricUnit, getPerformanceThresholds, METRIC_LABELS } from "../utils/performanceUtils";
+import { ChartTooltip } from "../../../../components/charts/ChartTooltip";
 
 const tilt_wrap = Tilt_Warp({
   subsets: ["latin"],
@@ -27,6 +28,7 @@ export function PerformanceChart() {
   const session = authClient.useSession();
   const { site, bucket } = useStore();
   const { selectedPerformanceMetric, selectedPercentile } = usePerformanceStore();
+  const nivoTheme = useNivoTheme();
 
   // State for toggling percentile visibility
   const [visiblePercentiles, setVisiblePercentiles] = useState<Set<string>>(new Set(["P50", "P75", "P90", "P99"]));
@@ -138,10 +140,6 @@ export function PerformanceChart() {
     return dt.toFormat(hour12 ? "MMM d" : "dd MMM");
   };
 
-  const formatTooltipValue = (value: number) => {
-    return `${formatMetricValue(selectedPerformanceMetric, value)}${getMetricUnit(selectedPerformanceMetric, value)}`;
-  };
-
   // Get performance thresholds for the current metric
   const thresholds = getPerformanceThresholds(selectedPerformanceMetric);
 
@@ -196,15 +194,17 @@ export function PerformanceChart() {
         <div className="flex items-center justify-between px-2 md:px-0">
           <div className="flex items-center space-x-4">
             <Link
-              href={session.data ? "/" : "https://rybbit.io"}
+              href={session.data ? "/" : "https://rybbit.com"}
               className={cn("text-lg font-semibold flex items-center gap-1.5 opacity-75", tilt_wrap.className)}
             >
-              <Image src="/rybbit.svg" alt="Rybbit" width={20} height={20} />
-              rybbit.io
+              <RybbitLogo width={20} height={20} />
+              rybbit.com
             </Link>
           </div>
           <div className="flex items-center space-x-4">
-            <span className="text-sm text-neutral-200">{METRIC_LABELS[selectedPerformanceMetric]}</span>
+            <span className="text-sm text-neutral-600 dark:text-neutral-200">
+              {METRIC_LABELS[selectedPerformanceMetric]}
+            </span>
             <div className="flex items-center space-x-2">
               {(["P50", "P75", "P90", "P99"] as const).map(percentile => {
                 const colors = {
@@ -221,7 +221,9 @@ export function PerformanceChart() {
                     onClick={() => togglePercentile(percentile)}
                     className={cn(
                       "flex items-center space-x-1.5 px-2 py-1 rounded text-xs font-medium transition-all",
-                      isVisible ? "bg-neutral-800 text-white" : "bg-neutral-900 text-neutral-500 hover:text-neutral-400"
+                      isVisible
+                        ? "bg-neutral-150 dark:bg-neutral-800 text-neutral-900 dark:text-white"
+                        : "bg-neutral-50 dark:bg-neutral-900 text-neutral-600 dark:text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-400"
                     )}
                   >
                     <div
@@ -298,25 +300,31 @@ export function PerformanceChart() {
                 const currentTime = DateTime.fromJSDate(new Date(slice.points[0].data.x));
 
                 return (
-                  <div className="text-sm bg-neutral-850 p-3 rounded-md min-w-[150px] border border-neutral-750">
-                    {formatChartDateTime(currentTime, bucket)}
-                    <div className="space-y-2 mt-2">
-                      {slice.points.map((point: any) => {
-                        return (
-                          <div key={point.seriesId} className="flex justify-between items-center">
-                            <div className="flex items-center gap-2">
-                              <div className="w-3 h-3 rounded-full" style={{ backgroundColor: point.seriesColor }} />
-                              <span className="text-neutral-200 font-medium">{point.seriesId}</span>
+                  <ChartTooltip>
+                    <div className="p-3 min-w-[150px]">
+                      <div className="mb-2">{formatChartDateTime(currentTime, bucket)}</div>
+                      <div className="space-y-2">
+                        {slice.points.map((point: any) => {
+                          return (
+                            <div key={point.seriesId} className="flex justify-between items-center">
+                              <div className="flex items-center gap-2">
+                                <div className="w-1 h-3 rounded-[3px]" style={{ backgroundColor: point.seriesColor }} />
+                                <span>{point.seriesId}</span>
+                              </div>
+                              <span>
+                                <span className="font-medium">
+                                  {formatMetricValue(selectedPerformanceMetric, Number(point.data.yFormatted))}
+                                </span>
+                                <span className="text-muted-foreground">
+                                  {getMetricUnit(selectedPerformanceMetric, Number(point.data.yFormatted))}
+                                </span>
+                              </span>
                             </div>
-                            <span className="text-white">
-                              {point.serieId}
-                              {formatTooltipValue(Number(point.data.yFormatted))}
-                            </span>
-                          </div>
-                        );
-                      })}
+                          );
+                        })}
+                      </div>
                     </div>
-                  </div>
+                  </ChartTooltip>
                 );
               }}
             />

@@ -151,7 +151,7 @@ export function ReplayBreadcrumbs() {
     const eventInfo = EVENT_TYPE_INFO[eventTypeStr as keyof typeof EVENT_TYPE_INFO] || {
       name: `Unknown (${eventTypeStr})`,
       icon: Globe,
-      color: "text-gray-400",
+      color: "text-neutral-400",
     };
 
     // For incremental snapshots, get more detail
@@ -224,13 +224,13 @@ export function ReplayBreadcrumbs() {
   const getEventColor = (event: any) => {
     const eventTypeStr = String(event.type);
     const eventInfo = EVENT_TYPE_INFO[eventTypeStr as keyof typeof EVENT_TYPE_INFO];
-    return eventInfo?.color || "text-gray-400";
+    return eventInfo?.color || "text-neutral-400";
   };
 
   if (isLoading || !data?.events) {
     return (
-      <div className="rounded-lg border border-neutral-800 p-4 flex items-center justify-center h-[calc(100vh-120px)]">
-        <Loader2 className="w-6 h-6 animate-spin text-neutral-400" />
+      <div className="rounded-lg border border-neutral-100 dark:border-neutral-800 p-4 flex items-center justify-center h-[calc(100vh-120px)]">
+        <Loader2 className="w-6 h-6 animate-spin text-neutral-600 dark:text-neutral-400" />
       </div>
     );
   }
@@ -255,7 +255,7 @@ export function ReplayBreadcrumbs() {
 
   return (
     <div className="flex flex-col gap-2">
-      <div className="rounded-lg border border-neutral-800 bg-neutral-900 flex items-center justify-between gap-2 p-2 text-xs text-neutral-200">
+      <div className="rounded-lg border border-neutral-100 dark:border-neutral-800 bg-white dark:bg-neutral-900 flex items-center justify-between gap-2 p-2 text-xs text-neutral-900 dark:text-neutral-200">
         <div className="flex items-center gap-2">
           <Avatar id={data.metadata.user_id} size={20} />
           {generateName(data.metadata.user_id)}
@@ -264,8 +264,8 @@ export function ReplayBreadcrumbs() {
           <Button size="sm">View User</Button>
         </Link>
       </div>
-      <div className="rounded-lg border border-neutral-800 flex flex-col">
-        <div className="p-2 border-b border-neutral-800 bg-neutral-900 text-xs text-neutral-400">
+      <div className="rounded-lg border border-neutral-100 dark:border-neutral-800 flex flex-col">
+        <div className="p-2 border-b border-neutral-100 dark:border-neutral-800 bg-white dark:bg-neutral-900 text-xs text-neutral-600 dark:text-neutral-400">
           {data.events.length} events captured ({groupedEvents.length} groups)
         </div>
         <ScrollArea className="h-[calc(100vh-215px)]">
@@ -283,26 +283,30 @@ export function ReplayBreadcrumbs() {
                 <div
                   key={`${group.startTime}-${index}`}
                   className={cn(
-                    "p-2 border-b border-neutral-800 bg-neutral-900",
-                    "hover:bg-neutral-800/80 transition-colors cursor-pointer",
+                    "p-2 border-b border-neutral-100 dark:border-neutral-800 bg-white dark:bg-neutral-900",
+                    "hover:bg-neutral-50 dark:hover:bg-neutral-800/80 transition-colors cursor-pointer",
                     "flex items-center gap-2 group"
                   )}
                   onClick={() => handleGroupClick(group)}
                 >
-                  <div className="text-xs text-neutral-400 w-10">
+                  <div className="text-xs text-neutral-600 dark:text-neutral-400 w-10">
                     {Duration.fromMillis(startTimeMs).toFormat("mm:ss")}
                   </div>
                   <Icon className={cn("w-4 h-4 flex-shrink-0", color)} />
                   <div className="flex-1 min-w-0">
-                    <div className="text-xs text-neutral-200 font-medium truncate">{description}</div>
+                    <div className="text-xs text-neutral-900 dark:text-neutral-200 font-medium truncate">
+                      {description}
+                    </div>
                     {group.count > 1 && durationMs > 0 && (
-                      <div className="text-xs text-neutral-500 mt-0.5">
+                      <div className="text-xs text-neutral-500 dark:text-neutral-500 mt-0.5">
                         {Duration.fromMillis(durationMs).toFormat("s.SSS")}s duration
                       </div>
                     )}
                   </div>
                   {group.count > 5 && (
-                    <div className="text-xs text-neutral-500 bg-neutral-800 px-1.5 py-0.5 rounded">{group.count}</div>
+                    <div className="text-xs text-neutral-700 dark:text-neutral-500 bg-neutral-100 dark:bg-neutral-800 px-1.5 py-0.5 rounded">
+                      {group.count}
+                    </div>
                   )}
                 </div>
               );

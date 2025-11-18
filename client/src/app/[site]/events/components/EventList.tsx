@@ -8,6 +8,7 @@ import { useGetEventProperties } from "../../../../api/analytics/events/useGetEv
 import { NothingFound } from "../../../../components/NothingFound";
 import { cn } from "../../../../lib/utils";
 import { EventProperties } from "./EventProperties";
+import { addFilter } from "../../../../lib/store";
 
 // Skeleton component for EventList
 const EventListSkeleton = memo(({ size = "small" }: { size?: "small" | "large" }) => {
@@ -42,7 +43,7 @@ const EventListSkeleton = memo(({ size = "small" }: { size?: "small" | "large" }
       {Array.from({ length: 10 }).map((_, index) => (
         <div key={index} className={cn("relative flex items-center", size === "small" ? "h-6" : "h-9")}>
           <div
-            className="absolute inset-0 bg-neutral-800 py-2 rounded-md animate-pulse"
+            className="absolute inset-0 bg-neutral-200 dark:bg-neutral-800 py-2 rounded-md animate-pulse"
             style={{ width: `${widths[index]}%` }}
           ></div>
           <div
@@ -52,15 +53,15 @@ const EventListSkeleton = memo(({ size = "small" }: { size?: "small" | "large" }
             )}
           >
             <div className="flex items-center gap-1">
-              <div className="h-4 w-4 bg-neutral-800 rounded animate-pulse mr-1"></div>
+              <div className="h-4 w-4 bg-neutral-200 dark:bg-neutral-800 rounded animate-pulse mr-1"></div>
               <div
-                className="h-4 bg-neutral-800 rounded animate-pulse"
+                className="h-4 bg-neutral-200 dark:bg-neutral-800 rounded animate-pulse"
                 style={{ width: `${labelWidths[index]}px` }}
               ></div>
             </div>
             <div className={cn("flex gap-2", size === "small" ? "text-xs" : "text-sm")}>
               <div
-                className="h-4 bg-neutral-800 rounded animate-pulse"
+                className="h-4 bg-neutral-200 dark:bg-neutral-800 rounded animate-pulse"
                 style={{ width: `${valueWidths[index]}px` }}
               ></div>
             </div>
@@ -93,15 +94,15 @@ export function EventList({ events, isLoading, size = "small" }: EventListProps)
   if (!events || events.length === 0) {
     return size === "small" ? (
       <div className="flex flex-col gap-2">
-        <div className="text-neutral-100 w-full text-center mt-6 flex flex-row gap-2 items-center justify-center">
+        <div className="text-neutral-600 dark:text-neutral-300 w-full text-center mt-6 flex flex-row gap-2 items-center justify-center">
           <Info className="w-5 h-5" />
           No Data
         </div>
         <a
           target="_blank"
           rel="noopener noreferrer"
-          href="https://www.rybbit.io/docs/track-events"
-          className="text-neutral-400 w-full text-center mt-2 flex flex-row gap-1 items-center justify-center text-sm hover:underline hover:text-neutral-300"
+          href="https://www.rybbit.com/docs/track-events"
+          className="text-neutral-500 dark:text-neutral-400 w-full text-center mt-2 flex flex-row gap-1 items-center justify-center text-sm hover:underline hover:text-neutral-700 dark:hover:text-neutral-300"
         >
           <BookOpen className="w-4 h-4" />
           Learn how to track events
@@ -114,11 +115,14 @@ export function EventList({ events, isLoading, size = "small" }: EventListProps)
 
   // Find the total count to calculate percentages
   const totalCount = events.reduce((sum, event) => sum + event.count, 0);
+  const maxCount = Math.max(...events.map(event => event.count));
 
   return (
     <div className="flex flex-col gap-2">
       {events.map(event => {
+        const percentageOfMax = (event.count / maxCount) * 100;
         const percentage = (event.count / totalCount) * 100;
+
         const isExpanded = expandedEvent === event.eventName;
 
         return (
@@ -126,14 +130,20 @@ export function EventList({ events, isLoading, size = "small" }: EventListProps)
             {/* Event Row */}
             <div
               className={cn(
-                "relative flex items-center cursor-pointer hover:bg-neutral-850 group px-2 rounded-md",
+                "relative flex items-center cursor-pointer hover:bg-neutral-150/50  dark:hover:bg-neutral-850 group px-2 rounded-md",
                 size === "small" ? "h-6" : "h-9"
               )}
-              onClick={() => handleEventClick(event.eventName)}
+              onClick={() =>
+                addFilter({
+                  parameter: "event_name",
+                  value: [event.eventName],
+                  type: "equals",
+                })
+              }
             >
               <div
                 className="absolute inset-0 bg-dataviz py-2 opacity-25 rounded-md"
-                style={{ width: `${percentage}%` }}
+                style={{ width: `${percentageOfMax}%` }}
               ></div>
               <div
                 className={cn(
@@ -142,15 +152,30 @@ export function EventList({ events, isLoading, size = "small" }: EventListProps)
                 )}
               >
                 <div className="font-medium truncate max-w-[70%] flex items-center gap-1">
-                  {isExpanded ? (
-                    <ChevronDown className="h-4 w-4 text-neutral-400 hover:text-neutral-100" strokeWidth={3} />
-                  ) : (
-                    <ChevronRight className="h-4 w-4 text-neutral-400 hover:text-neutral-100" strokeWidth={3} />
-                  )}
+                  <div
+                    onClick={e => {
+                      e.stopPropagation();
+                      handleEventClick(event.eventName);
+                    }}
+                  >
+                    {isExpanded ? (
+                      <ChevronDown
+                        className="h-4 w-4 text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-100"
+                        strokeWidth={3}
+                      />
+                    ) : (
+                      <ChevronRight
+                        className="h-4 w-4 text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-100"
+                        strokeWidth={3}
+                      />
+                    )}
+                  </div>
                   {event.eventName}
                 </div>
                 <div className={cn("text-sm flex gap-2", size === "small" ? "text-xs" : "text-sm")}>
-                  <div className="hidden group-hover:block text-neutral-400">{Math.round(percentage * 10) / 10}%</div>
+                  <div className="hidden group-hover:block text-neutral-500 dark:text-neutral-400">
+                    {Math.round(percentage * 10) / 10}%
+                  </div>
                   <NumberFlow respectMotionPreference={false} value={event.count} format={{ notation: "compact" }} />
                 </div>
               </div>
@@ -158,7 +183,7 @@ export function EventList({ events, isLoading, size = "small" }: EventListProps)
 
             {/* Properties Section (Expanded) */}
             {isExpanded && (
-              <div className="ml-4 mt-2 mb-4 border-l-2 border-neutral-800 pl-4">
+              <div className="ml-4 mt-2 mb-4 border-l-2 border-neutral-100 dark:border-neutral-800 pl-4">
                 <EventProperties
                   properties={eventPropertiesData || []}
                   isLoading={isLoadingProperties}

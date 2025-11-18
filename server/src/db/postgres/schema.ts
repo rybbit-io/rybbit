@@ -14,7 +14,7 @@ import {
   unique,
 } from "drizzle-orm/pg-core";
 
-// User table
+// User table (BetterAuth)
 export const user = pgTable(
   "user",
   {
@@ -42,6 +42,7 @@ export const user = pgTable(
   table => [unique("user_username_unique").on(table.username), unique("user_email_unique").on(table.email)]
 );
 
+// Verification table (BetterAuth)
 export const verification = pgTable("verification", {
   id: text().primaryKey().notNull(),
   identifier: text().notNull(),
@@ -52,47 +53,32 @@ export const verification = pgTable("verification", {
 });
 
 // Sites table
-export const sites = pgTable(
-  "sites",
-  {
-    id: text("id").$defaultFn(() => sql`encode(gen_random_bytes(6), 'hex')`),
-    // deprecated - keeping as primary key for backwards compatibility
-    siteId: serial("site_id").primaryKey().notNull(),
-    name: text("name").notNull(),
-    domain: text("domain").notNull(),
-    createdAt: timestamp("created_at", { mode: "string" }).defaultNow(),
-    updatedAt: timestamp("updated_at", { mode: "string" }).defaultNow(),
-    createdBy: text("created_by")
-      .notNull()
-      .references(() => user.id),
-    organizationId: text("organization_id").references(() => organization.id),
-    public: boolean().default(false),
-    saltUserIds: boolean().default(false),
-    blockBots: boolean().default(true).notNull(),
-    excludedIPs: jsonb("excluded_ips").default([]), // Array of IP addresses/ranges to exclude
-    sessionReplay: boolean().default(false),
-    webVitals: boolean().default(false),
-    trackErrors: boolean().default(false),
-    trackOutbound: boolean().default(true),
-    trackUrlParams: boolean().default(true),
-    trackInitialPageView: boolean().default(true),
-    trackSpaNavigation: boolean().default(true),
-    trackIp: boolean().default(false),
-    apiKey: text("api_key"), // Format: rb_{32_hex_chars} = 35 chars total
-  },
-  table => [
-    foreignKey({
-      columns: [table.createdBy],
-      foreignColumns: [user.id],
-      name: "sites_created_by_user_id_fk",
-    }),
-    foreignKey({
-      columns: [table.organizationId],
-      foreignColumns: [organization.id],
-      name: "sites_organization_id_organization_id_fk",
-    }),
-  ]
-);
+export const sites = pgTable("sites", {
+  id: text("id").$defaultFn(() => sql`encode(gen_random_bytes(6), 'hex')`),
+  // deprecated - keeping as primary key for backwards compatibility
+  siteId: serial("site_id").primaryKey().notNull(),
+  name: text("name").notNull(),
+  domain: text("domain").notNull(),
+  createdAt: timestamp("created_at", { mode: "string" }).defaultNow(),
+  updatedAt: timestamp("updated_at", { mode: "string" }).defaultNow(),
+  createdBy: text("created_by").references(() => user.id, { onDelete: "set null" }),
+  organizationId: text("organization_id").references(() => organization.id),
+  public: boolean().default(false),
+  saltUserIds: boolean().default(false),
+  blockBots: boolean().default(true).notNull(),
+  excludedIPs: jsonb("excluded_ips").default([]), // Array of IP addresses/ranges to exclude
+  excludedCountries: jsonb("excluded_countries").default([]), // Array of ISO country codes to exclude (e.g., ["US", "GB"])
+  sessionReplay: boolean().default(false),
+  webVitals: boolean().default(false),
+  trackErrors: boolean().default(false),
+  trackOutbound: boolean().default(true),
+  trackUrlParams: boolean().default(true),
+  trackInitialPageView: boolean().default(true),
+  trackSpaNavigation: boolean().default(true),
+  trackIp: boolean().default(false),
+  apiKey: text("api_key"), // Format: rb_{32_hex_chars} = 35 chars total
+  privateLinkKey: text("private_link_key"),
+});
 
 // Active sessions table
 export const activeSessions = pgTable("active_sessions", {
@@ -103,56 +89,35 @@ export const activeSessions = pgTable("active_sessions", {
   lastActivity: timestamp("last_activity").defaultNow(),
 });
 
-export const funnels = pgTable(
-  "funnels",
-  {
-    reportId: serial("report_id").primaryKey().notNull(),
-    siteId: integer("site_id"),
-    userId: text("user_id"),
-    data: jsonb(),
-    createdAt: timestamp("created_at", { mode: "string" }).defaultNow(),
-    updatedAt: timestamp("updated_at", { mode: "string" }).defaultNow(),
-  },
-  table => [
-    foreignKey({
-      columns: [table.siteId],
-      foreignColumns: [sites.siteId],
-      name: "funnels_site_id_sites_site_id_fk",
-    }),
-    foreignKey({
-      columns: [table.userId],
-      foreignColumns: [user.id],
-      name: "funnels_user_id_user_id_fk",
-    }),
-  ]
-);
+export const funnels = pgTable("funnels", {
+  reportId: serial("report_id").primaryKey().notNull(),
+  siteId: integer("site_id").references(() => sites.siteId, { onDelete: "cascade" }),
+  userId: text("user_id").references(() => user.id, { onDelete: "set null" }),
+  data: jsonb(),
+  createdAt: timestamp("created_at", { mode: "string" }).defaultNow(),
+  updatedAt: timestamp("updated_at", { mode: "string" }).defaultNow(),
+});
 
-export const account = pgTable(
-  "account",
-  {
-    id: text().primaryKey().notNull(),
-    accountId: text().notNull(),
-    providerId: text().notNull(),
-    userId: text().notNull(),
-    accessToken: text(),
-    refreshToken: text(),
-    idToken: text(),
-    accessTokenExpiresAt: timestamp({ mode: "string" }),
-    refreshTokenExpiresAt: timestamp({ mode: "string" }),
-    scope: text(),
-    password: text(),
-    createdAt: timestamp({ mode: "string" }).notNull(),
-    updatedAt: timestamp({ mode: "string" }).notNull(),
-  },
-  table => [
-    foreignKey({
-      columns: [table.userId],
-      foreignColumns: [user.id],
-      name: "account_userId_user_id_fk",
-    }),
-  ]
-);
+// Account table (BetterAuth)
+export const account = pgTable("account", {
+  id: text().primaryKey().notNull(),
+  accountId: text().notNull(),
+  providerId: text().notNull(),
+  userId: text()
+    .notNull()
+    .references(() => user.id, { onDelete: "cascade" }),
+  accessToken: text(),
+  refreshToken: text(),
+  idToken: text(),
+  accessTokenExpiresAt: timestamp({ mode: "string" }),
+  refreshTokenExpiresAt: timestamp({ mode: "string" }),
+  scope: text(),
+  password: text(),
+  createdAt: timestamp({ mode: "string" }).notNull(),
+  updatedAt: timestamp({ mode: "string" }).notNull(),
+});
 
+// Organization table (BetterAuth)
 export const organization = pgTable(
   "organization",
   {
@@ -169,54 +134,33 @@ export const organization = pgTable(
   table => [unique("organization_slug_unique").on(table.slug)]
 );
 
-export const member = pgTable(
-  "member",
-  {
-    id: text().primaryKey().notNull(),
-    organizationId: text().notNull(),
-    userId: text().notNull(),
-    role: text().notNull(),
-    createdAt: timestamp({ mode: "string" }).notNull(),
-  },
-  table => [
-    foreignKey({
-      columns: [table.organizationId],
-      foreignColumns: [organization.id],
-      name: "member_organizationId_organization_id_fk",
-    }),
-    foreignKey({
-      columns: [table.userId],
-      foreignColumns: [user.id],
-      name: "member_userId_user_id_fk",
-    }),
-  ]
-);
+// Member table (BetterAuth)
+export const member = pgTable("member", {
+  id: text().primaryKey().notNull(),
+  organizationId: text()
+    .notNull()
+    .references(() => organization.id),
+  userId: text()
+    .notNull()
+    .references(() => user.id, { onDelete: "cascade" }),
+  role: text().notNull(),
+  createdAt: timestamp({ mode: "string" }).notNull(),
+});
 
-export const invitation = pgTable(
-  "invitation",
-  {
-    id: text().primaryKey().notNull(),
-    email: text().notNull(),
-    inviterId: text().notNull(),
-    organizationId: text().notNull(),
-    role: text().notNull(),
-    status: text().notNull(),
-    expiresAt: timestamp({ mode: "string" }).notNull(),
-  },
-  table => [
-    foreignKey({
-      columns: [table.inviterId],
-      foreignColumns: [user.id],
-      name: "invitation_inviterId_user_id_fk",
-    }),
-    foreignKey({
-      columns: [table.organizationId],
-      foreignColumns: [organization.id],
-      name: "invitation_organizationId_organization_id_fk",
-    }),
-  ]
-);
+// Invitation table (BetterAuth)
+export const invitation = pgTable("invitation", {
+  id: text().primaryKey().notNull(),
+  email: text().notNull(),
+  inviterId: text().references(() => user.id, { onDelete: "set null" }),
+  organizationId: text()
+    .notNull()
+    .references(() => organization.id),
+  role: text().notNull(),
+  status: text().notNull(),
+  expiresAt: timestamp({ mode: "string" }).notNull(),
+});
 
+// Session table (BetterAuth)
 export const session = pgTable(
   "session",
   {
@@ -227,19 +171,41 @@ export const session = pgTable(
     updatedAt: timestamp({ mode: "string" }).notNull(),
     ipAddress: text(),
     userAgent: text(),
-    userId: text().notNull(),
+    userId: text()
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
     impersonatedBy: text(),
     activeOrganizationId: text(),
   },
-  table => [
-    foreignKey({
-      columns: [table.userId],
-      foreignColumns: [user.id],
-      name: "session_userId_user_id_fk",
-    }),
-    unique("session_token_unique").on(table.token),
-  ]
+  table => [unique("session_token_unique").on(table.token)]
 );
+
+// API Key table (BetterAuth)
+export const apiKey = pgTable("apikey", {
+  id: text().primaryKey().notNull(),
+  name: text(),
+  start: text(),
+  prefix: text(),
+  key: text().notNull(),
+  userId: text()
+    .notNull()
+    .references(() => user.id, { onDelete: "cascade" }),
+  refillInterval: integer(),
+  refillAmount: integer(),
+  lastRefillAt: timestamp({ mode: "string" }),
+  enabled: boolean().notNull().default(true),
+  rateLimitEnabled: boolean().notNull().default(false),
+  rateLimitTimeWindow: integer(),
+  rateLimitMax: integer(),
+  requestCount: integer().notNull().default(0),
+  remaining: integer(),
+  lastRequest: timestamp({ mode: "string" }),
+  expiresAt: timestamp({ mode: "string" }),
+  createdAt: timestamp({ mode: "string" }).notNull(),
+  updatedAt: timestamp({ mode: "string" }).notNull(),
+  permissions: text(),
+  metadata: jsonb(),
+});
 
 // Goals table for tracking conversion goals
 export const goals = pgTable(
@@ -265,7 +231,7 @@ export const goals = pgTable(
       columns: [table.siteId],
       foreignColumns: [sites.siteId],
       name: "goals_site_id_sites_site_id_fk",
-    }),
+    }).onDelete("cascade"),
   ]
 );
 
@@ -280,109 +246,92 @@ export const telemetry = pgTable("telemetry", {
 });
 
 // Uptime monitor definitions
-export const uptimeMonitors = pgTable(
-  "uptime_monitors",
-  {
-    id: serial("id").primaryKey().notNull(),
-    organizationId: text("organization_id")
-      .notNull()
-      .references(() => organization.id),
-    name: text("name"),
-    monitorType: text("monitor_type").notNull(), // 'http', 'tcp'
+export const uptimeMonitors = pgTable("uptime_monitors", {
+  id: serial("id").primaryKey().notNull(),
+  organizationId: text("organization_id")
+    .notNull()
+    .references(() => organization.id),
+  name: text("name"),
+  monitorType: text("monitor_type").notNull(), // 'http', 'tcp'
 
-    // Common settings
-    intervalSeconds: integer("interval_seconds").notNull(),
-    enabled: boolean("enabled").default(true),
+  // Common settings
+  intervalSeconds: integer("interval_seconds").notNull(),
+  enabled: boolean("enabled").default(true),
 
-    // HTTP/HTTPS specific configuration
-    httpConfig: jsonb("http_config").$type<{
-      url: string;
-      method: "GET" | "POST" | "PUT" | "DELETE" | "HEAD" | "OPTIONS" | "PATCH";
-      headers?: Record<string, string>;
-      body?: string;
-      auth?: {
-        type: "none" | "basic" | "bearer" | "api_key" | "custom_header";
-        credentials?: {
-          username?: string;
-          password?: string;
-          token?: string;
-          headerName?: string;
-          headerValue?: string;
-        };
+  // HTTP/HTTPS specific configuration
+  httpConfig: jsonb("http_config").$type<{
+    url: string;
+    method: "GET" | "POST" | "PUT" | "DELETE" | "HEAD" | "OPTIONS" | "PATCH";
+    headers?: Record<string, string>;
+    body?: string;
+    auth?: {
+      type: "none" | "basic" | "bearer" | "api_key" | "custom_header";
+      credentials?: {
+        username?: string;
+        password?: string;
+        token?: string;
+        headerName?: string;
+        headerValue?: string;
       };
-      followRedirects?: boolean;
-      timeoutMs?: number;
-      ipVersion?: "any" | "ipv4" | "ipv6";
-      userAgent?: string;
-    }>(),
+    };
+    followRedirects?: boolean;
+    timeoutMs?: number;
+    ipVersion?: "any" | "ipv4" | "ipv6";
+    userAgent?: string;
+  }>(),
 
-    // TCP specific configuration
-    tcpConfig: jsonb("tcp_config").$type<{
-      host: string;
-      port: number;
-      timeoutMs?: number;
-    }>(),
+  // TCP specific configuration
+  tcpConfig: jsonb("tcp_config").$type<{
+    host: string;
+    port: number;
+    timeoutMs?: number;
+  }>(),
 
-    // Validation rules
-    validationRules: jsonb("validation_rules").notNull().default([]).$type<
-      Array<
-        | {
-            type: "status_code";
-            operator: "equals" | "not_equals" | "in" | "not_in";
-            value: number | number[];
-          }
-        | {
-            type: "response_time";
-            operator: "less_than" | "greater_than";
-            value: number;
-          }
-        | {
-            type: "response_body_contains" | "response_body_not_contains";
-            value: string;
-            caseSensitive?: boolean;
-          }
-        | {
-            type: "header_exists";
-            header: string;
-          }
-        | {
-            type: "header_value";
-            header: string;
-            operator: "equals" | "contains";
-            value: string;
-          }
-        | {
-            type: "response_size";
-            operator: "less_than" | "greater_than";
-            value: number;
-          }
-      >
-    >(),
+  // Validation rules
+  validationRules: jsonb("validation_rules").notNull().default([]).$type<
+    Array<
+      | {
+          type: "status_code";
+          operator: "equals" | "not_equals" | "in" | "not_in";
+          value: number | number[];
+        }
+      | {
+          type: "response_time";
+          operator: "less_than" | "greater_than";
+          value: number;
+        }
+      | {
+          type: "response_body_contains" | "response_body_not_contains";
+          value: string;
+          caseSensitive?: boolean;
+        }
+      | {
+          type: "header_exists";
+          header: string;
+        }
+      | {
+          type: "header_value";
+          header: string;
+          operator: "equals" | "contains";
+          value: string;
+        }
+      | {
+          type: "response_size";
+          operator: "less_than" | "greater_than";
+          value: number;
+        }
+    >
+  >(),
 
-    // Multi-region configuration
-    monitoringType: text("monitoring_type").default("local"), // 'local' or 'global'
-    selectedRegions: jsonb("selected_regions").default(["local"]).$type<string[]>(),
+  // Multi-region configuration
+  monitoringType: text("monitoring_type").default("local"), // 'local' or 'global'
+  selectedRegions: jsonb("selected_regions").default(["local"]).$type<string[]>(),
 
-    // Metadata
-    createdAt: timestamp("created_at", { mode: "string" }).defaultNow(),
-    updatedAt: timestamp("updated_at", { mode: "string" }).defaultNow(),
-    createdBy: text("created_by")
-      .notNull()
-      .references(() => user.id),
-  },
-  table => [
-    foreignKey({
-      columns: [table.organizationId],
-      foreignColumns: [organization.id],
-      name: "uptime_monitors_organization_id_organization_id_fk",
-    }),
-    foreignKey({
-      columns: [table.createdBy],
-      foreignColumns: [user.id],
-      name: "uptime_monitors_created_by_user_id_fk",
-    }),
-  ]
-);
+  // Metadata
+  createdAt: timestamp("created_at", { mode: "string" }).defaultNow(),
+  updatedAt: timestamp("updated_at", { mode: "string" }).defaultNow(),
+  createdBy: text("created_by").references(() => user.id, { onDelete: "set null" }),
+});
 
 // Monitor status tracking
 export const uptimeMonitorStatus = pgTable(
@@ -484,115 +433,92 @@ export const agentRegions = pgTable("agent_regions", {
 });
 
 // Uptime incidents table
-export const uptimeIncidents = pgTable(
-  "uptime_incidents",
-  {
-    id: serial("id").primaryKey().notNull(),
-    organizationId: text("organization_id")
-      .notNull()
-      .references(() => organization.id),
-    monitorId: integer("monitor_id")
-      .notNull()
-      .references(() => uptimeMonitors.id, { onDelete: "cascade" }),
-    region: text("region"), // Region where incident occurred
+export const uptimeIncidents = pgTable("uptime_incidents", {
+  id: serial("id").primaryKey().notNull(),
+  organizationId: text("organization_id")
+    .notNull()
+    .references(() => organization.id),
+  monitorId: integer("monitor_id")
+    .notNull()
+    .references(() => uptimeMonitors.id, { onDelete: "cascade" }),
+  region: text("region"), // Region where incident occurred
 
-    // Incident timing
-    startTime: timestamp("start_time", { mode: "string" }).notNull(),
-    endTime: timestamp("end_time", { mode: "string" }), // null if ongoing
+  // Incident timing
+  startTime: timestamp("start_time", { mode: "string" }).notNull(),
+  endTime: timestamp("end_time", { mode: "string" }), // null if ongoing
 
-    // Status
-    status: text("status").notNull().default("active"), // 'active', 'acknowledged', 'resolved'
+  // Status
+  status: text("status").notNull().default("active"), // 'active', 'acknowledged', 'resolved'
 
-    // Acknowledgement details
-    acknowledgedBy: text("acknowledged_by").references(() => user.id),
-    acknowledgedAt: timestamp("acknowledged_at", { mode: "string" }),
+  // Acknowledgement details
+  acknowledgedBy: text("acknowledged_by").references(() => user.id, { onDelete: "set null" }),
+  acknowledgedAt: timestamp("acknowledged_at", { mode: "string" }),
 
-    // Resolution details
-    resolvedBy: text("resolved_by").references(() => user.id),
-    resolvedAt: timestamp("resolved_at", { mode: "string" }),
+  // Resolution details
+  resolvedBy: text("resolved_by").references(() => user.id, { onDelete: "set null" }),
+  resolvedAt: timestamp("resolved_at", { mode: "string" }),
 
-    // Error details
-    lastError: text("last_error"),
-    lastErrorType: text("last_error_type"),
-    failureCount: integer("failure_count").default(1),
-    createdAt: timestamp("created_at", { mode: "string" }).defaultNow(),
-    updatedAt: timestamp("updated_at", { mode: "string" }).defaultNow(),
-  },
-  table => [
-    foreignKey({
-      columns: [table.organizationId],
-      foreignColumns: [organization.id],
-      name: "uptime_incidents_organization_id_organization_id_fk",
-    }),
-    foreignKey({
-      columns: [table.monitorId],
-      foreignColumns: [uptimeMonitors.id],
-      name: "uptime_incidents_monitor_id_uptime_monitors_id_fk",
-    }),
-    foreignKey({
-      columns: [table.acknowledgedBy],
-      foreignColumns: [user.id],
-      name: "uptime_incidents_acknowledged_by_user_id_fk",
-    }),
-    foreignKey({
-      columns: [table.resolvedBy],
-      foreignColumns: [user.id],
-      name: "uptime_incidents_resolved_by_user_id_fk",
-    }),
-  ]
-);
+  // Error details
+  lastError: text("last_error"),
+  lastErrorType: text("last_error_type"),
+  failureCount: integer("failure_count").default(1),
+  createdAt: timestamp("created_at", { mode: "string" }).defaultNow(),
+  updatedAt: timestamp("updated_at", { mode: "string" }).defaultNow(),
+});
 
 // Notification channels table
-export const notificationChannels = pgTable(
-  "notification_channels",
-  {
-    id: serial("id").primaryKey().notNull(),
-    organizationId: text("organization_id")
-      .notNull()
-      .references(() => organization.id),
-    type: text("type").notNull(), // 'email', 'discord', 'slack', 'sms'
-    name: text("name").notNull(),
-    enabled: boolean("enabled").default(true),
+export const notificationChannels = pgTable("notification_channels", {
+  id: serial("id").primaryKey().notNull(),
+  organizationId: text("organization_id")
+    .notNull()
+    .references(() => organization.id),
+  type: text("type").notNull(), // 'email', 'discord', 'slack', 'sms'
+  name: text("name").notNull(),
+  enabled: boolean("enabled").default(true),
 
-    // Channel-specific configuration
-    config: jsonb("config").notNull().$type<{
-      // Email config
-      email?: string;
+  // Channel-specific configuration
+  config: jsonb("config").notNull().$type<{
+    // Email config
+    email?: string;
 
-      // Discord config
-      webhookUrl?: string;
+    // Discord config
+    webhookUrl?: string;
 
-      // Slack config
-      slackWebhookUrl?: string;
-      slackChannel?: string;
+    // Slack config
+    slackWebhookUrl?: string;
+    slackChannel?: string;
 
-      // SMS config (placeholder)
-      phoneNumber?: string;
-      provider?: string;
-    }>(),
+    // SMS config (placeholder)
+    phoneNumber?: string;
+    provider?: string;
+  }>(),
 
-    // Monitor selection and notification settings
-    monitorIds: jsonb("monitor_ids").$type<number[] | null>(), // null = all monitors
-    triggerEvents: jsonb("trigger_events").notNull().default(["down", "recovery"]).$type<string[]>(), // 'down', 'recovery', 'degraded'
-    cooldownMinutes: integer("cooldown_minutes").default(5), // Minimum time between notifications
-    lastNotifiedAt: timestamp("last_notified_at", { mode: "string" }),
+  // Monitor selection and notification settings
+  monitorIds: jsonb("monitor_ids").$type<number[] | null>(), // null = all monitors
+  triggerEvents: jsonb("trigger_events").notNull().default(["down", "recovery"]).$type<string[]>(), // 'down', 'recovery', 'degraded'
+  cooldownMinutes: integer("cooldown_minutes").default(5), // Minimum time between notifications
+  lastNotifiedAt: timestamp("last_notified_at", { mode: "string" }),
 
-    createdAt: timestamp("created_at", { mode: "string" }).defaultNow(),
-    updatedAt: timestamp("updated_at", { mode: "string" }).defaultNow(),
-    createdBy: text("created_by")
-      .notNull()
-      .references(() => user.id),
-  },
-  table => [
-    foreignKey({
-      columns: [table.organizationId],
-      foreignColumns: [organization.id],
-      name: "notification_channels_organization_id_organization_id_fk",
-    }),
-    foreignKey({
-      columns: [table.createdBy],
-      foreignColumns: [user.id],
-      name: "notification_channels_created_by_user_id_fk",
-    }),
-  ]
-);
+  createdAt: timestamp("created_at", { mode: "string" }).defaultNow(),
+  updatedAt: timestamp("updated_at", { mode: "string" }).defaultNow(),
+  createdBy: text("created_by").references(() => user.id, { onDelete: "set null" }),
+});
+
+// Google Search Console connections table
+export const gscConnections = pgTable("gsc_connections", {
+  siteId: integer("site_id")
+    .primaryKey()
+    .notNull()
+    .references(() => sites.siteId, { onDelete: "cascade" }),
+
+  // OAuth tokens
+  accessToken: text("access_token").notNull(),
+  refreshToken: text("refresh_token").notNull(),
+  expiresAt: timestamp("expires_at", { mode: "string" }).notNull(),
+
+  // Which GSC property this connection is for
+  gscPropertyUrl: text("gsc_property_url").notNull(),
+
+  createdAt: timestamp("created_at", { mode: "string" }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { mode: "string" }).defaultNow().notNull(),
+});

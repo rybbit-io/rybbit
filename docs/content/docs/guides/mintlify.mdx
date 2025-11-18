@@ -1,0 +1,126 @@
+---
+title: Mintlify
+description: Integrate Rybbit Analytics with your Mintlify documentation site
+---
+
+import { Steps, Step } from 'fumadocs-ui/components/steps';
+import { Callout } from 'fumadocs-ui/components/callout';
+
+
+This guide explains how to integrate Rybbit with your Mintlify documentation site for analytics tracking. Mintlify uses a file-based approach for custom scripts where any JavaScript file in your content directory is automatically included on every documentation page.
+
+## How to Add Rybbit to Your Mintlify Docs
+
+Mintlify allows you to add custom JavaScript files to your documentation by placing `.js` files inside your content directory. These files will be automatically included on every page.
+
+<Steps>
+<Step>
+### Retrieve Your Tracking Script Details
+
+Navigate to your Rybbit dashboard to obtain your **Site ID**. The script source will be `https://app.rybbit.io/api/script.js` (or your self-hosted URL if applicable).
+</Step>
+
+<Step>
+### Create a Custom JavaScript File
+
+Create a new JavaScript file in your Mintlify content directory (typically where your `.mdx` files are located). You can name it something descriptive like `rybbit-analytics.js`.
+
+```javascript filename="rybbit-analytics.js"
+// Rybbit Analytics Integration
+(function() {
+  // Create the script element
+  const script = document.createElement('script');
+  script.src = 'https://app.rybbit.io/api/script.js';
+  script.async = true;
+  script.defer = true;
+  script.setAttribute('data-site-id', 'YOUR_SITE_ID'); // Replace with your actual Site ID
+
+  // Append the script to the document head
+  document.head.appendChild(script);
+})();
+```
+
+Make sure to replace `YOUR_SITE_ID` with your actual Site ID from your Rybbit dashboard.
+
+If you're self-hosting Rybbit, replace `https://app.rybbit.io/api/script.js` with your self-hosted URL (e.g., `https://your-domain.com/api/script.js`).
+</Step>
+
+<Step>
+### Verify Installation
+
+After deploying your Mintlify documentation site, open your Rybbit dashboard to check if data is being received. You can also inspect your browser's network tab to confirm that `script.js` is loaded on your pages and the Rybbit tracking requests are being sent.
+
+Look for:
+- The `script.js` file being loaded in the Network tab
+- POST requests to your Rybbit analytics endpoint (e.g., `/api/event`)
+</Step>
+</Steps>
+
+<Callout type="info">
+  **Page View Tracking**: Mintlify documentation sites are Single Page Applications (SPAs). Rybbit's tracking script is designed to automatically detect route changes in SPAs and track them as page views. The default configuration should work out of the box without any additional setup.
+</Callout>
+
+## Advanced Configuration
+
+### Custom Script Attributes
+
+You can customize the Rybbit script behavior by adding data attributes to the script tag:
+
+```javascript filename="rybbit-analytics.js"
+(function() {
+  const script = document.createElement('script');
+  script.src = 'https://app.rybbit.io/api/script.js';
+  script.async = true;
+  script.defer = true;
+  script.setAttribute('data-site-id', 'YOUR_SITE_ID');
+
+  // Optional: Customize debounce duration (default: 500ms)
+  script.setAttribute('data-debounce', '1000');
+
+  // Optional: Add custom skip patterns for certain URLs
+  script.setAttribute('data-skip-patterns', JSON.stringify(['/admin/*', '/internal/*']));
+
+  // Optional: Add custom mask patterns for sensitive data
+  script.setAttribute('data-mask-patterns', JSON.stringify(['password', 'token']));
+
+  document.head.appendChild(script);
+})();
+```
+
+Available script attributes:
+- `data-site-id` (required): Your Rybbit site ID
+- `data-debounce`: Debounce duration in milliseconds for tracking events (default: 500)
+- `data-skip-patterns`: JSON array of URL patterns to skip tracking
+- `data-mask-patterns`: JSON array of patterns to mask in tracked data
+- `data-replay-batch-size`: Number of session replay events to batch before sending (default: 250)
+- `data-replay-batch-interval`: Interval in milliseconds to send session replay batches (default: 5000)
+
+## Custom Event Tracking
+
+You can track custom events in your Mintlify documentation using the global `window.rybbit` API. This is useful for tracking specific user interactions like button clicks, downloads, or form submissions.
+
+### Tracking Custom Events in MDX
+
+Since Mintlify supports MDX, you can add inline event handlers to track custom events:
+
+```mdx
+<button
+  onClick={() => {
+    if (typeof window !== 'undefined' && window.rybbit) {
+      window.rybbit.event('download_clicked', {
+        file: 'getting-started-guide.pdf',
+        section: 'introduction'
+      });
+    }
+  }}
+  className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+>
+  Download Guide
+</button>
+```
+## Related Resources
+
+- [Rybbit Script Configuration](/docs/script)
+- [Custom Event Tracking](/docs/track-events)
+- [Mintlify Documentation](https://mintlify.com/docs)
+- [Mintlify Custom Scripts](https://www.mintlify.com/docs/customize/custom-scripts)

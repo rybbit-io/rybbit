@@ -8,27 +8,27 @@ body {
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 240 10% 3.9%;
+    --background: 0 0% 97%;
+    --foreground: 0 0% 3.9%;
     --popover: 0 0% 100%;
-    --popover-foreground: 240 10% 3.9%;
-    --primary: 240 5.9% 10%;
+    --popover-foreground: 0 0% 3.9%;
+    --primary: 0 0% 10%;
     --primary-foreground: 0 0% 98%;
-    --secondary: 240 4.8% 95.9%;
-    --secondary-foreground: 240 5.9% 10%;
-    --muted: 240 4.8% 95.9%;
-    --muted-foreground: 240 3.8% 46.1%;
-    --accent: 240 4.8% 95.9%;
-    --accent-foreground: 240 5.9% 10%;
+    --secondary: 0 0% 95.9%;
+    --secondary-foreground: 0 0% 10%;
+    --muted: 0 0% 95.9%;
+    --muted-foreground: 0 0% 46.1%;
+    --accent: 0 0% 95.9%;
+    --accent-foreground: 0 0% 10%;
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 98%;
-    --border: 240 5.9% 90%;
-    --input: 240 5.9% 90%;
-    --ring: 240 5.9% 10%;
+    --border: 0 0% 90%;
+    --input: 0 0% 90%;
+    --ring: 0 0% 10%;
     --radius: 0.3rem;
 
-    --dataviz: 230 100% 85%;
-    --dataviz-2: 230 100% 92%;
+    --dataviz: 230 100% 80%;
+    --dataviz-2: 230 100% 87%;
 
     --accent-50: var(--emerald-50);
     --accent-100: var(--emerald-100);
@@ -82,6 +82,7 @@ body {
     --zinc-950: 240 10% 3.9%;
 
     /* Neutral */
+    --neutral-0: 0 0% 97%;
     --neutral-50: 0 0% 95%;
     --neutral-100: 0 0% 90%;
     --neutral-150: 0 0% 85%;
@@ -358,9 +359,12 @@ body {
 
     --input: 240 3.7% 15.9%;
     --ring: 240 4.9% 83.9%;
+
+    --dataviz: 230 100% 85%;
+    --dataviz-2: 230 100% 92%;
   }
 
-  /* Dark scrollbar styles */
+  /* Light mode scrollbar styles */
   /* For Webkit browsers (Chrome, Safari, newer Edge) */
   ::-webkit-scrollbar {
     width: 10px;
@@ -368,23 +372,44 @@ body {
   }
 
   ::-webkit-scrollbar-track {
-    background: hsl(0 0% 9%);
+    background: hsl(0 0% 90%);
     border-radius: 4px;
   }
 
   ::-webkit-scrollbar-thumb {
-    background: hsl(0 0% 35%);
+    background: hsl(0 0% 70%);
     border-radius: 4px;
   }
 
   ::-webkit-scrollbar-thumb:hover {
-    background: hsl(0 0% 40%);
+    background: hsl(0 0% 60%);
   }
 
   /* For Firefox */
   * {
     scrollbar-width: thin;
-    scrollbar-color: hsl(0 0% 35%) hsl(0 0% 9%);
+    scrollbar-color: hsl(0 0% 70%) hsl(0 0% 90%);
+  }
+
+  .dark {
+    /* Dark mode scrollbar styles */
+    /* For Webkit browsers */
+    ::-webkit-scrollbar-track {
+      background: hsl(0 0% 9%);
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: hsl(0 0% 35%);
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+      background: hsl(0 0% 40%);
+    }
+
+    /* For Firefox */
+    * {
+      scrollbar-color: hsl(0 0% 35%) hsl(0 0% 9%);
+    }
   }
 
   /* Custom scrollbar class for specific elements */

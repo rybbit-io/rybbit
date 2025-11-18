@@ -49,9 +49,9 @@ export function ReplayList() {
 
   return (
     <div className="flex flex-col gap-2">
-      <div className="rounded-lg border border-neutral-800 bg-neutral-900 flex flex-col">
+      <div className="rounded-lg border border-neutral-100 dark:border-neutral-800 bg-white dark:bg-neutral-900 flex flex-col">
         <div className="flex items-center gap-2 p-2">
-          <div className="text-xs text-neutral-400">Min Duration</div>
+          <div className="text-xs text-neutral-600 dark:text-neutral-400">Min Duration</div>
           <div className="flex items-center gap-1">
             <Input
               type="number"
@@ -60,11 +60,11 @@ export function ReplayList() {
               onChange={e => setMinDuration(Number(e.target.value))}
               className="w-16"
             />
-            <div className="text-xs text-neutral-400">s</div>
+            <div className="text-xs text-neutral-600 dark:text-neutral-400">s</div>
           </div>
         </div>
       </div>
-      <div className="rounded-lg border border-neutral-800 flex flex-col">
+      <div className="rounded-lg border border-neutral-100 dark:border-neutral-800 flex flex-col">
         <ScrollArea className="h-[calc(100vh-178px)]">
           {isLoading ? (
             Array.from({ length: 20 }).map((_, index) => <ReplayCardSkeleton key={`loading-${index}`} />)
@@ -83,13 +83,13 @@ export function ReplayList() {
               {/* Infinite scroll anchor and loading indicator */}
               <div ref={ref} className="py-3 flex justify-center">
                 {isFetchingNextPage && (
-                  <div className="flex items-center gap-2 text-neutral-400 text-xs">
+                  <div className="flex items-center gap-2 text-neutral-600 dark:text-neutral-400 text-xs">
                     <Loader2 className="h-4 w-4 animate-spin" />
                     Loading more replays...
                   </div>
                 )}
                 {!hasNextPage && !isFetchingNextPage && flattenedData.length > 0 && (
-                  <div className="text-neutral-500 text-xs">All replays loaded</div>
+                  <div className="text-neutral-500 dark:text-neutral-500 text-xs">All replays loaded</div>
                 )}
               </div>
             </>

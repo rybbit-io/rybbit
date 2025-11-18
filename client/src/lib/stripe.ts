@@ -1,130 +1,141 @@
-const STRIPE_PRICES = [
+export interface StripePrice {
+  priceId: string;
+  price: number;
+  name: string;
+  interval: string;
+  events: number;
+  shortName: string;
+}
+
+const STRIPE_PRICES: StripePrice[] = [
   // Standard tiers
   {
     price: 19,
     priceId: "price_1RKuxUDFVprnAny2xyyWvXNr",
     name: "standard100k",
     interval: "month",
-    limits: {
-      events: 100_000,
-    },
+    shortName: "100k",
+    events: 100_000,
   },
   {
     price: 190,
     priceId: "price_1RKuxUDFVprnAny2RkoZyxev",
     name: "standard100k-annual",
     interval: "year",
-    limits: {
-      events: 100_000,
-    },
+    shortName: "100k",
+    events: 100_000,
   },
   {
     price: 29,
     priceId: "price_1RKuxTDFVprnAny2TS4Qz0Hi",
     name: "standard250k",
     interval: "month",
-    limits: {
-      events: 250_000,
-    },
+    shortName: "250k",
+    events: 250_000,
   },
   {
     price: 290,
     priceId: "price_1RKuxTDFVprnAny2rDcJOwHn",
     name: "standard250k-annual",
     interval: "year",
-    limits: {
-      events: 250_000,
-    },
+    shortName: "250k",
+    events: 250_000,
   },
   {
     name: "standard500k",
     priceId: "price_1RKuxSDFVprnAny2L7hbJSmO",
     price: 49,
     interval: "month",
-    limits: {
-      events: 500_000,
-    },
+    shortName: "500k",
+    events: 500_000,
   },
   {
     name: "standard500k-annual",
     priceId: "price_1RKuxSDFVprnAny2APD1EsL4",
     price: 490,
     interval: "year",
-    limits: {
-      events: 500_000,
-    },
+    shortName: "500k",
+    events: 500_000,
   },
   {
     name: "standard1m",
     priceId: "price_1RKuxRDFVprnAny2UnTeUnYl",
     price: 69,
     interval: "month",
-    limits: {
-      events: 1_000_000,
-    },
+    shortName: "1m",
+    events: 1_000_000,
   },
   {
     name: "standard1m-annual",
     priceId: "price_1RKuxRDFVprnAny2f67uFcwC",
     price: 690,
     interval: "year",
-    limits: {
-      events: 1_000_000,
-    },
+    shortName: "1m",
+    events: 1_000_000,
   },
   {
     name: "standard2m",
     priceId: "price_1RKuxPDFVprnAny2pvdhKxSL",
     price: 99,
     interval: "month",
-    limits: {
-      events: 2_000_000,
-    },
+    shortName: "2m",
+    events: 2_000_000,
   },
   {
     name: "standard2m-annual",
     priceId: "price_1RKuxPDFVprnAny2NCYgKQf5",
     price: 990,
     interval: "year",
-    limits: {
-      events: 2_000_000,
-    },
+    shortName: "2m",
+    events: 2_000_000,
   },
   {
     name: "standard5m",
     priceId: "price_1RKuxKDFVprnAny2pytTqnzP",
     price: 149,
     interval: "month",
-    limits: {
-      events: 5_000_000,
-    },
+    shortName: "5m",
+    events: 5_000_000,
   },
   {
     name: "standard5m-annual",
     priceId: "price_1RKuxKDFVprnAny2UjJFcvHQ",
     price: 1490,
     interval: "year",
-    limits: {
-      events: 5_000_000,
-    },
+    shortName: "5m",
+    events: 5_000_000,
   },
   {
     name: "standard10m",
     priceId: "price_1RKuxNDFVprnAny2HkZXUcZN",
     price: 249,
     interval: "month",
-    limits: {
-      events: 10_000_000,
-    },
+    shortName: "10m",
+    events: 10_000_000,
   },
   {
     name: "standard10m-annual",
     priceId: "price_1RKuxNDFVprnAny2mjFH5swO",
     price: 2490,
     interval: "year",
-    limits: {
-      events: 10_000_000,
-    },
+    shortName: "10m",
+    events: 10_000_000,
+  },
+  {
+    name: "standard20m",
+    priceId: "price_1SKXvkDFVprnAny2cnF3yDyB",
+    price: 399,
+    interval: "month",
+    shortName: "20m",
+    events: 20_000_000,
+  },
+  {
+    name: "standard20m-annual",
+    priceId: "price_1SKXxHDFVprnAny2fHARdc3Z",
+    price: 3990,
+    interval: "year",
+    shortName: "20m",
+    events: 20_000_000,
   },
   // Pro tiers
   {
@@ -132,128 +143,137 @@ const STRIPE_PRICES = [
     priceId: "price_1S8szIDFVprnAny2Hg7cxG5b",
     name: "pro100k",
     interval: "month",
-    limits: {
-      events: 100_000,
-    },
+    shortName: "100k",
+    events: 100_000,
   },
   {
     price: 390,
     priceId: "price_1S8szIDFVprnAny2MfwmEsD3",
     name: "pro100k-annual",
     interval: "year",
-    limits: {
-      events: 100_000,
-    },
+    shortName: "100k",
+    events: 100_000,
   },
   {
     price: 59,
     priceId: "price_1S8szHDFVprnAny2VyF3ZOuF",
     name: "pro250k",
     interval: "month",
-    limits: {
-      events: 250_000,
-    },
+    shortName: "250k",
+    events: 250_000,
   },
   {
     price: 590,
     priceId: "price_1S8szHDFVprnAny2KbYorj7v",
     name: "pro250k-annual",
     interval: "year",
-    limits: {
-      events: 250_000,
-    },
+    shortName: "250k",
+    events: 250_000,
   },
   {
     price: 99,
     priceId: "price_1S8szEDFVprnAny2hi4ZSoS8",
     name: "pro500k",
     interval: "month",
-    limits: {
-      events: 500_000,
-    },
+    shortName: "500k",
+    events: 500_000,
   },
   {
     price: 990,
     priceId: "price_1S8szEDFVprnAny2z6M7Befa",
     name: "pro500k-annual",
     interval: "year",
-    limits: {
-      events: 500_000,
-    },
+    shortName: "500k",
+    events: 500_000,
   },
   {
     price: 139,
     priceId: "price_1S8szCDFVprnAny28ccBSIDh",
     name: "pro1m",
     interval: "month",
-    limits: {
-      events: 1_000_000,
-    },
+    shortName: "1M",
+    events: 1_000_000,
   },
   {
     price: 1390,
     priceId: "price_1S8szCDFVprnAny2ujgml5hL",
     name: "pro1m-annual",
     interval: "year",
-    limits: {
-      events: 1_000_000,
-    },
+    shortName: "1M",
+    events: 1_000_000,
   },
   {
     price: 199,
     priceId: "price_1S8szBDFVprnAny2h8aeoObg",
     name: "pro2m",
     interval: "month",
-    limits: {
-      events: 2_000_000,
-    },
+    shortName: "2M",
+    events: 2_000_000,
   },
   {
     price: 1990,
     priceId: "price_1S8szBDFVprnAny2So7DIVTb",
     name: "pro2m-annual",
     interval: "year",
-    limits: {
-      events: 2_000_000,
-    },
+    shortName: "2M",
+    events: 2_000_000,
   },
   {
     price: 299,
     priceId: "price_1S8sz9DFVprnAny2Mjrl9je6",
     name: "pro5m",
     interval: "month",
-    limits: {
-      events: 5_000_000,
-    },
+    shortName: "5M",
+    events: 5_000_000,
   },
   {
     price: 2990,
     priceId: "price_1S8sz9DFVprnAny2pEnr5hXD",
     name: "pro5m-annual",
     interval: "year",
-    limits: {
-      events: 5_000_000,
-    },
+    shortName: "5M",
+    events: 5_000_000,
   },
   {
     price: 499,
     priceId: "price_1S8sz5DFVprnAny2PQR4etWx",
     name: "pro10m",
     interval: "month",
-    limits: {
-      events: 10_000_000,
-    },
+    shortName: "10M",
+    events: 10_000_000,
   },
   {
     price: 4990,
     priceId: "price_1S8sz5DFVprnAny2drMF3d7U",
     name: "pro10m-annual",
     interval: "year",
-    limits: {
-      events: 10_000_000,
-    },
+    shortName: "10M",
+    events: 10_000_000,
+  },
+  {
+    price: 799,
+    priceId: "price_1SKXw0DFVprnAny2Au9JTwnX",
+    name: "pro20m",
+    interval: "month",
+    shortName: "20M",
+    events: 20_000_000,
+  },
+  {
+    price: 7990,
+    priceId: "price_1SKXwcDFVprnAny2HCEv46PG",
+    name: "pro20m-annual",
+    interval: "year",
+    shortName: "20M",
+    events: 20_000_000,
   },
 ];
+
+export const STRIPE_TIERS = STRIPE_PRICES.filter(
+  price => price.interval === "month" && price.name.startsWith("standard")
+).map(price => ({
+  events: price.events,
+  shortName: price.shortName,
+}));
 
 const TEST_TO_PRICE_ID = {
   standard100k: "price_1R1fIVDFVprnAny2yJtRRPBm",
@@ -284,6 +304,10 @@ const TEST_TO_PRICE_ID = {
   "pro5m-annual": "price_1S8klTDFVprnAny2Na9XXAEI",
   pro10m: "price_1S8kkKDFVprnAny2WDjO98bN",
   "pro10m-annual": "price_1S8kl3DFVprnAny2Xdhho4F0",
+  standard20m: "price_1SKtYyDFVprnAny2ZT1K2gVP",
+  "standard20m-annual": "price_1SKtZ8DFVprnAny2HwSpfzS8",
+  pro20m: "price_1SKtYZDFVprnAny2WUpCtCzm",
+  "pro20m-annual": "price_1SKtYkDFVprnAny2ikpbKAA6",
 };
 
 export const getStripePrices = () => {

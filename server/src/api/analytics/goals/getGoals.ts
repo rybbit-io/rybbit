@@ -2,7 +2,6 @@ import { FastifyReply, FastifyRequest } from "fastify";
 import { db } from "../../../db/postgres/postgres.js";
 import { goals } from "../../../db/postgres/schema.js";
 import { clickhouse } from "../../../db/clickhouse/clickhouse.js";
-import { getUserHasAccessToSitePublic } from "../../../lib/auth-utils.js";
 import { eq, desc, asc, sql } from "drizzle-orm";
 import { getFilterStatement, getTimeStatement, processResults, patternToRegex } from "../utils.js";
 import SqlString from "sqlstring";
@@ -37,7 +36,7 @@ export async function getGoals(
     };
     Querystring: FilterParams<{
       page?: string;
-      pageSize?: string;
+      page_size?: string;
       sort?: string;
       order?: "asc" | "desc";
     }>;
@@ -45,7 +44,7 @@ export async function getGoals(
   reply: FastifyReply
 ) {
   const { site } = request.params;
-  const { filters, page = "1", pageSize = "10", sort = "createdAt", order = "desc" } = request.query;
+  const { filters, page = "1", page_size: pageSize = "10", sort = "createdAt", order = "desc" } = request.query;
 
   const pageNumber = parseInt(page, 10);
   const pageSizeNumber = parseInt(pageSize, 10);
@@ -57,12 +56,6 @@ export async function getGoals(
 
   if (isNaN(pageSizeNumber) || pageSizeNumber < 1 || pageSizeNumber > 100) {
     return reply.status(400).send({ error: "Invalid page size, must be between 1 and 100" });
-  }
-
-  // Check user access to site
-  const userHasAccessToSite = await getUserHasAccessToSitePublic(request, site);
-  if (!userHasAccessToSite) {
-    return reply.status(403).send({ error: "Forbidden" });
   }
 
   try {
@@ -129,8 +122,8 @@ export async function getGoals(
     }
 
     // Build filter and time clauses for ClickHouse queries
-    const filterStatement = filters ? getFilterStatement(filters) : "";
     const timeStatement = getTimeStatement(request.query);
+    const filterStatement = filters ? getFilterStatement(filters, Number(site), timeStatement) : "";
 
     // First, get the total number of unique sessions (denominator for conversion rate)
     const totalSessionsQuery = `

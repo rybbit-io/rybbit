@@ -15,6 +15,10 @@ import { RemoveMemberDialog } from "./components/RemoveMemberDialog";
 import { Invitations } from "./components/Invitations";
 import { IS_CLOUD } from "../../../../lib/const";
 import { CreateUserDialog } from "./components/CreateUserDialog";
+import { Input } from "../../../../components/ui/input";
+import { useEffect, useState } from "react";
+import { Button } from "../../../../components/ui/button";
+import { toast } from "sonner";
 
 // Types for our component
 export type Organization = {
@@ -49,6 +53,13 @@ function Organization({
     createdAt: Date;
   };
 }) {
+  const [name, setName] = useState(org.name);
+  const [isUpdating, setIsUpdating] = useState(false);
+
+  useEffect(() => {
+    setName(org.name);
+  }, [org.name]);
+
   const { data: members, refetch, isLoading: membersLoading } = useOrganizationMembers(org.id);
   const { refetch: refetchInvitations } = useOrganizationInvitations(org.id);
   const { data } = authClient.useSession();
@@ -60,8 +71,57 @@ function Organization({
     refetchInvitations();
   };
 
+  const handleOrganizationNameUpdate = async () => {
+    if (!name) {
+      toast.error("Organization name cannot be empty");
+      return;
+    }
+
+    try {
+      setIsUpdating(true);
+      const response = await authClient.organization.update({
+        organizationId: org.id,
+        data: {
+          name,
+        },
+      });
+
+      if (response.error) {
+        throw new Error(response.error.message || "Failed to update organization name");
+      }
+
+      toast.success("Name updated successfully");
+      window.location.reload();
+    } catch (error) {
+      console.error("Error updating organization name:", error);
+      toast.error(error instanceof Error ? error.message : "Failed to update organization name");
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
   return (
     <>
+      {isOwner && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-xl">Organization</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              <h4 className="text-sm font-medium">Organization Name</h4>
+              <p className="text-xs text-neutral-500">Update your organization name</p>
+              <div className="flex space-x-2">
+                <Input id="name" value={name} onChange={({ target }) => setName(target.value)} placeholder="name" />
+                <Button variant="outline" onClick={handleOrganizationNameUpdate} disabled={name === org.name}>
+                  {isUpdating ? "Updating..." : "Update"}
+                </Button>
+              </div>
+            </div>
+            {/* <DeleteOrganizationDialog organization={org} onSuccess={handleRefresh} /> */}
+          </CardContent>
+        </Card>
+      )}
       <Card className="w-full">
         <CardHeader className="pb-2">
           <div className="flex items-center justify-between flex-wrap gap-2">
@@ -80,7 +140,6 @@ function Organization({
                     <CreateUserDialog organizationId={org.id} onSuccess={handleRefresh} />
                   )}
                   <EditOrganizationDialog organization={org} onSuccess={handleRefresh} />
-                  <DeleteOrganizationDialog organization={org} onSuccess={handleRefresh} />
                 </>
               )}
             </div>

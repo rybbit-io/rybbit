@@ -1,7 +1,6 @@
 import { FastifyReply, FastifyRequest } from "fastify";
 import { clickhouse } from "../../../db/clickhouse/clickhouse.js";
 import { processResults, getTimeStatement, getFilterStatement } from "../utils.js";
-import { getUserHasAccessToSitePublic } from "../../../lib/auth-utils.js";
 import { FilterParams } from "@rybbit/shared";
 
 export type GetEventsResponse = {
@@ -27,29 +26,24 @@ interface GetEventsRequest {
   };
   Querystring: FilterParams<{
     page?: string;
-    pageSize?: string;
+    page_size?: string;
     count?: string; // Keeping for backward compatibility
   }>;
 }
 
 export async function getEvents(req: FastifyRequest<GetEventsRequest>, res: FastifyReply) {
   const { site } = req.params;
-  const { startDate, endDate, timeZone, filters, page = "1", pageSize = "20", count } = req.query;
+  const { start_date, end_date, time_zone, filters, page = "1", page_size: pageSize = "20", count } = req.query;
 
-  const userHasAccessToSite = await getUserHasAccessToSitePublic(req, site);
-  if (!userHasAccessToSite) {
-    return res.status(403).send({ error: "Forbidden" });
-  }
-
-  // Use count if provided (for backward compatibility), otherwise use pageSize
+  // Use count if provided (for backward compatibility), otherwise use page_size
   const limit = count ? parseInt(count, 10) : parseInt(pageSize, 10);
   const offset = (parseInt(page, 10) - 1) * limit;
 
   // Get time and filter statements if parameters are provided
   const timeStatement =
-    startDate || endDate ? getTimeStatement(req.query) : "AND timestamp > now() - INTERVAL 30 MINUTE"; // Default to last 30 minutes if no time range specified
+    start_date || end_date ? getTimeStatement(req.query) : "AND timestamp > now() - INTERVAL 30 MINUTE"; // Default to last 30 minutes if no time range specified
 
-  const filterStatement = filters ? getFilterStatement(filters) : "";
+  const filterStatement = filters ? getFilterStatement(filters, Number(site), timeStatement) : "";
 
   try {
     // First, get the total count for pagination metadata

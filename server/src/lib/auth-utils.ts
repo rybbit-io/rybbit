@@ -104,11 +104,75 @@ export async function getSitesUserHasAccessTo(req: FastifyRequest, adminOnly = f
 
 // for routes that are potentially public
 export async function getUserHasAccessToSitePublic(req: FastifyRequest, siteId: string | number) {
-  const [sites, isPublic] = await Promise.all([
-    getSitesUserHasAccessTo(req),
-    (await siteConfig.getConfig(siteId))?.public,
-  ]);
-  return sites.some(site => site.siteId === Number(siteId)) || isPublic;
+  const [userSites, config] = await Promise.all([getSitesUserHasAccessTo(req), siteConfig.getConfig(siteId)]);
+
+  // Check if user has direct access to the site
+  const hasDirectAccess = userSites.some(site => site.siteId === Number(siteId));
+  if (hasDirectAccess) {
+    return true;
+  }
+
+  // Check if site is public
+  if (config?.public) {
+    return true;
+  }
+
+  // Check if a valid private key was provided in the header
+  const privateKey = req.headers["x-private-key"];
+  if (privateKey && typeof privateKey === "string" && config?.privateLinkKey === privateKey) {
+    return true;
+  }
+
+  // Check if a valid API key was provided
+  // Priority: 1. Authorization: Bearer header (recommended), 2. Query parameter (testing only)
+  const authHeader = req.headers["authorization"];
+  const bearerToken = authHeader && typeof authHeader === "string" && authHeader.startsWith("Bearer ")
+    ? authHeader.substring(7)
+    : null;
+
+  const queryApiKey = (req.query as any)?.api_key;
+  const apiKey = bearerToken || queryApiKey;
+
+  if (apiKey && typeof apiKey === "string") {
+    try {
+      // Verify the API key using Better Auth
+      const result = await auth.api.verifyApiKey({
+        body: { key: apiKey },
+      });
+
+      if (result.valid && result.key) {
+        // Get the userId from the API key
+        const apiKeyUserId = result.key.userId;
+
+        // Get the site's organization
+        const siteRecords = await db
+          .select({
+            organizationId: sites.organizationId,
+          })
+          .from(sites)
+          .where(eq(sites.siteId, Number(siteId)))
+          .limit(1);
+
+        if (siteRecords.length > 0 && siteRecords[0].organizationId) {
+          // Check if the API key's user is a member of the organization
+          const userMembership = await db
+            .select()
+            .from(member)
+            .where(and(eq(member.userId, apiKeyUserId), eq(member.organizationId, siteRecords[0].organizationId)))
+            .limit(1);
+
+          if (userMembership.length > 0) {
+            return true;
+          }
+        }
+      }
+    } catch (error) {
+      console.error("Error verifying API key:", error);
+      // Continue to return false if API key verification fails
+    }
+  }
+
+  return false;
 }
 
 export async function getUserHasAccessToSite(req: FastifyRequest, siteId: string | number) {

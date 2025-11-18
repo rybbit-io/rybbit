@@ -49,16 +49,16 @@ export function PlanChangePreviewDialog({
           <div className="space-y-4">
             {/* Current Plan */}
             <div className="text-sm">
-              <div className="text-neutral-400">Current Plan</div>
-              <div className="text-neutral-100 font-medium">
+              <div className="text-neutral-500 dark:text-neutral-400">Current Plan</div>
+              <div className="text-neutral-900 dark:text-neutral-100 font-medium">
                 ${previewData.currentPlan.amount / 100}/{previewData.currentPlan.interval === "year" ? "yr" : "mo"}
               </div>
             </div>
 
             {/* New Plan */}
             <div className="text-sm">
-              <div className="text-neutral-400">New Plan</div>
-              <div className="text-neutral-100 font-medium">
+              <div className="text-neutral-500 dark:text-neutral-400">New Plan</div>
+              <div className="text-neutral-900 dark:text-neutral-100 font-medium">
                 ${previewData.newPlan.amount / 100}/{previewData.newPlan.interval === "year" ? "yr" : "mo"}
               </div>
             </div>
@@ -67,27 +67,27 @@ export function PlanChangePreviewDialog({
             <div className="pt-1">
               {previewData.proration.charge > 0 && (
                 <div className="flex justify-between text-sm mb-2">
-                  <span className="text-neutral-400">New plan charge (prorated)</span>
-                  <span className="text-neutral-100">${previewData.proration.charge.toFixed(2)}</span>
+                  <span className="text-neutral-500 dark:text-neutral-400">New plan charge (prorated)</span>
+                  <span className="text-neutral-900 dark:text-neutral-100">${previewData.proration.charge.toFixed(2)}</span>
                 </div>
               )}
               {previewData.proration.credit > 0 && (
                 <div className="flex justify-between text-sm mb-2">
-                  <span className="text-neutral-400">Unused time credit</span>
+                  <span className="text-neutral-500 dark:text-neutral-400">Unused time credit</span>
                   <span className="text-emerald-400">-${previewData.proration.credit.toFixed(2)}</span>
                 </div>
               )}
 
               <div className="flex justify-between text-sm font-medium pt-2">
-                <span className="text-neutral-100">Due now</span>
-                <span className={previewData.proration.immediatePayment > 0 ? "text-neutral-100" : "text-emerald-400"}>
+                <span className="text-neutral-900 dark:text-neutral-100">Due now</span>
+                <span className={previewData.proration.immediatePayment > 0 ? "text-neutral-900 dark:text-neutral-100" : "text-emerald-400"}>
                   ${previewData.proration.immediatePayment.toFixed(2)}
                 </span>
               </div>
             </div>
 
             {previewData.proration.nextBillingDate && (
-              <div className="text-xs text-neutral-400">
+              <div className="text-xs text-neutral-500 dark:text-neutral-400">
                 Your next billing date: {new Date(previewData.proration.nextBillingDate).toLocaleDateString()}
               </div>
             )}

@@ -65,7 +65,7 @@ export function SiteCard({ siteId, domain }: SiteCardProps) {
   return (
     <div
       ref={ref}
-      className="flex flex-col rounded-lg bg-neutral-900/70 p-4 border border-neutral-850 shadow-lg hover:shadow-xl hover:border-neutral-800 transition-all duration-300 hover:translate-y-[-2px]"
+      className="flex flex-col rounded-lg bg-white dark:bg-neutral-900/70 p-4 border border-neutral-100 dark:border-neutral-850 shadow-lg hover:shadow-xl hover:border-neutral-200 dark:hover:border-neutral-800 transition-all duration-300 hover:translate-y-[-2px]"
     >
       {showSkeleton ? (
         <>
@@ -81,12 +81,12 @@ export function SiteCard({ siteId, domain }: SiteCardProps) {
           </div>
 
           <div className="grid grid-cols-3 gap-2 mt-2">
-            <div className="flex flex-col gap-1 items-center bg-neutral-800/50 rounded-md p-2">
+            <div className="flex flex-col gap-1 items-center bg-neutral-100 dark:bg-neutral-800/50 rounded-md p-2">
               <Skeleton className="h-3 w-16 rounded" />
               <Skeleton className="h-6 w-10 rounded mt-1" />
             </div>
 
-            <div className="flex flex-col gap-1 items-center bg-neutral-800/50 rounded-md p-2">
+            <div className="flex flex-col gap-1 items-center bg-neutral-100 dark:bg-neutral-800/50 rounded-md p-2">
               <Skeleton className="h-3 w-16 rounded" />
               <Skeleton className="h-6 w-10 rounded mt-1" />
             </div>
@@ -108,20 +108,20 @@ export function SiteCard({ siteId, domain }: SiteCardProps) {
           <div className="relative mt-1 mb-1 rounded-md p-2 overflow-hidden">
             <SiteSessionChart data={data?.data ?? []} height={110} />
             {!hasData && (
-              <div className="absolute inset-0 flex items-center justify-center bg-neutral-900/70 backdrop-blur-sm">
-                <span className="text-sm text-neutral-400">No data available</span>
+              <div className="absolute inset-0 flex items-center justify-center bg-white/70 dark:bg-neutral-900/70 backdrop-blur-sm">
+                <span className="text-sm text-neutral-500 dark:text-neutral-400">No data available</span>
               </div>
             )}
           </div>
 
           <div className="grid grid-cols-3 gap-2 mt-2">
-            <div className="flex flex-col gap-1 items-center bg-neutral-800/50 rounded-md p-2 hover:bg-neutral-800 transition-colors">
-              <div className="text-xs text-neutral-400">Sessions</div>
+            <div className="flex flex-col gap-1 items-center bg-neutral-50 dark:bg-neutral-800/50 rounded-md p-2 hover:bg-neutral-150 dark:hover:bg-neutral-800 transition-colors">
+              <div className="text-xs text-neutral-500 dark:text-neutral-400">Sessions</div>
               <div className="font-semibold">{overviewData?.data?.sessions?.toLocaleString() || "0"}</div>
             </div>
 
-            <div className="flex flex-col gap-1 items-center bg-neutral-800/50 rounded-md p-2 hover:bg-neutral-800 transition-colors">
-              <div className="text-xs text-neutral-400">Users</div>
+            <div className="flex flex-col gap-1 items-center bg-neutral-50 dark:bg-neutral-800/50 rounded-md p-2 hover:bg-neutral-150 dark:hover:bg-neutral-800 transition-colors">
+              <div className="text-xs text-neutral-500 dark:text-neutral-400">Users</div>
               <div className="font-semibold">{overviewData?.data?.users?.toLocaleString() || "0"}</div>
             </div>
 
@@ -129,7 +129,7 @@ export function SiteCard({ siteId, domain }: SiteCardProps) {
               <Button
                 variant="outline"
                 size="sm"
-                className="w-full h-full border-neutral-700 bg-neutral-800/50 hover:bg-neutral-800 hover:text-blue-400 transition-all"
+                className="w-full h-full border-neutral-150 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800/50 hover:bg-neutral-150 dark:hover:bg-neutral-800 hover:text-blue-400 transition-all"
               >
                 <span className="mr-1">View</span>
                 <ArrowRight size={14} className="transition-transform group-hover:translate-x-0.5" />

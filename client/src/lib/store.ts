@@ -5,142 +5,11 @@ import { Time } from "../components/DateSelector/types";
 
 export type StatType = "pageviews" | "sessions" | "users" | "pages_per_session" | "bounce_rate" | "session_duration";
 
-export const SESSION_PAGE_FILTERS: FilterParameter[] = [
-  "hostname",
-  "browser",
-  "browser_version",
-  "operating_system",
-  "operating_system_version",
-  "language",
-  "country",
-  "region",
-  "city",
-  "device_type",
-  "referrer",
-  "event_name",
-  "channel",
-  "entry_page",
-  "exit_page",
-  "utm_source",
-  "utm_medium",
-  "utm_campaign",
-  "utm_term",
-  "utm_content",
-  "user_id",
-  "lat",
-  "lon",
-];
-
-export const SESSION_REPLAY_PAGE_FILTERS: FilterParameter[] = [
-  "hostname",
-  "browser",
-  "browser_version",
-  "operating_system",
-  "operating_system_version",
-  "language",
-  "country",
-  "region",
-  "city",
-  "device_type",
-  "referrer",
-  "channel",
-  "user_id",
-];
-
-export const EVENT_FILTERS: FilterParameter[] = [
-  // "event_name",
-  // "browser",
-  // "operating_system",
-  // "country",
-  // "device_type",
-  // "referrer",
-  "hostname",
-  "browser",
-  "browser_version",
-  "operating_system",
-  "operating_system_version",
-  "language",
-  "country",
-  "region",
-  "city",
-  "device_type",
-  "referrer",
-  "pathname",
-  "page_title",
-  "querystring",
-  "event_name",
-  "channel",
-  "utm_source",
-  "utm_medium",
-  "utm_campaign",
-  "utm_term",
-  "utm_content",
-  "entry_page",
-  "exit_page",
-  "dimensions",
-  "user_id",
-];
-
-export const GOALS_PAGE_FILTERS: FilterParameter[] = [
-  "hostname",
-  "browser",
-  "browser_version",
-  "operating_system",
-  "operating_system_version",
-  "language",
-  "country",
-  "region",
-  "city",
-  "device_type",
-  "referrer",
-  "event_name",
-  "channel",
-  "entry_page",
-  "exit_page",
-];
-
-export const USER_PAGE_FILTERS: FilterParameter[] = [
-  "hostname",
-  "browser",
-  "browser_version",
-  "operating_system",
-  "operating_system_version",
-  "language",
-  "country",
-  "region",
-  "city",
-  "device_type",
-  "referrer",
-  "user_id",
-];
-
-export const JOURNEY_PAGE_FILTERS: FilterParameter[] = [
-  "browser",
-  "operating_system",
-  "language",
-  "country",
-  "region",
-  "city",
-  "device_type",
-  "referrer",
-  "hostname",
-  // "channel",
-  // "utm_source",
-  // "utm_medium",
-  // "utm_campaign",
-  // "utm_term",
-  // "utm_content",
-  "entry_page",
-  "exit_page",
-  "dimensions",
-  "browser_version",
-  "operating_system_version",
-  "user_id",
-];
-
 type Store = {
   site: string;
   setSite: (site: string) => void;
+  privateKey: string | null;
+  setPrivateKey: (privateKey: string | null) => void;
   time: Time;
   previousTime: Time;
   setTime: (time: Time, changeBucket?: boolean) => void;
@@ -174,24 +43,30 @@ export const useStore = create<Store>(set => ({
         : {
             mode: "day",
             day: DateTime.now().toISODate(),
+            wellKnown: "today",
           },
       previousTime: hasTimeInUrl
         ? state.previousTime
         : {
             mode: "day",
             day: DateTime.now().minus({ days: 1 }).toISODate(),
+            wellKnown: "yesterday",
           },
       bucket: hasBucketInUrl ? state.bucket : "hour",
       selectedStat: hasStatInUrl ? state.selectedStat : "users",
     }));
   },
+  privateKey: null,
+  setPrivateKey: privateKey => set({ privateKey }),
   time: {
     mode: "day",
     day: DateTime.now().toISODate(),
+    wellKnown: "today",
   },
   previousTime: {
     mode: "day",
     day: DateTime.now().minus({ days: 1 }).toISODate(),
+    wellKnown: "yesterday",
   },
   setTime: (time, changeBucket = true) => {
     let bucketToUse: TimeBucket = "hour";
@@ -275,7 +150,7 @@ export const useStore = create<Store>(set => ({
 export const resetStore = () => {
   const { setSite, setTime, setBucket, setSelectedStat, setFilters } = useStore.getState();
   setSite("");
-  setTime({ mode: "day", day: DateTime.now().toISODate() });
+  setTime({ mode: "day", day: DateTime.now().toISODate(), wellKnown: "today" });
   setBucket("hour");
   setSelectedStat("users");
   setFilters([]);

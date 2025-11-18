@@ -3,6 +3,7 @@
 import { cn } from "@/lib/utils";
 import { Zoomies } from "ldrs/react";
 import "ldrs/react/Zoomies.css";
+import { useTheme } from "next-themes";
 import * as React from "react";
 
 // Default values shown
@@ -10,7 +11,7 @@ const Card = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElemen
   <div
     ref={ref}
     className={cn(
-      "relative rounded-lg border border-neutral-200 bg-white text-neutral-950 dark:border-neutral-850 dark:bg-neutral-900 dark:text-neutral-50 overflow-hidden transition-all duration-300 ",
+      "relative rounded-lg border border-neutral-100 bg-white text-neutral-950 dark:border-neutral-850 dark:bg-neutral-900 dark:text-neutral-50 overflow-hidden transition-all duration-300 ",
       className
     )}
     {...props}
@@ -20,9 +21,12 @@ Card.displayName = "Card";
 
 const CardLoader = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
   ({ className, ...props }, ref) => {
+    const { theme } = useTheme();
+    const loaderColor = theme === "dark" ? "hsl(var(--neutral-400))" : "hsl(var(--neutral-200))";
+
     return (
       <div className="mt-[-15px] absolute top-0 left-0 w-full">
-        <Zoomies size={1400} stroke="3" bg-opacity="0.1" speed="1.4" color="hsl(var(--neutral-400))" />
+        <Zoomies size={1400} stroke="3" bg-opacity="0.1" speed="1.4" color={loaderColor} />
       </div>
     );
   }

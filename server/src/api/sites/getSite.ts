@@ -2,7 +2,7 @@ import { eq } from "drizzle-orm";
 import { FastifyReply, FastifyRequest } from "fastify";
 import { db } from "../../db/postgres/postgres.js";
 import { sites } from "../../db/postgres/schema.js";
-import { getUserHasAccessToSitePublic, getUserHasAdminAccessToSite } from "../../lib/auth-utils.js";
+import { getUserHasAdminAccessToSite } from "../../lib/auth-utils.js";
 
 interface GetSiteParams {
   Params: {
@@ -23,15 +23,8 @@ export async function getSite(request: FastifyRequest<GetSiteParams>, reply: Fas
       return reply.status(404).send({ error: "Site not found" });
     }
 
-    // Check user access to site and owner status in parallel
-    const [userHasAccessToSite, isOwner] = await Promise.all([
-      getUserHasAccessToSitePublic(request, site.siteId),
-      getUserHasAdminAccessToSite(request, site.siteId),
-    ]);
-
-    if (!userHasAccessToSite) {
-      return reply.status(403).send({ error: "Forbidden" });
-    }
+    // Check if user has admin access
+    const isOwner = await getUserHasAdminAccessToSite(request, site.siteId);
 
     return reply.status(200).send({
       id: site.id,

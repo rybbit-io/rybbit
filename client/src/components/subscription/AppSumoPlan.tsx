@@ -36,7 +36,7 @@ export function AppSumoPlan() {
     <div className="space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center">AppSumo Plan</CardTitle>
+          <CardTitle className="flex items-center">AppSumo Plan Tier {subscription.planName.split("-")[1]}</CardTitle>
           <CardDescription>
             You are on the AppSumo lifetime plan with up to {subscription?.eventLimit.toLocaleString()} events per
             month.

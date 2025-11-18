@@ -71,9 +71,9 @@ const ActivitySlider = React.forwardRef<React.ElementRef<typeof SliderPrimitive.
           className={cn("relative flex w-full touch-none select-none items-center", className)}
           {...props}
         >
-          <SliderPrimitive.Track className="relative h-1.5 w-full grow overflow-hidden rounded-full bg-neutral-800">
+          <SliderPrimitive.Track className="relative h-1.5 w-full grow overflow-hidden rounded-full bg-neutral-200 dark:bg-neutral-800">
             {/* Inactive background */}
-            <div className="absolute h-full w-full bg-neutral-700" />
+            <div className="absolute h-full w-full bg-neutral-300 dark:bg-neutral-700" />
 
             {/* Activity periods */}
             {activityPeriods.map((period, index) => {
@@ -83,7 +83,7 @@ const ActivitySlider = React.forwardRef<React.ElementRef<typeof SliderPrimitive.
               return (
                 <div
                   key={index}
-                  className="absolute h-full bg-neutral-600"
+                  className="absolute h-full bg-neutral-400 dark:bg-neutral-600"
                   style={{
                     left: `${startPercent}%`,
                     width: `${widthPercent}%`,

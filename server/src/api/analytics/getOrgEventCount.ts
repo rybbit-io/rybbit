@@ -18,15 +18,15 @@ export async function getOrgEventCount(
       organizationId: string;
     };
     Querystring: {
-      startDate?: string;
-      endDate?: string;
-      timeZone?: string;
+      start_date?: string;
+      end_date?: string;
+      time_zone?: string;
     };
   }>,
   res: FastifyReply
 ) {
   const { organizationId } = req.params;
-  const { startDate, endDate, timeZone = "UTC" } = req.query;
+  const { start_date, end_date, time_zone = "UTC" } = req.query;
 
   try {
     // Get all sites the user has access to
@@ -46,31 +46,31 @@ export async function getOrgEventCount(
     let fillFromDate = "";
     let fillToDate = "";
 
-    if (startDate && endDate) {
+    if (start_date && end_date) {
       timeFilter = `AND event_hour >= toTimeZone(
-        toStartOfDay(toDateTime(${SqlString.escape(startDate)}, ${SqlString.escape(timeZone)})),
+        toStartOfDay(toDateTime(${SqlString.escape(start_date)}, ${SqlString.escape(time_zone)})),
         'UTC'
       )
       AND event_hour < if(
-        toDate(${SqlString.escape(endDate)}) = toDate(now(), ${SqlString.escape(timeZone)}),
+        toDate(${SqlString.escape(end_date)}) = toDate(now(), ${SqlString.escape(time_zone)}),
         now(),
         toTimeZone(
-          toStartOfDay(toDateTime(${SqlString.escape(endDate)}, ${SqlString.escape(timeZone)})) + INTERVAL 1 DAY,
+          toStartOfDay(toDateTime(${SqlString.escape(end_date)}, ${SqlString.escape(time_zone)})) + INTERVAL 1 DAY,
           'UTC'
         )
       )`;
 
       // Set up WITH FILL parameters
       fillFromDate = `FROM toTimeZone(
-        toStartOfDay(toDateTime(${SqlString.escape(startDate)}, ${SqlString.escape(timeZone)})),
+        toStartOfDay(toDateTime(${SqlString.escape(start_date)}, ${SqlString.escape(time_zone)})),
         'UTC'
       )`;
 
       fillToDate = `TO if(
-        toDate(${SqlString.escape(endDate)}) = toDate(now(), ${SqlString.escape(timeZone)}),
+        toDate(${SqlString.escape(end_date)}) = toDate(now(), ${SqlString.escape(time_zone)}),
         toStartOfDay(now()) + INTERVAL 1 DAY,
         toTimeZone(
-          toStartOfDay(toDateTime(${SqlString.escape(endDate)}, ${SqlString.escape(timeZone)})) + INTERVAL 1 DAY,
+          toStartOfDay(toDateTime(${SqlString.escape(end_date)}, ${SqlString.escape(time_zone)})) + INTERVAL 1 DAY,
           'UTC'
         )
       )`;

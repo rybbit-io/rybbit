@@ -63,10 +63,10 @@ export function EventLogItem({ event }: EventLogItemProps) {
   }
 
   return (
-    <div className="mb-3 rounded-lg bg-neutral-850/50 border border-neutral-800 overflow-hidden p-3 hover:bg-neutral-800/70 transition-all duration-200">
+    <div className="mb-3 rounded-lg bg-neutral-50 dark:bg-neutral-850/50 border border-neutral-100 dark:border-neutral-800 overflow-hidden p-3 hover:bg-neutral-100 dark:hover:bg-neutral-800/70 transition-all duration-200">
       <div className="flex flex-col space-y-2">
         {/* Single row with event type, name/path, device info, and timestamp */}
-        <div className="flex items-center gap-2 text-sm text-neutral-100">
+        <div className="flex items-center gap-2 text-sm text-neutral-900 dark:text-neutral-100">
           {/* Left side content */}
           <div className="flex items-center gap-2 flex-grow min-w-0">
             {/* Event type icon */}
@@ -154,7 +154,7 @@ export function EventLogItem({ event }: EventLogItemProps) {
             <Link href={`/${site}/user/${event.user_id}`} className="flex-shrink-0">
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <span className="text-sm font-mono text-neutral-400 hover:text-neutral-300">
+                  <span className="text-sm font-mono text-neutral-500 dark:text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-300">
                     {event.user_id.substring(0, 12)}
                   </span>
                 </TooltipTrigger>
@@ -166,7 +166,7 @@ export function EventLogItem({ event }: EventLogItemProps) {
           </div>
 
           {/* Timestamp (right-aligned) */}
-          <div className="text-sm flex-shrink-0 text-neutral-400 ml-auto">{eventTime.toRelative()}</div>
+          <div className="text-sm flex-shrink-0 text-neutral-500 dark:text-neutral-400 ml-auto">{eventTime.toRelative()}</div>
         </div>
 
         {/* Bottom row with event properties */}
@@ -176,9 +176,9 @@ export function EventLogItem({ event }: EventLogItemProps) {
               <Badge
                 key={key}
                 variant="outline"
-                className="px-1.5 py-0 h-5 text-xs bg-neutral-800 text-neutral-100 font-medium truncate max-w-[90%]"
+                className="px-1.5 py-0 h-5 text-xs bg-neutral-200 dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 font-medium truncate max-w-[90%]"
               >
-                <span className="text-neutral-300 font-light mr-1">{key}:</span>{" "}
+                <span className="text-neutral-600 dark:text-neutral-300 font-light mr-1">{key}:</span>{" "}
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <span className="truncate">
@@ -208,25 +208,25 @@ export const EventLogItemSkeleton = memo(() => {
   };
 
   return (
-    <div className="mb-3 rounded-lg bg-neutral-850/50 border border-neutral-800 overflow-hidden p-3">
+    <div className="mb-3 rounded-lg bg-neutral-50 dark:bg-neutral-850/50 border border-neutral-100 dark:border-neutral-800 overflow-hidden p-3">
       <div className="flex flex-col space-y-2">
         {/* Single row skeleton */}
         <div className="flex items-center gap-2">
           {/* Left side content */}
           <div className="flex items-center gap-2 flex-grow">
-            <div className="h-4 w-4 bg-neutral-800 rounded-sm animate-pulse flex-shrink-0"></div>
-            <div className="h-4 w-40 bg-neutral-800 rounded animate-pulse flex-shrink-0"></div>
+            <div className="h-4 w-4 bg-neutral-200 dark:bg-neutral-800 rounded-sm animate-pulse flex-shrink-0"></div>
+            <div className="h-4 w-40 bg-neutral-200 dark:bg-neutral-800 rounded animate-pulse flex-shrink-0"></div>
             <div className="flex space-x-1 flex-shrink-0">
-              <div className="h-4 w-4 bg-neutral-800 rounded-sm animate-pulse"></div>
-              <div className="h-4 w-4 bg-neutral-800 rounded-sm animate-pulse"></div>
-              <div className="h-4 w-4 bg-neutral-800 rounded-sm animate-pulse"></div>
-              <div className="h-4 w-4 bg-neutral-800 rounded-sm animate-pulse"></div>
+              <div className="h-4 w-4 bg-neutral-200 dark:bg-neutral-800 rounded-sm animate-pulse"></div>
+              <div className="h-4 w-4 bg-neutral-200 dark:bg-neutral-800 rounded-sm animate-pulse"></div>
+              <div className="h-4 w-4 bg-neutral-200 dark:bg-neutral-800 rounded-sm animate-pulse"></div>
+              <div className="h-4 w-4 bg-neutral-200 dark:bg-neutral-800 rounded-sm animate-pulse"></div>
             </div>
-            <div className="h-4 w-16 bg-neutral-800 rounded animate-pulse flex-shrink-0"></div>
+            <div className="h-4 w-16 bg-neutral-200 dark:bg-neutral-800 rounded animate-pulse flex-shrink-0"></div>
           </div>
 
           {/* Timestamp (right-aligned) */}
-          <div className="h-4 w-24 bg-neutral-800 rounded animate-pulse flex-shrink-0 ml-auto"></div>
+          <div className="h-4 w-24 bg-neutral-200 dark:bg-neutral-800 rounded animate-pulse flex-shrink-0 ml-auto"></div>
         </div>
 
         {/* Bottom row skeleton (properties) - show randomly */}
@@ -235,7 +235,7 @@ export const EventLogItemSkeleton = memo(() => {
             {Array.from({ length: Math.floor(Math.random() * 4) + 1 }).map((_, i) => (
               <div
                 key={i}
-                className="h-5 bg-neutral-800 rounded animate-pulse"
+                className="h-5 bg-neutral-200 dark:bg-neutral-800 rounded animate-pulse"
                 style={{ width: `${Math.random() * 60 + 40}px` }}
               ></div>
             ))}

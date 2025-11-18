@@ -24,7 +24,7 @@ export const MultiSelect = forwardRef<any, MultiSelectProps<any>>(({ className, 
       classNames={{
         control: ({ isFocused }) =>
           cn(
-            "flex  min-h-[36px] rounded-md px-3 py-[3px] text-sm shadow-sm transition-colors ",
+            "flex  min-h-[36px] rounded-md px-3 py-[3px] text-sm shadow-sm transition-colors border border-neutral-200 dark:border-neutral-750",
             "placeholder:text-muted-foreground ",
             "disabled:cursor-not-allowed disabled:opacity-50",
             isFocused && "ring-1 ring-ring",
@@ -32,7 +32,8 @@ export const MultiSelect = forwardRef<any, MultiSelectProps<any>>(({ className, 
           ),
         placeholder: () => "text-muted-foreground",
         input: () => "text-sm",
-        menu: () => "mt-2 rounded-md border-neutral-200 bg-neutral-900 text-neutral-50 shadow-md py-1",
+        menu: () =>
+          "mt-2 rounded-md border border-neutral-150 bg-white text-neutral-900 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-50 shadow-md py-1",
         menuList: () => "text-sm",
         option: ({ isFocused, isSelected }) =>
           cn(
@@ -41,7 +42,8 @@ export const MultiSelect = forwardRef<any, MultiSelectProps<any>>(({ className, 
             isFocused && !isSelected && "bg-accent text-accent-foreground",
             !isFocused && !isSelected && "text-popover-foreground hover:bg-accent hover:text-accent-foreground"
           ),
-        multiValue: () => "inline-flex items-center bg-neutral-750 rounded-md text-secondary-foreground mr-1",
+        multiValue: () =>
+          "inline-flex items-center bg-neutral-200 dark:bg-neutral-750 rounded-md text-secondary-foreground mr-1",
         multiValueLabel: () => "px-2 text-xs leading-none",
         multiValueRemove: () =>
           cn("flex items-center justify-center p-1", "hover:bg-destructive hover:text-destructive-foreground"),
@@ -50,12 +52,6 @@ export const MultiSelect = forwardRef<any, MultiSelectProps<any>>(({ className, 
         dropdownIndicator: () => "p-1 text-muted-foreground hover:text-foreground",
         indicatorSeparator: () => "bg-input mx-2 my-2 w-[1px]",
         noOptionsMessage: () => "text-muted-foreground p-2 text-sm",
-      }}
-      styles={{
-        control: base => ({
-          ...base,
-          border: "1px solid hsl(var(--neutral-750))",
-        }),
       }}
       {...props}
     />

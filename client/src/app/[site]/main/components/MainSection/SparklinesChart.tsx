@@ -1,5 +1,5 @@
 "use client";
-import { nivoTheme } from "@/lib/nivo";
+import { useNivoTheme } from "@/lib/nivo";
 import { ResponsiveLine } from "@nivo/line";
 import { DateTime } from "luxon";
 
@@ -10,6 +10,8 @@ export function SparklinesChart({
   data: { value: number; time: string }[] | undefined;
   isHovering: boolean;
 }) {
+  const nivoTheme = useNivoTheme();
+
   const formattedData = data
     ?.map((e, i) => {
       // filter out dates from the future

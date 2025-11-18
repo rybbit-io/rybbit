@@ -1,14 +1,15 @@
 "use client";
 
 import { BarChart, ShieldUser, User } from "lucide-react";
-import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState, Suspense } from "react";
-import { useAdminPermission } from "../app/admin/hooks/useAdminPermission";
-import { cn } from "../lib/utils";
+import { Suspense, useState } from "react";
 import { useEmbedablePage } from "../app/[site]/utils";
+import { useAdminPermission } from "../app/admin/hooks/useAdminPermission";
 import { IS_CLOUD } from "../lib/const";
+import { cn } from "../lib/utils";
+import { RybbitLogo } from "./RybbitLogo";
+import { ThemeSwitcher } from "./ThemeSwitcher";
 
 function AppSidebarContent() {
   const pathname = usePathname();
@@ -21,7 +22,7 @@ function AppSidebarContent() {
   return (
     <div
       className={cn(
-        "flex flex-col items-start justify-between h-dvh p-2 py-3 bg-neutral-900 border-r border-neutral-850 gap-3 transition-all duration-1s00",
+        "flex flex-col items-start justify-between h-dvh p-2 py-3 bg-neutral-50 dark:bg-neutral-900 border-r border-neutral-200 dark:border-neutral-850 gap-3 transition-all duration-1s00",
         isExpanded ? "w-44" : "w-[45px]"
       )}
       onMouseEnter={() => setIsExpanded(true)}
@@ -29,7 +30,7 @@ function AppSidebarContent() {
     >
       <div className="flex flex-col items-start gap-2">
         <Link href="/" className="mb-3 mt-1 ml-0.5 flex items-center justify-center">
-          <Image src="/rybbit.svg" alt="Rybbit" width={24} height={18} />
+          <RybbitLogo width={24} height={18} />
         </Link>
         <SidebarLink
           href="/"
@@ -55,13 +56,18 @@ function AppSidebarContent() {
           />
         )}
       </div>
-      <SidebarLink
-        href="/settings/account"
-        icon={<User className="w-5 h-5" />}
-        label="Account"
-        active={pathname.startsWith("/settings/account")}
-        expanded={isExpanded}
-      />
+      <div className="flex flex-col items-start gap-2 w-full">
+        <div className={cn("flex items-center w-full px-0.5", isExpanded ? "justify-start" : "hidden")}>
+          <ThemeSwitcher />
+        </div>
+        <SidebarLink
+          href="/settings/account"
+          icon={<User className="w-5 h-5" />}
+          label="Account"
+          active={pathname.startsWith("/settings/account")}
+          expanded={isExpanded}
+        />
+      </div>
     </div>
   );
 }
@@ -92,7 +98,9 @@ function SidebarLink({
       <div
         className={cn(
           "p-1 rounded-md transition-all duration-200 flex items-center gap-2",
-          active ? "bg-neutral-800 text-white" : "text-neutral-400 hover:text-white hover:bg-neutral-800/80"
+          active
+            ? "bg-neutral-150 dark:bg-neutral-800 text-neutral-800 dark:text-white"
+            : "text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white hover:bg-neutral-150 dark:hover:bg-neutral-800/80"
           // expanded ? "w-40" : "w-12"
         )}
       >
