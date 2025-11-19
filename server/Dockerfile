@@ -40,7 +40,9 @@ COPY --from=builder /app/server/src ./src
 COPY --from=builder /app/shared ./shared
 
 # Make the entrypoint executable
-RUN chmod +x /docker-entrypoint.sh
+# Normalize line endings (fixes CRLF on Windows checkouts) and make executable
+RUN sed -i 's/\r$//' /docker-entrypoint.sh \
+    && chmod +x /docker-entrypoint.sh
 
 # Expose the API port
 EXPOSE 3001
