@@ -28,6 +28,21 @@ export type SiteResponse = {
   trackIp?: boolean;
 };
 
+export type SiteMetrics = {
+  users: number;
+  pageviews: number;
+  bounceRate: number;
+  sessionDuration: number;
+  pagesPerSession: number;
+  sessions: number;
+  usersChange: number;
+  pageviewsChange: number;
+  sessionsChange: number;
+  bounceRateChange: number;
+  sessionDurationChange: number;
+  pagesPerSessionChange: number;
+};
+
 export type GetSitesFromOrgResponse = {
   organization: {
     id: string;
@@ -54,6 +69,7 @@ export type GetSitesFromOrgResponse = {
     blockBots: boolean;
     sessionsLast24Hours: number;
     isOwner: boolean;
+    metrics?: SiteMetrics;
   }>;
   subscription: {
     monthlyEventCount: number;
@@ -65,11 +81,21 @@ export type GetSitesFromOrgResponse = {
   };
 };
 
-export function useGetSitesFromOrg(organizationId?: string) {
+export function useGetSitesFromOrg(
+  organizationId?: string,
+  options?: { includeMetrics?: boolean; timePeriod?: "24h" | "7d" | "30d" }
+) {
+  const includeMetrics = options?.includeMetrics ?? false;
+  const timePeriod = options?.timePeriod ?? "24h";
+
   return useQuery<GetSitesFromOrgResponse>({
-    queryKey: ["get-sites-from-org", organizationId],
+    queryKey: ["get-sites-from-org", organizationId, includeMetrics, timePeriod],
     queryFn: () => {
-      return authedFetch(`/get-sites-from-org/${organizationId}`);
+      const params = new URLSearchParams();
+      if (includeMetrics) params.append("includeMetrics", "true");
+      if (timePeriod) params.append("timePeriod", timePeriod);
+      const queryString = params.toString();
+      return authedFetch(`/get-sites-from-org/${organizationId}${queryString ? `?${queryString}` : ""}`);
     },
     staleTime: 60000, // 1 minute
     enabled: !!organizationId,
