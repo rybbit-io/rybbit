@@ -10,6 +10,11 @@ type TotalPayload = TotalTrackingPayload & {
   sessionId: string;
 };
 
+const parsePositiveNumber = (value: string | undefined, fallback: number) => {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+};
+
 const getParsedProperties = (properties: string | undefined) => {
   try {
     return properties ? JSON.parse(properties) : undefined;
@@ -24,6 +29,7 @@ class PageviewQueue {
   private interval = 10000;
   private processing = false;
   private logger = createServiceLogger("pageview-queue");
+  private maxRetries = parsePositiveNumber(process.env.PAGEVIEW_QUEUE_MAX_RETRIES, 3);
 
   constructor() {
     // Start processing interval
@@ -116,7 +122,16 @@ class PageviewQueue {
     });
 
     this.logger.info({ count: processedPageviews.length }, "Bulk insert to ClickHouse");
-    // Bulk insert into database
+    try {
+      await this.insertBatchWithRetry(processedPageviews);
+    } catch (error) {
+      this.logger.error(error, `Error processing pageview queue after ${this.maxRetries + 1} attempts, dropping ${batch.length} items`);
+    } finally {
+      this.processing = false;
+    }
+  }
+
+  private async insertBatchWithRetry(processedPageviews: Record<string, unknown>[], retryCount = 0): Promise<void> {
     try {
       await clickhouse.insert({
         table: "events",
@@ -124,11 +139,15 @@ class PageviewQueue {
         format: "JSONEachRow",
       });
     } catch (error) {
-      this.logger.error(error, `Error processing pageview queue, re-adding ${batch.length} items to the start of the queue`);
-      // Re-queue the failed batch so it can be retried on the next interval
-      this.queue.unshift(...batch);
-    } finally {
-      this.processing = false;
+      if (retryCount >= this.maxRetries) {
+        throw error;
+      }
+
+      const retryAttempt = retryCount + 1;
+      const delay = this.interval * Math.pow(2, retryCount);
+      this.logger.warn({ retryAttempt, delay }, "Bulk insert to ClickHouse failed, retrying");
+      await new Promise(resolve => setTimeout(resolve, delay));
+      await this.insertBatchWithRetry(processedPageviews, retryCount + 1);
     }
   }
 }

@@ -86,4 +86,7 @@ IMAGE_TAG=latest
 # Port mapping (only needed for custom ports or --no-webserver)
 HOST_BACKEND_PORT="3001:3001"
 HOST_CLIENT_PORT="3002:3002"
+
+# ClickHouse insert retries for pageview queue (default: 3 retries after the initial attempt)
+PAGEVIEW_QUEUE_MAX_RETRIES=3
 ```
