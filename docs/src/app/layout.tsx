@@ -1,4 +1,5 @@
 import "@/app/global.css";
+import { NewsletterPopup } from "@/components/NewsletterPopup";
 import { RootProvider } from "fumadocs-ui/provider/next";
 import { Inter } from "next/font/google";
 import Script from "next/script";
@@ -113,6 +114,7 @@ export default function Layout({ children }: { children: ReactNode }) {
             enableSystem: true,
           }}
         >
+          <NewsletterPopup />
           {children}
         </RootProvider>
       </body>

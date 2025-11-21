@@ -1,0 +1,59 @@
+---
+title: "v2.0.0"
+description: "Major update with Map/Globe rework, Journeys page redesign, and server-side script configs"
+date: "2025-10-24"
+---
+
+# v2.0.0
+
+We haven't had a release for 2 months, but this is a big one! It's the biggest update in the short history of Rybbit, and includes a minor breaking change (you just need to toggle some switches in the UI if affected) so I've decided to mark it as 2.0.
+
+## Map/Globe Rework
+
+The Map and Realtime pages have been replaced with the Globe page. There isn't a straight up 1-to-1 replacement of the Realtime page yet, but I might add it in a future release.
+
+Leaflet has been replaced with Openlayers. I added a 3D mode using Mapbox, but I have left this feature out of the open source release because Mapbox requires a credit card to obtain an API key (even if you stay within the free tier). To be clear, the 2D map is in the self-hosted release.
+
+### New Globe Features
+
+- **Timeline view** where you can see and replay visits over time
+- **Coordinates view** where you can see the approximate location of sessions
+- Country and subdivision layers are largely the same
+
+## Journeys Page Rework
+
+- General UI redesign
+- Added step path filter
+- Hover interactions on nodes and connections now make more sense
+
+## Goal and Funnel Improvements
+
+- Added ability to clone goals and funnels
+- Added search filter to goals and funnels
+
+## User Identification Improvements
+
+- Changed user avatar
+- Now displays a random name for each user instead of the raw ID (ID is still available)
+
+## Script Configs are now Server-side
+
+**This is technically the breaking change of this 2.x release**
+
+I didn't like how some of the configs were living on the tracking script and some were in the site settings UI, so I moved almost all of them to site settings. You no longer have to redeploy your script every time you want to update the tracking config.
+
+For anyone currently setting fields on the tracking script, just head over to your site settings and toggle stuff on.
+
+## Filter Improvements
+
+- Fixed the "Event Name" filter. This was always broken in the past
+- In the main tab you can now filter by events by clicking on them
+- Added more filters to more pages, most notably the Hostname filter
+
+## Optional IP Address Collection
+
+You can now toggle visitor IP addresses. IP address collection is off by default because it is very privacy unfriendly, but it can be useful for debugging or blocking bots/spammers.
+
+## Channel Information
+
+Added channel information to the Sessions, Users, and Globe pages

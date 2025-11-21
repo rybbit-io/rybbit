@@ -1,0 +1,46 @@
+---
+title: "v1.6.0"
+description: "Added tracking outbound links, IP exclusion, custom error tracking, and UI improvements"
+date: "2025-09-01"
+---
+
+# v1.6.0
+
+## Key Features
+
+- Add tracking outbound links
+- Removed header and moved everything into the sidebar
+- Add IP exclusion
+- Add ability to track custom errors
+- Moved Clickhouse configs inside docker-compose file
+- A bunch of bug fixes
+
+## Commit Log
+
+- Use the total event count to calculate the percentage of each event type by [@rockinrimmer](https://github.com/rockinrimmer) in [#490](https://github.com/rybbit-io/rybbit/pull/490)
+- Signup refactor by [@goldflag](https://github.com/goldflag) in [#491](https://github.com/rybbit-io/rybbit/pull/491)
+- Update AdminPage and Organizations components for improved tab manage… by [@goldflag](https://github.com/goldflag) in [#486](https://github.com/rybbit-io/rybbit/pull/486)
+- Handle errors in the session timeline. These were previously treated … by [@rockinrimmer](https://github.com/rockinrimmer) in [#505](https://github.com/rybbit-io/rybbit/pull/505)
+- Uptime by [@goldflag](https://github.com/goldflag) in [#496](https://github.com/rybbit-io/rybbit/pull/496)
+- Add a "Source Information" section to the "Session Info" tab when vie… by [@rockinrimmer](https://github.com/rockinrimmer) in [#504](https://github.com/rybbit-io/rybbit/pull/504)
+- Custom Event Fixes & Tweaks by [@rockinrimmer](https://github.com/rockinrimmer) in [#501](https://github.com/rybbit-io/rybbit/pull/501)
+- Allow subdomains on origin validation by [@stijnie2210](https://github.com/stijnie2210) in [#493](https://github.com/rybbit-io/rybbit/pull/493)
+- improve logging by [@goldflag](https://github.com/goldflag) in [#525](https://github.com/rybbit-io/rybbit/pull/525)
+- Add Axiom logging support and update environment configuration by [@goldflag](https://github.com/goldflag) in [#526](https://github.com/rybbit-io/rybbit/pull/526)
+- Exclude ips by [@goldflag](https://github.com/goldflag) in [#527](https://github.com/rybbit-io/rybbit/pull/527)
+- Add ability to track custom errors by [@SmartArray](https://github.com/SmartArray) in [#529](https://github.com/rybbit-io/rybbit/pull/529)
+- Track outbound events by [@stijnie2210](https://github.com/stijnie2210) in [#536](https://github.com/rybbit-io/rybbit/pull/536)
+- update outbound link ui by [@goldflag](https://github.com/goldflag) in [#542](https://github.com/rybbit-io/rybbit/pull/542)
+- Refactor ClickHouse configuration in Docker Compose files by [@goldflag](https://github.com/goldflag) in [#543](https://github.com/rybbit-io/rybbit/pull/543)
+- Fuma by [@goldflag](https://github.com/goldflag) in [#532](https://github.com/rybbit-io/rybbit/pull/532)
+- Fix zstd by [@goldflag](https://github.com/goldflag) in [#547](https://github.com/rybbit-io/rybbit/pull/547)
+- Try to fix integrations by [@goldflag](https://github.com/goldflag) in [#556](https://github.com/rybbit-io/rybbit/pull/556)
+- bump version by [@goldflag](https://github.com/goldflag) in [#557](https://github.com/rybbit-io/rybbit/pull/557)
+
+## New Contributors
+
+- [@rockinrimmer](https://github.com/rockinrimmer) made their first contribution in [#490](https://github.com/rybbit-io/rybbit/pull/490)
+- [@stijnie2210](https://github.com/stijnie2210) made their first contribution in [#493](https://github.com/rybbit-io/rybbit/pull/493)
+- [@SmartArray](https://github.com/SmartArray) made their first contribution in [#529](https://github.com/rybbit-io/rybbit/pull/529)
+
+**Full Changelog**: [v1.5.1...v1.6.0](https://github.com/rybbit-io/rybbit/compare/v1.5.1...v1.6.0)

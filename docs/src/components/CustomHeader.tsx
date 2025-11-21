@@ -49,6 +49,12 @@ export function CustomHeader() {
               Docs
             </Link>
             <Link
+              href="/updates"
+              className="text-sm font-base text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white transition-colors"
+            >
+              Updates
+            </Link>
+            <Link
               href="/blog"
               className="text-sm font-base text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white transition-colors"
             >
@@ -130,6 +136,13 @@ export function CustomHeader() {
               onClick={() => setMobileMenuOpen(false)}
             >
               Docs
+            </Link>
+            <Link
+              href="/updates"
+              className="block rounded-md px-3 py-2 text-base font-medium text-neutral-600 dark:text-neutral-300 hover:bg-neutral-200 dark:hover:bg-neutral-800 hover:text-neutral-900 dark:hover:text-white"
+              onClick={() => setMobileMenuOpen(false)}
+            >
+              Updates
             </Link>
             <Link
               href="/blog"

@@ -1,0 +1,41 @@
+---
+title: "v1.0.0"
+description: "First major release with Browser/OS version filtering and breaking changes for reverse proxy configs"
+date: "2025-03-01"
+---
+
+# v1.0.0
+
+## Migration
+
+There are breaking changes if you used a custom reverse proxy to host Rybbit - We have removed the `/api` rewrite and you will need to modify your reverse proxy config
+
+## Key Features
+
+### Browser Versions
+
+Filter analytics data by specific browser versions to understand user distribution across different browser releases.
+
+### Operation System Versions
+
+Filter analytics data by operating system versions to gain insights into your user's platform preferences.
+
+## What's Changed
+
+- Free by [@goldflag](https://github.com/goldflag) in [#313](https://github.com/rybbit-io/rybbit/pull/313)
+- fix og by [@goldflag](https://github.com/goldflag) in [#320](https://github.com/rybbit-io/rybbit/pull/320)
+- Update self-hosting-advanced.mdx by [@smileBeda](https://github.com/smileBeda) in [#323](https://github.com/rybbit-io/rybbit/pull/323)
+- fix: healthcheck log level silent by [@nktnet1](https://github.com/nktnet1) in [#317](https://github.com/rybbit-io/rybbit/pull/317)
+- feat(filters): add support for browser and OS version filters by [@goldflag](https://github.com/goldflag) in [#326](https://github.com/rybbit-io/rybbit/pull/326)
+- blog by [@goldflag](https://github.com/goldflag) in [#269](https://github.com/rybbit-io/rybbit/pull/269)
+- doc: add optional section on rewriting the tracking script. by [@rexwangcc](https://github.com/rexwangcc) in [#328](https://github.com/rybbit-io/rybbit/pull/328)
+- feat(api): implement organization-specific site retrieval and subscri… by [@goldflag](https://github.com/goldflag) in [#333](https://github.com/rybbit-io/rybbit/pull/333)
+- docs: add mention of cloudflare specific issues by [@mezotv](https://github.com/mezotv) in [#337](https://github.com/rybbit-io/rybbit/pull/337)
+- remove reverse proxy rewrite by [@goldflag](https://github.com/goldflag) in [#340](https://github.com/rybbit-io/rybbit/pull/340)
+
+## New Contributors
+
+- [@rexwangcc](https://github.com/rexwangcc) made their first contribution in [#328](https://github.com/rybbit-io/rybbit/pull/328)
+- [@mezotv](https://github.com/mezotv) made their first contribution in [#337](https://github.com/rybbit-io/rybbit/pull/337)
+
+**Full Changelog**: [v0.4.2...v1.0.0](https://github.com/rybbit-io/rybbit/compare/v0.4.2...v1.0.0)

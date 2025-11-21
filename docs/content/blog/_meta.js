@@ -5,4 +5,6 @@ export default {
    "Why did my website traffic drop?",
   "onyx-ai-knowledge-platform":
     "How We Use Onyx to Power Knowledge Management at Rybbit",
+    "bounce-rate": 
+    "Understanding Bounce Rate and How to Improve It",
 };

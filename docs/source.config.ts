@@ -28,4 +28,17 @@ export const blog = defineDocs({
   },
 });
 
+// Updates collection - separate from docs
+export const updates = defineDocs({
+  dir: 'content/updates',
+  docs: {
+    schema: frontmatterSchema.extend({
+      date: z.string().date().or(z.date()),
+      author: z.string().optional(),
+      image: z.string().optional(),
+      tags: z.array(z.string()).optional(),
+    }),
+  },
+});
+
 export default defineConfig();
