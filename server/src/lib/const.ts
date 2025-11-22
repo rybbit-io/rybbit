@@ -548,7 +548,13 @@ export const getOIDCProviders = () => {
     const clientId = process.env[`OIDC_${providerId}_CLIENT_ID`];
     const clientSecret = process.env[`OIDC_${providerId}_CLIENT_SECRET`];
     const discoveryUrl = process.env[`OIDC_${providerId}_DISCOVERY_URL`];
-    const name = process.env[`OIDC_${providerId}_NAME`] || 'OpenID Connect';
+    const name = process.env[`OIDC_${providerId}_NAME`] || `SSO (${providerId.toLowerCase()})`;
+
+    try {
+      new URL(discoveryUrl || "");
+    } catch {
+      continue; // Skip invalid URLs
+    }
 
     if (clientId && clientSecret && discoveryUrl) {
       providers.push({
