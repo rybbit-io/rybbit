@@ -230,8 +230,7 @@ export function Chart({
 
   seriesData.forEach(series => {
     const baseId = `${series.id}-base`;
-    const hasEnoughPoints = series.points.length >= 2;
-    const baseData = displayDashed && hasEnoughPoints ? series.points.slice(0, -1) : series.points;
+    const baseData = series.points;
 
     chartPropsData.push({
       id: baseId,
@@ -253,47 +252,51 @@ export function Chart({
         id: baseId,
       },
     });
-
-    if (displayDashed && hasEnoughPoints) {
-      const dashedId = `${series.id}-dashed`;
-      chartPropsData.push({
-        id: dashedId,
-        data: series.points.slice(-2),
-      });
-      colorMap[dashedId] = series.color;
-
-      chartPropsDefs.push({
-        id: `${dashedId}-gradient`,
-        type: "linearGradient",
-        colors: [
-          { offset: 0, color: series.color, opacity: 0.35 },
-          { offset: 100, color: series.color, opacity: 0 },
-        ],
-      });
-      chartPropsFill.push({
-        id: `${dashedId}-gradient`,
-        match: {
-          id: dashedId,
-        },
-      });
-    }
   });
 
-  const DashedLine: LineCustomSvgLayer<LineSeries> = ({
+  const StackedLines: LineCustomSvgLayer<LineSeries> = ({
     series,
     lineGenerator,
     xScale,
     yScale,
   }: LineCustomSvgLayerProps<LineSeries>) => {
-    return series.map(({ id, data, color }) => (
-      <path
-        key={id}
-        d={lineGenerator(data.map(d => ({ x: xScale(d.data.x), y: yScale(d.data.y) })))!}
-        fill="none"
-        stroke={color}
-        style={String(id).endsWith("-dashed") ? { strokeDasharray: "3, 6", strokeWidth: 3 } : { strokeWidth: 2 }}
-      />
-    ));
+    return series.map(({ id, data, color }) => {
+      const usableData = displayDashed && data.length >= 2 ? data.slice(0, -1) : data;
+      const coords = usableData.map(d => {
+        const stackedY = (d.data as any).yStacked ?? d.data.y;
+        return { x: xScale(d.data.x), y: yScale(stackedY) };
+      });
+      const path = lineGenerator(coords);
+      if (!path) return null;
+      return <path key={`${id}-solid`} d={path} fill="none" stroke={color} style={{ strokeWidth: 2 }} />;
+    });
+  };
+
+  const DashedOverlay: LineCustomSvgLayer<LineSeries> = ({
+    series,
+    lineGenerator,
+    xScale,
+    yScale,
+  }: LineCustomSvgLayerProps<LineSeries>) => {
+    return series.map(({ id, data, color }) => {
+      if (!displayDashed || data.length < 2) return null;
+      const lastTwo = data.slice(-2);
+      const coords = lastTwo.map(d => {
+        const stackedY = (d.data as any).yStacked ?? d.data.y;
+        return { x: xScale(d.data.x), y: yScale(stackedY) };
+      });
+      const path = lineGenerator(coords);
+      if (!path) return null;
+      return (
+        <path
+          key={`${id}-dashed`}
+          d={path}
+          fill="none"
+          stroke={color}
+          style={{ strokeDasharray: "3, 6", strokeWidth: 3 }}
+        />
+      );
+    });
   };
 
   return (
@@ -355,11 +358,11 @@ export function Chart({
         tickValues: Y_TICK_VALUES,
         format: formatter,
       }}
-      enableTouchCrosshair={true}
-      enablePoints={false}
-      useMesh={true}
-      animate={false}
-      enableSlices={"x"}
+        enableTouchCrosshair={true}
+        enablePoints={false}
+        useMesh={true}
+        animate={false}
+        enableSlices={"x"}
       colors={({ id }) => colorMap[id as string] ?? "hsl(var(--dataviz))"}
       enableArea={true}
       areaBaselineValue={0}
@@ -563,8 +566,8 @@ export function Chart({
         "axes",
         "areas",
         "crosshair",
-        displayDashed ? DashedLine : "lines",
-        // "lines",
+        StackedLines,
+        displayDashed ? DashedOverlay : null,
         "slices",
         "points",
         "mesh",
