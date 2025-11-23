@@ -358,11 +358,11 @@ export function Chart({
         tickValues: Y_TICK_VALUES,
         format: formatter,
       }}
-        enableTouchCrosshair={true}
-        enablePoints={false}
-        useMesh={true}
-        animate={false}
-        enableSlices={"x"}
+      enableTouchCrosshair={true}
+      enablePoints={false}
+      useMesh={true}
+      animate={false}
+      enableSlices={"x"}
       colors={({ id }) => colorMap[id as string] ?? "hsl(var(--dataviz))"}
       enableArea={true}
       areaBaselineValue={0}
@@ -379,7 +379,7 @@ export function Chart({
 
         if (!normalizedPoints.length) return null;
 
-        // Single-series tooltip (unchanged)
+        // Single-series tooltip
         if (!showUserBreakdown) {
           const currentTime = normalizedPoints[0].data.currentTime as DateTime;
           const previousTime = normalizedPoints[0].data.previousTime as DateTime;
@@ -431,7 +431,7 @@ export function Chart({
 
         const previousColorFor = (seriesId: string) => {
           if (seriesId === "new_users") {
-            return resolvedTheme === "dark" ? "hsl(var(--dataviz) / 0.28)" : "hsl(var(--dataviz) / 0.28)";
+            return "hsl(var(--dataviz) / 0.28)";
           }
           if (seriesId === "returning_users") {
             return resolvedTheme === "dark" ? "hsl(var(--accent-800) / 0.35)" : "hsl(var(--accent-200) / 0.38)";
@@ -468,54 +468,6 @@ export function Chart({
             };
           })
           .filter(Boolean);
-
-        if (!rows.length) {
-          // Fallback: show first available point to avoid empty tooltip
-          const p = normalizedPoints[0];
-          const currentY = Number(p.data.yFormatted ?? p.data.y ?? 0);
-          const previousY = Number(p.data.previousY ?? 0);
-          const diff = currentY - previousY;
-          const diffPercentage = previousY ? (diff / previousY) * 100 : null;
-          const color = colorMap[String(p.serieId)] ?? "hsl(var(--dataviz))";
-          const currentTime = p.data.currentTime as DateTime | undefined;
-          const previousTime = p.data.previousTime as DateTime | undefined;
-
-          return (
-            <ChartTooltip>
-              <div className="px-2 pt-1 text-xs font-semibold text-muted-foreground">Users</div>
-              {diffPercentage !== null && (
-                <div
-                  className="text-base font-medium px-2 pt-1.5 pb-1"
-                  style={{
-                    color: diffPercentage > 0 ? "hsl(var(--green-400))" : "hsl(var(--red-400))",
-                  }}
-                >
-                  {diffPercentage > 0 ? "+" : ""}
-                  {diffPercentage.toFixed(2)}%
-                </div>
-              )}
-              <div className="w-full h-[1px] bg-neutral-100 dark:bg-neutral-750"></div>
-              <div className="m-2">
-                <div className="flex justify-between text-sm w-48">
-                  <div className="flex items-center gap-2">
-                    <div className="w-1 h-3 rounded-[3px]" style={{ backgroundColor: color }} />
-                    {currentTime ? formatChartDateTime(currentTime, bucket) : ""}
-                  </div>
-                  <div>{formatTooltipValue(currentY, selectedStat)}</div>
-                </div>
-                {previousTime && (
-                  <div className="flex justify-between text-sm text-muted-foreground">
-                    <div className="flex items-center gap-2">
-                      <div className="w-1 h-3 rounded-[3px] bg-neutral-200 dark:bg-neutral-750" />
-                      {formatChartDateTime(previousTime, bucket)}
-                    </div>
-                    <div>{formatTooltipValue(previousY, selectedStat)}</div>
-                  </div>
-                )}
-              </div>
-            </ChartTooltip>
-          );
-        }
 
         return (
           <ChartTooltip>
