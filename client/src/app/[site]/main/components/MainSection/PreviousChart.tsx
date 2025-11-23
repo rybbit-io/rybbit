@@ -50,8 +50,8 @@ export function PreviousChart({
   const showUserBreakdown = selectedStat === "users" && showUsersSplit;
   const previousColors = showUserBreakdown
     ? resolvedTheme === "dark"
-      ? ["hsl(var(--dataviz) / 0.32)", "hsl(var(--pink-800) / 0.35)"]
-      : ["hsl(var(--dataviz) / 0.32)", "hsl(var(--pink-200) / 0.38)"]
+      ? ["hsl(var(--dataviz) / 0.32)", "hsl(var(--accent-800) / 0.35)"]
+      : ["hsl(var(--dataviz) / 0.32)", "hsl(var(--accent-200) / 0.38)"]
     : resolvedTheme === "dark"
       ? ["hsl(var(--neutral-700))", "hsl(var(--neutral-500))"]
       : ["hsl(var(--neutral-100))", "hsl(var(--neutral-300))"];

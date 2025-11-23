@@ -116,7 +116,7 @@ export function MainSection() {
                 <span>New users</span>
               </div>
               <div className="flex items-center gap-2">
-                <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: "hsl(var(--pink-400))" }} />
+                <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: "hsl(var(--accent-200))" }} />
                 <span>Returning users</span>
               </div>
             </div>

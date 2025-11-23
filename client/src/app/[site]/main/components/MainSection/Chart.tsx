@@ -165,7 +165,7 @@ export function Chart({
           id: "returning_users",
           dataKey: "returning_users",
           label: SERIES_LABELS["returning_users"],
-          color: "hsl(var(--pink-400))",
+          color: "hsl(var(--accent-200))",
         },
       ]
     : [
@@ -434,7 +434,7 @@ export function Chart({
             return resolvedTheme === "dark" ? "hsl(var(--dataviz) / 0.28)" : "hsl(var(--dataviz) / 0.28)";
           }
           if (seriesId === "returning_users") {
-            return resolvedTheme === "dark" ? "hsl(var(--pink-800) / 0.35)" : "hsl(var(--pink-200) / 0.38)";
+            return resolvedTheme === "dark" ? "hsl(var(--accent-800) / 0.35)" : "hsl(var(--accent-200) / 0.38)";
           }
           return resolvedTheme === "dark" ? "hsl(var(--neutral-700))" : "hsl(var(--neutral-200))";
         };
