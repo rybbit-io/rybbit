@@ -42,7 +42,7 @@ function getLocalizedWeekdayNames(locale: string, format: "narrow" | "short" | "
     date.setDate(today.getDate() + ((day - today.getDay() + 7) % 7));
 
     const parts = formatter.formatToParts(date);
-    const weekday = parts.find((part) => part.type === "weekday");
+    const weekday = parts.find(part => part.type === "weekday");
 
     return weekday?.value ?? fallback[format][i];
   });
@@ -168,7 +168,7 @@ export const formatChartDateTime = (dt: DateTime, bucket: TimeBucket) => {
   if (bucket === "day") {
     options.minute = undefined;
     options.hour = undefined;
-    options.month = "long";
+    options.weekday = "short";
   }
   if (bucket === "fifteen_minutes" || bucket === "ten_minutes" || bucket === "five_minutes" || bucket === "minute") {
     options.minute = "numeric";

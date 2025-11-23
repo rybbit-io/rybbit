@@ -2,53 +2,30 @@ import { FilterParams } from "@rybbit/shared";
 import { FastifyReply, FastifyRequest } from "fastify";
 import SqlString from "sqlstring";
 import { clickhouse } from "../../db/clickhouse/clickhouse.js";
-import { getUserHasAccessToSitePublic } from "../../lib/auth-utils.js";
 import { validateTimeStatementFillParams } from "./query-validation.js";
-import {
-  getFilterStatement,
-  getTimeStatement,
-  TimeBucketToFn,
-  bucketIntervalMap,
-  processResults,
-} from "./utils.js";
+import { getFilterStatement, getTimeStatement, TimeBucketToFn, bucketIntervalMap, processResults } from "./utils.js";
 import { TimeBucket } from "./types.js";
 
 function getTimeStatementFill(params: FilterParams, bucket: TimeBucket) {
-  const { params: validatedParams, bucket: validatedBucket } =
-    validateTimeStatementFillParams(params, bucket);
+  const { params: validatedParams, bucket: validatedBucket } = validateTimeStatementFillParams(params, bucket);
 
-  if (
-    validatedParams.startDate &&
-    validatedParams.endDate &&
-    validatedParams.timeZone
-  ) {
-    const { startDate, endDate, timeZone } = validatedParams;
+  if (validatedParams.start_date && validatedParams.end_date && validatedParams.time_zone) {
+    const { start_date, end_date, time_zone } = validatedParams;
     return `WITH FILL FROM ${
-        TimeBucketToFn[validatedBucket]
-      }(toDateTime(${SqlString.escape(startDate)}, ${SqlString.escape(
-        timeZone
-      )}))
+      TimeBucketToFn[validatedBucket]
+    }(toDateTime(${SqlString.escape(start_date)}, ${SqlString.escape(time_zone)}))
       TO if(
-        toDate(${SqlString.escape(endDate)}) = toDate(now(), ${SqlString.escape(
-          timeZone
-        )}),
-        ${TimeBucketToFn[validatedBucket]}(toTimeZone(now(), ${SqlString.escape(
-          timeZone
-        )})),
-        ${
-          TimeBucketToFn[validatedBucket]
-        }(toDateTime(${SqlString.escape(endDate)}, ${SqlString.escape(
-          timeZone
+        toDate(${SqlString.escape(end_date)}) = toDate(now(), ${SqlString.escape(time_zone)}),
+        ${TimeBucketToFn[validatedBucket]}(toTimeZone(now(), ${SqlString.escape(time_zone)})),
+        ${TimeBucketToFn[validatedBucket]}(toDateTime(${SqlString.escape(end_date)}, ${SqlString.escape(
+          time_zone
         )})) + INTERVAL 1 DAY
       ) STEP INTERVAL ${bucketIntervalMap[validatedBucket]}`;
   }
   // For specific past minutes range - convert to exact timestamps for better performance
-  if (
-    validatedParams.pastMinutesStart !== undefined &&
-    validatedParams.pastMinutesEnd !== undefined
-  ) {
-    return `WITH FILL FROM now() - INTERVAL ${validatedParams.pastMinutesStart} MINUTE
-      TO now() - INTERVAL ${validatedParams.pastMinutesEnd} MINUTE
+  if (validatedParams.past_minutes_start !== undefined && validatedParams.past_minutes_end !== undefined) {
+    return `WITH FILL FROM now() - INTERVAL ${validatedParams.past_minutes_start} MINUTE
+      TO now() - INTERVAL ${validatedParams.past_minutes_end} MINUTE
       STEP INTERVAL ${bucketIntervalMap[validatedBucket]}`;
   }
 
@@ -70,28 +47,17 @@ export type GetErrorBucketedResponse = {
   error_count: number;
 }[];
 
-export async function getErrorBucketed(
-  req: FastifyRequest<GetErrorBucketedRequest>,
-  res: FastifyReply
-) {
+export async function getErrorBucketed(req: FastifyRequest<GetErrorBucketedRequest>, res: FastifyReply) {
   const site = req.params.site;
   const { bucket, errorMessage } = req.query;
 
   if (!errorMessage) {
-    return res
-      .status(400)
-      .send({ error: "errorMessage parameter is required" });
+    return res.status(400).send({ error: "errorMessage parameter is required" });
   }
 
   const numericSiteId = Number(site);
-  const hasAccess = await getUserHasAccessToSitePublic(req, numericSiteId);
-
-  if (!hasAccess) {
-    return res.status(403).send({ error: "Access denied" });
-  }
-
-  const filterStatement = getFilterStatement(req.query.filters);
   const timeStatement = getTimeStatement(req.query);
+  const filterStatement = getFilterStatement(req.query.filters, numericSiteId, timeStatement);
   const timeStatementFill = getTimeStatementFill(req.query, bucket);
 
   try {
@@ -117,7 +83,7 @@ export async function getErrorBucketed(
       query_params: {
         siteId: numericSiteId,
         errorMessage: errorMessage,
-        timeZone: req.query.timeZone || 'UTC',
+        timeZone: req.query.time_zone || "UTC",
       },
     });
 

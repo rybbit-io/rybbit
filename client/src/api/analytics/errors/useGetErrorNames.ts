@@ -32,9 +32,7 @@ export function useGetErrorNamesPaginated({
   limit = 10,
   page = 1,
   useFilters = true,
-}: UseGetErrorNamesOptions): UseQueryResult<
-  APIResponse<ErrorNamesPaginatedResponse>
-> {
+}: UseGetErrorNamesOptions): UseQueryResult<APIResponse<ErrorNamesPaginatedResponse>> {
   const { time, site, filters } = useStore();
 
   const queryParams = {
@@ -47,10 +45,7 @@ export function useGetErrorNamesPaginated({
   return useQuery({
     queryKey: ["error-names", time, site, filters, limit, page],
     queryFn: () => {
-      return authedFetch<APIResponse<ErrorNamesPaginatedResponse>>(
-        `/error-names/${site}`,
-        queryParams
-      );
+      return authedFetch<APIResponse<ErrorNamesPaginatedResponse>>(`/error-names/${site}`, queryParams);
     },
     staleTime: Infinity,
   });
@@ -60,9 +55,7 @@ export function useGetErrorNamesPaginated({
 export function useGetErrorNames({
   limit = 10,
   useFilters = true,
-}: Omit<UseGetErrorNamesOptions, "page">): UseQueryResult<
-  APIResponse<ErrorNamesStandardResponse>
-> {
+}: Omit<UseGetErrorNamesOptions, "page">): UseQueryResult<APIResponse<ErrorNamesStandardResponse>> {
   const { time, site, filters } = useStore();
 
   const queryParams = {
@@ -74,10 +67,7 @@ export function useGetErrorNames({
   return useQuery({
     queryKey: ["error-names", time, site, filters, limit],
     queryFn: () => {
-      return authedFetch<APIResponse<ErrorNamesStandardResponse>>(
-        `/error-names/${site}`,
-        queryParams
-      );
+      return authedFetch<APIResponse<ErrorNamesStandardResponse>>(`/error-names/${site}`, queryParams);
     },
     staleTime: Infinity,
   });

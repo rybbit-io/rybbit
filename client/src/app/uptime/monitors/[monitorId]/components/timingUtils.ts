@@ -7,11 +7,11 @@ export interface TimingSegment {
 }
 
 export const TIMING_COLORS = {
-  dns: "bg-emerald-500",     // Green - similar to hsl(160, 70%, 50%)
-  tcp: "bg-teal-500",         // Turquoise - similar to hsl(180, 70%, 45%)
-  tls: "bg-sky-500",          // Light Blue - similar to hsl(200, 70%, 45%)
-  ttfb: "bg-blue-500",        // Blue - for TTFB (not in chart but fits the gradient)
-  transfer: "bg-indigo-500",  // Deeper Blue - similar to hsl(220, 70%, 50%)
+  dns: "bg-emerald-500", // Green - similar to hsl(160, 70%, 50%)
+  tcp: "bg-teal-500", // Turquoise - similar to hsl(180, 70%, 45%)
+  tls: "bg-sky-500", // Light Blue - similar to hsl(200, 70%, 45%)
+  ttfb: "bg-blue-500", // Blue - for TTFB (not in chart but fits the gradient)
+  transfer: "bg-indigo-500", // Deeper Blue - similar to hsl(220, 70%, 50%)
 } as const;
 
 export function getTimingSegments(event: MonitorEvent): TimingSegment[] {
@@ -21,7 +21,7 @@ export function getTimingSegments(event: MonitorEvent): TimingSegment[] {
     { label: "TLS", time: event.tls_time_ms, color: TIMING_COLORS.tls },
     { label: "TTFB", time: event.ttfb_ms, color: TIMING_COLORS.ttfb },
     { label: "Transfer", time: event.transfer_time_ms, color: TIMING_COLORS.transfer },
-  ].filter((t) => t.time && t.time > 0);
+  ].filter(t => t.time && t.time > 0);
 }
 
 export function calculateTimingMetrics(timings: TimingSegment[], totalTime: number) {

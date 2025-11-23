@@ -8,9 +8,6 @@ export default function StripeSuccessPage() {
   const router = useRouter();
 
   useEffect(() => {
-    // Log the redirect for debugging purposes
-    console.log("Redirecting from Stripe success page");
-
     // Add a small delay to ensure the page has fully loaded before redirecting
     const redirectTimer = setTimeout(() => {
       // Redirect to the subscription settings page

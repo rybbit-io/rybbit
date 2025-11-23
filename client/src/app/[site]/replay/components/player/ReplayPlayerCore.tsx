@@ -9,29 +9,20 @@ interface ReplayPlayerCoreProps {
   isPlaying: boolean;
 }
 
-export function ReplayPlayerCore({
-  data,
-  width,
-  height,
-  onPlayPause,
-  isPlaying,
-}: ReplayPlayerCoreProps) {
+export function ReplayPlayerCore({ data, width, height, onPlayPause, isPlaying }: ReplayPlayerCoreProps) {
   const { playerContainerRef } = useReplayPlayer({ data, width, height });
 
   return (
     <div className="flex-1 flex items-center justify-center overflow-hidden relative">
       <div
         ref={playerContainerRef}
-        className="w-full bg-black rounded-lg shadow-2xl [&_.rr-player]:!bg-black"
+        className="w-full bg-black shadow-2xl [&_.rr-player]:!bg-black"
         style={{
           position: "relative",
         }}
       />
-      
-      <ReplayPlayerOverlay 
-        onPlayPause={onPlayPause}
-        isPlaying={isPlaying}
-      />
+
+      <ReplayPlayerOverlay onPlayPause={onPlayPause} isPlaying={isPlaying} />
     </div>
   );
 }

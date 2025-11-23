@@ -1,6 +1,7 @@
 "use client";
-import { nivoTheme } from "@/lib/nivo";
+import { useNivoTheme } from "@/lib/nivo";
 import { useStore } from "@/lib/store";
+import { useTheme } from "next-themes";
 import { ResponsiveLine } from "@nivo/line";
 import { DateTime } from "luxon";
 import { GetOverviewBucketedResponse } from "../../../../../api/analytics/useGetOverviewBucketed";
@@ -26,7 +27,7 @@ const getMin = (time: Time, bucket: TimeBucket) => {
   //   if (bucket === "hour") {
   //     return DateTime.now()
   //       .setZone("UTC")
-  //       .minus({ minutes: time.pastMinutesStart * 2 })
+  //       .minus({ minutes: time.past_minutes_start * 2 })
   //       .startOf("hour")
   //       .toJSDate();
   //   }
@@ -43,10 +44,12 @@ export function PreviousChart({
   max: number;
 }) {
   const { previousTime: time, selectedStat, bucket } = useStore();
+  const { resolvedTheme } = useTheme();
+  const nivoTheme = useNivoTheme();
 
   const size = (data?.data.length ?? 0 / 2) + 1;
   const formattedData = data?.data
-    ?.map((e) => {
+    ?.map(e => {
       const timestamp = DateTime.fromSQL(e.time).toUTC();
       return {
         x: timestamp.toFormat("yyyy-MM-dd HH:mm:ss"),
@@ -97,7 +100,7 @@ export function PreviousChart({
         tickRotation: 0,
         truncateTickAt: 0,
         tickValues: 0,
-        format: (value) => {
+        format: value => {
           const localTime = DateTime.fromJSDate(value).toLocal();
 
           if ((time.mode === "past-minutes" && time.pastMinutesStart >= 1440) || time.mode === "day") {
@@ -125,7 +128,7 @@ export function PreviousChart({
       animate={false}
       // motionConfig="stiff"
       enableSlices={"x"}
-      colors={["hsl(var(--neutral-700))"]}
+      colors={[resolvedTheme === "dark" ? "hsl(var(--neutral-700))" : "hsl(var(--neutral-100))"]}
     />
   );
 }

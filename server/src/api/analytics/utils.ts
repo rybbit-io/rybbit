@@ -1,32 +1,21 @@
 import { ResultSet } from "@clickhouse/client";
 import { FilterParams } from "@rybbit/shared";
 import SqlString from "sqlstring";
-import {
-  filterParamSchema,
-  validateFilters,
-  validateTimeStatementParams,
-} from "./query-validation.js";
+import { filterParamSchema, validateFilters, validateTimeStatementParams } from "./query-validation.js";
 import { FilterParameter, FilterType } from "./types.js";
 
 export function getTimeStatement(
-  params: Pick<
-    FilterParams,
-    "startDate" | "endDate" | "timeZone" | "pastMinutesStart" | "pastMinutesEnd"
-  >
+  params: Pick<FilterParams, "start_date" | "end_date" | "time_zone" | "past_minutes_start" | "past_minutes_end">
 ) {
-  const { startDate, endDate, timeZone, pastMinutesStart, pastMinutesEnd } =
-    params;
+  const { start_date, end_date, time_zone, past_minutes_start, past_minutes_end } = params;
 
   // Construct the legacy format for validation
   const pastMinutesRange =
-    pastMinutesStart !== undefined && pastMinutesEnd !== undefined
-      ? { start: Number(pastMinutesStart), end: Number(pastMinutesEnd) }
+    past_minutes_start !== undefined && past_minutes_end !== undefined
+      ? { start: Number(past_minutes_start), end: Number(past_minutes_end) }
       : undefined;
 
-  const date =
-    startDate && endDate && timeZone
-      ? { startDate, endDate, timeZone }
-      : undefined;
+  const date = start_date && end_date && time_zone ? { start_date, end_date, time_zone } : undefined;
 
   // Sanitize inputs with Zod
   const sanitized = validateTimeStatementParams({
@@ -35,27 +24,21 @@ export function getTimeStatement(
   });
 
   if (sanitized.date) {
-    const { startDate, endDate, timeZone } = sanitized.date;
-    if (!startDate && !endDate) {
+    const { start_date, end_date, time_zone } = sanitized.date;
+    if (!start_date && !end_date) {
       return "";
     }
 
     // Use SqlString.escape for date and timeZone values
     return `AND timestamp >= toTimeZone(
-      toStartOfDay(toDateTime(${SqlString.escape(
-        startDate
-      )}, ${SqlString.escape(timeZone)})),
+      toStartOfDay(toDateTime(${SqlString.escape(start_date)}, ${SqlString.escape(time_zone)})),
       'UTC'
       )
       AND timestamp < if(
-        toDate(${SqlString.escape(endDate)}) = toDate(now(), ${SqlString.escape(
-          timeZone
-        )}),
+        toDate(${SqlString.escape(end_date)}) = toDate(now(), ${SqlString.escape(time_zone)}),
         now(),
         toTimeZone(
-          toStartOfDay(toDateTime(${SqlString.escape(
-            endDate
-          )}, ${SqlString.escape(timeZone)})) + INTERVAL 1 DAY,
+          toStartOfDay(toDateTime(${SqlString.escape(end_date)}, ${SqlString.escape(time_zone)})) + INTERVAL 1 DAY,
           'UTC'
         )
       )`;
@@ -71,10 +54,7 @@ export function getTimeStatement(
     const endTimestamp = new Date(now.getTime() - end * 60 * 1000);
 
     // Format as YYYY-MM-DD HH:MM:SS without milliseconds for ClickHouse
-    const startIso = startTimestamp
-      .toISOString()
-      .slice(0, 19)
-      .replace("T", " ");
+    const startIso = startTimestamp.toISOString().slice(0, 19).replace("T", " ");
     const endIso = endTimestamp.toISOString().slice(0, 19).replace("T", " ");
 
     return `AND timestamp > toDateTime(${SqlString.escape(startIso)}) AND timestamp <= toDateTime(${SqlString.escape(endIso)})`;
@@ -84,9 +64,7 @@ export function getTimeStatement(
   return "";
 }
 
-export async function processResults<T>(
-  results: ResultSet<"JSONEachRow">
-): Promise<T[]> {
+export async function processResults<T>(results: ResultSet<"JSONEachRow">): Promise<T[]> {
   const data: T[] = await results.json();
   for (const row of data) {
     for (const key in row) {
@@ -160,7 +138,7 @@ export const getSqlParam = (parameter: FilterParameter) => {
   return filterParamSchema.parse(parameter);
 };
 
-export function getFilterStatement(filters: string) {
+export function getFilterStatement(filters: string, siteId?: number, timeStatement?: string) {
   if (!filters) {
     return "";
   }
@@ -172,101 +150,136 @@ export function getFilterStatement(filters: string) {
     return "";
   }
 
+  const siteIdFilter = siteId ? `site_id = ${siteId}` : "";
+  // Strip leading "AND " from timeStatement since we'll be constructing WHERE clauses
+  const timeFilter = timeStatement ? timeStatement.replace(/^AND\s+/i, "").trim() : "";
+
   return (
     "AND " +
     filtersArray
-      .map((filter) => {
-        const x =
-          filter.type === "contains" || filter.type === "not_contains"
-            ? "%"
-            : "";
+      .map(filter => {
+        const x = filter.type === "contains" || filter.type === "not_contains" ? "%" : "";
+        const isNumericParam = filter.parameter === "lat" || filter.parameter === "lon";
+
+        // Handle event_name as a session-level filter
+        // This ensures we filter to sessions containing the event, but still count all pageviews in those sessions
+        if (filter.parameter === "event_name") {
+          const whereClause = [siteIdFilter, timeFilter].filter(Boolean).join(" AND ");
+          const eventNameCondition =
+            filter.value.length === 1
+              ? `event_name ${filterTypeToOperator(filter.type)} ${SqlString.escape(x + filter.value[0] + x)}`
+              : `(${filter.value.map(value => `event_name ${filterTypeToOperator(filter.type)} ${SqlString.escape(x + value + x)}`).join(" OR ")})`;
+
+          const finalWhere = whereClause
+            ? `WHERE ${whereClause} AND ${eventNameCondition}`
+            : `WHERE ${eventNameCondition}`;
+
+          return `session_id IN (
+            SELECT DISTINCT session_id
+            FROM events
+            ${finalWhere}
+          )`;
+        }
 
         if (filter.parameter === "entry_page") {
+          const whereClause = [siteIdFilter, timeFilter].filter(Boolean).join(" AND ");
+          const whereStatement = whereClause ? `WHERE ${whereClause}` : "";
+
           if (filter.value.length === 1) {
             return `session_id IN (
-              SELECT session_id 
+              SELECT session_id
               FROM (
-                SELECT 
-                  session_id, 
+                SELECT
+                  session_id,
                   argMin(pathname, timestamp) AS entry_pathname
-                FROM events 
+                FROM events
+                ${whereStatement}
                 GROUP BY session_id
-              ) 
-              WHERE entry_pathname ${filterTypeToOperator(
-                filter.type
-              )} ${SqlString.escape(x + filter.value[0] + x)}
+              )
+              WHERE entry_pathname ${filterTypeToOperator(filter.type)} ${SqlString.escape(x + filter.value[0] + x)}
             )`;
           }
 
           const valuesWithOperator = filter.value.map(
-            (value) =>
-              `entry_pathname ${filterTypeToOperator(
-                filter.type
-              )} ${SqlString.escape(x + value + x)}`
+            value => `entry_pathname ${filterTypeToOperator(filter.type)} ${SqlString.escape(x + value + x)}`
           );
 
           return `session_id IN (
-            SELECT session_id 
+            SELECT session_id
             FROM (
-              SELECT 
-                session_id, 
+              SELECT
+                session_id,
                 argMin(pathname, timestamp) AS entry_pathname
-              FROM events 
+              FROM events
+              ${whereStatement}
               GROUP BY session_id
-            ) 
+            )
             WHERE (${valuesWithOperator.join(" OR ")})
           )`;
         }
 
         if (filter.parameter === "exit_page") {
+          const whereClause = [siteIdFilter, timeFilter].filter(Boolean).join(" AND ");
+          const whereStatement = whereClause ? `WHERE ${whereClause}` : "";
+
           if (filter.value.length === 1) {
             return `session_id IN (
-              SELECT session_id 
+              SELECT session_id
               FROM (
-                SELECT 
-                  session_id, 
+                SELECT
+                  session_id,
                   argMax(pathname, timestamp) AS exit_pathname
-                FROM events 
+                FROM events
+                ${whereStatement}
                 GROUP BY session_id
-              ) 
-              WHERE exit_pathname ${filterTypeToOperator(
-                filter.type
-              )} ${SqlString.escape(x + filter.value[0] + x)}
+              )
+              WHERE exit_pathname ${filterTypeToOperator(filter.type)} ${SqlString.escape(x + filter.value[0] + x)}
             )`;
           }
 
           const valuesWithOperator = filter.value.map(
-            (value) =>
-              `exit_pathname ${filterTypeToOperator(
-                filter.type
-              )} ${SqlString.escape(x + value + x)}`
+            value => `exit_pathname ${filterTypeToOperator(filter.type)} ${SqlString.escape(x + value + x)}`
           );
 
           return `session_id IN (
-            SELECT session_id 
+            SELECT session_id
             FROM (
-              SELECT 
-                session_id, 
+              SELECT
+                session_id,
                 argMax(pathname, timestamp) AS exit_pathname
-              FROM events 
+              FROM events
+              ${whereStatement}
               GROUP BY session_id
-            ) 
+            )
             WHERE (${valuesWithOperator.join(" OR ")})
           )`;
         }
 
-        if (filter.value.length === 1) {
-          return `${getSqlParam(filter.parameter)} ${filterTypeToOperator(
-            filter.type
-          )} ${SqlString.escape(x + filter.value[0] + x)}`;
+        // Special handling for lat/lon with tolerance
+        if (filter.parameter === "lat" || filter.parameter === "lon") {
+          const tolerance = 0.001;
+          if (filter.value.length === 1) {
+            const targetValue = Number(filter.value[0]);
+            return `${filter.parameter} >= ${targetValue - tolerance} AND ${filter.parameter} <= ${targetValue + tolerance}`;
+          }
+
+          const rangeConditions = filter.value.map(value => {
+            const targetValue = Number(value);
+            return `(${filter.parameter} >= ${targetValue - tolerance} AND ${filter.parameter} <= ${targetValue + tolerance})`;
+          });
+
+          return `(${rangeConditions.join(" OR ")})`;
         }
 
-        const valuesWithOperator = filter.value.map(
-          (value) =>
-            `${getSqlParam(filter.parameter)} ${filterTypeToOperator(
-              filter.type
-            )} ${SqlString.escape(x + value + x)}`
-        );
+        if (filter.value.length === 1) {
+          const value = isNumericParam ? filter.value[0] : SqlString.escape(x + filter.value[0] + x);
+          return `${getSqlParam(filter.parameter)} ${filterTypeToOperator(filter.type)} ${value}`;
+        }
+
+        const valuesWithOperator = filter.value.map(value => {
+          const escapedValue = isNumericParam ? value : SqlString.escape(x + value + x);
+          return `${getSqlParam(filter.parameter)} ${filterTypeToOperator(filter.type)} ${escapedValue}`;
+        });
 
         return `(${valuesWithOperator.join(" OR ")})`;
       })
@@ -322,4 +335,3 @@ export const bucketIntervalMap = {
   month: "1 MONTH",
   year: "1 YEAR",
 } as const;
-

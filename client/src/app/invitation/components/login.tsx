@@ -58,7 +58,7 @@ export function Login({ inviterEmail, organization }: LoginProps) {
           placeholder="example@email.com"
           required
           value={email}
-          onChange={(e) => setEmail(e.target.value)}
+          onChange={e => setEmail(e.target.value)}
         />
 
         <AuthInput
@@ -68,7 +68,7 @@ export function Login({ inviterEmail, organization }: LoginProps) {
           placeholder="••••••••"
           required
           value={password}
-          onChange={(e) => setPassword(e.target.value)}
+          onChange={e => setPassword(e.target.value)}
         />
 
         <AuthButton isLoading={isLoading} loadingText="Logging in...">

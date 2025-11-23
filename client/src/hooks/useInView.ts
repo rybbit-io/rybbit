@@ -8,9 +8,7 @@ interface UseInViewOptions extends IntersectionObserverInit {
   persistVisibility?: boolean;
 }
 
-export function useInView<T extends HTMLElement = HTMLDivElement>(
-  options?: UseInViewOptions
-) {
+export function useInView<T extends HTMLElement = HTMLDivElement>(options?: UseInViewOptions) {
   const { persistVisibility = true, ...observerOptions } = options || {};
   const ref = useRef<T>(null);
   const [isInView, setIsInView] = useState(false);

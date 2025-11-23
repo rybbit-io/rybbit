@@ -1,0 +1,189 @@
+---
+title: Goals dashboard
+description: How to use the Goals dashboard in Rybbit Analytics
+---
+
+## The Goals Tab
+
+![Rybbit Goals Dashboard](/blog/rybbit_goals_dashboard.png)
+
+Goals let you track specific outcomes you care about. Did users sign up? Did they complete checkout? Did they view key pages? The Goals tab helps you measure success.
+
+### Creating Your First Goal
+
+Click "Create Goal" to open the goal setup interface.
+
+You'll need to provide:
+
+**Goal Name**: Something descriptive like "Newsletter Signup" or "Purchase Complete"
+
+**Goal Type**: Choose between:
+- Page path goals (user visits a specific URL)
+- Event goals (user triggers a custom event)
+
+**Target**: The page path or event name to track
+
+**Value** (optional): Assign a monetary value to conversions
+
+### Page Path Goals
+
+Page path goals trigger when users visit specific URLs. Common examples:
+
+- Thank you pages after form submission
+- Order confirmation pages after checkout
+- Onboarding completion pages
+- Download confirmation pages
+
+Enter the URL path exactly as it appears in your analytics. Use wildcards for dynamic URLs:
+- `/thank-you` matches exactly `/thank-you`
+- `/thank-you*` matches `/thank-you`, `/thank-you?ref=email`, etc.
+- `/order/*/confirmation` matches `/order/12345/confirmation`
+
+### Event Goals
+
+Event goals trigger when custom events fire. You need to have custom event tracking implemented first.
+
+Common event goals:
+- Button clicks ("signup_clicked")
+- Video completions ("video_complete")
+- Form submissions ("contact_form_submitted")
+- Feature usage ("premium_feature_used")
+
+Events offer more flexibility than page goals. You can track actions that don't result in page loads.
+
+### Viewing Goal Performance
+
+After creating goals, the Goals tab displays your conversion metrics.
+
+For each goal, you'll see:
+- **Conversion Count**: How many times this goal converted
+- **Conversion Rate**: Percentage of sessions that converted
+- **Total Value**: Sum of all conversion values (if set)
+- **Trend**: Up or down compared to previous period
+
+### Conversion Funnel Analysis
+
+Click any goal to see detailed funnel analysis. This shows the path users take before converting.
+
+The funnel reveals:
+- Top entry pages for converting sessions
+- Most common paths to conversion
+- Where drop-offs happen
+- Average time to conversion
+
+This analysis helps you:
+- Optimize high-converting entry points
+- Fix pages where users drop off
+- Understand the customer journey
+- Reduce time to conversion
+
+### Goals by Traffic Source
+
+See which channels drive the most conversions. The Goals tab breaks down conversions by source.
+
+Compare conversion rates across:
+- Organic search
+- Social media
+- Direct traffic
+- Referrals
+- Paid campaigns
+
+Maybe organic search converts at 5% while social converts at 1%. This tells you where to focus acquisition efforts.
+
+### Goals by Device
+
+Device type affects conversion rates. Mobile users often convert less than desktop users, but that varies by industry.
+
+If mobile conversion rates lag significantly, you need mobile optimization. Focus on:
+- Simplifying mobile checkout flows
+- Reducing form fields
+- Improving mobile page speed
+- Testing tap targets and button sizes
+
+### Setting Conversion Value
+
+Assigning values to goals lets you track revenue or value generated through your site.
+
+Set values based on:
+- Average order value (for purchases)
+- Estimated lead value (for B2B sites)
+- Lifetime value estimates (for signups)
+- Advertising value (for pageviews)
+
+With values set, the Goals tab shows total value generated, making ROI calculations straightforward.
+
+### Multiple Goals
+
+Most sites should track several goals. Create goals for:
+
+**Top of Funnel**:
+- Newsletter signups
+- Free trial starts
+- Resource downloads
+
+**Middle of Funnel**:
+- Product page views
+- Demo requests
+- Add to cart actions
+
+**Bottom of Funnel**:
+- Purchase completions
+- Account creation
+- Premium upgrades
+
+Tracking multiple goals shows you the complete picture. Maybe signups are up but purchases are down. Or downloads increase but signups decline. These patterns inform strategy.
+
+### Time to Conversion
+
+For each goal, see how long it takes users to convert after their first visit.
+
+Most conversions happen:
+- Immediately (same session)
+- Within 24 hours
+- Within a week
+- Or longer
+
+Understanding conversion timing helps you:
+- Set appropriate retargeting windows
+- Adjust email follow-up schedules
+- Measure campaign effectiveness over correct timeframes
+- Identify quick wins versus nurture needs
+
+### Goals vs Funnels
+
+Goals track single conversion events. Funnels (covered elsewhere) track multi-step processes. Use both together:
+
+- **Goals**: Track end results (signup completed, purchase made)
+- **Funnels**: Analyze the steps leading to those results (viewed product → added to cart → proceeded to checkout → completed purchase)
+
+### Using Goals Effectively
+
+Get the most from goals by:
+
+**Start with Core Conversions**: Track your most important business outcomes first. Don't create dozens of goals immediately.
+
+**Add Context with Segments**: Don't just track overall conversion rates. Segment by source, device, and location to understand what drives success.
+
+**Set Benchmarks**: Record current conversion rates, then track improvements. Did your optimization increase conversions by 10%? You'll know.
+
+**Monitor Trends**: Weekly checks catch problems early. If conversion rates suddenly drop, investigate immediately.
+
+**Test and Learn**: Try changes, measure impact on goals, keep what works. Goals make experimentation measurable.
+
+**Assign Ownership**: Someone should own each goal and work to improve it. Goals without owners don't improve.
+
+### Goal Alerts (Coming Soon)
+
+Future Rybbit versions will include goal alerts. Get notified when:
+- Conversion rates drop below thresholds
+- A goal hits target numbers
+- Conversion patterns change significantly
+
+For now, check goals regularly to catch changes early.
+
+Questions about any feature?
+
+- **Documentation**: [rybbit.com/docs](https://rybbit.com/docs)
+- **Discord Community**: Join 385+ members at [discord.gg/DEhGb4hYBj](https://discord.gg/DEhGb4hYBj)
+- **Twitter/X**: [@yang_frog](https://x.com/yang_frog)
+- **GitHub**: [github.com/rybbit-io/rybbit](https://github.com/rybbit-io/rybbit)

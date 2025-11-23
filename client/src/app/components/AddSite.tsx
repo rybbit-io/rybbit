@@ -1,6 +1,7 @@
 "use client";
 import { Button } from "@/components/ui/button";
 import { AlertCircle, AppWindow, Plus } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { addSite, useGetSitesFromOrg } from "../../api/admin/sites";
 import { Alert, AlertDescription, AlertTitle } from "../../components/ui/alert";
@@ -18,11 +19,29 @@ import { Label } from "../../components/ui/label";
 import { Switch } from "../../components/ui/switch";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../../components/ui/tooltip";
 import { authClient } from "../../lib/auth";
-import { IS_CLOUD } from "../../lib/const";
-import { useStripeSubscription } from "../../lib/subscription/useStripeSubscription";
 import { resetStore, useStore } from "../../lib/store";
-import { useRouter } from "next/navigation";
+import { SubscriptionData, useStripeSubscription } from "../../lib/subscription/useStripeSubscription";
 import { isValidDomain, normalizeDomain } from "../../lib/utils";
+import { FREE_SITE_LIMIT, IS_CLOUD, PRO_SITE_LIMIT, STANDARD_SITE_LIMIT } from "../../lib/const";
+
+const getSiteLimit = (subscription: SubscriptionData | undefined) => {
+  if (subscription?.planName.includes("standard")) {
+    return STANDARD_SITE_LIMIT;
+  }
+  if (subscription?.planName.includes("pro")) {
+    return PRO_SITE_LIMIT;
+  }
+  if (subscription?.planName === "appsumo-1") {
+    return 3;
+  }
+  if (subscription?.planName === "appsumo-2") {
+    return 10;
+  }
+  if (subscription?.planName === "appsumo-3") {
+    return 25;
+  }
+  return FREE_SITE_LIMIT;
+};
 
 export function AddSite({ trigger, disabled }: { trigger?: React.ReactNode; disabled?: boolean }) {
   const { setSite } = useStore();
@@ -32,9 +51,9 @@ export function AddSite({ trigger, disabled }: { trigger?: React.ReactNode; disa
   const { data: sites, refetch } = useGetSitesFromOrg(activeOrganization?.id);
   const { data: subscription } = useStripeSubscription();
 
-  // Disable if user is on free plan and has 3+ sites
-  const isDisabledDueToLimit = subscription?.status !== "active" && (sites?.sites?.length || 0) >= 3 && IS_CLOUD;
-  const finalDisabled = disabled || isDisabledDueToLimit;
+  const isOverSiteLimit = getSiteLimit(subscription) <= (sites?.sites?.length || 0) && IS_CLOUD;
+
+  const finalDisabled = disabled || isOverSiteLimit;
 
   const [open, setOpen] = useState(false);
   const [domain, setDomain] = useState("");
@@ -83,7 +102,7 @@ export function AddSite({ trigger, disabled }: { trigger?: React.ReactNode; disa
   };
 
   // Show upgrade message if disabled due to limit
-  if (isDisabledDueToLimit) {
+  if (isOverSiteLimit) {
     return (
       <Tooltip>
         <TooltipTrigger asChild>
@@ -94,7 +113,10 @@ export function AddSite({ trigger, disabled }: { trigger?: React.ReactNode; disa
             </Button>
           </span>
         </TooltipTrigger>
-        <TooltipContent>Upgrade to Pro to add more websites</TooltipContent>
+        <TooltipContent>
+          You have reached the limit of {subscription?.isPro ? STANDARD_SITE_LIMIT : FREE_SITE_LIMIT} websites. Upgrade
+          to add more websites
+        </TooltipContent>
       </Tooltip>
     );
   }
@@ -103,7 +125,7 @@ export function AddSite({ trigger, disabled }: { trigger?: React.ReactNode; disa
     <div>
       <Dialog
         open={open}
-        onOpenChange={(isOpen) => {
+        onOpenChange={isOpen => {
           setOpen(isOpen);
           if (isOpen) {
             resetForm();
@@ -129,20 +151,20 @@ export function AddSite({ trigger, disabled }: { trigger?: React.ReactNode; disa
 
           <div className="grid gap-4 py-2">
             <div className="grid w-full items-center gap-1.5">
-              <Label htmlFor="domain" className="text-sm font-medium text-white">
+              <Label htmlFor="domain" className="text-sm font-medium">
                 Domain
               </Label>
               <Input
                 id="domain"
                 value={domain}
-                onChange={(e) => setDomain(e.target.value.toLowerCase())}
+                onChange={e => setDomain(e.target.value.toLowerCase())}
                 placeholder="example.com or sub.example.com"
               />
             </div>
             {/* Public Analytics Setting */}
             <div className="flex items-center justify-between">
               <div>
-                <Label htmlFor="isPublic" className="text-sm font-medium text-white">
+                <Label htmlFor="isPublic" className="text-sm font-medium">
                   Public Analytics
                 </Label>
                 <p className="text-xs text-muted-foreground mt-1">
@@ -155,7 +177,7 @@ export function AddSite({ trigger, disabled }: { trigger?: React.ReactNode; disa
             {/* User ID Salting Setting */}
             <div className="flex items-center justify-between">
               <div>
-                <Label htmlFor="saltUserIds" className="text-sm font-medium text-white">
+                <Label htmlFor="saltUserIds" className="text-sm font-medium">
                   Enable User ID Salting
                 </Label>
                 <p className="text-xs text-muted-foreground mt-1">

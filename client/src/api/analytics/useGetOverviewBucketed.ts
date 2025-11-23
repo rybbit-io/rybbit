@@ -1,10 +1,5 @@
 import { Filter, TimeBucket } from "@rybbit/shared";
-import {
-  UseQueryOptions,
-  UseQueryResult,
-  useQuery,
-} from "@tanstack/react-query";
-import { timeZone } from "../../lib/dateTimeUtils";
+import { UseQueryOptions, UseQueryResult, useQuery } from "@tanstack/react-query";
 import { useStore } from "../../lib/store";
 import { APIResponse } from "../types";
 import { authedFetch, getQueryParams } from "../utils";
@@ -49,7 +44,6 @@ export function useGetOverviewBucketed({
 
   // Use getQueryParams utility to handle conditional logic
   const queryParams = getQueryParams(timeToUse, {
-    timeZone,
     bucket,
     filters: combinedFilters,
   });
@@ -70,10 +64,7 @@ export function useGetOverviewBucketed({
   return useQuery({
     queryKey,
     queryFn: () => {
-      return authedFetch<APIResponse<GetOverviewBucketedResponse>>(
-        `/overview-bucketed/${site}`,
-        queryParams
-      );
+      return authedFetch<APIResponse<GetOverviewBucketedResponse>>(`/overview-bucketed/${site}`, queryParams);
     },
     refetchInterval,
     placeholderData: (_, query: any) => {
@@ -81,7 +72,7 @@ export function useGetOverviewBucketed({
       const queryKeyArray = query.queryKey as any[];
 
       // Find site in query key (position varies based on query type)
-      const siteIndex = queryKeyArray.findIndex((item) => item === site);
+      const siteIndex = queryKeyArray.findIndex(item => item === site);
       if (siteIndex !== -1) {
         return query.state.data;
       }

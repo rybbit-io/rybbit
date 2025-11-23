@@ -20,9 +20,7 @@ export function usePageMetadata(pageUrl: string | null) {
       try {
         // Using Microlink to fetch metadata
         const response = await fetch(
-          `https://api.microlink.io/?url=${encodeURIComponent(
-            pageUrl
-          )}&meta=true&screenshot=false`
+          `https://api.microlink.io/?url=${encodeURIComponent(pageUrl)}&meta=true&screenshot=false`
         );
 
         if (!response.ok) {

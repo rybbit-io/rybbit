@@ -4,7 +4,6 @@ import { z, ZodError } from "zod";
 import { createServiceLogger } from "../../lib/logger/logger.js";
 import { siteConfig } from "../../lib/siteConfig.js";
 import { sessionsService } from "../sessions/sessionsService.js";
-import { checkApiKeyRateLimit, validateApiKey, validateOrigin } from "../shared/requestValidation.js";
 import { usageService } from "../usageService.js";
 import { pageviewQueue } from "./pageviewQueue.js";
 import { createBasePayload } from "./utils.js";
@@ -48,7 +47,7 @@ export const trackingPayloadSchema = z.discriminatedUnion("type", [
         .string()
         .max(2048)
         .refine(
-          (val) => {
+          val => {
             try {
               JSON.parse(val);
               return true;
@@ -56,7 +55,7 @@ export const trackingPayloadSchema = z.discriminatedUnion("type", [
               return false;
             }
           },
-          { message: "Properties must be a valid JSON string" },
+          { message: "Properties must be a valid JSON string" }
         )
         .optional(), // Optional but must be valid JSON if present
       user_id: z.string().max(255).optional(),
@@ -108,27 +107,29 @@ export const trackingPayloadSchema = z.discriminatedUnion("type", [
         .string()
         .max(2048)
         .refine(
-          (val) => {
+          val => {
             try {
               const parsed = JSON.parse(val);
               // Validate outbound-specific properties
               if (typeof parsed.url !== "string" || parsed.url.length === 0) return false;
               if (parsed.text && typeof parsed.text !== "string") return false;
               if (parsed.target && typeof parsed.target !== "string") return false;
-              
+
               // Validate URL format
               try {
                 new URL(parsed.url);
               } catch {
                 return false;
               }
-              
+
               return true;
             } catch (e) {
               return false;
             }
           },
-          { message: "Properties must be valid JSON with outbound link fields (url required, text and target optional)" },
+          {
+            message: "Properties must be valid JSON with outbound link fields (url required, text and target optional)",
+          }
         ),
       user_id: z.string().max(255).optional(),
       api_key: z.string().max(35).optional(), // rb_ prefix + 32 hex chars
@@ -153,7 +154,7 @@ export const trackingPayloadSchema = z.discriminatedUnion("type", [
         .string()
         .max(4096) // Larger limit for error details
         .refine(
-          (val) => {
+          val => {
             try {
               const parsed = JSON.parse(val);
               // Validate error-specific properties
@@ -183,7 +184,7 @@ export const trackingPayloadSchema = z.discriminatedUnion("type", [
           {
             message:
               "Properties must be valid JSON with error fields (message, stack, fileName, lineNumber, columnNumber)",
-          },
+          }
         ),
       user_id: z.string().max(255).optional(),
       api_key: z.string().max(35).optional(), // rb_ prefix + 32 hex chars
@@ -212,57 +213,19 @@ export async function trackEvent(request: FastifyRequest, reply: FastifyReply) {
     // Use validated data
     const validatedPayload = validationResult.data;
 
-    // First check if API key is provided and valid
-    const apiKeyValidation = await validateApiKey(validatedPayload.site_id, validatedPayload.api_key);
-
-    // If API key validation failed with an error, reject the request
-    if (apiKeyValidation.error) {
-      logger.warn(
-        { siteId: validatedPayload.site_id, error: apiKeyValidation.error },
-        "Request rejected - API key validation failed",
-      );
-      return reply.status(403).send({
+    // Get the site configuration to get the numeric siteId
+    const siteConfiguration = await siteConfig.getConfig(validatedPayload.site_id);
+    if (!siteConfiguration) {
+      logger.warn({ siteId: validatedPayload.site_id }, "Site not found");
+      return reply.status(404).send({
         success: false,
-        error: apiKeyValidation.error,
+        error: "Site not found",
       });
     }
 
-    // Check rate limit for API key authenticated requests
-    if (apiKeyValidation.success && validatedPayload.api_key) {
-      if (!checkApiKeyRateLimit(validatedPayload.api_key)) {
-        logger.warn(
-          { apiKey: validatedPayload.api_key, siteId: validatedPayload.site_id },
-          "Rate limit exceeded for API key",
-        );
-        return reply.status(429).send({
-          success: false,
-          error: "Rate limit exceeded. Maximum 20 requests per second per API key.",
-        });
-      }
-    }
-
-    // If no valid API key, validate origin
-    if (!apiKeyValidation.success) {
-      const originValidation = await validateOrigin(validatedPayload.site_id, request.headers.origin as string);
-
-      if (!originValidation.success) {
-        logger.warn(
-          { siteId: validatedPayload.site_id, error: originValidation.error },
-          "Request rejected - origin validation failed",
-        );
-        return reply.status(403).send({
-          success: false,
-          error: originValidation.error,
-        });
-      }
-    }
-
-    // Make sure the site config is loaded
-    await siteConfig.ensureInitialized();
-
     // Check if bot blocking is enabled for this site and if the request is from a bot
     // Skip bot check for API key authenticated requests
-    if (!validatedPayload.api_key && siteConfig.shouldBlockBots(validatedPayload.site_id)) {
+    if (!validatedPayload.api_key && siteConfiguration.blockBots) {
       // Use custom user agent if provided, otherwise fall back to header
       const userAgent = validatedPayload.user_agent || (request.headers["user-agent"] as string);
       if (userAgent && isbot(userAgent)) {
@@ -274,8 +237,8 @@ export async function trackEvent(request: FastifyRequest, reply: FastifyReply) {
       }
     }
 
-    // Check if the site has exceeded its monthly limit
-    if (usageService.isSiteOverLimit(Number(validatedPayload.site_id))) {
+    // Check if the site has exceeded its monthly limit (using numeric siteId)
+    if (usageService.isSiteOverLimit(siteConfiguration.siteId)) {
       logger.info({ siteId: validatedPayload.site_id }, "Skipping event - site over monthly limit");
       return reply.status(200).send("Site over monthly limit, event not tracked");
     }
@@ -284,28 +247,57 @@ export async function trackEvent(request: FastifyRequest, reply: FastifyReply) {
     // Use custom IP if provided in payload, otherwise get from request
     const requestIP = validatedPayload.ip_address || request.ip || "";
 
-    if (siteConfig.isIPExcluded(requestIP, validatedPayload.site_id)) {
-      logger.info({ siteId: validatedPayload.site_id, ip: requestIP }, "IP excluded from tracking");
-      return reply.status(200).send({
-        success: true,
-        message: "Event not tracked - IP excluded",
-      });
+    if (siteConfiguration.excludedIPs && siteConfiguration.excludedIPs.length > 0) {
+      const isExcluded = await siteConfig.isIPExcluded(requestIP, validatedPayload.site_id);
+      if (isExcluded) {
+        logger.info({ siteId: validatedPayload.site_id, ip: requestIP }, "IP excluded from tracking");
+        return reply.status(200).send({
+          success: true,
+          message: "Event not tracked - IP excluded",
+        });
+      }
+    }
+
+    // Check if the country should be excluded from tracking
+    if (siteConfiguration.excludedCountries && siteConfiguration.excludedCountries.length > 0) {
+      const { getLocation } = await import("../../db/geolocation/geolocation.js");
+      const locationResults = await getLocation([requestIP]);
+      const locationData = locationResults[requestIP];
+
+      if (locationData?.countryIso) {
+        const isCountryExcluded = await siteConfig.isCountryExcluded(locationData.countryIso, validatedPayload.site_id);
+        if (isCountryExcluded) {
+          logger.info(
+            { siteId: validatedPayload.site_id, country: locationData.countryIso },
+            "Country excluded from tracking"
+          );
+          return reply.status(200).send({
+            success: true,
+            message: "Event not tracked - country excluded",
+          });
+        }
+      }
     }
 
     // Create base payload for the event using validated data
-    const payload = createBasePayload(
+    const payload = await createBasePayload(
       request, // Pass request for IP/UA
       validatedPayload.type,
-      validatedPayload, // Add validated payload back
+      validatedPayload, // Pass original validated payload
+      siteConfiguration
     );
-    // Update session
+
+    // Update session (use numeric siteId)
     const { sessionId } = await sessionsService.updateSession({
       userId: payload.userId,
-      site_id: payload.site_id,
+      siteId: siteConfiguration.siteId,
     });
 
-    // Add to queue for processing
-    await pageviewQueue.add({ ...payload, sessionId });
+    // Add to queue for processing (payload already has numeric siteId)
+    await pageviewQueue.add({
+      ...payload,
+      sessionId,
+    });
 
     return reply.status(200).send({
       success: true,

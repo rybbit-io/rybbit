@@ -9,17 +9,11 @@ export function useDeleteGoal() {
   return useMutation<{ success: boolean }, Error, number>({
     mutationFn: async (goalId: number) => {
       try {
-        return await authedFetch<{ success: boolean }>(
-          `/goal/${goalId}`,
-          undefined,
-          {
-            method: "DELETE",
-          }
-        );
+        return await authedFetch<{ success: boolean }>(`/goal/${goalId}`, undefined, {
+          method: "DELETE",
+        });
       } catch (error) {
-        throw new Error(
-          error instanceof Error ? error.message : "Failed to delete goal"
-        );
+        throw new Error(error instanceof Error ? error.message : "Failed to delete goal");
       }
     },
     onSuccess: () => {

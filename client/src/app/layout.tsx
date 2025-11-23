@@ -8,50 +8,50 @@ import { cn } from "../lib/utils";
 import "./globals.css";
 import Script from "next/script";
 import { useStopImpersonation } from "@/hooks/useStopImpersonation";
+import { useIsProduction } from "@/hooks/useIsProduction";
 import { ReactScan } from "./ReactScan";
 import { OrganizationInitializer } from "../components/OrganizationInitializer";
 import { AuthenticationGuard } from "../components/AuthenticationGuard";
+import { ThemeProvider } from "next-themes";
+import { NuqsAdapter } from "nuqs/adapters/next/app";
 
 const inter = Inter({ subsets: ["latin"] });
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   // Use the hook to expose stopImpersonating globally
   useStopImpersonation();
 
+  const { isProduction, isAppProduction } = useIsProduction();
+
   return (
-    <html lang="en" className="dark">
+    <html lang="en" suppressHydrationWarning>
       <ReactScan />
-      <TooltipProvider>
-        <body
-          className={cn(
-            "bg-background text-foreground h-full",
-            inter.className
+      <NuqsAdapter>
+        <body className={cn("bg-background text-foreground h-full", inter.className)} suppressHydrationWarning>
+          <ThemeProvider attribute="class" enableSystem={true} disableTransitionOnChange>
+            <TooltipProvider>
+              <QueryProvider>
+                <OrganizationInitializer />
+                <AuthenticationGuard />
+                {children}
+              </QueryProvider>
+              <Toaster />
+            </TooltipProvider>
+          </ThemeProvider>
+          {isAppProduction && (
+            <>
+              <Script
+                src="https://demo.rybbit.com/api/script.js"
+                data-site-id="21"
+                strategy="afterInteractive"
+                data-web-vitals="true"
+                data-track-errors="true"
+                data-session-replay="true"
+              />
+            </>
           )}
-        >
-          <QueryProvider>
-            <OrganizationInitializer />
-            <AuthenticationGuard />
-            {children}
-          </QueryProvider>
-          <Toaster />
         </body>
-      </TooltipProvider>
-      {globalThis?.location?.hostname === "app.rybbit.io" && (
-        <>
-          <Script
-            src="https://demo.rybbit.io/api/script.js"
-            data-site-id="22"
-            strategy="afterInteractive"
-            data-web-vitals="true"
-            data-track-errors="true"
-            data-session-replay="true"
-          />
-        </>
-      )}
+      </NuqsAdapter>
     </html>
   );
 }

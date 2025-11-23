@@ -1,11 +1,14 @@
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { ArrowRight, ChevronDown, ChevronRight, ExternalLink, FileText, MousePointerClick, TriangleAlert } from "lucide-react";
+import { ArrowRight, ChevronDown, ChevronRight } from "lucide-react";
 import { DateTime } from "luxon";
 import { memo, useState } from "react";
-import { GetSessionsResponse } from "../../api/analytics/userSessions";
+import { GetSessionsResponse } from "../../api/analytics/useGetUserSessions";
 import { formatDuration, hour12, userLocale } from "../../lib/dateTimeUtils";
 import { cn, formatter } from "../../lib/utils";
+import { Avatar, generateName } from "../Avatar";
+import { Channel } from "../Channel";
+import { EventIcon, PageviewIcon } from "../EventIcons";
 import {
   BrowserTooltipIcon,
   CountryFlagTooltipIcon,
@@ -19,6 +22,7 @@ interface SessionCardProps {
   session: GetSessionsResponse[number];
   userId?: string;
   onClick?: () => void;
+  expandedByDefault?: boolean;
 }
 
 // Function to truncate path for display
@@ -30,17 +34,13 @@ function truncatePath(path: string, maxLength: number = 32) {
   return `${path.substring(0, maxLength)}...`;
 }
 
-export function SessionCard({ session, onClick, userId }: SessionCardProps) {
-  const [expanded, setExpanded] = useState(false);
-
+export function SessionCard({ session, onClick, userId, expandedByDefault }: SessionCardProps) {
+  const [expanded, setExpanded] = useState(expandedByDefault || false);
   // Calculate session duration in minutes
   const start = DateTime.fromSQL(session.session_start);
   const end = DateTime.fromSQL(session.session_end);
   const totalSeconds = Math.floor(end.diff(start).milliseconds / 1000);
   const duration = formatDuration(totalSeconds);
-
-  // Truncate user ID to first 8 characters
-  const truncatedUserId = session.user_id.substring(0, 8);
 
   const handleCardClick = () => {
     if (onClick) {
@@ -50,16 +50,19 @@ export function SessionCard({ session, onClick, userId }: SessionCardProps) {
     }
   };
 
+  const name = generateName(session.user_id);
+
   return (
-    <div className="mb-3 rounded-lg bg-neutral-900 border border-neutral-800 overflow-hidden">
+    <div className="rounded-lg bg-white dark:bg-neutral-900 border border-neutral-100 dark:border-neutral-800 overflow-hidden">
       <div className="p-3 cursor-pointer" onClick={handleCardClick}>
         <div className="flex items-center gap-2">
           <div className="hidden md:flex items-center gap-2">
-            <span className="text-xs font-mono text-gray-400">{truncatedUserId}</span>
+            <Avatar size={24} id={session.user_id} />
+            <span className="text-xs text-neutral-600 dark:text-neutral-200 w-24 truncate">{name}</span>
           </div>
 
           {/* Icons section */}
-          <div className="flex space-x-2 items-center md:ml-3">
+          <div className="flex space-x-2 items-center">
             {session.country && (
               <CountryFlagTooltipIcon country={session.country} city={session.city} region={session.region} />
             )}
@@ -75,8 +78,8 @@ export function SessionCard({ session, onClick, userId }: SessionCardProps) {
             />
             <Tooltip>
               <TooltipTrigger asChild>
-                <Badge variant="outline" className="flex items-center gap-1 bg-neutral-800 text-gray-300">
-                  <FileText className="w-4 h-4 text-blue-500" />
+                <Badge className="flex items-center gap-1 bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-300">
+                  <PageviewIcon />
                   <span>{formatter(session.pageviews)}</span>
                 </Badge>
               </TooltipTrigger>
@@ -84,38 +87,21 @@ export function SessionCard({ session, onClick, userId }: SessionCardProps) {
             </Tooltip>
             <Tooltip>
               <TooltipTrigger asChild>
-                <Badge variant="outline" className="flex items-center gap-1 bg-neutral-800 text-gray-300">
-                  <MousePointerClick className="w-4 h-4 text-amber-500" />
+                <Badge className="flex items-center gap-1 bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-300">
+                  <EventIcon />
                   <span>{formatter(session.events)}</span>
                 </Badge>
               </TooltipTrigger>
               <TooltipContent>Events</TooltipContent>
             </Tooltip>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Badge variant="outline" className="flex items-center gap-1 bg-neutral-800 text-gray-300">
-                  <TriangleAlert className="w-4 h-4 text-red-500" />
-                  <span>{formatter(session.errors)}</span>
-                </Badge>
-              </TooltipTrigger>
-              <TooltipContent>Errors</TooltipContent>
-            </Tooltip>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Badge variant="outline" className="flex items-center gap-1 bg-neutral-800 text-gray-300">
-                  <ExternalLink className="w-4 h-4 text-purple-500" />
-                  <span>{formatter(session.outbound)}</span>
-                </Badge>
-              </TooltipTrigger>
-              <TooltipContent>Outbound Clicks</TooltipContent>
-            </Tooltip>
+            <Channel channel={session.channel} referrer={session.referrer} />
           </div>
 
           {/* Pages section with tooltips for long paths */}
           <div className="items-center ml-3 flex-1 min-w-0 hidden md:flex">
             <Tooltip>
               <TooltipTrigger asChild>
-                <span className="text-xs text-gray-400 truncate max-w-[200px] inline-block">
+                <span className="text-xs text-neutral-500 dark:text-neutral-400 truncate max-w-[200px] inline-block">
                   {truncatePath(session.entry_page)}
                 </span>
               </TooltipTrigger>
@@ -124,11 +110,11 @@ export function SessionCard({ session, onClick, userId }: SessionCardProps) {
               </TooltipContent>
             </Tooltip>
 
-            <ArrowRight className="mx-2 w-3 h-3 flex-shrink-0 text-gray-400" />
+            <ArrowRight className="mx-2 w-3 h-3 flex-shrink-0 text-neutral-500 dark:text-neutral-400" />
 
             <Tooltip>
               <TooltipTrigger asChild>
-                <span className="text-xs text-gray-400 truncate max-w-[200px] inline-block">
+                <span className="text-xs text-neutral-500 dark:text-neutral-400 truncate max-w-[200px] inline-block">
                   {truncatePath(session.exit_page)}
                 </span>
               </TooltipTrigger>
@@ -140,8 +126,8 @@ export function SessionCard({ session, onClick, userId }: SessionCardProps) {
 
           {/* Time information */}
 
-          <div className="flex items-center gap-4 text-xs text-gray-300">
-            <span className="text-gray-400">
+          <div className="flex items-center gap-1.5 text-xs text-neutral-600 dark:text-neutral-300">
+            <span className="text-neutral-500 dark:text-neutral-400">
               {DateTime.fromSQL(session.session_start, {
                 zone: "utc",
               })
@@ -149,15 +135,16 @@ export function SessionCard({ session, onClick, userId }: SessionCardProps) {
                 .toLocal()
                 .toFormat(hour12 ? "MMM d, h:mm a" : "dd MMM, HH:mm")}
             </span>
+            <span className="text-neutral-500 dark:text-neutral-400">•</span>
             <span className="hidden md:block">{duration}</span>
           </div>
 
           {/* Expand/Collapse icon */}
           <div className="ml-2 flex-shrink-0 hidden md:flex">
             {expanded ? (
-              <ChevronDown className="w-4 h-4 text-gray-400" strokeWidth={3} />
+              <ChevronDown className="w-4 h-4 text-neutral-500 dark:text-neutral-400" strokeWidth={3} />
             ) : (
-              <ChevronRight className="w-4 h-4 text-gray-400" strokeWidth={3} />
+              <ChevronRight className="w-4 h-4 text-neutral-500 dark:text-neutral-400" strokeWidth={3} />
             )}
           </div>
         </div>
@@ -189,43 +176,46 @@ export const SessionCardSkeleton = memo(() => {
   };
 
   // Create multiple skeletons for a realistic loading state
-  const skeletons = Array.from({ length: 10 }).map((_, index) => (
-    <div className="mb-3 rounded-lg bg-neutral-900 border border-neutral-800 overflow-hidden" key={index}>
+  const skeletons = Array.from({ length: 25 }).map((_, index) => (
+    <div
+      className="rounded-lg bg-white dark:bg-neutral-900 border border-neutral-100 dark:border-neutral-800 overflow-hidden"
+      key={index}
+    >
       <div className="p-3">
         <div className="flex items-center gap-2">
           {/* Avatar and User ID */}
           <div className="hidden md:flex items-center gap-2">
-            <Skeleton className="h-3 w-14" />
+            <Skeleton className="h-6 w-6 rounded-full" />
+            <Skeleton className="h-3 w-24" />
           </div>
 
-          {/* Icons */}
-          <div className="flex space-x-2 items-center md:ml-3">
+          {/* Icons section - matching actual component structure */}
+          <div className="flex space-x-2 items-center">
+            {/* Country, Browser, OS, Device icons */}
             <Skeleton className="h-4 w-4 rounded-sm" />
-            <Skeleton className="h-4 w-4 rounded-sm flex-shrink-0" />
-            <Skeleton className="h-4 w-4 rounded-sm flex-shrink-0" />
             <Skeleton className="h-4 w-4 rounded-sm" />
+            <Skeleton className="h-4 w-4 rounded-sm" />
+            <Skeleton className="h-4 w-4 rounded-sm" />
+            {/* Pageviews badge */}
             <Skeleton className="h-[21px] w-12 rounded-sm" />
+            {/* Events badge */}
             <Skeleton className="h-[21px] w-12 rounded-sm" />
-            <Skeleton className="h-[21px] w-12 rounded-sm" />
-            <Skeleton className="h-[21px] w-12 rounded-sm" />
+            {/* Channel badge */}
+            <Skeleton className="h-[21px] w-16 rounded-sm" />
           </div>
 
           {/* Entry/Exit paths with randomized widths */}
           <div className="items-center ml-3 flex-1 min-w-0 hidden md:flex">
             <Skeleton className={cn("h-3 max-w-[200px]", getRandomWidth())} />
-            <div className="mx-2 flex-shrink-0">
-              <Skeleton className="h-3 w-3" />
-            </div>
+            <ArrowRight className="mx-2 w-3 h-3 flex-shrink-0 text-neutral-500 dark:text-neutral-400 opacity-20" />
             <Skeleton className={cn("h-3 max-w-[200px]", getRandomWidth())} />
           </div>
 
-          {/* Time */}
-          <div className="flex items-center gap-4">
-            {/* Date/time skeleton */}
+          {/* Time information */}
+          <div className="flex items-center gap-1.5">
             <Skeleton className={cn("h-3", getRandomTimeWidth())} />
-
-            {/* Duration skeleton */}
-            <Skeleton className={cn("h-3", getRandomDurationWidth(), "hidden md:block")} />
+            <span className="text-neutral-500 dark:text-neutral-400 opacity-20">•</span>
+            <Skeleton className={cn("h-3 hidden md:block", getRandomDurationWidth())} />
           </div>
 
           {/* Expand icon */}

@@ -1,8 +1,9 @@
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { FileText, Laptop, MousePointerClick, Smartphone } from "lucide-react";
+import { Laptop, Smartphone } from "lucide-react";
 import { DateTime } from "luxon";
 import Link from "next/link";
 import { Event, useGetEvents } from "../../../../api/analytics/events/useGetEvents";
+import { EventIcon, PageviewIcon } from "../../../../components/EventIcons";
 import { Skeleton } from "../../../../components/ui/skeleton";
 import { cn, getCountryName } from "../../../../lib/utils";
 import { Browser } from "../../components/shared/icons/Browser";
@@ -44,13 +45,7 @@ function EventCard({ event }: { event: Event }) {
     <Link href={`user/${event.user_id}`} target="_blank" rel="noopener noreferrer">
       <div className="mb-3 rounded-lg bg-neutral-850/50 border border-neutral-800 overflow-hidden p-3 flex flex-col filter backdrop-blur-sm hover:bg-neutral-800/70 transition-all duration-200">
         <div className="flex items-center gap-2 text-sm text-neutral-100 mb-2">
-          <div className="flex items-center gap-2">
-            {isPageview ? (
-              <FileText className="w-4 h-4 text-blue-500" />
-            ) : (
-              <MousePointerClick className="w-4 h-4 text-amber-500" />
-            )}
-          </div>
+          <div className="flex items-center gap-2">{isPageview ? <PageviewIcon /> : <EventIcon />}</div>
 
           {event.type === "pageview" ? (
             <div>
@@ -120,7 +115,7 @@ function EventCard({ event }: { event: Event }) {
           {/* <div className="flex items-center ml-3 flex-1 min-w-0">
             <Tooltip>
               <TooltipTrigger asChild>
-                <span className="text-xs text-gray-400 truncate max-w-[200px] inline-block">
+                <span className="text-xs text-neutral-400 truncate max-w-[200px] inline-block">
                   {truncatePath(
                     isPageview && event.page_title
                       ? event.page_title
@@ -139,8 +134,8 @@ function EventCard({ event }: { event: Event }) {
           </div> */}
 
           {/* Time information */}
-          <div className="flex items-center text-xs text-gray-300">
-            <span className="text-gray-400">{eventTime.toRelative()}</span>
+          <div className="flex items-center text-xs text-neutral-300">
+            <span className="text-neutral-400">{eventTime.toRelative()}</span>
           </div>
         </div>
       </div>
@@ -156,7 +151,7 @@ export function RealtimeEvents() {
   }
 
   if (!data || data.length === 0) {
-    return <div className="text-sm text-gray-400 p-4 text-center">No events recorded yet</div>;
+    return <div className="text-sm text-neutral-400 p-4 text-center">No events recorded yet</div>;
   }
 
   return (

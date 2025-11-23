@@ -6,74 +6,33 @@ import { z } from "zod";
 // =============================================================================
 
 /**
- * Schema for table parameter in time queries
- */
-const tableSchema = z.enum(["events", "sessions"]).optional();
-
-/**
  * Date validation regex for YYYY-MM-DD format
  */
 const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
 
 /**
- * Schema for date parameters with time zone
- */
-const dateParamsSchema = z.object({
-  startDate: z
-    .string()
-    .regex(dateRegex, { message: "Invalid date format. Use YYYY-MM-DD" })
-    .optional()
-    .refine((date) => !date || !isNaN(Date.parse(date)), {
-      message: "Invalid date value",
-    }),
-  endDate: z
-    .string()
-    .regex(dateRegex, { message: "Invalid date format. Use YYYY-MM-DD" })
-    .optional()
-    .refine((date) => !date || !isNaN(Date.parse(date)), {
-      message: "Invalid date value",
-    }),
-  timeZone: z
-    .string()
-    .min(1, { message: "Time zone cannot be empty" })
-    .refine(
-      (tz) => {
-        try {
-          // Test if time zone is valid by attempting to format a date with it
-          Intl.DateTimeFormat(undefined, { timeZone: tz });
-          return true;
-        } catch (e) {
-          return false;
-        }
-      },
-      { message: "Invalid time zone" }
-    ),
-  table: tableSchema,
-});
-
-/**
  * Schema for simplified date parameters without table
  */
 const fillDateParamsSchema = z.object({
-  startDate: z
+  start_date: z
     .string()
     .regex(dateRegex, { message: "Invalid date format. Use YYYY-MM-DD" })
     .optional()
-    .refine((date) => !date || !isNaN(Date.parse(date)), {
+    .refine(date => !date || !isNaN(Date.parse(date)), {
       message: "Invalid date value",
     }),
-  endDate: z
+  end_date: z
     .string()
     .regex(dateRegex, { message: "Invalid date format. Use YYYY-MM-DD" })
     .optional()
-    .refine((date) => !date || !isNaN(Date.parse(date)), {
+    .refine(date => !date || !isNaN(Date.parse(date)), {
       message: "Invalid date value",
     }),
-  timeZone: z
+  time_zone: z
     .string()
     .min(1, { message: "Time zone cannot be empty" })
     .refine(
-      (tz) => {
+      tz => {
         try {
           // Test if time zone is valid by attempting to format a date with it
           Intl.DateTimeFormat(undefined, { timeZone: tz });
@@ -99,16 +58,13 @@ const timeStatementParamsSchema = z
         end: z.number().nonnegative(),
       })
       .optional()
-      .refine((data) => !data || data.start > data.end, {
+      .refine(data => !data || data.start > data.end, {
         message: "start must be greater than end (start = older, end = newer)",
       }),
   })
-  .refine(
-    (data) => data.date !== undefined || data.pastMinutesRange !== undefined,
-    {
-      message: "Either date or pastMinutesRange must be provided",
-    }
-  )
+  .refine(data => data.date !== undefined || data.pastMinutesRange !== undefined, {
+    message: "Either date or pastMinutesRange must be provided",
+  })
   // Set default empty objects if schema validation fails
   .catch({
     date: undefined,
@@ -120,26 +76,26 @@ const timeStatementParamsSchema = z
  */
 const filterParamsTimeStatementFillSchema = z
   .object({
-    startDate: z
+    start_date: z
       .string()
       .regex(dateRegex, { message: "Invalid date format. Use YYYY-MM-DD" })
       .optional()
-      .refine((date) => !date || !isNaN(Date.parse(date)), {
+      .refine(date => !date || !isNaN(Date.parse(date)), {
         message: "Invalid date value",
       }),
-    endDate: z
+    end_date: z
       .string()
       .regex(dateRegex, { message: "Invalid date format. Use YYYY-MM-DD" })
       .optional()
-      .refine((date) => !date || !isNaN(Date.parse(date)), {
+      .refine(date => !date || !isNaN(Date.parse(date)), {
         message: "Invalid date value",
       }),
-    timeZone: z
+    time_zone: z
       .string()
       .min(1, { message: "Time zone cannot be empty" })
       .optional()
       .refine(
-        (tz) => {
+        tz => {
           if (!tz) return true;
           try {
             // Test if time zone is valid by attempting to format a date with it
@@ -151,56 +107,49 @@ const filterParamsTimeStatementFillSchema = z
         },
         { message: "Invalid time zone" }
       ),
-    pastMinutesStart: z
+    past_minutes_start: z
       .union([z.string(), z.number()])
       .optional()
-      .transform((val) => {
+      .transform(val => {
         if (val === undefined) return undefined;
         const num = typeof val === "string" ? Number(val) : val;
         return isNaN(num) ? undefined : num;
       })
-      .refine((val) => val === undefined || val >= 0, {
-        message: "pastMinutesStart must be non-negative",
+      .refine(val => val === undefined || val >= 0, {
+        message: "past_minutes_start must be non-negative",
       }),
-    pastMinutesEnd: z
+    past_minutes_end: z
       .union([z.string(), z.number()])
       .optional()
-      .transform((val) => {
+      .transform(val => {
         if (val === undefined) return undefined;
         const num = typeof val === "string" ? Number(val) : val;
         return isNaN(num) ? undefined : num;
       })
-      .refine((val) => val === undefined || val >= 0, {
-        message: "pastMinutesEnd must be non-negative",
+      .refine(val => val === undefined || val >= 0, {
+        message: "past_minutes_end must be non-negative",
       }),
     filters: z.string().optional(),
   })
   .refine(
-    (data) => {
-      const hasDateParams = data.startDate && data.endDate && data.timeZone;
-      const hasPastMinutesParams =
-        data.pastMinutesStart !== undefined &&
-        data.pastMinutesEnd !== undefined;
+    data => {
+      const hasDateParams = data.start_date && data.end_date && data.time_zone;
+      const hasPastMinutesParams = data.past_minutes_start !== undefined && data.past_minutes_end !== undefined;
       return hasDateParams || hasPastMinutesParams;
     },
     {
-      message:
-        "Either (startDate, endDate, timeZone) or (pastMinutesStart, pastMinutesEnd) must be provided",
+      message: "Either (start_date, end_date, time_zone) or (past_minutes_start, past_minutes_end) must be provided",
     }
   )
   .refine(
-    (data) => {
-      if (
-        data.pastMinutesStart !== undefined &&
-        data.pastMinutesEnd !== undefined
-      ) {
-        return data.pastMinutesStart > data.pastMinutesEnd;
+    data => {
+      if (data.past_minutes_start !== undefined && data.past_minutes_end !== undefined) {
+        return data.past_minutes_start > data.past_minutes_end;
       }
       return true;
     },
     {
-      message:
-        "pastMinutesStart must be greater than pastMinutesEnd (start = older, end = newer)",
+      message: "past_minutes_start must be greater than past_minutes_end (start = older, end = newer)",
     }
   );
 
@@ -230,12 +179,7 @@ const timeBucketSchema = z.enum([
 /**
  * Schema for filter type values
  */
-const filterTypeSchema = z.enum([
-  "equals",
-  "not_equals",
-  "contains",
-  "not_contains",
-]);
+const filterTypeSchema = z.enum(["equals", "not_equals", "contains", "not_contains"]);
 
 /**
  * Schema for filter parameter values
@@ -265,6 +209,19 @@ export const filterParamSchema = z.enum([
   "dimensions",
   "browser_version",
   "operating_system_version",
+  "user_id",
+  "lat",
+  "lon",
+  "timezone",
+  "vpn",
+  "crawler",
+  "datacenter",
+  "company",
+  "company_type",
+  "company_domain",
+  "asn_org",
+  "asn_type",
+  "asn_domain",
 ]);
 
 /**
@@ -273,7 +230,7 @@ export const filterParamSchema = z.enum([
 const filterSchema = z.object({
   parameter: filterParamSchema,
   type: filterTypeSchema,
-  value: z.array(z.string()),
+  value: z.array(z.string().or(z.number())),
 });
 
 // =============================================================================
@@ -295,10 +252,7 @@ export function validateTimeStatementParams(params: unknown) {
  * @param bucket Raw bucket parameter
  * @returns Validated parameters and bucket
  */
-export function validateTimeStatementFillParams(
-  params: FilterParams,
-  bucket: unknown
-) {
+export function validateTimeStatementFillParams(params: FilterParams, bucket: unknown) {
   const validatedBucket = timeBucketSchema.parse(bucket);
   const validatedParams = filterParamsTimeStatementFillSchema.parse(params);
 

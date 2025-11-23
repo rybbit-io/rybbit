@@ -5,7 +5,7 @@ export function NothingFound({
   icon,
 }: {
   title: string;
-  description?: string;
+  description?: React.ReactNode;
   action?: React.ReactNode;
   icon?: React.ReactNode;
 }) {

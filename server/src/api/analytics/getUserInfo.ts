@@ -20,6 +20,7 @@ interface UserPageviewData {
   first_seen: string;
   pageviews: number;
   events: number;
+  ip: string;
 }
 
 export async function getUserInfo(
@@ -58,7 +59,8 @@ export async function getUserInfo(
             argMinIf(pathname, timestamp, type = 'pageview') AS entry_page,
             argMaxIf(pathname, timestamp, type = 'pageview') AS exit_page,
             countIf(type = 'pageview') AS pageviews,
-            countIf(type = 'custom_event') AS events
+            countIf(type = 'custom_event') AS events,
+            argMax(ip, timestamp) AS ip
         FROM
             events
         WHERE
@@ -87,7 +89,8 @@ export async function getUserInfo(
         MAX(session_end) AS last_seen,
         MIN(session_start) AS first_seen,
         SUM(pageviews) AS pageviews,
-        SUM(events) AS events
+        SUM(events) AS events,
+        any(ip) AS ip
     FROM
         sessions
       `,

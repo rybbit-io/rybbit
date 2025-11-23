@@ -1,10 +1,10 @@
 export interface BaseParams {
-  startDate: string;
-  endDate: string;
-  timeZone: string;
+  start_date: string;
+  end_date: string;
+  time_zone: string;
   filters: string;
-  pastMinutesStart?: number;
-  pastMinutesEnd?: number;
+  past_minutes_start?: number;
+  past_minutes_end?: number;
 }
 
 export type FilterParams<T = {}> = BaseParams & T;

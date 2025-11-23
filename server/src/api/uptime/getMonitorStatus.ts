@@ -12,10 +12,7 @@ interface GetMonitorStatusRequest {
   };
 }
 
-export async function getMonitorStatus(
-  request: FastifyRequest<GetMonitorStatusRequest>,
-  reply: FastifyReply
-) {
+export async function getMonitorStatus(request: FastifyRequest<GetMonitorStatusRequest>, reply: FastifyReply) {
   const session = await getSessionFromReq(request);
   const userId = session?.user?.id;
   const { monitorId } = request.params;
@@ -36,10 +33,7 @@ export async function getMonitorStatus(
 
     // Check if user has access to the monitor's organization
     const userHasAccess = await db.query.member.findFirst({
-      where: and(
-        eq(member.userId, userId),
-        eq(member.organizationId, monitor.organizationId)
-      ),
+      where: and(eq(member.userId, userId), eq(member.organizationId, monitor.organizationId)),
     });
 
     if (!userHasAccess) {

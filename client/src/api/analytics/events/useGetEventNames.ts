@@ -1,9 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
-import {
-  useStore,
-  getFilteredFilters,
-  EVENT_FILTERS,
-} from "../../../lib/store";
+import { getFilteredFilters, useStore } from "../../../lib/store";
+import { EVENT_FILTERS } from "../../../lib/filterGroups";
 import { authedFetch, getQueryParams } from "../../utils";
 
 export type EventName = {
@@ -26,10 +23,7 @@ export function useGetEventNames() {
         filters: filteredFilters.length > 0 ? filteredFilters : undefined,
       };
 
-      return authedFetch<{ data: EventName[] }>(
-        `/events/names/${site}`,
-        params
-      ).then((res) => res.data);
+      return authedFetch<{ data: EventName[] }>(`/events/names/${site}`, params).then(res => res.data);
     },
   });
 }

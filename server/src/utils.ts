@@ -1,5 +1,4 @@
 import { FastifyRequest } from "fastify";
-import { siteConfig } from "./lib/siteConfig.js";
 import * as psl from "psl";
 
 const desktopOS = new Set([
@@ -121,20 +120,6 @@ export function getDeviceType(screenWidth: number, screenHeight: number, ua: UAP
   return "Mobile";
 }
 
-// Check if a site is public
-export const isSitePublic = async (siteId: string | number) => {
-  try {
-    // Ensure the siteConfig cache is initialized
-    await siteConfig.ensureInitialized();
-
-    // Use the cached value
-    return siteConfig.isSitePublic(siteId);
-  } catch (err) {
-    console.error("Error checking if site is public:", err);
-    return false;
-  }
-};
-
 // Extract site ID from path
 export const extractSiteId = (path: string) => {
   // Remove query parameters if present
@@ -217,7 +202,7 @@ export const getIpAddress = (request: FastifyRequest): string => {
   if (forwardedFor && typeof forwardedFor === "string") {
     const ips = forwardedFor
       .split(",")
-      .map((ip) => ip.trim())
+      .map(ip => ip.trim())
       .filter(Boolean);
     if (ips.length > 0) {
       // Always use the first IP - the original client

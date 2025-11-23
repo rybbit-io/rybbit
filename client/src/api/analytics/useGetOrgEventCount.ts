@@ -3,6 +3,9 @@ import { authedFetch } from "../utils";
 
 export type OrgEventCountResponse = {
   event_date: string;
+  pageview_count: number;
+  custom_event_count: number;
+  performance_count: number;
   event_count: number;
 }[];
 
@@ -22,14 +25,11 @@ async function getOrgEventCount({
   timeZone?: string;
 }): Promise<GetOrgEventCountResponse> {
   const params = new URLSearchParams();
-  if (startDate) params.append("startDate", startDate);
-  if (endDate) params.append("endDate", endDate);
-  if (timeZone) params.append("timeZone", timeZone);
+  if (startDate) params.append("start_date", startDate);
+  if (endDate) params.append("end_date", endDate);
+  if (timeZone) params.append("time_zone", timeZone);
 
-  return authedFetch(
-    `/org-event-count/${organizationId}`,
-    Object.fromEntries(params)
-  );
+  return authedFetch(`/org-event-count/${organizationId}`, Object.fromEntries(params));
 }
 
 export function useGetOrgEventCount({

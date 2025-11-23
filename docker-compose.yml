@@ -1,5 +1,6 @@
 services:
   caddy:
+    profiles: ["with-webserver"]
     image: caddy:2.10.0
     container_name: caddy
     restart: unless-stopped
@@ -66,16 +67,6 @@ services:
     mem_limit: 4g
     cpus: 2.0
 
-  # redis:
-  #   image: redis:7-alpine
-  #   container_name: redis
-  #   ports:
-  #     - "127.0.0.1:6379:6379"
-  #   volumes:
-  #     - redis-data:/data
-  #   restart: unless-stopped
-  #   command: ["redis-server", "--appendonly", "yes"]
-
   backend:
     image: ghcr.io/rybbit-io/rybbit-backend:${IMAGE_TAG:-latest}
     container_name: backend
@@ -98,16 +89,12 @@ services:
       - BASE_URL=${BASE_URL}
       - DISABLE_SIGNUP=${DISABLE_SIGNUP}
       - DISABLE_TELEMETRY=${DISABLE_TELEMETRY}
-      # # Redis configuration
-      # - REDIS_HOST=redis
-      # - REDIS_PORT=6379
+      - MAPBOX_TOKEN=${MAPBOX_TOKEN}
     depends_on:
       clickhouse:
         condition: service_healthy
       postgres:
         condition: service_started
-      # redis:
-      #   condition: service_started
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:3001/api/health"]
       interval: 3s
@@ -142,7 +129,6 @@ services:
 volumes:
   clickhouse-data:
   postgres-data:
-  redis-data:
   caddy_data: # Persistent volume for Caddy's certificates and state
   caddy_config: # Persistent volume for Caddy's configuration cache (optional but good practice)
 

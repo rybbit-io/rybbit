@@ -40,15 +40,15 @@ export class RegionHealthChecker {
       });
 
       // Filter out local region
-      const remoteRegions = regions.filter((r) => r.code !== "local");
+      const remoteRegions = regions.filter(r => r.code !== "local");
 
       this.logger.debug(`Checking health of ${remoteRegions.length} remote regions`);
 
-      const healthPromises = remoteRegions.map((region) =>
-        this.checkRegionHealth(region).catch((error) => {
+      const healthPromises = remoteRegions.map(region =>
+        this.checkRegionHealth(region).catch(error => {
           this.logger.error(error, `Error checking health of region ${region.code}`);
           return { region, isHealthy: false };
-        }),
+        })
       );
 
       const results = await Promise.all(healthPromises);
@@ -64,7 +64,7 @@ export class RegionHealthChecker {
           .where(eq(agentRegions.code, region.code));
       }
 
-      const healthyCount = results.filter((r) => r.isHealthy).length;
+      const healthyCount = results.filter(r => r.isHealthy).length;
       this.logger.info({ healthyCount, totalRegions: remoteRegions.length }, "Region health check complete");
     } catch (error) {
       this.logger.error(error, "Error in region health check");

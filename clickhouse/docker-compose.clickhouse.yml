@@ -1,0 +1,99 @@
+# Standalone ClickHouse server for migration testing
+# Usage: docker compose -f docker-compose.clickhouse.yml up -d
+
+services:
+  clickhouse:
+    container_name: clickhouse
+    image: clickhouse/clickhouse-server:25.4.2
+    volumes:
+      - clickhouse-data:/var/lib/clickhouse
+    environment:
+      - CLICKHOUSE_DB=${CLICKHOUSE_DB:-analytics}
+      - CLICKHOUSE_USER=${CLICKHOUSE_USER:-default}
+      - CLICKHOUSE_PASSWORD=${CLICKHOUSE_PASSWORD:-frog}
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8123/ping"]
+      interval: 3s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    restart: unless-stopped
+    ports:
+      - "8123:8123" # HTTP interface
+      - "9000:9000" # Native protocol
+    mem_limit: 250g
+    mem_reservation: 128g
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "3"
+    configs:
+      - source: clickhouse_network
+        target: /etc/clickhouse-server/config.d/network.xml
+      - source: clickhouse_json
+        target: /etc/clickhouse-server/config.d/enable_json.xml
+      - source: clickhouse_logging
+        target: /etc/clickhouse-server/config.d/logging_rules.xml
+      - source: clickhouse_user_logging
+        target: /etc/clickhouse-server/config.d/user_logging.xml
+
+volumes:
+  clickhouse-data:
+    external: true
+
+configs:
+  clickhouse_network:
+    content: |
+      <clickhouse>
+          <listen_host>0.0.0.0</listen_host>
+      </clickhouse>
+
+  clickhouse_json:
+    content: |
+      <clickhouse>
+          <settings>
+              <enable_json_type>1</enable_json_type>
+              <max_concurrent_queries>100</max_concurrent_queries>
+              <background_pool_size>32</background_pool_size>
+              <background_merges_mutations_concurrency_ratio>2</background_merges_mutations_concurrency_ratio>
+              <mark_cache_size>21474836480</mark_cache_size>
+          </settings>
+      </clickhouse>
+
+  clickhouse_logging:
+    content: |
+      <clickhouse>
+        <logger>
+            <level>warning</level>
+            <console>true</console>
+        </logger>
+        <query_thread_log remove="remove"/>
+        <query_log remove="remove"/>
+        <text_log remove="remove"/>
+        <trace_log remove="remove"/>
+        <metric_log remove="remove"/>
+        <asynchronous_metric_log remove="remove"/>
+        <session_log remove="remove"/>
+        <part_log remove="remove"/>
+        <latency_log remove="remove"/>
+        <processors_profile_log remove="remove"/>
+      </clickhouse>
+
+  clickhouse_user_logging:
+    content: |
+      <clickhouse>
+        <profiles>
+          <default>
+            <log_queries>0</log_queries>
+            <log_query_threads>0</log_query_threads>
+            <log_processors_profiles>0</log_processors_profiles>
+            <max_memory_usage>200000000000</max_memory_usage>
+            <max_bytes_before_external_group_by>100000000000</max_bytes_before_external_group_by>
+            <max_bytes_before_external_sort>100000000000</max_bytes_before_external_sort>
+            <max_threads>48</max_threads>
+            <max_block_size>65536</max_block_size>
+            <input_format_parallel_parsing>1</input_format_parallel_parsing>
+          </default>
+        </profiles>
+      </clickhouse>

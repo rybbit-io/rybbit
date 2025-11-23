@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { authedFetch } from "../utils";
 import { authClient } from "../../lib/auth";
 
@@ -43,3 +43,63 @@ export function useOrganizationInvitations(organizationId: string) {
     },
   });
 }
+
+interface AddUserToOrganizationInput {
+  email: string;
+  role: string;
+  organizationId: string;
+}
+
+export function useAddUserToOrganization() {
+  const queryClient = useQueryClient();
+
+  return useMutation<{ message: string }, Error, AddUserToOrganizationInput>({
+    mutationFn: async ({ email, role, organizationId }: AddUserToOrganizationInput) => {
+      try {
+        return await authedFetch<{ message: string }>("/add-user-to-organization", undefined, {
+          method: "POST",
+          data: {
+            email,
+            role,
+            organizationId,
+          },
+        });
+      } catch (error) {
+        throw new Error(error instanceof Error ? error.message : "Failed to add user to organization");
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin-organizations"] });
+      queryClient.invalidateQueries({ queryKey: [USER_ORGANIZATIONS_QUERY_KEY] });
+      queryClient.invalidateQueries({ queryKey: ["admin-users"] });
+    },
+  });
+}
+
+interface RemoveUserFromOrganizationInput {
+  memberIdOrEmail: string;
+  organizationId: string;
+}
+
+export function useRemoveUserFromOrganization() {
+  const queryClient = useQueryClient();
+
+  return useMutation<void, Error, RemoveUserFromOrganizationInput>({
+    mutationFn: async ({ memberIdOrEmail, organizationId }: RemoveUserFromOrganizationInput) => {
+      try {
+        await authClient.organization.removeMember({
+          memberIdOrEmail,
+          organizationId,
+        });
+      } catch (error) {
+        throw new Error(error instanceof Error ? error.message : "Failed to remove user from organization");
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin-organizations"] });
+      queryClient.invalidateQueries({ queryKey: [USER_ORGANIZATIONS_QUERY_KEY] });
+      queryClient.invalidateQueries({ queryKey: ["admin-users"] });
+    },
+  });
+}
+

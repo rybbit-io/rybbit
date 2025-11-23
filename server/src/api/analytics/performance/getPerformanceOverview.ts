@@ -1,16 +1,12 @@
 import { FastifyReply, FastifyRequest } from "fastify";
 import { clickhouse } from "../../../db/clickhouse/clickhouse.js";
-import {
-  getFilterStatement,
-  getTimeStatement,
-  processResults,
-} from "../utils.js";
-import { getUserHasAccessToSitePublic } from "../../../lib/auth-utils.js";
+import { getFilterStatement, getTimeStatement, processResults } from "../utils.js";
 import { PerformanceOverviewMetrics } from "../types.js";
 import { FilterParams } from "@rybbit/shared";
 
-const getQuery = (params: FilterParams) => {
-  const filterStatement = getFilterStatement(params.filters);
+const getQuery = (params: FilterParams, siteId: number) => {
+  const timeStatement = getTimeStatement(params);
+  const filterStatement = getFilterStatement(params.filters, siteId, timeStatement);
 
   return `SELECT
       quantile(0.5)(lcp) AS lcp_p50,
@@ -39,7 +35,7 @@ const getQuery = (params: FilterParams) => {
         site_id = {siteId:Int32}
         AND type = 'performance'
         ${filterStatement}
-        ${getTimeStatement(params)}`;
+        ${timeStatement}`;
 };
 
 export interface PerformanceOverviewRequest {
@@ -49,17 +45,10 @@ export interface PerformanceOverviewRequest {
   Querystring: FilterParams;
 }
 
-export async function getPerformanceOverview(
-  req: FastifyRequest<PerformanceOverviewRequest>,
-  res: FastifyReply
-) {
+export async function getPerformanceOverview(req: FastifyRequest<PerformanceOverviewRequest>, res: FastifyReply) {
   const site = req.params.site;
-  const userHasAccessToSite = await getUserHasAccessToSitePublic(req, site);
-  if (!userHasAccessToSite) {
-    return res.status(403).send({ error: "Forbidden" });
-  }
 
-  const query = getQuery(req.query);
+  const query = getQuery(req.query, Number(site));
 
   try {
     const result = await clickhouse.query({
@@ -74,8 +63,6 @@ export async function getPerformanceOverview(
     return res.send({ data: data[0] });
   } catch (error) {
     console.error("Error fetching performance overview:", error);
-    return res
-      .status(500)
-      .send({ error: "Failed to fetch performance overview" });
+    return res.status(500).send({ error: "Failed to fetch performance overview" });
   }
 }

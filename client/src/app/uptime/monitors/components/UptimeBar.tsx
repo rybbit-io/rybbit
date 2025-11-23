@@ -19,7 +19,7 @@ export function UptimeBar({ monitorId, className }: UptimeBarProps) {
     return (
       <div className={cn("flex gap-1 h-6", className)}>
         {Array.from({ length: 7 }).map((_, i) => (
-          <div key={i} className="w-[10px] rounded-md bg-neutral-300 dark:bg-neutral-600 animate-pulse" />
+          <div key={i} className="w-[10px] rounded-md bg-neutral-150 dark:bg-neutral-600 animate-pulse" />
         ))}
       </div>
     );
@@ -29,7 +29,7 @@ export function UptimeBar({ monitorId, className }: UptimeBarProps) {
     return null;
   }
   // Process bucket data
-  const days = data.buckets.map((bucket) => {
+  const days = data.buckets.map(bucket => {
     const date = DateTime.fromSQL(bucket.bucket_time).toLocal();
     return {
       date: bucket.bucket_formatted,
@@ -46,7 +46,7 @@ export function UptimeBar({ monitorId, className }: UptimeBarProps) {
   return (
     <TooltipProvider>
       <div className={cn("flex gap-1 h-6", className)}>
-        {days.map((day) => {
+        {days.map(day => {
           const totalChecks = day.totalChecks;
           const hasIssues = day.failureCount > 0 || day.timeoutCount > 0;
           const uptimePercentage = day.uptimePercentage.toFixed(1);

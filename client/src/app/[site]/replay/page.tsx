@@ -4,7 +4,7 @@ import { useMeasure } from "@uidotdev/usehooks";
 import { useGetSessionReplays } from "../../../api/analytics/sessionReplay/useGetSessionReplays";
 import { DisabledOverlay } from "../../../components/DisabledOverlay";
 import { useSetPageTitle } from "../../../hooks/useSetPageTitle";
-import { SESSION_REPLAY_PAGE_FILTERS } from "../../../lib/store";
+import { SESSION_REPLAY_PAGE_FILTERS } from "../../../lib/filterGroups";
 import { SubHeader } from "../components/SubHeader/SubHeader";
 import { EnableSessionReplay } from "./components/EnableSessionReplay";
 import { ReplayList } from "./components/ReplayList";
@@ -26,7 +26,7 @@ export default function SessionReplayPage() {
   const [ref, { height: resolvedHeight, width: resolvedWidth }] = useMeasure();
 
   return (
-    <DisabledOverlay message="Replay" featurePath="replay">
+    <DisabledOverlay message="Replay" featurePath="replay" requiredPlan="pro">
       <div className="p-2 md:p-4 max-w-[2000px] mx-auto flex flex-col gap-1 overflow-y-hidden">
         <SubHeader availableFilters={SESSION_REPLAY_PAGE_FILTERS} />
         <EnableSessionReplay />

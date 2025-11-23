@@ -5,33 +5,20 @@ import { useGetEventsInfinite } from "../../../../api/analytics/events/useGetEve
 import { NothingFound } from "../../../../components/NothingFound";
 import { formatter } from "../../../../lib/utils";
 import { EventLogItem, EventLogItemSkeleton } from "./EventLogItem";
+import { ErrorState } from "../../../../components/ErrorState";
 
 export function EventLog() {
   const containerRef = useRef<HTMLDivElement>(null);
   const loadMoreRef = useRef<HTMLDivElement>(null);
 
   // Fetch events with infinite scrolling
-  const {
-    data,
-    isLoading,
-    isError,
-    fetchNextPage,
-    hasNextPage,
-    isFetchingNextPage,
-  } = useGetEventsInfinite({
+  const { data, isLoading, isError, fetchNextPage, hasNextPage, isFetchingNextPage } = useGetEventsInfinite({
     pageSize: 100,
   });
 
-  // Remove console.log
-
   // Handle scroll for infinite loading
   const handleScroll = useCallback(() => {
-    if (
-      !loadMoreRef.current ||
-      !containerRef.current ||
-      !hasNextPage ||
-      isFetchingNextPage
-    ) {
+    if (!loadMoreRef.current || !containerRef.current || !hasNextPage || isFetchingNextPage) {
       return;
     }
 
@@ -58,7 +45,7 @@ export function EventLog() {
   }, [handleScroll]);
 
   // Flatten all pages of data
-  const allEvents = data?.pages.flatMap((page) => page.data) || [];
+  const allEvents = data?.pages.flatMap(page => page.data) || [];
 
   if (isLoading) {
     return (
@@ -72,19 +59,15 @@ export function EventLog() {
 
   if (isError) {
     return (
-      <div className="text-center py-8 text-neutral-400">
-        Error loading events. Please try again.
-      </div>
+      <ErrorState
+        title="Failed to load events"
+        message="There was a problem fetching the events. Please try again later."
+      />
     );
   }
 
   if (allEvents.length === 0) {
-    return (
-      <NothingFound
-        title={"No events found"}
-        description={"Try a different date range or filter"}
-      />
-    );
+    return <NothingFound title={"No events found"} description={"Try a different date range or filter"} />;
   }
 
   return (
@@ -109,9 +92,8 @@ export function EventLog() {
       </div>
       {/* Pagination info */}
       {data?.pages[0]?.pagination && (
-        <div className="text-center text-xs text-neutral-400 pt-2">
-          Showing {allEvents.length} of{" "}
-          {formatter(data.pages[0].pagination.total)} events
+        <div className="text-center text-xs text-neutral-500 dark:text-neutral-400 pt-2">
+          Showing {allEvents.length} of {formatter(data.pages[0].pagination.total)} events
         </div>
       )}
     </div>

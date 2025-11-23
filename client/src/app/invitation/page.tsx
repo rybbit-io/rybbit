@@ -1,11 +1,10 @@
 "use client";
 
 import { AlertCircle } from "lucide-react";
-import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useState } from "react";
 import { ThreeDotLoader } from "../../components/Loaders";
-import { TopBar } from "../../components/TopBar";
+import { RybbitLogo } from "../../components/RybbitLogo";
 import { Alert, AlertDescription, AlertTitle } from "../../components/ui/alert";
 import { Button } from "../../components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
@@ -22,12 +21,12 @@ function AuthComponent() {
   return (
     <Card className="w-full max-w-md p-1">
       <CardHeader>
-        <Image src="/rybbit.svg" alt="Rybbit" width={32} height={32} />
+        <RybbitLogo width={32} height={32} />
         <CardTitle className="text-2xl flex justify-center">Join {organization}</CardTitle>
         <p className="text-center text-sm text-muted-foreground mt-2">You've been invited by {inviterEmail}</p>
       </CardHeader>
       <CardContent>
-        <Tabs defaultValue="login" value={activeTab} onValueChange={(v) => setActiveTab(v as "login" | "signup")}>
+        <Tabs defaultValue="login" value={activeTab} onValueChange={v => setActiveTab(v as "login" | "signup")}>
           <TabsList className="grid w-full grid-cols-2 mb-6">
             <TabsTrigger value="signup">Sign Up</TabsTrigger>
             <TabsTrigger value="login">Login</TabsTrigger>
@@ -76,7 +75,7 @@ function AcceptInvitationInner() {
   return (
     <Card className="w-full max-w-md">
       <CardHeader>
-        <Image src="/rybbit.svg" alt="Rybbit" width={32} height={32} />
+        <RybbitLogo width={32} height={32} />
         <CardTitle className="text-2xl flex justify-center">Invitation</CardTitle>
       </CardHeader>
       <CardContent>
@@ -112,8 +111,6 @@ function InvitationContent() {
 export default function AcceptInvitation() {
   return (
     <div className="flex flex-col min-h-dvh">
-      <TopBar />
-
       <div className="flex justify-center items-center flex-grow p-4">
         <Suspense fallback={<ThreeDotLoader />}>
           <InvitationContent />

@@ -122,7 +122,7 @@ export function ChangePassword() {
   return (
     <Dialog
       open={open}
-      onOpenChange={(isOpen) => {
+      onOpenChange={isOpen => {
         setOpen(isOpen);
         if (!isOpen) resetForm();
       }}
@@ -148,7 +148,7 @@ export function ChangePassword() {
               <Input
                 id="currentPassword"
                 value={currentPassword}
-                onChange={(e) => setCurrentPassword(e.target.value)}
+                onChange={e => setCurrentPassword(e.target.value)}
                 type="password"
                 placeholder="Your current password"
                 className="pr-10"
@@ -171,8 +171,8 @@ export function ChangePassword() {
                     passwordStrength <= 2
                       ? "text-red-500"
                       : passwordStrength === 3
-                      ? "text-yellow-500"
-                      : "text-green-500"
+                        ? "text-yellow-500"
+                        : "text-green-500"
                   )}
                 >
                   {passwordStrength <= 2 ? "Weak" : passwordStrength === 3 ? "Good" : "Strong"}
@@ -183,7 +183,7 @@ export function ChangePassword() {
               <Input
                 id="newPassword"
                 value={newPassword}
-                onChange={(e) => setNewPassword(e.target.value)}
+                onChange={e => setNewPassword(e.target.value)}
                 type="password"
                 placeholder="Your new password"
                 className="pr-10"
@@ -203,7 +203,7 @@ export function ChangePassword() {
             {newPassword && (
               <>
                 <div className="flex space-x-1 mt-1.5">
-                  {[1, 2, 3, 4].map((index) => (
+                  {[1, 2, 3, 4].map(index => (
                     <div
                       key={index}
                       className={cn(
@@ -220,8 +220,8 @@ export function ChangePassword() {
                       passwordStrength <= 2
                         ? "text-red-500"
                         : passwordStrength === 3
-                        ? "text-yellow-500"
-                        : "text-green-500"
+                          ? "text-yellow-500"
+                          : "text-green-500"
                     )}
                   >
                     {passwordFeedback}
@@ -239,7 +239,7 @@ export function ChangePassword() {
               <Input
                 id="confirmPassword"
                 value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
+                onChange={e => setConfirmPassword(e.target.value)}
                 type="password"
                 placeholder="Confirm your new password"
                 className="pr-10"

@@ -11,9 +11,9 @@ export interface ScriptConfig {
   enableSessionReplay: boolean;
   sessionReplayBatchSize: number;
   sessionReplayBatchInterval: number;
+  sessionReplayMaskTextSelectors: string[];
   skipPatterns: string[];
   maskPatterns: string[];
-  apiKey?: string;
 }
 
 export interface BasePayload {
@@ -27,7 +27,6 @@ export interface BasePayload {
   page_title: string;
   referrer: string;
   user_id?: string;
-  api_key?: string;
 }
 
 export interface TrackingPayload extends BasePayload {
@@ -85,5 +84,4 @@ export interface SessionReplayBatch {
     viewportHeight?: number;
     language?: string;
   };
-  apiKey?: string;
 }

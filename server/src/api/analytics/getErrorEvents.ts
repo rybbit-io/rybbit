@@ -1,11 +1,6 @@
 import { FastifyReply, FastifyRequest } from "fastify";
 import { clickhouse } from "../../db/clickhouse/clickhouse.js";
-import { getUserHasAccessToSitePublic } from "../../lib/auth-utils.js";
-import {
-  getFilterStatement,
-  getTimeStatement,
-  processResults,
-} from "./utils.js";
+import { getFilterStatement, getTimeStatement, processResults } from "./utils.js";
 import { FilterParams } from "@rybbit/shared";
 
 interface GetErrorEventsRequest {
@@ -50,24 +45,11 @@ type ErrorEventsPaginatedResponse = {
   totalCount: number;
 };
 
-const getErrorEventsQuery = (
-  request: FastifyRequest<GetErrorEventsRequest>,
-  isCountQuery: boolean = false
-) => {
-  const {
-    startDate,
-    endDate,
-    timeZone,
-    filters,
-    errorMessage,
-    limit,
-    page,
-    pastMinutesStart,
-    pastMinutesEnd,
-  } = request.query;
+const getErrorEventsQuery = (request: FastifyRequest<GetErrorEventsRequest>, isCountQuery: boolean = false) => {
+  const { filters, limit, page } = request.query;
 
-  const filterStatement = getFilterStatement(filters);
   const timeStatement = getTimeStatement(request.query);
+  const filterStatement = getFilterStatement(filters, Number(request.params.site), timeStatement);
 
   let validatedLimit: number | null = null;
   if (!isCountQuery && limit !== undefined) {
@@ -77,12 +59,7 @@ const getErrorEventsQuery = (
     }
   }
   // Default to 20 for error events
-  const limitStatement =
-    !isCountQuery && validatedLimit
-      ? `LIMIT ${validatedLimit}`
-      : isCountQuery
-        ? ""
-        : "LIMIT 20";
+  const limitStatement = !isCountQuery && validatedLimit ? `LIMIT ${validatedLimit}` : isCountQuery ? "" : "LIMIT 20";
 
   let validatedOffset: number | null = null;
   if (!isCountQuery && page !== undefined) {
@@ -92,8 +69,7 @@ const getErrorEventsQuery = (
       validatedOffset = pageOffset;
     }
   }
-  const offsetStatement =
-    !isCountQuery && validatedOffset ? `OFFSET ${validatedOffset}` : "";
+  const offsetStatement = !isCountQuery && validatedOffset ? `OFFSET ${validatedOffset}` : "";
 
   if (isCountQuery) {
     return `
@@ -154,20 +130,12 @@ const getErrorEventsQuery = (
   `;
 };
 
-export async function getErrorEvents(
-  req: FastifyRequest<GetErrorEventsRequest>,
-  res: FastifyReply
-) {
+export async function getErrorEvents(req: FastifyRequest<GetErrorEventsRequest>, res: FastifyReply) {
   const site = req.params.site;
   const { errorMessage, page } = req.query;
 
   if (!errorMessage) {
     return res.status(400).send({ error: "errorMessage parameter is required" });
-  }
-
-  const userHasAccessToSite = await getUserHasAccessToSitePublic(req, site);
-  if (!userHasAccessToSite) {
-    return res.status(403).send({ error: "Forbidden" });
   }
 
   const isPaginatedRequest = page !== undefined;
@@ -195,9 +163,7 @@ export async function getErrorEvents(
           errorMessage: errorMessage,
         },
       });
-      const countData = await processResults<{ totalCount: number }>(
-        countResult
-      );
+      const countData = await processResults<{ totalCount: number }>(countResult);
       const totalCount = countData.length > 0 ? countData[0].totalCount : 0;
       return res.send({ data: { data: items, totalCount } });
     } else {

@@ -51,7 +51,7 @@ export function TimingWaterfall({ event }: TimingWaterfallProps) {
         {renderTimingSegments(timings, totalTime, renderWaterfallSegment)}
       </div>
       <div className="flex flex-wrap gap-2 mt-2">
-        {timings.map((timing) => (
+        {timings.map(timing => (
           <TimingLegendItem key={timing.label} timing={timing} />
         ))}
       </div>

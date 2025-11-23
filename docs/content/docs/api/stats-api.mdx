@@ -1,0 +1,561 @@
+---
+title: Stats API
+description: Retrieve analytics data programmatically with the Rybbit Stats API
+---
+
+import { TypeTable } from 'fumadocs-ui/components/type-table';
+
+The Rybbit API allows you to programmatically access your analytics data. All analytics endpoints are read-only and require authentication via API keys.
+
+## Authentication
+
+All API requests must include authentication using one of the following methods:
+
+### Bearer Token (Recommended)
+
+```bash
+Authorization: Bearer your_api_key_here
+```
+
+### Query Parameter (Testing Only)
+
+```bash
+?api_key=your_api_key_here
+```
+
+<Callout type="warn">
+Query parameters expose API keys in server logs and browser history. Use only for quick testing.
+</Callout>
+
+## Generating API Keys
+
+API keys are user-scoped and grant organization-level access:
+
+1. Navigate to **Settings → Account** in your Rybbit dashboard
+2. Scroll to the **API Keys** section
+3. Enter a name for your API key
+4. Click **Create**
+5. Copy the key immediately (it won't be shown again)
+
+### Rate Limits
+
+- **500 requests per 10 minutes** per API key
+- Keys are tied to your user account and grant access to all sites in your organization(s)
+
+## Common Parameters
+
+The following parameters are shared across all analytics endpoints.
+
+### Time Parameters
+
+All endpoints require either date-based or relative time parameters:
+
+<TypeTable
+  type={{
+    start_date: {
+      description: 'Start date for the query period',
+      type: 'string',
+      typeDescription: 'Format: YYYY-MM-DD (e.g., "2024-01-15")',
+      required: false,
+    },
+    end_date: {
+      description: 'End date for the query period',
+      type: 'string',
+      typeDescription: 'Format: YYYY-MM-DD (e.g., "2024-01-31")',
+      required: false,
+    },
+    time_zone: {
+      description: 'IANA timezone identifier',
+      type: 'string',
+      typeDescription: 'e.g., "America/New_York", "Europe/London", "Asia/Tokyo"',
+      required: false,
+    },
+    past_minutes_start: {
+      description: 'Start of relative time range (older boundary)',
+      type: 'number',
+      typeDescription: 'Minutes ago from now. Must be greater than past_minutes_end.',
+      required: false,
+    },
+    past_minutes_end: {
+      description: 'End of relative time range (newer boundary)',
+      type: 'number',
+      typeDescription: 'Minutes ago from now. Must be less than past_minutes_start.',
+      required: false,
+    },
+  }}
+/>
+
+**Note:** You must provide either:
+- All three date parameters (`start_date`, `end_date`, `time_zone`), OR
+- Both relative parameters (`past_minutes_start`, `past_minutes_end`)
+
+#### Examples
+
+**Date-based query (last 30 days):**
+```
+?start_date=2024-01-01&end_date=2024-01-31&time_zone=America/New_York
+```
+
+**Relative query (last 60 minutes):**
+```
+?past_minutes_start=60&past_minutes_end=0
+```
+
+### Filter Parameters
+
+The `filters` parameter accepts a JSON-encoded array of filter objects to narrow down your data.
+
+#### Filter Object Structure
+
+<TypeTable
+  type={{
+    parameter: {
+      description: 'The dimension to filter on',
+      type: 'FilterParameter',
+      typeDescription: 'See Filter Parameters table below',
+      required: true,
+    },
+    type: {
+      description: 'The type of comparison to perform',
+      type: 'FilterType',
+      typeDescription: '"equals" | "not_equals" | "contains" | "not_contains"',
+      required: true,
+    },
+    value: {
+      description: 'Array of values to match against',
+      type: 'Array<string | number>',
+      typeDescription: 'Multiple values are treated as OR conditions',
+      required: true,
+    },
+  }}
+/>
+
+#### Available Filter Parameters
+
+<TypeTable
+  type={{
+    browser: {
+      description: 'Browser name',
+      type: 'string',
+      typeDescription: 'e.g., "Chrome", "Firefox", "Safari"',
+    },
+    operating_system: {
+      description: 'Operating system name',
+      type: 'string',
+      typeDescription: 'e.g., "Windows", "macOS", "Linux"',
+    },
+    language: {
+      description: 'Browser language',
+      type: 'string',
+      typeDescription: 'e.g., "en-US", "es-ES"',
+    },
+    country: {
+      description: 'Country code',
+      type: 'string',
+      typeDescription: 'ISO 3166-1 alpha-2 code, e.g., "US", "GB"',
+    },
+    region: {
+      description: 'Geographic region',
+      type: 'string',
+    },
+    city: {
+      description: 'City name',
+      type: 'string',
+    },
+    device_type: {
+      description: 'Device category',
+      type: 'string',
+      typeDescription: '"desktop", "mobile", "tablet"',
+    },
+    referrer: {
+      description: 'HTTP referrer URL',
+      type: 'string',
+    },
+    hostname: {
+      description: 'Website hostname',
+      type: 'string',
+      typeDescription: 'e.g., "example.com"',
+    },
+    pathname: {
+      description: 'URL pathname',
+      type: 'string',
+      typeDescription: 'e.g., "/blog/post-title"',
+    },
+    page_title: {
+      description: 'HTML page title',
+      type: 'string',
+    },
+    querystring: {
+      description: 'URL query string',
+      type: 'string',
+      typeDescription: 'e.g., "?ref=twitter"',
+    },
+    event_name: {
+      description: 'Custom event name',
+      type: 'string',
+    },
+    channel: {
+      description: 'Marketing channel',
+      type: 'string',
+      typeDescription: 'e.g., "Direct", "Organic Search", "Social"',
+    },
+    utm_source: {
+      description: 'UTM source parameter',
+      type: 'string',
+    },
+    utm_medium: {
+      description: 'UTM medium parameter',
+      type: 'string',
+    },
+    utm_campaign: {
+      description: 'UTM campaign parameter',
+      type: 'string',
+    },
+    utm_term: {
+      description: 'UTM term parameter',
+      type: 'string',
+    },
+    utm_content: {
+      description: 'UTM content parameter',
+      type: 'string',
+    },
+    entry_page: {
+      description: 'First page in session',
+      type: 'string',
+    },
+    exit_page: {
+      description: 'Last page in session',
+      type: 'string',
+    },
+    user_id: {
+      description: 'Custom user identifier',
+      type: 'string',
+    },
+    browser_version: {
+      description: 'Browser version',
+      type: 'string',
+    },
+    operating_system_version: {
+      description: 'OS version',
+      type: 'string',
+    },
+  }}
+/>
+
+#### Filter Examples
+
+**Single filter:**
+```json
+[
+  {
+    "parameter": "country",
+    "type": "equals",
+    "value": ["US"]
+  }
+]
+```
+
+**Multiple filters (AND logic):**
+```json
+[
+  {
+    "parameter": "country",
+    "type": "equals",
+    "value": ["US", "CA"]
+  },
+  {
+    "parameter": "device_type",
+    "type": "equals",
+    "value": ["mobile"]
+  }
+]
+```
+
+**URL-encoded:**
+```
+?filters=%5B%7B%22parameter%22%3A%22country%22%2C%22type%22%3A%22equals%22%2C%22value%22%3A%5B%22US%22%5D%7D%5D
+```
+
+---
+
+## Endpoints
+
+### Get Overview
+
+```
+GET /api/overview/:site
+```
+
+Returns high-level analytics metrics for a site.
+
+#### Path Parameters
+
+<TypeTable
+  type={{
+    site: {
+      description: 'Site ID or site identifier',
+      type: 'string | number',
+      required: true,
+    },
+  }}
+/>
+
+#### Query Parameters
+
+Accepts all [Common Parameters](#common-parameters) (time and filters).
+
+#### Response
+
+<TypeTable
+  type={{
+    sessions: {
+      description: 'Total number of sessions',
+      type: 'number',
+    },
+    pageviews: {
+      description: 'Total number of pageviews',
+      type: 'number',
+    },
+    users: {
+      description: 'Total unique users',
+      type: 'number',
+    },
+    pages_per_session: {
+      description: 'Average pages viewed per session',
+      type: 'number',
+    },
+    bounce_rate: {
+      description: 'Percentage of single-page sessions',
+      type: 'number',
+      typeDescription: 'Range: 0-100',
+    },
+    session_duration: {
+      description: 'Average session duration in seconds',
+      type: 'number',
+    },
+  }}
+/>
+
+#### Example Request
+
+```bash
+curl -X GET "https://api.rybbit.com/api/overview/123?start_date=2024-01-01&end_date=2024-01-31&time_zone=America/New_York" \
+  -H "Authorization: Bearer your_api_key_here"
+```
+
+#### Example Response
+
+```json
+{
+  "data": {
+    "sessions": 15420,
+    "pageviews": 48933,
+    "users": 12847,
+    "pages_per_session": 3.17,
+    "bounce_rate": 42.8,
+    "session_duration": 182.5
+  }
+}
+```
+
+---
+
+### Get Metric
+
+```
+GET /api/metric/:site
+```
+
+Returns dimensional analytics data broken down by a specific parameter. Supports pagination.
+
+#### Path Parameters
+
+<TypeTable
+  type={{
+    site: {
+      description: 'Site ID or site identifier',
+      type: 'string | number',
+      required: true,
+    },
+  }}
+/>
+
+#### Query Parameters
+
+Accepts all [Common Parameters](#common-parameters) plus the following:
+
+<TypeTable
+  type={{
+    parameter: {
+      description: 'The dimension to break down by',
+      type: 'FilterParameter',
+      typeDescription: 'e.g., "pathname", "country", "browser", "event_name"',
+      required: true,
+    },
+    limit: {
+      description: 'Number of results per page',
+      type: 'number',
+      default: 100,
+    },
+    page: {
+      description: 'Page number (1-indexed)',
+      type: 'number',
+      default: 1,
+    },
+  }}
+/>
+
+#### Response
+
+<TypeTable
+  type={{
+    data: {
+      description: 'Array of metric results',
+      type: 'MetricItem[]',
+      typeDescription: 'See MetricItem structure below',
+    },
+    totalCount: {
+      description: 'Total number of unique values across all pages',
+      type: 'number',
+    },
+  }}
+/>
+
+#### MetricItem Structure
+
+<TypeTable
+  type={{
+    value: {
+      description: 'The dimension value',
+      type: 'string',
+      typeDescription: 'e.g., "/blog", "Chrome", "US"',
+    },
+    count: {
+      description: 'Number of sessions for this value',
+      type: 'number',
+    },
+    percentage: {
+      description: 'Percentage of total sessions',
+      type: 'number',
+      typeDescription: 'Range: 0-100',
+    },
+    pageviews: {
+      description: 'Total pageviews (for page-related parameters)',
+      type: 'number',
+      required: false,
+    },
+    pageviews_percentage: {
+      description: 'Percentage of total pageviews',
+      type: 'number',
+      required: false,
+    },
+    time_on_page_seconds: {
+      description: 'Average time on page (for page-related parameters)',
+      type: 'number',
+      required: false,
+    },
+    bounce_rate: {
+      description: 'Bounce rate percentage',
+      type: 'number',
+      typeDescription: 'Range: 0-100',
+      required: false,
+    },
+    pathname: {
+      description: 'Representative pathname (for page_title parameter)',
+      type: 'string',
+      required: false,
+    },
+  }}
+/>
+
+#### Example Request
+
+```bash
+curl -X GET "https://api.rybbit.com/api/metric/123?parameter=country&start_date=2024-01-01&end_date=2024-01-31&time_zone=America/New_York&limit=10&page=1" \
+  -H "Authorization: Bearer your_api_key_here"
+```
+
+#### Example Response
+
+```json
+{
+  "data": {
+    "data": [
+      {
+        "value": "US",
+        "count": 8420,
+        "percentage": 54.63,
+        "pageviews": 26891,
+        "pageviews_percentage": 54.96,
+        "bounce_rate": 41.2
+      },
+      {
+        "value": "GB",
+        "count": 2150,
+        "percentage": 13.95,
+        "pageviews": 6847,
+        "pageviews_percentage": 13.99,
+        "bounce_rate": 43.8
+      }
+    ],
+    "totalCount": 87
+  }
+}
+```
+
+#### Pagination Example
+
+```bash
+# Page 1
+GET /api/metric/123?parameter=pathname&limit=50&page=1
+
+# Page 2
+GET /api/metric/123?parameter=pathname&limit=50&page=2
+```
+
+---
+
+## Error Responses
+
+All endpoints return standard HTTP status codes:
+
+- **200** - Success
+- **400** - Bad Request (invalid parameters)
+- **401** - Unauthorized (missing or invalid API key)
+- **403** - Forbidden (no access to site)
+- **404** - Not Found (site doesn't exist)
+- **429** - Too Many Requests (rate limit exceeded)
+- **500** - Internal Server Error
+
+### Error Response Format
+
+```json
+{
+  "error": "Error message describing what went wrong"
+}
+```
+
+---
+
+## Best Practices
+
+1. **Cache responses** - Analytics data doesn't change frequently. Cache for at least 5-10 minutes.
+2. **Use date ranges** - For recent data, use `past_minutes_start/end`. For historical data, use `start_date/end_date`.
+3. **Filter strategically** - Apply filters to reduce data transfer and improve performance.
+4. **Paginate results** - Use the `limit` and `page` parameters for large datasets.
+5. **Monitor rate limits** - Implement exponential backoff if you receive 429 responses.
+
+---
+
+## Rate Limiting
+
+When you exceed the rate limit, you'll receive a `429 Too Many Requests` response:
+
+```json
+{
+  "success": false,
+  "error": "Rate limit exceeded. Maximum 500 requests per 10 minutes per API key."
+}
+```
+
+Wait for the rate limit window to reset before making additional requests.

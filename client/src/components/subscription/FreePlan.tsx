@@ -1,14 +1,14 @@
-import { AlertTriangle, ArrowRight, PackageOpen } from "lucide-react";
-import { useRouter } from "next/navigation";
+import { authClient } from "@/lib/auth";
+import { AlertTriangle, ArrowRight } from "lucide-react";
 import { DateTime } from "luxon";
+import { useRouter } from "next/navigation";
+import { DEFAULT_EVENT_LIMIT } from "../../lib/subscription/constants";
+import { useStripeSubscription } from "../../lib/subscription/useStripeSubscription";
 import { Alert, AlertDescription, AlertTitle } from "../ui/alert";
 import { Button } from "../ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "../ui/card";
 import { Progress } from "../ui/progress";
-import { DEFAULT_EVENT_LIMIT } from "../../lib/subscription/constants";
-import { useStripeSubscription } from "../../lib/subscription/useStripeSubscription";
 import { UsageChart } from "../UsageChart";
-import { authClient } from "@/lib/auth";
 
 export function FreePlan() {
   const { data: subscription } = useStripeSubscription();
@@ -79,12 +79,7 @@ export function FreePlan() {
               </div>
             </div>
 
-            {organizationId && (
-              <div className="space-y-2">
-                <h3 className="font-medium text-sm text-neutral-400 mb-2">Last 30 Days</h3>
-                <UsageChart organizationId={organizationId} startDate={startDate} endDate={endDate} />
-              </div>
-            )}
+            {organizationId && <UsageChart organizationId={organizationId} startDate={startDate} endDate={endDate} />}
           </div>
         </CardContent>
         <CardFooter>

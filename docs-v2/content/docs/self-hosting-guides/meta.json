@@ -1,7 +1,0 @@
-{
-  "title": "Self-Hosting Guides",
-  "pages": [
-    "custom-nginx",
-    "nginx-proxy-manager"
-  ]
-}

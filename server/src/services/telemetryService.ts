@@ -22,13 +22,17 @@ class TelemetryService {
     if (!IS_CLOUD && !DISABLE_TELEMETRY) {
       this.logger.info("Initializing telemetry cron");
       // Schedule telemetry to run every 24 hours at midnight
-      this.telemetryTask = cron.schedule("0 0 * * *", async () => {
-        try {
-          await this.collectAndSendTelemetry();
-        } catch (error) {
-          this.logger.error(error as Error, "Error during telemetry collection");
-        }
-      });
+      this.telemetryTask = cron.schedule(
+        "0 0 * * *",
+        async () => {
+          try {
+            await this.collectAndSendTelemetry();
+          } catch (error) {
+            this.logger.error(error as Error, "Error during telemetry collection");
+          }
+        },
+        { timezone: "UTC" }
+      );
 
       // Run immediately on startup
       this.collectAndSendTelemetry();
@@ -51,7 +55,7 @@ class TelemetryService {
 
   // Get table row counts from ClickHouse
   private async getTableCounts() {
-    const tables = ["events", "session_replay_events", "session_replay_metadata", "hourly_events_by_site_mv_target"];
+    const tables = ["events", "session_replay_events", "session_replay_metadata"];
 
     const counts: Record<string, number> = {};
 
@@ -64,7 +68,7 @@ class TelemetryService {
         const data = await processResults<{ count: number }>(result);
         counts[table] = data[0]?.count || 0;
       } catch (error) {
-        // Table might not exist, especially hourly_events_by_site_mv_target in self-hosted
+        // Table might not exist
         counts[table] = 0;
       }
     }
@@ -101,7 +105,7 @@ class TelemetryService {
   // Send telemetry to cloud instance
   private async sendTelemetry(data: any) {
     try {
-      const response = await fetch("https://demo.rybbit.io/api/admin/telemetry", {
+      const response = await fetch("https://demo.rybbit.com/api/admin/telemetry", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

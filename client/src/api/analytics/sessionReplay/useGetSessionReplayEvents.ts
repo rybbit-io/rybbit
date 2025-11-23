@@ -46,9 +46,7 @@ export function useGetSessionReplayEvents(siteId: number, sessionId: string) {
   return useQuery({
     queryKey: ["session-replay-events", siteId, sessionId],
     queryFn: () => {
-      return authedFetch<GetSessionReplayEventsResponse>(
-        `/session-replay/${sessionId}/${siteId}`
-      );
+      return authedFetch<GetSessionReplayEventsResponse>(`/session-replay/${sessionId}/${siteId}`);
     },
     enabled: !!siteId && !!sessionId,
     staleTime: 1000 * 60 * 10, // 10 minutes

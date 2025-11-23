@@ -1,11 +1,6 @@
 import { FastifyReply, FastifyRequest } from "fastify";
 import { clickhouse } from "../../../db/clickhouse/clickhouse.js";
-import {
-  getTimeStatement,
-  processResults,
-  getFilterStatement,
-} from "../utils.js";
-import { getUserHasAccessToSitePublic } from "../../../lib/auth-utils.js";
+import { getTimeStatement, processResults, getFilterStatement } from "../utils.js";
 import { FilterParams } from "@rybbit/shared";
 
 export type GetOutboundLinksResponse = {
@@ -21,26 +16,12 @@ export interface GetOutboundLinksRequest {
   Querystring: FilterParams<{}>;
 }
 
-export async function getOutboundLinks(
-  req: FastifyRequest<GetOutboundLinksRequest>,
-  res: FastifyReply
-) {
-  const {
-    startDate,
-    endDate,
-    timeZone,
-    filters,
-    pastMinutesStart,
-    pastMinutesEnd,
-  } = req.query;
+export async function getOutboundLinks(req: FastifyRequest<GetOutboundLinksRequest>, res: FastifyReply) {
+  const { filters } = req.query;
   const site = req.params.site;
-  const userHasAccessToSite = await getUserHasAccessToSitePublic(req, site);
-  if (!userHasAccessToSite) {
-    return res.status(403).send({ error: "Forbidden" });
-  }
 
   const timeStatement = getTimeStatement(req.query);
-  const filterStatement = filters ? getFilterStatement(filters) : "";
+  const filterStatement = filters ? getFilterStatement(filters, Number(site), timeStatement) : "";
 
   const query = `
     SELECT
@@ -70,9 +51,9 @@ export async function getOutboundLinks(
     }
 
     const rawData = await processResults<RawOutboundEvent>(result);
-    
+
     const urlCounts = new Map<string, { count: number; lastClicked: string }>();
-    
+
     rawData.forEach(event => {
       try {
         const props = JSON.parse(event.properties);

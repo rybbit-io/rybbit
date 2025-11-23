@@ -76,8 +76,8 @@ export function useGetPerformanceByDimension({
     page,
     percentile: selectedPercentile,
     filters: useFilters ? [...filters, ...additionalFilters] : undefined,
-    sortBy,
-    sortOrder,
+    sort_by: sortBy,
+    sort_order: sortOrder,
     dimension,
   });
 
@@ -96,10 +96,7 @@ export function useGetPerformanceByDimension({
       sortOrder,
     ],
     queryFn: async () => {
-      const response = await authedFetch<{ data: any }>(
-        `/performance/by-dimension/${site}`,
-        queryParams
-      );
+      const response = await authedFetch<{ data: any }>(`/performance/by-dimension/${site}`, queryParams);
       return response.data;
     },
     staleTime: Infinity,

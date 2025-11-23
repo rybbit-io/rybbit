@@ -11,10 +11,16 @@ import { DeleteAccount } from "./DeleteAccount";
 import { validateEmail } from "../../../../lib/auth-utils";
 import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
+import { Switch } from "../../../../components/ui/switch";
+import { useUpdateAccountSettings } from "../../../../api/admin/accountSettings";
+import { IS_CLOUD } from "../../../../lib/const";
+import { ApiKeyManager } from "./ApiKeyManager";
 
-export function AccountInner({ session }: { session: ReturnType<typeof authClient.useSession> }) {
+export function AccountInner() {
+  const session = authClient.useSession();
   const router = useRouter();
   const queryClient = useQueryClient();
+  const updateAccountSettings = useUpdateAccountSettings();
 
   const [email, setEmail] = useState(session.data?.user.email ?? "");
   const [name, setName] = useState(session.data?.user.name ?? "");
@@ -43,7 +49,7 @@ export function AccountInner({ session }: { session: ReturnType<typeof authClien
       }
 
       toast.success("Name updated successfully");
-      globalThis.location.reload();
+      session.refetch();
     } catch (error) {
       console.error("Error updating name:", error);
       toast.error(error instanceof Error ? error.message : "Failed to update name");
@@ -74,14 +80,25 @@ export function AccountInner({ session }: { session: ReturnType<typeof authClien
       }
 
       toast.success("Email updated successfully");
-
-      // Reload the page to refresh the session
-      globalThis.location.reload();
+      session.refetch();
     } catch (error) {
       console.error("Error updating email:", error);
       toast.error(error instanceof Error ? error.message : "Failed to update email");
     } finally {
       setIsUpdatingEmail(false);
+    }
+  };
+
+  const handleEmailReportsToggle = async (checked: boolean) => {
+    try {
+      await updateAccountSettings.mutateAsync({
+        sendAutoEmailReports: checked,
+      });
+      toast.success(`Email reports ${checked ? "enabled" : "disabled"}`);
+      session.refetch();
+    } catch (error) {
+      console.error("Error updating email reports setting:", error);
+      toast.error(error instanceof Error ? error.message : "Failed to update email reports setting");
     }
   };
 
@@ -126,6 +143,21 @@ export function AccountInner({ session }: { session: ReturnType<typeof authClien
               </Button>
             </div>
           </div>
+          {(session.data?.user as any)?.sendAutoEmailReports !== undefined && IS_CLOUD && (
+            <div className="flex items-center justify-between">
+              <div className="space-y-2">
+                <h4 className="text-sm font-medium">Send Weekly Email Reports</h4>
+                <p className="text-xs text-neutral-500">Enable or disable automatic email reports for your account.</p>
+              </div>
+              <div className="flex space-x-2">
+                <Switch
+                  checked={(session.data?.user as any).sendAutoEmailReports}
+                  onCheckedChange={handleEmailReportsToggle}
+                  disabled={updateAccountSettings.isPending}
+                />
+              </div>
+            </div>
+          )}
           <Button
             variant="outline"
             onClick={async () => {
@@ -162,6 +194,8 @@ export function AccountInner({ session }: { session: ReturnType<typeof authClien
           </div>
         </CardContent>
       </Card>
+
+      {IS_CLOUD && <ApiKeyManager />}
     </div>
   );
 }

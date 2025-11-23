@@ -1,11 +1,6 @@
 import { FastifyReply, FastifyRequest } from "fastify";
 import { clickhouse } from "../../db/clickhouse/clickhouse.js";
-import {
-  getFilterStatement,
-  getTimeStatement,
-  processResults,
-} from "./utils.js";
-import { getUserHasAccessToSitePublic } from "../../lib/auth-utils.js";
+import { getFilterStatement, getTimeStatement, processResults } from "./utils.js";
 import { FilterParams } from "@rybbit/shared";
 
 export type GetSessionsResponse = {
@@ -24,6 +19,9 @@ export type GetSessionsResponse = {
   screen_height: number;
   referrer: string;
   channel: string;
+  hostname: string;
+  page_title: string;
+  querystring: string;
   utm_source: string;
   utm_medium: string;
   utm_campaign: string;
@@ -38,6 +36,9 @@ export type GetSessionsResponse = {
   events: number;
   errors: number;
   outbound: number;
+  ip: string;
+  lat: number;
+  lon: number;
 }[];
 
 export interface GetSessionsRequest {
@@ -45,24 +46,27 @@ export interface GetSessionsRequest {
     site: string;
   };
   Querystring: FilterParams<{
+    limit: number;
     page: number;
-    userId?: string;
+    user_id?: string;
   }>;
 }
 
-export async function getSessions(
-  req: FastifyRequest<GetSessionsRequest>,
-  res: FastifyReply
-) {
-  const { filters, page, userId } = req.query;
+export async function getSessions(req: FastifyRequest<GetSessionsRequest>, res: FastifyReply) {
+  const { filters, page, user_id: userId, limit } = req.query;
   const site = req.params.site;
-  const userHasAccessToSite = await getUserHasAccessToSitePublic(req, site);
-  if (!userHasAccessToSite) {
-    return res.status(403).send({ error: "Forbidden" });
-  }
 
-  const filterStatement = getFilterStatement(filters);
   const timeStatement = getTimeStatement(req.query);
+  let filterStatement = getFilterStatement(filters, Number(site), timeStatement);
+
+  // Transform filter statement to use extracted UTM columns instead of map access
+  // since the CTE already extracts utm_source, utm_medium, etc. as separate columns
+  filterStatement = filterStatement
+    .replace(/url_parameters\['utm_source'\]/g, "utm_source")
+    .replace(/url_parameters\['utm_medium'\]/g, "utm_medium")
+    .replace(/url_parameters\['utm_campaign'\]/g, "utm_campaign")
+    .replace(/url_parameters\['utm_term'\]/g, "utm_term")
+    .replace(/url_parameters\['utm_content'\]/g, "utm_content");
 
   const query = `
   WITH AggregatedSessions AS (
@@ -82,7 +86,7 @@ export async function getSessions(
           argMax(screen_height, timestamp) AS screen_height,
           argMin(referrer, timestamp) AS referrer,
           argMin(channel, timestamp) AS channel,
-          /* UTM parameters from url_parameters map */
+          argMin(hostname, timestamp) AS hostname,
           argMin(url_parameters, timestamp)['utm_source'] AS utm_source,
           argMin(url_parameters, timestamp)['utm_medium'] AS utm_medium,
           argMin(url_parameters, timestamp)['utm_campaign'] AS utm_campaign,
@@ -96,20 +100,23 @@ export async function getSessions(
           countIf(type = 'pageview') AS pageviews,
           countIf(type = 'custom_event') AS events,
           countIf(type = 'error') AS errors,
-          countIf(type = 'outbound') AS outbound
+          countIf(type = 'outbound') AS outbound,
+          argMax(ip, timestamp) AS ip,
+          argMax(lat, timestamp) AS lat,
+          argMax(lon, timestamp) AS lon
       FROM events
       WHERE
           site_id = {siteId:Int32}
-          ${userId ? ` AND user_id = {userId:String}` : ""}
+          ${userId ? ` AND user_id = {user_id:String}` : ""}
           ${timeStatement}
       GROUP BY
           session_id,
           user_id
+      ORDER BY session_end DESC
   )
   SELECT *
   FROM AggregatedSessions
   WHERE 1 = 1 ${filterStatement}
-  ORDER BY session_end DESC
   LIMIT {limit:Int32} OFFSET {offset:Int32}
   `;
 
@@ -119,9 +126,9 @@ export async function getSessions(
       format: "JSONEachRow",
       query_params: {
         siteId: Number(site),
-        userId,
-        limit: 100,
-        offset: (page - 1) * 100,
+        user_id: userId,
+        limit: limit || 100,
+        offset: (page - 1) * (limit || 100),
       },
     });
 

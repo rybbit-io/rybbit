@@ -1,33 +1,28 @@
-import { Filter } from "@rybbit/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useDebounce } from "@uidotdev/usehooks";
 import { timeZone } from "../../../lib/dateTimeUtils";
-import { useStore } from "../../../lib/store";
-import { authedFetch } from "../../utils";
+import { FUNNEL_PAGE_FILTERS } from "../../../lib/filterGroups";
+import { getFilteredFilters, useStore } from "../../../lib/store";
+import { authedFetch, getQueryParams } from "../../utils";
 
 export type FunnelStep = {
   value: string;
   name?: string;
   type: "page" | "event";
+  hostname?: string;
   eventPropertyKey?: string;
   eventPropertyValue?: string | number | boolean;
 };
 
 export type FunnelRequest = {
   steps: FunnelStep[];
-  startDate: string | null;
-  endDate: string | null;
   name?: string;
-  filters?: Filter[];
 };
 
 export type SaveFunnelRequest = {
   steps: FunnelStep[];
-  startDate: string;
-  endDate: string;
   name: string;
   reportId?: number;
-  filters?: Filter[];
 };
 
 export type FunnelResponse = {
@@ -42,22 +37,16 @@ export type FunnelResponse = {
  * Hook for analyzing conversion funnels through a series of steps
  */
 export function useGetFunnel(config?: FunnelRequest, debounce?: boolean) {
-  const { site } = useStore();
+  const { site, time } = useStore();
 
   const debouncedConfig = useDebounce(config, 500);
+
+  const queryParams = getQueryParams(time, { filters: getFilteredFilters(FUNNEL_PAGE_FILTERS) });
 
   const configToUse = debounce ? debouncedConfig : config;
 
   return useQuery<FunnelResponse[], Error>({
-    queryKey: [
-      "funnel",
-      site,
-      configToUse?.filters,
-      configToUse?.startDate,
-      configToUse?.endDate,
-      configToUse?.filters,
-      configToUse?.steps.map((s) => s.value + s.type),
-    ],
+    queryKey: ["funnel", site, queryParams, configToUse?.steps.map(s => s.value + s.type)],
     queryFn: async () => {
       if (!configToUse) {
         throw new Error("Funnel configuration is required");
@@ -66,17 +55,12 @@ export function useGetFunnel(config?: FunnelRequest, debounce?: boolean) {
       // Add time zone to the request
       const fullConfig = {
         ...configToUse,
-        timeZone,
       };
       try {
-        const response = await authedFetch<{ data: FunnelResponse[] }>(
-          `/funnel/${site}`,
-          undefined,
-          {
-            method: "POST",
-            data: fullConfig,
-          }
-        );
+        const response = await authedFetch<{ data: FunnelResponse[] }>(`/funnel/${site}`, queryParams, {
+          method: "POST",
+          data: fullConfig,
+        });
 
         return response.data;
       } catch (error) {
@@ -94,12 +78,8 @@ export function useSaveFunnel() {
   const { site } = useStore();
   const queryClient = useQueryClient();
 
-  return useMutation<
-    { success: boolean; funnelId: number },
-    Error,
-    SaveFunnelRequest
-  >({
-    mutationFn: async (funnelConfig) => {
+  return useMutation<{ success: boolean; funnelId: number }, Error, SaveFunnelRequest>({
+    mutationFn: async funnelConfig => {
       // Add time zone to the request
       const fullConfig = {
         ...funnelConfig,

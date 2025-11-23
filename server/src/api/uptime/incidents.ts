@@ -83,7 +83,9 @@ export const incidentsRoutes = async (server: FastifyInstance) => {
               ELSE 'Unknown Monitor'
             END
           `,
-          affectedRegions: sql<string[]>`ARRAY_REMOVE(ARRAY_AGG(DISTINCT ${uptimeIncidents.region} ORDER BY ${uptimeIncidents.region}), NULL)`,
+          affectedRegions: sql<
+            string[]
+          >`ARRAY_REMOVE(ARRAY_AGG(DISTINCT ${uptimeIncidents.region} ORDER BY ${uptimeIncidents.region}), NULL)`,
           startTime: sql<string>`MIN(${uptimeIncidents.startTime})`,
           endTime: sql<string>`MAX(${uptimeIncidents.endTime})`,
           status: uptimeIncidents.status,
@@ -278,4 +280,3 @@ export const incidentsRoutes = async (server: FastifyInstance) => {
     },
   });
 };
-

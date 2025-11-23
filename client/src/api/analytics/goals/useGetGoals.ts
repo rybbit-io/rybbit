@@ -1,9 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
-import {
-  getFilteredFilters,
-  GOALS_PAGE_FILTERS,
-  useStore,
-} from "../../../lib/store";
+import { getFilteredFilters, useStore } from "../../../lib/store";
+import { GOALS_PAGE_FILTERS } from "../../../lib/filterGroups";
 import { authedFetch, getQueryParams } from "../../utils";
 
 export interface Goal {
@@ -53,22 +50,13 @@ export function useGetGoals({
   const timeParams = getQueryParams(time);
 
   return useQuery({
-    queryKey: [
-      "goals",
-      site,
-      timeParams,
-      filteredFilters,
-      page,
-      pageSize,
-      sort,
-      order,
-    ],
+    queryKey: ["goals", site, timeParams, filteredFilters, page, pageSize, sort, order],
     queryFn: async () => {
       return authedFetch<GoalsResponse>(`/goals/${site}`, {
         ...timeParams,
-        filteredFilters,
+        filters: filteredFilters,
         page,
-        pageSize,
+        page_size: pageSize,
         sort,
         order,
       });

@@ -46,10 +46,7 @@ type UseGetErrorEventsOptions = {
 };
 
 // Hook for infinite scrolling
-export function useGetErrorEventsInfinite(
-  errorMessage: string,
-  enabled: boolean = true
-) {
+export function useGetErrorEventsInfinite(errorMessage: string, enabled: boolean = true) {
   const { time, site, filters } = useStore();
 
   return useInfiniteQuery({
@@ -63,16 +60,10 @@ export function useGetErrorEventsInfinite(
         filters,
       };
 
-      return authedFetch<APIResponse<ErrorEventsPaginatedResponse>>(
-        `/error-events/${site}`,
-        queryParams
-      );
+      return authedFetch<APIResponse<ErrorEventsPaginatedResponse>>(`/error-events/${site}`, queryParams);
     },
     initialPageParam: 1,
-    getNextPageParam: (
-      lastPage: APIResponse<ErrorEventsPaginatedResponse>,
-      allPages
-    ) => {
+    getNextPageParam: (lastPage: APIResponse<ErrorEventsPaginatedResponse>, allPages) => {
       const currentPage = allPages.length;
       const totalItems = lastPage.data?.totalCount || 0;
       const itemsPerPage = 20;
@@ -84,4 +75,3 @@ export function useGetErrorEventsInfinite(
     staleTime: Infinity,
   });
 }
-

@@ -2,25 +2,14 @@
 
 import { Expand, Monitor, Smartphone, Tablet } from "lucide-react";
 import { useState } from "react";
-import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from "../../../../../components/ui/basic-tabs";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../../../../components/ui/basic-tabs";
 import { Card, CardContent } from "../../../../../components/ui/card";
 import { StandardSection } from "../../../components/shared/StandardSection/StandardSection";
 import { Browser } from "../../../components/shared/icons/Browser";
 import { OperatingSystem } from "../../../components/shared/icons/OperatingSystem";
 import { Button } from "../../../../../components/ui/button";
 
-type Tab =
-  | "devices"
-  | "browsers"
-  | "os"
-  | "dimensions"
-  | "browser_versions"
-  | "os_versions";
+type Tab = "devices" | "browsers" | "os" | "dimensions" | "browser_versions" | "os_versions";
 
 export function Devices() {
   const [tab, setTab] = useState<Tab>("browsers");
@@ -32,11 +21,7 @@ export function Devices() {
   return (
     <Card className="h-[405px]">
       <CardContent className="mt-2">
-        <Tabs
-          defaultValue="browsers"
-          value={tab}
-          onValueChange={(value) => setTab(value as Tab)}
-        >
+        <Tabs defaultValue="browsers" value={tab} onValueChange={value => setTab(value as Tab)}>
           <div className="flex flex-row gap-2 justify-between items-center">
             <div className="overflow-x-auto">
               <TabsList>
@@ -46,17 +31,19 @@ export function Devices() {
                 <TabsTrigger value="dimensions">Screen Dimensions</TabsTrigger>
               </TabsList>
             </div>
-            <Button size="smIcon" onClick={() => setExpanded(!expanded)}>
-              <Expand />
-            </Button>
+            <div className="w-7">
+              <Button size="smIcon" onClick={() => setExpanded(!expanded)}>
+                <Expand className="w-4 h-4" />
+              </Button>
+            </div>
           </div>
           <TabsContent value="devices">
             <StandardSection
               filterParameter="device_type"
               title="Devices"
-              getValue={(e) => e.value}
-              getKey={(e) => e.value}
-              getLabel={(e) => (
+              getValue={e => e.value}
+              getKey={e => e.value}
+              getLabel={e => (
                 <div className="flex gap-2 items-center">
                   {e.value === "Desktop" && <Monitor className="w-4 h-4" />}
                   {e.value === "Mobile" && <Smartphone className="w-4 h-4" />}
@@ -72,15 +59,15 @@ export function Devices() {
             <StandardSection
               filterParameter="browser"
               title="Browsers"
-              getValue={(e) => e.value}
-              getKey={(e) => e.value}
-              getLabel={(e) => (
+              getValue={e => e.value}
+              getKey={e => e.value}
+              getLabel={e => (
                 <div className="flex gap-2 items-center">
                   <Browser browser={e.value} />
                   {e.value || "Other"}
                 </div>
               )}
-              getSubrowLabel={(e) => {
+              getSubrowLabel={e => {
                 const justBrowser = e.value.split(" ").slice(0, -1).join(" ");
                 return (
                   <div className="flex gap-2 items-center">
@@ -97,15 +84,15 @@ export function Devices() {
           <TabsContent value="os">
             <StandardSection
               title="Operating Systems"
-              getValue={(e) => e.value}
-              getKey={(e) => e.value}
-              getLabel={(e) => (
+              getValue={e => e.value}
+              getKey={e => e.value}
+              getLabel={e => (
                 <div className="flex gap-2 items-center">
                   <OperatingSystem os={e.value || "Other"} />
                   {e.value || "Other"}
                 </div>
               )}
-              getSubrowLabel={(e) => {
+              getSubrowLabel={e => {
                 const justOS = e.value.split(" ").slice(0, -1).join(" ");
                 return (
                   <div className="flex gap-2 items-center">
@@ -123,13 +110,9 @@ export function Devices() {
           <TabsContent value="dimensions">
             <StandardSection
               title="Screen Dimensions"
-              getValue={(e) => e.value}
-              getKey={(e) => e.value}
-              getLabel={(e) => (
-                <div className="flex gap-2 items-center">
-                  {e.value || "Other"}
-                </div>
-              )}
+              getValue={e => e.value}
+              getKey={e => e.value}
+              getLabel={e => <div className="flex gap-2 items-center">{e.value || "Other"}</div>}
               filterParameter="dimensions"
               expanded={expanded}
               close={close}

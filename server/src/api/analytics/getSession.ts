@@ -1,6 +1,5 @@
 import { FastifyReply, FastifyRequest } from "fastify";
 import { clickhouse } from "../../db/clickhouse/clickhouse.js";
-import { getUserHasAccessToSitePublic } from "../../lib/auth-utils.js";
 import { processResults } from "./utils.js";
 
 export interface SessionDetails {
@@ -26,6 +25,7 @@ export interface SessionDetails {
   events: number;
   entry_page: string;
   exit_page: string;
+  ip: string;
 }
 
 export interface Event {
@@ -63,24 +63,14 @@ export interface GetSessionRequest {
   };
 }
 
-export async function getSession(
-  req: FastifyRequest<GetSessionRequest>,
-  res: FastifyReply
-) {
+export async function getSession(req: FastifyRequest<GetSessionRequest>, res: FastifyReply) {
   const { sessionId, site } = req.params;
   const limit = req.query.limit ? parseInt(req.query.limit) : 100;
   const offset = req.query.offset ? parseInt(req.query.offset) : 0;
   const minutes = req.query.minutes ? parseInt(req.query.minutes) : undefined;
 
-  const userHasAccessToSite = await getUserHasAccessToSitePublic(req, site);
-  if (!userHasAccessToSite) {
-    return res.status(403).send({ error: "Forbidden" });
-  }
-
   // Add time filter if minutes is provided
-  const timeFilter = minutes
-    ? `timestamp > now() - interval ${minutes} minute`
-    : "";
+  const timeFilter = minutes ? `timestamp > now() - interval ${minutes} minute` : "";
 
   // Add the WHERE clause connector if timeFilter exists
   const timeFilterWithConnector = timeFilter ? `AND ${timeFilter}` : "";
@@ -110,7 +100,8 @@ SELECT
     countIf(type = 'pageview') as pageviews,
     count() as events,
     argMinIf(pathname, timestamp, type = 'pageview') as entry_page,
-    argMaxIf(pathname, timestamp, type = 'pageview') as exit_page
+    argMaxIf(pathname, timestamp, type = 'pageview') as exit_page,
+    any(ip) AS ip
 FROM events
 WHERE 
     site_id = {siteId:Int32}
@@ -156,35 +147,34 @@ OFFSET {offset:Int32}
     `;
 
     // Execute queries in parallel
-    const [sessionResultSettled, countResultSettled, eventsResultSettled] =
-      await Promise.allSettled([
-        clickhouse.query({
-          query: sessionQuery,
-          format: "JSONEachRow",
-          query_params: {
-            siteId: Number(site),
-            sessionId,
-          },
-        }),
-        clickhouse.query({
-          query: countQuery,
-          format: "JSONEachRow",
-          query_params: {
-            siteId: Number(site),
-            sessionId,
-          },
-        }),
-        clickhouse.query({
-          query: eventsQuery,
-          format: "JSONEachRow",
-          query_params: {
-            siteId: Number(site),
-            sessionId,
-            limit,
-            offset,
-          },
-        }),
-      ]);
+    const [sessionResultSettled, countResultSettled, eventsResultSettled] = await Promise.allSettled([
+      clickhouse.query({
+        query: sessionQuery,
+        format: "JSONEachRow",
+        query_params: {
+          siteId: Number(site),
+          sessionId,
+        },
+      }),
+      clickhouse.query({
+        query: countQuery,
+        format: "JSONEachRow",
+        query_params: {
+          siteId: Number(site),
+          sessionId,
+        },
+      }),
+      clickhouse.query({
+        query: eventsQuery,
+        format: "JSONEachRow",
+        query_params: {
+          siteId: Number(site),
+          sessionId,
+          limit,
+          offset,
+        },
+      }),
+    ]);
 
     // Check if queries were successful
     if (sessionResultSettled.status === "rejected") {

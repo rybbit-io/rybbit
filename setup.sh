@@ -7,6 +7,7 @@ set -e
 USE_WEBSERVER="true"
 BACKEND_PORT="3001"
 CLIENT_PORT="3002"
+MAPBOX_TOKEN=""
 
 # Help function
 show_help() {
@@ -18,6 +19,7 @@ show_help() {
   echo "  --no-webserver          Disable the built-in Caddy webserver"
   echo "  --backend-port <port>   Set custom host port for backend (default: 3001)"
   echo "  --client-port <port>    Set custom host port for client (default: 3002)"
+  echo "  --mapbox-token <token>  Set Mapbox API token (optional but recommended for maps)"
   echo "  --help                  Show this help message"
 }
 
@@ -44,6 +46,15 @@ while [[ "$#" -gt 0 ]]; do
         exit 1
       fi
       CLIENT_PORT="$2"
+      shift 2
+      ;;
+    --mapbox-token)
+      if [[ -z "$2" || "$2" =~ ^- ]]; then
+        echo "Error: --mapbox-token requires a token value"
+        show_help
+        exit 1
+      fi
+      MAPBOX_TOKEN="$2"
       shift 2
       ;;
     --help)
@@ -100,6 +111,11 @@ BETTER_AUTH_SECRET=${BETTER_AUTH_SECRET}
 DISABLE_SIGNUP=false
 EOL
 
+# Add MAPBOX_TOKEN if provided
+if [ -n "$MAPBOX_TOKEN" ]; then
+  echo "MAPBOX_TOKEN=${MAPBOX_TOKEN}" >> .env
+fi
+
 # Only add port variables if using custom ports or no webserver
 if [ "$USE_WEBSERVER" = "false" ]; then
   # When not using the built-in webserver, expose ports to all interfaces
@@ -138,10 +154,10 @@ fi
 echo "Building and starting Docker services..."
 if [ "$USE_WEBSERVER" = "false" ]; then
   # Start without the caddy service when using --no-webserver
-  docker compose up -d backend client clickhouse postgres
+  docker compose up -d
 else
   # Start all services including caddy
-  docker compose up -d
+  docker compose --profile with-webserver up -d
 fi
 
 echo "Setup complete. Services are starting in the background."

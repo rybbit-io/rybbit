@@ -2,7 +2,6 @@ import { eq } from "drizzle-orm";
 import { FastifyReply, FastifyRequest } from "fastify";
 import { db } from "../../../db/postgres/postgres.js";
 import { funnels as funnelsTable } from "../../../db/postgres/schema.js";
-import { getUserHasAccessToSitePublic } from "../../../lib/auth-utils.js";
 
 export async function getFunnels(
   request: FastifyRequest<{
@@ -14,12 +13,6 @@ export async function getFunnels(
 ) {
   const { site } = request.params;
 
-  // Check user access to site
-  const userHasAccessToSite = await getUserHasAccessToSitePublic(request, site);
-  if (!userHasAccessToSite) {
-    return reply.status(403).send({ error: "Forbidden" });
-  }
-
   try {
     // Fetch all funnels for the site
     const funnelRecords = await db
@@ -29,13 +22,12 @@ export async function getFunnels(
       .orderBy(funnelsTable.createdAt);
 
     // Transform the records to a more frontend-friendly structure
-    const funnels = funnelRecords.map((record) => {
+    const funnels = funnelRecords.map(record => {
       const data = record.data as any;
       return {
         id: record.reportId,
         name: data.name || "Unnamed Funnel",
         steps: data.steps || [],
-        filters: data.filters || [],
         configuration: data.configuration || {},
         createdAt: record.createdAt,
         updatedAt: record.updatedAt,

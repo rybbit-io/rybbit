@@ -35,33 +35,33 @@ export const useReplayStore = create<{
 
   // Reset all player state when session changes
   resetPlayerState: () => void;
-}>((set) => ({
+}>(set => ({
   minDuration: 30,
-  setMinDuration: (minDuration) => set({ minDuration }),
+  setMinDuration: minDuration => set({ minDuration }),
 
   // Session selection
   sessionId: "",
-  setSessionId: (sessionId) => set({ sessionId }),
+  setSessionId: sessionId => set({ sessionId }),
 
   // Player state
   player: null,
-  setPlayer: (player) => set({ player }),
+  setPlayer: player => set({ player }),
 
   // Playback state
   isPlaying: false,
-  setIsPlaying: (isPlaying) => set({ isPlaying }),
+  setIsPlaying: isPlaying => set({ isPlaying }),
 
   currentTime: 0,
-  setCurrentTime: (currentTime) => set({ currentTime }),
+  setCurrentTime: currentTime => set({ currentTime }),
 
   duration: 0,
-  setDuration: (duration) => set({ duration }),
+  setDuration: duration => set({ duration }),
 
   playbackSpeed: "1",
-  setPlaybackSpeed: (playbackSpeed) => set({ playbackSpeed }),
+  setPlaybackSpeed: playbackSpeed => set({ playbackSpeed }),
 
   activityPeriods: [],
-  setActivityPeriods: (activityPeriods) => set({ activityPeriods }),
+  setActivityPeriods: activityPeriods => set({ activityPeriods }),
 
   // Reset all player state when session changes
   resetPlayerState: () =>

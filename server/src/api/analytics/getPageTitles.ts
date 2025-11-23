@@ -1,11 +1,6 @@
 import { FastifyReply, FastifyRequest } from "fastify";
 import { clickhouse } from "../../db/clickhouse/clickhouse.js";
-import { getUserHasAccessToSitePublic } from "../../lib/auth-utils.js";
-import {
-  getFilterStatement,
-  getTimeStatement,
-  processResults,
-} from "./utils.js";
+import { getFilterStatement, getTimeStatement, processResults } from "./utils.js";
 import { FilterParams } from "@rybbit/shared";
 
 interface GetPageTitlesRequest {
@@ -33,23 +28,11 @@ type PageTitlesPaginatedResponse = {
   totalCount: number;
 };
 
-const getPageTitlesQuery = (
-  request: FastifyRequest<GetPageTitlesRequest>,
-  isCountQuery: boolean = false
-) => {
-  const {
-    startDate,
-    endDate,
-    timeZone,
-    filters,
-    limit,
-    page,
-    pastMinutesStart,
-    pastMinutesEnd,
-  } = request.query;
+const getPageTitlesQuery = (request: FastifyRequest<GetPageTitlesRequest>, isCountQuery: boolean = false) => {
+  const { filters, limit, page } = request.query;
 
-  const filterStatement = getFilterStatement(filters);
   const timeStatement = getTimeStatement(request.query);
+  const filterStatement = getFilterStatement(filters, Number(request.params.site), timeStatement);
 
   let validatedLimit: number | null = null;
   if (!isCountQuery && limit !== undefined) {
@@ -59,12 +42,7 @@ const getPageTitlesQuery = (
     }
   }
   // StandardSection usually shows a small number, e.g., 7 or 10. Let's default to 10 for non-paginated use.
-  const limitStatement =
-    !isCountQuery && validatedLimit
-      ? `LIMIT ${validatedLimit}`
-      : isCountQuery
-        ? ""
-        : "LIMIT 10";
+  const limitStatement = !isCountQuery && validatedLimit ? `LIMIT ${validatedLimit}` : isCountQuery ? "" : "LIMIT 10";
 
   let validatedOffset: number | null = null;
   if (!isCountQuery && page !== undefined) {
@@ -74,8 +52,7 @@ const getPageTitlesQuery = (
       validatedOffset = pageOffset;
     }
   }
-  const offsetStatement =
-    !isCountQuery && validatedOffset ? `OFFSET ${validatedOffset}` : "";
+  const offsetStatement = !isCountQuery && validatedOffset ? `OFFSET ${validatedOffset}` : "";
 
   // For page_title, we want to count distinct sessions that viewed this title.
   // We also need a representative pathname and calculate average time on page.
@@ -143,17 +120,9 @@ const getPageTitlesQuery = (
   `;
 };
 
-export async function getPageTitles(
-  req: FastifyRequest<GetPageTitlesRequest>,
-  res: FastifyReply
-) {
+export async function getPageTitles(req: FastifyRequest<GetPageTitlesRequest>, res: FastifyReply) {
   const site = req.params.site;
   const { page } = req.query;
-
-  const userHasAccessToSite = await getUserHasAccessToSitePublic(req, site);
-  if (!userHasAccessToSite) {
-    return res.status(403).send({ error: "Forbidden" });
-  }
 
   const isPaginatedRequest = page !== undefined; // True if page is present
 
@@ -178,9 +147,7 @@ export async function getPageTitles(
           siteId: Number(site),
         },
       });
-      const countData = await processResults<{ totalCount: number }>(
-        countResult
-      );
+      const countData = await processResults<{ totalCount: number }>(countResult);
       const totalCount = countData.length > 0 ? countData[0].totalCount : 0;
       return res.send({ data: { data: items, totalCount } });
     } else {

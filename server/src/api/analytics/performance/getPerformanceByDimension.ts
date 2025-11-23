@@ -1,11 +1,6 @@
 import { FastifyReply, FastifyRequest } from "fastify";
 import { clickhouse } from "../../../db/clickhouse/clickhouse.js";
-import { getUserHasAccessToSitePublic } from "../../../lib/auth-utils.js";
-import {
-  getFilterStatement,
-  getTimeStatement,
-  processResults,
-} from "../utils.js";
+import { getFilterStatement, getTimeStatement, processResults } from "../utils.js";
 import { FilterParams } from "@rybbit/shared";
 
 interface GetPerformanceByDimensionRequest {
@@ -15,8 +10,8 @@ interface GetPerformanceByDimensionRequest {
   Querystring: FilterParams<{
     limit?: number;
     page?: number;
-    sortBy?: string;
-    sortOrder?: "asc" | "desc";
+    sort_by?: string;
+    sort_order?: "asc" | "desc";
     dimension: string;
   }>;
 }
@@ -57,41 +52,19 @@ type GetPerformanceByDimensionPaginatedResponse = {
   totalCount: number;
 };
 
-const getQuery = (
-  request: FastifyRequest<GetPerformanceByDimensionRequest>,
-  isCountQuery: boolean = false
-) => {
+const getQuery = (request: FastifyRequest<GetPerformanceByDimensionRequest>, isCountQuery: boolean = false) => {
   const queryParams = request.query;
-  const {
-    startDate,
-    endDate,
-    timeZone,
-    filters,
-    limit,
-    page,
-    pastMinutesStart,
-    pastMinutesEnd,
-    sortBy,
-    sortOrder,
-    dimension,
-  } = queryParams;
+  const { filters, limit, page, sort_by: sortBy, sort_order: sortOrder, dimension } = queryParams;
 
   // Validate dimension
-  const validDimensions = [
-    "pathname",
-    "country",
-    "device_type",
-    "browser",
-    "operating_system",
-    "region",
-  ];
+  const validDimensions = ["pathname", "country", "device_type", "browser", "operating_system", "region"];
 
   if (!validDimensions.includes(dimension)) {
     throw new Error(`Invalid dimension: ${dimension}`);
   }
 
-  const filterStatement = getFilterStatement(filters);
   const timeStatement = getTimeStatement(request.query);
+  const filterStatement = getFilterStatement(filters, Number(request.params.site), timeStatement);
 
   let validatedLimit: number | null = null;
   if (!isCountQuery && limit !== undefined) {
@@ -100,12 +73,7 @@ const getQuery = (
       validatedLimit = parsedLimit;
     }
   }
-  const limitStatement =
-    !isCountQuery && validatedLimit
-      ? `LIMIT ${validatedLimit}`
-      : isCountQuery
-        ? ""
-        : "LIMIT 100";
+  const limitStatement = !isCountQuery && validatedLimit ? `LIMIT ${validatedLimit}` : isCountQuery ? "" : "LIMIT 100";
 
   let validatedOffset: number | null = null;
   if (!isCountQuery && page !== undefined) {
@@ -115,8 +83,7 @@ const getQuery = (
       validatedOffset = pageOffset;
     }
   }
-  const offsetStatement =
-    !isCountQuery && validatedOffset ? `OFFSET ${validatedOffset}` : "";
+  const offsetStatement = !isCountQuery && validatedOffset ? `OFFSET ${validatedOffset}` : "";
 
   // Handle sorting
   const validSortColumns = [
@@ -148,12 +115,9 @@ const getQuery = (
     "ttfb_p90",
     "ttfb_p99",
   ];
-  const validSortBy =
-    sortBy && validSortColumns.includes(sortBy) ? sortBy : "event_count";
+  const validSortBy = sortBy && validSortColumns.includes(sortBy) ? sortBy : "event_count";
   const validSortOrder = sortOrder === "asc" ? "ASC" : "DESC";
-  const orderByStatement = !isCountQuery
-    ? `ORDER BY ${validSortBy} ${validSortOrder} NULLS LAST`
-    : "";
+  const orderByStatement = !isCountQuery ? `ORDER BY ${validSortBy} ${validSortOrder} NULLS LAST` : "";
 
   const baseCteQuery = `
     PerformanceStats AS (
@@ -248,11 +212,6 @@ export async function getPerformanceByDimension(
   const { page, dimension } = req.query;
   const site = req.params.site;
 
-  const userHasAccessToSite = await getUserHasAccessToSitePublic(req, site);
-  if (!userHasAccessToSite) {
-    return res.status(403).send({ error: "Forbidden" });
-  }
-
   const isPaginatedRequest = page !== undefined;
 
   try {
@@ -288,8 +247,6 @@ export async function getPerformanceByDimension(
     if (isPaginatedRequest) {
       console.error("Failed countQuery for dimension:", dimension);
     }
-    return res
-      .status(500)
-      .send({ error: "Failed to fetch performance by dimension" });
+    return res.status(500).send({ error: "Failed to fetch performance by dimension" });
   }
 }

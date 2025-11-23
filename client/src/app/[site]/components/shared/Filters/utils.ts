@@ -49,6 +49,34 @@ export function getParameterNameLabel(parameter: FilterParameter) {
       return "Browser Version";
     case "operating_system_version":
       return "OS Version";
+    case "user_id":
+      return "User ID";
+    case "lat":
+      return "Lat";
+    case "lon":
+      return "Lon";
+    case "hostname":
+      return "Hostname";
+    case "timezone":
+      return "Timezone";
+    case "vpn":
+      return "VPN";
+    case "crawler":
+      return "Crawler";
+    case "datacenter":
+      return "Datacenter";
+    case "company":
+      return "Company";
+    case "company_type":
+      return "Company Type";
+    case "company_domain":
+      return "Company Domain";
+    case "asn_org":
+      return "ASN Org";
+    case "asn_type":
+      return "ASN Type";
+    case "asn_domain":
+      return "ASN Domain";
     default:
       return parameter;
   }
@@ -69,16 +97,13 @@ export const filterTypeToLabel = (type: FilterType) => {
   }
 };
 
-export function getParameterValueLabel(
-  filter: Filter,
-  getRegionName: (region: string) => string | undefined
-) {
-  const formatValue = (value: string) => {
+export function getParameterValueLabel(filter: Filter, getRegionName: (region: string) => string | undefined) {
+  const formatValue = (value: string | number) => {
     if (filter.parameter === "country") {
-      return getCountryName(value);
+      return getCountryName(value as string);
     }
     if (filter.parameter === "region") {
-      return getRegionName(value);
+      return getRegionName(value as string);
     }
     return value;
   };

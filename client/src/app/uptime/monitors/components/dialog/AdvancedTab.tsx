@@ -73,24 +73,24 @@ export function AdvancedTab({ form, monitorType }: AdvancedTabProps) {
               // Sync local state changes back to form field
               React.useEffect(() => {
                 const headersObject = localHeaders
-                  .filter((h) => h.key !== "") // Only include headers with keys
+                  .filter(h => h.key !== "") // Only include headers with keys
                   .reduce((acc, { key, value }) => ({ ...acc, [key]: value }), {});
 
                 field.onChange(Object.keys(headersObject).length > 0 ? headersObject : undefined);
               }, [localHeaders, field]);
 
               const updateHeader = (id: string, type: "key" | "value", newValue: string) => {
-                setLocalHeaders((prev) =>
-                  prev.map((header) => (header.id === id ? { ...header, [type]: newValue } : header))
+                setLocalHeaders(prev =>
+                  prev.map(header => (header.id === id ? { ...header, [type]: newValue } : header))
                 );
               };
 
               const removeHeader = (id: string) => {
-                setLocalHeaders((prev) => prev.filter((header) => header.id !== id));
+                setLocalHeaders(prev => prev.filter(header => header.id !== id));
               };
 
               const addHeader = () => {
-                setLocalHeaders((prev) => [
+                setLocalHeaders(prev => [
                   ...prev,
                   {
                     key: "",
@@ -110,18 +110,18 @@ export function AdvancedTab({ form, monitorType }: AdvancedTabProps) {
                     </Button>
                   </div>
                   <div className="space-y-2">
-                    {localHeaders.map((header) => (
+                    {localHeaders.map(header => (
                       <div key={header.id} className="flex gap-2 items-center">
                         <Input
                           placeholder="Header name"
                           value={header.key}
-                          onChange={(e) => updateHeader(header.id, "key", e.target.value)}
+                          onChange={e => updateHeader(header.id, "key", e.target.value)}
                           className="flex-1"
                         />
                         <Input
                           placeholder="Header value"
                           value={header.value}
-                          onChange={(e) => updateHeader(header.id, "value", e.target.value)}
+                          onChange={e => updateHeader(header.id, "value", e.target.value)}
                           className="flex-1"
                         />
                         <Button

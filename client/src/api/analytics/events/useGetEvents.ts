@@ -1,8 +1,7 @@
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { Time } from "../../../components/DateSelector/types";
 import { useStore } from "../../../lib/store";
-import { authedFetch, getStartAndEndDate } from "../../utils";
-import { timeZone } from "../../../lib/dateTimeUtils";
+import { authedFetch, getQueryParams } from "../../utils";
 
 export type Event = {
   timestamp: string;
@@ -47,53 +46,27 @@ export function useGetEvents(count = 10) {
     queryFn: () =>
       authedFetch<{ data: Event[] }>(`/events/${site}`, {
         count,
-      }).then((res) => res.data),
+      }).then(res => res.data),
   });
 }
 
 // New hook with pagination and filtering support
 export function useGetEventsInfinite(options: GetEventsOptions = {}) {
   const { site, time, filters } = useStore();
-  const { startDate, endDate } = options.time
-    ? getStartAndEndDate(options.time)
-    : getStartAndEndDate(time);
   const pageSize = options.pageSize || 20;
 
   return useInfiniteQuery<EventsResponse, Error>({
-    queryKey: [
-      "events-infinite",
-      site,
-      startDate,
-      endDate,
-      timeZone,
-      filters,
-      pageSize,
-      options.isRealtime,
-    ],
+    queryKey: ["events-infinite", site, time, filters, pageSize, options.isRealtime],
     initialPageParam: 1,
     queryFn: async ({ pageParam }) => {
-      const params: Record<string, any> = {
-        startDate,
-        endDate,
-        timeZone,
+      const params = getQueryParams(time, {
         page: pageParam,
-        pageSize,
-      };
+        page_size: pageSize,
+        filters: filters && filters.length > 0 ? JSON.stringify(filters) : undefined,
+        count: options.count,
+      });
 
-      // Add filters if provided
-      if (filters && filters.length > 0) {
-        params.filters = JSON.stringify(filters);
-      }
-
-      // Add count if provided (for backward compatibility)
-      if (options.count) {
-        params.count = options.count;
-      }
-
-      const response = await authedFetch<EventsResponse>(
-        `/events/${site}`,
-        params
-      );
+      const response = await authedFetch<EventsResponse>(`/events/${site}`, params);
       return response;
     },
     getNextPageParam: (lastPage: EventsResponse) => {

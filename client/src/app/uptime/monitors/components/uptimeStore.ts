@@ -26,11 +26,11 @@ export const useUptimeStore = create<{
   setBucket: (bucket: TimeBucket) => void;
   selectedRegion?: string;
   setSelectedRegion: (region?: string) => void;
-}>((set) => ({
+}>(set => ({
   timeRange: "24h",
-  setTimeRange: (timeRange) => set({ timeRange }),
+  setTimeRange: timeRange => set({ timeRange }),
   bucket: "minute",
-  setBucket: (bucket) => set({ bucket }),
+  setBucket: bucket => set({ bucket }),
   selectedRegion: undefined,
-  setSelectedRegion: (region) => set({ selectedRegion: region }),
+  setSelectedRegion: region => set({ selectedRegion: region }),
 }));
