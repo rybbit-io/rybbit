@@ -17,6 +17,8 @@ type Store = {
   setBucket: (bucket: TimeBucket) => void;
   selectedStat: StatType;
   setSelectedStat: (stat: StatType) => void;
+  showUsersSplit: boolean;
+  setShowUsersSplit: (split: boolean) => void;
   filters: Filter[];
   setFilters: (filters: Filter[]) => void;
 };
@@ -54,6 +56,7 @@ export const useStore = create<Store>(set => ({
           },
       bucket: hasBucketInUrl ? state.bucket : "hour",
       selectedStat: hasStatInUrl ? state.selectedStat : "users",
+      showUsersSplit: false,
     }));
   },
   privateKey: null,
@@ -143,16 +146,19 @@ export const useStore = create<Store>(set => ({
   setBucket: bucket => set({ bucket }),
   selectedStat: "users",
   setSelectedStat: stat => set({ selectedStat: stat }),
+  showUsersSplit: false,
+  setShowUsersSplit: split => set({ showUsersSplit: split }),
   filters: [],
   setFilters: filters => set({ filters }),
 }));
 
 export const resetStore = () => {
-  const { setSite, setTime, setBucket, setSelectedStat, setFilters } = useStore.getState();
+  const { setSite, setTime, setBucket, setSelectedStat, setFilters, setShowUsersSplit } = useStore.getState();
   setSite("");
   setTime({ mode: "day", day: DateTime.now().toISODate(), wellKnown: "today" });
   setBucket("hour");
   setSelectedStat("users");
+  setShowUsersSplit(false);
   setFilters([]);
 };
 

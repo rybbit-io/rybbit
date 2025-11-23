@@ -13,6 +13,7 @@ import { Chart } from "./Chart";
 import { Overview } from "./Overview";
 import { PreviousChart } from "./PreviousChart";
 import { RybbitLogo } from "../../../../../components/RybbitLogo";
+import { Switch } from "../../../../../components/ui/switch";
 
 const SELECTED_STAT_MAP = {
   pageviews: "Pageviews",
@@ -31,7 +32,8 @@ const tilt_wrap = Tilt_Warp({
 export function MainSection() {
   const session = authClient.useSession();
 
-  const { selectedStat, time, site, bucket } = useStore();
+  const { selectedStat, time, site, bucket, showUsersSplit, setShowUsersSplit } = useStore();
+  const showUserBreakdown = selectedStat === "users" && showUsersSplit;
 
   // Current period data
   const { data, isFetching, error } = useGetOverviewBucketed({
@@ -56,10 +58,14 @@ export function MainSection() {
     periodTime: "previous",
   });
 
-  const maxOfDataAndPreviousData = Math.max(
-    Math.max(...(data?.data?.map((d: any) => d[selectedStat]) ?? [])),
-    Math.max(...(previousData?.data?.map((d: any) => d[selectedStat]) ?? []))
-  );
+  const activeKeys = showUserBreakdown ? (["new_users", "returning_users"] as const) : ([selectedStat] as const);
+
+  const getMaxValue = (dataset?: { data?: { [key: string]: number }[] }) =>
+    Math.max(...(dataset?.data?.map(d => Math.max(...activeKeys.map(key => d?.[key] ?? 0))) ?? [0]));
+
+  const maxOfDataAndPreviousData = Math.max(getMaxValue(data), getMaxValue(previousData));
+
+  const statLabel = `${SELECTED_STAT_MAP[selectedStat]}${showUserBreakdown ? " (new vs returning)" : ""}`;
 
   return (
     <>
@@ -82,9 +88,31 @@ export function MainSection() {
                 rybbit.com
               </Link>
             </div>
-            <span className="text-sm text-neutral-700 dark:text-neutral-200">{SELECTED_STAT_MAP[selectedStat]}</span>
-            <BucketSelection />
+            <span className="text-sm text-neutral-700 dark:text-neutral-200">{statLabel}</span>
+            <div className="flex items-center gap-3">
+              {selectedStat === "users" && (
+                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <Switch id="toggle-user-breakdown" checked={showUsersSplit} onCheckedChange={setShowUsersSplit} />
+                  <label className="cursor-pointer" htmlFor="toggle-user-breakdown">
+                    New vs returning
+                  </label>
+                </div>
+              )}
+              <BucketSelection />
+            </div>
           </div>
+          {showUserBreakdown && (
+            <div className="flex items-center gap-4 text-xs text-muted-foreground px-2 md:px-0 mt-2">
+              <div className="flex items-center gap-2">
+                <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: "hsl(var(--dataviz))" }} />
+                <span>New users</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: "hsl(var(--pink-400))" }} />
+                <span>Returning users</span>
+              </div>
+            </div>
+          )}
           <div className="h-[200px] md:h-[290px] relative">
             <div className="absolute top-0 left-0 w-full h-full">
               <PreviousChart data={previousData} max={maxOfDataAndPreviousData} />

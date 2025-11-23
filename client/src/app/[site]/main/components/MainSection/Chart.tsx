@@ -5,6 +5,7 @@ import { StatType, useStore } from "@/lib/store";
 import { LineCustomSvgLayer, LineCustomSvgLayerProps, LineSeries, ResponsiveLine } from "@nivo/line";
 import { useWindowSize } from "@uidotdev/usehooks";
 import { DateTime } from "luxon";
+import { useTheme } from "next-themes";
 import { GetOverviewBucketedResponse } from "../../../../../api/analytics/useGetOverviewBucketed";
 import { APIResponse } from "../../../../../api/types";
 import { Time } from "../../../../../components/DateSelector/types";
@@ -118,6 +119,24 @@ const formatTooltipValue = (value: number, selectedStat: StatType): string => {
 
 const Y_TICK_VALUES = 5;
 
+const SERIES_LABELS: Record<StatType | "new_users" | "returning_users", string> = {
+  pageviews: "Pageviews",
+  sessions: "Sessions",
+  pages_per_session: "Pages per Session",
+  bounce_rate: "Bounce Rate",
+  session_duration: "Session Duration",
+  users: "Users",
+  new_users: "New Users",
+  returning_users: "Returning Users",
+};
+
+type SeriesConfig = {
+  id: string;
+  dataKey: keyof GetOverviewBucketedResponse[number];
+  label: string;
+  color: string;
+};
+
 export function Chart({
   data,
   previousData,
@@ -127,37 +146,42 @@ export function Chart({
   previousData: APIResponse<GetOverviewBucketedResponse> | undefined;
   max: number;
 }) {
-  const { time, bucket, selectedStat } = useStore();
+  const { time, bucket, selectedStat, showUsersSplit } = useStore();
   const { width } = useWindowSize();
   const nivoTheme = useNivoTheme();
+  const { resolvedTheme } = useTheme();
+
+  const showUserBreakdown = selectedStat === "users" && showUsersSplit;
+
+  const seriesConfig: SeriesConfig[] = showUserBreakdown
+    ? [
+        {
+          id: "new_users",
+          dataKey: "new_users",
+          label: SERIES_LABELS["new_users"],
+          color: "hsl(var(--dataviz))",
+        },
+        {
+          id: "returning_users",
+          dataKey: "returning_users",
+          label: SERIES_LABELS["returning_users"],
+          color: "hsl(var(--pink-400))",
+        },
+      ]
+    : [
+        {
+          id: selectedStat,
+          dataKey: selectedStat,
+          label: SERIES_LABELS[selectedStat],
+          color: "hsl(var(--dataviz))",
+        },
+      ];
 
   const maxTicks = Math.round((width ?? Infinity) / 75);
 
   // When the current period has more datapoints than the previous period,
   // we need to shift the previous datapoints to the right by the difference in length
   const lengthDiff = Math.max((data?.data?.length ?? 0) - (previousData?.data?.length ?? 0), 0);
-
-  const formattedData =
-    data?.data
-      ?.map((e, i) => {
-        // Parse timestamp properly
-        const timestamp = DateTime.fromSQL(e.time).toUTC();
-
-        // filter out dates from the future
-        if (timestamp > DateTime.now()) {
-          return null;
-        }
-
-        return {
-          x: timestamp.toFormat("yyyy-MM-dd HH:mm:ss"),
-          y: e[selectedStat],
-          previousY: i >= lengthDiff && previousData?.data?.[i - lengthDiff][selectedStat],
-          currentTime: timestamp,
-          previousTime:
-            i >= lengthDiff ? DateTime.fromSQL(previousData?.data?.[i - lengthDiff]?.time ?? "").toUTC() : undefined,
-        };
-      })
-      .filter(e => e !== null) || [];
 
   const currentDayStr = DateTime.now().toISODate();
   const currentMonthStr = DateTime.now().toFormat("yyyy-MM-01");
@@ -169,62 +193,91 @@ export function Chart({
     (time.mode === "range" && time.endDate !== currentDayStr) || // do not display in range mode if end date is not current day
     (time.mode === "day" && (bucket === "minute" || bucket === "five_minutes")) || // do not display in day mode if bucket is minute or five_minutes
     (time.mode === "past-minutes" && (bucket === "minute" || bucket === "five_minutes")); // do not display in 24-hour mode if bucket is minute or five_minutes
-  const displayDashed = formattedData.length >= 2 && !shouldNotDisplay;
+  const seriesData = seriesConfig.map(config => {
+    const points =
+      data?.data
+        ?.map((e, i) => {
+          // Parse timestamp properly
+          const timestamp = DateTime.fromSQL(e.time).toUTC();
 
-  const baseGradient = {
-    offset: 0,
-    color: "hsl(var(--dataviz))",
-  };
+          // filter out dates from the future
+          if (timestamp > DateTime.now()) {
+            return null;
+          }
 
-  const croppedData = formattedData.slice(0, -1);
+          const previousEntry = i >= lengthDiff ? previousData?.data?.[i - lengthDiff] : undefined;
+          const previousTimestamp = previousEntry ? DateTime.fromSQL(previousEntry.time).toUTC() : undefined;
 
-  // add original data and styles to chart
-  const chartPropsData = [
-    {
-      id: "croppedData",
-      data: displayDashed ? croppedData : formattedData,
-    },
-  ];
-  const chartPropsDefs = [
-    {
-      id: "croppedData",
-      type: "linearGradient",
-      colors: [
-        { ...baseGradient, opacity: 1 },
-        { offset: 100, color: baseGradient.color, opacity: 0 },
-      ],
-    },
-  ];
-  const chartPropsFill = [
-    {
-      id: "croppedData",
-      match: {
-        id: "croppedData",
-      },
-    },
-  ];
+          return {
+            x: timestamp.toFormat("yyyy-MM-dd HH:mm:ss"),
+            y: (e as any)[config.dataKey] ?? 0,
+            previousY: previousEntry ? (previousEntry as any)[config.dataKey] : undefined,
+            currentTime: timestamp,
+            previousTime: previousTimestamp,
+          };
+        })
+        .filter(e => e !== null) ?? [];
 
-  // add dashed data and styles to chart
-  if (displayDashed) {
+    return { ...config, points };
+  });
+
+  const displayDashed = (seriesData[0]?.points.length ?? 0) >= 2 && !shouldNotDisplay;
+
+  const chartPropsData: { id: string; data: any[] }[] = [];
+  const chartPropsDefs: any[] = [];
+  const chartPropsFill: any[] = [];
+  const colorMap: Record<string, string> = {};
+
+  seriesData.forEach(series => {
+    const baseId = `${series.id}-base`;
+    const hasEnoughPoints = series.points.length >= 2;
+    const baseData = displayDashed && hasEnoughPoints ? series.points.slice(0, -1) : series.points;
+
     chartPropsData.push({
-      id: "dashedData",
-      data: [croppedData.at(-1)!, formattedData.at(-1)!],
+      id: baseId,
+      data: baseData,
     });
+    colorMap[baseId] = series.color;
+
     chartPropsDefs.push({
-      id: "dashedData",
+      id: `${baseId}-gradient`,
       type: "linearGradient",
       colors: [
-        { ...baseGradient, opacity: 0.35 },
-        { offset: 100, color: baseGradient.color, opacity: 0 },
+        { offset: 0, color: series.color, opacity: 1 },
+        { offset: 100, color: series.color, opacity: 0 },
       ],
     });
     chartPropsFill.push({
-      id: "dashedData",
+      id: `${baseId}-gradient`,
       match: {
-        id: "dashedData",
+        id: baseId,
       },
     });
-  }
+
+    if (displayDashed && hasEnoughPoints) {
+      const dashedId = `${series.id}-dashed`;
+      chartPropsData.push({
+        id: dashedId,
+        data: series.points.slice(-2),
+      });
+      colorMap[dashedId] = series.color;
+
+      chartPropsDefs.push({
+        id: `${dashedId}-gradient`,
+        type: "linearGradient",
+        colors: [
+          { offset: 0, color: series.color, opacity: 0.35 },
+          { offset: 100, color: series.color, opacity: 0 },
+        ],
+      });
+      chartPropsFill.push({
+        id: `${dashedId}-gradient`,
+        match: {
+          id: dashedId,
+        },
+      });
+    }
+  });
 
   const DashedLine: LineCustomSvgLayer<LineSeries> = ({
     series,
@@ -238,7 +291,7 @@ export function Chart({
         d={lineGenerator(data.map(d => ({ x: xScale(d.data.x), y: yScale(d.data.y) })))!}
         fill="none"
         stroke={color}
-        style={id === "dashedData" ? { strokeDasharray: "3, 6", strokeWidth: 3 } : { strokeWidth: 2 }}
+        style={String(id).endsWith("-dashed") ? { strokeDasharray: "3, 6", strokeWidth: 3 } : { strokeWidth: 2 }}
       />
     ));
   };
@@ -307,54 +360,200 @@ export function Chart({
       useMesh={true}
       animate={false}
       enableSlices={"x"}
-      colors={["hsl(var(--dataviz))"]}
+      colors={({ id }) => colorMap[id as string] ?? "hsl(var(--dataviz))"}
       enableArea={true}
       areaBaselineValue={0}
       areaOpacity={0.3}
       defs={chartPropsDefs}
       fill={chartPropsFill}
       sliceTooltip={({ slice }: any) => {
-        const currentY = Number(slice.points[0].data.yFormatted);
-        const previousY = Number(slice.points[0].data.previousY) || 0;
-        const currentTime = slice.points[0].data.currentTime as DateTime;
-        const previousTime = slice.points[0].data.previousTime as DateTime;
+        // Normalize dashed series ids back to their base ids so we always find a point
+        const normalizedPoints = slice.points.map((point: any) => ({
+          ...point,
+          originalSerieId: String(point.serieId),
+          serieId: String(point.serieId).replace(/-dashed$/, "-base"),
+        }));
 
-        const diff = currentY - previousY;
-        const diffPercentage = previousY ? (diff / previousY) * 100 : null;
+        if (!normalizedPoints.length) return null;
+
+        // Single-series tooltip (unchanged)
+        if (!showUserBreakdown) {
+          const currentTime = normalizedPoints[0].data.currentTime as DateTime;
+          const previousTime = normalizedPoints[0].data.previousTime as DateTime;
+          const currentY = Number(normalizedPoints[0].data.yFormatted ?? normalizedPoints[0].data.y);
+          const previousY = Number(normalizedPoints[0].data.previousY) || 0;
+          const diff = currentY - previousY;
+          const diffPercentage = previousY ? (diff / previousY) * 100 : null;
+          const primaryColor = colorMap[`${seriesConfig[0].id}-base`] ?? "hsl(var(--dataviz))";
+
+          return (
+            <ChartTooltip>
+              {diffPercentage !== null && (
+                <div
+                  className="text-base font-medium px-2 pt-1.5 pb-1"
+                  style={{
+                    color: diffPercentage > 0 ? "hsl(var(--green-400))" : "hsl(var(--red-400))",
+                  }}
+                >
+                  {diffPercentage > 0 ? "+" : ""}
+                  {diffPercentage.toFixed(2)}%
+                </div>
+              )}
+              <div className="w-full h-[1px] bg-neutral-100 dark:bg-neutral-750"></div>
+
+              <div className="m-2">
+                <div className="flex justify-between text-sm w-40">
+                  <div className="flex items-center gap-2">
+                    <div className="w-1 h-3 rounded-[3px]" style={{ backgroundColor: primaryColor }} />
+                    {formatChartDateTime(currentTime, bucket)}
+                  </div>
+                  <div>{formatTooltipValue(currentY, selectedStat)}</div>
+                </div>
+                {previousTime && (
+                  <div className="flex justify-between text-sm text-muted-foreground">
+                    <div className="flex items-center gap-2">
+                      <div className="w-1 h-3 rounded-[3px] bg-neutral-200 dark:bg-neutral-750" />
+                      {formatChartDateTime(previousTime, bucket)}
+                    </div>
+                    <div>{formatTooltipValue(previousY, selectedStat)}</div>
+                  </div>
+                )}
+              </div>
+            </ChartTooltip>
+          );
+        }
+
+        // Two-series tooltip (new vs returning) using the slice's timestamp to fetch both series points
+        const targetTime = (normalizedPoints[0].data.currentTime as DateTime | undefined)?.toMillis();
+
+        const previousColorFor = (seriesId: string) => {
+          if (seriesId === "new_users") {
+            return resolvedTheme === "dark" ? "hsl(var(--dataviz) / 0.28)" : "hsl(var(--dataviz) / 0.28)";
+          }
+          if (seriesId === "returning_users") {
+            return resolvedTheme === "dark" ? "hsl(var(--pink-800) / 0.35)" : "hsl(var(--pink-200) / 0.38)";
+          }
+          return resolvedTheme === "dark" ? "hsl(var(--neutral-700))" : "hsl(var(--neutral-200))";
+        };
+
+        const rows = seriesConfig
+          .map(series => {
+            const match = seriesData
+              .find(s => s.id === series.id)
+              ?.points.find(p => {
+                const t = (p.currentTime as DateTime | undefined)?.toMillis();
+                return targetTime !== undefined && t === targetTime;
+              });
+
+            if (!match) return null;
+
+            const currentY = Number(match.y ?? 0);
+            const previousY = Number(match.previousY ?? 0);
+            const diff = currentY - previousY;
+            const diffPercentage = previousY ? (diff / previousY) * 100 : null;
+
+            return {
+              id: series.id,
+              color: series.color,
+              label: series.label,
+              currentTime: match.currentTime as DateTime | undefined,
+              previousTime: match.previousTime as DateTime | undefined,
+              currentY,
+              previousY,
+              diffPercentage,
+              previousColor: previousColorFor(series.id),
+            };
+          })
+          .filter(Boolean);
+
+        if (!rows.length) {
+          // Fallback: show first available point to avoid empty tooltip
+          const p = normalizedPoints[0];
+          const currentY = Number(p.data.yFormatted ?? p.data.y ?? 0);
+          const previousY = Number(p.data.previousY ?? 0);
+          const diff = currentY - previousY;
+          const diffPercentage = previousY ? (diff / previousY) * 100 : null;
+          const color = colorMap[String(p.serieId)] ?? "hsl(var(--dataviz))";
+          const currentTime = p.data.currentTime as DateTime | undefined;
+          const previousTime = p.data.previousTime as DateTime | undefined;
+
+          return (
+            <ChartTooltip>
+              <div className="px-2 pt-1 text-xs font-semibold text-muted-foreground">Users</div>
+              {diffPercentage !== null && (
+                <div
+                  className="text-base font-medium px-2 pt-1.5 pb-1"
+                  style={{
+                    color: diffPercentage > 0 ? "hsl(var(--green-400))" : "hsl(var(--red-400))",
+                  }}
+                >
+                  {diffPercentage > 0 ? "+" : ""}
+                  {diffPercentage.toFixed(2)}%
+                </div>
+              )}
+              <div className="w-full h-[1px] bg-neutral-100 dark:bg-neutral-750"></div>
+              <div className="m-2">
+                <div className="flex justify-between text-sm w-48">
+                  <div className="flex items-center gap-2">
+                    <div className="w-1 h-3 rounded-[3px]" style={{ backgroundColor: color }} />
+                    {currentTime ? formatChartDateTime(currentTime, bucket) : ""}
+                  </div>
+                  <div>{formatTooltipValue(currentY, selectedStat)}</div>
+                </div>
+                {previousTime && (
+                  <div className="flex justify-between text-sm text-muted-foreground">
+                    <div className="flex items-center gap-2">
+                      <div className="w-1 h-3 rounded-[3px] bg-neutral-200 dark:bg-neutral-750" />
+                      {formatChartDateTime(previousTime, bucket)}
+                    </div>
+                    <div>{formatTooltipValue(previousY, selectedStat)}</div>
+                  </div>
+                )}
+              </div>
+            </ChartTooltip>
+          );
+        }
 
         return (
           <ChartTooltip>
-            {diffPercentage !== null && (
-              <div
-                className="text-base font-medium px-2 pt-1.5 pb-1"
-                style={{
-                  color: diffPercentage > 0 ? "hsl(var(--green-400))" : "hsl(var(--red-400))",
-                }}
-              >
-                {diffPercentage > 0 ? "+" : ""}
-                {diffPercentage.toFixed(2)}%
-              </div>
-            )}
-            <div className="w-full h-[1px] bg-neutral-100 dark:bg-neutral-750"></div>
-
-            <div className="m-2">
-              <div className="flex justify-between text-sm w-40">
-                <div className="flex items-center gap-2">
-                  <div className="w-1 h-3 rounded-[3px] bg-dataviz" />
-                  {formatChartDateTime(currentTime, bucket)}
+            {rows.map((row: any, idx: number) => (
+              <div key={row.id} className={idx < rows.length - 1 ? "pb-1.5 mb-1.5" : ""}>
+                <div className={`px-2 text-xs font-semibold text-muted-foreground ${idx === 0 ? "pt-2" : "pt-1"}`}>
+                  {row.label}
                 </div>
-                <div>{formatTooltipValue(currentY, selectedStat)}</div>
-              </div>
-              {previousTime && (
-                <div className="flex justify-between text-sm text-muted-foreground">
-                  <div className="flex items-center gap-2">
-                    <div className="w-1 h-3 rounded-[3px] bg-neutral-200 dark:bg-neutral-750" />
-                    {formatChartDateTime(previousTime, bucket)}
+                {row.diffPercentage !== null && (
+                  <div
+                    className="text-base font-medium px-2 pt-1.5 pb-1"
+                    style={{
+                      color: row.diffPercentage > 0 ? "hsl(var(--green-400))" : "hsl(var(--red-400))",
+                    }}
+                  >
+                    {row.diffPercentage > 0 ? "+" : ""}
+                    {row.diffPercentage.toFixed(2)}%
                   </div>
-                  <div>{formatTooltipValue(previousY, selectedStat)}</div>
+                )}
+                {row.diffPercentage !== null && <div className="w-full h-[1px] bg-neutral-100 dark:bg-neutral-750" />}
+
+                <div className="m-2">
+                  <div className="flex justify-between text-sm w-48">
+                    <div className="flex items-center gap-2">
+                      <div className="w-1 h-3 rounded-[3px]" style={{ backgroundColor: row.color }} />
+                      {row.currentTime ? formatChartDateTime(row.currentTime, bucket) : ""}
+                    </div>
+                    <div>{formatTooltipValue(row.currentY, selectedStat)}</div>
+                  </div>
+                  {row.previousTime && (
+                    <div className="flex justify-between text-sm text-muted-foreground">
+                      <div className="flex items-center gap-2">
+                        <div className="w-1 h-3 rounded-[3px]" style={{ backgroundColor: row.previousColor }} />
+                        {formatChartDateTime(row.previousTime, bucket)}
+                      </div>
+                      <div>{formatTooltipValue(row.previousY, selectedStat)}</div>
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
+              </div>
+            ))}
           </ChartTooltip>
         );
       }}
