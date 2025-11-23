@@ -312,7 +312,7 @@ export function Chart({
       yScale={{
         type: "linear",
         min: 0,
-        stacked: false,
+        stacked: showUserBreakdown,
         reverse: false,
         max: Math.max(max, 1),
       }}

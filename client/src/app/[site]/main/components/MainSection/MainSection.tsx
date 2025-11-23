@@ -61,7 +61,15 @@ export function MainSection() {
   const activeKeys = showUserBreakdown ? (["new_users", "returning_users"] as const) : ([selectedStat] as const);
 
   const getMaxValue = (dataset?: { data?: { [key: string]: number }[] }) =>
-    Math.max(...(dataset?.data?.map(d => Math.max(...activeKeys.map(key => d?.[key] ?? 0))) ?? [0]));
+    Math.max(
+      ...(
+        dataset?.data?.map(d =>
+          showUserBreakdown
+            ? (d?.["new_users"] ?? 0) + (d?.["returning_users"] ?? 0)
+            : Math.max(...activeKeys.map(key => d?.[key] ?? 0))
+        ) ?? [0]
+      )
+    );
 
   const maxOfDataAndPreviousData = Math.max(getMaxValue(data), getMaxValue(previousData));
 
