@@ -84,30 +84,40 @@ export function MainSection() {
       <Card className="overflow-visible">
         {(isFetching || isPreviousFetching) && <CardLoader />}
         <CardContent className="p-2 md:p-4 py-3 w-full">
-          <div className="flex items-center justify-between px-2 md:px-0 relative">
-            <div className="flex items-center space-x-4">
-              <Link
-                href={session.data ? "/" : "https://rybbit.com"}
-                className={cn("text-lg font-semibold flex items-center gap-1.5 opacity-75", tilt_wrap.className)}
-              >
-                <RybbitLogo width={20} height={20} />
-                rybbit.com
-              </Link>
+          <div className="flex flex-col gap-2 px-2 md:px-0 relative">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-4">
+                <Link
+                  href={session.data ? "/" : "https://rybbit.com"}
+                  className={cn("text-lg font-semibold flex items-center gap-1.5 opacity-75", tilt_wrap.className)}
+                >
+                  <RybbitLogo width={20} height={20} />
+                  rybbit.com
+                </Link>
+              </div>
+              <span className="absolute left-1/2 -translate-x-1/2 text-sm text-neutral-700 dark:text-neutral-200">
+                {SELECTED_STAT_MAP[selectedStat]}
+              </span>
+              <div className="flex items-center gap-3 md:justify-end">
+                {selectedStat === "users" && (
+                  <div className="hidden md:flex items-center gap-2 text-xs text-muted-foreground">
+                    <Switch id="toggle-user-breakdown" checked={showUsersSplit} onCheckedChange={setShowUsersSplit} />
+                    <label className="cursor-pointer" htmlFor="toggle-user-breakdown">
+                      New vs returning
+                    </label>
+                  </div>
+                )}
+                <BucketSelection />
+              </div>
             </div>
-            <span className="absolute left-1/2 -translate-x-1/2 text-sm text-neutral-700 dark:text-neutral-200">
-              {SELECTED_STAT_MAP[selectedStat]}
-            </span>
-            <div className="flex items-center gap-3">
-              {selectedStat === "users" && (
-                <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                  <Switch id="toggle-user-breakdown" checked={showUsersSplit} onCheckedChange={setShowUsersSplit} />
-                  <label className="cursor-pointer" htmlFor="toggle-user-breakdown">
-                    New vs returning
-                  </label>
-                </div>
-              )}
-              <BucketSelection />
-            </div>
+            {selectedStat === "users" && (
+              <div className="flex md:hidden items-center gap-2 text-xs text-muted-foreground justify-end">
+                <Switch id="toggle-user-breakdown" checked={showUsersSplit} onCheckedChange={setShowUsersSplit} />
+                <label className="cursor-pointer" htmlFor="toggle-user-breakdown">
+                  New vs returning
+                </label>
+              </div>
+            )}
           </div>
           {showUserBreakdown && (
             <div className="flex items-center justify-center gap-4 text-xs text-muted-foreground px-2 md:px-0 mt-2">
