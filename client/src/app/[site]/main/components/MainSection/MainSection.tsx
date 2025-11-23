@@ -73,8 +73,6 @@ export function MainSection() {
 
   const maxOfDataAndPreviousData = Math.max(getMaxValue(data), getMaxValue(previousData));
 
-  const statLabel = `${SELECTED_STAT_MAP[selectedStat]}${showUserBreakdown ? " (new vs returning)" : ""}`;
-
   return (
     <>
       <Card>
@@ -97,7 +95,7 @@ export function MainSection() {
               </Link>
             </div>
             <span className="absolute left-1/2 -translate-x-1/2 text-sm text-neutral-700 dark:text-neutral-200">
-              {statLabel}
+              {SELECTED_STAT_MAP[selectedStat]}
             </span>
             <div className="flex items-center gap-3">
               {selectedStat === "users" && (
