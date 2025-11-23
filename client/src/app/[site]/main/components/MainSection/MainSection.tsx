@@ -86,7 +86,7 @@ export function MainSection() {
       <Card className="overflow-visible">
         {(isFetching || isPreviousFetching) && <CardLoader />}
         <CardContent className="p-2 md:p-4 py-3 w-full">
-          <div className="flex items-center justify-between px-2 md:px-0">
+          <div className="flex items-center justify-between px-2 md:px-0 relative">
             <div className="flex items-center space-x-4">
               <Link
                 href={session.data ? "/" : "https://rybbit.com"}
@@ -96,7 +96,9 @@ export function MainSection() {
                 rybbit.com
               </Link>
             </div>
-            <span className="text-sm text-neutral-700 dark:text-neutral-200">{statLabel}</span>
+            <span className="absolute left-1/2 -translate-x-1/2 text-sm text-neutral-700 dark:text-neutral-200">
+              {statLabel}
+            </span>
             <div className="flex items-center gap-3">
               {selectedStat === "users" && (
                 <div className="flex items-center gap-2 text-xs text-muted-foreground">
@@ -110,7 +112,7 @@ export function MainSection() {
             </div>
           </div>
           {showUserBreakdown && (
-            <div className="flex items-center gap-4 text-xs text-muted-foreground px-2 md:px-0 mt-2">
+            <div className="flex items-center justify-center gap-4 text-xs text-muted-foreground px-2 md:px-0 mt-2">
               <div className="flex items-center gap-2">
                 <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: "hsl(var(--dataviz))" }} />
                 <span>New users</span>
