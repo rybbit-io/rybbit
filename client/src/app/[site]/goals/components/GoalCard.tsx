@@ -1,6 +1,7 @@
 "use client";
 
-import { ChevronDown, ChevronUp, Copy, Edit, Trash2 } from "lucide-react";
+import { ChevronDown, ChevronUp, Copy, Edit, ListFilterPlus, Trash2 } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useDeleteGoal } from "../../../../api/analytics/goals/useDeleteGoal";
 import { Goal } from "../../../../api/analytics/goals/useGetGoals";
@@ -19,7 +20,7 @@ import {
 } from "../../../../components/ui/alert-dialog";
 import { Button } from "../../../../components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../../../../components/ui/tooltip";
-import { useStore } from "../../../../lib/store";
+import { useStore, addFilter } from "../../../../lib/store";
 import GoalFormModal from "./GoalFormModal";
 
 interface GoalCardProps {
@@ -35,6 +36,35 @@ export default function GoalCard({ goal, siteId }: GoalCardProps) {
   const [page, setPage] = useState(1);
   const deleteGoalMutation = useDeleteGoal();
   const { time } = useStore();
+  const router = useRouter();
+
+  // Add goal as filter to current view
+  const handleFilterByGoal = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    
+    // Build filter based on goal type
+    let filterValue: string;
+    let filterParam: string;
+    
+    if (goal.goalType === "event") {
+      filterParam = "event_name";
+      filterValue = goal.config.eventName || "";
+    } else {
+      // For path goals, filter by pathname
+      filterParam = "pathname";
+      filterValue = goal.config.pathPattern || "";
+    }
+    
+    const filter = {
+      parameter: filterParam as any,
+      type: "equals" as any,
+      value: [filterValue],
+    };
+    
+    // Add filter to store and navigate to main page
+    addFilter(filter);
+    router.push(`/${siteId}/main`);
+  };
 
   // Fetch sessions when expanded
   const { data: sessionsData, isLoading: isLoadingSessions } = useGetGoalSessions({
@@ -132,6 +162,18 @@ export default function GoalCard({ goal, siteId }: GoalCardProps) {
 
           {/* Right section - Actions */}
           <div className="flex flex-shrink-0 gap-1 pl-4">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  onClick={handleFilterByGoal}
+                  variant="ghost"
+                  size="smIcon"
+                >
+                  <ListFilterPlus className="h-4 w-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Filter by this goal</TooltipContent>
+            </Tooltip>
             <div onClick={e => e.stopPropagation()}>
               <GoalFormModal
                 siteId={siteId}

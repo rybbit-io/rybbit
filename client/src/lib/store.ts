@@ -274,7 +274,11 @@ export const addFilter = (filter: Filter) => {
   if (filterExists === -1) {
     setFilters([...filters, filter]);
   } else {
-    setFilters(filters.map((f, i) => (i === filterExists ? filter : f)));
+    // Merge values instead of replacing the entire filter
+    const existingFilter = filters[filterExists];
+    const mergedValues = [...new Set([...existingFilter.value, ...filter.value])];
+    const updatedFilter = { ...existingFilter, value: mergedValues };
+    setFilters(filters.map((f, i) => (i === filterExists ? updatedFilter : f)));
   }
 };
 
