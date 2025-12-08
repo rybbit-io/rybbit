@@ -2,7 +2,7 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { EVENT_FILTERS } from "@/lib/filterGroups";
-import { useGetEventNames } from "../../../api/analytics/events/useGetEventNames";
+import { useGetEventNames } from "../../../api/analytics/hooks/events/useGetEventNames";
 import { DisabledOverlay } from "../../../components/DisabledOverlay";
 import { useSetPageTitle } from "../../../hooks/useSetPageTitle";
 import { SubHeader } from "../components/SubHeader/SubHeader";

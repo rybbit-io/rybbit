@@ -5,7 +5,7 @@ import VectorLayer from "ol/layer/Vector";
 import VectorSource from "ol/source/Vector";
 import { Fill, Stroke, Style } from "ol/style";
 import { MutableRefObject, useEffect, useMemo, useRef, useState } from "react";
-import { useMetric } from "../../../../../api/analytics/useGetMetric";
+import { useMetric } from "../../../../../api/analytics/hooks/useGetMetric";
 import { useSubdivisions } from "../../../../../lib/geo";
 import { addFilter } from "../../../../../lib/store";
 import { createColorScale } from "../../utils/colorScale";

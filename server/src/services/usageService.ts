@@ -1,7 +1,7 @@
 import { and, eq } from "drizzle-orm";
 import { DateTime } from "luxon";
 import * as cron from "node-cron";
-import { processResults } from "../api/analytics/utils.js";
+import { processResults } from "../api/analytics/utils/utils.js";
 import { clickhouse } from "../db/clickhouse/clickhouse.js";
 import { db } from "../db/postgres/postgres.js";
 import { member, organization, sites, user } from "../db/postgres/schema.js";

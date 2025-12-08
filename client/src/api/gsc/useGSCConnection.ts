@@ -60,3 +60,12 @@ export function useDisconnectGSC() {
     },
   });
 }
+
+/**
+ * Standalone fetch function for GSC connection status (used for exports)
+ */
+export async function fetchGSCConnectionStatus(
+  site: number | string
+): Promise<GSCConnectionStatus> {
+  return authedFetch<GSCConnectionStatus>(`/gsc/status/${site}`);
+}

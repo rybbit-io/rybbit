@@ -17,10 +17,10 @@ import { UserPlus } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Alert } from "../../../../../components/ui/alert";
-import { authClient } from "../../../../../lib/auth";
-import { SubscriptionData, useStripeSubscription } from "../../../../../lib/subscription/useStripeSubscription";
-import { IS_CLOUD, PRO_TEAM_LIMIT, STANDARD_TEAM_LIMIT } from "../../../../../lib/const";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../../../../../components/ui/tooltip";
+import { authClient } from "../../../../../lib/auth";
+import { IS_CLOUD, STANDARD_TEAM_LIMIT } from "../../../../../lib/const";
+import { SubscriptionData, useStripeSubscription } from "../../../../../lib/subscription/useStripeSubscription";
 
 interface InviteMemberDialogProps {
   organizationId: string;
@@ -30,11 +30,13 @@ interface InviteMemberDialogProps {
 
 const getMemberLimit = (subscription: SubscriptionData | undefined) => {
   if (subscription?.status !== "active") return 1;
-  if (subscription?.planName.includes("pro")) return PRO_TEAM_LIMIT;
+  if (subscription?.planName.includes("pro")) return Infinity;
   if (subscription?.planName.includes("standard")) return STANDARD_TEAM_LIMIT;
   if (subscription?.planName === "appsumo-1") return 1;
   if (subscription?.planName === "appsumo-2") return 3;
-  if (subscription?.planName === "appsumo-3") return 10;
+  if (subscription?.planName === "appsumo-3") return Infinity;
+  if (subscription?.planName === "appsumo-4") return Infinity;
+  if (subscription?.planName === "appsumo-5") return Infinity;
   return 1;
 };
 
@@ -93,7 +95,8 @@ export function InviteMemberDialog({ organizationId, onSuccess, memberCount }: I
           </span>
         </TooltipTrigger>
         <TooltipContent>
-          You have reached the limit of {subscription?.isPro ? 10 : 3} members. Upgrade to add more members
+          You have reached the limit of {getMemberLimit(subscription)} member
+          {getMemberLimit(subscription) > 1 ? "s" : ""}. Upgrade to add more members
         </TooltipContent>
       </Tooltip>
     );

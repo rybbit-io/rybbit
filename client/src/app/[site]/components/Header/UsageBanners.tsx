@@ -28,7 +28,7 @@ export function UsageBanners() {
   ) {
     return (
       <div className="mt-4 px-4 py-3 rounded-lg border border-red-300 dark:border-red-400/30 bg-red-100/80 dark:bg-red-900/20 text-sm flex gap-4 items-center">
-        <AlertTriangle className="h-5 w-5 text-red-600 dark:text-red-400 flex-shrink-0" />
+        <AlertTriangle className="h-5 w-5 text-red-600 dark:text-red-400 shrink-0" />
         <div className="flex-1">
           <span className="text-red-700 dark:text-red-300 font-medium">
             Monthly event limit exceeded: <strong>{formatNumber(subscription.monthlyEventCount || 0)}</strong> of{" "}
@@ -53,7 +53,7 @@ export function UsageBanners() {
   if (usagePercentage >= 90) {
     return (
       <div className="mt-4 px-4 py-3 rounded-lg border border-amber-300 dark:border-amber-400/30 bg-amber-100/80 dark:bg-amber-900/20 text-sm flex gap-4 items-center">
-        <AlertTriangle className="h-5 w-5 text-amber-600 dark:text-amber-400 flex-shrink-0" />
+        <AlertTriangle className="h-5 w-5 text-amber-600 dark:text-amber-400 shrink-0" />
         <div className="flex-1">
           <span className="text-amber-700 dark:text-amber-300 font-medium">
             Approaching monthly event limit: <strong>{formatNumber(subscription?.monthlyEventCount || 0)}</strong> of{" "}

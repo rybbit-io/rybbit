@@ -1,6 +1,7 @@
 import { DateTime } from "luxon";
 import { useMemo, useState } from "react";
-import { useGetOverviewBucketed } from "../../../../../api/analytics/useGetOverviewBucketed";
+import { useGetOverviewBucketed } from "../../../../../api/analytics/hooks/useGetOverviewBucketed";
+import { ChartTooltip } from "../../../../../components/charts/ChartTooltip";
 import { Tabs, TabsList, TabsTrigger } from "../../../../../components/ui/basic-tabs";
 import { Card, CardContent, CardLoader } from "../../../../../components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../../../../components/ui/select";
@@ -86,16 +87,16 @@ export function Weekdays() {
     // Calculate intensity level 1-10
     const ratio = value / maxValue;
 
-    // Use predefined opacity classes that are guaranteed to exist in Tailwind
-    if (ratio < 0.1) return "bg-emerald-500 bg-opacity-10";
-    if (ratio < 0.2) return "bg-emerald-500 bg-opacity-20";
-    if (ratio < 0.3) return "bg-emerald-500 bg-opacity-30";
-    if (ratio < 0.4) return "bg-emerald-500 bg-opacity-40";
-    if (ratio < 0.5) return "bg-emerald-500 bg-opacity-50";
-    if (ratio < 0.6) return "bg-emerald-500 bg-opacity-60";
-    if (ratio < 0.7) return "bg-emerald-500 bg-opacity-70";
-    if (ratio < 0.8) return "bg-emerald-500 bg-opacity-80";
-    if (ratio < 0.9) return "bg-emerald-500 bg-opacity-90";
+    // Use slash notation for opacity (Tailwind v4)
+    if (ratio < 0.1) return "bg-emerald-500/10";
+    if (ratio < 0.2) return "bg-emerald-500/20";
+    if (ratio < 0.3) return "bg-emerald-500/30";
+    if (ratio < 0.4) return "bg-emerald-500/40";
+    if (ratio < 0.5) return "bg-emerald-500/50";
+    if (ratio < 0.6) return "bg-emerald-500/60";
+    if (ratio < 0.7) return "bg-emerald-500/70";
+    if (ratio < 0.8) return "bg-emerald-500/80";
+    if (ratio < 0.9) return "bg-emerald-500/90";
     return "bg-emerald-500";
   };
 
@@ -172,7 +173,10 @@ export function Weekdays() {
             {Array(24)
               .fill(0)
               .map((_, hour) => (
-                <div key={hour} className="h-4 text-xs flex items-center justify-end pr-2 text-neutral-600 dark:text-neutral-400">
+                <div
+                  key={hour}
+                  className="h-4 text-xs flex items-center justify-end pr-2 text-neutral-600 dark:text-neutral-400"
+                >
                   {hour % 2 === 1 ? hourLabels[hour] : ""}
                 </div>
               ))}
@@ -214,14 +218,20 @@ export function Weekdays() {
                               )}
                             />
                           </TooltipTrigger>
-                          <TooltipContent className="flex flex-col gap-1 p-2">
-                            <div className="font-medium text-sm">
-                              {longDayNames[day]} {formatLocalTime(hour, 0)} - {formatLocalTime(hour, 59)}
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <span className="font-semibold">{formatMetricValue(value)}</span>
-                              <span className="text-neutral-400 text-xs">{getMetricDisplayName(metric)}</span>
-                            </div>
+                          <TooltipContent className="p-0 border-0 bg-transparent">
+                            <ChartTooltip>
+                              <div className="flex flex-col gap-1 p-2">
+                                <div className="font-medium text-sm">
+                                  {longDayNames[day]} {formatLocalTime(hour, 0)} - {formatLocalTime(hour, 59)}
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <span className="font-semibold">{formatMetricValue(value)}</span>
+                                  <span className="text-neutral-500 dark:text-neutral-400 text-xs">
+                                    {getMetricDisplayName(metric)}
+                                  </span>
+                                </div>
+                              </div>
+                            </ChartTooltip>
                           </TooltipContent>
                         </Tooltip>
                       );

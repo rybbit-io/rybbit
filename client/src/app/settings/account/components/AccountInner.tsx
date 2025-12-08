@@ -1,20 +1,20 @@
 "use client";
 
 import { authClient } from "@/lib/auth";
+import { useQueryClient } from "@tanstack/react-query";
+import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
+import { useUpdateAccountSettings } from "../../../../api/admin/accountSettings";
 import { Button } from "../../../../components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../../../../components/ui/card";
 import { Input } from "../../../../components/ui/input";
-import { ChangePassword } from "./ChangePassword";
-import { DeleteAccount } from "./DeleteAccount";
-import { validateEmail } from "../../../../lib/auth-utils";
-import { useRouter } from "next/navigation";
-import { useQueryClient } from "@tanstack/react-query";
 import { Switch } from "../../../../components/ui/switch";
-import { useUpdateAccountSettings } from "../../../../api/admin/accountSettings";
+import { validateEmail } from "../../../../lib/auth-utils";
 import { IS_CLOUD } from "../../../../lib/const";
 import { ApiKeyManager } from "./ApiKeyManager";
+import { ChangePassword } from "./ChangePassword";
+import { DeleteAccount } from "./DeleteAccount";
 
 export function AccountInner() {
   const session = authClient.useSession();
@@ -194,8 +194,7 @@ export function AccountInner() {
           </div>
         </CardContent>
       </Card>
-
-      {IS_CLOUD && <ApiKeyManager />}
+      <ApiKeyManager />
     </div>
   );
 }

@@ -6,12 +6,14 @@ import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";
 import { ThemeSwitcher } from "./ThemeSwitcher";
+import { BlackFridayBanner } from "./BlackFridayBanner";
 
 export function CustomHeader() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-neutral-300 dark:border-neutral-800 bg-background/80 backdrop-blur-md">
+      {/* <BlackFridayBanner /> */}
       <nav className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3" aria-label="Global">
         {/* Logo */}
         <div className="flex items-center">

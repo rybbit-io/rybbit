@@ -27,7 +27,7 @@ export function FreeTrialBanner() {
     return (
       <div className="mt-4 px-4 py-3 rounded-lg border border-blue-100 dark:border-blue-400/30 bg-blue-50/80 dark:bg-blue-900/20 text-sm flex justify-between items-center">
         <div className="text-blue-700 dark:text-blue-300 flex items-center font-medium">
-          <Clock className="h-4 w-4 mr-2 text-blue-500 dark:text-blue-400 flex-shrink-0" />
+          <Clock className="h-4 w-4 mr-2 text-blue-500 dark:text-blue-400 shrink-0" />
           <span>
             Free trial: <strong>{daysRemaining}</strong> days remaining – Using{" "}
             <strong>{formatNumber(eventsUsed)}</strong> of {formatNumber(eventLimit)} events

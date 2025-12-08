@@ -4,7 +4,7 @@ import { useStore } from "@/lib/store";
 import { useTheme } from "next-themes";
 import { ResponsiveLine } from "@nivo/line";
 import { DateTime } from "luxon";
-import { GetOverviewBucketedResponse } from "../../../../../api/analytics/useGetOverviewBucketed";
+import { GetOverviewBucketedResponse } from "../../../../../api/analytics/endpoints";
 import { APIResponse } from "../../../../../api/types";
 import { Time } from "../../../../../components/DateSelector/types";
 import { TimeBucket } from "@rybbit/shared";

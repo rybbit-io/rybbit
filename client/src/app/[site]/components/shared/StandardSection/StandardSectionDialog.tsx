@@ -1,15 +1,10 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { TableSortIndicator } from "@/components/ui/table";
+import { FilterParameter } from "@rybbit/shared";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-  TableSortIndicator,
-} from "@/components/ui/table";
-import {
+  ColumnDef,
+  ColumnHelper,
   createColumnHelper,
   flexRender,
   getCoreRowModel,
@@ -18,11 +13,10 @@ import {
   useReactTable,
 } from "@tanstack/react-table";
 import { useDebounce, useIntersectionObserver } from "@uidotdev/usehooks";
-import { Loader2, Search, SquareArrowOutUpRight } from "lucide-react";
+import { Loader2, SquareArrowOutUpRight } from "lucide-react";
 import { ReactNode, useEffect, useMemo, useState } from "react";
-import { useInfiniteMetric } from "../../../../../api/analytics/useGetMetric";
-import { MetricResponse } from "../../../../../api/analytics/useGetMetric";
-import { FilterParameter } from "@rybbit/shared";
+import { useInfiniteMetric } from "../../../../../api/analytics/hooks/useGetMetric";
+import { MetricResponse } from "../../../../../api/analytics/endpoints";
 import { addFilter } from "../../../../../lib/store";
 import { cn, formatSecondsAsMinutesAndSeconds } from "../../../../../lib/utils";
 
@@ -134,7 +128,7 @@ export function StandardSectionDialog({
             cell: info => (
               <div className="flex flex-row gap-1 items-center sm:justify-end">{info.getValue()?.toLocaleString()}</div>
             ),
-          }) as any
+          }) satisfies ColumnDef<MetricResponse, number>
         );
         cols.push(
           columnHelper.accessor("pageviews_percentage", {
@@ -142,7 +136,7 @@ export function StandardSectionDialog({
             cell: info => (
               <div className="flex flex-row gap-1 items-center sm:justify-end">{info.getValue()?.toFixed(1)}%</div>
             ),
-          }) as any
+          }) satisfies ColumnDef<MetricResponse, number>
         );
       }
 
@@ -154,7 +148,7 @@ export function StandardSectionDialog({
             cell: info => (
               <div className="text-right">{formatSecondsAsMinutesAndSeconds(Math.round(info.getValue() ?? 0))}</div>
             ),
-          }) as any
+          }) satisfies ColumnDef<MetricResponse, number>
         );
       }
 
@@ -166,7 +160,7 @@ export function StandardSectionDialog({
             cell: info => (
               <div className="flex flex-row gap-1 items-center sm:justify-end">{info.getValue()?.toFixed(1)}%</div>
             ),
-          }) as any
+          }) satisfies ColumnDef<MetricResponse, number>
         );
       }
     }
@@ -210,7 +204,7 @@ export function StandardSectionDialog({
 
   return (
     <Dialog open={expanded} onOpenChange={close}>
-      <DialogContent className="max-w-[1000px] w-[100vw] max-h-[1000px] h-[calc(100vh-2rem)] p-2 sm:p-4 flex flex-col gap-2">
+      <DialogContent className="max-w-[1000px] w-screen max-h-[1000px] h-[calc(100vh-2rem)] p-2 sm:p-4 flex flex-col gap-2">
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
         </DialogHeader>
@@ -267,7 +261,7 @@ export function StandardSectionDialog({
                       <td
                         key={cell.id}
                         className={cn(
-                          "p-2 align-middle [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]",
+                          "p-2 align-middle [&:has([role=checkbox])]:pr-0 *:[role=checkbox]:translate-y-[2px]",
                           "relative",
                           cellIndex !== 0 && "text-right"
                         )}

@@ -17,6 +17,7 @@ export interface SubscriptionData {
   trialDaysRemaining?: number;
   message?: string; // For expired trial message
   isPro?: boolean;
+  isOverride?: boolean;
 }
 
 export function useStripeSubscription(): UseQueryResult<SubscriptionData, Error> {

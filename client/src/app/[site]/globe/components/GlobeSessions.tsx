@@ -1,10 +1,10 @@
-import { ArrowRight, ChevronDown, ChevronUp, ExternalLink } from "lucide-react";
+import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
+import { ArrowRight, ChevronDown, ChevronUp } from "lucide-react";
 import { DateTime } from "luxon";
-import Link from "next/link";
 import { useMemo, useState } from "react";
-import { VisuallyHidden } from "radix-ui";
 import { useCurrentSite } from "../../../../api/admin/sites";
-import { GetSessionsResponse, useGetSessionsInfinite } from "../../../../api/analytics/useGetUserSessions";
+import { useGetSessionsInfinite } from "../../../../api/analytics/hooks/useGetUserSessions";
+import { GetSessionsResponse } from "../../../../api/analytics/endpoints";
 import { Avatar, generateName } from "../../../../components/Avatar";
 import { Channel } from "../../../../components/Channel";
 import { EventIcon, PageviewIcon } from "../../../../components/EventIcons";
@@ -144,7 +144,7 @@ function SessionCard({ session, onClick }: { session: GetSessionsResponse[number
           </TooltipContent>
         </Tooltip>
 
-        <ArrowRight className="mx-2 w-3 h-3 flex-shrink-0 text-neutral-400" />
+        <ArrowRight className="mx-2 w-3 h-3 shrink-0 text-neutral-400" />
 
         <Tooltip>
           <TooltipTrigger asChild>
@@ -162,7 +162,7 @@ function SessionCard({ session, onClick }: { session: GetSessionsResponse[number
 }
 
 export function GlobeSessions() {
-  const { data, isLoading, fetchNextPage, hasNextPage, isFetchingNextPage } = useGetSessionsInfinite();
+  const { data, isLoading, fetchNextPage, hasNextPage, isFetchingNextPage } = useGetSessionsInfinite({});
 
   const [expanded, setExpanded] = useState(false);
   const [selectedSession, setSelectedSession] = useState<GetSessionsResponse[number] | null>(null);
@@ -205,9 +205,9 @@ export function GlobeSessions() {
       </div>
 
       <Dialog open={!!selectedSession} onOpenChange={open => !open && setSelectedSession(null)}>
-        <VisuallyHidden.Root>
+        <VisuallyHidden>
           <DialogTitle>Session Details</DialogTitle>
-        </VisuallyHidden.Root>
+        </VisuallyHidden>
         <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto bg-transparent border-0 p-0 shadow-none gap-0 [&>button]:hidden">
           {selectedSession && <FullSessionCard session={selectedSession} expandedByDefault />}
         </DialogContent>

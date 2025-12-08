@@ -1,7 +1,7 @@
 "use client";
 
 import { AlertCircle } from "lucide-react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { Suspense, useState } from "react";
 import { ThreeDotLoader } from "../../components/Loaders";
 import { RybbitLogo } from "../../components/RybbitLogo";
@@ -12,11 +12,18 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../components/ui/ta
 import { authClient } from "../../lib/auth";
 import { Login } from "./components/login";
 import { Signup } from "./components/signup";
+import { useQueryStates, parseAsString } from "nuqs";
 
 function AuthComponent() {
-  const organization = useSearchParams().get("organization");
-  const inviterEmail = useSearchParams().get("inviterEmail");
+  const [{ invitationId, organization, inviterEmail }] = useQueryStates({
+    invitationId: parseAsString,
+    organization: parseAsString,
+    inviterEmail: parseAsString,
+  });
   const [activeTab, setActiveTab] = useState<"login" | "signup">("signup");
+
+  // Construct callback URL to return to this page after OAuth
+  const callbackURL = `/invitation?invitationId=${invitationId}&organization=${organization}&inviterEmail=${inviterEmail}`;
 
   return (
     <Card className="w-full max-w-md p-1">
@@ -33,11 +40,11 @@ function AuthComponent() {
           </TabsList>
 
           <TabsContent value="login">
-            <Login inviterEmail={inviterEmail} organization={organization} />
+            <Login callbackURL={callbackURL} />
           </TabsContent>
 
           <TabsContent value="signup">
-            <Signup inviterEmail={inviterEmail} organization={organization} />
+            <Signup callbackURL={callbackURL} />
           </TabsContent>
         </Tabs>
       </CardContent>
@@ -46,9 +53,11 @@ function AuthComponent() {
 }
 
 function AcceptInvitationInner() {
-  const invitationId = useSearchParams().get("invitationId");
-  const organization = useSearchParams().get("organization");
-  const inviterEmail = useSearchParams().get("inviterEmail");
+  const [{ invitationId, organization, inviterEmail }] = useQueryStates({
+    invitationId: parseAsString,
+    organization: parseAsString,
+    inviterEmail: parseAsString,
+  });
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string>("");
@@ -111,7 +120,7 @@ function InvitationContent() {
 export default function AcceptInvitation() {
   return (
     <div className="flex flex-col min-h-dvh">
-      <div className="flex justify-center items-center flex-grow p-4">
+      <div className="flex justify-center items-center grow p-4">
         <Suspense fallback={<ThreeDotLoader />}>
           <InvitationContent />
         </Suspense>

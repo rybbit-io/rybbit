@@ -1,7 +1,7 @@
 "use client";
 
 import { useMeasure } from "@uidotdev/usehooks";
-import { useGetSessionReplays } from "../../../api/analytics/sessionReplay/useGetSessionReplays";
+import { useGetSessionReplays } from "../../../api/analytics/hooks/sessionReplay/useGetSessionReplays";
 import { DisabledOverlay } from "../../../components/DisabledOverlay";
 import { useSetPageTitle } from "../../../hooks/useSetPageTitle";
 import { SESSION_REPLAY_PAGE_FILTERS } from "../../../lib/filterGroups";

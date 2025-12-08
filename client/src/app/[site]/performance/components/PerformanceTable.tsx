@@ -1,7 +1,15 @@
 "use client";
 
 import { Skeleton } from "@/components/ui/skeleton";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableSortIndicator } from "@/components/ui/table";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+  TableSortIndicator,
+} from "@/components/ui/table";
 import {
   createColumnHelper,
   flexRender,
@@ -10,18 +18,11 @@ import {
   SortingState,
   useReactTable,
 } from "@tanstack/react-table";
-import {
-  Monitor,
-  Smartphone,
-  Tablet,
-  SquareArrowOutUpRight,
-} from "lucide-react";
+import { Monitor, Smartphone, Tablet, SquareArrowOutUpRight } from "lucide-react";
 import { useMemo, useState, useCallback } from "react";
 import { useGetSite } from "../../../../api/admin/sites";
-import {
-  PerformanceByDimensionItem,
-  useGetPerformanceByDimension,
-} from "../../../../api/analytics/performance/useGetPerformanceByDimension";
+import { useGetPerformanceByDimension } from "../../../../api/analytics/hooks/performance/useGetPerformanceByDimension";
+import { PerformanceByDimensionItem } from "../../../../api/analytics/endpoints";
 import { Pagination } from "../../../../components/pagination";
 import { FilterParameter } from "@rybbit/shared";
 import { useStore, addFilter, removeFilter } from "../../../../lib/store";

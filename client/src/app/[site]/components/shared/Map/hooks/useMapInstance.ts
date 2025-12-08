@@ -30,11 +30,21 @@ export function useMapInstance({
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<Map | null>(null);
   const mapViewRef = useRef<"countries" | "subdivisions">(mapView);
+  const countryDataRef = useRef<ProcessedData[] | null>(countryData);
+  const subdivisionDataRef = useRef<ProcessedData[] | null>(subdivisionData);
 
-  // Update mapView ref when it changes
+  // Update refs when values change
   useEffect(() => {
     mapViewRef.current = mapView;
   }, [mapView]);
+
+  useEffect(() => {
+    countryDataRef.current = countryData;
+  }, [countryData]);
+
+  useEffect(() => {
+    subdivisionDataRef.current = subdivisionData;
+  }, [subdivisionData]);
 
   // Initialize map
   useEffect(() => {
@@ -77,7 +87,7 @@ export function useMapInstance({
 
         setHoveredId(code);
 
-        const dataToUse = isCountryView ? countryData : subdivisionData;
+        const dataToUse = isCountryView ? countryDataRef.current : subdivisionDataRef.current;
         const foundData = dataToUse?.find(({ value }) => value === code);
         const count = foundData?.count || 0;
         const percentage = foundData?.percentage || 0;

@@ -1,0 +1,14 @@
+{
+  "title": "Stats",
+  "pages": [
+    "overview",
+    "sessions",
+    "events",
+    "users",
+    "goals",
+    "funnels",
+    "performance",
+    "errors",
+    "misc"
+  ]
+}

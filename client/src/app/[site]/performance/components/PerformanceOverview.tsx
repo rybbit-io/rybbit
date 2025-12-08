@@ -4,7 +4,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import NumberFlow from "@number-flow/react";
 import { TrendingDown, TrendingUp } from "lucide-react";
-import { useGetPerformanceOverview } from "../../../../api/analytics/performance/useGetPerformanceOverview";
+import { useGetPerformanceOverview } from "../../../../api/analytics/hooks/performance/useGetPerformanceOverview";
 import { Card, CardContent, CardLoader } from "../../../../components/ui/card";
 import { useStore } from "../../../../lib/store";
 import { PerformanceMetric, usePerformanceStore } from "../performanceStore";

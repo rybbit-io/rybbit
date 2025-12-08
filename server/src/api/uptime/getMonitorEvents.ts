@@ -4,7 +4,7 @@ import { db } from "../../db/postgres/postgres.js";
 import { uptimeMonitors, member } from "../../db/postgres/schema.js";
 import { clickhouse } from "../../db/clickhouse/clickhouse.js";
 import { getSessionFromReq } from "../../lib/auth-utils.js";
-import { processResults } from "../analytics/utils.js";
+import { processResults } from "../analytics/utils/utils.js";
 import { getMonitorEventsQuerySchema, type GetMonitorEventsQuery } from "./schemas.js";
 
 interface GetMonitorEventsRequest {

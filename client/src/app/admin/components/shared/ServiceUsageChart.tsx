@@ -2,7 +2,7 @@
 
 import { useGetAdminServiceEventCount } from "@/api/admin/useGetAdminServiceEventCount";
 import { timeZone, userLocale } from "@/lib/dateTimeUtils";
-import { nivoTheme } from "@/lib/nivo";
+import { useNivoTheme } from "@/lib/nivo";
 import { formatter } from "@/lib/utils";
 import { ResponsiveLine } from "@nivo/line";
 import { useWindowSize } from "@uidotdev/usehooks";
@@ -17,6 +17,7 @@ interface ServiceUsageChartProps {
 
 export function ServiceUsageChart({ startDate, endDate, title }: ServiceUsageChartProps) {
   const { width } = useWindowSize();
+  const nivoTheme = useNivoTheme();
 
   // Fetch the data inside the component
   const { data, isLoading, error } = useGetAdminServiceEventCount({

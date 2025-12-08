@@ -27,7 +27,10 @@ export async function parseScriptConfig(scriptTag: HTMLScriptElement): Promise<S
   // These can be overridden via data attributes for testing/debugging
   const skipPatterns = parseJsonSafely<string[]>(scriptTag.getAttribute("data-skip-patterns"), []);
   const maskPatterns = parseJsonSafely<string[]>(scriptTag.getAttribute("data-mask-patterns"), []);
-  const sessionReplayMaskTextSelectors = parseJsonSafely<string[]>(scriptTag.getAttribute("data-replay-mask-text-selectors"), []);
+  const sessionReplayMaskTextSelectors = parseJsonSafely<string[]>(
+    scriptTag.getAttribute("data-replay-mask-text-selectors"),
+    []
+  );
 
   const debounceDuration = scriptTag.getAttribute("data-debounce")
     ? Math.max(0, parseInt(scriptTag.getAttribute("data-debounce")!))
@@ -63,7 +66,7 @@ export async function parseScriptConfig(scriptTag: HTMLScriptElement): Promise<S
 
   try {
     // Fetch configuration from API
-    const configUrl = `${analyticsHost}/site/${siteId}/tracking-config`;
+    const configUrl = `${analyticsHost}/site/tracking-config/${siteId}`;
     const response = await fetch(configUrl, {
       method: "GET",
       // Include credentials if needed for authentication

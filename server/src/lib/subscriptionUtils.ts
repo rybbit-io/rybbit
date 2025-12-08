@@ -1,7 +1,8 @@
-import { sql } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { DateTime } from "luxon";
 import Stripe from "stripe";
 import { db } from "../db/postgres/postgres.js";
+import { organization } from "../db/postgres/schema.js";
 import { APPSUMO_TIER_LIMITS, DEFAULT_EVENT_LIMIT, getStripePrices, StripePlan } from "./const.js";
 import { stripe } from "./stripe.js";
 
@@ -40,7 +41,19 @@ export interface FreeSubscriptionInfo {
   status: "free";
 }
 
-export type SubscriptionInfo = AppSumoSubscriptionInfo | StripeSubscriptionInfo | FreeSubscriptionInfo;
+export interface OverrideSubscriptionInfo {
+  source: "override";
+  planName: string;
+  eventLimit: number;
+  replayLimit: number;
+  periodStart: string;
+  status: "active";
+  interval: "month" | "year" | "lifetime";
+  cancelAtPeriodEnd: false;
+  isPro: boolean;
+}
+
+export type SubscriptionInfo = AppSumoSubscriptionInfo | StripeSubscriptionInfo | FreeSubscriptionInfo | OverrideSubscriptionInfo;
 
 /**
  * Gets the first day of the current month in YYYY-MM-DD format
@@ -80,6 +93,67 @@ export async function getAppSumoSubscription(organizationId: string): Promise<Ap
     return null;
   } catch (error) {
     console.error("Error checking AppSumo license:", error);
+    return null;
+  }
+}
+
+/**
+ * Gets plan override subscription info for an organization
+ * @returns Override subscription info or null if no override set
+ */
+export async function getOverrideSubscription(organizationId: string): Promise<OverrideSubscriptionInfo | null> {
+  try {
+    const orgResult = await db
+      .select({ planOverride: organization.planOverride })
+      .from(organization)
+      .where(eq(organization.id, organizationId))
+      .limit(1);
+
+    const org = orgResult[0];
+    if (!org?.planOverride) {
+      return null;
+    }
+
+    // Check if it's an AppSumo tier override (e.g., "appsumo-1", "appsumo-2", "appsumo-3")
+    const appsumoMatch = org.planOverride.match(/^appsumo-([123])$/);
+    if (appsumoMatch) {
+      const tier = appsumoMatch[1] as keyof typeof APPSUMO_TIER_LIMITS;
+      const eventLimit = APPSUMO_TIER_LIMITS[tier];
+
+      return {
+        source: "override",
+        planName: org.planOverride,
+        eventLimit,
+        replayLimit: 0, // AppSumo doesn't include replays
+        periodStart: getStartOfMonth(),
+        status: "active",
+        interval: "lifetime",
+        cancelAtPeriodEnd: false,
+        isPro: false,
+      };
+    }
+
+    // Look up plan details from the plan name (Stripe plans)
+    const planDetails = getStripePrices().find((plan: StripePlan) => plan.name === org.planOverride);
+
+    if (!planDetails) {
+      console.error("Plan override not found in price list:", org.planOverride);
+      return null;
+    }
+
+    return {
+      source: "override",
+      planName: planDetails.name,
+      eventLimit: planDetails.limits.events,
+      replayLimit: planDetails.limits.replays,
+      periodStart: getStartOfMonth(),
+      status: "active",
+      interval: planDetails.interval,
+      cancelAtPeriodEnd: false,
+      isPro: planDetails.name.includes("pro"),
+    };
+  } catch (error) {
+    console.error("Error checking plan override:", error);
     return null;
   }
 }
@@ -169,14 +243,20 @@ export async function getStripeSubscription(
 }
 
 /**
- * Gets the best subscription for an organization (highest event limit)
- * Checks both AppSumo and Stripe subscriptions and returns the one with the higher limit
- * @returns The subscription with the highest event limit, or free tier if none found
+ * Gets the best subscription for an organization
+ * Priority: Override > AppSumo/Stripe (highest limit) > Free
+ * @returns The active subscription, or free tier if none found
  */
 export async function getBestSubscription(
   organizationId: string,
   stripeCustomerId: string | null
 ): Promise<SubscriptionInfo> {
+  // Check override first - always wins
+  const overrideSub = await getOverrideSubscription(organizationId);
+  if (overrideSub) {
+    return overrideSub;
+  }
+
   // Get both subscription types
   const [appsumoSub, stripeSub] = await Promise.all([
     getAppSumoSubscription(organizationId),

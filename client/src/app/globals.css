@@ -1,9 +1,131 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import 'tailwindcss';
 
-body {
-  font-family: Arial, Helvetica, sans-serif;
+@plugin 'tailwindcss-animate';
+
+@custom-variant dark (&:is(.dark *));
+
+@utility container {
+  margin-inline: auto;
+  padding-inline: 2rem;
+  @media (width >= --theme(--breakpoint-sm)) {
+    max-width: none;
+  }
+  @media (width >= 1400px) {
+    max-width: 1400px;
+  }
+}
+
+@theme {
+  --color-border: hsl(var(--border));
+  --color-input: hsl(var(--input));
+  --color-ring: hsl(var(--ring));
+  --color-background: hsl(var(--background));
+  --color-foreground: hsl(var(--foreground));
+
+  --color-primary: hsl(var(--primary));
+  --color-primary-foreground: hsl(var(--primary-foreground));
+
+  --color-secondary: hsl(var(--secondary));
+  --color-secondary-foreground: hsl(var(--secondary-foreground));
+
+  --color-destructive: hsl(var(--destructive));
+  --color-destructive-foreground: hsl(var(--destructive-foreground));
+
+  --color-muted: hsl(var(--muted));
+  --color-muted-foreground: hsl(var(--muted-foreground));
+
+  --color-accent-50: hsl(var(--accent-50));
+  --color-accent-100: hsl(var(--accent-100));
+  --color-accent-200: hsl(var(--accent-200));
+  --color-accent-300: hsl(var(--accent-300));
+  --color-accent-400: hsl(var(--accent-400));
+  --color-accent-500: hsl(var(--accent-500));
+  --color-accent-600: hsl(var(--accent-600));
+  --color-accent-700: hsl(var(--accent-700));
+  --color-accent-800: hsl(var(--accent-800));
+  --color-accent-900: hsl(var(--accent-900));
+  --color-accent-950: hsl(var(--accent-950));
+  --color-accent: hsl(var(--accent));
+  --color-accent-foreground: hsl(var(--accent-foreground));
+
+  --color-dataviz-2: hsl(var(--dataviz-2));
+  --color-dataviz: hsl(var(--dataviz));
+
+  --color-popover: hsl(var(--popover));
+  --color-popover-foreground: hsl(var(--popover-foreground));
+
+  --color-card: hsl(var(--card));
+  --color-card-foreground: hsl(var(--card-foreground));
+
+  --color-neutral-0: hsl(var(--neutral-0));
+  --color-neutral-50: hsl(var(--neutral-50));
+  --color-neutral-100: hsl(var(--neutral-100));
+  --color-neutral-150: hsl(var(--neutral-150));
+  --color-neutral-200: hsl(var(--neutral-200));
+  --color-neutral-250: hsl(var(--neutral-250));
+  --color-neutral-300: hsl(var(--neutral-300));
+  --color-neutral-350: hsl(var(--neutral-350));
+  --color-neutral-400: hsl(var(--neutral-400));
+  --color-neutral-450: hsl(var(--neutral-450));
+  --color-neutral-500: hsl(var(--neutral-500));
+  --color-neutral-550: hsl(var(--neutral-550));
+  --color-neutral-600: hsl(var(--neutral-600));
+  --color-neutral-650: hsl(var(--neutral-650));
+  --color-neutral-700: hsl(var(--neutral-700));
+  --color-neutral-750: hsl(var(--neutral-750));
+  --color-neutral-800: hsl(var(--neutral-800));
+  --color-neutral-850: hsl(var(--neutral-850));
+  --color-neutral-900: hsl(var(--neutral-900));
+  --color-neutral-950: hsl(var(--neutral-950));
+  --color-neutral-1000: hsl(var(--neutral-1000));
+
+  --radius-lg: var(--radius);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-sm: calc(var(--radius) - 4px);
+
+  --animate-accordion-down: accordion-down 0.2s ease-out;
+  --animate-accordion-up: accordion-up 0.2s ease-out;
+
+  @keyframes accordion-down {
+    from {
+      height: 0;
+    }
+    to {
+      height: var(--radix-accordion-content-height);
+    }
+  }
+  @keyframes accordion-up {
+    from {
+      height: var(--radix-accordion-content-height);
+    }
+    to {
+      height: 0;
+    }
+  }
+}
+
+/*
+  The default border color has changed to `currentcolor` in Tailwind CSS v4,
+  so we've added these compatibility styles to make sure everything still
+  looks the same as it did with Tailwind CSS v3.
+
+  If we ever want to remove these styles, we need to add an explicit border
+  color utility to any element that depends on these defaults.
+*/
+@layer base {
+  *,
+  ::after,
+  ::before,
+  ::backdrop,
+  ::file-selector-button {
+    border-color: var(--color-border, currentcolor);
+  }
+}
+
+@layer utilities {
+  body {
+    font-family: Arial, Helvetica, sans-serif;
+  }
 }
 
 @layer base {

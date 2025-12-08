@@ -1,5 +1,8 @@
+import { eq } from "drizzle-orm";
 import { FastifyRequest } from "fastify";
 import * as psl from "psl";
+import { db } from "./db/postgres/postgres.js";
+import { sites } from "./db/postgres/schema.js";
 
 const desktopOS = new Set([
   "AIX",
@@ -134,6 +137,56 @@ export const extractSiteId = (path: string) => {
     return segments[segments.length - 1];
   }
   return null;
+};
+
+// Cache for string ID to numeric ID lookups to avoid repeated DB queries
+const siteIdCache = new Map<string, number>();
+
+// Resolve a site identifier (string ID or numeric ID) to its numeric siteId
+// Returns the numeric siteId or null if not found
+export const resolveNumericSiteId = async (siteIdentifier: string): Promise<number | null> => {
+  // If it's already numeric, return it
+  if (/^\d+$/.test(siteIdentifier)) {
+    return parseInt(siteIdentifier, 10);
+  }
+
+  // Check cache first
+  if (siteIdCache.has(siteIdentifier)) {
+    return siteIdCache.get(siteIdentifier)!;
+  }
+
+  // Look up the string ID in the database
+  try {
+    const site = await db
+      .select({ siteId: sites.siteId })
+      .from(sites)
+      .where(eq(sites.id, siteIdentifier))
+      .limit(1);
+
+    if (site.length > 0) {
+      const numericId = site[0].siteId;
+      // Cache the result
+      siteIdCache.set(siteIdentifier, numericId);
+      return numericId;
+    }
+  } catch (error) {
+    console.error("Error resolving site ID:", error);
+  }
+
+  return null;
+};
+
+// Replace site ID in URL path with numeric ID
+export const replacePathSiteId = (path: string, numericId: number): string => {
+  const [pathPart, queryPart] = path.split("?");
+  const segments = pathPart.split("/");
+
+  // Replace the last segment (which is the site ID)
+  if (segments.length >= 2) {
+    segments[segments.length - 1] = String(numericId);
+  }
+
+  return queryPart ? `${segments.join("/")}?${queryPart}` : segments.join("/");
 };
 
 // Normalizes a domain/hostname by removing all subdomain prefixes.

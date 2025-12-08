@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useMemo } from "react";
-import { useGetSessionReplayEvents } from "../../../../../api/analytics/sessionReplay/useGetSessionReplayEvents";
+import { useGetSessionReplayEvents } from "../../../../../api/analytics/hooks/sessionReplay/useGetSessionReplayEvents";
 import {
   BrowserTooltipIcon,
   CountryFlagTooltipIcon,
@@ -24,7 +24,7 @@ export function ReplayPlayerTopbar() {
           <div className="flex items-center gap-2 min-w-0 flex-1">
             <div className="h-4 w-32 bg-neutral-150 dark:bg-neutral-700 rounded animate-pulse" />
           </div>
-          <div className="flex items-center gap-1 flex-shrink-0 ml-2">
+          <div className="flex items-center gap-1 shrink-0 ml-2">
             <div className="h-4 w-24 bg-neutral-150 dark:bg-neutral-700 rounded animate-pulse" />
           </div>
         </div>
@@ -83,7 +83,7 @@ export function ReplayPlayerTopbar() {
         </Link>
 
         {/* Right side: Screen dimensions */}
-        <div className="flex items-center gap-2 text-xs text-neutral-600 dark:text-neutral-400 flex-shrink-0 ml-2">
+        <div className="flex items-center gap-2 text-xs text-neutral-600 dark:text-neutral-400 shrink-0 ml-2">
           <CountryFlagTooltipIcon
             country={metadata.country}
             city={metadata.city}

@@ -1,10 +1,10 @@
-import { nivoTheme } from "@/lib/nivo";
+import { useNivoTheme } from "@/lib/nivo";
 import { ResponsiveLine } from "@nivo/line";
 import { DateTime } from "luxon";
 import { useMemo } from "react";
-import { GetOverviewBucketedResponse } from "../api/analytics/useGetOverviewBucketed";
-import { formatter } from "../lib/utils";
+import { GetOverviewBucketedResponse } from "../api/analytics/endpoints";
 import { hour12 } from "../lib/dateTimeUtils";
+import { formatter } from "../lib/utils";
 import { ChartTooltip } from "./charts/ChartTooltip";
 
 interface SiteSessionChartProps {
@@ -31,6 +31,7 @@ export function SiteSessionChart({ data, height = 100 }: SiteSessionChartProps) 
       },
     ];
   }, [data]);
+  const nivoTheme = useNivoTheme();
 
   return (
     <div style={{ height }}>

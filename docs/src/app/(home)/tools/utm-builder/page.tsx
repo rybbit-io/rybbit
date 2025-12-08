@@ -1,253 +1,295 @@
-"use client";
+import { UTMBuilderForm } from "./UTMBuilderForm";
+import { ToolPageLayout } from "../components/ToolPageLayout";
+import type { Metadata } from "next";
 
-import { TrackedButton } from "@/components/TrackedButton";
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { DEFAULT_EVENT_LIMIT } from "@/lib/const";
-import { CheckCircle, Copy } from "lucide-react";
-import Link from "next/link";
-import { useMemo, useState } from "react";
+export const metadata: Metadata = {
+  title: "Free UTM Builder | Campaign URL Parameter Generator for Marketing Tracking",
+  description:
+    "Create trackable UTM campaign URLs instantly. Build utm_source, utm_medium, utm_campaign parameters for Google Analytics and marketing campaign tracking.",
+  openGraph: {
+    title: "Free UTM Builder | Campaign URL Parameter Generator",
+    description:
+      "Generate UTM campaign URLs instantly for accurate marketing tracking in Google Analytics and other analytics platforms.",
+    type: "website",
+    url: "https://rybbit.com/tools/utm-builder",
+    siteName: "Rybbit Documentation",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Free UTM Builder | Campaign URL Parameter Generator",
+    description: "Build trackable campaign URLs with UTM parameters for better marketing analytics.",
+  },
+  alternates: {
+    canonical: "https://rybbit.com/tools/utm-builder",
+  },
+};
+
+const structuredData = {
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "WebApplication",
+      name: "UTM Builder Tool",
+      description: "Free tool to generate UTM parameters for campaign URL tracking",
+      url: "https://rybbit.com/tools/utm-builder",
+      applicationCategory: "Utility",
+      offers: {
+        "@type": "Offer",
+        price: "0",
+        priceCurrency: "USD",
+      },
+      author: {
+        "@type": "Organization",
+        name: "Rybbit",
+        url: "https://rybbit.com",
+      },
+    },
+    {
+      "@type": "FAQPage",
+      mainEntity: [
+        {
+          "@type": "Question",
+          name: "What is UTM tracking?",
+          acceptedAnswer: {
+            "@type": "Answer",
+            text: "UTM (Urchin Tracking Module) parameters are tags added to URLs that help you track the effectiveness of your marketing campaigns in analytics tools like Rybbit, Google Analytics, and others. They tell you exactly where your traffic is coming from and how your campaigns perform.",
+          },
+        },
+        {
+          "@type": "Question",
+          name: "What are the required UTM parameters?",
+          acceptedAnswer: {
+            "@type": "Answer",
+            text: "The three required parameters are: utm_source (identifies the source like google or newsletter), utm_medium (identifies the medium like cpc or email), and utm_campaign (identifies the specific campaign like summer_sale).",
+          },
+        },
+        {
+          "@type": "Question",
+          name: "How do I track UTM links with Rybbit?",
+          acceptedAnswer: {
+            "@type": "Answer",
+            text: "Once you have Rybbit installed on your website, UTM parameters are automatically tracked. You can view your campaign performance in your Rybbit dashboard under the UTM section.",
+          },
+        },
+        {
+          "@type": "Question",
+          name: "What are optional UTM parameters?",
+          acceptedAnswer: {
+            "@type": "Answer",
+            text: "utm_term is used for tracking paid search keywords, while utm_content helps differentiate between different ads or links within the same campaign. These are optional but useful for deeper campaign analysis and A/B testing.",
+          },
+        },
+        {
+          "@type": "Question",
+          name: "What naming conventions should I follow?",
+          acceptedAnswer: {
+            "@type": "Answer",
+            text: "Use lowercase letters and underscores instead of spaces (e.g., summer_sale, not Summer Sale). Be consistent across campaigns so data is properly grouped in analytics. Avoid special characters and keep names descriptive but concise.",
+          },
+        },
+      ],
+    },
+  ],
+};
+
+const educationalContent = (
+  <>
+    <h2 className="text-2xl font-bold text-neutral-900 dark:text-white mb-4">What are UTM Parameters?</h2>
+    <p className="text-neutral-700 dark:text-neutral-300 leading-relaxed mb-4">
+      UTM (Urchin Tracking Module) parameters are special tags you add to the end of your URLs to track your marketing
+      campaign performance. When someone clicks a link with UTM parameters, analytics tools like Rybbit, Google
+      Analytics, and others automatically capture that data and organize it for you.
+    </p>
+    <p className="text-neutral-700 dark:text-neutral-300 leading-relaxed mb-4">
+      Instead of wondering which campaigns drive the most traffic, UTM parameters let you see exactly how many visitors
+      came from each campaign, where they came from, and how they behaved on your site.
+    </p>
+
+    <h2 className="text-2xl font-bold text-neutral-900 dark:text-white mb-4 mt-8">
+      How UTM Parameters Work with Google Analytics
+    </h2>
+
+    <h3 className="text-xl font-semibold text-neutral-900 dark:text-white mb-3 mt-6">The Five UTM Parameters</h3>
+    <ul className="space-y-2 text-neutral-700 dark:text-neutral-300 mb-6">
+      <li>
+        <code className="text-sm font-mono text-emerald-600 dark:text-emerald-400">utm_source</code> - Where the traffic
+        comes from (google, newsletter, facebook)
+      </li>
+      <li>
+        <code className="text-sm font-mono text-emerald-600 dark:text-emerald-400">utm_medium</code> - How they got
+        there (cpc, email, social, organic)
+      </li>
+      <li>
+        <code className="text-sm font-mono text-emerald-600 dark:text-emerald-400">utm_campaign</code> - Which campaign
+        it belongs to (summer_sale, product_launch)
+      </li>
+      <li>
+        <code className="text-sm font-mono text-emerald-600 dark:text-emerald-400">utm_term</code> - Paid search
+        keywords (optional)
+      </li>
+      <li>
+        <code className="text-sm font-mono text-emerald-600 dark:text-emerald-400">utm_content</code> - Which ad or link
+        was clicked (optional)
+      </li>
+    </ul>
+
+    <p className="text-neutral-700 dark:text-neutral-300 mb-2">
+      <strong>Example URL:</strong>
+    </p>
+    <p className="text-neutral-700 dark:text-neutral-300 mb-4">
+      <code className="text-xs font-mono">
+        https://example.com?utm_source=google&utm_medium=cpc&utm_campaign=summer_sale&utm_term=running_shoes
+      </code>
+    </p>
+    <p className="text-neutral-700 dark:text-neutral-300">
+      Google Analytics automatically parses these parameters and shows them in your reports, making it easy to compare
+      campaign performance.
+    </p>
+
+    <h2 className="text-2xl font-bold text-neutral-900 dark:text-white mb-4 mt-8">
+      UTM Naming Conventions & Best Practices
+    </h2>
+    <ul className="space-y-2 text-neutral-700 dark:text-neutral-300 mb-6">
+      <li>
+        <strong>Use Consistent Formatting:</strong> Always use lowercase letters and underscores instead of spaces. This
+        ensures consistent data grouping in your analytics. Good: summer_sale, facebook_ads, email_newsletter | Bad:
+        Summer Sale, Facebook Ads, Email Newsletter
+      </li>
+      <li>
+        <strong>Be Descriptive but Concise:</strong> Use names that clearly identify the campaign or source without
+        being overly long. Short, specific names are easier to remember and less prone to typos.
+      </li>
+      <li>
+        <strong>Establish a Naming Convention:</strong> Create a standard UTM naming scheme for your organization and
+        document it. This prevents duplicate or conflicting parameter values. Example scheme: campaign =
+        [season]_[product], source = [channel], medium = [type]
+      </li>
+      <li>
+        <strong>Never Use Spaces or Special Characters:</strong> Spaces and special characters can cause encoding
+        issues. Stick to alphanumeric characters and underscores.
+      </li>
+    </ul>
+
+    <h2 className="text-2xl font-bold text-neutral-900 dark:text-white mb-4 mt-8">Common UTM Use Cases</h2>
+    <ul className="space-y-2 text-neutral-700 dark:text-neutral-300 mb-6">
+      <li>
+        <strong>Email Marketing:</strong> Track which emails drive the most traffic. Use utm_source=newsletter,
+        utm_medium=email, and create unique campaign names for each send.
+      </li>
+      <li>
+        <strong>Social Media Campaigns:</strong> Measure performance across platforms. Use
+        utm_source=facebook/twitter/linkedin, utm_medium=social, and track A/B tests with utm_content.
+      </li>
+      <li>
+        <strong>Paid Search Ads:</strong> Track Google Ads and Bing campaigns. Use utm_source=google, utm_medium=cpc,
+        and utm_term for your keywords to optimize bidding.
+      </li>
+      <li>
+        <strong>Affiliate & Referral Programs:</strong> Monitor performance by partner. Use utm_source=[partner_name],
+        utm_medium=affiliate, and utm_content=[unique_id] per partner.
+      </li>
+      <li>
+        <strong>Offline to Online Tracking:</strong> Include UTM parameters in offline marketing materials. QR codes,
+        print ads, and events can all drive trackable traffic.
+      </li>
+      <li>
+        <strong>A/B Testing Ads:</strong> Compare different ad creatives or messaging. Use utm_content to differentiate
+        versions and measure which performs better.
+      </li>
+    </ul>
+
+    <h2 className="text-2xl font-bold text-neutral-900 dark:text-white mb-4 mt-8">Common UTM Mistakes to Avoid</h2>
+    <ul className="space-y-2 text-neutral-700 dark:text-neutral-300 mb-6">
+      <li>
+        <strong>Inconsistent Parameter Values:</strong> Using "Facebook" sometimes and "facebook" other times causes
+        data to be split into separate analytics rows. Always use consistent casing and formatting.
+      </li>
+      <li>
+        <strong>Omitting Required Parameters:</strong> While technically you can have partial UTM parameters, missing
+        utm_source, utm_medium, or utm_campaign reduces your tracking insight. Always fill at least these three.
+      </li>
+      <li>
+        <strong>Using Spaces and Special Characters:</strong> Spaces become %20 in URLs, and special characters can
+        cause encoding issues. Stick to letters, numbers, hyphens, and underscores.
+      </li>
+      <li>
+        <strong>Forgetting to Tag All Links:</strong> If you only tag some of your marketing links, you'll get
+        incomplete data. Create a process to tag every single campaign link.
+      </li>
+      <li>
+        <strong>Not Documenting Your Scheme:</strong> Without documented naming conventions, your team will create
+        inconsistent UTM parameters. Create and share a style guide.
+      </li>
+    </ul>
+
+    <h2 className="text-2xl font-bold text-neutral-900 dark:text-white mb-4 mt-8">How to Use the UTM Builder</h2>
+    <ol className="space-y-2 text-neutral-700 dark:text-neutral-300 mb-6">
+      <li>
+        <strong>Enter Your Website URL:</strong> Start with your base URL (e.g., https://example.com/products)
+      </li>
+      <li>
+        <strong>Fill Required Fields:</strong> Set your utm_source, utm_medium, and utm_campaign. These three are
+        essential for proper tracking.
+      </li>
+      <li>
+        <strong>Add Optional Parameters:</strong> Use utm_term for keywords and utm_content to differentiate ads within
+        the same campaign.
+      </li>
+      <li>
+        <strong>Copy Your UTM URL:</strong> Click the Copy button to copy your fully formed URL with all parameters
+        included.
+      </li>
+      <li>
+        <strong>Use in Your Campaigns:</strong> Paste the URL in your marketing channels (emails, ads, social posts,
+        etc.) and track the results.
+      </li>
+    </ol>
+  </>
+);
+
+const faqs = [
+  {
+    question: "What is UTM tracking?",
+    answer:
+      "UTM (Urchin Tracking Module) parameters are tags added to URLs that help you track the effectiveness of your marketing campaigns in analytics tools like Rybbit, Google Analytics, and others. They tell you exactly where your traffic is coming from and how your campaigns perform.",
+  },
+  {
+    question: "What are the required UTM parameters?",
+    answer:
+      "The three required parameters are: utm_source (identifies the source like google or newsletter), utm_medium (identifies the medium like cpc or email), and utm_campaign (identifies the specific campaign like summer_sale).",
+  },
+  {
+    question: "How do I track UTM links with Rybbit?",
+    answer:
+      "Once you have Rybbit installed on your website, UTM parameters are automatically tracked. You can view your campaign performance in your Rybbit dashboard under the UTM section.",
+  },
+  {
+    question: "What are optional UTM parameters?",
+    answer:
+      "utm_term is used for tracking paid search keywords, while utm_content helps differentiate between different ads or links within the same campaign. These are optional but useful for deeper campaign analysis and A/B testing.",
+  },
+  {
+    question: "What naming conventions should I follow?",
+    answer:
+      "Use lowercase letters and underscores instead of spaces (e.g., summer_sale, not Summer Sale). Be consistent across campaigns so data is properly grouped in analytics. Avoid special characters and keep names descriptive but concise.",
+  },
+];
 
 export default function UTMBuilderPage() {
-  const [url, setUrl] = useState("");
-  const [source, setSource] = useState("");
-  const [medium, setMedium] = useState("");
-  const [campaign, setCampaign] = useState("");
-  const [term, setTerm] = useState("");
-  const [content, setContent] = useState("");
-  const [copied, setCopied] = useState(false);
-
-  const utmUrl = useMemo(() => {
-    if (!url || !source || !medium || !campaign) return "";
-
-    try {
-      const urlObj = new URL(url.startsWith("http") ? url : `https://${url}`);
-      urlObj.searchParams.set("utm_source", source);
-      urlObj.searchParams.set("utm_medium", medium);
-      urlObj.searchParams.set("utm_campaign", campaign);
-      if (term) urlObj.searchParams.set("utm_term", term);
-      if (content) urlObj.searchParams.set("utm_content", content);
-      return urlObj.toString();
-    } catch {
-      return "";
-    }
-  }, [url, source, medium, campaign, term, content]);
-
-  const copyToClipboard = async () => {
-    if (utmUrl) {
-      await navigator.clipboard.writeText(utmUrl);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    }
-  };
-
-  const clearForm = () => {
-    setUrl("");
-    setSource("");
-    setMedium("");
-    setCampaign("");
-    setTerm("");
-    setContent("");
-    setCopied(false);
-  };
-
   return (
-    <div className="min-h-screen bg-gradient-to-b from-neutral-50 to-neutral-100 dark:from-neutral-950 dark:to-neutral-900">
-      <div className="max-w-4xl mx-auto px-6 py-20">
-        {/* Header */}
-        <div className="mb-16">
-          <div className="inline-block mb-4 px-4 py-1.5 bg-emerald-100 dark:bg-emerald-900/30 border border-emerald-200 dark:border-emerald-800 rounded-full">
-            <span className="text-sm font-medium text-emerald-700 dark:text-emerald-400">Free Tool</span>
-          </div>
-          <h1 className="text-5xl md:text-6xl font-bold text-neutral-900 dark:text-white mb-6 tracking-tight">
-            UTM Builder
-          </h1>
-          <p className="text-xl text-neutral-600 dark:text-neutral-400 max-w-2xl leading-relaxed">
-            Create trackable campaign URLs with UTM parameters. Perfect for tracking your marketing campaigns across different channels.
-          </p>
-        </div>
-
-        {/* Tool */}
-        <div className="mb-16">
-          <div className="space-y-6">
-            {/* Website URL */}
-            <div>
-              <label className="block text-sm font-medium text-neutral-900 dark:text-white mb-2">
-                Website URL <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="text"
-                value={url}
-                onChange={e => setUrl(e.target.value)}
-                placeholder="https://example.com"
-                className="w-full px-4 py-3 bg-white dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 rounded-lg text-neutral-900 dark:text-white placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-              />
-            </div>
-
-            {/* Campaign Source */}
-            <div>
-              <label className="block text-sm font-medium text-neutral-900 dark:text-white mb-2">
-                Campaign Source <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="text"
-                value={source}
-                onChange={e => setSource(e.target.value)}
-                placeholder="google, newsletter, facebook"
-                className="w-full px-4 py-3 bg-white dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 rounded-lg text-neutral-900 dark:text-white placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-              />
-              <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">The referrer (e.g., google, newsletter)</p>
-            </div>
-
-            {/* Campaign Medium */}
-            <div>
-              <label className="block text-sm font-medium text-neutral-900 dark:text-white mb-2">
-                Campaign Medium <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="text"
-                value={medium}
-                onChange={e => setMedium(e.target.value)}
-                placeholder="cpc, email, social"
-                className="w-full px-4 py-3 bg-white dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 rounded-lg text-neutral-900 dark:text-white placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-              />
-              <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">Marketing medium (e.g., cpc, email, social)</p>
-            </div>
-
-            {/* Campaign Name */}
-            <div>
-              <label className="block text-sm font-medium text-neutral-900 dark:text-white mb-2">
-                Campaign Name <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="text"
-                value={campaign}
-                onChange={e => setCampaign(e.target.value)}
-                placeholder="summer_sale, product_launch"
-                className="w-full px-4 py-3 bg-white dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 rounded-lg text-neutral-900 dark:text-white placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-              />
-              <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">Product, promo code, or slogan (e.g., summer_sale)</p>
-            </div>
-
-            {/* Campaign Term (Optional) */}
-            <div>
-              <label className="block text-sm font-medium text-neutral-900 dark:text-white mb-2">Campaign Term</label>
-              <input
-                type="text"
-                value={term}
-                onChange={e => setTerm(e.target.value)}
-                placeholder="running_shoes, blue_widget"
-                className="w-full px-4 py-3 bg-white dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 rounded-lg text-neutral-900 dark:text-white placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-              />
-              <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">Identify the paid keywords (optional)</p>
-            </div>
-
-            {/* Campaign Content (Optional) */}
-            <div>
-              <label className="block text-sm font-medium text-neutral-900 dark:text-white mb-2">Campaign Content</label>
-              <input
-                type="text"
-                value={content}
-                onChange={e => setContent(e.target.value)}
-                placeholder="logolink, textlink"
-                className="w-full px-4 py-3 bg-white dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 rounded-lg text-neutral-900 dark:text-white placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-              />
-              <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">Differentiate ads or links (optional)</p>
-            </div>
-
-            {/* Result */}
-            {utmUrl && (
-              <div className="pt-6 border-t border-neutral-200 dark:border-neutral-800">
-                <label className="block text-sm font-medium text-neutral-900 dark:text-white mb-2">Your UTM URL</label>
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    value={utmUrl}
-                    readOnly
-                    className="flex-1 px-4 py-3 bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-300 dark:border-emerald-800 rounded-lg text-neutral-900 dark:text-white font-mono text-sm"
-                  />
-                  <button
-                    onClick={copyToClipboard}
-                    className="px-6 py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-medium rounded-lg transition-colors flex items-center gap-2"
-                  >
-                    {copied ? <CheckCircle className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-                    {copied ? "Copied!" : "Copy"}
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {/* Buttons */}
-            <div className="flex gap-4 pt-4">
-              <button
-                onClick={clearForm}
-                className="px-6 py-3 bg-neutral-200 dark:bg-neutral-800 hover:bg-neutral-300 dark:hover:bg-neutral-700 text-neutral-900 dark:text-white font-medium rounded-lg transition-colors"
-              >
-                Clear
-              </button>
-            </div>
-          </div>
-        </div>
-
-        {/* FAQ Section */}
-        <div className="mb-12">
-          <h2 className="text-2xl font-bold text-neutral-900 dark:text-white mb-6">What are UTM parameters?</h2>
-          <div className="bg-neutral-100/50 dark:bg-neutral-800/20 backdrop-blur-sm border border-neutral-300/50 dark:border-neutral-800/50 rounded-xl overflow-hidden">
-            <Accordion type="single" collapsible className="w-full">
-              <AccordionItem value="item-1" className="border-b border-neutral-300/50 dark:border-neutral-800/50">
-                <AccordionTrigger className="px-6 py-4 text-base font-medium hover:text-emerald-500 dark:hover:text-emerald-400 transition-colors">
-                  What is UTM tracking?
-                </AccordionTrigger>
-                <AccordionContent className="px-6 pb-4 text-neutral-700 dark:text-neutral-300">
-                  UTM (Urchin Tracking Module) parameters are tags added to URLs that help you track the effectiveness of your marketing campaigns in analytics tools like Rybbit, Google Analytics, and others. They tell you exactly where your traffic is coming from.
-                </AccordionContent>
-              </AccordionItem>
-
-              <AccordionItem value="item-2" className="border-b border-neutral-300/50 dark:border-neutral-800/50">
-                <AccordionTrigger className="px-6 py-4 text-base font-medium hover:text-emerald-500 dark:hover:text-emerald-400 transition-colors">
-                  What are the required UTM parameters?
-                </AccordionTrigger>
-                <AccordionContent className="px-6 pb-4 text-neutral-700 dark:text-neutral-300">
-                  The three required parameters are: utm_source (identifies the source like google or newsletter), utm_medium (identifies the medium like cpc or email), and utm_campaign (identifies the specific campaign like summer_sale).
-                </AccordionContent>
-              </AccordionItem>
-
-              <AccordionItem value="item-3">
-                <AccordionTrigger className="px-6 py-4 text-base font-medium hover:text-emerald-500 dark:hover:text-emerald-400 transition-colors">
-                  How do I track UTM links with Rybbit?
-                </AccordionTrigger>
-                <AccordionContent className="px-6 pb-4 text-neutral-700 dark:text-neutral-300">
-                  Once you have Rybbit installed on your website, UTM parameters are automatically tracked. You can view your campaign performance in your{" "}
-                  <Link href="https://app.rybbit.io" className="text-emerald-600 dark:text-emerald-400 hover:underline">
-                    Rybbit dashboard
-                  </Link>{" "}
-                  under the UTM section.
-                </AccordionContent>
-              </AccordionItem>
-            </Accordion>
-          </div>
-        </div>
-
-      </div>
-
-      {/* CTA */}
-      <div className="border-t border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 py-20">
-        <div className="max-w-4xl mx-auto px-6 text-center">
-          <h2 className="text-3xl md:text-4xl font-bold text-neutral-900 dark:text-white mb-4">
-            Track your UTM campaigns with Rybbit
-          </h2>
-          <p className="text-lg text-neutral-600 dark:text-neutral-400 mb-8 max-w-2xl mx-auto">
-            See exactly which campaigns drive the most traffic and conversions. Get started for free with up to {DEFAULT_EVENT_LIMIT.toLocaleString()} events per month.
-          </p>
-          <TrackedButton
-            href="https://app.rybbit.io/signup"
-            eventName="signup"
-            eventProps={{ location: "utm_builder_cta" }}
-            className="inline-block bg-emerald-600 hover:bg-emerald-500 text-white font-semibold px-10 py-4 text-lg rounded-lg shadow-lg shadow-emerald-900/20 transform hover:-translate-y-0.5 transition-all duration-200"
-          >
-            Start tracking for free
-          </TrackedButton>
-        </div>
-      </div>
-    </div>
+    <ToolPageLayout
+      toolSlug="utm-builder"
+      title="UTM Builder"
+      description="Create trackable campaign URLs with UTM parameters. Perfect for tracking your marketing campaigns across different channels and accurately measuring their performance."
+      badge="Free Tool"
+      toolComponent={<UTMBuilderForm />}
+      educationalContent={educationalContent}
+      faqs={faqs}
+      relatedToolsCategory="analytics"
+      ctaTitle="Track your UTM campaigns with Rybbit"
+      ctaDescription="See exactly which campaigns drive the most traffic and conversions."
+      ctaEventLocation="utm_builder_cta"
+      structuredData={structuredData}
+    />
   );
 }

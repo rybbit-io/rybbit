@@ -8,6 +8,8 @@ author: Rybbit Team
 
 If you run an e-commerce website, understanding your customer behavior and sales funnel is crucial for growth. Whether you're running a small online store or a large marketplace, having the right analytics in place can mean the difference between scaling successfully and struggling to understand why your sales are declining.
 
+E-commerce analytics are a specialized application of [web analytics](/blog/what-is-web-analytics), focused specifically on understanding purchase behavior, conversion rates, and customer journeys through your store.
+
 This is where Rybbit Analytics comes in. Unlike traditional analytics platforms that overwhelm you with data you don't need, Rybbit gives you actionable insights into your e-commerce metrics while respecting your customers' privacy and keeping your data under your control.
 
 ## Why E-commerce Sites Need Better Analytics
@@ -29,7 +31,7 @@ Rybbit is built from the ground up to be simple, privacy-focused, and actionable
 
 **No Cookie Consent Banners Required** - Rybbit doesn't use cookies, which means you don't need those annoying cookie banners that hurt your conversion rates. Your checkout flow stays clean and simple.
 
-**Lightning Fast** - The Rybbit script is incredibly lightweight (under 1KB), so it won't slow down your product pages or checkout process. Every millisecond of load time matters for e-commerce conversions.
+**Lightning Fast** - The Rybbit script is designed to be lightweight and minimize performance impact on your product pages and checkout process. Load time matters for e-commerce conversions.
 
 **You Own Your Data** - With the self-hosted option, all your customer data stays on your servers. No third-party access, no data sharing, complete control.
 
@@ -41,11 +43,7 @@ Getting started with Rybbit is straightforward. You can either use the hosted ve
 
 ### Installation
 
-Add the Rybbit tracking script to your site's header. For most e-commerce platforms, this goes in your theme's template file:
-
-```html
-<script defer src="https://your-rybbit-instance.com/script.js" data-project-id="your-project-id"></script>
-```
+Add the Rybbit tracking script to your site's header. For most e-commerce platforms, this goes in your theme's template file. Refer to the [official Rybbit documentation](/docs/script) for the correct installation steps.
 
 That's it. No complex configuration, no tag managers required, no cookies to configure.
 
@@ -58,15 +56,7 @@ While Rybbit automatically tracks page views, you'll want to track key e-commerc
 - Checkout initiated
 - Purchase completed
 
-Here's how you track a purchase:
-
-```javascript
-window.rybbit.event("Purchase", {
-  value: orderTotal,
-  currency: "USD",
-  transaction_id: orderId,
-});
-```
+See the [Rybbit event tracking documentation](/docs/track-events) for specific implementation details on how to track these events properly for your platform.
 
 ## Key Metrics for E-commerce Success
 
@@ -114,11 +104,11 @@ Common insights you might discover:
 
 ### 4. Page Performance Analysis
 
-Page speed directly impacts e-commerce conversions. Studies show that even a 100ms delay can reduce conversion rates by 7%.
+Page speed directly impacts e-commerce conversions.
 
 <img src="/blog/performancedashboard.png" alt="Rybbit's performance dashboard" />
 
-Rybbit's performance tab shows you the Largest Contentful Paint (LCP) for each page. If your product pages or checkout pages have high LCP times, you're losing money. The performance dashboard makes it easy to identify which pages need optimization.
+Rybbit's performance tab shows you the Largest Contentful Paint (LCP) for each page. If your product pages or checkout pages have poor performance metrics, you should optimize them. The performance dashboard makes it easy to identify which pages need optimization.
 
 **What to look for:**
 
@@ -128,7 +118,7 @@ Rybbit's performance tab shows you the Largest Contentful Paint (LCP) for each p
 
 ### 5. Conversion Funnel Insights
 
-One of the most powerful uses of Rybbit for e-commerce is tracking your conversion funnel. Using the pages tab, you can see the customer journey:
+One of the most powerful uses of Rybbit for e-commerce is tracking your conversion funnel. Similar to how [content marketing funnels](/blog/content-marketing-funnel) work for awareness and consideration stages, your e-commerce funnel tracks the path from product discovery to purchase. Using the pages tab, you can see the customer journey:
 
 <img src="/blog/pages.png" alt="Rybbit's page tab" />
 
@@ -168,43 +158,35 @@ This is especially valuable for:
 
 ### Scenario 1: Optimizing Marketing Spend
 
-Sarah runs a sustainable fashion e-commerce store. She was spending $5,000/month on Facebook ads and $3,000/month on Google Ads. Using Rybbit's channel filtering combined with purchase events, she discovered:
-
-- Facebook ads drove more traffic but had a 0.8% conversion rate
-- Google Shopping ads had less traffic but a 3.2% conversion rate
-- Organic search had the highest conversion rate at 4.1%
-
-**Action taken:** She shifted budget from Facebook to Google Shopping and invested in SEO. Three months later, her overall conversion rate increased by 47% while her ad spend decreased by 25%.
+When analyzing which traffic sources drive actual revenue (not just clicks), you can make more informed decisions about how to allocate your marketing budget. Using Rybbit's channel filtering combined with conversion tracking helps you see which acquisition channels produce the highest-quality users.
 
 ### Scenario 2: Fixing Mobile Conversion Issues
 
-Mike's electronics store had 65% mobile traffic but only 20% of purchases came from mobile devices. Using Rybbit's device filter and page analysis, he discovered:
+If you notice that mobile users make up a large portion of your traffic but a smaller portion of your conversions, Rybbit's device filtering helps you identify where the problem is. Common issues include:
 
-- Mobile users were dropping off at the checkout page
-- The checkout page had an LCP of 4.2 seconds on mobile (anything over 2.5 seconds is poor)
-- Mobile users were bouncing at a 72% rate from the payment page
+- Checkout experience problems on mobile
+- Performance issues on mobile devices
+- Form complexity or navigation problems on small screens
 
-**Action taken:** Mike optimized his mobile checkout, reduced the number of form fields, improved page speed, and added mobile payment options like Apple Pay. Mobile conversion rate increased from 1.1% to 2.8%.
+By identifying where mobile users drop off, you can prioritize fixes to improve mobile conversion rates.
 
 ### Scenario 3: International Expansion
 
-Jessica's beauty products store was primarily US-focused but noticed growing international traffic. Using Rybbit's geographic filtering, she found:
+Using Rybbit's geographic filtering, you can see which countries or regions show strong engagement and conversion patterns. This helps you:
 
-- UK traffic had high engagement and good conversion rates
-- German traffic was significant but had a 0.3% conversion rate
-- Australian visitors had the highest average order value
-
-**Action taken:** She added localized payment options for Germany (SEPA), improved international shipping information, and added UK and Australian pricing. International sales increased by 134% in the next quarter.
+- Identify markets worth investing in
+- Spot countries with traffic but low conversion (signaling a potential need for localization)
+- Prioritize international optimizations based on data, not assumptions
 
 ### Scenario 4: Product Page Optimization
 
-Tom's sporting goods store had great traffic but declining conversion rates. Using Rybbit's pages tab, he analyzed individual product pages and found:
+By analyzing individual product pages with Rybbit, you can identify patterns:
 
-- High-traffic product pages often had the worst conversion rates
-- Pages with detailed descriptions and multiple images converted better
-- Video demonstrations on product pages showed significantly higher conversion
+- Which pages get high traffic but have poor conversion rates
+- What content attributes correlate with higher conversions (detailed descriptions, multiple images, videos, etc.)
+- Which optimization efforts have the most impact
 
-**Action taken:** He prioritized improving the top-traffic, low-conversion product pages first, adding better images, detailed specifications, and customer reviews. Overall conversion rate improved by 22%.
+For a comprehensive guide on understanding your entire purchase journey, see our [sales funnel guide](/blog/what-is-sales-funnel-rybbit), which covers how to track and optimize all stages from awareness to purchase.
 
 ## Privacy and E-commerce: Why It Matters
 
@@ -260,62 +242,19 @@ In an era where data breaches make headlines regularly, being able to tell your 
 
 ## Advanced E-commerce Tracking with Rybbit
 
+For more detailed tracking beyond page views, refer to the [Rybbit event tracking documentation](/docs/track-events) for implementation guidance on:
+
 ### Customer Lifetime Value (CLV) Tracking
 
-Track repeat purchases to understand customer lifetime value:
-
-```javascript
-// Track first purchase
-window.rybbit.event("First Purchase", {
-  value: orderTotal,
-  customer_id: customerId,
-});
-
-// Track repeat purchases
-window.rybbit.event("Repeat Purchase", {
-  value: orderTotal,
-  customer_id: customerId,
-  purchase_count: totalPurchases,
-});
-```
+Track repeat purchases to understand customer lifetime value. The documentation covers best practices for tracking first-time purchases and repeat customer behavior.
 
 ### Cart Abandonment Analysis
 
-Track when users add items to cart but don't complete checkout:
-
-```javascript
-// Add to cart
-window.rybbit.event("Add to Cart", {
-  product_id: productId,
-  value: productPrice,
-});
-
-// Checkout started
-window.rybbit.event("Checkout Started", {
-  cart_value: totalValue,
-});
-
-// Purchase completed (or not)
-window.rybbit.event("Purchase", {
-  value: orderTotal,
-});
-```
-
-By tracking these events, you can calculate your cart abandonment rate and work to reduce it.
+Track the checkout flow to identify where customers are abandoning carts. By measuring events at key steps (add to cart, checkout started, purchase completed), you can calculate your cart abandonment rate and work to reduce it.
 
 ### Product Category Performance
 
-Track which product categories perform best:
-
-```javascript
-window.rybbit.event("Product View", {
-  category: "Electronics",
-  subcategory: "Headphones",
-  product_id: productId,
-});
-```
-
-This helps you understand which categories drive the most engagement and sales, informing your inventory and marketing decisions.
+Track which product categories perform best by recording category and product information when users interact with products. This helps you understand which categories drive the most engagement and sales.
 
 ## Getting Started with Rybbit for Your E-commerce Store
 
@@ -363,8 +302,12 @@ Ready to get better insights into your e-commerce business? Give Rybbit a try an
 - [Bounce Rate Guide](/blog/bounce-rate)
 - [Churn Rate vs Retention Rate](/blog/churn-rate-vs-retention-rate)
 - [Website Traffic Drop Analysis](/blog/website-traffic-drop)
+- [Sales Funnel Guide](/blog/what-is-sales-funnel-rybbit)
+- [Content Marketing Funnel](/blog/content-marketing-funnel)
+- [Web Analytics Guide](/blog/what-is-web-analytics)
 - [Behavior Analytics - Sessions](/docs/behavior-analytics/sessions)
 - [Behavior Analytics - Events](/docs/behavior-analytics/events)
 - [Behavior Analytics - Users](/docs/behavior-analytics/users)
 - [Track Custom Events](/docs/track-events)
+- [Product Analytics - Funnels](/docs/product-analytics/funnels_guide)
 - [Getting Started with Rybbit](/docs)

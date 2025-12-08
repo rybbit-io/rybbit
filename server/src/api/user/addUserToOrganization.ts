@@ -17,16 +17,19 @@ function generateId(len = 32) {
 }
 
 interface AddUserToOrganization {
+  Params: {
+    organizationId: string;
+  };
   Body: {
     email: string;
     role: string;
-    organizationId: string;
   };
 }
 
 export async function addUserToOrganization(request: FastifyRequest<AddUserToOrganization>, reply: FastifyReply) {
   try {
-    const { email, role, organizationId } = request.body;
+    const { organizationId } = request.params;
+    const { email, role } = request.body;
 
     const [userIsInOrg, isAdmin] = await Promise.all([
       getUserIsInOrg(request, organizationId),
@@ -38,9 +41,9 @@ export async function addUserToOrganization(request: FastifyRequest<AddUserToOrg
     }
 
     // Validate input
-    if (!email || !role || !organizationId) {
+    if (!email || !role) {
       return reply.status(400).send({
-        error: "Missing required fields: email, role, and organizationId",
+        error: "Missing required fields: email and role",
       });
     }
 

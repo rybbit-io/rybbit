@@ -1,6 +1,6 @@
 import mapboxgl from "mapbox-gl";
 import { isNil, round } from "lodash";
-import type { GetSessionsResponse } from "../../../../../../api/analytics/useGetUserSessions";
+import type { GetSessionsResponse } from "../../../../../../api/analytics/endpoints";
 import { CLUSTER_LAYER_ID, CLUSTER_COUNT_LAYER_ID, SOURCE_ID, SPREAD_RADIUS_DEGREES } from "./timelineLayerConstants";
 
 /**

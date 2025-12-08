@@ -1,7 +1,7 @@
 import { useParams } from "next/navigation";
 import { useEffect } from "react";
 import "rrweb-player/dist/style.css";
-import { useGetSessionReplayEvents } from "../../../../../api/analytics/sessionReplay/useGetSessionReplayEvents";
+import { useGetSessionReplayEvents } from "../../../../../api/analytics/hooks/sessionReplay/useGetSessionReplayEvents";
 import { ThreeDotLoader } from "../../../../../components/Loaders";
 import { useReplayStore } from "../replayStore";
 import { useActivityPeriods } from "./hooks/useActivityPeriods";

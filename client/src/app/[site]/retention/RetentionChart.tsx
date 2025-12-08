@@ -3,10 +3,11 @@
 import { useNivoTheme } from "@/lib/nivo";
 import { ResponsiveLine } from "@nivo/line";
 import { DateTime } from "luxon";
-import { useMemo } from "react";
-import { ProcessedRetentionData, RetentionMode } from "../../../api/analytics/useGetRetention";
-import { Skeleton } from "../../../components/ui/skeleton";
 import { useTheme } from "next-themes";
+import { useMemo } from "react";
+import { ProcessedRetentionData, RetentionMode } from "../../../api/analytics/endpoints";
+import { ChartTooltip } from "../../../components/charts/ChartTooltip";
+import { Skeleton } from "../../../components/ui/skeleton";
 
 interface RetentionChartProps {
   data: ProcessedRetentionData | undefined;
@@ -125,7 +126,7 @@ export function RetentionChart({ data, isLoading, mode }: RetentionChartProps) {
   );
 
   return (
-    <div className="h-[400px]">
+    <div className="h-[400px] overflow-visible">
       <ResponsiveLine
         data={chartData}
         theme={nivoTheme}
@@ -153,12 +154,14 @@ export function RetentionChart({ data, isLoading, mode }: RetentionChartProps) {
           tickSize: 5,
           tickPadding: 5,
           tickRotation: 0,
+          tickValues: 5,
           format: value => `${value}%`,
         }}
         enableGridX={true}
+        gridYValues={5}
         gridXValues={Array.from({ length: data.maxPeriods + 1 }, (_, i) => i)}
         colors={{ datum: "color" }}
-        useMesh={true}
+        enableSlices="x"
         pointSize={0}
         legends={[
           {
@@ -187,46 +190,40 @@ export function RetentionChart({ data, isLoading, mode }: RetentionChartProps) {
             itemTextColor: resolvedTheme === "dark" ? "hsl(var(--neutral-200))" : "hsl(var(--neutral-700))",
           },
         ]}
-        tooltip={({ point }) => {
-          const value = point.data.y as number | null;
-          const xValue = point.data.x as number;
-
-          // Find the original cohort date by matching the formatted label
-          const cohortEntry = chartData.find(series => series.id === point.seriesId);
-          const cohortIndex = cohortEntry ? chartData.indexOf(cohortEntry) : -1;
-          const originalCohortKey = cohortIndex >= 0 && cohortKeys && cohortKeys[cohortIndex];
-
-          // Format full date for tooltip
-          let cohortDateDisplay = point.seriesId;
-          if (originalCohortKey) {
-            const startDate = DateTime.fromISO(originalCohortKey);
-            if (mode === "day") {
-              cohortDateDisplay = startDate.toFormat("MMM dd, yyyy");
-            } else {
-              const endDate = startDate.plus({ days: 6 });
-
-              if (startDate.month === endDate.month) {
-                cohortDateDisplay = `${startDate.toFormat("MMM dd")} - ${endDate.toFormat("dd, yyyy")}`;
-              } else if (startDate.year === endDate.year) {
-                cohortDateDisplay = `${startDate.toFormat("MMM dd")} - ${endDate.toFormat("MMM dd, yyyy")}`;
-              } else {
-                cohortDateDisplay = `${startDate.toFormat("MMM dd, yyyy")} - ${endDate.toFormat("MMM dd, yyyy")}`;
-              }
-            }
-          }
+        sliceTooltip={({ slice }) => {
+          const xValue = slice.points[0]?.data.x as number;
 
           return (
-            <div className="text-sm bg-neutral-150 dark:bg-neutral-850 p-2 rounded-md border border-neutral-300 dark:border-neutral-800 shadow-md">
-              <div className="font-medium mb-1" style={{ color: point.seriesColor }}>
-                Cohort: {cohortDateDisplay}
-              </div>
-              <div className="flex justify-between w-48 text-neutral-700 dark:text-neutral-200">
-                <span>
+            <ChartTooltip>
+              <div className="p-2 text-sm">
+                <div className="font-medium mb-2 text-neutral-700 dark:text-neutral-200">
                   {mode === "day" ? "Day" : "Week"} {xValue}
-                </span>
-                <span className="font-medium">{value !== null ? `${value.toFixed(1)}%` : "-"}</span>
+                </div>
+                <div className="flex flex-col gap-1">
+                  {slice.points.map((point: any) => {
+                    const value = point.data.y as number | null;
+                    // Point ID format is "serieId.index", extract the serie ID
+                    const cohortLabel = String(point.id).split(".")[0];
+                    // Get color from chartData since point.serieColor may be undefined
+                    const seriesData = chartData.find(s => s.id === cohortLabel);
+                    const color = point.serieColor || seriesData?.color || point.color;
+                    return (
+                      <div key={point.id} className="flex justify-between items-center gap-4">
+                        <div className="flex items-center gap-2">
+                          <div className="w-1 h-3 rounded-[3px]" style={{ backgroundColor: color }} />
+                          <span className="text-neutral-600 dark:text-neutral-300 whitespace-nowrap">
+                            {cohortLabel}
+                          </span>
+                        </div>
+                        <span className="font-medium text-neutral-700 dark:text-neutral-200">
+                          {value !== null ? `${value.toFixed(1)}%` : "-"}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
-            </div>
+            </ChartTooltip>
           );
         }}
       />

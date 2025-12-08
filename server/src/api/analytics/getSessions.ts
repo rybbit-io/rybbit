@@ -1,11 +1,14 @@
 import { FastifyReply, FastifyRequest } from "fastify";
 import { clickhouse } from "../../db/clickhouse/clickhouse.js";
-import { getFilterStatement, getTimeStatement, processResults } from "./utils.js";
+import { enrichWithTraits, getTimeStatement, processResults } from "./utils/utils.js";
 import { FilterParams } from "@rybbit/shared";
+import { getFilterStatement } from "./utils/getFilterStatement.js";
 
 export type GetSessionsResponse = {
   session_id: string;
-  user_id: string;
+  user_id: string; // Device fingerprint
+  identified_user_id: string; // Custom user ID when identified, empty string otherwise
+  traits: Record<string, unknown> | null;
   country: string;
   region: string;
   city: string;
@@ -49,12 +52,14 @@ export interface GetSessionsRequest {
     limit: number;
     page: number;
     user_id?: string;
+    identified_only?: string;
   }>;
 }
 
 export async function getSessions(req: FastifyRequest<GetSessionsRequest>, res: FastifyReply) {
-  const { filters, page, user_id: userId, limit } = req.query;
+  const { filters, page = 1, user_id: userId, limit = 100, identified_only: identifiedOnly = "false" } = req.query;
   const site = req.params.site;
+  const filterIdentified = identifiedOnly === "true";
 
   const timeStatement = getTimeStatement(req.query);
   let filterStatement = getFilterStatement(filters, Number(site), timeStatement);
@@ -72,7 +77,8 @@ export async function getSessions(req: FastifyRequest<GetSessionsRequest>, res: 
   WITH AggregatedSessions AS (
       SELECT
           session_id,
-          user_id,
+          argMax(user_id, timestamp) AS user_id,
+          argMax(identified_user_id, timestamp) AS identified_user_id,
           argMax(country, timestamp) AS country,
           argMax(region, timestamp) AS region,
           argMax(city, timestamp) AS city,
@@ -107,16 +113,17 @@ export async function getSessions(req: FastifyRequest<GetSessionsRequest>, res: 
       FROM events
       WHERE
           site_id = {siteId:Int32}
-          ${userId ? ` AND user_id = {user_id:String}` : ""}
+          ${userId ? ` AND (events.user_id = {user_id:String} OR events.identified_user_id = {user_id:String})` : ""}
           ${timeStatement}
       GROUP BY
-          session_id,
-          user_id
+          session_id
       ORDER BY session_end DESC
   )
-  SELECT *
+  SELECT
+      *
   FROM AggregatedSessions
   WHERE 1 = 1 ${filterStatement}
+  ${filterIdentified ? "AND identified_user_id != ''" : ""}
   LIMIT {limit:Int32} OFFSET {offset:Int32}
   `;
 
@@ -132,8 +139,12 @@ export async function getSessions(req: FastifyRequest<GetSessionsRequest>, res: 
       },
     });
 
-    const data = await processResults<GetSessionsResponse[number]>(result);
-    return res.send({ data });
+    const data = await processResults<Omit<GetSessionsResponse[number], "traits">>(result);
+
+    // Enrich with traits from Postgres
+    const dataWithTraits = await enrichWithTraits(data, Number(site));
+
+    return res.send({ data: dataWithTraits });
   } catch (error) {
     console.error("Generated Query:", query);
     console.error("Error fetching sessions:", error);

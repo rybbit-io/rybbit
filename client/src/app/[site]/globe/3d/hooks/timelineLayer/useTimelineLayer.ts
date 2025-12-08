@@ -1,7 +1,7 @@
 import mapboxgl from "mapbox-gl";
 import { useEffect, useRef, useState, useCallback } from "react";
 import { throttle } from "lodash";
-import type { GetSessionsResponse } from "../../../../../../api/analytics/useGetUserSessions";
+import type { GetSessionsResponse } from "../../../../../../api/analytics/endpoints";
 import { useTimelineStore, useActiveSessions } from "../../../timelineStore";
 import { initializeClusterSource, setupClusterClickHandler } from "./timelineClusterUtils";
 import {

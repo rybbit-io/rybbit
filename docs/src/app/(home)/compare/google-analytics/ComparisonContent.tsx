@@ -1,5 +1,3 @@
-import { DEFAULT_EVENT_LIMIT } from "../../../../lib/const";
-
 export function GoogleAnalyticsComparisonContent() {
   return (
     <div className="space-y-6 text-neutral-350 font-light">
@@ -44,11 +42,11 @@ export function GoogleAnalyticsComparisonContent() {
         <h3 className="text-xl font-medium">Real-Time, Accurate Data That Lasts</h3>
         <p className="leading-relaxed">
           Google Analytics has significant accuracy issues that most users don't realize. It samples data on
-          high-traffic sites (showing you only a fraction of actual visits), has 24-48 hour delays in reporting, and
-          automatically deletes your data after 2-14 months. Many ad blockers also block Google Analytics, meaning
-          you're missing 15-30% of your visitors. Rybbit gives you 100% accurate, real-time data with no sampling ever.
-          We're less prone to ad blockers, and your data is retained for years. See everything that happens on your
-          site, when it happens.
+          high-traffic sites (showing you only a fraction of actual visits), has delays in reporting, and automatically
+          deletes your data after 2-14 months. Many ad blockers also block Google Analytics, meaning you're missing
+          15-30% of your visitors. Rybbit gives you 100% accurate, real-time data with no sampling ever. We're less
+          prone to ad blockers, and your data is retained for years. See everything that happens on your site, when it
+          happens.
         </p>
       </div>
 
@@ -80,11 +78,9 @@ export function GoogleAnalyticsComparisonContent() {
         <h3 className="text-xl font-medium">Transparent Business Model</h3>
         <p className="leading-relaxed">
           Google Analytics is "free" because you're the product. Your data feeds their advertising empire. Rybbit has a
-          transparent, sustainable business model: we charge fair prices for our service. Starting at just $19/month for
-          {DEFAULT_EVENT_LIMIT.toLocaleString()} events after a generous free tier, scaling up to $499/month for 10M
-          events with all features including session replay. No hidden costs, no data mining, no advertising network.
-          We're independently bootstrapped and aligned with your success, not venture capital demands. You know exactly
-          what you're paying for and why.
+          transparent, sustainable business model: we charge fair prices for our service. No hidden costs, no data
+          mining, no advertising network. We're independently bootstrapped and aligned with your success, not venture
+          capital demands. You know exactly what you're paying for and why.
         </p>
       </div>
 

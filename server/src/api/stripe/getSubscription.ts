@@ -37,6 +37,22 @@ export async function getSubscriptionInner(organizationId: string) {
   const subscription = await getBestSubscription(organizationId, org.stripeCustomerId);
 
   // Format response based on subscription source
+  if (subscription.source === "override") {
+    return {
+      id: null,
+      planName: subscription.planName,
+      status: subscription.status,
+      currentPeriodEnd: getStartOfNextMonth(),
+      currentPeriodStart: getStartOfMonth(),
+      eventLimit: subscription.eventLimit,
+      monthlyEventCount: org.monthlyEventCount || 0,
+      interval: subscription.interval,
+      cancelAtPeriodEnd: subscription.cancelAtPeriodEnd,
+      isPro: subscription.isPro,
+      isOverride: true,
+    };
+  }
+
   if (subscription.source === "appsumo") {
     return {
       id: null,

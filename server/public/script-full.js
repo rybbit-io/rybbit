@@ -77,7 +77,10 @@
     }
     const skipPatterns = parseJsonSafely(scriptTag.getAttribute("data-skip-patterns"), []);
     const maskPatterns = parseJsonSafely(scriptTag.getAttribute("data-mask-patterns"), []);
-    const sessionReplayMaskTextSelectors = parseJsonSafely(scriptTag.getAttribute("data-replay-mask-text-selectors"), []);
+    const sessionReplayMaskTextSelectors = parseJsonSafely(
+      scriptTag.getAttribute("data-replay-mask-text-selectors"),
+      []
+    );
     const debounceDuration = scriptTag.getAttribute("data-debounce") ? Math.max(0, parseInt(scriptTag.getAttribute("data-debounce"))) : 500;
     const sessionReplayBatchSize = scriptTag.getAttribute("data-replay-batch-size") ? Math.max(1, parseInt(scriptTag.getAttribute("data-replay-batch-size"))) : 250;
     const sessionReplayBatchInterval = scriptTag.getAttribute("data-replay-batch-interval") ? Math.max(1e3, parseInt(scriptTag.getAttribute("data-replay-batch-interval"))) : 5e3;
@@ -100,7 +103,7 @@
       enableSessionReplay: false
     };
     try {
-      const configUrl = `${analyticsHost}/site/${siteId}/tracking-config`;
+      const configUrl = `${analyticsHost}/site/tracking-config/${siteId}`;
       const response = await fetch(configUrl, {
         method: "GET",
         // Include credentials if needed for authentication

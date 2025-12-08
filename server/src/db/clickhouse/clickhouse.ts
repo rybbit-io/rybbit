@@ -58,7 +58,9 @@ export const initializeClickhouse = async () => {
         ADD COLUMN IF NOT EXISTS fcp Nullable(Float64),
         ADD COLUMN IF NOT EXISTS ttfb Nullable(Float64),
         ADD COLUMN IF NOT EXISTS ip Nullable(String),
-        ADD COLUMN IF NOT EXISTS timezone LowCardinality(String) DEFAULT ''
+        ADD COLUMN IF NOT EXISTS timezone LowCardinality(String) DEFAULT '',
+        ADD COLUMN IF NOT EXISTS identified_user_id String DEFAULT '',
+        ADD COLUMN IF NOT EXISTS import_id Nullable(UUID)
     `,
   });
 
@@ -116,7 +118,8 @@ export const initializeClickhouse = async () => {
     query: `
       ALTER TABLE session_replay_events
         ADD COLUMN IF NOT EXISTS event_data_key Nullable(String), -- R2 storage key for cloud deployments
-        ADD COLUMN IF NOT EXISTS batch_index Nullable(UInt16) -- Index within the R2 batch
+        ADD COLUMN IF NOT EXISTS batch_index Nullable(UInt16), -- Index within the R2 batch
+        ADD COLUMN IF NOT EXISTS identified_user_id String DEFAULT ''
       `,
   });
 
@@ -155,6 +158,13 @@ export const initializeClickhouse = async () => {
       PARTITION BY toYYYYMM(start_time)
       ORDER BY (site_id, session_id)
       TTL start_time + INTERVAL 30 DAY
+      `,
+  });
+
+  await clickhouse.exec({
+    query: `
+      ALTER TABLE session_replay_metadata
+        ADD COLUMN IF NOT EXISTS identified_user_id String DEFAULT ''
       `,
   });
 

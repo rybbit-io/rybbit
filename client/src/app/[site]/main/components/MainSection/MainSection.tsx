@@ -2,16 +2,17 @@
 import { Card, CardContent, CardLoader } from "@/components/ui/card";
 import { Tilt_Warp } from "next/font/google";
 import Link from "next/link";
-import { useGetOverview } from "../../../../../api/analytics/useGetOverview";
-import { useGetOverviewBucketed } from "../../../../../api/analytics/useGetOverviewBucketed";
+import { useGetOverview } from "../../../../../api/analytics/hooks/useGetOverview";
+import { useGetOverviewBucketed } from "../../../../../api/analytics/hooks/useGetOverviewBucketed";
+import { BucketSelection } from "../../../../../components/BucketSelection";
+import { RybbitLogo } from "../../../../../components/RybbitLogo";
 import { authClient } from "../../../../../lib/auth";
 import { useStore } from "../../../../../lib/store";
 import { cn } from "../../../../../lib/utils";
-import { BucketSelection } from "../../../../../components/BucketSelection";
+import { ExportButton } from "../ExportButton";
 import { Chart } from "./Chart";
 import { Overview } from "./Overview";
 import { PreviousChart } from "./PreviousChart";
-import { RybbitLogo } from "../../../../../components/RybbitLogo";
 
 const SELECTED_STAT_MAP = {
   pageviews: "Pageviews",
@@ -82,7 +83,10 @@ export function MainSection() {
               </Link>
             </div>
             <span className="text-sm text-neutral-700 dark:text-neutral-200">{SELECTED_STAT_MAP[selectedStat]}</span>
-            <BucketSelection />
+            <div className="flex items-center gap-2">
+              <ExportButton />
+              <BucketSelection />
+            </div>
           </div>
           <div className="h-[200px] md:h-[290px] relative">
             <div className="absolute top-0 left-0 w-full h-full">

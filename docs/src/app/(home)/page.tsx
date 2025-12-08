@@ -15,6 +15,7 @@ import { RealTimeAnalytics } from "../../components/Cards/RealTimeAnalytics";
 import { SessionReplay } from "../../components/Cards/SessionReplay";
 import { UserSessions } from "../../components/Cards/UserSessions";
 import { DEFAULT_EVENT_LIMIT } from "../../lib/const";
+import { SpinningGlobe } from "@/components/SpinningGlobe";
 
 const tilt_wrap = Tilt_Warp({
   subsets: ["latin"],
@@ -25,14 +26,14 @@ const faqSchema = {
   "@context": "https://schema.org",
   "@type": "FAQPage",
   mainEntity: [
-    // {
-    //   "@type": "Question",
-    //   name: "Is Rybbit GDPR and CCPA compliant?",
-    //   acceptedAnswer: {
-    //     "@type": "Answer",
-    //     text: "Yes, Rybbit is fully compliant with GDPR, CCPA, and other privacy regulations. We don't use cookies or collect any personal data that could identify your users. We salt user IDs daily to ensure users are not fingerprinted. You will not need to display a cookie consent banner to your users.",
-    //   },
-    // },
+    {
+      "@type": "Question",
+      name: "Is Rybbit GDPR and CCPA compliant?",
+      acceptedAnswer: {
+        "@type": "Answer",
+        text: "Yes, Rybbit is fully compliant with GDPR, CCPA, and other privacy regulations. We don't use cookies or collect any personal data that could identify your users. We salt user IDs daily to ensure users are not fingerprinted. You will not need to display a cookie consent banner to your users.",
+      },
+    },
     {
       "@type": "Question",
       name: "How does Rybbit compare to Google Analytics?",
@@ -167,7 +168,7 @@ export default function HomePage() {
               Get started
             </TrackedButton>
             <TrackedButton
-              href="https://demo.rybbit.com/21"
+              href="https://demo.rybbit.com/1"
               eventName="demo"
               target="_blank"
               rel="noopener noreferrer"
@@ -329,6 +330,7 @@ export default function HomePage() {
           </div>
           {/* </div> */}
         </section>
+
         <section className="py-14 md:py-20 w-full max-w-6xl px-4">
           <div className="text-center mb-10 md:mb-16">
             <SectionBadge className="mb-4"> Analytics Reimagined</SectionBadge>
@@ -342,6 +344,21 @@ export default function HomePage() {
             <SessionReplay />
             <UserSessions />
             <Funnels />
+          </div>
+        </section>
+
+        {/* Real-Time Globe Section */}
+        <section className="py-14 md:py-20 w-full max-w-6xl">
+          <div className="text-center mb-10 md:mb-16 px-4">
+            <SectionBadge className="mb-4">Real-Time Insights</SectionBadge>
+            <h2 className="text-3xl md:text-5xl font-bold tracking-tight">See Your Users Around the World</h2>
+            <p className="mt-4 text-base md:text-xl text-neutral-600 dark:text-neutral-300 max-w-2xl mx-auto font-light">
+              Watch real-time visitor activity across the globe. Every dot represents a real user exploring your site
+              right now.
+            </p>
+          </div>
+          <div className="relative h-[420px] md:h-[700px] max-w-[100vw] mx-auto rounded-2xl">
+            <SpinningGlobe />
           </div>
         </section>
 
@@ -384,23 +401,23 @@ export default function HomePage() {
 
             <div className="bg-neutral-100/50 dark:bg-neutral-800/20 backdrop-blur-sm border border-neutral-300/50 dark:border-neutral-800/50 rounded-xl overflow-hidden">
               <Accordion type="single" collapsible className="w-full">
-                {/* <AccordionItem value="item-1" className="border-b border-neutral-800/50">
-                  <AccordionTrigger className="px-6 py-4 text-base md:text-lg font-medium hover:text-emerald-400 transition-colors">
+                <AccordionItem value="item-1">
+                  <AccordionTrigger className="md:text-lg">
                     Is Rybbit GDPR and CCPA compliant?
                   </AccordionTrigger>
-                  <AccordionContent className="px-6 pb-4 text-neutral-300">
+                  <AccordionContent>
                     Yes, Rybbit is fully compliant with GDPR, CCPA, and other privacy regulations. We don&apos;t use
                     cookies or collect any personal data that could identify your users. We salt user IDs daily to
                     ensure users are not fingerprinted. You will not need to display a cookie consent banner to your
                     users.
                   </AccordionContent>
-                </AccordionItem> */}
+                </AccordionItem>
 
-                <AccordionItem value="item-2" className="border-b border-neutral-300/50 dark:border-neutral-800/50">
-                  <AccordionTrigger className="px-6 py-4 text-base md:text-lg font-medium hover:text-emerald-500 dark:hover:text-emerald-400 transition-colors">
+                <AccordionItem value="item-2">
+                  <AccordionTrigger className="md:text-lg">
                     Rybbit vs. Google Analytics
                   </AccordionTrigger>
-                  <AccordionContent className="px-6 pb-4 text-neutral-700 dark:text-neutral-300">
+                  <AccordionContent>
                     <p>
                       Google Analytics is free because Google uses it as a funnel into their ecosystem and to sell ads.
                       Rybbit&apos;s only goal is to provide you with high quality analytics. No more confusing
@@ -410,7 +427,7 @@ export default function HomePage() {
                     <p>
                       You can see for yourself by checking out our{" "}
                       <Link
-                        href="https://demo.rybbit.com/21"
+                        href="https://demo.rybbit.com/1"
                         className="text-emerald-600 dark:text-emerald-400 hover:text-emerald-500 dark:hover:text-emerald-300"
                       >
                         demo site
@@ -420,11 +437,11 @@ export default function HomePage() {
                   </AccordionContent>
                 </AccordionItem>
 
-                <AccordionItem value="item-3" className="border-b border-neutral-300/50 dark:border-neutral-800/50">
-                  <AccordionTrigger className="px-6 py-4 text-base md:text-lg font-medium hover:text-emerald-500 dark:hover:text-emerald-400 transition-colors">
+                <AccordionItem value="item-3">
+                  <AccordionTrigger className="md:text-lg">
                     Rybbit vs. Plausible/Umami/Fathom
                   </AccordionTrigger>
-                  <AccordionContent className="px-6 pb-4 text-neutral-700 dark:text-neutral-300">
+                  <AccordionContent>
                     <p>
                       Rybbit is similar to these simple and privacy-focused analytics platforms, but we are raising the
                       bar when it comes to UX and the quality and scope of our feature set.
@@ -436,11 +453,11 @@ export default function HomePage() {
                     </p>
                   </AccordionContent>
                 </AccordionItem>
-                <AccordionItem value="item-4" className="border-b border-neutral-300/50 dark:border-neutral-800/50">
-                  <AccordionTrigger className="px-6 py-4 text-base md:text-lg font-medium hover:text-emerald-500 dark:hover:text-emerald-400 transition-colors">
+                <AccordionItem value="item-4">
+                  <AccordionTrigger className="md:text-lg">
                     Rybbit vs. Posthog/Mixpanel/Amplitude
                   </AccordionTrigger>
-                  <AccordionContent className="px-6 pb-4 text-neutral-700 dark:text-neutral-300">
+                  <AccordionContent>
                     <p>
                       Rybbit has most of the features of enterprise analytics platforms, but packaged in a way that is
                       usable for small and medium sized teams.
@@ -453,11 +470,11 @@ export default function HomePage() {
                   </AccordionContent>
                 </AccordionItem>
 
-                <AccordionItem value="item-5" className="border-b border-neutral-300/50 dark:border-neutral-800/50">
-                  <AccordionTrigger className="px-6 py-4 text-base md:text-lg font-medium hover:text-emerald-500 dark:hover:text-emerald-400 transition-colors">
+                <AccordionItem value="item-5">
+                  <AccordionTrigger className="md:text-lg">
                     Can I self-host Rybbit?
                   </AccordionTrigger>
-                  <AccordionContent className="px-6 pb-4 text-neutral-700 dark:text-neutral-300">
+                  <AccordionContent>
                     Absolutely! Rybbit is available as a self-hosted option. You can install it on your own server and
                     have complete control over your data.{" "}
                     <Link
@@ -470,11 +487,11 @@ export default function HomePage() {
                   </AccordionContent>
                 </AccordionItem>
 
-                <AccordionItem value="item-6" className="border-b border-neutral-300/50 dark:border-neutral-800/50">
-                  <AccordionTrigger className="px-6 py-4 text-base md:text-lg font-medium hover:text-emerald-500 dark:hover:text-emerald-400 transition-colors">
+                <AccordionItem value="item-6">
+                  <AccordionTrigger className="md:text-lg">
                     How easy is it to set up Rybbit?
                   </AccordionTrigger>
-                  <AccordionContent className="px-6 pb-4 text-neutral-700 dark:text-neutral-300">
+                  <AccordionContent>
                     <Link
                       href="/docs/script"
                       className="text-emerald-600 dark:text-emerald-400 hover:text-emerald-500 dark:hover:text-emerald-300"
@@ -488,20 +505,27 @@ export default function HomePage() {
                 </AccordionItem>
 
                 <AccordionItem value="item-7">
-                  <AccordionTrigger className="px-6 py-4 text-base md:text-lg font-medium hover:text-emerald-500 dark:hover:text-emerald-400 transition-colors">
+                  <AccordionTrigger className="md:text-lg">
                     What platforms does Rybbit support?
                   </AccordionTrigger>
-                  <AccordionContent className="px-6 pb-4 text-neutral-700 dark:text-neutral-300">
+                  <AccordionContent>
                     Rybbit works with virtually any website platform. Whether you&apos;re using WordPress, Shopify,
                     Next.js, React, Vue, or any other framework, our simple tracking snippet integrates seamlessly. You
-                    can also use @rybbit/js, our web SDK you can install from npm.
+                    can also use @rybbit/js, our web SDK you can install from npm. Check out our{" "}
+                    <Link
+                      href="/docs"
+                      className="text-emerald-600 dark:text-emerald-400 hover:text-emerald-500 dark:hover:text-emerald-300"
+                    >
+                      documentation
+                    </Link>{" "}
+                    for setup guides.
                   </AccordionContent>
                 </AccordionItem>
                 <AccordionItem value="item-8">
-                  <AccordionTrigger className="px-6 py-4 text-base md:text-lg font-medium hover:text-emerald-500 dark:hover:text-emerald-400 transition-colors">
+                  <AccordionTrigger className="md:text-lg">
                     Is Rybbit open source?
                   </AccordionTrigger>
-                  <AccordionContent className="px-6 pb-4 text-neutral-700 dark:text-neutral-300">
+                  <AccordionContent>
                     Yes, Rybbit is open source under the AGPL v3.0 license. You are free to{" "}
                     <Link
                       href="/docs/self-hosting"
@@ -512,13 +536,39 @@ export default function HomePage() {
                     for either personal or business use.
                   </AccordionContent>
                 </AccordionItem>
-                <AccordionItem value="item-9" className="border-t border-neutral-300/50 dark:border-neutral-800/50">
-                  <AccordionTrigger className="px-6 py-4 text-base md:text-lg font-medium hover:text-emerald-500 dark:hover:text-emerald-400 transition-colors">
-                    What counts as an event?
+
+                <AccordionItem value="item-9">
+                  <AccordionTrigger className="md:text-lg">
+                    Can I invite my team to my organization?
                   </AccordionTrigger>
-                  <AccordionContent className="px-6 pb-4 text-neutral-700 dark:text-neutral-300">
-                    An event is either a pageview or a custom event that you create on your website. Pageviews are
-                    tracked automatically, while custom events can be defined to track specific user interactions.
+                  <AccordionContent>
+                    Yes, you can invite unlimited team members to your organization. Each member can have different
+                    permission levels to view or manage your analytics dashboards.
+                  </AccordionContent>
+                </AccordionItem>
+
+                <AccordionItem value="item-10">
+                  <AccordionTrigger className="md:text-lg">
+                    Can I share my dashboard publicly?
+                  </AccordionTrigger>
+                  <AccordionContent>
+                    Yes, you can share your dashboard publicly in two ways: with a secret link that only people with the
+                    URL can access, or as a completely public dashboard that anyone can view.
+                  </AccordionContent>
+                </AccordionItem>
+
+                <AccordionItem value="item-11">
+                  <AccordionTrigger className="md:text-lg">Does Rybbit have an API?</AccordionTrigger>
+                  <AccordionContent>
+                    Yes, Rybbit provides a comprehensive{" "}
+                    <Link
+                      href="/docs/api"
+                      className="text-emerald-600 dark:text-emerald-400 hover:text-emerald-500 dark:hover:text-emerald-300"
+                    >
+                      API
+                    </Link>{" "}
+                    that allows you to programmatically access your analytics data. You can integrate Rybbit data into
+                    your own applications, dashboards, or workflows.
                   </AccordionContent>
                 </AccordionItem>
               </Accordion>
@@ -549,11 +599,6 @@ export default function HomePage() {
                 >
                   Get started
                 </TrackedButton>
-                {/* <Link href="https://docs.tomato.gg" className="w-full sm:w-auto">
-                  <button className="w-full sm:w-auto bg-neutral-800 hover:bg-neutral-700 text-white font-medium px-6 md:px-8 py-3 md:py-4 rounded-lg border border-neutral-600 transform hover:-translate-y-0.5 transition-all duration-200 hover:border-neutral-400 focus:outline-none focus:ring-2 focus:ring-neutral-400 focus:ring-opacity-50">
-                    View Documentation
-                  </button>
-                </Link> */}
               </div>
 
               <p className="text-neutral-500 dark:text-neutral-400 text-xs md:text-sm flex items-center justify-center gap-2">

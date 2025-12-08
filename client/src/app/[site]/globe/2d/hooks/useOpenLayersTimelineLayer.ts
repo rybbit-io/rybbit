@@ -1,18 +1,18 @@
-import { useEffect, useRef, useState } from "react";
+import Feature, { FeatureLike } from "ol/Feature";
 import OLMap from "ol/Map";
 import Overlay from "ol/Overlay";
-import VectorLayer from "ol/layer/Vector";
-import VectorSource from "ol/source/Vector";
-import Cluster from "ol/source/Cluster";
-import Feature, { FeatureLike } from "ol/Feature";
 import Point from "ol/geom/Point";
-import { Circle, Fill, Stroke, Style, Text } from "ol/style";
+import VectorLayer from "ol/layer/Vector";
 import { fromLonLat } from "ol/proj";
-import type { GetSessionsResponse } from "../../../../../api/analytics/useGetUserSessions";
-import { useTimelineStore, useActiveSessions } from "../../timelineStore";
+import Cluster from "ol/source/Cluster";
+import VectorSource from "ol/source/Vector";
+import { Circle, Fill, Style, Text } from "ol/style";
+import { useEffect, useRef, useState } from "react";
+import type { GetSessionsResponse } from "../../../../../api/analytics/endpoints";
 import { generateAvatarSVG } from "../../3d/hooks/timelineLayer/timelineMarkerHelpers";
+import { useActiveSessions, useTimelineStore } from "../../timelineStore";
+import { CLUSTER_MAX_ZOOM, CLUSTERING_THRESHOLD, MIN_CLUSTER_SIZE } from "../../utils/clusteringConstants";
 import { buildTooltipHTML } from "../../utils/timelineTooltipBuilder";
-import { CLUSTER_MAX_ZOOM, MIN_CLUSTER_SIZE, CLUSTERING_THRESHOLD } from "../../utils/clusteringConstants";
 
 // OpenLayers-specific clustering constants
 const CLUSTER_RADIUS = 50; // pixels (OpenLayers specific)

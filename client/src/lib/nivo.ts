@@ -54,6 +54,3 @@ export const useNivoTheme = (): PartialTheme => {
   const { resolvedTheme } = useTheme();
   return getNivoTheme(resolvedTheme === "dark");
 };
-
-// Export default dark theme for backwards compatibility
-export const nivoTheme: PartialTheme = getNivoTheme(true);

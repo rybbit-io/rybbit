@@ -23,7 +23,7 @@ function ownerMessage(message: string, featurePath?: string, requiredPlan?: "pro
   return (
     <div className="bg-neutral-900 rounded-lg  border border-neutral-700 shadow-xl flex flex-col gap-3 p-4">
       <div className="flex gap-3">
-        <Crown className="h-5 w-5 text-amber-500 flex-shrink-0" />
+        <Crown className="h-5 w-5 text-amber-500 shrink-0" />
         <div className="flex-1 space-y-1">
           <p className="text-sm text-muted-foreground">
             Upgrade to{" "}
@@ -55,7 +55,7 @@ function userMessage(message: string, featurePath?: string) {
   return (
     <div className="bg-neutral-900 rounded-lg  border border-neutral-700 shadow-xl flex flex-col gap-3 p-4">
       <div className="flex gap-3">
-        <Crown className="h-5 w-5 text-amber-500 flex-shrink-0" />
+        <Crown className="h-5 w-5 text-amber-500 shrink-0" />
         <div className="flex-1 space-y-1">
           <p className="text-sm text-muted-foreground">
             Ask your organization owner to upgrade to <span className="font-medium text-foreground">Pro</span> to unlock{" "}

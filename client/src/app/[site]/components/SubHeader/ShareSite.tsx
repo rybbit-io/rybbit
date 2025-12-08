@@ -1,37 +1,34 @@
-import { Copy, Share, Trash } from "lucide-react";
-import { Button } from "../../../../components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuItem,
-  DropdownMenuContent,
-  DropdownMenuTrigger,
-} from "../../../../components/ui/dropdown-menu";
-import { Input } from "../../../../components/ui/input";
+import { Copy, Share } from "lucide-react";
+import { useParams } from "next/navigation";
+import { toast } from "sonner";
 import {
   useGeneratePrivateLinkKey,
   useGetPrivateLinkConfig,
   useRevokePrivateLinkKey,
 } from "../../../../api/admin/privateLink";
-import { useParams } from "next/navigation";
-import { toast } from "sonner";
+import { Button } from "../../../../components/ui/button";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from "../../../../components/ui/dropdown-menu";
+import { Input } from "../../../../components/ui/input";
+import { Tooltip, TooltipContent, TooltipTrigger } from "../../../../components/ui/tooltip";
 
 export function ShareSite() {
   const { site } = useParams();
-  const {
-    data: privateLink,
-    isLoading: isLoadingPrivateLink,
-    refetch: refetchPrivateLink,
-  } = useGetPrivateLinkConfig(Number(site));
+  const { data: privateLink, isLoading: isLoadingPrivateLink } = useGetPrivateLinkConfig(Number(site));
   const { mutate: generatePrivateLinkKey, isPending: isGeneratingPrivateLink } = useGeneratePrivateLinkKey();
   const { mutate: revokePrivateLinkKey } = useRevokePrivateLinkKey();
 
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button variant="secondary" size="icon" onClick={() => {}} className="h-8 w-8">
-          <Share />
-        </Button>
-      </DropdownMenuTrigger>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <DropdownMenuTrigger asChild>
+            <Button variant="secondary" size="icon" onClick={() => {}} className="h-8 w-8">
+              <Share />
+            </Button>
+          </DropdownMenuTrigger>
+        </TooltipTrigger>
+        <TooltipContent>Share a private link</TooltipContent>
+      </Tooltip>
       <DropdownMenuContent align="end" className="flex flex-col p-3 max-w-[400px]">
         <span className="text-sm font-medium pb-2">Share this dashboard</span>
         {!isLoadingPrivateLink && !privateLink?.privateLinkKey && (

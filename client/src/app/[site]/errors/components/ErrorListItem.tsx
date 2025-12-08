@@ -5,8 +5,8 @@ import { ChevronDown, ChevronRight } from "lucide-react";
 import { useState } from "react";
 import { ErrorDetails } from "./ErrorDetails";
 import { ErrorSparklineChart } from "./ErrorSparklineChart";
-import { useGetErrorBucketed } from "@/api/analytics/errors/useGetErrorBucketed";
-import { ErrorNameItem } from "../../../../api/analytics/errors/useGetErrorNames";
+import { useGetErrorBucketed } from "@/api/analytics/hooks/errors/useGetErrorBucketed";
+import { ErrorNameItem } from "../../../../api/analytics/endpoints";
 
 // Maximum length for error messages
 const MAX_ERROR_MESSAGE_LENGTH = 150;
@@ -26,7 +26,6 @@ export function ErrorListItem({ errorData }: ErrorListItemProps) {
   // Get error bucketed data for sparkline
   const { data: errorBucketedData, isLoading: isLoadingBucketed } = useGetErrorBucketed({
     errorMessage: errorData.value,
-    enabled: true,
   });
 
   return (
@@ -78,7 +77,7 @@ export function ErrorListItem({ errorData }: ErrorListItemProps) {
               </div>
 
               {/* Expand/Collapse icon */}
-              <div className="ml-2 flex-shrink-0 flex">
+              <div className="ml-2 shrink-0 flex">
                 {expanded ? (
                   <ChevronDown className="w-4 h-4 text-neutral-500 dark:text-neutral-400" strokeWidth={3} />
                 ) : (

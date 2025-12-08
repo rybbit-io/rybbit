@@ -68,7 +68,7 @@ export function BrowserTooltipIcon({
   return (
     <Tooltip>
       <TooltipTrigger asChild>
-        <div className="flex-shrink-0">
+        <div className="shrink-0">
           <Browser browser={browser || "Unknown"} size={size} />
         </div>
       </TooltipTrigger>
@@ -94,7 +94,7 @@ export function OperatingSystemTooltipIcon({
   return (
     <Tooltip>
       <TooltipTrigger asChild>
-        <div className="flex-shrink-0">
+        <div className="shrink-0">
           <OperatingSystem os={operating_system || ""} size={size} />
         </div>
       </TooltipTrigger>

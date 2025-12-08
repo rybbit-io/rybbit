@@ -23,7 +23,7 @@ export interface UpdateExcludedCountriesResponse {
 }
 
 export const fetchExcludedCountries = async (siteId: string): Promise<ExcludedCountriesResponse> => {
-  return await authedFetch<ExcludedCountriesResponse>(`/site/${siteId}/excluded-countries`);
+  return await authedFetch<ExcludedCountriesResponse>(`/sites/${siteId}/excluded-countries`);
 };
 
 export const updateExcludedCountries = async (

@@ -9,7 +9,13 @@ export default {
     "Rybbit Analytics for E-commerce Websites",
   "onyx-ai-knowledge-platform":
     "How We Use Onyx to Power Knowledge Management at Rybbit",
+  "marketing-attribution-tools":
+    "Best Marketing Attribution Tools & Software for 2025",
+  "what-is-web-analytics":
+    "What is Web Analytics? A Complete Guide to Understanding Your Visitors with Rybbit",
   "multivariate-testing":
     "What is Multivariate Testing? Examples and How to Run Tests with Rybbit",
   "bounce-rate": "How to Calculate Bounce Rate with Rybbit Analytics",
+  "content-marketing-funnel": "Using Rybbit Analytics to Optimize Your Content Marketing Funnel",
+  "geographic-segmentation": "How Marketers Use Geographic Segmentation to Optimize Campaigns",
 };

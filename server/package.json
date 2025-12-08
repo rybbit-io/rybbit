@@ -1,6 +1,6 @@
 {
   "name": "rybbit-backend",
-  "version": "2.2.0",
+  "version": "2.2.2",
   "description": "Rybbit backend",
   "main": "dist/index.js",
   "type": "module",
@@ -45,6 +45,7 @@
     "ip-address": "^10.0.1",
     "isbot": "^5.1.28",
     "luxon": "3.6.1",
+    "nanoid": "^5.1.6",
     "node-cache": "^5.1.2",
     "node-cron": "4.0.6",
     "pg": "8.16.0",

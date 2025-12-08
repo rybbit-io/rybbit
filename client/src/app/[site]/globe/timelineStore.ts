@@ -1,7 +1,7 @@
 import { DateTime } from "luxon";
 import { create } from "zustand";
 import { useMemo } from "react";
-import type { GetSessionsResponse } from "../../../api/analytics/useGetUserSessions";
+import type { GetSessionsResponse } from "../../../api/analytics/endpoints";
 import { getActiveSessions } from "./timelineUtils";
 
 interface TimelineStore {

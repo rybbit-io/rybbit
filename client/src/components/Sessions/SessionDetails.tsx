@@ -9,19 +9,17 @@ import { DateTime } from "luxon";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { memo, useMemo } from "react";
-import {
-  GetSessionsResponse,
-  SessionEvent,
-  useGetSessionDetailsInfinite,
-} from "../../api/analytics/useGetUserSessions";
+import { useGetSessionDetailsInfinite } from "../../api/analytics/hooks/useGetUserSessions";
+import { GetSessionsResponse, SessionEvent } from "../../api/analytics/endpoints";
 import { Browser } from "../../app/[site]/components/shared/icons/Browser";
 import { CountryFlag } from "../../app/[site]/components/shared/icons/CountryFlag";
 import { OperatingSystem } from "../../app/[site]/components/shared/icons/OperatingSystem";
 import { formatDuration, hour12 } from "../../lib/dateTimeUtils";
 import { useGetRegionName } from "../../lib/geo";
 import { cn, getCountryName, getLanguageName } from "../../lib/utils";
-import { Avatar } from "../Avatar";
+import { Avatar, generateName } from "../Avatar";
 import { EventIcon, PageviewIcon } from "../EventIcons";
+import { IdentifiedBadge } from "../IdentifiedBadge";
 import { Button } from "../ui/button";
 
 // Component to display a single pageview or event
@@ -54,10 +52,10 @@ function PageviewItem({
   return (
     <div className="flex mb-3">
       {/* Timeline circle with number */}
-      <div className="relative flex-shrink-0">
+      <div className="relative shrink-0">
         {!isLast && (
           <div
-            className="absolute top-8 left-4 w-[1px] bg-neutral-200 dark:bg-neutral-600/25"
+            className="absolute top-8 left-4 w-px bg-neutral-200 dark:bg-neutral-600/25"
             style={{
               height: "calc(100% - 20px)",
             }}
@@ -76,7 +74,7 @@ function PageviewItem({
 
       <div className="flex flex-col ml-3 flex-1">
         <div className="flex items-center flex-1 py-1">
-          <div className="flex-shrink-0 mr-3">
+          <div className="shrink-0 mr-3">
             {isEvent ? (
               <EventIcon />
             ) : isError ? (
@@ -123,7 +121,7 @@ function PageviewItem({
             )}
           </div>
 
-          <div className="text-xs text-neutral-500 dark:text-neutral-400 flex-shrink-0">{formattedTime}</div>
+          <div className="text-xs text-neutral-500 dark:text-neutral-400 shrink-0">{formattedTime}</div>
         </div>
         {isPageview && duration && (
           <div className="flex items-center pl-7 mt-1">
@@ -139,11 +137,7 @@ function PageviewItem({
               {item.props && Object.keys(item.props).length > 0 ? (
                 <span className="flex flex-wrap gap-2 mt-1">
                   {Object.entries(item.props).map(([key, value]) => (
-                    <Badge
-                      key={key}
-                      variant="outline"
-                      className="px-1.5 py-0 h-5 text-xs bg-neutral-200 dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 font-medium"
-                    >
+                    <Badge key={key} variant="outline">
                       <span className="text-neutral-600 dark:text-neutral-300 font-light mr-1">{key}:</span>{" "}
                       <Tooltip>
                         <TooltipTrigger asChild>
@@ -211,7 +205,7 @@ function PageviewItem({
                   {item.props.stack && (
                     <div>
                       <p className="mt-2 mb-1 text-neutral-600 dark:text-neutral-300 font-light">Stack Trace:</p>
-                      <pre className="text-xs text-neutral-900 dark:text-neutral-100 bg-neutral-200 dark:bg-neutral-800 p-2 rounded overflow-x-auto whitespace-pre-wrap break-words">
+                      <pre className="text-xs text-neutral-900 dark:text-neutral-100 bg-neutral-200 dark:bg-neutral-800 p-2 rounded overflow-x-auto whitespace-pre-wrap wrap-break-word">
                         {item.props.stack}
                       </pre>
                     </div>
@@ -252,7 +246,7 @@ const SessionDetailsTimelineSkeleton = memo(({ itemCount }: { itemCount: number 
               <div className="flex items-center">
                 <Skeleton className="h-4 w-4 mr-3" />
                 <Skeleton className={cn("h-4", getRandomWidth(), "max-w-md mr-4")} />
-                <Skeleton className="h-3 w-16 flex-shrink-0 ml-auto" />
+                <Skeleton className="h-3 w-16 shrink-0 ml-auto" />
               </div>
               <div className="mt-1 pl-7">
                 {Math.random() > 0.5 && <Skeleton className={cn("h-3", Math.random() > 0.7 ? "w-48" : "w-32")} />}
@@ -309,8 +303,10 @@ export function SessionDetails({ session, userId }: SessionDetailsProps) {
 
   const { getRegionName } = useGetRegionName();
 
+  const isIdentified = !!session.identified_user_id;
+
   return (
-    <div className="px-4 bg-white dark:bg-neutral-900 border-t border-neutral-300 dark:border-neutral-800">
+    <div className="px-4 bg-white dark:bg-neutral-900 border-t border-neutral-100 dark:border-neutral-850">
       {isLoading ? (
         <SessionDetailsTimelineSkeleton itemCount={session.pageviews + session.events} />
       ) : error ? (
@@ -325,7 +321,7 @@ export function SessionDetails({ session, userId }: SessionDetailsProps) {
               <TabsTrigger value="info">Session Info</TabsTrigger>
             </TabsList>
             {!userId && (
-              <Link href={`/${site}/user/${session.user_id}`}>
+              <Link href={`/${site}/user/${isIdentified ? session.identified_user_id : session.user_id}`}>
                 <Button size={"sm"} variant={"success"}>
                   View User <ArrowRight className="w-4 h-4" />
                 </Button>
@@ -388,23 +384,33 @@ export function SessionDetails({ session, userId }: SessionDetailsProps) {
             <div className="grid grid-cols-1 lg:grid-cols-[auto_auto_auto] gap-8 mb-6">
               {/* User Information */}
               <div>
-                <h4 className="text-sm font-medium mb-3 text-neutral-600 dark:text-neutral-300 border-b border-neutral-300 dark:border-neutral-800 pb-2">
+                <h4 className="text-sm font-medium mb-3 text-neutral-600 dark:text-neutral-300 border-b border-neutral-100 dark:border-neutral-800 pb-2">
                   User Information
                 </h4>
                 <div className="space-y-3">
                   {sessionDetails?.user_id && (
                     <div className="flex items-center gap-2">
-                      <div className="h-10 w-10 bg-neutral-200 dark:bg-neutral-800 rounded-full flex items-center justify-center flex-shrink-0">
-                        <Avatar size={40} id={sessionDetails.user_id} />
+                      <div className="h-10 w-10 bg-neutral-200 dark:bg-neutral-800 rounded-full flex items-center justify-center shrink-0">
+                        <Avatar size={40} id={isIdentified ? session.identified_user_id : sessionDetails.user_id} />
                       </div>
                       <div>
-                        <div className="text-sm text-neutral-500 dark:text-neutral-400 flex items-center">
-                          <span className="font-medium text-neutral-600 dark:text-neutral-300">User ID:</span>
-                          <CopyText text={sessionDetails.user_id} maxLength={24} className="inline-flex ml-2" />
+                        <div className="text-sm text-neutral-500 dark:text-neutral-400 flex items-center gap-2">
+                          <span className="font-medium text-neutral-600 dark:text-neutral-300">
+                            {isIdentified
+                              ? (session.traits?.username as string) ||
+                                (session.traits?.name as string) ||
+                                session.identified_user_id
+                              : generateName(sessionDetails.user_id)}
+                          </span>
+                          {isIdentified && <IdentifiedBadge traits={session.traits} />}
                         </div>
                         <div className="text-sm text-neutral-500 dark:text-neutral-400 flex items-center">
-                          <span className="font-medium text-neutral-600 dark:text-neutral-300">Session ID:</span>
-                          <CopyText text={sessionDetails.session_id} maxLength={20} className="inline-flex ml-2" />
+                          <span className="font-medium text-neutral-600 dark:text-neutral-300">User ID:</span>
+                          <CopyText
+                            text={isIdentified ? session.identified_user_id : sessionDetails.user_id}
+                            maxLength={24}
+                            className="inline-flex ml-2"
+                          />
                         </div>
                       </div>
                     </div>
@@ -413,8 +419,10 @@ export function SessionDetails({ session, userId }: SessionDetailsProps) {
                   <div className="space-y-2">
                     {sessionDetails?.language && (
                       <div className="text-sm flex items-center gap-2">
-                        <span className="font-medium text-neutral-300 min-w-[80px]">Language:</span>
-                        <span className="text-neutral-400">
+                        <span className="font-medium text-neutral-600 dark:text-neutral-300 min-w-[80px]">
+                          Language:
+                        </span>
+                        <span className="text-neutral-500 dark:text-neutral-400">
                           {sessionDetails.language ? getLanguageName(sessionDetails.language) : "N/A"}
                         </span>
                       </div>
@@ -435,13 +443,15 @@ export function SessionDetails({ session, userId }: SessionDetailsProps) {
                     {sessionDetails?.region && getRegionName(sessionDetails.region) && (
                       <div className="flex items-center gap-2 text-sm">
                         <span className="font-medium text-neutral-600 dark:text-neutral-300 min-w-[80px]">Region:</span>
-                        <span className="text-neutral-400">{getRegionName(sessionDetails.region)}</span>
+                        <span className="text-neutral-500 dark:text-neutral-400">
+                          {getRegionName(sessionDetails.region)}
+                        </span>
                       </div>
                     )}
                     {sessionDetails?.city && (
                       <div className="flex items-center gap-2 text-sm">
                         <span className="font-medium text-neutral-600 dark:text-neutral-300 min-w-[80px]">City:</span>
-                        <span className="text-neutral-400">{sessionDetails.city}</span>
+                        <span className="text-neutral-500 dark:text-neutral-400">{sessionDetails.city}</span>
                       </div>
                     )}
                   </div>
@@ -450,13 +460,13 @@ export function SessionDetails({ session, userId }: SessionDetailsProps) {
 
               {/* Device Information */}
               <div>
-                <h4 className="text-sm font-medium mb-3 text-neutral-600 dark:text-neutral-300 border-b border-neutral-300 dark:border-neutral-800 pb-2">
+                <h4 className="text-sm font-medium mb-3 text-neutral-600 dark:text-neutral-300 border-b border-neutral-100 dark:border-neutral-800 pb-2">
                   Device Information
                 </h4>
                 <div className="space-y-3">
                   <div className="flex items-center gap-2 text-sm">
-                    <span className="font-medium text-neutral-300 min-w-[80px]">Device:</span>
-                    <div className="flex items-center gap-1.5 text-neutral-400">
+                    <span className="font-medium text-neutral-600 dark:text-neutral-300 min-w-[80px]">Device:</span>
+                    <div className="flex items-center gap-1.5 text-neutral-500 dark:text-neutral-400">
                       {sessionDetails?.device_type === "Desktop" && <Monitor className="w-4 h-4" />}
                       {sessionDetails?.device_type === "Mobile" && <Smartphone className="w-4 h-4" />}
                       {sessionDetails?.device_type === "Tablet" && <Tablet className="w-4 h-4" />}
@@ -465,8 +475,8 @@ export function SessionDetails({ session, userId }: SessionDetailsProps) {
                   </div>
 
                   <div className="flex items-center gap-2 text-sm">
-                    <span className="font-medium text-neutral-300 min-w-[80px]">Browser:</span>
-                    <div className="flex items-center gap-1.5 text-neutral-400">
+                    <span className="font-medium text-neutral-600 dark:text-neutral-300 min-w-[80px]">Browser:</span>
+                    <div className="flex items-center gap-1.5 text-neutral-500 dark:text-neutral-400">
                       <Browser browser={sessionDetails?.browser || "Unknown"} />
                       <span>
                         {sessionDetails?.browser || "Unknown"}
@@ -478,8 +488,8 @@ export function SessionDetails({ session, userId }: SessionDetailsProps) {
                   </div>
 
                   <div className="flex items-center gap-2 text-sm">
-                    <span className="font-medium text-neutral-300 min-w-[80px]">OS:</span>
-                    <div className="flex items-center gap-1.5 text-neutral-400">
+                    <span className="font-medium text-neutral-600 dark:text-neutral-300 min-w-[80px]">OS:</span>
+                    <div className="flex items-center gap-1.5 text-neutral-500 dark:text-neutral-400">
                       <OperatingSystem os={sessionDetails?.operating_system || ""} />
                       <span>
                         {sessionDetails?.operating_system || "Unknown"}
@@ -492,16 +502,16 @@ export function SessionDetails({ session, userId }: SessionDetailsProps) {
 
                   {sessionDetails?.screen_width && sessionDetails?.screen_height ? (
                     <div className="flex items-center gap-2 text-sm">
-                      <span className="font-medium text-neutral-300 min-w-[80px]">Screen:</span>
-                      <span className="text-neutral-400">
+                      <span className="font-medium text-neutral-600 dark:text-neutral-300 min-w-[80px]">Screen:</span>
+                      <span className="text-neutral-500 dark:text-neutral-400">
                         {sessionDetails.screen_width} × {sessionDetails.screen_height}
                       </span>
                     </div>
                   ) : null}
                   {sessionDetails?.ip && (
                     <div className="flex items-center gap-2 text-sm">
-                      <span className="font-medium text-neutral-300 min-w-[80px]">IP:</span>
-                      <span className="text-neutral-400">{sessionDetails.ip}</span>
+                      <span className="font-medium text-neutral-600 dark:text-neutral-300 min-w-[80px]">IP:</span>
+                      <span className="text-neutral-500 dark:text-neutral-400">{sessionDetails.ip}</span>
                     </div>
                   )}
                 </div>
@@ -509,27 +519,27 @@ export function SessionDetails({ session, userId }: SessionDetailsProps) {
 
               {/* Source Information */}
               <div>
-                <h4 className="text-sm font-medium mb-3 text-neutral-600 dark:text-neutral-300 border-b border-neutral-300 dark:border-neutral-800 pb-2">
+                <h4 className="text-sm font-medium mb-3 text-neutral-600 dark:text-neutral-300 border-b border-neutral-100 dark:border-neutral-800 pb-2">
                   Source Information
                 </h4>
                 <div className="space-y-3">
                   <div className="flex items-center gap-2 text-sm">
-                    <span className="font-medium text-neutral-300 min-w-[80px]">Channel:</span>
-                    <div className="flex items-center gap-1.5 text-neutral-400">
+                    <span className="font-medium text-neutral-600 dark:text-neutral-300 min-w-[80px]">Channel:</span>
+                    <div className="flex items-center gap-1.5 text-neutral-500 dark:text-neutral-400">
                       <span>{sessionDetails?.channel || "None"}</span>
                     </div>
                   </div>
 
                   <div className="flex items-center gap-2 text-sm">
-                    <span className="font-medium text-neutral-300 min-w-[80px]">Referrer:</span>
-                    <div className="flex items-center gap-1.5 text-neutral-400">
+                    <span className="font-medium text-neutral-600 dark:text-neutral-300 min-w-[80px]">Referrer:</span>
+                    <div className="flex items-center gap-1.5 text-neutral-500 dark:text-neutral-400">
                       <span>{sessionDetails?.referrer || "None"}</span>
                     </div>
                   </div>
 
                   <div className="flex items-center gap-2 text-sm">
-                    <span className="font-medium text-neutral-300 min-w-[80px]">Entry Page:</span>
-                    <div className="flex items-center gap-1.5 text-neutral-400">
+                    <span className="font-medium text-neutral-600 dark:text-neutral-300 min-w-[80px]">Entry Page:</span>
+                    <div className="flex items-center gap-1.5 text-neutral-500 dark:text-neutral-400">
                       <span>{sessionDetails?.entry_page || "None"}</span>
                     </div>
                   </div>

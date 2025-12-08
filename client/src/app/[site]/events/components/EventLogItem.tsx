@@ -7,7 +7,7 @@ import { DateTime } from "luxon";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { memo } from "react";
-import { Event } from "../../../../api/analytics/events/useGetEvents";
+import { Event } from "../../../../api/analytics/endpoints";
 import { getCountryName } from "../../../../lib/utils";
 import { Browser } from "../../components/shared/icons/Browser";
 import { CountryFlag } from "../../components/shared/icons/CountryFlag";
@@ -68,9 +68,9 @@ export function EventLogItem({ event }: EventLogItemProps) {
         {/* Single row with event type, name/path, device info, and timestamp */}
         <div className="flex items-center gap-2 text-sm text-neutral-900 dark:text-neutral-100">
           {/* Left side content */}
-          <div className="flex items-center gap-2 flex-grow min-w-0">
+          <div className="flex items-center gap-2 grow min-w-0">
             {/* Event type icon */}
-            <div className="flex-shrink-0">
+            <div className="shrink-0">
               {isPageview ? (
                 <PageviewIcon />
               ) : isOutbound ? (
@@ -105,7 +105,7 @@ export function EventLogItem({ event }: EventLogItemProps) {
             </div>
 
             {/* Device info */}
-            <div className="flex-shrink-0 flex space-x-1 items-center">
+            <div className="shrink-0 flex space-x-1 items-center">
               {event.country && (
                 <Tooltip>
                   <TooltipTrigger asChild>
@@ -151,7 +151,7 @@ export function EventLogItem({ event }: EventLogItemProps) {
             </div>
 
             {/* User ID */}
-            <Link href={`/${site}/user/${event.user_id}`} className="flex-shrink-0">
+            <Link href={`/${site}/user/${event.user_id}`} className="shrink-0">
               <Tooltip>
                 <TooltipTrigger asChild>
                   <span className="text-sm font-mono text-neutral-500 dark:text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-300">
@@ -166,7 +166,9 @@ export function EventLogItem({ event }: EventLogItemProps) {
           </div>
 
           {/* Timestamp (right-aligned) */}
-          <div className="text-sm flex-shrink-0 text-neutral-500 dark:text-neutral-400 ml-auto">{eventTime.toRelative()}</div>
+          <div className="text-sm shrink-0 text-neutral-500 dark:text-neutral-400 ml-auto">
+            {eventTime.toRelative()}
+          </div>
         </div>
 
         {/* Bottom row with event properties */}
@@ -213,20 +215,20 @@ export const EventLogItemSkeleton = memo(() => {
         {/* Single row skeleton */}
         <div className="flex items-center gap-2">
           {/* Left side content */}
-          <div className="flex items-center gap-2 flex-grow">
-            <div className="h-4 w-4 bg-neutral-200 dark:bg-neutral-800 rounded-sm animate-pulse flex-shrink-0"></div>
-            <div className="h-4 w-40 bg-neutral-200 dark:bg-neutral-800 rounded animate-pulse flex-shrink-0"></div>
-            <div className="flex space-x-1 flex-shrink-0">
+          <div className="flex items-center gap-2 grow">
+            <div className="h-4 w-4 bg-neutral-200 dark:bg-neutral-800 rounded-sm animate-pulse shrink-0"></div>
+            <div className="h-4 w-40 bg-neutral-200 dark:bg-neutral-800 rounded animate-pulse shrink-0"></div>
+            <div className="flex space-x-1 shrink-0">
               <div className="h-4 w-4 bg-neutral-200 dark:bg-neutral-800 rounded-sm animate-pulse"></div>
               <div className="h-4 w-4 bg-neutral-200 dark:bg-neutral-800 rounded-sm animate-pulse"></div>
               <div className="h-4 w-4 bg-neutral-200 dark:bg-neutral-800 rounded-sm animate-pulse"></div>
               <div className="h-4 w-4 bg-neutral-200 dark:bg-neutral-800 rounded-sm animate-pulse"></div>
             </div>
-            <div className="h-4 w-16 bg-neutral-200 dark:bg-neutral-800 rounded animate-pulse flex-shrink-0"></div>
+            <div className="h-4 w-16 bg-neutral-200 dark:bg-neutral-800 rounded animate-pulse shrink-0"></div>
           </div>
 
           {/* Timestamp (right-aligned) */}
-          <div className="h-4 w-24 bg-neutral-200 dark:bg-neutral-800 rounded animate-pulse flex-shrink-0 ml-auto"></div>
+          <div className="h-4 w-24 bg-neutral-200 dark:bg-neutral-800 rounded animate-pulse shrink-0 ml-auto"></div>
         </div>
 
         {/* Bottom row skeleton (properties) - show randomly */}

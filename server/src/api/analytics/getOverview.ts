@@ -1,8 +1,8 @@
 import { FilterParams } from "@rybbit/shared";
 import { FastifyReply, FastifyRequest } from "fastify";
 import { clickhouse } from "../../db/clickhouse/clickhouse.js";
-import { getUserHasAccessToSitePublic } from "../../lib/auth-utils.js";
-import { getFilterStatement, getTimeStatement, processResults } from "./utils.js";
+import { getFilterStatement } from "./utils/getFilterStatement.js";
+import { getTimeStatement, processResults } from "./utils/utils.js";
 
 type GetOverviewResponse = {
   sessions: number;

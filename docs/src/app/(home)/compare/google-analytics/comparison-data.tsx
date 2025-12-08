@@ -4,11 +4,11 @@ export const googleAnalyticsComparisonData: ComparisonSection[] = [
   {
     title: "Privacy & Compliance",
     features: [
-      // {
-      //   name: "GDPR compliant without cookie banner",
-      //   rybbitValue: true,
-      //   competitorValue: false,
-      // },
+      {
+        name: "GDPR compliant without cookie banner",
+        rybbitValue: true,
+        competitorValue: false,
+      },
       {
         name: "CCPA compliant",
         rybbitValue: true,
@@ -112,7 +112,7 @@ export const googleAnalyticsComparisonData: ComparisonSection[] = [
       {
         name: "User journeys (Sankey)",
         rybbitValue: true,
-        competitorValue: false,
+        competitorValue: true,
       },
       {
         name: "UTM tracking",

@@ -1,0 +1,1464 @@
+---
+title: Goals
+description: Create and track conversion goals based on page visits or custom events
+full: true
+---
+
+import { TypeTable } from 'fumadocs-ui/components/type-table';
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+
+See the [API Reference](/docs/api/stats/reference) for authentication, common parameters, and filters.
+
+## Endpoints
+
+<div className="flex flex-col gap-2 my-6">
+  <a href="#get-goals" className="flex items-center gap-3 p-3 rounded-lg bg-fd-secondary/50 hover:bg-fd-secondary transition-colors no-underline">
+    <span className="px-2 py-1 text-xs font-bold rounded bg-green-500/20 text-green-600 dark:text-green-400">GET</span>
+    <code className="text-sm">/api/goals/:site</code>
+  </a>
+  <a href="#get-goal-sessions" className="flex items-center gap-3 p-3 rounded-lg bg-fd-secondary/50 hover:bg-fd-secondary transition-colors no-underline">
+    <span className="px-2 py-1 text-xs font-bold rounded bg-green-500/20 text-green-600 dark:text-green-400">GET</span>
+    <code className="text-sm">/api/goals/:goalId/sessions/:site</code>
+  </a>
+  <a href="#create-goal" className="flex items-center gap-3 p-3 rounded-lg bg-fd-secondary/50 hover:bg-fd-secondary transition-colors no-underline">
+    <span className="px-2 py-1 text-xs font-bold rounded bg-blue-500/20 text-blue-600 dark:text-blue-400">POST</span>
+    <code className="text-sm">/api/goals/:site</code>
+  </a>
+  <a href="#update-goal" className="flex items-center gap-3 p-3 rounded-lg bg-fd-secondary/50 hover:bg-fd-secondary transition-colors no-underline">
+    <span className="px-2 py-1 text-xs font-bold rounded bg-yellow-500/20 text-yellow-600 dark:text-yellow-400">PUT</span>
+    <code className="text-sm">/api/goals/:goalId/:site</code>
+  </a>
+  <a href="#delete-goal" className="flex items-center gap-3 p-3 rounded-lg bg-fd-secondary/50 hover:bg-fd-secondary transition-colors no-underline">
+    <span className="px-2 py-1 text-xs font-bold rounded bg-red-500/20 text-red-600 dark:text-red-400">DELETE</span>
+    <code className="text-sm">/api/goals/:goalId/:site</code>
+  </a>
+</div>
+
+---
+
+## Get Goals
+
+<div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
+<div>
+
+```
+GET /api/goals/:site
+```
+
+Returns a paginated list of goals with their conversion metrics.
+
+### Path Parameters
+
+<TypeTable
+  type={{
+    site: {
+      description: 'Site ID or site identifier',
+      type: 'string | number',
+      required: true,
+    },
+  }}
+/>
+
+### Query Parameters
+
+Accepts all [Common Parameters](/docs/api/getting-started#common-parameters) plus the following:
+
+<TypeTable
+  type={{
+    page: {
+      description: 'Page number (1-indexed)',
+      type: 'number',
+      default: 1,
+    },
+    page_size: {
+      description: 'Number of results per page (max 100)',
+      type: 'number',
+      default: 10,
+    },
+    sort: {
+      description: 'Field to sort by',
+      type: 'string',
+      typeDescription: '"goalId" | "name" | "goalType" | "createdAt"',
+      default: 'createdAt',
+    },
+    order: {
+      description: 'Sort direction',
+      type: 'string',
+      typeDescription: '"asc" | "desc"',
+      default: 'desc',
+    },
+  }}
+/>
+
+### Response
+
+<TypeTable
+  type={{
+    data: {
+      description: 'Array of goal objects with conversion data',
+      type: 'Goal[]',
+    },
+    meta: {
+      description: 'Pagination metadata',
+      type: 'PaginationMeta',
+    },
+  }}
+/>
+
+#### Goal Object
+
+<TypeTable
+  type={{
+    goalId: {
+      description: 'Unique goal identifier',
+      type: 'number',
+    },
+    name: {
+      description: 'Goal name',
+      type: 'string | null',
+    },
+    goalType: {
+      description: 'Type of goal',
+      type: 'string',
+      typeDescription: '"path" | "event"',
+    },
+    config: {
+      description: 'Goal configuration',
+      type: 'GoalConfig',
+    },
+    createdAt: {
+      description: 'Creation timestamp',
+      type: 'string',
+      typeDescription: 'ISO 8601 datetime',
+    },
+    total_conversions: {
+      description: 'Number of sessions that completed the goal',
+      type: 'number',
+    },
+    total_sessions: {
+      description: 'Total sessions in the time period',
+      type: 'number',
+    },
+    conversion_rate: {
+      description: 'Conversion rate (0-1)',
+      type: 'number',
+    },
+  }}
+/>
+
+#### GoalConfig Object
+
+<TypeTable
+  type={{
+    pathPattern: {
+      description: 'URL path pattern (for path goals). Supports wildcards (*)',
+      type: 'string',
+      required: false,
+    },
+    eventName: {
+      description: 'Event name to match (for event goals)',
+      type: 'string',
+      required: false,
+    },
+    eventPropertyKey: {
+      description: 'Event property key to match',
+      type: 'string',
+      required: false,
+    },
+    eventPropertyValue: {
+      description: 'Event property value to match',
+      type: 'string | number | boolean',
+      required: false,
+    },
+  }}
+/>
+
+</div>
+<div className="flex flex-col gap-4">
+
+<Tabs items={['cURL', 'JavaScript', 'Python', 'PHP', 'Ruby', 'Go', 'Rust', 'Java', '.NET']}>
+  <Tab value="cURL">
+```bash title="Request"
+curl -X GET "https://api.rybbit.io/api/goals/123?start_date=2024-01-01&end_date=2024-01-31" \
+  -H "Authorization: Bearer your_api_key_here"
+```
+  </Tab>
+  <Tab value="JavaScript">
+```javascript title="Request"
+const response = await fetch(
+  'https://api.rybbit.io/api/goals/123?start_date=2024-01-01&end_date=2024-01-31',
+  {
+    headers: {
+      'Authorization': 'Bearer your_api_key_here'
+    }
+  }
+);
+
+const data = await response.json();
+```
+  </Tab>
+  <Tab value="Python">
+```python title="Request"
+import requests
+
+response = requests.get(
+    'https://api.rybbit.io/api/goals/123',
+    params={
+        'start_date': '2024-01-01',
+        'end_date': '2024-01-31'
+    },
+    headers={
+        'Authorization': 'Bearer your_api_key_here'
+    }
+)
+
+data = response.json()
+```
+  </Tab>
+  <Tab value="PHP">
+```php title="Request"
+<?php
+$ch = curl_init();
+
+curl_setopt($ch, CURLOPT_URL, 'https://api.rybbit.io/api/goals/123?start_date=2024-01-01&end_date=2024-01-31');
+curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+curl_setopt($ch, CURLOPT_HTTPHEADER, [
+    'Authorization: Bearer your_api_key_here'
+]);
+
+$response = curl_exec($ch);
+curl_close($ch);
+
+$data = json_decode($response, true);
+?>
+```
+  </Tab>
+  <Tab value="Ruby">
+```ruby title="Request"
+require 'net/http'
+require 'json'
+require 'uri'
+
+uri = URI('https://api.rybbit.io/api/goals/123?start_date=2024-01-01&end_date=2024-01-31')
+req = Net::HTTP::Get.new(uri)
+req['Authorization'] = 'Bearer your_api_key_here'
+
+res = Net::HTTP.start(uri.hostname, uri.port, use_ssl: true) do |http|
+  http.request(req)
+end
+
+data = JSON.parse(res.body)
+```
+  </Tab>
+  <Tab value="Go">
+```go title="Request"
+package main
+
+import (
+    "encoding/json"
+    "io"
+    "net/http"
+)
+
+func main() {
+    url := "https://api.rybbit.io/api/goals/123?start_date=2024-01-01&end_date=2024-01-31"
+
+    req, _ := http.NewRequest("GET", url, nil)
+    req.Header.Add("Authorization", "Bearer your_api_key_here")
+
+    client := &http.Client{}
+    resp, _ := client.Do(req)
+    defer resp.Body.Close()
+
+    body, _ := io.ReadAll(resp.Body)
+
+    var data map[string]interface{}
+    json.Unmarshal(body, &data)
+}
+```
+  </Tab>
+  <Tab value="Rust">
+```rust title="Request"
+use reqwest;
+use serde_json::Value;
+
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let client = reqwest::Client::new();
+
+    let response = client
+        .get("https://api.rybbit.io/api/goals/123?start_date=2024-01-01&end_date=2024-01-31")
+        .header("Authorization", "Bearer your_api_key_here")
+        .send()
+        .await?;
+
+    let data: Value = response.json().await?;
+
+    Ok(())
+}
+```
+  </Tab>
+  <Tab value="Java">
+```java title="Request"
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+
+public class Main {
+    public static void main(String[] args) throws Exception {
+        HttpClient client = HttpClient.newHttpClient();
+
+        HttpRequest request = HttpRequest.newBuilder()
+            .uri(URI.create("https://api.rybbit.io/api/goals/123?start_date=2024-01-01&end_date=2024-01-31"))
+            .header("Authorization", "Bearer your_api_key_here")
+            .GET()
+            .build();
+
+        HttpResponse<String> response = client.send(request,
+            HttpResponse.BodyHandlers.ofString());
+
+        String data = response.body();
+    }
+}
+```
+  </Tab>
+  <Tab value=".NET">
+```csharp title="Request"
+using System;
+using System.Net.Http;
+using System.Threading.Tasks;
+
+class Program
+{
+    static async Task Main(string[] args)
+    {
+        using var client = new HttpClient();
+
+        client.DefaultRequestHeaders.Add("Authorization", "Bearer your_api_key_here");
+
+        var response = await client.GetAsync(
+            "https://api.rybbit.io/api/goals/123?start_date=2024-01-01&end_date=2024-01-31");
+
+        var data = await response.Content.ReadAsStringAsync();
+    }
+}
+```
+  </Tab>
+</Tabs>
+
+```json title="Response"
+{
+  "data": [
+    {
+      "goalId": 1,
+      "name": "Signup Completed",
+      "goalType": "path",
+      "config": {
+        "pathPattern": "/signup/complete"
+      },
+      "createdAt": "2024-01-10T12:00:00.000Z",
+      "total_conversions": 1250,
+      "total_sessions": 15420,
+      "conversion_rate": 0.081
+    },
+    {
+      "goalId": 2,
+      "name": "Purchase Made",
+      "goalType": "event",
+      "config": {
+        "eventName": "purchase",
+        "eventPropertyKey": "value",
+        "eventPropertyValue": 100
+      },
+      "createdAt": "2024-01-15T09:30:00.000Z",
+      "total_conversions": 320,
+      "total_sessions": 15420,
+      "conversion_rate": 0.021
+    }
+  ],
+  "meta": {
+    "total": 2,
+    "page": 1,
+    "pageSize": 10,
+    "totalPages": 1
+  }
+}
+```
+
+</div>
+</div>
+
+---
+
+## Get Goal Sessions
+
+<div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
+<div>
+
+```
+GET /api/goals/:goalId/sessions/:site
+```
+
+Returns sessions that completed a specific goal. Useful for analyzing the behavior of converting users.
+
+### Path Parameters
+
+<TypeTable
+  type={{
+    goalId: {
+      description: 'Goal ID',
+      type: 'string | number',
+      required: true,
+    },
+    site: {
+      description: 'Site ID or site identifier',
+      type: 'string | number',
+      required: true,
+    },
+  }}
+/>
+
+### Query Parameters
+
+Accepts all [Common Parameters](/docs/api/getting-started#common-parameters) plus the following:
+
+<TypeTable
+  type={{
+    page: {
+      description: 'Page number (1-indexed)',
+      type: 'number',
+      default: 1,
+    },
+    limit: {
+      description: 'Number of results per page',
+      type: 'number',
+      default: 25,
+    },
+  }}
+/>
+
+### Response
+
+<TypeTable
+  type={{
+    data: {
+      description: 'Array of session objects',
+      type: 'Session[]',
+    },
+  }}
+/>
+
+#### Session Object
+
+<TypeTable
+  type={{
+    session_id: {
+      description: 'Unique session identifier',
+      type: 'string',
+    },
+    user_id: {
+      description: 'User identifier',
+      type: 'string',
+    },
+    country: {
+      description: 'Country code',
+      type: 'string',
+    },
+    browser: {
+      description: 'Browser name',
+      type: 'string',
+    },
+    operating_system: {
+      description: 'Operating system',
+      type: 'string',
+    },
+    device_type: {
+      description: 'Device type',
+      type: 'string',
+    },
+    entry_page: {
+      description: 'First page visited',
+      type: 'string',
+    },
+    exit_page: {
+      description: 'Last page visited',
+      type: 'string',
+    },
+    pageviews: {
+      description: 'Number of pageviews',
+      type: 'number',
+    },
+    session_duration: {
+      description: 'Session duration in seconds',
+      type: 'number',
+    },
+    session_start: {
+      description: 'Session start time',
+      type: 'string',
+      typeDescription: 'ISO 8601 datetime',
+    },
+    session_end: {
+      description: 'Session end time',
+      type: 'string',
+      typeDescription: 'ISO 8601 datetime',
+    },
+  }}
+/>
+
+</div>
+<div className="flex flex-col gap-4">
+
+<Tabs items={['cURL', 'JavaScript', 'Python', 'PHP', 'Ruby', 'Go', 'Rust', 'Java', '.NET']}>
+  <Tab value="cURL">
+```bash title="Request"
+curl -X GET "https://api.rybbit.io/api/goals/1/sessions/123?page=1&limit=10" \
+  -H "Authorization: Bearer your_api_key_here"
+```
+  </Tab>
+  <Tab value="JavaScript">
+```javascript title="Request"
+const response = await fetch(
+  'https://api.rybbit.io/api/goals/1/sessions/123?page=1&limit=10',
+  {
+    headers: {
+      'Authorization': 'Bearer your_api_key_here'
+    }
+  }
+);
+
+const data = await response.json();
+```
+  </Tab>
+  <Tab value="Python">
+```python title="Request"
+import requests
+
+response = requests.get(
+    'https://api.rybbit.io/api/goals/1/sessions/123',
+    params={
+        'page': 1,
+        'limit': 10
+    },
+    headers={
+        'Authorization': 'Bearer your_api_key_here'
+    }
+)
+
+data = response.json()
+```
+  </Tab>
+  <Tab value="PHP">
+```php title="Request"
+<?php
+$ch = curl_init();
+
+curl_setopt($ch, CURLOPT_URL, 'https://api.rybbit.io/api/goals/1/sessions/123?page=1&limit=10');
+curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+curl_setopt($ch, CURLOPT_HTTPHEADER, [
+    'Authorization: Bearer your_api_key_here'
+]);
+
+$response = curl_exec($ch);
+curl_close($ch);
+
+$data = json_decode($response, true);
+?>
+```
+  </Tab>
+  <Tab value="Ruby">
+```ruby title="Request"
+require 'net/http'
+require 'json'
+require 'uri'
+
+uri = URI('https://api.rybbit.io/api/goals/1/sessions/123?page=1&limit=10')
+req = Net::HTTP::Get.new(uri)
+req['Authorization'] = 'Bearer your_api_key_here'
+
+res = Net::HTTP.start(uri.hostname, uri.port, use_ssl: true) do |http|
+  http.request(req)
+end
+
+data = JSON.parse(res.body)
+```
+  </Tab>
+  <Tab value="Go">
+```go title="Request"
+package main
+
+import (
+    "encoding/json"
+    "io"
+    "net/http"
+)
+
+func main() {
+    url := "https://api.rybbit.io/api/goals/1/sessions/123?page=1&limit=10"
+
+    req, _ := http.NewRequest("GET", url, nil)
+    req.Header.Add("Authorization", "Bearer your_api_key_here")
+
+    client := &http.Client{}
+    resp, _ := client.Do(req)
+    defer resp.Body.Close()
+
+    body, _ := io.ReadAll(resp.Body)
+
+    var data map[string]interface{}
+    json.Unmarshal(body, &data)
+}
+```
+  </Tab>
+  <Tab value="Rust">
+```rust title="Request"
+use reqwest;
+use serde_json::Value;
+
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let client = reqwest::Client::new();
+
+    let response = client
+        .get("https://api.rybbit.io/api/goals/1/sessions/123?page=1&limit=10")
+        .header("Authorization", "Bearer your_api_key_here")
+        .send()
+        .await?;
+
+    let data: Value = response.json().await?;
+
+    Ok(())
+}
+```
+  </Tab>
+  <Tab value="Java">
+```java title="Request"
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+
+public class Main {
+    public static void main(String[] args) throws Exception {
+        HttpClient client = HttpClient.newHttpClient();
+
+        HttpRequest request = HttpRequest.newBuilder()
+            .uri(URI.create("https://api.rybbit.io/api/goals/1/sessions/123?page=1&limit=10"))
+            .header("Authorization", "Bearer your_api_key_here")
+            .GET()
+            .build();
+
+        HttpResponse<String> response = client.send(request,
+            HttpResponse.BodyHandlers.ofString());
+
+        String data = response.body();
+    }
+}
+```
+  </Tab>
+  <Tab value=".NET">
+```csharp title="Request"
+using System;
+using System.Net.Http;
+using System.Threading.Tasks;
+
+class Program
+{
+    static async Task Main(string[] args)
+    {
+        using var client = new HttpClient();
+
+        client.DefaultRequestHeaders.Add("Authorization", "Bearer your_api_key_here");
+
+        var response = await client.GetAsync(
+            "https://api.rybbit.io/api/goals/1/sessions/123?page=1&limit=10");
+
+        var data = await response.Content.ReadAsStringAsync();
+    }
+}
+```
+  </Tab>
+</Tabs>
+
+```json title="Response"
+{
+  "data": [
+    {
+      "session_id": "sess_abc123",
+      "user_id": "user_xyz789",
+      "country": "US",
+      "browser": "Chrome",
+      "operating_system": "macOS",
+      "device_type": "desktop",
+      "entry_page": "/",
+      "exit_page": "/signup/complete",
+      "pageviews": 5,
+      "session_duration": 245,
+      "session_start": "2024-01-31T14:00:00.000Z",
+      "session_end": "2024-01-31T14:04:05.000Z",
+      "referrer": "https://google.com",
+      "channel": "organic"
+    }
+  ]
+}
+```
+
+</div>
+</div>
+
+---
+
+## Create Goal
+
+<div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
+<div>
+
+```
+POST /api/goals/:site
+```
+
+Creates a new goal for tracking conversions.
+
+### Path Parameters
+
+<TypeTable
+  type={{
+    site: {
+      description: 'Site ID or site identifier',
+      type: 'string | number',
+      required: true,
+    },
+  }}
+/>
+
+### Request Body
+
+<TypeTable
+  type={{
+    name: {
+      description: 'Goal name',
+      type: 'string',
+      required: false,
+    },
+    goalType: {
+      description: 'Type of goal',
+      type: 'string',
+      typeDescription: '"path" | "event"',
+      required: true,
+    },
+    config: {
+      description: 'Goal configuration',
+      type: 'GoalConfig',
+      required: true,
+    },
+  }}
+/>
+
+#### GoalConfig for Path Goals
+
+<TypeTable
+  type={{
+    pathPattern: {
+      description: 'URL path pattern to match. Supports wildcards (*)',
+      type: 'string',
+      required: true,
+      typeDescription: 'e.g., "/checkout/*", "/signup/complete"',
+    },
+  }}
+/>
+
+#### GoalConfig for Event Goals
+
+<TypeTable
+  type={{
+    eventName: {
+      description: 'Event name to match',
+      type: 'string',
+      required: true,
+    },
+    eventPropertyKey: {
+      description: 'Property key to match (optional)',
+      type: 'string',
+      required: false,
+    },
+    eventPropertyValue: {
+      description: 'Property value to match (required if key is provided)',
+      type: 'string | number | boolean',
+      required: false,
+    },
+  }}
+/>
+
+### Response
+
+<TypeTable
+  type={{
+    success: {
+      description: 'Whether the goal was created',
+      type: 'boolean',
+    },
+    goalId: {
+      description: 'ID of the created goal',
+      type: 'number',
+    },
+  }}
+/>
+
+</div>
+<div className="flex flex-col gap-4">
+
+<Tabs items={['cURL', 'JavaScript', 'Python', 'PHP', 'Ruby', 'Go', 'Rust', 'Java', '.NET']}>
+  <Tab value="cURL">
+```bash title="Path Goal"
+curl -X POST "https://api.rybbit.io/api/goals/123" \
+  -H "Authorization: Bearer your_api_key_here" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Checkout Complete",
+    "goalType": "path",
+    "config": {
+      "pathPattern": "/checkout/success"
+    }
+  }'
+```
+  </Tab>
+  <Tab value="JavaScript">
+```javascript title="Event Goal"
+const response = await fetch(
+  'https://api.rybbit.io/api/goals/123',
+  {
+    method: 'POST',
+    headers: {
+      'Authorization': 'Bearer your_api_key_here',
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      name: 'Purchase Made',
+      goalType: 'event',
+      config: {
+        eventName: 'purchase',
+        eventPropertyKey: 'plan',
+        eventPropertyValue: 'pro'
+      }
+    })
+  }
+);
+
+const data = await response.json();
+```
+  </Tab>
+  <Tab value="Python">
+```python title="Request"
+import requests
+
+response = requests.post(
+    'https://api.rybbit.io/api/goals/123',
+    json={
+        'name': 'Signup Complete',
+        'goalType': 'path',
+        'config': {
+            'pathPattern': '/signup/*'
+        }
+    },
+    headers={
+        'Authorization': 'Bearer your_api_key_here'
+    }
+)
+
+data = response.json()
+```
+  </Tab>
+  <Tab value="PHP">
+```php title="Request"
+$body = [
+    'name' => 'Checkout Complete',
+    'goalType' => 'path',
+    'config' => [
+        'pathPattern' => '/checkout/success'
+    ]
+];
+
+$ch = curl_init();
+curl_setopt($ch, CURLOPT_URL, 'https://api.rybbit.io/api/goals/123');
+curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+curl_setopt($ch, CURLOPT_POST, true);
+curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($body));
+curl_setopt($ch, CURLOPT_HTTPHEADER, [
+    'Authorization: Bearer your_api_key_here',
+    'Content-Type: application/json'
+]);
+
+$response = curl_exec($ch);
+curl_close($ch);
+
+$data = json_decode($response, true);
+```
+  </Tab>
+  <Tab value="Ruby">
+```ruby title="Request"
+require 'net/http'
+require 'json'
+
+uri = URI('https://api.rybbit.io/api/goals/123')
+request = Net::HTTP::Post.new(uri)
+request['Authorization'] = 'Bearer your_api_key_here'
+request['Content-Type'] = 'application/json'
+request.body = {
+  name: 'Checkout Complete',
+  goalType: 'path',
+  config: { pathPattern: '/checkout/success' }
+}.to_json
+
+response = Net::HTTP.start(uri.hostname, uri.port, use_ssl: true) do |http|
+  http.request(request)
+end
+
+data = JSON.parse(response.body)
+```
+  </Tab>
+  <Tab value="Go">
+```go title="Request"
+body := map[string]interface{}{
+    "name": "Checkout Complete",
+    "goalType": "path",
+    "config": map[string]string{
+        "pathPattern": "/checkout/success",
+    },
+}
+jsonBody, _ := json.Marshal(body)
+
+req, _ := http.NewRequest("POST", "https://api.rybbit.io/api/goals/123", bytes.NewBuffer(jsonBody))
+req.Header.Set("Authorization", "Bearer your_api_key_here")
+req.Header.Set("Content-Type", "application/json")
+
+client := &http.Client{}
+resp, _ := client.Do(req)
+defer resp.Body.Close()
+
+var data map[string]interface{}
+json.NewDecoder(resp.Body).Decode(&data)
+```
+  </Tab>
+  <Tab value="Rust">
+```rust title="Request"
+let body = serde_json::json!({
+    "name": "Checkout Complete",
+    "goalType": "path",
+    "config": {
+        "pathPattern": "/checkout/success"
+    }
+});
+
+let client = reqwest::Client::new();
+let res = client
+    .post("https://api.rybbit.io/api/goals/123")
+    .header("Authorization", "Bearer your_api_key_here")
+    .json(&body)
+    .send()
+    .await?;
+
+let data: serde_json::Value = res.json().await?;
+```
+  </Tab>
+  <Tab value="Java">
+```java title="Request"
+String json = """
+{
+  "name": "Checkout Complete",
+  "goalType": "path",
+  "config": {
+    "pathPattern": "/checkout/success"
+  }
+}
+""";
+
+HttpClient client = HttpClient.newHttpClient();
+HttpRequest request = HttpRequest.newBuilder()
+    .uri(URI.create("https://api.rybbit.io/api/goals/123"))
+    .header("Authorization", "Bearer your_api_key_here")
+    .header("Content-Type", "application/json")
+    .POST(HttpRequest.BodyPublishers.ofString(json))
+    .build();
+
+HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+```
+  </Tab>
+  <Tab value=".NET">
+```csharp title="Request"
+var body = new
+{
+    name = "Checkout Complete",
+    goalType = "path",
+    config = new { pathPattern = "/checkout/success" }
+};
+
+using var client = new HttpClient();
+client.DefaultRequestHeaders.Add("Authorization", "Bearer your_api_key_here");
+
+var content = new StringContent(
+    JsonSerializer.Serialize(body),
+    Encoding.UTF8,
+    "application/json");
+
+var response = await client.PostAsync("https://api.rybbit.io/api/goals/123", content);
+var data = await response.Content.ReadAsStringAsync();
+```
+  </Tab>
+</Tabs>
+
+```json title="Response"
+{
+  "success": true,
+  "goalId": 3
+}
+```
+
+</div>
+</div>
+
+---
+
+## Update Goal
+
+<div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
+<div>
+
+```
+PUT /api/goals/:goalId/:site
+```
+
+Updates an existing goal.
+
+### Path Parameters
+
+<TypeTable
+  type={{
+    goalId: {
+      description: 'ID of the goal to update',
+      type: 'string | number',
+      required: true,
+    },
+    site: {
+      description: 'Site ID or site identifier',
+      type: 'string | number',
+      required: true,
+    },
+  }}
+/>
+
+### Request Body
+
+<TypeTable
+  type={{
+    name: {
+      description: 'Updated goal name',
+      type: 'string',
+      required: false,
+    },
+    goalType: {
+      description: 'Type of goal',
+      type: 'string',
+      typeDescription: '"path" | "event"',
+      required: true,
+    },
+    config: {
+      description: 'Updated goal configuration',
+      type: 'GoalConfig',
+      required: true,
+    },
+  }}
+/>
+
+### Response
+
+<TypeTable
+  type={{
+    success: {
+      description: 'Whether the goal was updated',
+      type: 'boolean',
+    },
+    goalId: {
+      description: 'ID of the updated goal',
+      type: 'number',
+    },
+  }}
+/>
+
+</div>
+<div className="flex flex-col gap-4">
+
+<Tabs items={['cURL', 'JavaScript', 'Python', 'PHP', 'Ruby', 'Go', 'Rust', 'Java', '.NET']}>
+  <Tab value="cURL">
+```bash title="Request"
+curl -X PUT "https://api.rybbit.io/api/goals/1/123" \
+  -H "Authorization: Bearer your_api_key_here" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Signup Completed (Updated)",
+    "goalType": "path",
+    "config": {
+      "pathPattern": "/signup/complete/*"
+    }
+  }'
+```
+  </Tab>
+  <Tab value="JavaScript">
+```javascript title="Request"
+const response = await fetch(
+  'https://api.rybbit.io/api/goals/1/123',
+  {
+    method: 'PUT',
+    headers: {
+      'Authorization': 'Bearer your_api_key_here',
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      name: 'Signup Completed (Updated)',
+      goalType: 'path',
+      config: {
+        pathPattern: '/signup/complete/*'
+      }
+    })
+  }
+);
+
+const data = await response.json();
+```
+  </Tab>
+  <Tab value="Python">
+```python title="Request"
+import requests
+
+response = requests.put(
+    'https://api.rybbit.io/api/goals/1/123',
+    json={
+        'name': 'Signup Completed (Updated)',
+        'goalType': 'path',
+        'config': {
+            'pathPattern': '/signup/complete/*'
+        }
+    },
+    headers={
+        'Authorization': 'Bearer your_api_key_here'
+    }
+)
+
+data = response.json()
+```
+  </Tab>
+  <Tab value="PHP">
+```php title="Request"
+$body = [
+    'name' => 'Signup Completed (Updated)',
+    'goalType' => 'path',
+    'config' => [
+        'pathPattern' => '/signup/complete/*'
+    ]
+];
+
+$ch = curl_init();
+curl_setopt($ch, CURLOPT_URL, 'https://api.rybbit.io/api/goals/1/123');
+curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'PUT');
+curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($body));
+curl_setopt($ch, CURLOPT_HTTPHEADER, [
+    'Authorization: Bearer your_api_key_here',
+    'Content-Type: application/json'
+]);
+
+$response = curl_exec($ch);
+curl_close($ch);
+
+$data = json_decode($response, true);
+```
+  </Tab>
+  <Tab value="Ruby">
+```ruby title="Request"
+require 'net/http'
+require 'json'
+
+uri = URI('https://api.rybbit.io/api/goals/1/123')
+request = Net::HTTP::Put.new(uri)
+request['Authorization'] = 'Bearer your_api_key_here'
+request['Content-Type'] = 'application/json'
+request.body = {
+  name: 'Signup Completed (Updated)',
+  goalType: 'path',
+  config: { pathPattern: '/signup/complete/*' }
+}.to_json
+
+response = Net::HTTP.start(uri.hostname, uri.port, use_ssl: true) do |http|
+  http.request(request)
+end
+
+data = JSON.parse(response.body)
+```
+  </Tab>
+  <Tab value="Go">
+```go title="Request"
+body := map[string]interface{}{
+    "name": "Signup Completed (Updated)",
+    "goalType": "path",
+    "config": map[string]string{
+        "pathPattern": "/signup/complete/*",
+    },
+}
+jsonBody, _ := json.Marshal(body)
+
+req, _ := http.NewRequest("PUT", "https://api.rybbit.io/api/goals/1/123", bytes.NewBuffer(jsonBody))
+req.Header.Set("Authorization", "Bearer your_api_key_here")
+req.Header.Set("Content-Type", "application/json")
+
+client := &http.Client{}
+resp, _ := client.Do(req)
+defer resp.Body.Close()
+
+var data map[string]interface{}
+json.NewDecoder(resp.Body).Decode(&data)
+```
+  </Tab>
+  <Tab value="Rust">
+```rust title="Request"
+let body = serde_json::json!({
+    "name": "Signup Completed (Updated)",
+    "goalType": "path",
+    "config": {
+        "pathPattern": "/signup/complete/*"
+    }
+});
+
+let client = reqwest::Client::new();
+let res = client
+    .put("https://api.rybbit.io/api/goals/1/123")
+    .header("Authorization", "Bearer your_api_key_here")
+    .json(&body)
+    .send()
+    .await?;
+
+let data: serde_json::Value = res.json().await?;
+```
+  </Tab>
+  <Tab value="Java">
+```java title="Request"
+String json = """
+{
+  "name": "Signup Completed (Updated)",
+  "goalType": "path",
+  "config": {
+    "pathPattern": "/signup/complete/*"
+  }
+}
+""";
+
+HttpClient client = HttpClient.newHttpClient();
+HttpRequest request = HttpRequest.newBuilder()
+    .uri(URI.create("https://api.rybbit.io/api/goals/1/123"))
+    .header("Authorization", "Bearer your_api_key_here")
+    .header("Content-Type", "application/json")
+    .PUT(HttpRequest.BodyPublishers.ofString(json))
+    .build();
+
+HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+```
+  </Tab>
+  <Tab value=".NET">
+```csharp title="Request"
+var body = new
+{
+    name = "Signup Completed (Updated)",
+    goalType = "path",
+    config = new { pathPattern = "/signup/complete/*" }
+};
+
+using var client = new HttpClient();
+client.DefaultRequestHeaders.Add("Authorization", "Bearer your_api_key_here");
+
+var content = new StringContent(
+    JsonSerializer.Serialize(body),
+    Encoding.UTF8,
+    "application/json");
+
+var response = await client.PutAsync("https://api.rybbit.io/api/goals/1/123", content);
+var data = await response.Content.ReadAsStringAsync();
+```
+  </Tab>
+</Tabs>
+
+```json title="Response"
+{
+  "success": true,
+  "goalId": 1
+}
+```
+
+</div>
+</div>
+
+---
+
+## Delete Goal
+
+<div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
+<div>
+
+```
+DELETE /api/goals/:goalId/:site
+```
+
+Deletes a goal. This action cannot be undone.
+
+### Path Parameters
+
+<TypeTable
+  type={{
+    goalId: {
+      description: 'ID of the goal to delete',
+      type: 'string | number',
+      required: true,
+    },
+    site: {
+      description: 'Site ID or site identifier',
+      type: 'string | number',
+      required: true,
+    },
+  }}
+/>
+
+### Response
+
+<TypeTable
+  type={{
+    success: {
+      description: 'Whether the goal was deleted',
+      type: 'boolean',
+    },
+  }}
+/>
+
+</div>
+<div className="flex flex-col gap-4">
+
+<Tabs items={['cURL', 'JavaScript', 'Python', 'PHP', 'Ruby', 'Go', 'Rust', 'Java', '.NET']}>
+  <Tab value="cURL">
+```bash title="Request"
+curl -X DELETE "https://api.rybbit.io/api/goals/1/123" \
+  -H "Authorization: Bearer your_api_key_here"
+```
+  </Tab>
+  <Tab value="JavaScript">
+```javascript title="Request"
+const response = await fetch(
+  'https://api.rybbit.io/api/goals/1/123',
+  {
+    method: 'DELETE',
+    headers: {
+      'Authorization': 'Bearer your_api_key_here'
+    }
+  }
+);
+
+const data = await response.json();
+```
+  </Tab>
+  <Tab value="Python">
+```python title="Request"
+import requests
+
+response = requests.delete(
+    'https://api.rybbit.io/api/goals/1/123',
+    headers={
+        'Authorization': 'Bearer your_api_key_here'
+    }
+)
+
+data = response.json()
+```
+  </Tab>
+  <Tab value="PHP">
+```php title="Request"
+$ch = curl_init();
+curl_setopt($ch, CURLOPT_URL, 'https://api.rybbit.io/api/goals/1/123');
+curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'DELETE');
+curl_setopt($ch, CURLOPT_HTTPHEADER, [
+    'Authorization: Bearer your_api_key_here'
+]);
+
+$response = curl_exec($ch);
+curl_close($ch);
+
+$data = json_decode($response, true);
+```
+  </Tab>
+  <Tab value="Ruby">
+```ruby title="Request"
+require 'net/http'
+require 'json'
+
+uri = URI('https://api.rybbit.io/api/goals/1/123')
+request = Net::HTTP::Delete.new(uri)
+request['Authorization'] = 'Bearer your_api_key_here'
+
+response = Net::HTTP.start(uri.hostname, uri.port, use_ssl: true) do |http|
+  http.request(request)
+end
+
+data = JSON.parse(response.body)
+```
+  </Tab>
+  <Tab value="Go">
+```go title="Request"
+req, _ := http.NewRequest("DELETE", "https://api.rybbit.io/api/goals/1/123", nil)
+req.Header.Set("Authorization", "Bearer your_api_key_here")
+
+client := &http.Client{}
+resp, _ := client.Do(req)
+defer resp.Body.Close()
+
+var data map[string]interface{}
+json.NewDecoder(resp.Body).Decode(&data)
+```
+  </Tab>
+  <Tab value="Rust">
+```rust title="Request"
+let client = reqwest::Client::new();
+let res = client
+    .delete("https://api.rybbit.io/api/goals/1/123")
+    .header("Authorization", "Bearer your_api_key_here")
+    .send()
+    .await?;
+
+let data: serde_json::Value = res.json().await?;
+```
+  </Tab>
+  <Tab value="Java">
+```java title="Request"
+HttpClient client = HttpClient.newHttpClient();
+HttpRequest request = HttpRequest.newBuilder()
+    .uri(URI.create("https://api.rybbit.io/api/goals/1/123"))
+    .header("Authorization", "Bearer your_api_key_here")
+    .DELETE()
+    .build();
+
+HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+```
+  </Tab>
+  <Tab value=".NET">
+```csharp title="Request"
+using var client = new HttpClient();
+client.DefaultRequestHeaders.Add("Authorization", "Bearer your_api_key_here");
+
+var response = await client.DeleteAsync("https://api.rybbit.io/api/goals/1/123");
+var data = await response.Content.ReadAsStringAsync();
+```
+  </Tab>
+</Tabs>
+
+```json title="Response"
+{
+  "success": true
+}
+```
+
+</div>
+</div>

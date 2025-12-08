@@ -56,12 +56,11 @@ export function useAddUserToOrganization() {
   return useMutation<{ message: string }, Error, AddUserToOrganizationInput>({
     mutationFn: async ({ email, role, organizationId }: AddUserToOrganizationInput) => {
       try {
-        return await authedFetch<{ message: string }>("/add-user-to-organization", undefined, {
+        return await authedFetch<{ message: string }>(`/organizations/${organizationId}/members`, undefined, {
           method: "POST",
           data: {
             email,
             role,
-            organizationId,
           },
         });
       } catch (error) {

@@ -19,7 +19,7 @@ export async function generateMetadata(props: { params: Promise<{ slug: string[]
   const page = blogSource.getPage(params.slug);
   if (!page) return {};
 
-  const url = `https://docs.rybbit.io/blog/${params.slug.join("/")}`;
+  const url = `https://rybbit.com/blog/${params.slug.join("/")}`;
   const publishedTime = page.data.date ? new Date(page.data.date).toISOString() : undefined;
   const ogImage = page.data.image || "/opengraph-image.png";
 
@@ -168,7 +168,10 @@ export default async function BlogPostPage(props: { params: Promise<{ slug: stri
             components={{
               ...defaultMdxComponents,
               pre: (props: React.ComponentPropsWithoutRef<"pre">) => (
-                <Pre {...props} className="bg-neutral-50 dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-lg" />
+                <Pre
+                  {...props}
+                  className="bg-neutral-50 dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-lg"
+                />
               ),
               code: ({ className, ...props }: React.ComponentPropsWithoutRef<"code">) => {
                 // Check if this code is inside a pre tag (code block)

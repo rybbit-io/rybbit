@@ -2,9 +2,9 @@
 
 import { ChevronDown, ChevronUp, Copy, Edit, Trash2 } from "lucide-react";
 import { useState } from "react";
-import { useDeleteGoal } from "../../../../api/analytics/goals/useDeleteGoal";
-import { Goal } from "../../../../api/analytics/goals/useGetGoals";
-import { useGetGoalSessions } from "../../../../api/analytics/goals/useGetGoalSessions";
+import { useDeleteGoal } from "../../../../api/analytics/hooks/goals/useDeleteGoal";
+import { Goal } from "../../../../api/analytics/endpoints";
+import { useGetGoalSessions } from "../../../../api/analytics/hooks/goals/useGetGoalSessions";
 import { EventIcon, PageviewIcon } from "../../../../components/EventIcons";
 import { SessionsList } from "../../../../components/Sessions/SessionsList";
 import {
@@ -101,14 +101,14 @@ export default function GoalCard({ goal, siteId }: GoalCardProps) {
 
             <div className="mt-1">
               <span className="text-xs text-neutral-500 dark:text-neutral-400 mr-2">Pattern:</span>
-              <code className="text-xs bg-neutral-200 dark:bg-neutral-800 px-1 py-0.5 rounded">
+              <code className="text-xs bg-neutral-100 dark:bg-neutral-800 px-1 py-0.5 rounded">
                 {goal.goalType === "path" ? goal.config.pathPattern : goal.config.eventName}
               </code>
 
               {goal.goalType === "event" && goal.config.eventPropertyKey && (
                 <div className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
                   Property:{" "}
-                  <code className="text-xs bg-neutral-200 dark:bg-neutral-800 px-1 py-0.5 rounded text-neutral-900 dark:text-neutral-100">
+                  <code className="text-xs bg-neutral-100 dark:bg-neutral-800 px-1 py-0.5 rounded text-neutral-900 dark:text-neutral-100">
                     {goal.config.eventPropertyKey}: {String(goal.config.eventPropertyValue)}
                   </code>
                 </div>
@@ -131,7 +131,7 @@ export default function GoalCard({ goal, siteId }: GoalCardProps) {
           </div>
 
           {/* Right section - Actions */}
-          <div className="flex flex-shrink-0 gap-1 pl-4">
+          <div className="flex shrink-0 gap-1 pl-4">
             <div onClick={e => e.stopPropagation()}>
               <GoalFormModal
                 siteId={siteId}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useJourneys } from "@/api/analytics/useGetJourneys";
+import { useJourneys } from "@/api/analytics/hooks/useGetJourneys";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Input } from "@/components/ui/input";
 import { Slider } from "@/components/ui/slider";

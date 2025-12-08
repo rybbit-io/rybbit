@@ -2,7 +2,7 @@ import { FastifyReply, FastifyRequest } from "fastify";
 import SqlString from "sqlstring";
 import { clickhouse } from "../../db/clickhouse/clickhouse.js";
 import { getSitesUserHasAccessTo } from "../../lib/auth-utils.js";
-import { processResults } from "./utils.js";
+import { processResults } from "./utils/utils.js";
 
 type OrgEventCountResponse = {
   event_date: string;

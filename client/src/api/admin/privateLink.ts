@@ -17,7 +17,7 @@ export const useGetPrivateLinkConfig = (siteId: number) => {
       const response = await authedFetch<{
         success: boolean;
         data: PrivateLinkConfigResponse;
-      }>(`/site/${siteId}/private-link-config`);
+      }>(`/sites/${siteId}/private-link-config`);
       return response.data;
     },
     enabled: !!siteId,
@@ -34,7 +34,7 @@ export const useGeneratePrivateLinkKey = () => {
         success: boolean;
         data: UpdatePrivateLinkConfigResponse;
       }>(
-        `/site/${siteId}/private-link-config`,
+        `/sites/${siteId}/private-link-config`,
         {},
         {
           method: "POST",
@@ -59,7 +59,7 @@ export const useRevokePrivateLinkKey = () => {
         success: boolean;
         data: UpdatePrivateLinkConfigResponse;
       }>(
-        `/site/${siteId}/private-link-config`,
+        `/sites/${siteId}/private-link-config`,
         {},
         {
           method: "POST",

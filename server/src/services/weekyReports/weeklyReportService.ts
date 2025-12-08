@@ -4,7 +4,7 @@ import { eq } from "drizzle-orm";
 import { db } from "../../db/postgres/postgres.js";
 import { organization, member, user, sites } from "../../db/postgres/schema.js";
 import { clickhouse } from "../../db/clickhouse/clickhouse.js";
-import { processResults } from "../../api/analytics/utils.js";
+import { processResults } from "../../api/analytics/utils/utils.js";
 import { createServiceLogger } from "../../lib/logger/logger.js";
 import { sendWeeklyReportEmail } from "../../lib/email/email.js";
 import { IS_CLOUD } from "../../lib/const.js";

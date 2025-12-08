@@ -3,7 +3,7 @@ import { clickhouse } from "../../../db/clickhouse/clickhouse.js";
 import { db } from "../../../db/postgres/postgres.js";
 import { goals } from "../../../db/postgres/schema.js";
 import { eq } from "drizzle-orm";
-import { getTimeStatement, processResults, patternToRegex } from "../utils.js";
+import { getTimeStatement, processResults, patternToRegex } from "../utils/utils.js";
 import { FilterParams } from "@rybbit/shared";
 import { GetSessionsResponse } from "../getSessions.js";
 import SqlString from "sqlstring";

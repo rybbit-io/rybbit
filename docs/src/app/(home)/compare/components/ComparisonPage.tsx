@@ -78,7 +78,7 @@ export function ComparisonPage({ competitorName, sections, comparisonContent }: 
               Track your site
             </TrackedButton>
             <TrackedButton
-              href="https://demo.rybbit.com/21"
+              href="https://demo.rybbit.com/1"
               eventName="demo"
               target="_blank"
               rel="noopener noreferrer"

@@ -9,11 +9,10 @@ import { AuthError } from "@/components/auth/AuthError";
 import { SocialButtons } from "@/components/auth/SocialButtons";
 
 interface LoginProps {
-  inviterEmail?: string | null;
-  organization?: string | null;
+  callbackURL: string;
 }
 
-export function Login({ inviterEmail, organization }: LoginProps) {
+export function Login({ callbackURL }: LoginProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string>("");
   const [email, setEmail] = useState("");
@@ -51,6 +50,7 @@ export function Login({ inviterEmail, organization }: LoginProps) {
   return (
     <form onSubmit={handleLogin}>
       <div className="flex flex-col gap-4">
+        <SocialButtons onError={setError} callbackURL={callbackURL} />
         <AuthInput
           id="email"
           label="Email"
@@ -60,7 +60,6 @@ export function Login({ inviterEmail, organization }: LoginProps) {
           value={email}
           onChange={e => setEmail(e.target.value)}
         />
-
         <AuthInput
           id="password"
           label="Password"
@@ -70,13 +69,9 @@ export function Login({ inviterEmail, organization }: LoginProps) {
           value={password}
           onChange={e => setPassword(e.target.value)}
         />
-
         <AuthButton isLoading={isLoading} loadingText="Logging in...">
           Login to Accept Invitation
         </AuthButton>
-
-        <SocialButtons onError={setError} />
-
         <AuthError error={error} />
       </div>
     </form>

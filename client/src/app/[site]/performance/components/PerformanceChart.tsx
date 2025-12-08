@@ -8,7 +8,7 @@ import { DateTime } from "luxon";
 import { Tilt_Warp } from "next/font/google";
 import Link from "next/link";
 import { useState } from "react";
-import { useGetPerformanceTimeSeries } from "../../../../api/analytics/performance/useGetPerformanceTimeSeries";
+import { useGetPerformanceTimeSeries } from "../../../../api/analytics/hooks/performance/useGetPerformanceTimeSeries";
 import { BucketSelection } from "../../../../components/BucketSelection";
 import { RybbitLogo } from "../../../../components/RybbitLogo";
 import { authClient } from "../../../../lib/auth";

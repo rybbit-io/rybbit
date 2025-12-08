@@ -1,0 +1,480 @@
+---
+title: Getting Started
+description: Authentication, common parameters, and best practices for the Rybbit Stats API
+---
+
+import { TypeTable } from 'fumadocs-ui/components/type-table';
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+
+<Callout type="warn">
+The API is currently in beta. There may be breaking changes as we continue to improve and expand the API.
+</Callout>
+
+## Authentication
+
+All API requests must include authentication using one of the following methods:
+
+### Bearer Token (Recommended)
+
+```bash
+Authorization: Bearer your_api_key_here
+```
+
+### Query Parameter (Testing Only)
+
+```bash
+?api_key=your_api_key_here
+```
+
+<Callout type="warn">
+Query parameters expose API keys in server logs and browser history. Use only for quick testing.
+</Callout>
+
+## Generating API Keys
+
+API keys are user-scoped and grant organization-level access:
+
+1. Navigate to **Settings → Account** in your Rybbit dashboard
+2. Scroll to the **API Keys** section
+3. Enter a name for your API key
+4. Click **Create**
+5. Copy the key immediately (it won't be shown again)
+
+### Rate Limits
+
+- **500 requests per 10 minutes** per API key
+- Keys are tied to your user account and grant access to all sites in your organization(s)
+
+---
+
+## Common Parameters
+
+The following parameters are shared across all analytics endpoints.
+
+### Time Parameters
+
+All endpoints require either date-based or relative time parameters:
+
+<TypeTable
+  type={{
+    start_date: {
+      description: 'Start date for the query period',
+      type: 'string',
+      typeDescription: 'Format: YYYY-MM-DD (e.g., "2024-01-15")',
+      required: false,
+    },
+    end_date: {
+      description: 'End date for the query period',
+      type: 'string',
+      typeDescription: 'Format: YYYY-MM-DD (e.g., "2024-01-31")',
+      required: false,
+    },
+    time_zone: {
+      description: 'IANA timezone identifier',
+      type: 'string',
+      typeDescription: 'e.g., "America/New_York", "Europe/London", "Asia/Tokyo"',
+      required: false,
+    },
+    past_minutes_start: {
+      description: 'Start of relative time range (older boundary)',
+      type: 'number',
+      typeDescription: 'Minutes ago from now. Must be greater than past_minutes_end.',
+      required: false,
+    },
+    past_minutes_end: {
+      description: 'End of relative time range (newer boundary)',
+      type: 'number',
+      typeDescription: 'Minutes ago from now. Must be less than past_minutes_start.',
+      required: false,
+    },
+  }}
+/>
+
+**Note:** You must provide either:
+- All three date parameters (`start_date`, `end_date`, `time_zone`), OR
+- Both relative parameters (`past_minutes_start`, `past_minutes_end`)
+
+#### Examples
+
+**Date-based query (last 30 days):**
+```
+?start_date=2024-01-01&end_date=2024-01-31&time_zone=America/New_York
+```
+
+**Relative query (last 60 minutes):**
+```
+?past_minutes_start=60&past_minutes_end=0
+```
+
+### Filter Parameters
+
+The `filters` parameter accepts a JSON-encoded array of filter objects to narrow down your data.
+
+#### Filter Object Structure
+
+<TypeTable
+  type={{
+    parameter: {
+      description: 'The dimension to filter on',
+      type: 'FilterParameter',
+      typeDescription: 'See Filter Parameters table below',
+      required: true,
+    },
+    type: {
+      description: 'The type of comparison to perform',
+      type: 'FilterType',
+      typeDescription: '"equals" | "not_equals" | "contains" | "not_contains" | "regex" | "not_regex" | "greater_than" | "less_than"',
+      required: true,
+    },
+    value: {
+      description: 'Array of values to match against',
+      type: 'Array<string | number>',
+      typeDescription: 'Multiple values are treated as OR conditions',
+      required: true,
+    },
+  }}
+/>
+
+#### Filter Types
+
+<TypeTable
+  type={{
+    equals: {
+      description: 'Exact match',
+      type: 'string',
+      typeDescription: 'Value must exactly match',
+    },
+    not_equals: {
+      description: 'Exclude exact matches',
+      type: 'string',
+      typeDescription: 'Value must not match',
+    },
+    contains: {
+      description: 'Substring match',
+      type: 'string',
+      typeDescription: 'Value must contain the substring (uses SQL LIKE %value%)',
+    },
+    not_contains: {
+      description: 'Exclude substring matches',
+      type: 'string',
+      typeDescription: 'Value must not contain the substring',
+    },
+    regex: {
+      description: 'Regular expression match',
+      type: 'string',
+      typeDescription: 'Value must match the regex pattern (max 500 characters)',
+    },
+    not_regex: {
+      description: 'Exclude regex matches',
+      type: 'string',
+      typeDescription: 'Value must not match the regex pattern',
+    },
+    greater_than: {
+      description: 'Numeric greater than',
+      type: 'number',
+      typeDescription: 'For numeric fields like lat, lon',
+    },
+    less_than: {
+      description: 'Numeric less than',
+      type: 'number',
+      typeDescription: 'For numeric fields like lat, lon',
+    },
+  }}
+/>
+
+#### Available Filter Parameters
+
+**Browser & Device**
+
+<TypeTable
+  type={{
+    browser: {
+      description: 'Browser name',
+      type: 'string',
+      typeDescription: 'e.g., "Chrome", "Firefox", "Safari"',
+    },
+    browser_version: {
+      description: 'Browser with version',
+      type: 'string',
+      typeDescription: 'e.g., "Chrome 120"',
+    },
+    operating_system: {
+      description: 'Operating system name',
+      type: 'string',
+      typeDescription: 'e.g., "Windows", "macOS", "Linux"',
+    },
+    operating_system_version: {
+      description: 'OS with version',
+      type: 'string',
+      typeDescription: 'e.g., "Windows 10/11", "macOS 14"',
+    },
+    device_type: {
+      description: 'Device category',
+      type: 'string',
+      typeDescription: '"desktop", "mobile", "tablet"',
+    },
+    dimensions: {
+      description: 'Screen dimensions',
+      type: 'string',
+      typeDescription: 'e.g., "1920x1080", "390x844"',
+    },
+    language: {
+      description: 'Browser language',
+      type: 'string',
+      typeDescription: 'e.g., "en-US", "es-ES"',
+    },
+  }}
+/>
+
+**Location**
+
+<TypeTable
+  type={{
+    country: {
+      description: 'Country code',
+      type: 'string',
+      typeDescription: 'ISO 3166-1 alpha-2 code, e.g., "US", "GB"',
+    },
+    region: {
+      description: 'Geographic region/state',
+      type: 'string',
+      typeDescription: 'e.g., "California", "England"',
+    },
+    city: {
+      description: 'City name with region prefix',
+      type: 'string',
+      typeDescription: 'Format: "Region-City", e.g., "CA-San Francisco"',
+    },
+    timezone: {
+      description: 'User timezone',
+      type: 'string',
+      typeDescription: 'IANA timezone, e.g., "America/New_York"',
+    },
+    lat: {
+      description: 'Latitude',
+      type: 'number',
+      typeDescription: 'Supports greater_than, less_than, equals (with 0.001 tolerance)',
+    },
+    lon: {
+      description: 'Longitude',
+      type: 'number',
+      typeDescription: 'Supports greater_than, less_than, equals (with 0.001 tolerance)',
+    },
+  }}
+/>
+
+**Page & Traffic**
+
+<TypeTable
+  type={{
+    pathname: {
+      description: 'URL pathname',
+      type: 'string',
+      typeDescription: 'e.g., "/blog/post-title"',
+    },
+    page_title: {
+      description: 'HTML page title',
+      type: 'string',
+    },
+    hostname: {
+      description: 'Website hostname',
+      type: 'string',
+      typeDescription: 'e.g., "example.com"',
+    },
+    querystring: {
+      description: 'URL query string',
+      type: 'string',
+      typeDescription: 'e.g., "?ref=twitter"',
+    },
+    referrer: {
+      description: 'Referrer domain (without www)',
+      type: 'string',
+      typeDescription: 'e.g., "google.com", "twitter.com"',
+    },
+    entry_page: {
+      description: 'First page in session (landing page)',
+      type: 'string',
+    },
+    exit_page: {
+      description: 'Last page in session',
+      type: 'string',
+    },
+    channel: {
+      description: 'Marketing channel',
+      type: 'string',
+      typeDescription: 'e.g., "Direct", "Organic Search", "Social"',
+    },
+  }}
+/>
+
+**UTM Parameters**
+
+<TypeTable
+  type={{
+    utm_source: {
+      description: 'UTM source parameter',
+      type: 'string',
+      typeDescription: 'e.g., "google", "newsletter"',
+    },
+    utm_medium: {
+      description: 'UTM medium parameter',
+      type: 'string',
+      typeDescription: 'e.g., "cpc", "email"',
+    },
+    utm_campaign: {
+      description: 'UTM campaign parameter',
+      type: 'string',
+    },
+    utm_term: {
+      description: 'UTM term parameter',
+      type: 'string',
+    },
+    utm_content: {
+      description: 'UTM content parameter',
+      type: 'string',
+    },
+  }}
+/>
+
+**User & Events**
+
+<TypeTable
+  type={{
+    user_id: {
+      description: 'User identifier',
+      type: 'string',
+      typeDescription: 'Matches both device fingerprint and custom identified user ID',
+    },
+    event_name: {
+      description: 'Custom event name',
+      type: 'string',
+      typeDescription: 'Filters to sessions containing the event',
+    },
+  }}
+/>
+
+#### Filter Examples
+
+<Tabs items={['Single Filter', 'Multiple Filters', 'Contains', 'Regex', 'Numeric', 'URL-encoded']}>
+  <Tab value="Single Filter">
+```json
+[
+  {
+    "parameter": "country",
+    "type": "equals",
+    "value": ["US"]
+  }
+]
+```
+  </Tab>
+  <Tab value="Multiple Filters">
+Multiple filters use AND logic:
+```json
+[
+  {
+    "parameter": "country",
+    "type": "equals",
+    "value": ["US", "CA"]
+  },
+  {
+    "parameter": "device_type",
+    "type": "equals",
+    "value": ["mobile"]
+  }
+]
+```
+  </Tab>
+  <Tab value="Contains">
+Substring match:
+```json
+[
+  {
+    "parameter": "pathname",
+    "type": "contains",
+    "value": ["/blog"]
+  }
+]
+```
+  </Tab>
+  <Tab value="Regex">
+Pattern match:
+```json
+[
+  {
+    "parameter": "pathname",
+    "type": "regex",
+    "value": ["^/products/[0-9]+$"]
+  }
+]
+```
+  </Tab>
+  <Tab value="Numeric">
+Geolocation comparison:
+```json
+[
+  {
+    "parameter": "lat",
+    "type": "greater_than",
+    "value": ["37.0"]
+  },
+  {
+    "parameter": "lat",
+    "type": "less_than",
+    "value": ["38.0"]
+  }
+]
+```
+  </Tab>
+  <Tab value="URL-encoded">
+```
+?filters=%5B%7B%22parameter%22%3A%22country%22%2C%22type%22%3A%22equals%22%2C%22value%22%3A%5B%22US%22%5D%7D%5D
+```
+  </Tab>
+</Tabs>
+
+---
+
+## Error Responses
+
+All endpoints return standard HTTP status codes:
+
+- **200** - Success
+- **400** - Bad Request (invalid parameters)
+- **401** - Unauthorized (missing or invalid API key)
+- **403** - Forbidden (no access to site)
+- **404** - Not Found (site doesn't exist)
+- **429** - Too Many Requests (rate limit exceeded)
+- **500** - Internal Server Error
+
+### Error Response Format
+
+```json
+{
+  "error": "Error message describing what went wrong"
+}
+```
+
+---
+
+## Best Practices
+
+1. **Cache responses** - Analytics data doesn't change frequently. Cache for at least 5-10 minutes.
+2. **Use date ranges** - For recent data, use `past_minutes_start/end`. For historical data, use `start_date/end_date`.
+3. **Filter strategically** - Apply filters to reduce data transfer and improve performance.
+4. **Paginate results** - Use the `limit` and `page` parameters for large datasets.
+5. **Monitor rate limits** - Implement exponential backoff if you receive 429 responses.
+
+---
+
+## Rate Limiting
+
+When you exceed the rate limit, you'll receive a `429 Too Many Requests` response:
+
+```json
+{
+  "success": false,
+  "error": "Rate limit exceeded. Maximum 500 requests per 10 minutes per API key."
+}
+```
+
+Wait for the rate limit window to reset before making additional requests.

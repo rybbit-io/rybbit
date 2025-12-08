@@ -1,11 +1,12 @@
 "use client";
 
 import { useCallback, useEffect, useRef } from "react";
-import { useGetEventsInfinite } from "../../../../api/analytics/events/useGetEvents";
+import { useGetEventsInfinite } from "../../../../api/analytics/hooks/events/useGetEvents";
 import { NothingFound } from "../../../../components/NothingFound";
 import { formatter } from "../../../../lib/utils";
 import { EventLogItem, EventLogItemSkeleton } from "./EventLogItem";
 import { ErrorState } from "../../../../components/ErrorState";
+import { ScrollArea } from "../../../../components/ui/scroll-area";
 
 export function EventLog() {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -71,9 +72,8 @@ export function EventLog() {
   }
 
   return (
-    <div className="space-y-1">
-      {/* Event list */}
-      <div ref={containerRef} className="max-h-[80vh] overflow-y-auto pr-2">
+    <ScrollArea className="h-[80vh]">
+      <div ref={containerRef} className="h-full pr-2">
         {allEvents.map((event, index) => (
           <EventLogItem key={`${event.timestamp}-${index}`} event={event} />
         ))}
@@ -96,6 +96,6 @@ export function EventLog() {
           Showing {allEvents.length} of {formatter(data.pages[0].pagination.total)} events
         </div>
       )}
-    </div>
+    </ScrollArea>
   );
 }

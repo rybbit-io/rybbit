@@ -3,7 +3,7 @@
 import { useMemo } from "react";
 import { ResponsiveLine } from "@nivo/line";
 import { parseUtcTimestamp, userLocale } from "@/lib/dateTimeUtils";
-import { nivoTheme } from "@/lib/nivo";
+import { useNivoTheme } from "@/lib/nivo";
 import { formatter } from "@/lib/utils";
 import { DateTime } from "luxon";
 import { useWindowSize } from "@uidotdev/usehooks";
@@ -18,7 +18,7 @@ interface GrowthChartProps {
 export function GrowthChart({ data, color = "#3b82f6", title }: GrowthChartProps) {
   const { width } = useWindowSize();
   const maxTicks = Math.round((width ?? Infinity) / 200);
-
+  const nivoTheme = useNivoTheme();
   const chartData = useMemo(() => {
     if (!data || data.length === 0) return [];
 
@@ -48,11 +48,19 @@ export function GrowthChart({ data, color = "#3b82f6", title }: GrowthChartProps
   }, [data]);
 
   if (data === undefined) {
-    return <div className="h-64 flex items-center justify-center text-neutral-500 dark:text-neutral-400 text-sm">Loading...</div>;
+    return (
+      <div className="h-64 flex items-center justify-center text-neutral-500 dark:text-neutral-400 text-sm">
+        Loading...
+      </div>
+    );
   }
 
   if (!data || data.length === 0) {
-    return <div className="h-64 flex items-center justify-center text-neutral-500 dark:text-neutral-400 text-sm">No data available</div>;
+    return (
+      <div className="h-64 flex items-center justify-center text-neutral-500 dark:text-neutral-400 text-sm">
+        No data available
+      </div>
+    );
   }
 
   return (
@@ -73,7 +81,7 @@ export function GrowthChart({ data, color = "#3b82f6", title }: GrowthChartProps
           stacked: false,
           reverse: false,
         }}
-        enableGridX={false}
+        enableGridX={true}
         enableGridY={true}
         gridYValues={5}
         yFormat=" >-.0f"

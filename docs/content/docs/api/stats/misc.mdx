@@ -1,0 +1,674 @@
+---
+title: Misc
+description: Retention analysis and user journey tracking endpoints
+full: true
+---
+
+import { TypeTable } from 'fumadocs-ui/components/type-table';
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+
+See the [API Reference](/docs/api/stats/reference) for authentication, common parameters, and filters.
+
+## Endpoints
+
+<div className="flex flex-col gap-2 my-6">
+  <a href="#get-retention" className="flex items-center gap-3 p-3 rounded-lg bg-fd-secondary/50 hover:bg-fd-secondary transition-colors no-underline">
+    <span className="px-2 py-1 text-xs font-bold rounded bg-green-500/20 text-green-600 dark:text-green-400">GET</span>
+    <code className="text-sm">/api/retention/:site</code>
+  </a>
+  <a href="#get-journeys" className="flex items-center gap-3 p-3 rounded-lg bg-fd-secondary/50 hover:bg-fd-secondary transition-colors no-underline">
+    <span className="px-2 py-1 text-xs font-bold rounded bg-green-500/20 text-green-600 dark:text-green-400">GET</span>
+    <code className="text-sm">/api/journeys/:site</code>
+  </a>
+</div>
+
+---
+
+## Get Retention
+
+<div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
+<div>
+
+```
+GET /api/retention/:site
+```
+
+Returns cohort-based retention analysis data. Users are grouped into cohorts based on their first visit, and retention is tracked over subsequent time periods.
+
+### Path Parameters
+
+<TypeTable
+  type={{
+    site: {
+      description: 'Site ID or site identifier',
+      type: 'string | number',
+      required: true,
+    },
+  }}
+/>
+
+### Query Parameters
+
+<TypeTable
+  type={{
+    mode: {
+      description: 'Retention period granularity',
+      type: 'string',
+      typeDescription: '"day" | "week"',
+      default: 'week',
+    },
+    range: {
+      description: 'Number of days to analyze (7-365)',
+      type: 'number',
+      default: 90,
+    },
+  }}
+/>
+
+### Response
+
+<TypeTable
+  type={{
+    data: {
+      description: 'Retention analysis data',
+      type: 'RetentionData',
+    },
+  }}
+/>
+
+#### RetentionData Object
+
+<TypeTable
+  type={{
+    cohorts: {
+      description: 'Map of cohort periods to retention data',
+      type: 'Record<string, CohortData>',
+    },
+    maxPeriods: {
+      description: 'Maximum number of retention periods',
+      type: 'number',
+    },
+    mode: {
+      description: 'Retention mode used',
+      type: 'string',
+      typeDescription: '"day" | "week"',
+    },
+    range: {
+      description: 'Time range in days',
+      type: 'number',
+    },
+  }}
+/>
+
+#### CohortData Object
+
+<TypeTable
+  type={{
+    size: {
+      description: 'Number of users in the cohort',
+      type: 'number',
+    },
+    percentages: {
+      description: 'Retention percentages for each period (index 0 = period 0, etc.)',
+      type: '(number | null)[]',
+      typeDescription: 'null indicates no data for that period yet',
+    },
+  }}
+/>
+
+</div>
+<div className="flex flex-col gap-4">
+
+<Tabs items={['cURL', 'JavaScript', 'Python', 'PHP', 'Ruby', 'Go', 'Rust', 'Java', '.NET']}>
+  <Tab value="cURL">
+```bash title="Request"
+curl -X GET "https://api.rybbit.io/api/retention/123?mode=week&range=90" \
+  -H "Authorization: Bearer your_api_key_here"
+```
+  </Tab>
+  <Tab value="JavaScript">
+```javascript title="Request"
+const response = await fetch(
+  'https://api.rybbit.io/api/retention/123?mode=week&range=90',
+  {
+    headers: {
+      'Authorization': 'Bearer your_api_key_here'
+    }
+  }
+);
+
+const data = await response.json();
+```
+  </Tab>
+  <Tab value="Python">
+```python title="Request"
+import requests
+
+response = requests.get(
+    'https://api.rybbit.io/api/retention/123',
+    params={
+        'mode': 'week',
+        'range': 90
+    },
+    headers={
+        'Authorization': 'Bearer your_api_key_here'
+    }
+)
+
+data = response.json()
+```
+  </Tab>
+  <Tab value="PHP">
+```php title="Request"
+$ch = curl_init();
+curl_setopt($ch, CURLOPT_URL, 'https://api.rybbit.io/api/retention/123?mode=week&range=90');
+curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+curl_setopt($ch, CURLOPT_HTTPHEADER, [
+    'Authorization: Bearer your_api_key_here'
+]);
+
+$response = curl_exec($ch);
+curl_close($ch);
+
+$data = json_decode($response, true);
+```
+  </Tab>
+  <Tab value="Ruby">
+```ruby title="Request"
+require 'net/http'
+require 'json'
+
+uri = URI('https://api.rybbit.io/api/retention/123?mode=week&range=90')
+req = Net::HTTP::Get.new(uri)
+req['Authorization'] = 'Bearer your_api_key_here'
+
+res = Net::HTTP.start(uri.hostname, uri.port, use_ssl: true) { |http| http.request(req) }
+data = JSON.parse(res.body)
+```
+  </Tab>
+  <Tab value="Go">
+```go title="Request"
+req, _ := http.NewRequest("GET", "https://api.rybbit.io/api/retention/123?mode=week&range=90", nil)
+req.Header.Set("Authorization", "Bearer your_api_key_here")
+
+client := &http.Client{}
+resp, _ := client.Do(req)
+defer resp.Body.Close()
+
+var data map[string]interface{}
+json.NewDecoder(resp.Body).Decode(&data)
+```
+  </Tab>
+  <Tab value="Rust">
+```rust title="Request"
+let client = reqwest::Client::new();
+let res = client
+    .get("https://api.rybbit.io/api/retention/123?mode=week&range=90")
+    .header("Authorization", "Bearer your_api_key_here")
+    .send()
+    .await?;
+
+let data: serde_json::Value = res.json().await?;
+```
+  </Tab>
+  <Tab value="Java">
+```java title="Request"
+HttpClient client = HttpClient.newHttpClient();
+HttpRequest request = HttpRequest.newBuilder()
+    .uri(URI.create("https://api.rybbit.io/api/retention/123?mode=week&range=90"))
+    .header("Authorization", "Bearer your_api_key_here")
+    .GET()
+    .build();
+
+HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+```
+  </Tab>
+  <Tab value=".NET">
+```csharp title="Request"
+using var client = new HttpClient();
+client.DefaultRequestHeaders.Add("Authorization", "Bearer your_api_key_here");
+
+var response = await client.GetAsync("https://api.rybbit.io/api/retention/123?mode=week&range=90");
+var data = await response.Content.ReadAsStringAsync();
+```
+  </Tab>
+</Tabs>
+
+```json title="Response"
+{
+  "data": {
+    "cohorts": {
+      "2024-01-01": {
+        "size": 1250,
+        "percentages": [100, 45.2, 32.1, 28.5, 25.3, 22.1]
+      },
+      "2024-01-08": {
+        "size": 1420,
+        "percentages": [100, 48.5, 35.2, 30.1, 26.8, null]
+      },
+      "2024-01-15": {
+        "size": 1380,
+        "percentages": [100, 46.8, 33.5, 29.2, null, null]
+      },
+      "2024-01-22": {
+        "size": 1510,
+        "percentages": [100, 44.2, 31.8, null, null, null]
+      },
+      "2024-01-29": {
+        "size": 1290,
+        "percentages": [100, 47.1, null, null, null, null]
+      }
+    },
+    "maxPeriods": 5,
+    "mode": "week",
+    "range": 90
+  }
+}
+```
+
+### Understanding Retention Data
+
+The retention data shows how many users from each cohort return in subsequent periods:
+
+- **Period 0**: Always 100% (the cohort's first visit)
+- **Period 1**: Users who returned 1 week later
+- **Period 2**: Users who returned 2 weeks later
+- etc.
+
+A `null` value indicates that period hasn't occurred yet for that cohort.
+
+### Visualization Example
+
+```javascript title="Building a Retention Table"
+const { cohorts, maxPeriods } = data.data;
+
+// Headers: Cohort, Size, Week 0, Week 1, Week 2, ...
+const headers = ['Cohort', 'Size',
+  ...Array(maxPeriods + 1).fill(0).map((_, i) => `Week ${i}`)
+];
+
+// Rows
+Object.entries(cohorts).forEach(([date, cohort]) => {
+  const row = [
+    date,
+    cohort.size,
+    ...cohort.percentages.map(p => p !== null ? `${p}%` : '-')
+  ];
+  console.log(row.join(' | '));
+});
+```
+
+</div>
+</div>
+
+---
+
+## Get Journeys
+
+<div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
+<div>
+
+```
+GET /api/journeys/:site
+```
+
+Returns the most common page navigation paths (user journeys) within sessions. Useful for understanding how users navigate through your site.
+
+### Path Parameters
+
+<TypeTable
+  type={{
+    site: {
+      description: 'Site ID or site identifier',
+      type: 'string | number',
+      required: true,
+    },
+  }}
+/>
+
+### Query Parameters
+
+Accepts all [Common Parameters](/docs/api/getting-started#common-parameters) plus the following:
+
+<TypeTable
+  type={{
+    steps: {
+      description: 'Maximum number of steps in the journey (2-10)',
+      type: 'number',
+      default: 3,
+    },
+    limit: {
+      description: 'Maximum number of journeys to return (1-500)',
+      type: 'number',
+      default: 100,
+    },
+    stepFilters: {
+      description: 'JSON object to filter specific steps (e.g., {"0": "/"})',
+      type: 'string',
+      typeDescription: 'JSON string mapping step index to required path',
+      required: false,
+    },
+  }}
+/>
+
+### Response
+
+<TypeTable
+  type={{
+    journeys: {
+      description: 'Array of journey objects',
+      type: 'Journey[]',
+    },
+  }}
+/>
+
+#### Journey Object
+
+<TypeTable
+  type={{
+    path: {
+      description: 'Array of page paths in order',
+      type: 'string[]',
+    },
+    count: {
+      description: 'Number of sessions with this journey',
+      type: 'number',
+    },
+    percentage: {
+      description: 'Percentage of total sessions',
+      type: 'number',
+    },
+  }}
+/>
+
+</div>
+<div className="flex flex-col gap-4">
+
+<Tabs items={['cURL', 'JavaScript', 'Python', 'PHP', 'Ruby', 'Go', 'Rust', 'Java', '.NET']}>
+  <Tab value="cURL">
+```bash title="Request"
+curl -X GET "https://api.rybbit.io/api/journeys/123?steps=4&limit=20&start_date=2024-01-01&end_date=2024-01-31" \
+  -H "Authorization: Bearer your_api_key_here"
+```
+  </Tab>
+  <Tab value="JavaScript">
+```javascript title="Request"
+const response = await fetch(
+  'https://api.rybbit.io/api/journeys/123?steps=4&limit=20&start_date=2024-01-01&end_date=2024-01-31',
+  {
+    headers: {
+      'Authorization': 'Bearer your_api_key_here'
+    }
+  }
+);
+
+const data = await response.json();
+```
+  </Tab>
+  <Tab value="Python">
+```python title="Request"
+import requests
+
+response = requests.get(
+    'https://api.rybbit.io/api/journeys/123',
+    params={
+        'steps': 4,
+        'limit': 20,
+        'start_date': '2024-01-01',
+        'end_date': '2024-01-31'
+    },
+    headers={
+        'Authorization': 'Bearer your_api_key_here'
+    }
+)
+
+data = response.json()
+```
+  </Tab>
+  <Tab value="PHP">
+```php title="Request"
+$ch = curl_init();
+curl_setopt($ch, CURLOPT_URL, 'https://api.rybbit.io/api/journeys/123?steps=4&limit=20&start_date=2024-01-01&end_date=2024-01-31');
+curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+curl_setopt($ch, CURLOPT_HTTPHEADER, [
+    'Authorization: Bearer your_api_key_here'
+]);
+
+$response = curl_exec($ch);
+curl_close($ch);
+
+$data = json_decode($response, true);
+```
+  </Tab>
+  <Tab value="Ruby">
+```ruby title="Request"
+require 'net/http'
+require 'json'
+
+uri = URI('https://api.rybbit.io/api/journeys/123?steps=4&limit=20&start_date=2024-01-01&end_date=2024-01-31')
+req = Net::HTTP::Get.new(uri)
+req['Authorization'] = 'Bearer your_api_key_here'
+
+res = Net::HTTP.start(uri.hostname, uri.port, use_ssl: true) { |http| http.request(req) }
+data = JSON.parse(res.body)
+```
+  </Tab>
+  <Tab value="Go">
+```go title="Request"
+req, _ := http.NewRequest("GET", "https://api.rybbit.io/api/journeys/123?steps=4&limit=20&start_date=2024-01-01&end_date=2024-01-31", nil)
+req.Header.Set("Authorization", "Bearer your_api_key_here")
+
+client := &http.Client{}
+resp, _ := client.Do(req)
+defer resp.Body.Close()
+
+var data map[string]interface{}
+json.NewDecoder(resp.Body).Decode(&data)
+```
+  </Tab>
+  <Tab value="Rust">
+```rust title="Request"
+let client = reqwest::Client::new();
+let res = client
+    .get("https://api.rybbit.io/api/journeys/123?steps=4&limit=20&start_date=2024-01-01&end_date=2024-01-31")
+    .header("Authorization", "Bearer your_api_key_here")
+    .send()
+    .await?;
+
+let data: serde_json::Value = res.json().await?;
+```
+  </Tab>
+  <Tab value="Java">
+```java title="Request"
+HttpClient client = HttpClient.newHttpClient();
+HttpRequest request = HttpRequest.newBuilder()
+    .uri(URI.create("https://api.rybbit.io/api/journeys/123?steps=4&limit=20&start_date=2024-01-01&end_date=2024-01-31"))
+    .header("Authorization", "Bearer your_api_key_here")
+    .GET()
+    .build();
+
+HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+```
+  </Tab>
+  <Tab value=".NET">
+```csharp title="Request"
+using var client = new HttpClient();
+client.DefaultRequestHeaders.Add("Authorization", "Bearer your_api_key_here");
+
+var response = await client.GetAsync("https://api.rybbit.io/api/journeys/123?steps=4&limit=20&start_date=2024-01-01&end_date=2024-01-31");
+var data = await response.Content.ReadAsStringAsync();
+```
+  </Tab>
+</Tabs>
+
+```json title="Response"
+{
+  "journeys": [
+    {
+      "path": ["/", "/pricing", "/signup"],
+      "count": 1250,
+      "percentage": 8.12
+    },
+    {
+      "path": ["/", "/features", "/pricing", "/signup"],
+      "count": 890,
+      "percentage": 5.78
+    },
+    {
+      "path": ["/blog/getting-started", "/", "/pricing"],
+      "count": 650,
+      "percentage": 4.22
+    },
+    {
+      "path": ["/", "/docs", "/docs/quickstart"],
+      "count": 580,
+      "percentage": 3.77
+    },
+    {
+      "path": ["/", "/about", "/contact"],
+      "count": 420,
+      "percentage": 2.73
+    }
+  ]
+}
+```
+
+### Filtering by Step
+
+You can filter journeys that include specific pages at specific steps:
+
+<Tabs items={['cURL', 'JavaScript', 'Python', 'PHP', 'Ruby', 'Go', 'Rust', 'Java', '.NET']}>
+  <Tab value="cURL">
+```bash title="Filter journeys starting from homepage"
+curl -X GET "https://api.rybbit.io/api/journeys/123?steps=3&stepFilters=%7B%220%22%3A%22%2F%22%7D" \
+  -H "Authorization: Bearer your_api_key_here"
+```
+  </Tab>
+  <Tab value="JavaScript">
+```javascript title="Filter journeys starting from homepage"
+const stepFilters = JSON.stringify({ "0": "/" });
+
+const response = await fetch(
+  `https://api.rybbit.io/api/journeys/123?steps=3&stepFilters=${encodeURIComponent(stepFilters)}`,
+  {
+    headers: {
+      'Authorization': 'Bearer your_api_key_here'
+    }
+  }
+);
+```
+  </Tab>
+  <Tab value="Python">
+```python title="Request"
+import requests
+
+response = requests.get(
+    'https://api.rybbit.io/api/journeys/123?steps=3&stepFilters=%7B%220%22%3A%22%2F%22%7D',
+    headers={
+        'Authorization': 'Bearer your_api_key_here'
+    }
+)
+
+data = response.json()
+```
+  </Tab>
+  <Tab value="PHP">
+```php title="Request"
+$ch = curl_init();
+curl_setopt($ch, CURLOPT_URL, 'https://api.rybbit.io/api/journeys/123?steps=3&stepFilters=%7B%220%22%3A%22%2F%22%7D');
+curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+curl_setopt($ch, CURLOPT_HTTPHEADER, [
+    'Authorization: Bearer your_api_key_here'
+]);
+
+$response = curl_exec($ch);
+curl_close($ch);
+
+$data = json_decode($response, true);
+```
+  </Tab>
+  <Tab value="Ruby">
+```ruby title="Request"
+require 'net/http'
+require 'json'
+
+uri = URI('https://api.rybbit.io/api/journeys/123?steps=3&stepFilters=%7B%220%22%3A%22%2F%22%7D')
+req = Net::HTTP::Get.new(uri)
+req['Authorization'] = 'Bearer your_api_key_here'
+
+res = Net::HTTP.start(uri.hostname, uri.port, use_ssl: true) { |http| http.request(req) }
+data = JSON.parse(res.body)
+```
+  </Tab>
+  <Tab value="Go">
+```go title="Request"
+req, _ := http.NewRequest("GET", "https://api.rybbit.io/api/journeys/123?steps=3&stepFilters=%7B%220%22%3A%22%2F%22%7D", nil)
+req.Header.Set("Authorization", "Bearer your_api_key_here")
+
+client := &http.Client{}
+resp, _ := client.Do(req)
+defer resp.Body.Close()
+
+var data map[string]interface{}
+json.NewDecoder(resp.Body).Decode(&data)
+```
+  </Tab>
+  <Tab value="Rust">
+```rust title="Request"
+let client = reqwest::Client::new();
+let res = client
+    .get("https://api.rybbit.io/api/journeys/123?steps=3&stepFilters=%7B%220%22%3A%22%2F%22%7D")
+    .header("Authorization", "Bearer your_api_key_here")
+    .send()
+    .await?;
+
+let data: serde_json::Value = res.json().await?;
+```
+  </Tab>
+  <Tab value="Java">
+```java title="Request"
+HttpClient client = HttpClient.newHttpClient();
+HttpRequest request = HttpRequest.newBuilder()
+    .uri(URI.create("https://api.rybbit.io/api/journeys/123?steps=3&stepFilters=%7B%220%22%3A%22%2F%22%7D"))
+    .header("Authorization", "Bearer your_api_key_here")
+    .GET()
+    .build();
+
+HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+```
+  </Tab>
+  <Tab value=".NET">
+```csharp title="Request"
+using var client = new HttpClient();
+client.DefaultRequestHeaders.Add("Authorization", "Bearer your_api_key_here");
+
+var response = await client.GetAsync("https://api.rybbit.io/api/journeys/123?steps=3&stepFilters=%7B%220%22%3A%22%2F%22%7D");
+var data = await response.Content.ReadAsStringAsync();
+```
+  </Tab>
+</Tabs>
+
+```json title="Response with step filter"
+{
+  "journeys": [
+    {
+      "path": ["/", "/pricing", "/signup"],
+      "count": 1250,
+      "percentage": 12.5
+    },
+    {
+      "path": ["/", "/features", "/pricing"],
+      "count": 890,
+      "percentage": 8.9
+    },
+    {
+      "path": ["/", "/docs", "/docs/quickstart"],
+      "count": 580,
+      "percentage": 5.8
+    }
+  ]
+}
+```
+
+</div>
+</div>

@@ -2,7 +2,7 @@ import { FastifyReply, FastifyRequest } from "fastify";
 import SqlString from "sqlstring";
 import { clickhouse } from "../../db/clickhouse/clickhouse.js";
 import { getIsUserAdmin } from "../../lib/auth-utils.js";
-import { processResults } from "../analytics/utils.js";
+import { processResults } from "../analytics/utils/utils.js";
 
 type ServiceEventCountResponse = {
   event_date: string;

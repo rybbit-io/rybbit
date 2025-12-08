@@ -1,6 +1,7 @@
 import { FastifyReply, FastifyRequest } from "fastify";
 import { FilterParams } from "@rybbit/shared";
 import { SessionReplayQueryService } from "../../services/replay/sessionReplayQueryService.js";
+import { enrichWithTraits } from "../analytics/utils/utils.js";
 
 export async function getSessionReplays(
   request: FastifyRequest<{
@@ -32,7 +33,13 @@ export async function getSessionReplays(
       filters: filters || "",
     });
 
-    return reply.send({ data: replays });
+    // The replays from ClickHouse use snake_case and enrichWithTraits expects that format
+    const replaysWithTraits = await enrichWithTraits(
+      replays as unknown as Array<{ identified_user_id: string }>,
+      siteId
+    );
+
+    return reply.send({ data: replaysWithTraits });
   } catch (error) {
     console.error("Error fetching session replays:", error);
     return reply.status(500).send({ error: "Internal server error" });

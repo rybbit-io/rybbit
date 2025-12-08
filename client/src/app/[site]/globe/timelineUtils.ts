@@ -1,5 +1,5 @@
 import { DateTime } from "luxon";
-import { GetSessionsResponse } from "../../../api/analytics/useGetUserSessions";
+import { GetSessionsResponse } from "../../../api/analytics/endpoints";
 
 /**
  * Calculate the appropriate window size in minutes based on the total time range

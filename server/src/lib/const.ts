@@ -19,6 +19,8 @@ export const APPSUMO_TIER_LIMITS = {
   "1": 20_000,
   "2": 100_000,
   "3": 250_000,
+  "4": 500_000,
+  "5": 1_000_000,
 } as const;
 
 // Define a type for the plan objects

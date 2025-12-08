@@ -4,10 +4,10 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
-import { useCreateGoal } from "../../../../api/analytics/goals/useCreateGoal";
-import { Goal } from "../../../../api/analytics/goals/useGetGoals";
-import { useUpdateGoal } from "../../../../api/analytics/goals/useUpdateGoal";
-import { useMetric } from "../../../../api/analytics/useGetMetric";
+import { useCreateGoal } from "../../../../api/analytics/hooks/goals/useCreateGoal";
+import { Goal } from "../../../../api/analytics/endpoints";
+import { useUpdateGoal } from "../../../../api/analytics/hooks/goals/useUpdateGoal";
+import { useMetric } from "../../../../api/analytics/hooks/useGetMetric";
 import { EventIcon, PageviewIcon } from "../../../../components/EventIcons";
 import { Button } from "../../../../components/ui/button";
 import {

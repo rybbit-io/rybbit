@@ -5,11 +5,11 @@ import { AuthError } from "@/components/auth/AuthError";
 import { AuthInput } from "@/components/auth/AuthInput";
 import { SocialButtons } from "@/components/auth/SocialButtons";
 import { Turnstile } from "@/components/auth/Turnstile";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { RybbitLogo } from "../../components/RybbitLogo";
+import { RybbitTextLogo } from "../../components/RybbitLogo";
+import { SpinningGlobe } from "../../components/SpinningGlobe";
 import { useSetPageTitle } from "../../hooks/useSetPageTitle";
 import { authClient } from "../../lib/auth";
 import { useConfigs } from "../../lib/configs";
@@ -72,47 +72,29 @@ export default function Page() {
   const turnstileEnabled = IS_CLOUD && process.env.NODE_ENV === "production";
 
   return (
-    <div className="flex flex-col justify-between items-center h-dvh w-full p-4">
-      <div></div>
-      <Card className="w-full max-w-sm p-1">
-        <CardHeader>
-          <RybbitLogo width={32} height={32} />
-          <CardTitle className="text-2xl flex justify-center">Sign in</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit}>
-            <div className="flex flex-col gap-4">
-              <AuthInput
-                id="email"
-                label="Email"
-                type="email"
-                placeholder="example@email.com"
-                required
-                value={email}
-                onChange={e => setEmail(e.target.value)}
-              />
-
-              <AuthInput
-                id="password"
-                label="Password"
-                type="password"
-                placeholder="••••••••"
-                required
-                value={password}
-                onChange={e => setPassword(e.target.value)}
-                rightElement={
-                  <Link href="/reset-password" className="text-xs text-muted-foreground hover:text-primary">
-                    Forgot password?
-                  </Link>
-                }
-              />
-
-              {turnstileEnabled && (
-                <Turnstile
-                  onSuccess={token => setTurnstileToken(token)}
-                  onError={() => setTurnstileToken("")}
-                  onExpire={() => setTurnstileToken("")}
-                  className="flex justify-center"
+    <div className="flex h-dvh w-full">
+      {/* Left panel - login form */}
+      <div className="w-full lg:w-[550px] flex flex-col p-6 lg:p-10">
+        {/* Logo at top left */}
+        <div className="mb-8">
+          <a href="https://rybbit.com" target="_blank" className="inline-block">
+            <RybbitTextLogo />
+          </a>
+        </div>
+        <div className="flex-1 flex flex-col justify-center w-full max-w-[550px] mx-auto">
+          <h1 className="text-lg text-neutral-600 dark:text-neutral-300 mb-6">Welcome back</h1>
+          <div className="flex flex-col gap-4">
+            <SocialButtons onError={setError} />
+            <form onSubmit={handleSubmit}>
+              <div className="flex flex-col gap-4">
+                <AuthInput
+                  id="email"
+                  label="Email"
+                  type="email"
+                  placeholder="example@email.com"
+                  required
+                  value={email}
+                  onChange={e => setEmail(e.target.value)}
                 />
               )}
 

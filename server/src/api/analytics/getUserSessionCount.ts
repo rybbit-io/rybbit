@@ -1,6 +1,6 @@
 import { FastifyReply, FastifyRequest } from "fastify";
 import { clickhouse } from "../../db/clickhouse/clickhouse.js";
-import { processResults } from "./utils.js";
+import { processResults } from "./utils/utils.js";
 import SqlString from "sqlstring";
 
 export interface GetUserSessionCountRequest {
@@ -33,7 +33,7 @@ export async function getUserSessionCount(req: FastifyRequest<GetUserSessionCoun
     FROM events
     WHERE
       site_id = {siteId:Int32}
-      AND user_id = {userId:String} 
+      AND (user_id = {userId:String} OR identified_user_id = {userId:String})
     GROUP BY date
     ORDER BY date ASC
   `;

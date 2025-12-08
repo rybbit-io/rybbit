@@ -62,3 +62,27 @@ pre {
 .animate-marquee-vertical {
   animation: marquee-vertical var(--duration) linear infinite;
 }
+
+/* Override prose list styles for tool pages */
+.prose ul li.flex,
+.prose ol li.flex {
+  padding-left: 0 !important;
+  padding-inline-start: 0 !important;
+  margin-left: 0 !important;
+  list-style-type: none !important;
+}
+
+.prose ul li.flex::before,
+.prose ol li.flex::before,
+.prose ul li.flex::marker,
+.prose ol li.flex::marker {
+  content: none !important;
+  display: none !important;
+}
+
+/* Remove left padding from ordered lists with list-inside */
+.prose ol.list-inside {
+  padding-left: 0 !important;
+  padding-inline-start: 0 !important;
+  margin-left: 0 !important;
+}

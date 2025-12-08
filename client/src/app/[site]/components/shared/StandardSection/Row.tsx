@@ -3,8 +3,8 @@ import NumberFlow from "@number-flow/react";
 import { round } from "lodash";
 import { ChevronDown, ChevronRight, SquareArrowOutUpRight } from "lucide-react";
 import { ReactNode, useState, useCallback } from "react";
-import { usePaginatedMetric } from "../../../../../api/analytics/useGetMetric";
-import { MetricResponse } from "../../../../../api/analytics/useGetMetric";
+import { usePaginatedMetric } from "../../../../../api/analytics/hooks/useGetMetric";
+import { MetricResponse } from "../../../../../api/analytics/endpoints";
 import { addFilter, removeFilter, useStore } from "../../../../../lib/store";
 
 // Custom hook for filter handling logic
@@ -67,7 +67,7 @@ const RowItem = ({
           {leftContent}
           <span className="truncate">{getLabel(item)}</span>
           {getLink && (
-            <a href={getLink(item)} target="_blank" onClick={e => e.stopPropagation()} className="flex-shrink-0">
+            <a href={getLink(item)} target="_blank" onClick={e => e.stopPropagation()} className="shrink-0">
               <SquareArrowOutUpRight
                 className="ml-0.5 w-3.5 h-3.5 text-neutral-600 hover:text-neutral-900 dark:text-neutral-300 dark:hover:text-neutral-100"
                 strokeWidth={3}
@@ -75,7 +75,7 @@ const RowItem = ({
             </a>
           )}
         </div>
-        <div className="text-xs flex gap-2 flex-shrink-0">
+        <div className="text-xs flex gap-2 shrink-0">
           <div className="hidden group-hover:block text-neutral-600 dark:text-neutral-400">
             {round(item.percentage, 1)}%
           </div>

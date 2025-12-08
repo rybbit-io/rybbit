@@ -1,323 +1,273 @@
-"use client";
-
-import { TrackedButton } from "@/components/TrackedButton";
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { DEFAULT_EVENT_LIMIT } from "@/lib/const";
-import { round } from "lodash";
-import { Plus, X } from "lucide-react";
+import { FunnelVisualizerForm } from "./FunnelVisualizerForm";
+import { ToolPageLayout } from "../components/ToolPageLayout";
 import Link from "next/link";
-import { useState } from "react";
+import type { Metadata } from "next";
 
-interface FunnelStep {
-  name: string;
-  visitors: string;
-}
+export const metadata: Metadata = {
+  title: "Free Funnel Visualizer | Marketing Funnel Analysis & Conversion Funnel Tool",
+  description:
+    "Visualize your conversion funnel step-by-step. Input visitor counts at each stage to identify where you're losing customers. Analyze drop-off rates and optimize your funnel for better conversions.",
+  openGraph: {
+    title: "Free Funnel Visualizer | Marketing Funnel Analysis & Conversion Funnel Tool",
+    description:
+      "Visualize your conversion funnel step-by-step. Identify drop-off points and optimize conversion rates.",
+    type: "website",
+    url: "https://rybbit.com/tools/funnel-visualizer",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Free Funnel Visualizer | Marketing Funnel Analysis & Conversion Funnel Tool",
+    description:
+      "Visualize your conversion funnel step-by-step. Identify drop-off points and optimize conversion rates.",
+  },
+  alternates: {
+    canonical: "https://rybbit.com/tools/funnel-visualizer",
+  },
+};
 
-interface FunnelChartData {
-  stepName: string;
-  visitors: number;
-  conversionRate: number;
-  dropoffRate: number;
-  stepNumber: number;
-}
+const structuredData = {
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "WebApplication",
+      name: "Funnel Visualizer",
+      description: "Free tool to visualize conversion funnels and analyze drop-off rates at each step",
+      url: "https://rybbit.com/tools/funnel-visualizer",
+      applicationCategory: "BusinessApplication",
+      featureList: [
+        "Step-by-step funnel visualization",
+        "Conversion rate analysis",
+        "Drop-off rate tracking",
+        "Customizable funnel stages",
+        "Real-time calculations",
+      ],
+      offers: {
+        "@type": "Offer",
+        price: "0",
+        priceCurrency: "USD",
+      },
+    },
+    {
+      "@type": "FAQPage",
+      mainEntity: [
+        {
+          "@type": "Question",
+          name: "What is a conversion funnel?",
+          acceptedAnswer: {
+            "@type": "Answer",
+            text: "A conversion funnel is the path visitors take from initial contact to conversion. It shows how many users progress through each step and where they drop off. Understanding your funnel helps identify friction points and optimization opportunities.",
+          },
+        },
+        {
+          "@type": "Question",
+          name: "What are the typical stages in a conversion funnel?",
+          acceptedAnswer: {
+            "@type": "Answer",
+            text: "Common funnel stages include: Awareness (landing page visits), Consideration (product/service page views), Evaluation (cart additions), Decision (checkout starts), and Conversion (purchases). However, funnels vary by business model. E-commerce might track store browsing to purchase, while SaaS might track sign-ups to trial to paid conversion.",
+          },
+        },
+        {
+          "@type": "Question",
+          name: "How do I analyze funnel drop-offs?",
+          acceptedAnswer: {
+            "@type": "Answer",
+            text: "To analyze drop-offs: (1) Calculate the percentage drop from each step to the next, (2) Identify which steps have the largest losses, (3) Consider external factors (traffic quality, targeting, seasonality), (4) Test improvements on high-drop-off steps, (5) Compare performance over time. The steps with the biggest drop-offs typically offer the best optimization opportunities.",
+          },
+        },
+        {
+          "@type": "Question",
+          name: "What is a good conversion funnel rate?",
+          acceptedAnswer: {
+            "@type": "Answer",
+            text: "Conversion rates vary widely by industry and business model. E-commerce websites typically see 2-5% overall conversion rates, SaaS free-to-paid conversion is often 5-15%, while lead generation funnels might convert 10-30% of visitors. The key is to compare your metrics against your own baseline and industry benchmarks, then focus on improving the weakest steps.",
+          },
+        },
+        {
+          "@type": "Question",
+          name: "How can I improve my conversion funnel?",
+          acceptedAnswer: {
+            "@type": "Answer",
+            text: "Optimize high drop-off steps first by: simplifying forms and checkout processes, improving page load speed, enhancing trust signals and social proof, clarifying value propositions, reducing friction (fewer clicks), improving mobile experience, A/B testing changes, and removing distractions. Track these improvements with Rybbit Analytics to measure the actual impact on conversions.",
+          },
+        },
+      ],
+    },
+  ],
+};
+
+const educationalContent = (
+  <>
+    <h2 className="text-2xl font-bold text-neutral-900 dark:text-white mb-4">What is a Conversion Funnel?</h2>
+    <p className="text-neutral-700 dark:text-neutral-300 leading-relaxed mb-4">
+      A conversion funnel visualizes the customer journey from initial awareness to final conversion. Just like a
+      physical funnel narrows toward the bottom, a conversion funnel shows how the number of users decreases at each
+      step of your sales or signup process.
+    </p>
+    <p className="text-neutral-700 dark:text-neutral-300 leading-relaxed mb-4">
+      Understanding your conversion funnel is critical for business growth because it reveals where potential customers
+      are dropping off. By identifying and fixing these bottlenecks, you can significantly improve your overall
+      conversion rate without increasing marketing spend.
+    </p>
+
+    <h3 className="text-xl font-semibold text-neutral-900 dark:text-white mb-3 mt-6">Why Funnels Matter</h3>
+    <ul className="space-y-2 text-neutral-700 dark:text-neutral-300 mb-6">
+      <li>Reveal exactly where customers are leaving</li>
+      <li>Help prioritize optimization efforts on high-impact areas</li>
+      <li>Enable data-driven decision making about your funnel</li>
+      <li>Track progress as you implement improvements</li>
+      <li>Support ROI calculations for marketing initiatives</li>
+    </ul>
+
+    <h2 className="text-2xl font-bold text-neutral-900 dark:text-white mb-4 mt-8">Understanding Funnel Stages</h2>
+    <p className="text-neutral-700 dark:text-neutral-300 leading-relaxed mb-4">
+      While funnels vary by business model, most follow a similar progression from awareness to conversion. Here are the
+      common stages:
+    </p>
+    <ul className="space-y-2 text-neutral-700 dark:text-neutral-300 mb-6">
+      <li>
+        <strong>Awareness:</strong> Users discover your brand through ads, content, or word-of-mouth. This is typically
+        measured by landing page visits or impressions.
+      </li>
+      <li>
+        <strong>Consideration:</strong> Interested users explore your product or service by viewing product pages,
+        demos, or reading reviews.
+      </li>
+      <li>
+        <strong>Evaluation:</strong> Users actively consider the purchase by adding items to cart, requesting quotes, or
+        starting free trials.
+      </li>
+      <li>
+        <strong>Decision:</strong> Users commit to action by starting checkout, completing signup forms, or requesting
+        more information.
+      </li>
+      <li>
+        <strong>Conversion:</strong> Users complete the desired action—purchase, signup, trial activation, or lead
+        submission.
+      </li>
+      <li>
+        <strong>Retention:</strong> Users continue engaging (repeat purchases, retention rate, customer lifetime value).
+      </li>
+    </ul>
+
+    <h2 className="text-2xl font-bold text-neutral-900 dark:text-white mb-4 mt-8">How to Analyze Funnel Drop-offs</h2>
+    <p className="text-neutral-700 dark:text-neutral-300 leading-relaxed mb-4">
+      Drop-offs occur when users don't progress to the next step. Analyzing where and why users drop off is the key to
+      optimization. Here's a systematic approach:
+    </p>
+    <ol className="space-y-2 text-neutral-700 dark:text-neutral-300 mb-6">
+      <li>
+        <strong>Calculate Drop-off Percentages:</strong> For each step, calculate what percentage of users from the
+        previous step dropped off. A 50% drop from step 1 to 2 is a major red flag.
+      </li>
+      <li>
+        <strong>Identify the Biggest Bottleneck:</strong> Focus on the step with the largest absolute drop (most users
+        lost). This is usually your highest-impact optimization opportunity.
+      </li>
+      <li>
+        <strong>Consider External Factors:</strong> Evaluate traffic quality, targeting, seasonality, device type, and
+        traffic source. High drop-offs might indicate poor audience match, not a product issue.
+      </li>
+      <li>
+        <strong>Hypothesize Root Causes:</strong> Use analytics, user testing, surveys, and session recordings to
+        understand why users drop off. Is it friction, unclear messaging, trust issues, or pricing?
+      </li>
+      <li>
+        <strong>Test Improvements:</strong> Implement targeted fixes (form simplification, page speed improvements,
+        clearer CTAs) and measure the impact on your funnel conversion rate.
+      </li>
+    </ol>
+
+    <h2 className="text-2xl font-bold text-neutral-900 dark:text-white mb-4 mt-8">Funnel Optimization Strategies</h2>
+    <p className="text-neutral-700 dark:text-neutral-300 leading-relaxed mb-4">
+      Once you've identified drop-off points, here are proven strategies to improve each stage of your funnel:
+    </p>
+
+    <h3 className="text-xl font-semibold text-neutral-900 dark:text-white mb-3 mt-6">Awareness Stage</h3>
+    <ul className="space-y-2 text-neutral-700 dark:text-neutral-300 mb-6">
+      <li>Target high-intent keywords and audiences</li>
+      <li>Improve ad creative and messaging relevance</li>
+      <li>Ensure traffic sources align with audience quality</li>
+      <li>Test different channel mix</li>
+    </ul>
+
+    <h3 className="text-xl font-semibold text-neutral-900 dark:text-white mb-3 mt-6">Consideration Stage</h3>
+    <ul className="space-y-2 text-neutral-700 dark:text-neutral-300 mb-6">
+      <li>Improve page load speed</li>
+      <li>Clarify value proposition above the fold</li>
+      <li>Add product images, videos, and demos</li>
+      <li>Include social proof and testimonials</li>
+    </ul>
+
+    <h3 className="text-xl font-semibold text-neutral-900 dark:text-white mb-3 mt-6">Evaluation Stage</h3>
+    <ul className="space-y-2 text-neutral-700 dark:text-neutral-300 mb-6">
+      <li>Make pricing transparent and competitive</li>
+      <li>Add comparison tables and ROI calculators</li>
+      <li>Offer risk-free trials or guarantees</li>
+      <li>Provide detailed feature documentation</li>
+    </ul>
+
+    <h3 className="text-xl font-semibold text-neutral-900 dark:text-white mb-3 mt-6">Decision Stage</h3>
+    <ul className="space-y-2 text-neutral-700 dark:text-neutral-300 mb-6">
+      <li>Simplify checkout (fewer form fields)</li>
+      <li>Show security badges and trust signals</li>
+      <li>Offer multiple payment options</li>
+      <li>Reduce required steps to purchase</li>
+    </ul>
+  </>
+);
+
+const faqs = [
+  {
+    question: "What is a conversion funnel?",
+    answer:
+      "A conversion funnel is the path visitors take from initial contact to conversion. It shows how many users progress through each step and where they drop off. Understanding your funnel helps identify friction points and optimization opportunities.",
+  },
+  {
+    question: "What are the typical stages in a conversion funnel?",
+    answer:
+      "Common funnel stages include: Awareness (landing page visits), Consideration (product/service page views), Evaluation (cart additions), Decision (checkout starts), and Conversion (purchases). However, funnels vary by business model. E-commerce might track store browsing to purchase, while SaaS might track sign-ups to trial to paid conversion.",
+  },
+  {
+    question: "How do I analyze funnel drop-offs?",
+    answer:
+      "To analyze drop-offs: (1) Calculate the percentage drop from each step to the next, (2) Identify which steps have the largest losses, (3) Consider external factors (traffic quality, targeting, seasonality), (4) Test improvements on high-drop-off steps, (5) Compare performance over time. The steps with the biggest drop-offs typically offer the best optimization opportunities.",
+  },
+  {
+    question: "What is a good conversion funnel rate?",
+    answer:
+      "Conversion rates vary widely by industry and business model. E-commerce websites typically see 2-5% overall conversion rates, SaaS free-to-paid conversion is often 5-15%, while lead generation funnels might convert 10-30% of visitors. The key is to compare your metrics against your own baseline and industry benchmarks, then focus on improving the weakest steps.",
+  },
+  {
+    question: "How can I improve my conversion funnel?",
+    answer: (
+      <>
+        Optimize high drop-off steps first by: simplifying forms and checkout processes, improving page load speed,
+        enhancing trust signals and social proof, clarifying value propositions, reducing friction (fewer clicks),
+        improving mobile experience, A/B testing changes, and removing distractions. Track these improvements with{" "}
+        <Link href="https://app.rybbit.io" className="text-emerald-600 dark:text-emerald-400 hover:underline">
+          Rybbit Analytics
+        </Link>{" "}
+        to measure the actual impact on conversions.
+      </>
+    ),
+  },
+];
 
 export default function FunnelVisualizerPage() {
-  const [steps, setSteps] = useState<FunnelStep[]>([
-    { name: "Landing Page", visitors: "" },
-    { name: "Product Page", visitors: "" },
-    { name: "Cart", visitors: "" },
-    { name: "Checkout", visitors: "" },
-    { name: "Purchase", visitors: "" },
-  ]);
-
-  const addStep = () => {
-    setSteps([...steps, { name: "", visitors: "" }]);
-  };
-
-  const removeStep = (index: number) => {
-    if (steps.length > 2) {
-      setSteps(steps.filter((_, i) => i !== index));
-    }
-  };
-
-  const updateStep = (index: number, field: "name" | "visitors", value: string) => {
-    const newSteps = [...steps];
-    newSteps[index][field] = value;
-    setSteps(newSteps);
-  };
-
-  const calculateFunnelData = (): FunnelChartData[] | null => {
-    const validSteps = steps.filter(s => s.name && s.visitors && parseFloat(s.visitors) > 0);
-    if (validSteps.length < 2) return null;
-
-    const firstStepVisitors = parseFloat(validSteps[0].visitors);
-
-    return validSteps.map((step, index) => {
-      const visitors = parseFloat(step.visitors);
-      const conversionRate = (visitors / firstStepVisitors) * 100;
-      const prevVisitors = index > 0 ? parseFloat(validSteps[index - 1].visitors) : visitors;
-      const dropoffRate = index > 0 ? ((prevVisitors - visitors) / prevVisitors) * 100 : 0;
-
-      return {
-        stepName: step.name,
-        visitors,
-        conversionRate,
-        dropoffRate,
-        stepNumber: index + 1,
-      };
-    });
-  };
-
-  const chartData = calculateFunnelData();
-  const firstStep = chartData?.[0];
-  const lastStep = chartData?.[chartData.length - 1];
-  const totalConversionRate = lastStep?.conversionRate || 0;
-
-  const clearForm = () => {
-    setSteps([
-      { name: "Landing Page", visitors: "" },
-      { name: "Product Page", visitors: "" },
-      { name: "Cart", visitors: "" },
-      { name: "Checkout", visitors: "" },
-      { name: "Purchase", visitors: "" },
-    ]);
-  };
-
   return (
-    <div className="min-h-screen bg-gradient-to-b from-neutral-50 to-neutral-100 dark:from-neutral-950 dark:to-neutral-900">
-      <div className="max-w-5xl mx-auto px-6 py-20">
-        {/* Header */}
-        <div className="mb-16">
-          <div className="inline-block mb-4 px-4 py-1.5 bg-emerald-100 dark:bg-emerald-900/30 border border-emerald-200 dark:border-emerald-800 rounded-full">
-            <span className="text-sm font-medium text-emerald-700 dark:text-emerald-400">Free Tool</span>
-          </div>
-          <h1 className="text-5xl md:text-6xl font-bold text-neutral-900 dark:text-white mb-6 tracking-tight">
-            Funnel Visualizer
-          </h1>
-          <p className="text-xl text-neutral-600 dark:text-neutral-400 max-w-2xl leading-relaxed">
-            Visualize your conversion funnel step-by-step. Input visitor counts at each stage and see where you're
-            losing customers.
-          </p>
-        </div>
-
-        {/* Tool */}
-        <div className="mb-16">
-          <div className="space-y-6">
-            <div className="space-y-4">
-              {steps.map((step, index) => (
-                <div key={index} className="flex gap-3 items-start">
-                  <div className="flex-shrink-0 w-8 h-10 flex items-center justify-center">
-                    <div className="w-6 h-6 rounded-full bg-emerald-100 dark:bg-emerald-900/30 border border-emerald-200 dark:border-emerald-800 flex items-center justify-center text-xs font-medium text-emerald-700 dark:text-emerald-400">
-                      {index + 1}
-                    </div>
-                  </div>
-                  <div className="flex-1 grid grid-cols-2 gap-3">
-                    <input
-                      type="text"
-                      value={step.name}
-                      onChange={e => updateStep(index, "name", e.target.value)}
-                      placeholder={`Step ${index + 1} name`}
-                      className="px-4 py-3 bg-white dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 rounded-lg text-neutral-900 dark:text-white placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                    />
-                    <input
-                      type="number"
-                      value={step.visitors}
-                      onChange={e => updateStep(index, "visitors", e.target.value)}
-                      placeholder="Visitors"
-                      className="px-4 py-3 bg-white dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 rounded-lg text-neutral-900 dark:text-white placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                    />
-                  </div>
-                  {steps.length > 2 && (
-                    <button
-                      onClick={() => removeStep(index)}
-                      className="flex-shrink-0 w-10 h-10 flex items-center justify-center text-neutral-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-lg transition-colors"
-                    >
-                      <X className="w-5 h-5" />
-                    </button>
-                  )}
-                </div>
-              ))}
-            </div>
-
-            <button
-              onClick={addStep}
-              className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 rounded-lg transition-colors"
-            >
-              <Plus className="w-4 h-4" />
-              Add Step
-            </button>
-
-            {/* Funnel Visualization */}
-            {chartData && chartData.length > 0 && (
-              <div className="pt-6 border-t border-neutral-200 dark:border-neutral-800">
-                <div className="space-y-0">
-                  {chartData.map((step, index) => {
-                    const maxBarWidth = 100;
-                    const ratio = firstStep?.visitors ? step.visitors / firstStep.visitors : 0;
-                    const barWidth = Math.max(ratio * maxBarWidth, 0);
-                    const prevStep = index > 0 ? chartData[index - 1] : null;
-                    const droppedFromPrevious = prevStep ? prevStep.visitors - step.visitors : 0;
-
-                    return (
-                      <div key={step.stepNumber} className="relative pb-4">
-                        {/* Step Header */}
-                        <div className="flex items-center p-2">
-                          <div className="flex-shrink-0 w-6 h-6 rounded-full bg-neutral-100 dark:bg-neutral-800 flex items-center justify-center text-xs mr-2">
-                            {step.stepNumber}
-                          </div>
-                          <div className="font-medium text-sm flex-1">{step.stepName}</div>
-                        </div>
-
-                        {/* Bar and metrics */}
-                        <div className="flex items-center pl-8">
-                          {/* Metrics */}
-                          <div className="flex-shrink-0 min-w-[130px] mr-4 space-y-1">
-                            <div className="flex items-baseline">
-                              <span className="text-base font-semibold">{step.visitors.toLocaleString()}</span>
-                              <span className="text-sm text-neutral-500 dark:text-neutral-400 ml-1">visitors</span>
-                            </div>
-                            {index !== 0 && (
-                              <div className="flex items-baseline text-orange-500 text-xs font-medium">
-                                {droppedFromPrevious.toLocaleString()} dropped
-                              </div>
-                            )}
-                          </div>
-
-                          {/* Bar */}
-                          <div className="flex-grow h-10 bg-neutral-100 dark:bg-neutral-800 rounded-md overflow-hidden relative mt-2">
-                            {/* Relative conversion bar (from previous step) */}
-                            {index > 0 && prevStep && (
-                              <div
-                                className="absolute h-full rounded-md"
-                                style={{
-                                  width: `${(step.visitors / prevStep.visitors) * 100}%`,
-                                  background: `repeating-linear-gradient(
-                                    45deg,
-                                    rgba(16, 185, 129, 0.25),
-                                    rgba(16, 185, 129, 0.25) 6px,
-                                    rgba(16, 185, 129, 0.15) 6px,
-                                    rgba(16, 185, 129, 0.15) 12px
-                                  )`,
-                                }}
-                              ></div>
-                            )}
-                            {/* Absolute conversion bar (from first step) */}
-                            <div
-                              className="h-full bg-emerald-500/70 rounded-md relative z-10"
-                              style={{ width: `${barWidth}%` }}
-                            ></div>
-                            <div className="absolute top-2 right-2 z-20">
-                              <div className="text-base font-semibold">{round(step.conversionRate, 2)}%</div>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-
-                <div className="flex items-center gap-4 mt-6 ml-4 text-xs text-neutral-500 dark:text-neutral-400">
-                  <div className="flex items-center">
-                    <div className="w-3 h-3 bg-emerald-500/70 rounded-sm mr-1"></div>
-                    <span>Overall conversion</span>
-                  </div>
-                  <div className="flex items-center">
-                    <div
-                      className="w-3 h-3 rounded-sm mr-1"
-                      style={{
-                        background: `repeating-linear-gradient(
-                          45deg,
-                          rgba(16, 185, 129, 0.25),
-                          rgba(16, 185, 129, 0.25) 3px,
-                          rgba(16, 185, 129, 0.15) 3px,
-                          rgba(16, 185, 129, 0.15) 6px
-                        )`,
-                      }}
-                    ></div>
-                    <span>Conversion from previous step</span>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Buttons */}
-            <div className="flex gap-4 pt-4">
-              <button
-                onClick={clearForm}
-                className="px-6 py-3 bg-neutral-200 dark:bg-neutral-800 hover:bg-neutral-300 dark:hover:bg-neutral-700 text-neutral-900 dark:text-white font-medium rounded-lg transition-colors"
-              >
-                Clear
-              </button>
-            </div>
-          </div>
-        </div>
-
-        {/* FAQ Section */}
-        <div className="mb-16">
-          <h2 className="text-2xl font-bold text-neutral-900 dark:text-white mb-6">Understanding Conversion Funnels</h2>
-          <div className="bg-neutral-100/50 dark:bg-neutral-800/20 backdrop-blur-sm border border-neutral-300/50 dark:border-neutral-800/50 rounded-xl overflow-hidden">
-            <Accordion type="single" collapsible className="w-full">
-              <AccordionItem value="item-1" className="border-b border-neutral-300/50 dark:border-neutral-800/50">
-                <AccordionTrigger className="px-6 py-4 text-base font-medium hover:text-emerald-500 dark:hover:text-emerald-400 transition-colors">
-                  What is a conversion funnel?
-                </AccordionTrigger>
-                <AccordionContent className="px-6 pb-4 text-neutral-700 dark:text-neutral-300">
-                  A conversion funnel is the path visitors take from initial contact to conversion. It shows how many
-                  users progress through each step and where they drop off. Understanding your funnel helps identify
-                  friction points and optimization opportunities.
-                </AccordionContent>
-              </AccordionItem>
-
-              <AccordionItem value="item-2" className="border-b border-neutral-300/50 dark:border-neutral-800/50">
-                <AccordionTrigger className="px-6 py-4 text-base font-medium hover:text-emerald-500 dark:hover:text-emerald-400 transition-colors">
-                  What's a good funnel conversion rate?
-                </AccordionTrigger>
-                <AccordionContent className="px-6 pb-4 text-neutral-700 dark:text-neutral-300">
-                  It varies by industry, but e-commerce funnels typically see 2-3% overall conversion rates. SaaS free
-                  trial funnels might see 10-20% conversion to paid. The key is identifying your biggest drop-off points
-                  and improving those steps first—even small improvements compound.
-                </AccordionContent>
-              </AccordionItem>
-
-              <AccordionItem value="item-3">
-                <AccordionTrigger className="px-6 py-4 text-base font-medium hover:text-emerald-500 dark:hover:text-emerald-400 transition-colors">
-                  How do I improve my funnel?
-                </AccordionTrigger>
-                <AccordionContent className="px-6 pb-4 text-neutral-700 dark:text-neutral-300">
-                  Focus on the steps with the biggest drop-offs. Common improvements include: simplifying forms,
-                  improving page load speed, adding trust signals, clarifying value propositions, reducing friction, and
-                  A/B testing changes. Track your funnels automatically with{" "}
-                  <Link href="https://app.rybbit.io" className="text-emerald-600 dark:text-emerald-400 hover:underline">
-                    Rybbit Analytics
-                  </Link>{" "}
-                  to measure impact.
-                </AccordionContent>
-              </AccordionItem>
-            </Accordion>
-          </div>
-        </div>
-      </div>
-
-      {/* CTA */}
-      <div className="border-t border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 py-20">
-        <div className="max-w-4xl mx-auto px-6 text-center">
-          <h2 className="text-3xl md:text-4xl font-bold text-neutral-900 dark:text-white mb-4">
-            Track funnels automatically with Rybbit
-          </h2>
-          <p className="text-lg text-neutral-600 dark:text-neutral-400 mb-8 max-w-2xl mx-auto">
-            No manual data entry—Rybbit automatically tracks conversion funnels with real-time session data. Get started
-            for free with up to {DEFAULT_EVENT_LIMIT.toLocaleString()} events per month.
-          </p>
-          <TrackedButton
-            href="https://app.rybbit.io/signup"
-            eventName="signup"
-            eventProps={{ location: "funnel_visualizer_cta" }}
-            className="inline-block bg-emerald-600 hover:bg-emerald-500 text-white font-semibold px-10 py-4 text-lg rounded-lg shadow-lg shadow-emerald-900/20 transform hover:-translate-y-0.5 transition-all duration-200"
-          >
-            Start tracking for free
-          </TrackedButton>
-        </div>
-      </div>
-    </div>
+    <ToolPageLayout
+      toolSlug="funnel-visualizer"
+      title="Funnel Visualizer"
+      description="Visualize your conversion funnel step-by-step. Input visitor counts at each stage and see where you're losing customers. Analyze drop-off rates and identify optimization opportunities."
+      badge="Free Tool"
+      toolComponent={<FunnelVisualizerForm />}
+      educationalContent={educationalContent}
+      faqs={faqs}
+      relatedToolsCategory="analytics"
+      ctaTitle="Track funnels automatically with Rybbit"
+      ctaDescription="No manual data entry—Rybbit automatically tracks conversion funnels with real-time session data."
+      ctaEventLocation="funnel_visualizer_cta"
+      structuredData={structuredData}
+    />
   );
 }

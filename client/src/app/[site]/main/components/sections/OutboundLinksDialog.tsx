@@ -6,7 +6,7 @@ import { useDebounce, useIntersectionObserver } from "@uidotdev/usehooks";
 import { DateTime } from "luxon";
 import { ChevronDown, ChevronUp, Loader2, Search, SquareArrowOutUpRight } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
-import { OutboundLink } from "../../../../../api/analytics/events/useGetOutboundLinks";
+import { OutboundLink } from "../../../../../api/analytics/endpoints";
 import { cn } from "../../../../../lib/utils";
 
 interface OutboundLinksDialogProps {
@@ -199,7 +199,9 @@ export function OutboundLinksDialog({ outboundLinks, expanded, close }: Outbound
                 </div>
               </div>
             )}
-            {!hasMore && <div className="py-4 text-center text-neutral-500 dark:text-neutral-500 text-xs">All items loaded</div>}
+            {!hasMore && (
+              <div className="py-4 text-center text-neutral-500 dark:text-neutral-500 text-xs">All items loaded</div>
+            )}
           </div>
         </div>
       </DialogContent>

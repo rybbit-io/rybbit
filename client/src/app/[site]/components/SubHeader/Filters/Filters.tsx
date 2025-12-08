@@ -4,7 +4,8 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "../../../../../componen
 import { useGetRegionName } from "../../../../../lib/geo";
 import { removeFilter, updateFilter, useStore } from "../../../../../lib/store";
 import { cn } from "../../../../../lib/utils";
-import { filterTypeToLabel, getParameterNameLabel, getParameterValueLabel } from "../../shared/Filters/utils";
+import { isNumericParameter } from "./const";
+import { filterTypeToLabel, getParameterNameLabel, getParameterValueLabel } from "./utils";
 
 export function Filters({ availableFilters }: { availableFilters?: FilterParameter[] }) {
   const { filters } = useStore();
@@ -30,24 +31,49 @@ export function Filters({ availableFilters }: { availableFilters?: FilterParamet
                   disabled ? "bg-neutral-200 dark:bg-neutral-900" : "bg-neutral-100 dark:bg-neutral-850"
                 )}
               >
-                <div className={cn(disabled ? "text-neutral-400 dark:text-neutral-500" : "text-neutral-600 dark:text-neutral-300")}>
+                <div
+                  className={cn(
+                    disabled ? "text-neutral-400 dark:text-neutral-500" : "text-neutral-600 dark:text-neutral-300"
+                  )}
+                >
                   {getParameterNameLabel(filter.parameter)}
                 </div>
                 <div
                   className={cn(
                     "text-emerald-400 font cursor-pointer whitespace-nowrap",
-                    (filter.type === "not_equals" || filter.type === "not_contains") && "text-red-400"
+                    (filter.type === "not_equals" || filter.type === "not_contains" || filter.type === "not_regex") &&
+                      "text-red-400"
                   )}
                   onClick={() => {
+                    const isNumeric = isNumericParameter(filter.parameter);
                     let newType: FilterType = "equals";
-                    if (filter.type === "equals") {
-                      newType = "not_equals";
-                    } else if (filter.type === "not_equals") {
-                      newType = "contains";
-                    } else if (filter.type === "contains") {
-                      newType = "not_contains";
-                    } else if (filter.type === "not_contains") {
-                      newType = "equals";
+
+                    if (isNumeric) {
+                      // Numeric cycle: equals -> not_equals -> greater_than -> less_than -> equals
+                      if (filter.type === "equals") {
+                        newType = "not_equals";
+                      } else if (filter.type === "not_equals") {
+                        newType = "greater_than";
+                      } else if (filter.type === "greater_than") {
+                        newType = "less_than";
+                      } else if (filter.type === "less_than") {
+                        newType = "equals";
+                      }
+                    } else {
+                      // String cycle: equals -> not_equals -> contains -> not_contains -> regex -> not_regex -> equals
+                      if (filter.type === "equals") {
+                        newType = "not_equals";
+                      } else if (filter.type === "not_equals") {
+                        newType = "contains";
+                      } else if (filter.type === "contains") {
+                        newType = "not_contains";
+                      } else if (filter.type === "not_contains") {
+                        newType = "regex";
+                      } else if (filter.type === "regex") {
+                        newType = "not_regex";
+                      } else if (filter.type === "not_regex") {
+                        newType = "equals";
+                      }
                     }
 
                     updateFilter({ ...filter, type: newType }, i);
@@ -55,7 +81,12 @@ export function Filters({ availableFilters }: { availableFilters?: FilterParamet
                 >
                   {filterTypeToLabel(filter.type)}
                 </div>
-                <div className={cn("text-neutral-900 dark:text-neutral-100 font-medium whitespace-nowrap", disabled && "text-neutral-400 dark:text-neutral-500")}>
+                <div
+                  className={cn(
+                    "text-neutral-900 dark:text-neutral-100 font-medium whitespace-nowrap",
+                    disabled && "text-neutral-400 dark:text-neutral-500"
+                  )}
+                >
                   {getParameterValueLabel(filter, getRegionName)}
                 </div>
                 <div

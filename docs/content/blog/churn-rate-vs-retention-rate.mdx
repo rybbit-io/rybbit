@@ -6,11 +6,11 @@ tags: ['analytics', 'metrics', 'product', 'retention']
 author: Rybbit Team
 ---
 
-# Churn Rate vs Retention Rate: What's the Difference and Why It Matters
-
 You're sitting in a product review meeting. Someone throws out a number: "Our churn rate is 5% this month."
 
 Everyone nods. But is that good? Bad? Should you panic or celebrate?
+
+Understanding churn and retention is a critical part of [web analytics](/blog/what-is-web-analytics) and understanding the full customer lifecycle.
 
 Here's the thing - churn rate and retention rate are two sides of the same coin. Most people treat them interchangeably. But they're not quite the same, and understanding the difference changes how you interpret your data.
 
@@ -106,7 +106,7 @@ Churn = (Customers Lost This Month / Customers at Start of Month) x 100
 Retention = 100 - Churn
 ```
 
-This works for month-to-month comparisons and is easy to explain to stakeholders.
+This works for month-to-month comparisons and is easy to explain to stakeholders. It's similar to how [bounce rate](/blog/bounce-rate) works—you're calculating the percentage of users who don't continue.
 
 ### Cohort-Based Retention
 
@@ -191,6 +191,10 @@ But they also need to understand retention trends, because retention signals pro
 
 Rybbit makes tracking churn and retention straightforward because it gives you both user-level data and event tracking. Here's how to use it effectively:
 
+<img src="/blog/rybbit_retention_dashboard.png" alt="Rybbit's retention dashboard showing cohort analysis" />
+
+The Retention dashboard in Rybbit shows you cohort retention rates over time, making it easy to see patterns in which users stick around and which ones churn.
+
 ### Setting Up Churn Tracking
 
 1. **Define your churn event**: First, create a custom event that fires when a customer churns. This might be:
@@ -199,77 +203,29 @@ Rybbit makes tracking churn and retention straightforward because it gives you b
    - Failed payment after retry
    - Days without login (for free products)
 
-Use Rybbit's event tracking to capture this:
-
-```javascript
-// When a customer cancels their subscription
-window.rybbit.event("Churn", {
-  reason: "subscription_cancelled",
-  customer_lifetime_days: 180,
-  mrr_lost: 99,
-  plan_type: "professional"
-});
-
-// Or when they haven't been active in 30 days
-window.rybbit.event("Churn", {
-  reason: "inactivity",
-  days_inactive: 30,
-  customer_lifetime_days: 45
-});
-```
-
 2. **Track cohorts of customers**: Use Rybbit's cohort analysis to group customers by signup month, then measure what percentage churned each month.
 
-3. **Calculate churn from your dashboard**: In Rybbit, navigate to the Events tab and filter by your "Churn" event. Divide the count of churned users by your starting user count for that month to get your monthly churn rate.
+3. **Calculate churn from your dashboard**: In Rybbit, navigate to the Events tab and filter by your churn event. Divide the count of churned users by your starting user count for that month to get your monthly churn rate.
 
 ### Measuring Retention with Rybbit
 
 The more powerful use case is building retention curves:
 
-1. **Create user cohorts by signup date**: In Rybbit, go to the Users tab and filter by "First Visit Date" to create cohorts of users who signed up in specific time periods (January, February, March, etc.).
+1. **Create user cohorts by signup date**: In Rybbit, go to the Users tab and filter by "First Visit Date" to create cohorts of users who signed up in specific time periods.
 
-2. **Track engagement events**: For each cohort, monitor which events they trigger over time. Create custom events that signal retention:
+2. **Track engagement events**: For each cohort, monitor which events they trigger over time. Create custom events that signal retention such as:
    - Product signup or first login
    - First feature usage
-   - Scheduled action (e.g., "report_generated")
+   - Key actions that indicate active usage
    - Subscription renewal
    - Support interaction
-
-Example:
-
-```javascript
-// User takes a meaningful action
-window.rybbit.event("Feature_Usage", {
-  feature_name: "advanced_reporting",
-  user_signup_cohort: "2025-10"
-});
-
-// Track weekly active users
-window.rybbit.event("Weekly_Active", {
-  days_since_signup: 7,
-  signup_month: "2025-10"
-});
-
-// Track 30-day and 90-day retention markers
-window.rybbit.event("Milestone_Reached", {
-  milestone_type: "30_day_user",
-  signup_month: "2025-10"
-});
-
-window.rybbit.event("Milestone_Reached", {
-  milestone_type: "90_day_user",
-  signup_month: "2025-10"
-});
-```
 
 3. **Analyze retention trends**: Use Rybbit's Users tab to see:
    - How many users from each cohort are still active this week/month
    - Which cohorts have better retention than others
    - Whether new changes improved retention
 
-4. **Compare cohorts**: Look at your retention curves month-over-month:
-   - If your January cohort shows 70% retention at day 30, and your February cohort shows 75%, you're improving
-   - If retention is dropping across cohorts, you have a problem that needs investigation
+4. **Compare cohorts**: Look at your retention curves month-over-month to see if retention is improving or declining across different user groups.
 
 ### Rybbit Dashboard Usage
 
@@ -295,64 +251,34 @@ Here's how to use Rybbit's specific features:
 - Filter by properties like plan type, signup method, or geography to see which segments have better retention
 - Create segments like "high-value customers" and track their retention separately
 
-### Real Example: A SaaS Tracking Retention
+### Real Example: Tracking Key Retention Milestones
 
-Let's say you're running a project management tool:
+For a product like a project management tool, you would track:
 
-**Week 1 After Signup:**
-```javascript
-// Day 1: User signs up
-window.rybbit.event("Account_Created", {
-  plan_type: "free",
-  signup_source: "organic"
-});
+<img src="/blog/rybbit_journey_dashboard.png" alt="Rybbit's journey dashboard showing user paths" />
 
-// Day 3: User creates first project
-window.rybbit.event("Feature_Used", {
-  feature: "create_project",
-  days_active: 3
-});
+Use the journey dashboard to see the typical paths users take through your product, revealing which sequences lead to long-term retention.
 
-// Day 7: Still using the app
-window.rybbit.event("Retention_Day7", {
-  active: true,
-  sessions: 4,
-  projects_created: 2
-});
-```
+**Early engagement (Week 1):**
+- User account creation
+- First meaningful action (e.g., creating first project)
+- Day 7 return visit
 
-**Month 1:**
-```javascript
-// Day 30: User still active
-window.rybbit.event("Retention_Day30", {
-  active: true,
-  sessions: 12,
-  projects_created: 4,
-  plan_upgraded: false  // Still on free plan = churn risk
-});
-```
+**Mid-term engagement (Month 1):**
+- Day 30 activity level
+- Feature adoption patterns
+- Plan upgrade decisions
 
-**Month 3:**
-```javascript
-// If they upgraded, they're retained
-window.rybbit.event("Plan_Upgraded", {
-  from_plan: "free",
-  to_plan: "professional",
-  days_to_upgrade: 45
-});
+**Long-term tracking (Month 3+):**
+- Plan upgrades or downgrades
+- Churn events (inactivity, cancellation)
+- Engagement levels over time
 
-// If they're inactive
-window.rybbit.event("Churn", {
-  reason: "inactivity",
-  days_active: 31
-});
-```
-
-In your Rybbit dashboard, you can now:
-- See what percentage of users hit Day 7 retention milestone
-- See what percentage made it to Day 30
-- See upgrade rates (converted churners to retained customers)
-- Compare these rates across cohorts to measure improvement
+In your Rybbit dashboard, you can track:
+- What percentage of users hit your key retention milestones
+- Upgrade rates for different user cohorts
+- Patterns in which users retain versus churn
+- Whether improvements over time are moving the needle
 
 ### Key Rybbit Features for Churn/Retention
 
@@ -372,9 +298,11 @@ The key insight: Retention isn't a single number. It's a curve that changes over
 
 Knowing your churn rate is only half the battle. The real value comes from improving it. Here are practical strategies that actually work:
 
+Use Rybbit's funnel analysis to track where users drop off in your onboarding flow and identify optimization opportunities.
+
 ### 1. Optimize Your Onboarding
 
-Most churn happens in the first 30 days. A user who successfully completes onboarding is 5-10x more likely to stick around.
+Most churn happens in the first 30 days. Users who successfully experience value during onboarding are significantly more likely to stick around.
 
 **What to do:**
 - Create a clear path to first value. Don't overwhelm new users with features. Guide them to the one action that makes your product meaningful.
@@ -382,7 +310,7 @@ Most churn happens in the first 30 days. A user who successfully completes onboa
 - Measure time-to-value. How long until a new user takes their first meaningful action? Shorter is better.
 - A/B test your onboarding. Try different flows and measure which cohort has better day 7 and day 30 retention.
 
-**Real example:** Slack measures "first message sent" as a milestone. Users who send their first message are dramatically more likely to remain active. They don't measure users who just signed up - they measure users who experienced value.
+The key is that users who successfully get value from your product become users who experienced success. They're more likely to remain active than users who just signed up.
 
 ### 2. Identify and Segment At-Risk Users
 
@@ -418,7 +346,7 @@ Building more features doesn't improve retention. Building the right features do
 - Ruthlessly deprioritize features that don't correlate with retention
 - Invest heavily in the features that retained users depend on
 
-**Real example:** A project management tool might have 50 features. But 80% of retained users only use 5 of them. Focus on those 5. Make them bulletproof.
+**Real example:** Project management tools often have many features, but the most engaged users typically focus on and rely on a smaller core set of essential features. Focus on making those core features excellent.
 
 ### 5. Improve Customer Support Response Time
 
@@ -430,8 +358,6 @@ Users who get help quickly stick around. Users who wait days for support tend to
 - If response time is slow, that's a retention leak. Fix it.
 - Proactive support > reactive. Help users before they ask.
 
-**Real example:** Intercom found that users who get a helpful message within 24 hours of a problematic event have 40% higher lifetime value. Not because of what the message says, but because someone cared enough to reach out.
-
 ### 6. Price Correctly
 
 Wrong pricing is an invisible churn driver. Too expensive, and you lose customers. Too cheap, and you attract wrong-fit customers who churn.
@@ -442,7 +368,7 @@ Wrong pricing is an invisible churn driver. Too expensive, and you lose customer
 - Offer annual plans. Customers who commit annually are more engaged (they've already paid).
 - Make upgrade paths clear. Customers should know how to get more value as their needs grow.
 
-**Real example:** A SaaS with $10/month and $100/month plans might see 30% monthly churn on $10 plans and 2% on $100 plans. The low price attracts tire-kickers. Raising the floor price or making the entry-level tier more limited can improve retention.
+**Real example:** Pricing tiers often show different churn patterns, with lower-priced plans attracting users with lower commitment levels. Understanding your churn by pricing tier helps inform pricing strategy decisions.
 
 ### 7. Create Network Effects or Switching Costs
 
@@ -454,7 +380,7 @@ The harder it is to leave, the less they churn.
 - Community. Users with friends/teammates using your product stick around longer.
 - Track engagement with your ecosystem, not just your product.
 
-**Real example:** Figma's network effect is powerful. A designer might use it alone, but once the whole team is on Figma, leaving is impossible. Your product doesn't have to do everything - it just has to be essential to the user's workflow.
+**Real example:** Tools that facilitate team collaboration often benefit from network effects. Once teams coordinate around a single platform, switching becomes difficult. Your product doesn't need to do everything - it just needs to be essential to the user's workflow.
 
 ### 8. Monetize Engagement, Not Users
 
@@ -466,8 +392,6 @@ Better: Charge based on usage or value delivered. Users see ROI. They stay.
 - Structure pricing around value metrics (projects, reports, API calls) not seats
 - Track which pricing model correlates with retention for your business
 - Give users ways to control their costs. If they see their bill shrinking, great. If it's growing for unclear reasons, they'll leave.
-
-**Real example:** Stripe charges based on volume processed. More usage = more revenue, but users see that Stripe is making money *because* the customer is successful. That's aligned incentives.
 
 ### 9. Build a Feedback Loop
 
@@ -531,3 +455,6 @@ Everything else is just trying to fix the leak in your bucket while you're pouri
 - [Track Custom Events](/docs/track-events)
 - [Blog: Bounce Rate Guide](/blog/bounce-rate)
 - [Blog: Website Traffic Drop Analysis](/blog/website-traffic-drop)
+- [Blog: E-commerce Analytics](/blog/ecommerce-analytics)
+- [Blog: Sales Funnel Guide](/blog/what-is-sales-funnel-rybbit)
+- [Blog: Web Analytics Guide](/blog/what-is-web-analytics)

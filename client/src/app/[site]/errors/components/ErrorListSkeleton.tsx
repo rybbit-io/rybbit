@@ -49,7 +49,7 @@ export function ErrorListSkeleton({ count = 5 }: ErrorListSkeletonProps) {
                   </div>
 
                   {/* Expand/Collapse icon */}
-                  <div className="ml-2 flex-shrink-0">
+                  <div className="ml-2 shrink-0">
                     <Skeleton className="h-4 w-4" /> {/* Chevron icon */}
                   </div>
                 </div>

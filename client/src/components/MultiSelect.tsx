@@ -24,7 +24,7 @@ export const MultiSelect = forwardRef<any, MultiSelectProps<any>>(({ className, 
       classNames={{
         control: ({ isFocused }) =>
           cn(
-            "flex  min-h-[36px] rounded-md px-3 py-[3px] text-sm shadow-sm transition-colors border border-neutral-200 dark:border-neutral-750",
+            "flex h-[36px] box-border rounded-md px-3 py-[3px] text-sm transition-colors border border-neutral-200 dark:border-neutral-750",
             "placeholder:text-muted-foreground ",
             "disabled:cursor-not-allowed disabled:opacity-50",
             isFocused && "ring-1 ring-ring",
@@ -50,7 +50,7 @@ export const MultiSelect = forwardRef<any, MultiSelectProps<any>>(({ className, 
         valueContainer: () => "gap-1 flex flex-wrap items-center",
         clearIndicator: () => "p-1 text-muted-foreground hover:text-foreground",
         dropdownIndicator: () => "p-1 text-muted-foreground hover:text-foreground",
-        indicatorSeparator: () => "bg-input mx-2 my-2 w-[1px]",
+        indicatorSeparator: () => "bg-input mx-2 my-2 w-px",
         noOptionsMessage: () => "text-muted-foreground p-2 text-sm",
       }}
       {...props}

@@ -70,7 +70,7 @@ export function SimpleAnalyticsComparisonContent() {
         <p className="leading-relaxed">
           SimpleAnalytics offers unlimited pageviews on their free tier, but with a major catch: they delete all data
           older than 30 days. This makes historical comparisons impossible and limits the free tier's usefulness for any
-          serious analysis. Rybbit's free tier provides {DEFAULT_EVENT_LIMIT.toLocaleString()} events per month with
+          serious analysis. Rybbit's free tier provides {DEFAULT_EVENT_LIMIT.toLocaleString()} pageviews per month with
           full data retention. You can track seasonal trends, compare year-over-year growth, and build a complete
           picture of your site's performance over time. A truly useful free tier shouldn't delete your history just when
           it becomes valuable.

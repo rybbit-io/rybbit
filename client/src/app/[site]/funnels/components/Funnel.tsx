@@ -3,8 +3,8 @@
 import { round } from "lodash";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import { useState } from "react";
-import { FunnelResponse, FunnelStep } from "../../../../api/analytics/funnels/useGetFunnel";
-import { useGetFunnelStepSessions } from "../../../../api/analytics/funnels/useGetFunnelStepSessions";
+import { FunnelResponse, FunnelStep } from "../../../../api/analytics/endpoints";
+import { useGetFunnelStepSessions } from "../../../../api/analytics/hooks/funnels/useGetFunnelStepSessions";
 import { EventIcon, PageviewIcon } from "../../../../components/EventIcons";
 import { SessionsList } from "../../../../components/Sessions/SessionsList";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../../../components/ui/tabs";
@@ -104,14 +104,14 @@ function FunnelStepComponent({ step, index, steps, chartData, firstStep, siteId 
         className="flex items-center cursor-pointer hover:bg-neutral-100 dark:hover:bg-neutral-800/30 rounded-md p-2 -ml-2 transition-colors"
         onClick={toggleExpansion}
       >
-        <div className="flex-shrink-0 w-6 h-6 rounded-full bg-neutral-100 dark:bg-neutral-800 flex items-center justify-center text-xs mr-2">
+        <div className="shrink-0 w-6 h-6 rounded-full bg-neutral-100 dark:bg-neutral-800 flex items-center justify-center text-xs mr-2">
           {step.stepNumber}
         </div>
         <div className="font-medium text-sm flex items-center gap-2 flex-1">
           {steps[index]?.type === "page" ? <PageviewIcon /> : <EventIcon />}
           {step.stepName}
         </div>
-        <div className="flex-shrink-0">
+        <div className="shrink-0">
           {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
         </div>
       </div>
@@ -119,7 +119,7 @@ function FunnelStepComponent({ step, index, steps, chartData, firstStep, siteId 
       {/* Bar and metrics */}
       <div className="flex items-center pl-8">
         {/* Metrics */}
-        <div className="flex-shrink-0 min-w-[130px] mr-4 space-y-1">
+        <div className="shrink-0 min-w-[130px] mr-4 space-y-1">
           <div className="flex items-baseline">
             <span className="text-base font-semibold">{step.visitors.toLocaleString()}</span>
             <span className="text-sm text-neutral-500 dark:text-neutral-400 ml-1">sessions</span>
@@ -132,7 +132,7 @@ function FunnelStepComponent({ step, index, steps, chartData, firstStep, siteId 
         </div>
 
         {/* Bar */}
-        <div className="flex-grow h-10 bg-neutral-100 dark:bg-neutral-800 rounded-md overflow-hidden relative mt-2">
+        <div className="grow h-10 bg-neutral-100 dark:bg-neutral-800 rounded-md overflow-hidden relative mt-2">
           {/* Relative conversion bar (from previous step) */}
           {index > 0 && prevStep && (
             <div

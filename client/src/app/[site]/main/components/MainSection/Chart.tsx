@@ -5,7 +5,7 @@ import { StatType, useStore } from "@/lib/store";
 import { LineCustomSvgLayer, LineCustomSvgLayerProps, LineSeries, ResponsiveLine } from "@nivo/line";
 import { useWindowSize } from "@uidotdev/usehooks";
 import { DateTime } from "luxon";
-import { GetOverviewBucketedResponse } from "../../../../../api/analytics/useGetOverviewBucketed";
+import { GetOverviewBucketedResponse } from "../../../../../api/analytics/endpoints";
 import { APIResponse } from "../../../../../api/types";
 import { Time } from "../../../../../components/DateSelector/types";
 import { formatSecondsAsMinutesAndSeconds, formatter } from "../../../../../lib/utils";
@@ -335,7 +335,7 @@ export function Chart({
                 {diffPercentage.toFixed(2)}%
               </div>
             )}
-            <div className="w-full h-[1px] bg-neutral-100 dark:bg-neutral-750"></div>
+            <div className="w-full h-px bg-neutral-100 dark:bg-neutral-750"></div>
 
             <div className="m-2">
               <div className="flex justify-between text-sm w-40">

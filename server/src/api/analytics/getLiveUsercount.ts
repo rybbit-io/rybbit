@@ -1,6 +1,6 @@
 import { FastifyReply, FastifyRequest } from "fastify";
 import { clickhouse } from "../../db/clickhouse/clickhouse.js";
-import { processResults } from "./utils.js";
+import { processResults } from "./utils/utils.js";
 
 export const getLiveUsercount = async (
   req: FastifyRequest<{

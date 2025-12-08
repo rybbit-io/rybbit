@@ -1,0 +1,165 @@
+---
+title: Identify Users
+description: How to identify and track logged-in users with Rybbit
+---
+
+<Callout type="warn" title="GDPR & Privacy Compliance">
+User identification involves processing personal data. Before using these features, ensure you have a lawful basis for processing (typically user consent), have disclosed tracking in your privacy policy, and provide users the ability to access and delete their data. Only collect traits you have explicit consent to process.
+</Callout>
+
+Rybbit allows you to identify logged-in users and associate their activity with a persistent identity across devices and sessions. This enables powerful user-level analytics, including tracking user journeys, understanding retention, and personalizing experiences.
+
+## How It Works
+
+By default, Rybbit assigns an anonymous ID to each visitor based on their device fingerprint. When you call `identify()`, you link this anonymous visitor to a known user ID, allowing you to:
+
+- Track the same user across multiple devices
+- Associate pre-login activity with the logged-in user
+- Store user metadata (traits) like email, name, and custom fields
+- View identified users in your dashboard with their real names
+
+## Special Trait Fields
+
+When identifying users, certain trait fields are treated specially by Rybbit:
+
+| Field | Description |
+|-------|-------------|
+| `username` | **Primary display name** - Shown in the users list and session cards instead of the user ID |
+| `name` | **Fallback display name** - Used if username is not provided |
+| `email` | Displayed below the user's name in the dashboard |
+
+You can also include any custom fields you need for segmentation and analysis.
+
+## Limits
+
+- **Traits size**: Maximum 2KB per identify call. Traits are stored as JSON, so keep payloads concise.
+- **User ID length**: Maximum 255 characters.
+
+## API Reference
+
+### `window.rybbit.identify(userId, traits?)`
+
+Sets a custom user ID for tracking logged-in users across devices and sessions, with optional user traits (metadata).
+
+- `userId` (String): The unique identifier for the user. This will be stored in localStorage and persist across browser sessions. **Note: Custom user IDs are stored exactly as provided without any hashing or modification.**
+- `traits` (Object, Optional): An object containing user metadata like email, name, username, or any custom fields. This data is stored in Rybbit and can be used to identify users in the dashboard. Setting a trait to `null` removes it from the user's profile.
+
+```javascript
+// Identify a user when they log in (without traits)
+window.rybbit.identify("user_12345");
+
+// Identify a user with traits (recommended)
+window.rybbit.identify("user_12345", {
+  username: "johndoe",           // Primary display name
+  name: "John Doe",              // Fallback display name
+  email: "john@example.com",
+  plan: "premium",
+  company: "Acme Inc"
+});
+
+// All subsequent events and pageviews will be associated with this user ID
+```
+
+### `window.rybbit.setTraits(traits)`
+
+Updates the traits for the currently identified user without re-identifying them. Useful for updating user properties after initial identification.
+
+- `traits` (Object): An object containing user metadata. New traits are merged with existing traits. **Setting a trait to `null` removes it from the user's profile.**
+
+```javascript
+// Update user traits after they upgrade their plan
+window.rybbit.setTraits({
+  plan: "enterprise",
+  upgraded_at: "2024-01-15"
+});
+
+// Remove a trait by setting it to null
+window.rybbit.setTraits({
+  temporary_flag: null  // This trait will be removed
+});
+```
+
+**Note:** You must call `identify()` before using `setTraits()`. If no user is identified, this will log a warning.
+
+### `window.rybbit.clearUserId()`
+
+Clears the stored user ID. Useful when a user logs out.
+
+```javascript
+// Clear user identification when user logs out
+window.rybbit.clearUserId();
+```
+
+### `window.rybbit.getUserId()`
+
+Returns the currently set user ID, or `null` if none is set.
+
+```javascript
+// Check if a user is identified
+const currentUserId = window.rybbit.getUserId();
+if (currentUserId) {
+  console.log('Current user:', currentUserId);
+} else {
+  console.log('No user identified');
+}
+```
+
+## Complete Example
+
+Here's a typical workflow for user identification:
+
+```javascript
+// When user logs in
+function handleLogin(userData) {
+  // Set user identification with traits
+  window.rybbit.identify(userData.id, {
+    username: userData.username,
+    name: userData.fullName,
+    email: userData.email,
+    plan: userData.plan
+  });
+
+  // Track login event
+  window.rybbit.event("User Login", {
+    method: "email"
+  });
+}
+
+// When user upgrades their plan
+function handlePlanUpgrade(newPlan) {
+  // Update traits without re-identifying
+  window.rybbit.setTraits({
+    plan: newPlan,
+    upgraded_at: new Date().toISOString()
+  });
+
+  // Track upgrade event
+  window.rybbit.event("Plan Upgraded", {
+    new_plan: newPlan
+  });
+}
+
+// When user logs out
+function handleLogout() {
+  // Track logout event
+  window.rybbit.event("User Logout");
+
+  // Clear user identification
+  window.rybbit.clearUserId();
+}
+
+// Check identification status
+function checkUserStatus() {
+  const userId = window.rybbit.getUserId();
+  if (userId) {
+    console.log("User is identified:", userId);
+  } else {
+    console.log("Anonymous user");
+  }
+}
+```
+
+**Related Documentation:**
+- [Track Events](/docs/track-events)
+- [Behavior Analytics - Users Tab](/docs/behavior-analytics/users)
+- [API - Sending Events](/docs/api/sending-events)

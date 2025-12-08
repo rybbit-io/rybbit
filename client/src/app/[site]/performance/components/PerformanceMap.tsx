@@ -1,6 +1,6 @@
 "use client";
 
-import { useGetPerformanceByDimension } from "@/api/analytics/performance/useGetPerformanceByDimension";
+import { useGetPerformanceByDimension } from "@/api/analytics/hooks/performance/useGetPerformanceByDimension";
 import { useMeasure } from "@uidotdev/usehooks";
 import { Feature } from "geojson";
 import "ol/ol.css";
@@ -149,13 +149,13 @@ export function PerformanceMap({ height }: { height: string }) {
     mapInstanceRef.current = map;
 
     // Handle pointer move for hover effects
-    map.on("pointermove", (evt) => {
+    map.on("pointermove", evt => {
       if (evt.dragging) {
         return;
       }
 
       const pixel = map.getEventPixel(evt.originalEvent);
-      const feature = map.forEachFeatureAtPixel(pixel, (feature) => feature);
+      const feature = map.forEachFeatureAtPixel(pixel, feature => feature);
 
       if (feature) {
         const countryCode = feature.get("ISO_A2");
@@ -199,9 +199,9 @@ export function PerformanceMap({ height }: { height: string }) {
     });
 
     // Handle click for filtering
-    map.on("click", (evt) => {
+    map.on("click", evt => {
       const pixel = map.getEventPixel(evt.originalEvent);
-      const feature = map.forEachFeatureAtPixel(pixel, (feature) => feature);
+      const feature = map.forEachFeatureAtPixel(pixel, feature => feature);
 
       if (feature) {
         const countryCode = feature.get("ISO_A2");
@@ -250,7 +250,7 @@ export function PerformanceMap({ height }: { height: string }) {
     // Create new vector layer with inline style function
     const vectorLayer = new VectorLayer({
       source: vectorSource,
-      style: (feature) => {
+      style: feature => {
         const countryCode = feature.get("ISO_A2");
 
         const foundData = processedPerformanceDataRef.current?.find((item: any) => item.country === countryCode);
@@ -294,7 +294,14 @@ export function PerformanceMap({ height }: { height: string }) {
 
     vectorLayerRef.current = vectorLayer;
     mapInstanceRef.current.addLayer(vectorLayer);
-  }, [countriesGeoData, dataVersion, selectedPercentile, selectedPerformanceMetric, colorScale, processedPerformanceData]);
+  }, [
+    countriesGeoData,
+    dataVersion,
+    selectedPercentile,
+    selectedPerformanceMetric,
+    colorScale,
+    processedPerformanceData,
+  ]);
 
   // Update styles when hoveredId changes (without recreating the layer)
   useEffect(() => {

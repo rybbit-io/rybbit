@@ -1,284 +1,303 @@
-"use client";
+import type { Metadata } from "next";
+import { TrafficValueForm } from "./TrafficValueForm";
+import { ToolPageLayout } from "../components/ToolPageLayout";
 
-import { TrackedButton } from "@/components/TrackedButton";
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { DEFAULT_EVENT_LIMIT } from "@/lib/const";
-import Link from "next/link";
-import { useState } from "react";
+export const metadata: Metadata = {
+  title: "Free Traffic Value Calculator | Website Traffic ROI & Value Calculator",
+  description:
+    "Calculate the monetary value of your website traffic. Understand what each visitor is worth to your business. Get insights into conversion rates, revenue per visitor, and optimize your marketing budget allocation.",
+  openGraph: {
+    title: "Free Traffic Value Calculator | Website Traffic ROI & Value Calculator",
+    description:
+      "Calculate the monetary value of your website traffic. Understand what each visitor is worth to your business and optimize your marketing spend.",
+    type: "website",
+    url: "https://rybbit.com/tools/traffic-value-calculator",
+    siteName: "Rybbit Documentation",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Free Traffic Value Calculator | Website Traffic ROI & Value Calculator",
+    description:
+      "Calculate the value of each website visitor and make smarter marketing decisions based on traffic ROI.",
+  },
+  alternates: {
+    canonical: "https://rybbit.com/tools/traffic-value-calculator",
+  },
+};
+
+const structuredData = {
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "WebApplication",
+      name: "Traffic Value Calculator",
+      description: "Free tool to calculate the monetary value of website traffic and understand visitor ROI",
+      url: "https://rybbit.com/tools/traffic-value-calculator",
+      applicationCategory: "Utility",
+      offers: {
+        "@type": "Offer",
+        price: "0",
+        priceCurrency: "USD",
+      },
+      author: {
+        "@type": "Organization",
+        name: "Rybbit",
+        url: "https://rybbit.com",
+      },
+    },
+    {
+      "@type": "FAQPage",
+      mainEntity: [
+        {
+          "@type": "Question",
+          name: "What is traffic value?",
+          acceptedAnswer: {
+            "@type": "Answer",
+            text: "Traffic value is the estimated monetary worth of each visitor to your website. It's calculated by multiplying your monthly visitors by your conversion rate, average order value, and profit margin. This metric helps you understand how much each visitor is worth in profit to your business.",
+          },
+        },
+        {
+          "@type": "Question",
+          name: "Why is knowing traffic value important?",
+          acceptedAnswer: {
+            "@type": "Answer",
+            text: "Knowing your traffic value helps you make informed decisions about marketing spend and investments. If each visitor is worth $2 in profit, you can confidently spend up to $2 per visitor on advertising while breaking even. This enables smarter budget allocation across marketing channels.",
+          },
+        },
+        {
+          "@type": "Question",
+          name: "How do I calculate traffic value?",
+          acceptedAnswer: {
+            "@type": "Answer",
+            text: "Traffic value is calculated as: Monthly Visitors × Conversion Rate × Average Order Value × Profit Margin. For example, 50,000 visitors × 2.5% conversion × $75 AOV × 30% margin = $2.81 per visitor in monthly profit.",
+          },
+        },
+        {
+          "@type": "Question",
+          name: "What factors affect traffic value?",
+          acceptedAnswer: {
+            "@type": "Answer",
+            text: "Traffic value is affected by: conversion rate (how many visitors buy), average order value (revenue per customer), profit margin (actual profitability after costs), and traffic quality (whether visitors are likely to purchase). Improving any of these factors increases your traffic value.",
+          },
+        },
+        {
+          "@type": "Question",
+          name: "How can I increase my traffic value?",
+          acceptedAnswer: {
+            "@type": "Answer",
+            text: "Increase traffic value by: improving conversion rates through better UX and faster load times, increasing average order value with upsells and cross-sells, raising profit margins through better pricing or lower costs, and attracting higher-intent traffic through SEO and targeted advertising.",
+          },
+        },
+      ],
+    },
+  ],
+};
+
+const educationalContent = (
+  <>
+    <h2 className="text-2xl font-bold text-neutral-900 dark:text-white mb-4">What is Traffic Value?</h2>
+    <p className="text-neutral-700 dark:text-neutral-300 leading-relaxed mb-4">
+      Traffic value is the estimated monetary worth of each visitor to your website. It represents how much profit you
+      generate from the average visitor based on your conversion rate, average order value, and profit margin.
+      Understanding this metric is crucial for evaluating the effectiveness of your marketing efforts and optimizing
+      your advertising budget allocation.
+    </p>
+    <p className="text-neutral-700 dark:text-neutral-300 leading-relaxed mb-4">
+      For example, if you have 50,000 monthly visitors, a 2.5% conversion rate, an average order value of $75, and a 30%
+      profit margin, your traffic value would be approximately $2.81 per visitor in monthly profit. This means
+      increasing your traffic by just 10% could add nearly $1,400 to your monthly profit.
+    </p>
+
+    <h2 className="text-2xl font-bold text-neutral-900 dark:text-white mb-4 mt-8">How to Calculate Traffic Value</h2>
+    <p className="text-neutral-700 dark:text-neutral-300 mb-2">
+      <code className="text-sm font-mono">
+        Traffic Value = Monthly Visitors × Conversion Rate × Average Order Value × Profit Margin
+      </code>
+    </p>
+    <p className="text-neutral-700 dark:text-neutral-300 mb-2">
+      <strong>Step-by-Step Example:</strong>
+    </p>
+    <ol className="space-y-2 text-neutral-700 dark:text-neutral-300 mb-6">
+      <li>Monthly Visitors: 50,000 people visit your website each month</li>
+      <li>Conversion Rate: 2.5% of visitors make a purchase (1,250 conversions)</li>
+      <li>Average Order Value: Each customer spends $75 on average ($93,750 total revenue)</li>
+      <li>Profit Margin: 30% of revenue is actual profit ($28,125 monthly profit)</li>
+      <li>Traffic Value: $28,125 ÷ 50,000 visitors = $0.56 per visitor</li>
+    </ol>
+    <p className="text-neutral-700 dark:text-neutral-300 mb-6">
+      Our calculator automates this process and also shows you important insights like annual profit potential, how
+      traffic increases impact your bottom line, and what you can afford to spend per visitor on acquisition.
+    </p>
+
+    <h2 className="text-2xl font-bold text-neutral-900 dark:text-white mb-4 mt-8">Factors Affecting Traffic Value</h2>
+    <ul className="space-y-2 text-neutral-700 dark:text-neutral-300 mb-6">
+      <li>
+        <strong>Conversion Rate:</strong> The percentage of visitors who complete a desired action (purchase, signup,
+        etc.). Higher conversion rates dramatically increase traffic value. Even a 1% increase from 2% to 3% conversion
+        boosts value by 50%. Focus on improving UX, page load speed, compelling copy, and clear calls-to-action.
+      </li>
+      <li>
+        <strong>Average Order Value (AOV):</strong> The average amount each customer spends per transaction. Increasing
+        AOV through upsells, cross-sells, product bundles, and premium tiers directly increases your traffic value.
+        Strategies include recommending complementary products, offering volume discounts, and tiered pricing.
+      </li>
+      <li>
+        <strong>Profit Margin:</strong> Your actual profit after all costs (COGS, wages, overhead, taxes). A 30% margin
+        means 30 cents of every dollar is profit. Improve margins by optimizing supply chains, reducing operational
+        costs, improving pricing strategy, or shifting to higher-margin products.
+      </li>
+      <li>
+        <strong>Traffic Quality:</strong> Not all visitors have equal value. High-intent traffic (people actively
+        searching for your solution) converts better than cold traffic. Attract better traffic through targeted SEO,
+        buyer-intent keyword campaigns, detailed audience targeting, and strategic partnerships.
+      </li>
+      <li>
+        <strong>Customer Lifetime Value (LTV):</strong> For businesses with repeat customers, true traffic value is much
+        higher than single-purchase value. Include repeat purchases, subscriptions, and long-term customer value in your
+        calculations. Use analytics tools to track actual LTV rather than assuming single purchases.
+      </li>
+    </ul>
+
+    <h2 className="text-2xl font-bold text-neutral-900 dark:text-white mb-4 mt-8">
+      Strategies to Maximize Traffic Value
+    </h2>
+    <ol className="space-y-2 text-neutral-700 dark:text-neutral-300 mb-6">
+      <li>
+        <strong>Optimize Conversion Funnel:</strong> Reduce friction in your checkout process, improve page load speed
+        (aim for under 3 seconds), use compelling headlines and CTAs, add trust signals (reviews, guarantees), and
+        implement exit-intent popups with discounts to recover abandoning visitors.
+      </li>
+      <li>
+        <strong>Increase Average Order Value:</strong> Implement product recommendations, offer bundle deals, use tiered
+        pricing, suggest upgrades at checkout, and create loyalty programs. Even a $5 increase in AOV significantly
+        boosts your traffic value when applied to thousands of monthly visitors.
+      </li>
+      <li>
+        <strong>Improve Profit Margins:</strong> Negotiate better supplier rates, optimize inventory management, reduce
+        operational waste, automate manual processes, and raise prices strategically. Higher margins on the same revenue
+        directly increase your traffic value.
+      </li>
+      <li>
+        <strong>Attract Higher-Quality Traffic:</strong> Focus on buyer-intent keywords in SEO, use detailed audience
+        targeting in ads, build partnerships with complementary brands, and create educational content that attracts
+        serious prospects rather than casual browsers.
+      </li>
+      <li>
+        <strong>Build Customer Retention:</strong> Implement email marketing, create loyalty programs, offer excellent
+        customer support, and track repeat purchase rates. Customers who return multiple times have significantly higher
+        lifetime value.
+      </li>
+    </ol>
+
+    <h2 className="text-2xl font-bold text-neutral-900 dark:text-white mb-4 mt-8">
+      Industry Benchmarks & Typical Values
+    </h2>
+    <p className="text-neutral-700 dark:text-neutral-300 mb-4 leading-relaxed">
+      Traffic value varies significantly by industry, business model, and traffic quality. Here are approximate
+      benchmarks to help you understand if your traffic value is competitive:
+    </p>
+    <ul className="space-y-2 text-neutral-700 dark:text-neutral-300 mb-6">
+      <li>
+        <strong>E-commerce - $0.50 - $3.00 per visitor:</strong> Higher values if selling premium products with high
+        margins. Lower conversion rates but good AOV drives value. Direct traffic and email often have higher value than
+        social media.
+      </li>
+      <li>
+        <strong>SaaS / Subscriptions - $2.00 - $10.00+ per visitor:</strong> High profit margins and customer lifetime
+        value. Lower initial conversion rates but recurring revenue compounds value over time. Free trials increase
+        conversion rates.
+      </li>
+      <li>
+        <strong>Lead Generation - $1.00 - $5.00 per visitor:</strong> Value depends on lead quality, cost per lead, and
+        conversion rate to paying customer. B2B often higher than B2C. Your sales team's close rate significantly
+        impacts actual value.
+      </li>
+      <li>
+        <strong>Affiliate / AdSense - $0.01 - $0.25 per visitor:</strong> Low CPM (cost per thousand impressions) from
+        ad networks. High traffic volume needed. Value depends on content niche and audience quality. Finance/SaaS
+        topics have higher CPM.
+      </li>
+      <li>
+        <strong>Content / Publishing - $0.05 - $1.00 per visitor:</strong> Highly dependent on monetization model (ads,
+        subscriptions, sponsorships). Niche audiences with high engagement earn more. Consistent, high-quality content
+        builds value.
+      </li>
+      <li>
+        <strong>Marketplace / Classifieds - $0.10 - $2.00 per visitor:</strong> Value from transaction fees or listing
+        fees. Higher traffic volume needed due to lower per-visitor monetization. Network effects increase value over
+        time.
+      </li>
+    </ul>
+  </>
+);
+
+const faqs = [
+  {
+    question: "What is traffic value?",
+    answer: (
+      <>
+        Traffic value is the estimated monetary worth of each visitor to your website. It's calculated by multiplying
+        your monthly visitors by your conversion rate, average order value, and profit margin. This metric helps you
+        understand how much each visitor is worth in profit to your business.
+      </>
+    ),
+  },
+  {
+    question: "Why is knowing traffic value important?",
+    answer: (
+      <>
+        Knowing your traffic value helps you make informed decisions about marketing spend and investments. If each
+        visitor is worth $2 in profit, you can confidently spend up to $2 per visitor on advertising while breaking
+        even. This enables smarter budget allocation across marketing channels.
+      </>
+    ),
+  },
+  {
+    question: "How do I calculate traffic value?",
+    answer: (
+      <>
+        Traffic value is calculated as: Monthly Visitors × Conversion Rate × Average Order Value × Profit Margin. For
+        example, 50,000 visitors × 2.5% conversion × $75 AOV × 30% margin = $2.81 per visitor in monthly profit.
+      </>
+    ),
+  },
+  {
+    question: "What factors affect traffic value?",
+    answer: (
+      <>
+        Traffic value is affected by: conversion rate (how many visitors buy), average order value (revenue per
+        customer), profit margin (actual profitability after costs), and traffic quality (whether visitors are likely to
+        purchase). Improving any of these factors increases your traffic value.
+      </>
+    ),
+  },
+  {
+    question: "How can I increase my traffic value?",
+    answer: (
+      <>
+        Increase traffic value by: improving conversion rates through better UX and faster load times, increasing
+        average order value with upsells and cross-sells, raising profit margins through better pricing or lower costs,
+        and attracting higher-intent traffic through SEO and targeted advertising.
+      </>
+    ),
+  },
+];
 
 export default function TrafficValueCalculatorPage() {
-  const [monthlyVisitors, setMonthlyVisitors] = useState("");
-  const [conversionRate, setConversionRate] = useState("");
-  const [averageOrderValue, setAverageOrderValue] = useState("");
-  const [profitMargin, setProfitMargin] = useState("");
-
-  const calculateValue = () => {
-    const visitors = parseFloat(monthlyVisitors);
-    const cr = parseFloat(conversionRate) / 100;
-    const aov = parseFloat(averageOrderValue);
-    const margin = parseFloat(profitMargin) / 100;
-
-    if (!visitors || !cr || !aov || !margin) return null;
-
-    const conversions = visitors * cr;
-    const revenue = conversions * aov;
-    const profit = revenue * margin;
-    const valuePerVisitor = profit / visitors;
-    const annualProfit = profit * 12;
-
-    return {
-      conversions,
-      revenue,
-      profit,
-      valuePerVisitor,
-      annualProfit
-    };
-  };
-
-  const metrics = calculateValue();
-
-  const clearForm = () => {
-    setMonthlyVisitors("");
-    setConversionRate("");
-    setAverageOrderValue("");
-    setProfitMargin("");
-  };
-
   return (
-    <div className="min-h-screen bg-gradient-to-b from-neutral-50 to-neutral-100 dark:from-neutral-950 dark:to-neutral-900">
-      <div className="max-w-4xl mx-auto px-6 py-20">
-        {/* Header */}
-        <div className="mb-16">
-          <div className="inline-block mb-4 px-4 py-1.5 bg-emerald-100 dark:bg-emerald-900/30 border border-emerald-200 dark:border-emerald-800 rounded-full">
-            <span className="text-sm font-medium text-emerald-700 dark:text-emerald-400">Free Tool</span>
-          </div>
-          <h1 className="text-5xl md:text-6xl font-bold text-neutral-900 dark:text-white mb-6 tracking-tight">
-            Traffic Value Calculator
-          </h1>
-          <p className="text-xl text-neutral-600 dark:text-neutral-400 max-w-2xl leading-relaxed">
-            Estimate the monetary value of your website traffic. Understand what each visitor is worth to your business.
-          </p>
-        </div>
-
-        {/* Tool */}
-        <div className="mb-16">
-          <div className="space-y-6">
-            {/* Monthly Visitors */}
-            <div>
-              <label className="block text-sm font-medium text-neutral-900 dark:text-white mb-2">
-                Monthly Visitors <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="number"
-                value={monthlyVisitors}
-                onChange={e => setMonthlyVisitors(e.target.value)}
-                placeholder="50000"
-                className="w-full px-4 py-3 bg-white dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 rounded-lg text-neutral-900 dark:text-white placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-              />
-              <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">Total visitors per month</p>
-            </div>
-
-            {/* Conversion Rate */}
-            <div>
-              <label className="block text-sm font-medium text-neutral-900 dark:text-white mb-2">
-                Conversion Rate <span className="text-red-500">*</span>
-              </label>
-              <div className="relative">
-                <input
-                  type="number"
-                  step="0.01"
-                  value={conversionRate}
-                  onChange={e => setConversionRate(e.target.value)}
-                  placeholder="2.5"
-                  className="w-full pl-4 pr-10 py-3 bg-white dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 rounded-lg text-neutral-900 dark:text-white placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                />
-                <span className="absolute right-4 top-1/2 -translate-y-1/2 text-neutral-500 dark:text-neutral-400">%</span>
-              </div>
-              <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">Percentage of visitors who convert</p>
-            </div>
-
-            {/* Average Order Value */}
-            <div>
-              <label className="block text-sm font-medium text-neutral-900 dark:text-white mb-2">
-                Average Order Value <span className="text-red-500">*</span>
-              </label>
-              <div className="relative">
-                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-500 dark:text-neutral-400">$</span>
-                <input
-                  type="number"
-                  step="0.01"
-                  value={averageOrderValue}
-                  onChange={e => setAverageOrderValue(e.target.value)}
-                  placeholder="75.00"
-                  className="w-full pl-8 pr-4 py-3 bg-white dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 rounded-lg text-neutral-900 dark:text-white placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                />
-              </div>
-              <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">Average revenue per conversion</p>
-            </div>
-
-            {/* Profit Margin */}
-            <div>
-              <label className="block text-sm font-medium text-neutral-900 dark:text-white mb-2">
-                Profit Margin <span className="text-red-500">*</span>
-              </label>
-              <div className="relative">
-                <input
-                  type="number"
-                  step="0.1"
-                  value={profitMargin}
-                  onChange={e => setProfitMargin(e.target.value)}
-                  placeholder="30"
-                  className="w-full pl-4 pr-10 py-3 bg-white dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 rounded-lg text-neutral-900 dark:text-white placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                />
-                <span className="absolute right-4 top-1/2 -translate-y-1/2 text-neutral-500 dark:text-neutral-400">%</span>
-              </div>
-              <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">Net profit margin per sale</p>
-            </div>
-
-            {/* Results */}
-            {metrics && (
-              <div className="pt-6 border-t border-neutral-200 dark:border-neutral-800 space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-neutral-900 dark:text-white mb-2">
-                    Value Per Visitor
-                  </label>
-                  <div className="px-4 py-6 bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-300 dark:border-emerald-800 rounded-lg text-center">
-                    <div className="text-4xl font-bold text-emerald-600 dark:text-emerald-400">
-                      ${metrics.valuePerVisitor.toFixed(2)}
-                    </div>
-                    <div className="text-sm text-neutral-600 dark:text-neutral-400 mt-1">per visitor</div>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-neutral-900 dark:text-white mb-2">
-                      Monthly Conversions
-                    </label>
-                    <div className="px-4 py-4 bg-neutral-100 dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 rounded-lg text-center">
-                      <div className="text-2xl font-bold text-neutral-900 dark:text-white">
-                        {Math.round(metrics.conversions).toLocaleString()}
-                      </div>
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-neutral-900 dark:text-white mb-2">
-                      Monthly Revenue
-                    </label>
-                    <div className="px-4 py-4 bg-neutral-100 dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 rounded-lg text-center">
-                      <div className="text-2xl font-bold text-neutral-900 dark:text-white">
-                        ${metrics.revenue.toLocaleString(undefined, { maximumFractionDigits: 0 })}
-                      </div>
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-neutral-900 dark:text-white mb-2">
-                      Monthly Profit
-                    </label>
-                    <div className="px-4 py-4 bg-blue-50 dark:bg-blue-950/30 border border-blue-300 dark:border-blue-800 rounded-lg text-center">
-                      <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
-                        ${metrics.profit.toLocaleString(undefined, { maximumFractionDigits: 0 })}
-                      </div>
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-neutral-900 dark:text-white mb-2">
-                      Annual Profit
-                    </label>
-                    <div className="px-4 py-4 bg-blue-50 dark:bg-blue-950/30 border border-blue-300 dark:border-blue-800 rounded-lg text-center">
-                      <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
-                        ${metrics.annualProfit.toLocaleString(undefined, { maximumFractionDigits: 0 })}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="p-4 bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-900 rounded-lg">
-                  <h3 className="font-semibold text-emerald-900 dark:text-emerald-200 mb-2">What this means:</h3>
-                  <ul className="text-sm text-emerald-900 dark:text-emerald-200 space-y-1">
-                    <li>• Each visitor is worth <strong>${metrics.valuePerVisitor.toFixed(2)}</strong> in profit</li>
-                    <li>• A <strong>10% traffic increase</strong> would add <strong>${(metrics.profit * 0.1).toLocaleString(undefined, { maximumFractionDigits: 0 })}/month</strong> in profit</li>
-                    <li>• A <strong>1% conversion rate improvement</strong> would add <strong>${((parseFloat(monthlyVisitors) * 0.01 * parseFloat(averageOrderValue) * parseFloat(profitMargin) / 100)).toLocaleString(undefined, { maximumFractionDigits: 0 })}/month</strong> in profit</li>
-                    <li>• You can afford to spend up to <strong>${metrics.valuePerVisitor.toFixed(2)}</strong> per visitor on acquisition</li>
-                  </ul>
-                </div>
-              </div>
-            )}
-
-            {/* Buttons */}
-            <div className="flex gap-4 pt-4">
-              <button
-                onClick={clearForm}
-                className="px-6 py-3 bg-neutral-200 dark:bg-neutral-800 hover:bg-neutral-300 dark:hover:bg-neutral-700 text-neutral-900 dark:text-white font-medium rounded-lg transition-colors"
-              >
-                Clear
-              </button>
-            </div>
-          </div>
-        </div>
-
-        {/* FAQ Section */}
-        <div className="mb-16">
-          <h2 className="text-2xl font-bold text-neutral-900 dark:text-white mb-6">Understanding Traffic Value</h2>
-          <div className="bg-neutral-100/50 dark:bg-neutral-800/20 backdrop-blur-sm border border-neutral-300/50 dark:border-neutral-800/50 rounded-xl overflow-hidden">
-            <Accordion type="single" collapsible className="w-full">
-              <AccordionItem value="item-1" className="border-b border-neutral-300/50 dark:border-neutral-800/50">
-                <AccordionTrigger className="px-6 py-4 text-base font-medium hover:text-emerald-500 dark:hover:text-emerald-400 transition-colors">
-                  Why is knowing visitor value important?
-                </AccordionTrigger>
-                <AccordionContent className="px-6 pb-4 text-neutral-700 dark:text-neutral-300">
-                  Understanding visitor value helps you make informed decisions about marketing spend, SEO investments, and website optimization. If each visitor is worth $2, you can confidently spend up to $2 per visitor on advertising while breaking even, and anything less is profitable.
-                </AccordionContent>
-              </AccordionItem>
-
-              <AccordionItem value="item-2" className="border-b border-neutral-300/50 dark:border-neutral-800/50">
-                <AccordionTrigger className="px-6 py-4 text-base font-medium hover:text-emerald-500 dark:hover:text-emerald-400 transition-colors">
-                  How can I increase visitor value?
-                </AccordionTrigger>
-                <AccordionContent className="px-6 pb-4 text-neutral-700 dark:text-neutral-300">
-                  You can increase visitor value by: improving conversion rate (better UX, faster site, clearer CTAs), increasing average order value (upsells, cross-sells, bundles), improving profit margins (better pricing, lower costs), or attracting higher-intent traffic (better targeting, SEO for buyer keywords).
-                </AccordionContent>
-              </AccordionItem>
-
-              <AccordionItem value="item-3">
-                <AccordionTrigger className="px-6 py-4 text-base font-medium hover:text-emerald-500 dark:hover:text-emerald-400 transition-colors">
-                  Should I include customer lifetime value?
-                </AccordionTrigger>
-                <AccordionContent className="px-6 pb-4 text-neutral-700 dark:text-neutral-300">
-                  This calculator shows immediate value per visitor. For businesses with repeat customers, your actual visitor value is higher when including lifetime value (LTV). Track customer behavior over time with{" "}
-                  <Link href="https://app.rybbit.io" className="text-emerald-600 dark:text-emerald-400 hover:underline">
-                    Rybbit Analytics
-                  </Link>{" "}
-                  to understand true LTV.
-                </AccordionContent>
-              </AccordionItem>
-            </Accordion>
-          </div>
-        </div>
-      </div>
-
-      {/* CTA */}
-      <div className="border-t border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 py-20">
-        <div className="max-w-4xl mx-auto px-6 text-center">
-          <h2 className="text-3xl md:text-4xl font-bold text-neutral-900 dark:text-white mb-4">
-            Maximize your traffic value with Rybbit
-          </h2>
-          <p className="text-lg text-neutral-600 dark:text-neutral-400 mb-8 max-w-2xl mx-auto">
-            Track conversions, revenue, and visitor sources to optimize your most valuable traffic. Get started for free with up to {DEFAULT_EVENT_LIMIT.toLocaleString()} events per month.
-          </p>
-          <TrackedButton
-            href="https://app.rybbit.io/signup"
-            eventName="signup"
-            eventProps={{ location: "traffic_value_calculator_cta" }}
-            className="inline-block bg-emerald-600 hover:bg-emerald-500 text-white font-semibold px-10 py-4 text-lg rounded-lg shadow-lg shadow-emerald-900/20 transform hover:-translate-y-0.5 transition-all duration-200"
-          >
-            Start tracking for free
-          </TrackedButton>
-        </div>
-      </div>
-    </div>
+    <ToolPageLayout
+      toolSlug="traffic-value-calculator"
+      title="Traffic Value Calculator"
+      description="Estimate the monetary value of your website traffic. Understand what each visitor is worth to your business and make smarter marketing decisions."
+      badge="Free Tool"
+      toolComponent={<TrafficValueForm />}
+      educationalContent={educationalContent}
+      faqs={faqs}
+      relatedToolsCategory="analytics"
+      ctaTitle="Maximize your traffic value with Rybbit"
+      ctaDescription="Track conversions, revenue, and visitor sources to optimize your most valuable traffic."
+      ctaEventLocation="traffic_value_calculator_cta"
+      structuredData={structuredData}
+    />
   );
 }

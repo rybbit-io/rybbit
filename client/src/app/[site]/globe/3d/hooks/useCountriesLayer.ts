@@ -1,7 +1,7 @@
 import { FilterParameter } from "@rybbit/shared";
 import mapboxgl from "mapbox-gl";
 import { useEffect, useMemo, useRef } from "react";
-import { useMetric } from "../../../../../api/analytics/useGetMetric";
+import { useMetric } from "../../../../../api/analytics/hooks/useGetMetric";
 import { useCountries } from "../../../../../lib/geo";
 import { addFilter } from "../../../../../lib/store";
 import { createColorScale } from "../../utils/colorScale";

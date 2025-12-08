@@ -1,10 +1,13 @@
 import { FastifyReply, FastifyRequest } from "fastify";
 import { clickhouse } from "../../db/clickhouse/clickhouse.js";
-import { getFilterStatement, getTimeStatement, processResults } from "./utils.js";
+import { enrichWithTraits, getTimeStatement, processResults } from "./utils/utils.js";
 import { FilterParams } from "@rybbit/shared";
+import { getFilterStatement } from "./utils/getFilterStatement.js";
 
 export type GetUsersResponse = {
-  user_id: string;
+  user_id: string; // Device fingerprint
+  identified_user_id: string; // Custom user ID when identified, empty string otherwise
+  traits: Record<string, unknown> | null;
   country: string;
   region: string;
   city: string;
@@ -29,6 +32,7 @@ export interface GetUsersRequest {
     page_size?: string;
     sort_by?: string;
     sort_order?: string;
+    identified_only?: string;
   }>;
 }
 
@@ -36,11 +40,13 @@ export async function getUsers(req: FastifyRequest<GetUsersRequest>, res: Fastif
   const {
     filters,
     page = "1",
-    page_size: pageSize = "20",
+    page_size: pageSize = "100",
     sort_by: sortBy = "last_seen",
     sort_order: sortOrder = "desc",
+    identified_only: identifiedOnly = "false",
   } = req.query;
   const site = req.params.site;
+  const filterIdentified = identifiedOnly === "true";
 
   const pageNum = parseInt(page, 10);
   const pageSizeNum = parseInt(pageSize, 10);
@@ -58,7 +64,10 @@ export async function getUsers(req: FastifyRequest<GetUsersRequest>, res: Fastif
   const query = `
 WITH AggregatedUsers AS (
     SELECT
-        user_id,
+        -- Group by effective user: identified_user_id for identified users, user_id (device) for anonymous
+        COALESCE(NULLIF(events.identified_user_id, ''), events.user_id) AS effective_user_id,
+        argMax(user_id, timestamp) AS user_id,
+        argMax(identified_user_id, timestamp) AS identified_user_id,
         argMax(country, timestamp) AS country,
         argMax(region, timestamp) AS region,
         argMax(city, timestamp) AS city,
@@ -68,7 +77,7 @@ WITH AggregatedUsers AS (
         argMax(operating_system, timestamp) AS operating_system,
         argMax(operating_system_version, timestamp) AS operating_system_version,
         argMax(device_type, timestamp) AS device_type,
-        argMax(screen_width, timestamp) AS screen_width, 
+        argMax(screen_width, timestamp) AS screen_width,
         argMax(screen_height, timestamp) AS screen_height,
         argMin(referrer, timestamp) AS referrer,
         argMax(channel, timestamp) AS channel,
@@ -83,19 +92,34 @@ WITH AggregatedUsers AS (
         site_id = {siteId:Int32}
         ${timeStatement}
     GROUP BY
-        user_id
+        effective_user_id
 )
-SELECT *
+SELECT
+    *
 FROM AggregatedUsers
 WHERE 1 = 1 ${filterStatement}
+${filterIdentified ? "AND identified_user_id != ''" : ""}
 ORDER BY ${actualSortBy} ${actualSortOrder}
 LIMIT {limit:Int32} OFFSET {offset:Int32}
   `;
 
   // Query to get total count
-  const countQuery = `
+  const countQuery = filterIdentified
+    ? `
+SELECT count(*) AS total_count
+FROM (
+    SELECT DISTINCT identified_user_id
+    FROM events
+    WHERE
+        site_id = {siteId:Int32}
+        AND identified_user_id != ''
+        ${timeStatement}
+        ${filterStatement}
+)
+`
+    : `
 SELECT
-    count(DISTINCT user_id) AS total_count
+    count(DISTINCT COALESCE(NULLIF(events.identified_user_id, ''), events.user_id)) AS total_count
 FROM events
 WHERE
     site_id = {siteId:Int32}
@@ -124,12 +148,15 @@ WHERE
       }),
     ]);
 
-    const data = await processResults<GetUsersResponse[number]>(result);
+    const data = await processResults<Omit<GetUsersResponse[number], "traits">>(result);
     const countData = await processResults<{ total_count: number }>(countResult);
     const totalCount = countData[0]?.total_count || 0;
 
+    // Enrich with traits from Postgres
+    const dataWithTraits = await enrichWithTraits(data, Number(site));
+
     return res.send({
-      data,
+      data: dataWithTraits,
       totalCount,
       page: pageNum,
       pageSize: pageSizeNum,

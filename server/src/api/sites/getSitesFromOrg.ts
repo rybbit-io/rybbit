@@ -5,7 +5,7 @@ import { db } from "../../db/postgres/postgres.js";
 import { sites, member, organization } from "../../db/postgres/schema.js";
 import { getSessionFromReq, getIsUserAdmin } from "../../lib/auth-utils.js";
 import { IS_CLOUD, DEFAULT_EVENT_LIMIT } from "../../lib/const.js";
-import { processResults } from "../analytics/utils.js";
+import { processResults } from "../analytics/utils/utils.js";
 import { getSubscriptionInner } from "../stripe/getSubscription.js";
 
 export async function getSitesFromOrg(

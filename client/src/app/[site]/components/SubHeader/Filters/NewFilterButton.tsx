@@ -6,7 +6,7 @@ import { Button } from "../../../../../components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from "../../../../../components/ui/dropdown-menu";
 import { useStore } from "../../../../../lib/store";
 import { sleep } from "../../../../../lib/utils";
-import { FilterComponent } from "../../shared/Filters/FilterComponent";
+import { FilterComponent } from "./FilterComponent";
 
 export function NewFilterButton({ availableFilters }: { availableFilters?: FilterParameter[] }) {
   const { filters, setFilters } = useStore();

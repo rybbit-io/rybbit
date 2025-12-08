@@ -1,6 +1,6 @@
 import { FastifyReply, FastifyRequest } from "fastify";
 import { clickhouse } from "../../db/clickhouse/clickhouse.js";
-import { processResults } from "./utils.js";
+import { processResults } from "./utils/utils.js";
 
 // Define the expected shape of a single data row from the query
 interface RetentionDataRow {
@@ -43,17 +43,18 @@ export const getRetention = async (
     query: `
 WITH UserFirstPeriod AS (
     SELECT
-        user_id,
+        -- Use effective user ID: identified_user_id for identified users, user_id for anonymous
+        COALESCE(NULLIF(identified_user_id, ''), user_id) AS effective_user_id,
         ${periodFunction}(min(timestamp)${retentionMode === "week" ? ", 1" : ""}) AS cohort_period
     FROM events
     WHERE site_id = {siteId:UInt16}
     -- Use the configurable time range
     AND timestamp >= addDays(today(), -{timeRange:UInt16})
-    GROUP BY user_id
+    GROUP BY effective_user_id
 ),
 PeriodActivity AS (
     SELECT DISTINCT
-        user_id,
+        COALESCE(NULLIF(identified_user_id, ''), user_id) AS effective_user_id,
         ${periodFunction}(timestamp${retentionMode === "week" ? ", 1" : ""}) AS activity_period
     FROM events
     WHERE site_id = {siteId:UInt16}
@@ -64,9 +65,9 @@ CohortRetention AS (
     SELECT
         ufp.cohort_period,
         dateDiff('${periodDiffFunc}', ufp.cohort_period, pa.activity_period) AS period_difference,
-        count(DISTINCT pa.user_id) AS retained_users
+        count(DISTINCT pa.effective_user_id) AS retained_users
     FROM UserFirstPeriod ufp
-    JOIN PeriodActivity pa ON ufp.user_id = pa.user_id
+    JOIN PeriodActivity pa ON ufp.effective_user_id = pa.effective_user_id
     WHERE pa.activity_period >= ufp.cohort_period
     GROUP BY
         ufp.cohort_period,
@@ -75,7 +76,7 @@ CohortRetention AS (
 CohortSize AS (
     SELECT
         cohort_period,
-        count(DISTINCT user_id) AS total_users
+        count(DISTINCT effective_user_id) AS total_users
     FROM UserFirstPeriod
     GROUP BY cohort_period
 )

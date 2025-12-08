@@ -5,7 +5,8 @@ import { GOALS_PAGE_FILTERS } from "@/lib/filterGroups";
 import { useStore } from "@/lib/store";
 import { ArrowRight, Funnel } from "lucide-react";
 import { useMemo, useState } from "react";
-import { SavedFunnel, useGetFunnels } from "../../../api/analytics/funnels/useGetFunnels";
+import { useGetFunnels } from "../../../api/analytics/hooks/funnels/useGetFunnels";
+import { SavedFunnel } from "../../../api/analytics/endpoints";
 import { DisabledOverlay } from "../../../components/DisabledOverlay";
 import { ErrorState } from "../../../components/ErrorState";
 import { NothingFound } from "../../../components/NothingFound";
@@ -18,7 +19,7 @@ import { FunnelRow } from "./components/FunnelRow";
 const FunnelRowSkeleton = () => (
   <div className="rounded-md shadow-sm bg-white dark:bg-neutral-900 border border-neutral-100 dark:border-neutral-800 mb-4 overflow-hidden">
     <div className="flex items-center justify-between py-2 px-5 animate-pulse">
-      <div className="flex items-center flex-grow">
+      <div className="flex items-center grow">
         <div className="mt-1 text-xs flex flex-col gap-3 w-full">
           {/* Funnel name and steps skeleton */}
           <div className="flex flex-wrap gap-1 items-center">

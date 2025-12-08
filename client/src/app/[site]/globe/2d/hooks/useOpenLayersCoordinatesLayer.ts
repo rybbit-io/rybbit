@@ -8,7 +8,7 @@ import Feature, { FeatureLike } from "ol/Feature";
 import Point from "ol/geom/Point";
 import { Circle, Fill, Stroke, Style } from "ol/style";
 import { fromLonLat } from "ol/proj";
-import { useGetSessionLocations } from "../../../../../api/analytics/useGetSessionLocations";
+import { useGetSessionLocations } from "../../../../../api/analytics/hooks/useGetSessionLocations";
 import { addFilter, removeFilter, useStore } from "../../../../../lib/store";
 import { renderCountryFlag } from "../../utils/renderCountryFlag";
 

@@ -11,11 +11,10 @@ import { SocialButtons } from "@/components/auth/SocialButtons";
 import { Turnstile } from "@/components/auth/Turnstile";
 
 interface SignupProps {
-  inviterEmail?: string | null;
-  organization?: string | null;
+  callbackURL: string;
 }
 
-export function Signup({ inviterEmail, organization }: SignupProps) {
+export function Signup({ callbackURL }: SignupProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string>("");
   const [email, setEmail] = useState("");
@@ -71,6 +70,8 @@ export function Signup({ inviterEmail, organization }: SignupProps) {
   return (
     <form onSubmit={handleSignup}>
       <div className="flex flex-col gap-4">
+        <SocialButtons onError={setError} callbackURL={callbackURL} mode="signup" />
+
         <AuthInput
           id="email"
           label="Email"
@@ -91,15 +92,6 @@ export function Signup({ inviterEmail, organization }: SignupProps) {
           onChange={e => setPassword(e.target.value)}
         />
 
-        {IS_CLOUD && (
-          <Turnstile
-            onSuccess={token => setTurnstileToken(token)}
-            onError={() => setTurnstileToken("")}
-            onExpire={() => setTurnstileToken("")}
-            className="flex justify-center"
-          />
-        )}
-
         <AuthButton
           isLoading={isLoading}
           loadingText="Creating account..."
@@ -108,7 +100,14 @@ export function Signup({ inviterEmail, organization }: SignupProps) {
           Sign Up to Accept Invitation
         </AuthButton>
 
-        <SocialButtons onError={setError} />
+        {IS_CLOUD && (
+          <Turnstile
+            onSuccess={token => setTurnstileToken(token)}
+            onError={() => setTurnstileToken("")}
+            onExpire={() => setTurnstileToken("")}
+            className="flex justify-center"
+          />
+        )}
 
         <AuthError error={error} />
       </div>

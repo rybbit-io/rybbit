@@ -4,14 +4,7 @@ import { Slider } from "@/components/ui/slider";
 import { cn } from "@/lib/utils";
 import { getCalApi } from "@calcom/embed-react";
 import { useEffect, useState } from "react";
-import {
-  DEFAULT_EVENT_LIMIT,
-  FREE_SITE_LIMIT,
-  PRO_SITE_LIMIT,
-  PRO_TEAM_LIMIT,
-  STANDARD_SITE_LIMIT,
-  STANDARD_TEAM_LIMIT,
-} from "../lib/const";
+import { DEFAULT_EVENT_LIMIT, FREE_SITE_LIMIT, STANDARD_SITE_LIMIT, STANDARD_TEAM_LIMIT } from "../lib/const";
 import { PricingCard } from "./PricingCard";
 
 // Available event tiers for the slider
@@ -38,8 +31,8 @@ const STANDARD_FEATURES = [
 // Define pro plan features
 const PRO_FEATURES = [
   "Everything in Standard",
-  `Up to ${PRO_SITE_LIMIT} websites`,
-  `Up to ${PRO_TEAM_LIMIT} team members`,
+  "Unlimited websites",
+  "Unlimited team members",
   "Session replays",
   "5 year data retention",
   "Priority support",
@@ -48,8 +41,6 @@ const PRO_FEATURES = [
 // Define enterprise plan features
 const ENTERPRISE_FEATURES = [
   "Everything in Pro",
-  "Unlimited websites",
-  "Unlimited team members",
   "Single Sign-On (SSO)",
   "Infinite data retention",
   "Dedicated isolated instance",
@@ -151,10 +142,9 @@ export function PricingSection() {
 
         {/* Shared controls section */}
         <div className="max-w-xl mx-auto mb-8">
-          {/* Events per month and billing toggle */}
           <div className="flex justify-between mb-6 items-center">
             <div>
-              <h3 className="font-semibold mb-2">Events per month</h3>
+              <h3 className="font-semibold mb-2">Monthly pageviews</h3>
               <div className="text-3xl font-bold text-emerald-600 dark:text-emerald-400">
                 {typeof eventLimit === "number" ? eventLimit.toLocaleString() : eventLimit}
               </div>
@@ -223,7 +213,7 @@ export function PricingSection() {
             priceDisplay={
               <div>
                 <span className="text-3xl font-bold">{DEFAULT_EVENT_LIMIT.toLocaleString()}</span>
-                <span className="ml-1 text-neutral-400">events/month</span>
+                <span className="ml-1 text-neutral-400">pageviews/m</span>
               </div>
             }
             buttonText="Start for free"

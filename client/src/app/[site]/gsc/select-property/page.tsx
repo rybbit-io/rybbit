@@ -1,16 +1,16 @@
 "use client";
 
-import { useSearchParams, useParams, useRouter } from "next/navigation";
-import { useState } from "react";
+import { useParams, useRouter } from "next/navigation";
+import { Suspense, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { authedFetch } from "@/api/utils";
+import { useQueryState, parseAsJson } from "nuqs";
 
-export default function SelectGSCPropertyPage() {
-  const searchParams = useSearchParams();
+function SelectGSCPropertyPageContent() {
   const params = useParams();
   const router = useRouter();
   const site = params.site as string;
@@ -19,8 +19,7 @@ export default function SelectGSCPropertyPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Parse properties from query params
-  const propertiesParam = searchParams.get("properties");
-  const properties: string[] = propertiesParam ? JSON.parse(decodeURIComponent(propertiesParam)) : [];
+  const [properties] = useQueryState("properties", parseAsJson<string[]>(value => value as string[]).withDefault([]));
 
   const handleSubmit = async () => {
     if (!selectedProperty) {
@@ -79,7 +78,7 @@ export default function SelectGSCPropertyPage() {
             {properties.map(property => (
               <div
                 key={property}
-                className="flex items-center space-x-2 border border-neutral-100 dark:border-neutral-200 rounded-lg p-4 hover:bg-neutral-50 dark:hover:bg-neutral-800/30"
+                className="flex items-center space-x-2 border border-neutral-100 dark:border-neutral-750 rounded-lg p-4 hover:bg-neutral-50 dark:hover:bg-neutral-800/30"
               >
                 <RadioGroupItem value={property} id={property} />
                 <Label htmlFor={property} className="flex-1 cursor-pointer">
@@ -110,5 +109,13 @@ export default function SelectGSCPropertyPage() {
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+export default function SelectGSCPropertyPage() {
+  return (
+    <Suspense fallback={null}>
+      <SelectGSCPropertyPageContent />
+    </Suspense>
   );
 }

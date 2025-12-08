@@ -1,16 +1,15 @@
 import { Clock, MousePointerClick, Trash2 } from "lucide-react";
 import { DateTime } from "luxon";
-import Link from "next/link";
 import { useState } from "react";
+import { useDeleteSessionReplay } from "../../../../api/analytics/hooks/sessionReplay/useDeleteSessionReplay";
+import { Avatar } from "../../../../components/Avatar";
+import { IdentifiedBadge } from "../../../../components/IdentifiedBadge";
 import {
   BrowserTooltipIcon,
   CountryFlagTooltipIcon,
   DeviceTypeTooltipIcon,
   OperatingSystemTooltipIcon,
 } from "../../../../components/TooltipIcons/TooltipIcons";
-import { Badge } from "../../../../components/ui/badge";
-import { Skeleton } from "../../../../components/ui/skeleton";
-import { Button } from "../../../../components/ui/button";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -22,13 +21,17 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "../../../../components/ui/alert-dialog";
-import { cn, formatter } from "../../../../lib/utils";
+import { Badge } from "../../../../components/ui/badge";
+import { Button } from "../../../../components/ui/button";
+import { Skeleton } from "../../../../components/ui/skeleton";
+import { cn, formatter, getUserDisplayName } from "../../../../lib/utils";
 import { useReplayStore } from "./replayStore";
-import { useDeleteSessionReplay } from "../../../../api/analytics/sessionReplay/useDeleteSessionReplay";
 
 interface SessionReplayListItem {
   session_id: string;
   user_id: string;
+  identified_user_id: string;
+  traits: Record<string, unknown> | null;
   start_time: string;
   end_time?: string;
   duration_ms?: number;
@@ -87,10 +90,20 @@ export function ReplayCard({ replay }: { replay: SessionReplayListItem }) {
         setSessionId(replay.session_id);
       }}
     >
+      {/* User info row */}
+      <div className="flex items-center gap-1.5 mb-1.5">
+        <Avatar
+          size={16}
+          id={replay.user_id}
+          lastActiveTime={replay.end_time ? DateTime.fromSQL(replay.end_time, { zone: "utc" }) : undefined}
+        />
+        <span className="text-xs text-neutral-700 dark:text-neutral-200 truncate max-w-[100px]">
+          {getUserDisplayName(replay)}
+        </span>
+        {replay.identified_user_id && <IdentifiedBadge traits={replay.traits} />}
+      </div>
+
       <div className="flex items-center gap-2 mb-1">
-        {/* <div className="text-xs text-neutral-500">
-          {replay.user_id.slice(0, 12)}...
-        </div> */}
         <div className="text-xs text-neutral-600 dark:text-neutral-400">{startTime.toRelative()}</div>
         {duration && (
           <div className="flex items-center gap-1 text-neutral-600 dark:text-neutral-400 text-xs">

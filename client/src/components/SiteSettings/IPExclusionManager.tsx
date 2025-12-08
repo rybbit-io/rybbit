@@ -129,7 +129,7 @@ export function IPExclusionManager({ siteId, disabled = false }: IPExclusionMana
                 size="icon"
                 onClick={() => removeIPField(index)}
                 disabled={disabled}
-                className="flex-shrink-0"
+                className="shrink-0"
               >
                 <Minus className="h-4 w-4" />
               </Button>

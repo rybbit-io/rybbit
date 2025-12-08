@@ -5,16 +5,16 @@ import { ConfirmationModal } from "@/components/ConfirmationModal";
 import { Button } from "@/components/ui/button";
 import { SiGoogle } from "@icons-pack/react-simple-icons";
 import { ExternalLink } from "lucide-react";
-import { useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
+import { useQueryState, parseAsString } from "nuqs";
 
 interface GSCManagerProps {
   disabled?: boolean;
 }
 
 export function GSCManager({ disabled = false }: GSCManagerProps) {
-  const searchParams = useSearchParams();
+  const [gscStatus] = useQueryState("gsc", parseAsString);
   const { data: connection, isLoading, refetch } = useGSCConnection();
   const { mutate: connect, isPending: isConnecting } = useConnectGSC();
   const { mutate: disconnect, isPending: isDisconnecting } = useDisconnectGSC();
@@ -22,12 +22,11 @@ export function GSCManager({ disabled = false }: GSCManagerProps) {
 
   // Check for OAuth success/error in URL params
   useEffect(() => {
-    const gscStatus = searchParams.get("gsc");
     if (gscStatus === "success") {
       toast.success("Google Search Console connected successfully");
       refetch();
     }
-  }, [searchParams, refetch]);
+  }, [gscStatus, refetch]);
 
   const handleDisconnect = async () => {
     return new Promise((resolve, reject) => {

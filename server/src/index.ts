@@ -33,7 +33,6 @@ import { getSessions } from "./api/analytics/getSessions.js";
 import { getMetric } from "./api/analytics/getMetric.js";
 import { getUserInfo } from "./api/analytics/getUserInfo.js";
 import { getUserSessionCount } from "./api/analytics/getUserSessionCount.js";
-import { getUserSessions } from "./api/analytics/getUserSessions.js";
 import { getUsers } from "./api/analytics/getUsers.js";
 import { createGoal } from "./api/analytics/goals/createGoal.js";
 import { deleteGoal } from "./api/analytics/goals/deleteGoal.js";
@@ -77,10 +76,11 @@ import { auth } from "./lib/auth.js";
 import { IS_CLOUD } from "./lib/const.js";
 import { siteConfig } from "./lib/siteConfig.js";
 import { trackEvent } from "./services/tracker/trackEvent.js";
+import { handleIdentify } from "./services/tracker/identifyService.js";
 // need to import telemetry service here to start it
 import { telemetryService } from "./services/telemetryService.js";
 import { weeklyReportService } from "./services/weekyReports/weeklyReportService.js";
-import { extractSiteId } from "./utils.js";
+import { extractSiteId, replacePathSiteId, resolveNumericSiteId } from "./utils.js";
 import { getTrackingConfig } from "./api/sites/getTrackingConfig.js";
 import { updateSitePrivateLinkConfig } from "./api/sites/updateSitePrivateLinkConfig.js";
 import { getSitePrivateLinkConfig } from "./api/sites/getSitePrivateLinkConfig.js";
@@ -90,6 +90,10 @@ import { getGSCStatus } from "./api/gsc/status.js";
 import { disconnectGSC } from "./api/gsc/disconnect.js";
 import { getGSCData } from "./api/gsc/getData.js";
 import { selectGSCProperty } from "./api/gsc/selectProperty.js";
+import { getSiteImports } from "./api/sites/getSiteImports.js";
+import { createSiteImport } from "./api/sites/createSiteImport.js";
+import { batchImportEvents } from "./api/sites/batchImportEvents.js";
+import { deleteSiteImport } from "./api/sites/deleteSiteImport.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -202,7 +206,7 @@ server.register(
 const PUBLIC_ROUTES: string[] = [
   "/api/health",
   "/api/track",
-  "/track",
+  "/api/identify",
   "/api/script.js",
   "/api/script-full.js",
   "/api/replay.js",
@@ -216,7 +220,7 @@ const PUBLIC_ROUTES: string[] = [
   "/api/as/webhook",
   "/api/session-replay/record",
   "/api/admin/telemetry",
-  "/api/site/:siteId/tracking-config",
+  "/api/site/tracking-config",
 ];
 
 // Define analytics routes that can be public
@@ -231,30 +235,19 @@ const ANALYTICS_ROUTES = [
   "/api/site-has-data/",
   "/api/site-is-public/",
   "/api/sessions/",
-  "/api/session/",
   "/api/users/",
-  "/api/user/info/",
-  "/api/user/session-count/",
   "/api/session-locations/",
   "/api/funnels/",
-  "/api/funnel/",
-  "/api/funnel/:stepNumber/sessions/",
   "/api/journeys/",
   "/api/goals/",
-  "/api/goal/",
-  "/api/goals/:goalId/sessions/",
-  "/api/analytics/events/names/",
-  "/api/analytics/events/properties/",
   "/api/events/",
   "/api/events/outbound/",
-  "/api/get-site",
+  "/api/get-site/",
   "/api/performance/overview/",
   "/api/performance/time-series/",
-  "/api/performance/by-path/",
   "/api/performance/by-dimension/",
   "/api/error-names/",
   "/api/error-events/",
-  "/api/error-bucketed/",
   "/api/session-replay/",
   "/api/gsc/data/",
 ];
@@ -276,8 +269,29 @@ server.addHook("onRequest", async (request, reply) => {
     const siteId = extractSiteId(processedUrl);
 
     if (siteId) {
+      // Convert string ID to numeric ID if needed
+      let resolvedSiteId = siteId;
+      if (!/^\d+$/.test(siteId)) {
+        const numericSiteId = await resolveNumericSiteId(siteId);
+        if (numericSiteId) {
+          // Rewrite the URL with the numeric ID
+          const newUrl = replacePathSiteId(processedUrl, numericSiteId);
+          request.raw.url = newUrl;
+          processedUrl = newUrl;
+          resolvedSiteId = String(numericSiteId);
+          // Also update the parsed params since Fastify has already parsed them
+          const params = request.params as Record<string, string>;
+          if (params && "site" in params) {
+            params.site = resolvedSiteId;
+          }
+        } else {
+          // String ID not found in database
+          return reply.status(404).send({ error: "Site not found" });
+        }
+      }
+
       // Check all access methods: direct access, public site, or valid private key
-      const hasAccess = await getUserHasAccessToSitePublic(request, siteId);
+      const hasAccess = await getUserHasAccessToSitePublic(request, resolvedSiteId);
 
       if (hasAccess) {
         // User has access via: direct access, public site, or valid private key
@@ -322,24 +336,23 @@ server.get("/api/retention/:site", getRetention);
 server.get("/api/site-has-data/:site", getSiteHasData);
 server.get("/api/site-is-public/:site", getSiteIsPublic);
 server.get("/api/sessions/:site", getSessions);
-server.get("/api/session/:sessionId/:site", getSession);
+server.get("/api/sessions/:sessionId/:site", getSession);
 server.get("/api/events/:site", getEvents);
 server.get("/api/users/:site", getUsers);
-server.get("/api/user/:userId/sessions/:site", getUserSessions);
-server.get("/api/user/session-count/:site", getUserSessionCount);
-server.get("/api/user/info/:userId/:site", getUserInfo);
+server.get("/api/users/session-count/:site", getUserSessionCount);
+server.get("/api/users/:userId/:site", getUserInfo);
 server.get("/api/session-locations/:site", getSessionLocations);
 server.get("/api/funnels/:site", getFunnels);
 server.get("/api/journeys/:site", getJourneys);
-server.post("/api/funnel/:site", getFunnel);
-server.post("/api/funnel/:stepNumber/sessions/:site", getFunnelStepSessions);
-server.post("/api/funnel/create/:site", createFunnel);
-server.delete("/api/funnel/:funnelId", deleteFunnel);
+server.post("/api/funnels/analyze/:site", getFunnel);
+server.post("/api/funnels/:stepNumber/sessions/:site", getFunnelStepSessions);
+server.post("/api/funnels/:site", createFunnel);
+server.delete("/api/funnels/:funnelId/:site", deleteFunnel);
 server.get("/api/goals/:site", getGoals);
 server.get("/api/goals/:goalId/sessions/:site", getGoalSessions);
-server.post("/api/goal/create", createGoal);
-server.delete("/api/goal/:goalId", deleteGoal);
-server.put("/api/goal/update", updateGoal);
+server.post("/api/goals/:site", createGoal);
+server.delete("/api/goals/:goalId/:site", deleteGoal);
+server.put("/api/goals/:goalId/:site", updateGoal);
 server.get("/api/events/names/:site", getEventNames);
 server.get("/api/events/properties/:site", getEventProperties);
 server.get("/api/events/outbound/:site", getOutboundLinks);
@@ -356,21 +369,31 @@ server.get("/api/session-replay/list/:site", getSessionReplays);
 server.get("/api/session-replay/:sessionId/:site", getSessionReplayEvents);
 server.delete("/api/session-replay/:sessionId/:site", deleteSessionReplay);
 
-// Administrative
+// Sites
+server.get("/api/sites/:id", getSite);
+server.post("/api/sites", addSite);
+server.put("/api/sites/:id/config", updateSiteConfig);
+server.delete("/api/sites/:id", deleteSite);
+server.get("/api/sites/:siteId/private-link-config", getSitePrivateLinkConfig);
+server.post("/api/sites/:siteId/private-link-config", updateSitePrivateLinkConfig);
+server.get("/api/site/tracking-config/:siteId", getTrackingConfig);
+server.get("/api/sites/:siteId/excluded-ips", getSiteExcludedIPs);
+server.get("/api/sites/:siteId/excluded-countries", getSiteExcludedCountries);
+
+// Site Imports
+server.get("/api/sites/:site/imports", getSiteImports);
+server.post("/api/sites/:site/imports", createSiteImport);
+server.post("/api/sites/:site/imports/:importId/events", batchImportEvents);
+server.delete("/api/sites/:site/imports/:importId", deleteSiteImport);
+
+// Organizations
+server.get("/api/organizations/:organizationId/sites", getSitesFromOrg);
+server.get("/api/organizations/:organizationId/members", listOrganizationMembers);
+server.post("/api/organizations/:organizationId/members", addUserToOrganization);
+
+// User
 server.get("/api/config", getConfig);
-server.post("/api/add-site", addSite);
-server.post("/api/update-site-config", updateSiteConfig);
-server.post("/api/delete-site/:id", deleteSite);
-server.get("/api/get-sites-from-org/:organizationId", getSitesFromOrg);
-server.get("/api/get-site/:id", getSite);
-server.get("/api/site/:siteId/private-link-config", getSitePrivateLinkConfig);
-server.post("/api/site/:siteId/private-link-config", updateSitePrivateLinkConfig);
-server.get("/api/site/:siteId/tracking-config", getTrackingConfig);
-server.get("/api/site/:siteId/excluded-ips", getSiteExcludedIPs);
-server.get("/api/site/:siteId/excluded-countries", getSiteExcludedCountries);
-server.get("/api/list-organization-members/:organizationId", listOrganizationMembers);
 server.get("/api/user/organizations", getUserOrganizations);
-server.post("/api/add-user-to-organization", addUserToOrganization);
 server.post("/api/user/account-settings", updateAccountSettings);
 server.get("/api/user/api-keys", listApiKeys);
 server.post("/api/user/api-keys", createApiKey);
@@ -448,6 +471,9 @@ if (IS_CLOUD) {
 
 server.post("/track", trackEvent);
 server.post("/api/track", trackEvent);
+
+server.post("/identify", handleIdentify);
+server.post("/api/identify", handleIdentify);
 
 server.get("/api/health", { logLevel: "silent" }, (_, reply) => reply.send("OK"));
 

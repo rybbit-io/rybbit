@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { DateTime } from "luxon";
 import { useEffect, useMemo } from "react";
-import { GetSessionsResponse } from "../../../../../../api/analytics/useGetUserSessions";
+import { GetSessionsResponse } from "../../../../../../api/analytics/endpoints";
 import { APIResponse } from "../../../../../../api/types";
 import { authedFetch, getQueryParams } from "../../../../../../api/utils";
 import { getFilteredFilters, useStore } from "../../../../../../lib/store";

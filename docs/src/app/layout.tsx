@@ -89,23 +89,6 @@ export default function Layout({ children }: { children: ReactNode }) {
           "data-api-key": process.env.NEXT_PUBLIC_RYBBIT_API_KEY,
         })}
       />
-      <Script id="matomo" strategy="afterInteractive">
-        {`
-        var _paq = window._paq = window._paq || [];
-        /* tracker methods like "setCustomDimension" should be called before "trackPageView" */
-        _paq.push(['trackPageView']);
-        _paq.push(['enableLinkTracking']);
-        (function() {
-          var u = "https://rybbit.matomo.cloud/";
-          _paq.push(['setTrackerUrl', u + 'matomo.php']);
-          _paq.push(['setSiteId', '1']);
-          var d = document, g = d.createElement('script'), s = d.getElementsByTagName('script')[0];
-          g.async = true;
-          g.src = 'https://cdn.matomo.cloud/rybbit.matomo.cloud/matomo.js';
-          s.parentNode.insertBefore(g, s);
-        })();
-      `}
-      </Script>
       <body className={`flex flex-col min-h-screen ${inter.variable} font-sans`}>
         <RootProvider
           theme={{

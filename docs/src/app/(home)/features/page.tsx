@@ -336,7 +336,7 @@ export default function FeaturesPage() {
                 Get started
               </TrackedButton>
               <TrackedButton
-                href="https://demo.rybbit.com/21"
+                href="https://demo.rybbit.com/1"
                 eventName="demo"
                 target="_blank"
                 rel="noopener noreferrer"
@@ -515,7 +515,7 @@ export default function FeaturesPage() {
           </div>
           <p className="text-neutral-500 dark:text-neutral-400 text-sm flex items-center justify-center gap-2 mt-8">
             <CheckCircle className="w-4 h-4" />
-            No credit card required • Cancel anytime • {DEFAULT_EVENT_LIMIT.toLocaleString()} events/month free
+            No credit card required • Cancel anytime • {DEFAULT_EVENT_LIMIT.toLocaleString()} pageviews/month free
           </p>
         </div>
       </section>

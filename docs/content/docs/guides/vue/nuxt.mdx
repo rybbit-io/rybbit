@@ -14,10 +14,13 @@ This guide explains how to integrate Rybbit with your Nuxt.js application for an
 This is the recommended method for Nuxt.js applications.
 
 <Steps>
+<Step>
 ### Retrieve Your Site ID
 
 Navigate to your Rybbit dashboard to obtain your Site ID. You'll need this for the `data-site-id` attribute in the script configuration.
+</Step>
 
+<Step>
 ### Modify `nuxt.config.ts` (or `.js`)
 
 **For Nuxt 3:**
@@ -32,7 +35,6 @@ export default defineNuxtConfig({
       script: [
         {
           src: 'https://app.rybbit.io/api/script.js',
-          async: true,
           defer: true,
           'data-site-id': 'YOUR_SITE_ID', // Replace with your Site ID
         },
@@ -54,7 +56,6 @@ export default {
     script: [
       {
         src: 'https://app.rybbit.io/api/script.js',
-        async: true,
         defer: true,
         'data-site-id': 'YOUR_SITE_ID', // Replace with your Site ID
       },
@@ -63,10 +64,13 @@ export default {
 }
 ```
 Ensure you replace `YOUR_SITE_ID` with your actual Site ID from your Rybbit dashboard. This method ensures the script is included in the `<head>` of all your pages.
+</Step>
 
+<Step>
 ### Verify Installation
 
 After restarting your Nuxt.js development server or deploying your application, open your Rybbit dashboard to check if data is being received. You can also inspect your browser's network tab to confirm that `script.js` is loaded.
+</Step>
 </Steps>
 
 <Callout type="info">

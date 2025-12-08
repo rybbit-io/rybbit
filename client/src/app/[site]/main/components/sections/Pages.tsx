@@ -8,6 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../../../../compone
 import { Button } from "../../../../../components/ui/button";
 import { Card, CardContent } from "../../../../../components/ui/card";
 import { StandardSection } from "../../../components/shared/StandardSection/StandardSection";
+import { truncateString } from "../../../../../lib/utils";
 
 type Tab = "pages" | "page_title" | "entry_pages" | "exit_pages" | "hostname";
 
@@ -45,7 +46,7 @@ export function Pages() {
               title="Pages"
               getValue={e => e.value}
               getKey={e => e.value}
-              getLabel={e => e.value || "Other"}
+              getLabel={e => truncateString(e.value, 50) || "Other"}
               getLink={e => `https://${siteMetadata?.domain}${e.value}`}
               expanded={expanded}
               close={close}
@@ -57,7 +58,7 @@ export function Pages() {
               title="Page Title"
               getValue={e => e.value}
               getKey={e => e.value}
-              getLabel={e => e.value || "Other"}
+              getLabel={e => truncateString(e.value, 50) || "Other"}
               // getLink={(e) =>
               //   e.pathname
               //     ? `https://${siteMetadata?.domain}${e.pathname}`

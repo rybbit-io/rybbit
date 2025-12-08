@@ -68,10 +68,10 @@ export function PlausibleComparisonContent() {
         <p className="leading-relaxed">
           Plausible requires payment from day one, even for small personal projects. We believe analytics should be
           accessible to everyone, which is why Rybbit offers a generous free tier with{" "}
-          {DEFAULT_EVENT_LIMIT.toLocaleString()} events per month. Perfect for personal blogs, side projects, or testing
-          before you commit. When you're ready to upgrade, our pricing is competitive and transparent. Both companies
-          are bootstrapped and independent, but we've chosen to make getting started easier for developers and small
-          businesses who are just beginning their journey.
+          {DEFAULT_EVENT_LIMIT.toLocaleString()} pageviews per month. Perfect for personal blogs, side projects, or
+          testing before you commit. When you're ready to upgrade, our pricing is competitive and transparent. Both
+          companies are bootstrapped and independent, but we've chosen to make getting started easier for developers and
+          small businesses who are just beginning their journey.
         </p>
       </div>
 

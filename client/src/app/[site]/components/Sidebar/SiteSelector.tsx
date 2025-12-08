@@ -1,12 +1,12 @@
 import { ChevronDown, Plus } from "lucide-react";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useState, Suspense } from "react";
 import { useGetSite, useGetSitesFromOrg } from "../../../../api/admin/sites";
 import { Favicon } from "../../../../components/Favicon";
 import { Button } from "../../../../components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "../../../../components/ui/popover";
 import { authClient } from "../../../../lib/auth";
-import { resetStore, useStore } from "../../../../lib/store";
+import { useStore } from "../../../../lib/store";
 import { userStore } from "../../../../lib/userStore";
 import { cn, formatter } from "../../../../lib/utils";
 import { AddSite } from "../../../components/AddSite";
@@ -18,11 +18,8 @@ function SiteSelectorContent({ onSiteSelect }: { onSiteSelect: () => void }) {
   const { data: sites } = useGetSitesFromOrg(activeOrganization?.id);
   const embed = useEmbedablePage();
 
-  const { setSite } = useStore();
-
   const pathname = usePathname();
   const router = useRouter();
-  const searchParams = useSearchParams();
   const currentSiteId = Number(pathname.split("/")[1]);
 
   const { user } = userStore();
@@ -52,13 +49,12 @@ function SiteSelectorContent({ onSiteSelect }: { onSiteSelect: () => void }) {
                     onSiteSelect(); // Close popover even if same site
                     return;
                   }
-                  resetStore();
-                  setSite(site.siteId.toString());
                   const pathSegments = pathname.split("/");
                   pathSegments[1] = site.siteId.toString();
                   const newPath = pathSegments.join("/");
-                  const queryString = searchParams.toString();
-                  router.push(queryString ? `${newPath}?${queryString}` : newPath);
+                  const queryString = window.location.search;
+                  // Let the layout's useEffect sync the site from the new pathname
+                  router.push(queryString ? `${newPath}${queryString}` : newPath);
                   onSiteSelect(); // Close popover immediately
                 }}
                 className={cn(
@@ -67,7 +63,7 @@ function SiteSelectorContent({ onSiteSelect }: { onSiteSelect: () => void }) {
                 )}
               >
                 <div className="flex items-center gap-3 flex-1 min-w-0">
-                  <Favicon domain={site.domain} className="w-4 h-4 flex-shrink-0" />
+                  <Favicon domain={site.domain} className="w-4 h-4 shrink-0" />
                   <div className="text-sm text-neutral-900 dark:text-white truncate">{site.domain}</div>
                 </div>
               </div>
@@ -96,13 +92,12 @@ function SiteSelectorContent({ onSiteSelect }: { onSiteSelect: () => void }) {
                       onSiteSelect(); // Close popover even if same site
                       return;
                     }
-                    resetStore();
-                    setSite(site.siteId.toString());
                     const pathSegments = pathname.split("/");
                     pathSegments[1] = site.siteId.toString();
                     const newPath = pathSegments.join("/");
-                    const queryString = searchParams.toString();
-                    router.push(queryString ? `${newPath}?${queryString}` : newPath);
+                    const queryString = window.location.search;
+                    // Let the layout's useEffect sync the site from the new pathname
+                    router.push(queryString ? `${newPath}${queryString}` : newPath);
                     onSiteSelect(); // Close popover immediately
                   }}
                   className={cn(
@@ -111,7 +106,7 @@ function SiteSelectorContent({ onSiteSelect }: { onSiteSelect: () => void }) {
                   )}
                 >
                   <div className="flex items-center gap-3 flex-1 min-w-0">
-                    <Favicon domain={site.domain} className="w-4 h-4 flex-shrink-0" />
+                    <Favicon domain={site.domain} className="w-4 h-4 shrink-0" />
                     <div className="text-sm text-neutral-900 dark:text-white truncate">{site.domain}</div>
                   </div>
                   <div className="flex items-center gap-3">
@@ -128,7 +123,7 @@ function SiteSelectorContent({ onSiteSelect }: { onSiteSelect: () => void }) {
                 className="flex items-center justify-between p-2 animate-pulse rounded-md border-b border-neutral-300 dark:border-neutral-800 last:border-b-0"
               >
                 <div className="flex items-center gap-3 flex-1">
-                  <div className="w-4 h-4 bg-neutral-200 dark:bg-neutral-700 rounded flex-shrink-0"></div>
+                  <div className="w-4 h-4 bg-neutral-200 dark:bg-neutral-700 rounded shrink-0"></div>
                   <div className="h-4 bg-neutral-200 dark:bg-neutral-700 rounded w-32"></div>
                 </div>
                 <div className="h-3 bg-neutral-200 dark:bg-neutral-700 rounded w-20"></div>

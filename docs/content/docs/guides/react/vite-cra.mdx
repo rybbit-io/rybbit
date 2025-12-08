@@ -18,6 +18,7 @@ The recommended and simplest method to add the Rybbit tracking script is directl
 This is the most straightforward method and ensures the script is loaded early.
 
 <Steps>
+<Step>
 ### Retrieve Your Tracking Script
 
 Navigate to your Rybbit dashboard to obtain your code snippet. It will look like this:
@@ -26,17 +27,20 @@ Navigate to your Rybbit dashboard to obtain your code snippet. It will look like
 <script
   src="https://app.rybbit.io/api/script.js"
   data-site-id="YOUR_SITE_ID"
-  async
   defer
 ></script>
 ```
 Remember to replace `YOUR_SITE_ID` with your actual Site ID.
+</Step>
 
+<Step>
 ### Locate Your `index.html` File
 
 -   For **Create React App (CRA)**: This file is typically located at `public/index.html`.
 -   For **Vite (React template)**: This file is typically located at the root of your project as `index.html`.
+</Step>
 
+<Step>
 ### Add the Snippet to `index.html`
 
 Open your `index.html` file and paste the Rybbit tracking snippet just before the closing `</head>` tag or `</body>` tag. Placing it in the `<head>` allows it to load sooner.
@@ -53,7 +57,6 @@ Open your `index.html` file and paste the Rybbit tracking snippet just before th
     <script
       src="https://app.rybbit.io/api/script.js"
       data-site-id="YOUR_SITE_ID"
-      async
       defer
     ></script>
   </head>
@@ -65,10 +68,13 @@ Open your `index.html` file and paste the Rybbit tracking snippet just before th
 </html>
 ```
 Make sure to replace `YOUR_SITE_ID` with your actual Site ID.
+</Step>
 
+<Step>
 ### Verify Installation
 
 After deploying your application, open your Rybbit dashboard to see if data is being received. You can also check your browser's network tab to ensure `script.js` is loaded.
+</Step>
 </Steps>
 
 <Callout type="info">

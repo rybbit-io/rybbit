@@ -3,7 +3,7 @@
 import NumberFlow from "@number-flow/react";
 import { Info } from "lucide-react";
 import { memo } from "react";
-import { EventProperty } from "../../../../api/analytics/events/useGetEventProperties";
+import { EventProperty } from "../../../../api/analytics/endpoints";
 import { cn } from "../../../../lib/utils";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
@@ -65,7 +65,9 @@ export function EventProperties({ properties, isLoading, selectedEvent, size = "
         return (
           <div key={key} className={cn("flex flex-col gap-1", size === "small" ? "text-xs" : "text-sm")}>
             {/* Property Key Header */}
-            <div className="font-semibold  text-primary py-1 border-b border-neutral-100 dark:border-neutral-800">{key}</div>
+            <div className="font-semibold  text-primary py-1 border-b border-neutral-100 dark:border-neutral-800">
+              {key}
+            </div>
 
             {/* Property Values */}
             <div className="pl-4 flex flex-col gap-2">
@@ -166,7 +168,10 @@ const EventPropertiesSkeleton = memo(({ size = "small" }: { size?: "small" | "la
                       ></div>
                     </div>
                     <div className="flex gap-2">
-                      <div className="h-4 bg-neutral-200 dark:bg-neutral-800 rounded animate-pulse" style={{ width: "40px" }}></div>
+                      <div
+                        className="h-4 bg-neutral-200 dark:bg-neutral-800 rounded animate-pulse"
+                        style={{ width: "40px" }}
+                      ></div>
                     </div>
                   </div>
                 </div>

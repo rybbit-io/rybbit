@@ -179,7 +179,7 @@ export function SiteConfiguration({ siteMetadata, disabled = false, onClose }: S
     },
   ];
 
-  const { data: subscription } = useStripeSubscription();
+  const { data: subscription, isLoading: isSubscriptionLoading } = useStripeSubscription();
 
   const sessionReplayDisabled = !subscription?.isPro && IS_CLOUD;
   const webVitalsDisabled = subscription?.status !== "active" && IS_CLOUD;
@@ -187,17 +187,21 @@ export function SiteConfiguration({ siteMetadata, disabled = false, onClose }: S
 
   // Configuration for analytics feature toggles
   const analyticsToggles: ToggleConfig[] = [
-    {
-      id: "sessionReplay",
-      label: "Session Replay",
-      description: "Record and replay user sessions to understand user behavior",
-      value: toggleStates.sessionReplay,
-      key: "sessionReplay",
-      enabledMessage: "Session replay enabled",
-      disabledMessage: "Session replay disabled",
-      disabled: sessionReplayDisabled,
-      badge: <Badge variant="success">Pro</Badge>,
-    },
+    ...(!subscription?.planName?.startsWith("appsumo") && !isSubscriptionLoading
+      ? [
+          {
+            id: "sessionReplay",
+            label: "Session Replay",
+            description: "Record and replay user sessions to understand user behavior",
+            value: toggleStates.sessionReplay,
+            key: "sessionReplay",
+            enabledMessage: "Session replay enabled",
+            disabledMessage: "Session replay disabled",
+            disabled: sessionReplayDisabled,
+            badge: <Badge variant="success">Pro</Badge>,
+          } as ToggleConfig,
+        ]
+      : []),
     ...(IS_CLOUD
       ? [
           {

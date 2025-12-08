@@ -3,8 +3,9 @@
 import { useMeasure } from "@uidotdev/usehooks";
 import "ol/ol.css";
 import { useEffect, useState } from "react";
-import { useMetric } from "../../../../../api/analytics/useGetMetric";
+import { useMetric } from "../../../../../api/analytics/hooks/useGetMetric";
 import { useCountries, useSubdivisions } from "../../../../../lib/geo";
+import { ChartTooltip } from "../../../../../components/charts/ChartTooltip";
 import { CountryFlag } from "../icons/CountryFlag";
 import { useMapInstance } from "./hooks/useMapInstance";
 import { useMapLayers } from "./hooks/useMapLayers";
@@ -107,21 +108,27 @@ export function MapComponent({ height, mapView: controlledMapView }: MapComponen
       />
       {tooltipContent && (
         <div
-          className="fixed z-50 bg-neutral-1000 text-white rounded-md p-2 shadow-lg text-sm pointer-events-none"
+          className="fixed z-50 pointer-events-none"
           style={{
             left: tooltipPosition.x,
             top: tooltipPosition.y - 10,
             transform: "translate(-50%, -100%)",
           }}
         >
-          <div className="font-sm flex items-center gap-1">
-            {tooltipContent.code && <CountryFlag country={tooltipContent.code.slice(0, 2)} />}
-            {tooltipContent.name}
-          </div>
-          <div>
-            <span className="font-bold text-accent-400">{tooltipContent.count.toLocaleString()}</span>{" "}
-            <span className="text-neutral-300">({tooltipContent.percentage.toFixed(1)}%) sessions</span>
-          </div>
+          <ChartTooltip>
+            <div className="p-2">
+              <div className="font-sm flex items-center gap-1">
+                {tooltipContent.code && <CountryFlag country={tooltipContent.code.slice(0, 2)} />}
+                {tooltipContent.name}
+              </div>
+              <div>
+                <span className="font-bold text-accent-400">{tooltipContent.count.toLocaleString()}</span>{" "}
+                <span className="text-neutral-500 dark:text-neutral-300">
+                  ({tooltipContent.percentage.toFixed(1)}%) sessions
+                </span>
+              </div>
+            </div>
+          </ChartTooltip>
         </div>
       )}
     </div>

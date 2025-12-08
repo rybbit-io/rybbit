@@ -1,8 +1,7 @@
 ---
-title: Track events
+title: Track Events
 description: How to track custom events with Rybbit
 ---
-
 
 The script exposes a global object `window.rybbit` with functions for manual tracking of events, as well as the ability to track events using data attributes on HTML elements.
 
@@ -15,9 +14,9 @@ You can track custom events by adding data attributes to any HTML element:
 <button data-rybbit-event="signup_clicked">Sign Up</button>
 
 <!-- Event with custom properties -->
-<button 
-  data-rybbit-event="purchase_click" 
-  data-rybbit-prop-product="premium" 
+<button
+  data-rybbit-event="purchase_click"
+  data-rybbit-prop-product="premium"
   data-rybbit-prop-price="49.99"
 >
   Buy Now
@@ -56,79 +55,6 @@ Tracks a pageview. Useful when `data-track-spa` is set to `"false"` or when you 
 window.rybbit.pageview();
 ```
 
-### `window.rybbit.identify(userId)`
-
-Sets a custom user ID for tracking logged-in users across devices and sessions.
-
-*   `userId` (String): The unique identifier for the user. This will be stored in localStorage and persist across browser sessions. **Note: Custom user IDs are stored exactly as provided without any hashing or modification.**
-
-```javascript
-// Identify a user when they log in
-window.rybbit.identify("user_12345");
-
-// All subsequent events and pageviews will be associated with this user ID
-```
-
-### `window.rybbit.clearUserId()`
-
-Clears the stored user ID. Useful when a user logs out.
-
-```javascript
-// Clear user identification when user logs out
-window.rybbit.clearUserId();
-```
-
-### `window.rybbit.getUserId()`
-
-Returns the currently set user ID, or `null` if none is set.
-
-```javascript
-// Check if a user is identified
-const currentUserId = window.rybbit.getUserId();
-if (currentUserId) {
-  console.log('Current user:', currentUserId);
-} else {
-  console.log('No user identified');
-}
-```
-
-## User Identification Example
-
-Here's a typical workflow for user identification:
-
-```javascript
-// When user logs in
-function handleLogin(userData) {
-  // Set user identification
-  window.rybbit.identify(userData.id);
-  
-  // Track login event
-  window.rybbit.event("User Login", {
-    method: "email",
-    plan: userData.plan
-  });
-}
-
-// When user logs out
-function handleLogout() {
-  // Track logout event
-  window.rybbit.event("User Logout");
-  
-  // Clear user identification
-  window.rybbit.clearUserId();
-}
-
-// Check identification status
-function checkUserStatus() {
-  const userId = window.rybbit.getUserId();
-  if (userId) {
-    console.log("User is identified:", userId);
-  } else {
-    console.log("Anonymous user");
-  }
-}
-```
-
 ## TypeScript Support
 
 Put this as `rybbit.d.ts` anywhere in your project to avoid having to do `(window as any).rybbit.event()` everywhere.
@@ -150,8 +76,15 @@ interface Rybbit {
     /**
      * Sets a custom user ID for tracking logged-in users
      * @param userId The user ID to set (will be stored in localStorage)
+     * @param traits Optional user metadata (email, name, custom fields)
      */
-    identify: (userId: string) => void;
+    identify: (userId: string, traits?: Record<string, unknown>) => void;
+
+    /**
+     * Updates traits for the currently identified user
+     * @param traits User metadata to merge with existing traits
+     */
+    setTraits: (traits: Record<string, unknown>) => void;
 
     /**
      * Clears the stored user ID
@@ -196,6 +129,7 @@ See the [API documentation](/docs/api/sending-events) for detailed examples in m
 ---
 
 **Related Documentation:**
+- [Identify Users](/docs/identify-users)
 - [Behavior Analytics - Events Tab](/docs/behavior-analytics/events)
 - [Behavior Analytics - Users Tab](/docs/behavior-analytics/users)
 - [Behavior Analytics - Sessions Tab](/docs/behavior-analytics/sessions)

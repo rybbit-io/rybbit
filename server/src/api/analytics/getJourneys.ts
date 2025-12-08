@@ -1,8 +1,8 @@
-import { FastifyRequest, FastifyReply } from "fastify";
-import { clickhouse } from "../../db/clickhouse/clickhouse.js";
-import { DateTime } from "luxon";
-import { getTimeStatement, getFilterStatement } from "./utils.js";
 import { FilterParams } from "@rybbit/shared";
+import { FastifyReply, FastifyRequest } from "fastify";
+import { clickhouse } from "../../db/clickhouse/clickhouse.js";
+import { getFilterStatement } from "./utils/getFilterStatement.js";
+import { getTimeStatement } from "./utils/utils.js";
 
 export const getJourneys = async (
   request: FastifyRequest<{

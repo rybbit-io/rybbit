@@ -43,13 +43,6 @@ All countries are supported using 2-letter ISO country codes (ISO 3166-1 alpha-2
 - **Case-insensitive**: Both `US` and `us` are accepted
 - **Maximum**: Up to 250 countries can be excluded
 
-### Use Cases
-
-- **Filter bot traffic**: Block countries known for generating bot traffic
-- **Privacy compliance**: Exclude regions for data protection requirements
-- **Analytics accuracy**: Remove traffic from regions where your service isn't available
-- **Development testing**: Block production traffic from specific regions during testing
-
 ### Key Features
 
 - **Server-side filtering**: Traffic is blocked before it reaches your analytics database
@@ -89,30 +82,3 @@ You can use both IP and country exclusions together for comprehensive filtering:
 - **IP exclusions** are checked first, then **country exclusions**
 - Both filters work at the server level before data reaches your database
 - Excluded events return a `200` status code but with a message indicating they were not tracked
-
-## API Access
-
-Both IP and country exclusions can be managed via the API:
-
-### Get Excluded IPs
-```bash
-GET /api/site/:siteId/excluded-ips
-```
-
-### Get Excluded Countries
-```bash
-GET /api/site/:siteId/excluded-countries
-```
-
-### Update Site Configuration
-```bash
-POST /api/site/:siteId/config
-Content-Type: application/json
-
-{
-  "excludedIPs": ["192.168.1.0/24", "10.0.0.1"],
-  "excludedCountries": ["US", "GB", "CN"]
-}
-```
-
-See the [API documentation](/docs/api/stats-api) for more details on authentication and request formats.

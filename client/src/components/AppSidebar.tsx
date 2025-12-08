@@ -104,7 +104,7 @@ function SidebarLink({
           // expanded ? "w-40" : "w-12"
         )}
       >
-        <div className="flex items-center justify-center w-5 h-5 flex-shrink-0">{icon}</div>
+        <div className="flex items-center justify-center w-5 h-5 shrink-0">{icon}</div>
         {expanded && label && (
           <span className="text-sm font-medium whitespace-nowrap overflow-hidden w-[120px]">{label}</span>
         )}

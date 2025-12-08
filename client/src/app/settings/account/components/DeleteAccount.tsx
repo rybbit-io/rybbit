@@ -18,8 +18,10 @@ import {
 } from "../../../../components/ui/alert-dialog";
 import { Button } from "../../../../components/ui/button";
 import { authClient } from "../../../../lib/auth";
+import { useStripeSubscription } from "../../../../lib/subscription/useStripeSubscription";
 
 export function DeleteAccount() {
+  const { data: subscription } = useStripeSubscription();
   const [isDeleting, setIsDeleting] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
   const router = useRouter();
@@ -49,6 +51,9 @@ export function DeleteAccount() {
     setIsOpen(false);
   };
 
+  const accountNotDeletable =
+    isDeleting || subscription?.planName.startsWith("standard") || subscription?.planName.startsWith("pro");
+
   return (
     <AlertDialog open={isOpen} onOpenChange={setIsOpen}>
       <AlertDialogTrigger asChild>
@@ -60,11 +65,12 @@ export function DeleteAccount() {
         <AlertDialogHeader>
           <AlertDialogTitle className="flex items-center gap-2">
             <AlertTriangle className="h-5 w-5" color="hsl(var(--red-500))" />
-            Delete your account?
+            {accountNotDeletable ? "Cannot delete account" : "Delete your account?"}
           </AlertDialogTitle>
           <AlertDialogDescription>
-            This action cannot be undone. This will permanently delete your account and remove all your data from our
-            servers.
+            {accountNotDeletable
+              ? "You have an active subscription. Please cancel your subscription before deleting your account."
+              : "This action cannot be undone. This will permanently delete your account and remove all your data from our servers."}
           </AlertDialogDescription>
         </AlertDialogHeader>
 
@@ -72,16 +78,18 @@ export function DeleteAccount() {
           <AlertDialogCancel onClick={handleClose} disabled={isDeleting}>
             Cancel
           </AlertDialogCancel>
-          <AlertDialogAction
-            onClick={e => {
-              e.preventDefault();
-              handleAccountDeletion();
-            }}
-            variant="destructive"
-            disabled={isDeleting}
-          >
-            {isDeleting ? "Deleting..." : "Delete Account"}
-          </AlertDialogAction>
+          {!accountNotDeletable && (
+            <AlertDialogAction
+              onClick={e => {
+                e.preventDefault();
+                handleAccountDeletion();
+              }}
+              variant="destructive"
+              disabled={isDeleting}
+            >
+              {isDeleting ? "Deleting..." : "Delete Account"}
+            </AlertDialogAction>
+          )}
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>

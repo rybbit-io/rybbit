@@ -21,19 +21,9 @@ export default function PricingPage() {
           </h3>
 
           <div className="bg-neutral-50 dark:bg-neutral-800/20 p-5 rounded-lg border border-neutral-200 dark:border-neutral-700">
-            <h4 className="font-medium mb-2 text-neutral-900 dark:text-neutral-100">What counts as an event?</h4>
-            <p className="text-neutral-600 dark:text-neutral-300">
-              An event is either a pageview or a custom event that you create on
-              your website. Pageviews are tracked automatically, while custom
-              events can be defined to track specific user interactions.
-            </p>
-          </div>
-
-          <div className="bg-neutral-50 dark:bg-neutral-800/20 p-5 rounded-lg border border-neutral-200 dark:border-neutral-700">
             <h4 className="font-medium mb-2 text-neutral-900 dark:text-neutral-100">Can I change my plan later?</h4>
             <p className="text-neutral-600 dark:text-neutral-300">
-              Absolutely. You can upgrade, downgrade, or cancel your plan at any
-              time through your account settings.
+              Absolutely. You can upgrade, downgrade, or cancel your plan at any time through your account settings.
             </p>
           </div>
 
@@ -42,9 +32,8 @@ export default function PricingPage() {
               What happens if I go over my event limit?
             </h4>
             <p className="text-neutral-600 dark:text-neutral-300">
-              We&apos;ll notify you when you&apos;re approaching your limit. You can
-              either upgrade to a higher plan or continue with your current plan
-              (events beyond the limit won&apos;t be tracked).
+              We&apos;ll notify you when you&apos;re approaching your limit. You can either upgrade to a higher plan or
+              continue with your current plan (events beyond the limit won&apos;t be tracked).
             </p>
           </div>
         </div>

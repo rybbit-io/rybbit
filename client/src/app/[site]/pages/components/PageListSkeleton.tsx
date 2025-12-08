@@ -17,7 +17,7 @@ export function PageListSkeleton({ count = 5 }: PageListSkeletonProps) {
               {/* Left side: Page title/path with thumbnail skeleton */}
               <div className="flex gap-3 flex-1 min-w-0">
                 {/* Thumbnail skeleton - conditionally shown like in PageListItem */}
-                <div className="hidden sm:block flex-shrink-0 h-12 w-16 relative rounded-md overflow-hidden border border-neutral-100 dark:border-neutral-800">
+                <div className="hidden sm:block shrink-0 h-12 w-16 relative rounded-md overflow-hidden border border-neutral-100 dark:border-neutral-800">
                   <Skeleton className="w-full h-full" />
                 </div>
 

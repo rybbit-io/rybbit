@@ -1,59 +1,60 @@
 import {
-  Link,
-  Search,
-  ExternalLink,
-  Users,
-  Mail,
-  HelpCircle,
-  MousePointerClick,
-  DollarSign,
-  Monitor,
-  Video,
-  Handshake,
-  FileText,
-  ShoppingCart,
   Calendar,
+  DollarSign,
+  ExternalLink,
+  FileQuestion,
+  FileText,
+  Handshake,
   Headphones,
+  HelpCircle,
+  Link,
+  Mail,
+  Monitor,
+  Search,
+  ShoppingCart,
+  Users,
+  Video,
 } from "lucide-react";
-import { Badge } from "./ui/badge";
+import { cn } from "../lib/utils";
 import { Favicon } from "./Favicon";
+import { Badge } from "./ui/badge";
 
-export const getChannelIcon = (channel: string) => {
+export const ChannelIcon = ({ channel, className }: { channel: string; className?: string }) => {
   switch (channel) {
     case "Direct":
-      return <Link className="w-4 h-4 text-neutral-500 dark:text-neutral-400" />;
+      return <Link className={cn("w-4 h-4", className)} />;
     case "Organic Search":
-      return <Search className="w-4 h-4 text-neutral-500 dark:text-neutral-400" />;
+      return <Search className={cn("w-4 h-4", className)} />;
     case "Referral":
-      return <ExternalLink className="w-4 h-4 text-neutral-500 dark:text-neutral-400" />;
+      return <ExternalLink className={cn("w-4 h-4", className)} />;
     case "Organic Social":
-      return <Users className="w-4 h-4 text-neutral-500 dark:text-neutral-400" />;
+      return <Users className={cn("w-4 h-4", className)} />;
     case "Email":
-      return <Mail className="w-4 h-4 text-neutral-500 dark:text-neutral-400" />;
+      return <Mail className={cn("w-4 h-4", className)} />;
     case "Unknown":
-      return <HelpCircle className="w-4 h-4 text-neutral-500 dark:text-neutral-400" />;
+      return <HelpCircle className={cn("w-4 h-4", className)} />;
     case "Paid Search":
-      return <Search className="w-4 h-4 text-neutral-500 dark:text-neutral-400" />;
+      return <Search className={cn("w-4 h-4", className)} />;
     case "Paid Unknown":
-      return <DollarSign className="w-4 h-4 text-neutral-500 dark:text-neutral-400" />;
+      return <DollarSign className={cn("w-4 h-4", className)} />;
     case "Paid Social":
-      return <Users className="w-4 h-4 text-neutral-500 dark:text-neutral-400" />;
+      return <Users className={cn("w-4 h-4", className)} />;
     case "Display":
-      return <Monitor className="w-4 h-4 text-neutral-500 dark:text-neutral-400" />;
+      return <Monitor className={cn("w-4 h-4", className)} />;
     case "Organic Video":
-      return <Video className="w-4 h-4 text-neutral-500 dark:text-neutral-400" />;
+      return <Video className={cn("w-4 h-4", className)} />;
     case "Affiliate":
-      return <Handshake className="w-4 h-4 text-neutral-500 dark:text-neutral-400" />;
+      return <Handshake className={cn("w-4 h-4", className)} />;
     case "Content":
-      return <FileText className="w-4 h-4 text-neutral-500 dark:text-neutral-400" />;
+      return <FileText className={cn("w-4 h-4", className)} />;
     case "Organic Shopping":
-      return <ShoppingCart className="w-4 h-4 text-neutral-500 dark:text-neutral-400" />;
+      return <ShoppingCart className={cn("w-4 h-4", className)} />;
     case "Event":
-      return <Calendar className="w-4 h-4 text-neutral-500 dark:text-neutral-400" />;
+      return <Calendar className={cn("w-4 h-4", className)} />;
     case "Audio":
-      return <Headphones className="w-4 h-4 text-neutral-500 dark:text-neutral-400" />;
+      return <Headphones className={cn("w-4 h-4", className)} />;
     default:
-      return null;
+      return <FileQuestion className={cn("w-4 h-4", className)} />;
   }
 };
 
@@ -148,7 +149,7 @@ export function Channel({ channel, referrer }: { channel: string; referrer: stri
 
   return (
     <Badge className="flex items-center gap-1 bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-300">
-      {getChannelIcon(channel)}
+      <ChannelIcon channel={channel} />
       <span>{channel}</span>
     </Badge>
   );

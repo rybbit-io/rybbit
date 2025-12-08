@@ -174,7 +174,7 @@ export function SearchConsole() {
                   renderName={name => (
                     <div className="flex items-center gap-1">
                       <span className="truncate">{new URL(name).pathname || "/"}</span>
-                      <a href={name} target="_blank" rel="noopener noreferrer" className="flex-shrink-0">
+                      <a href={name} target="_blank" rel="noopener noreferrer" className="shrink-0">
                         <SquareArrowOutUpRight
                           className="ml-0.5 w-3.5 h-3.5 text-neutral-600 hover:text-neutral-900 dark:text-neutral-300 dark:hover:text-neutral-100"
                           strokeWidth={3}

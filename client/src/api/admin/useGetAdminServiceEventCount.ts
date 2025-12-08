@@ -34,12 +34,10 @@ export function useGetAdminServiceEventCount({
   startDate,
   endDate,
   timeZone,
-  enabled = true,
 }: {
   startDate?: string;
   endDate?: string;
   timeZone: string;
-  enabled?: boolean;
 }) {
   return useQuery({
     queryKey: ["admin-service-event-count", startDate, endDate, timeZone],
@@ -49,7 +47,6 @@ export function useGetAdminServiceEventCount({
         endDate,
         timeZone,
       }),
-    enabled,
     staleTime: 1000 * 60 * 5, // 5 minutes
   });
 }

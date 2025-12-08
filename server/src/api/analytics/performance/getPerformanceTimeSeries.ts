@@ -1,10 +1,11 @@
 import { FastifyReply, FastifyRequest } from "fastify";
 import { clickhouse } from "../../../db/clickhouse/clickhouse.js";
-import { getFilterStatement, getTimeStatement, processResults, TimeBucketToFn, bucketIntervalMap } from "../utils.js";
+import { getTimeStatement, processResults, TimeBucketToFn, bucketIntervalMap } from "../utils/utils.js";
 import SqlString from "sqlstring";
-import { validateTimeStatementFillParams } from "../query-validation.js";
+import { validateTimeStatementFillParams } from "../utils/query-validation.js";
 import { TimeBucket, PerformanceTimeSeriesPoint } from "../types.js";
 import { FilterParams } from "@rybbit/shared";
+import { getFilterStatement } from "../utils/getFilterStatement.js";
 
 function getTimeStatementFill(params: FilterParams, bucket: TimeBucket) {
   const { params: validatedParams, bucket: validatedBucket } = validateTimeStatementFillParams(params, bucket);
@@ -66,7 +67,7 @@ function getTimeStatementFill(params: FilterParams, bucket: TimeBucket) {
 }
 
 const getQuery = (params: FilterParams<{ bucket: TimeBucket }>, siteId: number) => {
-  const { start_date, end_date, time_zone, bucket, filters, past_minutes_start, past_minutes_end } = params;
+  const { start_date, end_date, time_zone, bucket = "hour", filters, past_minutes_start, past_minutes_end } = params;
   const timeStatement = getTimeStatement(params);
   const filterStatement = getFilterStatement(filters, siteId, timeStatement);
 

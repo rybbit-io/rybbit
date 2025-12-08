@@ -67,7 +67,7 @@ export function Sites() {
         header: ({ column }) => <SortableHeader column={column}>Domain</SortableHeader>,
         cell: ({ row }) => (
           <div className="font-medium flex items-center gap-2">
-            <Favicon domain={row.original.domain} className="w-5 h-5 flex-shrink-0" />
+            <Favicon domain={row.original.domain} className="w-5 h-5 shrink-0" />
             <Link href={`https://${row.original.domain}`} target="_blank" className="hover:underline">
               {row.getValue("domain")}
             </Link>

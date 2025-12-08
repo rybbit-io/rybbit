@@ -4,9 +4,10 @@ import NumberFlow from "@number-flow/react";
 import { Info } from "lucide-react";
 import { DateTime } from "luxon";
 import { memo } from "react";
-import { OutboundLink } from "../../../../api/analytics/events/useGetOutboundLinks";
+import { OutboundLink } from "../../../../api/analytics/endpoints";
 import { Favicon } from "../../../../components/Favicon";
 import { cn } from "../../../../lib/utils";
+import { ScrollArea } from "../../../../components/ui/scroll-area";
 
 // Skeleton component for OutboundLinksList
 const OutboundLinksListSkeleton = memo(({ size = "small" }: { size?: "small" | "large" }) => {
@@ -114,54 +115,59 @@ export function OutboundLinksList({ outboundLinks, isLoading, size = "small" }: 
   const maxCount = Math.max(...outboundLinks.map(link => link.count));
 
   return (
-    <div className="flex flex-col gap-2 overflow-y-auto max-h-[60vh] h-auto lg:h-full lg:min-h-0 lg:max-h-full">
-      {outboundLinks.map((link, index) => {
-        const percentageOfMax = (link.count / maxCount) * 100;
-        const percentage = (link.count / totalCount) * 100;
-        const lastClicked = DateTime.fromSQL(link.lastClicked, {
-          zone: "utc",
-        }).toLocal();
+    <ScrollArea className="h-[394px]">
+      <div className="flex flex-col gap-2 pr-2">
+        {outboundLinks.map((link, index) => {
+          const percentageOfMax = (link.count / maxCount) * 100;
+          const percentage = (link.count / totalCount) * 100;
+          const lastClicked = DateTime.fromSQL(link.lastClicked, {
+            zone: "utc",
+          }).toLocal();
 
-        return (
-          <div
-            key={`${link.url}-${index}`}
-            className={cn(
-              "relative flex items-center hover:bg-neutral-100 dark:hover:bg-neutral-850 group px-2 rounded-md",
-              size === "small" ? "h-6" : "h-9"
-            )}
-          >
+          return (
             <div
-              className="absolute inset-0 bg-dataviz py-2 opacity-25 rounded-md"
-              style={{ width: `${percentageOfMax}%` }}
-            ></div>
-            <div
-              className={cn("z-10 flex justify-between items-center w-full", size === "small" ? "text-xs" : "text-sm")}
+              key={`${link.url}-${index}`}
+              className={cn(
+                "relative flex items-center hover:bg-neutral-100 dark:hover:bg-neutral-850 group px-2 rounded-md",
+                size === "small" ? "h-6" : "h-9"
+              )}
             >
-              <div className="font-medium truncate max-w-[70%] flex items-center gap-1">
-                <Favicon domain={new URL(link.url).hostname} className="w-4 mr-1" />
-                <a
-                  href={link.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-neutral-900 dark:text-neutral-100 hover:underline truncate"
-                  title={link.url}
-                >
-                  {truncateUrl(link.url)}
-                </a>
-              </div>
-              <div className={cn("text-sm flex gap-2 items-center", size === "small" ? "text-xs" : "text-sm")}>
-                <div className="hidden group-hover:block text-neutral-600 dark:text-neutral-400 text-xs">
-                  {Math.round(percentage * 10) / 10}%
+              <div
+                className="absolute inset-0 bg-dataviz py-2 opacity-25 rounded-md"
+                style={{ width: `${percentageOfMax}%` }}
+              ></div>
+              <div
+                className={cn(
+                  "z-10 flex justify-between items-center w-full",
+                  size === "small" ? "text-xs" : "text-sm"
+                )}
+              >
+                <div className="font-medium truncate max-w-[70%] flex items-center gap-1">
+                  <Favicon domain={new URL(link.url).hostname} className="w-4 mr-1" />
+                  <a
+                    href={link.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-neutral-900 dark:text-neutral-100 hover:underline truncate"
+                    title={link.url}
+                  >
+                    {truncateUrl(link.url)}
+                  </a>
                 </div>
-                <div className="hidden group-hover:block text-neutral-600 dark:text-neutral-400 text-xs">
-                  {lastClicked.toRelative()}
+                <div className={cn("text-sm flex gap-2 items-center", size === "small" ? "text-xs" : "text-sm")}>
+                  <div className="hidden group-hover:block text-neutral-600 dark:text-neutral-400 text-xs">
+                    {Math.round(percentage * 10) / 10}%
+                  </div>
+                  {/* <div className="hidden group-hover:block text-neutral-600 dark:text-neutral-400 text-xs">
+                    {lastClicked.toRelative()}
+                  </div> */}
+                  <NumberFlow respectMotionPreference={false} value={link.count} format={{ notation: "compact" }} />
                 </div>
-                <NumberFlow respectMotionPreference={false} value={link.count} format={{ notation: "compact" }} />
               </div>
             </div>
-          </div>
-        );
-      })}
-    </div>
+          );
+        })}
+      </div>
+    </ScrollArea>
   );
 }

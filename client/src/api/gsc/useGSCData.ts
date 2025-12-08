@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { Time } from "../../components/DateSelector/types";
 import { useStore } from "../../lib/store";
 import { authedFetch, getQueryParams } from "../utils";
 
@@ -32,4 +33,20 @@ export function useGSCData(dimension: GSCDimension) {
     // Refetch less frequently since GSC data updates slowly
     staleTime: 5 * 60 * 1000, // 5 minutes
   });
+}
+
+/**
+ * Standalone fetch function for GSC data (used for exports)
+ */
+export async function fetchGSCData(
+  site: number | string,
+  dimension: GSCDimension,
+  time: Time
+): Promise<GSCData[]> {
+  const timeParams = getQueryParams(time);
+  const response = await authedFetch<{ data: GSCData[] }>(`/gsc/data/${site}`, {
+    ...timeParams,
+    dimension,
+  });
+  return response.data;
 }

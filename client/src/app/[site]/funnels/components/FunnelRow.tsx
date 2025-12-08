@@ -7,9 +7,9 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { ArrowRight, ChevronDown, ChevronUp, Copy, Edit, Eye, MousePointerClick, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
-import { useDeleteFunnel } from "../../../../api/analytics/funnels/useDeleteFunnel";
-import { useGetFunnel } from "../../../../api/analytics/funnels/useGetFunnel";
-import { SavedFunnel } from "../../../../api/analytics/funnels/useGetFunnels";
+import { useDeleteFunnel } from "../../../../api/analytics/hooks/funnels/useDeleteFunnel";
+import { useGetFunnel } from "../../../../api/analytics/hooks/funnels/useGetFunnel";
+import { SavedFunnel } from "../../../../api/analytics/endpoints";
 import { ThreeDotLoader } from "../../../../components/Loaders";
 import { EditFunnelDialog } from "./EditFunnel";
 import { Funnel } from "./Funnel";
@@ -64,7 +64,7 @@ export function FunnelRow({ funnel, index }: FunnelRowProps) {
     <Card className="mb-4 overflow-hidden">
       {/* Header row (always visible) */}
       <div className="flex items-center justify-between py-2 px-5">
-        <div className="flex items-center flex-grow cursor-pointer transition-colors" onClick={handleExpand}>
+        <div className="flex items-center grow cursor-pointer transition-colors" onClick={handleExpand}>
           <div className="mt-1 text-xs text-neutral-500 dark:text-neutral-400 flex flex-col gap-3">
             {/* Steps visualization */}
             <div className="flex flex-wrap gap-1">

@@ -56,8 +56,8 @@ export function PaidPlan() {
             ]
           : ["1 year data retention", "Standard support", "Core analytics features"],
         color: isPro
-          ? "bg-gradient-to-br from-purple-50 to-indigo-100 dark:from-purple-800 dark:to-indigo-800"
-          : "bg-gradient-to-br from-green-50 to-emerald-100 dark:from-green-800 dark:to-emerald-800",
+          ? "bg-linear-to-br from-purple-50 to-indigo-100 dark:from-purple-800 dark:to-indigo-800"
+          : "bg-linear-to-br from-green-50 to-emerald-100 dark:from-green-800 dark:to-emerald-800",
         icon: <Shield className="h-5 w-5" />,
       }
     : null;

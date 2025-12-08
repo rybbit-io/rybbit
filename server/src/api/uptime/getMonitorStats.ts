@@ -4,7 +4,7 @@ import { clickhouse } from "../../db/clickhouse/clickhouse.js";
 import { db } from "../../db/postgres/postgres.js";
 import { member, uptimeMonitors } from "../../db/postgres/schema.js";
 import { getSessionFromReq } from "../../lib/auth-utils.js";
-import { processResults, TimeBucketToFn } from "../analytics/utils.js";
+import { processResults, TimeBucketToFn } from "../analytics/utils/utils.js";
 import { getMonitorStatsQuerySchema, type GetMonitorStatsQuery } from "./schemas.js";
 import { DateTime } from "luxon";
 

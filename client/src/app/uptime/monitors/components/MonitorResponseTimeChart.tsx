@@ -1,18 +1,18 @@
 "use client";
 
 import { UptimeMonitor, useMonitorStats } from "@/api/uptime/monitors";
+import { ChartTooltip } from "@/components/charts/ChartTooltip";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatChartDateTime, hour12, userLocale } from "@/lib/dateTimeUtils";
-import { nivoTheme } from "@/lib/nivo";
 import { cn } from "@/lib/utils";
 import { ResponsiveLine } from "@nivo/line";
 import { DateTime } from "luxon";
 import { useEffect, useState } from "react";
+import { useNivoTheme } from "../../../../lib/nivo";
 import { UptimeBucketSelection } from "./UptimeBucketSelection";
 import { useUptimeStore } from "./uptimeStore";
 import { getHoursFromTimeRange } from "./utils";
-import { ChartTooltip } from "@/components/charts/ChartTooltip";
 
 const MONITOR_COLORS = {
   dns: "hsl(160, 70%, 50%)",
@@ -208,6 +208,7 @@ export function MonitorResponseTimeChart({
         return dt.toFormat(hour12 ? "MMM d" : "dd MMM");
     }
   };
+  const nivoTheme = useNivoTheme();
 
   return (
     <Card className="overflow-visible">
@@ -266,7 +267,7 @@ export function MonitorResponseTimeChart({
           <div className="h-[400px] w-full relative" style={{ overflow: "visible", zIndex: 10 }}>
             <ResponsiveLine
               data={data}
-              theme={{ ...nivoTheme }}
+              theme={nivoTheme}
               margin={{ top: 10, right: 20, bottom: 25, left: 50 }}
               defs={defs}
               fill={fill}

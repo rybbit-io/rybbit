@@ -1,36 +1,44 @@
+import { Filter } from "@rybbit/shared";
 import { DateTime } from "luxon";
 import { Time } from "../components/DateSelector/types";
 import axios, { AxiosRequestConfig } from "axios";
 import { BACKEND_URL } from "../lib/const";
 import { timeZone } from "../lib/dateTimeUtils";
 import { useStore } from "../lib/store";
+import { CommonApiParams } from "./analytics/endpoints/types";
 
-function getStartAndEndDate(time: Time) {
+export function getStartAndEndDate(time: Time): { startDate: string | null; endDate: string | null } {
   if (time.mode === "range") {
-    return { start_date: time.startDate, end_date: time.endDate };
+    return { startDate: time.startDate, endDate: time.endDate };
   }
   if (time.mode === "week") {
     return {
-      start_date: time.week,
-      end_date: DateTime.fromISO(time.week).endOf("week").toISODate(),
+      startDate: time.week,
+      endDate: DateTime.fromISO(time.week).endOf("week").toISODate(),
     };
   }
   if (time.mode === "month") {
     return {
-      start_date: time.month,
-      end_date: DateTime.fromISO(time.month).endOf("month").toISODate(),
+      startDate: time.month,
+      endDate: DateTime.fromISO(time.month).endOf("month").toISODate(),
     };
   }
   if (time.mode === "year") {
     return {
-      start_date: time.year,
-      end_date: DateTime.fromISO(time.year).endOf("year").toISODate(),
+      startDate: time.year,
+      endDate: DateTime.fromISO(time.year).endOf("year").toISODate(),
     };
   }
   if (time.mode === "all-time" || time.mode === "past-minutes") {
-    return { start_date: null, end_date: null };
+    return { startDate: null, endDate: null };
   }
-  return { start_date: time.day, end_date: time.day };
+  return { startDate: time.day, endDate: time.day };
+}
+
+// Internal version that uses snake_case for getQueryParams
+function getStartAndEndDateSnake(time: Time) {
+  const { startDate, endDate } = getStartAndEndDate(time);
+  return { start_date: startDate, end_date: endDate };
 }
 
 export function getQueryParams(time: Time, additionalParams: Record<string, any> = {}): Record<string, any> {
@@ -45,9 +53,40 @@ export function getQueryParams(time: Time, additionalParams: Record<string, any>
 
   // Regular date-based approach
   return {
-    ...getStartAndEndDate(time),
+    ...getStartAndEndDateSnake(time),
     time_zone: timeZone,
     ...additionalParams,
+  };
+}
+
+// Re-export timeZone for convenience
+export { timeZone };
+
+/**
+ * Build CommonApiParams from a Time object, handling all time modes including past-minutes.
+ * This centralizes the logic for converting Time to API params across all hooks.
+ */
+export function buildApiParams(
+  time: Time,
+  options: { filters?: Filter[] } = {}
+): CommonApiParams {
+  if (time.mode === "past-minutes") {
+    return {
+      startDate: "",
+      endDate: "",
+      timeZone,
+      filters: options.filters,
+      pastMinutesStart: time.pastMinutesStart,
+      pastMinutesEnd: time.pastMinutesEnd,
+    };
+  }
+
+  const { startDate, endDate } = getStartAndEndDate(time);
+  return {
+    startDate: startDate ?? "",
+    endDate: endDate ?? "",
+    timeZone,
+    filters: options.filters,
   };
 }
 

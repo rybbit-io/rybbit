@@ -10,17 +10,16 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { motion } from "framer-motion";
 import { ArrowRight, Check } from "lucide-react";
-import Image from "next/image";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import React, { Suspense, useEffect, useState } from "react";
 import { addSite } from "../../../api/admin/sites";
+import { RybbitTextLogo } from "../../../components/RybbitLogo";
 import { useSetPageTitle } from "../../../hooks/useSetPageTitle";
 import { authClient } from "../../../lib/auth";
 import { IS_CLOUD } from "../../../lib/const";
 import { userStore } from "../../../lib/userStore";
 import { cn, isValidDomain, normalizeDomain } from "../../../lib/utils";
-import { RybbitTextLogo } from "../../../components/RybbitLogo";
 
 // Animation variants for step transitions
 const contentVariants = {

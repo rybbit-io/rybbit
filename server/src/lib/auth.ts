@@ -1,4 +1,5 @@
 import { betterAuth } from "better-auth";
+import { createAuthMiddleware } from "better-auth/api";
 import { admin, captcha, emailOTP, organization, apiKey } from "better-auth/plugins";
 import dotenv from "dotenv";
 import { asc, eq } from "drizzle-orm";
@@ -8,11 +9,9 @@ import { db } from "../db/postgres/postgres.js";
 import * as schema from "../db/postgres/schema.js";
 import { user } from "../db/postgres/schema.js";
 import { DISABLE_SIGNUP, IS_CLOUD } from "./const.js";
-import { sendEmail, sendInvitationEmail } from "./email/email.js";
+import { sendEmail, sendInvitationEmail, sendWelcomeEmail } from "./email/email.js";
 
 dotenv.config();
-
-type AuthType = ReturnType<typeof betterAuth> | null;
 
 const pluginList = [
   admin(),
@@ -175,5 +174,15 @@ export const auth = betterAuth({
         },
       },
     },
+  },
+  hooks: {
+    after: createAuthMiddleware(async ctx => {
+      if (ctx.path.startsWith("/sign-up") && IS_CLOUD) {
+        const newSession = ctx.context.newSession;
+        if (newSession) {
+          sendWelcomeEmail(newSession.user.email, newSession.user.name);
+        }
+      }
+    }),
   },
 });
