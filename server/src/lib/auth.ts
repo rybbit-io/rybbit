@@ -94,6 +94,7 @@ const pluginList = [
 
 export const auth = betterAuth({
   basePath: "/api/auth",
+  baseURL: process.env.BETTER_AUTH_URL || process.env.BASE_URL,
   database: new pg.Pool({
     host: process.env.POSTGRES_HOST || "postgres",
     port: parseInt(process.env.POSTGRES_PORT || "5432", 10),
@@ -134,7 +135,11 @@ export const auth = betterAuth({
     },
   },
   plugins: pluginList,
-  trustedOrigins: ["http://localhost:3002"],
+  trustedOrigins: [
+    "http://localhost:3002",
+    ...(process.env.BASE_URL ? [process.env.BASE_URL] : []),
+  ],
+  trustHost: process.env.AUTH_TRUST_HOST === "true",
   advanced: {
     useSecureCookies: process.env.NODE_ENV === "production", // don't mark Secure in dev
     defaultCookieAttributes: {
