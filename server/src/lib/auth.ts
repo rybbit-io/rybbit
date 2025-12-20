@@ -145,7 +145,7 @@ export const auth = betterAuth({
   plugins: pluginList,
   trustedOrigins: [
     "http://localhost:3002",
-    ...(process.env.BASE_URL ? [process.env.BASE_URL] : []),
+    baseURL,
   ],
   trustHost: process.env.AUTH_TRUST_HOST === "true",
   advanced: {
