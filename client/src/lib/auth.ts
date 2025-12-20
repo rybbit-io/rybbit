@@ -5,10 +5,22 @@ import { createAuthClient } from "better-auth/react";
 const getBaseURL = () => {
   // Server-side (SSR)
   if (typeof window === "undefined") {
-    return process.env.BACKEND_URL || process.env.NEXT_PUBLIC_BACKEND_URL;
+    const url = process.env.BACKEND_URL || process.env.NEXT_PUBLIC_BACKEND_URL;
+    if (!url) {
+      throw new Error(
+        "Missing required environment variable: BACKEND_URL or NEXT_PUBLIC_BACKEND_URL must be set for SSR authentication"
+      );
+    }
+    return url;
   }
   // Client-side
-  return process.env.NEXT_PUBLIC_BACKEND_URL;
+  const url = process.env.NEXT_PUBLIC_BACKEND_URL;
+  if (!url) {
+    throw new Error(
+      "Missing required environment variable: NEXT_PUBLIC_BACKEND_URL must be set for client-side authentication"
+    );
+  }
+  return url;
 };
 
 export const authClient = createAuthClient({

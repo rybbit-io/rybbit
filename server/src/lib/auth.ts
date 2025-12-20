@@ -92,9 +92,17 @@ const pluginList = [
     : []),
 ];
 
+// Validate base URL is configured
+const baseURL = process.env.BETTER_AUTH_URL || process.env.BASE_URL;
+if (!baseURL) {
+  throw new Error(
+    "Missing required environment variable: BETTER_AUTH_URL or BASE_URL must be set for authentication"
+  );
+}
+
 export const auth = betterAuth({
   basePath: "/api/auth",
-  baseURL: process.env.BETTER_AUTH_URL || process.env.BASE_URL,
+  baseURL,
   database: new pg.Pool({
     host: process.env.POSTGRES_HOST || "postgres",
     port: parseInt(process.env.POSTGRES_PORT || "5432", 10),
