@@ -1,7 +1,6 @@
 import { FastifyReply, FastifyRequest } from "fastify";
 import { clickhouse } from "../../db/clickhouse/clickhouse.js";
-import { processResults } from "./utils.js";
-import { getUserHasAccessToSitePublic } from "../../lib/auth-utils.js";
+import { processResults } from "./utils/utils.js";
 import SqlString from "sqlstring";
 
 export interface GetUserSessionCountRequest {
@@ -9,8 +8,8 @@ export interface GetUserSessionCountRequest {
     site: string;
   };
   Querystring: {
-    userId?: string;
-    timeZone?: string;
+    user_id?: string;
+    time_zone?: string;
   };
 }
 
@@ -19,20 +18,12 @@ export type GetUserSessionCountResponse = {
   sessions: number;
 }[];
 
-export async function getUserSessionCount(
-  req: FastifyRequest<GetUserSessionCountRequest>,
-  res: FastifyReply
-) {
+export async function getUserSessionCount(req: FastifyRequest<GetUserSessionCountRequest>, res: FastifyReply) {
   const { site } = req.params;
-  const { userId, timeZone = "UTC" } = req.query;
-
-  const userHasAccessToSite = await getUserHasAccessToSitePublic(req, site);
-  if (!userHasAccessToSite) {
-    return res.status(403).send({ error: "Forbidden" });
-  }
+  const { user_id: userId, time_zone: timeZone = "UTC" } = req.query;
 
   if (!userId) {
-    return res.status(400).send({ error: "userId is required" });
+    return res.status(400).send({ error: "user_id is required" });
   }
 
   const query = `
@@ -42,7 +33,7 @@ export async function getUserSessionCount(
     FROM events
     WHERE
       site_id = {siteId:Int32}
-      AND user_id = {userId:String} 
+      AND (user_id = {userId:String} OR identified_user_id = {userId:String})
     GROUP BY date
     ORDER BY date ASC
   `;
@@ -57,16 +48,13 @@ export async function getUserSessionCount(
       },
     });
 
-    const data =
-      await processResults<GetUserSessionCountResponse[number]>(result);
+    const data = await processResults<GetUserSessionCountResponse[number]>(result);
 
     return res.send({
       data,
     });
   } catch (error) {
     console.error("Error fetching user session count:", error);
-    return res
-      .status(500)
-      .send({ error: "Failed to fetch user session count" });
+    return res.status(500).send({ error: "Failed to fetch user session count" });
   }
 }

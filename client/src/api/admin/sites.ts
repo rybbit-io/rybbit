@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { authClient } from "../../lib/auth";
 
 export type SiteResponse = {
+  id: string | null;
   siteId: number;
   name: string;
   domain: string;
@@ -16,23 +17,16 @@ export type SiteResponse = {
   saltUserIds: boolean;
   blockBots: boolean;
   isOwner: boolean;
+  // Analytics features
+  sessionReplay?: boolean;
+  webVitals?: boolean;
+  trackErrors?: boolean;
+  trackOutbound?: boolean;
+  trackUrlParams?: boolean;
+  trackInitialPageView?: boolean;
+  trackSpaNavigation?: boolean;
+  trackIp?: boolean;
 };
-
-export type GetSitesResponse = {
-  siteId: number;
-  name: string;
-  domain: string;
-  createdAt: string;
-  updatedAt: string;
-  createdBy: string;
-  public: boolean;
-  saltUserIds: boolean;
-  blockBots: boolean;
-  overMonthlyLimit?: boolean;
-  monthlyEventCount?: number;
-  eventLimit?: number;
-  isOwner?: boolean;
-}[];
 
 export type GetSitesFromOrgResponse = {
   organization: {
@@ -47,6 +41,7 @@ export type GetSitesFromOrgResponse = {
     overMonthlyLimit: boolean | null;
   } | null;
   sites: Array<{
+    id: string | null;
     siteId: number;
     name: string;
     domain: string;
@@ -66,6 +61,7 @@ export type GetSitesFromOrgResponse = {
     overMonthlyLimit: boolean;
     planName: string;
     status: string;
+    isPro: boolean;
   };
 };
 
@@ -73,7 +69,7 @@ export function useGetSitesFromOrg(organizationId?: string) {
   return useQuery<GetSitesFromOrgResponse>({
     queryKey: ["get-sites-from-org", organizationId],
     queryFn: () => {
-      return authedFetch(`/get-sites-from-org/${organizationId}`);
+      return authedFetch(`/organizations/${organizationId}/sites`);
     },
     staleTime: 60000, // 1 minute
     enabled: !!organizationId,
@@ -90,7 +86,7 @@ export function addSite(
     blockBots?: boolean;
   }
 ) {
-  return authedFetch<{ siteId: number }>("/add-site", undefined, {
+  return authedFetch<{ siteId: number }>("/sites", undefined, {
     method: "POST",
     data: {
       domain,
@@ -107,31 +103,33 @@ export function addSite(
 }
 
 export function deleteSite(siteId: number) {
-  return authedFetch(`/delete-site/${siteId}`, undefined, {
-    method: "POST",
+  return authedFetch(`/sites/${siteId}`, undefined, {
+    method: "DELETE",
   });
 }
 
-export function changeSiteDomain(siteId: number, newDomain: string) {
-  return authedFetch("/change-site-domain", undefined, {
-    method: "POST",
-    data: {
-      siteId,
-      newDomain,
-    },
-    headers: {
-      "Content-Type": "application/json",
-    },
-  });
-}
-
-export function changeSitePublic(siteId: number, isPublic: boolean) {
-  return authedFetch("/change-site-public", undefined, {
-    method: "POST",
-    data: {
-      siteId,
-      isPublic,
-    },
+// Consolidated function to update any site configuration
+export function updateSiteConfig(
+  siteId: number,
+  config: {
+    domain?: string;
+    public?: boolean;
+    saltUserIds?: boolean;
+    blockBots?: boolean;
+    excludedIPs?: string[];
+    excludedCountries?: string[];
+    sessionReplay?: boolean;
+    webVitals?: boolean;
+    trackErrors?: boolean;
+    trackOutbound?: boolean;
+    trackUrlParams?: boolean;
+    trackInitialPageView?: boolean;
+    trackSpaNavigation?: boolean;
+  }
+) {
+  return authedFetch(`/sites/${siteId}/config`, undefined, {
+    method: "PUT",
+    data: config,
     headers: {
       "Content-Type": "application/json",
     },
@@ -145,9 +143,7 @@ export function useSiteHasData(siteId: string) {
       if (!siteId) {
         return Promise.resolve(false);
       }
-      return authedFetch<{ hasData: boolean }>(`/site-has-data/${siteId}`).then(
-        (data) => data.hasData
-      );
+      return authedFetch<{ hasData: boolean }>(`/site-has-data/${siteId}`).then(data => data.hasData);
     },
     refetchInterval: 5000,
     staleTime: Infinity,
@@ -166,38 +162,11 @@ export function useGetSite(siteId?: string | number) {
         return null;
       }
 
-      // Use regular fetch instead of authedFetch to support public sites
-      const data = await authedFetch<SiteResponse>(`/get-site/${siteIdToUse}`);
+      const data = await authedFetch<SiteResponse>(`/sites/${siteIdToUse}`);
       return data;
     },
-    staleTime: 60000, // 1 minute
+    staleTime: 60000,
     enabled: !!siteId,
-  });
-}
-
-export function changeSiteSalt(siteId: number, saltUserIds: boolean) {
-  return authedFetch("/change-site-salt", undefined, {
-    method: "POST",
-    data: {
-      siteId,
-      saltUserIds,
-    },
-    headers: {
-      "Content-Type": "application/json",
-    },
-  });
-}
-
-export function changeSiteBlockBots(siteId: number, blockBots: boolean) {
-  return authedFetch("/change-site-block-bots", undefined, {
-    method: "POST",
-    data: {
-      siteId,
-      blockBots,
-    },
-    headers: {
-      "Content-Type": "application/json",
-    },
   });
 }
 
@@ -210,16 +179,14 @@ export function useGetSiteIsPublic(siteId?: string | number) {
       }
 
       try {
-        const data = await authedFetch<{ isPublic: boolean }>(
-          `/site-is-public/${siteId}`
-        );
+        const data = await authedFetch<{ isPublic: boolean }>(`/site-is-public/${siteId}`);
         return !!data.isPublic;
       } catch (error) {
         console.error("Error checking if site is public:", error);
         return false;
       }
     },
-    staleTime: 60000, // 1 minute
+    staleTime: 60000,
     enabled: !!siteId,
   });
 }
@@ -230,9 +197,7 @@ export const useCurrentSite = () => {
   const pathname = usePathname();
 
   return {
-    site: sites?.sites.find(
-      (site) => site.siteId === Number(pathname.split("/")[1])
-    ),
+    site: sites?.sites.find(site => site.siteId === Number(pathname.split("/")[1])),
     subscription: sites?.subscription,
   };
 };

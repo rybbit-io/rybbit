@@ -59,7 +59,7 @@
   }
 
   // config.ts
-  function parseScriptConfig(scriptTag) {
+  async function parseScriptConfig(scriptTag) {
     const src = scriptTag.getAttribute("src");
     if (!src) {
       console.error("Script src attribute is missing");
@@ -71,48 +71,65 @@
       return null;
     }
     const siteId = scriptTag.getAttribute("data-site-id") || scriptTag.getAttribute("site-id");
-    if (!siteId || isNaN(Number(siteId))) {
-      console.error(
-        "Please provide a valid site ID using the data-site-id attribute"
-      );
+    if (!siteId) {
+      console.error("Please provide a valid site ID using the data-site-id attribute");
       return null;
     }
+    const skipPatterns = parseJsonSafely(scriptTag.getAttribute("data-skip-patterns"), []);
+    const maskPatterns = parseJsonSafely(scriptTag.getAttribute("data-mask-patterns"), []);
+    const sessionReplayMaskTextSelectors = parseJsonSafely(
+      scriptTag.getAttribute("data-replay-mask-text-selectors"),
+      []
+    );
     const debounceDuration = scriptTag.getAttribute("data-debounce") ? Math.max(0, parseInt(scriptTag.getAttribute("data-debounce"))) : 500;
-    const skipPatterns = parseJsonSafely(
-      scriptTag.getAttribute("data-skip-patterns"),
-      []
-    );
-    const maskPatterns = parseJsonSafely(
-      scriptTag.getAttribute("data-mask-patterns"),
-      []
-    );
-    const apiKey = scriptTag.getAttribute("data-api-key") || void 0;
-    const sessionReplayBatchSize = scriptTag.getAttribute(
-      "data-replay-batch-size"
-    ) ? Math.max(1, parseInt(scriptTag.getAttribute("data-replay-batch-size"))) : 250;
-    const sessionReplayBatchInterval = scriptTag.getAttribute(
-      "data-replay-batch-interval"
-    ) ? Math.max(
-      1e3,
-      parseInt(scriptTag.getAttribute("data-replay-batch-interval"))
-    ) : 5e3;
-    return {
+    const sessionReplayBatchSize = scriptTag.getAttribute("data-replay-batch-size") ? Math.max(1, parseInt(scriptTag.getAttribute("data-replay-batch-size"))) : 250;
+    const sessionReplayBatchInterval = scriptTag.getAttribute("data-replay-batch-interval") ? Math.max(1e3, parseInt(scriptTag.getAttribute("data-replay-batch-interval"))) : 5e3;
+    const defaultConfig = {
       analyticsHost,
       siteId,
       debounceDuration,
-      autoTrackPageview: scriptTag.getAttribute("data-auto-track-pageview") !== "false",
-      autoTrackSpa: scriptTag.getAttribute("data-track-spa") !== "false",
-      trackQuerystring: scriptTag.getAttribute("data-track-query") !== "false",
-      trackOutbound: scriptTag.getAttribute("data-track-outbound") !== "false",
-      enableWebVitals: scriptTag.getAttribute("data-web-vitals") === "true",
-      trackErrors: scriptTag.getAttribute("data-track-errors") === "true",
-      enableSessionReplay: scriptTag.getAttribute("data-session-replay") === "true",
       sessionReplayBatchSize,
       sessionReplayBatchInterval,
+      sessionReplayMaskTextSelectors,
       skipPatterns,
       maskPatterns,
-      apiKey
+      // Default all tracking to true initially (will be updated from API)
+      autoTrackPageview: true,
+      autoTrackSpa: true,
+      trackQuerystring: true,
+      trackOutbound: true,
+      enableWebVitals: false,
+      trackErrors: false,
+      enableSessionReplay: false
     };
+    try {
+      const configUrl = `${analyticsHost}/site/tracking-config/${siteId}`;
+      const response = await fetch(configUrl, {
+        method: "GET",
+        // Include credentials if needed for authentication
+        credentials: "omit"
+      });
+      if (response.ok) {
+        const apiConfig = await response.json();
+        return {
+          ...defaultConfig,
+          // Map API field names to script config field names
+          autoTrackPageview: apiConfig.trackInitialPageView ?? defaultConfig.autoTrackPageview,
+          autoTrackSpa: apiConfig.trackSpaNavigation ?? defaultConfig.autoTrackSpa,
+          trackQuerystring: apiConfig.trackUrlParams ?? defaultConfig.trackQuerystring,
+          trackOutbound: apiConfig.trackOutbound ?? defaultConfig.trackOutbound,
+          enableWebVitals: apiConfig.webVitals ?? defaultConfig.enableWebVitals,
+          trackErrors: apiConfig.trackErrors ?? defaultConfig.trackErrors,
+          enableSessionReplay: apiConfig.sessionReplay ?? defaultConfig.enableSessionReplay
+        };
+      } else {
+        console.warn("Failed to fetch tracking config from API, using defaults");
+        return defaultConfig;
+      }
+    } catch (error) {
+      console.warn("Error fetching tracking config:", error);
+      return defaultConfig;
+    }
   }
 
   // sessionReplay.ts
@@ -152,7 +169,7 @@
         return;
       }
       try {
-        this.stopRecordingFn = window.rrweb.record({
+        const recordingOptions = {
           emit: (event) => {
             this.addEvent({
               type: event.type,
@@ -160,14 +177,14 @@
               timestamp: event.timestamp || Date.now()
             });
           },
-          recordCanvas: true,
-          // Record canvas elements
+          recordCanvas: false,
+          // Disable canvas recording to reduce data
           collectFonts: true,
-          // Collect font info for better replay
-          checkoutEveryNms: 3e4,
-          // Checkout every 30 seconds
-          checkoutEveryNth: 200,
-          // Checkout every 200 events
+          // Disable font collection to reduce data
+          checkoutEveryNms: 6e4,
+          // Checkout every 60 seconds (was 30)
+          checkoutEveryNth: 500,
+          // Checkout every 500 events (was 200)
           maskAllInputs: true,
           // Mask all input values for privacy
           maskInputOptions: {
@@ -187,16 +204,33 @@
             headMetaVerification: true
           },
           sampling: {
-            // Optional: reduce recording frequency to save bandwidth
+            // Aggressive sampling to reduce data volume
             mousemove: false,
-            // Don't record every mouse move
-            mouseInteraction: true,
-            scroll: 150,
-            // Sample scroll events every 150ms
-            input: "last"
+            // Don't record mouse moves at all
+            mouseInteraction: {
+              MouseUp: false,
+              MouseDown: false,
+              Click: true,
+              // Only record clicks
+              ContextMenu: false,
+              DblClick: true,
+              Focus: true,
+              Blur: true,
+              TouchStart: false,
+              TouchEnd: false
+            },
+            scroll: 500,
+            // Sample scroll events every 500ms (was 150)
+            input: "last",
             // Only record the final input value
+            media: 800
+            // Sample media interactions less frequently
           }
-        });
+        };
+        if (this.config.sessionReplayMaskTextSelectors && this.config.sessionReplayMaskTextSelectors.length > 0) {
+          recordingOptions.maskTextSelector = this.config.sessionReplayMaskTextSelectors.join(", ");
+        }
+        this.stopRecordingFn = window.rrweb.record(recordingOptions);
         this.isRecording = true;
         this.setupBatchTimer();
       } catch (error) {
@@ -309,22 +343,16 @@
     }
     async sendSessionReplayBatch(batch) {
       try {
-        if (this.config.apiKey) {
-          batch.apiKey = this.config.apiKey;
-        }
-        await fetch(
-          `${this.config.analyticsHost}/session-replay/record/${this.config.siteId}`,
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json"
-            },
-            body: JSON.stringify(batch),
-            mode: "cors",
-            keepalive: false
-            // Disable keepalive for large session replay requests
-          }
-        );
+        await fetch(`${this.config.analyticsHost}/session-replay/record/${this.config.siteId}`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify(batch),
+          mode: "cors",
+          keepalive: false
+          // Disable keepalive for large session replay requests
+        });
       } catch (error) {
         console.error("Failed to send session replay batch:", error);
         throw error;
@@ -357,9 +385,6 @@
       if (this.customUserId) {
         payload.user_id = this.customUserId;
       }
-      if (this.config.apiKey) {
-        payload.api_key = this.config.apiKey;
-      }
       return payload;
     }
     async sendTrackingData(payload) {
@@ -379,9 +404,7 @@
     }
     track(eventType, eventName = "", properties = {}) {
       if (eventType === "custom_event" && (!eventName || typeof eventName !== "string")) {
-        console.error(
-          "Event name is required and must be a string for custom events"
-        );
+        console.error("Event name is required and must be a string for custom events");
         return;
       }
       const basePayload = this.createBasePayload();
@@ -463,7 +486,7 @@
       }
       this.track("error", error.name || "Error", errorProperties);
     }
-    identify(userId) {
+    identify(userId, traits) {
       if (typeof userId !== "string" || userId.trim() === "") {
         console.error("User ID must be a non-empty string");
         return;
@@ -474,8 +497,41 @@
       } catch (e2) {
         console.warn("Could not persist user ID to localStorage");
       }
+      this.sendIdentifyEvent(this.customUserId, traits, true);
       if (this.sessionReplayRecorder) {
         this.sessionReplayRecorder.updateUserId(this.customUserId);
+      }
+    }
+    setTraits(traits) {
+      if (!traits || typeof traits !== "object") {
+        console.error("Traits must be an object");
+        return;
+      }
+      const userId = this.customUserId;
+      if (!userId) {
+        console.warn("Cannot set traits without identifying user first. Call identify() first.");
+        return;
+      }
+      this.sendIdentifyEvent(userId, traits, false);
+    }
+    async sendIdentifyEvent(userId, traits, isNewIdentify = true) {
+      try {
+        await fetch(`${this.config.analyticsHost}/identify`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            site_id: this.config.siteId,
+            user_id: userId,
+            traits,
+            is_new_identify: isNewIdentify
+          }),
+          mode: "cors",
+          keepalive: true
+        });
+      } catch (error) {
+        console.error("Failed to send identify event:", error);
       }
     }
     clearUserId() {
@@ -521,9 +577,9 @@
   // ../../node_modules/web-vitals/dist/web-vitals.js
   var e = -1;
   var t = (t2) => {
-    addEventListener("pageshow", (n2) => {
+    addEventListener("pageshow", ((n2) => {
       n2.persisted && (e = n2.timeStamp, t2(n2));
-    }, true);
+    }), true);
   };
   var n = (e2, t2, n2, i2) => {
     let s2, o2;
@@ -532,7 +588,7 @@
     };
   };
   var i = (e2) => {
-    requestAnimationFrame(() => requestAnimationFrame(() => e2()));
+    requestAnimationFrame((() => requestAnimationFrame((() => e2()))));
   };
   var s = () => {
     const e2 = performance.getEntriesByType("navigation")[0];
@@ -567,11 +623,11 @@
   var h = (e2, t2, n2 = {}) => {
     try {
       if (PerformanceObserver.supportedEntryTypes.includes(e2)) {
-        const i2 = new PerformanceObserver((e3) => {
-          Promise.resolve().then(() => {
+        const i2 = new PerformanceObserver(((e3) => {
+          Promise.resolve().then((() => {
             t2(e3.getEntries());
-          });
-        });
+          }));
+        }));
         return i2.observe({ type: e2, buffered: true, ...n2 }), i2;
       }
     } catch {
@@ -594,12 +650,12 @@
   };
   var v = () => {
     if (u < 0) {
-      const e2 = o(), n2 = document.prerendering ? void 0 : globalThis.performance.getEntriesByType("visibility-state").filter((t2) => "hidden" === t2.name && t2.startTime > e2)[0]?.startTime;
-      u = n2 ?? m(), addEventListener("visibilitychange", p, true), addEventListener("prerenderingchange", p, true), t(() => {
-        setTimeout(() => {
+      const e2 = o(), n2 = document.prerendering ? void 0 : globalThis.performance.getEntriesByType("visibility-state").filter(((t2) => "hidden" === t2.name && t2.startTime > e2))[0]?.startTime;
+      u = n2 ?? m(), addEventListener("visibilitychange", p, true), addEventListener("prerenderingchange", p, true), t((() => {
+        setTimeout((() => {
           u = m();
-        });
-      });
+        }));
+      }));
     }
     return { get firstHiddenTime() {
       return u;
@@ -608,38 +664,38 @@
     } };
   };
   var g = (e2) => {
-    document.prerendering ? addEventListener("prerenderingchange", () => e2(), true) : e2();
+    document.prerendering ? addEventListener("prerenderingchange", (() => e2()), true) : e2();
   };
   var y = [1800, 3e3];
   var E = (e2, s2 = {}) => {
-    g(() => {
+    g((() => {
       const c2 = v();
       let a2, d2 = r("FCP");
-      const f2 = h("paint", (e3) => {
+      const f2 = h("paint", ((e3) => {
         for (const t2 of e3) "first-contentful-paint" === t2.name && (f2.disconnect(), t2.startTime < c2.firstHiddenTime && (d2.value = Math.max(t2.startTime - o(), 0), d2.entries.push(t2), a2(true)));
-      });
-      f2 && (a2 = n(e2, d2, y, s2.reportAllChanges), t((t2) => {
-        d2 = r("FCP"), a2 = n(e2, d2, y, s2.reportAllChanges), i(() => {
-          d2.value = performance.now() - t2.timeStamp, a2(true);
-        });
       }));
-    });
+      f2 && (a2 = n(e2, d2, y, s2.reportAllChanges), t(((t2) => {
+        d2 = r("FCP"), a2 = n(e2, d2, y, s2.reportAllChanges), i((() => {
+          d2.value = performance.now() - t2.timeStamp, a2(true);
+        }));
+      })));
+    }));
   };
   var b = [0.1, 0.25];
   var L = (e2, s2 = {}) => {
     const o2 = v();
-    E(f(() => {
+    E(f((() => {
       let c2, f2 = r("CLS", 0);
       const u2 = a(s2, d), l2 = (e3) => {
         for (const t2 of e3) u2.h(t2);
         u2.i > f2.value && (f2.value = u2.i, f2.entries = u2.o, c2());
       }, m2 = h("layout-shift", l2);
-      m2 && (c2 = n(e2, f2, b, s2.reportAllChanges), o2.onHidden(() => {
+      m2 && (c2 = n(e2, f2, b, s2.reportAllChanges), o2.onHidden((() => {
         l2(m2.takeRecords()), c2(true);
-      }), t(() => {
-        u2.i = 0, f2 = r("CLS", 0), c2 = n(e2, f2, b, s2.reportAllChanges), i(() => c2());
-      }), setTimeout(c2));
-    }));
+      })), t((() => {
+        u2.i = 0, f2 = r("CLS", 0), c2 = n(e2, f2, b, s2.reportAllChanges), i((() => c2()));
+      })), setTimeout(c2));
+    })));
   };
   var P = 0;
   var T = 1 / 0;
@@ -672,7 +728,7 @@
       const t2 = this.u.at(-1);
       let n2 = this.l.get(e2.interactionId);
       if (n2 || this.u.length < 10 || e2.duration > t2.P) {
-        if (n2 ? e2.duration > n2.P ? (n2.entries = [e2], n2.P = e2.duration) : e2.duration === n2.P && e2.startTime === n2.entries[0].startTime && n2.entries.push(e2) : (n2 = { id: e2.interactionId, entries: [e2], P: e2.duration }, this.l.set(n2.id, n2), this.u.push(n2)), this.u.sort((e3, t3) => t3.P - e3.P), this.u.length > 10) {
+        if (n2 ? e2.duration > n2.P ? (n2.entries = [e2], n2.P = e2.duration) : e2.duration === n2.P && e2.startTime === n2.entries[0].startTime && n2.entries.push(e2) : (n2 = { id: e2.interactionId, entries: [e2], P: e2.duration }, this.l.set(n2.id, n2), this.u.push(n2)), this.u.sort(((e3, t3) => t3.P - e3.P)), this.u.length > 10) {
           const e3 = this.u.splice(10);
           for (const t3 of e3) this.l.delete(t3.id);
         }
@@ -682,30 +738,30 @@
   };
   var A = (e2) => {
     const t2 = globalThis.requestIdleCallback || setTimeout;
-    "hidden" === document.visibilityState ? e2() : (e2 = f(e2), addEventListener("visibilitychange", e2, { once: true, capture: true }), t2(() => {
+    "hidden" === document.visibilityState ? e2() : (e2 = f(e2), addEventListener("visibilitychange", e2, { once: true, capture: true }), t2((() => {
       e2(), removeEventListener("visibilitychange", e2, { capture: true });
-    }));
+    })));
   };
   var B = [200, 500];
   var S = (e2, i2 = {}) => {
     if (!globalThis.PerformanceEventTiming || !("interactionId" in PerformanceEventTiming.prototype)) return;
     const s2 = v();
-    g(() => {
+    g((() => {
       I();
       let o2, c2 = r("INP");
       const d2 = a(i2, k), f2 = (e3) => {
-        A(() => {
+        A((() => {
           for (const t3 of e3) d2.h(t3);
           const t2 = d2.L();
           t2 && t2.P !== c2.value && (c2.value = t2.P, c2.entries = t2.entries, o2());
-        });
+        }));
       }, u2 = h("event", f2, { durationThreshold: i2.durationThreshold ?? 40 });
-      o2 = n(e2, c2, B, i2.reportAllChanges), u2 && (u2.observe({ type: "first-input", buffered: true }), s2.onHidden(() => {
+      o2 = n(e2, c2, B, i2.reportAllChanges), u2 && (u2.observe({ type: "first-input", buffered: true }), s2.onHidden((() => {
         f2(u2.takeRecords()), o2(true);
-      }), t(() => {
+      })), t((() => {
         d2.v(), c2 = r("INP"), o2 = n(e2, c2, B, i2.reportAllChanges);
-      }));
-    });
+      })));
+    }));
   };
   var N = class {
     constructor() {
@@ -717,7 +773,7 @@
   };
   var q = [2500, 4e3];
   var x = (e2, s2 = {}) => {
-    g(() => {
+    g((() => {
       const c2 = v();
       let d2, u2 = r("LCP");
       const l2 = a(s2, N), m2 = (e3) => {
@@ -726,32 +782,32 @@
       }, p2 = h("largest-contentful-paint", m2);
       if (p2) {
         d2 = n(e2, u2, q, s2.reportAllChanges);
-        const o2 = f(() => {
+        const o2 = f((() => {
           m2(p2.takeRecords()), p2.disconnect(), d2(true);
-        }), c3 = (e3) => {
+        })), c3 = (e3) => {
           e3.isTrusted && (A(o2), removeEventListener(e3.type, c3, { capture: true }));
         };
         for (const e3 of ["keydown", "click", "visibilitychange"]) addEventListener(e3, c3, { capture: true });
-        t((t2) => {
-          u2 = r("LCP"), d2 = n(e2, u2, q, s2.reportAllChanges), i(() => {
+        t(((t2) => {
+          u2 = r("LCP"), d2 = n(e2, u2, q, s2.reportAllChanges), i((() => {
             u2.value = performance.now() - t2.timeStamp, d2(true);
-          });
-        });
+          }));
+        }));
       }
-    });
+    }));
   };
   var H = [800, 1800];
   var O = (e2) => {
-    document.prerendering ? g(() => O(e2)) : "complete" !== document.readyState ? addEventListener("load", () => O(e2), true) : setTimeout(e2);
+    document.prerendering ? g((() => O(e2))) : "complete" !== document.readyState ? addEventListener("load", (() => O(e2)), true) : setTimeout(e2);
   };
   var $ = (e2, i2 = {}) => {
     let c2 = r("TTFB"), a2 = n(e2, c2, H, i2.reportAllChanges);
-    O(() => {
+    O((() => {
       const d2 = s();
-      d2 && (c2.value = Math.max(d2.responseStart - o(), 0), c2.entries = [d2], a2(true), t(() => {
+      d2 && (c2.value = Math.max(d2.responseStart - o(), 0), c2.entries = [d2], a2(true), t((() => {
         c2 = r("TTFB", 0), a2 = n(e2, c2, H, i2.reportAllChanges), a2(true);
-      }));
-    });
+      })));
+    }));
   };
 
   // webVitals.ts
@@ -794,9 +850,7 @@
       if (this.sent) return;
       const metricName = metric.name.toLowerCase();
       this.data[metricName] = metric.value;
-      const allCollected = Object.values(this.data).every(
-        (value) => value !== null
-      );
+      const allCollected = Object.values(this.data).every((value) => value !== null);
       if (allCollected) {
         this.sendData();
       }
@@ -818,7 +872,7 @@
   };
 
   // index.ts
-  (function() {
+  (async function() {
     const scriptTag = document.currentScript;
     if (!scriptTag) {
       console.error("Could not find current script tag");
@@ -830,9 +884,13 @@
         },
         event: () => {
         },
+        error: () => {
+        },
         trackOutbound: () => {
         },
         identify: () => {
+        },
+        setTraits: () => {
         },
         clearUserId: () => {
         },
@@ -845,17 +903,15 @@
       };
       return;
     }
-    const config = parseScriptConfig(scriptTag);
+    const config = await parseScriptConfig(scriptTag);
     if (!config) {
       return;
     }
     const tracker = new Tracker(config);
     if (config.enableWebVitals) {
-      const webVitalsCollector = new WebVitalsCollector(
-        (vitals) => {
-          tracker.trackWebVitals(vitals);
-        }
-      );
+      const webVitalsCollector = new WebVitalsCollector((vitals) => {
+        tracker.trackWebVitals(vitals);
+      });
       webVitalsCollector.initialize();
     }
     if (config.trackErrors) {
@@ -896,15 +952,9 @@
           target = target.parentElement;
         }
         if (config.trackOutbound) {
-          const link = e2.target.closest(
-            "a"
-          );
+          const link = e2.target.closest("a");
           if (link?.href && isOutboundLink(link.href)) {
-            tracker.trackOutbound(
-              link.href,
-              link.innerText || link.textContent || "",
-              link.target || "_self"
-            );
+            tracker.trackOutbound(link.href, link.innerText || link.textContent || "", link.target || "_self");
           }
         }
       });
@@ -936,7 +986,8 @@
       event: (name, properties = {}) => tracker.trackEvent(name, properties),
       error: (error, properties = {}) => tracker.trackError(error, properties),
       trackOutbound: (url, text = "", target = "_self") => tracker.trackOutbound(url, text, target),
-      identify: (userId) => tracker.identify(userId),
+      identify: (userId, traits) => tracker.identify(userId, traits),
+      setTraits: (traits) => tracker.setTraits(traits),
       clearUserId: () => tracker.clearUserId(),
       getUserId: () => tracker.getUserId(),
       startSessionReplay: () => tracker.startSessionReplay(),

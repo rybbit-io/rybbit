@@ -1,6 +1,6 @@
 import { betterAuth } from "better-auth";
-import { drizzleAdapter } from "better-auth/adapters/drizzle";
-import { admin, emailOTP, organization } from "better-auth/plugins";
+import { createAuthMiddleware } from "better-auth/api";
+import { admin, captcha, emailOTP, organization, apiKey } from "better-auth/plugins";
 import dotenv from "dotenv";
 import { asc, eq } from "drizzle-orm";
 import pg from "pg";
@@ -8,27 +8,26 @@ import pg from "pg";
 import { db } from "../db/postgres/postgres.js";
 import * as schema from "../db/postgres/schema.js";
 import { user } from "../db/postgres/schema.js";
-import { DISABLE_SIGNUP } from "./const.js";
-import { sendEmail, sendInvitationEmail } from "./resend.js";
+import { DISABLE_SIGNUP, IS_CLOUD } from "./const.js";
+import { sendEmail, sendInvitationEmail, sendWelcomeEmail } from "./email/email.js";
 
 dotenv.config();
 
-type AuthType = ReturnType<typeof betterAuth> | null;
-
 const pluginList = [
   admin(),
+  apiKey(),
   organization({
     // Allow users to create organizations
     allowUserToCreateOrganization: true,
     // Set the creator role to owner
     creatorRole: "owner",
-    sendInvitationEmail: async (invitation) => {
+    sendInvitationEmail: async invitation => {
       const inviteLink = `${process.env.BASE_URL}/invitation?invitationId=${invitation.invitation.id}&organization=${invitation.organization.name}&inviterEmail=${invitation.inviter.user.email}`;
       await sendInvitationEmail(
         invitation.email,
         invitation.inviter.user.email,
         invitation.organization.name,
-        inviteLink,
+        inviteLink
       );
     },
   }),
@@ -82,9 +81,18 @@ const pluginList = [
       }
     },
   }),
+  // Add Cloudflare Turnstile captcha (cloud only)
+  ...(IS_CLOUD && process.env.TURNSTILE_SECRET_KEY && process.env.NODE_ENV === "production"
+    ? [
+        captcha({
+          provider: "cloudflare-turnstile",
+          secretKey: process.env.TURNSTILE_SECRET_KEY,
+        }),
+      ]
+    : []),
 ];
 
-export let auth: AuthType | null = betterAuth({
+export const auth = betterAuth({
   basePath: "/api/auth",
   database: new pg.Pool({
     host: process.env.POSTGRES_HOST || "postgres",
@@ -110,6 +118,14 @@ export let auth: AuthType | null = betterAuth({
     },
   },
   user: {
+    additionalFields: {
+      sendAutoEmailReports: {
+        type: "boolean",
+        required: true,
+        defaultValue: true,
+        input: true,
+      },
+    },
     deleteUser: {
       enabled: true,
     },
@@ -138,102 +154,35 @@ export let auth: AuthType | null = betterAuth({
           }
         },
       },
-    },
-  },
-});
-
-export function initAuth(allowedOrigins: string[]) {
-  auth = betterAuth({
-    basePath: "/api/auth",
-    database: drizzleAdapter(db, {
-      provider: "pg",
-      schema: {
-        // Map our schema tables to what better-auth expects
-        user: schema.user,
-        account: schema.account,
-        session: schema.session,
-        verification: schema.verification,
-        organization: schema.organization,
-        member: schema.member,
-      },
-    }),
-    experimental: {
-      sessionCookie: {
-        domains: allowedOrigins,
-      },
-    },
-    emailAndPassword: {
-      enabled: true,
-      // Disable email verification for now
-      requireEmailVerification: false,
-      disableSignUp: DISABLE_SIGNUP,
-    },
-    socialProviders: {
-      google: {
-        clientId: process.env.GOOGLE_CLIENT_ID!,
-        clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
-      },
-      github: {
-        clientId: process.env.GITHUB_CLIENT_ID!,
-        clientSecret: process.env.GITHUB_CLIENT_SECRET!,
-      },
-      // twitter: {
-      //   clientId: process.env.TWITTER_CLIENT_ID!,
-      //   clientSecret: process.env.TWITTER_CLIENT_SECRET!,
-      // },
-    },
-    user: {
-      additionalFields: {
-        monthlyEventCount: {
-          type: "number",
-          defaultValue: 0,
-          required: false,
-        },
-      },
-      deleteUser: {
-        enabled: true,
-        // Add a hook to run before deleting a user
-        // i dont think this works
-        beforeDelete: async (user) => {
-          // Delete all memberships for this user first
-          console.log(`Cleaning up memberships for user ${user.id} before deletion`);
-          try {
-            // Delete member records for this user
-            await db.delete(schema.member).where(eq(schema.member.userId, user.id));
-
-            console.log(`Successfully removed memberships for user ${user.id}`);
-          } catch (error) {
-            console.error(`Error removing memberships for user ${user.id}:`, error);
-            throw error; // Re-throw to prevent user deletion if cleanup fails
+      update: {
+        before: async userUpdate => {
+          // Security: Prevent role field from being updated via regular update-user endpoint
+          // Role changes should only go through the admin setRole endpoint
+          if (userUpdate && typeof userUpdate === "object") {
+            if ("role" in userUpdate) {
+              // Remove role from the update data
+              const { role: _, ...dataWithoutRole } = userUpdate;
+              return {
+                data: dataWithoutRole,
+              };
+            }
+            // Always return the data, even if role wasn't present
+            return {
+              data: userUpdate,
+            };
           }
         },
       },
-      changeEmail: {
-        enabled: true,
-      },
     },
-    plugins: pluginList,
-    trustedOrigins: allowedOrigins,
-    advanced: {
-      useSecureCookies: process.env.NODE_ENV === "production",
-      defaultCookieAttributes: {
-        sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
-        path: "/",
-      },
-    },
-    databaseHooks: {
-      user: {
-        create: {
-          after: async () => {
-            const users = await db.select().from(schema.user).orderBy(asc(user.createdAt));
-
-            // If this is the first user, make them an admin
-            if (users.length === 1) {
-              await db.update(user).set({ role: "admin" }).where(eq(user.id, users[0].id));
-            }
-          },
-        },
-      },
-    },
-  });
-}
+  },
+  hooks: {
+    after: createAuthMiddleware(async ctx => {
+      if (ctx.path.startsWith("/sign-up") && IS_CLOUD) {
+        const newSession = ctx.context.newSession;
+        if (newSession) {
+          sendWelcomeEmail(newSession.user.email, newSession.user.name);
+        }
+      }
+    }),
+  },
+});

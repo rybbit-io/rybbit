@@ -1,0 +1,7 @@
+{
+  "extends": ["next/core-web-vitals", "next/typescript"],
+  "rules": {
+    "react/no-danger": "off",
+    "react/no-unescaped-entities": "off"
+  }
+}

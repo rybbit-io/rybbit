@@ -1,0 +1,172 @@
+---
+title: Google Tag Manager
+description: Integrate Rybbit Analytics with your website using Google Tag Manager
+---
+
+import { Steps, Step } from 'fumadocs-ui/components/steps';
+
+
+Google Tag Manager (GTM) allows you to add code snippets or tracking pixels to your website with minimal code changes. This makes it an efficient way to integrate Rybbit without modifying your codebase.
+
+## How to Add Rybbit to Google Tag Manager
+
+<Steps>
+<Step>
+### Retrieve Your Tracking Script
+
+Navigate to your Rybbit dashboard to obtain your code snippet.
+
+Normally, the script would look like:
+
+```html
+<script
+  src="https://app.rybbit.io/api/script.js"
+  data-site-id="YOUR_SITE_ID"
+  defer
+></script>
+```
+
+However, GTM sanitizes script tags by removing non-standard HTML attributes like `data-site-id`. So you need to use:
+
+```javascript
+<script>
+  (function() {
+    var el = document.createElement("script");
+    el.src = "https://app.rybbit.io/api/script.js";
+    el.async = true;
+    el.defer = true;
+    el.setAttribute("data-site-id", "YOUR_SITE_ID");
+    document.head.appendChild(el);
+  })();
+</script>
+```
+</Step>
+
+<Step>
+### Access Your GTM Dashboard
+
+Assuming GTM is already set up, go to your GTM dashboard and select the appropriate account and container linked to your website.
+</Step>
+
+<Step>
+### Create a New Tag
+
+Click on **Add a new tag** to initiate the creation process.
+</Step>
+
+<Step>
+### Configure the Tag
+
+Under **Tag Configuration**, choose **Custom HTML** and paste your Rybbit snippet into the provided field.
+</Step>
+
+<Step>
+### Set Up Triggers
+
+Assign a trigger to determine when the tag should fire. For instance, to load Rybbit on all pages, select the **All Pages** trigger.
+</Step>
+
+<Step>
+### Save and Publish
+
+Save your changes and publish the container to make the tag active on your website.
+</Step>
+</Steps>
+
+## Custom Event Tracking
+
+Once Rybbit is loaded through GTM, you can track custom events using JavaScript. Since GTM already handles the script loading, you can directly call the Rybbit tracking functions.
+
+### Method 1: Direct JavaScript in GTM
+
+You can create additional Custom HTML tags in GTM to track specific events:
+
+```html
+<script>
+  // Track a custom event when this tag fires
+  if (typeof window.rybbit !== 'undefined') {
+    window.rybbit.event('gtm_custom_event', {
+      event_category: 'engagement',
+      event_label: 'button_click',
+      value: 1
+    });
+  }
+</script>
+```
+
+### Method 2: Track Events from Your Website Code
+
+Once Rybbit is loaded via GTM, you can track events directly from your website's JavaScript:
+
+```javascript
+// Example: Track button clicks
+document.addEventListener('DOMContentLoaded', function() {
+  const ctaButton = document.getElementById('cta-button');
+  if (ctaButton) {
+    ctaButton.addEventListener('click', function() {
+      if (typeof window.rybbit !== 'undefined') {
+        window.rybbit.event('cta_clicked', {
+          button_text: ctaButton.textContent,
+          page_path: window.location.pathname,
+          timestamp: new Date().toISOString()
+        });
+      }
+    });
+  }
+});
+```
+
+### Method 3: Using GTM Variables and Triggers
+
+You can leverage GTM's built-in variables and triggers to send custom events to Rybbit:
+
+1. Create a new **Custom HTML** tag
+2. Use GTM variables in your tracking code:
+
+```html
+<script>
+  if (typeof window.rybbit !== 'undefined') {
+    window.rybbit.event('{{Event}}', {
+      page: '{{Page URL}}',
+      referrer: '{{Referrer}}',
+      click_text: '{{Click Text}}',
+      click_url: '{{Click URL}}'
+    });
+  }
+</script>
+```
+
+3. Set up triggers for specific interactions (e.g., form submissions, scroll depth, video plays)
+
+### Common Event Examples
+
+```javascript
+// Form submission
+window.rybbit.event('form_submitted', {
+  form_id: 'contact-form',
+  form_name: 'Contact Us'
+});
+
+// E-commerce tracking
+window.rybbit.event('add_to_cart', {
+  product_id: '12345',
+  product_name: 'Example Product',
+  price: 29.99,
+  quantity: 1
+});
+
+// Video engagement
+window.rybbit.event('video_played', {
+  video_title: 'Product Demo',
+  duration: 120,
+  percent_watched: 75
+});
+
+// Download tracking
+window.rybbit.event('file_downloaded', {
+  file_name: 'whitepaper.pdf',
+  file_type: 'pdf',
+  file_size: '2.5MB'
+});
+```
+

@@ -1,0 +1,485 @@
+---
+title: Laravel Proxy Setup
+description: Configure Laravel routes and middleware to proxy Rybbit tracking
+---
+
+import { Steps } from 'fumadocs-ui/components/steps';
+import { Callout } from 'fumadocs-ui/components/callout';
+import { Tabs, Tab } from 'fumadocs-ui/components/tabs';
+
+Laravel makes it straightforward to proxy Rybbit tracking using routes and the HTTP client. This guide shows how to set up proxy endpoints in your Laravel application.
+
+## Overview
+
+Laravel's HTTP client (built on Guzzle) provides an elegant way to proxy requests to Rybbit servers while maintaining full control over headers, caching, and error handling.
+
+**What you'll achieve:**
+- Proxy all Rybbit endpoints through your Laravel app
+- Forward necessary headers for accurate tracking
+- Optional caching with Laravel Cache
+- Support all Rybbit features
+
+## Prerequisites
+
+- Laravel 8 or later
+- Your Rybbit instance URL:
+  - **Cloud hosted**: `https://app.rybbit.io`
+  - **Self-hosted**: Your instance URL
+- Your Rybbit site ID
+
+## Implementation
+
+<Steps>
+
+### Configure Environment Variables
+
+Add your Rybbit host to `.env`:
+
+```bash
+# .env
+RYBBIT_HOST=https://app.rybbit.io
+# For self-hosted: RYBBIT_HOST=https://analytics.yourcompany.com
+```
+
+### Create Analytics Controller
+
+Generate a controller for handling analytics proxying:
+
+```bash
+php artisan make:controller AnalyticsProxyController
+```
+
+Then implement the proxy logic:
+
+```php
+<?php
+// app/Http/Controllers/AnalyticsProxyController.php
+
+namespace App\Http\Controllers;
+
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Cache;
+
+class AnalyticsProxyController extends Controller
+{
+    private string $rybbitHost;
+
+    public function __construct()
+    {
+        $this->rybbitHost = config('services.rybbit.host', 'https://app.rybbit.io');
+    }
+
+    /**
+     * Proxy script requests (GET)
+     */
+    public function proxyScript(Request $request, string $script)
+    {
+        // Cache scripts for 1 hour
+        $cacheKey = "rybbit_script_{$script}";
+
+        return Cache::remember($cacheKey, 3600, function () use ($script, $request) {
+            return $this->forwardRequest("api/{$script}", 'GET', $request);
+        });
+    }
+
+    /**
+     * Proxy tracking requests (POST)
+     */
+    public function proxyTrack(Request $request)
+    {
+        return $this->forwardRequest('api/track', 'POST', $request);
+    }
+
+    /**
+     * Proxy identify requests (POST)
+     */
+    public function proxyIdentify(Request $request)
+    {
+        return $this->forwardRequest('api/identify', 'POST', $request);
+    }
+
+    /**
+     * Proxy session replay recording (POST)
+     */
+    public function proxySessionReplay(Request $request, string $siteId)
+    {
+        return $this->forwardRequest("api/session-replay/record/{$siteId}", 'POST', $request);
+    }
+
+    /**
+     * Proxy site configuration (GET)
+     */
+    public function proxySiteConfig(Request $request, string $siteId)
+    {
+        // Cache config for 5 minutes
+        $cacheKey = "rybbit_config_{$siteId}";
+
+        return Cache::remember($cacheKey, 300, function () use ($siteId, $request) {
+            return $this->forwardRequest("site/tracking-config/{$siteId}", 'GET', $request);
+        });
+    }
+
+    /**
+     * Forward request to Rybbit backend
+     */
+    private function forwardRequest(string $path, string $method, Request $request)
+    {
+        $url = "{$this->rybbitHost}/{$path}";
+
+        // Get client IP
+        $clientIp = $request->header('X-Forwarded-For', $request->ip());
+
+        // Build HTTP request
+        $httpRequest = Http::timeout(30)
+            ->withHeaders([
+                'X-Real-IP' => $clientIp,
+                'X-Forwarded-For' => $clientIp,
+                'User-Agent' => $request->header('User-Agent'),
+                'Referer' => $request->header('Referer', ''),
+            ]);
+
+        try {
+            if ($method === 'POST') {
+                $response = $httpRequest->post($url, $request->all());
+            } else {
+                $response = $httpRequest->get($url);
+            }
+
+            return response($response->body(), $response->status())
+                ->header('Content-Type', $response->header('Content-Type'));
+        } catch (\Exception $e) {
+            \Log::error('Rybbit proxy error', [
+                'url' => $url,
+                'error' => $e->getMessage(),
+            ]);
+
+            return response()->json(['error' => 'Analytics proxy error'], 500);
+        }
+    }
+}
+```
+
+### Add Routes
+
+Add routes for the analytics proxy in `routes/web.php`:
+
+```php
+<?php
+// routes/web.php
+
+use App\Http\Controllers\AnalyticsProxyController;
+
+// Analytics proxy routes
+Route::prefix('analytics')->group(function () {
+    // Scripts (GET)
+    Route::get('/{script}', [AnalyticsProxyController::class, 'proxyScript'])
+        ->where('script', '(script|script-full|replay|metrics)\.js');
+
+    // Tracking endpoints (POST)
+    Route::post('/track', [AnalyticsProxyController::class, 'proxyTrack']);
+    Route::post('/identify', [AnalyticsProxyController::class, 'proxyIdentify']);
+    Route::post('/session-replay/record/{siteId}', [AnalyticsProxyController::class, 'proxySessionReplay']);
+
+    // Configuration (GET)
+    Route::get('/site/tracking-config/{siteId}', [AnalyticsProxyController::class, 'proxySiteConfig']);
+});
+```
+
+### Add Service Configuration (Optional)
+
+Add Rybbit configuration to `config/services.php`:
+
+```php
+<?php
+// config/services.php
+
+return [
+    // ... other services
+
+    'rybbit' => [
+        'host' => env('RYBBIT_HOST', 'https://app.rybbit.io'),
+    ],
+];
+```
+
+### Update Your Blade Templates
+
+Add the tracking script to your layout:
+
+```blade
+{{-- resources/views/layouts/app.blade.php --}}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>{{ config('app.name') }}</title>
+
+    {{-- Rybbit Analytics --}}
+    <script src="{{ url('/analytics/script.js') }}" async data-site-id="YOUR_SITE_ID"></script>
+</head>
+<body>
+    @yield('content')
+</body>
+</html>
+```
+
+### Verify the Setup
+
+1. **Clear route cache** (if caching enabled):
+   ```bash
+   php artisan route:clear
+   ```
+
+2. **Visit your application** with Developer Tools open
+3. **Check Network tab**: Requests should go to `/analytics/*`
+4. **Verify in Rybbit dashboard**: Data should appear
+
+</Steps>
+
+## How It Works
+
+Laravel routes intercept requests to `/analytics/*` and forward them to Rybbit:
+
+1. Request to `/analytics/script.js` hits Laravel route
+2. Controller forwards to `https://app.rybbit.io/api/script.js`
+3. Response is cached (for cacheable endpoints)
+4. Client IP and headers are preserved for accurate tracking
+
+## Advanced Configuration
+
+### Middleware for Rate Limiting
+
+Create rate limiting middleware:
+
+```bash
+php artisan make:middleware RateLimitAnalytics
+```
+
+```php
+<?php
+// app/Http/Middleware/RateLimitAnalytics.php
+
+namespace App\Http\Middleware;
+
+use Closure;
+use Illuminate\Cache\RateLimiter;
+
+class RateLimitAnalytics
+{
+    protected $limiter;
+
+    public function __construct(RateLimiter $limiter)
+    {
+        $this->limiter = $limiter;
+    }
+
+    public function handle($request, Closure $next)
+    {
+        $key = 'analytics:' . $request->ip();
+
+        if ($this->limiter->tooManyAttempts($key, 100)) {
+            return response('Too Many Requests', 429);
+        }
+
+        $this->limiter->hit($key, 60); // 100 requests per minute
+
+        return $next($request);
+    }
+}
+```
+
+Register in `app/Http/Kernel.php`:
+
+```php
+protected $routeMiddleware = [
+    // ... other middleware
+    'rate.limit.analytics' => \App\Http\Middleware\RateLimitAnalytics::class,
+];
+```
+
+Apply to routes:
+
+```php
+Route::prefix('analytics')->middleware('rate.limit.analytics')->group(function () {
+    // ... routes
+});
+```
+
+### Custom Cache Configuration
+
+Use different cache drivers for analytics:
+
+```php
+private function forwardRequest(string $path, string $method, Request $request)
+{
+    // Use Redis for analytics caching
+    $cache = Cache::store('redis');
+
+    // Or use file cache
+    // $cache = Cache::store('file');
+
+    // ... rest of the method
+}
+```
+
+### Queue Large Requests
+
+For large session replay uploads, use queues:
+
+```bash
+php artisan make:job ForwardAnalyticsData
+```
+
+```php
+<?php
+// app/Jobs/ForwardAnalyticsData.php
+
+namespace App\Jobs;
+
+use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Support\Facades\Http;
+
+class ForwardAnalyticsData implements ShouldQueue
+{
+    use Queueable;
+
+    protected $url;
+    protected $data;
+    protected $headers;
+
+    public function __construct(string $url, array $data, array $headers)
+    {
+        $this->url = $url;
+        $this->data = $data;
+        $this->headers = $headers;
+    }
+
+    public function handle()
+    {
+        Http::withHeaders($this->headers)
+            ->post($this->url, $this->data);
+    }
+}
+```
+
+Use in controller for session replay:
+
+```php
+public function proxySessionReplay(Request $request, string $siteId)
+{
+    // Dispatch job for async processing
+    ForwardAnalyticsData::dispatch(
+        "{$this->rybbitHost}/api/session-replay/record/{$siteId}",
+        $request->all(),
+        [
+            'X-Real-IP' => $request->ip(),
+            'User-Agent' => $request->header('User-Agent'),
+        ]
+    );
+
+    return response()->json(['status' => 'queued']);
+}
+```
+
+### CORS Configuration
+
+If serving from a different domain:
+
+```php
+<?php
+// config/cors.php
+
+return [
+    'paths' => ['analytics/*'],
+    'allowed_methods' => ['GET', 'POST'],
+    'allowed_origins' => ['https://yourdomain.com'],
+    'allowed_headers' => ['Content-Type', 'X-Requested-With'],
+];
+```
+
+## Troubleshooting
+
+### 404 Not Found
+
+**Problem**: Routes return 404.
+
+**Solution**:
+1. Clear route cache: `php artisan route:clear`
+2. List routes to verify: `php artisan route:list --path=analytics`
+3. Check route order (more specific routes first)
+
+### Session errors with POST requests
+
+**Problem**: CSRF token errors on tracking endpoints.
+
+**Solution**:
+Exclude analytics routes from CSRF protection in `app/Http/Middleware/VerifyCsrfToken.php`:
+
+```php
+protected $except = [
+    'analytics/*',
+];
+```
+
+### Incorrect geolocation
+
+**Problem**: All visitors show server's location.
+
+**Solution**:
+Ensure IP forwarding in controller:
+```php
+$clientIp = $request->header('X-Forwarded-For', $request->ip());
+```
+
+And add to HTTP request:
+```php
+'X-Real-IP' => $clientIp,
+'X-Forwarded-For' => $clientIp,
+```
+
+### Cache not clearing
+
+**Problem**: Old script cached after Rybbit update.
+
+**Solution**:
+Clear specific cache key:
+```bash
+php artisan cache:forget rybbit_script_script.js
+```
+
+Or clear all cache:
+```bash
+php artisan cache:clear
+```
+
+## Performance Optimization
+
+### Cache Optimization
+
+```php
+// Configure cache tags for easy clearing
+Cache::tags(['rybbit', 'scripts'])->remember($cacheKey, 3600, function () {
+    // ... fetch script
+});
+
+// Clear all Rybbit cache
+Cache::tags(['rybbit'])->flush();
+```
+
+### HTTP Client Optimization
+
+```php
+// Use connection pooling
+Http::pool(fn (Pool $pool) => [
+    $pool->get("{$this->rybbitHost}/api/script.js"),
+    $pool->get("{$this->rybbitHost}/api/replay.js"),
+]);
+```
+
+## Related Resources
+
+- [Laravel Integration Guide](/docs/guides/laravel) - General Laravel integration
+- [Tracking Script Documentation](/docs/script) - Script configuration
+- [Laravel HTTP Client](https://laravel.com/docs/http-client) - Official Laravel docs

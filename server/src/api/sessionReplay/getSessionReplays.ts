@@ -1,6 +1,7 @@
 import { FastifyReply, FastifyRequest } from "fastify";
 import { FilterParams } from "@rybbit/shared";
 import { SessionReplayQueryService } from "../../services/replay/sessionReplayQueryService.js";
+import { enrichWithTraits } from "../analytics/utils/utils.js";
 
 export async function getSessionReplays(
   request: FastifyRequest<{
@@ -24,19 +25,21 @@ export async function getSessionReplays(
       offset: offset ? Number(offset) : 0,
       userId: userId || undefined,
       minDuration: minDuration ? Number(minDuration) : undefined,
-      startDate: request.query.startDate,
-      endDate: request.query.endDate,
-      timeZone: request.query.timeZone,
-      pastMinutesStart: request.query.pastMinutesStart
-        ? Number(request.query.pastMinutesStart)
-        : undefined,
-      pastMinutesEnd: request.query.pastMinutesEnd
-        ? Number(request.query.pastMinutesEnd)
-        : undefined,
+      start_date: request.query.start_date,
+      end_date: request.query.end_date,
+      time_zone: request.query.time_zone,
+      past_minutes_start: request.query.past_minutes_start ? Number(request.query.past_minutes_start) : undefined,
+      past_minutes_end: request.query.past_minutes_end ? Number(request.query.past_minutes_end) : undefined,
       filters: filters || "",
     });
 
-    return reply.send({ data: replays });
+    // The replays from ClickHouse use snake_case and enrichWithTraits expects that format
+    const replaysWithTraits = await enrichWithTraits(
+      replays as unknown as Array<{ identified_user_id: string }>,
+      siteId
+    );
+
+    return reply.send({ data: replaysWithTraits });
   } catch (error) {
     console.error("Error fetching session replays:", error);
     return reply.status(500).send({ error: "Internal server error" });

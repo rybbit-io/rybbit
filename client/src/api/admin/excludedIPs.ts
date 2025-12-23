@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { authedFetch } from "../utils";
+import { updateSiteConfig } from "./sites";
 
 export interface ExcludedIPsResponse {
   success: boolean;
@@ -23,22 +24,18 @@ export interface UpdateExcludedIPsResponse {
 
 // Fetch excluded IPs for a site
 export const fetchExcludedIPs = async (siteId: string): Promise<ExcludedIPsResponse> => {
-  return await authedFetch<ExcludedIPsResponse>(`/site/${siteId}/excluded-ips`);
+  return await authedFetch<ExcludedIPsResponse>(`/sites/${siteId}/excluded-ips`);
 };
 
-// Update excluded IPs for a site
+// Update excluded IPs for a site using the consolidated endpoint
 export const updateExcludedIPs = async (siteId: number, excludedIPs: string[]): Promise<UpdateExcludedIPsResponse> => {
-  return await authedFetch<UpdateExcludedIPsResponse>(
-    `/site/${siteId}/excluded-ips`,
-    undefined,
-    {
-      method: "POST",
-      data: {
-        siteId: siteId.toString(),
-        excludedIPs,
-      },
-    }
-  );
+  const result = await updateSiteConfig(siteId, { excludedIPs });
+  // Map the response to match the expected interface
+  return {
+    success: true,
+    message: "Excluded IPs updated successfully",
+    excludedIPs: excludedIPs,
+  };
 };
 
 // Hook to fetch excluded IPs

@@ -20,7 +20,7 @@ interface UserInfo {
 
 export async function listOrganizationMembers(
   request: FastifyRequest<ListOrganizationMembersRequest>,
-  reply: FastifyReply,
+  reply: FastifyReply
 ) {
   try {
     const { organizationId } = request.params;
@@ -68,7 +68,7 @@ export async function listOrganizationMembers(
     // Transform the results to the expected format
     return reply.send({
       success: true,
-      data: organizationMembers.map((m) => ({
+      data: organizationMembers.map(m => ({
         id: m.id,
         role: m.role,
         userId: m.userId,

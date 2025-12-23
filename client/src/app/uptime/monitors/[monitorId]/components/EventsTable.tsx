@@ -9,6 +9,7 @@ import {
   SortingState,
   useReactTable,
 } from "@tanstack/react-table";
+import { getTimezone } from "@/lib/store";
 import { Loader2 } from "lucide-react";
 import { DateTime } from "luxon";
 import React, { useMemo, useState } from "react";
@@ -43,7 +44,7 @@ export function EventsTable({ monitor, monitorId }: { monitor?: UptimeMonitor; m
 
   // Flatten all pages of events
   const allEvents = useMemo(() => {
-    return data?.pages.flatMap((page) => page.events) || [];
+    return data?.pages.flatMap(page => page.events) || [];
   }, [data]);
 
   const toggleRow = (rowId: string) => {
@@ -78,7 +79,7 @@ export function EventsTable({ monitor, monitorId }: { monitor?: UptimeMonitor; m
           const timestamp = DateTime.fromSQL(row.original.timestamp, { zone: "utc" });
           return (
             <div className="text-sm">
-              <div className="">{timestamp.toLocal().toFormat("MMM dd, HH:mm:ss")}</div>
+              <div className="">{timestamp.setZone(getTimezone()).toFormat("MMM dd, HH:mm:ss")}</div>
             </div>
           );
         },
@@ -123,7 +124,7 @@ export function EventsTable({ monitor, monitorId }: { monitor?: UptimeMonitor; m
             columnHelper.accessor("region", {
               header: "Region",
               cell: ({ row }) => {
-                const region = REGIONS.find((r) => r.code === row.original.region);
+                const region = REGIONS.find(r => r.code === row.original.region);
                 return (
                   <span className="text-sm flex items-center gap-2">
                     <CountryFlag country={region?.countryCode || "US"} className="w-5 h-5" />
@@ -161,9 +162,9 @@ export function EventsTable({ monitor, monitorId }: { monitor?: UptimeMonitor; m
         <div className="rounded-lg border border-neutral-800">
           <Table>
             <TableHeader>
-              {table.getHeaderGroups().map((headerGroup) => (
+              {table.getHeaderGroups().map(headerGroup => (
                 <TableRow key={headerGroup.id}>
-                  {headerGroup.headers.map((header) => (
+                  {headerGroup.headers.map(header => (
                     <TableHead
                       key={header.id}
                       style={{
@@ -217,10 +218,10 @@ export function EventsTable({ monitor, monitorId }: { monitor?: UptimeMonitor; m
                   </TableCell>
                 </TableRow>
               ) : (
-                table.getRowModel().rows.map((row) => (
+                table.getRowModel().rows.map(row => (
                   <React.Fragment key={row.id}>
                     <TableRow className="cursor-pointer hover:bg-neutral-900/50" onClick={() => toggleRow(row.id)}>
-                      {row.getVisibleCells().map((cell) => (
+                      {row.getVisibleCells().map(cell => (
                         <TableCell key={cell.id}>{flexRender(cell.column.columnDef.cell, cell.getContext())}</TableCell>
                       ))}
                     </TableRow>

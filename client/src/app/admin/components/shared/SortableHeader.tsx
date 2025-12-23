@@ -18,11 +18,7 @@ export function SortableHeader<TData>({
   const sortDirection = column.getIsSorted();
 
   return (
-    <Button
-      variant="ghost"
-      onClick={() => column.toggleSorting(sortDirection === "asc")}
-      className={className}
-    >
+    <Button variant="ghost" onClick={() => column.toggleSorting(sortDirection === "asc")} className={className}>
       {children}
       {sortDirection === "asc" ? (
         <ArrowUp className="ml-2 h-4 w-4" />

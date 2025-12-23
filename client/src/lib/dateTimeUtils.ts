@@ -1,5 +1,6 @@
 import { TimeBucket } from "@rybbit/shared";
 import { DateTime, Duration, DurationLikeObject, Settings } from "luxon";
+import { getTimezone } from "./store";
 
 // Detect user locale from the browser environment (fallback to 'en-US' on server)
 export const userLocale = typeof navigator !== "undefined" ? navigator.language : "en-US";
@@ -42,7 +43,7 @@ function getLocalizedWeekdayNames(locale: string, format: "narrow" | "short" | "
     date.setDate(today.getDate() + ((day - today.getDay() + 7) % 7));
 
     const parts = formatter.formatToParts(date);
-    const weekday = parts.find((part) => part.type === "weekday");
+    const weekday = parts.find(part => part.type === "weekday");
 
     return weekday?.value ?? fallback[format][i];
   });
@@ -161,6 +162,7 @@ export const formatChartDateTime = (dt: DateTime, bucket: TimeBucket) => {
     day: "numeric",
     hour: "numeric",
     hour12: hour12,
+    timeZone: getTimezone(),
   };
   if (showMinutes && !hour12) {
     options.minute = "numeric";
@@ -168,7 +170,7 @@ export const formatChartDateTime = (dt: DateTime, bucket: TimeBucket) => {
   if (bucket === "day") {
     options.minute = undefined;
     options.hour = undefined;
-    options.month = "long";
+    options.weekday = "short";
   }
   if (bucket === "fifteen_minutes" || bucket === "ten_minutes" || bucket === "five_minutes" || bucket === "minute") {
     options.minute = "numeric";
@@ -178,10 +180,50 @@ export const formatChartDateTime = (dt: DateTime, bucket: TimeBucket) => {
 };
 
 /**
- * Converts a UTC timestamp string to local time for display
+ * Converts a UTC timestamp string to user's selected timezone for display
  * @param timestamp - UTC timestamp string from the server
- * @returns DateTime object in local timezone
+ * @returns DateTime object in user's selected timezone
  */
 export const parseUtcTimestamp = (timestamp: string): DateTime => {
-  return DateTime.fromSQL(timestamp, { zone: "utc" }).toLocal();
+  return DateTime.fromSQL(timestamp, { zone: "utc" }).setZone(getTimezone());
+};
+
+// Timezones with GMT offset and city name
+export const timezones = [
+  { value: "system", label: "System" },
+  { value: "Pacific/Honolulu", label: "GMT-10 Pacific/Honolulu" },
+  { value: "America/Anchorage", label: "GMT-9 America/Anchorage" },
+  { value: "America/Los_Angeles", label: "GMT-8 America/Los_Angeles" },
+  { value: "America/Denver", label: "GMT-7 America/Denver" },
+  { value: "America/Chicago", label: "GMT-6 America/Chicago" },
+  { value: "America/New_York", label: "GMT-5 America/New_York" },
+  { value: "America/Halifax", label: "GMT-4 America/Halifax" },
+  { value: "America/Sao_Paulo", label: "GMT-3 America/Sao_Paulo" },
+  { value: "Atlantic/South_Georgia", label: "GMT-2 Atlantic/South_Georgia" },
+  { value: "Atlantic/Azores", label: "GMT-1 Atlantic/Azores" },
+  { value: "UTC", label: "GMT+0 UTC" },
+  { value: "Europe/London", label: "GMT+0 Europe/London" },
+  { value: "Europe/Paris", label: "GMT+1 Europe/Paris" },
+  { value: "Europe/Berlin", label: "GMT+1 Europe/Berlin" },
+  { value: "Europe/Helsinki", label: "GMT+2 Europe/Helsinki" },
+  { value: "Europe/Moscow", label: "GMT+3 Europe/Moscow" },
+  { value: "Asia/Dubai", label: "GMT+4 Asia/Dubai" },
+  { value: "Asia/Karachi", label: "GMT+5 Asia/Karachi" },
+  { value: "Asia/Kolkata", label: "GMT+5:30 Asia/Kolkata" },
+  { value: "Asia/Dhaka", label: "GMT+6 Asia/Dhaka" },
+  { value: "Asia/Bangkok", label: "GMT+7 Asia/Bangkok" },
+  { value: "Asia/Singapore", label: "GMT+8 Asia/Singapore" },
+  { value: "Asia/Shanghai", label: "GMT+8 Asia/Shanghai" },
+  { value: "Asia/Tokyo", label: "GMT+9 Asia/Tokyo" },
+  { value: "Australia/Sydney", label: "GMT+10 Australia/Sydney" },
+  { value: "Pacific/Auckland", label: "GMT+12 Pacific/Auckland" },
+];
+
+// Get timezone label for display
+export const getTimezoneLabel = (value: string): string => {
+  if (value === "system") {
+    return `System (${timeZone})`;
+  }
+  const tz = timezones.find((t) => t.value === value);
+  return tz?.label ?? value;
 };

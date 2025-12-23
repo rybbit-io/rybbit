@@ -11,9 +11,9 @@ export interface ScriptConfig {
   enableSessionReplay: boolean;
   sessionReplayBatchSize: number;
   sessionReplayBatchInterval: number;
+  sessionReplayMaskTextSelectors: string[];
   skipPatterns: string[];
   maskPatterns: string[];
-  apiKey?: string;
 }
 
 export interface BasePayload {
@@ -27,7 +27,6 @@ export interface BasePayload {
   page_title: string;
   referrer: string;
   user_id?: string;
-  api_key?: string;
 }
 
 export interface TrackingPayload extends BasePayload {
@@ -62,7 +61,8 @@ export interface RybbitAPI {
   event: (name: string, properties?: Record<string, any>) => void;
   error: (error: Error, properties?: ErrorProperties) => void;
   trackOutbound: (url: string, text?: string, target?: string) => void;
-  identify: (userId: string) => void;
+  identify: (userId: string, traits?: Record<string, unknown>) => void;
+  setTraits: (traits: Record<string, unknown>) => void;
   clearUserId: () => void;
   getUserId: () => string | null;
   startSessionReplay: () => void;
@@ -85,5 +85,4 @@ export interface SessionReplayBatch {
     viewportHeight?: number;
     language?: string;
   };
-  apiKey?: string;
 }

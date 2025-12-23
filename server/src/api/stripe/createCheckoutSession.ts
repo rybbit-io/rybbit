@@ -2,11 +2,7 @@ import { eq, and } from "drizzle-orm";
 import { FastifyReply, FastifyRequest } from "fastify";
 import Stripe from "stripe";
 import { db } from "../../db/postgres/postgres.js";
-import {
-  organization,
-  user as userSchema,
-  member,
-} from "../../db/postgres/schema.js";
+import { organization, user as userSchema, member } from "../../db/postgres/schema.js";
 import { stripe } from "../../lib/stripe.js";
 
 interface CheckoutRequestBody {
@@ -29,8 +25,7 @@ export async function createCheckoutSession(
 
   if (!priceId || !successUrl || !cancelUrl || !organizationId) {
     return reply.status(400).send({
-      error:
-        "Missing required parameters: priceId, successUrl, cancelUrl, organizationId",
+      error: "Missing required parameters: priceId, successUrl, cancelUrl, organizationId",
     });
   }
 
@@ -41,12 +36,7 @@ export async function createCheckoutSession(
         role: member.role,
       })
       .from(member)
-      .where(
-        and(
-          eq(member.userId, userId),
-          eq(member.organizationId, organizationId)
-        )
-      )
+      .where(and(eq(member.userId, userId), eq(member.organizationId, organizationId)))
       .limit(1);
 
     if (!memberResult.length || memberResult[0].role !== "owner") {
@@ -80,9 +70,7 @@ export async function createCheckoutSession(
     const org = orgResult[0];
 
     if (!user || !org) {
-      return reply
-        .status(404)
-        .send({ error: "User or organization not found" });
+      return reply.status(404).send({ error: "User or organization not found" });
     }
 
     let stripeCustomerId = org.stripeCustomerId;
@@ -100,10 +88,7 @@ export async function createCheckoutSession(
       stripeCustomerId = customer.id;
 
       // 4. Update the organization with the new Stripe Customer ID
-      await db
-        .update(organization)
-        .set({ stripeCustomerId })
-        .where(eq(organization.id, organizationId));
+      await db.update(organization).set({ stripeCustomerId }).where(eq(organization.id, organizationId));
     }
 
     // 5. Create a Stripe Checkout Session

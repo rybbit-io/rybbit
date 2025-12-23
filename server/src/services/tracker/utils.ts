@@ -5,16 +5,25 @@ import { getIpAddress } from "../../utils.js";
 import { userIdService } from "../userId/userIdService.js";
 import { trackingPayloadSchema } from "./trackEvent.js";
 import { TrackingPayload } from "./types.js";
+import { SiteConfigData } from "../../lib/siteConfig.js";
 
 export type TotalTrackingPayload = TrackingPayload & {
+  userId: string; // Always the device fingerprint (same as anonymousId)
+  anonymousId: string; // Always the hash of IP+UserAgent (device fingerprint)
+  identifiedUserId: string; // Custom user ID when identified, empty string otherwise
+  timestamp: string;
   type?: string;
   event_name?: string;
   properties?: string;
-  userId: string;
-  timestamp: string;
   ua: UAParser.IResult;
   referrer: string;
   ipAddress: string;
+  storeIp?: boolean;
+  lcp?: number;
+  cls?: number;
+  inp?: number;
+  fcp?: number;
+  ttfb?: number;
 };
 
 // Infer type from Zod schema
@@ -82,24 +91,31 @@ export function clearSelfReferrer(referrer: string, hostname: string): string {
 }
 
 // Create base tracking payload from request
-export function createBasePayload(
+export async function createBasePayload(
   request: FastifyRequest,
   eventType: "pageview" | "custom_event" | "performance" | "error" | "outbound" = "pageview",
   validatedBody: ValidatedTrackingPayload,
-): TotalTrackingPayload {
+  siteConfiguration: SiteConfigData
+): Promise<TotalTrackingPayload> {
   // Use custom user agent if provided, otherwise fall back to header
   const userAgent = validatedBody.user_agent || request.headers["user-agent"] || "";
   // Override IP if provided in payload
   const ipAddress = validatedBody.ip_address || getIpAddress(request);
-  const siteId = validatedBody.site_id;
 
-  // Use custom user ID if provided, otherwise generate one
-  const userId = validatedBody.user_id
-    ? validatedBody.user_id.trim()
-    : userIdService.generateUserId(ipAddress, userAgent, siteId);
+  // Always compute anonymous_id based on IP+UserAgent (device fingerprint)
+  const anonymousId = await userIdService.generateUserId(
+    ipAddress,
+    userAgent,
+    siteConfiguration.siteId
+  );
+
+  // userId is always the device fingerprint
+  // identifiedUserId is the custom user ID when provided, empty string otherwise
+  const identifiedUserId = validatedBody.user_id ? validatedBody.user_id.trim() : "";
 
   return {
     ...validatedBody,
+    site_id: siteConfiguration.siteId, // Use the numeric site ID
     hostname: validatedBody.hostname || "",
     pathname: validatedBody.pathname || "",
     querystring: validatedBody.querystring || "",
@@ -112,6 +128,9 @@ export function createBasePayload(
     ipAddress: ipAddress,
     timestamp: new Date().toISOString(),
     ua: userAgentParser(userAgent),
-    userId: userId,
-  };
+    userId: anonymousId, // Always the device fingerprint
+    anonymousId: anonymousId,
+    identifiedUserId: identifiedUserId, // Custom user ID when identified
+    storeIp: siteConfiguration.trackIp,
+  } as any;
 }

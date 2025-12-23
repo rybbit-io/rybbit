@@ -1,11 +1,10 @@
 "use client";
 
 import { AlertCircle } from "lucide-react";
-import Image from "next/image";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { Suspense, useState } from "react";
 import { ThreeDotLoader } from "../../components/Loaders";
-import { TopBar } from "../../components/TopBar";
+import { RybbitLogo } from "../../components/RybbitLogo";
 import { Alert, AlertDescription, AlertTitle } from "../../components/ui/alert";
 import { Button } from "../../components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
@@ -13,32 +12,39 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../components/ui/ta
 import { authClient } from "../../lib/auth";
 import { Login } from "./components/login";
 import { Signup } from "./components/signup";
+import { useQueryStates, parseAsString } from "nuqs";
 
 function AuthComponent() {
-  const organization = useSearchParams().get("organization");
-  const inviterEmail = useSearchParams().get("inviterEmail");
+  const [{ invitationId, organization, inviterEmail }] = useQueryStates({
+    invitationId: parseAsString,
+    organization: parseAsString,
+    inviterEmail: parseAsString,
+  });
   const [activeTab, setActiveTab] = useState<"login" | "signup">("signup");
+
+  // Construct callback URL to return to this page after OAuth
+  const callbackURL = `/invitation?invitationId=${invitationId}&organization=${organization}&inviterEmail=${inviterEmail}`;
 
   return (
     <Card className="w-full max-w-md p-1">
       <CardHeader>
-        <Image src="/rybbit.svg" alt="Rybbit" width={32} height={32} />
+        <RybbitLogo width={32} height={32} />
         <CardTitle className="text-2xl flex justify-center">Join {organization}</CardTitle>
         <p className="text-center text-sm text-muted-foreground mt-2">You've been invited by {inviterEmail}</p>
       </CardHeader>
       <CardContent>
-        <Tabs defaultValue="login" value={activeTab} onValueChange={(v) => setActiveTab(v as "login" | "signup")}>
+        <Tabs defaultValue="login" value={activeTab} onValueChange={v => setActiveTab(v as "login" | "signup")}>
           <TabsList className="grid w-full grid-cols-2 mb-6">
             <TabsTrigger value="signup">Sign Up</TabsTrigger>
             <TabsTrigger value="login">Login</TabsTrigger>
           </TabsList>
 
           <TabsContent value="login">
-            <Login inviterEmail={inviterEmail} organization={organization} />
+            <Login callbackURL={callbackURL} />
           </TabsContent>
 
           <TabsContent value="signup">
-            <Signup inviterEmail={inviterEmail} organization={organization} />
+            <Signup callbackURL={callbackURL} />
           </TabsContent>
         </Tabs>
       </CardContent>
@@ -47,9 +53,11 @@ function AuthComponent() {
 }
 
 function AcceptInvitationInner() {
-  const invitationId = useSearchParams().get("invitationId");
-  const organization = useSearchParams().get("organization");
-  const inviterEmail = useSearchParams().get("inviterEmail");
+  const [{ invitationId, organization, inviterEmail }] = useQueryStates({
+    invitationId: parseAsString,
+    organization: parseAsString,
+    inviterEmail: parseAsString,
+  });
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string>("");
@@ -76,7 +84,7 @@ function AcceptInvitationInner() {
   return (
     <Card className="w-full max-w-md">
       <CardHeader>
-        <Image src="/rybbit.svg" alt="Rybbit" width={32} height={32} />
+        <RybbitLogo width={32} height={32} />
         <CardTitle className="text-2xl flex justify-center">Invitation</CardTitle>
       </CardHeader>
       <CardContent>
@@ -112,9 +120,7 @@ function InvitationContent() {
 export default function AcceptInvitation() {
   return (
     <div className="flex flex-col min-h-dvh">
-      <TopBar />
-
-      <div className="flex justify-center items-center flex-grow p-4">
+      <div className="flex justify-center items-center grow p-4">
         <Suspense fallback={<ThreeDotLoader />}>
           <InvitationContent />
         </Suspense>

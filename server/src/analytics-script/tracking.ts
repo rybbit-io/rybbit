@@ -1,10 +1,4 @@
-import {
-  BasePayload,
-  ScriptConfig,
-  TrackingPayload,
-  WebVitalsData,
-  SessionReplayBatch,
-} from "./types.js";
+import { BasePayload, ScriptConfig, TrackingPayload, WebVitalsData, SessionReplayBatch } from "./types.js";
 import { findMatchingPattern } from "./utils.js";
 import { SessionReplayRecorder } from "./sessionReplay.js";
 
@@ -35,10 +29,8 @@ export class Tracker {
 
   private async initializeSessionReplay(): Promise<void> {
     try {
-      this.sessionReplayRecorder = new SessionReplayRecorder(
-        this.config,
-        this.customUserId || "",
-        (batch) => this.sendSessionReplayBatch(batch)
+      this.sessionReplayRecorder = new SessionReplayRecorder(this.config, this.customUserId || "", batch =>
+        this.sendSessionReplayBatch(batch)
       );
       await this.sessionReplayRecorder.initialize();
     } catch (error) {
@@ -46,27 +38,17 @@ export class Tracker {
     }
   }
 
-  private async sendSessionReplayBatch(
-    batch: SessionReplayBatch
-  ): Promise<void> {
+  private async sendSessionReplayBatch(batch: SessionReplayBatch): Promise<void> {
     try {
-      // Include API key if configured
-      if (this.config.apiKey) {
-        batch.apiKey = this.config.apiKey;
-      }
-      
-      await fetch(
-        `${this.config.analyticsHost}/session-replay/record/${this.config.siteId}`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(batch),
-          mode: "cors",
-          keepalive: false, // Disable keepalive for large session replay requests
-        }
-      );
+      await fetch(`${this.config.analyticsHost}/session-replay/record/${this.config.siteId}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(batch),
+        mode: "cors",
+        keepalive: false, // Disable keepalive for large session replay requests
+      });
     } catch (error) {
       console.error("Failed to send session replay batch:", error);
       throw error;
@@ -109,11 +91,6 @@ export class Tracker {
       payload.user_id = this.customUserId;
     }
 
-    // Include API key if configured
-    if (this.config.apiKey) {
-      payload.api_key = this.config.apiKey;
-    }
-
     return payload;
   }
 
@@ -133,18 +110,9 @@ export class Tracker {
     }
   }
 
-  track(
-    eventType: TrackingPayload["type"],
-    eventName: string = "",
-    properties: Record<string, any> = {}
-  ): void {
-    if (
-      eventType === "custom_event" &&
-      (!eventName || typeof eventName !== "string")
-    ) {
-      console.error(
-        "Event name is required and must be a string for custom events"
-      );
+  track(eventType: TrackingPayload["type"], eventName: string = "", properties: Record<string, any> = {}): void {
+    if (eventType === "custom_event" && (!eventName || typeof eventName !== "string")) {
+      console.error("Event name is required and must be a string for custom events");
       return;
     }
 
@@ -158,9 +126,7 @@ export class Tracker {
       type: eventType,
       event_name: eventName,
       properties:
-        eventType === "custom_event" ||
-        eventType === "outbound" ||
-        eventType === "error"
+        eventType === "custom_event" || eventType === "outbound" || eventType === "error"
           ? JSON.stringify(properties)
           : undefined,
     };
@@ -176,11 +142,7 @@ export class Tracker {
     this.track("custom_event", name, properties);
   }
 
-  trackOutbound(
-    url: string,
-    text: string = "",
-    target: string = "_self"
-  ): void {
+  trackOutbound(url: string, text: string = "", target: string = "_self"): void {
     this.track("outbound", "", { url, text, target });
   }
 
@@ -242,9 +204,7 @@ export class Tracker {
 
     if (additionalInfo.lineno) {
       const lineNum =
-        typeof additionalInfo.lineno === "string"
-          ? parseInt(additionalInfo.lineno, 10)
-          : additionalInfo.lineno;
+        typeof additionalInfo.lineno === "string" ? parseInt(additionalInfo.lineno, 10) : additionalInfo.lineno;
       if (lineNum && lineNum !== 0) {
         errorProperties.lineNumber = lineNum;
       }
@@ -252,9 +212,7 @@ export class Tracker {
 
     if (additionalInfo.colno) {
       const colNum =
-        typeof additionalInfo.colno === "string"
-          ? parseInt(additionalInfo.colno, 10)
-          : additionalInfo.colno;
+        typeof additionalInfo.colno === "string" ? parseInt(additionalInfo.colno, 10) : additionalInfo.colno;
       if (colNum && colNum !== 0) {
         errorProperties.columnNumber = colNum;
       }
@@ -262,10 +220,7 @@ export class Tracker {
 
     // Add any other additional info
     for (const key in additionalInfo) {
-      if (
-        !["lineno", "colno"].includes(key) &&
-        additionalInfo[key] !== undefined
-      ) {
+      if (!["lineno", "colno"].includes(key) && additionalInfo[key] !== undefined) {
         errorProperties[key] = additionalInfo[key];
       }
     }
@@ -273,7 +228,7 @@ export class Tracker {
     this.track("error", error.name || "Error", errorProperties);
   }
 
-  identify(userId: string): void {
+  identify(userId: string, traits?: Record<string, unknown>): void {
     if (typeof userId !== "string" || userId.trim() === "") {
       console.error("User ID must be a non-empty string");
       return;
@@ -286,9 +241,52 @@ export class Tracker {
       console.warn("Could not persist user ID to localStorage");
     }
 
+    // Send identify event to server (creates alias and stores traits)
+    this.sendIdentifyEvent(this.customUserId, traits, true);
+
     // Update session replay recorder with new user ID
     if (this.sessionReplayRecorder) {
       this.sessionReplayRecorder.updateUserId(this.customUserId);
+    }
+  }
+
+  setTraits(traits: Record<string, unknown>): void {
+    if (!traits || typeof traits !== "object") {
+      console.error("Traits must be an object");
+      return;
+    }
+
+    const userId = this.customUserId;
+    if (!userId) {
+      console.warn("Cannot set traits without identifying user first. Call identify() first.");
+      return;
+    }
+
+    this.sendIdentifyEvent(userId, traits, false);
+  }
+
+  private async sendIdentifyEvent(
+    userId: string,
+    traits?: Record<string, unknown>,
+    isNewIdentify: boolean = true
+  ): Promise<void> {
+    try {
+      await fetch(`${this.config.analyticsHost}/identify`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          site_id: this.config.siteId,
+          user_id: userId,
+          traits: traits,
+          is_new_identify: isNewIdentify,
+        }),
+        mode: "cors",
+        keepalive: true,
+      });
+    } catch (error) {
+      console.error("Failed to send identify event:", error);
     }
   }
 

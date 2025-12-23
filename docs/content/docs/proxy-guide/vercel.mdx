@@ -1,0 +1,283 @@
+---
+title: Vercel Proxy Setup
+description: Deploy Rybbit proxy on Vercel with Edge Network caching
+---
+
+import { Steps } from 'fumadocs-ui/components/steps';
+import { Callout } from 'fumadocs-ui/components/callout';
+
+Vercel makes it easy to proxy Rybbit tracking through their Edge Network. If you're using Next.js, follow the [Next.js proxy guide](/docs/proxy-guide/next-js) instead, which is optimized for Next.js applications.
+
+This guide is for static sites or other frameworks deployed on Vercel.
+
+## Overview
+
+Vercel supports rewrites in `vercel.json`, allowing you to proxy requests through their global Edge Network. This provides excellent performance with automatic caching at edge locations worldwide.
+
+**What you'll achieve:**
+- Proxy Rybbit through Vercel's Edge Network
+- Automatic global caching and CDN distribution
+- Simple JSON configuration
+- Support all Rybbit features
+
+## Prerequisites
+
+- Site deployed on Vercel
+- Your Rybbit instance URL:
+  - **Cloud hosted**: `https://app.rybbit.io`
+  - **Self-hosted**: Your instance URL
+- Your Rybbit site ID
+
+## Implementation
+
+<Steps>
+
+### Create or Update vercel.json
+
+Add rewrites to your `vercel.json` file in the project root:
+
+```json
+{
+  "rewrites": [
+    {
+      "source": "/analytics/script.js",
+      "destination": "https://app.rybbit.io/api/script.js"
+    },
+    {
+      "source": "/analytics/script-full.js",
+      "destination": "https://app.rybbit.io/api/script-full.js"
+    },
+    {
+      "source": "/analytics/replay.js",
+      "destination": "https://app.rybbit.io/api/replay.js"
+    },
+    {
+      "source": "/analytics/metrics.js",
+      "destination": "https://app.rybbit.io/api/metrics.js"
+    },
+    {
+      "source": "/analytics/track",
+      "destination": "https://app.rybbit.io/api/track"
+    },
+    {
+      "source": "/analytics/identify",
+      "destination": "https://app.rybbit.io/api/identify"
+    },
+    {
+      "source": "/analytics/session-replay/record/:siteId",
+      "destination": "https://app.rybbit.io/api/session-replay/record/:siteId"
+    },
+    {
+      "source": "/analytics/site/tracking-config/:siteId",
+      "destination": "https://app.rybbit.io/site/tracking-config/:siteId"
+    }
+  ]
+}
+```
+
+<Callout type="info">
+Replace `app.rybbit.io` with your self-hosted Rybbit instance URL if you're not using the cloud version.
+</Callout>
+
+### Update Your Tracking Script
+
+Update your HTML to use the proxied path:
+
+```html
+<script src="/analytics/script.js" async data-site-id="YOUR_SITE_ID"></script>
+```
+
+### Deploy to Vercel
+
+Commit your changes and deploy:
+
+```bash
+git add vercel.json
+git commit -m "Add Rybbit proxy configuration"
+git push
+```
+
+Vercel will automatically detect the changes and deploy with the new rewrites.
+
+### Verify the Setup
+
+1. **Visit your deployed site** with Developer Tools open
+2. **Check Network tab**:
+   - Script should load from `/analytics/script.js`
+   - Tracking requests should go to `/analytics/track`
+   - All requests should show your Vercel domain
+3. **Verify in Rybbit dashboard**: Data should appear after 1-2 minutes
+
+</Steps>
+
+## How It Works
+
+Vercel's Edge Network handles rewrites at the edge, close to your users:
+
+1. Request hits Vercel's edge location nearest to the user
+2. Edge server rewrites and proxies to Rybbit
+3. Response is cached at the edge (for cacheable requests)
+4. Subsequent requests serve from edge cache
+
+This provides excellent performance with minimal configuration.
+
+## Performance Benefits
+
+### Edge Network Caching
+
+Vercel automatically caches responses at edge locations:
+
+- **Scripts**: Cached globally, served from nearest edge
+- **Configuration**: Cached with appropriate TTL
+- **Tracking requests**: Not cached (unique per request)
+
+### Global Distribution
+
+Your analytics proxy benefits from Vercel's global CDN:
+
+- 70+ edge locations worldwide
+- Sub-100ms latency for most users
+- Automatic failover and redundancy
+
+## Bandwidth Considerations
+
+<Callout type="warn">
+Vercel rewrites count toward your bandwidth quota. For a site with 100,000 monthly sessions:
+- Without session replay: ~5-10 GB/month
+- With session replay: ~30-80 GB/month
+
+Check your Vercel plan limits. Pro plan includes 1 TB bandwidth/month.
+</Callout>
+
+## Troubleshooting
+
+### Rewrites not working
+
+**Problem**: Requests still go to `app.rybbit.io` directly.
+
+**Solution**:
+1. Ensure `vercel.json` is in your project root
+2. Redeploy after adding `vercel.json`
+3. Clear browser cache and test in incognito mode
+
+### 404 on tracking endpoints
+
+**Problem**: Script loads but tracking returns 404.
+
+**Solution**:
+Verify all endpoints are in `vercel.json` rewrites, including:
+- `/analytics/track`
+- `/analytics/identify`
+- `/analytics/session-replay/record/:siteId`
+
+### Session replay not working
+
+**Problem**: Basic tracking works but replay doesn't record.
+
+**Solution**:
+Add replay endpoints to rewrites:
+```json
+{
+  "source": "/analytics/replay.js",
+  "destination": "https://app.rybbit.io/api/replay.js"
+},
+{
+  "source": "/analytics/session-replay/record/:siteId",
+  "destination": "https://app.rybbit.io/api/session-replay/record/:siteId"
+}
+```
+
+## Environment-Specific Configuration
+
+### Using Environment Variables
+
+While Vercel's `vercel.json` doesn't support environment variables directly, you can use different config files:
+
+```json
+// vercel.json (production)
+{
+  "rewrites": [
+    {
+      "source": "/analytics/script.js",
+      "destination": "https://app.rybbit.io/api/script.js"
+    }
+  ]
+}
+```
+
+```json
+// vercel.staging.json (staging)
+{
+  "rewrites": [
+    {
+      "source": "/analytics/script.js",
+      "destination": "https://staging.rybbit.io/api/script.js"
+    }
+  ]
+}
+```
+
+Then specify config in build settings or use Vercel CLI:
+```bash
+vercel --prod --local-config vercel.json
+```
+
+## Advanced Configuration
+
+### Headers
+
+Add custom headers to responses:
+
+```json
+{
+  "rewrites": [
+    {
+      "source": "/analytics/script.js",
+      "destination": "https://app.rybbit.io/api/script.js"
+    }
+  ],
+  "headers": [
+    {
+      "source": "/analytics/(.*)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=3600"
+        }
+      ]
+    }
+  ]
+}
+```
+
+### Redirects vs Rewrites
+
+Don't use redirects for proxying (they're visible to the user):
+
+```json
+// ❌ Wrong - uses redirects (user sees app.rybbit.io)
+{
+  "redirects": [
+    {
+      "source": "/analytics/script.js",
+      "destination": "https://app.rybbit.io/api/script.js"
+    }
+  ]
+}
+
+// ✅ Correct - uses rewrites (transparent proxy)
+{
+  "rewrites": [
+    {
+      "source": "/analytics/script.js",
+      "destination": "https://app.rybbit.io/api/script.js"
+    }
+  ]
+}
+```
+
+## Related Resources
+
+- [Next.js Proxy Guide](/docs/proxy-guide/next-js) - If using Next.js
+- [Tracking Script Documentation](/docs/script) - Script configuration
+- [Vercel Rewrites Documentation](https://vercel.com/docs/projects/project-configuration#rewrites) - Official Vercel docs

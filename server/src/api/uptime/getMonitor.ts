@@ -10,10 +10,7 @@ interface GetMonitorParams {
   };
 }
 
-export async function getMonitor(
-  request: FastifyRequest<GetMonitorParams>,
-  reply: FastifyReply
-) {
+export async function getMonitor(request: FastifyRequest<GetMonitorParams>, reply: FastifyReply) {
   const session = await getSessionFromReq(request);
   const userId = session?.user?.id;
   const { monitorId } = request.params;
@@ -34,10 +31,7 @@ export async function getMonitor(
 
     // Check if user has access to the monitor's organization
     const userHasAccess = await db.query.member.findFirst({
-      where: and(
-        eq(member.userId, userId),
-        eq(member.organizationId, monitor.organizationId)
-      ),
+      where: and(eq(member.userId, userId), eq(member.organizationId, monitor.organizationId)),
     });
 
     if (!userHasAccess) {

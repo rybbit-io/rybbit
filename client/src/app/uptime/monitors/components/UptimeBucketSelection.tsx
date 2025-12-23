@@ -72,12 +72,12 @@ export function UptimeBucketSelection({ timeRange, bucket, onBucketChange }: Upt
   }, [timeRange, bucket, availableBuckets, onBucketChange]);
 
   return (
-    <Select value={bucket} onValueChange={(value) => onBucketChange(value as TimeBucket)}>
+    <Select value={bucket} onValueChange={value => onBucketChange(value as TimeBucket)}>
       <SelectTrigger className="w-[120px]" size="sm">
         <SelectValue />
       </SelectTrigger>
       <SelectContent>
-        {availableBuckets.map((bucketOption) => (
+        {availableBuckets.map(bucketOption => (
           <SelectItem key={bucketOption} value={bucketOption} size="sm">
             {bucketLabels[bucketOption]}
           </SelectItem>

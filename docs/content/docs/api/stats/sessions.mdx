@@ -1,0 +1,843 @@
+---
+title: Sessions
+description: Retrieve session-level analytics data including session lists, details, and locations
+full: true
+---
+
+import { TypeTable } from 'fumadocs-ui/components/type-table';
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+
+See the [API Reference](/docs/api/stats/reference) for authentication, common parameters, and filters.
+
+## Endpoints
+
+<div className="flex flex-col gap-2 my-6">
+  <a href="#get-sessions" className="flex items-center gap-3 p-3 rounded-lg bg-fd-secondary/50 hover:bg-fd-secondary transition-colors no-underline">
+    <span className="px-2 py-1 text-xs font-bold rounded bg-green-500/20 text-green-600 dark:text-green-400">GET</span>
+    <code className="text-sm">/api/sessions/:site</code>
+  </a>
+  <a href="#get-session" className="flex items-center gap-3 p-3 rounded-lg bg-fd-secondary/50 hover:bg-fd-secondary transition-colors no-underline">
+    <span className="px-2 py-1 text-xs font-bold rounded bg-green-500/20 text-green-600 dark:text-green-400">GET</span>
+    <code className="text-sm">/api/sessions/:sessionId/:site</code>
+  </a>
+  <a href="#get-session-locations" className="flex items-center gap-3 p-3 rounded-lg bg-fd-secondary/50 hover:bg-fd-secondary transition-colors no-underline">
+    <span className="px-2 py-1 text-xs font-bold rounded bg-green-500/20 text-green-600 dark:text-green-400">GET</span>
+    <code className="text-sm">/api/session-locations/:site</code>
+  </a>
+</div>
+
+---
+
+## Get Sessions
+
+<div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
+<div>
+
+```
+GET /api/sessions/:site
+```
+
+Returns a paginated list of sessions with their analytics data.
+
+### Path Parameters
+
+<TypeTable
+  type={{
+    site: {
+      description: 'Site ID or site identifier',
+      type: 'string | number',
+      required: true,
+    },
+  }}
+/>
+
+### Query Parameters
+
+Accepts all [Common Parameters](/docs/api/getting-started#common-parameters) plus the following:
+
+<TypeTable
+  type={{
+    page: {
+      description: 'Page number (1-indexed)',
+      type: 'number',
+      default: 1,
+    },
+    limit: {
+      description: 'Number of results per page',
+      type: 'number',
+      default: 100,
+    },
+    user_id: {
+      description: 'Filter sessions by user ID',
+      type: 'string',
+      required: false,
+    },
+    identified_only: {
+      description: 'Only return sessions from identified users',
+      type: 'string',
+      typeDescription: '"true" | "false"',
+      default: 'false',
+    },
+  }}
+/>
+
+### Response
+
+<TypeTable
+  type={{
+    data: {
+      description: 'Array of session objects',
+      type: 'Session[]',
+    },
+  }}
+/>
+
+#### Session Object
+
+<TypeTable
+  type={{
+    session_id: {
+      description: 'Unique session identifier',
+      type: 'string',
+    },
+    user_id: {
+      description: 'Device fingerprint identifier',
+      type: 'string',
+    },
+    identified_user_id: {
+      description: 'Custom user ID when identified',
+      type: 'string',
+    },
+    traits: {
+      description: 'Custom user traits',
+      type: 'object | null',
+    },
+    country: {
+      description: 'Country code',
+      type: 'string',
+    },
+    region: {
+      description: 'Region/state',
+      type: 'string',
+    },
+    city: {
+      description: 'City name',
+      type: 'string',
+    },
+    browser: {
+      description: 'Browser name',
+      type: 'string',
+    },
+    operating_system: {
+      description: 'Operating system',
+      type: 'string',
+    },
+    device_type: {
+      description: 'Device type',
+      type: 'string',
+    },
+    referrer: {
+      description: 'Referrer URL',
+      type: 'string',
+    },
+    channel: {
+      description: 'Traffic channel',
+      type: 'string',
+    },
+    entry_page: {
+      description: 'First page visited',
+      type: 'string',
+    },
+    exit_page: {
+      description: 'Last page visited',
+      type: 'string',
+    },
+    pageviews: {
+      description: 'Number of pageviews',
+      type: 'number',
+    },
+    events: {
+      description: 'Number of custom events',
+      type: 'number',
+    },
+    session_duration: {
+      description: 'Duration in seconds',
+      type: 'number',
+    },
+    session_start: {
+      description: 'Session start time',
+      type: 'string',
+      typeDescription: 'ISO 8601 datetime',
+    },
+    session_end: {
+      description: 'Session end time',
+      type: 'string',
+      typeDescription: 'ISO 8601 datetime',
+    },
+    utm_source: {
+      description: 'UTM source parameter',
+      type: 'string',
+    },
+    utm_medium: {
+      description: 'UTM medium parameter',
+      type: 'string',
+    },
+    utm_campaign: {
+      description: 'UTM campaign parameter',
+      type: 'string',
+    },
+  }}
+/>
+
+</div>
+<div className="flex flex-col gap-4">
+
+<Tabs items={['cURL', 'JavaScript', 'Python', 'PHP', 'Ruby', 'Go', 'Rust', 'Java', '.NET']}>
+  <Tab value="cURL">
+```bash title="Request"
+curl -X GET "https://api.rybbit.io/api/sessions/123?page=1&limit=20&start_date=2024-01-01&end_date=2024-01-31" \
+  -H "Authorization: Bearer your_api_key_here"
+```
+  </Tab>
+  <Tab value="JavaScript">
+```javascript title="Request"
+const response = await fetch(
+  'https://api.rybbit.io/api/sessions/123?page=1&limit=20&start_date=2024-01-01&end_date=2024-01-31',
+  {
+    headers: {
+      'Authorization': 'Bearer your_api_key_here'
+    }
+  }
+);
+
+const data = await response.json();
+```
+  </Tab>
+  <Tab value="Python">
+```python title="Request"
+import requests
+
+response = requests.get(
+    'https://api.rybbit.io/api/sessions/123',
+    params={
+        'page': 1,
+        'limit': 20,
+        'start_date': '2024-01-01',
+        'end_date': '2024-01-31'
+    },
+    headers={
+        'Authorization': 'Bearer your_api_key_here'
+    }
+)
+
+data = response.json()
+```
+  </Tab>
+  <Tab value="PHP">
+```php title="Request"
+$ch = curl_init();
+curl_setopt($ch, CURLOPT_URL, 'https://api.rybbit.io/api/sessions/123?page=1&limit=20&start_date=2024-01-01&end_date=2024-01-31');
+curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+curl_setopt($ch, CURLOPT_HTTPHEADER, [
+    'Authorization: Bearer your_api_key_here'
+]);
+
+$response = curl_exec($ch);
+curl_close($ch);
+
+$data = json_decode($response, true);
+```
+  </Tab>
+  <Tab value="Ruby">
+```ruby title="Request"
+require 'net/http'
+require 'json'
+
+uri = URI('https://api.rybbit.io/api/sessions/123?page=1&limit=20&start_date=2024-01-01&end_date=2024-01-31')
+req = Net::HTTP::Get.new(uri)
+req['Authorization'] = 'Bearer your_api_key_here'
+
+res = Net::HTTP.start(uri.hostname, uri.port, use_ssl: true) { |http| http.request(req) }
+data = JSON.parse(res.body)
+```
+  </Tab>
+  <Tab value="Go">
+```go title="Request"
+req, _ := http.NewRequest("GET", "https://api.rybbit.io/api/sessions/123?page=1&limit=20&start_date=2024-01-01&end_date=2024-01-31", nil)
+req.Header.Set("Authorization", "Bearer your_api_key_here")
+
+client := &http.Client{}
+resp, _ := client.Do(req)
+defer resp.Body.Close()
+
+var data map[string]interface{}
+json.NewDecoder(resp.Body).Decode(&data)
+```
+  </Tab>
+  <Tab value="Rust">
+```rust title="Request"
+let client = reqwest::Client::new();
+let res = client
+    .get("https://api.rybbit.io/api/sessions/123?page=1&limit=20&start_date=2024-01-01&end_date=2024-01-31")
+    .header("Authorization", "Bearer your_api_key_here")
+    .send()
+    .await?;
+
+let data: serde_json::Value = res.json().await?;
+```
+  </Tab>
+  <Tab value="Java">
+```java title="Request"
+HttpClient client = HttpClient.newHttpClient();
+HttpRequest request = HttpRequest.newBuilder()
+    .uri(URI.create("https://api.rybbit.io/api/sessions/123?page=1&limit=20&start_date=2024-01-01&end_date=2024-01-31"))
+    .header("Authorization", "Bearer your_api_key_here")
+    .GET()
+    .build();
+
+HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+```
+  </Tab>
+  <Tab value=".NET">
+```csharp title="Request"
+using var client = new HttpClient();
+client.DefaultRequestHeaders.Add("Authorization", "Bearer your_api_key_here");
+
+var response = await client.GetAsync("https://api.rybbit.io/api/sessions/123?page=1&limit=20&start_date=2024-01-01&end_date=2024-01-31");
+var data = await response.Content.ReadAsStringAsync();
+```
+  </Tab>
+</Tabs>
+
+```json title="Response"
+{
+  "data": [
+    {
+      "session_id": "sess_abc123",
+      "user_id": "dev_xyz789",
+      "identified_user_id": "user@example.com",
+      "traits": { "plan": "pro" },
+      "country": "US",
+      "region": "California",
+      "city": "San Francisco",
+      "browser": "Chrome",
+      "operating_system": "macOS",
+      "device_type": "desktop",
+      "referrer": "https://google.com",
+      "channel": "organic",
+      "entry_page": "/",
+      "exit_page": "/pricing",
+      "pageviews": 5,
+      "events": 2,
+      "session_duration": 245,
+      "session_start": "2024-01-31T14:00:00.000Z",
+      "session_end": "2024-01-31T14:04:05.000Z",
+      "utm_source": "google",
+      "utm_medium": "cpc",
+      "utm_campaign": "brand"
+    }
+  ]
+}
+```
+
+</div>
+</div>
+
+---
+
+## Get Session
+
+<div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
+<div>
+
+```
+GET /api/sessions/:sessionId/:site
+```
+
+Returns detailed information about a specific session including all events and pageviews.
+
+### Path Parameters
+
+<TypeTable
+  type={{
+    sessionId: {
+      description: 'Session ID',
+      type: 'string',
+      required: true,
+    },
+    site: {
+      description: 'Site ID or site identifier',
+      type: 'string | number',
+      required: true,
+    },
+  }}
+/>
+
+### Query Parameters
+
+<TypeTable
+  type={{
+    limit: {
+      description: 'Number of events to return',
+      type: 'number',
+      default: 100,
+    },
+    offset: {
+      description: 'Number of events to skip',
+      type: 'number',
+      default: 0,
+    },
+    minutes: {
+      description: 'Only return events from the last N minutes',
+      type: 'number',
+      required: false,
+    },
+  }}
+/>
+
+### Response
+
+<TypeTable
+  type={{
+    data: {
+      description: 'Session details object',
+      type: 'SessionDetails',
+    },
+  }}
+/>
+
+#### SessionDetails Object
+
+<TypeTable
+  type={{
+    session: {
+      description: 'Session metadata',
+      type: 'SessionMeta',
+    },
+    events: {
+      description: 'Array of events in the session',
+      type: 'Event[]',
+    },
+    pagination: {
+      description: 'Pagination info for events',
+      type: 'Pagination',
+    },
+  }}
+/>
+
+#### Event Object
+
+<TypeTable
+  type={{
+    timestamp: {
+      description: 'Event timestamp',
+      type: 'string',
+      typeDescription: 'ISO 8601 datetime',
+    },
+    pathname: {
+      description: 'Page path',
+      type: 'string',
+    },
+    hostname: {
+      description: 'Hostname',
+      type: 'string',
+    },
+    page_title: {
+      description: 'Page title',
+      type: 'string',
+    },
+    type: {
+      description: 'Event type',
+      type: 'string',
+      typeDescription: '"pageview" | "custom_event" | "error" | "outbound"',
+    },
+    event_name: {
+      description: 'Custom event name (for custom_event type)',
+      type: 'string',
+    },
+    props: {
+      description: 'Event properties',
+      type: 'object',
+    },
+  }}
+/>
+
+</div>
+<div className="flex flex-col gap-4">
+
+<Tabs items={['cURL', 'JavaScript', 'Python', 'PHP', 'Ruby', 'Go', 'Rust', 'Java', '.NET']}>
+  <Tab value="cURL">
+```bash title="Request"
+curl -X GET "https://api.rybbit.io/api/sessions/sess_abc123/123?limit=50" \
+  -H "Authorization: Bearer your_api_key_here"
+```
+  </Tab>
+  <Tab value="JavaScript">
+```javascript title="Request"
+const response = await fetch(
+  'https://api.rybbit.io/api/sessions/sess_abc123/123?limit=50',
+  {
+    headers: {
+      'Authorization': 'Bearer your_api_key_here'
+    }
+  }
+);
+
+const data = await response.json();
+```
+  </Tab>
+  <Tab value="Python">
+```python title="Request"
+import requests
+
+response = requests.get(
+    'https://api.rybbit.io/api/sessions/sess_abc123/123',
+    params={'limit': 50},
+    headers={
+        'Authorization': 'Bearer your_api_key_here'
+    }
+)
+
+data = response.json()
+```
+  </Tab>
+  <Tab value="PHP">
+```php title="Request"
+$ch = curl_init();
+curl_setopt($ch, CURLOPT_URL, 'https://api.rybbit.io/api/sessions/sess_abc123/123?limit=50');
+curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+curl_setopt($ch, CURLOPT_HTTPHEADER, [
+    'Authorization: Bearer your_api_key_here'
+]);
+
+$response = curl_exec($ch);
+curl_close($ch);
+
+$data = json_decode($response, true);
+```
+  </Tab>
+  <Tab value="Ruby">
+```ruby title="Request"
+require 'net/http'
+require 'json'
+
+uri = URI('https://api.rybbit.io/api/sessions/sess_abc123/123?limit=50')
+req = Net::HTTP::Get.new(uri)
+req['Authorization'] = 'Bearer your_api_key_here'
+
+res = Net::HTTP.start(uri.hostname, uri.port, use_ssl: true) { |http| http.request(req) }
+data = JSON.parse(res.body)
+```
+  </Tab>
+  <Tab value="Go">
+```go title="Request"
+req, _ := http.NewRequest("GET", "https://api.rybbit.io/api/sessions/sess_abc123/123?limit=50", nil)
+req.Header.Set("Authorization", "Bearer your_api_key_here")
+
+client := &http.Client{}
+resp, _ := client.Do(req)
+defer resp.Body.Close()
+
+var data map[string]interface{}
+json.NewDecoder(resp.Body).Decode(&data)
+```
+  </Tab>
+  <Tab value="Rust">
+```rust title="Request"
+let client = reqwest::Client::new();
+let res = client
+    .get("https://api.rybbit.io/api/sessions/sess_abc123/123?limit=50")
+    .header("Authorization", "Bearer your_api_key_here")
+    .send()
+    .await?;
+
+let data: serde_json::Value = res.json().await?;
+```
+  </Tab>
+  <Tab value="Java">
+```java title="Request"
+HttpClient client = HttpClient.newHttpClient();
+HttpRequest request = HttpRequest.newBuilder()
+    .uri(URI.create("https://api.rybbit.io/api/sessions/sess_abc123/123?limit=50"))
+    .header("Authorization", "Bearer your_api_key_here")
+    .GET()
+    .build();
+
+HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+```
+  </Tab>
+  <Tab value=".NET">
+```csharp title="Request"
+using var client = new HttpClient();
+client.DefaultRequestHeaders.Add("Authorization", "Bearer your_api_key_here");
+
+var response = await client.GetAsync("https://api.rybbit.io/api/sessions/sess_abc123/123?limit=50");
+var data = await response.Content.ReadAsStringAsync();
+```
+  </Tab>
+</Tabs>
+
+```json title="Response"
+{
+  "data": {
+    "session": {
+      "session_id": "sess_abc123",
+      "user_id": "dev_xyz789",
+      "country": "US",
+      "browser": "Chrome",
+      "operating_system": "macOS",
+      "device_type": "desktop",
+      "session_start": "2024-01-31T14:00:00.000Z",
+      "session_end": "2024-01-31T14:04:05.000Z",
+      "session_duration": 245,
+      "pageviews": 5,
+      "events": 7,
+      "entry_page": "/",
+      "exit_page": "/pricing"
+    },
+    "events": [
+      {
+        "timestamp": "2024-01-31T14:00:00.000Z",
+        "pathname": "/",
+        "hostname": "example.com",
+        "page_title": "Home",
+        "type": "pageview",
+        "referrer": "https://google.com"
+      },
+      {
+        "timestamp": "2024-01-31T14:01:30.000Z",
+        "pathname": "/",
+        "hostname": "example.com",
+        "type": "custom_event",
+        "event_name": "cta_click",
+        "props": { "button": "hero" }
+      }
+    ],
+    "pagination": {
+      "total": 7,
+      "limit": 50,
+      "offset": 0,
+      "hasMore": false
+    }
+  }
+}
+```
+
+</div>
+</div>
+
+---
+
+## Get Session Locations
+
+<div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
+<div>
+
+```
+GET /api/session-locations/:site
+```
+
+Returns aggregated session locations with coordinates for map visualization.
+
+### Path Parameters
+
+<TypeTable
+  type={{
+    site: {
+      description: 'Site ID or site identifier',
+      type: 'string | number',
+      required: true,
+    },
+  }}
+/>
+
+### Query Parameters
+
+Accepts all [Common Parameters](/docs/api/getting-started#common-parameters) (time and filters).
+
+### Response
+
+<TypeTable
+  type={{
+    data: {
+      description: 'Array of location objects',
+      type: 'Location[]',
+    },
+  }}
+/>
+
+#### Location Object
+
+<TypeTable
+  type={{
+    lat: {
+      description: 'Latitude coordinate',
+      type: 'number',
+    },
+    lon: {
+      description: 'Longitude coordinate',
+      type: 'number',
+    },
+    city: {
+      description: 'City name',
+      type: 'string',
+    },
+    country: {
+      description: 'Country code',
+      type: 'string',
+    },
+    count: {
+      description: 'Number of sessions from this location',
+      type: 'number',
+    },
+  }}
+/>
+
+</div>
+<div className="flex flex-col gap-4">
+
+<Tabs items={['cURL', 'JavaScript', 'Python', 'PHP', 'Ruby', 'Go', 'Rust', 'Java', '.NET']}>
+  <Tab value="cURL">
+```bash title="Request"
+curl -X GET "https://api.rybbit.io/api/session-locations/123?start_date=2024-01-01&end_date=2024-01-31" \
+  -H "Authorization: Bearer your_api_key_here"
+```
+  </Tab>
+  <Tab value="JavaScript">
+```javascript title="Request"
+const response = await fetch(
+  'https://api.rybbit.io/api/session-locations/123?start_date=2024-01-01&end_date=2024-01-31',
+  {
+    headers: {
+      'Authorization': 'Bearer your_api_key_here'
+    }
+  }
+);
+
+const data = await response.json();
+```
+  </Tab>
+  <Tab value="Python">
+```python title="Request"
+import requests
+
+response = requests.get(
+    'https://api.rybbit.io/api/session-locations/123',
+    params={
+        'start_date': '2024-01-01',
+        'end_date': '2024-01-31'
+    },
+    headers={
+        'Authorization': 'Bearer your_api_key_here'
+    }
+)
+
+data = response.json()
+```
+  </Tab>
+  <Tab value="PHP">
+```php title="Request"
+$ch = curl_init();
+curl_setopt($ch, CURLOPT_URL, 'https://api.rybbit.io/api/session-locations/123?start_date=2024-01-01&end_date=2024-01-31');
+curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+curl_setopt($ch, CURLOPT_HTTPHEADER, [
+    'Authorization: Bearer your_api_key_here'
+]);
+
+$response = curl_exec($ch);
+curl_close($ch);
+
+$data = json_decode($response, true);
+```
+  </Tab>
+  <Tab value="Ruby">
+```ruby title="Request"
+require 'net/http'
+require 'json'
+
+uri = URI('https://api.rybbit.io/api/session-locations/123?start_date=2024-01-01&end_date=2024-01-31')
+req = Net::HTTP::Get.new(uri)
+req['Authorization'] = 'Bearer your_api_key_here'
+
+res = Net::HTTP.start(uri.hostname, uri.port, use_ssl: true) { |http| http.request(req) }
+data = JSON.parse(res.body)
+```
+  </Tab>
+  <Tab value="Go">
+```go title="Request"
+req, _ := http.NewRequest("GET", "https://api.rybbit.io/api/session-locations/123?start_date=2024-01-01&end_date=2024-01-31", nil)
+req.Header.Set("Authorization", "Bearer your_api_key_here")
+
+client := &http.Client{}
+resp, _ := client.Do(req)
+defer resp.Body.Close()
+
+var data map[string]interface{}
+json.NewDecoder(resp.Body).Decode(&data)
+```
+  </Tab>
+  <Tab value="Rust">
+```rust title="Request"
+let client = reqwest::Client::new();
+let res = client
+    .get("https://api.rybbit.io/api/session-locations/123?start_date=2024-01-01&end_date=2024-01-31")
+    .header("Authorization", "Bearer your_api_key_here")
+    .send()
+    .await?;
+
+let data: serde_json::Value = res.json().await?;
+```
+  </Tab>
+  <Tab value="Java">
+```java title="Request"
+HttpClient client = HttpClient.newHttpClient();
+HttpRequest request = HttpRequest.newBuilder()
+    .uri(URI.create("https://api.rybbit.io/api/session-locations/123?start_date=2024-01-01&end_date=2024-01-31"))
+    .header("Authorization", "Bearer your_api_key_here")
+    .GET()
+    .build();
+
+HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+```
+  </Tab>
+  <Tab value=".NET">
+```csharp title="Request"
+using var client = new HttpClient();
+client.DefaultRequestHeaders.Add("Authorization", "Bearer your_api_key_here");
+
+var response = await client.GetAsync("https://api.rybbit.io/api/session-locations/123?start_date=2024-01-01&end_date=2024-01-31");
+var data = await response.Content.ReadAsStringAsync();
+```
+  </Tab>
+</Tabs>
+
+```json title="Response"
+{
+  "data": [
+    {
+      "lat": 37.7749,
+      "lon": -122.4194,
+      "city": "San Francisco",
+      "country": "US",
+      "count": 1250
+    },
+    {
+      "lat": 40.7128,
+      "lon": -74.006,
+      "city": "New York",
+      "country": "US",
+      "count": 980
+    },
+    {
+      "lat": 51.5074,
+      "lon": -0.1278,
+      "city": "London",
+      "country": "GB",
+      "count": 650
+    }
+  ]
+}
+```
+
+</div>
+</div>

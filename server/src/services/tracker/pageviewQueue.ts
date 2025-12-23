@@ -4,25 +4,10 @@ import { getLocation } from "../../db/geolocation/geolocation.js";
 import { createServiceLogger } from "../../lib/logger/logger.js";
 import { getDeviceType } from "../../utils.js";
 import { getChannel } from "./getChannel.js";
-import { clearSelfReferrer, getAllUrlParams } from "./utils.js";
-import { TrackingPayload } from "./types.js";
+import { clearSelfReferrer, getAllUrlParams, TotalTrackingPayload } from "./utils.js";
 
-type TotalPayload = TrackingPayload & {
-  userId: string;
-  timestamp: string;
+type TotalPayload = TotalTrackingPayload & {
   sessionId: string;
-  ua: UAParser.IResult;
-  referrer: string;
-  ipAddress: string;
-  type?: string;
-  event_name?: string;
-  properties?: string;
-  // Performance metrics
-  lcp?: number;
-  cls?: number;
-  inp?: number;
-  fcp?: number;
-  ttfb?: number;
 };
 
 const getParsedProperties = (properties: string | undefined) => {
@@ -55,36 +40,20 @@ class PageviewQueue {
 
     // Get batch of pageviews
     const batch = this.queue.splice(0, this.batchSize);
-    const ips = [...new Set(batch.map((pv) => pv.ipAddress))];
+    const ips = [...new Set(batch.map(pv => pv.ipAddress))];
 
-    let geoData: Record<string, { data: any }> = {};
-
-    try {
-      // Process each IP to get geo data using local implementation
-      const geoPromises = ips.map(async (ip) => {
-        const locationData = await getLocation(ip);
-        return { ip, locationData };
-      });
-
-      const results = await Promise.all(geoPromises);
-
-      // Format results to match expected structure
-      results.forEach(({ ip, locationData }) => {
-        geoData[ip] = { data: locationData };
-      });
-    } catch (error) {
-      this.logger.error(error, "Error getting geo data");
-    }
+    const geoData = await getLocation(ips);
 
     // Process each pageview with its geo data
-    const processedPageviews = batch.map((pv) => {
+    const processedPageviews = batch.map(pv => {
       const dataForIp = geoData?.[pv.ipAddress];
 
-      const countryCode = dataForIp?.data?.countryIso || "";
-      const regionCode = dataForIp?.data?.subdivisions?.[0]?.isoCode || "";
-      const latitude = dataForIp?.data?.latitude || 0;
-      const longitude = dataForIp?.data?.longitude || 0;
-      const city = dataForIp?.data?.city || "";
+      const countryCode = dataForIp?.countryIso || "";
+      const regionCode = dataForIp?.region || "";
+      const latitude = dataForIp?.latitude || 0;
+      const longitude = dataForIp?.longitude || 0;
+      const city = dataForIp?.city || "";
+      const timezone = dataForIp?.timeZone || "";
 
       // Check if referrer is from the same domain and clear it if so
       let referrer = clearSelfReferrer(pv.referrer || "", pv.hostname || "");
@@ -96,7 +65,9 @@ class PageviewQueue {
         site_id: pv.site_id,
         timestamp: DateTime.fromISO(pv.timestamp).toFormat("yyyy-MM-dd HH:mm:ss"),
         session_id: pv.sessionId,
-        user_id: pv.userId,
+        user_id: pv.userId, // Always the device fingerprint
+        anonymous_id: pv.anonymousId,
+        identified_user_id: pv.identifiedUserId || "", // Custom user ID when identified
         hostname: pv.hostname || "",
         pathname: pv.pathname || "",
         querystring: pv.querystring || "",
@@ -126,6 +97,24 @@ class PageviewQueue {
         inp: pv.inp || null,
         fcp: pv.fcp || null,
         ttfb: pv.ttfb || null,
+        ip: pv.storeIp ? pv.ipAddress : null,
+        timezone: timezone,
+        import_id: null,
+        company: dataForIp?.company?.name || "",
+        company_domain: dataForIp?.company?.domain || "",
+        company_type: dataForIp?.company?.type || "",
+        company_abuse_score: dataForIp?.company?.abuseScore ?? null,
+        asn: dataForIp?.asn?.asn || null,
+        asn_org: dataForIp?.asn?.org || "",
+        asn_domain: dataForIp?.asn?.domain || "",
+        asn_type: dataForIp?.asn?.type || "",
+        asn_abuse_score: dataForIp?.asn?.abuseScore ?? null,
+        vpn: dataForIp?.vpn || "",
+        crawler: dataForIp?.crawler || "",
+        datacenter: dataForIp?.datacenter || "",
+        is_proxy: dataForIp?.isProxy ?? null,
+        is_tor: dataForIp?.isTor ?? null,
+        is_satellite: dataForIp?.isSatellite ?? null,
       };
     });
 

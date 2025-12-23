@@ -1,58 +1,37 @@
 import { FastifyReply, FastifyRequest } from "fastify";
 import { clickhouse } from "../../../db/clickhouse/clickhouse.js";
-import {
-  getFilterStatement,
-  getTimeStatement,
-  processResults,
-  TimeBucketToFn,
-  bucketIntervalMap,
-} from "../utils.js";
+import { getTimeStatement, processResults, TimeBucketToFn, bucketIntervalMap } from "../utils/utils.js";
 import SqlString from "sqlstring";
-import { getUserHasAccessToSitePublic } from "../../../lib/auth-utils.js";
-import { validateTimeStatementFillParams } from "../query-validation.js";
+import { validateTimeStatementFillParams } from "../utils/query-validation.js";
 import { TimeBucket, PerformanceTimeSeriesPoint } from "../types.js";
 import { FilterParams } from "@rybbit/shared";
-
+import { getFilterStatement } from "../utils/getFilterStatement.js";
 
 function getTimeStatementFill(params: FilterParams, bucket: TimeBucket) {
-  const { params: validatedParams, bucket: validatedBucket } =
-    validateTimeStatementFillParams(params, bucket);
+  const { params: validatedParams, bucket: validatedBucket } = validateTimeStatementFillParams(params, bucket);
 
-  if (
-    validatedParams.startDate &&
-    validatedParams.endDate &&
-    validatedParams.timeZone
-  ) {
-    const { startDate, endDate, timeZone } = validatedParams;
+  if (validatedParams.start_date && validatedParams.end_date && validatedParams.time_zone) {
+    const { start_date, end_date, time_zone } = validatedParams;
     return `WITH FILL FROM toTimeZone(
-      toDateTime(${
-        TimeBucketToFn[validatedBucket]
-      }(toDateTime(${SqlString.escape(startDate)}, ${SqlString.escape(
-        timeZone
+      toDateTime(${TimeBucketToFn[validatedBucket]}(toDateTime(${SqlString.escape(start_date)}, ${SqlString.escape(
+        time_zone
       )}))),
       'UTC'
       )
       TO if(
-        toDate(${SqlString.escape(endDate)}) = toDate(now(), ${SqlString.escape(
-          timeZone
-        )}),
+        toDate(${SqlString.escape(end_date)}) = toDate(now(), ${SqlString.escape(time_zone)}),
         now(),
         toTimeZone(
-          toDateTime(${
-            TimeBucketToFn[validatedBucket]
-          }(toDateTime(${SqlString.escape(endDate)}, ${SqlString.escape(
-            timeZone
+          toDateTime(${TimeBucketToFn[validatedBucket]}(toDateTime(${SqlString.escape(end_date)}, ${SqlString.escape(
+            time_zone
           )}))) + INTERVAL 1 DAY,
           'UTC'
         )
       ) STEP INTERVAL ${bucketIntervalMap[validatedBucket]}`;
   }
   // For specific past minutes range - convert to exact timestamps for better performance
-  if (
-    validatedParams.pastMinutesStart !== undefined &&
-    validatedParams.pastMinutesEnd !== undefined
-  ) {
-    const { pastMinutesStart: start, pastMinutesEnd: end } = validatedParams;
+  if (validatedParams.past_minutes_start !== undefined && validatedParams.past_minutes_end !== undefined) {
+    const { past_minutes_start: start, past_minutes_end: end } = validatedParams;
 
     // Calculate exact timestamps in JavaScript to avoid runtime ClickHouse calculations
     const now = new Date();
@@ -60,10 +39,7 @@ function getTimeStatementFill(params: FilterParams, bucket: TimeBucket) {
     const endTimestamp = new Date(now.getTime() - end * 60 * 1000);
 
     // Format as YYYY-MM-DD HH:MM:SS without milliseconds for ClickHouse
-    const startIso = startTimestamp
-      .toISOString()
-      .slice(0, 19)
-      .replace("T", " ");
+    const startIso = startTimestamp.toISOString().slice(0, 19).replace("T", " ");
     const endIso = endTimestamp.toISOString().slice(0, 19).replace("T", " ");
 
     return ` WITH FILL 
@@ -90,26 +66,16 @@ function getTimeStatementFill(params: FilterParams, bucket: TimeBucket) {
   return "";
 }
 
-const getQuery = (params: FilterParams<{ bucket: TimeBucket }>) => {
-  const {
-    startDate,
-    endDate,
-    timeZone,
-    bucket,
-    filters,
-    pastMinutesStart,
-    pastMinutesEnd,
-  } = params;
-  const filterStatement = getFilterStatement(filters);
+const getQuery = (params: FilterParams<{ bucket: TimeBucket }>, siteId: number) => {
+  const { start_date, end_date, time_zone, bucket = "hour", filters, past_minutes_start, past_minutes_end } = params;
+  const timeStatement = getTimeStatement(params);
+  const filterStatement = getFilterStatement(filters, siteId, timeStatement);
 
-  const isAllTime =
-    !startDate && !endDate && !pastMinutesStart && !pastMinutesEnd;
+  const isAllTime = !start_date && !end_date && !past_minutes_start && !past_minutes_end;
 
   const query = `
 SELECT
-    toDateTime(${
-      TimeBucketToFn[bucket]
-    }(toTimeZone(timestamp, ${SqlString.escape(timeZone)}))) AS time,
+    toDateTime(${TimeBucketToFn[bucket]}(toTimeZone(timestamp, ${SqlString.escape(time_zone)}))) AS time,
     quantile(0.5)(lcp) AS lcp_p50,
     quantile(0.75)(lcp) AS lcp_p75,
     quantile(0.9)(lcp) AS lcp_p90,
@@ -136,10 +102,8 @@ WHERE
     site_id = {siteId:Int32}
     AND type = 'performance'
     ${filterStatement}
-    ${getTimeStatement(params)}
-GROUP BY time ORDER BY time ${
-    isAllTime ? "" : getTimeStatementFill(params, bucket)
-  }`;
+    ${timeStatement}
+GROUP BY time ORDER BY time ${isAllTime ? "" : getTimeStatementFill(params, bucket)}`;
 
   return query;
 };
@@ -157,12 +121,7 @@ export async function getPerformanceTimeSeries(
 ) {
   const site = req.params.site;
 
-  const userHasAccessToSite = await getUserHasAccessToSitePublic(req, site);
-  if (!userHasAccessToSite) {
-    return res.status(403).send({ error: "Forbidden" });
-  }
-
-  const query = getQuery(req.query);
+  const query = getQuery(req.query, Number(site));
 
   try {
     const result = await clickhouse.query({
@@ -177,8 +136,6 @@ export async function getPerformanceTimeSeries(
     return res.send({ data });
   } catch (error) {
     console.error("Error fetching performance time series:", error);
-    return res
-      .status(500)
-      .send({ error: "Failed to fetch performance time series" });
+    return res.status(500).send({ error: "Failed to fetch performance time series" });
   }
 }

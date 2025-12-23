@@ -1,0 +1,234 @@
+---
+title: Data Import
+description: Import historical analytics data from other platforms
+---
+
+import { Callout } from 'fumadocs-ui/components/callout';
+import { Step, Steps } from 'fumadocs-ui/components/steps';
+
+The data import feature allows you to migrate your historical analytics data from other platforms to Rybbit. This preserves your analytics history when switching from competitors, giving you a complete view of your data without losing valuable insights.
+
+<Callout type="info">
+  Data import is available on Standard and Pro plans. Free tier users will need to upgrade to access this feature.
+</Callout>
+
+## Supported Platforms
+
+Currently, Rybbit supports importing data from:
+
+- Umami
+- Simple Analytics
+
+Additional platforms may be added in the future based on user demand.
+
+## Plan Requirements
+
+### Cloud Version
+
+| Plan | Access | Historical Window | Monthly Event Limit |
+|------|--------|-------------------|---------------------|
+| Free | ❌ Not available | - | - |
+| Standard | ✅ Available | 24 months | Plan limit applies |
+| Pro | ✅ Available | 60 months (5 years) | Plan limit applies |
+| AppSumo | ✅ Available | 24 months | Plan limit applies |
+
+### Self-Hosted Version
+
+Self-hosted installations have **unlimited** access to data imports with no restrictions on:
+- Historical data window (import data from any date)
+- Event quotas (no monthly limits)
+- Concurrent imports (no limit on active imports)
+
+## Import Limits
+
+### Historical Data Windows
+
+The historical data window determines how far back you can import data:
+
+- **Standard/AppSumo plans**: Import data from the past 24 months
+- **Pro plans**: Import data from the past 60 months (5 years)
+- **Self-hosted**: Unlimited - import data from any date
+
+Events outside your plan's historical window will be automatically skipped during import.
+
+### Event Quotas
+
+Imported events count toward your monthly event limit:
+
+- If you're close to your monthly limit, imports may be partially skipped
+- Skipped events are counted and displayed in the import history
+- Consider upgrading your plan if you need to import large amounts of data
+
+### Concurrent Imports
+
+For cloud users:
+- **Maximum 1 active import per organization**
+- New imports are blocked until the current one completes
+- Maximum 2-hour timeout per import
+
+Self-hosted users have no concurrent import restrictions.
+
+## How to Import Data
+
+<Steps>
+<Step>
+
+### Export Data from Source Platform
+
+**Umami:**
+1. Navigate to Settings → Data
+2. Export your data as CSV
+3. Ensure the export includes all required fields
+
+**Simple Analytics:**
+1. Go to your site settings
+2. Navigate to Export section
+3. Download your analytics data as CSV
+
+</Step>
+
+<Step>
+
+### Navigate to Import Settings
+
+1. Open your Rybbit dashboard
+2. Navigate to Site Settings
+3. Click on the **Import** tab
+
+</Step>
+
+<Step>
+
+### Select Platform and Upload CSV
+
+1. Select your source platform from the dropdown
+2. Click "Choose File" and select your exported CSV
+3. Click the **Import** button
+
+<Callout type="warn">
+  For very large imports (multiple GB), consider splitting your CSV into smaller files and importing them sequentially.
+</Callout>
+
+</Step>
+
+<Step>
+
+### Monitor Import Progress
+
+Your import will begin processing in the background. You can:
+- View the import status in the "Import History" section
+- Monitor the number of imported, skipped, and invalid events
+- Continue using Rybbit while the import runs
+
+<Callout type="info">
+  Large imports may take several minutes to complete. The page will automatically refresh to show updated progress.
+</Callout>
+
+</Step>
+</Steps>
+
+## Import History
+
+The Import History section displays all your past and current imports.
+
+### Import Metrics
+
+Each import shows three key metrics:
+
+**Imported Events**
+- Number of events successfully imported into Rybbit
+- These events are now visible in your analytics dashboard
+
+**Skipped Events**
+- Events that were excluded during import
+- Common reasons:
+  - Outside your plan's historical data window
+  - Would exceed your monthly event quota
+
+**Invalid Events**
+- Events that failed validation during import
+- Common reasons:
+  - Malformed CSV data
+  - Missing required fields
+  - Invalid date/time formats
+  - Data type mismatches
+
+<Callout type="warn">
+  If you see a high number of invalid events, verify your CSV export matches the expected format for your platform.
+</Callout>
+
+### Managing Imports
+
+**Deleting Completed Imports**
+- Click the trash icon next to any completed import
+- Confirm the deletion in the dialog
+- This will permanently remove the import record **and all associated events** from your analytics
+- Active imports cannot be deleted
+
+<Callout type="error">
+  Deleting an import removes all events that were imported. This action cannot be undone. Make sure you have a backup of your original CSV file.
+</Callout>
+
+## Troubleshooting
+
+### Events Skipped Due to Quota Limits
+
+**Cause:** Importing the events would exceed your monthly event limit.
+
+**Solution:**
+- Wait until the next billing cycle when your quota resets
+- Upgrade to a plan with a higher event limit
+- Import smaller date ranges to stay within quota
+
+### Events Skipped Due to Date Range
+
+**Cause:** Events are older than your plan's historical data window.
+
+**Solution:**
+- Upgrade to Pro plan for 60-month history (vs 24-month on Standard)
+- For self-hosted, no action needed - all dates are allowed
+- Filter your CSV export to only include recent data
+
+### High Invalid Event Count
+
+**Cause:** CSV format doesn't match the expected structure for your platform.
+
+**Solution:**
+1. Verify you selected the correct platform
+2. Check that your CSV export includes all required fields
+3. Look for special characters or malformed data in the CSV
+4. Try importing a small sample file (first 100 rows) to test
+
+### Import Appears Stuck
+
+**Cause:** Very large files can take time to process, or a timeout occurred.
+
+**Solution:**
+- Wait up to 2 hours for the import to complete
+- If still stuck after 2 hours, the import will be automatically marked as complete
+- Check the imported event count to see if any data was processed
+- Contact support if no events were imported
+
+## Best Practices
+
+### Before You Import
+
+1. **Export a complete backup** from your current analytics platform
+2. **Test with a small sample** (first 1,000 rows) before importing your full dataset
+3. **Check your event quota** to ensure you have sufficient capacity
+4. **Verify date ranges** match your plan's historical window
+5. **Review CSV format** matches the required structure for your platform
+
+### During Import
+
+1. **Don't close the browser tab**
+2. **Monitor the progress** in the Import History section
+3. **Check for skipped/invalid events** early to catch format issues
+4. **Wait for completion** before starting another import (cloud users)
+
+### After Import
+
+1. **Verify your data** appears correctly in analytics dashboards
+2. **Check date ranges** to ensure historical data is visible
+3. **Compare totals** with your source platform to validate accuracy
+4. **Keep the original CSV** as a backup before deleting the import

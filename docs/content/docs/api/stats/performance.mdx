@@ -1,0 +1,764 @@
+---
+title: Performance
+description: Retrieve Core Web Vitals and performance metrics for your site
+full: true
+---
+
+import { TypeTable } from 'fumadocs-ui/components/type-table';
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+
+See the [API Reference](/docs/api/stats/reference) for authentication, common parameters, and filters.
+
+## Core Web Vitals
+
+The performance endpoints return data for the following Core Web Vitals metrics:
+
+| Metric | Description | Good | Needs Improvement | Poor |
+|--------|-------------|------|-------------------|------|
+| **LCP** | Largest Contentful Paint - loading performance | < 2.5s | 2.5s - 4s | > 4s |
+| **CLS** | Cumulative Layout Shift - visual stability | < 0.1 | 0.1 - 0.25 | > 0.25 |
+| **INP** | Interaction to Next Paint - interactivity | < 200ms | 200ms - 500ms | > 500ms |
+| **FCP** | First Contentful Paint - initial render | < 1.8s | 1.8s - 3s | > 3s |
+| **TTFB** | Time to First Byte - server response time | < 800ms | 800ms - 1.8s | > 1.8s |
+
+## Endpoints
+
+<div className="flex flex-col gap-2 my-6">
+  <a href="#get-performance-overview" className="flex items-center gap-3 p-3 rounded-lg bg-fd-secondary/50 hover:bg-fd-secondary transition-colors no-underline">
+    <span className="px-2 py-1 text-xs font-bold rounded bg-green-500/20 text-green-600 dark:text-green-400">GET</span>
+    <code className="text-sm">/api/performance/overview/:site</code>
+  </a>
+  <a href="#get-performance-time-series" className="flex items-center gap-3 p-3 rounded-lg bg-fd-secondary/50 hover:bg-fd-secondary transition-colors no-underline">
+    <span className="px-2 py-1 text-xs font-bold rounded bg-green-500/20 text-green-600 dark:text-green-400">GET</span>
+    <code className="text-sm">/api/performance/time-series/:site</code>
+  </a>
+  <a href="#get-performance-by-dimension" className="flex items-center gap-3 p-3 rounded-lg bg-fd-secondary/50 hover:bg-fd-secondary transition-colors no-underline">
+    <span className="px-2 py-1 text-xs font-bold rounded bg-green-500/20 text-green-600 dark:text-green-400">GET</span>
+    <code className="text-sm">/api/performance/by-dimension/:site</code>
+  </a>
+</div>
+
+---
+
+## Get Performance Overview
+
+<div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
+<div>
+
+```
+GET /api/performance/overview/:site
+```
+
+Returns aggregate performance metrics with percentile breakdowns for all Core Web Vitals.
+
+### Path Parameters
+
+<TypeTable
+  type={{
+    site: {
+      description: 'Site ID or site identifier',
+      type: 'string | number',
+      required: true,
+    },
+  }}
+/>
+
+### Query Parameters
+
+Accepts all [Common Parameters](/docs/api/getting-started#common-parameters) (time and filters).
+
+### Response
+
+<TypeTable
+  type={{
+    data: {
+      description: 'Performance metrics object',
+      type: 'PerformanceMetrics',
+    },
+  }}
+/>
+
+#### PerformanceMetrics Object
+
+Each metric (lcp, cls, inp, fcp, ttfb) includes the following percentiles:
+
+<TypeTable
+  type={{
+    lcp_p50: {
+      description: 'LCP 50th percentile (median)',
+      type: 'number',
+      typeDescription: 'milliseconds',
+    },
+    lcp_p75: {
+      description: 'LCP 75th percentile',
+      type: 'number',
+      typeDescription: 'milliseconds',
+    },
+    lcp_p90: {
+      description: 'LCP 90th percentile',
+      type: 'number',
+      typeDescription: 'milliseconds',
+    },
+    lcp_p99: {
+      description: 'LCP 99th percentile',
+      type: 'number',
+      typeDescription: 'milliseconds',
+    },
+    total_performance_events: {
+      description: 'Total number of performance measurements',
+      type: 'number',
+    },
+  }}
+/>
+
+</div>
+<div className="flex flex-col gap-4">
+
+<Tabs items={['cURL', 'JavaScript', 'Python', 'PHP', 'Ruby', 'Go', 'Rust', 'Java', '.NET']}>
+  <Tab value="cURL">
+```bash title="Request"
+curl -X GET "https://api.rybbit.io/api/performance/overview/123?start_date=2024-01-01&end_date=2024-01-31" \
+  -H "Authorization: Bearer your_api_key_here"
+```
+  </Tab>
+  <Tab value="JavaScript">
+```javascript title="Request"
+const response = await fetch(
+  'https://api.rybbit.io/api/performance/overview/123?start_date=2024-01-01&end_date=2024-01-31',
+  {
+    headers: {
+      'Authorization': 'Bearer your_api_key_here'
+    }
+  }
+);
+
+const data = await response.json();
+```
+  </Tab>
+  <Tab value="Python">
+```python title="Request"
+import requests
+
+response = requests.get(
+    'https://api.rybbit.io/api/performance/overview/123',
+    params={
+        'start_date': '2024-01-01',
+        'end_date': '2024-01-31'
+    },
+    headers={
+        'Authorization': 'Bearer your_api_key_here'
+    }
+)
+
+data = response.json()
+```
+  </Tab>
+  <Tab value="PHP">
+```php title="Request"
+$ch = curl_init();
+curl_setopt($ch, CURLOPT_URL, 'https://api.rybbit.io/api/performance/overview/123?start_date=2024-01-01&end_date=2024-01-31');
+curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+curl_setopt($ch, CURLOPT_HTTPHEADER, [
+    'Authorization: Bearer your_api_key_here'
+]);
+
+$response = curl_exec($ch);
+curl_close($ch);
+
+$data = json_decode($response, true);
+```
+  </Tab>
+  <Tab value="Ruby">
+```ruby title="Request"
+require 'net/http'
+require 'json'
+
+uri = URI('https://api.rybbit.io/api/performance/overview/123?start_date=2024-01-01&end_date=2024-01-31')
+req = Net::HTTP::Get.new(uri)
+req['Authorization'] = 'Bearer your_api_key_here'
+
+res = Net::HTTP.start(uri.hostname, uri.port, use_ssl: true) { |http| http.request(req) }
+data = JSON.parse(res.body)
+```
+  </Tab>
+  <Tab value="Go">
+```go title="Request"
+req, _ := http.NewRequest("GET", "https://api.rybbit.io/api/performance/overview/123?start_date=2024-01-01&end_date=2024-01-31", nil)
+req.Header.Set("Authorization", "Bearer your_api_key_here")
+
+client := &http.Client{}
+resp, _ := client.Do(req)
+defer resp.Body.Close()
+
+var data map[string]interface{}
+json.NewDecoder(resp.Body).Decode(&data)
+```
+  </Tab>
+  <Tab value="Rust">
+```rust title="Request"
+let client = reqwest::Client::new();
+let res = client
+    .get("https://api.rybbit.io/api/performance/overview/123?start_date=2024-01-01&end_date=2024-01-31")
+    .header("Authorization", "Bearer your_api_key_here")
+    .send()
+    .await?;
+
+let data: serde_json::Value = res.json().await?;
+```
+  </Tab>
+  <Tab value="Java">
+```java title="Request"
+HttpClient client = HttpClient.newHttpClient();
+HttpRequest request = HttpRequest.newBuilder()
+    .uri(URI.create("https://api.rybbit.io/api/performance/overview/123?start_date=2024-01-01&end_date=2024-01-31"))
+    .header("Authorization", "Bearer your_api_key_here")
+    .GET()
+    .build();
+
+HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+```
+  </Tab>
+  <Tab value=".NET">
+```csharp title="Request"
+using var client = new HttpClient();
+client.DefaultRequestHeaders.Add("Authorization", "Bearer your_api_key_here");
+
+var response = await client.GetAsync("https://api.rybbit.io/api/performance/overview/123?start_date=2024-01-01&end_date=2024-01-31");
+var data = await response.Content.ReadAsStringAsync();
+```
+  </Tab>
+</Tabs>
+
+```json title="Response"
+{
+  "data": {
+    "lcp_p50": 1850,
+    "lcp_p75": 2400,
+    "lcp_p90": 3200,
+    "lcp_p99": 5100,
+    "cls_p50": 0.05,
+    "cls_p75": 0.1,
+    "cls_p90": 0.18,
+    "cls_p99": 0.35,
+    "inp_p50": 120,
+    "inp_p75": 180,
+    "inp_p90": 280,
+    "inp_p99": 450,
+    "fcp_p50": 1200,
+    "fcp_p75": 1600,
+    "fcp_p90": 2100,
+    "fcp_p99": 3500,
+    "ttfb_p50": 450,
+    "ttfb_p75": 650,
+    "ttfb_p90": 950,
+    "ttfb_p99": 1800,
+    "total_performance_events": 48521
+  }
+}
+```
+
+</div>
+</div>
+
+---
+
+## Get Performance Time Series
+
+<div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
+<div>
+
+```
+GET /api/performance/time-series/:site
+```
+
+Returns performance metrics over time, broken down by configurable time buckets. Useful for charting performance trends.
+
+### Path Parameters
+
+<TypeTable
+  type={{
+    site: {
+      description: 'Site ID or site identifier',
+      type: 'string | number',
+      required: true,
+    },
+  }}
+/>
+
+### Query Parameters
+
+Accepts all [Common Parameters](/docs/api/getting-started#common-parameters) plus the following:
+
+<TypeTable
+  type={{
+    bucket: {
+      description: 'Time bucket size for grouping data',
+      type: 'TimeBucket',
+      typeDescription: '"minute" | "five_minutes" | "hour" | "day" | "week" | "month"',
+      required: true,
+    },
+  }}
+/>
+
+### Response
+
+<TypeTable
+  type={{
+    data: {
+      description: 'Array of time-bucketed performance data',
+      type: 'PerformancePoint[]',
+    },
+  }}
+/>
+
+#### PerformancePoint Object
+
+Each point includes all percentiles for each metric plus:
+
+<TypeTable
+  type={{
+    time: {
+      description: 'Start of the time bucket',
+      type: 'string',
+      typeDescription: 'ISO 8601 datetime',
+    },
+    event_count: {
+      description: 'Number of performance events in this bucket',
+      type: 'number',
+    },
+  }}
+/>
+
+</div>
+<div className="flex flex-col gap-4">
+
+<Tabs items={['cURL', 'JavaScript', 'Python', 'PHP', 'Ruby', 'Go', 'Rust', 'Java', '.NET']}>
+  <Tab value="cURL">
+```bash title="Request"
+curl -X GET "https://api.rybbit.io/api/performance/time-series/123?bucket=day&start_date=2024-01-01&end_date=2024-01-07&time_zone=UTC" \
+  -H "Authorization: Bearer your_api_key_here"
+```
+  </Tab>
+  <Tab value="JavaScript">
+```javascript title="Request"
+const response = await fetch(
+  'https://api.rybbit.io/api/performance/time-series/123?bucket=day&start_date=2024-01-01&end_date=2024-01-07&time_zone=UTC',
+  {
+    headers: {
+      'Authorization': 'Bearer your_api_key_here'
+    }
+  }
+);
+
+const data = await response.json();
+```
+  </Tab>
+  <Tab value="Python">
+```python title="Request"
+import requests
+
+response = requests.get(
+    'https://api.rybbit.io/api/performance/time-series/123',
+    params={
+        'bucket': 'day',
+        'start_date': '2024-01-01',
+        'end_date': '2024-01-07',
+        'time_zone': 'UTC'
+    },
+    headers={
+        'Authorization': 'Bearer your_api_key_here'
+    }
+)
+
+data = response.json()
+```
+  </Tab>
+  <Tab value="PHP">
+```php title="Request"
+$ch = curl_init();
+curl_setopt($ch, CURLOPT_URL, 'https://api.rybbit.io/api/performance/time-series/123?bucket=day&start_date=2024-01-01&end_date=2024-01-07&time_zone=UTC');
+curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+curl_setopt($ch, CURLOPT_HTTPHEADER, [
+    'Authorization: Bearer your_api_key_here'
+]);
+
+$response = curl_exec($ch);
+curl_close($ch);
+
+$data = json_decode($response, true);
+```
+  </Tab>
+  <Tab value="Ruby">
+```ruby title="Request"
+require 'net/http'
+require 'json'
+
+uri = URI('https://api.rybbit.io/api/performance/time-series/123?bucket=day&start_date=2024-01-01&end_date=2024-01-07&time_zone=UTC')
+req = Net::HTTP::Get.new(uri)
+req['Authorization'] = 'Bearer your_api_key_here'
+
+res = Net::HTTP.start(uri.hostname, uri.port, use_ssl: true) { |http| http.request(req) }
+data = JSON.parse(res.body)
+```
+  </Tab>
+  <Tab value="Go">
+```go title="Request"
+req, _ := http.NewRequest("GET", "https://api.rybbit.io/api/performance/time-series/123?bucket=day&start_date=2024-01-01&end_date=2024-01-07&time_zone=UTC", nil)
+req.Header.Set("Authorization", "Bearer your_api_key_here")
+
+client := &http.Client{}
+resp, _ := client.Do(req)
+defer resp.Body.Close()
+
+var data map[string]interface{}
+json.NewDecoder(resp.Body).Decode(&data)
+```
+  </Tab>
+  <Tab value="Rust">
+```rust title="Request"
+let client = reqwest::Client::new();
+let res = client
+    .get("https://api.rybbit.io/api/performance/time-series/123?bucket=day&start_date=2024-01-01&end_date=2024-01-07&time_zone=UTC")
+    .header("Authorization", "Bearer your_api_key_here")
+    .send()
+    .await?;
+
+let data: serde_json::Value = res.json().await?;
+```
+  </Tab>
+  <Tab value="Java">
+```java title="Request"
+HttpClient client = HttpClient.newHttpClient();
+HttpRequest request = HttpRequest.newBuilder()
+    .uri(URI.create("https://api.rybbit.io/api/performance/time-series/123?bucket=day&start_date=2024-01-01&end_date=2024-01-07&time_zone=UTC"))
+    .header("Authorization", "Bearer your_api_key_here")
+    .GET()
+    .build();
+
+HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+```
+  </Tab>
+  <Tab value=".NET">
+```csharp title="Request"
+using var client = new HttpClient();
+client.DefaultRequestHeaders.Add("Authorization", "Bearer your_api_key_here");
+
+var response = await client.GetAsync("https://api.rybbit.io/api/performance/time-series/123?bucket=day&start_date=2024-01-01&end_date=2024-01-07&time_zone=UTC");
+var data = await response.Content.ReadAsStringAsync();
+```
+  </Tab>
+</Tabs>
+
+```json title="Response"
+{
+  "data": [
+    {
+      "time": "2024-01-01T00:00:00.000Z",
+      "lcp_p50": 1820,
+      "lcp_p75": 2350,
+      "lcp_p90": 3100,
+      "lcp_p99": 4900,
+      "cls_p50": 0.04,
+      "cls_p75": 0.09,
+      "inp_p50": 115,
+      "inp_p75": 175,
+      "fcp_p50": 1180,
+      "fcp_p75": 1580,
+      "ttfb_p50": 440,
+      "ttfb_p75": 640,
+      "event_count": 6892
+    },
+    {
+      "time": "2024-01-02T00:00:00.000Z",
+      "lcp_p50": 1900,
+      "lcp_p75": 2450,
+      "lcp_p90": 3250,
+      "lcp_p99": 5200,
+      "cls_p50": 0.05,
+      "cls_p75": 0.11,
+      "inp_p50": 125,
+      "inp_p75": 185,
+      "fcp_p50": 1220,
+      "fcp_p75": 1620,
+      "ttfb_p50": 460,
+      "ttfb_p75": 660,
+      "event_count": 7234
+    }
+  ]
+}
+```
+
+</div>
+</div>
+
+---
+
+## Get Performance by Dimension
+
+<div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
+<div>
+
+```
+GET /api/performance/by-dimension/:site
+```
+
+Returns performance metrics broken down by a specific dimension (page, country, browser, etc.). Useful for identifying performance issues on specific pages or for specific user segments.
+
+### Path Parameters
+
+<TypeTable
+  type={{
+    site: {
+      description: 'Site ID or site identifier',
+      type: 'string | number',
+      required: true,
+    },
+  }}
+/>
+
+### Query Parameters
+
+Accepts all [Common Parameters](/docs/api/getting-started#common-parameters) plus the following:
+
+<TypeTable
+  type={{
+    dimension: {
+      description: 'Dimension to break down by',
+      type: 'string',
+      typeDescription: '"pathname" | "country" | "device_type" | "browser" | "operating_system" | "region"',
+      required: true,
+    },
+    page: {
+      description: 'Page number (1-indexed)',
+      type: 'number',
+      required: false,
+    },
+    limit: {
+      description: 'Number of results per page',
+      type: 'number',
+      default: 100,
+    },
+    sort_by: {
+      description: 'Field to sort by',
+      type: 'string',
+      default: 'event_count',
+    },
+    sort_order: {
+      description: 'Sort direction',
+      type: 'string',
+      typeDescription: '"asc" | "desc"',
+      default: 'desc',
+    },
+  }}
+/>
+
+### Response
+
+<TypeTable
+  type={{
+    data: {
+      description: 'Paginated response object',
+      type: 'PaginatedResponse',
+    },
+  }}
+/>
+
+#### DimensionPerformance Object
+
+Each object includes the dimension value plus all percentiles:
+
+<TypeTable
+  type={{
+    pathname: {
+      description: 'The dimension value (field name matches dimension param)',
+      type: 'string',
+    },
+    event_count: {
+      description: 'Number of performance events',
+      type: 'number',
+    },
+    lcp_avg: {
+      description: 'Average LCP',
+      type: 'number',
+    },
+    lcp_p50: {
+      description: 'LCP 50th percentile',
+      type: 'number',
+    },
+    lcp_p75: {
+      description: 'LCP 75th percentile',
+      type: 'number',
+    },
+    lcp_p90: {
+      description: 'LCP 90th percentile',
+      type: 'number',
+    },
+    lcp_p99: {
+      description: 'LCP 99th percentile',
+      type: 'number',
+    },
+  }}
+/>
+
+</div>
+<div className="flex flex-col gap-4">
+
+<Tabs items={['cURL', 'JavaScript', 'Python', 'PHP', 'Ruby', 'Go', 'Rust', 'Java', '.NET']}>
+  <Tab value="cURL">
+```bash title="Request"
+curl -X GET "https://api.rybbit.io/api/performance/by-dimension/123?dimension=pathname&sort_by=lcp_p75&sort_order=desc&limit=10" \
+  -H "Authorization: Bearer your_api_key_here"
+```
+  </Tab>
+  <Tab value="JavaScript">
+```javascript title="Request"
+const response = await fetch(
+  'https://api.rybbit.io/api/performance/by-dimension/123?dimension=pathname&sort_by=lcp_p75&sort_order=desc&limit=10',
+  {
+    headers: {
+      'Authorization': 'Bearer your_api_key_here'
+    }
+  }
+);
+
+const data = await response.json();
+```
+  </Tab>
+  <Tab value="Python">
+```python title="Request"
+import requests
+
+response = requests.get(
+    'https://api.rybbit.io/api/performance/by-dimension/123',
+    params={
+        'dimension': 'pathname',
+        'sort_by': 'lcp_p75',
+        'sort_order': 'desc',
+        'limit': 10
+    },
+    headers={
+        'Authorization': 'Bearer your_api_key_here'
+    }
+)
+
+data = response.json()
+```
+  </Tab>
+  <Tab value="PHP">
+```php title="Request"
+$ch = curl_init();
+curl_setopt($ch, CURLOPT_URL, 'https://api.rybbit.io/api/performance/by-dimension/123?dimension=pathname&sort_by=lcp_p75&sort_order=desc&limit=10');
+curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+curl_setopt($ch, CURLOPT_HTTPHEADER, [
+    'Authorization: Bearer your_api_key_here'
+]);
+
+$response = curl_exec($ch);
+curl_close($ch);
+
+$data = json_decode($response, true);
+```
+  </Tab>
+  <Tab value="Ruby">
+```ruby title="Request"
+require 'net/http'
+require 'json'
+
+uri = URI('https://api.rybbit.io/api/performance/by-dimension/123?dimension=pathname&sort_by=lcp_p75&sort_order=desc&limit=10')
+req = Net::HTTP::Get.new(uri)
+req['Authorization'] = 'Bearer your_api_key_here'
+
+res = Net::HTTP.start(uri.hostname, uri.port, use_ssl: true) { |http| http.request(req) }
+data = JSON.parse(res.body)
+```
+  </Tab>
+  <Tab value="Go">
+```go title="Request"
+req, _ := http.NewRequest("GET", "https://api.rybbit.io/api/performance/by-dimension/123?dimension=pathname&sort_by=lcp_p75&sort_order=desc&limit=10", nil)
+req.Header.Set("Authorization", "Bearer your_api_key_here")
+
+client := &http.Client{}
+resp, _ := client.Do(req)
+defer resp.Body.Close()
+
+var data map[string]interface{}
+json.NewDecoder(resp.Body).Decode(&data)
+```
+  </Tab>
+  <Tab value="Rust">
+```rust title="Request"
+let client = reqwest::Client::new();
+let res = client
+    .get("https://api.rybbit.io/api/performance/by-dimension/123?dimension=pathname&sort_by=lcp_p75&sort_order=desc&limit=10")
+    .header("Authorization", "Bearer your_api_key_here")
+    .send()
+    .await?;
+
+let data: serde_json::Value = res.json().await?;
+```
+  </Tab>
+  <Tab value="Java">
+```java title="Request"
+HttpClient client = HttpClient.newHttpClient();
+HttpRequest request = HttpRequest.newBuilder()
+    .uri(URI.create("https://api.rybbit.io/api/performance/by-dimension/123?dimension=pathname&sort_by=lcp_p75&sort_order=desc&limit=10"))
+    .header("Authorization", "Bearer your_api_key_here")
+    .GET()
+    .build();
+
+HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+```
+  </Tab>
+  <Tab value=".NET">
+```csharp title="Request"
+using var client = new HttpClient();
+client.DefaultRequestHeaders.Add("Authorization", "Bearer your_api_key_here");
+
+var response = await client.GetAsync("https://api.rybbit.io/api/performance/by-dimension/123?dimension=pathname&sort_by=lcp_p75&sort_order=desc&limit=10");
+var data = await response.Content.ReadAsStringAsync();
+```
+  </Tab>
+</Tabs>
+
+```json title="Response"
+{
+  "data": {
+    "data": [
+      {
+        "pathname": "/dashboard",
+        "event_count": 12450,
+        "lcp_avg": 2850,
+        "lcp_p50": 2400,
+        "lcp_p75": 3200,
+        "lcp_p90": 4100,
+        "lcp_p99": 6500,
+        "cls_avg": 0.08,
+        "cls_p50": 0.05,
+        "cls_p75": 0.12,
+        "inp_avg": 180,
+        "inp_p50": 150,
+        "inp_p75": 220,
+        "fcp_avg": 1450,
+        "fcp_p50": 1300,
+        "fcp_p75": 1700,
+        "ttfb_avg": 520,
+        "ttfb_p50": 480,
+        "ttfb_p75": 680
+      },
+      {
+        "pathname": "/reports",
+        "event_count": 8920,
+        "lcp_avg": 2650,
+        "lcp_p50": 2200,
+        "lcp_p75": 2900,
+        "lcp_p90": 3800,
+        "lcp_p99": 5800
+      }
+    ],
+    "totalCount": 156
+  }
+}
+```
+
+</div>
+</div>

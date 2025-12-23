@@ -3,18 +3,14 @@
 import { useEffect } from "react";
 import { authClient } from "../lib/auth";
 import { useUserOrganizations } from "../api/admin/organizations";
+import { useTrack } from "../hooks/useTrack";
 
 function OrganizationInitializerInner() {
   const { data: organizations } = useUserOrganizations();
-  const { data: activeOrganization, isPending: isPendingActiveOrganization } =
-    authClient.useActiveOrganization();
+  const { data: activeOrganization, isPending: isPendingActiveOrganization } = authClient.useActiveOrganization();
 
   useEffect(() => {
-    if (
-      !isPendingActiveOrganization &&
-      !activeOrganization &&
-      organizations?.length
-    ) {
+    if (!isPendingActiveOrganization && !activeOrganization && organizations?.length) {
       authClient.organization.setActive({
         organizationId: organizations?.[0]?.id,
       });
@@ -26,6 +22,7 @@ function OrganizationInitializerInner() {
 
 export function OrganizationInitializer() {
   const session = authClient.useSession();
+  useTrack();
   if (session.data?.user) {
     return <OrganizationInitializerInner />;
   }

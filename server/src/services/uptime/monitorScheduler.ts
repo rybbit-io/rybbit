@@ -146,26 +146,26 @@ export class MonitorScheduler {
 
       // First, remove repeatable job configuration
       const repeatableJobs = await this.queue.getRepeatableJobs();
-      const monitorRepeatableJobs = repeatableJobs.filter((job) => job.name === jobName || job.id === jobName);
+      const monitorRepeatableJobs = repeatableJobs.filter(job => job.name === jobName || job.id === jobName);
 
-      await Promise.all(monitorRepeatableJobs.map((job) => this.queue.removeRepeatableByKey(job.key)));
+      await Promise.all(monitorRepeatableJobs.map(job => this.queue.removeRepeatableByKey(job.key)));
 
       // Then remove any non-repeat jobs (only remove jobs that don't belong to scheduler)
       const jobs = await this.queue.getJobs(["waiting", "active", "completed", "failed"]);
-      const monitorJobs = jobs.filter((job) => {
+      const monitorJobs = jobs.filter(job => {
         // Only remove jobs that match our monitor and aren't repeat jobs
         return (job.name === jobName || job.id === jobName) && !job.repeatJobKey;
       });
 
       await Promise.all(
-        monitorJobs.map(async (job) => {
+        monitorJobs.map(async job => {
           try {
             await job.remove();
           } catch (err) {
             // Ignore errors for jobs that can't be removed (e.g., repeat jobs)
             this.logger.warn({ jobId: job.id, error: err }, "Could not remove job");
           }
-        }),
+        })
       );
 
       this.logger.info({ monitorId }, "Removed schedule for monitor");
@@ -210,11 +210,11 @@ export class MonitorScheduler {
         Promise.race([
           this.queueEvents.close(),
           new Promise((_, reject) => setTimeout(() => reject(new Error("Queue events close timeout")), 3000)),
-        ]).catch((err) => this.logger.error(err, "Queue events close error")),
+        ]).catch(err => this.logger.error(err, "Queue events close error")),
         Promise.race([
           this.queue.close(),
           new Promise((_, reject) => setTimeout(() => reject(new Error("Queue close timeout")), 3000)),
-        ]).catch((err) => this.logger.error(err, "Queue close error")),
+        ]).catch(err => this.logger.error(err, "Queue close error")),
       ]);
 
       this.logger.info("BullMQ monitor scheduler shut down successfully");

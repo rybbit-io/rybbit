@@ -6,6 +6,7 @@
         "lib": [
             "ES2020"
         ],
+        "jsx": "react",
         "strict": true,
         "esModuleInterop": true,
         "skipLibCheck": true,

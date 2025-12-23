@@ -4,9 +4,10 @@ import {
   SessionReplayListItem,
   GetSessionReplayEventsResponse,
 } from "../../types/sessionReplay.js";
-import { processResults, getTimeStatement, getFilterStatement } from "../../api/analytics/utils.js";
+import { processResults, getTimeStatement } from "../../api/analytics/utils/utils.js";
 import { FilterParams } from "@rybbit/shared";
 import { r2Storage } from "../storage/r2StorageService.js";
+import { getFilterStatement } from "../../api/analytics/utils/getFilterStatement.js";
 
 /**
  * Service responsible for querying/retrieving session replay data
@@ -15,12 +16,12 @@ import { r2Storage } from "../storage/r2StorageService.js";
 export class SessionReplayQueryService {
   async getSessionReplayList(
     siteId: number,
-    options: {
+    options: FilterParams<{
       limit?: number;
       offset?: number;
       userId?: string;
       minDuration?: number;
-    } & Pick<FilterParams, "startDate" | "endDate" | "timeZone" | "pastMinutesStart" | "pastMinutesEnd" | "filters">,
+    }>
   ): Promise<SessionReplayListItem[]> {
     const { limit = 50, offset = 0, userId, minDuration } = options;
 
@@ -32,7 +33,7 @@ export class SessionReplayQueryService {
     const queryParams: any = { siteId, limit, offset };
 
     if (userId) {
-      whereConditions.push(`user_id = {userId:String}`);
+      whereConditions.push(`(user_id = {userId:String} OR identified_user_id = {userId:String})`);
       queryParams.userId = userId;
     }
 
@@ -70,9 +71,10 @@ export class SessionReplayQueryService {
     }
 
     const query = `
-      SELECT 
+      SELECT
         session_id,
         user_id,
+        identified_user_id,
         start_time,
         end_time,
         duration_ms,
@@ -131,7 +133,7 @@ export class SessionReplayQueryService {
     const metadata = metadataResults[0];
 
     if (!metadata) {
-      throw new Error("Session replay not found");
+      throw new Error("Session replay not found for session " + sessionId);
     }
 
     // Get events
@@ -164,7 +166,7 @@ export class SessionReplayQueryService {
 
     // Group events by batch key for efficient R2 retrieval
     const eventsByBatch = new Map<string | null, EventRow[]>();
-    eventsResults.forEach((event) => {
+    eventsResults.forEach(event => {
       const key = event.event_data_key;
       if (!eventsByBatch.has(key)) {
         eventsByBatch.set(key, []);
@@ -249,7 +251,7 @@ export class SessionReplayQueryService {
         SELECT *
         FROM session_replay_metadata
         FINAL
-        WHERE site_id = {siteId:UInt16} 
+        WHERE site_id = {siteId:UInt16}
           AND session_id = {sessionId:String}
         LIMIT 1
       `,
@@ -259,5 +261,58 @@ export class SessionReplayQueryService {
 
     const results = await processResults<SessionReplayMetadata>(result);
     return results[0] || null;
+  }
+
+  /**
+   * Delete a session replay and all associated data
+   * This includes:
+   * - Events from session_replay_events table
+   * - Metadata from session_replay_metadata table
+   * - R2 stored data (if enabled)
+   */
+  async deleteSessionReplay(siteId: number, sessionId: string): Promise<void> {
+    // First, get all R2 keys for this session if R2 is enabled
+    if (r2Storage.isEnabled()) {
+      try {
+        const r2KeysResult = await clickhouse.query({
+          query: `
+            SELECT DISTINCT event_data_key
+            FROM session_replay_events
+            WHERE site_id = {siteId:UInt16}
+              AND session_id = {sessionId:String}
+              AND event_data_key IS NOT NULL
+          `,
+          query_params: { siteId, sessionId },
+          format: "JSONEachRow",
+        });
+
+        const r2Keys = await processResults<{ event_data_key: string }>(r2KeysResult);
+
+        // Delete all R2 batches in parallel
+        await Promise.all(r2Keys.map(row => r2Storage.deleteBatch(row.event_data_key)));
+      } catch (error) {
+        console.error(`Failed to delete R2 data for session ${sessionId}:`, error);
+        // Continue with ClickHouse deletion even if R2 fails
+      }
+    }
+
+    // Delete from ClickHouse tables
+    await clickhouse.command({
+      query: `
+        DELETE FROM session_replay_events
+        WHERE site_id = {siteId:UInt16}
+          AND session_id = {sessionId:String}
+      `,
+      query_params: { siteId, sessionId },
+    });
+
+    await clickhouse.command({
+      query: `
+        DELETE FROM session_replay_metadata
+        WHERE site_id = {siteId:UInt16}
+          AND session_id = {sessionId:String}
+      `,
+      query_params: { siteId, sessionId },
+    });
   }
 }

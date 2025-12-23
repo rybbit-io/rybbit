@@ -18,9 +18,7 @@ describe("normalizeOrigin", () => {
     it("should remove multi-level subdomains", () => {
       expect(normalizeOrigin("api.v1.example.com")).toBe("example.com");
       expect(normalizeOrigin("www.blog.example.com")).toBe("example.com");
-      expect(normalizeOrigin("https://api.v2.staging.example.com")).toBe(
-        "example.com"
-      );
+      expect(normalizeOrigin("https://api.v2.staging.example.com")).toBe("example.com");
     });
   });
 
@@ -28,9 +26,7 @@ describe("normalizeOrigin", () => {
     it("should handle .co.uk domains correctly", () => {
       expect(normalizeOrigin("www.example.co.uk")).toBe("example.co.uk");
       expect(normalizeOrigin("api.example.co.uk")).toBe("example.co.uk");
-      expect(normalizeOrigin("https://subdomain.example.co.uk")).toBe(
-        "example.co.uk"
-      );
+      expect(normalizeOrigin("https://subdomain.example.co.uk")).toBe("example.co.uk");
     });
 
     it("should handle .com.au domains correctly", () => {
@@ -40,9 +36,7 @@ describe("normalizeOrigin", () => {
 
     it("should handle .org.uk domains correctly", () => {
       expect(normalizeOrigin("www.charity.org.uk")).toBe("charity.org.uk");
-      expect(normalizeOrigin("subdomain.charity.org.uk")).toBe(
-        "charity.org.uk"
-      );
+      expect(normalizeOrigin("subdomain.charity.org.uk")).toBe("charity.org.uk");
     });
 
     it("should handle .gov.uk domains correctly", () => {
@@ -51,12 +45,8 @@ describe("normalizeOrigin", () => {
     });
 
     it("should handle .edu.au domains correctly", () => {
-      expect(normalizeOrigin("www.university.edu.au")).toBe(
-        "university.edu.au"
-      );
-      expect(normalizeOrigin("library.university.edu.au")).toBe(
-        "university.edu.au"
-      );
+      expect(normalizeOrigin("www.university.edu.au")).toBe("university.edu.au");
+      expect(normalizeOrigin("library.university.edu.au")).toBe("university.edu.au");
     });
   });
 
@@ -64,45 +54,27 @@ describe("normalizeOrigin", () => {
     it("should handle full URLs with protocols", () => {
       expect(normalizeOrigin("https://www.example.com")).toBe("example.com");
       expect(normalizeOrigin("http://api.example.com")).toBe("example.com");
-      expect(normalizeOrigin("https://subdomain.example.co.uk")).toBe(
-        "example.co.uk"
-      );
+      expect(normalizeOrigin("https://subdomain.example.co.uk")).toBe("example.co.uk");
     });
 
     it("should handle URLs with paths", () => {
-      expect(normalizeOrigin("https://www.example.com/path/to/page")).toBe(
-        "example.com"
-      );
-      expect(normalizeOrigin("https://api.example.com/v1/users")).toBe(
-        "example.com"
-      );
+      expect(normalizeOrigin("https://www.example.com/path/to/page")).toBe("example.com");
+      expect(normalizeOrigin("https://api.example.com/v1/users")).toBe("example.com");
     });
 
     it("should handle URLs with query parameters", () => {
-      expect(normalizeOrigin("https://www.example.com?param=value")).toBe(
-        "example.com"
-      );
-      expect(normalizeOrigin("https://api.example.com/search?q=test")).toBe(
-        "example.com"
-      );
+      expect(normalizeOrigin("https://www.example.com?param=value")).toBe("example.com");
+      expect(normalizeOrigin("https://api.example.com/search?q=test")).toBe("example.com");
     });
 
     it("should handle URLs with fragments", () => {
-      expect(normalizeOrigin("https://www.example.com#section")).toBe(
-        "example.com"
-      );
-      expect(normalizeOrigin("https://blog.example.com/post#comments")).toBe(
-        "example.com"
-      );
+      expect(normalizeOrigin("https://www.example.com#section")).toBe("example.com");
+      expect(normalizeOrigin("https://blog.example.com/post#comments")).toBe("example.com");
     });
 
     it("should handle URLs with ports", () => {
-      expect(normalizeOrigin("https://www.example.com:8080")).toBe(
-        "example.com"
-      );
-      expect(normalizeOrigin("http://api.example.com:3000")).toBe(
-        "example.com"
-      );
+      expect(normalizeOrigin("https://www.example.com:8080")).toBe("example.com");
+      expect(normalizeOrigin("http://api.example.com:3000")).toBe("example.com");
     });
 
     it("should handle plain hostnames without protocol", () => {
@@ -138,9 +110,7 @@ describe("normalizeOrigin", () => {
 
     it("should handle domains with hyphens", () => {
       expect(normalizeOrigin("www.my-site.com")).toBe("my-site.com");
-      expect(normalizeOrigin("api.my-awesome-site.co.uk")).toBe(
-        "my-awesome-site.co.uk"
-      );
+      expect(normalizeOrigin("api.my-awesome-site.co.uk")).toBe("my-awesome-site.co.uk");
     });
 
     it("should handle domains with numbers", () => {
@@ -209,15 +179,9 @@ describe("normalizeOrigin", () => {
         "https://shop.example.net",
       ];
 
-      const results = domains.map((domain) => normalizeOrigin(domain));
+      const results = domains.map(domain => normalizeOrigin(domain));
 
-      expect(results).toEqual([
-        "example.com",
-        "example.com",
-        "example.co.uk",
-        "example.org",
-        "example.net",
-      ]);
+      expect(results).toEqual(["example.com", "example.com", "example.co.uk", "example.org", "example.net"]);
     });
   });
 });

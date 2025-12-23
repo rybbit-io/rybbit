@@ -2,16 +2,11 @@ import { FastifyReply, FastifyRequest } from "fastify";
 import { db } from "../../../db/postgres/postgres.js";
 import { goals } from "../../../db/postgres/schema.js";
 import { clickhouse } from "../../../db/clickhouse/clickhouse.js";
-import { getUserHasAccessToSitePublic } from "../../../lib/auth-utils.js";
 import { eq, desc, asc, sql } from "drizzle-orm";
-import {
-  getFilterStatement,
-  getTimeStatement,
-  processResults,
-  patternToRegex,
-} from "../utils.js";
+import { getTimeStatement, processResults, patternToRegex } from "../utils/utils.js";
 import SqlString from "sqlstring";
 import { FilterParams } from "@rybbit/shared";
+import { getFilterStatement } from "../utils/getFilterStatement.js";
 
 // Types for the response
 interface GoalWithConversions {
@@ -42,7 +37,7 @@ export async function getGoals(
     };
     Querystring: FilterParams<{
       page?: string;
-      pageSize?: string;
+      page_size?: string;
       sort?: string;
       order?: "asc" | "desc";
     }>;
@@ -50,18 +45,7 @@ export async function getGoals(
   reply: FastifyReply
 ) {
   const { site } = request.params;
-  const {
-    startDate,
-    endDate,
-    timeZone,
-    filters,
-    page = "1",
-    pageSize = "10",
-    sort = "createdAt",
-    order = "desc",
-    pastMinutesStart,
-    pastMinutesEnd,
-  } = request.query;
+  const { filters, page = "1", page_size: pageSize = "10", sort = "createdAt", order = "desc" } = request.query;
 
   const pageNumber = parseInt(page, 10);
   const pageSizeNumber = parseInt(pageSize, 10);
@@ -72,15 +56,7 @@ export async function getGoals(
   }
 
   if (isNaN(pageSizeNumber) || pageSizeNumber < 1 || pageSizeNumber > 100) {
-    return reply
-      .status(400)
-      .send({ error: "Invalid page size, must be between 1 and 100" });
-  }
-
-  // Check user access to site
-  const userHasAccessToSite = await getUserHasAccessToSitePublic(request, site);
-  if (!userHasAccessToSite) {
-    return reply.status(403).send({ error: "Forbidden" });
+    return reply.status(400).send({ error: "Invalid page size, must be between 1 and 100" });
   }
 
   try {
@@ -147,8 +123,8 @@ export async function getGoals(
     }
 
     // Build filter and time clauses for ClickHouse queries
-    const filterStatement = filters ? getFilterStatement(filters) : "";
     const timeStatement = getTimeStatement(request.query);
+    const filterStatement = filters ? getFilterStatement(filters, Number(site), timeStatement) : "";
 
     // First, get the total number of unique sessions (denominator for conversion rate)
     const totalSessionsQuery = `
@@ -164,9 +140,7 @@ export async function getGoals(
       format: "JSONEachRow",
     });
 
-    const totalSessionsData = await processResults<{ total_sessions: number }>(
-      totalSessionsResult
-    );
+    const totalSessionsData = await processResults<{ total_sessions: number }>(totalSessionsResult);
     const totalSessions = totalSessionsData[0]?.total_sessions || 0;
 
     // Build a single query that calculates all goal conversions at once using conditional aggregation
@@ -193,34 +167,24 @@ export async function getGoals(
 
         if (!eventName) continue;
 
-        let eventClause = `type = 'custom_event' AND event_name = ${SqlString.escape(
-          eventName
-        )}`;
+        let eventClause = `type = 'custom_event' AND event_name = ${SqlString.escape(eventName)}`;
 
         // Add property matching if needed
         if (eventPropertyKey && eventPropertyValue !== undefined) {
           // Access the sub-column directly for native JSON type
-          const propValueAccessor = `props.${SqlString.escapeId(
-            eventPropertyKey
-          )}`;
+          const propValueAccessor = `props.${SqlString.escapeId(eventPropertyKey)}`;
 
           // Comparison needs to handle the Dynamic type returned
           // Let ClickHouse handle the comparison based on the provided value type
           if (typeof eventPropertyValue === "string") {
-            eventClause += ` AND toString(${propValueAccessor}) = ${SqlString.escape(
-              eventPropertyValue
-            )}`;
+            eventClause += ` AND toString(${propValueAccessor}) = ${SqlString.escape(eventPropertyValue)}`;
           } else if (typeof eventPropertyValue === "number") {
             // Use toFloat64 or toInt* depending on expected number type
-            eventClause += ` AND toFloat64OrNull(${propValueAccessor}) = ${SqlString.escape(
-              eventPropertyValue
-            )}`;
+            eventClause += ` AND toFloat64OrNull(${propValueAccessor}) = ${SqlString.escape(eventPropertyValue)}`;
           } else if (typeof eventPropertyValue === "boolean") {
             // Booleans might be stored as 0/1 or true/false in JSON
             // Comparing toUInt8 seems robust
-            eventClause += ` AND toUInt8OrNull(${propValueAccessor}) = ${
-              eventPropertyValue ? 1 : 0
-            }`;
+            eventClause += ` AND toUInt8OrNull(${propValueAccessor}) = ${eventPropertyValue ? 1 : 0}`;
           }
         }
 
@@ -236,7 +200,7 @@ export async function getGoals(
 
     if (conditionalClauses.length === 0) {
       // If no valid goals to calculate, return the goals without conversion data
-      const goalsWithZeroConversions = siteGoals.map((goal) => ({
+      const goalsWithZeroConversions = siteGoals.map(goal => ({
         ...goal,
         total_conversions: 0,
         total_sessions: totalSessions,
@@ -269,28 +233,23 @@ export async function getGoals(
       format: "JSONEachRow",
     });
 
-    const conversionData =
-      await processResults<Record<string, number>>(conversionResult);
+    const conversionData = await processResults<Record<string, number>>(conversionResult);
 
     // If we didn't get any results, use zeros
     const conversions = conversionData[0] || {};
 
     // Combine goals data with conversion metrics
-    const goalsWithConversions: GoalWithConversions[] = siteGoals.map(
-      (goal) => {
-        const totalConversions =
-          conversions[`goal_${goal.goalId}_conversions`] || 0;
-        const conversionRate =
-          totalSessions > 0 ? totalConversions / totalSessions : 0;
+    const goalsWithConversions: GoalWithConversions[] = siteGoals.map(goal => {
+      const totalConversions = conversions[`goal_${goal.goalId}_conversions`] || 0;
+      const conversionRate = totalSessions > 0 ? totalConversions / totalSessions : 0;
 
-        return {
-          ...goal,
-          total_conversions: totalConversions,
-          total_sessions: totalSessions,
-          conversion_rate: conversionRate,
-        };
-      }
-    );
+      return {
+        ...goal,
+        total_conversions: totalConversions,
+        total_sessions: totalSessions,
+        conversion_rate: conversionRate,
+      };
+    });
 
     return reply.send({
       data: goalsWithConversions,

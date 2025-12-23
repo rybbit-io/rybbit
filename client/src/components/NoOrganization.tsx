@@ -24,10 +24,7 @@ export function NoOrganization({
         </div>
         <CardTitle className="mb-2 text-xl">No Organization</CardTitle>
         <CardDescription className="mb-6">{message}</CardDescription>
-        <Button
-          onClick={() => setCreateOrgDialogOpen(true)}
-          className="max-w-xs"
-        >
+        <Button onClick={() => setCreateOrgDialogOpen(true)} className="max-w-xs">
           <Plus className="mr-2 h-4 w-4" />
           Create an Organization
         </Button>

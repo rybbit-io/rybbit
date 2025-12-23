@@ -1,0 +1,457 @@
+---
+title: Cloudflare Workers Proxy Setup
+description: Use Cloudflare Workers to proxy Rybbit tracking at the edge
+---
+
+import { Steps } from 'fumadocs-ui/components/steps';
+import { Callout } from 'fumadocs-ui/components/callout';
+import { Tabs, Tab } from 'fumadocs-ui/components/tabs';
+
+Cloudflare Workers provide a serverless way to proxy Rybbit tracking at the edge, close to your users worldwide. This delivers excellent performance with minimal configuration.
+
+## Overview
+
+Cloudflare Workers run on Cloudflare's global network, intercepting and proxying requests before they reach your origin server. This makes them perfect for analytics proxying with built-in caching and ultra-low latency.
+
+**What you'll achieve:**
+- Edge-based proxying in 300+ cities worldwide
+- Automatic caching with Cloudflare's Cache API
+- Sub-10ms latency for most requests
+- Zero server infrastructure needed
+
+## Prerequisites
+
+- Cloudflare account with your domain
+- Workers enabled on your account (free tier available)
+- Your Rybbit instance URL:
+  - **Cloud hosted**: `https://app.rybbit.io`
+  - **Self-hosted**: Your instance URL
+- Your Rybbit site ID
+
+## Implementation
+
+<Steps>
+
+### Create Worker
+
+Log in to Cloudflare Dashboard and create a new Worker:
+
+1. Go to **Workers & Pages** → **Create application** → **Create Worker**
+2. Name it `rybbit-proxy` (or your preferred name)
+3. Click **Deploy** to create the worker
+
+### Update Worker Code
+
+Replace the default code with the proxy implementation:
+
+<Tabs>
+<Tab value="full-proxy-recommended" title="Full Proxy (Recommended)">
+
+```javascript
+// Cloudflare Worker for Rybbit Analytics Proxy
+
+const RYBBIT_HOST = 'https://app.rybbit.io';
+
+addEventListener('fetch', event => {
+  event.respondWith(handleRequest(event.request));
+});
+
+async function handleRequest(request) {
+  const url = new URL(request.url);
+
+  // Only proxy /analytics/* paths
+  if (!url.pathname.startsWith('/analytics/')) {
+    // Pass through to origin
+    return fetch(request);
+  }
+
+  try {
+    return await proxyToRybbit(request, url);
+  } catch (error) {
+    console.error('Proxy error:', error);
+    return new Response('Analytics proxy error', { status: 500 });
+  }
+}
+
+async function proxyToRybbit(request, url) {
+  // Map paths: /analytics/* → /api/*
+  let rybbitPath = url.pathname.replace('/analytics/', '/api/');
+
+  // Special case for site config
+  if (url.pathname.startsWith('/analytics/site/')) {
+    rybbitPath = url.pathname.replace('/analytics/', '/');
+  }
+
+  // Build Rybbit URL
+  const rybbitUrl = new URL(rybbitPath, RYBBIT_HOST);
+  rybbitUrl.search = url.search; // Preserve query params
+
+  // Get client IP
+  const clientIp = request.headers.get('CF-Connecting-IP') ||
+                   request.headers.get('X-Forwarded-For') ||
+                   '0.0.0.0';
+
+  // Build request headers
+  const proxyHeaders = new Headers(request.headers);
+  proxyHeaders.set('X-Real-IP', clientIp);
+  proxyHeaders.set('X-Forwarded-For', clientIp);
+  proxyHeaders.delete('CF-Connecting-IP'); // Remove Cloudflare internal header
+
+  // Build proxy request
+  const proxyRequest = new Request(rybbitUrl, {
+    method: request.method,
+    headers: proxyHeaders,
+    body: request.method !== 'GET' && request.method !== 'HEAD' ? request.body : undefined,
+  });
+
+  // Check cache for GET requests
+  if (request.method === 'GET') {
+    const cache = caches.default;
+    let response = await cache.match(proxyRequest);
+
+    if (response) {
+      // Return cached response
+      return new Response(response.body, {
+        status: response.status,
+        statusText: response.statusText,
+        headers: {
+          ...Object.fromEntries(response.headers),
+          'X-Cache-Status': 'HIT',
+        },
+      });
+    }
+  }
+
+  // Fetch from Rybbit
+  const response = await fetch(proxyRequest);
+
+  // Cache scripts for 1 hour
+  if (request.method === 'GET' && url.pathname.match(/\.(js)$/)) {
+    const cacheResponse = new Response(response.body, response);
+    cacheResponse.headers.set('Cache-Control', 'public, max-age=3600');
+    cacheResponse.headers.set('X-Cache-Status', 'MISS');
+
+    // Clone and cache
+    const cache = caches.default;
+    await cache.put(proxyRequest, cacheResponse.clone());
+
+    return cacheResponse;
+  }
+
+  // Return non-cacheable response
+  return new Response(response.body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers: response.headers,
+  });
+}
+```
+
+</Tab>
+<Tab value="minimal-proxy" title="Minimal Proxy">
+
+```javascript
+// Minimal Cloudflare Worker for Rybbit
+
+const RYBBIT_HOST = 'https://app.rybbit.io';
+
+addEventListener('fetch', event => {
+  event.respondWith(handleRequest(event.request));
+});
+
+async function handleRequest(request) {
+  const url = new URL(request.url);
+
+  // Only proxy /analytics/script.js and /analytics/track
+  if (url.pathname === '/analytics/script.js' || url.pathname === '/analytics/track') {
+    const rybbitPath = url.pathname.replace('/analytics/', '/api/');
+    const rybbitUrl = `${RYBBIT_HOST}${rybbitPath}`;
+
+    const clientIp = request.headers.get('CF-Connecting-IP') || '0.0.0.0';
+
+    const proxyHeaders = new Headers(request.headers);
+    proxyHeaders.set('X-Real-IP', clientIp);
+    proxyHeaders.set('X-Forwarded-For', clientIp);
+
+    return fetch(rybbitUrl, {
+      method: request.method,
+      headers: proxyHeaders,
+      body: request.method === 'POST' ? request.body : undefined,
+    });
+  }
+
+  // Pass through to origin
+  return fetch(request);
+}
+```
+
+</Tab>
+<Tab value="with-environment-variables" title="With Environment Variables">
+
+Using Workers secrets for configuration:
+
+```javascript
+addEventListener('fetch', event => {
+  event.respondWith(handleRequest(event.request, event.env));
+});
+
+async function handleRequest(request, env) {
+  const RYBBIT_HOST = env.RYBBIT_HOST || 'https://app.rybbit.io';
+  const url = new URL(request.url);
+
+  if (!url.pathname.startsWith('/analytics/')) {
+    return fetch(request);
+  }
+
+  let rybbitPath = url.pathname.replace('/analytics/', '/api/');
+
+  if (url.pathname.startsWith('/analytics/site/')) {
+    rybbitPath = url.pathname.replace('/analytics/', '/');
+  }
+
+  const rybbitUrl = new URL(rybbitPath, RYBBIT_HOST);
+  const clientIp = request.headers.get('CF-Connecting-IP') || '0.0.0.0';
+
+  const proxyHeaders = new Headers(request.headers);
+  proxyHeaders.set('X-Real-IP', clientIp);
+  proxyHeaders.set('X-Forwarded-For', clientIp);
+
+  return fetch(rybbitUrl.toString(), {
+    method: request.method,
+    headers: proxyHeaders,
+    body: request.method !== 'GET' ? request.body : undefined,
+  });
+}
+```
+
+Set environment variable in Cloudflare Dashboard:
+**Workers & Pages** → Your Worker → **Settings** → **Variables** → Add `RYBBIT_HOST`
+
+</Tab>
+</Tabs>
+
+### Deploy Worker
+
+Click **Save and Deploy** to publish your worker.
+
+### Configure Worker Route
+
+Set up a route to trigger the worker:
+
+1. Go to **Workers & Pages** → Your Worker → **Triggers**
+2. Click **Add route**
+3. Configure:
+   - **Route**: `yourdomain.com/analytics/*`
+   - **Zone**: Select your domain
+4. Click **Save**
+
+<Callout type="info">
+The route pattern `yourdomain.com/analytics/*` ensures the worker only runs for analytics requests, not your entire site.
+</Callout>
+
+### Update Your Tracking Script
+
+Add the script to your website:
+
+```html
+<script src="/analytics/script.js" async data-site-id="YOUR_SITE_ID"></script>
+```
+
+### Verify the Setup
+
+1. **Visit your site** with Developer Tools open
+2. **Check Network tab**:
+   - Script loads from `/analytics/script.js`
+   - Check response headers for `CF-Cache-Status` (HIT/MISS)
+3. **Verify in Rybbit dashboard**: Data should appear
+
+</Steps>
+
+## How It Works
+
+Cloudflare Workers intercept requests at the edge:
+
+1. Request to `yourdomain.com/analytics/script.js` hits Cloudflare edge
+2. Worker checks cache for GET requests
+3. If not cached, proxies to `app.rybbit.io/api/script.js`
+4. Response is cached at the edge location
+5. Subsequent requests serve from edge cache (ultra-fast)
+
+All tracking data flows through Cloudflare's network while preserving client IP information.
+
+## Performance Benefits
+
+### Global Edge Network
+
+- **300+ locations worldwide**: Workers run in Cloudflare data centers globally
+- **Sub-10ms cold start**: Faster than traditional serverless
+- **Automatic scaling**: Handles traffic spikes without configuration
+
+### Built-in Caching
+
+- **Cache API**: Leverages Cloudflare's massive edge cache
+- **Intelligent caching**: Scripts cached at edge, tracking requests passed through
+- **Instant cache purge**: Clear cache via Cloudflare API if needed
+
+### Zero Infrastructure
+
+- **No servers to manage**: Fully serverless
+- **Pay-per-request**: Free tier includes 100,000 requests/day
+- **Automatic HTTPS**: Cloudflare handles SSL
+
+## Advanced Configuration
+
+### Cache Control
+
+Customize caching behavior:
+
+```javascript
+// Cache scripts for different durations
+if (url.pathname === '/analytics/script.js') {
+  cacheResponse.headers.set('Cache-Control', 'public, max-age=3600'); // 1 hour
+} else if (url.pathname === '/analytics/replay.js') {
+  cacheResponse.headers.set('Cache-Control', 'public, max-age=7200'); // 2 hours
+}
+```
+
+### Rate Limiting
+
+Add basic rate limiting:
+
+```javascript
+// Simple in-memory rate limiting (per edge location)
+const rateLimitMap = new Map();
+
+async function checkRateLimit(ip) {
+  const key = `ratelimit:${ip}`;
+  const current = rateLimitMap.get(key) || { count: 0, resetAt: Date.now() + 60000 };
+
+  if (Date.now() > current.resetAt) {
+    current.count = 0;
+    current.resetAt = Date.now() + 60000;
+  }
+
+  current.count++;
+  rateLimitMap.set(key, current);
+
+  return current.count > 100; // 100 requests per minute
+}
+```
+
+### Logging and Analytics
+
+Log proxy usage:
+
+```javascript
+async function handleRequest(request) {
+  const startTime = Date.now();
+
+  try {
+    const response = await proxyToRybbit(request, url);
+    const duration = Date.now() - startTime;
+
+    // Log to Cloudflare Analytics Engine (if enabled)
+    console.log({
+      path: url.pathname,
+      status: response.status,
+      duration,
+      cached: response.headers.get('X-Cache-Status') === 'HIT',
+    });
+
+    return response;
+  } catch (error) {
+    console.error('Proxy error:', error);
+    return new Response('Error', { status: 500 });
+  }
+}
+```
+
+## Cost Considerations
+
+Cloudflare Workers pricing (as of 2024):
+
+- **Free tier**: 100,000 requests/day
+- **Paid plan**: $5/month for 10 million requests + $0.50 per million after
+
+For typical traffic:
+- 100,000 sessions/month ≈ 200,000-500,000 requests (well within free tier)
+- Even with session replay: Usually under 1 million requests/month
+
+<Callout type="info">
+Most sites stay within the free tier. Bandwidth is unlimited on all Cloudflare plans.
+</Callout>
+
+## Troubleshooting
+
+### Worker not triggering
+
+**Problem**: Requests bypass worker.
+
+**Solution**:
+1. Verify route is configured: `yourdomain.com/analytics/*`
+2. Check zone matches your domain
+3. Ensure orange-cloud (proxy) is enabled on DNS record
+
+### Cache not working
+
+**Problem**: `X-Cache-Status` always shows MISS.
+
+**Solution**:
+1. Verify cache key includes important parts:
+   ```javascript
+   const cacheKey = new Request(rybbitUrl, request);
+   ```
+2. Ensure `Cache-Control` headers are set
+3. Check method is GET (POST requests aren't cached)
+
+### Incorrect geolocation
+
+**Problem**: All visitors show Cloudflare IPs.
+
+**Solution**:
+Use `CF-Connecting-IP` header:
+```javascript
+const clientIp = request.headers.get('CF-Connecting-IP');
+proxyHeaders.set('X-Real-IP', clientIp);
+```
+
+### Deployment errors
+
+**Problem**: Worker fails to deploy.
+
+**Solution**:
+1. Check syntax in editor (no console.log in production)
+2. Verify all async functions use await
+3. Test locally with Wrangler:
+   ```bash
+   npm install -g wrangler
+   wrangler dev
+   ```
+
+## Local Development
+
+Use Wrangler for local testing:
+
+```bash
+# Install Wrangler
+npm install -g wrangler
+
+# Login to Cloudflare
+wrangler login
+
+# Create worker
+wrangler init rybbit-proxy
+
+# Dev server
+wrangler dev
+
+# Deploy
+wrangler deploy
+```
+
+## Related Resources
+
+- [Tracking Script Documentation](/docs/script) - Script configuration
+- [Generic Proxy Guide](/docs/proxy-guide/get-started) - Core concepts
+- [Cloudflare Workers Docs](https://developers.cloudflare.com/workers/) - Official docs
+- [Workers Cache API](https://developers.cloudflare.com/workers/runtime-apis/cache/) - Caching documentation

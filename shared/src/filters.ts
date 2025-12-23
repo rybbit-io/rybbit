@@ -1,4 +1,12 @@
-export type FilterType = "equals" | "not_equals" | "contains" | "not_contains";
+export type FilterType =
+  | "equals"
+  | "not_equals"
+  | "contains"
+  | "not_contains"
+  | "regex"
+  | "not_regex"
+  | "greater_than"
+  | "less_than";
 
 export type FilterParameter =
   | "browser"
@@ -24,10 +32,23 @@ export type FilterParameter =
   | "exit_page"
   | "dimensions"
   | "browser_version"
-  | "operating_system_version";
+  | "operating_system_version"
+  | "user_id"
+  | "lat"
+  | "lon"
+  | "timezone"
+  | "vpn"
+  | "crawler"
+  | "datacenter"
+  | "company"
+  | "company_type"
+  | "company_domain"
+  | "asn_org"
+  | "asn_type"
+  | "asn_domain";
 
 export interface Filter {
   parameter: FilterParameter;
-  value: string[];
+  value: (string | number)[];
   type: FilterType;
 }

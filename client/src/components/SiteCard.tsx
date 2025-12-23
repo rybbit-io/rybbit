@@ -1,13 +1,13 @@
-import { ArrowRight } from "lucide-react";
 import Link from "next/link";
 import { useRef } from "react";
-import { useGetOverview } from "../api/analytics/useGetOverview";
-import { useGetOverviewBucketed } from "../api/analytics/useGetOverviewBucketed";
+import { useGetOverview } from "../api/analytics/hooks/useGetOverview";
+import { useGetOverviewBucketed } from "../api/analytics/hooks/useGetOverviewBucketed";
+import { ChangePercentage } from "../app/[site]/main/components/MainSection/Overview";
 import { useInView } from "../hooks/useInView";
-import { MINUTES_IN_24_HOURS } from "../lib/const";
+import { useStore } from "../lib/store";
+import { formatter } from "../lib/utils";
 import { Favicon } from "./Favicon";
 import { SiteSessionChart } from "./SiteSessionChart";
-import { Button } from "./ui/button";
 import { Skeleton } from "./ui/skeleton";
 
 interface SiteCardProps {
@@ -26,14 +26,11 @@ export function SiteCard({ siteId, domain }: SiteCardProps) {
   // Track if we've ever loaded data successfully
   const hasLoadedData = useRef(false);
 
+  const { bucket } = useStore();
+
   const { data, isLoading, isSuccess } = useGetOverviewBucketed({
     site: siteId,
-    bucket: "hour",
-    overrideTime: {
-      mode: "past-minutes",
-      pastMinutesStart: 1440,
-      pastMinutesEnd: 0,
-    },
+    bucket,
     props: {
       enabled: isInView,
     },
@@ -45,11 +42,12 @@ export function SiteCard({ siteId, domain }: SiteCardProps) {
     isSuccess: isOverviewSuccess,
   } = useGetOverview({
     site: siteId,
-    overrideTime: {
-      mode: "past-minutes",
-      pastMinutesStart: 1440,
-      pastMinutesEnd: 0,
-    },
+  });
+
+  // Previous period - automatically handles both regular time-based and past-minutes queries
+  const { data: overviewDataPrevious, isLoading: isOverviewLoadingPrevious } = useGetOverview({
+    site: siteId,
+    periodTime: "previous",
   });
 
   // Update the hasLoadedData ref when data loads successfully
@@ -63,81 +61,78 @@ export function SiteCard({ siteId, domain }: SiteCardProps) {
   const showSkeleton = (isLoading || isOverviewLoading || !isInView) && !hasLoadedData.current;
 
   return (
-    <div
-      ref={ref}
-      className="flex flex-col rounded-lg bg-neutral-900/70 p-4 border border-neutral-850 shadow-lg hover:shadow-xl hover:border-neutral-800 transition-all duration-300 hover:translate-y-[-2px]"
-    >
-      {showSkeleton ? (
-        <>
-          <div className="flex justify-between items-center">
-            <div className="flex gap-3 items-center">
+    <Link href={`/${siteId}`}>
+      <div
+        ref={ref}
+        className="flex flex-col md:flex-row md:justify-between gap-3 rounded-lg bg-white dark:bg-neutral-900/70 px-4 py-3 border border-neutral-100 dark:border-neutral-850 transition-all duration-300 hover:translate-y-[-2px] w-full"
+      >
+        {showSkeleton ? (
+          <>
+            <div className="flex gap-2 items-center">
               <Skeleton className="w-6 h-6 rounded" />
-              <Skeleton className="h-6 w-40" />
+              <Skeleton className="h-5 w-32" />
             </div>
-          </div>
-
-          <div className="relative mt-1 mb-1 rounded-md p-2 overflow-hidden">
-            <Skeleton className="h-[110px] w-full rounded-md" />
-          </div>
-
-          <div className="grid grid-cols-3 gap-2 mt-2">
-            <div className="flex flex-col gap-1 items-center bg-neutral-800/50 rounded-md p-2">
-              <Skeleton className="h-3 w-16 rounded" />
-              <Skeleton className="h-6 w-10 rounded mt-1" />
+            <div className="flex gap-2 items-center">
+              <Skeleton className="h-[64px] w-[200px] rounded-md" />
+              <div className="grid grid-cols-2 gap-2 w-[250px]">
+                <div className="flex flex-col gap-1 p-2">
+                  <Skeleton className="h-3 w-12" />
+                  <Skeleton className="h-6 w-16" />
+                </div>
+                <div className="flex flex-col gap-1 p-2">
+                  <Skeleton className="h-3 w-10" />
+                  <Skeleton className="h-6 w-14" />
+                </div>
+              </div>
             </div>
-
-            <div className="flex flex-col gap-1 items-center bg-neutral-800/50 rounded-md p-2">
-              <Skeleton className="h-3 w-16 rounded" />
-              <Skeleton className="h-6 w-10 rounded mt-1" />
-            </div>
-
-            <div className="flex items-center justify-center">
-              <Skeleton className="h-[38px] w-full rounded" />
-            </div>
-          </div>
-        </>
-      ) : (
-        <>
-          <div className="flex justify-between items-center">
-            <Link href={`/${siteId}`} className="group flex gap-3 items-center duration-200">
+          </>
+        ) : (
+          <>
+            <div className="flex gap-2 items-center">
               <Favicon domain={domain} className="w-6 h-6" />
               <span className="text-lg font-medium truncate group-hover:underline transition-all">{domain}</span>
-            </Link>
-          </div>
-
-          <div className="relative mt-1 mb-1 rounded-md p-2 overflow-hidden">
-            <SiteSessionChart data={data?.data ?? []} height={110} />
-            {!hasData && (
-              <div className="absolute inset-0 flex items-center justify-center bg-neutral-900/70 backdrop-blur-sm">
-                <span className="text-sm text-neutral-400">No data available</span>
+            </div>
+            <div className="flex flex-col sm:flex-row gap-2 sm:gap-4 items-start sm:items-center justify-between">
+              <div className="relative rounded-md w-[200px] h-[50px]">
+                <SiteSessionChart data={data?.data ?? []} />
+                {!hasData && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-white/70 dark:bg-neutral-900/70 backdrop-blur-sm">
+                    <span className="text-sm text-neutral-500 dark:text-neutral-400">No data available</span>
+                  </div>
+                )}
               </div>
-            )}
-          </div>
 
-          <div className="grid grid-cols-3 gap-2 mt-2">
-            <div className="flex flex-col gap-1 items-center bg-neutral-800/50 rounded-md p-2 hover:bg-neutral-800 transition-colors">
-              <div className="text-xs text-neutral-400">Sessions</div>
-              <div className="font-semibold">{overviewData?.data?.sessions?.toLocaleString() || "0"}</div>
+              <div className="grid grid-cols-2 gap-2 w-full sm:w-[250px]">
+                <div className="flex flex-col items-start gap-1 rounded-md p-2 transition-colors">
+                  <div className="text-xs text-neutral-500 dark:text-neutral-400">Sessions</div>
+                  <div className="font-semibold text-xl flex gap-2">
+                    {formatter(overviewData?.data?.sessions ?? 0)}{" "}
+                    {overviewData?.data?.sessions && overviewDataPrevious?.data?.sessions ? (
+                      <ChangePercentage
+                        current={overviewData?.data?.sessions}
+                        previous={overviewDataPrevious?.data?.sessions}
+                      />
+                    ) : null}
+                  </div>
+                </div>
+
+                <div className="flex flex-col items-start gap-1 rounded-md p-2 transition-colors">
+                  <div className="text-xs text-neutral-500 dark:text-neutral-400">Users</div>
+                  <div className="font-semibold text-xl flex gap-2">
+                    {formatter(overviewData?.data?.users ?? 0)}{" "}
+                    {overviewData?.data?.users && overviewDataPrevious?.data?.users ? (
+                      <ChangePercentage
+                        current={overviewData?.data?.users}
+                        previous={overviewDataPrevious?.data?.users}
+                      />
+                    ) : null}
+                  </div>
+                </div>
+              </div>
             </div>
-
-            <div className="flex flex-col gap-1 items-center bg-neutral-800/50 rounded-md p-2 hover:bg-neutral-800 transition-colors">
-              <div className="text-xs text-neutral-400">Users</div>
-              <div className="font-semibold">{overviewData?.data?.users?.toLocaleString() || "0"}</div>
-            </div>
-
-            <Link href={`/${siteId}`} className="flex items-center justify-center">
-              <Button
-                variant="outline"
-                size="sm"
-                className="w-full h-full border-neutral-700 bg-neutral-800/50 hover:bg-neutral-800 hover:text-blue-400 transition-all"
-              >
-                <span className="mr-1">View</span>
-                <ArrowRight size={14} className="transition-transform group-hover:translate-x-0.5" />
-              </Button>
-            </Link>
-          </div>
-        </>
-      )}
-    </div>
+          </>
+        )}
+      </div>
+    </Link>
   );
 }

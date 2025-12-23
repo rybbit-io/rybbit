@@ -1,0 +1,21 @@
+/* Globe Mapbox Popup Styling */
+.mapboxgl-popup.globe-tooltip {
+  pointer-events: auto;
+}
+
+.mapboxgl-popup.globe-tooltip .mapboxgl-popup-content {
+  background-color: transparent;
+  color: white;
+  border-radius: 0;
+  padding: 0;
+  box-shadow: none;
+  pointer-events: auto;
+}
+
+.mapboxgl-popup.globe-tooltip .mapboxgl-popup-tip {
+  display: none;
+}
+
+.mapboxgl-popup.globe-tooltip .mapboxgl-popup-close-button {
+  display: none;
+}

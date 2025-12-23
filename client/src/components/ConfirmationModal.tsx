@@ -20,15 +20,7 @@ export const ConfirmationModal: React.FC<{
   setIsOpen: (b: boolean) => void;
   onConfirm: () => void;
   primaryAction?: ButtonProps;
-}> = ({
-  title,
-  description,
-  children,
-  isOpen,
-  onConfirm,
-  setIsOpen,
-  primaryAction,
-}) => {
+}> = ({ title, description, children, isOpen, onConfirm, setIsOpen, primaryAction }) => {
   const [error, setError] = useState<string | null>(null);
 
   const onSubmit = async () => {
@@ -43,7 +35,7 @@ export const ConfirmationModal: React.FC<{
 
   return (
     <div>
-      <Dialog open={isOpen} onOpenChange={(e) => setIsOpen(e)}>
+      <Dialog open={isOpen} onOpenChange={e => setIsOpen(e)}>
         <DialogTrigger asChild>{children}</DialogTrigger>
         <DialogContent className="max-w-lg">
           <DialogHeader>
@@ -58,18 +50,10 @@ export const ConfirmationModal: React.FC<{
             </Alert>
           )}
           <DialogFooter>
-            <Button
-              type="submit"
-              onClick={() => setIsOpen(false)}
-              variant={"ghost"}
-            >
+            <Button type="submit" onClick={() => setIsOpen(false)} variant={"ghost"}>
               Cancel
             </Button>
-            <Button
-              type="submit"
-              onClick={onSubmit}
-              {...primaryAction}
-            ></Button>
+            <Button type="submit" onClick={onSubmit} {...primaryAction}></Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

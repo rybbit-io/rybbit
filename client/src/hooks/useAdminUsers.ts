@@ -10,9 +10,7 @@ import { useRouter } from "next/navigation";
 export function useAdminUsers() {
   const router = useRouter();
   // Table state
-  const [sorting, setSorting] = useState<SortingState>([
-    { id: "createdAt", desc: true },
-  ]);
+  const [sorting, setSorting] = useState<SortingState>([{ id: "createdAt", desc: true }]);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 50 });
   const [globalFilter, setGlobalFilter] = useState("");
@@ -21,14 +19,13 @@ export function useAdminUsers() {
   const fetchUsers = async () => {
     // Default sort configuration from sorting state
     const sortBy = sorting.length > 0 ? sorting[0].id : "createdAt";
-    const sortDirection =
-      sorting.length > 0 ? (sorting[0].desc ? "desc" : "asc") : "desc";
+    const sortDirection = sorting.length > 0 ? (sorting[0].desc ? "desc" : "asc") : "desc";
 
     // Apply filters if any
     let emailFilter = "";
     let roleFilter = "";
 
-    columnFilters.forEach((filter) => {
+    columnFilters.forEach(filter => {
       if (filter.id === "email" && typeof filter.value === "string") {
         emailFilter = filter.value;
       }
@@ -71,14 +68,7 @@ export function useAdminUsers() {
     users: AdminUser[];
     total: number;
   }>({
-    queryKey: [
-      "admin-users",
-      pagination.pageIndex,
-      pagination.pageSize,
-      sorting,
-      columnFilters,
-      globalFilter,
-    ],
+    queryKey: ["admin-users", pagination.pageIndex, pagination.pageSize, sorting, columnFilters, globalFilter],
     queryFn: fetchUsers,
   });
 
@@ -92,8 +82,7 @@ export function useAdminUsers() {
       // Redirect to home after impersonation
       return true;
     } catch (err) {
-      const errorMessage =
-        err instanceof Error ? err.message : "Unknown error occurred";
+      const errorMessage = err instanceof Error ? err.message : "Unknown error occurred";
       console.error(`Failed to impersonate user: ${errorMessage}`);
       return false;
     }
@@ -105,8 +94,7 @@ export function useAdminUsers() {
       await authClient.admin.stopImpersonating();
       return true;
     } catch (err) {
-      const errorMessage =
-        err instanceof Error ? err.message : "Unknown error occurred";
+      const errorMessage = err instanceof Error ? err.message : "Unknown error occurred";
       console.error(`Failed to stop impersonation: ${errorMessage}`);
       return false;
     }

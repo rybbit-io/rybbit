@@ -1,12 +1,8 @@
 import { FastifyReply, FastifyRequest } from "fastify";
 import { clickhouse } from "../../db/clickhouse/clickhouse.js";
-import { getUserHasAccessToSitePublic } from "../../lib/auth-utils.js";
-import {
-  getFilterStatement,
-  getTimeStatement,
-  processResults,
-} from "./utils.js";
+import { getTimeStatement, processResults } from "./utils/utils.js";
 import { FilterParams } from "@rybbit/shared";
+import { getFilterStatement } from "./utils/getFilterStatement.js";
 
 interface GetErrorNamesRequest {
   Params: {
@@ -33,14 +29,11 @@ type ErrorNamesPaginatedResponse = {
   totalCount: number;
 };
 
-const getErrorNamesQuery = (
-  request: FastifyRequest<GetErrorNamesRequest>,
-  isCountQuery: boolean = false
-) => {
+const getErrorNamesQuery = (request: FastifyRequest<GetErrorNamesRequest>, isCountQuery: boolean = false) => {
   const { filters, limit, page } = request.query;
 
-  const filterStatement = getFilterStatement(filters);
   const timeStatement = getTimeStatement(request.query);
+  const filterStatement = getFilterStatement(filters, Number(request.params.site), timeStatement);
 
   let validatedLimit: number | null = null;
   if (!isCountQuery && limit !== undefined) {
@@ -50,12 +43,7 @@ const getErrorNamesQuery = (
     }
   }
   // Default to 10 for non-paginated use
-  const limitStatement =
-    !isCountQuery && validatedLimit
-      ? `LIMIT ${validatedLimit}`
-      : isCountQuery
-        ? ""
-        : "LIMIT 10";
+  const limitStatement = !isCountQuery && validatedLimit ? `LIMIT ${validatedLimit}` : isCountQuery ? "" : "LIMIT 10";
 
   let validatedOffset: number | null = null;
   if (!isCountQuery && page !== undefined) {
@@ -65,8 +53,7 @@ const getErrorNamesQuery = (
       validatedOffset = pageOffset;
     }
   }
-  const offsetStatement =
-    !isCountQuery && validatedOffset ? `OFFSET ${validatedOffset}` : "";
+  const offsetStatement = !isCountQuery && validatedOffset ? `OFFSET ${validatedOffset}` : "";
 
   // For errors, we want to count total occurrences and unique sessions affected
   // Group by error message instead of error name
@@ -116,17 +103,9 @@ const getErrorNamesQuery = (
   `;
 };
 
-export async function getErrorNames(
-  req: FastifyRequest<GetErrorNamesRequest>,
-  res: FastifyReply
-) {
+export async function getErrorNames(req: FastifyRequest<GetErrorNamesRequest>, res: FastifyReply) {
   const site = req.params.site;
   const { page } = req.query;
-
-  const userHasAccessToSite = await getUserHasAccessToSitePublic(req, site);
-  if (!userHasAccessToSite) {
-    return res.status(403).send({ error: "Forbidden" });
-  }
 
   const isPaginatedRequest = page !== undefined; // True if page is present
 
@@ -151,14 +130,11 @@ export async function getErrorNames(
           siteId: Number(site),
         },
       });
-      const countData = await processResults<{ totalCount: number }>(
-        countResult
-      );
+      const countData = await processResults<{ totalCount: number }>(countResult);
       const totalCount = countData.length > 0 ? countData[0].totalCount : 0;
       return res.send({ data: { data: items, totalCount } });
     } else {
       // For non-paginated (StandardSection default) use, return the simpler structure
-      console.info(items);
       return res.send({ data: items });
     }
   } catch (error) {

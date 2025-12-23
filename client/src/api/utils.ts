@@ -1,10 +1,12 @@
+import { Filter } from "@rybbit/shared";
 import { DateTime } from "luxon";
 import { Time } from "../components/DateSelector/types";
 import axios, { AxiosRequestConfig } from "axios";
 import { BACKEND_URL } from "../lib/const";
-import { timeZone } from "../lib/dateTimeUtils";
+import { getTimezone, useStore } from "../lib/store";
+import { CommonApiParams } from "./analytics/endpoints/types";
 
-export function getStartAndEndDate(time: Time) {
+export function getStartAndEndDate(time: Time): { startDate: string | null; endDate: string | null } {
   if (time.mode === "range") {
     return { startDate: time.startDate, endDate: time.endDate };
   }
@@ -32,24 +34,30 @@ export function getStartAndEndDate(time: Time) {
   return { startDate: time.day, endDate: time.day };
 }
 
-export function getQueryParams(
-  time: Time,
-  additionalParams: Record<string, any> = {}
-): Record<string, any> {
+/**
+ * Build CommonApiParams from a Time object, handling all time modes including past-minutes.
+ * This centralizes the logic for converting Time to API params across all hooks.
+ */
+export function buildApiParams(time: Time, options: { filters?: Filter[] } = {}): CommonApiParams {
+  const timeZone = getTimezone();
+
   if (time.mode === "past-minutes") {
     return {
+      startDate: "",
+      endDate: "",
       timeZone,
+      filters: options.filters,
       pastMinutesStart: time.pastMinutesStart,
       pastMinutesEnd: time.pastMinutesEnd,
-      ...additionalParams,
     };
   }
 
-  // Regular date-based approach
+  const { startDate, endDate } = getStartAndEndDate(time);
   return {
-    ...getStartAndEndDate(time),
+    startDate: startDate ?? "",
+    endDate: endDate ?? "",
     timeZone,
-    ...additionalParams,
+    filters: options.filters,
   };
 }
 
@@ -72,12 +80,20 @@ export async function authedFetch<T>(
     });
   }
 
+  // Get private key from store and add to headers if present
+  const privateKey = useStore.getState().privateKey;
+  const headers = {
+    ...config.headers,
+    ...(privateKey ? { "x-private-key": privateKey } : {}),
+  };
+
   try {
     const response = await axios({
       url: fullUrl,
       params: processedParams,
       withCredentials: true,
       ...config,
+      headers,
     });
 
     return response.data;

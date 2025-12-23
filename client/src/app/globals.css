@@ -1,35 +1,157 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import 'tailwindcss';
 
-body {
-  font-family: Arial, Helvetica, sans-serif;
+@plugin 'tailwindcss-animate';
+
+@custom-variant dark (&:is(.dark *));
+
+@utility container {
+  margin-inline: auto;
+  padding-inline: 2rem;
+  @media (width >= --theme(--breakpoint-sm)) {
+    max-width: none;
+  }
+  @media (width >= 1400px) {
+    max-width: 1400px;
+  }
+}
+
+@theme {
+  --color-border: hsl(var(--border));
+  --color-input: hsl(var(--input));
+  --color-ring: hsl(var(--ring));
+  --color-background: hsl(var(--background));
+  --color-foreground: hsl(var(--foreground));
+
+  --color-primary: hsl(var(--primary));
+  --color-primary-foreground: hsl(var(--primary-foreground));
+
+  --color-secondary: hsl(var(--secondary));
+  --color-secondary-foreground: hsl(var(--secondary-foreground));
+
+  --color-destructive: hsl(var(--destructive));
+  --color-destructive-foreground: hsl(var(--destructive-foreground));
+
+  --color-muted: hsl(var(--muted));
+  --color-muted-foreground: hsl(var(--muted-foreground));
+
+  --color-accent-50: hsl(var(--accent-50));
+  --color-accent-100: hsl(var(--accent-100));
+  --color-accent-200: hsl(var(--accent-200));
+  --color-accent-300: hsl(var(--accent-300));
+  --color-accent-400: hsl(var(--accent-400));
+  --color-accent-500: hsl(var(--accent-500));
+  --color-accent-600: hsl(var(--accent-600));
+  --color-accent-700: hsl(var(--accent-700));
+  --color-accent-800: hsl(var(--accent-800));
+  --color-accent-900: hsl(var(--accent-900));
+  --color-accent-950: hsl(var(--accent-950));
+  --color-accent: hsl(var(--accent));
+  --color-accent-foreground: hsl(var(--accent-foreground));
+
+  --color-dataviz-2: hsl(var(--dataviz-2));
+  --color-dataviz: hsl(var(--dataviz));
+
+  --color-popover: hsl(var(--popover));
+  --color-popover-foreground: hsl(var(--popover-foreground));
+
+  --color-card: hsl(var(--card));
+  --color-card-foreground: hsl(var(--card-foreground));
+
+  --color-neutral-0: hsl(var(--neutral-0));
+  --color-neutral-50: hsl(var(--neutral-50));
+  --color-neutral-100: hsl(var(--neutral-100));
+  --color-neutral-150: hsl(var(--neutral-150));
+  --color-neutral-200: hsl(var(--neutral-200));
+  --color-neutral-250: hsl(var(--neutral-250));
+  --color-neutral-300: hsl(var(--neutral-300));
+  --color-neutral-350: hsl(var(--neutral-350));
+  --color-neutral-400: hsl(var(--neutral-400));
+  --color-neutral-450: hsl(var(--neutral-450));
+  --color-neutral-500: hsl(var(--neutral-500));
+  --color-neutral-550: hsl(var(--neutral-550));
+  --color-neutral-600: hsl(var(--neutral-600));
+  --color-neutral-650: hsl(var(--neutral-650));
+  --color-neutral-700: hsl(var(--neutral-700));
+  --color-neutral-750: hsl(var(--neutral-750));
+  --color-neutral-800: hsl(var(--neutral-800));
+  --color-neutral-850: hsl(var(--neutral-850));
+  --color-neutral-900: hsl(var(--neutral-900));
+  --color-neutral-950: hsl(var(--neutral-950));
+  --color-neutral-1000: hsl(var(--neutral-1000));
+
+  --radius-lg: var(--radius);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-sm: calc(var(--radius) - 4px);
+
+  --animate-accordion-down: accordion-down 0.2s ease-out;
+  --animate-accordion-up: accordion-up 0.2s ease-out;
+
+  @keyframes accordion-down {
+    from {
+      height: 0;
+    }
+    to {
+      height: var(--radix-accordion-content-height);
+    }
+  }
+  @keyframes accordion-up {
+    from {
+      height: var(--radix-accordion-content-height);
+    }
+    to {
+      height: 0;
+    }
+  }
+}
+
+/*
+  The default border color has changed to `currentcolor` in Tailwind CSS v4,
+  so we've added these compatibility styles to make sure everything still
+  looks the same as it did with Tailwind CSS v3.
+
+  If we ever want to remove these styles, we need to add an explicit border
+  color utility to any element that depends on these defaults.
+*/
+@layer base {
+  *,
+  ::after,
+  ::before,
+  ::backdrop,
+  ::file-selector-button {
+    border-color: var(--color-border, currentcolor);
+  }
+}
+
+@layer utilities {
+  body {
+    font-family: Arial, Helvetica, sans-serif;
+  }
 }
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 240 10% 3.9%;
+    --background: 0 0% 97%;
+    --foreground: 0 0% 3.9%;
     --popover: 0 0% 100%;
-    --popover-foreground: 240 10% 3.9%;
-    --primary: 240 5.9% 10%;
+    --popover-foreground: 0 0% 3.9%;
+    --primary: 0 0% 10%;
     --primary-foreground: 0 0% 98%;
-    --secondary: 240 4.8% 95.9%;
-    --secondary-foreground: 240 5.9% 10%;
-    --muted: 240 4.8% 95.9%;
-    --muted-foreground: 240 3.8% 46.1%;
-    --accent: 240 4.8% 95.9%;
-    --accent-foreground: 240 5.9% 10%;
+    --secondary: 0 0% 95.9%;
+    --secondary-foreground: 0 0% 10%;
+    --muted: 0 0% 95.9%;
+    --muted-foreground: 0 0% 46.1%;
+    --accent: 0 0% 95.9%;
+    --accent-foreground: 0 0% 10%;
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 98%;
-    --border: 240 5.9% 90%;
-    --input: 240 5.9% 90%;
-    --ring: 240 5.9% 10%;
+    --border: 0 0% 90%;
+    --input: 0 0% 90%;
+    --ring: 0 0% 10%;
     --radius: 0.3rem;
 
-    --dataviz: 230 100% 85%;
-    --dataviz-2: 230 100% 92%;
-    
+    --dataviz: 230 100% 80%;
+    --dataviz-2: 230 100% 87%;
+
     --accent-50: var(--emerald-50);
     --accent-100: var(--emerald-100);
     --accent-200: var(--emerald-200);
@@ -82,6 +204,7 @@ body {
     --zinc-950: 240 10% 3.9%;
 
     /* Neutral */
+    --neutral-0: 0 0% 97%;
     --neutral-50: 0 0% 95%;
     --neutral-100: 0 0% 90%;
     --neutral-150: 0 0% 85%;
@@ -181,7 +304,6 @@ body {
     --lime-900: 87.6 61.2% 20.2%;
     --lime-950: 89.3 80.4% 11.2%;
 
-
     /* Green */
     --green-50: 138.5 76.5% 96.7%;
     --green-100: 140.6 84.2% 92.5%;
@@ -260,83 +382,83 @@ body {
     --blue-900: 224.4 64.3% 32.9%;
     --blue-950: 226.2 57.3% 21%;
 
-     /* Indigo */
-     --indigo-50: 225.9 100% 96.7%;
-     --indigo-100: 226.5 100% 93.9%;
-     --indigo-200: 228 96.5% 88.8%;
-     --indigo-300: 229.7 93.5% 81.8%;
-     --indigo-400: 234.5 89.5% 73.9%;
-     --indigo-500: 238.7 83.5% 66.7%;
-     --indigo-600: 243.4 75.4% 58.6%;
-     --indigo-700: 244.5 57.9% 50.6%;
-     --indigo-800: 243.7 54.5% 41.4%;
-     --indigo-900: 242.2 47.4% 34.3%;
-     --indigo-950: 243.5 47.7% 20.8%;
- 
-     /* Violet */
-     --violet-50: 250 100% 97.6%;
-     --violet-100: 251.4 91.3% 95.5%;
-     --violet-200: 250.5 95.2% 91.8%;
-     --violet-300: 252.5 94.7% 85.1%;
-     --violet-400: 255.1 91.7% 76.3%;
-     --violet-500: 258.3 89.5% 66.3%;
-     --violet-600: 262.1 83.3% 57.8%;
-     --violet-700: 263.4 70% 50.4%;
-     --violet-800: 263.4 69.3% 42.2%;
-     --violet-900: 263.5 67.4% 34.9%;
-     --violet-950: 264.1 71.2% 21.6%;
- 
-     /* Purple */
-     --purple-50: 270 100% 98%;
-     --purple-100: 268.7 100% 95.5%;
-     --purple-200: 268.6 100% 91.8%;
-     --purple-300: 269.2 97.4% 85.1%;
-     --purple-400: 270 95.2% 75.3%;
-     --purple-500: 270.7 91% 65.1%;
-     --purple-600: 271.5 81.3% 55.9%;
-     --purple-700: 272.1 71.7% 47.1%;
-     --purple-800: 272.9 67.2% 39.4%;
-     --purple-900: 273.6 65.6% 32%;
-     --purple-950: 274.1 75.7% 20.8%;
- 
-     /* Fuchsia */
-     --fuchsia-50: 289.1 100% 97.8%;
-     --fuchsia-100: 287 100% 95.5%;
-     --fuchsia-200: 288.3 95.8% 90.6%;
-     --fuchsia-300: 291.1 93.1% 82.9%;
-     --fuchsia-400: 292 91.4% 72.5%;
-     --fuchsia-500: 292.2 84.1% 60.6%;
-     --fuchsia-600: 293.4 69.5% 48.8%;
-     --fuchsia-700: 294.7 72.4% 39.8%;
-     --fuchsia-800: 295.4 70.2% 32.9%;
-     --fuchsia-900: 296.7 63.6% 28%;
-     --fuchsia-950: 297.1 71.7% 17.3%;
- 
-     /* Pink */
-     --pink-50: 327.3 73.3% 97.1%;
-     --pink-100: 325.7 77.8% 94.7%;
-     --pink-200: 325.9 84.6% 89.8%;
-     --pink-300: 327.4 87.1% 81.8%;
-     --pink-400: 328.6 85.5% 70.2%;
-     --pink-500: 330.4 81.2% 60.4%;
-     --pink-600: 333.3 71.4% 50.6%;
-     --pink-700: 335.1 77.6% 42%;
-     --pink-800: 336.1 74.7% 35.3%;
-     --pink-900: 336.8 69% 30.4%;
-     --pink-950: 336.8 83.9% 17.3%;
- 
-     /* Rose */
-     --rose-50: 355.7 100% 97.3%;
-     --rose-100: 355.6 100% 94.7%;
-     --rose-200: 352.7 96.1% 90%;
-     --rose-300: 352.6 95.7% 81.8%;
-     --rose-400: 351.3 94.5% 71.4%;
-     --rose-500: 349.7 89.2% 60.2%;
-     --rose-600: 346.8 77.2% 49.8%;
-     --rose-700: 345.3 82.7% 40.8%;
-     --rose-800: 343.4 79.7% 34.7%;
-     --rose-900: 341.5 75.5% 30.4%;
-     --rose-950: 341.3 89.1% 17.3%;
+    /* Indigo */
+    --indigo-50: 225.9 100% 96.7%;
+    --indigo-100: 226.5 100% 93.9%;
+    --indigo-200: 228 96.5% 88.8%;
+    --indigo-300: 229.7 93.5% 81.8%;
+    --indigo-400: 234.5 89.5% 73.9%;
+    --indigo-500: 238.7 83.5% 66.7%;
+    --indigo-600: 243.4 75.4% 58.6%;
+    --indigo-700: 244.5 57.9% 50.6%;
+    --indigo-800: 243.7 54.5% 41.4%;
+    --indigo-900: 242.2 47.4% 34.3%;
+    --indigo-950: 243.5 47.7% 20.8%;
+
+    /* Violet */
+    --violet-50: 250 100% 97.6%;
+    --violet-100: 251.4 91.3% 95.5%;
+    --violet-200: 250.5 95.2% 91.8%;
+    --violet-300: 252.5 94.7% 85.1%;
+    --violet-400: 255.1 91.7% 76.3%;
+    --violet-500: 258.3 89.5% 66.3%;
+    --violet-600: 262.1 83.3% 57.8%;
+    --violet-700: 263.4 70% 50.4%;
+    --violet-800: 263.4 69.3% 42.2%;
+    --violet-900: 263.5 67.4% 34.9%;
+    --violet-950: 264.1 71.2% 21.6%;
+
+    /* Purple */
+    --purple-50: 270 100% 98%;
+    --purple-100: 268.7 100% 95.5%;
+    --purple-200: 268.6 100% 91.8%;
+    --purple-300: 269.2 97.4% 85.1%;
+    --purple-400: 270 95.2% 75.3%;
+    --purple-500: 270.7 91% 65.1%;
+    --purple-600: 271.5 81.3% 55.9%;
+    --purple-700: 272.1 71.7% 47.1%;
+    --purple-800: 272.9 67.2% 39.4%;
+    --purple-900: 273.6 65.6% 32%;
+    --purple-950: 274.1 75.7% 20.8%;
+
+    /* Fuchsia */
+    --fuchsia-50: 289.1 100% 97.8%;
+    --fuchsia-100: 287 100% 95.5%;
+    --fuchsia-200: 288.3 95.8% 90.6%;
+    --fuchsia-300: 291.1 93.1% 82.9%;
+    --fuchsia-400: 292 91.4% 72.5%;
+    --fuchsia-500: 292.2 84.1% 60.6%;
+    --fuchsia-600: 293.4 69.5% 48.8%;
+    --fuchsia-700: 294.7 72.4% 39.8%;
+    --fuchsia-800: 295.4 70.2% 32.9%;
+    --fuchsia-900: 296.7 63.6% 28%;
+    --fuchsia-950: 297.1 71.7% 17.3%;
+
+    /* Pink */
+    --pink-50: 327.3 73.3% 97.1%;
+    --pink-100: 325.7 77.8% 94.7%;
+    --pink-200: 325.9 84.6% 89.8%;
+    --pink-300: 327.4 87.1% 81.8%;
+    --pink-400: 328.6 85.5% 70.2%;
+    --pink-500: 330.4 81.2% 60.4%;
+    --pink-600: 333.3 71.4% 50.6%;
+    --pink-700: 335.1 77.6% 42%;
+    --pink-800: 336.1 74.7% 35.3%;
+    --pink-900: 336.8 69% 30.4%;
+    --pink-950: 336.8 83.9% 17.3%;
+
+    /* Rose */
+    --rose-50: 355.7 100% 97.3%;
+    --rose-100: 355.6 100% 94.7%;
+    --rose-200: 352.7 96.1% 90%;
+    --rose-300: 352.6 95.7% 81.8%;
+    --rose-400: 351.3 94.5% 71.4%;
+    --rose-500: 349.7 89.2% 60.2%;
+    --rose-600: 346.8 77.2% 49.8%;
+    --rose-700: 345.3 82.7% 40.8%;
+    --rose-800: 343.4 79.7% 34.7%;
+    --rose-900: 341.5 75.5% 30.4%;
+    --rose-950: 341.3 89.1% 17.3%;
   }
 
   .dark {
@@ -359,9 +481,12 @@ body {
 
     --input: 240 3.7% 15.9%;
     --ring: 240 4.9% 83.9%;
+
+    --dataviz: 230 100% 85%;
+    --dataviz-2: 230 100% 92%;
   }
 
-  /* Dark scrollbar styles */
+  /* Light mode scrollbar styles */
   /* For Webkit browsers (Chrome, Safari, newer Edge) */
   ::-webkit-scrollbar {
     width: 10px;
@@ -369,23 +494,44 @@ body {
   }
 
   ::-webkit-scrollbar-track {
-    background: hsl(0 0% 9%);
+    background: hsl(0 0% 90%);
     border-radius: 4px;
   }
 
   ::-webkit-scrollbar-thumb {
-    background: hsl(0 0% 35%);
+    background: hsl(0 0% 70%);
     border-radius: 4px;
   }
 
   ::-webkit-scrollbar-thumb:hover {
-    background: hsl(0 0% 40%);
+    background: hsl(0 0% 60%);
   }
 
   /* For Firefox */
   * {
     scrollbar-width: thin;
-    scrollbar-color: hsl(0 0% 35%) hsl(0 0% 9%);
+    scrollbar-color: hsl(0 0% 70%) hsl(0 0% 90%);
+  }
+
+  .dark {
+    /* Dark mode scrollbar styles */
+    /* For Webkit browsers */
+    ::-webkit-scrollbar-track {
+      background: hsl(0 0% 9%);
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: hsl(0 0% 35%);
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+      background: hsl(0 0% 40%);
+    }
+
+    /* For Firefox */
+    * {
+      scrollbar-color: hsl(0 0% 35%) hsl(0 0% 9%);
+    }
   }
 
   /* Custom scrollbar class for specific elements */

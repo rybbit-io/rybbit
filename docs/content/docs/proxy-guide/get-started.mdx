@@ -1,0 +1,311 @@
+---
+title: Generic Proxy Setup
+description: Framework-agnostic guide to proxy Rybbit tracking through your own domain
+---
+
+import { Steps } from 'fumadocs-ui/components/steps';
+import { Callout } from 'fumadocs-ui/components/callout';
+import { Tabs, Tab } from 'fumadocs-ui/components/tabs';
+
+This guide covers the core concepts for setting up a Rybbit proxy with any reverse proxy or server framework. If your specific framework has a dedicated guide, we recommend following that instead for optimized instructions.
+
+## Prerequisites
+
+Before setting up the proxy, ensure you have:
+
+- **A domain or subdomain** where you'll serve the proxied scripts (e.g., `yourdomain.com` or `analytics.yourdomain.com`)
+- **SSL/TLS certificate** for HTTPS (required for modern browsers)
+- **Server or platform** with reverse proxy capabilities
+- **Your Rybbit instance URL**:
+  - Cloud: `https://app.rybbit.io`
+  - Self-hosted: Your Rybbit instance URL (e.g., `https://analytics.yourcompany.com`)
+- **Your Rybbit site ID** (found in your Rybbit dashboard)
+
+## Understanding the Endpoints
+
+Rybbit uses several endpoints for tracking. You can choose between a minimal setup or full proxy:
+
+<Tabs>
+<Tab value="minimal" title="Minimal Setup">
+
+**Required endpoints for basic tracking:**
+
+| Endpoint | Method | Purpose | Cache |
+|----------|--------|---------|-------|
+| `/api/script.js` | GET | Main tracking script | 1 hour |
+| `/api/track` | POST | Event tracking endpoint | No cache |
+
+This minimal setup enables basic pageview and event tracking, but won't support session replay or some advanced features.
+
+</Tab>
+<Tab value="full-setup-recommended" title="Full Setup (Recommended)">
+
+**All endpoints for complete functionality:**
+
+| Endpoint | Method | Purpose | Cache |
+|----------|--------|---------|-------|
+| `/api/script.js` | GET | Main tracking script (minified) | 1 hour |
+| `/api/script-full.js` | GET | Unminified script for debugging | 1 hour |
+| `/api/replay.js` | GET | Session replay recording script | 1 hour |
+| `/api/metrics.js` | GET | Web Vitals metrics script | 1 hour |
+| `/api/track` | POST | Event tracking endpoint | No cache |
+| `/api/identify` | POST | User identification endpoint | No cache |
+| `/api/session-replay/record/:siteId` | POST | Session replay data upload | No cache |
+| `/site/tracking-config/:siteId` | GET | Site configuration | 5 minutes |
+
+This setup supports all Rybbit features including session replay, Web Vitals, and custom events.
+
+</Tab>
+</Tabs>
+
+<Callout type="info">
+The session replay and metrics scripts (`/api/replay.js` and `/api/metrics.js`) are loaded dynamically by the main script when those features are enabled in your site settings. You don't need to include them in your HTML.
+</Callout>
+
+## Implementation Steps
+
+<Steps>
+
+### Configure Your Proxy Rules
+
+Set up your reverse proxy to forward requests from your chosen path (e.g., `/analytics/*`) to the Rybbit server.
+
+**Generic proxy configuration pattern:**
+
+```
+Your domain path          →  Rybbit backend
+-----------------            ---------------
+/analytics/script.js      →  https://app.rybbit.io/api/script.js
+/analytics/track          →  https://app.rybbit.io/api/track
+/analytics/replay.js      →  https://app.rybbit.io/api/replay.js
+... and so on
+```
+
+**Key requirements:**
+- Preserve the HTTP method (GET or POST)
+- Forward necessary headers (User-Agent, X-Forwarded-For, Referer)
+- Maintain request/response body for POST requests
+- Set appropriate Content-Type headers
+
+### Configure Caching (Optional but Recommended)
+
+Implement caching to reduce load on Rybbit servers and improve performance:
+
+**Recommended cache durations:**
+- **Scripts** (`.js` files): 1 hour (3600 seconds)
+  - These change infrequently but may be updated for bug fixes
+- **Site configuration** (`/site/tracking-config/*`): 5 minutes (300 seconds)
+  - Updated when you change settings in the dashboard
+- **Tracking endpoints** (POST requests): Never cache
+  - Each request contains unique event data
+
+**Example cache headers to set:**
+```
+Cache-Control: public, max-age=3600  # For scripts
+Cache-Control: public, max-age=300   # For config
+Cache-Control: no-store              # For tracking POSTs
+```
+
+### Update Your Tracking Script
+
+Change your script tag to load from your proxied domain instead of directly from Rybbit:
+
+**Before (direct loading):**
+```html
+<script src="https://app.rybbit.io/api/script.js" async data-site-id="YOUR_SITE_ID"></script>
+```
+
+**After (proxied):**
+```html
+<script src="https://yourdomain.com/analytics/script.js" async data-site-id="YOUR_SITE_ID"></script>
+```
+
+<Callout type="info">
+**How Auto-Discovery Works**: The Rybbit script automatically extracts the analytics host from its own `src` attribute by splitting on `/script.js`. This means when it loads from `https://yourdomain.com/analytics/script.js`, it automatically sends all tracking data to `https://yourdomain.com/analytics/*` endpoints.
+</Callout>
+
+### Verify the Setup
+
+Test your proxy configuration to ensure everything works correctly:
+
+1. **Open your website** in a browser with Developer Tools open
+2. **Go to the Network tab** and filter by "script" or your proxy path
+3. **Verify the script loads**:
+   - You should see a request to `yourdomain.com/analytics/script.js`
+   - Status should be `200 OK`
+   - Content-Type should be `application/javascript`
+4. **Verify tracking works**:
+   - Navigate to another page or trigger an event
+   - You should see POST requests to `yourdomain.com/analytics/track`
+   - Check the response is successful (200 OK)
+5. **Check your Rybbit dashboard**:
+   - Wait 1-2 minutes for data to process
+   - Verify your session appears in real-time dashboard
+
+### Configure Security Headers (Optional)
+
+Add security headers to protect your proxy:
+
+**Recommended headers:**
+```
+X-Content-Type-Options: nosniff
+X-Frame-Options: DENY
+Referrer-Policy: strict-origin-when-cross-origin
+```
+
+**CORS headers** (should be preserved from Rybbit):
+```
+Access-Control-Allow-Origin: *
+Access-Control-Allow-Methods: GET, POST, OPTIONS
+Access-Control-Allow-Headers: Content-Type
+```
+
+</Steps>
+
+## Request Header Forwarding
+
+For accurate tracking, ensure these headers are forwarded to the Rybbit backend:
+
+| Header | Purpose | Required |
+|--------|---------|----------|
+| `User-Agent` | Device and browser detection | Yes |
+| `X-Forwarded-For` or `X-Real-IP` | IP address for geolocation | Yes |
+| `Referer` | Referrer tracking | Recommended |
+| `Accept-Language` | Language detection | Optional |
+
+<Callout type="warn">
+**IP Forwarding**: Rybbit uses IP addresses for geolocation (country/city) and creating anonymous user identifiers (hashed IP + User Agent). If you don't forward the `X-Forwarded-For` or `X-Real-IP` header, all traffic will appear to come from your proxy server's IP.
+</Callout>
+
+## Bandwidth Considerations
+
+Proxying adds bandwidth usage to your infrastructure. Here's what to expect:
+
+**Typical bandwidth per session:**
+- Initial script load: ~18 KB (one-time per session)
+- Pageview tracking: ~0.5-2 KB per pageview
+- Custom events: ~0.5-3 KB per event
+- Session replay: 50-500 KB per session (if enabled, varies by session length)
+- Web Vitals: ~1-2 KB per page
+
+**Estimated monthly bandwidth** for a site with 100,000 monthly sessions:
+- Without session replay: ~5-10 GB/month
+- With session replay: ~30-80 GB/month
+
+Most modern hosting plans can handle this easily, but verify your bandwidth limits if you have high traffic or session replay enabled.
+
+## Performance Optimization
+
+### Use a CDN
+
+If your server has CDN capabilities (like Cloudflare, Fastly, or AWS CloudFront), configure it to cache the static scripts:
+
+- Cache scripts at edge locations worldwide
+- Reduce latency for global users
+- Offload bandwidth from your origin server
+
+### Enable Compression
+
+Ensure your proxy enables gzip or brotli compression:
+
+```
+Content-Encoding: gzip
+```
+
+This can reduce script size by 60-70%, improving load times and reducing bandwidth.
+
+### Connection Reuse
+
+Configure your proxy to maintain persistent connections to Rybbit's backend to reduce latency on repeated requests.
+
+## Common Proxy Patterns
+
+<Tabs>
+<Tab value="subdomain-proxy" title="Subdomain Proxy">
+
+Use a dedicated subdomain for analytics:
+
+```
+https://analytics.yourdomain.com/script.js  →  https://app.rybbit.io/api/script.js
+https://analytics.yourdomain.com/track      →  https://app.rybbit.io/api/track
+```
+
+**Pros:**
+- Clean separation of concerns
+- Easy to manage SSL certificate
+- Can use separate CDN configuration
+
+**Cons:**
+- Additional DNS lookup (minor performance impact)
+- Need to manage subdomain DNS
+
+</Tab>
+<Tab value="path-based-proxy" title="Path-Based Proxy">
+
+Use a path on your main domain:
+
+```
+https://yourdomain.com/analytics/script.js  →  https://app.rybbit.io/api/script.js
+https://yourdomain.com/analytics/track      →  https://app.rybbit.io/api/track
+```
+
+**Pros:**
+- No additional DNS lookup
+- Single SSL certificate
+- Truly first-party from browser perspective
+
+**Cons:**
+- Must ensure proxy path doesn't conflict with your app routes
+
+</Tab>
+</Tabs>
+
+## Security Considerations
+
+### Rate Limiting
+
+Consider adding rate limiting to prevent abuse:
+
+- Limit POST requests to tracking endpoints (e.g., 100 requests per minute per IP)
+- Whitelist your Rybbit backend IP if possible
+- Monitor for unusual traffic patterns
+
+### Request Size Limits
+
+Set appropriate request body size limits:
+
+- `/api/track`, `/api/identify`: 1 MB max
+- `/api/session-replay/record/*`: 10 MB max (session replay can send large payloads)
+
+### HTTPS Only
+
+Always serve your proxy over HTTPS:
+
+- Modern browsers require HTTPS for many features
+- Protects user data in transit
+- Required for accurate tracking in secure contexts
+
+## Troubleshooting
+
+If something isn't working, check:
+
+1. **Script loads but no events tracked**: Verify all tracking endpoints (`/api/track`, etc.) are proxied
+2. **CORS errors**: Ensure CORS headers are preserved from Rybbit backend
+3. **404 errors**: Check that URL paths exactly match expected format
+4. **Incorrect geolocation**: Verify `X-Forwarded-For` header is forwarded
+5. **Session replay not working**: Add `/api/replay.js` and `/api/session-replay/record/:siteId` endpoints
+
+For more detailed troubleshooting, see our [troubleshooting guide](/docs/proxy-guide/troubleshooting).
+
+## Next Steps
+
+Now that you understand the generic concepts, choose your specific framework or platform for detailed implementation instructions:
+
+- [Next.js](/docs/proxy-guide/next-js)
+- [Nginx](/docs/proxy-guide/nginx)
+- [Caddy](/docs/proxy-guide/caddy)
+- [Vercel](/docs/proxy-guide/vercel)
+- [Express.js](/docs/proxy-guide/express)
+- [Laravel](/docs/proxy-guide/laravel)
+- [Astro](/docs/proxy-guide/astro)
+- [Cloudflare Workers](/docs/proxy-guide/cloudflare-workers)

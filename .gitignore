@@ -44,3 +44,5 @@ coverage/
 .env.production 
 
 .cursor/
+
+.claude/

@@ -3,7 +3,7 @@ import { authedFetch } from "../utils";
 import { timeZone } from "../../lib/dateTimeUtils";
 
 // Validation rule types
-export type ValidationRule = 
+export type ValidationRule =
   | {
       type: "status_code";
       operator: "equals" | "not_equals" | "in" | "not_in";
@@ -376,27 +376,15 @@ export interface UpdateMonitorInput {
 }
 
 async function createMonitor(data: CreateMonitorInput) {
-  return authedFetch(
-    `/uptime/monitors`,
-    undefined,
-    { method: 'POST', data }
-  );
+  return authedFetch(`/uptime/monitors`, undefined, { method: "POST", data });
 }
 
 async function updateMonitor(monitorId: number, data: UpdateMonitorInput) {
-  return authedFetch(
-    `/uptime/monitors/${monitorId}`,
-    undefined,
-    { method: 'PUT', data }
-  );
+  return authedFetch(`/uptime/monitors/${monitorId}`, undefined, { method: "PUT", data });
 }
 
 async function deleteMonitor(monitorId: number) {
-  return authedFetch(
-    `/uptime/monitors/${monitorId}`,
-    undefined,
-    { method: 'DELETE' }
-  );
+  return authedFetch(`/uptime/monitors/${monitorId}`, undefined, { method: "DELETE" });
 }
 
 export function useCreateMonitor() {

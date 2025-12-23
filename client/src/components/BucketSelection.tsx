@@ -1,15 +1,10 @@
 "use client";
 
 import { useStore } from "@/lib/store";
-import {
-  SelectItem,
-  Select,
-  SelectContent,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { SelectItem, Select, SelectContent, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DateTime } from "luxon";
 import { Time } from "./DateSelector/types";
+import { TimerReset } from "lucide-react";
 
 const getOptions = (time: Time) => {
   if (time.mode === "past-minutes") {
@@ -17,13 +12,13 @@ const getOptions = (time: Time) => {
       return (
         <SelectContent>
           <SelectItem size="sm" value="minute">
-            Minute
+            Min
           </SelectItem>
           <SelectItem size="sm" value="five_minutes">
-            5 Minutes
+            5 Min
           </SelectItem>
           <SelectItem size="sm" value="fifteen_minutes">
-            15 Minutes
+            15 Min
           </SelectItem>
           <SelectItem size="sm" value="hour">
             Hour
@@ -44,7 +39,7 @@ const getOptions = (time: Time) => {
     return (
       <SelectContent>
         <SelectItem size="sm" value="minute">
-          Minute
+          Min
         </SelectItem>
       </SelectContent>
     );
@@ -53,13 +48,13 @@ const getOptions = (time: Time) => {
     return (
       <SelectContent>
         <SelectItem size="sm" value="minute">
-          Minute
+          Min
         </SelectItem>
         <SelectItem size="sm" value="five_minutes">
-          5 Minutes
+          5 Min
         </SelectItem>
         <SelectItem size="sm" value="fifteen_minutes">
-          15 Minutes
+          15 Min
         </SelectItem>
         <SelectItem size="sm" value="hour">
           Hour
@@ -71,7 +66,7 @@ const getOptions = (time: Time) => {
     return (
       <SelectContent>
         <SelectItem size="sm" value="fifteen_minutes">
-          15 Minutes
+          15 Min
         </SelectItem>
         <SelectItem size="sm" value="hour">
           Hour
@@ -114,25 +109,22 @@ const getOptions = (time: Time) => {
   }
 
   if (time.mode === "range") {
-    const timeRangeLength = DateTime.fromISO(time.endDate).diff(
-      DateTime.fromISO(time.startDate),
-      "days"
-    ).days;
+    const timeRangeLength = DateTime.fromISO(time.endDate).diff(DateTime.fromISO(time.startDate), "days").days;
 
     return (
       <SelectContent>
         {timeRangeLength <= 7 && (
           <SelectItem size="sm" value="five_minutes">
-            5 Minutes
+            5 Min
           </SelectItem>
         )}
         {timeRangeLength <= 14 && (
           <>
             <SelectItem size="sm" value="ten_minutes">
-              10 Minutes
+              10 Min
             </SelectItem>
             <SelectItem size="sm" value="fifteen_minutes">
-              15 Minutes
+              15 Min
             </SelectItem>
           </>
         )}
@@ -166,8 +158,11 @@ export function BucketSelection() {
 
   return (
     <Select value={bucket} onValueChange={setBucket}>
-      <SelectTrigger className="w-[100px]" size="sm">
-        <SelectValue />
+      <SelectTrigger className="w-[90px]" size="sm">
+        <div className="flex items-center gap-1">
+          <TimerReset className="w-3 h-3" />
+          <SelectValue />
+        </div>
       </SelectTrigger>
       {getOptions(time)}
     </Select>

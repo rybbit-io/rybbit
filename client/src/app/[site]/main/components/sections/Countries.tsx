@@ -1,21 +1,16 @@
 "use client";
 import { ChevronRight, Expand, Globe } from "lucide-react";
 import { useState } from "react";
-import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from "../../../../../components/ui/basic-tabs";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../../../../components/ui/basic-tabs";
+import { Button } from "../../../../../components/ui/button";
 import { Card, CardContent } from "../../../../../components/ui/card";
+import { useSubdivisions } from "../../../../../lib/geo";
 import { getCountryName, getLanguageName } from "../../../../../lib/utils";
+import { MapComponent } from "../../../components/shared/Map/MapComponent";
 import { StandardSection } from "../../../components/shared/StandardSection/StandardSection";
 import { CountryFlag } from "../../../components/shared/icons/CountryFlag";
-import { useSubdivisions } from "../../../../../lib/geo";
-import { MapComponent } from "../../../components/shared/Map";
-import { Button } from "../../../../../components/ui/button";
 
-type Tab = "countries" | "regions" | "languages" | "cities" | "map";
+type Tab = "countries" | "regions" | "languages" | "cities" | "map" | "timezones";
 
 function getCountryCity(value: string) {
   if (value.split("-").length === 2) {
@@ -46,11 +41,7 @@ export function Countries() {
   return (
     <Card className="h-[405px]">
       <CardContent className="mt-2">
-        <Tabs
-          defaultValue="countries"
-          value={tab}
-          onValueChange={(value) => setTab(value as Tab)}
-        >
+        <Tabs defaultValue="countries" value={tab} onValueChange={value => setTab(value as Tab)}>
           <div className="flex flex-row gap-2 justify-between items-center">
             <TabsList>
               <TabsTrigger value="countries">Countries</TabsTrigger>
@@ -58,9 +49,10 @@ export function Countries() {
               <TabsTrigger value="cities">Cities</TabsTrigger>
               <TabsTrigger value="languages">Languages</TabsTrigger>
               <TabsTrigger value="map">Map</TabsTrigger>
+              <TabsTrigger value="timezones">Timezones</TabsTrigger>
             </TabsList>
             {tab !== "map" && (
-              <div>
+              <div className="w-7">
                 <Button size="smIcon" onClick={() => setExpanded(!expanded)}>
                   <Expand className="w-4 h-4" />
                 </Button>
@@ -71,10 +63,10 @@ export function Countries() {
             <StandardSection
               filterParameter="country"
               title="Countries"
-              getValue={(e) => e.value}
-              getKey={(e) => e.value}
-              getFilterLabel={(e) => getCountryName(e.value)}
-              getLabel={(e) => {
+              getValue={e => e.value}
+              getKey={e => e.value}
+              getFilterLabel={e => getCountryName(e.value)}
+              getLabel={e => {
                 return (
                   <div className="flex gap-2 items-center">
                     <CountryFlag country={e.value} />
@@ -90,21 +82,21 @@ export function Countries() {
             <StandardSection
               filterParameter="region"
               title="Regions"
-              getValue={(e) => e.value}
-              getKey={(e) => e.value}
-              getFilterLabel={(e) => {
+              getValue={e => e.value}
+              getKey={e => e.value}
+              getFilterLabel={e => {
                 const region = subdivisions?.features.find(
-                  (feature) => feature.properties.iso_3166_2 === e.value
+                  feature => feature.properties.iso_3166_2 === e.value
                 )?.properties;
                 return region?.name ?? "";
               }}
-              getLabel={(e) => {
+              getLabel={e => {
                 if (!e.value) {
                   return "Unknown";
                 }
 
                 const region = subdivisions?.features.find(
-                  (feature) => feature.properties.iso_3166_2 === e.value
+                  feature => feature.properties.iso_3166_2 === e.value
                 )?.properties;
 
                 const countryCode = e.value.split("-")[0];
@@ -126,9 +118,9 @@ export function Countries() {
             <StandardSection
               filterParameter="city"
               title="Cities"
-              getValue={(e) => e.value}
-              getKey={(e) => e.value}
-              getLabel={(e) => {
+              getValue={e => e.value}
+              getKey={e => e.value}
+              getLabel={e => {
                 if (!e.value || e.value === "-") {
                   return "Unknown";
                 }
@@ -136,17 +128,14 @@ export function Countries() {
                 const { country, region, city } = getCountryCity(e.value) ?? {};
 
                 const region_ = subdivisions?.features.find(
-                  (feature) =>
-                    feature.properties.iso_3166_2 === `${country}-${region}`
+                  feature => feature.properties.iso_3166_2 === `${country}-${region}`
                 )?.properties;
 
                 return (
                   <div className="flex gap-2 items-center">
                     <CountryFlag country={country} />
                     {country}
-                    {region_?.name && (
-                      <ChevronRight className="w-4 h-4 mx-[-4px]" />
-                    )}
+                    {region_?.name && <ChevronRight className="w-4 h-4 mx-[-4px]" />}
                     {region_?.name}
                     {city && <ChevronRight className="w-4 h-4 mx-[-4px]" />}
                     {city}
@@ -161,10 +150,10 @@ export function Countries() {
             <StandardSection
               filterParameter="language"
               title="Languages"
-              getValue={(e) => e.value}
-              getKey={(e) => e.value}
-              getFilterLabel={(e) => getLanguageName(e.value) ?? ""}
-              getLabel={(e) => (
+              getValue={e => e.value}
+              getKey={e => e.value}
+              getFilterLabel={e => getLanguageName(e.value) ?? ""}
+              getLabel={e => (
                 <div className="flex gap-2 items-center">
                   {getCountryFromLanguage(e.value) ? (
                     <CountryFlag country={getCountryFromLanguage(e.value)!} />
@@ -174,6 +163,28 @@ export function Countries() {
                   {getLanguageName(e.value)}
                 </div>
               )}
+              expanded={expanded}
+              close={close}
+            />
+          </TabsContent>
+          <TabsContent value="timezones">
+            <StandardSection
+              filterParameter="timezone"
+              title="Timezones"
+              getValue={e => e.value}
+              getKey={e => e.value}
+              // getFilterLabel={e => getLanguageName(e.value) ?? ""}
+              // getLabel={e => (
+              //   <div className="flex gap-2 items-center">
+              //     {getCountryFromLanguage(e.value) ? (
+              //       <CountryFlag country={getCountryFromLanguage(e.value)!} />
+              //     ) : (
+              //       <Globe className="w-5 h-5" />
+              //     )}
+              //     {getLanguageName(e.value)}
+              //   </div>
+              // )}
+              getLabel={e => e.value}
               expanded={expanded}
               close={close}
             />

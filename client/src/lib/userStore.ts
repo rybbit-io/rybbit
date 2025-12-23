@@ -7,11 +7,11 @@ export const userStore = create<{
   isPending: boolean;
   setSession: (user: User) => void;
   setIsPending: (isPending: boolean) => void;
-}>((set) => ({
+}>(set => ({
   user: null,
   isPending: true,
-  setSession: (user) => set({ user }),
-  setIsPending: (isPending) => set({ isPending }),
+  setSession: user => set({ user }),
+  setIsPending: isPending => set({ isPending }),
 }));
 
 authClient.getSession().then(({ data: session }) => {

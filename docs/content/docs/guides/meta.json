@@ -1,0 +1,25 @@
+{
+  "title": "Integration Guides",
+  "pages": [
+    "angular",
+    "astro",
+    "bubble",
+    "docusaurus",
+    "drupal",
+    "framer",
+    "google-tag-manager",
+    "hugo",
+    "jekyll",
+    "laravel",
+    "mintlify",
+    "react",
+    "shopify",
+    "squarespace",
+    "svelte",
+    "vue",
+    "webflow",
+    "wix",
+    "woocommerce",
+    "wordpress"
+  ]
+}

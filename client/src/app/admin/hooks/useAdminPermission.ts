@@ -51,12 +51,11 @@ export function useAdminPermission() {
   const stopImpersonating = async () => {
     try {
       await authClient.admin.stopImpersonating();
-      setState((prev) => ({ ...prev, isImpersonating: false }));
+      setState(prev => ({ ...prev, isImpersonating: false }));
       window.location.reload();
       return true;
     } catch (err) {
-      const errorMessage =
-        err instanceof Error ? err.message : "Unknown error occurred";
+      const errorMessage = err instanceof Error ? err.message : "Unknown error occurred";
       console.error(`Failed to stop impersonation: ${errorMessage}`);
       return false;
     }

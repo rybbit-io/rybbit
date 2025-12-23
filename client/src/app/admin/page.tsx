@@ -15,7 +15,7 @@ import { Button } from "../../components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "../../components/ui/sheet";
 
 import { Menu } from "lucide-react";
-import { VisuallyHidden } from "radix-ui";
+import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 import { Favicon } from "../../components/Favicon";
 
 function MobileSidebar() {
@@ -30,11 +30,11 @@ function MobileSidebar() {
             <Menu />
           </Button>
         </SheetTrigger>
-        <VisuallyHidden.Root>
+        <VisuallyHidden>
           <SheetHeader>
             <SheetTitle>Rybbit Sidebar</SheetTitle>
           </SheetHeader>
-        </VisuallyHidden.Root>
+        </VisuallyHidden>
         <SheetContent side="left" className="p-0 w-[40px] flex gap-0" showClose={false}>
           <AppSidebar />
         </SheetContent>
@@ -56,7 +56,8 @@ export default function AdminPage() {
         <div className="mb-2">
           <MobileSidebar />
         </div>
-        <AdminLayout title="Admin Dashboard">
+        <AdminLayout>
+          <div className="text-2xl font-bold mb-4">Admin Dashboard</div>
           <Tabs defaultValue="organizations" value={activeTab} onValueChange={setActiveTab}>
             <TabsList className="mb-4">
               <TabsTrigger value="organizations">Organizations</TabsTrigger>
@@ -78,7 +79,7 @@ export default function AdminPage() {
             </TabsContent>
 
             <TabsContent value="settings">
-              <div className="p-4 border rounded-md">
+              <div className="p-4 border border-neutral-100 dark:border-neutral-800 rounded-md">
                 <h2 className="text-xl font-bold mb-4">Admin Settings</h2>
                 <p className="text-muted-foreground">Settings panel coming soon...</p>
               </div>

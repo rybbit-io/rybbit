@@ -1,7 +1,6 @@
 import { FastifyReply, FastifyRequest } from "fastify";
 import { clickhouse } from "../../db/clickhouse/clickhouse.js";
-import { getUserHasAccessToSitePublic } from "../../lib/auth-utils.js";
-import { processResults } from "./utils.js";
+import { processResults } from "./utils/utils.js";
 
 // Define the expected shape of a single data row from the query
 interface RetentionDataRow {
@@ -36,11 +35,6 @@ export const getRetention = async (
   // Validate range parameter (between 7-365 days)
   const timeRange = Math.min(365, Math.max(7, parseInt(range) || 90));
 
-  const userHasAccessToSite = await getUserHasAccessToSitePublic(req, site);
-  if (!userHasAccessToSite) {
-    return res.status(403).send({ error: "Forbidden" });
-  }
-
   // Build the appropriate SQL based on the retention mode
   const periodFunction = retentionMode === "day" ? "toDate" : "toStartOfWeek";
   const periodDiffFunc = retentionMode === "day" ? "day" : "week";
@@ -49,22 +43,19 @@ export const getRetention = async (
     query: `
 WITH UserFirstPeriod AS (
     SELECT
-        user_id,
-        ${periodFunction}(min(timestamp)${
-          retentionMode === "week" ? ", 1" : ""
-        }) AS cohort_period
+        -- Use effective user ID: identified_user_id for identified users, user_id for anonymous
+        COALESCE(NULLIF(identified_user_id, ''), user_id) AS effective_user_id,
+        ${periodFunction}(min(timestamp)${retentionMode === "week" ? ", 1" : ""}) AS cohort_period
     FROM events
     WHERE site_id = {siteId:UInt16}
     -- Use the configurable time range
     AND timestamp >= addDays(today(), -{timeRange:UInt16})
-    GROUP BY user_id
+    GROUP BY effective_user_id
 ),
 PeriodActivity AS (
     SELECT DISTINCT
-        user_id,
-        ${periodFunction}(timestamp${
-          retentionMode === "week" ? ", 1" : ""
-        }) AS activity_period
+        COALESCE(NULLIF(identified_user_id, ''), user_id) AS effective_user_id,
+        ${periodFunction}(timestamp${retentionMode === "week" ? ", 1" : ""}) AS activity_period
     FROM events
     WHERE site_id = {siteId:UInt16}
     -- Match the date range filter
@@ -74,9 +65,9 @@ CohortRetention AS (
     SELECT
         ufp.cohort_period,
         dateDiff('${periodDiffFunc}', ufp.cohort_period, pa.activity_period) AS period_difference,
-        count(DISTINCT pa.user_id) AS retained_users
+        count(DISTINCT pa.effective_user_id) AS retained_users
     FROM UserFirstPeriod ufp
-    JOIN PeriodActivity pa ON ufp.user_id = pa.user_id
+    JOIN PeriodActivity pa ON ufp.effective_user_id = pa.effective_user_id
     WHERE pa.activity_period >= ufp.cohort_period
     GROUP BY
         ufp.cohort_period,
@@ -85,7 +76,7 @@ CohortRetention AS (
 CohortSize AS (
     SELECT
         cohort_period,
-        count(DISTINCT user_id) AS total_users
+        count(DISTINCT effective_user_id) AS total_users
     FROM UserFirstPeriod
     GROUP BY cohort_period
 )
@@ -121,20 +112,15 @@ ORDER BY
 };
 
 // Process raw retention data into a grid-friendly format
-function processRetentionData(
-  rawData: RetentionDataRow[]
-): Omit<ProcessedRetentionData, "mode" | "range"> {
+function processRetentionData(rawData: RetentionDataRow[]): Omit<ProcessedRetentionData, "mode" | "range"> {
   if (!rawData || rawData.length === 0) {
     return { cohorts: {}, maxPeriods: 0 };
   }
 
-  const processedCohorts: Record<
-    string,
-    { size: number; percentages: (number | null)[] }
-  > = {};
+  const processedCohorts: Record<string, { size: number; percentages: (number | null)[] }> = {};
   let maxPeriodDiff = 0;
 
-  rawData.forEach((row) => {
+  rawData.forEach(row => {
     if (!processedCohorts[row.cohort_period]) {
       processedCohorts[row.cohort_period] = {
         size: row.cohort_size,
@@ -142,14 +128,10 @@ function processRetentionData(
       };
     }
     // Ensure array is long enough, filling gaps with null
-    while (
-      processedCohorts[row.cohort_period].percentages.length <=
-      row.period_difference
-    ) {
+    while (processedCohorts[row.cohort_period].percentages.length <= row.period_difference) {
       processedCohorts[row.cohort_period].percentages.push(null);
     }
-    processedCohorts[row.cohort_period].percentages[row.period_difference] =
-      row.retention_percentage;
+    processedCohorts[row.cohort_period].percentages[row.period_difference] = row.retention_percentage;
 
     if (row.period_difference > maxPeriodDiff) {
       maxPeriodDiff = row.period_difference;
@@ -159,7 +141,7 @@ function processRetentionData(
   // Ensure all percentage arrays have the same length for grid alignment
   const finalMaxPeriods = Math.max(maxPeriodDiff, 0);
 
-  Object.values(processedCohorts).forEach((cohort) => {
+  Object.values(processedCohorts).forEach(cohort => {
     // Ensure all cohorts have the same number of periods
     while (cohort.percentages.length <= finalMaxPeriods) {
       cohort.percentages.push(null);

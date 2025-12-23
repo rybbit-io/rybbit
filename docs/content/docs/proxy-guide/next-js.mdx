@@ -1,0 +1,516 @@
+---
+title: Next.js Proxy Setup
+description: Configure Next.js rewrites to proxy Rybbit tracking and bypass ad blockers
+---
+
+import { Steps } from 'fumadocs-ui/components/steps';
+import { Callout } from 'fumadocs-ui/components/callout';
+import { Tabs, Tab } from 'fumadocs-ui/components/tabs';
+
+Next.js provides a powerful [rewrites](https://nextjs.org/docs/app/api-reference/next-config-js/rewrites) feature that makes it easy to proxy Rybbit tracking through your own domain. This guide works with both the App Router (Next.js 13+) and Pages Router.
+
+## Overview
+
+Next.js rewrites allow you to map incoming request paths to different destination URLs transparently. This is perfect for proxying analytics since the browser sees requests to your domain while Next.js forwards them to Rybbit's servers behind the scenes.
+
+**What you'll achieve:**
+- Serve Rybbit scripts from your domain (e.g., `/analytics/script.js`)
+- Proxy all tracking requests through your Next.js application
+- Bypass ad blocker detection with first-party requests
+- Support all Rybbit features (session replay, Web Vitals, custom events)
+
+## Prerequisites
+
+- Next.js 12 or later (rewrites are supported in all modern versions)
+- Your Rybbit site ID (found in your dashboard)
+- Your Rybbit instance URL:
+  - **Cloud hosted**: `https://app.rybbit.io`
+  - **Self-hosted**: Your instance URL (e.g., `https://analytics.yourcompany.com`)
+
+## Implementation
+
+<Steps>
+
+### Configure Environment Variables
+
+Create or update your `.env` or `.env.local` file with your Rybbit instance URL:
+
+<Tabs>
+<Tab value="cloud-hosted" title="Cloud Hosted">
+
+```bash
+# .env.local
+NEXT_PUBLIC_RYBBIT_HOST=https://app.rybbit.io
+```
+
+</Tab>
+<Tab value="self-hosted" title="Self-Hosted">
+
+```bash
+# .env.local
+NEXT_PUBLIC_RYBBIT_HOST=https://analytics.yourcompany.com
+```
+
+Replace `analytics.yourcompany.com` with your actual Rybbit instance domain.
+
+</Tab>
+</Tabs>
+
+<Callout type="info">
+The `NEXT_PUBLIC_` prefix makes this environment variable available in both server and client environments, though it's primarily used during build time for the rewrites configuration.
+</Callout>
+
+### Set Up Rewrites in next.config.js
+
+Add or update the `rewrites` function in your `next.config.js` (or `next.config.mjs` for ESM):
+
+<Tabs>
+<Tab value="full-proxy-recommended" title="Full Proxy (Recommended)">
+
+This configuration proxies all Rybbit endpoints including session replay and Web Vitals:
+
+```javascript
+// next.config.js
+/** @type {import('next').NextConfig} */
+const nextConfig = {
+  async rewrites() {
+    const rybbitHost = process.env.NEXT_PUBLIC_RYBBIT_HOST;
+
+    if (!rybbitHost) {
+      console.warn('NEXT_PUBLIC_RYBBIT_HOST is not set. Rybbit proxy will not work.');
+      return [];
+    }
+
+    return [
+      // Tracking scripts
+      {
+        source: '/analytics/script.js',
+        destination: `${rybbitHost}/api/script.js`,
+      },
+      {
+        source: '/analytics/script-full.js',
+        destination: `${rybbitHost}/api/script-full.js`,
+      },
+      {
+        source: '/analytics/replay.js',
+        destination: `${rybbitHost}/api/replay.js`,
+      },
+      {
+        source: '/analytics/metrics.js',
+        destination: `${rybbitHost}/api/metrics.js`,
+      },
+      // Tracking endpoints
+      {
+        source: '/analytics/track',
+        destination: `${rybbitHost}/api/track`,
+      },
+      {
+        source: '/analytics/identify',
+        destination: `${rybbitHost}/api/identify`,
+      },
+      {
+        source: '/analytics/session-replay/record/:siteId',
+        destination: `${rybbitHost}/api/session-replay/record/:siteId`,
+      },
+      {
+        source: '/analytics/site/tracking-config/:siteId',
+        destination: `${rybbitHost}/site/tracking-config/:siteId`,
+      },
+    ];
+  },
+};
+
+module.exports = nextConfig;
+```
+
+</Tab>
+<Tab value="minimal-proxy" title="Minimal Proxy">
+
+Minimal setup with just script loading and basic event tracking:
+
+```javascript
+// next.config.js
+/** @type {import('next').NextConfig} */
+const nextConfig = {
+  async rewrites() {
+    const rybbitHost = process.env.NEXT_PUBLIC_RYBBIT_HOST;
+
+    if (!rybbitHost) {
+      console.warn('NEXT_PUBLIC_RYBBIT_HOST is not set. Rybbit proxy will not work.');
+      return [];
+    }
+
+    return [
+      {
+        source: '/analytics/script.js',
+        destination: `${rybbitHost}/api/script.js`,
+      },
+      {
+        source: '/analytics/track',
+        destination: `${rybbitHost}/api/track`,
+      },
+    ];
+  },
+};
+
+module.exports = nextConfig;
+```
+
+<Callout type="warn">
+This minimal setup won't support session replay or Web Vitals. Use the full proxy configuration if you need these features.
+</Callout>
+
+</Tab>
+<Tab value="esm-nextconfigmjs" title="ESM (next.config.mjs)">
+
+If you're using ES modules:
+
+```javascript
+// next.config.mjs
+/** @type {import('next').NextConfig} */
+const nextConfig = {
+  async rewrites() {
+    const rybbitHost = process.env.NEXT_PUBLIC_RYBBIT_HOST;
+
+    if (!rybbitHost) {
+      console.warn('NEXT_PUBLIC_RYBBIT_HOST is not set. Rybbit proxy will not work.');
+      return [];
+    }
+
+    return [
+      {
+        source: '/analytics/script.js',
+        destination: `${rybbitHost}/api/script.js`,
+      },
+      {
+        source: '/analytics/track',
+        destination: `${rybbitHost}/api/track`,
+      },
+      {
+        source: '/analytics/replay.js',
+        destination: `${rybbitHost}/api/replay.js`,
+      },
+      {
+        source: '/analytics/metrics.js',
+        destination: `${rybbitHost}/api/metrics.js`,
+      },
+      {
+        source: '/analytics/identify',
+        destination: `${rybbitHost}/api/identify`,
+      },
+      {
+        source: '/analytics/session-replay/record/:siteId',
+        destination: `${rybbitHost}/api/session-replay/record/:siteId`,
+      },
+      {
+        source: '/analytics/site/tracking-config/:siteId',
+        destination: `${rybbitHost}/site/tracking-config/:siteId`,
+      },
+    ];
+  },
+};
+
+export default nextConfig;
+```
+
+</Tab>
+</Tabs>
+
+<Callout type="info">
+**Custom Path**: You can change `/analytics` to any path you prefer (e.g., `/tracking`, `/stats`, `/rybbit`). Just ensure you use the same path consistently in both your rewrites and script tag.
+</Callout>
+
+### Update Your Tracking Script
+
+Update your script tag to load from the proxied path instead of directly from Rybbit:
+
+<Tabs>
+<Tab value="app-router-nextjs-13" title="App Router (Next.js 13+)">
+
+Update your root layout file:
+
+```tsx
+// app/layout.tsx
+import Script from 'next/script';
+
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return (
+    <html lang="en">
+      <body>
+        {children}
+        <Script
+          src="/analytics/script.js"
+          data-site-id="YOUR_SITE_ID"
+          strategy="afterInteractive"
+        />
+      </body>
+    </html>
+  );
+}
+```
+
+Replace `YOUR_SITE_ID` with your actual site ID from the Rybbit dashboard.
+
+</Tab>
+<Tab value="pages-router" title="Pages Router">
+
+Update your `_app.tsx` or `_app.jsx` file:
+
+```tsx
+// pages/_app.tsx
+import Script from 'next/script';
+import type { AppProps } from 'next/app';
+
+function MyApp({ Component, pageProps }: AppProps) {
+  return (
+    <>
+      <Component {...pageProps} />
+      <Script
+        src="/analytics/script.js"
+        data-site-id="YOUR_SITE_ID"
+        strategy="afterInteractive"
+      />
+    </>
+  );
+}
+
+export default MyApp;
+```
+
+Replace `YOUR_SITE_ID` with your actual site ID from the Rybbit dashboard.
+
+</Tab>
+<Tab value="javascript-no-typescript" title="JavaScript (No TypeScript)">
+
+```jsx
+// app/layout.js or pages/_app.js
+import Script from 'next/script';
+
+export default function RootLayout({ children }) {
+  return (
+    <html lang="en">
+      <body>
+        {children}
+        <Script
+          src="/analytics/script.js"
+          data-site-id="YOUR_SITE_ID"
+          strategy="afterInteractive"
+        />
+      </body>
+    </html>
+  );
+}
+```
+
+</Tab>
+</Tabs>
+
+### Restart Your Development Server
+
+After updating `next.config.js`, restart your Next.js development server for the changes to take effect:
+
+```bash
+# Stop the server (Ctrl+C) and restart
+npm run dev
+# or
+yarn dev
+# or
+pnpm dev
+```
+
+### Verify the Setup
+
+Open your website in a browser with Developer Tools:
+
+1. **Open the Network tab** and filter by "analytics" or "script"
+2. **Verify the script loads**:
+   - You should see a request to `/analytics/script.js` (not `app.rybbit.io`)
+   - Status should be `200 OK`
+   - The domain should be your own domain
+3. **Verify tracking works**:
+   - Navigate to another page or trigger an event
+   - You should see POST requests to `/analytics/track`
+   - All requests should show your domain, not `app.rybbit.io`
+4. **Check the Rybbit dashboard**:
+   - Wait 1-2 minutes for data processing
+   - Verify your session appears in the real-time dashboard
+
+</Steps>
+
+## How It Works
+
+The Rybbit tracking script has a built-in auto-discovery mechanism. When it loads from:
+
+```html
+<script src="/analytics/script.js" data-site-id="123"></script>
+```
+
+It automatically extracts the analytics host from its own `src` attribute:
+
+```typescript
+// Inside Rybbit's script
+const scriptElement = document.currentScript;
+const src = scriptElement.getAttribute('src');
+const analyticsHost = src.split('/script.js')[0];
+// Result: "" (empty string means same domain)
+```
+
+This means all tracking requests automatically go to `/analytics/track`, `/analytics/identify`, etc., which Next.js then rewrites to forward to Rybbit's servers.
+
+## Performance Considerations
+
+### Bandwidth Usage
+
+All tracking requests now flow through your Next.js server, which will increase bandwidth usage:
+
+<Callout type="warn">
+**Bandwidth Impact**: Each session typically uses 10-50 KB without session replay, or 50-500 KB with session replay enabled. For a site with 100,000 monthly sessions, expect 5-10 GB/month additional bandwidth without replay, or 30-80 GB/month with replay.
+</Callout>
+
+Most Vercel, Netlify, or other hosting plans can handle this, but check your plan's bandwidth limits if you have high traffic.
+
+### Caching
+
+Next.js automatically caches responses when possible, but you can optimize further:
+
+**Using Vercel Edge Network:**
+If deployed on Vercel, your rewrites benefit from the global Edge Network, which caches static scripts close to users worldwide.
+
+**Custom caching headers:**
+The Rybbit server sets appropriate cache headers, which Next.js respects:
+- Scripts (`.js` files): Cached for 1 hour
+- Configuration: Cached for 5 minutes
+- Tracking POSTs: Not cached
+
+### Server Load
+
+Rewrites are handled at the edge on Vercel, so there's minimal impact on your serverless functions. For self-hosted Next.js, consider:
+
+- Using a CDN (Cloudflare, CloudFront, etc.) in front of Next.js
+- Scaling your server if you have very high traffic
+- Monitoring server response times
+
+## Troubleshooting
+
+### Script loads but events aren't tracked
+
+**Problem**: You see the script load successfully, but no tracking data appears in the dashboard.
+
+**Solution**:
+1. Check that `/analytics/track` is included in your rewrites
+2. Verify POST requests to `/analytics/track` return `200 OK` in Network tab
+3. Check for CORS errors in the browser console
+4. Ensure your Rybbit instance URL is correct in `.env.local`
+
+### 404 errors on tracking endpoints
+
+**Problem**: Script loads fine, but tracking requests return 404.
+
+**Solution**:
+1. Verify all tracking endpoints are in your `rewrites()` configuration
+2. Restart your dev server after changing `next.config.js`
+3. Clear your browser cache
+4. Check that the endpoint paths exactly match (case-sensitive)
+
+### Session replay not working
+
+**Problem**: Basic tracking works but session replay doesn't record.
+
+**Solution**:
+Add the session replay endpoints to your rewrites:
+
+```javascript
+{
+  source: '/analytics/replay.js',
+  destination: `${rybbitHost}/api/replay.js`,
+},
+{
+  source: '/analytics/session-replay/record/:siteId',
+  destination: `${rybbitHost}/api/session-replay/record/:siteId`,
+},
+```
+
+### Environment variable not loading
+
+**Problem**: Rewrites don't work, console shows warning about missing `NEXT_PUBLIC_RYBBIT_HOST`.
+
+**Solution**:
+1. Ensure you created `.env.local` in your project root
+2. Restart your dev server after creating `.env.local`
+3. For production, ensure environment variables are set in your hosting platform (Vercel, Netlify, etc.)
+
+## Deployment Considerations
+
+### Vercel
+
+When deploying to Vercel:
+1. Add `NEXT_PUBLIC_RYBBIT_HOST` environment variable in your Vercel project settings
+2. Rewrites automatically work at the edge with zero configuration
+3. Bandwidth is generous on all Vercel plans
+
+### Self-Hosted
+
+When self-hosting Next.js:
+1. Ensure environment variables are available to the Next.js process
+2. Consider adding a CDN layer for better caching and reduced bandwidth
+3. Monitor server load if you have high traffic
+
+### Other Platforms (Netlify, AWS, etc.)
+
+1. Set environment variables in your platform's settings
+2. Verify rewrites are supported (most platforms support Next.js rewrites)
+3. Check bandwidth limits for your plan
+
+## Advanced Configuration
+
+### Different paths for different environments
+
+You can customize the proxy path based on the environment:
+
+```javascript
+// next.config.js
+const nextConfig = {
+  async rewrites() {
+    const rybbitHost = process.env.NEXT_PUBLIC_RYBBIT_HOST;
+    const analyticsPath = process.env.NODE_ENV === 'development'
+      ? '/dev-analytics'
+      : '/analytics';
+
+    return [
+      {
+        source: `${analyticsPath}/script.js`,
+        destination: `${rybbitHost}/api/script.js`,
+      },
+      // ... other rewrites
+    ];
+  },
+};
+```
+
+### Conditional proxy (development only)
+
+If you only want proxying in production:
+
+```javascript
+// next.config.js
+const nextConfig = {
+  async rewrites() {
+    if (process.env.NODE_ENV === 'development') {
+      return []; // No proxy in development
+    }
+
+    // ... production rewrites
+  },
+};
+```
+
+## Related Resources
+
+- [Next.js Integration Guide](/docs/guides/react/next-js) - General Next.js integration
+- [Tracking Script Documentation](/docs/script) - Script configuration options
+- [Custom Events](/docs/track-events) - Track custom events
+- [Next.js Rewrites Documentation](https://nextjs.org/docs/app/api-reference/next-config-js/rewrites) - Official Next.js docs

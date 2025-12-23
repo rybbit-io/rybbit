@@ -12,12 +12,10 @@ const eventConfigSchema = z
   .object({
     eventName: z.string().min(1, "Event name cannot be empty"),
     eventPropertyKey: z.string().optional(),
-    eventPropertyValue: z
-      .union([z.string(), z.number(), z.boolean()])
-      .optional(),
+    eventPropertyValue: z.union([z.string(), z.number(), z.boolean()]).optional(),
   })
   .refine(
-    (data) => {
+    data => {
       // If one property matching field is provided, both must be provided
       if (data.eventPropertyKey && data.eventPropertyValue === undefined) {
         return false;
@@ -28,28 +26,24 @@ const eventConfigSchema = z
       return true;
     },
     {
-      message:
-        "Both eventPropertyKey and eventPropertyValue must be provided together or omitted together",
+      message: "Both eventPropertyKey and eventPropertyValue must be provided together or omitted together",
     }
   );
 
-// Define validation schema for the goal request
-const goalSchema = z
+// Define validation schema for the goal request body
+const goalBodySchema = z
   .object({
-    siteId: z.number().int().positive("Site ID must be a positive integer"),
     name: z.string().optional(),
     goalType: z.enum(["path", "event"]),
     config: z.object({
       pathPattern: z.string().optional(),
       eventName: z.string().optional(),
       eventPropertyKey: z.string().optional(),
-      eventPropertyValue: z
-        .union([z.string(), z.number(), z.boolean()])
-        .optional(),
+      eventPropertyValue: z.union([z.string(), z.number(), z.boolean()]).optional(),
     }),
   })
   .refine(
-    (data) => {
+    data => {
       if (data.goalType === "path") {
         return !!data.config.pathPattern;
       } else if (data.goalType === "event") {
@@ -63,24 +57,28 @@ const goalSchema = z
     }
   );
 
-type CreateGoalRequest = z.infer<typeof goalSchema>;
+type CreateGoalBody = z.infer<typeof goalBodySchema>;
 
 export async function createGoal(
   request: FastifyRequest<{
-    Body: CreateGoalRequest;
+    Params: { site: string };
+    Body: CreateGoalBody;
   }>,
   reply: FastifyReply
 ) {
   try {
+    // Get siteId from URL params
+    const siteId = parseInt(request.params.site, 10);
+    if (isNaN(siteId) || siteId <= 0) {
+      return reply.status(400).send({ error: "Invalid site ID" });
+    }
+
     // Validate the request body
-    const validatedData = goalSchema.parse(request.body);
-    const { siteId, name, goalType, config } = validatedData;
+    const validatedData = goalBodySchema.parse(request.body);
+    const { name, goalType, config } = validatedData;
 
     // Check user access to site
-    const userHasAccessToSite = await getUserHasAccessToSite(
-      request,
-      siteId.toString()
-    );
+    const userHasAccessToSite = await getUserHasAccessToSite(request, siteId.toString());
     if (!userHasAccessToSite) {
       return reply.status(403).send({ error: "Forbidden" });
     }

@@ -10,6 +10,7 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { getTimezone } from "@/lib/store";
 import { cn } from "@/lib/utils";
 import { AlertCircle, CheckCircle, MoreHorizontal } from "lucide-react";
 import { DateTime } from "luxon";
@@ -23,7 +24,7 @@ import {
 } from "../../../api/uptime/incidents";
 
 const formatStartTime = (timestamp: string) => {
-  const dt = DateTime.fromSQL(timestamp, { zone: "UTC" }).toLocal();
+  const dt = DateTime.fromSQL(timestamp, { zone: "UTC" }).setZone(getTimezone());
   return dt.toRelative() || dt.toFormat("MMM dd, HH:mm");
 };
 
@@ -105,7 +106,7 @@ export default function IncidentsPage() {
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-semibold">Incidents</h1>
 
-        <Tabs value={statusFilter} onValueChange={(value) => setStatusFilter(value as any)}>
+        <Tabs value={statusFilter} onValueChange={value => setStatusFilter(value as any)}>
           <TabsList>
             <TabsTrigger value="active">Active</TabsTrigger>
             <TabsTrigger value="acknowledged">Acknowledged</TabsTrigger>
@@ -158,7 +159,7 @@ export default function IncidentsPage() {
                 </TableCell>
               </TableRow>
             ) : (
-              data?.incidents?.map((incident) => (
+              data?.incidents?.map(incident => (
                 <TableRow key={incident.id}>
                   <TableCell>{getStatusIcon(incident.status)}</TableCell>
                   <TableCell>
@@ -169,7 +170,7 @@ export default function IncidentsPage() {
                       <div className="flex flex-wrap gap-1">
                         {incident.affectedRegions.length > 3 ? (
                           <>
-                            {incident.affectedRegions.slice(0, 3).map((region) => (
+                            {incident.affectedRegions.slice(0, 3).map(region => (
                               <span
                                 key={region}
                                 className={cn(
@@ -185,7 +186,7 @@ export default function IncidentsPage() {
                             </span>
                           </>
                         ) : (
-                          incident.affectedRegions.map((region) => (
+                          incident.affectedRegions.map(region => (
                             <span
                               key={region}
                               className={cn(

@@ -1,6 +1,7 @@
 import React from "react";
 import { DateTime } from "luxon";
 import { TableCell, TableRow } from "@/components/ui/table";
+import { getTimezone } from "@/lib/store";
 import { StatusOrb } from "./StatusOrb";
 import { UptimeBar } from "./UptimeBar";
 import { UptimeMonitor, useMonitorUptime } from "@/api/uptime/monitors";
@@ -27,7 +28,7 @@ const formatLastPing = (lastCheckedAt?: string) => {
 
   const lastPing = DateTime.fromSQL(lastCheckedAt, {
     zone: "utc",
-  }).toLocal();
+  }).setZone(getTimezone());
 
   const now = DateTime.now();
   const diffMs = now.toMillis() - lastPing.toMillis();

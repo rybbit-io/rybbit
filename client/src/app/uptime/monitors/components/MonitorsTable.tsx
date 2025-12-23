@@ -14,6 +14,7 @@ import {
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { UptimeMonitor, useMonitors } from "@/api/uptime/monitors";
 import { Skeleton } from "@/components/ui/skeleton";
+import { getTimezone } from "@/lib/store";
 import { Radio, ArrowDown, ArrowUp, ArrowUpDown } from "lucide-react";
 import { StatusOrb } from "./StatusOrb";
 import { UptimeBar } from "./UptimeBar";
@@ -50,7 +51,7 @@ const formatLastPing = (lastCheckedAt?: string) => {
 
   const lastPing = DateTime.fromSQL(lastCheckedAt, {
     zone: "utc",
-  }).toLocal();
+  }).setZone(getTimezone());
 
   const now = DateTime.now();
   const diffMs = now.toMillis() - lastPing.toMillis();
@@ -166,13 +167,13 @@ export function MonitorsTable({ onMonitorClick }: MonitorsTableProps) {
         cell: ({ row }) => <UptimeBar monitorId={row.original.id} />,
         size: 192,
       }),
-      columnHelper.accessor((row) => row.status?.lastCheckedAt, {
+      columnHelper.accessor(row => row.status?.lastCheckedAt, {
         id: "lastPing",
         header: ({ column }) => <SortHeader column={column}>Last Ping</SortHeader>,
         cell: ({ getValue }) => <span className="text-neutral-300">{formatLastPing(getValue())}</span>,
         size: 112,
       }),
-      columnHelper.accessor((row) => row.status?.uptimePercentage7d, {
+      columnHelper.accessor(row => row.status?.uptimePercentage7d, {
         id: "uptimePercentage",
         header: ({ column }) => (
           <SortHeader column={column}>
@@ -210,15 +211,15 @@ export function MonitorsTable({ onMonitorClick }: MonitorsTableProps) {
       <Input
         placeholder="Search monitors by name, URL, or type..."
         value={globalFilter}
-        onChange={(e) => setGlobalFilter(e.target.value)}
+        onChange={e => setGlobalFilter(e.target.value)}
         className="max-w-sm bg-neutral-900"
       />
       <div className="rounded-lg border border-neutral-800">
         <Table>
           <TableHeader>
-            {table.getHeaderGroups().map((headerGroup) => (
+            {table.getHeaderGroups().map(headerGroup => (
               <TableRow key={headerGroup.id}>
-                {headerGroup.headers.map((header) => (
+                {headerGroup.headers.map(header => (
                   <TableHead
                     key={header.id}
                     style={{
@@ -265,13 +266,13 @@ export function MonitorsTable({ onMonitorClick }: MonitorsTableProps) {
                 </TableCell>
               </TableRow>
             ) : (
-              table.getRowModel().rows.map((row) => (
+              table.getRowModel().rows.map(row => (
                 <TableRow
                   key={row.id}
                   className="cursor-pointer hover:bg-neutral-900/50"
                   onClick={() => onMonitorClick?.(row.original)}
                 >
-                  {row.getVisibleCells().map((cell) => (
+                  {row.getVisibleCells().map(cell => (
                     <TableCell key={cell.id}>{flexRender(cell.column.columnDef.cell, cell.getContext())}</TableCell>
                   ))}
                 </TableRow>
@@ -286,7 +287,7 @@ export function MonitorsTable({ onMonitorClick }: MonitorsTableProps) {
         <Pagination
           table={table}
           data={{
-            items: table.getFilteredRowModel().rows.map((row) => row.original),
+            items: table.getFilteredRowModel().rows.map(row => row.original),
             total: table.getFilteredRowModel().rows.length,
           }}
           pagination={pagination}

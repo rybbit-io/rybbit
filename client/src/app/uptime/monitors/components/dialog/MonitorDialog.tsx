@@ -41,7 +41,9 @@ export function MonitorDialog({ monitor, open, onOpenChange }: MonitorDialogProp
   const { data: regionsData } = useQuery({
     queryKey: ["uptime-regions"],
     queryFn: async () => {
-      const response = await authedFetch<{ regions: Array<{ code: string; name: string; isHealthy: boolean; isLocal: boolean }> }>("/uptime/regions");
+      const response = await authedFetch<{
+        regions: Array<{ code: string; name: string; isHealthy: boolean; isLocal: boolean }>;
+      }>("/uptime/regions");
       return response.regions;
     },
     enabled: open && IS_CLOUD,
@@ -133,8 +135,15 @@ export function MonitorDialog({ monitor, open, onOpenChange }: MonitorDialogProp
       if (globalRegions.length > 0) {
         const currentRegions = form.getValues("selectedRegions");
         // Only set if empty or has default "local" value
-        if (!currentRegions || currentRegions.length === 0 || (currentRegions.length === 1 && currentRegions[0] === "local")) {
-          form.setValue("selectedRegions", globalRegions.map(r => r.code));
+        if (
+          !currentRegions ||
+          currentRegions.length === 0 ||
+          (currentRegions.length === 1 && currentRegions[0] === "local")
+        ) {
+          form.setValue(
+            "selectedRegions",
+            globalRegions.map(r => r.code)
+          );
         }
       }
     }
@@ -208,11 +217,7 @@ export function MonitorDialog({ monitor, open, onOpenChange }: MonitorDialogProp
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <Form {...form}>
-          <form
-            onSubmit={form.handleSubmit(onSubmit, (errors) => {
-              console.log("Form validation errors:", errors);
-            })}
-          >
+          <form>
             <DialogHeader>
               <DialogTitle>{isEdit ? "Edit" : "Create New"} Monitor</DialogTitle>
               <DialogDescription>

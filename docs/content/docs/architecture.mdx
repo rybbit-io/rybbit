@@ -1,0 +1,246 @@
+---
+title: Architecture
+description: Understanding Rybbit's architecture
+---
+
+## Overview
+
+Rybbit is a modern, open-source web and product analytics platform designed as a privacy-friendly alternative to Google Analytics. Built with a full-stack TypeScript architecture, it provides real-time analytics, session replay, performance monitoring, and uptime tracking capabilities.
+
+## System Architecture
+
+<Tabs items={['Cloud', 'Self-Hosted']} defaultIndex={0}>
+<Tab value="Self-Hosted">
+<Mermaid
+  chart="
+graph TB
+    subgraph Client Applications
+        A[Tracked Website]
+        B[Dashboard UI<br/>Next.js 15]
+    end
+
+    subgraph Rybbit Server
+        C[Caddy<br/>HTTP/3 Support]
+        subgraph Backend Service
+            D[Fastify Server<br/>Node.js]
+            E[Better Auth<br/>Authentication]
+            K[MaxMind GeoIP<br/>IP Geolocation]
+        end
+
+        G[(PostgreSQL<br/>Metadata & Users)]
+        H[(ClickHouse<br/>Events & Analytics)]
+    end
+
+    A -->|Track Events| C
+    B -->|API Requests| C
+    C -->|Route Traffic| D
+
+    D -->|Auth| E
+    E -->|Sessions| G
+    D -->|User Data| G
+    D -->|Analytics Data| H
+    D -->|IP Lookup| K
+"
+/>
+</Tab>
+
+<Tab value="Cloud">
+<Mermaid
+  chart="
+graph TB
+    subgraph Client Applications
+        A[Tracked Website]
+        B[Dashboard UI<br/>Next.js 15]
+    end
+
+    subgraph Rybbit Server
+        C[Caddy<br/>HTTP/3 Support]
+        subgraph Backend Service
+            D[Fastify Server<br/>Node.js]
+            E[Better Auth<br/>Authentication]
+            K[MaxMind GeoIP<br/>IP Geolocation]
+        end
+
+        G[(PostgreSQL<br/>Metadata & Users)]
+        H[(ClickHouse<br/>Events & Analytics)]
+    end
+
+    subgraph External Services
+        I[Cloudflare R2<br/>Session Replays]
+        J[Resend<br/>Email Service]
+    end
+
+    A -->|Track Events| C
+    B -->|API Requests| C
+    C -->|Route Traffic| D
+
+    D -->|Auth| E
+    E -->|Sessions| G
+    D -->|Queue Jobs| F
+    D -->|User Data| G
+    D -->|Analytics Data| H
+    D -->|Store Replays| I
+    D -->|Send Emails| J
+    D -->|IP Lookup| K
+
+    F -->|Process Events| H
+"
+/>
+</Tab>
+</Tabs>
+
+## Core Components
+
+### Frontend (Client)
+
+**Technology Stack:**
+- **Framework**: Next.js 15 with App Router and Turbopack
+- **UI Library**: React 19 with Shadcn UI components
+- **Styling**: Tailwind CSS
+- **State Management**:
+  - Zustand for global state
+  - Tanstack Query for server state
+  - Jotai for atomic state
+- **Data Visualization**:
+  - Nivo charts (bar, line, calendar)
+  - React Globe GL for 3D visualizations
+  - Leaflet for maps
+- **Forms**: React Hook Form with Zod validation
+- **Authentication**: Better Auth client
+
+### Backend (Server)
+
+**Technology Stack:**
+- **Framework**: Fastify with TypeScript
+- **ORM**: Drizzle ORM
+- **Authentication**: Better Auth with session management
+- **Validation**: Zod schemas
+- **Logging**: Pino with Axiom integration (cloud)
+- **Rate Limiting**: Fastify rate limit plugin
+
+### Database Layer
+
+#### PostgreSQL
+**Purpose**: Relational data and application state
+
+**Schema Management**: Drizzle ORM with migrations
+
+#### ClickHouse
+**Purpose**: High-performance analytics data storage
+
+### Tracking Script
+
+**Location**: `server/src/analytics-script/`
+
+**Build**:
+- Bundled with esbuild
+- Minified with Terser
+- Served as static file
+
+**Features:**
+- Automatic pageview tracking
+- SPA route change detection
+- Custom event API
+- Session replay (optional)
+- Web Vitals collection (optional)
+- Error tracking (optional)
+- Outbound link tracking
+
+**Size**: ~18KB uncompressed
+
+### Infrastructure
+
+#### Docker Compose Architecture
+
+**Services:**
+
+1. **Caddy** (Reverse Proxy)
+   - Automatic HTTPS with Let's Encrypt
+   - HTTP/3 support
+   - Routes traffic to client and backend
+
+2. **Client** (Frontend)
+   - Next.js production build
+   - Static asset serving
+
+3. **Backend** (API Server)
+   - Fastify server
+   - Environment-based configuration
+
+4. **ClickHouse**
+   - Custom network configuration
+   - JSON type support
+   - Minimal logging for performance
+   - Persistent volume for data
+
+5. **PostgreSQL**
+   - User and site data
+   - Health checks
+   - Persistent volume
+
+**Cloud Additions:**
+- R2 integration for session replay storage
+- Axiom logging integration
+- Stripe webhook handling
+
+## Data Flow
+
+### Event Tracking Flow
+
+```
+1. User action on tracked website
+2. Tracking script captures event
+3. POST to /api/track endpoint
+4. Server validates payload (Zod)
+5. API key validation (if provided)
+6. Rate limiting check
+7. Site configuration lookup
+8. Bot detection (if enabled)
+9. Monthly limit check
+10. IP exclusion check
+11. User agent parsing
+12. Geolocation lookup (MaxMind)
+13. Session update (PostgreSQL)
+14. Event written to ClickHouse
+15. Real-time updates broadcasted
+```
+
+### Query Flow
+
+```
+1. Dashboard makes API request
+2. Authentication check (Better Auth)
+3. Site ownership validation
+4. Query parameters parsed
+5. Filter conditions built
+6. ClickHouse query executed
+7. Results aggregated
+8. Response formatted and cached
+9. UI updated with data
+```
+
+## Deployment Models
+
+### Self-Hosted
+- Most feature access 
+- All data stored in ClickHouse
+- No external dependencies required
+- Docker Compose deployment
+
+### Cloud (rybbit.io)
+- Managed hosting on Hetzner (EU)
+- Stripe integration for billing
+- Cloudflare R2 storage for session replays
+- Multi-region uptime monitoring
+- Usage tracking with materialized views
+
+## Security & Privacy
+
+- **No cookies**: User identification via IP+UA hash
+- **Daily rotating salt**: Optional for enhanced privacy
+- **IP exclusion**: Filter internal traffic
+- **Bot blocking**: isbot integration
+- **Rate limiting**: API key and IP-based
+- **No cookies**: Privacy-first design
+- **Session-based auth**: Better Auth with secure tokens
+- **Minimal data retention**: Configurable TTL policies

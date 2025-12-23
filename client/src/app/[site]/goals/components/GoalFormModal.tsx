@@ -1,12 +1,14 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { FileText, MousePointerClick } from "lucide-react";
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
-import { useCreateGoal } from "../../../../api/analytics/goals/useCreateGoal";
-import { Goal } from "../../../../api/analytics/goals/useGetGoals";
+import { useCreateGoal } from "../../../../api/analytics/hooks/goals/useCreateGoal";
+import { Goal } from "../../../../api/analytics/endpoints";
+import { useUpdateGoal } from "../../../../api/analytics/hooks/goals/useUpdateGoal";
+import { useMetric } from "../../../../api/analytics/hooks/useGetMetric";
+import { EventIcon, PageviewIcon } from "../../../../components/EventIcons";
 import { Button } from "../../../../components/ui/button";
 import {
   Dialog,
@@ -18,12 +20,10 @@ import {
 } from "../../../../components/ui/dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "../../../../components/ui/form";
 import { Input } from "../../../../components/ui/input";
+import { InputWithSuggestions, SuggestionOption } from "../../../../components/ui/input-with-suggestions";
 import { Label } from "../../../../components/ui/label";
 import { Switch } from "../../../../components/ui/switch";
 import { cn } from "../../../../lib/utils";
-import { useUpdateGoal } from "../../../../api/analytics/goals/useUpdateGoal";
-import { InputWithSuggestions, SuggestionOption } from "../../../../components/ui/input-with-suggestions";
-import { useSingleCol } from "../../../../api/analytics/useSingleCol";
 
 // Define form schema
 const formSchema = z
@@ -38,7 +38,7 @@ const formSchema = z
     }),
   })
   .refine(
-    (data) => {
+    data => {
       if (data.goalType === "path") {
         return !!data.config.pathPattern;
       } else if (data.goalType === "event") {
@@ -58,22 +58,23 @@ interface GoalFormModalProps {
   siteId: number;
   goal?: Goal; // Optional goal for editing mode
   trigger: React.ReactNode;
+  isCloneMode?: boolean; // Optional clone mode flag
 }
 
-export default function GoalFormModal({ siteId, goal, trigger }: GoalFormModalProps) {
+export default function GoalFormModal({ siteId, goal, trigger, isCloneMode = false }: GoalFormModalProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [useProperties, setUseProperties] = useState(
     !!goal?.config.eventPropertyKey && !!goal?.config.eventPropertyValue
   );
 
   // Fetch suggestions for paths and events
-  const { data: pathsData } = useSingleCol({
+  const { data: pathsData } = useMetric({
     parameter: "pathname",
     limit: 1000,
     useFilters: false,
   });
 
-  const { data: eventsData } = useSingleCol({
+  const { data: eventsData } = useMetric({
     parameter: "event_name",
     limit: 1000,
     useFilters: false,
@@ -81,13 +82,13 @@ export default function GoalFormModal({ siteId, goal, trigger }: GoalFormModalPr
 
   // Transform data into SuggestionOption format
   const pathSuggestions: SuggestionOption[] =
-    pathsData?.data?.map((item) => ({
+    pathsData?.data?.map(item => ({
       value: item.value,
       label: item.value,
     })) || [];
 
   const eventSuggestions: SuggestionOption[] =
-    eventsData?.data?.map((item) => ({
+    eventsData?.data?.map(item => ({
       value: item.value,
       label: item.value,
     })) || [];
@@ -103,35 +104,36 @@ export default function GoalFormModal({ siteId, goal, trigger }: GoalFormModalPr
     setIsOpen(false);
   };
 
-  const isEditMode = !!goal;
+  const isEditMode = !!goal && !isCloneMode;
   const createGoal = useCreateGoal();
   const updateGoal = useUpdateGoal();
 
   // Initialize form with default values or existing goal
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
-    defaultValues: isEditMode
-      ? {
-          name: goal.name || "",
-          goalType: goal.goalType,
-          config: {
-            pathPattern: goal.config.pathPattern || "",
-            eventName: goal.config.eventName || "",
-            eventPropertyKey: goal.config.eventPropertyKey || "",
-            eventPropertyValue:
-              goal.config.eventPropertyValue !== undefined ? String(goal.config.eventPropertyValue) : "",
+    defaultValues:
+      (isEditMode || isCloneMode) && goal
+        ? {
+            name: isCloneMode ? `${goal.name || `Goal #${goal.goalId}`} (Copy)` : goal.name || "",
+            goalType: goal.goalType,
+            config: {
+              pathPattern: goal.config.pathPattern || "",
+              eventName: goal.config.eventName || "",
+              eventPropertyKey: goal.config.eventPropertyKey || "",
+              eventPropertyValue:
+                goal.config.eventPropertyValue !== undefined ? String(goal.config.eventPropertyValue) : "",
+            },
+          }
+        : {
+            name: "",
+            goalType: "path",
+            config: {
+              pathPattern: "",
+              eventName: "",
+              eventPropertyKey: "",
+              eventPropertyValue: "",
+            },
           },
-        }
-      : {
-          name: "",
-          goalType: "path",
-          config: {
-            pathPattern: "",
-            eventName: "",
-            eventPropertyKey: "",
-            eventPropertyValue: "",
-          },
-        },
   });
 
   const goalType = form.watch("goalType");
@@ -184,7 +186,7 @@ export default function GoalFormModal({ siteId, goal, trigger }: GoalFormModalPr
   return (
     <Dialog
       open={isOpen}
-      onOpenChange={(open) => {
+      onOpenChange={open => {
         setIsOpen(open);
         if (!open) {
           form.reset();
@@ -192,14 +194,18 @@ export default function GoalFormModal({ siteId, goal, trigger }: GoalFormModalPr
         }
       }}
     >
-      <DialogTrigger asChild>{trigger}</DialogTrigger>
+      <DialogTrigger asChild>
+        <div onClick={() => setIsOpen(true)}>{trigger}</div>
+      </DialogTrigger>
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
-          <DialogTitle>{isEditMode ? "Edit Goal" : "Create Goal"}</DialogTitle>
+          <DialogTitle>{isEditMode ? "Edit Goal" : isCloneMode ? "Clone Goal" : "Create Goal"}</DialogTitle>
           <DialogDescription>
             {isEditMode
               ? "Update the goal details below."
-              : "Set up a new conversion goal to track specific user actions."}
+              : isCloneMode
+                ? "Clone this goal with the same configuration."
+                : "Set up a new conversion goal to track specific user actions."}
           </DialogDescription>
         </DialogHeader>
 
@@ -229,12 +235,12 @@ export default function GoalFormModal({ siteId, goal, trigger }: GoalFormModalPr
                     <div className="flex items-center gap-2 mt-1">
                       {field.value === "path" ? (
                         <div className="flex items-center gap-1 bg-neutral-800/50 py-2 px-3 rounded">
-                          <FileText className="w-4 h-4 text-blue-500" />
+                          <PageviewIcon />
                           <span>Page Goal</span>
                         </div>
                       ) : (
                         <div className="flex items-center gap-1 bg-neutral-800/50 py-2 px-3 rounded">
-                          <MousePointerClick className="w-4 h-4 text-amber-500" />
+                          <EventIcon />
                           <span>Event Goal</span>
                         </div>
                       )}
@@ -251,7 +257,7 @@ export default function GoalFormModal({ siteId, goal, trigger }: GoalFormModalPr
                           )}
                           onClick={() => field.onChange("path")}
                         >
-                          <FileText className="w-4 h-4 text-blue-500" />
+                          <PageviewIcon />
                           <span>Page Goal</span>
                         </Button>
                         <Button
@@ -263,7 +269,7 @@ export default function GoalFormModal({ siteId, goal, trigger }: GoalFormModalPr
                           )}
                           onClick={() => field.onChange("event")}
                         >
-                          <MousePointerClick className="w-4 h-4 text-amber-500" />
+                          <EventIcon />
                           <span>Event Goal</span>
                         </Button>
                       </div>
@@ -289,7 +295,7 @@ export default function GoalFormModal({ siteId, goal, trigger }: GoalFormModalPr
                       />
                     </FormControl>
                     <FormMessage />
-                    <div className="text-xs text-gray-500 mt-1">
+                    <div className="text-xs text-neutral-500 mt-1">
                       Use * to match a single path segment. Use ** to match across segments.
                     </div>
                   </FormItem>

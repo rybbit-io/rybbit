@@ -66,7 +66,7 @@ export async function performHttpCheck(options: HttpCheckOptions): Promise<HttpC
         case "basic":
           if (options.auth.credentials?.username && options.auth.credentials?.password) {
             const encoded = Buffer.from(
-              `${options.auth.credentials.username}:${options.auth.credentials.password}`,
+              `${options.auth.credentials.username}:${options.auth.credentials.password}`
             ).toString("base64");
             headers["Authorization"] = `Basic ${encoded}`;
           }
@@ -93,7 +93,7 @@ export async function performHttpCheck(options: HttpCheckOptions): Promise<HttpC
       body: options.body,
       bodyTimeout: options.timeoutMs || 30000,
       headersTimeout: options.timeoutMs || 30000,
-      maxRedirections: options.followRedirects !== false ? 5 : 0,
+      // maxRedirections: options.followRedirects !== false ? 5 : 0,
     });
 
     // Calculate timings

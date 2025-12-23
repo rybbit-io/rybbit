@@ -2,19 +2,8 @@
 
 import { Table } from "@tanstack/react-table";
 import { Button } from "@/components/ui/button";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
-  ChevronLeft,
-  ChevronRight,
-  ChevronsLeft,
-  ChevronsRight,
-} from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from "lucide-react";
 
 // Simplified pagination controller interface
 interface PaginationController {
@@ -53,21 +42,13 @@ export function Pagination<TData>({
           <>
             Showing{" "}
             <span className="font-semibold">
-              {data?.items?.length
-                ? pagination.pageIndex * pagination.pageSize + 1
-                : 0}
+              {data?.items?.length ? pagination.pageIndex * pagination.pageSize + 1 : 0}
             </span>{" "}
             to{" "}
             <span className="font-semibold">
-              {data?.items?.length
-                ? Math.min(
-                    (pagination.pageIndex + 1) * pagination.pageSize,
-                    data?.total || 0
-                  )
-                : 0}
+              {data?.items?.length ? Math.min((pagination.pageIndex + 1) * pagination.pageSize, data?.total || 0) : 0}
             </span>{" "}
-            of <span className="font-semibold">{data?.total || 0}</span>{" "}
-            {itemName}
+            of <span className="font-semibold">{data?.total || 0}</span> {itemName}
           </>
         )}
       </div>
@@ -76,7 +57,7 @@ export function Pagination<TData>({
           <span className="text-sm text-neutral-400">Page size:</span>
           <Select
             value={pagination.pageSize.toString()}
-            onValueChange={(value) => {
+            onValueChange={value => {
               setPagination({
                 pageIndex: 0, // Reset to first page when changing page size
                 pageSize: Number(value),
@@ -115,14 +96,8 @@ export function Pagination<TData>({
             <span>Loading...</span>
           ) : (
             <>
-              Page{" "}
-              <span className="font-semibold">
-                {table.getState().pagination.pageIndex + 1}
-              </span>{" "}
-              of{" "}
-              <span className="font-semibold">
-                {Math.max(table.getPageCount(), 1)}
-              </span>
+              Page <span className="font-semibold">{table.getState().pagination.pageIndex + 1}</span> of{" "}
+              <span className="font-semibold">{Math.max(table.getPageCount(), 1)}</span>
             </>
           )}
         </div>

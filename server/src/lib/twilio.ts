@@ -11,10 +11,7 @@ if (IS_CLOUD && process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN)
   twilioClient = twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
 }
 
-export const sendSMS = async (
-  phoneNumber: string,
-  message: string
-): Promise<{ success: boolean; error?: string }> => {
+export const sendSMS = async (phoneNumber: string, message: string): Promise<{ success: boolean; error?: string }> => {
   if (!twilioClient) {
     logger.info("Twilio client not initialized - skipping SMS notification");
     return { success: false, error: "SMS not configured" };
@@ -36,16 +33,16 @@ export const sendSMS = async (
     return { success: true };
   } catch (error) {
     logger.error({ phoneNumber, error }, "Failed to send SMS");
-    return { 
-      success: false, 
-      error: error instanceof Error ? error.message : "Failed to send SMS" 
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to send SMS",
     };
   }
 };
 
 export const isSMSConfigured = (): boolean => {
   return !!(
-    twilioClient && 
+    twilioClient &&
     process.env.TWILIO_PHONE_NUMBER &&
     process.env.TWILIO_ACCOUNT_SID &&
     process.env.TWILIO_AUTH_TOKEN

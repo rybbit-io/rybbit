@@ -1,0 +1,755 @@
+---
+title: Errors
+description: Track and analyze JavaScript errors captured from your site
+full: true
+---
+
+import { TypeTable } from 'fumadocs-ui/components/type-table';
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+
+See the [API Reference](/docs/api/stats/reference) for authentication, common parameters, and filters.
+
+## Endpoints
+
+<div className="flex flex-col gap-2 my-6">
+  <a href="#get-error-names" className="flex items-center gap-3 p-3 rounded-lg bg-fd-secondary/50 hover:bg-fd-secondary transition-colors no-underline">
+    <span className="px-2 py-1 text-xs font-bold rounded bg-green-500/20 text-green-600 dark:text-green-400">GET</span>
+    <code className="text-sm">/api/error-names/:site</code>
+  </a>
+  <a href="#get-error-events" className="flex items-center gap-3 p-3 rounded-lg bg-fd-secondary/50 hover:bg-fd-secondary transition-colors no-underline">
+    <span className="px-2 py-1 text-xs font-bold rounded bg-green-500/20 text-green-600 dark:text-green-400">GET</span>
+    <code className="text-sm">/api/error-events/:site</code>
+  </a>
+  <a href="#get-error-time-series" className="flex items-center gap-3 p-3 rounded-lg bg-fd-secondary/50 hover:bg-fd-secondary transition-colors no-underline">
+    <span className="px-2 py-1 text-xs font-bold rounded bg-green-500/20 text-green-600 dark:text-green-400">GET</span>
+    <code className="text-sm">/api/error-bucketed/:site</code>
+  </a>
+</div>
+
+---
+
+## Get Error Names
+
+<div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
+<div>
+
+```
+GET /api/error-names/:site
+```
+
+Returns a list of unique error messages with occurrence counts and affected session counts.
+
+### Path Parameters
+
+<TypeTable
+  type={{
+    site: {
+      description: 'Site ID or site identifier',
+      type: 'string | number',
+      required: true,
+    },
+  }}
+/>
+
+### Query Parameters
+
+Accepts all [Common Parameters](/docs/api/getting-started#common-parameters) plus the following:
+
+<TypeTable
+  type={{
+    page: {
+      description: 'Page number (1-indexed). Enables paginated response format.',
+      type: 'number',
+      required: false,
+    },
+    limit: {
+      description: 'Number of results per page',
+      type: 'number',
+      default: 10,
+    },
+  }}
+/>
+
+### Response
+
+<TypeTable
+  type={{
+    data: {
+      description: 'Array of error objects (or paginated wrapper)',
+      type: 'Error[] | PaginatedResponse',
+    },
+  }}
+/>
+
+#### Error Object
+
+<TypeTable
+  type={{
+    value: {
+      description: 'Error message',
+      type: 'string',
+    },
+    errorName: {
+      description: 'Error type (TypeError, ReferenceError, etc.)',
+      type: 'string',
+    },
+    count: {
+      description: 'Total occurrences',
+      type: 'number',
+    },
+    sessionCount: {
+      description: 'Unique sessions affected',
+      type: 'number',
+    },
+    percentage: {
+      description: 'Percentage of total error sessions',
+      type: 'number',
+    },
+  }}
+/>
+
+</div>
+<div className="flex flex-col gap-4">
+
+<Tabs items={['cURL', 'JavaScript', 'Python', 'PHP', 'Ruby', 'Go', 'Rust', 'Java', '.NET']}>
+  <Tab value="cURL">
+```bash title="Request"
+curl -X GET "https://api.rybbit.io/api/error-names/123?start_date=2024-01-01&end_date=2024-01-31" \
+  -H "Authorization: Bearer your_api_key_here"
+```
+  </Tab>
+  <Tab value="JavaScript">
+```javascript title="Request"
+const response = await fetch(
+  'https://api.rybbit.io/api/error-names/123?start_date=2024-01-01&end_date=2024-01-31',
+  {
+    headers: {
+      'Authorization': 'Bearer your_api_key_here'
+    }
+  }
+);
+
+const data = await response.json();
+```
+  </Tab>
+  <Tab value="Python">
+```python title="Request"
+import requests
+
+response = requests.get(
+    'https://api.rybbit.io/api/error-names/123',
+    params={
+        'start_date': '2024-01-01',
+        'end_date': '2024-01-31'
+    },
+    headers={
+        'Authorization': 'Bearer your_api_key_here'
+    }
+)
+
+data = response.json()
+```
+  </Tab>
+  <Tab value="PHP">
+```php title="Request"
+$ch = curl_init();
+curl_setopt($ch, CURLOPT_URL, 'https://api.rybbit.io/api/error-names/123?start_date=2024-01-01&end_date=2024-01-31');
+curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+curl_setopt($ch, CURLOPT_HTTPHEADER, [
+    'Authorization: Bearer your_api_key_here'
+]);
+
+$response = curl_exec($ch);
+curl_close($ch);
+
+$data = json_decode($response, true);
+```
+  </Tab>
+  <Tab value="Ruby">
+```ruby title="Request"
+require 'net/http'
+require 'json'
+
+uri = URI('https://api.rybbit.io/api/error-names/123?start_date=2024-01-01&end_date=2024-01-31')
+req = Net::HTTP::Get.new(uri)
+req['Authorization'] = 'Bearer your_api_key_here'
+
+res = Net::HTTP.start(uri.hostname, uri.port, use_ssl: true) { |http| http.request(req) }
+data = JSON.parse(res.body)
+```
+  </Tab>
+  <Tab value="Go">
+```go title="Request"
+req, _ := http.NewRequest("GET", "https://api.rybbit.io/api/error-names/123?start_date=2024-01-01&end_date=2024-01-31", nil)
+req.Header.Set("Authorization", "Bearer your_api_key_here")
+
+client := &http.Client{}
+resp, _ := client.Do(req)
+defer resp.Body.Close()
+
+var data map[string]interface{}
+json.NewDecoder(resp.Body).Decode(&data)
+```
+  </Tab>
+  <Tab value="Rust">
+```rust title="Request"
+let client = reqwest::Client::new();
+let res = client
+    .get("https://api.rybbit.io/api/error-names/123?start_date=2024-01-01&end_date=2024-01-31")
+    .header("Authorization", "Bearer your_api_key_here")
+    .send()
+    .await?;
+
+let data: serde_json::Value = res.json().await?;
+```
+  </Tab>
+  <Tab value="Java">
+```java title="Request"
+HttpClient client = HttpClient.newHttpClient();
+HttpRequest request = HttpRequest.newBuilder()
+    .uri(URI.create("https://api.rybbit.io/api/error-names/123?start_date=2024-01-01&end_date=2024-01-31"))
+    .header("Authorization", "Bearer your_api_key_here")
+    .GET()
+    .build();
+
+HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+```
+  </Tab>
+  <Tab value=".NET">
+```csharp title="Request"
+using var client = new HttpClient();
+client.DefaultRequestHeaders.Add("Authorization", "Bearer your_api_key_here");
+
+var response = await client.GetAsync("https://api.rybbit.io/api/error-names/123?start_date=2024-01-01&end_date=2024-01-31");
+var data = await response.Content.ReadAsStringAsync();
+```
+  </Tab>
+</Tabs>
+
+```json title="Response"
+{
+  "data": [
+    {
+      "value": "Cannot read property 'map' of undefined",
+      "errorName": "TypeError",
+      "count": 156,
+      "sessionCount": 89,
+      "percentage": 34.5
+    },
+    {
+      "value": "NetworkError when attempting to fetch resource",
+      "errorName": "TypeError",
+      "count": 98,
+      "sessionCount": 72,
+      "percentage": 27.9
+    },
+    {
+      "value": "foo is not defined",
+      "errorName": "ReferenceError",
+      "count": 45,
+      "sessionCount": 38,
+      "percentage": 14.7
+    }
+  ]
+}
+```
+
+</div>
+</div>
+
+---
+
+## Get Error Events
+
+<div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
+<div>
+
+```
+GET /api/error-events/:site
+```
+
+Returns individual error occurrences for a specific error message, with full context including stack traces.
+
+### Path Parameters
+
+<TypeTable
+  type={{
+    site: {
+      description: 'Site ID or site identifier',
+      type: 'string | number',
+      required: true,
+    },
+  }}
+/>
+
+### Query Parameters
+
+Accepts all [Common Parameters](/docs/api/getting-started#common-parameters) plus the following:
+
+<TypeTable
+  type={{
+    errorMessage: {
+      description: 'The error message to filter by',
+      type: 'string',
+      required: true,
+    },
+    page: {
+      description: 'Page number (1-indexed)',
+      type: 'number',
+      required: false,
+    },
+    limit: {
+      description: 'Number of results per page',
+      type: 'number',
+      default: 20,
+    },
+  }}
+/>
+
+### Response
+
+<TypeTable
+  type={{
+    data: {
+      description: 'Array of error event objects',
+      type: 'ErrorEvent[]',
+    },
+  }}
+/>
+
+#### ErrorEvent Object
+
+<TypeTable
+  type={{
+    timestamp: {
+      description: 'When the error occurred',
+      type: 'string',
+      typeDescription: 'ISO 8601 datetime',
+    },
+    session_id: {
+      description: 'Session identifier',
+      type: 'string',
+    },
+    user_id: {
+      description: 'User identifier',
+      type: 'string | null',
+    },
+    pathname: {
+      description: 'Page where error occurred',
+      type: 'string',
+    },
+    hostname: {
+      description: 'Hostname',
+      type: 'string',
+    },
+    browser: {
+      description: 'Browser name',
+      type: 'string',
+    },
+    browser_version: {
+      description: 'Browser version',
+      type: 'string',
+    },
+    operating_system: {
+      description: 'Operating system',
+      type: 'string',
+    },
+    device_type: {
+      description: 'Device type',
+      type: 'string',
+    },
+    country: {
+      description: 'Country code',
+      type: 'string',
+    },
+    message: {
+      description: 'Error message',
+      type: 'string',
+    },
+    stack: {
+      description: 'Stack trace',
+      type: 'string | null',
+    },
+    fileName: {
+      description: 'Source file name',
+      type: 'string | null',
+    },
+    lineNumber: {
+      description: 'Line number in source',
+      type: 'number | null',
+    },
+    columnNumber: {
+      description: 'Column number in source',
+      type: 'number | null',
+    },
+  }}
+/>
+
+</div>
+<div className="flex flex-col gap-4">
+
+<Tabs items={['cURL', 'JavaScript', 'Python', 'PHP', 'Ruby', 'Go', 'Rust', 'Java', '.NET']}>
+  <Tab value="cURL">
+```bash title="Request"
+curl -X GET "https://api.rybbit.io/api/error-events/123?errorMessage=Cannot%20read%20property%20%27map%27%20of%20undefined&limit=10" \
+  -H "Authorization: Bearer your_api_key_here"
+```
+  </Tab>
+  <Tab value="JavaScript">
+```javascript title="Request"
+const response = await fetch(
+  `https://api.rybbit.io/api/error-events/123?errorMessage=${encodeURIComponent("Cannot read property 'map' of undefined")}&limit=10`,
+  {
+    headers: {
+      'Authorization': 'Bearer your_api_key_here'
+    }
+  }
+);
+
+const data = await response.json();
+```
+  </Tab>
+  <Tab value="Python">
+```python title="Request"
+import requests
+
+response = requests.get(
+    'https://api.rybbit.io/api/error-events/123',
+    params={
+        'errorMessage': "Cannot read property 'map' of undefined",
+        'limit': 10
+    },
+    headers={
+        'Authorization': 'Bearer your_api_key_here'
+    }
+)
+
+data = response.json()
+```
+  </Tab>
+  <Tab value="PHP">
+```php title="Request"
+$ch = curl_init();
+curl_setopt($ch, CURLOPT_URL, 'https://api.rybbit.io/api/error-events/123?errorMessage=Cannot%20read%20property%20%27map%27%20of%20undefined&limit=10');
+curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+curl_setopt($ch, CURLOPT_HTTPHEADER, [
+    'Authorization: Bearer your_api_key_here'
+]);
+
+$response = curl_exec($ch);
+curl_close($ch);
+
+$data = json_decode($response, true);
+```
+  </Tab>
+  <Tab value="Ruby">
+```ruby title="Request"
+require 'net/http'
+require 'json'
+
+uri = URI('https://api.rybbit.io/api/error-events/123?errorMessage=Cannot%20read%20property%20%27map%27%20of%20undefined&limit=10')
+req = Net::HTTP::Get.new(uri)
+req['Authorization'] = 'Bearer your_api_key_here'
+
+res = Net::HTTP.start(uri.hostname, uri.port, use_ssl: true) { |http| http.request(req) }
+data = JSON.parse(res.body)
+```
+  </Tab>
+  <Tab value="Go">
+```go title="Request"
+req, _ := http.NewRequest("GET", "https://api.rybbit.io/api/error-events/123?errorMessage=Cannot%20read%20property%20%27map%27%20of%20undefined&limit=10", nil)
+req.Header.Set("Authorization", "Bearer your_api_key_here")
+
+client := &http.Client{}
+resp, _ := client.Do(req)
+defer resp.Body.Close()
+
+var data map[string]interface{}
+json.NewDecoder(resp.Body).Decode(&data)
+```
+  </Tab>
+  <Tab value="Rust">
+```rust title="Request"
+let client = reqwest::Client::new();
+let res = client
+    .get("https://api.rybbit.io/api/error-events/123?errorMessage=Cannot%20read%20property%20%27map%27%20of%20undefined&limit=10")
+    .header("Authorization", "Bearer your_api_key_here")
+    .send()
+    .await?;
+
+let data: serde_json::Value = res.json().await?;
+```
+  </Tab>
+  <Tab value="Java">
+```java title="Request"
+HttpClient client = HttpClient.newHttpClient();
+HttpRequest request = HttpRequest.newBuilder()
+    .uri(URI.create("https://api.rybbit.io/api/error-events/123?errorMessage=Cannot%20read%20property%20%27map%27%20of%20undefined&limit=10"))
+    .header("Authorization", "Bearer your_api_key_here")
+    .GET()
+    .build();
+
+HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+```
+  </Tab>
+  <Tab value=".NET">
+```csharp title="Request"
+using var client = new HttpClient();
+client.DefaultRequestHeaders.Add("Authorization", "Bearer your_api_key_here");
+
+var response = await client.GetAsync("https://api.rybbit.io/api/error-events/123?errorMessage=Cannot%20read%20property%20%27map%27%20of%20undefined&limit=10");
+var data = await response.Content.ReadAsStringAsync();
+```
+  </Tab>
+</Tabs>
+
+```json title="Response"
+{
+  "data": [
+    {
+      "timestamp": "2024-01-31T14:22:00.000Z",
+      "session_id": "sess_abc123",
+      "user_id": "user_xyz789",
+      "pathname": "/dashboard",
+      "hostname": "app.example.com",
+      "browser": "Chrome",
+      "browser_version": "120.0.0",
+      "operating_system": "macOS",
+      "device_type": "desktop",
+      "country": "US",
+      "message": "Cannot read property 'map' of undefined",
+      "stack": "TypeError: Cannot read property 'map' of undefined\n    at Dashboard (dashboard.js:42:15)\n    at renderWithHooks (react-dom.js:1234:22)",
+      "fileName": "dashboard.js",
+      "lineNumber": 42,
+      "columnNumber": 15
+    }
+  ]
+}
+```
+
+</div>
+</div>
+
+---
+
+## Get Error Time Series
+
+<div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
+<div>
+
+```
+GET /api/error-bucketed/:site
+```
+
+Returns error occurrence counts over time for a specific error message. Useful for tracking error trends and identifying when issues started.
+
+### Path Parameters
+
+<TypeTable
+  type={{
+    site: {
+      description: 'Site ID or site identifier',
+      type: 'string | number',
+      required: true,
+    },
+  }}
+/>
+
+### Query Parameters
+
+Accepts all [Common Parameters](/docs/api/getting-started#common-parameters) plus the following:
+
+<TypeTable
+  type={{
+    errorMessage: {
+      description: 'The error message to filter by',
+      type: 'string',
+      required: true,
+    },
+    bucket: {
+      description: 'Time bucket size for grouping data',
+      type: 'TimeBucket',
+      typeDescription: '"minute" | "five_minutes" | "hour" | "day" | "week" | "month"',
+      required: true,
+    },
+  }}
+/>
+
+### Response
+
+<TypeTable
+  type={{
+    success: {
+      description: 'Whether the request succeeded',
+      type: 'boolean',
+    },
+    data: {
+      description: 'Array of time-bucketed counts',
+      type: 'ErrorBucket[]',
+    },
+  }}
+/>
+
+#### ErrorBucket Object
+
+<TypeTable
+  type={{
+    time: {
+      description: 'Start of the time bucket',
+      type: 'string',
+      typeDescription: 'ISO 8601 datetime',
+    },
+    error_count: {
+      description: 'Number of errors in this bucket',
+      type: 'number',
+    },
+  }}
+/>
+
+</div>
+<div className="flex flex-col gap-4">
+
+<Tabs items={['cURL', 'JavaScript', 'Python', 'PHP', 'Ruby', 'Go', 'Rust', 'Java', '.NET']}>
+  <Tab value="cURL">
+```bash title="Request"
+curl -X GET "https://api.rybbit.io/api/error-bucketed/123?errorMessage=Cannot%20read%20property%20%27map%27%20of%20undefined&bucket=hour&start_date=2024-01-30&end_date=2024-01-31&time_zone=UTC" \
+  -H "Authorization: Bearer your_api_key_here"
+```
+  </Tab>
+  <Tab value="JavaScript">
+```javascript title="Request"
+const response = await fetch(
+  `https://api.rybbit.io/api/error-bucketed/123?errorMessage=${encodeURIComponent("Cannot read property 'map' of undefined")}&bucket=hour&start_date=2024-01-30&end_date=2024-01-31&time_zone=UTC`,
+  {
+    headers: {
+      'Authorization': 'Bearer your_api_key_here'
+    }
+  }
+);
+
+const data = await response.json();
+```
+  </Tab>
+  <Tab value="Python">
+```python title="Request"
+import requests
+
+response = requests.get(
+    'https://api.rybbit.io/api/error-bucketed/123',
+    params={
+        'errorMessage': "Cannot read property 'map' of undefined",
+        'bucket': 'hour',
+        'start_date': '2024-01-30',
+        'end_date': '2024-01-31',
+        'time_zone': 'UTC'
+    },
+    headers={
+        'Authorization': 'Bearer your_api_key_here'
+    }
+)
+
+data = response.json()
+```
+  </Tab>
+  <Tab value="PHP">
+```php title="Request"
+$ch = curl_init();
+curl_setopt($ch, CURLOPT_URL, 'https://api.rybbit.io/api/error-bucketed/123?errorMessage=Cannot%20read%20property%20%27map%27%20of%20undefined&bucket=hour&start_date=2024-01-30&end_date=2024-01-31&time_zone=UTC');
+curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+curl_setopt($ch, CURLOPT_HTTPHEADER, [
+    'Authorization: Bearer your_api_key_here'
+]);
+
+$response = curl_exec($ch);
+curl_close($ch);
+
+$data = json_decode($response, true);
+```
+  </Tab>
+  <Tab value="Ruby">
+```ruby title="Request"
+require 'net/http'
+require 'json'
+
+uri = URI('https://api.rybbit.io/api/error-bucketed/123?errorMessage=Cannot%20read%20property%20%27map%27%20of%20undefined&bucket=hour&start_date=2024-01-30&end_date=2024-01-31&time_zone=UTC')
+req = Net::HTTP::Get.new(uri)
+req['Authorization'] = 'Bearer your_api_key_here'
+
+res = Net::HTTP.start(uri.hostname, uri.port, use_ssl: true) { |http| http.request(req) }
+data = JSON.parse(res.body)
+```
+  </Tab>
+  <Tab value="Go">
+```go title="Request"
+req, _ := http.NewRequest("GET", "https://api.rybbit.io/api/error-bucketed/123?errorMessage=Cannot%20read%20property%20%27map%27%20of%20undefined&bucket=hour&start_date=2024-01-30&end_date=2024-01-31&time_zone=UTC", nil)
+req.Header.Set("Authorization", "Bearer your_api_key_here")
+
+client := &http.Client{}
+resp, _ := client.Do(req)
+defer resp.Body.Close()
+
+var data map[string]interface{}
+json.NewDecoder(resp.Body).Decode(&data)
+```
+  </Tab>
+  <Tab value="Rust">
+```rust title="Request"
+let client = reqwest::Client::new();
+let res = client
+    .get("https://api.rybbit.io/api/error-bucketed/123?errorMessage=Cannot%20read%20property%20%27map%27%20of%20undefined&bucket=hour&start_date=2024-01-30&end_date=2024-01-31&time_zone=UTC")
+    .header("Authorization", "Bearer your_api_key_here")
+    .send()
+    .await?;
+
+let data: serde_json::Value = res.json().await?;
+```
+  </Tab>
+  <Tab value="Java">
+```java title="Request"
+HttpClient client = HttpClient.newHttpClient();
+HttpRequest request = HttpRequest.newBuilder()
+    .uri(URI.create("https://api.rybbit.io/api/error-bucketed/123?errorMessage=Cannot%20read%20property%20%27map%27%20of%20undefined&bucket=hour&start_date=2024-01-30&end_date=2024-01-31&time_zone=UTC"))
+    .header("Authorization", "Bearer your_api_key_here")
+    .GET()
+    .build();
+
+HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+```
+  </Tab>
+  <Tab value=".NET">
+```csharp title="Request"
+using var client = new HttpClient();
+client.DefaultRequestHeaders.Add("Authorization", "Bearer your_api_key_here");
+
+var response = await client.GetAsync("https://api.rybbit.io/api/error-bucketed/123?errorMessage=Cannot%20read%20property%20%27map%27%20of%20undefined&bucket=hour&start_date=2024-01-30&end_date=2024-01-31&time_zone=UTC");
+var data = await response.Content.ReadAsStringAsync();
+```
+  </Tab>
+</Tabs>
+
+```json title="Response"
+{
+  "success": true,
+  "data": [
+    {
+      "time": "2024-01-30T00:00:00.000Z",
+      "error_count": 5
+    },
+    {
+      "time": "2024-01-30T01:00:00.000Z",
+      "error_count": 3
+    },
+    {
+      "time": "2024-01-30T02:00:00.000Z",
+      "error_count": 8
+    },
+    {
+      "time": "2024-01-30T03:00:00.000Z",
+      "error_count": 2
+    }
+  ]
+}
+```
+
+</div>
+</div>
