@@ -258,8 +258,8 @@ export function ReplayBreadcrumbs() {
   // Calculate display name based on identification status
   const isIdentified = !!data.metadata.identified_user_id;
   const userLink = isIdentified
-    ? `/${siteId}/user/${data.metadata.identified_user_id}`
-    : `/${siteId}/user/${data.metadata.user_id}`;
+    ? `/${siteId}/user/${encodeURIComponent(data.metadata.identified_user_id)}`
+    : `/${siteId}/user/${encodeURIComponent(data.metadata.user_id)}`;
 
   return (
     <div className="flex flex-col gap-2 h-full">

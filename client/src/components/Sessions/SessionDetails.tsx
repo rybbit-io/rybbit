@@ -322,7 +322,11 @@ export function SessionDetails({ session, userId }: SessionDetailsProps) {
               <TabsTrigger value="info">Session Info</TabsTrigger>
             </TabsList>
             {!userId && (
-              <Link href={`/${site}/user/${isIdentified ? session.identified_user_id : session.user_id}`}>
+              <Link
+                href={`/${site}/user/${encodeURIComponent(
+                  isIdentified ? session.identified_user_id : session.user_id
+                )}`}
+              >
                 <Button size={"sm"} variant={"success"}>
                   View User <ArrowRight className="w-4 h-4" />
                 </Button>

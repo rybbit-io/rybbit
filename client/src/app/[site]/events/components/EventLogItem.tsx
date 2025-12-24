@@ -152,7 +152,7 @@ export function EventLogItem({ event }: EventLogItemProps) {
             </div>
 
             {/* User ID */}
-            <Link href={`/${site}/user/${event.user_id}`} className="shrink-0">
+            <Link href={`/${site}/user/${encodeURIComponent(event.user_id)}`} className="shrink-0">
               <Tooltip>
                 <TooltipTrigger asChild>
                   <span className="text-sm font-mono text-neutral-500 dark:text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-300">

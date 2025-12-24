@@ -1,4 +1,3 @@
-import { useParams } from "next/navigation";
 import { useState } from "react";
 import { useGetSite } from "../../../../../api/admin/sites";
 import { TabsContent, TabsList, TabsTrigger } from "../../../../../components/ui/basic-tabs";
@@ -9,8 +8,7 @@ import { StandardSection } from "../../../components/shared/StandardSection/Stan
 
 type Tab = "pages" | "events";
 
-export function UserTopPages() {
-  const { userId } = useParams();
+export function UserTopPages({ userId }: { userId: string }) {
   const [tab, setTab] = useState<Tab>("pages");
 
   const { data: siteMetadata } = useGetSite();
@@ -37,7 +35,7 @@ export function UserTopPages() {
               getLink={e => `https://${siteMetadata?.domain}${e.value}`}
               expanded={false}
               close={close}
-              customFilters={[{ parameter: "user_id", value: [userId as string], type: "equals" }]}
+              customFilters={[{ parameter: "user_id", value: [userId], type: "equals" }]}
               customTime={{
                 mode: "all-time",
                 wellKnown: "all-time",
@@ -54,7 +52,7 @@ export function UserTopPages() {
               getLink={e => `https://${siteMetadata?.domain}${e.value}`}
               expanded={false}
               close={close}
-              customFilters={[{ parameter: "user_id", value: [userId as string], type: "equals" }]}
+              customFilters={[{ parameter: "user_id", value: [userId], type: "equals" }]}
               customTime={{
                 mode: "all-time",
                 wellKnown: "all-time",

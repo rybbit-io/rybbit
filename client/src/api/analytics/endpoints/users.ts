@@ -120,6 +120,6 @@ export async function fetchUserSessionCount(
  * GET /api/users/:userId/:site
  */
 export async function fetchUserInfo(site: string | number, userId: string): Promise<UserInfo> {
-  const response = await authedFetch<{ data: UserInfo }>(`/users/${userId}/${site}`);
+  const response = await authedFetch<{ data: UserInfo }>(`/users/${encodeURIComponent(userId)}/${site}`);
   return response.data;
 }

@@ -29,13 +29,22 @@ const LIMIT = 25;
 export default function UserPage() {
   useSetPageTitle("Rybbit · User");
 
-  const { userId, site } = useParams();
+  const { userId: rawUserId, site } = useParams();
+  const userId = (() => {
+    const value = Array.isArray(rawUserId) ? rawUserId[0] : rawUserId;
+    if (!value) return "";
+    try {
+      return decodeURIComponent(value);
+    } catch {
+      return value;
+    }
+  })();
   const [page, setPage] = useState(1);
 
-  const { data, isLoading } = useUserInfo(Number(site), userId as string);
-  const { data: sessionCount } = useGetUserSessionCount(userId as string);
+  const { data, isLoading } = useUserInfo(Number(site), userId);
+  const { data: sessionCount } = useGetUserSessionCount(userId);
   const { data: sessionsData, isLoading: isLoadingSessions } = useGetSessions({
-    userId: userId as string,
+    userId,
     page: page,
     limit: LIMIT + 1,
   });
@@ -52,7 +61,7 @@ export default function UserPage() {
   const traitsEmail = data?.traits?.email as string | undefined;
   const isIdentified = !!data?.identified_user_id;
   const displayName =
-    traitsUsername || traitsName || (isIdentified ? (userId as string) : generateName(userId as string));
+    traitsUsername || traitsName || (isIdentified ? userId : generateName(userId));
 
   return (
     <div className="p-2 md:p-4 max-w-[1200px] mx-auto">
@@ -75,7 +84,7 @@ export default function UserPage() {
       </div>
 
       <div className="flex items-center gap-4 mb-4">
-        <Avatar size={64} id={userId as string} />
+        <Avatar size={64} id={userId} />
         <div className="mt-3 w-full flex gap-2">
           <div>
             <div className="font-semibold text-lg flex items-center gap-2">
@@ -114,7 +123,7 @@ export default function UserPage() {
 
         {/* Right Content - Sessions */}
         <div className="flex-1 min-w-0 space-y-4">
-          <UserTopPages />
+          <UserTopPages userId={userId} />
           <SessionsList
             sessions={sessions}
             isLoading={isLoadingSessions}
@@ -122,7 +131,7 @@ export default function UserPage() {
             onPageChange={setPage}
             hasNextPage={hasNextPage}
             hasPrevPage={hasPrevPage}
-            userId={userId as string}
+            userId={userId}
           />
         </div>
       </div>
