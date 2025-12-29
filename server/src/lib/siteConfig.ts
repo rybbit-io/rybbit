@@ -94,10 +94,10 @@ class SiteConfig {
         sessionReplay: site.sessionReplay || false,
         webVitals: site.webVitals || false,
         trackErrors: site.trackErrors || false,
-        trackOutbound: site.trackOutbound || true,
-        trackUrlParams: site.trackUrlParams || true,
-        trackInitialPageView: site.trackInitialPageView || true,
-        trackSpaNavigation: site.trackSpaNavigation || true,
+        trackOutbound: site.trackOutbound ?? true,
+        trackUrlParams: site.trackUrlParams ?? true,
+        trackInitialPageView: site.trackInitialPageView ?? true,
+        trackSpaNavigation: site.trackSpaNavigation ?? true,
         trackIp: site.trackIp || false,
       };
 
