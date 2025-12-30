@@ -38,7 +38,7 @@ export function FreePlan() {
         <CardHeader>
           <CardTitle className="flex items-center">Free Plan</CardTitle>
           <CardDescription>
-            You are on the Free plan with up to {DEFAULT_EVENT_LIMIT.toLocaleString()} events per month.
+            You are on the Free plan with up to {DEFAULT_EVENT_LIMIT.toLocaleString()} pageviews per month.
           </CardDescription>
         </CardHeader>
         <CardContent>

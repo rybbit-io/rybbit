@@ -1,12 +1,10 @@
 ---
-title: Self-Hosting Quick Start
+title: Quick start
 description: Set up your own instance of Rybbit using our setup script
 ---
 
 import { Steps, Step } from 'fumadocs-ui/components/steps';
 import { Callout } from 'fumadocs-ui/components/callout';
-
-# Quick Start
 
 This guide will walk you through setting up your own instance of Rybbit using our setup script. If you want to manually setup Rybbit using the Docker Compose file, check out our [Manual Docker Compose Setup](/docs/self-hosting-guides/self-hosting-manual) guide.
 
@@ -111,70 +109,5 @@ Open your browser and navigate to `https://your.domain.name/signup` (using the d
 Create your admin account. You can then log in and start adding your websites!
 </Step>
 </Steps>
-
-## Managing Your Installation
-
-### Helper Scripts
-
-Rybbit comes with helper scripts to manage your installation:
-
-- **restart.sh**: Restart all services (useful when you've changed .env settings)
-  ```bash
-  ./restart.sh
-  ```
-
-- **update.sh**: Update to the latest version by pulling new code and rebuilding containers
-  ```bash
-  git pull
-  ./update.sh
-  ```
-
-### Docker Compose Commands
-
-You can also manage services directly with Docker Compose:
-
-- **Stop all services**:
-  ```bash
-  docker compose stop
-  ```
-
-- **Stop and remove containers** (preserves data):
-  ```bash
-  docker compose down
-  ```
-
-- **Start services** (if you used setup.sh with default webserver):
-  ```bash
-  docker compose --profile with-webserver up -d
-  ```
-
-- **Start services** (if you used setup.sh with --no-webserver):
-  ```bash
-  docker compose up -d
-  ```
-
-- **View logs**:
-  ```bash
-  docker compose logs -f
-  ```
-
-<Callout>
-If you are using your self-hosted Rybbit without anyone else, you can disable new user signups by setting `DISABLE_SIGNUP=true` in the `.env` file at the root of the repository.
-</Callout>
-
-## Anonymous Usage Telemetry
-
-To help us improve Rybbit, self-hosted instances automatically send anonymous usage statistics to our cloud service. This includes:
-
-- Number of rows in each ClickHouse table
-- Total database size
-- Your Rybbit version
-- A hashed instance identifier
-
-No personal data, website content, or visitor information is ever collected.
-
-<Callout type="info">
-You can completely disable telemetry by adding `DISABLE_TELEMETRY=true` to your `.env` file and restarting your services.
-</Callout>
 
 If you run into any issues or need help, feel free to join our Discord community!

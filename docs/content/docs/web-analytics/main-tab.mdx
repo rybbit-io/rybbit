@@ -1,0 +1,355 @@
+---
+title: Main Dashboard 
+description: How to interpret and use the Main Dashboard in Rybbit
+---
+
+# Understanding the Main Tab in Rybbit Analytics
+
+The main dashboard serves as your home base in Rybbit Analytics. This is where you land after logging in, and honestly, it's designed so you might never need to leave. Everything you need for daily analytics monitoring lives here. This guide breaks down every section, metric, and feature you'll find on the Main tab.
+
+## Your Analytics Command Center
+
+Think of the Main tab as your website's dashboard. Within seconds of opening Rybbit, you get a complete picture of how your site performed. No drilling through menus, no hunting for data. It's all right there.
+
+<img src="/blog/rybbit_main_dashboard.png" alt="Rybbit's dashboard" />
+
+## Top Metrics Bar
+
+The top of your Main tab displays your core numbers. These metrics update in real-time, so you can refresh and watch the changes happen.
+
+### Unique Users
+
+This shows how many different people visited your site during your selected time period. Rybbit identifies unique users without cookies—it uses a combination of IP address hashing and user agent information. The number stays accurate while respecting privacy.
+
+### Total Sessions
+
+A session represents one visit to your site. If someone visits, leaves, and comes back 30 minutes later, that counts as two sessions. This metric tells you how many visits your site received.
+
+### Total Pageviews
+
+Raw pageview count—every page load from every visitor. If one person views five pages, that's five pageviews. Simple.
+
+### Bounce Rate
+
+The percentage of sessions where visitors viewed only one page and left. We covered this metric extensively in our bounce rate guide, but you'll reference it constantly from the Main tab.
+
+### Pages Per Session
+
+Average number of pages viewed per visit. Higher numbers usually indicate better engagement, though context matters. A blog reader might view one long article and leave satisfied.
+
+### Session Duration
+
+Average time spent on your site per visit. Like pages per session, this varies by site type. News sites might see quick visits, while documentation sites often see longer sessions.
+
+## Time Controls and Filtering
+
+Above your metrics bar sits the date range selector. This determines what data you're seeing everywhere on the Main tab.
+
+### Date Range Selector
+
+Click the date display to pick your time range, for example you can choose:
+- Today
+- Yesterday
+- Last 7 days
+- Last 30 days
+- Last 90 days
+- Custom range
+- Other options as seen in the screenshot
+
+The custom option lets you choose between any two dates.
+
+## Filters Panel
+
+The filters panel (accessible from the top bar) lets you combine multiple filters for granular analysis.
+
+### Adding Filters
+
+Click "Filter" and then "Add Filter" and choose from 15+ dimensions:
+- Device type
+- Browser
+- OS
+- Country
+- City
+- Referrer
+- UTM parameters
+- Custom event properties
+- And more
+
+### Combining Filters
+
+Stack multiple filters to create specific segments. Want to see mobile users from the United States who arrived via organic search? Add three filters:
+1. Device = Mobile
+2. Country = United States
+3. Referrer contains "google"
+
+Your entire Main tab now shows only sessions matching all three conditions.
+
+## Hostname Filter
+
+For sites that track multiple domains (maybe you run several sites or subdomains), the hostname filter helps separate them.
+
+### Selecting Domains
+
+Click the hostname selector to choose which domains to display. Track blog.yoursite.com separately from app.yoursite.com, or combine them for a complete picture.
+
+To clear the filter, click the X on the filter tag near the top.
+
+## The Main Chart
+
+Your primary visualization sits front and center. This chart shows your selected metric over time.
+
+### Switching Metrics
+
+Click the stat selector to change what the chart displays:
+- Users
+- Sessions
+- Pageviews
+- Bounce Rate
+- Pages Per Session
+- Session Duration
+
+The chart updates instantly to show your chosen metric's trend.
+
+### Reading the Graph
+
+Hover over any point to see exact numbers for that time bucket.
+
+Patterns jump out visually. Traffic spikes? You'll spot them. Steady decline? That shows up too. The chart makes trends obvious.
+
+## Traffic Sources Breakdown
+
+Scroll further and you'll hit the referrer section. This shows where your traffic comes from.
+
+### Source Categories
+
+Rybbit automatically categorizes traffic:
+- **Direct**: Typed URL or bookmarks
+- **Search**: Google, Bing, DuckDuckGo, etc.
+- **Social**: Twitter, Facebook, LinkedIn, Reddit
+- **Referral**: Other websites linking to you
+
+Each category shows session count and percentage of total traffic.
+
+### Detailed Referrer List
+
+Click any individual referrer to filter your entire view to just that traffic source. Now all your metrics show only visitors from that source. Check bounce rate for Reddit traffic specifically, or see if Twitter visitors view more pages than average.
+
+Click any category in the channels tab to expand and see specific sources. Under "Social," for example, you'll see exactly how many sessions came from Twitter versus LinkedIn.
+
+## UTM Parameters
+
+If you use UTM tags for campaign tracking, this section becomes incredibly valuable.
+
+### Campaign Data
+
+See all your campaigns with metrics for each:
+- Campaign name (utm_campaign)
+- Source (utm_source)
+- Medium (utm_medium)
+- Term (utm_term)
+- Content (utm_content)
+
+Each parameter shows session counts and allows filtering.
+
+Click any campaign to filter the Main tab to just that campaign's traffic. Compare bounce rates across campaigns, or see which campaign drives the longest sessions.
+
+### Pages
+
+You can use this section to find the exact pages (their URL's, the page titles, entry and exit pages, and hostnames) that your users are visitng.
+
+## Top Pages
+
+The pages section shows which URLs received the most traffic.
+
+### Page List
+
+Pages rank by view count. Each entry displays:
+- Page path
+- Pageview count
+- Unique visitors to that page
+- Average time on page
+- Bounce rate for that page
+
+### Page Performance
+
+Notice how each page shows its own bounce rate and time on page. This helps identify high-performers and problem pages. A landing page with 80% bounce rate and 10-second average time? That needs work.
+
+Click any page to filter the entire Main tab to just sessions that viewed that page. Suddenly you're analyzing only visitors who hit your pricing page, for example.
+
+## Entry and Exit Pages
+
+These sections break down where visits begin and end.
+
+### Entry Pages
+
+Your entry pages show which URLs serve as landing points. For each entry page, you see:
+- Session count starting there
+- Bounce rate for sessions starting there
+- Average pages per session from that entry
+
+Entry page data matters for SEO and marketing. Which pages bring traffic? Which ones convert visitors into engaged users?
+
+### Exit Pages
+
+Exit pages show where people leave. High exit rates on checkout pages signal problems. High exits on thank-you pages? That's expected and fine.
+
+## Device and Browser Breakdown
+
+Keep scrolling to find device, browser, and operating system data.
+
+### Device Type
+
+See the split between:
+- Desktop
+- Mobile
+- Tablet
+
+Each shows session count and percentage. Mobile-first sites will see mobile dominate; B2B tools often show desktop leads.
+
+### Browser, Device and OS
+
+Detailed browser information appears below devices:
+- Browser name (Chrome, Safari, Firefox, Edge)
+- Browser version
+- Device Type (Desktop/Mobile)
+- Operating system
+- OS version
+
+This helps debug issues. Seeing weird behavior reports? Check if they correlate with a specific browser version.
+
+Click any device type, browser, or OS to filter your view to just those sessions.
+
+## Screen Resolution Data
+
+Screen sizes matter for responsive design. The resolutions section shows what sizes your visitors use.
+
+### Resolution List
+
+Common resolutions appear with session counts:
+- 1920x1080 (Full HD)
+- 1366x768 (Laptop standard)
+- 414x896 (iPhone sizes)
+- And many more
+
+This data informs design decisions. If 60% of your traffic uses mobile resolutions, mobile-first design becomes critical.
+
+## Geographic Data
+
+The countries section shows where your visitors connect from.
+
+### Country List
+
+Countries appear ranked by session count. Each entry shows:
+- Country flag and name
+- Session count
+- Percentage of total traffic (hover over the specific country to see)
+
+## Custom Events Section
+
+Below your main chart, you'll see your custom events (if you've set any up). These show how often specific actions happen on your site.
+
+### Filtering by Events
+
+Each event gets its own card displaying:
+- Event name
+- Total count for the period
+- Trend indicator (up or down from previous period)
+
+Click any event card to filter the entire Main tab to show only sessions where that event occurred.
+
+After clicking an event, notice how all your metrics update to reflect only sessions containing that event. Want to see bounce rate for users who played a video? Click the video_play event. Curious about average session duration for users who added items to cart? Click add_to_cart.
+
+This turns events from simple counters into powerful segmentation tools.
+
+## Weekly Trends
+
+At the bottom of the Main tab, you'll find a weekly comparison widget.
+
+### Week-over-Week Comparison
+
+This section shows key metrics over the week:
+- Unique Visitors
+- Sessions 
+- Pageviews 
+- Bounce Rate
+- Pages per session
+- Session Duration
+
+## Making the Most of the Main Tab
+
+Here's how to use the Main tab effectively:
+
+### Start with the Big Picture
+
+Open Rybbit, glance at your top metrics. Are numbers where you expect? Any surprises? This 10-second check gives you daily pulse.
+
+### Investigate Anomalies
+
+Notice an unexpected spike or drop? Click into that time period on the chart. Check which pages drove the change. Look at traffic sources. Follow the data trail.
+
+### Compare Time Periods
+
+Use the date picker to compare similar periods. How does this Monday compare to last Monday? This campaign to the previous one? These comparisons reveal what's working.
+
+### Combine Filters for Deep Dives
+
+Don't just look at overall stats. Layer filters to understand specific user segments. Mobile users from paid campaigns behave differently than desktop users from organic search. See how.
+
+### Track Improvements Over Time
+
+Made site changes? Watch the metrics over days and weeks. Did improving mobile performance reduce mobile bounce rate? Did adding videos increase session duration? The Main tab shows results.
+
+### Use Event Filtering
+
+This feature transforms the Main tab. Instead of asking "how did my site perform overall," you ask "how did users who took action X perform?" Much more actionable.
+
+### Check Geographic Patterns
+
+International traffic growing? Time to think about localization. One country dominating? Consider timezone-specific content scheduling or support hours.
+
+### Monitor Entry Pages
+
+Your entry pages determine first impressions. High bounce rates on entry pages mean visitors aren't finding what they expected. Fix those pages first.
+
+## Tips and Tricks
+
+### Bookmark Filtered Views
+
+Found a particularly useful filtered view? Bookmark that URL. Rybbit's filters appear in the URL, so bookmarking saves your exact configuration.
+
+### Use Mobile for Quick Checks
+
+The Main tab works great on mobile browsers. Stuck in a meeting but need to check a number? Pull up Rybbit on your phone—everything's there.
+
+### Set Up Multiple Projects
+
+Managing several sites? Create separate projects for each. The project selector at the top lets you switch between them instantly.
+
+## Common Questions
+
+**Q: Why don't my numbers match Google Analytics exactly?**
+
+Rybbit uses different counting methods, bot detection works better, and there's no sampling. Small discrepancies are normal. Over time, you'll find Rybbit's numbers more reliable.
+
+Not noticeably. Rybbit's handles filtered queries incredibly fast, even with millions of events.
+
+**Q: Can multiple team members view the Main tab simultaneously?**
+
+Yes. Rybbit supports organizations and multiple users. Each person can have their own filters and views without affecting others.
+
+## Getting Support
+
+Questions about any feature?
+
+- **Documentation**: [rybbit.com/docs](https://rybbit.com/docs)
+- **Discord Community**: Join 385+ members at [discord.gg/DEhGb4hYBj](https://discord.gg/DEhGb4hYBj)
+- **Twitter/X**: [@yang_frog](https://x.com/yang_frog)
+- **GitHub**: [github.com/rybbit-io/rybbit](https://github.com/rybbit-io/rybbit)
+
+---
+
+**Related Guides:**
+- [Calculating Bounce Rate with Rybbit](/blog/bounce-rate)
+- [Getting Started with Rybbit Analytics](/docs)
+- [Tracking Custom Events](/docs/track-events)
+- [Using Session Replay Effectively](/docs/product-analytics/replay-session)

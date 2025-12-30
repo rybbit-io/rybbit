@@ -20,7 +20,7 @@ export const sendEmail = async (email: string, subject: string, html: string) =>
   }
   try {
     const response = await resend.emails.send({
-      from: "Rybbit <onboarding@app.rybbit.io>",
+      from: "Rybbit <automail@rybbit.com>",
       to: email,
       subject,
       html,
@@ -85,4 +85,32 @@ export const sendWeeklyReportEmail = async (
   const subject = `Weekly Analytics Report - ${organizationReport.sites[0].siteName}`;
 
   await sendEmail(email, subject, html);
+};
+
+export const sendWelcomeEmail = async (email: string, name?: string) => {
+  if (!resend) return;
+
+  const greeting = name ? `Hi ${name}` : "Hi there";
+  const text = `${greeting},
+
+Welcome to Rybbit! Thanks for signing up.
+
+I'm excited to have you on board. Rybbit is fully self-funded and we're fully committed to making an analytics platform that only serves the interests of our users.
+
+If you run into any issues or have any questions or suggestions, just reply to this email - I'd love to hear from you.
+
+Cheers,
+Bill`;
+
+  try {
+    await resend.emails.send({
+      from: "Bill from Rybbit <bill@rybbit.com>",
+      replyTo: "hello@rybbit.com",
+      to: email,
+      subject: "Welcome to Rybbit!",
+      text,
+    });
+  } catch (error) {
+    console.error("Failed to send welcome email:", error);
+  }
 };

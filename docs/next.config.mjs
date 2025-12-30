@@ -23,7 +23,19 @@ const config = {
         protocol: "https",
         hostname: "cdn.outrank.so",
       },
+      {
+        protocol: "https",
+        hostname: "www.google.com",
+      },
     ],
+  },
+  async rewrites() {
+    return [
+      {
+        source: '/docs/:path*.mdx',
+        destination: '/llms.mdx/:path*',
+      },
+    ];
   },
 };
 

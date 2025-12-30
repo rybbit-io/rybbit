@@ -1,11 +1,13 @@
+import { Filter } from "@rybbit/shared";
 import { DateTime } from "luxon";
 import { Time } from "../components/DateSelector/types";
 import axios, { AxiosRequestConfig } from "axios";
 import { BACKEND_URL } from "../lib/const";
 import { timeZone } from "../lib/dateTimeUtils";
 import { useStore } from "../lib/store";
+import { CommonApiParams } from "./analytics/endpoints/types";
 
-export function getStartAndEndDate(time: Time) {
+export function getStartAndEndDate(time: Time): { startDate: string | null; endDate: string | null } {
   if (time.mode === "range") {
     return { startDate: time.startDate, endDate: time.endDate };
   }
@@ -33,21 +35,58 @@ export function getStartAndEndDate(time: Time) {
   return { startDate: time.day, endDate: time.day };
 }
 
+// Internal version that uses snake_case for getQueryParams
+function getStartAndEndDateSnake(time: Time) {
+  const { startDate, endDate } = getStartAndEndDate(time);
+  return { start_date: startDate, end_date: endDate };
+}
+
 export function getQueryParams(time: Time, additionalParams: Record<string, any> = {}): Record<string, any> {
   if (time.mode === "past-minutes") {
     return {
-      timeZone,
-      pastMinutesStart: time.pastMinutesStart,
-      pastMinutesEnd: time.pastMinutesEnd,
+      time_zone: timeZone,
+      past_minutes_start: time.pastMinutesStart,
+      past_minutes_end: time.pastMinutesEnd,
       ...additionalParams,
     };
   }
 
   // Regular date-based approach
   return {
-    ...getStartAndEndDate(time),
-    timeZone,
+    ...getStartAndEndDateSnake(time),
+    time_zone: timeZone,
     ...additionalParams,
+  };
+}
+
+// Re-export timeZone for convenience
+export { timeZone };
+
+/**
+ * Build CommonApiParams from a Time object, handling all time modes including past-minutes.
+ * This centralizes the logic for converting Time to API params across all hooks.
+ */
+export function buildApiParams(
+  time: Time,
+  options: { filters?: Filter[] } = {}
+): CommonApiParams {
+  if (time.mode === "past-minutes") {
+    return {
+      startDate: "",
+      endDate: "",
+      timeZone,
+      filters: options.filters,
+      pastMinutesStart: time.pastMinutesStart,
+      pastMinutesEnd: time.pastMinutesEnd,
+    };
+  }
+
+  const { startDate, endDate } = getStartAndEndDate(time);
+  return {
+    startDate: startDate ?? "",
+    endDate: endDate ?? "",
+    timeZone,
+    filters: options.filters,
   };
 }
 

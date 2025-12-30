@@ -5,7 +5,7 @@ import { redirect, usePathname } from "next/navigation";
 import { userStore } from "../lib/userStore";
 import { useGetSiteIsPublic } from "../api/admin/sites";
 
-const publicRoutes = ["/login", "/signup", "/invitation", "/reset-password"];
+const PUBLIC_ROUTES = ["/login", "/signup", "/invitation", "/reset-password", "/as/callback"];
 
 export function AuthenticationGuard() {
   const { user, isPending } = userStore();
@@ -28,7 +28,14 @@ export function AuthenticationGuard() {
     // 3. Not on a public route
     // 4. Not on a public site
     // 5. Not using a private link key
-    if (!isPending && !isCheckingPublic && !user && !publicRoutes.includes(pathname) && !isPublicSite && !hasPrivateKey) {
+    if (
+      !isPending &&
+      !isCheckingPublic &&
+      !user &&
+      !PUBLIC_ROUTES.includes(pathname) &&
+      !isPublicSite &&
+      !hasPrivateKey
+    ) {
       redirect("/login");
     }
   }, [isPending, user, pathname, isCheckingPublic, isPublicSite, hasPrivateKey]);

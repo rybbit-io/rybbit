@@ -1,0 +1,611 @@
+---
+title: Troubleshooting Proxy Setup
+description: Common issues and solutions for Rybbit proxy configurations
+---
+
+import { Callout } from 'fumadocs-ui/components/callout';
+import { Steps } from 'fumadocs-ui/components/steps';
+
+This guide covers common issues you might encounter when setting up a Rybbit proxy and how to resolve them.
+
+## Script Loading Issues
+
+### Script Fails to Load (404 Error)
+
+**Symptoms:**
+- Network tab shows 404 for `/analytics/script.js`
+- Console errors about failed script loading
+- No tracking data in dashboard
+
+**Solutions:**
+
+<Steps>
+
+### Verify Proxy Configuration
+
+Check your proxy rules are correctly configured:
+
+- **Next.js**: Ensure rewrites are in `next.config.js` and server is restarted
+- **Nginx**: Verify location blocks are active and Nginx is reloaded
+- **Caddy**: Check Caddyfile syntax with `caddy validate`
+- **Workers**: Verify route is configured in Cloudflare dashboard
+
+### Check Path Mapping
+
+Ensure paths are correctly mapped:
+
+```
+Your domain          →  Rybbit backend
+-----------------        ---------------
+/analytics/script.js →  /api/script.js
+```
+
+Common mistakes:
+- Wrong source path (`/tracking` instead of `/analytics`)
+- Incorrect destination (missing `/api` prefix)
+- Typos in configuration
+
+### Test Direct Backend Access
+
+Verify Rybbit backend is accessible:
+
+```bash
+curl -I https://app.rybbit.io/api/script.js
+```
+
+Should return `HTTP/2 200` with `content-type: application/javascript`.
+
+</Steps>
+
+---
+
+### Script Loads but Returns HTML
+
+**Symptoms:**
+- Script loads with 200 status
+- Content-Type is `text/html` instead of `application/javascript`
+- Console errors about unexpected token `<`
+
+**Cause:** Proxy is serving your application's 404 page instead of proxying.
+
+**Solutions:**
+
+1. **Ensure proxy runs before app routing**:
+   - Next.js: Rewrites run automatically before pages
+   - Express: Define proxy routes BEFORE catch-all routes
+   - Laravel: Place proxy routes at the top of `web.php`
+
+2. **Check route specificity**:
+```javascript
+// ❌ Wrong order - catch-all comes first
+app.get('*', (req, res) => res.sendFile('index.html'));
+app.use('/analytics', proxyMiddleware);
+
+// ✅ Correct order - proxy comes first
+app.use('/analytics', proxyMiddleware);
+app.get('*', (req, res) => res.sendFile('index.html'));
+```
+
+---
+
+## Tracking Issues
+
+### Script Loads but No Events Tracked
+
+**Symptoms:**
+- Script loads successfully
+- No errors in console
+- No tracking data appears in Rybbit dashboard
+- POST requests to `/analytics/track` fail or return errors
+
+**Solutions:**
+
+<Steps>
+
+### Verify All Endpoints Are Proxied
+
+Ensure tracking endpoints are configured:
+
+- `/analytics/track` (required)
+- `/analytics/identify` (for user identification)
+- `/analytics/session-replay/record/:siteId` (for session replay)
+- `/analytics/site/tracking-config/:siteId` (for configuration)
+
+**Check Network tab**: Look for failed POST requests to `/analytics/track`.
+
+### Check CORS Headers
+
+Tracking endpoints need proper CORS headers. Rybbit sets these automatically, but ensure your proxy preserves them:
+
+```nginx
+# Nginx - preserve CORS headers
+proxy_pass_header Access-Control-Allow-Origin;
+proxy_pass_header Access-Control-Allow-Methods;
+```
+
+```javascript
+// Express - don't override CORS
+// ❌ Wrong - blocks CORS
+app.use('/analytics', cors({ origin: 'https://yourdomain.com' }));
+
+// ✅ Correct - allow all origins (or use Rybbit's headers)
+app.use('/analytics', cors({ origin: true }));
+```
+
+### Verify Content-Type for POST Requests
+
+Tracking POSTs send JSON data. Ensure Content-Type is preserved:
+
+```nginx
+# Nginx
+proxy_set_header Content-Type $content_type;
+```
+
+```javascript
+// Express
+onProxyReq: (proxyReq, req) => {
+  if (req.headers['content-type']) {
+    proxyReq.setHeader('Content-Type', req.headers['content-type']);
+  }
+}
+```
+
+### Check Request Method Preservation
+
+Ensure POST requests remain POST:
+
+```nginx
+# Nginx - correct
+proxy_method $request_method;
+
+# Or let it default (preserves method)
+proxy_pass https://app.rybbit.io;
+```
+
+</Steps>
+
+---
+
+### Events Tracked but Dashboard Shows Wrong Data
+
+**Symptoms:**
+- Events appear in dashboard
+- But geolocation is wrong (all same location)
+- Or user agents are incorrect
+
+**Cause:** Client IP or headers not forwarded properly.
+
+**Solutions:**
+
+<Callout type="warn">
+**Critical**: The `X-Forwarded-For` and `X-Real-IP` headers must contain the original client IP for accurate geolocation and user identification.
+</Callout>
+
+**Nginx:**
+```nginx
+proxy_set_header X-Real-IP $remote_addr;
+proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+proxy_set_header User-Agent $http_user_agent;
+```
+
+**Caddy:**
+```txt
+reverse_proxy https://app.rybbit.io {
+    header_up X-Real-IP {remote_host}
+    header_up X-Forwarded-For {remote_host}
+}
+```
+
+**Express:**
+```javascript
+onProxyReq: (proxyReq, req) => {
+  const clientIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
+  proxyReq.setHeader('X-Real-IP', clientIp);
+  proxyReq.setHeader('X-Forwarded-For', clientIp);
+  proxyReq.setHeader('User-Agent', req.headers['user-agent']);
+}
+```
+
+**Cloudflare Workers:**
+```javascript
+const clientIp = request.headers.get('CF-Connecting-IP') || '0.0.0.0';
+proxyHeaders.set('X-Real-IP', clientIp);
+```
+
+---
+
+## Session Replay Issues
+
+### Session Replay Not Working
+
+**Symptoms:**
+- Basic tracking works fine
+- Session replays don't appear in dashboard
+- Console shows errors loading `/analytics/replay.js`
+
+**Solutions:**
+
+1. **Add replay script endpoint**:
+```javascript
+// Next.js
+{
+  source: '/analytics/replay.js',
+  destination: `${process.env.NEXT_PUBLIC_RYBBIT_HOST}/api/replay.js`,
+}
+```
+
+2. **Add replay recording endpoint**:
+```javascript
+{
+  source: '/analytics/session-replay/record/:siteId',
+  destination: `${process.env.NEXT_PUBLIC_RYBBIT_HOST}/api/session-replay/record/:siteId`,
+}
+```
+
+3. **Increase request size limits**:
+
+Session replay can send large payloads (up to 10MB). Ensure your proxy allows this:
+
+```nginx
+# Nginx
+location ~ ^/analytics/session-replay/record/ {
+    client_max_body_size 10M;
+    proxy_pass https://app.rybbit.io;
+}
+```
+
+```javascript
+// Express
+app.use('/analytics/session-replay', express.json({ limit: '10mb' }));
+```
+
+```javascript
+// Next.js - add to next.config.js
+module.exports = {
+  api: {
+    bodyParser: {
+      sizeLimit: '10mb',
+    },
+  },
+};
+```
+
+---
+
+## Configuration and Caching Issues
+
+### Stale Configuration (Settings Changes Not Applied)
+
+**Symptoms:**
+- Changed settings in Rybbit dashboard
+- But tracking script still uses old settings
+- Takes a long time for changes to appear
+
+**Cause:** Configuration endpoint is cached too aggressively.
+
+**Solutions:**
+
+1. **Check cache duration** for config endpoint:
+
+```nginx
+# Nginx - cache for 5 minutes max
+location ~ ^/analytics/site/tracking-config/ {
+    proxy_cache_valid 200 5m;  # Not longer!
+    proxy_pass https://app.rybbit.io;
+}
+```
+
+2. **Clear cache manually**:
+
+```bash
+# Nginx
+sudo nginx -s reload
+
+# Or clear cache directory
+sudo rm -rf /var/cache/nginx/rybbit/*
+```
+
+```javascript
+// Node.js/Express with node-cache
+cache.del(`rybbit_config_${siteId}`);
+
+// Or flush all
+cache.flushAll();
+```
+
+3. **Don't cache config endpoint at all** (if issues persist):
+
+```nginx
+# Nginx - no caching
+location ~ ^/analytics/site/tracking-config/ {
+    proxy_cache off;
+    proxy_pass https://app.rybbit.io;
+}
+```
+
+---
+
+### Script Updates Not Appearing
+
+**Symptoms:**
+- Rybbit released an update
+- Your site still loads old script version
+- Missing new features or bug fixes
+
+**Cause:** Script cached too long.
+
+**Solutions:**
+
+1. **Recommended cache duration**: 1 hour maximum
+
+```nginx
+# Nginx
+proxy_cache_valid 200 1h;  # Not longer!
+```
+
+2. **Clear script cache**:
+
+```bash
+# Nginx - purge cache
+sudo rm -rf /var/cache/nginx/rybbit/
+sudo nginx -s reload
+```
+
+```bash
+# Vercel - clear via dashboard
+# Deployments → Your deployment → Clear cache
+```
+
+```javascript
+// Cloudflare Workers - purge via dashboard
+// Caching → Configuration → Purge Everything
+```
+
+3. **Add cache busting** (advanced):
+
+```javascript
+// Next.js - revalidate on each deployment
+{
+  source: '/analytics/script.js',
+  destination: `${rybbitHost}/api/script.js`,
+  headers: [
+    {
+      key: 'Cache-Control',
+      value: 'public, max-age=3600, must-revalidate',
+    },
+  ],
+}
+```
+
+---
+
+## Performance Issues
+
+### High Bandwidth Usage
+
+**Symptoms:**
+- Bandwidth costs increasing significantly
+- Server struggling with traffic
+- Slow response times
+
+**Solutions:**
+
+<Steps>
+
+### Implement Caching
+
+Cache static scripts to reduce backend requests:
+
+```nginx
+# Nginx with caching
+proxy_cache_path /var/cache/nginx/rybbit levels=1:2 keys_zone=rybbit:10m;
+
+location = /analytics/script.js {
+    proxy_cache rybbit;
+    proxy_cache_valid 200 1h;
+    proxy_cache_key "$scheme$request_method$host$request_uri";
+    add_header X-Cache-Status $upstream_cache_status;
+    proxy_pass https://app.rybbit.io/api/script.js;
+}
+```
+
+### Use CDN
+
+Put a CDN in front of your proxy:
+
+- Cloudflare (recommended)
+- AWS CloudFront
+- Fastly
+
+### Monitor and Limit
+
+Add monitoring and rate limiting:
+
+```javascript
+// Express with rate limiting
+const rateLimit = require('express-rate-limit');
+
+app.use('/analytics/track', rateLimit({
+  windowMs: 60 * 1000,
+  max: 100, // 100 requests per minute per IP
+}));
+```
+
+</Steps>
+
+---
+
+### Slow Response Times
+
+**Symptoms:**
+- Tracking requests take multiple seconds
+- Script loading is slow
+- Poor user experience
+
+**Solutions:**
+
+1. **Enable compression**:
+
+```nginx
+# Nginx
+gzip on;
+gzip_types application/javascript;
+```
+
+2. **Use connection keepalive**:
+
+```nginx
+# Nginx
+proxy_http_version 1.1;
+proxy_set_header Connection "";
+
+upstream rybbit {
+    server app.rybbit.io:443;
+    keepalive 32;
+}
+```
+
+3. **Check backend connectivity**:
+
+```bash
+# Test latency to Rybbit
+curl -w "@curl-format.txt" -o /dev/null -s https://app.rybbit.io/api/script.js
+
+# Create curl-format.txt:
+# time_namelookup:  %{time_namelookup}s
+# time_connect:     %{time_connect}s
+# time_starttransfer: %{time_starttransfer}s
+# time_total:       %{time_total}s
+```
+
+If backend is slow, consider:
+- Self-hosting Rybbit closer to your users
+- Using a CDN proxy
+- Caching more aggressively
+
+---
+
+## Platform-Specific Issues
+
+### Next.js: Rewrites Not Working
+
+**Problem:** Added rewrites to `next.config.js` but they don't work.
+
+**Solutions:**
+
+1. **Restart dev server**:
+```bash
+# Stop server (Ctrl+C)
+npm run dev
+```
+
+2. **Check async rewrites** function:
+```javascript
+// ❌ Wrong - not async
+rewrites() {
+    return [...];
+}
+
+// ✅ Correct - async
+async rewrites() {
+    return [...];
+}
+```
+
+3. **Verify environment variable** is loaded:
+```javascript
+async rewrites() {
+    console.log('RYBBIT_HOST:', process.env.NEXT_PUBLIC_RYBBIT_HOST);
+    // Should log the URL
+    return [...];
+}
+```
+
+---
+
+### Nginx: 502 Bad Gateway
+
+**Problem:** Nginx returns 502 error for analytics endpoints.
+
+**Solutions:**
+
+1. **Enable SNI** for SSL:
+```nginx
+proxy_ssl_server_name on;
+```
+
+2. **Check DNS resolution**:
+```bash
+nslookup app.rybbit.io
+```
+
+3. **Check logs**:
+```bash
+sudo tail -f /var/log/nginx/error.log
+```
+
+4. **Test backend directly**:
+```bash
+curl -v https://app.rybbit.io/api/script.js
+```
+
+---
+
+### Vercel: 404 After Deployment
+
+**Problem:** Works locally but 404 in production.
+
+**Solutions:**
+
+1. **Ensure `vercel.json` is committed**:
+```bash
+git add vercel.json
+git commit -m "Add Rybbit proxy config"
+git push
+```
+
+2. **Check build logs** in Vercel dashboard for errors
+
+3. **Verify environment variables** are set in Vercel project settings
+
+---
+
+## Debugging Checklist
+
+When troubleshooting, work through this checklist:
+
+- [ ] Script loads successfully (200 status, correct Content-Type)
+- [ ] Tracking endpoint is proxied (`/analytics/track`)
+- [ ] POST requests preserve method and body
+- [ ] Client IP is forwarded (`X-Forwarded-For`, `X-Real-IP`)
+- [ ] User-Agent header is preserved
+- [ ] CORS headers are preserved (check response headers)
+- [ ] Request size limits allow tracking data (1MB minimum)
+- [ ] Session replay endpoints are proxied (if using replay)
+- [ ] Cache duration is appropriate (1 hour for scripts, 5 min for config)
+- [ ] No CSRF protection blocking POST requests
+- [ ] Environment variables are set correctly
+- [ ] Configuration changes have been deployed
+
+## Getting Help
+
+If you've tried everything and still have issues:
+
+1. **Check browser console** for JavaScript errors
+2. **Check Network tab** for failed requests (note status codes)
+3. **Check server logs** for proxy errors
+4. **Test with curl** to isolate browser vs server issues
+5. **Verify directly** against `https://app.rybbit.io/api/script.js`
+
+**Gather this information before asking for help:**
+- Framework/platform you're using
+- Proxy configuration code
+- Network tab screenshot showing the issue
+- Any error messages from logs or console
+- Whether it worked before (what changed?)
+
+## Related Resources
+
+- [Generic Proxy Guide](/docs/proxy-guide/get-started) - Core concepts
+- [Tracking Script Documentation](/docs/script) - Script configuration
+- Framework-specific guides for detailed setup

@@ -1,9 +1,10 @@
 "use client";
 
-import { GetOverviewBucketedResponse } from "@/api/analytics/useGetOverviewBucketed";
+import { GetOverviewBucketedResponse } from "@/api/analytics/endpoints";
 import { APIResponse } from "@/api/types";
+import { ChartTooltip } from "@/components/charts/ChartTooltip";
 import { hour12, userLocale } from "@/lib/dateTimeUtils";
-import { nivoTheme } from "@/lib/nivo";
+import { useNivoTheme } from "@/lib/nivo";
 import { ResponsiveLine } from "@nivo/line";
 import { DateTime } from "luxon";
 
@@ -15,10 +16,11 @@ interface PageSparklineChartProps {
 }
 
 export function PageSparklineChart({ data, isHovering, pageTitle, isLoading }: PageSparklineChartProps) {
+  const nivoTheme = useNivoTheme();
   if (isLoading) {
     return (
       <div className="h-full w-full flex items-center justify-center animate-pulse">
-        <div className="h-[1px] w-full bg-border opacity-50"></div>
+        <div className="h-px w-full bg-border opacity-50"></div>
       </div>
     );
   }
@@ -38,7 +40,7 @@ export function PageSparklineChart({ data, isHovering, pageTitle, isLoading }: P
   if (!sparklineData || sparklineData.length === 0) {
     return (
       <div className="h-full w-full flex items-center justify-center">
-        <div className="h-[1px] w-full bg-border opacity-50"></div>
+        <div className="h-px w-full bg-border opacity-50"></div>
       </div>
     );
   }
@@ -97,12 +99,14 @@ export function PageSparklineChart({ data, isHovering, pageTitle, isLoading }: P
         const timestamp = point.data.time as DateTime;
 
         return (
-          <div className="text-sm bg-neutral-900 border border-neutral-700 p-2 rounded-md shadow-md">
-            <div className="flex items-center justify-between gap-3">
-              <div className="text-neutral-200">{formatDateTime(timestamp)}</div>
-              <div className="font-medium">{value.toLocaleString()}</div>
+          <ChartTooltip>
+            <div className="p-2">
+              <div className="flex items-center justify-between gap-3">
+                <div>{formatDateTime(timestamp)}</div>
+                <div className="font-medium">{value.toLocaleString()}</div>
+              </div>
             </div>
-          </div>
+          </ChartTooltip>
         );
       }}
     />

@@ -19,7 +19,7 @@ export function UptimeBar({ monitorId, className }: UptimeBarProps) {
     return (
       <div className={cn("flex gap-1 h-6", className)}>
         {Array.from({ length: 7 }).map((_, i) => (
-          <div key={i} className="w-[10px] rounded-md bg-neutral-300 dark:bg-neutral-600 animate-pulse" />
+          <div key={i} className="w-[10px] rounded-md bg-neutral-150 dark:bg-neutral-600 animate-pulse" />
         ))}
       </div>
     );

@@ -1,14 +1,15 @@
 "use client";
 
 import { UptimeMonitor, useMonitorStats } from "@/api/uptime/monitors";
+import { ChartTooltip } from "@/components/charts/ChartTooltip";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatChartDateTime, hour12, userLocale } from "@/lib/dateTimeUtils";
-import { nivoTheme } from "@/lib/nivo";
 import { cn } from "@/lib/utils";
 import { ResponsiveLine } from "@nivo/line";
 import { DateTime } from "luxon";
 import { useEffect, useState } from "react";
+import { useNivoTheme } from "../../../../lib/nivo";
 import { UptimeBucketSelection } from "./UptimeBucketSelection";
 import { useUptimeStore } from "./uptimeStore";
 import { getHoursFromTimeRange } from "./utils";
@@ -207,6 +208,7 @@ export function MonitorResponseTimeChart({
         return dt.toFormat(hour12 ? "MMM d" : "dd MMM");
     }
   };
+  const nivoTheme = useNivoTheme();
 
   return (
     <Card className="overflow-visible">
@@ -265,7 +267,7 @@ export function MonitorResponseTimeChart({
           <div className="h-[400px] w-full relative" style={{ overflow: "visible", zIndex: 10 }}>
             <ResponsiveLine
               data={data}
-              theme={{ ...nivoTheme }}
+              theme={nivoTheme}
               margin={{ top: 10, right: 20, bottom: 25, left: 50 }}
               defs={defs}
               fill={fill}
@@ -374,42 +376,44 @@ export function MonitorResponseTimeChart({
                     : 0;
 
                 return (
-                  <div className="text-sm bg-neutral-850 p-3 rounded-md min-w-[200px] border border-neutral-750 text-neutral-200">
-                    {formatChartDateTime(currentTime, bucket)}
+                  <ChartTooltip>
+                    <div className="p-3 min-w-[200px]">
+                      <div className="mb-2">{formatChartDateTime(currentTime, bucket)}</div>
 
-                    {/* Show failure status if any failures */}
-                    {dataPoint && dataPoint.failure_percentage > 0 && (
-                      <div
-                        className={cn(
-                          "text-xs px-2 py-1 rounded mt-2 mb-2",
-                          dataPoint.failure_percentage >= 50
-                            ? "bg-red-500/20 text-red-400"
-                            : "bg-yellow-500/20 text-yellow-400"
-                        )}
-                      >
-                        {dataPoint.failure_count + dataPoint.timeout_count} of {dataPoint.check_count} checks failed (
-                        {dataPoint.failure_percentage.toFixed(1)}%)
-                      </div>
-                    )}
-
-                    <div className="space-y-1.5 mt-2 text-xs">
-                      {slice.points.map((point: any) => (
-                        <div key={point.seriesId} className="flex justify-between items-center">
-                          <div className="flex items-center gap-2">
-                            <div className="w-2 h-2 rounded-sm" style={{ backgroundColor: point.seriesColor }} />
-                            <span className="text-neutral-300">{point.seriesId}</span>
-                          </div>
-                          <span className="text-neutral-200">{formatTooltipValue(Number(point.data.yFormatted))}</span>
-                        </div>
-                      ))}
-                      {monitorType === "http" && (
-                        <div className="flex justify-between items-center pt-1.5 border-t border-neutral-700">
-                          <span className="text-neutral-300">Total</span>
-                          <span className="text-white font-medium">{formatTooltipValue(total)}</span>
+                      {/* Show failure status if any failures */}
+                      {dataPoint && dataPoint.failure_percentage > 0 && (
+                        <div
+                          className={cn(
+                            "text-xs px-2 py-1 rounded mb-2",
+                            dataPoint.failure_percentage >= 50
+                              ? "bg-red-500/20 text-red-400"
+                              : "bg-yellow-500/20 text-yellow-400"
+                          )}
+                        >
+                          {dataPoint.failure_count + dataPoint.timeout_count} of {dataPoint.check_count} checks failed (
+                          {dataPoint.failure_percentage.toFixed(1)}%)
                         </div>
                       )}
+
+                      <div className="space-y-1.5 text-xs">
+                        {slice.points.map((point: any) => (
+                          <div key={point.seriesId} className="flex justify-between items-center">
+                            <div className="flex items-center gap-2">
+                              <div className="w-2 h-2 rounded-sm" style={{ backgroundColor: point.seriesColor }} />
+                              <span>{point.seriesId}</span>
+                            </div>
+                            <span className="font-medium">{formatTooltipValue(Number(point.data.yFormatted))}</span>
+                          </div>
+                        ))}
+                        {monitorType === "http" && (
+                          <div className="flex justify-between items-center pt-1.5 border-t border-neutral-100 dark:border-neutral-750">
+                            <span>Total</span>
+                            <span className="font-semibold">{formatTooltipValue(total)}</span>
+                          </div>
+                        )}
+                      </div>
                     </div>
-                  </div>
+                  </ChartTooltip>
                 );
               }}
             />

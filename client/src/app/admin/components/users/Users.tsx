@@ -47,14 +47,14 @@ export function Users() {
 
   if (isError) {
     return (
-      <AdminLayout title="Users" showStopImpersonating>
+      <AdminLayout>
         <ErrorAlert message="Failed to load users. Please try again later." />
       </AdminLayout>
     );
   }
 
   return (
-    <AdminLayout title="Users" showStopImpersonating>
+    <AdminLayout>
       <div className="space-y-4">
         {/* Filters */}
         <UserFilters

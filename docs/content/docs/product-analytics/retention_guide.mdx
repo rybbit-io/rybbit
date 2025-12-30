@@ -1,0 +1,160 @@
+---
+title: Retention Analytics
+description: Understanding Rybbit's retention tab
+---
+
+# Understanding Retention Analysis in Rybbit
+
+This guide will help you understand how to use retention analysis in Rybbit to measure user engagement and identify opportunities to improve your product or website.
+
+<img src="/blog/rybbit_retention_dashboard.png" alt="Rybbit's dashboard" />
+
+## What is Retention Analysis?
+
+Retention analysis helps you answer one of the most important questions in product analytics: **Are people coming back to use your product?**
+
+Unlike simple metrics like total visitors or pageviews, retention analysis shows you how many users return to your site or app over time. This gives you insight into whether users find lasting value in what you offer.
+
+## Understanding Cohorts
+
+At the heart of retention analysis are cohorts. A cohort is simply a group of users who share something in common, typically when they first visited your site or performed a specific action.
+
+For example:
+- All users who first visited your site on January 15th form one cohort
+- All users who first visited during the week of January 15-21st form a weekly cohort
+- All users who signed up for an account in February form a monthly cohort
+
+By grouping users this way, you can track how their behavior changes over time and compare different groups to see if certain periods brought in more engaged users.
+
+## How to Read the Retention Table
+
+The retention table in Rybbit shows you how many users from each cohort returned after a certain period. Here's what you'll see:
+
+### The Rows
+Each row represents a different cohort, typically grouped by the date or week when users first arrived. The leftmost column shows when that cohort started.
+
+### The Columns
+The columns represent time periods after the cohort's start date:
+- **Day 0 / Week 0**: The starting point (always 100%)
+- **Day 1 / Week 1**: Users who returned after 1 day/week
+- **Day 2 / Week 2**: Users who returned after 2 days/weeks
+- And so on...
+
+### The Numbers
+The percentages show what portion of the original cohort returned in each time period. For example, if 40% appears in the "Day 7" column, it means 40% of users who started in that cohort came back after a week.
+
+### Color Coding
+Rybbit uses color intensity to help you quickly spot patterns:
+- Lighter colors indicate higher retention rates
+- Darker colors indicate more drop-off
+- This makes it easy to spot trends at a glance
+
+## Key Insights to Look For
+
+### 1. The Retention Curve Pattern
+Look at how retention changes as you move across the columns. Most products show a pattern like this:
+- Sharp drop-off in the first few days (Day 0 to Day 3)
+- Gradual decline over the following weeks
+- Eventually plateauing at a "baseline" retention rate
+
+The shape of this curve tells you a lot. A steep drop suggests users aren't finding value quickly. A flatter curve indicates better long-term engagement.
+
+### 2. Comparing Cohorts
+Look down the columns to compare different cohorts at the same point in their lifecycle. Ask yourself:
+- Are newer cohorts retaining better or worse than older ones?
+- Did retention improve after you launched a new feature?
+- Which time periods brought in the stickiest users?
+
+This comparison helps you understand if your product improvements are working and which acquisition efforts bring quality users.
+
+### 3. Critical Time Windows
+Pay special attention to these periods:
+- **Day 1 retention**: Did users find enough value to come back the next day?
+- **Day 7 retention**: Did users integrate your product into their routine?
+- **Day 30 retention**: Have users formed a habit and found lasting value?
+
+These milestones help you identify where users drop off and what experiences might need improvement.
+
+## Common Patterns and What They Mean
+
+### The Cliff Drop
+If you see retention falling from 100% to 20-30% within the first few days, it often means:
+- Your onboarding experience isn't effectively communicating value
+- Users don't understand how to use key features
+- There's a mismatch between what users expected and what they found
+
+### The Steady Decline
+A gradual, consistent drop over time is normal, but if it's too steep, consider:
+- Are users getting ongoing value or is the novelty wearing off?
+- Do you have features that encourage repeat usage?
+- Are you staying top-of-mind with notifications or emails?
+
+### The Plateau
+When retention levels off (stops declining significantly), you've found your core users. This baseline retention represents users who have found genuine, lasting value. Understanding who these users are and what they do differently is key to improving overall retention.
+
+### Improving Trends
+If newer cohorts show better retention than older ones at the same lifecycle stage, congratulations! Your product improvements are working. Document what changed so you can replicate success.
+
+## Tips for Taking Action
+
+### Start with Day 1
+Focus on getting users to return the day after their first visit. This is your first chance to prove value and sets the tone for long-term retention.
+
+### Identify Drop-off Points
+Look for the steepest declines in your retention curve. These represent critical moments where users decide your product isn't valuable enough. Investigate what happens at those points.
+
+### Segment Your Analysis
+Don't just look at all users together. Filter by:
+- Traffic source (organic, paid, referral)
+- User type (new vs returning)
+- Specific behaviors or features used
+
+This helps you understand which types of users retain best and why.
+
+### Track Over Time
+Retention analysis is most powerful when viewed as a trend. Check your retention dashboard regularly to see if your efforts are moving the needle. Set benchmarks and celebrate improvements.
+
+## Understanding Enhanced Privacy Mode
+
+If you have Enhanced Privacy mode enabled in Rybbit, keep in mind that it affects retention tracking. In this mode, Rybbit forgets user identifiers daily, which means:
+- Retention beyond 24 hours becomes less accurate
+- Unique user counts over longer periods may be inflated
+- The retention dashboard becomes less useful overall
+
+This trade-off prioritizes user privacy at the cost of long-term behavior tracking. If retention insights are critical for your business, you may want to disable Enhanced Privacy mode.
+
+## Getting Started
+
+To make the most of retention analysis in Rybbit:
+
+1. **Set a baseline**: Look at your current retention rates to understand where you stand
+2. **Choose your intervals**: Decide whether daily, weekly, or monthly cohorts make most sense for your product
+3. **Watch for patterns**: Monitor your retention table regularly to spot trends
+4. **Form hypotheses**: When you see concerning patterns, develop theories about why they're happening
+5. **Test improvements**: Make changes to your product and track whether newer cohorts retain better
+6. **Iterate**: Use what you learn to continuously improve the user experience
+
+## Conclusion
+
+Retention analysis is one of the most powerful tools in your analytics toolkit. It reveals the truth about whether your product creates lasting value for users. If you have questions about interpreting your retention data or want to discuss what you're seeing, don't hesitate to reach out to our support team.
+
+Remember: good retention doesn't happen by accident. It's the result of deeply understanding your users, continuously improving your product, and making sure every interaction delivers value. Your retention dashboard is your guide on that journey.
+
+---
+
+**Related Reading:**
+- [Behavior Analytics - Users Tab](/docs/behavior-analytics/users)
+- [Behavior Analytics - Sessions Tab](/docs/behavior-analytics/sessions)
+- [Behavior Analytics - Events Tab](/docs/behavior-analytics/events)
+- [Product Analytics - Journeys Dashboard](/docs/product-analytics/journeys_dashboard)
+- [Product Analytics - Funnels Guide](/docs/product-analytics/funnels_guide)
+- [Track Custom Events](/docs/track-events)
+- [Blog: Churn Rate vs Retention Rate](/blog/churn-rate-vs-retention-rate)
+
+## Questions about any feature?
+
+
+- **Documentation**: [rybbit.com/docs](https://rybbit.com/docs)
+- **Discord Community**: 385+ members at [discord.gg/DEhGb4hYBj](https://discord.gg/DEhGb4hYBj)
+- **Twitter/X**: [@yang_frog](https://x.com/yang_frog)
+- **GitHub**: [github.com/rybbit-io/rybbit](https://github.com/rybbit-io/rybbit)

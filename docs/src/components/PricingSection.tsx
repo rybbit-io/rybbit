@@ -1,28 +1,31 @@
 "use client";
 
 import { Slider } from "@/components/ui/slider";
-import { Check, X, CheckCircle } from "lucide-react";
-import Link from "next/link";
-import { useState } from "react";
 import { cn } from "@/lib/utils";
-import { trackAdEvent } from "@/lib/trackAdEvent";
+import { getCalApi } from "@calcom/embed-react";
+import { useEffect, useState } from "react";
+import { DEFAULT_EVENT_LIMIT, FREE_SITE_LIMIT, STANDARD_SITE_LIMIT, STANDARD_TEAM_LIMIT } from "../lib/const";
+import { PricingCard } from "./PricingCard";
 
 // Available event tiers for the slider
 const EVENT_TIERS = [100_000, 250_000, 500_000, 1_000_000, 2_000_000, 5_000_000, 10_000_000, 20_000_000, "Custom"];
 
 // Define standard plan features
 const STANDARD_FEATURES = [
-  "Up to 10 websites",
-  "Up to 3 team members",
-  "Web vitals",
+  "Everything in Free",
+  `Up to ${STANDARD_SITE_LIMIT} websites`,
+  `Up to ${STANDARD_TEAM_LIMIT} team members`,
   "Funnels",
   "Goals",
-  "Error tracking",
   "Journeys",
+  "Web vitals",
+  "Error tracking",
   "User profiles",
   "Retention",
+  "Sessions",
+  "Email reports",
   "2 year data retention",
-  "Standard support",
+  "Email support",
 ];
 
 // Define pro plan features
@@ -31,15 +34,29 @@ const PRO_FEATURES = [
   "Unlimited websites",
   "Unlimited team members",
   "Session replays",
-  "5+ year data retention",
+  "5 year data retention",
   "Priority support",
+];
+
+// Define enterprise plan features
+const ENTERPRISE_FEATURES = [
+  "Everything in Pro",
+  "Single Sign-On (SSO)",
+  "Infinite data retention",
+  "Dedicated isolated instance",
+  "On-premise Installation",
+  "Custom Features",
+  "Whitelabeling",
+  "Manual invoicing",
+  "Uptime SLA",
+  "Enterprise support",
+  "Slack/live chat support",
 ];
 
 // Define free plan features
 const FREE_FEATURES = [
   { feature: "1 user", included: true },
-  { feature: "Up to 3 websites", included: true },
-  { feature: "Cookieless tracking", included: true },
+  { feature: `${FREE_SITE_LIMIT} website`, included: true },
   { feature: "Web analytics dashboard", included: true },
   { feature: "Custom events", included: true },
   { feature: "6 month data retention", included: true },
@@ -98,6 +115,14 @@ export function PricingSection() {
   const standardPrices = getFormattedPrice(eventLimit, "standard");
   const proPrices = getFormattedPrice(eventLimit, "pro");
 
+  // Initialize Cal.com embed
+  useEffect(() => {
+    (async function () {
+      const cal = await getCalApi({ namespace: "secret" });
+      cal("ui", { hideEventTypeDetails: false, layout: "month_view" });
+    })();
+  }, []);
+
   // Handle slider changes
   function handleSliderChange(value: number[]) {
     setEventLimitIndex(value[0]);
@@ -107,32 +132,33 @@ export function PricingSection() {
     <section className="py-16 md:py-24 w-full">
       <div className="max-w-7xl mx-auto px-4">
         <div className="mb-12 text-center max-w-3xl mx-auto">
-          <h2 className="text-4xl md:text-5xl font-bold tracking-tight pb-4 text-transparent bg-clip-text bg-gradient-to-b from-white via-gray-200 to-gray-400">
+          <h2 className="text-4xl md:text-5xl font-bold tracking-tight pb-4 text-transparent bg-clip-text bg-gradient-to-b from-neutral-900 via-neutral-700 to-neutral-500 dark:from-white dark:via-gray-200 dark:to-gray-400">
             Simple, Transparent Pricing
           </h2>
-          <p className="text-lg text-neutral-300">Privacy-friendly analytics with all the features you need to grow</p>
+          <p className="text-lg text-neutral-600 dark:text-neutral-300">
+            Privacy-friendly analytics with all the features you need to grow
+          </p>
         </div>
 
         {/* Shared controls section */}
         <div className="max-w-xl mx-auto mb-8">
-          {/* Events per month and billing toggle */}
           <div className="flex justify-between mb-6 items-center">
             <div>
-              <h3 className="font-semibold mb-2">Events per month</h3>
-              <div className="text-3xl font-bold text-emerald-400">
+              <h3 className="font-semibold mb-2">Monthly pageviews</h3>
+              <div className="text-3xl font-bold text-emerald-600 dark:text-emerald-400">
                 {typeof eventLimit === "number" ? eventLimit.toLocaleString() : eventLimit}
               </div>
             </div>
             <div className="flex flex-col items-end">
               {/* Billing toggle */}
-              <div className="flex gap-3 mb-2 text-sm">
+              <div className="flex mb-2 text-sm">
                 <button
                   onClick={() => setIsAnnual(false)}
                   className={cn(
                     "px-3 py-1 rounded-full transition-colors cursor-pointer",
                     !isAnnual
-                      ? "bg-emerald-500/20 text-emerald-400 font-medium"
-                      : "text-neutral-400 hover:text-neutral-200"
+                      ? "bg-emerald-500/30 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 font-medium"
+                      : "text-neutral-600 dark:text-neutral-400 hover:text-neutral-800 dark:hover:text-neutral-200"
                   )}
                 >
                   Monthly
@@ -142,12 +168,12 @@ export function PricingSection() {
                   className={cn(
                     "px-3 py-1 rounded-full transition-colors cursor-pointer",
                     isAnnual
-                      ? "bg-emerald-500/20 text-emerald-400 font-medium"
-                      : "text-neutral-400 hover:text-neutral-200"
+                      ? "bg-emerald-500/30 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 font-medium"
+                      : "text-neutral-600 dark:text-neutral-400 hover:text-neutral-800 dark:hover:text-neutral-200"
                   )}
                 >
                   Annual
-                  <span className="ml-1 text-xs text-emerald-500">-17%</span>
+                  <span className="ml-1 text-xs text-emerald-600 dark:text-emerald-500">-17%</span>
                 </button>
               </div>
             </div>
@@ -178,180 +204,80 @@ export function PricingSection() {
           </div>
         </div>
 
-        {/* Three card layout */}
-        <div className="flex flex-col lg:flex-row gap-6 max-w-6xl mx-auto justify-center items-stretch">
+        {/* Pricing cards layout */}
+        <div className="grid min-[1100px]:grid-cols-4 min-[600px]:grid-cols-2 min-[400px]:grid-cols-1 gap-6 max-w-6xl mx-auto justify-center items-stretch">
           {/* Free Plan Card */}
-          <div className="w-full lg:w-96 flex-shrink-0 text-neutral-300">
-            <div className="bg-neutral-800/15 rounded-xl border border-neutral-800/60 overflow-hidden backdrop-blur-sm shadow-xl h-full">
-              <div className="p-6">
-                <div className="mb-4">
-                  <h3 className="text-xl font-bold mb-2">Free</h3>
-                  <p className="text-sm text-neutral-400">Perfect for getting started</p>
-                </div>
-
-                {/* Price display */}
-                <div className="mb-6">
-                  <div>
-                    <span className="text-3xl font-bold">10,000</span>
-                    <span className="ml-1 text-neutral-400">/month events</span>
-                  </div>
-                </div>
-
-                <Link href="https://app.rybbit.io/signup" className="w-full block">
-                  <button
-                    onClick={() => trackAdEvent("signup", { location: "pricing" })}
-                    data-rybbit-event="signup"
-                    data-rybbit-prop-location="free"
-                    className="w-full bg-neutral-700 hover:bg-neutral-600 text-white font-medium px-5 py-3 rounded-lg border border-neutral-600 transform hover:-translate-y-0.5 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-neutral-400 focus:ring-opacity-50 cursor-pointer"
-                  >
-                    Start for free
-                  </button>
-                </Link>
-                <div className="space-y-3 mt-6 mb-3">
-                  {FREE_FEATURES.map((item, i) => (
-                    <div key={i} className="flex items-center">
-                      {item.included ? (
-                        <Check className="h-4 w-4 text-emerald-400 mr-3 shrink-0" />
-                      ) : (
-                        <X className="h-4 w-4 text-neutral-400 mr-3 shrink-0" />
-                      )}
-                      <span className={"text-sm"}>{item.feature}</span>
-                    </div>
-                  ))}
-                </div>
+          <PricingCard
+            title="Free"
+            description="Perfect for hobby projects"
+            priceDisplay={
+              <div>
+                <span className="text-3xl font-bold">{DEFAULT_EVENT_LIMIT.toLocaleString()}</span>
+                <span className="ml-1 text-neutral-400">pageviews/m</span>
               </div>
-            </div>
-          </div>
+            }
+            buttonText="Start for free"
+            buttonHref="https://app.rybbit.io/signup"
+            buttonVariant="default"
+            features={FREE_FEATURES}
+            variant="free"
+            eventLocation="free"
+          />
 
           {/* Standard Plan Card */}
-          <div className="w-full lg:w-96 flex-shrink-0">
-            <div className="bg-neutral-800/50 rounded-xl border border-neutral-800/90 overflow-hidden backdrop-blur-sm shadow-xl">
-              <div className="p-6">
-                <div className="mb-4">
-                  <h3 className="text-xl font-bold mb-2">Standard</h3>
-                  <p className="text-sm text-neutral-400">Everything you need to get started</p>
+          <PricingCard
+            title="Standard"
+            description="Everything you need to get started as a small business"
+            priceDisplay={
+              standardPrices.custom ? (
+                <div className="text-3xl font-bold">Custom</div>
+              ) : (
+                <div>
+                  <span className="text-3xl font-bold">
+                    ${isAnnual ? Math.round(standardPrices.annual! / 12) : standardPrices.monthly}
+                  </span>
+                  <span className="ml-1 text-neutral-400">/month</span>
                 </div>
-
-                {/* Price display */}
-                <div className="mb-6">
-                  {standardPrices.custom ? (
-                    <div className="text-3xl font-bold">Custom</div>
-                  ) : (
-                    <div>
-                      <span className="text-3xl font-bold">
-                        ${isAnnual ? Math.round(standardPrices.annual! / 12) : standardPrices.monthly}
-                      </span>
-                      <span className="ml-1 text-neutral-400">/month</span>
-                    </div>
-                  )}
-                </div>
-
-                {standardPrices.custom ? (
-                  <Link href="https://www.rybbit.io/contact" className="w-full block">
-                    <button className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-medium px-5 py-3 rounded-lg shadow-lg shadow-emerald-900/20 transform hover:-translate-y-0.5 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-opacity-50 cursor-pointer">
-                      Contact us
-                    </button>
-                  </Link>
-                ) : (
-                  <Link href="https://app.rybbit.io/signup" className="w-full block">
-                    <button
-                      onClick={() => trackAdEvent("signup", { location: "pricing" })}
-                      data-rybbit-event="signup"
-                      data-rybbit-prop-location="standard"
-                      className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-medium px-5 py-3 rounded-lg shadow-lg shadow-emerald-900/20 transform hover:-translate-y-0.5 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-opacity-50 cursor-pointer"
-                    >
-                      Try for free
-                    </button>
-                  </Link>
-                )}
-
-                <div className="space-y-4 my-6">
-                  {STANDARD_FEATURES.map((feature, i) => (
-                    <div key={i} className="flex items-center">
-                      <Check className="h-4 w-4 text-emerald-400 mr-3 shrink-0" />
-                      <span className="text-sm">{feature}</span>
-                    </div>
-                  ))}
-                </div>
-
-                <p className="text-center text-sm text-neutral-400 mt-4 flex items-center justify-center gap-2">
-                  {standardPrices.custom ? (
-                    "Email us at hello@rybbit.io for custom pricing"
-                  ) : (
-                    <>
-                      <CheckCircle className="w-3 h-3" />
-                      We don&apos;t ask for your credit card.
-                    </>
-                  )}
-                </p>
-              </div>
-            </div>
-          </div>
+              )
+            }
+            buttonText={standardPrices.custom ? "Contact us" : "Get started"}
+            buttonHref={standardPrices.custom ? "https://www.rybbit.com/contact" : "https://app.rybbit.io/signup"}
+            features={STANDARD_FEATURES}
+            eventLocation={standardPrices.custom ? undefined : "standard"}
+          />
 
           {/* Pro Plan Card */}
-          <div className="w-full lg:w-96 flex-shrink-0">
-            <div className="bg-neutral-800/50 rounded-xl border border-neutral-800/90 overflow-hidden backdrop-blur-sm shadow-xl h-full">
-              <div className="p-6">
-                <div className="mb-4">
-                  <h3 className="text-xl font-bold mb-2">Pro</h3>
-                  <p className="text-sm text-neutral-400">Advanced features for professional teams</p>
+          <PricingCard
+            title="Pro"
+            description="Advanced features for professional teams"
+            priceDisplay={
+              proPrices.custom ? (
+                <div className="text-3xl font-bold">Custom</div>
+              ) : (
+                <div>
+                  <span className="text-3xl font-bold">
+                    ${isAnnual ? Math.round(proPrices.annual! / 12) : proPrices.monthly}
+                  </span>
+                  <span className="ml-1 text-neutral-400">/month</span>
                 </div>
+              )
+            }
+            buttonText={proPrices.custom ? "Contact us" : "Get started"}
+            buttonHref={proPrices.custom ? "https://www.rybbit.com/contact" : "https://app.rybbit.io/signup"}
+            features={PRO_FEATURES}
+            eventLocation={proPrices.custom ? undefined : "pro"}
+            recommended={true}
+          />
 
-                {/* Price display */}
-                <div className="mb-6">
-                  {proPrices.custom ? (
-                    <div className="text-3xl font-bold">Custom</div>
-                  ) : (
-                    <div>
-                      <span className="text-3xl font-bold">
-                        ${isAnnual ? Math.round(proPrices.annual! / 12) : proPrices.monthly}
-                      </span>
-                      <span className="ml-1 text-neutral-400">/month</span>
-                    </div>
-                  )}
-                </div>
-
-                {proPrices.custom ? (
-                  <Link href="https://www.rybbit.io/contact" className="w-full block">
-                    <button className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-medium px-5 py-3 rounded-lg shadow-lg shadow-emerald-900/20 transform hover:-translate-y-0.5 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-opacity-50 cursor-pointer">
-                      Contact us
-                    </button>
-                  </Link>
-                ) : (
-                  <Link href="https://app.rybbit.io/signup" className="w-full block">
-                    <button
-                      onClick={() => trackAdEvent("signup", { location: "pricing" })}
-                      data-rybbit-event="signup"
-                      data-rybbit-prop-location="pro"
-                      className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-medium px-5 py-3 rounded-lg shadow-lg shadow-emerald-900/20 transform hover:-translate-y-0.5 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-opacity-50 cursor-pointer"
-                    >
-                      Try for free
-                    </button>
-                  </Link>
-                )}
-
-                <div className="space-y-4 my-6">
-                  {PRO_FEATURES.map((feature, i) => (
-                    <div key={i} className="flex items-center">
-                      <Check className="h-4 w-4 text-emerald-400 mr-3 shrink-0" />
-                      <span className="text-sm">{feature}</span>
-                    </div>
-                  ))}
-                </div>
-
-                <p className="text-center text-sm text-neutral-400 mt-4 flex items-center justify-center gap-2">
-                  {proPrices.custom ? (
-                    "Email us at hello@rybbit.io for custom pricing"
-                  ) : (
-                    <>
-                      <CheckCircle className="w-3 h-3" />
-                      We don&apos;t ask for your credit card.
-                    </>
-                  )}
-                </p>
-              </div>
-            </div>
-          </div>
+          {/* Enterprise Plan Card */}
+          <PricingCard
+            title="Enterprise"
+            description="Advanced features for enterprise teams"
+            priceDisplay={<div className="text-3xl font-bold">Custom</div>}
+            features={ENTERPRISE_FEATURES}
+            buttonText={"Contact us"}
+            buttonHref={"https://www.rybbit.com/contact"}
+          />
         </div>
       </div>
     </section>

@@ -69,7 +69,7 @@ export function useGetSitesFromOrg(organizationId?: string) {
   return useQuery<GetSitesFromOrgResponse>({
     queryKey: ["get-sites-from-org", organizationId],
     queryFn: () => {
-      return authedFetch(`/get-sites-from-org/${organizationId}`);
+      return authedFetch(`/organizations/${organizationId}/sites`);
     },
     staleTime: 60000, // 1 minute
     enabled: !!organizationId,
@@ -86,7 +86,7 @@ export function addSite(
     blockBots?: boolean;
   }
 ) {
-  return authedFetch<{ siteId: number }>("/add-site", undefined, {
+  return authedFetch<{ siteId: number }>("/sites", undefined, {
     method: "POST",
     data: {
       domain,
@@ -103,8 +103,8 @@ export function addSite(
 }
 
 export function deleteSite(siteId: number) {
-  return authedFetch(`/delete-site/${siteId}`, undefined, {
-    method: "POST",
+  return authedFetch(`/sites/${siteId}`, undefined, {
+    method: "DELETE",
   });
 }
 
@@ -127,12 +127,9 @@ export function updateSiteConfig(
     trackSpaNavigation?: boolean;
   }
 ) {
-  return authedFetch("/update-site-config", undefined, {
-    method: "POST",
-    data: {
-      siteId,
-      ...config,
-    },
+  return authedFetch(`/sites/${siteId}/config`, undefined, {
+    method: "PUT",
+    data: config,
     headers: {
       "Content-Type": "application/json",
     },
@@ -166,7 +163,7 @@ export function useGetSite(siteId?: string | number) {
       }
 
       // Use regular fetch instead of authedFetch to support public sites
-      const data = await authedFetch<SiteResponse>(`/get-site/${siteIdToUse}`);
+      const data = await authedFetch<SiteResponse>(`/sites/${siteIdToUse}`);
       return data;
     },
     staleTime: 60000, // 1 minute

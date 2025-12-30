@@ -1,4 +1,12 @@
-export type FilterType = "equals" | "not_equals" | "contains" | "not_contains";
+export type FilterType =
+  | "equals"
+  | "not_equals"
+  | "contains"
+  | "not_contains"
+  | "regex"
+  | "not_regex"
+  | "greater_than"
+  | "less_than";
 
 export type FilterParameter =
   | "browser"

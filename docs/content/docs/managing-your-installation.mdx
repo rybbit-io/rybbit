@@ -1,0 +1,100 @@
+---
+title: Managing your installation
+description: Managing your Rybbit installation
+---
+
+import { Steps, Step } from 'fumadocs-ui/components/steps';
+import { Callout } from 'fumadocs-ui/components/callout';
+
+## Helpful scripts
+<Callout>
+You probably need to run `chmod +x *.sh` before running the scripts.
+</Callout>
+
+### Updating Your Installation
+
+Rybbit is updated frequently with new features and bug fixes. You can update your installation by running the following commands:
+
+**update.sh**: Update to the latest version by pulling new code and rebuilding containers
+  ```bash
+  git pull
+  ./update.sh
+  ```
+
+### Restarting Your Installation
+
+**restart.sh**: Restart all services (useful when you've changed .env settings)
+  ```bash
+  ./restart.sh
+  ```
+
+## Docker Compose Commands
+
+You can also manage services directly with Docker Compose:
+
+- **Stop all services**:
+  ```bash
+  docker compose stop
+  ```
+
+- **Stop and remove containers** (preserves data):
+  ```bash
+  docker compose down
+  ```
+
+- **Start services** (if you used setup.sh with default webserver):
+  ```bash
+  docker compose --profile with-webserver up -d
+  ```
+
+- **Start services** (if you used setup.sh with --no-webserver):
+  ```bash
+  docker compose up -d
+  ```
+
+- **View logs**:
+  ```bash
+  docker compose logs -f
+  ```
+
+<Callout>
+If you are using your self-hosted Rybbit without anyone else, you can disable new user signups by setting `DISABLE_SIGNUP=true` in the `.env` file at the root of the repository.
+</Callout>
+
+## Database Access
+
+You can access the databases by running the following commands:
+
+- **Access Clickhouse**:
+  ```bash
+  docker exec -it clickhouse clickhouse-client --database analytics
+  ```
+
+- **Access Postgres**:
+  ```bash
+  docker exec -it postgres psql -U frog -d analytics
+  ```
+### Edit Session Replay Retention Policy
+
+The default session replay retention policy is 30 days. This may be too long for some users as session replays can take up a lot of space. You can edit it by running the following command:
+
+```bash
+docker exec -it clickhouse clickhouse-client --database analytics
+ALTER TABLE session_replay_events MODIFY TTL toDateTime(timestamp) + INTERVAL 14 DAY;
+ALTER TABLE session_replay_metadata MODIFY TTL start_time + INTERVAL 14 DAY;
+```
+
+## Anonymous Usage Telemetry
+
+To help us improve Rybbit, self-hosted instances automatically send anonymous usage statistics to our cloud service. This includes:
+
+- Number of rows in each ClickHouse table
+- Total database size
+- Your Rybbit version
+- A hashed instance identifier
+
+No personal data, website content, or visitor information is ever collected.
+
+<Callout type="info">
+You can completely disable telemetry by adding `DISABLE_TELEMETRY=true` to your `.env` file and restarting your services.
+</Callout>

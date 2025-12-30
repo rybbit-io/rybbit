@@ -1,17 +1,17 @@
 "use client";
 
+import { AuthButton } from "@/components/auth/AuthButton";
+import { AuthError } from "@/components/auth/AuthError";
+import { AuthInput } from "@/components/auth/AuthInput";
+import { Turnstile } from "@/components/auth/Turnstile";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { RybbitLogo } from "../../components/RybbitLogo";
 import { useSetPageTitle } from "../../hooks/useSetPageTitle";
 import { authClient } from "../../lib/auth";
 import { IS_CLOUD } from "../../lib/const";
-import { AuthInput } from "@/components/auth/AuthInput";
-import { AuthButton } from "@/components/auth/AuthButton";
-import { AuthError } from "@/components/auth/AuthError";
-import { Turnstile } from "@/components/auth/Turnstile";
 
 export default function ResetPasswordPage() {
   useSetPageTitle("Rybbit · Reset Password");
@@ -102,7 +102,7 @@ export default function ResetPasswordPage() {
     <div className="flex justify-center items-center h-dvh w-full p-4">
       <Card className="w-full max-w-sm p-1">
         <CardHeader>
-          <Image src="/rybbit.svg" alt="Rybbit" width={32} height={32} />
+          <RybbitLogo width={32} height={32} />
           <CardTitle className="text-2xl flex justify-center">
             {resetSuccess ? "Password Reset Successful" : otpSent ? "Enter OTP Code" : "Reset Password"}
           </CardTitle>
@@ -110,14 +110,14 @@ export default function ResetPasswordPage() {
         <CardContent>
           {resetSuccess ? (
             <div className="flex flex-col items-center space-y-6 py-4">
-              <div className="h-20 w-20 rounded-full bg-green-900/20 flex items-center justify-center border-2 border-green-500 text-green-500">
+              <div className="h-20 w-20 rounded-full bg-green-100 dark:bg-green-900/20 flex items-center justify-center border-2 border-green-500 text-green-500">
                 <span className="text-3xl font-bold">✓</span>
               </div>
               <div className="text-center space-y-2">
                 <h3 className="text-xl font-medium text-green-500">Success!</h3>
                 <p className="text-muted-foreground">Your password has been reset successfully.</p>
               </div>
-              <div className="w-full rounded-md bg-neutral-800/30 p-3 mt-4">
+              <div className="w-full rounded-md bg-neutral-100 dark:bg-neutral-800/30 p-3 mt-4">
                 <div className="flex justify-center">
                   <p className="text-sm text-muted-foreground">Redirecting to login page...</p>
                 </div>

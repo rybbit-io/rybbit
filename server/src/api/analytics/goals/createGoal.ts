@@ -30,10 +30,9 @@ const eventConfigSchema = z
     }
   );
 
-// Define validation schema for the goal request
-const goalSchema = z
+// Define validation schema for the goal request body
+const goalBodySchema = z
   .object({
-    siteId: z.number().int().positive("Site ID must be a positive integer"),
     name: z.string().optional(),
     goalType: z.enum(["path", "event"]),
     config: z.object({
@@ -58,18 +57,25 @@ const goalSchema = z
     }
   );
 
-type CreateGoalRequest = z.infer<typeof goalSchema>;
+type CreateGoalBody = z.infer<typeof goalBodySchema>;
 
 export async function createGoal(
   request: FastifyRequest<{
-    Body: CreateGoalRequest;
+    Params: { site: string };
+    Body: CreateGoalBody;
   }>,
   reply: FastifyReply
 ) {
   try {
+    // Get siteId from URL params
+    const siteId = parseInt(request.params.site, 10);
+    if (isNaN(siteId) || siteId <= 0) {
+      return reply.status(400).send({ error: "Invalid site ID" });
+    }
+
     // Validate the request body
-    const validatedData = goalSchema.parse(request.body);
-    const { siteId, name, goalType, config } = validatedData;
+    const validatedData = goalBodySchema.parse(request.body);
+    const { name, goalType, config } = validatedData;
 
     // Check user access to site
     const userHasAccessToSite = await getUserHasAccessToSite(request, siteId.toString());

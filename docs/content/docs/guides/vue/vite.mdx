@@ -16,6 +16,7 @@ The recommended and simplest method for client-side Vue applications is to add t
 ### Adding to `index.html`
 
 <Steps>
+<Step>
 ### Retrieve Your Tracking Script
 
 Navigate to your Rybbit dashboard to obtain your code snippet:
@@ -24,16 +25,19 @@ Navigate to your Rybbit dashboard to obtain your code snippet:
 <script
   src="https://app.rybbit.io/api/script.js"
   data-site-id="YOUR_SITE_ID"
-  async
   defer
 ></script>
 ```
 Replace `YOUR_SITE_ID` with your actual Site ID.
+</Step>
 
+<Step>
 ### Locate Your `index.html` File
 
 This file is typically located at the root of your Vite-based Vue project.
+</Step>
 
+<Step>
 ### Add the Snippet to `index.html`
 
 Open `index.html` and paste the Rybbit tracking snippet just before the closing `</head>` tag or `</body>` tag. Placing it in the `<head>` allows it to load sooner.
@@ -50,7 +54,6 @@ Open `index.html` and paste the Rybbit tracking snippet just before the closing 
     <script
       src="https://app.rybbit.io/api/script.js"
       data-site-id="YOUR_SITE_ID"
-      async
       defer
     ></script>
   </head>
@@ -62,10 +65,13 @@ Open `index.html` and paste the Rybbit tracking snippet just before the closing 
 </html>
 ```
 Ensure `YOUR_SITE_ID` is replaced with your actual Site ID.
+</Step>
 
+<Step>
 ### Verify Installation
 
 Deploy your application and check your Rybbit dashboard for incoming data. You can also inspect your browser's network tab to confirm that `script.js` is loaded.
+</Step>
 </Steps>
 
 <Callout type="info">

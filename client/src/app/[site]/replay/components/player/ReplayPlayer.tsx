@@ -1,7 +1,7 @@
 import { useParams } from "next/navigation";
 import { useEffect } from "react";
 import "rrweb-player/dist/style.css";
-import { useGetSessionReplayEvents } from "../../../../../api/analytics/sessionReplay/useGetSessionReplayEvents";
+import { useGetSessionReplayEvents } from "../../../../../api/analytics/hooks/sessionReplay/useGetSessionReplayEvents";
 import { ThreeDotLoader } from "../../../../../components/Loaders";
 import { useReplayStore } from "../replayStore";
 import { useActivityPeriods } from "./hooks/useActivityPeriods";
@@ -106,7 +106,7 @@ export function ReplayPlayer({ width, height }: { width: number; height: number 
   }
 
   return (
-    <div className="flex flex-col bg-neutral-950 overflow-hidden" style={{ width: width, height: height }}>
+    <div className="flex flex-col overflow-hidden" style={{ width: width, height: height }}>
       <ReplayPlayerTopbar />
       <ReplayPlayerCore data={data} width={width} height={height} onPlayPause={handlePlayPause} isPlaying={isPlaying} />
 

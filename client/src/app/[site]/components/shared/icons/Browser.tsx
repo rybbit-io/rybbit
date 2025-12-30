@@ -1,7 +1,5 @@
-import { m } from "framer-motion";
 import { Compass } from "lucide-react";
 import Image from "next/image";
-import { cn } from "../../../../../lib/utils";
 
 const BROWSER_TO_LOGO: Record<string, string> = {
   Chrome: "Chrome.svg",

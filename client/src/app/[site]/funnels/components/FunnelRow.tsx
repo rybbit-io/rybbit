@@ -7,9 +7,9 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { ArrowRight, ChevronDown, ChevronUp, Copy, Edit, Eye, MousePointerClick, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
-import { useDeleteFunnel } from "../../../../api/analytics/funnels/useDeleteFunnel";
-import { useGetFunnel } from "../../../../api/analytics/funnels/useGetFunnel";
-import { SavedFunnel } from "../../../../api/analytics/funnels/useGetFunnels";
+import { useDeleteFunnel } from "../../../../api/analytics/hooks/funnels/useDeleteFunnel";
+import { useGetFunnel } from "../../../../api/analytics/hooks/funnels/useGetFunnel";
+import { SavedFunnel } from "../../../../api/analytics/endpoints";
 import { ThreeDotLoader } from "../../../../components/Loaders";
 import { EditFunnelDialog } from "./EditFunnel";
 import { Funnel } from "./Funnel";
@@ -64,14 +64,11 @@ export function FunnelRow({ funnel, index }: FunnelRowProps) {
     <Card className="mb-4 overflow-hidden">
       {/* Header row (always visible) */}
       <div className="flex items-center justify-between py-2 px-5">
-        <div
-          className="flex items-center flex-grow cursor-pointer hover:bg-neutral-50 dark:hover:bg-neutral-900 transition-colors"
-          onClick={handleExpand}
-        >
-          <div className="mt-1 text-xs text-neutral-400 flex flex-col gap-3">
+        <div className="flex items-center grow cursor-pointer transition-colors" onClick={handleExpand}>
+          <div className="mt-1 text-xs text-neutral-500 dark:text-neutral-400 flex flex-col gap-3">
             {/* Steps visualization */}
             <div className="flex flex-wrap gap-1">
-              <h3 className="font-medium text-neutral-100 text-base mr-2">{funnel.name}</h3>
+              <h3 className="font-medium text-neutral-900 dark:text-neutral-100 text-base mr-2">{funnel.name}</h3>
               {funnel.steps.map((step, index) => (
                 <div key={index} className="flex items-center">
                   {index > 0 && <ArrowRight className="h-3 w-3 mx-1 text-neutral-400" />}
@@ -176,7 +173,7 @@ export function FunnelRow({ funnel, index }: FunnelRowProps) {
 
       {/* Expandable content */}
       {expanded && (
-        <div className="border-t border-neutral-200 dark:border-neutral-800">
+        <div className="border-t border-neutral-100 dark:border-neutral-800">
           <div className="p-4">
             {isPending ? (
               <ThreeDotLoader className="h-[400px]" />

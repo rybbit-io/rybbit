@@ -5,8 +5,8 @@ import { InputWithSuggestions, SuggestionOption } from "@/components/ui/input-wi
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Plus, Save, Trash2 } from "lucide-react";
 import { useState } from "react";
-import { FunnelResponse, FunnelStep } from "../../../../api/analytics/funnels/useGetFunnel";
-import { useSingleCol } from "../../../../api/analytics/useSingleCol";
+import { FunnelResponse, FunnelStep } from "../../../../api/analytics/endpoints";
+import { useMetric } from "../../../../api/analytics/hooks/useGetMetric";
 import { ThreeDotLoader } from "../../../../components/Loaders";
 import { Label } from "../../../../components/ui/label";
 import { Switch } from "../../../../components/ui/switch";
@@ -51,19 +51,19 @@ export function FunnelForm({
   );
 
   // Fetch suggestions for paths, events, and hostnames
-  const { data: pathsData } = useSingleCol({
+  const { data: pathsData } = useMetric({
     parameter: "pathname",
     limit: 1000,
     useFilters: false,
   });
 
-  const { data: eventsData } = useSingleCol({
+  const { data: eventsData } = useMetric({
     parameter: "event_name",
     limit: 1000,
     useFilters: false,
   });
 
-  const { data: hostnamesData } = useSingleCol({
+  const { data: hostnamesData } = useMetric({
     parameter: "hostname",
     limit: 1000,
     useFilters: false,
@@ -198,14 +198,14 @@ export function FunnelForm({
               {steps.map((step, index) => (
                 <div
                   key={index}
-                  className="flex flex-col space-y-2 border border-neutral-750 p-4 rounded-lg bg-neutral-850"
+                  className="flex flex-col space-y-2 border border-neutral-200 dark:border-neutral-750 p-4 rounded-lg bg-white dark:bg-neutral-850"
                 >
                   <div className="flex items-start gap-2">
-                    <div className="flex-shrink-0 w-6 h-6 rounded-full border border-neutral-400 bg-neutral-750 flex items-center justify-center text-xs mt-1.5">
+                    <div className="shrink-0 w-6 h-6 rounded-full border border-neutral-300 dark:border-neutral-400 bg-neutral-100 dark:bg-neutral-750 flex items-center justify-center text-xs mt-1.5">
                       {index + 1}
                     </div>
                     <Select value={step.type} onValueChange={value => updateStepType(index, value as "page" | "event")}>
-                      <SelectTrigger className="min-w-[80px] max-w-[80px] dark:border-neutral-700">
+                      <SelectTrigger className="min-w-[80px] max-w-[80px] border-neutral-300 dark:border-neutral-700">
                         <SelectValue placeholder="Type" />
                       </SelectTrigger>
                       <SelectContent>
@@ -214,27 +214,27 @@ export function FunnelForm({
                       </SelectContent>
                     </Select>
 
-                    <div className="flex-grow space-y-2">
+                    <div className="grow space-y-2">
                       <div className="flex gap-2">
                         <InputWithSuggestions
                           suggestions={hostnameSuggestions}
                           placeholder="Hostname (optional)"
                           value={step.hostname || ""}
-                          className="dark:border-neutral-700 w-30"
+                          className="border-neutral-300 dark:border-neutral-700 w-30"
                           onChange={e => updateStep(index, "hostname", e.target.value)}
                         />
                         <InputWithSuggestions
                           suggestions={step.type === "page" ? pathSuggestions : eventSuggestions}
                           placeholder={step.type === "page" ? "Path (e.g. /pricing)" : "Event name"}
                           value={step.value}
-                          className="dark:border-neutral-700 w-56"
+                          className="border-neutral-300 dark:border-neutral-700 w-56"
                           onChange={e => updateStep(index, "value", e.target.value)}
                         />
                       </div>
                       <div className="flex items-center gap-2">
                         <Input
                           placeholder="Label (optional)"
-                          className="dark:border-neutral-700"
+                          className="border-neutral-300 dark:border-neutral-700"
                           value={step.name || ""}
                           onChange={e => updateStep(index, "name", e.target.value)}
                         />
@@ -263,13 +263,13 @@ export function FunnelForm({
                             <div className="grid grid-cols-2 gap-2 mt-2">
                               <Input
                                 placeholder="Property key"
-                                className="dark:border-neutral-700"
+                                className="border-neutral-300 dark:border-neutral-700"
                                 value={step.eventPropertyKey || ""}
                                 onChange={e => updateStep(index, "eventPropertyKey", e.target.value)}
                               />
                               <Input
                                 placeholder="Property value"
-                                className="dark:border-neutral-700"
+                                className="border-neutral-300 dark:border-neutral-700"
                                 value={step.eventPropertyValue !== undefined ? String(step.eventPropertyValue) : ""}
                                 onChange={e => updateStep(index, "eventPropertyValue", e.target.value)}
                               />
@@ -288,7 +288,7 @@ export function FunnelForm({
       </div>
 
       <div className="flex justify-between items-center">
-        <span className="text-xs text-neutral-500 ">
+        <span className="text-xs text-neutral-600 dark:text-neutral-500">
           Use * to match a single path segment (e.g., /blog/*) or ** to match multiple segments (e.g., /docs/**/intro)
         </span>
         <div className="text-sm text-red-500">

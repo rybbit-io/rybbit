@@ -4,7 +4,7 @@ import "mapbox-gl/dist/mapbox-gl.css";
 import { useEffect, useRef } from "react";
 import "./globe.css";
 
-import { VisuallyHidden } from "radix-ui";
+import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 import { DisabledOverlay } from "../../../components/DisabledOverlay";
 import { SessionCard } from "../../../components/Sessions/SessionCard";
 import { Dialog, DialogContent, DialogTitle } from "../../../components/ui/dialog";
@@ -85,7 +85,7 @@ export default function GlobePage() {
   return (
     <DisabledOverlay message="Globe" featurePath="globe">
       <div className="relative w-full h-dvh overflow-hidden">
-        <div className="p-2 md:p-4 relative z-50">
+        <div className="p-2 md:p-4 relative z-50 dark">
           <SubHeader />
         </div>
         <div className="absolute top-0 left-0 right-0 bottom-0 z-10">
@@ -96,11 +96,11 @@ export default function GlobePage() {
           )}
           <div className="absolute bottom-2 left-2 right-2  md:right-4 md:left-4 z-99999 flex flex-col gap-2 pointer-events-none ">
             <div className="flex items-end gap-2 justify-between overflow-x-auto">
-              <div className="pointer-events-auto">
+              <div className="pointer-events-auto dark">
                 <MapViewSelector />
               </div>
               {mapView === "timeline" ? (
-                <div className="pointer-events-auto flex gap-2">
+                <div className="pointer-events-auto flex gap-2 dark">
                   {mapMode === "3D" && <MapStyleSelector />}
                   <Select
                     value={windowSize.toString()}
@@ -109,7 +109,7 @@ export default function GlobePage() {
                       setManualWindowSize(newSize);
                     }}
                   >
-                    <SelectTrigger className="w-[60px] h-[30px]" size="sm">
+                    <SelectTrigger className="w-[60px] h-[30px] text-white" size="sm">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -122,13 +122,13 @@ export default function GlobePage() {
                   </Select>
                 </div>
               ) : (
-                <div className="pointer-events-auto hidden md:block">
+                <div className="pointer-events-auto hidden md:block dark">
                   <GlobeSessions />
                 </div>
               )}
             </div>
             {mapView === "timeline" && (
-              <div className="pointer-events-auto">
+              <div className="pointer-events-auto dark">
                 <TimelineScrubber />
               </div>
             )}
@@ -137,9 +137,9 @@ export default function GlobePage() {
       </div>
 
       <Dialog open={!!selectedSession} onOpenChange={open => !open && setSelectedSession(null)}>
-        <VisuallyHidden.Root>
+        <VisuallyHidden>
           <DialogTitle>Session Details</DialogTitle>
-        </VisuallyHidden.Root>
+        </VisuallyHidden>
         <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto bg-transparent border-0 p-0 shadow-none [&>button]:hidden">
           {selectedSession && <SessionCard session={selectedSession} expandedByDefault />}
         </DialogContent>

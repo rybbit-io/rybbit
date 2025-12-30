@@ -25,6 +25,7 @@ import { deleteSite, SiteResponse, updateSiteConfig, useGetSitesFromOrg } from "
 import { normalizeDomain } from "@/lib/utils";
 import { IPExclusionManager } from "./IPExclusionManager";
 import { CountryExclusionManager } from "./CountryExclusionManager";
+import { GSCManager } from "./GSCManager";
 import { useStripeSubscription } from "../../lib/subscription/useStripeSubscription";
 import { Badge } from "../ui/badge";
 import { IS_CLOUD } from "../../lib/const";
@@ -178,7 +179,7 @@ export function SiteConfiguration({ siteMetadata, disabled = false, onClose }: S
     },
   ];
 
-  const { data: subscription } = useStripeSubscription();
+  const { data: subscription, isLoading: isSubscriptionLoading } = useStripeSubscription();
 
   const sessionReplayDisabled = !subscription?.isPro && IS_CLOUD;
   const webVitalsDisabled = subscription?.status !== "active" && IS_CLOUD;
@@ -186,17 +187,21 @@ export function SiteConfiguration({ siteMetadata, disabled = false, onClose }: S
 
   // Configuration for analytics feature toggles
   const analyticsToggles: ToggleConfig[] = [
-    {
-      id: "sessionReplay",
-      label: "Session Replay",
-      description: "Record and replay user sessions to understand user behavior",
-      value: toggleStates.sessionReplay,
-      key: "sessionReplay",
-      enabledMessage: "Session replay enabled",
-      disabledMessage: "Session replay disabled",
-      disabled: sessionReplayDisabled,
-      badge: <Badge variant="success">Pro</Badge>,
-    },
+    ...(!subscription?.planName?.startsWith("appsumo") && !isSubscriptionLoading
+      ? [
+          {
+            id: "sessionReplay",
+            label: "Session Replay",
+            description: "Record and replay user sessions to understand user behavior",
+            value: toggleStates.sessionReplay,
+            key: "sessionReplay",
+            enabledMessage: "Session replay enabled",
+            disabledMessage: "Session replay disabled",
+            disabled: sessionReplayDisabled,
+            badge: <Badge variant="success">Pro</Badge>,
+          } as ToggleConfig,
+        ]
+      : []),
     ...(IS_CLOUD
       ? [
           {
@@ -305,6 +310,9 @@ export function SiteConfiguration({ siteMetadata, disabled = false, onClose }: S
       {/* Country Exclusions Section */}
       <CountryExclusionManager siteId={siteMetadata.siteId} disabled={disabled} />
 
+      {/* Google Search Console Section */}
+      {IS_CLOUD && <GSCManager disabled={disabled} />}
+
       {/* Domain Settings Section */}
       <div className="space-y-3">
         <div>
@@ -332,8 +340,8 @@ export function SiteConfiguration({ siteMetadata, disabled = false, onClose }: S
         <h4 className="text-sm font-semibold text-destructive">Danger Zone</h4>
         <AlertDialog>
           <AlertDialogTrigger asChild>
-            <Button variant="destructive" className="w-full" disabled={disabled}>
-              <AlertTriangle className="h-4 w-4 mr-2" />
+            <Button variant="destructive" disabled={disabled}>
+              <AlertTriangle className="h-4 w-4" />
               Delete Site
             </Button>
           </AlertDialogTrigger>

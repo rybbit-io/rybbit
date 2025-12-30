@@ -5,7 +5,7 @@ import VectorLayer from "ol/layer/Vector";
 import VectorSource from "ol/source/Vector";
 import { Fill, Stroke, Style } from "ol/style";
 import { MutableRefObject, useEffect, useMemo, useRef, useState } from "react";
-import { useSingleCol } from "../../../../../api/analytics/useSingleCol";
+import { useMetric } from "../../../../../api/analytics/hooks/useGetMetric";
 import { useCountries } from "../../../../../lib/geo";
 import { addFilter } from "../../../../../lib/store";
 import { createColorScale } from "../../utils/colorScale";
@@ -27,7 +27,7 @@ interface TooltipData {
 }
 
 export function useOpenLayersCountriesLayer({ mapInstanceRef, mapViewRef, mapView }: UseOpenLayersCountriesLayerProps) {
-  const { data: countryData } = useSingleCol({ parameter: "country" });
+  const { data: countryData } = useMetric({ parameter: "country" });
   const { data: countriesGeoData } = useCountries();
   const colorScale = useMemo(() => createColorScale(countryData?.data), [countryData?.data]);
 

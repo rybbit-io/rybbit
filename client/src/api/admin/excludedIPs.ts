@@ -24,7 +24,7 @@ export interface UpdateExcludedIPsResponse {
 
 // Fetch excluded IPs for a site
 export const fetchExcludedIPs = async (siteId: string): Promise<ExcludedIPsResponse> => {
-  return await authedFetch<ExcludedIPsResponse>(`/site/${siteId}/excluded-ips`);
+  return await authedFetch<ExcludedIPsResponse>(`/sites/${siteId}/excluded-ips`);
 };
 
 // Update excluded IPs for a site using the consolidated endpoint

@@ -1,0 +1,592 @@
+---
+title: Nginx Proxy Setup
+description: Configure Nginx reverse proxy to serve Rybbit tracking and bypass ad blockers
+---
+
+import { Steps } from 'fumadocs-ui/components/steps';
+import { Callout } from 'fumadocs-ui/components/callout';
+import { Tabs, Tab } from 'fumadocs-ui/components/tabs';
+
+Nginx is a powerful web server and reverse proxy that makes it easy to proxy Rybbit tracking through your own domain. This guide shows how to configure Nginx to forward tracking requests to Rybbit servers while caching static scripts for better performance.
+
+## Overview
+
+Nginx's `proxy_pass` directive lets you forward requests from your domain to Rybbit's servers. Combined with caching, this provides excellent performance and reliability for proxying analytics.
+
+**What you'll achieve:**
+- Proxy all Rybbit endpoints through your domain
+- Cache static scripts for better performance
+- Forward necessary headers for accurate tracking
+- Support all Rybbit features (session replay, Web Vitals, custom events)
+
+## Prerequisites
+
+- Nginx installed (version 1.18 or later recommended)
+- SSL/TLS certificate configured (Let's Encrypt recommended)
+- Your Rybbit instance URL:
+  - **Cloud hosted**: `https://app.rybbit.io`
+  - **Self-hosted**: Your instance URL
+- Your Rybbit site ID (found in your dashboard)
+
+## Implementation
+
+<Steps>
+
+### Configure Nginx Proxy
+
+Add a new location block (or update existing configuration) in your Nginx site configuration:
+
+<Tabs>
+<Tab value="full-proxy-recommended" title="Full Proxy (Recommended)">
+
+```nginx
+# /etc/nginx/sites-available/yourdomain.com
+server {
+    listen 443 ssl http2;
+    server_name yourdomain.com;
+
+    # Your SSL configuration
+    ssl_certificate /etc/letsencrypt/live/yourdomain.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/yourdomain.com/privkey.pem;
+
+    # Your main site configuration
+    location / {
+        # Your regular site config...
+    }
+
+    # Rybbit Analytics Proxy
+    # Main tracking script (cached)
+    location = /analytics/script.js {
+        proxy_pass https://app.rybbit.io/api/script.js;
+        proxy_set_header Host app.rybbit.io;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_ssl_server_name on;
+
+        # Cache for 1 hour
+        proxy_cache_valid 200 1h;
+        proxy_cache_bypass $http_cache_control;
+        add_header X-Cache-Status $upstream_cache_status;
+    }
+
+    # Unminified script for debugging (cached)
+    location = /analytics/script-full.js {
+        proxy_pass https://app.rybbit.io/api/script-full.js;
+        proxy_set_header Host app.rybbit.io;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_ssl_server_name on;
+
+        proxy_cache_valid 200 1h;
+    }
+
+    # Session replay script (cached)
+    location = /analytics/replay.js {
+        proxy_pass https://app.rybbit.io/api/replay.js;
+        proxy_set_header Host app.rybbit.io;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_ssl_server_name on;
+
+        proxy_cache_valid 200 1h;
+    }
+
+    # Web Vitals metrics script (cached)
+    location = /analytics/metrics.js {
+        proxy_pass https://app.rybbit.io/api/metrics.js;
+        proxy_set_header Host app.rybbit.io;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_ssl_server_name on;
+
+        proxy_cache_valid 200 1h;
+    }
+
+    # Event tracking endpoint (not cached)
+    location = /analytics/track {
+        proxy_pass https://app.rybbit.io/api/track;
+        proxy_set_header Host app.rybbit.io;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header Content-Type application/json;
+        proxy_ssl_server_name on;
+    }
+
+    # User identification endpoint (not cached)
+    location = /analytics/identify {
+        proxy_pass https://app.rybbit.io/api/identify;
+        proxy_set_header Host app.rybbit.io;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header Content-Type application/json;
+        proxy_ssl_server_name on;
+    }
+
+    # Session replay recording endpoint (not cached)
+    location ~ ^/analytics/session-replay/record/(.*)$ {
+        proxy_pass https://app.rybbit.io/api/session-replay/record/$1;
+        proxy_set_header Host app.rybbit.io;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header Content-Type application/json;
+        proxy_ssl_server_name on;
+
+        # Allow larger uploads for session replay
+        client_max_body_size 10M;
+    }
+
+    # Site configuration endpoint (cached briefly)
+    location ~ ^/analytics/site/tracking-config/(.*)$ {
+        proxy_pass https://app.rybbit.io/site/tracking-config/$1;
+        proxy_set_header Host app.rybbit.io;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_ssl_server_name on;
+
+        # Cache for 5 minutes
+        proxy_cache_valid 200 5m;
+    }
+}
+```
+
+<Callout type="info">
+Replace `app.rybbit.io` with your self-hosted Rybbit instance URL if you're not using the cloud version.
+</Callout>
+
+</Tab>
+<Tab value="minimal-proxy" title="Minimal Proxy">
+
+Minimal configuration for basic tracking:
+
+```nginx
+# /etc/nginx/sites-available/yourdomain.com
+server {
+    listen 443 ssl http2;
+    server_name yourdomain.com;
+
+    # SSL configuration
+    ssl_certificate /etc/letsencrypt/live/yourdomain.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/yourdomain.com/privkey.pem;
+
+    # Main tracking script
+    location = /analytics/script.js {
+        proxy_pass https://app.rybbit.io/api/script.js;
+        proxy_set_header Host app.rybbit.io;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_ssl_server_name on;
+
+        proxy_cache_valid 200 1h;
+    }
+
+    # Event tracking
+    location = /analytics/track {
+        proxy_pass https://app.rybbit.io/api/track;
+        proxy_set_header Host app.rybbit.io;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_ssl_server_name on;
+    }
+}
+```
+
+</Tab>
+<Tab value="with-cache-zone" title="With Cache Zone">
+
+For better performance with caching, define a cache zone:
+
+```nginx
+# /etc/nginx/nginx.conf (http block)
+http {
+    # Define cache zone for Rybbit
+    proxy_cache_path /var/cache/nginx/rybbit
+        levels=1:2
+        keys_zone=rybbit_cache:10m
+        max_size=100m
+        inactive=60m
+        use_temp_path=off;
+
+    # ... rest of http config
+}
+```
+
+Then in your site config:
+
+```nginx
+# /etc/nginx/sites-available/yourdomain.com
+server {
+    # ... server config
+
+    location = /analytics/script.js {
+        proxy_pass https://app.rybbit.io/api/script.js;
+        proxy_set_header Host app.rybbit.io;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_ssl_server_name on;
+
+        # Use the cache zone
+        proxy_cache rybbit_cache;
+        proxy_cache_valid 200 1h;
+        proxy_cache_key "$scheme$request_method$host$request_uri";
+        add_header X-Cache-Status $upstream_cache_status;
+    }
+
+    # ... other locations
+}
+```
+
+</Tab>
+</Tabs>
+
+<Callout type="warn">
+**Important**: The `proxy_set_header X-Real-IP` and `X-Forwarded-For` headers are critical for accurate geolocation and user identification. Without these, all traffic will appear to come from your Nginx server's IP.
+</Callout>
+
+### Create Cache Directory (Optional)
+
+If using a cache zone, create the cache directory:
+
+```bash
+sudo mkdir -p /var/cache/nginx/rybbit
+sudo chown www-data:www-data /var/cache/nginx/rybbit
+```
+
+### Test Nginx Configuration
+
+Before reloading Nginx, test the configuration for syntax errors:
+
+```bash
+sudo nginx -t
+```
+
+You should see:
+```
+nginx: configuration file /etc/nginx/nginx.conf test is successful
+```
+
+### Reload Nginx
+
+Apply the changes by reloading Nginx:
+
+```bash
+sudo systemctl reload nginx
+```
+
+Or if you prefer:
+
+```bash
+sudo nginx -s reload
+```
+
+### Update Your Tracking Script
+
+Update your HTML to load the script from your proxied domain:
+
+```html
+<!DOCTYPE html>
+<html>
+<head>
+    <!-- ... other head elements -->
+    <script src="/analytics/script.js" async data-site-id="YOUR_SITE_ID"></script>
+</head>
+<body>
+    <!-- Your content -->
+</body>
+</html>
+```
+
+Replace `YOUR_SITE_ID` with your actual site ID from the Rybbit dashboard.
+
+### Verify the Setup
+
+Test your configuration:
+
+1. **Check Nginx is running**:
+   ```bash
+   sudo systemctl status nginx
+   ```
+
+2. **Test script loading**:
+   ```bash
+   curl -I https://yourdomain.com/analytics/script.js
+   ```
+
+   You should see:
+   ```
+   HTTP/2 200
+   content-type: application/javascript
+   x-cache-status: MISS  # First request
+   ```
+
+3. **Test again to verify caching**:
+   ```bash
+   curl -I https://yourdomain.com/analytics/script.js
+   ```
+
+   You should see:
+   ```
+   HTTP/2 200
+   x-cache-status: HIT  # Cached!
+   ```
+
+4. **Open your website** in a browser with Developer Tools and verify:
+   - Script loads from `/analytics/script.js` (your domain)
+   - Tracking requests go to `/analytics/track` (your domain)
+   - Data appears in your Rybbit dashboard after 1-2 minutes
+
+</Steps>
+
+## How It Works
+
+Nginx's `proxy_pass` directive transparently forwards requests to Rybbit's servers:
+
+1. Browser requests `https://yourdomain.com/analytics/script.js`
+2. Nginx matches the location block and forwards to `https://app.rybbit.io/api/script.js`
+3. Nginx sets necessary headers (`X-Real-IP`, `X-Forwarded-For`) for accurate tracking
+4. Response is cached (if configured) and sent back to browser
+5. All subsequent tracking requests follow the same pattern
+
+The Rybbit script auto-detects it's being served from your domain and sends all tracking data to your domain's `/analytics/*` endpoints.
+
+## Performance Optimization
+
+### Caching Strategy
+
+Configure different cache durations based on content type:
+
+```nginx
+# Scripts - cache for 1 hour
+location ~ ^/analytics/(script|replay|metrics)\.js$ {
+    proxy_pass https://app.rybbit.io/api/$1.js;
+    # ... proxy headers
+    proxy_cache_valid 200 1h;
+    proxy_cache_valid 404 1m;  # Cache 404s briefly
+}
+
+# Config - cache for 5 minutes (changes when you update dashboard settings)
+location ~ ^/analytics/site/tracking-config/ {
+    proxy_pass https://app.rybbit.io/site/tracking-config/;
+    # ... proxy headers
+    proxy_cache_valid 200 5m;
+}
+
+# Tracking - never cache (each request is unique)
+location ~ ^/analytics/(track|identify)$ {
+    proxy_pass https://app.rybbit.io/api/$1;
+    # ... proxy headers
+    # No caching directives
+}
+```
+
+### Gzip Compression
+
+Enable compression for JavaScript files:
+
+```nginx
+# In http or server block
+gzip on;
+gzip_vary on;
+gzip_types application/javascript text/javascript;
+gzip_min_length 1000;
+```
+
+### Connection Pooling
+
+Keep connections to Rybbit backend alive for better performance:
+
+```nginx
+upstream rybbit_backend {
+    server app.rybbit.io:443;
+    keepalive 32;
+}
+
+location /analytics/ {
+    proxy_pass https://rybbit_backend/api/;
+    proxy_http_version 1.1;
+    proxy_set_header Connection "";
+    # ... other proxy headers
+}
+```
+
+### Proxy Buffering
+
+For better performance with larger session replay uploads:
+
+```nginx
+location ~ ^/analytics/session-replay/record/ {
+    proxy_pass https://app.rybbit.io/api/session-replay/record/;
+    # ... proxy headers
+
+    proxy_buffering on;
+    proxy_buffer_size 4k;
+    proxy_buffers 8 4k;
+    proxy_busy_buffers_size 8k;
+    client_max_body_size 10M;
+}
+```
+
+## Security Considerations
+
+### Rate Limiting
+
+Protect your proxy from abuse with rate limiting:
+
+```nginx
+# In http block
+http {
+    limit_req_zone $binary_remote_addr zone=analytics_limit:10m rate=10r/s;
+
+    # ... rest of config
+}
+
+# In server block
+location = /analytics/track {
+    limit_req zone=analytics_limit burst=20 nodelay;
+    proxy_pass https://app.rybbit.io/api/track;
+    # ... proxy headers
+}
+```
+
+This limits to 10 requests per second per IP, with bursts up to 20.
+
+### Request Size Limits
+
+Set appropriate limits for different endpoints:
+
+```nginx
+# Default for most endpoints
+client_max_body_size 1M;
+
+# Larger limit for session replay
+location ~ ^/analytics/session-replay/record/ {
+    client_max_body_size 10M;
+    # ... proxy config
+}
+```
+
+### Security Headers
+
+Add security headers to your responses:
+
+```nginx
+add_header X-Content-Type-Options nosniff;
+add_header X-Frame-Options DENY;
+add_header Referrer-Policy strict-origin-when-cross-origin;
+```
+
+## Troubleshooting
+
+### 502 Bad Gateway
+
+**Problem**: Nginx returns 502 error when accessing analytics endpoints.
+
+**Solution**:
+1. Check Rybbit backend is accessible:
+   ```bash
+   curl -I https://app.rybbit.io/api/script.js
+   ```
+2. Verify `proxy_ssl_server_name on` is set
+3. Check Nginx error logs:
+   ```bash
+   sudo tail -f /var/log/nginx/error.log
+   ```
+
+### Cache not working
+
+**Problem**: `X-Cache-Status` always shows `MISS`.
+
+**Solution**:
+1. Verify cache directory exists and is writable
+2. Check `proxy_cache_path` is defined in http block
+3. Ensure `proxy_cache` directive uses correct zone name
+4. Check cache key is consistent:
+   ```nginx
+   proxy_cache_key "$scheme$request_method$host$request_uri";
+   ```
+
+### Incorrect geolocation in Rybbit
+
+**Problem**: All visitors show same location (your server's location).
+
+**Solution**:
+Ensure you're forwarding client IP headers:
+```nginx
+proxy_set_header X-Real-IP $remote_addr;
+proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+```
+
+### SSL errors in Nginx logs
+
+**Problem**: Logs show SSL verification errors when connecting to Rybbit.
+
+**Solution**:
+Add `proxy_ssl_server_name on` to enable SNI:
+```nginx
+location /analytics/ {
+    proxy_pass https://app.rybbit.io/api/;
+    proxy_ssl_server_name on;  # Enable SNI
+    # ... other config
+}
+```
+
+## Advanced Configuration
+
+### Subdomain Proxy
+
+Use a dedicated subdomain for analytics:
+
+```nginx
+# /etc/nginx/sites-available/analytics.yourdomain.com
+server {
+    listen 443 ssl http2;
+    server_name analytics.yourdomain.com;
+
+    ssl_certificate /etc/letsencrypt/live/analytics.yourdomain.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/analytics.yourdomain.com/privkey.pem;
+
+    # Proxy all requests to Rybbit
+    location / {
+        proxy_pass https://app.rybbit.io/api/;
+        proxy_set_header Host app.rybbit.io;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_ssl_server_name on;
+    }
+}
+```
+
+Then use:
+```html
+<script src="https://analytics.yourdomain.com/script.js" data-site-id="123"></script>
+```
+
+### Multiple Rybbit Instances
+
+If you need to proxy multiple Rybbit instances:
+
+```nginx
+location /analytics-prod/ {
+    proxy_pass https://prod.rybbit.io/api/;
+    # ... proxy config
+}
+
+location /analytics-staging/ {
+    proxy_pass https://staging.rybbit.io/api/;
+    # ... proxy config
+}
+```
+
+## Related Resources
+
+- [Nginx Custom Configuration Guide](/docs/self-hosting-guides/custom-nginx) - Self-hosting Rybbit with Nginx
+- [Tracking Script Documentation](/docs/script) - Script configuration options
+- [Generic Proxy Guide](/docs/proxy-guide/get-started) - Framework-agnostic concepts
+- [Nginx Proxy Module](http://nginx.org/en/docs/http/ngx_http_proxy_module.html) - Official Nginx documentation

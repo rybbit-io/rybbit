@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import { authClient } from "../lib/auth";
 import { useUserOrganizations } from "../api/admin/organizations";
+import { useTrack } from "../hooks/useTrack";
 
 function OrganizationInitializerInner() {
   const { data: organizations } = useUserOrganizations();
@@ -21,6 +22,7 @@ function OrganizationInitializerInner() {
 
 export function OrganizationInitializer() {
   const session = authClient.useSession();
+  useTrack();
   if (session.data?.user) {
     return <OrganizationInitializerInner />;
   }

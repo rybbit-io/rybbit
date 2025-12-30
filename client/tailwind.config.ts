@@ -1,12 +1,7 @@
 /** @type {import('tailwindcss').Config} */
 module.exports = {
   darkMode: ["class"],
-  content: [
-    "./pages/**/*.{ts,tsx}",
-    "./components/**/*.{ts,tsx}",
-    "./app/**/*.{ts,tsx}",
-    "./src/**/*.{ts,tsx}",
-  ],
+  content: ["./pages/**/*.{ts,tsx}", "./components/**/*.{ts,tsx}", "./app/**/*.{ts,tsx}", "./src/**/*.{ts,tsx}"],
   theme: {
     container: {
       center: true,
@@ -41,6 +36,7 @@ module.exports = {
         accent: {
           DEFAULT: "hsl(var(--accent))",
           foreground: "hsl(var(--accent-foreground))",
+
           50: "hsl(var(--accent-50))",
           100: "hsl(var(--accent-100))",
           200: "hsl(var(--accent-200))",
@@ -66,6 +62,7 @@ module.exports = {
           foreground: "hsl(var(--card-foreground))",
         },
         neutral: {
+          0: "hsl(var(--neutral-0))",
           50: "hsl(var(--neutral-50))",
           100: "hsl(var(--neutral-100))",
           150: "hsl(var(--neutral-150))",

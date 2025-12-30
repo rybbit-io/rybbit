@@ -5,7 +5,7 @@ import path from "path";
 import { fileURLToPath } from "url";
 import { clickhouse } from "../db/clickhouse/clickhouse.js";
 import { IS_CLOUD, DISABLE_TELEMETRY, SECRET } from "../lib/const.js";
-import { processResults } from "../api/analytics/utils.js";
+import { processResults } from "../api/analytics/utils/utils.js";
 import { createServiceLogger } from "../lib/logger/logger.js";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -105,7 +105,7 @@ class TelemetryService {
   // Send telemetry to cloud instance
   private async sendTelemetry(data: any) {
     try {
-      const response = await fetch("https://demo.rybbit.io/api/admin/telemetry", {
+      const response = await fetch("https://demo.rybbit.com/api/admin/telemetry", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

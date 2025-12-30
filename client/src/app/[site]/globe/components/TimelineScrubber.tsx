@@ -153,7 +153,7 @@ export function TimelineScrubber() {
   return (
     <div className="w-full flex flex-col">
       {/* Session histogram */}
-      <div className="w-full h-8 flex items-end gap-[1px] relative">
+      <div className="w-full h-8 flex items-end gap-px relative">
         {isCalculating && displayedCounts.length === 0 && (
           <div className="absolute inset-0 flex items-center justify-center">
             <div className="w-3 h-3 border-2 border-neutral-600 border-t-accent-500 rounded-full animate-spin" />

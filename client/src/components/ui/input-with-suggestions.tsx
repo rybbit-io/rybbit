@@ -73,7 +73,7 @@ export const InputWithSuggestions = React.forwardRef<HTMLInputElement, InputWith
           {...props}
         />
         {open && filteredSuggestions.length > 0 && (
-          <div className="absolute z-50 mt-1 w-full max-h-60 overflow-auto rounded-md border border-neutral-200 bg-white shadow-md dark:border-neutral-800 dark:bg-neutral-900">
+          <div className="absolute z-50 mt-1 w-full max-h-60 overflow-auto rounded-md border border-neutral-150 bg-white shadow-md dark:border-neutral-800 dark:bg-neutral-900">
             {filteredSuggestions.map(suggestion => (
               <div
                 key={suggestion.value}

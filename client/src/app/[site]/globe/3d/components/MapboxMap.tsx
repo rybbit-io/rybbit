@@ -10,7 +10,7 @@ export const MapboxMap = ({ mapContainer }: { mapContainer: RefObject<HTMLDivEle
       {configs?.mapboxToken ? (
         <div
           ref={mapContainer}
-          className="w-full h-full [&_.mapboxgl-ctrl-bottom-left]:!hidden [&_.mapboxgl-ctrl-logo]:!hidden"
+          className="w-full h-full [&_.mapboxgl-ctrl-bottom-left]:hidden! [&_.mapboxgl-ctrl-logo]:hidden!"
         />
       ) : isLoading ? null : (
         <div className="w-full h-full flex items-center justify-center">

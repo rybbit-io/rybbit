@@ -29,12 +29,7 @@ const Twitter = ({ className, ...props }: TwitterIconProps) => (
 );
 
 const Verified = ({ className, ...props }: TwitterIconProps) => (
-  <svg
-    aria-label="Verified Account"
-    viewBox="0 0 24 24"
-    className={cn(className)}
-    {...props}
-  >
+  <svg aria-label="Verified Account" viewBox="0 0 24 24" className={cn(className)} {...props}>
     <g fill="currentColor">
       <path d="M22.5 12.5c0-1.58-.875-2.95-2.148-3.6.154-.435.238-.905.238-1.4 0-2.21-1.71-3.998-3.818-3.998-.47 0-.92.084-1.336.25C14.818 2.415 13.51 1.5 12 1.5s-2.816.917-3.437 2.25c-.415-.165-.866-.25-1.336-.25-2.11 0-3.818 1.79-3.818 4 0 .494.083.964.237 1.4-1.272.65-2.147 2.018-2.147 3.6 0 1.495.782 2.798 1.942 3.486-.02.17-.032.34-.032.514 0 2.21 1.708 4 3.818 4 .47 0 .92-.086 1.335-.25.62 1.334 1.926 2.25 3.437 2.25 1.512 0 2.818-.916 3.437-2.25.415.163.865.248 1.336.248 2.11 0 3.818-1.79 3.818-4 0-.174-.012-.344-.033-.513 1.158-.687 1.943-1.99 1.943-3.484zm-6.616-3.334l-4.334 6.5c-.145.217-.382.334-.625.334-.143 0-.288-.04-.416-.126l-.115-.094-2.415-2.415c-.293-.293-.293-.768 0-1.06s.768-.294 1.06 0l1.77 1.767 3.825-5.74c.23-.345.696-.436 1.04-.207.346.23.44.696.21 1.04z" />
     </g>
@@ -59,8 +54,10 @@ export const TweetHeader = ({ tweet }: { tweet: EnrichedTweet }) => {
             src={tweet.user.profile_image_url_https}
             className="overflow-hidden rounded-full border border-transparent"
             loading="lazy"
-            onError={(e) => {
-              e.currentTarget.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(tweet.user.name)}&background=1a1a1a&color=fff&size=48`;
+            onError={e => {
+              e.currentTarget.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(
+                tweet.user.name
+              )}&background=1a1a1a&color=fff&size=48`;
             }}
           />
         </a>
@@ -73,16 +70,14 @@ export const TweetHeader = ({ tweet }: { tweet: EnrichedTweet }) => {
           >
             {truncate(tweet.user.name, 20)}
             {tweet.user.verified ||
-              (tweet.user.is_blue_verified && (
-                <Verified className="ml-1 inline size-4 text-blue-500" />
-              ))}
+              (tweet.user.is_blue_verified && <Verified className="ml-1 inline size-4 text-blue-500" />)}
           </a>
           <div className="flex items-center space-x-1">
             <a
               href={tweet.user.url}
               target="_blank"
               rel="noreferrer"
-              className="text-sm text-gray-500 transition-all duration-75"
+              className="text-sm text-neutral-500 transition-all duration-75"
             >
               @{truncate(tweet.user.screen_name, 16)}
             </a>
@@ -111,19 +106,13 @@ export const TweetBody = ({ tweet }: { tweet: EnrichedTweet }) => (
               href={entity.href}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-sm font-normal text-gray-500"
+              className="text-sm font-normal text-neutral-500"
             >
               <span>{entity.text}</span>
             </a>
           );
         case "text":
-          return (
-            <span
-              key={idx}
-              className="text-sm font-normal"
-              dangerouslySetInnerHTML={{ __html: entity.text }}
-            />
-          );
+          return <span key={idx} className="text-sm font-normal" dangerouslySetInnerHTML={{ __html: entity.text }} />;
       }
     })}
   </div>
@@ -134,14 +123,7 @@ export const TweetMedia = ({ tweet }: { tweet: EnrichedTweet }) => {
   return (
     <div className="flex flex-1 items-center justify-center">
       {tweet.video && (
-        <video
-          poster={tweet.video.poster}
-          autoPlay
-          loop
-          muted
-          playsInline
-          className="rounded-xl border shadow-sm"
-        >
+        <video poster={tweet.video.poster} autoPlay loop muted playsInline className="rounded-xl border shadow-sm">
           <source src={tweet.video.variants[0].src} type="video/mp4" />
           Your browser does not support the video tag.
         </video>
@@ -149,7 +131,7 @@ export const TweetMedia = ({ tweet }: { tweet: EnrichedTweet }) => {
       {tweet.photos && (
         <div className="relative flex transform-gpu snap-x snap-mandatory gap-4 overflow-x-auto">
           <div className="shrink-0 snap-center sm:w-2" />
-          {tweet.photos.map((photo) => (
+          {tweet.photos.map(photo => (
             <img
               key={photo.url}
               src={photo.url}

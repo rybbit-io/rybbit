@@ -1,5 +1,7 @@
 import BoringAvatar from "boring-avatars";
+import { DateTime } from "luxon";
 import { animals, colors, uniqueNamesGenerator } from "unique-names-generator";
+import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
 
 export const AVATAR_COLORS = [
   "#ec4899",
@@ -24,8 +26,27 @@ export const AVATAR_COLORS = [
   "#d1d5db",
 ];
 
-export function Avatar({ id, size = 20 }: { id: string; size?: number }) {
-  return <BoringAvatar size={size} name={id} variant="beam" colors={AVATAR_COLORS} />;
+export function Avatar({ id, size = 20, lastActiveTime }: { id: string; size?: number; lastActiveTime?: DateTime }) {
+  const timeSinceEnd = lastActiveTime ? -lastActiveTime.toLocal().diffNow().toMillis() / 1000 : 0;
+  const online = lastActiveTime ? timeSinceEnd < 300 : false;
+  return (
+    <div className="relative">
+      <BoringAvatar size={size} name={id} variant="beam" colors={AVATAR_COLORS} />
+      {online && (
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <div
+              className="absolute -bottom-1 -right-1 bg-green-500 rounded-full border border-2 border-white dark:border-neutral-900"
+              style={{ width: size / 1.7, height: size / 1.7 }}
+            />
+          </TooltipTrigger>
+          <TooltipContent>
+            <p>Active {lastActiveTime?.toRelative()}</p>
+          </TooltipContent>
+        </Tooltip>
+      )}
+    </div>
+  );
 }
 
 export function generateName(id: string) {

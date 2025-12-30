@@ -2,7 +2,6 @@ import { FastifyReply, FastifyRequest } from "fastify";
 import { z } from "zod";
 import { siteConfig } from "../../lib/siteConfig.js";
 import { SessionReplayIngestService } from "../../services/replay/sessionReplayIngestService.js";
-import { validateApiKey } from "../../services/shared/requestValidation.js";
 import { usageService } from "../../services/usageService.js";
 import { RecordSessionReplayRequest } from "../../types/sessionReplay.js";
 import { getIpAddress } from "../../utils.js";
@@ -55,33 +54,6 @@ export async function recordSessionReplay(
     }
 
     const body = recordSessionReplaySchema.parse(request.body) as RecordSessionReplayRequest;
-
-    // First check if API key is provided and valid
-    const apiKeyValidation = await validateApiKey(siteId, body.apiKey);
-
-    // If API key validation failed with an error, reject the request
-    if (apiKeyValidation.error) {
-      logger.warn(`[SessionReplay] Request rejected for site ${siteId}: ${apiKeyValidation.error}`);
-      return reply.status(403).send({
-        success: false,
-        error: apiKeyValidation.error,
-      });
-    }
-
-    // Check rate limit for API key authenticated requests
-    // ratelimit for session replays doesn't really work right now
-
-    // if (apiKeyValidation.success && body.apiKey) {
-    //   if (!checkApiKeyRateLimit(body.apiKey)) {
-    //     console.warn(
-    //       `[SessionReplay] Rate limit exceeded for API key ${body.apiKey} on site ${siteId}`,
-    //     );
-    //     return reply.status(429).send({
-    //       success: false,
-    //       error: "Rate limit exceeded. Maximum 20 requests per second per API key.",
-    //     });
-    //   }
-    // }
 
     // Check if the IP should be excluded from tracking
     const requestIP = getIpAddress(request);

@@ -146,7 +146,7 @@ export function PlanDialog({ open, onOpenChange, currentPlanName, hasActiveSubsc
                   "px-4 py-2 rounded-full transition-colors cursor-pointer",
                   !isAnnual
                     ? "bg-emerald-500/20 text-emerald-400 font-medium"
-                    : "text-neutral-400 hover:text-neutral-200"
+                    : "text-neutral-500 dark:text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200"
                 )}
               >
                 Monthly
@@ -157,7 +157,7 @@ export function PlanDialog({ open, onOpenChange, currentPlanName, hasActiveSubsc
                   "px-4 py-2 rounded-full transition-colors cursor-pointer",
                   isAnnual
                     ? "bg-emerald-500/20 text-emerald-400 font-medium"
-                    : "text-neutral-400 hover:text-neutral-200"
+                    : "text-neutral-500 dark:text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200"
                 )}
               >
                 Annual
@@ -173,9 +173,9 @@ export function PlanDialog({ open, onOpenChange, currentPlanName, hasActiveSubsc
               { type: "pro" as const, title: "Pro", subtitle: "Advanced features + session replays" },
             ].map(({ type, title, subtitle }) => (
               <div key={type} className="space-y-3">
-                <div className="text-center mb-4">
+                <div className="mb-4">
                   <h3 className="text-xl font-bold">{title}</h3>
-                  <p className="text-sm text-neutral-400">{subtitle}</p>
+                  <p className="text-sm text-neutral-500 dark:text-neutral-400">{subtitle}</p>
                 </div>
                 <div className="space-y-2">
                   {STRIPE_TIERS.map(tier => {
@@ -191,23 +191,22 @@ export function PlanDialog({ open, onOpenChange, currentPlanName, hasActiveSubsc
                           "flex flex-col gap-2 justify-between p-3 rounded-lg border cursor-pointer",
                           isCurrent
                             ? "bg-emerald-500/10 border-emerald-500"
-                            : "bg-neutral-800/20 border-neutral-700/50 hover:bg-neutral-800/30",
+                            : "bg-neutral-100 dark:bg-neutral-800/20 border-neutral-300 dark:border-neutral-700/50 hover:bg-neutral-200 dark:hover:bg-neutral-800/30",
                           isLoading && "opacity-50"
                         )}
                         onClick={() => handlePlanSelection(plan.priceId, plan.name)}
                       >
-                        <div className="flex items-center justify-between w-full">
-                          <Badge variant="success">{type === "pro" ? "Pro" : "Standard"}</Badge>
-                          <div className="text-xs text-neutral-400">
-                            <span className="text-neutral-200 font-semibold text-base">
+                        <div className="flex justify-between w-full">
+                          <div className="text-neutral-900 dark:text-neutral-100 font-medium flex-end">
+                            {tier.shortName} events{" "}
+                            <span className="text-neutral-500 dark:text-neutral-400 text-xs font-normal">/ month</span>
+                          </div>
+                          <div className="text-xs text-neutral-500 dark:text-neutral-400">
+                            <span className="text-neutral-700 dark:text-neutral-200 font-semibold text-base">
                               ${isAnnual ? Math.round(plan.price / 12) : plan.price}
                             </span>{" "}
-                            / month
+                            /month
                           </div>
-                        </div>
-                        <div className="text-neutral-100 font-medium flex items-center gap-2">
-                          {tier.shortName} events <span className="text-neutral-400 text-xs font-normal">/ month</span>
-                          {isLoading && <Loader2 className="w-4 h-4 animate-spin" />}
                         </div>
                       </div>
                     );
@@ -220,10 +219,10 @@ export function PlanDialog({ open, onOpenChange, currentPlanName, hasActiveSubsc
           {/* Features comparison link */}
           <div className="mt-3 text-center">
             <a
-              href="https://www.rybbit.io/pricing"
+              href="https://www.rybbit.com/pricing"
               target="_blank"
               rel="noopener noreferrer"
-              className="text-neutral-200 hover:text-neutral-100 text-sm underline"
+              className="text-neutral-600 dark:text-neutral-200 hover:text-neutral-900 dark:hover:text-neutral-100 text-sm underline"
             >
               View detailed feature comparison →
             </a>

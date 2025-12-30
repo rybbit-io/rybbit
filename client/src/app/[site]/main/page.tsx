@@ -10,6 +10,7 @@ import { Events } from "./components/sections/Events";
 import { Network } from "./components/sections/Network";
 import { Pages } from "./components/sections/Pages";
 import { Referrers } from "./components/sections/Referrers";
+import { SearchConsole } from "./components/sections/SearchConsole";
 import { Weekdays } from "./components/sections/Weekdays";
 
 export default function MainPage() {
@@ -34,9 +35,10 @@ function MainPageContent() {
         <Pages />
         <Devices />
         <Countries />
-        {IS_CLOUD && <Network />}
         <Events />
         <Weekdays />
+        {IS_CLOUD && <Network />}
+        {IS_CLOUD && <SearchConsole />}
       </div>
     </div>
   );

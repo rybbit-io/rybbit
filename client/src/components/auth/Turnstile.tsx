@@ -1,6 +1,7 @@
 "use client";
 
 import { Turnstile as CloudflareTurnstile, TurnstileInstance } from "@marsidev/react-turnstile";
+import { useTheme } from "next-themes";
 import { useRef } from "react";
 
 interface TurnstileProps {
@@ -13,6 +14,7 @@ interface TurnstileProps {
 export function Turnstile({ onSuccess, onError, onExpire, className = "" }: TurnstileProps) {
   const turnstileRef = useRef<TurnstileInstance>(null);
   const siteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
+  const { theme } = useTheme();
 
   if (!siteKey) {
     console.error("NEXT_PUBLIC_TURNSTILE_SITE_KEY is not defined");
@@ -34,7 +36,7 @@ export function Turnstile({ onSuccess, onError, onExpire, className = "" }: Turn
           onExpire?.();
         }}
         options={{
-          theme: "dark",
+          theme: theme === "dark" ? "dark" : "auto",
           size: "normal",
         }}
       />

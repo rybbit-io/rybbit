@@ -56,8 +56,8 @@ export function PaidPlan() {
             ]
           : ["1 year data retention", "Standard support", "Core analytics features"],
         color: isPro
-          ? "bg-gradient-to-br from-purple-50 to-indigo-100 dark:from-purple-800 dark:to-indigo-800"
-          : "bg-gradient-to-br from-green-50 to-emerald-100 dark:from-green-800 dark:to-emerald-800",
+          ? "bg-linear-to-br from-purple-50 to-indigo-100 dark:from-purple-800 dark:to-indigo-800"
+          : "bg-linear-to-br from-green-50 to-emerald-100 dark:from-green-800 dark:to-emerald-800",
         icon: <Shield className="h-5 w-5" />,
       }
     : null;
@@ -144,8 +144,10 @@ export function PaidPlan() {
           <div className="space-y-6 mt-3 p-2">
             <div className="flex justify-between items-start">
               <div className="space-y-1">
-                <p className="text-3xl font-bold">{currentPlanDetails?.name || activeSubscription.planName}</p>
-                <p className="text text-gray-300">{getFormattedPrice()}</p>
+                <p className="text-3xl font-bold">{currentPlanDetails?.name || activeSubscription.planName} </p>
+                <p className="text text-neutral-600 dark:text-neutral-300">
+                  {getFormattedPrice()} • {activeSubscription.eventLimit.toLocaleString()} events
+                </p>
                 {isAnnualPlan && (
                   <div className="mt-2 text-sm text-emerald-400">
                     <p>You save by paying annually (2 months free)</p>
@@ -164,7 +166,7 @@ export function PaidPlan() {
             </div>
 
             <div className="space-y-2">
-              <h3 className="font-medium mb-2">Usage</h3>
+              <h3 className="font-medium mb-2">Usage this month</h3>
               <div className="space-y-4">
                 <div>
                   <div className="flex justify-between mb-1">

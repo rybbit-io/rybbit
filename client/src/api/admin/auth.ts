@@ -19,7 +19,7 @@ type GetOrganizationMembersResponse = {
 export const useOrganizationMembers = (organizationId: string) => {
   return useQuery<GetOrganizationMembersResponse>({
     queryKey: ["organization-members", organizationId],
-    queryFn: () => authedFetch(`/list-organization-members/${organizationId}`),
+    queryFn: () => authedFetch(`/organizations/${organizationId}/members`),
     staleTime: Infinity,
   });
 };

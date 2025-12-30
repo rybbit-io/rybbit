@@ -1,0 +1,271 @@
+---
+title: Events Tab
+description: A comprehensive guide to tracking and analyzing custom events in Rybbit's Behavior Analytics
+---
+
+# A Guide to Rybbit's Events Tab
+
+The Events tab in Rybbit's Behavior Analytics section lets you track and analyze custom events that happen on your website. While standard analytics tracks page views and basic interactions, the Events tab gives you control over what actions matter most to your business—whether that's button clicks, form submissions, purchases, sign-ups, feature usage, or any other meaningful user interaction.
+
+## What is a Custom Event?
+
+A custom event is any action you define as important for your business. Unlike page views which happen automatically, custom events require you to implement tracking code. This intentional approach means you only track what matters to you, keeping your analytics focused and your data collection minimal.
+
+Custom events are the bridge between your business goals and user behavior. By tracking events, you transform raw user actions into meaningful signals that show you what users are doing and whether they're achieving your desired outcomes.
+
+## Types of Events You Can Track
+
+Rybbit allows you to track virtually any user action as a custom event:
+
+### Engagement Events
+- Button clicks (CTA, "Learn More," "Get Started")
+- Link clicks
+- Video plays and completions
+- Form submissions
+- Content shares
+- Feature interactions
+
+### Conversion Events
+- Product purchases
+- Sign-ups and registrations
+- Newsletter subscriptions
+- Account upgrades
+- Demo requests
+- Contact form submissions
+
+### Feature Usage Events
+- Feature activations
+- Tool usage
+- Feature completions
+- API calls
+- File uploads/downloads
+
+### User Journey Events
+- Onboarding completion
+- Tutorial progression
+- Milestone achievements
+- Status changes
+- User level-ups
+
+## Accessing the Events Tab
+
+To view and analyze your events:
+
+1. Log into your Rybbit dashboard
+2. Navigate to the **Behavior** section in the left sidebar
+3. Click on the **Events** tab
+
+You'll see a comprehensive list of all tracked events on your website, along with frequency, user information, and other metrics.
+
+## Key Event Metrics
+
+When examining the Events tab, you'll encounter important metrics about your custom events:
+
+### Event Name
+The name you assigned to the custom event. Clear, consistent naming makes it easier to track and analyze events.
+
+### Event Count
+The total number of times this event has been triggered across all users and sessions. High counts indicate frequent user actions around this feature or functionality.
+
+### Unique Users
+The number of distinct users who have triggered this event. This shows how many of your users interact with this specific feature or functionality.
+
+### Conversion Rate
+For key events (especially purchases), this shows what percentage of your total users or sessions resulted in this event. High conversion rates on important events indicate strong product-market fit.
+
+### Average Value
+If you track monetary value with your events (common for purchases), this shows the average transaction value.
+
+### Event Properties
+Custom data attached to each event. For example, a "Purchase" event might include properties like product_id, price, quantity, and category.
+
+### First Triggered
+When the first instance of this event occurred, showing how long you've been tracking this action.
+
+### Last Triggered
+The most recent time this event was triggered, indicating current user engagement with this feature.
+
+## Filtering and Analyzing Events
+
+Rybbit provides powerful filtering to help you understand specific events:
+
+### Filter by Event Name
+Focus on specific events you care about most. For example, analyze only "Purchase" events or "Feature A Activation" events.
+
+### Filter by User
+See which specific users triggered events, useful for understanding power users or investigating individual user journeys.
+
+### Filter by Session
+Analyze events within specific sessions to understand the context and sequence of user actions.
+
+### Filter by Event Properties
+Drill down into specific event details. For example, filter "Purchase" events by product category or price range.
+
+### Filter by Time Range
+Compare event trends across different time periods to measure growth, impact of changes, or seasonal patterns.
+
+### Filter by Source
+If tracking events from multiple sources (website, app, etc.), filter by source to analyze platform-specific behavior.
+
+## Common Use Cases
+
+### Measuring Conversion Funnel
+Track events across your user journey (sign-up → feature activation → purchase) to measure conversion rates at each stage and identify where users drop off.
+
+### Feature Adoption Tracking
+Monitor how many users discover and use new features you've released. Low adoption might indicate the feature needs better onboarding or visibility.
+
+### Understanding Feature Engagement
+Track which features users interact with most frequently. This data guides your product roadmap and feature prioritization.
+
+### Validating Product Changes
+After making changes to your product, monitor event metrics to measure impact. Did the change increase desired actions or decrease undesired ones?
+
+### Identifying Power Users
+Find users who trigger many important events. These engaged users are valuable for retention and can provide product feedback.
+
+### Analyzing User Workflow
+Track the sequence of events users follow when accomplishing a goal. Optimization opportunities often appear when users take unexpected or inefficient paths.
+
+### Debugging Issues
+Monitor error events to identify when users encounter problems on your site. Spikes in error events might indicate a bug or performance issue.
+
+### Measuring Marketing Campaign Impact
+Track campaign-specific events to measure whether users from specific campaigns take desired actions at higher rates.
+
+## Setting Up Event Tracking
+
+Before you can analyze events, you need to track them. This typically involves:
+
+1. **Identify Key Events**: Determine which user actions matter most to your business
+2. **Implement Tracking**: Add event tracking code to your website using Rybbit's SDK or API
+3. **Name Consistently**: Use clear, consistent names for your events (e.g., "purchase_completed" not "sale" or "checkout")
+4. **Add Context**: Include relevant properties with events to provide additional context
+5. **Test**: Verify events are firing correctly before relying on the data
+6. **Monitor**: Regularly review event data to ensure tracking is working as expected
+
+## Event Property Best Practices
+
+When tracking custom events, include relevant properties to add context:
+
+### For E-commerce Events
+Include product_id, price, category, quantity, discount, currency, etc.
+
+### For Sign-up Events
+Include plan_type, source, location, device_type, etc.
+
+### For Engagement Events
+Include feature_name, action_type, duration, success, etc.
+
+### For Error Events
+Include error_type, error_message, page_path, severity, etc.
+
+Include only relevant properties—more isn't always better. Cleaner events are easier to analyze and require less data storage.
+
+## Analyzing Event Patterns
+
+Look for patterns across your event data:
+
+### Event Sequences
+Do users typically trigger events in a specific sequence? Understanding natural workflows helps you optimize your user experience.
+
+### Time Patterns
+Do certain events spike at specific times of day or days of the week? This might indicate optimal times for marketing or feature releases.
+
+### Cohort Differences
+Do different user segments (by device, location, referrer) have different event patterns? This reveals optimization opportunities for specific groups.
+
+### Conversion Funnel Efficiency
+Track how users move through your conversion funnel. Where do most users drop off? What's the typical path for converters?
+
+### Feature Engagement Trends
+Do usage patterns for specific features increase or decrease over time? This guides feature maintenance and development priorities.
+
+## Advanced Event Analysis Techniques
+
+### Funnel Analysis
+Manually analyze the sequence of events users trigger. For example: "view_product" → "add_to_cart" → "view_checkout" → "purchase_completed"
+
+### Cohort Comparison
+Compare event behavior between user cohorts (acquired at different times, from different sources, using different devices) to identify factors that drive engagement.
+
+### Retention Analysis
+For users who trigger important events (like "premium_upgrade"), track how their retention differs from other users over time.
+
+### Lifetime Value Calculation
+For monetization events, sum the total value generated by each user across all their events to calculate user lifetime value.
+
+### Event Attribution
+When users trigger important conversion events, trace back which previous events or sessions contributed to that conversion.
+
+## Troubleshooting Event Tracking
+
+### Events not appearing
+Verify that tracking code is properly installed and that you're using the correct event names. Check browser console for JavaScript errors.
+
+### Inconsistent event names
+If the same action is tracked with different names (e.g., "signup" and "sign_up"), consolidate to a single name for cleaner analysis.
+
+### Missing event properties
+Ensure your tracking code includes relevant properties. Without properties, it's harder to analyze event context.
+
+### Event counts seem low
+Compare event counts to your overall traffic. If conversion events are below 1%, you may have product issues or incorrect tracking.
+
+### Properties showing unexpected values
+Validate that your code is passing the correct values to event properties. Test thoroughly before relying on the data.
+
+## Privacy and Event Data
+
+Rybbit's event tracking respects user privacy:
+
+- Events don't require cookies
+- PII (passwords, emails, credit cards) should never be included in events
+- You control what data is collected through your event definitions
+- Users can opt out of event tracking
+- Event data follows the same retention policies as other analytics data
+
+Configure PII masking to automatically redact sensitive information from event properties.
+
+## Best Practices for Event Tracking
+
+**Start Simple**: Begin with your most important events. Add more later as you understand your data needs.
+
+**Use Consistent Naming**: Adopt a naming convention (e.g., verb_noun like "button_clicked," "form_submitted") and stick with it.
+
+**Include Context**: Events are more useful when you understand the context. Include relevant properties.
+
+**Test Thoroughly**: Before deploying tracking to production, verify events fire correctly in development.
+
+**Document Your Events**: Keep a document listing all events you track, their names, and what properties they include.
+
+**Monitor for Changes**: Periodically review event counts to spot unusual spikes or drops that might indicate tracking issues.
+
+**Connect to Business Goals**: Ensure you're tracking events that actually relate to your business objectives.
+
+## Connecting Events with Other Analytics
+
+### Events and Users
+Analyzing which users trigger which events helps you identify user segments and power users.
+
+### Events and Sessions
+Understanding events within the context of sessions shows how events relate to the overall user journey.
+
+### Events and Errors
+Correlation between user actions and errors can help you identify which features are causing issues.
+
+## Conclusion
+
+The Events tab in Rybbit's Behavior Analytics transforms your website into a feedback machine that shows you exactly what users are doing and whether they're achieving your business goals. By thoughtfully selecting what to track and analyzing the resulting data, you gain actionable insights that drive product improvement and business growth.
+
+Start by identifying your most important user actions, implement tracking, and then regularly review the data to understand user behavior patterns. Over time, event data becomes an invaluable tool for measuring product success and guiding optimization efforts.
+
+**Additional Resources:**
+- [Track Custom Events Guide](/docs/track-events)
+- [Users Tab Guide](/docs/behavior-analytics/users)
+- [Sessions Tab Guide](/docs/behavior-analytics/sessions)
+- [Errors Tab Guide](/docs/behavior-analytics/errors)
+- [Product Analytics - Funnels Guide](/docs/product-analytics/funnels_guide)
+- [Event Tracking Best Practices](/docs/track-events)
+- [API - Sending Events](/docs/api/sending-events)
+- [Blog: Churn Rate vs Retention Rate](/blog/churn-rate-vs-retention-rate)

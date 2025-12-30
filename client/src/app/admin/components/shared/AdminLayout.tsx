@@ -1,20 +1,16 @@
 "use client";
 
-import { ReactNode } from "react";
-import { redirect } from "next/navigation";
-import { AlertCircle } from "lucide-react";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import { redirect } from "next/navigation";
+import { ReactNode } from "react";
 import { useAdminPermission } from "../../hooks/useAdminPermission";
 
 interface AdminLayoutProps {
   children: ReactNode;
-  title: string;
-  showStopImpersonating?: boolean;
 }
 
-export function AdminLayout({ children, title, showStopImpersonating = false }: AdminLayoutProps) {
-  const { isAdmin, isImpersonating, isCheckingAdmin, stopImpersonating } = useAdminPermission();
+export function AdminLayout({ children }: AdminLayoutProps) {
+  const { isAdmin, isCheckingAdmin } = useAdminPermission();
 
   // If not admin, show access denied
   if (!isAdmin && !isCheckingAdmin) {
@@ -29,17 +25,5 @@ export function AdminLayout({ children, title, showStopImpersonating = false }: 
     );
   }
 
-  return (
-    <div>
-      <div className="flex items-center justify-between mb-6">
-        <h2 className="text-xl font-bold">{title}</h2>
-        {showStopImpersonating && isImpersonating && (
-          <Button onClick={stopImpersonating} variant="destructive">
-            Stop Impersonating
-          </Button>
-        )}
-      </div>
-      {children}
-    </div>
-  );
+  return <div>{children}</div>;
 }

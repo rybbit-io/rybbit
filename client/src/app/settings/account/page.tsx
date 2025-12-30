@@ -10,7 +10,7 @@ export default function AccountPage() {
     <>
       <div className="mb-4">
         <h1 className="text-3xl font-bold tracking-tight">Account Settings</h1>
-        <p className="text-gray-500 dark:text-gray-400">Manage your personal account settings</p>
+        <p className="text-neutral-500 dark:text-neutral-400">Manage your personal account settings</p>
       </div>
       <AccountInner />
     </>

@@ -56,15 +56,13 @@ export const LimitExceededEmail = ({
               <div className="inline-block bg-warningBg/20 text-warningBg px-3 py-1.5 rounded-full text-sm font-medium mb-4">
                 Event Limit Exceeded
               </div>
-              <Heading className="text-darkText text-3xl font-semibold mb-6">
-                Monthly Event Limit Reached
-              </Heading>
+              <Heading className="text-darkText text-3xl font-semibold mb-6">Monthly Event Limit Reached</Heading>
             </Section>
 
             <Section className="mb-8">
               <Text className="text-darkText text-base leading-relaxed mb-4">
-                Your organization <span className="font-bold text-brand">{organizationName}</span> has
-                exceeded its monthly event limit.
+                Your organization <span className="font-bold text-brand">{organizationName}</span> has exceeded its
+                monthly event limit.
               </Text>
               <Text className="text-darkText text-base leading-relaxed mb-4">
                 <strong>Current usage:</strong> {eventCount.toLocaleString()} events
@@ -72,8 +70,8 @@ export const LimitExceededEmail = ({
                 <strong>Monthly limit:</strong> {eventLimit.toLocaleString()} events
               </Text>
               <Text className="text-darkText text-base leading-relaxed">
-                Your analytics tracking has been paused. To continue tracking events and accessing
-                your analytics data, please upgrade your plan.
+                Your analytics tracking has been paused. To continue tracking events and accessing your analytics data,
+                please upgrade your plan.
               </Text>
             </Section>
 
@@ -88,11 +86,9 @@ export const LimitExceededEmail = ({
 
             <Section className="text-center border-t border-borderColor pt-5">
               <Text className="text-mutedText text-xs mb-2">
-                Need help? Contact our support team at support@rybbit.io
+                Need help? Contact our support team at support@rybbit.com
               </Text>
-              <Text className="text-mutedText text-xs">
-                © {currentYear} Rybbit Analytics
-              </Text>
+              <Text className="text-mutedText text-xs">© {currentYear} Rybbit Analytics</Text>
             </Section>
           </Container>
         </Body>

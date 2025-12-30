@@ -87,7 +87,7 @@ services:
       dockerfile: ./server/Dockerfile
     environment:
       - NODE_ENV=production
-      - CLICKHOUSE_HOST=http://clickhouse:8123
+      - CLICKHOUSE_HOST=${CLICKHOUSE_HOST:-http://clickhouse:8123}
       - CLICKHOUSE_DB=${CLICKHOUSE_DB:-analytics}
       - CLICKHOUSE_PASSWORD=${CLICKHOUSE_PASSWORD:-frog}
       - POSTGRES_HOST=postgres
@@ -102,6 +102,9 @@ services:
       - CLOUD=${CLOUD}
       - STRIPE_SECRET_KEY=${STRIPE_SECRET_KEY}
       - STRIPE_WEBHOOK_SECRET=${STRIPE_WEBHOOK_SECRET}
+      # AppSumo configuration
+      - APPSUMO_CLIENT_ID=${APPSUMO_CLIENT_ID}
+      - APPSUMO_CLIENT_SECRET=${APPSUMO_CLIENT_SECRET}
       - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
       - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
       - GITHUB_CLIENT_ID=${GITHUB_CLIENT_ID}
@@ -126,6 +129,7 @@ services:
       - MAPBOX_TOKEN=${MAPBOX_TOKEN}
       - TURNSTILE_SECRET_KEY=${TURNSTILE_SECRET_KEY}
       - IPAPI_KEY=${IPAPI_KEY}
+      - GOOGLE_REDIRECT_URI=${GOOGLE_REDIRECT_URI}
     depends_on:
       clickhouse:
         condition: service_healthy

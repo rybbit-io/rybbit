@@ -4,17 +4,19 @@ import { Card, CardContent, CardHeader, CardTitle } from "../../../../components
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../../../../components/ui/table";
 import { authClient } from "../../../../lib/auth";
 
+import { useEffect, useState } from "react";
+import { toast } from "sonner";
 import { useOrganizationMembers } from "../../../../api/admin/auth";
 import { useOrganizationInvitations } from "../../../../api/admin/organizations";
 import { NoOrganization } from "../../../../components/NoOrganization";
-import { InviteMemberDialog } from "./components/InviteMemberDialog";
+import { Button } from "../../../../components/ui/button";
+import { Input } from "../../../../components/ui/input";
 import { useSetPageTitle } from "../../../../hooks/useSetPageTitle";
-import { EditOrganizationDialog } from "./components/EditOrganizationDialog";
-import { DeleteOrganizationDialog } from "./components/DeleteOrganizationDialog";
-import { RemoveMemberDialog } from "./components/RemoveMemberDialog";
-import { Invitations } from "./components/Invitations";
 import { IS_CLOUD } from "../../../../lib/const";
 import { CreateUserDialog } from "./components/CreateUserDialog";
+import { Invitations } from "./components/Invitations";
+import { InviteMemberDialog } from "./components/InviteMemberDialog";
+import { RemoveMemberDialog } from "./components/RemoveMemberDialog";
 
 // Types for our component
 export type Organization = {
@@ -49,19 +51,76 @@ function Organization({
     createdAt: Date;
   };
 }) {
+  const [name, setName] = useState(org.name);
+  const [isUpdating, setIsUpdating] = useState(false);
+
+  useEffect(() => {
+    setName(org.name);
+  }, [org.name]);
+
   const { data: members, refetch, isLoading: membersLoading } = useOrganizationMembers(org.id);
   const { refetch: refetchInvitations } = useOrganizationInvitations(org.id);
   const { data } = authClient.useSession();
 
   const isOwner = members?.data.find(member => member.role === "owner" && member.userId === data?.user?.id);
+  const isAdmin = members?.data.find(member => member.role === "admin" && member.userId === data?.user?.id) || isOwner;
 
   const handleRefresh = () => {
     refetch();
     refetchInvitations();
   };
 
+  const handleOrganizationNameUpdate = async () => {
+    if (!name) {
+      toast.error("Organization name cannot be empty");
+      return;
+    }
+
+    try {
+      setIsUpdating(true);
+      const response = await authClient.organization.update({
+        organizationId: org.id,
+        data: {
+          name,
+        },
+      });
+
+      if (response.error) {
+        throw new Error(response.error.message || "Failed to update organization name");
+      }
+
+      toast.success("Name updated successfully");
+      window.location.reload();
+    } catch (error) {
+      console.error("Error updating organization name:", error);
+      toast.error(error instanceof Error ? error.message : "Failed to update organization name");
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
   return (
     <>
+      {isOwner && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-xl">Organization</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              <h4 className="text-sm font-medium">Organization Name</h4>
+              <p className="text-xs text-neutral-500">Update your organization name</p>
+              <div className="flex space-x-2">
+                <Input id="name" value={name} onChange={({ target }) => setName(target.value)} placeholder="name" />
+                <Button variant="outline" onClick={handleOrganizationNameUpdate} disabled={name === org.name}>
+                  {isUpdating ? "Updating..." : "Update"}
+                </Button>
+              </div>
+            </div>
+            {/* <DeleteOrganizationDialog organization={org} onSuccess={handleRefresh} /> */}
+          </CardContent>
+        </Card>
+      )}
       <Card className="w-full">
         <CardHeader className="pb-2">
           <div className="flex items-center justify-between flex-wrap gap-2">
@@ -79,8 +138,6 @@ function Organization({
                   ) : (
                     <CreateUserDialog organizationId={org.id} onSuccess={handleRefresh} />
                   )}
-                  <EditOrganizationDialog organization={org} onSuccess={handleRefresh} />
-                  <DeleteOrganizationDialog organization={org} onSuccess={handleRefresh} />
                 </>
               )}
             </div>
@@ -133,9 +190,9 @@ function Organization({
                           .toLocal()
                           .toLocaleString(DateTime.DATE_SHORT)}
                       </TableCell>
-                      {isOwner && (
+                      {isAdmin && (
                         <TableCell className="text-right">
-                          {member.role !== "owner" && (
+                          {(isOwner || member.role !== "owner") && (
                             <RemoveMemberDialog member={member} organizationId={org.id} onSuccess={handleRefresh} />
                           )}
                         </TableCell>

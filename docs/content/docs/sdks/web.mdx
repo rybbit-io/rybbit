@@ -16,6 +16,22 @@ npm install @rybbit/js
 yarn add @rybbit/js
 ```
 
+## Peer Dependencies
+
+The SDK has an optional peer dependency for session replay functionality:
+
+```bash
+npm install rrweb
+```
+
+```bash
+yarn add rrweb
+```
+
+<Callout type="info">
+The `rrweb` package is only required if you enable session replay in your Rybbit dashboard. The SDK will work without it for all other tracking features.
+</Callout>
+
 ## Initialization
 
 <Callout type="warning">
@@ -25,7 +41,7 @@ yarn add @rybbit/js
 ### Syntax
 
 ```typescript
-rybbit.init(config: RybbitConfig);
+async rybbit.init(config: RybbitConfig): Promise<void>;
 ```
 
 ### Example
@@ -33,7 +49,7 @@ rybbit.init(config: RybbitConfig);
 ```javascript
 import rybbit from "@rybbit/js";
 
-rybbit.init({
+await rybbit.init({
   analyticsHost: "https://api.rybbit.io/api",
   siteId: "1",
 });
@@ -41,26 +57,44 @@ rybbit.init({
 
 ### Configuration Options
 
-| Option (`init`)       | Type               | Default | Description                                                                                                                                                             |
-| :-------------------- | :----------------- | :------ | :---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `analyticsHost`       | `string`           | -       | **Required.** URL of your Rybbit analytics instance (e.g., `https://rybbit.yourdomain.com/api`).                                                                        |
-| `siteId`              | `string \| number` | -       | **Required.** The Site ID for your website obtained from your Rybbit instance.                                                                                          |
-| `debounce`            | `number`           | `500`   | Debounce time in milliseconds for tracking pageviews after route changes. Set to `0` to disable debouncing (track immediately).                                         |
-| `autoTrackPageviews`  | `boolean`          | `true`  | Track pageviews on initial load.                                                                                                                                        |
-| `autoTrackSpaRoutes`  | `boolean`          | `true`  | Track pageviews on SPA navigation (if `autoTrackPageviews` is `true`).                                                                                                  |
-| `trackQuerystring`    | `boolean`          | `true`  | Include the URL's query string (e.g., `?utm_source=google`) in the tracked `querystring` data.                                                                          |
-| `trackOutboundLinks`  | `boolean`          | `true`  | Track clicks on anchor (`<a>`) tags that link to external domains.                                                                                                      |
-| `trackHashRoutes`     | `boolean`          | `true`  | Track URL hash changes.                                                                                                                                                 |
-| `trackDataAttributes` | `boolean`          | `true`  | Track clicks on elements with a `data-rybbit-event` attribute.                                                                                                          |
-| `trackWebVitals`      | `boolean`          | `false`  | Track website performance metrics.                                                                                                                                      |
-| `webVitalsTimeout`    | `number`           | `20000` | Timeout in milliseconds for sending web vitals.                                                                                                                         |
-| `skipPatterns`        | `string[]`         | `[]`    | Array of path patterns. Pageviews whose path matches any pattern will **not** be tracked. See [Path Matching](#path-matching).                                          |
-| `maskPatterns`        | `string[]`         | `[]`    | Array of path patterns. For matching pageview paths, the original path will be **replaced** by the pattern itself in tracked data. See [Path Matching](#path-matching). |
-| `debug`               | `boolean`          | `false` | Enable detailed logging to the browser console.                                                                                                                         |
+#### Required Options
+
+| Option          | Type               | Description                                                                          |
+| :-------------- | :----------------- | :----------------------------------------------------------------------------------- |
+| `analyticsHost` | `string`           | URL of your Rybbit analytics instance (e.g., `https://rybbit.yourdomain.com/api`). |
+| `siteId`        | `string \| number` | The Site ID for your website obtained from your Rybbit instance.       |
+
+#### Local Configuration Options
+
+These options are configured in your code and control SDK behavior locally:
+
+| Option                 | Type     | Default | Description                                                                                                                                                             |
+| :--------------------- | :------- | :------ | :---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `debounce`             | `number` | `500`   | Debounce time in milliseconds for tracking pageviews after route changes. Set to `0` to disable debouncing (track immediately).                                         |
+| `skipPatterns`         | `string[]` | `[]`    | Array of path patterns. Pageviews whose path matches any pattern will **not** be tracked. See [Path Matching](#path-matching).                                          |
+| `maskPatterns`         | `string[]` | `[]`    | Array of path patterns. For matching pageview paths, the original path will be **replaced** by the pattern itself in tracked data. See [Path Matching](#path-matching). |
+| `debug`                | `boolean` | `false` | Enable detailed logging to the browser console.                                                                                                                         |
+| `replayPrivacyConfig`  | `object` | -       | Privacy settings for session replay. See [Session Replay](#session-replay).                                                                                            |
+
+#### Remote Configuration
+
+These settings are controlled through your Rybbit dashboard and cannot be set in the init config:
+
+| Dashboard Setting      | Description                                                | Default |
+| :--------------------- | :--------------------------------------------------------- | :------ |
+| Track Initial Pageview | Track pageview on initial page load                        | `true`  |
+| Track SPA Navigation   | Track pageviews on Single Page Application route changes   | `true`  |
+| Track URL Parameters   | Include URL query strings in tracked data                  | `true`  |
+| Track Outbound Links   | Automatically track clicks on external links               | `true`  |
+| Track Web Vitals       | Track Core Web Vitals performance metrics                  | `false` |
+| Capture Errors         | Enable automatic error tracking                            | `false` |
+| Session Replay         | Enable session replay recording                            | `false` |
+
+If fetching settings fails or times out, the SDK uses sensible defaults.
 
 ## Tracking Pageviews
 
-Pageviews are tracked automatically if `autoTrackPageviews` is enabled (default). This includes the initial page load and subsequent route changes in Single Page Applications (SPAs) if `autoTrackSpaRoutes` is also enabled.
+Pageviews are tracked automatically based on your dashboard settings. This includes the initial page load and subsequent route changes in Single Page Applications (SPAs).
 
 ### Syntax
 
@@ -78,7 +112,7 @@ rybbit.pageview(path?: string);
 
 ### When to Use Manually
 
-- **Automatic tracking disabled:** If you set `autoTrackPageviews: false` during initialization.
+- **Automatic tracking disabled:** If you disabled automatic pageview tracking in your dashboard.
 - **Virtual Pageviews:** In SPAs where a significant view change occurs without a URL change.
 - **Specific Timing:** If you need to ensure a pageview is tracked only after certain conditions are met.
 
@@ -144,7 +178,7 @@ function addToCart(item) {
 
 ### Declarative Tracking with Data Attributes
 
-If `trackDataAttributes` is enabled (default), you can track events directly from your HTML. The SDK will automatically listen for clicks on elements with the `data-rybbit-event` attribute.
+The SDK automatically listens for clicks on elements with the `data-rybbit-event` attribute.
 
 - `data-rybbit-event="<event-name>"`: This attribute makes the element trackable. The value is used as the event name.
 - `data-rybbit-prop-<property-name>="<value>"`: You can add multiple properties to the event by using this attribute format. The SDK collects all attributes starting with `data-rybbit-prop-` and includes them as key-value pairs in the event data.
@@ -166,7 +200,7 @@ If `trackDataAttributes` is enabled (default), you can track events directly fro
 
 ## Tracking Outbound Links
 
-Outbound links (links to external domains) are tracked automatically by default if `trackOutboundLinks` is enabled. The SDK attaches a global click listener to capture clicks on `<a>` tags with external `href` attributes.
+Outbound links (links to external domains) are tracked automatically by default based on your dashboard settings. The SDK attaches a global click listener to capture clicks on `<a>` tags with external `href` attributes.
 
 ### Syntax
 
@@ -182,7 +216,7 @@ rybbit.outbound(url: string, text?: string, target?: string);
 
 ### When to Use Manually
 
-- **Automatic tracking disabled:** If you set `trackOutboundLinks: false` during init.
+- **Automatic tracking disabled:** If you disabled outbound link tracking in your dashboard.
 - **Non-anchor elements:** If you trigger navigation to an external site using JavaScript from an element that isn't an `<a>` tag.
 
 ### Example
@@ -194,6 +228,116 @@ document.getElementById("external-service-button")?.addEventListener("click", ()
   rybbit.outbound(url, "Visit External Service", "_blank");
   // Optionally navigate after tracking
   window.open(url, "_blank");
+});
+```
+
+## Error Tracking
+
+The SDK can automatically capture JavaScript errors and unhandled promise rejections. This feature must be enabled in your Rybbit dashboard.
+
+### Automatic Error Capture
+
+When enabled in your dashboard, the SDK will automatically track:
+- Uncaught exceptions (`window.error` events)
+- Unhandled promise rejections (`window.unhandledrejection` events)
+
+### Manual Error Capture
+
+You can manually capture errors with additional context:
+
+#### Syntax
+
+```typescript
+rybbit.captureError(error: Error | ErrorEvent, context?: TrackProperties);
+```
+
+#### Parameters
+
+- **`error`** (`Error | ErrorEvent`, Required): The error object to capture.
+- **`context`** (`object`, Optional): Additional context to include with the error.
+
+#### Example
+
+```javascript
+try {
+  // Some risky operation
+  processPayment(orderData);
+} catch (error) {
+  rybbit.captureError(error, {
+    component: "checkout",
+    orderId: "order-123",
+    userId: currentUser.id
+  });
+  // Handle error in your UI
+  showErrorMessage("Payment failed");
+}
+
+// Capture error from async operation
+async function fetchUserData(userId) {
+  try {
+    const response = await fetch(`/api/users/${userId}`);
+    return await response.json();
+  } catch (error) {
+    rybbit.captureError(error, {
+      endpoint: "/api/users",
+      userId: userId
+    });
+    throw error;
+  }
+}
+```
+
+<Callout type="info">
+Manual error capture only works when error tracking is enabled in your dashboard settings. If it's disabled, calling `captureError()` will log a warning.
+</Callout>
+
+## Session Replay
+
+Session replay records user interactions on your website, allowing you to watch how users navigate and interact with your site. This feature requires the `rrweb` peer dependency.
+
+### Installation
+
+```bash
+npm install rrweb
+```
+
+### Enabling Session Replay
+
+Session replay must be enabled in your Rybbit dashboard under. Once enabled, recording starts automatically when the SDK initializes.
+
+### Manual Controls
+
+You can manually start, stop, and check the status of session replay:
+
+```typescript
+// Start recording (only works if enabled in dashboard)
+rybbit.startSessionReplay();
+
+// Stop recording
+rybbit.stopSessionReplay();
+
+// Check if currently recording
+const isRecording = rybbit.isSessionReplayActive();
+if (isRecording) {
+  console.log("Session is being recorded");
+}
+```
+
+### Privacy Configuration
+
+Session replay includes privacy-focused defaults and configuration options:
+
+```javascript
+await rybbit.init({
+  analyticsHost: "https://api.rybbit.io/api",
+  siteId: "1",
+  replayPrivacyConfig: {
+    maskAllInputs: true, // Mask all input values (default: true)
+    maskTextSelectors: [
+      ".sensitive-data",  // Mask text in elements with this class
+      "#credit-card"      // Mask specific element IDs
+    ]
+  }
 });
 ```
 
@@ -246,6 +390,58 @@ let currentUserId = rybbit.getUserId();
 console.log("Current Rybbit User ID:", currentUserId);
 ```
 
+## Page Change Callbacks
+
+Register callbacks that execute when the page or route changes. This is useful for integrating with third-party tools or triggering custom logic on navigation.
+
+### Syntax
+
+```typescript
+rybbit.onPageChange(callback: (newPath: string, previousPath: string) => void): () => void;
+```
+
+### Parameters
+
+- **`callback`** (`function`, Required): Function to execute on page change. Receives:
+  - `newPath`: The new pathname
+  - `previousPath`: The previous pathname
+
+### Returns
+
+Returns an unsubscribe function to remove the callback.
+
+### Example
+
+```javascript
+// Register a callback
+const unsubscribe = rybbit.onPageChange((newPath, previousPath) => {
+  console.log(`Navigated from ${previousPath} to ${newPath}`);
+
+  // Example: Track scroll position reset
+  window.scrollTo(0, 0);
+});
+
+// Later, to remove the callback
+unsubscribe();
+
+// Example: Multiple callbacks can be registered
+rybbit.onPageChange((newPath) => {
+  // Update page title
+  document.title = `${newPath} - My Site`;
+});
+
+rybbit.onPageChange((newPath, previousPath) => {
+  // Log navigation for debugging
+  if (process.env.NODE_ENV === 'development') {
+    console.log('Navigation:', { from: previousPath, to: newPath });
+  }
+});
+```
+
+<Callout type="info">
+Callbacks are only triggered when the pathname actually changes. Multiple calls to the same path won't trigger callbacks repeatedly.
+</Callout>
+
 ## Cleanup
 
 In Single Page Applications or other dynamic environments, you may need to manually clean up the listeners that the SDK sets up.
@@ -254,6 +450,32 @@ In Single Page Applications or other dynamic environments, you may need to manua
 
 ```typescript
 rybbit.cleanup();
+```
+
+### What Gets Cleaned Up
+
+- SPA route change listeners (`popstate`, `hashchange`)
+- Outbound link click listeners
+- Data attribute click listeners
+- Error tracking listeners
+- Session replay recording
+- Page change callbacks
+- Resets initialization state
+
+### Example
+
+```javascript
+// In React
+useEffect(() => {
+  rybbit.init({
+    analyticsHost: "https://api.rybbit.io/api",
+    siteId: "1",
+  });
+
+  return () => {
+    rybbit.cleanup();
+  };
+}, []);
 ```
 
 ## Path Matching
@@ -277,7 +499,7 @@ If a page's path matches any pattern in `skipPatterns`, the pageview for that pa
 
 ```javascript
 // Example skipPatterns in init
-rybbit.init({
+await rybbit.init({
   // ... other options
   skipPatterns: [
     "/admin/**",        // Skip all admin sections
@@ -304,7 +526,7 @@ If a path matches both a `skipPatterns` and a `maskPatterns` pattern, **skipping
 
 ```javascript
 // Example maskPatterns in init
-rybbit.init({
+await rybbit.init({
   // ... other options
   maskPatterns: [
     "/users/*/profile",  // Group all user profile views

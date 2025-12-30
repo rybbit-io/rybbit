@@ -1,6 +1,6 @@
 import mapboxgl from "mapbox-gl";
 import { isNil, round } from "lodash";
-import type { GetSessionsResponse } from "../../../../../../api/analytics/userSessions";
+import type { GetSessionsResponse } from "../../../../../../api/analytics/endpoints";
 import { CLUSTER_LAYER_ID, CLUSTER_COUNT_LAYER_ID, SOURCE_ID, SPREAD_RADIUS_DEGREES } from "./timelineLayerConstants";
 
 /**
@@ -10,7 +10,7 @@ function hashStringToNumber(str: string): number {
   let hash = 0;
   for (let i = 0; i < str.length; i++) {
     const char = str.charCodeAt(i);
-    hash = ((hash << 5) - hash) + char;
+    hash = (hash << 5) - hash + char;
     hash = hash & hash; // Convert to 32bit integer
   }
   return Math.abs(hash);
@@ -92,10 +92,7 @@ export function spreadOverlappingPoints(
         const offsetLat = Math.sin(angle) * radius;
         const offsetLon = (Math.cos(angle) * radius) / lonAdjustment;
 
-        coordinateMap.set(session.session_id, [
-          baseLon + offsetLon,
-          baseLat + offsetLat,
-        ]);
+        coordinateMap.set(session.session_id, [baseLon + offsetLon, baseLat + offsetLat]);
       });
     }
   });

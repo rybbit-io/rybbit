@@ -1,7 +1,7 @@
 import { FilterParameter } from "@rybbit/shared";
 import mapboxgl from "mapbox-gl";
 import { useEffect, useMemo, useRef } from "react";
-import { useSingleCol } from "../../../../../api/analytics/useSingleCol";
+import { useMetric } from "../../../../../api/analytics/hooks/useGetMetric";
 import { useSubdivisions } from "../../../../../lib/geo";
 import { addFilter } from "../../../../../lib/store";
 import { createColorScale } from "../../utils/colorScale";
@@ -16,7 +16,7 @@ interface UseSubdivisionsLayerProps {
 export function useSubdivisionsLayer({ map, mapLoaded, mapView }: UseSubdivisionsLayerProps) {
   const popupRef = useRef<mapboxgl.Popup | null>(null);
 
-  const { data: subdivisionData } = useSingleCol({ parameter: "region", limit: 10000 });
+  const { data: subdivisionData } = useMetric({ parameter: "region", limit: 10000 });
   const { data: subdivisionsGeoData } = useSubdivisions();
   const colorScale = useMemo(() => createColorScale(subdivisionData?.data), [subdivisionData?.data]);
 

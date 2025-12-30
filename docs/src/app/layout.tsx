@@ -1,5 +1,5 @@
 import "@/app/global.css";
-import { RootProvider } from "fumadocs-ui/provider";
+import { RootProvider } from "fumadocs-ui/provider/next";
 import { Inter } from "next/font/google";
 import Script from "next/script";
 import type { ReactNode } from "react";
@@ -28,11 +28,11 @@ export const metadata: Metadata = {
   authors: [{ name: "Rybbit Team" }],
   creator: "Rybbit",
   publisher: "Rybbit",
-  metadataBase: new URL("https://rybbit.io"),
+  metadataBase: new URL("https://rybbit.com"),
   openGraph: {
     type: "website",
     locale: "en_US",
-    url: "https://rybbit.io",
+    url: "https://rybbit.com",
     siteName: "Rybbit",
     title: "Rybbit - Privacy-First Web Analytics Platform",
     description:
@@ -52,7 +52,7 @@ export const metadata: Metadata = {
     description:
       "Open-source, privacy-focused web analytics platform. Track your website performance without compromising user privacy.",
     images: ["/opengraph-image.png"],
-    creator: "@rybbitio",
+    creator: "@yang_frog",
   },
   robots: {
     index: true,
@@ -76,9 +76,9 @@ const isDev = process.env.NODE_ENV === "development";
 
 export default function Layout({ children }: { children: ReactNode }) {
   return (
-    <html lang="en" suppressHydrationWarning className="dark">
+    <html lang="en" suppressHydrationWarning>
       <Script
-        src="https://demo.rybbit.io/api/script.js"
+        src="https://demo.rybbit.com/api/script.js"
         data-site-id="21"
         strategy="afterInteractive"
         data-session-replay="true"
@@ -92,9 +92,8 @@ export default function Layout({ children }: { children: ReactNode }) {
       <body className={`flex flex-col min-h-screen ${inter.variable} font-sans`}>
         <RootProvider
           theme={{
-            forcedTheme: "dark",
-            defaultTheme: "dark",
-            enabled: false,
+            enabled: true,
+            enableSystem: true,
           }}
         >
           {children}

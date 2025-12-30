@@ -1,0 +1,482 @@
+---
+title: Caddy Proxy Setup
+description: Configure Caddy reverse proxy to serve Rybbit tracking with automatic HTTPS
+---
+
+import { Steps } from 'fumadocs-ui/components/steps';
+import { Callout } from 'fumadocs-ui/components/callout';
+import { Tabs, Tab } from 'fumadocs-ui/components/tabs';
+
+Caddy is a powerful web server with automatic HTTPS that makes reverse proxying simple and secure. This guide shows how to configure Caddy to proxy Rybbit tracking through your own domain.
+
+## Overview
+
+Caddy's `reverse_proxy` directive makes it incredibly easy to proxy requests. Combined with automatic HTTPS via Let's Encrypt, Caddy provides a secure, low-configuration solution for proxying analytics.
+
+**What you'll achieve:**
+- Automatic HTTPS with Let's Encrypt
+- Simple reverse proxy configuration
+- Header forwarding for accurate tracking
+- Support all Rybbit features
+
+## Prerequisites
+
+- Caddy installed (version 2.0 or later)
+- Domain pointing to your server
+- Your Rybbit instance URL:
+  - **Cloud hosted**: `https://app.rybbit.io`
+  - **Self-hosted**: Your instance URL
+- Your Rybbit site ID (found in your dashboard)
+
+<Callout type="info">
+Caddy automatically obtains and renews SSL certificates from Let's Encrypt. No manual SSL configuration needed!
+</Callout>
+
+## Implementation
+
+<Steps>
+
+### Configure Caddyfile
+
+Add or update your Caddyfile with the analytics proxy configuration:
+
+<Tabs>
+<Tab value="full-proxy-recommended" title="Full Proxy (Recommended)">
+
+```txt
+# /etc/caddy/Caddyfile
+
+yourdomain.com {
+    # Your main site configuration
+    # ...
+
+    # Rybbit Analytics Proxy
+    # Main tracking script
+    handle /analytics/script.js {
+        reverse_proxy https://app.rybbit.io {
+            header_up Host app.rybbit.io
+            header_up X-Real-IP {remote_host}
+            header_up X-Forwarded-For {remote_host}
+            header_up X-Forwarded-Proto {scheme}
+        }
+        rewrite * /api/script.js
+    }
+
+    # Unminified script
+    handle /analytics/script-full.js {
+        reverse_proxy https://app.rybbit.io {
+            header_up Host app.rybbit.io
+            header_up X-Real-IP {remote_host}
+            header_up X-Forwarded-For {remote_host}
+        }
+        rewrite * /api/script-full.js
+    }
+
+    # Session replay script
+    handle /analytics/replay.js {
+        reverse_proxy https://app.rybbit.io {
+            header_up Host app.rybbit.io
+            header_up X-Real-IP {remote_host}
+            header_up X-Forwarded-For {remote_host}
+        }
+        rewrite * /api/replay.js
+    }
+
+    # Web Vitals metrics script
+    handle /analytics/metrics.js {
+        reverse_proxy https://app.rybbit.io {
+            header_up Host app.rybbit.io
+            header_up X-Real-IP {remote_host}
+            header_up X-Forwarded-For {remote_host}
+        }
+        rewrite * /api/metrics.js
+    }
+
+    # Event tracking endpoint
+    handle /analytics/track {
+        reverse_proxy https://app.rybbit.io {
+            header_up Host app.rybbit.io
+            header_up X-Real-IP {remote_host}
+            header_up X-Forwarded-For {remote_host}
+            header_up Content-Type {header.Content-Type}
+        }
+        rewrite * /api/track
+    }
+
+    # User identification endpoint
+    handle /analytics/identify {
+        reverse_proxy https://app.rybbit.io {
+            header_up Host app.rybbit.io
+            header_up X-Real-IP {remote_host}
+            header_up X-Forwarded-For {remote_host}
+            header_up Content-Type {header.Content-Type}
+        }
+        rewrite * /api/identify
+    }
+
+    # Session replay recording
+    handle /analytics/session-replay/record/* {
+        reverse_proxy https://app.rybbit.io {
+            header_up Host app.rybbit.io
+            header_up X-Real-IP {remote_host}
+            header_up X-Forwarded-For {remote_host}
+            header_up Content-Type {header.Content-Type}
+        }
+        rewrite * /api/session-replay/record{path}
+    }
+
+    # Site configuration
+    handle /analytics/site/tracking-config/* {
+        reverse_proxy https://app.rybbit.io {
+            header_up Host app.rybbit.io
+            header_up X-Real-IP {remote_host}
+            header_up X-Forwarded-For {remote_host}
+        }
+        rewrite * /site/tracking-config{path}
+    }
+}
+```
+
+<Callout type="info">
+Replace `app.rybbit.io` with your self-hosted Rybbit instance URL if you're not using the cloud version.
+</Callout>
+
+</Tab>
+<Tab value="minimal-proxy" title="Minimal Proxy">
+
+```txt
+# /etc/caddy/Caddyfile
+
+yourdomain.com {
+    # Main tracking script
+    handle /analytics/script.js {
+        reverse_proxy https://app.rybbit.io {
+            header_up Host app.rybbit.io
+            header_up X-Real-IP {remote_host}
+            header_up X-Forwarded-For {remote_host}
+        }
+        rewrite * /api/script.js
+    }
+
+    # Event tracking
+    handle /analytics/track {
+        reverse_proxy https://app.rybbit.io {
+            header_up Host app.rybbit.io
+            header_up X-Real-IP {remote_host}
+            header_up X-Forwarded-For {remote_host}
+        }
+        rewrite * /api/track
+    }
+}
+```
+
+</Tab>
+<Tab value="simplified-with-handle-path" title="Simplified with Handle Path">
+
+Caddy 2.4+ supports a cleaner syntax with `handle_path`:
+
+```txt
+# /etc/caddy/Caddyfile
+
+yourdomain.com {
+    handle_path /analytics/* {
+        reverse_proxy https://app.rybbit.io {
+            header_up Host app.rybbit.io
+            header_up X-Real-IP {remote_host}
+            header_up X-Forwarded-For {remote_host}
+        }
+        rewrite * /api{uri}
+    }
+}
+```
+
+This proxies all `/analytics/*` requests to `https://app.rybbit.io/api/*`.
+
+</Tab>
+</Tabs>
+
+### Validate Caddyfile
+
+Test your configuration for syntax errors:
+
+```bash
+caddy validate --config /etc/caddy/Caddyfile
+```
+
+You should see:
+```
+Valid configuration
+```
+
+### Reload Caddy
+
+Apply the changes by reloading Caddy:
+
+```bash
+sudo caddy reload --config /etc/caddy/Caddyfile
+```
+
+Or if using systemd:
+
+```bash
+sudo systemctl reload caddy
+```
+
+<Callout type="info">
+Caddy will automatically obtain an SSL certificate from Let's Encrypt on first request if one doesn't exist.
+</Callout>
+
+### Update Your Tracking Script
+
+Update your HTML to load the script from your proxied domain:
+
+```html
+<!DOCTYPE html>
+<html>
+<head>
+    <!-- ... other head elements -->
+    <script src="/analytics/script.js" async data-site-id="YOUR_SITE_ID"></script>
+</head>
+<body>
+    <!-- Your content -->
+</body>
+</html>
+```
+
+Replace `YOUR_SITE_ID` with your actual site ID from the Rybbit dashboard.
+
+### Verify the Setup
+
+Test your configuration:
+
+1. **Check Caddy is running**:
+   ```bash
+   sudo systemctl status caddy
+   ```
+
+2. **Test script loading**:
+   ```bash
+   curl -I https://yourdomain.com/analytics/script.js
+   ```
+
+   You should see `HTTP/2 200` with `content-type: application/javascript`.
+
+3. **Open your website** in a browser with Developer Tools and verify:
+   - Script loads from `/analytics/script.js`
+   - Tracking requests go to `/analytics/track`
+   - Data appears in Rybbit dashboard
+
+</Steps>
+
+## How It Works
+
+Caddy's `reverse_proxy` directive forwards requests to Rybbit's servers:
+
+1. Browser requests `https://yourdomain.com/analytics/script.js`
+2. Caddy matches the handle block
+3. Rewrites the path to `/api/script.js`
+4. Forwards to `https://app.rybbit.io/api/script.js` with proper headers
+5. Returns response to browser
+
+The Rybbit script auto-detects it's being served from your domain and sends all tracking to your domain's endpoints.
+
+## Advanced Configuration
+
+### Caching with Cache-Control
+
+Add caching headers for better performance:
+
+```txt
+yourdomain.com {
+    # Scripts - cache for 1 hour
+    handle /analytics/script.js {
+        reverse_proxy https://app.rybbit.io {
+            header_up Host app.rybbit.io
+            header_up X-Real-IP {remote_host}
+            header_up X-Forwarded-For {remote_host}
+        }
+        rewrite * /api/script.js
+        header Cache-Control "public, max-age=3600"
+    }
+
+    # Config - cache for 5 minutes
+    handle /analytics/site/tracking-config/* {
+        reverse_proxy https://app.rybbit.io {
+            header_up Host app.rybbit.io
+            header_up X-Real-IP {remote_host}
+            header_up X-Forwarded-For {remote_host}
+        }
+        rewrite * /site/tracking-config{path}
+        header Cache-Control "public, max-age=300"
+    }
+
+    # Tracking - no cache
+    handle /analytics/track {
+        reverse_proxy https://app.rybbit.io {
+            header_up Host app.rybbit.io
+            header_up X-Real-IP {remote_host}
+            header_up X-Forwarded-For {remote_host}
+        }
+        rewrite * /api/track
+        header Cache-Control "no-store"
+    }
+}
+```
+
+### Subdomain Proxy
+
+Use a dedicated subdomain for analytics:
+
+```txt
+# /etc/caddy/Caddyfile
+
+analytics.yourdomain.com {
+    reverse_proxy https://app.rybbit.io {
+        header_up Host app.rybbit.io
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+    }
+    rewrite * /api{uri}
+}
+```
+
+Then use:
+```html
+<script src="https://analytics.yourdomain.com/script.js" data-site-id="123"></script>
+```
+
+### Request Size Limits
+
+For session replay, increase max body size:
+
+```txt
+yourdomain.com {
+    # Increase request body limit for session replay
+    handle /analytics/session-replay/record/* {
+        request_body {
+            max_size 10MB
+        }
+        reverse_proxy https://app.rybbit.io {
+            header_up Host app.rybbit.io
+            header_up X-Real-IP {remote_host}
+            header_up X-Forwarded-For {remote_host}
+        }
+        rewrite * /api/session-replay/record{path}
+    }
+}
+```
+
+### Environment-Based Configuration
+
+Use Caddy's environment variable support:
+
+```txt
+# /etc/caddy/Caddyfile
+
+{$DOMAIN:yourdomain.com} {
+    handle_path /analytics/* {
+        reverse_proxy {$RYBBIT_HOST:https://app.rybbit.io} {
+            header_up Host {upstream_hostport}
+            header_up X-Real-IP {remote_host}
+            header_up X-Forwarded-For {remote_host}
+        }
+        rewrite * /api{uri}
+    }
+}
+```
+
+Then set environment variables:
+```bash
+export DOMAIN=yourdomain.com
+export RYBBIT_HOST=https://app.rybbit.io
+caddy run
+```
+
+### Rate Limiting
+
+Protect your proxy with rate limiting using the `rate_limit` plugin:
+
+```txt
+yourdomain.com {
+    handle /analytics/track {
+        rate_limit {
+            zone analytics {
+                key {remote_host}
+                events 100
+                window 1m
+            }
+        }
+        reverse_proxy https://app.rybbit.io {
+            header_up Host app.rybbit.io
+            header_up X-Real-IP {remote_host}
+            header_up X-Forwarded-For {remote_host}
+        }
+        rewrite * /api/track
+    }
+}
+```
+
+<Callout type="warn">
+The `rate_limit` directive requires the [caddy-ratelimit plugin](https://github.com/mholt/caddy-ratelimit). Install with: `xcaddy build --with github.com/mholt/caddy-ratelimit`
+</Callout>
+
+## Troubleshooting
+
+### Certificate errors
+
+**Problem**: Caddy fails to obtain SSL certificate.
+
+**Solution**:
+1. Verify domain points to your server (DNS)
+2. Check ports 80 and 443 are open
+3. Ensure no other process is using port 443
+4. Check Caddy logs: `journalctl -u caddy -f`
+
+### Incorrect geolocation
+
+**Problem**: All visitors show same location.
+
+**Solution**:
+Ensure you're forwarding client IP:
+```txt
+reverse_proxy https://app.rybbit.io {
+    header_up X-Real-IP {remote_host}
+    header_up X-Forwarded-For {remote_host}
+}
+```
+
+### 502 Bad Gateway
+
+**Problem**: Caddy returns 502 when accessing analytics endpoints.
+
+**Solution**:
+1. Verify Rybbit backend is accessible:
+   ```bash
+   curl -I https://app.rybbit.io/api/script.js
+   ```
+2. Check Caddy logs for errors:
+   ```bash
+   journalctl -u caddy -n 50
+   ```
+
+### Path rewriting not working
+
+**Problem**: Requests go to wrong Rybbit endpoints.
+
+**Solution**:
+Use the `rewrite` directive correctly:
+```txt
+handle /analytics/script.js {
+    rewrite * /api/script.js  # Rewrite before reverse_proxy
+    reverse_proxy https://app.rybbit.io {
+        # ... headers
+    }
+}
+```
+
+## Related Resources
+
+- [Tracking Script Documentation](/docs/script) - Script configuration options
+- [Generic Proxy Guide](/docs/proxy-guide/get-started) - Framework-agnostic concepts
+- [Caddy Documentation](https://caddyserver.com/docs/) - Official Caddy docs
+- [Caddy reverse_proxy](https://caddyserver.com/docs/caddyfile/directives/reverse_proxy) - Reverse proxy directive docs

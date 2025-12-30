@@ -2,7 +2,7 @@ import { FilterParameter } from "@rybbit/shared/dist/filters";
 import { round } from "lodash";
 import mapboxgl from "mapbox-gl";
 import { useEffect, useRef } from "react";
-import { useGetSessionLocations } from "../../../../../api/analytics/useGetSessionLocations";
+import { useGetSessionLocations } from "../../../../../api/analytics/hooks/useGetSessionLocations";
 import { addFilter, removeFilter, useStore } from "../../../../../lib/store";
 import { renderCountryFlag } from "../../utils/renderCountryFlag";
 

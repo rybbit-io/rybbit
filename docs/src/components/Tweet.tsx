@@ -33,18 +33,18 @@ export const MagicTweet = ({ tweet, className, ...props }: { tweet: Tweet; class
   return (
     <div
       className={cn(
-        "relative flex size-full max-w-lg flex-col gap-2 overflow-hidden rounded-lg p-4 backdrop-blur-md bg-neutral-800/20 border border-neutral-800/50",
+        "relative flex size-full max-w-lg flex-col gap-2 overflow-hidden rounded-lg p-4 backdrop-blur-md bg-neutral-100/50 dark:bg-neutral-800/20 border border-neutral-300/50 dark:border-neutral-800/50",
         className
       )}
       {...props}
     >
       <TweetHeader tweet={enrichedTweet} />
       <TweetBody tweet={enrichedTweet} />
-      {tweet.id_str !== "1920425974954381456" && (
+      {/* {tweet.id_str !== "1920425974954381456" && (
         <div className="hidden sm:block">
           <TweetMedia tweet={enrichedTweet} />
         </div>
-      )}
+      )} */}
     </div>
   );
 };

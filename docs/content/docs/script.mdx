@@ -1,8 +1,9 @@
 ---
-title: Tracking Script
+title: Tracking script
 description: How to install and configure the Rybbit tracking script
 ---
 
+import { Callout } from 'fumadocs-ui/components/callout';
 
 To start tracking user activity on your website, add the Rybbit tracking script to your site's HTML.
 
@@ -13,6 +14,10 @@ The webpage should give you this script tag like this when you first add a websi
 <script src="https://app.rybbit.io/api/script.js" async data-site-id="YOUR_SITE_ID"></script>
 ```
 If you are self-hosting Rybbit `app.rybbit.io` will be domain of your Rybbit instance.
+
+<Callout type="info">
+  **Bypass Ad Blockers**: Some ad blockers may block analytics scripts regardless of privacy compliance. To improve tracking accuracy, you can proxy the tracking script through your own domain. See our [Proxy Guide](/docs/proxy-guide) for setup instructions for Next.js, Nginx, Caddy, and more.
+</Callout>
 
 ## Configuration
 
@@ -62,7 +67,7 @@ data-mask-patterns='["/users/*/settings", "/accounts/**", "/orders/*/details"]'
 ```html
 <script
   src="https://api.rybbit.io/api/script.js"
-  async
+  defer
   data-site-id="456"
   data-skip-patterns='["/admin/**", "/preview/*"]'
   data-mask-patterns='["/users/*/profile", "/orders/**"]'

@@ -27,6 +27,7 @@ declare global {
       error: () => {},
       trackOutbound: () => {},
       identify: () => {},
+      setTraits: () => {},
       clearUserId: () => {},
       getUserId: () => null,
       startSessionReplay: () => {},
@@ -147,7 +148,8 @@ declare global {
     error: (error: Error, properties: ErrorProperties = {}) => tracker.trackError(error, properties),
     trackOutbound: (url: string, text: string = "", target: string = "_self") =>
       tracker.trackOutbound(url, text, target),
-    identify: (userId: string) => tracker.identify(userId),
+    identify: (userId: string, traits?: Record<string, unknown>) => tracker.identify(userId, traits),
+    setTraits: (traits: Record<string, unknown>) => tracker.setTraits(traits),
     clearUserId: () => tracker.clearUserId(),
     getUserId: () => tracker.getUserId(),
     startSessionReplay: () => tracker.startSessionReplay(),

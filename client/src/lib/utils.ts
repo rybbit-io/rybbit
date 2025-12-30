@@ -1,6 +1,7 @@
 import { clsx, type ClassValue } from "clsx";
 import { Duration } from "luxon";
 import { twMerge } from "tailwind-merge";
+import { generateName } from "../components/Avatar";
 import { userLocale } from "./dateTimeUtils";
 
 export function cn(...inputs: ClassValue[]) {
@@ -90,4 +91,19 @@ export function normalizeDomain(domain: string): string {
 export function isValidDomain(domain: string): boolean {
   const domainRegex = /^(?:https?:\/\/)?(?:[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,}$/;
   return domainRegex.test(domain);
+}
+
+export function getUserDisplayName<
+  T extends { identified_user_id?: string; traits?: Record<string, unknown> | null; user_id?: string },
+>(data: T) {
+  const traitsUsername = data?.traits?.username as string | undefined;
+  const traitsName = data?.traits?.name as string | undefined;
+  const traitsEmail = data?.traits?.email as string | undefined;
+  const isIdentified = !!data?.identified_user_id;
+  return (
+    traitsUsername ||
+    traitsName ||
+    traitsEmail ||
+    (isIdentified ? (data?.identified_user_id as string) : generateName(data?.user_id as string))
+  );
 }

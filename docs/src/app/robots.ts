@@ -1,29 +1,29 @@
-import { MetadataRoute } from 'next';
+import { MetadataRoute } from "next";
 
 export default function robots(): MetadataRoute.Robots {
-  const baseUrl = 'https://docs.rybbit.io';
-  
+  const baseUrl = "https://rybbit.com";
+
   return {
     rules: [
       {
-        userAgent: '*',
-        allow: '/',
+        userAgent: "*",
+        allow: "/",
         disallow: [
-          '/api/',
-          '/_next/',
-          '/static/',
-          '/*.json$',
-          '/*?*', // URLs with query parameters
-          '/404',
+          "/api/",
+          "/_next/",
+          "/static/",
+          "/*.json$",
+          "/*?*", // URLs with query parameters
+          "/404",
         ],
       },
       {
-        userAgent: 'Googlebot',
-        allow: '/',
+        userAgent: "Googlebot",
+        allow: "/",
       },
       {
-        userAgent: 'Bingbot',
-        allow: '/',
+        userAgent: "Bingbot",
+        allow: "/",
       },
     ],
     sitemap: `${baseUrl}/sitemap.xml`,

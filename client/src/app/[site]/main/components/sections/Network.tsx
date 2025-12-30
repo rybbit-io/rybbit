@@ -45,9 +45,9 @@ export function Network() {
                 <TabsTrigger value="asn_domain">ASN Domain</TabsTrigger>
               </TabsList>
             </div>
-            <div className="w-10">
+            <div className="w-7">
               <Button size="smIcon" onClick={() => setExpanded(!expanded)}>
-                <Expand />
+                <Expand className="w-4 h-4" />
               </Button>
             </div>
           </div>

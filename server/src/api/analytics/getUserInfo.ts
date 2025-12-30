@@ -1,10 +1,15 @@
 import { FastifyReply, FastifyRequest } from "fastify";
+import { eq, and } from "drizzle-orm";
 import { clickhouse } from "../../db/clickhouse/clickhouse.js";
-import { processResults } from "./utils.js";
+import { db } from "../../db/postgres/postgres.js";
+import { userProfiles, userAliases } from "../../db/postgres/schema.js";
+import { processResults } from "./utils/utils.js";
 
 interface UserPageviewData {
   sessions: number;
   duration: number;
+  user_id: string; // Device fingerprint
+  identified_user_id: string; // Custom user ID when identified
   country: string;
   region: string;
   city: string;
@@ -23,6 +28,18 @@ interface UserPageviewData {
   ip: string;
 }
 
+interface LinkedDevice {
+  anonymous_id: string;
+  created_at: string;
+}
+
+export interface UserInfoResponse {
+  data: UserPageviewData & {
+    traits: Record<string, unknown> | null;
+    linked_devices: LinkedDevice[];
+  };
+}
+
 export async function getUserInfo(
   req: FastifyRequest<{
     Params: {
@@ -34,13 +51,18 @@ export async function getUserInfo(
 ) {
   const { userId, site } = req.params;
 
+  const siteId = Number(site);
+
   try {
-    const queryResult = await clickhouse.query({
-      query: `
+    // Run ClickHouse query and Postgres queries in parallel
+    const [queryResult, profileResult, aliasesResult] = await Promise.all([
+      clickhouse.query({
+        query: `
     WITH sessions AS (
         SELECT
             session_id,
-            user_id,
+            argMax(user_id, timestamp) AS user_id,
+            argMax(identified_user_id, timestamp) AS identified_user_id,
             argMax(country, timestamp) AS country,
             argMax(region, timestamp) AS region,
             argMax(city, timestamp) AS city,
@@ -64,17 +86,18 @@ export async function getUserInfo(
         FROM
             events
         WHERE
-            user_id = {userId:String}
+            (events.identified_user_id = {userId:String} OR events.user_id = {userId:String})
             AND site_id = {site:Int32}
         GROUP BY
-            session_id,
-            user_id
+            session_id
         ORDER BY
             session_end DESC
     )
     SELECT
         COUNT(DISTINCT session_id) AS sessions,
         ROUND(avg(session_duration)) AS duration,
+        any(user_id) AS user_id,
+        any(identified_user_id) AS identified_user_id,
         any(country) as country,
         any(region) AS region,
         any(city) AS city,
@@ -94,12 +117,27 @@ export async function getUserInfo(
     FROM
         sessions
       `,
-      query_params: {
-        userId,
-        site,
-      },
-      format: "JSONEachRow",
-    });
+        query_params: {
+          userId,
+          site,
+        },
+        format: "JSONEachRow",
+      }),
+      // Get user profile traits from Postgres
+      db
+        .select()
+        .from(userProfiles)
+        .where(and(eq(userProfiles.siteId, siteId), eq(userProfiles.userId, userId)))
+        .limit(1),
+      // Get linked devices (all anonymous IDs for this user) from Postgres
+      db
+        .select({
+          anonymous_id: userAliases.anonymousId,
+          created_at: userAliases.createdAt,
+        })
+        .from(userAliases)
+        .where(and(eq(userAliases.siteId, siteId), eq(userAliases.userId, userId))),
+    ]);
 
     const data = await processResults<UserPageviewData>(queryResult);
 
@@ -110,7 +148,19 @@ export async function getUserInfo(
       });
     }
 
-    return res.send({ data: data[0] });
+    const traits = profileResult[0]?.traits || null;
+    const linked_devices = aliasesResult.map(alias => ({
+      anonymous_id: alias.anonymous_id,
+      created_at: alias.created_at,
+    }));
+
+    return res.send({
+      data: {
+        ...data[0],
+        traits,
+        linked_devices,
+      },
+    });
   } catch (error) {
     console.error("Error fetching user info:", error);
     return res.status(500).send({

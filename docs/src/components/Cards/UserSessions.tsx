@@ -1,31 +1,27 @@
-import Avatar from "boring-avatars";
-import { Clock, Eye, Laptop, MousePointerClick } from "lucide-react";
+import { Clock, Eye, Laptop, MousePointerClick, Users } from "lucide-react";
 import { Browser } from "../Browser";
 import { CountryFlag } from "../Country";
 import { OperatingSystem } from "../OperatingSystem";
 import { Card } from "./Card";
+import { Avatar } from "../Avatar";
 
 export function UserSessions() {
   return (
     <Card
       title="User Sessions"
       description="Track complete user journeys through your site with detailed session timelines."
+      icon={Users}
     >
-      <div className="mt-4 bg-neutral-900 p-4 rounded-md">
-        <div className="flex justify-between items-center mb-4">
+      <div className="space-y-4 mt-4 transform rotate-2 translate-x-8 translate-y-6  bg-neutral-100/50 dark:bg-neutral-800/20 border border-neutral-300/50 dark:border-neutral-800/50 pb-20 rounded-lg p-4 -mb-[100px] transition-transform duration-300 hover:scale-105 hover:rotate-3">
+        <div className="flex justify-between items-center mb-3">
           <div className="flex items-center gap-2">
-            <Avatar
-              size={32}
-              name={"billy"}
-              variant="marble"
-              colors={["#226756", "#6eaaa3", "#e8e8e8", "#bbc1e2", "#7182d6"]}
-            />
+            <Avatar size={28} id="john-doe" />
             <div>
-              <div className="text-sm">2c49ae3</div>
-              <div className="text-xs text-neutral-400">Today, 14:22 - 14:36 (14m)</div>
+              <div className="text-sm">John Doe</div>
+              <div className="text-xs text-neutral-500 dark:text-neutral-400">Today, 14:22 - 14:36 (14m)</div>
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5">
             <CountryFlag country="US" />
             <Browser browser="Chrome" />
             <OperatingSystem os="macOS" />
@@ -45,26 +41,26 @@ export function UserSessions() {
         </div> */}
 
         {/* Timeline */}
-        <div className="px-1 py-2">
+        <div className="px-1 py-1">
           {/* Event 1 */}
-          <div className="flex mb-3">
+          <div className="flex mb-2">
             <div className="relative flex-shrink-0">
-              <div className="absolute top-8 left-4 w-[1px] bg-neutral-700 h-[calc(100%-20px)]" />
-              <div className="flex items-center justify-center w-8 h-8 rounded-full bg-blue-900/30 border border-blue-500/50">
-                <span className="text-sm font-medium">1</span>
+              <div className="absolute top-7 left-3.5 w-[1px] bg-neutral-200 dark:bg-neutral-700 h-[calc(100%-16px)]" />
+              <div className="flex items-center justify-center w-7 h-7 rounded-full bg-neutral-50 border border-neutral-200 dark:bg-neutral-600/25 dark:border-neutral-600/25">
+                <span className="text-xs font-medium">1</span>
               </div>
             </div>
 
-            <div className="flex flex-col ml-3 flex-1">
-              <div className="flex items-center flex-1 py-1">
-                <Eye className="w-4 h-4 text-blue-500 mr-3" />
-                <div className="flex-1 min-w-0 mr-4">
+            <div className="flex flex-col ml-2 flex-1">
+              <div className="flex items-center flex-1 py-0.5">
+                <Eye className="w-3.5 h-3.5 text-blue-400 mr-2" />
+                <div className="flex-1 min-w-0 mr-3">
                   <div className="text-sm truncate">/home</div>
                 </div>
-                <div className="text-xs text-neutral-400">14:22:05</div>
+                <div className="text-xs text-neutral-500 dark:text-neutral-400">14:22:05</div>
               </div>
-              <div className="flex items-center pl-7 mt-1">
-                <div className="text-xs text-neutral-400">
+              <div className="flex items-center pl-5 mt-0.5">
+                <div className="text-xs text-neutral-500 dark:text-neutral-400">
                   <Clock className="w-3 h-3 inline mr-1" />
                   1m 32s
                 </div>
@@ -72,30 +68,30 @@ export function UserSessions() {
             </div>
           </div>
           {/* Event 2 */}
-          <div className="flex mb-3">
+          <div className="flex mb-2">
             <div className="relative flex-shrink-0">
-              <div className="absolute top-8 left-4 w-[1px] bg-neutral-700 h-[calc(100%-20px)]" />
-              <div className="flex items-center justify-center w-8 h-8 rounded-full bg-amber-900/30 border border-amber-500/50">
-                <span className="text-sm font-medium">2</span>
+              <div className="absolute top-7 left-3.5 w-[1px] bg-neutral-300 dark:bg-neutral-700 h-[calc(100%-16px)]" />
+              <div className="flex items-center justify-center w-7 h-7 rounded-full bg-neutral-50 border border-neutral-200 dark:bg-neutral-600/25 dark:border-neutral-600/25">
+                <span className="text-xs font-medium">2</span>
               </div>
             </div>
 
-            <div className="flex flex-col ml-3 flex-1">
-              <div className="flex items-center flex-1 py-1">
-                <MousePointerClick className="w-4 h-4 text-amber-500 mr-3" />
-                <div className="flex-1 min-w-0 mr-4">
+            <div className="flex flex-col ml-2 flex-1">
+              <div className="flex items-center flex-1 py-0.5">
+                <MousePointerClick className="w-3.5 h-3.5 text-amber-400 mr-2" />
+                <div className="flex-1 min-w-0 mr-3">
                   <div className="text-sm truncate">button_click</div>
                 </div>
-                <div className="text-xs text-neutral-400">14:25:55</div>
+                <div className="text-xs text-neutral-500 dark:text-neutral-400">14:25:55</div>
               </div>
-              <div className="flex items-center pl-7 mt-1">
-                <div className="flex flex-wrap gap-2">
-                  <div className="px-1.5 py-0 h-5 text-xs bg-neutral-800 rounded border border-neutral-700">
-                    <span className="text-neutral-400 font-light mr-1">button_id:</span>
+              <div className="flex items-center pl-5 mt-0.5">
+                <div className="flex flex-wrap gap-1.5">
+                  <div className="px-1.5 py-0 h-5 text-xs bg-neutral-200 dark:bg-neutral-800 rounded border border-neutral-400 dark:border-neutral-700">
+                    <span className="text-neutral-500 dark:text-neutral-400 font-light mr-1">button_id:</span>
                     <span>pricing</span>
                   </div>
-                  <div className="px-1.5 py-0 h-5 text-xs bg-neutral-800 rounded border border-neutral-700">
-                    <span className="text-neutral-400 font-light mr-1">section:</span>
+                  <div className="px-1.5 py-0 h-5 text-xs bg-neutral-200 dark:bg-neutral-800 rounded border border-neutral-400 dark:border-neutral-700">
+                    <span className="text-neutral-500 dark:text-neutral-400 font-light mr-1">section:</span>
                     <span>features</span>
                   </div>
                 </div>
@@ -104,24 +100,24 @@ export function UserSessions() {
           </div>
 
           {/* Event 3 */}
-          <div className="flex mb-3">
+          <div className="flex mb-2">
             <div className="relative flex-shrink-0">
-              <div className="absolute top-8 left-4 w-[1px] bg-neutral-700 h-[calc(100%-20px)]" />
-              <div className="flex items-center justify-center w-8 h-8 rounded-full bg-blue-900/30 border border-blue-500/50">
-                <span className="text-sm font-medium">3</span>
+              <div className="absolute top-7 left-3.5 w-[1px] bg-neutral-300 dark:bg-neutral-700 h-[calc(100%-16px)]" />
+              <div className="flex items-center justify-center w-7 h-7 rounded-full bg-neutral-50 border border-neutral-200 dark:bg-neutral-600/25 dark:border-neutral-600/25">
+                <span className="text-xs font-medium">3</span>
               </div>
             </div>
 
-            <div className="flex flex-col ml-3 flex-1">
-              <div className="flex items-center flex-1 py-1">
-                <Eye className="w-4 h-4 text-blue-500 mr-3" />
-                <div className="flex-1 min-w-0 mr-4">
+            <div className="flex flex-col ml-2 flex-1">
+              <div className="flex items-center flex-1 py-0.5">
+                <Eye className="w-3.5 h-3.5 text-blue-400 mr-2" />
+                <div className="flex-1 min-w-0 mr-3">
                   <div className="text-sm truncate">/pricing</div>
                 </div>
-                <div className="text-xs text-neutral-400">14:25:58</div>
+                <div className="text-xs text-neutral-500 dark:text-neutral-400">14:25:58</div>
               </div>
-              <div className="flex items-center pl-7 mt-1">
-                <div className="text-xs text-neutral-400">
+              <div className="flex items-center pl-5 mt-0.5">
+                <div className="text-xs text-neutral-500 dark:text-neutral-400">
                   <Clock className="w-3 h-3 inline mr-1" />
                   4m 42s
                 </div>
@@ -130,30 +126,29 @@ export function UserSessions() {
           </div>
 
           {/* Event 4 */}
-          <div className="flex mb-3">
+          <div className="flex mb-2">
             <div className="relative flex-shrink-0">
-              <div className="absolute top-8 left-4 w-[1px] bg-neutral-700 h-[calc(100%-20px)]" />
-              <div className="flex items-center justify-center w-8 h-8 rounded-full bg-amber-900/30 border border-amber-500/50">
-                <span className="text-sm font-medium">4</span>
+              <div className="flex items-center justify-center w-7 h-7 rounded-full bg-neutral-50 border border-neutral-200 dark:bg-neutral-600/25 dark:border-neutral-600/25">
+                <span className="text-xs font-medium">4</span>
               </div>
             </div>
 
-            <div className="flex flex-col ml-3 flex-1">
-              <div className="flex items-center flex-1 py-1">
-                <MousePointerClick className="w-4 h-4 text-amber-500 mr-3" />
-                <div className="flex-1 min-w-0 mr-4">
+            <div className="flex flex-col ml-2 flex-1">
+              <div className="flex items-center flex-1 py-0.5">
+                <MousePointerClick className="w-3.5 h-3.5 text-amber-400 mr-2" />
+                <div className="flex-1 min-w-0 mr-3">
                   <div className="text-sm truncate">form_submit</div>
                 </div>
-                <div className="text-xs text-neutral-400">14:30:40</div>
+                <div className="text-xs text-neutral-500 dark:text-neutral-400">14:30:40</div>
               </div>
-              <div className="flex items-center pl-7 mt-1">
-                <div className="flex flex-wrap gap-2">
-                  <div className="px-1.5 py-0 h-5 text-xs bg-neutral-800 rounded border border-neutral-700">
-                    <span className="text-neutral-400 font-light mr-1">form_id:</span>
+              <div className="flex items-center pl-5 mt-0.5">
+                <div className="flex flex-wrap gap-1.5">
+                  <div className="px-1.5 py-0 h-5 text-xs bg-neutral-200 dark:bg-neutral-800 rounded border border-neutral-400 dark:border-neutral-700">
+                    <span className="text-neutral-500 dark:text-neutral-400 font-light mr-1">form_id:</span>
                     <span>contact-form</span>
                   </div>
-                  <div className="px-1.5 py-0 h-5 text-xs bg-neutral-800 rounded border border-neutral-700">
-                    <span className="text-neutral-400 font-light mr-1">success:</span>
+                  <div className="px-1.5 py-0 h-5 text-xs bg-neutral-200 dark:bg-neutral-800 rounded border border-neutral-400 dark:border-neutral-700">
+                    <span className="text-neutral-500 dark:text-neutral-400 font-light mr-1">success:</span>
                     <span>true</span>
                   </div>
                 </div>

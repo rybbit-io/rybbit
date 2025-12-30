@@ -1,18 +1,18 @@
-import { useEffect, useRef, useState } from "react";
+import Feature, { FeatureLike } from "ol/Feature";
 import OLMap from "ol/Map";
 import Overlay from "ol/Overlay";
-import VectorLayer from "ol/layer/Vector";
-import VectorSource from "ol/source/Vector";
-import Cluster from "ol/source/Cluster";
-import Feature, { FeatureLike } from "ol/Feature";
 import Point from "ol/geom/Point";
-import { Circle, Fill, Stroke, Style, Text } from "ol/style";
+import VectorLayer from "ol/layer/Vector";
 import { fromLonLat } from "ol/proj";
-import type { GetSessionsResponse } from "../../../../../api/analytics/userSessions";
-import { useTimelineStore, useActiveSessions } from "../../timelineStore";
+import Cluster from "ol/source/Cluster";
+import VectorSource from "ol/source/Vector";
+import { Circle, Fill, Style, Text } from "ol/style";
+import { useEffect, useRef, useState } from "react";
+import type { GetSessionsResponse } from "../../../../../api/analytics/endpoints";
 import { generateAvatarSVG } from "../../3d/hooks/timelineLayer/timelineMarkerHelpers";
+import { useActiveSessions, useTimelineStore } from "../../timelineStore";
+import { CLUSTER_MAX_ZOOM, CLUSTERING_THRESHOLD, MIN_CLUSTER_SIZE } from "../../utils/clusteringConstants";
 import { buildTooltipHTML } from "../../utils/timelineTooltipBuilder";
-import { CLUSTER_MAX_ZOOM, MIN_CLUSTER_SIZE, CLUSTERING_THRESHOLD } from "../../utils/clusteringConstants";
 
 // OpenLayers-specific clustering constants
 const CLUSTER_RADIUS = 50; // pixels (OpenLayers specific)
@@ -127,20 +127,22 @@ export function useOpenLayersTimelineLayer({ mapInstanceRef, mapViewRef, mapView
 
     if (shouldCluster) {
       // Create features for clustering
-      const features = activeSessions.map(session => {
-        if (!session.lat || !session.lon) return null;
+      const features = activeSessions
+        .map(session => {
+          if (!session.lat || !session.lon) return null;
 
-        const feature = new Feature({
-          geometry: new Point(fromLonLat([session.lon, session.lat])),
-        });
+          const feature = new Feature({
+            geometry: new Point(fromLonLat([session.lon, session.lat])),
+          });
 
-        feature.setProperties({
-          session_id: session.session_id,
-          session,
-        });
+          feature.setProperties({
+            session_id: session.session_id,
+            session,
+          });
 
-        return feature;
-      }).filter(Boolean) as Feature[];
+          return feature;
+        })
+        .filter(Boolean) as Feature[];
 
       // Create vector source
       const vectorSource = new VectorSource({
@@ -383,101 +385,101 @@ export function useOpenLayersTimelineLayer({ mapInstanceRef, mapViewRef, mapView
       });
       toRemove.forEach(id => overlaysMap.delete(id));
 
-    // Create or update overlays for active sessions
-    activeSessions.forEach(session => {
-      if (!session?.session_id || !session.lat || !session.lon) return;
+      // Create or update overlays for active sessions
+      activeSessions.forEach(session => {
+        if (!session?.session_id || !session.lat || !session.lon) return;
 
-      const existing = overlaysMap.get(session.session_id);
+        const existing = overlaysMap.get(session.session_id);
 
-      if (existing) {
-        // Update position if needed
-        const currentPos = existing.overlay.getPosition();
-        const newPos = fromLonLat([session.lon, session.lat]);
-        if (!currentPos || currentPos[0] !== newPos[0] || currentPos[1] !== newPos[1]) {
-          existing.overlay.setPosition(newPos);
+        if (existing) {
+          // Update position if needed
+          const currentPos = existing.overlay.getPosition();
+          const newPos = fromLonLat([session.lon, session.lat]);
+          if (!currentPos || currentPos[0] !== newPos[0] || currentPos[1] !== newPos[1]) {
+            existing.overlay.setPosition(newPos);
+          }
+        } else {
+          // Create new overlay
+          const avatarContainer = document.createElement("div");
+          avatarContainer.className = "timeline-avatar-marker";
+          avatarContainer.style.cursor = "pointer";
+          avatarContainer.style.borderRadius = "50%";
+          avatarContainer.style.overflow = "hidden";
+          avatarContainer.style.width = "32px";
+          avatarContainer.style.height = "32px";
+          avatarContainer.style.boxShadow = "0 2px 8px rgba(0,0,0,0.3)";
+          avatarContainer.style.transform = "translate(-50%, -50%)"; // Center the avatar
+
+          const avatarSVG = generateAvatarSVG(session.user_id, 32);
+          avatarContainer.innerHTML = avatarSVG;
+
+          // Track cleanup resources
+          let timeoutId: number | null = null;
+          let buttonHandler: ((e: Event) => void) | null = null;
+          let buttonElement: Element | null = null;
+
+          // Add click handler for tooltip
+          const handleAvatarClick = (e: MouseEvent) => {
+            e.stopPropagation();
+
+            // If clicking the same avatar that has the tooltip open, close it
+            if (openTooltipSessionId === session.session_id && tooltipOverlayRef.current) {
+              tooltipOverlayRef.current.setPosition(undefined);
+              setOpenTooltipSessionId(null);
+              return;
+            }
+
+            // Show tooltip for this session
+            if (tooltipOverlayRef.current) {
+              const html = buildTooltipHTML(session, session.lon, session.lat);
+              tooltipOverlayRef.current.getElement()!.innerHTML = html;
+              tooltipOverlayRef.current.setPosition(fromLonLat([session.lon, session.lat]));
+              setOpenTooltipSessionId(session.session_id);
+
+              // Add click handler to "View Details" button
+              timeoutId = window.setTimeout(() => {
+                const button = document.querySelector(`[data-session-id="${session.session_id}"]`);
+                if (button) {
+                  buttonHandler = (e: Event) => {
+                    e.stopPropagation();
+                    setSelectedSession(session);
+                    if (tooltipOverlayRef.current) {
+                      tooltipOverlayRef.current.setPosition(undefined);
+                      setOpenTooltipSessionId(null);
+                    }
+                  };
+                  buttonElement = button;
+                  button.addEventListener("click", buttonHandler);
+                }
+              }, 0);
+            }
+          };
+
+          avatarContainer.addEventListener("click", handleAvatarClick);
+
+          const overlay = new Overlay({
+            element: avatarContainer,
+            positioning: "center-center",
+            stopEvent: false,
+          });
+
+          overlay.setPosition(fromLonLat([session.lon, session.lat]));
+          map.addOverlay(overlay);
+
+          // Cleanup function to remove all event listeners and clear timeouts
+          const cleanup = () => {
+            if (timeoutId !== null) {
+              clearTimeout(timeoutId);
+            }
+            if (buttonHandler && buttonElement) {
+              buttonElement.removeEventListener("click", buttonHandler);
+            }
+            avatarContainer.removeEventListener("click", handleAvatarClick);
+          };
+
+          overlaysMap.set(session.session_id, { overlay, element: avatarContainer, session, cleanup });
         }
-      } else {
-        // Create new overlay
-        const avatarContainer = document.createElement("div");
-        avatarContainer.className = "timeline-avatar-marker";
-        avatarContainer.style.cursor = "pointer";
-        avatarContainer.style.borderRadius = "50%";
-        avatarContainer.style.overflow = "hidden";
-        avatarContainer.style.width = "32px";
-        avatarContainer.style.height = "32px";
-        avatarContainer.style.boxShadow = "0 2px 8px rgba(0,0,0,0.3)";
-        avatarContainer.style.transform = "translate(-50%, -50%)"; // Center the avatar
-
-        const avatarSVG = generateAvatarSVG(session.user_id, 32);
-        avatarContainer.innerHTML = avatarSVG;
-
-        // Track cleanup resources
-        let timeoutId: number | null = null;
-        let buttonHandler: ((e: Event) => void) | null = null;
-        let buttonElement: Element | null = null;
-
-        // Add click handler for tooltip
-        const handleAvatarClick = (e: MouseEvent) => {
-          e.stopPropagation();
-
-          // If clicking the same avatar that has the tooltip open, close it
-          if (openTooltipSessionId === session.session_id && tooltipOverlayRef.current) {
-            tooltipOverlayRef.current.setPosition(undefined);
-            setOpenTooltipSessionId(null);
-            return;
-          }
-
-          // Show tooltip for this session
-          if (tooltipOverlayRef.current) {
-            const html = buildTooltipHTML(session, session.lon, session.lat);
-            tooltipOverlayRef.current.getElement()!.innerHTML = html;
-            tooltipOverlayRef.current.setPosition(fromLonLat([session.lon, session.lat]));
-            setOpenTooltipSessionId(session.session_id);
-
-            // Add click handler to "View Details" button
-            timeoutId = window.setTimeout(() => {
-              const button = document.querySelector(`[data-session-id="${session.session_id}"]`);
-              if (button) {
-                buttonHandler = (e: Event) => {
-                  e.stopPropagation();
-                  setSelectedSession(session);
-                  if (tooltipOverlayRef.current) {
-                    tooltipOverlayRef.current.setPosition(undefined);
-                    setOpenTooltipSessionId(null);
-                  }
-                };
-                buttonElement = button;
-                button.addEventListener("click", buttonHandler);
-              }
-            }, 0);
-          }
-        };
-
-        avatarContainer.addEventListener("click", handleAvatarClick);
-
-        const overlay = new Overlay({
-          element: avatarContainer,
-          positioning: "center-center",
-          stopEvent: false,
-        });
-
-        overlay.setPosition(fromLonLat([session.lon, session.lat]));
-        map.addOverlay(overlay);
-
-        // Cleanup function to remove all event listeners and clear timeouts
-        const cleanup = () => {
-          if (timeoutId !== null) {
-            clearTimeout(timeoutId);
-          }
-          if (buttonHandler && buttonElement) {
-            buttonElement.removeEventListener("click", buttonHandler);
-          }
-          avatarContainer.removeEventListener("click", handleAvatarClick);
-        };
-
-        overlaysMap.set(session.session_id, { overlay, element: avatarContainer, session, cleanup });
-      }
-    });
+      });
     }
 
     // Handle cluster clicks to zoom in

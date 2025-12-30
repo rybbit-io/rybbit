@@ -7,12 +7,10 @@ import { useGetSite } from "../../../../../api/admin/sites";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../../../../components/ui/basic-tabs";
 import { Button } from "../../../../../components/ui/button";
 import { Card, CardContent } from "../../../../../components/ui/card";
-import { truncateString } from "../../../../../lib/utils";
 import { StandardSection } from "../../../components/shared/StandardSection/StandardSection";
+import { truncateString } from "../../../../../lib/utils";
 
 type Tab = "pages" | "page_title" | "entry_pages" | "exit_pages" | "hostname";
-
-const MAX_LABEL_LENGTH = 70;
 
 export function Pages() {
   const { data: siteMetadata } = useGetSite();
@@ -36,9 +34,11 @@ export function Pages() {
                 <TabsTrigger value="hostname">Hostnames</TabsTrigger>
               </TabsList>
             </div>
-            <Button size="smIcon" onClick={() => setExpanded(!expanded)}>
-              <Expand className="w-4 h-4" />
-            </Button>
+            <div className="w-7">
+              <Button size="smIcon" onClick={() => setExpanded(!expanded)}>
+                <Expand className="w-4 h-4" />
+              </Button>
+            </div>
           </div>
           <TabsContent value="pages">
             <StandardSection
@@ -46,7 +46,7 @@ export function Pages() {
               title="Pages"
               getValue={e => e.value}
               getKey={e => e.value}
-              getLabel={e => truncateString(e.value, MAX_LABEL_LENGTH) || "Other"}
+              getLabel={e => truncateString(e.value, 50) || "Other"}
               getLink={e => `https://${siteMetadata?.domain}${e.value}`}
               expanded={expanded}
               close={close}
@@ -58,7 +58,7 @@ export function Pages() {
               title="Page Title"
               getValue={e => e.value}
               getKey={e => e.value}
-              getLabel={e => truncateString(e.value, MAX_LABEL_LENGTH) || "Other"}
+              getLabel={e => truncateString(e.value, 50) || "Other"}
               // getLink={(e) =>
               //   e.pathname
               //     ? `https://${siteMetadata?.domain}${e.pathname}`
@@ -74,7 +74,7 @@ export function Pages() {
               title="Entry Pages"
               getValue={e => e.value}
               getKey={e => e.value}
-              getLabel={e => truncateString(e.value, MAX_LABEL_LENGTH) || "Other"}
+              getLabel={e => e.value || "Other"}
               getLink={e => `https://${siteMetadata?.domain}${e.value}`}
               expanded={expanded}
               close={close}
@@ -86,7 +86,7 @@ export function Pages() {
               title="Exit Pages"
               getValue={e => e.value}
               getKey={e => e.value}
-              getLabel={e => truncateString(e.value, MAX_LABEL_LENGTH) || "Other"}
+              getLabel={e => e.value || "Other"}
               getLink={e => `https://${siteMetadata?.domain}${e.value}`}
               expanded={expanded}
               close={close}

@@ -39,6 +39,8 @@ export const EVENT_FILTERS: FilterParameter[] = [
 
 export const GOALS_PAGE_FILTERS: FilterParameter[] = [...BASE_FILTERS];
 
+export const FUNNEL_PAGE_FILTERS: FilterParameter[] = [...BASE_FILTERS];
+
 export const USER_PAGE_FILTERS: FilterParameter[] = [
   "hostname",
   "browser",
@@ -52,8 +54,6 @@ export const USER_PAGE_FILTERS: FilterParameter[] = [
   "device_type",
   "referrer",
   "user_id",
-  "lat",
-  "lon",
 ];
 
 export const JOURNEY_PAGE_FILTERS: FilterParameter[] = [

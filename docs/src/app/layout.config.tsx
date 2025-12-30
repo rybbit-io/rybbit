@@ -12,7 +12,14 @@ export const baseOptions: BaseLayoutProps = {
   nav: {
     title: (
       <>
-        <Image src="/rybbit-text.svg" alt="Rybbit" width={90} height={0} style={{ height: "auto" }} className="mr-2" />
+        <Image
+          src="/rybbit-text.svg"
+          alt="Rybbit"
+          width={90}
+          height={0}
+          style={{ height: "auto" }}
+          className="mr-2 invert dark:invert-0"
+        />
       </>
     ),
   },
@@ -28,7 +35,7 @@ export const baseOptions: BaseLayoutProps = {
     //   },
     {
       text: "Demo",
-      url: "https://demo.rybbit.io/21",
+      url: "https://demo.rybbit.com/1",
       external: true,
     },
     //   {

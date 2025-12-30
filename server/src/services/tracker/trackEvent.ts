@@ -4,7 +4,6 @@ import { z, ZodError } from "zod";
 import { createServiceLogger } from "../../lib/logger/logger.js";
 import { siteConfig } from "../../lib/siteConfig.js";
 import { sessionsService } from "../sessions/sessionsService.js";
-import { checkApiKeyRateLimit, validateApiKey } from "../shared/requestValidation.js";
 import { usageService } from "../usageService.js";
 import { pageviewQueue } from "./pageviewQueue.js";
 import { createBasePayload } from "./utils.js";
@@ -213,35 +212,6 @@ export async function trackEvent(request: FastifyRequest, reply: FastifyReply) {
 
     // Use validated data
     const validatedPayload = validationResult.data;
-
-    // First check if API key is provided and valid
-    const apiKeyValidation = await validateApiKey(validatedPayload.site_id, validatedPayload.api_key);
-
-    // If API key validation failed with an error, reject the request
-    if (apiKeyValidation.error) {
-      logger.warn(
-        { siteId: validatedPayload.site_id, error: apiKeyValidation.error },
-        "Request rejected - API key validation failed"
-      );
-      return reply.status(403).send({
-        success: false,
-        error: apiKeyValidation.error,
-      });
-    }
-
-    // Check rate limit for API key authenticated requests
-    if (apiKeyValidation.success && validatedPayload.api_key) {
-      if (!checkApiKeyRateLimit(validatedPayload.api_key)) {
-        logger.warn(
-          { apiKey: validatedPayload.api_key, siteId: validatedPayload.site_id },
-          "Rate limit exceeded for API key"
-        );
-        return reply.status(429).send({
-          success: false,
-          error: "Rate limit exceeded. Maximum 20 requests per second per API key.",
-        });
-      }
-    }
 
     // Get the site configuration to get the numeric siteId
     const siteConfiguration = await siteConfig.getConfig(validatedPayload.site_id);

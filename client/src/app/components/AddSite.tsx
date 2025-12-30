@@ -1,7 +1,9 @@
 "use client";
 import { Button } from "@/components/ui/button";
 import { AlertCircle, AppWindow, Plus } from "lucide-react";
-import { useMemo, useState } from "react";
+import { DateTime } from "luxon";
+import { useRouter } from "next/navigation";
+import { useState } from "react";
 import { addSite, useGetSitesFromOrg } from "../../api/admin/sites";
 import { Alert, AlertDescription, AlertTitle } from "../../components/ui/alert";
 import {
@@ -18,11 +20,45 @@ import { Label } from "../../components/ui/label";
 import { Switch } from "../../components/ui/switch";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../../components/ui/tooltip";
 import { authClient } from "../../lib/auth";
-import { IS_CLOUD } from "../../lib/const";
-import { useStripeSubscription } from "../../lib/subscription/useStripeSubscription";
+import { FREE_SITE_LIMIT, IS_CLOUD, STANDARD_SITE_LIMIT } from "../../lib/const";
 import { resetStore, useStore } from "../../lib/store";
-import { useRouter } from "next/navigation";
+import { SubscriptionData, useStripeSubscription } from "../../lib/subscription/useStripeSubscription";
 import { isValidDomain, normalizeDomain } from "../../lib/utils";
+
+const getSiteLimit = (subscription: SubscriptionData | undefined) => {
+  if (subscription?.planName.includes("standard")) {
+    // grant unlimited sites to organizations created before June 27, 2025
+    if (
+      subscription?.createdAt &&
+      DateTime.fromISO(subscription.createdAt) < DateTime.fromFormat("2025-06-27", "yyyy-MM-dd")
+    ) {
+      return Infinity;
+    }
+    return STANDARD_SITE_LIMIT;
+  }
+  if (subscription?.planName.includes("pro")) {
+    return Infinity;
+  }
+  if (subscription?.planName === "appsumo-1") {
+    return 3;
+  }
+  if (subscription?.planName === "appsumo-2") {
+    return 10;
+  }
+  if (subscription?.planName === "appsumo-3") {
+    return 25;
+  }
+  if (subscription?.planName === "appsumo-4") {
+    return 50;
+  }
+  if (subscription?.planName === "appsumo-5") {
+    return 100;
+  }
+  if (subscription?.planName === "appsumo-5") {
+    return Infinity;
+  }
+  return FREE_SITE_LIMIT;
+};
 
 export function AddSite({ trigger, disabled }: { trigger?: React.ReactNode; disabled?: boolean }) {
   const { setSite } = useStore();
@@ -32,20 +68,7 @@ export function AddSite({ trigger, disabled }: { trigger?: React.ReactNode; disa
   const { data: sites, refetch } = useGetSitesFromOrg(activeOrganization?.id);
   const { data: subscription } = useStripeSubscription();
 
-  const isOverSiteLimit = useMemo(() => {
-    const numberOfSites = sites?.sites?.length || 0;
-    if (!IS_CLOUD) {
-      return false;
-    }
-    if (subscription?.status !== "active" && numberOfSites >= 3) {
-      return true;
-    }
-    if (!subscription?.isPro && numberOfSites >= 10) {
-      return true;
-    }
-
-    return false;
-  }, [subscription, sites]);
+  const isOverSiteLimit = getSiteLimit(subscription) <= (sites?.sites?.length || 0) && IS_CLOUD;
 
   const finalDisabled = disabled || isOverSiteLimit;
 
@@ -108,7 +131,8 @@ export function AddSite({ trigger, disabled }: { trigger?: React.ReactNode; disa
           </span>
         </TooltipTrigger>
         <TooltipContent>
-          You have reached the limit of {subscription?.isPro ? 10 : 3} websites. Upgrade to add more websites
+          You have reached the limit of {subscription?.isPro ? STANDARD_SITE_LIMIT : FREE_SITE_LIMIT} websites. Upgrade
+          to add more websites
         </TooltipContent>
       </Tooltip>
     );
@@ -144,7 +168,7 @@ export function AddSite({ trigger, disabled }: { trigger?: React.ReactNode; disa
 
           <div className="grid gap-4 py-2">
             <div className="grid w-full items-center gap-1.5">
-              <Label htmlFor="domain" className="text-sm font-medium text-white">
+              <Label htmlFor="domain" className="text-sm font-medium">
                 Domain
               </Label>
               <Input
@@ -157,7 +181,7 @@ export function AddSite({ trigger, disabled }: { trigger?: React.ReactNode; disa
             {/* Public Analytics Setting */}
             <div className="flex items-center justify-between">
               <div>
-                <Label htmlFor="isPublic" className="text-sm font-medium text-white">
+                <Label htmlFor="isPublic" className="text-sm font-medium">
                   Public Analytics
                 </Label>
                 <p className="text-xs text-muted-foreground mt-1">
@@ -170,7 +194,7 @@ export function AddSite({ trigger, disabled }: { trigger?: React.ReactNode; disa
             {/* User ID Salting Setting */}
             <div className="flex items-center justify-between">
               <div>
-                <Label htmlFor="saltUserIds" className="text-sm font-medium text-white">
+                <Label htmlFor="saltUserIds" className="text-sm font-medium">
                   Enable User ID Salting
                 </Label>
                 <p className="text-xs text-muted-foreground mt-1">

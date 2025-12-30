@@ -1,7 +1,7 @@
 import { FilterParameter } from "@rybbit/shared";
 import mapboxgl from "mapbox-gl";
 import { useEffect, useMemo, useRef } from "react";
-import { useSingleCol } from "../../../../../api/analytics/useSingleCol";
+import { useMetric } from "../../../../../api/analytics/hooks/useGetMetric";
 import { useCountries } from "../../../../../lib/geo";
 import { addFilter } from "../../../../../lib/store";
 import { createColorScale } from "../../utils/colorScale";
@@ -14,7 +14,7 @@ interface UseCountriesLayerProps {
 }
 
 export function useCountriesLayer({ map, mapLoaded, mapView }: UseCountriesLayerProps) {
-  const { data: countryData } = useSingleCol({ parameter: "country" });
+  const { data: countryData } = useMetric({ parameter: "country" });
   const { data: countriesGeoData } = useCountries();
   const colorScale = useMemo(() => createColorScale(countryData?.data), [countryData?.data]);
 

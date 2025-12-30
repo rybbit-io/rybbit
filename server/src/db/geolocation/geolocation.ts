@@ -209,7 +209,7 @@ async function getLocationFromIPAPI(ips: string[]): Promise<Record<string, Locat
 
     return results;
   } catch (error) {
-    logger.error("Error fetching from IPAPI:", error);
+    logger.error(error, "Error fetching from IPAPI");
     return { ...results, ...localInfo };
   }
 }

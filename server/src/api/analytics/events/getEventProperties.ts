@@ -1,7 +1,8 @@
 import { FastifyReply, FastifyRequest } from "fastify";
 import { clickhouse } from "../../../db/clickhouse/clickhouse.js";
-import { getTimeStatement, processResults, getFilterStatement } from "../utils.js";
+import { getTimeStatement, processResults } from "../utils/utils.js";
 import { FilterParams } from "@rybbit/shared";
+import { getFilterStatement } from "../utils/getFilterStatement.js";
 
 export type GetEventPropertiesResponse = {
   propertyKey: string;
@@ -14,12 +15,12 @@ export interface GetEventPropertiesRequest {
     site: string;
   };
   Querystring: FilterParams<{
-    eventName: string;
+    event_name: string;
   }>;
 }
 
 export async function getEventProperties(req: FastifyRequest<GetEventPropertiesRequest>, res: FastifyReply) {
-  const { startDate, endDate, timeZone, eventName, filters, pastMinutesStart, pastMinutesEnd } = req.query;
+  const { event_name: eventName, filters } = req.query;
   const site = req.params.site;
 
   if (!eventName) {
@@ -28,7 +29,7 @@ export async function getEventProperties(req: FastifyRequest<GetEventPropertiesR
 
   const timeStatement = getTimeStatement(req.query);
 
-  const filterStatement = filters ? getFilterStatement(filters) : "";
+  const filterStatement = filters ? getFilterStatement(filters, Number(site), timeStatement) : "";
 
   const query = `
     SELECT

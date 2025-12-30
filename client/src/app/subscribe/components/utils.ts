@@ -1,21 +1,25 @@
 // Common utility functions and constants for subscription components
 
+import { FREE_SITE_LIMIT, STANDARD_SITE_LIMIT, STANDARD_TEAM_LIMIT } from "../../../lib/const";
 import { getStripePrices, STRIPE_TIERS } from "../../../lib/stripe";
 
 export const EVENT_TIERS = [...STRIPE_TIERS.map(tier => tier.events), "Custom"];
 
 export const STANDARD_FEATURES = [
-  "Up to 10 websites",
-  "Up to 3 team members",
-  "Web vitals",
+  "Everything in Free",
+  `Up to ${STANDARD_SITE_LIMIT} websites`,
+  `Up to ${STANDARD_TEAM_LIMIT} team members`,
   "Funnels",
   "Goals",
-  "Error tracking",
   "Journeys",
+  "Web vitals",
+  "Error tracking",
   "User profiles",
   "Retention",
+  "Sessions",
+  "Email reports",
   "2 year data retention",
-  "Standard support",
+  "Email support",
 ];
 
 export const PRO_FEATURES = [
@@ -23,14 +27,27 @@ export const PRO_FEATURES = [
   "Unlimited websites",
   "Unlimited team members",
   "Session replays",
-  "5+ year data retention",
+  "5 year data retention",
   "Priority support",
+];
+
+export const ENTERPRISE_FEATURES = [
+  "Everything in Pro",
+  "Single Sign-On (SSO)",
+  "Infinite data retention",
+  "Dedicated isolated instance",
+  "On-premise Installation",
+  "Custom Features",
+  "Whitelabeling",
+  "Manual invoicing",
+  "Uptime SLA",
+  "Enterprise support",
+  "Slack/live chat support",
 ];
 
 export const FREE_FEATURES = [
   "1 user",
-  "Up to 3 websites",
-  "Cookieless tracking",
+  `${FREE_SITE_LIMIT} website`,
   "Web analytics dashboard",
   "Custom events",
   "6 month data retention",

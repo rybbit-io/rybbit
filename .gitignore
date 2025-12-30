@@ -23,7 +23,6 @@ pnpm-debug.log*
 # IDE specific files
 .idea/
 .vscode/
-.claude/
 *.swp
 *.swo
 .DS_Store
@@ -46,33 +45,4 @@ coverage/
 
 .cursor/
 
-# Prevent accidentally created metadata files
-*:
-C:*
-F:*
-drizzle-kit
-rybbit-backend@*
-*.patch
--rw-r--r--
-cript
-ssh
-total
-ter
-tats*
-video*:
-width*:
-height*:
-audio*:
-bitrate*:
-resolution*:
-preset*:
-# Prevent emoji files
-ℹ️
-✅
-��
-
-# Temporary refactoring documentation
-REFACTORING_*.md
-OPTIMIZATION_*.md
-BETA_TEST_*.md
-SECURITY_AUDIT_*.md
+.claude/

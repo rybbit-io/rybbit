@@ -3,7 +3,6 @@ import { useWindowSize } from "@uidotdev/usehooks";
 import { usePathname } from "next/navigation";
 import { useEffect } from "react";
 import { AppSidebar } from "../../components/AppSidebar";
-import { TopBar } from "../../components/TopBar";
 import { useStore } from "../../lib/store";
 import { useSyncStateWithUrl } from "../../lib/urlParams";
 import { Footer } from "../components/Footer";
@@ -63,7 +62,8 @@ export default function SiteLayout({ children }: { children: React.ReactNode }) 
             {!pathname.includes("/map") &&
               !pathname.includes("/realtime") &&
               !pathname.includes("/replay") &&
-              !pathname.includes("/globe") && <Footer />}
+              !pathname.includes("/globe") &&
+              !pathname.includes("/api-playground") && <Footer />}
           </div>
         </div>
       </div>

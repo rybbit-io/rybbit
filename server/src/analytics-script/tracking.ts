@@ -228,7 +228,7 @@ export class Tracker {
     this.track("error", error.name || "Error", errorProperties);
   }
 
-  identify(userId: string): void {
+  identify(userId: string, traits?: Record<string, unknown>): void {
     if (typeof userId !== "string" || userId.trim() === "") {
       console.error("User ID must be a non-empty string");
       return;
@@ -241,9 +241,52 @@ export class Tracker {
       console.warn("Could not persist user ID to localStorage");
     }
 
+    // Send identify event to server (creates alias and stores traits)
+    this.sendIdentifyEvent(this.customUserId, traits, true);
+
     // Update session replay recorder with new user ID
     if (this.sessionReplayRecorder) {
       this.sessionReplayRecorder.updateUserId(this.customUserId);
+    }
+  }
+
+  setTraits(traits: Record<string, unknown>): void {
+    if (!traits || typeof traits !== "object") {
+      console.error("Traits must be an object");
+      return;
+    }
+
+    const userId = this.customUserId;
+    if (!userId) {
+      console.warn("Cannot set traits without identifying user first. Call identify() first.");
+      return;
+    }
+
+    this.sendIdentifyEvent(userId, traits, false);
+  }
+
+  private async sendIdentifyEvent(
+    userId: string,
+    traits?: Record<string, unknown>,
+    isNewIdentify: boolean = true
+  ): Promise<void> {
+    try {
+      await fetch(`${this.config.analyticsHost}/identify`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          site_id: this.config.siteId,
+          user_id: userId,
+          traits: traits,
+          is_new_identify: isNewIdentify,
+        }),
+        mode: "cors",
+        keepalive: true,
+      });
+    } catch (error) {
+      console.error("Failed to send identify event:", error);
     }
   }
 

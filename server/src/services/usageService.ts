@@ -1,15 +1,14 @@
 import { and, eq } from "drizzle-orm";
 import { DateTime } from "luxon";
 import * as cron from "node-cron";
-import Stripe from "stripe";
-import { processResults } from "../api/analytics/utils.js";
+import { processResults } from "../api/analytics/utils/utils.js";
 import { clickhouse } from "../db/clickhouse/clickhouse.js";
 import { db } from "../db/postgres/postgres.js";
 import { member, organization, sites, user } from "../db/postgres/schema.js";
-import { DEFAULT_EVENT_LIMIT, getStripePrices, IS_CLOUD, StripePlan } from "../lib/const.js";
+import { DEFAULT_EVENT_LIMIT, IS_CLOUD } from "../lib/const.js";
 import { sendLimitExceededEmail } from "../lib/email/email.js";
 import { createServiceLogger } from "../lib/logger/logger.js";
-import { stripe } from "../lib/stripe.js";
+import { getBestSubscription } from "../lib/subscriptionUtils.js";
 
 class UsageService {
   private sitesOverLimit = new Set<number>();
@@ -67,9 +66,9 @@ class UsageService {
   }
 
   /**
-   * Gets the email of the organization owner
+   * Gets the emails of all organization owners
    */
-  private async getOrganizationOwnerEmail(organizationId: string): Promise<string | null> {
+  private async getOrganizationOwnerEmails(organizationId: string): Promise<string[]> {
     try {
       const owners = await db
         .select({
@@ -79,33 +78,36 @@ class UsageService {
         .innerJoin(user, eq(member.userId, user.id))
         .where(and(eq(member.organizationId, organizationId), eq(member.role, "owner")));
 
-      return owners.length > 0 ? owners[0].email : null;
+      return owners.map(owner => owner.email);
     } catch (error) {
-      this.logger.error(error as Error, `Error getting owner email for organization ${organizationId}`);
-      return null;
-    }
-  }
-
-  /**
-   * Gets all site IDs for an organization
-   */
-  private async getSiteIdsForOrganization(organizationId: string): Promise<number[]> {
-    try {
-      const siteRecords = await db
-        .select({ siteId: sites.siteId })
-        .from(sites)
-        .where(eq(sites.organizationId, organizationId));
-
-      return siteRecords.map(record => record.siteId);
-    } catch (error) {
-      this.logger.error(error as Error, `Error getting sites for organization ${organizationId}`);
+      this.logger.error(error as Error, `Error getting owner emails for organization ${organizationId}`);
       return [];
     }
   }
 
   /**
-   * Gets event limit and billing period start date for an organization based on their Stripe subscription.
-   * Fetches directly from Stripe if the organization has a stripeCustomerId.
+   * Gets all sites with their organization IDs (excludes sites without an organization)
+   */
+  private async getAllSites(): Promise<Array<{ siteId: number; organizationId: string }>> {
+    try {
+      const allSites = await db
+        .select({
+          siteId: sites.siteId,
+          organizationId: sites.organizationId,
+        })
+        .from(sites);
+
+      // Filter out sites without an organization ID
+      return allSites.filter(site => site.organizationId !== null) as Array<{ siteId: number; organizationId: string }>;
+    } catch (error) {
+      this.logger.error(error as Error, `Error getting all sites`);
+      return [];
+    }
+  }
+
+  /**
+   * Gets event limit and billing period start date for an organization based on their best subscription.
+   * Checks both AppSumo and Stripe subscriptions and uses the one with the higher event limit.
    * @returns [eventLimit, periodStartDate]
    */
   private async getOrganizationSubscriptionInfo(orgData: {
@@ -114,139 +116,65 @@ class UsageService {
     createdAt: string;
     name: string;
   }): Promise<[number, string | null]> {
-    if (orgData.name === "tomato 2" || orgData.name === "Zam") {
+    // Special case for specific organizations
+    if (orgData.name === "rybbit" || orgData.name === "Zam") {
       return [Infinity, this.getStartOfMonth()];
     }
-    if (orgData.name.includes("AppSumo")) {
-      return [1000000, this.getStartOfMonth()];
+
+    // Get the best subscription (highest event limit from AppSumo or Stripe)
+    const subscription = await getBestSubscription(orgData.id, orgData.stripeCustomerId);
+
+    // Log subscription details
+    if (subscription.source === "appsumo") {
+      this.logger.info(
+        `Organization ${orgData.name} using AppSumo ${subscription.planName} with ${subscription.eventLimit} events/month`
+      );
+    } else if (subscription.source === "stripe") {
+      this.logger.info(
+        `Organization ${orgData.name} using Stripe ${subscription.planName} (${subscription.interval}) with ${subscription.eventLimit} events/month`
+      );
+    } else {
+      this.logger.info(`Organization ${orgData.name} on free tier with ${subscription.eventLimit} events/month`);
     }
-    if (!orgData.stripeCustomerId) {
-      // No Stripe customer ID, use default limit and start of current month
-      return [DEFAULT_EVENT_LIMIT, this.getStartOfMonth()];
-    }
 
-    try {
-      // Fetch active subscriptions for the customer from Stripe
-      const subscriptions = await (stripe as Stripe).subscriptions.list({
-        customer: orgData.stripeCustomerId,
-        status: "active",
-        limit: 1,
-      });
-
-      if (subscriptions.data.length === 0) {
-        return [DEFAULT_EVENT_LIMIT, this.getStartOfMonth()];
-      }
-
-      const subscription = subscriptions.data[0];
-      const subscriptionItem = subscription.items.data[0];
-
-      const priceId = subscriptionItem.price.id;
-
-      if (!priceId) {
-        this.logger.error(
-          `Subscription item price ID not found for organization ${orgData.id}, sub ${subscription.id}`
-        );
-        return [DEFAULT_EVENT_LIMIT, this.getStartOfMonth()];
-      }
-
-      // Find corresponding plan details from constants
-      const planDetails = getStripePrices().find((plan: StripePlan) => plan.priceId === priceId);
-
-      // Get the event limit from the plan
-      const eventLimit = planDetails
-        ? planDetails.limits.events // This is already the monthly event limit, regardless of billing interval
-        : DEFAULT_EVENT_LIMIT;
-
-      // For the period start, we need to handle several cases:
-      const currentMonthStart = this.getStartOfMonth();
-      let periodStart = currentMonthStart;
-
-      if (subscriptionItem.current_period_start) {
-        // Convert subscription start timestamp to DateTime
-        const subscriptionStartDate = DateTime.fromSeconds(subscriptionItem.current_period_start);
-        const currentMonth = DateTime.now().startOf("month");
-
-        // If the subscription started within the current month, use that as the start date
-        // This ensures we don't count events from before they subscribed (e.g., during their free trial)
-        if (subscriptionStartDate >= currentMonth) {
-          periodStart = subscriptionStartDate.toISODate() as string;
-          this.logger.info(
-            `Organization ${orgData.name} subscribed during current month on ${periodStart}. Using subscription start date for counting.`
-          );
-        } else {
-          this.logger.info(
-            `Organization ${orgData.name} subscription started before current month. Using month start for counting.`
-          );
-        }
-      }
-
-      // Include subscription info for logging purposes
-      const interval = subscriptionItem.price.recurring?.interval || "unknown";
-      this.logger.info(`Organization ${orgData.name} has a ${interval} subscription.`);
-
-      return [eventLimit, periodStart];
-    } catch (error: any) {
-      this.logger.error(error as Error, `Error fetching Stripe subscription info for organization ${orgData.name}`);
-      // Fallback to default limit and current month start on Stripe API error
-      return [DEFAULT_EVENT_LIMIT, this.getStartOfMonth()];
-    }
+    return [subscription.eventLimit, subscription.periodStart];
   }
 
   /**
-   * Gets monthly event count from ClickHouse for the given site IDs
-   * Sites with ID < 2000 are grandfathered in and only count pageviews
-   * Sites with ID >= 2000 count all event types (pageview, custom_event, performance)
+   * Gets monthly event counts for all sites in a single query (for current month)
+   * Returns a map of site_id -> event count
    */
-  private async getMonthlyEventCount(siteIds: number[], startDate: string | null): Promise<number> {
-    if (!siteIds.length) {
-      return 0;
-    }
-
-    // If no startDate is provided (e.g., no subscription), default to start of month
-    const periodStart = startDate || this.getStartOfMonth();
-
-    // Split sites into grandfathered (< 2000) and new (>= 2000)
-    const grandfatheredSites = siteIds.filter(id => id < 2000);
-    const newSites = siteIds.filter(id => id >= 2000);
-
+  private async getAllSiteEventCounts(): Promise<Map<number, number>> {
     try {
-      let totalCount = 0;
+      const periodStart = this.getStartOfMonth();
 
-      // Count pageviews only for grandfathered sites
-      if (grandfatheredSites.length > 0) {
-        const grandfatheredResult = await clickhouse.query({
-          query: `
-            SELECT COUNT(*) as count
-            FROM events
-            WHERE site_id IN (${grandfatheredSites.join(",")}) AND type = 'pageview'
-            AND timestamp >= toDate('${periodStart}')
-          `,
-          format: "JSONEachRow",
-        });
-        const grandfatheredRows = await processResults<{ count: string }>(grandfatheredResult);
-        totalCount += parseInt(grandfatheredRows[0].count, 10);
+      const result = await clickhouse.query({
+        query: `
+          SELECT
+            site_id,
+            COUNT(*) as count
+          FROM events
+          WHERE type IN ('pageview', 'custom_event', 'performance')
+            AND timestamp >= toDate({periodStart:String})
+          GROUP BY site_id
+        `,
+        format: "JSONEachRow",
+        query_params: {
+          periodStart: periodStart,
+        },
+      });
+
+      const rows = await processResults<{ site_id: number; count: string }>(result);
+
+      const eventCountMap = new Map<number, number>();
+      for (const row of rows) {
+        eventCountMap.set(row.site_id, parseInt(row.count, 10));
       }
 
-      // Count all events (pageview, custom_event, performance) for new sites
-      if (newSites.length > 0) {
-        const newSitesResult = await clickhouse.query({
-          query: `
-            SELECT COUNT(*) as count
-            FROM events
-            WHERE site_id IN (${newSites.join(",")})
-            AND type IN ('pageview', 'custom_event', 'performance')
-            AND timestamp >= toDate('${periodStart}')
-          `,
-          format: "JSONEachRow",
-        });
-        const newSitesRows = await processResults<{ count: string }>(newSitesResult);
-        totalCount += parseInt(newSitesRows[0].count, 10);
-      }
-
-      return totalCount;
+      return eventCountMap;
     } catch (error) {
-      this.logger.error(error as Error, `Error querying ClickHouse for events for sites ${siteIds}`);
-      return 0;
+      this.logger.error(error as Error, "Error querying ClickHouse for event counts");
+      return new Map();
     }
   }
 
@@ -257,7 +185,22 @@ class UsageService {
     this.logger.info("Starting check of monthly event usage for organizations...");
 
     try {
-      // Get all organizations (both with and without Stripe customer IDs)
+      // Step 1: Get all sites with their organization IDs
+      const allSites = await this.getAllSites();
+
+      // Step 2: Get event counts for all sites in a single query (current month)
+      const eventCountMap = await this.getAllSiteEventCounts();
+
+      // Step 3: Build a map of organizationId -> { siteIds, eventCount }
+      const orgDataMap = new Map<string, { siteIds: number[]; eventCount: number }>();
+      for (const site of allSites) {
+        const orgData = orgDataMap.get(site.organizationId) || { siteIds: [], eventCount: 0 };
+        orgData.siteIds.push(site.siteId);
+        orgData.eventCount += eventCountMap.get(site.siteId) || 0;
+        orgDataMap.set(site.organizationId, orgData);
+      }
+
+      // Step 4: Get all organizations
       const organizations = await db
         .select({
           id: organization.id,
@@ -268,24 +211,30 @@ class UsageService {
         })
         .from(organization);
 
+      // Step 5: Process each organization
       for (const orgData of organizations) {
         try {
-          // Get site IDs for this organization
-          const siteIds = await this.getSiteIdsForOrganization(orgData.id);
+          const orgStats = orgDataMap.get(orgData.id);
+          const eventCount = orgStats?.eventCount || 0;
+          const siteIds = orgStats?.siteIds || [];
 
-          // If organization has no sites, continue to next organization
-          if (!siteIds.length) {
-            continue;
+          // Only fetch subscription info for organizations with > 3000 events
+          // This avoids slow Stripe API calls for low-usage orgs
+          let eventLimit: number;
+          let isOverLimit: boolean;
+
+          if (eventCount <= DEFAULT_EVENT_LIMIT) {
+            // Free tier limit is 3000, so they're definitely not over limit
+            eventLimit = DEFAULT_EVENT_LIMIT;
+            isOverLimit = false;
+            this.logger.debug(`Organization ${orgData.name} has ${eventCount} events, skipping subscription check`);
+          } else {
+            // High usage - need to check their actual subscription
+            const [fetchedLimit, periodStart] = await this.getOrganizationSubscriptionInfo(orgData);
+            eventLimit = fetchedLimit;
+            isOverLimit = eventCount > eventLimit;
           }
 
-          // Get organization's subscription information (limit and period start)
-          const [eventLimit, periodStart] = await this.getOrganizationSubscriptionInfo(orgData);
-
-          // Get monthly event count from ClickHouse using the billing period start date
-          const eventCount = await this.getMonthlyEventCount(siteIds, periodStart);
-
-          // Check if over limit and update global set
-          const isOverLimit = eventCount > eventLimit;
           const wasOverLimit = orgData.overMonthlyLimit ?? false;
 
           // Update organization's monthlyEventCount and overMonthlyLimit fields
@@ -299,21 +248,23 @@ class UsageService {
 
           // Send email notification if transitioning from under limit to over limit
           if (isOverLimit && !wasOverLimit) {
-            const ownerEmail = await this.getOrganizationOwnerEmail(orgData.id);
+            const ownerEmails = await this.getOrganizationOwnerEmails(orgData.id);
 
-            // Send email to the owner if found
-            if (ownerEmail) {
-              try {
-                await sendLimitExceededEmail(ownerEmail, orgData.name, eventCount, eventLimit);
-                this.logger.info(`Sent limit exceeded email to owner ${ownerEmail} for organization ${orgData.name}`);
-              } catch (error) {
-                this.logger.error(
-                  error as Error,
-                  `Failed to send limit exceeded email to owner ${ownerEmail} for organization ${orgData.name}`
-                );
+            // Send email to all owners if found
+            if (ownerEmails.length > 0) {
+              for (const ownerEmail of ownerEmails) {
+                try {
+                  await sendLimitExceededEmail(ownerEmail, orgData.name, eventCount, eventLimit);
+                  this.logger.info(`Sent limit exceeded email to owner ${ownerEmail} for organization ${orgData.name}`);
+                } catch (error) {
+                  this.logger.error(
+                    error as Error,
+                    `Failed to send limit exceeded email to owner ${ownerEmail} for organization ${orgData.name}`
+                  );
+                }
               }
             } else {
-              this.logger.warn(`No owner found for organization ${orgData.name}, skipping limit exceeded email`);
+              this.logger.warn(`No owners found for organization ${orgData.name}, skipping limit exceeded email`);
             }
           }
 
@@ -331,13 +282,8 @@ class UsageService {
             }
           }
 
-          // Format additional date info for logging if available
-          const periodInfo = periodStart ? `period started ${periodStart}` : "this month";
-
           this.logger.info(
-            `Updated organization ${
-              orgData.name
-            }: ${eventCount.toLocaleString()} events, limit ${eventLimit.toLocaleString()}, ${periodInfo}`
+            `Updated organization ${orgData.name}: ${eventCount.toLocaleString()} events, limit ${eventLimit.toLocaleString()}`
           );
         } catch (error) {
           this.logger.error(error as Error, `Error processing organization ${orgData.id}`);

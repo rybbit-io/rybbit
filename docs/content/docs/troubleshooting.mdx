@@ -91,3 +91,26 @@ cp .env.example .env
 # Then start the services
 docker-compose up -d
 ```
+
+## I ran out of disk space
+
+Regular web analytics events take up almost no space in Clickhouse, so it is very unlikely that you ran out of disk space from from this. There are two main reasons why you might have run out of disk space:
+
+### 1. You are using session replay
+
+On self-hosted instances where we don't have access to S3 compatible object storage, session replays are stored in Clickhouse. Each session replay is at least 1000x the data footprint of the web analytics events. So it's very easy to run out of disk space. 
+
+We have a 30 day retention policy for session replays events, so if you turn off session replay, your disk space will slowly come back. If you need to immediately free up space, you can truncate the session replays table:
+
+```bash
+docker exec -it clickhouse clickhouse-client --database analytics
+
+TRUNCATE TABLE session_replay_events;
+TRUNCATE TABLE session_replay_metadata;
+```
+
+### 2. You didn't mount the Clickhouse log suppression configs
+
+In our [docker-compose.yml](https://github.com/rybbit-io/rybbit/blob/master/docker-compose.ymlg), we have a config for Clickhouse that suppresses logs. Clickhouse stores a ton of logs in the log tables by default. This will quickly fill up your disk space if left unchecked.
+
+If you follow the standard installation process, the configs are already mounted for you. If you rolled your own Docker setup, you need to mount the configs manually.

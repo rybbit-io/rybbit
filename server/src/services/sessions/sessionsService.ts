@@ -1,4 +1,5 @@
 import { and, eq, lt } from "drizzle-orm";
+import { nanoid } from "nanoid";
 import * as cron from "node-cron";
 import { db } from "../../db/postgres/postgres.js";
 import { activeSessions } from "../../db/postgres/schema.js";
@@ -53,7 +54,7 @@ class SessionsService {
     }
 
     const insertData = {
-      sessionId: crypto.randomUUID(),
+      sessionId: nanoid(14),
       siteId,
       userId,
       startTime: new Date(),

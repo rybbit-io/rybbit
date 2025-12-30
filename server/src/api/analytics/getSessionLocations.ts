@@ -1,7 +1,8 @@
 import { FilterParams } from "@rybbit/shared";
 import { FastifyReply, FastifyRequest } from "fastify";
 import { clickhouse } from "../../db/clickhouse/clickhouse.js";
-import { getFilterStatement, getTimeStatement, processResults } from "./utils.js";
+import { getTimeStatement, processResults } from "./utils/utils.js";
+import { getFilterStatement } from "./utils/getFilterStatement.js";
 
 export async function getSessionLocations(
   req: FastifyRequest<{
@@ -14,8 +15,8 @@ export async function getSessionLocations(
 ) {
   const { site } = req.params;
 
-  const filterStatement = getFilterStatement(req.query.filters);
   const timeStatement = getTimeStatement(req.query);
+  const filterStatement = getFilterStatement(req.query.filters, Number(site), timeStatement);
 
   const result = await clickhouse.query({
     query: `

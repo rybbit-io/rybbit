@@ -1,10 +1,12 @@
 "use client";
 
 import { useCallback, useEffect, useRef } from "react";
-import { useGetEventsInfinite } from "../../../../api/analytics/events/useGetEvents";
+import { useGetEventsInfinite } from "../../../../api/analytics/hooks/events/useGetEvents";
 import { NothingFound } from "../../../../components/NothingFound";
 import { formatter } from "../../../../lib/utils";
 import { EventLogItem, EventLogItemSkeleton } from "./EventLogItem";
+import { ErrorState } from "../../../../components/ErrorState";
+import { ScrollArea } from "../../../../components/ui/scroll-area";
 
 export function EventLog() {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -57,7 +59,12 @@ export function EventLog() {
   }
 
   if (isError) {
-    return <div className="text-center py-8 text-neutral-400">Error loading events. Please try again.</div>;
+    return (
+      <ErrorState
+        title="Failed to load events"
+        message="There was a problem fetching the events. Please try again later."
+      />
+    );
   }
 
   if (allEvents.length === 0) {
@@ -65,9 +72,8 @@ export function EventLog() {
   }
 
   return (
-    <div className="space-y-1">
-      {/* Event list */}
-      <div ref={containerRef} className="max-h-[80vh] overflow-y-auto pr-2">
+    <ScrollArea className="h-[80vh]">
+      <div ref={containerRef} className="h-full pr-2">
         {allEvents.map((event, index) => (
           <EventLogItem key={`${event.timestamp}-${index}`} event={event} />
         ))}
@@ -86,10 +92,10 @@ export function EventLog() {
       </div>
       {/* Pagination info */}
       {data?.pages[0]?.pagination && (
-        <div className="text-center text-xs text-neutral-400 pt-2">
+        <div className="text-center text-xs text-neutral-500 dark:text-neutral-400 pt-2">
           Showing {allEvents.length} of {formatter(data.pages[0].pagination.total)} events
         </div>
       )}
-    </div>
+    </ScrollArea>
   );
 }

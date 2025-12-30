@@ -9,19 +9,6 @@ import { validateIPPattern } from "../../lib/ipUtils.js";
 
 // Schema for the update request - all fields are optional but validated when present
 const updateSiteConfigSchema = z.object({
-  siteId: z.union([z.string(), z.number()]).transform(val => {
-    const num = typeof val === "number" ? val : parseInt(val as string, 10);
-    if (isNaN(num) || num <= 0) {
-      throw new z.ZodError([
-        {
-          code: z.ZodIssueCode.custom,
-          message: "Invalid site ID: must be a positive integer",
-          path: ["siteId"],
-        },
-      ]);
-    }
-    return num;
-  }),
   // Site settings
   public: z.boolean().optional(),
   saltUserIds: z.boolean().optional(),
@@ -59,10 +46,19 @@ const updateSiteConfigSchema = z.object({
 type UpdateSiteConfigRequest = z.infer<typeof updateSiteConfigSchema>;
 
 export async function updateSiteConfig(
-  request: FastifyRequest<{ Body: UpdateSiteConfigRequest }>,
+  request: FastifyRequest<{ Params: { id: string }; Body: UpdateSiteConfigRequest }>,
   reply: FastifyReply
 ) {
   try {
+    // Get siteId from path params
+    const siteId = parseInt(request.params.id, 10);
+    if (isNaN(siteId) || siteId <= 0) {
+      return reply.status(400).send({
+        success: false,
+        error: "Invalid site ID: must be a positive integer",
+      });
+    }
+
     // Validate request body
     const validationResult = updateSiteConfigSchema.safeParse(request.body);
     if (!validationResult.success) {
@@ -73,7 +69,7 @@ export async function updateSiteConfig(
       });
     }
 
-    const { siteId, ...updateData } = validationResult.data;
+    const updateData = validationResult.data;
 
     // Check user permissions
     const userHasAdminAccessToSite = await getUserHasAdminAccessToSite(request, String(siteId));

@@ -1,0 +1,929 @@
+---
+title: Overview
+description: Retrieve high-level analytics metrics for a site
+full: true
+---
+
+import { TypeTable } from 'fumadocs-ui/components/type-table';
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+
+See the [API Reference](/docs/api/stats/reference) for authentication, common parameters, and filters.
+
+## Endpoints
+
+<div className="flex flex-col gap-2 my-6">
+  <a href="#get-overview" className="flex items-center gap-3 p-3 rounded-lg bg-fd-secondary/50 hover:bg-fd-secondary transition-colors no-underline">
+    <span className="px-2 py-1 text-xs font-bold rounded bg-green-500/20 text-green-600 dark:text-green-400">GET</span>
+    <code className="text-sm">/api/overview/:site</code>
+  </a>
+  <a href="#get-overview-time-series" className="flex items-center gap-3 p-3 rounded-lg bg-fd-secondary/50 hover:bg-fd-secondary transition-colors no-underline">
+    <span className="px-2 py-1 text-xs font-bold rounded bg-green-500/20 text-green-600 dark:text-green-400">GET</span>
+    <code className="text-sm">/api/overview-bucketed/:site</code>
+  </a>
+  <a href="#get-metric" className="flex items-center gap-3 p-3 rounded-lg bg-fd-secondary/50 hover:bg-fd-secondary transition-colors no-underline">
+    <span className="px-2 py-1 text-xs font-bold rounded bg-green-500/20 text-green-600 dark:text-green-400">GET</span>
+    <code className="text-sm">/api/metric/:site</code>
+  </a>
+  <a href="#get-live-visitors" className="flex items-center gap-3 p-3 rounded-lg bg-fd-secondary/50 hover:bg-fd-secondary transition-colors no-underline">
+    <span className="px-2 py-1 text-xs font-bold rounded bg-green-500/20 text-green-600 dark:text-green-400">GET</span>
+    <code className="text-sm">/api/live-user-count/:site</code>
+  </a>
+</div>
+
+---
+
+## Get Overview
+
+<div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
+<div>
+
+```
+GET /api/overview/:site
+```
+
+Returns high-level analytics metrics for a site.
+
+### Path Parameters
+
+<TypeTable
+  type={{
+    site: {
+      description: 'Site ID or site identifier',
+      type: 'string | number',
+      required: true,
+    },
+  }}
+/>
+
+### Query Parameters
+
+Accepts all [Common Parameters](/docs/api/getting-started#common-parameters) (time and filters).
+
+### Response
+
+<TypeTable
+  type={{
+    sessions: {
+      description: 'Total number of sessions',
+      type: 'number',
+    },
+    pageviews: {
+      description: 'Total number of pageviews',
+      type: 'number',
+    },
+    users: {
+      description: 'Total unique users',
+      type: 'number',
+    },
+    pages_per_session: {
+      description: 'Average pages viewed per session',
+      type: 'number',
+    },
+    bounce_rate: {
+      description: 'Percentage of single-page sessions',
+      type: 'number',
+      typeDescription: 'Range: 0-100',
+    },
+    session_duration: {
+      description: 'Average session duration in seconds',
+      type: 'number',
+    },
+  }}
+/>
+
+</div>
+<div className="flex flex-col gap-4">
+
+<Tabs items={['cURL', 'JavaScript', 'Python', 'PHP', 'Ruby', 'Go', 'Rust', 'Java', '.NET']}>
+  <Tab value="cURL">
+```bash title="Request"
+curl -X GET "https://api.rybbit.io/api/overview/123?start_date=2024-01-01&end_date=2024-01-31&time_zone=America/New_York" \
+  -H "Authorization: Bearer your_api_key_here"
+```
+  </Tab>
+  <Tab value="JavaScript">
+```javascript title="Request"
+const response = await fetch(
+  'https://api.rybbit.io/api/overview/123?start_date=2024-01-01&end_date=2024-01-31&time_zone=America/New_York',
+  {
+    headers: {
+      'Authorization': 'Bearer your_api_key_here'
+    }
+  }
+);
+
+const data = await response.json();
+```
+  </Tab>
+  <Tab value="Python">
+```python title="Request"
+import requests
+
+response = requests.get(
+    'https://api.rybbit.io/api/overview/123',
+    params={
+        'start_date': '2024-01-01',
+        'end_date': '2024-01-31',
+        'time_zone': 'America/New_York'
+    },
+    headers={
+        'Authorization': 'Bearer your_api_key_here'
+    }
+)
+
+data = response.json()
+```
+  </Tab>
+  <Tab value="PHP">
+```php title="Request"
+$ch = curl_init();
+curl_setopt($ch, CURLOPT_URL, 'https://api.rybbit.io/api/overview/123?start_date=2024-01-01&end_date=2024-01-31&time_zone=America/New_York');
+curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+curl_setopt($ch, CURLOPT_HTTPHEADER, [
+    'Authorization: Bearer your_api_key_here'
+]);
+
+$response = curl_exec($ch);
+curl_close($ch);
+
+$data = json_decode($response, true);
+```
+  </Tab>
+  <Tab value="Ruby">
+```ruby title="Request"
+require 'net/http'
+require 'json'
+
+uri = URI('https://api.rybbit.io/api/overview/123?start_date=2024-01-01&end_date=2024-01-31&time_zone=America/New_York')
+req = Net::HTTP::Get.new(uri)
+req['Authorization'] = 'Bearer your_api_key_here'
+
+res = Net::HTTP.start(uri.hostname, uri.port, use_ssl: true) { |http| http.request(req) }
+data = JSON.parse(res.body)
+```
+  </Tab>
+  <Tab value="Go">
+```go title="Request"
+req, _ := http.NewRequest("GET", "https://api.rybbit.io/api/overview/123?start_date=2024-01-01&end_date=2024-01-31&time_zone=America/New_York", nil)
+req.Header.Set("Authorization", "Bearer your_api_key_here")
+
+client := &http.Client{}
+resp, _ := client.Do(req)
+defer resp.Body.Close()
+
+var data map[string]interface{}
+json.NewDecoder(resp.Body).Decode(&data)
+```
+  </Tab>
+  <Tab value="Rust">
+```rust title="Request"
+let client = reqwest::Client::new();
+let res = client
+    .get("https://api.rybbit.io/api/overview/123?start_date=2024-01-01&end_date=2024-01-31&time_zone=America/New_York")
+    .header("Authorization", "Bearer your_api_key_here")
+    .send()
+    .await?;
+
+let data: serde_json::Value = res.json().await?;
+```
+  </Tab>
+  <Tab value="Java">
+```java title="Request"
+HttpClient client = HttpClient.newHttpClient();
+HttpRequest request = HttpRequest.newBuilder()
+    .uri(URI.create("https://api.rybbit.io/api/overview/123?start_date=2024-01-01&end_date=2024-01-31&time_zone=America/New_York"))
+    .header("Authorization", "Bearer your_api_key_here")
+    .GET()
+    .build();
+
+HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+```
+  </Tab>
+  <Tab value=".NET">
+```csharp title="Request"
+using var client = new HttpClient();
+client.DefaultRequestHeaders.Add("Authorization", "Bearer your_api_key_here");
+
+var response = await client.GetAsync("https://api.rybbit.io/api/overview/123?start_date=2024-01-01&end_date=2024-01-31&time_zone=America/New_York");
+var data = await response.Content.ReadAsStringAsync();
+```
+  </Tab>
+</Tabs>
+
+```json title="Response"
+{
+  "data": {
+    "sessions": 15420,
+    "pageviews": 48933,
+    "users": 12847,
+    "pages_per_session": 3.17,
+    "bounce_rate": 42.8,
+    "session_duration": 182.5
+  }
+}
+```
+
+</div>
+</div>
+
+---
+
+## Get Overview (Time Series)
+
+<div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
+<div>
+
+```
+GET /api/overview-bucketed/:site
+```
+
+Returns time-series analytics data broken down by configurable time buckets. Useful for charting trends over time.
+
+### Path Parameters
+
+<TypeTable
+  type={{
+    site: {
+      description: 'Site ID or site identifier',
+      type: 'string | number',
+      required: true,
+    },
+  }}
+/>
+
+### Query Parameters
+
+Accepts all [Common Parameters](/docs/api/getting-started#common-parameters) plus the following:
+
+<TypeTable
+  type={{
+    bucket: {
+      description: 'Time bucket size for grouping data',
+      type: 'TimeBucket',
+      typeDescription: '"minute" | "five_minutes" | "ten_minutes" | "fifteen_minutes" | "hour" | "day" | "week" | "month" | "year"',
+      required: true,
+    },
+  }}
+/>
+
+#### Bucket Selection Guide
+
+| Bucket | Best For |
+|--------|----------|
+| `minute` | Real-time monitoring (last hour) |
+| `five_minutes` | Short-term analysis (last few hours) |
+| `hour` | Daily analysis |
+| `day` | Weekly/monthly analysis |
+| `week` | Monthly/quarterly analysis |
+| `month` | Yearly analysis |
+
+### Response
+
+<TypeTable
+  type={{
+    time: {
+      description: 'Start of the time bucket',
+      type: 'string',
+      typeDescription: 'ISO 8601 datetime',
+    },
+    sessions: {
+      description: 'Number of sessions in this bucket',
+      type: 'number',
+    },
+    pageviews: {
+      description: 'Number of pageviews in this bucket',
+      type: 'number',
+    },
+    users: {
+      description: 'Unique users in this bucket',
+      type: 'number',
+    },
+    pages_per_session: {
+      description: 'Average pages viewed per session',
+      type: 'number',
+    },
+    bounce_rate: {
+      description: 'Percentage of single-page sessions',
+      type: 'number',
+      typeDescription: 'Range: 0-100',
+    },
+    session_duration: {
+      description: 'Average session duration in seconds',
+      type: 'number',
+    },
+  }}
+/>
+
+</div>
+<div className="flex flex-col gap-4">
+
+<Tabs items={['cURL', 'JavaScript', 'Python', 'PHP', 'Ruby', 'Go', 'Rust', 'Java', '.NET']}>
+  <Tab value="cURL">
+```bash title="Request"
+curl -X GET "https://api.rybbit.io/api/overview-bucketed/123?bucket=day&start_date=2024-01-01&end_date=2024-01-07&time_zone=America/New_York" \
+  -H "Authorization: Bearer your_api_key_here"
+```
+  </Tab>
+  <Tab value="JavaScript">
+```javascript title="Request"
+const response = await fetch(
+  'https://api.rybbit.io/api/overview-bucketed/123?bucket=day&start_date=2024-01-01&end_date=2024-01-07&time_zone=America/New_York',
+  {
+    headers: {
+      'Authorization': 'Bearer your_api_key_here'
+    }
+  }
+);
+
+const data = await response.json();
+```
+  </Tab>
+  <Tab value="Python">
+```python title="Request"
+import requests
+
+response = requests.get(
+    'https://api.rybbit.io/api/overview-bucketed/123',
+    params={
+        'bucket': 'day',
+        'start_date': '2024-01-01',
+        'end_date': '2024-01-07',
+        'time_zone': 'America/New_York'
+    },
+    headers={
+        'Authorization': 'Bearer your_api_key_here'
+    }
+)
+
+data = response.json()
+```
+  </Tab>
+  <Tab value="PHP">
+```php title="Request"
+$ch = curl_init();
+curl_setopt($ch, CURLOPT_URL, 'https://api.rybbit.io/api/overview-bucketed/123?bucket=day&start_date=2024-01-01&end_date=2024-01-07&time_zone=America/New_York');
+curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+curl_setopt($ch, CURLOPT_HTTPHEADER, [
+    'Authorization: Bearer your_api_key_here'
+]);
+
+$response = curl_exec($ch);
+curl_close($ch);
+
+$data = json_decode($response, true);
+```
+  </Tab>
+  <Tab value="Ruby">
+```ruby title="Request"
+require 'net/http'
+require 'json'
+
+uri = URI('https://api.rybbit.io/api/overview-bucketed/123?bucket=day&start_date=2024-01-01&end_date=2024-01-07&time_zone=America/New_York')
+req = Net::HTTP::Get.new(uri)
+req['Authorization'] = 'Bearer your_api_key_here'
+
+res = Net::HTTP.start(uri.hostname, uri.port, use_ssl: true) { |http| http.request(req) }
+data = JSON.parse(res.body)
+```
+  </Tab>
+  <Tab value="Go">
+```go title="Request"
+req, _ := http.NewRequest("GET", "https://api.rybbit.io/api/overview-bucketed/123?bucket=day&start_date=2024-01-01&end_date=2024-01-07&time_zone=America/New_York", nil)
+req.Header.Set("Authorization", "Bearer your_api_key_here")
+
+client := &http.Client{}
+resp, _ := client.Do(req)
+defer resp.Body.Close()
+
+var data map[string]interface{}
+json.NewDecoder(resp.Body).Decode(&data)
+```
+  </Tab>
+  <Tab value="Rust">
+```rust title="Request"
+let client = reqwest::Client::new();
+let res = client
+    .get("https://api.rybbit.io/api/overview-bucketed/123?bucket=day&start_date=2024-01-01&end_date=2024-01-07&time_zone=America/New_York")
+    .header("Authorization", "Bearer your_api_key_here")
+    .send()
+    .await?;
+
+let data: serde_json::Value = res.json().await?;
+```
+  </Tab>
+  <Tab value="Java">
+```java title="Request"
+HttpClient client = HttpClient.newHttpClient();
+HttpRequest request = HttpRequest.newBuilder()
+    .uri(URI.create("https://api.rybbit.io/api/overview-bucketed/123?bucket=day&start_date=2024-01-01&end_date=2024-01-07&time_zone=America/New_York"))
+    .header("Authorization", "Bearer your_api_key_here")
+    .GET()
+    .build();
+
+HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+```
+  </Tab>
+  <Tab value=".NET">
+```csharp title="Request"
+using var client = new HttpClient();
+client.DefaultRequestHeaders.Add("Authorization", "Bearer your_api_key_here");
+
+var response = await client.GetAsync("https://api.rybbit.io/api/overview-bucketed/123?bucket=day&start_date=2024-01-01&end_date=2024-01-07&time_zone=America/New_York");
+var data = await response.Content.ReadAsStringAsync();
+```
+  </Tab>
+</Tabs>
+
+```json title="Response"
+{
+  "data": [
+    {
+      "time": "2024-01-01T00:00:00.000Z",
+      "sessions": 1250,
+      "pageviews": 3890,
+      "users": 1100,
+      "pages_per_session": 3.11,
+      "bounce_rate": 41.5,
+      "session_duration": 165.2
+    },
+    {
+      "time": "2024-01-02T00:00:00.000Z",
+      "sessions": 1420,
+      "pageviews": 4520,
+      "users": 1280,
+      "pages_per_session": 3.18,
+      "bounce_rate": 39.8,
+      "session_duration": 178.4
+    },
+    {
+      "time": "2024-01-03T00:00:00.000Z",
+      "sessions": 1380,
+      "pageviews": 4210,
+      "users": 1190,
+      "pages_per_session": 3.05,
+      "bounce_rate": 42.1,
+      "session_duration": 162.8
+    }
+  ]
+}
+```
+
+</div>
+</div>
+
+---
+
+## Get Metric
+
+<div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
+<div>
+
+```
+GET /api/metric/:site
+```
+
+Returns dimensional analytics data broken down by a specific parameter. Supports pagination.
+
+### Path Parameters
+
+<TypeTable
+  type={{
+    site: {
+      description: 'Site ID or site identifier',
+      type: 'string | number',
+      required: true,
+    },
+  }}
+/>
+
+### Query Parameters
+
+Accepts all [Common Parameters](/docs/api/getting-started#common-parameters) plus the following:
+
+<TypeTable
+  type={{
+    parameter: {
+      description: 'The dimension to break down by',
+      type: 'FilterParameter',
+      typeDescription: 'e.g., "pathname", "country", "browser", "event_name"',
+      required: true,
+    },
+    limit: {
+      description: 'Number of results per page',
+      type: 'number',
+      default: 100,
+    },
+    page: {
+      description: 'Page number (1-indexed)',
+      type: 'number',
+      default: 1,
+    },
+  }}
+/>
+
+### Response
+
+<TypeTable
+  type={{
+    data: {
+      description: 'Array of metric results',
+      type: 'MetricItem[]',
+      typeDescription: 'See MetricItem structure below',
+    },
+    totalCount: {
+      description: 'Total number of unique values across all pages',
+      type: 'number',
+    },
+  }}
+/>
+
+#### MetricItem Structure
+
+<TypeTable
+  type={{
+    value: {
+      description: 'The dimension value',
+      type: 'string',
+      typeDescription: 'e.g., "/blog", "Chrome", "US"',
+    },
+    count: {
+      description: 'Number of sessions for this value',
+      type: 'number',
+    },
+    percentage: {
+      description: 'Percentage of total sessions',
+      type: 'number',
+      typeDescription: 'Range: 0-100',
+    },
+    pageviews: {
+      description: 'Total pageviews (for page-related parameters)',
+      type: 'number',
+      required: false,
+    },
+    bounce_rate: {
+      description: 'Bounce rate percentage',
+      type: 'number',
+      typeDescription: 'Range: 0-100',
+      required: false,
+    },
+  }}
+/>
+
+</div>
+<div className="flex flex-col gap-4">
+
+<Tabs items={['cURL', 'JavaScript', 'Python', 'PHP', 'Ruby', 'Go', 'Rust', 'Java', '.NET']}>
+  <Tab value="cURL">
+```bash title="Request"
+curl -X GET "https://api.rybbit.io/api/metric/123?parameter=country&start_date=2024-01-01&end_date=2024-01-31&time_zone=America/New_York&limit=10" \
+  -H "Authorization: Bearer your_api_key_here"
+```
+  </Tab>
+  <Tab value="JavaScript">
+```javascript title="Request"
+const response = await fetch(
+  'https://api.rybbit.io/api/metric/123?parameter=country&start_date=2024-01-01&end_date=2024-01-31&time_zone=America/New_York&limit=10',
+  {
+    headers: {
+      'Authorization': 'Bearer your_api_key_here'
+    }
+  }
+);
+
+const data = await response.json();
+```
+  </Tab>
+  <Tab value="Python">
+```python title="Request"
+import requests
+
+response = requests.get(
+    'https://api.rybbit.io/api/metric/123',
+    params={
+        'parameter': 'country',
+        'start_date': '2024-01-01',
+        'end_date': '2024-01-31',
+        'time_zone': 'America/New_York',
+        'limit': 10
+    },
+    headers={
+        'Authorization': 'Bearer your_api_key_here'
+    }
+)
+
+data = response.json()
+```
+  </Tab>
+  <Tab value="PHP">
+```php title="Request"
+$ch = curl_init();
+curl_setopt($ch, CURLOPT_URL, 'https://api.rybbit.io/api/metric/123?parameter=country&start_date=2024-01-01&end_date=2024-01-31&time_zone=America/New_York&limit=10');
+curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+curl_setopt($ch, CURLOPT_HTTPHEADER, [
+    'Authorization: Bearer your_api_key_here'
+]);
+
+$response = curl_exec($ch);
+curl_close($ch);
+
+$data = json_decode($response, true);
+```
+  </Tab>
+  <Tab value="Ruby">
+```ruby title="Request"
+require 'net/http'
+require 'json'
+
+uri = URI('https://api.rybbit.io/api/metric/123?parameter=country&start_date=2024-01-01&end_date=2024-01-31&time_zone=America/New_York&limit=10')
+req = Net::HTTP::Get.new(uri)
+req['Authorization'] = 'Bearer your_api_key_here'
+
+res = Net::HTTP.start(uri.hostname, uri.port, use_ssl: true) { |http| http.request(req) }
+data = JSON.parse(res.body)
+```
+  </Tab>
+  <Tab value="Go">
+```go title="Request"
+req, _ := http.NewRequest("GET", "https://api.rybbit.io/api/metric/123?parameter=country&start_date=2024-01-01&end_date=2024-01-31&time_zone=America/New_York&limit=10", nil)
+req.Header.Set("Authorization", "Bearer your_api_key_here")
+
+client := &http.Client{}
+resp, _ := client.Do(req)
+defer resp.Body.Close()
+
+var data map[string]interface{}
+json.NewDecoder(resp.Body).Decode(&data)
+```
+  </Tab>
+  <Tab value="Rust">
+```rust title="Request"
+let client = reqwest::Client::new();
+let res = client
+    .get("https://api.rybbit.io/api/metric/123?parameter=country&start_date=2024-01-01&end_date=2024-01-31&time_zone=America/New_York&limit=10")
+    .header("Authorization", "Bearer your_api_key_here")
+    .send()
+    .await?;
+
+let data: serde_json::Value = res.json().await?;
+```
+  </Tab>
+  <Tab value="Java">
+```java title="Request"
+HttpClient client = HttpClient.newHttpClient();
+HttpRequest request = HttpRequest.newBuilder()
+    .uri(URI.create("https://api.rybbit.io/api/metric/123?parameter=country&start_date=2024-01-01&end_date=2024-01-31&time_zone=America/New_York&limit=10"))
+    .header("Authorization", "Bearer your_api_key_here")
+    .GET()
+    .build();
+
+HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+```
+  </Tab>
+  <Tab value=".NET">
+```csharp title="Request"
+using var client = new HttpClient();
+client.DefaultRequestHeaders.Add("Authorization", "Bearer your_api_key_here");
+
+var response = await client.GetAsync("https://api.rybbit.io/api/metric/123?parameter=country&start_date=2024-01-01&end_date=2024-01-31&time_zone=America/New_York&limit=10");
+var data = await response.Content.ReadAsStringAsync();
+```
+  </Tab>
+</Tabs>
+
+```json title="Response"
+{
+  "data": {
+    "data": [
+      {
+        "value": "US",
+        "count": 8420,
+        "percentage": 54.63,
+        "pageviews": 26891,
+        "pageviews_percentage": 54.96,
+        "bounce_rate": 41.2
+      },
+      {
+        "value": "GB",
+        "count": 2150,
+        "percentage": 13.95,
+        "pageviews": 6847,
+        "pageviews_percentage": 13.99,
+        "bounce_rate": 43.8
+      }
+    ],
+    "totalCount": 87
+  }
+}
+```
+
+</div>
+</div>
+
+---
+
+## Get Live Visitors
+
+<div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
+<div>
+
+```
+GET /api/live-user-count/:site
+```
+
+Returns the count of unique active sessions within the specified time window. Useful for displaying real-time visitor counts.
+
+### Path Parameters
+
+<TypeTable
+  type={{
+    site: {
+      description: 'Site ID or site identifier',
+      type: 'string | number',
+      required: true,
+    },
+  }}
+/>
+
+### Query Parameters
+
+<TypeTable
+  type={{
+    minutes: {
+      description: 'Time window in minutes to count active sessions',
+      type: 'number',
+      default: 5,
+      typeDescription: 'Sessions with activity within the last N minutes are considered "live"',
+    },
+  }}
+/>
+
+### Response
+
+<TypeTable
+  type={{
+    count: {
+      description: 'Number of unique active sessions',
+      type: 'number',
+    },
+  }}
+/>
+
+#### Time Window Guide
+
+| Minutes | Use Case |
+|---------|----------|
+| `1` | Very active visitors (currently browsing) |
+| `5` | Standard "live" count (default) |
+| `15` | Recently active visitors |
+| `30` | Short-term engagement window |
+
+</div>
+<div className="flex flex-col gap-4">
+
+<Tabs items={['cURL', 'JavaScript', 'Python', 'PHP', 'Ruby', 'Go', 'Rust', 'Java', '.NET']}>
+  <Tab value="cURL">
+```bash title="Request"
+curl -X GET "https://api.rybbit.io/api/live-user-count/123?minutes=5" \
+  -H "Authorization: Bearer your_api_key_here"
+```
+  </Tab>
+  <Tab value="JavaScript">
+```javascript title="Request"
+const response = await fetch(
+  'https://api.rybbit.io/api/live-user-count/123?minutes=5',
+  {
+    headers: {
+      'Authorization': 'Bearer your_api_key_here'
+    }
+  }
+);
+
+const { count } = await response.json();
+console.log(`Live visitors: ${count}`);
+```
+  </Tab>
+  <Tab value="Python">
+```python title="Request"
+import requests
+
+response = requests.get(
+    'https://api.rybbit.io/api/live-user-count/123',
+    params={'minutes': 5},
+    headers={
+        'Authorization': 'Bearer your_api_key_here'
+    }
+)
+
+data = response.json()
+print(f"Live visitors: {data['count']}")
+```
+  </Tab>
+  <Tab value="PHP">
+```php title="Request"
+$ch = curl_init();
+curl_setopt($ch, CURLOPT_URL, 'https://api.rybbit.io/api/live-user-count/123?minutes=5');
+curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+curl_setopt($ch, CURLOPT_HTTPHEADER, [
+    'Authorization: Bearer your_api_key_here'
+]);
+
+$response = curl_exec($ch);
+curl_close($ch);
+
+$data = json_decode($response, true);
+echo "Live visitors: " . $data['count'];
+```
+  </Tab>
+  <Tab value="Ruby">
+```ruby title="Request"
+require 'net/http'
+require 'json'
+
+uri = URI('https://api.rybbit.io/api/live-user-count/123?minutes=5')
+req = Net::HTTP::Get.new(uri)
+req['Authorization'] = 'Bearer your_api_key_here'
+
+res = Net::HTTP.start(uri.hostname, uri.port, use_ssl: true) { |http| http.request(req) }
+data = JSON.parse(res.body)
+puts "Live visitors: #{data['count']}"
+```
+  </Tab>
+  <Tab value="Go">
+```go title="Request"
+req, _ := http.NewRequest("GET", "https://api.rybbit.io/api/live-user-count/123?minutes=5", nil)
+req.Header.Set("Authorization", "Bearer your_api_key_here")
+
+client := &http.Client{}
+resp, _ := client.Do(req)
+defer resp.Body.Close()
+
+var data map[string]interface{}
+json.NewDecoder(resp.Body).Decode(&data)
+fmt.Printf("Live visitors: %v\n", data["count"])
+```
+  </Tab>
+  <Tab value="Rust">
+```rust title="Request"
+let client = reqwest::Client::new();
+let res = client
+    .get("https://api.rybbit.io/api/live-user-count/123?minutes=5")
+    .header("Authorization", "Bearer your_api_key_here")
+    .send()
+    .await?;
+
+let data: serde_json::Value = res.json().await?;
+println!("Live visitors: {}", data["count"]);
+```
+  </Tab>
+  <Tab value="Java">
+```java title="Request"
+HttpClient client = HttpClient.newHttpClient();
+HttpRequest request = HttpRequest.newBuilder()
+    .uri(URI.create("https://api.rybbit.io/api/live-user-count/123?minutes=5"))
+    .header("Authorization", "Bearer your_api_key_here")
+    .GET()
+    .build();
+
+HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+```
+  </Tab>
+  <Tab value=".NET">
+```csharp title="Request"
+using var client = new HttpClient();
+client.DefaultRequestHeaders.Add("Authorization", "Bearer your_api_key_here");
+
+var response = await client.GetAsync("https://api.rybbit.io/api/live-user-count/123?minutes=5");
+var data = await response.Content.ReadAsStringAsync();
+```
+  </Tab>
+</Tabs>
+
+```json title="Response"
+{
+  "count": 42
+}
+```
+
+### Polling Example
+
+```javascript title="Real-time Widget"
+async function updateLiveCount() {
+  const response = await fetch(
+    'https://api.rybbit.io/api/live-user-count/123?minutes=5',
+    {
+      headers: {
+        'Authorization': 'Bearer your_api_key'
+      }
+    }
+  );
+  const { count } = await response.json();
+  document.getElementById('live-visitors')
+    .textContent = count;
+}
+
+// Update every 15 seconds
+setInterval(updateLiveCount, 15000);
+```
+
+</div>
+</div>

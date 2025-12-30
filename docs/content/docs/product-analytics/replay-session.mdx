@@ -1,0 +1,34 @@
+---
+title: Session Replay
+description: A guide to how to use Rybbit's Session Replay Tab
+---
+
+# A Guide to Rybbit’s Session Replay Tab
+Have you ever wondered what your users are actually doing on your website when they are using it? One of Rybbit’s most useful features allows you to take a peek into what individual users are doing on your site; you can literally view an anonymized replay of all their interactions on your website.
+
+This is obviously very useful for any owner interested in understanding how their website is performing, if you’ve ever pondered what your users are really doing on your site beyond just numbers and charts then this feature is an absolute must have. We’ll walk you through how to use it, why it’s incredibly useful, and some creative ways you can apply it to supercharge your online presence.
+# What exactly is Session Replay?
+Session replay is a feature that allows you to watch anonymized recordings of real sessions on your website, it’s like being able to replay a memory of all the interactions on your website for a particular session. You can see mouse movements, clicks, scrolls, traffic flows, and even a set of user details such as the country, region, device and other details of each user. Unlike services like Google Analytics that just give you numbers and aggregations, session replays provide actual visual playback to help you see the user story behind the stats. And true to Rybbit’s core pillar, this is all done without cookies to ensure user privacy while also delivering powerful insights.
+<img src="/blog/replay_sessions.png" alt="Rybbit's performance dashboard" />
+# How to set up Session Replay
+ 1. Set Up Rybbit on your website: Add the Rybbit tracking script to your website, you only need to add the snippet after you paste into your HTML head tag, you can grab this from your Rybbit dashboard after you sign up.
+ 2. Enable the Session Replay feature: You can either toggle it on your site settings in the Dashboard or add the attribute **data-session-replay=”true”**. It will look something like this:
+ `<script async defer src="https://your-rybbit-instance.com/tracker.js" data-site="YOUR_SITE_ID" data-session-replay="true"></script>`
+3. Protect PII (Personally Identifiable Information): This feature is optional, but it is highly recommended
+4. Access the Session Replays in your Dashboard: After Session Replays are enabled, you can go to the “Session Replays” tab on the left hand side of your Rybbit Dashboard, you can filter sessions by criteria like duration, errors or user region. You just need to click on a session to start viewing the playback, you can then use the timeline to look through the events, zoom in on clicks and analyze these interactions in real time.
+# Why is the Session Replay tab useful?
+Session replay allows you to simply cut through all the noise and see what your users are actually doing, providing you with actionable insights. Here are some use cases that you can consider:
+-   UX Optimization: You can identify where users are getting stuck, perhaps there are some confusing layouts or slow pages, you can use Replays along with A/B testing to determine where you can make improvements.
+-   Beyond the metrics: Metrics like pageviews and bounce rates are good to know, but they don’t tell you when the users are struggling with a form or leaving the page because it’s too slow. Session replays will reveal these pain points visually.
+-   Understand what your users are doing on your site: Seeing actual users and their actual sessions can help you build a much better comprehension of your audience.
+-   Share with your team: You can share replays with your team for collaboration or for reporting reasons.
+
+From just being a solo developer, or being a high-powered marketing team, or a technical oriented developer team, session replays allow you to have a truly granular view on how your users are actually interacting with your website.
+# Final Remarks
+At Rybbit, we built Session Replay to harmonize data and real-world user stories. If you’re tired of opaque analytics tools, then give it a try. Setup takes literally minutes and does not impact your site's performance whatsoever thanks to our cookie less approach.
+
+**Additional Resources:**
+- [Getting Started with Rybbit Analytics](https://rybbit.com/docs)
+- [Self-Hosting Guide](https://rybbit.com/docs/self-hosting)
+- [Tracking Custom Events](https://rybbit.com/docs/track-events)
+- [Framework Integration Guides](https://rybbit.com/docs) (React, Next.js, Vue, plus 20+ frameworks)

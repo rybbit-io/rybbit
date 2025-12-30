@@ -7,7 +7,7 @@ export interface OverviewData {
   session_duration: number;
 }
 
-export interface SingleColData {
+export interface MetricData {
   value: string;
   count: number;
   percentage: number | null;
@@ -19,10 +19,10 @@ export interface SiteReport {
   siteDomain: string;
   currentWeek: OverviewData;
   previousWeek: OverviewData;
-  topCountries: SingleColData[];
-  topPages: SingleColData[];
-  topReferrers: SingleColData[];
-  deviceBreakdown: SingleColData[];
+  topCountries: MetricData[];
+  topPages: MetricData[];
+  topReferrers: MetricData[];
+  deviceBreakdown: MetricData[];
 }
 
 export interface OrganizationReport {

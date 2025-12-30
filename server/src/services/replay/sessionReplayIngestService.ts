@@ -1,7 +1,7 @@
 import { DateTime } from "luxon";
 import { clickhouse } from "../../db/clickhouse/clickhouse.js";
 import { RecordSessionReplayRequest } from "../../types/sessionReplay.js";
-import { processResults } from "../../api/analytics/utils.js";
+import { processResults } from "../../api/analytics/utils/utils.js";
 import { parseTrackingData } from "./trackingUtils.js";
 import { sessionsService } from "../sessions/sessionsService.js";
 import { userIdService } from "../userId/userIdService.js";
@@ -27,11 +27,20 @@ export class SessionReplayIngestService {
   ): Promise<void> {
     const { userId: clientUserId, events, metadata } = request;
 
-    // Generate user ID server-side if not provided by client
-    const userId =
-      clientUserId && clientUserId.trim()
-        ? clientUserId.trim()
-        : await userIdService.generateUserId(requestMeta?.ipAddress || "", requestMeta?.userAgent || "", siteId);
+    // Always generate device fingerprint (anonymous user ID) server-side
+    const deviceFingerprint = await userIdService.generateUserId(
+      requestMeta?.ipAddress || "",
+      requestMeta?.userAgent || "",
+      siteId
+    );
+
+    // Check if client provided an identified user ID (different from device fingerprint)
+    const trimmedClientUserId = clientUserId?.trim() || "";
+    const identifiedUserId =
+      trimmedClientUserId && trimmedClientUserId !== deviceFingerprint ? trimmedClientUserId : "";
+
+    // Use device fingerprint as the primary user_id for session tracking
+    const userId = deviceFingerprint;
 
     // Get or create a session ID from the sessions service
     const { sessionId } = await sessionsService.updateSession({
@@ -66,6 +75,7 @@ export class SessionReplayIngestService {
           site_id: siteId,
           session_id: sessionId,
           user_id: userId,
+          identified_user_id: identifiedUserId,
           timestamp: event.timestamp,
           event_type: event.type,
           event_data: "", // Empty string when using R2
@@ -83,6 +93,7 @@ export class SessionReplayIngestService {
           site_id: siteId,
           session_id: sessionId,
           user_id: userId,
+          identified_user_id: identifiedUserId,
           timestamp: event.timestamp,
           event_type: event.type,
           event_data: serializedData,
@@ -108,7 +119,7 @@ export class SessionReplayIngestService {
 
     // Update or insert metadata
     if (metadata) {
-      await this.updateSessionMetadata(siteId, sessionId, userId, metadata, requestMeta);
+      await this.updateSessionMetadata(siteId, sessionId, userId, identifiedUserId, metadata, requestMeta);
     }
   }
 
@@ -116,6 +127,7 @@ export class SessionReplayIngestService {
     siteId: number,
     sessionId: string,
     userId: string,
+    identifiedUserId: string,
     metadata: any,
     requestMeta?: RequestMetadata
   ): Promise<void> {
@@ -188,6 +200,7 @@ export class SessionReplayIngestService {
           site_id: siteId,
           session_id: sessionId,
           user_id: userId,
+          identified_user_id: identifiedUserId,
           start_time: DateTime.fromJSDate(startTime).toFormat("yyyy-MM-dd HH:mm:ss"),
           end_time: endTime ? DateTime.fromJSDate(endTime).toFormat("yyyy-MM-dd HH:mm:ss") : null,
           duration_ms: durationMs,

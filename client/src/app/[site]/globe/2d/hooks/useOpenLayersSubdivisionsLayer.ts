@@ -5,7 +5,7 @@ import VectorLayer from "ol/layer/Vector";
 import VectorSource from "ol/source/Vector";
 import { Fill, Stroke, Style } from "ol/style";
 import { MutableRefObject, useEffect, useMemo, useRef, useState } from "react";
-import { useSingleCol } from "../../../../../api/analytics/useSingleCol";
+import { useMetric } from "../../../../../api/analytics/hooks/useGetMetric";
 import { useSubdivisions } from "../../../../../lib/geo";
 import { addFilter } from "../../../../../lib/store";
 import { createColorScale } from "../../utils/colorScale";
@@ -31,7 +31,7 @@ export function useOpenLayersSubdivisionsLayer({
   mapViewRef,
   mapView,
 }: UseOpenLayersSubdivisionsLayerProps) {
-  const { data: subdivisionData } = useSingleCol({ parameter: "region", limit: 10000 });
+  const { data: subdivisionData } = useMetric({ parameter: "region", limit: 10000 });
   const { data: subdivisionsGeoData } = useSubdivisions();
   const colorScale = useMemo(() => createColorScale(subdivisionData?.data), [subdivisionData?.data]);
 

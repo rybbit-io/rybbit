@@ -1,5 +1,6 @@
 import { cn } from "@/lib/utils";
 import { Marquee } from "@/components/magicui/marquee";
+import { SectionBadge } from "@/components/SectionBadge";
 import Image from "next/image";
 import Link from "next/link";
 
@@ -39,8 +40,8 @@ const PlatformLogo = ({ name, logo, path }: { name: string; logo: string; path: 
       <div
         className={cn(
           "flex items-center justify-center h-20 w-20 mx-2 my-2",
-          "bg-neutral-800/50 backdrop-blur-sm rounded-lg p-4",
-          "border border-neutral-700/50 hover:border-neutral-500 transition-colors duration-200",
+          "bg-neutral-100/50 dark:bg-neutral-800/50 backdrop-blur-sm rounded-lg p-4",
+          "border border-neutral-300/50 dark:border-neutral-700/50 hover:border-neutral-500 dark:hover:border-neutral-500 transition-colors duration-200",
           "cursor-pointer hover:scale-105 transition-transform"
         )}
       >
@@ -58,11 +59,11 @@ export function Integrations() {
   return (
     <div className="py-20 w-full">
       <div className="max-w-7xl mx-auto px-4 mb-10 text-center">
-        <div className="inline-block bg-emerald-900/30 text-emerald-400 px-3 py-1 rounded-full text-sm font-medium mb-4">
+        <SectionBadge className="mb-4">
           Seamless Integration
-        </div>
+        </SectionBadge>
         <h2 className="text-4xl font-bold mb-3">Works with all your favorite platforms</h2>
-        <p className="text-xl text-neutral-300 font-light">Integrate Rybbit with any platform in minutes</p>
+        <p className="text-xl text-neutral-600 dark:text-neutral-300 font-light">Integrate Rybbit with any platform in minutes</p>
       </div>
 
       <div className="relative flex w-full flex-col items-center justify-center overflow-hidden gap-8">

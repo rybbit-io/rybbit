@@ -1,15 +1,7 @@
 "use client";
 
 import { Card } from "./Card";
-import {
-  Play,
-  Pause,
-  SkipBack,
-  SkipForward,
-  Maximize2,
-  Volume2,
-  Laptop,
-} from "lucide-react";
+import { Play, Pause, SkipBack, SkipForward, Maximize2, Volume2, Laptop, Film } from "lucide-react";
 import { useState, useEffect } from "react";
 import { CountryFlag } from "../Country";
 import { Browser } from "../Browser";
@@ -26,7 +18,7 @@ export function SessionReplay() {
 
     const interval = setInterval(() => {
       // Animate cursor movement
-      setCursorPosition((prev) => {
+      setCursorPosition(prev => {
         const paths = [
           { x: 48, y: 32 },
           { x: 120, y: 80 },
@@ -35,9 +27,7 @@ export function SessionReplay() {
           { x: 200, y: 120 },
           { x: 120, y: 180 },
         ];
-        const currentIndex = paths.findIndex(
-          (p) => p.x === prev.x && p.y === prev.y
-        );
+        const currentIndex = paths.findIndex(p => p.x === prev.x && p.y === prev.y);
         const nextIndex = (currentIndex + 1) % paths.length;
 
         // Trigger click effect on product
@@ -61,74 +51,75 @@ export function SessionReplay() {
     <Card
       title="Session Replay"
       description="Watch real user sessions to understand their behavior and identify pain points."
+      icon={Film}
     >
-      <div className="bg-neutral-900 rounded-lg overflow-hidden">
+      <div className=" mt-4 transform rotate-2 translate-x-8 translate-y-8 bg-neutral-200 dark:bg-neutral-900 rounded-lg -mb-[30px] rounded-xl transition-transform duration-300 hover:scale-105 hover:rotate-3">
         {/* Video player container */}
-        <div className="relative bg-black">
+        <div className="relative">
           {/* Mock website content */}
-          <div className="aspect-video bg-neutral-950 relative overflow-hidden">
+          <div className="relative overflow-hidden">
             {/* Browser chrome */}
-            <div className="bg-neutral-800 h-8 flex items-center px-3 gap-2">
-              <div className="flex gap-1.5">
-                <div className="w-3 h-3 rounded-full bg-red-500"></div>
-                <div className="w-3 h-3 rounded-full bg-yellow-500"></div>
-                <div className="w-3 h-3 rounded-full bg-green-500"></div>
+            <div className="bg-neutral-300 dark:bg-neutral-800 h-7 flex items-center px-2 gap-2 rounded-t-lg">
+              <div className="flex gap-1">
+                <div className="w-2 h-2 rounded-full bg-red-500"></div>
+                <div className="w-2 h-2 rounded-full bg-yellow-500"></div>
+                <div className="w-2 h-2 rounded-full bg-green-500"></div>
               </div>
-              <div className="flex-1 mx-4">
-                <div className="bg-neutral-700 rounded px-3 py-1 text-xs text-neutral-300">
+              <div className="flex-1 mx-3">
+                <div className="bg-neutral-400 dark:bg-neutral-700 rounded px-2 py-0.5 text-[10px] text-neutral-900 dark:text-neutral-300">
                   https://example.com/products
                 </div>
               </div>
             </div>
 
             {/* Mock website content */}
-            <div className="p-4 bg-white">
+            <div className="p-3 bg-white">
               {/* Header */}
-              <div className="flex items-center justify-between mb-6">
-                <div className="w-24 h-6 bg-neutral-300 rounded"></div>
-                <div className="flex gap-4">
-                  <div className="w-16 h-4 bg-neutral-200 rounded"></div>
-                  <div className="w-16 h-4 bg-neutral-200 rounded"></div>
-                  <div className="w-16 h-4 bg-neutral-200 rounded"></div>
+              <div className="flex items-center justify-between mb-4">
+                <div className="w-20 h-4 bg-neutral-300 rounded"></div>
+                <div className="flex gap-3">
+                  <div className="w-12 h-3 bg-neutral-200 rounded"></div>
+                  <div className="w-12 h-3 bg-neutral-200 rounded"></div>
+                  <div className="w-12 h-3 bg-neutral-200 rounded"></div>
                 </div>
               </div>
 
               {/* Hero section */}
-              <div className="mb-6">
-                <div className="w-48 h-8 bg-neutral-800 rounded mb-2"></div>
-                <div className="w-64 h-4 bg-neutral-200 rounded"></div>
+              <div className="mb-4">
+                <div className="w-40 h-6 bg-neutral-800 rounded mb-1.5"></div>
+                <div className="w-52 h-3 bg-neutral-200 rounded"></div>
               </div>
 
               {/* Product grid */}
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-3 gap-2">
                 <div
-                  className={`bg-neutral-100 rounded p-2 transition-all duration-300 ${
+                  className={`bg-neutral-100 rounded p-1.5 transition-all duration-300 ${
                     hoveredProduct === 0 ? "shadow-lg scale-105" : ""
                   }`}
                 >
-                  <div className="w-full h-20 bg-neutral-300 rounded mb-2"></div>
-                  <div className="w-full h-3 bg-neutral-200 rounded mb-1"></div>
-                  <div className="w-16 h-3 bg-emerald-500 rounded"></div>
+                  <div className="w-full h-16 bg-neutral-300 rounded mb-1.5"></div>
+                  <div className="w-full h-2 bg-neutral-200 rounded mb-1"></div>
+                  <div className="w-12 h-2 bg-emerald-500 rounded"></div>
                 </div>
                 <div
-                  className={`bg-neutral-100 rounded p-2 transition-all duration-300 ${
+                  className={`bg-neutral-100 rounded p-1.5 transition-all duration-300 ${
                     hoveredProduct === 1 ? "shadow-lg scale-105" : ""
                   }`}
                 >
-                  <div className="w-full h-20 bg-neutral-300 rounded mb-2 relative">
-                    <div className="absolute top-1 left-1 w-8 h-3 bg-red-500 rounded"></div>
+                  <div className="w-full h-16 bg-neutral-300 rounded mb-1.5 relative">
+                    <div className="absolute top-0.5 left-0.5 w-6 h-2 bg-red-500 rounded"></div>
                   </div>
-                  <div className="w-full h-3 bg-neutral-200 rounded mb-1"></div>
-                  <div className="w-16 h-3 bg-emerald-500 rounded"></div>
+                  <div className="w-full h-2 bg-neutral-200 rounded mb-1"></div>
+                  <div className="w-12 h-2 bg-emerald-500 rounded"></div>
                 </div>
                 <div
-                  className={`bg-neutral-100 rounded p-2 transition-all duration-300 ${
+                  className={`bg-neutral-100 rounded p-1.5 transition-all duration-300 ${
                     hoveredProduct === 2 ? "shadow-lg scale-105" : ""
                   }`}
                 >
-                  <div className="w-full h-20 bg-neutral-300 rounded mb-2"></div>
-                  <div className="w-full h-3 bg-neutral-200 rounded mb-1"></div>
-                  <div className="w-16 h-3 bg-emerald-500 rounded"></div>
+                  <div className="w-full h-16 bg-neutral-300 rounded mb-1.5"></div>
+                  <div className="w-full h-2 bg-neutral-200 rounded mb-1"></div>
+                  <div className="w-12 h-2 bg-emerald-500 rounded"></div>
                 </div>
               </div>
             </div>
@@ -141,17 +132,8 @@ export function SessionReplay() {
                 top: `${cursorPosition.y}px`,
               }}
             >
-              <svg
-                viewBox="0 0 24 24"
-                fill="none"
-                className="w-full h-full drop-shadow-sm"
-              >
-                <path
-                  d="M5.5 3.5L20.5 12L12 14.5L9.5 22L5.5 3.5Z"
-                  fill="white"
-                  stroke="black"
-                  strokeWidth="1"
-                />
+              <svg viewBox="0 0 24 24" fill="none" className="w-full h-full drop-shadow-sm">
+                <path d="M5.5 3.5L20.5 12L12 14.5L9.5 22L5.5 3.5Z" fill="white" stroke="black" strokeWidth="1" />
               </svg>
             </div>
 
@@ -176,66 +158,25 @@ export function SessionReplay() {
         </div>
 
         {/* Video controls */}
-        <div className="bg-neutral-800/50 backdrop-blur-sm p-3">
-          {/* Progress bar */}
-          <div className="mb-3">
-            <div className="flex items-center justify-between text-xs text-neutral-400 mb-1">
-              <span>2:34</span>
-              <span>5:12</span>
-            </div>
-            <div className="relative h-1 bg-neutral-700 rounded-full overflow-hidden">
-              <div className="absolute left-0 top-0 h-full w-1/2 bg-emerald-500 rounded-full"></div>
-              <div className="absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2 w-3 h-3 bg-emerald-400 rounded-full shadow-lg"></div>
-            </div>
-          </div>
+        <div className="bg-neutral-300/50 dark:bg-neutral-800/50 backdrop-blur-sm p-2 pb-10">
+          <div className="flex items-center gap-3">
+            {/* Play/Pause button */}
+            <button
+              onClick={() => setIsPlaying(!isPlaying)}
+              className="bg-emerald-600 hover:bg-emerald-500 text-white rounded-full p-1.5 transition-colors"
+            >
+              {isPlaying ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5" />}
+            </button>
 
-          {/* Control buttons */}
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <button className="text-neutral-300 hover:text-white transition-colors">
-                <SkipBack className="w-4 h-4" />
-              </button>
-              <button
-                onClick={() => setIsPlaying(!isPlaying)}
-                className="bg-emerald-600 hover:bg-emerald-500 text-white rounded-full p-2 transition-colors"
-              >
-                {isPlaying ? (
-                  <Pause className="w-4 h-4" />
-                ) : (
-                  <Play className="w-4 h-4" />
-                )}
-              </button>
-              <button className="text-neutral-300 hover:text-white transition-colors">
-                <SkipForward className="w-4 h-4" />
-              </button>
-            </div>
-
-            <div className="flex items-center gap-3">
-              <button className="text-neutral-300 hover:text-white transition-colors">
-                <Volume2 className="w-4 h-4" />
-              </button>
-              <button className="text-neutral-300 hover:text-white transition-colors">
-                <Maximize2 className="w-4 h-4" />
-              </button>
-            </div>
-          </div>
-        </div>
-
-        {/* Session info */}
-        <div className="p-4 border-t border-neutral-800">
-          <div className="flex items-center justify-between text-sm">
-            <div>
-              <div className="text-neutral-300">Session #48291</div>
-              <div className="text-xs text-neutral-500">
-                User clicked &quot;Add to Cart&quot; 3 times
+            {/* Progress bar */}
+            <div className="flex-1">
+              <div className="relative h-1 bg-neutral-400 dark:bg-neutral-700 rounded-full overflow-hidden">
+                <div className="absolute left-0 top-0 h-full w-1/2 bg-emerald-500 rounded-full"></div>
               </div>
             </div>
-            <div className="flex items-center gap-2">
-              <CountryFlag country="US" />
-              <Browser browser="Chrome" />
-              <OperatingSystem os="Windows" />
-              <Laptop className="w-4 h-4" />
-            </div>
+
+            {/* Time display */}
+            <div className="text-[10px] text-neutral-600 dark:text-neutral-400 tabular-nums">2:34 / 5:12</div>
           </div>
         </div>
       </div>

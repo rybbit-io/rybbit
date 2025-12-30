@@ -3,7 +3,7 @@ import Link from "next/link";
 
 export function Footer() {
   return (
-    <footer className="border-t border-neutral-800 bg-neutral-950/50">
+    <footer className="border-t border-neutral-800 bg-neutral-900">
       <div className="max-w-[1300px] mx-auto px-6 py-12">
         {/* Main Footer Content */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 mb-8">
@@ -14,21 +14,18 @@ export function Footer() {
               Open source, privacy-focused web analytics platform that respects
               user privacy.
             </p> */}
-            {/* <div className="mt-4">
-              <a
-                href="https://www.producthunt.com/products/rybbit?embed=true&utm_source=badge-top-post-badge&utm_medium=badge&utm_source=badge-rybbit"
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                <img
-                  src="https://api.producthunt.com/widgets/embed-image/v1/top-post-badge.svg?post_id=1028220&theme=dark&period=daily&t=1761000444319"
-                  alt="Rybbit - The open source Google Analytics replacement | Product Hunt"
-                  style={{ width: "200px", height: "43px" }}
-                  width="200"
-                  height="43"
-                />
-              </a>
-            </div> */}
+            <a
+              href="https://www.producthunt.com/products/rybbit?embed=true&utm_source=badge-top-post-badge&utm_medium=badge&utm_source=badge-rybbit&#0045;2"
+              target="_blank"
+            >
+              <img
+                src="https://api.producthunt.com/widgets/embed-image/v1/top-post-badge.svg?post_id=1028220&theme=neutral&period=daily&t=1761001525479"
+                alt="Rybbit - Open&#0032;Source&#0032;Google&#0032;Analytics&#0032;Replacement | Product Hunt"
+                style={{ width: "250px", height: "54px", margin: "20px 0px" }}
+                width="250"
+                height="54"
+              />
+            </a>
             {/* Social Media Links */}
             <div className="flex gap-4">
               <a
@@ -127,6 +124,11 @@ export function Footer() {
                 </Link>
               </li>
               <li>
+                <Link href="/features" className="text-neutral-400 hover:text-white transition-colors">
+                  Features
+                </Link>
+              </li>
+              <li>
                 <Link href="/pricing" className="text-neutral-400 hover:text-white transition-colors">
                   Pricing
                 </Link>
@@ -134,6 +136,11 @@ export function Footer() {
               <li>
                 <Link href="/blog" className="text-neutral-400 hover:text-white transition-colors">
                   Blog
+                </Link>
+              </li>
+              <li>
+                <Link href="/tools" className="text-neutral-400 hover:text-white transition-colors">
+                  Tools
                 </Link>
               </li>
               <li>
@@ -157,13 +164,18 @@ export function Footer() {
                 </a>
               </li>
               <li>
-                <Link href="/docs/api" className="text-neutral-400 hover:text-white transition-colors">
+                <Link href="/docs/api/getting-started" className="text-neutral-400 hover:text-white transition-colors">
                   API Reference
                 </Link>
               </li>
               <li>
                 <Link href="https://ipapi.is/" className="text-neutral-400 hover:text-white transition-colors">
                   Geolocation by ipapi.is
+                </Link>
+              </li>
+              <li>
+                <Link href="/oss-friends" className="text-neutral-400 hover:text-white transition-colors">
+                  OSS Friends
                 </Link>
               </li>
             </ul>
@@ -194,7 +206,12 @@ export function Footer() {
                 </Link>
               </li>
               <li>
-                <a href="mailto:hello@rybbit.io" className="text-neutral-400 hover:text-white transition-colors">
+                <Link href="/dpa" className="text-neutral-400 hover:text-white transition-colors">
+                  DPA
+                </Link>
+              </li>
+              <li>
+                <a href="mailto:hello@rybbit.com" className="text-neutral-400 hover:text-white transition-colors">
                   Support
                 </a>
               </li>

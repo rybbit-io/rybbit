@@ -8,6 +8,11 @@ import { z } from 'zod';
 
 export const { docs, meta } = defineDocs({
   dir: 'content/docs',
+  docs: {
+    postprocess: {
+      includeProcessedMarkdown: true,
+    },
+  },
 });
 
 // Blog collection - separate from docs

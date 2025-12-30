@@ -9,6 +9,7 @@ import { TrialPlan } from "../../../../components/subscription/TrialPlan";
 import { ExpiredTrialPlan } from "../../../../components/subscription/ExpiredTrialPlan";
 import { useSetPageTitle } from "../../../../hooks/useSetPageTitle";
 import { FreePlan } from "../../../../components/subscription/FreePlan";
+import { OverridePlan } from "../../../../components/subscription/OverridePlan";
 import { Building } from "lucide-react";
 import { authClient } from "@/lib/auth";
 import { AppSumoPlan } from "../../../../components/subscription/AppSumoPlan";
@@ -64,8 +65,12 @@ export default function OrganizationSubscriptionPage() {
       return <TrialPlan />;
     }
 
-    if (activeSubscription.appSumoPlan) {
+    if (activeSubscription.planName.startsWith("appsumo")) {
       return <AppSumoPlan />;
+    }
+
+    if (activeSubscription.isOverride) {
+      return <OverridePlan />;
     }
 
     return <PaidPlan />;

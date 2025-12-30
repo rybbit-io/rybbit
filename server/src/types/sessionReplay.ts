@@ -2,6 +2,7 @@ export interface SessionReplayEvent {
   siteId: number;
   sessionId: string;
   userId: string;
+  identifiedUserId?: string;
   timestamp: Date;
   eventType: string;
   eventData: string;
@@ -16,6 +17,7 @@ export interface SessionReplayMetadata {
   siteId: number;
   sessionId: string;
   userId: string;
+  identifiedUserId?: string;
   startTime: Date;
   endTime?: Date;
   durationMs?: number;
@@ -62,6 +64,7 @@ export interface RecordSessionReplayRequest {
 export interface SessionReplayListItem {
   sessionId: string;
   userId: string;
+  identifiedUserId?: string;
   startTime: Date;
   endTime?: Date;
   durationMs?: number;

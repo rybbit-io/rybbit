@@ -1,8 +1,8 @@
-import { FastifyRequest, FastifyReply } from "fastify";
-import { clickhouse } from "../../db/clickhouse/clickhouse.js";
-import { DateTime } from "luxon";
-import { getTimeStatement, getFilterStatement } from "./utils.js";
 import { FilterParams } from "@rybbit/shared";
+import { FastifyReply, FastifyRequest } from "fastify";
+import { clickhouse } from "../../db/clickhouse/clickhouse.js";
+import { getFilterStatement } from "./utils/getFilterStatement.js";
+import { getTimeStatement } from "./utils/utils.js";
 
 export const getJourneys = async (
   request: FastifyRequest<{
@@ -17,7 +17,7 @@ export const getJourneys = async (
 ) => {
   try {
     const { site } = request.params;
-    const { steps = "3", startDate, endDate, timeZone = "UTC", limit = "100", filters, stepFilters } = request.query;
+    const { steps = "3", limit = "100", filters, stepFilters } = request.query;
 
     const maxSteps = parseInt(steps, 10);
     const journeyLimit = parseInt(limit, 10);
@@ -36,7 +36,7 @@ export const getJourneys = async (
 
     // Time conditions using getTimeStatement
     const timeStatement = getTimeStatement(request.query);
-    const filterStatement = getFilterStatement(filters);
+    const filterStatement = getFilterStatement(filters, Number(site), timeStatement);
 
     // Parse step filters
     let parsedStepFilters: Record<number, string> = {};

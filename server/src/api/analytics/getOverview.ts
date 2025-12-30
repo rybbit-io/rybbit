@@ -1,8 +1,8 @@
 import { FilterParams } from "@rybbit/shared";
 import { FastifyReply, FastifyRequest } from "fastify";
 import { clickhouse } from "../../db/clickhouse/clickhouse.js";
-import { getUserHasAccessToSitePublic } from "../../lib/auth-utils.js";
-import { getFilterStatement, getTimeStatement, processResults } from "./utils.js";
+import { getFilterStatement } from "./utils/getFilterStatement.js";
+import { getTimeStatement, processResults } from "./utils/utils.js";
 
 type GetOverviewResponse = {
   sessions: number;
@@ -13,9 +13,9 @@ type GetOverviewResponse = {
   session_duration: number;
 };
 
-const getQuery = (params: FilterParams) => {
-  const filterStatement = getFilterStatement(params.filters);
+const getQuery = (params: FilterParams, siteId: number) => {
   const timeStatement = getTimeStatement(params);
+  const filterStatement = getFilterStatement(params.filters, siteId, timeStatement);
 
   return `
     WITH
@@ -93,17 +93,20 @@ export interface OverviewRequest {
 }
 
 export async function getOverview(req: FastifyRequest<OverviewRequest>, res: FastifyReply) {
-  const { startDate, endDate, timeZone, filters, pastMinutesStart, pastMinutesEnd } = req.query;
+  const { start_date, end_date, time_zone, filters, past_minutes_start, past_minutes_end } = req.query;
   const site = req.params.site;
 
-  const query = getQuery({
-    startDate,
-    endDate,
-    timeZone,
-    filters,
-    pastMinutesStart,
-    pastMinutesEnd,
-  });
+  const query = getQuery(
+    {
+      start_date,
+      end_date,
+      time_zone,
+      filters,
+      past_minutes_start,
+      past_minutes_end,
+    },
+    Number(site)
+  );
 
   try {
     const result = await clickhouse.query({

@@ -61,7 +61,7 @@ export function CopyText({
             <button
               onClick={handleCopy}
               className={cn(
-                "p-1 rounded-md transition-colors text-gray-400 hover:text-gray-200 hover:bg-neutral-800 focus:outline-none",
+                "p-1 rounded-md transition-colors text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800 focus:outline-none",
                 copyButtonClassName
               )}
               aria-label="Copy to clipboard"
