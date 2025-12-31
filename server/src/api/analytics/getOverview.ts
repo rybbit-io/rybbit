@@ -96,6 +96,17 @@ export async function getOverview(req: FastifyRequest<OverviewRequest>, res: Fas
   const { start_date, end_date, time_zone, filters, past_minutes_start, past_minutes_end } = req.query;
   const site = req.params.site;
 
+  // Debug logging to diagnose discrepancy between API and UI
+  console.log("[getOverview] Request params:", {
+    site,
+    start_date,
+    end_date,
+    time_zone,
+    filters: filters ? JSON.parse(filters) : [],
+    past_minutes_start,
+    past_minutes_end,
+  });
+
   const query = getQuery(
     {
       start_date,
@@ -118,6 +129,7 @@ export async function getOverview(req: FastifyRequest<OverviewRequest>, res: Fas
     });
 
     const data = await processResults<GetOverviewResponse>(result);
+    console.log("[getOverview] Result:", data[0]);
     return res.send({ data: data[0] });
   } catch (error) {
     console.error("Error fetching overview:", error);

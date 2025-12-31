@@ -25,8 +25,12 @@ export function useGetOverview({ periodTime, site, overrideTime }: UseGetOvervie
 
   return useQuery({
     queryKey,
-    queryFn: () => {
-      return fetchOverview(site!, params).then(data => ({ data }));
+    queryFn: async () => {
+      // Debug logging to diagnose discrepancy between API and UI
+      console.log("[useGetOverview] Fetching with params:", params);
+      const data = await fetchOverview(site!, params);
+      console.log("[useGetOverview] Received:", data);
+      return { data };
     },
     staleTime: 60_000,
     placeholderData: (_, query: any) => {
