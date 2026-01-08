@@ -188,14 +188,14 @@ Each site in the `sites` array contains:
 <Tabs items={['cURL', 'JavaScript', 'Python', 'PHP', 'Ruby', 'Go', 'Rust', 'Java', '.NET']}>
   <Tab value="cURL">
 ```bash title="Request"
-curl -X GET "https://api.rybbit.io/api/organizations" \
+curl -X GET "https://app.rybbit.io/api/organizations" \
   -H "Authorization: Bearer your_api_key_here"
 ```
   </Tab>
   <Tab value="JavaScript">
 ```javascript title="Request"
 const response = await fetch(
-  'https://api.rybbit.io/api/organizations',
+  'https://app.rybbit.io/api/organizations',
   {
     headers: {
       'Authorization': 'Bearer your_api_key_here'
@@ -211,7 +211,7 @@ const data = await response.json();
 import requests
 
 response = requests.get(
-    'https://api.rybbit.io/api/organizations',
+    'https://app.rybbit.io/api/organizations',
     headers={
         'Authorization': 'Bearer your_api_key_here'
     }
@@ -223,7 +223,7 @@ data = response.json()
   <Tab value="PHP">
 ```php title="Request"
 $ch = curl_init();
-curl_setopt($ch, CURLOPT_URL, "https://api.rybbit.io/api/organizations");
+curl_setopt($ch, CURLOPT_URL, "https://app.rybbit.io/api/organizations");
 curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
 curl_setopt($ch, CURLOPT_HTTPHEADER, [
     'Authorization: Bearer your_api_key_here'
@@ -240,7 +240,7 @@ $data = json_decode($response, true);
 require 'net/http'
 require 'json'
 
-uri = URI('https://api.rybbit.io/api/organizations')
+uri = URI('https://app.rybbit.io/api/organizations')
 req = Net::HTTP::Get.new(uri)
 req['Authorization'] = 'Bearer your_api_key_here'
 
@@ -250,7 +250,7 @@ data = JSON.parse(res.body)
   </Tab>
   <Tab value="Go">
 ```go title="Request"
-req, _ := http.NewRequest("GET", "https://api.rybbit.io/api/organizations", nil)
+req, _ := http.NewRequest("GET", "https://app.rybbit.io/api/organizations", nil)
 req.Header.Set("Authorization", "Bearer your_api_key_here")
 
 client := &http.Client{}
@@ -265,7 +265,7 @@ json.NewDecoder(resp.Body).Decode(&data)
 ```rust title="Request"
 let client = reqwest::Client::new();
 let res = client
-    .get("https://api.rybbit.io/api/organizations")
+    .get("https://app.rybbit.io/api/organizations")
     .header("Authorization", "Bearer your_api_key_here")
     .send()
     .await?;
@@ -277,7 +277,7 @@ let data: serde_json::Value = res.json().await?;
 ```java title="Request"
 HttpClient client = HttpClient.newHttpClient();
 HttpRequest request = HttpRequest.newBuilder()
-    .uri(URI.create("https://api.rybbit.io/api/organizations"))
+    .uri(URI.create("https://app.rybbit.io/api/organizations"))
     .header("Authorization", "Bearer your_api_key_here")
     .GET()
     .build();
@@ -290,7 +290,7 @@ HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.o
 using var client = new HttpClient();
 client.DefaultRequestHeaders.Add("Authorization", "Bearer your_api_key_here");
 
-var response = await client.GetAsync("https://api.rybbit.io/api/organizations");
+var response = await client.GetAsync("https://app.rybbit.io/api/organizations");
 var data = await response.Content.ReadAsStringAsync();
 ```
   </Tab>
@@ -503,7 +503,7 @@ Returns the created site object with the assigned `siteId`.
 <Tabs items={['cURL', 'JavaScript', 'Python', 'PHP', 'Ruby', 'Go', 'Rust', 'Java', '.NET']}>
   <Tab value="cURL">
 ```bash title="Request"
-curl -X POST "https://api.rybbit.io/api/organizations/org_123/sites" \
+curl -X POST "https://app.rybbit.io/api/organizations/org_123/sites" \
   -H "Authorization: Bearer your_api_key_here" \
   -H "Content-Type: application/json" \
   -d '{"domain": "example.com", "name": "My Website", "blockBots": true}'
@@ -513,7 +513,7 @@ curl -X POST "https://api.rybbit.io/api/organizations/org_123/sites" \
 ```javascript title="Request"
 const organizationId = 'org_123';
 const response = await fetch(
-  `https://api.rybbit.io/api/organizations/${organizationId}/sites`,
+  `https://app.rybbit.io/api/organizations/${organizationId}/sites`,
   {
     method: 'POST',
     headers: {
@@ -537,7 +537,7 @@ import requests
 
 organization_id = 'org_123'
 response = requests.post(
-    f'https://api.rybbit.io/api/organizations/{organization_id}/sites',
+    f'https://app.rybbit.io/api/organizations/{organization_id}/sites',
     json={
         'domain': 'example.com',
         'name': 'My Website',
@@ -555,7 +555,7 @@ data = response.json()
 ```php title="Request"
 $organizationId = 'org_123';
 $ch = curl_init();
-curl_setopt($ch, CURLOPT_URL, "https://api.rybbit.io/api/organizations/{$organizationId}/sites");
+curl_setopt($ch, CURLOPT_URL, "https://app.rybbit.io/api/organizations/{$organizationId}/sites");
 curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
 curl_setopt($ch, CURLOPT_POST, true);
 curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode([
@@ -580,7 +580,7 @@ require 'net/http'
 require 'json'
 
 organization_id = 'org_123'
-uri = URI("https://api.rybbit.io/api/organizations/#{organization_id}/sites")
+uri = URI("https://app.rybbit.io/api/organizations/#{organization_id}/sites")
 req = Net::HTTP::Post.new(uri)
 req['Authorization'] = 'Bearer your_api_key_here'
 req['Content-Type'] = 'application/json'
@@ -602,7 +602,7 @@ body := bytes.NewBuffer([]byte(`{
   "name": "My Website",
   "blockBots": true
 }`))
-req, _ := http.NewRequest("POST", "https://api.rybbit.io/api/organizations/"+organizationId+"/sites", body)
+req, _ := http.NewRequest("POST", "https://app.rybbit.io/api/organizations/"+organizationId+"/sites", body)
 req.Header.Set("Authorization", "Bearer your_api_key_here")
 req.Header.Set("Content-Type", "application/json")
 
@@ -619,7 +619,7 @@ json.NewDecoder(resp.Body).Decode(&data)
 let organization_id = "org_123";
 let client = reqwest::Client::new();
 let res = client
-    .post(format!("https://api.rybbit.io/api/organizations/{}/sites", organization_id))
+    .post(format!("https://app.rybbit.io/api/organizations/{}/sites", organization_id))
     .header("Authorization", "Bearer your_api_key_here")
     .json(&serde_json::json!({
         "domain": "example.com",
@@ -638,7 +638,7 @@ String organizationId = "org_123";
 HttpClient client = HttpClient.newHttpClient();
 String json = "{\"domain\": \"example.com\", \"name\": \"My Website\", \"blockBots\": true}";
 HttpRequest request = HttpRequest.newBuilder()
-    .uri(URI.create("https://api.rybbit.io/api/organizations/" + organizationId + "/sites"))
+    .uri(URI.create("https://app.rybbit.io/api/organizations/" + organizationId + "/sites"))
     .header("Authorization", "Bearer your_api_key_here")
     .header("Content-Type", "application/json")
     .POST(HttpRequest.BodyPublishers.ofString(json))
@@ -659,7 +659,7 @@ var content = new StringContent(
     "application/json"
 );
 
-var response = await client.PostAsync($"https://api.rybbit.io/api/organizations/{organizationId}/sites", content);
+var response = await client.PostAsync($"https://app.rybbit.io/api/organizations/{organizationId}/sites", content);
 var data = await response.Content.ReadAsStringAsync();
 ```
   </Tab>
@@ -782,7 +782,7 @@ Each member in the `data` array contains:
 <Tabs items={['cURL', 'JavaScript', 'Python', 'PHP', 'Ruby', 'Go', 'Rust', 'Java', '.NET']}>
   <Tab value="cURL">
 ```bash title="Request"
-curl -X GET "https://api.rybbit.io/api/organizations/org_123/members" \
+curl -X GET "https://app.rybbit.io/api/organizations/org_123/members" \
   -H "Authorization: Bearer your_api_key_here"
 ```
   </Tab>
@@ -790,7 +790,7 @@ curl -X GET "https://api.rybbit.io/api/organizations/org_123/members" \
 ```javascript title="Request"
 const organizationId = 'org_123';
 const response = await fetch(
-  `https://api.rybbit.io/api/organizations/${organizationId}/members`,
+  `https://app.rybbit.io/api/organizations/${organizationId}/members`,
   {
     headers: {
       'Authorization': 'Bearer your_api_key_here'
@@ -807,7 +807,7 @@ import requests
 
 organization_id = 'org_123'
 response = requests.get(
-    f'https://api.rybbit.io/api/organizations/{organization_id}/members',
+    f'https://app.rybbit.io/api/organizations/{organization_id}/members',
     headers={
         'Authorization': 'Bearer your_api_key_here'
     }
@@ -820,7 +820,7 @@ data = response.json()
 ```php title="Request"
 $organizationId = 'org_123';
 $ch = curl_init();
-curl_setopt($ch, CURLOPT_URL, "https://api.rybbit.io/api/organizations/{$organizationId}/members");
+curl_setopt($ch, CURLOPT_URL, "https://app.rybbit.io/api/organizations/{$organizationId}/members");
 curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
 curl_setopt($ch, CURLOPT_HTTPHEADER, [
     'Authorization: Bearer your_api_key_here'
@@ -838,7 +838,7 @@ require 'net/http'
 require 'json'
 
 organization_id = 'org_123'
-uri = URI("https://api.rybbit.io/api/organizations/#{organization_id}/members")
+uri = URI("https://app.rybbit.io/api/organizations/#{organization_id}/members")
 req = Net::HTTP::Get.new(uri)
 req['Authorization'] = 'Bearer your_api_key_here'
 
@@ -849,7 +849,7 @@ data = JSON.parse(res.body)
   <Tab value="Go">
 ```go title="Request"
 organizationId := "org_123"
-req, _ := http.NewRequest("GET", "https://api.rybbit.io/api/organizations/"+organizationId+"/members", nil)
+req, _ := http.NewRequest("GET", "https://app.rybbit.io/api/organizations/"+organizationId+"/members", nil)
 req.Header.Set("Authorization", "Bearer your_api_key_here")
 
 client := &http.Client{}
@@ -865,7 +865,7 @@ json.NewDecoder(resp.Body).Decode(&data)
 let organization_id = "org_123";
 let client = reqwest::Client::new();
 let res = client
-    .get(format!("https://api.rybbit.io/api/organizations/{}/members", organization_id))
+    .get(format!("https://app.rybbit.io/api/organizations/{}/members", organization_id))
     .header("Authorization", "Bearer your_api_key_here")
     .send()
     .await?;
@@ -878,7 +878,7 @@ let data: serde_json::Value = res.json().await?;
 String organizationId = "org_123";
 HttpClient client = HttpClient.newHttpClient();
 HttpRequest request = HttpRequest.newBuilder()
-    .uri(URI.create("https://api.rybbit.io/api/organizations/" + organizationId + "/members"))
+    .uri(URI.create("https://app.rybbit.io/api/organizations/" + organizationId + "/members"))
     .header("Authorization", "Bearer your_api_key_here")
     .GET()
     .build();
@@ -892,7 +892,7 @@ var organizationId = "org_123";
 using var client = new HttpClient();
 client.DefaultRequestHeaders.Add("Authorization", "Bearer your_api_key_here");
 
-var response = await client.GetAsync($"https://api.rybbit.io/api/organizations/{organizationId}/members");
+var response = await client.GetAsync($"https://app.rybbit.io/api/organizations/{organizationId}/members");
 var data = await response.Content.ReadAsStringAsync();
 ```
   </Tab>
@@ -1019,7 +1019,7 @@ Returns a success message when the user is added successfully.
 <Tabs items={['cURL', 'JavaScript', 'Python', 'PHP', 'Ruby', 'Go', 'Rust', 'Java', '.NET']}>
   <Tab value="cURL">
 ```bash title="Request"
-curl -X POST "https://api.rybbit.io/api/organizations/org_123/members" \
+curl -X POST "https://app.rybbit.io/api/organizations/org_123/members" \
   -H "Authorization: Bearer your_api_key_here" \
   -H "Content-Type: application/json" \
   -d '{"email": "newuser@example.com", "role": "member"}'
@@ -1029,7 +1029,7 @@ curl -X POST "https://api.rybbit.io/api/organizations/org_123/members" \
 ```javascript title="Request"
 const organizationId = 'org_123';
 const response = await fetch(
-  `https://api.rybbit.io/api/organizations/${organizationId}/members`,
+  `https://app.rybbit.io/api/organizations/${organizationId}/members`,
   {
     method: 'POST',
     headers: {
@@ -1052,7 +1052,7 @@ import requests
 
 organization_id = 'org_123'
 response = requests.post(
-    f'https://api.rybbit.io/api/organizations/{organization_id}/members',
+    f'https://app.rybbit.io/api/organizations/{organization_id}/members',
     json={
         'email': 'newuser@example.com',
         'role': 'member'
@@ -1069,7 +1069,7 @@ data = response.json()
 ```php title="Request"
 $organizationId = 'org_123';
 $ch = curl_init();
-curl_setopt($ch, CURLOPT_URL, "https://api.rybbit.io/api/organizations/{$organizationId}/members");
+curl_setopt($ch, CURLOPT_URL, "https://app.rybbit.io/api/organizations/{$organizationId}/members");
 curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
 curl_setopt($ch, CURLOPT_POST, true);
 curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode([
@@ -1093,7 +1093,7 @@ require 'net/http'
 require 'json'
 
 organization_id = 'org_123'
-uri = URI("https://api.rybbit.io/api/organizations/#{organization_id}/members")
+uri = URI("https://app.rybbit.io/api/organizations/#{organization_id}/members")
 req = Net::HTTP::Post.new(uri)
 req['Authorization'] = 'Bearer your_api_key_here'
 req['Content-Type'] = 'application/json'
@@ -1113,7 +1113,7 @@ body := bytes.NewBuffer([]byte(`{
   "email": "newuser@example.com",
   "role": "member"
 }`))
-req, _ := http.NewRequest("POST", "https://api.rybbit.io/api/organizations/"+organizationId+"/members", body)
+req, _ := http.NewRequest("POST", "https://app.rybbit.io/api/organizations/"+organizationId+"/members", body)
 req.Header.Set("Authorization", "Bearer your_api_key_here")
 req.Header.Set("Content-Type", "application/json")
 
@@ -1130,7 +1130,7 @@ json.NewDecoder(resp.Body).Decode(&data)
 let organization_id = "org_123";
 let client = reqwest::Client::new();
 let res = client
-    .post(format!("https://api.rybbit.io/api/organizations/{}/members", organization_id))
+    .post(format!("https://app.rybbit.io/api/organizations/{}/members", organization_id))
     .header("Authorization", "Bearer your_api_key_here")
     .json(&serde_json::json!({
         "email": "newuser@example.com",
@@ -1148,7 +1148,7 @@ String organizationId = "org_123";
 HttpClient client = HttpClient.newHttpClient();
 String json = "{\"email\": \"newuser@example.com\", \"role\": \"member\"}";
 HttpRequest request = HttpRequest.newBuilder()
-    .uri(URI.create("https://api.rybbit.io/api/organizations/" + organizationId + "/members"))
+    .uri(URI.create("https://app.rybbit.io/api/organizations/" + organizationId + "/members"))
     .header("Authorization", "Bearer your_api_key_here")
     .header("Content-Type", "application/json")
     .POST(HttpRequest.BodyPublishers.ofString(json))
@@ -1169,7 +1169,7 @@ var content = new StringContent(
     "application/json"
 );
 
-var response = await client.PostAsync($"https://api.rybbit.io/api/organizations/{organizationId}/members", content);
+var response = await client.PostAsync($"https://app.rybbit.io/api/organizations/{organizationId}/members", content);
 var data = await response.Content.ReadAsStringAsync();
 ```
   </Tab>

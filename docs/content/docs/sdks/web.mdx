@@ -50,7 +50,7 @@ async rybbit.init(config: RybbitConfig): Promise<void>;
 import rybbit from "@rybbit/js";
 
 await rybbit.init({
-  analyticsHost: "https://api.rybbit.io/api",
+  analyticsHost: "https://app.rybbit.io/api",
   siteId: "1",
 });
 ```
@@ -329,7 +329,7 @@ Session replay includes privacy-focused defaults and configuration options:
 
 ```javascript
 await rybbit.init({
-  analyticsHost: "https://api.rybbit.io/api",
+  analyticsHost: "https://app.rybbit.io/api",
   siteId: "1",
   replayPrivacyConfig: {
     maskAllInputs: true, // Mask all input values (default: true)
@@ -468,7 +468,7 @@ rybbit.cleanup();
 // In React
 useEffect(() => {
   rybbit.init({
-    analyticsHost: "https://api.rybbit.io/api",
+    analyticsHost: "https://app.rybbit.io/api",
     siteId: "1",
   });
 

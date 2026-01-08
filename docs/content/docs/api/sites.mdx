@@ -150,14 +150,14 @@ Returns detailed information about a specific site including its configuration.
 <Tabs items={['cURL', 'JavaScript', 'Python', 'PHP', 'Ruby', 'Go', 'Rust', 'Java', '.NET']}>
   <Tab value="cURL">
 ```bash title="Request"
-curl -X GET "https://api.rybbit.io/api/sites/123" \
+curl -X GET "https://app.rybbit.io/api/sites/123" \
   -H "Authorization: Bearer your_api_key_here"
 ```
   </Tab>
   <Tab value="JavaScript">
 ```javascript title="Request"
 const response = await fetch(
-  'https://api.rybbit.io/api/sites/123',
+  'https://app.rybbit.io/api/sites/123',
   {
     headers: {
       'Authorization': 'Bearer your_api_key_here'
@@ -173,7 +173,7 @@ const data = await response.json();
 import requests
 
 response = requests.get(
-    'https://api.rybbit.io/api/sites/123',
+    'https://app.rybbit.io/api/sites/123',
     headers={
         'Authorization': 'Bearer your_api_key_here'
     }
@@ -185,7 +185,7 @@ data = response.json()
   <Tab value="PHP">
 ```php title="Request"
 $ch = curl_init();
-curl_setopt($ch, CURLOPT_URL, 'https://api.rybbit.io/api/sites/123');
+curl_setopt($ch, CURLOPT_URL, 'https://app.rybbit.io/api/sites/123');
 curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
 curl_setopt($ch, CURLOPT_HTTPHEADER, [
     'Authorization: Bearer your_api_key_here'
@@ -202,7 +202,7 @@ $data = json_decode($response, true);
 require 'net/http'
 require 'json'
 
-uri = URI('https://api.rybbit.io/api/sites/123')
+uri = URI('https://app.rybbit.io/api/sites/123')
 req = Net::HTTP::Get.new(uri)
 req['Authorization'] = 'Bearer your_api_key_here'
 
@@ -212,7 +212,7 @@ data = JSON.parse(res.body)
   </Tab>
   <Tab value="Go">
 ```go title="Request"
-req, _ := http.NewRequest("GET", "https://api.rybbit.io/api/sites/123", nil)
+req, _ := http.NewRequest("GET", "https://app.rybbit.io/api/sites/123", nil)
 req.Header.Set("Authorization", "Bearer your_api_key_here")
 
 client := &http.Client{}
@@ -227,7 +227,7 @@ json.NewDecoder(resp.Body).Decode(&data)
 ```rust title="Request"
 let client = reqwest::Client::new();
 let res = client
-    .get("https://api.rybbit.io/api/sites/123")
+    .get("https://app.rybbit.io/api/sites/123")
     .header("Authorization", "Bearer your_api_key_here")
     .send()
     .await?;
@@ -239,7 +239,7 @@ let data: serde_json::Value = res.json().await?;
 ```java title="Request"
 HttpClient client = HttpClient.newHttpClient();
 HttpRequest request = HttpRequest.newBuilder()
-    .uri(URI.create("https://api.rybbit.io/api/sites/123"))
+    .uri(URI.create("https://app.rybbit.io/api/sites/123"))
     .header("Authorization", "Bearer your_api_key_here")
     .GET()
     .build();
@@ -252,7 +252,7 @@ HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.o
 using var client = new HttpClient();
 client.DefaultRequestHeaders.Add("Authorization", "Bearer your_api_key_here");
 
-var response = await client.GetAsync("https://api.rybbit.io/api/sites/123");
+var response = await client.GetAsync("https://app.rybbit.io/api/sites/123");
 var data = await response.Content.ReadAsStringAsync();
 ```
   </Tab>
@@ -325,14 +325,14 @@ Permanently deletes a site and all its associated data. This action cannot be un
 <Tabs items={['cURL', 'JavaScript', 'Python', 'PHP', 'Ruby', 'Go', 'Rust', 'Java', '.NET']}>
   <Tab value="cURL">
 ```bash title="Request"
-curl -X DELETE "https://api.rybbit.io/api/sites/123" \
+curl -X DELETE "https://app.rybbit.io/api/sites/123" \
   -H "Authorization: Bearer your_api_key_here"
 ```
   </Tab>
   <Tab value="JavaScript">
 ```javascript title="Request"
 const response = await fetch(
-  'https://api.rybbit.io/api/sites/123',
+  'https://app.rybbit.io/api/sites/123',
   {
     method: 'DELETE',
     headers: {
@@ -349,7 +349,7 @@ const data = await response.json();
 import requests
 
 response = requests.delete(
-    'https://api.rybbit.io/api/sites/123',
+    'https://app.rybbit.io/api/sites/123',
     headers={
         'Authorization': 'Bearer your_api_key_here'
     }
@@ -361,7 +361,7 @@ data = response.json()
   <Tab value="PHP">
 ```php title="Request"
 $ch = curl_init();
-curl_setopt($ch, CURLOPT_URL, 'https://api.rybbit.io/api/sites/123');
+curl_setopt($ch, CURLOPT_URL, 'https://app.rybbit.io/api/sites/123');
 curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
 curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'DELETE');
 curl_setopt($ch, CURLOPT_HTTPHEADER, [
@@ -379,7 +379,7 @@ $data = json_decode($response, true);
 require 'net/http'
 require 'json'
 
-uri = URI('https://api.rybbit.io/api/sites/123')
+uri = URI('https://app.rybbit.io/api/sites/123')
 req = Net::HTTP::Delete.new(uri)
 req['Authorization'] = 'Bearer your_api_key_here'
 
@@ -389,7 +389,7 @@ data = JSON.parse(res.body)
   </Tab>
   <Tab value="Go">
 ```go title="Request"
-req, _ := http.NewRequest("DELETE", "https://api.rybbit.io/api/sites/123", nil)
+req, _ := http.NewRequest("DELETE", "https://app.rybbit.io/api/sites/123", nil)
 req.Header.Set("Authorization", "Bearer your_api_key_here")
 
 client := &http.Client{}
@@ -404,7 +404,7 @@ json.NewDecoder(resp.Body).Decode(&data)
 ```rust title="Request"
 let client = reqwest::Client::new();
 let res = client
-    .delete("https://api.rybbit.io/api/sites/123")
+    .delete("https://app.rybbit.io/api/sites/123")
     .header("Authorization", "Bearer your_api_key_here")
     .send()
     .await?;
@@ -416,7 +416,7 @@ let data: serde_json::Value = res.json().await?;
 ```java title="Request"
 HttpClient client = HttpClient.newHttpClient();
 HttpRequest request = HttpRequest.newBuilder()
-    .uri(URI.create("https://api.rybbit.io/api/sites/123"))
+    .uri(URI.create("https://app.rybbit.io/api/sites/123"))
     .header("Authorization", "Bearer your_api_key_here")
     .DELETE()
     .build();
@@ -429,7 +429,7 @@ HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.o
 using var client = new HttpClient();
 client.DefaultRequestHeaders.Add("Authorization", "Bearer your_api_key_here");
 
-var response = await client.DeleteAsync("https://api.rybbit.io/api/sites/123");
+var response = await client.DeleteAsync("https://app.rybbit.io/api/sites/123");
 var data = await response.Content.ReadAsStringAsync();
 ```
   </Tab>
@@ -559,7 +559,7 @@ Updates site configuration settings. All fields are optional - only include the 
 <Tabs items={['cURL', 'JavaScript', 'Python', 'PHP', 'Ruby', 'Go', 'Rust', 'Java', '.NET']}>
   <Tab value="cURL">
 ```bash title="Request"
-curl -X PUT "https://api.rybbit.io/api/sites/123/config" \
+curl -X PUT "https://app.rybbit.io/api/sites/123/config" \
   -H "Authorization: Bearer your_api_key_here" \
   -H "Content-Type: application/json" \
   -d '{"public": true, "blockBots": true, "excludedCountries": ["CN", "RU"]}'
@@ -568,7 +568,7 @@ curl -X PUT "https://api.rybbit.io/api/sites/123/config" \
   <Tab value="JavaScript">
 ```javascript title="Request"
 const response = await fetch(
-  'https://api.rybbit.io/api/sites/123/config',
+  'https://app.rybbit.io/api/sites/123/config',
   {
     method: 'PUT',
     headers: {
@@ -591,7 +591,7 @@ const data = await response.json();
 import requests
 
 response = requests.put(
-    'https://api.rybbit.io/api/sites/123/config',
+    'https://app.rybbit.io/api/sites/123/config',
     json={
         'public': True,
         'blockBots': True,
@@ -608,7 +608,7 @@ data = response.json()
   <Tab value="PHP">
 ```php title="Request"
 $ch = curl_init();
-curl_setopt($ch, CURLOPT_URL, 'https://api.rybbit.io/api/sites/123/config');
+curl_setopt($ch, CURLOPT_URL, 'https://app.rybbit.io/api/sites/123/config');
 curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
 curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'PUT');
 curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode([
@@ -632,7 +632,7 @@ $data = json_decode($response, true);
 require 'net/http'
 require 'json'
 
-uri = URI('https://api.rybbit.io/api/sites/123/config')
+uri = URI('https://app.rybbit.io/api/sites/123/config')
 req = Net::HTTP::Put.new(uri)
 req['Authorization'] = 'Bearer your_api_key_here'
 req['Content-Type'] = 'application/json'
@@ -645,7 +645,7 @@ data = JSON.parse(res.body)
   <Tab value="Go">
 ```go title="Request"
 body := bytes.NewBuffer([]byte(`{"public": true, "blockBots": true, "excludedCountries": ["CN", "RU"]}`))
-req, _ := http.NewRequest("PUT", "https://api.rybbit.io/api/sites/123/config", body)
+req, _ := http.NewRequest("PUT", "https://app.rybbit.io/api/sites/123/config", body)
 req.Header.Set("Authorization", "Bearer your_api_key_here")
 req.Header.Set("Content-Type", "application/json")
 
@@ -661,7 +661,7 @@ json.NewDecoder(resp.Body).Decode(&data)
 ```rust title="Request"
 let client = reqwest::Client::new();
 let res = client
-    .put("https://api.rybbit.io/api/sites/123/config")
+    .put("https://app.rybbit.io/api/sites/123/config")
     .header("Authorization", "Bearer your_api_key_here")
     .json(&serde_json::json!({
         "public": true,
@@ -679,7 +679,7 @@ let data: serde_json::Value = res.json().await?;
 HttpClient client = HttpClient.newHttpClient();
 String json = "{\"public\": true, \"blockBots\": true, \"excludedCountries\": [\"CN\", \"RU\"]}";
 HttpRequest request = HttpRequest.newBuilder()
-    .uri(URI.create("https://api.rybbit.io/api/sites/123/config"))
+    .uri(URI.create("https://app.rybbit.io/api/sites/123/config"))
     .header("Authorization", "Bearer your_api_key_here")
     .header("Content-Type", "application/json")
     .PUT(HttpRequest.BodyPublishers.ofString(json))
@@ -699,7 +699,7 @@ var content = new StringContent(
     "application/json"
 );
 
-var response = await client.PutAsync("https://api.rybbit.io/api/sites/123/config", content);
+var response = await client.PutAsync("https://app.rybbit.io/api/sites/123/config", content);
 var data = await response.Content.ReadAsStringAsync();
 ```
   </Tab>
@@ -773,14 +773,14 @@ Returns the list of IP addresses and CIDR ranges that are excluded from tracking
 <Tabs items={['cURL', 'JavaScript', 'Python', 'PHP', 'Ruby', 'Go', 'Rust', 'Java', '.NET']}>
   <Tab value="cURL">
 ```bash title="Request"
-curl -X GET "https://api.rybbit.io/api/sites/123/excluded-ips" \
+curl -X GET "https://app.rybbit.io/api/sites/123/excluded-ips" \
   -H "Authorization: Bearer your_api_key_here"
 ```
   </Tab>
   <Tab value="JavaScript">
 ```javascript title="Request"
 const response = await fetch(
-  'https://api.rybbit.io/api/sites/123/excluded-ips',
+  'https://app.rybbit.io/api/sites/123/excluded-ips',
   {
     headers: {
       'Authorization': 'Bearer your_api_key_here'
@@ -796,7 +796,7 @@ const data = await response.json();
 import requests
 
 response = requests.get(
-    'https://api.rybbit.io/api/sites/123/excluded-ips',
+    'https://app.rybbit.io/api/sites/123/excluded-ips',
     headers={
         'Authorization': 'Bearer your_api_key_here'
     }
@@ -808,7 +808,7 @@ data = response.json()
   <Tab value="PHP">
 ```php title="Request"
 $ch = curl_init();
-curl_setopt($ch, CURLOPT_URL, 'https://api.rybbit.io/api/sites/123/excluded-ips');
+curl_setopt($ch, CURLOPT_URL, 'https://app.rybbit.io/api/sites/123/excluded-ips');
 curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
 curl_setopt($ch, CURLOPT_HTTPHEADER, [
     'Authorization: Bearer your_api_key_here'
@@ -825,7 +825,7 @@ $data = json_decode($response, true);
 require 'net/http'
 require 'json'
 
-uri = URI('https://api.rybbit.io/api/sites/123/excluded-ips')
+uri = URI('https://app.rybbit.io/api/sites/123/excluded-ips')
 req = Net::HTTP::Get.new(uri)
 req['Authorization'] = 'Bearer your_api_key_here'
 
@@ -835,7 +835,7 @@ data = JSON.parse(res.body)
   </Tab>
   <Tab value="Go">
 ```go title="Request"
-req, _ := http.NewRequest("GET", "https://api.rybbit.io/api/sites/123/excluded-ips", nil)
+req, _ := http.NewRequest("GET", "https://app.rybbit.io/api/sites/123/excluded-ips", nil)
 req.Header.Set("Authorization", "Bearer your_api_key_here")
 
 client := &http.Client{}
@@ -850,7 +850,7 @@ json.NewDecoder(resp.Body).Decode(&data)
 ```rust title="Request"
 let client = reqwest::Client::new();
 let res = client
-    .get("https://api.rybbit.io/api/sites/123/excluded-ips")
+    .get("https://app.rybbit.io/api/sites/123/excluded-ips")
     .header("Authorization", "Bearer your_api_key_here")
     .send()
     .await?;
@@ -862,7 +862,7 @@ let data: serde_json::Value = res.json().await?;
 ```java title="Request"
 HttpClient client = HttpClient.newHttpClient();
 HttpRequest request = HttpRequest.newBuilder()
-    .uri(URI.create("https://api.rybbit.io/api/sites/123/excluded-ips"))
+    .uri(URI.create("https://app.rybbit.io/api/sites/123/excluded-ips"))
     .header("Authorization", "Bearer your_api_key_here")
     .GET()
     .build();
@@ -875,7 +875,7 @@ HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.o
 using var client = new HttpClient();
 client.DefaultRequestHeaders.Add("Authorization", "Bearer your_api_key_here");
 
-var response = await client.GetAsync("https://api.rybbit.io/api/sites/123/excluded-ips");
+var response = await client.GetAsync("https://app.rybbit.io/api/sites/123/excluded-ips");
 var data = await response.Content.ReadAsStringAsync();
 ```
   </Tab>
@@ -941,14 +941,14 @@ Returns the list of country codes that are excluded from tracking.
 <Tabs items={['cURL', 'JavaScript', 'Python', 'PHP', 'Ruby', 'Go', 'Rust', 'Java', '.NET']}>
   <Tab value="cURL">
 ```bash title="Request"
-curl -X GET "https://api.rybbit.io/api/sites/123/excluded-countries" \
+curl -X GET "https://app.rybbit.io/api/sites/123/excluded-countries" \
   -H "Authorization: Bearer your_api_key_here"
 ```
   </Tab>
   <Tab value="JavaScript">
 ```javascript title="Request"
 const response = await fetch(
-  'https://api.rybbit.io/api/sites/123/excluded-countries',
+  'https://app.rybbit.io/api/sites/123/excluded-countries',
   {
     headers: {
       'Authorization': 'Bearer your_api_key_here'
@@ -964,7 +964,7 @@ const data = await response.json();
 import requests
 
 response = requests.get(
-    'https://api.rybbit.io/api/sites/123/excluded-countries',
+    'https://app.rybbit.io/api/sites/123/excluded-countries',
     headers={
         'Authorization': 'Bearer your_api_key_here'
     }
@@ -976,7 +976,7 @@ data = response.json()
   <Tab value="PHP">
 ```php title="Request"
 $ch = curl_init();
-curl_setopt($ch, CURLOPT_URL, 'https://api.rybbit.io/api/sites/123/excluded-countries');
+curl_setopt($ch, CURLOPT_URL, 'https://app.rybbit.io/api/sites/123/excluded-countries');
 curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
 curl_setopt($ch, CURLOPT_HTTPHEADER, [
     'Authorization: Bearer your_api_key_here'
@@ -993,7 +993,7 @@ $data = json_decode($response, true);
 require 'net/http'
 require 'json'
 
-uri = URI('https://api.rybbit.io/api/sites/123/excluded-countries')
+uri = URI('https://app.rybbit.io/api/sites/123/excluded-countries')
 req = Net::HTTP::Get.new(uri)
 req['Authorization'] = 'Bearer your_api_key_here'
 
@@ -1003,7 +1003,7 @@ data = JSON.parse(res.body)
   </Tab>
   <Tab value="Go">
 ```go title="Request"
-req, _ := http.NewRequest("GET", "https://api.rybbit.io/api/sites/123/excluded-countries", nil)
+req, _ := http.NewRequest("GET", "https://app.rybbit.io/api/sites/123/excluded-countries", nil)
 req.Header.Set("Authorization", "Bearer your_api_key_here")
 
 client := &http.Client{}
@@ -1018,7 +1018,7 @@ json.NewDecoder(resp.Body).Decode(&data)
 ```rust title="Request"
 let client = reqwest::Client::new();
 let res = client
-    .get("https://api.rybbit.io/api/sites/123/excluded-countries")
+    .get("https://app.rybbit.io/api/sites/123/excluded-countries")
     .header("Authorization", "Bearer your_api_key_here")
     .send()
     .await?;
@@ -1030,7 +1030,7 @@ let data: serde_json::Value = res.json().await?;
 ```java title="Request"
 HttpClient client = HttpClient.newHttpClient();
 HttpRequest request = HttpRequest.newBuilder()
-    .uri(URI.create("https://api.rybbit.io/api/sites/123/excluded-countries"))
+    .uri(URI.create("https://app.rybbit.io/api/sites/123/excluded-countries"))
     .header("Authorization", "Bearer your_api_key_here")
     .GET()
     .build();
@@ -1043,7 +1043,7 @@ HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.o
 using var client = new HttpClient();
 client.DefaultRequestHeaders.Add("Authorization", "Bearer your_api_key_here");
 
-var response = await client.GetAsync("https://api.rybbit.io/api/sites/123/excluded-countries");
+var response = await client.GetAsync("https://app.rybbit.io/api/sites/123/excluded-countries");
 var data = await response.Content.ReadAsStringAsync();
 ```
   </Tab>
@@ -1120,14 +1120,14 @@ Returns the private link key configuration. Private links allow sharing analytic
 <Tabs items={['cURL', 'JavaScript', 'Python', 'PHP', 'Ruby', 'Go', 'Rust', 'Java', '.NET']}>
   <Tab value="cURL">
 ```bash title="Request"
-curl -X GET "https://api.rybbit.io/api/sites/123/private-link-config" \
+curl -X GET "https://app.rybbit.io/api/sites/123/private-link-config" \
   -H "Authorization: Bearer your_api_key_here"
 ```
   </Tab>
   <Tab value="JavaScript">
 ```javascript title="Request"
 const response = await fetch(
-  'https://api.rybbit.io/api/sites/123/private-link-config',
+  'https://app.rybbit.io/api/sites/123/private-link-config',
   {
     headers: {
       'Authorization': 'Bearer your_api_key_here'
@@ -1143,7 +1143,7 @@ const data = await response.json();
 import requests
 
 response = requests.get(
-    'https://api.rybbit.io/api/sites/123/private-link-config',
+    'https://app.rybbit.io/api/sites/123/private-link-config',
     headers={
         'Authorization': 'Bearer your_api_key_here'
     }
@@ -1155,7 +1155,7 @@ data = response.json()
   <Tab value="PHP">
 ```php title="Request"
 $ch = curl_init();
-curl_setopt($ch, CURLOPT_URL, 'https://api.rybbit.io/api/sites/123/private-link-config');
+curl_setopt($ch, CURLOPT_URL, 'https://app.rybbit.io/api/sites/123/private-link-config');
 curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
 curl_setopt($ch, CURLOPT_HTTPHEADER, [
     'Authorization: Bearer your_api_key_here'
@@ -1172,7 +1172,7 @@ $data = json_decode($response, true);
 require 'net/http'
 require 'json'
 
-uri = URI('https://api.rybbit.io/api/sites/123/private-link-config')
+uri = URI('https://app.rybbit.io/api/sites/123/private-link-config')
 req = Net::HTTP::Get.new(uri)
 req['Authorization'] = 'Bearer your_api_key_here'
 
@@ -1182,7 +1182,7 @@ data = JSON.parse(res.body)
   </Tab>
   <Tab value="Go">
 ```go title="Request"
-req, _ := http.NewRequest("GET", "https://api.rybbit.io/api/sites/123/private-link-config", nil)
+req, _ := http.NewRequest("GET", "https://app.rybbit.io/api/sites/123/private-link-config", nil)
 req.Header.Set("Authorization", "Bearer your_api_key_here")
 
 client := &http.Client{}
@@ -1197,7 +1197,7 @@ json.NewDecoder(resp.Body).Decode(&data)
 ```rust title="Request"
 let client = reqwest::Client::new();
 let res = client
-    .get("https://api.rybbit.io/api/sites/123/private-link-config")
+    .get("https://app.rybbit.io/api/sites/123/private-link-config")
     .header("Authorization", "Bearer your_api_key_here")
     .send()
     .await?;
@@ -1209,7 +1209,7 @@ let data: serde_json::Value = res.json().await?;
 ```java title="Request"
 HttpClient client = HttpClient.newHttpClient();
 HttpRequest request = HttpRequest.newBuilder()
-    .uri(URI.create("https://api.rybbit.io/api/sites/123/private-link-config"))
+    .uri(URI.create("https://app.rybbit.io/api/sites/123/private-link-config"))
     .header("Authorization", "Bearer your_api_key_here")
     .GET()
     .build();
@@ -1222,7 +1222,7 @@ HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.o
 using var client = new HttpClient();
 client.DefaultRequestHeaders.Add("Authorization", "Bearer your_api_key_here");
 
-var response = await client.GetAsync("https://api.rybbit.io/api/sites/123/private-link-config");
+var response = await client.GetAsync("https://app.rybbit.io/api/sites/123/private-link-config");
 var data = await response.Content.ReadAsStringAsync();
 ```
   </Tab>
@@ -1310,7 +1310,7 @@ Generates or revokes a private link key for sharing analytics without authentica
 <Tabs items={['cURL', 'JavaScript', 'Python', 'PHP', 'Ruby', 'Go', 'Rust', 'Java', '.NET']}>
   <Tab value="cURL">
 ```bash title="Request"
-curl -X POST "https://api.rybbit.io/api/sites/123/private-link-config" \
+curl -X POST "https://app.rybbit.io/api/sites/123/private-link-config" \
   -H "Authorization: Bearer your_api_key_here" \
   -H "Content-Type: application/json" \
   -d '{"action": "generate_private_link_key"}'
@@ -1319,7 +1319,7 @@ curl -X POST "https://api.rybbit.io/api/sites/123/private-link-config" \
   <Tab value="JavaScript">
 ```javascript title="Request"
 const response = await fetch(
-  'https://api.rybbit.io/api/sites/123/private-link-config',
+  'https://app.rybbit.io/api/sites/123/private-link-config',
   {
     method: 'POST',
     headers: {
@@ -1340,7 +1340,7 @@ const data = await response.json();
 import requests
 
 response = requests.post(
-    'https://api.rybbit.io/api/sites/123/private-link-config',
+    'https://app.rybbit.io/api/sites/123/private-link-config',
     json={
         'action': 'generate_private_link_key'
     },
@@ -1355,7 +1355,7 @@ data = response.json()
   <Tab value="PHP">
 ```php title="Request"
 $ch = curl_init();
-curl_setopt($ch, CURLOPT_URL, 'https://api.rybbit.io/api/sites/123/private-link-config');
+curl_setopt($ch, CURLOPT_URL, 'https://app.rybbit.io/api/sites/123/private-link-config');
 curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
 curl_setopt($ch, CURLOPT_POST, true);
 curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode([
@@ -1377,7 +1377,7 @@ $data = json_decode($response, true);
 require 'net/http'
 require 'json'
 
-uri = URI('https://api.rybbit.io/api/sites/123/private-link-config')
+uri = URI('https://app.rybbit.io/api/sites/123/private-link-config')
 req = Net::HTTP::Post.new(uri)
 req['Authorization'] = 'Bearer your_api_key_here'
 req['Content-Type'] = 'application/json'
@@ -1390,7 +1390,7 @@ data = JSON.parse(res.body)
   <Tab value="Go">
 ```go title="Request"
 body := bytes.NewBuffer([]byte(`{"action": "generate_private_link_key"}`))
-req, _ := http.NewRequest("POST", "https://api.rybbit.io/api/sites/123/private-link-config", body)
+req, _ := http.NewRequest("POST", "https://app.rybbit.io/api/sites/123/private-link-config", body)
 req.Header.Set("Authorization", "Bearer your_api_key_here")
 req.Header.Set("Content-Type", "application/json")
 
@@ -1406,7 +1406,7 @@ json.NewDecoder(resp.Body).Decode(&data)
 ```rust title="Request"
 let client = reqwest::Client::new();
 let res = client
-    .post("https://api.rybbit.io/api/sites/123/private-link-config")
+    .post("https://app.rybbit.io/api/sites/123/private-link-config")
     .header("Authorization", "Bearer your_api_key_here")
     .json(&serde_json::json!({
         "action": "generate_private_link_key"
@@ -1422,7 +1422,7 @@ let data: serde_json::Value = res.json().await?;
 HttpClient client = HttpClient.newHttpClient();
 String json = "{\"action\": \"generate_private_link_key\"}";
 HttpRequest request = HttpRequest.newBuilder()
-    .uri(URI.create("https://api.rybbit.io/api/sites/123/private-link-config"))
+    .uri(URI.create("https://app.rybbit.io/api/sites/123/private-link-config"))
     .header("Authorization", "Bearer your_api_key_here")
     .header("Content-Type", "application/json")
     .POST(HttpRequest.BodyPublishers.ofString(json))
@@ -1442,7 +1442,7 @@ var content = new StringContent(
     "application/json"
 );
 
-var response = await client.PostAsync("https://api.rybbit.io/api/sites/123/private-link-config", content);
+var response = await client.PostAsync("https://app.rybbit.io/api/sites/123/private-link-config", content);
 var data = await response.Content.ReadAsStringAsync();
 ```
   </Tab>
