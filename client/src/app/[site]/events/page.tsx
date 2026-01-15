@@ -24,8 +24,8 @@ export default function EventsPage() {
         <EventsChart />
 
         <Card className="h-auto lg:h-full">
-
           <CardHeader>
+
             <CardTitle>Custom Events</CardTitle>
           </CardHeader>
           <CardContent>

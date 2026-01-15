@@ -1,6 +1,6 @@
 "use client";
 
-import { ResponsiveLine } from "@nivo/line";
+import { ResponsiveLine, SliceTooltipProps } from "@nivo/line";
 import { useWindowSize } from "@uidotdev/usehooks";
 import { DateTime } from "luxon";
 import { useEffect, useMemo, useState } from "react";
@@ -31,10 +31,16 @@ const COLOR_PALETTE = [
 
 const EVENT_LIMIT_OPTIONS = [1, 3, 5, 8, 10];
 
-type ChartSeries = {
+type EventPoint = {
+  x: string;
+  y: number;
+  currentTime: DateTime;
+};
+
+type EventSeries = {
   id: string;
   color: string;
-  data: Array<{ x: string; y: number; currentTime: DateTime }>;
+  data: EventPoint[];
 };
 
 export function EventsChart() {
@@ -64,7 +70,7 @@ export function EventsChart() {
 
   const { series, legendItems, maxValue, totalPoints } = useMemo(() => {
     if (!data || data.length === 0) {
-      return { series: [] as ChartSeries[], legendItems: [], maxValue: 1, totalPoints: 0 };
+      return { series: [] as EventSeries[], legendItems: [], maxValue: 1, totalPoints: 0 };
     }
 
     const timeLookup = new Map<string, DateTime>();
@@ -73,7 +79,7 @@ export function EventsChart() {
 
     data.forEach(item => {
       const timestamp = DateTime.fromSQL(item.time, { zone: timezone }).toUTC();
-      if (timestamp > DateTime.now()) {
+      if (!timestamp.isValid || timestamp > DateTime.now()) {
         return;
       }
 
@@ -205,7 +211,7 @@ export function EventsChart() {
           </div>
         ) : (
           <div className="h-[260px] w-full">
-            <ResponsiveLine
+            <ResponsiveLine<EventSeries>
               data={visibleSeries}
               theme={nivoTheme}
               margin={{ top: 10, right: 20, bottom: 30, left: 40 }}
@@ -250,29 +256,30 @@ export function EventsChart() {
               animate={false}
               enableSlices="x"
               lineWidth={2}
-              sliceTooltip={({ slice }: any) => {
+              sliceTooltip={({ slice }: SliceTooltipProps<EventSeries>) => {
                 const currentTime = slice.points[0]?.data.currentTime as DateTime | undefined;
+                const sortedPoints = [...slice.points].sort(
+                  (a, b) => Number(b.data.yFormatted) - Number(a.data.yFormatted)
+                );
 
                 return (
                   <ChartTooltip>
                     <div className="p-3 min-w-[160px]">
                       {currentTime && <div className="mb-2">{formatChartDateTime(currentTime, bucket)}</div>}
                       <div className="space-y-1">
-                        {slice.points
-                          .sort((a: any, b: any) => Number(b.data.yFormatted) - Number(a.data.yFormatted))
-                          .map((point: any) => (
-                            <div key={point.id} className="flex justify-between items-center gap-4">
-                              <div className="flex items-center gap-2">
-                                <div className="w-1 h-3 rounded-[3px]" style={{ backgroundColor: point.seriesColor }} />
-                                <span className="text-neutral-600 dark:text-neutral-300 max-w-[140px] truncate">
-                                  {point.seriesId}
-                                </span>
-                              </div>
-                              <span className="font-medium text-neutral-700 dark:text-neutral-200">
-                                {formatter(Number(point.data.yFormatted))}
+                        {sortedPoints.map(point => (
+                          <div key={point.id} className="flex justify-between items-center gap-4">
+                            <div className="flex items-center gap-2">
+                              <div className="w-1 h-3 rounded-[3px]" style={{ backgroundColor: point.seriesColor }} />
+                              <span className="text-neutral-600 dark:text-neutral-300 max-w-[140px] truncate">
+                                {point.seriesId}
                               </span>
                             </div>
-                          ))}
+                            <span className="font-medium text-neutral-700 dark:text-neutral-200">
+                              {formatter(Number(point.data.yFormatted))}
+                            </span>
+                          </div>
+                        ))}
                       </div>
                     </div>
                   </ChartTooltip>

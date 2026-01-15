@@ -34,6 +34,10 @@ export async function getEventBucketed(req: FastifyRequest<GetEventBucketedReque
   const { bucket = "hour", limit } = req.query;
   const timeZone = req.query.time_zone || "UTC";
 
+  if (!TimeBucketToFn[bucket]) {
+    return res.status(400).send({ error: `Invalid bucket value: ${bucket}` });
+  }
+
   const topLimit = parseLimit(limit);
 
   const timeStatement = getTimeStatement(req.query);
