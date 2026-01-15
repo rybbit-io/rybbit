@@ -1,8 +1,10 @@
 // Events
+export { getEventBucketed } from "./events/getEventBucketed.js";
 export { getEventNames } from "./events/getEventNames.js";
 export { getEventProperties } from "./events/getEventProperties.js";
 export { getEvents } from "./events/getEvents.js";
 export { getOutboundLinks } from "./events/getOutboundLinks.js";
+
 
 // Funnels
 export { createFunnel } from "./funnels/createFunnel.js";

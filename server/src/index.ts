@@ -19,9 +19,11 @@ import {
   getErrorBucketed,
   getErrorEvents,
   getErrorNames,
+  getEventBucketed,
   getEventNames,
   getEventProperties,
   getEvents,
+
   getFunnel,
   getFunnelStepSessions,
   getFunnels,
@@ -237,7 +239,9 @@ async function analyticsRoutes(fastify: FastifyInstance) {
   fastify.get("/sites/:siteId/sessions", publicSite, getSessions);
   fastify.get("/sites/:siteId/sessions/:sessionId", publicSite, getSession);
   fastify.get("/sites/:siteId/events", publicSite, getEvents);
+  fastify.get("/sites/:siteId/events/bucketed", publicSite, getEventBucketed);
   fastify.get("/sites/:siteId/users", publicSite, getUsers);
+
   fastify.get("/sites/:siteId/users/session-count", publicSite, getUserSessionCount);
   fastify.get("/sites/:siteId/users/:userId", publicSite, getUserInfo);
   fastify.get("/sites/:siteId/session-locations", publicSite, getSessionLocations);

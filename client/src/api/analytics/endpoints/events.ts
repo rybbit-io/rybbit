@@ -1,5 +1,6 @@
 import { authedFetch } from "../../utils";
-import { CommonApiParams, PaginationParams, toQueryParams } from "./types";
+import { BucketedParams, CommonApiParams, PaginationParams, toBucketedQueryParams, toQueryParams } from "./types";
+
 
 // Event type
 export type Event = {
@@ -50,9 +51,21 @@ export type OutboundLink = {
   lastClicked: string;
 };
 
+// Event counts over time
+export type EventBucketedPoint = {
+  time: string;
+  event_name: string;
+  event_count: number;
+};
+
 export interface EventsParams extends CommonApiParams, PaginationParams {
   pageSize?: number;
 }
+
+export interface EventBucketedParams extends BucketedParams {
+  limit?: number;
+}
+
 
 export interface EventPropertiesParams extends CommonApiParams {
   eventName: string;
@@ -128,3 +141,24 @@ export async function fetchOutboundLinks(
   );
   return response.data;
 }
+
+/**
+ * Fetch bucketed event counts for top custom events
+ * GET /api/events/bucketed/:site
+ */
+export async function fetchEventBucketed(
+  site: string | number,
+  params: EventBucketedParams
+): Promise<EventBucketedPoint[]> {
+  const queryParams = {
+    ...toBucketedQueryParams(params),
+    limit: params.limit,
+  };
+
+  const response = await authedFetch<{ data: EventBucketedPoint[] }>(
+    `/sites/${site}/events/bucketed`,
+    queryParams
+  );
+  return response.data;
+}
+
