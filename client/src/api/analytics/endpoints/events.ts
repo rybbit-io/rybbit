@@ -144,7 +144,7 @@ export async function fetchOutboundLinks(
 
 /**
  * Fetch bucketed event counts for top custom events
- * GET /api/events/bucketed/:site
+ * GET /sites/:site/events/bucketed
  */
 export async function fetchEventBucketed(
   site: string | number,
