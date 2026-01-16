@@ -211,7 +211,7 @@ export function EventsChart() {
           </div>
         ) : (
           <div className="h-[260px] w-full">
-            <ResponsiveLine<EventSeries>
+            <ResponsiveLine
               data={visibleSeries}
               theme={nivoTheme}
               margin={{ top: 10, right: 20, bottom: 30, left: 40 }}
