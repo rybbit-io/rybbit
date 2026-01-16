@@ -79,7 +79,7 @@ export function EventsChart() {
 
     data.forEach(item => {
       const timestamp = DateTime.fromSQL(item.time, { zone: timezone }).toUTC();
-      if (!timestamp.isValid || timestamp > DateTime.now()) {
+      if (!timestamp.isValid || timestamp > DateTime.now().toUTC()) {
         return;
       }
 
