@@ -98,7 +98,7 @@ export function StandardSectionDialog({
           <div className="flex flex-row gap-1 items-center text-left">
             {getLabel(row.original)}
             {getLink && (
-              <a href={getLink(row.original)} target="_blank" onClick={e => e.stopPropagation()}>
+              <a rel="noopener noreferrer" href={getLink(row.original)} target="_blank" onClick={e => e.stopPropagation()}>
                 <SquareArrowOutUpRight
                   className="ml-0.5 w-3.5 h-3.5 text-neutral-600 hover:text-neutral-900 dark:text-neutral-300 dark:hover:text-neutral-100"
                   strokeWidth={3}
