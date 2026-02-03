@@ -165,7 +165,7 @@ export function SiteCard({ siteId, domain, tags = [], allTags = [], onTagsUpdate
                 )}
               </div>
 
-              <div className="grid grid-cols-2 gap-2 w-full sm:w-[250px]">
+              <div className="grid grid-cols-2 gap-2 w-full sm:w-75">
                 <div className="flex flex-col items-start gap-1 rounded-md p-2 transition-colors">
                   <div className="text-xs text-neutral-500 dark:text-neutral-400">Sessions</div>
                   <div className="font-semibold text-xl flex gap-2">
