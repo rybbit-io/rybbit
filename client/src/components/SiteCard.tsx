@@ -156,7 +156,7 @@ export function SiteCard({ siteId, domain, tags = [], allTags = [], onTagsUpdate
               </div>
             </div>
             <div className="flex flex-col sm:flex-row gap-2 sm:gap-4 items-start sm:items-center justify-between">
-              <div className="relative rounded-md w-[200px] h-[50px]">
+              <div className="relative rounded-md w-40 h-12.5">
                 <SiteSessionChart data={data?.data ?? []} />
                 {!hasData && (
                   <div className="absolute inset-0 flex items-center justify-center bg-white/70 dark:bg-neutral-900/70 backdrop-blur-sm">
