@@ -1,3 +1,4 @@
+import cluster from "node:cluster";
 import { and, eq, lt } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import * as cron from "node-cron";
@@ -10,7 +11,9 @@ class SessionsService {
   private logger = createServiceLogger("sessions");
 
   constructor() {
-    this.initializeCleanupCron();
+    if (!cluster.isWorker) {
+      this.initializeCleanupCron();
+    }
   }
 
   private initializeCleanupCron() {

@@ -128,6 +128,7 @@ services:
       - GOOGLE_REDIRECT_URI=${GOOGLE_REDIRECT_URI}
       - OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
       - OPENROUTER_MODEL=${OPENROUTER_MODEL}
+      - CLUSTER_WORKERS=${CLUSTER_WORKERS:-4}
     depends_on:
       clickhouse:
         condition: service_healthy

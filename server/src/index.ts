@@ -1,3 +1,4 @@
+import cluster from "node:cluster";
 import cors from "@fastify/cors";
 import fastifyStatic from "@fastify/static";
 import { toNodeHandler } from "better-auth/node";
@@ -129,6 +130,7 @@ import { reengagementService } from "./services/reengagement/reengagementService
 import { telemetryService } from "./services/telemetryService.js";
 import { handleIdentify } from "./services/tracker/identifyService.js";
 import { trackEvent } from "./services/tracker/trackEvent.js";
+import { usageService } from "./services/usageService.js";
 import { weeklyReportService } from "./services/weekyReports/weeklyReportService.js";
 
 // Pre-composed middleware chains for common auth patterns
@@ -396,17 +398,33 @@ server.register(apiRoutes, { prefix: "/api" });
 
 const start = async () => {
   try {
-    await Promise.all([initializeClickhouse(), initPostgres()]);
+    // When running as a cluster worker, the primary process already initialized the databases
+    if (!cluster.isWorker) {
+      await Promise.all([initializeClickhouse(), initPostgres()]);
+    }
 
-    telemetryService.startTelemetryCron();
-    if (IS_CLOUD && process.env.NODE_ENV !== "development") {
-      weeklyReportService.startWeeklyReportCron();
-      reengagementService.startReengagementCron();
+    // Cron jobs should only run on the primary process (or in single-process mode)
+    if (!cluster.isWorker) {
+      telemetryService.startTelemetryCron();
+      if (IS_CLOUD && process.env.NODE_ENV !== "development") {
+        weeklyReportService.startWeeklyReportCron();
+        reengagementService.startReengagementCron();
+      }
     }
 
     // Start the server first
     await server.listen({ port: 3001, host: "0.0.0.0" });
-    server.log.info("Server is listening on http://0.0.0.0:3001");
+    server.log.info(`Server is listening on http://0.0.0.0:3001 (PID: ${process.pid})`);
+
+    // Listen for IPC messages from the cluster primary process
+    if (cluster.isWorker) {
+      process.on("message", (message: { type: string; siteIds: number[] }) => {
+        if (message?.type === "sites-over-limit") {
+          usageService.setSitesOverLimit(new Set(message.siteIds));
+          server.log.debug(`Received ${message.siteIds.length} sites-over-limit from primary`);
+        }
+      });
+    }
 
     // if (process.env.NODE_ENV === "production") {
     //   // Initialize uptime monitoring service in the background (non-blocking)

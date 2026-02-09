@@ -1,3 +1,4 @@
+import cluster from "node:cluster";
 import { and, eq } from "drizzle-orm";
 import { DateTime } from "luxon";
 import * as cron from "node-cron";
@@ -16,7 +17,16 @@ class UsageService {
   private logger = createServiceLogger("usage-checker");
 
   constructor() {
-    this.initializeUsageCheckCron();
+    if (!cluster.isWorker) {
+      this.initializeUsageCheckCron();
+    }
+  }
+
+  /**
+   * Sets the sitesOverLimit set (used by workers receiving IPC updates from primary)
+   */
+  public setSitesOverLimit(sites: Set<number>): void {
+    this.sitesOverLimit = sites;
   }
 
   /**
