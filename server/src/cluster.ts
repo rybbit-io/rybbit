@@ -1,5 +1,4 @@
 import cluster from "node:cluster";
-import os from "node:os";
 import { initializeClickhouse } from "./db/clickhouse/clickhouse.js";
 import { initPostgres } from "./db/postgres/initPostgres.js";
 import { IS_CLOUD } from "./lib/const.js";
