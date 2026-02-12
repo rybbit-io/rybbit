@@ -49,7 +49,7 @@
     "@uidotdev/usehooks": "2.4.1",
     "axios": "^1.9.0",
     "better-auth": "1.4.18",
-    "boring-avatars": "1.11.2",
+    "boring-avatars": "2.0.4",
     "class-variance-authority": "0.7.1",
     "clsx": "2.1.1",
     "cmdk": "^1.1.1",
