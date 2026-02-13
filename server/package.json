@@ -40,7 +40,7 @@
     "dotenv": "16.5.0",
     "drizzle-orm": "0.45.1",
     "fastify": "5.3.3",
-    "fastify-better-auth": "1.1.0",
+    "fastify-better-auth": "1.2.0",
     "i18n-iso-countries": "^7.14.0",
     "ip-address": "^10.0.1",
     "isbot": "^5.1.28",
