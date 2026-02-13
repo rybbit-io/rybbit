@@ -42,19 +42,18 @@
 
     console.log(LOG, "Sending ad_click", payload);
 
-    if (navigator.sendBeacon) {
-      const sent = navigator.sendBeacon(trackUrl, JSON.stringify(payload));
-      console.log(LOG, "sendBeacon result:", sent);
-    } else {
-      fetch(trackUrl, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-        keepalive: true,
-      })
-        .then((r) => console.log(LOG, "fetch response:", r.status))
-        .catch((err) => console.error(LOG, "fetch error:", err));
-    }
+    fetch(trackUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+      keepalive: true,
+    })
+      .then((r) =>
+        r.ok
+          ? console.log(LOG, "Tracked OK", r.status)
+          : r.text().then((t) => console.error(LOG, "Track failed", r.status, t))
+      )
+      .catch((err) => console.error(LOG, "fetch error:", err));
   }
 
   // Identify the creative URL for an ad iframe or its container

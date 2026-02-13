@@ -275,6 +275,10 @@ export async function trackEvent(request: FastifyRequest, reply: FastifyReply) {
     const validationResult = trackingPayloadSchema.safeParse(request.body);
 
     if (!validationResult.success) {
+      logger.warn(
+        { body: request.body, errors: validationResult.error.flatten() },
+        "Track validation failed"
+      );
       return reply.status(400).send({
         success: false,
         error: "Invalid payload",
