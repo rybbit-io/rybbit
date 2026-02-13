@@ -5,6 +5,7 @@ import {
   FileInput,
   LucideIcon,
   MousePointerClick,
+  Megaphone,
   TextCursorInput,
   TriangleAlert,
   SquareMousePointer
@@ -24,6 +25,7 @@ const EVENT_TYPE_ICONS: Record<EventType, LucideIcon> = {
   copy: Copy,
   form_submit: FileInput,
   input_change: TextCursorInput,
+  ad_click: Megaphone,
 };
 
 // Build color and label lookups from shared config

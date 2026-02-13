@@ -25,6 +25,7 @@ const EVENT_TYPE_CONFIG = [
   { key: "copy_count", label: "Copy", color: "#38bdf8" },
   { key: "form_submit_count", label: "Form Submits", color: "#c084fc" },
   { key: "input_change_count", label: "Input Changes", color: "#f472b6" },
+  { key: "ad_click_count", label: "Ad Clicks", color: "#fb923c" },
 ] as const;
 
 type EventTypeKey = (typeof EVENT_TYPE_CONFIG)[number]["key"];

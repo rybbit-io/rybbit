@@ -15,7 +15,8 @@ export type EventType =
   | "button_click"
   | "copy"
   | "form_submit"
-  | "input_change";
+  | "input_change"
+  | "ad_click";
 
 export interface EventTypeConfig {
   value: EventType;
@@ -32,6 +33,7 @@ export const EVENT_TYPE_CONFIG: EventTypeConfig[] = [
   { value: "form_submit", label: "Form Submit", colorClass: "text-purple-400" },
   { value: "input_change", label: "Input Change", colorClass: "text-pink-400" },
   { value: "error", label: "Error", colorClass: "text-red-400" },
+  { value: "ad_click", label: "Ad Click", colorClass: "text-orange-400" },
 ];
 
 // Autocaptured event types that goals and funnel steps can target directly
@@ -113,6 +115,8 @@ export function useEventDisplayName(): EventDisplayNameFormatter {
           if (item.props?.inputName) return t("Changed {type}input \"{name}\"", { type: inputType, name: String(item.props.inputName) });
           return t("Changed {type}input", { type: inputType });
         }
+        case "ad_click":
+          return t("Ad Click");
         default:
           return t("Event");
       }

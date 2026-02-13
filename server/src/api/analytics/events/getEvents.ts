@@ -71,7 +71,7 @@ const EVENT_COLUMNS = `
   type
 `;
 
-const EVENT_TYPE_FILTER = `AND type IN ('custom_event', 'pageview', 'outbound', 'button_click', 'copy', 'form_submit', 'input_change')`;
+const EVENT_TYPE_FILTER = `AND type IN ('custom_event', 'pageview', 'outbound', 'button_click', 'copy', 'form_submit', 'input_change', 'ad_click')`;
 
 export const buildEventsQuery = (query: GetEventsRequest["Querystring"], siteId: number): QuerySpec => {
   const { since_timestamp, before_timestamp, page_size: pageSize = "50", filters } = query;

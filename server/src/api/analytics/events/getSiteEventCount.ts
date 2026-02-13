@@ -16,6 +16,7 @@ export type GetSiteEventCountResponse = {
   copy_count: number;
   form_submit_count: number;
   input_change_count: number;
+  ad_click_count: number;
   event_count: number;
 }[];
 
@@ -46,11 +47,12 @@ export const buildSiteEventCountQuery = (query: GetSiteEventCountRequest["Querys
       countIf(type = 'copy') as copy_count,
       countIf(type = 'form_submit') as form_submit_count,
       countIf(type = 'input_change') as input_change_count,
+      countIf(type = 'ad_click') as ad_click_count,
       count() as event_count
     FROM events
     WHERE
       site_id = {siteId:Int32}
-      AND type IN ('pageview', 'custom_event', 'performance', 'outbound', 'error', 'button_click', 'copy', 'form_submit', 'input_change')
+      AND type IN ('pageview', 'custom_event', 'performance', 'outbound', 'error', 'button_click', 'copy', 'form_submit', 'input_change', 'ad_click')
       ${timeStatement}
       ${filterStatement}
     GROUP BY time
