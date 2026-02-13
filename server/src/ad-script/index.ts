@@ -9,7 +9,7 @@
   }
 
   const src = scriptTag.getAttribute("src") || "";
-  const analyticsHost = src.split("/ad.js")[0].replace("/api", "");
+  const analyticsHost = src.split("/frog.js")[0].replace("/api", "");
   const trackUrl = analyticsHost + "/api/track";
 
   console.log(LOG, "Initialized", { siteId, analyticsHost });

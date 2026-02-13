@@ -19,13 +19,13 @@ async function buildScript() {
       bundle: true,
       format: "iife",
       target: "es2020",
-      outfile: "../../public/ad-full.js",
+      outfile: "../../public/frog-full.js",
       minify: false,
       sourcemap: false,
       platform: "browser",
     });
 
-    console.log("Built ad-full.js");
+    console.log("Built frog-full.js");
 
     // Build the minified version
     await build({
@@ -33,13 +33,13 @@ async function buildScript() {
       bundle: true,
       format: "iife",
       target: "es2020",
-      outfile: "../../public/ad.js",
+      outfile: "../../public/frog.js",
       minify: true,
       sourcemap: false,
       platform: "browser",
     });
 
-    console.log("Built ad.js (minified)");
+    console.log("Built frog.js (minified)");
   } catch (error) {
     console.error("Build failed:", error);
     process.exit(1);
