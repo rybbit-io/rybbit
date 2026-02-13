@@ -16,49 +16,121 @@
       console.warn(LOG, "No data-site-id attribute found on script tag");
       return;
     }
-    document.addEventListener("click", function(e) {
-      const target = e.target;
-      const anchor = target.closest("a");
-      if (!anchor) return;
-      const img = anchor.querySelector("img");
-      if (!img) {
-        console.debug(LOG, "Click on <a> but no <img> found inside, skipping");
-        return;
-      }
-      const imgSrc = img.src;
-      if (!imgSrc) {
-        console.debug(LOG, "Image has no src, skipping");
-        return;
-      }
-      let imgHostname = "";
+    const trackUrl = analyticsHost + "/api/track";
+    function sendAdClick(creative) {
+      let creativeHostname = "";
       try {
-        imgHostname = new URL(imgSrc).hostname;
+        creativeHostname = new URL(creative).hostname;
       } catch {
       }
       const payload = {
         type: "ad_click",
         site_id: siteId,
-        pathname: imgSrc,
-        hostname: imgHostname,
+        pathname: creative,
+        hostname: creativeHostname,
         screenWidth: window.screen.width,
         screenHeight: window.screen.height,
         language: navigator.language,
         page_title: document.title,
         referrer: document.referrer
       };
-      const url = analyticsHost + "/api/track";
-      console.log(LOG, "Sending ad_click", { url, payload });
+      console.log(LOG, "Sending ad_click", payload);
       if (navigator.sendBeacon) {
-        const sent = navigator.sendBeacon(url, JSON.stringify(payload));
+        const sent = navigator.sendBeacon(trackUrl, JSON.stringify(payload));
         console.log(LOG, "sendBeacon result:", sent);
       } else {
-        fetch(url, {
+        fetch(trackUrl, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload),
           keepalive: true
         }).then((r) => console.log(LOG, "fetch response:", r.status)).catch((err) => console.error(LOG, "fetch error:", err));
       }
+    }
+    function getAdCreative(iframe) {
+      if (iframe.src) return iframe.src;
+      let el = iframe;
+      while (el) {
+        const id = el.getAttribute("id") || "";
+        const dataAdSlot = el.getAttribute("data-ad-slot") || "";
+        const dataAdClient = el.getAttribute("data-ad-client") || "";
+        if (dataAdSlot) return `ad-slot:${dataAdSlot}`;
+        if (dataAdClient) return `ad-client:${dataAdClient}`;
+        if (id) return `container:${id}`;
+        el = el.parentElement;
+      }
+      return "unknown-ad";
+    }
+    document.addEventListener("click", function(e) {
+      const target = e.target;
+      const anchor = target.closest("a");
+      if (!anchor) return;
+      const img = anchor.querySelector("img");
+      if (!img) return;
+      const imgSrc = img.src;
+      if (!imgSrc) return;
+      console.log(LOG, "Direct <a><img> click detected", imgSrc);
+      sendAdClick(imgSrc);
     });
+    let hoveredIframe = null;
+    let blurTimeout = null;
+    function onIframeMouseEnter() {
+      hoveredIframe = this;
+      console.debug(LOG, "Mouse entered iframe", this.src || "(no src)");
+    }
+    function onIframeMouseLeave() {
+      if (hoveredIframe === this) {
+        hoveredIframe = null;
+      }
+    }
+    function attachIframeListeners(iframe) {
+      iframe.addEventListener("mouseenter", onIframeMouseEnter);
+      iframe.addEventListener("mouseleave", onIframeMouseLeave);
+    }
+    function scanIframes() {
+      const iframes = document.querySelectorAll("iframe");
+      console.log(LOG, `Found ${iframes.length} iframes on page`);
+      iframes.forEach(attachIframeListeners);
+    }
+    const observer = new MutationObserver(function(mutations) {
+      for (const mutation of mutations) {
+        for (const node of Array.from(mutation.addedNodes)) {
+          if (node instanceof HTMLIFrameElement) {
+            console.debug(LOG, "New iframe added", node.src || "(no src)");
+            attachIframeListeners(node);
+          }
+          if (node instanceof HTMLElement) {
+            const nested = node.querySelectorAll("iframe");
+            nested.forEach(attachIframeListeners);
+          }
+        }
+      }
+    });
+    observer.observe(document.documentElement, {
+      childList: true,
+      subtree: true
+    });
+    window.addEventListener("blur", function() {
+      if (blurTimeout) clearTimeout(blurTimeout);
+      blurTimeout = setTimeout(function() {
+        if (hoveredIframe) {
+          const creative = getAdCreative(hoveredIframe);
+          console.log(LOG, "Iframe click detected via blur", creative);
+          sendAdClick(creative);
+          hoveredIframe = null;
+        }
+      }, 100);
+    });
+    window.addEventListener("focus", function() {
+      if (blurTimeout) {
+        clearTimeout(blurTimeout);
+        blurTimeout = null;
+      }
+    });
+    if (document.readyState === "loading") {
+      document.addEventListener("DOMContentLoaded", scanIframes);
+    } else {
+      scanIframes();
+    }
   })();
 })();
