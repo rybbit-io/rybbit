@@ -1,6 +1,10 @@
 // Types
 export * from "./types";
 
+// Ads endpoints
+export { fetchAdClicksBreakdown } from "./ads";
+export type { AdClicksBreakdownItem, AdClicksBreakdownParams } from "./ads";
+
 // Overview endpoints
 export {
   fetchOverview,

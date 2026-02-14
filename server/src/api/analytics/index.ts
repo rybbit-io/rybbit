@@ -1,3 +1,6 @@
+// Ads
+export { getAdClicksBreakdown } from "./ads/getAdClicksBreakdown.js";
+
 // Events
 export { getAutocaptureEvents } from "./events/getAutocaptureEvents.js";
 export { getAutocaptureValues } from "./events/getAutocaptureValues.js";
