@@ -27,7 +27,7 @@ export default function AdsPage() {
 
 function AdsPageContent() {
   useSetPageTitle("Rybbit · Ads");
-  const [selectedStat, setSelectedStat] = useState<AdStat>("ad_click_count");
+  const [selectedStat, setSelectedStat] = useState<AdStat>("ad_impression_count");
   const { data } = useGetSiteEventCount();
 
   const totalClicks =
