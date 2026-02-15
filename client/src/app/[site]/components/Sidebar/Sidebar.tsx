@@ -13,6 +13,7 @@ import {
   Globe2,
   LayoutDashboard,
   LayoutGrid,
+  Megaphone,
   MousePointerClick,
   Rewind,
   Settings,
@@ -82,7 +83,7 @@ function SidebarContent() {
           label={t("Ads")}
           active={isActiveTab("ads")}
           href={getTabPath("ads")}
-          icon={<LayoutDashboard className="w-4 h-4" />}
+          icon={<Megaphone className="w-4 h-4" />}
         />
         <SidebarComponents.Item
           label={t("Main")}
