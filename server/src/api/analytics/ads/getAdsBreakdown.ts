@@ -46,7 +46,7 @@ export async function getAdsBreakdown(
 
   const valueExpr =
     parameter === "creative_url"
-      ? "JSONExtractString(props, 'creative_url')"
+      ? "JSONExtractString(toString(props), 'creative_url')"
       : parameter;
 
   const query = `
