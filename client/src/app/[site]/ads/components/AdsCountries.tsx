@@ -91,15 +91,15 @@ function CountryBreakdownList({ type }: { type: "ad_click" | "ad_impression" }) 
 }
 
 export function AdsCountries() {
-  const [tab, setTab] = useState<string>("ad_click");
+  const [tab, setTab] = useState<string>("ad_impression");
 
   return (
     <Card className="h-[405px]">
       <CardContent className="mt-2">
         <Tabs value={tab} onValueChange={setTab}>
           <TabsList>
-            <TabsTrigger value="ad_click">Clicks</TabsTrigger>
             <TabsTrigger value="ad_impression">Impressions</TabsTrigger>
+            <TabsTrigger value="ad_click">Clicks</TabsTrigger>
           </TabsList>
           <TabsContent value="ad_click">
             <CountryBreakdownList type="ad_click" />

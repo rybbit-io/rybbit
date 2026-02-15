@@ -36,12 +36,12 @@ function AdsPageContent() {
     data?.reduce((sum, p) => sum + p.ad_impression_count, 0) ?? 0;
 
   const stats: { key: AdStat; label: string; value: number }[] = [
-    { key: "ad_click_count", label: "Ad Clicks", value: totalClicks },
     {
       key: "ad_impression_count",
       label: "Ad Impressions",
       value: totalImpressions,
     },
+    { key: "ad_click_count", label: "Ad Clicks", value: totalClicks },
   ];
 
   const selectedLabel =

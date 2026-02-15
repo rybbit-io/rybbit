@@ -86,15 +86,15 @@ function PathnameBreakdownList({ type }: { type: "ad_click" | "ad_impression" })
 }
 
 export function AdsPathnames() {
-  const [tab, setTab] = useState<string>("ad_click");
+  const [tab, setTab] = useState<string>("ad_imppession");
 
   return (
     <Card className="h-[405px]">
       <CardContent className="mt-2">
         <Tabs value={tab} onValueChange={setTab}>
           <TabsList>
-            <TabsTrigger value="ad_click">Clicks</TabsTrigger>
             <TabsTrigger value="ad_impression">Impressions</TabsTrigger>
+            <TabsTrigger value="ad_click">Clicks</TabsTrigger>
           </TabsList>
           <TabsContent value="ad_click">
             <PathnameBreakdownList type="ad_click" />
