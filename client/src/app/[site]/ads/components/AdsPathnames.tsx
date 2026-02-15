@@ -86,7 +86,7 @@ function PathnameBreakdownList({ type }: { type: "ad_click" | "ad_impression" })
 }
 
 export function AdsPathnames() {
-  const [tab, setTab] = useState<string>("ad_imppession");
+  const [tab, setTab] = useState<string>("ad_impression");
 
   return (
     <Card className="h-[405px]">
