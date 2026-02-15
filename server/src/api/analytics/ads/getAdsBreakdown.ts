@@ -21,7 +21,7 @@ interface AdsBreakdownRow {
   percentage: number;
 }
 
-const ALLOWED_PARAMETERS = ["country", "pathname"] as const;
+const ALLOWED_PARAMETERS = ["country", "pathname", "creative_url"] as const;
 const ALLOWED_TYPES = ["ad_click", "ad_impression"] as const;
 
 export async function getAdsBreakdown(
@@ -44,9 +44,14 @@ export async function getAdsBreakdown(
     ? getFilterStatement(filters, Number(site), timeStatement)
     : "";
 
+  const valueExpr =
+    parameter === "creative_url"
+      ? "JSONExtractString(props, 'creative_url')"
+      : parameter;
+
   const query = `
     SELECT
-      ${parameter} as value,
+      ${valueExpr} as value,
       count() as count,
       round((count() / sum(count()) OVER ()) * 100, 2) as percentage
     FROM events
@@ -55,9 +60,9 @@ export async function getAdsBreakdown(
       AND type = {type:String}
       ${timeStatement}
       ${filterStatement}
-      AND ${parameter} IS NOT NULL
-      AND ${parameter} != ''
-    GROUP BY ${parameter}
+      AND ${valueExpr} IS NOT NULL
+      AND ${valueExpr} != ''
+    GROUP BY ${valueExpr}
     ORDER BY count DESC
     LIMIT {limit:Int32}
   `;

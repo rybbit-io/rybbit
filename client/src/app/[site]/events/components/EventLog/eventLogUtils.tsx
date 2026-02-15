@@ -41,6 +41,7 @@ export function getMainData(
   const isFormSubmit = event.type === "form_submit";
   const isInputChange = event.type === "input_change";
   const isAdClick = event.type === "ad_click";
+  const isAdImpression = event.type === "ad_impression";
 
   if (isPageview) {
     return {
@@ -56,10 +57,11 @@ export function getMainData(
     };
   }
 
-  if (isAdClick) {
+  if (isAdClick || isAdImpression) {
+    const creativeUrl = props.creative_url as string;
     return {
-      label: event.pathname || "Ad Click",
-      url: event.pathname,
+      label: creativeUrl || "Ad",
+      url: creativeUrl,
     };
   }
 

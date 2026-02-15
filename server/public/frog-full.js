@@ -17,13 +17,14 @@
       return {
         type,
         site_id: siteId,
-        pathname: imgSrc,
+        pathname: window.location.pathname,
         hostname: window.location.hostname,
         screenWidth: window.screen.width,
         screenHeight: window.screen.height,
         language: navigator.language,
         page_title: document.title,
-        referrer: document.referrer
+        referrer: document.referrer,
+        properties: JSON.stringify({ creative_url: imgSrc })
       };
     }
     function sendEvent(payload) {

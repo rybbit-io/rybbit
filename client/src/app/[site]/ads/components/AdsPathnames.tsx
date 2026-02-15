@@ -17,7 +17,7 @@ import {
 
 function PathnameBreakdownList({ type }: { type: "ad_click" | "ad_impression" }) {
   const { data, isLoading, isFetching, error, refetch } =
-    useGetAdsBreakdown("pathname", type);
+    useGetAdsBreakdown("creative_url", type);
 
   const ratio = data?.[0]?.percentage ? 100 / data[0].percentage : 1;
   const countLabel = type === "ad_click" ? "Clicks" : "Impressions";
@@ -26,7 +26,7 @@ function PathnameBreakdownList({ type }: { type: "ad_click" | "ad_impression" })
     <>
       {isFetching && <CardLoader />}
       <div className="flex flex-row gap-2 justify-between pr-1 text-xs text-neutral-600 dark:text-neutral-400 mb-2">
-        <div>Pages</div>
+        <div>Creatives</div>
         <div>{countLabel}</div>
       </div>
       <ScrollArea className="h-[300px]">

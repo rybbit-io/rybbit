@@ -249,14 +249,50 @@ export const trackingPayloadSchema = z.discriminatedUnion("type", [
     .object({
       type: z.literal("ad_click"),
       ...baseEventFields,
-      ...defaultEventProps,
+      event_name: z.string().max(256).optional(),
+      properties: z
+        .string()
+        .max(2048)
+        .refine(
+          (val) => {
+            try {
+              const parsed = JSON.parse(val);
+              return typeof parsed.creative_url === "string";
+            } catch {
+              return false;
+            }
+          },
+          {
+            message:
+              "Properties must be valid JSON with creative_url field",
+          }
+        )
+        .optional(),
     })
     .strict(),
   z
     .object({
       type: z.literal("ad_impression"),
       ...baseEventFields,
-      ...defaultEventProps,
+      event_name: z.string().max(256).optional(),
+      properties: z
+        .string()
+        .max(2048)
+        .refine(
+          (val) => {
+            try {
+              const parsed = JSON.parse(val);
+              return typeof parsed.creative_url === "string";
+            } catch {
+              return false;
+            }
+          },
+          {
+            message:
+              "Properties must be valid JSON with creative_url field",
+          }
+        )
+        .optional(),
     })
     .strict(),
 ]);
