@@ -252,6 +252,13 @@ export const trackingPayloadSchema = z.discriminatedUnion("type", [
       ...defaultEventProps,
     })
     .strict(),
+  z
+    .object({
+      type: z.literal("ad_impression"),
+      ...baseEventFields,
+      ...defaultEventProps,
+    })
+    .strict(),
 ]);
 
 const logger = createServiceLogger("track-event");

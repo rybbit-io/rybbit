@@ -76,7 +76,8 @@ export interface TrackingPayload extends BasePayload {
     | "button_click"
     | "copy"
     | "form_submit"
-    | "input_change";
+    | "input_change"
+    | "ad_impression";
   event_name?: string;
   properties?: string;
   // Web vitals metrics

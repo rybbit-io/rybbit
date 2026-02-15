@@ -130,7 +130,8 @@ export async function createBasePayload(
     | "copy"
     | "form_submit"
     | "input_change"
-    | "ad_click" = "pageview",
+    | "ad_click"
+    | "ad_impression" = "pageview",
   validatedBody: ValidatedTrackingPayload,
   siteConfiguration: SiteConfigData,
   trustedServerSideIngestion = false

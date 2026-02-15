@@ -1,5 +1,5 @@
 // Ads
-export { getAdClicksBreakdown } from "./ads/getAdClicksBreakdown.js";
+export { getAdsBreakdown } from "./ads/getAdsBreakdown.js";
 
 // Events
 export { getAutocaptureEvents } from "./events/getAutocaptureEvents.js";

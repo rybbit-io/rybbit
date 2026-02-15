@@ -105,6 +105,7 @@ export type SiteEventCountPoint = {
   form_submit_count: number;
   input_change_count: number;
   ad_click_count: number;
+  ad_impression_count: number;
   event_count: number;
 };
 

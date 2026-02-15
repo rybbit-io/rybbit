@@ -4,31 +4,34 @@ import { clickhouse } from "../../../db/clickhouse/clickhouse.js";
 import { getFilterStatement } from "../utils/getFilterStatement.js";
 import { getTimeStatement, processResults } from "../utils/utils.js";
 
-interface GetAdClicksBreakdownRequest {
+interface GetAdsBreakdownRequest {
   Params: {
     siteId: string;
   };
   Querystring: FilterParams<{
     parameter: string;
+    type?: string;
     limit?: string;
   }>;
 }
 
-interface AdClicksBreakdownRow {
+interface AdsBreakdownRow {
   value: string;
   count: number;
   percentage: number;
 }
 
 const ALLOWED_PARAMETERS = ["country", "pathname"] as const;
+const ALLOWED_TYPES = ["ad_click", "ad_impression"] as const;
 
-export async function getAdClicksBreakdown(
-  req: FastifyRequest<GetAdClicksBreakdownRequest>,
+export async function getAdsBreakdown(
+  req: FastifyRequest<GetAdsBreakdownRequest>,
   res: FastifyReply
 ) {
-  const { filters, parameter, limit: limitStr } = req.query;
+  const { filters, parameter, type: typeParam, limit: limitStr } = req.query;
   const site = req.params.siteId;
   const limit = limitStr ? Math.min(Number(limitStr), 100) : 20;
+  const type = typeParam && ALLOWED_TYPES.includes(typeParam as any) ? typeParam : "ad_click";
 
   if (!parameter || !ALLOWED_PARAMETERS.includes(parameter as any)) {
     return res
@@ -49,7 +52,7 @@ export async function getAdClicksBreakdown(
     FROM events
     WHERE
       site_id = {siteId:Int32}
-      AND type = 'ad_click'
+      AND type = {type:String}
       ${timeStatement}
       ${filterStatement}
       AND ${parameter} IS NOT NULL
@@ -65,14 +68,15 @@ export async function getAdClicksBreakdown(
       format: "JSONEachRow",
       query_params: {
         siteId: Number(site),
+        type,
         limit,
       },
     });
 
-    const data = await processResults<AdClicksBreakdownRow>(result);
+    const data = await processResults<AdsBreakdownRow>(result);
     return res.send({ data });
   } catch (error) {
-    console.error("Error fetching ad clicks breakdown:", error);
-    return res.status(500).send({ error: "Failed to fetch ad clicks breakdown" });
+    console.error("Error fetching ads breakdown:", error);
+    return res.status(500).send({ error: "Failed to fetch ads breakdown" });
   }
 }

@@ -2,9 +2,12 @@ import { useQuery } from "@tanstack/react-query";
 import { EVENT_FILTERS } from "../../../../lib/filterGroups";
 import { getFilteredFilters, useStore } from "../../../../lib/store";
 import { buildApiParams } from "../../../utils";
-import { fetchAdClicksBreakdown } from "../../endpoints/ads";
+import { fetchAdsBreakdown } from "../../endpoints/ads";
 
-export function useGetAdClicksBreakdown(parameter: string) {
+export function useGetAdsBreakdown(
+  parameter: string,
+  type: "ad_click" | "ad_impression" = "ad_click"
+) {
   const { site, time, timezone } = useStore();
 
   const filteredFilters = getFilteredFilters(EVENT_FILTERS);
@@ -13,12 +16,13 @@ export function useGetAdClicksBreakdown(parameter: string) {
   });
 
   return useQuery({
-    queryKey: ["ad-clicks-breakdown", site, parameter, time, filteredFilters, timezone],
+    queryKey: ["ads-breakdown", site, parameter, type, time, filteredFilters, timezone],
     enabled: !!site,
     queryFn: () =>
-      fetchAdClicksBreakdown(site, {
+      fetchAdsBreakdown(site, {
         ...params,
         parameter,
+        type,
       }),
   });
 }

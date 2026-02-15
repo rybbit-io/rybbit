@@ -22,7 +22,7 @@ import {
   deleteFunnel,
   deleteGoal,
   deleteUser,
-  getAdClicksBreakdown,
+  getAdsBreakdown,
   generatePdfReport,
   getDashboard,
   getDashboards,
@@ -407,7 +407,7 @@ async function analyticsRoutes(fastify: FastifyInstance) {
   fastify.get("/sites/:siteId/events/autocapture", publicEventsRead, getAutocaptureEvents);
   fastify.get("/sites/:siteId/events/autocapture-values", publicEventsRead, getAutocaptureValues);
   fastify.get("/sites/:siteId/events/outbound", publicEventsRead, getOutboundLinks);
-  fastify.get("/sites/:siteId/ad-clicks/breakdown", publicEventsRead, getAdClicksBreakdown);
+  fastify.get("/sites/:siteId/ads/breakdown", publicEventsRead, getAdsBreakdown);
   fastify.get("/org-event-count/:organizationId", orgAnalyticsRead, getOrgEventCount);
   fastify.post("/organizations/:organizationId/analytics/query", orgSqlRead, runCustomQuery);
   fastify.post("/organizations/:organizationId/analytics/query/generate", orgSqlRead, generateCustomQuery);
