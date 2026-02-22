@@ -22,6 +22,7 @@ const LOCALE_OPTIONS = [
   { value: "ko", label: "한국어", country: "KR" },
   { value: "pt", label: "Português", country: "BR" },
   { value: "ja", label: "日本語", country: "JP" },
+  { value: "cs", label: "Čeština", country: "CZ" },
 ] as const;
 
 export function LanguageSwitcher() {
