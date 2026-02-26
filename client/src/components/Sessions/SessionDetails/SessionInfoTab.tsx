@@ -10,6 +10,7 @@ import { getCountryName, getLanguageName } from "../../../lib/utils";
 import { Avatar, generateName } from "../../Avatar";
 import { IdentifiedBadge } from "../../IdentifiedBadge";
 import { DeviceIcon } from "../../../app/[site]/components/shared/icons/Device";
+import { useGetSite } from "../../../api/admin/hooks/useSites";
 
 interface SessionInfoTabProps {
   session: GetSessionsResponse[number];
@@ -20,6 +21,8 @@ interface SessionInfoTabProps {
     region?: string;
     city?: string;
     device_type?: string;
+    device_model?: string;
+    app_version?: string;
     browser?: string;
     browser_version?: string;
     operating_system?: string;
@@ -39,6 +42,8 @@ export function SessionInfoTab({
 }: SessionInfoTabProps) {
   const { getRegionName } = useGetRegionName();
   const t = useExtracted();
+  const { data: siteMetadata } = useGetSite();
+  const isApp = siteMetadata?.type === "app";
   const isIdentified = !!session.identified_user_id;
 
   return (
@@ -151,34 +156,61 @@ export function SessionInfoTab({
           {t("Device Information")}
         </h4>
         <div className="space-y-3">
-          <div className="flex items-center gap-2 text-sm">
-            <span className="font-medium text-neutral-600 dark:text-neutral-300 min-w-[80px]">
-              {t("Device:")}
-            </span>
-            <div className="flex items-center gap-1.5 text-neutral-500 dark:text-neutral-400">
-              <DeviceIcon deviceType={sessionDetails?.device_type || ""} />
-              <span>{sessionDetails?.device_type || t("Unknown")}</span>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2 text-sm">
-            <span className="font-medium text-neutral-600 dark:text-neutral-300 min-w-[80px]">
-              {t("Browser:")}
-            </span>
-            <div className="flex items-center gap-1.5 text-neutral-500 dark:text-neutral-400">
-              <Browser
-                browser={sessionDetails?.browser || "Unknown"}
-              />
-              <span>
-                {sessionDetails?.browser || t("Unknown")}
-                {sessionDetails?.browser_version && (
-                  <span className="ml-1">
-                    v{sessionDetails.browser_version}
-                  </span>
-                )}
+          {!isApp && (
+            <div className="flex items-center gap-2 text-sm">
+              <span className="font-medium text-neutral-600 dark:text-neutral-300 min-w-[80px]">
+                {t("Device:")}
               </span>
+              <div className="flex items-center gap-1.5 text-neutral-500 dark:text-neutral-400">
+                <DeviceIcon deviceType={sessionDetails?.device_type || ""} />
+                <span>{sessionDetails?.device_type || t("Unknown")}</span>
+              </div>
             </div>
-          </div>
+          )}
+
+          {isApp ? (
+            <>
+              {sessionDetails?.device_model && (
+                <div className="flex items-center gap-2 text-sm">
+                  <span className="font-medium text-neutral-600 dark:text-neutral-300 min-w-[80px]">
+                    {t("Device Model:")}
+                  </span>
+                  <span className="text-neutral-500 dark:text-neutral-400">
+                    {sessionDetails.device_model}
+                  </span>
+                </div>
+              )}
+              {sessionDetails?.app_version && (
+                <div className="flex items-center gap-2 text-sm">
+                  <span className="font-medium text-neutral-600 dark:text-neutral-300 min-w-[80px]">
+                    {t("App Version:")}
+                  </span>
+                  <span className="text-neutral-500 dark:text-neutral-400">
+                    v{sessionDetails.app_version}
+                  </span>
+                </div>
+              )}
+            </>
+          ) : (
+            <div className="flex items-center gap-2 text-sm">
+              <span className="font-medium text-neutral-600 dark:text-neutral-300 min-w-[80px]">
+                {t("Browser:")}
+              </span>
+              <div className="flex items-center gap-1.5 text-neutral-500 dark:text-neutral-400">
+                <Browser
+                  browser={sessionDetails?.browser || "Unknown"}
+                />
+                <span>
+                  {sessionDetails?.browser || t("Unknown")}
+                  {sessionDetails?.browser_version && (
+                    <span className="ml-1">
+                      v{sessionDetails.browser_version}
+                    </span>
+                  )}
+                </span>
+              </div>
+            </div>
+          )}
 
           <div className="flex items-center gap-2 text-sm">
             <span className="font-medium text-neutral-600 dark:text-neutral-300 min-w-[80px]">
@@ -227,30 +259,34 @@ export function SessionInfoTab({
       {/* Source Information */}
       <div>
         <h4 className="text-sm font-medium mb-3 text-neutral-600 dark:text-neutral-300 border-b border-neutral-100 dark:border-neutral-800 pb-2">
-          {t("Source Information")}
+          {isApp ? t("Session") : t("Source Information")}
         </h4>
         <div className="space-y-3">
-          <div className="flex items-center gap-2 text-sm">
-            <span className="font-medium text-neutral-600 dark:text-neutral-300 min-w-[80px]">
-              {t("Channel:")}
-            </span>
-            <div className="flex items-center gap-1.5 text-neutral-500 dark:text-neutral-400">
-              <span>{sessionDetails?.channel || t("None")}</span>
+          {!isApp && (
+            <div className="flex items-center gap-2 text-sm">
+              <span className="font-medium text-neutral-600 dark:text-neutral-300 min-w-[80px]">
+                {t("Channel:")}
+              </span>
+              <div className="flex items-center gap-1.5 text-neutral-500 dark:text-neutral-400">
+                <span>{sessionDetails?.channel || t("None")}</span>
+              </div>
             </div>
-          </div>
+          )}
+
+          {!isApp && (
+            <div className="flex items-center gap-2 text-sm">
+              <span className="font-medium text-neutral-600 dark:text-neutral-300 min-w-[80px]">
+                {t("Referrer:")}
+              </span>
+              <div className="flex items-center gap-1.5 text-neutral-500 dark:text-neutral-400">
+                <span>{sessionDetails?.referrer || t("None")}</span>
+              </div>
+            </div>
+          )}
 
           <div className="flex items-center gap-2 text-sm">
             <span className="font-medium text-neutral-600 dark:text-neutral-300 min-w-[80px]">
-              {t("Referrer:")}
-            </span>
-            <div className="flex items-center gap-1.5 text-neutral-500 dark:text-neutral-400">
-              <span>{sessionDetails?.referrer || t("None")}</span>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2 text-sm">
-            <span className="font-medium text-neutral-600 dark:text-neutral-300 min-w-[80px]">
-              {t("Entry Page:")}
+              {isApp ? t("Entry Screen:") : t("Entry Page:")}
             </span>
             <div className="flex items-center gap-1.5 text-neutral-500 dark:text-neutral-400">
               <span>{sessionDetails?.entry_page || t("None")}</span>

@@ -12,14 +12,17 @@ import { Label } from "../../../components/ui/label";
 import { Switch } from "../../../components/ui/switch";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../../../components/ui/tooltip";
 import { useSetPageTitle } from "../../../hooks/useSetPageTitle";
-import { SESSION_PAGE_FILTERS } from "../../../lib/filterGroups";
+import { getSessionPageFilters } from "../../../lib/filterGroups";
 import { SubHeader } from "../components/SubHeader/SubHeader";
+import { useGetSite } from "../../../api/admin/hooks/useSites";
 
 const LIMIT = 100;
 
 export default function SessionsPage() {
   const t = useExtracted();
   useSetPageTitle("Sessions");
+  const { data: siteMetadata } = useGetSite();
+  const isApp = siteMetadata?.type === "app";
   const [page, setPage] = useState(1);
   const [identifiedOnly, setIdentifiedOnly] = useState(false);
   const [minPageviews, setMinPageviews] = useState<number | undefined>(undefined);
@@ -91,7 +94,7 @@ export default function SessionsPage() {
             htmlFor="min-pageviews"
             className="text-sm text-neutral-600 dark:text-neutral-400 whitespace-nowrap"
           >
-            {t("Min pageviews")}
+            {isApp ? t("Min screenviews") : t("Min pageviews")}
           </Label>
           <Input
             id="min-pageviews"
@@ -144,7 +147,7 @@ export default function SessionsPage() {
   return (
     <DisabledOverlay message={t("Sessions")} featurePath="sessions">
       <div className="p-2 md:p-4 max-w-[1300px] mx-auto space-y-3">
-        <SubHeader availableFilters={SESSION_PAGE_FILTERS} />
+        <SubHeader availableFilters={getSessionPageFilters(isApp)} />
         <SessionsList
           sessions={sessions}
           isLoading={isLoading}
