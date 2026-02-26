@@ -13,7 +13,7 @@ import { DisabledOverlay } from "../../../components/DisabledOverlay";
 import { useSetPageTitle } from "../../../hooks/useSetPageTitle";
 import { timeZone } from "../../../lib/dateTimeUtils";
 import { useStore } from "../../../lib/store";
-import { JOURNEY_PAGE_FILTERS } from "../../../lib/filterGroups";
+import { getJourneyPageFilters } from "../../../lib/filterGroups";
 import { SubHeader } from "../components/SubHeader/SubHeader";
 import { SankeyDiagram } from "./components/SankeyDiagram";
 
@@ -26,6 +26,7 @@ export default function JourneysPage() {
   const [stepFilters, setStepFilters] = useState<Record<number, string>>({});
 
   const { data: siteMetadata } = useGetSite();
+  const isApp = siteMetadata?.type === "app";
   const { time } = useStore();
 
   // Fetch path suggestions
@@ -53,7 +54,7 @@ export default function JourneysPage() {
   return (
     <DisabledOverlay message="User Journeys" featurePath="journeys">
       <div className="container mx-auto p-2 md:p-4">
-        <SubHeader availableFilters={JOURNEY_PAGE_FILTERS} />
+        <SubHeader availableFilters={getJourneyPageFilters(isApp)} />
         <div className="flex items-center gap-6 my-2">
           <div className="flex items-center gap-3 w-[180px]">
             <span className="text-sm text-neutral-600 dark:text-neutral-300 whitespace-nowrap">{t("{steps} steps", { steps: String(steps) })}</span>

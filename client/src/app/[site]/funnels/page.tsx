@@ -2,7 +2,8 @@
 
 import { useExtracted } from "next-intl";
 import { Input } from "@/components/ui/input";
-import { GOALS_PAGE_FILTERS } from "@/lib/filterGroups";
+import { getFunnelPageFilters } from "@/lib/filterGroups";
+import { useGetSite } from "../../../api/admin/hooks/useSites";
 import { useStore } from "@/lib/store";
 import { ArrowRight, Funnel } from "lucide-react";
 import { Card } from "@/components/ui/card";
@@ -62,6 +63,8 @@ const FunnelRowSkeleton = () => (
 export default function FunnelsPage() {
   const t = useExtracted();
   useSetPageTitle("Funnels");
+  const { data: siteMetadata } = useGetSite();
+  const isApp = siteMetadata?.type === "app";
 
   const { site } = useStore();
   const { data: funnels, isLoading, error } = useGetFunnels(site);
@@ -87,7 +90,7 @@ export default function FunnelsPage() {
   return (
     <DisabledOverlay message="Funnels" featurePath="funnels">
       <div className="p-2 md:p-4 max-w-[1300px] mx-auto space-y-3">
-        <SubHeader availableFilters={GOALS_PAGE_FILTERS} />
+        <SubHeader availableFilters={getFunnelPageFilters(isApp)} />
         <div className="flex justify-between items-center">
           <Input
             placeholder={t("Filter funnels")}
