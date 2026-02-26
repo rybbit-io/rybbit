@@ -123,6 +123,44 @@ export function getDeviceType(screenWidth: number, screenHeight: number, ua: UAP
   return "Mobile";
 }
 
+// RFC 7231 §5.5.3 User-Agent parser for SDK clients.
+// 3-part: AppName/Version (packageName; Platform OS; deviceModel) SDKName/Version
+// 2-part: AppName/Version (Platform OS; deviceModel) SDKName/Version
+export function parseSDKUserAgent(userAgent: string): {
+  browser: string;
+  browserVersion: string;
+  os: string;
+  osVersion: string;
+} | null {
+  // 3-part format (with packageName)
+  const match3 = userAgent.match(
+    /^(.+?)\/(\S+)\s+\([^;]+;\s*(\w+)\s+([^;]+);\s*[^)]+\)\s+\S+\/\S+$/
+  );
+  if (match3) {
+    return {
+      browser: match3[1],
+      browserVersion: match3[2],
+      os: match3[3],
+      osVersion: match3[4].trim(),
+    };
+  }
+
+  // 2-part format (without packageName)
+  const match2 = userAgent.match(
+    /^(.+?)\/(\S+)\s+\((\w+)\s+([^;]+);\s*[^)]+\)\s+\S+\/\S+$/
+  );
+  if (match2) {
+    return {
+      browser: match2[1],
+      browserVersion: match2[2],
+      os: match2[3],
+      osVersion: match2[4].trim(),
+    };
+  }
+
+  return null;
+}
+
 // Extract site ID from path
 export const extractSiteId = (path: string) => {
   // Remove query parameters if present
