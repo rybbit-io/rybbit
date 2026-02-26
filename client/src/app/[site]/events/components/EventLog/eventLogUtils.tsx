@@ -18,8 +18,11 @@ export function parseEventProperties(event: Event): Record<string, any> {
   return {};
 }
 
-export function getEventTypeLabel(type: string, t?: TranslationFunction) {
+export function getEventTypeLabel(type: string, t?: TranslationFunction, isApp?: boolean) {
   const label = EVENT_TYPE_CONFIG.find(item => item.value === type)?.label ?? "Event";
+  if (isApp && label === "Pageview") {
+    return t ? t("Screenview") : "Screenview";
+  }
   return t ? t(label) : label;
 }
 
