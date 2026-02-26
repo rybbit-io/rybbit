@@ -8,6 +8,7 @@ import { Card, CardContent, CardLoader } from "../../../../../components/ui/card
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../../../../components/ui/select";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../../../../../components/ui/tooltip";
 import { getTimezone, StatType, useStore } from "../../../../../lib/store";
+import { useGetSite } from "../../../../../api/admin/hooks/useSites";
 import { cn } from "../../../../../lib/utils";
 
 import { formatLocalTime, hourLabels, longDayNames, shortDayNames } from "../../../../../lib/dateTimeUtils";
@@ -17,6 +18,8 @@ export function Weekdays() {
   const [metric, setMetric] = useState<StatType>("users");
   const timezone = getTimezone();
   const t = useExtracted();
+  const { data: siteMetadata } = useGetSite();
+  const isApp = siteMetadata?.type === "app";
 
   const { data, isFetching, error } = useGetOverviewBucketed({
     site,
@@ -128,13 +131,13 @@ export function Weekdays() {
       case "users":
         return t("Unique Visitors");
       case "pageviews":
-        return t("Pageviews");
+        return isApp ? t("Screenviews") : t("Pageviews");
       case "sessions":
         return t("Sessions");
       case "bounce_rate":
         return t("Bounce Rate");
       case "pages_per_session":
-        return t("Pages per Session");
+        return isApp ? t("Screens per Session") : t("Pages per Session");
       case "session_duration":
         return t("Session Duration");
       default:
@@ -159,10 +162,10 @@ export function Weekdays() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="users">{t("Unique Visitors")}</SelectItem>
-              <SelectItem value="pageviews">{t("Pageviews")}</SelectItem>
+              <SelectItem value="pageviews">{isApp ? t("Screenviews") : t("Pageviews")}</SelectItem>
               <SelectItem value="sessions">{t("Sessions")}</SelectItem>
               <SelectItem value="bounce_rate">{t("Bounce Rate")}</SelectItem>
-              <SelectItem value="pages_per_session">{t("Pages per Session")}</SelectItem>
+              <SelectItem value="pages_per_session">{isApp ? t("Screens per Session") : t("Pages per Session")}</SelectItem>
               <SelectItem value="session_duration">{t("Session Duration")}</SelectItem>
             </SelectContent>
           </Select>

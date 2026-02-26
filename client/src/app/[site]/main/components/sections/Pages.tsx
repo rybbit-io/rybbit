@@ -18,9 +18,17 @@ export function Pages() {
   const [tab, setTab] = useState<Tab>("pages");
   const [expanded, setExpanded] = useState(false);
   const t = useExtracted();
+  const isApp = siteMetadata?.type === "app";
   const close = () => {
     setExpanded(false);
   };
+
+  const getPageLink = isApp
+    ? undefined
+    : (e: { value: string; hostname?: string }) => {
+        const host = e.hostname || siteMetadata?.domain;
+        return host ? `https://${host}${e.value}` : "#";
+      };
 
   return (
     <Card className="h-[405px]">
@@ -29,11 +37,11 @@ export function Pages() {
           <div className="flex flex-row gap-2 justify-between items-center">
             <div className="overflow-x-auto">
               <TabsList>
-                <TabsTrigger value="pages">{t("Pages")}</TabsTrigger>
+                <TabsTrigger value="pages">{isApp ? t("Screens") : t("Pages")}</TabsTrigger>
                 <TabsTrigger value="page_title">{t("Titles")}</TabsTrigger>
-                <TabsTrigger value="entry_pages">{t("Entries")}</TabsTrigger>
-                <TabsTrigger value="exit_pages">{t("Exits")}</TabsTrigger>
-                <TabsTrigger value="hostname">{t("Hostnames")}</TabsTrigger>
+                <TabsTrigger value="entry_pages">{isApp ? t("Entry Screens") : t("Entries")}</TabsTrigger>
+                <TabsTrigger value="exit_pages">{isApp ? t("Exit Screens") : t("Exits")}</TabsTrigger>
+                {!isApp && <TabsTrigger value="hostname">{t("Hostnames")}</TabsTrigger>}
               </TabsList>
             </div>
             <div className="w-7">
@@ -45,14 +53,11 @@ export function Pages() {
           <TabsContent value="pages">
             <StandardSection
               filterParameter="pathname"
-              title={t("Pages")}
+              title={isApp ? t("Screens") : t("Pages")}
               getValue={e => e.value}
               getKey={e => e.value}
               getLabel={e => truncateString(e.value, 50) || t("Other")}
-              getLink={e => {
-                const host = e.hostname || siteMetadata?.domain;
-                return host ? `https://${host}${e.value}` : "#";
-              }}
+              getLink={getPageLink}
               expanded={expanded}
               close={close}
             />
@@ -64,11 +69,6 @@ export function Pages() {
               getValue={e => e.value}
               getKey={e => e.value}
               getLabel={e => truncateString(e.value, 50) || t("Other")}
-              // getLink={(e) =>
-              //   e.pathname
-              //     ? `https://${siteMetadata?.domain}${e.pathname}`
-              //     : "#"
-              // }
               expanded={expanded}
               close={close}
             />
@@ -76,14 +76,11 @@ export function Pages() {
           <TabsContent value="entry_pages">
             <StandardSection
               filterParameter="entry_page"
-              title={t("Entry Pages")}
+              title={isApp ? t("Entry Screens") : t("Entry Pages")}
               getValue={e => e.value}
               getKey={e => e.value}
               getLabel={e => e.value || t("Other")}
-              getLink={e => {
-                const host = e.hostname || siteMetadata?.domain;
-                return host ? `https://${host}${e.value}` : "#";
-              }}
+              getLink={getPageLink}
               expanded={expanded}
               close={close}
             />
@@ -91,29 +88,28 @@ export function Pages() {
           <TabsContent value="exit_pages">
             <StandardSection
               filterParameter="exit_page"
-              title={t("Exit Pages")}
+              title={isApp ? t("Exit Screens") : t("Exit Pages")}
               getValue={e => e.value}
               getKey={e => e.value}
               getLabel={e => e.value || t("Other")}
-              getLink={e => {
-                const host = e.hostname || siteMetadata?.domain;
-                return host ? `https://${host}${e.value}` : "#";
-              }}
+              getLink={getPageLink}
               expanded={expanded}
               close={close}
             />
           </TabsContent>
-          <TabsContent value="hostname">
-            <StandardSection
-              filterParameter="hostname"
-              title={t("Hostnames")}
-              getValue={e => e.value}
-              getKey={e => e.value}
-              getLabel={e => e.value}
-              expanded={expanded}
-              close={close}
-            />
-          </TabsContent>
+          {!isApp && (
+            <TabsContent value="hostname">
+              <StandardSection
+                filterParameter="hostname"
+                title={t("Hostnames")}
+                getValue={e => e.value}
+                getKey={e => e.value}
+                getLabel={e => e.value}
+                expanded={expanded}
+                close={close}
+              />
+            </TabsContent>
+          )}
         </Tabs>
       </CardContent>
     </Card>

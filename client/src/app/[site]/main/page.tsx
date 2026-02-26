@@ -1,5 +1,6 @@
 "use client";
 import { ReactNode } from "react";
+import { useGetSite } from "../../../api/admin/hooks/useSites";
 import { useGetLiveUserCount } from "../../../api/analytics/hooks/useGetLiveUserCount";
 import { useInView } from "../../../hooks/useInView";
 import { useSetPageTitle } from "../../../hooks/useSetPageTitle";
@@ -37,6 +38,8 @@ export default function MainPage() {
 
 function MainPageContent() {
   const { data } = useGetLiveUserCount(5);
+  const { data: siteMetadata } = useGetSite();
+  const isApp = siteMetadata?.type === "app";
 
   useSetPageTitle(`${data?.count ?? "…"} user${data?.count === 1 ? "" : "s"} online`);
 
@@ -45,14 +48,18 @@ function MainPageContent() {
       <SubHeader />
       <MainSection />
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 mt-3">
-        <LazySection><Referrers /></LazySection>
+        {!isApp && <LazySection><Referrers /></LazySection>}
         <LazySection><Pages /></LazySection>
         <LazySection><Devices /></LazySection>
         <LazySection><Countries /></LazySection>
         <LazySection height="483px"><Events /></LazySection>
-        <LazySection><Weekdays /></LazySection>
-        {IS_CLOUD && <LazySection><Network /></LazySection>}
-        {IS_CLOUD && <LazySection><SearchConsole /></LazySection>}
+        <LazySection>
+          <div className={isApp ? "lg:col-span-2" : ""}>
+            <Weekdays />
+          </div>
+        </LazySection>
+        {IS_CLOUD && !isApp && <LazySection><Network /></LazySection>}
+        {IS_CLOUD && !isApp && <LazySection><SearchConsole /></LazySection>}
       </div>
     </div>
   );

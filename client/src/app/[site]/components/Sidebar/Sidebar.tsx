@@ -34,6 +34,7 @@ function SidebarContent() {
   const embed = useEmbedablePage();
 
   const { data: site } = useGetSite(Number(pathname.split("/")[1]));
+  const isApp = site?.type === "app";
 
   // Check which tab is active based on the current path
   const getTabPath = (tabName: string) => {
@@ -70,7 +71,7 @@ function SidebarContent() {
         <SiteSelector />
       </div>
       <div className="flex flex-col p-3 pt-1">
-        <SidebarComponents.SectionHeader>{t("Web Analytics")}</SidebarComponents.SectionHeader>
+        <SidebarComponents.SectionHeader>{isApp ? t("Analytics") : t("Web Analytics")}</SidebarComponents.SectionHeader>
         <SidebarComponents.Item
           label={t("Main")}
           active={isActiveTab("main")}
@@ -85,13 +86,13 @@ function SidebarContent() {
         />
         {IS_CLOUD && (
           <SidebarComponents.Item
-            label={t("Pages")}
+            label={isApp ? t("Screens") : t("Pages")}
             active={isActiveTab("pages")}
             href={getTabPath("pages")}
             icon={<File className="w-4 h-4" />}
           />
         )}
-        {IS_CLOUD && (
+        {IS_CLOUD && !isApp && (
           <SidebarComponents.Item
             label={t("Performance")}
             active={isActiveTab("performance")}
@@ -114,16 +115,18 @@ function SidebarContent() {
           />
         </div>
         <SidebarComponents.SectionHeader>{t("Product Analytics")}</SidebarComponents.SectionHeader>
-        <div className="hidden md:block">
-          {!subscription?.planName?.startsWith("appsumo") && !isSubscriptionLoading && (
-            <SidebarComponents.Item
-              label={t("Replay")}
-              active={isActiveTab("replay")}
-              href={getTabPath("replay")}
-              icon={<Video className="w-4 h-4" />}
-            />
-          )}
-        </div>
+        {!isApp && (
+          <div className="hidden md:block">
+            {!subscription?.planName?.startsWith("appsumo") && !isSubscriptionLoading && (
+              <SidebarComponents.Item
+                label={t("Replay")}
+                active={isActiveTab("replay")}
+                href={getTabPath("replay")}
+                icon={<Video className="w-4 h-4" />}
+              />
+            )}
+          </div>
+        )}
         <SidebarComponents.Item
           label={t("Funnels")}
           active={isActiveTab("funnels")}

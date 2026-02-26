@@ -30,6 +30,8 @@ export function PageListItem({ pageData, isLoading = false }: PageListItemProps)
   const [thumbnailError, setThumbnailError] = useState(false);
   const { data: siteMetadata } = useGetSite();
   const { site, time, bucket } = useStore(); // Get time and bucket from store
+  const siteType = siteMetadata?.type || "web";
+  const isApp = siteType !== "web";
 
   const isPastMinutesMode = time.mode === "past-minutes";
 
@@ -71,14 +73,18 @@ export function PageListItem({ pageData, isLoading = false }: PageListItemProps)
   const isLoadingTrafficData = isPastMinutesMode ? isLoadingPastMinutes : isLoadingRegular;
 
   // External URL for the page
-  const pageUrl = pageData.hostname
-    ? `https://${pageData.hostname}${pageData.value}`
-    : siteMetadata?.domain
-      ? `https://${siteMetadata.domain}${pageData.value}`
-      : "";
+  const pageUrl = isApp
+    ? ""
+    : pageData.hostname
+      ? `https://${pageData.hostname}${pageData.value}`
+      : siteMetadata?.domain
+        ? `https://${siteMetadata.domain}${pageData.value}`
+        : "";
 
   // Fetch page metadata using TanStack Query
-  const { data: metadata, isLoading: isLoadingMetadata, isError: isMetadataError } = usePageMetadata(pageUrl);
+  const { data: metadata, isLoading: isLoadingMetadata, isError: isMetadataError } = usePageMetadata(
+    isApp ? "" : pageUrl
+  );
 
   // Get thumbnail URL from metadata
   const thumbnailUrl = !thumbnailError && !isMetadataError ? metadata?.image : null;

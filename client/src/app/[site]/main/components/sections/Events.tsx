@@ -10,6 +10,7 @@ import { OutboundLinksDialog } from "./OutboundLinksDialog";
 import { useGetOutboundLinks } from "../../../../../api/analytics/hooks/events/useGetOutboundLinks";
 import { Expand } from "lucide-react";
 import { ScrollArea } from "../../../../../components/ui/scroll-area";
+import { useGetSite } from "../../../../../api/admin/hooks/useSites";
 
 type Tab = "events" | "outbound";
 
@@ -64,6 +65,8 @@ export function Events() {
   const [tab, setTab] = useState<Tab>("events");
   const [expandedOutbound, setExpandedOutbound] = useState(false);
   const t = useExtracted();
+  const { data: siteMetadata } = useGetSite();
+  const isApp = siteMetadata?.type === "app";
 
   return (
     <Card className="h-[483px]">
@@ -73,10 +76,10 @@ export function Events() {
             <div className="overflow-x-auto">
               <TabsList>
                 <TabsTrigger value="events">{t("Custom Events")}</TabsTrigger>
-                <TabsTrigger value="outbound">{t("Outbound Links")}</TabsTrigger>
+                {!isApp && <TabsTrigger value="outbound">{t("Outbound Links")}</TabsTrigger>}
               </TabsList>
             </div>
-            {tab === "outbound" && (
+            {tab === "outbound" && !isApp && (
               <Button size="smIcon" onClick={() => setExpandedOutbound(true)}>
                 <Expand className="w-4 h-4" />
               </Button>
@@ -85,9 +88,11 @@ export function Events() {
           <TabsContent value="events">
             <Events_ />
           </TabsContent>
-          <TabsContent value="outbound">
-            <OutboundLinks expanded={expandedOutbound} close={() => setExpandedOutbound(false)} />
-          </TabsContent>
+          {!isApp && (
+            <TabsContent value="outbound">
+              <OutboundLinks expanded={expandedOutbound} close={() => setExpandedOutbound(false)} />
+            </TabsContent>
+          )}
         </Tabs>
       </CardContent>
     </Card>
