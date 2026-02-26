@@ -78,6 +78,14 @@ export function AddSite({ trigger, disabled }: { trigger?: React.ReactNode; disa
         type: siteType,
       });
 
+      if (iconBase64) {
+        try {
+          await uploadSiteIcon(site.siteId, iconBase64);
+        } catch (iconError) {
+          console.warn("Site created but icon upload failed", iconError);
+        }
+      }
+
       resetStore();
       setSite(site.siteId.toString());
       router.push(`/${site.siteId}`);

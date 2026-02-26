@@ -398,6 +398,92 @@ export function SiteConfiguration({ siteMetadata, disabled = false, onClose }: S
       <IPExclusionManager siteId={siteMetadata.siteId} disabled={disabled} />
       <CountryExclusionManager siteId={siteMetadata.siteId} disabled={disabled} />
       {IS_CLOUD && <GSCManager disabled={disabled} />}
+      {siteType !== "web" && (
+        <div className="space-y-3">
+          <div>
+            <h4 className="text-sm font-semibold text-foreground">{t("App Icon")}</h4>
+            <p className="text-xs text-muted-foreground">
+              {t("Displayed as a favicon in the sidebar, site selector, and site cards. Accepts any image format — automatically resized to 128×128 PNG. Max 50 KB.")}
+            </p>
+          </div>
+          <div className="flex items-center gap-4">
+            <div className="shrink-0">
+              <Label className="text-xs text-muted-foreground mb-1 block">{t("Preview")}</Label>
+              <div className="relative w-12 h-12">
+                <img
+                  key={iconVersion}
+                  src={`${BACKEND_URL}/sites/${siteMetadata.siteId}/icon?v=${iconVersion}`}
+                  alt={t("App Icon")}
+                  className="w-12 h-12 rounded-lg border border-border"
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).style.display = "none";
+                    (e.target as HTMLImageElement).nextElementSibling?.classList.remove("hidden");
+                  }}
+                  onLoad={(e) => {
+                    (e.target as HTMLImageElement).style.display = "";
+                    (e.target as HTMLImageElement).nextElementSibling?.classList.add("hidden");
+                  }}
+                />
+                <div className="hidden w-12 h-12 rounded-lg border border-dashed border-border bg-neutral-100 dark:bg-neutral-800 flex items-center justify-center">
+                  <Smartphone className="w-5 h-5 text-muted-foreground" />
+                </div>
+              </div>
+            </div>
+            <div className="flex flex-col gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={disabled || isUploadingIcon}
+                onClick={() => {
+                  const input = document.createElement("input");
+                  input.type = "file";
+                  input.accept = "image/*";
+                  input.onchange = async (e) => {
+                    const file = (e.target as HTMLInputElement).files?.[0];
+                    if (!file) return;
+                    setIsUploadingIcon(true);
+                    try {
+                      const base64 = await resizeImageToIcon(file);
+                      await uploadSiteIcon(siteMetadata.siteId, base64);
+                      setIconVersion((v) => v + 1);
+                      toast.success(t("Icon uploaded"));
+                    } catch {
+                      toast.error(t("Failed to upload icon"));
+                    } finally {
+                      setIsUploadingIcon(false);
+                    }
+                  };
+                  input.click();
+                }}
+              >
+                <Upload className="h-4 w-4" />
+                {isUploadingIcon ? t("Uploading...") : t("Upload Icon")}
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-muted-foreground"
+                disabled={disabled || isDeletingIcon}
+                onClick={async () => {
+                  setIsDeletingIcon(true);
+                  try {
+                    await deleteSiteIcon(siteMetadata.siteId);
+                    setIconVersion((v) => v + 1);
+                    toast.success(t("Icon removed"));
+                  } catch {
+                    toast.error(t("Failed to remove icon"));
+                  } finally {
+                    setIsDeletingIcon(false);
+                  }
+                }}
+              >
+                <Trash2 className="h-4 w-4" />
+                {t("Remove Icon")}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
       <div className="space-y-3">
         <div>
           <h4 className="text-sm font-semibold text-foreground">{t("Site Name")}</h4>
