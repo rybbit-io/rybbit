@@ -20,6 +20,8 @@ export type GetSessionsResponse = {
   operating_system_version: string;
   screen_width: number;
   screen_height: number;
+  device_model: string;
+  app_version: string;
   referrer: string;
   channel: string;
   hostname: string;
@@ -120,6 +122,8 @@ export async function getSessions(req: FastifyRequest<GetSessionsRequest>, res: 
           argMax(operating_system_version, timestamp) AS operating_system_version,
           argMax(screen_width, timestamp) AS screen_width,
           argMax(screen_height, timestamp) AS screen_height,
+          argMax(device_model, timestamp) AS device_model,
+          argMax(app_version, timestamp) AS app_version,
           argMin(referrer, timestamp) AS referrer,
           argMin(channel, timestamp) AS channel,
           argMin(hostname, timestamp) AS hostname,

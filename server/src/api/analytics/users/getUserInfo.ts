@@ -15,6 +15,8 @@ interface UserPageviewData {
   city: string;
   language: string;
   device_type: string;
+  device_model: string;
+  app_version: string;
   browser: string;
   browser_version: string;
   operating_system: string;
@@ -67,6 +69,8 @@ export async function getUserInfo(
             argMax(city, timestamp) AS city,
             argMax(language, timestamp) AS language,
             argMax(device_type, timestamp) AS device_type,
+            argMax(device_model, timestamp) AS device_model,
+            argMax(app_version, timestamp) AS app_version,
             argMax(browser, timestamp) AS browser,
             argMax(browser_version, timestamp) AS browser_version,
             argMax(operating_system, timestamp) AS operating_system,
@@ -103,6 +107,8 @@ export async function getUserInfo(
         any(city) AS city,
         any(language) AS language,
         any(device_type) AS device_type,
+        any(device_model) AS device_model,
+        any(app_version) AS app_version,
         any(browser) AS browser,
         any(browser_version) AS browser_version,
         any(operating_system) AS operating_system,

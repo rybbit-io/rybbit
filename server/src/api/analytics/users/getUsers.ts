@@ -17,6 +17,8 @@ export type GetUsersResponse = {
   browser: string;
   operating_system: string;
   device_type: string;
+  device_model: string;
+  app_version: string;
   pageviews: number;
   events: number;
   sessions: number;
@@ -116,6 +118,8 @@ WITH AggregatedUsers AS (
         argMax(operating_system, timestamp) AS operating_system,
         argMax(operating_system_version, timestamp) AS operating_system_version,
         argMax(device_type, timestamp) AS device_type,
+        argMax(device_model, timestamp) AS device_model,
+        argMax(app_version, timestamp) AS app_version,
         argMax(screen_width, timestamp) AS screen_width,
         argMax(screen_height, timestamp) AS screen_height,
         argMin(referrer, timestamp) AS referrer,

@@ -10,6 +10,8 @@ export interface SessionDetails {
   city: string;
   language: string;
   device_type: string;
+  device_model: string;
+  app_version: string;
   browser: string;
   browser_version: string;
   operating_system: string;
@@ -86,6 +88,8 @@ SELECT
     any(city) as city,
     any(language) as language,
     any(device_type) as device_type,
+    any(device_model) as device_model,
+    any(app_version) as app_version,
     any(browser) as browser,
     any(browser_version) as browser_version,
     any(operating_system) as operating_system,
