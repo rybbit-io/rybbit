@@ -27,7 +27,9 @@ export function EnableErrorTracking() {
           </AlertTitle>
           <AlertDescription className="text-sm text-neutral-700/80 dark:text-neutral-300/80">
             <div className="mb-2">
-              {t("Error tracking captures JavaScript errors and exceptions from your application.")} <b>{t("Note:")}</b> {t("Enabling error tracking will increase your event usage.")}
+              {siteMetadata?.type && siteMetadata.type !== "web"
+              ? t("Error tracking captures errors and exceptions from your application.")
+              : t("Error tracking captures JavaScript errors and exceptions from your application.")} <b>{t("Note:")}</b> {t("Enabling error tracking will increase your event usage.")}
             </div>
             <Button
               size="sm"

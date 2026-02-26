@@ -24,7 +24,7 @@ import { Switch } from "@/components/ui/switch";
 
 import { deleteSite, updateSiteConfig, SiteResponse } from "@/api/admin/endpoints";
 import { useGetSitesFromOrg } from "@/api/admin/hooks/useSites";
-import { normalizeDomain } from "@/lib/utils";
+import { normalizeDomain, isValidDomain, isValidPackageName } from "@/lib/utils";
 import { IPExclusionManager } from "./IPExclusionManager";
 import { CountryExclusionManager } from "./CountryExclusionManager";
 import { GSCManager } from "./GSCManager";
@@ -54,6 +54,8 @@ export function SiteConfiguration({ siteMetadata, disabled = false, onClose }: S
   const t = useExtracted();
   const { refetch } = useGetSitesFromOrg(siteMetadata?.organizationId ?? "");
   const router = useRouter();
+
+  const siteType = siteMetadata.type || "web";
 
   const [newName, setNewName] = useState(siteMetadata.name);
   const [isChangingName, setIsChangingName] = useState(false);
@@ -136,9 +138,21 @@ export function SiteConfiguration({ siteMetadata, disabled = false, onClose }: S
       return;
     }
 
+    if (siteType === "web") {
+      if (!isValidDomain(newDomain)) {
+        toast.error(t("Invalid domain format"));
+        return;
+      }
+    } else {
+      if (!isValidPackageName(newDomain)) {
+        toast.error(t("Invalid package name format"));
+        return;
+      }
+    }
+
     try {
       setIsChangingDomain(true);
-      const normalizedDomain = normalizeDomain(newDomain);
+      const normalizedDomain = siteType === "web" ? normalizeDomain(newDomain) : newDomain;
       await updateSiteConfig(siteMetadata.siteId, { domain: normalizedDomain });
       toast.success(t("Domain updated successfully"));
       router.refresh();
@@ -212,9 +226,11 @@ export function SiteConfiguration({ siteMetadata, disabled = false, onClose }: S
   const sessionReplayDisabled = (!subscription?.planName.includes("pro") || (!!subscription?.isTrial && (subscription?.eventLimit ?? 0) >= 500_000)) && IS_CLOUD;
   const standardFeaturesDisabled = !subscription?.planName.includes("standard") && !subscription?.planName.includes("pro") && !subscription?.planName.includes("appsumo") && IS_CLOUD;
 
+  const isWeb = siteType === "web";
+
   // Configuration for analytics feature toggles
   const analyticsToggles: ToggleConfig[] = [
-    ...(!subscription?.planName?.startsWith("appsumo") && !isSubscriptionLoading
+    ...(!subscription?.planName?.startsWith("appsumo") && !isSubscriptionLoading && isWeb
       ? [
         {
           id: "sessionReplay",
@@ -229,7 +245,7 @@ export function SiteConfiguration({ siteMetadata, disabled = false, onClose }: S
         } as ToggleConfig,
       ]
       : []),
-    ...(IS_CLOUD
+    ...(IS_CLOUD && isWeb
       ? [
         {
           id: "webVitals",
@@ -244,24 +260,28 @@ export function SiteConfiguration({ siteMetadata, disabled = false, onClose }: S
         } as ToggleConfig,
       ]
       : []),
-    {
-      id: "trackSpaNavigation",
-      label: t("SPA Navigation"),
-      description: t("Automatically track navigation in single-page applications"),
-      value: toggleStates.trackSpaNavigation,
-      key: "trackSpaNavigation",
-      enabledMessage: t("SPA navigation tracking enabled"),
-      disabledMessage: t("SPA navigation tracking disabled"),
-    },
-    {
-      id: "trackUrlParams",
-      label: t("URL Parameters"),
-      description: t("Include query string parameters in page tracking"),
-      value: toggleStates.trackUrlParams,
-      key: "trackUrlParams",
-      enabledMessage: t("URL parameters tracking enabled"),
-      disabledMessage: t("URL parameters tracking disabled"),
-    },
+    ...(isWeb
+      ? [
+        {
+          id: "trackSpaNavigation",
+          label: t("SPA Navigation"),
+          description: t("Automatically track navigation in single-page applications"),
+          value: toggleStates.trackSpaNavigation,
+          key: "trackSpaNavigation",
+          enabledMessage: t("SPA navigation tracking enabled"),
+          disabledMessage: t("SPA navigation tracking disabled"),
+        } as ToggleConfig,
+        {
+          id: "trackUrlParams",
+          label: t("URL Parameters"),
+          description: t("Include query string parameters in page tracking"),
+          value: toggleStates.trackUrlParams,
+          key: "trackUrlParams",
+          enabledMessage: t("URL parameters tracking enabled"),
+          disabledMessage: t("URL parameters tracking disabled"),
+        } as ToggleConfig,
+      ]
+      : []),
     {
       id: "trackInitialPageView",
       label: t("Initial Page View"),
@@ -273,61 +293,70 @@ export function SiteConfiguration({ siteMetadata, disabled = false, onClose }: S
     },
   ];
 
-  const autoCaptureToggles: ToggleConfig[] = [
-    {
-      id: "trackOutbound",
-      label: t("Outbound Links"),
-      description: t("Track when users click on external links"),
-      value: toggleStates.trackOutbound,
-      key: "trackOutbound",
-      enabledMessage: t("Outbound tracking enabled"),
-      disabledMessage: t("Outbound tracking disabled"),
-    },
-    {
-      id: "trackErrors",
-      label: t("Error Tracking"),
-      description: t("Capture JavaScript errors and exceptions from your site"),
-      value: toggleStates.trackErrors,
-      key: "trackErrors",
-      enabledMessage: t("Error tracking enabled"),
-      disabledMessage: t("Error tracking disabled"),
-      disabled: standardFeaturesDisabled,
-      badge: <Badge variant="success">Standard</Badge>,
-    },
-    {
-      id: "trackButtonClicks",
-      label: t("Button Clicks"),
-      description: t("Automatically track clicks on all buttons"),
-      value: toggleStates.trackButtonClicks,
-      key: "trackButtonClicks",
-      enabledMessage: t("Button click tracking enabled"),
-      disabledMessage: t("Button click tracking disabled"),
-      disabled: standardFeaturesDisabled,
-      badge: <Badge variant="success">Standard</Badge>,
-    },
-    {
-      id: "trackCopy",
-      label: t("Copy Events"),
-      description: t("Track when users copy text from your site"),
-      value: toggleStates.trackCopy,
-      key: "trackCopy",
-      enabledMessage: t("Copy tracking enabled"),
-      disabledMessage: t("Copy tracking disabled"),
-      disabled: standardFeaturesDisabled,
-      badge: <Badge variant="success">Standard</Badge>,
-    },
-    {
-      id: "trackFormInteractions",
-      label: t("Form Interactions"),
-      description: t("Automatically track form submissions and input/select changes"),
-      value: toggleStates.trackFormInteractions,
-      key: "trackFormInteractions",
-      enabledMessage: t("Form interaction tracking enabled"),
-      disabledMessage: t("Form interaction tracking disabled"),
-      disabled: standardFeaturesDisabled,
-      badge: <Badge variant="success">Standard</Badge>,
-    },
-  ];
+  // Error tracking - available for all site types
+  const errorTrackingToggle: ToggleConfig = {
+    id: "trackErrors",
+    label: t("Error Tracking"),
+    description: isWeb
+      ? t("Capture JavaScript errors and exceptions from your site")
+      : t("Capture errors and exceptions from your app"),
+    value: toggleStates.trackErrors,
+    key: "trackErrors",
+    enabledMessage: t("Error tracking enabled"),
+    disabledMessage: t("Error tracking disabled"),
+    disabled: standardFeaturesDisabled,
+    badge: <Badge variant="success">Standard</Badge>,
+  };
+
+  // Auto capture toggles - DOM-based features only available for web
+  const webOnlyToggles: ToggleConfig[] = isWeb
+    ? [
+      {
+        id: "trackOutbound",
+        label: t("Outbound Links"),
+        description: t("Track when users click on external links"),
+        value: toggleStates.trackOutbound,
+        key: "trackOutbound",
+        enabledMessage: t("Outbound tracking enabled"),
+        disabledMessage: t("Outbound tracking disabled"),
+      },
+      {
+        id: "trackButtonClicks",
+        label: t("Button Clicks"),
+        description: t("Automatically track clicks on all buttons"),
+        value: toggleStates.trackButtonClicks,
+        key: "trackButtonClicks",
+        enabledMessage: t("Button click tracking enabled"),
+        disabledMessage: t("Button click tracking disabled"),
+        disabled: standardFeaturesDisabled,
+        badge: <Badge variant="success">Standard</Badge>,
+      },
+      {
+        id: "trackCopy",
+        label: t("Copy Events"),
+        description: t("Track when users copy text from your site"),
+        value: toggleStates.trackCopy,
+        key: "trackCopy",
+        enabledMessage: t("Copy tracking enabled"),
+        disabledMessage: t("Copy tracking disabled"),
+        disabled: standardFeaturesDisabled,
+        badge: <Badge variant="success">Standard</Badge>,
+      },
+      {
+        id: "trackFormInteractions",
+        label: t("Form Interactions"),
+        description: t("Automatically track form submissions and input/select changes"),
+        value: toggleStates.trackFormInteractions,
+        key: "trackFormInteractions",
+        enabledMessage: t("Form interaction tracking enabled"),
+        disabledMessage: t("Form interaction tracking disabled"),
+        disabled: standardFeaturesDisabled,
+        badge: <Badge variant="success">Standard</Badge>,
+      },
+    ]
+    : [];
+
+  const autoCaptureToggles: ToggleConfig[] = [errorTrackingToggle, ...webOnlyToggles];
 
   const renderToggleSection = (toggles: ToggleConfig[], title?: string) => (
     <>
@@ -363,7 +392,9 @@ export function SiteConfiguration({ siteMetadata, disabled = false, onClose }: S
     <div className="pt-4 pb-6 space-y-6 max-h-[70vh] overflow-y-auto">
       <div className="space-y-4">{renderToggleSection(privacyToggles, t("Privacy & Security"))}</div>
       <div className="space-y-4">{renderToggleSection(analyticsToggles, t("Analytics Features"))}</div>
-      <div className="space-y-4">{renderToggleSection(autoCaptureToggles, t("Auto Capture"))}</div>
+      {autoCaptureToggles.length > 0 && (
+        <div className="space-y-4">{renderToggleSection(autoCaptureToggles, t("Auto Capture"))}</div>
+      )}
       <IPExclusionManager siteId={siteMetadata.siteId} disabled={disabled} />
       <CountryExclusionManager siteId={siteMetadata.siteId} disabled={disabled} />
       {IS_CLOUD && <GSCManager disabled={disabled} />}
@@ -390,14 +421,18 @@ export function SiteConfiguration({ siteMetadata, disabled = false, onClose }: S
 
       <div className="space-y-3">
         <div>
-          <h4 className="text-sm font-semibold text-foreground">{t("Domain")}</h4>
-          <p className="text-xs text-muted-foreground">{t("The domain used for tracking")}</p>
+          <h4 className="text-sm font-semibold text-foreground">
+            {siteType === "web" ? t("Change Domain") : t("Change Package Name")}
+          </h4>
+          <p className="text-xs text-muted-foreground">
+            {siteType === "web" ? t("Update the domain for this site") : t("Update the package name for this site")}
+          </p>
         </div>
         <div className="flex space-x-2">
           <Input
             value={newDomain}
             onChange={e => setNewDomain(e.target.value.toLowerCase())}
-            placeholder="example.com"
+            placeholder={siteType === "web" ? "example.com" : "com.example.app"}
           />
           <Button
             variant="outline"
