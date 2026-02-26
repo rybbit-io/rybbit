@@ -26,7 +26,7 @@ export function SDKIntegration({
       </div>
       <div className="text-sm text-muted-foreground">
         <a
-          href="https://github.com/nks-hub/rybbit-flutter"
+          href="https://github.com/nks-hub/rybbit-flutter-sdk"
           target="_blank"
           rel="noopener noreferrer"
           className="text-blue-400 hover:underline"
