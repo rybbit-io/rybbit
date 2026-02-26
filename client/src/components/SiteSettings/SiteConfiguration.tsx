@@ -201,15 +201,19 @@ export function SiteConfiguration({ siteMetadata, disabled = false, onClose }: S
       enabledMessage: t("User ID salting enabled"),
       disabledMessage: t("User ID salting disabled"),
     },
-    {
-      id: "blockBots",
-      label: t("Block Bot Traffic"),
-      description: t("Traffic from known bots and crawlers will not be tracked"),
-      value: toggleStates.blockBots,
-      key: "blockBots",
-      enabledMessage: t("Bot blocking enabled"),
-      disabledMessage: t("Bot blocking disabled"),
-    },
+    ...(siteType === "web"
+      ? [
+          {
+            id: "blockBots",
+            label: t("Block Bot Traffic"),
+            description: t("Traffic from known bots and crawlers will not be tracked"),
+            value: toggleStates.blockBots,
+            key: "blockBots",
+            enabledMessage: t("Bot blocking enabled"),
+            disabledMessage: t("Bot blocking disabled"),
+          } as ToggleConfig,
+        ]
+      : []),
     {
       id: "trackIp",
       label: t("Track IP Address"),
