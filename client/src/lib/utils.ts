@@ -120,6 +120,10 @@ export function isValidDomain(domain: string): boolean {
   return domainRegex.test(domain);
 }
 
+export function isValidPackageName(name: string): boolean {
+  return /^[a-zA-Z][a-zA-Z0-9_]*(\.[a-zA-Z][a-zA-Z0-9_]*)+$/.test(name);
+}
+
 export function getUserDisplayName<
   T extends { identified_user_id?: string; traits?: Record<string, unknown> | null; user_id?: string },
 >(data: T) {

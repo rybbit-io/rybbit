@@ -1,6 +1,7 @@
 "use client";
 import { Button } from "@/components/ui/button";
-import { AlertCircle, AppWindow, Plus } from "lucide-react";
+import { AlertCircle, AppWindow, Plus, Smartphone } from "lucide-react";
+import { DateTime } from "luxon";
 import { useExtracted } from "next-intl";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -23,8 +24,8 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "../../components/ui/too
 import { authClient } from "../../lib/auth";
 import { IS_CLOUD } from "../../lib/const";
 import { resetStore, useStore } from "../../lib/store";
-import { useStripeSubscription } from "../../lib/subscription/useStripeSubscription";
-import { isValidDomain, normalizeDomain } from "../../lib/utils";
+import { SubscriptionData, useStripeSubscription } from "../../lib/subscription/useStripeSubscription";
+import { isValidDomain, isValidPackageName, normalizeDomain } from "../../lib/utils";
 
 export function AddSite({ trigger, disabled }: { trigger?: React.ReactNode; disabled?: boolean }) {
   const { setSite } = useStore();
@@ -46,6 +47,7 @@ export function AddSite({ trigger, disabled }: { trigger?: React.ReactNode; disa
   const [isPublic, setIsPublic] = useState(false);
   const [saltUserIds, setSaltUserIds] = useState(false);
   const [error, setError] = useState("");
+  const [siteType, setSiteType] = useState<"web" | "app">("web");
 
   const handleSubmit = async () => {
     setError("");
@@ -55,18 +57,25 @@ export function AddSite({ trigger, disabled }: { trigger?: React.ReactNode; disa
       return;
     }
 
-    // Validate before attempting to add
-    if (!isValidDomain(domain)) {
-      setError(t("Invalid domain format. Must be a valid domain like example.com or sub.example.com"));
-      return;
+    if (siteType === "web") {
+      if (!isValidDomain(domain)) {
+        setError(t("Invalid domain format. Must be a valid domain like example.com or sub.example.com"));
+        return;
+      }
+    } else {
+      if (!isValidPackageName(domain)) {
+        setError(t("Invalid package name format. Must be like com.example.app"));
+        return;
+      }
     }
 
     try {
-      const normalizedDomain = normalizeDomain(domain);
-      const siteName = name.trim() || normalizedDomain;
-      const site = await addSite(normalizedDomain, siteName, activeOrganization.id, {
+      const normalizedValue = siteType === "web" ? normalizeDomain(domain) : domain.trim();
+      const siteName = name.trim() || normalizedValue;
+      const site = await addSite(normalizedValue, siteName, activeOrganization.id, {
         isPublic,
         saltUserIds,
+        type: siteType,
       });
 
       resetStore();
@@ -87,6 +96,7 @@ export function AddSite({ trigger, disabled }: { trigger?: React.ReactNode; disa
     setError("");
     setIsPublic(false);
     setSaltUserIds(false);
+    setSiteType("web");
   };
 
 
@@ -149,22 +159,43 @@ export function AddSite({ trigger, disabled }: { trigger?: React.ReactNode; disa
         <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <AppWindow className="h-6 w-6" />
-              {t("Add Website")}
+              {siteType === "web" ? <AppWindow className="h-6 w-6" /> : <Smartphone className="h-6 w-6" />}
+              {siteType === "web" ? t("Add Website") : t("Add App")}
             </DialogTitle>
             <DialogDescription>{t("Track analytics for a new website in your organization")}</DialogDescription>
           </DialogHeader>
 
           <div className="grid gap-4 py-2">
             <div className="grid w-full items-center gap-1.5">
+              <Label className="text-sm font-medium">{t("Platform")}</Label>
+              <div className="flex gap-2">
+                {([
+                  { value: "web" as const, label: t("Web"), icon: AppWindow },
+                  { value: "app" as const, label: t("App"), icon: Smartphone },
+                ]).map(({ value, label, icon: Icon }) => (
+                  <Button
+                    key={value}
+                    type="button"
+                    variant={siteType === value ? "default" : "outline"}
+                    size="sm"
+                    className="flex-1"
+                    onClick={() => { setSiteType(value); setDomain(""); setError(""); }}
+                  >
+                    <Icon className="h-4 w-4 mr-1" />
+                    {label}
+                  </Button>
+                ))}
+              </div>
+            </div>
+            <div className="grid w-full items-center gap-1.5">
               <Label htmlFor="domain" className="text-sm font-medium">
-                {t("Domain")}
+                {siteType === "web" ? t("Domain") : t("Package Name")}
               </Label>
               <Input
                 id="domain"
                 value={domain}
                 onChange={e => setDomain(e.target.value.toLowerCase())}
-                placeholder="example.com or sub.example.com"
+                placeholder={siteType === "web" ? "example.com or sub.example.com" : "com.example.app"}
               />
             </div>
             <div className="grid w-full items-center gap-1.5">
