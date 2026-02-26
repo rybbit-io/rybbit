@@ -1,6 +1,6 @@
 "use client";
 
-import { AlertTriangle } from "lucide-react";
+import { AlertTriangle, Smartphone, Trash2, Upload } from "lucide-react";
 import { useExtracted } from "next-intl";
 import { useRouter } from "next/navigation";
 import { useState, useCallback, ReactNode } from "react";
@@ -22,8 +22,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 
-import { deleteSite, updateSiteConfig, SiteResponse } from "@/api/admin/endpoints";
+import { deleteSite, updateSiteConfig, uploadSiteIcon, deleteSiteIcon, SiteResponse } from "@/api/admin/endpoints";
 import { useGetSitesFromOrg } from "@/api/admin/hooks/useSites";
+import { resizeImageToIcon } from "@/lib/imageUtils";
+import { BACKEND_URL } from "@/lib/const";
 import { normalizeDomain, isValidDomain, isValidPackageName } from "@/lib/utils";
 import { IPExclusionManager } from "./IPExclusionManager";
 import { CountryExclusionManager } from "./CountryExclusionManager";
@@ -82,6 +84,9 @@ export function SiteConfiguration({ siteMetadata, disabled = false, onClose }: S
   });
 
   const [loadingStates, setLoadingStates] = useState<Record<string, boolean>>({});
+  const [iconVersion, setIconVersion] = useState(0);
+  const [isUploadingIcon, setIsUploadingIcon] = useState(false);
+  const [isDeletingIcon, setIsDeletingIcon] = useState(false);
 
   // Generic toggle handler
   const handleToggle = useCallback(

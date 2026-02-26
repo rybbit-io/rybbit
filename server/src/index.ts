@@ -79,10 +79,12 @@ import {
   createSiteImport,
   deleteSite,
   deleteSiteImport,
+  deleteSiteIcon,
   getSite,
   getSiteExcludedCountries,
   getSiteExcludedIPs,
   getSiteHasData,
+  getSiteIcon,
   getSiteImports,
   getSiteIsPublic,
   getSitePrivateLinkConfig,
@@ -90,6 +92,7 @@ import {
   getTrackingConfig,
   updateSiteConfig,
   updateSitePrivateLinkConfig,
+  uploadSiteIcon,
   verifyScript,
 } from "./api/sites/index.js";
 import {
@@ -301,6 +304,11 @@ async function sitesRoutes(fastify: FastifyInstance) {
   fastify.get("/sites/:siteId/excluded-ips", authSite, getSiteExcludedIPs);
   fastify.get("/sites/:siteId/excluded-countries", authSite, getSiteExcludedCountries);
   fastify.get("/sites/:siteId/verify-script", authSite, verifyScript);
+
+  // Site Icon (GET is fully public - it's just a favicon)
+  fastify.get("/sites/:siteId/icon", { preHandler: [resolveSiteId] as any }, getSiteIcon);
+  fastify.put("/sites/:siteId/icon", adminSite, uploadSiteIcon);
+  fastify.delete("/sites/:siteId/icon", adminSite, deleteSiteIcon);
 
   // Site Imports
   fastify.get("/sites/:siteId/imports", adminSite, getSiteImports);

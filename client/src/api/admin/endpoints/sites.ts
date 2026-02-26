@@ -160,3 +160,17 @@ export interface VerifyScriptResponse {
 export function verifyScript(siteId: number | string) {
   return authedFetch<VerifyScriptResponse>(`/sites/${siteId}/verify-script`);
 }
+
+export function uploadSiteIcon(siteId: number, icon: string) {
+  return authedFetch<{ success: boolean }>(`/sites/${siteId}/icon`, undefined, {
+    method: "PUT",
+    data: { icon },
+    headers: { "Content-Type": "application/json" },
+  });
+}
+
+export function deleteSiteIcon(siteId: number) {
+  return authedFetch<{ success: boolean }>(`/sites/${siteId}/icon`, undefined, {
+    method: "DELETE",
+  });
+}

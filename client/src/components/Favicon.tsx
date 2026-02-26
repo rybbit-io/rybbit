@@ -1,21 +1,36 @@
 import { Smartphone } from "lucide-react";
 import { useState } from "react";
+import { BACKEND_URL } from "../lib/const";
 import { cn } from "../lib/utils";
 
 export function Favicon({
   domain,
   className,
   siteType,
+  siteId,
+  iconVersion,
 }: {
   domain: string;
   className?: string;
   siteType?: "web" | "app";
+  siteId?: number;
+  iconVersion?: number;
 }) {
   const [imageError, setImageError] = useState(false);
   const firstLetter = domain.charAt(0).toUpperCase();
 
   if (siteType && siteType !== "web") {
-    const Icon = Smartphone;
+    if (siteId && !imageError) {
+      return (
+        <img
+          src={`${BACKEND_URL}/sites/${siteId}/icon${iconVersion ? `?v=${iconVersion}` : ""}`}
+          className={cn("rounded", className ?? "w-4 h-4")}
+          alt={`Icon for ${domain}`}
+          onError={() => setImageError(true)}
+        />
+      );
+    }
+
     return (
       <div
         className={cn(
@@ -23,7 +38,7 @@ export function Favicon({
           className ?? "w-4 h-4"
         )}
       >
-        <Icon className="w-[60%] h-[60%]" />
+        <Smartphone className="w-[60%] h-[60%]" />
       </div>
     );
   }

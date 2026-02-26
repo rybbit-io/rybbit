@@ -2,11 +2,13 @@
 export {
   addSite,
   deleteSite,
+  deleteSiteIcon,
   updateSiteConfig,
   fetchSite,
   fetchSitesFromOrg,
   fetchSiteHasData,
   fetchSiteIsPublic,
+  uploadSiteIcon,
   verifyScript,
 } from "./sites";
 export type { SiteResponse, GetSitesFromOrgResponse, VerifyScriptResponse } from "./sites";

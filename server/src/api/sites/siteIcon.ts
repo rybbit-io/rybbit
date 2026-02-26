@@ -49,6 +49,10 @@ export async function uploadSiteIcon(
     return reply.status(400).send({ error: "Invalid site ID" });
   }
 
+  if (!request.body) {
+    return reply.status(400).send({ error: "Request body is required" });
+  }
+
   const { icon } = request.body as { icon: string };
 
   if (!icon) {

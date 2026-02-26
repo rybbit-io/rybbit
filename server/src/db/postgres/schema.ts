@@ -2,6 +2,7 @@ import { sql } from "drizzle-orm";
 import {
   boolean,
   check,
+  customType,
   foreignKey,
   index,
   integer,
@@ -16,6 +17,12 @@ import {
   pgEnum,
   uuid,
 } from "drizzle-orm/pg-core";
+
+const bytea = customType<{ data: Buffer }>({
+  dataType() {
+    return "bytea";
+  },
+});
 
 // User table (BetterAuth)
 export const user = pgTable(
@@ -87,6 +94,7 @@ export const sites = pgTable("sites", {
   apiKey: text("api_key"), // Format: rb_{64_hex_chars} = 67 chars total
   privateLinkKey: text("private_link_key"),
   tags: jsonb("tags").default([]).$type<string[]>(),
+  icon: bytea("icon"),
 });
 
 // Active sessions table
