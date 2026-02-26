@@ -13,13 +13,7 @@ const updateSiteConfigSchema = z.object({
   public: z.boolean().optional(),
   saltUserIds: z.boolean().optional(),
   blockBots: z.boolean().optional(),
-  domain: z
-    .string()
-    .regex(
-      /^(?:[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,}$/,
-      "Invalid domain format. Must be a valid domain like example.com or sub.example.com"
-    )
-    .optional(),
+  domain: z.string().min(1).max(253).optional(),
   excludedIPs: z.array(z.string().trim().min(1)).max(100).optional(),
   excludedCountries: z
     .array(
@@ -84,6 +78,28 @@ export async function updateSiteConfig(
 
     if (!site) {
       return reply.status(404).send({ error: "Site not found" });
+    }
+
+    // Validate domain based on site type
+    if (updateData.domain) {
+      const siteType = (site as any).type || "web";
+      if (siteType === "web") {
+        const domainRegex = /^(?:[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,}$/;
+        if (!domainRegex.test(updateData.domain)) {
+          return reply.status(400).send({
+            success: false,
+            error: "Invalid domain format. Must be a valid domain like example.com or sub.example.com",
+          });
+        }
+      } else {
+        const packageNameRegex = /^[a-zA-Z][a-zA-Z0-9_]*(\.[a-zA-Z][a-zA-Z0-9_]*)+$/;
+        if (!packageNameRegex.test(updateData.domain)) {
+          return reply.status(400).send({
+            success: false,
+            error: "Invalid package name format. Must be like com.example.app",
+          });
+        }
+      }
     }
 
     // Additional validation for excluded IPs if provided

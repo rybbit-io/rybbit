@@ -63,6 +63,14 @@ export const initializeClickhouse = async () => {
     `,
   });
 
+  await clickhouse.exec({
+    query: `
+      ALTER TABLE events
+        ADD COLUMN IF NOT EXISTS app_version LowCardinality(String) DEFAULT '',
+        ADD COLUMN IF NOT EXISTS device_model LowCardinality(String) DEFAULT ''
+    `,
+  });
+
   if (IS_CLOUD) {
     await clickhouse.exec({
       query: `

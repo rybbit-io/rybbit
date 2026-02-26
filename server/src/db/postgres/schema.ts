@@ -63,6 +63,7 @@ export const sites = pgTable("sites", {
   siteId: serial("site_id").primaryKey().notNull(),
   name: text("name").notNull(),
   domain: text("domain").notNull(),
+  type: text("type").default("web").notNull(), // 'web', 'app'
   createdAt: timestamp("created_at", { mode: "string" }).defaultNow(),
   updatedAt: timestamp("updated_at", { mode: "string" }).defaultNow(),
   createdBy: text("created_by").references(() => user.id, { onDelete: "set null" }),

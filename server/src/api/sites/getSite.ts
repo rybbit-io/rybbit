@@ -31,6 +31,7 @@ export async function getSite(request: FastifyRequest<GetSiteParams>, reply: Fas
       siteId: site.siteId,
       name: site.name,
       domain: site.domain,
+      type: site.type,
       createdAt: site.createdAt,
       updatedAt: site.updatedAt,
       createdBy: site.createdBy,

@@ -31,6 +31,7 @@ export async function addSite(
       trackCopy?: boolean;
       trackFormInteractions?: boolean;
       tags?: string[];
+      type?: "web" | "app";
     };
   }>,
   reply: FastifyReply
@@ -56,17 +57,25 @@ export async function addSite(
     trackCopy,
     trackFormInteractions,
     tags,
+    type: siteType = "web",
   } = request.body;
 
-  // Strip protocol and trailing slash before validation
   const cleanedDomain = domain.replace(/^https?:\/\//, "").replace(/\/+$/, "");
 
-  // Validate domain format using regex
-  const domainRegex = /^(?:[\p{L}\p{N}](?:[\p{L}\p{N}-]{0,61}[\p{L}\p{N}])?\.)+\p{L}{2,}$/u;
-  if (!domainRegex.test(cleanedDomain)) {
-    return reply.status(400).send({
-      error: "Invalid domain format. Must be a valid domain like example.com or sub.example.com",
-    });
+  if (siteType === "web") {
+    const domainRegex = /^(?:[\p{L}\p{N}](?:[\p{L}\p{N}-]{0,61}[\p{L}\p{N}])?\.)+\p{L}{2,}$/u;
+    if (!domainRegex.test(cleanedDomain)) {
+      return reply.status(400).send({
+        error: "Invalid domain format. Must be a valid domain like example.com or sub.example.com",
+      });
+    }
+  } else {
+    const packageNameRegex = /^[a-zA-Z][a-zA-Z0-9_]*(\.[a-zA-Z][a-zA-Z0-9_]*)+$/;
+    if (!packageNameRegex.test(cleanedDomain)) {
+      return reply.status(400).send({
+        error: "Invalid package name format. Must be a valid identifier like com.example.app",
+      });
+    }
   }
 
   try {
@@ -111,6 +120,7 @@ export async function addSite(
       .insert(sites)
       .values({
         id,
+        type: siteType,
         domain: cleanedDomain,
         name,
         createdBy: userId,
