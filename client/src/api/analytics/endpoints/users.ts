@@ -14,6 +14,8 @@ export type UsersResponse = {
   browser: string;
   operating_system: string;
   device_type: string;
+  device_model: string;
+  app_version: string;
   referrer: string;
   channel: string;
   pageviews: number;
@@ -40,6 +42,8 @@ export type UserInfo = {
   city: string;
   language: string;
   device_type: string;
+  device_model: string;
+  app_version: string;
   browser: string;
   browser_version: string;
   operating_system: string;
