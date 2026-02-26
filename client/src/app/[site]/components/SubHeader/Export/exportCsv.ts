@@ -34,6 +34,8 @@ const PAGE_METRICS: { param: FilterParameter; filename: string }[] = [
 const DEVICE_METRICS: { param: FilterParameter; filename: string }[] = [
   { param: "browser", filename: "browsers.csv" },
   { param: "device_type", filename: "devices.csv" },
+  { param: "device_model", filename: "device-models.csv" },
+  { param: "app_version", filename: "app-versions.csv" },
   { param: "operating_system", filename: "operating-systems.csv" },
   { param: "dimensions", filename: "screen-dimensions.csv" },
 ];

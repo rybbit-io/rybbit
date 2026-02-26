@@ -109,6 +109,16 @@ export const FilterOptions: {
     icon: <TabletSmartphone className="h-4 w-4" />,
   },
   {
+    label: "Device Model",
+    value: "device_model",
+    icon: <TabletSmartphone className="h-4 w-4" />,
+  },
+  {
+    label: "App Version",
+    value: "app_version",
+    icon: <Tag className="h-4 w-4" />,
+  },
+  {
     label: "Operating System",
     value: "operating_system",
     icon: <Brain className="h-4 w-4" />,

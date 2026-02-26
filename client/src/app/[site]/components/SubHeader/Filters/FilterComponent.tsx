@@ -60,6 +60,8 @@ export function FilterComponent({
       case "region": return t("Region");
       case "city": return t("City");
       case "device_type": return t("Device Type");
+      case "device_model": return t("Device Model");
+      case "app_version": return t("App Version");
       case "operating_system": return t("Operating System");
       case "operating_system_version": return t("Operating System Version");
       case "browser": return t("Browser");

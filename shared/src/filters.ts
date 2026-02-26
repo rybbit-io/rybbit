@@ -16,6 +16,8 @@ export type FilterParameter =
   | "region"
   | "city"
   | "device_type"
+  | "device_model"
+  | "app_version"
   | "referrer"
   | "hostname"
   | "pathname"
