@@ -12,6 +12,10 @@ export interface UpdateGoalRequest {
     eventName?: string;
     eventPropertyKey?: string;
     eventPropertyValue?: string | number | boolean;
+    propertyFilters?: Array<{
+      key: string;
+      value: string | number | boolean;
+    }>;
   };
 }
 
@@ -28,6 +32,7 @@ export function useUpdateGoal() {
     mutationFn: async goalData => {
       return updateGoal(goalData.siteId, {
         goalId: goalData.goalId,
+        siteId: goalData.siteId,
         name: goalData.name,
         goalType: goalData.goalType,
         config: goalData.config,

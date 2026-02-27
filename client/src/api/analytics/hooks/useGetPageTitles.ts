@@ -15,12 +15,12 @@ export function useGetPageTitlesPaginated({
   page = 1,
   useFilters = true,
 }: UseGetPageTitlesOptions): UseQueryResult<{ data: PageTitlesPaginatedResponse }> {
-  const { time, site, filters } = useStore();
+  const { time, site, filters, timezone } = useStore();
 
   const params = buildApiParams(time, { filters: useFilters ? filters : undefined });
 
   return useQuery({
-    queryKey: ["page-titles", time, site, filters, limit, page, useFilters],
+    queryKey: ["page-titles", time, site, filters, limit, page, useFilters, timezone],
     queryFn: async () => {
       const data = await fetchPageTitles(site, {
         ...params,

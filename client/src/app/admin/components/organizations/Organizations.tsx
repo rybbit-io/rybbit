@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { useAdminOrganizations } from "@/api/admin/getAdminOrganizations";
+import { useAdminOrganizations } from "@/api/admin/hooks/useAdminOrganizations";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DateTime } from "luxon";
@@ -15,9 +15,12 @@ import { OrganizationsTable } from "./OrganizationsTable";
 import { OrganizationFilters, TierOption } from "./OrganizationFilters";
 import { FilteredStatsCards } from "./FilteredStatsCards";
 import { useFilteredOrganizations } from "./useFilteredOrganizations";
+import { DownloadIcon } from "lucide-react";
+import { useExtracted } from "next-intl";
 
 export function Organizations() {
   const { data: organizations, isLoading, isError } = useAdminOrganizations();
+  const t = useExtracted();
 
   const [searchQuery, setSearchQuery] = useState("");
 
@@ -64,7 +67,7 @@ export function Organizations() {
   if (isError) {
     return (
       <AdminLayout>
-        <ErrorAlert message="Failed to load organizations data. Please try again later." />
+        <ErrorAlert message={t("Failed to load organizations data. Please try again later.")} />
       </AdminLayout>
     );
   }
@@ -74,13 +77,13 @@ export function Organizations() {
       <Tabs defaultValue="growth" className="mb-6">
         <div className="flex items-center justify-between mb-2">
           <TabsList>
-            <TabsTrigger value="growth">Organization Growth</TabsTrigger>
-            <TabsTrigger value="usage">Service Usage</TabsTrigger>
-            <TabsTrigger value="subscriptions">Subscription Tiers</TabsTrigger>
+            <TabsTrigger value="growth">{t("Organization Growth")}</TabsTrigger>
+            <TabsTrigger value="usage">{t("Service Usage")}</TabsTrigger>
+            <TabsTrigger value="subscriptions">{t("Subscription Tiers")}</TabsTrigger>
           </TabsList>
         </div>
         <TabsContent value="growth">
-          <GrowthChart data={organizations} color="#8b5cf6" title="Organizations" />
+          <GrowthChart data={organizations} color="#8b5cf6" title={t("Organizations")} />
         </TabsContent>
         <TabsContent value="usage">
           <div className="flex items-center gap-1 bg-neutral-100 dark:bg-neutral-800 p-1 rounded-lg">
@@ -114,45 +117,59 @@ export function Organizations() {
               onClick={() => setTimePeriod("all")}
               className="h-7 text-xs"
             >
-              All Time
+              {t("All Time")}
             </Button>
           </div>
           <ServiceUsageChart
             startDate={startDate}
             endDate={endDate}
-            title={`Service-wide Usage - ${timePeriod === "all" ? "All Time" : `Last ${timePeriod}`}`}
+            title={timePeriod === "all" ? t("Service-wide Usage - All Time") : t("Service-wide Usage - Last {timePeriod}", { timePeriod })}
           />
         </TabsContent>
         <TabsContent value="subscriptions">
           <SubscriptionTiersTable organizations={organizations} isLoading={isLoading} />
         </TabsContent>
       </Tabs>
-
-      <div className="mb-4">
+      <div className="space-y-2">
         <SearchInput
-          placeholder="Search by name, slug, domain, or member email..."
+          placeholder={t("Search by name, slug, domain, or member email...")}
           value={searchQuery}
           onChange={setSearchQuery}
         />
+        <OrganizationFilters
+          showZeroEvents={showZeroEvents}
+          setShowZeroEvents={setShowZeroEvents}
+          showOnlyOverLimit={showOnlyOverLimit}
+          setShowOnlyOverLimit={setShowOnlyOverLimit}
+          availableTiers={availableTiers}
+          selectedTiers={selectedTiers}
+          setSelectedTiers={setSelectedTiers}
+        />
+        <FilteredStatsCards organizations={filteredOrganizations} isLoading={isLoading} />
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => {
+            if (!filteredOrganizations) return;
+            const emails = filteredOrganizations
+              .sort((a, b) => a.name.localeCompare(b.name))
+              .flatMap((org) =>
+                org.members.filter((m) => m.role === "owner").map((m) => m.email)
+              )
+              .filter(Boolean);
+            const unique = [...new Set(emails)];
+            navigator.clipboard.writeText(unique.join("\n"));
+          }}
+        >
+          <DownloadIcon className="w-4 h-4" />
+          {t("Export")}
+        </Button>
+        <OrganizationsTable
+          organizations={filteredOrganizations}
+          isLoading={isLoading}
+          searchQuery={searchQuery}
+        />
       </div>
-
-      <OrganizationFilters
-        showZeroEvents={showZeroEvents}
-        setShowZeroEvents={setShowZeroEvents}
-        showOnlyOverLimit={showOnlyOverLimit}
-        setShowOnlyOverLimit={setShowOnlyOverLimit}
-        availableTiers={availableTiers}
-        selectedTiers={selectedTiers}
-        setSelectedTiers={setSelectedTiers}
-      />
-
-      <FilteredStatsCards organizations={filteredOrganizations} isLoading={isLoading} />
-
-      <OrganizationsTable
-        organizations={filteredOrganizations}
-        isLoading={isLoading}
-        searchQuery={searchQuery}
-      />
-    </AdminLayout>
+    </AdminLayout >
   );
 }

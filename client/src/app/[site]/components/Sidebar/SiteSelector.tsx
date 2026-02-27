@@ -1,7 +1,8 @@
 import { ChevronDown, Plus } from "lucide-react";
+import { useExtracted } from "next-intl";
 import { usePathname, useRouter } from "next/navigation";
 import { useState, Suspense } from "react";
-import { useGetSite, useGetSitesFromOrg } from "../../../../api/admin/sites";
+import { useGetSite, useGetSitesFromOrg } from "../../../../api/admin/hooks/useSites";
 import { Favicon } from "../../../../components/Favicon";
 import { Button } from "../../../../components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "../../../../components/ui/popover";
@@ -14,6 +15,7 @@ import { useEmbedablePage } from "../../utils";
 import { DEMO_HOSTNAME } from "../../../../lib/const";
 
 function SiteSelectorContent({ onSiteSelect }: { onSiteSelect: () => void }) {
+  const t = useExtracted();
   const { data: activeOrganization } = authClient.useActiveOrganization();
   const { data: sites } = useGetSitesFromOrg(activeOrganization?.id);
   const embed = useEmbedablePage();
@@ -32,12 +34,8 @@ function SiteSelectorContent({ onSiteSelect }: { onSiteSelect: () => void }) {
         <div className="max-h-96 overflow-y-auto">
           {[
             {
-              siteId: 21,
+              siteId: 81,
               domain: "rybbit.com",
-            },
-            {
-              siteId: 1,
-              domain: "tomato.gg",
             },
           ].map(site => {
             const isSelected = site.siteId === currentSiteId;
@@ -83,52 +81,52 @@ function SiteSelectorContent({ onSiteSelect }: { onSiteSelect: () => void }) {
       <div className="max-h-96 overflow-y-auto">
         {sites?.sites
           ? sites.sites.map(site => {
-              const isSelected = site.siteId === currentSiteId;
-              return (
-                <div
-                  key={site.siteId}
-                  onClick={() => {
-                    if (isSelected) {
-                      onSiteSelect(); // Close popover even if same site
-                      return;
-                    }
-                    const pathSegments = pathname.split("/");
-                    pathSegments[1] = site.siteId.toString();
-                    const newPath = pathSegments.join("/");
-                    const queryString = window.location.search;
-                    // Let the layout's useEffect sync the site from the new pathname
-                    router.push(queryString ? `${newPath}${queryString}` : newPath);
-                    onSiteSelect(); // Close popover immediately
-                  }}
-                  className={cn(
-                    "flex items-center justify-between p-2 cursor-pointer hover:bg-neutral-100 dark:hover:bg-neutral-800/50 transition-colors rounded-md border-b border-neutral-100 dark:border-neutral-800 last:border-b-0",
-                    isSelected && "bg-neutral-50 dark:bg-neutral-800"
-                  )}
-                >
-                  <div className="flex items-center gap-3 flex-1 min-w-0">
-                    <Favicon domain={site.domain} className="w-4 h-4 shrink-0" />
-                    <div className="text-sm text-neutral-900 dark:text-white truncate">{site.domain}</div>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <div className="text-xs text-neutral-600 dark:text-neutral-300 whitespace-nowrap">
-                      {formatter(site.sessionsLast24Hours)} sessions (24h)
-                    </div>
-                  </div>
-                </div>
-              );
-            })
-          : Array.from({ length: 3 }).map((_, index) => (
+            const isSelected = site.siteId === currentSiteId;
+            return (
               <div
-                key={`skeleton-${index}`}
-                className="flex items-center justify-between p-2 animate-pulse rounded-md border-b border-neutral-300 dark:border-neutral-800 last:border-b-0"
+                key={site.siteId}
+                onClick={() => {
+                  if (isSelected) {
+                    onSiteSelect(); // Close popover even if same site
+                    return;
+                  }
+                  const pathSegments = pathname.split("/");
+                  pathSegments[1] = site.siteId.toString();
+                  const newPath = pathSegments.join("/");
+                  const queryString = window.location.search;
+                  // Let the layout's useEffect sync the site from the new pathname
+                  router.push(queryString ? `${newPath}${queryString}` : newPath);
+                  onSiteSelect(); // Close popover immediately
+                }}
+                className={cn(
+                  "flex items-center justify-between p-2 cursor-pointer hover:bg-neutral-100 dark:hover:bg-neutral-800/50 transition-colors rounded-md border-b border-neutral-100 dark:border-neutral-800 last:border-b-0",
+                  isSelected && "bg-neutral-50 dark:bg-neutral-800"
+                )}
               >
-                <div className="flex items-center gap-3 flex-1">
-                  <div className="w-4 h-4 bg-neutral-200 dark:bg-neutral-700 rounded shrink-0"></div>
-                  <div className="h-4 bg-neutral-200 dark:bg-neutral-700 rounded w-32"></div>
+                <div className="flex items-center gap-3 flex-1 min-w-0">
+                  <Favicon domain={site.domain} className="w-4 h-4 shrink-0" />
+                  <div className="text-sm text-neutral-900 dark:text-white truncate">{site.domain}</div>
                 </div>
-                <div className="h-3 bg-neutral-200 dark:bg-neutral-700 rounded w-20"></div>
+                <div className="flex items-center gap-3">
+                  <div className="text-xs text-neutral-600 dark:text-neutral-300 whitespace-nowrap">
+                    {t("{count} sessions (24h)", { count: formatter(site.sessionsLast24Hours) })}
+                  </div>
+                </div>
               </div>
-            ))}
+            );
+          })
+          : Array.from({ length: 3 }).map((_, index) => (
+            <div
+              key={`skeleton-${index}`}
+              className="flex items-center justify-between p-2 animate-pulse rounded-md border-b border-neutral-300 dark:border-neutral-800 last:border-b-0"
+            >
+              <div className="flex items-center gap-3 flex-1">
+                <div className="w-4 h-4 bg-neutral-200 dark:bg-neutral-700 rounded shrink-0"></div>
+                <div className="h-4 bg-neutral-200 dark:bg-neutral-700 rounded w-32"></div>
+              </div>
+              <div className="h-3 bg-neutral-200 dark:bg-neutral-700 rounded w-20"></div>
+            </div>
+          ))}
       </div>
 
       {/* Add Site Section */}
@@ -137,7 +135,7 @@ function SiteSelectorContent({ onSiteSelect }: { onSiteSelect: () => void }) {
           trigger={
             <Button variant="ghost" className="w-full justify-start gap-2">
               <Plus className="h-4 w-4" />
-              Add Website
+              {t("Add Website")}
             </Button>
           }
         />

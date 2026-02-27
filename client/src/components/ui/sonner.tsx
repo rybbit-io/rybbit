@@ -1,31 +1,48 @@
 "use client";
 
-import { useTheme } from "next-themes";
-import { Toaster as Sonner } from "sonner";
+import hotToast, { Toaster as HotToaster } from "react-hot-toast";
 
-type ToasterProps = React.ComponentProps<typeof Sonner>;
-
-const Toaster = ({ ...props }: ToasterProps) => {
-  const { theme = "system" } = useTheme();
-
+const Toaster = () => {
   return (
-    <Sonner
-      theme={theme as ToasterProps["theme"]}
-      className="toaster group"
+    <HotToaster
+      position="bottom-right"
       toastOptions={{
-        classNames: {
-          toast:
-            "group toast group-[.toaster]:bg-white group-[.toaster]:text-neutral-950 group-[.toaster]:border-neutral-200 group-[.toaster]:shadow-lg dark:group-[.toaster]:bg-neutral-850 dark:group-[.toaster]:text-neutral-50 dark:group-[.toaster]:border-neutral-700",
-          description: "group-[.toast]:text-neutral-500 dark:group-[.toast]:text-neutral-400",
-          actionButton:
-            "group-[.toast]:bg-neutral-900 group-[.toast]:text-neutral-50 dark:group-[.toast]:bg-neutral-50 dark:group-[.toast]:text-neutral-900",
-          cancelButton:
-            "group-[.toast]:bg-neutral-100 group-[.toast]:text-neutral-500 dark:group-[.toast]:bg-neutral-800 dark:group-[.toast]:text-neutral-400",
+        className: [
+          "!bg-white !text-neutral-800",
+          "!border !border-neutral-150 !shadow-lg",
+          "!rounded-lg !text-sm !font-medium",
+          "dark:!bg-neutral-850 dark:!text-neutral-200",
+          "dark:!border-neutral-850",
+        ].join(" "),
+        success: {
+          iconTheme: {
+            primary: "#10b981",
+            secondary: "#fff",
+          },
+        },
+        error: {
+          iconTheme: {
+            primary: "#ef4444",
+            secondary: "#fff",
+          },
         },
       }}
-      {...props}
     />
   );
 };
 
-export { Toaster };
+const toast = Object.assign(
+  (message: string) => hotToast(message),
+  {
+    success: (message: string) => hotToast.success(message),
+    error: (message: string) => hotToast.error(message),
+    info: (message: string) =>
+      hotToast(message, {
+        icon: "ℹ️",
+      }),
+    dismiss: (id?: string) => hotToast.dismiss(id),
+    custom: hotToast.custom,
+  }
+);
+
+export { Toaster, toast };

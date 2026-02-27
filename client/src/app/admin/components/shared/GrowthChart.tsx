@@ -115,7 +115,6 @@ export function GrowthChart({ data, color = "#3b82f6", title }: GrowthChartProps
         enableArea={false}
         sliceTooltip={({ slice }: any) => {
           const point = slice.points[0];
-          const currentTime = DateTime.fromSQL(point.data.x as string);
 
           return (
             <ChartTooltip>

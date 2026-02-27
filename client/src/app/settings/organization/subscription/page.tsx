@@ -5,21 +5,31 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { PaidPlan } from "../../../../components/subscription/PaidPlain/PaidPlan";
 import { useStripeSubscription } from "../../../../lib/subscription/useStripeSubscription";
 import { NoOrganization } from "../../../../components/NoOrganization";
-import { TrialPlan } from "../../../../components/subscription/TrialPlan";
 import { ExpiredTrialPlan } from "../../../../components/subscription/ExpiredTrialPlan";
 import { useSetPageTitle } from "../../../../hooks/useSetPageTitle";
 import { FreePlan } from "../../../../components/subscription/FreePlan";
 import { OverridePlan } from "../../../../components/subscription/OverridePlan";
+import { CustomPlan } from "../../../../components/subscription/CustomPlan";
 import { Building } from "lucide-react";
+import { useExtracted } from "next-intl";
 import { authClient } from "@/lib/auth";
+import { useEffect } from "react";
 import { AppSumoPlan } from "../../../../components/subscription/AppSumoPlan";
 
 export default function OrganizationSubscriptionPage() {
-  useSetPageTitle("Rybbit · Organization Subscription");
+  useSetPageTitle("Organization Subscription");
+  const t = useExtracted();
   const { data: activeSubscription, isLoading: isLoadingSubscription } = useStripeSubscription();
 
   const { data: activeOrg, isPending } = authClient.useActiveOrganization();
   const { data: session } = authClient.useSession();
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.has("session_id") && session?.user?.email) {
+      window.rewardful?.("convert", { email: session.user.email });
+    }
+  }, [session?.user?.email]);
 
   // Check if the current user is an owner by looking at the members in the active organization
   const currentUserMember = activeOrg?.members?.find(member => member.userId === session?.user?.id);
@@ -30,7 +40,7 @@ export default function OrganizationSubscriptionPage() {
   // Determine which plan to display
   const renderPlanComponent = () => {
     if (!activeOrg && !isPending) {
-      return <NoOrganization message="You need to select an organization to manage your subscription." />;
+      return <NoOrganization message={t("You need to select an organization to manage your subscription.")} />;
     }
 
     if (!isOwner) {
@@ -39,9 +49,9 @@ export default function OrganizationSubscriptionPage() {
           <div className="mx-auto w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mb-4">
             <Building className="h-6 w-6 text-primary" />
           </div>
-          <CardTitle className="mb-2 text-xl">Not an owner</CardTitle>
+          <CardTitle className="mb-2 text-xl">{t("Not an owner")}</CardTitle>
           <CardDescription className="mb-6">
-            Only the owner of the organization can manage the subscription.
+            {t("Only the owner of the organization can manage the subscription.")}
           </CardDescription>
         </Card>
       );
@@ -61,8 +71,8 @@ export default function OrganizationSubscriptionPage() {
       return <FreePlan />;
     }
 
-    if (activeSubscription.isTrial) {
-      return <TrialPlan />;
+    if (activeSubscription.planName === "custom") {
+      return <CustomPlan />;
     }
 
     if (activeSubscription.planName.startsWith("appsumo")) {

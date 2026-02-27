@@ -1,4 +1,4 @@
-@import 'tailwindcss';
+@import "tailwindcss";
 
 @plugin 'tailwindcss-animate';
 
@@ -477,7 +477,7 @@
     --accent-foreground: 0 0% 98%;
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 0 0% 98%;
-    --border: 0 0% 9%;
+    --border: 0 0% 12%;
 
     --input: 240 3.7% 15.9%;
     --ring: 240 4.9% 83.9%;

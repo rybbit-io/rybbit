@@ -1,6 +1,9 @@
+import { getTimezone } from "@/lib/store";
 import { Clock, MousePointerClick, Trash2 } from "lucide-react";
 import { DateTime } from "luxon";
+import { useExtracted } from "next-intl";
 import { useState } from "react";
+import { useDateTimeFormat } from "../../../../hooks/useDateTimeFormat";
 import { useDeleteSessionReplay } from "../../../../api/analytics/hooks/sessionReplay/useDeleteSessionReplay";
 import { Avatar } from "../../../../components/Avatar";
 import { IdentifiedBadge } from "../../../../components/IdentifiedBadge";
@@ -25,7 +28,7 @@ import { Badge } from "../../../../components/ui/badge";
 import { Button } from "../../../../components/ui/button";
 import { Skeleton } from "../../../../components/ui/skeleton";
 import { cn, formatter, getUserDisplayName } from "../../../../lib/utils";
-import { useReplayStore } from "./replayStore";
+import { useReplayStore } from "@/components/replay/replayStore";
 
 interface SessionReplayListItem {
   session_id: string;
@@ -50,12 +53,14 @@ interface SessionReplayListItem {
 }
 
 export function ReplayCard({ replay }: { replay: SessionReplayListItem }) {
+  const t = useExtracted();
+  const { formatRelative } = useDateTimeFormat();
   const { sessionId, setSessionId, resetPlayerState } = useReplayStore();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const deleteSessionReplay = useDeleteSessionReplay();
   const startTime = DateTime.fromSQL(replay.start_time, {
     zone: "utc",
-  }).toLocal();
+  }).setZone(getTimezone());
   const duration = replay.duration_ms ? Math.ceil(replay.duration_ms / 1000) : null;
 
   const formatDuration = (seconds: number) => {
@@ -82,8 +87,7 @@ export function ReplayCard({ replay }: { replay: SessionReplayListItem }) {
   return (
     <div
       className={cn(
-        "bg-white dark:bg-neutral-900 border-b border-neutral-100 dark:border-neutral-800 p-3 hover:bg-neutral-50 dark:hover:bg-neutral-800/80 transition-colors cursor-pointer w-[200px] group relative",
-        // "bg-neutral-900 border border-neutral-800 rounded-lg p-3 hover:bg-neutral-800/50 transition-colors cursor-pointer",
+        "border-b border-neutral-100 dark:border-neutral-800 p-3 hover:bg-neutral-50 dark:hover:bg-neutral-800/80 transition-colors cursor-pointer w-[200px] group relative",
         sessionId === replay.session_id && "bg-neutral-100 dark:bg-neutral-800/80"
       )}
       onClick={() => {
@@ -104,7 +108,7 @@ export function ReplayCard({ replay }: { replay: SessionReplayListItem }) {
       </div>
 
       <div className="flex items-center gap-2 mb-1">
-        <div className="text-xs text-neutral-600 dark:text-neutral-400">{startTime.toRelative()}</div>
+        <div className="text-xs text-neutral-600 dark:text-neutral-400">{formatRelative(startTime)}</div>
         {duration && (
           <div className="flex items-center gap-1 text-neutral-600 dark:text-neutral-400 text-xs">
             <Clock className="w-3 h-3" />
@@ -128,14 +132,13 @@ export function ReplayCard({ replay }: { replay: SessionReplayListItem }) {
           </AlertDialogTrigger>
           <AlertDialogContent onClick={e => e.stopPropagation()}>
             <AlertDialogHeader>
-              <AlertDialogTitle>Delete Session Replay</AlertDialogTitle>
+              <AlertDialogTitle>{t("Delete Session Replay")}</AlertDialogTitle>
               <AlertDialogDescription>
-                Are you sure you want to delete this session replay? This action cannot be undone and will permanently
-                remove the replay data.
+                {t("Are you sure you want to delete this session replay? This action cannot be undone and will permanently remove the replay data.")}
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
-              <AlertDialogCancel onClick={e => e.stopPropagation()}>Cancel</AlertDialogCancel>
+              <AlertDialogCancel onClick={e => e.stopPropagation()}>{t("Cancel")}</AlertDialogCancel>
               <AlertDialogAction
                 variant="destructive"
                 onClick={e => {
@@ -144,7 +147,7 @@ export function ReplayCard({ replay }: { replay: SessionReplayListItem }) {
                 }}
                 disabled={deleteSessionReplay.isPending}
               >
-                {deleteSessionReplay.isPending ? "Deleting..." : "Delete"}
+                {deleteSessionReplay.isPending ? t("Deleting...") : t("Delete")}
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
@@ -182,7 +185,7 @@ export function ReplayCard({ replay }: { replay: SessionReplayListItem }) {
 
 export function ReplayCardSkeleton() {
   return (
-    <div className="bg-white dark:bg-neutral-900 border-b border-neutral-100 dark:border-neutral-800 p-3 hover:bg-neutral-50 dark:hover:bg-neutral-800/80 transition-colors">
+    <div className="border-b border-neutral-100 dark:border-neutral-800 p-3 hover:bg-neutral-50 dark:hover:bg-neutral-800/80 transition-colors">
       {/* Time and duration row */}
       <div className="flex items-center gap-2 mb-1">
         <Skeleton className="h-3 w-16" />

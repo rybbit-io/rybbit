@@ -3,7 +3,6 @@ import { z } from "zod";
 import { db } from "../../db/postgres/postgres.js";
 import { sites } from "../../db/postgres/schema.js";
 import { eq } from "drizzle-orm";
-import { getUserHasAdminAccessToSite } from "../../lib/auth-utils.js";
 import { siteConfig } from "../../lib/siteConfig.js";
 import { validateIPPattern } from "../../lib/ipUtils.js";
 
@@ -32,6 +31,9 @@ const updateSiteConfigSchema = z.object({
     .max(250)
     .optional(),
 
+  // Tags
+  tags: z.array(z.string().trim().min(1).max(50)).max(20).optional(),
+
   // Analytics features
   sessionReplay: z.boolean().optional(),
   webVitals: z.boolean().optional(),
@@ -41,17 +43,20 @@ const updateSiteConfigSchema = z.object({
   trackInitialPageView: z.boolean().optional(),
   trackSpaNavigation: z.boolean().optional(),
   trackIp: z.boolean().optional(),
+  trackButtonClicks: z.boolean().optional(),
+  trackCopy: z.boolean().optional(),
+  trackFormInteractions: z.boolean().optional(),
 });
 
 type UpdateSiteConfigRequest = z.infer<typeof updateSiteConfigSchema>;
 
 export async function updateSiteConfig(
-  request: FastifyRequest<{ Params: { id: string }; Body: UpdateSiteConfigRequest }>,
+  request: FastifyRequest<{ Params: { siteId: string }; Body: UpdateSiteConfigRequest }>,
   reply: FastifyReply
 ) {
   try {
     // Get siteId from path params
-    const siteId = parseInt(request.params.id, 10);
+    const siteId = parseInt(request.params.siteId, 10);
     if (isNaN(siteId) || siteId <= 0) {
       return reply.status(400).send({
         success: false,
@@ -70,12 +75,6 @@ export async function updateSiteConfig(
     }
 
     const updateData = validationResult.data;
-
-    // Check user permissions
-    const userHasAdminAccessToSite = await getUserHasAdminAccessToSite(request, String(siteId));
-    if (!userHasAdminAccessToSite) {
-      return reply.status(403).send({ error: "Forbidden" });
-    }
 
     // Check if site exists
     const site = await db.query.sites.findFirst({
@@ -116,6 +115,7 @@ export async function updateSiteConfig(
       "domain",
       "excludedIPs",
       "excludedCountries",
+      "tags",
       "sessionReplay",
       "webVitals",
       "trackErrors",
@@ -124,6 +124,9 @@ export async function updateSiteConfig(
       "trackInitialPageView",
       "trackSpaNavigation",
       "trackIp",
+      "trackButtonClicks",
+      "trackCopy",
+      "trackFormInteractions",
     ];
 
     for (const field of directMappings) {

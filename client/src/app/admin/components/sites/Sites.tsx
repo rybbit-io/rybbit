@@ -1,7 +1,8 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { useAdminSites, AdminSiteData } from "@/api/admin/getAdminSites";
+import { useAdminSites } from "@/api/admin/hooks/useAdminSites";
+import { AdminSiteData } from "@/api/admin/endpoints";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -23,11 +24,15 @@ import { AdminLayout } from "../shared/AdminLayout";
 import { GrowthChart } from "../shared/GrowthChart";
 import Link from "next/link";
 import { Favicon } from "../../../../components/Favicon";
+import { useDateTimeFormat } from "../../../../hooks/useDateTimeFormat";
 import { parseUtcTimestamp } from "../../../../lib/dateTimeUtils";
 import { formatter } from "../../../../lib/utils";
+import { useExtracted } from "next-intl";
 
 export function Sites() {
   const { data: sites, isLoading, isError } = useAdminSites();
+  const t = useExtracted();
+  const { formatRelative } = useDateTimeFormat();
   const [searchQuery, setSearchQuery] = useState("");
   const [sorting, setSorting] = useState<SortingState>([{ id: "eventsLast24Hours", desc: true }]);
   const [pagination, setPagination] = useState({
@@ -53,7 +58,7 @@ export function Sites() {
     () => [
       {
         accessorKey: "siteId",
-        header: ({ column }) => <SortableHeader column={column}>Site ID</SortableHeader>,
+        header: ({ column }) => <SortableHeader column={column}>{t("Site ID")}</SortableHeader>,
         cell: ({ row }) => (
           <div>
             <Link href={`/${row.getValue("siteId")}`} target="_blank" className="hover:underline">
@@ -64,7 +69,7 @@ export function Sites() {
       },
       {
         accessorKey: "domain",
-        header: ({ column }) => <SortableHeader column={column}>Domain</SortableHeader>,
+        header: ({ column }) => <SortableHeader column={column}>{t("Domain")}</SortableHeader>,
         cell: ({ row }) => (
           <div className="font-medium flex items-center gap-2">
             <Favicon domain={row.original.domain} className="w-5 h-5 shrink-0" />
@@ -76,34 +81,34 @@ export function Sites() {
       },
       {
         accessorKey: "createdAt",
-        header: ({ column }) => <SortableHeader column={column}>Created</SortableHeader>,
-        cell: ({ row }) => <div>{parseUtcTimestamp(row.getValue("createdAt")).toRelative()}</div>,
+        header: ({ column }) => <SortableHeader column={column}>{t("Created")}</SortableHeader>,
+        cell: ({ row }) => <div>{formatRelative(parseUtcTimestamp(row.getValue("createdAt")))}</div>,
       },
       {
         accessorKey: "public",
-        header: ({ column }) => <SortableHeader column={column}>Public</SortableHeader>,
+        header: ({ column }) => <SortableHeader column={column}>{t("Public")}</SortableHeader>,
         cell: ({ row }) => (
-          <div>{row.getValue("public") ? <Badge>Public</Badge> : <Badge variant="outline">Private</Badge>}</div>
+          <div>{row.getValue("public") ? <Badge>{t("Public")}</Badge> : <Badge variant="outline">{t("Private")}</Badge>}</div>
         ),
       },
       {
         accessorKey: "eventsLast24Hours",
-        header: ({ column }) => <SortableHeader column={column}>Events (24h)</SortableHeader>,
+        header: ({ column }) => <SortableHeader column={column}>{t("Events (24h)")}</SortableHeader>,
         cell: ({ row }) => <div>{formatter(Number(row.getValue("eventsLast24Hours")))}</div>,
       },
       {
         accessorKey: "eventsLast30Days",
-        header: ({ column }) => <SortableHeader column={column}>Events (30d)</SortableHeader>,
+        header: ({ column }) => <SortableHeader column={column}>{t("Events (30d)")}</SortableHeader>,
         cell: ({ row }) => <div>{formatter(Number(row.getValue("eventsLast30Days")))}</div>,
       },
       {
         id: "subscription",
-        header: ({ column }) => <SortableHeader column={column}>Subscription</SortableHeader>,
+        header: ({ column }) => <SortableHeader column={column}>{t("Subscription")}</SortableHeader>,
         accessorFn: row => row.subscription.planName,
         cell: ({ row }) => {
           const subscription = row.original.subscription;
           const statusColor =
-            subscription.status === "active"
+            subscription.status === "active" || subscription.status === "trialing"
               ? "default"
               : subscription.status === "canceled"
                 ? "destructive"
@@ -113,7 +118,7 @@ export function Sites() {
       },
       {
         accessorKey: "organizationOwnerEmail",
-        header: ({ column }) => <SortableHeader column={column}>Owner Email</SortableHeader>,
+        header: ({ column }) => <SortableHeader column={column}>{t("Owner Email")}</SortableHeader>,
         cell: ({ row }) => <div>{row.getValue("organizationOwnerEmail") || "-"}</div>,
       },
     ],
@@ -139,17 +144,17 @@ export function Sites() {
   if (isError) {
     return (
       <AdminLayout>
-        <ErrorAlert message="Failed to load sites data. Please try again later." />
+        <ErrorAlert message={t("Failed to load sites data. Please try again later.")} />
       </AdminLayout>
     );
   }
 
   return (
     <AdminLayout>
-      <GrowthChart data={sites} title="Sites" color="#10b981" />
+      <GrowthChart data={sites} title={t("Sites")} color="#10b981" />
 
       <div className="mb-4">
-        <SearchInput placeholder="Search by domain or owner email..." value={searchQuery} onChange={setSearchQuery} />
+        <SearchInput placeholder={t("Search by domain or owner email...")} value={searchQuery} onChange={setSearchQuery} />
       </div>
 
       <div className="rounded-md border border-neutral-100 dark:border-neutral-800">
@@ -200,7 +205,7 @@ export function Sites() {
             ) : table.getRowModel().rows.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={columns.length} className="text-center py-6 text-muted-foreground">
-                  {searchQuery ? "No sites match your search" : "No sites found"}
+                  {searchQuery ? t("No sites match your search") : t("No sites found")}
                 </TableCell>
               </TableRow>
             ) : (

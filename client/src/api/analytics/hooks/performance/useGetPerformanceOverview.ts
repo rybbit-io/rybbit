@@ -7,14 +7,14 @@ import { fetchPerformanceOverview } from "../../endpoints";
 type PeriodTime = "current" | "previous";
 
 export function useGetPerformanceOverview({ periodTime, site }: { periodTime?: PeriodTime; site?: number | string }) {
-  const { time, previousTime, filters } = useStore();
+  const { time, previousTime, filters, timezone } = useStore();
   const { selectedPercentile } = usePerformanceStore();
   const timeToUse = periodTime === "previous" ? previousTime : time;
 
   const params = buildApiParams(timeToUse, { filters });
 
   return useQuery({
-    queryKey: ["performance-overview", timeToUse, site, filters, selectedPercentile],
+    queryKey: ["performance-overview", timeToUse, site, filters, selectedPercentile, timezone],
     queryFn: () => {
       return fetchPerformanceOverview(site!, {
         ...params,

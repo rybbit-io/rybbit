@@ -1,13 +1,12 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { toast } from "@/components/ui/sonner";
 import { authClient } from "@/lib/auth";
 import { BACKEND_URL } from "@/lib/const";
 import { getStripePrices, STRIPE_TIERS } from "@/lib/stripe";
 import { usePreviewSubscriptionUpdate, useUpdateSubscription } from "@/lib/subscription/useSubscriptionMutations";
 import { cn } from "@/lib/utils";
-import { Loader2 } from "lucide-react";
 import { useState } from "react";
-import { toast } from "sonner";
-import { Badge } from "../../ui/badge";
+import { CheckoutModal } from "../CheckoutModal";
 import { PlanChangePreviewDialog } from "./PlanChangePreviewDialog";
 
 interface PlanDialogProps {
@@ -22,6 +21,7 @@ export function PlanDialog({ open, onOpenChange, currentPlanName, hasActiveSubsc
   const [showProrationDialog, setShowProrationDialog] = useState(false);
   const [pendingPriceId, setPendingPriceId] = useState<string | null>(null);
   const [pendingPlanName, setPendingPlanName] = useState<string | null>(null);
+  const [checkoutClientSecret, setCheckoutClientSecret] = useState<string | null>(null);
   const stripePrices = getStripePrices();
   const { data: activeOrg } = authClient.useActiveOrganization();
   const previewMutation = usePreviewSubscriptionUpdate();
@@ -54,8 +54,7 @@ export function PlanDialog({ open, onOpenChange, currentPlanName, hasActiveSubsc
         setShowProrationDialog(true);
       } else {
         // For new subscriptions, create a checkout session
-        const successUrl = `${baseUrl}/settings/organization/subscription?session_id={CHECKOUT_SESSION_ID}`;
-        const cancelUrl = `${baseUrl}/settings/organization/subscription`;
+        const returnUrl = `${baseUrl}/settings/organization/subscription?session_id={CHECKOUT_SESSION_ID}`;
 
         const response = await fetch(`${BACKEND_URL}/stripe/create-checkout-session`, {
           method: "POST",
@@ -65,9 +64,9 @@ export function PlanDialog({ open, onOpenChange, currentPlanName, hasActiveSubsc
           credentials: "include",
           body: JSON.stringify({
             priceId,
-            successUrl,
-            cancelUrl,
+            returnUrl,
             organizationId: activeOrg.id,
+            referral: window.Rewardful?.referral || undefined,
           }),
         });
 
@@ -77,10 +76,11 @@ export function PlanDialog({ open, onOpenChange, currentPlanName, hasActiveSubsc
           throw new Error(data.error || "Failed to create checkout session.");
         }
 
-        if (data.checkoutUrl) {
-          window.location.href = data.checkoutUrl;
+        if (data.clientSecret) {
+          setCheckoutClientSecret(data.clientSecret);
+          onOpenChange(false); // close plan selection dialog
         } else {
-          throw new Error("Checkout URL not received.");
+          throw new Error("Checkout session not received.");
         }
       }
     } catch (error: any) {
@@ -88,7 +88,7 @@ export function PlanDialog({ open, onOpenChange, currentPlanName, hasActiveSubsc
     }
   };
 
-  const getPriceForTier = (events: number, planType: "standard" | "pro") => {
+  const getPriceForTier = (events: number, planType: "basic" | "standard" | "pro") => {
     const suffix = isAnnual ? "-annual" : "";
     const planName = `${planType}${events >= 1_000_000 ? events / 1_000_000 + "m" : events / 1_000 + "k"}${suffix}`;
     const plan = stripePrices.find(p => p.name === planName);
@@ -132,7 +132,7 @@ export function PlanDialog({ open, onOpenChange, currentPlanName, hasActiveSubsc
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Choose Your Plan</DialogTitle>
           </DialogHeader>
@@ -161,59 +161,66 @@ export function PlanDialog({ open, onOpenChange, currentPlanName, hasActiveSubsc
                 )}
               >
                 Annual
-                <span className="ml-1 text-xs text-emerald-500">-17%</span>
+                <span className="ml-1 text-xs text-emerald-500">-33%</span>
               </button>
             </div>
           </div>
 
           {/* Plan columns */}
-          <div className="grid grid-cols-2 gap-6">
+          <div className="grid grid-cols-3 gap-6">
             {[
+              { type: "basic" as const, title: "Basic", subtitle: "For personal projects" },
               { type: "standard" as const, title: "Standard", subtitle: "Core analytics features" },
               { type: "pro" as const, title: "Pro", subtitle: "Advanced features + session replays" },
-            ].map(({ type, title, subtitle }) => (
-              <div key={type} className="space-y-3">
-                <div className="mb-4">
-                  <h3 className="text-xl font-bold">{title}</h3>
-                  <p className="text-sm text-neutral-500 dark:text-neutral-400">{subtitle}</p>
-                </div>
-                <div className="space-y-2">
-                  {STRIPE_TIERS.map(tier => {
-                    const plan = getPriceForTier(tier.events, type);
-                    if (!plan) return null;
-                    const isCurrent = isCurrentPlan(plan.name);
-                    const isLoading = previewMutation.isPending && pendingPriceId === plan.priceId;
+            ].map(({ type, title, subtitle }) => {
+              const tiers = type === "basic"
+                ? STRIPE_TIERS.filter(t => t.events <= 250_000)
+                : STRIPE_TIERS;
 
-                    return (
-                      <div
-                        key={plan.name}
-                        className={cn(
-                          "flex flex-col gap-2 justify-between p-3 rounded-lg border cursor-pointer",
-                          isCurrent
-                            ? "bg-emerald-500/10 border-emerald-500"
-                            : "bg-neutral-100 dark:bg-neutral-800/20 border-neutral-300 dark:border-neutral-700/50 hover:bg-neutral-200 dark:hover:bg-neutral-800/30",
-                          isLoading && "opacity-50"
-                        )}
-                        onClick={() => handlePlanSelection(plan.priceId, plan.name)}
-                      >
-                        <div className="flex justify-between w-full">
-                          <div className="text-neutral-900 dark:text-neutral-100 font-medium flex-end">
-                            {tier.shortName} events{" "}
-                            <span className="text-neutral-500 dark:text-neutral-400 text-xs font-normal">/ month</span>
-                          </div>
-                          <div className="text-xs text-neutral-500 dark:text-neutral-400">
-                            <span className="text-neutral-700 dark:text-neutral-200 font-semibold text-base">
-                              ${isAnnual ? Math.round(plan.price / 12) : plan.price}
-                            </span>{" "}
-                            /month
+              return (
+                <div key={type} className="space-y-3">
+                  <div className="mb-4">
+                    <h3 className="text-xl font-bold">{title}</h3>
+                    <p className="text-sm text-neutral-500 dark:text-neutral-400">{subtitle}</p>
+                  </div>
+                  <div className="space-y-2">
+                    {tiers.map(tier => {
+                      const plan = getPriceForTier(tier.events, type);
+                      if (!plan) return null;
+                      const isCurrent = isCurrentPlan(plan.name);
+                      const isLoading = previewMutation.isPending && pendingPriceId === plan.priceId;
+
+                      return (
+                        <div
+                          key={plan.name}
+                          className={cn(
+                            "flex flex-col gap-2 justify-between p-3 rounded-lg border cursor-pointer",
+                            isCurrent
+                              ? "bg-emerald-500/10 border-emerald-500"
+                              : "bg-neutral-50 dark:bg-neutral-800/20 border-neutral-100 dark:border-neutral-700/50 hover:bg-neutral-200 dark:hover:bg-neutral-800/30",
+                            isLoading && "opacity-50"
+                          )}
+                          onClick={() => handlePlanSelection(plan.priceId, plan.name)}
+                        >
+                          <div className="flex justify-between w-full">
+                            <div className="text-neutral-900 dark:text-neutral-100 font-medium flex-end">
+                              {tier.shortName} events{" "}
+                              <span className="text-neutral-500 dark:text-neutral-400 text-xs font-normal">/ month</span>
+                            </div>
+                            <div className="text-xs text-neutral-500 dark:text-neutral-400">
+                              <span className="text-neutral-700 dark:text-neutral-200 font-semibold text-base">
+                                ${isAnnual ? Math.round(plan.price / 12) : plan.price}
+                              </span>{" "}
+                              /month
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    );
-                  })}
+                      );
+                    })}
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
 
           {/* Features comparison link */}
@@ -237,6 +244,11 @@ export function PlanDialog({ open, onOpenChange, currentPlanName, hasActiveSubsc
         onConfirm={handlePreviewConfirm}
         onCancel={handlePreviewCancel}
         isUpdating={updateMutation.isPending}
+      />
+      <CheckoutModal
+        clientSecret={checkoutClientSecret}
+        open={!!checkoutClientSecret}
+        onOpenChange={(open) => { if (!open) setCheckoutClientSecret(null); }}
       />
     </>
   );

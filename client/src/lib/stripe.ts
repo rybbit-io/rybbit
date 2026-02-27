@@ -8,6 +8,38 @@ export interface StripePrice {
 }
 
 const STRIPE_PRICES: StripePrice[] = [
+  {
+    priceId: "price_1T2No5DFVprnAny2ahUc6TEI",
+    name: "basic100k",
+    interval: "month",
+    price: 14,
+    events: 100_000,
+    shortName: "100k",
+  },
+  {
+    priceId: "price_1T2NqJDFVprnAny21UlXbpxY",
+    name: "basic100k-annual",
+    interval: "year",
+    price: 14 * 8,
+    events: 100_000,
+    shortName: "100k",
+  },
+  {
+    priceId: "price_1T2NpzDFVprnAny2EmAIheV8",
+    name: "basic250k",
+    interval: "month",
+    price: 24,
+    events: 250_000,
+    shortName: "250k",
+  },
+  {
+    priceId: "price_1T2NrRDFVprnAny2N4KhTwQn",
+    name: "basic250k-annual",
+    interval: "year",
+    price: 24 * 8,
+    events: 250_000,
+    shortName: "250k",
+  },
   // Standard tiers
   {
     price: 19,
@@ -18,8 +50,8 @@ const STRIPE_PRICES: StripePrice[] = [
     events: 100_000,
   },
   {
-    price: 190,
-    priceId: "price_1RKuxUDFVprnAny2RkoZyxev",
+    price: 19 * 8,
+    priceId: "price_1SyiH0DFVprnAny2RGghi13M",
     name: "standard100k-annual",
     interval: "year",
     shortName: "100k",
@@ -34,8 +66,8 @@ const STRIPE_PRICES: StripePrice[] = [
     events: 250_000,
   },
   {
-    price: 290,
-    priceId: "price_1RKuxTDFVprnAny2rDcJOwHn",
+    price: 29 * 8,
+    priceId: "price_1SyiHJDFVprnAny2xSJxxLW0",
     name: "standard250k-annual",
     interval: "year",
     shortName: "250k",
@@ -51,8 +83,8 @@ const STRIPE_PRICES: StripePrice[] = [
   },
   {
     name: "standard500k-annual",
-    priceId: "price_1RKuxSDFVprnAny2APD1EsL4",
-    price: 490,
+    priceId: "price_1SyiGFDFVprnAny2gTPDOtpy",
+    price: 49 * 8,
     interval: "year",
     shortName: "500k",
     events: 500_000,
@@ -67,8 +99,8 @@ const STRIPE_PRICES: StripePrice[] = [
   },
   {
     name: "standard1m-annual",
-    priceId: "price_1RKuxRDFVprnAny2f67uFcwC",
-    price: 690,
+    priceId: "price_1SyiGTDFVprnAny2J19JdKFb",
+    price: 69 * 8,
     interval: "year",
     shortName: "1m",
     events: 1_000_000,
@@ -83,8 +115,8 @@ const STRIPE_PRICES: StripePrice[] = [
   },
   {
     name: "standard2m-annual",
-    priceId: "price_1RKuxPDFVprnAny2NCYgKQf5",
-    price: 990,
+    priceId: "price_1SyiGjDFVprnAny2XcoFwB8f",
+    price: 99 * 8,
     interval: "year",
     shortName: "2m",
     events: 2_000_000,
@@ -99,8 +131,8 @@ const STRIPE_PRICES: StripePrice[] = [
   },
   {
     name: "standard5m-annual",
-    priceId: "price_1RKuxKDFVprnAny2UjJFcvHQ",
-    price: 1490,
+    priceId: "price_1SyiFhDFVprnAny2GoHXTm0K",
+    price: 149 * 8,
     interval: "year",
     shortName: "5m",
     events: 5_000_000,
@@ -115,8 +147,8 @@ const STRIPE_PRICES: StripePrice[] = [
   },
   {
     name: "standard10m-annual",
-    priceId: "price_1RKuxNDFVprnAny2mjFH5swO",
-    price: 2490,
+    priceId: "price_1SyiFzDFVprnAny2OLUIUK0o",
+    price: 249 * 8,
     interval: "year",
     shortName: "10m",
     events: 10_000_000,
@@ -131,8 +163,8 @@ const STRIPE_PRICES: StripePrice[] = [
   },
   {
     name: "standard20m-annual",
-    priceId: "price_1SKXxHDFVprnAny2fHARdc3Z",
-    price: 3990,
+    priceId: "price_1SyiDzDFVprnAny2kSldxh49",
+    price: 399 * 8,
     interval: "year",
     shortName: "20m",
     events: 20_000_000,
@@ -147,8 +179,8 @@ const STRIPE_PRICES: StripePrice[] = [
     events: 100_000,
   },
   {
-    price: 390,
-    priceId: "price_1S8szIDFVprnAny2MfwmEsD3",
+    price: 39 * 8,
+    priceId: "price_1SyiEMDFVprnAny2oWEiR1Qa",
     name: "pro100k-annual",
     interval: "year",
     shortName: "100k",
@@ -163,8 +195,8 @@ const STRIPE_PRICES: StripePrice[] = [
     events: 250_000,
   },
   {
-    price: 590,
-    priceId: "price_1S8szHDFVprnAny2KbYorj7v",
+    price: 59 * 8,
+    priceId: "price_1SyiEdDFVprnAny2OCEMbT42",
     name: "pro250k-annual",
     interval: "year",
     shortName: "250k",
@@ -179,8 +211,8 @@ const STRIPE_PRICES: StripePrice[] = [
     events: 500_000,
   },
   {
-    price: 990,
-    priceId: "price_1S8szEDFVprnAny2z6M7Befa",
+    price: 99 * 8,
+    priceId: "price_1SyiEsDFVprnAny2ougv1XOJ",
     name: "pro500k-annual",
     interval: "year",
     shortName: "500k",
@@ -195,8 +227,8 @@ const STRIPE_PRICES: StripePrice[] = [
     events: 1_000_000,
   },
   {
-    price: 1390,
-    priceId: "price_1S8szCDFVprnAny2ujgml5hL",
+    price: 139 * 8,
+    priceId: "price_1SyiFBDFVprnAny2X5xb73Si",
     name: "pro1m-annual",
     interval: "year",
     shortName: "1M",
@@ -211,8 +243,8 @@ const STRIPE_PRICES: StripePrice[] = [
     events: 2_000_000,
   },
   {
-    price: 1990,
-    priceId: "price_1S8szBDFVprnAny2So7DIVTb",
+    price: 199 * 8,
+    priceId: "price_1SyiHtDFVprnAny2vmDMP6fu",
     name: "pro2m-annual",
     interval: "year",
     shortName: "2M",
@@ -227,8 +259,8 @@ const STRIPE_PRICES: StripePrice[] = [
     events: 5_000_000,
   },
   {
-    price: 2990,
-    priceId: "price_1S8sz9DFVprnAny2pEnr5hXD",
+    price: 299 * 8,
+    priceId: "price_1SyiHcDFVprnAny2B3bt5ZMs",
     name: "pro5m-annual",
     interval: "year",
     shortName: "5M",
@@ -243,8 +275,8 @@ const STRIPE_PRICES: StripePrice[] = [
     events: 10_000_000,
   },
   {
-    price: 4990,
-    priceId: "price_1S8sz5DFVprnAny2drMF3d7U",
+    price: 499 * 8,
+    priceId: "price_1SyiAaDFVprnAny2iWpXTyFV",
     name: "pro10m-annual",
     interval: "year",
     shortName: "10M",
@@ -259,8 +291,8 @@ const STRIPE_PRICES: StripePrice[] = [
     events: 20_000_000,
   },
   {
-    price: 7990,
-    priceId: "price_1SKXwcDFVprnAny2HCEv46PG",
+    price: 799 * 8,
+    priceId: "price_1Syi5UDFVprnAny2ALnTjery",
     name: "pro20m-annual",
     interval: "year",
     shortName: "20M",
@@ -319,3 +351,16 @@ export const getStripePrices = () => {
     priceId: TEST_TO_PRICE_ID[price.name as keyof typeof TEST_TO_PRICE_ID],
   }));
 };
+
+export function getPlanType(name: string) {
+  if (name.includes("basic")) {
+    return "Basic";
+  }
+  if (name.includes("standard")) {
+    return "Standard";
+  }
+  if (name.includes("pro")) {
+    return "Pro";
+  }
+  return "Free"
+}

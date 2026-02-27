@@ -2,6 +2,7 @@ import { DateTime } from "luxon";
 import { create } from "zustand";
 import { useMemo } from "react";
 import type { GetSessionsResponse } from "../../../api/analytics/endpoints";
+import { useStore } from "../../../lib/store";
 import { getActiveSessions } from "./timelineUtils";
 
 interface TimelineStore {
@@ -58,10 +59,13 @@ export function useActiveSessions(): GetSessionsResponse {
   const currentTime = useTimelineStore(state => state.currentTime);
   const windowSize = useTimelineStore(state => state.windowSize);
   const allSessions = useTimelineStore(state => state.allSessions);
+  // Use reactive timezone from useStore
+  const storeTimezone = useStore(state => state.timezone);
+  const timezone = storeTimezone === "system" ? Intl.DateTimeFormat().resolvedOptions().timeZone : storeTimezone;
 
   return useMemo(() => {
     if (!currentTime || allSessions.length === 0) return [];
-    const activeSessions = getActiveSessions(allSessions, currentTime, windowSize);
+    const activeSessions = getActiveSessions(allSessions, currentTime, windowSize, timezone);
     return activeSessions;
-  }, [currentTime, windowSize, allSessions]);
+  }, [currentTime, windowSize, allSessions, timezone]);
 }

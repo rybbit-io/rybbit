@@ -86,7 +86,7 @@ export async function fetchErrorNames(
   };
 
   const response = await authedFetch<{ data: ErrorNamesPaginatedResponse }>(
-    `/error-names/${site}`,
+    `/sites/${site}/error-names`,
     queryParams
   );
   return response.data;
@@ -108,7 +108,7 @@ export async function fetchErrorEvents(
   };
 
   const response = await authedFetch<{ data: ErrorEventsPaginatedResponse }>(
-    `/error-events/${site}`,
+    `/sites/${site}/error-events`,
     queryParams
   );
   return response.data;
@@ -129,7 +129,7 @@ export async function fetchErrorBucketed(
   };
 
   const response = await authedFetch<{ data: GetErrorBucketedResponse }>(
-    `/error-bucketed/${site}`,
+    `/sites/${site}/error-bucketed`,
     queryParams
   );
   return response.data;

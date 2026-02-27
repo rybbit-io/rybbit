@@ -119,17 +119,15 @@ services:
       - R2_ACCESS_KEY_ID=${R2_ACCESS_KEY_ID}
       - R2_SECRET_ACCESS_KEY=${R2_SECRET_ACCESS_KEY}
       - R2_BUCKET_NAME=${R2_BUCKET_NAME:-rybbit}
-      # Redis configuration
       - REDIS_HOST=redis
       - REDIS_PORT=6379
       - REDIS_PASSWORD=${REDIS_PASSWORD:-changeme}
-      # Axiom logging configuration (optional)
-      - AXIOM_DATASET=${AXIOM_DATASET}
-      - AXIOM_TOKEN=${AXIOM_TOKEN}
       - MAPBOX_TOKEN=${MAPBOX_TOKEN}
       - TURNSTILE_SECRET_KEY=${TURNSTILE_SECRET_KEY}
       - IPAPI_KEY=${IPAPI_KEY}
       - GOOGLE_REDIRECT_URI=${GOOGLE_REDIRECT_URI}
+      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
+      - OPENROUTER_MODEL=${OPENROUTER_MODEL}
     depends_on:
       clickhouse:
         condition: service_healthy
@@ -152,6 +150,7 @@ services:
         NEXT_PUBLIC_CLOUD: ${CLOUD}
         NEXT_PUBLIC_MAPBOX_TOKEN: ${MAPBOX_TOKEN}
         NEXT_PUBLIC_TURNSTILE_SITE_KEY: ${TURNSTILE_SITE_KEY}
+        NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: ${STRIPE_PUBLISHABLE_KEY}
     environment:
       - NODE_ENV=production
       - NEXT_PUBLIC_BACKEND_URL=${BASE_URL}
@@ -159,6 +158,7 @@ services:
       - NEXT_PUBLIC_CLOUD=${CLOUD}
       - NEXT_PUBLIC_MAPBOX_TOKEN=${MAPBOX_TOKEN}
       - NEXT_PUBLIC_TURNSTILE_SITE_KEY=${TURNSTILE_SITE_KEY}
+      - NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=${STRIPE_PUBLISHABLE_KEY}
     depends_on:
       - backend
     restart: unless-stopped

@@ -75,6 +75,7 @@ describe("Tracker", () => {
     });
 
     config = {
+      namespace: "rybbit",
       analyticsHost: "https://analytics.example.com",
       siteId: "123",
       debounceDuration: 0,
@@ -90,6 +91,9 @@ describe("Tracker", () => {
       sessionReplayMaskTextSelectors: [],
       skipPatterns: [],
       maskPatterns: [],
+      trackButtonClicks: false,
+      trackCopy: false,
+      trackFormInteractions: false,
     };
 
     tracker = new Tracker(config);
@@ -138,6 +142,19 @@ describe("Tracker", () => {
       mockLocation.pathname = "/user/123/profile";
       const payload = tracker.createBasePayload();
       expect(payload?.pathname).toBe("/user/*/profile");
+    });
+
+    it("should support regex skip and mask patterns", () => {
+      config.skipPatterns = ["re:^/private/.*$"];
+      config.maskPatterns = ["re:^/user/\\d+/profile$"];
+      tracker = new Tracker(config);
+
+      mockLocation.pathname = "/private/settings";
+      expect(tracker.createBasePayload()).toBeNull();
+
+      mockLocation.pathname = "/user/123/profile";
+      const payload = tracker.createBasePayload();
+      expect(payload?.pathname).toBe("re:^/user/\\d+/profile$");
     });
 
     it("should exclude querystring when disabled", () => {
@@ -366,7 +383,7 @@ describe("Tracker", () => {
     it("should identify user", () => {
       tracker.identify("user-456");
 
-      expect(window.localStorage.setItem).toHaveBeenCalledWith("rybbit-user-id", "user-456");
+      expect(window.localStorage.setItem).toHaveBeenCalledWith(`${config.namespace}-user-id`, "user-456");
       expect(tracker.getUserId()).toBe("user-456");
     });
 
@@ -384,7 +401,7 @@ describe("Tracker", () => {
       tracker.identify("user-789");
       tracker.clearUserId();
 
-      expect(window.localStorage.removeItem).toHaveBeenCalledWith("rybbit-user-id");
+      expect(window.localStorage.removeItem).toHaveBeenCalledWith(`${config.namespace}-user-id`);
       expect(tracker.getUserId()).toBeNull();
     });
 

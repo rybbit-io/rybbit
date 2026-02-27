@@ -6,17 +6,17 @@ import { getUserHasAdminAccessToSite } from "../../lib/auth-utils.js";
 
 interface GetSiteParams {
   Params: {
-    id: string;
+    siteId: string;
   };
 }
 
 export async function getSite(request: FastifyRequest<GetSiteParams>, reply: FastifyReply) {
-  const { id } = request.params;
+  const { siteId } = request.params;
 
   try {
     // Get site info
     const site = await db.query.sites.findFirst({
-      where: eq(sites.siteId, Number(id)),
+      where: eq(sites.siteId, Number(siteId)),
     });
 
     if (!site) {
@@ -48,6 +48,9 @@ export async function getSite(request: FastifyRequest<GetSiteParams>, reply: Fas
       trackUrlParams: site.trackUrlParams,
       trackInitialPageView: site.trackInitialPageView,
       trackSpaNavigation: site.trackSpaNavigation,
+      trackButtonClicks: site.trackButtonClicks,
+      trackCopy: site.trackCopy,
+      trackFormInteractions: site.trackFormInteractions,
     });
   } catch (error) {
     console.error("Error retrieving site:", error);

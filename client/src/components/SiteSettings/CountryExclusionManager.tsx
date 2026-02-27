@@ -1,13 +1,14 @@
 "use client";
 
 import { X } from "lucide-react";
+import { useExtracted } from "next-intl";
 import React, { useState } from "react";
-import { toast } from "sonner";
+import { toast } from "@/components/ui/sonner";
 
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 
-import { useGetExcludedCountries, useUpdateExcludedCountries } from "@/api/admin/excludedCountries";
+import { useGetExcludedCountries, useUpdateExcludedCountries } from "@/api/admin/hooks/useExcludedCountries";
 import { CountrySelector } from "./CountrySelector";
 
 interface CountryExclusionManagerProps {
@@ -16,6 +17,7 @@ interface CountryExclusionManagerProps {
 }
 
 export function CountryExclusionManager({ siteId, disabled = false }: CountryExclusionManagerProps) {
+  const t = useExtracted();
   const { data: excludedCountriesData, isLoading } = useGetExcludedCountries(siteId);
   const updateExcludedCountriesMutation = useUpdateExcludedCountries();
 
@@ -63,15 +65,15 @@ export function CountryExclusionManager({ siteId, disabled = false }: CountryExc
   };
 
   if (isLoading) {
-    return <div className="text-sm text-muted-foreground">Loading country exclusions...</div>;
+    return <div className="text-sm text-muted-foreground">{t("Loading country exclusions...")}</div>;
   }
 
   return (
     <div className="space-y-4">
       <div>
-        <Label className="text-sm font-medium text-foreground block">Country Exclusions</Label>
+        <Label className="text-sm font-medium text-foreground block">{t("Country Exclusions")}</Label>
         <p className="text-xs text-muted-foreground mt-1">
-          Exclude traffic from specific countries. Events from these countries will not be tracked in your analytics.
+          {t("Exclude traffic from specific countries. Events from these countries will not be tracked in your analytics.")}
         </p>
       </div>
 
@@ -79,7 +81,7 @@ export function CountryExclusionManager({ siteId, disabled = false }: CountryExc
 
       {countryList.length > 0 && (
         <div className="space-y-2">
-          <Label className="text-xs text-muted-foreground">Excluded Countries ({countryList.length})</Label>
+          <Label className="text-xs text-muted-foreground">{t("Excluded Countries ({count})", { count: String(countryList.length) })}</Label>
           <div className="flex flex-wrap gap-2">
             {countryList.map(countryCode => (
               <div
@@ -108,7 +110,7 @@ export function CountryExclusionManager({ siteId, disabled = false }: CountryExc
             disabled={disabled || updateExcludedCountriesMutation.isPending}
             size="sm"
           >
-            {updateExcludedCountriesMutation.isPending ? "Saving..." : "Save Changes"}
+            {updateExcludedCountriesMutation.isPending ? t("Saving...") : t("Save Changes")}
           </Button>
           <Button
             variant="outline"
@@ -116,7 +118,7 @@ export function CountryExclusionManager({ siteId, disabled = false }: CountryExc
             disabled={disabled || updateExcludedCountriesMutation.isPending}
             size="sm"
           >
-            Reset
+            {t("Reset")}
           </Button>
         </div>
       )}

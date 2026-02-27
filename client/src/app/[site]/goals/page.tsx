@@ -1,5 +1,6 @@
 "use client";
 
+import { useExtracted } from "next-intl";
 import { useMemo, useState } from "react";
 import { useGetGoals } from "../../../api/analytics/hooks/goals/useGetGoals";
 import { DisabledOverlay } from "../../../components/DisabledOverlay";
@@ -13,6 +14,7 @@ import CreateGoalButton from "./components/CreateGoalButton";
 import GoalsList from "./components/GoalsList";
 import { Target } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import Link from "next/link";
 
 // Goal card skeleton component
 const GoalCardSkeleton = () => (
@@ -57,7 +59,8 @@ const GoalCardSkeleton = () => (
 );
 
 export default function GoalsPage() {
-  useSetPageTitle("Rybbit · Goals");
+  const t = useExtracted();
+  useSetPageTitle("Goals");
 
   const { site } = useStore();
   const [searchQuery, setSearchQuery] = useState("");
@@ -131,18 +134,18 @@ export default function GoalsPage() {
   // Transform data for TablePagination
   const paginationData = goalsData
     ? {
-        items: goalsData.data,
-        total: goalsData.meta.total,
-      }
+      items: goalsData.data,
+      total: goalsData.meta.total,
+    }
     : undefined;
 
   return (
-    <DisabledOverlay message="Goals" featurePath="goals">
+    <DisabledOverlay message="Goals" featurePath="goals" requiredPlan="basic">
       <div className="p-2 md:p-4 max-w-[1400px] mx-auto space-y-3">
         <SubHeader availableFilters={GOALS_PAGE_FILTERS} />
         <div className="flex items-center justify-between">
           <Input
-            placeholder="Filter goals"
+            placeholder={t("Filter goals")}
             className="w-48"
             isSearch
             value={searchQuery}
@@ -162,15 +165,15 @@ export default function GoalsPage() {
         ) : !goalsData || goalsData.data.length === 0 ? (
           <NothingFound
             icon={<Target className="w-10 h-10" />}
-            title={"No goals found"}
-            description={"Create your first conversion goal to start tracking important user actions."}
+            title={t("No goals found")}
+            description={<span>{t("Create your first conversion goal to start tracking important user actions.")} <Link href="https://rybbit.com/docs/goals" className="text-blue-500 hover:underline" target="_blank">{t("Learn more")}</Link></span>}
             action={<CreateGoalButton siteId={Number(site)} />}
           />
         ) : filteredGoals.length === 0 ? (
           <NothingFound
             icon={<Target className="w-10 h-10" />}
-            title={"No goals found"}
-            description={`No goals match "${searchQuery}"`}
+            title={t("No goals found")}
+            description={t('No goals match "{searchQuery}"', { searchQuery })}
           />
         ) : (
           <div className="space-y-6">

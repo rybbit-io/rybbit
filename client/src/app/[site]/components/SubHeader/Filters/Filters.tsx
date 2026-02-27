@@ -1,15 +1,74 @@
 import { FilterParameter, FilterType } from "@rybbit/shared";
 import { X } from "lucide-react";
+import { useExtracted } from "next-intl";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../../../../../components/ui/tooltip";
 import { useGetRegionName } from "../../../../../lib/geo";
 import { removeFilter, updateFilter, useStore } from "../../../../../lib/store";
 import { cn } from "../../../../../lib/utils";
 import { isNumericParameter } from "./const";
-import { filterTypeToLabel, getParameterNameLabel, getParameterValueLabel } from "./utils";
+import { getParameterValueLabel } from "./utils";
 
 export function Filters({ availableFilters }: { availableFilters?: FilterParameter[] }) {
+  const t = useExtracted();
   const { filters } = useStore();
   const { getRegionName } = useGetRegionName();
+
+  const getTranslatedParameterName = (parameter: FilterParameter): string => {
+    switch (parameter) {
+      case "country": return t("Country");
+      case "device_type": return t("Device Type");
+      case "operating_system": return t("OS");
+      case "browser": return t("Browser");
+      case "referrer": return t("Referrer");
+      case "pathname": return t("Path");
+      case "page_title": return t("Title");
+      case "querystring": return t("Query");
+      case "language": return t("Language");
+      case "city": return t("City");
+      case "region": return t("Region");
+      case "channel": return t("Channel");
+      case "entry_page": return t("Entry Page");
+      case "exit_page": return t("Exit Page");
+      case "dimensions": return t("Dimension");
+      case "event_name": return t("Event Name");
+      case "utm_source": return t("UTM Source");
+      case "utm_medium": return t("UTM Medium");
+      case "utm_campaign": return t("UTM Campaign");
+      case "utm_term": return t("UTM Term");
+      case "utm_content": return t("UTM Content");
+      case "browser_version": return t("Browser Version");
+      case "operating_system_version": return t("OS Version");
+      case "user_id": return t("User ID");
+      case "lat": return t("Lat");
+      case "lon": return t("Lon");
+      case "hostname": return t("Hostname");
+      case "timezone": return t("Timezone");
+      case "vpn": return t("VPN");
+      case "crawler": return t("Crawler");
+      case "datacenter": return t("Datacenter");
+      case "company": return t("Company");
+      case "company_type": return t("Company Type");
+      case "company_domain": return t("Company Domain");
+      case "asn_org": return t("ASN Org");
+      case "asn_type": return t("ASN Type");
+      case "asn_domain": return t("ASN Domain");
+      default: return parameter;
+    }
+  };
+
+  const getTranslatedFilterType = (type: FilterType): string => {
+    switch (type) {
+      case "equals": return t("is");
+      case "not_equals": return t("is not");
+      case "contains": return t("contains");
+      case "not_contains": return t("not contains");
+      case "regex": return t("matches");
+      case "not_regex": return t("not matches");
+      case "greater_than": return ">";
+      case "less_than": return "<";
+      default: return type;
+    }
+  };
 
   return (
     <div className="flex gap-2 flex-wrap">
@@ -20,7 +79,7 @@ export function Filters({ availableFilters }: { availableFilters?: FilterParamet
           <Tooltip key={filter.parameter}>
             {disabled && (
               <TooltipContent>
-                <p>Filter not active for this page</p>
+                <p>{t("Filter not active for this page")}</p>
               </TooltipContent>
             )}
             <TooltipTrigger>
@@ -36,7 +95,7 @@ export function Filters({ availableFilters }: { availableFilters?: FilterParamet
                     disabled ? "text-neutral-400 dark:text-neutral-500" : "text-neutral-600 dark:text-neutral-300"
                   )}
                 >
-                  {getParameterNameLabel(filter.parameter)}
+                  {getTranslatedParameterName(filter.parameter)}
                 </div>
                 <div
                   className={cn(
@@ -79,7 +138,7 @@ export function Filters({ availableFilters }: { availableFilters?: FilterParamet
                     updateFilter({ ...filter, type: newType }, i);
                   }}
                 >
-                  {filterTypeToLabel(filter.type)}
+                  {getTranslatedFilterType(filter.type)}
                 </div>
                 <div
                   className={cn(

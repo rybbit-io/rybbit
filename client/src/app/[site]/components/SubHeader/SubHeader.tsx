@@ -1,43 +1,17 @@
 "use client";
 import { Button } from "@/components/ui/button";
-import { goBack, goForward, useStore } from "@/lib/store";
+import { canGoForward, goBack, goForward, useStore } from "@/lib/store";
 import { FilterParameter } from "@rybbit/shared";
-import { ChevronLeft, ChevronRight, Share } from "lucide-react";
-import { DateTime } from "luxon";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Filters } from "./Filters/Filters";
 
 import { DateSelector } from "../../../../components/DateSelector/DateSelector";
-import { Time } from "../../../../components/DateSelector/types";
+import { authClient } from "../../../../lib/auth";
+import { MobileSidebar } from "../Sidebar/MobileSidebar";
+import { ExportButton } from "./Export";
 import { NewFilterButton } from "./Filters/NewFilterButton";
 import { LiveUserCount } from "./LiveUserCount";
-import { MobileSidebar } from "../Sidebar/MobileSidebar";
 import { ShareSite } from "./ShareSite";
-import { authClient } from "../../../../lib/auth";
-
-const canGoForward = (time: Time) => {
-  const currentDay = DateTime.now().startOf("day");
-  if (time.mode === "day") {
-    return !(DateTime.fromISO(time.day).startOf("day") >= currentDay);
-  }
-
-  if (time.mode === "range") {
-    return !(DateTime.fromISO(time.endDate).startOf("day") >= currentDay);
-  }
-
-  if (time.mode === "week") {
-    return !(DateTime.fromISO(time.week).startOf("week") >= currentDay);
-  }
-
-  if (time.mode === "month") {
-    return !(DateTime.fromISO(time.month).startOf("month") >= currentDay);
-  }
-
-  if (time.mode === "year") {
-    return !(DateTime.fromISO(time.year).startOf("year") >= currentDay);
-  }
-
-  return false;
-};
 
 export function SubHeader({ availableFilters }: { availableFilters?: FilterParameter[] }) {
   const { time, setTime } = useStore();
@@ -55,6 +29,9 @@ export function SubHeader({ availableFilters }: { availableFilters?: FilterParam
         <div className="flex items-center gap-2">
           <LiveUserCount />
           {session.data && <ShareSite />}
+          <div className="hidden md:block">
+            <ExportButton />
+          </div>
           <DateSelector time={time} setTime={setTime} />
           <div className="flex items-center">
             <Button

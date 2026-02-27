@@ -6,59 +6,96 @@ import { useQueryStates } from "nuqs";
 import React, { useEffect } from "react";
 import { Time } from "../components/DateSelector/types";
 import { analyticsParsers } from "./parsers";
-import { useStore } from "./store";
+import { getTimezone, useStore } from "./store";
 
 // Map of wellKnown presets to their dynamic time calculations
+// Uses timezone-aware dates based on the user's selected timezone
 const wellKnownPresets: Record<string, () => Time> = {
-  today: () => ({ mode: "day", day: DateTime.now().toISODate(), wellKnown: "today" }),
-  yesterday: () => ({ mode: "day", day: DateTime.now().minus({ days: 1 }).toISODate(), wellKnown: "yesterday" }),
-  "last-3-days": () => ({
-    mode: "range",
-    startDate: DateTime.now().minus({ days: 2 }).toISODate(),
-    endDate: DateTime.now().toISODate(),
-    wellKnown: "last-3-days",
-  }),
-  "last-7-days": () => ({
-    mode: "range",
-    startDate: DateTime.now().minus({ days: 6 }).toISODate(),
-    endDate: DateTime.now().toISODate(),
-    wellKnown: "last-7-days",
-  }),
-  "last-14-days": () => ({
-    mode: "range",
-    startDate: DateTime.now().minus({ days: 13 }).toISODate(),
-    endDate: DateTime.now().toISODate(),
-    wellKnown: "last-14-days",
-  }),
-  "last-30-days": () => ({
-    mode: "range",
-    startDate: DateTime.now().minus({ days: 29 }).toISODate(),
-    endDate: DateTime.now().toISODate(),
-    wellKnown: "last-30-days",
-  }),
-  "last-60-days": () => ({
-    mode: "range",
-    startDate: DateTime.now().minus({ days: 59 }).toISODate(),
-    endDate: DateTime.now().toISODate(),
-    wellKnown: "last-60-days",
-  }),
-  "this-week": () => ({ mode: "week", week: DateTime.now().startOf("week").toISODate(), wellKnown: "this-week" }),
-  "last-week": () => ({
-    mode: "week",
-    week: DateTime.now().minus({ weeks: 1 }).startOf("week").toISODate(),
-    wellKnown: "last-week",
-  }),
-  "this-month": () => ({
-    mode: "month",
-    month: DateTime.now().startOf("month").toISODate(),
-    wellKnown: "this-month",
-  }),
-  "last-month": () => ({
-    mode: "month",
-    month: DateTime.now().minus({ months: 1 }).startOf("month").toISODate(),
-    wellKnown: "last-month",
-  }),
-  "this-year": () => ({ mode: "year", year: DateTime.now().startOf("year").toISODate(), wellKnown: "this-year" }),
+  today: () => {
+    const now = DateTime.now().setZone(getTimezone());
+    return { mode: "day", day: now.toISODate()!, wellKnown: "today" };
+  },
+  yesterday: () => {
+    const now = DateTime.now().setZone(getTimezone());
+    return { mode: "day", day: now.minus({ days: 1 }).toISODate()!, wellKnown: "yesterday" };
+  },
+  "last-3-days": () => {
+    const now = DateTime.now().setZone(getTimezone());
+    return {
+      mode: "range",
+      startDate: now.minus({ days: 2 }).toISODate()!,
+      endDate: now.toISODate()!,
+      wellKnown: "last-3-days",
+    };
+  },
+  "last-7-days": () => {
+    const now = DateTime.now().setZone(getTimezone());
+    return {
+      mode: "range",
+      startDate: now.minus({ days: 6 }).toISODate()!,
+      endDate: now.toISODate()!,
+      wellKnown: "last-7-days",
+    };
+  },
+  "last-14-days": () => {
+    const now = DateTime.now().setZone(getTimezone());
+    return {
+      mode: "range",
+      startDate: now.minus({ days: 13 }).toISODate()!,
+      endDate: now.toISODate()!,
+      wellKnown: "last-14-days",
+    };
+  },
+  "last-30-days": () => {
+    const now = DateTime.now().setZone(getTimezone());
+    return {
+      mode: "range",
+      startDate: now.minus({ days: 29 }).toISODate()!,
+      endDate: now.toISODate()!,
+      wellKnown: "last-30-days",
+    };
+  },
+  "last-60-days": () => {
+    const now = DateTime.now().setZone(getTimezone());
+    return {
+      mode: "range",
+      startDate: now.minus({ days: 59 }).toISODate()!,
+      endDate: now.toISODate()!,
+      wellKnown: "last-60-days",
+    };
+  },
+  "this-week": () => {
+    const now = DateTime.now().setZone(getTimezone());
+    return { mode: "week", week: now.startOf("week").toISODate()!, wellKnown: "this-week" };
+  },
+  "last-week": () => {
+    const now = DateTime.now().setZone(getTimezone());
+    return {
+      mode: "week",
+      week: now.minus({ weeks: 1 }).startOf("week").toISODate()!,
+      wellKnown: "last-week",
+    };
+  },
+  "this-month": () => {
+    const now = DateTime.now().setZone(getTimezone());
+    return {
+      mode: "month",
+      month: now.startOf("month").toISODate()!,
+      wellKnown: "this-month",
+    };
+  },
+  "last-month": () => {
+    const now = DateTime.now().setZone(getTimezone());
+    return {
+      mode: "month",
+      month: now.minus({ months: 1 }).startOf("month").toISODate()!,
+      wellKnown: "last-month",
+    };
+  },
+  "this-year": () => {
+    const now = DateTime.now().setZone(getTimezone());
+    return { mode: "year", year: now.startOf("year").toISODate()!, wellKnown: "this-year" };
+  },
   "last-30-minutes": () => ({
     mode: "past-minutes",
     pastMinutesStart: 30,
@@ -95,9 +132,14 @@ export const useSyncStateWithUrl = () => {
   const initializedFromUrlRef = React.useRef(false);
 
   // Check if we're on a path where we should sync URL params
-  const shouldSyncUrl = () => {
-    if (!pathname) return false;
-    const pathParts = pathname.split("/");
+  // Use a ref so this check doesn't trigger effects on navigation
+  const pathnameRef = React.useRef(pathname);
+  pathnameRef.current = pathname;
+
+  const shouldSyncUrl = React.useCallback(() => {
+    const p = pathnameRef.current;
+    if (!p) return false;
+    const pathParts = p.split("/");
     if (pathParts.length < 3) return false;
     return [
       "main",
@@ -112,7 +154,7 @@ export const useSyncStateWithUrl = () => {
       "errors",
       "pages",
     ].includes(pathParts[2]);
-  };
+  }, []);
 
   // Get URL params using nuqs
   const [urlParams, setUrlParams] = useQueryStates(analyticsParsers, {
@@ -182,7 +224,8 @@ export const useSyncStateWithUrl = () => {
 
     // Mark that we've initialized from URL
     initializedFromUrlRef.current = true;
-  }, [urlParams, site, setTime, setBucket, setSelectedStat, setFilters, shouldSyncUrl, pathname]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentionally omit pathname; initializedFromUrlRef guards re-runs
+  }, [urlParams, site, setTime, setBucket, setSelectedStat, setFilters, shouldSyncUrl]);
 
   // Update URL when state changes
   useEffect(() => {
@@ -230,5 +273,6 @@ export const useSyncStateWithUrl = () => {
 
     // Note: embed param is automatically preserved by nuqs
     setUrlParams(newParams);
-  }, [time, bucket, selectedStat, filters, site, setUrlParams, shouldSyncUrl, pathname]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentionally omit pathname to avoid interfering with soft navigation
+  }, [time, bucket, selectedStat, filters, site, setUrlParams, shouldSyncUrl]);
 };

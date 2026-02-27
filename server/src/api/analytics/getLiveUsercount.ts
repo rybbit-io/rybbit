@@ -4,19 +4,19 @@ import { processResults } from "./utils/utils.js";
 
 export const getLiveUsercount = async (
   req: FastifyRequest<{
-    Params: { site: string };
+    Params: { siteId: string };
     Querystring: { minutes: number };
   }>,
   res: FastifyReply
 ) => {
-  const { site } = req.params;
+  const { siteId } = req.params;
   const { minutes } = req.query;
 
   const query = await clickhouse.query({
     query: `SELECT COUNT(DISTINCT(session_id)) AS count FROM events WHERE timestamp > now() - interval {minutes:Int32} minute AND site_id = {siteId:Int32}`,
     format: "JSONEachRow",
     query_params: {
-      siteId: Number(site),
+      siteId: Number(siteId),
       minutes: Number(minutes || 5),
     },
   });

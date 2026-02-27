@@ -13,11 +13,11 @@ import { logger } from "../../lib/logger/logger.js";
  */
 export async function getGSCData(req: FastifyRequest<GetGSCDataRequest>, res: FastifyReply) {
   try {
-    const { site } = req.params;
+    const { siteId } = req.params;
     const { start_date, end_date, dimension } = req.query;
-    const siteId = Number(site);
+    const numericSiteId = Number(siteId);
 
-    if (isNaN(siteId)) {
+    if (isNaN(numericSiteId)) {
       return res.status(400).send({ error: "Invalid site ID" });
     }
 
@@ -29,21 +29,15 @@ export async function getGSCData(req: FastifyRequest<GetGSCDataRequest>, res: Fa
       return res.status(400).send({ error: "Missing dimension parameter" });
     }
 
-    // Check if user has access to this site
-    const hasAccess = await getUserHasAccessToSite(req, siteId);
-    if (!hasAccess) {
-      return res.status(403).send({ error: "Access denied" });
-    }
-
     // Get connection
-    const [connection] = await db.select().from(gscConnections).where(eq(gscConnections.siteId, siteId));
+    const [connection] = await db.select().from(gscConnections).where(eq(gscConnections.siteId, numericSiteId));
 
     if (!connection) {
       return res.status(404).send({ error: "GSC not connected for this site" });
     }
 
     // Refresh token if needed
-    const accessToken = await refreshGSCToken(siteId);
+    const accessToken = await refreshGSCToken(numericSiteId);
     if (!accessToken) {
       return res.status(500).send({ error: "Failed to refresh access token" });
     }
@@ -68,7 +62,7 @@ export async function getGSCData(req: FastifyRequest<GetGSCDataRequest>, res: Fa
 
     if (!gscResponse.ok) {
       const errorText = await gscResponse.text();
-      logger.error(errorText, "GSC API error");
+      logger.error(`GSC API error: ${errorText}`);
       return res.status(gscResponse.status).send({ error: "Failed to fetch GSC data", details: errorText });
     }
 

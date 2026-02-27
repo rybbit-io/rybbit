@@ -1,18 +1,20 @@
 import { useNivoTheme } from "@/lib/nivo";
 import { ResponsiveLine } from "@nivo/line";
 import { DateTime } from "luxon";
+import { useExtracted } from "next-intl";
 import { useMemo } from "react";
 import { GetOverviewBucketedResponse } from "../api/analytics/endpoints";
-import { hour12 } from "../lib/dateTimeUtils";
-import { formatter } from "../lib/utils";
+import { formatChartDateTime } from "../lib/dateTimeUtils";
+import { useStore } from "../lib/store";
 import { ChartTooltip } from "./charts/ChartTooltip";
 
 interface SiteSessionChartProps {
   data: GetOverviewBucketedResponse;
-  height?: number | string;
 }
 
-export function SiteSessionChart({ data, height = 100 }: SiteSessionChartProps) {
+export function SiteSessionChart({ data }: SiteSessionChartProps) {
+  const t = useExtracted();
+  const { bucket } = useStore();
   const chartData = useMemo(() => {
     if (!data || data.length === 0) {
       return [{ id: "sessions", data: [] }];
@@ -34,75 +36,60 @@ export function SiteSessionChart({ data, height = 100 }: SiteSessionChartProps) 
   const nivoTheme = useNivoTheme();
 
   return (
-    <div style={{ height }}>
-      <ResponsiveLine
-        data={chartData}
-        margin={{ top: 10, right: 10, bottom: 20, left: 25 }}
-        xScale={{
-          type: "time",
-          format: "%Y-%m-%d %H:%M:%S",
-          precision: "second",
-          useUTC: true,
-        }}
-        yScale={{
-          type: "linear",
-          min: 0,
-          max: "auto",
-        }}
-        curve="linear"
-        enableSlices={"x"}
-        axisBottom={{
-          tickSize: 5,
-          tickPadding: 5,
-          tickRotation: 0,
-          tickValues: 3,
-          format: value => {
-            const time = DateTime.fromJSDate(value);
-            return time.toFormat(hour12 ? "ha" : "HH:mm");
-          },
-        }}
-        axisLeft={{
-          tickSize: 5,
-          tickPadding: 5,
-          tickRotation: 0,
-          tickValues: 2,
-          format: formatter,
-        }}
-        enableGridX={false}
-        enableGridY={false}
-        enablePoints={false}
-        enableArea={true}
-        areaOpacity={0.3}
-        colors={["hsl(var(--accent-400))"]}
-        theme={nivoTheme}
-        defs={[
-          {
-            id: "gradientA",
-            type: "linearGradient",
-            colors: [
-              { offset: 0, color: "hsl(var(--accent-400))", opacity: 1 },
-              { offset: 100, color: "hsl(var(--accent-400))", opacity: 0 },
-            ],
-          },
-        ]}
-        fill={[{ match: "*", id: "gradientA" }]}
-        sliceTooltip={({ slice }: any) => {
-          const currentY = Number(slice.points[0].data.yFormatted);
-          const currentTime = slice.points[0].data.currentTime as DateTime;
+    <ResponsiveLine
+      data={chartData}
+      margin={{ top: 5, right: 0, bottom: 0, left: 0 }}
+      xScale={{
+        type: "time",
+        format: "%Y-%m-%d %H:%M:%S",
+        precision: "second",
+        useUTC: true,
+      }}
+      yScale={{
+        type: "linear",
+        min: 0,
+        max: "auto",
+      }}
+      curve="linear"
+      enableSlices={"x"}
+      axisBottom={null}
+      axisLeft={null}
+      enableGridX={false}
+      enableGridY={false}
+      enablePoints={false}
+      enableArea={true}
+      areaOpacity={0.3}
+      colors={["hsl(var(--dataviz))"]}
+      theme={nivoTheme}
+      defs={[
+        {
+          id: "gradientA",
+          type: "linearGradient",
+          colors: [
+            { offset: 0, color: "hsl(var(--dataviz))", opacity: 1 },
+            { offset: 50, color: "hsl(var(--dataviz))", opacity: 0.3 },
+            { offset: 100, color: "hsl(var(--dataviz))", opacity: 0 },
+          ],
+        },
+      ]}
+      animate={false}
+      fill={[{ match: "*", id: "gradientA" }]}
+      sliceTooltip={({ slice }: any) => {
+        const currentY = Number(slice.points[0].data.yFormatted);
+        const currentTime = slice.points[0].data.currentTime as DateTime;
 
-          return (
-            <ChartTooltip>
-              <div className="p-2">
-                <div className="text-xs mb-1">Sessions</div>
-                <div className="flex justify-between text-xs w-20">
-                  <div className="text-muted-foreground">{currentTime.toFormat(hour12 ? "ha" : "HH:mm")}</div>
-                  <div className="font-medium">{currentY.toLocaleString()}</div>
-                </div>
+        return (
+          <ChartTooltip>
+            <div className="p-2">
+              <div className="text-xs mb-1">{t("Sessions")}</div>
+              <div className="flex justify-between text-xs gap-3">
+                <div className="text-muted-foreground">{formatChartDateTime(currentTime, bucket)}</div>
+                <div className="font-medium">{currentY.toLocaleString()}</div>
               </div>
-            </ChartTooltip>
-          );
-        }}
-      />
-    </div>
+            </div>
+          </ChartTooltip>
+        );
+      }}
+    />
   );
 }

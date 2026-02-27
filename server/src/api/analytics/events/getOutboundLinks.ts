@@ -12,14 +12,14 @@ export type GetOutboundLinksResponse = {
 
 export interface GetOutboundLinksRequest {
   Params: {
-    site: string;
+    siteId: string;
   };
   Querystring: FilterParams<{}>;
 }
 
 export async function getOutboundLinks(req: FastifyRequest<GetOutboundLinksRequest>, res: FastifyReply) {
   const { filters } = req.query;
-  const site = req.params.site;
+  const site = req.params.siteId;
 
   const timeStatement = getTimeStatement(req.query);
   const filterStatement = filters ? getFilterStatement(filters, Number(site), timeStatement) : "";

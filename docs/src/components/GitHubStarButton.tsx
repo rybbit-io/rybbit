@@ -35,9 +35,9 @@ export function GitHubStarButton() {
         <div className="flex items-center gap-1 ml-1 mr-0.5 py-0.5 rounded-full text-xs">
           <Star className="w-3 h-3 text-yellow-400 fill-current" />
           {isLoading ? (
-            <div className="w-7.5 h-3.5 bg-neutral-400 dark:bg-neutral-600 rounded-sm animate-pulse"></div>
+            <div className="w-8 h-3.5 bg-neutral-400 dark:bg-neutral-600 rounded-sm animate-pulse"></div>
           ) : (
-            starCount && <span className="h-3.5 w-7.5">{starCount}</span>
+            starCount && <span className="h-3.5 w-9">{starCount}</span>
           )}
         </div>
       </a>

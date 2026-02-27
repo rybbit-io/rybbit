@@ -14,6 +14,7 @@ import {
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { UptimeMonitor, useMonitors } from "@/api/uptime/monitors";
 import { Skeleton } from "@/components/ui/skeleton";
+import { getTimezone } from "@/lib/store";
 import { Radio, ArrowDown, ArrowUp, ArrowUpDown } from "lucide-react";
 import { StatusOrb } from "./StatusOrb";
 import { UptimeBar } from "./UptimeBar";
@@ -50,7 +51,7 @@ const formatLastPing = (lastCheckedAt?: string) => {
 
   const lastPing = DateTime.fromSQL(lastCheckedAt, {
     zone: "utc",
-  }).toLocal();
+  }).setZone(getTimezone());
 
   const now = DateTime.now();
   const diffMs = now.toMillis() - lastPing.toMillis();

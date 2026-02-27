@@ -1,5 +1,6 @@
 "use client";
 
+import { useExtracted } from "next-intl";
 import { ChartColumnDecreasing } from "lucide-react";
 import { DateTime } from "luxon"; // Import Luxon for date formatting
 import { Fragment, useMemo, useState } from "react";
@@ -15,17 +16,6 @@ import { useSetPageTitle } from "../../../hooks/useSetPageTitle";
 import { MobileSidebar } from "../components/Sidebar/MobileSidebar";
 import { RetentionChart } from "./RetentionChart";
 import { ErrorState } from "../../../components/ErrorState";
-
-// Available time range options (in days)
-const RANGE_OPTIONS = [
-  { value: "7", label: "Last 7 days" },
-  { value: "14", label: "Last 14 days" },
-  { value: "30", label: "Last 30 days" },
-  { value: "60", label: "Last 60 days" },
-  { value: "90", label: "Last 90 days" },
-  { value: "180", label: "Last 6 months" },
-  { value: "365", label: "Last 1 year" },
-];
 
 // Dynamic color function that creates a smooth gradient based on retention percentage
 const getRetentionColor = (
@@ -68,7 +58,8 @@ const getRetentionColor = (
 };
 
 export default function RetentionPage() {
-  useSetPageTitle("Rybbit · Retention");
+  const t = useExtracted();
+  useSetPageTitle("Retention");
 
   // State for the retention mode (day or week)
   const [mode, setMode] = useState<RetentionMode>("week");
@@ -122,7 +113,7 @@ export default function RetentionPage() {
 
   // Labels for column headers based on mode
   const getPeriodLabel = (index: number) => {
-    return mode === "day" ? `Day ${index}` : `Week ${index}`;
+    return mode === "day" ? t("Day {index}", { index: String(index) }) : t("Week {index}", { index: String(index) });
   };
 
   const handleModeChange = (newMode: string) => {
@@ -146,21 +137,23 @@ export default function RetentionPage() {
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              {RANGE_OPTIONS.map(option => (
-                <SelectItem key={option.value} value={option.value}>
-                  {option.label}
-                </SelectItem>
-              ))}
+              <SelectItem value="7">{t("Last 7 days")}</SelectItem>
+              <SelectItem value="14">{t("Last 14 days")}</SelectItem>
+              <SelectItem value="30">{t("Last 30 days")}</SelectItem>
+              <SelectItem value="60">{t("Last 60 days")}</SelectItem>
+              <SelectItem value="90">{t("Last 90 days")}</SelectItem>
+              <SelectItem value="180">{t("Last 6 months")}</SelectItem>
+              <SelectItem value="365">{t("Last 1 year")}</SelectItem>
             </SelectContent>
           </Select>
         </div>
         <Tabs value={mode} onValueChange={handleModeChange}>
           <TabsList>
             <TabsTrigger value="day" disabled={isLoading}>
-              Daily
+              {t("Daily")}
             </TabsTrigger>
             <TabsTrigger value="week" disabled={isLoading}>
-              Weekly
+              {t("Weekly")}
             </TabsTrigger>
           </TabsList>
         </Tabs>
@@ -175,8 +168,8 @@ export default function RetentionPage() {
         <Card>
           <CardContent>
             <ErrorState
-              title="Failed to load retention data"
-              message="There was a problem fetching the retention data. Please try again later."
+              title={t("Failed to load retention data")}
+              message={t("There was a problem fetching the retention data. Please try again later.")}
             />
           </CardContent>
         </Card>
@@ -190,8 +183,8 @@ export default function RetentionPage() {
       <div className="p-2 md:p-4 max-w-[1300px] mx-auto flex flex-col gap-3">
         <NothingFound
           icon={<ChartColumnDecreasing className="w-10 h-10" />}
-          title={"No retention data available"}
-          description={"Try selecting a different time range or make sure you have tracking data in the system."}
+          title={t("No retention data available")}
+          description={t("Try selecting a different time range or make sure you have tracking data in the system.")}
         />
       </div>
     );
@@ -207,7 +200,7 @@ export default function RetentionPage() {
         <FilterControls />
         <Card className="overflow-visible">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle>Retention</CardTitle>
+            <CardTitle>{t("Retention")}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-6 overflow-visible">
             {isLoading ? (
@@ -232,7 +225,7 @@ export default function RetentionPage() {
                   >
                     {/* Header Row */}
                     <div className="p-2 text-sm font-semibold bg-white dark:bg-neutral-900 text-neutral-600 dark:text-neutral-100 text-center sticky left-0 z-10 border-b border-r border-neutral-50 dark:border-neutral-700">
-                      Cohort
+                      {t("Cohort")}
                     </div>
                     {periodHeaders.map(header => (
                       <div
@@ -252,7 +245,7 @@ export default function RetentionPage() {
                             {formatDate(cohortPeriod)}
                           </div>
                           <div className="text-xs text-neutral-500 dark:text-neutral-300 mt-1 whitespace-nowrap">
-                            {data.cohorts[cohortPeriod].size.toLocaleString()} users
+                            {t("{count} users", { count: data.cohorts[cohortPeriod].size.toLocaleString() })}
                           </div>
                         </div>
                         {/* Retention Cells */}

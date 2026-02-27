@@ -2,6 +2,7 @@ import { asc, eq, sql } from "drizzle-orm";
 import { IS_CLOUD } from "../../lib/const.js";
 import { db } from "./postgres.js";
 import { user } from "./schema.js";
+import { logger } from "../../lib/logger/logger.js";
 
 export const initPostgres = async () => {
   try {
@@ -27,7 +28,7 @@ export const initPostgres = async () => {
  * This runs only in cloud environments (IS_CLOUD === true)
  */
 async function initializeAppSumoTables() {
-  console.info("Initializing AppSumo tables...");
+  logger.info("Initializing AppSumo tables...");
   try {
     // Create 'appsumo' schema for AppSumo tables
     await db.execute(sql`CREATE SCHEMA IF NOT EXISTS appsumo`);
@@ -60,8 +61,8 @@ async function initializeAppSumoTables() {
       )
     `);
 
-    console.info("AppSumo schema and tables initialized successfully");
+    logger.info("AppSumo schema and tables initialized successfully");
   } catch (error) {
-    console.error("Error initializing AppSumo tables:", error);
+    logger.error(error, "Error initializing AppSumo tables:");
   }
 }

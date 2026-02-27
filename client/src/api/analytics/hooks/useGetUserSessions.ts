@@ -1,7 +1,7 @@
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { SESSION_PAGE_FILTERS } from "../../../lib/filterGroups";
-import { getFilteredFilters, useStore } from "../../../lib/store";
-import { buildApiParams, timeZone } from "../../utils";
+import { getFilteredFilters, getTimezone, useStore } from "../../../lib/store";
+import { buildApiParams } from "../../utils";
 import {
   fetchSession,
   fetchSessions,
@@ -18,25 +18,31 @@ export function useGetSessions({
   limit = 100,
   identifiedOnly = false,
   timeOverride,
+  minPageviews,
+  minEvents,
+  minDuration,
 }: {
   userId?: string;
   page?: number;
   limit?: number;
   identifiedOnly?: boolean;
   timeOverride?: Time;
+  minPageviews?: number;
+  minEvents?: number;
+  minDuration?: number;
 }) {
-  const { time, site } = useStore();
+  const { time, site, timezone } = useStore();
 
   const filteredFilters = getFilteredFilters(SESSION_PAGE_FILTERS);
 
   // When filtering by userId, we fetch all sessions for that user (no time filter)
   // Otherwise use buildApiParams which handles past-minutes mode
   const params = userId
-    ? { startDate: "", endDate: "", timeZone, filters: filteredFilters }
+    ? { startDate: "", endDate: "", timeZone: getTimezone(), filters: filteredFilters }
     : buildApiParams(timeOverride || time, { filters: filteredFilters });
 
   return useQuery<{ data: GetSessionsResponse }>({
-    queryKey: ["sessions", timeOverride || time, site, filteredFilters, userId, page, limit, identifiedOnly],
+    queryKey: ["sessions", timeOverride || time, site, filteredFilters, userId, page, limit, identifiedOnly, timezone, minPageviews, minEvents, minDuration],
     queryFn: () => {
       return fetchSessions(site, {
         ...params,
@@ -44,6 +50,9 @@ export function useGetSessions({
         limit,
         userId,
         identifiedOnly,
+        minPageviews,
+        minEvents,
+        minDuration,
       });
     },
     staleTime: Infinity,
@@ -54,23 +63,25 @@ export function useGetSessionsInfinite({
   userId,
   timeOverride,
   limit = 100,
+  refetchInterval,
 }: {
   userId?: string;
   timeOverride?: Time;
   limit?: number;
+  refetchInterval?: number;
 }) {
-  const { time, site } = useStore();
+  const { time, site, timezone } = useStore();
 
   const filteredFilters = getFilteredFilters(SESSION_PAGE_FILTERS);
 
   // When filtering by userId, we fetch all sessions for that user (no time filter)
   // Otherwise use buildApiParams which handles past-minutes mode
   const params = userId
-    ? { startDate: "", endDate: "", timeZone, filters: filteredFilters }
+    ? { startDate: "", endDate: "", timeZone: getTimezone(), filters: filteredFilters }
     : buildApiParams(timeOverride || time, { filters: filteredFilters });
 
   return useInfiniteQuery<{ data: GetSessionsResponse }>({
-    queryKey: ["sessions-infinite", timeOverride || time, site, filteredFilters, userId],
+    queryKey: ["sessions-infinite", timeOverride || time, site, filteredFilters, userId, timezone],
     queryFn: ({ pageParam = 1 }) => {
       return fetchSessions(site, {
         ...params,
@@ -88,6 +99,7 @@ export function useGetSessionsInfinite({
       return undefined;
     },
     staleTime: Infinity,
+    refetchInterval,
   });
 }
 
@@ -126,14 +138,14 @@ export function useGetSessionDetailsInfinite(sessionId: string | null) {
 }
 
 export function useGetUserSessionCount(userId: string) {
-  const { site } = useStore();
+  const { site, timezone } = useStore();
 
   return useQuery<{ data: UserSessionCountResponse[] }>({
-    queryKey: ["user-session-count", userId, site],
+    queryKey: ["user-session-count", userId, site, timezone],
     queryFn: () => {
       return fetchUserSessionCount(site, {
         userId,
-        timeZone,
+        timeZone: getTimezone(),
       });
     },
     staleTime: Infinity,

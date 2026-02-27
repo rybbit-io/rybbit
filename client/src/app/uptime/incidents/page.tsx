@@ -10,22 +10,19 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useDateTimeFormat } from "@/hooks/useDateTimeFormat";
+import { getTimezone } from "@/lib/store";
 import { cn } from "@/lib/utils";
 import { AlertCircle, CheckCircle, MoreHorizontal } from "lucide-react";
 import { DateTime } from "luxon";
 import { useState } from "react";
-import { toast } from "sonner";
+import { toast } from "@/components/ui/sonner";
 import {
   UptimeIncident,
   useAcknowledgeIncident,
   useIncidents,
   useResolveIncident,
 } from "../../../api/uptime/incidents";
-
-const formatStartTime = (timestamp: string) => {
-  const dt = DateTime.fromSQL(timestamp, { zone: "UTC" }).toLocal();
-  return dt.toRelative() || dt.toFormat("MMM dd, HH:mm");
-};
 
 const getStatusIcon = (status: UptimeIncident["status"]) => {
   switch (status) {
@@ -75,6 +72,13 @@ const formatDuration = (startTime: string, endTime: string | null): string => {
 };
 
 export default function IncidentsPage() {
+  const { formatRelative } = useDateTimeFormat();
+
+  const formatStartTime = (timestamp: string) => {
+    const dt = DateTime.fromSQL(timestamp, { zone: "UTC" }).setZone(getTimezone());
+    return formatRelative(dt);
+  };
+
   const [statusFilter, setStatusFilter] = useState<"active" | "acknowledged" | "resolved" | "all">("active");
 
   const { data, isLoading } = useIncidents({ status: statusFilter });

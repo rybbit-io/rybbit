@@ -9,15 +9,15 @@ import { logger } from "../../lib/logger/logger.js";
  */
 export async function connectGSC(req: FastifyRequest<ConnectGSCRequest>, res: FastifyReply) {
   try {
-    const { site } = req.params;
-    const siteId = Number(site);
+    const { siteId } = req.params;
+    const numericSiteId = Number(siteId);
 
-    if (isNaN(siteId)) {
+    if (isNaN(numericSiteId)) {
       return res.status(400).send({ error: "Invalid site ID" });
     }
 
     // Check if user has access to this site
-    const hasAccess = await getUserHasAccessToSite(req, siteId);
+    const hasAccess = await getUserHasAccessToSite(req, numericSiteId);
     if (!hasAccess) {
       return res.status(403).send({ error: "Access denied" });
     }
@@ -31,7 +31,7 @@ export async function connectGSC(req: FastifyRequest<ConnectGSCRequest>, res: Fa
 
     // Build OAuth URL
     const scope = "https://www.googleapis.com/auth/webmasters.readonly";
-    const state = siteId.toString(); // Pass siteId in state to retrieve after OAuth
+    const state = numericSiteId.toString(); // Pass siteId in state to retrieve after OAuth
 
     const authUrl = new URL("https://accounts.google.com/o/oauth2/v2/auth");
     authUrl.searchParams.set("client_id", clientId);

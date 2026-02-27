@@ -12,8 +12,9 @@ import {
 } from "@/components/ui/dialog";
 import { authClient } from "@/lib/auth";
 import { UserMinus } from "lucide-react";
+import { useExtracted } from "next-intl";
 import { useState } from "react";
-import { toast } from "sonner";
+import { toast } from "@/components/ui/sonner";
 import { Member } from "../page";
 
 interface RemoveMemberDialogProps {
@@ -23,6 +24,7 @@ interface RemoveMemberDialogProps {
 }
 
 export function RemoveMemberDialog({ member, organizationId, onSuccess }: RemoveMemberDialogProps) {
+  const t = useExtracted();
   const [isLoading, setIsLoading] = useState(false);
   const [open, setOpen] = useState(false);
 
@@ -35,11 +37,11 @@ export function RemoveMemberDialog({ member, organizationId, onSuccess }: Remove
         organizationId,
       });
 
-      toast.success("Member removed successfully");
+      toast.success(t("Member removed successfully"));
       setOpen(false);
       onSuccess();
     } catch (error: any) {
-      toast.error(error.message || "Failed to remove member");
+      toast.error(error.message || t("Failed to remove member"));
     } finally {
       setIsLoading(false);
     }
@@ -54,17 +56,17 @@ export function RemoveMemberDialog({ member, organizationId, onSuccess }: Remove
       </DialogTrigger>
       <DialogContent className="max-w-lg">
         <DialogHeader>
-          <DialogTitle>Remove Member</DialogTitle>
+          <DialogTitle>{t("Remove Member")}</DialogTitle>
           <DialogDescription>
-            Are you sure you want to remove {member.user.name} from the organization?
+            {t("Are you sure you want to remove {name} from the organization?", { name: member.user.name ?? "" })}
           </DialogDescription>
         </DialogHeader>
         <DialogFooter>
           <Button variant="outline" onClick={() => setOpen(false)}>
-            Cancel
+            {t("Cancel")}
           </Button>
           <Button variant="destructive" onClick={handleRemove} disabled={isLoading}>
-            {isLoading ? "Removing..." : "Remove Member"}
+            {isLoading ? t("Removing...") : t("Remove Member")}
           </Button>
         </DialogFooter>
       </DialogContent>

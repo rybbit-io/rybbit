@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { Time } from "../../../../components/DateSelector/types";
+import { useStore } from "../../../../lib/store";
 import { buildApiParams } from "../../../utils";
 import { fetchGoalSessions } from "../../endpoints";
 
@@ -18,10 +19,11 @@ export function useGetGoalSessions({
   limit?: number;
   enabled?: boolean;
 }) {
+  const { timezone } = useStore();
   const params = buildApiParams(time);
 
   return useQuery({
-    queryKey: ["goal-sessions", goalId, siteId, time, page, limit],
+    queryKey: ["goal-sessions", goalId, siteId, time, page, limit, timezone],
     queryFn: async () => {
       return fetchGoalSessions(siteId, {
         ...params,

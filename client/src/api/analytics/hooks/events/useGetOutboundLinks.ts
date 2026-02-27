@@ -5,7 +5,7 @@ import { buildApiParams } from "../../../utils";
 import { fetchOutboundLinks } from "../../endpoints";
 
 export function useGetOutboundLinks() {
-  const { site, time } = useStore();
+  const { site, time, timezone } = useStore();
 
   const filteredFilters = getFilteredFilters(EVENT_FILTERS);
   const params = buildApiParams(time, {
@@ -13,7 +13,7 @@ export function useGetOutboundLinks() {
   });
 
   return useQuery({
-    queryKey: ["outbound-links", site, time, filteredFilters],
+    queryKey: ["outbound-links", site, time, filteredFilters, timezone],
     enabled: !!site,
     queryFn: () => fetchOutboundLinks(site, params),
   });

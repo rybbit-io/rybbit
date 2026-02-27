@@ -20,18 +20,145 @@ export interface EndpointCategory {
 
 export const endpointCategories: EndpointCategory[] = [
   {
+    name: "Sites",
+    endpoints: [
+      {
+        method: "GET",
+        path: "/sites/:site",
+        name: "Get Site",
+        description: "Returns details for a specific site",
+        hasCommonParams: false,
+      },
+      {
+        method: "DELETE",
+        path: "/sites/:site",
+        name: "Delete Site",
+        description: "Permanently deletes a site and all its data. Requires admin/owner role.",
+        hasCommonParams: false,
+      },
+      {
+        method: "PUT",
+        path: "/sites/:site/config",
+        name: "Update Site Config",
+        description: "Updates site configuration settings. Requires admin/owner role.",
+        hasCommonParams: false,
+        hasRequestBody: true,
+        requestBodyExample: {
+          public: true,
+          blockBots: true,
+          excludedCountries: ["CN", "RU"],
+        },
+      },
+      {
+        method: "GET",
+        path: "/sites/:site/excluded-ips",
+        name: "Get Excluded IPs",
+        description: "Returns the list of excluded IP addresses",
+        hasCommonParams: false,
+      },
+      {
+        method: "GET",
+        path: "/sites/:site/excluded-countries",
+        name: "Get Excluded Countries",
+        description: "Returns the list of excluded country codes",
+        hasCommonParams: false,
+      },
+      {
+        method: "GET",
+        path: "/sites/:site/private-link-config",
+        name: "Get Private Link Config",
+        description: "Returns the private link key configuration",
+        hasCommonParams: false,
+      },
+      {
+        method: "POST",
+        path: "/sites/:site/private-link-config",
+        name: "Update Private Link",
+        description: "Generates or revokes a private link key. Requires admin/owner role.",
+        hasCommonParams: false,
+        hasRequestBody: true,
+        requestBodyExample: {
+          action: "generate_private_link_key",
+        },
+      },
+    ],
+  },
+  {
+    name: "Organizations",
+    endpoints: [
+      {
+        method: "GET",
+        path: "/organizations",
+        name: "Get My Organizations",
+        description: "Returns all organizations the authenticated user is a member of, including all members for each organization",
+        hasCommonParams: false,
+      },
+      {
+        method: "POST",
+        path: "/organizations/:organizationId/sites",
+        name: "Create Site",
+        description: "Creates a new site in an organization. Requires admin/owner role.",
+        hasCommonParams: false,
+        pathParams: ["organizationId"],
+        hasRequestBody: true,
+        requestBodyExample: {
+          domain: "example.com",
+          name: "My Website",
+          public: false,
+          blockBots: true,
+          saltUserIds: false,
+          excludedIPs: [],
+          excludedCountries: [],
+          sessionReplay: false,
+          webVitals: false,
+          trackErrors: false,
+          trackOutbound: true,
+          trackUrlParams: true,
+          trackInitialPageView: true,
+          trackSpaNavigation: true,
+          trackIp: false,
+          trackButtonClicks: false,
+          trackCopy: false,
+          trackFormInteractions: false,
+          tags: [],
+        },
+      },
+      {
+        method: "GET",
+        path: "/organizations/:organizationId/members",
+        name: "Get Organization Members",
+        description: "Returns all members of an organization with user details",
+        hasCommonParams: false,
+        pathParams: ["organizationId"],
+      },
+      {
+        method: "POST",
+        path: "/organizations/:organizationId/members",
+        name: "Add Organization Member",
+        description: "Adds a user to an organization with a specified role",
+        hasCommonParams: false,
+        pathParams: ["organizationId"],
+        hasRequestBody: true,
+        requestBodyExample: {
+          email: "user@example.com",
+          role: "member",
+        },
+      },
+    ],
+  },
+  {
     name: "Overview",
     endpoints: [
       {
         method: "GET",
-        path: "/overview/:site",
+        path: "/sites/:site/overview",
         name: "Get Overview",
         description: "Returns high-level analytics metrics for a site",
         hasCommonParams: true,
       },
       {
         method: "GET",
-        path: "/overview-bucketed/:site",
+        path: "/sites/:site/overview-bucketed",
         name: "Get Overview (Time Series)",
         description: "Returns time-series analytics data broken down by time buckets",
         hasCommonParams: true,
@@ -39,7 +166,7 @@ export const endpointCategories: EndpointCategory[] = [
       },
       {
         method: "GET",
-        path: "/metric/:site",
+        path: "/sites/:site/metric",
         name: "Get Metric",
         description: "Returns dimensional analytics broken down by a specific parameter",
         hasCommonParams: true,
@@ -48,7 +175,7 @@ export const endpointCategories: EndpointCategory[] = [
       },
       {
         method: "GET",
-        path: "/live-user-count/:site",
+        path: "/sites/:site/live-user-count",
         name: "Get Live Visitors",
         description: "Returns the count of active sessions within the specified time window",
         hasCommonParams: false,
@@ -61,22 +188,22 @@ export const endpointCategories: EndpointCategory[] = [
     endpoints: [
       {
         method: "GET",
-        path: "/events/:site",
+        path: "/sites/:site/events",
         name: "Get Events",
-        description: "Returns a paginated list of events",
+        description: "Returns a paginated list of events with cursor-based pagination",
         hasCommonParams: true,
-        specificParams: ["page", "page_size"],
+        specificParams: ["page_size", "since_timestamp", "before_timestamp"],
       },
       {
         method: "GET",
-        path: "/events/names/:site",
+        path: "/sites/:site/events/names",
         name: "Get Event Names",
         description: "Returns list of unique custom event names with counts",
         hasCommonParams: true,
       },
       {
         method: "GET",
-        path: "/events/properties/:site",
+        path: "/sites/:site/events/properties",
         name: "Get Event Properties",
         description: "Returns property key-value pairs for a specific event",
         hasCommonParams: true,
@@ -85,7 +212,7 @@ export const endpointCategories: EndpointCategory[] = [
       },
       {
         method: "GET",
-        path: "/events/outbound/:site",
+        path: "/sites/:site/events/outbound",
         name: "Get Outbound Links",
         description: "Returns outbound link clicks with occurrence counts",
         hasCommonParams: true,
@@ -97,7 +224,7 @@ export const endpointCategories: EndpointCategory[] = [
     endpoints: [
       {
         method: "GET",
-        path: "/error-names/:site",
+        path: "/sites/:site/error-names",
         name: "Get Error Names",
         description: "Returns unique error messages with occurrence and session counts",
         hasCommonParams: true,
@@ -105,7 +232,7 @@ export const endpointCategories: EndpointCategory[] = [
       },
       {
         method: "GET",
-        path: "/error-events/:site",
+        path: "/sites/:site/error-events",
         name: "Get Error Events",
         description: "Returns individual error occurrences with context and stack traces",
         hasCommonParams: true,
@@ -114,7 +241,7 @@ export const endpointCategories: EndpointCategory[] = [
       },
       {
         method: "GET",
-        path: "/error-bucketed/:site",
+        path: "/sites/:site/error-bucketed",
         name: "Get Error Time Series",
         description: "Returns error occurrence counts over time",
         hasCommonParams: true,
@@ -128,7 +255,7 @@ export const endpointCategories: EndpointCategory[] = [
     endpoints: [
       {
         method: "GET",
-        path: "/goals/:site",
+        path: "/sites/:site/goals",
         name: "Get Goals",
         description: "Returns paginated list of goals with conversion metrics",
         hasCommonParams: true,
@@ -136,7 +263,7 @@ export const endpointCategories: EndpointCategory[] = [
       },
       {
         method: "GET",
-        path: "/goals/:goalId/sessions/:site",
+        path: "/sites/:site/goals/:goalId/sessions",
         name: "Get Goal Sessions",
         description: "Returns sessions that completed a specific goal",
         hasCommonParams: true,
@@ -145,7 +272,7 @@ export const endpointCategories: EndpointCategory[] = [
       },
       {
         method: "POST",
-        path: "/goals/:site",
+        path: "/sites/:site/goals",
         name: "Create Goal",
         description: "Creates a new goal",
         hasCommonParams: false,
@@ -160,7 +287,7 @@ export const endpointCategories: EndpointCategory[] = [
       },
       {
         method: "PUT",
-        path: "/goals/:goalId/:site",
+        path: "/sites/:site/goals/:goalId",
         name: "Update Goal",
         description: "Updates an existing goal",
         hasCommonParams: false,
@@ -176,7 +303,7 @@ export const endpointCategories: EndpointCategory[] = [
       },
       {
         method: "DELETE",
-        path: "/goals/:goalId/:site",
+        path: "/sites/:site/goals/:goalId",
         name: "Delete Goal",
         description: "Deletes a goal",
         hasCommonParams: false,
@@ -189,14 +316,14 @@ export const endpointCategories: EndpointCategory[] = [
     endpoints: [
       {
         method: "GET",
-        path: "/funnels/:site",
+        path: "/sites/:site/funnels",
         name: "Get Funnels",
         description: "Returns all saved funnels for a site",
         hasCommonParams: false,
       },
       {
         method: "POST",
-        path: "/funnels/analyze/:site",
+        path: "/sites/:site/funnels/analyze",
         name: "Analyze Funnel",
         description: "Analyzes funnel conversion data step-by-step",
         hasCommonParams: true,
@@ -211,7 +338,7 @@ export const endpointCategories: EndpointCategory[] = [
       },
       {
         method: "POST",
-        path: "/funnels/:stepNumber/sessions/:site",
+        path: "/sites/:site/funnels/:stepNumber/sessions",
         name: "Get Funnel Step Sessions",
         description: "Returns sessions that reached or dropped at a specific funnel step",
         hasCommonParams: true,
@@ -227,7 +354,7 @@ export const endpointCategories: EndpointCategory[] = [
       },
       {
         method: "POST",
-        path: "/funnels/:site",
+        path: "/sites/:site/funnels",
         name: "Create Funnel",
         description: "Creates a saved funnel",
         hasCommonParams: false,
@@ -242,7 +369,7 @@ export const endpointCategories: EndpointCategory[] = [
       },
       {
         method: "DELETE",
-        path: "/funnels/:funnelId/:site",
+        path: "/sites/:site/funnels/:funnelId",
         name: "Delete Funnel",
         description: "Deletes a saved funnel",
         hasCommonParams: false,
@@ -255,14 +382,14 @@ export const endpointCategories: EndpointCategory[] = [
     endpoints: [
       {
         method: "GET",
-        path: "/performance/overview/:site",
+        path: "/sites/:site/performance/overview",
         name: "Get Performance Overview",
         description: "Returns aggregate Core Web Vitals metrics",
         hasCommonParams: true,
       },
       {
         method: "GET",
-        path: "/performance/time-series/:site",
+        path: "/sites/:site/performance/time-series",
         name: "Get Performance Time Series",
         description: "Returns performance metrics over time",
         hasCommonParams: true,
@@ -270,7 +397,7 @@ export const endpointCategories: EndpointCategory[] = [
       },
       {
         method: "GET",
-        path: "/performance/by-dimension/:site",
+        path: "/sites/:site/performance/by-dimension",
         name: "Get Performance by Dimension",
         description: "Returns performance breakdown by dimension",
         hasCommonParams: true,
@@ -284,7 +411,7 @@ export const endpointCategories: EndpointCategory[] = [
     endpoints: [
       {
         method: "GET",
-        path: "/sessions/:site",
+        path: "/sites/:site/sessions",
         name: "Get Sessions",
         description: "Returns a paginated list of sessions",
         hasCommonParams: true,
@@ -292,7 +419,7 @@ export const endpointCategories: EndpointCategory[] = [
       },
       {
         method: "GET",
-        path: "/sessions/:sessionId/:site",
+        path: "/sites/:site/sessions/:sessionId",
         name: "Get Session",
         description: "Returns detailed session information with events",
         hasCommonParams: false,
@@ -301,7 +428,7 @@ export const endpointCategories: EndpointCategory[] = [
       },
       {
         method: "GET",
-        path: "/session-locations/:site",
+        path: "/sites/:site/session-locations",
         name: "Get Session Locations",
         description: "Returns aggregated session locations for map visualization",
         hasCommonParams: true,
@@ -313,7 +440,7 @@ export const endpointCategories: EndpointCategory[] = [
     endpoints: [
       {
         method: "GET",
-        path: "/users/:site",
+        path: "/sites/:site/users",
         name: "Get Users",
         description: "Returns a paginated list of users",
         hasCommonParams: true,
@@ -321,7 +448,7 @@ export const endpointCategories: EndpointCategory[] = [
       },
       {
         method: "GET",
-        path: "/users/session-count/:site",
+        path: "/sites/:site/users/session-count",
         name: "Get User Session Count",
         description: "Returns daily session counts for a specific user",
         hasCommonParams: false,
@@ -329,7 +456,7 @@ export const endpointCategories: EndpointCategory[] = [
       },
       {
         method: "GET",
-        path: "/users/:userId/:site",
+        path: "/sites/:site/users/:userId",
         name: "Get User Info",
         description: "Returns detailed user profile information",
         hasCommonParams: false,
@@ -342,7 +469,7 @@ export const endpointCategories: EndpointCategory[] = [
     endpoints: [
       {
         method: "GET",
-        path: "/retention/:site",
+        path: "/sites/:site/retention",
         name: "Get Retention",
         description: "Returns cohort-based retention analysis",
         hasCommonParams: false,
@@ -350,7 +477,7 @@ export const endpointCategories: EndpointCategory[] = [
       },
       {
         method: "GET",
-        path: "/journeys/:site",
+        path: "/sites/:site/journeys",
         name: "Get Journeys",
         description: "Returns most common page navigation paths",
         hasCommonParams: true,
@@ -435,17 +562,34 @@ export const parameterMetadata: Record<
   steps: { label: "Steps", type: "number", placeholder: "3" },
   range: { label: "Range (days)", type: "number", placeholder: "90" },
   offset: { label: "Offset", type: "number", placeholder: "0" },
+  since_timestamp: { label: "Since Timestamp", type: "text", placeholder: "ISO 8601, e.g. 2024-01-31T14:00:00.000Z" },
+  before_timestamp: { label: "Before Timestamp", type: "text", placeholder: "ISO 8601, e.g. 2024-01-31T14:00:00.000Z" },
   event_name: { label: "Event Name", type: "text", placeholder: "e.g., purchase" },
   errorMessage: { label: "Error Message", type: "text", placeholder: "Error message to filter by" },
   user_id: { label: "User ID", type: "text", placeholder: "User ID" },
   time_zone: { label: "Time Zone", type: "text", placeholder: "America/New_York" },
   identified_only: { label: "Identified Only", type: "select", options: ["true", "false"] },
   // Path params
+  orgId: { label: "Organization ID", type: "text", placeholder: "org_abc123" },
   goalId: { label: "Goal ID", type: "number", placeholder: "Goal ID" },
   funnelId: { label: "Funnel ID", type: "number", placeholder: "Funnel ID" },
   sessionId: { label: "Session ID", type: "text", placeholder: "Session ID" },
   userId: { label: "User ID", type: "text", placeholder: "User ID" },
   stepNumber: { label: "Step Number", type: "number", placeholder: "Step number (1-indexed)" },
+  siteId: { label: "Site ID", type: "number", placeholder: "Site ID" },
+  organizationId: { label: "Organization ID", type: "text", placeholder: "org_abc123" },
+  // Sites-specific params
+  action: {
+    label: "Action",
+    type: "select",
+    options: ["generate_private_link_key", "revoke_private_link_key"],
+  },
+  // Organizations-specific params
+  role: {
+    label: "Role",
+    type: "select",
+    options: ["admin", "member", "owner"],
+  },
 };
 
 // Method colors for UI

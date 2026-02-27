@@ -1,6 +1,9 @@
 import BoringAvatar from "boring-avatars";
 import { DateTime } from "luxon";
+import { useExtracted } from "next-intl";
 import { animals, colors, uniqueNamesGenerator } from "unique-names-generator";
+import { useDateTimeFormat } from "../hooks/useDateTimeFormat";
+import { getTimezone } from "../lib/store";
 import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
 
 export const AVATAR_COLORS = [
@@ -27,7 +30,9 @@ export const AVATAR_COLORS = [
 ];
 
 export function Avatar({ id, size = 20, lastActiveTime }: { id: string; size?: number; lastActiveTime?: DateTime }) {
-  const timeSinceEnd = lastActiveTime ? -lastActiveTime.toLocal().diffNow().toMillis() / 1000 : 0;
+  const t = useExtracted();
+  const { formatRelative } = useDateTimeFormat();
+  const timeSinceEnd = lastActiveTime ? -lastActiveTime.setZone(getTimezone()).diffNow().toMillis() / 1000 : 0;
   const online = lastActiveTime ? timeSinceEnd < 300 : false;
   return (
     <div className="relative">
@@ -41,7 +46,7 @@ export function Avatar({ id, size = 20, lastActiveTime }: { id: string; size?: n
             />
           </TooltipTrigger>
           <TooltipContent>
-            <p>Active {lastActiveTime?.toRelative()}</p>
+            <p>{t("Active {time}", { time: lastActiveTime ? formatRelative(lastActiveTime) : "" })}</p>
           </TooltipContent>
         </Tooltip>
       )}

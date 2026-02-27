@@ -31,7 +31,7 @@ export function useGetPerformanceByDimension({
   sortBy,
   sortOrder,
 }: UseGetPerformanceByDimensionOptions): UseQueryResult<PaginatedPerformanceResponse> {
-  const { time, filters } = useStore();
+  const { time, filters, timezone } = useStore();
   const { selectedPercentile } = usePerformanceStore();
 
   const combinedFilters = useFilters ? [...filters, ...additionalFilters] : undefined;
@@ -50,6 +50,7 @@ export function useGetPerformanceByDimension({
       additionalFilters,
       sortBy,
       sortOrder,
+      timezone,
     ],
     queryFn: () => {
       return fetchPerformanceByDimension(site, {

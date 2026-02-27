@@ -1,0 +1,161 @@
+---
+title: Troubleshooting
+description: Common issues and solutions when the Rybbit tracking script isn't sending traffic
+---
+
+import { Callout } from 'fumadocs-ui/components/callout';
+import { Steps, Step } from 'fumadocs-ui/components/steps';
+
+If you've installed the Rybbit tracking script but aren't seeing any traffic in your dashboard, this guide will help you diagnose and fix common issues.
+
+## Check if the Script is Loaded
+
+The first step is to verify that the Rybbit script is properly loaded on your page.
+
+<Steps>
+<Step>
+### Open Your Browser's Developer Console
+
+Right-click anywhere on your webpage and select **Inspect** (or **Inspect Element**). Then click on the **Console** tab at the top of the panel that opens.
+
+Alternatively, you can use keyboard shortcuts:
+- **Windows/Linux**: Press `Ctrl + Shift + J` or `F12`
+- **Mac**: Press `Cmd + Option + J`
+</Step>
+
+<Step>
+### Type "rybbit" and Press Enter
+
+In the console, type `rybbit` and press Enter.
+
+**If the script is loaded correctly**, you'll see an object with functions like this:
+```javascript
+{event: ƒ, pageview: ƒ, identify: ƒ, setTraits: ƒ, clearUserId: ƒ, …}
+```
+
+**If the script is NOT loaded**, you'll see an error like:
+```
+Uncaught ReferenceError: rybbit is not defined
+```
+
+If you see the error, the script is not loading properly. Continue reading for common causes.
+</Step>
+</Steps>
+
+## Common Issues
+
+### Data Attributes Being Stripped
+
+Some platforms, content management systems, and tag managers automatically remove or sanitize `data-*` attributes (or all non-standard attributes) from script tags. This means the `data-site-id` attribute required by Rybbit gets removed, causing the script to fail silently.
+
+**Platforms known to strip attributes:**
+- Google Tag Manager
+- Some WordPress page builders
+- Certain website builders (Webflow, Wix, Squarespace in some configurations)
+- Some CDN or caching plugins
+
+**Solution:** Instead of using the standard script tag, inject the script dynamically using JavaScript:
+
+```javascript
+<script>
+  (function() {
+    var el = document.createElement("script");
+    el.src = "https://app.rybbit.io/api/script.js";
+    el.defer = true;
+    el.setAttribute("data-site-id", "YOUR_SITE_ID");
+    document.head.appendChild(el);
+  })();
+</script>
+```
+
+This approach creates the script element programmatically and sets the `data-site-id` attribute via JavaScript, which bypasses any HTML sanitization.
+
+<Callout type="info">
+For detailed Google Tag Manager setup instructions, see our [Google Tag Manager Guide](/docs/guides/google-tag-manager).
+</Callout>
+
+### Ad Blockers
+
+In rare cases, ad blockers may block the Rybbit tracking script. While Rybbit is privacy-focused and doesn't use cookies for tracking, some aggressive ad blockers may still flag analytics scripts.
+
+**How to check if an ad blocker is the issue:**
+1. Temporarily disable your ad blocker
+2. Refresh the page
+3. Check the console again for the `rybbit` object
+
+**Solutions:**
+- **For your own testing**: Disable your ad blocker or add your site to the allowlist
+- **For your visitors**: Consider setting up a [proxy](/docs/proxy-guide) to serve the script from your own domain, which significantly reduces the chance of being blocked
+
+### Script Not in the Right Location
+
+The Rybbit script should be placed in the `<head>` section of your HTML. If it's placed in the wrong location or loaded after the page has already finished loading, it may not work correctly.
+
+**Verify the script placement:**
+1. View your page source (right-click → **View Page Source**)
+2. Search for `rybbit` or `script.js`
+3. Confirm it appears within the `<head>...</head>` tags
+
+### Incorrect Site ID
+
+Double-check that your `data-site-id` matches the site ID shown in your Rybbit dashboard.
+
+1. Go to your Rybbit dashboard
+2. Navigate to your site's settings
+3. Copy the site ID and compare it with what's in your script tag
+
+### Content Security Policy (CSP) Blocking
+
+If your site has a strict Content Security Policy, it may block the Rybbit script from loading or executing.
+
+**Check for CSP errors:**
+1. Open the browser console
+2. Look for errors mentioning "Content Security Policy" or "CSP"
+
+**Solution:** Add the Rybbit script domain to your CSP headers:
+
+```
+script-src 'self' https://app.rybbit.io;
+connect-src 'self' https://app.rybbit.io;
+```
+
+If you're self-hosting Rybbit, replace `app.rybbit.io` with your Rybbit instance domain.
+
+### Script Loading Too Late in SPAs
+
+In single-page applications (React, Vue, Next.js, etc.), if the script loads after the initial page render, the automatic pageview might not fire.
+
+**Solution:** Ensure the script is in your root HTML template (like `index.html` or `_document.js` in Next.js), not dynamically imported in a component.
+
+For Next.js specifically, see our [Next.js Guide](/docs/guides/nextjs).
+
+## Testing Your Installation
+
+Once you've made changes, verify that tracking is working:
+
+1. **Check the console**: Type `rybbit` to confirm the object exists
+2. **Trigger a test event**: In the console, run:
+   ```javascript
+   rybbit.event("test_event")
+   ```
+3. **Check your dashboard**: Navigate to the Events tab in your Rybbit dashboard and look for "test_event" (it may take a few seconds to appear)
+4. **Check the Network tab**: In browser dev tools, go to the Network tab, filter by "track" or "rybbit", and verify requests are being sent with 200 status codes
+
+## Still Having Issues?
+
+If you've tried all the above and are still not seeing traffic:
+
+1. **Check the browser Network tab** for any failed requests to your Rybbit instance
+2. **Verify your site ID** is correct in the dashboard
+3. **Check if traffic is being filtered** - review your [IP exclusions](/docs/hiding-own-traffic) and [country exclusions](/docs/filter-traffic) to ensure your traffic isn't being blocked
+4. **For self-hosted instances** - ensure your Rybbit server is running and accessible
+
+---
+
+**Related Documentation:**
+- [Tracking Script Installation](/docs/script)
+- [Track Events](/docs/track-events)
+- [Proxy Guide](/docs/proxy-guide)
+- [Google Tag Manager Guide](/docs/guides/google-tag-manager)
+- [Hide Your Own Traffic](/docs/hiding-own-traffic)
+- [Filter Traffic](/docs/filter-traffic)

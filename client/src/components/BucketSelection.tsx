@@ -3,25 +3,26 @@
 import { useStore } from "@/lib/store";
 import { SelectItem, Select, SelectContent, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DateTime } from "luxon";
+import { useExtracted } from "next-intl";
 import { Time } from "./DateSelector/types";
 import { TimerReset } from "lucide-react";
 
-const getOptions = (time: Time) => {
+const getOptions = (time: Time, t: (key: string) => string) => {
   if (time.mode === "past-minutes") {
     if (time.pastMinutesStart >= 1440) {
       return (
         <SelectContent>
           <SelectItem size="sm" value="minute">
-            Min
+            {t("Min")}
           </SelectItem>
           <SelectItem size="sm" value="five_minutes">
-            5 Min
+            {t("5 Min")}
           </SelectItem>
           <SelectItem size="sm" value="fifteen_minutes">
-            15 Min
+            {t("15 Min")}
           </SelectItem>
           <SelectItem size="sm" value="hour">
-            Hour
+            {t("Hour")}
           </SelectItem>
         </SelectContent>
       );
@@ -30,7 +31,7 @@ const getOptions = (time: Time) => {
       return (
         <SelectContent>
           <SelectItem size="sm" value="hour">
-            Hour
+            {t("Hour")}
           </SelectItem>
         </SelectContent>
       );
@@ -39,7 +40,7 @@ const getOptions = (time: Time) => {
     return (
       <SelectContent>
         <SelectItem size="sm" value="minute">
-          Min
+          {t("Min")}
         </SelectItem>
       </SelectContent>
     );
@@ -48,16 +49,16 @@ const getOptions = (time: Time) => {
     return (
       <SelectContent>
         <SelectItem size="sm" value="minute">
-          Min
+          {t("Min")}
         </SelectItem>
         <SelectItem size="sm" value="five_minutes">
-          5 Min
+          {t("5 Min")}
         </SelectItem>
         <SelectItem size="sm" value="fifteen_minutes">
-          15 Min
+          {t("15 Min")}
         </SelectItem>
         <SelectItem size="sm" value="hour">
-          Hour
+          {t("Hour")}
         </SelectItem>
       </SelectContent>
     );
@@ -66,13 +67,13 @@ const getOptions = (time: Time) => {
     return (
       <SelectContent>
         <SelectItem size="sm" value="fifteen_minutes">
-          15 Min
+          {t("15 Min")}
         </SelectItem>
         <SelectItem size="sm" value="hour">
-          Hour
+          {t("Hour")}
         </SelectItem>
         <SelectItem size="sm" value="day">
-          Day
+          {t("Day")}
         </SelectItem>
       </SelectContent>
     );
@@ -81,13 +82,13 @@ const getOptions = (time: Time) => {
     return (
       <SelectContent>
         <SelectItem size="sm" value="hour">
-          Hour
+          {t("Hour")}
         </SelectItem>
         <SelectItem size="sm" value="day">
-          Day
+          {t("Day")}
         </SelectItem>
         <SelectItem size="sm" value="week">
-          Week
+          {t("Week")}
         </SelectItem>
       </SelectContent>
     );
@@ -96,13 +97,13 @@ const getOptions = (time: Time) => {
     return (
       <SelectContent>
         <SelectItem size="sm" value="day">
-          Day
+          {t("Day")}
         </SelectItem>
         <SelectItem size="sm" value="week">
-          Week
+          {t("Week")}
         </SelectItem>
         <SelectItem size="sm" value="month">
-          Month
+          {t("Month")}
         </SelectItem>
       </SelectContent>
     );
@@ -115,37 +116,37 @@ const getOptions = (time: Time) => {
       <SelectContent>
         {timeRangeLength <= 7 && (
           <SelectItem size="sm" value="five_minutes">
-            5 Min
+            {t("5 Min")}
           </SelectItem>
         )}
         {timeRangeLength <= 14 && (
           <>
             <SelectItem size="sm" value="ten_minutes">
-              10 Min
+              {t("10 Min")}
             </SelectItem>
             <SelectItem size="sm" value="fifteen_minutes">
-              15 Min
+              {t("15 Min")}
             </SelectItem>
           </>
         )}
         {timeRangeLength <= 30 && (
           <SelectItem size="sm" value="hour">
-            Hour
+            {t("Hour")}
           </SelectItem>
         )}
         {timeRangeLength > 1 && (
           <SelectItem size="sm" value="day">
-            Day
+            {t("Day")}
           </SelectItem>
         )}
         {timeRangeLength >= 28 && (
           <SelectItem size="sm" value="week">
-            Week
+            {t("Week")}
           </SelectItem>
         )}
         {timeRangeLength >= 60 && (
           <SelectItem size="sm" value="month">
-            Month
+            {t("Month")}
           </SelectItem>
         )}
       </SelectContent>
@@ -154,6 +155,7 @@ const getOptions = (time: Time) => {
 };
 
 export function BucketSelection() {
+  const t = useExtracted();
   const { bucket, setBucket, time } = useStore();
 
   return (
@@ -164,7 +166,7 @@ export function BucketSelection() {
           <SelectValue />
         </div>
       </SelectTrigger>
-      {getOptions(time)}
+      {getOptions(time, t)}
     </Select>
   );
 }

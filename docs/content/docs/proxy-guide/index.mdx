@@ -1,0 +1,153 @@
+---
+title: Proxy Setup Guide
+description: Bypass ad blockers and improve tracking accuracy by proxying Rybbit through your own domain
+---
+
+import { Cards, Card } from 'fumadocs-ui/components/card';
+import { Callout } from 'fumadocs-ui/components/callout';
+import {
+  SiAstro,
+  SiCloudflare,
+  SiExpress,
+  SiLaravel,
+  SiNextdotjs,
+  SiNginx,
+  SiVercel
+} from '@icons-pack/react-simple-icons';
+
+Proxying Rybbit's tracking script through your own domain helps bypass ad blockers and improves tracking accuracy by making all analytics requests appear as first-party traffic.
+
+## What is Proxy Setup?
+
+When you add Rybbit's tracking script directly to your website using the default installation:
+
+```html
+<script src="https://app.rybbit.io/api/script.js" async data-site-id="YOUR_SITE_ID"></script>
+```
+
+The browser loads the script from `app.rybbit.io`, which ad blockers can identify and block as third-party analytics. Even though Rybbit is privacy-focused and doesn't use cookies, some ad blockers use aggressive blocking rules that target any analytics domains.
+
+**Proxying solves this** by serving the tracking script and handling tracking requests through your own domain (e.g., `yourdomain.com/analytics/script.js`), making all tracking appear as first-party traffic.
+
+<Callout type="info">
+Rybbit is fully compliant with GDPR, CCPA, and other privacy regulations. It uses cookieless tracking based on IP + User Agent hashing with optional daily rotating salts. Proxying is about improving data accuracy, not circumventing privacy laws.
+</Callout>
+
+## Why Proxy Rybbit?
+
+### Improve Tracking Accuracy
+
+Ad blockers are becoming increasingly aggressive and may block analytics scripts regardless of their privacy practices. By proxying through your own domain:
+
+- **Bypass ad blocker detection**: Requests appear as first-party traffic to your own domain
+- **Increase data completeness**: Typical improvement of 10-30% in tracked sessions
+- **Maintain accurate metrics**: Get a true picture of your website's performance
+
+### Stay Privacy-Compliant
+
+Proxying doesn't compromise user privacy:
+
+- No cookies are used (Rybbit remains cookieless)
+- User data is still processed according to your privacy policy
+- GDPR, CCPA, and other privacy regulations remain fully satisfied
+- Users can still opt out through browser settings or Do Not Track
+
+### Better Performance (Optional)
+
+With proper caching configuration, proxying can also improve performance:
+
+- Serve scripts from your CDN or edge network
+- Reduce DNS lookups (one less domain to resolve)
+- Cache static scripts closer to your users
+
+## How It Works
+
+Here's the flow when you proxy Rybbit:
+
+1. **User visits your website**: Your HTML includes the tracking script from your domain
+   ```html
+   <script src="https://yourdomain.com/analytics/script.js" data-site-id="123"></script>
+   ```
+
+2. **Script loads from your domain**: Your server proxies the request to Rybbit's servers
+   - Request: `yourdomain.com/analytics/script.js` → proxied to → `app.rybbit.io/api/script.js`
+
+3. **Script auto-discovers analytics host**: The Rybbit script automatically detects the domain it was loaded from
+   ```typescript
+   // The script extracts the host from its own src attribute
+   const analyticsHost = src.split("/script.js")[0];
+   // Result: "https://yourdomain.com/analytics"
+   ```
+
+4. **Tracking data sent through your domain**: All analytics events are sent to your domain and proxied to Rybbit
+   - Event tracking: `yourdomain.com/analytics/track` → proxied to → `app.rybbit.io/api/track`
+   - Session replay: `yourdomain.com/analytics/session-replay/record/{siteId}` → proxied
+   - Configuration: `yourdomain.com/analytics/site/tracking-config/{siteId}` → proxied
+
+5. **Data appears in your Rybbit dashboard**: No changes needed in the Rybbit interface
+
+<Callout type="warn">
+**Bandwidth Consideration**: All tracking requests will flow through your server infrastructure, which will increase bandwidth usage. For most sites this is minimal (typically 10-50KB per session), but consider this when evaluating hosting costs.
+</Callout>
+
+## Choose Your Framework
+
+Select the framework or platform that matches your setup:
+
+<Cards>
+  <Card
+    icon={<SiNextdotjs />}
+    title="Next.js"
+    href="/docs/proxy-guide/next-js"
+    className="flex items-center gap-2"
+  />
+  <Card
+    icon={<SiNginx />}
+    title="Nginx"
+    href="/docs/proxy-guide/nginx"
+    className="flex items-center gap-2"
+  />
+  <Card
+    title="Caddy"
+    href="/docs/proxy-guide/caddy"
+    className="flex items-center gap-2"
+  />
+  <Card
+    icon={<SiVercel />}
+    title="Vercel"
+    href="/docs/proxy-guide/vercel"
+    className="flex items-center gap-2"
+  />
+  <Card
+    icon={<SiExpress />}
+    title="Express.js"
+    href="/docs/proxy-guide/express"
+    className="flex items-center gap-2"
+  />
+  <Card
+    icon={<SiLaravel />}
+    title="Laravel"
+    href="/docs/proxy-guide/laravel"
+    className="flex items-center gap-2"
+  />
+  <Card
+    icon={<SiAstro />}
+    title="Astro"
+    href="/docs/proxy-guide/astro"
+    className="flex items-center gap-2"
+  />
+  <Card
+    icon={<SiCloudflare />}
+    title="Cloudflare Workers"
+    href="/docs/proxy-guide/cloudflare-workers"
+    className="flex items-center gap-2"
+  />
+</Cards>
+
+## Generic Implementation
+
+If your framework isn't listed above, check out our [generic implementation guide](/docs/proxy-guide/get-started) that covers the core concepts applicable to any reverse proxy or server setup.
+
+## Need Help?
+
+If you encounter issues during setup, check our [troubleshooting guide](/docs/proxy-guide/troubleshooting) for common problems and solutions.

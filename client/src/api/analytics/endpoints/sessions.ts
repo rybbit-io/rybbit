@@ -37,9 +37,14 @@ export type GetSessionsResponse = {
   events: number;
   errors: number;
   outbound: number;
+  button_clicks: number;
+  copies: number;
+  form_submits: number;
+  input_changes: number;
   ip: string;
   lat: number;
   lon: number;
+  has_replay: number;
 }[];
 
 // Session details type
@@ -61,7 +66,9 @@ export interface SessionDetails {
   channel: string;
   session_end: string;
   session_start: string;
+  session_duration: number;
   pageviews: number;
+  events: number;
   entry_page: string;
   exit_page: string;
   ip: string;
@@ -111,7 +118,11 @@ export type LiveSessionLocation = {
 
 export interface SessionsParams extends CommonApiParams, PaginationParams {
   userId?: string;
+  sessionId?: string;
   identifiedOnly?: boolean;
+  minPageviews?: number;
+  minEvents?: number;
+  minDuration?: number;
 }
 
 export interface SessionDetailsParams {
@@ -134,11 +145,15 @@ export async function fetchSessions(
     page: params.page,
     limit: params.limit,
     user_id: params.userId,
+    session_id: params.sessionId,
     identified_only: params.identifiedOnly,
+    min_pageviews: params.minPageviews,
+    min_events: params.minEvents,
+    min_duration: params.minDuration,
   };
 
   const response = await authedFetch<{ data: GetSessionsResponse }>(
-    `/sessions/${site}`,
+    `/sites/${site}/sessions`,
     queryParams
   );
   return response;
@@ -162,7 +177,7 @@ export async function fetchSession(
   }
 
   const response = await authedFetch<{ data: SessionPageviewsAndEvents }>(
-    `/sessions/${params.sessionId}/${site}`,
+    `/sites/${site}/sessions/${params.sessionId}`,
     queryParams
   );
   return response;
@@ -177,7 +192,7 @@ export async function fetchSessionLocations(
   params: CommonApiParams
 ): Promise<LiveSessionLocation[]> {
   const response = await authedFetch<{ data: LiveSessionLocation[] }>(
-    `/session-locations/${site}`,
+    `/sites/${site}/session-locations`,
     toQueryParams(params)
   );
   return response.data;

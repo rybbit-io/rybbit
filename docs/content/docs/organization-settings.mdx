@@ -1,0 +1,45 @@
+---
+title: Organization settings
+description: Manage your organization, team members, roles, and permissions
+---
+
+import { Callout } from 'fumadocs-ui/components/callout';
+
+Access organization settings by clicking your profile icon and selecting "Organization Settings".
+
+![organization settings](/docs/organization-settings.png)
+
+## Organization
+
+### Organization Name
+
+Update your organization's display name. Only the organization owner can change this setting.
+
+### Delete Organization
+
+Permanently delete the organization and all associated data including sites, analytics, reports, and member associations.
+
+<Callout type="warn">
+  This action cannot be undone. You must type the organization name to confirm deletion. If you have an active subscription, you must cancel it before deleting the organization.
+</Callout>
+
+## Members
+
+View and manage all members in your organization. The members table shows:
+- **Name** - Member's display name
+- **Email** - Member's email address
+- **Role** - Owner, Admin, or Member
+- **Site Access** - Which sites the member can access
+- **Joined** - When they joined the organization
+
+### Member Roles
+
+| Role | Permissions |
+|------|-------------|
+| **Owner** | Full access to all features, can manage members, billing, and delete the organization |
+| **Admin** | Can manage members and access all sites, cannot delete the organization or manage billing |
+| **Member** | Can view analytics for assigned sites only, cannot manage settings or other members |
+
+### Inviting Members
+
+Owners can invite new members or create user accounts. See the [Inviting Users](/docs/inviting-users) guide for detailed instructions.

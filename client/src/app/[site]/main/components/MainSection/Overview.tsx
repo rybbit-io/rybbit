@@ -1,17 +1,18 @@
 "use client";
 
 import { Skeleton } from "@/components/ui/skeleton";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn, formatSecondsAsMinutesAndSeconds } from "@/lib/utils";
 import NumberFlow from "@number-flow/react";
-import { TrendingDown, TrendingUp } from "lucide-react";
+import { ArrowDown, ArrowUp, ChevronDown, ChevronUp } from "lucide-react";
+import { useExtracted } from "next-intl";
 import { useState } from "react";
 import { useGetOverview } from "../../../../../api/analytics/hooks/useGetOverview";
 import { useGetOverviewBucketed } from "../../../../../api/analytics/hooks/useGetOverviewBucketed";
 import { StatType, useStore } from "../../../../../lib/store";
 import { SparklinesChart } from "./SparklinesChart";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
-const ChangePercentage = ({
+export const ChangePercentage = ({
   current,
   previous,
   reverseColor,
@@ -36,11 +37,11 @@ const ChangePercentage = ({
   return (
     <div
       className={cn(
-        "text-xs flex items-center gap-1",
+        "text-xs flex items-center gap-0.5",
         (reverseColor ? -change : change) > 0 ? "text-green-400" : "text-red-400"
       )}
     >
-      {change > 0 ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
+      {change > 0 ? <ArrowUp className="w-3 h-3" strokeWidth={3} /> : <ArrowDown className="w-3 h-3" strokeWidth={3} />}
       {Math.abs(change).toFixed(1)}%
     </div>
   );
@@ -105,7 +106,7 @@ const Stat = ({
       onMouseLeave={() => setIsHovering(false)}
     >
       <div className="flex flex-col px-3 py-2">
-        <div className="text-sm font-medium text-muted-foreground">{title}</div>
+        <div className="text-xs font-medium text-muted-foreground">{title}</div>
         <div className="text-2xl font-medium flex gap-2 items-center justify-between">
           {isLoading ? (
             <>
@@ -154,6 +155,7 @@ const Stat = ({
 
 export function Overview() {
   const { site } = useStore();
+  const t = useExtracted();
 
   // Current period - automatically handles both regular time-based and past-minutes queries
   const {
@@ -193,17 +195,17 @@ export function Overview() {
 
   return (
     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-0 items-center">
-      <Stat title="Unique Users" id="users" value={currentUsers} previous={previousUsers} isLoading={isLoading} />
-      <Stat title="Sessions" id="sessions" value={currentSessions} previous={previousSessions} isLoading={isLoading} />
+      <Stat title={t("Unique Users")} id="users" value={currentUsers} previous={previousUsers} isLoading={isLoading} />
+      <Stat title={t("Sessions")} id="sessions" value={currentSessions} previous={previousSessions} isLoading={isLoading} />
       <Stat
-        title="Pageviews"
+        title={t("Pageviews")}
         id="pageviews"
         value={currentPageviews}
         previous={previousPageviews}
         isLoading={isLoading}
       />
       <Stat
-        title="Pages per Session"
+        title={t("Pages per Session")}
         id="pages_per_session"
         value={currentPagesPerSession}
         previous={previousPagesPerSession}
@@ -211,7 +213,7 @@ export function Overview() {
         isLoading={isLoading}
       />
       <Stat
-        title="Bounce Rate"
+        title={t("Bounce Rate")}
         id="bounce_rate"
         value={currentBounceRate}
         previous={previousBounceRate}
@@ -221,7 +223,7 @@ export function Overview() {
         reverseColor={true}
       />
       <Stat
-        title="Session Duration"
+        title={t("Session Duration")}
         id="session_duration"
         value={currentSessionDuration}
         previous={previousSessionDuration}

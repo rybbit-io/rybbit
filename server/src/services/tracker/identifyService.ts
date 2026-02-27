@@ -2,6 +2,7 @@ import { FastifyReply, FastifyRequest } from "fastify";
 import { eq, and } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "../../db/postgres/postgres.js";
+import { clickhouse } from "../../db/clickhouse/clickhouse.js";
 import { userProfiles, userAliases } from "../../db/postgres/schema.js";
 import { siteConfig } from "../../lib/siteConfig.js";
 import { userIdService } from "../userId/userIdService.js";
@@ -21,7 +22,7 @@ const identifyPayloadSchema = z.object({
     .record(z.unknown())
     .optional()
     .refine(
-      (traits) => {
+      traits => {
         if (!traits) return true;
         const size = new TextEncoder().encode(JSON.stringify(traits)).length;
         return size <= MAX_TRAITS_SIZE;
@@ -30,6 +31,29 @@ const identifyPayloadSchema = z.object({
     ),
   is_new_identify: z.boolean().default(true),
 });
+
+// Backfill window limits partition scanning to recent data only.
+// Anonymous events older than this are unlikely to belong to the identifying user.
+const BACKFILL_DAYS = 30;
+
+async function backfillIdentifiedUserId(
+  siteId: number,
+  anonymousId: string,
+  userId: string
+) {
+  try {
+    const tables = ["events", "session_replay_events", "session_replay_metadata"];
+    for (const table of tables) {
+      await clickhouse.command({
+        query: `ALTER TABLE ${table} UPDATE identified_user_id = {userId: String} WHERE site_id = {siteId: UInt16} AND user_id = {anonymousId: String} AND identified_user_id = '' AND timestamp >= now() - INTERVAL {days: UInt16} DAY`,
+        query_params: { userId, siteId, anonymousId, days: BACKFILL_DAYS },
+      });
+    }
+    logger.info({ siteId, anonymousId, userId }, "Backfilled identified_user_id in ClickHouse");
+  } catch (error) {
+    logger.error({ siteId, anonymousId, userId, error }, "Error backfilling identified_user_id");
+  }
+}
 
 export async function handleIdentify(request: FastifyRequest, reply: FastifyReply) {
   try {
@@ -78,19 +102,14 @@ export async function handleIdentify(request: FastifyRequest, reply: FastifyRepl
             anonymousId,
             userId: user_id,
           });
-
-          logger.info({ siteId, anonymousId, userId: user_id }, "Created new user alias");
+          // Fire-and-forget: backfill identified_user_id on past anonymous events
+          backfillIdentifiedUserId(siteId, anonymousId, user_id);
         } else if (existingAlias[0].userId !== user_id) {
-          // Anonymous ID already linked to a different user - log but don't error
-          logger.warn(
-            {
-              siteId,
-              anonymousId,
-              existingUserId: existingAlias[0].userId,
-              newUserId: user_id,
-            },
-            "Anonymous ID already linked to different user"
-          );
+          // Update alias to point to new user
+          await db
+            .update(userAliases)
+            .set({ userId: user_id })
+            .where(and(eq(userAliases.siteId, siteId), eq(userAliases.anonymousId, anonymousId)));
         }
       } catch (error) {
         // Handle unique constraint violation gracefully (race condition)
@@ -114,9 +133,7 @@ export async function handleIdentify(request: FastifyRequest, reply: FastifyRepl
             ...((existingProfile[0].traits as Record<string, unknown>) || {}),
             ...traits,
           };
-          const mergedTraits = Object.fromEntries(
-            Object.entries(merged).filter(([_, value]) => value !== null)
-          );
+          const mergedTraits = Object.fromEntries(Object.entries(merged).filter(([_, value]) => value !== null));
 
           await db
             .update(userProfiles)
@@ -125,20 +142,14 @@ export async function handleIdentify(request: FastifyRequest, reply: FastifyRepl
               updatedAt: new Date().toISOString(),
             })
             .where(and(eq(userProfiles.siteId, siteId), eq(userProfiles.userId, user_id)));
-
-          logger.info({ siteId, userId: user_id }, "Updated user profile traits");
         } else {
           // Create new profile (filter out null values)
-          const filteredTraits = Object.fromEntries(
-            Object.entries(traits).filter(([_, value]) => value !== null)
-          );
+          const filteredTraits = Object.fromEntries(Object.entries(traits).filter(([_, value]) => value !== null));
           await db.insert(userProfiles).values({
             siteId,
             userId: user_id,
             traits: filteredTraits,
           });
-
-          logger.info({ siteId, userId: user_id }, "Created new user profile");
         }
       } catch (error) {
         logger.error({ siteId, userId: user_id, error }, "Error updating user profile");

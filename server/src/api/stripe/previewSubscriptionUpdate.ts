@@ -58,18 +58,17 @@ export async function previewSubscriptionUpdate(
       return reply.status(404).send({ error: "Organization or Stripe customer ID not found" });
     }
 
-    // 3. Get the active subscription
-    const subscriptions = await stripe!.subscriptions.list({
-      customer: org.stripeCustomerId,
-      status: "active",
-      limit: 1,
-    });
+    // 3. Get the active or trialing subscription
+    const [activeSubscriptions, trialingSubscriptions] = await Promise.all([
+      stripe!.subscriptions.list({ customer: org.stripeCustomerId, status: "active", limit: 1 }),
+      stripe!.subscriptions.list({ customer: org.stripeCustomerId, status: "trialing", limit: 1 }),
+    ]);
 
-    if (subscriptions.data.length === 0) {
+    const subscription = activeSubscriptions.data[0] ?? trialingSubscriptions.data[0];
+
+    if (!subscription) {
       return reply.status(404).send({ error: "No active subscription found" });
     }
-
-    const subscription = subscriptions.data[0];
     const currentItem = subscription.items.data[0];
     const currentPeriodEnd = currentItem.current_period_end;
 

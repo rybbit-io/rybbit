@@ -45,7 +45,7 @@ export async function refreshGSCToken(siteId: number): Promise<string | null> {
     });
 
     if (!tokenResponse.ok) {
-      logger.error(await tokenResponse.text(), "Failed to refresh GSC token");
+      logger.error(`Failed to refresh GSC token: ${await tokenResponse.text()}`);
       return null;
     }
 
@@ -86,7 +86,7 @@ export async function getGSCProperties(accessToken: string): Promise<string[]> {
     });
 
     if (!response.ok) {
-      logger.error(await response.text(), "Failed to fetch GSC properties");
+      logger.error(`Failed to fetch GSC properties: ${await response.text()}`);
       return [];
     }
 

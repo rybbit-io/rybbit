@@ -6,7 +6,7 @@ import { getFilterStatement } from "./utils/getFilterStatement.js";
 
 interface GetPageTitlesRequest {
   Params: {
-    site: string;
+    siteId: string;
   };
   Querystring: FilterParams<{
     limit?: number;
@@ -33,7 +33,7 @@ const getPageTitlesQuery = (request: FastifyRequest<GetPageTitlesRequest>, isCou
   const { filters, limit, page } = request.query;
 
   const timeStatement = getTimeStatement(request.query);
-  const filterStatement = getFilterStatement(filters, Number(request.params.site), timeStatement);
+  const filterStatement = getFilterStatement(filters, Number(request.params.siteId), timeStatement);
 
   let validatedLimit: number | null = null;
   if (!isCountQuery && limit !== undefined) {
@@ -122,7 +122,7 @@ const getPageTitlesQuery = (request: FastifyRequest<GetPageTitlesRequest>, isCou
 };
 
 export async function getPageTitles(req: FastifyRequest<GetPageTitlesRequest>, res: FastifyReply) {
-  const site = req.params.site;
+  const site = req.params.siteId;
   const { page } = req.query;
 
   const isPaginatedRequest = page !== undefined; // True if page is present

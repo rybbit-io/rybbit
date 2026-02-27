@@ -5,6 +5,7 @@ import { db } from "../db/postgres/postgres.js";
 import { organization } from "../db/postgres/schema.js";
 import { APPSUMO_TIER_LIMITS, DEFAULT_EVENT_LIMIT, getStripePrices, StripePlan } from "./const.js";
 import { stripe } from "./stripe.js";
+import { logger } from "./logger/logger.js";
 
 export interface AppSumoSubscriptionInfo {
   source: "appsumo";
@@ -15,7 +16,6 @@ export interface AppSumoSubscriptionInfo {
   status: "active";
   interval: "lifetime";
   cancelAtPeriodEnd: false;
-  isPro: false;
 }
 
 export interface StripeSubscriptionInfo {
@@ -29,8 +29,8 @@ export interface StripeSubscriptionInfo {
   status: string;
   interval: string;
   cancelAtPeriodEnd: boolean;
-  isPro: boolean;
   createdAt: Date;
+  trialEnd?: Date;
 }
 
 export interface FreeSubscriptionInfo {
@@ -50,10 +50,26 @@ export interface OverrideSubscriptionInfo {
   status: "active";
   interval: "month" | "year" | "lifetime";
   cancelAtPeriodEnd: false;
-  isPro: boolean;
 }
 
-export type SubscriptionInfo = AppSumoSubscriptionInfo | StripeSubscriptionInfo | FreeSubscriptionInfo | OverrideSubscriptionInfo;
+export interface CustomPlanSubscriptionInfo {
+  source: "custom";
+  planName: "custom";
+  eventLimit: number;
+  memberLimit: number | null; // null = unlimited
+  siteLimit: number | null; // null = unlimited
+  periodStart: string;
+  status: "active";
+  interval: "lifetime";
+  cancelAtPeriodEnd: false;
+}
+
+export type SubscriptionInfo =
+  | AppSumoSubscriptionInfo
+  | StripeSubscriptionInfo
+  | FreeSubscriptionInfo
+  | OverrideSubscriptionInfo
+  | CustomPlanSubscriptionInfo;
 
 /**
  * Gets the first day of the current month in YYYY-MM-DD format
@@ -86,7 +102,6 @@ export async function getAppSumoSubscription(organizationId: string): Promise<Ap
         status: "active",
         interval: "lifetime",
         cancelAtPeriodEnd: false,
-        isPro: false,
       };
     }
 
@@ -114,8 +129,8 @@ export async function getOverrideSubscription(organizationId: string): Promise<O
       return null;
     }
 
-    // Check if it's an AppSumo tier override (e.g., "appsumo-1", "appsumo-2", "appsumo-3")
-    const appsumoMatch = org.planOverride.match(/^appsumo-([123])$/);
+    // Check if it's an AppSumo tier override (e.g., "appsumo-1", "appsumo-2", "appsumo-3", "appsumo-4", "appsumo-5", "appsumo-6")
+    const appsumoMatch = org.planOverride.match(/^appsumo-([123456])$/);
     if (appsumoMatch) {
       const tier = appsumoMatch[1] as keyof typeof APPSUMO_TIER_LIMITS;
       const eventLimit = APPSUMO_TIER_LIMITS[tier];
@@ -129,7 +144,6 @@ export async function getOverrideSubscription(organizationId: string): Promise<O
         status: "active",
         interval: "lifetime",
         cancelAtPeriodEnd: false,
-        isPro: false,
       };
     }
 
@@ -150,7 +164,6 @@ export async function getOverrideSubscription(organizationId: string): Promise<O
       status: "active",
       interval: planDetails.interval,
       cancelAtPeriodEnd: false,
-      isPro: planDetails.name.includes("pro"),
     };
   } catch (error) {
     console.error("Error checking plan override:", error);
@@ -162,9 +175,7 @@ export async function getOverrideSubscription(organizationId: string): Promise<O
  * Gets Stripe subscription info for an organization
  * @returns Stripe subscription info or null if no active subscription found
  */
-export async function getStripeSubscription(
-  stripeCustomerId: string | null
-): Promise<StripeSubscriptionInfo | null> {
+export async function getStripeSubscription(stripeCustomerId: string | null): Promise<StripeSubscriptionInfo | null> {
   if (!stripeCustomerId) {
     return null;
   }
@@ -177,11 +188,26 @@ export async function getStripeSubscription(
       expand: ["data.plan.product"],
     });
 
+    let subscription: Stripe.Subscription;
+    let isTrial = false;
+
     if (subscriptions.data.length === 0) {
-      return null;
+      // Check for trialing subscriptions
+      const trialSubs = await (stripe as Stripe).subscriptions.list({
+        customer: stripeCustomerId,
+        status: "trialing",
+        limit: 1,
+        expand: ["data.plan.product"],
+      });
+      if (trialSubs.data.length === 0) {
+        return null;
+      }
+      subscription = trialSubs.data[0];
+      isTrial = true;
+    } else {
+      subscription = subscriptions.data[0];
     }
 
-    const subscription = subscriptions.data[0];
     const subscriptionItem = subscription.items.data[0];
     const priceId = subscriptionItem.price.id;
 
@@ -207,8 +233,8 @@ export async function getStripeSubscription(
         status: subscription.status,
         interval: subscriptionItem.price.recurring?.interval ?? "unknown",
         cancelAtPeriodEnd: subscription.cancel_at_period_end,
-        isPro: false,
         createdAt: new Date(subscription.created * 1000),
+        ...(isTrial && subscription.trial_end ? { trialEnd: new Date(subscription.trial_end * 1000) } : {}),
       };
     }
 
@@ -218,9 +244,7 @@ export async function getStripeSubscription(
 
     // If subscription started within current month, use that date; otherwise use month start
     const periodStart =
-      subscriptionStartDate >= currentMonthStart
-        ? subscriptionStartDate.toISODate() as string
-        : getStartOfMonth();
+      subscriptionStartDate >= currentMonthStart ? (subscriptionStartDate.toISODate() as string) : getStartOfMonth();
 
     return {
       source: "stripe",
@@ -233,8 +257,8 @@ export async function getStripeSubscription(
       status: subscription.status,
       interval: subscriptionItem.price.recurring?.interval ?? "unknown",
       cancelAtPeriodEnd: subscription.cancel_at_period_end,
-      isPro: planDetails.name.includes("pro"),
       createdAt: new Date(subscription.created * 1000),
+      ...(isTrial && subscription.trial_end ? { trialEnd: new Date(subscription.trial_end * 1000) } : {}),
     };
   } catch (error) {
     console.error("Error fetching Stripe subscription:", error);
@@ -243,15 +267,57 @@ export async function getStripeSubscription(
 }
 
 /**
+ * Gets custom plan subscription info for an organization
+ * @returns Custom plan subscription info or null if no custom plan set
+ */
+export async function getCustomPlanSubscription(organizationId: string): Promise<CustomPlanSubscriptionInfo | null> {
+  try {
+    const orgResult = await db
+      .select({ customPlan: organization.customPlan })
+      .from(organization)
+      .where(eq(organization.id, organizationId))
+      .limit(1);
+
+    const org = orgResult[0];
+    if (!org?.customPlan) {
+      return null;
+    }
+
+    const cp = org.customPlan;
+
+    return {
+      source: "custom",
+      planName: "custom",
+      eventLimit: cp.events,
+      memberLimit: cp.members ?? null,
+      siteLimit: cp.websites ?? null,
+      periodStart: getStartOfMonth(),
+      status: "active",
+      interval: "lifetime",
+      cancelAtPeriodEnd: false,
+    };
+  } catch (error) {
+    console.error("Error checking custom plan:", error);
+    return null;
+  }
+}
+
+/**
  * Gets the best subscription for an organization
- * Priority: Override > AppSumo/Stripe (highest limit) > Free
+ * Priority: CustomPlan > Override > AppSumo/Stripe (highest limit) > Free
  * @returns The active subscription, or free tier if none found
  */
 export async function getBestSubscription(
   organizationId: string,
   stripeCustomerId: string | null
 ): Promise<SubscriptionInfo> {
-  // Check override first - always wins
+  // Check custom plan first - highest priority
+  const customSub = await getCustomPlanSubscription(organizationId);
+  if (customSub) {
+    return customSub;
+  }
+
+  // Check override next
   const overrideSub = await getOverrideSubscription(organizationId);
   if (overrideSub) {
     return overrideSub;
@@ -266,7 +332,7 @@ export async function getBestSubscription(
   // If we have both, return the one with higher event limit
   if (appsumoSub && stripeSub) {
     const bestSub = appsumoSub.eventLimit >= stripeSub.eventLimit ? appsumoSub : stripeSub;
-    console.log(
+    logger.info(
       `Organization has both AppSumo (${appsumoSub.eventLimit} events) and Stripe (${stripeSub.eventLimit} events). Using ${bestSub.source} with ${bestSub.eventLimit} events.`
     );
     return bestSub;

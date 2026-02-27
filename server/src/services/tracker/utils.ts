@@ -8,8 +8,7 @@ import { TrackingPayload } from "./types.js";
 import { SiteConfigData } from "../../lib/siteConfig.js";
 
 export type TotalTrackingPayload = TrackingPayload & {
-  userId: string; // Always the device fingerprint (same as anonymousId)
-  anonymousId: string; // Always the hash of IP+UserAgent (device fingerprint)
+  userId: string; // Always the device fingerprint
   identifiedUserId: string; // Custom user ID when identified, empty string otherwise
   timestamp: string;
   type?: string;
@@ -93,7 +92,7 @@ export function clearSelfReferrer(referrer: string, hostname: string): string {
 // Create base tracking payload from request
 export async function createBasePayload(
   request: FastifyRequest,
-  eventType: "pageview" | "custom_event" | "performance" | "error" | "outbound" = "pageview",
+  eventType: "pageview" | "custom_event" | "performance" | "error" | "outbound" | "button_click" | "copy" | "form_submit" | "input_change" = "pageview",
   validatedBody: ValidatedTrackingPayload,
   siteConfiguration: SiteConfigData
 ): Promise<TotalTrackingPayload> {
@@ -129,7 +128,6 @@ export async function createBasePayload(
     timestamp: new Date().toISOString(),
     ua: userAgentParser(userAgent),
     userId: anonymousId, // Always the device fingerprint
-    anonymousId: anonymousId,
     identifiedUserId: identifiedUserId, // Custom user ID when identified
     storeIp: siteConfiguration.trackIp,
   } as any;

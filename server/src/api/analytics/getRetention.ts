@@ -21,12 +21,12 @@ interface ProcessedRetentionData {
 
 export const getRetention = async (
   req: FastifyRequest<{
-    Params: { site: string };
+    Params: { siteId: string };
     Querystring: { mode?: string; range?: string };
   }>,
   res: FastifyReply
 ) => {
-  const { site } = req.params;
+  const { siteId } = req.params;
   const { mode = "week", range = "90" } = req.query; // Default to weekly mode and 90 days range
 
   // Validate mode parameter
@@ -94,7 +94,7 @@ ORDER BY
     `,
     format: "JSONEachRow",
     query_params: {
-      siteId: Number(site),
+      siteId: Number(siteId),
       timeRange: timeRange,
     },
   });

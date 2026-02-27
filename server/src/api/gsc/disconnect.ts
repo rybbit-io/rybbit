@@ -12,21 +12,21 @@ import { logger } from "../../lib/logger/logger.js";
  */
 export async function disconnectGSC(req: FastifyRequest<DisconnectGSCRequest>, res: FastifyReply) {
   try {
-    const { site } = req.params;
-    const siteId = Number(site);
+    const { siteId } = req.params;
+    const numericSiteId = Number(siteId);
 
-    if (isNaN(siteId)) {
+    if (isNaN(numericSiteId)) {
       return res.status(400).send({ error: "Invalid site ID" });
     }
 
     // Check if user has access to this site
-    const hasAccess = await getUserHasAccessToSite(req, siteId);
+    const hasAccess = await getUserHasAccessToSite(req, numericSiteId);
     if (!hasAccess) {
       return res.status(403).send({ error: "Access denied" });
     }
 
     // Delete the connection
-    await db.delete(gscConnections).where(eq(gscConnections.siteId, siteId));
+    await db.delete(gscConnections).where(eq(gscConnections.siteId, numericSiteId));
 
     return res.send({ success: true });
   } catch (error) {

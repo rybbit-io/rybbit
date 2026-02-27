@@ -1,58 +1,109 @@
 ---
 title: Site settings
-description: Configure your site settings including public analytics, privacy options, domain changes, and site management
+description: Configure your site settings including privacy options, analytics features, traffic filtering, and more
 ---
 
-import Image from "next/image";
 import { Callout } from 'fumadocs-ui/components/callout';
 
-Access your site settings by navigating to the settings page in your site's Rybbit dashboard.
+Access your site settings by clicking the settings icon in your site's Rybbit dashboard.
 
-<Image src="/settings.png" alt="Site Settings" width={500} height={500} />
+![site settings](/docs/site-settings.png)
 
-## Public Analytics
+## Privacy & Security
 
-You can make your analytics public by enabling the "Public Analytics" option in your site settings. Once enabled, you can share the page link with anyone.
+### Public Analytics
 
-- External viewers will not be able to edit any of your settings or add/remove/edit any existing reports, funnels, or goals
-- Your other websites will not be affected
-- Viewers have read-only access to your analytics data
+Make your analytics publicly accessible by enabling the "Public Analytics" toggle.
 
-## Enhanced Privacy (User ID Salting)
+- External viewers have read-only access to your analytics data
+- Viewers cannot edit settings, reports, funnels, or goals
+- Your other websites are not affected
 
-Rybbit stores user IDs as a hashed combination of IP + user agent. This allows us to identify users across many sessions on the same device, but can be seen as storing personally identifiable data under GDPR.
+### User ID Salting
 
-You can enable enhanced privacy by turning on the "User ID Salting" option in your site settings.
+Rybbit stores user IDs as a hashed combination of IP + user agent. This allows identifying users across sessions, but may be considered storing personally identifiable data under GDPR.
 
-When enabled, Rybbit will forget about unique users every day. If a user visits your site 10 times in one day, Rybbit will count that as one user with 10 sessions. But if they visit once a day for 10 days, they will be seen as a new user every day.
+Enable "User ID Salting" to have Rybbit forget about unique users every day. If a user visits 10 times in one day, they count as one user with 10 sessions. But if they visit once a day for 10 days, they appear as a new user each day.
 
-### Downsides of enabling user ID salting:
+**Downsides of enabling user ID salting:**
+- User session history beyond 24 hours is not available
+- Unique user counts over periods longer than 24 hours will be inflated
+- The user retention page becomes effectively useless
 
-- You will no longer see user session history beyond 24 hours
-- Unique user count over a period longer than 24 hours will be inflated
-- The user retention page will effectively be useless
+### Block Bot Traffic
+
+Enable "Block Bot Traffic" to prevent traffic from known bots and crawlers from being tracked in your analytics.
+
+### Track IP Address
+
+Enable "Track IP Address" to store the IP address of visitors.
+
+<Callout type="warn">
+  This is not GDPR compliant. Only enable if you have a legitimate need and proper consent mechanisms in place.
+</Callout>
+
+## Analytics Features
+
+### Session Replay <span className="text-green-500 text-sm">(Pro)</span>
+
+Record and replay user sessions to understand user behavior. This feature allows you to see exactly how users interact with your site.
+
+### Web Vitals <span className="text-green-500 text-sm">(Standard)</span>
+
+Track Core Web Vitals metrics including:
+- **LCP** (Largest Contentful Paint)
+- **CLS** (Cumulative Layout Shift)
+- **INP** (Interaction to Next Paint)
+- **FCP** (First Contentful Paint)
+- **TTFB** (Time to First Byte)
+
+### Error Tracking <span className="text-green-500 text-sm">(Standard)</span>
+
+Capture JavaScript errors and exceptions from your site to identify and fix issues affecting your users.
+
+### Track Outbound Links
+
+Track when users click on external links leaving your site. Enabled by default.
+
+### Track URL Parameters
+
+Include query string parameters in page tracking. Enabled by default. Disable if you want cleaner URLs in your analytics or need to exclude sensitive parameters.
+
+### Track Initial Page View
+
+Automatically track the first page view when the tracking script loads. Enabled by default.
+
+### Track SPA Navigation
+
+Automatically track navigation in single-page applications (SPAs). Enabled by default. This detects URL changes via the History API and tracks them as page views.
 
 ## Traffic Filtering
 
-You can filter unwanted traffic from your analytics using IP and country exclusions. See the [Filter Traffic](/docs/filter-traffic) guide for detailed information on:
+### IP Exclusions
 
-- **IP Exclusions**: Block specific IP addresses or ranges (supports CIDR notation and IPv4 ranges)
-- **Country Exclusions**: Block all traffic from specific countries using ISO country codes
+Block specific IP addresses or ranges from being tracked. Supports:
+- Individual IP addresses (e.g., `192.168.1.1`)
+- CIDR notation (e.g., `192.168.1.0/24`)
+- IPv4 ranges (e.g., `192.168.1.1-192.168.1.255`)
+
+### Country Exclusions
+
+Block all traffic from specific countries using ISO country codes (e.g., `US`, `DE`, `FR`).
 
 Both filtering methods work at the server level, ensuring blocked traffic never reaches your analytics database.
 
-## Changing Domains
+## Google Search Console <span className="text-green-500 text-sm">(Cloud)</span>
 
-You can update the domain of your site directly from the settings page.
+Connect your Google Search Console account to see search performance data alongside your analytics.
 
-- Changing domains will not affect any existing data
-- All historical analytics will be preserved
-- Currently we only support one domain per site
+## Change Domain
 
-## Deleting Sites
+Update the domain for your site. Changing domains does not affect existing data - all historical analytics are preserved.
 
-You can permanently delete a site by clicking the "Delete Site" button in the settings page.
+## Delete Site
+
+Permanently delete a site and all associated data.
 
 <Callout type="warn">
-  This action will delete all data associated with the site and cannot be undone.
+  This action cannot be undone. All analytics data, reports, funnels, and goals will be permanently deleted.
 </Callout>

@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { AdminOrganizationData } from "@/api/admin/getAdminOrganizations";
+import { AdminOrganizationData } from "@/api/admin/endpoints";
 import { TierOption } from "./OrganizationFilters";
 
 interface FilterOptions {
@@ -23,6 +23,7 @@ export function useFilteredOrganizations(
       const lowerSearchQuery = searchQuery.toLowerCase();
       filtered = filtered.filter(org => {
         return (
+          org.id.toLowerCase().includes(lowerSearchQuery) ||
           org.name.toLowerCase().includes(lowerSearchQuery) ||
           org.sites.some(site => site.domain.toLowerCase().includes(lowerSearchQuery)) ||
           org.members.some(

@@ -1,6 +1,7 @@
 "use client";
 
 import { AlertCircle } from "lucide-react";
+import { useExtracted } from "next-intl";
 import { useRouter } from "next/navigation";
 import { Suspense, useState } from "react";
 import { ThreeDotLoader } from "../../components/Loaders";
@@ -15,6 +16,7 @@ import { Signup } from "./components/signup";
 import { useQueryStates, parseAsString } from "nuqs";
 
 function AuthComponent() {
+  const t = useExtracted();
   const [{ invitationId, organization, inviterEmail }] = useQueryStates({
     invitationId: parseAsString,
     organization: parseAsString,
@@ -29,14 +31,14 @@ function AuthComponent() {
     <Card className="w-full max-w-md p-1">
       <CardHeader>
         <RybbitLogo width={32} height={32} />
-        <CardTitle className="text-2xl flex justify-center">Join {organization}</CardTitle>
-        <p className="text-center text-sm text-muted-foreground mt-2">You've been invited by {inviterEmail}</p>
+        <CardTitle className="text-2xl flex justify-center">{t("Join {organization}", { organization: organization ?? "" })}</CardTitle>
+        <p className="text-center text-sm text-muted-foreground mt-2">{t("You've been invited by {inviterEmail}", { inviterEmail: inviterEmail ?? "" })}</p>
       </CardHeader>
       <CardContent>
         <Tabs defaultValue="login" value={activeTab} onValueChange={v => setActiveTab(v as "login" | "signup")}>
           <TabsList className="grid w-full grid-cols-2 mb-6">
-            <TabsTrigger value="signup">Sign Up</TabsTrigger>
-            <TabsTrigger value="login">Login</TabsTrigger>
+            <TabsTrigger value="signup">{t("Sign Up")}</TabsTrigger>
+            <TabsTrigger value="login">{t("Login")}</TabsTrigger>
           </TabsList>
 
           <TabsContent value="login">
@@ -53,6 +55,7 @@ function AuthComponent() {
 }
 
 function AcceptInvitationInner() {
+  const t = useExtracted();
   const [{ invitationId, organization, inviterEmail }] = useQueryStates({
     invitationId: parseAsString,
     organization: parseAsString,
@@ -85,23 +88,22 @@ function AcceptInvitationInner() {
     <Card className="w-full max-w-md">
       <CardHeader>
         <RybbitLogo width={32} height={32} />
-        <CardTitle className="text-2xl flex justify-center">Invitation</CardTitle>
+        <CardTitle className="text-2xl flex justify-center">{t("Invitation")}</CardTitle>
       </CardHeader>
       <CardContent>
         <div className="flex flex-col gap-4">
           <p className="text-center">
-            You have been invited to join <span className="font-bold">{organization}</span> by{" "}
-            <span className="font-bold">{inviterEmail}</span>
+            {t("You have been invited to join {organization} by {inviterEmail}", { organization: organization ?? "", inviterEmail: inviterEmail ?? "" })}
           </p>
 
           <Button onClick={acceptInvitation} disabled={isLoading} variant="success" className="w-full">
-            {isLoading ? "Accepting..." : "Accept Invitation"}
+            {isLoading ? t("Accepting...") : t("Accept Invitation")}
           </Button>
 
           {error && (
             <Alert variant="destructive">
               <AlertCircle className="h-4 w-4" />
-              <AlertTitle>Error</AlertTitle>
+              <AlertTitle>{t("Error")}</AlertTitle>
               <AlertDescription>{error}</AlertDescription>
             </Alert>
           )}

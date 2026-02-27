@@ -1,4 +1,9 @@
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  ResponsiveDialog,
+  ResponsiveDialogContent,
+  ResponsiveDialogHeader,
+  ResponsiveDialogTitle,
+} from "@/components/ui/responsive-dialog";
 import { Input } from "@/components/ui/input";
 import { TableSortIndicator } from "@/components/ui/table";
 import { FilterParameter } from "@rybbit/shared";
@@ -14,6 +19,7 @@ import {
 } from "@tanstack/react-table";
 import { useDebounce, useIntersectionObserver } from "@uidotdev/usehooks";
 import { Loader2, SquareArrowOutUpRight } from "lucide-react";
+import { useExtracted } from "next-intl";
 import { ReactNode, useEffect, useMemo, useState } from "react";
 import { useInfiniteMetric } from "../../../../../api/analytics/hooks/useGetMetric";
 import { MetricResponse } from "../../../../../api/analytics/endpoints";
@@ -49,6 +55,7 @@ export function StandardSectionDialog({
   expanded,
   close,
 }: StandardSectionDialogProps) {
+  const t = useExtracted();
   const { data, isLoading, isFetching, error, refetch, fetchNextPage, hasNextPage, isFetchingNextPage } =
     useInfiniteMetric({
       parameter: filterParameter,
@@ -93,7 +100,7 @@ export function StandardSectionDialog({
           <div className="flex flex-row gap-1 items-center text-left">
             {getLabel(row.original)}
             {getLink && (
-              <a href={getLink(row.original)} target="_blank" onClick={e => e.stopPropagation()}>
+              <a rel="noopener noreferrer" href={getLink(row.original)} target="_blank" onClick={e => e.stopPropagation()}>
                 <SquareArrowOutUpRight
                   className="ml-0.5 w-3.5 h-3.5 text-neutral-600 hover:text-neutral-900 dark:text-neutral-300 dark:hover:text-neutral-100"
                   strokeWidth={3}
@@ -104,13 +111,13 @@ export function StandardSectionDialog({
         ),
       }),
       columnHelper.accessor("count", {
-        header: "Sessions",
+        header: t("Sessions"),
         cell: info => (
           <div className="flex flex-row gap-1 items-center sm:justify-end">{info.getValue().toLocaleString()}</div>
         ),
       }),
       columnHelper.accessor("percentage", {
-        header: "Session %",
+        header: t("Session %"),
         cell: info => (
           <div className="flex flex-row gap-1 items-center sm:justify-end">{info.getValue().toFixed(1)}%</div>
         ),
@@ -124,7 +131,7 @@ export function StandardSectionDialog({
       if (hasPageviews) {
         cols.push(
           columnHelper.accessor("pageviews", {
-            header: "Pageviews",
+            header: t("Pageviews"),
             cell: info => (
               <div className="flex flex-row gap-1 items-center sm:justify-end">{info.getValue()?.toLocaleString()}</div>
             ),
@@ -132,7 +139,7 @@ export function StandardSectionDialog({
         );
         cols.push(
           columnHelper.accessor("pageviews_percentage", {
-            header: "Pageviews %",
+            header: t("Pageviews %"),
             cell: info => (
               <div className="flex flex-row gap-1 items-center sm:justify-end">{info.getValue()?.toFixed(1)}%</div>
             ),
@@ -144,7 +151,7 @@ export function StandardSectionDialog({
       if (hasDuration) {
         cols.push(
           columnHelper.accessor("time_on_page_seconds", {
-            header: "Duration",
+            header: t("Duration"),
             cell: info => (
               <div className="text-right">{formatSecondsAsMinutesAndSeconds(Math.round(info.getValue() ?? 0))}</div>
             ),
@@ -156,7 +163,7 @@ export function StandardSectionDialog({
       if (hasBounceRate) {
         cols.push(
           columnHelper.accessor("bounce_rate", {
-            header: "Bounce Rate",
+            header: t("Bounce Rate"),
             cell: info => (
               <div className="flex flex-row gap-1 items-center sm:justify-end">{info.getValue()?.toFixed(1)}%</div>
             ),
@@ -191,26 +198,26 @@ export function StandardSectionDialog({
 
   if (isLoading || !data) {
     return (
-      <Dialog open={expanded} onOpenChange={close}>
-        <DialogContent className="max-w-[1000px] w-[calc(100vw-2rem)] p-2 sm:p-4">
+      <ResponsiveDialog open={expanded} onOpenChange={close}>
+        <ResponsiveDialogContent className="max-w-[1000px] w-[calc(100vw-2rem)] p-2 sm:p-4">
           <div className="flex justify-center items-center h-40">
             <Loader2 className="h-8 w-8 animate-spin text-neutral-600 dark:text-neutral-400" />
           </div>
-        </DialogContent>
-      </Dialog>
+        </ResponsiveDialogContent>
+      </ResponsiveDialog>
     );
   }
   const totalCount = data.pages[0]?.totalCount || 0;
 
   return (
-    <Dialog open={expanded} onOpenChange={close}>
-      <DialogContent className="max-w-[1000px] w-screen max-h-[1000px] h-[calc(100vh-2rem)] p-2 sm:p-4 flex flex-col gap-2">
-        <DialogHeader>
-          <DialogTitle>{title}</DialogTitle>
-        </DialogHeader>
+    <ResponsiveDialog open={expanded} onOpenChange={close}>
+      <ResponsiveDialogContent className="max-w-[1000px] w-screen max-h-[1000px] h-[calc(100vh-2rem)] p-2 sm:p-4 flex flex-col gap-2">
+        <ResponsiveDialogHeader>
+          <ResponsiveDialogTitle>{title}</ResponsiveDialogTitle>
+        </ResponsiveDialogHeader>
         <Input
           type="text"
-          placeholder={`Filter ${allItems.length} items...`}
+          placeholder={t("Filter {count} items...", { count: String(allItems.length) })}
           className="bg-white dark:bg-neutral-900 border-neutral-200 dark:border-neutral-700 text-xs"
           value={searchTerm}
           inputSize="sm"
@@ -283,16 +290,16 @@ export function StandardSectionDialog({
               {isFetchingNextPage && (
                 <div className="flex items-center gap-2 text-neutral-600 dark:text-neutral-400 text-xs">
                   <Loader2 className="h-4 w-4 animate-spin" />
-                  Loading more...
+                  {t("Loading more...")}
                 </div>
               )}
               {!hasNextPage && !isFetchingNextPage && (
-                <div className="text-neutral-500 dark:text-neutral-500 text-xs">All items loaded</div>
+                <div className="text-neutral-500 dark:text-neutral-500 text-xs">{t("All items loaded")}</div>
               )}
             </div>
           )}
         </div>
-      </DialogContent>
-    </Dialog>
+      </ResponsiveDialogContent>
+    </ResponsiveDialog>
   );
 }

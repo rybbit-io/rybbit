@@ -7,7 +7,7 @@ declare global {
   }
 }
 
-export function trackAdEvent(eventName: "signup" | "demo" | "login" | "github", eventData?: Record<string, any>) {
+export function trackAdEvent(eventName: string, eventData?: Record<string, any>) {
   // Track X/Twitter lead event for signup-related buttons
   if (typeof window !== "undefined" && window.twq) {
     if (["signup"].some(event => eventName.toLowerCase().includes(event))) {

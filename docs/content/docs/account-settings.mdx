@@ -1,0 +1,69 @@
+---
+title: Account settings
+description: Manage your personal account settings including profile, security, and API keys
+---
+
+import { Callout } from 'fumadocs-ui/components/callout';
+
+Access your account settings by clicking your profile icon and selecting "Account Settings".
+
+![account settings](/docs/account-settings.png)
+
+## Account
+
+### Name
+
+Update your display name shown across the platform. This name is visible to other members in your organization.
+
+### Email
+
+Update your email address for account notifications and login. This is the primary email associated with your account.
+
+### Weekly Email Reports <span className="text-green-500 text-sm">(Cloud)</span>
+
+Enable or disable automatic weekly email reports. When enabled, you'll receive a summary of your analytics performance delivered to your inbox each week.
+
+### Sign Out
+
+Sign out of your current session.
+
+## Security
+
+### Change Password
+
+Update your password to keep your account secure.
+
+### Delete Account
+
+Permanently delete your account and all associated data.
+
+<Callout type="warn">
+  This action cannot be undone. If you have an active subscription, you must cancel it before deleting your account.
+</Callout>
+
+## API Keys
+
+Generate API keys to access Rybbit's analytics endpoints from your applications.
+
+### Creating an API Key
+
+1. Enter a name for your API key (e.g., "Production App", "Development")
+2. Click "Create"
+3. Copy and save the generated key immediately
+
+<Callout type="warn">
+  API keys are only shown once when created. Store your key securely as you won't be able to view it again.
+</Callout>
+
+### Managing API Keys
+
+Your existing API keys are displayed in a table showing:
+- **Name** - The name you assigned to the key
+- **Key** - A preview of the key (first few characters)
+- **Created** - When the key was created
+
+You can delete API keys that are no longer needed. Deleting a key immediately revokes access for any applications using it.
+
+### Using API Keys
+
+Include your API key in requests to Rybbit's API endpoints. See the [API documentation](/docs/api) for available endpoints and usage examples.

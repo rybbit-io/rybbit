@@ -5,6 +5,7 @@ import { APIResponse } from "@/api/types";
 import { ChartTooltip } from "@/components/charts/ChartTooltip";
 import { hour12, userLocale } from "@/lib/dateTimeUtils";
 import { useNivoTheme } from "@/lib/nivo";
+import { getTimezone } from "@/lib/store";
 import { ResponsiveLine } from "@nivo/line";
 import { DateTime } from "luxon";
 
@@ -17,6 +18,8 @@ interface PageSparklineChartProps {
 
 export function PageSparklineChart({ data, isHovering, pageTitle, isLoading }: PageSparklineChartProps) {
   const nivoTheme = useNivoTheme();
+  const timezone = getTimezone();
+
   if (isLoading) {
     return (
       <div className="h-full w-full flex items-center justify-center animate-pulse">
@@ -29,12 +32,12 @@ export function PageSparklineChart({ data, isHovering, pageTitle, isLoading }: P
   const sparklineData = data?.data
     ?.filter(e => {
       // Filter out dates from the future
-      return DateTime.fromSQL(e.time).toUTC() <= DateTime.now();
+      return DateTime.fromSQL(e.time, { zone: timezone }).toUTC() <= DateTime.now();
     })
     .map(e => ({
-      x: DateTime.fromSQL(e.time).toUTC().toFormat("yyyy-MM-dd HH:mm:ss"),
+      x: DateTime.fromSQL(e.time, { zone: timezone }).toUTC().toFormat("yyyy-MM-dd HH:mm:ss"),
       y: e.sessions || 0,
-      time: DateTime.fromSQL(e.time).toUTC(),
+      time: DateTime.fromSQL(e.time, { zone: timezone }).toUTC(),
     }));
 
   if (!sparklineData || sparklineData.length === 0) {
@@ -102,7 +105,7 @@ export function PageSparklineChart({ data, isHovering, pageTitle, isLoading }: P
           <ChartTooltip>
             <div className="p-2">
               <div className="flex items-center justify-between gap-3">
-                <div>{formatDateTime(timestamp)}</div>
+                <div>{formatDateTime(timestamp, timezone)}</div>
                 <div className="font-medium">{value.toLocaleString()}</div>
               </div>
             </div>
@@ -113,13 +116,14 @@ export function PageSparklineChart({ data, isHovering, pageTitle, isLoading }: P
   );
 }
 
-const formatDateTime = (dt: DateTime) => {
+const formatDateTime = (dt: DateTime, tz: string) => {
   const options: Intl.DateTimeFormatOptions = {
     month: "short",
     day: "numeric",
     hour: "numeric",
     minute: "numeric",
     hour12: hour12,
+    timeZone: tz,
   };
 
   return new Intl.DateTimeFormat(userLocale, options).format(dt.toJSDate());

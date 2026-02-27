@@ -14,7 +14,7 @@ export interface GSCResponse {
 
 export interface GetGSCDataRequest {
   Params: {
-    site: string;
+    siteId: string;
   };
   Querystring: {
     start_date: string;
@@ -25,7 +25,7 @@ export interface GetGSCDataRequest {
 
 export interface ConnectGSCRequest {
   Params: {
-    site: string;
+    siteId: string;
   };
 }
 
@@ -39,12 +39,12 @@ export interface GSCCallbackRequest {
 
 export interface DisconnectGSCRequest {
   Params: {
-    site: string;
+    siteId: string;
   };
 }
 
 export interface GetGSCStatusRequest {
   Params: {
-    site: string;
+    siteId: string;
   };
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useGetSite } from "@/api/admin/sites";
+import { useGetSite } from "@/api/admin/hooks/useSites";
 import { useGetOverviewBucketed } from "@/api/analytics/hooks/useGetOverviewBucketed";
 import { MetricResponse } from "@/api/analytics/endpoints";
 import { usePageMetadata } from "@/api/usePageMetadata";
@@ -11,6 +11,7 @@ import { MINUTES_IN_24_HOURS } from "@/lib/const";
 import { truncateString } from "@/lib/utils";
 import { formatShortDuration } from "@/lib/dateTimeUtils";
 import { ExternalLink } from "lucide-react";
+import { useExtracted } from "next-intl";
 import Link from "next/link";
 import { useState } from "react";
 import { PageSparklineChart } from "./PageSparklineChart";
@@ -24,6 +25,7 @@ type PageListItemProps = {
 };
 
 export function PageListItem({ pageData, isLoading = false }: PageListItemProps) {
+  const t = useExtracted();
   const [isHovering, setIsHovering] = useState(false);
   const [thumbnailError, setThumbnailError] = useState(false);
   const { data: siteMetadata } = useGetSite();
@@ -69,7 +71,11 @@ export function PageListItem({ pageData, isLoading = false }: PageListItemProps)
   const isLoadingTrafficData = isPastMinutesMode ? isLoadingPastMinutes : isLoadingRegular;
 
   // External URL for the page
-  const pageUrl = siteMetadata?.domain ? `https://${siteMetadata.domain}${pageData.value}` : "";
+  const pageUrl = pageData.hostname
+    ? `https://${pageData.hostname}${pageData.value}`
+    : siteMetadata?.domain
+      ? `https://${siteMetadata.domain}${pageData.value}`
+      : "";
 
   // Fetch page metadata using TanStack Query
   const { data: metadata, isLoading: isLoadingMetadata, isError: isMetadataError } = usePageMetadata(pageUrl);
@@ -83,7 +89,7 @@ export function PageListItem({ pageData, isLoading = false }: PageListItemProps)
   };
 
   return (
-    <Card className="w-full mb-3" onMouseEnter={() => setIsHovering(true)} onMouseLeave={() => setIsHovering(false)}>
+    <Card className="w-full mb-3 overflow-visible" onMouseEnter={() => setIsHovering(true)} onMouseLeave={() => setIsHovering(false)}>
       <CardContent className="p-3">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center w-full gap-4">
           {/* Left side: Page title/path with thumbnail */}
@@ -135,12 +141,12 @@ export function PageListItem({ pageData, isLoading = false }: PageListItemProps)
             <div className="text-right min-w-[120px]">
               <div>
                 <span className="text-base font-semibold">{pageData.count.toLocaleString()}</span>
-                <span className="text-xs text-foreground/70"> sessions</span>
+                <span className="text-xs text-foreground/70"> {t("sessions")}</span>
               </div>
               {pageData.time_on_page_seconds !== undefined && (
                 <div>
                   <span className="text-base font-semibold">{formatShortDuration(pageData.time_on_page_seconds)} </span>
-                  <span className="text-xs text-foreground/70">avg time</span>
+                  <span className="text-xs text-foreground/70">{t("avg time")}</span>
                 </div>
               )}
             </div>

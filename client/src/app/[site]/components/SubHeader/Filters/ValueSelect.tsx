@@ -1,6 +1,7 @@
 "use client";
 
 import { FilterParameter } from "@rybbit/shared";
+import { useExtracted } from "next-intl";
 import { useMemo } from "react";
 import { useMetric } from "../../../../../api/analytics/hooks/useGetMetric";
 import { MultiSelect } from "../../../../../components/MultiSelect";
@@ -16,6 +17,7 @@ export function ValueSelect({
   value: (string | number)[];
   onChange: (values: (string | number)[]) => void;
 }) {
+  const t = useExtracted();
   const { data, isFetching } = useMetric({
     parameter,
     limit: 1000,
@@ -62,7 +64,7 @@ export function ValueSelect({
       }))}
       options={isFetching ? [] : suggestions}
       onChange={handleChange}
-      placeholder="Select values..."
+      placeholder={t("Select values...")}
       isLoading={isFetching}
     />
   );

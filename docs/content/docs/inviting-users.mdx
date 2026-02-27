@@ -1,6 +1,6 @@
 ---
 title: Inviting users
-description: You can invite your team members to your Rybbit organization as either an admin or a member
+description: Invite team members to your Rybbit organization and control their access to specific sites
 ---
 
 import { Steps, Step } from 'fumadocs-ui/components/steps';
@@ -19,12 +19,22 @@ Go to https://app.rybbit.io/organization "Add Member" button in the top right. E
 
 <Step>
 ### Select the user's role
- 
-You can either make the user an admin or a member. 
+
+You can either make the user an admin or a member.
 
 **Admins** can invite other users, add websites, edit websites, delete websites, and see all website data.
 
-**Members** can see all website data, but they cannot edit anything.
+**Members** can see website data, but they cannot edit anything. By default, members can see all websites in your organization.
+
+#### Restricting site access for members
+
+When inviting a member, you can optionally restrict their access to specific sites. Check the "Restrict access to specific sites" option and select which sites the member should be able to view.
+
+If you don't enable this option, the member will have access to all sites in your organization.
+
+<Callout type="info">
+  Site access restrictions only apply to members. Admins and owners always have full access to all sites.
+</Callout>
 </Step>
 
 <Step>
@@ -33,6 +43,17 @@ You can either make the user an admin or a member.
 Click the "Invite" button. The user will receive an email with a link to sign up for Rybbit. You can manage all invites in the organizations tab.
 </Step>
 </Steps>
+
+## Managing site access for existing members
+
+You can change a member's site access at any time after they've joined your organization.
+
+1. Go to the Members page in your organization settings
+2. Find the member in the list and click on their "Site Access" badge
+3. Toggle "Restrict access to specific sites" and select the sites they should have access to
+4. Click "Save changes"
+
+The member will immediately only see the sites you've selected. If you disable the restriction, they'll regain access to all sites.
 
 <Callout type="info">
   Currently, each user can only be in one organization.

@@ -2,7 +2,7 @@ import * as cron from "node-cron";
 import { DateTime } from "luxon";
 import { eq } from "drizzle-orm";
 import { db } from "../../db/postgres/postgres.js";
-import { organization, member, user, sites } from "../../db/postgres/schema.js";
+import { organization, member, user, sites, memberSiteAccess } from "../../db/postgres/schema.js";
 import { clickhouse } from "../../db/clickhouse/clickhouse.js";
 import { processResults } from "../../api/analytics/utils/utils.js";
 import { createServiceLogger } from "../../lib/logger/logger.js";
@@ -319,13 +319,15 @@ class WeeklyReportService {
 
   private async sendReportsToOrganization(report: OrganizationReport): Promise<void> {
     try {
-      // Fetch all members of the organization
+      // Fetch all members of the organization with their access restrictions
       const members = await db
         .select({
+          memberId: member.id,
           userId: member.userId,
           email: user.email,
           name: user.name,
           sendAutoEmailReports: user.sendAutoEmailReports,
+          hasRestrictedSiteAccess: member.hasRestrictedSiteAccess,
         })
         .from(member)
         .innerJoin(user, eq(member.userId, user.id))
@@ -338,7 +340,27 @@ class WeeklyReportService {
           continue;
         }
 
+        // Get allowed sites for this member
+        let allowedSiteIds: Set<number> | null = null;
+        if (memberData.hasRestrictedSiteAccess) {
+          const accessRecords = await db
+            .select({ siteId: memberSiteAccess.siteId })
+            .from(memberSiteAccess)
+            .where(eq(memberSiteAccess.memberId, memberData.memberId));
+          allowedSiteIds = new Set(accessRecords.map((r) => r.siteId));
+
+          // Skip this member entirely if they have no site access
+          if (allowedSiteIds.size === 0) {
+            continue;
+          }
+        }
+
         for (const site of report.sites) {
+          // Skip sites the member doesn't have access to
+          if (allowedSiteIds && !allowedSiteIds.has(site.siteId)) {
+            continue;
+          }
+
           try {
             // Create a report with just this single site
             const singleSiteReport: OrganizationReport = {

@@ -4,11 +4,9 @@ import { DateTime } from "luxon";
 import { clickhouse } from "../../db/clickhouse/clickhouse.js";
 import { db } from "../../db/postgres/postgres.js";
 import { member, sites, user } from "../../db/postgres/schema.js";
-import { getIsUserAdmin } from "../../lib/auth-utils.js";
 import { logger } from "../../lib/logger/logger.js";
 import { getOrganizationSubscriptions } from "../../services/admin/subscriptionService.js";
 
-// Define event count result type
 interface EventCountResult {
   site_id: string;
   total_events: number;
@@ -47,12 +45,6 @@ export interface AdminOrganizationData {
 }
 
 export async function getAdminOrganizations(request: FastifyRequest, reply: FastifyReply) {
-  const isAdmin = await getIsUserAdmin(request);
-
-  if (!isAdmin) {
-    return reply.status(401).send({ error: "Unauthorized" });
-  }
-
   try {
     // Get all organizations with their basic data
     const organizationsData = await db.query.organization.findMany({

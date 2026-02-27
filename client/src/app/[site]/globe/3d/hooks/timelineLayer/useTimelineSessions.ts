@@ -1,9 +1,9 @@
 import { useQuery } from "@tanstack/react-query";
 import { DateTime } from "luxon";
 import { useEffect, useMemo } from "react";
-import { GetSessionsResponse } from "../../../../../../api/analytics/endpoints";
+import { fetchSessions, GetSessionsResponse, SessionsParams } from "../../../../../../api/analytics/endpoints";
 import { APIResponse } from "../../../../../../api/types";
-import { authedFetch, getQueryParams } from "../../../../../../api/utils";
+import { authedFetch, buildApiParams } from "../../../../../../api/utils";
 import { getFilteredFilters, useStore } from "../../../../../../lib/store";
 import { SESSION_PAGE_FILTERS } from "../../../../../../lib/filterGroups";
 import { useTimelineStore } from "../../../timelineStore";
@@ -11,27 +11,28 @@ import { calculateWindowSize } from "../../../timelineUtils";
 import { MAX_PAGES, PAGE_SIZE } from "./timelineLayerConstants";
 
 export function useTimelineSessions() {
-  const { time, site } = useStore();
+  const { time, site, timezone: storeTimezone } = useStore();
   const { manualWindowSize, setTimeRange, setWindowSize, setAllSessions, setLoading, setError } = useTimelineStore();
+  // Resolve "system" to actual timezone, but keep reactivity from useStore
+  const timezone = storeTimezone === "system" ? Intl.DateTimeFormat().resolvedOptions().timeZone : storeTimezone;
 
   const filteredFilters = getFilteredFilters(SESSION_PAGE_FILTERS);
 
   // Fetch all sessions with pagination (up to 5 pages, 50k sessions total)
   const { data, isLoading, isError } = useQuery<APIResponse<GetSessionsResponse> & { hasMoreData?: boolean }>({
-    queryKey: ["timeline-sessions", time, site, filteredFilters],
+    queryKey: ["timeline-sessions", time, site, filteredFilters, timezone],
     queryFn: async () => {
       const allSessions = [];
       let reachedMaxPages = false;
 
       for (let page = 1; page <= MAX_PAGES; page++) {
-        const requestParams = {
-          ...getQueryParams(time),
-          filters: filteredFilters,
+        const requestParams: SessionsParams = {
+          ...buildApiParams(time, { filters: filteredFilters }),
           page,
           limit: PAGE_SIZE,
         };
 
-        const response = await authedFetch<APIResponse<GetSessionsResponse>>(`/sessions/${site}`, requestParams);
+        const response = await fetchSessions(site, requestParams);
 
         if (response?.data) {
           allSessions.push(...response.data);
@@ -89,8 +90,8 @@ export function useTimelineSessions() {
     let latest: DateTime | null = null;
 
     allSessions.forEach(session => {
-      const start = DateTime.fromSQL(session.session_start, { zone: "utc" }).toLocal();
-      const end = DateTime.fromSQL(session.session_end, { zone: "utc" }).toLocal();
+      const start = DateTime.fromSQL(session.session_start, { zone: "utc" }).setZone(timezone);
+      const end = DateTime.fromSQL(session.session_end, { zone: "utc" }).setZone(timezone);
 
       if (!earliest || start < earliest) {
         earliest = start;
@@ -108,5 +109,5 @@ export function useTimelineSessions() {
       }
       setTimeRange(earliest, latest);
     }
-  }, [allSessions, setTimeRange, setWindowSize, manualWindowSize, time]);
+  }, [allSessions, setTimeRange, setWindowSize, manualWindowSize, time, timezone]);
 }

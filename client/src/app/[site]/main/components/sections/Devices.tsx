@@ -1,6 +1,7 @@
 "use client";
 
 import { Expand, Monitor, Smartphone, Tablet } from "lucide-react";
+import { useExtracted } from "next-intl";
 import { useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../../../../components/ui/basic-tabs";
 import { Card, CardContent } from "../../../../../components/ui/card";
@@ -8,12 +9,14 @@ import { StandardSection } from "../../../components/shared/StandardSection/Stan
 import { Browser } from "../../../components/shared/icons/Browser";
 import { OperatingSystem } from "../../../components/shared/icons/OperatingSystem";
 import { Button } from "../../../../../components/ui/button";
+import { DeviceIcon } from "../../../components/shared/icons/Device";
 
 type Tab = "devices" | "browsers" | "os" | "dimensions" | "browser_versions" | "os_versions";
 
 export function Devices() {
   const [tab, setTab] = useState<Tab>("browsers");
   const [expanded, setExpanded] = useState(false);
+  const t = useExtracted();
   const close = () => {
     setExpanded(false);
   };
@@ -25,10 +28,10 @@ export function Devices() {
           <div className="flex flex-row gap-2 justify-between items-center">
             <div className="overflow-x-auto">
               <TabsList>
-                <TabsTrigger value="browsers">Browsers</TabsTrigger>
-                <TabsTrigger value="devices">Devices</TabsTrigger>
-                <TabsTrigger value="os">Operating Systems</TabsTrigger>
-                <TabsTrigger value="dimensions">Screen Dimensions</TabsTrigger>
+                <TabsTrigger value="browsers">{t("Browsers")}</TabsTrigger>
+                <TabsTrigger value="devices">{t("Devices")}</TabsTrigger>
+                <TabsTrigger value="os">{t("Operating Systems")}</TabsTrigger>
+                <TabsTrigger value="dimensions">{t("Screen Dimensions")}</TabsTrigger>
               </TabsList>
             </div>
             <div className="w-7">
@@ -40,15 +43,13 @@ export function Devices() {
           <TabsContent value="devices">
             <StandardSection
               filterParameter="device_type"
-              title="Devices"
+              title={t("Devices")}
               getValue={e => e.value}
               getKey={e => e.value}
               getLabel={e => (
                 <div className="flex gap-2 items-center">
-                  {e.value === "Desktop" && <Monitor className="w-4 h-4" />}
-                  {e.value === "Mobile" && <Smartphone className="w-4 h-4" />}
-                  {e.value === "Tablet" && <Tablet className="w-4 h-4" />}
-                  {e.value || "Other"}
+                  <DeviceIcon deviceType={e.value || ""} size={16} />
+                  {e.value || t("Other")}
                 </div>
               )}
               expanded={expanded}
@@ -58,13 +59,13 @@ export function Devices() {
           <TabsContent value="browsers">
             <StandardSection
               filterParameter="browser"
-              title="Browsers"
+              title={t("Browsers")}
               getValue={e => e.value}
               getKey={e => e.value}
               getLabel={e => (
                 <div className="flex gap-2 items-center">
                   <Browser browser={e.value} />
-                  {e.value || "Other"}
+                  {e.value || t("Other")}
                 </div>
               )}
               getSubrowLabel={e => {
@@ -72,7 +73,7 @@ export function Devices() {
                 return (
                   <div className="flex gap-2 items-center">
                     <Browser browser={justBrowser || "Other"} />
-                    {e.value || "Other"}
+                    {e.value || t("Other")}
                   </div>
                 );
               }}
@@ -83,13 +84,13 @@ export function Devices() {
           </TabsContent>
           <TabsContent value="os">
             <StandardSection
-              title="Operating Systems"
+              title={t("Operating Systems")}
               getValue={e => e.value}
               getKey={e => e.value}
               getLabel={e => (
                 <div className="flex gap-2 items-center">
                   <OperatingSystem os={e.value || "Other"} />
-                  {e.value || "Other"}
+                  {e.value || t("Other")}
                 </div>
               )}
               getSubrowLabel={e => {
@@ -97,7 +98,7 @@ export function Devices() {
                 return (
                   <div className="flex gap-2 items-center">
                     <OperatingSystem os={justOS || "Other"} />
-                    {e.value || "Other"}
+                    {e.value || t("Other")}
                   </div>
                 );
               }}
@@ -109,10 +110,10 @@ export function Devices() {
           </TabsContent>
           <TabsContent value="dimensions">
             <StandardSection
-              title="Screen Dimensions"
+              title={t("Screen Dimensions")}
               getValue={e => e.value}
               getKey={e => e.value}
-              getLabel={e => <div className="flex gap-2 items-center">{e.value || "Other"}</div>}
+              getLabel={e => <div className="flex gap-2 items-center">{e.value || t("Other")}</div>}
               filterParameter="dimensions"
               expanded={expanded}
               close={close}

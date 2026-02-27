@@ -4,7 +4,7 @@ import { buildApiParams } from "../../utils";
 import { fetchSessionLocations, LiveSessionLocation } from "../endpoints";
 
 export function useGetSessionLocations() {
-  const { time, site, filters } = useStore();
+  const { time, site, filters, timezone } = useStore();
 
   // Filter out location-related filters to avoid circular dependencies
   const locationExcludedFilters = filters.filter(
@@ -19,7 +19,7 @@ export function useGetSessionLocations() {
   const params = buildApiParams(time, { filters: locationExcludedFilters });
 
   return useQuery<LiveSessionLocation[]>({
-    queryKey: ["session-locations", site, time, locationExcludedFilters],
+    queryKey: ["session-locations", site, time, locationExcludedFilters, timezone],
     queryFn: () => {
       return fetchSessionLocations(site, params);
     },

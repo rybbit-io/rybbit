@@ -113,29 +113,6 @@ SessionsWithPageviews AS (
         asp.total_pageviews_in_session
     FROM FilteredSessions fs
     LEFT JOIN AllSessionPageviews asp ON fs.session_id = asp.session_id
-),
--- Determine the first visit bucket per user (site-wide, no filters)
-UserFirstVisits AS (
-    SELECT
-        user_id,
-        toDateTime(${TimeBucketToFn[bucket]}(toTimeZone(min(timestamp), ${SqlString.escape(time_zone)}))) AS first_visit_bucket
-    FROM events
-    WHERE site_id = {siteId:Int32}
-    GROUP BY user_id
-),
--- Attach first visit info to filtered events for new vs returning splits
-EventsWithFirstVisit AS (
-    SELECT
-        toDateTime(${TimeBucketToFn[bucket]}(toTimeZone(timestamp, ${SqlString.escape(time_zone)}))) AS bucket_time,
-        type,
-        user_id,
-        first_visit_bucket
-    FROM events
-    LEFT JOIN UserFirstVisits USING (user_id)
-    WHERE
-        site_id = {siteId:Int32}
-        ${filterStatement}
-        ${getTimeStatement(params)}
 )
 SELECT
     session_stats.time AS time,
@@ -144,9 +121,7 @@ SELECT
     session_stats.bounce_rate * 100 AS bounce_rate,
     session_stats.session_duration,
     page_stats.pageviews,
-    page_stats.users,
-    page_stats.new_users,
-    page_stats.returning_users
+    page_stats.users
 FROM
 (
     SELECT
@@ -161,12 +136,14 @@ FROM
 FULL JOIN
 (
     SELECT
-        bucket_time AS time,
+        toDateTime(${TimeBucketToFn[bucket]}(toTimeZone(timestamp, ${SqlString.escape(time_zone)}))) AS time,
         countIf(type = 'pageview') AS pageviews,
-        uniqExact(user_id) AS users,
-        uniqExactIf(user_id, first_visit_bucket = bucket_time) AS new_users,
-        uniqExactIf(user_id, first_visit_bucket < bucket_time) AS returning_users
-    FROM EventsWithFirstVisit
+        COUNT(DISTINCT user_id) AS users
+    FROM events
+    WHERE
+        site_id = {siteId:Int32}
+        ${filterStatement}
+        ${getTimeStatement(params)}
     GROUP BY time ORDER BY time ${isAllTime ? "" : getTimeStatementFill(params, bucket)}
 ) AS page_stats
 USING time
@@ -175,22 +152,12 @@ ORDER BY time`;
   return query;
 };
 
-type getOverviewBucketed = {
-  time: string;
-  pageviews: number;
-  sessions: number;
-  pages_per_session: number;
-  bounce_rate: number;
-  session_duration: number;
-  users: number;
-  new_users: number;
-  returning_users: number;
-}[];
+type getOverviewBucketed = { time: string; pageviews: number }[];
 
 export async function getOverviewBucketed(
   req: FastifyRequest<{
     Params: {
-      site: string;
+      siteId: string;
     };
     Querystring: FilterParams<{
       bucket: TimeBucket;
@@ -199,7 +166,7 @@ export async function getOverviewBucketed(
   res: FastifyReply
 ) {
   const { start_date, end_date, time_zone, bucket, filters, past_minutes_start, past_minutes_end } = req.query;
-  const site = req.params.site;
+  const site = req.params.siteId;
 
   const query = getQuery(
     {

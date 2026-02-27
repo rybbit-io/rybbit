@@ -1,5 +1,9 @@
 <p align="center">
-  <img src="https://github.com/user-attachments/assets/be982e50-8d59-471c-9fb7-e8982658a608" height="100">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/public/rybbit/horizontal_white.svg">
+    <source media="(prefers-color-scheme: light)" srcset="docs/public/rybbit/horizontal_black.svg">
+    <img src="docs/public/rybbit/horizontal_black.svg" height="70" alt="Rybbit">
+  </picture>
     <p align="center">Open Source Web & Product Analytics</p>
 
 <p align="center">
@@ -20,7 +24,7 @@
 </p>
 
 <p align="center">
-  <strong><a href="https://demo.rybbit.com/1">🔍 View Live Demo</a></strong> - See Rybbit running on a real-life production site with over a million visits a month.
+  <strong><a href="https://demo.rybbit.com/81">🔍 View Live Demo</a></strong> - See Rybbit running on a real-life production site.
 </p>
 
 <img width="1299" height="797" alt="Screenshot 2025-10-16 at 7 25 20 PM" src="https://github.com/user-attachments/assets/7988ba04-64ee-4410-9972-847d278efa2f" />
@@ -133,19 +137,3 @@ See how Rybbit compares to other analytics solutions:
 ## ⭐ Star History
 
 [![Star History Chart](https://api.star-history.com/svg?repos=rybbit-io/rybbit&type=Date)](https://www.star-history.com/#rybbit-io/rybbit&Date)
-
-## Partners
-
-<table align="center">
-  <tr>
-    <td>
-      <a href="https://onyx.app" >
-        <picture>
-          <source media="(prefers-color-scheme: dark)" srcset="https://github.com/user-attachments/assets/d945a61b-3588-4ca1-bc03-abf41bcda867" height="70" />
-          <source media="(prefers-color-scheme: light)" srcset="https://github.com/user-attachments/assets/d945a61b-3588-4ca1-bc03-abf41bcda867" height="70" />
-          <img src="https://github.com/user-attachments/assets/d945a61b-3588-4ca1-bc03-abf41bcda867" height="70" alt="Onyx" />
-        </picture>
-      </a>
-    </td>
-  </tr>
-</table>

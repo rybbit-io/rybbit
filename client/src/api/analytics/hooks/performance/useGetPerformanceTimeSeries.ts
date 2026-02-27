@@ -21,7 +21,7 @@ export function useGetPerformanceTimeSeries({
   dynamicFilters?: Filter[];
   props?: Partial<UseQueryOptions<APIResponse<GetPerformanceTimeSeriesResponse>>>;
 }): UseQueryResult<APIResponse<GetPerformanceTimeSeriesResponse>> {
-  const { time, previousTime, filters: globalFilters, bucket: storeBucket } = useStore();
+  const { time, previousTime, filters: globalFilters, bucket: storeBucket, timezone } = useStore();
   const { selectedPerformanceMetric } = usePerformanceStore();
 
   const timeToUse = periodTime === "previous" ? previousTime : time;
@@ -31,7 +31,7 @@ export function useGetPerformanceTimeSeries({
   const params = buildApiParams(timeToUse, { filters: combinedFilters });
 
   return useQuery({
-    queryKey: ["performance-time-series", timeToUse, bucketToUse, site, combinedFilters, selectedPerformanceMetric],
+    queryKey: ["performance-time-series", timeToUse, bucketToUse, site, combinedFilters, selectedPerformanceMetric, timezone],
     queryFn: () => {
       return fetchPerformanceTimeSeries(site, { ...params, bucket: bucketToUse }).then(data => ({ data }));
     },

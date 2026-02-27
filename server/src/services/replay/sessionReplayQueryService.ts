@@ -133,7 +133,7 @@ export class SessionReplayQueryService {
     const metadata = metadataResults[0];
 
     if (!metadata) {
-      throw new Error("Session replay not found");
+      throw new Error("Session replay not found for session " + sessionId);
     }
 
     // Get events

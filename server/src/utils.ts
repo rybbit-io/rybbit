@@ -145,11 +145,6 @@ const siteIdCache = new Map<string, number>();
 // Resolve a site identifier (string ID or numeric ID) to its numeric siteId
 // Returns the numeric siteId or null if not found
 export const resolveNumericSiteId = async (siteIdentifier: string): Promise<number | null> => {
-  // If it's already numeric, return it
-  if (/^\d+$/.test(siteIdentifier)) {
-    return parseInt(siteIdentifier, 10);
-  }
-
   // Check cache first
   if (siteIdCache.has(siteIdentifier)) {
     return siteIdCache.get(siteIdentifier)!;
@@ -157,11 +152,7 @@ export const resolveNumericSiteId = async (siteIdentifier: string): Promise<numb
 
   // Look up the string ID in the database
   try {
-    const site = await db
-      .select({ siteId: sites.siteId })
-      .from(sites)
-      .where(eq(sites.id, siteIdentifier))
-      .limit(1);
+    const site = await db.select({ siteId: sites.siteId }).from(sites).where(eq(sites.id, siteIdentifier)).limit(1);
 
     if (site.length > 0) {
       const numericId = site[0].siteId;
@@ -171,6 +162,10 @@ export const resolveNumericSiteId = async (siteIdentifier: string): Promise<numb
     }
   } catch (error) {
     console.error("Error resolving site ID:", error);
+  }
+
+  if (/^\d+$/.test(siteIdentifier)) {
+    return parseInt(siteIdentifier, 10);
   }
 
   return null;

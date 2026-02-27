@@ -9,11 +9,11 @@ type UseGetSessionReplaysOptions = {
 };
 
 export function useGetSessionReplays({ limit = 20, minDuration = 30 }: UseGetSessionReplaysOptions = {}) {
-  const { time, site, filters } = useStore();
+  const { time, site, filters, timezone } = useStore();
   const params = buildApiParams(time, { filters });
 
   return useInfiniteQuery({
-    queryKey: ["session-replays", site, time, filters, limit, minDuration],
+    queryKey: ["session-replays", site, time, filters, limit, minDuration, timezone],
     queryFn: async ({ pageParam = 0 }) => {
       return fetchSessionReplays(site, {
         ...params,

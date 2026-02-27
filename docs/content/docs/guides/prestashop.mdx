@@ -1,0 +1,170 @@
+---
+title: PrestaShop
+description: Integrate Rybbit Analytics with your PrestaShop store
+---
+
+import { Tabs, Tab } from 'fumadocs-ui/components/tabs';
+import { Steps, Step } from 'fumadocs-ui/components/steps';
+import { Callout } from 'fumadocs-ui/components/callout';
+
+PrestaShop is a popular open-source e-commerce platform. Here's how to add Rybbit Analytics to track visitors and conversions on your PrestaShop store.
+
+## How to Add Rybbit to PrestaShop
+
+<Tabs items={['Back Office Settings', 'Theme Files']}>
+<Tab>
+### Using Back Office Settings
+
+PrestaShop allows adding custom code through the back office.
+
+<Steps>
+<Step>
+### Access Theme Settings
+
+1. Log in to your PrestaShop Back Office
+2. Go to **Design** > **Theme & Logo**
+3. Scroll down to **Advanced customization** or click on **Pages Configuration**
+</Step>
+
+<Step>
+### Add Custom Code
+
+Depending on your PrestaShop version:
+
+**PrestaShop 1.7+:**
+1. Go to **Design** > **Theme & Logo** > **Advanced customization**
+2. Click on **Add a new HTML element**
+3. Select position: `head` or `displayHeader`
+4. Add the following code:
+
+```html
+<script>
+(function() {
+  var s = document.createElement('script');
+  s.src = 'https://app.rybbit.io/api/script.js';
+  s.defer = true;
+  s.setAttribute('data-site-id', 'YOUR_SITE_ID');
+  document.head.appendChild(s);
+})();
+</script>
+```
+
+**PrestaShop 8.x:**
+1. Go to **Design** > **Theme & Logo** > **Pages Configuration**
+2. Select **displayHead** hook
+3. Add a custom HTML module with the script above
+
+Replace `YOUR_SITE_ID` with your actual Site ID.
+</Step>
+
+<Step>
+### Save Changes
+
+Click **Save** to apply the tracking code to your store.
+</Step>
+</Steps>
+</Tab>
+
+<Tab>
+### Editing Theme Files
+
+For direct control, you can edit your theme's template files.
+
+<Callout type="warn">
+Create a child theme before editing files to preserve changes during updates.
+</Callout>
+
+<Steps>
+<Step>
+### Access Theme Files
+
+Navigate to your theme folder via FTP/SFTP or file manager:
+```
+/themes/your-theme-name/templates/_partials/
+```
+</Step>
+
+<Step>
+### Edit the Header Template
+
+Open `head.tpl` and add the following before the closing `</head>` tag (or at the end of the file):
+
+```html
+<script>
+(function() {
+  var s = document.createElement('script');
+  s.src = 'https://app.rybbit.io/api/script.js';
+  s.defer = true;
+  s.setAttribute('data-site-id', 'YOUR_SITE_ID');
+  document.head.appendChild(s);
+})();
+</script>
+```
+
+Replace `YOUR_SITE_ID` with your actual Site ID.
+</Step>
+
+<Step>
+### Clear Cache
+
+1. Go to **Advanced Parameters** > **Performance**
+2. Click **Clear cache**
+</Step>
+</Steps>
+</Tab>
+</Tabs>
+
+## Tracking E-commerce Events
+
+### Track Purchases
+
+To track completed purchases, add a script to the order confirmation page. Create a module or add to your theme's `order-confirmation.tpl`:
+
+```html
+{if isset($order)}
+<script>
+(function() {
+  function waitForRybbit(callback, timeout) {
+    var start = Date.now();
+    (function check() {
+      if (window.rybbit && typeof window.rybbit.event === 'function') {
+        callback();
+      } else if (Date.now() - start < timeout) {
+        setTimeout(check, 100);
+      }
+    })();
+  }
+
+  waitForRybbit(function() {
+    window.rybbit.event('purchase', {
+      transaction_id: '{$order.details.reference}',
+      value: {$order.totals.total.amount},
+      currency: '{$order.totals.total.currency}'
+    });
+  }, 5000);
+})();
+</script>
+{/if}
+```
+
+<Callout type="info">
+PrestaShop uses Smarty templating. The `{$variable}` syntax is processed by PrestaShop to inject order data.
+</Callout>
+
+## Troubleshooting
+
+### Script not loading
+
+1. Clear PrestaShop cache: **Advanced Parameters** > **Performance** > **Clear cache**
+2. Disable any JavaScript optimization modules temporarily
+3. Check the page source to verify the script is present
+
+### Theme updates overwriting changes
+
+Always use a child theme when editing template files. Changes to the parent theme will be lost on updates.
+
+### E-commerce events not tracking
+
+1. Verify the Smarty variables match your PrestaShop version
+2. Check the browser console for JavaScript errors
+3. Test by completing a test order

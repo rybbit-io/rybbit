@@ -1,21 +1,27 @@
 "use client";
 
-import { useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Dialog } from "@/components/ui/dialog";
-import { DialogContent } from "@/components/ui/dialog";
-import { DialogHeader } from "@/components/ui/dialog";
-import { DialogTitle } from "@/components/ui/dialog";
-import { DialogTrigger } from "@/components/ui/dialog";
-import { DialogFooter } from "@/components/ui/dialog";
-import { DialogDescription } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { AlertTriangle, Trash } from "lucide-react";
-import { authClient } from "@/lib/auth";
-import { toast } from "sonner";
-import { Organization } from "../page";
-import { USER_ORGANIZATIONS_QUERY_KEY } from "../../../../../api/admin/organizations";
 import { useQueryClient } from "@tanstack/react-query";
+import { AlertTriangle } from "lucide-react";
+import { useExtracted } from "next-intl";
+import { useState } from "react";
+import { toast } from "@/components/ui/sonner";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { authClient } from "@/lib/auth";
+import { useStripeSubscription } from "@/lib/subscription/useStripeSubscription";
+import { USER_ORGANIZATIONS_QUERY_KEY } from "../../../../../api/admin/hooks/useOrganizations";
+import { Organization } from "../page";
 
 interface DeleteOrganizationDialogProps {
   organization: Organization;
@@ -23,78 +29,100 @@ interface DeleteOrganizationDialogProps {
 }
 
 export function DeleteOrganizationDialog({ organization, onSuccess }: DeleteOrganizationDialogProps) {
-  const [isLoading, setIsLoading] = useState(false);
-  const [open, setOpen] = useState(false);
+  const { data: subscription } = useStripeSubscription();
+  const t = useExtracted();
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [isOpen, setIsOpen] = useState(false);
   const [confirmText, setConfirmText] = useState("");
   const queryClient = useQueryClient();
 
+  const hasActiveSubscription =
+    subscription?.planName.startsWith("standard") || subscription?.planName.startsWith("pro");
+
   const handleDelete = async () => {
     if (confirmText !== organization.name) {
-      toast.error("Please type the organization name to confirm deletion");
+      toast.error(t("Please type the organization name to confirm deletion"));
       return;
     }
 
-    setIsLoading(true);
+    setIsDeleting(true);
     try {
       await authClient.organization.delete({
         organizationId: organization.id,
       });
 
-      toast.success("Organization deleted successfully");
+      toast.success(t("Organization deleted successfully"));
       queryClient.invalidateQueries({ queryKey: [USER_ORGANIZATIONS_QUERY_KEY] });
       authClient.organization.setActive({
         organizationId: null,
       });
-      setOpen(false);
+      setIsOpen(false);
       onSuccess();
     } catch (error: any) {
-      toast.error(error.message || "Failed to delete organization");
+      toast.error(error.message || t("Failed to delete organization"));
     } finally {
-      setIsLoading(false);
+      setIsDeleting(false);
     }
   };
 
+  const handleClose = () => {
+    setIsOpen(false);
+    setConfirmText("");
+  };
+
+  const canDelete = !hasActiveSubscription && confirmText === organization.name && !isDeleting;
+
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button size="sm" variant="destructive">
-          <Trash className="h-4 w-4 mr-1" />
-          Delete
+    <AlertDialog open={isOpen} onOpenChange={setIsOpen}>
+      <AlertDialogTrigger asChild>
+        <Button variant="destructive" className="w-full" onClick={() => setIsOpen(true)}>
+          {t("Delete Organization")}
         </Button>
-      </DialogTrigger>
-      <DialogContent className="max-w-lg">
-        <DialogHeader>
-          <DialogTitle className="text-red-400 flex items-center gap-2">
-            <AlertTriangle className="h-5 w-5" />
-            Delete Organization
-          </DialogTitle>
-          <DialogDescription>
-            This action cannot be undone. This will permanently delete the organization and remove all associated data.
-          </DialogDescription>
-        </DialogHeader>
-        <div className="grid gap-4 py-4">
-          <p>
-            Please type <strong>{organization.name}</strong> to confirm.
-          </p>
-          <Input
-            value={confirmText}
-            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setConfirmText(e.target.value)}
-            placeholder={organization.name}
-          />
-        </div>
-        <DialogFooter>
-          <Button variant="outline" onClick={() => setOpen(false)}>
-            Cancel
-          </Button>
-          <Button
-            variant="destructive"
-            onClick={handleDelete}
-            disabled={isLoading || confirmText !== organization.name}
-          >
-            {isLoading ? "Deleting..." : "Delete Organization"}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+      </AlertDialogTrigger>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle className="flex items-center gap-2">
+            <AlertTriangle className="h-5 w-5" color="hsl(var(--red-500))" />
+            {hasActiveSubscription ? t("Cannot delete organization") : t("Delete your organization?")}
+          </AlertDialogTitle>
+          <AlertDialogDescription>
+            {hasActiveSubscription
+              ? t("You have an active subscription. Please cancel your subscription before deleting your organization.")
+              : t("This action cannot be undone. This will permanently delete the organization and remove all associated data.")}
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+
+        {!hasActiveSubscription && (
+          <div className="py-4">
+            <p className="text-sm mb-2">
+              {t("Please type {name} to confirm.", { name: organization.name })}
+            </p>
+            <Input
+              value={confirmText}
+              onChange={(e) => setConfirmText(e.target.value)}
+              placeholder={organization.name}
+            />
+          </div>
+        )}
+
+        <AlertDialogFooter>
+          <AlertDialogCancel onClick={handleClose} disabled={isDeleting}>
+            {t("Cancel")}
+          </AlertDialogCancel>
+          {!hasActiveSubscription && (
+            <AlertDialogAction
+              onClick={(e) => {
+                e.preventDefault();
+                handleDelete();
+              }}
+              variant="destructive"
+              disabled={!canDelete}
+            >
+              {isDeleting ? t("Deleting...") : t("Delete Organization")}
+            </AlertDialogAction>
+          )}
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
   );
 }

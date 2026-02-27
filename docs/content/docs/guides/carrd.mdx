@@ -1,0 +1,72 @@
+---
+title: Carrd
+description: Integrate Rybbit Analytics with your Carrd site
+---
+
+import { Steps, Step } from 'fumadocs-ui/components/steps';
+import { Callout } from 'fumadocs-ui/components/callout';
+
+Carrd is a popular platform for building simple, responsive one-page sites. You can add Rybbit Analytics to track visitors on your Carrd site.
+
+<Callout type="warn">
+Adding custom code requires a **Carrd Pro** subscription (Pro Standard, Pro Plus, or Pro Max).
+</Callout>
+
+## How to Add Rybbit to Carrd
+
+<Steps>
+<Step>
+### Open Your Site Settings
+
+1. Log in to Carrd and open your site in the editor
+2. Click on the **Settings** icon (gear) in the top right
+3. Select the **Settings** tab
+</Step>
+
+<Step>
+### Add Head Code
+
+1. Scroll down to the **Head** section under "Embed Code"
+2. Paste the following code:
+
+```html
+<script>
+(function() {
+  var s = document.createElement('script');
+  s.src = 'https://app.rybbit.io/api/script.js';
+  s.defer = true;
+  s.setAttribute('data-site-id', 'YOUR_SITE_ID');
+  document.head.appendChild(s);
+})();
+</script>
+```
+
+Replace `YOUR_SITE_ID` with your actual Site ID from your Rybbit dashboard.
+</Step>
+
+<Step>
+### Publish Your Site
+
+Click **Save** then **Publish** to apply the changes to your live site.
+</Step>
+</Steps>
+
+<Callout type="info">
+We use the JavaScript approach instead of a plain script tag because some site builders may strip `data-*` attributes during processing.
+</Callout>
+
+## Using Multiple Pages
+
+If your Carrd site has multiple pages (Pro Plus or Pro Max feature), the tracking script in the head code will automatically load on all pages.
+
+## Troubleshooting
+
+### Script not working
+
+1. Make sure you have a Carrd Pro subscription
+2. Ensure you published the site after adding the code
+3. Check "View Page Source" on your live site and search for `rybbit`
+
+### Form submissions
+
+To track form submissions as events, you can add a custom event using Carrd's form settings or by adding additional JavaScript in the embed code section.

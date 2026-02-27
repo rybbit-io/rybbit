@@ -1,0 +1,40 @@
+---
+title: Session Replay
+description: Watch recordings of user sessions
+---
+
+![Session Replay](/blog/replay_sessions.png)
+
+Session replay lets you watch anonymized recordings of real user sessions, showing mouse movements, clicks, scrolls, and page navigation.
+
+## Enabling Session Replay
+
+Enable session replay in your [site settings](/docs/site-settings), or add the attribute to your tracking script:
+
+```html
+<script
+  src="https://your-rybbit-instance.com/api/script.js"
+  data-site-id="YOUR_SITE_ID"
+  data-session-replay="true"
+  defer
+></script>
+```
+
+## What You'll See
+
+- Mouse movements and clicks
+- Scrolling behavior
+- Page navigation
+- Form interactions (with PII masked)
+- User details: country, device, browser
+
+## Using Session Replay
+
+- **UX optimization** - Identify where users get stuck or confused
+- **Debug issues** - See exactly what happened when users report problems
+- **Understand behavior** - Go beyond metrics to see the full user story
+- **Share with your team** - Collaborate on findings
+
+## Privacy
+
+Session replay automatically masks sensitive information. Enable PII protection in your settings for additional masking of form inputs and text content.

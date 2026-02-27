@@ -1,12 +1,13 @@
 "use client";
 
+import { useExtracted } from "next-intl";
 import { ConfirmationModal } from "@/components/ConfirmationModal";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { ArrowRight, ChevronDown, ChevronUp, Copy, Edit, Eye, MousePointerClick, Trash2 } from "lucide-react";
 import { useState } from "react";
-import { toast } from "sonner";
+import { toast } from "@/components/ui/sonner";
 import { useDeleteFunnel } from "../../../../api/analytics/hooks/funnels/useDeleteFunnel";
 import { useGetFunnel } from "../../../../api/analytics/hooks/funnels/useGetFunnel";
 import { SavedFunnel } from "../../../../api/analytics/endpoints";
@@ -21,6 +22,7 @@ interface FunnelRowProps {
 }
 
 export function FunnelRow({ funnel, index }: FunnelRowProps) {
+  const t = useExtracted();
   const [expanded, setExpanded] = useState(index === 0);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -53,7 +55,7 @@ export function FunnelRow({ funnel, index }: FunnelRowProps) {
   const handleDeleteFunnel = async () => {
     try {
       await deleteFunnel(funnel.id);
-      toast.success("Funnel deleted successfully");
+      toast.success(t("Funnel deleted successfully"));
     } catch (error) {
       console.error("Error deleting funnel:", error);
       throw error; // Let the ConfirmationModal handle the error display
@@ -90,16 +92,16 @@ export function FunnelRow({ funnel, index }: FunnelRowProps) {
                     </TooltipTrigger>
                     <TooltipContent side="bottom" className="text-xs">
                       <div>
-                        <span className="font-semibold">{step.type === "page" ? "Page" : "Event"}:</span> {step.value}
+                        <span className="font-semibold">{step.type === "page" ? t("Page") : t("Event")}:</span> {step.value}
                       </div>
                       {step.name && (
                         <div>
-                          <span className="font-semibold">Label:</span> {step.name}
+                          <span className="font-semibold">{t("Label")}:</span> {step.name}
                         </div>
                       )}
                       {step.type === "event" && step.eventPropertyKey && step.eventPropertyValue !== undefined && (
                         <div>
-                          <span className="font-semibold">Property:</span> {step.eventPropertyKey} ={" "}
+                          <span className="font-semibold">{t("Property")}:</span> {step.eventPropertyKey} ={" "}
                           {String(step.eventPropertyValue)}
                         </div>
                       )}
@@ -127,7 +129,7 @@ export function FunnelRow({ funnel, index }: FunnelRowProps) {
                   <Edit className="h-4 w-4" />
                 </Button>
               </TooltipTrigger>
-              <TooltipContent>Edit Funnel</TooltipContent>
+              <TooltipContent>{t("Edit Funnel")}</TooltipContent>
             </Tooltip>
 
             {/* Clone button */}
@@ -144,7 +146,7 @@ export function FunnelRow({ funnel, index }: FunnelRowProps) {
                   <Copy className="h-4 w-4" />
                 </Button>
               </TooltipTrigger>
-              <TooltipContent>Clone Funnel</TooltipContent>
+              <TooltipContent>{t("Clone Funnel")}</TooltipContent>
             </Tooltip>
 
             {/* Delete button */}
@@ -161,7 +163,7 @@ export function FunnelRow({ funnel, index }: FunnelRowProps) {
                   <Trash2 className="h-4 w-4" />
                 </Button>
               </TooltipTrigger>
-              <TooltipContent>Delete Funnel</TooltipContent>
+              <TooltipContent>{t("Delete Funnel")}</TooltipContent>
             </Tooltip>
 
             <Button variant="ghost" size="icon" onClick={handleExpand}>
@@ -179,12 +181,12 @@ export function FunnelRow({ funnel, index }: FunnelRowProps) {
               <ThreeDotLoader className="h-[400px]" />
             ) : isError ? (
               <div className="text-red-500 p-4 text-center">
-                Error loading funnel: {error instanceof Error ? error.message : "Unknown error"}
+                {t("Error loading funnel:")} {error instanceof Error ? error.message : t("Unknown error")}
               </div>
             ) : data && data.length > 0 ? (
               <Funnel data={data} steps={funnel.steps} isError={isError} error={error} isPending={isPending} />
             ) : (
-              <div className="text-center p-6 text-neutral-500">No funnel data available</div>
+              <div className="text-center p-6 text-neutral-500">{t("No funnel data available")}</div>
             )}
           </div>
         </div>
@@ -192,13 +194,13 @@ export function FunnelRow({ funnel, index }: FunnelRowProps) {
 
       {/* Delete Confirmation Modal */}
       <ConfirmationModal
-        title="Delete Funnel"
-        description={`Are you sure you want to delete "${funnel.name}"? This action cannot be undone.`}
+        title={t("Delete Funnel")}
+        description={t('Are you sure you want to delete "{name}"? This action cannot be undone.', { name: funnel.name })}
         isOpen={isDeleteModalOpen}
         setIsOpen={setIsDeleteModalOpen}
         onConfirm={handleDeleteFunnel}
         primaryAction={{
-          children: isDeleting ? "Deleting..." : "Delete",
+          children: isDeleting ? t("Deleting...") : t("Delete"),
           variant: "destructive",
         }}
       />

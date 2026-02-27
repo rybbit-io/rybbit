@@ -1,0 +1,74 @@
+---
+title: GitBook
+description: Integrate Rybbit Analytics with your GitBook documentation
+---
+
+import { Steps, Step } from 'fumadocs-ui/components/steps';
+import { Callout } from 'fumadocs-ui/components/callout';
+
+GitBook is a popular platform for creating documentation and knowledge bases. You can add Rybbit Analytics to track how visitors use your documentation.
+
+<Callout type="warn">
+Custom scripts require a **Pro plan or higher** and a **custom domain** configured for your GitBook space.
+</Callout>
+
+## How to Add Rybbit to GitBook
+
+<Steps>
+<Step>
+### Open Space Settings
+
+1. Navigate to your GitBook space
+2. Click on the **Settings** icon (gear) in the top right
+3. Go to **Integrations** in the sidebar
+</Step>
+
+<Step>
+### Add Custom Script
+
+1. Scroll to the **Custom scripts** section
+2. In the **Head** section, add the following code:
+
+```html
+<script
+  src="https://app.rybbit.io/api/script.js"
+  data-site-id="YOUR_SITE_ID"
+  defer
+></script>
+```
+
+Replace `YOUR_SITE_ID` with your actual Site ID from your Rybbit dashboard.
+</Step>
+
+<Step>
+### Save Changes
+
+Click **Save** to apply the script to your documentation site.
+</Step>
+</Steps>
+
+## Requirements
+
+For custom scripts to work on GitBook, you need:
+
+1. **Pro, Team, or Enterprise plan** - Custom scripts are not available on the free plan
+2. **Custom domain** - Scripts only load on custom domains, not on `*.gitbook.io` URLs
+
+## Troubleshooting
+
+### Script not appearing
+
+1. Ensure you have a Pro plan or higher
+2. Verify your custom domain is properly configured
+3. Check that you're viewing the site through your custom domain, not `*.gitbook.io`
+
+### Changes not reflecting
+
+GitBook may cache pages. Try:
+- Hard refresh (Ctrl+Shift+R or Cmd+Shift+R)
+- Viewing in an incognito/private window
+- Waiting a few minutes for cache to update
+
+### Tracking internal vs public docs
+
+The tracking script will work for both public documentation and internal/private spaces (when accessed by authenticated users through your custom domain).

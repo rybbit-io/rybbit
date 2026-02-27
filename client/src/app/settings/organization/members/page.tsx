@@ -1,22 +1,28 @@
 "use client";
 import { DateTime } from "luxon";
+import { getTimezone } from "../../../../lib/store";
 import { Card, CardContent, CardHeader, CardTitle } from "../../../../components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../../../../components/ui/table";
+import { Badge } from "../../../../components/ui/badge";
 import { authClient } from "../../../../lib/auth";
 
+import { useExtracted } from "next-intl";
 import { useEffect, useState } from "react";
-import { toast } from "sonner";
-import { useOrganizationMembers } from "../../../../api/admin/auth";
-import { useOrganizationInvitations } from "../../../../api/admin/organizations";
+import { toast } from "@/components/ui/sonner";
+import { useOrganizationMembers } from "../../../../api/admin/hooks/useOrganizationMembers";
+import { useOrganizationInvitations } from "../../../../api/admin/hooks/useOrganizations";
 import { NoOrganization } from "../../../../components/NoOrganization";
 import { Button } from "../../../../components/ui/button";
 import { Input } from "../../../../components/ui/input";
 import { useSetPageTitle } from "../../../../hooks/useSetPageTitle";
 import { IS_CLOUD } from "../../../../lib/const";
 import { CreateUserDialog } from "./components/CreateUserDialog";
+import { DeleteOrganizationDialog } from "./components/DeleteOrganizationDialog";
 import { Invitations } from "./components/Invitations";
 import { InviteMemberDialog } from "./components/InviteMemberDialog";
+import { MemberSiteAccessDialog } from "./components/MemberSiteAccessDialog";
 import { RemoveMemberDialog } from "./components/RemoveMemberDialog";
+import { GetOrganizationMembersResponse } from "../../../../api/admin/endpoints/auth";
 
 // Types for our component
 export type Organization = {
@@ -36,11 +42,16 @@ export type Member = {
     id: string;
     name: string | null;
     email: string;
-    image: string | null;
+  };
+  siteAccess?: {
+    hasRestrictedSiteAccess: boolean;
+    siteIds: number[];
   };
 };
 
 // Organization Component with Members Table
+type MemberData = GetOrganizationMembersResponse["data"][0];
+
 function Organization({
   org,
 }: {
@@ -51,8 +62,10 @@ function Organization({
     createdAt: Date;
   };
 }) {
+  const t = useExtracted();
   const [name, setName] = useState(org.name);
   const [isUpdating, setIsUpdating] = useState(false);
+  const [selectedMemberForAccess, setSelectedMemberForAccess] = useState<MemberData | null>(null);
 
   useEffect(() => {
     setName(org.name);
@@ -72,7 +85,7 @@ function Organization({
 
   const handleOrganizationNameUpdate = async () => {
     if (!name) {
-      toast.error("Organization name cannot be empty");
+      toast.error(t("Organization name cannot be empty"));
       return;
     }
 
@@ -86,14 +99,14 @@ function Organization({
       });
 
       if (response.error) {
-        throw new Error(response.error.message || "Failed to update organization name");
+        throw new Error(response.error.message || t("Failed to update organization name"));
       }
 
-      toast.success("Name updated successfully");
+      toast.success(t("Name updated successfully"));
       window.location.reload();
     } catch (error) {
       console.error("Error updating organization name:", error);
-      toast.error(error instanceof Error ? error.message : "Failed to update organization name");
+      toast.error(error instanceof Error ? error.message : t("Failed to update organization name"));
     } finally {
       setIsUpdating(false);
     }
@@ -104,27 +117,33 @@ function Organization({
       {isOwner && (
         <Card>
           <CardHeader>
-            <CardTitle className="text-xl">Organization</CardTitle>
+            <CardTitle className="text-xl">{t("Organization")}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-2">
-              <h4 className="text-sm font-medium">Organization Name</h4>
-              <p className="text-xs text-neutral-500">Update your organization name</p>
+              <h4 className="text-sm font-medium">{t("Organization Name")}</h4>
+              <p className="text-xs text-neutral-500">{t("Update your organization name")}</p>
               <div className="flex space-x-2">
                 <Input id="name" value={name} onChange={({ target }) => setName(target.value)} placeholder="name" />
                 <Button variant="outline" onClick={handleOrganizationNameUpdate} disabled={name === org.name}>
-                  {isUpdating ? "Updating..." : "Update"}
+                  {isUpdating ? t("Updating...") : t("Update")}
                 </Button>
               </div>
             </div>
-            {/* <DeleteOrganizationDialog organization={org} onSuccess={handleRefresh} /> */}
+            <div className="pt-4 border-t mt-4 space-y-2">
+              <h4 className="text-sm font-medium">{t("Delete Organization")}</h4>
+              <p className="text-xs text-neutral-500">{t("Permanently delete this organization and all its data")}</p>
+              <div className="w-[200px]">
+                <DeleteOrganizationDialog organization={org} onSuccess={handleRefresh} />
+              </div>
+            </div>
           </CardContent>
         </Card>
       )}
       <Card className="w-full">
         <CardHeader className="pb-2">
           <div className="flex items-center justify-between flex-wrap gap-2">
-            <CardTitle className="text-xl">Members</CardTitle>
+            <CardTitle className="text-xl">{t("Members")}</CardTitle>
 
             <div className="flex items-center gap-2">
               {isOwner && (
@@ -147,11 +166,12 @@ function Organization({
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead>Email</TableHead>
-                <TableHead>Role</TableHead>
-                <TableHead>Joined</TableHead>
-                {isOwner && <TableHead className="w-12">Actions</TableHead>}
+                <TableHead>{t("Name")}</TableHead>
+                <TableHead>{t("Email")}</TableHead>
+                <TableHead>{t("Role")}</TableHead>
+                <TableHead>{t("Site Access")}</TableHead>
+                <TableHead>{t("Joined")}</TableHead>
+                {isOwner && <TableHead className="w-12">{t("Actions")}</TableHead>}
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -169,6 +189,9 @@ function Organization({
                       <div className="h-4 bg-muted animate-pulse rounded w-16"></div>
                     </TableCell>
                     <TableCell>
+                      <div className="h-4 bg-muted animate-pulse rounded w-16"></div>
+                    </TableCell>
+                    <TableCell>
                       <div className="h-4 bg-muted animate-pulse rounded w-20"></div>
                     </TableCell>
                     {isOwner && (
@@ -180,14 +203,31 @@ function Organization({
                 ))
               ) : (
                 <>
-                  {members?.data?.map((member: any) => (
+                  {members?.data?.map((member: MemberData) => (
                     <TableRow key={member.id}>
                       <TableCell>{member.user?.name || "—"}</TableCell>
                       <TableCell>{member.user?.email}</TableCell>
-                      <TableCell className="capitalize">{member.role}</TableCell>
+                      <TableCell className="capitalize">
+                        {member.role === "admin" ? t("Admin") : member.role === "owner" ? t("Owner") : t("Member")}
+                      </TableCell>
+                      <TableCell>
+                        {member.role === "member" ? (
+                          <Badge
+                            variant={member.siteAccess?.hasRestrictedSiteAccess ? "default" : "secondary"}
+                            className={isAdmin ? "cursor-pointer hover:opacity-80" : ""}
+                            onClick={() => isAdmin && setSelectedMemberForAccess(member)}
+                          >
+                            {member.siteAccess?.hasRestrictedSiteAccess
+                              ? t("{count} sites", { count: String(member.siteAccess.siteIds.length) })
+                              : t("All sites")}
+                          </Badge>
+                        ) : (
+                          <Badge variant="outline">{t("All sites")}</Badge>
+                        )}
+                      </TableCell>
                       <TableCell>
                         {DateTime.fromSQL(member.createdAt, { zone: "utc" })
-                          .toLocal()
+                          .setZone(getTimezone())
                           .toLocaleString(DateTime.DATE_SHORT)}
                       </TableCell>
                       {isAdmin && (
@@ -201,8 +241,8 @@ function Organization({
                   ))}
                   {(!members?.data || members.data.length === 0) && (
                     <TableRow>
-                      <TableCell colSpan={isOwner ? 5 : 4} className="text-center py-6 text-muted-foreground">
-                        No members found
+                      <TableCell colSpan={isOwner ? 6 : 5} className="text-center py-6 text-muted-foreground">
+                        {t("No members found")}
                       </TableCell>
                     </TableRow>
                   )}
@@ -210,6 +250,14 @@ function Organization({
               )}
             </TableBody>
           </Table>
+
+          {/* Member Site Access Dialog */}
+          <MemberSiteAccessDialog
+            member={selectedMemberForAccess}
+            open={!!selectedMemberForAccess}
+            onClose={() => setSelectedMemberForAccess(null)}
+            onSuccess={handleRefresh}
+          />
         </CardContent>
       </Card>
 
@@ -220,20 +268,21 @@ function Organization({
 
 // Main Organizations component
 export default function MembersPage() {
-  useSetPageTitle("Rybbit · Organization Members");
+  useSetPageTitle("Organization Members");
+  const t = useExtracted();
   const { data: activeOrganization, isPending } = authClient.useActiveOrganization();
 
   if (isPending) {
     return (
       <div className="flex justify-center py-8">
-        <div className="animate-pulse">Loading organization...</div>
+        <div className="animate-pulse">{t("Loading organization...")}</div>
       </div>
     );
   }
 
   if (!activeOrganization) {
     return (
-      <NoOrganization message="You need to create or be added to an organization before you can manage members." />
+      <NoOrganization message={t("You need to create or be added to an organization before you can manage members.")} />
     );
   }
 

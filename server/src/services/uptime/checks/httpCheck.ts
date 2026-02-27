@@ -93,7 +93,7 @@ export async function performHttpCheck(options: HttpCheckOptions): Promise<HttpC
       body: options.body,
       bodyTimeout: options.timeoutMs || 30000,
       headersTimeout: options.timeoutMs || 30000,
-      maxRedirections: options.followRedirects !== false ? 5 : 0,
+      // maxRedirections: options.followRedirects !== false ? 5 : 0,
     });
 
     // Calculate timings

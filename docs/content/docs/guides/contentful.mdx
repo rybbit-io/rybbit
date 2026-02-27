@@ -1,0 +1,80 @@
+---
+title: Contentful
+description: Integrate Rybbit Analytics with your Contentful-powered website
+---
+
+import { Callout } from 'fumadocs-ui/components/callout';
+
+Contentful is an enterprise headless CMS that delivers content via API. Since Contentful is headless, you'll add Rybbit Analytics to your frontend application rather than to Contentful itself.
+
+<Callout type="info">
+Contentful only manages and delivers your content - it doesn't serve your website. The tracking script goes in your frontend framework (Next.js, Gatsby, Nuxt, etc.).
+</Callout>
+
+## How to Add Rybbit with Contentful
+
+Choose the guide that matches your frontend framework:
+
+### React-based Frontends
+- **[Next.js](/docs/guides/react/next-js)** - Most common choice with Contentful
+- **[Gatsby](/docs/guides/react/gatsby)** - Has official Contentful plugin
+- **[Remix](/docs/guides/react/remix)**
+- **[Vite + React](/docs/guides/react/vite-cra)**
+
+### Vue-based Frontends
+- **[Nuxt](/docs/guides/vue/nuxt)**
+- **[Vite + Vue](/docs/guides/vue/vite)**
+
+### Other Frontends
+- **[Astro](/docs/guides/astro)**
+- **[SvelteKit](/docs/guides/svelte/sveltekit)**
+- **[Angular](/docs/guides/angular)**
+
+## Quick Example: Next.js with Contentful
+
+If you're using Next.js (the most common Contentful frontend), add the tracking script to your root layout:
+
+```tsx
+// app/layout.tsx
+import Script from 'next/script'
+
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode
+}) {
+  return (
+    <html lang="en">
+      <head>
+        <Script
+          src="https://app.rybbit.io/api/script.js"
+          data-site-id="YOUR_SITE_ID"
+          strategy="afterInteractive"
+        />
+      </head>
+      <body>{children}</body>
+    </html>
+  )
+}
+```
+
+Replace `YOUR_SITE_ID` with your actual Site ID from your Rybbit dashboard.
+
+## Quick Example: Gatsby with Contentful
+
+If you're using Gatsby, add to your `gatsby-ssr.js`:
+
+```javascript
+import React from 'react'
+
+export const onRenderBody = ({ setHeadComponents }) => {
+  setHeadComponents([
+    <script
+      key="rybbit"
+      src="https://app.rybbit.io/api/script.js"
+      data-site-id="YOUR_SITE_ID"
+      defer
+    />
+  ])
+}
+```

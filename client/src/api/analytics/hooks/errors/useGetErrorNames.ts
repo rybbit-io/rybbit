@@ -1,6 +1,6 @@
-import { useStore } from "@/lib/store";
+import { getTimezone, useStore } from "@/lib/store";
 import { useQuery, UseQueryResult } from "@tanstack/react-query";
-import { getStartAndEndDate, timeZone } from "../../../utils";
+import { getStartAndEndDate } from "../../../utils";
 import {
   fetchErrorNames,
   ErrorNameItem,
@@ -20,17 +20,17 @@ export function useGetErrorNamesPaginated({
   page = 1,
   useFilters = true,
 }: UseGetErrorNamesOptions): UseQueryResult<{ data: ErrorNamesPaginatedResponse }> {
-  const { time, site, filters } = useStore();
+  const { time, site, filters, timezone } = useStore();
 
   const { startDate, endDate } = getStartAndEndDate(time);
 
   return useQuery({
-    queryKey: ["error-names", time, site, filters, limit, page, useFilters],
+    queryKey: ["error-names", time, site, filters, limit, page, useFilters, timezone],
     queryFn: async () => {
       const data = await fetchErrorNames(site, {
         startDate: startDate ?? "",
         endDate: endDate ?? "",
-        timeZone,
+        timeZone: getTimezone(),
         filters: useFilters ? filters : undefined,
         limit,
         page,
@@ -46,17 +46,17 @@ export function useGetErrorNames({
   limit = 10,
   useFilters = true,
 }: Omit<UseGetErrorNamesOptions, "page">): UseQueryResult<{ data: ErrorNamesPaginatedResponse }> {
-  const { time, site, filters } = useStore();
+  const { time, site, filters, timezone } = useStore();
 
   const { startDate, endDate } = getStartAndEndDate(time);
 
   return useQuery({
-    queryKey: ["error-names", time, site, filters, limit],
+    queryKey: ["error-names", time, site, filters, limit, timezone],
     queryFn: async () => {
       const data = await fetchErrorNames(site, {
         startDate: startDate ?? "",
         endDate: endDate ?? "",
-        timeZone,
+        timeZone: getTimezone(),
         filters: useFilters ? filters : undefined,
         limit,
       });

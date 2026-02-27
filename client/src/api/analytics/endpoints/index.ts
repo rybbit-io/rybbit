@@ -11,16 +11,29 @@ export type {
 } from "./overview";
 
 // Events endpoints
-export { fetchEvents, fetchEventNames, fetchEventProperties, fetchOutboundLinks } from "./events";
+export {
+  fetchEventBucketed,
+  fetchNewEvents,
+  fetchEventsCursor,
+  fetchEventNames,
+  fetchEventProperties,
+  fetchOutboundLinks,
+  fetchSiteEventCount,
+} from "./events";
 export type {
   Event,
-  EventsResponse,
+  EventBucketedPoint,
+  NewEventsResponse,
+  CursorEventsResponse,
   EventName,
   EventProperty,
   OutboundLink,
-  EventsParams,
+  EventBucketedParams,
   EventPropertiesParams,
+  SiteEventCountPoint,
+  SiteEventCountParams,
 } from "./events";
+
 
 // Errors endpoints
 export { fetchErrorNames, fetchErrorEvents, fetchErrorBucketed } from "./errors";
@@ -128,3 +141,20 @@ export type {
   GetSessionReplayEventsResponse,
   SessionReplaysParams,
 } from "./sessionReplay";
+
+// User Traits endpoints
+export { fetchUserTraitKeys, fetchUserTraitValues, fetchUserTraitValueUsers } from "./userTraits";
+export type {
+  TraitKey,
+  TraitKeysResponse,
+  TraitValue,
+  TraitValuesResponse,
+  TraitValuesParams,
+  TraitValueUser,
+  TraitValueUsersResponse,
+  TraitValueUsersParams,
+} from "./userTraits";
+
+// Export endpoints
+export { exportPdfReport } from "./export";
+export type { ExportPdfParams } from "./export";

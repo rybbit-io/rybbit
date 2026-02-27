@@ -1,7 +1,8 @@
 "use client";
 
+import { useExtracted } from "next-intl";
 import { usePathname } from "next/navigation";
-import { useGetSite } from "../../../../api/admin/sites";
+import { useGetSite } from "../../../../api/admin/hooks/useSites";
 import { Sidebar } from "./Sidebar";
 import { Button } from "../../../../components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "../../../../components/ui/sheet";
@@ -14,6 +15,7 @@ import { useEmbedablePage } from "../../utils";
 import { Suspense } from "react";
 
 function MobileSidebarContent() {
+  const t = useExtracted();
   const pathname = usePathname();
   const { data: site } = useGetSite(Number(pathname.split("/")[1]));
 
@@ -30,7 +32,7 @@ function MobileSidebarContent() {
         </SheetTrigger>
         <VisuallyHidden>
           <SheetHeader>
-            <SheetTitle>Rybbit Sidebar</SheetTitle>
+            <SheetTitle>{t("Rybbit Sidebar")}</SheetTitle>
           </SheetHeader>
         </VisuallyHidden>
         <SheetContent side="left" className="p-0 w-[240px] flex gap-0" showClose={false}>

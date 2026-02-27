@@ -1,32 +1,44 @@
 import {
   SiAngular,
   SiAstro,
+  SiBigcommerce,
+  SiCarrd,
+  SiContentful,
   SiDocusaurus,
   SiDrupal,
   SiFramer,
   SiGatsby,
+  SiGhost,
+  SiGitbook,
   SiGoogletagmanager,
   SiHugo,
   SiJekyll,
+  SiJoomla,
   SiLaravel,
+  SiMintlify,
   SiNextdotjs,
   SiNuxt,
+  SiPrestashop,
   SiReact,
   SiRemix,
+  SiSanity,
   SiShopify,
   SiSquarespace,
+  SiStrapi,
   SiSvelte,
+  SiVitepress,
   SiVuedotjs,
   SiWebflow,
   SiWix,
   SiWoocommerce,
   SiWordpress,
-  SiMintlify,
 } from "@icons-pack/react-simple-icons";
+import { useExtracted } from "next-intl";
 import React from "react";
-import { useGetSite, useSiteHasData } from "../../../../api/admin/sites";
+import { useGetSite, useSiteHasData } from "../../../../api/admin/hooks/useSites";
 import { CodeSnippet } from "../../../../components/CodeSnippet";
 import { Alert } from "../../../../components/ui/alert";
+import { VerifyInstallation } from "../../../../components/VerifyInstallation";
 import { useStore } from "../../../../lib/store";
 
 // Custom Card Component
@@ -43,7 +55,7 @@ function Card({ icon, title, description, href }: CardProps) {
       href={href}
       target="_blank"
       rel="noopener noreferrer"
-      className="group flex flex-col py-2 px-3 rounded-lg bg-neutral-50 dark:bg-neutral-850 border border-neutral-100 dark:border-neutral-750 hover:bg-white dark:hover:bg-neutral-900 transition-all duration-200"
+      className="group flex flex-col py-2 px-3 rounded-lg bg-white dark:bg-neutral-850 border border-neutral-100 dark:border-neutral-750 transition-all duration-200"
     >
       <div className="flex items-center gap-2">
         <div className="text-neutral-600 dark:text-neutral-300 group-hover:text-emerald-500 dark:group-hover:text-emerald-400 transition-colors">
@@ -57,6 +69,7 @@ function Card({ icon, title, description, href }: CardProps) {
 }
 
 export function NoData() {
+  const t = useExtracted();
   const { site } = useStore();
   const { data: siteHasData, isLoading } = useSiteHasData(site);
   const { data: siteMetadata, isLoading: isLoadingSiteMetadata } = useGetSite(site);
@@ -71,24 +84,29 @@ export function NoData() {
                 <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-green-400 opacity-75"></span>
                 <span className="relative inline-flex h-3 w-3 rounded-full bg-green-500"></span>
               </span>
-              <div className="font-medium">Waiting for analytics from {siteMetadata?.domain}...</div>
+              <div className="font-medium">{t("Waiting for analytics from {domain}...", { domain: siteMetadata?.domain ?? "" })}</div>
             </div>
-            <div className="text-xs text-muted-foreground">Place this snippet in the &lt;head&gt; of your website:</div>
+            <div className="text-xs text-muted-foreground">{t("Place this snippet in the {headTag} of your website:", { headTag: "<head>" })}</div>
             <CodeSnippet
               language="HTML"
               code={`<script\n    src="${globalThis.location.origin}/api/script.js"\n    data-site-id="${siteMetadata?.id ?? siteMetadata?.siteId}"\n    defer\n></script>`}
               className="text-xs"
             />
             <span className="text-xs text-muted-foreground">
-              See our{" "}
+              {t("See our")}{" "}
               <a href="https://rybbit.com/docs/script" className="text-blue-500 hover:underline">
-                docs
+                {t("docs")}
               </a>{" "}
-              for more information.
+              {t("for more information, or")}{" "}
+              <a href="https://rybbit.com/docs/script-troubleshooting" className="text-blue-500 hover:underline">
+                {t("troubleshoot")}
+              </a>{" "}
+              {t("if your script isn't sending traffic.")}
             </span>
+            {siteMetadata?.siteId && <VerifyInstallation siteId={siteMetadata.siteId} />}
             {/* Framework Guide Cards */}
             <div className="">
-              <h2 className="text-sm font-medium mb-4">Platform Guides</h2>
+              <h2 className="text-sm font-medium mb-4">{t("Platform Guides")}</h2>
               <div className="flex flex-wrap gap-2">
                 <Card
                   icon={<SiGoogletagmanager className="w-5 h-5" />}
@@ -139,16 +157,52 @@ export function NoData() {
                   href="https://rybbit.com/docs/guides/svelte/sveltekit"
                 />
                 <Card
+                  icon={<img src="/platforms/thrivecart.svg" alt="ThriveCart" className="w-5 h-5 grayscale" />}
+                  title="ThriveCart"
+                  description=""
+                  href="https://rybbit.com/docs/guides/thrivecart"
+                />
+                <Card
                   icon={<SiAstro className="w-5 h-5" />}
                   title="Astro"
                   description=""
                   href="https://rybbit.com/docs/guides/astro"
                 />
                 <Card
+                  icon={<SiBigcommerce className="w-5 h-5" />}
+                  title="BigCommerce"
+                  description=""
+                  href="https://rybbit.com/docs/guides/bigcommerce"
+                />
+                <Card
+                  icon={<SiCarrd className="w-5 h-5" />}
+                  title="Carrd"
+                  description=""
+                  href="https://rybbit.com/docs/guides/carrd"
+                />
+                <Card
+                  icon={<SiContentful className="w-5 h-5" />}
+                  title="Contentful"
+                  description=""
+                  href="https://rybbit.com/docs/guides/contentful"
+                />
+                <Card
                   icon={<SiGatsby className="w-5 h-5" />}
                   title="Gatsby"
                   description=""
                   href="https://rybbit.com/docs/guides/react/gatsby"
+                />
+                <Card
+                  icon={<SiGhost className="w-5 h-5" />}
+                  title="Ghost"
+                  description=""
+                  href="https://rybbit.com/docs/guides/ghost"
+                />
+                <Card
+                  icon={<SiGitbook className="w-5 h-5" />}
+                  title="GitBook"
+                  description=""
+                  href="https://rybbit.com/docs/guides/gitbook"
                 />
                 <Card
                   icon={<SiRemix className="w-5 h-5" />}
@@ -188,6 +242,12 @@ export function NoData() {
                   href="https://rybbit.com/docs/guides/jekyll"
                 />
                 <Card
+                  icon={<SiJoomla className="w-5 h-5" />}
+                  title="Joomla"
+                  description=""
+                  href="https://rybbit.com/docs/guides/joomla"
+                />
+                <Card
                   icon={<SiLaravel className="w-5 h-5" />}
                   title="Laravel"
                   description=""
@@ -200,6 +260,18 @@ export function NoData() {
                   href="https://rybbit.com/docs/guides/mintlify"
                 />
                 <Card
+                  icon={<SiPrestashop className="w-5 h-5" />}
+                  title="PrestaShop"
+                  description=""
+                  href="https://rybbit.com/docs/guides/prestashop"
+                />
+                <Card
+                  icon={<SiSanity className="w-5 h-5" />}
+                  title="Sanity"
+                  description=""
+                  href="https://rybbit.com/docs/guides/sanity"
+                />
+                <Card
                   icon={<SiShopify className="w-5 h-5" />}
                   title="Shopify"
                   description=""
@@ -210,6 +282,18 @@ export function NoData() {
                   title="Squarespace"
                   description=""
                   href="https://rybbit.com/docs/guides/squarespace"
+                />
+                <Card
+                  icon={<SiStrapi className="w-5 h-5" />}
+                  title="Strapi"
+                  description=""
+                  href="https://rybbit.com/docs/guides/strapi"
+                />
+                <Card
+                  icon={<SiVitepress className="w-5 h-5" />}
+                  title="VitePress"
+                  description=""
+                  href="https://rybbit.com/docs/guides/vitepress"
                 />
                 <Card
                   icon={<SiWordpress className="w-5 h-5" />}

@@ -14,19 +14,19 @@ See the [API Reference](/docs/api/stats/reference) for authentication, common pa
 <div className="flex flex-col gap-2 my-6">
   <a href="#get-overview" className="flex items-center gap-3 p-3 rounded-lg bg-fd-secondary/50 hover:bg-fd-secondary transition-colors no-underline">
     <span className="px-2 py-1 text-xs font-bold rounded bg-green-500/20 text-green-600 dark:text-green-400">GET</span>
-    <code className="text-sm">/api/overview/:site</code>
+    <code className="text-sm">/api/sites/:site/overview</code>
   </a>
   <a href="#get-overview-time-series" className="flex items-center gap-3 p-3 rounded-lg bg-fd-secondary/50 hover:bg-fd-secondary transition-colors no-underline">
     <span className="px-2 py-1 text-xs font-bold rounded bg-green-500/20 text-green-600 dark:text-green-400">GET</span>
-    <code className="text-sm">/api/overview-bucketed/:site</code>
+    <code className="text-sm">/api/sites/:site/overview-bucketed</code>
   </a>
   <a href="#get-metric" className="flex items-center gap-3 p-3 rounded-lg bg-fd-secondary/50 hover:bg-fd-secondary transition-colors no-underline">
     <span className="px-2 py-1 text-xs font-bold rounded bg-green-500/20 text-green-600 dark:text-green-400">GET</span>
-    <code className="text-sm">/api/metric/:site</code>
+    <code className="text-sm">/api/sites/:site/metric</code>
   </a>
   <a href="#get-live-visitors" className="flex items-center gap-3 p-3 rounded-lg bg-fd-secondary/50 hover:bg-fd-secondary transition-colors no-underline">
     <span className="px-2 py-1 text-xs font-bold rounded bg-green-500/20 text-green-600 dark:text-green-400">GET</span>
-    <code className="text-sm">/api/live-user-count/:site</code>
+    <code className="text-sm">/api/sites/:site/live-user-count</code>
   </a>
 </div>
 
@@ -38,7 +38,7 @@ See the [API Reference](/docs/api/stats/reference) for authentication, common pa
 <div>
 
 ```
-GET /api/overview/:site
+GET /api/sites/:site/overview
 ```
 
 Returns high-level analytics metrics for a site.
@@ -97,14 +97,14 @@ Accepts all [Common Parameters](/docs/api/getting-started#common-parameters) (ti
 <Tabs items={['cURL', 'JavaScript', 'Python', 'PHP', 'Ruby', 'Go', 'Rust', 'Java', '.NET']}>
   <Tab value="cURL">
 ```bash title="Request"
-curl -X GET "https://api.rybbit.io/api/overview/123?start_date=2024-01-01&end_date=2024-01-31&time_zone=America/New_York" \
+curl -X GET "https://app.rybbit.io/api/sites/123/overview?start_date=2024-01-01&end_date=2024-01-31&time_zone=America/New_York" \
   -H "Authorization: Bearer your_api_key_here"
 ```
   </Tab>
   <Tab value="JavaScript">
 ```javascript title="Request"
 const response = await fetch(
-  'https://api.rybbit.io/api/overview/123?start_date=2024-01-01&end_date=2024-01-31&time_zone=America/New_York',
+  'https://app.rybbit.io/api/sites/123/overview?start_date=2024-01-01&end_date=2024-01-31&time_zone=America/New_York',
   {
     headers: {
       'Authorization': 'Bearer your_api_key_here'
@@ -120,7 +120,7 @@ const data = await response.json();
 import requests
 
 response = requests.get(
-    'https://api.rybbit.io/api/overview/123',
+    'https://app.rybbit.io/api/sites/123/overview',
     params={
         'start_date': '2024-01-01',
         'end_date': '2024-01-31',
@@ -137,7 +137,7 @@ data = response.json()
   <Tab value="PHP">
 ```php title="Request"
 $ch = curl_init();
-curl_setopt($ch, CURLOPT_URL, 'https://api.rybbit.io/api/overview/123?start_date=2024-01-01&end_date=2024-01-31&time_zone=America/New_York');
+curl_setopt($ch, CURLOPT_URL, 'https://app.rybbit.io/api/sites/123/overview?start_date=2024-01-01&end_date=2024-01-31&time_zone=America/New_York');
 curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
 curl_setopt($ch, CURLOPT_HTTPHEADER, [
     'Authorization: Bearer your_api_key_here'
@@ -154,7 +154,7 @@ $data = json_decode($response, true);
 require 'net/http'
 require 'json'
 
-uri = URI('https://api.rybbit.io/api/overview/123?start_date=2024-01-01&end_date=2024-01-31&time_zone=America/New_York')
+uri = URI('https://app.rybbit.io/api/sites/123/overview?start_date=2024-01-01&end_date=2024-01-31&time_zone=America/New_York')
 req = Net::HTTP::Get.new(uri)
 req['Authorization'] = 'Bearer your_api_key_here'
 
@@ -164,7 +164,7 @@ data = JSON.parse(res.body)
   </Tab>
   <Tab value="Go">
 ```go title="Request"
-req, _ := http.NewRequest("GET", "https://api.rybbit.io/api/overview/123?start_date=2024-01-01&end_date=2024-01-31&time_zone=America/New_York", nil)
+req, _ := http.NewRequest("GET", "https://app.rybbit.io/api/sites/123/overview?start_date=2024-01-01&end_date=2024-01-31&time_zone=America/New_York", nil)
 req.Header.Set("Authorization", "Bearer your_api_key_here")
 
 client := &http.Client{}
@@ -179,7 +179,7 @@ json.NewDecoder(resp.Body).Decode(&data)
 ```rust title="Request"
 let client = reqwest::Client::new();
 let res = client
-    .get("https://api.rybbit.io/api/overview/123?start_date=2024-01-01&end_date=2024-01-31&time_zone=America/New_York")
+    .get("https://app.rybbit.io/api/sites/123/overview?start_date=2024-01-01&end_date=2024-01-31&time_zone=America/New_York")
     .header("Authorization", "Bearer your_api_key_here")
     .send()
     .await?;
@@ -191,7 +191,7 @@ let data: serde_json::Value = res.json().await?;
 ```java title="Request"
 HttpClient client = HttpClient.newHttpClient();
 HttpRequest request = HttpRequest.newBuilder()
-    .uri(URI.create("https://api.rybbit.io/api/overview/123?start_date=2024-01-01&end_date=2024-01-31&time_zone=America/New_York"))
+    .uri(URI.create("https://app.rybbit.io/api/sites/123/overview?start_date=2024-01-01&end_date=2024-01-31&time_zone=America/New_York"))
     .header("Authorization", "Bearer your_api_key_here")
     .GET()
     .build();
@@ -204,7 +204,7 @@ HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.o
 using var client = new HttpClient();
 client.DefaultRequestHeaders.Add("Authorization", "Bearer your_api_key_here");
 
-var response = await client.GetAsync("https://api.rybbit.io/api/overview/123?start_date=2024-01-01&end_date=2024-01-31&time_zone=America/New_York");
+var response = await client.GetAsync("https://app.rybbit.io/api/sites/123/overview?start_date=2024-01-01&end_date=2024-01-31&time_zone=America/New_York");
 var data = await response.Content.ReadAsStringAsync();
 ```
   </Tab>
@@ -234,7 +234,7 @@ var data = await response.Content.ReadAsStringAsync();
 <div>
 
 ```
-GET /api/overview-bucketed/:site
+GET /api/sites/:site/overview-bucketed
 ```
 
 Returns time-series analytics data broken down by configurable time buckets. Useful for charting trends over time.
@@ -320,14 +320,14 @@ Accepts all [Common Parameters](/docs/api/getting-started#common-parameters) plu
 <Tabs items={['cURL', 'JavaScript', 'Python', 'PHP', 'Ruby', 'Go', 'Rust', 'Java', '.NET']}>
   <Tab value="cURL">
 ```bash title="Request"
-curl -X GET "https://api.rybbit.io/api/overview-bucketed/123?bucket=day&start_date=2024-01-01&end_date=2024-01-07&time_zone=America/New_York" \
+curl -X GET "https://app.rybbit.io/api/sites/123/overview-bucketed?bucket=day&start_date=2024-01-01&end_date=2024-01-07&time_zone=America/New_York" \
   -H "Authorization: Bearer your_api_key_here"
 ```
   </Tab>
   <Tab value="JavaScript">
 ```javascript title="Request"
 const response = await fetch(
-  'https://api.rybbit.io/api/overview-bucketed/123?bucket=day&start_date=2024-01-01&end_date=2024-01-07&time_zone=America/New_York',
+  'https://app.rybbit.io/api/sites/123/overview-bucketed?bucket=day&start_date=2024-01-01&end_date=2024-01-07&time_zone=America/New_York',
   {
     headers: {
       'Authorization': 'Bearer your_api_key_here'
@@ -343,7 +343,7 @@ const data = await response.json();
 import requests
 
 response = requests.get(
-    'https://api.rybbit.io/api/overview-bucketed/123',
+    'https://app.rybbit.io/api/sites/123/overview-bucketed',
     params={
         'bucket': 'day',
         'start_date': '2024-01-01',
@@ -361,7 +361,7 @@ data = response.json()
   <Tab value="PHP">
 ```php title="Request"
 $ch = curl_init();
-curl_setopt($ch, CURLOPT_URL, 'https://api.rybbit.io/api/overview-bucketed/123?bucket=day&start_date=2024-01-01&end_date=2024-01-07&time_zone=America/New_York');
+curl_setopt($ch, CURLOPT_URL, 'https://app.rybbit.io/api/sites/123/overview-bucketed?bucket=day&start_date=2024-01-01&end_date=2024-01-07&time_zone=America/New_York');
 curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
 curl_setopt($ch, CURLOPT_HTTPHEADER, [
     'Authorization: Bearer your_api_key_here'
@@ -378,7 +378,7 @@ $data = json_decode($response, true);
 require 'net/http'
 require 'json'
 
-uri = URI('https://api.rybbit.io/api/overview-bucketed/123?bucket=day&start_date=2024-01-01&end_date=2024-01-07&time_zone=America/New_York')
+uri = URI('https://app.rybbit.io/api/sites/123/overview-bucketed?bucket=day&start_date=2024-01-01&end_date=2024-01-07&time_zone=America/New_York')
 req = Net::HTTP::Get.new(uri)
 req['Authorization'] = 'Bearer your_api_key_here'
 
@@ -388,7 +388,7 @@ data = JSON.parse(res.body)
   </Tab>
   <Tab value="Go">
 ```go title="Request"
-req, _ := http.NewRequest("GET", "https://api.rybbit.io/api/overview-bucketed/123?bucket=day&start_date=2024-01-01&end_date=2024-01-07&time_zone=America/New_York", nil)
+req, _ := http.NewRequest("GET", "https://app.rybbit.io/api/sites/123/overview-bucketed?bucket=day&start_date=2024-01-01&end_date=2024-01-07&time_zone=America/New_York", nil)
 req.Header.Set("Authorization", "Bearer your_api_key_here")
 
 client := &http.Client{}
@@ -403,7 +403,7 @@ json.NewDecoder(resp.Body).Decode(&data)
 ```rust title="Request"
 let client = reqwest::Client::new();
 let res = client
-    .get("https://api.rybbit.io/api/overview-bucketed/123?bucket=day&start_date=2024-01-01&end_date=2024-01-07&time_zone=America/New_York")
+    .get("https://app.rybbit.io/api/sites/123/overview-bucketed?bucket=day&start_date=2024-01-01&end_date=2024-01-07&time_zone=America/New_York")
     .header("Authorization", "Bearer your_api_key_here")
     .send()
     .await?;
@@ -415,7 +415,7 @@ let data: serde_json::Value = res.json().await?;
 ```java title="Request"
 HttpClient client = HttpClient.newHttpClient();
 HttpRequest request = HttpRequest.newBuilder()
-    .uri(URI.create("https://api.rybbit.io/api/overview-bucketed/123?bucket=day&start_date=2024-01-01&end_date=2024-01-07&time_zone=America/New_York"))
+    .uri(URI.create("https://app.rybbit.io/api/sites/123/overview-bucketed?bucket=day&start_date=2024-01-01&end_date=2024-01-07&time_zone=America/New_York"))
     .header("Authorization", "Bearer your_api_key_here")
     .GET()
     .build();
@@ -428,7 +428,7 @@ HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.o
 using var client = new HttpClient();
 client.DefaultRequestHeaders.Add("Authorization", "Bearer your_api_key_here");
 
-var response = await client.GetAsync("https://api.rybbit.io/api/overview-bucketed/123?bucket=day&start_date=2024-01-01&end_date=2024-01-07&time_zone=America/New_York");
+var response = await client.GetAsync("https://app.rybbit.io/api/sites/123/overview-bucketed?bucket=day&start_date=2024-01-01&end_date=2024-01-07&time_zone=America/New_York");
 var data = await response.Content.ReadAsStringAsync();
 ```
   </Tab>
@@ -479,7 +479,7 @@ var data = await response.Content.ReadAsStringAsync();
 <div>
 
 ```
-GET /api/metric/:site
+GET /api/sites/:site/metric
 ```
 
 Returns dimensional analytics data broken down by a specific parameter. Supports pagination.
@@ -575,14 +575,14 @@ Accepts all [Common Parameters](/docs/api/getting-started#common-parameters) plu
 <Tabs items={['cURL', 'JavaScript', 'Python', 'PHP', 'Ruby', 'Go', 'Rust', 'Java', '.NET']}>
   <Tab value="cURL">
 ```bash title="Request"
-curl -X GET "https://api.rybbit.io/api/metric/123?parameter=country&start_date=2024-01-01&end_date=2024-01-31&time_zone=America/New_York&limit=10" \
+curl -X GET "https://app.rybbit.io/api/sites/123/metric?parameter=country&start_date=2024-01-01&end_date=2024-01-31&time_zone=America/New_York&limit=10" \
   -H "Authorization: Bearer your_api_key_here"
 ```
   </Tab>
   <Tab value="JavaScript">
 ```javascript title="Request"
 const response = await fetch(
-  'https://api.rybbit.io/api/metric/123?parameter=country&start_date=2024-01-01&end_date=2024-01-31&time_zone=America/New_York&limit=10',
+  'https://app.rybbit.io/api/sites/123/metric?parameter=country&start_date=2024-01-01&end_date=2024-01-31&time_zone=America/New_York&limit=10',
   {
     headers: {
       'Authorization': 'Bearer your_api_key_here'
@@ -598,7 +598,7 @@ const data = await response.json();
 import requests
 
 response = requests.get(
-    'https://api.rybbit.io/api/metric/123',
+    'https://app.rybbit.io/api/sites/123/metric',
     params={
         'parameter': 'country',
         'start_date': '2024-01-01',
@@ -617,7 +617,7 @@ data = response.json()
   <Tab value="PHP">
 ```php title="Request"
 $ch = curl_init();
-curl_setopt($ch, CURLOPT_URL, 'https://api.rybbit.io/api/metric/123?parameter=country&start_date=2024-01-01&end_date=2024-01-31&time_zone=America/New_York&limit=10');
+curl_setopt($ch, CURLOPT_URL, 'https://app.rybbit.io/api/sites/123/metric?parameter=country&start_date=2024-01-01&end_date=2024-01-31&time_zone=America/New_York&limit=10');
 curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
 curl_setopt($ch, CURLOPT_HTTPHEADER, [
     'Authorization: Bearer your_api_key_here'
@@ -634,7 +634,7 @@ $data = json_decode($response, true);
 require 'net/http'
 require 'json'
 
-uri = URI('https://api.rybbit.io/api/metric/123?parameter=country&start_date=2024-01-01&end_date=2024-01-31&time_zone=America/New_York&limit=10')
+uri = URI('https://app.rybbit.io/api/sites/123/metric?parameter=country&start_date=2024-01-01&end_date=2024-01-31&time_zone=America/New_York&limit=10')
 req = Net::HTTP::Get.new(uri)
 req['Authorization'] = 'Bearer your_api_key_here'
 
@@ -644,7 +644,7 @@ data = JSON.parse(res.body)
   </Tab>
   <Tab value="Go">
 ```go title="Request"
-req, _ := http.NewRequest("GET", "https://api.rybbit.io/api/metric/123?parameter=country&start_date=2024-01-01&end_date=2024-01-31&time_zone=America/New_York&limit=10", nil)
+req, _ := http.NewRequest("GET", "https://app.rybbit.io/api/sites/123/metric?parameter=country&start_date=2024-01-01&end_date=2024-01-31&time_zone=America/New_York&limit=10", nil)
 req.Header.Set("Authorization", "Bearer your_api_key_here")
 
 client := &http.Client{}
@@ -659,7 +659,7 @@ json.NewDecoder(resp.Body).Decode(&data)
 ```rust title="Request"
 let client = reqwest::Client::new();
 let res = client
-    .get("https://api.rybbit.io/api/metric/123?parameter=country&start_date=2024-01-01&end_date=2024-01-31&time_zone=America/New_York&limit=10")
+    .get("https://app.rybbit.io/api/sites/123/metric?parameter=country&start_date=2024-01-01&end_date=2024-01-31&time_zone=America/New_York&limit=10")
     .header("Authorization", "Bearer your_api_key_here")
     .send()
     .await?;
@@ -671,7 +671,7 @@ let data: serde_json::Value = res.json().await?;
 ```java title="Request"
 HttpClient client = HttpClient.newHttpClient();
 HttpRequest request = HttpRequest.newBuilder()
-    .uri(URI.create("https://api.rybbit.io/api/metric/123?parameter=country&start_date=2024-01-01&end_date=2024-01-31&time_zone=America/New_York&limit=10"))
+    .uri(URI.create("https://app.rybbit.io/api/sites/123/metric?parameter=country&start_date=2024-01-01&end_date=2024-01-31&time_zone=America/New_York&limit=10"))
     .header("Authorization", "Bearer your_api_key_here")
     .GET()
     .build();
@@ -684,7 +684,7 @@ HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.o
 using var client = new HttpClient();
 client.DefaultRequestHeaders.Add("Authorization", "Bearer your_api_key_here");
 
-var response = await client.GetAsync("https://api.rybbit.io/api/metric/123?parameter=country&start_date=2024-01-01&end_date=2024-01-31&time_zone=America/New_York&limit=10");
+var response = await client.GetAsync("https://app.rybbit.io/api/sites/123/metric?parameter=country&start_date=2024-01-01&end_date=2024-01-31&time_zone=America/New_York&limit=10");
 var data = await response.Content.ReadAsStringAsync();
 ```
   </Tab>
@@ -727,7 +727,7 @@ var data = await response.Content.ReadAsStringAsync();
 <div>
 
 ```
-GET /api/live-user-count/:site
+GET /api/sites/:site/live-user-count
 ```
 
 Returns the count of unique active sessions within the specified time window. Useful for displaying real-time visitor counts.
@@ -783,14 +783,14 @@ Returns the count of unique active sessions within the specified time window. Us
 <Tabs items={['cURL', 'JavaScript', 'Python', 'PHP', 'Ruby', 'Go', 'Rust', 'Java', '.NET']}>
   <Tab value="cURL">
 ```bash title="Request"
-curl -X GET "https://api.rybbit.io/api/live-user-count/123?minutes=5" \
+curl -X GET "https://app.rybbit.io/api/sites/123/live-user-count?minutes=5" \
   -H "Authorization: Bearer your_api_key_here"
 ```
   </Tab>
   <Tab value="JavaScript">
 ```javascript title="Request"
 const response = await fetch(
-  'https://api.rybbit.io/api/live-user-count/123?minutes=5',
+  'https://app.rybbit.io/api/sites/123/live-user-count?minutes=5',
   {
     headers: {
       'Authorization': 'Bearer your_api_key_here'
@@ -807,7 +807,7 @@ console.log(`Live visitors: ${count}`);
 import requests
 
 response = requests.get(
-    'https://api.rybbit.io/api/live-user-count/123',
+    'https://app.rybbit.io/api/sites/123/live-user-count',
     params={'minutes': 5},
     headers={
         'Authorization': 'Bearer your_api_key_here'
@@ -821,7 +821,7 @@ print(f"Live visitors: {data['count']}")
   <Tab value="PHP">
 ```php title="Request"
 $ch = curl_init();
-curl_setopt($ch, CURLOPT_URL, 'https://api.rybbit.io/api/live-user-count/123?minutes=5');
+curl_setopt($ch, CURLOPT_URL, 'https://app.rybbit.io/api/sites/123/live-user-count?minutes=5');
 curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
 curl_setopt($ch, CURLOPT_HTTPHEADER, [
     'Authorization: Bearer your_api_key_here'
@@ -839,7 +839,7 @@ echo "Live visitors: " . $data['count'];
 require 'net/http'
 require 'json'
 
-uri = URI('https://api.rybbit.io/api/live-user-count/123?minutes=5')
+uri = URI('https://app.rybbit.io/api/sites/123/live-user-count?minutes=5')
 req = Net::HTTP::Get.new(uri)
 req['Authorization'] = 'Bearer your_api_key_here'
 
@@ -850,7 +850,7 @@ puts "Live visitors: #{data['count']}"
   </Tab>
   <Tab value="Go">
 ```go title="Request"
-req, _ := http.NewRequest("GET", "https://api.rybbit.io/api/live-user-count/123?minutes=5", nil)
+req, _ := http.NewRequest("GET", "https://app.rybbit.io/api/sites/123/live-user-count?minutes=5", nil)
 req.Header.Set("Authorization", "Bearer your_api_key_here")
 
 client := &http.Client{}
@@ -866,7 +866,7 @@ fmt.Printf("Live visitors: %v\n", data["count"])
 ```rust title="Request"
 let client = reqwest::Client::new();
 let res = client
-    .get("https://api.rybbit.io/api/live-user-count/123?minutes=5")
+    .get("https://app.rybbit.io/api/sites/123/live-user-count?minutes=5")
     .header("Authorization", "Bearer your_api_key_here")
     .send()
     .await?;
@@ -879,7 +879,7 @@ println!("Live visitors: {}", data["count"]);
 ```java title="Request"
 HttpClient client = HttpClient.newHttpClient();
 HttpRequest request = HttpRequest.newBuilder()
-    .uri(URI.create("https://api.rybbit.io/api/live-user-count/123?minutes=5"))
+    .uri(URI.create("https://app.rybbit.io/api/sites/123/live-user-count?minutes=5"))
     .header("Authorization", "Bearer your_api_key_here")
     .GET()
     .build();
@@ -892,7 +892,7 @@ HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.o
 using var client = new HttpClient();
 client.DefaultRequestHeaders.Add("Authorization", "Bearer your_api_key_here");
 
-var response = await client.GetAsync("https://api.rybbit.io/api/live-user-count/123?minutes=5");
+var response = await client.GetAsync("https://app.rybbit.io/api/sites/123/live-user-count?minutes=5");
 var data = await response.Content.ReadAsStringAsync();
 ```
   </Tab>
@@ -909,7 +909,7 @@ var data = await response.Content.ReadAsStringAsync();
 ```javascript title="Real-time Widget"
 async function updateLiveCount() {
   const response = await fetch(
-    'https://api.rybbit.io/api/live-user-count/123?minutes=5',
+    'https://app.rybbit.io/api/sites/123/live-user-count?minutes=5',
     {
       headers: {
         'Authorization': 'Bearer your_api_key'

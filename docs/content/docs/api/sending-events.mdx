@@ -47,8 +47,8 @@ API keys are user-scoped and grant access to all sites in your organization(s).
 ```bash
 curl -X POST 'https://app.rybbit.io/api/track' \
   -H 'Content-Type: application/json' \
+  -H 'Authorization: Bearer rb_your_api_key_here' \
   -d '{
-    "api_key": "rb_your_api_key_here",
     "site_id": "123",
     "type": "pageview",
     "pathname": "/api/users",
@@ -63,8 +63,8 @@ curl -X POST 'https://app.rybbit.io/api/track' \
 ```bash
 curl -X POST 'https://app.rybbit.io/api/track' \
   -H 'Content-Type: application/json' \
+  -H 'Authorization: Bearer rb_your_api_key_here' \
   -d '{
-    "api_key": "rb_your_api_key_here",
     "site_id": "123",
     "type": "custom_event",
     "pathname": "/checkout",
@@ -83,12 +83,6 @@ All parameters are sent in the request body as JSON.
 
 <TypeTable
   type={{
-    api_key: {
-      description: 'Your generated API key - bypasses bot detection',
-      type: 'string',
-      typeDescription: 'Starts with "rb_"',
-      required: false,
-    },
     site_id: {
       description: 'Your site ID',
       type: 'string',
@@ -346,9 +340,9 @@ const trackEvent = async (eventData) => {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
+      'Authorization': `Bearer ${process.env.RYBBIT_API_KEY}`,
     },
     body: JSON.stringify({
-      api_key: process.env.RYBBIT_API_KEY,
       site_id: process.env.RYBBIT_SITE_ID,
       ...eventData
     })
@@ -383,9 +377,11 @@ import os
 def track_event(event_data):
     response = requests.post(
         'https://app.rybbit.io/api/track',
-        headers={'Content-Type': 'application/json'},
+        headers={
+            'Content-Type': 'application/json',
+            'Authorization': f"Bearer {os.getenv('RYBBIT_API_KEY')}"
+        },
         json={
-            'api_key': os.getenv('RYBBIT_API_KEY'),
             'site_id': os.getenv('RYBBIT_SITE_ID'),
             **event_data
         }
@@ -421,7 +417,6 @@ import (
 )
 
 type TrackingEvent struct {
-    APIKey     string `json:"api_key"`
     SiteID     string `json:"site_id"`
     Type       string `json:"type"`
     Pathname   string `json:"pathname"`
@@ -431,7 +426,6 @@ type TrackingEvent struct {
 }
 
 func trackEvent(event TrackingEvent) error {
-    event.APIKey = os.Getenv("RYBBIT_API_KEY")
     event.SiteID = os.Getenv("RYBBIT_SITE_ID")
 
     jsonData, err := json.Marshal(event)
@@ -439,11 +433,20 @@ func trackEvent(event TrackingEvent) error {
         return err
     }
 
-    resp, err := http.Post(
+    req, err := http.NewRequest(
+        "POST",
         "https://app.rybbit.io/api/track",
-        "application/json",
         bytes.NewBuffer(jsonData),
     )
+    if err != nil {
+        return err
+    }
+
+    req.Header.Set("Content-Type", "application/json")
+    req.Header.Set("Authorization", "Bearer "+os.Getenv("RYBBIT_API_KEY"))
+
+    client := &http.Client{}
+    resp, err := client.Do(req)
     if err != nil {
         return err
     }
@@ -490,7 +493,6 @@ public class RybbitTracker {
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     public void trackEvent(Map<String, Object> eventData) throws Exception {
-        eventData.put("api_key", API_KEY);
         eventData.put("site_id", SITE_ID);
 
         String json = objectMapper.writeValueAsString(eventData);
@@ -498,6 +500,7 @@ public class RybbitTracker {
         HttpRequest request = HttpRequest.newBuilder()
             .uri(URI.create(API_URL))
             .header("Content-Type", "application/json")
+            .header("Authorization", "Bearer " + API_KEY)
             .POST(HttpRequest.BodyPublishers.ofString(json))
             .build();
 
@@ -546,13 +549,15 @@ class RybbitTracker {
     }
 
     public function trackEvent($eventData) {
-        $eventData['api_key'] = $this->apiKey;
         $eventData['site_id'] = $this->siteId;
 
         $ch = curl_init($this->apiUrl);
         curl_setopt($ch, CURLOPT_POST, 1);
         curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($eventData));
-        curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, [
+            'Content-Type: application/json',
+            'Authorization: Bearer ' . $this->apiKey
+        ]);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
 
         $response = curl_exec($ch);
@@ -602,7 +607,6 @@ class RybbitTracker
   end
 
   def track_event(event_data)
-    event_data[:api_key] = @api_key
     event_data[:site_id] = @site_id
 
     uri = URI(API_URL)
@@ -611,6 +615,7 @@ class RybbitTracker
 
     request = Net::HTTP::Post.new(uri.path)
     request['Content-Type'] = 'application/json'
+    request['Authorization'] = "Bearer #{@api_key}"
     request.body = event_data.to_json
 
     response = http.request(request)
@@ -647,6 +652,7 @@ tracker.track_event({
 ```csharp
 using System;
 using System.Net.Http;
+using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
@@ -664,11 +670,12 @@ public class RybbitTracker
         _httpClient = new HttpClient();
         _apiKey = Environment.GetEnvironmentVariable("RYBBIT_API_KEY");
         _siteId = Environment.GetEnvironmentVariable("RYBBIT_SITE_ID");
+        _httpClient.DefaultRequestHeaders.Authorization =
+            new AuthenticationHeaderValue("Bearer", _apiKey);
     }
 
     public async Task TrackEventAsync(Dictionary<string, object> eventData)
     {
-        eventData["api_key"] = _apiKey;
         eventData["site_id"] = _siteId;
 
         var json = JsonSerializer.Serialize(eventData);
@@ -711,6 +718,7 @@ public class RybbitTracker
 <Tab value="Rust">
 ```rust
 use reqwest;
+use reqwest::header::{HeaderMap, HeaderValue, AUTHORIZATION, CONTENT_TYPE};
 use serde_json::{json, Value};
 use std::env;
 
@@ -733,11 +741,18 @@ impl RybbitTracker {
     }
 
     async fn track_event(&self, mut event_data: Value) -> Result<(), Box<dyn std::error::Error>> {
-        event_data["api_key"] = json!(self.api_key);
         event_data["site_id"] = json!(self.site_id);
+
+        let mut headers = HeaderMap::new();
+        headers.insert(CONTENT_TYPE, HeaderValue::from_static("application/json"));
+        headers.insert(
+            AUTHORIZATION,
+            HeaderValue::from_str(&format!("Bearer {}", self.api_key))?,
+        );
 
         let response = self.client
             .post(&self.api_url)
+            .headers(headers)
             .json(&event_data)
             .send()
             .await?;
@@ -801,7 +816,6 @@ class RybbitTracker {
 
     func trackEvent(_ eventData: [String: Any]) async throws {
         var data = eventData
-        data["api_key"] = apiKey
         data["site_id"] = siteId
 
         // Add device info
@@ -824,6 +838,7 @@ class RybbitTracker {
         var request = URLRequest(url: URL(string: apiUrl)!)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
         request.httpBody = try JSONSerialization.data(withJSONObject: data)
 
         let (_, response) = try await URLSession.shared.data(for: request)
@@ -886,7 +901,6 @@ class RybbitTracker(private val context: Context) {
 
     suspend fun trackEvent(eventData: Map<String, Any>) = withContext(Dispatchers.IO) {
         val data = eventData.toMutableMap().apply {
-            put("api_key", apiKey)
             put("site_id", siteId)
             put("user_agent", getUserAgent())
 
@@ -902,6 +916,7 @@ class RybbitTracker(private val context: Context) {
 
         val request = Request.Builder()
             .url(API_URL)
+            .addHeader("Authorization", "Bearer $apiKey")
             .post(body)
             .build()
 
@@ -969,7 +984,6 @@ class RybbitTracker {
 
   Future<void> trackEvent(Map<String, dynamic> eventData) async {
     final data = Map<String, dynamic>.from(eventData);
-    data['api_key'] = _apiKey;
     data['site_id'] = _siteId;
 
     // Add device info
@@ -983,7 +997,10 @@ class RybbitTracker {
 
     final response = await http.post(
       Uri.parse(_apiUrl),
-      headers: {'Content-Type': 'application/json'},
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $_apiKey',
+      },
       body: json.encode(data),
     );
 

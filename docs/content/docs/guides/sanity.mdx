@@ -1,0 +1,78 @@
+---
+title: Sanity
+description: Integrate Rybbit Analytics with your Sanity-powered website
+---
+
+import { Callout } from 'fumadocs-ui/components/callout';
+
+Sanity is a headless CMS that provides content management for your applications. Since Sanity is headless, you'll add Rybbit Analytics to your frontend application rather than to Sanity itself.
+
+<Callout type="info">
+Sanity only manages your content - it doesn't serve your website directly. The tracking script goes in your frontend framework (Next.js, Gatsby, Nuxt, etc.).
+</Callout>
+
+## How to Add Rybbit with Sanity
+
+Choose the guide that matches your frontend framework:
+
+### React-based Frontends
+- **[Next.js](/docs/guides/react/next-js)** - Most common choice with Sanity
+- **[Gatsby](/docs/guides/react/gatsby)** - Popular for static sites
+- **[Remix](/docs/guides/react/remix)**
+- **[Vite + React](/docs/guides/react/vite-cra)**
+
+### Vue-based Frontends
+- **[Nuxt](/docs/guides/vue/nuxt)**
+- **[Vite + Vue](/docs/guides/vue/vite)**
+
+### Other Frontends
+- **[Astro](/docs/guides/astro)** - Great for content-heavy sites
+- **[SvelteKit](/docs/guides/svelte/sveltekit)**
+
+## Quick Example: Next.js with Sanity
+
+If you're using Next.js (the most common Sanity frontend), add the tracking script to your root layout:
+
+```tsx
+// app/layout.tsx
+import Script from 'next/script'
+
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode
+}) {
+  return (
+    <html lang="en">
+      <head>
+        <Script
+          src="https://app.rybbit.io/api/script.js"
+          data-site-id="YOUR_SITE_ID"
+          strategy="afterInteractive"
+        />
+      </head>
+      <body>{children}</body>
+    </html>
+  )
+}
+```
+
+Replace `YOUR_SITE_ID` with your actual Site ID from your Rybbit dashboard.
+
+## Sanity Studio
+
+If you want to track usage of Sanity Studio itself (your content editing interface), you can add the script to your studio's root:
+
+```tsx
+// sanity.config.ts
+import { defineConfig } from 'sanity'
+
+export default defineConfig({
+  // ... your config
+  document: {
+    // Add custom studio plugins if needed
+  }
+})
+```
+
+However, most users only want to track their public-facing website, not their internal Studio usage.

@@ -3,7 +3,6 @@ import { z } from "zod";
 import { db } from "../../db/postgres/postgres.js";
 import { sites } from "../../db/postgres/schema.js";
 import { eq } from "drizzle-orm";
-import { getUserHasAccessToSite } from "../../lib/auth-utils.js";
 
 const getSiteExcludedIPsSchema = z.object({
   siteId: z.string().min(1),
@@ -29,16 +28,6 @@ export async function getSiteExcludedIPs(request: FastifyRequest, reply: Fastify
       return reply.status(400).send({
         success: false,
         error: "Invalid site ID: must be a positive integer",
-      });
-    }
-
-    // Check if user has access to this site
-    const hasAccess = await getUserHasAccessToSite(request, numericSiteId);
-
-    if (!hasAccess) {
-      return reply.status(403).send({
-        success: false,
-        error: "Forbidden: You don't have access to this site",
       });
     }
 

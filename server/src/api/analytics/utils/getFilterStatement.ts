@@ -2,6 +2,19 @@ import SqlString from "sqlstring";
 import { filterParamSchema, validateFilters } from "./query-validation.js";
 import { FilterParameter, FilterType } from "../types.js";
 
+// Options for customizing filter behavior
+export interface FilterStatementOptions {
+  // Parameters that should use session-level subqueries (finds sessions containing matching events)
+  // Default: ["event_name"] - entry_page and exit_page are always session-level due to special aggregation
+  sessionLevelParams?: FilterParameter[];
+
+  // Field name mappings for CTEs that extract fields to different column names
+  // e.g., { "url_parameters['utm_source']": "utm_source" }
+  fieldMappings?: Record<string, string>;
+}
+
+const DEFAULT_SESSION_LEVEL_PARAMS: FilterParameter[] = ["event_name"];
+
 const filterTypeToOperator = (type: FilterType) => {
   switch (type) {
     case "equals":
@@ -63,7 +76,12 @@ export const getSqlParam = (parameter: FilterParameter) => {
   return filterParamSchema.parse(parameter);
 };
 
-export function getFilterStatement(filters: string, siteId?: number, timeStatement?: string) {
+export function getFilterStatement(
+  filters: string,
+  siteId?: number,
+  timeStatement?: string,
+  options?: FilterStatementOptions
+) {
   if (!filters) {
     return "";
   }
@@ -75,35 +93,44 @@ export function getFilterStatement(filters: string, siteId?: number, timeStateme
     return "";
   }
 
+  const sessionLevelParams = options?.sessionLevelParams ?? DEFAULT_SESSION_LEVEL_PARAMS;
   const siteIdFilter = siteId ? `site_id = ${siteId}` : "";
   // Strip leading "AND " from timeStatement since we'll be constructing WHERE clauses
   const timeFilter = timeStatement ? timeStatement.replace(/^AND\s+/i, "").trim() : "";
 
-  return (
+  // Helper to build session-level subquery for a parameter
+  const buildSessionLevelSubquery = (
+    param: FilterParameter,
+    filterType: FilterType,
+    values: (string | number)[],
+    wildcardPrefix: string
+  ): string => {
+    const whereClause = [siteIdFilter, timeFilter].filter(Boolean).join(" AND ");
+    const condition =
+      values.length === 1
+        ? `${param} ${filterTypeToOperator(filterType)} ${SqlString.escape(wildcardPrefix + values[0] + wildcardPrefix)}`
+        : `(${values.map(value => `${param} ${filterTypeToOperator(filterType)} ${SqlString.escape(wildcardPrefix + value + wildcardPrefix)}`).join(" OR ")})`;
+
+    const finalWhere = whereClause ? `WHERE ${whereClause} AND ${condition}` : `WHERE ${condition}`;
+
+    return `session_id IN (
+            SELECT DISTINCT session_id
+            FROM events
+            ${finalWhere}
+          )`;
+  };
+
+  let result =
     "AND " +
     filtersArray
       .map(filter => {
         const x = filter.type === "contains" || filter.type === "not_contains" ? "%" : "";
         const isNumericParam = filter.parameter === "lat" || filter.parameter === "lon";
 
-        // Handle event_name as a session-level filter
-        // This ensures we filter to sessions containing the event, but still count all pageviews in those sessions
-        if (filter.parameter === "event_name") {
-          const whereClause = [siteIdFilter, timeFilter].filter(Boolean).join(" AND ");
-          const eventNameCondition =
-            filter.value.length === 1
-              ? `event_name ${filterTypeToOperator(filter.type)} ${SqlString.escape(x + filter.value[0] + x)}`
-              : `(${filter.value.map(value => `event_name ${filterTypeToOperator(filter.type)} ${SqlString.escape(x + value + x)}`).join(" OR ")})`;
-
-          const finalWhere = whereClause
-            ? `WHERE ${whereClause} AND ${eventNameCondition}`
-            : `WHERE ${eventNameCondition}`;
-
-          return `session_id IN (
-            SELECT DISTINCT session_id
-            FROM events
-            ${finalWhere}
-          )`;
+        // Handle session-level filters (configurable via options)
+        // This ensures we filter to sessions containing matching events
+        if (sessionLevelParams.includes(filter.parameter)) {
+          return buildSessionLevelSubquery(filter.parameter, filter.type, filter.value, x);
         }
 
         if (filter.parameter === "entry_page") {
@@ -272,6 +299,16 @@ export function getFilterStatement(filters: string, siteId?: number, timeStateme
 
         return `(${valuesWithOperator.join(" OR ")})`;
       })
-      .join(" AND ")
-  );
+      .join(" AND ");
+
+  // Apply field mappings if provided (for CTEs that extract fields to different column names)
+  if (options?.fieldMappings) {
+    for (const [from, to] of Object.entries(options.fieldMappings)) {
+      // Escape special regex characters in the 'from' string
+      const escapedFrom = from.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      result = result.replace(new RegExp(escapedFrom, "g"), to);
+    }
+  }
+
+  return result;
 }

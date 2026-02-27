@@ -25,7 +25,7 @@ export function useMetric({
   periodTime?: PeriodTime;
   useFilters?: boolean;
 }): UseQueryResult<APIResponse<MetricResponse[]>> {
-  const { time, previousTime, site, filters } = useStore();
+  const { time, previousTime, site, filters, timezone } = useStore();
   const timeToUse = periodTime === "previous" ? previousTime : time;
 
   // For "previous" periods in past-minutes mode, we need to modify the time object
@@ -40,7 +40,7 @@ export function useMetric({
       : timeToUse;
 
   const params = buildApiParams(timeForQuery, { filters: useFilters ? filters : undefined });
-  const queryKey = [parameter, timeForQuery, site, filters, limit, useFilters];
+  const queryKey = [parameter, timeForQuery, site, filters, limit, useFilters, timezone];
 
   return useQuery({
     queryKey,
@@ -90,7 +90,7 @@ export function usePaginatedMetric({
   customFilters?: Filter[];
   customTime?: Time;
 }): UseQueryResult<PaginatedResponse> {
-  const { time, site, filters } = useStore();
+  const { time, site, filters, timezone } = useStore();
   const timeToUse = customTime ?? time;
   const combinedFilters = useFilters
     ? customFilters.length > 0
@@ -101,7 +101,7 @@ export function usePaginatedMetric({
   const params = buildApiParams(timeToUse, { filters: combinedFilters });
 
   return useQuery({
-    queryKey: [parameter, customTime, time, site, filters, limit, page, additionalFilters, customFilters],
+    queryKey: [parameter, customTime, time, site, filters, limit, page, additionalFilters, customFilters, timezone],
     queryFn: async () => {
       return fetchMetric(site, {
         ...params,
@@ -134,11 +134,11 @@ export function useInfiniteMetric({
   limit?: number;
   useFilters?: boolean;
 }): UseInfiniteQueryResult<InfiniteData<PaginatedResponse>> {
-  const { time, site, filters } = useStore();
+  const { time, site, filters, timezone } = useStore();
   const params = buildApiParams(time, { filters: useFilters ? filters : undefined });
 
   return useInfiniteQuery({
-    queryKey: [parameter, time, site, filters, limit, "infinite-metric"],
+    queryKey: [parameter, time, site, filters, limit, "infinite-metric", timezone],
     queryFn: async ({ pageParam = 1 }) => {
       return fetchMetric(site, {
         ...params,

@@ -6,7 +6,7 @@ import { getFilterStatement } from "./utils/getFilterStatement.js";
 
 interface GetErrorNamesRequest {
   Params: {
-    site: string;
+    siteId: string;
   };
   Querystring: FilterParams<{
     limit?: number;
@@ -33,7 +33,7 @@ const getErrorNamesQuery = (request: FastifyRequest<GetErrorNamesRequest>, isCou
   const { filters, limit, page } = request.query;
 
   const timeStatement = getTimeStatement(request.query);
-  const filterStatement = getFilterStatement(filters, Number(request.params.site), timeStatement);
+  const filterStatement = getFilterStatement(filters, Number(request.params.siteId), timeStatement);
 
   let validatedLimit: number | null = null;
   if (!isCountQuery && limit !== undefined) {
@@ -104,7 +104,7 @@ const getErrorNamesQuery = (request: FastifyRequest<GetErrorNamesRequest>, isCou
 };
 
 export async function getErrorNames(req: FastifyRequest<GetErrorNamesRequest>, res: FastifyReply) {
-  const site = req.params.site;
+  const site = req.params.siteId;
   const { page } = req.query;
 
   const isPaginatedRequest = page !== undefined; // True if page is present

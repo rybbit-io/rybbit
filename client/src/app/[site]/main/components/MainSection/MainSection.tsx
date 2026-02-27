@@ -1,30 +1,20 @@
 "use client";
 import { Card, CardContent, CardLoader } from "@/components/ui/card";
-import { User, Users } from "lucide-react";
 import { Tilt_Warp } from "next/font/google";
+import { useExtracted } from "next-intl";
 import Link from "next/link";
 import { useGetOverview } from "../../../../../api/analytics/hooks/useGetOverview";
 import { useGetOverviewBucketed } from "../../../../../api/analytics/hooks/useGetOverviewBucketed";
 import { BucketSelection } from "../../../../../components/BucketSelection";
-import { RybbitLogo } from "../../../../../components/RybbitLogo";
+import { RybbitTextLogo } from "../../../../../components/RybbitLogo";
+import { useWhiteLabel } from "../../../../../hooks/useIsWhiteLabel";
 import { authClient } from "../../../../../lib/auth";
 import { useStore } from "../../../../../lib/store";
-import { cn } from "../../../../../lib/utils";
-import { ExportButton } from "../ExportButton";
 import { Chart } from "./Chart";
 import { Overview } from "./Overview";
 import { PreviousChart } from "./PreviousChart";
-import { Tooltip, TooltipContent, TooltipTrigger } from "../../../../../components/ui/tooltip";
-import { Button } from "../../../../../components/ui/button";
 
-const SELECTED_STAT_MAP = {
-  pageviews: "Pageviews",
-  sessions: "Sessions",
-  pages_per_session: "Pages per Session",
-  bounce_rate: "Bounce Rate",
-  session_duration: "Session Duration",
-  users: "Users",
-};
+// Moved inside component to use static t() calls
 
 const tilt_wrap = Tilt_Warp({
   subsets: ["latin"],
@@ -32,10 +22,23 @@ const tilt_wrap = Tilt_Warp({
 });
 
 export function MainSection() {
+  const { isWhiteLabel } = useWhiteLabel();
   const session = authClient.useSession();
+  const t = useExtracted();
 
-  const { selectedStat, time, site, bucket, showUsersSplit, setShowUsersSplit } = useStore();
-  const showUserBreakdown = selectedStat === "users" && showUsersSplit;
+  const { selectedStat, time, site, bucket } = useStore();
+
+  const getSelectedStatLabel = () => {
+    switch (selectedStat) {
+      case "pageviews": return t("Pageviews");
+      case "sessions": return t("Sessions");
+      case "pages_per_session": return t("Pages per Session");
+      case "bounce_rate": return t("Bounce Rate");
+      case "session_duration": return t("Session Duration");
+      case "users": return t("Users");
+      default: return selectedStat;
+    }
+  };
 
   // Current period data
   const { data, isFetching, error } = useGetOverviewBucketed({
@@ -60,18 +63,10 @@ export function MainSection() {
     periodTime: "previous",
   });
 
-  const activeKeys = showUserBreakdown ? (["new_users", "returning_users"] as const) : ([selectedStat] as const);
-
-  const getMaxValue = (dataset?: { data?: Record<string, number | string>[] }) =>
-    Math.max(
-      ...(dataset?.data?.map(d =>
-        showUserBreakdown
-          ? Number(d?.["new_users"] ?? 0) + Number(d?.["returning_users"] ?? 0)
-          : Math.max(...activeKeys.map(key => Number(d?.[key] ?? 0)))
-      ) ?? [0])
-    );
-
-  const maxOfDataAndPreviousData = Math.max(getMaxValue(data), getMaxValue(previousData));
+  const maxOfDataAndPreviousData = Math.max(
+    Math.max(...(data?.data?.map((d: any) => d[selectedStat]) ?? [])),
+    Math.max(...(previousData?.data?.map((d: any) => d[selectedStat]) ?? []))
+  );
 
   return (
     <>
@@ -81,44 +76,23 @@ export function MainSection() {
         </CardContent>
         {(isOverviewFetching || isOverviewFetchingPrevious) && <CardLoader />}
       </Card>
-      <Card className="overflow-visible">
+      <Card>
         {(isFetching || isPreviousFetching) && <CardLoader />}
         <CardContent className="p-2 md:p-4 py-3 w-full">
-          <div className="flex gap-2 justify-between items-center px-2 md:px-0 relative">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-4">
+          <div className="flex items-center justify-between px-2 md:px-0">
+            <div className="flex items-center space-x-4">
+              {!isWhiteLabel && (
                 <Link
                   href={session.data ? "/" : "https://rybbit.com"}
-                  className={cn("text-lg font-semibold flex items-center gap-1.5 opacity-75", tilt_wrap.className)}
+                  className="opacity-75"
                 >
-                  <RybbitLogo width={20} height={20} />
-                  rybbit.com
+                  <RybbitTextLogo width={80} height={0} />
                 </Link>
-              </div>
-            </div>
-            <span className="text-sm text-neutral-700 dark:text-neutral-200">{SELECTED_STAT_MAP[selectedStat]}</span>
-            <div className="flex items-center">
-              {selectedStat === "users" && (
-                <div className="flex items-center text-xs text-muted-foreground">
-                  <Tooltip>
-                    <TooltipTrigger>
-                      <Button variant="ghost" size="smIcon" onClick={() => setShowUsersSplit(!showUsersSplit)}>
-                        {showUsersSplit ? <Users /> : <User />}
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <p>{showUsersSplit ? "Hide new vs returning users" : "Show new vs returning users"}</p>
-                    </TooltipContent>
-                  </Tooltip>
-                </div>
               )}
-              <ExportButton />
-              <div className="pl-1">
-                <BucketSelection />
-              </div>
             </div>
+            <span className="text-sm text-neutral-700 dark:text-neutral-200">{getSelectedStatLabel()}</span>
+            <BucketSelection />
           </div>
-
           <div className="h-[200px] md:h-[290px] relative">
             <div className="absolute top-0 left-0 w-full h-full">
               <PreviousChart data={previousData} max={maxOfDataAndPreviousData} />

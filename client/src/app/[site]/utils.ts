@@ -1,7 +1,7 @@
 "use client";
 
 import { useQueryState, parseAsBoolean } from "nuqs";
-import { useCurrentSite } from "../../api/admin/sites";
+import { useCurrentSite } from "../../api/admin/hooks/useSites";
 
 export const useEmbedablePage = () => {
   const [embed] = useQueryState("embed", parseAsBoolean);

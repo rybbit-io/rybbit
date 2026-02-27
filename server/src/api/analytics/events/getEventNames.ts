@@ -11,7 +11,7 @@ export type GetEventNamesResponse = {
 
 export interface GetEventNamesRequest {
   Params: {
-    site: string;
+    siteId: string;
   };
   Querystring: FilterParams<{
     event_name: string;
@@ -20,7 +20,7 @@ export interface GetEventNamesRequest {
 
 export async function getEventNames(req: FastifyRequest<GetEventNamesRequest>, res: FastifyReply) {
   const { filters } = req.query;
-  const site = req.params.site;
+  const site = req.params.siteId;
 
   const timeStatement = getTimeStatement(req.query);
 

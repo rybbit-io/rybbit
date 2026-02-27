@@ -6,7 +6,7 @@ export function useGetLiveUserCount(minutes = 5) {
   const { site } = useStore();
   return useQuery<LiveUserCountResponse>({
     queryKey: ["live-user-count", site, minutes],
-    refetchInterval: 5000,
+    refetchInterval: 10000,
     queryFn: () => fetchLiveUserCount(site, minutes),
     enabled: !!site,
   });

@@ -1,0 +1,59 @@
+---
+title: Performance
+description: Track Core Web Vitals and site speed
+---
+
+![Performance Dashboard](/blog/rybbit_performance_dashboard.png)
+
+The Performance tab tracks Core Web Vitals from real user data.
+
+## Enabling Performance Tracking
+
+Enable Web Vitals in your [site settings](/docs/site-settings).
+
+## Web Vitals
+
+### Largest Contentful Paint (LCP)
+How long the main content takes to load.
+- **Good**: Under 2.5 seconds
+- **Needs Improvement**: 2.5-4 seconds
+- **Poor**: Over 4 seconds
+
+### Cumulative Layout Shift (CLS)
+How much content jumps around while loading.
+- **Good**: Under 0.1
+- **Needs Improvement**: 0.1-0.25
+- **Poor**: Over 0.25
+
+### Interaction to Next Paint (INP)
+How quickly your site responds to user interactions.
+- **Good**: Under 200ms
+- **Needs Improvement**: 200-500ms
+- **Poor**: Over 500ms
+
+### First Contentful Paint (FCP)
+How long until the first content appears.
+- **Good**: Under 1.8 seconds
+- **Needs Improvement**: 1.8-3 seconds
+- **Poor**: Over 3 seconds
+
+### Time to First Byte (TTFB)
+How long until the server responds.
+- **Good**: Under 800ms
+- **Needs Improvement**: 800-1800ms
+- **Poor**: Over 1800ms
+
+## Percentile Selector
+
+Choose which percentile to view (p50, p75, p90, p95, p99). The p75 is commonly used for Core Web Vitals assessment.
+
+## Comparison
+
+Each metric shows the change from the previous period, with green indicating improvement and red indicating degradation.
+
+## Breakdowns
+
+- **By Page** - Find your slowest pages
+- **By Device** - Compare mobile vs desktop performance
+- **By Browser** - Identify browser-specific issues
+- **By Country** - See geographic performance differences

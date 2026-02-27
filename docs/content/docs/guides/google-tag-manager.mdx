@@ -33,7 +33,6 @@ However, GTM sanitizes script tags by removing non-standard HTML attributes like
   (function() {
     var el = document.createElement("script");
     el.src = "https://app.rybbit.io/api/script.js";
-    el.async = true;
     el.defer = true;
     el.setAttribute("data-site-id", "YOUR_SITE_ID");
     document.head.appendChild(el);

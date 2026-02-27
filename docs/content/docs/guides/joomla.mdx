@@ -1,0 +1,139 @@
+---
+title: Joomla
+description: Integrate Rybbit Analytics with your Joomla website
+---
+
+import { Tabs, Tab } from 'fumadocs-ui/components/tabs';
+import { Steps, Step } from 'fumadocs-ui/components/steps';
+import { Callout } from 'fumadocs-ui/components/callout';
+
+Joomla is a popular open-source content management system. Here's how to add Rybbit Analytics to your Joomla site.
+
+## How to Add Rybbit to Joomla
+
+<Tabs items={['Custom HTML Module', 'Template Override']}>
+<Tab>
+### Using a Custom HTML Module
+
+This is the easiest method and doesn't require editing any files.
+
+<Steps>
+<Step>
+### Create a New Module
+
+1. Log in to your Joomla Administrator panel
+2. Go to **Extensions** > **Modules**
+3. Click **New** and select **Custom**
+</Step>
+
+<Step>
+### Configure the Module
+
+Set the following options:
+
+- **Title**: Rybbit Analytics (or any name you prefer)
+- **Show Title**: No
+- **Position**: Select a position that appears in the `<head>` section, often called `head`, `debug`, or similar depending on your template
+
+In the **Editor** tab, switch to **Code** view (or disable the editor) and paste:
+
+```html
+<script>
+(function() {
+  var s = document.createElement('script');
+  s.src = 'https://app.rybbit.io/api/script.js';
+  s.defer = true;
+  s.setAttribute('data-site-id', 'YOUR_SITE_ID');
+  document.head.appendChild(s);
+})();
+</script>
+```
+
+Replace `YOUR_SITE_ID` with your actual Site ID.
+</Step>
+
+<Step>
+### Publish the Module
+
+1. Set **Status** to **Published**
+2. Under **Menu Assignment**, select **On all pages**
+3. Click **Save & Close**
+</Step>
+</Steps>
+
+<Callout type="info">
+If your template doesn't have a head position, you can use any position - the JavaScript will still add the script to the document head.
+</Callout>
+</Tab>
+
+<Tab>
+### Editing Template Files
+
+For more control, you can add the script directly to your template.
+
+<Callout type="warn">
+Create a child template or template override to avoid losing changes when the template updates.
+</Callout>
+
+<Steps>
+<Step>
+### Access Template Files
+
+1. Go to **System** > **Site Templates**
+2. Click on your active template
+3. Click on the **index.php** file (or create an override)
+</Step>
+
+<Step>
+### Add the Script
+
+Find the closing `</head>` tag and add the script just before it:
+
+```php
+<script>
+(function() {
+  var s = document.createElement('script');
+  s.src = 'https://app.rybbit.io/api/script.js';
+  s.defer = true;
+  s.setAttribute('data-site-id', 'YOUR_SITE_ID');
+  document.head.appendChild(s);
+})();
+</script>
+</head>
+```
+
+Replace `YOUR_SITE_ID` with your actual Site ID.
+</Step>
+
+<Step>
+### Save the File
+
+Click **Save** or **Save & Close** to apply the changes.
+</Step>
+</Steps>
+</Tab>
+</Tabs>
+
+## Troubleshooting
+
+### Script not appearing on the site
+
+1. Check that the module is published and assigned to all pages
+2. Clear Joomla's cache: **System** > **Clear Cache**
+3. Verify the module position exists in your template
+
+### Editor stripping the script
+
+Joomla's default editor (TinyMCE) may strip script tags. To fix this:
+
+1. Go to **Extensions** > **Plugins**
+2. Find and open **Editor - TinyMCE**
+3. Under **Extended Valid Elements**, add: `script[src|defer|data-site-id]`
+4. Or simply use the **Code** view when editing the module
+
+### Caching issues
+
+If you're using a caching plugin or extension:
+
+1. Clear all caches after adding the script
+2. The script should work with page caching since it loads client-side

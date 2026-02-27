@@ -10,12 +10,12 @@ type UseGetErrorBucketedOptions = {
 export function useGetErrorBucketed({
   errorMessage,
 }: UseGetErrorBucketedOptions): UseQueryResult<GetErrorBucketedResponse> {
-  const { time, site, filters, bucket } = useStore();
+  const { time, site, filters, bucket, timezone } = useStore();
 
   const params = buildApiParams(time, { filters });
 
   return useQuery({
-    queryKey: ["error-bucketed", time, site, filters, bucket, errorMessage],
+    queryKey: ["error-bucketed", time, site, filters, bucket, errorMessage, timezone],
     queryFn: () => {
       return fetchErrorBucketed(site, {
         ...params,

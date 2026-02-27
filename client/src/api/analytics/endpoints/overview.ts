@@ -27,14 +27,13 @@ export type GetOverviewBucketedResponse = {
   bounce_rate: number;
   session_duration: number;
   users: number;
-  new_users: number;
-  returning_users: number;
 }[];
 
 // Metric response type
 export type MetricResponse = {
   value: string;
   title?: string;
+  hostname?: string;
   count: number;
   percentage: number;
   pageviews?: number;
@@ -52,8 +51,14 @@ export interface LiveUserCountResponse {
  * Fetch overview metrics for a site
  * GET /api/overview/:site
  */
-export async function fetchOverview(site: string | number, params: CommonApiParams): Promise<GetOverviewResponse> {
-  const response = await authedFetch<{ data: GetOverviewResponse }>(`/overview/${site}`, toQueryParams(params));
+export async function fetchOverview(
+  site: string | number,
+  params: CommonApiParams
+): Promise<GetOverviewResponse> {
+  const response = await authedFetch<{ data: GetOverviewResponse }>(
+    `/sites/${site}/overview`,
+    toQueryParams(params)
+  );
   return response.data;
 }
 
@@ -66,7 +71,7 @@ export async function fetchOverviewBucketed(
   params: BucketedParams
 ): Promise<GetOverviewBucketedResponse> {
   const response = await authedFetch<{ data: GetOverviewBucketedResponse }>(
-    `/overview-bucketed/${site}`,
+    `/sites/${site}/overview-bucketed`,
     toBucketedQueryParams(params)
   );
   return response.data;
@@ -82,7 +87,7 @@ export async function fetchMetric(
 ): Promise<{ data: MetricResponse[]; totalCount: number }> {
   const response = await authedFetch<{
     data: { data: MetricResponse[]; totalCount: number };
-  }>(`/metric/${site}`, toMetricQueryParams(params));
+  }>(`/sites/${site}/metric`, toMetricQueryParams(params));
   return response.data;
 }
 
@@ -90,7 +95,13 @@ export async function fetchMetric(
  * Fetch live user count
  * GET /api/live-user-count/:site
  */
-export async function fetchLiveUserCount(site: string | number, minutes: number = 5): Promise<LiveUserCountResponse> {
-  const response = await authedFetch<LiveUserCountResponse>(`/live-user-count/${site}`, { minutes });
+export async function fetchLiveUserCount(
+  site: string | number,
+  minutes: number = 5
+): Promise<LiveUserCountResponse> {
+  const response = await authedFetch<LiveUserCountResponse>(
+    `/sites/${site}/live-user-count`,
+    { minutes }
+  );
   return response;
 }

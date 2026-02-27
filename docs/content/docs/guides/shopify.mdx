@@ -30,7 +30,8 @@ Navigate to your Rybbit dashboard to obtain your code snippet.
 <Step>
 ### Add the Snippet to Your Shopify Store
 
-- In Shopify, go to **Online Store > Themes** and click **Edit code** from the settings dropdown beside the **Customize** button.
+- In Shopify, go to **Online Store > Themes**.
+- Find your current theme, click the **three dots (...)** button next to **Customize**, and select **Edit code**.
 - Open `theme.liquid` in the **Layout** folder.
 - Just before the closing `</head>` tag, insert your snippet.
 - Save the file to apply the changes to your live store.
@@ -172,8 +173,13 @@ document.addEventListener('DOMContentLoaded', function() {
 
 Track completed purchases on the Shopify "Order status" page (also known as the "Thank You" page).
 
-**Go to Shopify Admin > Settings > Checkout.**
-Scroll down to the **Order status page** section. In the **Additional scripts** box, paste the following:
+**1. Navigate to Checkout Settings:**
+- Go to **Settings** (bottom left in Admin).
+- Click on **Checkout** (or **Checkout and accounts** depending on your Admin version).
+
+**2. Add the Script:**
+- Scroll down to the **Order status page** section.
+- In the **Additional scripts** box, paste the following:
 
 ```liquid
 {% raw %}{% if first_time_accessed %}

@@ -12,7 +12,7 @@ export type GetEventPropertiesResponse = {
 
 export interface GetEventPropertiesRequest {
   Params: {
-    site: string;
+    siteId: string;
   };
   Querystring: FilterParams<{
     event_name: string;
@@ -21,7 +21,7 @@ export interface GetEventPropertiesRequest {
 
 export async function getEventProperties(req: FastifyRequest<GetEventPropertiesRequest>, res: FastifyReply) {
   const { event_name: eventName, filters } = req.query;
-  const site = req.params.site;
+  const site = req.params.siteId;
 
   if (!eventName) {
     return res.status(400).send({ error: "Event name is required" });

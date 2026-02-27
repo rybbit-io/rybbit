@@ -1,11 +1,17 @@
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { ArrowRight, ChevronDown, ChevronRight } from "lucide-react";
+import { addFilter, getTimezone } from "@/lib/store";
+import { FilterParameter } from "@rybbit/shared";
+import { ArrowRight, ChevronDown, ChevronRight, Video } from "lucide-react";
 import { DateTime } from "luxon";
-import { memo, useState } from "react";
+import { useExtracted } from "next-intl";
+import Link from "next/link";
+import { useParams } from "next/navigation";
+import { memo, useCallback, useState } from "react";
 import { GetSessionsResponse } from "../../api/analytics/endpoints";
-import { formatShortDuration, hour12, userLocale } from "../../lib/dateTimeUtils";
-import { cn, formatter, getUserDisplayName } from "../../lib/utils";
+import { useDateTimeFormat } from "@/hooks/useDateTimeFormat";
+import { formatShortDuration } from "../../lib/dateTimeUtils";
+import { cn, formatter, getUserDisplayName, truncateString } from "../../lib/utils";
 import { Avatar } from "../Avatar";
 import { Channel } from "../Channel";
 import { EventIcon, PageviewIcon } from "../EventIcons";
@@ -17,6 +23,7 @@ import {
   OperatingSystemTooltipIcon,
 } from "../TooltipIcons/TooltipIcons";
 import { Badge } from "../ui/badge";
+import { ReplayDrawer } from "./ReplayDrawer";
 import { SessionDetails } from "./SessionDetails";
 
 interface SessionCardProps {
@@ -24,24 +31,21 @@ interface SessionCardProps {
   userId?: string;
   onClick?: () => void;
   expandedByDefault?: boolean;
+  highlightedEventTimestamp?: number;
 }
 
-// Function to truncate path for display
-function truncatePath(path: string, maxLength: number = 32) {
-  if (!path) return "-";
-  if (path.length <= maxLength) return path;
-
-  // Keep the beginning of the path with ellipsis
-  return `${path.substring(0, maxLength)}...`;
-}
-
-export function SessionCard({ session, onClick, userId, expandedByDefault }: SessionCardProps) {
+export function SessionCard({ session, onClick, userId, expandedByDefault, highlightedEventTimestamp }: SessionCardProps) {
+  const { site } = useParams();
+  const t = useExtracted();
+  const { hour12, formatDateTime } = useDateTimeFormat();
   const [expanded, setExpanded] = useState(expandedByDefault || false);
+  const [replayDrawerOpen, setReplayDrawerOpen] = useState(false);
   // Calculate session duration in minutes
   const start = DateTime.fromSQL(session.session_start);
   const end = DateTime.fromSQL(session.session_end);
   const totalSeconds = Math.floor(end.diff(start).milliseconds / 1000);
   const duration = formatShortDuration(totalSeconds);
+  const isIdentified = !!session.identified_user_id;
 
   const handleCardClick = () => {
     if (onClick) {
@@ -51,39 +55,91 @@ export function SessionCard({ session, onClick, userId, expandedByDefault }: Ses
     }
   };
 
+  const handleFilterClick = useCallback(
+    (e: React.MouseEvent, parameter: FilterParameter, value: string | undefined) => {
+      e.stopPropagation();
+      if (!value) return;
+      addFilter({
+        parameter,
+        value: [value],
+        type: "equals",
+      });
+    },
+    []
+  );
+
   return (
     <div className="rounded-lg bg-white dark:bg-neutral-900 border border-neutral-100 dark:border-neutral-850 overflow-hidden">
       <div className="p-3 cursor-pointer" onClick={handleCardClick}>
-        <div className="flex items-center gap-2">
-          {!userId && (
-            <div className="hidden md:flex items-center gap-2">
+        {/* Mobile layout - two rows */}
+        <div className="flex flex-col gap-2 md:hidden">
+          {/* Top row on mobile - User name (left) + Timestamp (right) */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
               <Avatar
                 size={24}
                 id={session.user_id}
                 lastActiveTime={DateTime.fromSQL(session.session_end, { zone: "utc" })}
               />
-              <span className="text-xs text-neutral-600 dark:text-neutral-200 w-24 truncate">
+              <span className="text-xs text-neutral-600 dark:text-neutral-200 truncate max-w-[150px]">
                 {getUserDisplayName(session)}
               </span>
               {!!session.identified_user_id && <IdentifiedBadge traits={session.traits} />}
             </div>
-          )}
+            <span className="text-xs text-neutral-500 dark:text-neutral-400">
+              {formatDateTime(DateTime.fromSQL(session.session_start, { zone: "utc" }), {
+                month: "short",
+                day: "numeric",
+                hour: "numeric",
+                minute: "2-digit",
+                hour12,
+                timeZone: getTimezone(),
+              })}
+            </span>
+          </div>
 
-          {/* Icons section */}
-          <div className="flex space-x-2 items-center">
+          {/* Bottom row on mobile - Icons, badges, channel */}
+          <div className="flex items-center gap-2 flex-wrap">
             {session.country && (
-              <CountryFlagTooltipIcon country={session.country} city={session.city} region={session.region} />
+              <CountryFlagTooltipIcon
+                country={session.country}
+                city={session.city}
+                region={session.region}
+                onClick={e => handleFilterClick(e, "country", session.country)}
+              />
             )}
-            <BrowserTooltipIcon browser={session.browser || "Unknown"} browser_version={session.browser_version} />
+            <BrowserTooltipIcon
+              browser={session.browser || "Unknown"}
+              browser_version={session.browser_version}
+              onClick={e => handleFilterClick(e, "browser", session.browser)}
+            />
             <OperatingSystemTooltipIcon
               operating_system={session.operating_system || ""}
               operating_system_version={session.operating_system_version}
+              onClick={e => handleFilterClick(e, "operating_system", session.operating_system)}
             />
             <DeviceTypeTooltipIcon
               device_type={session.device_type || ""}
               screen_width={session.screen_width}
               screen_height={session.screen_height}
+              onClick={e => handleFilterClick(e, "device_type", session.device_type)}
             />
+            {session.has_replay === 1 && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Badge
+                    variant="success"
+                    onClick={e => {
+                      e.stopPropagation();
+                      setReplayDrawerOpen(true);
+                    }}
+                  >
+                    <Video className="w-4 h-4" />
+                  </Badge>
+                </TooltipTrigger>
+                <TooltipContent>{t("Watch Session Replay")}</TooltipContent>
+              </Tooltip>
+            )}
             <Tooltip>
               <TooltipTrigger asChild>
                 <Badge className="flex items-center gap-1 bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-300">
@@ -91,26 +147,123 @@ export function SessionCard({ session, onClick, userId, expandedByDefault }: Ses
                   <span>{formatter(session.pageviews)}</span>
                 </Badge>
               </TooltipTrigger>
-              <TooltipContent>Pageviews</TooltipContent>
+              <TooltipContent>{t("Pageviews")}</TooltipContent>
             </Tooltip>
             <Tooltip>
               <TooltipTrigger asChild>
                 <Badge className="flex items-center gap-1 bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-300">
                   <EventIcon />
-                  <span>{formatter(session.events)}</span>
+                  <span>{formatter(session.events + (session.button_clicks || 0) + (session.copies || 0) + (session.form_submits || 0) + (session.input_changes || 0))}</span>
                 </Badge>
               </TooltipTrigger>
-              <TooltipContent>Events</TooltipContent>
+              <TooltipContent>{t("Events")}</TooltipContent>
             </Tooltip>
-            <Channel channel={session.channel} referrer={session.referrer} />
+            <Channel
+              channel={session.channel}
+              referrer={session.referrer}
+              onClick={e => handleFilterClick(e, "channel", session.channel)}
+            />
+          </div>
+        </div>
+
+        {/* Desktop layout - single row */}
+        <div className="hidden md:flex items-center gap-2">
+          {!userId && (
+            <Link
+              href={`/${site}/user/${encodeURIComponent(
+                isIdentified ? session.identified_user_id : session.user_id
+              )}`}
+              onClick={e => e.stopPropagation()}
+              className="flex items-center gap-2"
+            >
+              <Avatar
+                size={24}
+                id={session.user_id}
+                lastActiveTime={DateTime.fromSQL(session.session_end, { zone: "utc" })}
+              />
+              <span className="text-xs text-neutral-600 dark:text-neutral-200 w-24 truncate hover:underline">
+                {getUserDisplayName(session)}
+              </span>
+              {!!session.identified_user_id && <IdentifiedBadge traits={session.traits} />}
+            </Link>
+          )}
+
+          {/* Icons section */}
+          <div className="flex space-x-2 items-center">
+            {session.country && (
+              <CountryFlagTooltipIcon
+                country={session.country}
+                city={session.city}
+                region={session.region}
+                onClick={e => handleFilterClick(e, "country", session.country)}
+              />
+            )}
+            <BrowserTooltipIcon
+              browser={session.browser || "Unknown"}
+              browser_version={session.browser_version}
+              onClick={e => handleFilterClick(e, "browser", session.browser)}
+            />
+            <OperatingSystemTooltipIcon
+              operating_system={session.operating_system || ""}
+              operating_system_version={session.operating_system_version}
+              onClick={e => handleFilterClick(e, "operating_system", session.operating_system)}
+            />
+            <DeviceTypeTooltipIcon
+              device_type={session.device_type || ""}
+              screen_width={session.screen_width}
+              screen_height={session.screen_height}
+              onClick={e => handleFilterClick(e, "device_type", session.device_type)}
+            />
+            {session.has_replay === 1 && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Badge
+                    variant="success"
+                    onClick={e => {
+                      e.stopPropagation();
+                      setReplayDrawerOpen(true);
+                    }}
+                  >
+                    <Video className="w-4 h-4" />
+                  </Badge>
+                </TooltipTrigger>
+                <TooltipContent>{t("Watch Session Replay")}</TooltipContent>
+              </Tooltip>
+            )}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Badge className="flex items-center gap-1 bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-300">
+                  <PageviewIcon />
+                  <span>{formatter(session.pageviews)}</span>
+                </Badge>
+              </TooltipTrigger>
+              <TooltipContent>{t("Pageviews")}</TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Badge className="flex items-center gap-1 bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-300">
+                  <EventIcon />
+                  <span>{formatter(session.events + (session.button_clicks || 0) + (session.copies || 0) + (session.form_submits || 0) + (session.input_changes || 0))}</span>
+                </Badge>
+              </TooltipTrigger>
+              <TooltipContent>{t("Events")}</TooltipContent>
+            </Tooltip>
+            <Channel
+              channel={session.channel}
+              referrer={session.referrer}
+              onClick={e => handleFilterClick(e, "channel", session.channel)}
+            />
           </div>
 
           {/* Pages section with tooltips for long paths */}
-          <div className="items-center ml-3 flex-1 min-w-0 hidden md:flex">
+          <div className="items-center ml-3 flex-1 min-w-0 flex">
             <Tooltip>
               <TooltipTrigger asChild>
-                <span className="text-xs text-neutral-500 dark:text-neutral-400 truncate max-w-[200px] inline-block">
-                  {truncatePath(session.entry_page)}
+                <span
+                  className="text-xs text-neutral-500 dark:text-neutral-400 truncate max-w-[200px] inline-block cursor-pointer hover:opacity-70"
+                  onClick={e => handleFilterClick(e, "entry_page", session.entry_page)}
+                >
+                  {truncateString(session.entry_page, 32)}
                 </span>
               </TooltipTrigger>
               <TooltipContent>
@@ -122,8 +275,11 @@ export function SessionCard({ session, onClick, userId, expandedByDefault }: Ses
 
             <Tooltip>
               <TooltipTrigger asChild>
-                <span className="text-xs text-neutral-500 dark:text-neutral-400 truncate max-w-[200px] inline-block">
-                  {truncatePath(session.exit_page)}
+                <span
+                  className="text-xs text-neutral-500 dark:text-neutral-400 truncate max-w-[200px] inline-block cursor-pointer hover:opacity-70"
+                  onClick={e => handleFilterClick(e, "exit_page", session.exit_page)}
+                >
+                  {truncateString(session.exit_page, 32)}
                 </span>
               </TooltipTrigger>
               <TooltipContent>
@@ -133,22 +289,23 @@ export function SessionCard({ session, onClick, userId, expandedByDefault }: Ses
           </div>
 
           {/* Time information */}
-
           <div className="flex items-center gap-1.5 text-xs text-neutral-600 dark:text-neutral-300">
             <span className="text-neutral-500 dark:text-neutral-400">
-              {DateTime.fromSQL(session.session_start, {
-                zone: "utc",
-              })
-                .setLocale(userLocale)
-                .toLocal()
-                .toFormat(hour12 ? "MMM d, h:mm a" : "dd MMM, HH:mm")}
+              {formatDateTime(DateTime.fromSQL(session.session_start, { zone: "utc" }), {
+                month: "short",
+                day: "numeric",
+                hour: "numeric",
+                minute: "2-digit",
+                hour12,
+                timeZone: getTimezone(),
+              })}
             </span>
             <span className="text-neutral-500 dark:text-neutral-400">•</span>
-            <span className="hidden md:block">{duration}</span>
+            <span>{duration}</span>
           </div>
 
           {/* Expand/Collapse icon */}
-          <div className="ml-2 shrink-0 hidden md:flex">
+          <div className="ml-2 shrink-0">
             {expanded ? (
               <ChevronDown className="w-4 h-4 text-neutral-500 dark:text-neutral-400" strokeWidth={3} />
             ) : (
@@ -159,7 +316,12 @@ export function SessionCard({ session, onClick, userId, expandedByDefault }: Ses
       </div>
 
       {/* Expanded content using SessionDetails component */}
-      {expanded && <SessionDetails session={session} userId={userId} />}
+      {expanded && <SessionDetails session={session} userId={userId} highlightedEventTimestamp={highlightedEventTimestamp} />}
+
+      {/* Replay Drawer */}
+      {session.has_replay === 1 && (
+        <ReplayDrawer sessionId={session.session_id} open={replayDrawerOpen} onOpenChange={setReplayDrawerOpen} />
+      )}
     </div>
   );
 }
@@ -190,10 +352,34 @@ export const SessionCardSkeleton = memo(({ userId, count }: { userId?: string; c
       key={index}
     >
       <div className="p-3">
-        <div className="flex items-center gap-2">
+        {/* Mobile layout - two rows */}
+        <div className="flex flex-col gap-2 md:hidden">
+          {/* Top row - Avatar + name (left) + timestamp (right) */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Skeleton className="h-6 w-6 rounded-full" />
+              <Skeleton className="h-3 w-24" />
+            </div>
+            <Skeleton className={cn("h-3", getRandomTimeWidth())} />
+          </div>
+
+          {/* Bottom row - Icons, badges, channel */}
+          <div className="flex items-center gap-2">
+            <Skeleton className="h-4 w-4 rounded-sm" />
+            <Skeleton className="h-4 w-4 rounded-sm" />
+            <Skeleton className="h-4 w-4 rounded-sm" />
+            <Skeleton className="h-4 w-4 rounded-sm" />
+            <Skeleton className="h-[21px] w-12 rounded-sm" />
+            <Skeleton className="h-[21px] w-12 rounded-sm" />
+            <Skeleton className="h-[21px] w-16 rounded-sm" />
+          </div>
+        </div>
+
+        {/* Desktop layout - single row */}
+        <div className="hidden md:flex items-center gap-2">
           {/* Avatar and User ID */}
           {!userId && (
-            <div className="hidden md:flex items-center gap-2">
+            <div className="flex items-center gap-2">
               <Skeleton className="h-6 w-6 rounded-full" />
               <Skeleton className="h-3 w-24" />
             </div>
@@ -215,7 +401,7 @@ export const SessionCardSkeleton = memo(({ userId, count }: { userId?: string; c
           </div>
 
           {/* Entry/Exit paths with randomized widths */}
-          <div className="items-center ml-3 flex-1 min-w-0 hidden md:flex">
+          <div className="items-center ml-3 flex-1 min-w-0 flex">
             <Skeleton className={cn("h-3 max-w-[200px]", getRandomWidth())} />
             <ArrowRight className="mx-2 w-3 h-3 shrink-0 text-neutral-500 dark:text-neutral-400 opacity-20" />
             <Skeleton className={cn("h-3 max-w-[200px]", getRandomWidth())} />
@@ -225,11 +411,11 @@ export const SessionCardSkeleton = memo(({ userId, count }: { userId?: string; c
           <div className="flex items-center gap-1.5">
             <Skeleton className={cn("h-3", getRandomTimeWidth())} />
             <span className="text-neutral-500 dark:text-neutral-400 opacity-20">•</span>
-            <Skeleton className={cn("h-3 hidden md:block", getRandomDurationWidth())} />
+            <Skeleton className={cn("h-3", getRandomDurationWidth())} />
           </div>
 
           {/* Expand icon */}
-          <div className="ml-2 shrink-0 hidden md:flex">
+          <div className="ml-2 shrink-0">
             <Skeleton className="h-4 w-4" />
           </div>
         </div>

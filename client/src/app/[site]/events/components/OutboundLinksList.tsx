@@ -1,12 +1,13 @@
 "use client";
 
+import { getTimezone } from "@/lib/store";
 import NumberFlow from "@number-flow/react";
 import { Info } from "lucide-react";
 import { DateTime } from "luxon";
 import { memo } from "react";
 import { OutboundLink } from "../../../../api/analytics/endpoints";
 import { Favicon } from "../../../../components/Favicon";
-import { cn } from "../../../../lib/utils";
+import { cn, truncateUrl } from "../../../../lib/utils";
 import { ScrollArea } from "../../../../components/ui/scroll-area";
 
 // Skeleton component for OutboundLinksList
@@ -69,33 +70,6 @@ interface OutboundLinksListProps {
   size?: "small" | "large";
 }
 
-// Function to truncate URL for display
-function truncateUrl(url: string, maxLength: number = 60) {
-  if (!url) return "-";
-  if (url.length <= maxLength) return url;
-
-  try {
-    const urlObj = new URL(url);
-    const domain = urlObj.hostname;
-    const path = urlObj.pathname + urlObj.search;
-
-    if (domain.length + path.length <= maxLength) {
-      return `${domain}${path}`;
-    }
-
-    // If still too long, truncate the path
-    const availableSpace = maxLength - domain.length - 3; // 3 for "..."
-    if (availableSpace > 0) {
-      return `${domain}${path.substring(0, availableSpace)}...`;
-    } else {
-      return `${domain.substring(0, maxLength - 3)}...`;
-    }
-  } catch (e) {
-    // If URL parsing fails, just truncate the string
-    return `${url.substring(0, maxLength - 3)}...`;
-  }
-}
-
 export function OutboundLinksList({ outboundLinks, isLoading, size = "small" }: OutboundLinksListProps) {
   if (isLoading) {
     return <OutboundLinksListSkeleton size={size} />;
@@ -116,13 +90,13 @@ export function OutboundLinksList({ outboundLinks, isLoading, size = "small" }: 
 
   return (
     <ScrollArea className="h-[394px]">
-      <div className="flex flex-col gap-2 pr-2">
+      <div className="flex flex-col gap-2 pr-2 overflow-x-hidden">
         {outboundLinks.map((link, index) => {
           const percentageOfMax = (link.count / maxCount) * 100;
           const percentage = (link.count / totalCount) * 100;
           const lastClicked = DateTime.fromSQL(link.lastClicked, {
             zone: "utc",
-          }).toLocal();
+          }).setZone(getTimezone());
 
           return (
             <div

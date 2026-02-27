@@ -7,9 +7,11 @@ import { UserFilters } from "@/app/admin/components/users/UserFilters";
 import { UsersTable } from "@/app/admin/components/users/UsersTable";
 import { useAdminUsers } from "@/hooks/useAdminUsers";
 import { useRouter } from "next/navigation";
+import { useExtracted } from "next-intl";
 
 export function Users() {
   const router = useRouter();
+  const t = useExtracted();
 
   const {
     // Data
@@ -48,7 +50,7 @@ export function Users() {
   if (isError) {
     return (
       <AdminLayout>
-        <ErrorAlert message="Failed to load users. Please try again later." />
+        <ErrorAlert message={t("Failed to load users. Please try again later.")} />
       </AdminLayout>
     );
   }

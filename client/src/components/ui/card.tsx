@@ -25,7 +25,7 @@ const CardLoader = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDiv
     const loaderColor = theme === "dark" ? "hsl(var(--neutral-400))" : "hsl(var(--neutral-200))";
 
     return (
-      <div className="mt-[-15px] absolute top-0 left-0 w-full overflow-hidden pointer-events-none">
+      <div className="mt-[-15px] absolute top-0 left-0 w-full">
         <Zoomies size={1400} stroke="3" bg-opacity="0.1" speed="1.4" color={loaderColor} />
       </div>
     );

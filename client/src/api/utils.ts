@@ -3,8 +3,7 @@ import { DateTime } from "luxon";
 import { Time } from "../components/DateSelector/types";
 import axios, { AxiosRequestConfig } from "axios";
 import { BACKEND_URL } from "../lib/const";
-import { timeZone } from "../lib/dateTimeUtils";
-import { useStore } from "../lib/store";
+import { getTimezone, useStore } from "../lib/store";
 import { CommonApiParams } from "./analytics/endpoints/types";
 
 export function getStartAndEndDate(time: Time): { startDate: string | null; endDate: string | null } {
@@ -35,41 +34,13 @@ export function getStartAndEndDate(time: Time): { startDate: string | null; endD
   return { startDate: time.day, endDate: time.day };
 }
 
-// Internal version that uses snake_case for getQueryParams
-function getStartAndEndDateSnake(time: Time) {
-  const { startDate, endDate } = getStartAndEndDate(time);
-  return { start_date: startDate, end_date: endDate };
-}
-
-export function getQueryParams(time: Time, additionalParams: Record<string, any> = {}): Record<string, any> {
-  if (time.mode === "past-minutes") {
-    return {
-      time_zone: timeZone,
-      past_minutes_start: time.pastMinutesStart,
-      past_minutes_end: time.pastMinutesEnd,
-      ...additionalParams,
-    };
-  }
-
-  // Regular date-based approach
-  return {
-    ...getStartAndEndDateSnake(time),
-    time_zone: timeZone,
-    ...additionalParams,
-  };
-}
-
-// Re-export timeZone for convenience
-export { timeZone };
-
 /**
  * Build CommonApiParams from a Time object, handling all time modes including past-minutes.
  * This centralizes the logic for converting Time to API params across all hooks.
  */
-export function buildApiParams(
-  time: Time,
-  options: { filters?: Filter[] } = {}
-): CommonApiParams {
+export function buildApiParams(time: Time, options: { filters?: Filter[] } = {}): CommonApiParams {
+  const timeZone = getTimezone();
+
   if (time.mode === "past-minutes") {
     return {
       startDate: "",

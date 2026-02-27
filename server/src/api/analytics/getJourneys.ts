@@ -2,11 +2,11 @@ import { FilterParams } from "@rybbit/shared";
 import { FastifyReply, FastifyRequest } from "fastify";
 import { clickhouse } from "../../db/clickhouse/clickhouse.js";
 import { getFilterStatement } from "./utils/getFilterStatement.js";
-import { getTimeStatement } from "./utils/utils.js";
+import { getTimeStatement, patternToRegex } from "./utils/utils.js";
 
 export const getJourneys = async (
   request: FastifyRequest<{
-    Params: { site: string };
+    Params: { siteId: string };
     Querystring: FilterParams<{
       steps?: string;
       limit?: string;
@@ -16,7 +16,7 @@ export const getJourneys = async (
   reply: FastifyReply
 ) => {
   try {
-    const { site } = request.params;
+    const { siteId } = request.params;
     const { steps = "3", limit = "100", filters, stepFilters } = request.query;
 
     const maxSteps = parseInt(steps, 10);
@@ -36,7 +36,7 @@ export const getJourneys = async (
 
     // Time conditions using getTimeStatement
     const timeStatement = getTimeStatement(request.query);
-    const filterStatement = getFilterStatement(filters, Number(site), timeStatement);
+    const filterStatement = getFilterStatement(filters, Number(siteId), timeStatement);
 
     // Parse step filters
     let parsedStepFilters: Record<number, string> = {};
@@ -51,9 +51,16 @@ export const getJourneys = async (
     }
 
     // Build step filter conditions for the HAVING clause
+    // Supports wildcard patterns: * matches single segment, ** matches multiple segments
     const stepFilterConditions = Object.entries(parsedStepFilters)
       .map(([step, path]) => {
         const stepIndex = parseInt(step, 10) + 1; // ClickHouse arrays are 1-indexed
+        if (path.includes("*")) {
+          // Use regex matching for wildcard patterns
+          const regex = patternToRegex(path);
+          return `match(journey[${stepIndex}], '${regex.replace(/'/g, "\\'")}')`;
+        }
+        // Use exact match for non-wildcard patterns (more efficient)
         return `journey[${stepIndex}] = '${path.replace(/'/g, "''")}'`;
       })
       .join(" AND ");
@@ -106,7 +113,7 @@ export const getJourneys = async (
         FROM journey_segments
       `,
       query_params: {
-        siteId: parseInt(site, 10),
+        siteId: parseInt(siteId, 10),
         maxSteps: maxSteps,
         journeyLimit: journeyLimit,
       },

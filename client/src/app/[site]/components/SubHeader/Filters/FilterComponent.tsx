@@ -1,5 +1,6 @@
 import { Filter, FilterParameter, FilterType } from "@rybbit/shared";
 import { HelpCircle, Trash } from "lucide-react";
+import { useExtracted } from "next-intl";
 import { useMemo } from "react";
 import { Button } from "../../../../../components/ui/button";
 import { Input } from "../../../../../components/ui/input";
@@ -41,6 +42,51 @@ export function FilterComponent({
   updateFilter: (filter: Filter | null, index: number) => void;
   availableFilters?: FilterParameter[];
 }) {
+  const t = useExtracted();
+
+  const getFilterOptionLabel = (value: FilterParameter): string => {
+    switch (value) {
+      case "pathname": return t("Path");
+      case "page_title": return t("Page Title");
+      case "querystring": return t("Query");
+      case "hostname": return t("Hostname");
+      case "user_id": return t("User ID");
+      case "event_name": return t("Event Name");
+      case "referrer": return t("Referrer");
+      case "channel": return t("Channel");
+      case "entry_page": return t("Entry Page");
+      case "exit_page": return t("Exit Page");
+      case "country": return t("Country");
+      case "region": return t("Region");
+      case "city": return t("City");
+      case "device_type": return t("Device Type");
+      case "operating_system": return t("Operating System");
+      case "operating_system_version": return t("Operating System Version");
+      case "browser": return t("Browser");
+      case "browser_version": return t("Browser Version");
+      case "language": return t("Language");
+      case "dimensions": return t("Screen Dimensions");
+      case "utm_source": return t("UTM Source");
+      case "utm_medium": return t("UTM Medium");
+      case "utm_campaign": return t("UTM Campaign");
+      case "utm_content": return t("UTM Content");
+      case "utm_term": return t("UTM Term");
+      case "lat": return t("Lat");
+      case "lon": return t("Lon");
+      case "timezone": return t("Timezone");
+      case "vpn": return t("VPN");
+      case "crawler": return t("Crawler");
+      case "datacenter": return t("Datacenter");
+      case "company": return t("Company");
+      case "company_type": return t("Company Type");
+      case "company_domain": return t("Company Domain");
+      case "asn_org": return t("ASN Org");
+      case "asn_type": return t("ASN Type");
+      case "asn_domain": return t("ASN Domain");
+      default: return value;
+    }
+  };
+
   const availableFilterOptions = availableFilters
     ? FilterOptions.filter(option => availableFilters?.includes(option.value)).filter(
         option => IS_CLOUD || !option.cloudOnly
@@ -49,6 +95,20 @@ export function FilterComponent({
 
   const isNumeric = isNumericParameter(filter.parameter);
   const operatorOptions = isNumeric ? NumericOperatorOptions : StringOperatorOptions;
+
+  const getOperatorLabel = (value: string): string => {
+    switch (value) {
+      case "equals": return isNumeric ? t("Equals") : t("Is");
+      case "not_equals": return isNumeric ? t("Not equals") : t("Is not");
+      case "contains": return t("Contains");
+      case "not_contains": return t("Not contains");
+      case "regex": return t("Matches regex");
+      case "not_regex": return t("Not matches regex");
+      case "greater_than": return ">";
+      case "less_than": return "<";
+      default: return value;
+    }
+  };
 
   // Check if we need a text input instead of multi-select
   const needsTextInput =
@@ -92,14 +152,14 @@ export function FilterComponent({
     <div className="grid grid-cols-[220px_auto] md:grid-cols-[160px_130px_250px_auto] gap-2">
       <Select onValueChange={handleParameterChange} value={filter.parameter}>
         <SelectTrigger>
-          <SelectValue placeholder="Filter" />
+          <SelectValue placeholder={t("Filter")} />
         </SelectTrigger>
         <SelectContent>
           {availableFilterOptions.map(option => (
             <SelectItem key={option.value} value={option.value}>
               <div className="flex items-center gap-2">
                 {option.icon}
-                {option.label}
+                {getFilterOptionLabel(option.value)}
               </div>
             </SelectItem>
           ))}
@@ -120,12 +180,12 @@ export function FilterComponent({
         }}
       >
         <SelectTrigger>
-          <SelectValue placeholder="Operator" />
+          <SelectValue placeholder={t("Operator")} />
         </SelectTrigger>
         <SelectContent>
           {operatorOptions.map(option => (
             <SelectItem key={option.value} value={option.value}>
-              {option.label}
+              {getOperatorLabel(option.value)}
             </SelectItem>
           ))}
         </SelectContent>
@@ -138,7 +198,7 @@ export function FilterComponent({
               onChange={e => {
                 updateFilter({ ...filter, value: [e.target.value] }, index);
               }}
-              placeholder={isRegexFilter ? "e.g. ^/blog/.*" : "Enter value..."}
+              placeholder={isRegexFilter ? t("e.g. ^/blog/.*") : t("Enter value...")}
               className={`h-9 ${regexError ? "border-red-500 focus-visible:ring-red-500" : ""}`}
             />
             {regexError && (
@@ -156,14 +216,32 @@ export function FilterComponent({
               </TooltipTrigger>
               <TooltipContent side="bottom" className="max-w-xs">
                 <div className="space-y-2">
-                  <p className="font-medium">Regex Examples:</p>
+                  <p className="font-medium">{t("Regex Examples:")}</p>
                   <ul className="text-xs space-y-1">
-                    {REGEX_EXAMPLES.map((ex, i) => (
-                      <li key={i}>
-                        <code className="bg-neutral-100 dark:bg-neutral-800 px-1 rounded">{ex.pattern}</code>
-                        <span className="text-neutral-500 ml-1">— {ex.description}</span>
-                      </li>
-                    ))}
+                    <li>
+                      <code className="bg-neutral-100 dark:bg-neutral-800 px-1 rounded">{"^/blog/"}</code>
+                      <span className="text-neutral-500 ml-1">— {t("Paths starting with /blog/")}</span>
+                    </li>
+                    <li>
+                      <code className="bg-neutral-100 dark:bg-neutral-800 px-1 rounded">{"/blog/.*"}</code>
+                      <span className="text-neutral-500 ml-1">— {t("Paths containing /blog/ followed by anything")}</span>
+                    </li>
+                    <li>
+                      <code className="bg-neutral-100 dark:bg-neutral-800 px-1 rounded">{"\\.(pdf|doc|docx)$"}</code>
+                      <span className="text-neutral-500 ml-1">— {t("Paths ending in .pdf, .doc, or .docx")}</span>
+                    </li>
+                    <li>
+                      <code className="bg-neutral-100 dark:bg-neutral-800 px-1 rounded">{"^/products/[0-9]+$"}</code>
+                      <span className="text-neutral-500 ml-1">— {t("Product pages with numeric IDs")}</span>
+                    </li>
+                    <li>
+                      <code className="bg-neutral-100 dark:bg-neutral-800 px-1 rounded">{"(?i)newsletter"}</code>
+                      <span className="text-neutral-500 ml-1">— {t("Case-insensitive match for 'newsletter'")}</span>
+                    </li>
+                    <li>
+                      <code className="bg-neutral-100 dark:bg-neutral-800 px-1 rounded">{"^(?!.*test).*$"}</code>
+                      <span className="text-neutral-500 ml-1">— {t("Paths NOT containing 'test'")}</span>
+                    </li>
                   </ul>
                 </div>
               </TooltipContent>

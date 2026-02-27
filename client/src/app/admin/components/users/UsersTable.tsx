@@ -36,15 +36,17 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { UserTableSkeleton } from "./UserTableSkeleton";
 import { userStore } from "@/lib/userStore";
 import { SortableHeader } from "../shared/SortableHeader";
+import { useDateTimeFormat } from "../../../../hooks/useDateTimeFormat";
 import { parseUtcTimestamp } from "../../../../lib/dateTimeUtils";
 import { AddToOrganizationDialog } from "./AddToOrganizationDialog";
-import { useRemoveUserFromOrganization } from "@/api/admin/organizations";
-import { useAdminOrganizations } from "@/api/admin/getAdminOrganizations";
-import { toast } from "sonner";
+import { useRemoveUserFromOrganization } from "@/api/admin/hooks/useOrganizations";
+import { useAdminOrganizations } from "@/api/admin/hooks/useAdminOrganizations";
+import { toast } from "@/components/ui/sonner";
 import { Label } from "@/components/ui/label";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
+import { useExtracted } from "next-intl";
 
 interface UsersTableProps {
   data: { users: AdminUser[]; total: number } | undefined;
@@ -81,6 +83,8 @@ export function UsersTable({
 
   const { data: organizations } = useAdminOrganizations();
   const removeUserFromOrganization = useRemoveUserFromOrganization();
+  const t = useExtracted();
+  const { formatRelative } = useDateTimeFormat();
 
   const handleRemoveFromOrganization = async () => {
     if (!selectedUser || !selectedOrganizationId) return;
@@ -90,12 +94,12 @@ export function UsersTable({
         memberIdOrEmail: selectedUser.email,
         organizationId: selectedOrganizationId,
       });
-      toast.success("User removed from organization successfully");
+      toast.success(t("User removed from organization successfully"));
       setShowRemoveConfirmDialog(false);
       setSelectedUser(null);
       setSelectedOrganizationId("");
     } catch (error: any) {
-      toast.error(error.message || "Failed to remove user from organization");
+      toast.error(error.message || t("Failed to remove user from organization"));
     }
   };
 
@@ -104,38 +108,38 @@ export function UsersTable({
     () => [
       {
         accessorKey: "id",
-        header: ({ column }) => <SortableHeader column={column}>User ID</SortableHeader>,
+        header: ({ column }) => <SortableHeader column={column}>{t("User ID")}</SortableHeader>,
         cell: ({ row }) => <div className="font-mono">{row.getValue("id")}</div>,
       },
       {
         accessorKey: "name",
-        header: ({ column }) => <SortableHeader column={column}>Name</SortableHeader>,
-        cell: ({ row }) => row.getValue("name") || "N/A",
+        header: ({ column }) => <SortableHeader column={column}>{t("Name")}</SortableHeader>,
+        cell: ({ row }) => row.getValue("name") || t("N/A"),
       },
       {
         accessorKey: "email",
-        header: ({ column }) => <SortableHeader column={column}>Email</SortableHeader>,
+        header: ({ column }) => <SortableHeader column={column}>{t("Email")}</SortableHeader>,
         cell: ({ row }) => row.getValue("email"),
       },
       {
         accessorKey: "role",
-        header: ({ column }) => <SortableHeader column={column}>Role</SortableHeader>,
+        header: ({ column }) => <SortableHeader column={column}>{t("Role")}</SortableHeader>,
         cell: ({ row }) => row.getValue("role") || "user",
       },
       {
         accessorKey: "createdAt",
-        header: ({ column }) => <SortableHeader column={column}>Created At</SortableHeader>,
-        cell: ({ row }) => <div>{parseUtcTimestamp(row.getValue("createdAt")).toRelative()}</div>,
+        header: ({ column }) => <SortableHeader column={column}>{t("Created At")}</SortableHeader>,
+        cell: ({ row }) => <div>{formatRelative(parseUtcTimestamp(row.getValue("createdAt")))}</div>,
       },
       {
         id: "actions",
-        header: "Actions",
+        header: t("Actions"),
         cell: ({ row }) => (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
                 <MoreVertical className="h-4 w-4" />
-                <span className="sr-only">Open menu</span>
+                <span className="sr-only">{t("Open menu")}</span>
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
@@ -143,8 +147,8 @@ export function UsersTable({
                 onClick={() => onImpersonate(row.original.id)}
                 disabled={row.original.id === userStore.getState().user?.id}
               >
-                <User className="mr-2 h-4 w-4" />
-                Impersonate
+                <User className="h-4 w-4" />
+                {t("Impersonate")}
               </DropdownMenuItem>
               <DropdownMenuItem
                 onClick={() => {
@@ -152,8 +156,8 @@ export function UsersTable({
                   setShowAddToOrgDialog(true);
                 }}
               >
-                <UserPlus className="mr-2 h-4 w-4" />
-                Add to Organization
+                <UserPlus className="h-4 w-4" />
+                {t("Add to Organization")}
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem
@@ -163,8 +167,8 @@ export function UsersTable({
                 }}
                 className="text-orange-500 focus:text-orange-600"
               >
-                <UserMinus className="mr-2 h-4 w-4" />
-                Remove from Organization
+                <UserMinus className="h-4 w-4" />
+                {t("Remove from Organization")}
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -219,7 +223,7 @@ export function UsersTable({
           ) : table.getRowModel().rows.length === 0 ? (
             <TableRow>
               <TableCell colSpan={columns.length} className="text-center py-4">
-                No users found
+                {t("No users found")}
               </TableCell>
             </TableRow>
           ) : (
@@ -248,14 +252,13 @@ export function UsersTable({
       <AlertDialog open={showRemoveConfirmDialog} onOpenChange={setShowRemoveConfirmDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Remove user from organization?</AlertDialogTitle>
+            <AlertDialogTitle>{t("Remove user from organization?")}</AlertDialogTitle>
             <AlertDialogDescription>
-              Select the organization to remove {selectedUser?.email} from. They will lose access to all resources in
-              that organization.
+              {t("Select the organization to remove {email} from. They will lose access to all resources in that organization.", { email: selectedUser?.email ?? "" })}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <div className="py-4">
-            <Label htmlFor="remove-org">Organization</Label>
+            <Label htmlFor="remove-org">{t("Organization")}</Label>
             <Popover open={removeOrgComboboxOpen} onOpenChange={setRemoveOrgComboboxOpen}>
               <PopoverTrigger asChild>
                 <Button
@@ -266,7 +269,7 @@ export function UsersTable({
                 >
                   {selectedOrganizationId
                     ? organizations?.find(org => org.id === selectedOrganizationId)?.name
-                    : "Select an organization..."}
+                    : t("Select an organization...")}
                   <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                 </Button>
               </PopoverTrigger>
@@ -277,9 +280,9 @@ export function UsersTable({
                     return 0;
                   }}
                 >
-                  <CommandInput placeholder="Search organizations..." />
+                  <CommandInput placeholder={t("Search organizations...")} />
                   <CommandList>
-                    <CommandEmpty>No organization found.</CommandEmpty>
+                    <CommandEmpty>{t("No organization found.")}</CommandEmpty>
                     <CommandGroup>
                       {organizations?.map(org => (
                         <CommandItem
@@ -291,7 +294,10 @@ export function UsersTable({
                           }}
                         >
                           <Check
-                            className={cn("mr-2 h-4 w-4", selectedOrganizationId === org.id ? "opacity-100" : "opacity-0")}
+                            className={cn(
+                              "mr-2 h-4 w-4",
+                              selectedOrganizationId === org.id ? "opacity-100" : "opacity-0"
+                            )}
                           />
                           {org.name}
                         </CommandItem>
@@ -308,14 +314,14 @@ export function UsersTable({
                 setSelectedOrganizationId("");
               }}
             >
-              Cancel
+              {t("Cancel")}
             </AlertDialogCancel>
             <AlertDialogAction
               onClick={handleRemoveFromOrganization}
               className="bg-orange-500 hover:bg-orange-600"
               disabled={!selectedOrganizationId}
             >
-              Remove from Organization
+              {t("Remove from Organization")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

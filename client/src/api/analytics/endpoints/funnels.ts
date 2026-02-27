@@ -8,8 +8,14 @@ export type FunnelStep = {
   name?: string;
   type: "page" | "event";
   hostname?: string;
+  // Deprecated fields - kept for backwards compatibility
   eventPropertyKey?: string;
   eventPropertyValue?: string | number | boolean;
+  // New field for multiple property filters
+  propertyFilters?: Array<{
+    key: string;
+    value: string | number | boolean;
+  }>;
 };
 
 // Funnel request type
@@ -70,7 +76,7 @@ export async function fetchFunnels(
   site: string | number
 ): Promise<SavedFunnel[]> {
   const response = await authedFetch<{ data: SavedFunnel[] }>(
-    `/funnels/${site}`
+    `/sites/${site}/funnels`
   );
   return response.data;
 }
@@ -86,7 +92,7 @@ export async function analyzeFunnel(
   const queryParams = toQueryParams(params);
 
   const response = await authedFetch<{ data: FunnelResponse[] }>(
-    `/funnels/analyze/${site}`,
+    `/sites/${site}/funnels/analyze`,
     queryParams,
     {
       method: "POST",
@@ -115,7 +121,7 @@ export async function fetchFunnelStepSessions(
   };
 
   const response = await authedFetch<{ data: GetSessionsResponse }>(
-    `/funnels/${params.stepNumber}/sessions/${site}`,
+    `/sites/${site}/funnels/${params.stepNumber}/sessions`,
     queryParams,
     {
       method: "POST",
@@ -134,7 +140,7 @@ export async function saveFunnel(
   params: SaveFunnelParams
 ): Promise<{ success: boolean; funnelId: number }> {
   const response = await authedFetch<{ success: boolean; funnelId: number }>(
-    `/funnels/${site}`,
+    `/sites/${site}/funnels`,
     undefined,
     {
       method: "POST",
@@ -153,7 +159,7 @@ export async function deleteFunnel(
   funnelId: number
 ): Promise<{ success: boolean }> {
   const response = await authedFetch<{ success: boolean }>(
-    `/funnels/${funnelId}/${site}`,
+    `/sites/${site}/funnels/${funnelId}`,
     undefined,
     {
       method: "DELETE",

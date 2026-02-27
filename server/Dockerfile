@@ -25,8 +25,19 @@ FROM node:20-alpine
 
 WORKDIR /app
 
-# Install PostgreSQL client for migrations
-RUN apk add --no-cache postgresql-client
+# Install PostgreSQL client for migrations and Chromium for Puppeteer PDF generation
+RUN apk add --no-cache \
+    postgresql-client \
+    chromium \
+    nss \
+    freetype \
+    harfbuzz \
+    ca-certificates \
+    ttf-freefont
+
+# Configure Puppeteer to use system Chromium
+ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium-browser
+ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
 
 # Copy built application and dependencies
 COPY --from=builder /app/server/package*.json ./

@@ -6,6 +6,14 @@
 
   // utils.ts
   function patternToRegex(pattern) {
+    const REGEX_PREFIX = "re:";
+    if (pattern.startsWith(REGEX_PREFIX)) {
+      const rawRegex = pattern.slice(REGEX_PREFIX.length);
+      if (!rawRegex) {
+        throw new Error("Empty regex pattern");
+      }
+      return new RegExp(rawRegex);
+    }
     const DOUBLE_WILDCARD_TOKEN = "__DOUBLE_ASTERISK_TOKEN__";
     const SINGLE_WILDCARD_TOKEN = "__SINGLE_ASTERISK_TOKEN__";
     let tokenized = pattern.replace(/\*\*/g, DOUBLE_WILDCARD_TOKEN).replace(/\*/g, SINGLE_WILDCARD_TOKEN);
@@ -75,6 +83,7 @@
       console.error("Please provide a valid site ID using the data-site-id attribute");
       return null;
     }
+    const namespace = scriptTag.getAttribute("data-namespace") || "rybbit";
     const skipPatterns = parseJsonSafely(scriptTag.getAttribute("data-skip-patterns"), []);
     const maskPatterns = parseJsonSafely(scriptTag.getAttribute("data-mask-patterns"), []);
     const sessionReplayMaskTextSelectors = parseJsonSafely(
@@ -84,7 +93,25 @@
     const debounceDuration = scriptTag.getAttribute("data-debounce") ? Math.max(0, parseInt(scriptTag.getAttribute("data-debounce"))) : 500;
     const sessionReplayBatchSize = scriptTag.getAttribute("data-replay-batch-size") ? Math.max(1, parseInt(scriptTag.getAttribute("data-replay-batch-size"))) : 250;
     const sessionReplayBatchInterval = scriptTag.getAttribute("data-replay-batch-interval") ? Math.max(1e3, parseInt(scriptTag.getAttribute("data-replay-batch-interval"))) : 5e3;
+    const sessionReplayBlockClass = scriptTag.getAttribute("data-replay-block-class") || void 0;
+    const sessionReplayBlockSelector = scriptTag.getAttribute("data-replay-block-selector") || void 0;
+    const sessionReplayIgnoreClass = scriptTag.getAttribute("data-replay-ignore-class") || void 0;
+    const sessionReplayIgnoreSelector = scriptTag.getAttribute("data-replay-ignore-selector") || void 0;
+    const sessionReplayMaskTextClass = scriptTag.getAttribute("data-replay-mask-text-class") || void 0;
+    const maskAllInputsAttr = scriptTag.getAttribute("data-replay-mask-all-inputs");
+    const sessionReplayMaskAllInputs = maskAllInputsAttr !== null ? maskAllInputsAttr !== "false" : void 0;
+    const maskInputOptionsAttr = scriptTag.getAttribute("data-replay-mask-input-options");
+    const sessionReplayMaskInputOptions = maskInputOptionsAttr ? parseJsonSafely(maskInputOptionsAttr, { password: true, email: true }) : void 0;
+    const collectFontsAttr = scriptTag.getAttribute("data-replay-collect-fonts");
+    const sessionReplayCollectFonts = collectFontsAttr !== null ? collectFontsAttr !== "false" : void 0;
+    const samplingAttr = scriptTag.getAttribute("data-replay-sampling");
+    const sessionReplaySampling = samplingAttr ? parseJsonSafely(samplingAttr, {}) : void 0;
+    const slimDOMAttr = scriptTag.getAttribute("data-replay-slim-dom-options");
+    const sessionReplaySlimDOMOptions = slimDOMAttr ? parseJsonSafely(slimDOMAttr, {}) : void 0;
+    const sampleRateAttr = scriptTag.getAttribute("data-replay-sample-rate");
+    const sessionReplaySampleRate = sampleRateAttr ? Math.min(100, Math.max(0, parseInt(sampleRateAttr, 10))) : void 0;
     const defaultConfig = {
+      namespace,
       analyticsHost,
       siteId,
       debounceDuration,
@@ -100,7 +127,22 @@
       trackOutbound: true,
       enableWebVitals: false,
       trackErrors: false,
-      enableSessionReplay: false
+      enableSessionReplay: false,
+      trackButtonClicks: false,
+      trackCopy: false,
+      trackFormInteractions: false,
+      // rrweb session replay options (undefined means use rrweb defaults)
+      sessionReplayBlockClass,
+      sessionReplayBlockSelector,
+      sessionReplayIgnoreClass,
+      sessionReplayIgnoreSelector,
+      sessionReplayMaskTextClass,
+      sessionReplayMaskAllInputs,
+      sessionReplayMaskInputOptions,
+      sessionReplayCollectFonts,
+      sessionReplaySampling,
+      sessionReplaySlimDOMOptions,
+      sessionReplaySampleRate
     };
     try {
       const configUrl = `${analyticsHost}/site/tracking-config/${siteId}`;
@@ -120,7 +162,10 @@
           trackOutbound: apiConfig.trackOutbound ?? defaultConfig.trackOutbound,
           enableWebVitals: apiConfig.webVitals ?? defaultConfig.enableWebVitals,
           trackErrors: apiConfig.trackErrors ?? defaultConfig.trackErrors,
-          enableSessionReplay: apiConfig.sessionReplay ?? defaultConfig.enableSessionReplay
+          enableSessionReplay: apiConfig.sessionReplay ?? defaultConfig.enableSessionReplay,
+          trackButtonClicks: apiConfig.trackButtonClicks ?? defaultConfig.trackButtonClicks,
+          trackCopy: apiConfig.trackCopy ?? defaultConfig.trackCopy,
+          trackFormInteractions: apiConfig.trackFormInteractions ?? defaultConfig.trackFormInteractions
         };
       } else {
         console.warn("Failed to fetch tracking config from API, using defaults");
@@ -133,6 +178,22 @@
   }
 
   // sessionReplay.ts
+  var SAMPLE_STORAGE_KEY = "rybbit-replay-sampled";
+  function shouldSampleSession(sampleRate) {
+    if (sampleRate >= 100) return true;
+    if (sampleRate <= 0) return false;
+    try {
+      const existingDecision = sessionStorage.getItem(SAMPLE_STORAGE_KEY);
+      if (existingDecision !== null) {
+        return existingDecision === "1";
+      }
+      const sampled = Math.random() * 100 < sampleRate;
+      sessionStorage.setItem(SAMPLE_STORAGE_KEY, sampled ? "1" : "0");
+      return sampled;
+    } catch {
+      return Math.random() * 100 < sampleRate;
+    }
+  }
   var SessionReplayRecorder = class {
     constructor(config, userId, sendBatch) {
       this.isRecording = false;
@@ -143,6 +204,10 @@
     }
     async initialize() {
       if (!this.config.enableSessionReplay) {
+        return;
+      }
+      const sampleRate = this.config.sessionReplaySampleRate;
+      if (sampleRate !== void 0 && !shouldSampleSession(sampleRate)) {
         return;
       }
       if (!window.rrweb) {
@@ -169,6 +234,41 @@
         return;
       }
       try {
+        const defaultSampling = {
+          // Aggressive sampling to reduce data volume
+          mousemove: false,
+          // Don't record mouse moves at all
+          mouseInteraction: {
+            MouseUp: false,
+            MouseDown: false,
+            Click: true,
+            // Only record clicks
+            ContextMenu: false,
+            DblClick: true,
+            Focus: true,
+            Blur: true,
+            TouchStart: false,
+            TouchEnd: false
+          },
+          scroll: 500,
+          // Sample scroll events every 500ms
+          input: "last",
+          // Only record the final input value
+          media: 800
+          // Sample media interactions less frequently
+        };
+        const defaultSlimDOMOptions = {
+          script: false,
+          comment: true,
+          headFavicon: true,
+          headWhitespace: true,
+          headMetaDescKeywords: true,
+          headMetaSocial: true,
+          headMetaRobots: true,
+          headMetaHttpEquiv: true,
+          headMetaAuthorship: true,
+          headMetaVerification: true
+        };
         const recordingOptions = {
           emit: (event) => {
             this.addEvent({
@@ -178,54 +278,22 @@
             });
           },
           recordCanvas: false,
-          // Disable canvas recording to reduce data
-          collectFonts: true,
-          // Disable font collection to reduce data
+          // Always disabled to save disk space
           checkoutEveryNms: 6e4,
-          // Checkout every 60 seconds (was 30)
+          // Checkout every 60 seconds
           checkoutEveryNth: 500,
-          // Checkout every 500 events (was 200)
-          maskAllInputs: true,
-          // Mask all input values for privacy
-          maskInputOptions: {
-            password: true,
-            email: true
-          },
-          slimDOMOptions: {
-            script: false,
-            comment: true,
-            headFavicon: true,
-            headWhitespace: true,
-            headMetaDescKeywords: true,
-            headMetaSocial: true,
-            headMetaRobots: true,
-            headMetaHttpEquiv: true,
-            headMetaAuthorship: true,
-            headMetaVerification: true
-          },
-          sampling: {
-            // Aggressive sampling to reduce data volume
-            mousemove: false,
-            // Don't record mouse moves at all
-            mouseInteraction: {
-              MouseUp: false,
-              MouseDown: false,
-              Click: true,
-              // Only record clicks
-              ContextMenu: false,
-              DblClick: true,
-              Focus: true,
-              Blur: true,
-              TouchStart: false,
-              TouchEnd: false
-            },
-            scroll: 500,
-            // Sample scroll events every 500ms (was 150)
-            input: "last",
-            // Only record the final input value
-            media: 800
-            // Sample media interactions less frequently
-          }
+          // Checkout every 500 events
+          // Use config values with fallbacks to defaults
+          blockClass: this.config.sessionReplayBlockClass ?? "rr-block",
+          blockSelector: this.config.sessionReplayBlockSelector ?? null,
+          ignoreClass: this.config.sessionReplayIgnoreClass ?? "rr-ignore",
+          ignoreSelector: this.config.sessionReplayIgnoreSelector ?? null,
+          maskTextClass: this.config.sessionReplayMaskTextClass ?? "rr-mask",
+          maskAllInputs: this.config.sessionReplayMaskAllInputs ?? true,
+          maskInputOptions: this.config.sessionReplayMaskInputOptions ?? { password: true, email: true },
+          collectFonts: this.config.sessionReplayCollectFonts ?? true,
+          sampling: this.config.sessionReplaySampling ?? defaultSampling,
+          slimDOMOptions: this.config.sessionReplaySlimDOMOptions ?? defaultSlimDOMOptions
         };
         if (this.config.sessionReplayMaskTextSelectors && this.config.sessionReplayMaskTextSelectors.length > 0) {
           recordingOptions.maskTextSelector = this.config.sessionReplayMaskTextSelectors.join(", ");
@@ -314,6 +382,8 @@
   var Tracker = class {
     constructor(config) {
       this.customUserId = null;
+      this.errorDedupeCache = /* @__PURE__ */ new Map();
+      this.errorDedupeLastCleanup = 0;
       this.config = config;
       this.loadUserId();
       if (config.enableSessionReplay) {
@@ -322,7 +392,7 @@
     }
     loadUserId() {
       try {
-        const storedUserId = localStorage.getItem("rybbit-user-id");
+        const storedUserId = localStorage.getItem(`${this.config.namespace}-user-id`);
         if (storedUserId) {
           this.customUserId = storedUserId;
         }
@@ -411,11 +481,12 @@
       if (!basePayload) {
         return;
       }
+      const typesWithProperties = ["custom_event", "outbound", "error", "button_click", "copy", "form_submit", "input_change"];
       const payload = {
         ...basePayload,
         type: eventType,
         event_name: eventName,
-        properties: eventType === "custom_event" || eventType === "outbound" || eventType === "error" ? JSON.stringify(properties) : void 0
+        properties: typesWithProperties.includes(eventType) ? JSON.stringify(properties) : void 0
       };
       this.sendTrackingData(payload);
     }
@@ -442,6 +513,10 @@
       this.sendTrackingData(payload);
     }
     trackError(error, additionalInfo = {}) {
+      const message = error?.message || "";
+      if (message.includes("ResizeObserver loop completed with undelivered notifications") || message.includes("ResizeObserver loop limit exceeded")) {
+        return;
+      }
       const currentOrigin = window.location.origin;
       const filename = additionalInfo.filename || "";
       const errorStack = error.stack || "";
@@ -457,6 +532,30 @@
         if (!errorStack.includes(currentOrigin)) {
           return;
         }
+      }
+      const dedupeKeyParts = [
+        error.name || "Error",
+        message,
+        additionalInfo.filename || "",
+        additionalInfo.lineno ?? "",
+        additionalInfo.colno ?? ""
+      ];
+      const dedupeKey = dedupeKeyParts.join("|");
+      const now = Date.now();
+      const dedupeWindowMs = 6e4;
+      const lastSeen = this.errorDedupeCache.get(dedupeKey);
+      if (lastSeen && now - lastSeen < dedupeWindowMs) {
+        return;
+      }
+      this.errorDedupeCache.set(dedupeKey, now);
+      const pruneAfterMs = 10 * 6e4;
+      if (now - this.errorDedupeLastCleanup > dedupeWindowMs) {
+        for (const [key, ts] of this.errorDedupeCache.entries()) {
+          if (now - ts > pruneAfterMs) {
+            this.errorDedupeCache.delete(key);
+          }
+        }
+        this.errorDedupeLastCleanup = now;
       }
       const errorProperties = {
         message: error.message?.substring(0, 500) || "Unknown error",
@@ -486,25 +585,70 @@
       }
       this.track("error", error.name || "Error", errorProperties);
     }
-    identify(userId) {
+    trackButtonClick(properties) {
+      this.track("button_click", "", properties);
+    }
+    trackCopy(properties) {
+      this.track("copy", "", properties);
+    }
+    trackFormSubmit(properties) {
+      this.track("form_submit", "", properties);
+    }
+    trackInputChange(properties) {
+      this.track("input_change", "", properties);
+    }
+    identify(userId, traits) {
       if (typeof userId !== "string" || userId.trim() === "") {
         console.error("User ID must be a non-empty string");
         return;
       }
       this.customUserId = userId.trim();
       try {
-        localStorage.setItem("rybbit-user-id", this.customUserId);
+        localStorage.setItem(`${this.config.namespace}-user-id`, this.customUserId);
       } catch (e2) {
         console.warn("Could not persist user ID to localStorage");
       }
+      this.sendIdentifyEvent(this.customUserId, traits, true);
       if (this.sessionReplayRecorder) {
         this.sessionReplayRecorder.updateUserId(this.customUserId);
+      }
+    }
+    setTraits(traits) {
+      if (!traits || typeof traits !== "object") {
+        console.error("Traits must be an object");
+        return;
+      }
+      const userId = this.customUserId;
+      if (!userId) {
+        console.warn("Cannot set traits without identifying user first. Call identify() first.");
+        return;
+      }
+      this.sendIdentifyEvent(userId, traits, false);
+    }
+    async sendIdentifyEvent(userId, traits, isNewIdentify = true) {
+      try {
+        await fetch(`${this.config.analyticsHost}/identify`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            site_id: this.config.siteId,
+            user_id: userId,
+            traits,
+            is_new_identify: isNewIdentify
+          }),
+          mode: "cors",
+          keepalive: true
+        });
+      } catch (error) {
+        console.error("Failed to send identify event:", error);
       }
     }
     clearUserId() {
       this.customUserId = null;
       try {
-        localStorage.removeItem("rybbit-user-id");
+        localStorage.removeItem(`${this.config.namespace}-user-id`);
       } catch (e2) {
       }
     }
@@ -544,31 +688,31 @@
   // ../../node_modules/web-vitals/dist/web-vitals.js
   var e = -1;
   var t = (t2) => {
-    addEventListener("pageshow", (n2) => {
+    addEventListener("pageshow", ((n2) => {
       n2.persisted && (e = n2.timeStamp, t2(n2));
-    }, true);
+    }), true);
   };
   var n = (e2, t2, n2, i2) => {
-    let o2, s2;
+    let s2, o2;
     return (r2) => {
-      t2.value >= 0 && (r2 || i2) && (s2 = t2.value - (o2 ?? 0), (s2 || void 0 === o2) && (o2 = t2.value, t2.delta = s2, t2.rating = ((e3, t3) => e3 > t3[1] ? "poor" : e3 > t3[0] ? "needs-improvement" : "good")(t2.value, n2), e2(t2)));
+      t2.value >= 0 && (r2 || i2) && (o2 = t2.value - (s2 ?? 0), (o2 || void 0 === s2) && (s2 = t2.value, t2.delta = o2, t2.rating = ((e3, t3) => e3 > t3[1] ? "poor" : e3 > t3[0] ? "needs-improvement" : "good")(t2.value, n2), e2(t2)));
     };
   };
   var i = (e2) => {
-    requestAnimationFrame(() => requestAnimationFrame(() => e2()));
+    requestAnimationFrame((() => requestAnimationFrame((() => e2()))));
   };
-  var o = () => {
+  var s = () => {
     const e2 = performance.getEntriesByType("navigation")[0];
     if (e2 && e2.responseStart > 0 && e2.responseStart < performance.now()) return e2;
   };
-  var s = () => {
-    const e2 = o();
+  var o = () => {
+    const e2 = s();
     return e2?.activationStart ?? 0;
   };
   var r = (t2, n2 = -1) => {
-    const i2 = o();
+    const i2 = s();
     let r2 = "navigate";
-    e >= 0 ? r2 = "back-forward-cache" : i2 && (document.prerendering || s() > 0 ? r2 = "prerender" : document.wasDiscarded ? r2 = "restore" : i2.type && (r2 = i2.type.replace(/_/g, "-")));
+    e >= 0 ? r2 = "back-forward-cache" : i2 && (document.prerendering || o() > 0 ? r2 = "prerender" : document.wasDiscarded ? r2 = "restore" : i2.type && (r2 = i2.type.replace(/_/g, "-")));
     return { name: t2, value: n2, rating: "good", delta: 0, entries: [], id: `v5-${Date.now()}-${Math.floor(8999999999999 * Math.random()) + 1e12}`, navigationType: r2 };
   };
   var c = /* @__PURE__ */ new WeakMap();
@@ -590,11 +734,11 @@
   var h = (e2, t2, n2 = {}) => {
     try {
       if (PerformanceObserver.supportedEntryTypes.includes(e2)) {
-        const i2 = new PerformanceObserver((e3) => {
-          Promise.resolve().then(() => {
+        const i2 = new PerformanceObserver(((e3) => {
+          Promise.resolve().then((() => {
             t2(e3.getEntries());
-          });
-        });
+          }));
+        }));
         return i2.observe({ type: e2, buffered: true, ...n2 }), i2;
       }
     } catch {
@@ -607,127 +751,130 @@
     };
   };
   var u = -1;
-  var l = () => "hidden" !== document.visibilityState || document.prerendering ? 1 / 0 : 0;
-  var m = (e2) => {
-    "hidden" === document.visibilityState && u > -1 && (u = "visibilitychange" === e2.type ? e2.timeStamp : 0, v());
-  };
-  var g = () => {
-    addEventListener("visibilitychange", m, true), addEventListener("prerenderingchange", m, true);
+  var l = /* @__PURE__ */ new Set();
+  var m = () => "hidden" !== document.visibilityState || document.prerendering ? 1 / 0 : 0;
+  var p = (e2) => {
+    if ("hidden" === document.visibilityState) {
+      if ("visibilitychange" === e2.type) for (const e3 of l) e3();
+      isFinite(u) || (u = "visibilitychange" === e2.type ? e2.timeStamp : 0, removeEventListener("prerenderingchange", p, true));
+    }
   };
   var v = () => {
-    removeEventListener("visibilitychange", m, true), removeEventListener("prerenderingchange", m, true);
-  };
-  var p = () => {
     if (u < 0) {
-      const e2 = s(), n2 = document.prerendering ? void 0 : globalThis.performance.getEntriesByType("visibility-state").filter((t2) => "hidden" === t2.name && t2.startTime > e2)[0]?.startTime;
-      u = n2 ?? l(), g(), t(() => {
-        setTimeout(() => {
-          u = l(), g();
-        });
-      });
+      const e2 = o(), n2 = document.prerendering ? void 0 : globalThis.performance.getEntriesByType("visibility-state").filter(((t2) => "hidden" === t2.name && t2.startTime > e2))[0]?.startTime;
+      u = n2 ?? m(), addEventListener("visibilitychange", p, true), addEventListener("prerenderingchange", p, true), t((() => {
+        setTimeout((() => {
+          u = m();
+        }));
+      }));
     }
     return { get firstHiddenTime() {
       return u;
+    }, onHidden(e2) {
+      l.add(e2);
     } };
   };
-  var y = (e2) => {
-    document.prerendering ? addEventListener("prerenderingchange", () => e2(), true) : e2();
+  var g = (e2) => {
+    document.prerendering ? addEventListener("prerenderingchange", (() => e2()), true) : e2();
   };
-  var b = [1800, 3e3];
-  var P = (e2, o2 = {}) => {
-    y(() => {
-      const c2 = p();
+  var y = [1800, 3e3];
+  var E = (e2, s2 = {}) => {
+    g((() => {
+      const c2 = v();
       let a2, d2 = r("FCP");
-      const f2 = h("paint", (e3) => {
-        for (const t2 of e3) "first-contentful-paint" === t2.name && (f2.disconnect(), t2.startTime < c2.firstHiddenTime && (d2.value = Math.max(t2.startTime - s(), 0), d2.entries.push(t2), a2(true)));
-      });
-      f2 && (a2 = n(e2, d2, b, o2.reportAllChanges), t((t2) => {
-        d2 = r("FCP"), a2 = n(e2, d2, b, o2.reportAllChanges), i(() => {
-          d2.value = performance.now() - t2.timeStamp, a2(true);
-        });
+      const f2 = h("paint", ((e3) => {
+        for (const t2 of e3) "first-contentful-paint" === t2.name && (f2.disconnect(), t2.startTime < c2.firstHiddenTime && (d2.value = Math.max(t2.startTime - o(), 0), d2.entries.push(t2), a2(true)));
       }));
-    });
-  };
-  var T = [0.1, 0.25];
-  var E = (e2, o2 = {}) => {
-    P(f(() => {
-      let s2, c2 = r("CLS", 0);
-      const f2 = a(o2, d), u2 = (e3) => {
-        for (const t2 of e3) f2.h(t2);
-        f2.i > c2.value && (c2.value = f2.i, c2.entries = f2.o, s2());
-      }, l2 = h("layout-shift", u2);
-      l2 && (s2 = n(e2, c2, T, o2.reportAllChanges), document.addEventListener("visibilitychange", () => {
-        "hidden" === document.visibilityState && (u2(l2.takeRecords()), s2(true));
-      }), t(() => {
-        f2.i = 0, c2 = r("CLS", 0), s2 = n(e2, c2, T, o2.reportAllChanges), i(() => s2());
-      }), setTimeout(s2));
+      f2 && (a2 = n(e2, d2, y, s2.reportAllChanges), t(((t2) => {
+        d2 = r("FCP"), a2 = n(e2, d2, y, s2.reportAllChanges), i((() => {
+          d2.value = performance.now() - t2.timeStamp, a2(true);
+        }));
+      })));
     }));
   };
+  var b = [0.1, 0.25];
+  var L = (e2, s2 = {}) => {
+    const o2 = v();
+    E(f((() => {
+      let c2, f2 = r("CLS", 0);
+      const u2 = a(s2, d), l2 = (e3) => {
+        for (const t2 of e3) u2.h(t2);
+        u2.i > f2.value && (f2.value = u2.i, f2.entries = u2.o, c2());
+      }, m2 = h("layout-shift", l2);
+      m2 && (c2 = n(e2, f2, b, s2.reportAllChanges), o2.onHidden((() => {
+        l2(m2.takeRecords()), c2(true);
+      })), t((() => {
+        u2.i = 0, f2 = r("CLS", 0), c2 = n(e2, f2, b, s2.reportAllChanges), i((() => c2()));
+      })), setTimeout(c2));
+    })));
+  };
+  var P = 0;
+  var T = 1 / 0;
   var _ = 0;
-  var L = 1 / 0;
-  var M = 0;
-  var C = (e2) => {
-    for (const t2 of e2) t2.interactionId && (L = Math.min(L, t2.interactionId), M = Math.max(M, t2.interactionId), _ = M ? (M - L) / 7 + 1 : 0);
+  var M = (e2) => {
+    for (const t2 of e2) t2.interactionId && (T = Math.min(T, t2.interactionId), _ = Math.max(_, t2.interactionId), P = _ ? (_ - T) / 7 + 1 : 0);
   };
-  var I;
-  var w = () => I ? _ : performance.interactionCount ?? 0;
-  var F = () => {
-    "interactionCount" in performance || I || (I = h("event", C, { type: "event", buffered: true, durationThreshold: 0 }));
+  var w;
+  var C = () => w ? P : performance.interactionCount ?? 0;
+  var I = () => {
+    "interactionCount" in performance || w || (w = h("event", M, { type: "event", buffered: true, durationThreshold: 0 }));
   };
-  var k = 0;
-  var A = class {
+  var F = 0;
+  var k = class {
     constructor() {
       __publicField(this, "u", []);
       __publicField(this, "l", /* @__PURE__ */ new Map());
       __publicField(this, "m");
-      __publicField(this, "v");
+      __publicField(this, "p");
     }
-    p() {
-      k = w(), this.u.length = 0, this.l.clear();
+    v() {
+      F = C(), this.u.length = 0, this.l.clear();
     }
-    P() {
-      const e2 = Math.min(this.u.length - 1, Math.floor((w() - k) / 50));
+    L() {
+      const e2 = Math.min(this.u.length - 1, Math.floor((C() - F) / 50));
       return this.u[e2];
     }
     h(e2) {
       if (this.m?.(e2), !e2.interactionId && "first-input" !== e2.entryType) return;
       const t2 = this.u.at(-1);
       let n2 = this.l.get(e2.interactionId);
-      if (n2 || this.u.length < 10 || e2.duration > t2.T) {
-        if (n2 ? e2.duration > n2.T ? (n2.entries = [e2], n2.T = e2.duration) : e2.duration === n2.T && e2.startTime === n2.entries[0].startTime && n2.entries.push(e2) : (n2 = { id: e2.interactionId, entries: [e2], T: e2.duration }, this.l.set(n2.id, n2), this.u.push(n2)), this.u.sort((e3, t3) => t3.T - e3.T), this.u.length > 10) {
+      if (n2 || this.u.length < 10 || e2.duration > t2.P) {
+        if (n2 ? e2.duration > n2.P ? (n2.entries = [e2], n2.P = e2.duration) : e2.duration === n2.P && e2.startTime === n2.entries[0].startTime && n2.entries.push(e2) : (n2 = { id: e2.interactionId, entries: [e2], P: e2.duration }, this.l.set(n2.id, n2), this.u.push(n2)), this.u.sort(((e3, t3) => t3.P - e3.P)), this.u.length > 10) {
           const e3 = this.u.splice(10);
           for (const t3 of e3) this.l.delete(t3.id);
         }
-        this.v?.(n2);
+        this.p?.(n2);
       }
     }
   };
-  var B = (e2) => {
+  var A = (e2) => {
     const t2 = globalThis.requestIdleCallback || setTimeout;
-    "hidden" === document.visibilityState ? e2() : (e2 = f(e2), document.addEventListener("visibilitychange", e2, { once: true }), t2(() => {
-      e2(), document.removeEventListener("visibilitychange", e2);
+    "hidden" === document.visibilityState ? e2() : (e2 = f(e2), addEventListener("visibilitychange", e2, { once: true, capture: true }), t2((() => {
+      e2(), removeEventListener("visibilitychange", e2, { capture: true });
+    })));
+  };
+  var B = [200, 500];
+  var S = (e2, i2 = {}) => {
+    if (!globalThis.PerformanceEventTiming || !("interactionId" in PerformanceEventTiming.prototype)) return;
+    const s2 = v();
+    g((() => {
+      I();
+      let o2, c2 = r("INP");
+      const d2 = a(i2, k), f2 = (e3) => {
+        A((() => {
+          for (const t3 of e3) d2.h(t3);
+          const t2 = d2.L();
+          t2 && t2.P !== c2.value && (c2.value = t2.P, c2.entries = t2.entries, o2());
+        }));
+      }, u2 = h("event", f2, { durationThreshold: i2.durationThreshold ?? 40 });
+      o2 = n(e2, c2, B, i2.reportAllChanges), u2 && (u2.observe({ type: "first-input", buffered: true }), s2.onHidden((() => {
+        f2(u2.takeRecords()), o2(true);
+      })), t((() => {
+        d2.v(), c2 = r("INP"), o2 = n(e2, c2, B, i2.reportAllChanges);
+      })));
     }));
   };
-  var N = [200, 500];
-  var S = (e2, i2 = {}) => {
-    globalThis.PerformanceEventTiming && "interactionId" in PerformanceEventTiming.prototype && y(() => {
-      F();
-      let o2, s2 = r("INP");
-      const c2 = a(i2, A), d2 = (e3) => {
-        B(() => {
-          for (const t3 of e3) c2.h(t3);
-          const t2 = c2.P();
-          t2 && t2.T !== s2.value && (s2.value = t2.T, s2.entries = t2.entries, o2());
-        });
-      }, f2 = h("event", d2, { durationThreshold: i2.durationThreshold ?? 40 });
-      o2 = n(e2, s2, N, i2.reportAllChanges), f2 && (f2.observe({ type: "first-input", buffered: true }), document.addEventListener("visibilitychange", () => {
-        "hidden" === document.visibilityState && (d2(f2.takeRecords()), o2(true));
-      }), t(() => {
-        c2.p(), s2 = r("INP"), o2 = n(e2, s2, N, i2.reportAllChanges);
-      }));
-    });
-  };
-  var q = class {
+  var N = class {
     constructor() {
       __publicField(this, "m");
     }
@@ -735,41 +882,43 @@
       this.m?.(e2);
     }
   };
-  var x = [2500, 4e3];
-  var O = (e2, o2 = {}) => {
-    y(() => {
-      const c2 = p();
+  var q = [2500, 4e3];
+  var x = (e2, s2 = {}) => {
+    g((() => {
+      const c2 = v();
       let d2, u2 = r("LCP");
-      const l2 = a(o2, q), m2 = (e3) => {
-        o2.reportAllChanges || (e3 = e3.slice(-1));
-        for (const t2 of e3) l2.h(t2), t2.startTime < c2.firstHiddenTime && (u2.value = Math.max(t2.startTime - s(), 0), u2.entries = [t2], d2());
-      }, g2 = h("largest-contentful-paint", m2);
-      if (g2) {
-        d2 = n(e2, u2, x, o2.reportAllChanges);
-        const s2 = f(() => {
-          m2(g2.takeRecords()), g2.disconnect(), d2(true);
-        });
-        for (const e3 of ["keydown", "click", "visibilitychange"]) addEventListener(e3, () => B(s2), { capture: true, once: true });
-        t((t2) => {
-          u2 = r("LCP"), d2 = n(e2, u2, x, o2.reportAllChanges), i(() => {
+      const l2 = a(s2, N), m2 = (e3) => {
+        s2.reportAllChanges || (e3 = e3.slice(-1));
+        for (const t2 of e3) l2.h(t2), t2.startTime < c2.firstHiddenTime && (u2.value = Math.max(t2.startTime - o(), 0), u2.entries = [t2], d2());
+      }, p2 = h("largest-contentful-paint", m2);
+      if (p2) {
+        d2 = n(e2, u2, q, s2.reportAllChanges);
+        const o2 = f((() => {
+          m2(p2.takeRecords()), p2.disconnect(), d2(true);
+        })), c3 = (e3) => {
+          e3.isTrusted && (A(o2), removeEventListener(e3.type, c3, { capture: true }));
+        };
+        for (const e3 of ["keydown", "click", "visibilitychange"]) addEventListener(e3, c3, { capture: true });
+        t(((t2) => {
+          u2 = r("LCP"), d2 = n(e2, u2, q, s2.reportAllChanges), i((() => {
             u2.value = performance.now() - t2.timeStamp, d2(true);
-          });
-        });
+          }));
+        }));
       }
-    });
+    }));
   };
-  var $ = [800, 1800];
-  var D = (e2) => {
-    document.prerendering ? y(() => D(e2)) : "complete" !== document.readyState ? addEventListener("load", () => D(e2), true) : setTimeout(e2);
+  var H = [800, 1800];
+  var O = (e2) => {
+    document.prerendering ? g((() => O(e2))) : "complete" !== document.readyState ? addEventListener("load", (() => O(e2)), true) : setTimeout(e2);
   };
-  var H = (e2, i2 = {}) => {
-    let c2 = r("TTFB"), a2 = n(e2, c2, $, i2.reportAllChanges);
-    D(() => {
-      const d2 = o();
-      d2 && (c2.value = Math.max(d2.responseStart - s(), 0), c2.entries = [d2], a2(true), t(() => {
-        c2 = r("TTFB", 0), a2 = n(e2, c2, $, i2.reportAllChanges), a2(true);
-      }));
-    });
+  var $ = (e2, i2 = {}) => {
+    let c2 = r("TTFB"), a2 = n(e2, c2, H, i2.reportAllChanges);
+    O((() => {
+      const d2 = s();
+      d2 && (c2.value = Math.max(d2.responseStart - o(), 0), c2.entries = [d2], a2(true), t((() => {
+        c2 = r("TTFB", 0), a2 = n(e2, c2, H, i2.reportAllChanges), a2(true);
+      })));
+    }));
   };
 
   // webVitals.ts
@@ -789,11 +938,11 @@
     }
     initialize() {
       try {
-        O(this.collectMetric.bind(this));
-        E(this.collectMetric.bind(this));
+        x(this.collectMetric.bind(this));
+        L(this.collectMetric.bind(this));
         S(this.collectMetric.bind(this));
-        P(this.collectMetric.bind(this));
-        H(this.collectMetric.bind(this));
+        E(this.collectMetric.bind(this));
+        $(this.collectMetric.bind(this));
         this.timeout = setTimeout(() => {
           if (!this.sent) {
             this.sendData();
@@ -833,6 +982,184 @@
     }
   };
 
+  // clickTracking.ts
+  var ClickTrackingManager = class {
+    constructor(tracker, config) {
+      this.tracker = tracker;
+      this.config = config;
+    }
+    initialize() {
+      document.addEventListener("click", this.handleClick.bind(this), true);
+    }
+    handleClick(event) {
+      const target = event.target;
+      if (this.config.trackButtonClicks && this.isButton(target)) {
+        this.trackButtonClick(target);
+      }
+    }
+    isButton(element) {
+      if (element.tagName === "BUTTON") return true;
+      if (element.getAttribute("role") === "button") return true;
+      if (element.tagName === "INPUT") {
+        const type = element.type?.toLowerCase();
+        if (type === "submit" || type === "button") return true;
+      }
+      let parent = element.parentElement;
+      let depth = 0;
+      while (parent && depth < 3) {
+        if (parent.tagName === "BUTTON") return true;
+        if (parent.getAttribute("role") === "button") return true;
+        parent = parent.parentElement;
+        depth++;
+      }
+      return false;
+    }
+    trackButtonClick(element) {
+      const buttonElement = this.findButton(element);
+      if (!buttonElement) return;
+      if (buttonElement.hasAttribute("data-rybbit-event")) return;
+      const properties = {
+        text: this.getElementText(buttonElement),
+        ...this.extractDataAttributes(buttonElement)
+      };
+      this.tracker.trackButtonClick(properties);
+    }
+    extractDataAttributes(element) {
+      const attrs = {};
+      for (const attr of element.attributes) {
+        if (attr.name.startsWith("data-rybbit-prop-")) {
+          const key = attr.name.replace("data-rybbit-prop-", "");
+          attrs[key] = attr.value;
+        }
+      }
+      return attrs;
+    }
+    findButton(element) {
+      if (element.tagName === "BUTTON") return element;
+      if (element.getAttribute("role") === "button") return element;
+      if (element.tagName === "INPUT") {
+        const type = element.type?.toLowerCase();
+        if (type === "submit" || type === "button") return element;
+      }
+      let parent = element.parentElement;
+      let depth = 0;
+      while (parent && depth < 3) {
+        if (parent.tagName === "BUTTON") return parent;
+        if (parent.getAttribute("role") === "button") return parent;
+        parent = parent.parentElement;
+        depth++;
+      }
+      return null;
+    }
+    getElementText(element) {
+      const text = element.textContent?.trim().substring(0, 100);
+      if (text) return text;
+      const ariaLabel = element.getAttribute("aria-label")?.trim().substring(0, 100);
+      if (ariaLabel) return ariaLabel;
+      if (element.tagName === "INPUT") {
+        const value = element.value?.trim().substring(0, 100);
+        if (value) return value;
+      }
+      const title = element.getAttribute("title")?.trim().substring(0, 100);
+      if (title) return title;
+      return void 0;
+    }
+    cleanup() {
+      document.removeEventListener("click", this.handleClick.bind(this), true);
+    }
+  };
+
+  // copyTracking.ts
+  var CopyTrackingManager = class {
+    constructor(tracker) {
+      this.tracker = tracker;
+    }
+    initialize() {
+      document.addEventListener("copy", this.handleCopy.bind(this));
+    }
+    handleCopy() {
+      const selection = window.getSelection();
+      if (!selection || selection.isCollapsed) return;
+      const text = selection.toString();
+      const textLength = text.length;
+      if (textLength === 0) return;
+      const anchorNode = selection.anchorNode;
+      const sourceElement = anchorNode instanceof HTMLElement ? anchorNode : anchorNode?.parentElement;
+      if (!sourceElement) return;
+      const properties = {
+        text: text.substring(0, 500),
+        ...textLength > 500 && { textLength },
+        sourceElement: sourceElement.tagName.toLowerCase()
+      };
+      this.tracker.trackCopy(properties);
+    }
+    cleanup() {
+      document.removeEventListener("copy", this.handleCopy.bind(this));
+    }
+  };
+
+  // formTracking.ts
+  var FormTrackingManager = class {
+    constructor(tracker, config) {
+      this.tracker = tracker;
+      this.config = config;
+      this.boundHandleSubmit = this.handleSubmit.bind(this);
+      this.boundHandleChange = this.handleChange.bind(this);
+    }
+    initialize() {
+      document.addEventListener("submit", this.boundHandleSubmit, true);
+      document.addEventListener("change", this.boundHandleChange, true);
+    }
+    cleanup() {
+      document.removeEventListener("submit", this.boundHandleSubmit, true);
+      document.removeEventListener("change", this.boundHandleChange, true);
+    }
+    handleSubmit(event) {
+      const form = event.target;
+      if (form.tagName !== "FORM") return;
+      const properties = {
+        formId: form.id || "",
+        formName: form.name || "",
+        formAction: form.action || "",
+        method: (form.method || "get").toUpperCase(),
+        fieldCount: form.elements.length,
+        ariaLabel: form.getAttribute("aria-label") || void 0,
+        ...this.extractDataAttributes(form)
+      };
+      this.tracker.trackFormSubmit(properties);
+    }
+    handleChange(event) {
+      const target = event.target;
+      const tagName = target.tagName.toUpperCase();
+      if (!["INPUT", "SELECT", "TEXTAREA"].includes(tagName)) return;
+      if (target.disabled) return;
+      if (tagName === "INPUT") {
+        const inputType = target.type?.toLowerCase();
+        if (inputType === "hidden" || inputType === "password") return;
+      }
+      const inputName = target.name || target.id || target.getAttribute("aria-label") || target.placeholder || "";
+      const properties = {
+        element: tagName.toLowerCase(),
+        inputType: tagName === "INPUT" ? target.type?.toLowerCase() : void 0,
+        inputName,
+        formId: target.form?.id || void 0,
+        formName: target.form?.name || void 0,
+        ...this.extractDataAttributes(target)
+      };
+      this.tracker.trackInputChange(properties);
+    }
+    extractDataAttributes(element) {
+      const attrs = {};
+      for (const attr of element.attributes) {
+        if (attr.name.startsWith("data-rybbit-prop-")) {
+          const key = attr.name.replace("data-rybbit-prop-", "");
+          attrs[key] = attr.value;
+        }
+      }
+      return attrs;
+    }
+  };
+
   // index.ts
   (async function() {
     const scriptTag = document.currentScript;
@@ -840,8 +1167,10 @@
       console.error("Could not find current script tag");
       return;
     }
-    if (window.__RYBBIT_OPTOUT__ || localStorage.getItem("disable-rybbit") !== null) {
-      window.rybbit = {
+    const namespace = scriptTag.getAttribute("data-namespace") || "rybbit";
+    const optOutKey = `disable-${namespace}`;
+    if (window.__RYBBIT_OPTOUT__ || localStorage.getItem(optOutKey) !== null) {
+      window[namespace] = {
         pageview: () => {
         },
         event: () => {
@@ -851,6 +1180,8 @@
         trackOutbound: () => {
         },
         identify: () => {
+        },
+        setTraits: () => {
         },
         clearUserId: () => {
         },
@@ -863,6 +1194,23 @@
       };
       return;
     }
+    const earlyQueue = [];
+    const queueMethod = (method) => (...args) => {
+      earlyQueue.push([method, args]);
+    };
+    window[namespace] = {
+      pageview: queueMethod("pageview"),
+      event: queueMethod("event"),
+      error: queueMethod("error"),
+      trackOutbound: queueMethod("trackOutbound"),
+      identify: queueMethod("identify"),
+      setTraits: queueMethod("setTraits"),
+      clearUserId: queueMethod("clearUserId"),
+      getUserId: () => null,
+      startSessionReplay: queueMethod("startSessionReplay"),
+      stopSessionReplay: queueMethod("stopSessionReplay"),
+      isSessionReplayActive: () => false
+    };
     const config = await parseScriptConfig(scriptTag);
     if (!config) {
       return;
@@ -873,6 +1221,21 @@
         tracker.trackWebVitals(vitals);
       });
       webVitalsCollector.initialize();
+    }
+    let clickManager = null;
+    let copyManager = null;
+    let formManager = null;
+    if (config.trackButtonClicks) {
+      clickManager = new ClickTrackingManager(tracker, config);
+      clickManager.initialize();
+    }
+    if (config.trackCopy) {
+      copyManager = new CopyTrackingManager(tracker);
+      copyManager.initialize();
+    }
+    if (config.trackFormInteractions) {
+      formManager = new FormTrackingManager(tracker, config);
+      formManager.initialize();
     }
     if (config.trackErrors) {
       window.addEventListener("error", (event) => {
@@ -941,20 +1304,27 @@
         });
       }
     }
-    window.rybbit = {
+    window[config.namespace] = {
       pageview: () => tracker.trackPageview(),
       event: (name, properties = {}) => tracker.trackEvent(name, properties),
       error: (error, properties = {}) => tracker.trackError(error, properties),
       trackOutbound: (url, text = "", target = "_self") => tracker.trackOutbound(url, text, target),
-      identify: (userId) => tracker.identify(userId),
+      identify: (userId, traits) => tracker.identify(userId, traits),
+      setTraits: (traits) => tracker.setTraits(traits),
       clearUserId: () => tracker.clearUserId(),
       getUserId: () => tracker.getUserId(),
       startSessionReplay: () => tracker.startSessionReplay(),
       stopSessionReplay: () => tracker.stopSessionReplay(),
       isSessionReplayActive: () => tracker.isSessionReplayActive()
     };
+    const api = window[config.namespace];
+    for (const [method, args] of earlyQueue) {
+      api[method](...args);
+    }
     setupEventListeners();
     window.addEventListener("beforeunload", () => {
+      clickManager?.cleanup();
+      copyManager?.cleanup();
       tracker.cleanup();
     });
     if (config.autoTrackPageview) {

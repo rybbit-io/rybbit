@@ -4,12 +4,9 @@ import { z } from "zod";
 import { DateTime } from "luxon";
 import { db } from "../../db/postgres/postgres.js";
 import { user } from "../../db/postgres/schema.js";
-import { getSessionFromReq } from "../../lib/auth-utils.js";
 
-// Schema for account settings that can be updated
 const updateAccountSettingsSchema = z.object({
   sendAutoEmailReports: z.boolean().optional(),
-  // Add more settings here in the future
 });
 
 export type UpdateAccountSettingsRequest = z.infer<typeof updateAccountSettingsSchema>;
@@ -19,13 +16,11 @@ export const updateAccountSettings = async (
   reply: FastifyReply
 ) => {
   try {
-    const session = await getSessionFromReq(request);
-
-    if (!session?.user.id) {
+    const userId = request.user?.id;
+    if (!userId) {
       return reply.status(401).send({ error: "Unauthorized" });
     }
 
-    // Validate request body
     const validation = updateAccountSettingsSchema.safeParse(request.body);
 
     if (!validation.success) {
@@ -53,7 +48,7 @@ export const updateAccountSettings = async (
         ...updateData,
         updatedAt: DateTime.now().toISO(),
       })
-      .where(eq(user.id, session.user.id))
+      .where(eq(user.id, userId))
       .returning();
 
     if (!updatedUser) {

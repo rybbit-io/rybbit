@@ -1,5 +1,6 @@
 "use client";
 
+import { useExtracted } from "next-intl";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Table,
@@ -10,6 +11,7 @@ import {
   TableRow,
   TableSortIndicator,
 } from "@/components/ui/table";
+import { FilterParameter } from "@rybbit/shared";
 import {
   createColumnHelper,
   flexRender,
@@ -18,22 +20,22 @@ import {
   SortingState,
   useReactTable,
 } from "@tanstack/react-table";
-import { Monitor, Smartphone, Tablet, SquareArrowOutUpRight } from "lucide-react";
-import { useMemo, useState, useCallback } from "react";
-import { useGetSite } from "../../../../api/admin/sites";
-import { useGetPerformanceByDimension } from "../../../../api/analytics/hooks/performance/useGetPerformanceByDimension";
+import { SquareArrowOutUpRight } from "lucide-react";
+import { useCallback, useMemo, useState } from "react";
+import { useGetSite } from "../../../../api/admin/hooks/useSites";
 import { PerformanceByDimensionItem } from "../../../../api/analytics/endpoints";
+import { useGetPerformanceByDimension } from "../../../../api/analytics/hooks/performance/useGetPerformanceByDimension";
 import { Pagination } from "../../../../components/pagination";
-import { FilterParameter } from "@rybbit/shared";
-import { useStore, addFilter, removeFilter } from "../../../../lib/store";
+import { CardLoader } from "../../../../components/ui/card";
+import { addFilter, removeFilter, useStore } from "../../../../lib/store";
+import { getCountryName } from "../../../../lib/utils";
+import { Browser } from "../../components/shared/icons/Browser";
+import { CountryFlag } from "../../components/shared/icons/CountryFlag";
+import { DeviceIcon } from "../../components/shared/icons/Device";
+import { OperatingSystem } from "../../components/shared/icons/OperatingSystem";
 import { PerformanceMetric, usePerformanceStore } from "../performanceStore";
 import { formatMetricValue, getMetricColor, getMetricUnit } from "../utils/performanceUtils";
-import { CountryFlag } from "../../components/shared/icons/CountryFlag";
-import { Browser } from "../../components/shared/icons/Browser";
-import { OperatingSystem } from "../../components/shared/icons/OperatingSystem";
-import { getCountryName } from "../../../../lib/utils";
 import { MetricTooltip } from "./shared/MetricTooltip";
-import { CardLoader } from "../../../../components/ui/card";
 
 const MetricCell = ({
   metric,
@@ -87,6 +89,7 @@ const useFilterToggle = () => {
 };
 
 export function PerformanceTable({ dimension, title }: PerformanceTableProps) {
+  const t = useExtracted();
   const { site } = useStore();
   const { data: siteMetadata } = useGetSite();
   const { selectedPercentile } = usePerformanceStore();
@@ -121,19 +124,19 @@ export function PerformanceTable({ dimension, title }: PerformanceTableProps) {
       columnHelper.accessor(dimension, {
         header:
           dimension === "pathname"
-            ? "Path"
+            ? t("Path")
             : dimension === "country"
-              ? "Country"
+              ? t("Country")
               : dimension === "device_type"
-                ? "Device Type"
+                ? t("Device Type")
                 : dimension === "browser"
-                  ? "Browser"
+                  ? t("Browser")
                   : dimension === "operating_system"
-                    ? "Operating System"
+                    ? t("Operating System")
                     : dimension.charAt(0).toUpperCase() + dimension.slice(1),
         cell: info => {
           const value = info.getValue();
-          const displayValue = value || (dimension === "pathname" ? "/" : "Unknown");
+          const displayValue = value || (dimension === "pathname" ? "/" : t("Unknown"));
 
           const handleClick = () => {
             if (value) {
@@ -153,24 +156,18 @@ export function PerformanceTable({ dimension, title }: PerformanceTableProps) {
                 </>
               ) : dimension === "device_type" ? (
                 <>
-                  {value === "Desktop" ? (
-                    <Monitor className="h-4 w-4" />
-                  ) : value === "Mobile" ? (
-                    <Smartphone className="h-4 w-4" />
-                  ) : value === "Tablet" ? (
-                    <Tablet className="h-4 w-4" />
-                  ) : null}
-                  {value || "Other"}
+                  <DeviceIcon deviceType={value || ""} />
+                  {value || t("Other")}
                 </>
               ) : dimension === "browser" && value ? (
                 <>
                   <Browser browser={value} />
-                  {value || "Other"}
+                  {value || t("Other")}
                 </>
               ) : dimension === "operating_system" ? (
                 <>
                   <OperatingSystem os={value || "Other"} />
-                  {value || "Other"}
+                  {value || t("Other")}
                 </>
               ) : (
                 <>
@@ -239,7 +236,7 @@ export function PerformanceTable({ dimension, title }: PerformanceTableProps) {
         cell: info => <MetricCell metric="ttfb" value={info.getValue() as number} percentile={selectedPercentile} />,
       }),
       columnHelper.accessor("event_count", {
-        header: "Events",
+        header: t("Events"),
         cell: info => (
           <div className="text-neutral-600 dark:text-neutral-300">{info.getValue()?.toLocaleString() ?? 0}</div>
         ),
@@ -377,11 +374,10 @@ export function PerformanceTable({ dimension, title }: PerformanceTableProps) {
                   {headerGroup.headers.map(header => (
                     <TableHead
                       key={header.id}
-                      className={`text-neutral-600 dark:text-neutral-300 ${
-                        header.column.getCanSort()
-                          ? "cursor-pointer hover:text-white transition-colors select-none"
-                          : ""
-                      }`}
+                      className={`text-neutral-600 dark:text-neutral-300 ${header.column.getCanSort()
+                        ? "cursor-pointer hover:text-white transition-colors select-none"
+                        : ""
+                        }`}
                       onClick={header.column.getToggleSortingHandler()}
                     >
                       <div className="flex items-center gap-1">
@@ -400,7 +396,7 @@ export function PerformanceTable({ dimension, title }: PerformanceTableProps) {
               {table.getRowModel().rows.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={columns.length} className="text-neutral-500 py-8">
-                    No performance data available
+                    {t("No performance data available")}
                   </TableCell>
                 </TableRow>
               ) : (

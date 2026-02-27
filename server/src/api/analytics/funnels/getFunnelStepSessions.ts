@@ -3,7 +3,7 @@ import { FastifyReply, FastifyRequest } from "fastify";
 import SqlString from "sqlstring";
 import { clickhouse } from "../../../db/clickhouse/clickhouse.js";
 import { getTimeStatement, patternToRegex, processResults } from "../utils/utils.js";
-import { GetSessionsResponse } from "../getSessions.js";
+import { GetSessionsResponse } from "../sessions/getSessions.js";
 import { getFilterStatement } from "../utils/getFilterStatement.js";
 
 type FunnelStep = {
@@ -13,6 +13,10 @@ type FunnelStep = {
   hostname?: string;
   eventPropertyKey?: string;
   eventPropertyValue?: string | number | boolean;
+  propertyFilters?: Array<{
+    key: string;
+    value: string | number | boolean;
+  }>;
 };
 
 type Funnel = {
@@ -22,7 +26,7 @@ type Funnel = {
 export interface GetFunnelStepSessionsRequest {
   Body: Funnel;
   Params: {
-    site: string;
+    siteId: string;
     stepNumber: string;
   };
   Querystring: FilterParams<{
@@ -34,7 +38,7 @@ export interface GetFunnelStepSessionsRequest {
 
 export async function getFunnelStepSessions(req: FastifyRequest<GetFunnelStepSessionsRequest>, res: FastifyReply) {
   const { steps } = req.body;
-  const { stepNumber: stepNumberStr, site } = req.params;
+  const { stepNumber: stepNumberStr, siteId } = req.params;
   const { mode, page, limit } = req.query;
 
   const stepNumber = parseInt(stepNumberStr, 10);
@@ -59,37 +63,57 @@ export async function getFunnelStepSessions(req: FastifyRequest<GetFunnelStepSes
 
   try {
     const timeStatement = getTimeStatement(req.query);
-    let filterStatement = getFilterStatement(req.query.filters, Number(site), timeStatement);
 
-    // Transform filter statement to use extracted UTM columns instead of map access
-    // since the CTE already extracts utm_source, utm_medium, etc. as separate columns
-    filterStatement = filterStatement
-      .replace(/url_parameters\['utm_source'\]/g, "utm_source")
-      .replace(/url_parameters\['utm_medium'\]/g, "utm_medium")
-      .replace(/url_parameters\['utm_campaign'\]/g, "utm_campaign")
-      .replace(/url_parameters\['utm_term'\]/g, "utm_term")
-      .replace(/url_parameters\['utm_content'\]/g, "utm_content");
+    // Use fieldMappings since the CTE extracts UTM params as separate columns
+    const filterStatement = getFilterStatement(req.query.filters, Number(siteId), timeStatement, {
+      fieldMappings: {
+        "url_parameters['utm_source']": "utm_source",
+        "url_parameters['utm_medium']": "utm_medium",
+        "url_parameters['utm_campaign']": "utm_campaign",
+        "url_parameters['utm_term']": "utm_term",
+        "url_parameters['utm_content']": "utm_content",
+      },
+    });
 
     // Build conditional statements for each step we need
     const stepsToCheck = mode === "reached" ? stepNumber : stepNumber + 1;
-    const stepConditions = steps.slice(0, stepsToCheck).map((step, idx) => {
+    const stepConditions = steps.slice(0, stepsToCheck).map((step) => {
       let condition = "";
 
       if (step.type === "page") {
         const regex = patternToRegex(step.value);
         condition = `type = 'pageview' AND match(pathname, ${SqlString.escape(regex)})`;
+
+        // Support both new propertyFilters array and legacy single property
+        const filters = step.propertyFilters || (
+          step.eventPropertyKey && step.eventPropertyValue !== undefined
+            ? [{ key: step.eventPropertyKey, value: step.eventPropertyValue }]
+            : []
+        );
+
+        // Add property matching for page steps (URL parameters)
+        for (const filter of filters) {
+          const propValueAccessor = `url_parameters[${SqlString.escape(filter.key)}]`;
+          condition += ` AND ${propValueAccessor} = ${SqlString.escape(String(filter.value))}`;
+        }
       } else {
         condition = `type = 'custom_event' AND event_name = ${SqlString.escape(step.value)}`;
 
-        if (step.eventPropertyKey && step.eventPropertyValue !== undefined) {
-          const propValueAccessor = `props.${SqlString.escapeId(step.eventPropertyKey)}`;
+        // Support both new propertyFilters array and legacy single property
+        const filters = step.propertyFilters || (
+          step.eventPropertyKey && step.eventPropertyValue !== undefined
+            ? [{ key: step.eventPropertyKey, value: step.eventPropertyValue }]
+            : []
+        );
 
-          if (typeof step.eventPropertyValue === "string") {
-            condition += ` AND toString(${propValueAccessor}) = ${SqlString.escape(step.eventPropertyValue)}`;
-          } else if (typeof step.eventPropertyValue === "number") {
-            condition += ` AND toFloat64OrNull(${propValueAccessor}) = ${SqlString.escape(step.eventPropertyValue)}`;
-          } else if (typeof step.eventPropertyValue === "boolean") {
-            condition += ` AND toUInt8OrNull(${propValueAccessor}) = ${step.eventPropertyValue ? 1 : 0}`;
+        // Add property matching for event steps
+        for (const filter of filters) {
+          if (typeof filter.value === "string") {
+            condition += ` AND JSONExtractString(toString(props), ${SqlString.escape(filter.key)}) = ${SqlString.escape(filter.value)}`;
+          } else if (typeof filter.value === "number") {
+            condition += ` AND toFloat64(JSONExtractString(toString(props), ${SqlString.escape(filter.key)})) = ${SqlString.escape(filter.value)}`;
+          } else if (typeof filter.value === "boolean") {
+            condition += ` AND JSONExtractString(toString(props), ${SqlString.escape(filter.key)}) = ${SqlString.escape(filter.value ? 'true' : 'false')}`;
           }
         }
       }
@@ -112,7 +136,8 @@ export async function getFunnelStepSessions(req: FastifyRequest<GetFunnelStepSes
         event_name,
         type,
         props,
-        hostname
+        hostname,
+        url_parameters
       FROM events
       WHERE
         site_id = {siteId:Int32}
@@ -231,7 +256,7 @@ export async function getFunnelStepSessions(req: FastifyRequest<GetFunnelStepSes
       query,
       format: "JSONEachRow",
       query_params: {
-        siteId: Number(site),
+        siteId: Number(siteId),
         limit: limit || 25,
         offset: (page - 1) * (limit || 25),
       },

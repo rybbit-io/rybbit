@@ -1,5 +1,6 @@
 import { DateTime } from "luxon";
 import { createElement } from "react";
+import { getTimezone } from "../../../../lib/store";
 // @ts-ignore - React 19 has built-in types
 import { renderToStaticMarkup } from "react-dom/server";
 import { Eye, MousePointerClick } from "lucide-react";
@@ -33,7 +34,7 @@ export function buildTooltipHTML(session: GetSessionsResponse[number], lng: numb
   // Start time formatting
   const startTime = DateTime.fromSQL(session.session_start, { zone: "utc" })
     .setLocale(userLocale)
-    .toLocal()
+    .setZone(getTimezone())
     .toFormat(hour12 ? "MMM d, h:mm a" : "dd MMM, HH:mm");
 
   // Pageview and event icons

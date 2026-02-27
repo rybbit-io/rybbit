@@ -111,7 +111,7 @@ GROUP BY time ORDER BY time ${isAllTime ? "" : getTimeStatementFill(params, buck
 export async function getPerformanceTimeSeries(
   req: FastifyRequest<{
     Params: {
-      site: string;
+      siteId: string;
     };
     Querystring: FilterParams<{
       bucket: TimeBucket;
@@ -119,7 +119,7 @@ export async function getPerformanceTimeSeries(
   }>,
   res: FastifyReply
 ) {
-  const site = req.params.site;
+  const site = req.params.siteId;
 
   const query = getQuery(req.query, Number(site));
 

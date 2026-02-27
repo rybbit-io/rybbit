@@ -1,87 +1,110 @@
 import { cn } from "@/lib/utils";
-import { Marquee } from "@/components/magicui/marquee";
 import { SectionBadge } from "@/components/SectionBadge";
-import Image from "next/image";
 import Link from "next/link";
+import {
+  SiAngular,
+  SiAstro,
+  SiBigcommerce,
+  SiCarrd,
+  SiContentful,
+  SiDocusaurus,
+  SiDrupal,
+  SiFramer,
+  SiGatsby,
+  SiGhost,
+  SiGitbook,
+  SiGoogletagmanager,
+  SiHugo,
+  SiJekyll,
+  SiJoomla,
+  SiLaravel,
+  SiMintlify,
+  SiNextdotjs,
+  SiNuxt,
+  SiPrestashop,
+  SiReact,
+  SiRemix,
+  SiSanity,
+  SiShopify,
+  SiSquarespace,
+  SiStrapi,
+  SiSvelte,
+  SiVitepress,
+  SiVuedotjs,
+  SiWebflow,
+  SiWix,
+  SiWoocommerce,
+  SiWordpress,
+} from "@icons-pack/react-simple-icons";
+import { ComponentType } from "react";
 
-// Platform logos from the public directory with their documentation paths
-const platforms = [
-  { name: "Next.js", logo: "/platforms/nextjs.svg", path: "/docs/guides/react/next-js" },
-  { name: "React", logo: "/platforms/react.svg", path: "/docs/guides/react/vite-cra" },
-  { name: "Vue", logo: "/platforms/vue.svg", path: "/docs/guides/vue/vite" },
-  { name: "Angular", logo: "/platforms/angular.svg", path: "/docs/guides/angular" },
-  { name: "Svelte", logo: "/platforms/svelte.svg", path: "/docs/guides/svelte/vite" },
-  { name: "Remix", logo: "/platforms/remix.png", path: "/docs/guides/react/remix" },
-  { name: "Gatsby", logo: "/platforms/gatsby.svg", path: "/docs/guides/react/gatsby" },
-  { name: "Nuxt", logo: "/platforms/nuxt.svg", path: "/docs/guides/vue/nuxt" },
-  { name: "WordPress", logo: "/platforms/wordpress.svg", path: "/docs/guides/wordpress" },
-  { name: "Shopify", logo: "/platforms/shopify.svg", path: "/docs/guides/shopify" },
-  { name: "Webflow", logo: "/platforms/webflow.svg", path: "/docs/guides/webflow" },
-  { name: "Laravel", logo: "/platforms/laravel.svg", path: "/docs/guides/laravel" },
-  { name: "GTM", logo: "/platforms/gtm.svg", path: "/docs/guides/google-tag-manager" },
-  { name: "Docusaurus", logo: "/platforms/docusaurus.svg", path: "/docs/guides/docusaurus" },
-  { name: "WooCommerce", logo: "/platforms/woocommerce.svg", path: "/docs/guides/woocommerce" },
-  { name: "Mintlify", logo: "/platforms/mintlify.svg", path: "/docs/guides/mintlify" },
-];
-
-// Shuffle function to randomize array order
-const shuffleArray = <T,>(array: T[]): T[] => {
-  const shuffled = [...array];
-  for (let i = shuffled.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
-  }
-  return shuffled;
+type IconProps = {
+  className?: string;
+  size?: number;
 };
 
-const PlatformLogo = ({ name, logo, path }: { name: string; logo: string; path: string }) => {
+// Platform data with their documentation paths and icons
+const platforms: { name: string; icon: ComponentType<IconProps>; path: string }[] = [
+  { name: "Angular", icon: SiAngular, path: "/docs/guides/angular" },
+  { name: "Astro", icon: SiAstro, path: "/docs/guides/astro" },
+  { name: "BigCommerce", icon: SiBigcommerce, path: "/docs/guides/bigcommerce" },
+  { name: "Carrd", icon: SiCarrd, path: "/docs/guides/carrd" },
+  { name: "Contentful", icon: SiContentful, path: "/docs/guides/contentful" },
+  { name: "Docusaurus", icon: SiDocusaurus, path: "/docs/guides/docusaurus" },
+  { name: "Drupal", icon: SiDrupal, path: "/docs/guides/drupal" },
+  { name: "Framer", icon: SiFramer, path: "/docs/guides/framer" },
+  { name: "Gatsby", icon: SiGatsby, path: "/docs/guides/react/gatsby" },
+  { name: "Ghost", icon: SiGhost, path: "/docs/guides/ghost" },
+  { name: "GitBook", icon: SiGitbook, path: "/docs/guides/gitbook" },
+  { name: "GTM", icon: SiGoogletagmanager, path: "/docs/guides/google-tag-manager" },
+  { name: "Hugo", icon: SiHugo, path: "/docs/guides/hugo" },
+  { name: "Jekyll", icon: SiJekyll, path: "/docs/guides/jekyll" },
+  { name: "Joomla", icon: SiJoomla, path: "/docs/guides/joomla" },
+  { name: "Laravel", icon: SiLaravel, path: "/docs/guides/laravel" },
+  { name: "Mintlify", icon: SiMintlify, path: "/docs/guides/mintlify" },
+  { name: "Next.js", icon: SiNextdotjs, path: "/docs/guides/react/next-js" },
+  { name: "Nuxt", icon: SiNuxt, path: "/docs/guides/vue/nuxt" },
+  { name: "PrestaShop", icon: SiPrestashop, path: "/docs/guides/prestashop" },
+  { name: "React", icon: SiReact, path: "/docs/guides/react/vite-cra" },
+  { name: "Remix", icon: SiRemix, path: "/docs/guides/react/remix" },
+  { name: "Sanity", icon: SiSanity, path: "/docs/guides/sanity" },
+  { name: "Shopify", icon: SiShopify, path: "/docs/guides/shopify" },
+  { name: "Squarespace", icon: SiSquarespace, path: "/docs/guides/squarespace" },
+  { name: "Strapi", icon: SiStrapi, path: "/docs/guides/strapi" },
+  { name: "Svelte", icon: SiSvelte, path: "/docs/guides/svelte/vite" },
+  { name: "SvelteKit", icon: SiSvelte, path: "/docs/guides/svelte/sveltekit" },
+  { name: "VitePress", icon: SiVitepress, path: "/docs/guides/vitepress" },
+  { name: "Vue", icon: SiVuedotjs, path: "/docs/guides/vue/vite" },
+  { name: "Webflow", icon: SiWebflow, path: "/docs/guides/webflow" },
+  { name: "Wix", icon: SiWix, path: "/docs/guides/wix" },
+  { name: "WooCommerce", icon: SiWoocommerce, path: "/docs/guides/woocommerce" },
+  { name: "WordPress", icon: SiWordpress, path: "/docs/guides/wordpress" },
+];
+
+const PlatformLogo = ({ name, icon: Icon, path }: { name: string; icon: ComponentType<IconProps>; path: string }) => {
   return (
     <Link href={path} className="block">
       <div
         className={cn(
-          "flex items-center justify-center h-20 w-20 mx-2 my-2",
-          "bg-neutral-100/50 dark:bg-neutral-800/50 backdrop-blur-sm rounded-lg p-4",
-          "border border-neutral-300/50 dark:border-neutral-700/50 hover:border-neutral-500 dark:hover:border-neutral-500 transition-colors duration-200",
+          "flex flex-col justify-center gap-4 p-4 w-32",
+          "bg-neutral-100/50 dark:bg-neutral-800/20 backdrop-blur-sm rounded-lg",
+          "border border-neutral-300/50 dark:border-neutral-800/50 hover:border-neutral-500 dark:hover:border-neutral-700 transition-colors duration-200",
           "cursor-pointer hover:scale-105 transition-transform"
         )}
       >
-        <Image src={logo} alt={name} width={60} height={60} className="object-contain max-h-10" />
+        <Icon className="h-6 w-6 text-neutral-700 dark:text-neutral-300" />
+        <span className="text-sm text-neutral-600 dark:text-neutral-400">{name}</span>
       </div>
     </Link>
   );
 };
 
-export function Integrations() {
-  // Create two different shuffled arrays for the marquee rows
-  const topRowPlatforms = shuffleArray(platforms);
-  const bottomRowPlatforms = shuffleArray(platforms);
-
+export function IntegrationsGrid() {
   return (
-    <div className="py-20 w-full">
-      <div className="max-w-7xl mx-auto px-4 mb-10 text-center">
-        <SectionBadge className="mb-4">
-          Seamless Integration
-        </SectionBadge>
-        <h2 className="text-4xl font-bold mb-3">Works with all your favorite platforms</h2>
-        <p className="text-xl text-neutral-600 dark:text-neutral-300 font-light">Integrate Rybbit with any platform in minutes</p>
-      </div>
-
-      <div className="relative flex w-full flex-col items-center justify-center overflow-hidden gap-8">
-        <Marquee pauseOnHover className="[--duration:120s]" reverse>
-          {topRowPlatforms.map((platform, index) => (
-            <PlatformLogo key={`top-${index}`} {...platform} />
-          ))}
-        </Marquee>
-
-        <Marquee pauseOnHover className="[--duration:90s]">
-          {bottomRowPlatforms.map((platform, index) => (
-            <PlatformLogo key={`bottom-${index}`} {...platform} />
-          ))}
-        </Marquee>
-
-        <div className="pointer-events-none absolute inset-y-0 left-0 w-1/4 bg-gradient-to-r from-background"></div>
-        <div className="pointer-events-none absolute inset-y-0 right-0 w-1/4 bg-gradient-to-l from-background"></div>
-      </div>
+    <div className="flex flex-wrap gap-5">
+      {platforms.map((platform) => (
+        <PlatformLogo key={platform.name} {...platform} />
+      ))}
     </div>
   );
 }

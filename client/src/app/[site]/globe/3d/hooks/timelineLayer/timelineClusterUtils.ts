@@ -1,7 +1,7 @@
-import mapboxgl from "mapbox-gl";
 import { isNil, round } from "lodash";
 import type { GetSessionsResponse } from "../../../../../../api/analytics/endpoints";
-import { SOURCE_ID, MIN_CLUSTER_SIZE } from "./timelineLayerConstants";
+import { MIN_CLUSTER_SIZE } from "../../../utils/clusteringConstants";
+import { SOURCE_ID } from "./timelineLayerConstants";
 import { spreadOverlappingPoints } from "./timelineLayerManager";
 
 /**

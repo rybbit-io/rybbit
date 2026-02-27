@@ -4,48 +4,7 @@ import { RybbitEvent } from "./rybbit.js";
 import { z } from "zod";
 import { deriveKeyOnlySchema } from "./utils.js";
 
-export interface UmamiEvent {
-  // website_id: string; // Ignore
-  session_id: string;
-  // visit_id: string; // Ignore
-  // event_id: string; // Ignore
-
-  hostname: string;
-  browser: string;
-  os: string;
-  device: string;
-  screen: string;
-  language: string;
-  country: string;
-  region: string;
-  city: string;
-
-  url_path: string;
-  url_query: string;
-  // utm_source: string; // Ignore, part of url_query
-  // utm_medium: string; // Ignore, part of url_query
-  // utm_campaign: string; // Ignore, part of url_query
-  // utm_content: string; // Ignore, part of url_query
-  // utm_term: string; // Ignore, part of url_query
-  referrer_path: string;
-  // referrer_query: string; // Ignore
-  referrer_domain: string;
-  page_title: string;
-
-  // gclid: string; // Ignore, part of url_query
-  // fbclid: string; // Ignore, part of url_query
-  // msclkid: string; // Ignore, part of url_query
-  // ttclid: string; // Ignore, part of url_query
-  // li_fat_id: string; // Ignore, part of url_query
-  // twclid: string; // Ignore, part of url_query
-
-  event_type: string;
-  event_name: string;
-  // tag: string; // Ignore
-  distinct_id: string;
-  created_at: string;
-  // job_id: string | null; // Ignore
-}
+export type UmamiEvent = z.input<typeof UmamiImportMapper.umamiEventKeyOnlySchema>;
 
 export class UmamiImportMapper {
   private static readonly browserMap: Record<string, string> = {
@@ -158,7 +117,10 @@ export class UmamiImportMapper {
       }
 
       const data = parsed.data;
-      const referrer = data.referrer_domain + data.referrer_path;
+      const referrer = clearSelfReferrer(
+        data.referrer_domain + data.referrer_path,
+        data.hostname.replace(/^www\./, "")
+      );
       const [screenWidth, screenHeight] = data.screen ? data.screen.split("x") : ["0", "0"];
 
       acc.push({
@@ -171,7 +133,7 @@ export class UmamiImportMapper {
         querystring: data.url_query,
         url_parameters: getAllUrlParams(data.url_query),
         page_title: data.page_title,
-        referrer: clearSelfReferrer(referrer, data.hostname.replace(/^www\./, "")),
+        referrer: referrer,
         channel: getChannel(referrer, data.url_query, data.hostname),
         browser: data.browser,
         browser_version: "",

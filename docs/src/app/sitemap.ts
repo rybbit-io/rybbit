@@ -24,7 +24,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   }));
 
   // Dynamically get tool slugs from the tools directory
-  const toolsPath = join(process.cwd(), "src/app/(home)/tools");
+  const toolsPath = join(process.cwd(), "src/app/[locale]/(home)/tools");
   const toolSlugs = readdirSync(toolsPath, { withFileTypes: true })
     .filter(dirent => dirent.isDirectory() && dirent.name !== "components")
     .map(dirent => dirent.name);

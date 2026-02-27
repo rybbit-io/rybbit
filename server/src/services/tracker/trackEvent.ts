@@ -7,81 +7,70 @@ import { sessionsService } from "../sessions/sessionsService.js";
 import { usageService } from "../usageService.js";
 import { pageviewQueue } from "./pageviewQueue.js";
 import { createBasePayload } from "./utils.js";
+import { getLocation } from "../../db/geolocation/geolocation.js";
+
+// Shared fields for all event types
+const baseEventFields = {
+  site_id: z.string().min(1),
+  hostname: z.string().max(253).optional(),
+  pathname: z.string().max(2048).optional(),
+  querystring: z.string().max(2048).optional(),
+  screenWidth: z.number().int().positive().optional(),
+  screenHeight: z.number().int().positive().optional(),
+  language: z.string().max(35).optional(),
+  page_title: z.string().max(512).optional(),
+  referrer: z.string().max(2048).optional(),
+  user_id: z.string().max(255).optional(),
+  ip_address: z.string().ip().optional(),
+  user_agent: z.string().max(512).optional(),
+};
+
+// Default event_name and properties used by pageview and performance
+const defaultEventProps = {
+  event_name: z.string().max(256).optional(),
+  properties: z.string().max(2048).optional(),
+};
+
+// Reusable JSON validation refine
+const jsonStringRefine = (message: string) =>
+  z
+    .string()
+    .max(2048)
+    .refine(
+      val => {
+        try {
+          JSON.parse(val);
+          return true;
+        } catch {
+          return false;
+        }
+      },
+      { message }
+    )
+    .optional();
 
 // Define Zod schema for validation
 export const trackingPayloadSchema = z.discriminatedUnion("type", [
   z
     .object({
       type: z.literal("pageview"),
-      site_id: z.string().min(1),
-      hostname: z.string().max(253).optional(),
-      pathname: z.string().max(2048).optional(),
-      querystring: z.string().max(2048).optional(),
-      screenWidth: z.number().int().positive().optional(),
-      screenHeight: z.number().int().positive().optional(),
-      language: z.string().max(35).optional(),
-      page_title: z.string().max(512).optional(),
-      referrer: z.string().max(2048).optional(),
-      event_name: z.string().max(256).optional(),
-      properties: z.string().max(2048).optional(),
-      user_id: z.string().max(255).optional(),
-      api_key: z.string().max(35).optional(), // rb_ prefix + 32 hex chars
-      ip_address: z.string().ip().optional(), // Custom IP for geolocation
-      user_agent: z.string().max(512).optional(), // Custom user agent
+      ...baseEventFields,
+      ...defaultEventProps,
     })
     .strict(),
   z
     .object({
       type: z.literal("custom_event"),
-      site_id: z.string().min(1),
-      hostname: z.string().max(253).optional(),
-      pathname: z.string().max(2048).optional(),
-      querystring: z.string().max(2048).optional(),
-      screenWidth: z.number().int().positive().optional(),
-      screenHeight: z.number().int().positive().optional(),
-      language: z.string().max(35).optional(),
-      page_title: z.string().max(512).optional(),
-      referrer: z.string().max(2048).optional(),
+      ...baseEventFields,
       event_name: z.string().min(1).max(256),
-      properties: z
-        .string()
-        .max(2048)
-        .refine(
-          val => {
-            try {
-              JSON.parse(val);
-              return true;
-            } catch (e) {
-              return false;
-            }
-          },
-          { message: "Properties must be a valid JSON string" }
-        )
-        .optional(), // Optional but must be valid JSON if present
-      user_id: z.string().max(255).optional(),
-      api_key: z.string().max(35).optional(), // rb_ prefix + 32 hex chars
-      ip_address: z.string().ip().optional(), // Custom IP for geolocation
-      user_agent: z.string().max(512).optional(), // Custom user agent
+      properties: jsonStringRefine("Properties must be a valid JSON string"),
     })
     .strict(),
   z
     .object({
       type: z.literal("performance"),
-      site_id: z.string().min(1),
-      hostname: z.string().max(253).optional(),
-      pathname: z.string().max(2048).optional(),
-      querystring: z.string().max(2048).optional(),
-      screenWidth: z.number().int().positive().optional(),
-      screenHeight: z.number().int().positive().optional(),
-      language: z.string().max(35).optional(),
-      page_title: z.string().max(512).optional(),
-      referrer: z.string().max(2048).optional(),
-      event_name: z.string().max(256).optional(),
-      properties: z.string().max(2048).optional(),
-      user_id: z.string().max(255).optional(),
-      api_key: z.string().max(35).optional(), // rb_ prefix + 32 hex chars
-      ip_address: z.string().ip().optional(), // Custom IP for geolocation
-      user_agent: z.string().max(512).optional(), // Custom user agent
+      ...baseEventFields,
+      ...defaultEventProps,
       // Performance metrics (can be null if not collected)
       lcp: z.number().min(0).nullable().optional(),
       cls: z.number().min(0).nullable().optional(),
@@ -93,16 +82,8 @@ export const trackingPayloadSchema = z.discriminatedUnion("type", [
   z
     .object({
       type: z.literal("outbound"),
-      site_id: z.string().min(1),
-      hostname: z.string().max(253).optional(),
-      pathname: z.string().max(2048).optional(),
-      querystring: z.string().max(2048).optional(),
-      screenWidth: z.number().int().positive().optional(),
-      screenHeight: z.number().int().positive().optional(),
-      language: z.string().max(35).optional(),
-      page_title: z.string().max(512).optional(),
-      referrer: z.string().max(2048).optional(),
-      event_name: z.string().max(256).optional(), // Empty for outbound events
+      ...baseEventFields,
+      event_name: z.string().max(256).optional(),
       properties: z
         .string()
         .max(2048)
@@ -110,20 +91,16 @@ export const trackingPayloadSchema = z.discriminatedUnion("type", [
           val => {
             try {
               const parsed = JSON.parse(val);
-              // Validate outbound-specific properties
               if (typeof parsed.url !== "string" || parsed.url.length === 0) return false;
               if (parsed.text && typeof parsed.text !== "string") return false;
               if (parsed.target && typeof parsed.target !== "string") return false;
-
-              // Validate URL format
               try {
                 new URL(parsed.url);
               } catch {
                 return false;
               }
-
               return true;
-            } catch (e) {
+            } catch {
               return false;
             }
           },
@@ -131,24 +108,12 @@ export const trackingPayloadSchema = z.discriminatedUnion("type", [
             message: "Properties must be valid JSON with outbound link fields (url required, text and target optional)",
           }
         ),
-      user_id: z.string().max(255).optional(),
-      api_key: z.string().max(35).optional(), // rb_ prefix + 32 hex chars
-      ip_address: z.string().ip().optional(), // Custom IP for geolocation
-      user_agent: z.string().max(512).optional(), // Custom user agent
     })
     .strict(),
   z
     .object({
       type: z.literal("error"),
-      site_id: z.string().min(1),
-      hostname: z.string().max(253).optional(),
-      pathname: z.string().max(2048).optional(),
-      querystring: z.string().max(2048).optional(),
-      screenWidth: z.number().int().positive().optional(),
-      screenHeight: z.number().int().positive().optional(),
-      language: z.string().max(35).optional(),
-      page_title: z.string().max(512).optional(),
-      referrer: z.string().max(2048).optional(),
+      ...baseEventFields,
       event_name: z.string().min(1).max(256), // Error type (TypeError, ReferenceError, etc.)
       properties: z
         .string()
@@ -157,17 +122,11 @@ export const trackingPayloadSchema = z.discriminatedUnion("type", [
           val => {
             try {
               const parsed = JSON.parse(val);
-              // Validate error-specific properties
               if (typeof parsed.message !== "string") return false;
               if (parsed.stack && typeof parsed.stack !== "string") return false;
-
-              // Support both camelCase and lowercase for backwards compatibility
               if (parsed.fileName && typeof parsed.fileName !== "string") return false;
-
               if (parsed.lineNumber && typeof parsed.lineNumber !== "number") return false;
-
               if (parsed.columnNumber && typeof parsed.columnNumber !== "number") return false;
-
               // Apply truncation limits
               if (parsed.message && parsed.message.length > 500) {
                 parsed.message = parsed.message.substring(0, 500);
@@ -175,9 +134,8 @@ export const trackingPayloadSchema = z.discriminatedUnion("type", [
               if (parsed.stack && parsed.stack.length > 2000) {
                 parsed.stack = parsed.stack.substring(0, 2000);
               }
-
               return true;
-            } catch (e) {
+            } catch {
               return false;
             }
           },
@@ -186,10 +144,93 @@ export const trackingPayloadSchema = z.discriminatedUnion("type", [
               "Properties must be valid JSON with error fields (message, stack, fileName, lineNumber, columnNumber)",
           }
         ),
-      user_id: z.string().max(255).optional(),
-      api_key: z.string().max(35).optional(), // rb_ prefix + 32 hex chars
-      ip_address: z.string().ip().optional(), // Custom IP for geolocation
-      user_agent: z.string().max(512).optional(), // Custom user agent
+    })
+    .strict(),
+  z
+    .object({
+      type: z.literal("button_click"),
+      ...baseEventFields,
+      event_name: z.string().max(256).optional(),
+      properties: jsonStringRefine("Properties must be valid JSON"),
+    })
+    .strict(),
+  z
+    .object({
+      type: z.literal("copy"),
+      ...baseEventFields,
+      event_name: z.string().max(256).optional(),
+      properties: z
+        .string()
+        .max(2048)
+        .refine(
+          val => {
+            try {
+              const parsed = JSON.parse(val);
+              if (typeof parsed.sourceElement !== "string") return false;
+              if (parsed.text !== undefined && typeof parsed.text !== "string") return false;
+              if (parsed.textLength !== undefined && (typeof parsed.textLength !== "number" || parsed.textLength < 0)) return false;
+              return true;
+            } catch {
+              return false;
+            }
+          },
+          {
+            message: "Properties must be valid JSON with copy fields (sourceElement required, text and textLength optional)",
+          }
+        ),
+    })
+    .strict(),
+  z
+    .object({
+      type: z.literal("form_submit"),
+      ...baseEventFields,
+      event_name: z.string().max(256).optional(),
+      properties: z
+        .string()
+        .max(2048)
+        .refine(
+          val => {
+            try {
+              const parsed = JSON.parse(val);
+              if (typeof parsed.formId !== "string") return false;
+              if (typeof parsed.formName !== "string") return false;
+              if (typeof parsed.formAction !== "string") return false;
+              if (typeof parsed.method !== "string") return false;
+              if (typeof parsed.fieldCount !== "number" || parsed.fieldCount < 0) return false;
+              return true;
+            } catch {
+              return false;
+            }
+          },
+          {
+            message: "Properties must be valid JSON with form_submit fields (formId, formName, formAction, method, fieldCount required)",
+          }
+        ),
+    })
+    .strict(),
+  z
+    .object({
+      type: z.literal("input_change"),
+      ...baseEventFields,
+      event_name: z.string().max(256).optional(),
+      properties: z
+        .string()
+        .max(2048)
+        .refine(
+          val => {
+            try {
+              const parsed = JSON.parse(val);
+              if (typeof parsed.element !== "string") return false;
+              if (typeof parsed.inputName !== "string") return false;
+              return true;
+            } catch {
+              return false;
+            }
+          },
+          {
+            message: "Properties must be valid JSON with input_change fields (element, inputName required)",
+          }
+        ),
     })
     .strict(),
 ]);
@@ -224,8 +265,10 @@ export async function trackEvent(request: FastifyRequest, reply: FastifyReply) {
     }
 
     // Check if bot blocking is enabled for this site and if the request is from a bot
-    // Skip bot check for API key authenticated requests
-    if (!validatedPayload.api_key && siteConfiguration.blockBots) {
+    // Skip bot check for Bearer token authenticated requests
+    const authHeader = request.headers["authorization"];
+    const hasBearerToken = typeof authHeader === "string" && authHeader.startsWith("Bearer ");
+    if (!hasBearerToken && siteConfiguration.blockBots) {
       // Use custom user agent if provided, otherwise fall back to header
       const userAgent = validatedPayload.user_agent || (request.headers["user-agent"] as string);
       if (userAgent && isbot(userAgent)) {
@@ -260,7 +303,6 @@ export async function trackEvent(request: FastifyRequest, reply: FastifyReply) {
 
     // Check if the country should be excluded from tracking
     if (siteConfiguration.excludedCountries && siteConfiguration.excludedCountries.length > 0) {
-      const { getLocation } = await import("../../db/geolocation/geolocation.js");
       const locationResults = await getLocation([requestIP]);
       const locationData = locationResults[requestIP];
 

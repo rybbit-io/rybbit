@@ -7,22 +7,7 @@ import { DateTime } from "luxon";
 import { getDeviceType } from "../../../utils.js";
 import { deriveKeyOnlySchema } from "./utils.js";
 
-export interface SimpleAnalyticsEvent {
-  added_iso: string;
-  country_code: string;
-  datapoint: string;
-  document_referrer: string;
-  hostname: string;
-  lang_language: string;
-  lang_region: string;
-  path: string;
-  query: string;
-  screen_height: string;
-  screen_width: string;
-  session_id: string;
-  user_agent: string;
-  uuid: string;
-}
+export type SimpleAnalyticsEvent = z.input<typeof SimpleAnalyticsImportMapper.simpleAnalyticsEventKeyOnlySchema>;
 
 export class SimpleAnalyticsImportMapper {
   private static readonly simpleAnalyticsEventSchema = z.object({
@@ -61,6 +46,7 @@ export class SimpleAnalyticsImportMapper {
 
       const data = parsed.data;
       const ua = UAParser(data.user_agent);
+      const referrer = clearSelfReferrer(data.document_referrer, data.hostname);
       const screenWidth = parseInt(data.screen_width, 10);
       const screenHeight = parseInt(data.screen_height, 10);
 
@@ -74,8 +60,8 @@ export class SimpleAnalyticsImportMapper {
         querystring: data.query,
         url_parameters: getAllUrlParams(data.query),
         page_title: "",
-        referrer: clearSelfReferrer(data.document_referrer, data.hostname),
-        channel: getChannel(data.document_referrer, data.query, data.hostname),
+        referrer: referrer,
+        channel: getChannel(referrer, data.query, data.hostname),
         browser: ua.browser.name || "",
         browser_version: ua.browser.major || "",
         operating_system: ua.os.name || "",

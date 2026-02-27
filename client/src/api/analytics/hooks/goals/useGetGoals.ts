@@ -15,13 +15,13 @@ export function useGetGoals({
   sort?: "goalId" | "name" | "goalType" | "createdAt";
   order?: "asc" | "desc";
 }) {
-  const { site, time } = useStore();
+  const { site, time, timezone } = useStore();
   const filteredFilters = getFilteredFilters(GOALS_PAGE_FILTERS);
 
   const params = buildApiParams(time, { filters: filteredFilters });
 
   return useQuery({
-    queryKey: ["goals", site, time, filteredFilters, page, pageSize, sort, order],
+    queryKey: ["goals", site, time, filteredFilters, page, pageSize, sort, order, timezone],
     queryFn: async () => {
       return fetchGoals(site, {
         ...params,

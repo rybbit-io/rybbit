@@ -6,6 +6,7 @@ import { usageService } from "../../services/usageService.js";
 import { RecordSessionReplayRequest } from "../../types/sessionReplay.js";
 import { getIpAddress } from "../../utils.js";
 import { logger } from "../../lib/logger/logger.js";
+import { getLocation } from "../../db/geolocation/geolocation.js";
 
 const recordSessionReplaySchema = z.object({
   userId: z.string(),
@@ -24,19 +25,19 @@ const recordSessionReplaySchema = z.object({
       language: z.string().optional(),
     })
     .optional(),
-  apiKey: z.string().max(35).optional(), // rb_ prefix + 32 hex chars
 });
 
 export async function recordSessionReplay(
   request: FastifyRequest<{
-    Params: { site: string };
+    Params: { siteId: string };
     Body: RecordSessionReplayRequest;
   }>,
   reply: FastifyReply
 ) {
   try {
     // Get the site configuration to get the numeric siteId
-    const { siteId, excludedIPs, excludedCountries, sessionReplay } = (await siteConfig.getConfig(request.params.site)) ?? {};
+    const { siteId, excludedIPs, excludedCountries, sessionReplay } =
+      (await siteConfig.getConfig(request.params.siteId)) ?? {};
 
     if (!sessionReplay) {
       logger.info(`[SessionReplay] Skipping event for site ${siteId} - session replay not enabled`);
@@ -44,7 +45,7 @@ export async function recordSessionReplay(
     }
 
     if (!siteId) {
-      throw new Error(`Site not found: ${request.params.site}`);
+      throw new Error(`Site not found: ${request.params.siteId}`);
     }
 
     // Check if the site has exceeded its monthly limit
@@ -68,12 +69,11 @@ export async function recordSessionReplay(
 
     // Check if the country should be excluded from tracking
     if (excludedCountries && excludedCountries.length > 0) {
-      const { getLocation } = await import("../../db/geolocation/geolocation.js");
       const locationResults = await getLocation([requestIP]);
       const locationData = locationResults[requestIP];
 
       if (locationData?.countryIso) {
-        const isCountryExcluded = await siteConfig.isCountryExcluded(locationData.countryIso, request.params.site);
+        const isCountryExcluded = await siteConfig.isCountryExcluded(locationData.countryIso, request.params.siteId);
         if (isCountryExcluded) {
           logger.info(`[SessionReplay] Country ${locationData.countryIso} excluded from tracking for site ${siteId}`);
           return reply.status(200).send({

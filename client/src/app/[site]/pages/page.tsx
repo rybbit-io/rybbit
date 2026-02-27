@@ -1,5 +1,6 @@
 "use client";
 
+import { useExtracted } from "next-intl";
 import { useGetPageTitlesPaginated } from "@/api/analytics/hooks/useGetPageTitles";
 import { PageTitleItem } from "@/api/analytics/endpoints";
 import { Pagination } from "@/components/pagination";
@@ -15,6 +16,7 @@ import { PageListSkeleton } from "./components/PageListSkeleton";
 const PAGE_SIZE = 10;
 
 export default function Pages() {
+  const t = useExtracted();
   const { site } = useStore();
 
   const [pagination, setPagination] = useState({
@@ -23,7 +25,7 @@ export default function Pages() {
   });
   const [totalPages, setTotalPages] = useState(0);
 
-  useSetPageTitle("Rybbit · Pages");
+  useSetPageTitle("Pages");
 
   // Get page number (1-based) from pageIndex (0-based)
   const pageNumber = pagination.pageIndex + 1;
@@ -95,7 +97,7 @@ export default function Pages() {
   }
 
   return (
-    <DisabledOverlay message="pages" featurePath="pages">
+    <DisabledOverlay message={t("pages")} featurePath="pages">
       <div className="p-2 md:p-4 max-w-[1100px] mx-auto space-y-3">
         <SubHeader />
 
@@ -103,7 +105,7 @@ export default function Pages() {
           <PageListSkeleton count={pagination.pageSize} />
         ) : isErrorPages ? (
           <div className="text-center p-8 text-destructive">
-            <p>Error loading pages data</p>
+            <p>{t("Error loading pages data")}</p>
             <p className="text-sm">{pagesError?.toString()}</p>
           </div>
         ) : pagesDataArray && pagesDataArray.length > 0 ? (
@@ -127,13 +129,13 @@ export default function Pages() {
                 pagination={pagination}
                 setPagination={setPagination}
                 isLoading={isLoading}
-                itemName="pages"
+                itemName={t("pages")}
               />
             )}
           </>
         ) : !isLoadingPages && !isFetching ? (
           <div className="text-center py-12 text-muted-foreground">
-            <p>No pages data found for the selected period.</p>
+            <p>{t("No pages data found for the selected period.")}</p>
           </div>
         ) : null}
       </div>

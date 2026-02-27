@@ -9,7 +9,7 @@ import { analyzeFunnel, FunnelRequest, FunnelResponse, saveFunnel, SaveFunnelReq
  * Hook for analyzing conversion funnels through a series of steps
  */
 export function useGetFunnel(config?: FunnelRequest, debounce?: boolean) {
-  const { site, time } = useStore();
+  const { site, time, timezone } = useStore();
 
   const debouncedConfig = useDebounce(config, 500);
   const filteredFilters = getFilteredFilters(FUNNEL_PAGE_FILTERS);
@@ -18,7 +18,7 @@ export function useGetFunnel(config?: FunnelRequest, debounce?: boolean) {
   const configToUse = debounce ? debouncedConfig : config;
 
   return useQuery<FunnelResponse[], Error>({
-    queryKey: ["funnel", site, time, filteredFilters, configToUse?.steps],
+    queryKey: ["funnel", site, time, filteredFilters, configToUse?.steps, timezone],
     queryFn: async () => {
       if (!configToUse) {
         throw new Error("Funnel configuration is required");

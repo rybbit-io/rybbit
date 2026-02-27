@@ -58,18 +58,17 @@ export async function updateSubscription(
       return reply.status(404).send({ error: "Organization or Stripe customer ID not found" });
     }
 
-    // 3. Get the active subscription
-    const subscriptions = await (stripe as Stripe).subscriptions.list({
-      customer: org.stripeCustomerId,
-      status: "active",
-      limit: 1,
-    });
+    // 3. Get the active or trialing subscription
+    const [activeSubscriptions, trialingSubscriptions] = await Promise.all([
+      (stripe as Stripe).subscriptions.list({ customer: org.stripeCustomerId, status: "active", limit: 1 }),
+      (stripe as Stripe).subscriptions.list({ customer: org.stripeCustomerId, status: "trialing", limit: 1 }),
+    ]);
 
-    if (subscriptions.data.length === 0) {
+    const subscription = activeSubscriptions.data[0] ?? trialingSubscriptions.data[0];
+
+    if (!subscription) {
       return reply.status(404).send({ error: "No active subscription found" });
     }
-
-    const subscription = subscriptions.data[0];
     const subscriptionItem = subscription.items.data[0];
 
     // 4. Validate the new price exists

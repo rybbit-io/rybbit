@@ -1,30 +1,23 @@
-import { FastifyReply, FastifyRequest } from "fastify";
-import { GetGSCStatusRequest } from "./types.js";
-import { gscConnections } from "../../db/postgres/schema.js";
 import { eq } from "drizzle-orm";
-import { getUserHasAccessToSite } from "../../lib/auth-utils.js";
+import { FastifyReply, FastifyRequest } from "fastify";
 import { db } from "../../db/postgres/postgres.js";
+import { gscConnections } from "../../db/postgres/schema.js";
 import { logger } from "../../lib/logger/logger.js";
+import { GetGSCStatusRequest } from "./types.js";
 
 /**
  * Checks if a site has an active GSC connection
  */
 export async function getGSCStatus(req: FastifyRequest<GetGSCStatusRequest>, res: FastifyReply) {
   try {
-    const { site } = req.params;
-    const siteId = Number(site);
+    const { siteId } = req.params;
+    const numericSiteId = Number(siteId);
 
-    if (isNaN(siteId)) {
+    if (isNaN(numericSiteId)) {
       return res.status(400).send({ error: "Invalid site ID" });
     }
 
-    // Check if user has access to this site
-    const hasAccess = await getUserHasAccessToSite(req, siteId);
-    if (!hasAccess) {
-      return res.status(403).send({ error: "Access denied" });
-    }
-
-    const [connection] = await db.select().from(gscConnections).where(eq(gscConnections.siteId, siteId));
+    const [connection] = await db.select().from(gscConnections).where(eq(gscConnections.siteId, numericSiteId));
 
     if (!connection) {
       return res.send({

@@ -1,26 +1,21 @@
-import { useStore } from "@/lib/store";
+import { getTimezone, useStore } from "@/lib/store";
 import { useInfiniteQuery } from "@tanstack/react-query";
-import { getStartAndEndDate, timeZone } from "../../../utils";
-import {
-  fetchErrorEvents,
-  ErrorEvent,
-  ErrorEventsPaginatedResponse,
-  ErrorEventsStandardResponse,
-} from "../../endpoints";
+import { getStartAndEndDate } from "../../../utils";
+import { ErrorEventsPaginatedResponse, fetchErrorEvents } from "../../endpoints";
 
 // Hook for infinite scrolling
 export function useGetErrorEventsInfinite(errorMessage: string, enabled: boolean = true) {
-  const { time, site, filters } = useStore();
+  const { time, site, filters, timezone } = useStore();
 
   const { startDate, endDate } = getStartAndEndDate(time);
 
   return useInfiniteQuery({
-    queryKey: ["error-events-infinite", time, site, filters, errorMessage],
+    queryKey: ["error-events-infinite", time, site, filters, errorMessage, timezone],
     queryFn: async ({ pageParam = 1 }) => {
       const data = await fetchErrorEvents(site, {
         startDate: startDate ?? "",
         endDate: endDate ?? "",
-        timeZone,
+        timeZone: getTimezone(),
         filters,
         errorMessage,
         limit: 20,

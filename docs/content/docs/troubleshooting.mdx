@@ -111,6 +111,6 @@ TRUNCATE TABLE session_replay_metadata;
 
 ### 2. You didn't mount the Clickhouse log suppression configs
 
-In our [docker-compose.yml](https://github.com/rybbit-io/rybbit/blob/master/docker-compose.ymlg), we have a config for Clickhouse that suppresses logs. Clickhouse stores a ton of logs in the log tables by default. This will quickly fill up your disk space if left unchecked.
+In our [docker-compose.yml](https://github.com/rybbit-io/rybbit/blob/master/docker-compose.yml), we have a config for Clickhouse that suppresses logs. Clickhouse stores a ton of logs in the log tables by default. This will quickly fill up your disk space if left unchecked.
 
 If you follow the standard installation process, the configs are already mounted for you. If you rolled your own Docker setup, you need to mount the configs manually.

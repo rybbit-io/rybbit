@@ -43,6 +43,10 @@ const updateGoalSchema = z
       eventName: z.string().optional(),
       eventPropertyKey: z.string().optional(),
       eventPropertyValue: z.union([z.string(), z.number(), z.boolean()]).optional(),
+      propertyFilters: z.array(z.object({
+        key: z.string(),
+        value: z.union([z.string(), z.number(), z.boolean()]),
+      })).optional(),
     }),
   })
   .refine(

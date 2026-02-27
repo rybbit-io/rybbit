@@ -95,10 +95,10 @@ export async function fetchSessionReplays(
     ...toQueryParams(params),
     limit: params.limit,
     offset: params.offset,
-    min_duration: params.minDuration,
+    minDuration: params.minDuration,
   };
 
-  const response = await authedFetch<SessionReplayListResponse>(`/session-replay/list/${site}`, queryParams);
+  const response = await authedFetch<SessionReplayListResponse>(`/sites/${site}/session-replay/list`, queryParams);
   return response;
 }
 
@@ -110,7 +110,7 @@ export async function fetchSessionReplayEvents(
   site: string | number,
   sessionId: string
 ): Promise<GetSessionReplayEventsResponse> {
-  const response = await authedFetch<GetSessionReplayEventsResponse>(`/session-replay/${sessionId}/${site}`);
+  const response = await authedFetch<GetSessionReplayEventsResponse>(`/sites/${site}/session-replay/${sessionId}`);
   return response;
 }
 
@@ -119,7 +119,7 @@ export async function fetchSessionReplayEvents(
  * DELETE /api/session-replay/:sessionId/:site
  */
 export async function deleteSessionReplay(site: string | number, sessionId: string): Promise<{ success: boolean }> {
-  const response = await authedFetch<{ success: boolean }>(`/session-replay/${sessionId}/${site}`, undefined, {
+  const response = await authedFetch<{ success: boolean }>(`/sites/${site}/session-replay/${sessionId}`, undefined, {
     method: "DELETE",
   });
   return response;

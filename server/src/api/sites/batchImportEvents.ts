@@ -1,6 +1,5 @@
 import { FastifyReply, FastifyRequest } from "fastify";
 import { z } from "zod";
-import { getUserHasAdminAccessToSite } from "../../lib/auth-utils.js";
 import { clickhouse } from "../../db/clickhouse/clickhouse.js";
 import { updateImportProgress, completeImport, getImportById } from "../../services/import/importStatusManager.js";
 import { UmamiEvent, UmamiImportMapper } from "../../services/import/mappings/umami.js";
@@ -15,7 +14,7 @@ import { IS_CLOUD } from "../../lib/const.js";
 const batchImportRequestSchema = z
   .object({
     params: z.object({
-      site: z.coerce.number().int().positive(),
+      siteId: z.coerce.number().int().positive(),
       importId: z.string().uuid(),
     }),
     body: z.object({
@@ -44,20 +43,15 @@ export async function batchImportEvents(request: FastifyRequest<BatchImportReque
       return reply.status(400).send({ error: "Validation error" });
     }
 
-    const { site, importId } = parsed.data.params;
+    const { siteId, importId } = parsed.data.params;
     const { events, isLastBatch } = parsed.data.body;
-
-    const userHasAccess = await getUserHasAdminAccessToSite(request, site);
-    if (!userHasAccess) {
-      return reply.status(403).send({ error: "Forbidden" });
-    }
 
     const importRecord = await getImportById(importId);
     if (!importRecord) {
       return reply.status(404).send({ error: "Import not found" });
     }
 
-    if (importRecord.siteId !== site) {
+    if (importRecord.siteId !== siteId) {
       return reply.status(400).send({ error: "Import does not belong to this site" });
     }
 
@@ -68,7 +62,7 @@ export async function batchImportEvents(request: FastifyRequest<BatchImportReque
       })
       .from(sites)
       .leftJoin(organization, eq(sites.organizationId, organization.id))
-      .where(eq(sites.siteId, site))
+      .where(eq(sites.siteId, siteId))
       .limit(1);
 
     if (!siteRecord || !siteRecord.organizationId) {
@@ -90,9 +84,9 @@ export async function batchImportEvents(request: FastifyRequest<BatchImportReque
 
       let transformedEvents;
       if (importRecord.platform === "umami") {
-        transformedEvents = UmamiImportMapper.transform(events as UmamiEvent[], site, importId);
+        transformedEvents = UmamiImportMapper.transform(events as UmamiEvent[], siteId, importId);
       } else if (importRecord.platform === "simple_analytics") {
-        transformedEvents = SimpleAnalyticsImportMapper.transform(events as SimpleAnalyticsEvent[], site, importId);
+        transformedEvents = SimpleAnalyticsImportMapper.transform(events as SimpleAnalyticsEvent[], siteId, importId);
       } else {
         return reply.status(400).send({ error: "Unsupported platform" });
       }

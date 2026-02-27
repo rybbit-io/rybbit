@@ -1,4 +1,5 @@
 "use client";
+import { useGetLiveUserCount } from "../../../api/analytics/hooks/useGetLiveUserCount";
 import { useSetPageTitle } from "../../../hooks/useSetPageTitle";
 import { IS_CLOUD } from "../../../lib/const";
 import { useStore } from "../../../lib/store";
@@ -24,13 +25,15 @@ export default function MainPage() {
 }
 
 function MainPageContent() {
-  useSetPageTitle("Rybbit · Main");
+  const { data } = useGetLiveUserCount(5);
+
+  useSetPageTitle(`${data?.count ?? "…"} user${data?.count === 1 ? "" : "s"} online`);
 
   return (
-    <div className="p-2 md:p-4 max-w-[1100px] mx-auto space-y-3 ">
+    <div className="p-2 md:p-4 max-w-[1100px] mx-auto space-y-3">
       <SubHeader />
       <MainSection />
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 mt-4">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 mt-3">
         <Referrers />
         <Pages />
         <Devices />

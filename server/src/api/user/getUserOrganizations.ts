@@ -2,13 +2,11 @@ import { FastifyRequest, FastifyReply } from "fastify";
 import { db } from "../../db/postgres/postgres.js";
 import { eq } from "drizzle-orm";
 import { member, organization } from "../../db/postgres/schema.js";
-import { getSessionFromReq } from "../../lib/auth-utils.js";
 
 export const getUserOrganizations = async (request: FastifyRequest, reply: FastifyReply) => {
   try {
-    const session = await getSessionFromReq(request);
-
-    if (!session?.user.id) {
+    const userId = request.user?.id;
+    if (!userId) {
       return reply.status(401).send({ error: "Unauthorized" });
     }
 
@@ -24,7 +22,7 @@ export const getUserOrganizations = async (request: FastifyRequest, reply: Fasti
       })
       .from(member)
       .innerJoin(organization, eq(member.organizationId, organization.id))
-      .where(eq(member.userId, session?.user.id));
+      .where(eq(member.userId, userId));
 
     return reply.send(userOrganizations);
   } catch (error) {

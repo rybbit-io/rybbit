@@ -1,6 +1,7 @@
-import { useQuery, UseQueryResult } from "@tanstack/react-query";
 import { authClient } from "@/lib/auth";
-import { BACKEND_URL, IS_CLOUD } from "../const";
+import { useQuery, UseQueryResult } from "@tanstack/react-query";
+import { authedFetch } from "../../api/utils";
+import { IS_CLOUD } from "../const";
 
 export interface SubscriptionData {
   id: string;
@@ -16,11 +17,12 @@ export interface SubscriptionData {
   isTrial?: boolean;
   trialDaysRemaining?: number;
   message?: string; // For expired trial message
-  isPro?: boolean;
   isOverride?: boolean;
+  memberLimit: number | null;
+  siteLimit: number | null;
 }
 
-export function useStripeSubscription(): UseQueryResult<SubscriptionData, Error> {
+export function useStripeSubscription(): UseQueryResult<SubscriptionData | undefined, Error> {
   const { data: activeOrg } = authClient.useActiveOrganization();
 
   const fetchSubscription = async () => {
@@ -28,30 +30,13 @@ export function useStripeSubscription(): UseQueryResult<SubscriptionData, Error>
       return undefined;
     }
 
-    const response = await fetch(`${BACKEND_URL}/stripe/subscription?organizationId=${activeOrg.id}`, {
-      method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      credentials: "include",
-    });
-
-    if (!response.ok) {
-      if (response.status === 401) {
-        return null;
-      } else {
-        const errorData = await response.json();
-        throw new Error(errorData.error || `Error: ${response.status}`);
-      }
-    }
-
-    return await response.json();
+    return authedFetch<SubscriptionData>(`/stripe/subscription?organizationId=${activeOrg.id}`);
   };
 
-  return useQuery<SubscriptionData>({
+  return useQuery<SubscriptionData | undefined>({
     queryKey: ["stripe-subscription", activeOrg?.id],
     queryFn: fetchSubscription,
-    staleTime: 5 * 60 * 1000, // 5 minutes
+    staleTime: 5 * 60 * 1000,
     retry: false,
     enabled: !!activeOrg,
   });

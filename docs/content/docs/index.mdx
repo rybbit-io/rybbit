@@ -1,6 +1,7 @@
 ---
 title: Introduction
 description: Introduction to Rybbit
+full: true
 ---
 
 import { Cards, Card } from 'fumadocs-ui/components/card';
@@ -9,41 +10,51 @@ import { Check, X, AlertTriangle } from 'lucide-react';
 import {
   SiAngular,
   SiAstro,
+  SiBigcommerce,
+  SiCarrd,
+  SiContentful,
   SiDocusaurus,
   SiDrupal,
   SiFramer,
+  SiGatsby,
+  SiGhost,
+  SiGitbook,
   SiGoogletagmanager,
   SiHugo,
   SiJekyll,
+  SiJoomla,
   SiLaravel,
   SiMintlify,
-  SiReact,
   SiNextdotjs,
-  SiGatsby,
+  SiNuxt,
+  SiPrestashop,
+  SiReact,
   SiRemix,
+  SiSanity,
   SiShopify,
   SiSquarespace,
+  SiStrapi,
   SiSvelte,
+  SiVitepress,
   SiVuedotjs,
-  SiNuxt,
   SiWebflow,
   SiWix,
   SiWoocommerce,
-  SiWordpress
+  SiWordpress,
 } from '@icons-pack/react-simple-icons';
 
-**Rybbit** is a powerful open source web and products analytics platform. Check out our [live demo](https://demo.rybbit.com/1) using a real production site that sends over **15,000,000** events a month.
+**Rybbit** is a powerful open source web and products analytics platform. Check out our [live demo](https://demo.rybbit.com/81) using a real production site.
 
-{/* <div className="relative z-10 rounded-lg overflow-hidden border-8 border-neutral-100/5 shadow-2xl shadow-emerald-900/10">
+<div className="relative z-10 rounded-lg overflow-hidden border-8 border-neutral-100/5 shadow-2xl shadow-emerald-900/10">
   <iframe
-    src="https://demo.rybbit.com/1"
+    src="https://demo.rybbit.com/81"
     width="1300"
     height="750"
     className="w-full h-[600px] md:h-[700px] lg:h-[750px]"
     style={{ border: "none" }}
     title="Rybbit Analytics Demo"
   ></iframe>
-</div> */}
+</div>
 
 ## Getting Started
 
@@ -63,15 +74,33 @@ And then learn how to add the [tracking script](/docs/script) to your website to
     href="/docs/guides/angular" 
     className="flex items-center gap-2"
   />
-  <Card 
+  <Card
     icon={<SiAstro />}
-    title="Astro" 
-    href="/docs/guides/astro" 
+    title="Astro"
+    href="/docs/guides/astro"
     className="flex items-center gap-2"
   />
-  <Card 
-    title="Bubble" 
-    href="/docs/guides/bubble" 
+  <Card
+    icon={<SiBigcommerce />}
+    title="BigCommerce"
+    href="/docs/guides/bigcommerce"
+    className="flex items-center gap-2"
+  />
+  <Card
+    title="Bubble"
+    href="/docs/guides/bubble"
+    className="flex items-center gap-2"
+  />
+  <Card
+    icon={<SiCarrd />}
+    title="Carrd"
+    href="/docs/guides/carrd"
+    className="flex items-center gap-2"
+  />
+  <Card
+    icon={<SiContentful />}
+    title="Contentful"
+    href="/docs/guides/contentful"
     className="flex items-center gap-2"
   />
   <Card 
@@ -99,6 +128,18 @@ And then learn how to add the [tracking script](/docs/script) to your website to
     className="flex items-center gap-2"
   />
   <Card
+    icon={<SiGhost />}
+    title="Ghost"
+    href="/docs/guides/ghost"
+    className="flex items-center gap-2"
+  />
+  <Card
+    icon={<SiGitbook />}
+    title="GitBook"
+    href="/docs/guides/gitbook"
+    className="flex items-center gap-2"
+  />
+  <Card
     icon={<SiGoogletagmanager />}
     title="Google Tag Manager"
     href="/docs/guides/google-tag-manager"
@@ -110,16 +151,22 @@ And then learn how to add the [tracking script](/docs/script) to your website to
     href="/docs/guides/hugo"
     className="flex items-center gap-2"
   />
-  <Card 
+  <Card
     icon={<SiJekyll />}
-    title="Jekyll" 
-    href="/docs/guides/jekyll" 
+    title="Jekyll"
+    href="/docs/guides/jekyll"
     className="flex items-center gap-2"
   />
-  <Card 
+  <Card
+    icon={<SiJoomla />}
+    title="Joomla"
+    href="/docs/guides/joomla"
+    className="flex items-center gap-2"
+  />
+  <Card
     icon={<SiLaravel />}
-    title="Laravel" 
-    href="/docs/guides/laravel" 
+    title="Laravel"
+    href="/docs/guides/laravel"
     className="flex items-center gap-2"
   />
   <Card 
@@ -141,39 +188,69 @@ And then learn how to add the [tracking script](/docs/script) to your website to
     className="flex items-center gap-2"
   />
   <Card
+    icon={<SiPrestashop />}
+    title="PrestaShop"
+    href="/docs/guides/prestashop"
+    className="flex items-center gap-2"
+  />
+  <Card
     icon={<SiReact />}
     title="React"
     href="/docs/guides/react/vite-cra"
     className="flex items-center gap-2"
   />
-  <Card 
+  <Card
     icon={<SiRemix />}
-    title="Remix" 
-    href="/docs/guides/react/remix" 
+    title="Remix"
+    href="/docs/guides/react/remix"
     className="flex items-center gap-2"
   />
-  <Card 
+  <Card
+    icon={<SiSanity />}
+    title="Sanity"
+    href="/docs/guides/sanity"
+    className="flex items-center gap-2"
+  />
+  <Card
     icon={<SiShopify />}
-    title="Shopify" 
-    href="/docs/guides/shopify" 
+    title="Shopify"
+    href="/docs/guides/shopify"
     className="flex items-center gap-2"
   />
-  <Card 
+  <Card
     icon={<SiSquarespace />}
-    title="Squarespace" 
-    href="/docs/guides/squarespace" 
+    title="Squarespace"
+    href="/docs/guides/squarespace"
     className="flex items-center gap-2"
   />
-  <Card 
-    icon={<SiSvelte />}
-    title="Svelte" 
-    href="/docs/guides/svelte/vite" 
+  <Card
+    icon={<SiStrapi />}
+    title="Strapi"
+    href="/docs/guides/strapi"
     className="flex items-center gap-2"
   />
-  <Card 
+  <Card
     icon={<SiSvelte />}
-    title="SvelteKit" 
-    href="/docs/guides/svelte/sveltekit" 
+    title="Svelte"
+    href="/docs/guides/svelte/vite"
+    className="flex items-center gap-2"
+  />
+  <Card
+    icon={<SiSvelte />}
+    title="SvelteKit"
+    href="/docs/guides/svelte/sveltekit"
+    className="flex items-center gap-2"
+  />
+  <Card
+    icon={<Image src="/platforms/thrivecart.svg" alt="ThriveCart" width={16} height={16} className="grayscale" />}
+    title="ThriveCart"
+    href="/docs/guides/thrivecart"
+    className="flex items-center gap-2"
+  />
+  <Card
+    icon={<SiVitepress />}
+    title="VitePress"
+    href="/docs/guides/vitepress"
     className="flex items-center gap-2"
   />
   <Card

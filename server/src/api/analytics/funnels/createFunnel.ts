@@ -9,6 +9,13 @@ type FunnelStep = {
   value: string;
   name?: string;
   type: "page" | "event";
+  hostname?: string;
+  eventPropertyKey?: string;
+  eventPropertyValue?: string | number | boolean;
+  propertyFilters?: Array<{
+    key: string;
+    value: string | number | boolean;
+  }>;
 };
 
 type Funnel = {
@@ -21,13 +28,13 @@ export async function createFunnel(
   request: FastifyRequest<{
     Body: Funnel;
     Params: {
-      site: string;
+      siteId: string;
     };
   }>,
   reply: FastifyReply
 ) {
   const { steps, name, reportId } = request.body;
-  const { site } = request.params;
+  const { siteId } = request.params;
   const userId = request.user?.id;
 
   // Validate request
@@ -40,7 +47,7 @@ export async function createFunnel(
   }
 
   // Check user access to site
-  const userHasAccessToSite = await getUserHasAccessToSite(request, site);
+  const userHasAccessToSite = await getUserHasAccessToSite(request, siteId);
   if (!userHasAccessToSite) {
     return reply.status(403).send({ error: "Forbidden" });
   }
@@ -58,7 +65,7 @@ export async function createFunnel(
         return reply.status(404).send({ error: "Funnel not found" });
       }
 
-      if (existingFunnel.siteId !== Number(site)) {
+      if (existingFunnel.siteId !== Number(siteId)) {
         return reply.status(403).send({ error: "Funnel does not belong to this site" });
       }
 
@@ -83,7 +90,7 @@ export async function createFunnel(
       result = await db
         .insert(funnelsTable)
         .values({
-          siteId: Number(site),
+          siteId: Number(siteId),
           userId,
           data: {
             name,

@@ -9,6 +9,7 @@ import {
   SortingState,
   useReactTable,
 } from "@tanstack/react-table";
+import { getTimezone } from "@/lib/store";
 import { Loader2 } from "lucide-react";
 import { DateTime } from "luxon";
 import React, { useMemo, useState } from "react";
@@ -78,7 +79,7 @@ export function EventsTable({ monitor, monitorId }: { monitor?: UptimeMonitor; m
           const timestamp = DateTime.fromSQL(row.original.timestamp, { zone: "utc" });
           return (
             <div className="text-sm">
-              <div className="">{timestamp.toLocal().toFormat("MMM dd, HH:mm:ss")}</div>
+              <div className="">{timestamp.setZone(getTimezone()).toFormat("MMM dd, HH:mm:ss")}</div>
             </div>
           );
         },
@@ -243,7 +244,7 @@ export function EventsTable({ monitor, monitorId }: { monitor?: UptimeMonitor; m
         {isFetchingNextPage && (
           <div className="flex justify-center">
             <Button variant="ghost" size="sm" disabled>
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              <Loader2 className="h-4 w-4 animate-spin" />
               Loading more events...
             </Button>
           </div>

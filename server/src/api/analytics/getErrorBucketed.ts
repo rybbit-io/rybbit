@@ -35,7 +35,7 @@ function getTimeStatementFill(params: FilterParams, bucket: TimeBucket) {
 
 interface GetErrorBucketedRequest {
   Params: {
-    site: string;
+    siteId: string;
   };
   Querystring: FilterParams<{
     bucket: TimeBucket;
@@ -49,7 +49,7 @@ export type GetErrorBucketedResponse = {
 }[];
 
 export async function getErrorBucketed(req: FastifyRequest<GetErrorBucketedRequest>, res: FastifyReply) {
-  const site = req.params.site;
+  const site = req.params.siteId;
   const { bucket, errorMessage } = req.query;
 
   if (!errorMessage) {

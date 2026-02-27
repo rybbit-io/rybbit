@@ -1,4 +1,5 @@
 import { DateTime } from "luxon";
+import { useExtracted } from "next-intl";
 import { useMemo, useState } from "react";
 import { useGetOverviewBucketed } from "../../../../../api/analytics/hooks/useGetOverviewBucketed";
 import { ChartTooltip } from "../../../../../components/charts/ChartTooltip";
@@ -6,7 +7,7 @@ import { Tabs, TabsList, TabsTrigger } from "../../../../../components/ui/basic-
 import { Card, CardContent, CardLoader } from "../../../../../components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../../../../components/ui/select";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../../../../../components/ui/tooltip";
-import { StatType, useStore } from "../../../../../lib/store";
+import { getTimezone, StatType, useStore } from "../../../../../lib/store";
 import { cn } from "../../../../../lib/utils";
 
 import { formatLocalTime, hourLabels, longDayNames, shortDayNames } from "../../../../../lib/dateTimeUtils";
@@ -14,6 +15,8 @@ import { formatLocalTime, hourLabels, longDayNames, shortDayNames } from "../../
 export function Weekdays() {
   const { site, time } = useStore();
   const [metric, setMetric] = useState<StatType>("users");
+  const timezone = getTimezone();
+  const t = useExtracted();
 
   const { data, isFetching, error } = useGetOverviewBucketed({
     site,
@@ -38,8 +41,8 @@ export function Weekdays() {
     data.data.forEach(item => {
       if (!item || !item.time) return;
 
-      // Parse the timestamp
-      const date = DateTime.fromSQL(item.time);
+      // Parse the timestamp in the selected timezone
+      const date = DateTime.fromSQL(item.time, { zone: timezone });
       if (!date.isValid) return;
 
       const dayOfWeek = (date.weekday - 1) % 7; // Luxon uses 1 for Monday, 7 for Sunday
@@ -63,7 +66,7 @@ export function Weekdays() {
     }
 
     return aggregated;
-  }, [data, metric]);
+  }, [data, metric, timezone]);
 
   // Find max value for color intensity scaling
   const maxValue = useMemo(() => {
@@ -123,17 +126,17 @@ export function Weekdays() {
   const getMetricDisplayName = (metric: StatType): string => {
     switch (metric) {
       case "users":
-        return "Unique Visitors";
+        return t("Unique Visitors");
       case "pageviews":
-        return "Pageviews";
+        return t("Pageviews");
       case "sessions":
-        return "Sessions";
+        return t("Sessions");
       case "bounce_rate":
-        return "Bounce Rate";
+        return t("Bounce Rate");
       case "pages_per_session":
-        return "Pages per Session";
+        return t("Pages per Session");
       case "session_duration":
-        return "Session Duration";
+        return t("Session Duration");
       default:
         return metric;
     }
@@ -146,21 +149,21 @@ export function Weekdays() {
         <div className="flex flex-row items-center justify-between">
           <Tabs defaultValue="pages" value={"pages"}>
             <TabsList>
-              <TabsTrigger value="pages">Weekly Trends</TabsTrigger>
+              <TabsTrigger value="pages">{t("Weekly Trends")}</TabsTrigger>
             </TabsList>
           </Tabs>
 
           <Select value={metric} onValueChange={value => setMetric(value as StatType)}>
             <SelectTrigger className="w-[160px]" size="sm">
-              <SelectValue placeholder="Select metric" />
+              <SelectValue placeholder={t("Select metric")} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="users">Unique Visitors</SelectItem>
-              <SelectItem value="pageviews">Pageviews</SelectItem>
-              <SelectItem value="sessions">Sessions</SelectItem>
-              <SelectItem value="bounce_rate">Bounce Rate</SelectItem>
-              <SelectItem value="pages_per_session">Pages per Session</SelectItem>
-              <SelectItem value="session_duration">Session Duration</SelectItem>
+              <SelectItem value="users">{t("Unique Visitors")}</SelectItem>
+              <SelectItem value="pageviews">{t("Pageviews")}</SelectItem>
+              <SelectItem value="sessions">{t("Sessions")}</SelectItem>
+              <SelectItem value="bounce_rate">{t("Bounce Rate")}</SelectItem>
+              <SelectItem value="pages_per_session">{t("Pages per Session")}</SelectItem>
+              <SelectItem value="session_duration">{t("Session Duration")}</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -207,7 +210,7 @@ export function Weekdays() {
                         heatmapData[day].length > hour
                           ? heatmapData[day][hour]
                           : 0;
-                      const colorClass = value > 0 ? getColorIntensity(value) : "bg-neutral-200 dark:bg-neutral-800";
+                      const colorClass = value > 0 ? getColorIntensity(value) : "bg-neutral-50 dark:bg-neutral-850";
                       return (
                         <Tooltip key={day}>
                           <TooltipTrigger asChild>

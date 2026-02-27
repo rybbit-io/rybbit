@@ -1,16 +1,22 @@
 import { debounce } from "lodash";
 import { AlertTriangle, Pause, Play } from "lucide-react";
+import { useExtracted } from "next-intl";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { TimelineSlider } from "../../../../components/ui/timeline-slider";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "../../../../components/ui/tooltip";
+import { useStore } from "../../../../lib/store";
 import { useTimelineStore, useActiveSessions } from "../timelineStore";
 import { formatTimelineTime, generateTimeWindows, getSessionCountsPerWindow } from "../timelineUtils";
 import { MAX_PAGES, PAGE_SIZE } from "../3d/hooks/timelineLayer/timelineLayerConstants";
 
 export function TimelineScrubber() {
+  const t = useExtracted();
   const { currentTime, timeRange, windowSize, setCurrentTime, allSessions, isLoading, hasMoreData } =
     useTimelineStore();
   const activeSessions = useActiveSessions();
+  // Use reactive timezone from useStore
+  const storeTimezone = useStore(state => state.timezone);
+  const timezone = storeTimezone === "system" ? Intl.DateTimeFormat().resolvedOptions().timeZone : storeTimezone;
   const [isPlaying, setIsPlaying] = useState(false);
   const [localSliderIndex, setLocalSliderIndex] = useState(0);
   const [displayedCounts, setDisplayedCounts] = useState<number[]>([]);
@@ -92,13 +98,13 @@ export function TimelineScrubber() {
 
   // Debounced function to calculate session counts
   const debouncedCalculateCounts = useRef(
-    debounce((windows: ReturnType<typeof generateTimeWindows>, sessions: typeof allSessions, size: number) => {
+    debounce((windows: ReturnType<typeof generateTimeWindows>, sessions: typeof allSessions, size: number, tz: string) => {
       if (windows.length === 0 || sessions.length === 0) {
         setDisplayedCounts([]);
         setIsCalculating(false);
         return;
       }
-      const counts = getSessionCountsPerWindow(sessions, windows, size);
+      const counts = getSessionCountsPerWindow(sessions, windows, size, tz);
       setDisplayedCounts(counts);
       setIsCalculating(false);
     }, 200)
@@ -125,12 +131,12 @@ export function TimelineScrubber() {
   useEffect(() => {
     if (timeWindows.length > 0 && allSessions.length > 0) {
       setIsCalculating(true);
-      debouncedCalculateCounts(timeWindows, allSessions, windowSize);
+      debouncedCalculateCounts(timeWindows, allSessions, windowSize, timezone);
     } else {
       setDisplayedCounts([]);
       setIsCalculating(false);
     }
-  }, [timeWindows, allSessions, windowSize, debouncedCalculateCounts]);
+  }, [timeWindows, allSessions, windowSize, timezone, debouncedCalculateCounts]);
 
   // Get max count for scaling the histogram
   const maxCount = useMemo(() => {
@@ -141,7 +147,7 @@ export function TimelineScrubber() {
     return (
       <div className="flex items-center justify-center gap-2 text-xs text-neutral-400 h-[70px] w-full">
         <div className="w-4 h-4 border-2 border-neutral-600 border-t-accent-500 rounded-full animate-spin" />
-        <span>Loading sessions...</span>
+        <span>{t("Loading sessions...")}</span>
       </div>
     );
   }
@@ -173,7 +179,7 @@ export function TimelineScrubber() {
                 opacity: isCalculating ? 0.5 : 1,
               }}
               className="flex-1 transition-all duration-150 cursor-pointer"
-              title={`${count} session${count !== 1 ? "s" : ""}`}
+              title={count !== 1 ? t("{count} sessions", { count: String(count) }) : t("{count} session", { count: String(count) })}
               onClick={() => {
                 setLocalSliderIndex(index);
                 if (timeWindows[index]) {
@@ -191,7 +197,7 @@ export function TimelineScrubber() {
           <button
             onClick={() => setIsPlaying(!isPlaying)}
             className="p-1.5 rounded"
-            aria-label={isPlaying ? "Pause" : "Play"}
+            aria-label={isPlaying ? t("Pause") : t("Play")}
           >
             {isPlaying ? <Pause className="w-4 h-4 text-neutral-100" /> : <Play className="w-4 h-4 text-neutral-100" />}
           </button>
@@ -204,7 +210,7 @@ export function TimelineScrubber() {
             <span className="font-bold text-accent-400">
               {activeSessions.length.toLocaleString()} / {allSessions.length.toLocaleString()}
             </span>{" "}
-            sessions
+            {t("sessions")}
             {hasMoreData && (
               <TooltipProvider>
                 <Tooltip>
@@ -213,8 +219,7 @@ export function TimelineScrubber() {
                   </TooltipTrigger>
                   <TooltipContent>
                     <p>
-                      Showing only the first {(MAX_PAGES * PAGE_SIZE).toLocaleString()} sessions. More data may be
-                      available.
+                      {t("Showing only the first {count} sessions. More data may be available.", { count: (MAX_PAGES * PAGE_SIZE).toLocaleString() })}
                     </p>
                   </TooltipContent>
                 </Tooltip>

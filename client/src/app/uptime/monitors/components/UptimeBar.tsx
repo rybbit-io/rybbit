@@ -1,5 +1,6 @@
 import React from "react";
 import { cn } from "@/lib/utils";
+import { getTimezone } from "@/lib/store";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { DateTime } from "luxon";
 import { useMonitorUptimeBuckets } from "@/api/uptime/monitors";
@@ -30,7 +31,7 @@ export function UptimeBar({ monitorId, className }: UptimeBarProps) {
   }
   // Process bucket data
   const days = data.buckets.map(bucket => {
-    const date = DateTime.fromSQL(bucket.bucket_time).toLocal();
+    const date = DateTime.fromSQL(bucket.bucket_time).setZone(getTimezone());
     return {
       date: bucket.bucket_formatted,
       dateFormatted: date.toFormat("MMM dd"),

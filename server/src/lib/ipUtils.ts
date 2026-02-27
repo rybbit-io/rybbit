@@ -97,7 +97,7 @@ export function matchesCIDR(ipAddress: string, cidr: string): boolean {
       return ipv6.isInSubnet(cidrv6);
     }
   } catch (error) {
-    logger.warn(`Error matching CIDR ${cidr} for IP ${ipAddress}:`, error);
+    logger.warn(error, `Error matching CIDR ${cidr} for IP ${ipAddress}`);
     return false;
   }
 }
@@ -143,7 +143,7 @@ export function matchesRange(ipAddress: string, range: string): boolean {
       }
     }
   } catch (error) {
-    logger.warn(`Error matching range ${range} for IP ${ipAddress}:`, error);
+    logger.warn(error, `Error matching range ${range} for IP ${ipAddress}`);
     return false;
   }
 }

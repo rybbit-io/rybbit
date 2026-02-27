@@ -9,6 +9,7 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import * as CountryFlags from "country-flag-icons/react/3x2";
 import {
+  Bot,
   Monitor,
   Smartphone,
   Link,
@@ -234,6 +235,9 @@ function getChannelIconComponent(channel: string) {
       return Calendar;
     case "Audio":
       return Headphones;
+    case "AI":
+    case "Paid AI":
+      return Bot;
     default:
       return null;
   }
@@ -380,16 +384,14 @@ function buildTooltipHTML(session: Session): string {
         </div>
       </div>
       <div class="tooltip-stats">
-        ${
-          browserIconPath
-            ? `<img src="${browserIconPath}" alt="${session.browser}" title="${session.browser}" class="tooltip-icon" />`
-            : ""
-        }
-        ${
-          osIconPath
-            ? `<img src="${osIconPath}" alt="${session.operating_system}" title="${session.operating_system}" class="tooltip-icon" />`
-            : ""
-        }
+        ${browserIconPath
+      ? `<img src="${browserIconPath}" alt="${session.browser}" title="${session.browser}" class="tooltip-icon" />`
+      : ""
+    }
+        ${osIconPath
+      ? `<img src="${osIconPath}" alt="${session.operating_system}" title="${session.operating_system}" class="tooltip-icon" />`
+      : ""
+    }
         <span class="tooltip-device" title="${session.device_type}">${deviceIconSVG}</span>
         <span class="tooltip-badge">
           ${pageviewIconSVG}
@@ -602,7 +604,7 @@ export function SpinningGlobe() {
     const fetchSessions = async () => {
       try {
         const response = await fetch(
-          "https://demo.rybbit.com/api/sessions/1?past_minutes_start=120&past_minutes_end=0&filters=[]&page=1&limit=100"
+          "https://demo.rybbit.com/api/sites/81/sessions?past_minutes_start=240&past_minutes_end=0&filters=[]&page=1&limit=100"
         );
         const data = await response.json();
         setSessions(data.data || []);

@@ -1,0 +1,127 @@
+name: Translate Missing Strings (Docs)
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - "docs/src/**/*.ts"
+      - "docs/src/**/*.tsx"
+  workflow_dispatch:
+
+jobs:
+  check:
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    permissions:
+      actions: write
+      contents: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install dependencies
+        run: cd docs && npm ci
+
+      - name: Extract messages
+        run: cd docs && node scripts/extract-messages.mjs
+
+      - name: Check for untranslated strings
+        id: changes
+        run: |
+          cd docs/messages
+          EN_KEYS=$(python3 -c "import json; f=open('en.json'); d=json.load(f); print(len(d))")
+          NEEDS_TRANSLATION=false
+          for file in zh.json ja.json de.json pl.json pt.json it.json fr.json ko.json es.json; do
+            LANG_KEYS=$(python3 -c "import json; f=open('$file'); d=json.load(f); print(len(d))")
+            EMPTY=$(python3 -c "import json; f=open('$file'); d=json.load(f); print(sum(1 for v in d.values() if v == ''))")
+            if [ "$EMPTY" -gt 0 ] || [ "$LANG_KEYS" -ne "$EN_KEYS" ]; then
+              NEEDS_TRANSLATION=true
+              break
+            fi
+          done
+          echo "has_changes=$NEEDS_TRANSLATION" >> "$GITHUB_OUTPUT"
+
+      - name: Trigger translation workflow
+        if: steps.changes.outputs.has_changes == 'true'
+        run: gh workflow run translate-docs.yml --ref master
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  translate:
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+      id-token: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install dependencies
+        run: cd docs && npm ci
+
+      - name: Extract messages
+        run: cd docs && node scripts/extract-messages.mjs
+
+      - name: Run Claude Code
+        uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          allowed_bots: "github-actions[bot]"
+          prompt: |
+            The message extraction step has just run and updated the translation files in docs/messages/.
+            New keys have been added with empty string values to the non-English locale files.
+
+            Check the translation files in docs/messages/. The source of truth is en.json.
+
+            For each non-English translation file (zh.json, ja.json, de.json, pl.json, pt.json, it.json, fr.json, ko.json, es.json):
+            1. Find any keys that have empty string values (these are newly extracted, untranslated strings)
+            2. Find any keys in the translation file that still have English text (were not actually translated)
+            3. Translate the missing/untranslated strings into the appropriate language using en.json as reference
+            4. Maintain the same key order as en.json
+            5. Also remove any keys that exist in the translation file but NOT in en.json (stale keys)
+
+            Language mapping:
+            - zh.json = Chinese (Simplified)
+            - ja.json = Japanese
+            - de.json = German
+            - pl.json = Polish
+            - pt.json = Portuguese (Brazilian)
+            - it.json = Italian
+            - fr.json = French
+            - ko.json = Korean
+            - es.json = Spanish
+
+            Important:
+            - Preserve {placeholder} variables exactly as they appear in the English strings
+            - Keep translations natural and idiomatic, not literal
+            - Maintain consistent terminology within each language file
+            - Do NOT modify en.json
+            - If there are no missing translations, do nothing
+            - You may use python3 to read/analyze/update the JSON files
+
+            After translating, commit and push directly to master using these exact steps (run each command separately, use only single-line messages with no newlines):
+            1. git add docs/messages/*.json
+            2. git commit -m "Update docs translations"
+            3. git push origin master
+          claude_args: >-
+            --model claude-sonnet-4-6
+            --max-turns 50
+            --allowedTools "Edit" "Read" "Write" "Glob" "Grep"
+            "Bash(python3 *)" "Bash(git add *)"
+            "Bash(git commit *)" "Bash(git push *)"

@@ -14,12 +14,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { UserPlus } from "lucide-react";
+import { useExtracted } from "next-intl";
 import { useState } from "react";
-import { toast } from "sonner";
+import { toast } from "@/components/ui/sonner";
 import { Alert } from "../../../../../components/ui/alert";
 import { authClient } from "../../../../../lib/auth";
 import { validateEmail } from "../../../../../lib/auth-utils";
-import { useAddUserToOrganization } from "../../../../../api/admin/organizations";
+import { useAddUserToOrganization } from "../../../../../api/admin/hooks/useOrganizations";
 
 interface CreateUserDialogProps {
   organizationId: string;
@@ -27,6 +28,7 @@ interface CreateUserDialogProps {
 }
 
 export function CreateUserDialog({ organizationId, onSuccess }: CreateUserDialogProps) {
+  const t = useExtracted();
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
   const [password, setPassword] = useState("");
@@ -48,17 +50,17 @@ export function CreateUserDialog({ organizationId, onSuccess }: CreateUserDialog
 
   const handleInvite = async () => {
     if (!email) {
-      setError("Email is required");
+      setError(t("Email is required"));
       return;
     }
 
     if (!validateEmail(email)) {
-      setError("Please enter a valid email address");
+      setError(t("Please enter a valid email address"));
       return;
     }
 
     if (password.length < 8) {
-      setError("Password must be at least 8 characters long");
+      setError(t("Password must be at least 8 characters long"));
       return;
     }
 
@@ -75,11 +77,11 @@ export function CreateUserDialog({ organizationId, onSuccess }: CreateUserDialog
         organizationId,
       });
 
-      toast.success(`User created successfully`);
+      toast.success(t("User created successfully"));
       onSuccess();
       resetState();
     } catch (error: any) {
-      setError(error.message || "Failed to create user");
+      setError(error.message || t("Failed to create user"));
     }
   };
 
@@ -88,17 +90,17 @@ export function CreateUserDialog({ organizationId, onSuccess }: CreateUserDialog
       <DialogTrigger asChild>
         <Button size="sm" variant="outline">
           <UserPlus className="h-4 w-4 mr-1" />
-          Create User
+          {t("Create User")}
         </Button>
       </DialogTrigger>
       <DialogContent className="max-w-lg">
         <DialogHeader>
-          <DialogTitle>Create a new user</DialogTitle>
-          <DialogDescription>Create a new user for this organization.</DialogDescription>
+          <DialogTitle>{t("Create a new user")}</DialogTitle>
+          <DialogDescription>{t("Create a new user for this organization.")}</DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-4">
           <div className="grid gap-2">
-            <Label htmlFor="email">Email</Label>
+            <Label htmlFor="email">{t("Email")}</Label>
             <Input
               id="email"
               type="email"
@@ -108,7 +110,7 @@ export function CreateUserDialog({ organizationId, onSuccess }: CreateUserDialog
             />
           </div>
           <div className="grid gap-2">
-            <Label htmlFor="name">Name</Label>
+            <Label htmlFor="name">{t("Name")}</Label>
             <Input
               id="name"
               type="text"
@@ -118,7 +120,7 @@ export function CreateUserDialog({ organizationId, onSuccess }: CreateUserDialog
             />
           </div>
           <div className="grid gap-2">
-            <Label htmlFor="password">Password</Label>
+            <Label htmlFor="password">{t("Password")}</Label>
             <Input
               id="password"
               type="password"
@@ -128,14 +130,14 @@ export function CreateUserDialog({ organizationId, onSuccess }: CreateUserDialog
             />
           </div>
           <div className="grid gap-2">
-            <Label htmlFor="role">Role</Label>
+            <Label htmlFor="role">{t("Role")}</Label>
             <Select value={role} onValueChange={value => setRole(value as "admin" | "member")}>
               <SelectTrigger>
-                <SelectValue placeholder="Select a role" />
+                <SelectValue placeholder={t("Select a role")} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="admin">Admin</SelectItem>
-                <SelectItem value="member">Member</SelectItem>
+                <SelectItem value="admin">{t("Admin")}</SelectItem>
+                <SelectItem value="member">{t("Member")}</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -143,10 +145,10 @@ export function CreateUserDialog({ organizationId, onSuccess }: CreateUserDialog
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => resetState(false)}>
-            Cancel
+            {t("Cancel")}
           </Button>
           <Button onClick={handleInvite} disabled={addUserToOrganization.isPending} variant="success">
-            {addUserToOrganization.isPending ? "Creating..." : "Create User"}
+            {addUserToOrganization.isPending ? t("Creating...") : t("Create User")}
           </Button>
         </DialogFooter>
       </DialogContent>
