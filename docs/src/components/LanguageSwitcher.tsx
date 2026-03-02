@@ -17,6 +17,7 @@ const LOCALE_OPTIONS = [
   { value: "ko", label: "한국어", country: "KR" },
   { value: "pt", label: "Português", country: "BR" },
   { value: "ja", label: "日本語", country: "JP" },
+  { value: "hi", label: "हिंदी", country: "IN" },
 ] as const satisfies {
   value: (typeof routing.locales)[number];
   label: string;
@@ -30,7 +31,7 @@ export function LanguageSwitcher() {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
-  const current = LOCALE_OPTIONS.find((o) => o.value === currentLocale) ?? LOCALE_OPTIONS[0];
+  const current = LOCALE_OPTIONS.find(o => o.value === currentLocale) ?? LOCALE_OPTIONS[0];
 
   function handleLocaleChange(locale: string) {
     router.replace(pathname, { locale });
@@ -51,7 +52,7 @@ export function LanguageSwitcher() {
     <div className="relative" ref={ref}>
       <button
         type="button"
-        onClick={() => setOpen((v) => !v)}
+        onClick={() => setOpen(v => !v)}
         className="flex items-center gap-2 bg-transparent text-sm text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white transition-colors cursor-pointer border border-neutral-300 dark:border-neutral-700 rounded-md px-2 py-1 focus:outline-none focus:ring-1 focus:ring-neutral-400"
         aria-label="Select language"
       >
@@ -60,7 +61,7 @@ export function LanguageSwitcher() {
       </button>
       {open && (
         <div className="absolute right-0 bottom-full mb-1 z-50 min-w-[160px] rounded-md border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-900 shadow-lg py-1">
-          {LOCALE_OPTIONS.map((option) => (
+          {LOCALE_OPTIONS.map(option => (
             <button
               key={option.value}
               type="button"

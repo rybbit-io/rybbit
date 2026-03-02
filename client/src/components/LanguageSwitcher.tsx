@@ -3,13 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useLocale } from "next-intl";
 import { CountryFlag } from "../app/[site]/components/shared/icons/CountryFlag";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "./ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
 
 const LOCALE_OPTIONS = [
   { value: "en", label: "English", country: "US" },
@@ -23,6 +17,7 @@ const LOCALE_OPTIONS = [
   { value: "pt", label: "Português", country: "BR" },
   { value: "ja", label: "日本語", country: "JP" },
   { value: "cs", label: "Čeština", country: "CZ" },
+  { value: "hi", label: "हिंदी", country: "IN" },
 ] as const;
 
 export function LanguageSwitcher() {
@@ -40,7 +35,7 @@ export function LanguageSwitcher() {
         <SelectValue />
       </SelectTrigger>
       <SelectContent>
-        {LOCALE_OPTIONS.map((option) => (
+        {LOCALE_OPTIONS.map(option => (
           <SelectItem key={option.value} value={option.value}>
             <span className="flex items-center gap-2">
               <CountryFlag country={option.country} className="w-4" />
