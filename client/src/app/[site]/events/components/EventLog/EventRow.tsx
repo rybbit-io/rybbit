@@ -133,16 +133,22 @@ export function EventRow({ event, site, onClick }: EventRowProps) {
       </div>
 
       <div className="text-neutral-600 dark:text-neutral-300 px-2 py-1 truncate">
-        <Link
-          href={pageUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          onClick={e => e.stopPropagation()}
-          className="hover:underline"
-          title={pagePath}
-        >
-          {truncateString(pagePath, 60)}
-        </Link>
+        {isApp ? (
+          <span title={pagePath}>
+            {truncateString(pagePath, 60)}
+          </span>
+        ) : (
+          <Link
+            href={pageUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={e => e.stopPropagation()}
+            className="hover:underline"
+            title={pagePath}
+          >
+            {truncateString(pagePath, 60)}
+          </Link>
+        )}
       </div>
 
       <div className="text-neutral-600 dark:text-neutral-300 px-2 py-1 truncate">
