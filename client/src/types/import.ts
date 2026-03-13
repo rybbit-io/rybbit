@@ -1,1 +1,1 @@
-export type ImportPlatform = "umami" | "simple_analytics";
+export type ImportPlatform = "umami" | "simple_analytics" | "matomo";

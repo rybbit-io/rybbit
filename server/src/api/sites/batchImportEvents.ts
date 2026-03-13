@@ -4,6 +4,7 @@ import { clickhouse } from "../../db/clickhouse/clickhouse.js";
 import { updateImportProgress, completeImport, getImportById } from "../../services/import/importStatusManager.js";
 import { UmamiEvent, UmamiImportMapper } from "../../services/import/mappings/umami.js";
 import { SimpleAnalyticsEvent, SimpleAnalyticsImportMapper } from "../../services/import/mappings/simpleAnalytics.js";
+import { MatomoEvent, MatomoImportMapper } from "../../services/import/mappings/matomo.js";
 import { importQuotaManager } from "../../services/import/importQuotaManager.js";
 import { db } from "../../db/postgres/postgres.js";
 import { organization, sites } from "../../db/postgres/schema.js";
@@ -21,6 +22,7 @@ const batchImportRequestSchema = z
       events: z.union([
         z.array(UmamiImportMapper.umamiEventKeyOnlySchema),
         z.array(SimpleAnalyticsImportMapper.simpleAnalyticsEventKeyOnlySchema),
+        z.array(MatomoImportMapper.matomoEventKeyOnlySchema),
       ]),
       isLastBatch: z.boolean().optional(),
     }),
@@ -87,6 +89,8 @@ export async function batchImportEvents(request: FastifyRequest<BatchImportReque
         transformedEvents = UmamiImportMapper.transform(events as UmamiEvent[], siteId, importId);
       } else if (importRecord.platform === "simple_analytics") {
         transformedEvents = SimpleAnalyticsImportMapper.transform(events as SimpleAnalyticsEvent[], siteId, importId);
+      } else if (importRecord.platform === "matomo") {
+        transformedEvents = MatomoImportMapper.transform(events as MatomoEvent[], siteId, importId);
       } else {
         return reply.status(400).send({ error: "Unsupported platform" });
       }

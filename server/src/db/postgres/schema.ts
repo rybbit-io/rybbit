@@ -607,7 +607,7 @@ export const userAliases = pgTable(
   ]
 );
 
-export const importPlatforms = ["umami", "simple_analytics"] as const;
+export const importPlatforms = ["umami", "simple_analytics", "matomo"] as const;
 
 export const importPlatformEnum = pgEnum("import_platform_enum", importPlatforms);
 
