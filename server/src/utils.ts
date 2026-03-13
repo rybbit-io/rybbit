@@ -131,10 +131,11 @@ export function parseSDKUserAgent(userAgent: string): {
   browserVersion: string;
   os: string;
   osVersion: string;
+  deviceModel: string;
 } | null {
   // 3-part format (with packageName)
   const match3 = userAgent.match(
-    /^(.+?)\/(\S+)\s+\([^;]+;\s*(\w+)\s+([^;]+);\s*[^)]+\)\s+\S+\/\S+$/
+    /^(.+?)\/(\S+)\s+\([^;]+;\s*(\w+)\s+([^;]+);\s*([^)]+)\)\s+\S+\/\S+$/
   );
   if (match3) {
     return {
@@ -142,12 +143,13 @@ export function parseSDKUserAgent(userAgent: string): {
       browserVersion: match3[2],
       os: match3[3],
       osVersion: match3[4].trim(),
+      deviceModel: match3[5].trim(),
     };
   }
 
   // 2-part format (without packageName)
   const match2 = userAgent.match(
-    /^(.+?)\/(\S+)\s+\((\w+)\s+([^;]+);\s*[^)]+\)\s+\S+\/\S+$/
+    /^(.+?)\/(\S+)\s+\((\w+)\s+([^;]+);\s*([^)]+)\)\s+\S+\/\S+$/
   );
   if (match2) {
     return {
@@ -155,6 +157,7 @@ export function parseSDKUserAgent(userAgent: string): {
       browserVersion: match2[2],
       os: match2[3],
       osVersion: match2[4].trim(),
+      deviceModel: match2[5].trim(),
     };
   }
 

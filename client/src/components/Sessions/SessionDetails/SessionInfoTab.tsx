@@ -186,7 +186,7 @@ export function SessionInfoTab({
                     {t("App Version:")}
                   </span>
                   <span className="text-neutral-500 dark:text-neutral-400">
-                    v{sessionDetails.app_version}
+                    {sessionDetails.app_version}
                   </span>
                 </div>
               )}

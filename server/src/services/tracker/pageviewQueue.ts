@@ -123,7 +123,7 @@ class PageviewQueue {
         is_tor: dataForIp?.isTor ?? null,
         is_satellite: dataForIp?.isSatellite ?? null,
         app_version: pv.app_version || "",
-        device_model: pv.device_model || "",
+        device_model: pv.device_model || sdkUA?.deviceModel || "",
       };
     });
 
