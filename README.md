@@ -82,6 +82,7 @@ See how Rybbit compares to other analytics solutions:
 | **Error Tracking**                | ✅     | ❌         | ❌         | ❌         |
 | **Public Dashboards**             | ✅     | ❌         | ✅         | ❌         |
 | **Organizations**                 | ✅     | ✅         | ✅         | ✅         |
+| **SSO / OpenID Connect**          | ✅     | ✅         | ✅         | ✅         |
 | **Free Tier**                     | ✅     | ✅         | ❌         | ✅         |
 | **Frog 🐸**                       | ✅     | ❌         | ❌         | ❌         |
 

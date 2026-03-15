@@ -8,7 +8,7 @@ import { Turnstile } from "@/components/auth/Turnstile";
 import { useExtracted } from "next-intl";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { RybbitTextLogo } from "../../components/RybbitLogo";
 import { SpinningGlobe } from "../../components/SpinningGlobe";
 import { useSetPageTitle } from "../../hooks/useSetPageTitle";
@@ -73,6 +73,19 @@ export default function Page() {
 
   const turnstileEnabled = IS_CLOUD && process.env.NODE_ENV === "production";
 
+  // Auto-redirect to SSO if internal auth is disabled and there's only one OIDC provider
+  useEffect(() => {
+    if (!isLoadingConfigs && configs && !configs.internalAuthEnabled && configs.enabledOIDCProviders.length === 1) {
+      const provider = configs.enabledOIDCProviders[0];
+      authClient.signIn.oauth2({
+        providerId: provider.providerId,
+        callbackURL: "/",
+      }).catch(err => {
+        setError(String(err));
+      });
+    }
+  }, [configs, isLoadingConfigs]);
+
   return (
     <div className="flex h-dvh w-full">
       {/* Left panel - login form */}
@@ -87,55 +100,57 @@ export default function Page() {
           <h1 className="text-lg text-neutral-600 dark:text-neutral-300 mb-6">{t("Welcome back")}</h1>
           <div className="flex flex-col gap-4">
             <SocialButtons onError={setError} />
-            <form onSubmit={handleSubmit}>
-              <div className="flex flex-col gap-4">
-                <AuthInput
-                  id="email"
-                  label={t("Email")}
-                  type="email"
-                  placeholder="example@email.com"
-                  required
-                  value={email}
-                  onChange={e => setEmail(e.target.value)}
-                />
-
-                <AuthInput
-                  id="password"
-                  label={t("Password")}
-                  type="password"
-                  placeholder="••••••••"
-                  required
-                  value={password}
-                  onChange={e => setPassword(e.target.value)}
-                  rightElement={
-                    IS_CLOUD && (
-                      <Link href="/reset-password" className="text-xs text-muted-foreground hover:text-primary">
-                        {t("Forgot password?")}
-                      </Link>
-                    )
-                  }
-                />
-
-                {turnstileEnabled && (
-                  <Turnstile
-                    onSuccess={token => setTurnstileToken(token)}
-                    onError={() => setTurnstileToken("")}
-                    onExpire={() => setTurnstileToken("")}
-                    className="flex justify-center"
+            {configs?.internalAuthEnabled && (
+              <form onSubmit={handleSubmit}>
+                <div className="flex flex-col gap-4">
+                  <AuthInput
+                    id="email"
+                    label={t("Email")}
+                    type="email"
+                    placeholder="example@email.com"
+                    required
+                    value={email}
+                    onChange={e => setEmail(e.target.value)}
                   />
-                )}
 
-                <AuthButton
-                  isLoading={isLoading}
-                  loadingText={t("Logging in...")}
-                  disabled={turnstileEnabled ? !turnstileToken || isLoading : isLoading}
-                >
-                  {t("Login")}
-                </AuthButton>
+                  <AuthInput
+                    id="password"
+                    label={t("Password")}
+                    type="password"
+                    placeholder="••••••••"
+                    required
+                    value={password}
+                    onChange={e => setPassword(e.target.value)}
+                    rightElement={
+                      IS_CLOUD && (
+                        <Link href="/reset-password" className="text-xs text-muted-foreground hover:text-primary">
+                          {t("Forgot password?")}
+                        </Link>
+                      )
+                    }
+                  />
 
-                <AuthError error={error} title={t("Error Logging In")} />
-              </div>
-            </form>
+                  {turnstileEnabled && (
+                    <Turnstile
+                      onSuccess={token => setTurnstileToken(token)}
+                      onError={() => setTurnstileToken("")}
+                      onExpire={() => setTurnstileToken("")}
+                      className="flex justify-center"
+                    />
+                  )}
+
+                  <AuthButton
+                    isLoading={isLoading}
+                    loadingText={t("Logging in...")}
+                    disabled={turnstileEnabled ? !turnstileToken || isLoading : isLoading}
+                  >
+                    {t("Login")}
+                  </AuthButton>
+
+                  <AuthError error={error} title={t("Error Logging In")} />
+                </div>
+              </form>
+            )}
 
             {(!configs?.disableSignup || !isLoadingConfigs) && (
               <div className="text-center text-sm">

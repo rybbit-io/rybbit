@@ -1,3 +1,4 @@
+import { SocialProviders } from "better-auth/social-providers";
 import dotenv from "dotenv";
 
 dotenv.config();
@@ -5,6 +6,8 @@ dotenv.config();
 export const IS_CLOUD = process.env.CLOUD === "true";
 export const DISABLE_SIGNUP = process.env.DISABLE_SIGNUP === "true";
 export const DISABLE_TELEMETRY = process.env.DISABLE_TELEMETRY === "true";
+export const INTERNAL_AUTHENTICATION_ENABLED = process.env.INTERNAL_AUTHENTICATION_ENABLED !== "false";
+
 export const SECRET = process.env.BETTER_AUTH_SECRET;
 export const MAPBOX_TOKEN = process.env.MAPBOX_TOKEN;
 
@@ -509,3 +512,79 @@ export const getStripePrices = () => {
     priceId: TEST_TO_PRICE_ID[price.name as keyof typeof TEST_TO_PRICE_ID],
   }));
 };
+
+export const getOIDCProviders = () => {
+  const providers: Array<{ providerId: string; clientId: string; clientSecret: string; discoveryUrl: string; scopes: string[]; name: string }> = [];
+  const oidcClientIdRegex = /^OIDC_([A-Z0-9_]+)_CLIENT_ID$/;
+  const oidcClientSecretRegex = /^OIDC_([A-Z0-9_]+)_CLIENT_SECRET$/;
+  const oidcDiscoveryUrlRegex = /^OIDC_([A-Z0-9_]+)_DISCOVERY_URL$/;
+  const oidcNameRegex = /^OIDC_([A-Z0-9_]+)_NAME$/;
+
+  const providerIds = new Set<string>();
+
+  for (const key in process.env) {
+    const clientIdMatch = key.match(oidcClientIdRegex);
+    if (clientIdMatch && process.env[key]) {
+      providerIds.add(clientIdMatch[1]);
+    }
+
+    const clientSecretMatch = key.match(oidcClientSecretRegex);
+    if (clientSecretMatch && process.env[key]) {
+      providerIds.add(clientSecretMatch[1]);
+    }
+
+    const discoveryUrlMatch = key.match(oidcDiscoveryUrlRegex);
+    if (discoveryUrlMatch && process.env[key]) {
+      providerIds.add(discoveryUrlMatch[1]);
+    }
+
+    const nameMatch = key.match(oidcNameRegex);
+    if (nameMatch && process.env[key]) {
+      providerIds.add(nameMatch[1]);
+    }
+  }
+
+  for (const providerId of providerIds) {
+    const clientId = process.env[`OIDC_${providerId}_CLIENT_ID`];
+    const clientSecret = process.env[`OIDC_${providerId}_CLIENT_SECRET`];
+    const discoveryUrl = process.env[`OIDC_${providerId}_DISCOVERY_URL`];
+    const name = process.env[`OIDC_${providerId}_NAME`] || `SSO (${providerId.toLowerCase()})`;
+
+    try {
+      new URL(discoveryUrl || "");
+    } catch {
+      continue; // Skip invalid URLs
+    }
+
+    if (clientId && clientSecret && discoveryUrl) {
+      providers.push({
+        providerId: providerId.toLowerCase(),
+        clientId,
+        clientSecret,
+        discoveryUrl,
+        scopes: ["openid", "profile", "email"],
+        name
+      });
+    }
+  }
+
+  return providers;
+}
+
+
+export const getSocialProviders = (): SocialProviders => {
+  return {
+    ...(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET ? {
+      google: {
+        clientId: process.env.GOOGLE_CLIENT_ID,
+        clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+      }
+    } : {}),
+    ...(process.env.GITHUB_CLIENT_ID && process.env.GITHUB_CLIENT_SECRET ? {
+      github: {
+        clientId: process.env.GITHUB_CLIENT_ID,
+        clientSecret: process.env.GITHUB_CLIENT_SECRET,
+      }
+    } : {}),
+  }
+}

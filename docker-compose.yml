@@ -90,6 +90,12 @@ services:
       - DISABLE_SIGNUP=${DISABLE_SIGNUP}
       - DISABLE_TELEMETRY=${DISABLE_TELEMETRY}
       - MAPBOX_TOKEN=${MAPBOX_TOKEN}
+
+      # Optional for OpenID Connect. Can have multiple OIDC providers by adding more env vars with different "PROVIDER"
+      # - OIDC_{PROVIDER}_NAME="SSO Provider"
+      # - OIDC_{PROVIDER}_CLIENT_ID=${OIDC_PROVIDER_CLIENT_ID}
+      # - OIDC_{PROVIDER}_CLIENT_SECRET=${OIDC_PROVIDER_CLIENT_SECRET}
+      # - OIDC_{PROVIDER}_DISCOVERY_URL=${OIDC_PROVIDER_DISCOVERY_URL} # e.g. https://accounts.google.com/.well-known/openid-configuration
     depends_on:
       clickhouse:
         condition: service_healthy

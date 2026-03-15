@@ -6,6 +6,7 @@ import { ArrowRight } from "lucide-react";
 import { useExtracted } from "next-intl";
 import Link from "next/link";
 
+import { useConfigs } from "../../../lib/configs";
 import { IS_CLOUD } from "../../../lib/const";
 
 interface AccountStepProps {
@@ -32,49 +33,54 @@ export function AccountStep({
   setError,
 }: AccountStepProps) {
   const t = useExtracted();
+  const { configs } = useConfigs();
 
   return (
     <div>
       <h2 className="text-2xl font-semibold mb-4">{t("Signup")}</h2>
       <div className="space-y-4">
         <SocialButtons onError={setError} callbackURL="/signup?step=2" mode="signup" />
-        <AuthInput
-          id="email"
-          label={t("Email")}
-          type="email"
-          placeholder="email@example.com"
-          required
-          value={email}
-          onChange={e => setEmail(e.target.value)}
-        />
-        <AuthInput
-          id="password"
-          label={t("Password")}
-          type="password"
-          placeholder="••••••••"
-          required
-          value={password}
-          onChange={e => setPassword(e.target.value)}
-        />
-        {IS_CLOUD && (
-          <Turnstile
-            onSuccess={token => setTurnstileToken(token)}
-            onError={() => setTurnstileToken("")}
-            onExpire={() => setTurnstileToken("")}
-            className="flex justify-center"
-          />
+        {configs?.internalAuthEnabled && (
+          <>
+            <AuthInput
+              id="email"
+              label={t("Email")}
+              type="email"
+              placeholder="email@example.com"
+              required
+              value={email}
+              onChange={e => setEmail(e.target.value)}
+            />
+            <AuthInput
+              id="password"
+              label={t("Password")}
+              type="password"
+              placeholder="••••••••"
+              required
+              value={password}
+              onChange={e => setPassword(e.target.value)}
+            />
+            {IS_CLOUD && (
+              <Turnstile
+                onSuccess={token => setTurnstileToken(token)}
+                onError={() => setTurnstileToken("")}
+                onExpire={() => setTurnstileToken("")}
+                className="flex justify-center"
+              />
+            )}
+            <AuthButton
+              isLoading={isLoading}
+              loadingText={t("Creating account...")}
+              onClick={onSubmit}
+              type="button"
+              className="mt-6 transition-all duration-300 h-11"
+              disabled={IS_CLOUD ? !turnstileToken || isLoading : isLoading}
+            >
+              {t("Continue")}
+              <ArrowRight className="ml-2 h-4 w-4" />
+            </AuthButton>
+          </>
         )}
-        <AuthButton
-          isLoading={isLoading}
-          loadingText={t("Creating account...")}
-          onClick={onSubmit}
-          type="button"
-          className="mt-6 transition-all duration-300 h-11"
-          disabled={IS_CLOUD ? !turnstileToken || isLoading : isLoading}
-        >
-          {t("Continue")}
-          <ArrowRight className="ml-2 h-4 w-4" />
-        </AuthButton>
         <div className="text-center text-sm">
           {t("Already have an account?")}{" "}
           <Link
