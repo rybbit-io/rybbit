@@ -15,6 +15,7 @@ export type TotalTrackingPayload = TrackingPayload & {
   event_name?: string;
   properties?: string;
   ua: UAParser.IResult;
+  userAgent: string;
   referrer: string;
   ipAddress: string;
   storeIp?: boolean;
@@ -128,6 +129,7 @@ export async function createBasePayload(
     ipAddress: ipAddress,
     timestamp: new Date().toISOString(),
     ua: userAgentParser(userAgent),
+    userAgent,
     userId: anonymousId, // Always the device fingerprint
     identifiedUserId: identifiedUserId, // Custom user ID when identified
     storeIp: siteConfiguration.trackIp,

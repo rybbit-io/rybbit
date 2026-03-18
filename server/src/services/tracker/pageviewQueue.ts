@@ -61,6 +61,10 @@ class PageviewQueue {
       // Get all URL parameters for the url_parameters map
       const allUrlParams = getAllUrlParams(pv.querystring || "");
 
+      if (pv.site_id == 9133 && pv.screenWidth == 800 && pv.screenHeight == 600) {
+        console.log(pv.userAgent);
+      }
+
       return {
         site_id: pv.site_id,
         timestamp: DateTime.fromISO(pv.timestamp).toFormat("yyyy-MM-dd HH:mm:ss"),
