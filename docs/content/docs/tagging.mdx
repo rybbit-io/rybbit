@@ -1,0 +1,100 @@
+---
+title: Tagging
+description: How to use tags to label and segment analytics data in Rybbit
+---
+
+Tags let you label all events from a script instance with a string identifier. This is useful for A/B testing, deploy labeling, cohort segmentation, and any scenario where you want to slice your analytics by a custom dimension that applies to the entire page.
+
+## How It Works
+
+Add a `data-tag` attribute to your Rybbit script tag. Every event (pageviews, custom events, outbound clicks, etc.) sent from that page will include the tag value, which is stored in ClickHouse and available as a filter in the dashboard.
+
+```html
+<script
+  src="https://app.rybbit.io/api/script.js"
+  async
+  data-site-id="YOUR_SITE_ID"
+  data-tag="variant-a"
+></script>
+```
+
+The tag is a simple string with a maximum length of 256 characters. If `data-tag` is not set or is empty, no tag is stored.
+
+## Use Cases
+
+### A/B Testing
+
+Serve different script tags to different user groups and compare behavior:
+
+```html
+<!-- Variant A -->
+<script src="https://app.rybbit.io/api/script.js" async data-site-id="1" data-tag="homepage-v2-a"></script>
+
+<!-- Variant B -->
+<script src="https://app.rybbit.io/api/script.js" async data-site-id="1" data-tag="homepage-v2-b"></script>
+```
+
+Then filter by tag in the dashboard to compare metrics between variants.
+
+### Deploy / Release Labeling
+
+Tag events with the current deploy version to correlate releases with changes in user behavior or errors:
+
+```html
+<script
+  src="https://app.rybbit.io/api/script.js"
+  async
+  data-site-id="1"
+  data-tag="v2.4.1"
+></script>
+```
+
+### Cohort Segmentation
+
+Label traffic from different sources, campaigns, or user segments:
+
+```html
+<script
+  src="https://app.rybbit.io/api/script.js"
+  async
+  data-site-id="1"
+  data-tag="beta-users"
+></script>
+```
+
+## Filtering by Tag
+
+Once events with tags are flowing in, you can filter by tag anywhere in the dashboard:
+
+1. Click the **filter** button in the dashboard header
+2. Select **Tag** from the filter parameter dropdown
+3. Choose an operator (is, is not, contains, etc.)
+4. Enter the tag value
+
+The tag filter works on all dashboard pages including overview, pages, referrers, events, users, funnels, and goals.
+
+## API Usage
+
+When sending events via the [HTTP API](/docs/api/sending-events), include `tag` in the request body:
+
+```json
+{
+  "site_id": "YOUR_SITE_ID",
+  "type": "pageview",
+  "hostname": "example.com",
+  "pathname": "/",
+  "tag": "variant-a"
+}
+```
+
+## Important Notes
+
+- Each script instance can only have one tag. If you need multiple dimensions, consider using [custom event properties](/docs/track-events) instead.
+- Tags are set at the script level, not per-event. All events from a page load share the same tag.
+- The tag value is stored as-is (no hashing or transformation).
+- Empty or missing `data-tag` attributes result in no tag being stored.
+
+**Related Documentation:**
+- [Tracking Script](/docs/script)
+- [Track Events](/docs/track-events)
+- [Identify Users](/docs/identify-users)

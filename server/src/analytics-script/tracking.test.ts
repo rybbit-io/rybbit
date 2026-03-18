@@ -94,6 +94,7 @@ describe("Tracker", () => {
       trackButtonClicks: false,
       trackCopy: false,
       trackFormInteractions: false,
+      tag: "",
     };
 
     tracker = new Tracker(config);

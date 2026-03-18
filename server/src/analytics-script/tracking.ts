@@ -93,6 +93,10 @@ export class Tracker {
       payload.user_id = this.customUserId;
     }
 
+    if (this.config.tag) {
+      payload.tag = this.config.tag;
+    }
+
     return payload;
   }
 

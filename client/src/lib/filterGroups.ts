@@ -24,6 +24,7 @@ const BASE_FILTERS: FilterParameter[] = [
   "user_id",
   "lat",
   "lon",
+  "tag",
 ];
 
 export const SESSION_PAGE_FILTERS: FilterParameter[] = [...BASE_FILTERS, "pathname", "entry_page", "exit_page", "event_name"];

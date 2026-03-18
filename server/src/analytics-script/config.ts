@@ -83,6 +83,8 @@ export async function parseScriptConfig(scriptTag: HTMLScriptElement): Promise<S
     ? Math.min(100, Math.max(0, parseInt(sampleRateAttr, 10)))
     : undefined;
 
+  const tag = scriptTag.getAttribute("data-tag") || "";
+
   // Default config with minimal settings
   const defaultConfig: ScriptConfig = {
     namespace,
@@ -105,6 +107,7 @@ export async function parseScriptConfig(scriptTag: HTMLScriptElement): Promise<S
     trackButtonClicks: false,
     trackCopy: false,
     trackFormInteractions: false,
+    tag,
     // rrweb session replay options (undefined means use rrweb defaults)
     sessionReplayBlockClass,
     sessionReplayBlockSelector,

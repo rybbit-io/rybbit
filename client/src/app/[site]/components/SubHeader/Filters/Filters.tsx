@@ -52,6 +52,7 @@ export function Filters({ availableFilters }: { availableFilters?: FilterParamet
       case "asn_org": return t("ASN Org");
       case "asn_type": return t("ASN Type");
       case "asn_domain": return t("ASN Domain");
+      case "tag": return t("Tag");
       default: return parameter;
     }
   };

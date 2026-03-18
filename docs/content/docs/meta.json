@@ -11,6 +11,7 @@
     "track-events",
     "autocapture",
     "identify-users",
+    "tagging",
     "guides",
     "proxy-guide",
     "sdks",

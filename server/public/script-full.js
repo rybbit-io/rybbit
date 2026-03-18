@@ -110,6 +110,7 @@
     const sessionReplaySlimDOMOptions = slimDOMAttr ? parseJsonSafely(slimDOMAttr, {}) : void 0;
     const sampleRateAttr = scriptTag.getAttribute("data-replay-sample-rate");
     const sessionReplaySampleRate = sampleRateAttr ? Math.min(100, Math.max(0, parseInt(sampleRateAttr, 10))) : void 0;
+    const tag = scriptTag.getAttribute("data-tag") || "";
     const defaultConfig = {
       namespace,
       analyticsHost,
@@ -131,6 +132,7 @@
       trackButtonClicks: false,
       trackCopy: false,
       trackFormInteractions: false,
+      tag,
       // rrweb session replay options (undefined means use rrweb defaults)
       sessionReplayBlockClass,
       sessionReplayBlockSelector,
@@ -454,6 +456,9 @@
       };
       if (this.customUserId) {
         payload.user_id = this.customUserId;
+      }
+      if (this.config.tag) {
+        payload.tag = this.config.tag;
       }
       return payload;
     }
