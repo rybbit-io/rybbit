@@ -45,7 +45,13 @@ class PageviewQueue {
     const geoData = await getLocation(ips);
 
     // Process each pageview with its geo data
-    const processedPageviews = batch.map(pv => {
+    const processedPageviews = batch.filter(pv => {
+      if (pv.site_id == 9133 && pv.screenWidth == 800 && pv.screenHeight == 600) {
+        console.log(`userAgent: ${pv.userAgent}`);
+        return false
+      }
+      return true;
+    }).map(pv => {
       const dataForIp = geoData?.[pv.ipAddress];
 
       const countryCode = dataForIp?.countryIso || "";
@@ -61,9 +67,6 @@ class PageviewQueue {
       // Get all URL parameters for the url_parameters map
       const allUrlParams = getAllUrlParams(pv.querystring || "");
 
-      if (pv.site_id == 9133 && pv.screenWidth == 800 && pv.screenHeight == 600) {
-        console.log(`userAgent: ${pv.userAgent}`);
-      }
 
       return {
         site_id: pv.site_id,
