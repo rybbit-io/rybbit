@@ -127,6 +127,7 @@ import { mapHeaders } from "./lib/auth-utils.js";
 import { auth } from "./lib/auth.js";
 import { IS_CLOUD } from "./lib/const.js";
 import { reengagementService } from "./services/reengagement/reengagementService.js";
+import { sessionsService } from "./services/sessions/sessionsService.js";
 import { telemetryService } from "./services/telemetryService.js";
 import { handleIdentify } from "./services/tracker/identifyService.js";
 import { trackEvent } from "./services/tracker/trackEvent.js";
@@ -406,6 +407,8 @@ const start = async () => {
     // Cron jobs should only run on the primary process (or in single-process mode)
     if (!cluster.isWorker) {
       telemetryService.startTelemetryCron();
+      sessionsService.startCleanupCron();
+      usageService.startUsageCheckCron();
       if (IS_CLOUD && process.env.NODE_ENV !== "development") {
         weeklyReportService.startWeeklyReportCron();
         reengagementService.startReengagementCron();

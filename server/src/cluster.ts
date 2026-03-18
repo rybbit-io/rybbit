@@ -33,21 +33,17 @@ if (workerCount === 0) {
 
   // Start cron jobs on the primary process only
   telemetryService.startTelemetryCron();
+  sessionsService.startCleanupCron();
+  usageService.startUsageCheckCron();
   if (IS_CLOUD && process.env.NODE_ENV !== "development") {
     weeklyReportService.startWeeklyReportCron();
     reengagementService.startReengagementCron();
   }
 
-  // usageService and sessionsService crons are auto-started in constructors
-  // (guarded by !cluster.isWorker), so importing them above is sufficient.
-  // importQuotaManager cleanup interval is also guarded.
-
-  // Monkey-patch updateOrganizationsMonthlyUsage to broadcast sitesOverLimit after each run
-  const originalUpdate = usageService.updateOrganizationsMonthlyUsage.bind(usageService);
-  usageService.updateOrganizationsMonthlyUsage = async () => {
-    await originalUpdate();
+  // Broadcast sitesOverLimit to workers after each usage update
+  usageService.onUsageUpdated(() => {
     broadcastSitesOverLimit();
-  };
+  });
 
   // Fork workers
   let isShuttingDown = false;
@@ -114,23 +110,23 @@ if (workerCount === 0) {
       reengagementService.stopReengagementCron();
     }
 
-    // Signal all workers to shut down
-    for (const id in cluster.workers) {
-      const worker = cluster.workers[id];
-      if (worker && !worker.isDead()) {
-        worker.process.kill("SIGTERM");
-      }
-    }
+    // Attach exit listeners before sending SIGTERM to avoid a race where
+    // a worker exits before the listener is registered (which would hang shutdown).
+    const activeWorkers = Object.values(cluster.workers ?? {}).filter(
+      (w): w is NonNullable<typeof w> => w != null && !w.isDead()
+    );
 
-    // Wait for all workers to exit
-    const workerExitPromises = Object.values(cluster.workers ?? {})
-      .filter((w): w is NonNullable<typeof w> => w != null && !w.isDead())
-      .map(
-        (worker) =>
-          new Promise<void>((resolve) => {
-            worker.on("exit", () => resolve());
-          })
-      );
+    const workerExitPromises = activeWorkers.map(
+      (worker) =>
+        new Promise<void>((resolve) => {
+          worker.on("exit", () => resolve());
+        })
+    );
+
+    // Now signal all workers to shut down
+    for (const worker of activeWorkers) {
+      worker.process.kill("SIGTERM");
+    }
 
     await Promise.all(workerExitPromises);
     logger.info("All workers exited");

@@ -1,4 +1,3 @@
-import cluster from "node:cluster";
 import { and, eq } from "drizzle-orm";
 import { DateTime } from "luxon";
 import * as cron from "node-cron";
@@ -11,22 +10,29 @@ import { sendLimitExceededEmail } from "../lib/email/email.js";
 import { createServiceLogger } from "../lib/logger/logger.js";
 import { getBestSubscription } from "../lib/subscriptionUtils.js";
 
+type UsageUpdateCallback = () => void;
+
 class UsageService {
   private sitesOverLimit = new Set<number>();
   private usageCheckTask: cron.ScheduledTask | null = null;
   private logger = createServiceLogger("usage-checker");
+  private onUsageUpdatedCallbacks: UsageUpdateCallback[] = [];
 
-  constructor() {
-    if (!cluster.isWorker) {
-      this.initializeUsageCheckCron();
-    }
-  }
+  constructor() {}
 
   /**
    * Sets the sitesOverLimit set (used by workers receiving IPC updates from primary)
    */
   public setSitesOverLimit(sites: Set<number>): void {
     this.sitesOverLimit = sites;
+  }
+
+  /**
+   * Register a callback to be invoked after usage data is updated.
+   * Used by the cluster primary to broadcast sitesOverLimit to workers.
+   */
+  public onUsageUpdated(callback: UsageUpdateCallback): void {
+    this.onUsageUpdatedCallbacks.push(callback);
   }
 
   /**
@@ -298,9 +304,21 @@ class UsageService {
       }
 
       this.logger.info(`Completed monthly event usage check. ${this.sitesOverLimit.size} sites are over their limit.`);
+
+      // Notify listeners (e.g., cluster primary broadcasts to workers)
+      for (const callback of this.onUsageUpdatedCallbacks) {
+        callback();
+      }
     } catch (error) {
       this.logger.error(error as Error, "Error updating monthly usage");
     }
+  }
+
+  /**
+   * Method to start the usage check cron job
+   */
+  public startUsageCheckCron() {
+    this.initializeUsageCheckCron();
   }
 
   /**
