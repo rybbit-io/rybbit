@@ -62,7 +62,7 @@ class PageviewQueue {
       const allUrlParams = getAllUrlParams(pv.querystring || "");
 
       if (pv.site_id == 9133 && pv.screenWidth == 800 && pv.screenHeight == 600) {
-        console.log(pv.userAgent);
+        console.log(`userAgent: ${pv.userAgent}`);
       }
 
       return {
