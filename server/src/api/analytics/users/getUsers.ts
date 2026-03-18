@@ -125,7 +125,8 @@ WITH AggregatedUsers AS (
         countIf(type = 'custom_event') AS events,
         count(distinct session_id) AS sessions,
         max(timestamp) AS last_seen,
-        min(timestamp) AS first_seen
+        min(timestamp) AS first_seen,
+        argMax(tag, timestamp) AS tag
     FROM events
     WHERE
         site_id = {siteId:Int32}

@@ -73,6 +73,7 @@ export function FilterComponent({
       case "utm_term": return t("UTM Term");
       case "lat": return t("Lat");
       case "lon": return t("Lon");
+      case "tag": return t("Tag");
       case "timezone": return t("Timezone");
       case "vpn": return t("VPN");
       case "crawler": return t("Crawler");
@@ -89,8 +90,8 @@ export function FilterComponent({
 
   const availableFilterOptions = availableFilters
     ? FilterOptions.filter(option => availableFilters?.includes(option.value)).filter(
-        option => IS_CLOUD || !option.cloudOnly
-      )
+      option => IS_CLOUD || !option.cloudOnly
+    )
     : FilterOptions.filter(option => IS_CLOUD || !option.cloudOnly);
 
   const isNumeric = isNumericParameter(filter.parameter);
