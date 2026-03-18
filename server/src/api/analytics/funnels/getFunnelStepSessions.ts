@@ -259,7 +259,7 @@ export async function getFunnelStepSessions(req: FastifyRequest<GetFunnelStepSes
       query_params: {
         siteId: Number(siteId),
         limit: limit || 25,
-        offset: (page - 1) * (limit || 25),
+        offset: ((page || 1) - 1) * (limit || 25),
       },
     });
 

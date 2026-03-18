@@ -166,7 +166,7 @@ export async function getGoalSessions(req: FastifyRequest<GetGoalSessionsRequest
       query_params: {
         siteId: Number(siteId),
         limit: limit || 25,
-        offset: (page - 1) * (limit || 25),
+        offset: ((page || 1) - 1) * (limit || 25),
       },
     });
 
