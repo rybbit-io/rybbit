@@ -50,7 +50,7 @@ function SignupPageContent() {
   // Plan selection (cloud step 2)
   const [eventLimitIndex, setEventLimitIndex] = useState(0);
   const [isAnnual, setIsAnnual] = useState(true);
-  const [selectedPlan, setSelectedPlan] = useState<"basic" | "standard" | "pro">("pro");
+  const [selectedPlan, setSelectedPlan] = useState<"standard" | "pro">("pro");
   const [checkoutClientSecret, setCheckoutClientSecret] = useState<string | null>(null);
 
   // Setup: Organization + website

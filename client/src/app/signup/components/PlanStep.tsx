@@ -2,7 +2,6 @@ import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { ArrowRight } from "lucide-react";
 import { useExtracted } from "next-intl";
-import { useEffect } from "react";
 
 import { cn } from "../../../lib/utils";
 import { EVENT_TIERS, findPriceForTier, formatEventTier } from "../../subscribe/components/utils";
@@ -12,8 +11,8 @@ interface PlanStepProps {
   setEventLimitIndex: (v: number) => void;
   isAnnual: boolean;
   setIsAnnual: (v: boolean) => void;
-  selectedPlan: "basic" | "standard" | "pro";
-  setSelectedPlan: (v: "basic" | "standard" | "pro") => void;
+  selectedPlan: "standard" | "pro";
+  setSelectedPlan: (v: "standard" | "pro") => void;
   onSubscribe: () => void;
   isLoading: boolean;
 }
@@ -29,7 +28,7 @@ function PlanRow({
   disabled,
   disabledReason,
 }: {
-  plan: "basic" | "standard" | "pro";
+  plan: "standard" | "pro";
   label: string;
   description: string;
   eventLimit: number | string;
@@ -121,13 +120,6 @@ export function PlanStep({
 }: PlanStepProps) {
   const t = useExtracted();
   const eventLimit = EVENT_TIERS[eventLimitIndex];
-  const basicAvailable = typeof eventLimit === "number" && eventLimit <= 250_000;
-
-  useEffect(() => {
-    if (!basicAvailable && selectedPlan === "basic") {
-      setSelectedPlan("standard");
-    }
-  }, [basicAvailable, selectedPlan]);
 
   return (
     <div>
@@ -197,17 +189,6 @@ export function PlanStep({
         {/* Plan rows */}
         {eventLimit !== "Custom" ? (
           <div className="space-y-2">
-            <PlanRow
-              plan="basic"
-              label={t("Basic")}
-              description={t("1 site, 1 team member, basic features")}
-              eventLimit={basicAvailable ? eventLimit : 250_000}
-              isAnnual={isAnnual}
-              selectedPlan={selectedPlan}
-              onSelect={() => setSelectedPlan("basic")}
-              disabled={!basicAvailable}
-              disabledReason={!basicAvailable ? "Up to 250k events" : undefined}
-            />
             <PlanRow
               plan="standard"
               label={t("Standard")}

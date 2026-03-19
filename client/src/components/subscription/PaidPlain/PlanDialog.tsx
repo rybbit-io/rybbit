@@ -88,7 +88,7 @@ export function PlanDialog({ open, onOpenChange, currentPlanName, hasActiveSubsc
     }
   };
 
-  const getPriceForTier = (events: number, planType: "basic" | "standard" | "pro") => {
+  const getPriceForTier = (events: number, planType: "standard" | "pro") => {
     const suffix = isAnnual ? "-annual" : "";
     const planName = `${planType}${events >= 1_000_000 ? events / 1_000_000 + "m" : events / 1_000 + "k"}${suffix}`;
     const plan = stripePrices.find(p => p.name === planName);
@@ -167,15 +167,12 @@ export function PlanDialog({ open, onOpenChange, currentPlanName, hasActiveSubsc
           </div>
 
           {/* Plan columns */}
-          <div className="grid grid-cols-3 gap-6">
+          <div className="grid grid-cols-2 gap-6">
             {[
-              { type: "basic" as const, title: "Basic", subtitle: "For personal projects" },
               { type: "standard" as const, title: "Standard", subtitle: "Core analytics features" },
               { type: "pro" as const, title: "Pro", subtitle: "Advanced features + session replays" },
             ].map(({ type, title, subtitle }) => {
-              const tiers = type === "basic"
-                ? STRIPE_TIERS.filter(t => t.events <= 250_000)
-                : STRIPE_TIERS;
+              const tiers = STRIPE_TIERS;
 
               return (
                 <div key={type} className="space-y-3">
