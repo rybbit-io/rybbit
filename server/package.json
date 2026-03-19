@@ -51,7 +51,7 @@
     "node-cache": "^5.1.2",
     "node-cron": "4.0.6",
     "pg": "8.16.0",
-    "postgres": "3.4.5",
+    "postgres": "3.4.8",
     "psl": "^1.15.0",
     "puppeteer": "^24.34.0",
     "react": "19.2.1",
