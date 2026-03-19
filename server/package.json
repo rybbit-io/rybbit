@@ -55,7 +55,7 @@
     "psl": "^1.15.0",
     "puppeteer": "^24.34.0",
     "react": "19.2.1",
-    "react-dom": "19.2.1",
+    "react-dom": "19.2.4",
     "resend": "^4.5.1",
     "rrweb": "^2.0.0-alpha.20",
     "sqlstring": "2.3.3",
