@@ -317,7 +317,6 @@ CREATE TABLE IF NOT EXISTS "user" (
 	"banned" boolean,
 	"banReason" text,
 	"banExpires" timestamp,
-	"stripeCustomerId" text,
 	"overMonthlyLimit" boolean DEFAULT false,
 	"monthlyEventCount" integer DEFAULT 0,
 	"sendAutoEmailReports" boolean DEFAULT true,
@@ -474,19 +473,19 @@ EXCEPTION
 END $$;
 --> statement-breakpoint
 DO $$ BEGIN
- ALTER TABLE "uptime_alert_history" ADD CONSTRAINT "uptime_alert_history_alert_id_uptime_alerts_id_fk" FOREIGN KEY ("alert_id") REFERENCES "public"."uptime_alerts"("id") ON DELETE no action ON UPDATE no action;
+ ALTER TABLE "uptime_alert_history" ADD CONSTRAINT "uptime_alert_history_alert_id_uptime_alerts_id_fk" FOREIGN KEY ("alert_id") REFERENCES "public"."uptime_alerts"("id") ON DELETE cascade ON UPDATE no action;
 EXCEPTION
  WHEN duplicate_object THEN null;
 END $$;
 --> statement-breakpoint
 DO $$ BEGIN
- ALTER TABLE "uptime_alert_history" ADD CONSTRAINT "uptime_alert_history_monitor_id_uptime_monitors_id_fk" FOREIGN KEY ("monitor_id") REFERENCES "public"."uptime_monitors"("id") ON DELETE no action ON UPDATE no action;
+ ALTER TABLE "uptime_alert_history" ADD CONSTRAINT "uptime_alert_history_monitor_id_uptime_monitors_id_fk" FOREIGN KEY ("monitor_id") REFERENCES "public"."uptime_monitors"("id") ON DELETE cascade ON UPDATE no action;
 EXCEPTION
  WHEN duplicate_object THEN null;
 END $$;
 --> statement-breakpoint
 DO $$ BEGIN
- ALTER TABLE "uptime_alerts" ADD CONSTRAINT "uptime_alerts_monitor_id_uptime_monitors_id_fk" FOREIGN KEY ("monitor_id") REFERENCES "public"."uptime_monitors"("id") ON DELETE no action ON UPDATE no action;
+ ALTER TABLE "uptime_alerts" ADD CONSTRAINT "uptime_alerts_monitor_id_uptime_monitors_id_fk" FOREIGN KEY ("monitor_id") REFERENCES "public"."uptime_monitors"("id") ON DELETE cascade ON UPDATE no action;
 EXCEPTION
  WHEN duplicate_object THEN null;
 END $$;
@@ -516,7 +515,7 @@ EXCEPTION
 END $$;
 --> statement-breakpoint
 DO $$ BEGIN
- ALTER TABLE "uptime_monitor_status" ADD CONSTRAINT "uptime_monitor_status_monitor_id_uptime_monitors_id_fk" FOREIGN KEY ("monitor_id") REFERENCES "public"."uptime_monitors"("id") ON DELETE no action ON UPDATE no action;
+ ALTER TABLE "uptime_monitor_status" ADD CONSTRAINT "uptime_monitor_status_monitor_id_uptime_monitors_id_fk" FOREIGN KEY ("monitor_id") REFERENCES "public"."uptime_monitors"("id") ON DELETE cascade ON UPDATE no action;
 EXCEPTION
  WHEN duplicate_object THEN null;
 END $$;

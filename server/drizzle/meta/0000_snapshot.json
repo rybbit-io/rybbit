@@ -1,5 +1,5 @@
 {
-  "id": "aed9a9f8-dce1-43ea-954c-b57311a48d4f",
+  "id": "4fb75cfb-346a-49ac-a1ec-162c0824ba4c",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -1690,7 +1690,7 @@
           "columnsTo": [
             "id"
           ],
-          "onDelete": "no action",
+          "onDelete": "cascade",
           "onUpdate": "no action"
         },
         "uptime_alert_history_monitor_id_uptime_monitors_id_fk": {
@@ -1703,7 +1703,7 @@
           "columnsTo": [
             "id"
           ],
-          "onDelete": "no action",
+          "onDelete": "cascade",
           "onUpdate": "no action"
         }
       },
@@ -1774,7 +1774,7 @@
           "columnsTo": [
             "id"
           ],
-          "onDelete": "no action",
+          "onDelete": "cascade",
           "onUpdate": "no action"
         }
       },
@@ -2053,7 +2053,7 @@
           "columnsTo": [
             "id"
           ],
-          "onDelete": "no action",
+          "onDelete": "cascade",
           "onUpdate": "no action"
         }
       },
@@ -2290,12 +2290,6 @@
         "banExpires": {
           "name": "banExpires",
           "type": "timestamp",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "stripeCustomerId": {
-          "name": "stripeCustomerId",
-          "type": "text",
           "primaryKey": false,
           "notNull": false
         },
