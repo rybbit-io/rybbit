@@ -46,6 +46,7 @@ COPY --from=builder /app/server/dist ./dist
 COPY --from=builder /app/server/node_modules ./node_modules
 COPY --from=builder /app/server/docker-entrypoint.sh /docker-entrypoint.sh
 COPY --from=builder /app/server/drizzle.config.ts ./drizzle.config.ts
+COPY --from=builder /app/server/drizzle ./drizzle
 COPY --from=builder /app/server/public ./public
 COPY --from=builder /app/server/src ./src
 COPY --from=builder /app/shared ./shared
