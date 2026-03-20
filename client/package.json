@@ -13,6 +13,8 @@
     "format:check": "prettier --check \"src/**/*.{js,jsx,ts,tsx,json,css,scss,md}\""
   },
   "dependencies": {
+    "@better-auth/api-key": "^1.5.5",
+    "@better-auth/core": "^1.5.5",
     "@calcom/embed-react": "^1.5.3",
     "@hookform/resolvers": "5.0.1",
     "@icons-pack/react-simple-icons": "^13.6.0",
@@ -52,7 +54,8 @@
     "@types/papaparse": "^5.5.0",
     "@uidotdev/usehooks": "2.4.1",
     "axios": "^1.13.5",
-    "better-auth": "1.4.18",
+    "better-auth": "1.5.5",
+    "better-call": "^1.3.2",
     "boring-avatars": "2.0.4",
     "class-variance-authority": "0.7.1",
     "clsx": "2.1.1",

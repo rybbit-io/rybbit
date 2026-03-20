@@ -129,6 +129,7 @@ services:
       - OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
       - OPENROUTER_MODEL=${OPENROUTER_MODEL}
       - CLUSTER_WORKERS=${CLUSTER_WORKERS:-4}
+      - BETTER_AUTH_API_KEY=${BETTER_AUTH_API_KEY}
     depends_on:
       clickhouse:
         condition: service_healthy

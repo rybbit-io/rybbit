@@ -96,6 +96,7 @@ const OTP_SUBJECTS: Record<OtpEmailType, string> = {
   "sign-in": "Your Rybbit Sign-In Code",
   "email-verification": "Verify Your Email Address",
   "forget-password": "Reset Your Password",
+  "change-email": "Change Your Email Address",
 };
 
 export const sendOtpEmail = async (email: string, otp: string, type: OtpEmailType) => {

@@ -121,14 +121,14 @@ export async function getSitesUserHasAccessTo(req: FastifyRequest, adminOnly = f
         // Get specific sites for restricted members
         restrictedMemberIds.length > 0
           ? (async () => {
-              const siteAccess = await db
-                .select({ siteId: memberSiteAccess.siteId })
-                .from(memberSiteAccess)
-                .where(inArray(memberSiteAccess.memberId, restrictedMemberIds));
-              const siteIds = siteAccess.map(s => s.siteId);
-              if (siteIds.length === 0) return [];
-              return db.select().from(sites).where(inArray(sites.siteId, siteIds));
-            })()
+            const siteAccess = await db
+              .select({ siteId: memberSiteAccess.siteId })
+              .from(memberSiteAccess)
+              .where(inArray(memberSiteAccess.memberId, restrictedMemberIds));
+            const siteIds = siteAccess.map(s => s.siteId);
+            if (siteIds.length === 0) return [];
+            return db.select().from(sites).where(inArray(sites.siteId, siteIds));
+          })()
           : Promise.resolve([]),
       ]);
 
@@ -183,7 +183,7 @@ export async function checkApiKey(req: FastifyRequest, options: { organizationId
 
       if (result.valid && result.key) {
         // Get the userId from the API key
-        const apiKeyUserId = result.key.userId;
+        const apiKeyUserId = result.key.referenceId;
 
         // Determine the organization ID - either directly provided or looked up from site
         let organizationId = options.organizationId;
@@ -244,8 +244,8 @@ export async function getUserIdFromRequest(req: FastifyRequest): Promise<string 
       const result = await auth.api.verifyApiKey({
         body: { key: apiKey },
       });
-      if (result.valid && result.key?.userId) {
-        return result.key.userId;
+      if (result.valid && result.key?.referenceId) {
+        return result.key.referenceId;
       }
     } catch (error) {
       logger.error(error, "Error verifying API key");

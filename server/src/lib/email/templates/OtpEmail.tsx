@@ -12,7 +12,7 @@ import {
 } from "@react-email/components";
 import * as React from "react";
 
-export type OtpEmailType = "sign-in" | "email-verification" | "forget-password";
+export type OtpEmailType = "sign-in" | "email-verification" | "forget-password" | "change-email";
 
 interface OtpEmailProps {
   otp: string;
@@ -39,6 +39,12 @@ const getContent = (type: OtpEmailType) => {
         heading: "Reset Your Password",
         description: "You requested to reset your password for Rybbit. Here is your one-time password:",
       };
+    case "change-email":
+      return {
+        preview: "Change Your Email Address",
+        heading: "Change Your Email",
+        description: "Here is your verification code for Rybbit:",
+      };
   }
 };
 
@@ -49,7 +55,7 @@ export const OtpEmail = ({ otp, type }: OtpEmailProps) => {
   return (
     <Html>
       <Head />
-      <Preview>{content.preview}</Preview>
+      <Preview>{content?.preview}</Preview>
       <Tailwind
         config={{
           presets: [pixelBasedPreset],
@@ -70,11 +76,11 @@ export const OtpEmail = ({ otp, type }: OtpEmailProps) => {
         <Body className="bg-lightBg font-sans">
           <Container className="mx-auto py-10 px-6 max-w-[600px]">
             <Section className="text-center">
-              <Heading className="text-darkText text-3xl font-semibold mb-6">{content.heading}</Heading>
+              <Heading className="text-darkText text-3xl font-semibold mb-6">{content?.heading}</Heading>
             </Section>
 
             <Section className="mb-6">
-              <Text className="text-darkText text-base leading-relaxed mb-4">{content.description}</Text>
+              <Text className="text-darkText text-base leading-relaxed mb-4">{content?.description}</Text>
             </Section>
 
             <Section className="text-center mb-6">
