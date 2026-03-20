@@ -12,7 +12,7 @@ RUN npm install && npm run build
 # Install server dependencies
 WORKDIR /app/server
 COPY server/package*.json ./
-RUN npm ci
+RUN npm ci --legacy-peer-deps
 
 # Copy server source code
 COPY server/ .
