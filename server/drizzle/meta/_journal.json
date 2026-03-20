@@ -8,6 +8,13 @@
       "when": 1773977221784,
       "tag": "0000_premium_jubilee",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1773978596482,
+      "tag": "0001_deep_penance",
+      "breakpoints": true
     }
   ]
 }

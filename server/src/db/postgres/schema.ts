@@ -35,8 +35,6 @@ export const user = pgTable(
     banReason: text(),
     banExpires: timestamp({ mode: "string" }),
     // deprecated
-    stripeCustomerId: text(),
-    // deprecated
     overMonthlyLimit: boolean().default(false),
     // deprecated
     monthlyEventCount: integer().default(0),
