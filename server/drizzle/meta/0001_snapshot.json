@@ -1,5 +1,5 @@
 {
-  "id": "6bb25e6a-82bd-44ed-8407-f402aa4f070b",
+  "id": "baa8de49-1e74-469d-8311-ec3ec304fd1c",
   "prevId": "aed9a9f8-dce1-43ea-954c-b57311a48d4f",
   "version": "7",
   "dialect": "postgresql",
@@ -325,6 +325,12 @@
           "type": "timestamp",
           "primaryKey": false,
           "notNull": true
+        },
+        "configId": {
+          "name": "configId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
         },
         "permissions": {
           "name": "permissions",

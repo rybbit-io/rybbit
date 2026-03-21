@@ -62,10 +62,6 @@ export type {
   UpdateAccountSettingsResponse,
 } from "./accountSettings";
 
-// User API Keys endpoints
-export { listApiKeys, createApiKey, deleteApiKey } from "./userApiKeys";
-export type { ApiKey, ApiKeyWithKey, CreateApiKeyRequest } from "./userApiKeys";
-
 // Private Link endpoints
 export {
   getPrivateLinkConfig,

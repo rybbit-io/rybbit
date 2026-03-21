@@ -18,7 +18,9 @@ export function ApiKeyManager() {
   const [showApiKeyDialog, setShowApiKeyDialog] = useState(false);
   const [createdApiKey, setCreatedApiKey] = useState<string | null>(null);
 
-  const { data: apiKeys, isLoading: isLoadingApiKeys, isError, error, refetch } = useListApiKeys();
+  const { data: apiKeysData, isLoading: isLoadingApiKeys, isError, error, refetch } = useListApiKeys();
+
+  const apiKeys = apiKeysData?.apiKeys;
   const createApiKey = useCreateApiKey();
   const deleteApiKey = useDeleteApiKey();
 
@@ -123,7 +125,7 @@ export function ApiKeyManager() {
                       <TableRow key={key.id}>
                         <TableCell className="font-medium">{key.name || t("Unnamed")}</TableCell>
                         <TableCell className="font-mono text-xs">{key.start || "****"}...</TableCell>
-                        <TableCell>{DateTime.fromISO(key.createdAt).toLocaleString(DateTime.DATETIME_SHORT)}</TableCell>
+                        <TableCell>{DateTime.fromJSDate(new Date(key.createdAt)).toLocaleString(DateTime.DATETIME_SHORT)}</TableCell>
                         <TableCell className="text-right">
                           <Button
                             variant="destructive"

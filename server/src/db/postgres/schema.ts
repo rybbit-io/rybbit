@@ -245,6 +245,7 @@ export const apiKey = pgTable("apikey", {
   expiresAt: timestamp({ mode: "string" }),
   createdAt: timestamp({ mode: "string" }).notNull(),
   updatedAt: timestamp({ mode: "string" }).notNull(),
+  configId: text(),
   permissions: text(),
   metadata: jsonb(),
 });
