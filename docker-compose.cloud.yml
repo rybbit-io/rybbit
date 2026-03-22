@@ -201,7 +201,11 @@ configs:
             <console>true</console>
         </logger>
         <query_thread_log remove="remove"/>
-        <query_log remove="remove"/>
+        <query_log>
+            <database>system</database>
+            <table>query_log</table>
+            <flush_interval_milliseconds>7500</flush_interval_milliseconds>
+        </query_log>
         <text_log remove="remove"/>
         <trace_log remove="remove"/>
         <metric_log remove="remove"/>
@@ -217,7 +221,7 @@ configs:
       <clickhouse>
         <profiles>
           <default>
-            <log_queries>0</log_queries>
+            <log_queries>1</log_queries>
             <log_query_threads>0</log_query_threads>
             <log_processors_profiles>0</log_processors_profiles>
             <max_memory_usage>8000000000</max_memory_usage>
