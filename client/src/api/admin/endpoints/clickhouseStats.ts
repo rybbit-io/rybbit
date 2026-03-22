@@ -38,24 +38,56 @@ export interface ClickhouseStatsResponse {
   unavailableFeatures: string[];
 }
 
-export interface ActiveQuery {
+export interface QueryLogEntry {
+  eventTime: string;
   queryId: string;
-  user: string;
-  query: string;
-  elapsed: number;
-  readRows: number;
-  memoryUsage: number;
   queryKind: string;
+  queryDurationMs: number;
+  readRows: number;
+  readBytes: number;
+  writtenRows: number;
+  writtenBytes: number;
+  memoryUsage: number;
+  type: string;
+  exceptionCode: number;
+  query: string;
+  user: string;
+  databases: string[];
+  tables: string[];
 }
 
-export interface ClickhouseActiveQueriesResponse {
-  activeQueries: ActiveQuery[];
+export interface ClickhouseQueryLogResponse {
+  items: QueryLogEntry[];
+  total: number;
+  page: number;
+  pageSize: number;
+  unavailable?: boolean;
 }
 
-export function getClickhouseStats() {
-  return authedFetch<ClickhouseStatsResponse>("/admin/clickhouse-stats");
+export interface QueryLogParams {
+  page?: number;
+  pageSize?: number;
+  sortBy?: string;
+  sortOrder?: "asc" | "desc";
+  queryKind?: string;
+  type?: string;
 }
 
-export function getClickhouseActiveQueries() {
-  return authedFetch<ClickhouseActiveQueriesResponse>("/admin/clickhouse-active-queries");
+export function getClickhouseStats(days?: number) {
+  const params = days !== undefined ? `?days=${days}` : "";
+  return authedFetch<ClickhouseStatsResponse>(`/admin/clickhouse-stats${params}`);
+}
+
+export function getClickhouseQueryLog(params: QueryLogParams = {}) {
+  const searchParams = new URLSearchParams();
+  if (params.page) searchParams.set("page", String(params.page));
+  if (params.pageSize) searchParams.set("pageSize", String(params.pageSize));
+  if (params.sortBy) searchParams.set("sortBy", params.sortBy);
+  if (params.sortOrder) searchParams.set("sortOrder", params.sortOrder);
+  if (params.queryKind) searchParams.set("queryKind", params.queryKind);
+  if (params.type) searchParams.set("type", params.type);
+  const qs = searchParams.toString();
+  return authedFetch<ClickhouseQueryLogResponse>(
+    `/admin/clickhouse-query-log${qs ? `?${qs}` : ""}`
+  );
 }

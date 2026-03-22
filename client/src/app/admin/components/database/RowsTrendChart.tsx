@@ -13,9 +13,10 @@ import { formatter } from "@/lib/utils";
 interface RowsTrendChartProps {
   rowsByDate: RowsByDate[] | undefined;
   isLoading: boolean;
+  days: number;
 }
 
-export function RowsTrendChart({ rowsByDate, isLoading }: RowsTrendChartProps) {
+export function RowsTrendChart({ rowsByDate, isLoading, days }: RowsTrendChartProps) {
   const nivoTheme = useNivoTheme();
   const { width } = useWindowSize();
   const maxTicks = Math.round((width ?? Infinity) / 100);
@@ -55,9 +56,9 @@ export function RowsTrendChart({ rowsByDate, isLoading }: RowsTrendChartProps) {
     "hsl(var(--emerald-400))",
   ];
 
-  // Filter to last 30 days to exclude bad/future dates
+  // Filter to exclude bad/future dates
   const now = DateTime.now();
-  const thirtyDaysAgo = now.minus({ days: 30 });
+  const cutoff = days > 0 ? now.minus({ days }) : null;
 
   // Match GrowthChart pattern: use string dates directly
   const chartData = Object.entries(tableGroups).map(([table, rows]) => ({
@@ -71,8 +72,7 @@ export function RowsTrendChart({ rowsByDate, isLoading }: RowsTrendChartProps) {
           currentTime: dt,
         };
       })
-      // Filter out invalid dates (future dates or dates outside the 30-day window)
-      .filter(point => point.currentTime.isValid && point.currentTime <= now && point.currentTime >= thirtyDaysAgo)
+      .filter(point => point.currentTime.isValid && point.currentTime <= now && (!cutoff || point.currentTime >= cutoff))
       .sort((a, b) => a.currentTime.toMillis() - b.currentTime.toMillis()),
   }));
 

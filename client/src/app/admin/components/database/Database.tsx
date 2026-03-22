@@ -4,12 +4,12 @@ import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { useClickhouseStats, useClickhouseActiveQueries } from "@/api/admin/hooks/useClickhouseStats";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useClickhouseStats } from "@/api/admin/hooks/useClickhouseStats";
 import { TableStatsCards } from "./TableStatsCards";
 import { RowsTrendChart } from "./RowsTrendChart";
 import { InsertRateChart } from "./InsertRateChart";
-import { ActiveQueriesTable } from "./ActiveQueriesTable";
-import { QueryErrorsTable } from "./QueryErrorsTable";
+import { QueryLogTable } from "./QueryLogTable";
 import { RefreshControls } from "./RefreshControls";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -86,14 +86,9 @@ export function Database() {
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState("overview");
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+  const [rowsDays, setRowsDays] = useState(30);
 
-  const { data: stats, isLoading: statsLoading, isRefetching: statsRefetching, dataUpdatedAt } = useClickhouseStats();
-
-  const {
-    data: activeQueriesData,
-    isLoading: queriesLoading,
-    isRefetching: queriesRefetching,
-  } = useClickhouseActiveQueries();
+  const { data: stats, isLoading: statsLoading, isRefetching: statsRefetching, dataUpdatedAt } = useClickhouseStats(rowsDays);
 
   // Update last updated time when data changes
   if (dataUpdatedAt && (!lastUpdated || dataUpdatedAt > lastUpdated.getTime())) {
@@ -102,13 +97,12 @@ export function Database() {
 
   const handleRefresh = () => {
     queryClient.invalidateQueries({ queryKey: ["clickhouse-stats"] });
-    queryClient.invalidateQueries({ queryKey: ["clickhouse-active-queries"] });
+    queryClient.invalidateQueries({ queryKey: ["clickhouse-query-log"] });
   };
 
-  const isRefetching = statsRefetching || queriesRefetching;
+  const isRefetching = statsRefetching;
 
   const isInsertRateUnavailable = stats?.unavailableFeatures?.includes("insertRate") ?? false;
-  const isQueryErrorsUnavailable = stats?.unavailableFeatures?.includes("queryErrors") ?? false;
 
   return (
     <div className="space-y-6">
@@ -127,8 +121,7 @@ export function Database() {
       <Tabs defaultValue="overview" value={activeTab} onValueChange={setActiveTab}>
         <TabsList>
           <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="queries">Active Queries</TabsTrigger>
-          <TabsTrigger value="errors">Query Errors</TabsTrigger>
+          <TabsTrigger value="query-log">Query Log</TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview" className="space-y-4 mt-4">
@@ -153,41 +146,46 @@ export function Database() {
           </div>
 
           <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Rows Inserted by Table (Last 30 days)</CardTitle>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <CardTitle className="text-base">Rows Inserted by Table</CardTitle>
+              <Select value={String(rowsDays)} onValueChange={(v) => setRowsDays(Number(v))}>
+                <SelectTrigger className="w-[140px] h-8 text-xs">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="7">Last 7 days</SelectItem>
+                  <SelectItem value="14">Last 14 days</SelectItem>
+                  <SelectItem value="30">Last 30 days</SelectItem>
+                  <SelectItem value="60">Last 60 days</SelectItem>
+                  <SelectItem value="90">Last 90 days</SelectItem>
+                  <SelectItem value="180">Last 180 days</SelectItem>
+                  <SelectItem value="365">Last 365 days</SelectItem>
+                  <SelectItem value="0">All time</SelectItem>
+                </SelectContent>
+              </Select>
             </CardHeader>
             <CardContent>
-              <RowsTrendChart rowsByDate={stats?.rowsByDate} isLoading={statsLoading} />
+              <RowsTrendChart rowsByDate={stats?.rowsByDate} isLoading={statsLoading} days={rowsDays} />
             </CardContent>
           </Card>
         </TabsContent>
 
-        <TabsContent value="queries" className="mt-4">
+        <TabsContent value="query-log" className="mt-4">
           <Card>
             <CardHeader>
               <CardTitle className="text-base">
-                Active Queries
+                Query Log
                 <span className="ml-2 text-sm font-normal text-neutral-500 dark:text-neutral-400">
-                  (auto-refreshes every 10s)
+                  (last 24 hours)
                 </span>
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <ActiveQueriesTable activeQueries={activeQueriesData?.activeQueries} isLoading={queriesLoading} />
+              <QueryLogTable />
             </CardContent>
           </Card>
         </TabsContent>
 
-        <TabsContent value="errors" className="mt-4">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Query Errors (Last 24h)</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <QueryErrorsTable queryErrors={stats?.queryErrors} isLoading={statsLoading} isUnavailable={isQueryErrorsUnavailable} />
-            </CardContent>
-          </Card>
-        </TabsContent>
       </Tabs>
     </div>
   );

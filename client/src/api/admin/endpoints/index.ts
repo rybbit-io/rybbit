@@ -82,13 +82,14 @@ export { getOrganizationMembers } from "./auth";
 export type { GetOrganizationMembersResponse } from "./auth";
 
 // ClickHouse Stats endpoints
-export { getClickhouseStats, getClickhouseActiveQueries } from "./clickhouseStats";
+export { getClickhouseStats, getClickhouseQueryLog } from "./clickhouseStats";
 export type {
   TableStats,
   RowsByDate,
   InsertRate,
   QueryError,
   ClickhouseStatsResponse,
-  ActiveQuery,
-  ClickhouseActiveQueriesResponse,
+  QueryLogEntry,
+  ClickhouseQueryLogResponse,
+  QueryLogParams,
 } from "./clickhouseStats";

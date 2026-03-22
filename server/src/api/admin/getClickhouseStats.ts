@@ -31,8 +31,10 @@ interface QueryErrorRow {
   query: string;
 }
 
-export async function getClickhouseStats(request: FastifyRequest, reply: FastifyReply) {
+export async function getClickhouseStats(request: FastifyRequest<{ Querystring: { days?: string } }>, reply: FastifyReply) {
   const unavailableFeatures: string[] = [];
+  const days = request.query.days ? parseInt(request.query.days, 10) : 30;
+  const daysInterval = days > 0 ? days : 30;
 
   try {
     // Get table statistics (uses system.parts - always available)
@@ -56,23 +58,29 @@ export async function getClickhouseStats(request: FastifyRequest, reply: Fastify
     });
     const tableStats = (await tableStatsResult.json()) as TableStatsRow[];
 
-    // Get rows by date (last 30 days) - query actual tables for accurate daily counts
+    // Get rows by date - query actual tables for accurate daily counts
+    const dateFilter = days === 0
+      ? ""
+      : `WHERE timestamp >= now() - INTERVAL ${daysInterval} DAY`;
+    const dateFilterStartTime = days === 0
+      ? ""
+      : `WHERE start_time >= now() - INTERVAL ${daysInterval} DAY`;
     const rowsByDateResult = await clickhouse.query({
       query: `
         SELECT date, table, rows_inserted FROM (
           SELECT toDate(timestamp) as date, 'events' as table, count() as rows_inserted
           FROM events
-          WHERE timestamp >= now() - INTERVAL 30 DAY
+          ${dateFilter}
           GROUP BY date
           UNION ALL
           SELECT toDate(timestamp) as date, 'session_replay_events' as table, count() as rows_inserted
           FROM session_replay_events
-          WHERE timestamp >= now() - INTERVAL 30 DAY
+          ${dateFilter}
           GROUP BY date
           UNION ALL
           SELECT toDate(start_time) as date, 'session_replay_metadata' as table, count() as rows_inserted
           FROM session_replay_metadata
-          WHERE start_time >= now() - INTERVAL 30 DAY
+          ${dateFilterStartTime}
           GROUP BY date
         )
         ORDER BY date, table

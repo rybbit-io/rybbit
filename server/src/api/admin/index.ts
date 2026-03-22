@@ -4,4 +4,4 @@ export { getAdminOrganizations } from "./getAdminOrganizations.js";
 export { getAdminServiceEventCount } from "./getAdminServiceEventCount.js";
 export { getAdminSites } from "./getAdminSites.js";
 export { getClickhouseStats } from "./getClickhouseStats.js";
-export { getClickhouseActiveQueries } from "./getClickhouseActiveQueries.js";
+export { getClickhouseQueryLog } from "./getClickhouseQueryLog.js";
