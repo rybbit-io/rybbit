@@ -64,6 +64,8 @@ export async function getClickhouseQueryLog(
     const conditions = [
       "event_time >= now() - INTERVAL 24 HOUR",
       "type != 'QueryStart'",
+      "query NOT LIKE '%system.query_log%'",
+      "query NOT LIKE '%system.processes%'",
     ];
     if (queryKind && ["Select", "Insert", "Other"].includes(queryKind)) {
       conditions.push(`query_kind = '${queryKind}'`);

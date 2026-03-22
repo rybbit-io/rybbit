@@ -153,40 +153,51 @@ export function QueryLogTable() {
       </div>
 
       {/* Table */}
-      {isLoading ? (
-        <div className="space-y-2">
-          {[...Array(10)].map((_, i) => (
-            <Skeleton key={i} className="h-10 w-full" />
-          ))}
-        </div>
-      ) : !data?.items?.length ? (
-        <div className="text-center py-8 text-neutral-500 dark:text-neutral-400">
-          No queries found in the last 24 hours
-        </div>
-      ) : (
-        <div className="border rounded-lg overflow-hidden dark:border-neutral-800">
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
+      <div className="border rounded-lg overflow-hidden dark:border-neutral-800">
+        <div className="overflow-x-auto">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <SortableHeader column="event_time" label="Time" currentSort={sortBy} currentOrder={sortOrder} onSort={handleSort} />
+                <TableHead>User</TableHead>
+                <TableHead>Kind</TableHead>
+                <TableHead>Status</TableHead>
+                <SortableHeader column="query_duration_ms" label="Duration" currentSort={sortBy} currentOrder={sortOrder} onSort={handleSort} />
+                <SortableHeader column="read_rows" label="Rows Read" currentSort={sortBy} currentOrder={sortOrder} onSort={handleSort} />
+                <SortableHeader column="read_bytes" label="Bytes Read" currentSort={sortBy} currentOrder={sortOrder} onSort={handleSort} />
+                <SortableHeader column="written_rows" label="Rows Written" currentSort={sortBy} currentOrder={sortOrder} onSort={handleSort} />
+                <SortableHeader column="memory_usage" label="Memory" currentSort={sortBy} currentOrder={sortOrder} onSort={handleSort} />
+                <TableHead>Query</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {isLoading ? (
+                [...Array(pageSize)].map((_, i) => (
+                  <TableRow key={i}>
+                    <TableCell><Skeleton className="h-4 w-28" /></TableCell>
+                    <TableCell><Skeleton className="h-4 w-16" /></TableCell>
+                    <TableCell><Skeleton className="h-5 w-14 rounded-full" /></TableCell>
+                    <TableCell><Skeleton className="h-5 w-10 rounded-full" /></TableCell>
+                    <TableCell><Skeleton className="h-4 w-14" /></TableCell>
+                    <TableCell><Skeleton className="h-4 w-12" /></TableCell>
+                    <TableCell><Skeleton className="h-4 w-14" /></TableCell>
+                    <TableCell><Skeleton className="h-4 w-12" /></TableCell>
+                    <TableCell><Skeleton className="h-4 w-14" /></TableCell>
+                    <TableCell><Skeleton className="h-4 w-48" /></TableCell>
+                  </TableRow>
+                ))
+              ) : !data?.items?.length ? (
                 <TableRow>
-                  <SortableHeader column="event_time" label="Time" currentSort={sortBy} currentOrder={sortOrder} onSort={handleSort} />
-                  <TableHead>User</TableHead>
-                  <TableHead>Kind</TableHead>
-                  <TableHead>Status</TableHead>
-                  <SortableHeader column="query_duration_ms" label="Duration" currentSort={sortBy} currentOrder={sortOrder} onSort={handleSort} />
-                  <SortableHeader column="read_rows" label="Rows Read" currentSort={sortBy} currentOrder={sortOrder} onSort={handleSort} />
-                  <SortableHeader column="read_bytes" label="Bytes Read" currentSort={sortBy} currentOrder={sortOrder} onSort={handleSort} />
-                  <SortableHeader column="written_rows" label="Rows Written" currentSort={sortBy} currentOrder={sortOrder} onSort={handleSort} />
-                  <SortableHeader column="memory_usage" label="Memory" currentSort={sortBy} currentOrder={sortOrder} onSort={handleSort} />
-                  <TableHead>Query</TableHead>
+                  <TableCell colSpan={10} className="text-center py-8 text-neutral-500 dark:text-neutral-400">
+                    No queries found in the last 24 hours
+                  </TableCell>
                 </TableRow>
-              </TableHeader>
-              <TableBody>
-                {data.items.map((entry) => {
+              ) : (
+                data.items.map((entry, i) => {
                   const eventTime = DateTime.fromSQL(entry.eventTime, { zone: "utc" }).setZone(getTimezone());
                   const isError = entry.type === "ExceptionWhileProcessing";
                   return (
-                    <TableRow key={entry.queryId} className={isError ? "bg-red-50/50 dark:bg-red-950/20" : ""}>
+                    <TableRow key={`${entry.queryId}-${i}`} className={isError ? "bg-red-50/50 dark:bg-red-950/20" : ""}>
                       <TableCell className="text-xs whitespace-nowrap">
                         {eventTime.toLocaleString(DateTime.DATETIME_SHORT_WITH_SECONDS)}
                       </TableCell>
@@ -220,12 +231,12 @@ export function QueryLogTable() {
                       </TableCell>
                     </TableRow>
                   );
-                })}
-              </TableBody>
-            </Table>
-          </div>
+                })
+              )}
+            </TableBody>
+          </Table>
         </div>
-      )}
+      </div>
 
       {/* Query Detail Sheet */}
       <Sheet open={!!selectedEntry} onOpenChange={(open) => { if (!open) setSelectedEntry(null); }}>
