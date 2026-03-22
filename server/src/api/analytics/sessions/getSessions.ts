@@ -2,7 +2,7 @@ import { FastifyReply, FastifyRequest } from "fastify";
 import { clickhouse } from "../../../db/clickhouse/clickhouse.js";
 import { enrichWithTraits, getTimeStatement, processResults } from "../utils/utils.js";
 import { FilterParams } from "@rybbit/shared";
-import { getFilterStatement } from "../utils/getFilterStatement.js";
+import { getFilterStatement, getEventLevelFilterStatement } from "../utils/getFilterStatement.js";
 
 export type GetSessionsResponse = {
   session_id: string;
@@ -103,6 +103,11 @@ export async function getSessions(req: FastifyRequest<GetSessionsRequest>, res: 
     fieldMappings: SESSION_FIELD_MAPPINGS,
   });
 
+  // Inner filter: only raw event-level columns (country, browser, device_type, etc.)
+  // Applied inside the CTE before GROUP BY to reduce rows aggregated.
+  // The outer filterStatement still enforces full correctness.
+  const innerFilterStatement = getEventLevelFilterStatement(filters, Number(site), timeStatement);
+
   const query = `
   WITH AggregatedSessions AS (
       SELECT
@@ -151,6 +156,7 @@ export async function getSessions(req: FastifyRequest<GetSessionsRequest>, res: 
           ${userId ? ` AND (events.user_id = {user_id:String} OR events.identified_user_id = {user_id:String})` : ""}
           ${sessionId ? ` AND events.session_id = {session_id:String}` : ""}
           ${timeStatement}
+          ${innerFilterStatement}
       GROUP BY
           session_id
       ORDER BY session_end DESC

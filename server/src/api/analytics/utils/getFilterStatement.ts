@@ -11,7 +11,30 @@ export interface FilterStatementOptions {
   // Field name mappings for CTEs that extract fields to different column names
   // e.g., { "url_parameters['utm_source']": "utm_source" }
   fieldMappings?: Record<string, string>;
+
+  // When set, only generate conditions for the listed parameters (all others are skipped)
+  includeOnly?: FilterParameter[];
 }
+
+// Raw event-level columns that have consistent values across all events in a session.
+// Safe to push into a CTE WHERE clause before GROUP BY session_id.
+export const INNER_SAFE_PARAMS: FilterParameter[] = [
+  "country",
+  "region",
+  "city",
+  "language",
+  "device_type",
+  "browser",
+  "browser_version",
+  "operating_system",
+  "operating_system_version",
+  "hostname",
+  "referrer",
+  "channel",
+  "dimensions",
+  "lat",
+  "lon",
+];
 
 const DEFAULT_SESSION_LEVEL_PARAMS: FilterParameter[] = ["event_name"];
 
@@ -94,6 +117,7 @@ export function getFilterStatement(
   }
 
   const sessionLevelParams = options?.sessionLevelParams ?? DEFAULT_SESSION_LEVEL_PARAMS;
+  const includeOnly = options?.includeOnly;
   const siteIdFilter = siteId ? `site_id = ${siteId}` : "";
   // Strip leading "AND " from timeStatement since we'll be constructing WHERE clauses
   const timeFilter = timeStatement ? timeStatement.replace(/^AND\s+/i, "").trim() : "";
@@ -120,9 +144,17 @@ export function getFilterStatement(
           )`;
   };
 
+  const activeFilters = includeOnly
+    ? filtersArray.filter(f => includeOnly.includes(f.parameter))
+    : filtersArray;
+
+  if (activeFilters.length === 0) {
+    return "";
+  }
+
   let result =
     "AND " +
-    filtersArray
+    activeFilters
       .map(filter => {
         const x = filter.type === "contains" || filter.type === "not_contains" ? "%" : "";
         const isNumericParam = filter.parameter === "lat" || filter.parameter === "lon";
@@ -311,4 +343,17 @@ export function getFilterStatement(
   }
 
   return result;
+}
+
+// Returns a WHERE fragment containing only raw event-level column filters.
+// Safe to push inside a CTE WHERE clause before GROUP BY session_id, because
+// these columns have consistent values across all events in a session.
+export function getEventLevelFilterStatement(
+  filters: string,
+  siteId?: number,
+  timeStatement?: string
+): string {
+  return getFilterStatement(filters, siteId, timeStatement, {
+    includeOnly: INNER_SAFE_PARAMS,
+  });
 }

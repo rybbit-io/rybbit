@@ -352,6 +352,8 @@ const getQuery = (request: FastifyRequest<GetMetricRequest>, isCountQuery: boole
 
   // Default case for other parameters
   const sqlParam = getSqlParam(parameter);
+  const hasFilter = filterStatement.trim().length > 0;
+
   if (isCountQuery) {
     return `
     SELECT COUNT(DISTINCT ${sqlParam}) as totalCount
@@ -365,6 +367,41 @@ const getQuery = (request: FastifyRequest<GetMetricRequest>, isCountQuery: boole
     `;
   }
 
+  if (!hasFilter) {
+    // Single scan: compute pageviews_in_session inline via countIf per session.
+    // Safe because with no filter, the scan covers all events in the session anyway.
+    return `
+    WITH SessionData AS (
+        SELECT
+            argMin(${sqlParam}, timestamp) as value,
+            session_id,
+            countIf(type = 'pageview') as pageviews_in_session
+        FROM events
+        WHERE
+            site_id = {siteId:Int32}
+            AND ${sqlParam} IS NOT NULL
+            AND ${sqlParam} <> ''
+            ${timeStatement}
+        GROUP BY session_id
+    )
+    SELECT
+        value,
+        COUNT(DISTINCT session_id) as count,
+        round((COUNT(DISTINCT session_id) / sum(COUNT(DISTINCT session_id)) OVER ()) * 100, 2) as percentage,
+        COUNT() as pageviews,
+        round((COUNT() / sum(COUNT()) OVER ()) * 100, 2) as pageviews_percentage,
+        round((countIf(DISTINCT session_id, pageviews_in_session = 1) / nullIf(COUNT(DISTINCT session_id), 0)) * 100, 2) as bounce_rate
+    FROM SessionData
+    GROUP BY value
+    ORDER BY count desc
+    ${limitStatement}
+    ${offsetStatement};
+    `;
+  }
+
+  // With filters: two-scan approach preserves correct bounce rate.
+  // SessionPageCounts counts total pageviews per session (unfiltered) so bounce rate
+  // reflects the true session behaviour, not just filtered events.
   return `
     WITH SessionPageCounts AS (
         SELECT
