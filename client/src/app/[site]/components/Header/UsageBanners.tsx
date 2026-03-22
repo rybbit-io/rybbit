@@ -1,9 +1,11 @@
 import { AlertTriangle, ArrowRight } from "lucide-react";
+import { useExtracted } from "next-intl";
 import Link from "next/link";
 import { useCurrentSite } from "../../../../api/admin/hooks/useSites";
 import { Button } from "../../../../components/ui/button";
 
 export function UsageBanners() {
+  const t = useExtracted();
   const { site, subscription } = useCurrentSite();
 
   if (!site) return null;
@@ -31,17 +33,17 @@ export function UsageBanners() {
         <AlertTriangle className="h-5 w-5 text-red-600 dark:text-red-400 shrink-0" />
         <div className="flex-1">
           <span className="text-red-700 dark:text-red-300 font-medium">
-            Monthly event limit exceeded: <strong>{formatNumber(subscription.monthlyEventCount || 0)}</strong> of{" "}
-            <strong>{formatNumber(subscription.eventLimit)}</strong> events used.{" "}
+            {t("Monthly event limit exceeded:")} <strong>{formatNumber(subscription.monthlyEventCount || 0)}</strong> {t("of")}{" "}
+            <strong>{formatNumber(subscription.eventLimit)}</strong> {t("events used.")}{" "}
             {site.isOwner
-              ? "Upgrade your plan to continue collecting analytics."
-              : "Please contact your organization owner to upgrade."}
+              ? t("Upgrade your plan to continue collecting analytics.")
+              : t("Please contact your organization owner to upgrade.")}
           </span>
         </div>
         {site.isOwner && (
           <Button variant="success" size="sm" asChild>
             <Link href="/settings/organization/subscription">
-              Upgrade <ArrowRight className="ml-1 h-3 w-3" />
+              {t("Upgrade")} <ArrowRight className="ml-1 h-3 w-3" />
             </Link>
           </Button>
         )}
@@ -56,17 +58,17 @@ export function UsageBanners() {
         <AlertTriangle className="h-5 w-5 text-amber-600 dark:text-amber-400 shrink-0" />
         <div className="flex-1">
           <span className="text-amber-700 dark:text-amber-300 font-medium">
-            Approaching monthly event limit: <strong>{formatNumber(subscription?.monthlyEventCount || 0)}</strong> of{" "}
-            <strong>{formatNumber(subscription?.eventLimit || 0)}</strong> events used.{" "}
+            {t("Approaching monthly event limit:")} <strong>{formatNumber(subscription?.monthlyEventCount || 0)}</strong> {t("of")}{" "}
+            <strong>{formatNumber(subscription?.eventLimit || 0)}</strong> {t("events used.")}{" "}
             {site.isOwner
-              ? "Consider upgrading to avoid interruptions."
-              : "You may want to notify your organization owner."}
+              ? t("Consider upgrading to avoid interruptions.")
+              : t("You may want to notify your organization owner.")}
           </span>
         </div>
         {site.isOwner && (
           <Button variant="success" size="sm" asChild>
             <Link href="/settings/organization/subscription">
-              Upgrade <ArrowRight className="ml-1 h-3 w-3" />
+              {t("Upgrade")} <ArrowRight className="ml-1 h-3 w-3" />
             </Link>
           </Button>
         )}

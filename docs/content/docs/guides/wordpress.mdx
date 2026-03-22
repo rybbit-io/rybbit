@@ -209,17 +209,58 @@ Some visitors use ad blockers that block analytics scripts. This is expected beh
 - Testing in an incognito/private window
 - Testing from a different device
 
-### Self-hosted Rybbit
+## Script Options
 
-If you're self-hosting Rybbit, replace `https://app.rybbit.io` with your own domain:
+You can customize the tracking script with additional `data-*` attributes. When using the JavaScript snippet approach, add them with `s.setAttribute()`. For a full list of options, see the [Tracking Script reference](/docs/script).
+
+### Skip Pages from Tracking
+
+Use `data-skip-patterns` to exclude certain pages (like admin or preview pages) from being tracked. Supports `*` (single segment) and `**` (multiple segments) wildcards.
 
 ```html
 <script>
 (function() {
   var s = document.createElement('script');
-  s.src = 'https://your-rybbit-domain.com/api/script.js';
+  s.src = 'https://app.rybbit.io/api/script.js';
   s.defer = true;
   s.setAttribute('data-site-id', 'YOUR_SITE_ID');
+  s.setAttribute('data-skip-patterns', '["/wp-admin/**", "/preview/**"]');
+  document.head.appendChild(s);
+})();
+</script>
+```
+
+### Mask Sensitive URLs
+
+Use `data-mask-patterns` to track pageviews on sensitive pages without recording the actual URL path. The URL is replaced with the pattern itself in your analytics data.
+
+```html
+<script>
+(function() {
+  var s = document.createElement('script');
+  s.src = 'https://app.rybbit.io/api/script.js';
+  s.defer = true;
+  s.setAttribute('data-site-id', 'YOUR_SITE_ID');
+  s.setAttribute('data-mask-patterns', '["/my-account/**", "/orders/*/details"]');
+  document.head.appendChild(s);
+})();
+</script>
+```
+
+### Session Replay Privacy
+
+If you have session replay enabled, you can mask or block sensitive content from recordings:
+
+```html
+<script>
+(function() {
+  var s = document.createElement('script');
+  s.src = 'https://app.rybbit.io/api/script.js';
+  s.defer = true;
+  s.setAttribute('data-site-id', 'YOUR_SITE_ID');
+  s.setAttribute('data-replay-block-selector', '.sensitive-content, #payment-form');
+  s.setAttribute('data-replay-mask-text-selectors', '[".user-name", "#email"]');
+  s.setAttribute('data-replay-mask-all-inputs', 'true');
   document.head.appendChild(s);
 })();
 </script>

@@ -31,6 +31,9 @@ const updateSiteConfigSchema = z.object({
     .max(250)
     .optional(),
 
+  // Tags
+  tags: z.array(z.string().trim().min(1).max(50)).max(20).optional(),
+
   // Analytics features
   sessionReplay: z.boolean().optional(),
   webVitals: z.boolean().optional(),
@@ -40,6 +43,9 @@ const updateSiteConfigSchema = z.object({
   trackInitialPageView: z.boolean().optional(),
   trackSpaNavigation: z.boolean().optional(),
   trackIp: z.boolean().optional(),
+  trackButtonClicks: z.boolean().optional(),
+  trackCopy: z.boolean().optional(),
+  trackFormInteractions: z.boolean().optional(),
 });
 
 type UpdateSiteConfigRequest = z.infer<typeof updateSiteConfigSchema>;
@@ -109,6 +115,7 @@ export async function updateSiteConfig(
       "domain",
       "excludedIPs",
       "excludedCountries",
+      "tags",
       "sessionReplay",
       "webVitals",
       "trackErrors",
@@ -117,6 +124,9 @@ export async function updateSiteConfig(
       "trackInitialPageView",
       "trackSpaNavigation",
       "trackIp",
+      "trackButtonClicks",
+      "trackCopy",
+      "trackFormInteractions",
     ];
 
     for (const field of directMappings) {

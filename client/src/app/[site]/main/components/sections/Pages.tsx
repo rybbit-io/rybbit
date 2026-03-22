@@ -2,6 +2,7 @@
 
 import { useStore } from "@/lib/store";
 import { Expand } from "lucide-react";
+import { useExtracted } from "next-intl";
 import { useState } from "react";
 import { useGetSite } from "../../../../../api/admin/hooks/useSites";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../../../../components/ui/basic-tabs";
@@ -16,6 +17,7 @@ export function Pages() {
   const { data: siteMetadata } = useGetSite();
   const [tab, setTab] = useState<Tab>("pages");
   const [expanded, setExpanded] = useState(false);
+  const t = useExtracted();
   const close = () => {
     setExpanded(false);
   };
@@ -27,11 +29,11 @@ export function Pages() {
           <div className="flex flex-row gap-2 justify-between items-center">
             <div className="overflow-x-auto">
               <TabsList>
-                <TabsTrigger value="pages">Pages</TabsTrigger>
-                <TabsTrigger value="page_title">Titles</TabsTrigger>
-                <TabsTrigger value="entry_pages">Entries</TabsTrigger>
-                <TabsTrigger value="exit_pages">Exits</TabsTrigger>
-                <TabsTrigger value="hostname">Hostnames</TabsTrigger>
+                <TabsTrigger value="pages">{t("Pages")}</TabsTrigger>
+                <TabsTrigger value="page_title">{t("Titles")}</TabsTrigger>
+                <TabsTrigger value="entry_pages">{t("Entries")}</TabsTrigger>
+                <TabsTrigger value="exit_pages">{t("Exits")}</TabsTrigger>
+                <TabsTrigger value="hostname">{t("Hostnames")}</TabsTrigger>
               </TabsList>
             </div>
             <div className="w-7">
@@ -43,11 +45,14 @@ export function Pages() {
           <TabsContent value="pages">
             <StandardSection
               filterParameter="pathname"
-              title="Pages"
+              title={t("Pages")}
               getValue={e => e.value}
               getKey={e => e.value}
-              getLabel={e => truncateString(e.value, 50) || "Other"}
-              getLink={e => `https://${siteMetadata?.domain}${e.value}`}
+              getLabel={e => truncateString(e.value, 50) || t("Other")}
+              getLink={e => {
+                const host = e.hostname || siteMetadata?.domain;
+                return host ? `https://${host}${e.value}` : "#";
+              }}
               expanded={expanded}
               close={close}
             />
@@ -55,10 +60,10 @@ export function Pages() {
           <TabsContent value="page_title">
             <StandardSection
               filterParameter="page_title"
-              title="Page Title"
+              title={t("Page Title")}
               getValue={e => e.value}
               getKey={e => e.value}
-              getLabel={e => truncateString(e.value, 50) || "Other"}
+              getLabel={e => truncateString(e.value, 50) || t("Other")}
               // getLink={(e) =>
               //   e.pathname
               //     ? `https://${siteMetadata?.domain}${e.pathname}`
@@ -71,11 +76,14 @@ export function Pages() {
           <TabsContent value="entry_pages">
             <StandardSection
               filterParameter="entry_page"
-              title="Entry Pages"
+              title={t("Entry Pages")}
               getValue={e => e.value}
               getKey={e => e.value}
-              getLabel={e => e.value || "Other"}
-              getLink={e => `https://${siteMetadata?.domain}${e.value}`}
+              getLabel={e => e.value || t("Other")}
+              getLink={e => {
+                const host = e.hostname || siteMetadata?.domain;
+                return host ? `https://${host}${e.value}` : "#";
+              }}
               expanded={expanded}
               close={close}
             />
@@ -83,11 +91,14 @@ export function Pages() {
           <TabsContent value="exit_pages">
             <StandardSection
               filterParameter="exit_page"
-              title="Exit Pages"
+              title={t("Exit Pages")}
               getValue={e => e.value}
               getKey={e => e.value}
-              getLabel={e => e.value || "Other"}
-              getLink={e => `https://${siteMetadata?.domain}${e.value}`}
+              getLabel={e => e.value || t("Other")}
+              getLink={e => {
+                const host = e.hostname || siteMetadata?.domain;
+                return host ? `https://${host}${e.value}` : "#";
+              }}
               expanded={expanded}
               close={close}
             />
@@ -95,7 +106,7 @@ export function Pages() {
           <TabsContent value="hostname">
             <StandardSection
               filterParameter="hostname"
-              title="Hostnames"
+              title={t("Hostnames")}
               getValue={e => e.value}
               getKey={e => e.value}
               getLabel={e => e.value}

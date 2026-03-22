@@ -55,10 +55,10 @@ export default function SiteLayout({ children }: { children: React.ReactNode }) 
           <Sidebar />
         </div>
         <div className="flex-1 overflow-auto">
-          <div>
+          <div className="min-h-full flex flex-col">
             {/* <div className="px-4 py-2 max-w-[1400px] mx-auto w-full mb-4"> */}
             <Header />
-            <div>{children}</div>
+            <div className="flex-1">{children}</div>
             {!pathname.includes("/map") &&
               !pathname.includes("/realtime") &&
               !pathname.includes("/replay") &&

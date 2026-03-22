@@ -1,16 +1,26 @@
 import { useEffect, useMemo } from "react";
 import { useIntersectionObserver } from "@uidotdev/usehooks";
 import { Loader2, Video } from "lucide-react";
+import { useExtracted } from "next-intl";
 import { NothingFound } from "../../../../components/NothingFound";
 import { ReplayCard, ReplayCardSkeleton } from "./ReplayCard";
 import { useGetSessionReplays } from "../../../../api/analytics/hooks/sessionReplay/useGetSessionReplays";
 import { SessionReplayListItem } from "../../../../api/analytics/endpoints";
+import { useShallow } from "zustand/react/shallow";
 import { useReplayStore } from "@/components/replay/replayStore";
 import { ScrollArea } from "../../../../components/ui/scroll-area";
 import { Input } from "../../../../components/ui/input";
 
 export function ReplayList() {
-  const { sessionId, setSessionId, minDuration, setMinDuration } = useReplayStore();
+  const t = useExtracted();
+  const { sessionId, setSessionId, minDuration, setMinDuration } = useReplayStore(
+    useShallow(s => ({
+      sessionId: s.sessionId,
+      setSessionId: s.setSessionId,
+      minDuration: s.minDuration,
+      setMinDuration: s.setMinDuration,
+    }))
+  );
 
   const { data, isLoading, error, fetchNextPage, hasNextPage, isFetchingNextPage } = useGetSessionReplays({
     minDuration,
@@ -49,7 +59,7 @@ export function ReplayList() {
     <div className="flex flex-col gap-2">
       <div className="rounded-lg border border-neutral-100 dark:border-neutral-800 bg-white dark:bg-neutral-900 flex flex-col">
         <div className="flex items-center gap-2 p-2">
-          <div className="text-xs text-neutral-600 dark:text-neutral-400">Min Duration</div>
+          <div className="text-xs text-neutral-600 dark:text-neutral-400">{t("Min Duration")}</div>
           <div className="flex items-center gap-1">
             <Input
               type="number"
@@ -70,8 +80,8 @@ export function ReplayList() {
             ) : flattenedData.length === 0 ? (
               <NothingFound
                 icon={<Video className="w-10 h-10" />}
-                title={"No session replays found"}
-                description={"Try a different date range or filter"}
+                title={t("No session replays found")}
+                description={t("Try a different date range or filter")}
               />
             ) : (
               <>
@@ -84,11 +94,11 @@ export function ReplayList() {
                   {isFetchingNextPage && (
                     <div className="flex items-center gap-2 text-neutral-600 dark:text-neutral-400 text-xs">
                       <Loader2 className="h-4 w-4 animate-spin" />
-                      Loading more replays...
+                      {t("Loading more replays...")}
                     </div>
                   )}
                   {!hasNextPage && !isFetchingNextPage && flattenedData.length > 0 && (
-                    <div className="text-neutral-500 dark:text-neutral-500 text-xs">All replays loaded</div>
+                    <div className="text-neutral-500 dark:text-neutral-500 text-xs">{t("All replays loaded")}</div>
                   )}
                 </div>
               </>

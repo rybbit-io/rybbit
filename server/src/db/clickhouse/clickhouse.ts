@@ -60,7 +60,8 @@ export const initializeClickhouse = async () => {
         ADD COLUMN IF NOT EXISTS ip Nullable(String),
         ADD COLUMN IF NOT EXISTS timezone LowCardinality(String) DEFAULT '',
         ADD COLUMN IF NOT EXISTS identified_user_id String DEFAULT '',
-        ADD COLUMN IF NOT EXISTS import_id Nullable(UUID)
+        ADD COLUMN IF NOT EXISTS import_id Nullable(UUID),
+        ADD COLUMN IF NOT EXISTS tag LowCardinality(String) DEFAULT ''
     `,
   });
 

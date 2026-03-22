@@ -4,8 +4,8 @@ import {
   CLUSTER_LAYER_ID,
   CLUSTER_COUNT_LAYER_ID,
   UNCLUSTERED_LAYER_ID,
-  MIN_CLUSTER_SIZE,
 } from "./timelineLayerConstants";
+import { MIN_CLUSTER_SIZE } from "../../../utils/clusteringConstants";
 
 /**
  * Create and configure the popup for session tooltips

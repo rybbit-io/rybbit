@@ -77,6 +77,8 @@ export function getParameterNameLabel(parameter: FilterParameter) {
       return "ASN Type";
     case "asn_domain":
       return "ASN Domain";
+    case "tag":
+      return "Tag";
     default:
       return parameter;
   }

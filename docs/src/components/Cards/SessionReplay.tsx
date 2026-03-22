@@ -3,11 +3,13 @@
 import { Card } from "./Card";
 import { Play, Pause, SkipBack, SkipForward, Maximize2, Volume2, Laptop, Film } from "lucide-react";
 import { useState, useEffect } from "react";
+import { useExtracted } from "next-intl";
 import { CountryFlag } from "../Country";
 import { Browser } from "../Browser";
 import { OperatingSystem } from "../OperatingSystem";
 
 export function SessionReplay() {
+  const t = useExtracted();
   const [isPlaying, setIsPlaying] = useState(true);
   const [cursorPosition, setCursorPosition] = useState({ x: 48, y: 32 });
   const [clickPosition, setClickPosition] = useState<{ x: number; y: number } | null>(null);
@@ -49,8 +51,8 @@ export function SessionReplay() {
 
   return (
     <Card
-      title="Session Replay"
-      description="Watch real user sessions to understand their behavior and identify pain points."
+      title={t("Session Replay")}
+      description={t("Watch real user sessions to understand their behavior and identify pain points.")}
       icon={Film}
     >
       <div className=" mt-4 transform rotate-2 translate-x-8 translate-y-8 bg-neutral-200 dark:bg-neutral-900 rounded-lg -mb-[30px] rounded-xl transition-transform duration-300 hover:scale-105 hover:rotate-3">
@@ -151,7 +153,7 @@ export function SessionReplay() {
             {/* Scroll indicator */}
             {isPlaying && cursorPosition.y > 160 && (
               <div className="absolute bottom-2 right-2 bg-black/50 text-white text-[8px] px-2 py-1 rounded">
-                Scrolling...
+                {t("Scrolling...")}
               </div>
             )}
           </div>

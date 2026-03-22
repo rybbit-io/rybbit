@@ -92,13 +92,8 @@ export const onRequest: MiddlewareHandler = async (context, next) => {
 
 async function proxyToRybbit(request: Request, pathname: string): Promise<Response> {
   try {
-    // Map paths
+    // Map paths: /analytics/* → /api/*
     let rybbitPath = pathname.replace('/analytics/', '/api/');
-
-    // Special case for site config
-    if (pathname.startsWith('/analytics/site/')) {
-      rybbitPath = pathname.replace('/analytics/', '/');
-    }
 
     const rybbitUrl = `${RYBBIT_HOST}${rybbitPath}`;
 
@@ -149,11 +144,8 @@ export const onRequest = async (context, next) => {
 
 async function proxyToRybbit(request, pathname) {
   try {
+    // Map paths: /analytics/* → /api/*
     let rybbitPath = pathname.replace('/analytics/', '/api/');
-
-    if (pathname.startsWith('/analytics/site/')) {
-      rybbitPath = pathname.replace('/analytics/', '/');
-    }
 
     const rybbitUrl = `${RYBBIT_HOST}${rybbitPath}`;
     const forwardedFor = request.headers.get('x-forwarded-for');

@@ -1,7 +1,8 @@
 "use client";
 
+import { useExtracted } from "next-intl";
 import { useState } from "react";
-import { toast } from "sonner";
+import { toast } from "@/components/ui/sonner";
 import { Button } from "../../../../components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../../../../components/ui/card";
 import { Input } from "../../../../components/ui/input";
@@ -12,17 +13,20 @@ import { DateTime } from "luxon";
 import { useListApiKeys, useCreateApiKey, useDeleteApiKey } from "../../../../api/admin/hooks/useUserApiKeys";
 
 export function ApiKeyManager() {
+  const t = useExtracted();
   const [apiKeyName, setApiKeyName] = useState("");
   const [showApiKeyDialog, setShowApiKeyDialog] = useState(false);
   const [createdApiKey, setCreatedApiKey] = useState<string | null>(null);
 
-  const { data: apiKeys, isLoading: isLoadingApiKeys, isError, error, refetch } = useListApiKeys();
+  const { data: apiKeysData, isLoading: isLoadingApiKeys, isError, error, refetch } = useListApiKeys();
+
+  const apiKeys = apiKeysData?.apiKeys;
   const createApiKey = useCreateApiKey();
   const deleteApiKey = useDeleteApiKey();
 
   const handleCreateApiKey = async () => {
     if (!apiKeyName.trim()) {
-      toast.error("Please enter a name for the API key");
+      toast.error(t("Please enter a name for the API key"));
       return;
     }
 
@@ -31,50 +35,50 @@ export function ApiKeyManager() {
       setCreatedApiKey(result.key);
       setShowApiKeyDialog(true);
       setApiKeyName("");
-      toast.success("API key created successfully");
+      toast.success(t("API key created successfully"));
     } catch (error) {
       console.error("Error creating API key:", error);
-      toast.error(error instanceof Error ? error.message : "Failed to create API key");
+      toast.error(error instanceof Error ? error.message : t("Failed to create API key"));
     }
   };
 
   const handleDeleteApiKey = async (keyId: string, keyName: string | null) => {
-    if (!confirm(`Are you sure you want to delete the API key "${keyName || "Unnamed"}"?`)) {
+    if (!confirm(t("Are you sure you want to delete the API key \"{keyName}\"?", { keyName: keyName || t("Unnamed") }))) {
       return;
     }
 
     try {
       await deleteApiKey.mutateAsync(keyId);
-      toast.success("API key deleted successfully");
+      toast.success(t("API key deleted successfully"));
     } catch (error) {
       console.error("Error deleting API key:", error);
-      toast.error(error instanceof Error ? error.message : "Failed to delete API key");
+      toast.error(error instanceof Error ? error.message : t("Failed to delete API key"));
     }
   };
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
-    toast.success("Copied to clipboard");
+    toast.success(t("Copied to clipboard"));
   };
 
   return (
     <>
       <Card className="p-2">
         <CardHeader>
-          <CardTitle className="text-xl">API Keys</CardTitle>
+          <CardTitle className="text-xl">{t("API Keys")}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-6">
           <div className="space-y-2">
-            <h4 className="text-sm font-medium">Create API Key</h4>
+            <h4 className="text-sm font-medium">{t("Create API Key")}</h4>
             <p className="text-xs text-neutral-500">
-              Generate API keys to access analytics endpoints from your applications
+              {t("Generate API keys to access analytics endpoints from your applications")}
             </p>
             <div className="flex space-x-2">
               <Input
                 id="apiKeyName"
                 value={apiKeyName}
                 onChange={({ target }) => setApiKeyName(target.value)}
-                placeholder="API Key Name"
+                placeholder={t("API Key Name")}
                 onKeyDown={e => {
                   if (e.key === "Enter") {
                     e.preventDefault();
@@ -87,22 +91,22 @@ export function ApiKeyManager() {
                 onClick={handleCreateApiKey}
                 disabled={createApiKey.isPending || !apiKeyName.trim()}
               >
-                {createApiKey.isPending ? "Creating..." : "Create"}
+                {createApiKey.isPending ? t("Creating...") : t("Create")}
               </Button>
             </div>
           </div>
 
           <div className="space-y-2">
-            <h4 className="text-sm font-medium">Your API Keys</h4>
+            <h4 className="text-sm font-medium">{t("Your API Keys")}</h4>
             {isLoadingApiKeys ? (
-              <p className="text-xs text-neutral-500">Loading API keys...</p>
+              <p className="text-xs text-neutral-500">{t("Loading API keys...")}</p>
             ) : isError ? (
               <div className="space-y-2">
                 <p className="text-xs text-red-500">
-                  Failed to load API keys{error?.message ? `: ${error.message}` : ""}
+                  {t("Failed to load API keys")}{error?.message ? `: ${error.message}` : ""}
                 </p>
                 <Button variant="outline" size="sm" onClick={() => refetch()}>
-                  Retry
+                  {t("Retry")}
                 </Button>
               </div>
             ) : apiKeys && apiKeys.length > 0 ? (
@@ -110,18 +114,18 @@ export function ApiKeyManager() {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Name</TableHead>
-                      <TableHead>Key</TableHead>
-                      <TableHead>Created</TableHead>
-                      <TableHead className="text-right">Actions</TableHead>
+                      <TableHead>{t("Name")}</TableHead>
+                      <TableHead>{t("Key")}</TableHead>
+                      <TableHead>{t("Created")}</TableHead>
+                      <TableHead className="text-right">{t("Actions")}</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {apiKeys.map(key => (
                       <TableRow key={key.id}>
-                        <TableCell className="font-medium">{key.name || "Unnamed"}</TableCell>
+                        <TableCell className="font-medium">{key.name || t("Unnamed")}</TableCell>
                         <TableCell className="font-mono text-xs">{key.start || "****"}...</TableCell>
-                        <TableCell>{DateTime.fromISO(key.createdAt).toLocaleString(DateTime.DATETIME_SHORT)}</TableCell>
+                        <TableCell>{DateTime.fromJSDate(new Date(key.createdAt)).toLocaleString(DateTime.DATETIME_SHORT)}</TableCell>
                         <TableCell className="text-right">
                           <Button
                             variant="destructive"
@@ -129,7 +133,7 @@ export function ApiKeyManager() {
                             onClick={() => handleDeleteApiKey(key.id, key.name)}
                             disabled={deleteApiKey.isPending}
                           >
-                            Delete
+                            {t("Delete")}
                           </Button>
                         </TableCell>
                       </TableRow>
@@ -138,7 +142,7 @@ export function ApiKeyManager() {
                 </Table>
               </div>
             ) : (
-              <p className="text-xs text-neutral-500">No API keys created yet</p>
+              <p className="text-xs text-neutral-500">{t("No API keys created yet")}</p>
             )}
           </div>
         </CardContent>
@@ -147,22 +151,22 @@ export function ApiKeyManager() {
       <Dialog open={showApiKeyDialog} onOpenChange={setShowApiKeyDialog}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>API Key Created</DialogTitle>
-            <DialogDescription>Save this API key securely. You won&apos;t be able to see it again.</DialogDescription>
+            <DialogTitle>{t("API Key Created")}</DialogTitle>
+            <DialogDescription>{t("Save this API key securely. You won't be able to see it again.")}</DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label>Your API Key</Label>
+              <Label>{t("Your API Key")}</Label>
               <div className="flex space-x-2">
                 <Input value={createdApiKey || ""} readOnly className="font-mono text-xs" />
                 <Button variant="outline" onClick={() => createdApiKey && copyToClipboard(createdApiKey)}>
-                  Copy
+                  {t("Copy")}
                 </Button>
               </div>
             </div>
             <div className="rounded-lg bg-yellow-50 dark:bg-yellow-950 p-3 border border-yellow-200 dark:border-yellow-800">
               <p className="text-xs text-yellow-800 dark:text-yellow-200">
-                <strong>Important:</strong> Store this key securely. It won&apos;t be displayed again.
+                <strong>{t("Important")}:</strong> {t("Store this key securely. It won't be displayed again.")}
               </p>
             </div>
 
@@ -174,7 +178,7 @@ export function ApiKeyManager() {
               }}
               variant="success"
             >
-              Done
+              {t("Done")}
             </Button>
           </div>
         </DialogContent>

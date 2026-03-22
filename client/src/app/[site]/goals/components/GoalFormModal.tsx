@@ -1,5 +1,6 @@
 "use client";
 
+import { useExtracted } from "next-intl";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
@@ -59,6 +60,19 @@ const formSchema = z
       message: "Configuration is required based on goal type",
       path: ["config"],
     }
+  )
+  .refine(
+    data => {
+      if (data.goalType === "path" && data.config.pathPattern) {
+        return !/^(https?:\/\/|www\.|[a-zA-Z0-9-]+\.[a-zA-Z]{2,}\/)/i.test(data.config.pathPattern);
+      }
+      return true;
+    },
+    {
+      message:
+        "Enter a path (e.g., /checkout), not a full URL. The domain is already determined by your site.",
+      path: ["config", "pathPattern"],
+    }
   );
 
 type FormValues = z.infer<typeof formSchema>;
@@ -71,6 +85,7 @@ interface GoalFormModalProps {
 }
 
 export default function GoalFormModal({ siteId, goal, trigger, isCloneMode = false }: GoalFormModalProps) {
+  const t = useExtracted();
   const [isOpen, setIsOpen] = useState(false);
 
   // Initialize useProperties based on either new propertyFilters or legacy properties
@@ -248,13 +263,13 @@ export default function GoalFormModal({ siteId, goal, trigger, isCloneMode = fal
       </DialogTrigger>
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
-          <DialogTitle>{isEditMode ? "Edit Goal" : isCloneMode ? "Clone Goal" : "Create Goal"}</DialogTitle>
+          <DialogTitle>{isEditMode ? t("Edit Goal") : isCloneMode ? t("Clone Goal") : t("Create Goal")}</DialogTitle>
           <DialogDescription>
             {isEditMode
-              ? "Update the goal details below."
+              ? t("Update the goal details below.")
               : isCloneMode
-                ? "Clone this goal with the same configuration."
-                : "Set up a new conversion goal to track specific user actions."}
+                ? t("Clone this goal with the same configuration.")
+                : t("Set up a new conversion goal to track specific user actions.")}
           </DialogDescription>
         </DialogHeader>
 
@@ -265,9 +280,9 @@ export default function GoalFormModal({ siteId, goal, trigger, isCloneMode = fal
               name="name"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Goal Name (optional)</FormLabel>
+                  <FormLabel>{t("Goal Name (optional)")}</FormLabel>
                   <FormControl>
-                    <Input placeholder="e.g., Sign Up Completion" autoComplete="off" {...field} />
+                    <Input placeholder={t("e.g., Sign Up Completion")} autoComplete="off" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -279,18 +294,18 @@ export default function GoalFormModal({ siteId, goal, trigger, isCloneMode = fal
               name="goalType"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Goal Type</FormLabel>
+                  <FormLabel>{t("Goal Type")}</FormLabel>
                   {isEditMode ? (
                     <div className="flex items-center gap-2 mt-1">
                       {field.value === "path" ? (
                         <div className="flex items-center gap-1 bg-neutral-800/50 py-2 px-3 rounded">
                           <PageviewIcon />
-                          <span>Page Goal</span>
+                          <span>{t("Page Goal")}</span>
                         </div>
                       ) : (
                         <div className="flex items-center gap-1 bg-neutral-800/50 py-2 px-3 rounded">
                           <EventIcon />
-                          <span>Event Goal</span>
+                          <span>{t("Event Goal")}</span>
                         </div>
                       )}
                     </div>
@@ -307,7 +322,7 @@ export default function GoalFormModal({ siteId, goal, trigger, isCloneMode = fal
                           onClick={() => field.onChange("path")}
                         >
                           <PageviewIcon />
-                          <span>Page Goal</span>
+                          <span>{t("Page Goal")}</span>
                         </Button>
                         <Button
                           type="button"
@@ -319,7 +334,7 @@ export default function GoalFormModal({ siteId, goal, trigger, isCloneMode = fal
                           onClick={() => field.onChange("event")}
                         >
                           <EventIcon />
-                          <span>Event Goal</span>
+                          <span>{t("Event Goal")}</span>
                         </Button>
                       </div>
                     </FormControl>
@@ -336,7 +351,7 @@ export default function GoalFormModal({ siteId, goal, trigger, isCloneMode = fal
                   name="config.pathPattern"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Path Pattern</FormLabel>
+                      <FormLabel>{t("Path Pattern")}</FormLabel>
                       <FormControl>
                         <InputWithSuggestions
                           suggestions={pathSuggestions}
@@ -346,7 +361,7 @@ export default function GoalFormModal({ siteId, goal, trigger, isCloneMode = fal
                       </FormControl>
                       <FormMessage />
                       <div className="text-xs text-neutral-500 mt-1">
-                        Use * to match a single path segment. Use ** to match across segments.
+                        {t("Use * to match a single path segment. Use ** to match across segments.")}
                       </div>
                     </FormItem>
                   )}
@@ -355,7 +370,7 @@ export default function GoalFormModal({ siteId, goal, trigger, isCloneMode = fal
                 <div className="mt-4">
                   <div className="flex items-center space-x-2 mb-4">
                     <Switch id="use-properties" checked={useProperties} onCheckedChange={setUseProperties} />
-                    <Label htmlFor="use-properties">Match specific URL parameters</Label>
+                    <Label htmlFor="use-properties">{t("Match specific URL parameters")}</Label>
                   </div>
 
                   {useProperties && (
@@ -405,7 +420,7 @@ export default function GoalFormModal({ siteId, goal, trigger, isCloneMode = fal
                         className="w-full"
                       >
                         <Plus className="h-4 w-4" />
-                        Add Another Parameter
+                        {t("Add Another Parameter")}
                       </Button>
                     </div>
                   )}
@@ -420,7 +435,7 @@ export default function GoalFormModal({ siteId, goal, trigger, isCloneMode = fal
                   name="config.eventName"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Event Name</FormLabel>
+                      <FormLabel>{t("Event Name")}</FormLabel>
                       <FormControl>
                         <InputWithSuggestions
                           suggestions={eventSuggestions}
@@ -436,7 +451,7 @@ export default function GoalFormModal({ siteId, goal, trigger, isCloneMode = fal
                 <div className="mt-4">
                   <div className="flex items-center space-x-2 mb-4">
                     <Switch id="use-properties-event" checked={useProperties} onCheckedChange={setUseProperties} />
-                    <Label htmlFor="use-properties-event">Match specific event properties</Label>
+                    <Label htmlFor="use-properties-event">{t("Match specific event properties")}</Label>
                   </div>
 
                   {useProperties && (
@@ -486,7 +501,7 @@ export default function GoalFormModal({ siteId, goal, trigger, isCloneMode = fal
                         className="w-full"
                       >
                         <Plus className="h-4 w-4" />
-                        Add Another Property
+                        {t("Add Another Property")}
                       </Button>
                     </div>
                   )}
@@ -496,10 +511,10 @@ export default function GoalFormModal({ siteId, goal, trigger, isCloneMode = fal
 
             <div className="flex justify-end space-x-2">
               <Button variant="outline" type="button" onClick={onClose}>
-                Cancel
+                {t("Cancel")}
               </Button>
               <Button type="submit" disabled={createGoal.isPending || updateGoal.isPending} variant="success">
-                {createGoal.isPending || updateGoal.isPending ? "Saving..." : isEditMode ? "Update" : "Create"}
+                {createGoal.isPending || updateGoal.isPending ? t("Saving...") : isEditMode ? t("Update") : t("Create")}
               </Button>
             </div>
           </form>

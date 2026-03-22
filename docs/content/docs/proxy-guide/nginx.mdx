@@ -70,18 +70,6 @@ server {
         add_header X-Cache-Status $upstream_cache_status;
     }
 
-    # Unminified script for debugging (cached)
-    location = /analytics/script-full.js {
-        proxy_pass https://app.rybbit.io/api/script-full.js;
-        proxy_set_header Host app.rybbit.io;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-        proxy_ssl_server_name on;
-
-        proxy_cache_valid 200 1h;
-    }
-
     # Session replay script (cached)
     location = /analytics/replay.js {
         proxy_pass https://app.rybbit.io/api/replay.js;
@@ -144,7 +132,7 @@ server {
 
     # Site configuration endpoint (cached briefly)
     location ~ ^/analytics/site/tracking-config/(.*)$ {
-        proxy_pass https://app.rybbit.io/site/tracking-config/$1;
+        proxy_pass https://app.rybbit.io/api/site/tracking-config/$1;
         proxy_set_header Host app.rybbit.io;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
@@ -372,8 +360,8 @@ location ~ ^/analytics/(script|replay|metrics)\.js$ {
 }
 
 # Config - cache for 5 minutes (changes when you update dashboard settings)
-location ~ ^/analytics/site/tracking-config/ {
-    proxy_pass https://app.rybbit.io/site/tracking-config/;
+location ~ ^/analytics/site/tracking-config/(.*)$ {
+    proxy_pass https://app.rybbit.io/api/site/tracking-config/$1;
     # ... proxy headers
     proxy_cache_valid 200 5m;
 }

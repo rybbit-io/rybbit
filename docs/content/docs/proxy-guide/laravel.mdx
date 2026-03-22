@@ -116,7 +116,7 @@ class AnalyticsProxyController extends Controller
         $cacheKey = "rybbit_config_{$siteId}";
 
         return Cache::remember($cacheKey, 300, function () use ($siteId, $request) {
-            return $this->forwardRequest("site/tracking-config/{$siteId}", 'GET', $request);
+            return $this->forwardRequest("api/site/tracking-config/{$siteId}", 'GET', $request);
         });
     }
 
@@ -174,7 +174,7 @@ use App\Http\Controllers\AnalyticsProxyController;
 Route::prefix('analytics')->group(function () {
     // Scripts (GET)
     Route::get('/{script}', [AnalyticsProxyController::class, 'proxyScript'])
-        ->where('script', '(script|script-full|replay|metrics)\.js');
+        ->where('script', '(script|replay|metrics)\.js');
 
     // Tracking endpoints (POST)
     Route::post('/track', [AnalyticsProxyController::class, 'proxyTrack']);

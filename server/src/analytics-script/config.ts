@@ -83,6 +83,8 @@ export async function parseScriptConfig(scriptTag: HTMLScriptElement): Promise<S
     ? Math.min(100, Math.max(0, parseInt(sampleRateAttr, 10)))
     : undefined;
 
+  const tag = scriptTag.getAttribute("data-tag") || "";
+
   // Default config with minimal settings
   const defaultConfig: ScriptConfig = {
     namespace,
@@ -102,6 +104,10 @@ export async function parseScriptConfig(scriptTag: HTMLScriptElement): Promise<S
     enableWebVitals: false,
     trackErrors: false,
     enableSessionReplay: false,
+    trackButtonClicks: false,
+    trackCopy: false,
+    trackFormInteractions: false,
+    tag,
     // rrweb session replay options (undefined means use rrweb defaults)
     sessionReplayBlockClass,
     sessionReplayBlockSelector,
@@ -139,6 +145,9 @@ export async function parseScriptConfig(scriptTag: HTMLScriptElement): Promise<S
         enableWebVitals: apiConfig.webVitals ?? defaultConfig.enableWebVitals,
         trackErrors: apiConfig.trackErrors ?? defaultConfig.trackErrors,
         enableSessionReplay: apiConfig.sessionReplay ?? defaultConfig.enableSessionReplay,
+        trackButtonClicks: apiConfig.trackButtonClicks ?? defaultConfig.trackButtonClicks,
+        trackCopy: apiConfig.trackCopy ?? defaultConfig.trackCopy,
+        trackFormInteractions: apiConfig.trackFormInteractions ?? defaultConfig.trackFormInteractions,
       };
     } else {
       // If API call fails, log warning and use defaults

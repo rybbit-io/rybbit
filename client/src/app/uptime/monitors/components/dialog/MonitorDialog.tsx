@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { useCreateMonitor, useUpdateMonitor, UptimeMonitor } from "@/api/uptime/monitors";
-import { toast } from "sonner";
+import { toast } from "@/components/ui/sonner";
 import { Loader2 } from "lucide-react";
 import { createMonitorSchema, updateMonitorSchema } from "../monitorSchemas";
 import { Form } from "@/components/ui/form";

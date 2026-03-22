@@ -5,6 +5,7 @@ import { AdminOrganizationData } from "@/api/admin/endpoints";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useDateTimeFormat } from "../../../../hooks/useDateTimeFormat";
 import { parseUtcTimestamp } from "@/lib/dateTimeUtils";
 import { formatter } from "@/lib/utils";
 import { ChevronDown, ChevronRight } from "lucide-react";
@@ -20,6 +21,7 @@ import {
 } from "@tanstack/react-table";
 import { SortableHeader } from "../shared/SortableHeader";
 import { OrganizationExpandedRow } from "./OrganizationExpandedRow";
+import { useExtracted } from "next-intl";
 
 interface OrganizationsTableProps {
   organizations: AdminOrganizationData[];
@@ -28,6 +30,8 @@ interface OrganizationsTableProps {
 }
 
 export function OrganizationsTable({ organizations, isLoading, searchQuery }: OrganizationsTableProps) {
+  const t = useExtracted();
+  const { formatRelative } = useDateTimeFormat();
   const [expandedOrgs, setExpandedOrgs] = useState<Set<string>>(new Set());
   const [sorting, setSorting] = useState<SortingState>([]);
   const [pagination, setPagination] = useState({
@@ -50,7 +54,7 @@ export function OrganizationsTable({ organizations, isLoading, searchQuery }: Or
 
   const formatSubscriptionStatus = (subscription: AdminOrganizationData["subscription"]) => {
     const statusColor =
-      subscription.status === "active" ? "default" : subscription.status === "canceled" ? "destructive" : "secondary";
+      subscription.status === "active" || subscription.status === "trialing" ? "default" : subscription.status === "canceled" ? "destructive" : "secondary";
     return <Badge variant={statusColor}>{subscription.planName}</Badge>;
   };
 
@@ -72,17 +76,17 @@ export function OrganizationsTable({ organizations, isLoading, searchQuery }: Or
       },
       {
         accessorKey: "name",
-        header: ({ column }) => <SortableHeader column={column}>Organization</SortableHeader>,
+        header: ({ column }) => <SortableHeader column={column}>{t("Organization")}</SortableHeader>,
         cell: ({ row }) => <div className="font-medium">{row.getValue("name")}</div>,
       },
       {
         accessorKey: "createdAt",
-        header: ({ column }) => <SortableHeader column={column}>Created</SortableHeader>,
-        cell: ({ row }) => <div>{parseUtcTimestamp(row.getValue("createdAt")).toRelative()}</div>,
+        header: ({ column }) => <SortableHeader column={column}>{t("Created")}</SortableHeader>,
+        cell: ({ row }) => <div>{formatRelative(parseUtcTimestamp(row.getValue("createdAt")))}</div>,
       },
       {
         accessorKey: "monthlyEventCount",
-        header: ({ column }) => <SortableHeader column={column}>Monthly Events</SortableHeader>,
+        header: ({ column }) => <SortableHeader column={column}>{t("Monthly Events")}</SortableHeader>,
         cell: ({ row }) => {
           const count = row.getValue("monthlyEventCount") as number;
           const isOverLimit = row.original.overMonthlyLimit;
@@ -96,7 +100,7 @@ export function OrganizationsTable({ organizations, isLoading, searchQuery }: Or
       },
       {
         id: "eventsLast24Hours",
-        header: ({ column }) => <SortableHeader column={column}>24h Events</SortableHeader>,
+        header: ({ column }) => <SortableHeader column={column}>{t("24h Events")}</SortableHeader>,
         accessorFn: row => row.sites.reduce((total, site) => total + Number(site.eventsLast24Hours || 0), 0),
         cell: ({ row }) => {
           const total = row.original.sites.reduce((sum, site) => sum + Number(site.eventsLast24Hours || 0), 0);
@@ -105,7 +109,7 @@ export function OrganizationsTable({ organizations, isLoading, searchQuery }: Or
       },
       {
         id: "eventsLast30Days",
-        header: ({ column }) => <SortableHeader column={column}>30d Events</SortableHeader>,
+        header: ({ column }) => <SortableHeader column={column}>{t("30d Events")}</SortableHeader>,
         accessorFn: row => row.sites.reduce((total, site) => total + Number(site.eventsLast30Days || 0), 0),
         cell: ({ row }) => {
           const total = row.original.sites.reduce((sum, site) => sum + Number(site.eventsLast30Days || 0), 0);
@@ -114,19 +118,19 @@ export function OrganizationsTable({ organizations, isLoading, searchQuery }: Or
       },
       {
         id: "subscription",
-        header: ({ column }) => <SortableHeader column={column}>Subscription</SortableHeader>,
+        header: ({ column }) => <SortableHeader column={column}>{t("Subscription")}</SortableHeader>,
         accessorFn: row => row.subscription.planName,
         cell: ({ row }) => formatSubscriptionStatus(row.original.subscription),
       },
       {
         id: "sites",
-        header: ({ column }) => <SortableHeader column={column}>Sites</SortableHeader>,
+        header: ({ column }) => <SortableHeader column={column}>{t("Sites")}</SortableHeader>,
         accessorFn: row => row.sites.length,
         cell: ({ row }) => row.original.sites.length,
       },
       {
         id: "members",
-        header: ({ column }) => <SortableHeader column={column}>Members</SortableHeader>,
+        header: ({ column }) => <SortableHeader column={column}>{t("Members")}</SortableHeader>,
         accessorFn: row => row.members.length,
         cell: ({ row }) => row.original.members.length,
       },
@@ -247,7 +251,7 @@ export function OrganizationsTable({ organizations, isLoading, searchQuery }: Or
             ) : (
               <TableRow>
                 <TableCell colSpan={columns.length} className="text-center py-6 text-muted-foreground">
-                  {searchQuery ? "No organizations match your search" : "No organizations found"}
+                  {searchQuery ? t("No organizations match your search") : t("No organizations found")}
                 </TableCell>
               </TableRow>
             )}
@@ -261,9 +265,9 @@ export function OrganizationsTable({ organizations, isLoading, searchQuery }: Or
           data={
             table.getRowModel().rows.length > 0
               ? {
-                  items: table.getRowModel().rows,
-                  total: table.getRowModel().rows.length,
-                }
+                items: table.getRowModel().rows,
+                total: table.getRowModel().rows.length,
+              }
               : undefined
           }
           pagination={pagination}

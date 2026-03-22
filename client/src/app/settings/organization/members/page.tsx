@@ -6,8 +6,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from ".
 import { Badge } from "../../../../components/ui/badge";
 import { authClient } from "../../../../lib/auth";
 
+import { useExtracted } from "next-intl";
 import { useEffect, useState } from "react";
-import { toast } from "sonner";
+import { toast } from "@/components/ui/sonner";
 import { useOrganizationMembers } from "../../../../api/admin/hooks/useOrganizationMembers";
 import { useOrganizationInvitations } from "../../../../api/admin/hooks/useOrganizations";
 import { NoOrganization } from "../../../../components/NoOrganization";
@@ -61,6 +62,7 @@ function Organization({
     createdAt: Date;
   };
 }) {
+  const t = useExtracted();
   const [name, setName] = useState(org.name);
   const [isUpdating, setIsUpdating] = useState(false);
   const [selectedMemberForAccess, setSelectedMemberForAccess] = useState<MemberData | null>(null);
@@ -83,7 +85,7 @@ function Organization({
 
   const handleOrganizationNameUpdate = async () => {
     if (!name) {
-      toast.error("Organization name cannot be empty");
+      toast.error(t("Organization name cannot be empty"));
       return;
     }
 
@@ -97,14 +99,14 @@ function Organization({
       });
 
       if (response.error) {
-        throw new Error(response.error.message || "Failed to update organization name");
+        throw new Error(response.error.message || t("Failed to update organization name"));
       }
 
-      toast.success("Name updated successfully");
+      toast.success(t("Name updated successfully"));
       window.location.reload();
     } catch (error) {
       console.error("Error updating organization name:", error);
-      toast.error(error instanceof Error ? error.message : "Failed to update organization name");
+      toast.error(error instanceof Error ? error.message : t("Failed to update organization name"));
     } finally {
       setIsUpdating(false);
     }
@@ -115,22 +117,22 @@ function Organization({
       {isOwner && (
         <Card>
           <CardHeader>
-            <CardTitle className="text-xl">Organization</CardTitle>
+            <CardTitle className="text-xl">{t("Organization")}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-2">
-              <h4 className="text-sm font-medium">Organization Name</h4>
-              <p className="text-xs text-neutral-500">Update your organization name</p>
+              <h4 className="text-sm font-medium">{t("Organization Name")}</h4>
+              <p className="text-xs text-neutral-500">{t("Update your organization name")}</p>
               <div className="flex space-x-2">
                 <Input id="name" value={name} onChange={({ target }) => setName(target.value)} placeholder="name" />
                 <Button variant="outline" onClick={handleOrganizationNameUpdate} disabled={name === org.name}>
-                  {isUpdating ? "Updating..." : "Update"}
+                  {isUpdating ? t("Updating...") : t("Update")}
                 </Button>
               </div>
             </div>
             <div className="pt-4 border-t mt-4 space-y-2">
-              <h4 className="text-sm font-medium">Delete Organization</h4>
-              <p className="text-xs text-neutral-500">Permanently delete this organization and all its data</p>
+              <h4 className="text-sm font-medium">{t("Delete Organization")}</h4>
+              <p className="text-xs text-neutral-500">{t("Permanently delete this organization and all its data")}</p>
               <div className="w-[200px]">
                 <DeleteOrganizationDialog organization={org} onSuccess={handleRefresh} />
               </div>
@@ -141,7 +143,7 @@ function Organization({
       <Card className="w-full">
         <CardHeader className="pb-2">
           <div className="flex items-center justify-between flex-wrap gap-2">
-            <CardTitle className="text-xl">Members</CardTitle>
+            <CardTitle className="text-xl">{t("Members")}</CardTitle>
 
             <div className="flex items-center gap-2">
               {isOwner && (
@@ -164,12 +166,12 @@ function Organization({
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead>Email</TableHead>
-                <TableHead>Role</TableHead>
-                <TableHead>Site Access</TableHead>
-                <TableHead>Joined</TableHead>
-                {isOwner && <TableHead className="w-12">Actions</TableHead>}
+                <TableHead>{t("Name")}</TableHead>
+                <TableHead>{t("Email")}</TableHead>
+                <TableHead>{t("Role")}</TableHead>
+                <TableHead>{t("Site Access")}</TableHead>
+                <TableHead>{t("Joined")}</TableHead>
+                {isOwner && <TableHead className="w-12">{t("Actions")}</TableHead>}
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -205,7 +207,9 @@ function Organization({
                     <TableRow key={member.id}>
                       <TableCell>{member.user?.name || "—"}</TableCell>
                       <TableCell>{member.user?.email}</TableCell>
-                      <TableCell className="capitalize">{member.role}</TableCell>
+                      <TableCell className="capitalize">
+                        {member.role === "admin" ? t("Admin") : member.role === "owner" ? t("Owner") : t("Member")}
+                      </TableCell>
                       <TableCell>
                         {member.role === "member" ? (
                           <Badge
@@ -214,11 +218,11 @@ function Organization({
                             onClick={() => isAdmin && setSelectedMemberForAccess(member)}
                           >
                             {member.siteAccess?.hasRestrictedSiteAccess
-                              ? `${member.siteAccess.siteIds.length} site${member.siteAccess.siteIds.length !== 1 ? "s" : ""}`
-                              : "All sites"}
+                              ? t("{count} sites", { count: String(member.siteAccess.siteIds.length) })
+                              : t("All sites")}
                           </Badge>
                         ) : (
-                          <Badge variant="outline">All sites</Badge>
+                          <Badge variant="outline">{t("All sites")}</Badge>
                         )}
                       </TableCell>
                       <TableCell>
@@ -238,7 +242,7 @@ function Organization({
                   {(!members?.data || members.data.length === 0) && (
                     <TableRow>
                       <TableCell colSpan={isOwner ? 6 : 5} className="text-center py-6 text-muted-foreground">
-                        No members found
+                        {t("No members found")}
                       </TableCell>
                     </TableRow>
                   )}
@@ -264,20 +268,21 @@ function Organization({
 
 // Main Organizations component
 export default function MembersPage() {
-  useSetPageTitle("Rybbit · Organization Members");
+  useSetPageTitle("Organization Members");
+  const t = useExtracted();
   const { data: activeOrganization, isPending } = authClient.useActiveOrganization();
 
   if (isPending) {
     return (
       <div className="flex justify-center py-8">
-        <div className="animate-pulse">Loading organization...</div>
+        <div className="animate-pulse">{t("Loading organization...")}</div>
       </div>
     );
   }
 
   if (!activeOrganization) {
     return (
-      <NoOrganization message="You need to create or be added to an organization before you can manage members." />
+      <NoOrganization message={t("You need to create or be added to an organization before you can manage members.")} />
     );
   }
 

@@ -7,8 +7,9 @@ export {
   fetchSitesFromOrg,
   fetchSiteHasData,
   fetchSiteIsPublic,
+  verifyScript,
 } from "./sites";
-export type { SiteResponse, GetSitesFromOrgResponse } from "./sites";
+export type { SiteResponse, GetSitesFromOrgResponse, VerifyScriptResponse } from "./sites";
 
 // Organizations endpoints
 export {
@@ -60,10 +61,6 @@ export type {
   UpdateAccountSettingsRequest,
   UpdateAccountSettingsResponse,
 } from "./accountSettings";
-
-// User API Keys endpoints
-export { listApiKeys, createApiKey, deleteApiKey } from "./userApiKeys";
-export type { ApiKey, ApiKeyWithKey, CreateApiKeyRequest } from "./userApiKeys";
 
 // Private Link endpoints
 export {

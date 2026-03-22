@@ -1,4 +1,4 @@
-import { BasePayload, ScriptConfig, TrackingPayload, WebVitalsData, SessionReplayBatch } from "./types.js";
+import { BasePayload, ScriptConfig, TrackingPayload, WebVitalsData, SessionReplayBatch, ButtonClickProperties, CopyProperties, FormSubmitProperties, InputChangeProperties } from "./types.js";
 import { findMatchingPattern } from "./utils.js";
 import { SessionReplayRecorder } from "./sessionReplay.js";
 
@@ -6,6 +6,8 @@ export class Tracker {
   private config: ScriptConfig;
   private customUserId: string | null = null;
   private sessionReplayRecorder?: SessionReplayRecorder;
+  private errorDedupeCache: Map<string, number> = new Map();
+  private errorDedupeLastCleanup = 0;
 
   constructor(config: ScriptConfig) {
     this.config = config;
@@ -91,6 +93,10 @@ export class Tracker {
       payload.user_id = this.customUserId;
     }
 
+    if (this.config.tag) {
+      payload.tag = this.config.tag;
+    }
+
     return payload;
   }
 
@@ -121,12 +127,12 @@ export class Tracker {
       return; // Skip tracking
     }
 
+    const typesWithProperties = ["custom_event", "outbound", "error", "button_click", "copy", "form_submit", "input_change"];
     const payload: TrackingPayload = {
       ...basePayload,
       type: eventType,
       event_name: eventName,
-      properties:
-        eventType === "custom_event" || eventType === "outbound" || eventType === "error"
+      properties: typesWithProperties.includes(eventType)
           ? JSON.stringify(properties)
           : undefined,
     };
@@ -163,6 +169,15 @@ export class Tracker {
   }
 
   trackError(error: Error, additionalInfo: Record<string, any> = {}): void {
+    // Ignore known noisy browser warnings that aren't actionable app errors.
+    const message = error?.message || "";
+    if (
+      message.includes("ResizeObserver loop completed with undelivered notifications") ||
+      message.includes("ResizeObserver loop limit exceeded")
+    ) {
+      return;
+    }
+
     // Industry-standard filtering: Only track errors from the same origin to avoid noise from third-party scripts
     const currentOrigin = window.location.origin;
     const filename = additionalInfo.filename || "";
@@ -191,6 +206,34 @@ export class Tracker {
 
     // If neither filename nor stack can determine origin, track the error
     // This covers cases like NetworkError where the source is unclear but could be first-party
+
+    // Dedupe identical errors within a short window to prevent spam.
+    const dedupeKeyParts = [
+      error.name || "Error",
+      message,
+      additionalInfo.filename || "",
+      additionalInfo.lineno ?? "",
+      additionalInfo.colno ?? "",
+    ];
+    const dedupeKey = dedupeKeyParts.join("|");
+    const now = Date.now();
+    const dedupeWindowMs = 60_000;
+    const lastSeen = this.errorDedupeCache.get(dedupeKey);
+    if (lastSeen && now - lastSeen < dedupeWindowMs) {
+      return;
+    }
+    this.errorDedupeCache.set(dedupeKey, now);
+
+    // Periodically prune old keys to avoid unbounded growth.
+    const pruneAfterMs = 10 * 60_000;
+    if (now - this.errorDedupeLastCleanup > dedupeWindowMs) {
+      for (const [key, ts] of this.errorDedupeCache.entries()) {
+        if (now - ts > pruneAfterMs) {
+          this.errorDedupeCache.delete(key);
+        }
+      }
+      this.errorDedupeLastCleanup = now;
+    }
 
     const errorProperties: Record<string, any> = {
       message: error.message?.substring(0, 500) || "Unknown error", // Truncate to 500 chars
@@ -226,6 +269,22 @@ export class Tracker {
     }
 
     this.track("error", error.name || "Error", errorProperties);
+  }
+
+  trackButtonClick(properties: ButtonClickProperties): void {
+    this.track("button_click", "", properties);
+  }
+
+  trackCopy(properties: CopyProperties): void {
+    this.track("copy", "", properties);
+  }
+
+  trackFormSubmit(properties: FormSubmitProperties): void {
+    this.track("form_submit", "", properties);
+  }
+
+  trackInputChange(properties: InputChangeProperties): void {
+    this.track("input_change", "", properties);
   }
 
   identify(userId: string, traits?: Record<string, unknown>): void {

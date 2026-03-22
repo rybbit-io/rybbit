@@ -1,8 +1,9 @@
 "use client";
 
 import { Minus, Plus } from "lucide-react";
+import { useExtracted } from "next-intl";
 import React, { useState } from "react";
-import { toast } from "sonner";
+import { toast } from "@/components/ui/sonner";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -17,6 +18,7 @@ interface IPExclusionManagerProps {
 }
 
 export function IPExclusionManager({ siteId, disabled = false }: IPExclusionManagerProps) {
+  const t = useExtracted();
   const { data: excludedIPsData, isLoading } = useGetExcludedIPs(siteId);
   const updateExcludedIPsMutation = useUpdateExcludedIPs();
 
@@ -72,8 +74,8 @@ export function IPExclusionManager({ siteId, disabled = false }: IPExclusionMana
     if (invalidIPs.length > 0) {
       const errorMessage =
         validationErrors.length > 0
-          ? `Invalid IP patterns:\n${validationErrors.join("\n")}`
-          : `Invalid IP patterns: ${invalidIPs.join(", ")}`;
+          ? t("Invalid IP patterns:") + "\n" + validationErrors.join("\n")
+          : t("Invalid IP patterns:") + " " + invalidIPs.join(", ");
       toast.error(errorMessage);
       return;
     }
@@ -99,16 +101,15 @@ export function IPExclusionManager({ siteId, disabled = false }: IPExclusionMana
   };
 
   if (isLoading) {
-    return <div className="text-sm text-muted-foreground">Loading IP exclusions...</div>;
+    return <div className="text-sm text-muted-foreground">{t("Loading IP exclusions...")}</div>;
   }
 
   return (
     <div className="space-y-4">
       <div>
-        <Label className="text-sm font-medium text-foreground block">IP Exclusions</Label>
+        <Label className="text-sm font-medium text-foreground block">{t("IP Exclusions")}</Label>
         <p className="text-xs text-muted-foreground mt-1">
-          Exclude traffic from specific IP addresses or ranges. Supports single IPs (192.168.1.1), CIDR notation
-          (192.168.1.0/24), and ranges (192.168.1.1-192.168.1.10).
+          {t("Exclude traffic from specific IP addresses or ranges. Supports single IPs (192.168.1.1), CIDR notation (192.168.1.0/24), and ranges (192.168.1.1-192.168.1.10).")}
         </p>
       </div>
 
@@ -148,18 +149,18 @@ export function IPExclusionManager({ siteId, disabled = false }: IPExclusionMana
           className="flex items-center space-x-1"
         >
           <Plus className="h-4 w-4" />
-          <span>Add IP</span>
+          <span>{t("Add IP")}</span>
         </Button>
 
         {ipList.length >= 100 && (
-          <span className="text-xs text-muted-foreground">Maximum 100 IP exclusions allowed</span>
+          <span className="text-xs text-muted-foreground">{t("Maximum 100 IP exclusions allowed")}</span>
         )}
       </div>
 
       {hasUnsavedChanges && (
         <div className="flex items-center space-x-2 pt-2">
           <Button onClick={handleSave} disabled={disabled || updateExcludedIPsMutation.isPending} size="sm">
-            {updateExcludedIPsMutation.isPending ? "Saving..." : "Save Changes"}
+            {updateExcludedIPsMutation.isPending ? t("Saving...") : t("Save Changes")}
           </Button>
           <Button
             variant="outline"
@@ -167,7 +168,7 @@ export function IPExclusionManager({ siteId, disabled = false }: IPExclusionMana
             disabled={disabled || updateExcludedIPsMutation.isPending}
             size="sm"
           >
-            Reset
+            {t("Reset")}
           </Button>
         </div>
       )}

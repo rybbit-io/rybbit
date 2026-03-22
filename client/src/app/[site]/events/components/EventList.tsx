@@ -1,5 +1,6 @@
 "use client";
 
+import { useExtracted } from "next-intl";
 import NumberFlow from "@number-flow/react";
 import { BookOpen, ChevronDown, ChevronRight, Info } from "lucide-react";
 import { memo, useState } from "react";
@@ -79,6 +80,7 @@ interface EventListProps {
 }
 
 export function EventList({ events, isLoading, size = "small" }: EventListProps) {
+  const t = useExtracted();
   const [expandedEvent, setExpandedEvent] = useState<string | null>(null);
 
   const handleEventClick = (eventName: string) => {
@@ -96,7 +98,7 @@ export function EventList({ events, isLoading, size = "small" }: EventListProps)
       <div className="flex flex-col gap-2">
         <div className="text-neutral-600 dark:text-neutral-300 w-full text-center mt-6 flex flex-row gap-2 items-center justify-center">
           <Info className="w-5 h-5" />
-          No Data
+          {t("No Data")}
         </div>
         <a
           target="_blank"
@@ -105,11 +107,11 @@ export function EventList({ events, isLoading, size = "small" }: EventListProps)
           className="text-neutral-500 dark:text-neutral-400 w-full text-center mt-2 flex flex-row gap-1 items-center justify-center text-sm hover:underline hover:text-neutral-700 dark:hover:text-neutral-300"
         >
           <BookOpen className="w-4 h-4" />
-          Learn how to track events
+          {t("Learn how to track events")}
         </a>
       </div>
     ) : (
-      <NothingFound title={"No custom events found"} description={"Try a different date range or filter"} />
+      <NothingFound title={t("No custom events found")} description={t("Try a different date range or filter")} />
     );
   }
 

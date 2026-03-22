@@ -15,11 +15,12 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Check, ChevronsUpDown } from "lucide-react";
 import { useState } from "react";
-import { toast } from "sonner";
+import { toast } from "@/components/ui/sonner";
 import { Alert } from "@/components/ui/alert";
 import { useAddUserToOrganization } from "@/api/admin/hooks/useOrganizations";
 import { useAdminOrganizations } from "@/api/admin/hooks/useAdminOrganizations";
 import { cn } from "@/lib/utils";
+import { useExtracted } from "next-intl";
 
 interface AddToOrganizationDialogProps {
   userEmail: string;
@@ -35,6 +36,7 @@ export function AddToOrganizationDialog({ userEmail, userId, open, onOpenChange 
   const [comboboxOpen, setComboboxOpen] = useState(false);
 
   const { data: organizations, isLoading: isLoadingOrgs } = useAdminOrganizations();
+  const t = useExtracted();
   const addUserToOrganization = useAddUserToOrganization();
 
   const resetState = (open: boolean) => {
@@ -48,7 +50,7 @@ export function AddToOrganizationDialog({ userEmail, userId, open, onOpenChange 
 
   const handleAdd = async () => {
     if (!organizationId) {
-      setError("Please select an organization");
+      setError(t("Please select an organization"));
       return;
     }
 
@@ -59,10 +61,10 @@ export function AddToOrganizationDialog({ userEmail, userId, open, onOpenChange 
         organizationId,
       });
 
-      toast.success("User added to organization successfully");
+      toast.success(t("User added to organization successfully"));
       resetState(false);
     } catch (error: any) {
-      setError(error.message || "Failed to add user to organization");
+      setError(error.message || t("Failed to add user to organization"));
     }
   };
 
@@ -70,14 +72,14 @@ export function AddToOrganizationDialog({ userEmail, userId, open, onOpenChange 
     <Dialog open={open} onOpenChange={resetState}>
       <DialogContent className="max-w-lg">
         <DialogHeader>
-          <DialogTitle>Add user to organization</DialogTitle>
+          <DialogTitle>{t("Add user to organization")}</DialogTitle>
           <DialogDescription>
-            Add {userEmail} to an organization with a specific role.
+            {t("Add {userEmail} to an organization with a specific role.", { userEmail })}
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-4">
           <div className="grid gap-2">
-            <Label htmlFor="organization">Organization</Label>
+            <Label htmlFor="organization">{t("Organization")}</Label>
             <Popover open={comboboxOpen} onOpenChange={setComboboxOpen}>
               <PopoverTrigger asChild>
                 <Button
@@ -90,8 +92,8 @@ export function AddToOrganizationDialog({ userEmail, userId, open, onOpenChange 
                   {organizationId
                     ? organizations?.find(org => org.id === organizationId)?.name
                     : isLoadingOrgs
-                      ? "Loading..."
-                      : "Select an organization..."}
+                      ? t("Loading...")
+                      : t("Select an organization...")}
                   <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                 </Button>
               </PopoverTrigger>
@@ -102,9 +104,9 @@ export function AddToOrganizationDialog({ userEmail, userId, open, onOpenChange 
                     return 0;
                   }}
                 >
-                  <CommandInput placeholder="Search organizations..." />
+                  <CommandInput placeholder={t("Search organizations...")} />
                   <CommandList>
-                    <CommandEmpty>No organization found.</CommandEmpty>
+                    <CommandEmpty>{t("No organization found.")}</CommandEmpty>
                     <CommandGroup>
                       {organizations?.map(org => (
                         <CommandItem
@@ -126,15 +128,15 @@ export function AddToOrganizationDialog({ userEmail, userId, open, onOpenChange 
             </Popover>
           </div>
           <div className="grid gap-2">
-            <Label htmlFor="role">Role</Label>
+            <Label htmlFor="role">{t("Role")}</Label>
             <Select value={role} onValueChange={value => setRole(value as "admin" | "member" | "owner")}>
               <SelectTrigger id="role">
-                <SelectValue placeholder="Select a role" />
+                <SelectValue placeholder={t("Select a role")} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="owner">Owner</SelectItem>
-                <SelectItem value="admin">Admin</SelectItem>
-                <SelectItem value="member">Member</SelectItem>
+                <SelectItem value="owner">{t("Owner")}</SelectItem>
+                <SelectItem value="admin">{t("Admin")}</SelectItem>
+                <SelectItem value="member">{t("Member")}</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -142,10 +144,10 @@ export function AddToOrganizationDialog({ userEmail, userId, open, onOpenChange 
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => resetState(false)}>
-            Cancel
+            {t("Cancel")}
           </Button>
           <Button onClick={handleAdd} disabled={addUserToOrganization.isPending} variant="success">
-            {addUserToOrganization.isPending ? "Adding..." : "Add to Organization"}
+            {addUserToOrganization.isPending ? t("Adding...") : t("Add to Organization")}
           </Button>
         </DialogFooter>
       </DialogContent>

@@ -1,34 +1,37 @@
 import Image from "next/image";
 import Link from "next/link";
+import { useExtracted } from "next-intl";
 import { IS_CLOUD } from "../../lib/const";
 import { useWhiteLabel } from "../../hooks/useIsWhiteLabel";
 import { HeartIcon } from "lucide-react";
 import { Button } from "../../components/ui/button";
+import { LanguageSwitcher } from "../../components/LanguageSwitcher";
 
 export function Footer() {
   const APP_VERSION = process.env.NEXT_PUBLIC_APP_VERSION;
   const { isWhiteLabel } = useWhiteLabel();
+  const t = useExtracted();
   if (isWhiteLabel) {
     return null;
   }
 
   return (
-    <footer className="border-t border-neutral-200 dark:border-neutral-850 bg-neutral-50 dark:bg-neutral-900 mt-8">
+    <footer className="border-t border-neutral-200 dark:border-neutral-850 bg-neutral-50 dark:bg-neutral-900">
       <div className="max-w-[1100px] mx-auto px-4 py-12">
         {/* Main Footer Content */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mb-8">
           {/* Company Info */}
           <div className="space-y-4">
-            <Image src="/rybbit-text.svg" alt="Rybbit" width={120} height={27} className="dark:invert-0 invert" />
+            <Image src="/rybbit/horizontal_white.svg" alt="Rybbit" width={140} height={0} style={{ height: "auto" }} className="dark:invert-0 invert" />
             {!IS_CLOUD && (
               <div className="space-y-3">
                 <div className="text-sm text-neutral-600 dark:text-neutral-200">
-                  Liking Rybbit? Consider sponsoring the project!
+                  {t("Liking Rybbit? Consider sponsoring the project!")}
                 </div>
                 <a href="https://github.com/sponsors/goldflag" target="_blank" rel="noopener noreferrer">
                   <Button>
                     <HeartIcon className="w-5 h-5 text-red-500" strokeWidth={3} />
-                    Sponsor us
+                    {t("Sponsor us")}
                   </Button>
                 </a>
               </div>
@@ -73,14 +76,14 @@ export function Footer() {
 
           {/* Resources */}
           <div className="space-y-4">
-            <h3 className="text-sm font-semibold text-neutral-900 dark:text-white">Resources</h3>
+            <h3 className="text-sm font-semibold text-neutral-900 dark:text-white">{t("Resources")}</h3>
             <ul className="space-y-2 text-sm">
               <li>
                 <a
                   href="https://rybbit.com/docs"
                   className="text-neutral-500 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-white transition-colors"
                 >
-                  Documentation
+                  {t("Documentation")}
                 </a>
               </li>
               <li>
@@ -88,7 +91,7 @@ export function Footer() {
                   href="https://rybbit.com/features"
                   className="text-neutral-500 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-white transition-colors"
                 >
-                  Features
+                  {t("Features")}
                 </a>
               </li>
               <li>
@@ -108,7 +111,7 @@ export function Footer() {
                   rel="noopener noreferrer"
                   className="text-neutral-500 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-white transition-colors"
                 >
-                  Community
+                  Discord
                 </a>
               </li>
               <li>
@@ -116,7 +119,15 @@ export function Footer() {
                   href="https://rybbit.com/docs/api/getting-started"
                   className="text-neutral-500 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-white transition-colors"
                 >
-                  API Reference
+                  {t("API Reference")}
+                </a>
+              </li>
+              <li>
+                <a
+                  href="https://rybbit.com/affiliate"
+                  className="text-neutral-500 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-white transition-colors"
+                >
+                  {t("50% Affiliate Program")}
                 </a>
               </li>
             </ul>
@@ -124,14 +135,14 @@ export function Footer() {
 
           {/* Company */}
           <div className="space-y-4">
-            <h3 className="text-sm font-semibold text-neutral-900 dark:text-white">Company</h3>
+            <h3 className="text-sm font-semibold text-neutral-900 dark:text-white">{t("Company")}</h3>
             <ul className="space-y-2 text-sm">
               <li>
                 <a
                   href="https://rybbit.com/privacy"
                   className="text-neutral-500 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-white transition-colors"
                 >
-                  Privacy Policy
+                  {t("Privacy Policy")}
                 </a>
               </li>
               <li>
@@ -139,7 +150,7 @@ export function Footer() {
                   href="https://rybbit.com/terms-and-conditions"
                   className="text-neutral-500 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-white transition-colors"
                 >
-                  Terms and Conditions
+                  {t("Terms and Conditions")}
                 </a>
               </li>
               <li>
@@ -147,7 +158,7 @@ export function Footer() {
                   href="https://rybbit.com/security"
                   className="text-neutral-500 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-white transition-colors"
                 >
-                  Security
+                  {t("Security")}
                 </a>
               </li>
               <li>
@@ -164,7 +175,7 @@ export function Footer() {
                     href="mailto:hello@rybbit.com"
                     className="text-neutral-500 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-white transition-colors"
                   >
-                    Support
+                    {t("Support")}
                   </a>
                 </li>
               )}
@@ -176,7 +187,7 @@ export function Footer() {
         <div className="pt-8 border-t border-neutral-200 dark:border-neutral-800">
           <div className="flex flex-col md:flex-row items-center justify-between gap-4">
             <div className="flex items-center gap-4 text-sm text-neutral-500 dark:text-neutral-400">
-              <span>© {new Date().getFullYear()} Rybbit. All rights reserved.</span>
+              <span>{t("© {year} Rybbit. All rights reserved.", { year: String(new Date().getFullYear()) })}</span>
               <Link
                 href={`https://github.com/rybbit-io/rybbit/releases/tag/v${APP_VERSION}`}
                 className="hover:text-neutral-700 dark:hover:text-neutral-300"
@@ -184,11 +195,14 @@ export function Footer() {
                 v{APP_VERSION}
               </Link>
             </div>
-            <div className="text-sm text-neutral-500 dark:text-neutral-400">
-              Made with ❤️ by frogs{" "}
-              <a href="https://tomato.gg" target="_blank" title="Tomato.gg">
-                🐸🍅
-              </a>
+            <div className="flex items-center gap-4">
+              <LanguageSwitcher />
+              <span className="text-sm text-neutral-500 dark:text-neutral-400">
+                Made with ❤️ by frogs{" "}
+                <a href="https://tomato.gg" target="_blank" title="Tomato.gg">
+                  🐸🍅
+                </a>
+              </span>
             </div>
           </div>
         </div>

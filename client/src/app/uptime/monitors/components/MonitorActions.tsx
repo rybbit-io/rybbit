@@ -1,7 +1,7 @@
 import { Edit2, MoreVertical, Power, Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { toast } from "sonner";
+import { toast } from "@/components/ui/sonner";
 import { UptimeMonitor, useDeleteMonitor, useUpdateMonitor } from "../../../../api/uptime/monitors";
 import {
   AlertDialog,

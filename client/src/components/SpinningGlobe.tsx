@@ -130,7 +130,7 @@ export function SpinningGlobe() {
     queryKey: ["demo-sessions"],
     queryFn: async () => {
       const response = await fetch(
-        "https://demo.rybbit.com/api/sites/1/sessions?past_minutes_start=120&past_minutes_end=0&filters=[]&page=1&limit=100"
+        "https://demo.rybbit.com/api/sites/81/sessions?past_minutes_start=240&past_minutes_end=0&filters=[]&page=1&limit=100"
       );
       return response.json();
     },

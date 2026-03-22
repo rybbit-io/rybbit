@@ -1,10 +1,12 @@
 import { Building2 } from "lucide-react";
+import { useExtracted } from "next-intl";
 import { useState, useEffect } from "react";
 import { authClient } from "../lib/auth";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
 import { useUserOrganizations } from "../api/admin/hooks/useOrganizations";
 
 export function OrganizationSelector() {
+  const t = useExtracted();
   const { data: organizations, isLoading: isLoadingOrganizations } = useUserOrganizations();
   const { data: activeOrganization, isPending } = authClient.useActiveOrganization();
 
@@ -31,7 +33,7 @@ export function OrganizationSelector() {
     return (
       <Select disabled>
         <SelectTrigger className="w-full">
-          <SelectValue placeholder={"No organizations"} />
+          <SelectValue placeholder={t("No organizations")} />
         </SelectTrigger>
       </Select>
     );
@@ -42,11 +44,11 @@ export function OrganizationSelector() {
     return (
       <Select disabled>
         <SelectTrigger className="w-full">
-          <SelectValue placeholder={"Loading..."} />
+          <SelectValue placeholder={t("Loading...")} />
         </SelectTrigger>
         <SelectContent>
           <SelectItem value="placeholder" disabled>
-            {"Loading organizations..."}
+            {t("Loading organizations...")}
           </SelectItem>
         </SelectContent>
       </Select>
@@ -60,7 +62,7 @@ export function OrganizationSelector() {
       disabled={!organizations || organizations.length === 0}
     >
       <SelectTrigger className="w-full">
-        <SelectValue placeholder="Select an organization" />
+        <SelectValue placeholder={t("Select an organization")} />
       </SelectTrigger>
       <SelectContent>
         {organizations?.map(org => (
@@ -73,7 +75,7 @@ export function OrganizationSelector() {
         ))}
         {(!organizations || organizations.length === 0) && (
           <SelectItem value="no-org" disabled>
-            No organizations available
+            {t("No organizations available")}
           </SelectItem>
         )}
       </SelectContent>

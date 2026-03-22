@@ -1,43 +1,43 @@
 "use client";
 
-import { AuthButton } from "@/components/auth/AuthButton";
 import { AuthError } from "@/components/auth/AuthError";
-import { AuthInput } from "@/components/auth/AuthInput";
-import { SocialButtons } from "@/components/auth/SocialButtons";
-import { Turnstile } from "@/components/auth/Turnstile";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"; // Used for disabled signup view
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowRight, Check } from "lucide-react";
+import { CheckoutModal } from "@/components/subscription/components/CheckoutModal";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Check } from "lucide-react";
+import { useExtracted } from "next-intl";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { parseAsInteger, useQueryState } from "nuqs";
-import React, { Suspense, useEffect, useState } from "react";
+import React, { Suspense, useState } from "react";
 import { addSite } from "../../api/admin/endpoints";
 import { RybbitLogo, RybbitTextLogo } from "../../components/RybbitLogo";
-import { SpinningGlobe } from "../../components/SpinningGlobe";
+
 import { useSetPageTitle } from "../../hooks/useSetPageTitle";
 import { authClient } from "../../lib/auth";
 import { useConfigs } from "../../lib/configs";
-import { IS_CLOUD } from "../../lib/const";
+import { BACKEND_URL, IS_CLOUD } from "../../lib/const";
+import { trackAdEvent } from "../../lib/trackAdEvent";
 import { userStore } from "../../lib/userStore";
 import { cn, isValidDomain, normalizeDomain } from "../../lib/utils";
+import { EVENT_TIERS, findPriceForTier } from "../subscribe/components/utils";
+import { AccountStep } from "./components/AccountStep";
+import { PlanStep } from "./components/PlanStep";
+import { SetupStep } from "./components/SetupStep";
 
 function SignupPageContent() {
   const { configs, isLoading: isLoadingConfigs } = useConfigs();
-  useSetPageTitle("Rybbit · Signup");
+  useSetPageTitle("Signup");
+  const t = useExtracted();
 
-  const [currentStep, setCurrentStep] = useState(1);
-  const [stepParam] = useQueryState("step", parseAsInteger);
+  const maxStep = IS_CLOUD ? 3 : 2;
+  const [stepParam, setStepParam] = useQueryState("step", parseAsInteger);
+  const [currentStep, setCurrentStepRaw] = useState(stepParam && stepParam >= 1 && stepParam <= maxStep ? stepParam : 1);
 
-  // Sync URL step param with local state on mount
-  useEffect(() => {
-    if (stepParam && stepParam >= 1 && stepParam <= 3) {
-      setCurrentStep(stepParam);
-    }
-  }, [stepParam]);
+  // Wrap setCurrentStep to also update the URL param
+  const setCurrentStep = (step: number) => {
+    setCurrentStepRaw(step);
+    setStepParam(step);
+  };
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string>("");
   const router = useRouter();
@@ -47,16 +47,18 @@ function SignupPageContent() {
   const [password, setPassword] = useState("");
   const [turnstileToken, setTurnstileToken] = useState<string>("");
 
-  // Step 2: Organization creation
+  // Plan selection (cloud step 2)
+  const [eventLimitIndex, setEventLimitIndex] = useState(0);
+  const [isAnnual, setIsAnnual] = useState(true);
+  const [selectedPlan, setSelectedPlan] = useState<"standard" | "pro">("pro");
+  const [checkoutClientSecret, setCheckoutClientSecret] = useState<string | null>(null);
+
+  // Setup: Organization + website
   const [orgName, setOrgName] = useState("");
   const [orgSlug, setOrgSlug] = useState("");
   const [referralSource, setReferralSource] = useState("");
-
-  // Step 3: Website addition
-  const [organizationId, setOrganizationId] = useState("");
   const [domain, setDomain] = useState("");
 
-  // Handle organization name change and generate slug
   const handleOrgNameChange = (value: string) => {
     setOrgName(value);
     if (value) {
@@ -74,9 +76,8 @@ function SignupPageContent() {
     setError("");
 
     try {
-      // Validate Turnstile token if in cloud mode
       if (IS_CLOUD && !turnstileToken) {
-        setError("Please complete the captcha verification");
+        setError(t("Please complete the captcha verification"));
         setIsLoading(false);
         return;
       }
@@ -84,7 +85,7 @@ function SignupPageContent() {
       const { data, error } = await authClient.signUp.email(
         {
           email,
-          name: email.split("@")[0], // Use email prefix as default name
+          name: email.split("@")[0],
           password,
         },
         {
@@ -97,9 +98,7 @@ function SignupPageContent() {
       );
 
       if (data?.user) {
-        userStore.setState({
-          user: data.user,
-        });
+        userStore.setState({ user: data.user });
         setCurrentStep(2);
       }
 
@@ -113,12 +112,21 @@ function SignupPageContent() {
     }
   };
 
-  // Step 2: Organization creation submission
-  const handleOrganizationSubmit = async () => {
+  // Step 2: Setup submission — create org + site, then advance (cloud) or redirect (self-hosted)
+  const [siteId, setSiteId] = useState<number | null>(null);
+  const [organizationId, setOrganizationId] = useState<string | null>(null);
+
+  const handleSetupSubmit = async () => {
     setIsLoading(true);
     setError("");
 
     try {
+      if (!isValidDomain(domain)) {
+        setError(t("Invalid domain format. Must be a valid domain like example.com or sub.example.com"));
+        setIsLoading(false);
+        return;
+      }
+
       // Create organization
       const { data, error } = await authClient.organization.create({
         name: orgName,
@@ -126,28 +134,32 @@ function SignupPageContent() {
       });
 
       if (error) {
-        throw new Error(error.message || "Failed to create organization");
+        throw new Error(error.message || t("Failed to create organization"));
       }
 
       if (!data?.id) {
-        throw new Error("No organization ID returned");
+        throw new Error(t("No organization ID returned"));
       }
 
-      // Set as active organization
-      await authClient.organization.setActive({
-        organizationId: data.id,
-      });
+      await authClient.organization.setActive({ organizationId: data.id });
 
-      setOrganizationId(data.id);
-
-      // Track how user found Rybbit
       if (IS_CLOUD && referralSource && userStore.getState().user?.id) {
         window.rybbit?.identify(userStore.getState().user?.id || "", {
           source: referralSource,
         });
       }
 
-      setCurrentStep(3);
+      // Add website
+      const normalizedDomain = normalizeDomain(domain);
+      const response = await addSite(normalizedDomain, normalizedDomain, data.id);
+
+      if (IS_CLOUD) {
+        setSiteId(response.siteId);
+        setOrganizationId(data.id);
+        setCurrentStep(3);
+      } else {
+        router.push(`/${response.siteId}`);
+      }
     } catch (error) {
       setError(String(error));
     } finally {
@@ -155,30 +167,49 @@ function SignupPageContent() {
     }
   };
 
-  // Step 3: Website addition submission
-  const handleWebsiteSubmit = async () => {
+  // Step 3 (cloud): Create checkout session and open modal
+  const handleSubscribe = async () => {
     setIsLoading(true);
     setError("");
 
     try {
-      // Validate domain
-      if (!isValidDomain(domain)) {
-        setError("Invalid domain format. Must be a valid domain like example.com or sub.example.com");
-        setIsLoading(false);
+      const eventLimit = EVENT_TIERS[eventLimitIndex];
+      if (eventLimit === "Custom") return;
+
+      const selectedTierPrice = findPriceForTier(
+        eventLimit,
+        isAnnual ? "year" : "month",
+        selectedPlan
+      );
+
+      if (!selectedTierPrice) {
+        setError("Could not find a matching plan. Please try a different selection.");
         return;
       }
 
-      try {
-        const normalizedDomain = normalizeDomain(domain);
-        const response = await addSite(normalizedDomain, normalizedDomain, organizationId);
-        if (IS_CLOUD) {
-          router.push("/subscribe?siteId=" + response.siteId);
-        } else {
-          router.push(`/${response.siteId}`);
-        }
-      } catch (error) {
-        setError(String(error));
+      const baseUrl = window.location.origin;
+      const returnUrl = `${baseUrl}/${siteId}?session_id={CHECKOUT_SESSION_ID}`;
+
+      const checkoutResponse = await fetch(`${BACKEND_URL}/stripe/create-checkout-session`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          priceId: selectedTierPrice.priceId,
+          returnUrl,
+          organizationId,
+          referral: (window as any).Rewardful?.referral || undefined,
+        }),
+      });
+
+      const checkoutData = await checkoutResponse.json();
+
+      if (!checkoutResponse.ok) {
+        throw new Error(checkoutData.error || "Failed to create checkout session");
       }
+
+      trackAdEvent("checkout", { tier: selectedTierPrice.name });
+      setCheckoutClientSecret(checkoutData.clientSecret);
     } catch (error) {
       setError(String(error));
     } finally {
@@ -186,177 +217,59 @@ function SignupPageContent() {
     }
   };
 
-  // Render the content based on current step
+  const steps = IS_CLOUD
+    ? [
+      { step: 1, label: t("Account") },
+      { step: 2, label: t("Add site") },
+      { step: 3, label: t("Pick plan") },
+    ]
+    : [
+      { step: 1, label: t("Account") },
+      { step: 2, label: t("Add site") },
+    ];
+
   const renderStepContent = () => {
     switch (currentStep) {
       case 1:
         return (
-          <div>
-            <h2 className="text-2xl font-semibold mb-4">Signup</h2>
-            <div className="space-y-4">
-              <SocialButtons onError={setError} callbackURL="/signup?step=2" mode="signup" />
-              <AuthInput
-                id="email"
-                label="Email"
-                type="email"
-                placeholder="email@example.com"
-                required
-                value={email}
-                onChange={e => setEmail(e.target.value)}
-              />
-              <AuthInput
-                id="password"
-                label="Password"
-                type="password"
-                placeholder="••••••••"
-                required
-                value={password}
-                onChange={e => setPassword(e.target.value)}
-              />
-              {IS_CLOUD && (
-                <Turnstile
-                  onSuccess={token => setTurnstileToken(token)}
-                  onError={() => setTurnstileToken("")}
-                  onExpire={() => setTurnstileToken("")}
-                  className="flex justify-center"
-                />
-              )}
-              <AuthButton
-                isLoading={isLoading}
-                loadingText="Creating account..."
-                onClick={handleAccountSubmit}
-                type="button"
-                className="mt-6 transition-all duration-300 h-11"
-                disabled={IS_CLOUD ? !turnstileToken || isLoading : isLoading}
-              >
-                Continue
-                <ArrowRight className="ml-2 h-4 w-4" />
-              </AuthButton>
-              <div className="text-center text-sm">
-                Already have an account?{" "}
-                <Link
-                  href="/login"
-                  className="underline underline-offset-4 hover:text-emerald-400 transition-colors duration-300"
-                >
-                  Log in
-                </Link>
-              </div>
-            </div>
-          </div>
+          <AccountStep
+            email={email}
+            setEmail={setEmail}
+            password={password}
+            setPassword={setPassword}
+            turnstileToken={turnstileToken}
+            setTurnstileToken={setTurnstileToken}
+            isLoading={isLoading}
+            onSubmit={handleAccountSubmit}
+            setError={setError}
+          />
         );
       case 2:
         return (
-          <div>
-            <h2 className="text-2xl font-semibold mb-4">Create your organization</h2>
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="orgName">Organization Name</Label>
-                <Input
-                  id="orgName"
-                  type="text"
-                  placeholder="Acme Inc."
-                  value={orgName}
-                  onChange={e => handleOrgNameChange(e.target.value)}
-                  required
-                  className="h-10 transition-all bg-neutral-100 dark:bg-neutral-800/50 border-neutral-200 dark:border-neutral-700"
-                />
-              </div>
-
-              {IS_CLOUD && (
-                <div className="space-y-2">
-                  <Label htmlFor="referralSource">How did you find Rybbit?</Label>
-                  <Select value={referralSource} onValueChange={setReferralSource}>
-                    <SelectTrigger className="h-10 bg-neutral-100 dark:bg-neutral-800/50 border-neutral-200 dark:border-neutral-700">
-                      <SelectValue placeholder="Select an option" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="google">Google</SelectItem>
-                      <SelectItem value="reddit">Reddit</SelectItem>
-                      <SelectItem value="twitter">Twitter/X</SelectItem>
-                      <SelectItem value="youtube">YouTube</SelectItem>
-                      <SelectItem value="linkedin">LinkedIn</SelectItem>
-                      <SelectItem value="discord">Discord</SelectItem>
-                      <SelectItem value="producthunt">Product Hunt</SelectItem>
-                      <SelectItem value="hacker-news">Hacker News</SelectItem>
-                      <SelectItem value="github">Github</SelectItem>
-                      <SelectItem value="friends">Friends</SelectItem>
-                      <SelectItem value="work">Work</SelectItem>
-                      <SelectItem value="blog">Blog</SelectItem>
-                      <SelectItem value="other">Other</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
-
-              {/* <div className="space-y-2">
-                <Label htmlFor="orgSlug">Organization Slug</Label>
-                <Input
-                  id="orgSlug"
-                  type="text"
-                  placeholder="acme-inc"
-                  value={orgSlug}
-                  onChange={(e) =>
-                    setOrgSlug(
-                      e.target.value
-                        .toLowerCase()
-                        .replace(/\s+/g, "-")
-                        .replace(/[^a-z0-9-]/g, "")
-                    )
-                  }
-                  required
-                  className="h-10 transition-all bg-neutral-800/50 border-neutral-700"
-                />
-              </div> */}
-
-              <div className="flex flex-col gap-4">
-                <Button
-                  className="w-full transition-all duration-300 h-11 bg-emerald-600 hover:bg-emerald-500 text-white"
-                  onClick={handleOrganizationSubmit}
-                  disabled={isLoading || !orgName || !orgSlug || (IS_CLOUD && !referralSource)}
-                  variant="success"
-                >
-                  Continue
-                  <ArrowRight className="ml-2 h-4 w-4" />
-                </Button>
-                <Button className="w-full transition-all duration-300 h-11" onClick={() => router.push("/")}>
-                  I'm joining someone else's organization
-                </Button>
-              </div>
-            </div>
-          </div>
+          <SetupStep
+            domain={domain}
+            setDomain={setDomain}
+            orgName={orgName}
+            orgSlug={orgSlug}
+            handleOrgNameChange={handleOrgNameChange}
+            referralSource={referralSource}
+            setReferralSource={setReferralSource}
+            isLoading={isLoading}
+            onSubmit={handleSetupSubmit}
+          />
         );
       case 3:
         return (
-          <div>
-            <h2 className="text-2xl font-semibold mb-4">Add your site</h2>
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="domain">Website Domain</Label>
-                <Input
-                  id="domain"
-                  type="text"
-                  placeholder="example.com or sub.example.com"
-                  value={domain}
-                  onChange={e => setDomain(e.target.value.toLowerCase())}
-                  required
-                  className="h-10 transition-all bg-neutral-100 dark:bg-neutral-800/50 border-neutral-200 dark:border-neutral-700"
-                />
-                <p className="text-xs text-muted-foreground">Enter the domain of the website you want to track</p>
-              </div>
-
-              <div className="flex justify-between">
-                <Button
-                  className="w-full transition-all duration-300 h-11 bg-emerald-600 hover:bg-emerald-500 text-white"
-                  onClick={handleWebsiteSubmit}
-                  disabled={isLoading || !domain || !isValidDomain(domain)}
-                  variant="success"
-                >
-                  Continue
-                  <ArrowRight className="ml-2 h-4 w-4" />
-                </Button>
-              </div>
-            </div>
-          </div>
+          <PlanStep
+            eventLimitIndex={eventLimitIndex}
+            setEventLimitIndex={setEventLimitIndex}
+            isAnnual={isAnnual}
+            setIsAnnual={setIsAnnual}
+            selectedPlan={selectedPlan}
+            setSelectedPlan={setSelectedPlan}
+            onSubscribe={handleSubscribe}
+            isLoading={isLoading}
+          />
         );
       default:
         return null;
@@ -373,14 +286,14 @@ function SignupPageContent() {
         <Card className="w-full max-w-sm p-1">
           <CardHeader>
             <RybbitLogo width={32} height={32} />
-            <CardTitle className="text-2xl flex justify-center">Sign Up Disabled</CardTitle>
+            <CardTitle className="text-2xl flex justify-center">{t("Sign Up Disabled")}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="flex flex-col gap-6">
               <p className="text-center">
-                New account registration is currently disabled. If you have an account, you can{" "}
+                {t("New account registration is currently disabled. If you have an account, you can")}{" "}
                 <Link href="/login" className="underline">
-                  sign in
+                  {t("sign in")}
                 </Link>
                 .
               </p>
@@ -392,10 +305,9 @@ function SignupPageContent() {
   }
 
   return (
-    <div className="flex h-dvh w-full">
-      {/* Left panel - signup form */}
-      <div className="w-full lg:w-[550px] flex flex-col p-6 lg:p-10">
-        {/* Logo at top left */}
+    <div className="flex h-dvh w-full justify-center">
+      <div className="w-full max-w-[550px] flex flex-col p-6 lg:p-10">
+        {/* Logo */}
         <div className="mb-8">
           <a href="https://rybbit.com" target="_blank" className="inline-block">
             <RybbitTextLogo />
@@ -403,15 +315,20 @@ function SignupPageContent() {
         </div>
 
         <div className="flex-1 flex flex-col justify-center w-full max-w-[550px] mx-auto">
-          <h1 className="text-lg text-neutral-600 dark:text-neutral-300 mb-6">Get started with Rybbit</h1>
+          <div className="mb-8">
+            <h1 className="text-3xl font-medium">
+              {IS_CLOUD ? t("Start your 7-day free trial") : t("Get started with Rybbit")}
+            </h1>
+            {IS_CLOUD && (
+              <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-3">
+                {t("Start collecting analytics in minutes")}
+              </p>
+            )}
+          </div>
 
           {/* Horizontal step indicator */}
           <div className="flex items-center w-full mb-8">
-            {[
-              { step: 1, label: "Account" },
-              { step: 2, label: "Organization" },
-              { step: 3, label: "Website" },
-            ].map(({ step, label }, index) => (
+            {steps.map(({ step, label }, index, arr) => (
               <React.Fragment key={step}>
                 <div className="flex flex-col items-center gap-2">
                   <div
@@ -437,7 +354,7 @@ function SignupPageContent() {
                     {label}
                   </span>
                 </div>
-                {index < 2 && (
+                {index < arr.length - 1 && (
                   <div
                     className={cn(
                       "flex-1 h-0.5 mx-3 mb-6 transition-all duration-300 rounded-full",
@@ -464,16 +381,21 @@ function SignupPageContent() {
               rel="noopener"
               title="Rybbit - Open Source Privacy-Focused Web Analytics"
             >
-              Open source web analytics powered by Rybbit
+              {t("Open source web analytics powered by Rybbit")}
             </a>
           </div>
         )}
       </div>
 
-      {/* Right panel - globe (hidden on mobile/tablet) */}
-      <div className="hidden lg:block lg:w-[calc(100%-500px)] relative m-3 rounded-2xl overflow-hidden">
-        <SpinningGlobe />
-      </div>
+      {IS_CLOUD && (
+        <CheckoutModal
+          clientSecret={checkoutClientSecret}
+          open={!!checkoutClientSecret}
+          onOpenChange={(open) => {
+            if (!open) setCheckoutClientSecret(null);
+          }}
+        />
+      )}
     </div>
   );
 }

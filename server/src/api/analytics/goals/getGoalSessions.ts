@@ -5,7 +5,7 @@ import { goals } from "../../../db/postgres/schema.js";
 import { eq } from "drizzle-orm";
 import { getTimeStatement, processResults, patternToRegex } from "../utils/utils.js";
 import { FilterParams } from "@rybbit/shared";
-import { GetSessionsResponse } from "../getSessions.js";
+import { GetSessionsResponse } from "../sessions/getSessions.js";
 import SqlString from "sqlstring";
 
 export interface GetGoalSessionsRequest {
@@ -144,7 +144,8 @@ export async function getGoalSessions(req: FastifyRequest<GetGoalSessionsRequest
         countIf(e.type = 'outbound') AS outbound,
         argMax(e.ip, e.timestamp) AS ip,
         argMax(e.lat, e.timestamp) AS lat,
-        argMax(e.lon, e.timestamp) AS lon
+        argMax(e.lon, e.timestamp) AS lon,
+        argMax(e.tag, e.timestamp) AS tag
       FROM events e
       INNER JOIN GoalSessions gs ON e.session_id = gs.session_id
       WHERE
@@ -166,7 +167,7 @@ export async function getGoalSessions(req: FastifyRequest<GetGoalSessionsRequest
       query_params: {
         siteId: Number(siteId),
         limit: limit || 25,
-        offset: (page - 1) * (limit || 25),
+        offset: ((page || 1) - 1) * (limit || 25),
       },
     });
 

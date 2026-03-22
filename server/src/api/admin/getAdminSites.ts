@@ -1,9 +1,9 @@
-import { eq } from "drizzle-orm";
+import { count, eq } from "drizzle-orm";
 import { FastifyReply, FastifyRequest } from "fastify";
 import { DateTime } from "luxon";
 import { clickhouse } from "../../db/clickhouse/clickhouse.js";
 import { db } from "../../db/postgres/postgres.js";
-import { member, user } from "../../db/postgres/schema.js";
+import { goals, funnels, member, user } from "../../db/postgres/schema.js";
 import { getOrganizationSubscriptions } from "../../services/admin/subscriptionService.js";
 
 interface EventCountResult {
@@ -96,6 +96,29 @@ export async function getAdminSites(request: FastifyRequest, reply: FastifyReply
     siteEventMap30d.set(Number(event.site_id), event.total_events);
   }
 
+  // Get goal and funnel counts per site
+  const goalCounts = await db
+    .select({ siteId: goals.siteId, count: count() })
+    .from(goals)
+    .groupBy(goals.siteId);
+
+  const funnelCounts = await db
+    .select({ siteId: funnels.siteId, count: count() })
+    .from(funnels)
+    .groupBy(funnels.siteId);
+
+  const siteGoalCountMap = new Map<number, number>();
+  for (const row of goalCounts) {
+    siteGoalCountMap.set(row.siteId, row.count);
+  }
+
+  const siteFunnelCountMap = new Map<number, number>();
+  for (const row of funnelCounts) {
+    if (row.siteId != null) {
+      siteFunnelCountMap.set(row.siteId, row.count);
+    }
+  }
+
   // Combine all data
   const enrichedSites = sitesData.map(site => {
     const subscription = site.organizationId
@@ -109,6 +132,9 @@ export async function getAdminSites(request: FastifyRequest, reply: FastifyReply
       public: site.public,
       eventsLast24Hours: siteEventMap24h.get(site.siteId) || 0,
       eventsLast30Days: siteEventMap30d.get(site.siteId) || 0,
+      goalsCount: siteGoalCountMap.get(site.siteId) || 0,
+      funnelsCount: siteFunnelCountMap.get(site.siteId) || 0,
+      sessionReplay: site.sessionReplay ?? false,
       organizationOwnerEmail: site.organizationId ? orgOwnerMap.get(site.organizationId) : null,
       subscription: {
         planName: subscription?.planName || "free",

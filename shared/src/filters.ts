@@ -45,7 +45,8 @@ export type FilterParameter =
   | "company_domain"
   | "asn_org"
   | "asn_type"
-  | "asn_domain";
+  | "asn_domain"
+  | "tag";
 
 export interface Filter {
   parameter: FilterParameter;

@@ -80,8 +80,12 @@ export const sites = pgTable("sites", {
   trackInitialPageView: boolean().default(true),
   trackSpaNavigation: boolean().default(true),
   trackIp: boolean().default(false),
+  trackButtonClicks: boolean().default(false),
+  trackCopy: boolean().default(false),
+  trackFormInteractions: boolean().default(false),
   apiKey: text("api_key"), // Format: rb_{64_hex_chars} = 67 chars total
   privateLinkKey: text("private_link_key"),
+  tags: jsonb("tags").default([]).$type<string[]>(),
 });
 
 // Active sessions table
@@ -135,6 +139,11 @@ export const organization = pgTable(
     monthlyEventCount: integer().default(0),
     overMonthlyLimit: boolean().default(false),
     planOverride: text(), // Plan name override (e.g., "pro1m", "standard500k")
+    customPlan: jsonb("custom_plan").$type<{
+      events: number;
+      members: number | null; // null = unlimited
+      websites: number | null; // null = unlimited
+    }>(),
   },
   table => [unique("organization_slug_unique").on(table.slug)]
 );
@@ -164,6 +173,7 @@ export const invitation = pgTable("invitation", {
     .references(() => organization.id),
   role: text().notNull(),
   status: text().notNull(),
+  createdAt: timestamp({ mode: "string" }),
   expiresAt: timestamp({ mode: "string" }).notNull(),
   // Site access restriction for the invited member
   hasRestrictedSiteAccess: boolean("has_restricted_site_access").default(false).notNull(),
@@ -219,7 +229,7 @@ export const apiKey = pgTable("apikey", {
   start: text(),
   prefix: text(),
   key: text().notNull(),
-  userId: text()
+  referenceId: text()
     .notNull()
     .references(() => user.id, { onDelete: "cascade" }),
   refillInterval: integer(),
@@ -235,6 +245,7 @@ export const apiKey = pgTable("apikey", {
   expiresAt: timestamp({ mode: "string" }),
   createdAt: timestamp({ mode: "string" }).notNull(),
   updatedAt: timestamp({ mode: "string" }).notNull(),
+  configId: text(),
   permissions: text(),
   metadata: jsonb(),
 });
@@ -328,35 +339,35 @@ export const uptimeMonitors = pgTable("uptime_monitors", {
   validationRules: jsonb("validation_rules").notNull().default([]).$type<
     Array<
       | {
-          type: "status_code";
-          operator: "equals" | "not_equals" | "in" | "not_in";
-          value: number | number[];
-        }
+        type: "status_code";
+        operator: "equals" | "not_equals" | "in" | "not_in";
+        value: number | number[];
+      }
       | {
-          type: "response_time";
-          operator: "less_than" | "greater_than";
-          value: number;
-        }
+        type: "response_time";
+        operator: "less_than" | "greater_than";
+        value: number;
+      }
       | {
-          type: "response_body_contains" | "response_body_not_contains";
-          value: string;
-          caseSensitive?: boolean;
-        }
+        type: "response_body_contains" | "response_body_not_contains";
+        value: string;
+        caseSensitive?: boolean;
+      }
       | {
-          type: "header_exists";
-          header: string;
-        }
+        type: "header_exists";
+        header: string;
+      }
       | {
-          type: "header_value";
-          header: string;
-          operator: "equals" | "contains";
-          value: string;
-        }
+        type: "header_value";
+        header: string;
+        operator: "equals" | "contains";
+        value: string;
+      }
       | {
-          type: "response_size";
-          operator: "less_than" | "greater_than";
-          value: number;
-        }
+        type: "response_size";
+        operator: "less_than" | "greater_than";
+        value: number;
+      }
     >
   >(),
 
@@ -596,6 +607,21 @@ export const userAliases = pgTable(
     index("user_aliases_anon_idx").on(table.siteId, table.anonymousId),
   ]
 );
+
+// Cancellation feedback for churn reduction
+export const cancellationFeedback = pgTable("cancellation_feedback", {
+  id: serial("id").primaryKey().notNull(),
+  organizationId: text("organization_id").notNull(),
+  userId: text("user_id").notNull(),
+  reason: text("reason").notNull(),
+  reasonDetails: text("reason_details"),
+  retentionOfferShown: text("retention_offer_shown"),
+  retentionOfferAccepted: boolean("retention_offer_accepted").default(false),
+  outcome: text("outcome").notNull(),
+  planNameAtCancellation: text("plan_name_at_cancellation"),
+  monthlyEventCountAtCancellation: integer("monthly_event_count_at_cancellation"),
+  createdAt: timestamp("created_at", { mode: "string" }).defaultNow().notNull(),
+});
 
 export const importPlatforms = ["umami", "simple_analytics"] as const;
 

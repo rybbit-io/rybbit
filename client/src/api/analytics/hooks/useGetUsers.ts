@@ -13,12 +13,14 @@ export interface GetUsersOptions {
   sortOrder: string;
   filters?: Filter[];
   identifiedOnly?: boolean;
+  search?: string;
+  searchField?: string;
 }
 
 export function useGetUsers(options: GetUsersOptions) {
   const { time, site, timezone } = useStore();
 
-  const { page, pageSize, sortBy, sortOrder, identifiedOnly = false } = options;
+  const { page, pageSize, sortBy, sortOrder, identifiedOnly = false, search, searchField } = options;
   const filteredFilters = getFilteredFilters(USER_PAGE_FILTERS);
   const params = buildApiParams(time, { filters: filteredFilters });
 
@@ -29,7 +31,7 @@ export function useGetUsers(options: GetUsersOptions) {
       pageSize: number;
     }
   >({
-    queryKey: ["users", site, time, page, pageSize, sortBy, sortOrder, filteredFilters, identifiedOnly, timezone],
+    queryKey: ["users", site, time, page, pageSize, sortBy, sortOrder, filteredFilters, identifiedOnly, search, searchField, timezone],
     queryFn: async () => {
       const result = await fetchUsers(site, {
         ...params,
@@ -38,6 +40,8 @@ export function useGetUsers(options: GetUsersOptions) {
         sortBy,
         sortOrder: sortOrder as "asc" | "desc",
         identifiedOnly,
+        search,
+        searchField,
       });
       return {
         data: result.data as UsersResponse[],

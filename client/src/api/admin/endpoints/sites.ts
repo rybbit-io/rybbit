@@ -22,6 +22,10 @@ export type SiteResponse = {
   trackInitialPageView?: boolean;
   trackSpaNavigation?: boolean;
   trackIp?: boolean;
+  trackButtonClicks?: boolean;
+  trackCopy?: boolean;
+  trackFormInteractions?: boolean;
+  tags?: string[];
 };
 
 export type GetSitesFromOrgResponse = {
@@ -50,6 +54,7 @@ export type GetSitesFromOrgResponse = {
     blockBots: boolean;
     sessionsLast24Hours: number;
     isOwner: boolean;
+    tags?: string[] | null;
   }>;
   subscription: {
     monthlyEventCount: number;
@@ -57,7 +62,6 @@ export type GetSitesFromOrgResponse = {
     overMonthlyLimit: boolean;
     planName: string;
     status: string;
-    isPro: boolean;
   };
 };
 
@@ -113,6 +117,10 @@ export function updateSiteConfig(
     trackUrlParams?: boolean;
     trackInitialPageView?: boolean;
     trackSpaNavigation?: boolean;
+    trackButtonClicks?: boolean;
+    trackCopy?: boolean;
+    trackFormInteractions?: boolean;
+    tags?: string[];
   }
 ) {
   return authedFetch(`/sites/${siteId}/config`, undefined, {
@@ -134,4 +142,15 @@ export function fetchSiteHasData(siteId: string) {
 
 export function fetchSiteIsPublic(siteId: string | number) {
   return authedFetch<{ isPublic: boolean }>(`/sites/${siteId}/is-public`);
+}
+
+export interface VerifyScriptResponse {
+  scriptTagFound: boolean;
+  scriptExecuted: boolean;
+  siteIdMatch: boolean;
+  issues: string[];
+}
+
+export function verifyScript(siteId: number | string) {
+  return authedFetch<VerifyScriptResponse>(`/sites/${siteId}/verify-script`);
 }

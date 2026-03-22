@@ -9,9 +9,7 @@ class SessionsService {
   private cleanupTask: cron.ScheduledTask | null = null;
   private logger = createServiceLogger("sessions");
 
-  constructor() {
-    this.initializeCleanupCron();
-  }
+  constructor() {}
 
   private initializeCleanupCron() {
     this.cleanupTask = cron.schedule(
@@ -79,6 +77,10 @@ class SessionsService {
   }
 
   // Method to stop the cleanup cron job (useful for graceful shutdown)
+  startCleanupCron() {
+    this.initializeCleanupCron();
+  }
+
   stopCleanupCron() {
     if (this.cleanupTask) {
       this.cleanupTask.stop();

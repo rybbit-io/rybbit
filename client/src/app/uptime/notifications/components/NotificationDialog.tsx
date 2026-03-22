@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { toast } from "sonner";
+import { toast } from "@/components/ui/sonner";
 import { useNotificationsStore } from "../notificationsStore";
 import { NotificationChannel, useCreateChannel, useUpdateChannel } from "@/api/uptime/notifications";
 import { CHANNEL_CONFIG } from "../constants";

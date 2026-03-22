@@ -44,6 +44,12 @@ export type OrgEventCountResponse = {
   pageview_count: number;
   custom_event_count: number;
   performance_count: number;
+  outbound_count: number;
+  error_count: number;
+  button_click_count: number;
+  copy_count: number;
+  form_submit_count: number;
+  input_change_count: number;
   event_count: number;
 }[];
 

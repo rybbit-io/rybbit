@@ -66,11 +66,20 @@ export async function createPortalSession(request: FastifyRequest<{ Body: Portal
     if (flowType) {
       if (flowType === "subscription_update") {
         // For subscription_update flow, we need to fetch the subscription ID first
-        const subscriptions = await (stripe as Stripe).subscriptions.list({
+        // Check both active and trialing statuses (trials have status "trialing")
+        let subscriptions = await (stripe as Stripe).subscriptions.list({
           customer: org.stripeCustomerId,
           status: "active",
           limit: 1,
         });
+
+        if (subscriptions.data.length === 0) {
+          subscriptions = await (stripe as Stripe).subscriptions.list({
+            customer: org.stripeCustomerId,
+            status: "trialing",
+            limit: 1,
+          });
+        }
 
         if (subscriptions.data.length === 0) {
           return reply.status(404).send({ error: "No active subscription found" });
@@ -86,11 +95,20 @@ export async function createPortalSession(request: FastifyRequest<{ Body: Portal
         };
       } else if (flowType === "subscription_cancel") {
         // For subscription_cancel flow, we need to fetch the subscription ID first
-        const subscriptions = await (stripe as Stripe).subscriptions.list({
+        // Check both active and trialing statuses (trials have status "trialing")
+        let subscriptions = await (stripe as Stripe).subscriptions.list({
           customer: org.stripeCustomerId,
           status: "active",
           limit: 1,
         });
+
+        if (subscriptions.data.length === 0) {
+          subscriptions = await (stripe as Stripe).subscriptions.list({
+            customer: org.stripeCustomerId,
+            status: "trialing",
+            limit: 1,
+          });
+        }
 
         if (subscriptions.data.length === 0) {
           return reply.status(404).send({ error: "No active subscription found" });

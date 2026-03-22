@@ -1,5 +1,6 @@
 "use client";
 import { Expand } from "lucide-react";
+import { useExtracted } from "next-intl";
 import { useState } from "react";
 import { Favicon } from "../../../../../components/Favicon";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../../../../components/ui/basic-tabs";
@@ -23,6 +24,7 @@ type Tab =
 export function Network() {
   const [tab, setTab] = useState<Tab>("vpn");
   const [expanded, setExpanded] = useState(false);
+  const t = useExtracted();
   const close = () => {
     setExpanded(false);
   };
@@ -34,15 +36,15 @@ export function Network() {
           <div className="flex flex-row gap-2 justify-between items-center">
             <div className="overflow-x-auto">
               <TabsList>
-                <TabsTrigger value="vpn">VPNs</TabsTrigger>
-                <TabsTrigger value="crawler">Crawlers</TabsTrigger>
-                <TabsTrigger value="datacenter">Datacenters</TabsTrigger>
-                <TabsTrigger value="company">Company</TabsTrigger>
-                <TabsTrigger value="company_type">Company Type</TabsTrigger>
-                <TabsTrigger value="company_domain">Company Domain</TabsTrigger>
-                <TabsTrigger value="asn_org">ASN Org</TabsTrigger>
-                <TabsTrigger value="asn_type">ASN Type</TabsTrigger>
-                <TabsTrigger value="asn_domain">ASN Domain</TabsTrigger>
+                <TabsTrigger value="vpn">{t("VPNs")}</TabsTrigger>
+                <TabsTrigger value="crawler">{t("Crawlers")}</TabsTrigger>
+                <TabsTrigger value="datacenter">{t("Datacenters")}</TabsTrigger>
+                <TabsTrigger value="company">{t("Company")}</TabsTrigger>
+                <TabsTrigger value="company_type">{t("Company Type")}</TabsTrigger>
+                <TabsTrigger value="company_domain">{t("Company Domain")}</TabsTrigger>
+                <TabsTrigger value="asn_org">{t("ASN Org")}</TabsTrigger>
+                <TabsTrigger value="asn_type">{t("ASN Type")}</TabsTrigger>
+                <TabsTrigger value="asn_domain">{t("ASN Domain")}</TabsTrigger>
               </TabsList>
             </div>
             <div className="w-7">
@@ -54,7 +56,7 @@ export function Network() {
           <TabsContent value="vpn">
             <StandardSection
               filterParameter="vpn"
-              title="VPN"
+              title={t("VPN")}
               getValue={e => e.value}
               getKey={e => e.value}
               getFilterLabel={e => e.value}
@@ -73,7 +75,7 @@ export function Network() {
           <TabsContent value="crawler">
             <StandardSection
               filterParameter="crawler"
-              title="Crawler"
+              title={t("Crawler")}
               getValue={e => e.value}
               getKey={e => e.value}
               getFilterLabel={e => e.value}
@@ -92,7 +94,7 @@ export function Network() {
           <TabsContent value="datacenter">
             <StandardSection
               filterParameter="datacenter"
-              title="Datacenter"
+              title={t("Datacenter")}
               getValue={e => e.value}
               getKey={e => e.value}
               getFilterLabel={e => e.value}
@@ -104,7 +106,7 @@ export function Network() {
           <TabsContent value="company">
             <StandardSection
               filterParameter="company"
-              title="Company"
+              title={t("Company")}
               getValue={e => e.value}
               getKey={e => e.value}
               getFilterLabel={e => e.value}
@@ -116,7 +118,7 @@ export function Network() {
           <TabsContent value="company_type">
             <StandardSection
               filterParameter="company_type"
-              title="Company Type"
+              title={t("Company Type")}
               getValue={e => e.value}
               getKey={e => e.value}
               getFilterLabel={e => e.value}
@@ -128,7 +130,7 @@ export function Network() {
           <TabsContent value="company_domain">
             <StandardSection
               filterParameter="company_domain"
-              title="Company Domain"
+              title={t("Company Domain")}
               getValue={e => e.value}
               getKey={e => e.value}
               getFilterLabel={e => e.value}
@@ -138,7 +140,7 @@ export function Network() {
               getLabel={e => (
                 <div className="flex items-center">
                   <Favicon domain={e.value} className="w-4 mr-2" />
-                  {e.value ? e.value : "Unknown"}
+                  {e.value ? e.value : t("Unknown")}
                 </div>
               )}
             />
@@ -146,7 +148,7 @@ export function Network() {
           <TabsContent value="asn_org">
             <StandardSection
               filterParameter="asn_org"
-              title="ASN Org"
+              title={t("ASN Org")}
               getValue={e => e.value}
               getKey={e => e.value}
               getFilterLabel={e => e.value}
@@ -158,7 +160,7 @@ export function Network() {
           <TabsContent value="asn_type">
             <StandardSection
               filterParameter="asn_type"
-              title="ASN Type"
+              title={t("ASN Type")}
               getValue={e => e.value}
               getKey={e => e.value}
               getFilterLabel={e => e.value}
@@ -170,7 +172,7 @@ export function Network() {
           <TabsContent value="asn_domain">
             <StandardSection
               filterParameter="asn_domain"
-              title="ASN Domain"
+              title={t("ASN Domain")}
               getValue={e => e.value}
               getKey={e => e.value}
               getFilterLabel={e => e.value}
@@ -180,7 +182,7 @@ export function Network() {
               getLabel={e => (
                 <div className="flex items-center">
                   <Favicon domain={e.value} className="w-4 mr-2" />
-                  {e.value ? e.value : "Unknown"}
+                  {e.value ? e.value : t("Unknown")}
                 </div>
               )}
             />

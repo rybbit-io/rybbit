@@ -91,6 +91,10 @@ describe("Tracker", () => {
       sessionReplayMaskTextSelectors: [],
       skipPatterns: [],
       maskPatterns: [],
+      trackButtonClicks: false,
+      trackCopy: false,
+      trackFormInteractions: false,
+      tag: "",
     };
 
     tracker = new Tracker(config);
@@ -139,6 +143,19 @@ describe("Tracker", () => {
       mockLocation.pathname = "/user/123/profile";
       const payload = tracker.createBasePayload();
       expect(payload?.pathname).toBe("/user/*/profile");
+    });
+
+    it("should support regex skip and mask patterns", () => {
+      config.skipPatterns = ["re:^/private/.*$"];
+      config.maskPatterns = ["re:^/user/\\d+/profile$"];
+      tracker = new Tracker(config);
+
+      mockLocation.pathname = "/private/settings";
+      expect(tracker.createBasePayload()).toBeNull();
+
+      mockLocation.pathname = "/user/123/profile";
+      const payload = tracker.createBasePayload();
+      expect(payload?.pathname).toBe("re:^/user/\\d+/profile$");
     });
 
     it("should exclude querystring when disabled", () => {

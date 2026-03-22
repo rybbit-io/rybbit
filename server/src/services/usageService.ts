@@ -10,13 +10,29 @@ import { sendLimitExceededEmail } from "../lib/email/email.js";
 import { createServiceLogger } from "../lib/logger/logger.js";
 import { getBestSubscription } from "../lib/subscriptionUtils.js";
 
+type UsageUpdateCallback = () => void;
+
 class UsageService {
   private sitesOverLimit = new Set<number>();
   private usageCheckTask: cron.ScheduledTask | null = null;
   private logger = createServiceLogger("usage-checker");
+  private onUsageUpdatedCallbacks: UsageUpdateCallback[] = [];
 
-  constructor() {
-    this.initializeUsageCheckCron();
+  constructor() {}
+
+  /**
+   * Sets the sitesOverLimit set (used by workers receiving IPC updates from primary)
+   */
+  public setSitesOverLimit(sites: Set<number>): void {
+    this.sitesOverLimit = sites;
+  }
+
+  /**
+   * Register a callback to be invoked after usage data is updated.
+   * Used by the cluster primary to broadcast sitesOverLimit to workers.
+   */
+  public onUsageUpdated(callback: UsageUpdateCallback): void {
+    this.onUsageUpdatedCallbacks.push(callback);
   }
 
   /**
@@ -151,7 +167,7 @@ class UsageService {
             site_id,
             COUNT(*) as count
           FROM events
-          WHERE type IN ('pageview', 'custom_event', 'performance')
+          WHERE type IN ('pageview', 'custom_event', 'performance', 'outbound', 'button_click', 'copy', 'form_submit', 'input_change')
             AND timestamp >= toDate({periodStart:String})
           GROUP BY site_id
         `,
@@ -288,9 +304,21 @@ class UsageService {
       }
 
       this.logger.info(`Completed monthly event usage check. ${this.sitesOverLimit.size} sites are over their limit.`);
+
+      // Notify listeners (e.g., cluster primary broadcasts to workers)
+      for (const callback of this.onUsageUpdatedCallbacks) {
+        callback();
+      }
     } catch (error) {
       this.logger.error(error as Error, "Error updating monthly usage");
     }
+  }
+
+  /**
+   * Method to start the usage check cron job
+   */
+  public startUsageCheckCron() {
+    this.initializeUsageCheckCron();
   }
 
   /**

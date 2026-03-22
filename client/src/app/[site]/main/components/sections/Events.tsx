@@ -1,3 +1,4 @@
+import { useExtracted } from "next-intl";
 import { useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../../../../components/ui/basic-tabs";
 import { Card, CardContent, CardLoader } from "../../../../../components/ui/card";
@@ -14,6 +15,7 @@ type Tab = "events" | "outbound";
 
 function Events_() {
   const { data: eventNamesData, isLoading: isLoadingEventNames } = useGetEventNames();
+  const t = useExtracted();
 
   return (
     <>
@@ -24,8 +26,8 @@ function Events_() {
       )}
       <div className="relative pr-2">
         <div className="flex flex-row gap-2 justify-between pr-1 text-xs text-neutral-600 dark:text-neutral-400 mb-2">
-          <div>Custom Events</div>
-          <div>Count</div>
+          <div>{t("Custom Events")}</div>
+          <div>{t("Count")}</div>
         </div>
         <ScrollArea className="h-[394px]">
           <EventList events={eventNamesData || []} isLoading={isLoadingEventNames} />
@@ -37,6 +39,7 @@ function Events_() {
 
 function OutboundLinks({ expanded, close }: { expanded: boolean; close: () => void }) {
   const { data: outboundLinksData, isLoading: isLoadingOutboundLinks } = useGetOutboundLinks();
+  const t = useExtracted();
 
   return (
     <>
@@ -47,8 +50,8 @@ function OutboundLinks({ expanded, close }: { expanded: boolean; close: () => vo
       )}
       <div className="relative">
         <div className="flex flex-row gap-2 justify-between pr-1 text-xs text-neutral-600 dark:text-neutral-400 mb-2">
-          <div>Outbound Links</div>
-          <div>Clicks</div>
+          <div>{t("Outbound Links")}</div>
+          <div>{t("Clicks")}</div>
         </div>
         <OutboundLinksList outboundLinks={outboundLinksData || []} isLoading={isLoadingOutboundLinks} />
         <OutboundLinksDialog outboundLinks={outboundLinksData || []} expanded={expanded} close={close} />
@@ -60,6 +63,7 @@ function OutboundLinks({ expanded, close }: { expanded: boolean; close: () => vo
 export function Events() {
   const [tab, setTab] = useState<Tab>("events");
   const [expandedOutbound, setExpandedOutbound] = useState(false);
+  const t = useExtracted();
 
   return (
     <Card className="h-[483px]">
@@ -68,8 +72,8 @@ export function Events() {
           <div className="flex flex-row gap-2 justify-between items-center">
             <div className="overflow-x-auto">
               <TabsList>
-                <TabsTrigger value="events">Custom Events</TabsTrigger>
-                <TabsTrigger value="outbound">Outbound Links</TabsTrigger>
+                <TabsTrigger value="events">{t("Custom Events")}</TabsTrigger>
+                <TabsTrigger value="outbound">{t("Outbound Links")}</TabsTrigger>
               </TabsList>
             </div>
             {tab === "outbound" && (

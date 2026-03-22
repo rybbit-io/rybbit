@@ -20,6 +20,9 @@ export async function getTrackingConfig(request: FastifyRequest<{ Params: { site
       trackUrlParams: config.trackUrlParams ?? true,
       trackInitialPageView: config.trackInitialPageView ?? true,
       trackSpaNavigation: config.trackSpaNavigation ?? true,
+      trackButtonClicks: config.trackButtonClicks || false,
+      trackCopy: config.trackCopy || false,
+      trackFormInteractions: config.trackFormInteractions || false,
     });
   } catch (error) {
     console.error("Error getting tracking config:", error);

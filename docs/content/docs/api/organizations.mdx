@@ -449,6 +449,76 @@ Creates a new site within an organization. Requires admin or owner role in the o
       type: 'boolean',
       default: true,
     },
+    excludedIPs: {
+      description: 'Array of IP addresses to exclude from tracking',
+      type: 'string[]',
+      default: '[]',
+    },
+    excludedCountries: {
+      description: 'Array of ISO country codes to exclude (e.g., ["US", "GB"])',
+      type: 'string[]',
+      default: '[]',
+    },
+    sessionReplay: {
+      description: 'Enable session replay recording',
+      type: 'boolean',
+      default: false,
+    },
+    webVitals: {
+      description: 'Enable Core Web Vitals tracking',
+      type: 'boolean',
+      default: false,
+    },
+    trackErrors: {
+      description: 'Enable JavaScript error tracking',
+      type: 'boolean',
+      default: false,
+    },
+    trackOutbound: {
+      description: 'Track outbound link clicks',
+      type: 'boolean',
+      default: true,
+    },
+    trackUrlParams: {
+      description: 'Track URL parameters (UTM, etc.)',
+      type: 'boolean',
+      default: true,
+    },
+    trackInitialPageView: {
+      description: 'Automatically track the initial page view',
+      type: 'boolean',
+      default: true,
+    },
+    trackSpaNavigation: {
+      description: 'Track SPA navigation events',
+      type: 'boolean',
+      default: true,
+    },
+    trackIp: {
+      description: 'Store visitor IP addresses',
+      type: 'boolean',
+      default: false,
+    },
+    trackButtonClicks: {
+      description: 'Track button click events',
+      type: 'boolean',
+      default: false,
+    },
+    trackCopy: {
+      description: 'Track copy events',
+      type: 'boolean',
+      default: false,
+    },
+    trackFormInteractions: {
+      description: 'Track form interaction events',
+      type: 'boolean',
+      default: false,
+    },
+    tags: {
+      description: 'Array of tags for organizing the site',
+      type: 'string[]',
+      default: '[]',
+    },
   }}
 />
 
@@ -493,6 +563,62 @@ Returns the created site object with the assigned `siteId`.
     blockBots: {
       description: 'Whether bot traffic is blocked',
       type: 'boolean',
+    },
+    excludedIPs: {
+      description: 'Excluded IP addresses',
+      type: 'string[]',
+    },
+    excludedCountries: {
+      description: 'Excluded country codes',
+      type: 'string[]',
+    },
+    sessionReplay: {
+      description: 'Whether session replay is enabled',
+      type: 'boolean',
+    },
+    webVitals: {
+      description: 'Whether Web Vitals tracking is enabled',
+      type: 'boolean',
+    },
+    trackErrors: {
+      description: 'Whether error tracking is enabled',
+      type: 'boolean',
+    },
+    trackOutbound: {
+      description: 'Whether outbound link tracking is enabled',
+      type: 'boolean',
+    },
+    trackUrlParams: {
+      description: 'Whether URL parameter tracking is enabled',
+      type: 'boolean',
+    },
+    trackInitialPageView: {
+      description: 'Whether initial page view is tracked automatically',
+      type: 'boolean',
+    },
+    trackSpaNavigation: {
+      description: 'Whether SPA navigation is tracked',
+      type: 'boolean',
+    },
+    trackIp: {
+      description: 'Whether IP addresses are stored',
+      type: 'boolean',
+    },
+    trackButtonClicks: {
+      description: 'Whether button clicks are tracked',
+      type: 'boolean',
+    },
+    trackCopy: {
+      description: 'Whether copy events are tracked',
+      type: 'boolean',
+    },
+    trackFormInteractions: {
+      description: 'Whether form interactions are tracked',
+      type: 'boolean',
+    },
+    tags: {
+      description: 'Site tags',
+      type: 'string[]',
     },
   }}
 />
@@ -675,7 +801,21 @@ var data = await response.Content.ReadAsStringAsync();
   "createdBy": "user_xyz789",
   "public": false,
   "saltUserIds": false,
-  "blockBots": true
+  "blockBots": true,
+  "excludedIPs": [],
+  "excludedCountries": [],
+  "sessionReplay": false,
+  "webVitals": false,
+  "trackErrors": false,
+  "trackOutbound": true,
+  "trackUrlParams": true,
+  "trackInitialPageView": true,
+  "trackSpaNavigation": true,
+  "trackIp": false,
+  "trackButtonClicks": false,
+  "trackCopy": false,
+  "trackFormInteractions": false,
+  "tags": []
 }
 ```
 

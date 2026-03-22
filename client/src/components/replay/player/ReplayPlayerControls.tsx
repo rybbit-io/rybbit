@@ -3,7 +3,8 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Maximize2, Pause, Play } from "lucide-react";
-import { useState } from "react";
+import { memo, useState } from "react";
+import { useShallow } from "zustand/react/shallow";
 import { ReplayDrawer } from "../../Sessions/ReplayDrawer";
 import { useReplayStore } from "../replayStore";
 import { formatTime, PLAYBACK_SPEEDS } from "./utils/replayUtils";
@@ -16,14 +17,24 @@ interface ReplayPlayerControlsProps {
   isDrawer?: boolean;
 }
 
-export function ReplayPlayerControls({
+export const ReplayPlayerControls = memo(function ReplayPlayerControls({
   events,
   onPlayPause,
   onSliderChange,
   onSpeedChange,
   isDrawer,
 }: ReplayPlayerControlsProps) {
-  const { sessionId, player, isPlaying, currentTime, duration, playbackSpeed, activityPeriods } = useReplayStore();
+  const { sessionId, player, isPlaying, currentTime, duration, playbackSpeed, activityPeriods } = useReplayStore(
+    useShallow(s => ({
+      sessionId: s.sessionId,
+      player: s.player,
+      isPlaying: s.isPlaying,
+      currentTime: s.currentTime,
+      duration: s.duration,
+      playbackSpeed: s.playbackSpeed,
+      activityPeriods: s.activityPeriods,
+    }))
+  );
   const [replayDrawerOpen, setReplayDrawerOpen] = useState(false);
 
   return (
@@ -73,4 +84,4 @@ export function ReplayPlayerControls({
       </div>
     </div>
   );
-}
+});

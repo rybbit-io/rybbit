@@ -46,6 +46,7 @@ export class SimpleAnalyticsImportMapper {
 
       const data = parsed.data;
       const ua = UAParser(data.user_agent);
+      const referrer = clearSelfReferrer(data.document_referrer, data.hostname);
       const screenWidth = parseInt(data.screen_width, 10);
       const screenHeight = parseInt(data.screen_height, 10);
 
@@ -59,8 +60,8 @@ export class SimpleAnalyticsImportMapper {
         querystring: data.query,
         url_parameters: getAllUrlParams(data.query),
         page_title: "",
-        referrer: clearSelfReferrer(data.document_referrer, data.hostname),
-        channel: getChannel(data.document_referrer, data.query, data.hostname),
+        referrer: referrer,
+        channel: getChannel(referrer, data.query, data.hostname),
         browser: ua.browser.name || "",
         browser_version: ua.browser.major || "",
         operating_system: ua.os.name || "",

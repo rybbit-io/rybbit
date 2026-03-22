@@ -88,10 +88,6 @@ const nextConfig = {
         destination: `${rybbitHost}/api/script.js`,
       },
       {
-        source: '/analytics/script-full.js',
-        destination: `${rybbitHost}/api/script-full.js`,
-      },
-      {
         source: '/analytics/replay.js',
         destination: `${rybbitHost}/api/replay.js`,
       },
@@ -114,7 +110,7 @@ const nextConfig = {
       },
       {
         source: '/analytics/site/tracking-config/:siteId',
-        destination: `${rybbitHost}/site/tracking-config/:siteId`,
+        destination: `${rybbitHost}/api/site/tracking-config/:siteId`,
       },
     ];
   },
@@ -204,7 +200,7 @@ const nextConfig = {
       },
       {
         source: '/analytics/site/tracking-config/:siteId',
-        destination: `${rybbitHost}/site/tracking-config/:siteId`,
+        destination: `${rybbitHost}/api/site/tracking-config/:siteId`,
       },
     ];
   },

@@ -2,8 +2,9 @@
 
 import { useQueryClient } from "@tanstack/react-query";
 import { AlertTriangle } from "lucide-react";
+import { useExtracted } from "next-intl";
 import { useState } from "react";
-import { toast } from "sonner";
+import { toast } from "@/components/ui/sonner";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -29,6 +30,7 @@ interface DeleteOrganizationDialogProps {
 
 export function DeleteOrganizationDialog({ organization, onSuccess }: DeleteOrganizationDialogProps) {
   const { data: subscription } = useStripeSubscription();
+  const t = useExtracted();
   const [isDeleting, setIsDeleting] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
   const [confirmText, setConfirmText] = useState("");
@@ -39,7 +41,7 @@ export function DeleteOrganizationDialog({ organization, onSuccess }: DeleteOrga
 
   const handleDelete = async () => {
     if (confirmText !== organization.name) {
-      toast.error("Please type the organization name to confirm deletion");
+      toast.error(t("Please type the organization name to confirm deletion"));
       return;
     }
 
@@ -49,7 +51,7 @@ export function DeleteOrganizationDialog({ organization, onSuccess }: DeleteOrga
         organizationId: organization.id,
       });
 
-      toast.success("Organization deleted successfully");
+      toast.success(t("Organization deleted successfully"));
       queryClient.invalidateQueries({ queryKey: [USER_ORGANIZATIONS_QUERY_KEY] });
       authClient.organization.setActive({
         organizationId: null,
@@ -57,7 +59,7 @@ export function DeleteOrganizationDialog({ organization, onSuccess }: DeleteOrga
       setIsOpen(false);
       onSuccess();
     } catch (error: any) {
-      toast.error(error.message || "Failed to delete organization");
+      toast.error(error.message || t("Failed to delete organization"));
     } finally {
       setIsDeleting(false);
     }
@@ -74,26 +76,26 @@ export function DeleteOrganizationDialog({ organization, onSuccess }: DeleteOrga
     <AlertDialog open={isOpen} onOpenChange={setIsOpen}>
       <AlertDialogTrigger asChild>
         <Button variant="destructive" className="w-full" onClick={() => setIsOpen(true)}>
-          Delete Organization
+          {t("Delete Organization")}
         </Button>
       </AlertDialogTrigger>
       <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle className="flex items-center gap-2">
             <AlertTriangle className="h-5 w-5" color="hsl(var(--red-500))" />
-            {hasActiveSubscription ? "Cannot delete organization" : "Delete your organization?"}
+            {hasActiveSubscription ? t("Cannot delete organization") : t("Delete your organization?")}
           </AlertDialogTitle>
           <AlertDialogDescription>
             {hasActiveSubscription
-              ? "You have an active subscription. Please cancel your subscription before deleting your organization."
-              : "This action cannot be undone. This will permanently delete the organization and remove all associated data."}
+              ? t("You have an active subscription. Please cancel your subscription before deleting your organization.")
+              : t("This action cannot be undone. This will permanently delete the organization and remove all associated data.")}
           </AlertDialogDescription>
         </AlertDialogHeader>
 
         {!hasActiveSubscription && (
           <div className="py-4">
             <p className="text-sm mb-2">
-              Please type <strong>{organization.name}</strong> to confirm.
+              {t("Please type {name} to confirm.", { name: organization.name })}
             </p>
             <Input
               value={confirmText}
@@ -105,7 +107,7 @@ export function DeleteOrganizationDialog({ organization, onSuccess }: DeleteOrga
 
         <AlertDialogFooter>
           <AlertDialogCancel onClick={handleClose} disabled={isDeleting}>
-            Cancel
+            {t("Cancel")}
           </AlertDialogCancel>
           {!hasActiveSubscription && (
             <AlertDialogAction
@@ -116,7 +118,7 @@ export function DeleteOrganizationDialog({ organization, onSuccess }: DeleteOrga
               variant="destructive"
               disabled={!canDelete}
             >
-              {isDeleting ? "Deleting..." : "Delete Organization"}
+              {isDeleting ? t("Deleting...") : t("Delete Organization")}
             </AlertDialogAction>
           )}
         </AlertDialogFooter>

@@ -20,6 +20,8 @@ By default, Rybbit assigns an anonymous ID to each visitor based on their device
 - Store user metadata (traits) like email, name, and custom fields
 - View identified users in your dashboard with their real names
 
+When a new alias is created (i.e., the first time `identify()` is called for a given device), Rybbit retroactively updates all past anonymous events from that device to include the identified user ID. This means pre-login pageviews and events are attributed to the user once they identify themselves.
+
 ## Special Trait Fields
 
 When identifying users, certain trait fields are treated specially by Rybbit:
@@ -105,6 +107,13 @@ if (currentUserId) {
   console.log('No user identified');
 }
 ```
+
+## Important Notes
+
+- **Shared devices**: If multiple users log in from the same device (same IP address and user agent), calling `identify()` with a new user ID updates the alias to point to the new user. Future events will be attributed to the most recently identified user. Past events that were already backfilled retain their original attribution.
+- **Cross-device tracking**: Identifying the same user on different devices creates separate aliases. Events from each device are linked to the user independently via the `identified_user_id` field.
+- **Retroactive backfill**: The backfill runs asynchronously when a new alias is first created. ClickHouse mutations may take a short time to propagate depending on table size. Subsequent `identify()` calls from the same device (even with a different user ID) do not re-backfill old events.
+- **`clearUserId()` behavior**: Calling `clearUserId()` removes the user ID from localStorage so future events are anonymous. It does not delete the alias in the database or modify previously attributed events.
 
 ## Complete Example
 

@@ -44,10 +44,6 @@ Add rewrites to your `vercel.json` file in the project root:
       "destination": "https://app.rybbit.io/api/script.js"
     },
     {
-      "source": "/analytics/script-full.js",
-      "destination": "https://app.rybbit.io/api/script-full.js"
-    },
-    {
       "source": "/analytics/replay.js",
       "destination": "https://app.rybbit.io/api/replay.js"
     },
@@ -69,7 +65,7 @@ Add rewrites to your `vercel.json` file in the project root:
     },
     {
       "source": "/analytics/site/tracking-config/:siteId",
-      "destination": "https://app.rybbit.io/site/tracking-config/:siteId"
+      "destination": "https://app.rybbit.io/api/site/tracking-config/:siteId"
     }
   ]
 }

@@ -1,5 +1,6 @@
 "use client";
 import { Expand } from "lucide-react";
+import { useExtracted } from "next-intl";
 import { useState } from "react";
 import { ChannelIcon } from "../../../../../components/Channel";
 import { Favicon } from "../../../../../components/Favicon";
@@ -19,6 +20,7 @@ type Tab = "referrers" | "channels" | "utm_source" | "utm_medium" | "utm_campaig
 export function Referrers() {
   const [tab, setTab] = useState<Tab>("referrers");
   const [expanded, setExpanded] = useState(false);
+  const t = useExtracted();
   const close = () => {
     setExpanded(false);
   };
@@ -30,8 +32,8 @@ export function Referrers() {
           <div className="flex flex-row gap-2 justify-between items-center">
             <div className="overflow-x-auto">
               <TabsList>
-                <TabsTrigger value="referrers">Referrers</TabsTrigger>
-                <TabsTrigger value="channels">Channels</TabsTrigger>
+                <TabsTrigger value="referrers">{t("Referrers")}</TabsTrigger>
+                <TabsTrigger value="channels">{t("Channels")}</TabsTrigger>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild unstyled>
                     <div
@@ -41,20 +43,20 @@ export function Referrers() {
                           : "border-transparent text-neutral-600 dark:text-neutral-400"
                       }`}
                     >
-                      {tab === "utm_source" && "Source"}
-                      {tab === "utm_medium" && "Medium"}
-                      {tab === "utm_campaign" && "Campaign"}
-                      {tab === "utm_term" && "Term"}
-                      {tab === "utm_content" && "Content"}
-                      {!tab.startsWith("utm_") && "UTM"}
+                      {tab === "utm_source" && t("Source")}
+                      {tab === "utm_medium" && t("Medium")}
+                      {tab === "utm_campaign" && t("Campaign")}
+                      {tab === "utm_term" && t("Term")}
+                      {tab === "utm_content" && t("Content")}
+                      {!tab.startsWith("utm_") && t("UTM")}
                     </div>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="start">
-                    <DropdownMenuItem onClick={() => setTab("utm_source")}>Source</DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => setTab("utm_medium")}>Medium</DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => setTab("utm_campaign")}>Campaign</DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => setTab("utm_term")}>Term</DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => setTab("utm_content")}>Content</DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => setTab("utm_source")}>{t("Source")}</DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => setTab("utm_medium")}>{t("Medium")}</DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => setTab("utm_campaign")}>{t("Campaign")}</DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => setTab("utm_term")}>{t("Term")}</DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => setTab("utm_content")}>{t("Content")}</DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
                 {/* <TabsTrigger value="utm_source">Source</TabsTrigger>
@@ -73,14 +75,14 @@ export function Referrers() {
           <TabsContent value="referrers">
             <StandardSection
               filterParameter="referrer"
-              title="Referrers"
+              title={t("Referrers")}
               getValue={e => e.value}
               getKey={e => e.value}
               getLink={e => `https://${e.value}`}
               getLabel={e => (
                 <div className="flex items-center">
                   <Favicon domain={e.value} className="w-4 mr-2" />
-                  {e.value ? e.value : "Direct"}
+                  {e.value ? e.value : t("Direct")}
                 </div>
               )}
               expanded={expanded}
@@ -90,7 +92,7 @@ export function Referrers() {
           <TabsContent value="channels">
             <StandardSection
               filterParameter="channel"
-              title="Channels"
+              title={t("Channels")}
               getValue={e => e.value}
               getKey={e => e.value}
               // getLink={(e) => `https://${e.value}`}
@@ -106,7 +108,7 @@ export function Referrers() {
           <TabsContent value="utm_source">
             <StandardSection
               filterParameter="utm_source"
-              title="UTM Source"
+              title={t("UTM Source")}
               getKey={e => e.value}
               getLabel={e => e.value}
               getValue={e => e.value}
@@ -117,7 +119,7 @@ export function Referrers() {
           <TabsContent value="utm_medium">
             <StandardSection
               filterParameter="utm_medium"
-              title="UTM Medium"
+              title={t("UTM Medium")}
               getKey={e => e.value}
               getLabel={e => e.value}
               getValue={e => e.value}
@@ -128,7 +130,7 @@ export function Referrers() {
           <TabsContent value="utm_campaign">
             <StandardSection
               filterParameter="utm_campaign"
-              title="UTM Campaign"
+              title={t("UTM Campaign")}
               getKey={e => e.value}
               getLabel={e => e.value}
               getValue={e => e.value}
@@ -139,7 +141,7 @@ export function Referrers() {
           <TabsContent value="utm_content">
             <StandardSection
               filterParameter="utm_content"
-              title="UTM Content"
+              title={t("UTM Content")}
               getKey={e => e.value}
               getLabel={e => e.value}
               getValue={e => e.value}
@@ -150,7 +152,7 @@ export function Referrers() {
           <TabsContent value="utm_term">
             <StandardSection
               filterParameter="utm_term"
-              title="UTM Term"
+              title={t("UTM Term")}
               getKey={e => e.value}
               getLabel={e => e.value}
               getValue={e => e.value}

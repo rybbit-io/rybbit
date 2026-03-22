@@ -62,16 +62,6 @@ yourdomain.com {
         rewrite * /api/script.js
     }
 
-    # Unminified script
-    handle /analytics/script-full.js {
-        reverse_proxy https://app.rybbit.io {
-            header_up Host app.rybbit.io
-            header_up X-Real-IP {remote_host}
-            header_up X-Forwarded-For {remote_host}
-        }
-        rewrite * /api/script-full.js
-    }
-
     # Session replay script
     handle /analytics/replay.js {
         reverse_proxy https://app.rybbit.io {
@@ -132,7 +122,7 @@ yourdomain.com {
             header_up X-Real-IP {remote_host}
             header_up X-Forwarded-For {remote_host}
         }
-        rewrite * /site/tracking-config{path}
+        rewrite * /api/site/tracking-config{path}
     }
 }
 ```
@@ -306,7 +296,7 @@ yourdomain.com {
             header_up X-Real-IP {remote_host}
             header_up X-Forwarded-For {remote_host}
         }
-        rewrite * /site/tracking-config{path}
+        rewrite * /api/site/tracking-config{path}
         header Cache-Control "public, max-age=300"
     }
 

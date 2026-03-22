@@ -5,6 +5,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { cn, formatSecondsAsMinutesAndSeconds } from "@/lib/utils";
 import NumberFlow from "@number-flow/react";
 import { ArrowDown, ArrowUp, ChevronDown, ChevronUp } from "lucide-react";
+import { useExtracted } from "next-intl";
 import { useState } from "react";
 import { useGetOverview } from "../../../../../api/analytics/hooks/useGetOverview";
 import { useGetOverviewBucketed } from "../../../../../api/analytics/hooks/useGetOverviewBucketed";
@@ -154,6 +155,7 @@ const Stat = ({
 
 export function Overview() {
   const { site } = useStore();
+  const t = useExtracted();
 
   // Current period - automatically handles both regular time-based and past-minutes queries
   const {
@@ -193,17 +195,17 @@ export function Overview() {
 
   return (
     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-0 items-center">
-      <Stat title="Unique Users" id="users" value={currentUsers} previous={previousUsers} isLoading={isLoading} />
-      <Stat title="Sessions" id="sessions" value={currentSessions} previous={previousSessions} isLoading={isLoading} />
+      <Stat title={t("Unique Users")} id="users" value={currentUsers} previous={previousUsers} isLoading={isLoading} />
+      <Stat title={t("Sessions")} id="sessions" value={currentSessions} previous={previousSessions} isLoading={isLoading} />
       <Stat
-        title="Pageviews"
+        title={t("Pageviews")}
         id="pageviews"
         value={currentPageviews}
         previous={previousPageviews}
         isLoading={isLoading}
       />
       <Stat
-        title="Pages per Session"
+        title={t("Pages per Session")}
         id="pages_per_session"
         value={currentPagesPerSession}
         previous={previousPagesPerSession}
@@ -211,7 +213,7 @@ export function Overview() {
         isLoading={isLoading}
       />
       <Stat
-        title="Bounce Rate"
+        title={t("Bounce Rate")}
         id="bounce_rate"
         value={currentBounceRate}
         previous={previousBounceRate}
@@ -221,7 +223,7 @@ export function Overview() {
         reverseColor={true}
       />
       <Stat
-        title="Session Duration"
+        title={t("Session Duration")}
         id="session_duration"
         value={currentSessionDuration}
         previous={previousSessionDuration}

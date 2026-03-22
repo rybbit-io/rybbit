@@ -1,7 +1,346 @@
 ---
 title: Pangolin setup
-description: Set up Rybbit with Pangolin
+description: Set up Rybbit with Pangolin as a self-hosted reverse proxy using Newt
 ---
+
+import { Steps, Step } from 'fumadocs-ui/components/steps';
+import { Callout } from 'fumadocs-ui/components/callout';
+
+This guide shows you how to set up Rybbit with [Pangolin](https://github.com/fosrl/pangolin), a self-hosted reverse proxy, using a Newt container inside the Docker Compose stack. This approach avoids exposing ports directly on your host network.
+
+## Prerequisites
+
+- [Pangolin](https://github.com/fosrl/pangolin) already running and accessible (e.g. `https://pangolin.yourdomain.com`)
+- A Newt ID and Newt Secret from your Pangolin instance
+- A domain name pointed to your Pangolin server (e.g. `tracking.yourdomain.com`)
+- Docker and Docker Compose installed
+
+<Callout type="warning">
+You **must** generate a proper `BETTER_AUTH_SECRET` before starting. Without a valid 32+ character secret, you will not be able to create organizations or log in. Generate one with: `openssl rand -hex 32`
+</Callout>
+
+## Setup Steps
+
+<Steps>
+<Step>
+### Configure Environment Variables
+
+Create a `.env` file in your Rybbit directory:
+
+```bash
+# Required: Your domain and base URL
+DOMAIN_NAME=tracking.yourdomain.com
+BASE_URL=https://tracking.yourdomain.com
+
+# Required: Authentication secret (must be 32+ characters)
+# Generate with: openssl rand -hex 32
+BETTER_AUTH_SECRET=your_generated_secret_here
+
+# Required: Disable built-in webserver since Pangolin handles routing
+USE_WEBSERVER=false
+
+# ClickHouse configuration
+CLICKHOUSE_DB=analytics
+CLICKHOUSE_USER=default
+CLICKHOUSE_PASSWORD=changeme
+
+# PostgreSQL configuration
+POSTGRES_DB=analytics
+POSTGRES_USER=changeme
+POSTGRES_PASSWORD=changeme
+
+# Ports in host:container format (Pangolin needs it like this)
+HOST_BACKEND_PORT=3001:3001
+HOST_CLIENT_PORT=3002:3002
+
+# Optional: Disable new user signups after creating admin account
+# DISABLE_SIGNUP=true
+
+# Optional: Mapbox token for globe visualizations
+# MAPBOX_TOKEN=your_mapbox_token
+```
+
+<Callout type="info">
+The `HOST_BACKEND_PORT` and `HOST_CLIENT_PORT` values use the `host:container` format without binding to `127.0.0.1`. This is intentional — the Newt container inside the Docker network handles routing, so the ports do not need to be exposed to your host. Even if you already run services on ports 3001/3002 on your host, there will be no conflict.
+</Callout>
+</Step>
+
+<Step>
+### Create Docker Compose File
+
+Create a `docker-compose.yml` file in the same directory. This includes a Newt container that connects Pangolin to your Rybbit services:
+
+```yaml
+services:
+  newt:
+    image: fosrl/newt
+    container_name: newt-rybbit
+    restart: unless-stopped
+    environment:
+      - PANGOLIN_ENDPOINT=https://pangolin.yourdomain.com
+      - NEWT_ID=your_newt_id
+      - NEWT_SECRET=your_newt_secret
+
+  clickhouse:
+    container_name: clickhouse
+    image: clickhouse/clickhouse-server:25.4.2
+    volumes:
+      - clickhouse-data:/var/lib/clickhouse
+    configs:
+      - source: clickhouse_network
+        target: /etc/clickhouse-server/config.d/network.xml
+      - source: clickhouse_json
+        target: /etc/clickhouse-server/config.d/enable_json.xml
+      - source: clickhouse_logging
+        target: /etc/clickhouse-server/config.d/logging_rules.xml
+      - source: clickhouse_user_logging
+        target: /etc/clickhouse-server/config.d/user_logging.xml
+    environment:
+      - CLICKHOUSE_DB=${CLICKHOUSE_DB:-analytics}
+      - CLICKHOUSE_USER=${CLICKHOUSE_USER:-default}
+      - CLICKHOUSE_PASSWORD=${CLICKHOUSE_PASSWORD:-frog}
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8123/ping"]
+      interval: 3s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    restart: unless-stopped
+    ports:
+      - "8123:8123"
+
+  postgres:
+    image: postgres:17.4
+    container_name: postgres
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER:-frog}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-frog}
+      - POSTGRES_DB=${POSTGRES_DB:-analytics}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 3s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    restart: unless-stopped
+    ports:
+      - "5432:5432"
+
+  backend:
+    image: ghcr.io/rybbit-io/rybbit-backend:${IMAGE_TAG:-latest}
+    container_name: backend
+    ports:
+      - "${HOST_BACKEND_PORT:-127.0.0.1:3001:3001}"
+    environment:
+      - NODE_ENV=production
+      - CLICKHOUSE_HOST=http://clickhouse:8123
+      - CLICKHOUSE_DB=${CLICKHOUSE_DB:-analytics}
+      - CLICKHOUSE_PASSWORD=${CLICKHOUSE_PASSWORD:-frog}
+      - POSTGRES_HOST=postgres
+      - POSTGRES_PORT=5432
+      - POSTGRES_DB=${POSTGRES_DB:-analytics}
+      - POSTGRES_USER=${POSTGRES_USER:-frog}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-frog}
+      - BETTER_AUTH_SECRET=${BETTER_AUTH_SECRET}
+      - BASE_URL=${BASE_URL}
+      - DISABLE_SIGNUP=${DISABLE_SIGNUP}
+      - DISABLE_TELEMETRY=${DISABLE_TELEMETRY}
+      - MAPBOX_TOKEN=${MAPBOX_TOKEN}
+    depends_on:
+      clickhouse:
+        condition: service_healthy
+      postgres:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:3001/api/health"]
+      interval: 3s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    restart: unless-stopped
+
+  client:
+    image: ghcr.io/rybbit-io/rybbit-client:${IMAGE_TAG:-latest}
+    container_name: client
+    ports:
+      - "${HOST_CLIENT_PORT:-127.0.0.1:3002:3002}"
+    environment:
+      - NODE_ENV=production
+      - NEXT_PUBLIC_BACKEND_URL=${BASE_URL}
+      - NEXT_PUBLIC_DISABLE_SIGNUP=${DISABLE_SIGNUP}
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+volumes:
+  clickhouse-data:
+  postgres-data:
+
+configs:
+  clickhouse_network:
+    content: |
+      <clickhouse>
+          <listen_host>0.0.0.0</listen_host>
+      </clickhouse>
+
+  clickhouse_json:
+    content: |
+      <clickhouse>
+          <settings>
+              <enable_json_type>1</enable_json_type>
+          </settings>
+      </clickhouse>
+
+  clickhouse_logging:
+    content: |
+      <clickhouse>
+        <logger>
+            <level>warning</level>
+            <console>true</console>
+        </logger>
+        <query_thread_log remove="remove"/>
+        <query_log remove="remove"/>
+        <text_log remove="remove"/>
+        <trace_log remove="remove"/>
+        <metric_log remove="remove"/>
+        <asynchronous_metric_log remove="remove"/>
+        <session_log remove="remove"/>
+        <part_log remove="remove"/>
+        <latency_log remove="remove"/>
+        <processors_profile_log remove="remove"/>
+      </clickhouse>
+
+  clickhouse_user_logging:
+    content: |
+      <clickhouse>
+        <profiles>
+          <default>
+            <log_queries>0</log_queries>
+            <log_query_threads>0</log_query_threads>
+            <log_processors_profiles>0</log_processors_profiles>
+          </default>
+        </profiles>
+      </clickhouse>
+```
+
+<Callout type="info">
+The `newt` service runs inside the same Docker network as your other containers. It connects to your Pangolin instance and routes traffic to `backend` and `client` by their container hostnames — no host port exposure needed for Pangolin to reach them.
+</Callout>
+</Step>
+
+<Step>
+### Start Services
+
+Start all services:
+
+```bash
+docker compose up -d
+```
+
+Verify everything is running:
+
+```bash
+docker compose ps
+```
+
+Check that the backend is healthy:
+
+```bash
+docker compose logs backend
+```
+</Step>
+
+<Step>
+### Configure Pangolin
+
+In your Pangolin dashboard, create a new site for your Rybbit domain and configure two resources:
+
+1. **Client resource** — routes the root domain to the Rybbit frontend:
+   - Target: `client` (the Docker container hostname)
+   - Port: `3002`
+
+2. **Backend resource** — routes `/api` traffic to the Rybbit backend:
+   - Target: `backend` (the Docker container hostname)
+   - Port: `3001`
+
+For both resources, add these custom headers in the Pangolin configuration:
+
+| Header | Value |
+|---|---|
+| `X-Forwarded-Proto` | `https` |
+| `X-Forwarded-Host` | `tracking.yourdomain.com` |
+
+![Pangolin dashboard configuration](/docs/pangolin-dashboard.png)
+
+<Callout type="warning">
+The `X-Forwarded-Proto` and `X-Forwarded-Host` headers are critical. Without them, API requests from the client to the backend will fail. This is the most common source of issues with this setup.
+</Callout>
+
+<Callout type="info">
+You do **not** need to enable "Advanced Mode" in Pangolin. The standard configuration with the correct headers is sufficient.
+</Callout>
+</Step>
+
+<Step>
+### Access Rybbit
+
+Navigate to `https://tracking.yourdomain.com` and create your admin account.
+
+If you see 404 errors on `/api` routes, double-check that:
+- Your `BETTER_AUTH_SECRET` is set and is at least 32 characters
+- The `X-Forwarded-Proto` and `X-Forwarded-Host` headers are configured in Pangolin
+</Step>
+</Steps>
+
+## Troubleshooting
+
+### Cannot create organizations or log in
+
+This is almost always caused by a missing or invalid `BETTER_AUTH_SECRET`. Generate a proper secret:
+
+```bash
+openssl rand -hex 32
+```
+
+Add it to your `.env` file and restart the services:
+
+```bash
+docker compose down && docker compose up -d
+```
+
+### 404 errors on API routes
+
+Verify that Pangolin is forwarding the correct headers. The `X-Forwarded-Proto` header must be `https` and `X-Forwarded-Host` must match your domain. Without these, the backend cannot properly handle requests.
+
+### Backend health check failing
+
+Check the backend logs for errors:
+
+```bash
+docker compose logs -f backend
+```
+
+Ensure ClickHouse and PostgreSQL are healthy:
+
+```bash
+docker compose ps
+```
+
+### Newt not connecting to Pangolin
+
+Verify your Newt credentials and Pangolin endpoint:
+
+```bash
+docker compose logs -f newt-rybbit
+```
+
+Make sure `PANGOLIN_ENDPOINT`, `NEWT_ID`, and `NEWT_SECRET` are correct in your `docker-compose.yml`.
+
+## Video Reference
+
+For a visual walkthrough of setting up Rybbit with Pangolin, see the official Pangolin YouTube guide:
 
 <iframe
   width="560"
@@ -12,4 +351,3 @@ description: Set up Rybbit with Pangolin
   allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
   allowFullScreen
 ></iframe>
-

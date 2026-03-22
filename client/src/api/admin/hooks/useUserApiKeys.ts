@@ -1,20 +1,16 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import {
-  listApiKeys,
-  createApiKey,
-  deleteApiKey,
-  ApiKey,
-  ApiKeyWithKey,
-  CreateApiKeyRequest,
-} from "../endpoints";
+import { authClient } from "../../../lib/auth";
 
 // List all API keys for the current user
 export const useListApiKeys = () => {
-  return useQuery<ApiKey[]>({
+  return useQuery({
     queryKey: ["userApiKeys"],
     queryFn: async () => {
-      const response = await listApiKeys();
-      return response;
+      const response = await authClient.apiKey.list();
+      if (response.error) {
+        throw new Error(response.error.message);
+      }
+      return response.data;
     },
   });
 };
@@ -23,17 +19,18 @@ export const useListApiKeys = () => {
 export const useCreateApiKey = () => {
   const queryClient = useQueryClient();
 
-  return useMutation<ApiKeyWithKey, Error, CreateApiKeyRequest>({
-    mutationFn: async (data) => {
-      try {
-        const response = await createApiKey(data);
-        return response;
-      } catch (error) {
-        throw new Error(error instanceof Error ? error.message : "Failed to create API key");
+  return useMutation({
+    mutationFn: async (data: { name: string; expiresIn?: number }) => {
+      const response = await authClient.apiKey.create({
+        name: data.name,
+        expiresIn: data.expiresIn,
+      });
+      if (response.error) {
+        throw new Error(response.error.message);
       }
+      return response.data;
     },
     onSuccess: () => {
-      // Invalidate the list to refresh
       queryClient.invalidateQueries({ queryKey: ["userApiKeys"] });
     },
   });
@@ -43,17 +40,17 @@ export const useCreateApiKey = () => {
 export const useDeleteApiKey = () => {
   const queryClient = useQueryClient();
 
-  return useMutation<{ success: boolean }, Error, string>({
-    mutationFn: async (keyId) => {
-      try {
-        const response = await deleteApiKey(keyId);
-        return response;
-      } catch (error) {
-        throw new Error(error instanceof Error ? error.message : "Failed to delete API key");
+  return useMutation({
+    mutationFn: async (keyId: string) => {
+      const response = await authClient.apiKey.delete({
+        keyId,
+      });
+      if (response.error) {
+        throw new Error(response.error.message);
       }
+      return response.data;
     },
     onSuccess: () => {
-      // Invalidate the list to refresh
       queryClient.invalidateQueries({ queryKey: ["userApiKeys"] });
     },
   });

@@ -4,6 +4,7 @@ export { getEventNames } from "./events/getEventNames.js";
 export { getEventProperties } from "./events/getEventProperties.js";
 export { getEvents } from "./events/getEvents.js";
 export { getOutboundLinks } from "./events/getOutboundLinks.js";
+export { getSiteEventCount } from "./events/getSiteEventCount.js";
 
 
 // Funnels
@@ -40,9 +41,10 @@ export { getOverview } from "./getOverview.js";
 export { getOverviewBucketed } from "./getOverviewBucketed.js";
 export { getPageTitles } from "./getPageTitles.js";
 export { getRetention } from "./getRetention.js";
-export { getSession } from "./getSession.js";
-export { getSessionLocations } from "./getSessionLocations.js";
-export { getSessions } from "./getSessions.js";
-export { getUserInfo } from "./getUserInfo.js";
-export { getUserSessionCount } from "./getUserSessionCount.js";
-export { getUsers } from "./getUsers.js";
+export { getSession } from "./sessions/getSession.js";
+export { getSessionLocations } from "./sessions/getSessionLocations.js";
+export { getSessions } from "./sessions/getSessions.js";
+export { getUserInfo } from "./users/getUserInfo.js";
+export { getUserSessionCount } from "./users/getUserSessionCount.js";
+export { getUsers } from "./users/getUsers.js";
+export { getUserTraitKeys, getUserTraitValues, getUserTraitValueUsers } from "./users/getUserTraits.js";

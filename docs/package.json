@@ -6,7 +6,8 @@
     "build": "next build",
     "dev": "next dev --turbo --port 3003",
     "start": "next start",
-    "postinstall": "fumadocs-mdx"
+    "postinstall": "fumadocs-mdx",
+    "extract": "node scripts/extract-messages.mjs"
   },
   "dependencies": {
     "@calcom/embed-react": "^1.5.3",
@@ -18,6 +19,7 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "country-flag-icons": "^1.5.21",
+    "embla-carousel-react": "^8.6.0",
     "fumadocs-core": "16.0.3",
     "fumadocs-mdx": "13.0.2",
     "fumadocs-ui": "16.0.3",
@@ -27,10 +29,11 @@
     "mapbox-gl": "^3.16.0",
     "mermaid": "^11.12.0",
     "motion": "^12.29.0",
-    "next": "16.0.7",
+    "next": "^16.2.0",
+    "next-intl": "^4.8.3",
     "next-themes": "^0.4.6",
-    "react": "^19.2.0",
-    "react-dom": "^19.2.0",
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4",
     "react-easy-crop": "^5.5.5",
     "react-tweet": "^3.2.2",
     "tailwind-merge": "^3.4.0",

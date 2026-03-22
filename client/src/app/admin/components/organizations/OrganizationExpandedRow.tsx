@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { authClient } from "@/lib/auth";
 import { userStore } from "@/lib/userStore";
 import { CopyText } from "../../../../components/CopyText";
+import { useExtracted } from "next-intl";
 
 interface OrganizationExpandedRowProps {
   organization: AdminOrganizationData;
@@ -19,6 +20,7 @@ interface OrganizationExpandedRowProps {
 
 export function OrganizationExpandedRow({ organization }: OrganizationExpandedRowProps) {
   const router = useRouter();
+  const t = useExtracted();
 
   const handleImpersonate = useCallback(
     async (userId: string) => {
@@ -46,26 +48,26 @@ export function OrganizationExpandedRow({ organization }: OrganizationExpandedRo
       <div>
         <div className="flex items-center gap-2 text-sm font-semibold mb-3">
           <CreditCard className="h-4 w-4" />
-          Subscription Details
+          {t("Subscription Details")}
         </div>
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 p-4 border border-neutral-100 dark:border-neutral-800 rounded">
           <div>
-            <div className="text-xs text-neutral-500 dark:text-neutral-400 uppercase tracking-wide">Plan</div>
+            <div className="text-xs text-neutral-500 dark:text-neutral-400 uppercase tracking-wide">{t("Plan")}</div>
             <div className="font-medium">{organization.subscription.planName}</div>
           </div>
           <div>
-            <div className="text-xs text-neutral-500 dark:text-neutral-400 uppercase tracking-wide">Status</div>
+            <div className="text-xs text-neutral-500 dark:text-neutral-400 uppercase tracking-wide">{t("Status")}</div>
             <div className="font-medium">{organization.subscription.status}</div>
           </div>
           <div>
-            <div className="text-xs text-neutral-500 dark:text-neutral-400 uppercase tracking-wide">Event Limit</div>
+            <div className="text-xs text-neutral-500 dark:text-neutral-400 uppercase tracking-wide">{t("Event Limit")}</div>
             <div className="font-medium">
-              {organization.subscription.eventLimit ? formatter(organization.subscription.eventLimit) : "Unlimited"}
+              {organization.subscription.eventLimit ? formatter(organization.subscription.eventLimit) : t("Unlimited")}
             </div>
           </div>
           {organization.subscription.currentPeriodEnd && (
             <div>
-              <div className="text-xs text-neutral-500 dark:text-neutral-400 uppercase tracking-wide">Period End</div>
+              <div className="text-xs text-neutral-500 dark:text-neutral-400 uppercase tracking-wide">{t("Period End")}</div>
               <div className="font-medium">
                 {formatDistanceToNow(new Date(organization.subscription.currentPeriodEnd), {
                   addSuffix: true,
@@ -75,8 +77,8 @@ export function OrganizationExpandedRow({ organization }: OrganizationExpandedRo
           )}
           {organization.subscription.cancelAtPeriodEnd && (
             <div>
-              <div className="text-xs text-neutral-500 dark:text-neutral-400 uppercase tracking-wide">Cancellation</div>
-              <div className="font-medium text-orange-400">Cancels at period end</div>
+              <div className="text-xs text-neutral-500 dark:text-neutral-400 uppercase tracking-wide">{t("Cancellation")}</div>
+              <div className="font-medium text-orange-400">{t("Cancels at period end")}</div>
             </div>
           )}
         </div>
@@ -86,7 +88,7 @@ export function OrganizationExpandedRow({ organization }: OrganizationExpandedRo
       <div>
         <div className="flex items-center gap-2 text-sm font-semibold mb-3">
           <Building2 className="h-4 w-4" />
-          Sites ({organization.sites.length})
+          {t("Sites ({count})", { count: String(organization.sites.length) })}
         </div>
         {organization.sites.length > 0 ? (
           <div className="flex flex-wrap gap-2">
@@ -100,7 +102,7 @@ export function OrganizationExpandedRow({ organization }: OrganizationExpandedRo
                 <div className="flex flex-col">
                   <span className="font-medium">{site.domain}</span>
                   <span className="text-xs text-neutral-500 dark:text-neutral-400">
-                    {formatter(site.eventsLast24Hours)} events (24h) · {formatter(site.eventsLast30Days)} (30d)
+                    {t("{events24h} events (24h)", { events24h: formatter(site.eventsLast24Hours) })} · {t("{events30d} (30d)", { events30d: formatter(site.eventsLast30Days) })}
                   </span>
                 </div>
                 <ExternalLink className="h-3 w-3" />
@@ -109,7 +111,7 @@ export function OrganizationExpandedRow({ organization }: OrganizationExpandedRo
           </div>
         ) : (
           <div className="text-neutral-500 dark:text-neutral-400 p-4 border border-neutral-100 dark:border-neutral-800 rounded">
-            No sites
+            {t("No sites")}
           </div>
         )}
       </div>
@@ -118,7 +120,7 @@ export function OrganizationExpandedRow({ organization }: OrganizationExpandedRo
       <div>
         <div className="flex items-center gap-2 text-sm font-semibold mb-3">
           <User className="h-4 w-4" />
-          Members ({organization.members.length})
+          {t("Members ({count})", { count: String(organization.members.length) })}
         </div>
         {organization.members.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
@@ -146,7 +148,7 @@ export function OrganizationExpandedRow({ organization }: OrganizationExpandedRo
                     disabled={member.userId === userStore.getState().user?.id}
                   >
                     <UserCheck className="h-3 w-3" />
-                    Impersonate
+                    {t("Impersonate")}
                   </Button>
                 </div>
               </div>
@@ -154,7 +156,7 @@ export function OrganizationExpandedRow({ organization }: OrganizationExpandedRo
           </div>
         ) : (
           <div className="text-neutral-500 dark:text-neutral-400 p-4 border border-neutral-100 dark:border-neutral-800 rounded">
-            No members
+            {t("No members")}
           </div>
         )}
       </div>

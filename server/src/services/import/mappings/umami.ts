@@ -117,7 +117,10 @@ export class UmamiImportMapper {
       }
 
       const data = parsed.data;
-      const referrer = data.referrer_domain + data.referrer_path;
+      const referrer = clearSelfReferrer(
+        data.referrer_domain + data.referrer_path,
+        data.hostname.replace(/^www\./, "")
+      );
       const [screenWidth, screenHeight] = data.screen ? data.screen.split("x") : ["0", "0"];
 
       acc.push({
@@ -130,7 +133,7 @@ export class UmamiImportMapper {
         querystring: data.url_query,
         url_parameters: getAllUrlParams(data.url_query),
         page_title: data.page_title,
-        referrer: clearSelfReferrer(referrer, data.hostname.replace(/^www\./, "")),
+        referrer: referrer,
         channel: getChannel(referrer, data.url_query, data.hostname),
         browser: data.browser,
         browser_version: "",

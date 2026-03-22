@@ -42,6 +42,7 @@ describe("parseScriptConfig", () => {
     const config = await parseScriptConfig(mockScriptTag);
 
     expect(config).toEqual({
+      namespace: "rybbit",
       analyticsHost: "https://analytics.example.com",
       siteId: "123",
       debounceDuration: 500,
@@ -52,6 +53,9 @@ describe("parseScriptConfig", () => {
       enableWebVitals: true, // webVitals from API
       trackErrors: false, // trackErrors from API
       enableSessionReplay: true, // sessionReplay from API
+      trackButtonClicks: false,
+      trackCopy: false,
+      trackFormInteractions: false,
       skipPatterns: [],
       maskPatterns: [],
       sessionReplayBatchInterval: 5000,
@@ -68,6 +72,7 @@ describe("parseScriptConfig", () => {
       sessionReplayCollectFonts: undefined,
       sessionReplaySampling: undefined,
       sessionReplaySlimDOMOptions: undefined,
+      sessionReplaySampleRate: undefined,
     });
 
     expect(global.fetch).toHaveBeenCalledWith(
@@ -92,6 +97,7 @@ describe("parseScriptConfig", () => {
     const config = await parseScriptConfig(mockScriptTag);
 
     expect(config).toEqual({
+      namespace: "rybbit",
       analyticsHost: "https://analytics.example.com",
       siteId: "123",
       debounceDuration: 500,
@@ -102,6 +108,9 @@ describe("parseScriptConfig", () => {
       enableWebVitals: false,
       trackErrors: false,
       enableSessionReplay: false,
+      trackButtonClicks: false,
+      trackCopy: false,
+      trackFormInteractions: false,
       skipPatterns: [],
       maskPatterns: [],
       sessionReplayBatchInterval: 5000,
@@ -117,6 +126,7 @@ describe("parseScriptConfig", () => {
       sessionReplayCollectFonts: undefined,
       sessionReplaySampling: undefined,
       sessionReplaySlimDOMOptions: undefined,
+      sessionReplaySampleRate: undefined,
     });
 
     expect(consoleWarnSpy).toHaveBeenCalledWith(
@@ -134,6 +144,7 @@ describe("parseScriptConfig", () => {
     const config = await parseScriptConfig(mockScriptTag);
 
     expect(config).toEqual({
+      namespace: "rybbit",
       analyticsHost: "https://analytics.example.com",
       siteId: "123",
       debounceDuration: 500,
@@ -144,6 +155,9 @@ describe("parseScriptConfig", () => {
       enableWebVitals: false,
       trackErrors: false,
       enableSessionReplay: false,
+      trackButtonClicks: false,
+      trackCopy: false,
+      trackFormInteractions: false,
       skipPatterns: [],
       maskPatterns: [],
       sessionReplayBatchInterval: 5000,
@@ -159,6 +173,7 @@ describe("parseScriptConfig", () => {
       sessionReplayCollectFonts: undefined,
       sessionReplaySampling: undefined,
       sessionReplaySlimDOMOptions: undefined,
+      sessionReplaySampleRate: undefined,
     });
 
     expect(consoleWarnSpy).toHaveBeenCalledWith(

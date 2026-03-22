@@ -2,6 +2,7 @@ import { getTimezone } from "@/lib/store";
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 import { ArrowRight, ChevronDown, ChevronUp } from "lucide-react";
 import { DateTime } from "luxon";
+import { useExtracted } from "next-intl";
 import { useMemo, useState } from "react";
 import { useCurrentSite } from "../../../../api/admin/hooks/useSites";
 import { useGetSessionsInfinite } from "../../../../api/analytics/hooks/useGetUserSessions";
@@ -20,7 +21,8 @@ import { Badge } from "../../../../components/ui/badge";
 import { Button } from "../../../../components/ui/button";
 import { Dialog, DialogContent, DialogTitle } from "../../../../components/ui/dialog";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../../../../components/ui/tooltip";
-import { formatShortDuration, hour12, userLocale } from "../../../../lib/dateTimeUtils";
+import { useDateTimeFormat } from "../../../../hooks/useDateTimeFormat";
+import { formatShortDuration } from "../../../../lib/dateTimeUtils";
 import { cn, formatter, truncateString } from "../../../../lib/utils";
 
 function SessionCardSkeleton() {
@@ -56,6 +58,8 @@ function SessionCardSkeleton() {
 }
 
 function SessionCard({ session, onClick }: { session: GetSessionsResponse[number]; onClick?: () => void }) {
+  const t = useExtracted();
+  const { hour12, formatDateTime } = useDateTimeFormat();
   // Calculate session duration in minutes
   const start = DateTime.fromSQL(session.session_start, { zone: "utc" });
   const end = DateTime.fromSQL(session.session_end, { zone: "utc" });
@@ -78,12 +82,14 @@ function SessionCard({ session, onClick }: { session: GetSessionsResponse[number
         <div className="flex space-x-2 items-center pr-2">
           <div className="flex items-center gap-1.5 text-xs text-neutral-300">
             <span className="text-neutral-400">
-              {DateTime.fromSQL(session.session_start, {
-                zone: "utc",
-              })
-                .setLocale(userLocale)
-                .setZone(getTimezone())
-                .toFormat(hour12 ? "MMM d, h:mm a" : "dd MMM, HH:mm")}
+              {formatDateTime(DateTime.fromSQL(session.session_start, { zone: "utc" }), {
+                month: "short",
+                day: "numeric",
+                hour: "numeric",
+                minute: "2-digit",
+                hour12,
+                timeZone: getTimezone(),
+              })}
             </span>
             <span className="text-neutral-400">•</span>
             <span className="hidden md:block">{duration}</span>
@@ -111,7 +117,7 @@ function SessionCard({ session, onClick }: { session: GetSessionsResponse[number
               <span>{formatter(session.pageviews)}</span>
             </Badge>
           </TooltipTrigger>
-          <TooltipContent>Pageviews</TooltipContent>
+          <TooltipContent>{t("Pageviews")}</TooltipContent>
         </Tooltip>
         <Tooltip>
           <TooltipTrigger asChild>
@@ -120,7 +126,7 @@ function SessionCard({ session, onClick }: { session: GetSessionsResponse[number
               <span>{formatter(session.events)}</span>
             </Badge>
           </TooltipTrigger>
-          <TooltipContent>Events</TooltipContent>
+          <TooltipContent>{t("Events")}</TooltipContent>
         </Tooltip>
         <Channel channel={session.channel} referrer={session.referrer} />
       </div>
@@ -154,6 +160,7 @@ function SessionCard({ session, onClick }: { session: GetSessionsResponse[number
 }
 
 export function GlobeSessions() {
+  const t = useExtracted();
   const { data, isLoading, fetchNextPage, hasNextPage, isFetchingNextPage } = useGetSessionsInfinite({});
 
   const [expanded, setExpanded] = useState(false);
@@ -169,7 +176,7 @@ export function GlobeSessions() {
     <>
       <div className="space-y-2 bg-neutral-850/60 p-2 rounded-lg w-[371px] backdrop-blur-sm border border-neutral-800">
         <div className="text-sm text-neutral-200 font-medium flex items-center justify-between">
-          SESSIONS
+          {t("SESSIONS")}
           <Button variant="ghost" size="smIcon" onClick={() => setExpanded(!expanded)}>
             {expanded ? <ChevronDown className="w-4 h-4" /> : <ChevronUp className="w-4 h-4" />}
           </Button>
@@ -191,14 +198,14 @@ export function GlobeSessions() {
         {/* Load more button */}
         {hasNextPage && expanded && !isLoading && (
           <Button onClick={() => fetchNextPage()} className="w-full" variant="ghost" size="sm">
-            Load more
+            {t("Load more")}
           </Button>
         )}
       </div>
 
       <Dialog open={!!selectedSession} onOpenChange={open => !open && setSelectedSession(null)}>
         <VisuallyHidden>
-          <DialogTitle>Session Details</DialogTitle>
+          <DialogTitle>{t("Session Details")}</DialogTitle>
         </VisuallyHidden>
         <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto bg-transparent border-0 p-0 shadow-none gap-0 [&>button]:hidden">
           {selectedSession && <FullSessionCard session={selectedSession} expandedByDefault />}

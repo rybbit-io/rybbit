@@ -46,6 +46,8 @@ export type UserInfo = {
   operating_system_version: string;
   screen_height: number;
   screen_width: number;
+  referrer: string;
+  channel: string;
   last_seen: string;
   first_seen: string;
   pageviews: number;
@@ -64,6 +66,8 @@ export interface UserSessionCountResponse {
 export interface UsersParams extends CommonApiParams, PaginationParams, SortParams {
   pageSize?: number;
   identifiedOnly?: boolean;
+  search?: string;
+  searchField?: string;
 }
 
 export interface UserSessionsParams extends CommonApiParams {
@@ -94,6 +98,8 @@ export async function fetchUsers(site: string | number, params: UsersParams): Pr
     sort_by: params.sortBy,
     sort_order: params.sortOrder,
     identified_only: params.identifiedOnly,
+    search: params.search || undefined,
+    search_field: params.searchField || undefined,
   };
 
   const response = await authedFetch<UsersListResponse>(`/sites/${site}/users`, queryParams);

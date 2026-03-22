@@ -6,6 +6,14 @@
 
   // utils.ts
   function patternToRegex(pattern) {
+    const REGEX_PREFIX = "re:";
+    if (pattern.startsWith(REGEX_PREFIX)) {
+      const rawRegex = pattern.slice(REGEX_PREFIX.length);
+      if (!rawRegex) {
+        throw new Error("Empty regex pattern");
+      }
+      return new RegExp(rawRegex);
+    }
     const DOUBLE_WILDCARD_TOKEN = "__DOUBLE_ASTERISK_TOKEN__";
     const SINGLE_WILDCARD_TOKEN = "__SINGLE_ASTERISK_TOKEN__";
     let tokenized = pattern.replace(/\*\*/g, DOUBLE_WILDCARD_TOKEN).replace(/\*/g, SINGLE_WILDCARD_TOKEN);
@@ -102,6 +110,7 @@
     const sessionReplaySlimDOMOptions = slimDOMAttr ? parseJsonSafely(slimDOMAttr, {}) : void 0;
     const sampleRateAttr = scriptTag.getAttribute("data-replay-sample-rate");
     const sessionReplaySampleRate = sampleRateAttr ? Math.min(100, Math.max(0, parseInt(sampleRateAttr, 10))) : void 0;
+    const tag = scriptTag.getAttribute("data-tag") || "";
     const defaultConfig = {
       namespace,
       analyticsHost,
@@ -120,6 +129,10 @@
       enableWebVitals: false,
       trackErrors: false,
       enableSessionReplay: false,
+      trackButtonClicks: false,
+      trackCopy: false,
+      trackFormInteractions: false,
+      tag,
       // rrweb session replay options (undefined means use rrweb defaults)
       sessionReplayBlockClass,
       sessionReplayBlockSelector,
@@ -151,7 +164,10 @@
           trackOutbound: apiConfig.trackOutbound ?? defaultConfig.trackOutbound,
           enableWebVitals: apiConfig.webVitals ?? defaultConfig.enableWebVitals,
           trackErrors: apiConfig.trackErrors ?? defaultConfig.trackErrors,
-          enableSessionReplay: apiConfig.sessionReplay ?? defaultConfig.enableSessionReplay
+          enableSessionReplay: apiConfig.sessionReplay ?? defaultConfig.enableSessionReplay,
+          trackButtonClicks: apiConfig.trackButtonClicks ?? defaultConfig.trackButtonClicks,
+          trackCopy: apiConfig.trackCopy ?? defaultConfig.trackCopy,
+          trackFormInteractions: apiConfig.trackFormInteractions ?? defaultConfig.trackFormInteractions
         };
       } else {
         console.warn("Failed to fetch tracking config from API, using defaults");
@@ -368,6 +384,8 @@
   var Tracker = class {
     constructor(config) {
       this.customUserId = null;
+      this.errorDedupeCache = /* @__PURE__ */ new Map();
+      this.errorDedupeLastCleanup = 0;
       this.config = config;
       this.loadUserId();
       if (config.enableSessionReplay) {
@@ -439,6 +457,9 @@
       if (this.customUserId) {
         payload.user_id = this.customUserId;
       }
+      if (this.config.tag) {
+        payload.tag = this.config.tag;
+      }
       return payload;
     }
     async sendTrackingData(payload) {
@@ -465,11 +486,12 @@
       if (!basePayload) {
         return;
       }
+      const typesWithProperties = ["custom_event", "outbound", "error", "button_click", "copy", "form_submit", "input_change"];
       const payload = {
         ...basePayload,
         type: eventType,
         event_name: eventName,
-        properties: eventType === "custom_event" || eventType === "outbound" || eventType === "error" ? JSON.stringify(properties) : void 0
+        properties: typesWithProperties.includes(eventType) ? JSON.stringify(properties) : void 0
       };
       this.sendTrackingData(payload);
     }
@@ -496,6 +518,10 @@
       this.sendTrackingData(payload);
     }
     trackError(error, additionalInfo = {}) {
+      const message = error?.message || "";
+      if (message.includes("ResizeObserver loop completed with undelivered notifications") || message.includes("ResizeObserver loop limit exceeded")) {
+        return;
+      }
       const currentOrigin = window.location.origin;
       const filename = additionalInfo.filename || "";
       const errorStack = error.stack || "";
@@ -511,6 +537,30 @@
         if (!errorStack.includes(currentOrigin)) {
           return;
         }
+      }
+      const dedupeKeyParts = [
+        error.name || "Error",
+        message,
+        additionalInfo.filename || "",
+        additionalInfo.lineno ?? "",
+        additionalInfo.colno ?? ""
+      ];
+      const dedupeKey = dedupeKeyParts.join("|");
+      const now = Date.now();
+      const dedupeWindowMs = 6e4;
+      const lastSeen = this.errorDedupeCache.get(dedupeKey);
+      if (lastSeen && now - lastSeen < dedupeWindowMs) {
+        return;
+      }
+      this.errorDedupeCache.set(dedupeKey, now);
+      const pruneAfterMs = 10 * 6e4;
+      if (now - this.errorDedupeLastCleanup > dedupeWindowMs) {
+        for (const [key, ts] of this.errorDedupeCache.entries()) {
+          if (now - ts > pruneAfterMs) {
+            this.errorDedupeCache.delete(key);
+          }
+        }
+        this.errorDedupeLastCleanup = now;
       }
       const errorProperties = {
         message: error.message?.substring(0, 500) || "Unknown error",
@@ -539,6 +589,18 @@
         }
       }
       this.track("error", error.name || "Error", errorProperties);
+    }
+    trackButtonClick(properties) {
+      this.track("button_click", "", properties);
+    }
+    trackCopy(properties) {
+      this.track("copy", "", properties);
+    }
+    trackFormSubmit(properties) {
+      this.track("form_submit", "", properties);
+    }
+    trackInputChange(properties) {
+      this.track("input_change", "", properties);
     }
     identify(userId, traits) {
       if (typeof userId !== "string" || userId.trim() === "") {
@@ -925,6 +987,184 @@
     }
   };
 
+  // clickTracking.ts
+  var ClickTrackingManager = class {
+    constructor(tracker, config) {
+      this.tracker = tracker;
+      this.config = config;
+    }
+    initialize() {
+      document.addEventListener("click", this.handleClick.bind(this), true);
+    }
+    handleClick(event) {
+      const target = event.target;
+      if (this.config.trackButtonClicks && this.isButton(target)) {
+        this.trackButtonClick(target);
+      }
+    }
+    isButton(element) {
+      if (element.tagName === "BUTTON") return true;
+      if (element.getAttribute("role") === "button") return true;
+      if (element.tagName === "INPUT") {
+        const type = element.type?.toLowerCase();
+        if (type === "submit" || type === "button") return true;
+      }
+      let parent = element.parentElement;
+      let depth = 0;
+      while (parent && depth < 3) {
+        if (parent.tagName === "BUTTON") return true;
+        if (parent.getAttribute("role") === "button") return true;
+        parent = parent.parentElement;
+        depth++;
+      }
+      return false;
+    }
+    trackButtonClick(element) {
+      const buttonElement = this.findButton(element);
+      if (!buttonElement) return;
+      if (buttonElement.hasAttribute("data-rybbit-event")) return;
+      const properties = {
+        text: this.getElementText(buttonElement),
+        ...this.extractDataAttributes(buttonElement)
+      };
+      this.tracker.trackButtonClick(properties);
+    }
+    extractDataAttributes(element) {
+      const attrs = {};
+      for (const attr of element.attributes) {
+        if (attr.name.startsWith("data-rybbit-prop-")) {
+          const key = attr.name.replace("data-rybbit-prop-", "");
+          attrs[key] = attr.value;
+        }
+      }
+      return attrs;
+    }
+    findButton(element) {
+      if (element.tagName === "BUTTON") return element;
+      if (element.getAttribute("role") === "button") return element;
+      if (element.tagName === "INPUT") {
+        const type = element.type?.toLowerCase();
+        if (type === "submit" || type === "button") return element;
+      }
+      let parent = element.parentElement;
+      let depth = 0;
+      while (parent && depth < 3) {
+        if (parent.tagName === "BUTTON") return parent;
+        if (parent.getAttribute("role") === "button") return parent;
+        parent = parent.parentElement;
+        depth++;
+      }
+      return null;
+    }
+    getElementText(element) {
+      const text = element.textContent?.trim().substring(0, 100);
+      if (text) return text;
+      const ariaLabel = element.getAttribute("aria-label")?.trim().substring(0, 100);
+      if (ariaLabel) return ariaLabel;
+      if (element.tagName === "INPUT") {
+        const value = element.value?.trim().substring(0, 100);
+        if (value) return value;
+      }
+      const title = element.getAttribute("title")?.trim().substring(0, 100);
+      if (title) return title;
+      return void 0;
+    }
+    cleanup() {
+      document.removeEventListener("click", this.handleClick.bind(this), true);
+    }
+  };
+
+  // copyTracking.ts
+  var CopyTrackingManager = class {
+    constructor(tracker) {
+      this.tracker = tracker;
+    }
+    initialize() {
+      document.addEventListener("copy", this.handleCopy.bind(this));
+    }
+    handleCopy() {
+      const selection = window.getSelection();
+      if (!selection || selection.isCollapsed) return;
+      const text = selection.toString();
+      const textLength = text.length;
+      if (textLength === 0) return;
+      const anchorNode = selection.anchorNode;
+      const sourceElement = anchorNode instanceof HTMLElement ? anchorNode : anchorNode?.parentElement;
+      if (!sourceElement) return;
+      const properties = {
+        text: text.substring(0, 500),
+        ...textLength > 500 && { textLength },
+        sourceElement: sourceElement.tagName.toLowerCase()
+      };
+      this.tracker.trackCopy(properties);
+    }
+    cleanup() {
+      document.removeEventListener("copy", this.handleCopy.bind(this));
+    }
+  };
+
+  // formTracking.ts
+  var FormTrackingManager = class {
+    constructor(tracker, config) {
+      this.tracker = tracker;
+      this.config = config;
+      this.boundHandleSubmit = this.handleSubmit.bind(this);
+      this.boundHandleChange = this.handleChange.bind(this);
+    }
+    initialize() {
+      document.addEventListener("submit", this.boundHandleSubmit, true);
+      document.addEventListener("change", this.boundHandleChange, true);
+    }
+    cleanup() {
+      document.removeEventListener("submit", this.boundHandleSubmit, true);
+      document.removeEventListener("change", this.boundHandleChange, true);
+    }
+    handleSubmit(event) {
+      const form = event.target;
+      if (form.tagName !== "FORM") return;
+      const properties = {
+        formId: form.id || "",
+        formName: form.name || "",
+        formAction: form.action || "",
+        method: (form.method || "get").toUpperCase(),
+        fieldCount: form.elements.length,
+        ariaLabel: form.getAttribute("aria-label") || void 0,
+        ...this.extractDataAttributes(form)
+      };
+      this.tracker.trackFormSubmit(properties);
+    }
+    handleChange(event) {
+      const target = event.target;
+      const tagName = target.tagName.toUpperCase();
+      if (!["INPUT", "SELECT", "TEXTAREA"].includes(tagName)) return;
+      if (target.disabled) return;
+      if (tagName === "INPUT") {
+        const inputType = target.type?.toLowerCase();
+        if (inputType === "hidden" || inputType === "password") return;
+      }
+      const inputName = target.name || target.id || target.getAttribute("aria-label") || target.placeholder || "";
+      const properties = {
+        element: tagName.toLowerCase(),
+        inputType: tagName === "INPUT" ? target.type?.toLowerCase() : void 0,
+        inputName,
+        formId: target.form?.id || void 0,
+        formName: target.form?.name || void 0,
+        ...this.extractDataAttributes(target)
+      };
+      this.tracker.trackInputChange(properties);
+    }
+    extractDataAttributes(element) {
+      const attrs = {};
+      for (const attr of element.attributes) {
+        if (attr.name.startsWith("data-rybbit-prop-")) {
+          const key = attr.name.replace("data-rybbit-prop-", "");
+          attrs[key] = attr.value;
+        }
+      }
+      return attrs;
+    }
+  };
+
   // index.ts
   (async function() {
     const scriptTag = document.currentScript;
@@ -959,6 +1199,23 @@
       };
       return;
     }
+    const earlyQueue = [];
+    const queueMethod = (method) => (...args) => {
+      earlyQueue.push([method, args]);
+    };
+    window[namespace] = {
+      pageview: queueMethod("pageview"),
+      event: queueMethod("event"),
+      error: queueMethod("error"),
+      trackOutbound: queueMethod("trackOutbound"),
+      identify: queueMethod("identify"),
+      setTraits: queueMethod("setTraits"),
+      clearUserId: queueMethod("clearUserId"),
+      getUserId: () => null,
+      startSessionReplay: queueMethod("startSessionReplay"),
+      stopSessionReplay: queueMethod("stopSessionReplay"),
+      isSessionReplayActive: () => false
+    };
     const config = await parseScriptConfig(scriptTag);
     if (!config) {
       return;
@@ -969,6 +1226,21 @@
         tracker.trackWebVitals(vitals);
       });
       webVitalsCollector.initialize();
+    }
+    let clickManager = null;
+    let copyManager = null;
+    let formManager = null;
+    if (config.trackButtonClicks) {
+      clickManager = new ClickTrackingManager(tracker, config);
+      clickManager.initialize();
+    }
+    if (config.trackCopy) {
+      copyManager = new CopyTrackingManager(tracker);
+      copyManager.initialize();
+    }
+    if (config.trackFormInteractions) {
+      formManager = new FormTrackingManager(tracker, config);
+      formManager.initialize();
     }
     if (config.trackErrors) {
       window.addEventListener("error", (event) => {
@@ -1050,8 +1322,14 @@
       stopSessionReplay: () => tracker.stopSessionReplay(),
       isSessionReplayActive: () => tracker.isSessionReplayActive()
     };
+    const api = window[config.namespace];
+    for (const [method, args] of earlyQueue) {
+      api[method](...args);
+    }
     setupEventListeners();
     window.addEventListener("beforeunload", () => {
+      clickManager?.cleanup();
+      copyManager?.cleanup();
       tracker.cleanup();
     });
     if (config.autoTrackPageview) {

@@ -1,6 +1,7 @@
 import NumberFlow from "@number-flow/react";
 import { useIntersectionObserver } from "@uidotdev/usehooks";
 import { Rewind } from "lucide-react";
+import { useExtracted } from "next-intl";
 import { useEffect, useMemo } from "react";
 import { useGetLiveUserCount } from "../../../../api/analytics/hooks/useGetLiveUserCount";
 import { useGetSessionsInfinite } from "../../../../api/analytics/hooks/useGetUserSessions";
@@ -13,6 +14,7 @@ import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 import { ScrollArea } from "../../../../components/ui/scroll-area";
 
 export function LiveUserCount() {
+  const t = useExtracted();
   const { data } = useGetLiveUserCount(5);
 
   const {
@@ -69,13 +71,13 @@ export function LiveUserCount() {
           </DrawerTrigger>
         </TooltipTrigger>
         <TooltipContent>
-          <p>Users online in past 5 minutes</p>
+          <p>{t("Users online in past 5 minutes")}</p>
         </TooltipContent>
       </Tooltip>
       <DrawerContent>
         <VisuallyHidden>
           <DrawerHeader>
-            <DrawerTitle>Users online in past 5 minutes</DrawerTitle>
+            <DrawerTitle>{t("Users online in past 5 minutes")}</DrawerTitle>
           </DrawerHeader>
         </VisuallyHidden>
         <ScrollArea
@@ -88,8 +90,8 @@ export function LiveUserCount() {
             ) : sessions.length === 0 ? (
               <NothingFound
                 icon={<Rewind className="w-10 h-10" />}
-                title="No sessions found"
-                description="No users online in the past 5 minutes"
+                title={t("No sessions found")}
+                description={t("No users online in the past 5 minutes")}
               />
             ) : (
               <>

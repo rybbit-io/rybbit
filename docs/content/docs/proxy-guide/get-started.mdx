@@ -45,13 +45,12 @@ This minimal setup enables basic pageview and event tracking, but won't support 
 | Endpoint | Method | Purpose | Cache |
 |----------|--------|---------|-------|
 | `/api/script.js` | GET | Main tracking script (minified) | 1 hour |
-| `/api/script-full.js` | GET | Unminified script for debugging | 1 hour |
 | `/api/replay.js` | GET | Session replay recording script | 1 hour |
 | `/api/metrics.js` | GET | Web Vitals metrics script | 1 hour |
 | `/api/track` | POST | Event tracking endpoint | No cache |
 | `/api/identify` | POST | User identification endpoint | No cache |
 | `/api/session-replay/record/:siteId` | POST | Session replay data upload | No cache |
-| `/site/tracking-config/:siteId` | GET | Site configuration | 5 minutes |
+| `/api/site/tracking-config/:siteId` | GET | Site configuration | 5 minutes |
 
 This setup supports all Rybbit features including session replay, Web Vitals, and custom events.
 
@@ -94,7 +93,7 @@ Implement caching to reduce load on Rybbit servers and improve performance:
 **Recommended cache durations:**
 - **Scripts** (`.js` files): 1 hour (3600 seconds)
   - These change infrequently but may be updated for bug fixes
-- **Site configuration** (`/site/tracking-config/*`): 5 minutes (300 seconds)
+- **Site configuration** (`/api/site/tracking-config/*`): 5 minutes (300 seconds)
   - Updated when you change settings in the dashboard
 - **Tracking endpoints** (POST requests): Never cache
   - Each request contains unique event data

@@ -211,6 +211,3 @@ export const filterOperators = [
   { value: "not_contains", label: "Not Contains" },
   { value: "regex", label: "Regex" },
 ];
-
-// Re-export timezones from shared location for backwards compatibility
-export { timezones as commonTimezones } from "@/lib/dateTimeUtils";

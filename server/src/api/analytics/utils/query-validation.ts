@@ -231,6 +231,7 @@ export const filterParamSchema = z.enum([
   "asn_org",
   "asn_type",
   "asn_domain",
+  "tag",
 ]);
 
 /**

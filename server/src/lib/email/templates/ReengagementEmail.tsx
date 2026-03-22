@@ -65,7 +65,7 @@ export const ReengagementEmail = ({
         <Body className="bg-white font-sans">
           <Container className="mx-auto py-8 px-6 max-w-[600px]">
             <Img
-              src="https://app.rybbit.io/rybbit-text-black.png"
+              src="https://app.rybbit.io/rybbit/horizontal_black.svg"
               alt="Rybbit"
               width="120"
               height="28"

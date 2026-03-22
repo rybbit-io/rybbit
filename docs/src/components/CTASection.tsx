@@ -1,5 +1,6 @@
 import { TrackedButton } from "@/components/TrackedButton";
 import { DEFAULT_EVENT_LIMIT } from "@/lib/const";
+import { useExtracted } from "next-intl";
 
 interface CTASectionProps {
   title?: string;
@@ -12,17 +13,23 @@ interface CTASectionProps {
 }
 
 export function CTASection({
-  title = "Ready for better analytics?",
-  description = "Powerful insights without the complexity. Privacy-focused analytics that just works.",
-  primaryButtonText = "Get started",
+  title,
+  description,
+  primaryButtonText,
   primaryButtonHref = "https://app.rybbit.io/signup",
-  secondaryButtonText = "Live demo",
+  secondaryButtonText,
   secondaryButtonHref = "https://demo.rybbit.com/81",
   eventLocation = "bottom_cta",
 }: CTASectionProps) {
+  const t = useExtracted();
+  const resolvedTitle = title ?? t("Ready for better analytics?");
+  const resolvedDescription = description ?? t("Powerful insights without the complexity. Privacy-focused analytics that just works.");
+  const resolvedPrimaryButtonText = primaryButtonText ?? t("Start for $0");
+  const resolvedSecondaryButtonText = secondaryButtonText ?? t("Live demo");
+
   return (
-    <section className="py-12 md:py-20 w-full px-4 relative z-10">
-      <div className="max-w-[1200px] mx-auto">
+    <section className="py-12 md:py-20 w-full relative z-10">
+      <div className="max-w-[1200px] mx-auto px-4">
         <div className="relative overflow-hidden rounded-3xl bg-neutral-950 p-10 md:p-16 lg:p-20">
           {/* Noise texture overlay */}
           <svg
@@ -47,36 +54,36 @@ export function CTASection({
           <div className="absolute top-1/2 right-0 w-[250px] h-[250px] bg-teal-600/15 rounded-full blur-[80px] translate-x-1/2"></div>
 
           <div className="relative z-10 flex flex-col items-center justify-center text-center">
-            <h2 className="text-3xl md:text-5xl lg:text-6xl font-bold text-white mb-4 md:mb-6 tracking-tight">
-              {title}
+            <h2 className="text-2xl md:text-3xl lg:text-4xl font-semibold text-white mb-4 md:mb-6 tracking-tight">
+              {resolvedTitle}
             </h2>
-            <p className="text-base md:text-lg text-neutral-400 mb-8 md:mb-10 max-w-2xl mx-auto">
-              {description}
+            <p className="text-sm md:text-base text-neutral-400 mb-8 md:mb-10 mx-auto max-w-[500px]">
+              {resolvedDescription}
             </p>
 
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4 md:gap-6 mb-6 w-full sm:w-auto">
               <TrackedButton
                 href={primaryButtonHref}
                 eventName="signup"
-                eventProps={{ location: eventLocation, button_text: primaryButtonText }}
-                className="w-full whitespace-nowrap sm:w-auto bg-emerald-600 hover:bg-emerald-500 text-white font-medium px-6 py-3 rounded-lg shadow-lg shadow-emerald-900/20 transform hover:-translate-y-0.5 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-opacity-50 cursor-pointer"
+                eventProps={{ location: eventLocation, button_text: resolvedPrimaryButtonText }}
+                className="w-full whitespace-nowrap sm:w-auto bg-emerald-600 hover:bg-emerald-500 text-white font-medium px-6 py-3 rounded-lg shadow-lg shadow-emerald-900/20 transform hover:-translate-y-0.5 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-emerald-200 focus:ring-opacity-50 cursor-pointer"
               >
-                {primaryButtonText}
+                {resolvedPrimaryButtonText}
               </TrackedButton>
               <TrackedButton
                 href={secondaryButtonHref}
                 eventName="demo"
                 target="_blank"
                 rel="noopener noreferrer"
-                eventProps={{ location: eventLocation, button_text: secondaryButtonText }}
+                eventProps={{ location: eventLocation, button_text: resolvedSecondaryButtonText }}
                 className="w-full whitespace-nowrap sm:w-auto bg-neutral-800 hover:bg-neutral-700 text-white font-medium px-6 py-3 rounded-lg transform hover:-translate-y-0.5 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-neutral-400 focus:ring-opacity-50 cursor-pointer"
               >
-                {secondaryButtonText}
+                {resolvedSecondaryButtonText}
               </TrackedButton>
             </div>
 
             <p className="text-neutral-500 text-sm">
-              {DEFAULT_EVENT_LIMIT.toLocaleString()} events/month free. No credit card required.
+              {t("7-day free trial. Cancel anytime.")}
             </p>
           </div>
         </div>

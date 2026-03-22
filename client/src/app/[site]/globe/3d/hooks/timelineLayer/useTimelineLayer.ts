@@ -1,25 +1,22 @@
-import mapboxgl from "mapbox-gl";
-import { useEffect, useRef, useState, useCallback } from "react";
 import { throttle } from "lodash";
+import { useEffect, useRef, useState } from "react";
 import type { GetSessionsResponse } from "../../../../../../api/analytics/endpoints";
-import { useTimelineStore, useActiveSessions } from "../../../timelineStore";
+import { useActiveSessions, useTimelineStore } from "../../../timelineStore";
 import { initializeClusterSource, setupClusterClickHandler } from "./timelineClusterUtils";
 import {
-  SOURCE_ID,
   CLUSTER_LAYER_ID,
-  CLUSTER_MAX_ZOOM,
   CLUSTER_RADIUS,
-  CLUSTERING_THRESHOLD,
-  SPREAD_START_ZOOM,
+  SOURCE_ID,
 } from "./timelineLayerConstants";
 import { setClusterLayersVisibility, updateGeoJSONData } from "./timelineLayerManager";
-import { updateMarkers as updateMarkersUtil, clearAllMarkers, type MarkerData } from "./timelineMarkerManager";
 import {
-  createTooltipPopup,
   addClusterLayers,
+  createTooltipPopup,
   disableClusterTransitions,
   setupClusterHoverHandlers,
 } from "./timelineLayerSetup";
+import { clearAllMarkers, updateMarkers as updateMarkersUtil, type MarkerData } from "./timelineMarkerManager";
+import { CLUSTER_MAX_ZOOM, CLUSTERING_THRESHOLD, SPREAD_START_ZOOM } from "../../../utils/clusteringConstants";
 
 export function useTimelineLayer({
   map,

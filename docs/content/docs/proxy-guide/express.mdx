@@ -98,7 +98,7 @@ app.use('/analytics/site/tracking-config', createProxyMiddleware({
   target: RYBBIT_HOST,
   changeOrigin: true,
   pathRewrite: {
-    '^/analytics': '', // Keep /site/tracking-config path
+    '^/analytics/site': '/api/site', // Rewrite to /api/site/tracking-config
   },
   onProxyReq: (proxyReq, req, res) => {
     const clientIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
@@ -186,7 +186,7 @@ app.use('/analytics/site/tracking-config', createProxyMiddleware({
   target: RYBBIT_HOST,
   changeOrigin: true,
   pathRewrite: {
-    '^/analytics': '',
+    '^/analytics/site': '/api/site',
   },
   onProxyReq: proxyOptions.onProxyReq,
 }));

@@ -67,7 +67,7 @@ const RowItem = ({
           {leftContent}
           <span className="truncate">{getLabel(item)}</span>
           {getLink && (
-            <a href={getLink(item)} target="_blank" onClick={e => e.stopPropagation()} className="shrink-0">
+            <a href={getLink(item)} rel="noopener noreferrer" target="_blank" onClick={e => e.stopPropagation()} className="shrink-0">
               <SquareArrowOutUpRight
                 className="ml-0.5 w-3.5 h-3.5 text-neutral-600 hover:text-neutral-900 dark:text-neutral-300 dark:hover:text-neutral-100"
                 strokeWidth={3}

@@ -121,14 +121,14 @@ export async function getSitesUserHasAccessTo(req: FastifyRequest, adminOnly = f
         // Get specific sites for restricted members
         restrictedMemberIds.length > 0
           ? (async () => {
-              const siteAccess = await db
-                .select({ siteId: memberSiteAccess.siteId })
-                .from(memberSiteAccess)
-                .where(inArray(memberSiteAccess.memberId, restrictedMemberIds));
-              const siteIds = siteAccess.map(s => s.siteId);
-              if (siteIds.length === 0) return [];
-              return db.select().from(sites).where(inArray(sites.siteId, siteIds));
-            })()
+            const siteAccess = await db
+              .select({ siteId: memberSiteAccess.siteId })
+              .from(memberSiteAccess)
+              .where(inArray(memberSiteAccess.memberId, restrictedMemberIds));
+            const siteIds = siteAccess.map(s => s.siteId);
+            if (siteIds.length === 0) return [];
+            return db.select().from(sites).where(inArray(sites.siteId, siteIds));
+          })()
           : Promise.resolve([]),
       ]);
 
@@ -164,7 +164,14 @@ export function invalidateSitesAccessCache(userId: string) {
   sitesAccessCache.del(`${userId}:false`);
 }
 
-export async function checkApiKey(req: FastifyRequest, options: { organizationId?: string; siteId?: string | number }) {
+/**
+ * Verify an API key from the request and check organization membership.
+ * Returns rateLimited flag when the key is rejected due to rate limiting.
+ */
+export async function checkApiKey(
+  req: FastifyRequest,
+  options: { organizationId?: string; siteId?: string | number }
+): Promise<{ valid: boolean; role: string | null; rateLimited?: boolean }> {
   // Check if a valid API key was provided
   // Priority: 1. Authorization: Bearer header (recommended), 2. Query parameter (testing only)
   const authHeader = req.headers["authorization"];
@@ -183,7 +190,7 @@ export async function checkApiKey(req: FastifyRequest, options: { organizationId
 
       if (result.valid && result.key) {
         // Get the userId from the API key
-        const apiKeyUserId = result.key.userId;
+        const apiKeyUserId = result.key.referenceId;
 
         // Determine the organization ID - either directly provided or looked up from site
         let organizationId = options.organizationId;
@@ -217,6 +224,11 @@ export async function checkApiKey(req: FastifyRequest, options: { organizationId
         }
         return { valid: false, role: null };
       }
+
+      // Check if the key was rejected due to rate limiting
+      if (!result.valid && result.error?.code === "RATE_LIMITED") {
+        return { valid: false, role: null, rateLimited: true };
+      }
     } catch (error) {
       logger.error(error, "Error verifying API key");
       // Continue to return false if API key verification fails
@@ -244,8 +256,8 @@ export async function getUserIdFromRequest(req: FastifyRequest): Promise<string 
       const result = await auth.api.verifyApiKey({
         body: { key: apiKey },
       });
-      if (result.valid && result.key?.userId) {
-        return result.key.userId;
+      if (result.valid && result.key?.referenceId) {
+        return result.key.referenceId;
       }
     } catch (error) {
       logger.error(error, "Error verifying API key");

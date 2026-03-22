@@ -1,5 +1,6 @@
 "use client";
 
+import { useExtracted } from "next-intl";
 import { SessionsList } from "@/components/Sessions/SessionsList";
 import { Info } from "lucide-react";
 import Link from "next/link";
@@ -17,7 +18,8 @@ import { SubHeader } from "../components/SubHeader/SubHeader";
 const LIMIT = 100;
 
 export default function SessionsPage() {
-  useSetPageTitle("Rybbit · Sessions");
+  const t = useExtracted();
+  useSetPageTitle("Sessions");
   const [page, setPage] = useState(1);
   const [identifiedOnly, setIdentifiedOnly] = useState(false);
   const [minPageviews, setMinPageviews] = useState<number | undefined>(undefined);
@@ -68,7 +70,7 @@ export default function SessionsPage() {
           htmlFor="identified-only"
           className="text-sm text-neutral-600 dark:text-neutral-400 cursor-pointer"
         >
-          Identified only
+          {t("Identified only")}
         </Label>
         <Tooltip>
           <TooltipTrigger asChild>
@@ -77,7 +79,7 @@ export default function SessionsPage() {
             </Link>
           </TooltipTrigger>
           <TooltipContent>
-            <p>Learn how to identify users</p>
+            <p>{t("Learn how to identify users")}</p>
           </TooltipContent>
         </Tooltip>
       </div>
@@ -89,7 +91,7 @@ export default function SessionsPage() {
             htmlFor="min-pageviews"
             className="text-sm text-neutral-600 dark:text-neutral-400 whitespace-nowrap"
           >
-            Min pageviews
+            {t("Min pageviews")}
           </Label>
           <Input
             id="min-pageviews"
@@ -106,7 +108,7 @@ export default function SessionsPage() {
             htmlFor="min-events"
             className="text-sm text-neutral-600 dark:text-neutral-400 whitespace-nowrap"
           >
-            Min events
+            {t("Min events")}
           </Label>
           <Input
             id="min-events"
@@ -123,7 +125,7 @@ export default function SessionsPage() {
             htmlFor="min-duration"
             className="text-sm text-neutral-600 dark:text-neutral-400 whitespace-nowrap"
           >
-            Min duration (s)
+            {t("Min duration (s)")}
           </Label>
           <Input
             id="min-duration"
@@ -140,7 +142,7 @@ export default function SessionsPage() {
   );
 
   return (
-    <DisabledOverlay message="Sessions" featurePath="sessions">
+    <DisabledOverlay message={t("Sessions")} featurePath="sessions">
       <div className="p-2 md:p-4 max-w-[1300px] mx-auto space-y-3">
         <SubHeader availableFilters={SESSION_PAGE_FILTERS} />
         <SessionsList

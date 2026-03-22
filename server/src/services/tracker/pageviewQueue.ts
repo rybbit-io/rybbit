@@ -21,7 +21,7 @@ const getParsedProperties = (properties: string | undefined) => {
 class PageviewQueue {
   private queue: TotalPayload[] = [];
   private batchSize = 5000;
-  private interval = 10000;
+  private interval = 1000;
   private processing = false;
   private logger = createServiceLogger("pageview-queue");
 
@@ -45,7 +45,12 @@ class PageviewQueue {
     const geoData = await getLocation(ips);
 
     // Process each pageview with its geo data
-    const processedPageviews = batch.map(pv => {
+    const processedPageviews = batch.filter(pv => {
+      if (pv.site_id == 9133 && pv.screenWidth == 800 && pv.screenHeight == 600) {
+        return false
+      }
+      return true;
+    }).map(pv => {
       const dataForIp = geoData?.[pv.ipAddress];
 
       const countryCode = dataForIp?.countryIso || "";
@@ -61,12 +66,12 @@ class PageviewQueue {
       // Get all URL parameters for the url_parameters map
       const allUrlParams = getAllUrlParams(pv.querystring || "");
 
+
       return {
         site_id: pv.site_id,
         timestamp: DateTime.fromISO(pv.timestamp).toFormat("yyyy-MM-dd HH:mm:ss"),
         session_id: pv.sessionId,
         user_id: pv.userId, // Always the device fingerprint
-        anonymous_id: pv.anonymousId,
         identified_user_id: pv.identifiedUserId || "", // Custom user ID when identified
         hostname: pv.hostname || "",
         pathname: pv.pathname || "",
@@ -99,6 +104,7 @@ class PageviewQueue {
         ttfb: pv.ttfb || null,
         ip: pv.storeIp ? pv.ipAddress : null,
         timezone: timezone,
+        tag: pv.tag || "",
         import_id: null,
         company: dataForIp?.company?.name || "",
         company_domain: dataForIp?.company?.domain || "",
@@ -118,7 +124,7 @@ class PageviewQueue {
       };
     });
 
-    this.logger.info({ count: processedPageviews.length }, "Bulk insert to ClickHouse");
+    // this.logger.info({ count: processedPageviews.length }, "Bulk insert to ClickHouse");
     // Bulk insert into database
     try {
       await clickhouse.insert({

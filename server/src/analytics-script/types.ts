@@ -27,6 +27,10 @@ export interface ScriptConfig {
   sessionReplaySampling?: Record<string, any>;
   sessionReplaySlimDOMOptions?: Record<string, boolean> | boolean;
   sessionReplaySampleRate?: number; // 0-100, percentage of sessions to record
+  trackButtonClicks: boolean;
+  trackCopy: boolean;
+  trackFormInteractions: boolean;
+  tag: string;
 }
 
 export interface BasePayload {
@@ -40,10 +44,11 @@ export interface BasePayload {
   page_title: string;
   referrer: string;
   user_id?: string;
+  tag?: string;
 }
 
 export interface TrackingPayload extends BasePayload {
-  type: "pageview" | "custom_event" | "outbound" | "performance" | "error";
+  type: "pageview" | "custom_event" | "outbound" | "performance" | "error" | "button_click" | "copy" | "form_submit" | "input_change";
   event_name?: string;
   properties?: string;
   // Web vitals metrics
@@ -52,6 +57,37 @@ export interface TrackingPayload extends BasePayload {
   inp?: number | null;
   fcp?: number | null;
   ttfb?: number | null;
+  tag?: string;
+}
+
+export interface ButtonClickProperties {
+  text?: string;
+  [key: string]: string | undefined; // Additional data-rybbit-* attributes
+}
+
+export interface CopyProperties {
+  text: string;
+  textLength?: number; // Only sent if text was truncated
+  sourceElement: string;
+}
+
+export interface FormSubmitProperties {
+  formId: string;
+  formName: string;
+  formAction: string;
+  method: string;
+  fieldCount: number;
+  ariaLabel?: string;
+  [key: string]: string | number | undefined;
+}
+
+export interface InputChangeProperties {
+  element: string; // "input" | "select" | "textarea"
+  inputType?: string; // For inputs: "text", "email", "checkbox", etc.
+  inputName: string; // Name, id, aria-label, or placeholder attribute
+  formId?: string; // Parent form id if within a form
+  formName?: string; // Parent form name if within a form
+  [key: string]: string | undefined;
 }
 
 export interface WebVitalsData {

@@ -32,12 +32,13 @@ async function fetchSubscriptionsForCustomers(
   }
 
   try {
+    for (const status of ["active", "trialing"] as const) {
     let hasMore = true;
     let startingAfter: string | undefined;
 
     while (hasMore) {
       const subscriptions = await stripe.subscriptions.list({
-        status: "active",
+        status,
         limit: 100,
         expand: ["data.plan.product"],
         ...(startingAfter && { starting_after: startingAfter }),
@@ -82,6 +83,7 @@ async function fetchSubscriptionsForCustomers(
         await new Promise(resolve => setTimeout(resolve, 50));
       }
     }
+    } // end for (status)
   } catch (error) {
     console.error("Error fetching subscriptions from Stripe:", error);
   }

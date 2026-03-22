@@ -1,3 +1,4 @@
+import cluster from "node:cluster";
 import cors from "@fastify/cors";
 import fastifyStatic from "@fastify/static";
 import { toNodeHandler } from "better-auth/node";
@@ -46,12 +47,16 @@ import {
   getSession,
   getSessionLocations,
   getSessions,
+  getSiteEventCount,
   getUserInfo,
   getUserSessionCount,
+  getUserTraitKeys,
+  getUserTraitValueUsers,
+  getUserTraitValues,
   getUsers,
   updateGoal,
 } from "./api/analytics/index.js";
-import { getConfig } from "./api/getConfig.js";
+import { getConfig, getVersion } from "./api/getConfig.js";
 import {
   connectGSC,
   disconnectGSC,
@@ -84,22 +89,22 @@ import {
   getTrackingConfig,
   updateSiteConfig,
   updateSitePrivateLinkConfig,
+  verifyScript,
 } from "./api/sites/index.js";
 import {
   createCheckoutSession,
   createPortalSession,
+  getInvoices,
   getSubscription,
   handleWebhook,
   previewSubscriptionUpdate,
+  submitCancellationFeedback,
   updateSubscription,
 } from "./api/stripe/index.js";
 import {
   addUserToOrganization,
-  createApiKey,
-  deleteApiKey,
   getMyOrganizations,
   getUserOrganizations,
-  listApiKeys,
   listOrganizationMembers,
   oneClickUnsubscribeMarketing,
   unsubscribeMarketing,
@@ -121,9 +126,11 @@ import { mapHeaders } from "./lib/auth-utils.js";
 import { auth } from "./lib/auth.js";
 import { IS_CLOUD } from "./lib/const.js";
 import { reengagementService } from "./services/reengagement/reengagementService.js";
+import { sessionsService } from "./services/sessions/sessionsService.js";
 import { telemetryService } from "./services/telemetryService.js";
 import { handleIdentify } from "./services/tracker/identifyService.js";
 import { trackEvent } from "./services/tracker/trackEvent.js";
+import { usageService } from "./services/usageService.js";
 import { weeklyReportService } from "./services/weekyReports/weeklyReportService.js";
 
 // Pre-composed middleware chains for common auth patterns
@@ -242,10 +249,14 @@ async function analyticsRoutes(fastify: FastifyInstance) {
   fastify.get("/sites/:siteId/sessions/:sessionId", publicSite, getSession);
   fastify.get("/sites/:siteId/events", publicSite, getEvents);
   fastify.get("/sites/:siteId/events/bucketed", publicSite, getEventBucketed);
+  fastify.get("/sites/:siteId/events/count", publicSite, getSiteEventCount);
   fastify.get("/sites/:siteId/users", publicSite, getUsers);
 
   fastify.get("/sites/:siteId/users/session-count", publicSite, getUserSessionCount);
   fastify.get("/sites/:siteId/users/:userId", publicSite, getUserInfo);
+  fastify.get("/sites/:siteId/user-traits/keys", publicSite, getUserTraitKeys);
+  fastify.get("/sites/:siteId/user-traits/values", publicSite, getUserTraitValues);
+  fastify.get("/sites/:siteId/user-traits/users", publicSite, getUserTraitValueUsers);
   fastify.get("/sites/:siteId/session-locations", publicSite, getSessionLocations);
   fastify.get("/sites/:siteId/funnels", publicSite, getFunnels);
   fastify.get("/sites/:siteId/journeys", publicSite, getJourneys);
@@ -286,6 +297,7 @@ async function sitesRoutes(fastify: FastifyInstance) {
   fastify.get("/site/tracking-config/:siteId", getTrackingConfig); // Public - used by tracking script
   fastify.get("/sites/:siteId/excluded-ips", authSite, getSiteExcludedIPs);
   fastify.get("/sites/:siteId/excluded-countries", authSite, getSiteExcludedCountries);
+  fastify.get("/sites/:siteId/verify-script", authSite, verifyScript);
 
   // Site Imports
   fastify.get("/sites/:siteId/imports", adminSite, getSiteImports);
@@ -300,7 +312,7 @@ async function organizationsRoutes(fastify: FastifyInstance) {
   fastify.get("/organizations/:organizationId/sites", orgMember, getSitesFromOrg);
   fastify.post("/organizations/:organizationId/sites", orgAdminParams, addSite);
   fastify.get("/organizations/:organizationId/members", orgMember, listOrganizationMembers);
-  fastify.post("/organizations/:organizationId/members", orgMember, addUserToOrganization);
+  fastify.post("/organizations/:organizationId/members", authOnly, addUserToOrganization);
 
   // Member site access management (admin/owner only)
   fastify.put("/organizations/:organizationId/members/:memberId/sites", orgAdminParams, updateMemberSiteAccess);
@@ -316,14 +328,12 @@ async function organizationsRoutes(fastify: FastifyInstance) {
 async function userRoutes(fastify: FastifyInstance) {
   // User
   fastify.get("/config", getConfig); // Public - returns app config
+  fastify.get("/version", getVersion); // Public - returns app version
   fastify.get("/user/organizations", authOnly, getUserOrganizations);
   fastify.post("/user/account-settings", authOnly, updateAccountSettings);
   fastify.post("/user/unsubscribe-marketing", authOnly, unsubscribeMarketing);
   fastify.get("/user/unsubscribe-marketing-oneclick", oneClickUnsubscribeMarketing); // Public - for link clicks
   fastify.post("/user/unsubscribe-marketing-oneclick", oneClickUnsubscribeMarketing); // Public - for List-Unsubscribe header
-  fastify.get("/user/api-keys", authOnly, listApiKeys);
-  fastify.post("/user/api-keys", authOnly, createApiKey);
-  fastify.delete("/user/api-keys/:keyId", authOnly, deleteApiKey);
 }
 
 async function gscRoutes(fastify: FastifyInstance) {
@@ -349,6 +359,8 @@ async function stripeAdminRoutes(fastify: FastifyInstance) {
     fastify.post("/stripe/preview-subscription-update", authOnly, previewSubscriptionUpdate);
     fastify.post("/stripe/update-subscription", authOnly, updateSubscription);
     fastify.get("/stripe/subscription", authOnly, getSubscription);
+    fastify.get("/stripe/invoices", authOnly, getInvoices);
+    fastify.post("/stripe/cancellation-feedback", authOnly, submitCancellationFeedback);
     fastify.post("/stripe/webhook", { config: { rawBody: true } }, handleWebhook); // Public - Stripe webhook
 
     // Admin Routes
@@ -387,17 +399,35 @@ server.register(apiRoutes, { prefix: "/api" });
 
 const start = async () => {
   try {
-    await Promise.all([initializeClickhouse(), initPostgres()]);
+    // When running as a cluster worker, the primary process already initialized the databases
+    if (!cluster.isWorker) {
+      await Promise.all([initializeClickhouse(), initPostgres()]);
+    }
 
-    telemetryService.startTelemetryCron();
-    if (IS_CLOUD && process.env.NODE_ENV !== "development") {
-      weeklyReportService.startWeeklyReportCron();
-      reengagementService.startReengagementCron();
+    // Cron jobs should only run on the primary process (or in single-process mode)
+    if (!cluster.isWorker) {
+      telemetryService.startTelemetryCron();
+      sessionsService.startCleanupCron();
+      usageService.startUsageCheckCron();
+      if (IS_CLOUD && process.env.NODE_ENV !== "development") {
+        weeklyReportService.startWeeklyReportCron();
+        reengagementService.startReengagementCron();
+      }
     }
 
     // Start the server first
     await server.listen({ port: 3001, host: "0.0.0.0" });
-    server.log.info("Server is listening on http://0.0.0.0:3001");
+    server.log.info(`Server is listening on http://0.0.0.0:3001 (PID: ${process.pid})`);
+
+    // Listen for IPC messages from the cluster primary process
+    if (cluster.isWorker) {
+      process.on("message", (message: { type: string; siteIds: number[] }) => {
+        if (message?.type === "sites-over-limit") {
+          usageService.setSitesOverLimit(new Set(message.siteIds));
+          server.log.debug(`Received ${message.siteIds.length} sites-over-limit from primary`);
+        }
+      });
+    }
 
     // if (process.env.NODE_ENV === "production") {
     //   // Initialize uptime monitoring service in the background (non-blocking)

@@ -4,6 +4,7 @@ import { useMemo } from "react";
 import { AdminOrganizationData } from "@/api/admin/endpoints";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Building2, Activity, Zap, Clock } from "lucide-react";
+import { useExtracted } from "next-intl";
 
 interface FilteredStatsCardsProps {
   organizations: AdminOrganizationData[];
@@ -11,6 +12,7 @@ interface FilteredStatsCardsProps {
 }
 
 export function FilteredStatsCards({ organizations, isLoading }: FilteredStatsCardsProps) {
+  const t = useExtracted();
   const stats = useMemo(() => {
     const totalOrganizations = organizations.length;
 
@@ -33,30 +35,30 @@ export function FilteredStatsCards({ organizations, isLoading }: FilteredStatsCa
 
   const cards = [
     {
-      title: "Total Organizations",
+      title: t("Total Organizations"),
       value: stats.totalOrganizations,
       icon: Building2,
     },
     {
-      title: "Active Organizations",
+      title: t("Active Organizations"),
       value: stats.activeOrganizations,
       icon: Activity,
-      description: "With events in past 30 days",
+      description: t("With events in past 30 days"),
     },
     {
-      title: "24h Events",
+      title: t("24h Events"),
       value: stats.events24h,
       icon: Clock,
     },
     {
-      title: "30d Events",
+      title: t("30d Events"),
       value: stats.events30d,
       icon: Zap,
     },
   ];
 
   return (
-    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
       {cards.map((card, index) => {
         const Icon = card.icon;
         return (

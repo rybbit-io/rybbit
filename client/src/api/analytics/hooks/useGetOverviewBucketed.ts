@@ -15,6 +15,7 @@ export function useGetOverviewBucketed({
   refetchInterval,
   overrideTime,
   props,
+  useFilters = true,
 }: {
   periodTime?: PeriodTime;
   site: number | string;
@@ -25,13 +26,14 @@ export function useGetOverviewBucketed({
     | { mode: "past-minutes"; pastMinutesStart: number; pastMinutesEnd: number }
     | { mode: "range"; startDate: string; endDate: string };
   props?: Partial<UseQueryOptions<APIResponse<GetOverviewBucketedResponse>>>;
+  useFilters?: boolean;
 }): UseQueryResult<APIResponse<GetOverviewBucketedResponse>> {
   const { time, previousTime, filters: globalFilters, timezone } = useStore();
 
   // Use overrideTime if provided, otherwise use store time
   const baseTime = overrideTime || time;
   const timeToUse = periodTime === "previous" ? previousTime : baseTime;
-  const combinedFilters = [...globalFilters, ...dynamicFilters];
+  const combinedFilters = useFilters ? [...globalFilters, ...dynamicFilters] : undefined;
 
   // Generate appropriate query key based on whether we're using past minutes or regular time
   const queryKey =
@@ -43,9 +45,10 @@ export function useGetOverviewBucketed({
           site,
           bucket,
           combinedFilters,
+          useFilters,
           timezone,
         ]
-      : ["overview-bucketed", timeToUse, bucket, site, combinedFilters, timezone];
+      : ["overview-bucketed", timeToUse, bucket, site, combinedFilters, useFilters, timezone];
 
   const params = buildApiParams(timeToUse, { filters: combinedFilters });
 

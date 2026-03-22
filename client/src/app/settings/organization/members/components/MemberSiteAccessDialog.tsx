@@ -1,8 +1,9 @@
 "use client";
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useExtracted } from "next-intl";
 import { useEffect, useState } from "react";
-import { toast } from "sonner";
+import { toast } from "@/components/ui/sonner";
 
 import { GetOrganizationMembersResponse, updateMemberSiteAccess } from "@/api/admin/endpoints/auth";
 import { Button } from "@/components/ui/button";
@@ -37,6 +38,7 @@ export function MemberSiteAccessDialog({
 }: MemberSiteAccessDialogProps) {
   const { data: activeOrganization } = authClient.useActiveOrganization();
   const queryClient = useQueryClient();
+  const t = useExtracted();
 
   const [restrictSiteAccess, setRestrictSiteAccess] = useState(false);
   const [selectedSiteIds, setSelectedSiteIds] = useState<number[]>([]);
@@ -57,12 +59,12 @@ export function MemberSiteAccessDialog({
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["organizationMembers"] });
-      toast.success("Site access updated successfully");
+      toast.success(t("Site access updated successfully"));
       onSuccess();
       onClose();
     },
     onError: (error: any) => {
-      toast.error(error.message || "Failed to update site access");
+      toast.error(error.message || t("Failed to update site access"));
     },
   });
 
@@ -70,7 +72,7 @@ export function MemberSiteAccessDialog({
     if (!member || !activeOrganization?.id) return;
 
     if (restrictSiteAccess && selectedSiteIds.length === 0) {
-      toast.error("Please select at least one site or disable site restrictions");
+      toast.error(t("Please select at least one site or disable site restrictions"));
       return;
     }
 
@@ -85,11 +87,11 @@ export function MemberSiteAccessDialog({
     <Dialog open={open} onOpenChange={() => onClose()}>
       <DialogContent className="max-w-lg">
         <DialogHeader>
-          <DialogTitle>Site Access for {member.user.name || member.user.email}</DialogTitle>
+          <DialogTitle>{t("Site Access for {name}", { name: member.user.name || member.user.email })}</DialogTitle>
           <DialogDescription>
             {isRestrictable
-              ? "Configure which sites this member can access."
-              : "Admin and owner roles have access to all sites and cannot be restricted."}
+              ? t("Configure which sites this member can access.")
+              : t("Admin and owner roles have access to all sites and cannot be restricted.")}
           </DialogDescription>
         </DialogHeader>
 
@@ -107,7 +109,7 @@ export function MemberSiteAccessDialog({
                 }}
               />
               <Label htmlFor="restrict-access" className="cursor-pointer">
-                Restrict access to specific sites
+                {t("Restrict access to specific sites")}
               </Label>
             </div>
 
@@ -115,31 +117,30 @@ export function MemberSiteAccessDialog({
               <div className="pl-6">
                 <SiteAccessMultiSelect selectedSiteIds={selectedSiteIds} onChange={setSelectedSiteIds} />
                 <p className="text-xs text-muted-foreground mt-2">
-                  This member will only have access to the selected sites.
+                  {t("This member will only have access to the selected sites.")}
                 </p>
               </div>
             ) : (
               <p className="text-sm text-muted-foreground pl-6">
-                This member has access to all sites in the organization.
+                {t("This member has access to all sites in the organization.")}
               </p>
             )}
           </div>
         ) : (
           <div className="py-4 text-center">
             <p className="text-muted-foreground">
-              {member.role === "owner" ? "Organization owners" : "Admins"} automatically have access to all
-              sites.
+              {member.role === "owner" ? t("Organization owners") : t("Admins")} {t("automatically have access to all sites.")}
             </p>
           </div>
         )}
 
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>
-            Cancel
+            {t("Cancel")}
           </Button>
           {isRestrictable && (
             <Button onClick={handleSave} disabled={updateMutation.isPending}>
-              {updateMutation.isPending ? "Saving..." : "Save Changes"}
+              {updateMutation.isPending ? t("Saving...") : t("Save Changes")}
             </Button>
           )}
         </DialogFooter>

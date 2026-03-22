@@ -1,9 +1,11 @@
 import { betterAuth } from "better-auth";
-import { createAuthMiddleware } from "better-auth/api";
-import { admin, captcha, emailOTP, organization, apiKey } from "better-auth/plugins";
+import { APIError, createAuthMiddleware } from "better-auth/api";
+import { admin, captcha, emailOTP, organization } from "better-auth/plugins";
 import dotenv from "dotenv";
 import { and, asc, eq } from "drizzle-orm";
 import pg from "pg";
+import { dash } from "@better-auth/infra";
+import { apiKey } from "@better-auth/api-key"
 
 import { db } from "../db/postgres/postgres.js";
 import * as schema from "../db/postgres/schema.js";
@@ -17,6 +19,7 @@ dotenv.config();
 const pluginList = [
   admin(),
   apiKey(),
+  dash(),
   organization({
     allowUserToCreateOrganization: true,
     creatorRole: "owner",
@@ -50,6 +53,10 @@ const pluginList = [
             type: "string",
             required: false,
           },
+          customPlan: {
+            type: "string",
+            required: false,
+          },
         },
       },
     },
@@ -62,16 +69,17 @@ const pluginList = [
   // Add Cloudflare Turnstile captcha (cloud only)
   ...(IS_CLOUD && process.env.TURNSTILE_SECRET_KEY && process.env.NODE_ENV === "production"
     ? [
-        captcha({
-          provider: "cloudflare-turnstile",
-          secretKey: process.env.TURNSTILE_SECRET_KEY,
-        }),
-      ]
+      captcha({
+        provider: "cloudflare-turnstile",
+        secretKey: process.env.TURNSTILE_SECRET_KEY,
+      }),
+    ]
     : []),
 ];
 
 export const auth = betterAuth({
   basePath: "/api/auth",
+  appName: "Rybbit",
   database: new pg.Pool({
     host: process.env.POSTGRES_HOST || "postgres",
     port: parseInt(process.env.POSTGRES_PORT || "5432", 10),
@@ -175,6 +183,32 @@ export const auth = betterAuth({
     },
   },
   hooks: {
+    before: createAuthMiddleware(async (ctx) => {
+      if (IS_CLOUD && ctx.path === "/organization/invite-member") {
+        const body = ctx.body as { organizationId?: string } | undefined;
+        const organizationId = body?.organizationId;
+
+        if (organizationId) {
+          // Lazy import to avoid circular dependency
+          const { getSubscriptionInner } = await import("../api/stripe/getSubscription.js");
+          const subscription = await getSubscriptionInner(organizationId);
+          const memberLimit = subscription?.memberLimit ?? null;
+
+          if (memberLimit !== null) {
+            const members = await db
+              .select({ id: member.id })
+              .from(member)
+              .where(eq(member.organizationId, organizationId));
+
+            if (members.length >= memberLimit) {
+              throw new APIError("FORBIDDEN", {
+                message: `You have reached the limit of ${memberLimit} member${memberLimit === 1 ? "" : "s"} for your plan. Please upgrade to add more.`,
+              });
+            }
+          }
+        }
+      }
+    }),
     after: createAuthMiddleware(async ctx => {
       // Handle invitation acceptance - copy site access from invitation to member
       if (ctx.path === "/organization/accept-invitation") {

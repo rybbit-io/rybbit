@@ -179,14 +179,14 @@ Accepts all [Common Parameters](/docs/api/getting-started#common-parameters) plu
 <Tabs items={['cURL', 'JavaScript', 'Python', 'PHP', 'Ruby', 'Go', 'Rust', 'Java', '.NET']}>
   <Tab value="cURL">
 ```bash title="Request"
-curl -X GET "https://app.rybbit.io/api/sites/1/goals23?start_date=2024-01-01&end_date=2024-01-31" \
+curl -X GET "https://app.rybbit.io/api/sites/1/goals?start_date=2024-01-01&end_date=2024-01-31" \
   -H "Authorization: Bearer your_api_key_here"
 ```
   </Tab>
   <Tab value="JavaScript">
 ```javascript title="Request"
 const response = await fetch(
-  'https://app.rybbit.io/api/sites/1/goals23?start_date=2024-01-01&end_date=2024-01-31',
+  'https://app.rybbit.io/api/sites/1/goals?start_date=2024-01-01&end_date=2024-01-31',
   {
     headers: {
       'Authorization': 'Bearer your_api_key_here'
@@ -220,7 +220,7 @@ data = response.json()
 <?php
 $ch = curl_init();
 
-curl_setopt($ch, CURLOPT_URL, 'https://app.rybbit.io/api/sites/1/goals23?start_date=2024-01-01&end_date=2024-01-31');
+curl_setopt($ch, CURLOPT_URL, 'https://app.rybbit.io/api/sites/1/goals?start_date=2024-01-01&end_date=2024-01-31');
 curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
 curl_setopt($ch, CURLOPT_HTTPHEADER, [
     'Authorization: Bearer your_api_key_here'
@@ -239,7 +239,7 @@ require 'net/http'
 require 'json'
 require 'uri'
 
-uri = URI('https://app.rybbit.io/api/sites/1/goals23?start_date=2024-01-01&end_date=2024-01-31')
+uri = URI('https://app.rybbit.io/api/sites/1/goals?start_date=2024-01-01&end_date=2024-01-31')
 req = Net::HTTP::Get.new(uri)
 req['Authorization'] = 'Bearer your_api_key_here'
 
@@ -261,7 +261,7 @@ import (
 )
 
 func main() {
-    url := "https://app.rybbit.io/api/sites/1/goals23?start_date=2024-01-01&end_date=2024-01-31"
+    url := "https://app.rybbit.io/api/sites/1/goals?start_date=2024-01-01&end_date=2024-01-31"
 
     req, _ := http.NewRequest("GET", url, nil)
     req.Header.Add("Authorization", "Bearer your_api_key_here")
@@ -287,7 +287,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let client = reqwest::Client::new();
 
     let response = client
-        .get("https://app.rybbit.io/api/sites/1/goals23?start_date=2024-01-01&end_date=2024-01-31")
+        .get("https://app.rybbit.io/api/sites/1/goals?start_date=2024-01-01&end_date=2024-01-31")
         .header("Authorization", "Bearer your_api_key_here")
         .send()
         .await?;
@@ -310,7 +310,7 @@ public class Main {
         HttpClient client = HttpClient.newHttpClient();
 
         HttpRequest request = HttpRequest.newBuilder()
-            .uri(URI.create("https://app.rybbit.io/api/sites/1/goals23?start_date=2024-01-01&end_date=2024-01-31"))
+            .uri(URI.create("https://app.rybbit.io/api/sites/1/goals?start_date=2024-01-01&end_date=2024-01-31"))
             .header("Authorization", "Bearer your_api_key_here")
             .GET()
             .build();
@@ -338,7 +338,7 @@ class Program
         client.DefaultRequestHeaders.Add("Authorization", "Bearer your_api_key_here");
 
         var response = await client.GetAsync(
-            "https://app.rybbit.io/api/sites/1/goals23?start_date=2024-01-01&end_date=2024-01-31");
+            "https://app.rybbit.io/api/sites/1/goals?start_date=2024-01-01&end_date=2024-01-31");
 
         var data = await response.Content.ReadAsStringAsync();
     }
@@ -512,14 +512,14 @@ Accepts all [Common Parameters](/docs/api/getting-started#common-parameters) plu
 <Tabs items={['cURL', 'JavaScript', 'Python', 'PHP', 'Ruby', 'Go', 'Rust', 'Java', '.NET']}>
   <Tab value="cURL">
 ```bash title="Request"
-curl -X GET "https://app.rybbit.io/api/sites/1/goals/1/sessions23?page=1&limit=10" \
+curl -X GET "https://app.rybbit.io/api/sites/1/goals/1/sessions?page=1&limit=10" \
   -H "Authorization: Bearer your_api_key_here"
 ```
   </Tab>
   <Tab value="JavaScript">
 ```javascript title="Request"
 const response = await fetch(
-  'https://app.rybbit.io/api/sites/1/goals/1/sessions23?page=1&limit=10',
+  'https://app.rybbit.io/api/sites/1/goals/1/sessions?page=1&limit=10',
   {
     headers: {
       'Authorization': 'Bearer your_api_key_here'
@@ -535,7 +535,7 @@ const data = await response.json();
 import requests
 
 response = requests.get(
-    'https://app.rybbit.io/api/sites/1/goals/1/sessions23',
+    'https://app.rybbit.io/api/sites/1/goals/1/sessions',
     params={
         'page': 1,
         'limit': 10
@@ -553,7 +553,7 @@ data = response.json()
 <?php
 $ch = curl_init();
 
-curl_setopt($ch, CURLOPT_URL, 'https://app.rybbit.io/api/sites/1/goals/1/sessions23?page=1&limit=10');
+curl_setopt($ch, CURLOPT_URL, 'https://app.rybbit.io/api/sites/1/goals/1/sessions?page=1&limit=10');
 curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
 curl_setopt($ch, CURLOPT_HTTPHEADER, [
     'Authorization: Bearer your_api_key_here'
@@ -572,7 +572,7 @@ require 'net/http'
 require 'json'
 require 'uri'
 
-uri = URI('https://app.rybbit.io/api/sites/1/goals/1/sessions23?page=1&limit=10')
+uri = URI('https://app.rybbit.io/api/sites/1/goals/1/sessions?page=1&limit=10')
 req = Net::HTTP::Get.new(uri)
 req['Authorization'] = 'Bearer your_api_key_here'
 
@@ -594,7 +594,7 @@ import (
 )
 
 func main() {
-    url := "https://app.rybbit.io/api/sites/1/goals/1/sessions23?page=1&limit=10"
+    url := "https://app.rybbit.io/api/sites/1/goals/1/sessions?page=1&limit=10"
 
     req, _ := http.NewRequest("GET", url, nil)
     req.Header.Add("Authorization", "Bearer your_api_key_here")
@@ -620,7 +620,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let client = reqwest::Client::new();
 
     let response = client
-        .get("https://app.rybbit.io/api/sites/1/goals/1/sessions23?page=1&limit=10")
+        .get("https://app.rybbit.io/api/sites/1/goals/1/sessions?page=1&limit=10")
         .header("Authorization", "Bearer your_api_key_here")
         .send()
         .await?;
@@ -643,7 +643,7 @@ public class Main {
         HttpClient client = HttpClient.newHttpClient();
 
         HttpRequest request = HttpRequest.newBuilder()
-            .uri(URI.create("https://app.rybbit.io/api/sites/1/goals/1/sessions23?page=1&limit=10"))
+            .uri(URI.create("https://app.rybbit.io/api/sites/1/goals/1/sessions?page=1&limit=10"))
             .header("Authorization", "Bearer your_api_key_here")
             .GET()
             .build();
@@ -671,7 +671,7 @@ class Program
         client.DefaultRequestHeaders.Add("Authorization", "Bearer your_api_key_here");
 
         var response = await client.GetAsync(
-            "https://app.rybbit.io/api/sites/1/goals/1/sessions23?page=1&limit=10");
+            "https://app.rybbit.io/api/sites/1/goals/1/sessions?page=1&limit=10");
 
         var data = await response.Content.ReadAsStringAsync();
     }

@@ -132,9 +132,14 @@ export const useSyncStateWithUrl = () => {
   const initializedFromUrlRef = React.useRef(false);
 
   // Check if we're on a path where we should sync URL params
-  const shouldSyncUrl = () => {
-    if (!pathname) return false;
-    const pathParts = pathname.split("/");
+  // Use a ref so this check doesn't trigger effects on navigation
+  const pathnameRef = React.useRef(pathname);
+  pathnameRef.current = pathname;
+
+  const shouldSyncUrl = React.useCallback(() => {
+    const p = pathnameRef.current;
+    if (!p) return false;
+    const pathParts = p.split("/");
     if (pathParts.length < 3) return false;
     return [
       "main",
@@ -149,7 +154,7 @@ export const useSyncStateWithUrl = () => {
       "errors",
       "pages",
     ].includes(pathParts[2]);
-  };
+  }, []);
 
   // Get URL params using nuqs
   const [urlParams, setUrlParams] = useQueryStates(analyticsParsers, {
@@ -219,7 +224,8 @@ export const useSyncStateWithUrl = () => {
 
     // Mark that we've initialized from URL
     initializedFromUrlRef.current = true;
-  }, [urlParams, site, setTime, setBucket, setSelectedStat, setFilters, shouldSyncUrl, pathname]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentionally omit pathname; initializedFromUrlRef guards re-runs
+  }, [urlParams, site, setTime, setBucket, setSelectedStat, setFilters, shouldSyncUrl]);
 
   // Update URL when state changes
   useEffect(() => {
@@ -267,5 +273,6 @@ export const useSyncStateWithUrl = () => {
 
     // Note: embed param is automatically preserved by nuqs
     setUrlParams(newParams);
-  }, [time, bucket, selectedStat, filters, site, setUrlParams, shouldSyncUrl, pathname]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentionally omit pathname to avoid interfering with soft navigation
+  }, [time, bucket, selectedStat, filters, site, setUrlParams, shouldSyncUrl]);
 };

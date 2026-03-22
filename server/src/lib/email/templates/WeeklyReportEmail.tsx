@@ -315,7 +315,7 @@ export const WeeklyReportEmail = ({ userName, organizationReport }: WeeklyReport
                                   lineHeight: "1.2",
                                 }}
                               >
-                                {organizationReport.sites[0].siteName}
+                                {organizationReport.sites[0].siteDomain}
                               </Heading>
                             </td>
                           </tr>

@@ -2,12 +2,14 @@ import { getTimezone } from "@/lib/store";
 import { ResponsiveTimeRange } from "@nivo/calendar";
 import _ from "lodash";
 import { DateTime } from "luxon";
+import { useExtracted } from "next-intl";
 import { useTheme } from "next-themes";
 import { UserSessionCountResponse } from "../../../../../api/analytics/endpoints";
 import { useNivoTheme } from "../../../../../lib/nivo";
 import { ChartTooltip } from "../../../../../components/charts/ChartTooltip";
 
 export const VisitCalendar = ({ sessionCount }: { sessionCount: UserSessionCountResponse[] }) => {
+  const t = useExtracted();
   const { resolvedTheme } = useTheme();
   const nivoTheme = useNivoTheme();
   const data = sessionCount
@@ -51,8 +53,7 @@ export const VisitCalendar = ({ sessionCount }: { sessionCount: UserSessionCount
       tooltip={({ value, day }) => {
         return (
           <ChartTooltip className="p-2 flex gap-1">
-            {value}
-            <span className="text-neutral-600 dark:text-neutral-300">session{Number(value) > 1 && "s"} on</span> {day}
+            {t("{count} sessions on {day}", { count: String(value), day })}
           </ChartTooltip>
         );
       }}

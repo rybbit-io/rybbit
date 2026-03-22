@@ -2,6 +2,7 @@
 
 import { Filter, FilterParameter } from "@rybbit/shared";
 import { Info } from "lucide-react";
+import { useExtracted } from "next-intl";
 import Link from "next/link";
 import { ReactNode } from "react";
 import { usePaginatedMetric } from "../../../../../api/analytics/hooks/useGetMetric";
@@ -49,6 +50,7 @@ export function StandardSection({
   customFilters?: Filter[];
   customTime?: Time;
 }) {
+  const t = useExtracted();
   const { data, isLoading, isFetching, error, refetch } = usePaginatedMetric({
     parameter: filterParameter,
     limit: 100,
@@ -77,7 +79,7 @@ export function StandardSection({
                 <Info className="w-3 h-3" />
               </TooltipTrigger>
               <TooltipContent>
-                Geolocation by{" "}
+                {t("Geolocation by")}{" "}
                 <Link href="https://ipapi.is/" target="_blank" className="text-emerald-400 hover:text-emerald-300">
                   ipapi.is
                 </Link>
@@ -85,14 +87,14 @@ export function StandardSection({
             </Tooltip>
           )}
         </div>
-        <div>{countLabel || "Sessions"}</div>
+        <div>{countLabel || t("Sessions")}</div>
       </div>
       <ScrollArea className="h-[314px]">
         <div className="flex flex-col gap-2 overflow-x-hidden">
           {isLoading ? (
             <StandardSkeleton />
           ) : error ? (
-            <ErrorState title="Failed to load data" message={error.message} refetch={refetch} />
+            <ErrorState title={t("Failed to load data")} message={error.message} refetch={refetch} />
           ) : (
             <>
               {itemsForDisplay?.length ? (
@@ -115,7 +117,7 @@ export function StandardSection({
               ) : (
                 <div className="text-neutral-600 dark:text-neutral-300 w-full text-center mt-6 flex flex-row gap-2 items-center justify-center">
                   <Info className="w-5 h-5" />
-                  No Data
+                  {t("No Data")}
                 </div>
               )}
             </>

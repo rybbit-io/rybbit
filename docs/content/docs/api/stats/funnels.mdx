@@ -393,7 +393,7 @@ Accepts all [Common Parameters](/docs/api/getting-started#common-parameters) (ti
 <Tabs items={['cURL', 'JavaScript', 'Python', 'PHP', 'Ruby', 'Go', 'Rust', 'Java', '.NET']}>
   <Tab value="cURL">
 ```bash title="Request"
-curl -X POST "https://app.rybbit.io/api/sites/1/funnels/analyze23?start_date=2024-01-01&end_date=2024-01-31" \
+curl -X POST "https://app.rybbit.io/api/sites/1/funnels/analyze?start_date=2024-01-01&end_date=2024-01-31" \
   -H "Authorization: Bearer your_api_key_here" \
   -H "Content-Type: application/json" \
   -d '{
@@ -409,7 +409,7 @@ curl -X POST "https://app.rybbit.io/api/sites/1/funnels/analyze23?start_date=202
   <Tab value="JavaScript">
 ```javascript title="Request"
 const response = await fetch(
-  'https://app.rybbit.io/api/sites/1/funnels/analyze23?start_date=2024-01-01&end_date=2024-01-31',
+  'https://app.rybbit.io/api/sites/1/funnels/analyze?start_date=2024-01-01&end_date=2024-01-31',
   {
     method: 'POST',
     headers: {
@@ -435,7 +435,7 @@ const data = await response.json();
 import requests
 
 response = requests.post(
-    'https://app.rybbit.io/api/sites/1/funnels/analyze23',
+    'https://app.rybbit.io/api/sites/1/funnels/analyze',
     params={
         'start_date': '2024-01-01',
         'end_date': '2024-01-31'
@@ -468,7 +468,7 @@ $body = [
 ];
 
 $ch = curl_init();
-curl_setopt($ch, CURLOPT_URL, 'https://app.rybbit.io/api/sites/1/funnels/analyze23?start_date=2024-01-01&end_date=2024-01-31');
+curl_setopt($ch, CURLOPT_URL, 'https://app.rybbit.io/api/sites/1/funnels/analyze?start_date=2024-01-01&end_date=2024-01-31');
 curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
 curl_setopt($ch, CURLOPT_POST, true);
 curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($body));
@@ -488,7 +488,7 @@ $data = json_decode($response, true);
 require 'net/http'
 require 'json'
 
-uri = URI('https://app.rybbit.io/api/sites/1/funnels/analyze23?start_date=2024-01-01&end_date=2024-01-31')
+uri = URI('https://app.rybbit.io/api/sites/1/funnels/analyze?start_date=2024-01-01&end_date=2024-01-31')
 request = Net::HTTP::Post.new(uri)
 request['Authorization'] = 'Bearer your_api_key_here'
 request['Content-Type'] = 'application/json'
@@ -531,7 +531,7 @@ func main() {
     jsonBody, _ := json.Marshal(body)
 
     client := &http.Client{}
-    req, _ := http.NewRequest("POST", "https://app.rybbit.io/api/sites/1/funnels/analyze23?start_date=2024-01-01&end_date=2024-01-31", bytes.NewBuffer(jsonBody))
+    req, _ := http.NewRequest("POST", "https://app.rybbit.io/api/sites/1/funnels/analyze?start_date=2024-01-01&end_date=2024-01-31", bytes.NewBuffer(jsonBody))
     req.Header.Set("Authorization", "Bearer your_api_key_here")
     req.Header.Set("Content-Type", "application/json")
 
@@ -562,7 +562,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let client = reqwest::Client::new();
     let response = client
-        .post("https://app.rybbit.io/api/sites/1/funnels/analyze23?start_date=2024-01-01&end_date=2024-01-31")
+        .post("https://app.rybbit.io/api/sites/1/funnels/analyze?start_date=2024-01-01&end_date=2024-01-31")
         .header("Authorization", "Bearer your_api_key_here")
         .header("Content-Type", "application/json")
         .json(&body)
@@ -594,7 +594,7 @@ String json = """
 
 HttpClient client = HttpClient.newHttpClient();
 HttpRequest request = HttpRequest.newBuilder()
-    .uri(URI.create("https://app.rybbit.io/api/sites/1/funnels/analyze23?start_date=2024-01-01&end_date=2024-01-31"))
+    .uri(URI.create("https://app.rybbit.io/api/sites/1/funnels/analyze?start_date=2024-01-01&end_date=2024-01-31"))
     .header("Authorization", "Bearer your_api_key_here")
     .header("Content-Type", "application/json")
     .POST(HttpRequest.BodyPublishers.ofString(json))
@@ -633,7 +633,7 @@ var content = new StringContent(
     "application/json");
 
 var response = await client.PostAsync(
-    "https://app.rybbit.io/api/sites/1/funnels/analyze23?start_date=2024-01-01&end_date=2024-01-31",
+    "https://app.rybbit.io/api/sites/1/funnels/analyze?start_date=2024-01-01&end_date=2024-01-31",
     content);
 var data = await response.Content.ReadAsStringAsync();
 ```
@@ -762,7 +762,7 @@ Accepts all [Common Parameters](/docs/api/getting-started#common-parameters) plu
 <Tabs items={['cURL', 'JavaScript', 'Python', 'PHP', 'Ruby', 'Go', 'Rust', 'Java', '.NET']}>
   <Tab value="cURL">
 ```bash title="Get sessions that dropped off at step 2"
-curl -X POST "https://app.rybbit.io/api/sites/1/funnels/2/sessions23?mode=dropped&page=1" \
+curl -X POST "https://app.rybbit.io/api/sites/1/funnels/2/sessions?mode=dropped&page=1" \
   -H "Authorization: Bearer your_api_key_here" \
   -H "Content-Type: application/json" \
   -d '{
@@ -777,7 +777,7 @@ curl -X POST "https://app.rybbit.io/api/sites/1/funnels/2/sessions23?mode=droppe
   <Tab value="JavaScript">
 ```javascript title="Get sessions that reached step 3"
 const response = await fetch(
-  'https://app.rybbit.io/api/sites/1/funnels/3/sessions23?mode=reached&page=1',
+  'https://app.rybbit.io/api/sites/1/funnels/3/sessions?mode=reached&page=1',
   {
     method: 'POST',
     headers: {
@@ -833,7 +833,7 @@ $body = [
 ];
 
 $ch = curl_init();
-curl_setopt($ch, CURLOPT_URL, 'https://app.rybbit.io/api/sites/1/funnels/2/sessions23?mode=dropped&page=1');
+curl_setopt($ch, CURLOPT_URL, 'https://app.rybbit.io/api/sites/1/funnels/2/sessions?mode=dropped&page=1');
 curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
 curl_setopt($ch, CURLOPT_POST, true);
 curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($body));
@@ -853,7 +853,7 @@ $data = json_decode($response, true);
 require 'net/http'
 require 'json'
 
-uri = URI('https://app.rybbit.io/api/sites/1/funnels/2/sessions23?mode=dropped&page=1')
+uri = URI('https://app.rybbit.io/api/sites/1/funnels/2/sessions?mode=dropped&page=1')
 request = Net::HTTP::Post.new(uri)
 request['Authorization'] = 'Bearer your_api_key_here'
 request['Content-Type'] = 'application/json'
@@ -883,7 +883,7 @@ body := map[string]interface{}{
 }
 jsonBody, _ := json.Marshal(body)
 
-req, _ := http.NewRequest("POST", "https://app.rybbit.io/api/sites/1/funnels/2/sessions23?mode=dropped&page=1", bytes.NewBuffer(jsonBody))
+req, _ := http.NewRequest("POST", "https://app.rybbit.io/api/sites/1/funnels/2/sessions?mode=dropped&page=1", bytes.NewBuffer(jsonBody))
 req.Header.Set("Authorization", "Bearer your_api_key_here")
 req.Header.Set("Content-Type", "application/json")
 
@@ -907,7 +907,7 @@ let body = serde_json::json!({
 
 let client = reqwest::Client::new();
 let res = client
-    .post("https://app.rybbit.io/api/sites/1/funnels/2/sessions23?mode=dropped&page=1")
+    .post("https://app.rybbit.io/api/sites/1/funnels/2/sessions?mode=dropped&page=1")
     .header("Authorization", "Bearer your_api_key_here")
     .json(&body)
     .send()
@@ -930,7 +930,7 @@ String json = """
 
 HttpClient client = HttpClient.newHttpClient();
 HttpRequest request = HttpRequest.newBuilder()
-    .uri(URI.create("https://app.rybbit.io/api/sites/1/funnels/2/sessions23?mode=dropped&page=1"))
+    .uri(URI.create("https://app.rybbit.io/api/sites/1/funnels/2/sessions?mode=dropped&page=1"))
     .header("Authorization", "Bearer your_api_key_here")
     .header("Content-Type", "application/json")
     .POST(HttpRequest.BodyPublishers.ofString(json))
@@ -960,7 +960,7 @@ var content = new StringContent(
     "application/json");
 
 var response = await client.PostAsync(
-    "https://app.rybbit.io/api/sites/1/funnels/2/sessions23?mode=dropped&page=1",
+    "https://app.rybbit.io/api/sites/1/funnels/2/sessions?mode=dropped&page=1",
     content);
 var data = await response.Content.ReadAsStringAsync();
 ```

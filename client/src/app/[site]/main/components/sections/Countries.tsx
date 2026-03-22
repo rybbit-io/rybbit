@@ -1,5 +1,6 @@
 "use client";
 import { ChevronRight, Expand, Globe } from "lucide-react";
+import { useExtracted } from "next-intl";
 import { useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../../../../components/ui/basic-tabs";
 import { Button } from "../../../../../components/ui/button";
@@ -33,6 +34,7 @@ const getCountryFromLanguage = (languageCode: string): string | null => {
 export function Countries() {
   const [tab, setTab] = useState<Tab>("countries");
   const [expanded, setExpanded] = useState(false);
+  const t = useExtracted();
   const close = () => {
     setExpanded(false);
   };
@@ -44,12 +46,12 @@ export function Countries() {
         <Tabs defaultValue="countries" value={tab} onValueChange={value => setTab(value as Tab)}>
           <div className="flex flex-row gap-2 justify-between items-center">
             <TabsList>
-              <TabsTrigger value="countries">Countries</TabsTrigger>
-              <TabsTrigger value="regions">Regions</TabsTrigger>
-              <TabsTrigger value="cities">Cities</TabsTrigger>
-              <TabsTrigger value="languages">Languages</TabsTrigger>
-              <TabsTrigger value="map">Map</TabsTrigger>
-              <TabsTrigger value="timezones">Timezones</TabsTrigger>
+              <TabsTrigger value="countries">{t("Countries")}</TabsTrigger>
+              <TabsTrigger value="regions">{t("Regions")}</TabsTrigger>
+              <TabsTrigger value="cities">{t("Cities")}</TabsTrigger>
+              <TabsTrigger value="languages">{t("Languages")}</TabsTrigger>
+              <TabsTrigger value="map">{t("Map")}</TabsTrigger>
+              <TabsTrigger value="timezones">{t("Timezones")}</TabsTrigger>
             </TabsList>
             {tab !== "map" && (
               <div className="w-7">
@@ -62,7 +64,7 @@ export function Countries() {
           <TabsContent value="countries">
             <StandardSection
               filterParameter="country"
-              title="Countries"
+              title={t("Countries")}
               getValue={e => e.value}
               getKey={e => e.value}
               getFilterLabel={e => getCountryName(e.value)}
@@ -81,7 +83,7 @@ export function Countries() {
           <TabsContent value="regions">
             <StandardSection
               filterParameter="region"
-              title="Regions"
+              title={t("Regions")}
               getValue={e => e.value}
               getKey={e => e.value}
               getFilterLabel={e => {
@@ -92,7 +94,7 @@ export function Countries() {
               }}
               getLabel={e => {
                 if (!e.value) {
-                  return "Unknown";
+                  return t("Unknown");
                 }
 
                 const region = subdivisions?.features.find(
@@ -117,12 +119,12 @@ export function Countries() {
           <TabsContent value="cities">
             <StandardSection
               filterParameter="city"
-              title="Cities"
+              title={t("Cities")}
               getValue={e => e.value}
               getKey={e => e.value}
               getLabel={e => {
                 if (!e.value || e.value === "-") {
-                  return "Unknown";
+                  return t("Unknown");
                 }
 
                 const { country, region, city } = getCountryCity(e.value) ?? {};
@@ -149,7 +151,7 @@ export function Countries() {
           <TabsContent value="languages">
             <StandardSection
               filterParameter="language"
-              title="Languages"
+              title={t("Languages")}
               getValue={e => e.value}
               getKey={e => e.value}
               getFilterLabel={e => getLanguageName(e.value) ?? ""}
@@ -170,7 +172,7 @@ export function Countries() {
           <TabsContent value="timezones">
             <StandardSection
               filterParameter="timezone"
-              title="Timezones"
+              title={t("Timezones")}
               getValue={e => e.value}
               getKey={e => e.value}
               // getFilterLabel={e => getLanguageName(e.value) ?? ""}

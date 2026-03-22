@@ -1,5 +1,6 @@
 "use client";
 
+import { useExtracted } from "next-intl";
 import { SessionsList } from "@/components/Sessions/SessionsList";
 import Link from "next/link";
 import { useParams } from "next/navigation";
@@ -27,7 +28,8 @@ import { UserTopPages } from "./components/UserTopPages";
 const LIMIT = 25;
 
 export default function UserPage() {
-  useSetPageTitle("Rybbit · User");
+  useSetPageTitle("User");
+  const t = useExtracted();
 
   const { userId: rawUserId, site } = useParams();
   const userId = (() => {
@@ -72,12 +74,12 @@ export default function UserPage() {
           <BreadcrumbList>
             <BreadcrumbItem>
               <BreadcrumbLink asChild>
-                <Link href={`/${site}/users`}>Users</Link>
+                <Link href={`/${site}/users`}>{t("Users")}</Link>
               </BreadcrumbLink>
             </BreadcrumbItem>
             <BreadcrumbSeparator />
             <BreadcrumbItem>
-              <BreadcrumbPage>{isLoading ? "Loading..." : displayName}</BreadcrumbPage>
+              <BreadcrumbPage>{isLoading ? t("Loading...") : displayName}</BreadcrumbPage>
             </BreadcrumbItem>
           </BreadcrumbList>
         </Breadcrumb>
@@ -103,12 +105,14 @@ export default function UserPage() {
               </>
             )}
           </div>
-          {data?.ip && (
-            <Badge variant="outline" className="mt-3 text-xs">
+        </div>
+        {data?.ip && (
+          <div>
+            <Badge variant="outline" className="text-xs whitespace-nowrap">
               IP: {data.ip}
             </Badge>
-          )}
-        </div>
+          </div>
+        )}
       </div>
 
       {/* Main two-column layout */}

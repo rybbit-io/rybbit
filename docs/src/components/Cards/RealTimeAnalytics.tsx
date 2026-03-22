@@ -2,6 +2,7 @@
 
 import { Clock, Eye, Laptop, MousePointerClick, Smartphone, Activity } from "lucide-react";
 import { useEffect, useState } from "react";
+import { useExtracted } from "next-intl";
 import { Browser } from "../Browser";
 import { CountryFlag } from "../Country";
 import { OperatingSystem } from "../OperatingSystem";
@@ -83,15 +84,6 @@ interface Event {
   isNew?: boolean;
 }
 
-// Generate initial events with timestamps
-const generateInitialEvents = (): Event[] => {
-  return [
-    { ...eventTemplates[0], id: 1, timestamp: "2 min ago" },
-    { ...eventTemplates[1], id: 2, timestamp: "45 sec ago" },
-    { ...eventTemplates[2], id: 3, timestamp: "just now" },
-  ];
-};
-
 // EventCard component for Real-time Analytics
 function EventCard({ event, index, isNew }: { event: Event; index: number; isNew?: boolean }) {
   const isPageview = event.type === "pageview";
@@ -154,7 +146,12 @@ function EventCard({ event, index, isNew }: { event: Event; index: number; isNew
 }
 
 export function RealTimeAnalytics() {
-  const [events, setEvents] = useState<Event[]>(generateInitialEvents());
+  const t = useExtracted();
+  const [events, setEvents] = useState<Event[]>(() => [
+    { ...eventTemplates[0], id: 1, timestamp: t("2 min ago") },
+    { ...eventTemplates[1], id: 2, timestamp: t("45 sec ago") },
+    { ...eventTemplates[2], id: 3, timestamp: t("just now") },
+  ]);
   const [onlineCount, setOnlineCount] = useState(28);
   const [nextId, setNextId] = useState(4);
 
@@ -165,7 +162,7 @@ export function RealTimeAnalytics() {
       const newEvent: Event = {
         ...randomTemplate,
         id: nextId,
-        timestamp: "just now",
+        timestamp: t("just now"),
         isNew: true,
       };
 
@@ -175,7 +172,7 @@ export function RealTimeAnalytics() {
           ...event,
           isNew: index === 0,
           // Update timestamps
-          timestamp: index === 0 ? "just now" : index === 1 ? "30 sec ago" : index === 2 ? "1 min ago" : "2 min ago",
+          timestamp: index === 0 ? t("just now") : index === 1 ? t("30 sec ago") : index === 2 ? t("1 min ago") : t("2 min ago"),
         }));
         return updatedEvents;
       });
@@ -194,8 +191,8 @@ export function RealTimeAnalytics() {
 
   return (
     <Card
-      title="Real-time Analytics"
-      description="See your site performance as it happens with instant data updates and live visitor activity."
+      title={t("Real-time Analytics")}
+      description={t("See your site performance as it happens with instant data updates and live visitor activity.")}
       icon={Activity}
     >
       <div className="space-y-4 mt-4 transform -rotate-2 translate-x-8 translate-y-8 bg-neutral-100/50 dark:bg-neutral-800/20 border border-neutral-300/50 dark:border-neutral-800/50 pb-20 rounded-lg p-4 -mb-[90px] transition-transform duration-300 hover:scale-105 hover:-rotate-1">

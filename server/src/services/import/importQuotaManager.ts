@@ -1,3 +1,4 @@
+import cluster from "node:cluster";
 import { ImportQuotaTracker } from "./importQuotaTracker.js";
 import { IS_CLOUD } from "../../lib/const.js";
 
@@ -87,6 +88,6 @@ class ImportQuotaManager {
 export const importQuotaManager = new ImportQuotaManager();
 
 // Background cleanup loop
-if (IS_CLOUD) {
+if (IS_CLOUD && !cluster.isWorker) {
   setInterval(() => importQuotaManager.cleanup(), 15 * 60 * 1000);
 }

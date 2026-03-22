@@ -58,18 +58,17 @@ export async function updateSubscription(
       return reply.status(404).send({ error: "Organization or Stripe customer ID not found" });
     }
 
-    // 3. Get the active subscription
-    const subscriptions = await (stripe as Stripe).subscriptions.list({
-      customer: org.stripeCustomerId,
-      status: "active",
-      limit: 1,
-    });
+    // 3. Get the active or trialing subscription
+    const [activeSubscriptions, trialingSubscriptions] = await Promise.all([
+      (stripe as Stripe).subscriptions.list({ customer: org.stripeCustomerId, status: "active", limit: 1 }),
+      (stripe as Stripe).subscriptions.list({ customer: org.stripeCustomerId, status: "trialing", limit: 1 }),
+    ]);
 
-    if (subscriptions.data.length === 0) {
+    const subscription = activeSubscriptions.data[0] ?? trialingSubscriptions.data[0];
+
+    if (!subscription) {
       return reply.status(404).send({ error: "No active subscription found" });
     }
-
-    const subscription = subscriptions.data[0];
     const subscriptionItem = subscription.items.data[0];
 
     // 4. Validate the new price exists
@@ -80,7 +79,7 @@ export async function updateSubscription(
     }
 
     // 5. Update the subscription with the new price
-    // Using always_invoice to charge immediately for the proration
+    const isTrialing = subscription.status === "trialing";
     const updatedSubscription = await (stripe as Stripe).subscriptions.update(subscription.id, {
       items: [
         {
@@ -88,7 +87,9 @@ export async function updateSubscription(
           price: newPriceId,
         },
       ],
-      proration_behavior: "always_invoice", // Immediately invoice the proration amount
+      // For trialing subscriptions, swap the plan without charging — preserve the trial
+      proration_behavior: isTrialing ? "none" : "always_invoice",
+      ...(isTrialing && subscription.trial_end && { trial_end: subscription.trial_end }),
     });
 
     // Get the updated subscription details

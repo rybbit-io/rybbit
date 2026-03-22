@@ -77,11 +77,6 @@ async function proxyToRybbit(request, url) {
   // Map paths: /analytics/* → /api/*
   let rybbitPath = url.pathname.replace('/analytics/', '/api/');
 
-  // Special case for site config
-  if (url.pathname.startsWith('/analytics/site/')) {
-    rybbitPath = url.pathname.replace('/analytics/', '/');
-  }
-
   // Build Rybbit URL
   const rybbitUrl = new URL(rybbitPath, RYBBIT_HOST);
   rybbitUrl.search = url.search; // Preserve query params
@@ -203,11 +198,8 @@ async function handleRequest(request, env) {
     return fetch(request);
   }
 
+  // Map paths: /analytics/* → /api/*
   let rybbitPath = url.pathname.replace('/analytics/', '/api/');
-
-  if (url.pathname.startsWith('/analytics/site/')) {
-    rybbitPath = url.pathname.replace('/analytics/', '/');
-  }
 
   const rybbitUrl = new URL(rybbitPath, RYBBIT_HOST);
   const clientIp = request.headers.get('CF-Connecting-IP') || '0.0.0.0';

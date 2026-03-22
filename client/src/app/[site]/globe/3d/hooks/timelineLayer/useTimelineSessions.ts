@@ -6,13 +6,23 @@ import { APIResponse } from "../../../../../../api/types";
 import { authedFetch, buildApiParams } from "../../../../../../api/utils";
 import { getFilteredFilters, useStore } from "../../../../../../lib/store";
 import { SESSION_PAGE_FILTERS } from "../../../../../../lib/filterGroups";
+import { useShallow } from "zustand/react/shallow";
 import { useTimelineStore } from "../../../timelineStore";
 import { calculateWindowSize } from "../../../timelineUtils";
 import { MAX_PAGES, PAGE_SIZE } from "./timelineLayerConstants";
 
 export function useTimelineSessions() {
   const { time, site, timezone: storeTimezone } = useStore();
-  const { manualWindowSize, setTimeRange, setWindowSize, setAllSessions, setLoading, setError } = useTimelineStore();
+  const { manualWindowSize, setTimeRange, setWindowSize, setAllSessions, setLoading, setError } = useTimelineStore(
+    useShallow(s => ({
+      manualWindowSize: s.manualWindowSize,
+      setTimeRange: s.setTimeRange,
+      setWindowSize: s.setWindowSize,
+      setAllSessions: s.setAllSessions,
+      setLoading: s.setLoading,
+      setError: s.setError,
+    }))
+  );
   // Resolve "system" to actual timezone, but keep reactivity from useStore
   const timezone = storeTimezone === "system" ? Intl.DateTimeFormat().resolvedOptions().timeZone : storeTimezone;
 

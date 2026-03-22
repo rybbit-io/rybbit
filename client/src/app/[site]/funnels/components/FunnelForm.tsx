@@ -1,3 +1,4 @@
+import { useExtracted } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { InputWithSuggestions, SuggestionOption } from "@/components/ui/input-with-suggestions";
@@ -5,13 +6,15 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { cn } from "@/lib/utils";
 import { Reorder } from "framer-motion";
 import { ChevronDown, ChevronUp, GripVertical, Plus, Save, Trash2, X } from "lucide-react";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { FunnelResponse, FunnelStep } from "../../../../api/analytics/endpoints";
 import { useMetric } from "../../../../api/analytics/hooks/useGetMetric";
 import { ThreeDotLoader } from "../../../../components/Loaders";
 import { Label } from "../../../../components/ui/label";
 import { Switch } from "../../../../components/ui/switch";
 import { Funnel } from "./Funnel";
+
+const URL_PATTERN = /^(https?:\/\/|www\.|[a-zA-Z0-9-]+\.[a-zA-Z]{2,}\/)/i;
 
 interface FunnelFormProps {
   name: string;
@@ -46,6 +49,7 @@ export function FunnelForm({
   saveError,
   funnelData,
 }: FunnelFormProps) {
+  const t = useExtracted();
   // State to track which event steps have property filtering enabled
   const [useProperties, setUseProperties] = useState<boolean[]>(() =>
     steps.map(
@@ -79,6 +83,13 @@ export function FunnelForm({
 
   // Unique IDs for each step (needed for drag-and-drop reordering)
   const [stepIds, setStepIds] = useState<string[]>(() => steps.map((_, i) => `step-${Date.now()}-${i}`));
+
+  // Derive which page-type steps have URL values
+  const stepUrlErrors = useMemo(
+    () => steps.map(step => step.type === "page" && URL_PATTERN.test(step.value)),
+    [steps]
+  );
+  const hasUrlErrors = stepUrlErrors.some(Boolean);
 
   // Fetch suggestions for paths, events, and hostnames
   const { data: pathsData } = useMetric({
@@ -210,8 +221,8 @@ export function FunnelForm({
     funnelArea = (
       <div className="flex items-center justify-center rounded-lg h-full">
         <div className="text-center p-6">
-          <div className="text-lg font-medium mb-2">Funnel Preview</div>
-          <p className="text-sm text-neutral-500">Configure your funnel steps</p>
+          <div className="text-lg font-medium mb-2">{t("Funnel Preview")}</div>
+          <p className="text-sm text-neutral-500">{t("Configure your funnel steps")}</p>
         </div>
       </div>
     );
@@ -231,8 +242,8 @@ export function FunnelForm({
         {/* Left side: Funnel configuration form */}
         <div className="space-y-4">
           <div>
-            <label className="text-sm font-medium mb-1 block">Funnel Name</label>
-            <Input value={name} onChange={e => setName(e.target.value)} placeholder="Enter funnel name" />
+            <label className="text-sm font-medium mb-1 block">{t("Funnel Name")}</label>
+            <Input value={name} onChange={e => setName(e.target.value)} placeholder={t("Enter funnel name")} />
           </div>
 
           <div className="max-h-[calc(100vh-300px)] overflow-y-auto">
@@ -263,20 +274,30 @@ export function FunnelForm({
                         onValueChange={value => updateStepType(index, value as "page" | "event")}
                       >
                         <SelectTrigger className="min-w-[80px] max-w-[80px] border-neutral-300 dark:border-neutral-700">
-                          <SelectValue placeholder="Type" />
+                          <SelectValue placeholder={t("Type")} />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="page">Path</SelectItem>
-                          <SelectItem value="event">Event</SelectItem>
+                          <SelectItem value="page">{t("Path")}</SelectItem>
+                          <SelectItem value="event">{t("Event")}</SelectItem>
                         </SelectContent>
                       </Select>
-                      <InputWithSuggestions
-                        suggestions={step.type === "page" ? pathSuggestions : eventSuggestions}
-                        placeholder={step.type === "page" ? "Path (e.g. /pricing)" : "Event name"}
-                        value={step.value}
-                        className="border-neutral-300 dark:border-neutral-700 w-[260px]"
-                        onChange={e => updateStep(index, "value", e.target.value)}
-                      />
+                      <div className="flex flex-col">
+                        <InputWithSuggestions
+                          suggestions={step.type === "page" ? pathSuggestions : eventSuggestions}
+                          placeholder={step.type === "page" ? t("Path (e.g. /pricing)") : t("Event name")}
+                          value={step.value}
+                          className={cn(
+                            "border-neutral-300 dark:border-neutral-700 w-[260px]",
+                            stepUrlErrors[index] && "border-red-500 dark:border-red-500"
+                          )}
+                          onChange={e => updateStep(index, "value", e.target.value)}
+                        />
+                        {stepUrlErrors[index] && (
+                          <p className="text-xs text-red-500 mt-1">
+                            {t("Enter a path (e.g., /checkout), not a full URL.")}
+                          </p>
+                        )}
+                      </div>
                       <div className="flex items-center">
                         <Button
                           variant="ghost"
@@ -286,7 +307,7 @@ export function FunnelForm({
                             newExpandedSteps[index] = !newExpandedSteps[index];
                             setExpandedSteps(newExpandedSteps);
                           }}
-                          title={expandedSteps[index] ? "Hide advanced options" : "Show advanced options"}
+                          title={expandedSteps[index] ? t("Hide advanced options") : t("Show advanced options")}
                         >
                           {expandedSteps[index] ? (
                             <ChevronUp className="h-4 w-4" />
@@ -311,13 +332,13 @@ export function FunnelForm({
                         <div className="flex gap-2">
                           <InputWithSuggestions
                             suggestions={hostnameSuggestions}
-                            placeholder="Hostname (optional)"
+                            placeholder={t("Hostname (optional)")}
                             value={step.hostname || ""}
                             className="border-neutral-300 dark:border-neutral-700 w-40"
                             onChange={e => updateStep(index, "hostname", e.target.value)}
                           />
                           <Input
-                            placeholder="Label (optional)"
+                            placeholder={t("Label (optional)")}
                             className="border-neutral-300 dark:border-neutral-700 grow"
                             value={step.name || ""}
                             onChange={e => updateStep(index, "name", e.target.value)}
@@ -332,7 +353,7 @@ export function FunnelForm({
                               id={`use-properties-${index}`}
                             />
                             <Label htmlFor={`use-properties-${index}`}>
-                              {step.type === "page" ? "Filter by URL parameter" : "Filter by event property"}
+                              {step.type === "page" ? t("Filter by URL parameter") : t("Filter by event property")}
                             </Label>
                           </div>
 
@@ -419,7 +440,7 @@ export function FunnelForm({
                                 }}
                               >
                                 <Plus className="h-4 w-4" />
-                                New {step.type === "page" ? "Parameter" : "Property"}
+                                {step.type === "page" ? t("New Parameter") : t("New Property")}
                               </Button>
                             </div>
                           )}
@@ -431,7 +452,7 @@ export function FunnelForm({
               })}
             </Reorder.Group>
             <Button onClick={addStep} size="sm" className="mt-2">
-              <Plus className="h-4 w-4" /> Add Step
+              <Plus className="h-4 w-4" /> {t("Add Step")}
             </Button>
           </div>
         </div>
@@ -440,25 +461,25 @@ export function FunnelForm({
 
       <div className="flex justify-between items-center">
         <span className="text-xs text-neutral-600 dark:text-neutral-500">
-          Use * to match a single path segment (e.g., /blog/*) or ** to match multiple segments (e.g., /docs/**/intro)
+          {t("Use * to match a single path segment (e.g., /blog/*) or ** to match multiple segments (e.g., /docs/**/intro)")}
         </span>
         <div className="text-sm text-red-500">
           {(() => {
             if (isError) {
-              return error instanceof Error ? error.message : "An error occurred";
+              return error instanceof Error ? error.message : t("An error occurred");
             } else if (saveError) {
-              return saveError instanceof Error ? saveError.message : "An error occurred while saving";
+              return saveError instanceof Error ? saveError.message : t("An error occurred while saving");
             }
             return null;
           })()}
         </div>
         <div className="flex gap-2">
           <Button variant="outline" onClick={onCancel}>
-            Cancel
+            {t("Cancel")}
           </Button>
-          <Button onClick={onSave} disabled={isSaving} variant="success">
+          <Button onClick={onSave} disabled={isSaving || hasUrlErrors} variant="success">
             <Save className="h-4 w-4" />
-            {isSaving ? "Saving..." : saveButtonText}
+            {isSaving ? t("Saving...") : saveButtonText}
           </Button>
         </div>
       </div>

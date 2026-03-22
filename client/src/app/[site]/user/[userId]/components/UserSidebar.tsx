@@ -1,5 +1,6 @@
 "use client";
 
+import { useExtracted } from "next-intl";
 import { getTimezone } from "@/lib/store";
 import { Calendar, CalendarCheck, Clock, Files, Globe, Laptop, Monitor, Smartphone, Tablet } from "lucide-react";
 import { DateTime } from "luxon";
@@ -7,6 +8,7 @@ import { Avatar, generateName } from "../../../../../components/Avatar";
 import { Badge } from "../../../../../components/ui/badge";
 import { Skeleton } from "../../../../../components/ui/skeleton";
 import { IdentifiedBadge } from "../../../../../components/IdentifiedBadge";
+import { useDateTimeFormat } from "../../../../../hooks/useDateTimeFormat";
 import { formatDuration } from "../../../../../lib/dateTimeUtils";
 import { getCountryName, getLanguageName } from "../../../../../lib/utils";
 import { Browser } from "../../../components/shared/icons/Browser";
@@ -15,6 +17,7 @@ import { OperatingSystem } from "../../../components/shared/icons/OperatingSyste
 import { VisitCalendar } from "./Calendar";
 import { EventIcon, PageviewIcon } from "../../../../../components/EventIcons";
 import { UserInfo, UserSessionCountResponse } from "../../../../../api/analytics/endpoints";
+import { DeviceIcon } from "../../../components/shared/icons/Device";
 
 interface UserSidebarProps {
   data: UserInfo | undefined;
@@ -82,6 +85,8 @@ function StatCard({
 }
 
 export function UserSidebar({ data, isLoading, sessionCount, getRegionName }: UserSidebarProps) {
+  const t = useExtracted();
+  const { formatRelative } = useDateTimeFormat();
   const isIdentified = !!data?.identified_user_id;
 
   // Filter custom traits (exclude username, name, email)
@@ -96,31 +101,31 @@ export function UserSidebar({ data, isLoading, sessionCount, getRegionName }: Us
         <div className="grid grid-cols-2 gap-4">
           <StatCard
             icon={<Files className="w-3 h-3" />}
-            label="Sessions"
+            label={t("Sessions")}
             value={data?.sessions ?? "—"}
             isLoading={isLoading}
           />
           <StatCard
             icon={<PageviewIcon className="w-3 h-3" />}
-            label="Pageviews"
+            label={t("Pageviews")}
             value={data?.pageviews ?? "—"}
             isLoading={isLoading}
           />
           <StatCard
             icon={<EventIcon className="w-3 h-3" />}
-            label="Events"
+            label={t("Events")}
             value={data?.events ?? "—"}
             isLoading={isLoading}
           />
           <StatCard
             icon={<Clock className="w-3 h-3" />}
-            label="Avg Duration"
+            label={t("Avg Duration")}
             value={data?.duration ? formatDuration(data.duration) : "—"}
             isLoading={isLoading}
           />
           <StatCard
             icon={<Calendar className="w-3 h-3" />}
-            label="First Seen"
+            label={t("First Seen")}
             value={
               data?.first_seen
                 ? DateTime.fromSQL(data.first_seen, { zone: "utc" }).setZone(getTimezone()).toLocaleString(DateTime.DATE_MED)
@@ -130,7 +135,7 @@ export function UserSidebar({ data, isLoading, sessionCount, getRegionName }: Us
           />
           <StatCard
             icon={<CalendarCheck className="w-3 h-3" />}
-            label="Last Seen"
+            label={t("Last Seen")}
             value={
               data?.last_seen
                 ? DateTime.fromSQL(data.last_seen, { zone: "utc" }).setZone(getTimezone()).toLocaleString(DateTime.DATE_MED)
@@ -144,7 +149,7 @@ export function UserSidebar({ data, isLoading, sessionCount, getRegionName }: Us
       {/* Location & Device Info */}
       <SidebarCard>
         <h3 className="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wide mb-2">
-          Location & Device
+          {t("Location & Device")}
         </h3>
         {isLoading ? (
           <div className="space-y-0">
@@ -200,11 +205,11 @@ export function UserSidebar({ data, isLoading, sessionCount, getRegionName }: Us
           <div>
             <InfoRow
               icon={<CountryFlag country={data?.country || ""} className="w-4 h-4" />}
-              label="Country"
+              label={t("Country")}
               value={data?.country ? getCountryName(data.country) : "—"}
             />
             <InfoRow
-              label="Region"
+              label={t("Region")}
               value={
                 <span className="truncate max-w-[160px] inline-block">
                   {data?.region ? getRegionName(data.region) : "—"}
@@ -212,28 +217,22 @@ export function UserSidebar({ data, isLoading, sessionCount, getRegionName }: Us
                 </span>
               }
             />
-            <InfoRow label="Language" value={data?.language ? getLanguageName(data.language) : "—"} />
+            <InfoRow label={t("Language")} value={data?.language ? getLanguageName(data.language) : "—"} />
             <InfoRow
               icon={
-                data?.device_type === "Desktop" ? (
-                  <Monitor className="w-4 h-4" />
-                ) : data?.device_type === "Mobile" ? (
-                  <Smartphone className="w-4 h-4" />
-                ) : data?.device_type === "Tablet" ? (
-                  <Tablet className="w-4 h-4" />
-                ) : null
+                <DeviceIcon deviceType={data?.device_type || ""} size={13} />
               }
-              label="Device"
+              label={t("Device")}
               value={data?.device_type ?? "—"}
             />
             <InfoRow
               icon={<Browser browser={data?.browser || "Unknown"} size={13} />}
-              label="Browser"
+              label={t("Browser")}
               value={data?.browser ? `${data.browser}${data.browser_version ? ` v${data.browser_version}` : ""}` : "—"}
             />
             <InfoRow
               icon={<OperatingSystem os={data?.operating_system || ""} size={13} />}
-              label="OS"
+              label={t("OS")}
               value={
                 data?.operating_system
                   ? `${data.operating_system}${data.operating_system_version ? ` v${data.operating_system_version}` : ""}`
@@ -241,7 +240,7 @@ export function UserSidebar({ data, isLoading, sessionCount, getRegionName }: Us
               }
             />
             <InfoRow
-              label="Screen"
+              label={t("Screen")}
               value={data?.screen_width && data?.screen_height ? `${data.screen_width}×${data.screen_height}` : "—"}
             />
           </div>
@@ -251,7 +250,7 @@ export function UserSidebar({ data, isLoading, sessionCount, getRegionName }: Us
       {/* Activity Calendar */}
       <SidebarCard className="h-[180px]">
         <h3 className="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wide mb-2">
-          Activity Calendar
+          {t("Activity Calendar")}
         </h3>
         <div className="h-[140px]">
           <VisitCalendar sessionCount={sessionCount} />
@@ -262,7 +261,7 @@ export function UserSidebar({ data, isLoading, sessionCount, getRegionName }: Us
       {isIdentified && customTraits.length > 0 && (
         <SidebarCard>
           <h3 className="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wide mb-2">
-            User Traits
+            {t("User Traits")}
           </h3>
           <div className="space-y-1">
             {customTraits.map(([key, value]) => (
@@ -295,7 +294,7 @@ export function UserSidebar({ data, isLoading, sessionCount, getRegionName }: Us
                   {device.anonymous_id}
                 </span>
                 <span className="text-neutral-400 dark:text-neutral-500 text-xs">
-                  {DateTime.fromISO(device.created_at).toRelative()}
+                  {formatRelative(DateTime.fromISO(device.created_at))}
                 </span>
               </div>
             ))}

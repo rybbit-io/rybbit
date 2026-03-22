@@ -133,7 +133,7 @@ async function getLocationFromIPAPI(ips: string[]): Promise<Record<string, Locat
     return results;
   }
 
-  logger.info(`Cache hit: ${ips.length - uncachedIps.length}/${ips.length}, fetching ${uncachedIps.length} from IPAPI`);
+  // logger.info(`Cache hit: ${ips.length - uncachedIps.length}/${ips.length}, fetching ${uncachedIps.length} from IPAPI`);
 
   const localInfo = await getLocationFromLocal(uncachedIps);
 

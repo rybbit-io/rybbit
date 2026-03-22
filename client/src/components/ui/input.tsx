@@ -5,7 +5,7 @@ import { Search } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const inputVariants = cva(
-  "flex w-full rounded-lg border border-neutral-150 bg-transparent transition-colors file:border-0 file:bg-transparent file:font-medium file:text-neutral-950 placeholder:text-neutral-500 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-neutral-950 disabled:cursor-not-allowed disabled:opacity-50 dark:border-neutral-800 dark:file:text-neutral-50 dark:placeholder:text-neutral-400 dark:focus-visible:ring-neutral-300",
+  "flex w-full rounded-lg border border-neutral-150 bg-transparent transition-colors file:border-0 file:bg-transparent file:font-medium file:text-neutral-950 placeholder:text-neutral-500 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-neutral-950 disabled:cursor-not-allowed disabled:opacity-50 aria-[invalid=true]:border-red-500 dark:aria-[invalid=true]:border-red-400 dark:border-neutral-800 dark:file:text-neutral-50 dark:placeholder:text-neutral-400 dark:focus-visible:ring-neutral-300",
   {
     variants: {
       inputSize: {
@@ -21,7 +21,7 @@ const inputVariants = cva(
 
 export interface InputProps
   extends Omit<React.InputHTMLAttributes<HTMLInputElement>, "size">,
-    VariantProps<typeof inputVariants> {
+  VariantProps<typeof inputVariants> {
   isSearch?: boolean;
 }
 

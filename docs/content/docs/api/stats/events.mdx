@@ -61,15 +61,18 @@ Accepts all [Common Parameters](/docs/api/getting-started#common-parameters) plu
 
 <TypeTable
   type={{
-    page: {
-      description: 'Page number (1-indexed)',
-      type: 'number',
-      default: 1,
-    },
     page_size: {
       description: 'Number of results per page',
       type: 'number',
-      default: 20,
+      default: 50,
+    },
+    since_timestamp: {
+      description: 'Poll for new events after this timestamp (ISO 8601). Used for realtime polling. Returns up to 500 events.',
+      type: 'string',
+    },
+    before_timestamp: {
+      description: 'Fetch events before this timestamp (ISO 8601). Used for cursor-based pagination (scrolling back).',
+      type: 'string',
     },
   }}
 />
@@ -82,9 +85,9 @@ Accepts all [Common Parameters](/docs/api/getting-started#common-parameters) plu
       description: 'Array of event objects',
       type: 'Event[]',
     },
-    pagination: {
-      description: 'Pagination metadata',
-      type: 'Pagination',
+    cursor: {
+      description: 'Cursor metadata for pagination (only present when not using since_timestamp)',
+      type: '{ hasMore: boolean, oldestTimestamp: string | null }',
     },
   }}
 />
@@ -101,7 +104,7 @@ Accepts all [Common Parameters](/docs/api/getting-started#common-parameters) plu
     type: {
       description: 'Event type',
       type: 'string',
-      typeDescription: '"pageview" | "custom_event" | "outbound"',
+      typeDescription: '"pageview" | "custom_event" | "outbound" | "button_click" | "copy" | "form_submit" | "input_change"',
     },
     event_name: {
       description: 'Custom event name',
@@ -111,12 +114,24 @@ Accepts all [Common Parameters](/docs/api/getting-started#common-parameters) plu
       description: 'Event properties as JSON string',
       type: 'string',
     },
+    session_id: {
+      description: 'Session identifier',
+      type: 'string',
+    },
     user_id: {
       description: 'User identifier',
       type: 'string',
     },
+    identified_user_id: {
+      description: 'Identified user ID (if user has been identified)',
+      type: 'string',
+    },
     pathname: {
       description: 'Page path',
+      type: 'string',
+    },
+    querystring: {
+      description: 'URL query string',
       type: 'string',
     },
     hostname: {
@@ -135,13 +150,49 @@ Accepts all [Common Parameters](/docs/api/getting-started#common-parameters) plu
       description: 'Browser name',
       type: 'string',
     },
+    browser_version: {
+      description: 'Browser version',
+      type: 'string',
+    },
     operating_system: {
       description: 'Operating system',
+      type: 'string',
+    },
+    operating_system_version: {
+      description: 'Operating system version',
+      type: 'string',
+    },
+    language: {
+      description: 'Browser language',
       type: 'string',
     },
     country: {
       description: 'Country code',
       type: 'string',
+    },
+    region: {
+      description: 'Region/state',
+      type: 'string',
+    },
+    city: {
+      description: 'City name',
+      type: 'string',
+    },
+    lat: {
+      description: 'Latitude',
+      type: 'number',
+    },
+    lon: {
+      description: 'Longitude',
+      type: 'number',
+    },
+    screen_width: {
+      description: 'Screen width in pixels',
+      type: 'number',
+    },
+    screen_height: {
+      description: 'Screen height in pixels',
+      type: 'number',
     },
     device_type: {
       description: 'Device type',
@@ -156,14 +207,14 @@ Accepts all [Common Parameters](/docs/api/getting-started#common-parameters) plu
 <Tabs items={['cURL', 'JavaScript', 'Python', 'PHP', 'Ruby', 'Go', 'Rust', 'Java', '.NET']}>
   <Tab value="cURL">
 ```bash title="Request"
-curl -X GET "https://app.rybbit.io/api/sites/1/events23?page=1&page_size=20&start_date=2024-01-01&end_date=2024-01-31" \
+curl -X GET "https://app.rybbit.io/api/sites/1/events?page_size=50&start_date=2024-01-01&end_date=2024-01-31" \
   -H "Authorization: Bearer your_api_key_here"
 ```
   </Tab>
   <Tab value="JavaScript">
 ```javascript title="Request"
 const response = await fetch(
-  'https://app.rybbit.io/api/sites/1/events23?page=1&page_size=20&start_date=2024-01-01&end_date=2024-01-31',
+  'https://app.rybbit.io/api/sites/1/events?page_size=50&start_date=2024-01-01&end_date=2024-01-31',
   {
     headers: {
       'Authorization': 'Bearer your_api_key_here'
@@ -179,10 +230,9 @@ const data = await response.json();
 import requests
 
 response = requests.get(
-    'https://app.rybbit.io/api/sites/1/events23',
+    'https://app.rybbit.io/api/sites/1/events',
     params={
-        'page': 1,
-        'page_size': 20,
+        'page_size': 50,
         'start_date': '2024-01-01',
         'end_date': '2024-01-31'
     },
@@ -197,7 +247,7 @@ data = response.json()
   <Tab value="PHP">
 ```php title="Request"
 $ch = curl_init();
-curl_setopt($ch, CURLOPT_URL, 'https://app.rybbit.io/api/sites/1/events23?page=1&page_size=20&start_date=2024-01-01&end_date=2024-01-31');
+curl_setopt($ch, CURLOPT_URL, 'https://app.rybbit.io/api/sites/1/events?page_size=50&start_date=2024-01-01&end_date=2024-01-31');
 curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
 curl_setopt($ch, CURLOPT_HTTPHEADER, [
     'Authorization: Bearer your_api_key_here'
@@ -214,7 +264,7 @@ $data = json_decode($response, true);
 require 'net/http'
 require 'json'
 
-uri = URI('https://app.rybbit.io/api/sites/1/events23?page=1&page_size=20&start_date=2024-01-01&end_date=2024-01-31')
+uri = URI('https://app.rybbit.io/api/sites/1/events?page_size=50&start_date=2024-01-01&end_date=2024-01-31')
 req = Net::HTTP::Get.new(uri)
 req['Authorization'] = 'Bearer your_api_key_here'
 
@@ -224,7 +274,7 @@ data = JSON.parse(res.body)
   </Tab>
   <Tab value="Go">
 ```go title="Request"
-req, _ := http.NewRequest("GET", "https://app.rybbit.io/api/sites/1/events23?page=1&page_size=20&start_date=2024-01-01&end_date=2024-01-31", nil)
+req, _ := http.NewRequest("GET", "https://app.rybbit.io/api/sites/1/events?page_size=50&start_date=2024-01-01&end_date=2024-01-31", nil)
 req.Header.Set("Authorization", "Bearer your_api_key_here")
 
 client := &http.Client{}
@@ -239,7 +289,7 @@ json.NewDecoder(resp.Body).Decode(&data)
 ```rust title="Request"
 let client = reqwest::Client::new();
 let res = client
-    .get("https://app.rybbit.io/api/sites/1/events23?page=1&page_size=20&start_date=2024-01-01&end_date=2024-01-31")
+    .get("https://app.rybbit.io/api/sites/1/events?page_size=50&start_date=2024-01-01&end_date=2024-01-31")
     .header("Authorization", "Bearer your_api_key_here")
     .send()
     .await?;
@@ -251,7 +301,7 @@ let data: serde_json::Value = res.json().await?;
 ```java title="Request"
 HttpClient client = HttpClient.newHttpClient();
 HttpRequest request = HttpRequest.newBuilder()
-    .uri(URI.create("https://app.rybbit.io/api/sites/1/events23?page=1&page_size=20&start_date=2024-01-01&end_date=2024-01-31"))
+    .uri(URI.create("https://app.rybbit.io/api/sites/1/events?page_size=50&start_date=2024-01-01&end_date=2024-01-31"))
     .header("Authorization", "Bearer your_api_key_here")
     .GET()
     .build();
@@ -264,7 +314,7 @@ HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.o
 using var client = new HttpClient();
 client.DefaultRequestHeaders.Add("Authorization", "Bearer your_api_key_here");
 
-var response = await client.GetAsync("https://app.rybbit.io/api/sites/1/events23?page=1&page_size=20&start_date=2024-01-01&end_date=2024-01-31");
+var response = await client.GetAsync("https://app.rybbit.io/api/sites/1/events?page_size=50&start_date=2024-01-01&end_date=2024-01-31");
 var data = await response.Content.ReadAsStringAsync();
 ```
   </Tab>
@@ -278,13 +328,26 @@ var data = await response.Content.ReadAsStringAsync();
       "type": "custom_event",
       "event_name": "signup",
       "properties": "{\"plan\":\"pro\",\"source\":\"homepage\"}",
+      "session_id": "abc123def456",
       "user_id": "user_abc123",
+      "identified_user_id": "",
       "pathname": "/signup",
+      "querystring": "",
       "hostname": "example.com",
       "page_title": "Sign Up",
+      "referrer": "https://google.com",
       "browser": "Chrome",
+      "browser_version": "120.0",
       "operating_system": "macOS",
+      "operating_system_version": "14.0",
+      "language": "en-US",
       "country": "US",
+      "region": "California",
+      "city": "San Francisco",
+      "lat": 37.7749,
+      "lon": -122.4194,
+      "screen_width": 1920,
+      "screen_height": 1080,
       "device_type": "desktop"
     },
     {
@@ -292,21 +355,32 @@ var data = await response.Content.ReadAsStringAsync();
       "type": "pageview",
       "event_name": "",
       "properties": "{}",
+      "session_id": "abc123def456",
       "user_id": "user_abc123",
+      "identified_user_id": "",
       "pathname": "/pricing",
+      "querystring": "",
       "hostname": "example.com",
       "page_title": "Pricing",
+      "referrer": "https://example.com/",
       "browser": "Chrome",
+      "browser_version": "120.0",
       "operating_system": "macOS",
+      "operating_system_version": "14.0",
+      "language": "en-US",
       "country": "US",
+      "region": "California",
+      "city": "San Francisco",
+      "lat": 37.7749,
+      "lon": -122.4194,
+      "screen_width": 1920,
+      "screen_height": 1080,
       "device_type": "desktop"
     }
   ],
-  "pagination": {
-    "total": 48933,
-    "page": 1,
-    "pageSize": 20,
-    "totalPages": 2447
+  "cursor": {
+    "hasMore": true,
+    "oldestTimestamp": "2024-01-31T14:21:00.000Z"
   }
 }
 ```
@@ -375,14 +449,14 @@ Accepts all [Common Parameters](/docs/api/getting-started#common-parameters) (ti
 <Tabs items={['cURL', 'JavaScript', 'Python', 'PHP', 'Ruby', 'Go', 'Rust', 'Java', '.NET']}>
   <Tab value="cURL">
 ```bash title="Request"
-curl -X GET "https://app.rybbit.io/api/sites/1/events/names23?start_date=2024-01-01&end_date=2024-01-31" \
+curl -X GET "https://app.rybbit.io/api/sites/1/events/names?start_date=2024-01-01&end_date=2024-01-31" \
   -H "Authorization: Bearer your_api_key_here"
 ```
   </Tab>
   <Tab value="JavaScript">
 ```javascript title="Request"
 const response = await fetch(
-  'https://app.rybbit.io/api/sites/1/events/names23?start_date=2024-01-01&end_date=2024-01-31',
+  'https://app.rybbit.io/api/sites/1/events/names?start_date=2024-01-01&end_date=2024-01-31',
   {
     headers: {
       'Authorization': 'Bearer your_api_key_here'
@@ -398,7 +472,7 @@ const data = await response.json();
 import requests
 
 response = requests.get(
-    'https://app.rybbit.io/api/sites/1/events/names23',
+    'https://app.rybbit.io/api/sites/1/events/names',
     params={
         'start_date': '2024-01-01',
         'end_date': '2024-01-31'
@@ -414,7 +488,7 @@ data = response.json()
   <Tab value="PHP">
 ```php title="Request"
 $ch = curl_init();
-curl_setopt($ch, CURLOPT_URL, 'https://app.rybbit.io/api/sites/1/events/names23?start_date=2024-01-01&end_date=2024-01-31');
+curl_setopt($ch, CURLOPT_URL, 'https://app.rybbit.io/api/sites/1/events/names?start_date=2024-01-01&end_date=2024-01-31');
 curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
 curl_setopt($ch, CURLOPT_HTTPHEADER, [
     'Authorization: Bearer your_api_key_here'
@@ -431,7 +505,7 @@ $data = json_decode($response, true);
 require 'net/http'
 require 'json'
 
-uri = URI('https://app.rybbit.io/api/sites/1/events/names23?start_date=2024-01-01&end_date=2024-01-31')
+uri = URI('https://app.rybbit.io/api/sites/1/events/names?start_date=2024-01-01&end_date=2024-01-31')
 req = Net::HTTP::Get.new(uri)
 req['Authorization'] = 'Bearer your_api_key_here'
 
@@ -441,7 +515,7 @@ data = JSON.parse(res.body)
   </Tab>
   <Tab value="Go">
 ```go title="Request"
-req, _ := http.NewRequest("GET", "https://app.rybbit.io/api/sites/1/events/names23?start_date=2024-01-01&end_date=2024-01-31", nil)
+req, _ := http.NewRequest("GET", "https://app.rybbit.io/api/sites/1/events/names?start_date=2024-01-01&end_date=2024-01-31", nil)
 req.Header.Set("Authorization", "Bearer your_api_key_here")
 
 client := &http.Client{}
@@ -456,7 +530,7 @@ json.NewDecoder(resp.Body).Decode(&data)
 ```rust title="Request"
 let client = reqwest::Client::new();
 let res = client
-    .get("https://app.rybbit.io/api/sites/1/events/names23?start_date=2024-01-01&end_date=2024-01-31")
+    .get("https://app.rybbit.io/api/sites/1/events/names?start_date=2024-01-01&end_date=2024-01-31")
     .header("Authorization", "Bearer your_api_key_here")
     .send()
     .await?;
@@ -468,7 +542,7 @@ let data: serde_json::Value = res.json().await?;
 ```java title="Request"
 HttpClient client = HttpClient.newHttpClient();
 HttpRequest request = HttpRequest.newBuilder()
-    .uri(URI.create("https://app.rybbit.io/api/sites/1/events/names23?start_date=2024-01-01&end_date=2024-01-31"))
+    .uri(URI.create("https://app.rybbit.io/api/sites/1/events/names?start_date=2024-01-01&end_date=2024-01-31"))
     .header("Authorization", "Bearer your_api_key_here")
     .GET()
     .build();
@@ -481,7 +555,7 @@ HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.o
 using var client = new HttpClient();
 client.DefaultRequestHeaders.Add("Authorization", "Bearer your_api_key_here");
 
-var response = await client.GetAsync("https://app.rybbit.io/api/sites/1/events/names23?start_date=2024-01-01&end_date=2024-01-31");
+var response = await client.GetAsync("https://app.rybbit.io/api/sites/1/events/names?start_date=2024-01-01&end_date=2024-01-31");
 var data = await response.Content.ReadAsStringAsync();
 ```
   </Tab>
@@ -588,14 +662,14 @@ Accepts all [Common Parameters](/docs/api/getting-started#common-parameters) plu
 <Tabs items={['cURL', 'JavaScript', 'Python', 'PHP', 'Ruby', 'Go', 'Rust', 'Java', '.NET']}>
   <Tab value="cURL">
 ```bash title="Request"
-curl -X GET "https://app.rybbit.io/api/sites/1/events/properties23?event_name=signup&start_date=2024-01-01&end_date=2024-01-31" \
+curl -X GET "https://app.rybbit.io/api/sites/1/events/properties?event_name=signup&start_date=2024-01-01&end_date=2024-01-31" \
   -H "Authorization: Bearer your_api_key_here"
 ```
   </Tab>
   <Tab value="JavaScript">
 ```javascript title="Request"
 const response = await fetch(
-  'https://app.rybbit.io/api/sites/1/events/properties23?event_name=signup&start_date=2024-01-01&end_date=2024-01-31',
+  'https://app.rybbit.io/api/sites/1/events/properties?event_name=signup&start_date=2024-01-01&end_date=2024-01-31',
   {
     headers: {
       'Authorization': 'Bearer your_api_key_here'
@@ -611,7 +685,7 @@ const data = await response.json();
 import requests
 
 response = requests.get(
-    'https://app.rybbit.io/api/sites/1/events/properties23',
+    'https://app.rybbit.io/api/sites/1/events/properties',
     params={
         'event_name': 'signup',
         'start_date': '2024-01-01',
@@ -628,7 +702,7 @@ data = response.json()
   <Tab value="PHP">
 ```php title="Request"
 $ch = curl_init();
-curl_setopt($ch, CURLOPT_URL, 'https://app.rybbit.io/api/sites/1/events/properties23?event_name=signup&start_date=2024-01-01&end_date=2024-01-31');
+curl_setopt($ch, CURLOPT_URL, 'https://app.rybbit.io/api/sites/1/events/properties?event_name=signup&start_date=2024-01-01&end_date=2024-01-31');
 curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
 curl_setopt($ch, CURLOPT_HTTPHEADER, [
     'Authorization: Bearer your_api_key_here'
@@ -645,7 +719,7 @@ $data = json_decode($response, true);
 require 'net/http'
 require 'json'
 
-uri = URI('https://app.rybbit.io/api/sites/1/events/properties23?event_name=signup&start_date=2024-01-01&end_date=2024-01-31')
+uri = URI('https://app.rybbit.io/api/sites/1/events/properties?event_name=signup&start_date=2024-01-01&end_date=2024-01-31')
 req = Net::HTTP::Get.new(uri)
 req['Authorization'] = 'Bearer your_api_key_here'
 
@@ -655,7 +729,7 @@ data = JSON.parse(res.body)
   </Tab>
   <Tab value="Go">
 ```go title="Request"
-req, _ := http.NewRequest("GET", "https://app.rybbit.io/api/sites/1/events/properties23?event_name=signup&start_date=2024-01-01&end_date=2024-01-31", nil)
+req, _ := http.NewRequest("GET", "https://app.rybbit.io/api/sites/1/events/properties?event_name=signup&start_date=2024-01-01&end_date=2024-01-31", nil)
 req.Header.Set("Authorization", "Bearer your_api_key_here")
 
 client := &http.Client{}
@@ -670,7 +744,7 @@ json.NewDecoder(resp.Body).Decode(&data)
 ```rust title="Request"
 let client = reqwest::Client::new();
 let res = client
-    .get("https://app.rybbit.io/api/sites/1/events/properties23?event_name=signup&start_date=2024-01-01&end_date=2024-01-31")
+    .get("https://app.rybbit.io/api/sites/1/events/properties?event_name=signup&start_date=2024-01-01&end_date=2024-01-31")
     .header("Authorization", "Bearer your_api_key_here")
     .send()
     .await?;
@@ -682,7 +756,7 @@ let data: serde_json::Value = res.json().await?;
 ```java title="Request"
 HttpClient client = HttpClient.newHttpClient();
 HttpRequest request = HttpRequest.newBuilder()
-    .uri(URI.create("https://app.rybbit.io/api/sites/1/events/properties23?event_name=signup&start_date=2024-01-01&end_date=2024-01-31"))
+    .uri(URI.create("https://app.rybbit.io/api/sites/1/events/properties?event_name=signup&start_date=2024-01-01&end_date=2024-01-31"))
     .header("Authorization", "Bearer your_api_key_here")
     .GET()
     .build();
@@ -695,7 +769,7 @@ HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.o
 using var client = new HttpClient();
 client.DefaultRequestHeaders.Add("Authorization", "Bearer your_api_key_here");
 
-var response = await client.GetAsync("https://app.rybbit.io/api/sites/1/events/properties23?event_name=signup&start_date=2024-01-01&end_date=2024-01-31");
+var response = await client.GetAsync("https://app.rybbit.io/api/sites/1/events/properties?event_name=signup&start_date=2024-01-01&end_date=2024-01-31");
 var data = await response.Content.ReadAsStringAsync();
 ```
   </Tab>
@@ -802,14 +876,14 @@ Accepts all [Common Parameters](/docs/api/getting-started#common-parameters) (ti
 <Tabs items={['cURL', 'JavaScript', 'Python', 'PHP', 'Ruby', 'Go', 'Rust', 'Java', '.NET']}>
   <Tab value="cURL">
 ```bash title="Request"
-curl -X GET "https://app.rybbit.io/api/sites/1/events/outbound23?start_date=2024-01-01&end_date=2024-01-31" \
+curl -X GET "https://app.rybbit.io/api/sites/1/events/outbound?start_date=2024-01-01&end_date=2024-01-31" \
   -H "Authorization: Bearer your_api_key_here"
 ```
   </Tab>
   <Tab value="JavaScript">
 ```javascript title="Request"
 const response = await fetch(
-  'https://app.rybbit.io/api/sites/1/events/outbound23?start_date=2024-01-01&end_date=2024-01-31',
+  'https://app.rybbit.io/api/sites/1/events/outbound?start_date=2024-01-01&end_date=2024-01-31',
   {
     headers: {
       'Authorization': 'Bearer your_api_key_here'
@@ -825,7 +899,7 @@ const data = await response.json();
 import requests
 
 response = requests.get(
-    'https://app.rybbit.io/api/sites/1/events/outbound23',
+    'https://app.rybbit.io/api/sites/1/events/outbound',
     params={
         'start_date': '2024-01-01',
         'end_date': '2024-01-31'
@@ -841,7 +915,7 @@ data = response.json()
   <Tab value="PHP">
 ```php title="Request"
 $ch = curl_init();
-curl_setopt($ch, CURLOPT_URL, 'https://app.rybbit.io/api/sites/1/events/outbound23?start_date=2024-01-01&end_date=2024-01-31');
+curl_setopt($ch, CURLOPT_URL, 'https://app.rybbit.io/api/sites/1/events/outbound?start_date=2024-01-01&end_date=2024-01-31');
 curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
 curl_setopt($ch, CURLOPT_HTTPHEADER, [
     'Authorization: Bearer your_api_key_here'
@@ -858,7 +932,7 @@ $data = json_decode($response, true);
 require 'net/http'
 require 'json'
 
-uri = URI('https://app.rybbit.io/api/sites/1/events/outbound23?start_date=2024-01-01&end_date=2024-01-31')
+uri = URI('https://app.rybbit.io/api/sites/1/events/outbound?start_date=2024-01-01&end_date=2024-01-31')
 req = Net::HTTP::Get.new(uri)
 req['Authorization'] = 'Bearer your_api_key_here'
 
@@ -868,7 +942,7 @@ data = JSON.parse(res.body)
   </Tab>
   <Tab value="Go">
 ```go title="Request"
-req, _ := http.NewRequest("GET", "https://app.rybbit.io/api/sites/1/events/outbound23?start_date=2024-01-01&end_date=2024-01-31", nil)
+req, _ := http.NewRequest("GET", "https://app.rybbit.io/api/sites/1/events/outbound?start_date=2024-01-01&end_date=2024-01-31", nil)
 req.Header.Set("Authorization", "Bearer your_api_key_here")
 
 client := &http.Client{}
@@ -883,7 +957,7 @@ json.NewDecoder(resp.Body).Decode(&data)
 ```rust title="Request"
 let client = reqwest::Client::new();
 let res = client
-    .get("https://app.rybbit.io/api/sites/1/events/outbound23?start_date=2024-01-01&end_date=2024-01-31")
+    .get("https://app.rybbit.io/api/sites/1/events/outbound?start_date=2024-01-01&end_date=2024-01-31")
     .header("Authorization", "Bearer your_api_key_here")
     .send()
     .await?;
@@ -895,7 +969,7 @@ let data: serde_json::Value = res.json().await?;
 ```java title="Request"
 HttpClient client = HttpClient.newHttpClient();
 HttpRequest request = HttpRequest.newBuilder()
-    .uri(URI.create("https://app.rybbit.io/api/sites/1/events/outbound23?start_date=2024-01-01&end_date=2024-01-31"))
+    .uri(URI.create("https://app.rybbit.io/api/sites/1/events/outbound?start_date=2024-01-01&end_date=2024-01-31"))
     .header("Authorization", "Bearer your_api_key_here")
     .GET()
     .build();
@@ -908,7 +982,7 @@ HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.o
 using var client = new HttpClient();
 client.DefaultRequestHeaders.Add("Authorization", "Bearer your_api_key_here");
 
-var response = await client.GetAsync("https://app.rybbit.io/api/sites/1/events/outbound23?start_date=2024-01-01&end_date=2024-01-31");
+var response = await client.GetAsync("https://app.rybbit.io/api/sites/1/events/outbound?start_date=2024-01-01&end_date=2024-01-31");
 var data = await response.Content.ReadAsStringAsync();
 ```
   </Tab>

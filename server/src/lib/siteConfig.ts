@@ -23,6 +23,10 @@ export interface SiteConfigData {
   trackInitialPageView: boolean;
   trackSpaNavigation: boolean;
   trackIp: boolean;
+  trackButtonClicks: boolean;
+  trackCopy: boolean;
+  trackFormInteractions: boolean;
+  tags: string[];
 }
 
 class SiteConfig {
@@ -72,6 +76,10 @@ class SiteConfig {
           trackInitialPageView: sites.trackInitialPageView,
           trackSpaNavigation: sites.trackSpaNavigation,
           trackIp: sites.trackIp,
+          trackButtonClicks: sites.trackButtonClicks,
+          trackCopy: sites.trackCopy,
+          trackFormInteractions: sites.trackFormInteractions,
+          tags: sites.tags,
         })
         .from(sites)
         .where(isNumeric ? eq(sites.siteId, Number(siteIdOrId)) : eq(sites.id, String(siteIdOrId)))
@@ -99,6 +107,10 @@ class SiteConfig {
         trackInitialPageView: site.trackInitialPageView ?? true,
         trackSpaNavigation: site.trackSpaNavigation ?? true,
         trackIp: site.trackIp || false,
+        trackButtonClicks: site.trackButtonClicks || false,
+        trackCopy: site.trackCopy || false,
+        trackFormInteractions: site.trackFormInteractions || false,
+        tags: Array.isArray(site.tags) ? site.tags : [],
       };
 
       this.cache.set(cacheKey, {

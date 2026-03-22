@@ -1,4 +1,5 @@
 import { DateTime } from "luxon";
+import { useExtracted } from "next-intl";
 import { useMemo, useState } from "react";
 import { useGetOverviewBucketed } from "../../../../../api/analytics/hooks/useGetOverviewBucketed";
 import { ChartTooltip } from "../../../../../components/charts/ChartTooltip";
@@ -15,6 +16,7 @@ export function Weekdays() {
   const { site, time } = useStore();
   const [metric, setMetric] = useState<StatType>("users");
   const timezone = getTimezone();
+  const t = useExtracted();
 
   const { data, isFetching, error } = useGetOverviewBucketed({
     site,
@@ -124,17 +126,17 @@ export function Weekdays() {
   const getMetricDisplayName = (metric: StatType): string => {
     switch (metric) {
       case "users":
-        return "Unique Visitors";
+        return t("Unique Visitors");
       case "pageviews":
-        return "Pageviews";
+        return t("Pageviews");
       case "sessions":
-        return "Sessions";
+        return t("Sessions");
       case "bounce_rate":
-        return "Bounce Rate";
+        return t("Bounce Rate");
       case "pages_per_session":
-        return "Pages per Session";
+        return t("Pages per Session");
       case "session_duration":
-        return "Session Duration";
+        return t("Session Duration");
       default:
         return metric;
     }
@@ -147,21 +149,21 @@ export function Weekdays() {
         <div className="flex flex-row items-center justify-between">
           <Tabs defaultValue="pages" value={"pages"}>
             <TabsList>
-              <TabsTrigger value="pages">Weekly Trends</TabsTrigger>
+              <TabsTrigger value="pages">{t("Weekly Trends")}</TabsTrigger>
             </TabsList>
           </Tabs>
 
           <Select value={metric} onValueChange={value => setMetric(value as StatType)}>
             <SelectTrigger className="w-[160px]" size="sm">
-              <SelectValue placeholder="Select metric" />
+              <SelectValue placeholder={t("Select metric")} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="users">Unique Visitors</SelectItem>
-              <SelectItem value="pageviews">Pageviews</SelectItem>
-              <SelectItem value="sessions">Sessions</SelectItem>
-              <SelectItem value="bounce_rate">Bounce Rate</SelectItem>
-              <SelectItem value="pages_per_session">Pages per Session</SelectItem>
-              <SelectItem value="session_duration">Session Duration</SelectItem>
+              <SelectItem value="users">{t("Unique Visitors")}</SelectItem>
+              <SelectItem value="pageviews">{t("Pageviews")}</SelectItem>
+              <SelectItem value="sessions">{t("Sessions")}</SelectItem>
+              <SelectItem value="bounce_rate">{t("Bounce Rate")}</SelectItem>
+              <SelectItem value="pages_per_session">{t("Pages per Session")}</SelectItem>
+              <SelectItem value="session_duration">{t("Session Duration")}</SelectItem>
             </SelectContent>
           </Select>
         </div>

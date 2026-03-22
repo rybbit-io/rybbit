@@ -289,9 +289,9 @@ module.exports = {
 
 ```nginx
 # Nginx - cache for 5 minutes max
-location ~ ^/analytics/site/tracking-config/ {
+location ~ ^/analytics/site/tracking-config/(.*)$ {
     proxy_cache_valid 200 5m;  # Not longer!
-    proxy_pass https://app.rybbit.io;
+    proxy_pass https://app.rybbit.io/api/site/tracking-config/$1;
 }
 ```
 
@@ -317,9 +317,9 @@ cache.flushAll();
 
 ```nginx
 # Nginx - no caching
-location ~ ^/analytics/site/tracking-config/ {
+location ~ ^/analytics/site/tracking-config/(.*)$ {
     proxy_cache off;
-    proxy_pass https://app.rybbit.io;
+    proxy_pass https://app.rybbit.io/api/site/tracking-config/$1;
 }
 ```
 

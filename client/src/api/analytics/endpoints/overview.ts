@@ -33,6 +33,7 @@ export type GetOverviewBucketedResponse = {
 export type MetricResponse = {
   value: string;
   title?: string;
+  hostname?: string;
   count: number;
   percentage: number;
   pageviews?: number;

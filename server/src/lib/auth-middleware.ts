@@ -51,6 +51,10 @@ export const requireAuth: AuthMiddleware = async (request, reply) => {
     return;
   }
 
+  if (apiKeyResult.rateLimited) {
+    return reply.status(429).send({ error: "Rate limit exceeded" });
+  }
+
   return reply.status(401).send({ error: "Unauthorized" });
 };
 
@@ -83,12 +87,17 @@ export const requireSiteAccess: AuthMiddleware = async (request, reply) => {
 
   // Check session-based access
   const hasAccess = await getUserHasAccessToSite(request, siteId);
-  if (!hasAccess) {
-    return reply.status(403).send({ error: "Forbidden" });
+  if (hasAccess) {
+    const session = await getSessionFromReq(request);
+    if (session?.user) request.user = session.user;
+    return;
   }
 
-  const session = await getSessionFromReq(request);
-  if (session?.user) request.user = session.user;
+  if (apiKeyResult.rateLimited) {
+    return reply.status(429).send({ error: "Rate limit exceeded" });
+  }
+
+  return reply.status(403).send({ error: "Forbidden" });
 };
 
 /**
@@ -108,12 +117,17 @@ export const requireSiteAdminAccess: AuthMiddleware = async (request, reply) => 
 
   // Check session-based admin access
   const hasAdminAccess = await getUserHasAdminAccessToSite(request, siteId);
-  if (!hasAdminAccess) {
-    return reply.status(403).send({ error: "Forbidden" });
+  if (hasAdminAccess) {
+    const session = await getSessionFromReq(request);
+    if (session?.user) request.user = session.user;
+    return;
   }
 
-  const session = await getSessionFromReq(request);
-  if (session?.user) request.user = session.user;
+  if (apiKeyResult.rateLimited) {
+    return reply.status(429).send({ error: "Rate limit exceeded" });
+  }
+
+  return reply.status(403).send({ error: "Forbidden" });
 };
 
 /**
@@ -137,6 +151,10 @@ export const allowPublicSiteAccess: AuthMiddleware = async (request, reply) => {
     return;
   }
 
+  if (apiKeyResult.rateLimited) {
+    return reply.status(429).send({ error: "Rate limit exceeded" });
+  }
+
   return reply.status(403).send({ error: "Forbidden" });
 };
 
@@ -157,12 +175,17 @@ export const requireOrgMember: AuthMiddleware = async (request, reply) => {
   }
 
   const isMember = await getUserIsInOrg(request, organizationId);
-  if (!isMember) {
-    return reply.status(403).send({ error: "Forbidden" });
+  if (isMember) {
+    const session = await getSessionFromReq(request);
+    if (session?.user) request.user = session.user;
+    return;
   }
 
-  const session = await getSessionFromReq(request);
-  if (session?.user) request.user = session.user;
+  if (apiKeyResult.rateLimited) {
+    return reply.status(429).send({ error: "Rate limit exceeded" });
+  }
+
+  return reply.status(403).send({ error: "Forbidden" });
 };
 
 /**
@@ -187,6 +210,9 @@ export const requireOrgAdminFromParams: AuthMiddleware = async (request, reply) 
   // Check session-based access - must be admin/owner of org
   const session = await getSessionFromReq(request);
   if (!session?.user?.id) {
+    if (apiKeyResult.rateLimited) {
+      return reply.status(429).send({ error: "Rate limit exceeded" });
+    }
     return reply.status(401).send({ error: "Unauthorized" });
   }
 

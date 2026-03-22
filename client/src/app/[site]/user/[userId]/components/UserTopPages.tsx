@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useExtracted } from "next-intl";
 import { useGetSite } from "../../../../../api/admin/hooks/useSites";
 import { TabsContent, TabsList, TabsTrigger } from "../../../../../components/ui/basic-tabs";
 import { Card, CardContent } from "../../../../../components/ui/card";
@@ -9,6 +10,7 @@ import { StandardSection } from "../../../components/shared/StandardSection/Stan
 type Tab = "pages" | "events";
 
 export function UserTopPages({ userId }: { userId: string }) {
+  const t = useExtracted();
   const [tab, setTab] = useState<Tab>("pages");
 
   const { data: siteMetadata } = useGetSite();
@@ -19,7 +21,7 @@ export function UserTopPages({ userId }: { userId: string }) {
         <Tabs defaultValue="pages" value={tab} onValueChange={value => setTab(value as Tab)}>
           <div className="flex flex-row gap-2 items-center">
             <TabsList>
-              <TabsTrigger value="pages">Top Pages</TabsTrigger>
+              <TabsTrigger value="pages">{t("Top Pages")}</TabsTrigger>
             </TabsList>
             {/* <TabsList>
               <TabsTrigger value="events">Events</TabsTrigger>
@@ -28,11 +30,14 @@ export function UserTopPages({ userId }: { userId: string }) {
           <TabsContent value="pages">
             <StandardSection
               filterParameter="pathname"
-              title="Pages"
+              title={t("Pages")}
               getValue={e => e.value}
               getKey={e => e.value}
               getLabel={e => truncateString(e.value, 50) || "Other"}
-              getLink={e => `https://${siteMetadata?.domain}${e.value}`}
+              getLink={e => {
+                const host = e.hostname || siteMetadata?.domain;
+                return host ? `https://${host}${e.value}` : "#";
+              }}
               expanded={false}
               close={close}
               customFilters={[{ parameter: "user_id", value: [userId], type: "equals" }]}
@@ -45,11 +50,14 @@ export function UserTopPages({ userId }: { userId: string }) {
           <TabsContent value="events">
             <StandardSection
               filterParameter="pathname"
-              title="Pages"
+              title={t("Pages")}
               getValue={e => e.value}
               getKey={e => e.value}
               getLabel={e => truncateString(e.value, 50) || "Other"}
-              getLink={e => `https://${siteMetadata?.domain}${e.value}`}
+              getLink={e => {
+                const host = e.hostname || siteMetadata?.domain;
+                return host ? `https://${host}${e.value}` : "#";
+              }}
               expanded={false}
               close={close}
               customFilters={[{ parameter: "user_id", value: [userId], type: "equals" }]}

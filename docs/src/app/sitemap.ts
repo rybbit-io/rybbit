@@ -24,7 +24,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   }));
 
   // Dynamically get tool slugs from the tools directory
-  const toolsPath = join(process.cwd(), "src/app/(home)/tools");
+  const toolsPath = join(process.cwd(), "src/app/[locale]/(home)/tools");
   const toolSlugs = readdirSync(toolsPath, { withFileTypes: true })
     .filter(dirent => dirent.isDirectory() && dirent.name !== "components")
     .map(dirent => dirent.name);
@@ -35,6 +35,32 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     changeFrequency: "monthly" as const,
     priority: 0.8,
   }));
+
+  // Comparison pages
+  const competitors = [
+    "google-analytics",
+    "plausible",
+    "posthog",
+    "umami",
+    "fathom",
+    "simpleanalytics",
+    "matomo",
+    "cloudflare-analytics",
+  ];
+  const comparisonPages = [
+    {
+      url: `${baseUrl}/compare`,
+      lastModified: new Date(),
+      changeFrequency: "monthly" as const,
+      priority: 0.8,
+    },
+    ...competitors.map(slug => ({
+      url: `${baseUrl}/compare/${slug}`,
+      lastModified: new Date(),
+      changeFrequency: "monthly" as const,
+      priority: 0.8,
+    })),
+  ];
 
   // Static pages
   const staticPages = [
@@ -70,5 +96,5 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     },
   ];
 
-  return [...staticPages, ...toolPages, ...docPages, ...blogPosts];
+  return [...staticPages, ...comparisonPages, ...toolPages, ...docPages, ...blogPosts];
 }

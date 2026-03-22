@@ -1,5 +1,6 @@
 "use client";
 
+import { useExtracted } from "next-intl";
 import { Card, CardContent, CardLoader } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useNivoTheme } from "@/lib/nivo";
@@ -10,7 +11,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { useGetPerformanceTimeSeries } from "../../../../api/analytics/hooks/performance/useGetPerformanceTimeSeries";
 import { BucketSelection } from "../../../../components/BucketSelection";
-import { RybbitLogo } from "../../../../components/RybbitLogo";
+import { RybbitLogo, RybbitTextLogo } from "../../../../components/RybbitLogo";
 import { authClient } from "../../../../lib/auth";
 import { formatChartDateTime, hour12, userLocale } from "../../../../lib/dateTimeUtils";
 import { getTimezone, useStore } from "../../../../lib/store";
@@ -26,6 +27,7 @@ const tilt_wrap = Tilt_Warp({
 });
 
 export function PerformanceChart() {
+  const t = useExtracted();
   const session = authClient.useSession();
   const { site, bucket } = useStore();
   const { selectedPerformanceMetric, selectedPercentile } = usePerformanceStore();
@@ -149,59 +151,55 @@ export function PerformanceChart() {
   // Create markers for performance thresholds
   const markers = thresholds
     ? [
-        {
-          axis: "y" as const,
-          value: thresholds.good,
-          lineStyle: {
-            stroke: "hsl(var(--green-400))", // green
-            strokeWidth: 1,
-            strokeDasharray: "8 8",
-          },
-          legend: `Good (≤${formatMetricValue(selectedPerformanceMetric, thresholds.good)}${getMetricUnit(
-            selectedPerformanceMetric,
-            thresholds.good
-          )})`,
-          legendPosition: "top-left" as const,
-          legendOrientation: "horizontal" as const,
-          textStyle: {
-            fill: "hsl(var(--green-400))",
-            fontSize: 11,
-          },
+      {
+        axis: "y" as const,
+        value: thresholds.good,
+        lineStyle: {
+          stroke: "hsl(var(--green-400))", // green
+          strokeWidth: 1,
+          strokeDasharray: "8 8",
         },
-        {
-          axis: "y" as const,
-          value: thresholds.needs_improvement,
-          lineStyle: {
-            stroke: "hsl(var(--amber-400))", // yellow/amber
-            strokeWidth: 1,
-            strokeDasharray: "8 8",
-          },
-          legend: `Needs Improvement (≤${formatMetricValue(
-            selectedPerformanceMetric,
-            thresholds.needs_improvement
-          )}${getMetricUnit(selectedPerformanceMetric, thresholds.needs_improvement)})`,
-          legendPosition: "top-left" as const,
-          legendOrientation: "horizontal" as const,
-          textStyle: {
-            fill: "hsl(var(--amber-400))",
-            fontSize: 11,
-          },
+        legend: `Good (≤${formatMetricValue(selectedPerformanceMetric, thresholds.good)}${getMetricUnit(
+          selectedPerformanceMetric,
+          thresholds.good
+        )})`,
+        legendPosition: "top-left" as const,
+        legendOrientation: "horizontal" as const,
+        textStyle: {
+          fill: "hsl(var(--green-400))",
+          fontSize: 11,
         },
-      ]
+      },
+      {
+        axis: "y" as const,
+        value: thresholds.needs_improvement,
+        lineStyle: {
+          stroke: "hsl(var(--amber-400))", // yellow/amber
+          strokeWidth: 1,
+          strokeDasharray: "8 8",
+        },
+        legend: `Needs Improvement (≤${formatMetricValue(
+          selectedPerformanceMetric,
+          thresholds.needs_improvement
+        )}${getMetricUnit(selectedPerformanceMetric, thresholds.needs_improvement)})`,
+        legendPosition: "top-left" as const,
+        legendOrientation: "horizontal" as const,
+        textStyle: {
+          fill: "hsl(var(--amber-400))",
+          fontSize: 11,
+        },
+      },
+    ]
     : [];
 
   return (
-    <Card>
+    <Card className="overflow-visible">
       {isFetching && <CardLoader />}
       <CardContent className="p-2 md:p-4 py-3 w-full">
         <div className="flex items-center justify-between px-2 md:px-0">
           <div className="flex items-center space-x-4">
-            <Link
-              href={session.data ? "/" : "https://rybbit.com"}
-              className={cn("text-lg font-semibold flex items-center gap-1.5 opacity-75", tilt_wrap.className)}
-            >
-              <RybbitLogo width={20} height={20} />
-              rybbit
+            <Link href={session.data ? "/" : "https://rybbit.com"} className="opacity-75">
+              <RybbitTextLogo width={80} height={0} />
             </Link>
           </div>
           <div className="flex items-center space-x-4">
@@ -248,8 +246,8 @@ export function PerformanceChart() {
         ) : data.length === 0 ? (
           <div className="h-[300px] w-full flex items-center justify-center">
             <div className="text-center text-neutral-500">
-              <p className="text-lg font-medium">No performance data available</p>
-              <p className="text-sm">Try adjusting your date range or filters</p>
+              <p className="text-lg font-medium">{t("No performance data available")}</p>
+              <p className="text-sm">{t("Try adjusting your date range or filters")}</p>
             </div>
           </div>
         ) : (

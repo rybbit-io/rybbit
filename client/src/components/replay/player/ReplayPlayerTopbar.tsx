@@ -8,12 +8,25 @@ import {
   DeviceTypeTooltipIcon,
   OperatingSystemTooltipIcon,
 } from "@/components/TooltipIcons/TooltipIcons";
+import { useShallow } from "zustand/react/shallow";
 import { useReplayStore } from "../replayStore";
+
+// Extract pathname from full URL for display
+function getDisplayPath(url: string): string {
+  try {
+    const urlObj = new URL(url);
+    return urlObj.hostname + urlObj.pathname + urlObj.search + urlObj.hash;
+  } catch {
+    return url;
+  }
+}
 
 export function ReplayPlayerTopbar() {
   const params = useParams();
   const siteId = Number(params.site);
-  const { sessionId, currentTime } = useReplayStore();
+  const { sessionId, currentTime } = useReplayStore(
+    useShallow(s => ({ sessionId: s.sessionId, currentTime: s.currentTime }))
+  );
 
   const { data } = useGetSessionReplayEvents(siteId, sessionId);
 
@@ -21,19 +34,18 @@ export function ReplayPlayerTopbar() {
   const screenDimensions = `${metadata?.screen_width} × ${metadata?.screen_height}`;
 
   const pageViewEvents = useMemo(() => {
-    return data?.events?.filter(event => event.type === 4);
+    return data?.events?.filter((event: any) => Number(event.type) === 4);
   }, [data?.events]);
 
   // Get the current page URL based on the replay currentTime
   const pageUrl = useMemo(() => {
-    if (!pageViewEvents || currentTime === 0) {
+    if (!pageViewEvents || pageViewEvents.length === 0 || currentTime === 0) {
       return metadata?.page_url;
     }
 
     let currentUrl = metadata?.page_url;
     const firstTimestamp = pageViewEvents[0].timestamp;
 
-    // Find the most recent Meta event (type 4) with href before currentTime
     for (const event of pageViewEvents) {
       if (event.timestamp - firstTimestamp > currentTime) break;
       if (event.data?.href) {
@@ -58,16 +70,6 @@ export function ReplayPlayerTopbar() {
       </div>
     );
   }
-
-  // Extract pathname from full URL for display
-  const getDisplayPath = (url: string): string => {
-    try {
-      const urlObj = new URL(url);
-      return urlObj.hostname + urlObj.pathname + urlObj.search + urlObj.hash;
-    } catch {
-      return url;
-    }
-  };
 
   return (
     <div className="border border-neutral-100 dark:border-neutral-800 bg-white dark:bg-neutral-900 px-2 py-2 rounded-t-lg overflow-hidden">
