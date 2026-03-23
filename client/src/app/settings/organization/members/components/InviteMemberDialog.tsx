@@ -6,6 +6,7 @@ import { useExtracted } from "next-intl";
 import { useMemo, useState } from "react";
 import { toast } from "@/components/ui/sonner";
 
+import { useTeams } from "@/api/admin/hooks/useTeams";
 import { authedFetch } from "@/api/utils";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -47,10 +48,14 @@ export function InviteMemberDialog({ organizationId, onSuccess, memberCount }: I
     return memberCount >= memberLimit;
   }, [memberLimit, memberCount]);
 
+  const { data: teamsData } = useTeams(organizationId);
+  const teams = teamsData?.teams || [];
+
   const [email, setEmail] = useState("");
   const [role, setRole] = useState<"admin" | "member" | "owner">("member");
   const [restrictSiteAccess, setRestrictSiteAccess] = useState(false);
   const [selectedSiteIds, setSelectedSiteIds] = useState<number[]>([]);
+  const [selectedTeamIds, setSelectedTeamIds] = useState<string[]>([]);
   const [open, setOpen] = useState(false);
   const [error, setError] = useState("");
 
@@ -64,13 +69,17 @@ export function InviteMemberDialog({ organizationId, onSuccess, memberCount }: I
         resend: true,
       });
 
-      // If role is "member" and site access is restricted, update the invitation
-      if (role === "member" && restrictSiteAccess && result.data?.id) {
+      // Update invitation with site access restrictions and/or team assignments
+      const hasTeamAssignments = selectedTeamIds.length > 0;
+      const hasSiteRestrictions = role === "member" && restrictSiteAccess;
+
+      if ((hasSiteRestrictions || hasTeamAssignments) && result.data?.id) {
         await authedFetch(`/organizations/${organizationId}/invitations/${result.data.id}/sites`, undefined, {
           method: "PUT",
           data: {
-            hasRestrictedSiteAccess: true,
-            siteIds: selectedSiteIds,
+            hasRestrictedSiteAccess: hasSiteRestrictions,
+            siteIds: hasSiteRestrictions ? selectedSiteIds : [],
+            teamIds: selectedTeamIds,
           },
         });
       }
@@ -86,6 +95,7 @@ export function InviteMemberDialog({ organizationId, onSuccess, memberCount }: I
       setRole("member");
       setRestrictSiteAccess(false);
       setSelectedSiteIds([]);
+      setSelectedTeamIds([]);
       setError("");
     },
     onError: (err: any) => {
@@ -199,6 +209,38 @@ export function InviteMemberDialog({ organizationId, onSuccess, memberCount }: I
                   </p>
                 </div>
               )}
+            </div>
+          )}
+
+          {teams.length > 0 && (
+            <div className="grid gap-2">
+              <Label>{t("Teams")}</Label>
+              <p className="text-xs text-muted-foreground">
+                {t("Optionally add this member to teams when they accept the invitation.")}
+              </p>
+              <div className="border rounded-lg divide-y max-h-40 overflow-y-auto">
+                {teams.map(team => (
+                  <div key={team.id} className="flex items-center space-x-3 p-2.5 hover:bg-muted/50">
+                    <Checkbox
+                      id={`team-${team.id}`}
+                      checked={selectedTeamIds.includes(team.id)}
+                      onCheckedChange={() => {
+                        setSelectedTeamIds(prev =>
+                          prev.includes(team.id)
+                            ? prev.filter(id => id !== team.id)
+                            : [...prev, team.id]
+                        );
+                      }}
+                    />
+                    <Label htmlFor={`team-${team.id}`} className="flex-1 cursor-pointer text-sm">
+                      <span className="font-medium">{team.name}</span>
+                      <span className="text-muted-foreground ml-2">
+                        {t("{count} sites", { count: String(team.sites.length) })}
+                      </span>
+                    </Label>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
 

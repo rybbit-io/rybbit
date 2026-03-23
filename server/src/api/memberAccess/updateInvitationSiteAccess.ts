@@ -1,8 +1,8 @@
-import { and, eq } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import { FastifyReply, FastifyRequest } from "fastify";
 
 import { db } from "../../db/postgres/postgres.js";
-import { invitation, sites } from "../../db/postgres/schema.js";
+import { invitation, sites, team } from "../../db/postgres/schema.js";
 
 interface UpdateInvitationSiteAccessParams {
   organizationId: string;
@@ -12,6 +12,7 @@ interface UpdateInvitationSiteAccessParams {
 interface UpdateInvitationSiteAccessBody {
   hasRestrictedSiteAccess: boolean;
   siteIds: number[];
+  teamIds?: string[];
 }
 
 export async function updateInvitationSiteAccess(
@@ -22,7 +23,7 @@ export async function updateInvitationSiteAccess(
   reply: FastifyReply
 ) {
   const { organizationId, invitationId } = request.params;
-  const { hasRestrictedSiteAccess, siteIds } = request.body;
+  const { hasRestrictedSiteAccess, siteIds, teamIds } = request.body;
 
   try {
     // Verify the invitation exists and belongs to this organization
@@ -53,12 +54,30 @@ export async function updateInvitationSiteAccess(
       }
     }
 
-    // Update the invitation with site access info
+    // Validate that all teamIds belong to this organization
+    if (teamIds && teamIds.length > 0) {
+      const validTeams = await db
+        .select({ id: team.id })
+        .from(team)
+        .where(and(eq(team.organizationId, organizationId), inArray(team.id, teamIds)));
+
+      const validTeamIds = new Set(validTeams.map(t => t.id));
+      const invalidTeamIds = teamIds.filter(id => !validTeamIds.has(id));
+
+      if (invalidTeamIds.length > 0) {
+        return reply.status(400).send({
+          error: `Invalid team IDs: ${invalidTeamIds.join(", ")}. Teams must belong to this organization.`,
+        });
+      }
+    }
+
+    // Update the invitation with site access and team info
     await db
       .update(invitation)
       .set({
         hasRestrictedSiteAccess,
         siteIds: siteIds || [],
+        teamIds: teamIds || [],
       })
       .where(eq(invitation.id, invitationId));
 
@@ -67,6 +86,7 @@ export async function updateInvitationSiteAccess(
       invitationId,
       hasRestrictedSiteAccess,
       siteIds,
+      teamIds,
     });
   } catch (error) {
     console.error("Error updating invitation site access:", error);

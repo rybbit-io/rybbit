@@ -1,5 +1,5 @@
 {
-  "id": "e19db880-b899-4508-b04e-23383831f8d0",
+  "id": "372ba8dc-511d-480e-b745-28cdc242cea8",
   "prevId": "baa8de49-1e74-469d-8311-ec3ec304fd1c",
   "version": "7",
   "dialect": "postgresql",
@@ -822,6 +822,13 @@
         },
         "site_ids": {
           "name": "site_ids",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'[]'::jsonb"
+        },
+        "team_ids": {
+          "name": "team_ids",
           "type": "jsonb",
           "primaryKey": false,
           "notNull": false,

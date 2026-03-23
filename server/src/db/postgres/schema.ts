@@ -178,6 +178,7 @@ export const invitation = pgTable("invitation", {
   // Site access restriction for the invited member
   hasRestrictedSiteAccess: boolean("has_restricted_site_access").default(false).notNull(),
   siteIds: jsonb("site_ids").default([]).$type<number[]>(), // Array of site IDs to grant access to
+  teamIds: jsonb("team_ids").default([]).$type<string[]>(), // Array of team IDs to add the member to
 });
 
 // Member site access junction table - stores which sites a member has access to
