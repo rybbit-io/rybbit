@@ -66,6 +66,7 @@ import {
   selectGSCProperty,
 } from "./api/gsc/index.js";
 import { updateInvitationSiteAccess, updateMemberSiteAccess } from "./api/memberAccess/index.js";
+import { listTeams, createTeam, updateTeam, deleteTeam } from "./api/teams/index.js";
 import {
   deleteSessionReplay,
   getSessionReplayEvents,
@@ -325,6 +326,14 @@ async function organizationsRoutes(fastify: FastifyInstance) {
   );
 }
 
+async function teamsRoutes(fastify: FastifyInstance) {
+  // Teams
+  fastify.get("/organizations/:organizationId/teams", orgMember, listTeams);
+  fastify.post("/organizations/:organizationId/teams", orgAdminParams, createTeam);
+  fastify.put("/organizations/:organizationId/teams/:teamId", orgAdminParams, updateTeam);
+  fastify.delete("/organizations/:organizationId/teams/:teamId", orgAdminParams, deleteTeam);
+}
+
 async function userRoutes(fastify: FastifyInstance) {
   // User
   fastify.get("/config", getConfig); // Public - returns app config
@@ -383,6 +392,7 @@ async function apiRoutes(fastify: FastifyInstance) {
   await fastify.register(sessionReplayRoutes);
   await fastify.register(sitesRoutes);
   await fastify.register(organizationsRoutes);
+  await fastify.register(teamsRoutes);
   await fastify.register(userRoutes);
   await fastify.register(gscRoutes);
   await fastify.register(stripeAdminRoutes);

@@ -202,6 +202,43 @@ export const memberSiteAccess = pgTable(
   ]
 );
 
+// Team table (BetterAuth)
+export const team = pgTable("team", {
+  id: text("id").primaryKey(),
+  name: text("name").notNull(),
+  organizationId: text("organization_id").notNull().references(() => organization.id, { onDelete: "cascade" }),
+  createdAt: timestamp("created_at", { mode: "string" }).notNull(),
+  updatedAt: timestamp("updated_at", { mode: "string" }),
+});
+
+// Team member table (BetterAuth)
+export const teamMember = pgTable("teamMember", {
+  id: text("id").primaryKey(),
+  teamId: text("team_id").notNull().references(() => team.id, { onDelete: "cascade" }),
+  userId: text("user_id").notNull().references(() => user.id, { onDelete: "cascade" }),
+  createdAt: timestamp("created_at", { mode: "string" }),
+});
+
+// Team site access junction table - stores which sites belong to a team
+export const teamSiteAccess = pgTable(
+  "team_site_access",
+  {
+    id: serial("id").primaryKey().notNull(),
+    teamId: text("team_id")
+      .notNull()
+      .references(() => team.id, { onDelete: "cascade" }),
+    siteId: integer("site_id")
+      .notNull()
+      .references(() => sites.siteId, { onDelete: "cascade" }),
+    createdAt: timestamp("created_at", { mode: "string" }).defaultNow().notNull(),
+  },
+  (table) => [
+    unique("team_site_access_unique").on(table.teamId, table.siteId),
+    index("team_site_access_team_idx").on(table.teamId),
+    index("team_site_access_site_idx").on(table.siteId),
+  ]
+);
+
 // Session table (BetterAuth)
 export const session = pgTable(
   "session",

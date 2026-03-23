@@ -1,6 +1,6 @@
 "use client";
 
-import { CreditCard, Plus, Users } from "lucide-react";
+import { CreditCard, Plus, Users, Users2 } from "lucide-react";
 import { useExtracted } from "next-intl";
 import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
@@ -25,11 +25,17 @@ export default function OrganizationLayout({ children }: { children: React.React
   const isMember = currentMember?.role === "member";
 
   // Determine active tab from pathname
-  const activeTab = pathname.includes("/subscription") ? "subscription" : "organization";
+  const activeTab = pathname.includes("/subscription")
+    ? "subscription"
+    : pathname.includes("/teams")
+      ? "teams"
+      : "organization";
 
   const handleTabChange = (value: string) => {
     if (value === "organization") {
       router.push("/settings/organization/members");
+    } else if (value === "teams") {
+      router.push("/settings/organization/teams");
     } else if (value === "subscription") {
       router.push("/settings/organization/subscription");
     }
@@ -67,6 +73,10 @@ export default function OrganizationLayout({ children }: { children: React.React
                 <TabsTrigger value="organization" className="flex items-center gap-2">
                   <Users size={16} />
                   {t("Organization")}
+                </TabsTrigger>
+                <TabsTrigger value="teams" className="flex items-center gap-2">
+                  <Users2 size={16} />
+                  {t("Teams")}
                 </TabsTrigger>
                 {IS_CLOUD && (
                   <TabsTrigger value="subscription" className="flex items-center gap-2">

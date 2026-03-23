@@ -15,6 +15,13 @@
       "when": 1774062736532,
       "tag": "0001_workable_cable",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1774243249431,
+      "tag": "0002_far_annihilus",
+      "breakpoints": true
     }
   ]
 }

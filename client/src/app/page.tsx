@@ -5,6 +5,7 @@ import { ChevronLeft, ChevronRight, Plus, Search } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { useUserOrganizations } from "../api/admin/hooks/useOrganizations";
 import { useGetSitesFromOrg } from "../api/admin/hooks/useSites";
+import { useTeams } from "../api/admin/hooks/useTeams";
 import { CreateOrganizationDialog } from "../components/CreateOrganizationDialog";
 import { DateSelector } from "../components/DateSelector/DateSelector";
 import { NoOrganization } from "../components/NoOrganization";
@@ -15,6 +16,13 @@ import { Button } from "../components/ui/button";
 import { Card, CardDescription, CardTitle } from "../components/ui/card";
 import { Input } from "../components/ui/input";
 import { MultiSelect } from "../components/ui/multi-select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "../components/ui/select";
 import { useSetPageTitle } from "../hooks/useSetPageTitle";
 import { authClient } from "../lib/auth";
 import { canGoForward, goBack, goForward, useStore } from "../lib/store";
@@ -52,9 +60,12 @@ export default function Home() {
   const shouldShowSites = hasOrganizations && !isLoading;
   const hasNoSites = shouldShowSites && (!sites?.sites || sites.sites.length === 0);
 
+  const { data: teamsData } = useTeams(activeOrganization?.id);
+
   const [createOrgDialogOpen, setCreateOrgDialogOpen] = useState(false);
   const [domainFilter, setDomainFilter] = useState("");
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const [selectedTeamFilter, setSelectedTeamFilter] = useState<string>("all");
 
   // Compute unique tags from all sites
   const allTags = useMemo(() => {
@@ -66,11 +77,20 @@ export default function Home() {
   const [isMounted, setIsMounted] = useState(false);
   useEffect(() => setIsMounted(true), []);
 
-  // Filter sites by domain and tags
+  const teams = teamsData?.teams || [];
+  const hasTeams = teams.length > 0;
+
+  // Filter sites by domain, tags, and team
   const filteredSites = sites?.sites?.filter(site => {
     const matchesDomain = site.domain.toLowerCase().includes(domainFilter.toLowerCase());
     const matchesTags = selectedTags.length === 0 || selectedTags.some(tag => site.tags?.includes(tag));
-    return matchesDomain && matchesTags;
+    let matchesTeam = true;
+    if (selectedTeamFilter === "unassigned") {
+      matchesTeam = !site.teams || site.teams.length === 0;
+    } else if (selectedTeamFilter !== "all") {
+      matchesTeam = site.teams?.some(t => t.id === selectedTeamFilter) || false;
+    }
+    return matchesDomain && matchesTags && matchesTeam;
   });
 
   // Handle successful organization creation
@@ -128,6 +148,22 @@ export default function Home() {
               className="pl-9"
             />
           </div>
+          {hasTeams && (
+            <Select value={selectedTeamFilter} onValueChange={setSelectedTeamFilter}>
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder={t("Filter by team...")} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">{t("All Teams")}</SelectItem>
+                <SelectItem value="unassigned">{t("No Team")}</SelectItem>
+                {teams.map(team => (
+                  <SelectItem key={team.id} value={team.id}>
+                    {team.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
           {allTags.length > 0 && (
             <div className="w-[200px]">
               <MultiSelect
