@@ -4,6 +4,13 @@
  */
 export const DISABLE_ORIGIN_CHECK = process.env.DISABLE_ORIGIN_CHECK === "true";
 
+/**
+ * Minimum score from header heuristic checks to classify a request as a bot.
+ * Each detection signal contributes points; if the total meets or exceeds this
+ * threshold the request is silently rejected.
+ */
+export const BOT_SCORE_THRESHOLD = 5;
+
 const searchDomains = [
   // Google and variants
   "google.com",

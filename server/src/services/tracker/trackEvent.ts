@@ -3,6 +3,7 @@ import { isbot } from "isbot";
 import { z, ZodError } from "zod";
 import { createServiceLogger } from "../../lib/logger/logger.js";
 import { siteConfig } from "../../lib/siteConfig.js";
+import { detectBot } from "./botDetection.js";
 import { sessionsService } from "../sessions/sessionsService.js";
 import { usageService } from "../usageService.js";
 import { pageviewQueue } from "./pageviewQueue.js";
@@ -269,11 +270,24 @@ export async function trackEvent(request: FastifyRequest, reply: FastifyReply) {
     // Skip bot check for Bearer token authenticated requests
     const authHeader = request.headers["authorization"];
     const hasBearerToken = typeof authHeader === "string" && authHeader.startsWith("Bearer ");
-    if (!hasBearerToken && siteConfiguration.blockBots) {
+    if (!hasBearerToken) {
       // Use custom user agent if provided, otherwise fall back to header
       const userAgent = validatedPayload.user_agent || (request.headers["user-agent"] as string);
       if (userAgent && isbot(userAgent)) {
         logger.info({ siteId: validatedPayload.site_id, userAgent }, "Bot request filtered");
+        return reply.status(200).send({
+          success: true,
+          message: "Event not tracked - bot detected",
+        });
+      }
+
+      // Layer 1: Header heuristic bot detection
+      const detection = detectBot(request, userAgent || "");
+      if (detection.isBot) {
+        logger.info(
+          { siteId: validatedPayload.site_id, userAgent, reason: detection.reason, score: detection.score },
+          "Bot request filtered (heuristics)"
+        );
         return reply.status(200).send({
           success: true,
           message: "Event not tracked - bot detected",
