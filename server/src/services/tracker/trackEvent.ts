@@ -310,6 +310,47 @@ export async function trackEvent(request: FastifyRequest, reply: FastifyReply) {
       }
     }
 
+    // Diagnostic logging for known bot pattern (site 9133, 800x600)
+    // TODO: Remove once bot detection rules are tuned
+    if (
+      validatedPayload.site_id === "9133" &&
+      validatedPayload.screenWidth === 800 &&
+      validatedPayload.screenHeight === 600
+    ) {
+      const userAgent = validatedPayload.user_agent || (request.headers["user-agent"] as string) || "";
+      const detection = hasBearerToken ? null : detectBot(request, userAgent);
+      logger.warn(
+        {
+          siteId: validatedPayload.site_id,
+          userAgent,
+          ip: request.ip,
+          clientBotScore: validatedPayload._bs ?? "not_sent",
+          heuristicScore: detection?.score ?? "skipped",
+          heuristicReasons: detection?.reason ?? "skipped",
+          headers: {
+            accept: request.headers["accept"] ?? null,
+            "accept-language": request.headers["accept-language"] ?? null,
+            "accept-encoding": request.headers["accept-encoding"] ?? null,
+            "sec-fetch-site": request.headers["sec-fetch-site"] ?? null,
+            "sec-fetch-mode": request.headers["sec-fetch-mode"] ?? null,
+            "sec-fetch-dest": request.headers["sec-fetch-dest"] ?? null,
+            origin: request.headers["origin"] ?? null,
+            referer: request.headers["referer"] ?? null,
+            connection: request.headers["connection"] ?? null,
+          },
+          payload: {
+            type: validatedPayload.type,
+            hostname: validatedPayload.hostname,
+            pathname: validatedPayload.pathname,
+            language: validatedPayload.language,
+            referrer: validatedPayload.referrer,
+            page_title: validatedPayload.page_title,
+          },
+        },
+        "KNOWN BOT DIAGNOSTIC — site 9133, 800x600 — passed all detection"
+      );
+    }
+
     // Check if the site has exceeded its monthly limit (using numeric siteId)
     if (usageService.isSiteOverLimit(siteConfiguration.siteId)) {
       logger.info({ siteId: validatedPayload.site_id }, "Skipping event - site over monthly limit");
