@@ -16,37 +16,7 @@ type GetOverviewResponse = {
 const getQuery = (params: FilterParams, siteId: number) => {
   const timeStatement = getTimeStatement(params);
   const filterStatement = getFilterStatement(params.filters, siteId, timeStatement);
-  const hasFilter = filterStatement.trim().length > 0;
 
-  if (!hasFilter) {
-    // Single scan: no filter means AllSessionPageviews === FilteredSessions
-    return `
-      WITH SessionMetrics AS (
-          SELECT
-              session_id,
-              anyLast(user_id) AS user_id,
-              MIN(timestamp) AS start_time,
-              MAX(timestamp) AS end_time,
-              countIf(type = 'pageview') AS total_pageviews_in_session
-          FROM events
-          WHERE
-              site_id = {siteId:Int32}
-              ${timeStatement}
-          GROUP BY session_id
-      )
-      SELECT
-          COUNT() AS sessions,
-          AVG(total_pageviews_in_session) AS pages_per_session,
-          sumIf(1, total_pageviews_in_session = 1) / COUNT() * 100 AS bounce_rate,
-          AVG(end_time - start_time) AS session_duration,
-          SUM(total_pageviews_in_session) AS pageviews,
-          COUNT(DISTINCT user_id) AS users
-      FROM SessionMetrics`;
-  }
-
-  // Two scans (down from three):
-  // 1. AllSessionPageviews — unfiltered, for accurate bounce rate / pages_per_session
-  // 2. FilteredSessionsWithStats — filtered, provides session timing + pageviews + users
   return `
     WITH
     AllSessionPageviews AS (

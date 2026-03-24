@@ -70,8 +70,6 @@ const getQuery = (params: FilterParams<{ bucket: TimeBucket }>, siteId: number) 
   const { start_date, end_date, time_zone, bucket = "hour", filters, past_minutes_start, past_minutes_end } = params;
   const timeStatement = getTimeStatement(params);
   const filterStatement = getFilterStatement(filters, siteId, timeStatement);
-  const hasFilter = filterStatement.trim().length > 0;
-
   const pastMinutesRange =
     past_minutes_start !== undefined && past_minutes_end !== undefined
       ? { start: Number(past_minutes_start), end: Number(past_minutes_end) }
@@ -81,61 +79,6 @@ const getQuery = (params: FilterParams<{ bucket: TimeBucket }>, siteId: number) 
   const fillClause = isAllTime ? "" : getTimeStatementFill(params, bucket);
   const tzEscaped = SqlString.escape(time_zone);
 
-  if (!hasFilter) {
-    // No filter: merge AllSessionPageviews + FilteredSessions into one session scan.
-    // A second scan handles pageviews/users bucketed by event timestamp for accuracy.
-    return `
-WITH SessionMetrics AS (
-    SELECT
-        session_id,
-        anyLast(user_id) AS user_id,
-        MIN(timestamp) AS start_time,
-        MAX(timestamp) AS end_time,
-        countIf(type = 'pageview') AS total_pageviews_in_session
-    FROM events
-    WHERE
-        site_id = {siteId:Int32}
-        ${timeStatement}
-    GROUP BY session_id
-),
-SessionBucketed AS (
-    SELECT
-        toDateTime(${TimeBucketToFn[bucket]}(toTimeZone(start_time, ${tzEscaped}))) AS time,
-        COUNT() AS sessions,
-        AVG(total_pageviews_in_session) AS pages_per_session,
-        sumIf(1, total_pageviews_in_session = 1) / COUNT() AS bounce_rate,
-        AVG(end_time - start_time) AS session_duration,
-        COUNT(DISTINCT user_id) AS users
-    FROM SessionMetrics
-    GROUP BY time
-    ORDER BY time ${fillClause}
-),
-EventBucketed AS (
-    SELECT
-        toDateTime(${TimeBucketToFn[bucket]}(toTimeZone(timestamp, ${tzEscaped}))) AS time,
-        countIf(type = 'pageview') AS pageviews
-    FROM events
-    WHERE
-        site_id = {siteId:Int32}
-        ${timeStatement}
-    GROUP BY time
-    ORDER BY time ${fillClause}
-)
-SELECT
-    s.time AS time,
-    s.sessions,
-    s.pages_per_session,
-    s.bounce_rate * 100 AS bounce_rate,
-    s.session_duration,
-    e.pageviews,
-    s.users
-FROM SessionBucketed s
-FULL JOIN EventBucketed e USING time
-ORDER BY time`;
-  }
-
-  // With filters: keep original 3-CTE structure (semantics for bounce rate require
-  // unfiltered pageview counts per session from AllSessionPageviews).
   return `
 WITH
 AllSessionPageviews AS (
