@@ -313,7 +313,7 @@ export async function trackEvent(request: FastifyRequest, reply: FastifyReply) {
     // Diagnostic logging for known bot pattern (site 9133, 800x600)
     // TODO: Remove once bot detection rules are tuned
     if (
-      validatedPayload.site_id === "9133" &&
+      siteConfiguration.siteId === 9133 &&
       validatedPayload.screenWidth === 800 &&
       validatedPayload.screenHeight === 600
     ) {
