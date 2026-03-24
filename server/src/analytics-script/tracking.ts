@@ -9,7 +9,6 @@ export class Tracker {
   private sessionReplayRecorder?: SessionReplayRecorder;
   private errorDedupeCache: Map<string, number> = new Map();
   private errorDedupeLastCleanup = 0;
-
   constructor(config: ScriptConfig) {
     this.config = config;
     this.loadUserId();

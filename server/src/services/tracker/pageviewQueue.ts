@@ -47,33 +47,6 @@ class PageviewQueue {
     // Process each pageview with its geo data
     const processedPageviews = batch.filter(pv => {
       if (pv.site_id == 9133 && pv.screenWidth == 800 && pv.screenHeight == 600) {
-        const ipGeo = geoData?.[pv.ipAddress];
-        this.logger.warn(
-          {
-            userAgent: pv.userAgent,
-            ip: pv.ipAddress,
-            browser: pv.ua?.browser?.name,
-            browserVersion: pv.ua?.browser?.major,
-            os: pv.ua?.os?.name,
-            osVersion: pv.ua?.os?.version,
-            hostname: pv.hostname,
-            pathname: pv.pathname,
-            referrer: pv.referrer,
-            language: pv.language,
-            type: pv.type,
-            country: ipGeo?.countryIso,
-            city: ipGeo?.city,
-            asn: ipGeo?.asn?.org,
-            asnType: ipGeo?.asn?.type,
-            company: ipGeo?.company?.name,
-            datacenter: ipGeo?.datacenter,
-            isProxy: ipGeo?.isProxy,
-            isTor: ipGeo?.isTor,
-            vpn: ipGeo?.vpn,
-            crawler: ipGeo?.crawler,
-          },
-          "KNOWN BOT DROPPED — site 9133, 800x600"
-        );
         return false;
       }
       return true;
