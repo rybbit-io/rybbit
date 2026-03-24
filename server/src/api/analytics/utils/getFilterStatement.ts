@@ -14,9 +14,6 @@ export interface FilterStatementOptions {
 
   // When set, only generate conditions for the listed parameters (all others are skipped)
   includeOnly?: FilterParameter[];
-
-  // When set, skip conditions for the listed parameters
-  excludeParams?: FilterParameter[];
 }
 
 // Raw event-level columns that have consistent values across all events in a session.
@@ -147,14 +144,9 @@ export function getFilterStatement(
           )`;
   };
 
-  const excludeParams = options?.excludeParams;
-  let activeFilters = includeOnly
+  const activeFilters = includeOnly
     ? filtersArray.filter(f => includeOnly.includes(f.parameter))
     : filtersArray;
-  if (excludeParams) {
-    activeFilters = activeFilters.filter(f => !excludeParams.includes(f.parameter));
-  }
-
   if (activeFilters.length === 0) {
     return "";
   }
