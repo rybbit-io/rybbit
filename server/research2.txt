@@ -1,0 +1,135 @@
+Bot Detection for Privacy-Focused Web Analytics: A Practical Guide
+The isbot library catches only the low-hanging fruit. User-agent string matching alone filters roughly 10–30% of actual bot traffic, while bots now comprise 51% of all web traffic — surpassing humans for the first time TheBestVPN in 2024. Thales Group The platforms getting bot detection right (Plausible blocked 1.4 billion fake pageviews since February 2023) all use a layered approach: UA matching, datacenter IP filtering, referrer spam lists, header analysis, and behavioral signals. For a privacy-focused Node.js/ClickHouse analytics platform, you can implement all of these layers without fingerprinting users or storing personal data.
+The core insight from studying six open-source analytics platforms is that JavaScript-based analytics already provides the single most effective bot filter for free — most bots never execute your tracking script. Fvsch But headless browsers (Puppeteer, Playwright) running real Chrome with spoofed UAs absolutely do, and they're invisible to isbot. The fix requires stacking five or six additional detection layers, each cheap individually but powerful in combination.
+
+What the open-source analytics platforms actually do
+Every major privacy analytics platform uses a different combination of techniques, but a clear hierarchy of effectiveness emerges from examining their codebases and documentation.
+Plausible Analytics has the most sophisticated open-source approach with four distinct layers: UA filtering via ua_inspector (an Elixir wrapper around Matomo's Device Detector YAML database), referrer spam domain exclusion, datacenter IP blocking across ~32,000 IP ranges, Plausible Analytics and a proprietary unnatural traffic pattern detection algorithm. X In a controlled test published May 2025, Plausible correctly rejected all simulated Puppeteer bot traffic — including bots with realistic Chrome user-agents running from datacenter IPs — that Google Analytics counted as real pageviews. plausible +2
+Umami relies almost entirely on the isbot npm package, checking isbot(req.headers['user-agent']) in its /api/send endpoint and silently returning {"beep": "boop"} for detected bots. GitHubmostlylucid It performs no IP-based detection, no referrer spam filtering, and no behavioral analysis in the open-source version. This explains why isbot users still see significant bot traffic leaking through.
+Matomo offers the deepest detection through its plugin architecture. The core uses its own Device Detector library Matomo (the same YAML bot definitions that Plausible borrows). A premium Tracking Spam Prevention plugin adds cloud provider IP blocking (AWS, Azure, GCP, DigitalOcean, Oracle Cloud), headless browser detection, server-side library blocking (cURL, Postman, Guzzle), Matomo max-actions-per-visit rate limiting, and country-based filtering. Matomo Version 5.5.0 introduced AI-powered bot pattern recognition. Matomo
+PostHog uniquely splits detection across client and server. The posthog-js browser library maintains a blocked user-agent list in TypeScript that stops all event capture before network requests are made. PostHog Server-side, a CDP (Customer Data Platform) transformation filters events by both UA patterns and known bot IP addresses, PostHog supporting custom CIDR-notation IP prefix blocking. posthog
+Simple Analytics checks browser API traces for headless browser inconsistencies and offers opt-in advanced robot blocking that checks IPs against datacenter databases from Udger, AWS, GCP, and Azure — crucially noting they never store visitor IPs, not even hashed. simpleanalytics
+The pattern is clear: platforms relying solely on UA matching (like Umami's isbot) have the weakest bot filtering, while those combining UA + IP + behavioral detection (Plausible, Matomo premium) achieve dramatically better results. Medium
+Detection LayerPlausibleUmamiMatomoPostHogSimple AnalyticsUA string matching✅ Device Detector✅ isbot✅ Device Detector✅ Custom list✅ ProprietaryDatacenter IP blocking✅ ~32K ranges❌✅ Premium✅ CDP pipeline✅ Udger + cloudReferrer spam filtering✅❌✅ Community list❌✅Behavioral/pattern detection✅ Proprietary❌✅ Rate limiting + AI❌❌Headless browser detection✅❌✅ Premium✅ Client-side✅ Browser traces
+
+Server-side detection layers beyond user-agent matching
+Datacenter IP filtering is the highest-value addition
+After UA matching, datacenter IP blocking provides the single largest improvement in bot detection. Sophisticated bots spoof user-agent strings trivially, but they overwhelmingly run from cloud infrastructure. Plausible's ~32,000 datacenter IP ranges GitHub catch bots that isbot completely misses. Plausible Analytics
+Major cloud providers publish machine-readable IP ranges that you can fetch and cache daily:
+
+AWS: https://ip-ranges.amazonaws.com/ip-ranges.json (JSON, prefixes[].ip_prefix)
+GCP: https://www.gstatic.com/ipranges/cloud.json (JSON, prefixes[].ipv4Prefix)
+Azure: Published monthly via ServiceTags JSON downloads
+Cloudflare: https://www.cloudflare.com/ips-v4 (plain text, one CIDR per line)
+
+For Node.js, use the ipaddr.js or ip-cidr packages for CIDR matching against these ranges. Beyond Measure Store ranges in memory as a sorted structure for fast lookup. For broader datacenter detection beyond the big three, ipinfo.io provides ASN-level hosting classification (hosting vs. ISP vs. business), and ipdata.co offers an asn.type field with values like "hosting," "isp," and "business." The free MaxMind GeoLite2 ASN database provides organization names matchable against known hosting providers.
+Critical nuance: don't hard-block datacenter IPs. Use them as a weighted signal. VPN users and corporate proxy users (Zscaler, Cisco Umbrella) also route through cloud infrastructure. Plausible's approach is instructive — they maintain a separate VPN provider IP list and still count VPN users, grouping their location as "Anonymous VPN Service." Plausible Analyticsplausible Combine datacenter IP detection with other signals: datacenter IP + missing Accept-Language + no interaction = almost certainly a bot. Datacenter IP + normal headers + realistic browsing = probably VPN/corporate user. IPPriv
+Header analysis catches lazy bots
+Real browsers send a predictable set of HTTP headers that most bot frameworks omit or misconfigure:
+
+Missing Accept-Language: Every real browser sends this. Its absence is a strong bot signal. PHP SearXNG's bot detection flags requests without it. SearXNG
+Missing Sec-Fetch-* headers: Chrome 80+, Firefox 90+, and Safari 16.4+ always send Sec-Fetch-Dest, Sec-Fetch-Mode, and Sec-Fetch-Site. A user-agent claiming to be Chrome 120 without these headers is lying.
+Missing Sec-CH-UA Client Hints: Chromium browsers v89+ always send these. Their absence when the UA claims to be Chrome is a red flag.
+Accept: */* only: Real browsers send specific accept types; simple HTTP clients send the wildcard.
+Connection: close: Modern browsers use keep-alive; simple bot clients often send close. SearXNG
+
+For advanced deployments, TLS fingerprinting (JA3/JA4) compares the TLS ClientHello against the claimed user-agent. Trend Micro A request claiming to be Chrome 120 but presenting a Python requests TLS fingerprint is definitively a bot. JA4 (the successor to JA3) sorts TLS extensions before hashing, making it resistant to Chrome's extension randomization. Roundproxies BlogScrapingAnt For Node.js, the Go-based fingerproxy reverse proxy generates JA3/JA4 fingerprints and forwards them as HTTP headers. GitHub Cloudflare exposes these natively for Enterprise plans. Cloudflare
+Referrer spam and rate limiting
+The Matomo referrer-spam-list (github.com/matomo-org/referrer-spam-list) is the gold standard — a community-maintained, regularly updated plain-text file of spam domains used by Matomo, Fathom Lite, and many other tools. Fetch it weekly, parse into a Set for O(1) lookups, and check referrer hostnames via substring matching. GitHubGitHub
+For rate limiting, track events per hashed IP in a sliding window using Redis or an in-memory store. Sensible thresholds: flag at >100 pageviews/IP/hour, hard-limit at >500. ClickHouse is excellent for retrospective anomaly detection — query for IP hashes with anomalous patterns: impossibly fast page sequences, uniform request intervals (bots often hit pages at perfectly regular 2-second intervals), or single-page sessions at massive volume. Ingest LabsAnalyticsthatprofit
+
+Client-side detection that respects privacy
+JavaScript execution is your strongest inherent filter
+The foundational advantage of client-side analytics is that the majority of bots — estimated 60–80% of bad bots — never execute JavaScript. Running a headless browser costs 10–100x more resources than simple HTTP requests, so most scrapers, AI training crawlers, SEO bots, and social media preview bots skip JS entirely. Kalzumeus Your tracking script IS the filter: if it runs, that visitor already passed the first gate.
+You can strengthen this by having the script perform a small computation — adding random numbers, performing an AJAX POST rather than a pixel GET, or solving a lightweight proof-of-work challenge — before sending the analytics beacon. Kalzumeus
+Detecting headless browsers without fingerprinting users
+For the 20–40% of sophisticated bots that DO run JavaScript, several client-side checks detect automation frameworks without creating persistent user identifiers. The key privacy principle: check characteristics client-side, compute a boolean or numeric score, transmit only the score — never the raw signal data.
+The most reliable signals, in order of detection value:
+
+navigator.webdriver === true — Set automatically when browser is controlled by automation. Castle.io Bypassed with --disable-blink-features=AutomationControlled, Castle.io but many bots don't bother.
+Chrome DevTools Protocol (CDP) detection — The state-of-the-art technique in 2025. Puppeteer and Playwright communicate via CDP's WebSocket protocol, which can be detected by defining a property getter on an Error object's stack and logging it via console.log. When CDP's Runtime.enable is active, the serialization triggers the getter. Castle.io This catches most Puppeteer/Playwright bots, though newer frameworks like "nodriver" bypass it.
+window.outerHeight === 0 || window.outerWidth === 0 — Headless browsers return zero for outer window dimensions.
+navigator.connection?.rtt === 0 — Network round-trip time of zero indicates a headless environment.
+WebGL renderer check — Real browsers report actual GPU hardware (e.g., "ANGLE (Apple, Apple M4 Pro)"). Headless Chrome reports "Google SwiftShader" — a software renderer. DataDome Check this value, compare against the claimed UA, but do not store the hash.
+Missing window.chrome object — Present in real Chrome, absent in many headless configurations.
+navigator.plugins.length === 0 — Headless Chrome lacks default plugins (PDF viewer, etc.). Antoinevastel Caveat: Firefox also shows 0, so combine with UA checks.
+Notification permission inconsistency — In headless mode, Notification.permission and navigator.permissions.query({name: 'notifications'}) return contradictory values. Latenode
+
+A privacy-compatible implementation runs all checks client-side and transmits a single botScore integer:
+javascriptconst signals = {
+  webdriver: navigator.webdriver === true,
+  zeroOuterDim: window.outerHeight === 0,
+  zeroRtt: navigator.connection?.rtt === 0,
+  noChrome: !window.chrome && /Chrome/.test(navigator.userAgent),
+  swiftShader: getWebGLRenderer().includes('SwiftShader'),
+  cdpDetected: detectCDP()
+};
+const botScore = Object.values(signals).filter(Boolean).length;
+// Transmit only: { botScore: 3 } — not the individual signals
+Behavioral signals as a lightweight human proof
+A simple interaction check adds significant detection value without privacy concerns: listen for mousemove, scroll, keydown, or touchstart events, set a boolean hasInteracted = true on first occurrence, and include it in the analytics beacon after a 3–5 second timeout. Zero interaction on a pageview is a moderate bot signal; zero interaction combined with datacenter IP and missing headers is definitive.
+Full behavioral analysis (mouse trajectory modeling, click timing distributions) is powerful — academic research shows CNN+LSTM models analyzing mouse movements achieve 99.78% bot detection accuracy — but it's overkill for privacy-focused analytics. The binary "any interaction at all" signal captures most of the value.
+
+Threading the privacy-vs-detection needle
+The philosophical distinction is straightforward: fingerprinting identifies WHO someone is across sessions; bot detection identifies WHAT something is within a single request. Checking navigator.webdriver to classify a visit as automated is categorically different from hashing canvas output to re-identify a returning user.
+Privacy-focused platforms thread this needle through four principles:
+
+Stateless evaluation: Each request is assessed independently. No cookies, no cross-session linking, no persistent identifiers. Plausible, Umami, and Fathom all follow this model.
+Data minimization: Collect only what's needed for classification. Check the WebGL renderer for "SwiftShader" — don't store the full renderer string. Compute a bot score client-side — don't transmit raw behavioral data.
+Process-and-discard: IP addresses are used for datacenter classification in real-time, then never stored. Simple Analytics explicitly states they "never store visitor IPs, not even hashed." simpleanalytics
+Legitimate interest basis: Under GDPR Article 6.1(f), bot detection for platform security qualifies as a legitimate interest. GitHub The key is proportionality — collect only signals necessary for detection, don't repurpose the data.
+
+None of the techniques recommended in this report — UA matching, datacenter IP classification (without storage), header consistency checking, client-side environment detection (transmitting only scores), or interaction boolean checks — require cookies, create persistent identifiers, or constitute user tracking under GDPR, ePrivacy, or CCPA frameworks.
+
+Libraries and tools for your Node.js stack
+UA detection libraries (pick one primary, consider layering)
+Librarynpm PackageApproachMaintenanceBest ForisbotisbotSingle optimized regex from 1,800+ patternsVery active, used by Next.js itselfYour current choice — good baselinedevice-detector-jsdevice-detector-jsTypeScript port of Matomo Device Detector, 10K+ test casesActive, synced with Matomo upstreamRicher detection: identifies bot name, type, and produceres6-crawler-detectes6-crawler-detectES6 port of PHP CrawlerDetect, includes Express middlewareUpdated ~10 months agoDrop-in Express/Next.js middlewarenode-device-detectornode-device-detectorAnother Matomo Device Detector port with Client Hints supportActive, v2.2.5+Full device/browser/OS detection alongside bot detection
+Recommendation: Keep isbot for fast boolean checks on every request, and add device-detector-js for richer classification when isbot returns false but other signals are suspicious. The Matomo Device Detector YAML definitions detect hundreds of bot types npm that isbot's regex misses.
+Client-side bot detection
+FingerprintJS BotD (@fingerprintjs/botd, MIT license) is the standout option — a client-side-only library that detects automation tools and headless browsers. GitHub It runs entirely in the browser and produces a bot/not-bot classification. The open-source version covers the environment checks described above; the Pro version adds server-side data and cursor movement analysis. GitHub
+IP and infrastructure detection
+
+Cloud provider IP ranges: Fetch directly from AWS, GCP, and Azure endpoints (listed above) on a daily cron
+ipinfo.io: Hosting detection via ASN classification (free tier available)
+MaxMind GeoLite2 ASN: Free database for ASN organization name matching
+Firehol blocklist-ipsets (github.com/firehol/blocklist-ipsets): Aggregated IP blocklists including botnets GitHub
+
+Referrer spam
+
+Matomo referrer-spam-list (github.com/matomo-org/referrer-spam-list): Definitive community-maintained list, one domain per line, updated regularly GitHub
+
+The IAB/ABC Spiders & Bots List
+The industry-standard IAB list costs $4,000–$14,000/year, Bounteous updates monthly, IAB Tech Lab and cannot be redistributed — making it impractical for open-source projects. GA4 uses it internally for its built-in bot filtering. Plausible AnalyticsGoodfellastech For open-source alternatives, the combination of isbot + Matomo Device Detector patterns provides comparable coverage at zero cost.
+
+The bot landscape by the numbers
+51% of web traffic is now automated (Imperva/Thales 2025 report), Thales Group with 37% classified as bad bots — up from 24% in 2019. The six-year trend is unambiguous: bad bot traffic grows every year while human traffic share shrinks. Whole WhaleHelp Net Security
+The bots most likely to slip through your current isbot filter fall into distinct categories. Headless Chrome bots (Puppeteer, Playwright, Selenium) run real browser engines with spoofed UAs and are invisible to UA-based filtering Kameleo — tools like Puppeteer Stealth include 17 evasion modules. Latenode AI training crawlers have exploded: GPTBot's share of AI crawler traffic grew from 5% to 30% between May 2024 and May 2025, and Meta-ExternalAgent surged from under 1% to 19%. Cloudflare Most AI crawlers identify themselves in UA strings (making them filterable), but 5.7% of traffic claiming to be known AI crawlers is actually spoofed, with ChatGPT user-agents showing a 16.7% spoof rate.
+Social media preview bots are a major source of phantom traffic — Facebook's facebookexternalhit alone accounted for 27.16% of all identified bot traffic in 2024. Computerworld These don't execute JavaScript (so client-side analytics ignores them), but server-side tracking will count them. Residential proxy bots are the hardest category: Thales DataDome research found only 16% of websites can detect bots using residential proxies. DataDome These bots route through real home ISP connections with legitimate IP addresses, Help Net SecurityCloudflare execute JavaScript, and simulate human behavior.
+The effectiveness gap is stark. GA4's built-in IAB bot filter typically reduces sessions by only ~1% in controlled tests. MediumWellows Plausible's multi-layer approach, by contrast, catches bot traffic that GA4 counts as real. Metricsrule +3 Standard UA filtering alone catches perhaps 10–30% of actual bot traffic.
+
+Recommended implementation architecture
+For your Node.js/Next.js + ClickHouse platform, implement detection as a scoring pipeline rather than a binary block. Store all events with their bot score, letting dashboard users set their own filtering threshold. This enables retroactive adjustment as detection improves.
+Request arrives
+  → Layer 1: isbot(ua) check                     [~0.1ms, catches ~30% of bots]
+  → Layer 2: Header consistency                   [~0.1ms, catches lazy spoofers]
+       Missing Accept-Language? Sec-Fetch-* absent for claimed Chrome 80+?
+  → Layer 3: Datacenter IP CIDR match             [~0.5ms, catches cloud-hosted bots]
+       AWS + GCP + Azure + DO ranges, refreshed daily
+  → Layer 4: Referrer spam check                  [~0.1ms, catches spam referrers]
+       Matomo referrer-spam-list, refreshed weekly
+  → Layer 5: Rate limiting                        [~0.5ms via Redis]
+       >100 events/IP-hash/hour = suspicious, >500 = bot
+  → Layer 6: Client-side bot score                [arrives with beacon]
+       navigator.webdriver, outerHeight, WebGL renderer, CDP detection
+  → Composite score written to ClickHouse alongside event data
+Each layer adds a weighted signal to a composite bot_score (0–100). Store the score and the triggered detection reasons as a ClickHouse column. The dashboard filters on bot_score < threshold (default 30, user-adjustable). This architecture mirrors what Plausible does internally while adding client-side environment checks that Plausible omits.
+Quick wins for immediate implementation (ordered by effort-to-impact ratio):
+
+Add datacenter IP filtering — Fetch AWS/GCP/Azure IP ranges daily, CIDR-match incoming requests. This is the single highest-value addition beyond what isbot provides.
+Add header consistency checks — Five lines of code checking for Accept-Language, Sec-Fetch-*, and Sec-CH-UA against claimed browser version.
+Add the Matomo referrer spam list — Fetch weekly, substring-match referrer hostnames.
+Add device-detector-js as a secondary UA classifier — Catches bots that isbot's regex misses.
+Add client-side environment checks — Ship a small detection routine in your tracking script that sends a botScore integer with each beacon.
+Add per-IP-hash rate limiting — Redis sliding window, flag anomalous request volumes.
+
+These six additions, all privacy-compatible and practical for a self-hosted platform, would bring your detection capabilities roughly in line with Plausible's — currently the gold standard among open-source privacy analytics for bot filtering accuracy.
