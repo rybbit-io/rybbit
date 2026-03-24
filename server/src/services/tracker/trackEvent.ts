@@ -4,6 +4,7 @@ import { z, ZodError } from "zod";
 import { createServiceLogger } from "../../lib/logger/logger.js";
 import { siteConfig } from "../../lib/siteConfig.js";
 import { detectBot } from "./botDetection.js";
+import { CLIENT_BOT_SCORE_THRESHOLD } from "./const.js";
 import { sessionsService } from "../sessions/sessionsService.js";
 import { usageService } from "../usageService.js";
 import { pageviewQueue } from "./pageviewQueue.js";
@@ -25,6 +26,7 @@ const baseEventFields = {
   tag: z.string().max(256).optional(),
   ip_address: z.string().ip().optional(),
   user_agent: z.string().max(512).optional(),
+  _bs: z.number().int().min(0).max(10).optional(),
 };
 
 // Default event_name and properties used by pageview and performance
@@ -287,6 +289,19 @@ export async function trackEvent(request: FastifyRequest, reply: FastifyReply) {
         logger.info(
           { siteId: validatedPayload.site_id, userAgent, reason: detection.reason, score: detection.score },
           "Bot request filtered (heuristics)"
+        );
+        return reply.status(200).send({
+          success: true,
+          message: "Event not tracked - bot detected",
+        });
+      }
+
+      // Client-side bot signal score check
+      const clientBotScore = validatedPayload._bs;
+      if (typeof clientBotScore === "number" && clientBotScore >= CLIENT_BOT_SCORE_THRESHOLD) {
+        logger.info(
+          { siteId: validatedPayload.site_id, clientBotScore },
+          "Bot request filtered (client signals)"
         );
         return reply.status(200).send({
           success: true,

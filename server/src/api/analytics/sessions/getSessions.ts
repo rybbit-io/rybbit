@@ -2,7 +2,7 @@ import { FastifyReply, FastifyRequest } from "fastify";
 import { clickhouse } from "../../../db/clickhouse/clickhouse.js";
 import { enrichWithTraits, getTimeStatement, processResults } from "../utils/utils.js";
 import { FilterParams } from "@rybbit/shared";
-import { getFilterStatement, getEventLevelFilterStatement } from "../utils/getFilterStatement.js";
+import { getFilterStatement, getEventLevelFilterStatement, INNER_SAFE_PARAMS } from "../utils/getFilterStatement.js";
 
 export type GetSessionsResponse = {
   session_id: string;
@@ -101,6 +101,7 @@ export async function getSessions(req: FastifyRequest<GetSessionsRequest>, res: 
   const filterStatement = getFilterStatement(filters, Number(site), timeStatement, {
     sessionLevelParams: ["event_name", "pathname", "page_title"],
     fieldMappings: SESSION_FIELD_MAPPINGS,
+    excludeParams: INNER_SAFE_PARAMS,
   });
 
   // Inner filter: only raw event-level columns (country, browser, device_type, etc.)
