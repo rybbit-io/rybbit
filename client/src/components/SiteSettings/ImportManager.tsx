@@ -132,7 +132,9 @@ export function ImportManager({ siteId, disabled }: ImportManagerProps) {
               allowedDateRange.latestAllowedDate
             );
             workerManagerRef.current = parser;
-            parser.startImport(selectedFile);
+            parser.startImport(selectedFile).catch((err) => {
+              console.error("Plausible import failed:", err);
+            });
           } else {
             const parser = new CsvParser(
               siteId,
