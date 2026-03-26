@@ -26,6 +26,7 @@ import { useGetSiteImports, useCreateSiteImport, useDeleteSiteImport } from "@/a
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { IS_CLOUD } from "@/lib/const";
 import { CsvParser } from "@/lib/import/csvParser";
+import { PlausibleCsvParser } from "@/lib/import/plausibleParser";
 import { ImportPlatform } from "@/types/import";
 import { DisabledOverlay } from "@/components/DisabledOverlay";
 
@@ -35,17 +36,23 @@ interface ImportManagerProps {
 }
 
 const CONFIRM_THRESHOLD = 100 * 1024 * 1024;
-const ALLOWED_FILE_TYPES = ["text/csv"];
-const ALLOWED_EXTENSIONS = [".csv"];
+const ALLOWED_FILE_TYPES = ["text/csv", "application/zip", "application/x-zip-compressed"];
+const ALLOWED_EXTENSIONS = [".csv", ".zip"];
 
-function validateFile(file: File | null, t: (key: string) => string): string {
+function validateFile(file: File | null, platform: ImportPlatform | "", t: (key: string) => string): string {
   if (!file) {
     return t("Please select a file");
   }
 
   const extension = "." + file.name.split(".").pop()?.toLowerCase();
-  if (!ALLOWED_EXTENSIONS.includes(extension) && !ALLOWED_FILE_TYPES.includes(file.type)) {
-    return t("Only CSV files are accepted");
+  if (platform === "plausible") {
+    if (extension !== ".zip" && !["application/zip", "application/x-zip-compressed"].includes(file.type)) {
+      return t("Please upload a ZIP file exported from Plausible");
+    }
+  } else {
+    if (extension !== ".csv" && file.type !== "text/csv") {
+      return t("Only CSV files are accepted");
+    }
   }
 
   return "";
@@ -66,6 +73,7 @@ function formatPlatformName(platform: ImportPlatform): string {
   const platformNames: Record<ImportPlatform, string> = {
     umami: "Umami",
     simple_analytics: "Simple Analytics",
+    plausible: "Plausible",
   };
   return platformNames[platform];
 }
@@ -78,7 +86,7 @@ export function ImportManager({ siteId, disabled }: ImportManagerProps) {
   const [selectedPlatform, setSelectedPlatform] = useState<ImportPlatform | "">("");
   const [fileError, setFileError] = useState<string>("");
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const workerManagerRef = useRef<CsvParser | null>(null);
+  const workerManagerRef = useRef<CsvParser | PlausibleCsvParser | null>(null);
 
   const { data, isLoading, error } = useGetSiteImports(siteId);
   const createImportMutation = useCreateSiteImport(siteId);
@@ -93,7 +101,7 @@ export function ImportManager({ siteId, disabled }: ImportManagerProps) {
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0] || null;
     setSelectedFile(file);
-    setFileError(validateFile(file, t));
+    setFileError(validateFile(file, selectedPlatform, t));
   };
 
   const onSubmit = (e: React.FormEvent) => {
@@ -116,15 +124,26 @@ export function ImportManager({ siteId, disabled }: ImportManagerProps) {
         onSuccess: response => {
           const { importId, allowedDateRange } = response.data;
 
-          workerManagerRef.current = new CsvParser(
-            siteId,
-            importId,
-            selectedPlatform,
-            allowedDateRange.earliestAllowedDate,
-            allowedDateRange.latestAllowedDate
-          );
-
-          workerManagerRef.current.startImport(selectedFile);
+          if (selectedPlatform === "plausible") {
+            const parser = new PlausibleCsvParser(
+              siteId,
+              importId,
+              allowedDateRange.earliestAllowedDate,
+              allowedDateRange.latestAllowedDate
+            );
+            workerManagerRef.current = parser;
+            parser.startImport(selectedFile);
+          } else {
+            const parser = new CsvParser(
+              siteId,
+              importId,
+              selectedPlatform,
+              allowedDateRange.earliestAllowedDate,
+              allowedDateRange.latestAllowedDate
+            );
+            workerManagerRef.current = parser;
+            parser.startImport(selectedFile);
+          }
 
           setSelectedFile(null);
           setSelectedPlatform("");
@@ -216,13 +235,21 @@ export function ImportManager({ siteId, disabled }: ImportManagerProps) {
               {/* Platform Selection */}
               <div className="space-y-2">
                 <Label htmlFor="platform">{t("Platform")}</Label>
-                <Select value={selectedPlatform} onValueChange={(value: ImportPlatform) => setSelectedPlatform(value)}>
+                <Select value={selectedPlatform} onValueChange={(value: ImportPlatform) => {
+                  setSelectedPlatform(value);
+                  setSelectedFile(null);
+                  setFileError("");
+                  if (fileInputRef.current) {
+                    fileInputRef.current.value = "";
+                  }
+                }}>
                   <SelectTrigger id="platform" disabled={disabled || createImportMutation.isPending || hasActiveImport}>
                     <SelectValue placeholder={t("Select platform")} />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="umami">Umami</SelectItem>
                     <SelectItem value="simple_analytics">Simple Analytics</SelectItem>
+                    <SelectItem value="plausible">Plausible</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -237,11 +264,16 @@ export function ImportManager({ siteId, disabled }: ImportManagerProps) {
                   ref={fileInputRef}
                   id="file"
                   type="file"
-                  accept=".csv"
+                  accept={selectedPlatform === "plausible" ? ".zip" : ".csv"}
                   multiple={false}
                   onChange={handleFileChange}
                   disabled={disabled || createImportMutation.isPending || hasActiveImport}
                 />
+                {selectedPlatform === "plausible" && (
+                  <p className="text-sm text-muted-foreground">
+                    {t("Upload the ZIP file exported from Plausible")}
+                  </p>
+                )}
                 {fileError && <p className="text-sm text-red-600">{fileError}</p>}
               </div>
 
