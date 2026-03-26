@@ -48,6 +48,3 @@ coverage/
 .claude/
 
 .agents/
-
-# Test data (sample exports from analytics platforms)
-test-data/
