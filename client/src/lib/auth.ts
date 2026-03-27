@@ -4,7 +4,11 @@ import { createAuthClient } from "better-auth/react";
 
 export const authClient = createAuthClient({
   baseURL: process.env.NEXT_PUBLIC_BACKEND_URL,
-  plugins: [adminClient(), organizationClient(), emailOTPClient(), apiKeyClient()],
+  plugins: [adminClient(), organizationClient({
+    teams: {
+      enabled: true,
+    },
+  }), emailOTPClient(), apiKeyClient()],
   fetchOptions: {
     credentials: "include",
   },

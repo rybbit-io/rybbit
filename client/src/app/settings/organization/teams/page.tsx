@@ -1,13 +1,12 @@
 "use client";
 
-import { Globe, Plus, Users2 } from "lucide-react";
+import { ChevronDown, Globe, Plus, Users2 } from "lucide-react";
 import { useExtracted } from "next-intl";
 import { useState } from "react";
 
 import { Team } from "@/api/admin/endpoints/teams";
 import { useTeams } from "@/api/admin/hooks/useTeams";
 import { NoOrganization } from "@/components/NoOrganization";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -17,6 +16,7 @@ import {
 } from "@/components/ui/card";
 import { useSetPageTitle } from "@/hooks/useSetPageTitle";
 import { authClient } from "@/lib/auth";
+import { cn } from "@/lib/utils";
 import { CreateEditTeamDialog } from "./components/CreateEditTeamDialog";
 import { DeleteTeamDialog } from "./components/DeleteTeamDialog";
 
@@ -30,6 +30,19 @@ export default function TeamsPage() {
   );
 
   const [editingTeam, setEditingTeam] = useState<Team | null>(null);
+  const [expandedTeams, setExpandedTeams] = useState<Set<string>>(new Set());
+
+  const toggleExpanded = (teamId: string) => {
+    setExpandedTeams((prev) => {
+      const next = new Set(prev);
+      if (next.has(teamId)) {
+        next.delete(teamId);
+      } else {
+        next.add(teamId);
+      }
+      return next;
+    });
+  };
 
   if (isPending) {
     return (
@@ -96,56 +109,114 @@ export default function TeamsPage() {
             </div>
           ) : (
             <div className="space-y-3">
-              {teams.map((team) => (
-                <div
-                  key={team.id}
-                  className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors"
-                >
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <h3 className="font-medium truncate">{team.name}</h3>
+              {teams.map((team) => {
+                const isExpanded = expandedTeams.has(team.id);
+                return (
+                  <div
+                    key={team.id}
+                    className="border rounded-lg transition-colors"
+                  >
+                    <div
+                      className="flex items-center justify-between p-4 cursor-pointer hover:bg-muted/50"
+                      onClick={() => toggleExpanded(team.id)}
+                    >
+                      <div className="flex items-center gap-3 flex-1 min-w-0">
+                        <ChevronDown
+                          className={cn(
+                            "h-4 w-4 shrink-0 text-muted-foreground transition-transform",
+                            !isExpanded && "-rotate-90"
+                          )}
+                        />
+                        <div className="flex-1 min-w-0">
+                          <h3 className="font-medium truncate">{team.name}</h3>
+                          <div className="flex items-center gap-3 mt-1 text-sm text-muted-foreground">
+                            <span className="flex items-center gap-1">
+                              <Users2 className="h-3.5 w-3.5" />
+                              {t("{count} members", {
+                                count: String(team.members.length),
+                              })}
+                            </span>
+                            <span className="flex items-center gap-1">
+                              <Globe className="h-3.5 w-3.5" />
+                              {t("{count} sites", {
+                                count: String(team.sites.length),
+                              })}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                      <div
+                        className="flex items-center gap-2 ml-4"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setEditingTeam(team)}
+                        >
+                          {t("Edit")}
+                        </Button>
+                        <DeleteTeamDialog team={team} />
+                      </div>
                     </div>
-                    <div className="flex items-center gap-3 mt-1 text-sm text-muted-foreground">
-                      <span className="flex items-center gap-1">
-                        <Users2 className="h-3.5 w-3.5" />
-                        {t("{count} members", {
-                          count: String(team.members.length),
-                        })}
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <Globe className="h-3.5 w-3.5" />
-                        {t("{count} sites", {
-                          count: String(team.sites.length),
-                        })}
-                      </span>
-                    </div>
-                    {team.sites.length > 0 && (
-                      <div className="flex flex-wrap gap-1 mt-2">
-                        {team.sites.slice(0, 5).map((site) => (
-                          <Badge key={site.siteId} variant="secondary" className="text-xs">
-                            {site.domain}
-                          </Badge>
-                        ))}
-                        {team.sites.length > 5 && (
-                          <Badge variant="outline" className="text-xs">
-                            +{team.sites.length - 5}
-                          </Badge>
-                        )}
+                    {isExpanded && (
+                      <div className="border-t px-4 py-3">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div>
+                            <h4 className="text-sm font-medium mb-2 flex items-center gap-1.5">
+                              <Users2 className="h-3.5 w-3.5" />
+                              {t("Members")}
+                            </h4>
+                            {team.members.length === 0 ? (
+                              <p className="text-sm text-muted-foreground">
+                                {t("No members")}
+                              </p>
+                            ) : (
+                              <div className="space-y-1">
+                                {team.members.map((member) => (
+                                  <div
+                                    key={member.userId}
+                                    className="text-sm py-1 px-2 rounded hover:bg-muted/50"
+                                  >
+                                    <span>{member.userName || member.userEmail}</span>
+                                    {member.userName && (
+                                      <span className="text-muted-foreground ml-2 text-xs">
+                                        {member.userEmail}
+                                      </span>
+                                    )}
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                          <div>
+                            <h4 className="text-sm font-medium mb-2 flex items-center gap-1.5">
+                              <Globe className="h-3.5 w-3.5" />
+                              {t("Sites")}
+                            </h4>
+                            {team.sites.length === 0 ? (
+                              <p className="text-sm text-muted-foreground">
+                                {t("No sites")}
+                              </p>
+                            ) : (
+                              <div className="space-y-1">
+                                {team.sites.map((site) => (
+                                  <div
+                                    key={site.siteId}
+                                    className="text-sm py-1 px-2 rounded hover:bg-muted/50"
+                                  >
+                                    {site.domain}
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        </div>
                       </div>
                     )}
                   </div>
-                  <div className="flex items-center gap-2 ml-4">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setEditingTeam(team)}
-                    >
-                      {t("Edit")}
-                    </Button>
-                    <DeleteTeamDialog team={team} />
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </CardContent>

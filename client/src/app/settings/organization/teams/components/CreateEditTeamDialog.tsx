@@ -40,8 +40,8 @@ export function CreateEditTeamDialog({
 }: CreateEditTeamDialogProps) {
   const t = useExtracted();
   const { data: activeOrganization } = authClient.useActiveOrganization();
-  const { data: membersData } = useOrganizationMembers(activeOrganization?.id || "");
-  const { data: sitesData } = useGetSitesFromOrg(activeOrganization?.id);
+  const { data: membersData, isLoading: isLoadingMembers } = useOrganizationMembers(activeOrganization?.id || "");
+  const { data: sitesData, isLoading: isLoadingSites } = useGetSitesFromOrg(activeOrganization?.id);
 
   const createTeam = useCreateTeam();
   const updateTeam = useUpdateTeam();
@@ -167,7 +167,7 @@ export function CreateEditTeamDialog({
         </DialogDescription>
       </DialogHeader>
 
-      <div className="grid gap-4 py-4">
+      <div className="grid gap-4">
         {/* Team Name */}
         <div className="space-y-2">
           <Label htmlFor="team-name">{t("Team Name")}</Label>
@@ -181,7 +181,7 @@ export function CreateEditTeamDialog({
 
         {/* Members */}
         <div className="space-y-2">
-          <Label>{t("Members")}</Label>
+          <Label className="font-medium">{t("Members")}</Label>
           <p className="text-xs text-muted-foreground">
             {t("Select which members belong to this team.")}
           </p>
@@ -203,35 +203,46 @@ export function CreateEditTeamDialog({
               </Label>
             </div>
             <div className="border rounded-lg divide-y max-h-40 overflow-y-auto">
-              {members.map((m) => (
-                <div
-                  key={m.userId}
-                  className="flex items-center space-x-3 p-2.5 hover:bg-muted/50"
-                >
-                  <Checkbox
-                    id={`member-${m.userId}`}
-                    checked={selectedMemberIds.includes(m.userId)}
-                    onCheckedChange={() => handleMemberToggle(m.userId)}
-                  />
-                  <Label
-                    htmlFor={`member-${m.userId}`}
-                    className="flex-1 cursor-pointer text-sm"
-                  >
-                    <span className="font-medium">
-                      {m.user?.name || m.user?.email}
-                    </span>
-                    {m.user?.name && (
-                      <span className="text-muted-foreground ml-2">
-                        {m.user.email}
-                      </span>
-                    )}
-                  </Label>
-                </div>
-              ))}
-              {members.length === 0 && (
+              {isLoadingMembers ? (
+                Array.from({ length: 3 }).map((_, i) => (
+                  <div key={i} className="flex items-center space-x-3 p-2.5 animate-pulse">
+                    <div className="h-4 w-4 rounded bg-neutral-200 dark:bg-neutral-700" />
+                    <div className="flex-1 flex items-center gap-2">
+                      <div className="h-4 w-24 rounded bg-neutral-200 dark:bg-neutral-700" />
+                      <div className="h-4 w-32 rounded bg-neutral-200 dark:bg-neutral-700" />
+                    </div>
+                  </div>
+                ))
+              ) : members.length === 0 ? (
                 <div className="p-3 text-sm text-muted-foreground text-center">
                   {t("No members in this organization")}
                 </div>
+              ) : (
+                members.map((m) => (
+                  <div
+                    key={m.userId}
+                    className="flex items-center space-x-3 p-2.5 hover:bg-muted/50"
+                  >
+                    <Checkbox
+                      id={`member-${m.userId}`}
+                      checked={selectedMemberIds.includes(m.userId)}
+                      onCheckedChange={() => handleMemberToggle(m.userId)}
+                    />
+                    <Label
+                      htmlFor={`member-${m.userId}`}
+                      className="flex-1 cursor-pointer text-sm"
+                    >
+                      <span className="font-medium">
+                        {m.user?.name || m.user?.email}
+                      </span>
+                      {m.user?.name && (
+                        <span className="text-muted-foreground ml-2">
+                          {m.user.email}
+                        </span>
+                      )}
+                    </Label>
+                  </div>
+                ))
               )}
             </div>
           </div>
@@ -239,7 +250,7 @@ export function CreateEditTeamDialog({
 
         {/* Sites */}
         <div className="space-y-2">
-          <Label>{t("Sites")}</Label>
+          <Label className="font-medium">{t("Sites")}</Label>
           <p className="text-xs text-muted-foreground">
             {t(
               "Select which sites belong to this team. Only team members (and admins/owners) will be able to access these sites."
@@ -263,28 +274,36 @@ export function CreateEditTeamDialog({
               </Label>
             </div>
             <div className="border rounded-lg divide-y max-h-40 overflow-y-auto">
-              {sites.map((site) => (
-                <div
-                  key={site.siteId}
-                  className="flex items-center space-x-3 p-2.5 hover:bg-muted/50"
-                >
-                  <Checkbox
-                    id={`site-${site.siteId}`}
-                    checked={selectedSiteIds.includes(site.siteId)}
-                    onCheckedChange={() => handleSiteToggle(site.siteId)}
-                  />
-                  <Label
-                    htmlFor={`site-${site.siteId}`}
-                    className="flex-1 cursor-pointer text-sm"
-                  >
-                    <span className="font-medium">{site.domain}</span>
-                  </Label>
-                </div>
-              ))}
-              {sites.length === 0 && (
+              {isLoadingSites ? (
+                Array.from({ length: 3 }).map((_, i) => (
+                  <div key={i} className="flex items-center space-x-3 p-2.5 animate-pulse">
+                    <div className="h-4 w-4 rounded bg-neutral-200 dark:bg-neutral-700" />
+                    <div className="h-4 w-36 rounded bg-neutral-200 dark:bg-neutral-700" />
+                  </div>
+                ))
+              ) : sites.length === 0 ? (
                 <div className="p-3 text-sm text-muted-foreground text-center">
                   {t("No sites in this organization")}
                 </div>
+              ) : (
+                sites.map((site) => (
+                  <div
+                    key={site.siteId}
+                    className="flex items-center space-x-3 p-2.5 hover:bg-muted/50"
+                  >
+                    <Checkbox
+                      id={`site-${site.siteId}`}
+                      checked={selectedSiteIds.includes(site.siteId)}
+                      onCheckedChange={() => handleSiteToggle(site.siteId)}
+                    />
+                    <Label
+                      htmlFor={`site-${site.siteId}`}
+                      className="flex-1 cursor-pointer text-sm"
+                    >
+                      <span className="font-medium">{site.domain}</span>
+                    </Label>
+                  </div>
+                ))
               )}
             </div>
           </div>
