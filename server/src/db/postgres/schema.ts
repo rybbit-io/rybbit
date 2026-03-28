@@ -205,19 +205,19 @@ export const memberSiteAccess = pgTable(
 
 // Team table (BetterAuth)
 export const team = pgTable("team", {
-  id: text("id").primaryKey(),
-  name: text("name").notNull(),
-  organizationId: text("organization_id").notNull().references(() => organization.id, { onDelete: "cascade" }),
-  createdAt: timestamp("created_at", { mode: "string" }).notNull(),
-  updatedAt: timestamp("updated_at", { mode: "string" }),
+  id: text().primaryKey(),
+  name: text().notNull(),
+  organizationId: text().notNull().references(() => organization.id, { onDelete: "cascade" }),
+  createdAt: timestamp({ mode: "string" }).notNull(),
+  updatedAt: timestamp({ mode: "string" }),
 });
 
 // Team member table (BetterAuth)
 export const teamMember = pgTable("teamMember", {
-  id: text("id").primaryKey(),
-  teamId: text("team_id").notNull().references(() => team.id, { onDelete: "cascade" }),
-  userId: text("user_id").notNull().references(() => user.id, { onDelete: "cascade" }),
-  createdAt: timestamp("created_at", { mode: "string" }),
+  id: text().primaryKey(),
+  teamId: text().notNull().references(() => team.id, { onDelete: "cascade" }),
+  userId: text().notNull().references(() => user.id, { onDelete: "cascade" }),
+  createdAt: timestamp({ mode: "string" }),
 });
 
 // Team site access junction table - stores which sites belong to a team
