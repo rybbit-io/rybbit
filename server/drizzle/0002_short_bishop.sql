@@ -1,16 +1,16 @@
 CREATE TABLE IF NOT EXISTS "team" (
 	"id" text PRIMARY KEY NOT NULL,
 	"name" text NOT NULL,
-	"organization_id" text NOT NULL,
-	"created_at" timestamp NOT NULL,
-	"updated_at" timestamp
+	"organizationId" text NOT NULL,
+	"createdAt" timestamp NOT NULL,
+	"updatedAt" timestamp
 );
 --> statement-breakpoint
 CREATE TABLE IF NOT EXISTS "teamMember" (
 	"id" text PRIMARY KEY NOT NULL,
-	"team_id" text NOT NULL,
-	"user_id" text NOT NULL,
-	"created_at" timestamp
+	"teamId" text NOT NULL,
+	"userId" text NOT NULL,
+	"createdAt" timestamp
 );
 --> statement-breakpoint
 CREATE TABLE IF NOT EXISTS "team_site_access" (
@@ -32,25 +32,25 @@ END $$;--> statement-breakpoint
 DO $$ BEGIN
   IF NOT EXISTS (
     SELECT 1 FROM information_schema.table_constraints
-    WHERE constraint_name = 'team_organization_id_organization_id_fk'
+    WHERE constraint_name = 'team_organizationId_organization_id_fk'
   ) THEN
-    ALTER TABLE "team" ADD CONSTRAINT "team_organization_id_organization_id_fk" FOREIGN KEY ("organization_id") REFERENCES "public"."organization"("id") ON DELETE cascade ON UPDATE no action;
+    ALTER TABLE "team" ADD CONSTRAINT "team_organizationId_organization_id_fk" FOREIGN KEY ("organizationId") REFERENCES "public"."organization"("id") ON DELETE cascade ON UPDATE no action;
   END IF;
 END $$;--> statement-breakpoint
 DO $$ BEGIN
   IF NOT EXISTS (
     SELECT 1 FROM information_schema.table_constraints
-    WHERE constraint_name = 'teamMember_team_id_team_id_fk'
+    WHERE constraint_name = 'teamMember_teamId_team_id_fk'
   ) THEN
-    ALTER TABLE "teamMember" ADD CONSTRAINT "teamMember_team_id_team_id_fk" FOREIGN KEY ("team_id") REFERENCES "public"."team"("id") ON DELETE cascade ON UPDATE no action;
+    ALTER TABLE "teamMember" ADD CONSTRAINT "teamMember_teamId_team_id_fk" FOREIGN KEY ("teamId") REFERENCES "public"."team"("id") ON DELETE cascade ON UPDATE no action;
   END IF;
 END $$;--> statement-breakpoint
 DO $$ BEGIN
   IF NOT EXISTS (
     SELECT 1 FROM information_schema.table_constraints
-    WHERE constraint_name = 'teamMember_user_id_user_id_fk'
+    WHERE constraint_name = 'teamMember_userId_user_id_fk'
   ) THEN
-    ALTER TABLE "teamMember" ADD CONSTRAINT "teamMember_user_id_user_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."user"("id") ON DELETE cascade ON UPDATE no action;
+    ALTER TABLE "teamMember" ADD CONSTRAINT "teamMember_userId_user_id_fk" FOREIGN KEY ("userId") REFERENCES "public"."user"("id") ON DELETE cascade ON UPDATE no action;
   END IF;
 END $$;--> statement-breakpoint
 DO $$ BEGIN
