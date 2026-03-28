@@ -17,10 +17,10 @@ import { UserPlus } from "lucide-react";
 import { useExtracted } from "next-intl";
 import { useState } from "react";
 import { toast } from "@/components/ui/sonner";
-import { Alert } from "../../../../../components/ui/alert";
-import { authClient } from "../../../../../lib/auth";
-import { validateEmail } from "../../../../../lib/auth-utils";
-import { useAddUserToOrganization } from "../../../../../api/admin/hooks/useOrganizations";
+import { Alert } from "../../../../components/ui/alert";
+import { authClient } from "../../../../lib/auth";
+import { validateEmail } from "../../../../lib/auth-utils";
+import { useAddUserToOrganization } from "../../../../api/admin/hooks/useOrganizations";
 
 interface CreateUserDialogProps {
   organizationId: string;

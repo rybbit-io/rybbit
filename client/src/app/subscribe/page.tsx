@@ -21,7 +21,7 @@ function SubscribeContent() {
 
   // Redirect if already subscribed
   // if (subscription?.status === "active" || subscription?.status === "trialing") {
-  //   router.push("/settings/organization/subscription");
+  //   router.push("/settings/subscription");
   // }
 
   // Get the active organization ID

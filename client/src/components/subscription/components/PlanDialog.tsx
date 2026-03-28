@@ -97,7 +97,7 @@ export function PlanDialog({ open, onOpenChange, currentPlanName, hasActiveSubsc
         });
         setShowProrationDialog(true);
       } else {
-        const returnUrl = `${baseUrl}/settings/organization/subscription?session_id={CHECKOUT_SESSION_ID}`;
+        const returnUrl = `${baseUrl}/settings/subscription?session_id={CHECKOUT_SESSION_ID}`;
 
         const response = await fetch(`${BACKEND_URL}/stripe/create-checkout-session`, {
           method: "POST",

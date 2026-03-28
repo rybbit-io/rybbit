@@ -42,21 +42,21 @@ export function NavigationSidebar() {
           <>
             <Sidebar.Item
               label={t("Organization")}
-              active={pathname.startsWith("/settings/organization/members")}
+              active={pathname === "/settings/organization"}
               href="/settings/organization"
               icon={<Building2 className="w-4 h-4" />}
             />
             <Sidebar.Item
               label={t("Teams")}
-              active={pathname.startsWith("/settings/organization/teams")}
-              href="/settings/organization/teams"
+              active={pathname.startsWith("/settings/teams")}
+              href="/settings/teams"
               icon={<Users className="w-4 h-4" />}
             />
             {IS_CLOUD && (
               <Sidebar.Item
                 label={t("Subscription")}
-                active={pathname.startsWith("/settings/organization/subscription")}
-                href="/settings/organization/subscription"
+                active={pathname.startsWith("/settings/subscription")}
+                href="/settings/subscription"
                 icon={<CreditCard className="w-4 h-4" />}
               />
             )}

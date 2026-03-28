@@ -2,19 +2,19 @@
 
 import { Card, CardContent, CardDescription, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { PaidPlan } from "../../../../components/subscription/PaidPlain/PaidPlan";
-import { useStripeSubscription } from "../../../../lib/subscription/useStripeSubscription";
-import { NoOrganization } from "../../../../components/NoOrganization";
-import { ExpiredTrialPlan } from "../../../../components/subscription/ExpiredTrialPlan";
-import { useSetPageTitle } from "../../../../hooks/useSetPageTitle";
-import { FreePlan } from "../../../../components/subscription/FreePlan";
-import { OverridePlan } from "../../../../components/subscription/OverridePlan";
-import { CustomPlan } from "../../../../components/subscription/CustomPlan";
+import { PaidPlan } from "../../../components/subscription/PaidPlain/PaidPlan";
+import { useStripeSubscription } from "../../../lib/subscription/useStripeSubscription";
+import { NoOrganization } from "../../../components/NoOrganization";
+import { ExpiredTrialPlan } from "../../../components/subscription/ExpiredTrialPlan";
+import { useSetPageTitle } from "../../../hooks/useSetPageTitle";
+import { FreePlan } from "../../../components/subscription/FreePlan";
+import { OverridePlan } from "../../../components/subscription/OverridePlan";
+import { CustomPlan } from "../../../components/subscription/CustomPlan";
 import { Building } from "lucide-react";
 import { useExtracted } from "next-intl";
 import { authClient } from "@/lib/auth";
 import { useEffect } from "react";
-import { AppSumoPlan } from "../../../../components/subscription/AppSumoPlan";
+import { AppSumoPlan } from "../../../components/subscription/AppSumoPlan";
 
 export default function OrganizationSubscriptionPage() {
   useSetPageTitle("Organization Subscription");

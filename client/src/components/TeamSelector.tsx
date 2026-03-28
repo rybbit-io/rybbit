@@ -4,7 +4,7 @@ import { ChevronDown, Globe, Plus, Users } from "lucide-react";
 import { useExtracted } from "next-intl";
 import { useState } from "react";
 import { Team } from "../api/admin/endpoints/teams";
-import { CreateEditTeamDialog } from "../app/settings/organization/teams/components/CreateEditTeamDialog";
+import { CreateEditTeamDialog } from "../app/settings/teams/components/CreateEditTeamDialog";
 import { cn } from "../lib/utils";
 import { Button } from "./ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";

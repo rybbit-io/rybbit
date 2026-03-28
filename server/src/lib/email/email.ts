@@ -128,7 +128,7 @@ export const sendLimitExceededEmail = async (
   eventCount: number,
   eventLimit: number
 ) => {
-  const upgradeLink = "https://app.rybbit.io/settings/organization/subscription";
+  const upgradeLink = "https://app.rybbit.io/settings/subscription";
 
   const html = await render(
     LimitExceededEmail({

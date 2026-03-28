@@ -42,7 +42,7 @@ export function UsageBanners() {
         </div>
         {site.isOwner && (
           <Button variant="success" size="sm" asChild>
-            <Link href="/settings/organization/subscription">
+            <Link href="/settings/subscription">
               {t("Upgrade")} <ArrowRight className="ml-1 h-3 w-3" />
             </Link>
           </Button>
@@ -67,7 +67,7 @@ export function UsageBanners() {
         </div>
         {site.isOwner && (
           <Button variant="success" size="sm" asChild>
-            <Link href="/settings/organization/subscription">
+            <Link href="/settings/subscription">
               {t("Upgrade")} <ArrowRight className="ml-1 h-3 w-3" />
             </Link>
           </Button>

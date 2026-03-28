@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronDown, Globe, Pencil, Plus, Users2 } from "lucide-react";
+import { ChevronDown, Globe, Pencil, Users2 } from "lucide-react";
 import { useExtracted } from "next-intl";
 import { useState } from "react";
 
@@ -8,12 +8,6 @@ import { Team } from "@/api/admin/endpoints/teams";
 import { useTeams } from "@/api/admin/hooks/useTeams";
 import { NoOrganization } from "@/components/NoOrganization";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { useSetPageTitle } from "@/hooks/useSetPageTitle";
 import { authClient } from "@/lib/auth";
 import { cn } from "@/lib/utils";
@@ -65,56 +59,34 @@ export default function TeamsPage() {
   const teams = teamsData?.teams || [];
 
   return (
-    <div className="flex flex-col gap-6">
-      <Card>
-        <CardHeader className="pb-2">
-          <div className="flex items-center justify-between flex-wrap gap-2">
-            <div>
-              <CardTitle className="text-xl">{t("Teams")}</CardTitle>
-              <p className="text-sm text-muted-foreground mt-1">
-                {t(
-                  "Organize sites into teams to control which members can access them."
-                )}
-              </p>
-            </div>
-            <CreateEditTeamDialog
-              trigger={
-                <Button size="sm">
-                  <Plus className="h-4 w-4 mr-1" />
-                  {t("Create Team")}
-                </Button>
-              }
+    <div className="flex flex-col gap-4">
+      {teamsLoading ? (
+        <div className="space-y-3">
+          {Array.from({ length: 2 }).map((_, i) => (
+            <div
+              key={i}
+              className="h-20 bg-muted animate-pulse rounded-lg"
             />
-          </div>
-        </CardHeader>
-        <CardContent>
-          {teamsLoading ? (
-            <div className="space-y-3">
-              {Array.from({ length: 2 }).map((_, i) => (
-                <div
-                  key={i}
-                  className="h-20 bg-muted animate-pulse rounded-lg"
-                />
-              ))}
-            </div>
-          ) : teams.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">
-              <Users2 className="h-10 w-10 mx-auto mb-3 opacity-50" />
-              <p className="font-medium">{t("No teams yet")}</p>
-              <p className="text-sm mt-1">
-                {t(
-                  "Create a team to group sites and manage member access."
-                )}
-              </p>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {teams.map((team) => {
+          ))}
+        </div>
+      ) : teams.length === 0 ? (
+        <div className="text-center py-8 text-muted-foreground">
+          <Users2 className="h-10 w-10 mx-auto mb-3 opacity-50" />
+          <p className="font-medium">{t("No teams yet")}</p>
+          <p className="text-sm mt-1">
+            {t(
+              "Create a team to group sites and manage member access."
+            )}
+          </p>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {teams.map((team) => {
                 const isExpanded = expandedTeams.has(team.id);
                 return (
                   <div
                     key={team.id}
-                    className="border rounded-lg transition-colors"
+                    className="border rounded-lg transition-colors bg-white dark:bg-neutral-900/70"
                   >
                     <div
                       className="flex items-center justify-between p-4 cursor-pointer hover:bg-muted/50"
@@ -218,9 +190,7 @@ export default function TeamsPage() {
                 );
               })}
             </div>
-          )}
-        </CardContent>
-      </Card>
+      )}
 
       {/* Edit Team Dialog */}
       <CreateEditTeamDialog

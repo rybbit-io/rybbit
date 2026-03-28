@@ -78,7 +78,7 @@ export function PricingCards({ isLoggedIn }: { isLoggedIn: boolean }) {
       const baseUrl = window.location.origin;
       const returnUrl = siteId
         ? `${baseUrl}/${siteId}?session_id={CHECKOUT_SESSION_ID}`
-        : `${baseUrl}/settings/organization/subscription?session_id={CHECKOUT_SESSION_ID}`;
+        : `${baseUrl}/settings/subscription?session_id={CHECKOUT_SESSION_ID}`;
 
       const response = await fetch(`${BACKEND_URL}/stripe/create-checkout-session`, {
         method: "POST",
@@ -128,7 +128,7 @@ export function PricingCards({ isLoggedIn }: { isLoggedIn: boolean }) {
       const baseUrl = window.location.origin;
       const returnUrl = siteId
         ? `${baseUrl}/${siteId}?session_id={CHECKOUT_SESSION_ID}`
-        : `${baseUrl}/settings/organization/subscription?session_id={CHECKOUT_SESSION_ID}`;
+        : `${baseUrl}/settings/subscription?session_id={CHECKOUT_SESSION_ID}`;
 
       const response = await fetch(`${BACKEND_URL}/stripe/create-checkout-session`, {
         method: "POST",
