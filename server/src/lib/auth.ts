@@ -23,6 +23,9 @@ const pluginList = [
   organization({
     allowUserToCreateOrganization: true,
     creatorRole: "owner",
+    teams: {
+      enabled: true,
+    },
     sendInvitationEmail: async invitationData => {
       const inviteLink = `${process.env.BASE_URL}/invitation?invitationId=${invitationData.invitation.id}&organization=${invitationData.organization.name}&inviterEmail=${invitationData.inviter.user.email}`;
       await sendInvitationEmail(
