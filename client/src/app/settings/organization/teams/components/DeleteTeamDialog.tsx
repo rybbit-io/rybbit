@@ -17,6 +17,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { authClient } from "@/lib/auth";
+import { Trash2 } from "lucide-react";
 
 interface DeleteTeamDialogProps {
   team: Team;
@@ -50,11 +51,11 @@ export function DeleteTeamDialog({ team, onSuccess }: DeleteTeamDialogProps) {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant="destructive" size="sm">
-          {t("Delete")}
+        <Button variant="ghost" size="smIcon">
+          <Trash2 className="h-3.5 w-3.5" />
         </Button>
       </DialogTrigger>
-      <DialogContent>
+      <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle>{t("Delete Team")}</DialogTitle>
           <DialogDescription>

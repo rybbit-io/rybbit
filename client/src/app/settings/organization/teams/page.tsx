@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronDown, Globe, Plus, Users2 } from "lucide-react";
+import { ChevronDown, Globe, Pencil, Plus, Users2 } from "lucide-react";
 import { useExtracted } from "next-intl";
 import { useState } from "react";
 
@@ -150,11 +150,11 @@ export default function TeamsPage() {
                         onClick={(e) => e.stopPropagation()}
                       >
                         <Button
-                          variant="outline"
-                          size="sm"
+                          variant="ghost"
+                          size="smIcon"
                           onClick={() => setEditingTeam(team)}
                         >
-                          {t("Edit")}
+                          <Pencil className="h-3.5 w-3.5" />
                         </Button>
                         <DeleteTeamDialog team={team} />
                       </div>
@@ -176,7 +176,7 @@ export default function TeamsPage() {
                                 {team.members.map((member) => (
                                   <div
                                     key={member.userId}
-                                    className="text-sm py-1 px-2 rounded hover:bg-muted/50"
+                                    className="text-sm py-1 px-5 rounded hover:bg-muted/50"
                                   >
                                     <span>{member.userName || member.userEmail}</span>
                                     {member.userName && (
@@ -203,7 +203,7 @@ export default function TeamsPage() {
                                 {team.sites.map((site) => (
                                   <div
                                     key={site.siteId}
-                                    className="text-sm py-1 px-2 rounded hover:bg-muted/50"
+                                    className="text-sm py-1 px-5 rounded hover:bg-muted/50"
                                   >
                                     {site.domain}
                                   </div>
