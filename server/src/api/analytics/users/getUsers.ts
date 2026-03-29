@@ -51,31 +51,57 @@ export async function getUsers(req: FastifyRequest<GetUsersRequest>, res: Fastif
     search,
     search_field: searchField = "username",
   } = req.query;
-  const site = req.params.siteId;
+  const siteId = Number(req.params.siteId);
   let filterIdentified = identifiedOnly === "true";
 
-  // Search for matching user IDs in Postgres when search is provided
+  const timeStatement = getTimeStatement(req.query);
+  const filterStatement = getFilterStatement(filters, siteId, timeStatement);
+
+  // Search for matching user IDs when search is provided
   const MAX_MATCHING_USER_IDS = 10000;
   let matchingUserIds: string[] | null = null;
   if (search && search.trim()) {
     const searchTerm = `%${search.trim()}%`;
-    const siteId = Number(site);
 
-    const fieldConditions: Record<string, SQL> = {
-      username: sql`traits->>'username' ILIKE ${searchTerm}`,
-      name: sql`traits->>'name' ILIKE ${searchTerm}`,
-      email: sql`traits->>'email' ILIKE ${searchTerm}`,
-      user_id: sql`user_id ILIKE ${searchTerm}`,
-    };
-    const condition = fieldConditions[searchField] ?? fieldConditions.username;
+    if (searchField === "user_id") {
+      const searchResult = await clickhouse.query({
+        query: `
+          SELECT DISTINCT identified_user_id
+          FROM events
+          WHERE site_id = {siteId:Int32}
+            AND identified_user_id != ''
+            ${timeStatement}
+            ${filterStatement}
+            AND positionCaseInsensitiveUTF8(identified_user_id, {searchValue:String}) > 0
+          LIMIT {limit:Int32}
+        `,
+        format: "JSONEachRow",
+        query_params: {
+          siteId: siteId,
+          searchValue: search.trim(),
+          limit: MAX_MATCHING_USER_IDS,
+        },
+      });
 
-    const searchResult = await db.execute<{ user_id: string }>(sql`
-      SELECT user_id FROM user_profiles
-      WHERE site_id = ${siteId} AND ${condition}
-      LIMIT ${MAX_MATCHING_USER_IDS}
-    `);
+      const searchData = await processResults<{ identified_user_id: string }>(searchResult);
+      matchingUserIds = searchData.map(row => row.identified_user_id);
+    } else {
+      const fieldConditions: Record<string, SQL> = {
+        username: sql`traits->>'username' ILIKE ${searchTerm}`,
+        name: sql`traits->>'name' ILIKE ${searchTerm}`,
+        email: sql`traits->>'email' ILIKE ${searchTerm}`,
+      };
+      const condition = fieldConditions[searchField] ?? fieldConditions.username;
 
-    matchingUserIds = searchResult.map((r) => r.user_id);
+      const searchResult = await db.execute<{ user_id: string }>(sql`
+        SELECT user_id FROM user_profiles
+        WHERE site_id = ${siteId} AND ${condition}
+        LIMIT ${MAX_MATCHING_USER_IDS}
+      `);
+
+      matchingUserIds = searchResult.map(r => r.user_id);
+    }
+
     if (matchingUserIds.length === 0) {
       return res.send({
         data: [],
@@ -95,10 +121,6 @@ export async function getUsers(req: FastifyRequest<GetUsersRequest>, res: Fastif
   const validSortFields = ["first_seen", "last_seen", "pageviews", "sessions", "events"];
   const actualSortBy = validSortFields.includes(sortBy) ? sortBy : "last_seen";
   const actualSortOrder = sortOrder === "asc" ? "ASC" : "DESC";
-
-  // Generate filter statement and time statement
-  const timeStatement = getTimeStatement(req.query);
-  const filterStatement = getFilterStatement(filters, Number(site), timeStatement);
 
   const query = `
 WITH AggregatedUsers AS (
@@ -177,7 +199,7 @@ WHERE
         query,
         format: "JSONEachRow",
         query_params: {
-          siteId: Number(site),
+          siteId: siteId,
           limit: pageSizeNum,
           offset,
           ...(matchingUserIds ? { matchingUserIds } : {}),
@@ -187,7 +209,7 @@ WHERE
         query: countQuery,
         format: "JSONEachRow",
         query_params: {
-          siteId: Number(site),
+          siteId: siteId,
           ...(matchingUserIds ? { matchingUserIds } : {}),
         },
       }),
@@ -198,7 +220,7 @@ WHERE
     const totalCount = countData[0]?.total_count || 0;
 
     // Enrich with traits from Postgres
-    const dataWithTraits = await enrichWithTraits(data, Number(site));
+    const dataWithTraits = await enrichWithTraits(data, siteId);
 
     return res.send({
       data: dataWithTraits,
