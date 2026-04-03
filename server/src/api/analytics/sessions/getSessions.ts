@@ -99,7 +99,7 @@ export async function getSessions(req: FastifyRequest<GetSessionsRequest>, res: 
   // - sessionLevelParams: pathname and page_title filter at session level (finds sessions that visited a page)
   // - fieldMappings: CTE extracts UTM params as separate columns, so we need to map the field names
   const filterStatement = getFilterStatement(filters, Number(site), timeStatement, {
-    sessionLevelParams: ["event_name", "pathname", "page_title"],
+    sessionLevelParams: ["event_name", "pathname", "page_title", "channel"],
     fieldMappings: SESSION_FIELD_MAPPINGS,
   });
 
