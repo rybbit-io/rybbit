@@ -9,7 +9,7 @@ import { useEmbedablePage } from "../app/[site]/utils";
 import { useAdminPermission } from "../app/admin/hooks/useAdminPermission";
 import { useSignout } from "../hooks/useSignout";
 import { authClient } from "../lib/auth";
-import { IS_CLOUD } from "../lib/const";
+import { DEPLOYMENT, IS_CLOUD } from "../lib/const";
 import { useStripeSubscription } from "../lib/subscription/useStripeSubscription";
 import { cn } from "../lib/utils";
 import { RybbitLogo } from "./RybbitLogo";
@@ -19,7 +19,7 @@ function AdminLink({ isExpanded }: { isExpanded: boolean }) {
   const pathname = usePathname();
   const { isAdmin } = useAdminPermission();
   const t = useExtracted();
-  if (!IS_CLOUD || !isAdmin) return null;
+  if ((!IS_CLOUD && !DEPLOYMENT) || !isAdmin) return null;
 
   return (
     <SidebarLink
