@@ -86,6 +86,8 @@ services:
       - DISABLE_SIGNUP=${DISABLE_SIGNUP}
       - DISABLE_TELEMETRY=${DISABLE_TELEMETRY}
       - MAPBOX_TOKEN=${MAPBOX_TOKEN}
+      - CLUSTER_WORKERS=${CLUSTER_WORKERS:-4}
+      - DEPLOYMENT=${DEPLOYMENT}
     depends_on:
       clickhouse:
         condition: service_healthy
@@ -114,6 +116,7 @@ services:
       - NODE_ENV=production
       - NEXT_PUBLIC_BACKEND_URL=${BASE_URL}
       - NEXT_PUBLIC_DISABLE_SIGNUP=${DISABLE_SIGNUP}
+      - NEXT_PUBLIC_DEPLOYMENT=${DEPLOYMENT}
     depends_on:
       - backend
     restart: unless-stopped
