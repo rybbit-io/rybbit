@@ -12,7 +12,7 @@ import { weeklyReportService } from "./services/weekyReports/weeklyReportService
 const logger = createServiceLogger("cluster");
 
 // Determine worker count from environment variable
-// Default to 0 (single-process mode) if not set.
+// Default to 0 (single-process mode) if not set
 const requestedWorkers = process.env.CLUSTER_WORKERS;
 const workerCount =
   requestedWorkers === undefined || requestedWorkers === ""
