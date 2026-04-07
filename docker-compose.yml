@@ -68,7 +68,7 @@ services:
     container_name: backend
     build:
       context: .
-      dockerfile: server/Dockerfile
+      dockerfile: ./server/Dockerfile
     ports:
       - "${HOST_BACKEND_PORT:-127.0.0.1:3001:3001}"
     environment:
@@ -106,7 +106,7 @@ services:
     container_name: client
     build:
       context: .
-      dockerfile: client/Dockerfile
+      dockerfile: ./client/Dockerfile
       args:
         NEXT_PUBLIC_BACKEND_URL: ${BASE_URL}
         NEXT_PUBLIC_DISABLE_SIGNUP: ${DISABLE_SIGNUP}
