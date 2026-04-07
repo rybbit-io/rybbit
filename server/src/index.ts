@@ -368,6 +368,10 @@ async function stripeAdminRoutes(fastify: FastifyInstance) {
   // ClickHouse stats (available for all admins)
   fastify.get("/admin/clickhouse-stats", adminOnly, getClickhouseStats);
   fastify.get("/admin/clickhouse-query-log", adminOnly, getClickhouseQueryLog);
+  fastify.get("/admin/sites", adminOnly, getAdminSites);
+  fastify.get("/admin/organizations", adminOnly, getAdminOrganizations);
+  fastify.get("/admin/service-event-count", adminOnly, getAdminServiceEventCount);
+  fastify.post("/admin/telemetry", collectTelemetry); // Public - telemetry collection
 
   // STRIPE & ADMIN
   if (IS_CLOUD) {
@@ -387,6 +391,7 @@ async function stripeAdminRoutes(fastify: FastifyInstance) {
     fastify.get("/admin/service-event-count", adminOnly, getAdminServiceEventCount);
     fastify.post("/admin/telemetry", collectTelemetry); // Public - telemetry collection
 
+    // AppSumo Routes
     fastify.post("/as/activate", authOnly, activateAppSumoLicense);
     fastify.post("/as/webhook", handleAppSumoWebhook); // Public - AppSumo webhook
   }
