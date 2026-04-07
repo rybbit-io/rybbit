@@ -62,6 +62,8 @@ services:
       retries: 5
       start_period: 10s
     restart: unless-stopped
+    ports:
+      - "5432:5432"
 
   backend:
     image: ghcr.io/rybbit-io/rybbit-backend:${IMAGE_TAG:-latest}
