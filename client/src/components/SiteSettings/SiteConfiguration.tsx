@@ -55,6 +55,8 @@ export function SiteConfiguration({ siteMetadata, disabled = false, onClose }: S
   const { refetch } = useGetSitesFromOrg(siteMetadata?.organizationId ?? "");
   const router = useRouter();
 
+  const [newName, setNewName] = useState(siteMetadata.name);
+  const [isChangingName, setIsChangingName] = useState(false);
   const [newDomain, setNewDomain] = useState(siteMetadata.domain);
   const [isChangingDomain, setIsChangingDomain] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -107,6 +109,26 @@ export function SiteConfiguration({ siteMetadata, disabled = false, onClose }: S
     },
     [siteMetadata.siteId, refetch]
   );
+
+  const handleNameChange = async () => {
+    if (!newName.trim()) {
+      toast.error(t("Name cannot be empty"));
+      return;
+    }
+
+    try {
+      setIsChangingName(true);
+      await updateSiteConfig(siteMetadata.siteId, { name: newName.trim() });
+      toast.success(t("Name updated successfully"));
+      router.refresh();
+      refetch();
+    } catch (error) {
+      console.error("Error changing name:", error);
+      toast.error(t("Failed to update name"));
+    } finally {
+      setIsChangingName(false);
+    }
+  };
 
   const handleDomainChange = async () => {
     if (!newDomain) {
@@ -347,8 +369,29 @@ export function SiteConfiguration({ siteMetadata, disabled = false, onClose }: S
       {IS_CLOUD && <GSCManager disabled={disabled} />}
       <div className="space-y-3">
         <div>
-          <h4 className="text-sm font-semibold text-foreground">{t("Change Domain")}</h4>
-          <p className="text-xs text-muted-foreground">{t("Update the domain for this site")}</p>
+          <h4 className="text-sm font-semibold text-foreground">{t("Site Name")}</h4>
+          <p className="text-xs text-muted-foreground">{t("The display name for this site")}</p>
+        </div>
+        <div className="flex space-x-2">
+          <Input
+            value={newName}
+            onChange={e => setNewName(e.target.value)}
+            placeholder="My Website"
+          />
+          <Button
+            variant="outline"
+            onClick={handleNameChange}
+            disabled={isChangingName || newName === siteMetadata.name || disabled}
+          >
+            {isChangingName ? t("Updating...") : t("Update")}
+          </Button>
+        </div>
+      </div>
+
+      <div className="space-y-3">
+        <div>
+          <h4 className="text-sm font-semibold text-foreground">{t("Domain")}</h4>
+          <p className="text-xs text-muted-foreground">{t("The domain used for tracking")}</p>
         </div>
         <div className="flex space-x-2">
           <Input
@@ -380,7 +423,7 @@ export function SiteConfiguration({ siteMetadata, disabled = false, onClose }: S
             <AlertDialogHeader>
               <AlertDialogTitle>{t("Are you absolutely sure?")}</AlertDialogTitle>
               <AlertDialogDescription>
-                {t('This action cannot be undone. This will permanently delete the site "{name}" and all of its analytics data.', { name: siteMetadata.name })}
+                {t('This action cannot be undone. This will permanently delete the site "{siteName}" and all of its analytics data.', { siteName: siteMetadata.name })}
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>

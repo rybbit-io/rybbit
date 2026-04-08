@@ -177,7 +177,7 @@ export default function TeamsPage() {
                                     key={site.siteId}
                                     className="text-sm py-1 px-5 rounded hover:bg-muted/50"
                                   >
-                                    {site.domain}
+                                    {site.name}
                                   </div>
                                 ))}
                               </div>

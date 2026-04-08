@@ -58,7 +58,7 @@ function SiteSettingsInner({ siteMetadata, trigger }: { siteMetadata: SiteRespon
       <DialogContent className="sm:max-w-[750px]">
         <DialogHeader>
           <DialogTitle>{t("Site Settings")}</DialogTitle>
-          <DialogDescription>{t("Manage settings for {domain}", { domain: siteMetadata.domain })}</DialogDescription>
+          <DialogDescription>{t("Manage settings for {name}", { name: siteMetadata.name })}</DialogDescription>
         </DialogHeader>
         <Tabs value={activeTab} onValueChange={setActiveTab} className="pb-4">
           <TabsList className="grid w-full grid-cols-3">

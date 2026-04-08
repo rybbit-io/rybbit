@@ -18,6 +18,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
 
 interface SiteCardProps {
   siteId: number;
+  name: string;
   domain: string;
   tags?: string[];
   allTags?: string[];
@@ -26,7 +27,7 @@ interface SiteCardProps {
   onTagClick?: (tag: string) => void;
 }
 
-export function SiteCard({ siteId, domain, tags = [], allTags = [], onTagsUpdated, selectedTags = [], onTagClick }: SiteCardProps) {
+export function SiteCard({ siteId, name, domain, tags = [], allTags = [], onTagsUpdated, selectedTags = [], onTagClick }: SiteCardProps) {
   const t = useExtracted();
   const { ref, isInView } = useInView({
     // Start loading slightly before the card comes into view
@@ -105,7 +106,7 @@ export function SiteCard({ siteId, domain, tags = [], allTags = [], onTagsUpdate
           <>
             <div className="flex gap-2 items-center">
               <Favicon domain={domain} className="w-6 h-6" />
-              <span className="text-lg font-medium truncate group-hover:underline transition-all">{domain}</span>
+              <span className="text-lg font-medium truncate group-hover:underline transition-all">{name}</span>
               <div onClick={(e) => e.preventDefault()}>
                 <Tooltip>
                   <SiteSettings

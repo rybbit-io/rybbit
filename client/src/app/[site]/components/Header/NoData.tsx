@@ -84,7 +84,7 @@ export function NoData() {
                 <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-green-400 opacity-75"></span>
                 <span className="relative inline-flex h-3 w-3 rounded-full bg-green-500"></span>
               </span>
-              <div className="font-medium">{t("Waiting for analytics from {domain}...", { domain: siteMetadata?.domain ?? "" })}</div>
+              <div className="font-medium">{t("Waiting for analytics from {name}...", { name: siteMetadata?.name ?? "" })}</div>
             </div>
             <div className="text-xs text-muted-foreground">{t("Place this snippet in the {headTag} of your website:", { headTag: "<head>" })}</div>
             <CodeSnippet

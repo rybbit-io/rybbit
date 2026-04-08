@@ -42,6 +42,7 @@ export function AddSite({ trigger, disabled }: { trigger?: React.ReactNode; disa
 
   const [open, setOpen] = useState(false);
   const [domain, setDomain] = useState("");
+  const [name, setName] = useState("");
   const [isPublic, setIsPublic] = useState(false);
   const [saltUserIds, setSaltUserIds] = useState(false);
   const [error, setError] = useState("");
@@ -62,7 +63,8 @@ export function AddSite({ trigger, disabled }: { trigger?: React.ReactNode; disa
 
     try {
       const normalizedDomain = normalizeDomain(domain);
-      const site = await addSite(normalizedDomain, normalizedDomain, activeOrganization.id, {
+      const siteName = name.trim() || normalizedDomain;
+      const site = await addSite(normalizedDomain, siteName, activeOrganization.id, {
         isPublic,
         saltUserIds,
       });
@@ -81,6 +83,7 @@ export function AddSite({ trigger, disabled }: { trigger?: React.ReactNode; disa
 
   const resetForm = () => {
     setDomain("");
+    setName("");
     setError("");
     setIsPublic(false);
     setSaltUserIds(false);
@@ -162,6 +165,17 @@ export function AddSite({ trigger, disabled }: { trigger?: React.ReactNode; disa
                 value={domain}
                 onChange={e => setDomain(e.target.value.toLowerCase())}
                 placeholder="example.com or sub.example.com"
+              />
+            </div>
+            <div className="grid w-full items-center gap-1.5">
+              <Label htmlFor="name" className="text-sm font-medium">
+                {t("Name")}
+              </Label>
+              <Input
+                id="name"
+                value={name}
+                onChange={e => setName(e.target.value)}
+                placeholder={t("Display name (defaults to domain)")}
               />
             </div>
             {/* Public Analytics Setting */}

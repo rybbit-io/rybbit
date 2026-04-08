@@ -105,7 +105,7 @@ function SiteSelectorContent({ onSiteSelect }: { onSiteSelect: () => void }) {
               >
                 <div className="flex items-center gap-3 flex-1 min-w-0">
                   <Favicon domain={site.domain} className="w-4 h-4 shrink-0" />
-                  <div className="text-sm text-neutral-900 dark:text-white truncate">{site.domain}</div>
+                  <div className="text-sm text-neutral-900 dark:text-white truncate">{site.name}</div>
                 </div>
                 <div className="flex items-center gap-3">
                   <div className="text-xs text-neutral-600 dark:text-neutral-300 whitespace-nowrap">
@@ -156,7 +156,7 @@ function SiteSelectorWrapper() {
         {site ? (
           <button className="flex gap-2 items-center border border-neutral-200 dark:border-neutral-800 rounded-lg py-1.5 px-3 justify-start cursor-pointer hover:bg-neutral-150 dark:hover:bg-neutral-800/50 transition-colors h-[36px] w-full">
             <Favicon domain={site.domain} className="w-5 h-5" />
-            <div className="text-neutral-900 dark:text-white truncate text-sm flex-1 text-left">{site.domain}</div>
+            <div className="text-neutral-900 dark:text-white truncate text-sm flex-1 text-left">{site.name}</div>
             {!embed && <ChevronDown className="w-4 h-4 text-neutral-600 dark:text-neutral-400" />}
           </button>
         ) : (

@@ -72,7 +72,7 @@ export default function Home() {
   const { data: teamsData } = useTeams(activeOrganization?.id);
 
   const [createOrgDialogOpen, setCreateOrgDialogOpen] = useState(false);
-  const [domainFilter, setDomainFilter] = useState("");
+  const [nameFilter, setNameFilter] = useState("");
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [selectedTeamFilter, setSelectedTeamFilter] = useState<string>("all");
 
@@ -88,11 +88,11 @@ export default function Home() {
 
   const teams = teamsData?.teams || [];
 
-  // Filter sites by domain, tags, and team
+  // Filter sites by name, tags, and team
   const filteredSites = sites?.sites?.filter((site) => {
-    const matchesDomain = site.domain
+    const matchesDomain = site.name
       .toLowerCase()
-      .includes(domainFilter.toLowerCase());
+      .includes(nameFilter.toLowerCase());
     const matchesTags =
       selectedTags.length === 0 ||
       selectedTags.some((tag) => site.tags?.includes(tag));
@@ -161,9 +161,9 @@ export default function Home() {
       <div className="relative flex-1">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-neutral-500" />
         <Input
-          placeholder={t("Filter by domain...")}
-          value={domainFilter}
-          onChange={(e) => setDomainFilter(e.target.value)}
+          placeholder={t("Filter by name...")}
+          value={nameFilter}
+          onChange={(e) => setNameFilter(e.target.value)}
           className="pl-9"
         />
       </div>
@@ -194,6 +194,7 @@ export default function Home() {
           <SiteCard
             key={site.siteId}
             siteId={site.siteId}
+            name={site.name}
             domain={site.domain}
             tags={site.tags || []}
             allTags={allTags}

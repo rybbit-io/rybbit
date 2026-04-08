@@ -105,6 +105,7 @@ export function deleteSite(siteId: number) {
 export function updateSiteConfig(
   siteId: number,
   config: {
+    name?: string;
     domain?: string;
     public?: boolean;
     saltUserIds?: boolean;

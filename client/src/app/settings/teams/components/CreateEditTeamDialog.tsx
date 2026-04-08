@@ -300,7 +300,7 @@ export function CreateEditTeamDialog({
                       htmlFor={`site-${site.siteId}`}
                       className="flex-1 cursor-pointer text-sm"
                     >
-                      <span className="font-medium">{site.domain}</span>
+                      <span className="font-medium">{site.name}</span>
                     </Label>
                   </div>
                 ))
