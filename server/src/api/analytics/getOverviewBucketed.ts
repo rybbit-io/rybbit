@@ -20,7 +20,7 @@ function getTimeStatementFill(params: FilterParams, bucket: TimeBucket) {
       )
       TO if(
         toDate(${SqlString.escape(end_date)}) = toDate(now(), ${SqlString.escape(time_zone)}),
-        now(),
+        toTimeZone(now(), 'UTC'),
         toTimeZone(
           toDateTime(${TimeBucketToFn[validatedBucket]}(toDateTime(${SqlString.escape(end_date)}, ${SqlString.escape(
             time_zone
