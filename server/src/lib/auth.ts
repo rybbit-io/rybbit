@@ -34,7 +34,7 @@ const pluginList = [
             maxRequests: STANDARD_API_RATE_LIMIT,
           },
         }
-      : {}),
+      : { rateLimit: { maxRequests: 10000, timeWindow: 86400000 } }),
   }),
   dash(),
   organization({
