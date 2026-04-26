@@ -23,6 +23,7 @@ const LOCALE_OPTIONS = [
   { value: "pt", label: "Português", country: "BR" },
   { value: "ja", label: "日本語", country: "JP" },
   { value: "cs", label: "Čeština", country: "CZ" },
+  { value: "nl", label: 'Nederlands', country: "NL" }
 ] as const;
 
 export function LanguageSwitcher() {
