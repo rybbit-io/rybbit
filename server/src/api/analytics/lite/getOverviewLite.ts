@@ -25,21 +25,23 @@ export async function getOverviewLite(
 
   // Pulls every metric from sessions_mv. SimpleAggregateFunction(min/max/sum)
   // columns can be selected with bare min/max/sum — no Merge needed.
+  // Aliases must NOT collide with the source column names — ClickHouse will
+  // resolve `start_time` in WHERE as the aggregate alias and reject it.
   const query = `
     SELECT
       count() AS sessions,
-      sum(pageviews) AS pageviews,
+      sum(session_pageviews) AS pageviews,
       uniqExact(user_id) AS users,
-      avg(pageviews) AS pages_per_session,
-      countIf(pageviews = 1) / count() * 100 AS bounce_rate,
-      avg(end_time - start_time) AS session_duration
+      avg(session_pageviews) AS pages_per_session,
+      countIf(session_pageviews = 1) / count() * 100 AS bounce_rate,
+      avg(session_end - session_start) AS session_duration
     FROM (
       SELECT
         session_id,
         any(user_id) AS user_id,
-        sum(pageviews) AS pageviews,
-        min(start_time) AS start_time,
-        max(end_time) AS end_time
+        sum(pageviews) AS session_pageviews,
+        min(start_time) AS session_start,
+        max(end_time) AS session_end
       FROM sessions_mv_target
       WHERE site_id = {siteId:Int32}
         ${timeStatement}
