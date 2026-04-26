@@ -13,25 +13,26 @@ import {
 } from "@react-email/components";
 import * as React from "react";
 
-interface LimitExceededEmailProps {
+interface ApproachingLimitEmailProps {
   organizationName: string;
   eventCount: number;
   eventLimit: number;
   upgradeLink: string;
 }
 
-export const LimitExceededEmail = ({
+export const ApproachingLimitEmail = ({
   organizationName,
   eventCount,
   eventLimit,
   upgradeLink,
-}: LimitExceededEmailProps) => {
+}: ApproachingLimitEmailProps) => {
   const currentYear = new Date().getFullYear();
+  const usagePercent = Math.min(100, Math.round((eventCount / eventLimit) * 100));
 
   return (
     <Html>
       <Head />
-      <Preview>{organizationName} has exceeded its monthly event limit</Preview>
+      <Preview>{organizationName} is approaching its monthly event limit</Preview>
       <Tailwind
         config={{
           presets: [pixelBasedPreset],
@@ -60,18 +61,20 @@ export const LimitExceededEmail = ({
             <Text className="text-darkText text-base leading-relaxed mb-4">Hi there,</Text>
 
             <Text className="text-darkText text-base leading-relaxed mb-4">
-              Your organization <span className="font-semibold">{organizationName}</span> has exceeded its monthly event
-              limit.
+              Your organization <span className="font-semibold">{organizationName}</span> is on track to exceed its
+              monthly event limit before the end of the month.
             </Text>
 
             <Text className="text-darkText text-base leading-relaxed mb-4">
-              Current usage: <span className="font-semibold">{eventCount.toLocaleString()}</span> events
+              Current usage: <span className="font-semibold">{eventCount.toLocaleString()}</span> events ({usagePercent}
+              %)
               <br />
               Monthly limit: <span className="font-semibold">{eventLimit.toLocaleString()}</span> events
             </Text>
 
             <Text className="text-darkText text-base leading-relaxed mb-4">
-              Analytics tracking has been paused. To resume tracking and access your data, upgrade your plan:
+              Once you reach your limit, analytics tracking will be paused until your plan resets or you upgrade.
+              Upgrading now keeps your data flowing without interruption.
             </Text>
 
             <Text className="text-darkText text-base leading-relaxed mb-4">

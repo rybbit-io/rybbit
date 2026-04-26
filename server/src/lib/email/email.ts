@@ -1,6 +1,7 @@
 import { Resend } from "resend";
 import { render } from "@react-email/components";
 import { IS_CLOUD } from "../const.js";
+import { ApproachingLimitEmail } from "./templates/ApproachingLimitEmail.js";
 import { InvitationEmail } from "./templates/InvitationEmail.js";
 import { LimitExceededEmail } from "./templates/LimitExceededEmail.js";
 import { OnboardingTipEmail } from "./templates/OnboardingTipEmail.js";
@@ -175,6 +176,26 @@ export const sendLimitExceededEmail = async (
   );
 
   await sendEmail(email, `Action Required: ${organizationName} has exceeded its monthly event limit`, html);
+};
+
+export const sendApproachingLimitEmail = async (
+  email: string,
+  organizationName: string,
+  eventCount: number,
+  eventLimit: number
+) => {
+  const upgradeLink = "https://app.rybbit.io/settings/subscription";
+
+  const html = await render(
+    ApproachingLimitEmail({
+      organizationName,
+      eventCount,
+      eventLimit,
+      upgradeLink,
+    })
+  );
+
+  await sendEmail(email, `${organizationName} is approaching its monthly event limit`, html);
 };
 
 export const sendWeeklyReportEmail = async (

@@ -2,8 +2,9 @@ import {
   Body,
   Container,
   Head,
-  Heading,
+  Hr,
   Html,
+  Img,
   Link,
   Preview,
   Section,
@@ -255,7 +256,6 @@ export const WeeklyReportEmail = ({ userName, organizationReport }: WeeklyReport
             extend: {
               colors: {
                 brand: "#10b981",
-                lightBg: "#ffffff",
                 cardBg: "#f9fafb",
                 darkText: "#111827",
                 mutedText: "#6b7280",
@@ -267,66 +267,22 @@ export const WeeklyReportEmail = ({ userName, organizationReport }: WeeklyReport
           },
         }}
       >
-        <Body className="bg-lightBg font-sans">
-          <Container className="mx-auto py-10 px-6 max-w-[600px]">
-            {/* Header */}
-            <Section className="text-center mb-8">
-              <div className="inline-block bg-brand/10 text-brand px-3 py-1.5 rounded-full text-sm font-medium mb-4">
-                Weekly Report
-              </div>
-              <table
-                style={{
-                  width: "100%",
-                  marginBottom: "8px",
-                }}
-              >
-                <tbody>
-                  <tr>
-                    <td style={{ textAlign: "center" }}>
-                      <table
-                        style={{
-                          display: "inline-block",
-                          verticalAlign: "middle",
-                        }}
-                      >
-                        <tbody>
-                          <tr>
-                            <td
-                              style={{
-                                verticalAlign: "middle",
-                                paddingRight: "12px",
-                              }}
-                            >
-                              <img
-                                src={`https://www.google.com/s2/favicons?domain=${organizationReport.sites[0].siteDomain}&sz=32`}
-                                alt=""
-                                width="24"
-                                height="24"
-                                style={{ borderRadius: "4px", display: "block" }}
-                              />
-                            </td>
-                            <td style={{ verticalAlign: "middle" }}>
-                              <Heading
-                                style={{
-                                  color: "#111827",
-                                  fontSize: "30px",
-                                  fontWeight: 600,
-                                  margin: 0,
-                                  lineHeight: "1.2",
-                                }}
-                              >
-                                {organizationReport.sites[0].siteDomain}
-                              </Heading>
-                            </td>
-                          </tr>
-                        </tbody>
-                      </table>
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-              <Text className="text-mutedText text-base">Hi {userName}, here's your weekly analytics summary</Text>
-            </Section>
+        <Body className="bg-white font-sans">
+          <Container className="mx-auto py-8 px-6 max-w-[600px]">
+            <Img
+              src="https://app.rybbit.io/rybbit/horizontal_black.svg"
+              alt="Rybbit"
+              width="120"
+              height="28"
+              className="mb-8"
+            />
+
+            <Text className="text-darkText text-base leading-relaxed mb-4">Hi {userName},</Text>
+
+            <Text className="text-darkText text-base leading-relaxed mb-8">
+              Here's your weekly analytics summary for{" "}
+              <span className="font-semibold">{organizationReport.sites[0].siteDomain}</span>.
+            </Text>
 
             {/* Sites Reports */}
             {organizationReport.sites.map(site => (
@@ -428,30 +384,26 @@ export const WeeklyReportEmail = ({ userName, organizationReport }: WeeklyReport
                   />
                 </div>
 
-                {/* Dashboard Link */}
-                <div className="text-center mb-6">
-                  <Link
-                    href={`https://app.rybbit.io/${site.siteId}`}
-                    className="inline-block bg-brand text-white px-6 py-2.5 rounded-md font-medium text-sm no-underline"
-                  >
-                    View Full Dashboard
+                <Text className="text-darkText text-base leading-relaxed mb-4">
+                  <Link href={`https://app.rybbit.io/${site.siteId}`} className="text-brand underline">
+                    View full dashboard
                   </Link>
-                </div>
+                </Text>
               </Section>
             ))}
 
-            {/* Footer */}
-            <Section className="text-center border-t border-borderColor pt-5">
-              <Text className="text-mutedText text-xs mb-2">
-                This weekly report covers the last 7 days of analytics data.
-              </Text>
-              <Text className="text-mutedText text-xs mb-3">
-                <Link href="https://app.rybbit.io/settings/account" className="text-brand no-underline">
-                  Unsubscribe from weekly reports
-                </Link>
-              </Text>
-              <Text className="text-mutedText text-xs">© {currentYear} Rybbit Analytics</Text>
-            </Section>
+            <Text className="text-mutedText text-sm leading-relaxed">
+              This report covers the last 7 days of analytics data.
+            </Text>
+
+            <Hr className="border-borderColor my-8" />
+
+            <Text className="text-mutedText text-xs mb-2">
+              <Link href="https://app.rybbit.io/settings/account" className="text-mutedText underline">
+                Unsubscribe from weekly reports
+              </Link>
+            </Text>
+            <Text className="text-mutedText text-xs">© {currentYear} Rybbit Analytics</Text>
           </Container>
         </Body>
       </Tailwind>

@@ -138,6 +138,7 @@ export const organization = pgTable(
     stripeCustomerId: text(),
     monthlyEventCount: integer().default(0),
     overMonthlyLimit: boolean().default(false),
+    approachingLimitNotifiedPeriodStart: text(),
     planOverride: text(), // Plan name override (e.g., "pro1m", "standard500k")
     customPlan: jsonb("custom_plan").$type<{
       events: number;
