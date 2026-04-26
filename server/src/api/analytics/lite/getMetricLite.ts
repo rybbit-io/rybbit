@@ -55,7 +55,7 @@ export async function getMetricLite(
           ${timeStatement}
         GROUP BY pathname
       )
-      ORDER BY pageviews DESC
+      ORDER BY count DESC
       LIMIT ${limit}
     `;
   } else if (parameter === "country") {
@@ -76,7 +76,7 @@ export async function getMetricLite(
           ${timeStatement}
         GROUP BY country
       )
-      ORDER BY pageviews DESC
+      ORDER BY count DESC
       LIMIT ${limit}
     `;
   } else {
