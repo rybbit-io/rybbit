@@ -21,32 +21,23 @@ export async function getOverviewLite(
   res: FastifyReply
 ) {
   const site = Number(req.params.siteId);
-  const timeStatement = getLiteTimeStatement(req.query, "start_time");
+  const timeStatement = getLiteTimeStatement(req.query, "session_hour");
 
-  // Pulls every metric from sessions_mv. SimpleAggregateFunction(min/max/sum)
-  // columns can be selected with bare min/max/sum — no Merge needed.
-  // Aliases must NOT collide with the source column names — ClickHouse will
-  // resolve `start_time` in WHERE as the aggregate alias and reject it.
+  // Single read of the refreshable session_hourly_mv_target — ~720 rows/month
+  // per site instead of millions of session rows. All 6 metrics derive from
+  // pre-computed sums and one HLL state. `if(sum(sessions) > 0, ...)` guards
+  // against div-by-zero on empty time ranges.
   const query = `
     SELECT
-      count() AS sessions,
-      sum(session_pageviews) AS pageviews,
-      uniqExact(user_id) AS users,
-      avg(session_pageviews) AS pages_per_session,
-      countIf(session_pageviews = 1) / count() * 100 AS bounce_rate,
-      avg(session_end - session_start) AS session_duration
-    FROM (
-      SELECT
-        session_id,
-        any(user_id) AS user_id,
-        sum(pageviews) AS session_pageviews,
-        min(start_time) AS session_start,
-        max(end_time) AS session_end
-      FROM sessions_mv_target
-      WHERE site_id = {siteId:Int32}
-        ${timeStatement}
-      GROUP BY session_id
-    )
+      sum(sessions) AS sessions,
+      sum(pageviews) AS pageviews,
+      uniqMerge(users) AS users,
+      if(sum(sessions) > 0, sum(pageviews) / sum(sessions), 0) AS pages_per_session,
+      if(sum(sessions) > 0, sum(bounced_sessions) * 100.0 / sum(sessions), 0) AS bounce_rate,
+      if(sum(sessions) > 0, sum(total_session_duration_seconds) / sum(sessions), 0) AS session_duration
+    FROM session_hourly_mv_target
+    WHERE site_id = {siteId:Int32}
+      ${timeStatement}
   `;
 
   try {

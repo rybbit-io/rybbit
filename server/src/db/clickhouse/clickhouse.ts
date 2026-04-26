@@ -459,4 +459,56 @@ async function initializeLiteDashboardMVs() {
       GROUP BY site_id, event_hour, country, region
     `,
   });
+
+  // Session-keyed hourly rollup, populated by a REFRESHABLE materialized view.
+  // Streaming MVs can't compute bounce_rate or session_duration because they
+  // see one event at a time, never the full per-session state. The refreshable
+  // MV re-runs its SELECT every 5 minutes against the fully-merged sessions,
+  // which is cheap (~720 rows/site/month) and unlocks all 6 overview metrics
+  // from a single table read.
+  await clickhouse.exec({
+    query: `
+      CREATE TABLE IF NOT EXISTS session_hourly_mv_target (
+        site_id UInt16,
+        session_hour DateTime,
+        sessions UInt64,
+        pageviews UInt64,
+        users AggregateFunction(uniq, String),
+        total_session_duration_seconds UInt64,
+        bounced_sessions UInt64
+      )
+      ENGINE = MergeTree()
+      PARTITION BY toYYYYMM(session_hour)
+      ORDER BY (site_id, session_hour)
+    `,
+  });
+
+  await clickhouse.exec({
+    query: `
+      CREATE MATERIALIZED VIEW IF NOT EXISTS session_hourly_mv
+      REFRESH EVERY 5 MINUTE
+      TO session_hourly_mv_target
+      AS
+      SELECT
+        site_id,
+        toStartOfHour(session_start) AS session_hour,
+        count() AS sessions,
+        sum(session_pageviews) AS pageviews,
+        uniqState(user_id) AS users,
+        sum(toUInt64(session_end - session_start)) AS total_session_duration_seconds,
+        countIf(session_pageviews = 1) AS bounced_sessions
+      FROM (
+        SELECT
+          site_id,
+          session_id,
+          any(user_id) AS user_id,
+          countIf(type = 'pageview') AS session_pageviews,
+          min(timestamp) AS session_start,
+          max(timestamp) AS session_end
+        FROM events
+        GROUP BY site_id, session_id
+      ) AS s
+      GROUP BY site_id, session_hour
+    `,
+  });
 }
