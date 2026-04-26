@@ -1,8 +1,10 @@
 "use client";
 
+import { Expand } from "lucide-react";
 import { useExtracted } from "next-intl";
 import { useState } from "react";
 import { useGetSite } from "../../../../../api/admin/hooks/useSites";
+import { Button } from "../../../../../components/ui/button";
 import { Card, CardContent } from "../../../../../components/ui/card";
 import { StandardSection } from "../../../components/shared/StandardSection/StandardSection";
 import { truncateString } from "../../../../../lib/utils";
@@ -17,7 +19,14 @@ export function PagesLite() {
   return (
     <Card className="h-[405px]">
       <CardContent className="mt-2">
-        <div className="text-sm font-medium text-neutral-700 dark:text-neutral-200 mb-2 px-1">{t("Pages")}</div>
+        <div className="flex flex-row gap-2 justify-between items-center mb-2">
+          <div className="text-sm font-medium text-neutral-700 dark:text-neutral-200 px-1">{t("Pages")}</div>
+          <div className="w-7">
+            <Button size="smIcon" onClick={() => setExpanded(!expanded)}>
+              <Expand className="w-4 h-4" />
+            </Button>
+          </div>
+        </div>
         <StandardSection
           filterParameter="pathname"
           title={t("Pages")}
