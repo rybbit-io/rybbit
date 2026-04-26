@@ -90,6 +90,7 @@ services:
       - MAPBOX_TOKEN=${MAPBOX_TOKEN}
       - CLUSTER_WORKERS=${CLUSTER_WORKERS:-4}
       - DEPLOYMENT=${DEPLOYMENT}
+      - LITE_DASHBOARD=${LITE_DASHBOARD}
     depends_on:
       clickhouse:
         condition: service_healthy
@@ -112,6 +113,7 @@ services:
       args:
         NEXT_PUBLIC_BACKEND_URL: ${BASE_URL}
         NEXT_PUBLIC_DISABLE_SIGNUP: ${DISABLE_SIGNUP}
+        NEXT_PUBLIC_LITE_DASHBOARD: ${LITE_DASHBOARD}
     ports:
       - "${HOST_CLIENT_PORT:-127.0.0.1:3002:3002}"
     environment:
@@ -119,6 +121,7 @@ services:
       - NEXT_PUBLIC_BACKEND_URL=${BASE_URL}
       - NEXT_PUBLIC_DISABLE_SIGNUP=${DISABLE_SIGNUP}
       - NEXT_PUBLIC_DEPLOYMENT=${DEPLOYMENT}
+      - NEXT_PUBLIC_LITE_DASHBOARD=${LITE_DASHBOARD}
     depends_on:
       - backend
     restart: unless-stopped

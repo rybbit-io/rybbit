@@ -10,7 +10,7 @@ import { useStore } from "../../../lib/store";
 import { APIResponse } from "../../types";
 import { buildApiParams } from "../../utils";
 import { Time } from "../../../components/DateSelector/types";
-import { fetchMetric, MetricResponse } from "../endpoints";
+import { fetchMetric, fetchMetricLite, MetricResponse } from "../endpoints";
 
 type PeriodTime = "current" | "previous";
 
@@ -80,6 +80,7 @@ export function usePaginatedMetric({
   additionalFilters = [],
   customFilters = [],
   customTime,
+  lite = false,
 }: {
   parameter: FilterParameter;
   limit?: number;
@@ -89,21 +90,27 @@ export function usePaginatedMetric({
   additionalFilters?: Filter[];
   customFilters?: Filter[];
   customTime?: Time;
+  lite?: boolean;
 }): UseQueryResult<PaginatedResponse> {
   const { time, site, filters, timezone } = useStore();
   const timeToUse = customTime ?? time;
-  const combinedFilters = useFilters
-    ? customFilters.length > 0
-      ? customFilters
-      : [...filters, ...additionalFilters]
-    : undefined;
+  // Lite endpoints don't accept filters — drop them entirely when lite=true
+  // so the query key and request stay clean.
+  const combinedFilters = lite
+    ? undefined
+    : useFilters
+      ? customFilters.length > 0
+        ? customFilters
+        : [...filters, ...additionalFilters]
+      : undefined;
 
   const params = buildApiParams(timeToUse, { filters: combinedFilters });
 
   return useQuery({
-    queryKey: [parameter, customTime, time, site, filters, limit, page, additionalFilters, customFilters, timezone],
+    queryKey: [parameter, customTime, time, site, filters, limit, page, additionalFilters, customFilters, timezone, lite],
     queryFn: async () => {
-      return fetchMetric(site, {
+      const fetcher = lite ? fetchMetricLite : fetchMetric;
+      return fetcher(site, {
         ...params,
         parameter,
         limit,

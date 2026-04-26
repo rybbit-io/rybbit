@@ -34,6 +34,7 @@ export function StandardSection({
   getSubrowLabel,
   customFilters,
   customTime,
+  lite = false,
 }: {
   title: string;
   getKey: (item: MetricResponse) => string;
@@ -49,6 +50,7 @@ export function StandardSection({
   getSubrowLabel?: (item: MetricResponse) => ReactNode;
   customFilters?: Filter[];
   customTime?: Time;
+  lite?: boolean;
 }) {
   const t = useExtracted();
   const { data, isLoading, isFetching, error, refetch } = usePaginatedMetric({
@@ -57,6 +59,7 @@ export function StandardSection({
     page: 1,
     customFilters,
     customTime,
+    lite,
   });
 
   const itemsForDisplay = data?.data;

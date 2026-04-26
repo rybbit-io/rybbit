@@ -35,10 +35,13 @@ import {
   getJourneys,
   getLiveUsercount,
   getMetric,
+  getMetricLite,
   getOrgEventCount,
   getOutboundLinks,
   getOverview,
   getOverviewBucketed,
+  getOverviewBucketedLite,
+  getOverviewLite,
   getPageTitles,
   getPerformanceByDimension,
   getPerformanceOverview,
@@ -241,6 +244,9 @@ async function analyticsRoutes(fastify: FastifyInstance) {
   fastify.get("/sites/:siteId/live-user-count", { logLevel: "silent", ...publicSite }, getLiveUsercount);
   fastify.get("/sites/:siteId/overview", publicSite, getOverview);
   fastify.get("/sites/:siteId/overview-bucketed", publicSite, getOverviewBucketed);
+  fastify.get("/sites/:siteId/overview-lite", publicSite, getOverviewLite);
+  fastify.get("/sites/:siteId/overview-bucketed-lite", publicSite, getOverviewBucketedLite);
+  fastify.get("/sites/:siteId/metric-lite", publicSite, getMetricLite);
   fastify.get("/sites/:siteId/metric", publicSite, getMetric);
   fastify.get("/sites/:siteId/page-titles", publicSite, getPageTitles);
   fastify.get("/sites/:siteId/error-names", publicSite, getErrorNames);
