@@ -16,31 +16,23 @@ type GetOverviewBucketedLiteResponse = {
   users: number;
 }[];
 
-export async function getOverviewBucketedLite(
-  req: FastifyRequest<{
-    Params: { siteId: string };
-    Querystring: FilterParams<{ bucket: TimeBucket }>;
-  }>,
-  res: FastifyReply
-) {
-  const site = Number(req.params.siteId);
-  const bucket = liteBucket(req.query.bucket);
-  const fn = TimeBucketToFn[bucket];
-  const tz = SqlString.escape(req.query.time_zone || "UTC");
-
-  const overviewTime = getLiteTimeStatement(req.query, "event_hour");
-  const sessionsTime = getLiteTimeStatement(req.query, "start_time");
-  const isAllTime =
-    !req.query.start_date &&
-    !req.query.end_date &&
-    req.query.past_minutes_start === undefined &&
-    req.query.past_minutes_end === undefined;
-  const fill = isAllTime ? "" : getLiteFillClause(req.query, bucket);
-
-  // Pageviews + users are timestamp-bucketed (overview_hourly_mv groups by
-  // toStartOfHour(timestamp)). Session-derived metrics are start_time-bucketed
-  // (sessions_mv). Joined on the bucket time, matching getOverviewBucketed.
-  const query = `
+// Hour-bucketed charts use the streaming MV JOIN: pageviews/users are bucketed
+// by EVENT timestamp (when the pageview happened) which matches the standard
+// endpoint's semantics.
+//
+// Day/week/month charts read the refreshable session_hourly_mv directly. At
+// day+ granularity the difference between event-time and session-start-time
+// bucketing is negligible (sessions rarely cross day boundaries), and we get
+// all 6 metrics from a single small table.
+function buildHourBucketQuery(args: {
+  fn: string;
+  tz: string;
+  overviewTime: string;
+  sessionsTime: string;
+  fill: string;
+}) {
+  const { fn, tz, overviewTime, sessionsTime, fill } = args;
+  return `
     SELECT
       coalesce(p.time, s.time) AS time,
       coalesce(p.pageviews, 0) AS pageviews,
@@ -83,6 +75,67 @@ export async function getOverviewBucketedLite(
     ) s USING time
     ORDER BY time
   `;
+}
+
+function buildDayBucketQuery(args: {
+  fn: string;
+  tz: string;
+  sessionTime: string;
+  fill: string;
+}) {
+  const { fn, tz, sessionTime, fill } = args;
+  return `
+    SELECT
+      toDateTime(${fn}(toTimeZone(session_hour, ${tz}))) AS time,
+      sum(sessions) AS sessions,
+      sum(pageviews) AS pageviews,
+      uniqMerge(users) AS users,
+      if(sum(sessions) > 0, sum(pageviews) / sum(sessions), 0) AS pages_per_session,
+      if(sum(sessions) > 0, sum(bounced_sessions) * 100.0 / sum(sessions), 0) AS bounce_rate,
+      if(sum(sessions) > 0, sum(total_session_duration_seconds) / sum(sessions), 0) AS session_duration
+    FROM session_hourly_mv_target
+    WHERE site_id = {siteId:Int32}
+      ${sessionTime}
+    GROUP BY time
+    ORDER BY time ${fill}
+  `;
+}
+
+export async function getOverviewBucketedLite(
+  req: FastifyRequest<{
+    Params: { siteId: string };
+    Querystring: FilterParams<{ bucket: TimeBucket }>;
+  }>,
+  res: FastifyReply
+) {
+  const site = Number(req.params.siteId);
+  const bucket = liteBucket(req.query.bucket);
+  const fn = TimeBucketToFn[bucket];
+  const tz = SqlString.escape(req.query.time_zone || "UTC");
+
+  const isAllTime =
+    !req.query.start_date &&
+    !req.query.end_date &&
+    req.query.past_minutes_start === undefined &&
+    req.query.past_minutes_end === undefined;
+  const fill = isAllTime ? "" : getLiteFillClause(req.query, bucket);
+
+  const useDayBucket = bucket === "day" || bucket === "week" || bucket === "month" || bucket === "year";
+
+  const query = useDayBucket
+    ? buildDayBucketQuery({
+        fn,
+        tz,
+        sessionTime: getLiteTimeStatement(req.query, "session_hour"),
+        fill,
+      })
+    : buildHourBucketQuery({
+        fn,
+        tz,
+        overviewTime: getLiteTimeStatement(req.query, "event_hour"),
+        sessionsTime: getLiteTimeStatement(req.query, "start_time"),
+        fill,
+      });
 
   try {
     const result = await clickhouse.query({

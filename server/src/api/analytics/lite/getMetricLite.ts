@@ -96,3 +96,65 @@ export async function getMetricLite(
     return res.status(500).send({ error: "Failed to fetch metric" });
   }
 }
+
+
+/**
+# === fill these in ===                                                                                                                                         
+  export BASE_URL="https://opgg.rybbit.com/api"                                                                                                            
+  export API_KEY="DviIHftQUGJgjWUSfYORHeDJEoGZoTCUsAGJLgJKHVvZJJMFZmUDDygCdSGYfiIV"                                                                                                                       
+  export SITE_ID="1"                                                                                                                                              
+  export START="2026-04-22"   # 30-day range                                                                                                                      
+  export END="2026-04-25"                                         
+  export TZ="UTC"                                                                                                                                                 
+  # =====================                                         
+                                                                                                                                                                  
+  # Common curl flags: silent, drop body, print only timing                                                                                                       
+  TIMING='-o /dev/null -s -w "%{time_total}s  http_%{http_code}  size=%{size_download}\n"'
+                                                                                                                                                                  
+  bench() {                                                       
+    local label="$1"; local url="$2"                                                                                                                              
+    echo -n "$label: "                                                                                                                                            
+    eval curl $TIMING -H "\"Authorization: Bearer $API_KEY\"" "\"$url\""
+  }                                                                                                                                                               
+                                                                  
+  # Warm caches once (ClickHouse mark cache, OS page cache) so first-run noise                                                                                    
+  # doesn't dominate. Then measure 3x and take the best.          
+  warmup() { curl -s -o /dev/null -H "Authorization: Bearer $API_KEY" "$1"; }                                                                                     
+                                                                                                                                                                  
+  OVERVIEW_STD="$BASE_URL/sites/$SITE_ID/overview?start_date=$START&end_date=$END&time_zone=$TZ"                                                                  
+  OVERVIEW_LITE="$BASE_URL/sites/$SITE_ID/overview-lite?start_date=$START&end_date=$END&time_zone=$TZ"                                                            
+                                                                                                                                                                  
+  BUCKETED_STD="$BASE_URL/sites/$SITE_ID/overview-bucketed?start_date=$START&end_date=$END&time_zone=$TZ&bucket=day"                                              
+  BUCKETED_LITE="$BASE_URL/sites/$SITE_ID/overview-bucketed-lite?start_date=$START&end_date=$END&time_zone=$TZ&bucket=day"                                        
+                                                                                                                                                                  
+  METRIC_PATHS_STD="$BASE_URL/sites/$SITE_ID/metric?start_date=$START&end_date=$END&time_zone=$TZ&parameter=pathname&limit=100"                                   
+  METRIC_PATHS_LITE="$BASE_URL/sites/$SITE_ID/metric-lite?start_date=$START&end_date=$END&time_zone=$TZ&parameter=pathname&limit=100"                             
+                                                                                                                                                                  
+  METRIC_COUNTRY_STD="$BASE_URL/sites/$SITE_ID/metric?start_date=$START&end_date=$END&time_zone=$TZ&parameter=country&limit=100"                                  
+  METRIC_COUNTRY_LITE="$BASE_URL/sites/$SITE_ID/metric-lite?start_date=$START&end_date=$END&time_zone=$TZ&parameter=country&limit=100"                            
+                                                                                                                                                                  
+  for url in "$OVERVIEW_STD" "$OVERVIEW_LITE" "$BUCKETED_STD" "$BUCKETED_LITE" \                                                                                  
+             "$METRIC_PATHS_STD" "$METRIC_PATHS_LITE" "$METRIC_COUNTRY_STD" "$METRIC_COUNTRY_LITE"; do                                                            
+    warmup "$url"                                                                                                                                                 
+  done                                                                                                                                                            
+                                                                                                                                                                  
+  echo ""                                                                                                                                                         
+  echo "=== overview (single value) ==="                          
+  for i in 1 2 3; do bench "  std  run$i" "$OVERVIEW_STD";  done
+  for i in 1 2 3; do bench "  lite run$i" "$OVERVIEW_LITE"; done                                                                                                  
+                                                                                                                                                                  
+  echo ""                                                                                                                                                         
+  echo "=== overview-bucketed (chart) ==="                                                                                                                        
+  for i in 1 2 3; do bench "  std  run$i" "$BUCKETED_STD";  done  
+  for i in 1 2 3; do bench "  lite run$i" "$BUCKETED_LITE"; done                                                                                                  
+  
+  echo ""                                                                                                                                                         
+  echo "=== metric pathname ==="                                  
+  for i in 1 2 3; do bench "  std  run$i" "$METRIC_PATHS_STD";  done                                                                                              
+  for i in 1 2 3; do bench "  lite run$i" "$METRIC_PATHS_LITE"; done                                                                                              
+  
+  echo ""                                                                                                                                                         
+  echo "=== metric country ==="                                   
+  for i in 1 2 3; do bench "  std  run$i" "$METRIC_COUNTRY_STD";  done
+  for i in 1 2 3; do bench "  lite run$i" "$METRIC_COUNTRY_LITE"; done  
+ */
