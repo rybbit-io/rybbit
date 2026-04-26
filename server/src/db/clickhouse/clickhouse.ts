@@ -1,5 +1,5 @@
 import { createClient } from "@clickhouse/client";
-import { IS_CLOUD } from "../../lib/const.js";
+import { IS_CLOUD, LITE_DASHBOARD } from "../../lib/const.js";
 import { createServiceLogger } from "../../lib/logger/logger.js";
 
 const parsePositiveInt = (value: string | undefined, fallback: number) => {
@@ -287,4 +287,176 @@ export const initializeClickhouse = async () => {
       `,
     });
   }
+
+  if (LITE_DASHBOARD) {
+    await initializeLiteDashboardMVs();
+  }
 };
+
+// Materialized views that back the simplified high-traffic dashboard.
+// All views are hourly-bucketed and feed the lite endpoints; raw `events`
+// is still queried for filters that aren't keyed in these MVs.
+async function initializeLiteDashboardMVs() {
+  // Per-session rollup. Replaces the AllSessionPageviews / FilteredSessions
+  // CTEs that getOverview and getOverviewBucketed run over raw events.
+  // ReplacingMergeTree keyed by session_id collapses the streaming inserts
+  // into one final row per session as parts merge.
+  await clickhouse.exec({
+    query: `
+      CREATE TABLE IF NOT EXISTS sessions_mv_target (
+        site_id UInt16,
+        session_id String,
+        user_id String,
+        start_time SimpleAggregateFunction(min, DateTime),
+        end_time SimpleAggregateFunction(max, DateTime),
+        pageviews SimpleAggregateFunction(sum, UInt32),
+        events SimpleAggregateFunction(sum, UInt32),
+        country LowCardinality(FixedString(2)),
+        region LowCardinality(String),
+        device_type LowCardinality(String),
+        browser LowCardinality(String),
+        operating_system LowCardinality(String),
+        channel String,
+        referrer String,
+        hostname String,
+        entry_pathname String,
+        last_seen SimpleAggregateFunction(max, DateTime)
+      )
+      ENGINE = AggregatingMergeTree()
+      PARTITION BY toYYYYMM(start_time)
+      ORDER BY (site_id, session_id)
+    `,
+  });
+
+  await clickhouse.exec({
+    query: `
+      CREATE MATERIALIZED VIEW IF NOT EXISTS sessions_mv
+      TO sessions_mv_target
+      AS SELECT
+        site_id,
+        session_id,
+        any(user_id) AS user_id,
+        min(timestamp) AS start_time,
+        max(timestamp) AS end_time,
+        countIf(type = 'pageview') AS pageviews,
+        count() AS events,
+        any(country) AS country,
+        any(region) AS region,
+        any(device_type) AS device_type,
+        any(browser) AS browser,
+        any(operating_system) AS operating_system,
+        any(channel) AS channel,
+        any(referrer) AS referrer,
+        any(hostname) AS hostname,
+        argMin(pathname, timestamp) AS entry_pathname,
+        max(timestamp) AS last_seen
+      FROM events
+      GROUP BY site_id, session_id
+    `,
+  });
+
+  // Hourly overview rollup. Drives the bucketed chart and overview cards.
+  await clickhouse.exec({
+    query: `
+      CREATE TABLE IF NOT EXISTS overview_hourly_mv_target (
+        site_id UInt16,
+        event_hour DateTime,
+        pageviews SimpleAggregateFunction(sum, UInt64),
+        events SimpleAggregateFunction(sum, UInt64),
+        users AggregateFunction(uniq, String),
+        sessions AggregateFunction(uniq, String)
+      )
+      ENGINE = AggregatingMergeTree()
+      PARTITION BY toYYYYMM(event_hour)
+      ORDER BY (site_id, event_hour)
+    `,
+  });
+
+  await clickhouse.exec({
+    query: `
+      CREATE MATERIALIZED VIEW IF NOT EXISTS overview_hourly_mv
+      TO overview_hourly_mv_target
+      AS SELECT
+        site_id,
+        toStartOfHour(timestamp) AS event_hour,
+        countIf(type = 'pageview') AS pageviews,
+        count() AS events,
+        uniqState(user_id) AS users,
+        uniqState(session_id) AS sessions
+      FROM events
+      GROUP BY site_id, event_hour
+    `,
+  });
+
+  // Top-pathname rollup. Cardinality is bounded by hour, so high-URL sites
+  // still get smaller-than-raw storage. Filtered queries fall back to events.
+  await clickhouse.exec({
+    query: `
+      CREATE TABLE IF NOT EXISTS pathname_hourly_mv_target (
+        site_id UInt16,
+        event_hour DateTime,
+        pathname String,
+        hostname String,
+        pageviews SimpleAggregateFunction(sum, UInt64),
+        users AggregateFunction(uniq, String),
+        sessions AggregateFunction(uniq, String)
+      )
+      ENGINE = AggregatingMergeTree()
+      PARTITION BY toYYYYMM(event_hour)
+      ORDER BY (site_id, event_hour, pathname)
+    `,
+  });
+
+  await clickhouse.exec({
+    query: `
+      CREATE MATERIALIZED VIEW IF NOT EXISTS pathname_hourly_mv
+      TO pathname_hourly_mv_target
+      AS SELECT
+        site_id,
+        toStartOfHour(timestamp) AS event_hour,
+        pathname,
+        any(hostname) AS hostname,
+        countIf(type = 'pageview') AS pageviews,
+        uniqState(user_id) AS users,
+        uniqState(session_id) AS sessions
+      FROM events
+      WHERE type = 'pageview'
+      GROUP BY site_id, event_hour, pathname
+    `,
+  });
+
+  // Country/region rollup. Cardinality is naturally bounded.
+  await clickhouse.exec({
+    query: `
+      CREATE TABLE IF NOT EXISTS country_hourly_mv_target (
+        site_id UInt16,
+        event_hour DateTime,
+        country LowCardinality(FixedString(2)),
+        region LowCardinality(String),
+        pageviews SimpleAggregateFunction(sum, UInt64),
+        users AggregateFunction(uniq, String),
+        sessions AggregateFunction(uniq, String)
+      )
+      ENGINE = AggregatingMergeTree()
+      PARTITION BY toYYYYMM(event_hour)
+      ORDER BY (site_id, event_hour, country, region)
+    `,
+  });
+
+  await clickhouse.exec({
+    query: `
+      CREATE MATERIALIZED VIEW IF NOT EXISTS country_hourly_mv
+      TO country_hourly_mv_target
+      AS SELECT
+        site_id,
+        toStartOfHour(timestamp) AS event_hour,
+        country,
+        region,
+        countIf(type = 'pageview') AS pageviews,
+        uniqState(user_id) AS users,
+        uniqState(session_id) AS sessions
+      FROM events
+      GROUP BY site_id, event_hour, country, region
+    `,
+  });
+}

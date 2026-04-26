@@ -2,7 +2,15 @@
 export * from "./types";
 
 // Overview endpoints
-export { fetchOverview, fetchOverviewBucketed, fetchMetric, fetchLiveUserCount } from "./overview";
+export {
+  fetchOverview,
+  fetchOverviewBucketed,
+  fetchMetric,
+  fetchLiveUserCount,
+  fetchOverviewLite,
+  fetchOverviewBucketedLite,
+  fetchMetricLite,
+} from "./overview";
 export type {
   GetOverviewResponse,
   GetOverviewBucketedResponse,

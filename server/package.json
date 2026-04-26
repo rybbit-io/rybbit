@@ -24,7 +24,8 @@
     "update:referrer-spam": "node src/services/tracker/botBlocking/update-referrer-spam.mjs",
     "knip": "knip",
     "format": "prettier --write \"src/**/*.{js,ts,json,md}\"",
-    "format:check": "prettier --check \"src/**/*.{js,ts,json,md}\""
+    "format:check": "prettier --check \"src/**/*.{js,ts,json,md}\"",
+    "backfill:lite-mvs": "tsc && node dist/scripts/backfillLiteDashboardMVs.js"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.842.0",

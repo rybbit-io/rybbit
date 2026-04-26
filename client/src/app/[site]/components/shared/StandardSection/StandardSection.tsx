@@ -32,6 +32,7 @@ export type StandardSectionBaseProps = {
   getSubrowLabel?: (item: MetricResponse) => ReactNode;
   customFilters?: Filter[];
   customTime?: Time;
+  lite?: boolean;
 };
 
 type StandardSectionProps = StandardSectionBaseProps & {
@@ -55,6 +56,7 @@ export function StandardSection({
   getSubrowLabel,
   customFilters,
   customTime,
+  lite = false,
   renderDialog = true,
 }: StandardSectionProps) {
   const t = useExtracted();
@@ -64,6 +66,7 @@ export function StandardSection({
     page: 1,
     customFilters,
     customTime,
+    lite,
   });
 
   const itemsForDisplay = data?.data;
