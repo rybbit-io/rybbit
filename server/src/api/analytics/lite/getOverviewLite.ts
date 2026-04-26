@@ -25,19 +25,31 @@ export async function getOverviewLite(
 
   // Single read of the refreshable session_hourly_mv_target — ~720 rows/month
   // per site instead of millions of session rows. All 6 metrics derive from
-  // pre-computed sums and one HLL state. `if(sum(sessions) > 0, ...)` guards
-  // against div-by-zero on empty time ranges.
+  // pre-computed sums and one HLL state.
+  //
+  // Aggregations run in the inner subquery; divisions compose plain values in
+  // the outer SELECT. Don't alias `sum(sessions) AS sessions` at this level —
+  // ClickHouse will resolve the column name to the aggregate and reject as
+  // nested aggregation.
   const query = `
     SELECT
-      sum(sessions) AS sessions,
-      sum(pageviews) AS pageviews,
-      uniqMerge(users) AS users,
-      if(sum(sessions) > 0, sum(pageviews) / sum(sessions), 0) AS pages_per_session,
-      if(sum(sessions) > 0, sum(bounced_sessions) * 100.0 / sum(sessions), 0) AS bounce_rate,
-      if(sum(sessions) > 0, sum(total_session_duration_seconds) / sum(sessions), 0) AS session_duration
-    FROM session_hourly_mv_target
-    WHERE site_id = {siteId:Int32}
-      ${timeStatement}
+      sessions,
+      pageviews,
+      users,
+      if(sessions > 0, pageviews / sessions, 0) AS pages_per_session,
+      if(sessions > 0, bounced_sessions * 100.0 / sessions, 0) AS bounce_rate,
+      if(sessions > 0, total_session_duration_seconds / sessions, 0) AS session_duration
+    FROM (
+      SELECT
+        sum(sessions) AS sessions,
+        sum(pageviews) AS pageviews,
+        uniqMerge(users) AS users,
+        sum(bounced_sessions) AS bounced_sessions,
+        sum(total_session_duration_seconds) AS total_session_duration_seconds
+      FROM session_hourly_mv_target
+      WHERE site_id = {siteId:Int32}
+        ${timeStatement}
+    )
   `;
 
   try {

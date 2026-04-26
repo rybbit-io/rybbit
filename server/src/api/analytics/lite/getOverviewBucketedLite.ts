@@ -84,20 +84,33 @@ function buildDayBucketQuery(args: {
   fill: string;
 }) {
   const { fn, tz, sessionTime, fill } = args;
+  // Aggregate in the inner GROUP BY, then compose ratios in the outer SELECT.
+  // Aliasing `sum(sessions) AS sessions` would shadow the column inside the
+  // div-by-zero guard and trigger ILLEGAL_AGGREGATION.
   return `
     SELECT
-      toDateTime(${fn}(toTimeZone(session_hour, ${tz}))) AS time,
-      sum(sessions) AS sessions,
-      sum(pageviews) AS pageviews,
-      uniqMerge(users) AS users,
-      if(sum(sessions) > 0, sum(pageviews) / sum(sessions), 0) AS pages_per_session,
-      if(sum(sessions) > 0, sum(bounced_sessions) * 100.0 / sum(sessions), 0) AS bounce_rate,
-      if(sum(sessions) > 0, sum(total_session_duration_seconds) / sum(sessions), 0) AS session_duration
-    FROM session_hourly_mv_target
-    WHERE site_id = {siteId:Int32}
-      ${sessionTime}
-    GROUP BY time
-    ORDER BY time ${fill}
+      time,
+      sessions,
+      pageviews,
+      users,
+      if(sessions > 0, pageviews / sessions, 0) AS pages_per_session,
+      if(sessions > 0, bounced_sessions * 100.0 / sessions, 0) AS bounce_rate,
+      if(sessions > 0, total_session_duration_seconds / sessions, 0) AS session_duration
+    FROM (
+      SELECT
+        toDateTime(${fn}(toTimeZone(session_hour, ${tz}))) AS time,
+        sum(sessions) AS sessions,
+        sum(pageviews) AS pageviews,
+        uniqMerge(users) AS users,
+        sum(bounced_sessions) AS bounced_sessions,
+        sum(total_session_duration_seconds) AS total_session_duration_seconds
+      FROM session_hourly_mv_target
+      WHERE site_id = {siteId:Int32}
+        ${sessionTime}
+      GROUP BY time
+      ORDER BY time ${fill}
+    )
+    ORDER BY time
   `;
 }
 
