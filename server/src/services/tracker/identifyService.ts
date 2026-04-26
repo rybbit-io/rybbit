@@ -139,13 +139,20 @@ export async function handleIdentify(request: FastifyRequest, reply: FastifyRepl
           .filter(([_, v]) => v === null)
           .map(([k]) => k);
 
+        // When nullKeys is empty, drizzle serializes [] as `()` which is invalid
+        // Postgres array literal syntax. Skip the subtract clause in that case.
+        const traitsExpr =
+          nullKeys.length > 0
+            ? sql`(${userProfiles.traits} - ${nullKeys}::text[]) || ${JSON.stringify(filteredTraits)}::jsonb`
+            : sql`${userProfiles.traits} || ${JSON.stringify(filteredTraits)}::jsonb`;
+
         await db
           .insert(userProfiles)
           .values({ siteId, userId: user_id, traits: filteredTraits })
           .onConflictDoUpdate({
             target: [userProfiles.siteId, userProfiles.userId],
             set: {
-              traits: sql`(${userProfiles.traits} - ${nullKeys}::text[]) || ${JSON.stringify(filteredTraits)}::jsonb`,
+              traits: traitsExpr,
               updatedAt: sql`now()`,
             },
           });
