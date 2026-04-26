@@ -62,17 +62,17 @@ export async function getOverviewBucketedLite(
     ) p
     FULL JOIN (
       SELECT
-        toDateTime(${fn}(toTimeZone(start_time, ${tz}))) AS time,
+        toDateTime(${fn}(toTimeZone(session_start, ${tz}))) AS time,
         count() AS sessions,
-        avg(pageviews) AS pages_per_session,
-        countIf(pageviews = 1) / count() * 100 AS bounce_rate,
-        avg(end_time - start_time) AS session_duration
+        avg(session_pageviews) AS pages_per_session,
+        countIf(session_pageviews = 1) / count() * 100 AS bounce_rate,
+        avg(session_end - session_start) AS session_duration
       FROM (
         SELECT
           session_id,
-          sum(pageviews) AS pageviews,
-          min(start_time) AS start_time,
-          max(end_time) AS end_time
+          sum(pageviews) AS session_pageviews,
+          min(start_time) AS session_start,
+          max(end_time) AS session_end
         FROM sessions_mv_target
         WHERE site_id = {siteId:Int32}
           ${sessionsTime}

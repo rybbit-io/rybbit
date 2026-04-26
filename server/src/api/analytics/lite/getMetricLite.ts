@@ -31,35 +31,51 @@ export async function getMetricLite(
   const limit = Math.min(Number(req.query.limit) || 100, 500);
   const timeStatement = getLiteTimeStatement(req.query, "event_hour");
 
+  // Percentages are computed in an outer pass so the window function
+  // operates on already-grouped rows. `sum(sum(...)) OVER ()` is illegal
+  // in ClickHouse — aggregates can't nest.
   let query: string;
   if (parameter === "pathname") {
     query = `
       SELECT
-        pathname AS value,
-        any(hostname) AS hostname,
-        sum(pageviews) AS pageviews,
-        uniqMerge(sessions) AS count,
-        round(uniqMerge(sessions) * 100.0 / sum(uniqMerge(sessions)) OVER (), 2) AS percentage,
-        round(sum(pageviews) * 100.0 / sum(sum(pageviews)) OVER (), 2) AS pageviews_percentage
-      FROM pathname_hourly_mv_target
-      WHERE site_id = {siteId:Int32}
-        ${timeStatement}
-      GROUP BY pathname
+        value,
+        hostname,
+        pageviews,
+        count,
+        round(count * 100.0 / sum(count) OVER (), 2) AS percentage,
+        round(pageviews * 100.0 / sum(pageviews) OVER (), 2) AS pageviews_percentage
+      FROM (
+        SELECT
+          pathname AS value,
+          any(hostname) AS hostname,
+          sum(pageviews) AS pageviews,
+          uniqMerge(sessions) AS count
+        FROM pathname_hourly_mv_target
+        WHERE site_id = {siteId:Int32}
+          ${timeStatement}
+        GROUP BY pathname
+      )
       ORDER BY pageviews DESC
       LIMIT ${limit}
     `;
   } else if (parameter === "country") {
     query = `
       SELECT
-        country AS value,
-        sum(pageviews) AS pageviews,
-        uniqMerge(sessions) AS count,
-        round(uniqMerge(sessions) * 100.0 / sum(uniqMerge(sessions)) OVER (), 2) AS percentage,
-        round(sum(pageviews) * 100.0 / sum(sum(pageviews)) OVER (), 2) AS pageviews_percentage
-      FROM country_hourly_mv_target
-      WHERE site_id = {siteId:Int32}
-        ${timeStatement}
-      GROUP BY country
+        value,
+        pageviews,
+        count,
+        round(count * 100.0 / sum(count) OVER (), 2) AS percentage,
+        round(pageviews * 100.0 / sum(pageviews) OVER (), 2) AS pageviews_percentage
+      FROM (
+        SELECT
+          country AS value,
+          sum(pageviews) AS pageviews,
+          uniqMerge(sessions) AS count
+        FROM country_hourly_mv_target
+        WHERE site_id = {siteId:Int32}
+          ${timeStatement}
+        GROUP BY country
+      )
       ORDER BY pageviews DESC
       LIMIT ${limit}
     `;
