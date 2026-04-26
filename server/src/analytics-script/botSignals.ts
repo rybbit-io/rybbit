@@ -26,7 +26,8 @@ export function getBotScore(): number {
     }
 
     // 4. Missing window.chrome on a Chrome UA — real Chrome always exposes this object
-    if (!((window as any).chrome) && /Chrome\//.test(navigator.userAgent)) {
+    //    Only flag for non-WebView Chrome UAs; Android WebView doesn't expose window.chrome
+    if (!((window as any).chrome) && /Chrome\//.test(navigator.userAgent) && !/\bwv\b|; wv\)/.test(navigator.userAgent)) {
       score++;
     }
 
@@ -48,8 +49,8 @@ export function getBotScore(): number {
     }
 
     // 6. No plugins — headless Chrome has 0 plugins, real Chrome has at least PDF viewer
-    //    Only flag for Chrome UAs since Firefox legitimately has 0
-    if (navigator.plugins.length === 0 && /Chrome\//.test(navigator.userAgent)) {
+    //    Only flag for non-WebView Chrome UAs; Firefox and Android WebView can legitimately have 0
+    if (navigator.plugins.length === 0 && /Chrome\//.test(navigator.userAgent) && !/\bwv\b|; wv\)/.test(navigator.userAgent)) {
       score++;
     }
 
