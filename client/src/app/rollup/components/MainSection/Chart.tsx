@@ -1,53 +1,51 @@
 "use client";
 import { TimeBucket } from "@rybbit/shared";
-import { ResponsiveLine } from "@nivo/line";
+import { ResponsiveBar } from "@nivo/bar";
 import { useWindowSize } from "@uidotdev/usehooks";
 import { DateTime } from "luxon";
 import { ChartTooltip } from "@/components/charts/ChartTooltip";
 import { Time } from "@/components/DateSelector/types";
 import { formatChartDateTime, hour12, userLocale } from "@/lib/dateTimeUtils";
 import { useNivoTheme } from "@/lib/nivo";
-import { getTimezone } from "@/lib/store";
-import { StatType } from "@/lib/store";
+import { getTimezone, StatType } from "@/lib/store";
 import { formatSecondsAsMinutesAndSeconds, formatter } from "@/lib/utils";
 import { RollupSeries } from "../../hooks/useRollupBucketed";
 
 const SITE_COLORS = [
-  "hsl(217, 91%, 60%)",
-  "hsl(142, 76%, 45%)",
-  "hsl(24, 95%, 60%)",
-  "hsl(280, 70%, 60%)",
-  "hsl(190, 95%, 50%)",
-  "hsl(340, 82%, 60%)",
-  "hsl(48, 96%, 55%)",
-  "hsl(160, 64%, 45%)",
-  "hsl(0, 84%, 65%)",
-  "hsl(258, 90%, 70%)",
-  "hsl(80, 60%, 50%)",
-  "hsl(210, 60%, 55%)",
-  "hsl(12, 88%, 55%)",
-  "hsl(170, 70%, 40%)",
-  "hsl(300, 70%, 65%)",
-  "hsl(60, 85%, 50%)",
-  "hsl(230, 80%, 70%)",
-  "hsl(110, 55%, 50%)",
-  "hsl(35, 90%, 50%)",
-  "hsl(320, 65%, 55%)",
-  "hsl(180, 80%, 45%)",
-  "hsl(265, 60%, 55%)",
-  "hsl(95, 70%, 40%)",
-  "hsl(15, 70%, 70%)",
-  "hsl(200, 85%, 65%)",
-  "hsl(135, 50%, 60%)",
-  "hsl(355, 70%, 50%)",
-  "hsl(245, 75%, 60%)",
-  "hsl(70, 80%, 60%)",
-  "hsl(290, 80%, 50%)",
+  "hsla(217, 75%, 60%, 0.85)",
+  "hsla(142, 65%, 48%, 0.85)",
+  "hsla(24, 80%, 60%, 0.85)",
+  "hsla(280, 62%, 62%, 0.85)",
+  "hsla(190, 78%, 52%, 0.85)",
+  "hsla(340, 70%, 62%, 0.85)",
+  "hsla(48, 80%, 55%, 0.85)",
+  "hsla(160, 58%, 48%, 0.85)",
+  "hsla(0, 70%, 65%, 0.85)",
+  "hsla(258, 72%, 70%, 0.85)",
+  "hsla(80, 58%, 52%, 0.85)",
+  "hsla(210, 58%, 58%, 0.85)",
+  "hsla(12, 75%, 58%, 0.85)",
+  "hsla(170, 62%, 44%, 0.85)",
+  "hsla(300, 60%, 65%, 0.85)",
+  "hsla(60, 70%, 52%, 0.85)",
+  "hsla(230, 70%, 70%, 0.85)",
+  "hsla(110, 52%, 52%, 0.85)",
+  "hsla(35, 75%, 52%, 0.85)",
+  "hsla(320, 58%, 58%, 0.85)",
+  "hsla(180, 70%, 48%, 0.85)",
+  "hsla(265, 58%, 58%, 0.85)",
+  "hsla(95, 62%, 44%, 0.85)",
+  "hsla(15, 62%, 68%, 0.85)",
+  "hsla(200, 75%, 65%, 0.85)",
+  "hsla(135, 52%, 60%, 0.85)",
+  "hsla(355, 62%, 55%, 0.85)",
+  "hsla(245, 70%, 62%, 0.85)",
+  "hsla(70, 70%, 60%, 0.85)",
+  "hsla(290, 70%, 55%, 0.85)",
 ];
 
 // Assign colors by position in the canonical site list so that no two sites
 // in view ever collide as long as there are at most SITE_COLORS.length sites.
-// Hashing by siteId would collide whenever ids share a residue mod 12.
 export function buildSiteColorMap(siteIds: number[]): Map<number, string> {
   const map = new Map<number, string>();
   siteIds.forEach((id, i) => {
@@ -58,60 +56,15 @@ export function buildSiteColorMap(siteIds: number[]): Map<number, string> {
 
 const FALLBACK_COLOR = SITE_COLORS[0];
 
-const Y_TICK_VALUES = 5;
+// Stats that are sums across sites get stacked bars; weighted-average stats
+// get grouped (side-by-side) bars since stacking averages is misleading.
+const ADDITIVE_STATS: StatType[] = ["pageviews", "sessions", "users"];
 
 const formatTooltipValue = (value: number, selectedStat: StatType): string => {
   if (selectedStat === "bounce_rate") return `${value.toFixed(1)}%`;
   if (selectedStat === "session_duration")
     return formatSecondsAsMinutesAndSeconds(value);
   return value.toLocaleString();
-};
-
-const getMin = (time: Time, _bucket: TimeBucket, timezone: string) => {
-  if (time.mode === "past-minutes") {
-    return DateTime.now()
-      .setZone(timezone)
-      .minus({ minutes: time.pastMinutesStart })
-      .startOf(time.pastMinutesStart < 360 ? "minute" : "hour")
-      .toJSDate();
-  }
-  if (time.mode === "day")
-    return DateTime.fromISO(time.day, { zone: timezone })
-      .startOf("day")
-      .toJSDate();
-  if (time.mode === "week")
-    return DateTime.fromISO(time.week, { zone: timezone })
-      .startOf("week")
-      .toJSDate();
-  if (time.mode === "month")
-    return DateTime.fromISO(time.month, { zone: timezone })
-      .startOf("month")
-      .toJSDate();
-  if (time.mode === "year")
-    return DateTime.fromISO(time.year, { zone: timezone })
-      .startOf("year")
-      .toJSDate();
-  return undefined;
-};
-
-const getMax = (time: Time, _bucket: TimeBucket, timezone: string) => {
-  if (time.mode === "day")
-    return DateTime.fromISO(time.day, { zone: timezone })
-      .endOf("day")
-      .toJSDate();
-  if (time.mode === "week")
-    return DateTime.fromISO(time.week, { zone: timezone })
-      .endOf("week")
-      .toJSDate();
-  if (time.mode === "month")
-    return DateTime.fromISO(time.month, { zone: timezone })
-      .endOf("month")
-      .toJSDate();
-  if (time.mode === "year")
-    return DateTime.fromISO(time.year, { zone: timezone })
-      .endOf("year")
-      .toJSDate();
-  return undefined;
 };
 
 type SiteMeta = {
@@ -138,78 +91,79 @@ export function Chart({
   const { width } = useWindowSize();
   const nivoTheme = useNivoTheme();
   const timezone = getTimezone();
+  const maxTicks = Math.max(1, Math.round((width ?? Infinity) / 75));
 
-  const chartMin = getMin(time, bucket, timezone);
-  const chartMax = getMax(time, bucket, timezone);
-  const maxTicks = Math.round((width ?? Infinity) / 75);
-
-  const chartData = series.map((s) => {
+  // Each site becomes a stacked/grouped key in every time-bucket row.
+  const labelForSeries = (s: RollupSeries) => {
     const meta = siteMetaById.get(s.siteId);
-    return {
-      id: meta?.name || meta?.domain || `Site ${s.siteId}`,
-      siteId: s.siteId,
-      color: siteColorMap.get(s.siteId) ?? FALLBACK_COLOR,
-      data: s.data
-        .map((point) => {
-          const ts = DateTime.fromSQL(point.time, { zone: timezone }).toUTC();
-          if (ts > DateTime.now()) return null;
-          return {
-            x: ts.toFormat("yyyy-MM-dd HH:mm:ss"),
-            y: point[selectedStat],
-            ts,
-          };
-        })
-        .filter((p): p is { x: string; y: number; ts: DateTime } => p !== null),
-    };
-  });
+    return meta?.name || meta?.domain || `Site ${s.siteId}`;
+  };
 
-  const yMax = Math.max(
-    1,
-    ...chartData.flatMap((s) => s.data.map((d) => d.y))
+  const keys = series.map(labelForSeries);
+  const colors = series.map(
+    (s) => siteColorMap.get(s.siteId) ?? FALLBACK_COLOR
   );
 
-  const colors = chartData.map((s) => s.color);
+  // Pivot series → one row per time bucket with a value per site key.
+  const buckets = new Map<string, Record<string, string | number>>();
+  series.forEach((s) => {
+    const key = labelForSeries(s);
+    s.data.forEach((point) => {
+      const ts = DateTime.fromSQL(point.time, { zone: timezone }).toUTC();
+      if (ts > DateTime.now()) return;
+      const timeStr = ts.toFormat("yyyy-MM-dd HH:mm:ss");
+      let row = buckets.get(timeStr);
+      if (!row) {
+        row = { time: timeStr };
+        keys.forEach((k) => {
+          row![k] = 0;
+        });
+        buckets.set(timeStr, row);
+      }
+      row[key] = point[selectedStat];
+    });
+  });
+
+  const chartData = Array.from(buckets.values()).sort((a, b) =>
+    String(a.time).localeCompare(String(b.time))
+  );
+
+  const groupMode: "grouped" | "stacked" = ADDITIVE_STATS.includes(selectedStat)
+    ? "stacked"
+    : "grouped";
+
+  const tickStep = Math.max(1, Math.ceil(chartData.length / maxTicks));
 
   return (
-    <ResponsiveLine
+    <ResponsiveBar
       data={chartData}
+      keys={keys}
+      indexBy="time"
+      groupMode={groupMode}
       theme={nivoTheme}
       margin={{ top: 10, right: 15, bottom: 30, left: 40 }}
-      xScale={{
-        type: "time",
-        format: "%Y-%m-%d %H:%M:%S",
-        precision: "second",
-        useUTC: true,
-        max: chartMax,
-        min: chartMin,
-      }}
-      yScale={{
-        type: "linear",
-        min: 0,
-        stacked: false,
-        reverse: false,
-        max: yMax,
-      }}
-      enableGridX={true}
+      padding={0.2}
+      innerPadding={groupMode === "grouped" ? 1 : 0}
+      valueScale={{ type: "linear" }}
+      indexScale={{ type: "band", round: true }}
+      colors={colors}
+      enableGridX={false}
       enableGridY={true}
-      gridYValues={Y_TICK_VALUES}
-      yFormat=" >-.2f"
+      enableLabel={false}
+      borderRadius={1}
+      animate={false}
       axisTop={null}
       axisRight={null}
       axisBottom={{
         tickSize: 5,
         tickPadding: 10,
         tickRotation: 0,
-        truncateTickAt: 0,
-        tickValues: Math.min(
-          maxTicks,
-          time.mode === "day" ||
-            (time.mode === "past-minutes" && time.pastMinutesStart === 1440)
-            ? 24
-            : 12
-        ),
-        format: (value) => {
-          const dt = DateTime.fromJSDate(value as Date, { zone: "utc" })
+        format: (value: string) => {
+          const idx = chartData.findIndex((d) => d.time === value);
+          if (idx === -1 || idx % tickStep !== 0) return "";
+          const dt = DateTime.fromFormat(value, "yyyy-MM-dd HH:mm:ss", {
+            zone: "utc",
+          })
             .setZone(getTimezone())
             .setLocale(userLocale);
           if (time.mode === "past-minutes") {
@@ -226,52 +180,33 @@ export function Chart({
         tickSize: 5,
         tickPadding: 10,
         tickRotation: 0,
-        truncateTickAt: 0,
-        tickValues: Y_TICK_VALUES,
         format: formatter,
       }}
-      enableTouchCrosshair={true}
-      enablePoints={false}
-      useMesh={true}
-      animate={false}
-      enableSlices={"x"}
-      colors={colors}
-      enableArea={false}
-      lineWidth={2}
-      sliceTooltip={({ slice }) => {
-        const points = [...slice.points].sort(
-          (a, b) => Number(b.data.yFormatted) - Number(a.data.yFormatted)
-        );
-        const tsRaw = points[0]?.data?.ts as DateTime | undefined;
-
+      tooltip={({ id, value, color, indexValue }) => {
+        const dt = DateTime.fromFormat(
+          String(indexValue),
+          "yyyy-MM-dd HH:mm:ss",
+          { zone: "utc" }
+        ).setZone(getTimezone());
         return (
           <ChartTooltip>
-            {tsRaw && (
-              <div className="text-xs font-medium px-2 pt-1.5 pb-1 text-neutral-400">
-                {formatChartDateTime(tsRaw, bucket)}
-              </div>
-            )}
-            <div className="w-full h-px bg-neutral-100 dark:bg-neutral-750" />
-            <div className="m-2 flex flex-col gap-1">
-              {points.map((p) => (
-                <div
-                  key={p.id}
-                  className="flex justify-between text-sm w-56 gap-3"
-                >
-                  <div className="flex items-center gap-2 min-w-0">
-                    <div
-                      className="w-1 h-3 rounded-[3px] shrink-0"
-                      style={{ backgroundColor: p.seriesColor }}
-                    />
-                    <span className="truncate">{p.seriesId}</span>
-                  </div>
-                  <div className="shrink-0">
-                    {formatTooltipValue(Number(p.data.yFormatted), selectedStat)}
-                  </div>
-                </div>
-              ))}
+            <div className="text-xs font-medium px-2 pt-1.5 pb-1 text-neutral-400">
+              {formatChartDateTime(dt, bucket)}
             </div>
-          </ChartTooltip >
+            <div className="w-full h-px bg-neutral-100 dark:bg-neutral-750" />
+            <div className="m-2 flex justify-between text-sm w-56 gap-3">
+              <div className="flex items-center gap-2 min-w-0">
+                <div
+                  className="w-1 h-3 rounded-[3px] shrink-0"
+                  style={{ backgroundColor: color }}
+                />
+                <span className="truncate">{String(id)}</span>
+              </div>
+              <div className="shrink-0">
+                {formatTooltipValue(Number(value), selectedStat)}
+              </div>
+            </div>
+          </ChartTooltip>
         );
       }}
     />

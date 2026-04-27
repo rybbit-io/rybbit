@@ -11,6 +11,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { useGetPerformanceTimeSeries } from "../../../../api/analytics/hooks/performance/useGetPerformanceTimeSeries";
 import { BucketSelection } from "../../../../components/BucketSelection";
+import { ToggleChip } from "../../../../components/ToggleChip";
 import { RybbitLogo, RybbitTextLogo } from "../../../../components/RybbitLogo";
 import { authClient } from "../../../../lib/auth";
 import { formatChartDateTime, hour12, userLocale } from "../../../../lib/dateTimeUtils";
@@ -209,30 +210,19 @@ export function PerformanceChart() {
             <div className="flex items-center space-x-2">
               {(["P50", "P75", "P90", "P99"] as const).map(percentile => {
                 const colors = {
-                  P50: "hsl(var(--indigo-100))", // light blue
-                  P75: "hsl(var(--indigo-300))", // medium blue
-                  P90: "hsl(var(--indigo-400))", // blue
-                  P99: "hsl(var(--indigo-500))", // dark blue
+                  P50: "hsl(var(--indigo-100))",
+                  P75: "hsl(var(--indigo-300))",
+                  P90: "hsl(var(--indigo-400))",
+                  P99: "hsl(var(--indigo-500))",
                 };
-                const isVisible = visiblePercentiles.has(percentile);
-
                 return (
-                  <button
+                  <ToggleChip
                     key={percentile}
+                    isSelected={visiblePercentiles.has(percentile)}
                     onClick={() => togglePercentile(percentile)}
-                    className={cn(
-                      "flex items-center space-x-1.5 px-2 py-1 rounded text-xs font-medium transition-all",
-                      isVisible
-                        ? "bg-neutral-150 dark:bg-neutral-800 text-neutral-900 dark:text-white"
-                        : "bg-neutral-50 dark:bg-neutral-900 text-neutral-600 dark:text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-400"
-                    )}
-                  >
-                    <div
-                      className={cn("w-3 h-3 rounded-sm transition-opacity", isVisible ? "opacity-100" : "opacity-30")}
-                      style={{ backgroundColor: colors[percentile] }}
-                    />
-                    <span>{percentile}</span>
-                  </button>
+                    swatchColor={colors[percentile]}
+                    label={percentile}
+                  />
                 );
               })}
             </div>
