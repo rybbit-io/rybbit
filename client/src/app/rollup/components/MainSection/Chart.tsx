@@ -3,6 +3,8 @@ import { TimeBucket } from "@rybbit/shared";
 import { ResponsiveBar } from "@nivo/bar";
 import { useWindowSize } from "@uidotdev/usehooks";
 import { DateTime } from "luxon";
+import { useState } from "react";
+import { createPortal } from "react-dom";
 import { ChartTooltip } from "@/components/charts/ChartTooltip";
 import { Time } from "@/components/DateSelector/types";
 import { formatChartDateTime, hour12, userLocale } from "@/lib/dateTimeUtils";
@@ -134,81 +136,155 @@ export function Chart({
 
   const tickStep = Math.max(1, Math.ceil(chartData.length / maxTicks));
 
+  // Tooltip state — we render our own via a portal so it isn't clipped by the
+  // surrounding Card's overflow-hidden, and so it can show every site for the
+  // hovered time bucket rather than just the bar under the cursor.
+  const colorByKey = new Map(keys.map((k, i) => [k, colors[i]]));
+  const [hover, setHover] = useState<{
+    indexValue: string;
+    x: number;
+    y: number;
+  } | null>(null);
+
+  const hoverRow = hover
+    ? chartData.find((d) => d.time === hover.indexValue)
+    : undefined;
+
+  const hoverEntries = hoverRow
+    ? keys
+        .map((k) => ({
+          key: k,
+          value: Number(hoverRow[k] ?? 0),
+          color: colorByKey.get(k) ?? FALLBACK_COLOR,
+        }))
+        .sort((a, b) => b.value - a.value)
+    : [];
+
+  const tooltipWidth = 240;
+  const tooltipOffset = 14;
+  const viewportW = typeof window !== "undefined" ? window.innerWidth : 0;
+  const tooltipLeft = hover
+    ? Math.min(hover.x + tooltipOffset, viewportW - tooltipWidth - 8)
+    : 0;
+
   return (
-    <ResponsiveBar
-      data={chartData}
-      keys={keys}
-      indexBy="time"
-      groupMode={groupMode}
-      theme={nivoTheme}
-      margin={{ top: 10, right: 15, bottom: 30, left: 40 }}
-      padding={0.2}
-      innerPadding={groupMode === "grouped" ? 1 : 0}
-      valueScale={{ type: "linear" }}
-      indexScale={{ type: "band", round: true }}
-      colors={colors}
-      enableGridX={false}
-      enableGridY={true}
-      enableLabel={false}
-      borderRadius={1}
-      animate={false}
-      axisTop={null}
-      axisRight={null}
-      axisBottom={{
-        tickSize: 5,
-        tickPadding: 10,
-        tickRotation: 0,
-        format: (value: string) => {
-          const idx = chartData.findIndex((d) => d.time === value);
-          if (idx === -1 || idx % tickStep !== 0) return "";
-          const dt = DateTime.fromFormat(value, "yyyy-MM-dd HH:mm:ss", {
-            zone: "utc",
-          })
-            .setZone(getTimezone())
-            .setLocale(userLocale);
-          if (time.mode === "past-minutes") {
-            if (time.pastMinutesStart < 1440)
-              return dt.toFormat(hour12 ? "h:mm" : "HH:mm");
-            return dt.toFormat(hour12 ? "ha" : "HH:mm");
+    <>
+      <div
+        className="w-full h-full"
+        onMouseMove={(e) =>
+          setHover((prev) =>
+            prev
+              ? { ...prev, x: e.clientX, y: e.clientY }
+              : prev
+          )
+        }
+        onMouseLeave={() => setHover(null)}
+      >
+        <ResponsiveBar
+          data={chartData}
+          keys={keys}
+          indexBy="time"
+          groupMode={groupMode}
+          theme={nivoTheme}
+          margin={{ top: 10, right: 15, bottom: 30, left: 40 }}
+          padding={0.2}
+          innerPadding={groupMode === "grouped" ? 1 : 0}
+          valueScale={{ type: "linear" }}
+          indexScale={{ type: "band", round: true }}
+          colors={colors}
+          enableGridX={false}
+          enableGridY={true}
+          enableLabel={false}
+          borderRadius={1}
+          animate={false}
+          axisTop={null}
+          axisRight={null}
+          axisBottom={{
+            tickSize: 5,
+            tickPadding: 10,
+            tickRotation: 0,
+            format: (value: string) => {
+              const idx = chartData.findIndex((d) => d.time === value);
+              if (idx === -1 || idx % tickStep !== 0) return "";
+              const dt = DateTime.fromFormat(value, "yyyy-MM-dd HH:mm:ss", {
+                zone: "utc",
+              })
+                .setZone(getTimezone())
+                .setLocale(userLocale);
+              if (time.mode === "past-minutes") {
+                if (time.pastMinutesStart < 1440)
+                  return dt.toFormat(hour12 ? "h:mm" : "HH:mm");
+                return dt.toFormat(hour12 ? "ha" : "HH:mm");
+              }
+              if (time.mode === "day")
+                return dt.toFormat(hour12 ? "ha" : "HH:mm");
+              return dt.toFormat(hour12 ? "MMM d" : "dd MMM");
+            },
+          }}
+          axisLeft={{
+            tickSize: 5,
+            tickPadding: 10,
+            tickRotation: 0,
+            format: formatter,
+          }}
+          onMouseEnter={(datum, event) =>
+            setHover({
+              indexValue: String(datum.indexValue),
+              x: event.clientX,
+              y: event.clientY,
+            })
           }
-          if (time.mode === "day")
-            return dt.toFormat(hour12 ? "ha" : "HH:mm");
-          return dt.toFormat(hour12 ? "MMM d" : "dd MMM");
-        },
-      }}
-      axisLeft={{
-        tickSize: 5,
-        tickPadding: 10,
-        tickRotation: 0,
-        format: formatter,
-      }}
-      tooltip={({ id, value, color, indexValue }) => {
-        const dt = DateTime.fromFormat(
-          String(indexValue),
-          "yyyy-MM-dd HH:mm:ss",
-          { zone: "utc" }
-        ).setZone(getTimezone());
-        return (
-          <ChartTooltip>
-            <div className="text-xs font-medium px-2 pt-1.5 pb-1 text-neutral-400">
-              {formatChartDateTime(dt, bucket)}
-            </div>
-            <div className="w-full h-px bg-neutral-100 dark:bg-neutral-750" />
-            <div className="m-2 flex justify-between text-sm w-56 gap-3">
-              <div className="flex items-center gap-2 min-w-0">
-                <div
-                  className="w-1 h-3 rounded-[3px] shrink-0"
-                  style={{ backgroundColor: color }}
-                />
-                <span className="truncate">{String(id)}</span>
+          onMouseLeave={() => setHover(null)}
+          tooltip={() => <></>}
+        />
+      </div>
+      {hover && hoverRow && typeof document !== "undefined" &&
+        createPortal(
+          <div
+            style={{
+              position: "fixed",
+              left: tooltipLeft,
+              top: hover.y + tooltipOffset,
+              width: tooltipWidth,
+              pointerEvents: "none",
+              zIndex: 9999,
+            }}
+          >
+            <ChartTooltip>
+              <div className="text-xs font-medium px-2 pt-1.5 pb-1 text-neutral-400">
+                {formatChartDateTime(
+                  DateTime.fromFormat(
+                    hover.indexValue,
+                    "yyyy-MM-dd HH:mm:ss",
+                    { zone: "utc" }
+                  ).setZone(getTimezone()),
+                  bucket
+                )}
               </div>
-              <div className="shrink-0">
-                {formatTooltipValue(Number(value), selectedStat)}
+              <div className="w-full h-px bg-neutral-100 dark:bg-neutral-750" />
+              <div className="m-2 flex flex-col gap-1">
+                {hoverEntries.map((e) => (
+                  <div
+                    key={e.key}
+                    className="flex justify-between text-sm gap-3"
+                  >
+                    <div className="flex items-center gap-2 min-w-0">
+                      <div
+                        className="w-1 h-3 rounded-[3px] shrink-0"
+                        style={{ backgroundColor: e.color }}
+                      />
+                      <span className="truncate">{e.key}</span>
+                    </div>
+                    <div className="shrink-0">
+                      {formatTooltipValue(e.value, selectedStat)}
+                    </div>
+                  </div>
+                ))}
               </div>
-            </div>
-          </ChartTooltip>
-        );
-      }}
-    />
+            </ChartTooltip>
+          </div>,
+          document.body
+        )}
+    </>
   );
 }
