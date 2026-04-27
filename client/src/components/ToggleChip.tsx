@@ -35,6 +35,7 @@ export function ToggleChip({
 
   return (
     <button
+      type="button"
       onClick={onClick}
       className={cn(
         "flex items-center space-x-1.5 px-2 py-1 rounded text-xs font-medium transition-all whitespace-nowrap",
