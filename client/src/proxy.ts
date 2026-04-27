@@ -39,6 +39,7 @@ export async function proxy(request: NextRequest) {
       "account",
       "uptime",
       "settings",
+      "rollup",
       "as",
       "_next",
       "api",

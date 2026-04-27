@@ -1,5 +1,5 @@
 "use client";
-import { Building2, CreditCard, LayoutGrid, UserCircle, Users } from "lucide-react";
+import { Building2, CreditCard, LayoutDashboard, LayoutGrid, UserCircle, Users } from "lucide-react";
 import { useExtracted } from "next-intl";
 import { usePathname } from "next/navigation";
 import { useUserOrganizations } from "../../api/admin/hooks/useOrganizations";
@@ -31,6 +31,12 @@ export function NavigationSidebar() {
           active={pathname === "/"}
           href="/"
           icon={<LayoutGrid className="w-4 h-4" />}
+        />
+        <Sidebar.Item
+          label={t("Rollup")}
+          active={pathname.startsWith("/rollup")}
+          href="/rollup"
+          icon={<LayoutDashboard className="w-4 h-4" />}
         />
         <Sidebar.Item
           label={t("Account")}
