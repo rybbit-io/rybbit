@@ -12,12 +12,15 @@ import { Card } from "@/components/ui/card";
 import { useInView } from "@/hooks/useInView";
 import { useSetPageTitle } from "@/hooks/useSetPageTitle";
 import { authClient } from "@/lib/auth";
+import { LITE_DASHBOARD } from "@/lib/const";
 import { buildSiteColorMap } from "./components/MainSection/Chart";
 import { MainSection } from "./components/MainSection/MainSection";
 import { RollupTopBar } from "./components/RollupTopBar";
 import { SiteToggleStrip } from "./components/SiteToggleStrip";
 import { Countries } from "./components/sections/Countries";
+import { CountriesLite } from "./components/sections/CountriesLite";
 import { Devices } from "./components/sections/Devices";
+import { PagesLite } from "./components/sections/PagesLite";
 import { Referrers } from "./components/sections/Referrers";
 
 function LazySection({
@@ -105,6 +108,23 @@ export default function RollupPage() {
         <Card className="p-6 text-center text-sm text-neutral-500 dark:text-neutral-400">
           {t("Select at least one site to view rollup analytics.")}
         </Card>
+      ) : LITE_DASHBOARD ? (
+        <>
+          <MainSection
+            siteIds={effectiveSiteIds}
+            sites={filteredSites}
+            siteColorMap={siteColorMap}
+            lite
+          />
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 mt-3">
+            <LazySection>
+              <PagesLite siteIds={effectiveSiteIds} />
+            </LazySection>
+            <LazySection>
+              <CountriesLite siteIds={effectiveSiteIds} />
+            </LazySection>
+          </div>
+        </>
       ) : (
         <>
           <MainSection
