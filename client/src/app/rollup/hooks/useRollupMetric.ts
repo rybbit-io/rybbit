@@ -1,7 +1,11 @@
 import { FilterParameter } from "@rybbit/shared";
 import { useQueries } from "@tanstack/react-query";
 import { useMemo } from "react";
-import { fetchMetric, MetricResponse } from "@/api/analytics/endpoints";
+import {
+  fetchMetric,
+  fetchMetricLite,
+  MetricResponse,
+} from "@/api/analytics/endpoints";
 import { buildApiParams } from "@/api/utils";
 import { useStore } from "@/lib/store";
 
@@ -18,27 +22,32 @@ export function useRollupMetric({
   siteIds,
   parameter,
   limit = 100,
+  lite = false,
 }: {
   siteIds: number[];
   parameter: FilterParameter;
   limit?: number;
+  lite?: boolean;
 }): UseRollupMetricResult {
   const { time, filters, timezone } = useStore();
-  const params = buildApiParams(time, { filters });
+  const effectiveFilters = lite ? undefined : filters;
+  const params = buildApiParams(time, { filters: effectiveFilters });
 
   const queries = useQueries({
     queries: siteIds.map((siteId) => ({
       queryKey: [
-        "rollup-metric",
+        lite ? "rollup-metric-lite" : "rollup-metric",
         parameter,
         siteId,
         time,
-        filters,
+        effectiveFilters,
         limit,
         timezone,
       ],
-      queryFn: () =>
-        fetchMetric(siteId, { ...params, parameter, limit, page: 1 }),
+      queryFn: () => {
+        const fetcher = lite ? fetchMetricLite : fetchMetric;
+        return fetcher(siteId, { ...params, parameter, limit, page: 1 });
+      },
       staleTime: 60_000,
     })),
   });

@@ -25,6 +25,7 @@ export function RollupSection({
   countLabel,
   expanded,
   close,
+  lite = false,
 }: {
   title: string;
   filterParameter: FilterParameter;
@@ -37,12 +38,14 @@ export function RollupSection({
   countLabel?: string;
   expanded: boolean;
   close: () => void;
+  lite?: boolean;
 }) {
   const t = useExtracted();
   const { data, isLoading, isFetching, error } = useRollupMetric({
     siteIds,
     parameter: filterParameter,
     limit: 100,
+    lite,
   });
 
   const items = data;
@@ -128,6 +131,7 @@ export function RollupSection({
           getLink={getLink}
           expanded={expanded}
           close={close}
+          lite={lite}
         />
       )}
     </>
