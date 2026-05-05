@@ -1,3 +1,4 @@
+import { clearSelfReferrer, getAllUrlParams } from "../../tracker/utils.js";
 import { getChannel } from "../../tracker/getChannel.js";
 import { RybbitEvent } from "./rybbit.js";
 import { z } from "zod";
@@ -55,6 +56,8 @@ export class PlausibleImportMapper {
         // ignore invalid JSON
       }
 
+      const referrer = clearSelfReferrer(data.referrer, data.hostname.replace(/^www\./, ""));
+
       acc.push({
         site_id: site,
         timestamp: data.timestamp,
@@ -63,10 +66,10 @@ export class PlausibleImportMapper {
         hostname: data.hostname,
         pathname: data.pathname,
         querystring: data.querystring,
-        url_parameters: {},
+        url_parameters: getAllUrlParams(data.querystring),
         page_title: "",
-        referrer: data.referrer,
-        channel: getChannel(data.referrer, data.querystring, data.hostname),
+        referrer,
+        channel: getChannel(referrer, data.querystring, data.hostname),
         browser: data.browser,
         browser_version: data.browser_version,
         operating_system: data.operating_system,
