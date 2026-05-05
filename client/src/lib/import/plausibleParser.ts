@@ -60,7 +60,39 @@ interface PlausibleSyntheticEvent {
 
 type DailyDist<T> = Map<string, DistEntry<T>[]>;
 
+interface Session {
+  sessionId: string;
+  userId: string;
+  hostname: string;
+  browser: BrowserInfo;
+  device: DeviceInfo;
+  os: OsInfo;
+  location: LocationInfo;
+  source: SourceInfo;
+  budget: number;
+  pagesUsed: number;
+  startSeconds: number;
+  perPageSeconds: number;
+}
+
+interface DayPool {
+  sessions: Session[];
+  cursor: number;
+}
+
+interface PoolDistributions {
+  browserDist: DailyDist<BrowserInfo>;
+  deviceDist: DailyDist<DeviceInfo>;
+  osDist: DailyDist<OsInfo>;
+  locationDist: DailyDist<LocationInfo>;
+  sourceDist: DailyDist<SourceInfo>;
+  hostnameDist: DailyDist<string>;
+  hostnameFallback: string;
+}
+
 const CHUNK_SIZE = 5000;
+const SECONDS_IN_DAY = 86400;
+const DEFAULT_PAGE_GAP_SECONDS = 30;
 
 // Simple deterministic pseudo-random based on index
 function deterministicPick<T>(
@@ -178,6 +210,28 @@ function buildReferrerUrl(source: string, referrer: string): string {
   // Friendly source names like "Brave" or "Bing" aren't URLs and can't become one.
   if (!value.includes(".") && !value.includes("/")) return "";
   return `https://${value}`;
+}
+
+function hashDate(date: string): number {
+  let h = 0;
+  for (let i = 0; i < date.length; i++) {
+    h = ((h << 5) - h + date.charCodeAt(i)) | 0;
+  }
+  return Math.abs(h) || 1;
+}
+
+function clampSecondsToDay(seconds: number): number {
+  if (seconds < 0) return 0;
+  if (seconds > SECONDS_IN_DAY - 1) return SECONDS_IN_DAY - 1;
+  return Math.floor(seconds);
+}
+
+function formatTimestamp(date: string, secondsOfDay: number): string {
+  const s = clampSecondsToDay(secondsOfDay);
+  const hours = Math.floor(s / 3600);
+  const minutes = Math.floor((s % 3600) / 60);
+  const seconds = s % 60;
+  return `${date} ${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
 }
 
 function buildQuerystring(utm: SourceInfo): string {
@@ -327,178 +381,168 @@ export class PlausibleCsvParser {
         }
       }
 
-      // Phase 3: Generate synthetic pageview events
-      let buffer: PlausibleSyntheticEvent[] = [];
-      let globalIndex = 0;
+      // Phase 3: Build per-date session pools.
+      //
+      // Plausible exports daily totals (visitors, visits, bounces, pageviews) plus
+      // per-page rows that re-aggregate the same activity. We use the daily totals
+      // to size a pool of users + sessions for each date, give each session a
+      // single set of context (browser/device/os/location/source/hostname) so the
+      // context is consistent across all of that session's pageviews, and then
+      // distribute pages from the pages CSV across the sessions. This produces
+      // multi-page sessions with a real bounce rate, matching the source data.
+      const visitorsData = csvFiles.get("visitors");
+      const visitorsByDate = new Map<string, Record<string, string>>();
+      if (visitorsData) {
+        for (const row of visitorsData) {
+          if (row.date) visitorsByDate.set(row.date, row);
+        }
+      }
 
+      // Per-date pageview/visit totals from the pages CSV — used as a fallback
+      // when no visitors row exists for a date.
+      const pagesTotalsByDate = new Map<string, { pageviews: number; visits: number }>();
       for (const row of pagesData) {
+        const date = row.date;
+        if (!date) continue;
+        const t = pagesTotalsByDate.get(date) ?? { pageviews: 0, visits: 0 };
+        t.pageviews += parseInt(row.pageviews || "0", 10) || 0;
+        t.visits += parseInt(row.visits || "0", 10) || 0;
+        pagesTotalsByDate.set(date, t);
+      }
+
+      const dists: PoolDistributions = {
+        browserDist,
+        deviceDist,
+        osDist,
+        locationDist,
+        sourceDist,
+        hostnameDist,
+        hostnameFallback,
+      };
+
+      const pools = new Map<string, DayPool>();
+      for (const date of pagesTotalsByDate.keys()) {
+        if (!this.isDateInRange(date)) continue;
+        const pool = this.buildDayPool(
+          date,
+          visitorsByDate.get(date) ?? null,
+          pagesTotalsByDate.get(date) ?? null,
+          dists
+        );
+        if (pool.sessions.length > 0) pools.set(date, pool);
+      }
+
+      // Sort pages by entry-page weight (desc) within each date so the
+      // highest-entry-likelihood pages are assigned first — they end up as
+      // the first page of sessions, which gives Rybbit's "entry pages" report
+      // a distribution that roughly matches Plausible's.
+      const entryPagesData = csvFiles.get("entry_pages");
+      const entryWeightByDatePage = new Map<string, number>();
+      if (entryPagesData) {
+        for (const row of entryPagesData) {
+          if (!row.date || !row.entry_page) continue;
+          const w = parseInt(row.entrances || "0", 10) || 0;
+          entryWeightByDatePage.set(`${row.date}|${row.entry_page}`, w);
+        }
+      }
+      const sortedPages = entryWeightByDatePage.size
+        ? this.sortPagesByEntryWeight(pagesData, entryWeightByDatePage)
+        : pagesData;
+
+      // Phase 4: Generate pageview events using the pools.
+      let buffer: PlausibleSyntheticEvent[] = [];
+
+      for (const row of sortedPages) {
         if (this.cancelled) return;
 
         const date = row.date;
-        if (!date || !this.isDateInRange(date)) continue;
+        if (!date) continue;
+        const pool = pools.get(date);
+        if (!pool) continue;
 
         const hostname = row.hostname || "";
         const page = row.page || "/";
         const pageviews = parseInt(row.pageviews || "0", 10);
-        const visits = parseInt(row.visits || "1", 10);
-
         if (pageviews <= 0) continue;
 
-        // Generate session IDs for this row's visits
-        const sessionsForRow = Math.max(1, Math.min(visits, pageviews));
-        const sessionIds: string[] = [];
-        for (let s = 0; s < sessionsForRow; s++) {
-          sessionIds.push(generateUUID(globalIndex + s, s * 31337));
-        }
-
         for (let i = 0; i < pageviews; i++) {
-          const eventIndex = globalIndex + i;
-          // Spread timestamps evenly across the day
-          const secondsInDay = 86400;
-          const offsetSeconds = Math.floor(
-            (i * secondsInDay) / pageviews
-          );
-          const hours = Math.floor(offsetSeconds / 3600);
-          const minutes = Math.floor((offsetSeconds % 3600) / 60);
-          const seconds = offsetSeconds % 60;
-          const timestamp = `${date} ${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
-
-          const sessionId = sessionIds[i % sessionsForRow];
-
-          const browser = this.pickFromDist(browserDist, date, eventIndex, {
-            browser: "",
-            browser_version: "",
-          });
-          const device = this.pickFromDist(deviceDist, date, eventIndex, {
-            device_type: "",
-          });
-          const os = this.pickFromDist(osDist, date, eventIndex, {
-            operating_system: "",
-            operating_system_version: "",
-          });
-          const location = this.pickFromDist(locationDist, date, eventIndex, {
-            country: "",
-            region: "",
-            city: "",
-          });
-          const source = this.pickFromDist(sourceDist, date, eventIndex, {
-            referrer: "",
-            utm_source: "",
-            utm_medium: "",
-            utm_campaign: "",
-            utm_content: "",
-            utm_term: "",
-          });
+          const session = this.pickSessionForPageview(pool);
+          const offsetSeconds =
+            session.startSeconds + session.pagesUsed * session.perPageSeconds;
+          const timestamp = formatTimestamp(date, offsetSeconds);
 
           buffer.push({
             timestamp,
-            session_id: sessionId,
-            user_id: sessionId,
+            session_id: session.sessionId,
+            user_id: session.userId,
             hostname,
             pathname: page,
-            querystring: buildQuerystring(source),
-            referrer: source.referrer,
-            browser: browser.browser,
-            browser_version: browser.browser_version,
-            operating_system: os.operating_system,
-            operating_system_version: os.operating_system_version,
-            device_type: device.device_type,
-            country: location.country,
-            region: location.region,
-            city: location.city,
+            querystring: buildQuerystring(session.source),
+            referrer: session.source.referrer,
+            browser: session.browser.browser,
+            browser_version: session.browser.browser_version,
+            operating_system: session.os.operating_system,
+            operating_system_version: session.os.operating_system_version,
+            device_type: session.device.device_type,
+            country: session.location.country,
+            region: session.location.region,
+            city: session.location.city,
             type: "pageview",
             event_name: "",
             props: "{}",
           });
+
+          session.pagesUsed += 1;
+          if (session.budget > 0) session.budget -= 1;
 
           if (buffer.length >= CHUNK_SIZE) {
             await this.uploadChunk(buffer, false);
             buffer = [];
           }
         }
-
-        globalIndex += pageviews;
       }
 
-      // Phase 4: Generate synthetic custom events
+      // Phase 5: Generate custom events, attached to existing sessions so they
+      // share user_ids with pageview activity for the same day.
       const customEventsData = csvFiles.get("custom_events");
       if (customEventsData) {
         for (const row of customEventsData) {
           if (this.cancelled) return;
 
           const date = row.date;
-          if (!date || !this.isDateInRange(date)) continue;
+          if (!date) continue;
+          const pool = pools.get(date);
+          if (!pool || pool.sessions.length === 0) continue;
 
           const eventName = row.name || "";
           const path = row.path || "/";
           const linkUrl = row.link_url || "";
           const eventCount = parseInt(row.events || "0", 10);
-
           if (eventCount <= 0 || !eventName) continue;
 
           const propsStr = linkUrl ? JSON.stringify({ url: linkUrl }) : "{}";
 
           for (let i = 0; i < eventCount; i++) {
-            const eventIndex = globalIndex + i;
-            const secondsInDay = 86400;
-            const offsetSeconds = Math.floor(
-              (i * secondsInDay) / eventCount
-            );
-            const hours = Math.floor(offsetSeconds / 3600);
-            const minutes = Math.floor((offsetSeconds % 3600) / 60);
-            const seconds = offsetSeconds % 60;
-            const timestamp = `${date} ${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
-
-            const sessionId = generateUUID(eventIndex, eventIndex * 7);
-
-            const browser = this.pickFromDist(browserDist, date, eventIndex, {
-              browser: "",
-              browser_version: "",
-            });
-            const device = this.pickFromDist(deviceDist, date, eventIndex, {
-              device_type: "",
-            });
-            const os = this.pickFromDist(osDist, date, eventIndex, {
-              operating_system: "",
-              operating_system_version: "",
-            });
-            const location = this.pickFromDist(
-              locationDist,
-              date,
-              eventIndex,
-              { country: "", region: "", city: "" }
-            );
-            const source = this.pickFromDist(sourceDist, date, eventIndex, {
-              referrer: "",
-              utm_source: "",
-              utm_medium: "",
-              utm_campaign: "",
-              utm_content: "",
-              utm_term: "",
-            });
-            const hostname = this.pickFromDist(
-              hostnameDist,
-              date,
-              eventIndex,
-              hostnameFallback
-            );
+            const session = pool.sessions[i % pool.sessions.length];
+            const offsetSeconds = Math.floor((i * SECONDS_IN_DAY) / eventCount);
+            const timestamp = formatTimestamp(date, offsetSeconds);
 
             buffer.push({
               timestamp,
-              session_id: sessionId,
-              user_id: sessionId,
-              hostname,
+              session_id: session.sessionId,
+              user_id: session.userId,
+              hostname: session.hostname,
               pathname: path,
-              querystring: buildQuerystring(source),
-              referrer: source.referrer,
-              browser: browser.browser,
-              browser_version: browser.browser_version,
-              operating_system: os.operating_system,
-              operating_system_version: os.operating_system_version,
-              device_type: device.device_type,
-              country: location.country,
-              region: location.region,
-              city: location.city,
+              querystring: buildQuerystring(session.source),
+              referrer: session.source.referrer,
+              browser: session.browser.browser,
+              browser_version: session.browser.browser_version,
+              operating_system: session.os.operating_system,
+              operating_system_version: session.os.operating_system_version,
+              device_type: session.device.device_type,
+              country: session.location.country,
+              region: session.location.region,
+              city: session.location.city,
               type: "custom_event",
               event_name: eventName,
               props: propsStr,
@@ -509,8 +553,6 @@ export class PlausibleCsvParser {
               buffer = [];
             }
           }
-
-          globalIndex += eventCount;
         }
       }
 
@@ -563,6 +605,135 @@ export class PlausibleCsvParser {
     const entries = dist.get(date);
     if (!entries || entries.length === 0) return fallback;
     return deterministicPick(entries, index);
+  }
+
+  private buildDayPool(
+    date: string,
+    visitorsRow: Record<string, string> | null,
+    pagesTotals: { pageviews: number; visits: number } | null,
+    dists: PoolDistributions
+  ): DayPool {
+    const visitorsRowPv = parseInt(visitorsRow?.pageviews ?? "", 10) || 0;
+    const visitorsRowVisits = parseInt(visitorsRow?.visits ?? "", 10) || 0;
+    const visitorsRowVisitors = parseInt(visitorsRow?.visitors ?? "", 10) || 0;
+    const visitorsRowBounces = parseInt(visitorsRow?.bounces ?? "", 10) || 0;
+    const visitorsRowDuration = parseInt(visitorsRow?.visit_duration ?? "", 10) || 0;
+
+    const totalPageviews = Math.max(visitorsRowPv, pagesTotals?.pageviews ?? 0);
+    const numSessions = Math.max(
+      1,
+      visitorsRowVisits || pagesTotals?.visits || Math.max(1, Math.ceil(totalPageviews / 2))
+    );
+    const numUsers = Math.max(1, Math.min(numSessions, visitorsRowVisitors || numSessions));
+    const numBounces = Math.min(numSessions, Math.max(0, visitorsRowBounces));
+
+    if (totalPageviews <= 0) {
+      return { sessions: [], cursor: 0 };
+    }
+
+    // Each session gets at least one pageview; bounces get exactly one.
+    const minPageviews = Math.max(numSessions, totalPageviews);
+    const nonBounce = numSessions - numBounces;
+    const remainingForNonBounce = Math.max(0, minPageviews - numBounces);
+    const baseNonBounce = nonBounce > 0 ? Math.floor(remainingForNonBounce / nonBounce) : 0;
+    const extraNonBounce = nonBounce > 0 ? remainingForNonBounce - baseNonBounce * nonBounce : 0;
+
+    const dateSeed = hashDate(date);
+    const userIds: string[] = [];
+    for (let i = 0; i < numUsers; i++) {
+      userIds.push(generateUUID(dateSeed + i, dateSeed * 3 + i * 31337));
+    }
+
+    const sessions: Session[] = [];
+    for (let i = 0; i < numSessions; i++) {
+      const isBounce = i < numBounces;
+      const budget = isBounce
+        ? 1
+        : Math.max(1, baseNonBounce + (i - numBounces < extraNonBounce ? 1 : 0));
+
+      const startSeconds = Math.floor((i * SECONDS_IN_DAY) / numSessions);
+      const avgDurationSeconds = visitorsRowDuration > 0 ? visitorsRowDuration / numSessions : 0;
+      const perPageSeconds =
+        budget > 1
+          ? Math.max(1, Math.floor(avgDurationSeconds / (budget - 1)) || DEFAULT_PAGE_GAP_SECONDS)
+          : DEFAULT_PAGE_GAP_SECONDS;
+
+      sessions.push({
+        sessionId: generateUUID(dateSeed * 7 + i, dateSeed * 11 + i * 7919),
+        userId: userIds[i % numUsers],
+        hostname: this.pickFromDist(dists.hostnameDist, date, i, dists.hostnameFallback),
+        browser: this.pickFromDist(dists.browserDist, date, i, {
+          browser: "",
+          browser_version: "",
+        }),
+        device: this.pickFromDist(dists.deviceDist, date, i, { device_type: "" }),
+        os: this.pickFromDist(dists.osDist, date, i, {
+          operating_system: "",
+          operating_system_version: "",
+        }),
+        location: this.pickFromDist(dists.locationDist, date, i, {
+          country: "",
+          region: "",
+          city: "",
+        }),
+        source: this.pickFromDist(dists.sourceDist, date, i, {
+          referrer: "",
+          utm_source: "",
+          utm_medium: "",
+          utm_campaign: "",
+          utm_content: "",
+          utm_term: "",
+        }),
+        budget,
+        pagesUsed: 0,
+        startSeconds,
+        perPageSeconds,
+      });
+    }
+
+    return { sessions, cursor: 0 };
+  }
+
+  private pickSessionForPageview(pool: DayPool): Session {
+    // Prefer sessions with remaining budget, advancing the cursor round-robin.
+    for (let i = 0; i < pool.sessions.length; i++) {
+      const idx = (pool.cursor + i) % pool.sessions.length;
+      const session = pool.sessions[idx];
+      if (session.budget > 0) {
+        pool.cursor = (idx + 1) % pool.sessions.length;
+        return session;
+      }
+    }
+    // All budgets exhausted (page totals exceed the visitors total — possible
+    // due to filtering). Over-allocate to keep events flowing rather than drop them.
+    const session = pool.sessions[pool.cursor % pool.sessions.length];
+    pool.cursor = (pool.cursor + 1) % pool.sessions.length;
+    return session;
+  }
+
+  private sortPagesByEntryWeight(
+    pagesData: Record<string, string>[],
+    entryWeights: Map<string, number>
+  ): Record<string, string>[] {
+    // Group rows by date to preserve date locality, then sort within each
+    // date by entry weight descending.
+    const byDate = new Map<string, Record<string, string>[]>();
+    for (const row of pagesData) {
+      const date = row.date || "";
+      if (!byDate.has(date)) byDate.set(date, []);
+      byDate.get(date)!.push(row);
+    }
+
+    const out: Record<string, string>[] = [];
+    for (const [date, rows] of byDate) {
+      rows.sort((a, b) => {
+        const aw = entryWeights.get(`${date}|${a.page}`) ?? 0;
+        const bw = entryWeights.get(`${date}|${b.page}`) ?? 0;
+        return bw - aw;
+      });
+      out.push(...rows);
+    }
+    return out;
   }
 
   private isDateInRange(dateStr: string): boolean {
