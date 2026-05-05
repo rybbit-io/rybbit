@@ -140,11 +140,44 @@ function normalizeDevice(device: string): string {
   return device;
 }
 
+const osMap: Record<string, string> = {
+  "gnu/linux": "Linux",
+  ubuntu: "Linux",
+  mac: "macOS",
+  "mac os": "macOS",
+  "mac os x": "macOS",
+  ios: "iOS",
+  ipados: "iOS",
+  android: "Android",
+  windows: "Windows",
+  "chrome os": "Chrome OS",
+  chromeos: "Chrome OS",
+};
+
+function normalizeOs(os: string): string {
+  if (!os) return "";
+  return osMap[os.toLowerCase()] ?? os;
+}
+
+const browserMap: Record<string, string> = {
+  "microsoft edge": "Edge",
+  "samsung browser": "Samsung Internet",
+  "yandex browser": "Yandex",
+};
+
+function normalizeBrowser(browser: string): string {
+  if (!browser) return "";
+  return browserMap[browser.toLowerCase()] ?? browser;
+}
+
 function buildReferrerUrl(source: string, referrer: string): string {
-  if (!source && !referrer) return "";
-  if (referrer) return `https://${referrer}`;
-  if (source && source !== "Direct / None") return `https://${source}`;
-  return "";
+  const value = referrer || source;
+  if (!value) return "";
+  // Already has a scheme (e.g. "android-app://com.linkedin.android") — keep as-is.
+  if (value.includes("://")) return value;
+  // Friendly source names like "Brave" or "Bing" aren't URLs and can't become one.
+  if (!value.includes(".") && !value.includes("/")) return "";
+  return `https://${value}`;
 }
 
 function buildQuerystring(utm: SourceInfo): string {
@@ -230,7 +263,7 @@ export class PlausibleCsvParser {
       const browserDist = this.buildDist<BrowserInfo>(
         csvFiles.get("browsers"),
         (row) => ({
-          browser: row.browser || "",
+          browser: normalizeBrowser(row.browser || ""),
           browser_version: row.browser_version || "",
         }),
         (row) => parseInt(row.pageviews || "0", 10)
@@ -245,7 +278,7 @@ export class PlausibleCsvParser {
       const osDist = this.buildDist<OsInfo>(
         csvFiles.get("operating_systems"),
         (row) => ({
-          operating_system: row.operating_system || "",
+          operating_system: normalizeOs(row.operating_system || ""),
           operating_system_version: row.operating_system_version || "",
         }),
         (row) => parseInt(row.pageviews || "0", 10)
@@ -256,7 +289,9 @@ export class PlausibleCsvParser {
         (row) => ({
           country: row.country || "",
           region: row.region || "",
-          city: row.city || "",
+          // Plausible exports city as a numeric Geonames ID (e.g. "2654264"), not a name.
+          // We have no lookup table, so drop it rather than store a fake city name.
+          city: "",
         }),
         (row) => parseInt(row.pageviews || "0", 10)
       );
@@ -273,6 +308,24 @@ export class PlausibleCsvParser {
         }),
         (row) => parseInt(row.pageviews || "0", 10)
       );
+
+      // Custom-event rows have no hostname column, so derive one from the pages CSV.
+      const hostnameDist = this.buildDist<string>(
+        pagesData,
+        (row) => row.hostname || "",
+        (row) => parseInt(row.pageviews || "0", 10)
+      );
+      let hostnameFallback = "";
+      let hostnameFallbackWeight = 0;
+      for (const row of pagesData) {
+        const h = row.hostname || "";
+        if (!h) continue;
+        const w = parseInt(row.pageviews || "0", 10);
+        if (w > hostnameFallbackWeight) {
+          hostnameFallbackWeight = w;
+          hostnameFallback = h;
+        }
+      }
 
       // Phase 3: Generate synthetic pageview events
       let buffer: PlausibleSyntheticEvent[] = [];
@@ -378,9 +431,12 @@ export class PlausibleCsvParser {
 
           const eventName = row.name || "";
           const path = row.path || "/";
+          const linkUrl = row.link_url || "";
           const eventCount = parseInt(row.events || "0", 10);
 
           if (eventCount <= 0 || !eventName) continue;
+
+          const propsStr = linkUrl ? JSON.stringify({ url: linkUrl }) : "{}";
 
           for (let i = 0; i < eventCount; i++) {
             const eventIndex = globalIndex + i;
@@ -412,15 +468,29 @@ export class PlausibleCsvParser {
               eventIndex,
               { country: "", region: "", city: "" }
             );
+            const source = this.pickFromDist(sourceDist, date, eventIndex, {
+              referrer: "",
+              utm_source: "",
+              utm_medium: "",
+              utm_campaign: "",
+              utm_content: "",
+              utm_term: "",
+            });
+            const hostname = this.pickFromDist(
+              hostnameDist,
+              date,
+              eventIndex,
+              hostnameFallback
+            );
 
             buffer.push({
               timestamp,
               session_id: sessionId,
               user_id: sessionId,
-              hostname: "",
+              hostname,
               pathname: path,
-              querystring: "",
-              referrer: "",
+              querystring: buildQuerystring(source),
+              referrer: source.referrer,
               browser: browser.browser,
               browser_version: browser.browser_version,
               operating_system: os.operating_system,
@@ -431,7 +501,7 @@ export class PlausibleCsvParser {
               city: location.city,
               type: "custom_event",
               event_name: eventName,
-              props: "{}",
+              props: propsStr,
             });
 
             if (buffer.length >= CHUNK_SIZE) {
