@@ -1,11 +1,14 @@
 import { describe, it, expect } from "vitest";
 import { PlausibleImportMapper } from "./plausible.js";
 
+const TEST_SESSION_ID = "9e3779b1-3c6e-4362-da4f-81b88c81f013";
+const TEST_USER_ID = "12345678-90ab-cdef-1234-567890abcdef";
+
 function makeEvent(overrides: Record<string, string> = {}) {
   return {
     timestamp: "2024-06-15 14:30:00",
-    session_id: "abc123",
-    user_id: "user456",
+    session_id: TEST_SESSION_ID,
+    user_id: TEST_USER_ID,
     hostname: "example.com",
     pathname: "/blog/post-1",
     querystring: "?utm_source=google",
@@ -35,8 +38,8 @@ describe("PlausibleImportMapper", () => {
       expect(result[0]).toMatchObject({
         site_id: 1,
         timestamp: "2024-06-15 14:30:00",
-        session_id: "abc123",
-        user_id: "user456",
+        session_id: TEST_SESSION_ID,
+        user_id: TEST_USER_ID,
         hostname: "example.com",
         pathname: "/blog/post-1",
         querystring: "?utm_source=google",

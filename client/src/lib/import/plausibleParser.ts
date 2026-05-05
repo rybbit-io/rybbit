@@ -117,8 +117,7 @@ function deterministicPick<T>(
 function generateUUID(seed1: number, seed2: number): string {
   // Generate a deterministic UUID-like string from two seed numbers
   const hex = (n: number) => {
-    const h = ((n * 2654435761) >>> 0).toString(16).padStart(8, "0");
-    return h;
+    return ((n * 2654435761) >>> 0).toString(16).padStart(8, "0");
   };
   const a = hex(seed1);
   const b = hex(seed2);

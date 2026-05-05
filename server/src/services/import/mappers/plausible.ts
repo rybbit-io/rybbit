@@ -15,8 +15,8 @@ export class PlausibleImportMapper {
       .regex(
         /^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01]) ([01]\d|2[0-3]):([0-5]\d):([0-5]\d)$/
       ),
-    session_id: z.string().max(64),
-    user_id: z.string().max(64),
+    session_id: z.string().uuid(),
+    user_id: z.string().uuid(),
     hostname: z.string().max(253),
     pathname: z.string().max(2048),
     querystring: z.string().max(2048),
@@ -26,8 +26,14 @@ export class PlausibleImportMapper {
     operating_system: z.string().max(25),
     operating_system_version: z.string().max(20),
     device_type: z.string().max(20),
-    country: z.string().max(2),
-    region: z.string().max(20),
+    country: z
+      .string()
+      .regex(/^[A-Z]{2}$/)
+      .or(z.literal("")),
+    region: z
+      .string()
+      .regex(/^[A-Z]{2}-[A-Z0-9]{1,3}$/)
+      .or(z.literal("")),
     city: z.string().max(60),
     type: z.enum(["pageview", "custom_event"]),
     event_name: z.string().max(256),
