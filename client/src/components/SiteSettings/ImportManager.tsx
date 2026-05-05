@@ -36,8 +36,6 @@ interface ImportManagerProps {
 }
 
 const CONFIRM_THRESHOLD = 100 * 1024 * 1024;
-const ALLOWED_FILE_TYPES = ["text/csv", "application/zip", "application/x-zip-compressed"];
-const ALLOWED_EXTENSIONS = [".csv", ".zip"];
 
 function formatFileSize(bytes: number): string {
   const sizeInMB = bytes / 1024 / 1024;
