@@ -9,6 +9,7 @@ import { validateIPPattern } from "../../lib/ipUtils.js";
 // Schema for the update request - all fields are optional but validated when present
 const updateSiteConfigSchema = z.object({
   // Site settings
+  name: z.string().min(1).max(255).optional(),
   public: z.boolean().optional(),
   saltUserIds: z.boolean().optional(),
   blockBots: z.boolean().optional(),
@@ -109,6 +110,7 @@ export async function updateSiteConfig(
 
     // Map the fields that exist in both request and database
     const directMappings = [
+      "name",
       "public",
       "saltUserIds",
       "blockBots",

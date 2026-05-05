@@ -15,6 +15,27 @@
       "when": 1774062736532,
       "tag": "0001_workable_cable",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1774244342221,
+      "tag": "0002_short_bishop",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1774763742452,
+      "tag": "0003_nice_xavin",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1777182754960,
+      "tag": "0004_bored_raider",
+      "breakpoints": true
     }
   ]
 }

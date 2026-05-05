@@ -17,10 +17,10 @@ import { UserPlus } from "lucide-react";
 import { useExtracted } from "next-intl";
 import { useState } from "react";
 import { toast } from "@/components/ui/sonner";
-import { Alert } from "../../../../../components/ui/alert";
-import { authClient } from "../../../../../lib/auth";
-import { validateEmail } from "../../../../../lib/auth-utils";
-import { useAddUserToOrganization } from "../../../../../api/admin/hooks/useOrganizations";
+import { Alert } from "../../../../components/ui/alert";
+import { authClient } from "../../../../lib/auth";
+import { validateEmail } from "../../../../lib/auth-utils";
+import { useAddUserToOrganization } from "../../../../api/admin/hooks/useOrganizations";
 
 interface CreateUserDialogProps {
   organizationId: string;
@@ -32,7 +32,7 @@ export function CreateUserDialog({ organizationId, onSuccess }: CreateUserDialog
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
   const [password, setPassword] = useState("");
-  const [role, setRole] = useState<"admin" | "member">("member");
+  const [role, setRole] = useState<"admin" | "member" | "owner">("member");
 
   const [open, setOpen] = useState(false);
   const [error, setError] = useState("");
@@ -131,11 +131,12 @@ export function CreateUserDialog({ organizationId, onSuccess }: CreateUserDialog
           </div>
           <div className="grid gap-2">
             <Label htmlFor="role">{t("Role")}</Label>
-            <Select value={role} onValueChange={value => setRole(value as "admin" | "member")}>
+            <Select value={role} onValueChange={value => setRole(value as "admin" | "member" | "owner")}>
               <SelectTrigger>
                 <SelectValue placeholder={t("Select a role")} />
               </SelectTrigger>
               <SelectContent>
+                <SelectItem value="owner">{t("Owner")}</SelectItem>
                 <SelectItem value="admin">{t("Admin")}</SelectItem>
                 <SelectItem value="member">{t("Member")}</SelectItem>
               </SelectContent>

@@ -14,7 +14,7 @@ import CreateGoalButton from "./components/CreateGoalButton";
 import GoalsList from "./components/GoalsList";
 import { Target } from "lucide-react";
 import { Input } from "@/components/ui/input";
-import Link from "next/link";
+import { ExternalLink } from "../../../components/ExternalLink";
 
 // Goal card skeleton component
 const GoalCardSkeleton = () => (
@@ -166,7 +166,7 @@ export default function GoalsPage() {
           <NothingFound
             icon={<Target className="w-10 h-10" />}
             title={t("No goals found")}
-            description={<span>{t("Create your first conversion goal to start tracking important user actions.")} <Link href="https://rybbit.com/docs/goals" className="text-blue-500 hover:underline" target="_blank">{t("Learn more")}</Link></span>}
+            description={<span>{t("Create your first conversion goal to start tracking important user actions.")} <ExternalLink href="https://rybbit.com/docs/goals">{t("Learn more")}</ExternalLink></span>}
             action={<CreateGoalButton siteId={Number(site)} />}
           />
         ) : filteredGoals.length === 0 ? (

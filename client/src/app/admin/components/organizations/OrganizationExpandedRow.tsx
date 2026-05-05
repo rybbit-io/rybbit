@@ -100,7 +100,7 @@ export function OrganizationExpandedRow({ organization }: OrganizationExpandedRo
                 className="inline-flex items-center gap-2 px-3 py-2 bg-neutral-100 dark:bg-neutral-800 hover:bg-neutral-200 dark:hover:bg-neutral-700 border border-neutral-200 dark:border-neutral-700 rounded-md text-sm transition-colors"
               >
                 <div className="flex flex-col">
-                  <span className="font-medium">{site.domain}</span>
+                  <span className="font-medium">{site.name}</span>
                   <span className="text-xs text-neutral-500 dark:text-neutral-400">
                     {t("{events24h} events (24h)", { events24h: formatter(site.eventsLast24Hours) })} · {t("{events30d} (30d)", { events30d: formatter(site.eventsLast30Days) })}
                   </span>

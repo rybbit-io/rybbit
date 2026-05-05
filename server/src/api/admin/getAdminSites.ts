@@ -127,6 +127,7 @@ export async function getAdminSites(request: FastifyRequest, reply: FastifyReply
 
     return {
       siteId: site.siteId,
+      name: site.name,
       domain: site.domain,
       createdAt: site.createdAt,
       public: site.public,

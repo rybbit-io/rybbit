@@ -12,13 +12,12 @@ import { weeklyReportService } from "./services/weekyReports/weeklyReportService
 const logger = createServiceLogger("cluster");
 
 // Determine worker count from environment variable
-// Default to 0 (single-process mode) if not set. Max 4 workers.
-const MAX_WORKERS = 4;
+// Default to 0 (single-process mode) if not set.
 const requestedWorkers = process.env.CLUSTER_WORKERS;
 const workerCount =
   requestedWorkers === undefined || requestedWorkers === ""
     ? 0
-    : Math.min(parseInt(requestedWorkers, 10), MAX_WORKERS);
+    : parseInt(requestedWorkers, 10);
 
 if (workerCount === 0) {
   // Single-process mode — no clustering, same as running index.ts directly

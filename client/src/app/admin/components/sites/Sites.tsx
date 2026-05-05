@@ -47,6 +47,7 @@ export function Sites() {
     return sites.filter(site => {
       const lowerSearchQuery = searchQuery.toLowerCase();
       return (
+        site.name.toLowerCase().includes(lowerSearchQuery) ||
         site.domain.toLowerCase().includes(lowerSearchQuery) ||
         site.organizationOwnerEmail?.toLowerCase().includes(lowerSearchQuery)
       );
@@ -68,13 +69,14 @@ export function Sites() {
         ),
       },
       {
-        accessorKey: "domain",
-        header: ({ column }) => <SortableHeader column={column}>{t("Domain")}</SortableHeader>,
+        accessorKey: "name",
+        header: ({ column }) => <SortableHeader column={column}>{t("Name")}</SortableHeader>,
         cell: ({ row }) => (
           <div className="font-medium flex items-center gap-2">
             <Favicon domain={row.original.domain} className="w-5 h-5 shrink-0" />
-            <Link href={`https://${row.original.domain}`} target="_blank" className="hover:underline">
-              {row.getValue("domain")}
+            <span>{row.getValue("name")}</span>
+            <Link href={`https://${row.original.domain}`} target="_blank" className="hover:underline text-xs text-muted-foreground">
+              {row.original.domain}
             </Link>
           </div>
         ),

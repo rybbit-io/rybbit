@@ -3,12 +3,12 @@ import { DateTime } from "luxon";
 import { useExtracted } from "next-intl";
 import { useState } from "react";
 import { toast } from "@/components/ui/sonner";
-import { useOrganizationInvitations } from "../../../../../api/admin/hooks/useOrganizations";
-import { Badge } from "../../../../../components/ui/badge";
-import { Button } from "../../../../../components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "../../../../../components/ui/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../../../../../components/ui/table";
-import { authClient } from "../../../../../lib/auth";
+import { useOrganizationInvitations } from "../../../../api/admin/hooks/useOrganizations";
+import { Badge } from "../../../../components/ui/badge";
+import { Button } from "../../../../components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "../../../../components/ui/card";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../../../../components/ui/table";
+import { authClient } from "../../../../lib/auth";
 
 interface InvitationsProps {
   organizationId: string;

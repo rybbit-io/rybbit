@@ -44,7 +44,7 @@ export function HeroSection({
 
   return (
     <>
-      <div className="flex flex-col items-center justify-center overflow-x-hidden pt-16 md:pt-24">
+      <div className="flex flex-col items-center justify-center overflow-x-hidden pt-16 md:pt-24 relative z-10">
         {showGitHubStar && <GitHubStarButton />}
 
         <h1

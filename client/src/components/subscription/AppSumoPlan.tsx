@@ -8,7 +8,7 @@ import { UsageChart } from "../UsageChart";
 import { PlanCard } from "./components/PlanCard";
 import { PlanDialog } from "./components/PlanDialog";
 import { UsageLimitAlerts } from "./components/UsageLimitAlerts";
-import { UsageProgressBar } from "./components/UsageProgressBar";
+import { UsageCards } from "./components/UsageCards";
 import { useUsageStats } from "./components/useUsageStats";
 
 export function AppSumoPlan() {
@@ -18,7 +18,7 @@ export function AppSumoPlan() {
   const [showPlanDialog, setShowPlanDialog] = useState(false);
 
   const organizationId = activeOrg?.id;
-  const { currentUsage, limit, percentageUsed, isNearLimit, isLimitExceeded } = useUsageStats(subscription);
+  const { isNearLimit, isLimitExceeded } = useUsageStats(subscription);
 
   if (!subscription) return null;
 
@@ -37,12 +37,7 @@ export function AppSumoPlan() {
         isNearLimit={isNearLimit}
         exceededMessage={t("You have exceeded your monthly event limit. Please upgrade to a Pro plan to continue collecting analytics.")}
       />
-      <UsageProgressBar
-        currentUsage={currentUsage}
-        limit={limit}
-        percentageUsed={percentageUsed}
-        isNearLimit={isNearLimit}
-      />
+      <UsageCards />
       {organizationId && <UsageChart organizationId={organizationId} />}
       <PlanDialog
         open={showPlanDialog}

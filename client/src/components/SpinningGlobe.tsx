@@ -117,12 +117,24 @@ const SECONDS_PER_REVOLUTION = 120;
 const MAX_SPIN_ZOOM = 5;
 const SLOW_SPIN_ZOOM = 3;
 
+// Mapbox GL v3 requires WebGL 2 (globe projection + standard style won't run otherwise).
+function isWebGL2Supported(): boolean {
+  if (typeof window === "undefined") return false;
+  try {
+    const canvas = document.createElement("canvas");
+    return !!canvas.getContext("webgl2");
+  } catch {
+    return false;
+  }
+}
+
 export function SpinningGlobe() {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
   const markersMapRef = useRef<Map<string, MarkerData>>(new Map());
   const isUserInteractingRef = useRef(false);
   const [mapLoaded, setMapLoaded] = useState(false);
+  const [isSupported] = useState(isWebGL2Supported);
   const { configs, isLoading: isLoadingConfigs } = useConfigs();
 
   // Fetch demo sessions
@@ -141,23 +153,28 @@ export function SpinningGlobe() {
 
   // Initialize map
   useEffect(() => {
-    if (!containerRef.current || !configs?.mapboxToken || mapRef.current) {
+    if (!containerRef.current || !configs?.mapboxToken || mapRef.current || !isSupported) {
       return;
     }
 
     mapboxgl.accessToken = configs.mapboxToken;
 
-    const map = new mapboxgl.Map({
-      container: containerRef.current,
-      style: "mapbox://styles/mapbox/standard",
-      projection: { name: "globe" },
-      zoom: 1.5,
-      center: [0, 20],
-      pitch: 0,
-      bearing: 0,
-      antialias: true,
-      attributionControl: false,
-    });
+    let map: mapboxgl.Map;
+    try {
+      map = new mapboxgl.Map({
+        container: containerRef.current,
+        style: "mapbox://styles/mapbox/standard",
+        projection: { name: "globe" },
+        zoom: 1.5,
+        center: [0, 20],
+        pitch: 0,
+        bearing: 0,
+        antialias: true,
+        attributionControl: false,
+      });
+    } catch {
+      return;
+    }
 
     mapRef.current = map;
 
@@ -490,7 +507,7 @@ export function SpinningGlobe() {
     };
   }, [sessions, mapLoaded]);
 
-  if (isLoadingConfigs || !configs?.mapboxToken) {
+  if (isLoadingConfigs || !configs?.mapboxToken || !isSupported) {
     return null;
   }
 

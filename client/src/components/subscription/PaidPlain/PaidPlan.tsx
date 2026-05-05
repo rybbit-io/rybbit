@@ -4,16 +4,14 @@ import { toast } from "@/components/ui/sonner";
 import { Alert, AlertDescription, AlertTitle } from "../../ui/alert";
 import { Button } from "../../ui/button";
 import { Card, CardContent } from "../../ui/card";
-import { Progress } from "../../ui/progress";
 import { BACKEND_URL } from "../../../lib/const";
 import { getPlanType, getStripePrices } from "../../../lib/stripe";
 import { formatDate } from "../../../lib/subscription/planUtils";
 import { useStripeSubscription } from "../../../lib/subscription/useStripeSubscription";
 import { UsageChart } from "../../UsageChart";
 import { authClient } from "@/lib/auth";
-import { useGetSitesFromOrg } from "@/api/admin/hooks/useSites";
-import { useOrganizationMembers } from "@/api/admin/hooks/useOrganizationMembers";
 import { InvoicesCard } from "../components/InvoicesCard";
+import { UsageCards } from "../components/UsageCards";
 import { CancellationDialog } from "./CancellationDialog";
 import { PlanDialog } from "../components/PlanDialog";
 
@@ -22,9 +20,6 @@ export function PaidPlan() {
 
   const { data: activeOrg } = authClient.useActiveOrganization();
   const organizationId = activeOrg?.id;
-
-  const { data: sitesData } = useGetSitesFromOrg(organizationId);
-  const { data: membersData } = useOrganizationMembers(organizationId ?? "");
 
   const [isProcessing, setIsProcessing] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
@@ -36,7 +31,6 @@ export function PaidPlan() {
 
   const eventLimit = activeSubscription?.eventLimit || 0;
   const currentUsage = activeSubscription?.monthlyEventCount || 0;
-  const usagePercentage = eventLimit > 0 ? Math.min((currentUsage / eventLimit) * 100, 100) : 0;
   const isAnnualPlan = activeSubscription?.interval === "year";
 
   const stripePlan = getStripePrices().find(p => p.name === activeSubscription?.planName);
@@ -170,9 +164,6 @@ export function PaidPlan() {
                 </Button>
               </div>
             </div>
-
-
-
             {currentUsage >= eventLimit && (
               <div className="mt-4 p-3 bg-amber-50 dark:bg-amber-900/20 rounded-md border border-amber-200 dark:border-amber-800">
                 <div className="flex items-center justify-between">
@@ -185,48 +176,7 @@ export function PaidPlan() {
                 </div>
               </div>
             )}
-
-            <div className="grid grid-cols-3 gap-4">
-              <div className="rounded-lg border p-3 pb-0 overflow-hidden relative">
-                <div className="text-sm text-muted-foreground">Events used this month</div>
-                <div className="text-lg font-semibold mb-3">
-                  {currentUsage.toLocaleString()} / {eventLimit.toLocaleString()}
-                </div>
-                <div className="relative h-1.5 -mx-3">
-                  <div className="bg-neutral-100 dark:bg-neutral-700 h-1.5 w-full absolute bottom-0 left-0"></div>
-                  <div
-                    style={{ width: `${usagePercentage}%` }}
-                    className={`h-1.5 absolute bottom-0 left-0 ${usagePercentage >= 100 ? "bg-red-500" : "bg-accent-400/75"}`}
-                  ></div>
-                </div>
-              </div>
-              <div className="rounded-lg border p-3 pb-0 overflow-hidden relative">
-                <div className="text-sm text-muted-foreground">Websites</div>
-                <div className="text-lg font-semibold mb-3">
-                  {sitesData?.sites.length ?? 0} / {activeSubscription.siteLimit === null ? "Unlimited" : activeSubscription.siteLimit.toLocaleString()}
-                </div>
-                <div className="relative h-1.5 -mx-3">
-                  <div className="bg-neutral-100 dark:bg-neutral-700 h-1.5 w-full absolute bottom-0 left-0"></div>
-                  <div
-                    style={{ width: activeSubscription.siteLimit === null ? "0%" : `${Math.min(((sitesData?.sites.length ?? 0) / activeSubscription.siteLimit) * 100, 100)}%` }}
-                    className="bg-accent-400/75 h-1.5 absolute bottom-0 left-0"
-                  ></div>
-                </div>
-              </div>
-              <div className="rounded-lg border p-3 pb-0 overflow-hidden relative">
-                <div className="text-sm text-muted-foreground">Team Members</div>
-                <div className="text-lg font-semibold mb-3">
-                  {membersData?.data?.length ?? 0} / {activeSubscription.memberLimit === null ? "Unlimited" : activeSubscription.memberLimit.toLocaleString()}
-                </div>
-                <div className="relative h-1.5 -mx-3">
-                  <div className="bg-neutral-100 dark:bg-neutral-700 h-1.5 w-full absolute bottom-0 left-0"></div>
-                  <div
-                    style={{ width: activeSubscription.memberLimit === null ? "0%" : `${Math.min(((membersData?.data?.length ?? 0) / activeSubscription.memberLimit) * 100, 100)}%` }}
-                    className="bg-accent-400/75 h-1.5 absolute bottom-0 left-0"
-                  ></div>
-                </div>
-              </div>
-            </div>
+            <UsageCards />
 
             {organizationId && <UsageChart organizationId={organizationId} />}
 

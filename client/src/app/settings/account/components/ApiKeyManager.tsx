@@ -11,6 +11,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from ".
 import { Label } from "../../../../components/ui/label";
 import { DateTime } from "luxon";
 import { useListApiKeys, useCreateApiKey, useDeleteApiKey } from "../../../../api/admin/hooks/useUserApiKeys";
+import { useStripeSubscription } from "../../../../lib/subscription/useStripeSubscription";
+import { IS_CLOUD } from "../../../../lib/const";
 
 export function ApiKeyManager() {
   const t = useExtracted();
@@ -18,7 +20,12 @@ export function ApiKeyManager() {
   const [showApiKeyDialog, setShowApiKeyDialog] = useState(false);
   const [createdApiKey, setCreatedApiKey] = useState<string | null>(null);
 
+  const { data: subscription } = useStripeSubscription();
   const { data: apiKeysData, isLoading: isLoadingApiKeys, isError, error, refetch } = useListApiKeys();
+
+  const planName = subscription?.planName || "free";
+  const isFreePlan = planName === "free" || planName.includes("basic");
+  const isPlanGated = IS_CLOUD && isFreePlan;
 
   const apiKeys = apiKeysData?.apiKeys;
   const createApiKey = useCreateApiKey();
@@ -73,27 +80,35 @@ export function ApiKeyManager() {
             <p className="text-xs text-neutral-500">
               {t("Generate API keys to access analytics endpoints from your applications")}
             </p>
-            <div className="flex space-x-2">
-              <Input
-                id="apiKeyName"
-                value={apiKeyName}
-                onChange={({ target }) => setApiKeyName(target.value)}
-                placeholder={t("API Key Name")}
-                onKeyDown={e => {
-                  if (e.key === "Enter") {
-                    e.preventDefault();
-                    handleCreateApiKey();
-                  }
-                }}
-              />
-              <Button
-                variant="outline"
-                onClick={handleCreateApiKey}
-                disabled={createApiKey.isPending || !apiKeyName.trim()}
-              >
-                {createApiKey.isPending ? t("Creating...") : t("Create")}
-              </Button>
-            </div>
+            {isPlanGated ? (
+              <div className="rounded-lg bg-neutral-50 dark:bg-neutral-900 p-3 border border-neutral-200 dark:border-neutral-800">
+                <p className="text-xs text-neutral-600 dark:text-neutral-400">
+                  {t("API keys are available on Standard and Pro plans.")}
+                </p>
+              </div>
+            ) : (
+              <div className="flex space-x-2">
+                <Input
+                  id="apiKeyName"
+                  value={apiKeyName}
+                  onChange={({ target }) => setApiKeyName(target.value)}
+                  placeholder={t("API Key Name")}
+                  onKeyDown={e => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      handleCreateApiKey();
+                    }
+                  }}
+                />
+                <Button
+                  variant="outline"
+                  onClick={handleCreateApiKey}
+                  disabled={createApiKey.isPending || !apiKeyName.trim()}
+                >
+                  {createApiKey.isPending ? t("Creating...") : t("Create")}
+                </Button>
+              </div>
+            )}
           </div>
 
           <div className="space-y-2">
@@ -110,7 +125,7 @@ export function ApiKeyManager() {
                 </Button>
               </div>
             ) : apiKeys && apiKeys.length > 0 ? (
-              <div className=" rounded-lg">
+              <div className="rounded-lg">
                 <Table>
                   <TableHeader>
                     <TableRow>

@@ -120,6 +120,8 @@ export async function createCheckoutSession(
       customer_update: {
         address: "auto",
       },
+      // Allow EU customers to provide their tax ID (VAT number)
+      // tax_id_collection: { enabled: true },
     });
 
     // 6. Return the client secret for embedded checkout

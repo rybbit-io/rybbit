@@ -277,6 +277,30 @@ describe("getFilterStatement", () => {
     });
   });
 
+  describe("Channel session acquisition filter", () => {
+    it("should filter by the first non-empty channel in each session", () => {
+      const filters = JSON.stringify([{ parameter: "channel", type: "equals", value: ["Organic Search"] }]);
+      const result = getFilterStatement(filters, 123, "AND timestamp > now() - INTERVAL 1 DAY");
+
+      expect(result).toContain("session_id IN");
+      expect(result).toContain("argMin(channel, timestamp) AS session_channel");
+      expect(result).toContain("site_id = 123");
+      expect(result).toContain("timestamp > now() - INTERVAL 1 DAY");
+      expect(result).toContain("channel IS NOT NULL");
+      expect(result).toContain("channel <> ''");
+      expect(result).toContain("session_channel = 'Organic Search'");
+    });
+
+    it("should allow callers to opt out of session-level channel filtering", () => {
+      const filters = JSON.stringify([{ parameter: "channel", type: "equals", value: ["Organic Search"] }]);
+      const result = getFilterStatement(filters, undefined, undefined, {
+        sessionLevelParams: ["event_name"],
+      });
+
+      expect(result).toBe("AND channel = 'Organic Search'");
+    });
+  });
+
   describe("Entry page filter", () => {
     it("should create subquery for entry_page filter", () => {
       const filters = JSON.stringify([{ parameter: "entry_page", type: "equals", value: ["/home"] }]);

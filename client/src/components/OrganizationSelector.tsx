@@ -67,9 +67,9 @@ export function OrganizationSelector() {
       <SelectContent>
         {organizations?.map(org => (
           <SelectItem key={org.id} value={org.id}>
-            <div className="flex items-center">
-              <Building2 className="h-4 w-4 mr-2 text-muted-foreground" />
-              {org.name}
+            <div className="flex items-center min-w-0">
+              <Building2 className="h-4 w-4 mr-2 text-muted-foreground shrink-0" />
+              <span className="truncate">{org.name}</span>
             </div>
           </SelectItem>
         ))}

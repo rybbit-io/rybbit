@@ -2,7 +2,7 @@ import { and, eq, inArray } from "drizzle-orm";
 import { FastifyRequest } from "fastify";
 import NodeCache from "node-cache";
 import { db } from "../db/postgres/postgres.js";
-import { member, memberSiteAccess, sites, user } from "../db/postgres/schema.js";
+import { member, memberSiteAccess, sites, user, team, teamMember, teamSiteAccess } from "../db/postgres/schema.js";
 import { auth } from "./auth.js";
 import { siteConfig } from "./siteConfig.js";
 import { logger } from "./logger/logger.js";
@@ -140,6 +140,69 @@ export async function getSitesUserHasAccessTo(req: FastifyRequest, adminOnly = f
       for (const site of restrictedSites) {
         if (!siteMap.has(site.siteId)) {
           siteMap.set(site.siteId, site);
+        }
+      }
+
+      // Apply team-based filtering for non-admin/owner members
+      // Members who have full org access (not restricted) still need team filtering
+      const memberOrgIds = memberRecords
+        .filter(r => r.role === "member")
+        .map(r => r.organizationId);
+
+      if (memberOrgIds.length > 0) {
+        // Find all team-gated sites in the member's orgs
+        const allTeamSites = await db
+          .select({ siteId: teamSiteAccess.siteId })
+          .from(teamSiteAccess)
+          .innerJoin(team, eq(teamSiteAccess.teamId, team.id))
+          .where(inArray(team.organizationId, memberOrgIds));
+
+        const teamGatedSiteIds = new Set(allTeamSites.map(s => s.siteId));
+
+        if (teamGatedSiteIds.size > 0) {
+          // Find teams the user belongs to
+          const userTeams = await db
+            .select({ teamId: teamMember.teamId })
+            .from(teamMember)
+            .where(eq(teamMember.userId, userId));
+
+          const userTeamSiteIds = new Set<number>();
+          if (userTeams.length > 0) {
+            const userTeamSites = await db
+              .select({ siteId: teamSiteAccess.siteId })
+              .from(teamSiteAccess)
+              .where(inArray(teamSiteAccess.teamId, userTeams.map(t => t.teamId)));
+            for (const s of userTeamSites) {
+              userTeamSiteIds.add(s.siteId);
+            }
+          }
+
+          // For sites from admin/owner orgs, keep all (no team filtering)
+          // For sites from member orgs, apply team filtering
+          const adminOrgSiteIds = new Set<number>();
+          if (fullAccessOrgIds.length > 0) {
+            // Sites from orgs where user is admin/owner should not be team-filtered
+            for (const record of memberRecords) {
+              if (record.role === "admin" || record.role === "owner") {
+                for (const [siteId, site] of siteMap) {
+                  if (site.organizationId === record.organizationId) {
+                    adminOrgSiteIds.add(siteId);
+                  }
+                }
+              }
+            }
+          }
+
+          // Remove team-gated sites the user can't access (only for member-role orgs)
+          for (const [siteId] of siteMap) {
+            if (
+              teamGatedSiteIds.has(siteId) &&
+              !userTeamSiteIds.has(siteId) &&
+              !adminOrgSiteIds.has(siteId)
+            ) {
+              siteMap.delete(siteId);
+            }
+          }
         }
       }
 

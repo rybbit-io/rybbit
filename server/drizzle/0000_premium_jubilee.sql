@@ -353,6 +353,62 @@ CREATE TABLE IF NOT EXISTS "verification" (
 	"updatedAt" timestamp
 );
 --> statement-breakpoint
+-- Idempotent column additions for existing installations upgrading from older versions.
+-- CREATE TABLE IF NOT EXISTS skips entirely when the table exists, so these ensure
+-- columns added after initial table creation are present.
+-- These are no-ops on fresh installs.
+
+-- organization
+ALTER TABLE "organization" ADD COLUMN IF NOT EXISTS "stripeCustomerId" text;--> statement-breakpoint
+ALTER TABLE "organization" ADD COLUMN IF NOT EXISTS "monthlyEventCount" integer DEFAULT 0;--> statement-breakpoint
+ALTER TABLE "organization" ADD COLUMN IF NOT EXISTS "overMonthlyLimit" boolean DEFAULT false;--> statement-breakpoint
+ALTER TABLE "organization" ADD COLUMN IF NOT EXISTS "planOverride" text;--> statement-breakpoint
+ALTER TABLE "organization" ADD COLUMN IF NOT EXISTS "custom_plan" jsonb;--> statement-breakpoint
+
+-- user
+ALTER TABLE "user" ADD COLUMN IF NOT EXISTS "displayUsername" text;--> statement-breakpoint
+ALTER TABLE "user" ADD COLUMN IF NOT EXISTS "banned" boolean;--> statement-breakpoint
+ALTER TABLE "user" ADD COLUMN IF NOT EXISTS "banReason" text;--> statement-breakpoint
+ALTER TABLE "user" ADD COLUMN IF NOT EXISTS "banExpires" timestamp;--> statement-breakpoint
+ALTER TABLE "user" ADD COLUMN IF NOT EXISTS "stripeCustomerId" text;--> statement-breakpoint
+ALTER TABLE "user" ADD COLUMN IF NOT EXISTS "overMonthlyLimit" boolean DEFAULT false;--> statement-breakpoint
+ALTER TABLE "user" ADD COLUMN IF NOT EXISTS "monthlyEventCount" integer DEFAULT 0;--> statement-breakpoint
+ALTER TABLE "user" ADD COLUMN IF NOT EXISTS "sendAutoEmailReports" boolean DEFAULT true;--> statement-breakpoint
+ALTER TABLE "user" ADD COLUMN IF NOT EXISTS "scheduled_tip_email_ids" jsonb DEFAULT '[]'::jsonb;--> statement-breakpoint
+
+-- sites
+ALTER TABLE "sites" ADD COLUMN IF NOT EXISTS "updated_at" timestamp DEFAULT now();--> statement-breakpoint
+ALTER TABLE "sites" ADD COLUMN IF NOT EXISTS "id" text;--> statement-breakpoint
+ALTER TABLE "sites" ADD COLUMN IF NOT EXISTS "organization_id" text;--> statement-breakpoint
+ALTER TABLE "sites" ADD COLUMN IF NOT EXISTS "public" boolean DEFAULT false;--> statement-breakpoint
+ALTER TABLE "sites" ADD COLUMN IF NOT EXISTS "saltUserIds" boolean DEFAULT false;--> statement-breakpoint
+ALTER TABLE "sites" ADD COLUMN IF NOT EXISTS "blockBots" boolean DEFAULT true NOT NULL;--> statement-breakpoint
+ALTER TABLE "sites" ADD COLUMN IF NOT EXISTS "excluded_ips" jsonb DEFAULT '[]'::jsonb;--> statement-breakpoint
+ALTER TABLE "sites" ADD COLUMN IF NOT EXISTS "excluded_countries" jsonb DEFAULT '[]'::jsonb;--> statement-breakpoint
+ALTER TABLE "sites" ADD COLUMN IF NOT EXISTS "sessionReplay" boolean DEFAULT false;--> statement-breakpoint
+ALTER TABLE "sites" ADD COLUMN IF NOT EXISTS "webVitals" boolean DEFAULT false;--> statement-breakpoint
+ALTER TABLE "sites" ADD COLUMN IF NOT EXISTS "trackErrors" boolean DEFAULT false;--> statement-breakpoint
+ALTER TABLE "sites" ADD COLUMN IF NOT EXISTS "trackOutbound" boolean DEFAULT true;--> statement-breakpoint
+ALTER TABLE "sites" ADD COLUMN IF NOT EXISTS "trackUrlParams" boolean DEFAULT true;--> statement-breakpoint
+ALTER TABLE "sites" ADD COLUMN IF NOT EXISTS "trackInitialPageView" boolean DEFAULT true;--> statement-breakpoint
+ALTER TABLE "sites" ADD COLUMN IF NOT EXISTS "trackSpaNavigation" boolean DEFAULT true;--> statement-breakpoint
+ALTER TABLE "sites" ADD COLUMN IF NOT EXISTS "trackIp" boolean DEFAULT false;--> statement-breakpoint
+ALTER TABLE "sites" ADD COLUMN IF NOT EXISTS "trackButtonClicks" boolean DEFAULT false;--> statement-breakpoint
+ALTER TABLE "sites" ADD COLUMN IF NOT EXISTS "trackCopy" boolean DEFAULT false;--> statement-breakpoint
+ALTER TABLE "sites" ADD COLUMN IF NOT EXISTS "trackFormInteractions" boolean DEFAULT false;--> statement-breakpoint
+ALTER TABLE "sites" ADD COLUMN IF NOT EXISTS "api_key" text;--> statement-breakpoint
+ALTER TABLE "sites" ADD COLUMN IF NOT EXISTS "private_link_key" text;--> statement-breakpoint
+ALTER TABLE "sites" ADD COLUMN IF NOT EXISTS "tags" jsonb DEFAULT '[]'::jsonb;--> statement-breakpoint
+
+-- member
+ALTER TABLE "member" ADD COLUMN IF NOT EXISTS "has_restricted_site_access" boolean DEFAULT false NOT NULL;--> statement-breakpoint
+
+-- invitation
+ALTER TABLE "invitation" ADD COLUMN IF NOT EXISTS "has_restricted_site_access" boolean DEFAULT false NOT NULL;--> statement-breakpoint
+ALTER TABLE "invitation" ADD COLUMN IF NOT EXISTS "site_ids" jsonb DEFAULT '[]'::jsonb;--> statement-breakpoint
+
+-- verification
+ALTER TABLE "verification" ADD COLUMN IF NOT EXISTS "updatedAt" timestamp;--> statement-breakpoint
 DO $$ BEGIN
  ALTER TABLE "account" ADD CONSTRAINT "account_userId_user_id_fk" FOREIGN KEY ("userId") REFERENCES "public"."user"("id") ON DELETE cascade ON UPDATE no action;
 EXCEPTION

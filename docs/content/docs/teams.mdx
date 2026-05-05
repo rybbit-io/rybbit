@@ -1,0 +1,71 @@
+---
+title: Teams
+description: Organize sites into teams to control which members can access them
+---
+
+import { Callout } from 'fumadocs-ui/components/callout';
+
+Teams let you group sites together and control which organization members can access them. This is useful for organizations managing multiple properties where different people are responsible for different sites.
+
+Access teams by clicking on "Teams" or going to [app.rybbit.io/settings/teams](https://app.rybbit.io/settings/teams).
+
+![teams](/docs/teams.png)
+
+## How Teams Work
+
+A team has three things:
+
+- **A name** — identifies the team (e.g. "Marketing Sites", "Client Projects")
+- **Members** — organization members assigned to the team
+- **Sites** — the sites that belong to the team
+
+When a member is assigned to a team, they can access all sites within that team. Admins and owners always have access to all sites regardless of team assignments.
+
+<Callout type="info">
+  Teams are an organizational tool for admins and owners. Members with the "Member" role can only see sites that belong to their assigned teams (unless they have unrestricted access).
+</Callout>
+
+## Creating a Team
+
+1. Go to **Settings > Teams**
+2. Click the **Create Team** button
+3. Enter a team name
+4. Select which members should belong to the team
+5. Select which sites the team should have access to
+6. Click **Create Team**
+
+You can also create a team directly from the team filter on the home page.
+
+## Managing Teams
+
+### Editing a Team
+
+Click the edit icon on any team card to update its name, members, or site assignments.
+
+### Deleting a Team
+
+Click the delete icon on a team card. Sites assigned to the team will become unassigned and visible to all members.
+
+<Callout type="warn">
+  Deleting a team removes all member-to-site associations through that team. Members who only had access via the deleted team will lose access to those sites.
+</Callout>
+
+## Filtering by Team
+
+On the home page, use the team selector in the toolbar to filter the site list by team. The options are:
+
+- **All Teams** — show all sites
+- **No Team** — show only sites not assigned to any team
+- **Specific team** — show only sites belonging to that team
+
+## Assigning Teams During Invitation
+
+When [inviting a new member](/docs/inviting-users), you can optionally assign them to one or more teams. When the member accepts the invitation, they will automatically be added to the selected teams.
+
+## Permissions
+
+| Role | Can create teams | Can edit/delete teams | Can view team-restricted sites |
+|------|-----------------|----------------------|-------------------------------|
+| **Owner** | Yes | Yes | All sites |
+| **Admin** | Yes | Yes | All sites |
+| **Member** | No | No | Only sites in their assigned teams |

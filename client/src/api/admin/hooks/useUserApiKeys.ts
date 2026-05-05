@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { authClient } from "../../../lib/auth";
+import { authedFetch } from "../../utils";
 
 // List all API keys for the current user
 export const useListApiKeys = () => {
@@ -15,20 +16,16 @@ export const useListApiKeys = () => {
   });
 };
 
-// Create a new API key
+// Create a new API key (uses custom endpoint for plan-based rate limits)
 export const useCreateApiKey = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: async (data: { name: string; expiresIn?: number }) => {
-      const response = await authClient.apiKey.create({
-        name: data.name,
-        expiresIn: data.expiresIn,
+      return authedFetch<{ key: string; id: string }>("/user/api-keys", undefined, {
+        method: "POST",
+        data,
       });
-      if (response.error) {
-        throw new Error(response.error.message);
-      }
-      return response.data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["userApiKeys"] });

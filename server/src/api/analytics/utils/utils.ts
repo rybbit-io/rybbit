@@ -38,7 +38,7 @@ export function getTimeStatement(
       )
       AND timestamp < if(
         toDate(${SqlString.escape(end_date)}) = toDate(now(), ${SqlString.escape(time_zone)}),
-        now(),
+        toTimeZone(now(), 'UTC'),
         toTimeZone(
           toStartOfDay(toDateTime(${SqlString.escape(end_date)}, ${SqlString.escape(time_zone)})) + INTERVAL 1 DAY,
           'UTC'

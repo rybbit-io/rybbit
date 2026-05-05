@@ -6,6 +6,7 @@ import { useExtracted } from "next-intl";
 import { useMemo, useState } from "react";
 import { toast } from "@/components/ui/sonner";
 
+import { useTeams } from "@/api/admin/hooks/useTeams";
 import { authedFetch } from "@/api/utils";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -47,10 +48,14 @@ export function InviteMemberDialog({ organizationId, onSuccess, memberCount }: I
     return memberCount >= memberLimit;
   }, [memberLimit, memberCount]);
 
+  const { data: teamsData } = useTeams(organizationId);
+  const teams = teamsData?.teams || [];
+
   const [email, setEmail] = useState("");
   const [role, setRole] = useState<"admin" | "member" | "owner">("member");
   const [restrictSiteAccess, setRestrictSiteAccess] = useState(false);
   const [selectedSiteIds, setSelectedSiteIds] = useState<number[]>([]);
+  const [selectedTeamId, setSelectedTeamId] = useState<string>("none");
   const [open, setOpen] = useState(false);
   const [error, setError] = useState("");
 
@@ -62,10 +67,13 @@ export function InviteMemberDialog({ organizationId, onSuccess, memberCount }: I
         role,
         organizationId,
         resend: true,
+        ...(selectedTeamId && selectedTeamId !== "none" ? { teamId: selectedTeamId } : {}),
       });
 
-      // If role is "member" and site access is restricted, update the invitation
-      if (role === "member" && restrictSiteAccess && result.data?.id) {
+      // Update invitation with site access restrictions
+      const hasSiteRestrictions = role === "member" && restrictSiteAccess;
+
+      if (hasSiteRestrictions && result.data?.id) {
         await authedFetch(`/organizations/${organizationId}/invitations/${result.data.id}/sites`, undefined, {
           method: "PUT",
           data: {
@@ -86,6 +94,7 @@ export function InviteMemberDialog({ organizationId, onSuccess, memberCount }: I
       setRole("member");
       setRestrictSiteAccess(false);
       setSelectedSiteIds([]);
+      setSelectedTeamId("none");
       setError("");
     },
     onError: (err: any) => {
@@ -199,6 +208,28 @@ export function InviteMemberDialog({ organizationId, onSuccess, memberCount }: I
                   </p>
                 </div>
               )}
+            </div>
+          )}
+
+          {teams.length > 0 && (
+            <div className="grid gap-2">
+              <Label>{t("Team")}</Label>
+              <Select value={selectedTeamId} onValueChange={setSelectedTeamId}>
+                <SelectTrigger>
+                  <SelectValue placeholder={t("No team")} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">{t("No team")}</SelectItem>
+                  {teams.map(team => (
+                    <SelectItem key={team.id} value={team.id}>
+                      {team.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                {t("Optionally add this member to a team when they accept the invitation.")}
+              </p>
             </div>
           )}
 

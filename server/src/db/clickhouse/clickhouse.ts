@@ -36,9 +36,7 @@ export const initializeClickhouse = async () => {
         screen_width UInt16,
         screen_height UInt16,
         device_type LowCardinality(String),
-        -- either 'pageview', 'custom_event', 'performance', 'outbound_link', 'error'
         type LowCardinality(String) DEFAULT 'pageview',
-        -- only for custom_event
         event_name String,
         props JSON
       )

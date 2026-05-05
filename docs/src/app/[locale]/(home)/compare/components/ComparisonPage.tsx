@@ -125,7 +125,7 @@ export function ComparisonPage({
               {t("Track your site")}
             </TrackedButton>
             <TrackedButton
-              href="https://demo.rybbit.com/1"
+              href="https://demo.rybbit.com/81"
               eventName="demo"
               target="_blank"
               rel="noopener noreferrer"

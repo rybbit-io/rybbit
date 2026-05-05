@@ -326,13 +326,13 @@ export async function getBestSubscription(
     getStripeSubscription(stripeCustomerId),
   ]);
 
-  // If we have both, return the one with higher event limit
-  if (appsumoSub && stripeSub) {
-    const bestSub = appsumoSub.eventLimit >= stripeSub.eventLimit ? appsumoSub : stripeSub;
-    logger.info(
-      `Organization has both AppSumo (${appsumoSub.eventLimit} events) and Stripe (${stripeSub.eventLimit} events). Using ${bestSub.source} with ${bestSub.eventLimit} events.`
-    );
-    return bestSub;
+
+  if (stripeSub) {
+    return stripeSub;
+  }
+
+  if (appsumoSub) {
+    return appsumoSub;
   }
 
   // Return whichever one exists

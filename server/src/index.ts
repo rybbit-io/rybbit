@@ -66,6 +66,7 @@ import {
   selectGSCProperty,
 } from "./api/gsc/index.js";
 import { updateInvitationSiteAccess, updateMemberSiteAccess } from "./api/memberAccess/index.js";
+import { listTeams, createTeam, updateTeam, deleteTeam } from "./api/teams/index.js";
 import {
   deleteSessionReplay,
   getSessionReplayEvents,
@@ -103,6 +104,7 @@ import {
 } from "./api/stripe/index.js";
 import {
   addUserToOrganization,
+  createUserApiKey,
   getMyOrganizations,
   getUserOrganizations,
   listOrganizationMembers,
@@ -132,6 +134,7 @@ import { handleIdentify } from "./services/tracker/identifyService.js";
 import { trackEvent } from "./services/tracker/trackEvent.js";
 import { usageService } from "./services/usageService.js";
 import { weeklyReportService } from "./services/weekyReports/weeklyReportService.js";
+import { handleAppSumoWebhook, activateAppSumoLicense } from "./api/as/index.js";
 
 // Pre-composed middleware chains for common auth patterns
 // Cast as any to work around Fastify's type inference limitations with preHandler
@@ -325,6 +328,14 @@ async function organizationsRoutes(fastify: FastifyInstance) {
   );
 }
 
+async function teamsRoutes(fastify: FastifyInstance) {
+  // Teams
+  fastify.get("/organizations/:organizationId/teams", orgMember, listTeams);
+  fastify.post("/organizations/:organizationId/teams", orgAdminParams, createTeam);
+  fastify.put("/organizations/:organizationId/teams/:teamId", orgAdminParams, updateTeam);
+  fastify.delete("/organizations/:organizationId/teams/:teamId", orgAdminParams, deleteTeam);
+}
+
 async function userRoutes(fastify: FastifyInstance) {
   // User
   fastify.get("/config", getConfig); // Public - returns app config
@@ -334,6 +345,7 @@ async function userRoutes(fastify: FastifyInstance) {
   fastify.post("/user/unsubscribe-marketing", authOnly, unsubscribeMarketing);
   fastify.get("/user/unsubscribe-marketing-oneclick", oneClickUnsubscribeMarketing); // Public - for link clicks
   fastify.post("/user/unsubscribe-marketing-oneclick", oneClickUnsubscribeMarketing); // Public - for List-Unsubscribe header
+  fastify.post("/user/api-keys", authOnly, createUserApiKey);
 }
 
 async function gscRoutes(fastify: FastifyInstance) {
@@ -369,9 +381,6 @@ async function stripeAdminRoutes(fastify: FastifyInstance) {
     fastify.get("/admin/service-event-count", adminOnly, getAdminServiceEventCount);
     fastify.post("/admin/telemetry", collectTelemetry); // Public - telemetry collection
 
-    // AppSumo Routes
-    const { activateAppSumoLicense, handleAppSumoWebhook } = await import("./api/as/index.js");
-
     fastify.post("/as/activate", authOnly, activateAppSumoLicense);
     fastify.post("/as/webhook", handleAppSumoWebhook); // Public - AppSumo webhook
   }
@@ -383,6 +392,7 @@ async function apiRoutes(fastify: FastifyInstance) {
   await fastify.register(sessionReplayRoutes);
   await fastify.register(sitesRoutes);
   await fastify.register(organizationsRoutes);
+  await fastify.register(teamsRoutes);
   await fastify.register(userRoutes);
   await fastify.register(gscRoutes);
   await fastify.register(stripeAdminRoutes);

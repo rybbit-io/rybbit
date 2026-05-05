@@ -1,5 +1,5 @@
 import { FastifyReply, FastifyRequest } from "fastify";
-import { eq, and } from "drizzle-orm";
+import { eq, and, sql } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "../../db/postgres/postgres.js";
 import { clickhouse } from "../../db/clickhouse/clickhouse.js";
@@ -87,6 +87,18 @@ export async function handleIdentify(request: FastifyRequest, reply: FastifyRepl
 
     // Create alias if this is a new identify call (links anonymous_id to user_id)
     if (is_new_identify) {
+      // Ensure a user_profiles row exists at identify time so the user is
+      // discoverable via search/inventory queries even when no traits are set,
+      // and so createdAt reflects identification time rather than first setTraits.
+      try {
+        await db
+          .insert(userProfiles)
+          .values({ siteId, userId: user_id })
+          .onConflictDoNothing();
+      } catch (error) {
+        logger.error({ siteId, userId: user_id, error }, "Error creating user profile shell");
+      }
+
       try {
         // Check if alias already exists
         const existingAlias = await db
@@ -117,43 +129,35 @@ export async function handleIdentify(request: FastifyRequest, reply: FastifyRepl
       }
     }
 
-    // Update or create user profile with traits
+    // Atomic upsert: merge non-null traits and remove keys explicitly set to null.
     if (traits && Object.keys(traits).length > 0) {
       try {
-        const existingProfile = await db
-          .select()
-          .from(userProfiles)
-          .where(and(eq(userProfiles.siteId, siteId), eq(userProfiles.userId, user_id)))
-          .limit(1);
+        const filteredTraits = Object.fromEntries(
+          Object.entries(traits).filter(([_, v]) => v !== null)
+        );
+        const nullKeys = Object.entries(traits)
+          .filter(([_, v]) => v === null)
+          .map(([k]) => k);
 
-        if (existingProfile.length > 0) {
-          // Merge new traits with existing (new traits override old)
-          // Traits with null values are removed from the result
-          const merged = {
-            ...((existingProfile[0].traits as Record<string, unknown>) || {}),
-            ...traits,
-          };
-          const mergedTraits = Object.fromEntries(Object.entries(merged).filter(([_, value]) => value !== null));
+        // When nullKeys is empty, drizzle serializes [] as `()` which is invalid
+        // Postgres array literal syntax. Skip the subtract clause in that case.
+        const traitsExpr =
+          nullKeys.length > 0
+            ? sql`(${userProfiles.traits} - ${nullKeys}::text[]) || ${JSON.stringify(filteredTraits)}::jsonb`
+            : sql`${userProfiles.traits} || ${JSON.stringify(filteredTraits)}::jsonb`;
 
-          await db
-            .update(userProfiles)
-            .set({
-              traits: mergedTraits,
-              updatedAt: new Date().toISOString(),
-            })
-            .where(and(eq(userProfiles.siteId, siteId), eq(userProfiles.userId, user_id)));
-        } else {
-          // Create new profile (filter out null values)
-          const filteredTraits = Object.fromEntries(Object.entries(traits).filter(([_, value]) => value !== null));
-          await db.insert(userProfiles).values({
-            siteId,
-            userId: user_id,
-            traits: filteredTraits,
+        await db
+          .insert(userProfiles)
+          .values({ siteId, userId: user_id, traits: filteredTraits })
+          .onConflictDoUpdate({
+            target: [userProfiles.siteId, userProfiles.userId],
+            set: {
+              traits: traitsExpr,
+              updatedAt: sql`now()`,
+            },
           });
-        }
       } catch (error) {
         logger.error({ siteId, userId: user_id, error }, "Error updating user profile");
-        // Don't fail the request if profile update fails
       }
     }
 

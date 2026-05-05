@@ -5,16 +5,16 @@ import { FilterParameter, FilterType } from "../types.js";
 // Options for customizing filter behavior
 export interface FilterStatementOptions {
   // Parameters that should use session-level subqueries (finds sessions containing matching events)
-  // Default: ["event_name"] - entry_page and exit_page are always session-level due to special aggregation
+  // Default: ["event_name", "channel"] - entry_page and exit_page are always session-level due to special aggregation
+  // Channel is handled as a session acquisition field using the first non-empty channel in the session.
   sessionLevelParams?: FilterParameter[];
 
   // Field name mappings for CTEs that extract fields to different column names
   // e.g., { "url_parameters['utm_source']": "utm_source" }
   fieldMappings?: Record<string, string>;
-
 }
 
-const DEFAULT_SESSION_LEVEL_PARAMS: FilterParameter[] = ["event_name"];
+const DEFAULT_SESSION_LEVEL_PARAMS: FilterParameter[] = ["event_name", "channel"];
 
 const filterTypeToOperator = (type: FilterType) => {
   switch (type) {
@@ -99,6 +99,41 @@ export function getFilterStatement(
   // Strip leading "AND " from timeStatement since we'll be constructing WHERE clauses
   const timeFilter = timeStatement ? timeStatement.replace(/^AND\s+/i, "").trim() : "";
 
+  const buildStringFilterCondition = (
+    expression: string,
+    filterType: FilterType,
+    values: (string | number)[],
+    wildcardPrefix: string
+  ): string => {
+    if (filterType === "regex" || filterType === "not_regex") {
+      const pattern = String(values[0] ?? "");
+
+      if (!pattern) {
+        throw new Error("Regex pattern cannot be empty");
+      }
+
+      try {
+        new RegExp(pattern);
+      } catch (e) {
+        throw new Error(`Invalid regex pattern: ${e instanceof Error ? e.message : "Unknown error"}`);
+      }
+
+      if (pattern.length > 500) {
+        throw new Error("Regex pattern too long (max 500 characters)");
+      }
+
+      const matchExpr = `match(${expression}, ${SqlString.escape(pattern)})`;
+      return filterType === "regex" ? matchExpr : `NOT ${matchExpr}`;
+    }
+
+    const condition =
+      values.length === 1
+        ? `${expression} ${filterTypeToOperator(filterType)} ${SqlString.escape(wildcardPrefix + values[0] + wildcardPrefix)}`
+        : `(${values.map(value => `${expression} ${filterTypeToOperator(filterType)} ${SqlString.escape(wildcardPrefix + value + wildcardPrefix)}`).join(" OR ")})`;
+
+    return condition;
+  };
+
   // Helper to build session-level subquery for a parameter
   const buildSessionLevelSubquery = (
     param: FilterParameter,
@@ -107,10 +142,7 @@ export function getFilterStatement(
     wildcardPrefix: string
   ): string => {
     const whereClause = [siteIdFilter, timeFilter].filter(Boolean).join(" AND ");
-    const condition =
-      values.length === 1
-        ? `${param} ${filterTypeToOperator(filterType)} ${SqlString.escape(wildcardPrefix + values[0] + wildcardPrefix)}`
-        : `(${values.map(value => `${param} ${filterTypeToOperator(filterType)} ${SqlString.escape(wildcardPrefix + value + wildcardPrefix)}`).join(" OR ")})`;
+    const condition = buildStringFilterCondition(param, filterType, values, wildcardPrefix);
 
     const finalWhere = whereClause ? `WHERE ${whereClause} AND ${condition}` : `WHERE ${condition}`;
 
@@ -121,6 +153,32 @@ export function getFilterStatement(
           )`;
   };
 
+  const buildSessionFirstValueSubquery = (
+    param: FilterParameter,
+    alias: string,
+    filterType: FilterType,
+    values: (string | number)[],
+    wildcardPrefix: string
+  ): string => {
+    const whereClause = [siteIdFilter, timeFilter, `${param} IS NOT NULL`, `${param} <> ''`]
+      .filter(Boolean)
+      .join(" AND ");
+    const condition = buildStringFilterCondition(alias, filterType, values, wildcardPrefix);
+
+    return `session_id IN (
+            SELECT session_id
+            FROM (
+              SELECT
+                session_id,
+                argMin(${param}, timestamp) AS ${alias}
+              FROM events
+              WHERE ${whereClause}
+              GROUP BY session_id
+            )
+            WHERE ${condition}
+          )`;
+  };
+
   let result =
     "AND " +
     filtersArray
@@ -128,9 +186,13 @@ export function getFilterStatement(
         const x = filter.type === "contains" || filter.type === "not_contains" ? "%" : "";
         const isNumericParam = filter.parameter === "lat" || filter.parameter === "lon";
 
-        // Handle session-level filters (configurable via options)
-        // This ensures we filter to sessions containing matching events
+        // Handle session-level filters (configurable via options).
+        // Most parameters match sessions containing an event; channel uses the session's first value.
         if (sessionLevelParams.includes(filter.parameter)) {
+          if (filter.parameter === "channel") {
+            return buildSessionFirstValueSubquery(filter.parameter, "session_channel", filter.type, filter.value, x);
+          }
+
           return buildSessionLevelSubquery(filter.parameter, filter.type, filter.value, x);
         }
 
@@ -237,30 +299,8 @@ export function getFilterStatement(
           }
         }
 
-        // Handle regex filters using ClickHouse match() function
         if (filter.type === "regex" || filter.type === "not_regex") {
-          const pattern = String(filter.value[0] ?? "");
-
-          // Validate regex pattern
-          if (!pattern) {
-            throw new Error("Regex pattern cannot be empty");
-          }
-
-          // Check if it's a valid regex by trying to compile it
-          try {
-            new RegExp(pattern);
-          } catch (e) {
-            throw new Error(`Invalid regex pattern: ${e instanceof Error ? e.message : "Unknown error"}`);
-          }
-
-          // Additional safety: limit pattern length to prevent abuse
-          if (pattern.length > 500) {
-            throw new Error("Regex pattern too long (max 500 characters)");
-          }
-
-          const regexPattern = SqlString.escape(pattern);
-          const matchExpr = `match(${getSqlParam(filter.parameter)}, ${regexPattern})`;
-          return filter.type === "regex" ? matchExpr : `NOT ${matchExpr}`;
+          return buildStringFilterCondition(getSqlParam(filter.parameter), filter.type, filter.value, x);
         }
 
         // Handle numeric comparison filters (>, <)

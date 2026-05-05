@@ -91,6 +91,7 @@ export function PricingSection({ isAnnual, setIsAnnual }: { isAnnual: boolean, s
     t("Sessions"),
     t("Email reports"),
     t("2 year data retention"),
+    t("API access"),
     t("Email support"),
   ];
 
@@ -100,6 +101,7 @@ export function PricingSection({ isAnnual, setIsAnnual }: { isAnnual: boolean, s
     t("Unlimited team members"),
     t("Session replays"),
     t("5 year data retention"),
+    t("10x higher API rate limit"),
     t("Priority support"),
   ];
 

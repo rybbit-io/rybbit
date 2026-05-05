@@ -6,7 +6,7 @@ import { UsageChart } from "../UsageChart";
 import { getPlanType } from "../../lib/stripe";
 import { PlanCard } from "./components/PlanCard";
 import { UsageLimitAlerts } from "./components/UsageLimitAlerts";
-import { UsageProgressBar } from "./components/UsageProgressBar";
+import { UsageCards } from "./components/UsageCards";
 import { useUsageStats } from "./components/useUsageStats";
 
 export function OverridePlan() {
@@ -15,7 +15,7 @@ export function OverridePlan() {
   const { data: activeOrg } = authClient.useActiveOrganization();
 
   const organizationId = activeOrg?.id;
-  const { currentUsage, limit, percentageUsed, isNearLimit, isLimitExceeded } = useUsageStats(subscription);
+  const { isNearLimit, isLimitExceeded } = useUsageStats(subscription);
 
   if (!subscription) return null;
 
@@ -46,12 +46,7 @@ export function OverridePlan() {
         exceededMessage={t("You have exceeded your monthly event limit. Please contact support for assistance.")}
         nearLimitMessage={t("You are approaching your monthly event limit. Please contact support if you need more capacity.")}
       />
-      <UsageProgressBar
-        currentUsage={currentUsage}
-        limit={limit}
-        percentageUsed={percentageUsed}
-        isNearLimit={isNearLimit}
-      />
+      <UsageCards />
       {organizationId && <UsageChart organizationId={organizationId} />}
     </PlanCard>
   );

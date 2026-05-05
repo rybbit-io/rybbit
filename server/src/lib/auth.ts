@@ -10,19 +10,39 @@ import { apiKey } from "@better-auth/api-key"
 import { db } from "../db/postgres/postgres.js";
 import * as schema from "../db/postgres/schema.js";
 import { invitation, member, memberSiteAccess, user } from "../db/postgres/schema.js";
-import { DISABLE_SIGNUP, IS_CLOUD } from "./const.js";
-import { addContactToAudience, sendInvitationEmail, sendOtpEmail, sendWelcomeEmail } from "./email/email.js";
+import { API_RATE_LIMIT_WINDOW, DISABLE_SIGNUP, IS_CLOUD, STANDARD_API_RATE_LIMIT } from "./const.js";
+import {
+  addContactToAudience,
+  sendChangeEmailVerification,
+  sendEmailVerificationLink,
+  sendInvitationEmail,
+  sendOtpEmail,
+  sendWelcomeEmail,
+} from "./email/email.js";
 import { onboardingTipsService } from "../services/onboardingTips/onboardingTipsService.js";
 
 dotenv.config();
 
 const pluginList = [
   admin(),
-  apiKey(),
+  apiKey({
+    ...(IS_CLOUD
+      ? {
+          rateLimit: {
+            enabled: true,
+            timeWindow: API_RATE_LIMIT_WINDOW,
+            maxRequests: STANDARD_API_RATE_LIMIT,
+          },
+        }
+      : { rateLimit: { maxRequests: 10000, timeWindow: 86400000 } }),
+  }),
   dash(),
   organization({
     allowUserToCreateOrganization: true,
     creatorRole: "owner",
+    teams: {
+      enabled: true,
+    },
     sendInvitationEmail: async invitationData => {
       const inviteLink = `${process.env.BASE_URL}/invitation?invitationId=${invitationData.invitation.id}&organization=${invitationData.organization.name}&inviterEmail=${invitationData.inviter.user.email}`;
       await sendInvitationEmail(
@@ -93,6 +113,18 @@ export const auth = betterAuth({
     requireEmailVerification: false,
     disableSignUp: DISABLE_SIGNUP,
   },
+  emailVerification: {
+    sendVerificationEmail: async ({
+      user,
+      url,
+    }: {
+      user: { email: string };
+      url: string;
+      token: string;
+    }) => {
+      await sendEmailVerificationLink(user.email, url);
+    },
+  },
   socialProviders: {
     google: {
       clientId: process.env.GOOGLE_CLIENT_ID!,
@@ -122,6 +154,18 @@ export const auth = betterAuth({
     },
     changeEmail: {
       enabled: true,
+      sendChangeEmailConfirmation: async ({
+        user,
+        newEmail,
+        url,
+      }: {
+        user: { email: string };
+        newEmail: string;
+        url: string;
+        token: string;
+      }) => {
+        await sendChangeEmailVerification(user.email, newEmail, url);
+      },
     },
   },
   plugins: pluginList,
@@ -231,27 +275,26 @@ export const auth = betterAuth({
 
             if (invitationRecord.length > 0) {
               const { organizationId, email, hasRestrictedSiteAccess, siteIds } = invitationRecord[0];
+              const userRecord = await db.select({ id: user.id }).from(user).where(eq(user.email, email)).limit(1);
 
-              if (hasRestrictedSiteAccess) {
-                // Find the user by email
-                const userRecord = await db.select({ id: user.id }).from(user).where(eq(user.email, email)).limit(1);
+              if (userRecord.length > 0) {
+                const userId = userRecord[0].id;
 
-                if (userRecord.length > 0) {
-                  await db.transaction(async tx => {
-                    // Find the member by organizationId + userId
-                    const memberRecord = await tx
-                      .select({ id: member.id })
-                      .from(member)
-                      .where(and(eq(member.organizationId, organizationId), eq(member.userId, userRecord[0].id)))
-                      .limit(1);
+                await db.transaction(async tx => {
+                  // Find the member by organizationId + userId
+                  const memberRecord = await tx
+                    .select({ id: member.id })
+                    .from(member)
+                    .where(and(eq(member.organizationId, organizationId), eq(member.userId, userId)))
+                    .limit(1);
 
-                    if (memberRecord.length > 0) {
-                      const memberId = memberRecord[0].id;
+                  if (memberRecord.length > 0) {
+                    const memberId = memberRecord[0].id;
 
-                      // Update member with hasRestrictedSiteAccess
+                    // Copy site access restrictions
+                    if (hasRestrictedSiteAccess) {
                       await tx.update(member).set({ hasRestrictedSiteAccess: true }).where(eq(member.id, memberId));
 
-                      // Insert site access entries
                       const siteIdArray = (siteIds || []) as number[];
                       if (siteIdArray.length > 0) {
                         await tx.insert(memberSiteAccess).values(
@@ -262,8 +305,8 @@ export const auth = betterAuth({
                         );
                       }
                     }
-                  });
-                }
+                  }
+                });
               }
             }
           }

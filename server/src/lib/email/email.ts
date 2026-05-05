@@ -1,13 +1,14 @@
 import { Resend } from "resend";
 import { render } from "@react-email/components";
 import { IS_CLOUD } from "../const.js";
+import { ApproachingLimitEmail } from "./templates/ApproachingLimitEmail.js";
 import { InvitationEmail } from "./templates/InvitationEmail.js";
 import { LimitExceededEmail } from "./templates/LimitExceededEmail.js";
 import { OnboardingTipEmail } from "./templates/OnboardingTipEmail.js";
 import { OtpEmail, type OtpEmailType } from "./templates/OtpEmail.js";
 import { ReengagementEmail } from "./templates/ReengagementEmail.js";
 import { WeeklyReportEmail } from "./templates/WeeklyReportEmail.js";
-import type { OrganizationReport } from "../../services/weekyReports/weeklyReportTypes.js";
+import type { SiteReport } from "../../services/weekyReports/weeklyReportTypes.js";
 import type { OnboardingTipContent } from "../../services/onboardingTips/onboardingTipsContent.js";
 import type { ReengagementContent } from "../../services/reengagement/reengagementContent.js";
 
@@ -104,6 +105,41 @@ export const sendOtpEmail = async (email: string, otp: string, type: OtpEmailTyp
   await sendEmail(email, OTP_SUBJECTS[type], html);
 };
 
+export const sendEmailVerificationLink = async (email: string, verificationUrl: string) => {
+  const html = `
+    <div style="font-family: Arial, sans-serif; max-width: 560px; margin: 0 auto; padding: 24px; color: #111;">
+      <h2 style="margin: 0 0 16px;">Verify your email</h2>
+      <p>Click the button below to verify this email address on your Rybbit account.</p>
+      <p style="margin: 24px 0;">
+        <a href="${verificationUrl}" style="background: #111; color: #fff; padding: 12px 20px; border-radius: 6px; text-decoration: none; display: inline-block;">Verify email</a>
+      </p>
+      <p style="font-size: 12px; color: #666; word-break: break-all;">Or paste this link into your browser: ${verificationUrl}</p>
+    </div>
+  `;
+
+  await sendEmail(email, "Verify your Rybbit email", html);
+};
+
+export const sendChangeEmailVerification = async (
+  currentEmail: string,
+  newEmail: string,
+  verificationUrl: string
+) => {
+  const html = `
+    <div style="font-family: Arial, sans-serif; max-width: 560px; margin: 0 auto; padding: 24px; color: #111;">
+      <h2 style="margin: 0 0 16px;">Confirm your new email</h2>
+      <p>We received a request to change the email on your Rybbit account from <strong>${currentEmail}</strong> to <strong>${newEmail}</strong>.</p>
+      <p>Click the button below to confirm the change. If you didn't request this, you can safely ignore this email.</p>
+      <p style="margin: 24px 0;">
+        <a href="${verificationUrl}" style="background: #111; color: #fff; padding: 12px 20px; border-radius: 6px; text-decoration: none; display: inline-block;">Confirm email change</a>
+      </p>
+      <p style="font-size: 12px; color: #666; word-break: break-all;">Or paste this link into your browser: ${verificationUrl}</p>
+    </div>
+  `;
+
+  await sendEmail(currentEmail, "Confirm your email change on Rybbit", html);
+};
+
 export const sendInvitationEmail = async (
   email: string,
   invitedBy: string,
@@ -128,7 +164,7 @@ export const sendLimitExceededEmail = async (
   eventCount: number,
   eventLimit: number
 ) => {
-  const upgradeLink = "https://app.rybbit.io/settings/organization/subscription";
+  const upgradeLink = "https://app.rybbit.io/settings/subscription";
 
   const html = await render(
     LimitExceededEmail({
@@ -142,19 +178,41 @@ export const sendLimitExceededEmail = async (
   await sendEmail(email, `Action Required: ${organizationName} has exceeded its monthly event limit`, html);
 };
 
+export const sendApproachingLimitEmail = async (
+  email: string,
+  organizationName: string,
+  eventCount: number,
+  eventLimit: number
+) => {
+  const upgradeLink = "https://app.rybbit.io/settings/subscription";
+
+  const html = await render(
+    ApproachingLimitEmail({
+      organizationName,
+      eventCount,
+      eventLimit,
+      upgradeLink,
+    })
+  );
+
+  await sendEmail(email, `${organizationName} is approaching its monthly event limit`, html);
+};
+
 export const sendWeeklyReportEmail = async (
   email: string,
   userName: string,
-  organizationReport: OrganizationReport
+  organizationName: string,
+  site: SiteReport
 ) => {
   const html = await render(
     WeeklyReportEmail({
       userName,
-      organizationReport,
+      organizationName,
+      site,
     })
   );
 
-  const subject = `Weekly Analytics Report - ${organizationReport.sites[0].siteName}`;
+  const subject = `Weekly Analytics Report - ${site.siteName}`;
 
   await sendEmail(email, subject, html);
 };

@@ -53,10 +53,19 @@ API keys are user-scoped and grant organization-level access:
 4. Click **Create**
 5. Copy the key immediately (it won't be shown again)
 
-### Rate Limits
+### Rate Limits (Cloud Only)
 
-- **500 requests per 10 minutes** per API key
-- Keys are tied to your user account and grant access to all sites in your organization(s)
+API key rate limits depend on your plan:
+
+| Plan | Limit |
+|------|-------|
+| **Free / Basic** | API keys not available |
+| **Standard** | 20 requests per minute |
+| **Pro** | 200 requests per minute |
+
+Self-hosted instances have no rate limits.
+
+Keys are tied to your user account and grant access to all sites in your organization(s).
 
 ---
 
@@ -466,28 +475,3 @@ All endpoints return standard HTTP status codes:
   "error": "Error message describing what went wrong"
 }
 ```
-
----
-
-## Best Practices
-
-1. **Cache responses** - Analytics data doesn't change frequently. Cache for at least 5-10 minutes.
-2. **Use date ranges** - For recent data, use `past_minutes_start/end`. For historical data, use `start_date/end_date`.
-3. **Filter strategically** - Apply filters to reduce data transfer and improve performance.
-4. **Paginate results** - Use the `limit` and `page` parameters for large datasets.
-5. **Monitor rate limits** - Implement exponential backoff if you receive 429 responses.
-
----
-
-## Rate Limiting
-
-When you exceed the rate limit, you'll receive a `429 Too Many Requests` response:
-
-```json
-{
-  "success": false,
-  "error": "Rate limit exceeded. Maximum 500 requests per 10 minutes per API key."
-}
-```
-
-Wait for the rate limit window to reset before making additional requests.

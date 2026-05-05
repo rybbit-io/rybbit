@@ -2,8 +2,9 @@ import {
   Body,
   Container,
   Head,
-  Heading,
+  Hr,
   Html,
+  Img,
   Preview,
   Section,
   Text,
@@ -23,26 +24,22 @@ const getContent = (type: OtpEmailType) => {
   switch (type) {
     case "sign-in":
       return {
-        preview: "Your Rybbit Sign-In Code",
-        heading: "Your Sign-In Code",
+        preview: "Your Rybbit sign-in code",
         description: "Here is your one-time password to sign in to Rybbit:",
       };
     case "email-verification":
       return {
-        preview: "Verify Your Email Address",
-        heading: "Verify Your Email",
+        preview: "Verify your email address",
         description: "Here is your verification code for Rybbit:",
       };
     case "forget-password":
       return {
-        preview: "Reset Your Password",
-        heading: "Reset Your Password",
+        preview: "Reset your password",
         description: "You requested to reset your password for Rybbit. Here is your one-time password:",
       };
     case "change-email":
       return {
-        preview: "Change Your Email Address",
-        heading: "Change Your Email",
+        preview: "Change your email address",
         description: "Here is your verification code for Rybbit:",
       };
   }
@@ -63,7 +60,6 @@ export const OtpEmail = ({ otp, type }: OtpEmailProps) => {
             extend: {
               colors: {
                 brand: "#10b981",
-                lightBg: "#ffffff",
                 cardBg: "#f9fafb",
                 darkText: "#111827",
                 mutedText: "#6b7280",
@@ -73,15 +69,19 @@ export const OtpEmail = ({ otp, type }: OtpEmailProps) => {
           },
         }}
       >
-        <Body className="bg-lightBg font-sans">
-          <Container className="mx-auto py-10 px-6 max-w-[600px]">
-            <Section className="text-center">
-              <Heading className="text-darkText text-3xl font-semibold mb-6">{content?.heading}</Heading>
-            </Section>
+        <Body className="bg-white font-sans">
+          <Container className="mx-auto py-8 px-6 max-w-[600px]">
+            <Img
+              src="https://app.rybbit.io/rybbit/horizontal_black.svg"
+              alt="Rybbit"
+              width="120"
+              height="28"
+              className="mb-8"
+            />
 
-            <Section className="mb-6">
-              <Text className="text-darkText text-base leading-relaxed mb-4">{content?.description}</Text>
-            </Section>
+            <Text className="text-darkText text-base leading-relaxed mb-4">Hi there,</Text>
+
+            <Text className="text-darkText text-base leading-relaxed mb-4">{content?.description}</Text>
 
             <Section className="text-center mb-6">
               <div className="bg-cardBg py-5 px-6 rounded-md inline-block">
@@ -89,16 +89,14 @@ export const OtpEmail = ({ otp, type }: OtpEmailProps) => {
               </div>
             </Section>
 
-            <Section className="mb-8">
-              <Text className="text-mutedText text-sm leading-relaxed">This code will expire in 5 minutes.</Text>
-              <Text className="text-mutedText text-sm leading-relaxed">
-                If you didn't request this code, you can safely ignore this email.
-              </Text>
-            </Section>
+            <Text className="text-mutedText text-sm leading-relaxed mb-2">This code will expire in 5 minutes.</Text>
+            <Text className="text-mutedText text-sm leading-relaxed">
+              If you didn't request this code, you can safely ignore this email.
+            </Text>
 
-            <Section className="text-center border-t border-borderColor pt-5">
-              <Text className="text-mutedText text-xs">© {currentYear} Rybbit Analytics</Text>
-            </Section>
+            <Hr className="border-borderColor my-8" />
+
+            <Text className="text-mutedText text-xs">© {currentYear} Rybbit Analytics</Text>
           </Container>
         </Body>
       </Tailwind>

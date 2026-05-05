@@ -5,7 +5,7 @@ import { useStripeSubscription } from "../../lib/subscription/useStripeSubscript
 import { UsageChart } from "../UsageChart";
 import { PlanCard } from "./components/PlanCard";
 import { UsageLimitAlerts } from "./components/UsageLimitAlerts";
-import { UsageProgressBar } from "./components/UsageProgressBar";
+import { UsageCards } from "./components/UsageCards";
 import { useUsageStats } from "./components/useUsageStats";
 
 export function CustomPlan() {
@@ -14,11 +14,9 @@ export function CustomPlan() {
   const { data: activeOrg } = authClient.useActiveOrganization();
 
   const organizationId = activeOrg?.id;
-  const { currentUsage, limit, percentageUsed, isNearLimit, isLimitExceeded } = useUsageStats(subscription);
+  const { limit, isNearLimit, isLimitExceeded } = useUsageStats(subscription);
 
   if (!subscription) return null;
-
-  const formatLimit = (value: number | null) => (value === null ? t("Unlimited") : value.toLocaleString());
 
   return (
     <PlanCard
@@ -38,26 +36,7 @@ export function CustomPlan() {
         exceededMessage={t("You have exceeded your monthly event limit. Please contact support for assistance.")}
         nearLimitMessage={t("You are approaching your monthly event limit. Please contact support if you need more capacity.")}
       />
-      <UsageProgressBar
-        currentUsage={currentUsage}
-        limit={limit}
-        percentageUsed={percentageUsed}
-        isNearLimit={isNearLimit}
-      />
-
-      <div className="space-y-2">
-        <h3 className="font-medium mb-2">{t("Plan Limits")}</h3>
-        <div className="grid grid-cols-2 gap-4">
-          <div className="rounded-lg border p-3">
-            <div className="text-sm text-muted-foreground">{t("Websites")}</div>
-            <div className="text-lg font-semibold">{formatLimit(subscription.siteLimit)}</div>
-          </div>
-          <div className="rounded-lg border p-3">
-            <div className="text-sm text-muted-foreground">{t("Team Members")}</div>
-            <div className="text-lg font-semibold">{formatLimit(subscription.memberLimit)}</div>
-          </div>
-        </div>
-      </div>
+      <UsageCards />
 
       {organizationId && <UsageChart organizationId={organizationId} />}
     </PlanCard>

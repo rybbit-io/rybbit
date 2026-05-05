@@ -362,14 +362,7 @@ class WeeklyReportService {
           }
 
           try {
-            // Create a report with just this single site
-            const singleSiteReport: OrganizationReport = {
-              organizationId: report.organizationId,
-              organizationName: report.organizationName,
-              sites: [site],
-            };
-
-            await sendWeeklyReportEmail(memberData.email, memberData.name, singleSiteReport);
+            await sendWeeklyReportEmail(memberData.email, memberData.name, report.organizationName, site);
             this.logger.info(
               {
                 email: memberData.email,

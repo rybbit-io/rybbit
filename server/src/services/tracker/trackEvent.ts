@@ -272,14 +272,14 @@ export async function trackEvent(request: FastifyRequest, reply: FastifyReply) {
     // Skip bot check for Bearer token authenticated requests
     const authHeader = request.headers["authorization"];
     const hasBearerToken = typeof authHeader === "string" && authHeader.startsWith("Bearer ");
-    if (!hasBearerToken) {
+    if (!hasBearerToken && siteConfiguration.blockBots) {
       // Use custom user agent if provided, otherwise fall back to header
       const userAgent = validatedPayload.user_agent || (request.headers["user-agent"] as string);
       if (userAgent && isbot(userAgent)) {
         logger.info({ siteId: validatedPayload.site_id, userAgent }, "Bot request filtered");
         return reply.status(200).send({
           success: true,
-          message: "Event not tracked - bot detected",
+          message: "Event not tracked - bot detected using isbot",
         });
       }
 
@@ -292,7 +292,7 @@ export async function trackEvent(request: FastifyRequest, reply: FastifyReply) {
         );
         return reply.status(200).send({
           success: true,
-          message: "Event not tracked - bot detected",
+          message: "Event not tracked - bot detected using header heuristics",
         });
       }
 
@@ -305,7 +305,7 @@ export async function trackEvent(request: FastifyRequest, reply: FastifyReply) {
         );
         return reply.status(200).send({
           success: true,
-          message: "Event not tracked - bot detected",
+          message: "Event not tracked - bot detected using client signals",
         });
       }
 
@@ -322,7 +322,7 @@ export async function trackEvent(request: FastifyRequest, reply: FastifyReply) {
         );
         return reply.status(200).send({
           success: true,
-          message: "Event not tracked - bot detected",
+          message: "Event not tracked - bot detected using desktop 800x600",
         });
       }
     }

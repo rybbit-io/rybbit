@@ -39,25 +39,6 @@ const CONFIRM_THRESHOLD = 100 * 1024 * 1024;
 const ALLOWED_FILE_TYPES = ["text/csv", "application/zip", "application/x-zip-compressed"];
 const ALLOWED_EXTENSIONS = [".csv", ".zip"];
 
-function validateFile(file: File | null, platform: ImportPlatform | "", t: (key: string) => string): string {
-  if (!file) {
-    return t("Please select a file");
-  }
-
-  const extension = "." + file.name.split(".").pop()?.toLowerCase();
-  if (platform === "plausible") {
-    if (extension !== ".zip" && !["application/zip", "application/x-zip-compressed"].includes(file.type)) {
-      return t("Please upload a ZIP file exported from Plausible");
-    }
-  } else {
-    if (extension !== ".csv" && file.type !== "text/csv") {
-      return t("Only CSV files are accepted");
-    }
-  }
-
-  return "";
-}
-
 function formatFileSize(bytes: number): string {
   const sizeInMB = bytes / 1024 / 1024;
   const sizeInGB = bytes / 1024 / 1024 / 1024;
@@ -88,6 +69,25 @@ export function ImportManager({ siteId, disabled }: ImportManagerProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const workerManagerRef = useRef<CsvParser | PlausibleCsvParser | null>(null);
 
+  function validateFile(file: File | null, platform: ImportPlatform | ""): string {
+    if (!file) {
+      return t("Please select a file");
+    }
+
+    const extension = "." + file.name.split(".").pop()?.toLowerCase();
+    if (platform === "plausible") {
+      if (extension !== ".zip" && !["application/zip", "application/x-zip-compressed"].includes(file.type)) {
+        return t("Please upload a ZIP file exported from Plausible");
+      }
+    } else {
+      if (extension !== ".csv" && file.type !== "text/csv") {
+        return t("Only CSV files are accepted");
+      }
+    }
+
+    return "";
+  }
+
   const { data, isLoading, error } = useGetSiteImports(siteId);
   const createImportMutation = useCreateSiteImport(siteId);
   const deleteMutation = useDeleteSiteImport(siteId);
@@ -101,7 +101,7 @@ export function ImportManager({ siteId, disabled }: ImportManagerProps) {
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0] || null;
     setSelectedFile(file);
-    setFileError(validateFile(file, selectedPlatform, t));
+    setFileError(validateFile(file, selectedPlatform));
   };
 
   const onSubmit = (e: React.FormEvent) => {

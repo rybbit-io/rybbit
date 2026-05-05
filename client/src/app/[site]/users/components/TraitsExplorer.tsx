@@ -2,6 +2,7 @@
 
 import { useExtracted } from "next-intl";
 import { Tags } from "lucide-react";
+import { ExternalLink } from "../../../../components/ExternalLink";
 import { NothingFound } from "../../../../components/NothingFound";
 import { useGetUserTraitKeys } from "../../../../api/analytics/hooks/useGetUserTraits";
 import { TraitKeyRow } from "./TraitKeyRow";
@@ -37,7 +38,7 @@ export function TraitsExplorer() {
       <NothingFound
         icon={<Tags className="w-10 h-10" />}
         title={t("No traits found")}
-        description={<p>{t("Traits will appear here once you")} <a href="https://rybbit.com/docs/identify-users" target="_blank" rel="noopener noreferrer" className="text-indigo-400 hover:underline">{t("identify users")}</a> {t("with custom properties.")}</p>}
+        description={<p>{t("Traits will appear here once you")} <ExternalLink href="https://rybbit.com/docs/identify-users">{t("identify users")}</ExternalLink> {t("with custom properties.")}</p>}
       />
     );
   }

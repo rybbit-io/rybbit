@@ -22,7 +22,6 @@ import { Suspense } from "react";
 import { useGetSite } from "../../../../api/admin/hooks/useSites";
 import { Sidebar as SidebarComponents } from "../../../../components/sidebar/Sidebar";
 import { SiteSettings } from "../../../../components/SiteSettings/SiteSettings";
-import { authClient } from "../../../../lib/auth";
 import { IS_CLOUD } from "../../../../lib/const";
 import { useEmbedablePage } from "../../utils";
 import { SiteSelector } from "./SiteSelector";
@@ -31,7 +30,6 @@ import { useStripeSubscription } from "../../../../lib/subscription/useStripeSub
 function SidebarContent() {
   const t = useExtracted();
   const { data: subscription, isLoading: isSubscriptionLoading } = useStripeSubscription();
-  const session = authClient.useSession();
   const pathname = usePathname();
   const embed = useEmbedablePage();
 
@@ -175,7 +173,7 @@ function SidebarContent() {
           href={getTabPath("reports")}
           icon={<ChartBarDecreasing className="w-4 h-4" />}
           /> */}
-        {session.data && !embed && (
+        {!embed && (
           <>
             <SidebarComponents.SectionHeader>{t("Settings")}</SidebarComponents.SectionHeader>
             <SiteSettings

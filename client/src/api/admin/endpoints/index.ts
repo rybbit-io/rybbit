@@ -81,6 +81,22 @@ export type { GetSiteImportsResponse, CreateSiteImportResponse } from "./import"
 export { getOrganizationMembers } from "./auth";
 export type { GetOrganizationMembersResponse } from "./auth";
 
+// Teams endpoints
+export {
+  fetchTeams,
+  createTeam,
+  updateTeam,
+  deleteTeam,
+} from "./teams";
+export type {
+  Team,
+  TeamMember,
+  TeamSite,
+  ListTeamsResponse,
+  CreateTeamInput,
+  UpdateTeamInput,
+} from "./teams";
+
 // ClickHouse Stats endpoints
 export { getClickhouseStats, getClickhouseQueryLog } from "./clickhouseStats";
 export type {

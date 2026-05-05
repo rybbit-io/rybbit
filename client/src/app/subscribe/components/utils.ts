@@ -38,6 +38,7 @@ export const PRO_FEATURES = [
   "Unlimited team members",
   "Session replays",
   "5 year data retention",
+  "10x higher API rate limit",
   "Priority support",
 ];
 

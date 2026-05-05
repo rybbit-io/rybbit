@@ -24,7 +24,7 @@ export function FAQAccordion() {
             <p>
               {t("You can see for yourself by checking out our")}{" "}
               <Link
-                href="https://demo.rybbit.com/1"
+                href="https://demo.rybbit.com/81"
                 className="text-emerald-600 dark:text-emerald-400 hover:text-emerald-500 dark:hover:text-emerald-300"
               >
                 {t("demo site")}

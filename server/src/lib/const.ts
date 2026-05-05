@@ -22,6 +22,11 @@ export const BASIC_MEMBER_LIMIT = 1;
 export const STANDARD_SITE_LIMIT = 5;
 export const STANDARD_MEMBER_LIMIT = 3;
 
+// API key rate limits per plan (requests per window)
+export const API_RATE_LIMIT_WINDOW = 60_000; // 1 minute
+export const STANDARD_API_RATE_LIMIT = 20; // 20 req/min
+export const PRO_API_RATE_LIMIT = 200; // 200 req/min
+
 export const APPSUMO_SITE_LIMITS: Record<string, number | null> = {
   "1": 3, "2": 10, "3": 25, "4": 50, "5": 100, "6": null,
 };

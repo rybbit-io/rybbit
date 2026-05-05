@@ -10,7 +10,7 @@ import {
   useReactTable,
 } from "@tanstack/react-table";
 import { addFilter, getTimezone } from "@/lib/store";
-import { ArrowDown, ArrowUp, ArrowUpDown, Info } from "lucide-react";
+import { Info } from "lucide-react";
 import { DateTime } from "luxon";
 import Link from "next/link";
 import { useParams } from "next/navigation";
@@ -26,11 +26,11 @@ import { ErrorState } from "../../../../components/ErrorState";
 import { Favicon } from "../../../../components/Favicon";
 import { IdentifiedBadge } from "../../../../components/IdentifiedBadge";
 import { Pagination } from "../../../../components/pagination";
-import { Button } from "../../../../components/ui/button";
 import { Input } from "../../../../components/ui/input";
 import { Label } from "../../../../components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../../../components/ui/select";
 import { Switch } from "../../../../components/ui/switch";
+import { TableSortIndicator } from "../../../../components/ui/table";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../../../../components/ui/tooltip";
 import { FilterParameter } from "@rybbit/shared";
 import { getCountryName, getUserDisplayName } from "../../../../lib/utils";
@@ -55,22 +55,13 @@ const SortHeader = ({ column, children }: any) => {
   const isSorted = column.getIsSorted();
 
   return (
-    <Button
-      variant="ghost"
+    <div
       onClick={() => column.toggleSorting(isSorted ? isSorted === "asc" : true)}
-      className="p-0 hover:bg-transparent"
+      className="flex items-center gap-1 cursor-pointer select-none"
     >
       {children}
-      {isSorted ? (
-        isSorted === "asc" ? (
-          <ArrowUp className="ml-2 h-4 w-4" />
-        ) : (
-          <ArrowDown className="ml-2 h-4 w-4" />
-        )
-      ) : (
-        <ArrowUpDown className="ml-2 h-4 w-4" />
-      )}
-    </Button>
+      <TableSortIndicator sortDirection={isSorted} />
+    </div>
   );
 };
 
@@ -258,19 +249,13 @@ export function UsersTable() {
         const date = DateTime.fromSQL(info.getValue(), {
           zone: "utc",
         }).setZone(getTimezone());
-        const formattedDate = formatDateTime(date, { year: "numeric", month: "numeric", day: "numeric", hour: "numeric", minute: "2-digit" });
+        const formattedDate = formatDateTime(date, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
         const relativeTime = formatRelativeTime(info.getValue());
 
         return (
           <div className="whitespace-nowrap">
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <span>{relativeTime}</span>
-              </TooltipTrigger>
-              <TooltipContent>
-                <p>{formattedDate}</p>
-              </TooltipContent>
-            </Tooltip>
+            <span className="group-hover:hidden">{relativeTime}</span>
+            <span className="hidden group-hover:inline">{formattedDate}</span>
           </div>
         );
       },
@@ -281,19 +266,13 @@ export function UsersTable() {
         const date = DateTime.fromSQL(info.getValue(), {
           zone: "utc",
         }).setZone(getTimezone());
-        const formattedDate = formatDateTime(date, { year: "numeric", month: "numeric", day: "numeric", hour: "numeric", minute: "2-digit" });
+        const formattedDate = formatDateTime(date, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
         const relativeTime = formatRelativeTime(info.getValue());
 
         return (
           <div className="whitespace-nowrap">
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <span>{relativeTime}</span>
-              </TooltipTrigger>
-              <TooltipContent>
-                <p>{formattedDate}</p>
-              </TooltipContent>
-            </Tooltip>
+            <span className="group-hover:hidden">{relativeTime}</span>
+            <span className="hidden group-hover:inline">{formattedDate}</span>
           </div>
         );
       },
@@ -372,87 +351,85 @@ export function UsersTable() {
           </Tooltip>
         </div>
       </div>
-      <div className="rounded-md border border-neutral-100 dark:border-neutral-800 bg-white dark:bg-neutral-900">
-        <div className="relative overflow-x-auto">
-          <table className="w-full text-sm text-left">
-            <thead className="bg-neutral-50 dark:bg-neutral-850 text-neutral-500 dark:text-neutral-400 ">
-              {table.getHeaderGroups().map(headerGroup => (
-                <tr key={headerGroup.id}>
-                  {headerGroup.headers.map(header => (
-                    <th
-                      key={header.id}
-                      scope="col"
-                      className="px-3 py-1 font-medium whitespace-nowrap"
-                      style={{
-                        minWidth: header.id === "user_id" ? "100px" : "auto",
-                      }}
-                    >
-                      {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
-                    </th>
+      <div className="relative overflow-x-auto">
+        <table className="w-full text-sm text-left">
+          <thead className="[&_tr]:border-b-0 bg-neutral-50 dark:bg-neutral-850">
+            {table.getHeaderGroups().map(headerGroup => (
+              <tr key={headerGroup.id}>
+                {headerGroup.headers.map(header => (
+                  <th
+                    key={header.id}
+                    scope="col"
+                    className="h-8 px-2 text-left align-middle font-medium text-xs text-neutral-500 dark:text-neutral-400 whitespace-nowrap first:rounded-l-xl last:rounded-r-xl"
+                    style={{
+                      minWidth: header.id === "user_id" ? "100px" : "auto",
+                    }}
+                  >
+                    {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
+                  </th>
+                ))}
+              </tr>
+            ))}
+          </thead>
+          <tbody>
+            {isLoading ? (
+              Array.from({ length: 15 }).map((_, index) => (
+                <tr key={index} className="border-b border-neutral-100 dark:border-neutral-800 animate-pulse">
+                  {Array.from({ length: columns.length }).map((_, cellIndex) => (
+                    <td key={cellIndex} className="px-3 py-3">
+                      <div className="h-4 bg-neutral-200 dark:bg-neutral-800 rounded"></div>
+                    </td>
                   ))}
                 </tr>
-              ))}
-            </thead>
-            <tbody>
-              {isLoading ? (
-                Array.from({ length: 15 }).map((_, index) => (
-                  <tr key={index} className="border-b border-neutral-100 dark:border-neutral-800 animate-pulse">
-                    {Array.from({ length: columns.length }).map((_, cellIndex) => (
-                      <td key={cellIndex} className="px-3 py-3">
-                        <div className="h-4 bg-neutral-200 dark:bg-neutral-800 rounded"></div>
-                      </td>
-                    ))}
-                  </tr>
-                ))
-              ) : table.getRowModel().rows.length === 0 ? (
-                <tr>
-                  <td
-                    colSpan={columns.length}
-                    className="px-3 py-8 text-center text-neutral-500 dark:text-neutral-400"
-                  >
-                    {t("No users found")}
-                  </td>
-                </tr>
-              ) : (
-                table.getRowModel().rows.map(row => {
-                  const linkId = row.original.identified_user_id || row.original.user_id;
-                  const href = `/${site}/user/${encodeURIComponent(linkId)}`;
+              ))
+            ) : table.getRowModel().rows.length === 0 ? (
+              <tr>
+                <td
+                  colSpan={columns.length}
+                  className="px-3 py-8 text-center text-neutral-500 dark:text-neutral-400"
+                >
+                  {t("No users found")}
+                </td>
+              </tr>
+            ) : (
+              table.getRowModel().rows.map(row => {
+                const linkId = row.original.identified_user_id || row.original.user_id;
+                const href = `/${site}/user/${encodeURIComponent(linkId)}`;
 
-                  return (
-                    <tr key={row.id} className="border-b border-neutral-100 dark:border-neutral-800 group">
-                      {row.getVisibleCells().map(cell => (
-                        <td key={cell.id} className="px-3 py-3 relative">
-                          {/* <Link
+                return (
+                  <tr key={row.id} className="border-b border-neutral-100 dark:border-neutral-800 group hover:bg-neutral-50 dark:hover:bg-neutral-850">
+                    {row.getVisibleCells().map(cell => (
+                      <td key={cell.id} className="px-3 py-3 relative">
+                        {/* <Link
                             href={href}
                             className="absolute inset-0 z-10"
                             aria-label={`View user ${userId}`}
                           >
                             <span className="sr-only">View user details</span>
                           </Link> */}
-                          <span className="relative z-0">
-                            {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                          </span>
-                        </td>
-                      ))}
-                    </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
-        </div>
+                        <span className="relative z-0">
+                          {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                        </span>
+                      </td>
+                    ))}
+                  </tr>
+                );
+              })
+            )}
+          </tbody>
+        </table>
+      </div>
 
-        <div className="border-t border-neutral-100 dark:border-neutral-800">
-          <div className="px-4 py-3">
-            <Pagination
-              table={table}
-              data={{ items: data?.data || [], total: data?.totalCount || 0 }}
-              pagination={pagination}
-              setPagination={setPagination}
-              isLoading={isLoading}
-              itemName="users"
-            />
-          </div>
+      <div className="border-t border-neutral-100 dark:border-neutral-800">
+        <div className="px-4 py-3">
+          <Pagination
+            table={table}
+            data={{ items: data?.data || [], total: data?.totalCount || 0 }}
+            pagination={pagination}
+            setPagination={setPagination}
+            isLoading={isLoading}
+            itemName="users"
+          />
         </div>
       </div>
     </div>

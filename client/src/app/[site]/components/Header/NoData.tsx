@@ -37,8 +37,8 @@ import { useExtracted } from "next-intl";
 import React from "react";
 import { useGetSite, useSiteHasData } from "../../../../api/admin/hooks/useSites";
 import { CodeSnippet } from "../../../../components/CodeSnippet";
+import { ExternalLink } from "../../../../components/ExternalLink";
 import { Alert } from "../../../../components/ui/alert";
-import { VerifyInstallation } from "../../../../components/VerifyInstallation";
 import { useStore } from "../../../../lib/store";
 
 // Custom Card Component
@@ -84,7 +84,7 @@ export function NoData() {
                 <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-green-400 opacity-75"></span>
                 <span className="relative inline-flex h-3 w-3 rounded-full bg-green-500"></span>
               </span>
-              <div className="font-medium">{t("Waiting for analytics from {domain}...", { domain: siteMetadata?.domain ?? "" })}</div>
+              <div className="font-medium">{t("Waiting for analytics from {name}...", { name: siteMetadata?.name ?? "" })}</div>
             </div>
             <div className="text-xs text-muted-foreground">{t("Place this snippet in the {headTag} of your website:", { headTag: "<head>" })}</div>
             <CodeSnippet
@@ -94,13 +94,13 @@ export function NoData() {
             />
             <span className="text-xs text-muted-foreground">
               {t("See our")}{" "}
-              <a href="https://rybbit.com/docs/script" className="text-blue-500 hover:underline">
+              <ExternalLink href="https://rybbit.com/docs/script">
                 {t("docs")}
-              </a>{" "}
+              </ExternalLink>{" "}
               {t("for more information, or")}{" "}
-              <a href="https://rybbit.com/docs/script-troubleshooting" className="text-blue-500 hover:underline">
+              <ExternalLink href="https://rybbit.com/docs/script-troubleshooting">
                 {t("troubleshoot")}
-              </a>{" "}
+              </ExternalLink>{" "}
               {t("if your script isn't sending traffic.")}
             </span>
             {/* {siteMetadata?.siteId && <VerifyInstallation siteId={siteMetadata.siteId} />} */}

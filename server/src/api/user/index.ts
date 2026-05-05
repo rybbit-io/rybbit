@@ -8,3 +8,6 @@ export { listOrganizationMembers } from "./listOrganizationMembers.js";
 export { updateAccountSettings } from "./updateAccountSettings.js";
 export { unsubscribeMarketing, oneClickUnsubscribeMarketing } from "./unsubscribeMarketing.js";
 
+// API Keys
+export { createUserApiKey } from "./createApiKey.js";
+

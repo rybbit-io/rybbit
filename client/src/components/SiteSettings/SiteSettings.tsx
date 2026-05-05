@@ -37,7 +37,8 @@ export function SiteSettings({ siteId, trigger }: { siteId: number; trigger?: Re
 function SiteSettingsInner({ siteMetadata, trigger }: { siteMetadata: SiteResponse; trigger?: React.ReactNode }) {
   const t = useExtracted();
   const { data: userOrganizationsData } = useUserOrganizations();
-  const disabled = !userOrganizationsData?.[0]?.role || userOrganizationsData?.[0]?.role === "member";
+  const siteOrgMembership = userOrganizationsData?.find((org) => org.id === siteMetadata.organizationId);
+  const disabled = !siteOrgMembership?.role || siteOrgMembership.role === "member";
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("settings");
@@ -58,7 +59,7 @@ function SiteSettingsInner({ siteMetadata, trigger }: { siteMetadata: SiteRespon
       <DialogContent className="sm:max-w-[750px]">
         <DialogHeader>
           <DialogTitle>{t("Site Settings")}</DialogTitle>
-          <DialogDescription>{t("Manage settings for {domain}", { domain: siteMetadata.domain })}</DialogDescription>
+          <DialogDescription>{t("Manage settings for {name}", { name: siteMetadata.name })}</DialogDescription>
         </DialogHeader>
         <Tabs value={activeTab} onValueChange={setActiveTab} className="pb-4">
           <TabsList className="grid w-full grid-cols-3">

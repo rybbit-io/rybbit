@@ -355,14 +355,19 @@ const getQuery = (request: FastifyRequest<GetMetricRequest>, isCountQuery: boole
 
   if (isCountQuery) {
     return `
-    SELECT COUNT(DISTINCT ${sqlParam}) as totalCount
-    FROM events
-    WHERE
-        site_id = {siteId:Int32}
-        AND ${sqlParam} IS NOT NULL
-        AND ${sqlParam} <> ''
-        ${filterStatement}
-        ${timeStatement};
+    SELECT COUNT(DISTINCT value) as totalCount
+    FROM (
+        SELECT
+            argMin(${sqlParam}, e.timestamp) as value
+        FROM events e
+        WHERE
+            e.site_id = {siteId:Int32}
+            AND ${sqlParam} IS NOT NULL
+            AND ${sqlParam} <> ''
+            ${filterStatement}
+            ${timeStatement}
+        GROUP BY e.session_id
+    );
     `;
   }
 
