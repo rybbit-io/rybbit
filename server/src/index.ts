@@ -305,7 +305,11 @@ async function sitesRoutes(fastify: FastifyInstance) {
   // Site Imports
   fastify.get("/sites/:siteId/imports", adminSite, getSiteImports);
   fastify.post("/sites/:siteId/imports", adminSite, createSiteImport);
-  fastify.post("/sites/:siteId/imports/:importId/events", adminSite, batchImportEvents);
+  fastify.post(
+    "/sites/:siteId/imports/:importId/events",
+    { ...adminSite, bodyLimit: 50 * 1024 * 1024 },
+    batchImportEvents
+  );
   fastify.delete("/sites/:siteId/imports/:importId", adminSite, deleteSiteImport);
 }
 
