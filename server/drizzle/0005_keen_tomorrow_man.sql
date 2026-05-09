@@ -1,0 +1,1 @@
+ALTER TYPE "public"."import_platform_enum" ADD VALUE 'plausible';
