@@ -4,11 +4,14 @@ import { useExtracted } from "next-intl";
 import { useCallback, useState } from "react";
 
 import { CodeSnippet } from "@/components/CodeSnippet";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "@/components/ui/sonner";
 import { SiteResponse, updateSiteConfig } from "@/api/admin/endpoints";
 import { useGetSitesFromOrg } from "@/api/admin/hooks/useSites";
+import { cn } from "@/lib/utils";
 
 interface EmbedTabProps {
   siteMetadata: SiteResponse;
@@ -57,6 +60,7 @@ export function EmbedTab({ siteMetadata }: EmbedTabProps) {
   const [accent, setAccent] = useState<string>(DEFAULT_ACCENT);
   const [isPublic, setIsPublic] = useState(!!siteMetadata.public);
   const [togglingPublic, setTogglingPublic] = useState(false);
+  const [outputTab, setOutputTab] = useState<"preview" | "code">("preview");
 
   const siteId = siteMetadata.siteId;
   const origin = typeof window !== "undefined" ? window.location.origin : "";
@@ -74,7 +78,7 @@ export function EmbedTab({ siteMetadata }: EmbedTabProps) {
     widgetUrl.searchParams.set("countries", String(showCountries));
   }
 
-  const cardHeight = 130 + (showChart ? 130 : 0) + (showCountries ? 60 + 28 * 5 : 0);
+  const cardHeight = 134 + (showChart ? 94 : 0) + (showCountries ? 162 : 0);
   const inlineHeight = 36;
   const inlineWidth = 220;
   const height = variant === "card" ? cardHeight : inlineHeight;
@@ -116,12 +120,9 @@ export function EmbedTab({ siteMetadata }: EmbedTabProps) {
 
   return (
     <div className="space-y-6">
-      <div className="space-y-2">
-        <h4 className="text-sm font-semibold text-foreground">{t("Embed Widget")}</h4>
-        <p className="text-xs text-muted-foreground">
-          {t("Show a live visitor count on your site. Data refreshes every minute and is cached server-side.")}
-        </p>
-      </div>
+      <p className="text-xs text-muted-foreground">
+        {t("Show a live visitor count on your site. Data refreshes every minute and is cached server-side.")}
+      </p>
 
       <div className="flex items-center justify-between rounded-md border border-neutral-200 dark:border-neutral-800 px-4 py-3 bg-neutral-50 dark:bg-neutral-900/40">
         <div>
@@ -142,6 +143,64 @@ export function EmbedTab({ siteMetadata }: EmbedTabProps) {
         />
       </div>
 
+
+      <div className="space-y-2">
+        <div className="flex flex-wrap gap-1">
+          {(
+            [
+              { key: "preview", label: t("Preview") },
+              { key: "code", label: t("Embed Code") },
+            ] as const
+          ).map(tab => (
+            <button
+              key={tab.key}
+              type="button"
+              onClick={() => setOutputTab(tab.key)}
+              className={cn(
+                "px-2 py-1 text-xs rounded transition-colors",
+                outputTab === tab.key
+                  ? "bg-neutral-100 dark:bg-neutral-700 text-neutral-900 dark:text-neutral-100"
+                  : "text-neutral-600 dark:text-neutral-400 hover:bg-neutral-50 dark:hover:bg-neutral-800"
+              )}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+
+        {outputTab === "preview" ? (
+          <div
+            className={`rounded-md border border-neutral-200 dark:border-neutral-800 p-4 flex ${variant === "card" ? "justify-center" : "items-center justify-center"
+              }`}
+            style={{ background: theme === "dark" ? "#0a0a0a" : "#f5f5f5" }}
+          >
+            {isPublic ? (
+              <iframe
+                key={widgetUrl.toString()}
+                src={widgetUrl.toString()}
+                style={{
+                  border: 0,
+                  width: iframeWidth,
+                  height,
+                  maxWidth: "100%",
+                  background: "transparent",
+                }}
+                title="Widget preview"
+              />
+            ) : (
+              <div
+                style={{ width: iframeWidth, height, maxWidth: "100%" }}
+                className="rounded-md border border-dashed border-neutral-300 dark:border-neutral-700 flex items-center justify-center text-xs text-muted-foreground"
+              >
+                {t("Enable Public Analytics to preview")}
+              </div>
+            )}
+          </div>
+        ) : (
+          <CodeSnippet language="HTML" code={iframeCode} />
+        )}
+      </div>
+
       <fieldset
         disabled={!isPublic}
         className={`space-y-6 transition-opacity ${!isPublic ? "opacity-50 pointer-events-none select-none" : ""}`}
@@ -151,18 +210,15 @@ export function EmbedTab({ siteMetadata }: EmbedTabProps) {
           <h5 className="text-xs font-semibold text-foreground uppercase tracking-wide">{t("Variant")}</h5>
           <div className="flex flex-wrap gap-2">
             {variants.map(v => (
-              <button
+              <Button
                 key={v.value}
                 type="button"
+                size="sm"
+                variant={variant === v.value ? "default" : "outline"}
                 onClick={() => setVariant(v.value)}
-                className={`px-3 py-1.5 rounded-md text-sm border transition-colors ${
-                  variant === v.value
-                    ? "bg-neutral-200 dark:bg-neutral-800 border-neutral-300 dark:border-neutral-700 text-foreground"
-                    : "bg-transparent border-neutral-200 dark:border-neutral-800 text-muted-foreground hover:text-foreground"
-                }`}
               >
                 {v.label}
-              </button>
+              </Button>
             ))}
           </div>
         </div>
@@ -172,18 +228,15 @@ export function EmbedTab({ siteMetadata }: EmbedTabProps) {
             <h5 className="text-xs font-semibold text-foreground uppercase tracking-wide">{t("Time Window")}</h5>
             <div className="flex flex-wrap gap-2">
               {timeWindows.map(w => (
-                <button
+                <Button
                   key={w.minutes}
                   type="button"
+                  size="sm"
+                  variant={minutes === w.minutes ? "default" : "outline"}
                   onClick={() => setMinutes(w.minutes)}
-                  className={`px-3 py-1.5 rounded-md text-sm border transition-colors ${
-                    minutes === w.minutes
-                      ? "bg-neutral-200 dark:bg-neutral-800 border-neutral-300 dark:border-neutral-700 text-foreground"
-                      : "bg-transparent border-neutral-200 dark:border-neutral-800 text-muted-foreground hover:text-foreground"
-                  }`}
                 >
                   {w.label}
-                </button>
+                </Button>
               ))}
             </div>
           </div>
@@ -199,18 +252,15 @@ export function EmbedTab({ siteMetadata }: EmbedTabProps) {
             </div>
             <div className="flex gap-2">
               {themes.map(th => (
-                <button
+                <Button
                   key={th.value}
                   type="button"
+                  size="sm"
+                  variant={theme === th.value ? "default" : "outline"}
                   onClick={() => setTheme(th.value)}
-                  className={`px-3 py-1.5 rounded-md text-sm border transition-colors ${
-                    theme === th.value
-                      ? "bg-neutral-200 dark:bg-neutral-800 border-neutral-300 dark:border-neutral-700 text-foreground"
-                      : "bg-transparent border-neutral-200 dark:border-neutral-800 text-muted-foreground hover:text-foreground"
-                  }`}
                 >
                   {th.label}
-                </button>
+                </Button>
               ))}
             </div>
           </div>
@@ -230,13 +280,15 @@ export function EmbedTab({ siteMetadata }: EmbedTabProps) {
                 onChange={e => setAccent(e.target.value)}
                 className="h-8 w-10 rounded-md border border-neutral-200 dark:border-neutral-800 bg-transparent cursor-pointer"
               />
-              <button
+              <Button
                 type="button"
+                variant="ghost"
+                size="sm"
                 onClick={() => setAccent(DEFAULT_ACCENT)}
-                className="text-xs text-muted-foreground hover:text-foreground underline-offset-2 hover:underline"
+                disabled={accent.toLowerCase() === DEFAULT_ACCENT}
               >
                 {t("Reset")}
-              </button>
+              </Button>
             </div>
           </div>
         </div>
@@ -275,55 +327,20 @@ export function EmbedTab({ siteMetadata }: EmbedTabProps) {
                   {t("Iframe width. Use max-width: 100% for responsive layouts.")}
                 </p>
               </div>
-              <input
+              <Input
                 id="embed-width"
                 type="number"
                 min={240}
                 max={800}
                 value={width}
                 onChange={e => setWidth(Math.max(240, Math.min(800, parseInt(e.target.value) || 360)))}
-                className="w-20 px-2 py-1 rounded-md border border-neutral-200 dark:border-neutral-800 bg-transparent text-sm text-foreground"
+                className="w-24"
               />
             </div>
           </div>
         )}
 
-        <div className="space-y-3">
-          <h5 className="text-xs font-semibold text-foreground uppercase tracking-wide">{t("Preview")}</h5>
-          <div
-            className={`rounded-md border border-neutral-200 dark:border-neutral-800 p-4 flex ${
-              variant === "card" ? "justify-center" : "items-center justify-center"
-            }`}
-            style={{ background: theme === "dark" ? "#0a0a0a" : "#f5f5f5" }}
-          >
-            {isPublic ? (
-              <iframe
-                key={widgetUrl.toString()}
-                src={widgetUrl.toString()}
-                style={{
-                  border: 0,
-                  width: iframeWidth,
-                  height,
-                  maxWidth: "100%",
-                  background: "transparent",
-                }}
-                title="Widget preview"
-              />
-            ) : (
-              <div
-                style={{ width: iframeWidth, height, maxWidth: "100%" }}
-                className="rounded-md border border-dashed border-neutral-300 dark:border-neutral-700 flex items-center justify-center text-xs text-muted-foreground"
-              >
-                {t("Enable Public Analytics to preview")}
-              </div>
-            )}
-          </div>
-        </div>
 
-        <div className="space-y-3">
-          <h5 className="text-xs font-semibold text-foreground uppercase tracking-wide">{t("Embed Code")}</h5>
-          <CodeSnippet language="HTML" code={iframeCode} />
-        </div>
       </fieldset>
     </div>
   );

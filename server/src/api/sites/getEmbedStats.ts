@@ -16,8 +16,8 @@ const ALLOWED_MINUTES = new Set([30, 1440, 10080]);
 
 function bucketExpr(minutes: number) {
   if (minutes === 30) return "toStartOfMinute(timestamp)";
-  if (minutes === 1440) return "toStartOfInterval(timestamp, INTERVAL 30 minute)";
-  return "toStartOfHour(timestamp)";
+  if (minutes === 1440) return "toStartOfHour(timestamp)";
+  return "toStartOfDay(timestamp)";
 }
 
 export async function getEmbedStats(
