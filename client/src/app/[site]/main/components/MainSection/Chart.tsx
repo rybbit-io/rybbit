@@ -3,9 +3,10 @@
 import * as d3 from "d3";
 import { DateTime } from "luxon";
 import { useTheme } from "next-themes";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
+import { TimeBucket } from "@rybbit/shared";
 import { ChartTooltip } from "../../../../../components/charts/ChartTooltip";
 import { Time } from "../../../../../components/DateSelector/types";
 import {
@@ -22,15 +23,47 @@ import { GetOverviewBucketedResponse } from "../../../../../api/analytics/endpoi
 import { APIResponse } from "../../../../../api/types";
 import { getChartTimeBounds } from "./chartTimeBounds";
 
+// Step a Luxon DateTime by one bucket. Wall-clock arithmetic so DST
+// transitions don't introduce off-by-an-hour drift in the tick grid.
+const stepBucket = (
+  dt: DateTime,
+  bucket: TimeBucket,
+  direction: 1 | -1
+): DateTime => {
+  const n = direction;
+  switch (bucket) {
+    case "minute":
+      return dt.plus({ minutes: n });
+    case "five_minutes":
+      return dt.plus({ minutes: 5 * n });
+    case "ten_minutes":
+      return dt.plus({ minutes: 10 * n });
+    case "fifteen_minutes":
+      return dt.plus({ minutes: 15 * n });
+    case "hour":
+      return dt.plus({ hours: n });
+    case "day":
+      return dt.plus({ days: n });
+    case "week":
+      return dt.plus({ weeks: n });
+    case "month":
+      return dt.plus({ months: n });
+    case "year":
+      return dt.plus({ years: n });
+  }
+};
+
 type Point = {
   x: Date;
   y: number;
   currentTime: DateTime;
-  previousTime?: DateTime;
-  previousY?: number;
 };
 
-type PrevPoint = { x: Date; y: number };
+type PrevPoint = {
+  x: Date;
+  y: number;
+  originalTime: DateTime;
+};
 
 const MARGIN = { top: 10, right: 15, bottom: 30, left: 40 };
 const Y_TICKS = 5;
@@ -77,6 +110,7 @@ export function Chart({
   const { resolvedTheme } = useTheme();
   const isDark = resolvedTheme === "dark";
   const timezone = getTimezone();
+  const clipId = useId().replace(/:/g, "");
 
   const wrapperRef = useRef<HTMLDivElement>(null);
   const [size, setSize] = useState<{ width: number; height: number }>({
@@ -105,56 +139,50 @@ export function Chart({
     );
 
     const now = DateTime.now();
-
-    // Filter against the strict period bounds (not the fallback-extended
-    // chartMax) so that during a goBack/goForward transition, stale data
-    // from the previous query doesn't get dragged onto the new x-axis.
-    const lowerBoundMs = cMin?.getTime();
     const upperBoundMs = (boundsMax ?? now.toJSDate()).getTime();
 
+    // Current points — filter against the strict upper bound only. Stale data
+    // during a goBack transition (timestamps in the future relative to the
+    // new range) gets dropped here.
     const currentPoints: Point[] = [];
-    data?.data?.forEach((e, i) => {
+    data?.data?.forEach(e => {
       const ts = DateTime.fromSQL(e.time, { zone: timezone }).toUTC();
       if (ts > now) return;
-      const tsMs = ts.toMillis();
-      if (lowerBoundMs !== undefined && tsMs < lowerBoundMs) return;
-      if (tsMs > upperBoundMs) return;
-      const prev = previousData?.data?.[i];
-      const prevTs = prev
-        ? DateTime.fromSQL(prev.time, { zone: timezone }).toUTC()
-        : undefined;
+      if (ts.toMillis() > upperBoundMs) return;
       currentPoints.push({
         x: ts.toJSDate(),
         y: Number(e[selectedStat] ?? 0),
         currentTime: ts,
-        previousTime: prevTs,
-        previousY: prev ? Number(prev[selectedStat] ?? 0) : undefined,
       });
     });
 
-    // Fall back to the last current data point (or now) when no period max
-    // is available — e.g. past-minutes mode with minute/five-minute buckets,
-    // where getChartTimeBounds returns max: undefined.
-    const fallbackMax = currentPoints.length
+    // For "all-time" mode (and any mode where the period has no fixed bounds)
+    // derive chartMin from the data so the x-axis isn't a dummy [0,1] domain.
+    const dataMin = currentPoints.length ? currentPoints[0].x : undefined;
+    const dataMax = currentPoints.length
       ? currentPoints[currentPoints.length - 1].x
-      : now.toJSDate();
-    const cMax = chartXMax ?? boundsMax ?? fallbackMax;
+      : undefined;
+    const effChartMin = cMin ?? dataMin;
+    const effChartMax = chartXMax ?? boundsMax ?? dataMax ?? now.toJSDate();
 
-    // Shift previous timestamps onto the current period's x-axis. Filter
-    // against the strict bounds (same as current points) so a stale previous
-    // query doesn't bleed onto the new x-axis during goBack/goForward.
+    // Previous points — time-shift onto the current period's x-axis. Each
+    // previous timestamp is shifted by (cMin − prevMin), so prev[0] lands at
+    // cMin. The previous line therefore spans the *full* previous period
+    // mapped onto the current's domain (e.g. "this month" shows all 30 days
+    // of April mapped to May 1-30, even though current data only goes to today).
+    // Keep originalTime so the tooltip can show the real previous date.
     const { min: prevMin } = getChartTimeBounds(previousTime, bucket, timezone);
     const offsetMs =
       cMin && prevMin ? cMin.getTime() - prevMin.getTime() : 0;
     const previousPoints: PrevPoint[] = [];
     previousData?.data?.forEach(e => {
-      const prevTs = DateTime.fromSQL(e.time, { zone: timezone });
+      const prevTs = DateTime.fromSQL(e.time, { zone: timezone }).toUTC();
       const mappedMs = prevTs.toMillis() + offsetMs;
-      if (lowerBoundMs !== undefined && mappedMs < lowerBoundMs) return;
       if (mappedMs > upperBoundMs) return;
       previousPoints.push({
         x: new Date(mappedMs),
         y: Number(e[selectedStat] ?? 0),
+        originalTime: prevTs,
       });
     });
 
@@ -175,8 +203,8 @@ export function Chart({
     return {
       current: currentPoints,
       previous: previousPoints,
-      chartMin: cMin,
-      chartMax: cMax,
+      chartMin: effChartMin,
+      chartMax: effChartMax,
       displayDashed: dashed,
     };
   }, [
@@ -214,28 +242,51 @@ export function Chart({
   }, [max, plotBottom, plotTop]);
 
   const maxTicks = Math.max(1, Math.round(W / 40));
-  const xTickCount = Math.min(
-    maxTicks,
+  const xTickCount =
     time.mode === "day" ||
-      (time.mode === "past-minutes" && time.pastMinutesStart === 1440)
-      ? 24
-      : Math.max(1, data?.data?.length ?? 0)
-  );
+    (time.mode === "past-minutes" && time.pastMinutesStart === 1440)
+      ? Math.min(maxTicks, 24)
+      : maxTicks;
 
-  // Use actual data-point timestamps as ticks so labels line up with the
-  // line's vertices. d3.scaleUtc.ticks() snaps to UTC interval boundaries,
-  // which drift from the user-timezone bucket boundaries the data points
-  // actually sit on.
+  // Generate ticks spanning [chartMin, chartMax] aligned to bucket boundaries.
+  // Anchored on the first current data point so ticks land where the API's
+  // buckets are (e.g. weekly Sunday-starts), then walked forward to chartMax
+  // and backward to chartMin in user-tz wall-clock steps. This makes ticks
+  // appear past today for in-progress periods ("this month" → ticks for
+  // May 1-31 even when current data only goes up to today), so the previous
+  // line drawn under those positions has labels/gridlines.
   const xTicks = useMemo(() => {
     if (!W || !chartMin || !chartMax || xTickCount <= 0) return [];
-    if (current.length === 0) return xScale.ticks(xTickCount);
-    const stride = Math.max(1, Math.ceil(current.length / xTickCount));
+
+    const chartMinMs = chartMin.getTime();
+    const chartMaxMs = chartMax.getTime();
+    const anchorMs = current.length ? current[0].x.getTime() : chartMinMs;
+    const anchor = DateTime.fromMillis(anchorMs, { zone: "utc" }).setZone(
+      timezone
+    );
+
     const ticks: Date[] = [];
-    for (let i = 0; i < current.length; i += stride) {
-      ticks.push(current[i].x);
+    let t = anchor;
+    let safety = 0;
+    while (t.toMillis() <= chartMaxMs && safety < 10000) {
+      if (t.toMillis() >= chartMinMs) {
+        ticks.push(t.toUTC().toJSDate());
+      }
+      t = stepBucket(t, bucket, 1);
+      safety++;
     }
-    return ticks;
-  }, [xScale, xTickCount, W, chartMin, chartMax, current]);
+    let tb = stepBucket(anchor, bucket, -1);
+    safety = 0;
+    while (tb.toMillis() >= chartMinMs && safety < 10000) {
+      ticks.unshift(tb.toUTC().toJSDate());
+      tb = stepBucket(tb, bucket, -1);
+      safety++;
+    }
+
+    if (ticks.length <= xTickCount) return ticks;
+    const stride = Math.max(1, Math.ceil(ticks.length / xTickCount));
+    return ticks.filter((_, i) => i % stride === 0);
+  }, [W, chartMin, chartMax, xTickCount, current, bucket, timezone]);
 
   // Cap vertical gridlines at 8 so dense ranges don't get noisy. Subsample
   // from xTicks so every gridline still aligns with a real label.
@@ -298,12 +349,17 @@ export function Chart({
     : "hsl(var(--neutral-900))";
 
   // Hover state
-  const bisect = useMemo(
+  const bisectCurrent = useMemo(
     () => d3.bisector<Point, Date>(d => d.x).center,
+    []
+  );
+  const bisectPrev = useMemo(
+    () => d3.bisector<PrevPoint, Date>(d => d.x).center,
     []
   );
   const [hover, setHover] = useState<{
     point: Point;
+    prev?: PrevPoint;
     clientX: number;
     clientY: number;
   } | null>(null);
@@ -313,10 +369,18 @@ export function Chart({
     const rect = e.currentTarget.getBoundingClientRect();
     const x = e.clientX - rect.left + plotLeft;
     const xDate = xScale.invert(x);
-    const idx = bisect(current, xDate);
+    const idx = bisectCurrent(current, xDate);
     const point = current[idx];
     if (!point) return;
-    setHover({ point, clientX: e.clientX, clientY: e.clientY });
+    // Pair the tooltip's previous value by x-position on the chart — i.e.
+    // whatever previous bucket is closest to where the current point sits.
+    // This stays consistent with the time-shifted previous line.
+    let prev: PrevPoint | undefined;
+    if (previous.length) {
+      const pIdx = bisectPrev(previous, point.x);
+      prev = previous[pIdx];
+    }
+    setHover({ point, prev, clientX: e.clientX, clientY: e.clientY });
   };
 
   const handleMouseLeave = () => setHover(null);
@@ -333,10 +397,10 @@ export function Chart({
     : 0;
 
   const hoverCurrentY = hover?.point.y ?? 0;
-  const hoverPreviousY = hover?.point.previousY ?? 0;
+  const hoverPreviousY = hover?.prev?.y ?? 0;
   const hoverDiff = hoverCurrentY - hoverPreviousY;
   const hoverDiffPct =
-    hover && hover.point.previousY !== undefined && hoverPreviousY
+    hover?.prev && hoverPreviousY
       ? (hoverDiff / hoverPreviousY) * 100
       : null;
 
@@ -345,12 +409,12 @@ export function Chart({
       {W > 0 && H > 0 && (
         <svg width={W} height={H} style={{ display: "block" }}>
           <defs>
-            <linearGradient id="current-grad" x1="0" x2="0" y1="0" y2="1">
+            <linearGradient id={`grad-${clipId}`} x1="0" x2="0" y1="0" y2="1">
               <stop offset="0%" stopColor="hsl(var(--dataviz))" stopOpacity={1} />
               <stop offset="100%" stopColor="hsl(var(--dataviz))" stopOpacity={0} />
             </linearGradient>
             <linearGradient
-              id="current-grad-dashed"
+              id={`grad-dashed-${clipId}`}
               x1="0"
               x2="0"
               y1="0"
@@ -367,6 +431,14 @@ export function Chart({
                 stopOpacity={0}
               />
             </linearGradient>
+            <clipPath id={`clip-${clipId}`}>
+              <rect
+                x={plotLeft}
+                y={plotTop}
+                width={plotW}
+                height={plotH}
+              />
+            </clipPath>
           </defs>
 
           {/* Y grid */}
@@ -394,46 +466,54 @@ export function Chart({
             />
           ))}
 
-          {/* Previous line */}
-          {previousLinePath && (
-            <path
-              d={previousLinePath}
-              fill="none"
-              stroke={previousStroke}
-              strokeWidth={2}
-            />
-          )}
+          {/* Clipped plot content — keeps lines/areas from spilling out of
+              the plot rect when bucket boundaries straddle chartMin/chartMax. */}
+          <g clipPath={`url(#clip-${clipId})`}>
+            {/* Previous line */}
+            {previousLinePath && (
+              <path
+                d={previousLinePath}
+                fill="none"
+                stroke={previousStroke}
+                strokeWidth={2}
+              />
+            )}
 
-          {/* Current area + line */}
-          {currentAreaPath && (
-            <path d={currentAreaPath} fill="url(#current-grad)" opacity={0.3} />
-          )}
-          {currentLinePath && (
-            <path
-              d={currentLinePath}
-              fill="none"
-              stroke="hsl(var(--dataviz))"
-              strokeWidth={2}
-            />
-          )}
+            {/* Current area + line */}
+            {currentAreaPath && (
+              <path
+                d={currentAreaPath}
+                fill={`url(#grad-${clipId})`}
+                opacity={0.3}
+              />
+            )}
+            {currentLinePath && (
+              <path
+                d={currentLinePath}
+                fill="none"
+                stroke="hsl(var(--dataviz))"
+                strokeWidth={2}
+              />
+            )}
 
-          {/* Dashed trailing segment */}
-          {dashedAreaPath && (
-            <path
-              d={dashedAreaPath}
-              fill="url(#current-grad-dashed)"
-              opacity={0.3}
-            />
-          )}
-          {dashedLinePath && (
-            <path
-              d={dashedLinePath}
-              fill="none"
-              stroke="hsl(var(--dataviz))"
-              strokeWidth={3}
-              strokeDasharray="3 6"
-            />
-          )}
+            {/* Dashed trailing segment */}
+            {dashedAreaPath && (
+              <path
+                d={dashedAreaPath}
+                fill={`url(#grad-dashed-${clipId})`}
+                opacity={0.3}
+              />
+            )}
+            {dashedLinePath && (
+              <path
+                d={dashedLinePath}
+                fill="none"
+                stroke="hsl(var(--dataviz))"
+                strokeWidth={3}
+                strokeDasharray="3 6"
+              />
+            )}
+          </g>
 
           {/* X axis */}
           <line
@@ -567,12 +647,12 @@ export function Chart({
                     {formatTooltipValue(hoverCurrentY, selectedStat)}
                   </div>
                 </div>
-                {hover.point.previousTime && (
+                {hover.prev && (
                   <div className="flex justify-between gap-3 text-sm text-muted-foreground">
                     <div className="flex items-center gap-2 min-w-0">
                       <div className="w-1 h-3 rounded-[3px] bg-neutral-200 dark:bg-neutral-750 shrink-0" />
                       <span className="truncate">
-                        {formatChartDateTime(hover.point.previousTime, bucket)}
+                        {formatChartDateTime(hover.prev.originalTime, bucket)}
                       </span>
                     </div>
                     <div className="shrink-0">
