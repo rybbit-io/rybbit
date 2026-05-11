@@ -6,7 +6,7 @@ import { useState } from "react";
 import { Popover, PopoverContent, PopoverTrigger } from "../../../../../components/ui/popover";
 import { cn } from "../../../../../lib/utils";
 import { isNumericParameter, NumericOperatorOptions, StringOperatorOptions } from "./const";
-import { getOperatorMenuLabel } from "./labels";
+import { useOperatorMenuLabel } from "./labels";
 
 export function OperatorPopover({
   filter,
@@ -18,6 +18,7 @@ export function OperatorPopover({
   children: React.ReactNode;
 }) {
   const t = useExtracted();
+  const getOperatorMenuLabel = useOperatorMenuLabel();
   const [open, setOpen] = useState(false);
   const isNumeric = isNumericParameter(filter.parameter);
   const operatorOptions = isNumeric ? NumericOperatorOptions : StringOperatorOptions;
@@ -45,7 +46,7 @@ export function OperatorPopover({
                   isSelected && "bg-neutral-100 dark:bg-neutral-800"
                 )}
               >
-                {getOperatorMenuLabel(option.value as FilterType, isNumeric, t)}
+                {getOperatorMenuLabel(option.value as FilterType, isNumeric)}
               </button>
             );
           })}

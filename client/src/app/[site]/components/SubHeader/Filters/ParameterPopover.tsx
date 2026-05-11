@@ -13,7 +13,7 @@ import {
 } from "../../../../../components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "../../../../../components/ui/popover";
 import { FilterOptions, isNumericParameter } from "./const";
-import { getParameterLabel } from "./labels";
+import { useParameterLabel } from "./labels";
 
 export function ParameterPopover({
   filter,
@@ -27,6 +27,8 @@ export function ParameterPopover({
   children: React.ReactNode;
 }) {
   const t = useExtracted();
+  const getParameterLabel = useParameterLabel();
+
   const [open, setOpen] = useState(false);
 
   const options = availableFilters
@@ -71,12 +73,12 @@ export function ParameterPopover({
               {options.map(option => (
                 <CommandItem
                   key={option.value}
-                  value={getParameterLabel(option.value, t)}
+                  value={getParameterLabel(option.value)}
                   onSelect={() => handleSelect(option.value)}
                 >
                   <div className="flex items-center gap-2">
                     {option.icon}
-                    {getParameterLabel(option.value, t)}
+                    {getParameterLabel(option.value)}
                   </div>
                 </CommandItem>
               ))}

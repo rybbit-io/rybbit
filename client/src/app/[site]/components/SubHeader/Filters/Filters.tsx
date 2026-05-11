@@ -12,10 +12,10 @@ import { cn } from "../../../../../lib/utils";
 import { isNumericParameter } from "./const";
 import {
   formatDisplayValue,
-  getOperatorLabel,
   getParameterIcon,
-  getParameterLabel,
+  useParameterLabel,
   operatorNeedsValue,
+  useOperatorLabel,
 } from "./labels";
 import { OperatorPopover } from "./OperatorPopover";
 import { ParameterPopover } from "./ParameterPopover";
@@ -25,6 +25,8 @@ export function Filters({ availableFilters }: { availableFilters?: FilterParamet
   const t = useExtracted();
   const { filters } = useStore();
   const { getRegionName } = useGetRegionName();
+  const getParameterLabel = useParameterLabel();
+  const getOperatorLabel = useOperatorLabel();
 
   return (
     <div className="flex gap-2 flex-wrap">
@@ -55,7 +57,7 @@ export function Filters({ availableFilters }: { availableFilters?: FilterParamet
                 )}
               >
                 {getParameterIcon(filter.parameter)}
-                {getParameterLabel(filter.parameter, t)}
+                {getParameterLabel(filter.parameter)}
               </Button>
             </ParameterPopover>
             <OperatorPopover filter={filter} onUpdate={onUpdate}>
@@ -65,7 +67,7 @@ export function Filters({ availableFilters }: { availableFilters?: FilterParamet
                 disabled={disabled}
                 className={cn("font-normal p-1.5 text-neutral-500 dark:text-neutral-400")}
               >
-                {getOperatorLabel(filter.type, isNumeric, t)}
+                {getOperatorLabel(filter.type, isNumeric)}
               </Button>
             </OperatorPopover>
             {operatorNeedsValue(filter.type) && (

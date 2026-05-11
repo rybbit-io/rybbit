@@ -9,10 +9,10 @@ import { cn } from "../../../../../lib/utils";
 import { isNumericParameter } from "./const";
 import {
   formatDisplayValue,
-  getOperatorLabel,
   getParameterIcon,
-  getParameterLabel,
   operatorNeedsValue,
+  useOperatorLabel,
+  useParameterLabel
 } from "./labels";
 import { OperatorPopover } from "./OperatorPopover";
 import { ParameterPopover } from "./ParameterPopover";
@@ -31,6 +31,9 @@ export function FilterComponent({
 }) {
   const t = useExtracted();
   const { getRegionName } = useGetRegionName();
+
+  const getParameterLabel = useParameterLabel();
+  const getOperatorLabel = useOperatorLabel();
 
   const onUpdate = (next: Filter) => updateFilter(next, index);
 
@@ -51,7 +54,7 @@ export function FilterComponent({
           className="font-normal justify-start text-neutral-700 dark:text-neutral-200"
         >
           {getParameterIcon(filter.parameter)}
-          {getParameterLabel(filter.parameter, t)}
+          {getParameterLabel(filter.parameter)}
         </Button>
       </ParameterPopover>
       <OperatorPopover filter={filter} onUpdate={onUpdate}>
@@ -62,7 +65,7 @@ export function FilterComponent({
             "font-normal justify-start text-neutral-500 dark:text-neutral-400"
           )}
         >
-          {getOperatorLabel(filter.type, isNumeric, t)}
+          {getOperatorLabel(filter.type, isNumeric)}
         </Button>
       </OperatorPopover>
       {operatorNeedsValue(filter.type) ? (
