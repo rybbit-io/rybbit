@@ -1,6 +1,6 @@
 "use client";
 
-import { Ban, Code, Download, Plug, Settings, SlidersHorizontal, X } from "lucide-react";
+import { Ban, Code, Download, LayoutTemplate, Plug, Settings, SlidersHorizontal, X } from "lucide-react";
 import { useExtracted } from "next-intl";
 import { useState } from "react";
 
@@ -14,6 +14,7 @@ import { GeneralTab } from "./GeneralTab";
 import { TrackingTab } from "./TrackingTab";
 import { ExclusionsTab } from "./ExclusionsTab";
 import { IntegrationsTab } from "./IntegrationsTab";
+import { EmbedTab } from "./EmbedTab";
 import { useGetSite } from "../../api/admin/hooks/useSites";
 import { useUserOrganizations } from "../../api/admin/hooks/useOrganizations";
 import { SiteResponse } from "../../api/admin/endpoints";
@@ -29,7 +30,7 @@ export function SiteSettings({ siteId, trigger }: { siteId: number; trigger?: Re
   return <SiteSettingsInner siteMetadata={siteMetadata} trigger={trigger} />;
 }
 
-type TabKey = "general" | "tracking" | "exclusions" | "integrations" | "script" | "import";
+type TabKey = "general" | "tracking" | "exclusions" | "integrations" | "script" | "import" | "embed";
 
 function SiteSettingsInner({ siteMetadata, trigger }: { siteMetadata: SiteResponse; trigger?: React.ReactNode }) {
   const t = useExtracted();
@@ -50,6 +51,7 @@ function SiteSettingsInner({ siteMetadata, trigger }: { siteMetadata: SiteRespon
     { key: "exclusions", label: t("Exclusions"), icon: Ban },
     { key: "integrations", label: t("Integrations"), icon: Plug, hidden: !IS_CLOUD },
     { key: "script", label: t("Tracking Script"), icon: Code },
+    { key: "embed", label: t("Embed Widget"), icon: LayoutTemplate },
     { key: "import", label: t("Import"), icon: Download },
   ];
 
@@ -114,6 +116,7 @@ function SiteSettingsInner({ siteMetadata, trigger }: { siteMetadata: SiteRespon
               {activeTab === "script" && (
                 <ScriptBuilder siteId={siteMetadata.id ?? String(siteMetadata.siteId)} />
               )}
+              {activeTab === "embed" && <EmbedTab siteMetadata={siteMetadata} />}
               {activeTab === "import" && <ImportManager siteId={siteMetadata.siteId} disabled={disabled} />}
             </div>
           </main>

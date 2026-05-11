@@ -79,6 +79,7 @@ import {
   createSiteImport,
   deleteSite,
   deleteSiteImport,
+  getEmbedStats,
   getSite,
   getSiteExcludedCountries,
   getSiteExcludedIPs,
@@ -298,6 +299,7 @@ async function sitesRoutes(fastify: FastifyInstance) {
   fastify.get("/sites/:siteId/private-link-config", adminSite, getSitePrivateLinkConfig);
   fastify.post("/sites/:siteId/private-link-config", adminSite, updateSitePrivateLinkConfig);
   fastify.get("/site/tracking-config/:siteId", getTrackingConfig); // Public - used by tracking script
+  fastify.get("/sites/:siteId/embed-stats", { preHandler: [resolveSiteId] as any }, getEmbedStats); // Public - widget endpoint (handler checks site is public)
   fastify.get("/sites/:siteId/excluded-ips", authSite, getSiteExcludedIPs);
   fastify.get("/sites/:siteId/excluded-countries", authSite, getSiteExcludedCountries);
   fastify.get("/sites/:siteId/verify-script", authSite, verifyScript);

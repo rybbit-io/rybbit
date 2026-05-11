@@ -43,6 +43,7 @@ export async function proxy(request: NextRequest) {
       "as",
       "_next",
       "api",
+      "widget",
     ];
     if (excludedRoutes.includes(siteId)) {
       return NextResponse.next();

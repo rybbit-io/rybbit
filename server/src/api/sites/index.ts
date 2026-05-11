@@ -4,6 +4,7 @@ export { deleteSite } from "./deleteSite.js";
 export { getSite } from "./getSite.js";
 export { getSiteHasData } from "./getSiteHasData.js";
 export { getSiteIsPublic } from "./getSiteIsPublic.js";
+export { getEmbedStats } from "./getEmbedStats.js";
 export { getSitesFromOrg } from "./getSitesFromOrg.js";
 export { updateSiteConfig } from "./updateSiteConfig.js";
 
