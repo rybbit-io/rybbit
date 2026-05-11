@@ -113,13 +113,16 @@ function renderCardHTML(c: Config) {
 
 function renderInlineHTML(c: Config) {
   const col = colors(c.theme);
+  const logo = c.theme === "dark" ? "/rybbit/horizontal_white.svg" : "/rybbit/horizontal_black.svg";
   return `
 <div class="w inline">
   <span class="pulse pulse-sm"></span>
   <span class="count" id="count">—</span>
-  <span class="muted">users online</span>
+  <span class="muted">online</span>
   <span class="sep">·</span>
-  <a href="https://rybbit.io" target="_blank" rel="noopener noreferrer">Rybbit</a>
+  <a href="https://rybbit.io" target="_blank" rel="noopener noreferrer">
+    <img src="${logo}" alt="Rybbit" width="50" height="10" />
+  </a>
 </div>
 <style>
   .w.inline {
@@ -139,7 +142,8 @@ function renderInlineHTML(c: Config) {
   .w.inline .count { font-weight: 600; }
   .w.inline .muted { color: ${col.muted}; }
   .w.inline .sep { color: ${col.muted}; opacity: 0.6; }
-  .w.inline a { color: ${col.muted}; font-size: 12px; text-decoration: none; }
+  .w.inline a { color: ${col.muted}; font-size: 12px; text-decoration: none; display: inline-flex; align-items: center; }
+  .w.inline a img { display: block; opacity: 0.7; }
 </style>`;
 }
 
@@ -161,6 +165,7 @@ function renderHTML(c: Config) {
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Rybbit live visitors</title>
 <style>
+  html { color-scheme: ${c.theme}; }
   html, body { background: transparent; margin: 0; padding: 0; }
   body {
     font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
@@ -170,7 +175,7 @@ function renderHTML(c: Config) {
     position: relative;
     display: inline-block;
   }
-  .pulse-sm { width: 8px; height: 8px; }
+  .pulse-sm { width: 12px; height: 12px; }
   .pulse-md { width: 14px; height: 14px; }
   .pulse::before, .pulse::after {
     content: "";
@@ -323,7 +328,7 @@ export async function GET(
     status: 200,
     headers: {
       "Content-Type": "text/html; charset=utf-8",
-      "Cache-Control": "public, max-age=3600",
+      "Cache-Control": "public, max-age=60, stale-while-revalidate=3600",
       "Content-Security-Policy": "frame-ancestors *",
       "X-Content-Type-Options": "nosniff",
     },

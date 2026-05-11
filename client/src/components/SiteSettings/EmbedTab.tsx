@@ -172,7 +172,7 @@ export function EmbedTab({ siteMetadata }: EmbedTabProps) {
           <div
             className={`rounded-md border border-neutral-200 dark:border-neutral-800 p-4 flex ${variant === "card" ? "justify-center" : "items-center justify-center"
               }`}
-            style={{ background: theme === "dark" ? "#0a0a0a" : "#f5f5f5" }}
+            style={{ background: "#f5f5f5" }}
           >
             {isPublic ? (
               <iframe
