@@ -13,7 +13,6 @@ import { authClient } from "../../../../../lib/auth";
 import { getTimezone, useStore } from "../../../../../lib/store";
 import { Chart } from "./Chart";
 import { Overview } from "./Overview";
-import { PreviousChart } from "./PreviousChart";
 
 // Moved inside component to use static t() calls
 
@@ -112,18 +111,13 @@ export function MainSection() {
             <span className="text-sm text-neutral-700 dark:text-neutral-200">{getSelectedStatLabel()}</span>
             <BucketSelection />
           </div>
-          <div className="h-[200px] md:h-[290px] relative">
-            <div className="absolute top-0 left-0 w-full h-full">
-              <PreviousChart data={previousData} max={maxOfDataAndPreviousData} chartXMax={chartXMax} />
-            </div>
-            <div className="absolute top-0 left-0 w-full h-full">
-              <Chart
-                data={data}
-                max={maxOfDataAndPreviousData}
-                previousData={time.mode === "all-time" ? undefined : previousData}
-                chartXMax={chartXMax}
-              />
-            </div>
+          <div className="h-[200px] md:h-[290px]">
+            <Chart
+              data={data}
+              max={maxOfDataAndPreviousData}
+              previousData={time.mode === "all-time" ? undefined : previousData}
+              chartXMax={chartXMax}
+            />
           </div>
         </CardContent>
       </Card>
