@@ -306,7 +306,6 @@ export function NewFilterButton({ availableFilters }: { availableFilters?: Filte
   const t = useExtracted();
   const [open, setOpen] = useState(false);
   const [parameter, setParameter] = useState<FilterParameter | null>(null);
-  const [renderedParameter, setRenderedParameter] = useState<FilterParameter | null>(null);
   const pendingRef = useRef<() => Filter | null>(() => null);
   const getParameterLabel = useParameterLabel();
 
@@ -320,23 +319,17 @@ export function NewFilterButton({ availableFilters }: { availableFilters?: Filte
       if (f) addFilter(f);
       pendingRef.current = () => null;
       setParameter(null);
-      setRenderedParameter(null);
     }
     setOpen(isOpen);
   };
 
   const selectParameter = (param: FilterParameter) => {
-    setRenderedParameter(param);
     setParameter(param);
   };
 
   const goBackToParameter = () => {
     pendingRef.current = () => null;
     setParameter(null);
-  };
-
-  const handleTransitionEnd = () => {
-    if (parameter === null) setRenderedParameter(null);
   };
 
   return (
@@ -347,66 +340,47 @@ export function NewFilterButton({ availableFilters }: { availableFilters?: Filte
           {t("Filter")}
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-72 p-0 overflow-hidden" align="start">
-        <div
-          className="flex items-start transition-transform duration-300 ease-out"
-          style={{
-            width: "200%",
-            transform: parameter ? "translateX(-50%)" : "translateX(0)",
-          }}
-          onTransitionEnd={handleTransitionEnd}
-        >
-          <div
-            className={cn("w-1/2 shrink-0", parameter && "pointer-events-none")}
-            aria-hidden={!!parameter}
-          >
-            <Command>
-              <div className="px-3 pt-3 pb-1 text-xs text-neutral-500 dark:text-neutral-400">
-                {t("Filter stats by")}
-              </div>
-              <CommandInput placeholder={t("Search")} />
-              <CommandList>
-                <CommandEmpty>{t("No results")}</CommandEmpty>
-                <CommandGroup>
-                  {parameterOptions.map(option => (
-                    <CommandItem
-                      key={option.value}
-                      value={getParameterLabel(option.value)}
-                      onSelect={() => selectParameter(option.value)}
-                      className="cursor-pointer"
-                    >
-                      <div className="flex items-center gap-2 flex-1 min-w-0">
-                        {option.icon}
-                        <span className="truncate">{getParameterLabel(option.value)}</span>
-                      </div>
-                      <ChevronRight className="h-4 w-4 text-neutral-400" />
-                    </CommandItem>
-                  ))}
-                </CommandGroup>
-              </CommandList>
-            </Command>
-          </div>
-          <div
-            className={cn("w-1/2 shrink-0", !parameter && "pointer-events-none")}
-            aria-hidden={!parameter}
-          >
-            {renderedParameter && (
-              <ValueStep
-                key={renderedParameter}
-                parameter={renderedParameter}
-                pendingRef={pendingRef}
-                onCommit={f => addFilter(f)}
-                onBack={goBackToParameter}
-                onClose={() => {
-                  pendingRef.current = () => null;
-                  setParameter(null);
-                  setRenderedParameter(null);
-                  setOpen(false);
-                }}
-              />
-            )}
-          </div>
-        </div>
+      <PopoverContent className="w-72 p-0" align="start">
+        {parameter ? (
+          <ValueStep
+            key={parameter}
+            parameter={parameter}
+            pendingRef={pendingRef}
+            onCommit={f => addFilter(f)}
+            onBack={goBackToParameter}
+            onClose={() => {
+              pendingRef.current = () => null;
+              setParameter(null);
+              setOpen(false);
+            }}
+          />
+        ) : (
+          <Command>
+            <div className="px-3 pt-3 pb-1 text-xs text-neutral-500 dark:text-neutral-400">
+              {t("Filter stats by")}
+            </div>
+            <CommandInput placeholder={t("Search")} />
+            <CommandList>
+              <CommandEmpty>{t("No results")}</CommandEmpty>
+              <CommandGroup>
+                {parameterOptions.map(option => (
+                  <CommandItem
+                    key={option.value}
+                    value={getParameterLabel(option.value)}
+                    onSelect={() => selectParameter(option.value)}
+                    className="cursor-pointer"
+                  >
+                    <div className="flex items-center gap-2 flex-1 min-w-0">
+                      {option.icon}
+                      <span className="truncate">{getParameterLabel(option.value)}</span>
+                    </div>
+                    <ChevronRight className="h-4 w-4 text-neutral-400" />
+                  </CommandItem>
+                ))}
+              </CommandGroup>
+            </CommandList>
+          </Command>
+        )}
       </PopoverContent>
     </Popover>
   );
