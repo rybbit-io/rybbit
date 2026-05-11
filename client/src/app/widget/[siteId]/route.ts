@@ -43,8 +43,8 @@ function renderCardHTML(c: Config) {
   ${c.chart ? `<div class="chart" id="chart"></div>` : ""}
   <div class="window-label">${c.windowLabel}</div>
   ${c.countries ? `<div class="countries" id="countries"></div>` : ""}
-  <a class="footer" href="https://rybbit.io" target="_blank" rel="noopener noreferrer">
-    Powered by <img src="${logo}" alt="Rybbit" width="60" height="12" />
+  <a class="footer" href="https://rybbit.com" target="_blank" rel="noopener noreferrer">
+    Powered by <img src="${logo}" alt="Rybbit web analytics" width="60" height="12" />
   </a>
 </div>
 <style>
@@ -113,15 +113,15 @@ function renderCardHTML(c: Config) {
 
 function renderInlineHTML(c: Config) {
   const col = colors(c.theme);
-  const logo = c.theme === "dark" ? "/rybbit/horizontal_white.svg" : "/rybbit/horizontal_black.svg";
+  const logo = c.theme === "dark" ? "/rybbit/frog_white.svg" : "/rybbit/frog_black.svg";
   return `
 <div class="w inline">
   <span class="pulse pulse-sm"></span>
   <span class="count" id="count">—</span>
   <span class="muted">online</span>
   <span class="sep">·</span>
-  <a href="https://rybbit.io" target="_blank" rel="noopener noreferrer">
-    <img src="${logo}" alt="Rybbit" width="50" height="10" />
+  <a href="https://rybbit.com" target="_blank" rel="noopener noreferrer">
+    <img src="${logo}" alt="Rybbit web analytics" width="50" height="10" />
   </a>
 </div>
 <style>
@@ -140,7 +140,7 @@ function renderInlineHTML(c: Config) {
     width: fit-content;
   }
   .w.inline .count { font-weight: 600; }
-  .w.inline .muted { color: ${col.muted}; }
+  .w.inline .muted { color: ${col.muted}; margin-left: -4px; }
   .w.inline .sep { color: ${col.muted}; opacity: 0.6; }
   .w.inline a { color: ${col.muted}; font-size: 12px; text-decoration: none; display: inline-flex; align-items: center; }
   .w.inline a img { display: block; opacity: 0.7; }
