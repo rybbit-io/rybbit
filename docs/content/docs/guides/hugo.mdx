@@ -14,7 +14,7 @@ Integrating Rybbit Analytics with your Hugo static site involves adding the trac
 First, you'll need your Rybbit tracking script. You can find this in your Rybbit dashboard under **Site Settings > Tracking Code**. It will look something like this:
 
 ```html
-<script async defer src="https://app.rybbit.io/api/script.js" data-site-id="YOUR_SITE_ID"></script>
+<script defer src="https://app.rybbit.io/api/script.js" data-site-id="YOUR_SITE_ID"></script>
 ```
 
 Replace `YOUR_SITE_ID` with your actual Site ID from your Rybbit dashboard.
@@ -32,7 +32,7 @@ Paste your Rybbit tracking script into this new file:
 ```html
 {{/* layouts/partials/rybbit-analytics.html */}}
 {{ if not .Site.IsServer }} {{/* Only include in production builds */}}
-  <script async defer src="https://app.rybbit.io/api/script.js" data-site-id="YOUR_SITE_ID"></script>
+  <script defer src="https://app.rybbit.io/api/script.js" data-site-id="YOUR_SITE_ID"></script>
 {{ end }}
 ```
 
@@ -74,7 +74,7 @@ Modify `layouts/partials/rybbit-analytics.html` to use a site parameter:
 ```html
 {{/* layouts/partials/rybbit-analytics.html */}}
 {{ if and (not .Site.IsServer) .Site.Params.rybbitSiteID }}
-  <script async defer src="{{ .Site.Params.rybbitInstanceURL | default "https://app.rybbit.io" }}/api/script.js" data-site-id="{{ .Site.Params.rybbitSiteID }}"></script>
+  <script defer src="{{ .Site.Params.rybbitInstanceURL | default "https://app.rybbit.io" }}/api/script.js" data-site-id="{{ .Site.Params.rybbitSiteID }}"></script>
 {{ end }}
 ```
 </Step>

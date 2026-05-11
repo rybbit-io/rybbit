@@ -31,7 +31,6 @@ Create a new JavaScript file in your Mintlify content directory (typically where
   // Create the script element
   const script = document.createElement('script');
   script.src = 'https://app.rybbit.io/api/script.js';
-  script.async = true;
   script.defer = true;
   script.setAttribute('data-site-id', 'YOUR_SITE_ID'); // Replace with your actual Site ID
 
@@ -70,7 +69,6 @@ You can customize the Rybbit script behavior by adding data attributes to the sc
 (function() {
   const script = document.createElement('script');
   script.src = 'https://app.rybbit.io/api/script.js';
-  script.async = true;
   script.defer = true;
   script.setAttribute('data-site-id', 'YOUR_SITE_ID');
 

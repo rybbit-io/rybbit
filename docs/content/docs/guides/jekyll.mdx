@@ -14,7 +14,7 @@ Integrating Rybbit Analytics with your Jekyll static site involves adding the tr
 First, you'll need your Rybbit tracking script. You can find this in your Rybbit dashboard under **Site Settings > Tracking Code**. It will look something like this:
 
 ```html
-<script async defer src="https://app.rybbit.io/api/script.js" data-site-id="YOUR_SITE_ID"></script>
+<script defer src="https://app.rybbit.io/api/script.js" data-site-id="YOUR_SITE_ID"></script>
 ```
 
 Replace `YOUR_SITE_ID` with your actual Site ID from your Rybbit dashboard.
@@ -45,7 +45,7 @@ Open this file and paste the Rybbit tracking script just before the closing `</b
 <!-- Rybbit Analytics Script -->
 {% raw %}
 {% if jekyll.environment == "production" %}
-  <script async defer src="https://app.rybbit.io/api/script.js" data-site-id="YOUR_SITE_ID"></script>
+  <script defer src="https://app.rybbit.io/api/script.js" data-site-id="YOUR_SITE_ID"></script>
 {% endif %}
 {% endraw %}
 
@@ -75,7 +75,7 @@ A cleaner approach is to create an include file for the script.
 {% raw %}
 {% comment %} _includes/rybbit-analytics.html {% endcomment %}
 {% if jekyll.environment == "production" and site.rybbit_site_id %}
-  <script async defer src="{{ site.rybbit_instance_url | default: 'https://app.rybbit.io' }}/api/script.js" data-site-id="{{ site.rybbit_site_id }}"></script>
+  <script defer src="{{ site.rybbit_instance_url | default: 'https://app.rybbit.io' }}/api/script.js" data-site-id="{{ site.rybbit_site_id }}"></script>
 {% endif %}
 {% endraw %}
 ```

@@ -14,7 +14,7 @@ Integrating Rybbit Analytics with your Laravel application is straightforward. Y
 First, you'll need your Rybbit tracking script. You can find this in your Rybbit dashboard under **Site Settings > Tracking Code**. It will look something like this:
 
 ```html
-<script async defer src="https://app.rybbit.io/api/script.js" data-site-id="YOUR_SITE_ID"></script>
+<script defer src="https://app.rybbit.io/api/script.js" data-site-id="YOUR_SITE_ID"></script>
 ```
 
 Replace `YOUR_SITE_ID` with your actual Site ID from your Rybbit dashboard.
@@ -55,7 +55,7 @@ Open your main Blade layout file. Paste the Rybbit tracking script just before t
 
     {{-- Rybbit Analytics Script --}}
     @if(app()->environment('production'))
-        <script async defer src="{{ config('services.rybbit.instance_url', 'https://app.rybbit.io') }}/api/script.js" data-site-id="{{ config('services.rybbit.site_id') }}"></script>
+        <script defer src="{{ config('services.rybbit.instance_url', 'https://app.rybbit.io') }}/api/script.js" data-site-id="{{ config('services.rybbit.site_id') }}"></script>
     @endif
 </body>
 </html>
@@ -69,7 +69,7 @@ If you prefer not to use the config helper immediately, you can hardcode the val
 ```php
     {{-- Rybbit Analytics Script --}}
     @if(app()->environment('production'))
-        <script async defer src="https://app.rybbit.io/api/script.js" data-site-id="YOUR_SITE_ID"></script>
+        <script defer src="https://app.rybbit.io/api/script.js" data-site-id="YOUR_SITE_ID"></script>
     @endif
 ```
 Remember to replace placeholders with your actual script URL and Site ID.
