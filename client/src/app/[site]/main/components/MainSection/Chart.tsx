@@ -106,10 +106,19 @@ export function Chart({
 
     const now = DateTime.now();
 
+    // Filter against the strict period bounds (not the fallback-extended
+    // chartMax) so that during a goBack/goForward transition, stale data
+    // from the previous query doesn't get dragged onto the new x-axis.
+    const lowerBoundMs = cMin?.getTime();
+    const upperBoundMs = (boundsMax ?? now.toJSDate()).getTime();
+
     const currentPoints: Point[] = [];
     data?.data?.forEach((e, i) => {
       const ts = DateTime.fromSQL(e.time, { zone: timezone }).toUTC();
       if (ts > now) return;
+      const tsMs = ts.toMillis();
+      if (lowerBoundMs !== undefined && tsMs < lowerBoundMs) return;
+      if (tsMs > upperBoundMs) return;
       const prev = previousData?.data?.[i];
       const prevTs = prev
         ? DateTime.fromSQL(prev.time, { zone: timezone }).toUTC()
@@ -131,7 +140,9 @@ export function Chart({
       : now.toJSDate();
     const cMax = chartXMax ?? boundsMax ?? fallbackMax;
 
-    // Shift previous timestamps onto the current period's x-axis.
+    // Shift previous timestamps onto the current period's x-axis. Filter
+    // against the strict bounds (same as current points) so a stale previous
+    // query doesn't bleed onto the new x-axis during goBack/goForward.
     const { min: prevMin } = getChartTimeBounds(previousTime, bucket, timezone);
     const offsetMs =
       cMin && prevMin ? cMin.getTime() - prevMin.getTime() : 0;
@@ -139,7 +150,8 @@ export function Chart({
     previousData?.data?.forEach(e => {
       const prevTs = DateTime.fromSQL(e.time, { zone: timezone });
       const mappedMs = prevTs.toMillis() + offsetMs;
-      if (cMax && mappedMs > cMax.getTime()) return;
+      if (lowerBoundMs !== undefined && mappedMs < lowerBoundMs) return;
+      if (mappedMs > upperBoundMs) return;
       previousPoints.push({
         x: new Date(mappedMs),
         y: Number(e[selectedStat] ?? 0),
