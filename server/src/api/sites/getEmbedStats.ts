@@ -37,7 +37,7 @@ export async function getEmbedStats(
 
   const config = await siteConfig.getConfig(siteId);
   if (!config) return res.status(404).send({ error: "Site not found" });
-  if (!config.public) return res.status(403).send({ error: "Site is not public" });
+  if (!config.embedEnabled) return res.status(403).send({ error: "Embed widget is not enabled for this site" });
 
   const cacheKey = `${siteId}:${minutesNum}:${includeChart}:${includeCountries}`;
   const now = Date.now();

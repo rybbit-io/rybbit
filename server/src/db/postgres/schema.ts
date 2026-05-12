@@ -68,6 +68,7 @@ export const sites = pgTable("sites", {
   createdBy: text("created_by").references(() => user.id, { onDelete: "set null" }),
   organizationId: text("organization_id").references(() => organization.id),
   public: boolean().default(false),
+  embedEnabled: boolean("embed_enabled").default(false),
   saltUserIds: boolean().default(false),
   blockBots: boolean().default(true).notNull(),
   excludedIPs: jsonb("excluded_ips").default([]), // Array of IP addresses/ranges to exclude

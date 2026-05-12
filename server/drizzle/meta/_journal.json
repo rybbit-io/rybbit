@@ -36,6 +36,13 @@
       "when": 1777182754960,
       "tag": "0004_bored_raider",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1778551960948,
+      "tag": "0005_sticky_gressill",
+      "breakpoints": true
     }
   ]
 }

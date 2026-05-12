@@ -9,6 +9,7 @@ export interface SiteConfigData {
   id: string | null;
   siteId: number;
   public: boolean;
+  embedEnabled: boolean;
   saltUserIds: boolean;
   domain: string;
   blockBots: boolean;
@@ -62,6 +63,7 @@ class SiteConfig {
           id: sites.id,
           siteId: sites.siteId,
           public: sites.public,
+          embedEnabled: sites.embedEnabled,
           saltUserIds: sites.saltUserIds,
           domain: sites.domain,
           blockBots: sites.blockBots,
@@ -93,6 +95,7 @@ class SiteConfig {
         id: site.id,
         siteId: site.siteId,
         public: site.public || false,
+        embedEnabled: site.embedEnabled || false,
         saltUserIds: site.saltUserIds || false,
         domain: site.domain || "",
         blockBots: site.blockBots === undefined ? true : site.blockBots,

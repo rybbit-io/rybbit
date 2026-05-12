@@ -11,6 +11,7 @@ const updateSiteConfigSchema = z.object({
   // Site settings
   name: z.string().min(1).max(255).optional(),
   public: z.boolean().optional(),
+  embedEnabled: z.boolean().optional(),
   saltUserIds: z.boolean().optional(),
   blockBots: z.boolean().optional(),
   domain: z
@@ -112,6 +113,7 @@ export async function updateSiteConfig(
     const directMappings = [
       "name",
       "public",
+      "embedEnabled",
       "saltUserIds",
       "blockBots",
       "domain",

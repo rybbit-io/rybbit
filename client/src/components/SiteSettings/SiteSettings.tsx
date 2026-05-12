@@ -2,10 +2,12 @@
 
 import { Ban, Code, Download, LayoutTemplate, Plug, Settings, SlidersHorizontal, X } from "lucide-react";
 import { useExtracted } from "next-intl";
-import { useState } from "react";
+import { useCallback, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogClose, DialogContent, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Switch } from "@/components/ui/switch";
+import { toast } from "@/components/ui/sonner";
 import { cn } from "@/lib/utils";
 
 import { ScriptBuilder } from "./ScriptBuilder";
@@ -17,7 +19,8 @@ import { IntegrationsTab } from "./IntegrationsTab";
 import { EmbedTab } from "./EmbedTab";
 import { useGetSite } from "../../api/admin/hooks/useSites";
 import { useUserOrganizations } from "../../api/admin/hooks/useOrganizations";
-import { SiteResponse } from "../../api/admin/endpoints";
+import { useGetSitesFromOrg } from "../../api/admin/hooks/useSites";
+import { SiteResponse, updateSiteConfig } from "../../api/admin/endpoints";
 import { IS_CLOUD } from "../../lib/const";
 
 export function SiteSettings({ siteId, trigger }: { siteId: number; trigger?: React.ReactNode }) {
@@ -40,6 +43,27 @@ function SiteSettingsInner({ siteMetadata, trigger }: { siteMetadata: SiteRespon
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<TabKey>("general");
+  const [embedEnabled, setEmbedEnabled] = useState(!!siteMetadata.embedEnabled);
+  const [togglingEmbed, setTogglingEmbed] = useState(false);
+  const { refetch: refetchOrgSites } = useGetSitesFromOrg(siteMetadata?.organizationId ?? "");
+
+  const handleToggleEmbed = useCallback(
+    async (checked: boolean) => {
+      setTogglingEmbed(true);
+      try {
+        await updateSiteConfig(siteMetadata.siteId, { embedEnabled: checked });
+        setEmbedEnabled(checked);
+        toast.success(checked ? t("Embed widget enabled") : t("Embed widget disabled"));
+        refetchOrgSites();
+      } catch (error) {
+        console.error("Error toggling embed:", error);
+        toast.error(t("Failed to update embed setting"));
+      } finally {
+        setTogglingEmbed(false);
+      }
+    },
+    [siteMetadata.siteId, refetchOrgSites, t]
+  );
 
   if (!siteMetadata) {
     return null;
@@ -99,8 +123,19 @@ function SiteSettingsInner({ siteMetadata, trigger }: { siteMetadata: SiteRespon
           </aside>
 
           <main className="flex-1 flex flex-col min-w-0">
-            <header className="px-6 pt-5 pb-3 border-b border-neutral-200 dark:border-neutral-850">
+            <header className="px-6 pt-5 pb-3 border-b border-neutral-200 dark:border-neutral-850 flex items-center justify-between gap-4">
               <DialogTitle className="text-lg font-semibold mb-0">{currentTab.label}</DialogTitle>
+              {activeTab === "embed" && (
+                <label className="flex items-center gap-2 text-sm text-muted-foreground cursor-pointer">
+                  {t("Enabled")}
+                  <Switch
+                    aria-label={t("Enable Embed Widget")}
+                    checked={embedEnabled}
+                    disabled={togglingEmbed}
+                    onCheckedChange={handleToggleEmbed}
+                  />
+                </label>
+              )}
             </header>
             <div className="flex-1 overflow-y-auto px-6 py-5">
               {activeTab === "general" && (
@@ -116,7 +151,7 @@ function SiteSettingsInner({ siteMetadata, trigger }: { siteMetadata: SiteRespon
               {activeTab === "script" && (
                 <ScriptBuilder siteId={siteMetadata.id ?? String(siteMetadata.siteId)} />
               )}
-              {activeTab === "embed" && <EmbedTab siteMetadata={siteMetadata} />}
+              {activeTab === "embed" && <EmbedTab siteMetadata={siteMetadata} embedEnabled={embedEnabled} />}
               {activeTab === "import" && <ImportManager siteId={siteMetadata.siteId} disabled={disabled} />}
             </div>
           </main>

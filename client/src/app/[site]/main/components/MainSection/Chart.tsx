@@ -106,7 +106,7 @@ export function Chart({
   max: number;
   chartXMax: Date | undefined;
 }) {
-  const { time, bucket, selectedStat, previousTime } = useStore();
+  const { time, bucket, selectedStat, previousTime, setTime } = useStore();
   const { resolvedTheme } = useTheme();
   const isDark = resolvedTheme === "dark";
   const timezone = getTimezone();
@@ -366,6 +366,7 @@ export function Chart({
 
   const handleMouseMove = (e: React.MouseEvent<SVGRectElement>) => {
     if (!current.length) return;
+    if (dragRaw) return;
     const rect = e.currentTarget.getBoundingClientRect();
     const x = e.clientX - rect.left + plotLeft;
     const xDate = xScale.invert(x);
@@ -384,6 +385,87 @@ export function Chart({
   };
 
   const handleMouseLeave = () => setHover(null);
+
+  // Drag-to-select range. Day bucket only for now; other buckets would need
+  // to also pick the bucket on commit (e.g. switching to week if the selection
+  // is > 31 days) and that's out of scope here.
+  const dragEnabled = bucket === "day";
+  const [dragRaw, setDragRaw] = useState<{
+    startX: number;
+    currentX: number;
+    moved: boolean;
+  } | null>(null);
+
+  // Snap a pixel position to a whole-day boundary (user tz). The +1s offset
+  // serves two purposes: (1) absorb floating-point rounding so a cursor at a
+  // pixel-perfect day boundary doesn't fall back to the previous day, and
+  // (2) make the snap inclusive — dragging *to* the Apr 14 tick selects up
+  // through Apr 14 rather than only up to Apr 13.
+  const pxToDay = (px: number) =>
+    DateTime.fromMillis(xScale.invert(px).getTime() + 1000, { zone: "utc" })
+      .setZone(timezone)
+      .startOf("day");
+
+  const dragSnapped = useMemo(() => {
+    if (!dragRaw) return null;
+    const leftPx = Math.min(dragRaw.startX, dragRaw.currentX);
+    const rightPx = Math.max(dragRaw.startX, dragRaw.currentX);
+    const leftDay = pxToDay(leftPx);
+    const rightDay = pxToDay(rightPx);
+    return {
+      leftPx: xScale(leftDay.toUTC().toJSDate()),
+      // Right edge = start of the day AFTER the rightmost day, so the rect
+      // visually covers the whole rightmost day.
+      rightPx: xScale(rightDay.plus({ days: 1 }).toUTC().toJSDate()),
+      startDate: leftDay.toISODate(),
+      endDate: rightDay.toISODate(),
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dragRaw, xScale, timezone]);
+
+  const handleMouseDown = (e: React.MouseEvent<SVGRectElement>) => {
+    if (!dragEnabled) return;
+    e.preventDefault();
+    const rect = e.currentTarget.getBoundingClientRect();
+    const startX = Math.max(
+      plotLeft,
+      Math.min(plotRight, e.clientX - rect.left + plotLeft)
+    );
+    setDragRaw({ startX, currentX: startX, moved: false });
+    setHover(null);
+
+    const onMove = (ev: MouseEvent) => {
+      if (!wrapperRef.current) return;
+      const r = wrapperRef.current.getBoundingClientRect();
+      const x = Math.max(plotLeft, Math.min(plotRight, ev.clientX - r.left));
+      setDragRaw(d =>
+        d ? { ...d, currentX: x, moved: d.moved || Math.abs(x - startX) >= 3 } : d
+      );
+    };
+
+    const onUp = () => {
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup", onUp);
+      setDragRaw(d => {
+        if (!d) return null;
+        // No real drag → treat as a plain click, don't refilter.
+        if (!d.moved) return null;
+        const leftPx = Math.min(d.startX, d.currentX);
+        const rightPx = Math.max(d.startX, d.currentX);
+        const startDate = pxToDay(leftPx).toISODate();
+        const endDate = pxToDay(rightPx).toISODate();
+        if (startDate && endDate) {
+          // Pass changeBucket=false so dragging within e.g. an all-time/day
+          // view doesn't auto-switch to week/month for shorter ranges.
+          setTime({ mode: "range", startDate, endDate }, false);
+        }
+        return null;
+      });
+    };
+
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", onUp);
+  };
 
   const tooltipWidth = 220;
   const tooltipOffset = 14;
@@ -592,6 +674,36 @@ export function Chart({
             />
           )}
 
+          {/* Drag-to-select range overlay — snapped to whole-day boundaries. */}
+          {dragSnapped && dragRaw?.moved && (
+            <g pointerEvents="none">
+              <rect
+                x={dragSnapped.leftPx}
+                y={plotTop}
+                width={Math.max(0, dragSnapped.rightPx - dragSnapped.leftPx)}
+                height={plotH}
+                fill="hsl(var(--dataviz))"
+                opacity={0.18}
+              />
+              <line
+                x1={dragSnapped.leftPx}
+                x2={dragSnapped.leftPx}
+                y1={plotTop}
+                y2={plotBottom}
+                stroke="hsl(var(--dataviz))"
+                strokeWidth={1}
+              />
+              <line
+                x1={dragSnapped.rightPx}
+                x2={dragSnapped.rightPx}
+                y1={plotTop}
+                y2={plotBottom}
+                stroke="hsl(var(--dataviz))"
+                strokeWidth={1}
+              />
+            </g>
+          )}
+
           {/* Mouse capture */}
           {plotW > 0 && plotH > 0 && (
             <rect
@@ -600,6 +712,8 @@ export function Chart({
               width={plotW}
               height={plotH}
               fill="transparent"
+              style={{ cursor: dragEnabled ? "crosshair" : "default" }}
+              onMouseDown={handleMouseDown}
               onMouseMove={handleMouseMove}
               onMouseLeave={handleMouseLeave}
             />

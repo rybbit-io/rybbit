@@ -1,20 +1,19 @@
 "use client";
 
 import { useExtracted } from "next-intl";
-import { useCallback, useState } from "react";
+import { useState } from "react";
 
 import { CodeSnippet } from "@/components/CodeSnippet";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { toast } from "@/components/ui/sonner";
-import { SiteResponse, updateSiteConfig } from "@/api/admin/endpoints";
-import { useGetSitesFromOrg } from "@/api/admin/hooks/useSites";
+import { SiteResponse } from "@/api/admin/endpoints";
 import { cn } from "@/lib/utils";
 
 interface EmbedTabProps {
   siteMetadata: SiteResponse;
+  embedEnabled: boolean;
 }
 
 const DEFAULT_ACCENT = "#10b981";
@@ -44,12 +43,11 @@ function useThemes() {
   ];
 }
 
-export function EmbedTab({ siteMetadata }: EmbedTabProps) {
+export function EmbedTab({ siteMetadata, embedEnabled }: EmbedTabProps) {
   const t = useExtracted();
   const timeWindows = useTimeWindows();
   const variants = useVariants();
   const themes = useThemes();
-  const { refetch } = useGetSitesFromOrg(siteMetadata?.organizationId ?? "");
 
   const [variant, setVariant] = useState<"card" | "inline">("card");
   const [minutes, setMinutes] = useState(30);
@@ -58,8 +56,6 @@ export function EmbedTab({ siteMetadata }: EmbedTabProps) {
   const [width, setWidth] = useState(360);
   const [theme, setTheme] = useState<"dark" | "light">("dark");
   const [accent, setAccent] = useState<string>(DEFAULT_ACCENT);
-  const [isPublic, setIsPublic] = useState(!!siteMetadata.public);
-  const [togglingPublic, setTogglingPublic] = useState(false);
   const [outputTab, setOutputTab] = useState<"preview" | "code">("preview");
 
   const siteId = siteMetadata.siteId;
@@ -100,49 +96,8 @@ export function EmbedTab({ siteMetadata }: EmbedTabProps) {
   scrolling="no"
 ></iframe>`;
 
-  const handleTogglePublic = useCallback(
-    async (checked: boolean) => {
-      setTogglingPublic(true);
-      try {
-        await updateSiteConfig(siteMetadata.siteId, { public: checked });
-        setIsPublic(checked);
-        toast.success(checked ? t("Site analytics made public") : t("Site analytics made private"));
-        refetch();
-      } catch (error) {
-        console.error("Error toggling public:", error);
-        toast.error(t("Failed to update public setting"));
-      } finally {
-        setTogglingPublic(false);
-      }
-    },
-    [siteMetadata.siteId, refetch, t]
-  );
-
   return (
     <div className="space-y-6">
-      <p className="text-xs text-muted-foreground">
-        {t("Show a live visitor count on your site. Data refreshes every minute and is cached server-side.")}
-      </p>
-
-      <div className="flex items-center justify-between rounded-md border border-neutral-200 dark:border-neutral-800 px-4 py-3 bg-neutral-50 dark:bg-neutral-900/40">
-        <div>
-          <Label htmlFor="embed-public" className="text-sm font-medium text-foreground">
-            {t("Public Analytics")}
-          </Label>
-          <p className="text-xs text-muted-foreground mt-1">
-            {isPublic
-              ? t("Your site is public. The widget below can be embedded on any site.")
-              : t("Embedding requires public analytics. Enable to share live stats publicly.")}
-          </p>
-        </div>
-        <Switch
-          id="embed-public"
-          checked={isPublic}
-          disabled={togglingPublic}
-          onCheckedChange={handleTogglePublic}
-        />
-      </div>
-
 
       <div className="space-y-2">
         <div className="flex flex-wrap gap-1">
@@ -174,7 +129,7 @@ export function EmbedTab({ siteMetadata }: EmbedTabProps) {
               }`}
             style={{ background: "#f5f5f5" }}
           >
-            {isPublic ? (
+            {embedEnabled ? (
               <iframe
                 key={widgetUrl.toString()}
                 src={widgetUrl.toString()}
@@ -192,7 +147,7 @@ export function EmbedTab({ siteMetadata }: EmbedTabProps) {
                 style={{ width: iframeWidth, height, maxWidth: "100%" }}
                 className="rounded-md border border-dashed border-neutral-300 dark:border-neutral-700 flex items-center justify-center text-xs text-muted-foreground"
               >
-                {t("Enable Public Analytics to preview")}
+                {t("Enable the embed widget to preview")}
               </div>
             )}
           </div>
@@ -202,9 +157,9 @@ export function EmbedTab({ siteMetadata }: EmbedTabProps) {
       </div>
 
       <fieldset
-        disabled={!isPublic}
-        className={`space-y-6 transition-opacity ${!isPublic ? "opacity-50 pointer-events-none select-none" : ""}`}
-        aria-disabled={!isPublic}
+        disabled={!embedEnabled}
+        className={`space-y-6 transition-opacity ${!embedEnabled ? "opacity-50 pointer-events-none select-none" : ""}`}
+        aria-disabled={!embedEnabled}
       >
         <div className="space-y-3">
           <h5 className="text-xs font-semibold text-foreground uppercase tracking-wide">{t("Variant")}</h5>
