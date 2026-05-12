@@ -3,7 +3,7 @@
 import * as d3 from "d3";
 import { DateTime } from "luxon";
 import { useTheme } from "next-themes";
-import { useEffect, useId, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
 import { TimeBucket } from "@rybbit/shared";
@@ -396,15 +396,25 @@ export function Chart({
     moved: boolean;
   } | null>(null);
 
-  // Snap a pixel position to a whole-day boundary (user tz). The +1s offset
-  // serves two purposes: (1) absorb floating-point rounding so a cursor at a
-  // pixel-perfect day boundary doesn't fall back to the previous day, and
-  // (2) make the snap inclusive — dragging *to* the Apr 14 tick selects up
-  // through Apr 14 rather than only up to Apr 13.
-  const pxToDay = (px: number) =>
-    DateTime.fromMillis(xScale.invert(px).getTime() + 1000, { zone: "utc" })
-      .setZone(timezone)
-      .startOf("day");
+  // Snap drag positions the same way hover does: to the nearest visible
+  // current bucket. Flooring the raw timestamp makes clicks just left of a
+  // daily bucket commit the previous day, even while the crosshair shows the
+  // intended bucket.
+  const pxToDay = useCallback(
+    (px: number) => {
+      const xDate = xScale.invert(px);
+      const point = current[bisectCurrent(current, xDate)];
+      if (point) {
+        return DateTime.fromJSDate(point.x, { zone: "utc" })
+          .setZone(timezone)
+          .startOf("day");
+      }
+      return DateTime.fromMillis(xDate.getTime() + 1000, { zone: "utc" })
+        .setZone(timezone)
+        .startOf("day");
+    },
+    [bisectCurrent, current, timezone, xScale]
+  );
 
   const dragSnapped = useMemo(() => {
     if (!dragRaw) return null;
@@ -414,14 +424,11 @@ export function Chart({
     const rightDay = pxToDay(rightPx);
     return {
       leftPx: xScale(leftDay.toUTC().toJSDate()),
-      // Right edge = start of the day AFTER the rightmost day, so the rect
-      // visually covers the whole rightmost day.
-      rightPx: xScale(rightDay.plus({ days: 1 }).toUTC().toJSDate()),
+      rightPx: xScale(rightDay.toUTC().toJSDate()),
       startDate: leftDay.toISODate(),
       endDate: rightDay.toISODate(),
     };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [dragRaw, xScale, timezone]);
+  }, [dragRaw, pxToDay, xScale]);
 
   const handleMouseDown = (e: React.MouseEvent<SVGRectElement>) => {
     if (!dragEnabled) return;
@@ -431,36 +438,39 @@ export function Chart({
       plotLeft,
       Math.min(plotRight, e.clientX - rect.left + plotLeft)
     );
-    setDragRaw({ startX, currentX: startX, moved: false });
+
+    // Track in closure variables so we can read the final position in onUp
+    // without going through a setState updater (which runs during render and
+    // would warn when setTime touches another component's store subscription).
+    let currentX = startX;
+    let moved = false;
+
+    setDragRaw({ startX, currentX, moved });
     setHover(null);
 
     const onMove = (ev: MouseEvent) => {
       if (!wrapperRef.current) return;
       const r = wrapperRef.current.getBoundingClientRect();
       const x = Math.max(plotLeft, Math.min(plotRight, ev.clientX - r.left));
-      setDragRaw(d =>
-        d ? { ...d, currentX: x, moved: d.moved || Math.abs(x - startX) >= 3 } : d
-      );
+      currentX = x;
+      if (!moved && Math.abs(x - startX) >= 3) moved = true;
+      setDragRaw({ startX, currentX, moved });
     };
 
     const onUp = () => {
       window.removeEventListener("mousemove", onMove);
       window.removeEventListener("mouseup", onUp);
-      setDragRaw(d => {
-        if (!d) return null;
-        // No real drag → treat as a plain click, don't refilter.
-        if (!d.moved) return null;
-        const leftPx = Math.min(d.startX, d.currentX);
-        const rightPx = Math.max(d.startX, d.currentX);
-        const startDate = pxToDay(leftPx).toISODate();
-        const endDate = pxToDay(rightPx).toISODate();
-        if (startDate && endDate) {
-          // Pass changeBucket=false so dragging within e.g. an all-time/day
-          // view doesn't auto-switch to week/month for shorter ranges.
-          setTime({ mode: "range", startDate, endDate }, false);
-        }
-        return null;
-      });
+      setDragRaw(null);
+      if (!moved) return;
+      const leftPx = Math.min(startX, currentX);
+      const rightPx = Math.max(startX, currentX);
+      const startDate = pxToDay(leftPx).toISODate();
+      const endDate = pxToDay(rightPx).toISODate();
+      if (startDate && endDate) {
+        // Pass changeBucket=false so dragging within e.g. an all-time/day
+        // view doesn't auto-switch to week/month for shorter ranges.
+        setTime({ mode: "range", startDate, endDate }, false);
+      }
     };
 
     window.addEventListener("mousemove", onMove);
