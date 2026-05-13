@@ -151,6 +151,7 @@ export function StandardSection({
                 close={close}
                 customFilters={customFilters}
                 customTime={customTime}
+                lite={lite}
               />
             </div>
           ) : null}

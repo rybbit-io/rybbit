@@ -38,6 +38,7 @@ export interface StandardSectionDialogBodyProps {
   filterParameter: FilterParameter;
   customFilters?: Filter[];
   customTime?: Time;
+  lite?: boolean;
 }
 
 interface StandardSectionDialogProps extends StandardSectionDialogBodyProps {
@@ -57,6 +58,7 @@ export function StandardSectionDialogBody({
   filterParameter,
   customFilters,
   customTime,
+  lite = false,
 }: StandardSectionDialogBodyProps) {
   const t = useExtracted();
   const { data, isLoading, isError, error, refetch, fetchNextPage, hasNextPage, isFetchingNextPage } =
@@ -65,6 +67,7 @@ export function StandardSectionDialogBody({
       limit: 100,
       customFilters,
       customTime,
+      lite,
     });
 
   const [searchTerm, setSearchTerm] = useState("");

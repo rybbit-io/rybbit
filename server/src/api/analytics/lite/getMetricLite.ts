@@ -4,11 +4,12 @@ import { clickhouse } from "../../../db/clickhouse/clickhouse.js";
 import { processResults } from "../utils/utils.js";
 import { getLiteTimeStatement } from "./utils.js";
 
-// Lite metric supports only the two dimensions backed by MVs:
+// Lite metric supports only dimensions backed by MVs:
 //   - pathname → pathname_hourly_mv_target
 //   - country → country_hourly_mv_target
+//   - device_type → device_type_hourly_mv_target
 // Other parameters return 400 — the simplified dashboard hides those sections.
-type LiteMetricParameter = "pathname" | "country";
+type LiteMetricParameter = "pathname" | "country" | "device_type";
 
 type LiteMetricItem = {
   value: string;
@@ -79,6 +80,28 @@ export async function getMetricLite(
       ORDER BY count DESC
       LIMIT ${limit}
     `;
+  } else if (parameter === "device_type") {
+    query = `
+      SELECT
+        value,
+        pageviews,
+        count,
+        round(count * 100.0 / sum(count) OVER (), 2) AS percentage,
+        round(pageviews * 100.0 / sum(pageviews) OVER (), 2) AS pageviews_percentage
+      FROM (
+        SELECT
+          device_type AS value,
+          sum(pageviews) AS pageviews,
+          uniqMerge(sessions) AS count
+        FROM device_type_hourly_mv_target
+        WHERE site_id = {siteId:Int32}
+          AND device_type <> ''
+          ${timeStatement}
+        GROUP BY device_type
+      )
+      ORDER BY count DESC
+      LIMIT ${limit}
+    `;
   } else {
     return res.status(400).send({ error: "Lite mode does not support this parameter" });
   }
@@ -96,7 +119,6 @@ export async function getMetricLite(
     return res.status(500).send({ error: "Failed to fetch metric" });
   }
 }
-
 
 /**
 # === fill these in ===                                                                                                                                         

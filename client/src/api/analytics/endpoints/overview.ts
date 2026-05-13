@@ -137,7 +137,7 @@ export async function fetchOverviewBucketedLite(
 }
 
 /**
- * Fetch lite metric (MV-backed). Only `pathname` and `country` are supported.
+ * Fetch lite metric (MV-backed). Supports pathname, country, and device type.
  * GET /api/sites/:site/metric-lite
  */
 export async function fetchMetricLite(

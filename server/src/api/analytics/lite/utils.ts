@@ -6,8 +6,9 @@ import { validateTimeStatementParams } from "../utils/query-validation.js";
 
 // Lite endpoints back the simplified high-traffic dashboard. They read from
 // hourly materialized views (overview_hourly_mv, sessions_mv, pathname_hourly_mv,
-// country_hourly_mv) instead of raw events. Filters are not supported and
-// sub-hour buckets are promoted to hour because the MVs are hour-grained.
+// country_hourly_mv, device_type_hourly_mv) instead of raw events. Filters are
+// not supported and sub-hour buckets are promoted to hour because the MVs are
+// hour-grained.
 
 export type LiteTimeRange = {
   startStatement: string;
