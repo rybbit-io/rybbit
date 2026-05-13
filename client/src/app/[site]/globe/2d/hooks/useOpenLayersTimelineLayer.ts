@@ -1,7 +1,9 @@
 import Feature, { FeatureLike } from "ol/Feature";
 import OLMap from "ol/Map";
+import { unByKey as dispose } from "ol/Observable";
 import Overlay from "ol/Overlay";
 import Point from "ol/geom/Point";
+import type { EventsKey } from "ol/events";
 import VectorLayer from "ol/layer/Vector";
 import { fromLonLat } from "ol/proj";
 import Cluster from "ol/source/Cluster";
@@ -16,6 +18,8 @@ import { buildTooltipHTML } from "../../utils/timelineTooltipBuilder";
 
 // OpenLayers-specific clustering constants
 const CLUSTER_RADIUS = 50; // pixels (OpenLayers specific)
+const AVATAR_MARKER_STYLE =
+  "cursor: pointer; border-radius: 50%; overflow: hidden; width: 32px; height: 32px; box-shadow: 0 2px 8px rgba(0,0,0,0.3); transform: translate(-50%, -50%);";
 
 interface TimelineLayerProps {
   mapInstanceRef: React.RefObject<OLMap | null>;
@@ -61,10 +65,10 @@ export function useOpenLayersTimelineLayer({ mapInstanceRef, mapViewRef, mapView
     // Set initial zoom
     handleZoomChange();
 
-    map.on("moveend", handleZoomChange);
+    const moveEndKey = map.on("moveend", handleZoomChange);
 
     return () => {
-      map.un("moveend", handleZoomChange);
+      dispose(moveEndKey);
     };
   }, [mapInstanceRef]);
 
@@ -76,8 +80,7 @@ export function useOpenLayersTimelineLayer({ mapInstanceRef, mapViewRef, mapView
     if (!tooltipOverlayRef.current) {
       const tooltipElement = document.createElement("div");
       tooltipElement.className = "ol-timeline-tooltip";
-      tooltipElement.style.position = "absolute";
-      tooltipElement.style.zIndex = "1000";
+      tooltipElement.style.cssText = "position: absolute; z-index: 1000;";
 
       const tooltip = new Overlay({
         element: tooltipElement,
@@ -121,6 +124,8 @@ export function useOpenLayersTimelineLayer({ mapInstanceRef, mapViewRef, mapView
       }
       return;
     }
+
+    let clusterMoveEndKey: EventsKey | EventsKey[] | null = null;
 
     // Determine if we should use clustering
     const shouldCluster = activeSessions.length > CLUSTERING_THRESHOLD && currentZoomRef.current < CLUSTER_MAX_ZOOM;
@@ -251,13 +256,7 @@ export function useOpenLayersTimelineLayer({ mapInstanceRef, mapViewRef, mapView
             // Create new overlay (same code as non-clustering case)
             const avatarContainer = document.createElement("div");
             avatarContainer.className = "timeline-avatar-marker";
-            avatarContainer.style.cursor = "pointer";
-            avatarContainer.style.borderRadius = "50%";
-            avatarContainer.style.overflow = "hidden";
-            avatarContainer.style.width = "32px";
-            avatarContainer.style.height = "32px";
-            avatarContainer.style.boxShadow = "0 2px 8px rgba(0,0,0,0.3)";
-            avatarContainer.style.transform = "translate(-50%, -50%)";
+            avatarContainer.style.cssText = AVATAR_MARKER_STYLE;
 
             const avatarSVG = generateAvatarSVG(session.user_id, 32);
             avatarContainer.innerHTML = avatarSVG;
@@ -351,22 +350,13 @@ export function useOpenLayersTimelineLayer({ mapInstanceRef, mapViewRef, mapView
       const handleMoveEndForClusters = () => {
         updateUnclusteredOverlays();
       };
-      map.on("moveend", handleMoveEndForClusters);
-
-      // Store handler for cleanup
-      (map as any).__clusterMoveEndHandler = handleMoveEndForClusters;
+      clusterMoveEndKey = map.on("moveend", handleMoveEndForClusters);
     } else {
       // Not clustering - use individual overlays
       // Remove cluster layer
       if (clusterLayerRef.current) {
         map.removeLayer(clusterLayerRef.current);
         clusterLayerRef.current = null;
-      }
-
-      // Remove cluster moveend handler if it exists
-      if ((map as any).__clusterMoveEndHandler) {
-        map.un("moveend", (map as any).__clusterMoveEndHandler);
-        delete (map as any).__clusterMoveEndHandler;
       }
 
       // Build set of current session IDs
@@ -400,13 +390,7 @@ export function useOpenLayersTimelineLayer({ mapInstanceRef, mapViewRef, mapView
           // Create new overlay
           const avatarContainer = document.createElement("div");
           avatarContainer.className = "timeline-avatar-marker";
-          avatarContainer.style.cursor = "pointer";
-          avatarContainer.style.borderRadius = "50%";
-          avatarContainer.style.overflow = "hidden";
-          avatarContainer.style.width = "32px";
-          avatarContainer.style.height = "32px";
-          avatarContainer.style.boxShadow = "0 2px 8px rgba(0,0,0,0.3)";
-          avatarContainer.style.transform = "translate(-50%, -50%)"; // Center the avatar
+          avatarContainer.style.cssText = AVATAR_MARKER_STYLE;
 
           const avatarSVG = generateAvatarSVG(session.user_id, 32);
           avatarContainer.innerHTML = avatarSVG;
@@ -525,16 +509,14 @@ export function useOpenLayersTimelineLayer({ mapInstanceRef, mapViewRef, mapView
       }
     };
 
-    map.on("click", handleMapClick);
+    const mapClickKey = map.on("click", handleMapClick);
 
     // Cleanup function
     return () => {
-      map.un("click", handleMapClick);
+      dispose(mapClickKey);
 
-      // Clean up cluster moveend handler if it exists
-      if ((map as any).__clusterMoveEndHandler) {
-        map.un("moveend", (map as any).__clusterMoveEndHandler);
-        delete (map as any).__clusterMoveEndHandler;
+      if (clusterMoveEndKey) {
+        dispose(clusterMoveEndKey);
       }
 
       overlaysMap.forEach(({ overlay, cleanup }) => {

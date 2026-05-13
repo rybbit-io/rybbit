@@ -507,9 +507,15 @@ export function SankeyDiagram({ journeys, steps, maxJourneys, domain }: SankeyDi
         tooltip.style("visibility", "hidden");
       });
 
-    // Cleanup tooltip on unmount
-    return () => {
+    const dispose = () => {
+      svg.selectAll("*").on("mouseenter", null).on("mousemove", null).on("mouseleave", null);
+      svg.selectAll("*").remove();
       tooltip.remove();
+    };
+
+    // Cleanup tooltip and D3 handlers on unmount
+    return () => {
+      dispose();
     };
   }, [journeys, steps, maxJourneys, domain, theme]);
 

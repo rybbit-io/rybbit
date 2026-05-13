@@ -124,6 +124,17 @@ export const DisabledOverlay: React.FC<DisabledOverlayProps> = ({
   useEffect(() => {
     if (!disabled || !containerRef.current || !contentRef.current) return;
 
+    const restoreContentStyles = () => {
+      const content = contentRef.current;
+      if (!content) return;
+
+      Object.assign(content.style, {
+        filter: `blur(${blur}px)`,
+        pointerEvents: "none",
+        userSelect: "none",
+      });
+    };
+
     // Watch for overlay removal
     const containerObserver = new MutationObserver(mutations => {
       mutations.forEach(mutation => {
@@ -147,9 +158,7 @@ export const DisabledOverlay: React.FC<DisabledOverlayProps> = ({
         const currentStyle = contentRef.current.getAttribute("style") || "";
         // Check if critical styles are missing
         if (!currentStyle.includes("blur") || !currentStyle.includes("pointer-events: none")) {
-          contentRef.current.style.filter = `blur(${blur}px)`;
-          contentRef.current.style.pointerEvents = "none";
-          contentRef.current.style.userSelect = "none";
+          restoreContentStyles();
         }
       }
     });
@@ -166,9 +175,7 @@ export const DisabledOverlay: React.FC<DisabledOverlayProps> = ({
       if (contentRef.current && disabled) {
         const currentStyle = contentRef.current.getAttribute("style") || "";
         if (!currentStyle.includes("blur") || !currentStyle.includes("pointer-events: none")) {
-          contentRef.current.style.filter = `blur(${blur}px)`;
-          contentRef.current.style.pointerEvents = "none";
-          contentRef.current.style.userSelect = "none";
+          restoreContentStyles();
         }
       }
     }, 2000); // Check every 2 seconds

@@ -22,6 +22,7 @@ export function useSubdivisionsLayer({ map, mapLoaded, mapView }: UseSubdivision
 
   useEffect(() => {
     if (!map.current || !subdivisionsGeoData || !subdivisionData?.data || !mapLoaded) return;
+    const mapInstance = map.current;
 
     // Initialize popup once
     if (!popupRef.current) {
@@ -33,8 +34,6 @@ export function useSubdivisionsLayer({ map, mapLoaded, mapView }: UseSubdivision
     }
 
     const addSubdivisionsLayer = () => {
-      if (!map.current) return;
-
       const geoDataCopy = JSON.parse(JSON.stringify(subdivisionsGeoData));
       geoDataCopy.features.forEach((feature: any) => {
         const code = feature.properties?.iso_3166_2;
@@ -45,15 +44,15 @@ export function useSubdivisionsLayer({ map, mapLoaded, mapView }: UseSubdivision
         feature.properties.count = count;
       });
 
-      if (map.current.getSource("subdivisions")) {
-        (map.current.getSource("subdivisions") as mapboxgl.GeoJSONSource).setData(geoDataCopy);
+      if (mapInstance.getSource("subdivisions")) {
+        (mapInstance.getSource("subdivisions") as mapboxgl.GeoJSONSource).setData(geoDataCopy);
       } else {
-        map.current.addSource("subdivisions", {
+        mapInstance.addSource("subdivisions", {
           type: "geojson",
           data: geoDataCopy,
         });
 
-        map.current.addLayer({
+        mapInstance.addLayer({
           id: "subdivisions-fill",
           type: "fill",
           source: "subdivisions",
@@ -66,7 +65,7 @@ export function useSubdivisionsLayer({ map, mapLoaded, mapView }: UseSubdivision
           },
         });
 
-        map.current.addLayer({
+        mapInstance.addLayer({
           id: "subdivisions-outline",
           type: "line",
           source: "subdivisions",
@@ -79,26 +78,37 @@ export function useSubdivisionsLayer({ map, mapLoaded, mapView }: UseSubdivision
             visibility: mapView === "subdivisions" ? "visible" : "none",
           },
         });
+      }
+    };
 
-        map.current.on("mousemove", "subdivisions-fill", e => {
-          if (!map.current || !e.features || e.features.length === 0 || !popupRef.current) return;
-          map.current.getCanvas().style.cursor = "pointer";
+    addSubdivisionsLayer();
 
-          const feature = e.features[0];
-          const code = feature.properties?.iso_3166_2;
-          const name = feature.properties?.name;
-          const count = feature.properties?.count || 0;
+    const setCursor = (cursor: string) => {
+      const canvas = mapInstance.getCanvas() as HTMLCanvasElement | undefined;
+      if (canvas) {
+        canvas.style.cursor = cursor;
+      }
+    };
 
-          const currentData = subdivisionData?.data;
-          const foundData = currentData?.find((d: any) => d.value === code);
-          const percentage = foundData?.percentage || 0;
+    const handleMouseMove = (e: mapboxgl.MapLayerMouseEvent) => {
+      if (!e.features || e.features.length === 0 || !popupRef.current) return;
+      setCursor("pointer");
 
-          // Extract country code from iso_3166_2 (e.g., "US-CA" -> "US")
-          const countryCode = code?.split("-")[0] || "";
-          const flagSVG = renderCountryFlag(countryCode);
+      const feature = e.features[0];
+      const code = feature.properties?.iso_3166_2;
+      const name = feature.properties?.name;
+      const count = feature.properties?.count || 0;
 
-          const coordinates = e.lngLat;
-          const html = `
+      const currentData = subdivisionData?.data;
+      const foundData = currentData?.find((d: any) => d.value === code);
+      const percentage = foundData?.percentage || 0;
+
+      // Extract country code from iso_3166_2 (e.g., "US-CA" -> "US")
+      const countryCode = code?.split("-")[0] || "";
+      const flagSVG = renderCountryFlag(countryCode);
+
+      const coordinates = e.lngLat;
+      const html = `
             <div class="bg-neutral-850 border border-neutral-700 rounded-lg p-2">
               <div class="flex items-center gap-2 mb-1">
                 ${flagSVG}
@@ -111,30 +121,38 @@ export function useSubdivisionsLayer({ map, mapLoaded, mapView }: UseSubdivision
             </div>
           `;
 
-          popupRef.current.setLngLat(coordinates).setHTML(html).addTo(map.current);
-        });
-
-        map.current.on("mouseleave", "subdivisions-fill", () => {
-          if (!map.current || !popupRef.current) return;
-          map.current.getCanvas().style.cursor = "";
-          popupRef.current.remove();
-        });
-
-        map.current.on("click", "subdivisions-fill", e => {
-          if (!e.features || e.features.length === 0) return;
-
-          const feature = e.features[0];
-          const code = feature.properties?.iso_3166_2;
-
-          addFilter({
-            parameter: "region" as FilterParameter,
-            value: [code],
-            type: "equals",
-          });
-        });
-      }
+      popupRef.current.setLngLat(coordinates).setHTML(html).addTo(mapInstance);
     };
 
-    addSubdivisionsLayer();
-  }, [subdivisionsGeoData, subdivisionData?.data, colorScale, map, mapLoaded]);
+    const handleMouseLeave = () => {
+      if (!popupRef.current) return;
+      setCursor("");
+      popupRef.current.remove();
+    };
+
+    const handleClick = (e: mapboxgl.MapLayerMouseEvent) => {
+      if (!e.features || e.features.length === 0) return;
+
+      const feature = e.features[0];
+      const code = feature.properties?.iso_3166_2;
+
+      addFilter({
+        parameter: "region" as FilterParameter,
+        value: [code],
+        type: "equals",
+      });
+    };
+
+    mapInstance.on("mousemove", "subdivisions-fill", handleMouseMove);
+    mapInstance.on("mouseleave", "subdivisions-fill", handleMouseLeave);
+    mapInstance.on("click", "subdivisions-fill", handleClick);
+
+    return () => {
+      mapInstance.off("mousemove", "subdivisions-fill", handleMouseMove);
+      mapInstance.off("mouseleave", "subdivisions-fill", handleMouseLeave);
+      mapInstance.off("click", "subdivisions-fill", handleClick);
+      setCursor("");
+      popupRef.current?.remove();
+    };
+  }, [subdivisionsGeoData, subdivisionData?.data, colorScale, map, mapLoaded, mapView]);
 }

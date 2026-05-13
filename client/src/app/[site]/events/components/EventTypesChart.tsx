@@ -79,7 +79,7 @@ export function EventTypesChart() {
       return { series: [] as Series[], legendItems: [], maxValue: 1, totalPoints: 0 };
     }
 
-    const sortedData = [...data].sort((a, b) => {
+    const sortedData = data.toSorted((a, b) => {
       const ta = DateTime.fromSQL(a.time, { zone: timezone }).toMillis();
       const tb = DateTime.fromSQL(b.time, { zone: timezone }).toMillis();
       return ta - tb;
@@ -202,7 +202,7 @@ export function EventTypesChart() {
           lineWidth={2}
           sliceTooltip={({ slice }: SliceTooltipProps<Series>) => {
             const currentTime = slice.points[0]?.data.currentTime as DateTime | undefined;
-            const sortedPoints = [...slice.points].sort(
+            const sortedPoints = slice.points.toSorted(
               (a, b) => Number(b.data.yFormatted) - Number(a.data.yFormatted)
             );
             const total = sortedPoints.reduce((acc, p) => acc + Number(p.data.yFormatted), 0);

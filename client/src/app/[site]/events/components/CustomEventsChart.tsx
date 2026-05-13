@@ -198,7 +198,7 @@ export function CustomEventsChart({ eventLimit }: { eventLimit: number }) {
             lineWidth={2}
             sliceTooltip={({ slice }: SliceTooltipProps<EventSeries>) => {
               const currentTime = slice.points[0]?.data.currentTime as DateTime | undefined;
-              const sortedPoints = [...slice.points].sort(
+              const sortedPoints = slice.points.toSorted(
                 (a, b) => Number(b.data.yFormatted) - Number(a.data.yFormatted)
               );
 

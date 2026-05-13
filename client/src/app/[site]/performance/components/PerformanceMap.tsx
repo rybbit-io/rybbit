@@ -7,6 +7,7 @@ import { Feature } from "geojson";
 import "ol/ol.css";
 import { useEffect, useMemo, useRef, useState } from "react";
 import Map from "ol/Map";
+import { unByKey as dispose } from "ol/Observable";
 import View from "ol/View";
 import { fromLonLat } from "ol/proj";
 import VectorLayer from "ol/layer/Vector";
@@ -151,7 +152,7 @@ export function PerformanceMap({ height }: { height: string }) {
     mapInstanceRef.current = map;
 
     // Handle pointer move for hover effects
-    map.on("pointermove", evt => {
+    const handlePointerMove = (evt: any) => {
       if (evt.dragging) {
         return;
       }
@@ -198,10 +199,11 @@ export function PerformanceMap({ height }: { height: string }) {
         setHoveredId(null);
         setTooltipContent(null);
       }
-    });
+    };
+    const pointerMoveKey = map.on("pointermove", handlePointerMove);
 
     // Handle click for filtering
-    map.on("click", evt => {
+    const handleClick = (evt: any) => {
       const pixel = map.getEventPixel(evt.originalEvent);
       const feature = map.forEachFeatureAtPixel(pixel, feature => feature);
 
@@ -215,9 +217,11 @@ export function PerformanceMap({ height }: { height: string }) {
           type: "equals",
         });
       }
-    });
+    };
+    const clickKey = map.on("click", handleClick);
 
     return () => {
+      dispose([pointerMoveKey, clickKey]);
       map.setTarget(undefined);
     };
   }, []);

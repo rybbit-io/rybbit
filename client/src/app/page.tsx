@@ -79,7 +79,7 @@ export default function Home() {
   // Compute unique tags from all sites
   const allTags = useMemo(() => {
     const tags = sites?.sites?.flatMap((s) => s.tags || []) || [];
-    return [...new Set(tags)].sort();
+    return Array.from(new Set(tags)).toSorted();
   }, [sites?.sites]);
 
   // Track hydration to avoid mismatch with date-dependent disabled states

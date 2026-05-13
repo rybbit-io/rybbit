@@ -6,9 +6,6 @@ export function useTouchPrimary() {
   useEffect(() => {
     if (typeof window === "undefined") return;
 
-    const controller = new AbortController();
-    const { signal } = controller;
-
     const handleTouch = () => {
       const hasTouch = "ontouchstart" in window || navigator.maxTouchPoints > 0;
       const prefersTouch = window.matchMedia("(pointer: coarse)").matches;
@@ -16,12 +13,15 @@ export function useTouchPrimary() {
     };
 
     const mq = window.matchMedia("(pointer: coarse)");
-    mq.addEventListener("change", handleTouch, { signal });
-    window.addEventListener("pointerdown", handleTouch, { signal });
+    mq.addEventListener("change", handleTouch);
+    window.addEventListener("pointerdown", handleTouch);
 
     handleTouch();
 
-    return () => controller.abort();
+    return () => {
+      mq.removeEventListener("change", handleTouch);
+      window.removeEventListener("pointerdown", handleTouch);
+    };
   }, []);
 
   return isTouchPrimary;

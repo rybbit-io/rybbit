@@ -57,20 +57,18 @@ const ScrollArea = React.forwardRef<
     const element = viewportRef.current;
     if (!element) return;
 
-    const controller = new AbortController();
-    const { signal } = controller;
-
     const resizeObserver = new ResizeObserver(checkScrollability);
     resizeObserver.observe(element);
 
-    element.addEventListener("scroll", checkScrollability, { signal });
-    window.addEventListener("resize", checkScrollability, { signal });
+    element.addEventListener("scroll", checkScrollability);
+    window.addEventListener("resize", checkScrollability);
 
     // Run an initial check whenever dependencies change (including pointer mode)
     checkScrollability();
 
     return () => {
-      controller.abort();
+      element.removeEventListener("scroll", checkScrollability);
+      window.removeEventListener("resize", checkScrollability);
       resizeObserver.disconnect();
     };
   }, [checkScrollability, isTouch]);
