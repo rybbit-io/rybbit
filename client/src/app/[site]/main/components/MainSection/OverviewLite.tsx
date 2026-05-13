@@ -16,25 +16,41 @@ import { SparklinesChart } from "./SparklinesChart";
 // Lite variant of Overview: no previous-period queries, no comparison arrows.
 // Backed by MV endpoints; ~10x fewer ClickHouse rows scanned per render.
 
+type LiteStatType = StatType | "total_time";
+
+const formatTotalTimeSpent = (value: number) => {
+  const seconds = Math.max(0, Math.round(value));
+  const days = Math.floor(seconds / 86400);
+  const hours = Math.floor((seconds % 86400) / 3600);
+  const minutes = Math.floor((seconds % 3600) / 60);
+
+  if (days > 0) return `${days}d ${hours}h`;
+  if (hours > 0) return `${hours}hr ${minutes}min`;
+  return formatSecondsAsMinutesAndSeconds(seconds);
+};
+
 const Stat = ({
   title,
   id,
   value,
   valueFormatter,
+  getBucketValue,
   isLoading,
   decimals,
   postfix,
 }: {
   title: string;
-  id: StatType;
+  id: LiteStatType;
   value: number;
   valueFormatter?: (value: number) => string;
+  getBucketValue?: (bucket: any) => number;
   isLoading: boolean;
   decimals?: number;
   postfix?: string;
 }) => {
   const { selectedStat, setSelectedStat, site, bucket, time } = useStore();
   const [isHovering, setIsHovering] = useState(false);
+  const isSelectable = id !== "total_time";
 
   const { data } = useGetOverviewBucketedLite({ site, bucket });
 
@@ -49,15 +65,25 @@ const Stat = ({
         }
         return true;
       })
-      .map((d: any) => ({ value: d[id], time: d.time })) ?? [];
+      .map((d: any) => ({
+        value: getBucketValue ? getBucketValue(d) : d[id],
+        time: d.time,
+      })) ?? [];
+
+  const handleClick = () => {
+    if (id !== "total_time") {
+      setSelectedStat(id);
+    }
+  };
 
   return (
     <div
       className={cn(
-        "flex flex-col cursor-pointer border-r border-neutral-100 dark:border-neutral-800 last:border-r-0 text-nowrap",
-        selectedStat === id && "bg-neutral-0 dark:bg-neutral-850"
+        "flex flex-col border-r border-neutral-100 dark:border-neutral-800 last:border-r-0 text-nowrap",
+        isSelectable ? "cursor-pointer" : "cursor-default",
+        isSelectable && selectedStat === id && "bg-neutral-0 dark:bg-neutral-850"
       )}
-      onClick={() => setSelectedStat(id)}
+      onClick={handleClick}
       onMouseEnter={() => setIsHovering(true)}
       onMouseLeave={() => setIsHovering(false)}
     >
@@ -111,9 +137,10 @@ export function OverviewLite() {
   const pagesPerSession = overviewData?.data?.pages_per_session ?? 0;
   const bounceRate = overviewData?.data?.bounce_rate ?? 0;
   const sessionDuration = overviewData?.data?.session_duration ?? 0;
+  const totalTimeSpent = sessionDuration * sessions;
 
   return (
-    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-0 items-center">
+    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-7 gap-0 items-center">
       <Stat title={t("Unique Users")} id="users" value={users} isLoading={isLoading} />
       <Stat title={t("Sessions")} id="sessions" value={sessions} isLoading={isLoading} />
       <Stat title={t("Pageviews")} id="pageviews" value={pageviews} isLoading={isLoading} />
@@ -138,6 +165,14 @@ export function OverviewLite() {
         value={sessionDuration}
         isLoading={isLoading}
         valueFormatter={formatSecondsAsMinutesAndSeconds}
+      />
+      <Stat
+        title={t("Total Time")}
+        id="total_time"
+        value={totalTimeSpent}
+        isLoading={isLoading}
+        valueFormatter={formatTotalTimeSpent}
+        getBucketValue={d => (d.session_duration ?? 0) * (d.sessions ?? 0)}
       />
     </div>
   );
