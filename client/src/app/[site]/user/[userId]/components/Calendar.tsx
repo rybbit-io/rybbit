@@ -1,6 +1,7 @@
 import { ResponsiveTimeRange } from "@nivo/calendar";
-import _ from "lodash";
 import { DateTime } from "luxon";
+import get from "lodash/get";
+import sortBy from "lodash/sortBy";
 import { useExtracted } from "next-intl";
 import { useTheme } from "next-themes";
 import { UserSessionCountResponse } from "../../../../../api/analytics/endpoints";
@@ -20,7 +21,7 @@ export const VisitCalendar = ({ sessionCount }: { sessionCount: UserSessionCount
     .reverse();
 
 
-  const maxValue = _.get(_.sortBy(data, "value")[Math.floor(data.length * 0.95)], "value");
+  const maxValue = get(sortBy(data, "value")[Math.floor(data.length * 0.95)], "value");
 
   if (data.length === 0) {
     return null;

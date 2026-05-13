@@ -1,6 +1,8 @@
 "use client";
 
-import { isNil, round, throttle } from "lodash";
+import isNil from "lodash/isNil";
+import round from "lodash/round";
+import throttle from "lodash/throttle";
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 import { useEffect, useRef, useState } from "react";

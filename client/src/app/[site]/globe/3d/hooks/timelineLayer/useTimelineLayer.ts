@@ -1,4 +1,4 @@
-import { throttle } from "lodash";
+import throttle from "lodash/throttle";
 import { useEffect, useRef, useState } from "react";
 import type { GetSessionsResponse } from "../../../../../../api/analytics/endpoints";
 import { useActiveSessions, useTimelineStore } from "../../../timelineStore";

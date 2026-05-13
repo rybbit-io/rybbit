@@ -1,5 +1,5 @@
 import { FilterParameter } from "@rybbit/shared/dist/filters";
-import { round } from "lodash";
+import round from "lodash/round";
 import mapboxgl from "mapbox-gl";
 import { useEffect, useRef } from "react";
 import { useGetSessionLocations } from "../../../../../api/analytics/hooks/useGetSessionLocations";

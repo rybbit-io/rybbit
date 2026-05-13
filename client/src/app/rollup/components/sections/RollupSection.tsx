@@ -7,7 +7,7 @@ import { ReactNode } from "react";
 import { ErrorState } from "@/components/ErrorState";
 import { CardLoader } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { round } from "lodash";
+import round from "lodash/round";
 import { StandardSkeleton } from "@/app/[site]/components/shared/StandardSection/Skeleton";
 import { MetricResponse } from "@/api/analytics/endpoints";
 import { useRollupMetric } from "../../hooks/useRollupMetric";

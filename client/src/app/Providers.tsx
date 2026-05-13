@@ -25,8 +25,8 @@ export function Providers({ children }: { children: React.ReactNode }) {
             <OrganizationInitializer />
             <AuthenticationGuard />
             {children}
+            <VersionCheck />
           </QueryProvider>
-          <VersionCheck />
           <Toaster />
         </TooltipProvider>
       </ThemeProvider>

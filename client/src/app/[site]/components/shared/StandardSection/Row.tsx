@@ -1,6 +1,6 @@
 import { FilterParameter } from "@rybbit/shared";
 import NumberFlow from "@number-flow/react";
-import { round } from "lodash";
+import round from "lodash/round";
 import { ChevronDown, ChevronRight, SquareArrowOutUpRight } from "lucide-react";
 import { ReactNode, useState, useCallback } from "react";
 import { usePaginatedMetric } from "../../../../../api/analytics/hooks/useGetMetric";

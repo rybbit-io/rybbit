@@ -1,5 +1,5 @@
 import { FilterParameter } from "@rybbit/shared/dist/filters";
-import { round } from "lodash";
+import round from "lodash/round";
 import { useEffect, useRef } from "react";
 import Map from "ol/Map";
 import VectorLayer from "ol/layer/Vector";
