@@ -7,6 +7,7 @@ import { useParams } from "next/navigation";
 import { useMemo } from "react";
 import { usePlaygroundStore } from "../hooks/usePlaygroundStore";
 import { CodeGenConfig } from "../utils/codeGenerators";
+import { buildCommonQueryParams } from "../utils/queryParams";
 import { CodeExamples } from "./CodeExamples";
 import { BACKEND_URL } from "../../../../lib/const";
 
@@ -19,6 +20,8 @@ export function ResponsePanel() {
     selectedEndpoint,
     startDate,
     endDate,
+    startTime,
+    endTime,
     timeZone,
     filters,
     endpointParams,
@@ -39,21 +42,7 @@ export function ResponsePanel() {
     const qp: Record<string, any> = {};
 
     if (selectedEndpoint.hasCommonParams) {
-      qp.start_date = startDate;
-      qp.end_date = endDate;
-      qp.time_zone = timeZone;
-
-      // Convert filters to API format inline
-      const apiFilters = filters
-        .filter(f => f.value.trim() !== "")
-        .map(f => ({
-          parameter: f.parameter,
-          type: f.operator,
-          value: [f.value],
-        }));
-      if (apiFilters.length > 0) {
-        qp.filters = JSON.stringify(apiFilters);
-      }
+      Object.assign(qp, buildCommonQueryParams({ startDate, endDate, startTime, endTime, timeZone, filters }));
     }
 
     // Add endpoint-specific params
@@ -76,7 +65,7 @@ export function ResponsePanel() {
     }
 
     return { queryParams: qp, parsedBody: body };
-  }, [selectedEndpoint, startDate, endDate, timeZone, filters, endpointParams, requestBody]);
+  }, [selectedEndpoint, startDate, endDate, startTime, endTime, timeZone, filters, endpointParams, requestBody]);
 
   // Code generation config
   const codeConfig: CodeGenConfig = useMemo(() => {

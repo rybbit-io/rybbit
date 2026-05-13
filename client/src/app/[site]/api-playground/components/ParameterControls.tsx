@@ -8,6 +8,7 @@ import { useExtracted } from "next-intl";
 import { useParams } from "next/navigation";
 import { usePlaygroundStore } from "../hooks/usePlaygroundStore";
 import { methodColors, parameterMetadata } from "../utils/endpointConfig";
+import { buildCommonQueryParams } from "../utils/queryParams";
 import { FilterBuilder } from "./FilterBuilder";
 import { TimezoneSelect } from "./TimezoneSelect";
 import { RequestBodyEditor } from "./RequestBodyEditor";
@@ -21,10 +22,14 @@ export function ParameterControls() {
     selectedEndpoint,
     startDate,
     endDate,
+    startTime,
+    endTime,
     timeZone,
     filters,
     setStartDate,
     setEndDate,
+    setStartTime,
+    setEndTime,
     endpointParams,
     setEndpointParam,
     pathParams,
@@ -72,7 +77,7 @@ export function ParameterControls() {
     }
 
     setIsLoading(true);
-    const startTime = performance.now();
+    const requestStartTime = performance.now();
 
     try {
       // Build the path
@@ -87,20 +92,7 @@ export function ParameterControls() {
       const queryParams: Record<string, any> = {};
 
       if (selectedEndpoint.hasCommonParams) {
-        queryParams.start_date = startDate;
-        queryParams.end_date = endDate;
-        queryParams.time_zone = timeZone;
-
-        const apiFilters = filters
-          .filter(f => f.value.trim() !== "")
-          .map(f => ({
-            parameter: f.parameter,
-            type: f.operator,
-            value: [f.value],
-          }));
-        if (apiFilters.length > 0) {
-          queryParams.filters = JSON.stringify(apiFilters);
-        }
+        Object.assign(queryParams, buildCommonQueryParams({ startDate, endDate, startTime, endTime, timeZone, filters }));
       }
 
       // Add endpoint-specific params
@@ -124,8 +116,8 @@ export function ParameterControls() {
           : undefined
       );
 
-      const endTime = performance.now();
-      setResponse(result, Math.round(endTime - startTime));
+      const requestEndTime = performance.now();
+      setResponse(result, Math.round(requestEndTime - requestStartTime));
     } catch (err: any) {
       setResponseError(err.message || t("Request failed"));
     }
@@ -252,6 +244,28 @@ export function ParameterControls() {
             <div className="space-y-1">
               <label className="text-sm font-medium text-neutral-700 dark:text-neutral-300">{t("End Date")}</label>
               <Input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="h-8 text-xs" />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <label className="text-sm font-medium text-neutral-700 dark:text-neutral-300">{t("Start Time")}</label>
+              <Input
+                type="time"
+                step={1}
+                value={startTime}
+                onChange={e => setStartTime(e.target.value)}
+                className="h-8 text-xs"
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="text-sm font-medium text-neutral-700 dark:text-neutral-300">{t("End Time")}</label>
+              <Input
+                type="time"
+                step={1}
+                value={endTime}
+                onChange={e => setEndTime(e.target.value)}
+                className="h-8 text-xs"
+              />
             </div>
           </div>
           <TimezoneSelect />

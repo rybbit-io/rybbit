@@ -17,9 +17,13 @@ interface PlaygroundState {
   // Common parameters (independent from store.ts)
   startDate: string;
   endDate: string;
+  startTime: string;
+  endTime: string;
   timeZone: string;
   setStartDate: (date: string) => void;
   setEndDate: (date: string) => void;
+  setStartTime: (time: string) => void;
+  setEndTime: (time: string) => void;
   setTimeZone: (tz: string) => void;
 
   // Filters
@@ -90,9 +94,13 @@ export const usePlaygroundStore = create<PlaygroundState>((set, get) => ({
   // Common parameters
   startDate: getToday(),
   endDate: getToday(),
+  startTime: "",
+  endTime: "",
   timeZone: getDefaultTimezone(),
   setStartDate: (date) => set({ startDate: date }),
   setEndDate: (date) => set({ endDate: date }),
+  setStartTime: (time) => set({ startTime: time }),
+  setEndTime: (time) => set({ endTime: time }),
   setTimeZone: (tz) => set({ timeZone: tz }),
 
   // Filters
@@ -173,6 +181,8 @@ export const usePlaygroundStore = create<PlaygroundState>((set, get) => ({
       selectedEndpoint: null,
       startDate: getToday(),
       endDate: getToday(),
+      startTime: "",
+      endTime: "",
       timeZone: getDefaultTimezone(),
       filters: [],
       endpointParams: {},

@@ -18,6 +18,7 @@ The easiest way to explore and test the API is using the built-in **API Playgrou
 The playground provides:
 - **Endpoint browser** - Browse all available API endpoints
 - **Parameter controls** - Configure request parameters with a visual interface
+- **Exact time ranges** - Test date ranges with optional start and end times
 - **Live responses** - See real API responses with your actual data
 - **Code generation** - Copy ready-to-use code snippets
 
@@ -75,7 +76,7 @@ The following parameters are shared across all analytics endpoints.
 
 ### Time Parameters
 
-All endpoints require either date-based or relative time parameters:
+All endpoints require date-based, exact datetime, or relative time parameters:
 
 <TypeTable
   type={{
@@ -94,7 +95,19 @@ All endpoints require either date-based or relative time parameters:
     time_zone: {
       description: 'IANA timezone identifier',
       type: 'string',
-      typeDescription: 'e.g., "America/New_York", "Europe/London", "Asia/Tokyo"',
+      typeDescription: 'e.g., "America/New_York", "Europe/London", "Asia/Tokyo". Required with date and exact datetime ranges.',
+      required: false,
+    },
+    start_datetime: {
+      description: 'Exact UTC start timestamp for the query period',
+      type: 'string',
+      typeDescription: 'Format: YYYY-MM-DD HH:mm:ss (e.g., "2024-01-15 13:00:00")',
+      required: false,
+    },
+    end_datetime: {
+      description: 'Exact UTC end timestamp for the query period. This boundary is exclusive.',
+      type: 'string',
+      typeDescription: 'Format: YYYY-MM-DD HH:mm:ss (e.g., "2024-01-15 15:00:00")',
       required: false,
     },
     past_minutes_start: {
@@ -114,6 +127,7 @@ All endpoints require either date-based or relative time parameters:
 
 **Note:** You must provide either:
 - All three date parameters (`start_date`, `end_date`, `time_zone`), OR
+- All three exact datetime parameters (`start_datetime`, `end_datetime`, `time_zone`), OR
 - Both relative parameters (`past_minutes_start`, `past_minutes_end`)
 
 #### Examples
@@ -121,6 +135,11 @@ All endpoints require either date-based or relative time parameters:
 **Date-based query (last 30 days):**
 ```
 ?start_date=2024-01-01&end_date=2024-01-31&time_zone=America/New_York
+```
+
+**Exact datetime query (8 AM to 10 AM in New York on Jan 15, sent as UTC):**
+```
+?start_datetime=2024-01-15%2013:00:00&end_datetime=2024-01-15%2015:00:00&time_zone=America/New_York
 ```
 
 **Relative query (last 60 minutes):**
