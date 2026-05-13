@@ -62,7 +62,16 @@ export interface OverviewRequest {
 }
 
 export async function getOverview(req: FastifyRequest<OverviewRequest>, res: FastifyReply) {
-  const { start_date, end_date, time_zone, filters, past_minutes_start, past_minutes_end } = req.query;
+  const {
+    start_date,
+    end_date,
+    time_zone,
+    filters,
+    start_datetime,
+    end_datetime,
+    past_minutes_start,
+    past_minutes_end,
+  } = req.query;
   const site = req.params.siteId;
 
   const query = getQuery(
@@ -71,6 +80,8 @@ export async function getOverview(req: FastifyRequest<OverviewRequest>, res: Fas
       end_date,
       time_zone,
       filters,
+      start_datetime,
+      end_datetime,
       past_minutes_start,
       past_minutes_end,
     },

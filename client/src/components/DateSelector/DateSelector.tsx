@@ -10,7 +10,7 @@ import {
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { getTimezoneLabel, timezones } from "@/lib/dateTimeUtils";
+import { getTimezoneLabel, hour12, timezones } from "@/lib/dateTimeUtils";
 import { getTimezone, useStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
 import { Calendar } from "lucide-react";
@@ -18,6 +18,31 @@ import { DateTime } from "luxon";
 import { useExtracted } from "next-intl";
 import { CustomDateRangePicker } from "./CustomDateRangePicker";
 import { Time } from "./types";
+import { TimeBucket } from "@rybbit/shared";
+
+const stepDateTimeBucket = (dt: DateTime, bucket: TimeBucket, direction: 1 | -1): DateTime => {
+  const n = direction;
+  switch (bucket) {
+    case "minute":
+      return dt.plus({ minutes: n });
+    case "five_minutes":
+      return dt.plus({ minutes: 5 * n });
+    case "ten_minutes":
+      return dt.plus({ minutes: 10 * n });
+    case "fifteen_minutes":
+      return dt.plus({ minutes: 15 * n });
+    case "hour":
+      return dt.plus({ hours: n });
+    case "day":
+      return dt.plus({ days: n });
+    case "week":
+      return dt.plus({ weeks: n });
+    case "month":
+      return dt.plus({ months: n });
+    case "year":
+      return dt.plus({ years: n });
+  }
+};
 
 export function DateSelector({
   time,
@@ -28,7 +53,7 @@ export function DateSelector({
   setTime: (time: Time) => void;
   pastMinutesEnabled?: boolean;
 }) {
-  const { timezone, setTimezone } = useStore();
+  const { timezone, setTimezone, bucket } = useStore();
   const t = useExtracted();
 
   const getWellKnownLabel = (wellKnown: string): string => {
@@ -65,6 +90,19 @@ export function DateSelector({
     if (time.mode === "range") {
       const startFormatted = DateTime.fromISO(time.startDate).toFormat("EEEE, MMM d");
       const endFormatted = DateTime.fromISO(time.endDate).toFormat("EEEE, MMM d");
+      return `${startFormatted} - ${endFormatted}`;
+    }
+
+    if (time.mode === "datetime-range") {
+      const start = DateTime.fromISO(time.startDateTime);
+      const endExclusive = DateTime.fromISO(time.endDateTime);
+      const displayEnd = stepDateTimeBucket(endExclusive, bucket, -1);
+      const startFormatted = start
+        .setZone(tz)
+        .toFormat(hour12 ? "MMM d, h:mm a" : "MMM d, HH:mm");
+      const endFormatted = (displayEnd > start ? displayEnd : endExclusive)
+        .setZone(tz)
+        .toFormat(hour12 ? "MMM d, h:mm a" : "MMM d, HH:mm");
       return `${startFormatted} - ${endFormatted}`;
     }
 

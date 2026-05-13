@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { Time } from "../../../components/DateSelector/types";
 import { useStore } from "../../../lib/store";
 import { buildApiParams } from "../../utils";
 import { fetchOverview } from "../endpoints";
@@ -8,10 +9,8 @@ type PeriodTime = "current" | "previous";
 type UseGetOverviewOptions = {
   periodTime?: PeriodTime;
   site?: number | string;
-  overrideTime?:
-    | { mode: "past-minutes"; pastMinutesStart: number; pastMinutesEnd: number }
-    | { mode: "range"; startDate: string; endDate: string };
-    useFilters?: boolean;
+  overrideTime?: Time;
+  useFilters?: boolean;
 };
 
 export function useGetOverview({ periodTime, site, overrideTime, useFilters = true }: UseGetOverviewOptions) {

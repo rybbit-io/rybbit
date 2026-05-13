@@ -101,6 +101,17 @@ const recalculateTimeForTimezone = (time: Time, timezone: string): Time | null =
 
 export type StatType = "pageviews" | "sessions" | "users" | "pages_per_session" | "bounce_rate" | "session_duration";
 
+const getBucketForDateTimeRange = (startDateTime: string, endDateTime: string): TimeBucket => {
+  const minutes = DateTime.fromISO(endDateTime).diff(DateTime.fromISO(startDateTime), "minutes").minutes;
+
+  if (minutes <= 120) return "minute";
+  if (minutes <= 1440) return "five_minutes";
+  if (minutes <= 14 * 1440) return "hour";
+  if (minutes <= 60 * 1440) return "day";
+  if (minutes <= 180 * 1440) return "week";
+  return "month";
+};
+
 type Store = {
   site: string;
   setSite: (site: string) => void;
@@ -206,6 +217,17 @@ export const useStore = create<Store>()(
             mode: "range",
             startDate: DateTime.fromISO(time.startDate).minus({ days: timeRangeLength }).toISODate() ?? "",
             endDate: DateTime.fromISO(time.startDate).minus({ days: 1 }).toISODate() ?? "",
+          };
+        } else if (time.mode === "datetime-range") {
+          const start = DateTime.fromISO(time.startDateTime);
+          const end = DateTime.fromISO(time.endDateTime);
+          const duration = end.diff(start);
+          bucketToUse = getBucketForDateTimeRange(time.startDateTime, time.endDateTime);
+
+          previousTime = {
+            mode: "datetime-range",
+            startDateTime: start.minus(duration).toISO() ?? "",
+            endDateTime: end.minus(duration).toISO() ?? "",
           };
         } else if (time.mode === "week") {
           bucketToUse = "day";
@@ -314,6 +336,19 @@ export const goBack = () => {
       },
       false
     );
+  } else if (time.mode === "datetime-range") {
+    const start = DateTime.fromISO(time.startDateTime);
+    const end = DateTime.fromISO(time.endDateTime);
+    const duration = end.diff(start);
+
+    setTime(
+      {
+        mode: "datetime-range",
+        startDateTime: start.minus(duration).toISO() ?? "",
+        endDateTime: end.minus(duration).toISO() ?? "",
+      },
+      false
+    );
   } else if (time.mode === "week") {
     setTime(
       {
@@ -368,6 +403,26 @@ export const goForward = () => {
         startDate: startDate.plus({ days: daysBetweenStartAndEnd }).toISODate() ?? "",
         // Cap the end date at today
         endDate: proposedEndDate.toISODate() ?? "",
+      },
+      false
+    );
+  } else if (time.mode === "datetime-range") {
+    const start = DateTime.fromISO(time.startDateTime);
+    const end = DateTime.fromISO(time.endDateTime);
+    const duration = end.diff(start);
+    const proposedStart = start.plus(duration);
+    const proposedEnd = end.plus(duration);
+    const now = DateTime.now();
+
+    if (proposedStart > now) {
+      return;
+    }
+
+    setTime(
+      {
+        mode: "datetime-range",
+        startDateTime: proposedStart.toISO() ?? "",
+        endDateTime: (proposedEnd > now ? now : proposedEnd).toISO() ?? "",
       },
       false
     );
@@ -434,6 +489,10 @@ export const canGoForward = (time: Time) => {
 
   if (time.mode === "range") {
     return !(DateTime.fromISO(time.endDate).startOf("day") >= currentDay);
+  }
+
+  if (time.mode === "datetime-range") {
+    return !(DateTime.fromISO(time.endDateTime) >= DateTime.now());
   }
 
   if (time.mode === "week") {

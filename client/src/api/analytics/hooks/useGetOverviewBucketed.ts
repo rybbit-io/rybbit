@@ -1,5 +1,6 @@
 import { Filter, TimeBucket } from "@rybbit/shared";
 import { UseQueryOptions, UseQueryResult, useQuery } from "@tanstack/react-query";
+import { Time } from "../../../components/DateSelector/types";
 import { useStore } from "../../../lib/store";
 import { APIResponse } from "../../types";
 import { buildApiParams } from "../../utils";
@@ -22,9 +23,7 @@ export function useGetOverviewBucketed({
   bucket?: TimeBucket;
   dynamicFilters?: Filter[];
   refetchInterval?: number;
-  overrideTime?:
-    | { mode: "past-minutes"; pastMinutesStart: number; pastMinutesEnd: number }
-    | { mode: "range"; startDate: string; endDate: string };
+  overrideTime?: Time;
   props?: Partial<UseQueryOptions<APIResponse<GetOverviewBucketedResponse>>>;
   useFilters?: boolean;
 }): UseQueryResult<APIResponse<GetOverviewBucketedResponse>> {

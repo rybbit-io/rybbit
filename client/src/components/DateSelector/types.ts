@@ -11,6 +11,13 @@ export type DateRangeMode = {
   wellKnown?: "last-3-days" | "last-7-days" | "last-14-days" | "last-30-days" | "last-60-days";
 };
 
+export type DateTimeRangeMode = {
+  mode: "datetime-range";
+  startDateTime: string;
+  endDateTime: string;
+  wellKnown?: never;
+};
+
 export type WeekMode = {
   mode: "week";
   week: string;
@@ -41,4 +48,12 @@ export type PastMinutesMode = {
   wellKnown?: "last-30-minutes" | "last-1-hour" | "last-6-hours" | "last-24-hours";
 };
 
-export type Time = DateMode | DateRangeMode | WeekMode | MonthMode | YearMode | AllTimeMode | PastMinutesMode;
+export type Time =
+  | DateMode
+  | DateRangeMode
+  | DateTimeRangeMode
+  | WeekMode
+  | MonthMode
+  | YearMode
+  | AllTimeMode
+  | PastMinutesMode;

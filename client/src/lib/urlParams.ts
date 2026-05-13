@@ -180,6 +180,12 @@ export const useSyncStateWithUrl = () => {
         timeFromUrl = { mode: "day", day: urlParams.day };
       } else if (urlParams.timeMode === "range" && urlParams.startDate && urlParams.endDate) {
         timeFromUrl = { mode: "range", startDate: urlParams.startDate, endDate: urlParams.endDate };
+      } else if (urlParams.timeMode === "datetime-range" && urlParams.startDateTime && urlParams.endDateTime) {
+        timeFromUrl = {
+          mode: "datetime-range",
+          startDateTime: urlParams.startDateTime,
+          endDateTime: urlParams.endDateTime,
+        };
       } else if (urlParams.timeMode === "week" && urlParams.week) {
         timeFromUrl = { mode: "week", week: urlParams.week };
       } else if (urlParams.timeMode === "month" && urlParams.month) {
@@ -246,6 +252,8 @@ export const useSyncStateWithUrl = () => {
       newParams.day = null;
       newParams.startDate = null;
       newParams.endDate = null;
+      newParams.startDateTime = null;
+      newParams.endDateTime = null;
       newParams.week = null;
       newParams.month = null;
       newParams.year = null;
@@ -253,12 +261,25 @@ export const useSyncStateWithUrl = () => {
       newParams.past_minutes_end = null;
     } else {
       newParams.wellKnown = null;
+      newParams.day = null;
+      newParams.startDate = null;
+      newParams.endDate = null;
+      newParams.startDateTime = null;
+      newParams.endDateTime = null;
+      newParams.week = null;
+      newParams.month = null;
+      newParams.year = null;
+      newParams.past_minutes_start = null;
+      newParams.past_minutes_end = null;
       // Store explicit date fields based on mode
       if (time.mode === "day" && "day" in time) {
         newParams.day = time.day;
       } else if (time.mode === "range" && "startDate" in time && "endDate" in time) {
         newParams.startDate = time.startDate;
         newParams.endDate = time.endDate;
+      } else if (time.mode === "datetime-range" && "startDateTime" in time && "endDateTime" in time) {
+        newParams.startDateTime = time.startDateTime;
+        newParams.endDateTime = time.endDateTime;
       } else if (time.mode === "week" && "week" in time) {
         newParams.week = time.week;
       } else if (time.mode === "month" && "month" in time) {

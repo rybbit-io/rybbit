@@ -7,9 +7,19 @@ import { userProfiles } from "../../../db/postgres/schema.js";
 import { validateTimeStatementParams } from "./query-validation.js";
 
 export function getTimeStatement(
-  params: Pick<FilterParams, "start_date" | "end_date" | "time_zone" | "past_minutes_start" | "past_minutes_end">
+  params: Pick<
+    FilterParams,
+    | "start_date"
+    | "end_date"
+    | "time_zone"
+    | "start_datetime"
+    | "end_datetime"
+    | "past_minutes_start"
+    | "past_minutes_end"
+  >
 ) {
-  const { start_date, end_date, time_zone, past_minutes_start, past_minutes_end } = params;
+  const { start_date, end_date, time_zone, start_datetime, end_datetime, past_minutes_start, past_minutes_end } =
+    params;
 
   // Construct the legacy format for validation
   const pastMinutesRange =
@@ -18,10 +28,12 @@ export function getTimeStatement(
       : undefined;
 
   const date = start_date && end_date && time_zone ? { start_date, end_date, time_zone } : undefined;
+  const dateTimeRange = start_datetime && end_datetime ? { start_datetime, end_datetime } : undefined;
 
   // Sanitize inputs with Zod
   const sanitized = validateTimeStatementParams({
     date,
+    dateTimeRange,
     pastMinutesRange,
   });
 
@@ -44,6 +56,12 @@ export function getTimeStatement(
           'UTC'
         )
       )`;
+  }
+
+  if (sanitized.dateTimeRange) {
+    const { start_datetime, end_datetime } = sanitized.dateTimeRange;
+    return `AND timestamp >= toDateTime(${SqlString.escape(start_datetime)}, 'UTC')
+      AND timestamp < toDateTime(${SqlString.escape(end_datetime)}, 'UTC')`;
   }
 
   // Handle specific range of past minutes - convert to exact timestamps for better performance

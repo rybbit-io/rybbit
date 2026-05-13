@@ -10,6 +10,13 @@ export function getStartAndEndDate(time: Time): { startDate: string | null; endD
   if (time.mode === "range") {
     return { startDate: time.startDate, endDate: time.endDate };
   }
+  if (time.mode === "datetime-range") {
+    const timeZone = getTimezone();
+    return {
+      startDate: DateTime.fromISO(time.startDateTime).setZone(timeZone).toISODate(),
+      endDate: DateTime.fromISO(time.endDateTime).setZone(timeZone).minus({ milliseconds: 1 }).toISODate(),
+    };
+  }
   if (time.mode === "week") {
     return {
       startDate: time.week,
@@ -59,6 +66,17 @@ export function buildApiParams(time: Time, options: { filters?: Filter[] } = {})
       filters,
       pastMinutesStart: time.pastMinutesStart,
       pastMinutesEnd: time.pastMinutesEnd,
+    };
+  }
+
+  if (time.mode === "datetime-range") {
+    return {
+      startDate: "",
+      endDate: "",
+      timeZone,
+      filters,
+      startDateTime: DateTime.fromISO(time.startDateTime).toUTC().toFormat("yyyy-MM-dd HH:mm:ss"),
+      endDateTime: DateTime.fromISO(time.endDateTime).toUTC().toFormat("yyyy-MM-dd HH:mm:ss"),
     };
   }
 

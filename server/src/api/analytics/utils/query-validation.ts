@@ -9,6 +9,13 @@ import { z } from "zod";
  * Date validation regex for YYYY-MM-DD format
  */
 const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+const dateTimeRegex = /^\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}(:\d{2})?(Z|[+-]\d{2}:?\d{2})?$/;
+
+const parseDateTimeMs = (value: string) => {
+  const normalized = value.includes("T") ? value : value.replace(" ", "T");
+  const withZone = /(?:Z|[+-]\d{2}:?\d{2})$/.test(normalized) ? normalized : `${normalized}Z`;
+  return Date.parse(withZone);
+};
 
 /**
  * Schema for simplified date parameters without table
@@ -45,6 +52,25 @@ const fillDateParamsSchema = z.object({
     ),
 });
 
+const dateTimeRangeSchema = z
+  .object({
+    start_datetime: z
+      .string()
+      .regex(dateTimeRegex, { message: "Invalid datetime format. Use YYYY-MM-DD HH:mm:ss" })
+      .refine(date => !isNaN(parseDateTimeMs(date)), {
+        message: "Invalid datetime value",
+      }),
+    end_datetime: z
+      .string()
+      .regex(dateTimeRegex, { message: "Invalid datetime format. Use YYYY-MM-DD HH:mm:ss" })
+      .refine(date => !isNaN(parseDateTimeMs(date)), {
+        message: "Invalid datetime value",
+      }),
+  })
+  .refine(data => parseDateTimeMs(data.start_datetime) < parseDateTimeMs(data.end_datetime), {
+    message: "start_datetime must be before end_datetime",
+  });
+
 /**
  * Schema for parameters to getTimeStatement() function
  * Either date or pastMinutesRange must be provided
@@ -52,6 +78,7 @@ const fillDateParamsSchema = z.object({
 const timeStatementParamsSchema = z
   .object({
     date: fillDateParamsSchema.optional(),
+    dateTimeRange: dateTimeRangeSchema.optional(),
     pastMinutesRange: z
       .object({
         start: z.number().nonnegative(),
@@ -62,12 +89,13 @@ const timeStatementParamsSchema = z
         message: "start must be greater than end (start = older, end = newer)",
       }),
   })
-  .refine(data => data.date !== undefined || data.pastMinutesRange !== undefined, {
-    message: "Either date or pastMinutesRange must be provided",
+  .refine(data => data.date !== undefined || data.dateTimeRange !== undefined || data.pastMinutesRange !== undefined, {
+    message: "Either date, dateTimeRange, or pastMinutesRange must be provided",
   })
   // Set default empty objects if schema validation fails
   .catch({
     date: undefined,
+    dateTimeRange: undefined,
     pastMinutesRange: undefined,
   });
 
@@ -107,6 +135,20 @@ const filterParamsTimeStatementFillSchema = z
         },
         { message: "Invalid time zone" }
       ),
+    start_datetime: z
+      .string()
+      .regex(dateTimeRegex, { message: "Invalid datetime format. Use YYYY-MM-DD HH:mm:ss" })
+      .optional()
+      .refine(date => !date || !isNaN(parseDateTimeMs(date)), {
+        message: "Invalid datetime value",
+      }),
+    end_datetime: z
+      .string()
+      .regex(dateTimeRegex, { message: "Invalid datetime format. Use YYYY-MM-DD HH:mm:ss" })
+      .optional()
+      .refine(date => !date || !isNaN(parseDateTimeMs(date)), {
+        message: "Invalid datetime value",
+      }),
     past_minutes_start: z
       .union([z.string(), z.number()])
       .optional()
@@ -134,11 +176,24 @@ const filterParamsTimeStatementFillSchema = z
   .refine(
     data => {
       const hasDateParams = data.start_date && data.end_date && data.time_zone;
+      const hasDateTimeParams = data.start_datetime && data.end_datetime && data.time_zone;
       const hasPastMinutesParams = data.past_minutes_start !== undefined && data.past_minutes_end !== undefined;
-      return hasDateParams || hasPastMinutesParams;
+      return hasDateParams || hasDateTimeParams || hasPastMinutesParams;
     },
     {
-      message: "Either (start_date, end_date, time_zone) or (past_minutes_start, past_minutes_end) must be provided",
+      message:
+        "Either (start_date, end_date, time_zone), (start_datetime, end_datetime, time_zone), or (past_minutes_start, past_minutes_end) must be provided",
+    }
+  )
+  .refine(
+    data => {
+      if (data.start_datetime && data.end_datetime) {
+        return parseDateTimeMs(data.start_datetime) < parseDateTimeMs(data.end_datetime);
+      }
+      return true;
+    },
+    {
+      message: "start_datetime must be before end_datetime",
     }
   )
   .refine(

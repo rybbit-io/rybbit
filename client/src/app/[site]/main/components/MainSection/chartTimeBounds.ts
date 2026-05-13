@@ -17,6 +17,30 @@ const bucketEndOffsetMinutes = (bucket: TimeBucket): number => {
   }
 };
 
+const stepBucket = (dt: DateTime, bucket: TimeBucket, direction: 1 | -1): DateTime => {
+  const n = direction;
+  switch (bucket) {
+    case "minute":
+      return dt.plus({ minutes: n });
+    case "five_minutes":
+      return dt.plus({ minutes: 5 * n });
+    case "ten_minutes":
+      return dt.plus({ minutes: 10 * n });
+    case "fifteen_minutes":
+      return dt.plus({ minutes: 15 * n });
+    case "hour":
+      return dt.plus({ hours: n });
+    case "day":
+      return dt.plus({ days: n });
+    case "week":
+      return dt.plus({ weeks: n });
+    case "month":
+      return dt.plus({ months: n });
+    case "year":
+      return dt.plus({ years: n });
+  }
+};
+
 export type ChartTimeBounds = { min: Date | undefined; max: Date | undefined };
 
 // Returns full-period x-scale bounds so the current and previous charts share
@@ -85,6 +109,16 @@ export const getChartTimeBounds = (
         .endOf("day")
         .minus({ minutes: offset })
         .toJSDate(),
+    };
+  }
+
+  if (time.mode === "datetime-range") {
+    const start = DateTime.fromISO(time.startDateTime);
+    const endExclusive = DateTime.fromISO(time.endDateTime);
+    const displayEnd = stepBucket(endExclusive, bucket, -1);
+    return {
+      min: start.toJSDate(),
+      max: (displayEnd > start ? displayEnd : endExclusive).toJSDate(),
     };
   }
 
