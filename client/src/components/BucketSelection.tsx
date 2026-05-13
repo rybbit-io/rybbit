@@ -127,7 +127,10 @@ export function BucketSelection() {
       const timeRangeLength =
         exactRangeMinutes !== undefined
           ? exactRangeMinutes / 1440
-          : DateTime.fromISO(time.endDate).diff(DateTime.fromISO(time.startDate), "days").days + 1;
+          : DateTime.fromISO(time.endDate, { zone: timezone }).diff(
+              DateTime.fromISO(time.startDate, { zone: timezone }),
+              "days"
+            ).days + 1;
 
       return (
         <SelectContent>

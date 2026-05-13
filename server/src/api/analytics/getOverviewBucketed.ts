@@ -3,7 +3,13 @@ import { FastifyReply, FastifyRequest } from "fastify";
 import SqlString from "sqlstring";
 import { clickhouse } from "../../db/clickhouse/clickhouse.js";
 import { validateTimeStatementFillParams } from "./utils/query-validation.js";
-import { getTimeStatement, processResults, TimeBucketToFn, bucketIntervalMap } from "./utils/utils.js";
+import {
+  getTimeStatement,
+  normalizeDatetimeForClickhouse,
+  processResults,
+  TimeBucketToFn,
+  bucketIntervalMap,
+} from "./utils/utils.js";
 import { getFilterStatement } from "./utils/getFilterStatement.js";
 import { TimeBucket } from "./types.js";
 
@@ -31,15 +37,17 @@ function getTimeStatementFill(params: FilterParams, bucket: TimeBucket) {
   }
   if (validatedParams.start_datetime && validatedParams.end_datetime && validatedParams.time_zone) {
     const { start_datetime, end_datetime, time_zone } = validatedParams;
+    const normalizedStartDatetime = normalizeDatetimeForClickhouse(start_datetime);
+    const normalizedEndDatetime = normalizeDatetimeForClickhouse(end_datetime);
     return `WITH FILL FROM toTimeZone(
       toDateTime(${TimeBucketToFn[validatedBucket]}(toTimeZone(toDateTime(${SqlString.escape(
-        start_datetime
+        normalizedStartDatetime
       )}, 'UTC'), ${SqlString.escape(time_zone)}))),
       'UTC'
       )
       TO toTimeZone(
         toDateTime(${TimeBucketToFn[validatedBucket]}(toTimeZone(toDateTime(${SqlString.escape(
-          end_datetime
+          normalizedEndDatetime
         )}, 'UTC'), ${SqlString.escape(time_zone)}))),
         'UTC'
       ) STEP INTERVAL ${bucketIntervalMap[validatedBucket]}`;

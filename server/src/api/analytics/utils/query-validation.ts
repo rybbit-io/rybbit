@@ -9,7 +9,7 @@ import { z } from "zod";
  * Date validation regex for YYYY-MM-DD format
  */
 const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
-const dateTimeRegex = /^\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}(:\d{2})?(Z|[+-]\d{2}:?\d{2})?$/;
+const dateTimeRegex = /^\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}:\d{2}(Z|[+-]\d{2}:?\d{2})?$/;
 
 const parseDateTimeMs = (value: string) => {
   const normalized = value.includes("T") ? value : value.replace(" ", "T");
