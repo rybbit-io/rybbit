@@ -8,14 +8,15 @@ import { CommonApiParams } from "./analytics/endpoints/types";
 
 export function getStartAndEndDate(time: Time): { startDate: string | null; endDate: string | null } {
   if (time.mode === "range") {
+    if (time.startTime && time.endTime) {
+      const timeZone = getTimezone();
+      const end = DateTime.fromISO(`${time.endDate}T${time.endTime}`, { zone: timeZone });
+      return {
+        startDate: time.startDate,
+        endDate: end.minus({ milliseconds: 1 }).toISODate(),
+      };
+    }
     return { startDate: time.startDate, endDate: time.endDate };
-  }
-  if (time.mode === "datetime-range") {
-    const timeZone = getTimezone();
-    return {
-      startDate: DateTime.fromISO(time.startDateTime).setZone(timeZone).toISODate(),
-      endDate: DateTime.fromISO(time.endDateTime).setZone(timeZone).minus({ milliseconds: 1 }).toISODate(),
-    };
   }
   if (time.mode === "week") {
     return {
@@ -69,14 +70,16 @@ export function buildApiParams(time: Time, options: { filters?: Filter[] } = {})
     };
   }
 
-  if (time.mode === "datetime-range") {
+  if (time.mode === "range" && time.startTime && time.endTime) {
+    const start = DateTime.fromISO(`${time.startDate}T${time.startTime}`, { zone: timeZone });
+    const end = DateTime.fromISO(`${time.endDate}T${time.endTime}`, { zone: timeZone });
     return {
       startDate: "",
       endDate: "",
       timeZone,
       filters,
-      startDateTime: DateTime.fromISO(time.startDateTime).toUTC().toFormat("yyyy-MM-dd HH:mm:ss"),
-      endDateTime: DateTime.fromISO(time.endDateTime).toUTC().toFormat("yyyy-MM-dd HH:mm:ss"),
+      startDateTime: start.toUTC().toFormat("yyyy-MM-dd HH:mm:ss"),
+      endDateTime: end.toUTC().toFormat("yyyy-MM-dd HH:mm:ss"),
     };
   }
 

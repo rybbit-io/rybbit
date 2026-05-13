@@ -96,9 +96,6 @@ const canDragSelectBucket = (bucket: TimeBucket) =>
   bucket === "hour" ||
   bucket === "day";
 
-const toUtcIso = (dt: DateTime) =>
-  dt.toUTC().toISO({ suppressMilliseconds: true });
-
 type Point = {
   x: Date;
   y: number;
@@ -125,7 +122,8 @@ const formatXTick = (
   date: Date,
   mode: Time["mode"],
   bucket: TimeBucket,
-  pastMinutesStart: number | undefined
+  pastMinutesStart: number | undefined,
+  isExactRange: boolean
 ) => {
   const dt = DateTime.fromJSDate(date, { zone: "utc" })
     .setZone(getTimezone())
@@ -138,7 +136,7 @@ const formatXTick = (
   }
   if (
     mode === "day" ||
-    (mode === "datetime-range" &&
+    (isExactRange &&
       (bucket === "minute" ||
         bucket === "five_minutes" ||
         bucket === "ten_minutes" ||
@@ -165,6 +163,7 @@ export function Chart({
   const { resolvedTheme } = useTheme();
   const isDark = resolvedTheme === "dark";
   const timezone = getTimezone();
+  const isExactRange = time.mode === "range" && Boolean(time.startTime && time.endTime);
   const clipId = useId().replace(/:/g, "");
 
   const wrapperRef = useRef<HTMLDivElement>(null);
@@ -248,7 +247,7 @@ export function Chart({
     const currentMonthStr = DateTime.now().toFormat("yyyy-MM-01");
     const shouldNotDisplay =
       time.mode === "all-time" ||
-      time.mode === "datetime-range" ||
+      isExactRange ||
       time.mode === "year" ||
       (time.mode === "month" && time.month !== currentMonthStr) ||
       (time.mode === "day" && time.day !== currentDayStr) ||
@@ -275,6 +274,7 @@ export function Chart({
     bucket,
     timezone,
     chartXMax,
+    isExactRange,
   ]);
 
   const W = size.width;
@@ -530,10 +530,20 @@ export function Chart({
         return;
       }
 
-      const startDateTime = toUtcIso(startBucket);
-      const endDateTime = toUtcIso(stepBucket(endBucket, bucket, 1));
-      if (startDateTime && endDateTime) {
-        setTime({ mode: "datetime-range", startDateTime, endDateTime }, false);
+      const endExclusive = stepBucket(endBucket, bucket, 1);
+      const startDate = startBucket.toISODate();
+      const endDate = endExclusive.toISODate();
+      if (startDate && endDate) {
+        setTime(
+          {
+            mode: "range",
+            startDate,
+            endDate,
+            startTime: startBucket.toFormat("HH:mm:ss"),
+            endTime: endExclusive.toFormat("HH:mm:ss"),
+          },
+          false
+        );
       }
     };
 
@@ -696,7 +706,8 @@ export function Chart({
                   bucket,
                   time.mode === "past-minutes"
                     ? time.pastMinutesStart
-                    : undefined
+                    : undefined,
+                  isExactRange
                 )}
               </text>
             </g>

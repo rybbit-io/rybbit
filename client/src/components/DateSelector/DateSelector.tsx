@@ -88,21 +88,19 @@ export function DateSelector({
     const now = DateTime.now().setZone(tz);
 
     if (time.mode === "range") {
+      if (time.startTime && time.endTime) {
+        const start = DateTime.fromISO(`${time.startDate}T${time.startTime}`, { zone: tz });
+        const endExclusive = DateTime.fromISO(`${time.endDate}T${time.endTime}`, { zone: tz });
+        const displayEnd = stepDateTimeBucket(endExclusive, bucket, -1);
+        const startFormatted = start.toFormat(hour12 ? "MMM d, h:mm a" : "MMM d, HH:mm");
+        const endFormatted = (displayEnd > start ? displayEnd : endExclusive).toFormat(
+          hour12 ? "MMM d, h:mm a" : "MMM d, HH:mm"
+        );
+        return `${startFormatted} - ${endFormatted}`;
+      }
+
       const startFormatted = DateTime.fromISO(time.startDate).toFormat("EEEE, MMM d");
       const endFormatted = DateTime.fromISO(time.endDate).toFormat("EEEE, MMM d");
-      return `${startFormatted} - ${endFormatted}`;
-    }
-
-    if (time.mode === "datetime-range") {
-      const start = DateTime.fromISO(time.startDateTime);
-      const endExclusive = DateTime.fromISO(time.endDateTime);
-      const displayEnd = stepDateTimeBucket(endExclusive, bucket, -1);
-      const startFormatted = start
-        .setZone(tz)
-        .toFormat(hour12 ? "MMM d, h:mm a" : "MMM d, HH:mm");
-      const endFormatted = (displayEnd > start ? displayEnd : endExclusive)
-        .setZone(tz)
-        .toFormat(hour12 ? "MMM d, h:mm a" : "MMM d, HH:mm");
       return `${startFormatted} - ${endFormatted}`;
     }
 

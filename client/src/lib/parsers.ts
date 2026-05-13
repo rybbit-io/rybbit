@@ -39,7 +39,6 @@ export const parseAsStatType = parseAsStringEnum<StatType>(statTypeValues);
 const timeModeValues: string[] = [
   "day",
   "range",
-  "datetime-range",
   "week",
   "month",
   "year",
@@ -103,6 +102,8 @@ export const analyticsParsers = {
   day: parseAsIsoDate,
   startDate: parseAsIsoDate,
   endDate: parseAsIsoDate,
+  startTime: parseAsOptionalString,
+  endTime: parseAsOptionalString,
   startDateTime: parseAsOptionalString,
   endDateTime: parseAsOptionalString,
   week: parseAsIsoDate,

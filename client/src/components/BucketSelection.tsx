@@ -1,6 +1,6 @@
 "use client";
 
-import { useStore } from "@/lib/store";
+import { getTimezone, useStore } from "@/lib/store";
 import { SelectItem, Select, SelectContent, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DateTime } from "luxon";
 import { useExtracted } from "next-intl";
@@ -116,10 +116,26 @@ export function BucketSelection() {
     }
 
     if (time.mode === "range") {
-      const timeRangeLength = DateTime.fromISO(time.endDate).diff(DateTime.fromISO(time.startDate), "days").days + 1;
+      const exactRange = Boolean(time.startTime && time.endTime);
+      const timezone = getTimezone();
+      const exactRangeMinutes = exactRange
+        ? DateTime.fromISO(`${time.endDate}T${time.endTime}`, { zone: timezone }).diff(
+          DateTime.fromISO(`${time.startDate}T${time.startTime}`, { zone: timezone }),
+          "minutes"
+        ).minutes
+        : undefined;
+      const timeRangeLength =
+        exactRangeMinutes !== undefined
+          ? exactRangeMinutes / 1440
+          : DateTime.fromISO(time.endDate).diff(DateTime.fromISO(time.startDate), "days").days + 1;
 
       return (
         <SelectContent>
+          {exactRangeMinutes !== undefined && timeRangeLength <= 1 && (
+            <SelectItem size="sm" value="minute">
+              {t("Min")}
+            </SelectItem>
+          )}
           {timeRangeLength <= 7 && (
             <SelectItem size="sm" value="five_minutes">
               {t("5 Min")}
@@ -151,56 +167,6 @@ export function BucketSelection() {
             </SelectItem>
           )}
           {timeRangeLength >= 60 && (
-            <SelectItem size="sm" value="month">
-              {t("Month")}
-            </SelectItem>
-          )}
-        </SelectContent>
-      );
-    }
-
-    if (time.mode === "datetime-range") {
-      const minutes = DateTime.fromISO(time.endDateTime).diff(DateTime.fromISO(time.startDateTime), "minutes").minutes;
-      const days = minutes / 1440;
-
-      return (
-        <SelectContent>
-          {minutes <= 120 && (
-            <SelectItem size="sm" value="minute">
-              {t("Min")}
-            </SelectItem>
-          )}
-          {days <= 7 && (
-            <SelectItem size="sm" value="five_minutes">
-              {t("5 Min")}
-            </SelectItem>
-          )}
-          {days <= 14 && (
-            <>
-              <SelectItem size="sm" value="ten_minutes">
-                {t("10 Min")}
-              </SelectItem>
-              <SelectItem size="sm" value="fifteen_minutes">
-                {t("15 Min")}
-              </SelectItem>
-            </>
-          )}
-          {days <= 30 && (
-            <SelectItem size="sm" value="hour">
-              {t("Hour")}
-            </SelectItem>
-          )}
-          {days >= 1 && (
-            <SelectItem size="sm" value="day">
-              {t("Day")}
-            </SelectItem>
-          )}
-          {days >= 28 && (
-            <SelectItem size="sm" value="week">
-              {t("Week")}
-            </SelectItem>
-          )}
-          {days >= 60 && (
             <SelectItem size="sm" value="month">
               {t("Month")}
             </SelectItem>

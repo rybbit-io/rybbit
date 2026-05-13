@@ -179,13 +179,16 @@ export const useSyncStateWithUrl = () => {
       if (urlParams.timeMode === "day" && urlParams.day) {
         timeFromUrl = { mode: "day", day: urlParams.day };
       } else if (urlParams.timeMode === "range" && urlParams.startDate && urlParams.endDate) {
-        timeFromUrl = { mode: "range", startDate: urlParams.startDate, endDate: urlParams.endDate };
-      } else if (urlParams.timeMode === "datetime-range" && urlParams.startDateTime && urlParams.endDateTime) {
-        timeFromUrl = {
-          mode: "datetime-range",
-          startDateTime: urlParams.startDateTime,
-          endDateTime: urlParams.endDateTime,
-        };
+        timeFromUrl =
+          urlParams.startTime && urlParams.endTime
+            ? {
+                mode: "range",
+                startDate: urlParams.startDate,
+                endDate: urlParams.endDate,
+                startTime: urlParams.startTime,
+                endTime: urlParams.endTime,
+              }
+            : { mode: "range", startDate: urlParams.startDate, endDate: urlParams.endDate };
       } else if (urlParams.timeMode === "week" && urlParams.week) {
         timeFromUrl = { mode: "week", week: urlParams.week };
       } else if (urlParams.timeMode === "month" && urlParams.month) {
@@ -252,6 +255,8 @@ export const useSyncStateWithUrl = () => {
       newParams.day = null;
       newParams.startDate = null;
       newParams.endDate = null;
+      newParams.startTime = null;
+      newParams.endTime = null;
       newParams.startDateTime = null;
       newParams.endDateTime = null;
       newParams.week = null;
@@ -264,6 +269,8 @@ export const useSyncStateWithUrl = () => {
       newParams.day = null;
       newParams.startDate = null;
       newParams.endDate = null;
+      newParams.startTime = null;
+      newParams.endTime = null;
       newParams.startDateTime = null;
       newParams.endDateTime = null;
       newParams.week = null;
@@ -277,9 +284,8 @@ export const useSyncStateWithUrl = () => {
       } else if (time.mode === "range" && "startDate" in time && "endDate" in time) {
         newParams.startDate = time.startDate;
         newParams.endDate = time.endDate;
-      } else if (time.mode === "datetime-range" && "startDateTime" in time && "endDateTime" in time) {
-        newParams.startDateTime = time.startDateTime;
-        newParams.endDateTime = time.endDateTime;
+        newParams.startTime = time.startTime ?? null;
+        newParams.endTime = time.endTime ?? null;
       } else if (time.mode === "week" && "week" in time) {
         newParams.week = time.week;
       } else if (time.mode === "month" && "month" in time) {

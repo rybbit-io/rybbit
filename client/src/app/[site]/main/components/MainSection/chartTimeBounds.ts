@@ -103,22 +103,22 @@ export const getChartTimeBounds = (
   }
 
   if (time.mode === "range") {
+    if (time.startTime && time.endTime) {
+      const start = DateTime.fromISO(`${time.startDate}T${time.startTime}`, { zone: timezone });
+      const endExclusive = DateTime.fromISO(`${time.endDate}T${time.endTime}`, { zone: timezone });
+      const displayEnd = stepBucket(endExclusive, bucket, -1);
+      return {
+        min: start.toJSDate(),
+        max: (displayEnd > start ? displayEnd : endExclusive).toJSDate(),
+      };
+    }
+
     return {
       min: DateTime.fromISO(time.startDate, { zone: timezone }).startOf("day").toJSDate(),
       max: DateTime.fromISO(time.endDate, { zone: timezone })
         .endOf("day")
         .minus({ minutes: offset })
         .toJSDate(),
-    };
-  }
-
-  if (time.mode === "datetime-range") {
-    const start = DateTime.fromISO(time.startDateTime);
-    const endExclusive = DateTime.fromISO(time.endDateTime);
-    const displayEnd = stepBucket(endExclusive, bucket, -1);
-    return {
-      min: start.toJSDate(),
-      max: (displayEnd > start ? displayEnd : endExclusive).toJSDate(),
     };
   }
 
