@@ -392,6 +392,39 @@ async function initializeLiteDashboardMVs() {
     `,
   });
 
+  // Device-type rollup.
+  await clickhouse.exec({
+    query: `
+      CREATE TABLE IF NOT EXISTS device_type_hourly_mv_target (
+        site_id UInt16,
+        event_hour DateTime,
+        device_type LowCardinality(String),
+        pageviews SimpleAggregateFunction(sum, UInt64),
+        users AggregateFunction(uniq, String),
+        sessions AggregateFunction(uniq, String)
+      )
+      ENGINE = AggregatingMergeTree()
+      PARTITION BY toYYYYMM(event_hour)
+      ORDER BY (site_id, event_hour, device_type)
+    `,
+  });
+
+  await clickhouse.exec({
+    query: `
+      CREATE MATERIALIZED VIEW IF NOT EXISTS device_type_hourly_mv
+      TO device_type_hourly_mv_target
+      AS SELECT
+        site_id,
+        toStartOfHour(timestamp) AS event_hour,
+        device_type,
+        countIf(type = 'pageview') AS pageviews,
+        uniqState(user_id) AS users,
+        uniqState(session_id) AS sessions
+      FROM events
+      GROUP BY site_id, event_hour, device_type
+    `,
+  });
+
   // Session-keyed hourly rollup, populated by a REFRESHABLE materialized view.
   // Streaming MVs can't compute bounce_rate or session_duration because they
   // see one event at a time, never the full per-session state. The refreshable

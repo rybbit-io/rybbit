@@ -11,6 +11,7 @@ import { MainSectionLite } from "./components/MainSection/MainSectionLite";
 import { Countries } from "./components/sections/Countries";
 import { CountriesLite } from "./components/sections/CountriesLite";
 import { Devices } from "./components/sections/Devices";
+import { DevicesLite } from "./components/sections/DevicesLite";
 import { Events } from "./components/sections/Events";
 import { Pages } from "./components/sections/Pages";
 import { PagesLite } from "./components/sections/PagesLite";
@@ -49,6 +50,7 @@ function MainPageContent() {
         <MainSectionLite />
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 mt-3">
           <LazySection><PagesLite /></LazySection>
+          <LazySection><DevicesLite /></LazySection>
           <LazySection><CountriesLite /></LazySection>
         </div>
       </div>

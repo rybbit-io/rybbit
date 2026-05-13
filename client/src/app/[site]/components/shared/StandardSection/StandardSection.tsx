@@ -139,6 +139,7 @@ export function StandardSection({
                 filterParameter={filterParameter}
                 expanded={expanded}
                 close={close}
+                lite={lite}
               />
             </div>
           ) : null}

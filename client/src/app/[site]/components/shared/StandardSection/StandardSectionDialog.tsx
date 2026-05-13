@@ -38,6 +38,7 @@ interface StandardSectionDialogProps {
   filterParameter: FilterParameter;
   expanded?: boolean;
   close: () => void;
+  lite?: boolean;
 }
 
 const columnHelper = createColumnHelper<MetricResponse>();
@@ -54,12 +55,14 @@ export function StandardSectionDialog({
   filterParameter,
   expanded,
   close,
+  lite = false,
 }: StandardSectionDialogProps) {
   const t = useExtracted();
   const { data, isLoading, isFetching, error, refetch, fetchNextPage, hasNextPage, isFetchingNextPage } =
     useInfiniteMetric({
       parameter: filterParameter,
       limit: 100,
+      lite,
     });
 
   const [searchTerm, setSearchTerm] = useState("");

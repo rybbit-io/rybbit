@@ -15,20 +15,21 @@
 //   --truncate                       TRUNCATE target tables first. Required if
 //                                    re-running — AggregatingMergeTree is not
 //                                    idempotent on re-insert.
-//   --tables sessions,overview,...   Subset to backfill. Default: all four.
+//   --tables sessions,overview,...   Subset to backfill. Default: all targets.
 //   --dry-run                        Print SQL without executing.
 
 import { clickhouse } from "../db/clickhouse/clickhouse.js";
 
-type TableKey = "sessions" | "overview" | "pathname" | "country";
+type TableKey = "sessions" | "overview" | "pathname" | "country" | "device_type";
 
-const ALL_TABLES: TableKey[] = ["sessions", "overview", "pathname", "country"];
+const ALL_TABLES: TableKey[] = ["sessions", "overview", "pathname", "country", "device_type"];
 
 const TARGET_TABLES: Record<TableKey, string> = {
   sessions: "sessions_mv_target",
   overview: "overview_hourly_mv_target",
   pathname: "pathname_hourly_mv_target",
   country: "country_hourly_mv_target",
+  device_type: "device_type_hourly_mv_target",
 };
 
 // Each SELECT mirrors the MV definition in clickhouse.ts. Keep in sync.
@@ -98,6 +99,19 @@ function buildSelectQuery(table: TableKey, where: string): string {
         FROM events
         ${where}
         GROUP BY site_id, event_hour, country, region
+      `;
+    case "device_type":
+      return `
+        SELECT
+          site_id,
+          toStartOfHour(timestamp) AS event_hour,
+          device_type,
+          countIf(type = 'pageview') AS pageviews,
+          uniqState(user_id) AS users,
+          uniqState(session_id) AS sessions
+        FROM events
+        ${where}
+        GROUP BY site_id, event_hour, device_type
       `;
   }
 }
