@@ -58,7 +58,7 @@ export function MainSectionLite() {
             <BucketSelection />
           </div>
           <div className="h-[200px] md:h-[290px] relative">
-            <Chart data={data} max={max} previousData={undefined} />
+            <Chart data={data} max={max} previousData={undefined} chartXMax={undefined} />
           </div>
         </CardContent>
       </Card>
