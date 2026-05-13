@@ -148,7 +148,7 @@ export function QueryLogTable() {
           </Select>
         </div>
         {isFetching && !isLoading && (
-          <span className="text-xs text-neutral-400">Updating...</span>
+          <span className="text-xs text-neutral-400">Updating&hellip;</span>
         )}
       </div>
 

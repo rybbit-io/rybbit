@@ -166,7 +166,7 @@ export function OutboundLinksDialog({ outboundLinks, expanded, close }: Outbound
                       rowIndex % 2 === 0 ? "bg-white dark:bg-neutral-900" : "bg-neutral-50 dark:bg-neutral-950"
                     )}
                   >
-                    <td className="px-2 py-2">
+                    <td className="p-2">
                       <div className="flex items-center gap-1">
                         <a
                           href={row.url}
@@ -185,9 +185,9 @@ export function OutboundLinksDialog({ outboundLinks, expanded, close }: Outbound
                         </a>
                       </div>
                     </td>
-                    <td className="px-2 py-2 text-right">{row.count.toLocaleString()}</td>
-                    <td className="px-2 py-2 text-right">{row.percentage.toFixed(1)}%</td>
-                    <td className="px-2 py-2 text-right text-neutral-600 dark:text-neutral-300">
+                    <td className="p-2 text-right">{row.count.toLocaleString()}</td>
+                    <td className="p-2 text-right">{row.percentage.toFixed(1)}%</td>
+                    <td className="p-2 text-right text-neutral-600 dark:text-neutral-300">
                       {(() => {
                         try {
                           const dt = DateTime.fromSQL(row.lastClicked, { zone: "utc" }).setZone(getTimezone());

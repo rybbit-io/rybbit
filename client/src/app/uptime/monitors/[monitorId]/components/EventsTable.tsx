@@ -245,7 +245,7 @@ export function EventsTable({ monitor, monitorId }: { monitor?: UptimeMonitor; m
           <div className="flex justify-center">
             <Button variant="ghost" size="sm" disabled>
               <Loader2 className="h-4 w-4 animate-spin" />
-              Loading more events...
+              Loading more events&hellip;
             </Button>
           </div>
         )}

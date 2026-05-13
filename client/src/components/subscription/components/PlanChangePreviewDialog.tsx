@@ -114,7 +114,7 @@ export function PlanChangePreviewDialog({
                 {isUpdating ? (
                   <span className="flex items-center justify-center gap-2">
                     <Loader2 className="w-4 h-4 animate-spin" />
-                    Updating...
+                    Updating&hellip;
                   </span>
                 ) : (
                   "Confirm Change"

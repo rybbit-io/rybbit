@@ -240,7 +240,7 @@ export default function RetentionPage() {
                     {cohortKeys.map(cohortPeriod => (
                       <Fragment key={cohortPeriod}>
                         {/* Cohort Info Cell */}
-                        <div className="py-2 px-2 bg-white dark:bg-neutral-900 text-sm sticky left-0 z-10 border-r border-neutral-50 dark:border-neutral-800">
+                        <div className="p-2 bg-white dark:bg-neutral-900 text-sm sticky left-0 z-10 border-r border-neutral-50 dark:border-neutral-800">
                           <div className="whitespace-nowrap text-neutral-700 dark:text-neutral-100">
                             {formatDate(cohortPeriod)}
                           </div>

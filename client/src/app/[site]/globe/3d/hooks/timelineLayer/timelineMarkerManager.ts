@@ -108,7 +108,12 @@ export async function updateMarkers(
   );
 
   // Build set of current session IDs
-  const currentSessionIds = new Set(unclusteredFeatures.map(f => f.properties?.session_id).filter(Boolean));
+  const currentSessionIds = new Set(
+    unclusteredFeatures.flatMap(f => {
+      const sessionId = f.properties?.session_id;
+      return sessionId ? [sessionId] : [];
+    })
+  );
 
   // Remove markers that are no longer unclustered
   const toRemove: string[] = [];

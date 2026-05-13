@@ -127,22 +127,20 @@ export function useOpenLayersTimelineLayer({ mapInstanceRef, mapViewRef, mapView
 
     if (shouldCluster) {
       // Create features for clustering
-      const features = activeSessions
-        .map(session => {
-          if (!session.lat || !session.lon) return null;
+      const features = activeSessions.flatMap(session => {
+        if (!session.lat || !session.lon) return [];
 
-          const feature = new Feature({
-            geometry: new Point(fromLonLat([session.lon, session.lat])),
-          });
+        const feature = new Feature({
+          geometry: new Point(fromLonLat([session.lon, session.lat])),
+        });
 
-          feature.setProperties({
-            session_id: session.session_id,
-            session,
-          });
+        feature.setProperties({
+          session_id: session.session_id,
+          session,
+        });
 
-          return feature;
-        })
-        .filter(Boolean) as Feature[];
+        return [feature];
+      });
 
       // Create vector source
       const vectorSource = new VectorSource({

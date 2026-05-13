@@ -34,7 +34,7 @@ export function SiteAccessMultiSelect({ selectedSiteIds, onChange, disabled = fa
   };
 
   if (isLoading) {
-    return <div className="text-sm text-muted-foreground">Loading sites...</div>;
+    return <div className="text-sm text-muted-foreground">Loading sites&hellip;</div>;
   }
 
   if (sites.length === 0) {

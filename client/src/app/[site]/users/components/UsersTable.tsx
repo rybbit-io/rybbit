@@ -376,7 +376,7 @@ export function UsersTable() {
               Array.from({ length: 15 }).map((_, index) => (
                 <tr key={index} className="border-b border-neutral-100 dark:border-neutral-800 animate-pulse">
                   {Array.from({ length: columns.length }).map((_, cellIndex) => (
-                    <td key={cellIndex} className="px-3 py-3">
+                    <td key={cellIndex} className="p-3">
                       <div className="h-4 bg-neutral-200 dark:bg-neutral-800 rounded"></div>
                     </td>
                   ))}
@@ -399,7 +399,7 @@ export function UsersTable() {
                 return (
                   <tr key={row.id} className="border-b border-neutral-100 dark:border-neutral-800 group hover:bg-neutral-50 dark:hover:bg-neutral-850">
                     {row.getVisibleCells().map(cell => (
-                      <td key={cell.id} className="px-3 py-3 relative">
+                      <td key={cell.id} className="p-3 relative">
                         {/* <Link
                             href={href}
                             className="absolute inset-0 z-10"

@@ -58,7 +58,7 @@ export function ReplayPlayerTopbar() {
 
   if (!pageUrl || !metadata) {
     return (
-      <div className="border border-neutral-100 dark:border-neutral-800 bg-white dark:bg-neutral-900 px-2 py-2 rounded-t-lg overflow-hidden">
+      <div className="border border-neutral-100 dark:border-neutral-800 bg-white dark:bg-neutral-900 p-2 rounded-t-lg overflow-hidden">
         <div className="flex items-center justify-between min-w-0">
           <div className="flex items-center gap-2 min-w-0 flex-1">
             <div className="h-4 w-32 bg-neutral-150 dark:bg-neutral-700 rounded animate-pulse" />
@@ -72,7 +72,7 @@ export function ReplayPlayerTopbar() {
   }
 
   return (
-    <div className="border border-neutral-100 dark:border-neutral-800 bg-white dark:bg-neutral-900 px-2 py-2 rounded-t-lg overflow-hidden">
+    <div className="border border-neutral-100 dark:border-neutral-800 bg-white dark:bg-neutral-900 p-2 rounded-t-lg overflow-hidden">
       <div className="flex items-center justify-between min-w-0">
         {/* Left side: Page path with external link */}
         <Link

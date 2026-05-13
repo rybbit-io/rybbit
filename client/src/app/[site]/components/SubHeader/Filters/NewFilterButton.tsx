@@ -102,10 +102,10 @@ function ValueStep({
 
   const suggestions = useMemo(() => {
     const fromData =
-      data?.data
-        ?.map(item => item.value)
-        .filter(Boolean)
-        .map(val => ({ value: String(val), label: String(getValueLabel(val)) })) ?? [];
+      data?.data?.flatMap(item => {
+        const val = item.value;
+        return val ? [{ value: String(val), label: String(getValueLabel(val)) }] : [];
+      }) ?? [];
     const present = new Set(fromData.map(o => o.value));
     const selectedExtras = selected
       .map(v => String(v))
