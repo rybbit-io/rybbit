@@ -285,7 +285,9 @@ async function analyticsRoutes(fastify: FastifyInstance) {
 
 async function sessionReplayRoutes(fastify: FastifyInstance) {
   // Session Replay
-  fastify.post("/session-replay/record/:siteId", recordSessionReplay); // Public - tracking endpoint
+  fastify.post("/session-replay/record/:siteId", (request, reply) =>   // TEMP: session replay ingestion disabled in response to abuse incident.
+    reply.status(200).send({ success: true, message: "Session replay temporarily disabled" })
+  ); // Public - tracking endpoint
   fastify.get("/sites/:siteId/session-replay/list", publicSite, getSessionReplays);
   fastify.get("/sites/:siteId/session-replay/:sessionId", publicSite, getSessionReplayEvents);
   fastify.delete("/sites/:siteId/session-replay/:sessionId", authSite, deleteSessionReplay);

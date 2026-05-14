@@ -34,8 +34,6 @@ export async function recordSessionReplay(
   }>,
   reply: FastifyReply
 ) {
-  // TEMP: session replay ingestion disabled in response to abuse incident.
-  return reply.status(200).send({ success: true, message: "Session replay temporarily disabled" });
 
   try {
     // Get the site configuration to get the numeric siteId
