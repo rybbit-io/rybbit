@@ -68,13 +68,13 @@ services:
 
 ```bash
 # Install dependencies
-npm install
+pnpm install
 
 # Build
-npm run build
+pnpm --filter rybbit-monitor-agent build
 
 # Run
-npm start
+pnpm --filter rybbit-monitor-agent start
 ```
 
 ## API Endpoints

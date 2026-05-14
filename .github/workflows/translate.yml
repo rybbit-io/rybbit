@@ -25,12 +25,16 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
+          cache: pnpm
+
+      - name: Enable Corepack
+        run: corepack enable
 
       - name: Install dependencies
-        run: cd client && npm ci
+        run: pnpm install --frozen-lockfile --filter client...
 
       - name: Extract messages
-        run: cd client && node scripts/extract-messages.mjs
+        run: pnpm --filter client extract
 
       - name: Check for untranslated strings
         id: changes
@@ -71,12 +75,16 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
+          cache: pnpm
+
+      - name: Enable Corepack
+        run: corepack enable
 
       - name: Install dependencies
-        run: cd client && npm ci
+        run: pnpm install --frozen-lockfile --filter client...
 
       - name: Extract messages
-        run: cd client && node scripts/extract-messages.mjs
+        run: pnpm --filter client extract
 
       - name: Run Claude Code
         uses: anthropics/claude-code-action@v1

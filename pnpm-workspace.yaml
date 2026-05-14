@@ -1,0 +1,17 @@
+packages:
+  - client
+  - server
+  - docs
+  - monitor-agent
+  - shared
+
+packageExtensions:
+  "@fastify/cors@*":
+    peerDependencies:
+      fastify: "*"
+  "@fastify/rate-limit@*":
+    peerDependencies:
+      fastify: "*"
+  "@fastify/static@*":
+    peerDependencies:
+      fastify: "*"

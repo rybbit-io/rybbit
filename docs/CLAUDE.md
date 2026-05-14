@@ -4,9 +4,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Commands
 
-- Dev: `npm run dev` (Next.js with Turbopack on port 3003)
-- Build: `npm run build`
-- Production: `npm start`
+- Dev: `pnpm --filter docs-v2 dev` (Next.js with Turbopack on port 3003)
+- Build: `pnpm --filter docs-v2 build`
+- Production: `pnpm --filter docs-v2 start`
 - Type Check: `tsc --noEmit`
 ## Project Overview
 
@@ -55,7 +55,7 @@ This is the documentation and marketing website for Rybbit, built with Next.js 1
 - **Fumadocs i18n**: `src/lib/i18n.ts` configures the Fumadocs doc tree with the same locales
 - **Usage in components**: `const t = useExtracted()` from `next-intl`, then `t("key")` or `t("Welcome {name}", { name })`
 - **Language Switcher**: `src/components/LanguageSwitcher.tsx` — client component dropdown for all 10 locales
-- **Adding translations**: Add keys to `messages/en.json`, then run `npm run extract` to sync all locale files
+- **Adding translations**: Add keys to `messages/en.json`, then run `pnpm --filter docs-v2 extract` to sync all locale files
 - **Automated translation**: `.github/workflows/translate-docs.yml` detects untranslated strings on push to master and opens a PR with AI-generated translations
 
 ### Path Aliases

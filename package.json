@@ -1,0 +1,19 @@
+{
+  "name": "rybbit",
+  "version": "2.6.0",
+  "private": true,
+  "packageManager": "pnpm@10.33.0",
+  "scripts": {
+    "build": "pnpm -r --if-present build",
+    "build:client": "pnpm --filter client build",
+    "build:server": "pnpm --filter rybbit-backend build",
+    "build:docs": "pnpm --filter docs-v2 build",
+    "build:monitor-agent": "pnpm --filter rybbit-monitor-agent build",
+    "dev:client": "pnpm --filter client dev",
+    "dev:server": "pnpm --filter rybbit-backend dev",
+    "dev:docs": "pnpm --filter docs-v2 dev",
+    "dev:monitor-agent": "pnpm --filter rybbit-monitor-agent dev",
+    "lint": "pnpm -r --if-present lint",
+    "test": "pnpm -r --if-present test:run"
+  }
+}

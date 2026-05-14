@@ -1,4 +1,7 @@
 FROM node:20-alpine
+ENV PNPM_HOME="/pnpm"
+ENV PATH="$PNPM_HOME:$PATH"
+RUN corepack enable
 
 # Install required system packages
 RUN apk add --no-cache \
@@ -9,16 +12,18 @@ RUN apk add --no-cache \
 WORKDIR /app
 
 # Copy package files
-COPY package*.json ./
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc ./
+COPY monitor-agent/package.json ./monitor-agent/package.json
 
 # Install all dependencies (including dev)
-RUN npm ci
+RUN pnpm install --frozen-lockfile --filter rybbit-monitor-agent
 
 # Copy source code
-COPY . .
+COPY monitor-agent ./monitor-agent
 
+WORKDIR /app/monitor-agent
 # Expose port
 EXPOSE 3003
 
 # Run in development mode with hot reloading
-CMD ["npm", "run", "dev"]
+CMD ["pnpm", "run", "dev"]

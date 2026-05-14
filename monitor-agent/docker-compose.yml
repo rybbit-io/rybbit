@@ -1,8 +1,8 @@
 services:
   monitor-agent:
     build:
-      context: .
-      dockerfile: Dockerfile
+      context: ..
+      dockerfile: monitor-agent/Dockerfile
     container_name: rybbit-monitor-agent
     ports:
       - "${PORT:-3003}:3003"

@@ -7,58 +7,58 @@ Self-hosted analytics backend using ClickHouse.
 ### Prerequisites
 
 - Node.js (v22.1.0 or higher)
-- npm
+- pnpm
 
 ### Installation
 
 ```bash
-npm install
+pnpm install
 ```
 
 ### Running the Application
 
 ```bash
 # Development mode
-npm run dev
+pnpm --filter rybbit-backend dev
 
 # Production build
-npm run build
-npm start
+pnpm --filter rybbit-backend build
+pnpm --filter rybbit-backend start
 ```
 
 ### Testing
 
 ```bash
 # Run tests once
-npm run test:run
+pnpm --filter rybbit-backend test:run
 
 # Run tests in watch mode
-npm run test:watch
+pnpm --filter rybbit-backend test:watch
 
 # Run tests with coverage
-npm run test
+pnpm --filter rybbit-backend test
 ```
 
 ### Database Operations
 
 ```bash
 # Generate migrations
-npm run db:generate
+pnpm --filter rybbit-backend db:generate
 
 # Run migrations
-npm run db:migrate
+pnpm --filter rybbit-backend db:migrate
 
 # Push schema changes
-npm run db:push
+pnpm --filter rybbit-backend db:push
 
 # Pull schema from database
-npm run db:pull
+pnpm --filter rybbit-backend db:pull
 
 # Drop database
-npm run db:drop
+pnpm --filter rybbit-backend db:drop
 
 # Check migrations
-npm run db:check
+pnpm --filter rybbit-backend db:check
 ```
 
 ## Testing
@@ -73,8 +73,8 @@ The project uses [Vitest](https://vitest.dev/) for testing. Test files should be
 
 ```bash
 # Run a specific test file
-npx vitest src/utils.test.ts
+pnpm --filter rybbit-backend exec vitest src/utils.test.ts
 
 # Run tests matching a pattern
-npx vitest --grep "normalizeOrigin"
+pnpm --filter rybbit-backend exec vitest --grep "normalizeOrigin"
 ```

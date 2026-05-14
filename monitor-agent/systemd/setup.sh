@@ -68,7 +68,8 @@ cp ../package.json "$INSTALL_DIR/"
 # Install production dependencies
 log_info "Installing production dependencies..."
 cd "$INSTALL_DIR"
-npm ci --production
+corepack enable
+pnpm install --prod --no-frozen-lockfile
 
 # Create environment file if it doesn't exist
 if [[ ! -f "$INSTALL_DIR/.env" ]]; then

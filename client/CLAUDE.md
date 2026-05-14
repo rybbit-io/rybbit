@@ -4,10 +4,10 @@ This file provides guidance to Claude Code when working in the `/client` directo
 
 ## Commands
 
-- `npm run dev` – Start dev server (Next.js + Turbopack, port 3002)
-- `npm run build` – Production build
-- `npm run lint` – ESLint
-- `npm run format` – Prettier format
+- `pnpm --filter client dev` – Start dev server (Next.js + Turbopack, port 3002)
+- `pnpm --filter client build` – Production build
+- `pnpm --filter client lint` – ESLint
+- `pnpm --filter client format` – Prettier format
 - `tsc --noEmit` – Type-check without emitting
 
 ## Stack

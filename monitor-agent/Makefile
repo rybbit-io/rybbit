@@ -23,10 +23,10 @@ prod: ## Run in production mode
 	REGION=$(REGION) docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d
 
 test: ## Run tests
-	npm test
+	pnpm test
 
 lint: ## Run linter
-	npm run lint
+	pnpm run lint
 
 clean: ## Clean up containers and images
 	docker-compose down -v
@@ -58,10 +58,10 @@ status-all: ## Check status of all regions
 	done
 
 install: ## Install dependencies
-	npm install
+	pnpm install
 
 build-ts: ## Build TypeScript
-	npm run build
+	pnpm run build
 
 start: ## Start the agent locally
-	npm start
+	pnpm start

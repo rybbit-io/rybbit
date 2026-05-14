@@ -8,7 +8,7 @@
     "dev": "tsx watch src/index.ts",
     "build": "tsc",
     "start": "node dist/index.js",
-    "docker:build": "docker build -t monitor-agent .",
+    "docker:build": "docker build -f Dockerfile -t monitor-agent ..",
     "docker:run": "docker run -p 3000:3000 --env-file .env monitor-agent"
   },
   "dependencies": {
