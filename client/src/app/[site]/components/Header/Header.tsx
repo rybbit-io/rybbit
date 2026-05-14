@@ -5,6 +5,7 @@ import { FreePlanBanner } from "../../../../components/FreePlanBanner";
 import { userStore } from "../../../../lib/userStore";
 import { AffiliateBanner } from "./AffiliateBanner";
 import { DemoSignupBanner } from "./DemoSignupBanner";
+import { IncidentBanner } from "./IncidentBanner";
 import { NoData } from "./NoData";
 import { UsageBanners } from "./UsageBanners";
 
@@ -16,6 +17,7 @@ export function Header() {
     <div className="flex flex-col">
       {user && !pathname.includes("/globe") && (
         <div className="flex flex-col px-2 md:px-4">
+          <IncidentBanner />
           <DemoSignupBanner />
           <AffiliateBanner />
           <FreePlanBanner />
