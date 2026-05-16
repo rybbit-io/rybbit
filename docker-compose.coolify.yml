@@ -60,6 +60,7 @@ services:
       - POSTGRES_USER=${POSTGRES_USER:-frog}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-frog}
       - BETTER_AUTH_SECRET=${BETTER_AUTH_SECRET}
+      - BETTER_AUTH_URL=${BASE_URL}
       - BASE_URL=${BASE_URL}
       - DOMAIN_NAME=${DOMAIN_NAME}
       - DISABLE_SIGNUP=${DISABLE_SIGNUP:-false}
@@ -81,6 +82,7 @@ services:
     restart: unless-stopped
     labels:
       - traefik.enable=true
+      - traefik.docker.network=coolify
       - traefik.http.routers.rybbit-backend.entrypoints=https
       - traefik.http.routers.rybbit-backend.tls=true
       - traefik.http.routers.rybbit-backend.rule=Host(`${DOMAIN_NAME}`) && (Path(`/api`) || PathPrefix(`/api/`))
@@ -110,6 +112,7 @@ services:
     restart: unless-stopped
     labels:
       - traefik.enable=true
+      - traefik.docker.network=coolify
       - traefik.http.routers.rybbit-client.entrypoints=https
       - traefik.http.routers.rybbit-client.tls=true
       - traefik.http.routers.rybbit-client.rule=Host(`${DOMAIN_NAME}`)
