@@ -3,12 +3,13 @@ import createNextIntlPlugin from "next-intl/plugin";
 
 const withNextIntl = createNextIntlPlugin({
   experimental: {
+    extract: true,
     srcPath: "./src",
     messages: {
-      sourceLocale: "en",
       path: "./messages",
       format: "json",
       locales: ["en", "de", "fr", "zh", "es", "pl", "it", "ko", "pt", "ja", "cs", "uk"],
+      sourceLocale: "en",
     },
   },
 });
