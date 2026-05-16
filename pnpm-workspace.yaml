@@ -6,6 +6,12 @@ packages:
   - shared
 
 packageExtensions:
+  "@hookform/resolvers@*":
+    peerDependencies:
+      zod: "*"
+    peerDependenciesMeta:
+      zod:
+        optional: true
   "@fastify/cors@*":
     peerDependencies:
       fastify: "*"

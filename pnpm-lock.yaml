@@ -4,7 +4,7 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
-packageExtensionsChecksum: sha256-jrJyfKEhjggNTrr0g88P8pZfrRd3RZlSpjxNjpFJ7rI=
+packageExtensionsChecksum: sha256-+dQ0coQCJAAefZ7V5QQJ/EGc4QFDbLXx+DM/8DNb9qs=
 
 importers:
 
@@ -23,7 +23,7 @@ importers:
         version: 1.5.3(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       '@hookform/resolvers':
         specifier: 5.0.1
-        version: 5.0.1(react-hook-form@7.56.3(react@19.2.4))
+        version: 5.0.1(react-hook-form@7.56.3(react@19.2.4))(zod@3.24.4)
       '@icons-pack/react-simple-icons':
         specifier: 13.8.0
         version: 13.8.0(react@19.2.4)
@@ -262,6 +262,9 @@ importers:
       '@types/d3':
         specifier: 7.4.3
         version: 7.4.3
+      '@types/d3-scale':
+        specifier: 4.0.9
+        version: 4.0.9
       '@types/geojson':
         specifier: 7946.0.16
         version: 7946.0.16
@@ -1675,6 +1678,10 @@ packages:
     resolution: {integrity: sha512-u/+Jp83luQNx9AdyW2fIPGY6Y7NG68eN2ZW8FOJYL+M0i4s49+refdJdOp/A9n9HFQtQs3HIDHQvX3ZET2o7YA==}
     peerDependencies:
       react-hook-form: ^7.55.0
+      zod: '*'
+    peerDependenciesMeta:
+      zod:
+        optional: true
 
   '@humanfs/core@0.19.2':
     resolution: {integrity: sha512-UhXNm+CFMWcbChXywFwkmhqjs3PRCmcSa/hfBgLIb7oQ5HNb1wS0icWsGtSAUNgefHeI+eBrA8I1fxmbHsGdvA==}
@@ -9740,10 +9747,12 @@ snapshots:
     dependencies:
       '@formatjs/fast-memoize': 3.1.5
 
-  '@hookform/resolvers@5.0.1(react-hook-form@7.56.3(react@19.2.4))':
+  '@hookform/resolvers@5.0.1(react-hook-form@7.56.3(react@19.2.4))(zod@3.24.4)':
     dependencies:
       '@standard-schema/utils': 0.3.0
       react-hook-form: 7.56.3(react@19.2.4)
+    optionalDependencies:
+      zod: 3.24.4
 
   '@humanfs/core@0.19.2':
     dependencies:
