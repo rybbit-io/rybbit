@@ -37,7 +37,7 @@ ENV NEXT_PUBLIC_TURNSTILE_SITE_KEY=${NEXT_PUBLIC_TURNSTILE_SITE_KEY}
 ENV NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=${NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY}
 
 WORKDIR /app/client
-RUN npm run build
+RUN npm run extract && npm run build
 
 # Production image, copy all the files and run next
 FROM base AS runner
