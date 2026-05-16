@@ -62,6 +62,7 @@
     "cmdk": "^1.1.1",
     "country-flag-icons": "1.5.19",
     "d3": "7.9.0",
+    "d3-scale": "4.0.2",
     "date-fns": "^4.1.0",
     "embla-carousel-react": "^8.6.0",
     "framer-motion": "12.11.0",
