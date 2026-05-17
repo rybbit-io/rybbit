@@ -49,6 +49,8 @@ export function GeneralTab({ siteMetadata, disabled = false, onClose, onPublicCh
   const t = useExtracted();
   const { refetch } = useGetSitesFromOrg(siteMetadata?.organizationId ?? "");
   const router = useRouter();
+  const isMobileSite = siteMetadata.type === "mobile";
+  const identifierLabel = isMobileSite ? t("App Identifier") : t("Domain");
 
   const [newName, setNewName] = useState(siteMetadata.name);
   const [isChangingName, setIsChangingName] = useState(false);
@@ -118,15 +120,15 @@ export function GeneralTab({ siteMetadata, disabled = false, onClose, onPublicCh
 
   const handleDomainChange = async () => {
     if (!newDomain) {
-      toast.error(t("Domain cannot be empty"));
+      toast.error(isMobileSite ? t("App identifier cannot be empty") : t("Domain cannot be empty"));
       return;
     }
 
     try {
       setIsChangingDomain(true);
-      const normalizedDomain = normalizeDomain(newDomain);
+      const normalizedDomain = isMobileSite ? newDomain.trim() : normalizeDomain(newDomain);
       await updateSiteConfig(siteMetadata.siteId, { domain: normalizedDomain });
-      toast.success(t("Domain updated successfully"));
+      toast.success(isMobileSite ? t("App identifier updated successfully") : t("Domain updated successfully"));
       router.refresh();
       refetch();
     } catch (error) {
@@ -213,14 +215,19 @@ export function GeneralTab({ siteMetadata, disabled = false, onClose, onPublicCh
 
       <div className="space-y-3">
         <div>
-          <h4 className="text-sm font-semibold text-foreground">{t("Domain")}</h4>
-          <p className="text-xs text-muted-foreground">{t("The domain used for tracking")}</p>
+          <h4 className="text-sm font-semibold text-foreground">{identifierLabel}</h4>
+          <p className="text-xs text-muted-foreground">
+            {isMobileSite ? t("The bundle or package identifier used for tracking") : t("The domain used for tracking")}
+          </p>
         </div>
         <div className="flex space-x-2">
           <Input
             value={newDomain}
-            onChange={e => setNewDomain(e.target.value.toLowerCase())}
-            placeholder="example.com"
+            onChange={e => {
+              const value = e.target.value.trim();
+              setNewDomain(isMobileSite ? value : value.toLowerCase());
+            }}
+            placeholder={isMobileSite ? "com.example.app" : "example.com"}
           />
           <Button
             variant="outline"

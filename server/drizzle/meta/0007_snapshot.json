@@ -1,6 +1,6 @@
 {
-  "id": "662aeef8-8f3e-4c11-becb-a2cef1b972ef",
-  "prevId": "2f7fdcb4-ca39-48b2-965a-bb095d262fa6",
+  "id": "3987804d-997b-4f52-aeaa-60f3c38025d2",
+  "prevId": "662aeef8-8f3e-4c11-becb-a2cef1b972ef",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -1790,6 +1790,12 @@
           "primaryKey": false,
           "notNull": true
         },
+        "type": {
+          "name": "type",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
         "domain": {
           "name": "domain",
           "type": "text",
@@ -1993,7 +1999,12 @@
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "policies": {},
-      "checkConstraints": {},
+      "checkConstraints": {
+        "sites_type_check": {
+          "name": "sites_type_check",
+          "value": "\"sites\".\"type\" IS NULL OR \"sites\".\"type\" IN ('web', 'mobile')"
+        }
+      },
       "isRLSEnabled": false
     },
     "public.team": {

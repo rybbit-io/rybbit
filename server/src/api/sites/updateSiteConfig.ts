@@ -10,17 +10,12 @@ import { validateIPPattern } from "../../lib/ipUtils.js";
 const updateSiteConfigSchema = z.object({
   // Site settings
   name: z.string().min(1).max(255).optional(),
+  type: z.enum(["web", "mobile"]).nullable().optional(),
   public: z.boolean().optional(),
   embedEnabled: z.boolean().optional(),
   saltUserIds: z.boolean().optional(),
   blockBots: z.boolean().optional(),
-  domain: z
-    .string()
-    .regex(
-      /^(?:[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,}$/,
-      "Invalid domain format. Must be a valid domain like example.com or sub.example.com"
-    )
-    .optional(),
+  domain: z.string().min(1).max(253).optional(),
   excludedIPs: z.array(z.string().trim().min(1)).max(100).optional(),
   excludedCountries: z
     .array(
@@ -87,6 +82,35 @@ export async function updateSiteConfig(
       return reply.status(404).send({ error: "Site not found" });
     }
 
+    const nextSiteType = updateData.type === undefined ? site.type || "web" : updateData.type || "web";
+
+    const nextDomain = updateData.domain ?? site.domain;
+    const cleanedDomain = nextDomain.replace(/^https?:\/\//, "").replace(/\/+$/, "");
+
+    if (updateData.domain !== undefined || updateData.type !== undefined) {
+      const domainRegex = /^(?:[\p{L}\p{N}](?:[\p{L}\p{N}-]{0,61}[\p{L}\p{N}])?\.)+\p{L}{2,}$/u;
+      const appIdentifierRegex = /^[A-Za-z0-9][A-Za-z0-9._-]{0,252}$/;
+      if (nextSiteType === "web" && !domainRegex.test(cleanedDomain)) {
+        return reply.status(400).send({
+          success: false,
+          error: "Invalid domain format. Must be a valid domain like example.com or sub.example.com",
+        });
+      }
+      if (nextSiteType === "mobile" && !appIdentifierRegex.test(cleanedDomain)) {
+        return reply.status(400).send({
+          success: false,
+          error: "Invalid app identifier. Use a bundle/package identifier like com.example.app",
+        });
+      }
+    }
+
+    if (nextSiteType === "mobile" && (updateData.sessionReplay || updateData.webVitals)) {
+      return reply.status(400).send({
+        success: false,
+        error: "Session replay and Web Vitals are only available for web sites",
+      });
+    }
+
     // Additional validation for excluded IPs if provided
     if (updateData.excludedIPs) {
       const validationErrors: string[] = [];
@@ -116,7 +140,6 @@ export async function updateSiteConfig(
       "embedEnabled",
       "saltUserIds",
       "blockBots",
-      "domain",
       "excludedIPs",
       "excludedCountries",
       "tags",
@@ -139,6 +162,17 @@ export async function updateSiteConfig(
       }
     }
 
+    if (updateData.type !== undefined) {
+      dbUpdateData.type = nextSiteType === "web" ? null : nextSiteType;
+    }
+    if (updateData.domain !== undefined) {
+      dbUpdateData.domain = cleanedDomain;
+    }
+    if (nextSiteType === "mobile") {
+      dbUpdateData.sessionReplay = false;
+      dbUpdateData.webVitals = false;
+    }
+
     // Only proceed if there are fields to update
     if (Object.keys(dbUpdateData).length === 0) {
       return reply.status(400).send({
@@ -154,7 +188,7 @@ export async function updateSiteConfig(
     await db.update(sites).set(dbUpdateData).where(eq(sites.siteId, siteId));
 
     // Update the site config cache
-    await siteConfig.updateConfig(siteId, updateData);
+    await siteConfig.updateConfig(siteId, dbUpdateData);
 
     // Get the updated configuration to return
     const updatedConfig = await siteConfig.getConfig(siteId);

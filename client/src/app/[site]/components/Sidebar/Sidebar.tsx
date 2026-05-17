@@ -39,6 +39,7 @@ function SidebarContent() {
   const { embed, hideSidebar } = useEmbedPageOptions();
 
   const { data: site } = useGetSite(Number(pathname.split("/")[1]));
+  const isMobileSite = site?.type === "mobile";
 
   if (hideSidebar) return null;
 
@@ -70,7 +71,9 @@ function SidebarContent() {
         <SiteSelector />
       </div>
       <div className="flex flex-col p-3 pt-1">
-        <SidebarComponents.SectionHeader>{t("Web Analytics")}</SidebarComponents.SectionHeader>
+        <SidebarComponents.SectionHeader>
+          {isMobileSite ? t("App Analytics") : t("Web Analytics")}
+        </SidebarComponents.SectionHeader>
         <SidebarComponents.Item
           label={t("Main")}
           active={isActiveTab("main")}
@@ -91,7 +94,7 @@ function SidebarContent() {
             icon={<File className="w-4 h-4" />}
           />
         )}
-        {IS_CLOUD && (
+        {IS_CLOUD && !isMobileSite && (
           <SidebarComponents.Item
             label={t("Performance")}
             active={isActiveTab("performance")}
@@ -123,7 +126,7 @@ function SidebarContent() {
         </div>
         <SidebarComponents.SectionHeader>{t("Product Analytics")}</SidebarComponents.SectionHeader>
         <div className="hidden md:block">
-          {!subscription?.planName?.startsWith("appsumo") && !isSubscriptionLoading && (
+          {!isMobileSite && !subscription?.planName?.startsWith("appsumo") && !isSubscriptionLoading && (
             <SidebarComponents.Item
               label={t("Replay")}
               active={isActiveTab("replay")}

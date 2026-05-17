@@ -2,7 +2,15 @@ import { eq, and, inArray } from "drizzle-orm";
 import { FastifyRequest, FastifyReply } from "fastify";
 import { clickhouse } from "../../db/clickhouse/clickhouse.js";
 import { db } from "../../db/postgres/postgres.js";
-import { sites, member, organization, memberSiteAccess, team, teamMember, teamSiteAccess } from "../../db/postgres/schema.js";
+import {
+  sites,
+  member,
+  organization,
+  memberSiteAccess,
+  team,
+  teamMember,
+  teamSiteAccess,
+} from "../../db/postgres/schema.js";
 import { IS_CLOUD, DEFAULT_EVENT_LIMIT } from "../../lib/const.js";
 import { getUserIdFromRequest } from "../../lib/auth-utils.js";
 import { processResults } from "../analytics/utils/utils.js";
@@ -26,10 +34,10 @@ export async function getSitesFromOrg(
     const [memberCheck, allSitesData, orgInfo] = await Promise.all([
       userId
         ? db
-          .select()
-          .from(member)
-          .where(and(eq(member.organizationId, organizationId), eq(member.userId, userId)))
-          .limit(1)
+            .select()
+            .from(member)
+            .where(and(eq(member.organizationId, organizationId), eq(member.userId, userId)))
+            .limit(1)
         : Promise.resolve([]),
       db.select().from(sites).where(eq(sites.organizationId, organizationId)),
       db.select().from(organization).where(eq(organization.id, organizationId)).limit(1),
@@ -84,9 +92,7 @@ export async function getSitesFromOrg(
         }
 
         // Keep sites that are NOT team-gated OR are in the user's teams
-        sitesData = sitesData.filter(
-          site => !teamGatedSiteIds.has(site.siteId) || userTeamSiteIds.has(site.siteId)
-        );
+        sitesData = sitesData.filter(site => !teamGatedSiteIds.has(site.siteId) || userTeamSiteIds.has(site.siteId));
       }
     }
 
@@ -154,6 +160,8 @@ export async function getSitesFromOrg(
     // Enhance sites data with session counts and subscription info
     const enhancedSitesData = sitesData.map(site => ({
       ...site,
+      type: site.type || "web",
+      domain: site.domain || "",
       sessionsLast24Hours: sessionCountMap.get(site.siteId) || 0,
       isOwner: memberRecord?.role !== "member",
       teams: siteTeamMap.get(site.siteId) || [],

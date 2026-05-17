@@ -4,6 +4,7 @@ export type SiteResponse = {
   id: string | null;
   siteId: number;
   name: string;
+  type: "web" | "mobile" | null;
   domain: string;
   createdAt: string;
   updatedAt: string;
@@ -45,6 +46,7 @@ export type GetSitesFromOrgResponse = {
     id: string | null;
     siteId: number;
     name: string;
+    type: "web" | "mobile" | null;
     domain: string;
     createdAt: string;
     updatedAt: string;
@@ -76,6 +78,7 @@ export function addSite(
   name: string,
   organizationId: string,
   settings?: {
+    type?: "web" | "mobile";
     isPublic?: boolean;
     saltUserIds?: boolean;
     blockBots?: boolean;
@@ -86,6 +89,7 @@ export function addSite(
     data: {
       domain,
       name,
+      type: settings?.type || "web",
       public: settings?.isPublic || false,
       saltUserIds: settings?.saltUserIds || false,
       blockBots: settings?.blockBots === undefined ? true : settings?.blockBots,
@@ -107,6 +111,7 @@ export function updateSiteConfig(
   siteId: number,
   config: {
     name?: string;
+    type?: "web" | "mobile" | null;
     domain?: string;
     public?: boolean;
     embedEnabled?: boolean;
@@ -121,6 +126,7 @@ export function updateSiteConfig(
     trackUrlParams?: boolean;
     trackInitialPageView?: boolean;
     trackSpaNavigation?: boolean;
+    trackIp?: boolean;
     trackButtonClicks?: boolean;
     trackCopy?: boolean;
     trackFormInteractions?: boolean;

@@ -1,0 +1,49 @@
+---
+title: React Native
+description: Official React Native SDK for Rybbit Analytics
+---
+
+## Installation
+
+```bash
+npm install @rybbit/react-native @react-native-async-storage/async-storage
+```
+
+## Initialization
+
+```tsx
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import rybbit from "@rybbit/react-native";
+
+await rybbit.init({
+  analyticsHost: "https://app.rybbit.io/api",
+  siteId: "1",
+  appIdentifier: "com.example.app",
+  storage: AsyncStorage,
+  initialScreenName: "Home",
+});
+```
+
+## Track Events
+
+```tsx
+await rybbit.event("signup_started", { plan: "pro" });
+await rybbit.identify("user_123", { plan: "pro" });
+await rybbit.error(error);
+```
+
+## React Navigation
+
+```tsx
+const navigationTracker = rybbit.createNavigationTracker();
+
+<NavigationContainer
+  ref={navigationRef}
+  onReady={() => navigationTracker.onReady(navigationRef.current)}
+  onStateChange={() => navigationTracker.onStateChange(navigationRef.current)}
+>
+  {/* screens */}
+</NavigationContainer>
+```
+
+Session replay and Web Vitals are web-only features and are not available for React Native apps.

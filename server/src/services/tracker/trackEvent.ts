@@ -23,6 +23,7 @@ const baseEventFields = {
   language: z.string().max(35).optional(),
   page_title: z.string().max(512).optional(),
   referrer: z.string().max(2048).optional(),
+  anonymous_id: z.string().min(1).max(255).optional(),
   user_id: z.string().max(255).optional(),
   tag: z.string().max(256).optional(),
   feature_flags: z.record(z.string().max(100), z.string().max(2048)).optional(),

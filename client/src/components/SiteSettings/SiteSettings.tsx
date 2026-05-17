@@ -95,13 +95,14 @@ function SiteSettingsInner({ siteMetadata, trigger }: { siteMetadata: SiteRespon
   }
 
   const currentSiteMetadata = { ...siteMetadata, public: sitePublic };
+  const isMobileSite = currentSiteMetadata.type === "mobile";
 
   const tabs: { key: TabKey; label: string; icon: React.ComponentType<{ className?: string }>; hidden?: boolean }[] = [
     { key: "general", label: t("General"), icon: Settings },
     { key: "tracking", label: t("Tracking"), icon: SlidersHorizontal },
     { key: "exclusions", label: t("Exclusions"), icon: Ban },
     { key: "integrations", label: t("Integrations"), icon: Plug, hidden: !IS_CLOUD },
-    { key: "script", label: t("Tracking Script"), icon: Code },
+    { key: "script", label: isMobileSite ? t("React Native SDK") : t("Tracking Script"), icon: Code },
     { key: "widget-embeds", label: t("Widget Embeds"), icon: LayoutTemplate },
     { key: "dashboard-embed", label: t("Dashboard Embed"), icon: LayoutDashboard },
     { key: "import", label: t("Import"), icon: Download },
@@ -177,7 +178,13 @@ function SiteSettingsInner({ siteMetadata, trigger }: { siteMetadata: SiteRespon
               {activeTab === "tracking" && <TrackingTab siteMetadata={currentSiteMetadata} disabled={disabled} />}
               {activeTab === "exclusions" && <ExclusionsTab siteId={siteMetadata.siteId} disabled={disabled} />}
               {activeTab === "integrations" && IS_CLOUD && <IntegrationsTab disabled={disabled} />}
-              {activeTab === "script" && <ScriptBuilder siteId={siteMetadata.id ?? String(siteMetadata.siteId)} />}
+              {activeTab === "script" && (
+                <ScriptBuilder
+                  siteId={siteMetadata.id ?? String(siteMetadata.siteId)}
+                  siteType={currentSiteMetadata.type || "web"}
+                  appIdentifier={currentSiteMetadata.domain}
+                />
+              )}
               {activeTab === "widget-embeds" && (
                 <EmbedTab siteMetadata={currentSiteMetadata} embedEnabled={embedEnabled} />
               )}

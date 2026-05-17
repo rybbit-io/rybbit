@@ -8,6 +8,7 @@ import { logger } from "./logger/logger.js";
 export interface SiteConfigData {
   id: string | null;
   siteId: number;
+  type: "web" | "mobile";
   public: boolean;
   embedEnabled: boolean;
   saltUserIds: boolean;
@@ -91,6 +92,7 @@ class SiteConfig {
       const configData: SiteConfigData = {
         id: site.id,
         siteId: site.siteId,
+        type: site.type || "web",
         public: site.public || false,
         embedEnabled: site.embedEnabled || false,
         saltUserIds: site.saltUserIds || false,

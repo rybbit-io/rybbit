@@ -112,8 +112,9 @@ export async function createBasePayload(
   const { ipAddress, userAgent } = resolveTrackingIdentity(request, validatedBody, trustedServerSideIngestion);
   const { ip_address: _ipAddressOverride, user_agent: _userAgentOverride, ...payloadBody } = validatedBody;
 
-  // Always compute anonymous_id based on IP+UserAgent (device fingerprint)
-  const anonymousId = await userIdService.generateUserId(ipAddress, userAgent, siteConfiguration.siteId);
+  const anonymousId = validatedBody.anonymous_id
+    ? await userIdService.generateUserIdFromClientId(validatedBody.anonymous_id, siteConfiguration.siteId)
+    : await userIdService.generateUserId(ipAddress, userAgent, siteConfiguration.siteId);
 
   // userId is always the device fingerprint
   // identifiedUserId is the custom user ID when provided, empty string otherwise

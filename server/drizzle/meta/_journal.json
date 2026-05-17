@@ -50,6 +50,13 @@
       "when": 1779981165610,
       "tag": "0006_orange_thunderbird",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1779981165611,
+      "tag": "0007_site_type",
+      "breakpoints": true
     }
   ]
 }
