@@ -22,6 +22,7 @@ const baseEventFields = {
   language: z.string().max(35).optional(),
   page_title: z.string().max(512).optional(),
   referrer: z.string().max(2048).optional(),
+  anonymous_id: z.string().min(1).max(255).optional(),
   user_id: z.string().max(255).optional(),
   tag: z.string().max(256).optional(),
   ip_address: z.string().ip().optional(),
@@ -172,14 +173,16 @@ export const trackingPayloadSchema = z.discriminatedUnion("type", [
               const parsed = JSON.parse(val);
               if (typeof parsed.sourceElement !== "string") return false;
               if (parsed.text !== undefined && typeof parsed.text !== "string") return false;
-              if (parsed.textLength !== undefined && (typeof parsed.textLength !== "number" || parsed.textLength < 0)) return false;
+              if (parsed.textLength !== undefined && (typeof parsed.textLength !== "number" || parsed.textLength < 0))
+                return false;
               return true;
             } catch {
               return false;
             }
           },
           {
-            message: "Properties must be valid JSON with copy fields (sourceElement required, text and textLength optional)",
+            message:
+              "Properties must be valid JSON with copy fields (sourceElement required, text and textLength optional)",
           }
         ),
     })
@@ -207,7 +210,8 @@ export const trackingPayloadSchema = z.discriminatedUnion("type", [
             }
           },
           {
-            message: "Properties must be valid JSON with form_submit fields (formId, formName, formAction, method, fieldCount required)",
+            message:
+              "Properties must be valid JSON with form_submit fields (formId, formName, formAction, method, fieldCount required)",
           }
         ),
     })
@@ -299,10 +303,7 @@ export async function trackEvent(request: FastifyRequest, reply: FastifyReply) {
       // Client-side bot signal score check
       const clientBotScore = validatedPayload._bs;
       if (typeof clientBotScore === "number" && clientBotScore >= CLIENT_BOT_SCORE_THRESHOLD) {
-        logger.info(
-          { siteId: validatedPayload.site_id, clientBotScore },
-          "Bot request filtered (client signals)"
-        );
+        logger.info({ siteId: validatedPayload.site_id, clientBotScore }, "Bot request filtered (client signals)");
         return reply.status(200).send({
           success: true,
           message: "Event not tracked - bot detected using client signals",
@@ -316,10 +317,7 @@ export async function trackEvent(request: FastifyRequest, reply: FastifyReply) {
         userAgent &&
         /Windows NT|Macintosh|X11/.test(userAgent)
       ) {
-        logger.info(
-          { siteId: validatedPayload.site_id, userAgent },
-          "Bot request filtered (desktop 800x600)"
-        );
+        logger.info({ siteId: validatedPayload.site_id, userAgent }, "Bot request filtered (desktop 800x600)");
         return reply.status(200).send({
           success: true,
           message: "Event not tracked - bot detected using desktop 800x600",

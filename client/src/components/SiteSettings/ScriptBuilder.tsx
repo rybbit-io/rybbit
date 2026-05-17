@@ -10,9 +10,11 @@ import { useState } from "react";
 
 interface ScriptBuilderProps {
   siteId: string;
+  siteType?: "web" | "mobile" | null;
+  appIdentifier?: string;
 }
 
-export function ScriptBuilder({ siteId }: ScriptBuilderProps) {
+export function ScriptBuilder({ siteId, siteType = "web", appIdentifier }: ScriptBuilderProps) {
   const t = useExtracted();
   const [debounceValue, setDebounceValue] = useState(500);
   const [skipPatterns, setSkipPatterns] = useState<string[]>([]);
@@ -76,21 +78,55 @@ export function ScriptBuilder({ siteId }: ScriptBuilderProps) {
   // Generate tracking script dynamically based on options
   const trackingScript = `<script
     src="${globalThis.location.origin}/api/script.js"
-    data-site-id="${siteId}"${debounceValue !== 500
-      ? `
+    data-site-id="${siteId}"${
+      debounceValue !== 500
+        ? `
     data-debounce="${debounceValue}"`
-      : ""
-    }${skipPatterns.length > 0
-      ? `
+        : ""
+    }${
+      skipPatterns.length > 0
+        ? `
     data-skip-patterns='${JSON.stringify(skipPatterns)}'`
-      : ""
-    }${maskPatterns.length > 0
-      ? `
+        : ""
+    }${
+      maskPatterns.length > 0
+        ? `
     data-mask-patterns='${JSON.stringify(maskPatterns)}'`
-      : ""
+        : ""
     }
     defer
 ></script>`;
+
+  const reactNativeInstall = "npm install @rybbit/react-native @react-native-async-storage/async-storage";
+  const reactNativeSnippet = `import AsyncStorage from "@react-native-async-storage/async-storage";
+import rybbit from "@rybbit/react-native";
+
+await rybbit.init({
+  analyticsHost: "${globalThis.location.origin}/api",
+  siteId: "${siteId}",
+  appIdentifier: "${appIdentifier || "com.example.app"}",
+  storage: AsyncStorage,
+  initialScreenName: "Home",
+});
+
+await rybbit.event("signup_started", { plan: "pro" });`;
+
+  if (siteType === "mobile") {
+    return (
+      <div className="space-y-6">
+        <div className="space-y-3">
+          <div>
+            <h4 className="text-sm font-semibold text-foreground">{t("React Native SDK")}</h4>
+            <p className="text-xs text-muted-foreground">
+              {t("Install the React Native package and initialize it in your app entry point")}
+            </p>
+          </div>
+          <CodeSnippet language="bash" code={reactNativeInstall} />
+          <CodeSnippet language="TypeScript" code={reactNativeSnippet} />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -113,7 +149,9 @@ export function ScriptBuilder({ siteId }: ScriptBuilderProps) {
               <Label htmlFor="skipPatterns" className="text-sm font-medium text-foreground block">
                 {t("Skip Patterns")}
               </Label>
-              <p className="text-xs text-muted-foreground mt-1">{t("URL patterns to exclude from tracking (one per line)")}</p>
+              <p className="text-xs text-muted-foreground mt-1">
+                {t("URL patterns to exclude from tracking (one per line)")}
+              </p>
               <p className="text-xs text-muted-foreground mt-1">
                 {t("Use * for single segment wildcard, ** for multi-segment wildcard")}
               </p>
@@ -168,7 +206,9 @@ export function ScriptBuilder({ siteId }: ScriptBuilderProps) {
                 <span className="text-xs text-muted-foreground">{t("Default: 500ms")}</span>
               </div>
             </div>
-            <p className="text-xs text-muted-foreground">{t("Time to wait before tracking a pageview after URL changes")}</p>
+            <p className="text-xs text-muted-foreground">
+              {t("Time to wait before tracking a pageview after URL changes")}
+            </p>
           </div>
         </div>
       </div>

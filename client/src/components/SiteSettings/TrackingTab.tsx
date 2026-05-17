@@ -33,6 +33,7 @@ interface ToggleConfig {
 export function TrackingTab({ siteMetadata, disabled = false }: TrackingTabProps) {
   const t = useExtracted();
   const { refetch } = useGetSitesFromOrg(siteMetadata?.organizationId ?? "");
+  const isMobileSite = siteMetadata.type === "mobile";
 
   const [toggleStates, setToggleStates] = useState({
     sessionReplay: siteMetadata.sessionReplay || false,
@@ -92,58 +93,64 @@ export function TrackingTab({ siteMetadata, disabled = false }: TrackingTabProps
     IS_CLOUD;
 
   const analyticsToggles: ToggleConfig[] = [
-    ...(!subscription?.planName?.startsWith("appsumo") && !isSubscriptionLoading
+    ...(!isMobileSite && !subscription?.planName?.startsWith("appsumo") && !isSubscriptionLoading
       ? [
-        {
-          id: "sessionReplay",
-          label: t("Session Replay"),
-          description: t("Record and replay user sessions to understand user behavior"),
-          value: toggleStates.sessionReplay,
-          key: "sessionReplay",
-          enabledMessage: t("Session replay enabled"),
-          disabledMessage: t("Session replay disabled"),
-          disabled: sessionReplayDisabled,
-          badge: <Badge variant="success">Pro</Badge>,
-        } as ToggleConfig,
-      ]
+          {
+            id: "sessionReplay",
+            label: t("Session Replay"),
+            description: t("Record and replay user sessions to understand user behavior"),
+            value: toggleStates.sessionReplay,
+            key: "sessionReplay",
+            enabledMessage: t("Session replay enabled"),
+            disabledMessage: t("Session replay disabled"),
+            disabled: sessionReplayDisabled,
+            badge: <Badge variant="success">Pro</Badge>,
+          } as ToggleConfig,
+        ]
       : []),
-    ...(IS_CLOUD
+    ...(IS_CLOUD && !isMobileSite
       ? [
-        {
-          id: "webVitals",
-          label: t("Web Vitals"),
-          description: t("Track Core Web Vitals metrics (LCP, CLS, INP, FCP, TTFB)"),
-          value: toggleStates.webVitals,
-          key: "webVitals" as keyof SiteResponse,
-          enabledMessage: t("Web Vitals enabled"),
-          disabledMessage: t("Web Vitals disabled"),
-          disabled: standardFeaturesDisabled,
-          badge: <Badge variant="success">Standard</Badge>,
-        } as ToggleConfig,
-      ]
+          {
+            id: "webVitals",
+            label: t("Web Vitals"),
+            description: t("Track Core Web Vitals metrics (LCP, CLS, INP, FCP, TTFB)"),
+            value: toggleStates.webVitals,
+            key: "webVitals" as keyof SiteResponse,
+            enabledMessage: t("Web Vitals enabled"),
+            disabledMessage: t("Web Vitals disabled"),
+            disabled: standardFeaturesDisabled,
+            badge: <Badge variant="success">Standard</Badge>,
+          } as ToggleConfig,
+        ]
       : []),
-    {
-      id: "trackSpaNavigation",
-      label: t("SPA Navigation"),
-      description: t("Automatically track navigation in single-page applications"),
-      value: toggleStates.trackSpaNavigation,
-      key: "trackSpaNavigation",
-      enabledMessage: t("SPA navigation tracking enabled"),
-      disabledMessage: t("SPA navigation tracking disabled"),
-    },
-    {
-      id: "trackUrlParams",
-      label: t("URL Parameters"),
-      description: t("Include query string parameters in page tracking"),
-      value: toggleStates.trackUrlParams,
-      key: "trackUrlParams",
-      enabledMessage: t("URL parameters tracking enabled"),
-      disabledMessage: t("URL parameters tracking disabled"),
-    },
+    ...(!isMobileSite
+      ? [
+          {
+            id: "trackSpaNavigation",
+            label: t("SPA Navigation"),
+            description: t("Automatically track navigation in single-page applications"),
+            value: toggleStates.trackSpaNavigation,
+            key: "trackSpaNavigation",
+            enabledMessage: t("SPA navigation tracking enabled"),
+            disabledMessage: t("SPA navigation tracking disabled"),
+          } as ToggleConfig,
+          {
+            id: "trackUrlParams",
+            label: t("URL Parameters"),
+            description: t("Include query string parameters in page tracking"),
+            value: toggleStates.trackUrlParams,
+            key: "trackUrlParams",
+            enabledMessage: t("URL parameters tracking enabled"),
+            disabledMessage: t("URL parameters tracking disabled"),
+          } as ToggleConfig,
+        ]
+      : []),
     {
       id: "trackInitialPageView",
-      label: t("Initial Page View"),
-      description: t("Automatically track the first page view when the script loads"),
+      label: isMobileSite ? t("Initial Screen View") : t("Initial Page View"),
+      description: isMobileSite
+        ? t("Automatically track the initial screen passed to the React Native SDK")
+        : t("Automatically track the first page view when the script loads"),
       value: toggleStates.trackInitialPageView,
       key: "trackInitialPageView",
       enabledMessage: t("Initial page view tracking enabled"),
@@ -152,19 +159,25 @@ export function TrackingTab({ siteMetadata, disabled = false }: TrackingTabProps
   ];
 
   const autoCaptureToggles: ToggleConfig[] = [
-    {
-      id: "trackOutbound",
-      label: t("Outbound Links"),
-      description: t("Track when users click on external links"),
-      value: toggleStates.trackOutbound,
-      key: "trackOutbound",
-      enabledMessage: t("Outbound tracking enabled"),
-      disabledMessage: t("Outbound tracking disabled"),
-    },
+    ...(!isMobileSite
+      ? [
+          {
+            id: "trackOutbound",
+            label: t("Outbound Links"),
+            description: t("Track when users click on external links"),
+            value: toggleStates.trackOutbound,
+            key: "trackOutbound",
+            enabledMessage: t("Outbound tracking enabled"),
+            disabledMessage: t("Outbound tracking disabled"),
+          } as ToggleConfig,
+        ]
+      : []),
     {
       id: "trackErrors",
       label: t("Error Tracking"),
-      description: t("Capture JavaScript errors and exceptions from your site"),
+      description: isMobileSite
+        ? t("Allow error events sent by the React Native SDK")
+        : t("Capture JavaScript errors and exceptions from your site"),
       value: toggleStates.trackErrors,
       key: "trackErrors",
       enabledMessage: t("Error tracking enabled"),
@@ -172,39 +185,43 @@ export function TrackingTab({ siteMetadata, disabled = false }: TrackingTabProps
       disabled: standardFeaturesDisabled,
       badge: <Badge variant="success">Standard</Badge>,
     },
-    {
-      id: "trackButtonClicks",
-      label: t("Button Clicks"),
-      description: t("Automatically track clicks on all buttons"),
-      value: toggleStates.trackButtonClicks,
-      key: "trackButtonClicks",
-      enabledMessage: t("Button click tracking enabled"),
-      disabledMessage: t("Button click tracking disabled"),
-      disabled: standardFeaturesDisabled,
-      badge: <Badge variant="success">Standard</Badge>,
-    },
-    {
-      id: "trackCopy",
-      label: t("Copy Events"),
-      description: t("Track when users copy text from your site"),
-      value: toggleStates.trackCopy,
-      key: "trackCopy",
-      enabledMessage: t("Copy tracking enabled"),
-      disabledMessage: t("Copy tracking disabled"),
-      disabled: standardFeaturesDisabled,
-      badge: <Badge variant="success">Standard</Badge>,
-    },
-    {
-      id: "trackFormInteractions",
-      label: t("Form Interactions"),
-      description: t("Automatically track form submissions and input/select changes"),
-      value: toggleStates.trackFormInteractions,
-      key: "trackFormInteractions",
-      enabledMessage: t("Form interaction tracking enabled"),
-      disabledMessage: t("Form interaction tracking disabled"),
-      disabled: standardFeaturesDisabled,
-      badge: <Badge variant="success">Standard</Badge>,
-    },
+    ...(!isMobileSite
+      ? [
+          {
+            id: "trackButtonClicks",
+            label: t("Button Clicks"),
+            description: t("Automatically track clicks on all buttons"),
+            value: toggleStates.trackButtonClicks,
+            key: "trackButtonClicks",
+            enabledMessage: t("Button click tracking enabled"),
+            disabledMessage: t("Button click tracking disabled"),
+            disabled: standardFeaturesDisabled,
+            badge: <Badge variant="success">Standard</Badge>,
+          } as ToggleConfig,
+          {
+            id: "trackCopy",
+            label: t("Copy Events"),
+            description: t("Track when users copy text from your site"),
+            value: toggleStates.trackCopy,
+            key: "trackCopy",
+            enabledMessage: t("Copy tracking enabled"),
+            disabledMessage: t("Copy tracking disabled"),
+            disabled: standardFeaturesDisabled,
+            badge: <Badge variant="success">Standard</Badge>,
+          } as ToggleConfig,
+          {
+            id: "trackFormInteractions",
+            label: t("Form Interactions"),
+            description: t("Automatically track form submissions and input/select changes"),
+            value: toggleStates.trackFormInteractions,
+            key: "trackFormInteractions",
+            enabledMessage: t("Form interaction tracking enabled"),
+            disabledMessage: t("Form interaction tracking disabled"),
+            disabled: standardFeaturesDisabled,
+            badge: <Badge variant="success">Standard</Badge>,
+          } as ToggleConfig,
+        ]
+      : []),
   ];
 
   const renderToggleSection = (toggles: ToggleConfig[], title: string) => (

@@ -1,0 +1,24 @@
+{
+  "name": "@rybbit/react-native",
+  "version": "0.1.0",
+  "description": "React Native analytics SDK for Rybbit",
+  "main": "index.js",
+  "types": "index.d.ts",
+  "files": [
+    "index.js",
+    "index.d.ts",
+    "README.md"
+  ],
+  "keywords": [
+    "analytics",
+    "react-native",
+    "rybbit"
+  ],
+  "peerDependencies": {
+    "react-native": ">=0.72.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "license": "MIT"
+}

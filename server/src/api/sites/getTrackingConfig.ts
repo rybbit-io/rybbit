@@ -13,8 +13,9 @@ export async function getTrackingConfig(request: FastifyRequest<{ Params: { site
     // Return tracking configuration
     // This endpoint is public since the analytics script needs to fetch it
     return reply.send({
-      sessionReplay: config.sessionReplay || false,
-      webVitals: config.webVitals || false,
+      type: config.type,
+      sessionReplay: config.type === "mobile" ? false : config.sessionReplay || false,
+      webVitals: config.type === "mobile" ? false : config.webVitals || false,
       trackErrors: config.trackErrors || false,
       trackOutbound: config.trackOutbound ?? true,
       trackUrlParams: config.trackUrlParams ?? true,

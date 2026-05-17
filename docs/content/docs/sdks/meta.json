@@ -2,6 +2,7 @@
   "title": "SDKs",
   "pages": [
     "web",
+    "react-native",
     "node"
   ]
 }

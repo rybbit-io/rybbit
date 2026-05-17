@@ -94,7 +94,16 @@ export function clearSelfReferrer(referrer: string, hostname: string): string {
 // Create base tracking payload from request
 export async function createBasePayload(
   request: FastifyRequest,
-  eventType: "pageview" | "custom_event" | "performance" | "error" | "outbound" | "button_click" | "copy" | "form_submit" | "input_change" = "pageview",
+  eventType:
+    | "pageview"
+    | "custom_event"
+    | "performance"
+    | "error"
+    | "outbound"
+    | "button_click"
+    | "copy"
+    | "form_submit"
+    | "input_change" = "pageview",
   validatedBody: ValidatedTrackingPayload,
   siteConfiguration: SiteConfigData
 ): Promise<TotalTrackingPayload> {
@@ -103,12 +112,9 @@ export async function createBasePayload(
   // Override IP if provided in payload
   const ipAddress = validatedBody.ip_address || getIpAddress(request);
 
-  // Always compute anonymous_id based on IP+UserAgent (device fingerprint)
-  const anonymousId = await userIdService.generateUserId(
-    ipAddress,
-    userAgent,
-    siteConfiguration.siteId
-  );
+  const anonymousId = validatedBody.anonymous_id
+    ? await userIdService.generateUserIdFromClientId(validatedBody.anonymous_id, siteConfiguration.siteId)
+    : await userIdService.generateUserId(ipAddress, userAgent, siteConfiguration.siteId);
 
   // userId is always the device fingerprint
   // identifiedUserId is the custom user ID when provided, empty string otherwise

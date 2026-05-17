@@ -1,6 +1,6 @@
 "use client";
 import { Button } from "@/components/ui/button";
-import { AlertCircle, AppWindow, Plus } from "lucide-react";
+import { AlertCircle, AppWindow, Globe2, Plus, Smartphone } from "lucide-react";
 import { useExtracted } from "next-intl";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -18,6 +18,7 @@ import {
 } from "../../components/ui/dialog";
 import { Input } from "../../components/ui/input";
 import { Label } from "../../components/ui/label";
+import { RadioGroup, RadioGroupItem } from "../../components/ui/radio-group";
 import { Switch } from "../../components/ui/switch";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../../components/ui/tooltip";
 import { authClient } from "../../lib/auth";
@@ -25,6 +26,10 @@ import { IS_CLOUD } from "../../lib/const";
 import { resetStore, useStore } from "../../lib/store";
 import { useStripeSubscription } from "../../lib/subscription/useStripeSubscription";
 import { isValidDomain, normalizeDomain } from "../../lib/utils";
+
+type SiteType = "web" | "mobile";
+
+const isValidAppIdentifier = (value: string) => /^[A-Za-z0-9][A-Za-z0-9._-]{0,252}$/.test(value);
 
 export function AddSite({ trigger, disabled }: { trigger?: React.ReactNode; disabled?: boolean }) {
   const { setSite } = useStore();
@@ -41,6 +46,7 @@ export function AddSite({ trigger, disabled }: { trigger?: React.ReactNode; disa
   const finalDisabled = disabled || isOverSiteLimit;
 
   const [open, setOpen] = useState(false);
+  const [siteType, setSiteType] = useState<SiteType>("web");
   const [domain, setDomain] = useState("");
   const [name, setName] = useState("");
   const [isPublic, setIsPublic] = useState(false);
@@ -56,15 +62,20 @@ export function AddSite({ trigger, disabled }: { trigger?: React.ReactNode; disa
     }
 
     // Validate before attempting to add
-    if (!isValidDomain(domain)) {
+    if (siteType === "web" && !isValidDomain(domain)) {
       setError(t("Invalid domain format. Must be a valid domain like example.com or sub.example.com"));
+      return;
+    }
+    if (siteType === "mobile" && !isValidAppIdentifier(domain)) {
+      setError(t("Invalid app identifier. Use a bundle/package identifier like com.example.app"));
       return;
     }
 
     try {
-      const normalizedDomain = normalizeDomain(domain);
+      const normalizedDomain = siteType === "web" ? normalizeDomain(domain) : domain.trim();
       const siteName = name.trim() || normalizedDomain;
       const site = await addSite(normalizedDomain, siteName, activeOrganization.id, {
+        type: siteType,
         isPublic,
         saltUserIds,
       });
@@ -82,13 +93,13 @@ export function AddSite({ trigger, disabled }: { trigger?: React.ReactNode; disa
   };
 
   const resetForm = () => {
+    setSiteType("web");
     setDomain("");
     setName("");
     setError("");
     setIsPublic(false);
     setSaltUserIds(false);
   };
-
 
   if (subscription?.status !== "active" && subscription?.status !== "trialing" && IS_CLOUD) {
     return (
@@ -97,13 +108,11 @@ export function AddSite({ trigger, disabled }: { trigger?: React.ReactNode; disa
           {trigger || (
             <Button disabled title={t("Upgrade to Pro to add more websites")}>
               <Plus className="h-4 w-4" />
-              {t("Add Website")}
+              {t("Add Site")}
             </Button>
           )}
         </TooltipTrigger>
-        <TooltipContent>
-          {t("You need to be on an active subscription to add websites")}
-        </TooltipContent>
+        <TooltipContent>{t("You need to be on an active subscription to add websites")}</TooltipContent>
       </Tooltip>
     );
   }
@@ -116,12 +125,14 @@ export function AddSite({ trigger, disabled }: { trigger?: React.ReactNode; disa
           {trigger || (
             <Button disabled title={t("Upgrade to Pro to add more websites")}>
               <Plus className="h-4 w-4" />
-              {t("Add Website")}
+              {t("Add Site")}
             </Button>
           )}
         </TooltipTrigger>
         <TooltipContent>
-          {t("You have reached the limit of {limit} websites. Upgrade to add more websites", { limit: String(siteLimit) })}
+          {t("You have reached the limit of {limit} websites. Upgrade to add more websites", {
+            limit: String(siteLimit),
+          })}
         </TooltipContent>
       </Tooltip>
     );
@@ -142,7 +153,7 @@ export function AddSite({ trigger, disabled }: { trigger?: React.ReactNode; disa
           {trigger || (
             <Button disabled={finalDisabled}>
               <Plus className="h-4 w-4" />
-              {t("Add Website")}
+              {t("Add Site")}
             </Button>
           )}
         </DialogTrigger>
@@ -150,21 +161,49 @@ export function AddSite({ trigger, disabled }: { trigger?: React.ReactNode; disa
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <AppWindow className="h-6 w-6" />
-              {t("Add Website")}
+              {t("Add Site")}
             </DialogTitle>
-            <DialogDescription>{t("Track analytics for a new website in your organization")}</DialogDescription>
+            <DialogDescription>
+              {t("Track analytics for a new website or React Native app in your organization")}
+            </DialogDescription>
           </DialogHeader>
 
           <div className="grid gap-4 py-2">
+            <RadioGroup
+              value={siteType}
+              onValueChange={value => setSiteType(value as SiteType)}
+              className="grid grid-cols-2 gap-3"
+            >
+              <Label
+                htmlFor="site-type-web"
+                className="flex cursor-pointer items-center gap-2 rounded-md border border-neutral-200 p-3 text-sm dark:border-neutral-800"
+              >
+                <RadioGroupItem id="site-type-web" value="web" />
+                <Globe2 className="h-4 w-4" />
+                <span>{t("Website")}</span>
+              </Label>
+              <Label
+                htmlFor="site-type-mobile"
+                className="flex cursor-pointer items-center gap-2 rounded-md border border-neutral-200 p-3 text-sm dark:border-neutral-800"
+              >
+                <RadioGroupItem id="site-type-mobile" value="mobile" />
+                <Smartphone className="h-4 w-4" />
+                <span>{t("React Native App")}</span>
+              </Label>
+            </RadioGroup>
+
             <div className="grid w-full items-center gap-1.5">
               <Label htmlFor="domain" className="text-sm font-medium">
-                {t("Domain")}
+                {siteType === "web" ? t("Domain") : t("App Identifier")}
               </Label>
               <Input
                 id="domain"
                 value={domain}
-                onChange={e => setDomain(e.target.value.toLowerCase())}
-                placeholder="example.com or sub.example.com"
+                onChange={e => {
+                  const value = e.target.value.trim();
+                  setDomain(siteType === "web" ? value.toLowerCase() : value);
+                }}
+                placeholder={siteType === "web" ? "example.com or sub.example.com" : "com.example.app"}
               />
             </div>
             <div className="grid w-full items-center gap-1.5">
@@ -208,7 +247,7 @@ export function AddSite({ trigger, disabled }: { trigger?: React.ReactNode; disa
           {error && (
             <Alert variant="destructive">
               <AlertCircle className="h-4 w-4" />
-              <AlertTitle>{t("Error Adding Website")}</AlertTitle>
+              <AlertTitle>{t("Error Adding Site")}</AlertTitle>
               <AlertDescription>{error}</AlertDescription>
             </Alert>
           )}

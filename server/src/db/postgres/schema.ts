@@ -57,37 +57,42 @@ export const verification = pgTable("verification", {
 });
 
 // Sites table
-export const sites = pgTable("sites", {
-  id: text("id").$defaultFn(() => sql`encode(gen_random_bytes(6), 'hex')`),
-  // deprecated - keeping as primary key for backwards compatibility
-  siteId: serial("site_id").primaryKey().notNull(),
-  name: text("name").notNull(),
-  domain: text("domain").notNull(),
-  createdAt: timestamp("created_at", { mode: "string" }).defaultNow(),
-  updatedAt: timestamp("updated_at", { mode: "string" }).defaultNow(),
-  createdBy: text("created_by").references(() => user.id, { onDelete: "set null" }),
-  organizationId: text("organization_id").references(() => organization.id),
-  public: boolean().default(false),
-  embedEnabled: boolean("embed_enabled").default(false),
-  saltUserIds: boolean().default(false),
-  blockBots: boolean().default(true).notNull(),
-  excludedIPs: jsonb("excluded_ips").default([]), // Array of IP addresses/ranges to exclude
-  excludedCountries: jsonb("excluded_countries").default([]), // Array of ISO country codes to exclude (e.g., ["US", "GB"])
-  sessionReplay: boolean().default(false),
-  webVitals: boolean().default(false),
-  trackErrors: boolean().default(false),
-  trackOutbound: boolean().default(true),
-  trackUrlParams: boolean().default(true),
-  trackInitialPageView: boolean().default(true),
-  trackSpaNavigation: boolean().default(true),
-  trackIp: boolean().default(false),
-  trackButtonClicks: boolean().default(false),
-  trackCopy: boolean().default(false),
-  trackFormInteractions: boolean().default(false),
-  apiKey: text("api_key"), // Format: rb_{64_hex_chars} = 67 chars total
-  privateLinkKey: text("private_link_key"),
-  tags: jsonb("tags").default([]).$type<string[]>(),
-});
+export const sites = pgTable(
+  "sites",
+  {
+    id: text("id").$defaultFn(() => sql`encode(gen_random_bytes(6), 'hex')`),
+    // deprecated - keeping as primary key for backwards compatibility
+    siteId: serial("site_id").primaryKey().notNull(),
+    name: text("name").notNull(),
+    type: text("type").$type<"web" | "mobile" | null>(),
+    domain: text("domain").notNull(),
+    createdAt: timestamp("created_at", { mode: "string" }).defaultNow(),
+    updatedAt: timestamp("updated_at", { mode: "string" }).defaultNow(),
+    createdBy: text("created_by").references(() => user.id, { onDelete: "set null" }),
+    organizationId: text("organization_id").references(() => organization.id),
+    public: boolean().default(false),
+    embedEnabled: boolean("embed_enabled").default(false),
+    saltUserIds: boolean().default(false),
+    blockBots: boolean().default(true).notNull(),
+    excludedIPs: jsonb("excluded_ips").default([]), // Array of IP addresses/ranges to exclude
+    excludedCountries: jsonb("excluded_countries").default([]), // Array of ISO country codes to exclude (e.g., ["US", "GB"])
+    sessionReplay: boolean().default(false),
+    webVitals: boolean().default(false),
+    trackErrors: boolean().default(false),
+    trackOutbound: boolean().default(true),
+    trackUrlParams: boolean().default(true),
+    trackInitialPageView: boolean().default(true),
+    trackSpaNavigation: boolean().default(true),
+    trackIp: boolean().default(false),
+    trackButtonClicks: boolean().default(false),
+    trackCopy: boolean().default(false),
+    trackFormInteractions: boolean().default(false),
+    apiKey: text("api_key"), // Format: rb_{64_hex_chars} = 67 chars total
+    privateLinkKey: text("private_link_key"),
+    tags: jsonb("tags").default([]).$type<string[]>(),
+  },
+  table => [check("sites_type_check", sql`${table.type} IS NULL OR ${table.type} IN ('web', 'mobile')`)]
+);
 
 // Active sessions table
 export const activeSessions = pgTable("active_sessions", {
