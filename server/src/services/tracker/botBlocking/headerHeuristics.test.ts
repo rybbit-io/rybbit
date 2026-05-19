@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { FastifyRequest } from "fastify";
-import { detectCloudflareBot, getCloudflareBotScore } from "./botDetection.js";
+import { detectCloudflareBot, getCloudflareBotScore } from "./headerHeuristics.js";
 
 function requestWithHeaders(headers: Record<string, string | string[]>): FastifyRequest {
   return { headers } as unknown as FastifyRequest;

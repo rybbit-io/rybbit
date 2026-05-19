@@ -20,7 +20,7 @@
     "db:pull": "drizzle-kit pull --config=drizzle.config.ts",
     "db:drop": "drizzle-kit drop --config=drizzle.config.ts",
     "db:check": "drizzle-kit check --config=drizzle.config.ts",
-    "update:datacenter-asns": "node scripts/update-datacenter-asns.mjs",
+    "update:datacenter-asns": "node src/services/tracker/botBlocking/update-datacenter-asns.mjs",
     "knip": "knip",
     "format": "prettier --write \"src/**/*.{js,ts,json,md}\"",
     "format:check": "prettier --check \"src/**/*.{js,ts,json,md}\""

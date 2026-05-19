@@ -1,5 +1,5 @@
 import { FastifyRequest } from "fastify";
-import { BOT_SCORE_THRESHOLD, CLOUDFLARE_BOT_SCORE_THRESHOLD } from "./const.js";
+import { BOT_SCORE_THRESHOLD, CLOUDFLARE_BOT_SCORE_THRESHOLD } from "./config.js";
 
 interface BotDetectionResult {
   isBot: boolean;

@@ -127,8 +127,6 @@ describe("classifyUA", () => {
 
   it("isBotUA boolean shorthand agrees with classifyUA", () => {
     expect(isBotUA("Googlebot/2.1")).toBe(true);
-    expect(isBotUA("Mozilla/5.0 (Windows NT 10.0) AppleWebKit/537.36 Chrome/120 Safari/537.36")).toBe(
-      false
-    );
+    expect(isBotUA("Mozilla/5.0 (Windows NT 10.0) AppleWebKit/537.36 Chrome/120 Safari/537.36")).toBe(false);
   });
 });
