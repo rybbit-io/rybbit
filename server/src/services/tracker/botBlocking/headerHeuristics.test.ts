@@ -1,44 +1,50 @@
 import { describe, expect, it } from "vitest";
 import { FastifyRequest } from "fastify";
-import { detectCloudflareBot, getCloudflareBotScore } from "./headerHeuristics.js";
+import { detectBot } from "./headerHeuristics.js";
 
 function requestWithHeaders(headers: Record<string, string | string[]>): FastifyRequest {
   return { headers } as unknown as FastifyRequest;
 }
 
-describe("Cloudflare bot score detection", () => {
-  it("reads cf-bot-score when Cloudflare forwards it to origin", () => {
-    const request = requestWithHeaders({ "cf-bot-score": "12" });
+const browserUserAgent =
+  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
 
-    expect(getCloudflareBotScore(request)).toBe(12);
-    expect(detectCloudflareBot(request)).toEqual({
+describe("header heuristic bot detection", () => {
+  it("detects scripting framework user agents", () => {
+    const result = detectBot(requestWithHeaders({}), "python-requests/2.31.0");
+
+    expect(result).toEqual({
       isBot: true,
-      score: 12,
-      reason: "cf_bot_score:12",
+      score: 5,
+      reason: "bot_framework:python-requests",
     });
   });
 
-  it("supports Cloudflare's documented x-bot-score transform header", () => {
-    const request = requestWithHeaders({ "x-bot-score": "29" });
+  it("scores missing browser headers", () => {
+    const result = detectBot(requestWithHeaders({}), browserUserAgent);
 
-    expect(detectCloudflareBot(request).isBot).toBe(true);
+    expect(result).toMatchObject({
+      isBot: true,
+      score: 9,
+    });
+    expect(result.reason).toContain("missing_accept_language");
+    expect(result.reason).toContain("missing_accept");
+    expect(result.reason).toContain("missing_accept_encoding");
+    expect(result.reason).toContain("missing_sec_fetch_site");
   });
 
-  it("does not block likely-human or not-computed Cloudflare scores", () => {
-    expect(detectCloudflareBot(requestWithHeaders({ "cf-bot-score": "30" }))).toMatchObject({
-      isBot: false,
-      score: 30,
+  it("does not score complete browser fetch headers", () => {
+    const request = requestWithHeaders({
+      accept: "*/*",
+      "accept-encoding": "gzip, br",
+      "accept-language": "en-US,en;q=0.9",
+      "sec-fetch-site": "cross-site",
     });
-    expect(detectCloudflareBot(requestWithHeaders({ "cf-bot-score": "0" }))).toEqual({
+
+    expect(detectBot(request, browserUserAgent)).toEqual({
       isBot: false,
       score: 0,
-      reason: "cf_bot_score_not_computed",
+      reason: undefined,
     });
-  });
-
-  it("ignores malformed scores", () => {
-    expect(getCloudflareBotScore(requestWithHeaders({ "cf-bot-score": "bad" }))).toBeNull();
-    expect(getCloudflareBotScore(requestWithHeaders({ "cf-bot-score": "12abc" }))).toBeNull();
-    expect(getCloudflareBotScore(requestWithHeaders({ "cf-bot-score": "101" }))).toBeNull();
   });
 });

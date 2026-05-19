@@ -1,12 +1,14 @@
 import { FastifyRequest } from "fastify";
 import { lookupAsn } from "../../../db/geolocation/asn.js";
-import { createServiceLogger } from "../../../lib/logger/logger.js";
+import { logger } from "../../../lib/logger/logger.js";
+import type { AnomalyCounters } from "./anomalyScorer.js";
+import { observeTrackingAnomaly } from "./anomalyScorer.js";
+import type { BotDetectionMethod } from "./botDetectionStats.js";
+import { recordBotDetections } from "./botDetectionStats.js";
 import { classifyBotAsn } from "./botProviderAsns.js";
 import { CLIENT_BOT_SCORE_THRESHOLD } from "./config.js";
-import { detectBot, detectCloudflareBot } from "./headerHeuristics.js";
+import { detectBot } from "./headerHeuristics.js";
 import { classifyUA } from "./uaBots/index.js";
-
-const logger = createServiceLogger("bot-blocking");
 
 interface BotBlockingPayload {
   siteId: string;
@@ -14,6 +16,9 @@ interface BotBlockingPayload {
   clientBotScore?: number;
   screenWidth?: number;
   screenHeight?: number;
+  hostname?: string;
+  pathname?: string;
+  eventType?: string;
   ipAddress: string;
 }
 
@@ -23,17 +28,16 @@ interface BotBlockingInput {
   payload: BotBlockingPayload;
 }
 
-type BotBlockingLayer =
-  | "ua_pattern"
-  | "cloudflare_bot_score"
-  | "header_heuristics"
-  | "client_signals"
-  | "desktop_800x600"
-  | "bot_asn";
+interface AnomalyReason {
+  rule: string;
+  score: number;
+  value: number;
+  threshold: number;
+  windowSeconds: number;
+}
 
 interface BotBlockingDetection {
-  layer: BotBlockingLayer;
-  message: string;
+  layer: BotDetectionMethod;
   botCategory?: string | null;
   matchedPattern?: string | null;
   reason?: string;
@@ -42,10 +46,11 @@ interface BotBlockingDetection {
   ip?: string;
   asn?: number;
   asnOrg?: string;
-  asnSource?: string;
   asnProvider?: string;
   asnCategory?: string;
   asnNote?: string;
+  anomalyReasons?: AnomalyReason[];
+  anomalyCounters?: AnomalyCounters;
 }
 
 export interface BotBlockingResult {
@@ -65,83 +70,90 @@ export function checkBotBlocking({ request, blockBots, payload }: BotBlockingInp
   }
 
   const userAgent = payload.userAgent || (request.headers["user-agent"] as string) || "";
-  const cloudflareDetection = detectCloudflareBot(request);
-  const cfBotScore = cloudflareDetection.score ?? undefined;
   const detections: BotBlockingDetection[] = [];
+  let blockMessage: string | null = null;
+
+  function addDetection(message: string, detection: BotBlockingDetection) {
+    blockMessage ??= message;
+    detections.push(detection);
+  }
 
   // Layer 1: User-agent classification (vendored from isbot patterns, with categories)
   const uaClassification = classifyUA(userAgent);
   if (uaClassification.isBot) {
-    detections.push({
+    addDetection("Event not tracked - bot detected using ua-pattern", {
       layer: "ua_pattern",
-      message: "Event not tracked - bot detected using ua-pattern",
       botCategory: uaClassification.category,
       matchedPattern: uaClassification.matchedPattern,
     });
   }
 
-  // Layer 2: Cloudflare Bot Management score forwarded by a request transform or Worker
-  if (cloudflareDetection.isBot) {
-    detections.push({
-      layer: "cloudflare_bot_score",
-      message: "Event not tracked - bot detected using cloudflare bot score",
-      reason: cloudflareDetection.reason,
-      score: cloudflareDetection.score ?? undefined,
-    });
-  }
-
-  // Layer 3: Header heuristic bot detection
+  // Layer 2: Header heuristic bot detection
   const detection = detectBot(request, userAgent);
   if (detection.isBot) {
-    detections.push({
+    addDetection("Event not tracked - bot detected using header heuristics", {
       layer: "header_heuristics",
-      message: "Event not tracked - bot detected using header heuristics",
       reason: detection.reason,
       score: detection.score,
     });
   }
 
-  // Layer 4: Client-side bot signal score check
+  // Layer 3: Client-side bot signal score check
   const clientBotScore = payload.clientBotScore;
   if (typeof clientBotScore === "number" && clientBotScore >= CLIENT_BOT_SCORE_THRESHOLD) {
-    detections.push({
+    addDetection("Event not tracked - bot detected using client signals", {
       layer: "client_signals",
-      message: "Event not tracked - bot detected using client signals",
       clientBotScore,
     });
   }
 
-  // Layer 5: Desktop 800x600 detection — Puppeteer default viewport, near-zero real desktop usage
+  // Layer 4: Desktop 800x600 detection — Puppeteer default viewport, near-zero real desktop usage
   if (
     payload.screenWidth === 800 &&
     payload.screenHeight === 600 &&
     userAgent &&
     /Windows NT|Macintosh|X11/.test(userAgent)
   ) {
-    detections.push({
+    addDetection("Event not tracked - bot detected using desktop 800x600", {
       layer: "desktop_800x600",
-      message: "Event not tracked - bot detected using desktop 800x600",
     });
   }
 
-  // Layer 6: ASN check — IP belongs to hosting/cloud or curated bot provider infrastructure.
+  // Layer 5: ASN check — IP belongs to hosting/cloud or curated bot provider infrastructure.
   const ipForAsn = payload.ipAddress;
   if (ipForAsn) {
     const asnInfo = lookupAsn(ipForAsn);
     const botAsnMatch = classifyBotAsn(asnInfo?.asn);
     if (asnInfo && botAsnMatch.isBotInfrastructure) {
-      detections.push({
+      addDetection("Event not tracked - bot detected using bot asn", {
         layer: "bot_asn",
-        message: "Event not tracked - bot detected using bot asn",
         ip: ipForAsn,
         asn: asnInfo.asn,
         asnOrg: asnInfo.organization,
-        asnSource: botAsnMatch.source,
         asnProvider: botAsnMatch.provider,
         asnCategory: botAsnMatch.category,
         asnNote: botAsnMatch.note,
       });
     }
+  }
+
+  // Layer 6: Request-rate and crawl-shape anomaly detection.
+  const anomaly = observeTrackingAnomaly({
+    siteId: payload.siteId,
+    ipAddress: payload.ipAddress,
+    userAgent,
+    hostname: payload.hostname,
+    pathname: payload.pathname,
+    eventType: payload.eventType,
+    hasClientBotScore: typeof payload.clientBotScore === "number",
+  });
+  if (anomaly.isAnomalous) {
+    addDetection("Event not tracked - bot detected using rate anomaly", {
+      layer: "rate_anomaly",
+      score: anomaly.score,
+      anomalyReasons: anomaly.reasons,
+      anomalyCounters: anomaly.counters,
+    });
   }
 
   if (detections.length === 0) {
@@ -151,8 +163,6 @@ export function checkBotBlocking({ request, blockBots, payload }: BotBlockingInp
   logger.info(
     {
       siteId: payload.siteId,
-      userAgent,
-      cfBotScore,
       detectionCount: detections.length,
       detectionLayers: detections.map(detection => detection.layer),
       detections,
@@ -160,9 +170,11 @@ export function checkBotBlocking({ request, blockBots, payload }: BotBlockingInp
     "Bot request filtered"
   );
 
+  recordBotDetections(detections.map(detection => detection.layer));
+
   return {
     blocked: true,
-    message: detections[0].message,
+    message: blockMessage ?? "Event not tracked - bot detected",
     detections,
   };
 }

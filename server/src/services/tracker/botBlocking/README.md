@@ -1,0 +1,82 @@
+# Bot Blocking
+
+This directory owns tracker-side bot filtering for public `/track` ingestion. `trackEvent.ts` validates the payload, resolves the request IP, and calls `checkBotBlocking()`. If any bot method matches, the event is acknowledged with HTTP 200 but is not stored.
+
+## Entry Point
+
+`index.ts` is the single decision point. It receives:
+
+- the Fastify request headers
+- site-level `blockBots`
+- the validated tracking payload fields needed for bot checks
+- the resolved request IP
+
+Bearer-token authenticated requests bypass bot blocking because they are treated as trusted server-side ingestion.
+
+## Detection Flow
+
+All methods run before a decision is returned. This avoids skewed logs where a request that matches multiple bot methods is only counted against the first one.
+
+The returned response still uses the first matched method's message for compatibility, but the log includes all matching methods in `detections`.
+
+Current methods:
+
+- `ua_pattern`: classifies the user-agent using vendored `isbot` patterns plus local AI, social, SEO, framework, headless, and monitoring patterns.
+- `header_heuristics`: scores missing or inconsistent browser headers, scripting framework UAs, headless UAs, stale Chrome versions, and suspicious fetch metadata.
+- `client_signals`: blocks when the browser script reports a client-side bot score at or above the configured threshold.
+- `desktop_800x600`: blocks desktop UAs with Puppeteer's default `800x600` viewport.
+- `bot_asn`: blocks requests from ipverse `hosting` ASNs or the curated bot/scanner/AI provider ASN overlay.
+- `rate_anomaly`: blocks request bursts and crawl-shaped behavior using in-memory sliding-window counters.
+
+## Logging
+
+Blocked requests emit one consolidated log line:
+
+- no raw user-agent string
+- no bot-blocking service child logger field
+- no repeated per-detection message strings
+- `siteId`
+- `detectionCount`
+- `detectionLayers`
+- structured `detections`
+
+Each detection object contains compact method-specific details such as matched UA pattern, header score, ASN metadata, or anomaly counters.
+
+`botDetectionStats.ts` also logs process-lifetime totals every 5 seconds:
+
+- `totalBlockedRequests`
+- `botDetectionTotals` by method
+
+A request can increment multiple method totals if multiple methods detected it, so method totals can sum higher than `totalBlockedRequests`.
+
+## ASN Data
+
+`datacenterAsns.ts` is generated from ipverse `as-metadata` where `metadata.category === "hosting"`.
+
+Regenerate it with:
+
+```sh
+npm run update:datacenter-asns
+```
+
+`botProviderAsns.ts` is the curated overlay for known bot, AI, scanner, and internet measurement ASNs that ipverse does not reliably categorize as hosting.
+
+## Rate Anomaly Layer
+
+`anomalyScorer.ts` uses per-process memory only. It tracks short rolling windows for:
+
+- events per `siteId + IP + UA hash`
+- events per `siteId + IP`
+- distinct paths per visitor tuple
+- distinct UAs per IP
+- distinct hostnames per IP
+- site-wide volume for a UA hash
+- missing client bot score volume
+
+The layer is score-based. Strong rules, such as more than 30 events in 10 seconds for one visitor tuple or more than 25 distinct paths in 60 seconds, can block alone. Weak rules, such as missing client score, only add context unless paired with stronger behavior.
+
+This catches obvious floods and fast crawlers, but it is local to a Node process. If the signal is useful in production, move the same keys and thresholds to Redis so counters are shared across workers and containers.
+
+## Trust Boundaries
+
+Bot blocking assumes the resolved IP is trustworthy. In production, the origin should only accept traffic from trusted proxy infrastructure, or the edge should strip and rebuild forwarding headers. Client-supplied `ip_address`, `user_agent`, and `_bs` are useful inputs but are not secure proof.

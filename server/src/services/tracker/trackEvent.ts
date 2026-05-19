@@ -171,14 +171,16 @@ export const trackingPayloadSchema = z.discriminatedUnion("type", [
               const parsed = JSON.parse(val);
               if (typeof parsed.sourceElement !== "string") return false;
               if (parsed.text !== undefined && typeof parsed.text !== "string") return false;
-              if (parsed.textLength !== undefined && (typeof parsed.textLength !== "number" || parsed.textLength < 0)) return false;
+              if (parsed.textLength !== undefined && (typeof parsed.textLength !== "number" || parsed.textLength < 0))
+                return false;
               return true;
             } catch {
               return false;
             }
           },
           {
-            message: "Properties must be valid JSON with copy fields (sourceElement required, text and textLength optional)",
+            message:
+              "Properties must be valid JSON with copy fields (sourceElement required, text and textLength optional)",
           }
         ),
     })
@@ -206,7 +208,8 @@ export const trackingPayloadSchema = z.discriminatedUnion("type", [
             }
           },
           {
-            message: "Properties must be valid JSON with form_submit fields (formId, formName, formAction, method, fieldCount required)",
+            message:
+              "Properties must be valid JSON with form_submit fields (formId, formName, formAction, method, fieldCount required)",
           }
         ),
     })
@@ -278,6 +281,9 @@ export async function trackEvent(request: FastifyRequest, reply: FastifyReply) {
         clientBotScore: validatedPayload._bs,
         screenWidth: validatedPayload.screenWidth,
         screenHeight: validatedPayload.screenHeight,
+        hostname: validatedPayload.hostname,
+        pathname: validatedPayload.pathname,
+        eventType: validatedPayload.type,
         ipAddress: requestIP,
       },
     });
