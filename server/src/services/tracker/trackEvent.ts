@@ -1,15 +1,18 @@
 import { FastifyReply, FastifyRequest } from "fastify";
-import { isbot } from "isbot";
 import { z, ZodError } from "zod";
 import { createServiceLogger } from "../../lib/logger/logger.js";
 import { siteConfig } from "../../lib/siteConfig.js";
-import { detectBot } from "./botDetection.js";
+import { detectBot, detectCloudflareBot } from "./botDetection.js";
 import { CLIENT_BOT_SCORE_THRESHOLD } from "./const.js";
 import { sessionsService } from "../sessions/sessionsService.js";
 import { usageService } from "../usageService.js";
 import { pageviewQueue } from "./pageviewQueue.js";
 import { createBasePayload } from "./utils.js";
 import { getLocation } from "../../db/geolocation/geolocation.js";
+import { lookupAsn } from "../../db/geolocation/asn.js";
+import { classifyUA } from "./uaBots/index.js";
+import { isDatacenterAsn } from "./datacenterAsns.js";
+import { getIpAddress } from "../../utils.js";
 
 // Shared fields for all event types
 const baseEventFields = {
@@ -268,6 +271,8 @@ export async function trackEvent(request: FastifyRequest, reply: FastifyReply) {
       });
     }
 
+    const requestIP = validatedPayload.ip_address || getIpAddress(request);
+
     // Check if bot blocking is enabled for this site and if the request is from a bot
     // Skip bot check for Bearer token authenticated requests
     const authHeader = request.headers["authorization"];
@@ -275,19 +280,50 @@ export async function trackEvent(request: FastifyRequest, reply: FastifyReply) {
     if (!hasBearerToken && siteConfiguration.blockBots) {
       // Use custom user agent if provided, otherwise fall back to header
       const userAgent = validatedPayload.user_agent || (request.headers["user-agent"] as string);
-      if (userAgent && isbot(userAgent)) {
-        logger.info({ siteId: validatedPayload.site_id, userAgent }, "Bot request filtered");
+      const cloudflareDetection = detectCloudflareBot(request);
+      const cfBotScore = cloudflareDetection.score ?? undefined;
+
+      // Layer 1: User-agent classification (vendored from isbot patterns, with categories)
+      const uaClassification = classifyUA(userAgent);
+      if (uaClassification.isBot) {
+        logger.info(
+          {
+            siteId: validatedPayload.site_id,
+            userAgent,
+            cfBotScore,
+            botCategory: uaClassification.category,
+            matchedPattern: uaClassification.matchedPattern,
+          },
+          "Bot request filtered (ua-pattern)"
+        );
         return reply.status(200).send({
           success: true,
-          message: "Event not tracked - bot detected using isbot",
+          message: "Event not tracked - bot detected using ua-pattern",
         });
       }
 
-      // Layer 1: Header heuristic bot detection
+      // Layer 2: Cloudflare Bot Management score forwarded by a request transform or Worker
+      if (cloudflareDetection.isBot) {
+        logger.info(
+          {
+            siteId: validatedPayload.site_id,
+            userAgent,
+            cfBotScore,
+            reason: cloudflareDetection.reason,
+          },
+          "Bot request filtered (cloudflare bot score)"
+        );
+        return reply.status(200).send({
+          success: true,
+          message: "Event not tracked - bot detected using cloudflare bot score",
+        });
+      }
+
+      // Layer 3: Header heuristic bot detection
       const detection = detectBot(request, userAgent || "");
       if (detection.isBot) {
         logger.info(
-          { siteId: validatedPayload.site_id, userAgent, reason: detection.reason, score: detection.score },
+          { siteId: validatedPayload.site_id, userAgent, cfBotScore, reason: detection.reason, score: detection.score },
           "Bot request filtered (heuristics)"
         );
         return reply.status(200).send({
@@ -296,11 +332,11 @@ export async function trackEvent(request: FastifyRequest, reply: FastifyReply) {
         });
       }
 
-      // Client-side bot signal score check
+      // Layer 4: Client-side bot signal score check
       const clientBotScore = validatedPayload._bs;
       if (typeof clientBotScore === "number" && clientBotScore >= CLIENT_BOT_SCORE_THRESHOLD) {
         logger.info(
-          { siteId: validatedPayload.site_id, clientBotScore },
+          { siteId: validatedPayload.site_id, cfBotScore, clientBotScore },
           "Bot request filtered (client signals)"
         );
         return reply.status(200).send({
@@ -309,7 +345,7 @@ export async function trackEvent(request: FastifyRequest, reply: FastifyReply) {
         });
       }
 
-      // Desktop 800x600 detection — Puppeteer default viewport, near-zero real desktop usage
+      // Layer 5: Desktop 800x600 detection — Puppeteer default viewport, near-zero real desktop usage
       if (
         validatedPayload.screenWidth === 800 &&
         validatedPayload.screenHeight === 600 &&
@@ -317,13 +353,37 @@ export async function trackEvent(request: FastifyRequest, reply: FastifyReply) {
         /Windows NT|Macintosh|X11/.test(userAgent)
       ) {
         logger.info(
-          { siteId: validatedPayload.site_id, userAgent },
+          { siteId: validatedPayload.site_id, userAgent, cfBotScore },
           "Bot request filtered (desktop 800x600)"
         );
         return reply.status(200).send({
           success: true,
           message: "Event not tracked - bot detected using desktop 800x600",
         });
+      }
+
+      // Layer 6: Datacenter ASN check — IP belongs to a known cloud/VPS provider.
+      // Real browser traffic almost never originates from datacenter ranges.
+      const ipForAsn = requestIP;
+      if (ipForAsn) {
+        const asnInfo = lookupAsn(ipForAsn);
+        if (asnInfo && isDatacenterAsn(asnInfo.asn)) {
+          logger.info(
+            {
+              siteId: validatedPayload.site_id,
+              userAgent,
+              cfBotScore,
+              ip: ipForAsn,
+              asn: asnInfo.asn,
+              asnOrg: asnInfo.organization,
+            },
+            "Bot request filtered (datacenter asn)"
+          );
+          return reply.status(200).send({
+            success: true,
+            message: "Event not tracked - bot detected using datacenter asn",
+          });
+        }
       }
     }
 
@@ -334,9 +394,6 @@ export async function trackEvent(request: FastifyRequest, reply: FastifyReply) {
     }
 
     // Check if the IP should be excluded from tracking
-    // Use custom IP if provided in payload, otherwise get from request
-    const requestIP = validatedPayload.ip_address || request.ip || "";
-
     if (siteConfiguration.excludedIPs && siteConfiguration.excludedIPs.length > 0) {
       const isExcluded = await siteConfig.isIPExcluded(requestIP, validatedPayload.site_id);
       if (isExcluded) {

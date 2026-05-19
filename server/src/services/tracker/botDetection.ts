@@ -1,11 +1,19 @@
 import { FastifyRequest } from "fastify";
-import { BOT_SCORE_THRESHOLD } from "./const.js";
+import { BOT_SCORE_THRESHOLD, CLOUDFLARE_BOT_SCORE_THRESHOLD } from "./const.js";
 
 interface BotDetectionResult {
   isBot: boolean;
   score: number;
   reason?: string;
 }
+
+interface CloudflareBotScoreResult {
+  isBot: boolean;
+  score: number | null;
+  reason?: string;
+}
+
+const CLOUDFLARE_BOT_SCORE_HEADERS = ["cf-bot-score", "x-bot-score", "cf-bot-management-score"] as const;
 
 // Known bot/scripting framework signatures in User-Agent strings
 const BOT_FRAMEWORK_PATTERNS = [
@@ -65,16 +73,67 @@ function claimsModernOS(ua: string): boolean {
   return false;
 }
 
+function getFirstHeaderValue(value: string | string[] | undefined): string | null {
+  if (Array.isArray(value)) {
+    return value[0] ?? null;
+  }
+  return typeof value === "string" ? value : null;
+}
+
+/**
+ * Extract Cloudflare Bot Management score when it has been forwarded to origin.
+ *
+ * Cloudflare exposes `cf.bot_management.score` to Rules/Workers, but origins only
+ * receive it if a request transform/worker copies it into a request header.
+ * We support the local `cf-bot-score` name plus Cloudflare's documented
+ * transform-rule example header, `x-bot-score`.
+ */
+export function getCloudflareBotScore(request: FastifyRequest): number | null {
+  for (const header of CLOUDFLARE_BOT_SCORE_HEADERS) {
+    const rawScore = getFirstHeaderValue(request.headers[header]);
+    if (!rawScore) continue;
+
+    const normalizedScore = rawScore.trim();
+    if (!/^\d{1,2}$/.test(normalizedScore)) continue;
+
+    const score = Number.parseInt(normalizedScore, 10);
+    if (Number.isInteger(score) && score >= 0 && score <= 99) {
+      return score;
+    }
+  }
+
+  return null;
+}
+
+export function detectCloudflareBot(request: FastifyRequest): CloudflareBotScoreResult {
+  const score = getCloudflareBotScore(request);
+
+  if (score === null) {
+    return { isBot: false, score: null };
+  }
+
+  if (score > 0 && score < CLOUDFLARE_BOT_SCORE_THRESHOLD) {
+    return {
+      isBot: true,
+      score,
+      reason: `cf_bot_score:${score}`,
+    };
+  }
+
+  return {
+    isBot: false,
+    score,
+    reason: score === 0 ? "cf_bot_score_not_computed" : undefined,
+  };
+}
+
 /**
  * Score-based bot detection using HTTP header heuristics.
  *
- * Supplements the isbot() UA-string check with analysis of headers
+ * Supplements the UA-pattern check (uaBots/classifyUA) with analysis of headers
  * that real browsers always send but scripting clients typically miss.
  */
-export function detectBot(
-  request: FastifyRequest,
-  userAgent: string
-): BotDetectionResult {
+export function detectBot(request: FastifyRequest, userAgent: string): BotDetectionResult {
   let score = 0;
   const reasons: string[] = [];
   const headers = request.headers;
@@ -117,10 +176,7 @@ export function detectBot(
   if (!acceptEncoding) {
     score += 2;
     reasons.push("missing_accept_encoding");
-  } else if (
-    typeof acceptEncoding === "string" &&
-    !acceptEncoding.includes("gzip")
-  ) {
+  } else if (typeof acceptEncoding === "string" && !acceptEncoding.includes("gzip")) {
     score += 2;
     reasons.push("no_gzip_support");
   }
