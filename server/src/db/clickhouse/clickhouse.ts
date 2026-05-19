@@ -1,5 +1,6 @@
 import { createClient } from "@clickhouse/client";
 import { IS_CLOUD } from "../../lib/const.js";
+import { createServiceLogger } from "../../lib/logger/logger.js";
 
 export const clickhouse = createClient({
   url: process.env.CLICKHOUSE_HOST,
@@ -7,10 +8,24 @@ export const clickhouse = createClient({
   password: process.env.CLICKHOUSE_PASSWORD,
 });
 
+const logger = createServiceLogger("clickhouse");
+
+async function execClickhouseInitStep(step: string, query: string, options?: { optional?: boolean }) {
+  try {
+    await clickhouse.exec({ query });
+  } catch (error) {
+    logger.error({ err: error, step }, "ClickHouse initialization step failed");
+    if (!options?.optional) {
+      throw error;
+    }
+  }
+}
+
 export const initializeClickhouse = async () => {
   // Create events table
-  await clickhouse.exec({
-    query: `
+  await execClickhouseInitStep(
+    "create events table",
+    `
       CREATE TABLE IF NOT EXISTS events (
         site_id UInt16,
         timestamp DateTime,
@@ -54,13 +69,14 @@ export const initializeClickhouse = async () => {
       ENGINE = MergeTree()
       PARTITION BY toYYYYMM(timestamp)
       ORDER BY (site_id, timestamp)
-      TTL timestamp + INTERVAL 3 MONTH DELETE WHERE is_bot
-      `,
-  });
+      TTL timestamp + INTERVAL 3 MONTH DELETE WHERE is_bot = true
+      `
+  );
 
   // Add columns to the events table
-  await clickhouse.exec({
-    query: `
+  await execClickhouseInitStep(
+    "add events columns",
+    `
       ALTER TABLE events
         ADD COLUMN IF NOT EXISTS lcp Nullable(Float64),
         ADD COLUMN IF NOT EXISTS cls Nullable(Float64),
@@ -83,16 +99,18 @@ export const initializeClickhouse = async () => {
         ADD COLUMN IF NOT EXISTS detected_rate_anomaly Bool DEFAULT false,
         ADD COLUMN IF NOT EXISTS matched_ua_pattern String DEFAULT '',
         ADD COLUMN IF NOT EXISTS bot_category LowCardinality(String) DEFAULT ''
-      `,
-  });
+      `
+  );
 
   // Keep bot rows in the main events table, but expire them sooner than normal analytics rows.
-  await clickhouse.exec({
-    query: `
+  await execClickhouseInitStep(
+    "modify events bot TTL",
+    `
       ALTER TABLE events
-        MODIFY TTL timestamp + INTERVAL 3 MONTH DELETE WHERE is_bot
+        MODIFY TTL timestamp + INTERVAL 3 MONTH DELETE WHERE is_bot = true
     `,
-  });
+    { optional: true }
+  );
 
   // Create session replay tables
   await clickhouse.exec({

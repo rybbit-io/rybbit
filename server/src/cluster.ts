@@ -11,6 +11,16 @@ import { weeklyReportService } from "./services/weekyReports/weeklyReportService
 
 const logger = createServiceLogger("cluster");
 
+process.on("uncaughtException", error => {
+  logger.error({ err: error }, "Uncaught exception in cluster process");
+  process.exit(1);
+});
+
+process.on("unhandledRejection", reason => {
+  logger.error({ err: reason }, "Unhandled rejection in cluster process");
+  process.exit(1);
+});
+
 // Determine worker count from environment variable
 // Default to 0 (single-process mode) if not set.
 const requestedWorkers = process.env.CLUSTER_WORKERS;
@@ -27,8 +37,13 @@ if (workerCount === 0) {
   logger.info(`Primary process ${process.pid} starting with ${workerCount} workers`);
 
   // Initialize databases once before forking workers
-  await Promise.all([initializeClickhouse(), initPostgres()]);
-  logger.info("Database initialization complete");
+  try {
+    await Promise.all([initializeClickhouse(), initPostgres()]);
+    logger.info("Database initialization complete");
+  } catch (error) {
+    logger.error({ err: error }, "Primary process failed during database initialization");
+    process.exit(1);
+  }
 
   // Start cron jobs on the primary process only
   telemetryService.startTelemetryCron();
