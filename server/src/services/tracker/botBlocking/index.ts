@@ -4,7 +4,7 @@ import { logger } from "../../../lib/logger/logger.js";
 import type { AnomalyCounters } from "./anomalyScorer.js";
 import { observeTrackingAnomaly } from "./anomalyScorer.js";
 import type { BotDetectionMethod } from "./botDetectionStats.js";
-import { recordBotDetections } from "./botDetectionStats.js";
+import { recordBotBlockingRequest, recordBotDetections } from "./botDetectionStats.js";
 import { classifyBotAsn } from "./botProviderAsns.js";
 import { CLIENT_BOT_SCORE_THRESHOLD } from "./config.js";
 import { detectBot } from "./headerHeuristics.js";
@@ -65,6 +65,9 @@ function isBearerAuthenticated(request: FastifyRequest): boolean {
 }
 
 export function checkBotBlocking({ request, blockBots, payload }: BotBlockingInput): BotBlockingResult | null {
+  const clientBotScore = payload.clientBotScore;
+  recordBotBlockingRequest(clientBotScore);
+
   if (!blockBots || isBearerAuthenticated(request)) {
     return null;
   }
@@ -99,7 +102,6 @@ export function checkBotBlocking({ request, blockBots, payload }: BotBlockingInp
   }
 
   // Layer 3: Client-side bot signal score check
-  const clientBotScore = payload.clientBotScore;
   if (typeof clientBotScore === "number" && clientBotScore >= CLIENT_BOT_SCORE_THRESHOLD) {
     addDetection("Event not tracked - bot detected using client signals", {
       layer: "client_signals",

@@ -7,7 +7,6 @@ export const BOT_SCORE_THRESHOLD = 5;
 
 /**
  * Minimum client-side bot signal score to classify a request as a bot.
- * The client runs checks (webdriver, outerHeight===0, SwiftShader, etc.)
- * and sends a single integer. A score >= this threshold is rejected.
+ * The client sends one cached weighted integer. A score >= this threshold is rejected.
  */
 export const CLIENT_BOT_SCORE_THRESHOLD = 3;

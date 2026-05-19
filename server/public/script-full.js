@@ -381,19 +381,27 @@
   };
 
   // botSignals.ts
+  var cachedBotScore = null;
+  var MAX_BOT_SCORE = 10;
   function getBotScore() {
+    if (cachedBotScore !== null) {
+      return cachedBotScore;
+    }
+    cachedBotScore = calculateBotScore();
+    return cachedBotScore;
+  }
+  function calculateBotScore() {
     let score = 0;
     try {
+      const userAgent = navigator.userAgent;
+      const isChromeLike = /Chrome\//.test(userAgent) && !/\bwv\b|; wv\)/.test(userAgent);
       if (navigator.webdriver === true) {
-        score++;
+        score += 3;
       }
       if (window.outerHeight === 0 || window.outerWidth === 0) {
-        score++;
+        score += 2;
       }
-      if (navigator.connection?.rtt === 0) {
-        score++;
-      }
-      if (!window.chrome && /Chrome\//.test(navigator.userAgent) && !/\bwv\b|; wv\)/.test(navigator.userAgent)) {
+      if (!window.chrome && isChromeLike) {
         score++;
       }
       try {
@@ -410,17 +418,12 @@
         }
       } catch (e2) {
       }
-      if (navigator.plugins.length === 0 && /Chrome\//.test(navigator.userAgent) && !/\bwv\b|; wv\)/.test(navigator.userAgent)) {
+      if (navigator.plugins.length === 0 && isChromeLike) {
         score++;
-      }
-      try {
-        if (typeof Notification !== "undefined" && Notification.permission === "denied") {
-        }
-      } catch (e2) {
       }
     } catch (e2) {
     }
-    return score;
+    return Math.min(score, MAX_BOT_SCORE);
   }
 
   // tracking.ts

@@ -2,36 +2,46 @@
  * Client-side bot detection signals.
  *
  * Checks browser environment characteristics that distinguish real browsers
- * from headless/automated ones. Returns a single integer score — the number
- * of bot-like signals detected. Only the score is transmitted, never the
- * individual signal values, preserving user privacy.
+ * from headless/automated ones. Returns a single weighted integer score.
+ * Only the score is transmitted, never individual signal values, preserving user privacy.
  */
+let cachedBotScore: number | null = null;
+
+const MAX_BOT_SCORE = 10;
+
 export function getBotScore(): number {
+  if (cachedBotScore !== null) {
+    return cachedBotScore;
+  }
+
+  cachedBotScore = calculateBotScore();
+  return cachedBotScore;
+}
+
+function calculateBotScore(): number {
   let score = 0;
 
   try {
-    // 1. navigator.webdriver — set to true when controlled by automation (Selenium, Puppeteer, Playwright)
+    const userAgent = navigator.userAgent;
+    const isChromeLike = /Chrome\//.test(userAgent) && !/\bwv\b|; wv\)/.test(userAgent);
+
+    // 1. navigator.webdriver — strong signal for Selenium, Puppeteer, Playwright, and similar automation
     if ((navigator as any).webdriver === true) {
-      score++;
+      score += 3;
     }
 
-    // 2. Zero outer dimensions — headless browsers return 0 for outer window size
+    // 2. Zero outer dimensions — common in headless/browserless environments
     if (window.outerHeight === 0 || window.outerWidth === 0) {
-      score++;
+      score += 2;
     }
 
-    // 3. Zero network RTT — real networks always have latency > 0
-    if ((navigator as any).connection?.rtt === 0) {
-      score++;
-    }
-
-    // 4. Missing window.chrome on a Chrome UA — real Chrome always exposes this object
+    // 3. Missing window.chrome on a Chrome UA — real Chrome usually exposes this object
     //    Only flag for non-WebView Chrome UAs; Android WebView doesn't expose window.chrome
-    if (!((window as any).chrome) && /Chrome\//.test(navigator.userAgent) && !/\bwv\b|; wv\)/.test(navigator.userAgent)) {
+    if (!((window as any).chrome) && isChromeLike) {
       score++;
     }
 
-    // 5. WebGL renderer check — headless Chrome uses "Google SwiftShader" (software renderer)
+    // 4. WebGL renderer check — headless/containerized Chrome often uses Google SwiftShader
     try {
       const canvas = document.createElement("canvas");
       const gl = canvas.getContext("webgl") || canvas.getContext("experimental-webgl");
@@ -48,25 +58,17 @@ export function getBotScore(): number {
       // WebGL not available — not a bot signal by itself
     }
 
-    // 6. No plugins — headless Chrome has 0 plugins, real Chrome has at least PDF viewer
-    //    Only flag for non-WebView Chrome UAs; Firefox and Android WebView can legitimately have 0
-    if (navigator.plugins.length === 0 && /Chrome\//.test(navigator.userAgent) && !/\bwv\b|; wv\)/.test(navigator.userAgent)) {
+    // 5. No plugins — weak supporting signal for Chrome-like UAs only
+    if (navigator.plugins.length === 0 && isChromeLike) {
       score++;
-    }
-
-    // 7. Notification permission inconsistency — headless mode can return contradictory values
-    try {
-      if (typeof Notification !== "undefined" && Notification.permission === "denied") {
-        // In headless, permission is always "denied" but permission query may say "prompt"
-        // We only count this if other signals are also present (it's a weak signal alone)
-        // Skip — too many false positives on mobile browsers
-      }
-    } catch (e) {
-      // Not available
     }
   } catch (e) {
     // If any top-level access fails, return whatever we've accumulated
   }
 
-  return score;
+  return Math.min(score, MAX_BOT_SCORE);
+}
+
+export function resetBotScoreCacheForTests() {
+  cachedBotScore = null;
 }

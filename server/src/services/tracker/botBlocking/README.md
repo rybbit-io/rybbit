@@ -28,6 +28,8 @@ Current methods:
 - `bot_asn`: blocks requests from ipverse `hosting` ASNs or the curated bot/scanner/AI provider ASN overlay.
 - `rate_anomaly`: blocks request bursts and crawl-shaped behavior using in-memory sliding-window counters.
 
+The client-side `_bs` value is a cached, weighted score computed once per page lifecycle. Strong signals such as `navigator.webdriver === true` can reach the blocking threshold alone; weaker signals such as SwiftShader, missing Chrome globals, and empty plugin lists only add supporting weight.
+
 ## Logging
 
 Blocked requests emit one consolidated log line:
@@ -42,10 +44,13 @@ Blocked requests emit one consolidated log line:
 
 Each detection object contains compact method-specific details such as matched UA pattern, header score, ASN metadata, or anomaly counters.
 
-`botDetectionStats.ts` also logs process-lifetime totals every 5 seconds:
+`botDetectionStats.ts` also logs process-lifetime totals for tracker requests that reach the bot-blocking entry point every 5 seconds:
 
+- `totalRequests`
 - `totalBlockedRequests`
+- `botRequestPercentage`
 - `botDetectionTotals` by method
+- `clientBotScoreHistogram` with buckets for missing, `0`, `1`, `2`, and `3+`
 
 A request can increment multiple method totals if multiple methods detected it, so method totals can sum higher than `totalBlockedRequests`.
 
