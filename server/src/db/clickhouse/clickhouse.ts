@@ -63,6 +63,49 @@ export const initializeClickhouse = async () => {
     `,
   });
 
+  // Create bot events table
+  await clickhouse.exec({
+    query: `
+      CREATE TABLE IF NOT EXISTS bot_events (
+        site_id UInt16,
+        timestamp DateTime,
+        user_id String,
+        hostname String,
+        pathname String,
+        querystring String,
+        referrer String,
+        browser LowCardinality(String),
+        browser_version LowCardinality(String),
+        operating_system LowCardinality(String),
+        operating_system_version LowCardinality(String),
+        country LowCardinality(FixedString(2)),
+        region LowCardinality(String),
+        city String,
+        lat Float64,
+        lon Float64,
+        screen_width UInt16,
+        screen_height UInt16,
+        device_type LowCardinality(String),
+        type LowCardinality(String) DEFAULT 'pageview',
+        asn Nullable(UInt32),
+        asn_org String,
+        detected_ua_pattern Bool,
+        detected_header_heuristics Bool,
+        detected_client_signals Bool,
+        detected_desktop_800x600 Bool,
+        detected_bot_asn Bool,
+        detected_rate_anomaly Bool,
+        matched_ua_pattern String,
+        bot_category LowCardinality(String)
+      )
+      ENGINE = MergeTree()
+      PARTITION BY toYYYYMM(timestamp)
+      ORDER BY (site_id, timestamp)
+      TTL timestamp + INTERVAL 3 MONTH
+      SETTINGS ttl_only_drop_parts = 1
+      `,
+  });
+
   // Create session replay tables
   await clickhouse.exec({
     query: `
