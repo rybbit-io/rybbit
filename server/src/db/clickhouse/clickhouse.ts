@@ -18,15 +18,127 @@ export const clickhouse = createClient({
 
 const logger = createServiceLogger("clickhouse");
 
-async function execClickhouseInitStep(step: string, query: string, options?: { optional?: boolean }) {
+async function execClickhouseInitStep(
+  step: string,
+  query: string,
+  options?: { optional?: boolean; lockAcquireTimeoutSeconds?: number }
+) {
   try {
-    await clickhouse.exec({ query });
+    await clickhouse.exec({
+      query,
+      clickhouse_settings: options?.lockAcquireTimeoutSeconds
+        ? { lock_acquire_timeout: options.lockAcquireTimeoutSeconds }
+        : undefined,
+    });
   } catch (error) {
     logger.error({ err: error, step, requestTimeoutMs: CLICKHOUSE_REQUEST_TIMEOUT_MS }, "ClickHouse initialization step failed");
     if (!options?.optional) {
       throw error;
     }
   }
+}
+
+type ColumnDefinition = {
+  name: string;
+  definition: string;
+};
+
+const EVENTS_COLUMNS_TO_ENSURE: ColumnDefinition[] = [
+  { name: "lcp", definition: "lcp Nullable(Float64)" },
+  { name: "cls", definition: "cls Nullable(Float64)" },
+  { name: "inp", definition: "inp Nullable(Float64)" },
+  { name: "fcp", definition: "fcp Nullable(Float64)" },
+  { name: "ttfb", definition: "ttfb Nullable(Float64)" },
+  { name: "ip", definition: "ip Nullable(String)" },
+  { name: "timezone", definition: "timezone LowCardinality(String) DEFAULT ''" },
+  { name: "identified_user_id", definition: "identified_user_id String DEFAULT ''" },
+  { name: "import_id", definition: "import_id Nullable(UUID)" },
+  { name: "tag", definition: "tag LowCardinality(String) DEFAULT ''" },
+  { name: "is_bot", definition: "is_bot Bool DEFAULT false" },
+  { name: "asn", definition: "asn Nullable(UInt32)" },
+  { name: "asn_org", definition: "asn_org String DEFAULT ''" },
+  { name: "detected_ua_pattern", definition: "detected_ua_pattern Bool DEFAULT false" },
+  { name: "detected_header_heuristics", definition: "detected_header_heuristics Bool DEFAULT false" },
+  { name: "detected_client_signals", definition: "detected_client_signals Bool DEFAULT false" },
+  { name: "detected_desktop_800x600", definition: "detected_desktop_800x600 Bool DEFAULT false" },
+  { name: "detected_bot_asn", definition: "detected_bot_asn Bool DEFAULT false" },
+  { name: "detected_rate_anomaly", definition: "detected_rate_anomaly Bool DEFAULT false" },
+  { name: "matched_ua_pattern", definition: "matched_ua_pattern String DEFAULT ''" },
+  { name: "bot_category", definition: "bot_category LowCardinality(String) DEFAULT ''" },
+];
+
+async function getTableColumns(table: string) {
+  const result = await clickhouse.query({
+    query: `
+      SELECT name
+      FROM system.columns
+      WHERE database = currentDatabase()
+        AND table = {table:String}
+    `,
+    query_params: { table },
+    format: "JSONEachRow",
+  });
+
+  const rows = await result.json<{ name: string }>();
+  return new Set(rows.map(row => row.name));
+}
+
+async function ensureEventsColumns() {
+  const existingColumns = await getTableColumns("events");
+  const missingColumns = EVENTS_COLUMNS_TO_ENSURE.filter(column => !existingColumns.has(column.name));
+
+  if (missingColumns.length === 0) {
+    logger.debug("Events table columns are up to date");
+    return;
+  }
+
+  logger.info(
+    { missingColumns: missingColumns.map(column => column.name) },
+    "Adding missing events table columns"
+  );
+
+  await execClickhouseInitStep(
+    "add missing events columns",
+    `
+      ALTER TABLE events
+        ${missingColumns.map(column => `ADD COLUMN IF NOT EXISTS ${column.definition}`).join(",\n        ")}
+      `,
+    { lockAcquireTimeoutSeconds: 15 }
+  );
+}
+
+async function getTableCreateQuery(table: string) {
+  const result = await clickhouse.query({
+    query: `
+      SELECT create_table_query
+      FROM system.tables
+      WHERE database = currentDatabase()
+        AND name = {table:String}
+      LIMIT 1
+    `,
+    query_params: { table },
+    format: "JSONEachRow",
+  });
+
+  const rows = await result.json<{ create_table_query: string }>();
+  return rows[0]?.create_table_query ?? "";
+}
+
+async function ensureEventsBotTtl() {
+  const createTableQuery = await getTableCreateQuery("events");
+  if (createTableQuery.includes("DELETE WHERE is_bot")) {
+    logger.debug("Events table bot TTL is already configured");
+    return;
+  }
+
+  await execClickhouseInitStep(
+    "modify events bot TTL",
+    `
+      ALTER TABLE events
+        MODIFY TTL timestamp + INTERVAL 3 MONTH DELETE WHERE is_bot = true
+    `,
+    { optional: true, lockAcquireTimeoutSeconds: 15 }
+  );
 }
 
 export const initializeClickhouse = async () => {
@@ -81,44 +193,11 @@ export const initializeClickhouse = async () => {
       `
   );
 
-  // Add columns to the events table
-  await execClickhouseInitStep(
-    "add events columns",
-    `
-      ALTER TABLE events
-        ADD COLUMN IF NOT EXISTS lcp Nullable(Float64),
-        ADD COLUMN IF NOT EXISTS cls Nullable(Float64),
-        ADD COLUMN IF NOT EXISTS inp Nullable(Float64),
-        ADD COLUMN IF NOT EXISTS fcp Nullable(Float64),
-        ADD COLUMN IF NOT EXISTS ttfb Nullable(Float64),
-        ADD COLUMN IF NOT EXISTS ip Nullable(String),
-        ADD COLUMN IF NOT EXISTS timezone LowCardinality(String) DEFAULT '',
-        ADD COLUMN IF NOT EXISTS identified_user_id String DEFAULT '',
-        ADD COLUMN IF NOT EXISTS import_id Nullable(UUID),
-        ADD COLUMN IF NOT EXISTS tag LowCardinality(String) DEFAULT '',
-        ADD COLUMN IF NOT EXISTS is_bot Bool DEFAULT false,
-        ADD COLUMN IF NOT EXISTS asn Nullable(UInt32),
-        ADD COLUMN IF NOT EXISTS asn_org String DEFAULT '',
-        ADD COLUMN IF NOT EXISTS detected_ua_pattern Bool DEFAULT false,
-        ADD COLUMN IF NOT EXISTS detected_header_heuristics Bool DEFAULT false,
-        ADD COLUMN IF NOT EXISTS detected_client_signals Bool DEFAULT false,
-        ADD COLUMN IF NOT EXISTS detected_desktop_800x600 Bool DEFAULT false,
-        ADD COLUMN IF NOT EXISTS detected_bot_asn Bool DEFAULT false,
-        ADD COLUMN IF NOT EXISTS detected_rate_anomaly Bool DEFAULT false,
-        ADD COLUMN IF NOT EXISTS matched_ua_pattern String DEFAULT '',
-        ADD COLUMN IF NOT EXISTS bot_category LowCardinality(String) DEFAULT ''
-      `
-  );
+  // Add only columns that are actually missing. Even a no-op ALTER needs the events table ALTER lock.
+  await ensureEventsColumns();
 
   // Keep bot rows in the main events table, but expire them sooner than normal analytics rows.
-  await execClickhouseInitStep(
-    "modify events bot TTL",
-    `
-      ALTER TABLE events
-        MODIFY TTL timestamp + INTERVAL 3 MONTH DELETE WHERE is_bot = true
-    `,
-    { optional: true }
-  );
+  await ensureEventsBotTtl();
 
   // Create session replay tables
   await clickhouse.exec({
