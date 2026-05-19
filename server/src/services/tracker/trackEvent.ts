@@ -7,8 +7,9 @@ import { usageService } from "../usageService.js";
 import { pageviewQueue } from "./pageviewQueue.js";
 import { createBasePayload } from "./utils.js";
 import { getLocation } from "../../db/geolocation/geolocation.js";
-import { getIpAddress } from "../../utils.js";
+import { checkApiKey } from "../../lib/auth-utils.js";
 import { checkBotBlocking } from "./botBlocking/index.js";
+import { resolveTrackingIdentity } from "./requestIdentity.js";
 
 // Shared fields for all event types
 const baseEventFields = {
@@ -244,6 +245,16 @@ export const trackingPayloadSchema = z.discriminatedUnion("type", [
 
 const logger = createServiceLogger("track-event");
 
+async function isTrustedServerSideIngestion(request: FastifyRequest, siteId: number): Promise<boolean> {
+  const authHeader = request.headers["authorization"];
+  if (typeof authHeader !== "string" || !authHeader.startsWith("Bearer ")) {
+    return false;
+  }
+
+  const apiKeyResult = await checkApiKey(request, { siteId });
+  return apiKeyResult.valid;
+}
+
 // Unified handler for all events (pageviews and custom events)
 export async function trackEvent(request: FastifyRequest, reply: FastifyReply) {
   try {
@@ -271,14 +282,17 @@ export async function trackEvent(request: FastifyRequest, reply: FastifyReply) {
       });
     }
 
-    const requestIP = validatedPayload.ip_address || getIpAddress(request);
+    const trustedServerSideIngestion = await isTrustedServerSideIngestion(request, siteConfiguration.siteId);
+    const trackingIdentity = resolveTrackingIdentity(request, validatedPayload, trustedServerSideIngestion);
+    const requestIP = trackingIdentity.ipAddress;
 
     const botBlockingResult = checkBotBlocking({
       request,
       blockBots: siteConfiguration.blockBots,
+      trustedServerSideIngestion,
       payload: {
         siteId: validatedPayload.site_id,
-        userAgent: validatedPayload.user_agent,
+        userAgent: trackingIdentity.userAgent,
         clientBotScore: validatedPayload._bs,
         clientBotSignalMask: validatedPayload._bsm,
         screenWidth: validatedPayload.screenWidth,
@@ -339,7 +353,8 @@ export async function trackEvent(request: FastifyRequest, reply: FastifyReply) {
       request, // Pass request for IP/UA
       validatedPayload.type,
       validatedPayload, // Pass original validated payload
-      siteConfiguration
+      siteConfiguration,
+      trustedServerSideIngestion
     );
 
     // Update session (use numeric siteId)

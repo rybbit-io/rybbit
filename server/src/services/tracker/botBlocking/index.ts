@@ -26,6 +26,7 @@ interface BotBlockingPayload {
 interface BotBlockingInput {
   request: FastifyRequest;
   blockBots: boolean;
+  trustedServerSideIngestion?: boolean;
   payload: BotBlockingPayload;
 }
 
@@ -60,16 +61,16 @@ export interface BotBlockingResult {
   detections: BotBlockingDetection[];
 }
 
-function isBearerAuthenticated(request: FastifyRequest): boolean {
-  const authHeader = request.headers["authorization"];
-  return typeof authHeader === "string" && authHeader.startsWith("Bearer ");
-}
-
-export function checkBotBlocking({ request, blockBots, payload }: BotBlockingInput): BotBlockingResult | null {
+export function checkBotBlocking({
+  request,
+  blockBots,
+  trustedServerSideIngestion = false,
+  payload,
+}: BotBlockingInput): BotBlockingResult | null {
   const clientBotScore = payload.clientBotScore;
   recordBotBlockingRequest(clientBotScore, payload.clientBotSignalMask);
 
-  if (!blockBots || isBearerAuthenticated(request)) {
+  if (!blockBots || trustedServerSideIngestion) {
     return null;
   }
 

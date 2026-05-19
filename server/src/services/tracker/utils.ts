@@ -1,11 +1,11 @@
 import { FastifyRequest } from "fastify";
 import UAParser, { UAParser as userAgentParser } from "ua-parser-js";
 import { z } from "zod";
-import { getIpAddress } from "../../utils.js";
 import { userIdService } from "../userId/userIdService.js";
 import { trackingPayloadSchema } from "./trackEvent.js";
 import { TrackingPayload } from "./types.js";
 import { SiteConfigData } from "../../lib/siteConfig.js";
+import { resolveTrackingIdentity } from "./requestIdentity.js";
 
 export type TotalTrackingPayload = TrackingPayload & {
   userId: string; // Always the device fingerprint
@@ -94,28 +94,32 @@ export function clearSelfReferrer(referrer: string, hostname: string): string {
 // Create base tracking payload from request
 export async function createBasePayload(
   request: FastifyRequest,
-  eventType: "pageview" | "custom_event" | "performance" | "error" | "outbound" | "button_click" | "copy" | "form_submit" | "input_change" = "pageview",
+  eventType:
+    | "pageview"
+    | "custom_event"
+    | "performance"
+    | "error"
+    | "outbound"
+    | "button_click"
+    | "copy"
+    | "form_submit"
+    | "input_change" = "pageview",
   validatedBody: ValidatedTrackingPayload,
-  siteConfiguration: SiteConfigData
+  siteConfiguration: SiteConfigData,
+  trustedServerSideIngestion = false
 ): Promise<TotalTrackingPayload> {
-  // Use custom user agent if provided, otherwise fall back to header
-  const userAgent = validatedBody.user_agent || request.headers["user-agent"] || "";
-  // Override IP if provided in payload
-  const ipAddress = validatedBody.ip_address || getIpAddress(request);
+  const { ipAddress, userAgent } = resolveTrackingIdentity(request, validatedBody, trustedServerSideIngestion);
+  const { ip_address: _ipAddressOverride, user_agent: _userAgentOverride, ...payloadBody } = validatedBody;
 
   // Always compute anonymous_id based on IP+UserAgent (device fingerprint)
-  const anonymousId = await userIdService.generateUserId(
-    ipAddress,
-    userAgent,
-    siteConfiguration.siteId
-  );
+  const anonymousId = await userIdService.generateUserId(ipAddress, userAgent, siteConfiguration.siteId);
 
   // userId is always the device fingerprint
   // identifiedUserId is the custom user ID when provided, empty string otherwise
   const identifiedUserId = validatedBody.user_id ? validatedBody.user_id.trim() : "";
 
   return {
-    ...validatedBody,
+    ...payloadBody,
     site_id: siteConfiguration.siteId, // Use the numeric site ID
     hostname: validatedBody.hostname || "",
     pathname: validatedBody.pathname || "",

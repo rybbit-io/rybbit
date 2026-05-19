@@ -43,14 +43,28 @@ describe("checkBotBlocking", () => {
     expect(result).toBeNull();
   });
 
-  it("skips bearer-token authenticated requests", () => {
+  it("skips verified trusted server-side ingestion requests", () => {
+    const result = checkBotBlocking({
+      request: requestWithHeaders({}),
+      blockBots: true,
+      trustedServerSideIngestion: true,
+      payload: basePayload,
+    });
+
+    expect(result).toBeNull();
+  });
+
+  it("does not bypass bot blocking for an unverified bearer header", () => {
     const result = checkBotBlocking({
       request: requestWithHeaders({ authorization: "Bearer token" }),
       blockBots: true,
       payload: basePayload,
     });
 
-    expect(result).toBeNull();
+    expect(result).toMatchObject({
+      blocked: true,
+      message: "Event not tracked - bot detected using header heuristics",
+    });
   });
 
   it("counts requests before bot-blocking bypasses for percentage stats", () => {
@@ -60,8 +74,9 @@ describe("checkBotBlocking", () => {
       payload: basePayload,
     });
     checkBotBlocking({
-      request: requestWithHeaders({ authorization: "Bearer token" }),
+      request: requestWithHeaders({}),
       blockBots: true,
+      trustedServerSideIngestion: true,
       payload: { ...basePayload, clientBotScore: 0, clientBotSignalMask: 0 },
     });
 

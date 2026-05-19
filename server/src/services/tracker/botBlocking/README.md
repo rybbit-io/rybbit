@@ -11,7 +11,7 @@ This directory owns tracker-side bot filtering for public `/track` ingestion. `t
 - the validated tracking payload fields needed for bot checks
 - the resolved request IP
 
-Bearer-token authenticated requests bypass bot blocking because they are treated as trusted server-side ingestion.
+Requests with a verified Bearer API key for the site bypass bot blocking because they are treated as trusted server-side ingestion.
 
 ## Detection Flow
 
@@ -85,4 +85,4 @@ This catches obvious floods and fast crawlers, but it is local to a Node process
 
 ## Trust Boundaries
 
-Bot blocking assumes the resolved IP is trustworthy. In production, the origin should only accept traffic from trusted proxy infrastructure, or the edge should strip and rebuild forwarding headers. Client-supplied `ip_address`, `user_agent`, `_bs`, and `_bsm` are useful inputs but are not secure proof.
+Bot blocking assumes the resolved IP is trustworthy. In production, the origin should only accept traffic from trusted proxy infrastructure, or the edge should strip and rebuild forwarding headers. Public tracking requests ignore client-supplied `ip_address` and `user_agent`; those overrides are only honored for trusted server-side ingestion. Client-supplied `_bs` and `_bsm` are useful inputs but are not secure proof.
