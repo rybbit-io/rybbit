@@ -39,9 +39,39 @@ describe("checkBotBlocking", () => {
       payload: basePayload,
     });
 
-    expect(result).toEqual({
+    expect(result).toMatchObject({
       blocked: true,
       message: "Event not tracked - bot detected using cloudflare bot score",
     });
+    expect(result?.detections.map(detection => detection.layer)).toEqual(["cloudflare_bot_score", "header_heuristics"]);
+  });
+
+  it("collects every matching bot signal before returning", () => {
+    const result = checkBotBlocking({
+      request: requestWithHeaders({
+        "cf-bot-score": "12",
+        "user-agent":
+          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/120.0.0.0 Safari/537.36",
+      }),
+      blockBots: true,
+      payload: {
+        ...basePayload,
+        clientBotScore: 3,
+        screenWidth: 800,
+        screenHeight: 600,
+      },
+    });
+
+    expect(result).toMatchObject({
+      blocked: true,
+      message: "Event not tracked - bot detected using ua-pattern",
+    });
+    expect(result?.detections.map(detection => detection.layer)).toEqual([
+      "ua_pattern",
+      "cloudflare_bot_score",
+      "header_heuristics",
+      "client_signals",
+      "desktop_800x600",
+    ]);
   });
 });
