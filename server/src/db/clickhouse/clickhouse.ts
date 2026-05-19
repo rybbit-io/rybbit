@@ -2,10 +2,18 @@ import { createClient } from "@clickhouse/client";
 import { IS_CLOUD } from "../../lib/const.js";
 import { createServiceLogger } from "../../lib/logger/logger.js";
 
+const parsePositiveInt = (value: string | undefined, fallback: number) => {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+};
+
+const CLICKHOUSE_REQUEST_TIMEOUT_MS = parsePositiveInt(process.env.CLICKHOUSE_REQUEST_TIMEOUT_MS, 300_000);
+
 export const clickhouse = createClient({
   url: process.env.CLICKHOUSE_HOST,
   database: process.env.CLICKHOUSE_DB,
   password: process.env.CLICKHOUSE_PASSWORD,
+  request_timeout: CLICKHOUSE_REQUEST_TIMEOUT_MS,
 });
 
 const logger = createServiceLogger("clickhouse");
@@ -14,7 +22,7 @@ async function execClickhouseInitStep(step: string, query: string, options?: { o
   try {
     await clickhouse.exec({ query });
   } catch (error) {
-    logger.error({ err: error, step }, "ClickHouse initialization step failed");
+    logger.error({ err: error, step, requestTimeoutMs: CLICKHOUSE_REQUEST_TIMEOUT_MS }, "ClickHouse initialization step failed");
     if (!options?.optional) {
       throw error;
     }
