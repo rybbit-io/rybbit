@@ -11,7 +11,7 @@ import { createBasePayload } from "./utils.js";
 import { getLocation } from "../../db/geolocation/geolocation.js";
 import { lookupAsn } from "../../db/geolocation/asn.js";
 import { classifyUA } from "./uaBots/index.js";
-import { isDatacenterAsn } from "./datacenterAsns.js";
+import { classifyBotAsn } from "./botProviderAsns.js";
 import { getIpAddress } from "../../utils.js";
 
 // Shared fields for all event types
@@ -362,12 +362,12 @@ export async function trackEvent(request: FastifyRequest, reply: FastifyReply) {
         });
       }
 
-      // Layer 6: Datacenter ASN check — IP belongs to a known cloud/VPS provider.
-      // Real browser traffic almost never originates from datacenter ranges.
+      // Layer 6: ASN check — IP belongs to hosting/cloud or curated bot provider infrastructure.
       const ipForAsn = requestIP;
       if (ipForAsn) {
         const asnInfo = lookupAsn(ipForAsn);
-        if (asnInfo && isDatacenterAsn(asnInfo.asn)) {
+        const botAsnMatch = classifyBotAsn(asnInfo?.asn);
+        if (asnInfo && botAsnMatch.isBotInfrastructure) {
           logger.info(
             {
               siteId: validatedPayload.site_id,
@@ -376,12 +376,16 @@ export async function trackEvent(request: FastifyRequest, reply: FastifyReply) {
               ip: ipForAsn,
               asn: asnInfo.asn,
               asnOrg: asnInfo.organization,
+              asnSource: botAsnMatch.source,
+              asnProvider: botAsnMatch.provider,
+              asnCategory: botAsnMatch.category,
+              asnNote: botAsnMatch.note,
             },
-            "Bot request filtered (datacenter asn)"
+            "Bot request filtered (bot asn)"
           );
           return reply.status(200).send({
             success: true,
-            message: "Event not tracked - bot detected using datacenter asn",
+            message: "Event not tracked - bot detected using bot asn",
           });
         }
       }
