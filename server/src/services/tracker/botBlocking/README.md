@@ -1,6 +1,6 @@
 # Bot Blocking
 
-This directory owns tracker-side bot filtering for public `/track` ingestion. `trackEvent.ts` validates the payload, resolves the request IP, and calls `checkBotBlocking()`. If any bot method matches, the event is acknowledged with HTTP 200 but is not stored.
+This directory owns tracker-side bot detection for public `/track` ingestion. `trackEvent.ts` validates the payload, resolves the request IP, and calls `checkBotBlocking()`. If any bot method matches, the event is stored in ClickHouse with `is_bot = true` and per-layer bot metadata.
 
 ## Entry Point
 
@@ -23,16 +23,16 @@ Current methods:
 
 - `ua_pattern`: classifies the user-agent using vendored `isbot` patterns plus local AI, social, SEO, framework, headless, and monitoring patterns.
 - `header_heuristics`: scores missing or inconsistent browser headers, scripting framework UAs, headless UAs, stale Chrome versions, and suspicious fetch metadata.
-- `client_signals`: blocks when the browser script reports a client-side bot score at or above the configured threshold.
-- `desktop_800x600`: blocks desktop UAs with Puppeteer's default `800x600` viewport.
-- `bot_asn`: blocks requests from ipverse `hosting` ASNs or the curated bot/scanner/AI provider ASN overlay.
-- `rate_anomaly`: blocks request bursts and crawl-shaped behavior using in-memory sliding-window counters.
+- `client_signals`: detects when the browser script reports a client-side bot score at or above the configured threshold.
+- `desktop_800x600`: detects desktop UAs with Puppeteer's default `800x600` viewport.
+- `bot_asn`: detects requests from ipverse `hosting` ASNs or the curated bot/scanner/AI provider ASN overlay.
+- `rate_anomaly`: detects request bursts and crawl-shaped behavior using in-memory sliding-window counters.
 
 The client-side `_bs` value is a cached, weighted score computed once per page lifecycle. Strong signals such as `navigator.webdriver === true` can reach the blocking threshold alone; weaker signals such as SwiftShader, missing Chrome globals, and empty plugin lists only add supporting weight. The client also sends `_bsm`, a compact bitmask used only for aggregate component counters.
 
 ## Logging
 
-Blocked requests emit one consolidated log line:
+Detected bot requests emit one consolidated log line:
 
 - no raw user-agent string
 - no bot-blocking service child logger field
@@ -47,13 +47,13 @@ Each detection object contains compact method-specific details such as matched U
 `botDetectionStats.ts` also logs process-lifetime totals for tracker requests that reach the bot-blocking entry point every 5 seconds:
 
 - `totalRequests`
-- `totalBlockedRequests`
+- `totalBotRequests`
 - `botRequestPercentage`
 - `botDetectionTotals` by method
 - `clientBotScoreHistogram` with buckets for missing, `0`, `1`, `2`, and `3+`
 - `clientBotSignalTotals` for `_bsm` components: missing mask, webdriver, zero outer dimensions, missing Chrome global, SwiftShader, empty plugins, and unknown mask bits
 
-A request can increment multiple method totals if multiple methods detected it, so method totals can sum higher than `totalBlockedRequests`.
+A request can increment multiple method totals if multiple methods detected it, so method totals can sum higher than `totalBotRequests`.
 
 ## ASN Data
 

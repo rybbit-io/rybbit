@@ -6,8 +6,9 @@ import { trackingPayloadSchema } from "./trackEvent.js";
 import { TrackingPayload } from "./types.js";
 import { SiteConfigData } from "../../lib/siteConfig.js";
 import { resolveTrackingIdentity } from "./requestIdentity.js";
+import type { BotEventProperties } from "./botBlocking/index.js";
 
-export type TotalTrackingPayload = TrackingPayload & {
+export type TotalTrackingPayload = TrackingPayload & Partial<BotEventProperties> & {
   userId: string; // Always the device fingerprint
   identifiedUserId: string; // Custom user ID when identified, empty string otherwise
   timestamp: string;

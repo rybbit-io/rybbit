@@ -58,13 +58,13 @@ const clientBotSignalTotals: Record<ClientBotSignalTotal, number> = {
 };
 
 let totalRequests = 0;
-let totalBlockedRequests = 0;
+let totalBotRequests = 0;
 
 function getBotRequestPercentage() {
   if (totalRequests === 0) {
     return 0;
   }
-  return Number(((totalBlockedRequests / totalRequests) * 100).toFixed(2));
+  return Number(((totalBotRequests / totalRequests) * 100).toFixed(2));
 }
 
 export function recordBotBlockingRequest(clientBotScore: number | undefined, clientBotSignalMask: number | undefined) {
@@ -98,7 +98,7 @@ export function recordBotBlockingRequest(clientBotScore: number | undefined, cli
 }
 
 export function recordBotDetections(methods: readonly BotDetectionMethod[]) {
-  totalBlockedRequests++;
+  totalBotRequests++;
   for (const method of methods) {
     totals[method]++;
   }
@@ -107,7 +107,7 @@ export function recordBotDetections(methods: readonly BotDetectionMethod[]) {
 export function getBotDetectionStats() {
   return {
     totalRequests,
-    totalBlockedRequests,
+    totalBotRequests,
     botRequestPercentage: getBotRequestPercentage(),
     totals: { ...totals },
     clientBotScoreHistogram: { ...clientBotScoreHistogram },
@@ -117,7 +117,7 @@ export function getBotDetectionStats() {
 
 export function resetBotDetectionStatsForTests() {
   totalRequests = 0;
-  totalBlockedRequests = 0;
+  totalBotRequests = 0;
   for (const method of BOT_DETECTION_METHODS) {
     totals[method] = 0;
   }
@@ -139,7 +139,7 @@ const interval = setInterval(() => {
   logger.info(
     {
       totalRequests,
-      totalBlockedRequests,
+      totalBotRequests,
       botRequestPercentage: getBotRequestPercentage(),
       botDetectionTotals: { ...totals },
       clientBotScoreHistogram: { ...clientBotScoreHistogram },

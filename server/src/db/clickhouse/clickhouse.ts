@@ -38,11 +38,23 @@ export const initializeClickhouse = async () => {
         device_type LowCardinality(String),
         type LowCardinality(String) DEFAULT 'pageview',
         event_name String,
-        props JSON
+        props JSON,
+        is_bot Bool DEFAULT false,
+        asn Nullable(UInt32),
+        asn_org String DEFAULT '',
+        detected_ua_pattern Bool DEFAULT false,
+        detected_header_heuristics Bool DEFAULT false,
+        detected_client_signals Bool DEFAULT false,
+        detected_desktop_800x600 Bool DEFAULT false,
+        detected_bot_asn Bool DEFAULT false,
+        detected_rate_anomaly Bool DEFAULT false,
+        matched_ua_pattern String DEFAULT '',
+        bot_category LowCardinality(String) DEFAULT ''
       )
       ENGINE = MergeTree()
       PARTITION BY toYYYYMM(timestamp)
       ORDER BY (site_id, timestamp)
+      TTL timestamp + INTERVAL 3 MONTH DELETE WHERE is_bot
       `,
   });
 
@@ -59,51 +71,27 @@ export const initializeClickhouse = async () => {
         ADD COLUMN IF NOT EXISTS timezone LowCardinality(String) DEFAULT '',
         ADD COLUMN IF NOT EXISTS identified_user_id String DEFAULT '',
         ADD COLUMN IF NOT EXISTS import_id Nullable(UUID),
-        ADD COLUMN IF NOT EXISTS tag LowCardinality(String) DEFAULT ''
-    `,
+        ADD COLUMN IF NOT EXISTS tag LowCardinality(String) DEFAULT '',
+        ADD COLUMN IF NOT EXISTS is_bot Bool DEFAULT false,
+        ADD COLUMN IF NOT EXISTS asn Nullable(UInt32),
+        ADD COLUMN IF NOT EXISTS asn_org String DEFAULT '',
+        ADD COLUMN IF NOT EXISTS detected_ua_pattern Bool DEFAULT false,
+        ADD COLUMN IF NOT EXISTS detected_header_heuristics Bool DEFAULT false,
+        ADD COLUMN IF NOT EXISTS detected_client_signals Bool DEFAULT false,
+        ADD COLUMN IF NOT EXISTS detected_desktop_800x600 Bool DEFAULT false,
+        ADD COLUMN IF NOT EXISTS detected_bot_asn Bool DEFAULT false,
+        ADD COLUMN IF NOT EXISTS detected_rate_anomaly Bool DEFAULT false,
+        ADD COLUMN IF NOT EXISTS matched_ua_pattern String DEFAULT '',
+        ADD COLUMN IF NOT EXISTS bot_category LowCardinality(String) DEFAULT ''
+      `,
   });
 
-  // Create bot events table
+  // Keep bot rows in the main events table, but expire them sooner than normal analytics rows.
   await clickhouse.exec({
     query: `
-      CREATE TABLE IF NOT EXISTS bot_events (
-        site_id UInt16,
-        timestamp DateTime,
-        user_id String,
-        hostname String,
-        pathname String,
-        querystring String,
-        referrer String,
-        browser LowCardinality(String),
-        browser_version LowCardinality(String),
-        operating_system LowCardinality(String),
-        operating_system_version LowCardinality(String),
-        country LowCardinality(FixedString(2)),
-        region LowCardinality(String),
-        city String,
-        lat Float64,
-        lon Float64,
-        screen_width UInt16,
-        screen_height UInt16,
-        device_type LowCardinality(String),
-        type LowCardinality(String) DEFAULT 'pageview',
-        asn Nullable(UInt32),
-        asn_org String,
-        detected_ua_pattern Bool,
-        detected_header_heuristics Bool,
-        detected_client_signals Bool,
-        detected_desktop_800x600 Bool,
-        detected_bot_asn Bool,
-        detected_rate_anomaly Bool,
-        matched_ua_pattern String,
-        bot_category LowCardinality(String)
-      )
-      ENGINE = MergeTree()
-      PARTITION BY toYYYYMM(timestamp)
-      ORDER BY (site_id, timestamp)
-      TTL timestamp + INTERVAL 3 MONTH
-      SETTINGS ttl_only_drop_parts = 1
-      `,
+      ALTER TABLE events
+        MODIFY TTL timestamp + INTERVAL 3 MONTH DELETE WHERE is_bot
+    `,
   });
 
   // Create session replay tables

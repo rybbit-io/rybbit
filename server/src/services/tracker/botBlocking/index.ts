@@ -1,5 +1,5 @@
 import { FastifyRequest } from "fastify";
-import { lookupAsn } from "../../../db/geolocation/asn.js";
+import { lookupAsn, type AsnInfo } from "../../../db/geolocation/asn.js";
 import { logger } from "../../../lib/logger/logger.js";
 import type { AnomalyCounters } from "./anomalyScorer.js";
 import { observeTrackingAnomaly } from "./anomalyScorer.js";
@@ -38,7 +38,7 @@ interface AnomalyReason {
   windowSeconds: number;
 }
 
-interface BotBlockingDetection {
+export interface BotBlockingDetection {
   layer: BotDetectionMethod;
   botCategory?: string | null;
   matchedPattern?: string | null;
@@ -55,10 +55,44 @@ interface BotBlockingDetection {
   anomalyCounters?: AnomalyCounters;
 }
 
-export interface BotBlockingResult {
-  blocked: true;
+export interface BotEventProperties {
+  isBot: true;
+  botAsn?: number;
+  botAsnOrg?: string;
+  detectedUaPattern: boolean;
+  detectedHeaderHeuristics: boolean;
+  detectedClientSignals: boolean;
+  detectedDesktop800x600: boolean;
+  detectedBotAsn: boolean;
+  detectedRateAnomaly: boolean;
+  matchedUaPattern: string;
+  botCategory: string;
+}
+
+export interface BotDetectionResult {
+  isBot: true;
   message: string;
   detections: BotBlockingDetection[];
+  eventProperties: BotEventProperties;
+}
+
+function buildBotEventProperties(detections: BotBlockingDetection[], asnInfo: AsnInfo | null): BotEventProperties {
+  const detectionLayers = new Set(detections.map(detection => detection.layer));
+  const uaDetection = detections.find(detection => detection.layer === "ua_pattern");
+
+  return {
+    isBot: true,
+    botAsn: asnInfo?.asn,
+    botAsnOrg: asnInfo?.organization ?? "",
+    detectedUaPattern: detectionLayers.has("ua_pattern"),
+    detectedHeaderHeuristics: detectionLayers.has("header_heuristics"),
+    detectedClientSignals: detectionLayers.has("client_signals"),
+    detectedDesktop800x600: detectionLayers.has("desktop_800x600"),
+    detectedBotAsn: detectionLayers.has("bot_asn"),
+    detectedRateAnomaly: detectionLayers.has("rate_anomaly"),
+    matchedUaPattern: uaDetection?.matchedPattern ?? "",
+    botCategory: uaDetection?.botCategory ?? "",
+  };
 }
 
 export function checkBotBlocking({
@@ -66,7 +100,7 @@ export function checkBotBlocking({
   blockBots,
   trustedServerSideIngestion = false,
   payload,
-}: BotBlockingInput): BotBlockingResult | null {
+}: BotBlockingInput): BotDetectionResult | null {
   const clientBotScore = payload.clientBotScore;
   recordBotBlockingRequest(clientBotScore, payload.clientBotSignalMask);
 
@@ -86,7 +120,7 @@ export function checkBotBlocking({
   // Layer 1: User-agent classification (vendored from isbot patterns, with categories)
   const uaClassification = classifyUA(userAgent);
   if (uaClassification.isBot) {
-    addDetection("Event not tracked - bot detected using ua-pattern", {
+    addDetection("Bot detected using ua-pattern", {
       layer: "ua_pattern",
       botCategory: uaClassification.category,
       matchedPattern: uaClassification.matchedPattern,
@@ -96,7 +130,7 @@ export function checkBotBlocking({
   // Layer 2: Header heuristic bot detection
   const detection = detectBot(request, userAgent);
   if (detection.isBot) {
-    addDetection("Event not tracked - bot detected using header heuristics", {
+    addDetection("Bot detected using header heuristics", {
       layer: "header_heuristics",
       reason: detection.reason,
       score: detection.score,
@@ -105,7 +139,7 @@ export function checkBotBlocking({
 
   // Layer 3: Client-side bot signal score check
   if (typeof clientBotScore === "number" && clientBotScore >= CLIENT_BOT_SCORE_THRESHOLD) {
-    addDetection("Event not tracked - bot detected using client signals", {
+    addDetection("Bot detected using client signals", {
       layer: "client_signals",
       clientBotScore,
     });
@@ -118,18 +152,19 @@ export function checkBotBlocking({
     userAgent &&
     /Windows NT|Macintosh|X11/.test(userAgent)
   ) {
-    addDetection("Event not tracked - bot detected using desktop 800x600", {
+    addDetection("Bot detected using desktop 800x600", {
       layer: "desktop_800x600",
     });
   }
 
   // Layer 5: ASN check — IP belongs to hosting/cloud or curated bot provider infrastructure.
   const ipForAsn = payload.ipAddress;
+  let asnInfo: AsnInfo | null = null;
   if (ipForAsn) {
-    const asnInfo = lookupAsn(ipForAsn);
+    asnInfo = lookupAsn(ipForAsn);
     const botAsnMatch = classifyBotAsn(asnInfo?.asn);
     if (asnInfo && botAsnMatch.isBotInfrastructure) {
-      addDetection("Event not tracked - bot detected using bot asn", {
+      addDetection("Bot detected using bot asn", {
         layer: "bot_asn",
         ip: ipForAsn,
         asn: asnInfo.asn,
@@ -152,7 +187,7 @@ export function checkBotBlocking({
     hasClientBotScore: typeof payload.clientBotScore === "number",
   });
   if (anomaly.isAnomalous) {
-    addDetection("Event not tracked - bot detected using rate anomaly", {
+    addDetection("Bot detected using rate anomaly", {
       layer: "rate_anomaly",
       score: anomaly.score,
       anomalyReasons: anomaly.reasons,
@@ -171,14 +206,15 @@ export function checkBotBlocking({
       detectionLayers: detections.map(detection => detection.layer),
       detections,
     },
-    "Bot request filtered"
+    "Bot request detected"
   );
 
   recordBotDetections(detections.map(detection => detection.layer));
 
   return {
-    blocked: true,
-    message: blockMessage ?? "Event not tracked - bot detected",
+    isBot: true,
+    message: blockMessage ?? "Bot detected",
     detections,
+    eventProperties: buildBotEventProperties(detections, asnInfo),
   };
 }

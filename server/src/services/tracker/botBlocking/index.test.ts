@@ -62,8 +62,8 @@ describe("checkBotBlocking", () => {
     });
 
     expect(result).toMatchObject({
-      blocked: true,
-      message: "Event not tracked - bot detected using header heuristics",
+      isBot: true,
+      message: "Bot detected using header heuristics",
     });
   });
 
@@ -82,7 +82,7 @@ describe("checkBotBlocking", () => {
 
     expect(getBotDetectionStats()).toMatchObject({
       totalRequests: 2,
-      totalBlockedRequests: 0,
+      totalBotRequests: 0,
       botRequestPercentage: 0,
       clientBotScoreHistogram: {
         missing: 1,
@@ -94,7 +94,7 @@ describe("checkBotBlocking", () => {
     });
   });
 
-  it("returns the block response message for detected bots", () => {
+  it("returns bot event properties for detected bots", () => {
     const result = checkBotBlocking({
       request: requestWithHeaders({}),
       blockBots: true,
@@ -102,14 +102,18 @@ describe("checkBotBlocking", () => {
     });
 
     expect(result).toMatchObject({
-      blocked: true,
-      message: "Event not tracked - bot detected using header heuristics",
+      isBot: true,
+      message: "Bot detected using header heuristics",
+      eventProperties: {
+        isBot: true,
+        detectedHeaderHeuristics: true,
+      },
     });
     expect(result?.detections.map(detection => detection.layer)).toEqual(["header_heuristics"]);
     expect(result?.detections[0]).not.toHaveProperty("message");
     expect(getBotDetectionStats()).toMatchObject({
       totalRequests: 1,
-      totalBlockedRequests: 1,
+      totalBotRequests: 1,
       botRequestPercentage: 100,
       totals: {
         header_heuristics: 1,
@@ -158,7 +162,7 @@ describe("checkBotBlocking", () => {
 
     expect(getBotDetectionStats()).toMatchObject({
       totalRequests: 5,
-      totalBlockedRequests: 1,
+      totalBotRequests: 1,
       botRequestPercentage: 20,
       clientBotScoreHistogram: {
         missing: 1,
@@ -195,8 +199,17 @@ describe("checkBotBlocking", () => {
     });
 
     expect(result).toMatchObject({
-      blocked: true,
-      message: "Event not tracked - bot detected using ua-pattern",
+      isBot: true,
+      message: "Bot detected using ua-pattern",
+      eventProperties: {
+        isBot: true,
+        detectedUaPattern: true,
+        detectedHeaderHeuristics: true,
+        detectedClientSignals: true,
+        detectedDesktop800x600: true,
+        matchedUaPattern: "headlesschrome",
+        botCategory: "headless",
+      },
     });
     expect(result?.detections.map(detection => detection.layer)).toEqual([
       "ua_pattern",
@@ -224,8 +237,8 @@ describe("checkBotBlocking", () => {
     }
 
     expect(result).toMatchObject({
-      blocked: true,
-      message: "Event not tracked - bot detected using rate anomaly",
+      isBot: true,
+      message: "Bot detected using rate anomaly",
     });
     expect(result?.detections.map(detection => detection.layer)).toEqual(["rate_anomaly"]);
     expect(result?.detections[0].anomalyReasons?.map(reason => reason.rule)).toContain("tuple_events_10s");

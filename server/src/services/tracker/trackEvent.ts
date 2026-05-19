@@ -286,7 +286,7 @@ export async function trackEvent(request: FastifyRequest, reply: FastifyReply) {
     const trackingIdentity = resolveTrackingIdentity(request, validatedPayload, trustedServerSideIngestion);
     const requestIP = trackingIdentity.ipAddress;
 
-    const botBlockingResult = checkBotBlocking({
+    const botDetectionResult = checkBotBlocking({
       request,
       blockBots: siteConfiguration.blockBots,
       trustedServerSideIngestion,
@@ -303,12 +303,6 @@ export async function trackEvent(request: FastifyRequest, reply: FastifyReply) {
         ipAddress: requestIP,
       },
     });
-    if (botBlockingResult) {
-      return reply.status(200).send({
-        success: true,
-        message: botBlockingResult.message,
-      });
-    }
 
     // Check if the site has exceeded its monthly limit (using numeric siteId)
     if (usageService.isSiteOverLimit(siteConfiguration.siteId)) {
@@ -366,6 +360,7 @@ export async function trackEvent(request: FastifyRequest, reply: FastifyReply) {
     // Add to queue for processing (payload already has numeric siteId)
     await pageviewQueue.add({
       ...payload,
+      ...(botDetectionResult?.eventProperties ?? {}),
       sessionId,
     });
 
