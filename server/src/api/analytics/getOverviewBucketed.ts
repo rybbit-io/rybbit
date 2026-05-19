@@ -121,6 +121,7 @@ AllSessionPageviews AS (
     FROM events
     WHERE
         site_id = {siteId:Int32}
+        AND is_bot = false
         ${getTimeStatement(params)}
     GROUP BY session_id
 ),
@@ -132,6 +133,7 @@ FilteredSessions AS (
     FROM events
     WHERE
         site_id = {siteId:Int32}
+        AND is_bot = false
         ${filterStatement}
         ${getTimeStatement(params)}
     GROUP BY session_id
@@ -173,6 +175,7 @@ FULL JOIN
     FROM events
     WHERE
         site_id = {siteId:Int32}
+        AND is_bot = false
         ${filterStatement}
         ${getTimeStatement(params)}
     GROUP BY time ORDER BY time ${fillClause}

@@ -143,6 +143,7 @@ export async function getUserTraitValueUsers(
         count(DISTINCT session_id) AS sessions
       FROM events
       WHERE site_id = {siteId:Int32}
+        AND is_bot = false
         AND events.identified_user_id IN ({userIds:Array(String)})
       GROUP BY effective_user_id
     `;

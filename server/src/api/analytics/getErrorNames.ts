@@ -67,6 +67,7 @@ const getErrorNamesQuery = (request: FastifyRequest<GetErrorNamesRequest>, isCou
         FROM events
         WHERE
           site_id = {siteId:Int32}
+          AND is_bot = false
           AND type = 'error'
           AND event_name IS NOT NULL
           AND event_name <> ''

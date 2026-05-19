@@ -31,6 +31,7 @@ WITH stuff AS (
         events
     WHERE
         site_id = {site:Int32}
+        AND is_bot = false
         ${timeStatement}
         ${filterStatement}
     GROUP BY

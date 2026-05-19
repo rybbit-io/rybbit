@@ -98,6 +98,7 @@ export async function getEvents(
         FROM events
         WHERE
           site_id = {siteId:Int32}
+          AND is_bot = false
           ${EVENT_TYPE_FILTER}
           AND timestamp > toDateTime64({sinceTimestamp:String}, 3)
           ${filterStatement}
@@ -141,6 +142,7 @@ export async function getEvents(
       FROM events
       WHERE
         site_id = {siteId:Int32}
+        AND is_bot = false
         ${EVENT_TYPE_FILTER}
         ${timeStatement}
         ${cursorCondition}

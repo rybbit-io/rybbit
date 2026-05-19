@@ -102,6 +102,7 @@ export async function getOrgEventCount(
         count() as event_count
       FROM events
       WHERE site_id IN (${siteIds.map((id: number) => SqlString.escape(id)).join(", ")})
+        AND is_bot = false
         AND type IN ('pageview', 'custom_event', 'performance', 'outbound', 'error', 'button_click', 'copy', 'form_submit', 'input_change')
         ${timeFilter.replace(/event_hour/g, "timestamp")}
       GROUP BY event_date

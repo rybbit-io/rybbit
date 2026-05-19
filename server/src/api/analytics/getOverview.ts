@@ -26,6 +26,7 @@ const getQuery = (params: FilterParams, siteId: number) => {
         FROM events
         WHERE
             site_id = {siteId:Int32}
+            AND is_bot = false
             ${timeStatement}
         GROUP BY session_id
     ),
@@ -39,6 +40,7 @@ const getQuery = (params: FilterParams, siteId: number) => {
         FROM events
         WHERE
             site_id = {siteId:Int32}
+            AND is_bot = false
             ${filterStatement}
             ${timeStatement}
         GROUP BY session_id

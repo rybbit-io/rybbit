@@ -79,6 +79,7 @@ export async function getErrorBucketed(req: FastifyRequest<GetErrorBucketedReque
       FROM events
       WHERE
         site_id = {siteId:Int32}
+        AND is_bot = false
         AND type = 'error'
         AND JSONExtractString(toString(props), 'message') = {errorMessage:String}
         ${filterStatement}

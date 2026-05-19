@@ -33,6 +33,7 @@ export async function getEventNames(req: FastifyRequest<GetEventNamesRequest>, r
     FROM events
     WHERE
       site_id = {siteId:Int32}
+      AND is_bot = false
       AND type = 'custom_event'
       AND event_name IS NOT NULL
       AND event_name != ''

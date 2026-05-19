@@ -140,6 +140,7 @@ class PdfReportService {
         FROM events
         WHERE
           site_id = {siteId:Int32}
+          AND is_bot = false
           AND timestamp >= toDateTime({startDate:String}, {timeZone:String})
           AND timestamp < toDateTime({endDate:String}, {timeZone:String}) + INTERVAL 1 DAY
           ${filterStatement}
@@ -194,6 +195,7 @@ class PdfReportService {
                   FROM events
                   WHERE
                       site_id = {siteId:Int32}
+                      AND is_bot = false
                       ${timeStatement}
                       ${filterStatement}
                   GROUP BY session_id
@@ -207,6 +209,7 @@ class PdfReportService {
               FROM events
               WHERE
                   site_id = {siteId:Int32}
+                  AND is_bot = false
                   ${timeStatement}
                   AND type = 'pageview'
                   ${filterStatement}
@@ -248,6 +251,7 @@ class PdfReportService {
             FROM events
             WHERE
                 site_id = {siteId:Int32}
+                AND is_bot = false
                 AND country IS NOT NULL
                 AND country <> ''
                 ${timeStatement}
@@ -272,6 +276,7 @@ class PdfReportService {
               FROM events
               WHERE
                 site_id = {siteId:Int32}
+                AND is_bot = false
                 AND type = 'pageview'
                 ${timeStatement}
                 ${filterStatement}
@@ -310,6 +315,7 @@ class PdfReportService {
             FROM events
             WHERE
                 site_id = {siteId:Int32}
+                AND is_bot = false
                 AND domainWithoutWWW(referrer) IS NOT NULL
                 AND domainWithoutWWW(referrer) <> ''
                 ${timeStatement}
@@ -333,6 +339,7 @@ class PdfReportService {
             FROM events
             WHERE
                 site_id = {siteId:Int32}
+                AND is_bot = false
                 AND device_type IS NOT NULL
                 AND device_type <> ''
                 ${timeStatement}
@@ -356,6 +363,7 @@ class PdfReportService {
             FROM events
             WHERE
                 site_id = {siteId:Int32}
+                AND is_bot = false
                 AND browser IS NOT NULL
                 AND browser <> ''
                 ${timeStatement}
@@ -379,6 +387,7 @@ class PdfReportService {
             FROM events
             WHERE
                 site_id = {siteId:Int32}
+                AND is_bot = false
                 AND operating_system IS NOT NULL
                 AND operating_system <> ''
                 ${timeStatement}
@@ -402,6 +411,7 @@ class PdfReportService {
             FROM events
             WHERE
                 site_id = {siteId:Int32}
+                AND is_bot = false
                 AND region IS NOT NULL
                 AND region <> ''
                 ${timeStatement}
@@ -425,6 +435,7 @@ class PdfReportService {
             FROM events
             WHERE
                 site_id = {siteId:Int32}
+                AND is_bot = false
                 AND city IS NOT NULL
                 AND city <> ''
                 ${timeStatement}

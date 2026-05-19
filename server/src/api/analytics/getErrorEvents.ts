@@ -78,6 +78,7 @@ const getErrorEventsQuery = (request: FastifyRequest<GetErrorEventsRequest>, isC
       FROM events
       WHERE
         site_id = {siteId:Int32}
+        AND is_bot = false
         AND type = 'error'
         AND JSONExtractString(toString(props), 'message') = {errorMessage:String}
         ${filterStatement}
@@ -121,6 +122,7 @@ const getErrorEventsQuery = (request: FastifyRequest<GetErrorEventsRequest>, isC
     FROM events
     WHERE
       site_id = {siteId:Int32}
+      AND is_bot = false
       AND type = 'error'
       AND JSONExtractString(toString(props), 'message') = {errorMessage:String}
       ${filterStatement}

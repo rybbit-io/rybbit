@@ -88,6 +88,7 @@ export async function getUserInfo(
         WHERE
             (events.identified_user_id = {userId:String} OR events.user_id = {userId:String})
             AND site_id = {site:Int32}
+            AND is_bot = false
         GROUP BY
             session_id
         ORDER BY

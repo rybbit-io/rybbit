@@ -246,6 +246,7 @@ export const initializeClickhouse = async () => {
           site_id,
           count() AS event_count
         FROM events
+        WHERE is_bot = false
         GROUP BY event_hour, site_id
       `,
     });

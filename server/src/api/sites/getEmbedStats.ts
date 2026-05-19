@@ -52,7 +52,8 @@ export async function getEmbedStats(
   const countResult = await clickhouse.query({
     query: `SELECT COUNT(DISTINCT(session_id)) AS count FROM events
             WHERE timestamp > now() - interval {minutes:Int32} minute
-              AND site_id = {siteId:Int32}`,
+              AND site_id = {siteId:Int32}
+              AND is_bot = false`,
     format: "JSONEachRow",
     query_params: { siteId: numericId, minutes: minutesNum },
   });
@@ -67,6 +68,7 @@ export async function getEmbedStats(
               FROM events
               WHERE timestamp > now() - interval {minutes:Int32} minute
                 AND site_id = {siteId:Int32}
+                AND is_bot = false
               GROUP BY time
               ORDER BY time`,
       format: "JSONEachRow",
@@ -84,6 +86,7 @@ export async function getEmbedStats(
               FROM events
               WHERE timestamp > now() - interval {minutes:Int32} minute
                 AND site_id = {siteId:Int32}
+                AND is_bot = false
                 AND country != ''
               GROUP BY country
               ORDER BY users DESC

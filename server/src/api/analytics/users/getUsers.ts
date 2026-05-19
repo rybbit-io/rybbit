@@ -130,6 +130,7 @@ WITH AggregatedUsers AS (
     FROM events
     WHERE
         site_id = {siteId:Int32}
+        AND is_bot = false
         ${timeStatement}
         ${matchingUserIds ? "AND events.identified_user_id IN ({matchingUserIds:Array(String)})" : ""}
     GROUP BY
@@ -153,6 +154,7 @@ FROM (
     FROM events
     WHERE
         site_id = {siteId:Int32}
+        AND is_bot = false
         AND identified_user_id != ''
         ${timeStatement}
         ${filterStatement}
@@ -165,6 +167,7 @@ SELECT
 FROM events
 WHERE
     site_id = {siteId:Int32}
+    AND is_bot = false
     ${filterStatement}
     ${timeStatement}
     ${matchingUserIds ? "AND events.identified_user_id IN ({matchingUserIds:Array(String)})" : ""}

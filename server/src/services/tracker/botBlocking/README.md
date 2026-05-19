@@ -2,6 +2,8 @@
 
 This directory owns tracker-side bot detection for public `/track` ingestion. `trackEvent.ts` validates the payload, resolves the request IP, and calls `checkBotBlocking()`. If any bot method matches, the event is stored in ClickHouse with `is_bot = true` and per-layer bot metadata.
 
+Normal analytics queries filter `events` with `is_bot = false`, so detected bot rows remain available for inspection without contributing to dashboard, report, replay-list, or usage totals.
+
 ## Entry Point
 
 `index.ts` is the single decision point. It receives:

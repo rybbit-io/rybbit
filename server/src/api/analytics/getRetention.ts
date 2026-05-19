@@ -48,6 +48,7 @@ WITH UserFirstPeriod AS (
         ${periodFunction}(min(timestamp)${retentionMode === "week" ? ", 1" : ""}) AS cohort_period
     FROM events
     WHERE site_id = {siteId:UInt16}
+    AND is_bot = false
     -- Use the configurable time range
     AND timestamp >= addDays(today(), -{timeRange:UInt16})
     GROUP BY effective_user_id
@@ -58,6 +59,7 @@ PeriodActivity AS (
         ${periodFunction}(timestamp${retentionMode === "week" ? ", 1" : ""}) AS activity_period
     FROM events
     WHERE site_id = {siteId:UInt16}
+    AND is_bot = false
     -- Match the date range filter
     AND timestamp >= addDays(today(), -{timeRange:UInt16})
 ),

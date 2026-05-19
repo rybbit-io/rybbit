@@ -107,6 +107,7 @@ export class ImportQuotaTracker {
                 1 as count
               FROM events
               WHERE site_id IN {grandfatheredSites:Array(Int32)}
+                AND is_bot = false
                 AND type = 'pageview'
                 AND timestamp >= toDate({startDate:String})
             `
@@ -121,6 +122,7 @@ export class ImportQuotaTracker {
                 1 as count
               FROM events
               WHERE site_id IN {newSites:Array(Int32)}
+                AND is_bot = false
                 AND type IN ('pageview', 'custom_event', 'performance')
                 AND timestamp >= toDate({startDate:String})
             `

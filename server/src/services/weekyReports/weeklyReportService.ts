@@ -44,6 +44,7 @@ class WeeklyReportService {
                   FROM events
                   WHERE
                       site_id = {siteId:Int32}
+                      AND is_bot = false
                       AND timestamp >= toDateTime({startDate:String})
                       AND timestamp < toDateTime({endDate:String})
                   GROUP BY session_id
@@ -58,6 +59,7 @@ class WeeklyReportService {
               FROM events
               WHERE
                   site_id = {siteId:Int32}
+                  AND is_bot = false
                   AND timestamp >= toDateTime({startDate:String})
                   AND timestamp < toDateTime({endDate:String})
                   AND type = 'pageview'
@@ -101,6 +103,7 @@ class WeeklyReportService {
             FROM events
             WHERE
                 site_id = {siteId:Int32}
+                AND is_bot = false
                 AND country IS NOT NULL
                 AND country <> ''
                 AND timestamp >= toDateTime({startDate:String})
@@ -125,6 +128,7 @@ class WeeklyReportService {
               FROM events
               WHERE
                 site_id = {siteId:Int32}
+                AND is_bot = false
                 AND type = 'pageview'
                 AND timestamp >= toDateTime({startDate:String})
                 AND timestamp < toDateTime({endDate:String})
@@ -163,6 +167,7 @@ class WeeklyReportService {
             FROM events
             WHERE
                 site_id = {siteId:Int32}
+                AND is_bot = false
                 AND domainWithoutWWW(referrer) IS NOT NULL
                 AND domainWithoutWWW(referrer) <> ''
                 AND timestamp >= toDateTime({startDate:String})
@@ -186,6 +191,7 @@ class WeeklyReportService {
             FROM events
             WHERE
                 site_id = {siteId:Int32}
+                AND is_bot = false
                 AND device_type IS NOT NULL
                 AND device_type <> ''
                 AND timestamp >= toDateTime({startDate:String})

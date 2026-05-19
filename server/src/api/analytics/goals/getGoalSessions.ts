@@ -105,6 +105,7 @@ export async function getGoalSessions(req: FastifyRequest<GetGoalSessionsRequest
       FROM events
       WHERE
         site_id = {siteId:Int32}
+        AND is_bot = false
         AND (${goalCondition})
         ${timeStatement}
     ),
@@ -150,6 +151,7 @@ export async function getGoalSessions(req: FastifyRequest<GetGoalSessionsRequest
       INNER JOIN GoalSessions gs ON e.session_id = gs.session_id
       WHERE
         e.site_id = {siteId:Int32}
+        AND e.is_bot = false
         ${timeStatement}
       GROUP BY
         e.session_id,

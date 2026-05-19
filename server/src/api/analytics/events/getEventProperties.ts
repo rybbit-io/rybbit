@@ -40,6 +40,7 @@ export async function getEventProperties(req: FastifyRequest<GetEventPropertiesR
     ARRAY JOIN JSONExtractKeysAndValuesRaw(CAST(props AS String)) AS kv -- Alias the tuple elements directly
     WHERE
       site_id = {siteId:Int32}
+      AND is_bot = false
       AND type = 'custom_event'
       AND event_name = {eventName:String}
       AND props != '{}' -- Check if the JSON object is not empty

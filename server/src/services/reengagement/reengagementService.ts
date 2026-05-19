@@ -52,6 +52,7 @@ class ReengagementService {
         query: `
           SELECT 1 FROM events
           WHERE site_id IN ({siteIds:Array(Int32)})
+          AND is_bot = false
           LIMIT 1
         `,
         format: "JSONEachRow",
