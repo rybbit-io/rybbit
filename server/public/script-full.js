@@ -381,28 +381,43 @@
   };
 
   // botSignals.ts
-  var cachedBotScore = null;
+  var CLIENT_BOT_SIGNAL_MASKS = {
+    webdriver: 1 << 0,
+    zeroOuterDimensions: 1 << 1,
+    missingChrome: 1 << 2,
+    swiftShader: 1 << 3,
+    emptyPlugins: 1 << 4
+  };
+  var cachedBotSignals = null;
   var MAX_BOT_SCORE = 10;
   function getBotScore() {
-    if (cachedBotScore !== null) {
-      return cachedBotScore;
-    }
-    cachedBotScore = calculateBotScore();
-    return cachedBotScore;
+    return getBotSignals().score;
   }
-  function calculateBotScore() {
+  function getBotSignalMask() {
+    return getBotSignals().mask;
+  }
+  function getBotSignals() {
+    cachedBotSignals ?? (cachedBotSignals = calculateBotSignals());
+    return cachedBotSignals;
+  }
+  function calculateBotSignals() {
     let score = 0;
+    let mask = 0;
+    function addSignal(signalMask, weight) {
+      mask |= signalMask;
+      score += weight;
+    }
     try {
       const userAgent = navigator.userAgent;
       const isChromeLike = /Chrome\//.test(userAgent) && !/\bwv\b|; wv\)/.test(userAgent);
       if (navigator.webdriver === true) {
-        score += 3;
+        addSignal(CLIENT_BOT_SIGNAL_MASKS.webdriver, 3);
       }
       if (window.outerHeight === 0 || window.outerWidth === 0) {
-        score += 2;
+        addSignal(CLIENT_BOT_SIGNAL_MASKS.zeroOuterDimensions, 2);
       }
       if (!window.chrome && isChromeLike) {
-        score++;
+        addSignal(CLIENT_BOT_SIGNAL_MASKS.missingChrome, 1);
       }
       try {
         const canvas = document.createElement("canvas");
@@ -412,18 +427,21 @@
           if (debugInfo) {
             const renderer = gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL);
             if (typeof renderer === "string" && renderer.includes("SwiftShader")) {
-              score++;
+              addSignal(CLIENT_BOT_SIGNAL_MASKS.swiftShader, 1);
             }
           }
         }
       } catch (e2) {
       }
       if (navigator.plugins.length === 0 && isChromeLike) {
-        score++;
+        addSignal(CLIENT_BOT_SIGNAL_MASKS.emptyPlugins, 1);
       }
     } catch (e2) {
     }
-    return Math.min(score, MAX_BOT_SCORE);
+    return {
+      score: Math.min(score, MAX_BOT_SCORE),
+      mask
+    };
   }
 
   // tracking.ts
@@ -499,7 +517,8 @@
         language: navigator.language,
         page_title: document.title,
         referrer: document.referrer,
-        _bs: getBotScore()
+        _bs: getBotScore(),
+        _bsm: getBotSignalMask()
       };
       if (this.customUserId) {
         payload.user_id = this.customUserId;

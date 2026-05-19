@@ -28,7 +28,7 @@ Current methods:
 - `bot_asn`: blocks requests from ipverse `hosting` ASNs or the curated bot/scanner/AI provider ASN overlay.
 - `rate_anomaly`: blocks request bursts and crawl-shaped behavior using in-memory sliding-window counters.
 
-The client-side `_bs` value is a cached, weighted score computed once per page lifecycle. Strong signals such as `navigator.webdriver === true` can reach the blocking threshold alone; weaker signals such as SwiftShader, missing Chrome globals, and empty plugin lists only add supporting weight.
+The client-side `_bs` value is a cached, weighted score computed once per page lifecycle. Strong signals such as `navigator.webdriver === true` can reach the blocking threshold alone; weaker signals such as SwiftShader, missing Chrome globals, and empty plugin lists only add supporting weight. The client also sends `_bsm`, a compact bitmask used only for aggregate component counters.
 
 ## Logging
 
@@ -51,6 +51,7 @@ Each detection object contains compact method-specific details such as matched U
 - `botRequestPercentage`
 - `botDetectionTotals` by method
 - `clientBotScoreHistogram` with buckets for missing, `0`, `1`, `2`, and `3+`
+- `clientBotSignalTotals` for `_bsm` components: missing mask, webdriver, zero outer dimensions, missing Chrome global, SwiftShader, empty plugins, and unknown mask bits
 
 A request can increment multiple method totals if multiple methods detected it, so method totals can sum higher than `totalBlockedRequests`.
 
@@ -84,4 +85,4 @@ This catches obvious floods and fast crawlers, but it is local to a Node process
 
 ## Trust Boundaries
 
-Bot blocking assumes the resolved IP is trustworthy. In production, the origin should only accept traffic from trusted proxy infrastructure, or the edge should strip and rebuild forwarding headers. Client-supplied `ip_address`, `user_agent`, and `_bs` are useful inputs but are not secure proof.
+Bot blocking assumes the resolved IP is trustworthy. In production, the origin should only accept traffic from trusted proxy infrastructure, or the edge should strip and rebuild forwarding headers. Client-supplied `ip_address`, `user_agent`, `_bs`, and `_bsm` are useful inputs but are not secure proof.

@@ -127,6 +127,7 @@ describe("Tracker", () => {
         page_title: "Test Page",
         referrer: "https://google.com",
         _bs: expect.any(Number),
+        _bsm: expect.any(Number),
       });
     });
 

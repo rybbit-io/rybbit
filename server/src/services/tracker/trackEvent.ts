@@ -26,6 +26,7 @@ const baseEventFields = {
   ip_address: z.string().ip().optional(),
   user_agent: z.string().max(512).optional(),
   _bs: z.number().int().min(0).max(10).optional(),
+  _bsm: z.number().int().min(0).max(31).optional(),
 };
 
 // Default event_name and properties used by pageview and performance
@@ -279,6 +280,7 @@ export async function trackEvent(request: FastifyRequest, reply: FastifyReply) {
         siteId: validatedPayload.site_id,
         userAgent: validatedPayload.user_agent,
         clientBotScore: validatedPayload._bs,
+        clientBotSignalMask: validatedPayload._bsm,
         screenWidth: validatedPayload.screenWidth,
         screenHeight: validatedPayload.screenHeight,
         hostname: validatedPayload.hostname,

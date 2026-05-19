@@ -14,6 +14,7 @@ interface BotBlockingPayload {
   siteId: string;
   userAgent?: string;
   clientBotScore?: number;
+  clientBotSignalMask?: number;
   screenWidth?: number;
   screenHeight?: number;
   hostname?: string;
@@ -66,7 +67,7 @@ function isBearerAuthenticated(request: FastifyRequest): boolean {
 
 export function checkBotBlocking({ request, blockBots, payload }: BotBlockingInput): BotBlockingResult | null {
   const clientBotScore = payload.clientBotScore;
-  recordBotBlockingRequest(clientBotScore);
+  recordBotBlockingRequest(clientBotScore, payload.clientBotSignalMask);
 
   if (!blockBots || isBearerAuthenticated(request)) {
     return null;

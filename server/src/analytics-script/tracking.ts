@@ -1,7 +1,7 @@
 import { BasePayload, ScriptConfig, TrackingPayload, WebVitalsData, SessionReplayBatch, ButtonClickProperties, CopyProperties, FormSubmitProperties, InputChangeProperties } from "./types.js";
 import { findMatchingPattern } from "./utils.js";
 import { SessionReplayRecorder } from "./sessionReplay.js";
-import { getBotScore } from "./botSignals.js";
+import { getBotScore, getBotSignalMask } from "./botSignals.js";
 
 export class Tracker {
   private config: ScriptConfig;
@@ -88,6 +88,7 @@ export class Tracker {
       page_title: document.title,
       referrer: document.referrer,
       _bs: getBotScore(),
+      _bsm: getBotSignalMask(),
     };
 
     if (this.customUserId) {

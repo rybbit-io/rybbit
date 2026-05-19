@@ -46,6 +46,7 @@ export interface BasePayload {
   user_id?: string;
   tag?: string;
   _bs?: number; // Client-side weighted bot detection score
+  _bsm?: number; // Client-side bot detection signal bitmask
 }
 
 export interface TrackingPayload extends BasePayload {

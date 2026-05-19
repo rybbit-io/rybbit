@@ -34,6 +34,29 @@ const clientBotScoreHistogram = {
   score3Plus: 0,
 };
 
+const CLIENT_BOT_SIGNAL_COMPONENTS = [
+  ["webdriver", 1 << 0],
+  ["zeroOuterDimensions", 1 << 1],
+  ["missingChrome", 1 << 2],
+  ["swiftShader", 1 << 3],
+  ["emptyPlugins", 1 << 4],
+] as const;
+
+type ClientBotSignalComponent = (typeof CLIENT_BOT_SIGNAL_COMPONENTS)[number][0];
+type ClientBotSignalTotal = ClientBotSignalComponent | "missingMask" | "unknownMaskBits";
+
+const KNOWN_CLIENT_BOT_SIGNAL_MASK = CLIENT_BOT_SIGNAL_COMPONENTS.reduce((mask, [, bit]) => mask | bit, 0);
+
+const clientBotSignalTotals: Record<ClientBotSignalTotal, number> = {
+  missingMask: 0,
+  webdriver: 0,
+  zeroOuterDimensions: 0,
+  missingChrome: 0,
+  swiftShader: 0,
+  emptyPlugins: 0,
+  unknownMaskBits: 0,
+};
+
 let totalRequests = 0;
 let totalBlockedRequests = 0;
 
@@ -44,7 +67,7 @@ function getBotRequestPercentage() {
   return Number(((totalBlockedRequests / totalRequests) * 100).toFixed(2));
 }
 
-export function recordBotBlockingRequest(clientBotScore: number | undefined) {
+export function recordBotBlockingRequest(clientBotScore: number | undefined, clientBotSignalMask: number | undefined) {
   totalRequests++;
 
   if (typeof clientBotScore !== "number" || !Number.isFinite(clientBotScore)) {
@@ -57,6 +80,20 @@ export function recordBotBlockingRequest(clientBotScore: number | undefined) {
     clientBotScoreHistogram.score2++;
   } else {
     clientBotScoreHistogram.score3Plus++;
+  }
+
+  if (typeof clientBotSignalMask !== "number" || !Number.isFinite(clientBotSignalMask)) {
+    clientBotSignalTotals.missingMask++;
+  } else {
+    for (const [component, bit] of CLIENT_BOT_SIGNAL_COMPONENTS) {
+      if ((clientBotSignalMask & bit) !== 0) {
+        clientBotSignalTotals[component]++;
+      }
+    }
+
+    if ((clientBotSignalMask & ~KNOWN_CLIENT_BOT_SIGNAL_MASK) !== 0) {
+      clientBotSignalTotals.unknownMaskBits++;
+    }
   }
 }
 
@@ -74,6 +111,7 @@ export function getBotDetectionStats() {
     botRequestPercentage: getBotRequestPercentage(),
     totals: { ...totals },
     clientBotScoreHistogram: { ...clientBotScoreHistogram },
+    clientBotSignalTotals: { ...clientBotSignalTotals },
   };
 }
 
@@ -88,6 +126,13 @@ export function resetBotDetectionStatsForTests() {
   clientBotScoreHistogram.score1 = 0;
   clientBotScoreHistogram.score2 = 0;
   clientBotScoreHistogram.score3Plus = 0;
+  clientBotSignalTotals.missingMask = 0;
+  clientBotSignalTotals.webdriver = 0;
+  clientBotSignalTotals.zeroOuterDimensions = 0;
+  clientBotSignalTotals.missingChrome = 0;
+  clientBotSignalTotals.swiftShader = 0;
+  clientBotSignalTotals.emptyPlugins = 0;
+  clientBotSignalTotals.unknownMaskBits = 0;
 }
 
 const interval = setInterval(() => {
@@ -98,6 +143,7 @@ const interval = setInterval(() => {
       botRequestPercentage: getBotRequestPercentage(),
       botDetectionTotals: { ...totals },
       clientBotScoreHistogram: { ...clientBotScoreHistogram },
+      clientBotSignalTotals: { ...clientBotSignalTotals },
     },
     "Bot detection totals since server start"
   );

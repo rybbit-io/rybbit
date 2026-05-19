@@ -21,6 +21,12 @@ const browserHeaders = {
   "user-agent": "Mozilla/5.0 Chrome/120 Safari/537.36",
 };
 
+const clientBotSignalMasks = {
+  webdriver: 1 << 0,
+  zeroOuterDimensions: 1 << 1,
+  swiftShader: 1 << 3,
+};
+
 describe("checkBotBlocking", () => {
   beforeEach(() => {
     resetAnomalyScorerForTests();
@@ -56,7 +62,7 @@ describe("checkBotBlocking", () => {
     checkBotBlocking({
       request: requestWithHeaders({ authorization: "Bearer token" }),
       blockBots: true,
-      payload: { ...basePayload, clientBotScore: 0 },
+      payload: { ...basePayload, clientBotScore: 0, clientBotSignalMask: 0 },
     });
 
     expect(getBotDetectionStats()).toMatchObject({
@@ -66,6 +72,9 @@ describe("checkBotBlocking", () => {
       clientBotScoreHistogram: {
         missing: 1,
         score0: 1,
+      },
+      clientBotSignalTotals: {
+        missingMask: 1,
       },
     });
   });
@@ -93,10 +102,13 @@ describe("checkBotBlocking", () => {
       clientBotScoreHistogram: {
         missing: 1,
       },
+      clientBotSignalTotals: {
+        missingMask: 1,
+      },
     });
   });
 
-  it("records client bot score histogram for inspected requests", () => {
+  it("records client bot score and signal aggregates for inspected requests", () => {
     const request = requestWithHeaders(browserHeaders);
 
     checkBotBlocking({
@@ -107,22 +119,26 @@ describe("checkBotBlocking", () => {
     checkBotBlocking({
       request,
       blockBots: true,
-      payload: { ...basePayload, clientBotScore: 0 },
+      payload: { ...basePayload, clientBotScore: 0, clientBotSignalMask: 0 },
     });
     checkBotBlocking({
       request,
       blockBots: true,
-      payload: { ...basePayload, clientBotScore: 1 },
+      payload: { ...basePayload, clientBotScore: 1, clientBotSignalMask: clientBotSignalMasks.swiftShader },
     });
     checkBotBlocking({
       request,
       blockBots: true,
-      payload: { ...basePayload, clientBotScore: 2 },
+      payload: {
+        ...basePayload,
+        clientBotScore: 2,
+        clientBotSignalMask: clientBotSignalMasks.zeroOuterDimensions,
+      },
     });
     checkBotBlocking({
       request,
       blockBots: true,
-      payload: { ...basePayload, clientBotScore: 3 },
+      payload: { ...basePayload, clientBotScore: 3, clientBotSignalMask: clientBotSignalMasks.webdriver },
     });
 
     expect(getBotDetectionStats()).toMatchObject({
@@ -135,6 +151,15 @@ describe("checkBotBlocking", () => {
         score1: 1,
         score2: 1,
         score3Plus: 1,
+      },
+      clientBotSignalTotals: {
+        missingMask: 1,
+        webdriver: 1,
+        zeroOuterDimensions: 1,
+        missingChrome: 0,
+        swiftShader: 1,
+        emptyPlugins: 0,
+        unknownMaskBits: 0,
       },
     });
   });

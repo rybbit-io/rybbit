@@ -3,23 +3,46 @@
  *
  * Checks browser environment characteristics that distinguish real browsers
  * from headless/automated ones. Returns a single weighted integer score.
- * Only the score is transmitted, never individual signal values, preserving user privacy.
+ * The tracker sends the score plus a compact signal bitmask for aggregate diagnostics.
  */
-let cachedBotScore: number | null = null;
+export const CLIENT_BOT_SIGNAL_MASKS = {
+  webdriver: 1 << 0,
+  zeroOuterDimensions: 1 << 1,
+  missingChrome: 1 << 2,
+  swiftShader: 1 << 3,
+  emptyPlugins: 1 << 4,
+} as const;
+
+interface BotSignalResult {
+  score: number;
+  mask: number;
+}
+
+let cachedBotSignals: BotSignalResult | null = null;
 
 const MAX_BOT_SCORE = 10;
 
 export function getBotScore(): number {
-  if (cachedBotScore !== null) {
-    return cachedBotScore;
-  }
-
-  cachedBotScore = calculateBotScore();
-  return cachedBotScore;
+  return getBotSignals().score;
 }
 
-function calculateBotScore(): number {
+export function getBotSignalMask(): number {
+  return getBotSignals().mask;
+}
+
+function getBotSignals(): BotSignalResult {
+  cachedBotSignals ??= calculateBotSignals();
+  return cachedBotSignals;
+}
+
+function calculateBotSignals(): BotSignalResult {
   let score = 0;
+  let mask = 0;
+
+  function addSignal(signalMask: number, weight: number) {
+    mask |= signalMask;
+    score += weight;
+  }
 
   try {
     const userAgent = navigator.userAgent;
@@ -27,18 +50,18 @@ function calculateBotScore(): number {
 
     // 1. navigator.webdriver — strong signal for Selenium, Puppeteer, Playwright, and similar automation
     if ((navigator as any).webdriver === true) {
-      score += 3;
+      addSignal(CLIENT_BOT_SIGNAL_MASKS.webdriver, 3);
     }
 
     // 2. Zero outer dimensions — common in headless/browserless environments
     if (window.outerHeight === 0 || window.outerWidth === 0) {
-      score += 2;
+      addSignal(CLIENT_BOT_SIGNAL_MASKS.zeroOuterDimensions, 2);
     }
 
     // 3. Missing window.chrome on a Chrome UA — real Chrome usually exposes this object
     //    Only flag for non-WebView Chrome UAs; Android WebView doesn't expose window.chrome
     if (!((window as any).chrome) && isChromeLike) {
-      score++;
+      addSignal(CLIENT_BOT_SIGNAL_MASKS.missingChrome, 1);
     }
 
     // 4. WebGL renderer check — headless/containerized Chrome often uses Google SwiftShader
@@ -50,7 +73,7 @@ function calculateBotScore(): number {
         if (debugInfo) {
           const renderer = (gl as WebGLRenderingContext).getParameter(debugInfo.UNMASKED_RENDERER_WEBGL);
           if (typeof renderer === "string" && renderer.includes("SwiftShader")) {
-            score++;
+            addSignal(CLIENT_BOT_SIGNAL_MASKS.swiftShader, 1);
           }
         }
       }
@@ -60,15 +83,18 @@ function calculateBotScore(): number {
 
     // 5. No plugins — weak supporting signal for Chrome-like UAs only
     if (navigator.plugins.length === 0 && isChromeLike) {
-      score++;
+      addSignal(CLIENT_BOT_SIGNAL_MASKS.emptyPlugins, 1);
     }
   } catch (e) {
     // If any top-level access fails, return whatever we've accumulated
   }
 
-  return Math.min(score, MAX_BOT_SCORE);
+  return {
+    score: Math.min(score, MAX_BOT_SCORE),
+    mask,
+  };
 }
 
 export function resetBotScoreCacheForTests() {
-  cachedBotScore = null;
+  cachedBotSignals = null;
 }
