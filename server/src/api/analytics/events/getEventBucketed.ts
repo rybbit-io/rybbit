@@ -50,7 +50,6 @@ export async function getEventBucketed(req: FastifyRequest<GetEventBucketedReque
       FROM events
       WHERE
         site_id = {siteId:Int32}
-        AND is_bot = false
         AND type = 'custom_event'
         AND event_name IS NOT NULL
         AND event_name != ''
@@ -67,7 +66,6 @@ export async function getEventBucketed(req: FastifyRequest<GetEventBucketedReque
     FROM events
     WHERE
       site_id = {siteId:Int32}
-      AND is_bot = false
       AND type = 'custom_event'
       AND event_name IS NOT NULL
       AND event_name != ''

@@ -142,7 +142,6 @@ export async function getFunnelStepSessions(req: FastifyRequest<GetFunnelStepSes
       FROM events
       WHERE
         site_id = {siteId:Int32}
-        AND is_bot = false
         ${timeStatement}
         ${filterStatement}
     ),
@@ -244,7 +243,6 @@ export async function getFunnelStepSessions(req: FastifyRequest<GetFunnelStepSes
       INNER JOIN TargetSessions ts ON e.session_id = ts.session_id
       WHERE
         e.site_id = {siteId:Int32}
-        AND e.is_bot = false
         ${timeStatement}
       GROUP BY
         e.session_id,

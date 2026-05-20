@@ -80,7 +80,6 @@ export const getJourneys = async (
             FROM events
             WHERE
               site_id = {siteId:Int32}
-              AND is_bot = false
               ${timeStatement || ""}
               ${filterStatement || ""}
               AND type = 'pageview'
@@ -108,7 +107,6 @@ export const getJourneys = async (
             SELECT count(DISTINCT session_id)
             FROM events
             WHERE site_id = {siteId:Int32}
-            AND is_bot = false
             ${timeStatement || ""}
             ${filterStatement || ""}
           ) AS percentage

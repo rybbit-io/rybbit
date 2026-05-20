@@ -47,7 +47,6 @@ export class SessionReplayQueryService {
       SELECT DISTINCT session_id
       FROM events
       WHERE site_id = {siteId:UInt16}
-        AND is_bot = false
         AND session_id IN (
           SELECT DISTINCT session_id
           FROM session_replay_events
@@ -71,7 +70,6 @@ export class SessionReplayQueryService {
             SELECT DISTINCT session_id
             FROM events
             WHERE site_id = {siteId:UInt16}
-              AND is_bot = false
               ${filterStatement}
           )
       `;

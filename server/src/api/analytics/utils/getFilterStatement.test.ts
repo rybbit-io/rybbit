@@ -43,13 +43,13 @@ describe("getSqlParam", () => {
 
     it("should handle entry_page", () => {
       expect(getSqlParam("entry_page")).toBe(
-        "(SELECT argMin(pathname, timestamp) FROM events WHERE session_id = events.session_id AND is_bot = false)"
+        "(SELECT argMin(pathname, timestamp) FROM events WHERE session_id = events.session_id)"
       );
     });
 
     it("should handle exit_page", () => {
       expect(getSqlParam("exit_page")).toBe(
-        "(SELECT argMax(pathname, timestamp) FROM events WHERE session_id = events.session_id AND is_bot = false)"
+        "(SELECT argMax(pathname, timestamp) FROM events WHERE session_id = events.session_id)"
       );
     });
 
@@ -261,7 +261,6 @@ describe("getFilterStatement", () => {
       expect(result).toContain("session_id IN");
       expect(result).toContain("SELECT DISTINCT session_id");
       expect(result).toContain("FROM events");
-      expect(result).toContain("is_bot = false");
       expect(result).toContain("event_name = 'click'");
     });
 
@@ -286,7 +285,6 @@ describe("getFilterStatement", () => {
       expect(result).toContain("session_id IN");
       expect(result).toContain("argMin(channel, timestamp) AS session_channel");
       expect(result).toContain("site_id = 123");
-      expect(result).toContain("is_bot = false");
       expect(result).toContain("timestamp > now() - INTERVAL 1 DAY");
       expect(result).toContain("channel IS NOT NULL");
       expect(result).toContain("channel <> ''");
@@ -309,7 +307,6 @@ describe("getFilterStatement", () => {
       const result = getFilterStatement(filters);
       expect(result).toContain("session_id IN");
       expect(result).toContain("argMin(pathname, timestamp) AS entry_pathname");
-      expect(result).toContain("is_bot = false");
       expect(result).toContain("entry_pathname = '/home'");
     });
 
@@ -334,7 +331,6 @@ describe("getFilterStatement", () => {
       const result = getFilterStatement(filters);
       expect(result).toContain("session_id IN");
       expect(result).toContain("argMax(pathname, timestamp) AS exit_pathname");
-      expect(result).toContain("is_bot = false");
       expect(result).toContain("exit_pathname = '/checkout'");
     });
 

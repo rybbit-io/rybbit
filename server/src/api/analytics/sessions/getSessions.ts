@@ -148,7 +148,6 @@ export async function getSessions(req: FastifyRequest<GetSessionsRequest>, res: 
       FROM events
       WHERE
           site_id = {siteId:Int32}
-          AND is_bot = false
           ${userId ? ` AND (events.user_id = {user_id:String} OR events.identified_user_id = {user_id:String})` : ""}
           ${sessionId ? ` AND events.session_id = {session_id:String}` : ""}
           ${timeStatement}

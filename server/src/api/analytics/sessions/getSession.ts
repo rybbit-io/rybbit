@@ -105,7 +105,6 @@ SELECT
 FROM events
 WHERE 
     site_id = {siteId:Int32}
-    AND is_bot = false
     AND session_id = {sessionId:String}
     ${timeFilterWithConnector}
 GROUP BY session_id
@@ -119,7 +118,6 @@ SELECT
 FROM events
 WHERE
     site_id = {siteId:Int32}
-    AND is_bot = false
     AND session_id = {sessionId:String}
     AND type != 'performance'
     ${timeFilterWithConnector}
@@ -140,7 +138,6 @@ SELECT
 FROM events
 WHERE
     site_id = {siteId:Int32}
-    AND is_bot = false
     AND session_id = {sessionId:String}
     AND type != 'performance'
     ${timeFilterWithConnector}

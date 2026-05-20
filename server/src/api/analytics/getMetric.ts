@@ -86,7 +86,6 @@ const getQuery = (request: FastifyRequest<GetMetricRequest>, isCountQuery: boole
       FROM events
       WHERE
         site_id = {siteId:Int32}
-        AND is_bot = false
         AND event_name IS NOT NULL 
         AND event_name <> ''
         ${filterStatement}
@@ -102,7 +101,6 @@ const getQuery = (request: FastifyRequest<GetMetricRequest>, isCountQuery: boole
     FROM events
     WHERE
       site_id = {siteId:Int32}
-      AND is_bot = false
       AND event_name IS NOT NULL 
       AND event_name <> ''
       ${filterStatement}
@@ -123,7 +121,6 @@ const getQuery = (request: FastifyRequest<GetMetricRequest>, isCountQuery: boole
       FROM events
       WHERE
           site_id = {siteId:Int32}
-          AND is_bot = false
           AND page_title IS NOT NULL
           AND page_title <> ''
           -- AND type = 'pageview'
@@ -144,7 +141,6 @@ const getQuery = (request: FastifyRequest<GetMetricRequest>, isCountQuery: boole
           FROM events
           WHERE
               site_id = {siteId:Int32}
-              AND is_bot = false
               AND type = 'pageview'
               ${timeStatement}
           GROUP BY session_id
@@ -159,7 +155,6 @@ const getQuery = (request: FastifyRequest<GetMetricRequest>, isCountQuery: boole
           LEFT JOIN SessionPageCounts spc ON e.session_id = spc.session_id
           WHERE
               e.site_id = {siteId:Int32}
-              AND e.is_bot = false
               AND e.page_title IS NOT NULL
               AND e.page_title <> ''
               ${filterStatement}
@@ -197,7 +192,6 @@ const getQuery = (request: FastifyRequest<GetMetricRequest>, isCountQuery: boole
           FROM events
           WHERE
               site_id = {siteId:Int32}
-              AND is_bot = false
               AND type = 'pageview'
               ${timeStatement}
           GROUP BY session_id
@@ -210,7 +204,6 @@ const getQuery = (request: FastifyRequest<GetMetricRequest>, isCountQuery: boole
           LEFT JOIN SessionPageCounts spc ON e.session_id = spc.session_id
           WHERE
               e.site_id = {siteId:Int32}
-              AND e.is_bot = false
               -- AND type = 'pageview'
               ${filterStatement}
               ${timeStatement}
@@ -290,7 +283,6 @@ const getQuery = (request: FastifyRequest<GetMetricRequest>, isCountQuery: boole
           FROM events
           WHERE
               site_id = {siteId:Int32}
-              AND is_bot = false
               AND type = 'pageview'
               ${timeStatement}
           GROUP BY session_id
@@ -307,7 +299,6 @@ const getQuery = (request: FastifyRequest<GetMetricRequest>, isCountQuery: boole
           LEFT JOIN SessionPageCounts spc ON e.session_id = spc.session_id
           WHERE
             e.site_id = {siteId:Int32}
-            AND e.is_bot = false
             -- AND type = 'pageview'
             ${filterStatement}
             ${timeStatement}
@@ -371,7 +362,6 @@ const getQuery = (request: FastifyRequest<GetMetricRequest>, isCountQuery: boole
         FROM events e
         WHERE
             e.site_id = {siteId:Int32}
-            AND e.is_bot = false
             AND ${sqlParam} IS NOT NULL
             AND ${sqlParam} <> ''
             ${filterStatement}
@@ -389,7 +379,6 @@ const getQuery = (request: FastifyRequest<GetMetricRequest>, isCountQuery: boole
         FROM events
         WHERE
             site_id = {siteId:Int32}
-            AND is_bot = false
             AND type = 'pageview'
             ${timeStatement}
         GROUP BY session_id
@@ -403,7 +392,6 @@ const getQuery = (request: FastifyRequest<GetMetricRequest>, isCountQuery: boole
         LEFT JOIN SessionPageCounts spc ON e.session_id = spc.session_id
         WHERE
             e.site_id = {siteId:Int32}
-            AND e.is_bot = false
             AND ${sqlParam} IS NOT NULL
             AND ${sqlParam} <> ''
             ${filterStatement}

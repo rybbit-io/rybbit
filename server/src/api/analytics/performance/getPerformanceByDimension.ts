@@ -153,7 +153,6 @@ const getQuery = (request: FastifyRequest<GetPerformanceByDimensionRequest>, isC
         FROM events
         WHERE 
           site_id = {siteId:Int32}
-          AND is_bot = false
           AND type = 'performance'
           AND ${dimension} IS NOT NULL 
           AND ${dimension} <> ''

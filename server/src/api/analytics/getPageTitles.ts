@@ -68,7 +68,6 @@ const getPageTitlesQuery = (request: FastifyRequest<GetPageTitlesRequest>, isCou
         FROM events
         WHERE
             site_id = {siteId:Int32}
-            AND is_bot = false
             AND type = 'pageview'
             ${timeStatement}
         GROUP BY session_id
@@ -83,7 +82,6 @@ const getPageTitlesQuery = (request: FastifyRequest<GetPageTitlesRequest>, isCou
         FROM events
         WHERE
           site_id = {siteId:Int32}
-          AND is_bot = false
           AND page_title IS NOT NULL
           AND page_title <> ''
           AND type = 'pageview'

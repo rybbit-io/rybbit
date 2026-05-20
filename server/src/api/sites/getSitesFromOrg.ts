@@ -104,7 +104,6 @@ export async function getSitesFromOrg(
           FROM events 
           WHERE timestamp >= now() - INTERVAL 1 DAY 
             AND site_id IN (${siteIds.join(",")})
-            AND is_bot = false
           GROUP BY site_id
         `,
         format: "JSONEachRow",

@@ -1,8 +1,8 @@
 # Bot Blocking
 
-This directory owns tracker-side bot detection for public `/track` ingestion. `trackEvent.ts` validates the payload, resolves the request IP, and calls `checkBotBlocking()`. If any bot method matches, the event is stored in ClickHouse with `is_bot = true` and per-layer bot metadata.
+This directory owns tracker-side bot detection for public `/track` ingestion. `trackEvent.ts` validates the payload, resolves the request IP, and calls `checkBotBlocking()`. If any bot method matches, the event is stored in ClickHouse `bot_events` with per-layer bot metadata.
 
-Normal analytics queries filter `events` with `is_bot = false`, so detected bot rows remain available for inspection without contributing to dashboard, report, replay-list, or usage totals.
+Detected bot requests are not inserted into the normal `events` table, so dashboard, report, replay-list, and usage queries do not need a bot filter.
 
 ## Entry Point
 
@@ -56,6 +56,20 @@ Each detection object contains compact method-specific details such as matched U
 - `clientBotSignalTotals` for `_bsm` components: missing mask, webdriver, zero outer dimensions, missing Chrome global, SwiftShader, empty plugins, and unknown mask bits
 
 A request can increment multiple method totals if multiple methods detected it, so method totals can sum higher than `totalBotRequests`.
+
+## Storage
+
+`botEventQueue.ts` enriches detected bot requests with the same browser, device, and geolocation basics as normal events, then inserts a compact audit row into `bot_events`.
+
+The table keeps only the columns needed to inspect bot traffic:
+
+- request identity and route fields: `site_id`, `timestamp`, `session_id`, `user_id`, `hostname`, `pathname`, `querystring`, `referrer`, `type`
+- browser, OS, device, screen, and location fields
+- ASN fields: `asn`, `asn_org`
+- one boolean column for each detection layer
+- UA classification fields: `matched_ua_pattern`, `bot_category`
+
+`bot_events` has a 3-month TTL. The main `events` table has no bot-specific columns or bot-specific TTL.
 
 ## ASN Data
 

@@ -8,6 +8,7 @@ import { pageviewQueue } from "./pageviewQueue.js";
 import { createBasePayload } from "./utils.js";
 import { getLocation } from "../../db/geolocation/geolocation.js";
 import { checkApiKey } from "../../lib/auth-utils.js";
+import { botEventQueue } from "./botBlocking/botEventQueue.js";
 import { checkBotBlocking } from "./botBlocking/index.js";
 import { resolveTrackingIdentity } from "./requestIdentity.js";
 
@@ -357,10 +358,21 @@ export async function trackEvent(request: FastifyRequest, reply: FastifyReply) {
       siteId: siteConfiguration.siteId,
     });
 
+    if (botDetectionResult) {
+      await botEventQueue.add({
+        ...payload,
+        ...botDetectionResult.eventProperties,
+        sessionId,
+      });
+
+      return reply.status(200).send({
+        success: true,
+      });
+    }
+
     // Add to queue for processing (payload already has numeric siteId)
     await pageviewQueue.add({
       ...payload,
-      ...(botDetectionResult?.eventProperties ?? {}),
       sessionId,
     });
 

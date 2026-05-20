@@ -33,7 +33,6 @@ export async function getUserSessionCount(req: FastifyRequest<GetUserSessionCoun
     FROM events
     WHERE
       site_id = {siteId:Int32}
-      AND is_bot = false
       AND (user_id = {userId:String} OR identified_user_id = {userId:String})
     GROUP BY date
     ORDER BY date ASC

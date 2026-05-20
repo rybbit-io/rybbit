@@ -13,7 +13,7 @@ export const getLiveUsercount = async (
   const { minutes } = req.query;
 
   const query = await clickhouse.query({
-    query: `SELECT COUNT(DISTINCT(session_id)) AS count FROM events WHERE timestamp > now() - interval {minutes:Int32} minute AND site_id = {siteId:Int32} AND is_bot = false`,
+    query: `SELECT COUNT(DISTINCT(session_id)) AS count FROM events WHERE timestamp > now() - interval {minutes:Int32} minute AND site_id = {siteId:Int32}`,
     format: "JSONEachRow",
     query_params: {
       siteId: Number(siteId),

@@ -54,17 +54,6 @@ const EVENTS_COLUMNS_TO_ENSURE: ColumnDefinition[] = [
   { name: "identified_user_id", definition: "identified_user_id String DEFAULT ''" },
   { name: "import_id", definition: "import_id Nullable(UUID)" },
   { name: "tag", definition: "tag LowCardinality(String) DEFAULT ''" },
-  { name: "is_bot", definition: "is_bot Bool DEFAULT false" },
-  { name: "asn", definition: "asn Nullable(UInt32)" },
-  { name: "asn_org", definition: "asn_org String DEFAULT ''" },
-  { name: "detected_ua_pattern", definition: "detected_ua_pattern Bool DEFAULT false" },
-  { name: "detected_header_heuristics", definition: "detected_header_heuristics Bool DEFAULT false" },
-  { name: "detected_client_signals", definition: "detected_client_signals Bool DEFAULT false" },
-  { name: "detected_desktop_800x600", definition: "detected_desktop_800x600 Bool DEFAULT false" },
-  { name: "detected_bot_asn", definition: "detected_bot_asn Bool DEFAULT false" },
-  { name: "detected_rate_anomaly", definition: "detected_rate_anomaly Bool DEFAULT false" },
-  { name: "matched_ua_pattern", definition: "matched_ua_pattern String DEFAULT ''" },
-  { name: "bot_category", definition: "bot_category LowCardinality(String) DEFAULT ''" },
 ];
 
 async function getTableColumns(table: string) {
@@ -107,40 +96,6 @@ async function ensureEventsColumns() {
   );
 }
 
-async function getTableCreateQuery(table: string) {
-  const result = await clickhouse.query({
-    query: `
-      SELECT create_table_query
-      FROM system.tables
-      WHERE database = currentDatabase()
-        AND name = {table:String}
-      LIMIT 1
-    `,
-    query_params: { table },
-    format: "JSONEachRow",
-  });
-
-  const rows = await result.json<{ create_table_query: string }>();
-  return rows[0]?.create_table_query ?? "";
-}
-
-async function ensureEventsBotTtl() {
-  const createTableQuery = await getTableCreateQuery("events");
-  if (createTableQuery.includes("DELETE WHERE is_bot")) {
-    logger.debug("Events table bot TTL is already configured");
-    return;
-  }
-
-  await execClickhouseInitStep(
-    "modify events bot TTL",
-    `
-      ALTER TABLE events
-        MODIFY TTL timestamp + INTERVAL 3 MONTH DELETE WHERE is_bot = true
-    `,
-    { optional: true, lockAcquireTimeoutSeconds: 15 }
-  );
-}
-
 export const initializeClickhouse = async () => {
   // Create events table
   await execClickhouseInitStep(
@@ -173,8 +128,42 @@ export const initializeClickhouse = async () => {
         device_type LowCardinality(String),
         type LowCardinality(String) DEFAULT 'pageview',
         event_name String,
-        props JSON,
-        is_bot Bool DEFAULT false,
+        props JSON
+      )
+      ENGINE = MergeTree()
+      PARTITION BY toYYYYMM(timestamp)
+      ORDER BY (site_id, timestamp)
+      `
+  );
+
+  // Add only columns that are actually missing. Even a no-op ALTER needs the events table ALTER lock.
+  await ensureEventsColumns();
+
+  await execClickhouseInitStep(
+    "create bot events table",
+    `
+      CREATE TABLE IF NOT EXISTS bot_events (
+        site_id UInt16,
+        timestamp DateTime,
+        session_id String,
+        user_id String,
+        hostname String,
+        pathname String,
+        querystring String,
+        referrer String,
+        browser LowCardinality(String),
+        browser_version LowCardinality(String),
+        operating_system LowCardinality(String),
+        operating_system_version LowCardinality(String),
+        country LowCardinality(FixedString(2)),
+        region LowCardinality(String),
+        city String,
+        lat Float64,
+        lon Float64,
+        screen_width UInt16,
+        screen_height UInt16,
+        device_type LowCardinality(String),
+        type LowCardinality(String) DEFAULT 'pageview',
         asn Nullable(UInt32),
         asn_org String DEFAULT '',
         detected_ua_pattern Bool DEFAULT false,
@@ -189,15 +178,9 @@ export const initializeClickhouse = async () => {
       ENGINE = MergeTree()
       PARTITION BY toYYYYMM(timestamp)
       ORDER BY (site_id, timestamp)
-      TTL timestamp + INTERVAL 3 MONTH DELETE WHERE is_bot = true
+      TTL timestamp + INTERVAL 3 MONTH
       `
   );
-
-  // Add only columns that are actually missing. Even a no-op ALTER needs the events table ALTER lock.
-  await ensureEventsColumns();
-
-  // Keep bot rows in the main events table, but expire them sooner than normal analytics rows.
-  await ensureEventsBotTtl();
 
   // Create session replay tables
   await clickhouse.exec({
@@ -351,7 +334,6 @@ export const initializeClickhouse = async () => {
           site_id,
           count() AS event_count
         FROM events
-        WHERE is_bot = false
         GROUP BY event_hour, site_id
       `,
     });

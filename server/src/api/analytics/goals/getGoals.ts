@@ -131,7 +131,6 @@ export async function getGoals(
       SELECT COUNT(DISTINCT session_id) AS total_sessions
       FROM events
       WHERE site_id = ${SqlString.escape(Number(siteId))}
-      AND is_bot = false
       ${timeStatement}
       ${filterStatement}
     `;
@@ -240,7 +239,6 @@ export async function getGoals(
         ${conditionalClauses.join(", ")}
       FROM events
       WHERE site_id = ${SqlString.escape(Number(siteId))}
-      AND is_bot = false
       ${timeStatement}
       ${filterStatement}
     `;

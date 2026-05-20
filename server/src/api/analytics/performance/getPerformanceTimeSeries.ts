@@ -126,7 +126,6 @@ SELECT
 FROM events
 WHERE
     site_id = {siteId:Int32}
-    AND is_bot = false
     AND type = 'performance'
     ${filterStatement}
     ${timeStatement}

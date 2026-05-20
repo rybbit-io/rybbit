@@ -69,10 +69,10 @@ export const getSqlParam = (parameter: FilterParameter) => {
     return "domainWithoutWWW(referrer)";
   }
   if (parameter === "entry_page") {
-    return "(SELECT argMin(pathname, timestamp) FROM events WHERE session_id = events.session_id AND is_bot = false)";
+    return "(SELECT argMin(pathname, timestamp) FROM events WHERE session_id = events.session_id)";
   }
   if (parameter === "exit_page") {
-    return "(SELECT argMax(pathname, timestamp) FROM events WHERE session_id = events.session_id AND is_bot = false)";
+    return "(SELECT argMax(pathname, timestamp) FROM events WHERE session_id = events.session_id)";
   }
   if (parameter === "dimensions") {
     return "concat(toString(screen_width), 'x', toString(screen_height))";
@@ -112,7 +112,6 @@ export function getFilterStatement(
 
   const sessionLevelParams = options?.sessionLevelParams ?? DEFAULT_SESSION_LEVEL_PARAMS;
   const siteIdFilter = siteId ? `site_id = ${siteId}` : "";
-  const nonBotFilter = "is_bot = false";
   // Strip leading "AND " from timeStatement since we'll be constructing WHERE clauses
   const timeFilter = timeStatement ? timeStatement.replace(/^AND\s+/i, "").trim() : "";
 
@@ -168,7 +167,7 @@ export function getFilterStatement(
     values: (string | number)[],
     wildcardPrefix: string
   ): string => {
-    const whereClause = [siteIdFilter, nonBotFilter, timeFilter].filter(Boolean).join(" AND ");
+    const whereClause = [siteIdFilter, timeFilter].filter(Boolean).join(" AND ");
     const condition = buildStringFilterCondition(param, filterType, values, wildcardPrefix);
 
     const finalWhere = whereClause ? `WHERE ${whereClause} AND ${condition}` : `WHERE ${condition}`;
@@ -187,7 +186,7 @@ export function getFilterStatement(
     values: (string | number)[],
     wildcardPrefix: string
   ): string => {
-    const whereClause = [siteIdFilter, nonBotFilter, timeFilter, `${param} IS NOT NULL`, `${param} <> ''`]
+    const whereClause = [siteIdFilter, timeFilter, `${param} IS NOT NULL`, `${param} <> ''`]
       .filter(Boolean)
       .join(" AND ");
     const condition = buildStringFilterCondition(alias, filterType, values, wildcardPrefix);
@@ -225,7 +224,7 @@ export function getFilterStatement(
         }
 
         if (filter.parameter === "entry_page") {
-          const whereClause = [siteIdFilter, nonBotFilter, timeFilter].filter(Boolean).join(" AND ");
+          const whereClause = [siteIdFilter, timeFilter].filter(Boolean).join(" AND ");
           const whereStatement = whereClause ? `WHERE ${whereClause}` : "";
           const condition = buildStringFilterCondition("entry_pathname", filter.type, filter.value);
 
@@ -244,7 +243,7 @@ export function getFilterStatement(
         }
 
         if (filter.parameter === "exit_page") {
-          const whereClause = [siteIdFilter, nonBotFilter, timeFilter].filter(Boolean).join(" AND ");
+          const whereClause = [siteIdFilter, timeFilter].filter(Boolean).join(" AND ");
           const whereStatement = whereClause ? `WHERE ${whereClause}` : "";
           const condition = buildStringFilterCondition("exit_pathname", filter.type, filter.value);
 

@@ -106,17 +106,6 @@ class PageviewQueue {
         timezone: timezone,
         tag: pv.tag || "",
         import_id: null,
-        is_bot: pv.isBot || false,
-        asn: pv.botAsn ?? null,
-        asn_org: pv.botAsnOrg || "",
-        detected_ua_pattern: pv.detectedUaPattern || false,
-        detected_header_heuristics: pv.detectedHeaderHeuristics || false,
-        detected_client_signals: pv.detectedClientSignals || false,
-        detected_desktop_800x600: pv.detectedDesktop800x600 || false,
-        detected_bot_asn: pv.detectedBotAsn || false,
-        detected_rate_anomaly: pv.detectedRateAnomaly || false,
-        matched_ua_pattern: pv.matchedUaPattern || "",
-        bot_category: pv.botCategory || "",
       };
     });
 

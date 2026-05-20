@@ -59,7 +59,6 @@ export async function getSiteEventCount(
     FROM events
     WHERE
       site_id = {siteId:Int32}
-      AND is_bot = false
       AND type IN ('pageview', 'custom_event', 'performance', 'outbound', 'error', 'button_click', 'copy', 'form_submit', 'input_change')
       ${timeStatement}
       ${filterStatement}
