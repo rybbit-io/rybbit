@@ -12,16 +12,21 @@ export const getLiveUsercount = async (
   const { siteId } = req.params;
   const { minutes } = req.query;
 
-  const query = await clickhouse.query({
-    query: `SELECT COUNT(DISTINCT(session_id)) AS count FROM events WHERE timestamp > now() - interval {minutes:Int32} minute AND site_id = {siteId:Int32}`,
-    format: "JSONEachRow",
-    query_params: {
-      siteId: Number(siteId),
-      minutes: Number(minutes || 5),
-    },
-  });
+  try {
+    const query = await clickhouse.query({
+      query: `SELECT COUNT(DISTINCT(session_id)) AS count FROM events WHERE timestamp > now() - interval {minutes:Int32} minute AND site_id = {siteId:Int32}`,
+      format: "JSONEachRow",
+      query_params: {
+        siteId: Number(siteId),
+        minutes: Number(minutes || 5),
+      },
+    });
 
-  const result = await processResults<{ count: number }>(query);
+    const result = await processResults<{ count: number }>(query);
 
-  return res.send({ count: result[0].count });
+    return res.send({ count: result[0]?.count ?? 0 });
+  } catch (error) {
+    req.log.error({ err: error, siteId }, "getLiveUsercount: ClickHouse query failed");
+    return res.status(500).send({ error: "Failed to fetch live user count" });
+  }
 };
