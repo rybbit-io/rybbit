@@ -18,8 +18,8 @@ const baseEventFields = {
   hostname: z.string().max(253).optional(),
   pathname: z.string().max(2048).optional(),
   querystring: z.string().max(2048).optional(),
-  screenWidth: z.number().int().positive().optional(),
-  screenHeight: z.number().int().positive().optional(),
+  screenWidth: z.number().int().nonnegative().optional(),
+  screenHeight: z.number().int().nonnegative().optional(),
   language: z.string().max(35).optional(),
   page_title: z.string().max(512).optional(),
   referrer: z.string().max(2048).optional(),
@@ -28,7 +28,7 @@ const baseEventFields = {
   ip_address: z.string().ip().optional(),
   user_agent: z.string().max(512).optional(),
   _bs: z.number().int().min(0).max(10).optional(),
-  _bsm: z.number().int().min(0).max(31).optional(),
+  _bsm: z.number().int().min(0).max(1023).optional(),
 };
 
 // Default event_name and properties used by pageview and performance

@@ -68,7 +68,6 @@ class BotEventQueue {
         detected_ua_pattern: event.detectedUaPattern || false,
         detected_header_heuristics: event.detectedHeaderHeuristics || false,
         detected_client_signals: event.detectedClientSignals || false,
-        detected_desktop_800x600: event.detectedDesktop800x600 || false,
         detected_bot_asn: event.detectedBotAsn || false,
         detected_rate_anomaly: event.detectedRateAnomaly || false,
         matched_ua_pattern: event.matchedUaPattern || "",

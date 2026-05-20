@@ -382,11 +382,17 @@
 
   // botSignals.ts
   var CLIENT_BOT_SIGNAL_MASKS = {
+    automationApi: 1 << 0,
     webdriver: 1 << 0,
     zeroOuterDimensions: 1 << 1,
     missingChrome: 1 << 2,
     swiftShader: 1 << 3,
-    emptyPlugins: 1 << 4
+    emptyPlugins: 1 << 4,
+    defaultViewport800x600: 1 << 5,
+    defaultViewport1024x768: 1 << 6,
+    impossibleDimensions: 1 << 7,
+    outerDimensionsWeird: 1 << 8,
+    pluginApiAbsence: 1 << 9
   };
   var cachedBotSignals = null;
   var MAX_BOT_SCORE = 10;
@@ -404,20 +410,63 @@
     let score = 0;
     let mask = 0;
     function addSignal(signalMask, weight) {
+      if ((mask & signalMask) !== 0) {
+        return;
+      }
       mask |= signalMask;
       score += weight;
     }
     try {
       const userAgent = navigator.userAgent;
       const isChromeLike = /Chrome\//.test(userAgent) && !/\bwv\b|; wv\)/.test(userAgent);
-      if (navigator.webdriver === true) {
-        addSignal(CLIENT_BOT_SIGNAL_MASKS.webdriver, 3);
+      const isDesktopUA = /Windows NT|Macintosh|X11|Linux x86_64/.test(userAgent) && !/Mobile|Android|iPhone|iPad/.test(userAgent);
+      const screenWidth = Number(window.screen?.width);
+      const screenHeight = Number(window.screen?.height);
+      const outerWidth = Number(window.outerWidth);
+      const outerHeight = Number(window.outerHeight);
+      const innerWidth = Number(window.innerWidth);
+      const innerHeight = Number(window.innerHeight);
+      const automationGlobalNames = [
+        "__webdriver_evaluate",
+        "__selenium_evaluate",
+        "__webdriver_script_function",
+        "__webdriver_script_func",
+        "__webdriver_script_fn",
+        "__fxdriver_evaluate",
+        "__driver_unwrapped",
+        "__webdriver_unwrapped",
+        "__driver_evaluate",
+        "__selenium_unwrapped",
+        "__fxdriver_unwrapped",
+        "_phantom",
+        "callPhantom",
+        "__nightmare",
+        "domAutomation",
+        "domAutomationController"
+      ];
+      const hasAutomationGlobal = automationGlobalNames.some((name) => name in window || name in document);
+      if (navigator.webdriver === true || hasAutomationGlobal) {
+        addSignal(CLIENT_BOT_SIGNAL_MASKS.automationApi, 3);
       }
-      if (window.outerHeight === 0 || window.outerWidth === 0) {
+      if (outerHeight === 0 || outerWidth === 0) {
         addSignal(CLIENT_BOT_SIGNAL_MASKS.zeroOuterDimensions, 2);
       }
+      if (!Number.isFinite(screenWidth) || !Number.isFinite(screenHeight) || screenWidth <= 0 || screenHeight <= 0 || screenWidth > 1e5 || screenHeight > 1e5) {
+        addSignal(CLIENT_BOT_SIGNAL_MASKS.impossibleDimensions, 3);
+      }
+      if (isDesktopUA && screenWidth === 800 && screenHeight === 600) {
+        addSignal(CLIENT_BOT_SIGNAL_MASKS.defaultViewport800x600, 3);
+      }
+      if (isDesktopUA && screenWidth === 1024 && screenHeight === 768) {
+        addSignal(CLIENT_BOT_SIGNAL_MASKS.defaultViewport1024x768, 3);
+      }
+      if (Number.isFinite(outerWidth) && Number.isFinite(outerHeight) && Number.isFinite(innerWidth) && Number.isFinite(innerHeight) && outerWidth > 0 && outerHeight > 0 && innerWidth > 0 && innerHeight > 0 && (outerWidth + 8 < innerWidth || outerHeight + 8 < innerHeight)) {
+        addSignal(CLIENT_BOT_SIGNAL_MASKS.outerDimensionsWeird, 2);
+      }
+      let hasPluginOrApiAbsence = false;
       if (!window.chrome && isChromeLike) {
         addSignal(CLIENT_BOT_SIGNAL_MASKS.missingChrome, 1);
+        hasPluginOrApiAbsence = true;
       }
       try {
         const canvas = document.createElement("canvas");
@@ -433,8 +482,12 @@
         }
       } catch (e2) {
       }
-      if (navigator.plugins.length === 0 && isChromeLike) {
+      if ((!navigator.plugins || navigator.plugins.length === 0) && isChromeLike) {
         addSignal(CLIENT_BOT_SIGNAL_MASKS.emptyPlugins, 1);
+        hasPluginOrApiAbsence = true;
+      }
+      if (hasPluginOrApiAbsence) {
+        addSignal(CLIENT_BOT_SIGNAL_MASKS.pluginApiAbsence, 0);
       }
     } catch (e2) {
     }

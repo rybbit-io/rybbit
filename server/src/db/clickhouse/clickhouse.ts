@@ -31,7 +31,10 @@ async function execClickhouseInitStep(
         : undefined,
     });
   } catch (error) {
-    logger.error({ err: error, step, requestTimeoutMs: CLICKHOUSE_REQUEST_TIMEOUT_MS }, "ClickHouse initialization step failed");
+    logger.error(
+      { err: error, step, requestTimeoutMs: CLICKHOUSE_REQUEST_TIMEOUT_MS },
+      "ClickHouse initialization step failed"
+    );
     if (!options?.optional) {
       throw error;
     }
@@ -108,7 +111,6 @@ export const initializeClickhouse = async () => {
         detected_ua_pattern Bool DEFAULT false,
         detected_header_heuristics Bool DEFAULT false,
         detected_client_signals Bool DEFAULT false,
-        detected_desktop_800x600 Bool DEFAULT false,
         detected_bot_asn Bool DEFAULT false,
         detected_rate_anomaly Bool DEFAULT false,
         matched_ua_pattern String DEFAULT '',

@@ -22,7 +22,7 @@ const browserHeaders = {
 };
 
 const clientBotSignalMasks = {
-  webdriver: 1 << 0,
+  automationApi: 1 << 0,
   zeroOuterDimensions: 1 << 1,
   swiftShader: 1 << 3,
 };
@@ -157,7 +157,7 @@ describe("checkBotBlocking", () => {
     checkBotBlocking({
       request,
       blockBots: true,
-      payload: { ...basePayload, clientBotScore: 3, clientBotSignalMask: clientBotSignalMasks.webdriver },
+      payload: { ...basePayload, clientBotScore: 3, clientBotSignalMask: clientBotSignalMasks.automationApi },
     });
 
     expect(getBotDetectionStats()).toMatchObject({
@@ -173,11 +173,16 @@ describe("checkBotBlocking", () => {
       },
       clientBotSignalTotals: {
         missingMask: 1,
-        webdriver: 1,
+        automationApi: 1,
         zeroOuterDimensions: 1,
         missingChrome: 0,
         swiftShader: 1,
         emptyPlugins: 0,
+        defaultViewport800x600: 0,
+        defaultViewport1024x768: 0,
+        impossibleDimensions: 0,
+        outerDimensionsWeird: 0,
+        pluginApiAbsence: 0,
         unknownMaskBits: 0,
       },
     });
@@ -206,7 +211,6 @@ describe("checkBotBlocking", () => {
         detectedUaPattern: true,
         detectedHeaderHeuristics: true,
         detectedClientSignals: true,
-        detectedDesktop800x600: true,
         matchedUaPattern: "headlesschrome",
         botCategory: "headless",
       },
@@ -215,8 +219,36 @@ describe("checkBotBlocking", () => {
       "ua_pattern",
       "header_heuristics",
       "client_signals",
-      "desktop_800x600",
     ]);
+  });
+
+  it("moves default viewport fingerprints into client signals", () => {
+    const result = checkBotBlocking({
+      request: requestWithHeaders({
+        ...browserHeaders,
+        "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120 Safari/537.36",
+      }),
+      blockBots: true,
+      payload: {
+        ...basePayload,
+        clientBotScore: 0,
+        clientBotSignalMask: 0,
+        screenWidth: 1024,
+        screenHeight: 768,
+      },
+    });
+
+    expect(result).toMatchObject({
+      isBot: true,
+      message: "Bot detected using client signals",
+      eventProperties: {
+        detectedClientSignals: true,
+      },
+    });
+    expect(result?.detections.map(detection => detection.layer)).toEqual(["client_signals"]);
+    expect(result?.detections[0]).toMatchObject({
+      clientSignals: ["defaultViewport1024x768"],
+    });
   });
 
   it("adds a rate anomaly layer after a request burst", () => {

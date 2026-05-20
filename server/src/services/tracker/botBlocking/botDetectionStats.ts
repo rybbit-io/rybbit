@@ -1,18 +1,11 @@
 import { logger } from "../../../lib/logger/logger.js";
 
-export type BotDetectionMethod =
-  | "ua_pattern"
-  | "header_heuristics"
-  | "client_signals"
-  | "desktop_800x600"
-  | "bot_asn"
-  | "rate_anomaly";
+export type BotDetectionMethod = "ua_pattern" | "header_heuristics" | "client_signals" | "bot_asn" | "rate_anomaly";
 
 const BOT_DETECTION_METHODS: readonly BotDetectionMethod[] = [
   "ua_pattern",
   "header_heuristics",
   "client_signals",
-  "desktop_800x600",
   "bot_asn",
   "rate_anomaly",
 ];
@@ -21,7 +14,6 @@ const totals: Record<BotDetectionMethod, number> = {
   ua_pattern: 0,
   header_heuristics: 0,
   client_signals: 0,
-  desktop_800x600: 0,
   bot_asn: 0,
   rate_anomaly: 0,
 };
@@ -35,11 +27,16 @@ const clientBotScoreHistogram = {
 };
 
 const CLIENT_BOT_SIGNAL_COMPONENTS = [
-  ["webdriver", 1 << 0],
+  ["automationApi", 1 << 0],
   ["zeroOuterDimensions", 1 << 1],
   ["missingChrome", 1 << 2],
   ["swiftShader", 1 << 3],
   ["emptyPlugins", 1 << 4],
+  ["defaultViewport800x600", 1 << 5],
+  ["defaultViewport1024x768", 1 << 6],
+  ["impossibleDimensions", 1 << 7],
+  ["outerDimensionsWeird", 1 << 8],
+  ["pluginApiAbsence", 1 << 9],
 ] as const;
 
 type ClientBotSignalComponent = (typeof CLIENT_BOT_SIGNAL_COMPONENTS)[number][0];
@@ -49,11 +46,16 @@ const KNOWN_CLIENT_BOT_SIGNAL_MASK = CLIENT_BOT_SIGNAL_COMPONENTS.reduce((mask, 
 
 const clientBotSignalTotals: Record<ClientBotSignalTotal, number> = {
   missingMask: 0,
-  webdriver: 0,
+  automationApi: 0,
   zeroOuterDimensions: 0,
   missingChrome: 0,
   swiftShader: 0,
   emptyPlugins: 0,
+  defaultViewport800x600: 0,
+  defaultViewport1024x768: 0,
+  impossibleDimensions: 0,
+  outerDimensionsWeird: 0,
+  pluginApiAbsence: 0,
   unknownMaskBits: 0,
 };
 
@@ -127,11 +129,16 @@ export function resetBotDetectionStatsForTests() {
   clientBotScoreHistogram.score2 = 0;
   clientBotScoreHistogram.score3Plus = 0;
   clientBotSignalTotals.missingMask = 0;
-  clientBotSignalTotals.webdriver = 0;
+  clientBotSignalTotals.automationApi = 0;
   clientBotSignalTotals.zeroOuterDimensions = 0;
   clientBotSignalTotals.missingChrome = 0;
   clientBotSignalTotals.swiftShader = 0;
   clientBotSignalTotals.emptyPlugins = 0;
+  clientBotSignalTotals.defaultViewport800x600 = 0;
+  clientBotSignalTotals.defaultViewport1024x768 = 0;
+  clientBotSignalTotals.impossibleDimensions = 0;
+  clientBotSignalTotals.outerDimensionsWeird = 0;
+  clientBotSignalTotals.pluginApiAbsence = 0;
   clientBotSignalTotals.unknownMaskBits = 0;
 }
 

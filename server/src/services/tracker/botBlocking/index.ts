@@ -38,6 +38,21 @@ interface AnomalyReason {
   windowSeconds: number;
 }
 
+const CLIENT_SIGNAL_MASKS = {
+  automationApi: 1 << 0,
+  zeroOuterDimensions: 1 << 1,
+  missingChrome: 1 << 2,
+  swiftShader: 1 << 3,
+  emptyPlugins: 1 << 4,
+  defaultViewport800x600: 1 << 5,
+  defaultViewport1024x768: 1 << 6,
+  impossibleDimensions: 1 << 7,
+  outerDimensionsWeird: 1 << 8,
+  pluginApiAbsence: 1 << 9,
+} as const;
+
+type ClientSignalName = keyof typeof CLIENT_SIGNAL_MASKS;
+
 export interface BotBlockingDetection {
   layer: BotDetectionMethod;
   botCategory?: string | null;
@@ -45,6 +60,8 @@ export interface BotBlockingDetection {
   reason?: string;
   score?: number;
   clientBotScore?: number;
+  clientBotSignalMask?: number;
+  clientSignals?: ClientSignalName[];
   ip?: string;
   asn?: number;
   asnOrg?: string;
@@ -62,7 +79,6 @@ export interface BotEventProperties {
   detectedUaPattern: boolean;
   detectedHeaderHeuristics: boolean;
   detectedClientSignals: boolean;
-  detectedDesktop800x600: boolean;
   detectedBotAsn: boolean;
   detectedRateAnomaly: boolean;
   matchedUaPattern: string;
@@ -87,11 +103,74 @@ function buildBotEventProperties(detections: BotBlockingDetection[], asnInfo: As
     detectedUaPattern: detectionLayers.has("ua_pattern"),
     detectedHeaderHeuristics: detectionLayers.has("header_heuristics"),
     detectedClientSignals: detectionLayers.has("client_signals"),
-    detectedDesktop800x600: detectionLayers.has("desktop_800x600"),
     detectedBotAsn: detectionLayers.has("bot_asn"),
     detectedRateAnomaly: detectionLayers.has("rate_anomaly"),
     matchedUaPattern: uaDetection?.matchedPattern ?? "",
     botCategory: uaDetection?.botCategory ?? "",
+  };
+}
+
+function isFiniteDimension(value: unknown): value is number {
+  return typeof value === "number" && Number.isFinite(value);
+}
+
+function isDesktopUserAgent(userAgent: string) {
+  return /Windows NT|Macintosh|X11|Linux x86_64/.test(userAgent) && !/Mobile|Android|iPhone|iPad/.test(userAgent);
+}
+
+function getClientSignalNames(mask: number): ClientSignalName[] {
+  return Object.entries(CLIENT_SIGNAL_MASKS).flatMap(([name, bit]) =>
+    (mask & bit) !== 0 ? [name as ClientSignalName] : []
+  );
+}
+
+function getClientSignalResult(payload: BotBlockingPayload, userAgent: string) {
+  const hasClientScore = typeof payload.clientBotScore === "number" && Number.isFinite(payload.clientBotScore);
+  const hasClientMask = typeof payload.clientBotSignalMask === "number" && Number.isFinite(payload.clientBotSignalMask);
+  const rawMask = hasClientMask ? payload.clientBotSignalMask! : 0;
+  let mask = rawMask;
+  let inferredScore = 0;
+
+  function addInferredSignal(name: ClientSignalName, weight: number) {
+    const bit = CLIENT_SIGNAL_MASKS[name];
+    if ((mask & bit) === 0) {
+      mask |= bit;
+    }
+
+    if (!hasClientScore || (rawMask & bit) === 0) {
+      inferredScore += weight;
+    }
+  }
+
+  const { screenWidth, screenHeight } = payload;
+  const hasScreenDimensions = screenWidth !== undefined || screenHeight !== undefined;
+  if (
+    hasScreenDimensions &&
+    (!isFiniteDimension(screenWidth) ||
+      !isFiniteDimension(screenHeight) ||
+      screenWidth <= 0 ||
+      screenHeight <= 0 ||
+      screenWidth > 100000 ||
+      screenHeight > 100000)
+  ) {
+    addInferredSignal("impossibleDimensions", 3);
+  } else if (isFiniteDimension(screenWidth) && isFiniteDimension(screenHeight) && isDesktopUserAgent(userAgent)) {
+    if (screenWidth === 800 && screenHeight === 600) {
+      addInferredSignal("defaultViewport800x600", 3);
+    }
+    if (screenWidth === 1024 && screenHeight === 768) {
+      addInferredSignal("defaultViewport1024x768", 3);
+    }
+  }
+
+  const score = Math.min((hasClientScore ? payload.clientBotScore! : 0) + inferredScore, 10);
+
+  return {
+    score,
+    mask,
+    signalNames: getClientSignalNames(mask),
+    scoreForStats: hasClientScore || inferredScore > 0 ? score : undefined,
+    maskForStats: hasClientMask || mask !== 0 ? mask : undefined,
   };
 }
 
@@ -101,14 +180,14 @@ export function checkBotBlocking({
   trustedServerSideIngestion = false,
   payload,
 }: BotBlockingInput): BotDetectionResult | null {
-  const clientBotScore = payload.clientBotScore;
-  recordBotBlockingRequest(clientBotScore, payload.clientBotSignalMask);
+  const userAgent = payload.userAgent || (request.headers["user-agent"] as string) || "";
+  const clientSignalResult = getClientSignalResult(payload, userAgent);
+  recordBotBlockingRequest(clientSignalResult.scoreForStats, clientSignalResult.maskForStats);
 
   if (!blockBots || trustedServerSideIngestion) {
     return null;
   }
 
-  const userAgent = payload.userAgent || (request.headers["user-agent"] as string) || "";
   const detections: BotBlockingDetection[] = [];
   let blockMessage: string | null = null;
 
@@ -137,27 +216,17 @@ export function checkBotBlocking({
     });
   }
 
-  // Layer 3: Client-side bot signal score check
-  if (typeof clientBotScore === "number" && clientBotScore >= CLIENT_BOT_SCORE_THRESHOLD) {
+  // Layer 3: Client-side and client-derived bot signal score check
+  if (clientSignalResult.score >= CLIENT_BOT_SCORE_THRESHOLD) {
     addDetection("Bot detected using client signals", {
       layer: "client_signals",
-      clientBotScore,
+      clientBotScore: clientSignalResult.score,
+      clientBotSignalMask: clientSignalResult.mask,
+      clientSignals: clientSignalResult.signalNames,
     });
   }
 
-  // Layer 4: Desktop 800x600 detection — Puppeteer default viewport, near-zero real desktop usage
-  if (
-    payload.screenWidth === 800 &&
-    payload.screenHeight === 600 &&
-    userAgent &&
-    /Windows NT|Macintosh|X11/.test(userAgent)
-  ) {
-    addDetection("Bot detected using desktop 800x600", {
-      layer: "desktop_800x600",
-    });
-  }
-
-  // Layer 5: ASN check — IP belongs to hosting/cloud or curated bot provider infrastructure.
+  // Layer 4: ASN check — IP belongs to hosting/cloud or curated bot provider infrastructure.
   const ipForAsn = payload.ipAddress;
   let asnInfo: AsnInfo | null = null;
   if (ipForAsn) {
@@ -176,7 +245,7 @@ export function checkBotBlocking({
     }
   }
 
-  // Layer 6: Request-rate and crawl-shape anomaly detection.
+  // Layer 5: Request-rate and crawl-shape anomaly detection.
   const anomaly = observeTrackingAnomaly({
     siteId: payload.siteId,
     ipAddress: payload.ipAddress,

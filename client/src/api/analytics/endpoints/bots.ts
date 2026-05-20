@@ -2,13 +2,7 @@ import { FilterParameter, TimeBucket } from "@rybbit/shared";
 import { authedFetch } from "../../utils";
 import { CommonApiParams, PaginationParams, toQueryParams } from "./types";
 
-export type BotLayerKey =
-  | "ua_pattern"
-  | "header_heuristics"
-  | "client_signals"
-  | "desktop_800x600"
-  | "bot_asn"
-  | "rate_anomaly";
+export type BotLayerKey = "ua_pattern" | "header_heuristics" | "client_signals" | "bot_asn" | "rate_anomaly";
 
 export type BotDimensionKey = FilterParameter | "asn_org" | "bot_category" | "matched_ua_pattern";
 

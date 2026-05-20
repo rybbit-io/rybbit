@@ -25,12 +25,8 @@ const layerLabels: { key: BotLayerKey; label: string; description: string }[] = 
   {
     key: "client_signals",
     label: "Client signals",
-    description: "Uses the browser-side signal mask to catch automation traits such as webdriver or missing APIs.",
-  },
-  {
-    key: "desktop_800x600",
-    label: "Desktop 800x600",
-    description: "Flags desktop traffic reporting the common automated 800x600 viewport fingerprint.",
+    description:
+      "Uses browser-side and dimension fingerprints such as automation APIs, impossible dimensions, default automation viewports, outer dimension anomalies, and missing plugin/API traits.",
   },
   {
     key: "bot_asn",

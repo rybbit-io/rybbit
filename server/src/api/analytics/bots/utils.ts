@@ -8,7 +8,6 @@ export const BOT_LAYER_COLUMNS = {
   ua_pattern: "detected_ua_pattern",
   header_heuristics: "detected_header_heuristics",
   client_signals: "detected_client_signals",
-  desktop_800x600: "detected_desktop_800x600",
   bot_asn: "detected_bot_asn",
   rate_anomaly: "detected_rate_anomaly",
 } as const;

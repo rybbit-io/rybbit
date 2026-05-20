@@ -11,7 +11,6 @@ type BotOverviewResponse = {
   ua_pattern: number;
   header_heuristics: number;
   client_signals: number;
-  desktop_800x600: number;
   bot_asn: number;
   rate_anomaly: number;
 };
@@ -38,7 +37,6 @@ const getQuery = (params: BotOverviewRequest["Querystring"]) => {
           countIf(detected_ua_pattern) AS ua_pattern,
           countIf(detected_header_heuristics) AS header_heuristics,
           countIf(detected_client_signals) AS client_signals,
-          countIf(detected_desktop_800x600) AS desktop_800x600,
           countIf(detected_bot_asn) AS bot_asn,
           countIf(detected_rate_anomaly) AS rate_anomaly
         FROM bot_events
@@ -72,7 +70,6 @@ const getQuery = (params: BotOverviewRequest["Querystring"]) => {
       ua_pattern,
       header_heuristics,
       client_signals,
-      desktop_800x600,
       bot_asn,
       rate_anomaly
     FROM bot_stats

@@ -24,8 +24,11 @@ describe("getBotScore", () => {
     );
     setNavigatorProperty("webdriver", false);
     setNavigatorProperty("plugins", { length: 5 });
+    setWindowProperty("screen", { width: 1920, height: 1080 });
     setWindowProperty("outerHeight", 768);
     setWindowProperty("outerWidth", 1024);
+    setWindowProperty("innerHeight", 720);
+    setWindowProperty("innerWidth", 1000);
     setWindowProperty("chrome", {});
     Object.defineProperty(HTMLCanvasElement.prototype, "getContext", {
       value: vi.fn(() => null),
@@ -38,11 +41,11 @@ describe("getBotScore", () => {
     expect(getBotSignalMask()).toBe(0);
   });
 
-  it("weights webdriver as a blocking-strength signal", () => {
+  it("weights automation APIs as blocking-strength signals", () => {
     setNavigatorProperty("webdriver", true);
 
     expect(getBotScore()).toBe(3);
-    expect(getBotSignalMask()).toBe(CLIENT_BOT_SIGNAL_MASKS.webdriver);
+    expect(getBotSignalMask()).toBe(CLIENT_BOT_SIGNAL_MASKS.automationApi);
   });
 
   it("adds weighted supporting signals", () => {
@@ -53,11 +56,40 @@ describe("getBotScore", () => {
 
     expect(getBotScore()).toBe(7);
     expect(getBotSignalMask()).toBe(
-      CLIENT_BOT_SIGNAL_MASKS.webdriver |
+      CLIENT_BOT_SIGNAL_MASKS.automationApi |
         CLIENT_BOT_SIGNAL_MASKS.zeroOuterDimensions |
         CLIENT_BOT_SIGNAL_MASKS.missingChrome |
-        CLIENT_BOT_SIGNAL_MASKS.emptyPlugins
+        CLIENT_BOT_SIGNAL_MASKS.emptyPlugins |
+        CLIENT_BOT_SIGNAL_MASKS.pluginApiAbsence
     );
+  });
+
+  it("weights default automation viewports as blocking-strength signals", () => {
+    setWindowProperty("screen", { width: 800, height: 600 });
+
+    expect(getBotScore()).toBe(3);
+    expect(getBotSignalMask()).toBe(CLIENT_BOT_SIGNAL_MASKS.defaultViewport800x600);
+
+    resetBotScoreCacheForTests();
+    setWindowProperty("screen", { width: 1024, height: 768 });
+
+    expect(getBotScore()).toBe(3);
+    expect(getBotSignalMask()).toBe(CLIENT_BOT_SIGNAL_MASKS.defaultViewport1024x768);
+  });
+
+  it("weights impossible dimensions as a blocking-strength signal", () => {
+    setWindowProperty("screen", { width: 0, height: 1080 });
+
+    expect(getBotScore()).toBe(3);
+    expect(getBotSignalMask()).toBe(CLIENT_BOT_SIGNAL_MASKS.impossibleDimensions);
+  });
+
+  it("counts outer dimension anomalies as a supporting signal", () => {
+    setWindowProperty("outerWidth", 800);
+    setWindowProperty("innerWidth", 1000);
+
+    expect(getBotScore()).toBe(2);
+    expect(getBotSignalMask()).toBe(CLIENT_BOT_SIGNAL_MASKS.outerDimensionsWeird);
   });
 
   it("counts SwiftShader as a supporting signal", () => {
@@ -76,10 +108,10 @@ describe("getBotScore", () => {
   it("caches the score for the page lifecycle", () => {
     setNavigatorProperty("webdriver", true);
     expect(getBotScore()).toBe(3);
-    expect(getBotSignalMask()).toBe(CLIENT_BOT_SIGNAL_MASKS.webdriver);
+    expect(getBotSignalMask()).toBe(CLIENT_BOT_SIGNAL_MASKS.automationApi);
 
     setNavigatorProperty("webdriver", false);
     expect(getBotScore()).toBe(3);
-    expect(getBotSignalMask()).toBe(CLIENT_BOT_SIGNAL_MASKS.webdriver);
+    expect(getBotSignalMask()).toBe(CLIENT_BOT_SIGNAL_MASKS.automationApi);
   });
 });

@@ -25,12 +25,11 @@ Current methods:
 
 - `ua_pattern`: classifies the user-agent using vendored `isbot` patterns plus local AI, social, SEO, framework, headless, and monitoring patterns.
 - `header_heuristics`: scores missing or inconsistent browser headers, scripting framework UAs, headless UAs, stale Chrome versions, and suspicious fetch metadata.
-- `client_signals`: detects when the browser script reports a client-side bot score at or above the configured threshold.
-- `desktop_800x600`: detects desktop UAs with Puppeteer's default `800x600` viewport.
+- `client_signals`: detects when browser-side and client-derived fingerprints reach the configured threshold. This includes automation APIs, default automation viewport sizes, impossible dimensions, outer-dimension anomalies, SwiftShader, and plugin/API absence.
 - `bot_asn`: detects requests from ipverse `hosting` ASNs or the curated bot/scanner/AI provider ASN overlay.
 - `rate_anomaly`: detects request bursts and crawl-shaped behavior using in-memory sliding-window counters.
 
-The client-side `_bs` value is a cached, weighted score computed once per page lifecycle. Strong signals such as `navigator.webdriver === true` can reach the blocking threshold alone; weaker signals such as SwiftShader, missing Chrome globals, and empty plugin lists only add supporting weight. The client also sends `_bsm`, a compact bitmask used only for aggregate component counters.
+The client-side `_bs` value is a cached, weighted score computed once per page lifecycle. Strong signals such as automation APIs, impossible dimensions, or default automation viewport sizes can reach the blocking threshold alone; weaker signals such as SwiftShader, missing Chrome globals, and empty plugin lists only add supporting weight. The client also sends `_bsm`, a compact bitmask used for aggregate component counters. The server supplements that mask from validated screen dimensions so older scripts can still move `800x600`, `1024x768`, and impossible dimensions into the `client_signals` layer.
 
 ## Logging
 
@@ -53,7 +52,7 @@ Each detection object contains compact method-specific details such as matched U
 - `botRequestPercentage`
 - `botDetectionTotals` by method
 - `clientBotScoreHistogram` with buckets for missing, `0`, `1`, `2`, and `3+`
-- `clientBotSignalTotals` for `_bsm` components: missing mask, webdriver, zero outer dimensions, missing Chrome global, SwiftShader, empty plugins, and unknown mask bits
+- `clientBotSignalTotals` for `_bsm` components: missing mask, automation API, zero outer dimensions, missing Chrome global, SwiftShader, empty plugins, default `800x600` viewport, default `1024x768` viewport, impossible dimensions, outer dimension anomalies, plugin/API absence, and unknown mask bits
 
 A request can increment multiple method totals if multiple methods detected it, so method totals can sum higher than `totalBotRequests`.
 
