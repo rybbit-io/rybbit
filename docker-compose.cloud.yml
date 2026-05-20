@@ -70,15 +70,15 @@ services:
     ports:
       - "5432:5432"
 
-  # redis:
-  #   image: redis:7-alpine
-  #   container_name: redis
-  #   ports:
-  #     - "6379:6379" # Exposed to internet for remote connections
-  #   volumes:
-  #     - redis-data:/data
-  #   restart: unless-stopped
-  #   command: ["redis-server", "--requirepass", "${REDIS_PASSWORD:-changeme}", "--appendonly", "yes"]
+  redis:
+    image: redis:7-alpine
+    container_name: redis
+    ports:
+      - "6379:6379" # Exposed to internet for remote connections
+    volumes:
+      - redis-data:/data
+    restart: unless-stopped
+    command: ["redis-server", "--requirepass", "${REDIS_PASSWORD:-changeme}", "--appendonly", "yes"]
 
   backend:
     container_name: backend
