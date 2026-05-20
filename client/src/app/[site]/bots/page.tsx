@@ -10,6 +10,7 @@ import { BotChart } from "./components/BotChart";
 import { BotsOverview } from "./components/BotsOverview";
 import { BotCountries } from "./components/sections/BotCountries";
 import { BotDevices } from "./components/sections/BotDevices";
+import { BotMetadata } from "./components/sections/BotMetadata";
 import { BotPages } from "./components/sections/BotPages";
 import { BotReferrers } from "./components/sections/BotReferrers";
 
@@ -49,6 +50,9 @@ export default function BotsPage() {
         </LazySection>
         <LazySection>
           <BotCountries />
+        </LazySection>
+        <LazySection>
+          <BotMetadata />
         </LazySection>
       </div>
     </div>

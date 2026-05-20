@@ -14,6 +14,7 @@ export const BOT_LAYER_COLUMNS = {
 } as const;
 
 export type BotLayerKey = keyof typeof BOT_LAYER_COLUMNS;
+export type BotDimensionKey = FilterParameter | "asn_org" | "bot_category" | "matched_ua_pattern";
 
 const BOT_FILTER_PARAMETERS = new Set<FilterParameter>([
   "browser",
@@ -34,7 +35,7 @@ const BOT_FILTER_PARAMETERS = new Set<FilterParameter>([
   "lon",
 ]);
 
-export const BOT_DIMENSIONS = new Set<FilterParameter>([
+export const BOT_DIMENSIONS = new Set<BotDimensionKey>([
   "browser",
   "browser_version",
   "operating_system",
@@ -47,6 +48,9 @@ export const BOT_DIMENSIONS = new Set<FilterParameter>([
   "hostname",
   "pathname",
   "dimensions",
+  "asn_org",
+  "bot_category",
+  "matched_ua_pattern",
 ]);
 
 export function getBotLayerStatement(layer?: string | null) {
@@ -94,7 +98,7 @@ const wrapLikeValue = (type: FilterType, value: string | number): string => {
   return v;
 };
 
-export const getBotSqlParam = (parameter: FilterParameter) => {
+export const getBotSqlParam = (parameter: BotDimensionKey) => {
   if (parameter === "referrer") {
     return "domainWithoutWWW(referrer)";
   }

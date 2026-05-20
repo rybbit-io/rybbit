@@ -1,9 +1,8 @@
-import { FilterParameter } from "@rybbit/shared";
 import { useQuery } from "@tanstack/react-query";
 import { useBotsStore } from "../../../../app/[site]/bots/botsStore";
 import { useStore } from "../../../../lib/store";
 import { buildApiParams } from "../../../utils";
-import { fetchBotDimension } from "../../endpoints";
+import { type BotDimensionKey, fetchBotDimension } from "../../endpoints";
 import { BOT_AVAILABLE_FILTERS } from "./constants";
 
 export function useGetBotDimension({
@@ -13,7 +12,7 @@ export function useGetBotDimension({
   page = 1,
 }: {
   site?: number | string;
-  dimension: FilterParameter;
+  dimension: BotDimensionKey;
   limit?: number;
   page?: number;
 }) {

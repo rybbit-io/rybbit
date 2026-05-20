@@ -69,7 +69,11 @@ export function BotChart() {
 
   return (
     <Card className="overflow-visible">
-      {isFetching && <CardLoader />}
+      {isFetching && (
+        <div className="absolute inset-x-0 top-0 h-4 overflow-hidden rounded-t-lg pointer-events-none">
+          <CardLoader />
+        </div>
+      )}
       <CardContent className="p-2 md:p-4 py-3 w-full">
         <div className="flex items-center justify-between px-2 md:px-0">
           <div className="flex items-center space-x-4">

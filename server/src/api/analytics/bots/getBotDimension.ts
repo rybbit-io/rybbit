@@ -1,10 +1,10 @@
 import { FilterParams } from "@rybbit/shared";
 import { FastifyReply, FastifyRequest } from "fastify";
 import { clickhouse } from "../../../db/clickhouse/clickhouse.js";
-import { FilterParameter } from "../types.js";
 import { getTimeStatement, processResults } from "../utils/utils.js";
 import {
   BOT_DIMENSIONS,
+  type BotDimensionKey,
   type BotLayerKey,
   getBotFilterStatement,
   getBotLayerStatement,
@@ -28,7 +28,7 @@ export interface BotDimensionRequest {
     siteId: string;
   };
   Querystring: FilterParams<{
-    dimension: FilterParameter;
+    dimension: BotDimensionKey;
     layer?: BotLayerKey;
     limit?: number;
     page?: number;

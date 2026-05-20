@@ -4,7 +4,7 @@ import { FilterParameter } from "@rybbit/shared";
 import NumberFlow from "@number-flow/react";
 import { Info, SquareArrowOutUpRight } from "lucide-react";
 import { ReactNode, useCallback } from "react";
-import { BotDimensionItem } from "../../../../api/analytics/endpoints";
+import { type BotDimensionItem, type BotDimensionKey } from "../../../../api/analytics/endpoints";
 import { useGetBotDimension } from "../../../../api/analytics/hooks/bots/useGetBotDimension";
 import { ErrorState } from "../../../../components/ErrorState";
 import { CardLoader } from "../../../../components/ui/card";
@@ -13,8 +13,6 @@ import { ScrollArea } from "../../../../components/ui/scroll-area";
 import { addFilter, removeFilter, useStore } from "../../../../lib/store";
 import { cn } from "../../../../lib/utils";
 import { StandardSkeleton } from "../../components/shared/StandardSection/Skeleton";
-
-const MAX_ITEMS_TO_DISPLAY = 10;
 
 function useFilterToggle() {
   const filters = useStore(state => state.filters);
@@ -48,7 +46,7 @@ function BotRow({
 }: {
   item: BotDimensionItem;
   ratio: number;
-  filterParameter: FilterParameter;
+  filterParameter?: FilterParameter;
   getKey: (item: BotDimensionItem) => string;
   getLabel: (item: BotDimensionItem) => ReactNode;
   getValue: (item: BotDimensionItem) => string;
@@ -63,9 +61,9 @@ function BotRow({
       key={getKey(item)}
       className={cn(
         "relative h-6 flex items-center hover:bg-neutral-150/50 dark:hover:bg-neutral-850 group",
-        value && "cursor-pointer"
+        value && filterParameter && "cursor-pointer"
       )}
-      onClick={() => toggleFilter(filterParameter, value)}
+      onClick={() => filterParameter && toggleFilter(filterParameter, value)}
     >
       <div
         className="absolute inset-0 bg-dataviz py-2 opacity-25 rounded-md"
@@ -111,7 +109,7 @@ function BotRows({
 }: {
   items: BotDimensionItem[];
   ratio: number;
-  filterParameter: FilterParameter;
+  filterParameter?: FilterParameter;
   getKey: (item: BotDimensionItem) => string;
   getLabel: (item: BotDimensionItem) => ReactNode;
   getValue: (item: BotDimensionItem) => string;
@@ -144,15 +142,17 @@ export function BotSection({
   getLink,
   expanded,
   close,
+  filterable = true,
 }: {
   title: string;
-  dimension: FilterParameter;
+  dimension: BotDimensionKey;
   getKey: (item: BotDimensionItem) => string;
   getLabel: (item: BotDimensionItem) => ReactNode;
   getValue: (item: BotDimensionItem) => string;
   getLink?: (item: BotDimensionItem) => string | undefined;
   expanded: boolean;
   close: () => void;
+  filterable?: boolean;
 }) {
   const { site } = useStore();
   const { data, isLoading, isFetching, error, refetch } = useGetBotDimension({
@@ -169,13 +169,13 @@ export function BotSection({
       hostname: item.hostname == null ? undefined : String(item.hostname),
     })) ?? [];
   const ratio = items[0]?.percentage ? 100 / items[0].percentage : 1;
-  const visibleItems = items.slice(0, MAX_ITEMS_TO_DISPLAY);
+  const filterParameter = filterable ? (dimension as FilterParameter) : undefined;
 
   const content = (
     <BotRows
-      items={visibleItems}
+      items={items}
       ratio={ratio}
-      filterParameter={dimension}
+      filterParameter={filterParameter}
       getKey={getKey}
       getLabel={getLabel}
       getValue={getValue}
@@ -201,7 +201,7 @@ export function BotSection({
           </div>
         ) : error ? (
           <ErrorState title="Failed to load data" message={error.message} refetch={refetch} />
-        ) : visibleItems.length ? (
+        ) : items.length ? (
           content
         ) : (
           <div className="text-neutral-600 dark:text-neutral-300 w-full text-center mt-6 flex flex-row gap-2 items-center justify-center">
@@ -219,7 +219,7 @@ export function BotSection({
             <BotRows
               items={items}
               ratio={ratio}
-              filterParameter={dimension}
+              filterParameter={filterParameter}
               getKey={getKey}
               getLabel={getLabel}
               getValue={getValue}

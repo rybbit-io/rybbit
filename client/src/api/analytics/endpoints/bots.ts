@@ -10,6 +10,8 @@ export type BotLayerKey =
   | "bot_asn"
   | "rate_anomaly";
 
+export type BotDimensionKey = FilterParameter | "asn_org" | "bot_category" | "matched_ua_pattern";
+
 export type GetBotOverviewResponse = Record<BotLayerKey, number> & {
   bot_requests: number;
   total_events: number;
@@ -40,7 +42,7 @@ export interface BotTimeSeriesParams extends CommonApiParams {
 }
 
 export interface BotDimensionParams extends CommonApiParams, PaginationParams {
-  dimension: FilterParameter;
+  dimension: BotDimensionKey;
   layer?: BotLayerKey | null;
 }
 

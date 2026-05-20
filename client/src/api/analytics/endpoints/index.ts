@@ -90,6 +90,7 @@ export type {
 // Bots endpoints
 export { fetchBotDimension, fetchBotOverview, fetchBotTimeSeries } from "./bots";
 export type {
+  BotDimensionKey,
   BotDimensionItem,
   BotDimensionParams,
   BotLayerKey,
