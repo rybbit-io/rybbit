@@ -19,6 +19,9 @@ import {
   deleteFunnel,
   deleteGoal,
   generatePdfReport,
+  getBotDimension,
+  getBotOverview,
+  getBotTimeSeries,
   getErrorBucketed,
   getErrorEvents,
   getErrorNames,
@@ -278,6 +281,9 @@ async function analyticsRoutes(fastify: FastifyInstance) {
   fastify.get("/sites/:siteId/performance/overview", publicSite, getPerformanceOverview);
   fastify.get("/sites/:siteId/performance/time-series", publicSite, getPerformanceTimeSeries);
   fastify.get("/sites/:siteId/performance/by-dimension", publicSite, getPerformanceByDimension);
+  fastify.get("/sites/:siteId/bots/overview", publicSite, getBotOverview);
+  fastify.get("/sites/:siteId/bots/time-series", publicSite, getBotTimeSeries);
+  fastify.get("/sites/:siteId/bots/by-dimension", publicSite, getBotDimension);
   fastify.get("/sites/:siteId/export/pdf", publicSite, generatePdfReport);
 }
 

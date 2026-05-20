@@ -87,6 +87,20 @@ export type {
   PaginatedPerformanceResponse,
 } from "./performance";
 
+// Bots endpoints
+export { fetchBotDimension, fetchBotOverview, fetchBotTimeSeries } from "./bots";
+export type {
+  BotDimensionItem,
+  BotDimensionParams,
+  BotLayerKey,
+  BotOverviewParams,
+  BotTimeSeriesParams,
+  BotTimeSeriesPoint,
+  GetBotOverviewResponse,
+  GetBotTimeSeriesResponse,
+  PaginatedBotDimensionResponse,
+} from "./bots";
+
 // Sessions endpoints
 export { fetchSessions, fetchSession, fetchSessionLocations } from "./sessions";
 export type {

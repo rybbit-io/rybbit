@@ -1,6 +1,7 @@
 "use client";
 import {
   AlertTriangle,
+  Bot,
   ChartColumnDecreasing,
   Code,
   File,
@@ -92,6 +93,14 @@ function SidebarContent() {
             active={isActiveTab("performance")}
             href={getTabPath("performance")}
             icon={<Gauge className="w-4 h-4" />}
+          />
+        )}
+        {IS_CLOUD && (
+          <SidebarComponents.Item
+            label={t("Bots")}
+            active={isActiveTab("bots")}
+            href={getTabPath("bots")}
+            icon={<Bot className="w-4 h-4" />}
           />
         )}
         <SidebarComponents.Item
