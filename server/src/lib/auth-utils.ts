@@ -236,13 +236,15 @@ export async function checkApiKey(
   options: { organizationId?: string; siteId?: string | number }
 ): Promise<{ valid: boolean; role: string | null; rateLimited?: boolean }> {
   // Check if a valid API key was provided
-  // Priority: 1. Authorization: Bearer header (recommended), 2. Query parameter (testing only)
+  // Priority: 1. Authorization: Bearer header, 2. X-Rybbit-Api-Key origin/proxy header, 3. Query parameter (testing only)
   const authHeader = req.headers["authorization"];
   const bearerToken =
     authHeader && typeof authHeader === "string" && authHeader.startsWith("Bearer ") ? authHeader.substring(7) : null;
 
+  const proxyApiKeyHeader = req.headers["x-rybbit-api-key"];
+  const proxyApiKey = typeof proxyApiKeyHeader === "string" ? proxyApiKeyHeader : null;
   const queryApiKey = (req.query as any)?.api_key;
-  const apiKey = bearerToken || queryApiKey;
+  const apiKey = bearerToken || proxyApiKey || queryApiKey;
 
   if (apiKey && typeof apiKey === "string") {
     try {

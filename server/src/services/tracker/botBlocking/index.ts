@@ -229,11 +229,12 @@ export function checkBotBlocking({
   // Layer 4: ASN check — IP belongs to hosting/cloud or curated bot provider infrastructure.
   const ipForAsn = payload.ipAddress;
   let asnInfo: AsnInfo | null = null;
+  let supportingHostingAsnDetection: BotBlockingDetection | null = null;
   if (ipForAsn) {
     asnInfo = lookupAsn(ipForAsn);
     const botAsnMatch = classifyBotAsn(asnInfo?.asn);
     if (asnInfo && botAsnMatch.isBotInfrastructure) {
-      addDetection("Bot detected using bot asn", {
+      const asnDetection: BotBlockingDetection = {
         layer: "bot_asn",
         ip: ipForAsn,
         asn: asnInfo.asn,
@@ -241,7 +242,13 @@ export function checkBotBlocking({
         asnProvider: botAsnMatch.provider,
         asnCategory: botAsnMatch.category,
         asnNote: botAsnMatch.note,
-      });
+      };
+
+      if (botAsnMatch.source === "curated_bot_provider") {
+        addDetection("Bot detected using bot asn", asnDetection);
+      } else {
+        supportingHostingAsnDetection = asnDetection;
+      }
     }
   }
 
@@ -262,6 +269,10 @@ export function checkBotBlocking({
       anomalyReasons: anomaly.reasons,
       anomalyCounters: anomaly.counters,
     });
+  }
+
+  if (supportingHostingAsnDetection && detections.length > 0) {
+    addDetection("Bot detected using bot asn", supportingHostingAsnDetection);
   }
 
   if (detections.length === 0) {

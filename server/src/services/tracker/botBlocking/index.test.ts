@@ -1,8 +1,13 @@
 import { FastifyRequest } from "fastify";
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { lookupAsn } from "../../../db/geolocation/asn.js";
 import { resetAnomalyScorerForTests } from "./anomalyScorer.js";
 import { getBotDetectionStats, resetBotDetectionStatsForTests } from "./botDetectionStats.js";
 import { checkBotBlocking } from "./index.js";
+
+vi.mock("../../../db/geolocation/asn.js", () => ({
+  lookupAsn: vi.fn(() => null),
+}));
 
 function requestWithHeaders(headers: Record<string, string | string[]>): FastifyRequest {
   return { headers } as unknown as FastifyRequest;
@@ -31,6 +36,7 @@ describe("checkBotBlocking", () => {
   beforeEach(() => {
     resetAnomalyScorerForTests();
     resetBotDetectionStatsForTests();
+    vi.mocked(lookupAsn).mockReturnValue(null);
   });
 
   it("does nothing when bot blocking is disabled", () => {
@@ -249,6 +255,90 @@ describe("checkBotBlocking", () => {
     expect(result?.detections[0]).toMatchObject({
       clientSignals: ["defaultViewport1024x768"],
     });
+  });
+
+  it("does not block generic hosting ASN by itself", () => {
+    vi.mocked(lookupAsn).mockReturnValue({
+      asn: 16509,
+      organization: "Amazon.com, Inc.",
+    });
+
+    const result = checkBotBlocking({
+      request: requestWithHeaders(browserHeaders),
+      blockBots: true,
+      payload: {
+        ...basePayload,
+        ipAddress: "18.0.0.1",
+        clientBotScore: 0,
+        clientBotSignalMask: 0,
+      },
+    });
+
+    expect(result).toBeNull();
+    expect(getBotDetectionStats()).toMatchObject({
+      totalRequests: 1,
+      totalBotRequests: 0,
+      totals: {
+        bot_asn: 0,
+      },
+    });
+  });
+
+  it("uses generic hosting ASN as supporting evidence when another layer matched", () => {
+    vi.mocked(lookupAsn).mockReturnValue({
+      asn: 16509,
+      organization: "Amazon.com, Inc.",
+    });
+
+    const result = checkBotBlocking({
+      request: requestWithHeaders(browserHeaders),
+      blockBots: true,
+      payload: {
+        ...basePayload,
+        ipAddress: "18.0.0.1",
+        clientBotScore: 3,
+        clientBotSignalMask: clientBotSignalMasks.automationApi,
+      },
+    });
+
+    expect(result).toMatchObject({
+      isBot: true,
+      message: "Bot detected using client signals",
+      eventProperties: {
+        detectedClientSignals: true,
+        detectedBotAsn: true,
+        botAsn: 16509,
+      },
+    });
+    expect(result?.detections.map(detection => detection.layer)).toEqual(["client_signals", "bot_asn"]);
+  });
+
+  it("still blocks curated bot provider ASNs without another matched layer", () => {
+    vi.mocked(lookupAsn).mockReturnValue({
+      asn: 401518,
+      organization: "OpenAI, L.L.C.",
+    });
+
+    const result = checkBotBlocking({
+      request: requestWithHeaders(browserHeaders),
+      blockBots: true,
+      payload: {
+        ...basePayload,
+        ipAddress: "57.154.0.1",
+        clientBotScore: 0,
+        clientBotSignalMask: 0,
+      },
+    });
+
+    expect(result).toMatchObject({
+      isBot: true,
+      message: "Bot detected using bot asn",
+      eventProperties: {
+        detectedBotAsn: true,
+        botAsn: 401518,
+      },
+    });
+    expect(result?.detections.map(detection => detection.layer)).toEqual(["bot_asn"]);
   });
 
   it("adds a rate anomaly layer after a request burst", () => {

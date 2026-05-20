@@ -26,7 +26,7 @@ Current methods:
 - `ua_pattern`: classifies the user-agent using vendored `isbot` patterns plus local AI, social, SEO, framework, headless, and monitoring patterns.
 - `header_heuristics`: scores missing or inconsistent browser headers, scripting framework UAs, headless UAs, stale Chrome versions, and suspicious fetch metadata.
 - `client_signals`: detects when browser-side and client-derived fingerprints reach the configured threshold. This includes automation APIs, default automation viewport sizes, impossible dimensions, outer-dimension anomalies, SwiftShader, and plugin/API absence.
-- `bot_asn`: detects requests from ipverse `hosting` ASNs or the curated bot/scanner/AI provider ASN overlay.
+- `bot_asn`: detects curated bot/scanner/AI provider ASNs as a standalone layer. Generic ipverse `hosting` ASNs are supporting evidence only and are recorded when another layer also matched.
 - `rate_anomaly`: detects request bursts and crawl-shaped behavior using in-memory sliding-window counters.
 
 The client-side `_bs` value is a cached, weighted score computed once per page lifecycle. Strong signals such as automation APIs, impossible dimensions, or default automation viewport sizes can reach the blocking threshold alone; weaker signals such as SwiftShader, missing Chrome globals, and empty plugin lists only add supporting weight. The client also sends `_bsm`, a compact bitmask used for aggregate component counters. The server supplements that mask from validated screen dimensions so older scripts can still move `800x600`, `1024x768`, and impossible dimensions into the `client_signals` layer.
@@ -100,4 +100,8 @@ This catches obvious floods and fast crawlers, but it is local to a Node process
 
 ## Trust Boundaries
 
-Bot blocking assumes the resolved IP is trustworthy. In production, the origin should only accept traffic from trusted proxy infrastructure, or the edge should strip and rebuild forwarding headers. Public tracking requests ignore client-supplied `ip_address` and `user_agent`; those overrides are only honored for trusted server-side ingestion. Client-supplied `_bs` and `_bsm` are useful inputs but are not secure proof.
+Bot blocking assumes the resolved IP is trustworthy. In production, the origin should only accept traffic from trusted proxy infrastructure, or the edge should strip and rebuild forwarding headers. Public tracking requests ignore client-supplied `ip_address` and `user_agent`; those overrides are only honored for trusted server-side ingestion.
+
+First-party customer proxies can pass the real visitor IP without disabling bot blocking by sending `X-Rybbit-Proxy: 1` plus a valid API key from the proxy to Rybbit. The API key can be sent as `Authorization: Bearer <api key>` or as the origin-only `X-Rybbit-Api-Key` header. In that mode the tracker trusts proxy-provided IP headers for IP resolution only, preferring `X-Rybbit-Client-IP`, then `True-Client-IP`, `CloudFront-Viewer-Address`, `X-Real-IP`, `X-Forwarded-For`, and `Forwarded`. It still uses the request user-agent header and still runs every bot detection layer.
+
+Client-supplied `_bs` and `_bsm` are useful inputs but are not secure proof.

@@ -5,7 +5,7 @@ import { userIdService } from "../userId/userIdService.js";
 import { trackingPayloadSchema } from "./trackEvent.js";
 import { TrackingPayload } from "./types.js";
 import { SiteConfigData } from "../../lib/siteConfig.js";
-import { resolveTrackingIdentity } from "./requestIdentity.js";
+import { resolveTrackingIdentity, type TrackingIdentityOptions } from "./requestIdentity.js";
 
 export type TotalTrackingPayload = TrackingPayload & {
   userId: string; // Always the device fingerprint
@@ -106,9 +106,9 @@ export async function createBasePayload(
     | "input_change" = "pageview",
   validatedBody: ValidatedTrackingPayload,
   siteConfiguration: SiteConfigData,
-  trustedServerSideIngestion = false
+  trackingIdentityOptions: TrackingIdentityOptions = {}
 ): Promise<TotalTrackingPayload> {
-  const { ipAddress, userAgent } = resolveTrackingIdentity(request, validatedBody, trustedServerSideIngestion);
+  const { ipAddress, userAgent } = resolveTrackingIdentity(request, validatedBody, trackingIdentityOptions);
   const { ip_address: _ipAddressOverride, user_agent: _userAgentOverride, ...payloadBody } = validatedBody;
 
   // Always compute anonymous_id based on IP+UserAgent (device fingerprint)
