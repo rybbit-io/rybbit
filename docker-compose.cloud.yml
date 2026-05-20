@@ -134,8 +134,6 @@ services:
         condition: service_healthy
       postgres:
         condition: service_started
-      redis:
-        condition: service_started
     restart: unless-stopped
     ports:
       - "3001:3001"

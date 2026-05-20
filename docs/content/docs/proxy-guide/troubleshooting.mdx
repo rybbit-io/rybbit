@@ -214,6 +214,36 @@ proxyHeaders.set('X-Real-IP', clientIp);
 
 ---
 
+### Proxied Requests Are Detected as Bots
+
+**Symptoms:**
+- `/analytics/track` returns `200 OK`
+- Events do not appear in the normal analytics dashboard
+- Bot logs or older responses say the event was not tracked because a bot was detected
+- The bot reason mentions `bot asn`
+- Geolocation points to your CDN or proxy region, such as a Cloudflare Worker or AWS CloudFront edge location
+
+**Cause:** Rybbit is seeing the proxy IP instead of the original visitor IP. This is common when a first-party proxy is hosted on CDN or cloud infrastructure. Those networks use hosting/datacenter ASNs, so traffic can look like bot infrastructure if the visitor IP is not passed in a trusted way.
+
+Set `X-Forwarded-For` or `X-Real-IP` to the original visitor IP before forwarding the request to Rybbit. Rybbit reads those headers before the connecting edge IP.
+
+**Cloudflare Workers:**
+
+```javascript
+const clientIp = request.headers.get('CF-Connecting-IP') || '0.0.0.0';
+
+const proxyHeaders = new Headers(request.headers);
+proxyHeaders.set('X-Real-IP', clientIp);
+proxyHeaders.set('X-Forwarded-For', clientIp);
+```
+
+**AWS CloudFront:**
+
+- Forward `X-Forwarded-For`, or set `X-Real-IP` to the viewer IP from a CloudFront Function/Lambda@Edge
+- Forward `User-Agent`, `Referer`, and `Accept-Language`
+
+---
+
 ## Session Replay Issues
 
 ### Session Replay Not Working

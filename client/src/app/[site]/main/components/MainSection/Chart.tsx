@@ -393,8 +393,16 @@ export function Chart({
     const dataMax = currentPoints.length
       ? currentPoints[currentPoints.length - 1].x
       : undefined;
+    const chartXMaxMs = chartXMax?.getTime();
+    const boundedChartXMax =
+      chartXMax &&
+      chartXMaxMs !== undefined &&
+      (lowerBoundMs === undefined || chartXMaxMs >= lowerBoundMs) &&
+      chartXMaxMs <= upperBoundMs
+        ? chartXMax
+        : undefined;
     const effChartMin = cMin ?? dataMin;
-    const effChartMax = chartXMax ?? boundsMax ?? dataMax ?? now.toJSDate();
+    const effChartMax = boundedChartXMax ?? boundsMax ?? dataMax ?? now.toJSDate();
 
     // Previous points — time-shift onto the current period's x-axis. Each
     // previous timestamp is shifted by (cMin - prevMin), so prev[0] lands at

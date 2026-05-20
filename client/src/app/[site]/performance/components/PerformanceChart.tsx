@@ -200,7 +200,7 @@ export function PerformanceChart() {
         <div className="flex items-center justify-between px-2 md:px-0">
           <div className="flex items-center space-x-4">
             <Link href={session.data ? "/" : "https://rybbit.com"} className="opacity-75">
-              <RybbitTextLogo width={80} height={0} />
+              <RybbitTextLogo width={80} />
             </Link>
           </div>
           <div className="flex items-center space-x-4">

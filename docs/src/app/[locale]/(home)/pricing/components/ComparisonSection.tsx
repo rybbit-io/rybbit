@@ -203,7 +203,7 @@ export function ComparisonSection({ isAnnual }: { isAnnual: boolean }) {
         },
         {
           name: t("Data retention"),
-          standard: t("2 years"),
+          standard: t("3 years"),
           pro: t("5 years"),
           enterprise: t("Infinite"),
         },

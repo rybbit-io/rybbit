@@ -68,7 +68,13 @@ export function Browser({ browser, size = 16 }: { browser: string; size?: number
   return (
     <>
       {BROWSER_TO_LOGO[browser] ? (
-        <Image src={`/browsers/${BROWSER_TO_LOGO[browser]}`} alt={browser || "Other"} width={size} height={size} />
+        <Image
+          src={`/browsers/${BROWSER_TO_LOGO[browser]}`}
+          alt={browser || "Other"}
+          width={size}
+          height={size}
+          style={{ width: size, height: size, objectFit: "contain" }}
+        />
       ) : (
         <Compass width={size} height={size} />
       )}

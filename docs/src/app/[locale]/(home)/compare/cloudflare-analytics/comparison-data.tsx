@@ -51,7 +51,7 @@ export const cloudflareAnalyticsExtendedData = {
   introHeading: "Why consider Rybbit over Cloudflare Analytics?",
   introParagraphs: [
     "Cloudflare Web Analytics is free and requires no setup if you're already using Cloudflare's CDN. But free comes with serious limitations. Cloudflare only samples about 10% of your traffic and extrapolates the rest, which means your visitor counts are estimates, not facts. Data is retained for just 6 months, and there's no support for custom events, conversion goals, UTM tracking, or even basic metrics like bounce rate and visit duration.",
-    "Rybbit processes 100% of your events with zero sampling, so every number in your dashboard is accurate. You get the full analytics toolkit: custom events with attributes, conversion goals, funnel analysis, session replay, user journey visualization, and 2-5+ years of data retention. Plus, Rybbit works with any website regardless of hosting provider, so you're not locked into Cloudflare's CDN.",
+    "Rybbit processes 100% of your events with zero sampling, so every number in your dashboard is accurate. You get the full analytics toolkit: custom events with attributes, conversion goals, funnel analysis, session replay, user journey visualization, and 3-5+ years of data retention. Plus, Rybbit works with any website regardless of hosting provider, so you're not locked into Cloudflare's CDN.",
     "Think of Cloudflare Analytics as a basic traffic counter and Rybbit as a complete analytics platform. If you just need to know roughly how many people visited your site, Cloudflare is fine. But if you want to understand user behavior, optimize conversions, debug issues with session replay, or make data-driven decisions with accurate numbers, Rybbit is what you need.",
   ],
 
@@ -59,7 +59,7 @@ export const cloudflareAnalyticsExtendedData = {
     "You need 100% accurate data without sampling (Cloudflare uses 10% samples)",
     "You want full analytics features: UTM tracking, custom events, goals, funnels",
     "You need session replay and user journey visualization",
-    "You want 2-5+ years of data retention instead of 6 months",
+    "You want 3-5+ years of data retention instead of 6 months",
     "You need analytics that works without Cloudflare CDN lock-in",
     "You want open-source software you can self-host",
   ],
@@ -80,7 +80,7 @@ export const cloudflareAnalyticsExtendedData = {
       "7-day free trial, no credit card required",
       "All features included on every plan",
       "100% unsampled, accurate data",
-      "2-5+ years data retention",
+      "3-5+ years data retention",
     ],
   } satisfies PricingInfo,
 
@@ -111,7 +111,7 @@ export const cloudflareAnalyticsExtendedData = {
     },
     {
       question: "How long does Cloudflare keep my data?",
-      answer: "Cloudflare retains analytics data for only 6 months. Rybbit retains data for 2-5+ years depending on your plan, and you can export your data at any time.",
+      answer: "Cloudflare retains analytics data for only 6 months. Rybbit retains data for 3-5+ years depending on your plan, and you can export your data at any time.",
     },
     {
       question: "Can I use Rybbit alongside Cloudflare Analytics?",

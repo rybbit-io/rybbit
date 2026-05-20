@@ -3,6 +3,7 @@ import { useWindowSize } from "@uidotdev/usehooks";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { AppSidebar } from "../../components/AppSidebar";
+import { getMainDashboardPath, getSiteRouteContext } from "../../lib/siteRoute";
 import { useStore } from "../../lib/store";
 import { useSyncStateWithUrl } from "../../lib/urlParams";
 import { Footer } from "../components/Footer";
@@ -10,52 +11,26 @@ import { Header } from "./components/Header/Header";
 import { Sidebar } from "./components/Sidebar/Sidebar";
 import { useEmbedPageOptions } from "./utils";
 
-const PRIVATE_KEY_PATTERN = /^[a-f0-9]{12}$/i;
-
-function getMainDashboardPath(pathname: string) {
-  const segments = pathname.split("/").filter(Boolean);
-  const siteId = segments[0];
-  if (!siteId || isNaN(Number(siteId))) return null;
-
-  const hasPrivateKey = segments.length > 1 && PRIVATE_KEY_PATTERN.test(segments[1]);
-  return hasPrivateKey ? `/${siteId}/${segments[1]}/main` : `/${siteId}/main`;
-}
-
 function isMainDashboardPath(pathname: string) {
-  const segments = pathname.split("/").filter(Boolean);
-  const hasPrivateKey = segments.length > 1 && PRIVATE_KEY_PATTERN.test(segments[1]);
-  const route = hasPrivateKey ? segments[2] : segments[1];
-  return route === "main";
+  return getSiteRouteContext(pathname).route === "main";
 }
 
 export default function SiteLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
-  const { setSite, site, setPrivateKey } = useStore();
-  const { hideSidebar } = useEmbedPageOptions();
+  const { setSiteContext, site, privateKey } = useStore();
+  const { embed, hideSidebar } = useEmbedPageOptions();
 
   // Sync store state with URL parameters
   useSyncStateWithUrl();
 
   useEffect(() => {
-    const segments = pathname.split("/").filter(Boolean);
+    const routeContext = getSiteRouteContext(pathname);
+    if (!routeContext.siteId || isNaN(Number(routeContext.siteId))) return;
+    if (routeContext.siteId === site && routeContext.privateKey === privateKey) return;
 
-    if (segments.length > 0) {
-      const siteId = segments[0];
-
-      // Update site if it's different and is a number
-      if (siteId !== site && !isNaN(Number(siteId))) {
-        setSite(siteId);
-      }
-
-      // Check if second segment is a private key (12 hex chars)
-      if (segments.length > 1 && /^[a-f0-9]{12}$/i.test(segments[1])) {
-        setPrivateKey(segments[1]);
-      } else {
-        setPrivateKey(null);
-      }
-    }
-  }, [pathname]);
+    setSiteContext(routeContext.siteId, routeContext.privateKey);
+  }, [pathname, privateKey, setSiteContext, site]);
 
   useEffect(() => {
     if (!hideSidebar || isMainDashboardPath(pathname)) return;
@@ -95,7 +70,7 @@ export default function SiteLayout({ children }: { children: React.ReactNode }) 
               !pathname.includes("/realtime") &&
               !pathname.includes("/replay") &&
               !pathname.includes("/globe") &&
-              !pathname.includes("/api-playground") && <Footer />}
+              !pathname.includes("/api-playground") && <Footer disabled={embed} />}
           </div>
         </div>
       </div>

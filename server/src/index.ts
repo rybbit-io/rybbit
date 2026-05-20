@@ -19,6 +19,9 @@ import {
   deleteFunnel,
   deleteGoal,
   generatePdfReport,
+  getBotDimension,
+  getBotOverview,
+  getBotTimeSeries,
   getErrorBucketed,
   getErrorEvents,
   getErrorNames,
@@ -26,7 +29,6 @@ import {
   getEventNames,
   getEventProperties,
   getEvents,
-
   getFunnel,
   getFunnelStepSessions,
   getFunnels,
@@ -65,7 +67,7 @@ import {
   gscCallback,
   selectGSCProperty,
 } from "./api/gsc/index.js";
-import { updateInvitationSiteAccess, updateMemberSiteAccess } from "./api/memberAccess/index.js";
+import { updateMemberSiteAccess } from "./api/memberAccess/index.js";
 import { listTeams, createTeam, updateTeam, deleteTeam } from "./api/teams/index.js";
 import {
   deleteSessionReplay,
@@ -153,7 +155,6 @@ const __dirname = dirname(__filename);
 const server = Fastify({
   disableRequestLogging: true,
   logger: {
-    // level: process.env.LOG_LEVEL || (process.env.NODE_ENV === "development" ? "debug" : "info"),
     level: "debug",
     transport: {
       target: "pino-pretty",
@@ -280,6 +281,9 @@ async function analyticsRoutes(fastify: FastifyInstance) {
   fastify.get("/sites/:siteId/performance/overview", publicSite, getPerformanceOverview);
   fastify.get("/sites/:siteId/performance/time-series", publicSite, getPerformanceTimeSeries);
   fastify.get("/sites/:siteId/performance/by-dimension", publicSite, getPerformanceByDimension);
+  fastify.get("/sites/:siteId/bots/overview", publicSite, getBotOverview);
+  fastify.get("/sites/:siteId/bots/time-series", publicSite, getBotTimeSeries);
+  fastify.get("/sites/:siteId/bots/by-dimension", publicSite, getBotDimension);
   fastify.get("/sites/:siteId/export/pdf", publicSite, generatePdfReport);
 }
 
@@ -325,13 +329,6 @@ async function organizationsRoutes(fastify: FastifyInstance) {
 
   // Member site access management (admin/owner only)
   fastify.put("/organizations/:organizationId/members/:memberId/sites", orgAdminParams, updateMemberSiteAccess);
-
-  // Invitation site access management (admin/owner only)
-  fastify.put(
-    "/organizations/:organizationId/invitations/:invitationId/sites",
-    orgAdminParams,
-    updateInvitationSiteAccess
-  );
 }
 
 async function teamsRoutes(fastify: FastifyInstance) {

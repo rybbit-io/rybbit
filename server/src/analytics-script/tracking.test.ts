@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { Tracker } from "./tracking.js";
 import { ScriptConfig } from "./types.js";
+import { resetBotScoreCacheForTests } from "./botSignals.js";
 
 // Mock fetch globally
 global.fetch = vi.fn();
@@ -11,6 +12,8 @@ describe("Tracker", () => {
   let mockLocation: any;
 
   beforeEach(() => {
+    resetBotScoreCacheForTests();
+
     // Reset fetch mock
     vi.mocked(global.fetch).mockReset();
     vi.mocked(global.fetch).mockResolvedValue({} as Response);
@@ -74,6 +77,11 @@ describe("Tracker", () => {
       writable: true,
     });
 
+    Object.defineProperty(HTMLCanvasElement.prototype, "getContext", {
+      value: vi.fn(() => null),
+      configurable: true,
+    });
+
     config = {
       namespace: "rybbit",
       analyticsHost: "https://analytics.example.com",
@@ -118,6 +126,8 @@ describe("Tracker", () => {
         language: "en-US",
         page_title: "Test Page",
         referrer: "https://google.com",
+        _bs: expect.any(Number),
+        _bsm: expect.any(Number),
       });
     });
 

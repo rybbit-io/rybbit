@@ -24,6 +24,7 @@ export function Invitations({ organizationId, isOwner }: InvitationsProps) {
     refetch: refetchInvitations,
     isLoading: invitationsLoading,
   } = useOrganizationInvitations(organizationId);
+  const pendingInvitations = invitations?.filter(invitation => invitation.status === "pending") ?? [];
 
   const handleCancelInvitation = async (invitationId: string) => {
     try {
@@ -37,40 +38,6 @@ export function Invitations({ organizationId, isOwner }: InvitationsProps) {
       toast.error(error.message || t("Failed to cancel invitation"));
     } finally {
       setLoadingInvitationId(null);
-    }
-  };
-
-  const handleResendInvitation = async (invitation: any) => {
-    try {
-      setLoadingInvitationId(invitation.id);
-      await authClient.organization.inviteMember({
-        email: invitation.email,
-        role: invitation.role,
-        organizationId,
-        resend: true,
-      });
-      toast.success(t("Invitation resent to {email}", { email: invitation.email }));
-      refetchInvitations();
-    } catch (error: any) {
-      toast.error(error.message || t("Failed to resend invitation"));
-    } finally {
-      setLoadingInvitationId(null);
-    }
-  };
-
-  // Helper function to determine badge variant
-  const getBadgeVariant = (status: string) => {
-    switch (status) {
-      case "pending":
-        return "secondary";
-      case "accepted":
-        return "success";
-      case "rejected":
-        return "destructive";
-      case "canceled":
-        return "warning";
-      default:
-        return "outline";
     }
   };
 
@@ -116,25 +83,15 @@ export function Invitations({ organizationId, isOwner }: InvitationsProps) {
               ))
             ) : (
               <>
-                {invitations?.length && invitations.length > 0 ? (
-                  invitations.map(invitation => (
+                {pendingInvitations.length > 0 ? (
+                  pendingInvitations.map(invitation => (
                     <TableRow key={invitation.id}>
                       <TableCell>{invitation.email}</TableCell>
                       <TableCell className="capitalize">
                         {invitation.role === "admin" ? t("Admin") : invitation.role === "owner" ? t("Owner") : t("Member")}
                       </TableCell>
                       <TableCell>
-                        <Badge variant={getBadgeVariant(invitation.status)}>
-                          {invitation.status === "pending"
-                            ? t("Pending")
-                            : invitation.status === "accepted"
-                              ? t("Accepted")
-                              : invitation.status === "rejected"
-                                ? t("Rejected")
-                                : invitation.status === "canceled"
-                                  ? t("Canceled")
-                                  : invitation.status}
-                        </Badge>
+                        <Badge variant="secondary">{t("Pending")}</Badge>
                       </TableCell>
                       <TableCell>
                         {DateTime.fromJSDate(new Date(invitation.expiresAt)).toLocaleString(DateTime.DATE_SHORT)}
@@ -149,16 +106,6 @@ export function Invitations({ organizationId, isOwner }: InvitationsProps) {
                               onClick={() => handleCancelInvitation(invitation.id)}
                             >
                               {loadingInvitationId === invitation.id ? t("Processing...") : t("Cancel")}
-                            </Button>
-                          )}
-                          {invitation.status === "canceled" && (
-                            <Button
-                              variant="default"
-                              size="sm"
-                              disabled={loadingInvitationId === invitation.id}
-                              onClick={() => handleResendInvitation(invitation)}
-                            >
-                              {loadingInvitationId === invitation.id ? t("Processing...") : t("Resend")}
                             </Button>
                           )}
                         </TableCell>

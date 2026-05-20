@@ -138,6 +138,7 @@ type Store = {
   setSite: (site: string) => void;
   privateKey: string | null;
   setPrivateKey: (privateKey: string | null) => void;
+  setSiteContext: (site: string, privateKey: string | null) => void;
   time: Time;
   previousTime: Time;
   setTime: (time: Time, changeBucket?: boolean) => void;
@@ -151,45 +152,52 @@ type Store = {
   setTimezone: (timezone: string) => void;
 };
 
-export const useStore = create<Store>()(
-  persist(
+type PersistedStore = Pick<Store, "timezone">;
+
+const getUrlParams = () => (typeof window !== "undefined" ? new URLSearchParams(globalThis.location.search) : null);
+
+const getDefaultTime = (): Time => ({
+  mode: "day",
+  day: DateTime.now().toISODate(),
+  wellKnown: "today",
+});
+
+const getDefaultPreviousTime = (): Time => ({
+  mode: "day",
+  day: DateTime.now().minus({ days: 1 }).toISODate(),
+  wellKnown: "yesterday",
+});
+
+const getSiteStateForUrl = (state: Store, site: string, privateKey?: string | null): Partial<Store> => {
+  const urlParams = getUrlParams();
+  const hasTimeInUrl = urlParams?.has("timeMode") || urlParams?.has("wellKnown");
+  const hasBucketInUrl = urlParams?.has("bucket");
+  const hasStatInUrl = urlParams?.has("stat");
+  const hasFiltersInUrl = urlParams?.has("filters");
+
+  return {
+    site,
+    ...(privateKey !== undefined ? { privateKey } : {}),
+    time: hasTimeInUrl ? state.time : getDefaultTime(),
+    previousTime: hasTimeInUrl ? state.previousTime : getDefaultPreviousTime(),
+    bucket: hasBucketInUrl ? state.bucket : "hour",
+    selectedStat: hasStatInUrl ? state.selectedStat : "users",
+    filters: hasFiltersInUrl ? state.filters : [],
+  };
+};
+
+export const useStore = create<Store, [["zustand/persist", PersistedStore]]>(
+  persist<Store, [], [], PersistedStore>(
     (set, get) => ({
       site: "",
       setSite: site => {
-        // Get current URL search params to check for stored state
-        let urlParams: URLSearchParams | null = null;
-        if (typeof window !== "undefined") {
-          urlParams = new URLSearchParams(globalThis.location.search);
-        }
-
-        // Check if we have state stored in the URL
-        const hasTimeInUrl = urlParams?.has("timeMode");
-        const hasBucketInUrl = urlParams?.has("bucket");
-        const hasStatInUrl = urlParams?.has("stat");
-
-        // Only set defaults if not present in URL
-        set(state => ({
-          site,
-          time: hasTimeInUrl
-            ? state.time
-            : {
-                mode: "day",
-                day: DateTime.now().toISODate(),
-                wellKnown: "today",
-              },
-          previousTime: hasTimeInUrl
-            ? state.previousTime
-            : {
-                mode: "day",
-                day: DateTime.now().minus({ days: 1 }).toISODate(),
-                wellKnown: "yesterday",
-              },
-          bucket: hasBucketInUrl ? state.bucket : "hour",
-          selectedStat: hasStatInUrl ? state.selectedStat : "users",
-        }));
+        set(state => getSiteStateForUrl(state, site));
       },
       privateKey: null,
       setPrivateKey: privateKey => set({ privateKey }),
+      setSiteContext: (site, privateKey) => {
+        set(state => getSiteStateForUrl(state, site, privateKey));
+      },
       time: {
         mode: "day",
         day: DateTime.now().toISODate(),
@@ -321,8 +329,9 @@ export const toUserTimezone = (dt: DateTime): DateTime => {
 };
 
 export const resetStore = () => {
-  const { setSite, setTime, setBucket, setSelectedStat, setFilters } = useStore.getState();
+  const { setSite, setPrivateKey, setTime, setBucket, setSelectedStat, setFilters } = useStore.getState();
   setSite("");
+  setPrivateKey(null);
   setTime({ mode: "day", day: DateTime.now().toISODate(), wellKnown: "today" });
   setBucket("hour");
   setSelectedStat("users");

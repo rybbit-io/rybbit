@@ -1,6 +1,7 @@
 "use client";
 import {
   AlertTriangle,
+  Bot,
   ChartColumnDecreasing,
   Code,
   File,
@@ -17,12 +18,13 @@ import {
   Video,
 } from "lucide-react";
 import { useExtracted } from "next-intl";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { Suspense } from "react";
 import { useGetSite } from "../../../../api/admin/hooks/useSites";
 import { Sidebar as SidebarComponents } from "../../../../components/sidebar/Sidebar";
 import { SiteSettings } from "../../../../components/SiteSettings/SiteSettings";
 import { IS_CLOUD } from "../../../../lib/const";
+import { getSiteRouteContext } from "../../../../lib/siteRoute";
 import { useEmbedPageOptions } from "../../utils";
 import { SiteSelector } from "./SiteSelector";
 import { useStripeSubscription } from "../../../../lib/subscription/useStripeSubscription";
@@ -31,6 +33,7 @@ function SidebarContent() {
   const t = useExtracted();
   const { data: subscription, isLoading: isSubscriptionLoading } = useStripeSubscription();
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const { embed, hideSidebar } = useEmbedPageOptions();
 
   const { data: site } = useGetSite(Number(pathname.split("/")[1]));
@@ -39,30 +42,21 @@ function SidebarContent() {
 
   // Check which tab is active based on the current path
   const getTabPath = (tabName: string) => {
-    const segments = pathname.split("/").filter(Boolean);
-    const siteId = segments[0];
-
-    // Check if second segment is a private key (12 hex chars)
-    const hasPrivateKey = segments.length > 1 && /^[a-f0-9]{12}$/i.test(segments[1]);
-    const privateKey = hasPrivateKey ? segments[1] : null;
+    const { siteId, privateKey } = getSiteRouteContext(pathname);
 
     // Build path: /siteId/[privateKey]/tabName
     const basePath = privateKey
       ? `/${siteId}/${privateKey}/${tabName.toLowerCase()}`
       : `/${siteId}/${tabName.toLowerCase()}`;
+    const queryString = searchParams.toString();
 
-    return `${basePath}${embed ? "?embed=true" : ""}`;
+    return queryString ? `${basePath}?${queryString}` : basePath;
   };
 
   const isActiveTab = (tabName: string) => {
     if (!pathname.includes("/")) return false;
 
-    const segments = pathname.split("/").filter(Boolean);
-    // Check if we have a private key (second segment is 12 hex chars)
-    const hasPrivateKey = segments.length > 1 && /^[a-f0-9]{12}$/i.test(segments[1]);
-
-    // Route is either segments[1] (no key) or segments[2] (with key)
-    const route = hasPrivateKey ? segments[2] || "main" : segments[1] || "main";
+    const route = getSiteRouteContext(pathname).route ?? "main";
     return route === tabName.toLowerCase();
   };
 
@@ -99,6 +93,14 @@ function SidebarContent() {
             active={isActiveTab("performance")}
             href={getTabPath("performance")}
             icon={<Gauge className="w-4 h-4" />}
+          />
+        )}
+        {IS_CLOUD && (
+          <SidebarComponents.Item
+            label={t("Bots")}
+            active={isActiveTab("bots")}
+            href={getTabPath("bots")}
+            icon={<Bot className="w-4 h-4" />}
           />
         )}
         <SidebarComponents.Item

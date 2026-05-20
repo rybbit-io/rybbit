@@ -1,5 +1,5 @@
 import { FastifyRequest } from "fastify";
-import { BOT_SCORE_THRESHOLD } from "./const.js";
+import { BOT_SCORE_THRESHOLD } from "./config.js";
 
 interface BotDetectionResult {
   isBot: boolean;
@@ -68,13 +68,10 @@ function claimsModernOS(ua: string): boolean {
 /**
  * Score-based bot detection using HTTP header heuristics.
  *
- * Supplements the isbot() UA-string check with analysis of headers
+ * Supplements the UA-pattern check (uaBots/classifyUA) with analysis of headers
  * that real browsers always send but scripting clients typically miss.
  */
-export function detectBot(
-  request: FastifyRequest,
-  userAgent: string
-): BotDetectionResult {
+export function detectBot(request: FastifyRequest, userAgent: string): BotDetectionResult {
   let score = 0;
   const reasons: string[] = [];
   const headers = request.headers;
@@ -117,10 +114,7 @@ export function detectBot(
   if (!acceptEncoding) {
     score += 2;
     reasons.push("missing_accept_encoding");
-  } else if (
-    typeof acceptEncoding === "string" &&
-    !acceptEncoding.includes("gzip")
-  ) {
+  } else if (typeof acceptEncoding === "string" && !acceptEncoding.includes("gzip")) {
     score += 2;
     reasons.push("no_gzip_support");
   }

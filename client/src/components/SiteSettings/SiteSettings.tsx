@@ -65,7 +65,6 @@ function SiteSettingsInner({ siteMetadata, trigger }: { siteMetadata: SiteRespon
   const [embedEnabled, setEmbedEnabled] = useState(!!siteMetadata.embedEnabled);
   const [togglingEmbed, setTogglingEmbed] = useState(false);
   const [sitePublic, setSitePublic] = useState(!!siteMetadata.public);
-  const [togglingPublic, setTogglingPublic] = useState(false);
   const { refetch: refetchOrgSites } = useGetSitesFromOrg(siteMetadata?.organizationId ?? "");
 
   useEffect(() => {
@@ -86,24 +85,6 @@ function SiteSettingsInner({ siteMetadata, trigger }: { siteMetadata: SiteRespon
         toast.error(t("Failed to update embed setting"));
       } finally {
         setTogglingEmbed(false);
-      }
-    },
-    [siteMetadata.siteId, refetchOrgSites, t]
-  );
-
-  const handleTogglePublic = useCallback(
-    async (checked: boolean) => {
-      setTogglingPublic(true);
-      try {
-        await updateSiteConfig(siteMetadata.siteId, { public: checked });
-        setSitePublic(checked);
-        toast.success(checked ? t("Site analytics made public") : t("Site analytics made private"));
-        refetchOrgSites();
-      } catch (error) {
-        console.error("Error toggling public analytics:", error);
-        toast.error(t("Failed to update public analytics setting"));
-      } finally {
-        setTogglingPublic(false);
       }
     },
     [siteMetadata.siteId, refetchOrgSites, t]
@@ -138,7 +119,7 @@ function SiteSettingsInner({ siteMetadata, trigger }: { siteMetadata: SiteRespon
           </Button>
         )}
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[900px] p-0 gap-0 overflow-hidden" hideClose>
+      <DialogContent className="sm:max-w-[1000px] p-0 gap-0 overflow-hidden" hideClose>
         <div className="flex h-[80vh]">
           <aside className="w-[220px] shrink-0 border-r border-neutral-200 dark:border-neutral-850 bg-neutral-50 dark:bg-neutral-900/50 p-3 flex flex-col gap-1">
             <DialogClose asChild>
@@ -203,10 +184,7 @@ function SiteSettingsInner({ siteMetadata, trigger }: { siteMetadata: SiteRespon
               {activeTab === "dashboard-embed" && (
                 <DashboardEmbedTab
                   siteMetadata={currentSiteMetadata}
-                  sitePublic={sitePublic}
                   disabled={disabled}
-                  togglingPublic={togglingPublic}
-                  onTogglePublic={handleTogglePublic}
                 />
               )}
               {activeTab === "import" && <ImportManager siteId={siteMetadata.siteId} disabled={disabled} />}

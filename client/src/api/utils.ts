@@ -3,6 +3,7 @@ import { DateTime } from "luxon";
 import { Time } from "../components/DateSelector/types";
 import axios, { AxiosRequestConfig } from "axios";
 import { BACKEND_URL } from "../lib/const";
+import { getSiteRouteContext } from "../lib/siteRoute";
 import { getTimezone, useStore } from "../lib/store";
 import { CommonApiParams } from "./analytics/endpoints/types";
 
@@ -112,7 +113,10 @@ export async function authedFetch<T>(
   }
 
   // Get private key from store and add to headers if present
-  const privateKey = useStore.getState().privateKey;
+  const privateKey =
+    typeof window !== "undefined"
+      ? getSiteRouteContext(globalThis.location.pathname).privateKey
+      : useStore.getState().privateKey;
   const headers = {
     ...config.headers,
     ...(privateKey ? { "x-private-key": privateKey } : {}),

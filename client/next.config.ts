@@ -5,6 +5,7 @@ const withNextIntl = createNextIntlPlugin({
   experimental: {
     extract: true,
     srcPath: "./src",
+    extract: true,
     messages: {
       path: "./messages",
       format: "json",

@@ -1,16 +1,51 @@
 import { createClient } from "@clickhouse/client";
 import { IS_CLOUD } from "../../lib/const.js";
+import { createServiceLogger } from "../../lib/logger/logger.js";
+
+const parsePositiveInt = (value: string | undefined, fallback: number) => {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+};
+
+const CLICKHOUSE_REQUEST_TIMEOUT_MS = parsePositiveInt(process.env.CLICKHOUSE_REQUEST_TIMEOUT_MS, 300_000);
 
 export const clickhouse = createClient({
   url: process.env.CLICKHOUSE_HOST,
   database: process.env.CLICKHOUSE_DB,
   password: process.env.CLICKHOUSE_PASSWORD,
+  request_timeout: CLICKHOUSE_REQUEST_TIMEOUT_MS,
 });
+
+const logger = createServiceLogger("clickhouse");
+
+async function execClickhouseInitStep(
+  step: string,
+  query: string,
+  options?: { optional?: boolean; lockAcquireTimeoutSeconds?: number }
+) {
+  try {
+    await clickhouse.exec({
+      query,
+      clickhouse_settings: options?.lockAcquireTimeoutSeconds
+        ? { lock_acquire_timeout: options.lockAcquireTimeoutSeconds }
+        : undefined,
+    });
+  } catch (error) {
+    logger.error(
+      { err: error, step, requestTimeoutMs: CLICKHOUSE_REQUEST_TIMEOUT_MS },
+      "ClickHouse initialization step failed"
+    );
+    if (!options?.optional) {
+      throw error;
+    }
+  }
+}
 
 export const initializeClickhouse = async () => {
   // Create events table
-  await clickhouse.exec({
-    query: `
+  await execClickhouseInitStep(
+    "create events table",
+    `
       CREATE TABLE IF NOT EXISTS events (
         site_id UInt16,
         timestamp DateTime,
@@ -43,25 +78,50 @@ export const initializeClickhouse = async () => {
       ENGINE = MergeTree()
       PARTITION BY toYYYYMM(timestamp)
       ORDER BY (site_id, timestamp)
-      `,
-  });
+      `
+  );
 
-  // Add columns to the events table
-  await clickhouse.exec({
-    query: `
-      ALTER TABLE events
-        ADD COLUMN IF NOT EXISTS lcp Nullable(Float64),
-        ADD COLUMN IF NOT EXISTS cls Nullable(Float64),
-        ADD COLUMN IF NOT EXISTS inp Nullable(Float64),
-        ADD COLUMN IF NOT EXISTS fcp Nullable(Float64),
-        ADD COLUMN IF NOT EXISTS ttfb Nullable(Float64),
-        ADD COLUMN IF NOT EXISTS ip Nullable(String),
-        ADD COLUMN IF NOT EXISTS timezone LowCardinality(String) DEFAULT '',
-        ADD COLUMN IF NOT EXISTS identified_user_id String DEFAULT '',
-        ADD COLUMN IF NOT EXISTS import_id Nullable(UUID),
-        ADD COLUMN IF NOT EXISTS tag LowCardinality(String) DEFAULT ''
-    `,
-  });
+  await execClickhouseInitStep(
+    "create bot events table",
+    `
+      CREATE TABLE IF NOT EXISTS bot_events (
+        site_id UInt16,
+        timestamp DateTime,
+        session_id String,
+        user_id String,
+        hostname String,
+        pathname String,
+        querystring String,
+        referrer String,
+        browser LowCardinality(String),
+        browser_version LowCardinality(String),
+        operating_system LowCardinality(String),
+        operating_system_version LowCardinality(String),
+        country LowCardinality(FixedString(2)),
+        region LowCardinality(String),
+        city String,
+        lat Float64,
+        lon Float64,
+        screen_width UInt16,
+        screen_height UInt16,
+        device_type LowCardinality(String),
+        type LowCardinality(String) DEFAULT 'pageview',
+        asn Nullable(UInt32),
+        asn_org String DEFAULT '',
+        detected_ua_pattern Bool DEFAULT false,
+        detected_header_heuristics Bool DEFAULT false,
+        detected_client_signals Bool DEFAULT false,
+        detected_bot_asn Bool DEFAULT false,
+        detected_rate_anomaly Bool DEFAULT false,
+        matched_ua_pattern String DEFAULT '',
+        bot_category LowCardinality(String) DEFAULT ''
+      )
+      ENGINE = MergeTree()
+      PARTITION BY toYYYYMM(timestamp)
+      ORDER BY (site_id, timestamp)
+      TTL timestamp + INTERVAL 3 MONTH
+      `
+  );
 
   // Create session replay tables
   await clickhouse.exec({

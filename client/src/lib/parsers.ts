@@ -1,4 +1,4 @@
-import { Filter, TimeBucket } from "@rybbit/shared";
+import { Filter, FilterParameter, FilterType, TimeBucket } from "@rybbit/shared";
 import { createParser, parseAsBoolean, parseAsInteger, parseAsJson, parseAsString, parseAsStringEnum } from "nuqs";
 import { StatType } from "./store";
 import { Time } from "@/components/DateSelector/types";
@@ -36,15 +36,7 @@ const statTypeValues: StatType[] = [
 export const parseAsStatType = parseAsStringEnum<StatType>(statTypeValues);
 
 // Time mode parser
-const timeModeValues: string[] = [
-  "day",
-  "range",
-  "week",
-  "month",
-  "year",
-  "all-time",
-  "past-minutes",
-];
+const timeModeValues: string[] = ["day", "range", "week", "month", "year", "all-time", "past-minutes"];
 
 export const parseAsTimeMode = parseAsStringEnum(timeModeValues);
 
@@ -75,7 +67,73 @@ export const parseAsWellKnown = parseAsStringEnum(wellKnownValues);
 export const parseAsIsoDate = parseAsString;
 
 // JSON parsers for complex types
-export const parseAsFilters = parseAsJson<Filter[]>(value => value as Filter[]);
+const filterTypeValues: FilterType[] = [
+  "equals",
+  "not_equals",
+  "contains",
+  "not_contains",
+  "starts_with",
+  "ends_with",
+  "regex",
+  "not_regex",
+  "is_null",
+  "is_not_null",
+  "greater_than",
+  "less_than",
+  "greater_than_or_equal",
+  "less_than_or_equal",
+];
+
+const filterParameterValues: FilterParameter[] = [
+  "browser",
+  "operating_system",
+  "language",
+  "country",
+  "region",
+  "city",
+  "device_type",
+  "referrer",
+  "hostname",
+  "pathname",
+  "page_title",
+  "querystring",
+  "event_name",
+  "channel",
+  "utm_source",
+  "utm_medium",
+  "utm_campaign",
+  "utm_term",
+  "utm_content",
+  "entry_page",
+  "exit_page",
+  "dimensions",
+  "browser_version",
+  "operating_system_version",
+  "user_id",
+  "lat",
+  "lon",
+  "timezone",
+  "tag",
+];
+
+const filterTypeSet = new Set(filterTypeValues);
+const filterParameterSet = new Set(filterParameterValues);
+
+function isFilter(value: unknown): value is Filter {
+  if (!value || typeof value !== "object") return false;
+
+  const candidate = value as Partial<Filter>;
+  return (
+    typeof candidate.parameter === "string" &&
+    filterParameterSet.has(candidate.parameter as FilterParameter) &&
+    typeof candidate.type === "string" &&
+    filterTypeSet.has(candidate.type as FilterType) &&
+    Array.isArray(candidate.value) &&
+    candidate.value.every(item => typeof item === "string" || typeof item === "number")
+  );
+}
+
+export const parseAsFilters = parseAsJson<Filter[]>(value => (Array.isArray(value) ? value.filter(isFilter) : []));
 export const parseAsStringArray = parseAsJson<string[]>(value => value as string[]);
 
 // GSC status parser (for OAuth callback)

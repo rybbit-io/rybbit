@@ -1,134 +1,17 @@
 ---
 title: Embeds
-description: Embed a live visitor widget or public analytics dashboard on your own site
+description: Embed a live visitor widget or analytics dashboard on your own site
 ---
-
-import { Callout } from 'fumadocs-ui/components/callout';
-import { EmbedWidgetDemo } from '@/components/EmbedWidgetDemo';
 
 Rybbit supports two iframe embed options:
 
-- **Widget Embeds** show a compact live visitor widget on any web page.
-- **Dashboard Embed** shows your public analytics dashboard in an iframe.
+- [Widget Embeds](/docs/embeds/widget) show a compact live visitor widget on any web page.
+- [Dashboard Embed](/docs/embeds/dashboard) shows your analytics dashboard in an iframe.
 
-Both embeds are self-contained iframes — no script tag, no JavaScript on your site, no dependencies.
+Both embeds are self-contained iframes. There is no script tag, no JavaScript on your site, and no dependency on the Rybbit tracking script.
 
-## Widget Embeds
+## Which Embed Should I Use?
 
-### Try it
+Use [Widget Embeds](/docs/embeds/widget) when you want a small live visitor count, chart, or top-countries summary. Widget Embeds do not make your dashboard public.
 
-Configure the widget below to see how it'll look. The preview shows live data from [demo.rybbit.com](https://demo.rybbit.com).
-
-<EmbedWidgetDemo />
-
-### Requirements
-
-The widget needs a public read-only data endpoint, so you must enable **Widget Embeds** on the site. This is a separate setting from **Public Analytics** — turning it on only exposes the live count, time series, and top countries to the widget endpoint, not your full dashboard.
-
-<Callout type="info">
-  Enabling the embed widget does **not** make your dashboard public. Only the data shown in the widget itself (visitor count, per-minute / per-hour / per-day series, top 5 countries) is accessible — no individual sessions, events, pages, or referrers.
-</Callout>
-
-### Setup
-
-1. Open your site in the Rybbit dashboard and click the settings icon.
-2. Go to the **Widget Embeds** tab.
-3. Toggle **Widget Enabled** on.
-4. Pick your options (variant, time window, theme, accent color).
-5. Copy the generated `<iframe>` snippet and paste it anywhere on your site.
-
-### Variants
-
-#### Card
-
-A self-contained dashboard card showing the live count, an optional bar chart of users over time, and an optional list of top countries.
-
-Options:
-
-| Option        | Values                           | Default | Description                                              |
-| ------------- | -------------------------------- | ------- | -------------------------------------------------------- |
-| Time window   | 30 minutes / 24 hours / 7 days   | 30 min  | Window the count and chart cover                         |
-| Bar chart     | on / off                         | on      | Show a bar chart bucketed per minute / hour / day        |
-| Top countries | on / off                         | on      | List the top 5 countries in the window                   |
-| Width         | 240 – 800 px                     | 360 px  | Iframe width; use `max-width: 100%` for responsive sites |
-
-#### Inline pill
-
-A compact pill that fits inline with your site's chrome — e.g. in a header or footer. Shows just the pulsing dot, the live count over the last 30 minutes, and the Rybbit wordmark.
-
-### Appearance
-
-- **Theme** — `dark` or `light`. The widget background is transparent, so rounded-corner edges blend into whatever sits behind the iframe.
-- **Accent color** — pick any hex color. Used for the pulsing live-indicator dot and the bar-chart bars. Defaults to Rybbit emerald.
-
-### Example
-
-```html
-<iframe
-  src="https://app.rybbit.io/widget/YOUR_SITE_ID?variant=card&theme=dark&minutes=30&chart=true&countries=true"
-  style="border: 0; width: 360px; height: 390px; max-width: 100%;"
-  loading="lazy"
-  title="Live visitors"
-></iframe>
-```
-
-If you self-host Rybbit, replace `app.rybbit.io` with your own domain.
-
-### URL parameters
-
-You don't usually need to build the URL by hand — the dashboard generates the right snippet for you — but the widget URL accepts:
-
-| Parameter    | Values                              | Description                                       |
-| ------------ | ----------------------------------- | ------------------------------------------------- |
-| `variant`    | `card`, `inline`                    | Layout variant                                    |
-| `theme`      | `dark`, `light`                     | Color scheme                                      |
-| `accent`     | 6-character hex (no `#`), e.g. `10b981` | Pulse / bar color                                 |
-| `minutes`    | `30`, `1440`, `10080`               | Time window in minutes (card variant only)        |
-| `chart`      | `true`, `false`                     | Show the bar chart (card variant only)            |
-| `countries`  | `true`, `false`                     | Show the top countries (card variant only)        |
-
-### Caching
-
-The widget HTML and the underlying stats endpoint are both cached for 60 seconds on the server, so embedding the widget on a high-traffic page won't put pressure on your Rybbit instance. The visible count refreshes once per minute.
-
-## Dashboard Embed
-
-The dashboard embed lets you place the main Rybbit analytics dashboard on another site. It uses the normal public dashboard route with `embed=true`.
-
-### Requirements
-
-Dashboard embeds require **Public Analytics** to be enabled for the site. Unlike Widget Embeds, this makes the site's read-only analytics dashboard accessible to anyone with the URL.
-
-<Callout type="warn">
-  Only enable Public Analytics if you are comfortable exposing the site's dashboard data publicly.
-</Callout>
-
-### Setup
-
-1. Open your site in the Rybbit dashboard and click the settings icon.
-2. Go to the **Dashboard Embed** tab.
-3. Toggle **Public Analytics** on.
-4. Choose whether to hide the dashboard sidebar.
-5. Copy the generated `<iframe>` snippet and paste it anywhere on your site.
-
-### Example
-
-```html
-<iframe
-  src="https://app.rybbit.io/YOUR_SITE_ID/main?embed=true&hideSidebar=true"
-  style="border: 0; width: 100%; height: 720px;"
-  loading="lazy"
-  title="Analytics dashboard"
-></iframe>
-```
-
-If you self-host Rybbit, replace `app.rybbit.io` with your own domain.
-
-### URL parameters
-
-| Parameter     | Values          | Description                                                |
-| ------------- | --------------- | ---------------------------------------------------------- |
-| `embed`       | `true`          | Enables public embed mode                                  |
-| `hideSidebar` | `true`, `false` | Hides the dashboard sidebar and keeps visitors on the main dashboard page |
-
-When `hideSidebar=true`, only the main dashboard page is shown in the iframe. Leave it off if you want viewers to use the dashboard sidebar to navigate other public analytics pages.
+Use [Dashboard Embed](/docs/embeds/dashboard) when you want to publish the full read-only analytics dashboard. Dashboard Embed uses a generated private link, so Public Analytics is not required.

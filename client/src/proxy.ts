@@ -50,7 +50,8 @@ export async function proxy(request: NextRequest) {
     }
 
     // Add cache control headers to make sure the redirect isn't cached
-    const response = NextResponse.redirect(new URL(`/${siteId}/main`, request.url));
+    url.pathname = `/${siteId}/main`;
+    const response = NextResponse.redirect(url);
     response.headers.set("Cache-Control", "no-store, max-age=0");
     return response;
   }
@@ -63,7 +64,8 @@ export async function proxy(request: NextRequest) {
     const siteAndKey = privateKeyMatch[1]; // e.g., "123/abc123def456"
 
     // Redirect to /main while preserving the private key in the path
-    const response = NextResponse.redirect(new URL(`/${siteAndKey}/main`, request.url));
+    url.pathname = `/${siteAndKey}/main`;
+    const response = NextResponse.redirect(url);
     response.headers.set("Cache-Control", "no-store, max-age=0");
     return response;
   }

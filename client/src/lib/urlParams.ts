@@ -1,11 +1,12 @@
 "use client";
 
 import { DateTime } from "luxon";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { useQueryStates } from "nuqs";
 import React, { useEffect } from "react";
 import { Time } from "../components/DateSelector/types";
 import { analyticsParsers } from "./parsers";
+import { getSiteRouteContext, isSyncedAnalyticsRoute } from "./siteRoute";
 import { getTimezone, useStore } from "./store";
 
 // Map of wellKnown presets to their dynamic time calculations
@@ -123,38 +124,30 @@ const wellKnownPresets: Record<string, () => Time> = {
   "all-time": () => ({ mode: "all-time", wellKnown: "all-time" }),
 };
 
+const getDefaultTime = (): Time => ({
+  mode: "day",
+  day: DateTime.now().setZone(getTimezone()).toISODate()!,
+  wellKnown: "today",
+});
+
 // Hook to sync store state with URL
 export const useSyncStateWithUrl = () => {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const { time, bucket, selectedStat, filters, setTime, setBucket, setSelectedStat, setFilters, site } = useStore();
 
-  // Use a ref to track if we've already loaded from URL
-  const initializedFromUrlRef = React.useRef(false);
+  const routeContext = React.useMemo(() => getSiteRouteContext(pathname), [pathname]);
+  const shouldSyncUrl = isSyncedAnalyticsRoute(routeContext.route);
+  const hydrationKey = shouldSyncUrl
+    ? `${routeContext.siteId ?? ""}:${routeContext.privateKey ?? ""}:${routeContext.route ?? ""}?${searchParams.toString()}`
+    : null;
+  const [hydratedUrlKey, setHydratedUrlKey] = React.useState<string | null>(null);
 
-  // Check if we're on a path where we should sync URL params
-  // Use a ref so this check doesn't trigger effects on navigation
-  const pathnameRef = React.useRef(pathname);
-  pathnameRef.current = pathname;
-
-  const shouldSyncUrl = React.useCallback(() => {
-    const p = pathnameRef.current;
-    if (!p) return false;
-    const pathParts = p.split("/");
-    if (pathParts.length < 3) return false;
-    return [
-      "main",
-      "sessions",
-      "users",
-      "performance",
-      "globe",
-      "goals",
-      "events",
-      "funnels",
-      "journeys",
-      "errors",
-      "pages",
-    ].includes(pathParts[2]);
-  }, []);
+  useEffect(() => {
+    if (!hydrationKey && hydratedUrlKey) {
+      setHydratedUrlKey(null);
+    }
+  }, [hydrationKey, hydratedUrlKey]);
 
   // Get URL params using nuqs
   const [urlParams, setUrlParams] = useQueryStates(analyticsParsers, {
@@ -164,9 +157,7 @@ export const useSyncStateWithUrl = () => {
 
   // Initialize from URL params after site is set
   useEffect(() => {
-    if (!site || initializedFromUrlRef.current || !shouldSyncUrl()) return;
-
-    let needsUpdate = false;
+    if (!hydrationKey || site !== routeContext.siteId || hydratedUrlKey === hydrationKey) return;
 
     // Deserialize time from URL
     let timeFromUrl: Time | null = null;
@@ -211,34 +202,40 @@ export const useSyncStateWithUrl = () => {
     }
 
     if (timeFromUrl) {
-      setTime(timeFromUrl, false); // Don't change bucket
-      needsUpdate = true;
+      setTime(timeFromUrl, !urlParams.bucket);
+    } else {
+      setTime(getDefaultTime(), !urlParams.bucket);
     }
 
     // Process bucket separately
     if (urlParams.bucket) {
       setBucket(urlParams.bucket);
-      needsUpdate = true;
     }
 
     if (urlParams.stat) {
       setSelectedStat(urlParams.stat);
-      needsUpdate = true;
+    } else {
+      setSelectedStat("users");
     }
 
-    if (urlParams.filters) {
-      setFilters(urlParams.filters);
-      needsUpdate = true;
-    }
+    setFilters(urlParams.filters ?? []);
 
-    // Mark that we've initialized from URL
-    initializedFromUrlRef.current = true;
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentionally omit pathname; initializedFromUrlRef guards re-runs
-  }, [urlParams, site, setTime, setBucket, setSelectedStat, setFilters, shouldSyncUrl]);
+    setHydratedUrlKey(hydrationKey);
+  }, [
+    hydrationKey,
+    hydratedUrlKey,
+    routeContext.siteId,
+    site,
+    setTime,
+    setBucket,
+    setSelectedStat,
+    setFilters,
+    urlParams,
+  ]);
 
   // Update URL when state changes
   useEffect(() => {
-    if (!site || !shouldSyncUrl()) return;
+    if (!hydrationKey || hydratedUrlKey !== hydrationKey || site !== routeContext.siteId) return;
 
     // Build params object to update - values, not parsers
     const newParams: Record<string, any> = {
@@ -300,6 +297,5 @@ export const useSyncStateWithUrl = () => {
 
     // Note: embed params are automatically preserved by nuqs
     setUrlParams(newParams);
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentionally omit pathname to avoid interfering with soft navigation
-  }, [time, bucket, selectedStat, filters, site, setUrlParams, shouldSyncUrl]);
+  }, [time, bucket, selectedStat, filters, site, setUrlParams, hydrationKey, hydratedUrlKey, routeContext.siteId]);
 };

@@ -20,6 +20,8 @@
     "db:pull": "drizzle-kit pull --config=drizzle.config.ts",
     "db:drop": "drizzle-kit drop --config=drizzle.config.ts",
     "db:check": "drizzle-kit check --config=drizzle.config.ts",
+    "update:datacenter-asns": "node src/services/tracker/botBlocking/update-datacenter-asns.mjs",
+    "update:referrer-spam": "node src/services/tracker/botBlocking/update-referrer-spam.mjs",
     "knip": "knip",
     "format": "prettier --write \"src/**/*.{js,ts,json,md}\"",
     "format:check": "prettier --check \"src/**/*.{js,ts,json,md}\""
@@ -47,7 +49,6 @@
     "fastify": "5.3.3",
     "i18n-iso-countries": "^7.14.0",
     "ip-address": "^10.0.1",
-    "isbot": "^5.1.28",
     "luxon": "3.7.2",
     "nanoid": "^5.1.6",
     "node-cache": "^5.1.2",

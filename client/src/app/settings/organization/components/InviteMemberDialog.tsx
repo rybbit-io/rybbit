@@ -7,7 +7,6 @@ import { useMemo, useState } from "react";
 import { toast } from "@/components/ui/sonner";
 
 import { useTeams } from "@/api/admin/hooks/useTeams";
-import { authedFetch } from "@/api/utils";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -61,32 +60,24 @@ export function InviteMemberDialog({ organizationId, onSuccess, memberCount }: I
 
   const inviteMutation = useMutation({
     mutationFn: async () => {
-      // Create the invitation via BetterAuth
+      const hasSiteRestrictions = role === "member" && restrictSiteAccess;
       const result = await authClient.organization.inviteMember({
         email,
         role,
         organizationId,
-        resend: true,
         ...(selectedTeamId && selectedTeamId !== "none" ? { teamId: selectedTeamId } : {}),
+        hasRestrictedSiteAccess: hasSiteRestrictions,
+        siteIds: hasSiteRestrictions ? selectedSiteIds : [],
       });
 
-      // Update invitation with site access restrictions
-      const hasSiteRestrictions = role === "member" && restrictSiteAccess;
-
-      if (hasSiteRestrictions && result.data?.id) {
-        await authedFetch(`/organizations/${organizationId}/invitations/${result.data.id}/sites`, undefined, {
-          method: "PUT",
-          data: {
-            hasRestrictedSiteAccess: true,
-            siteIds: selectedSiteIds,
-          },
-        });
+      if (result.error) {
+        throw new Error(result.error.message || t("Failed to send invitation"));
       }
 
       return result;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["organizationInvitations"] });
+      queryClient.invalidateQueries({ queryKey: ["invitations", organizationId] });
       toast.success(t("Invitation sent to {email}", { email }));
       setOpen(false);
       onSuccess();

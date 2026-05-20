@@ -239,13 +239,7 @@ export const normalizeOrigin = (input: string): string => {
 
 // Helper function to get IP address
 export const getIpAddress = (request: FastifyRequest): string => {
-  // Priority 1: Cloudflare header (already validated by CF)
-  const cfConnectingIp = request.headers["cf-connecting-ip"];
-  if (cfConnectingIp && typeof cfConnectingIp === "string") {
-    return cfConnectingIp.trim();
-  }
-
-  // Priority 2: X-Forwarded-For - just use the first IP
+  // Priority 1: X-Forwarded-For - use the first IP, which should be the original client.
   const forwardedFor = request.headers["x-forwarded-for"];
   if (forwardedFor && typeof forwardedFor === "string") {
     const ips = forwardedFor
@@ -256,6 +250,18 @@ export const getIpAddress = (request: FastifyRequest): string => {
       // Always use the first IP - the original client
       return ips[0];
     }
+  }
+
+  // Priority 2: X-Real-IP
+  const realIp = request.headers["x-real-ip"];
+  if (realIp && typeof realIp === "string") {
+    return realIp.trim();
+  }
+
+  // Priority 3: Cloudflare header
+  const cfConnectingIp = request.headers["cf-connecting-ip"];
+  if (cfConnectingIp && typeof cfConnectingIp === "string") {
+    return cfConnectingIp.trim();
   }
 
   return request.ip;

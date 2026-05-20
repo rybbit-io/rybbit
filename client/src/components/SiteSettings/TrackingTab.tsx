@@ -83,7 +83,9 @@ export function TrackingTab({ siteMetadata, disabled = false }: TrackingTabProps
     (!subscription?.planName.includes("pro") ||
       (!!subscription?.isTrial && (subscription?.eventLimit ?? 0) >= 500_000)) &&
     IS_CLOUD;
+
   const standardFeaturesDisabled =
+    !subscription?.planName.includes("custom") &&
     !subscription?.planName.includes("standard") &&
     !subscription?.planName.includes("pro") &&
     !subscription?.planName.includes("appsumo") &&
@@ -92,33 +94,33 @@ export function TrackingTab({ siteMetadata, disabled = false }: TrackingTabProps
   const analyticsToggles: ToggleConfig[] = [
     ...(!subscription?.planName?.startsWith("appsumo") && !isSubscriptionLoading
       ? [
-          {
-            id: "sessionReplay",
-            label: t("Session Replay"),
-            description: t("Record and replay user sessions to understand user behavior"),
-            value: toggleStates.sessionReplay,
-            key: "sessionReplay",
-            enabledMessage: t("Session replay enabled"),
-            disabledMessage: t("Session replay disabled"),
-            disabled: sessionReplayDisabled,
-            badge: <Badge variant="success">Pro</Badge>,
-          } as ToggleConfig,
-        ]
+        {
+          id: "sessionReplay",
+          label: t("Session Replay"),
+          description: t("Record and replay user sessions to understand user behavior"),
+          value: toggleStates.sessionReplay,
+          key: "sessionReplay",
+          enabledMessage: t("Session replay enabled"),
+          disabledMessage: t("Session replay disabled"),
+          disabled: sessionReplayDisabled,
+          badge: <Badge variant="success">Pro</Badge>,
+        } as ToggleConfig,
+      ]
       : []),
     ...(IS_CLOUD
       ? [
-          {
-            id: "webVitals",
-            label: t("Web Vitals"),
-            description: t("Track Core Web Vitals metrics (LCP, CLS, INP, FCP, TTFB)"),
-            value: toggleStates.webVitals,
-            key: "webVitals" as keyof SiteResponse,
-            enabledMessage: t("Web Vitals enabled"),
-            disabledMessage: t("Web Vitals disabled"),
-            disabled: standardFeaturesDisabled,
-            badge: <Badge variant="success">Standard</Badge>,
-          } as ToggleConfig,
-        ]
+        {
+          id: "webVitals",
+          label: t("Web Vitals"),
+          description: t("Track Core Web Vitals metrics (LCP, CLS, INP, FCP, TTFB)"),
+          value: toggleStates.webVitals,
+          key: "webVitals" as keyof SiteResponse,
+          enabledMessage: t("Web Vitals enabled"),
+          disabledMessage: t("Web Vitals disabled"),
+          disabled: standardFeaturesDisabled,
+          badge: <Badge variant="success">Standard</Badge>,
+        } as ToggleConfig,
+      ]
       : []),
     {
       id: "trackSpaNavigation",

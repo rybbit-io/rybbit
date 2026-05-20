@@ -41,7 +41,7 @@ export function MainSection() {
   };
 
   // Current period data
-  const { data, isFetching, error } = useGetOverviewBucketed({
+  const { data, isFetching, isPlaceholderData, error } = useGetOverviewBucketed({
     site,
     bucket,
   });
@@ -75,6 +75,7 @@ export function MainSection() {
   // overlay shows the full prior period as a backdrop.
   const timezone = getTimezone();
   const chartXMax = (() => {
+    if (isPlaceholderData) return undefined;
     if (time.mode !== "range") return undefined;
     const points = data?.data;
     if (!points?.length) return undefined;
@@ -104,7 +105,7 @@ export function MainSection() {
                   href={session.data ? "/" : "https://rybbit.com"}
                   className="opacity-75"
                 >
-                  <RybbitTextLogo width={80} height={0} />
+                  <RybbitTextLogo width={80} />
                 </Link>
               )}
             </div>

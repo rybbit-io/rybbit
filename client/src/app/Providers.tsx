@@ -13,13 +13,38 @@ import { Toaster } from "../components/ui/sonner";
 import { VersionCheck } from "../components/VersionCheck";
 import { TooltipProvider } from "../components/ui/tooltip";
 
+type EmbedTheme = "light" | "dark" | "system";
+
+function getEmbedTheme(): EmbedTheme | null {
+  if (typeof window === "undefined") return null;
+
+  const params = new URLSearchParams(window.location.search);
+  if (params.get("embed") !== "true") return null;
+
+  const theme = params.get("theme");
+  if (theme === "light" || theme === "dark" || theme === "system") {
+    return theme;
+  }
+
+  return "system";
+}
+
 export function Providers({ children }: { children: React.ReactNode }) {
   useStopImpersonation();
   const appEnv = useAppEnv();
+  const embedTheme = getEmbedTheme();
+  const themeStorageKey = embedTheme ? `embed-theme-${embedTheme}` : "theme";
 
   return (
     <NuqsAdapter>
-      <ThemeProvider attribute="class" enableSystem={true} disableTransitionOnChange>
+      <ThemeProvider
+        key={themeStorageKey}
+        attribute="class"
+        enableSystem={true}
+        defaultTheme={embedTheme ?? "system"}
+        storageKey={themeStorageKey}
+        disableTransitionOnChange
+      >
         <TooltipProvider>
           <QueryProvider>
             <OrganizationInitializer />
