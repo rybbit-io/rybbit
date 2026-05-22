@@ -124,7 +124,7 @@ function GoalMetricBarChart({
   const metricLabel = metric === "conversions" ? t("Conversions") : t("Conversion Rate");
 
   return (
-    <div className="h-8 w-24 shrink-0 flex items-end gap-px">
+    <div className="hidden md:flex h-8 w-48 shrink-0 items-end gap-px">
       {bars.map((bar, index) => {
         const height = max > 0 ? Math.max(10, (bar.value / max) * 100) : 10;
 
@@ -134,8 +134,8 @@ function GoalMetricBarChart({
               <div
                 className={
                   metric === "conversions"
-                    ? "flex-1 min-w-px rounded-t-sm bg-sky-400/70 dark:bg-sky-500/70"
-                    : "flex-1 min-w-px rounded-t-sm bg-emerald-400/70 dark:bg-emerald-500/70"
+                    ? "flex-1 min-w-px rounded-t-sm bg-dataviz/70 dark:bg-dataviz/70"
+                    : "flex-1 min-w-px rounded-t-sm bg-dataviz/70 dark:bg-dataviz/70"
                 }
                 style={{
                   height: `${height}%`,
@@ -205,7 +205,7 @@ export default function GoalCard({ goal, siteId, timeSeries, isLoadingTimeSeries
     <>
       <div className="rounded-lg bg-white dark:bg-neutral-900 border border-neutral-100 dark:border-neutral-800 overflow-hidden relative">
         <div
-          className="px-4 py-3 flex flex-col gap-3 md:flex-row md:items-center mb-1 cursor-pointer hover:bg-neutral-50 dark:hover:bg-neutral-800/50 transition-colors"
+          className="px-4 py-3 flex gap-3 flex-row items-center mb-1 cursor-pointer hover:bg-neutral-50 dark:hover:bg-neutral-800/50 transition-colors"
           onClick={toggleExpansion}
         >
           {/* Left section - Title and type */}
@@ -252,14 +252,14 @@ export default function GoalCard({ goal, siteId, timeSeries, isLoadingTimeSeries
           {/* Center section - Stats */}
           <div className="w-full md:flex-1 flex justify-start md:justify-center">
             <div className="grid w-full grid-cols-1 gap-3 sm:grid-cols-2 md:w-auto md:gap-4">
-              <div className="flex items-center justify-center gap-3">
+              <div className="flex items-center gap-3">
                 <GoalMetricBarChart data={timeSeries} metric="conversions" isLoading={isLoadingTimeSeries} />
                 <div className="min-w-[86px] text-left">
                   <div className="font-bold text-base">{goal.total_conversions.toLocaleString()}</div>
                   <div className="text-xs text-neutral-500 dark:text-neutral-400">{t("Conversions")}</div>
                 </div>
               </div>
-              <div className="flex items-center justify-center gap-3">
+              <div className="flex items-center gap-3">
                 <GoalMetricBarChart data={timeSeries} metric="conversion_rate" isLoading={isLoadingTimeSeries} />
                 <div className="min-w-[104px] text-left">
                   <div className="font-bold text-base">{(goal.conversion_rate * 100).toFixed(2)}%</div>
