@@ -18,6 +18,7 @@ export { createGoal } from "./goals/createGoal.js";
 export { deleteGoal } from "./goals/deleteGoal.js";
 export { getGoals } from "./goals/getGoals.js";
 export { getGoalSessions } from "./goals/getGoalSessions.js";
+export { getGoalTimeSeries } from "./goals/getGoalTimeSeries.js";
 export { updateGoal } from "./goals/updateGoal.js";
 
 // Performance

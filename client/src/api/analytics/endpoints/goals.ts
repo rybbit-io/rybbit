@@ -1,5 +1,12 @@
 import { authedFetch } from "../../utils";
-import { CommonApiParams, PaginationParams, SortParams, toQueryParams } from "./types";
+import {
+  BucketedParams,
+  CommonApiParams,
+  PaginationParams,
+  SortParams,
+  toBucketedQueryParams,
+  toQueryParams,
+} from "./types";
 import type { GetSessionsResponse } from "./sessions";
 
 // Goal type
@@ -39,10 +46,22 @@ export interface GoalsResponse {
   meta: PaginationMeta;
 }
 
+export interface GoalTimeSeriesPoint {
+  time: string;
+  goal_id: number;
+  conversions: number;
+  total_sessions: number;
+  conversion_rate: number;
+}
+
 export interface GoalsParams extends CommonApiParams, PaginationParams, SortParams {
   pageSize?: number;
   sort?: "goalId" | "name" | "goalType" | "createdAt";
   order?: "asc" | "desc";
+}
+
+export interface GoalTimeSeriesParams extends BucketedParams {
+  goalIds: number[];
 }
 
 export interface GoalSessionsParams extends CommonApiParams, PaginationParams {
@@ -73,10 +92,7 @@ export interface UpdateGoalParams extends CreateGoalParams {
  * Fetch goals with pagination
  * GET /api/goals/:site
  */
-export async function fetchGoals(
-  site: string | number,
-  params: GoalsParams
-): Promise<GoalsResponse> {
+export async function fetchGoals(site: string | number, params: GoalsParams): Promise<GoalsResponse> {
   const queryParams = {
     ...toQueryParams(params),
     page: params.page,
@@ -87,6 +103,23 @@ export async function fetchGoals(
 
   const response = await authedFetch<GoalsResponse>(`/sites/${site}/goals`, queryParams);
   return response;
+}
+
+/**
+ * Fetch bucketed conversion data for goals
+ * GET /api/goals/bucketed/:site
+ */
+export async function fetchGoalTimeSeries(
+  site: string | number,
+  params: GoalTimeSeriesParams
+): Promise<GoalTimeSeriesPoint[]> {
+  const queryParams = {
+    ...toBucketedQueryParams(params),
+    goal_ids: params.goalIds,
+  };
+
+  const response = await authedFetch<{ data: GoalTimeSeriesPoint[] }>(`/sites/${site}/goals/bucketed`, queryParams);
+  return response.data;
 }
 
 /**
@@ -118,14 +151,10 @@ export async function createGoal(
   site: string | number,
   params: CreateGoalParams
 ): Promise<{ success: boolean; goalId: number }> {
-  const response = await authedFetch<{ success: boolean; goalId: number }>(
-    `/sites/${site}/goals`,
-    undefined,
-    {
-      method: "POST",
-      data: params,
-    }
-  );
+  const response = await authedFetch<{ success: boolean; goalId: number }>(`/sites/${site}/goals`, undefined, {
+    method: "POST",
+    data: params,
+  });
   return response;
 }
 
@@ -152,16 +181,9 @@ export async function updateGoal(
  * Delete a goal
  * DELETE /api/goals/:goalId/:site
  */
-export async function deleteGoal(
-  site: string | number,
-  goalId: number
-): Promise<{ success: boolean }> {
-  const response = await authedFetch<{ success: boolean }>(
-    `/sites/${site}/goals/${goalId}`,
-    undefined,
-    {
-      method: "DELETE",
-    }
-  );
+export async function deleteGoal(site: string | number, goalId: number): Promise<{ success: boolean }> {
+  const response = await authedFetch<{ success: boolean }>(`/sites/${site}/goals/${goalId}`, undefined, {
+    method: "DELETE",
+  });
   return response;
 }

@@ -129,16 +129,39 @@ export function useInfiniteMetric({
   parameter,
   limit = 25,
   useFilters = true,
+  additionalFilters = [],
+  customFilters = [],
+  customTime,
 }: {
   parameter: FilterParameter;
   limit?: number;
   useFilters?: boolean;
+  additionalFilters?: Filter[];
+  customFilters?: Filter[];
+  customTime?: Time;
 }): UseInfiniteQueryResult<InfiniteData<PaginatedResponse>> {
   const { time, site, filters, timezone } = useStore();
-  const params = buildApiParams(time, { filters: useFilters ? filters : undefined });
+  const timeToUse = customTime ?? time;
+  const combinedFilters = useFilters
+    ? customFilters.length > 0
+      ? customFilters
+      : [...filters, ...additionalFilters]
+    : undefined;
+  const params = buildApiParams(timeToUse, { filters: combinedFilters });
 
   return useInfiniteQuery({
-    queryKey: [parameter, time, site, filters, limit, "infinite-metric", timezone],
+    queryKey: [
+      parameter,
+      customTime,
+      time,
+      site,
+      filters,
+      limit,
+      additionalFilters,
+      customFilters,
+      "infinite-metric",
+      timezone,
+    ],
     queryFn: async ({ pageParam = 1 }) => {
       return fetchMetric(site, {
         ...params,

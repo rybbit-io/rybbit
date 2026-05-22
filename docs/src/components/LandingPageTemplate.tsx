@@ -190,7 +190,7 @@ export function LandingPageTemplate({ title, subtitle, showEUFlag = true }: Land
         <div className="max-w-[1200px] mx-auto px-4">
           <div className="text-center mb-10 md:mb-12">
             <p className="text-neutral-500 dark:text-neutral-400 text-sm uppercase tracking-wider font-medium">
-              {t("Trusted by 4,000+ organizations worldwide")}
+              {t("Trusted by 10,000+ organizations worldwide")}
             </p>
           </div>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8 items-center justify-items-center">

@@ -43,6 +43,9 @@ export function useUpdateGoal() {
       queryClient.invalidateQueries({
         queryKey: ["goals", site],
       });
+      queryClient.invalidateQueries({
+        queryKey: ["goal-time-series", site],
+      });
     },
   });
 }
