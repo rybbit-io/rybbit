@@ -70,7 +70,8 @@ export default function SiteLayout({ children }: { children: React.ReactNode }) 
               !pathname.includes("/realtime") &&
               !pathname.includes("/replay") &&
               !pathname.includes("/globe") &&
-              !pathname.includes("/api-playground") && <Footer disabled={embed} />}
+              !pathname.includes("/api-playground") &&
+              !pathname.includes("/query") && <Footer disabled={embed} />}
           </div>
         </div>
       </div>

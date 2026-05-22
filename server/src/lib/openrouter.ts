@@ -5,7 +5,7 @@ interface OpenRouterResponse {
   choices: Array<{
     message: {
       role: string;
-      content: string;
+      content: string | null;
     };
     finish_reason: string;
   }>;
@@ -20,7 +20,7 @@ export async function callOpenRouter(
   }
 ): Promise<string> {
   const apiKey = process.env.OPENROUTER_API_KEY;
-  const model = options?.model || process.env.OPENROUTER_MODEL || "moonshotai/kimi-k2.5";
+  const model = options?.model || process.env.OPENROUTER_MODEL || "moonshotai/kimi-k2.6";
 
   if (!apiKey) {
     throw new Error("OPENROUTER_API_KEY is not configured");
@@ -53,5 +53,12 @@ export async function callOpenRouter(
     throw new Error("No response from OpenRouter");
   }
 
-  return data.choices[0].message.content;
+  const choice = data.choices[0];
+  const content = choice.message?.content;
+
+  if (typeof content !== "string" || content.trim().length === 0) {
+    throw new Error(`OpenRouter returned an empty response${choice.finish_reason ? ` (${choice.finish_reason})` : ""}`);
+  }
+
+  return content;
 }

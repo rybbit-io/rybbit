@@ -4,6 +4,7 @@ import {
   Bot,
   ChartColumnDecreasing,
   Code,
+  Database,
   File,
   Flag,
   FlaskConical,
@@ -124,6 +125,12 @@ function SidebarContent() {
             icon={<Code className="w-4 h-4" />}
           />
         </div>
+        <SidebarComponents.Item
+          label={t("Query")}
+          active={isActiveTab("query")}
+          href={getTabPath("query")}
+          icon={<Database className="w-4 h-4" />}
+        />
         <SidebarComponents.SectionHeader>{t("Product Analytics")}</SidebarComponents.SectionHeader>
         <div className="hidden md:block">
           {!isMobileSite && !subscription?.planName?.startsWith("appsumo") && !isSubscriptionLoading && (

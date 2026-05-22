@@ -25,6 +25,7 @@ import {
   getErrorBucketed,
   getErrorEvents,
   getErrorNames,
+  generateCustomQuery,
   getEventBucketed,
   getEventNames,
   getEventProperties,
@@ -60,6 +61,7 @@ import {
   getUserTraitValueUsers,
   getUserTraitValues,
   getUsers,
+  runCustomQuery,
   updateGoal,
 } from "./api/analytics/index.js";
 import { getConfig, getVersion } from "./api/getConfig.js";
@@ -313,6 +315,8 @@ async function analyticsRoutes(fastify: FastifyInstance) {
   fastify.get("/sites/:siteId/events/properties", publicSite, getEventProperties);
   fastify.get("/sites/:siteId/events/outbound", publicSite, getOutboundLinks);
   fastify.get("/org-event-count/:organizationId", orgMember, getOrgEventCount);
+  fastify.post("/organizations/:organizationId/analytics/query", orgMember, runCustomQuery);
+  fastify.post("/organizations/:organizationId/analytics/query/generate", orgMember, generateCustomQuery);
   fastify.get("/sites/:siteId/performance/overview", publicSite, getPerformanceOverview);
   fastify.get("/sites/:siteId/performance/time-series", publicSite, getPerformanceTimeSeries);
   fastify.get("/sites/:siteId/performance/by-dimension", publicSite, getPerformanceByDimension);

@@ -54,9 +54,11 @@ export default function JourneysPage() {
     <DisabledOverlay message="User Journeys" featurePath="journeys">
       <div className="container mx-auto p-2 md:p-4">
         <SubHeader availableFilters={JOURNEY_PAGE_FILTERS} />
-        <div className="flex items-center gap-6 my-2">
+        <div className="flex items-center gap-6 my-1">
           <div className="flex items-center gap-3 w-[180px]">
-            <span className="text-sm text-neutral-600 dark:text-neutral-300 whitespace-nowrap">{t("{steps} steps", { steps: String(steps) })}</span>
+            <span className="text-sm text-neutral-600 dark:text-neutral-300 whitespace-nowrap">
+              {t("{steps} steps", { steps: String(steps) })}
+            </span>
             <Slider
               value={[steps]}
               onValueChange={([value]) => setSteps(value)}
@@ -91,17 +93,19 @@ export default function JourneysPage() {
                 </div>
               </div>
             )}
-            <div className="flex flex-col gap-1 mb-4 mt-4">
+            <div className="flex flex-col gap-1 my-2">
               <div className="flex gap-1">
                 {Array.from({ length: steps }, (_, i) => (
                   <div
                     key={i}
-                    className="flex-1 h-10 bg-neutral-50 dark:bg-neutral-850 flex items-center text-neutral-900 dark:text-white text-sm relative px-3"
+                    className="flex-1 h-8 bg-neutral-50 dark:bg-neutral-850 flex items-center text-neutral-900 dark:text-white text-sm relative px-2"
                     style={{
                       clipPath: "polygon(0 0, 10px 50%, 0 100%, calc(100% - 10px) 100%, 100% 50%, calc(100% - 10px) 0)",
                     }}
                   >
-                    <span className="ml-2 whitespace-nowrap text-neutral-700 dark:text-neutral-200">{t("Step {number}", { number: String(i + 1) })}</span>
+                    <span className="ml-2 whitespace-nowrap text-neutral-700 dark:text-neutral-200">
+                      {t("Step {number}", { number: String(i + 1) })}
+                    </span>
                     <InputWithSuggestions
                       suggestions={pathSuggestions}
                       placeholder={t("Path filter")}
@@ -115,7 +119,7 @@ export default function JourneysPage() {
                         }
                         setStepFilters(newFilters);
                       }}
-                      className="h-7 bg-white dark:bg-neutral-900 border-neutral-100 dark:border-neutral-800 text-neutral-900 dark:text-white placeholder:text-neutral-400 dark:placeholder:text-neutral-500 ml-3 mr-3"
+                      className="h-6 bg-white dark:bg-neutral-900 border-neutral-100 dark:border-neutral-800 text-neutral-900 dark:text-white placeholder:text-neutral-400 dark:placeholder:text-neutral-500 ml-2 mr-2"
                     />
                   </div>
                 ))}

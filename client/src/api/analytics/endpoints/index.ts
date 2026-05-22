@@ -42,6 +42,16 @@ export type {
   SiteEventCountParams,
 } from "./events";
 
+// Custom query endpoints
+export { generateCustomQuery, runCustomQuery } from "./customQuery";
+export type {
+  CustomQueryGenerationMessage,
+  CustomQueryRow,
+  GenerateCustomQueryRequest,
+  GenerateCustomQueryResponse,
+  RunCustomQueryResponse,
+} from "./customQuery";
+
 // Errors endpoints
 export { fetchErrorNames, fetchErrorEvents, fetchErrorBucketed } from "./errors";
 export type {
