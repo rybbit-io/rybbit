@@ -16,12 +16,14 @@ export function useGenerateCustomQuery() {
       currentSiteId,
       currentQuery,
       history,
+      signal,
     }: {
       organizationId: string;
       prompt: string;
       currentSiteId?: number;
       currentQuery?: string;
       history?: CustomQueryGenerationMessage[];
-    }) => generateCustomQuery(organizationId, { prompt, currentSiteId, currentQuery, history }),
+      signal?: AbortSignal;
+    }) => generateCustomQuery(organizationId, { prompt, currentSiteId, currentQuery, history }, signal),
   });
 }

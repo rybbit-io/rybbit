@@ -1,10 +1,11 @@
 "use client";
 
+import { useVirtualizer } from "@tanstack/react-virtual";
 import { AlignLeft, Loader2, Play, Plus, Sparkles, X } from "lucide-react";
 import { useExtracted } from "next-intl";
 import { useTheme } from "next-themes";
 import { useParams } from "next/navigation";
-import { FormEvent, useMemo, useRef, useState } from "react";
+import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { Light as SyntaxHighlighter } from "react-syntax-highlighter";
 import sql from "react-syntax-highlighter/dist/esm/languages/hljs/sql";
 import { vs, vs2015 } from "react-syntax-highlighter/dist/esm/styles/hljs";
@@ -14,7 +15,7 @@ import { CustomQueryGenerationMessage, CustomQueryRow } from "../../../api/analy
 import { useGenerateCustomQuery, useRunCustomQuery } from "../../../api/analytics/hooks/useCustomQuery";
 import { Button } from "../../../components/ui/button";
 import { Input } from "../../../components/ui/input";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../../../components/ui/table";
+import { TableSortIndicator } from "../../../components/ui/table";
 import { toast } from "../../../components/ui/sonner";
 import { useSetPageTitle } from "../../../hooks/useSetPageTitle";
 import { cn } from "../../../lib/utils";
@@ -23,6 +24,11 @@ SyntaxHighlighter.registerLanguage("sql", sql);
 
 const DEFAULT_QUERY = "";
 
+type SortState = {
+  column: string;
+  direction: "asc" | "desc";
+} | null;
+
 type QueryTab = {
   id: string;
   name: string;
@@ -30,6 +36,7 @@ type QueryTab = {
   query: string;
   generationHistory: CustomQueryGenerationMessage[];
   rows: CustomQueryRow[];
+  sort: SortState;
   hasRun: boolean;
 };
 
@@ -41,6 +48,7 @@ function createQueryTab(index: number): QueryTab {
     query: DEFAULT_QUERY,
     generationHistory: [],
     rows: [],
+    sort: null,
     hasRun: false,
   };
 }
@@ -62,6 +70,62 @@ function getColumns(rows: CustomQueryRow[]) {
   return Array.from(columns);
 }
 
+function compareCellValues(left: unknown, right: unknown) {
+  const leftIsEmpty = left === null || left === undefined || left === "";
+  const rightIsEmpty = right === null || right === undefined || right === "";
+
+  if (leftIsEmpty && rightIsEmpty) return 0;
+  if (leftIsEmpty) return 1;
+  if (rightIsEmpty) return -1;
+
+  if (typeof left === "boolean" && typeof right === "boolean") {
+    return Number(left) - Number(right);
+  }
+
+  const leftNumber = typeof left === "number" ? left : typeof left === "string" ? Number(left) : Number.NaN;
+  const rightNumber = typeof right === "number" ? right : typeof right === "string" ? Number(right) : Number.NaN;
+
+  if (Number.isFinite(leftNumber) && Number.isFinite(rightNumber)) {
+    return leftNumber - rightNumber;
+  }
+
+  return formatCellValue(left).localeCompare(formatCellValue(right), undefined, {
+    numeric: true,
+    sensitivity: "base",
+  });
+}
+
+function sortRows(rows: CustomQueryRow[], sort: SortState) {
+  if (!sort) return rows;
+
+  return rows
+    .map((row, index) => ({ row, index }))
+    .sort((left, right) => {
+      const comparison = compareCellValues(left.row[sort.column], right.row[sort.column]);
+      if (comparison === 0) return left.index - right.index;
+      return sort.direction === "asc" ? comparison : -comparison;
+    })
+    .map(item => item.row);
+}
+
+function getNextSortState(currentSort: SortState, column: string): SortState {
+  if (!currentSort || currentSort.column !== column) {
+    return { column, direction: "asc" };
+  }
+
+  if (currentSort.direction === "asc") {
+    return { column, direction: "desc" };
+  }
+
+  return null;
+}
+
+function isAbortError(error: unknown) {
+  if (!(error instanceof Error)) return false;
+  const codedError = error as Error & { code?: string };
+  return error.name === "AbortError" || error.name === "CanceledError" || codedError.code === "ERR_CANCELED";
+}
+
 function formatQuery(query: string) {
   try {
     return formatSql(query, {
@@ -72,6 +136,111 @@ function formatQuery(query: string) {
   } catch {
     return query;
   }
+}
+
+function ResultsTable({
+  columns,
+  rows,
+  sort,
+  onSortChange,
+}: {
+  columns: string[];
+  rows: CustomQueryRow[];
+  sort: SortState;
+  onSortChange: (sort: SortState) => void;
+}) {
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const headerScrollRef = useRef<HTMLDivElement>(null);
+  const rowVirtualizer = useVirtualizer({
+    count: rows.length,
+    getScrollElement: () => scrollContainerRef.current,
+    estimateSize: () => 34,
+    overscan: 16,
+  });
+  const gridTemplateColumns = `repeat(${columns.length}, minmax(160px, 1fr))`;
+  const minWidth = `${columns.length * 180}px`;
+
+  const handleBodyScroll = (event: React.UIEvent<HTMLDivElement>) => {
+    if (headerScrollRef.current) {
+      headerScrollRef.current.scrollLeft = event.currentTarget.scrollLeft;
+    }
+  };
+
+  return (
+    <div className="flex h-[calc(100%-2.5rem)] min-h-0 flex-col">
+      <div
+        ref={headerScrollRef}
+        className="shrink-0 overflow-hidden border-b border-neutral-100 dark:border-neutral-800"
+      >
+        <div
+          role="row"
+          className="grid min-h-8 bg-neutral-50 text-xs font-medium text-neutral-500 dark:bg-neutral-850 dark:text-neutral-400"
+          style={{ gridTemplateColumns, minWidth }}
+        >
+          {columns.map(column => {
+            const sortDirection = sort?.column === column ? sort.direction : undefined;
+
+            return (
+              <div
+                key={column}
+                role="columnheader"
+                aria-sort={sortDirection === "asc" ? "ascending" : sortDirection === "desc" ? "descending" : "none"}
+                className="min-w-0 border-r border-neutral-100 last:border-r-0 dark:border-neutral-800"
+              >
+                <button
+                  type="button"
+                  onClick={() => {
+                    onSortChange(getNextSortState(sort, column));
+                    scrollContainerRef.current?.scrollTo({ top: 0 });
+                  }}
+                  className="flex h-8 w-full items-center justify-between gap-2 px-2 text-left hover:bg-neutral-100 dark:hover:bg-neutral-800"
+                >
+                  <span className="truncate">{column}</span>
+                  <TableSortIndicator sortDirection={sortDirection} className="shrink-0" />
+                </button>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      <div ref={scrollContainerRef} className="min-h-0 flex-1 overflow-auto" onScroll={handleBodyScroll}>
+        <div
+          className="relative bg-white dark:bg-neutral-900"
+          style={{ height: rowVirtualizer.getTotalSize(), minWidth }}
+        >
+          {rowVirtualizer.getVirtualItems().map(virtualRow => {
+            const row = rows[virtualRow.index];
+            if (!row) return null;
+
+            return (
+              <div
+                key={virtualRow.key}
+                role="row"
+                className="absolute left-0 grid min-h-[34px] w-full border-b border-neutral-100 bg-white text-xs transition-colors hover:bg-neutral-0 dark:border-neutral-800 dark:bg-neutral-900 dark:hover:bg-neutral-800/20"
+                style={{
+                  gridTemplateColumns,
+                  minWidth,
+                  transform: `translateY(${virtualRow.start}px)`,
+                }}
+              >
+                {columns.map(column => (
+                  <div
+                    key={column}
+                    role="cell"
+                    className="min-w-0 truncate whitespace-nowrap border-r border-neutral-100 px-2 py-2 font-mono last:border-r-0 dark:border-neutral-800"
+                    title={formatCellValue(row[column])}
+                  >
+                    {formatCellValue(row[column])}
+                  </div>
+                ))}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
 }
 
 function QueryEditor({
@@ -215,15 +384,51 @@ export default function QueryPage() {
 
   const [tabs, setTabs] = useState<QueryTab[]>(() => [createQueryTab(1)]);
   const [activeTabId, setActiveTabId] = useState(() => tabs[0]?.id);
+  const [runningTabIds, setRunningTabIds] = useState<Set<string>>(() => new Set());
+  const [generatingTabIds, setGeneratingTabIds] = useState<Set<string>>(() => new Set());
+  const generateAbortControllersRef = useRef<Map<string, AbortController>>(new Map());
 
   const runMutation = useRunCustomQuery();
   const generateMutation = useGenerateCustomQuery();
   const activeTab = tabs.find(tab => tab.id === activeTabId) ?? tabs[0];
   const columns = useMemo(() => getColumns(activeTab?.rows ?? []), [activeTab?.rows]);
+  const activeSort = activeTab?.sort && columns.includes(activeTab.sort.column) ? activeTab.sort : null;
+  const sortedRows = useMemo(() => sortRows(activeTab?.rows ?? [], activeSort), [activeTab?.rows, activeSort]);
+  const activeTabIsRunning = activeTab ? runningTabIds.has(activeTab.id) : false;
+  const activeTabIsGenerating = activeTab ? generatingTabIds.has(activeTab.id) : false;
+  const activeTabIsBusy = activeTabIsRunning || activeTabIsGenerating;
+
+  const updateTab = (tabId: string, updates: Partial<QueryTab>) => {
+    setTabs(currentTabs => currentTabs.map(tab => (tab.id === tabId ? { ...tab, ...updates } : tab)));
+  };
 
   const updateActiveTab = (updates: Partial<QueryTab>) => {
     if (!activeTab) return;
-    setTabs(currentTabs => currentTabs.map(tab => (tab.id === activeTab.id ? { ...tab, ...updates } : tab)));
+    updateTab(activeTab.id, updates);
+  };
+
+  const setTabRunning = (tabId: string, isRunning: boolean) => {
+    setRunningTabIds(currentIds => {
+      const nextIds = new Set(currentIds);
+      if (isRunning) {
+        nextIds.add(tabId);
+      } else {
+        nextIds.delete(tabId);
+      }
+      return nextIds;
+    });
+  };
+
+  const setTabGenerating = (tabId: string, isGenerating: boolean) => {
+    setGeneratingTabIds(currentIds => {
+      const nextIds = new Set(currentIds);
+      if (isGenerating) {
+        nextIds.add(tabId);
+      } else {
+        nextIds.delete(tabId);
+      }
+      return nextIds;
+    });
   };
 
   const addTab = () => {
@@ -235,6 +440,11 @@ export default function QueryPage() {
   };
 
   const closeTab = (tabId: string) => {
+    generateAbortControllersRef.current.get(tabId)?.abort();
+    generateAbortControllersRef.current.delete(tabId);
+    setTabGenerating(tabId, false);
+    setTabRunning(tabId, false);
+
     setTabs(currentTabs => {
       if (currentTabs.length === 1) return currentTabs;
       const tabIndex = currentTabs.findIndex(tab => tab.id === tabId);
@@ -246,47 +456,78 @@ export default function QueryPage() {
     });
   };
 
+  useEffect(() => {
+    return () => {
+      generateAbortControllersRef.current.forEach(controller => controller.abort());
+      generateAbortControllersRef.current.clear();
+    };
+  }, []);
+
+  const handleAbortGenerate = () => {
+    if (!activeTab) return;
+    generateAbortControllersRef.current.get(activeTab.id)?.abort();
+    generateAbortControllersRef.current.delete(activeTab.id);
+    setTabGenerating(activeTab.id, false);
+  };
+
   const handleGenerate = async (event: FormEvent) => {
     event.preventDefault();
     const prompt = activeTab?.prompt.trim();
     if (!organizationId || !activeTab || !prompt) return;
+
+    const tab = activeTab;
+    generateAbortControllersRef.current.get(tab.id)?.abort();
+    const abortController = new AbortController();
+    generateAbortControllersRef.current.set(tab.id, abortController);
+    setTabGenerating(tab.id, true);
 
     try {
       const result = await generateMutation.mutateAsync({
         organizationId,
         prompt,
         currentSiteId: Number.isFinite(siteId) ? siteId : undefined,
-        currentQuery: activeTab.query,
-        history: activeTab.generationHistory,
+        currentQuery: tab.query,
+        history: tab.generationHistory,
+        signal: abortController.signal,
       });
       const formattedQuery = formatQuery(result.query);
       const newGenerationMessages: CustomQueryGenerationMessage[] = [
         { role: "user", content: prompt },
         { role: "assistant", content: formattedQuery },
       ];
-      const generationHistory = [...activeTab.generationHistory, ...newGenerationMessages].slice(-12);
+      const generationHistory = [...tab.generationHistory, ...newGenerationMessages].slice(-12);
 
-      updateActiveTab({
+      updateTab(tab.id, {
         query: formattedQuery,
         generationHistory,
       });
     } catch (error) {
+      if (isAbortError(error)) return;
       toast.error(error instanceof Error ? error.message : t("Failed to generate query"));
+    } finally {
+      if (generateAbortControllersRef.current.get(tab.id) === abortController) {
+        generateAbortControllersRef.current.delete(tab.id);
+      }
+      setTabGenerating(tab.id, false);
     }
   };
 
   const handleRun = async () => {
     if (!organizationId || !activeTab?.query.trim()) return;
 
+    const tab = activeTab;
+    setTabRunning(tab.id, true);
+
     try {
-      const result = await runMutation.mutateAsync({ organizationId, query: activeTab.query });
-      updateActiveTab({ rows: result.data, hasRun: true });
+      const result = await runMutation.mutateAsync({ organizationId, query: tab.query });
+      updateTab(tab.id, { rows: result.data, hasRun: true });
     } catch (error) {
       toast.error(error instanceof Error ? error.message : t("Failed to run query"));
+    } finally {
+      setTabRunning(tab.id, false);
     }
   };
 
-  const isBusy = runMutation.isPending || generateMutation.isPending;
   const canUseQuery = !!organizationId && !isLoadingSite;
 
   return (
@@ -294,6 +535,7 @@ export default function QueryPage() {
       <div className="flex items-center gap-1 overflow-x-auto rounded-lg border border-neutral-150 bg-neutral-50 p-1 dark:border-neutral-850 dark:bg-neutral-950">
         {tabs.map((tab, index) => {
           const isActive = tab.id === activeTab?.id;
+          const tabIsBusy = runningTabIds.has(tab.id) || generatingTabIds.has(tab.id);
           return (
             <button
               key={tab.id}
@@ -306,7 +548,10 @@ export default function QueryPage() {
                   : "border-transparent text-neutral-600 hover:bg-white/70 hover:text-neutral-900 dark:text-neutral-400 dark:hover:bg-neutral-900/70 dark:hover:text-neutral-100"
               )}
             >
-              <span className="truncate">{tab.name || `Query ${index + 1}`}</span>
+              <span className="flex min-w-0 items-center gap-1.5">
+                {tabIsBusy && <Loader2 className="h-3 w-3 shrink-0 animate-spin text-neutral-400" />}
+                <span className="truncate">{tab.name || `Query ${index + 1}`}</span>
+              </span>
               {tabs.length > 1 && (
                 <span
                   role="button"
@@ -341,19 +586,29 @@ export default function QueryPage() {
           value={activeTab?.prompt ?? ""}
           onChange={event => updateActiveTab({ prompt: event.target.value })}
           placeholder={t("What do you want to query?")}
-          disabled={!canUseQuery || isBusy}
+          disabled={!canUseQuery || activeTabIsBusy}
           className="md:flex-1"
         />
-        <Button type="submit" disabled={!canUseQuery || !activeTab?.prompt.trim() || isBusy} className="md:w-auto">
-          {generateMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+        <Button
+          type="submit"
+          disabled={!canUseQuery || !activeTab?.prompt.trim() || activeTabIsBusy}
+          className="md:w-auto"
+        >
+          {activeTabIsGenerating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
           {t("Generate")}
         </Button>
+        {activeTabIsGenerating && (
+          <Button type="button" variant="outline" onClick={handleAbortGenerate} className="md:w-auto">
+            <X className="h-4 w-4" />
+            {t("Cancel")}
+          </Button>
+        )}
       </form>
 
       <QueryEditor
         value={activeTab?.query ?? ""}
-        disabled={!canUseQuery || isBusy}
-        isRunning={runMutation.isPending}
+        disabled={!canUseQuery || activeTabIsBusy}
+        isRunning={activeTabIsRunning}
         onChange={query => updateActiveTab({ query })}
         onFormat={() => updateActiveTab({ query: formatQuery(activeTab?.query ?? "") })}
         onRun={handleRun}
@@ -368,30 +623,12 @@ export default function QueryPage() {
         </div>
 
         {columns.length > 0 ? (
-          <div className="h-[calc(100%-2.5rem)] overflow-auto">
-            <Table>
-              <TableHeader className="sticky top-0 z-10">
-                <TableRow>
-                  {columns.map(column => (
-                    <TableHead key={column} className="whitespace-nowrap">
-                      {column}
-                    </TableHead>
-                  ))}
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {activeTab?.rows.map((row, rowIndex) => (
-                  <TableRow key={rowIndex}>
-                    {columns.map(column => (
-                      <TableCell key={column} className="max-w-[320px] truncate whitespace-nowrap font-mono text-xs">
-                        {formatCellValue(row[column])}
-                      </TableCell>
-                    ))}
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
+          <ResultsTable
+            columns={columns}
+            rows={sortedRows}
+            sort={activeSort}
+            onSortChange={sort => updateActiveTab({ sort })}
+          />
         ) : (
           <div className="flex h-[calc(100%-2.5rem)] items-center justify-center text-sm text-neutral-500 dark:text-neutral-400">
             {activeTab?.hasRun ? t("No rows returned") : t("Run a query")}

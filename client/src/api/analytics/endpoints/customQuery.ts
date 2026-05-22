@@ -29,23 +29,20 @@ export type GenerateCustomQueryRequest = {
 };
 
 export function runCustomQuery(organizationId: string, query: string) {
-  return authedFetch<RunCustomQueryResponse>(
-    `/organizations/${organizationId}/analytics/query`,
-    undefined,
-    {
-      method: "POST",
-      data: { query },
-    }
-  );
+  return authedFetch<RunCustomQueryResponse>(`/organizations/${organizationId}/analytics/query`, undefined, {
+    method: "POST",
+    data: { query },
+  });
 }
 
-export function generateCustomQuery(organizationId: string, data: GenerateCustomQueryRequest) {
+export function generateCustomQuery(organizationId: string, data: GenerateCustomQueryRequest, signal?: AbortSignal) {
   return authedFetch<GenerateCustomQueryResponse>(
     `/organizations/${organizationId}/analytics/query/generate`,
     undefined,
     {
       method: "POST",
       data,
+      signal,
     }
   );
 }
