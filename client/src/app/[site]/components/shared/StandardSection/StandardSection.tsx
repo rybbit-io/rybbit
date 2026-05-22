@@ -19,6 +19,27 @@ import { Time } from "../../../../../components/DateSelector/types";
 
 const MAX_ITEMS_TO_DISPLAY = 10;
 
+export type StandardSectionBaseProps = {
+  title: string;
+  getKey: (item: MetricResponse) => string;
+  getLabel: (item: MetricResponse) => ReactNode;
+  getValue: (item: MetricResponse) => string;
+  getFilterLabel?: (item: MetricResponse) => string;
+  getLink?: (item: MetricResponse) => string;
+  countLabel?: string;
+  filterParameter: FilterParameter;
+  hasSubrow?: boolean;
+  getSubrowLabel?: (item: MetricResponse) => ReactNode;
+  customFilters?: Filter[];
+  customTime?: Time;
+};
+
+type StandardSectionProps = StandardSectionBaseProps & {
+  expanded?: boolean;
+  close?: () => void;
+  renderDialog?: boolean;
+};
+
 export function StandardSection({
   title,
   getKey,
@@ -34,22 +55,8 @@ export function StandardSection({
   getSubrowLabel,
   customFilters,
   customTime,
-}: {
-  title: string;
-  getKey: (item: MetricResponse) => string;
-  getLabel: (item: MetricResponse) => ReactNode;
-  getValue: (item: MetricResponse) => string;
-  getFilterLabel?: (item: MetricResponse) => string;
-  getLink?: (item: MetricResponse) => string;
-  countLabel?: string;
-  filterParameter: FilterParameter;
-  expanded: boolean;
-  close: () => void;
-  hasSubrow?: boolean;
-  getSubrowLabel?: (item: MetricResponse) => ReactNode;
-  customFilters?: Filter[];
-  customTime?: Time;
-}) {
+  renderDialog = true,
+}: StandardSectionProps) {
   const t = useExtracted();
   const { data, isLoading, isFetching, error, refetch } = usePaginatedMetric({
     parameter: filterParameter,
@@ -80,7 +87,11 @@ export function StandardSection({
               </TooltipTrigger>
               <TooltipContent>
                 {t("Geolocation by")}{" "}
-                <Link href="https://www.maxmind.com/" target="_blank" className="text-emerald-400 hover:text-emerald-300">
+                <Link
+                  href="https://www.maxmind.com/"
+                  target="_blank"
+                  className="text-emerald-400 hover:text-emerald-300"
+                >
                   Maxmind
                 </Link>
               </TooltipContent>
@@ -122,11 +133,10 @@ export function StandardSection({
               )}
             </>
           )}
-          {!isLoading && !error && itemsForDisplay?.length ? (
+          {renderDialog && close && !isLoading && !error && itemsForDisplay?.length ? (
             <div className="flex flex-row gap-2 justify-between items-center">
               <StandardSectionDialog
                 title={title}
-                ratio={ratio}
                 getKey={getKey}
                 getLabel={getLabel}
                 getValue={getValue}
@@ -136,6 +146,8 @@ export function StandardSection({
                 filterParameter={filterParameter}
                 expanded={expanded}
                 close={close}
+                customFilters={customFilters}
+                customTime={customTime}
               />
             </div>
           ) : null}

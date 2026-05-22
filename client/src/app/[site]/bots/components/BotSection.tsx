@@ -133,27 +133,7 @@ function BotRows({
   );
 }
 
-export function BotSection({
-  title,
-  dimension,
-  getKey,
-  getLabel,
-  getValue,
-  getLink,
-  expanded,
-  close,
-  filterable = true,
-}: {
-  title: string;
-  dimension: BotDimensionKey;
-  getKey: (item: BotDimensionItem) => string;
-  getLabel: (item: BotDimensionItem) => ReactNode;
-  getValue: (item: BotDimensionItem) => string;
-  getLink?: (item: BotDimensionItem) => string | undefined;
-  expanded: boolean;
-  close: () => void;
-  filterable?: boolean;
-}) {
+function useBotSectionData(dimension: BotDimensionKey) {
   const { site } = useStore();
   const { data, isLoading, isFetching, error, refetch } = useGetBotDimension({
     site,
@@ -169,6 +149,90 @@ export function BotSection({
       hostname: item.hostname == null ? undefined : String(item.hostname),
     })) ?? [];
   const ratio = items[0]?.percentage ? 100 / items[0].percentage : 1;
+
+  return { items, ratio, isLoading, isFetching, error, refetch };
+}
+
+function EmptyBotSection() {
+  return (
+    <div className="text-neutral-600 dark:text-neutral-300 w-full text-center mt-6 flex flex-row gap-2 items-center justify-center">
+      <Info className="w-5 h-5" />
+      No Data
+    </div>
+  );
+}
+
+export type BotSectionBaseProps = {
+  title: string;
+  dimension: BotDimensionKey;
+  getKey: (item: BotDimensionItem) => string;
+  getLabel: (item: BotDimensionItem) => ReactNode;
+  getValue: (item: BotDimensionItem) => string;
+  getLink?: (item: BotDimensionItem) => string | undefined;
+  filterable?: boolean;
+};
+
+type BotSectionProps = BotSectionBaseProps & {
+  expanded?: boolean;
+  close?: () => void;
+  renderDialog?: boolean;
+};
+
+export function BotSectionDialogBody({
+  dimension,
+  getKey,
+  getLabel,
+  getValue,
+  getLink,
+  filterable = true,
+}: BotSectionBaseProps) {
+  const { items, ratio, isLoading, error, refetch } = useBotSectionData(dimension);
+  const filterParameter = filterable ? (dimension as FilterParameter) : undefined;
+
+  if (isLoading) {
+    return (
+      <div className="flex flex-col gap-2">
+        <StandardSkeleton />
+      </div>
+    );
+  }
+
+  if (error) {
+    return <ErrorState title="Failed to load data" message={error.message} refetch={refetch} />;
+  }
+
+  if (!items.length) {
+    return <EmptyBotSection />;
+  }
+
+  return (
+    <ScrollArea className="h-full min-h-0 pr-3">
+      <BotRows
+        items={items}
+        ratio={ratio}
+        filterParameter={filterParameter}
+        getKey={getKey}
+        getLabel={getLabel}
+        getValue={getValue}
+        getLink={getLink}
+      />
+    </ScrollArea>
+  );
+}
+
+export function BotSection({
+  title,
+  dimension,
+  getKey,
+  getLabel,
+  getValue,
+  getLink,
+  expanded,
+  close,
+  filterable = true,
+  renderDialog = true,
+}: BotSectionProps) {
+  const { items, ratio, isLoading, isFetching, error, refetch } = useBotSectionData(dimension);
   const filterParameter = filterable ? (dimension as FilterParameter) : undefined;
 
   const content = (
@@ -204,30 +268,29 @@ export function BotSection({
         ) : items.length ? (
           content
         ) : (
-          <div className="text-neutral-600 dark:text-neutral-300 w-full text-center mt-6 flex flex-row gap-2 items-center justify-center">
-            <Info className="w-5 h-5" />
-            No Data
-          </div>
+          <EmptyBotSection />
         )}
       </ScrollArea>
-      <Dialog open={expanded} onOpenChange={open => !open && close()}>
-        <DialogContent className="max-w-3xl">
-          <DialogHeader>
-            <DialogTitle>{title}</DialogTitle>
-          </DialogHeader>
-          <ScrollArea className="h-[70vh] pr-3">
-            <BotRows
-              items={items}
-              ratio={ratio}
-              filterParameter={filterParameter}
-              getKey={getKey}
-              getLabel={getLabel}
-              getValue={getValue}
-              getLink={getLink}
-            />
-          </ScrollArea>
-        </DialogContent>
-      </Dialog>
+      {renderDialog && close && (
+        <Dialog open={expanded} onOpenChange={open => !open && close()}>
+          <DialogContent className="max-w-3xl h-[calc(100vh-2rem)] flex flex-col">
+            <DialogHeader>
+              <DialogTitle>{title}</DialogTitle>
+            </DialogHeader>
+            <div className="min-h-0 flex-1">
+              <BotSectionDialogBody
+                title={title}
+                dimension={dimension}
+                getKey={getKey}
+                getLabel={getLabel}
+                getValue={getValue}
+                getLink={getLink}
+                filterable={filterable}
+              />
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
     </>
   );
 }
