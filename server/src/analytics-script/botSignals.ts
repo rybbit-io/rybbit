@@ -140,17 +140,30 @@ function calculateBotSignals(): BotSignalResult {
     // 7. WebGL renderer check — headless/containerized Chrome often uses Google SwiftShader
     try {
       const canvas = document.createElement("canvas");
-      const gl = canvas.getContext("webgl") || canvas.getContext("experimental-webgl");
+      const gl = (canvas.getContext("webgl") || canvas.getContext("experimental-webgl")) as WebGLRenderingContext | null;
       if (gl) {
-        const debugInfo = (gl as WebGLRenderingContext).getExtension("WEBGL_debug_renderer_info");
-        if (debugInfo) {
-          const renderer = (gl as WebGLRenderingContext).getParameter(debugInfo.UNMASKED_RENDERER_WEBGL);
-          if (typeof renderer === "string" && renderer.includes("SwiftShader")) {
-            addSignal(CLIENT_BOT_SIGNAL_MASKS.swiftShader, 1);
+        const rendererParts: string[] = [];
+        const rendererRaw = gl.getParameter(gl.RENDERER);
+        if (typeof rendererRaw === "string") {
+          rendererParts.push(rendererRaw);
+        }
+        try {
+          type WebGlDebugRendererInfo = {UNMASKED_RENDERER_WEBGL:number};
+          const debugInfo = gl.getExtension("WEBGL_debug_renderer_info") as WebGlDebugRendererInfo | null;
+          if (debugInfo) {
+            const unmaskedRaw = gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL);
+            if (typeof unmaskedRaw === "string") {
+              rendererParts.push(unmaskedRaw);
+            }
           }
+        } catch {
+          // Firefox Privacy
+        }
+        if (rendererParts.join(" ").toLowerCase().includes("swiftshader")) {
+          addSignal(CLIENT_BOT_SIGNAL_MASKS.swiftShader, 1);
         }
       }
-    } catch (e) {
+    } catch {
       // WebGL not available — not a bot signal by itself
     }
 
