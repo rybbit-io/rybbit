@@ -31,6 +31,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "../../../../components/
 import { formatChartDateTime } from "../../../../lib/dateTimeUtils";
 import { getTimezone, useStore } from "../../../../lib/store";
 import GoalFormModal from "./GoalFormModal";
+import { GoalBarChartSkeleton } from "./skeleton";
 
 interface GoalCardProps {
   goal: Goal;
@@ -105,19 +106,11 @@ function GoalMetricBarChart({
   }, [data, metric]);
 
   if (isLoading) {
-    return (
-      <div className="h-8 w-24 shrink-0 flex items-center justify-center animate-pulse" aria-hidden="true">
-        <div className="h-4 w-full rounded bg-neutral-200 dark:bg-neutral-800" />
-      </div>
-    );
+    return <GoalBarChartSkeleton />;
   }
 
   if (bars.length === 0) {
-    return (
-      <div className="h-8 w-24 shrink-0 flex items-end" aria-hidden="true">
-        <div className="h-px w-full bg-neutral-200 dark:bg-neutral-800" />
-      </div>
-    );
+    return <GoalBarChartSkeleton />;
   }
 
   const max = Math.max(...bars.map(bar => bar.value));

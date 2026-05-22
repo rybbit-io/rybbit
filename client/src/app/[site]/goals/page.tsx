@@ -18,6 +18,7 @@ import GoalsList from "./components/GoalsList";
 import { Target } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { ExternalLink } from "../../../components/ExternalLink";
+import { GoalBarChartSkeleton } from "./components/skeleton";
 
 // Goal card skeleton component
 const GoalCardSkeleton = () => (
@@ -37,16 +38,20 @@ const GoalCardSkeleton = () => (
 
       {/* Center section skeleton */}
       <div className="w-full md:flex-1 flex justify-start md:justify-center">
-        <div className="grid w-full grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-2 md:gap-4">
-          <div className="text-center">
-            <div className="h-7 bg-neutral-200 dark:bg-neutral-800 rounded w-20 mx-auto mb-1"></div>
-            <div className="h-5 bg-neutral-200 dark:bg-neutral-800 rounded w-12 mx-auto"></div>
-            <div className="h-3 bg-neutral-200 dark:bg-neutral-800 rounded w-16 mx-auto mt-1"></div>
+        <div className="grid w-full grid-cols-1 gap-3 sm:grid-cols-2 md:w-auto md:gap-4">
+          <div className="flex items-center gap-3">
+            <GoalBarChartSkeleton />
+            <div className="min-w-[86px] text-left">
+              <div className="h-5 bg-neutral-200 dark:bg-neutral-800 rounded w-14"></div>
+              <div className="h-3 bg-neutral-200 dark:bg-neutral-800 rounded w-20 mt-1"></div>
+            </div>
           </div>
-          <div className="text-center">
-            <div className="h-7 bg-neutral-200 dark:bg-neutral-800 rounded w-20 mx-auto mb-1"></div>
-            <div className="h-5 bg-neutral-200 dark:bg-neutral-800 rounded w-12 mx-auto"></div>
-            <div className="h-3 bg-neutral-200 dark:bg-neutral-800 rounded w-16 mx-auto mt-1"></div>
+          <div className="flex items-center gap-3">
+            <GoalBarChartSkeleton />
+            <div className="min-w-[104px] text-left">
+              <div className="h-5 bg-neutral-200 dark:bg-neutral-800 rounded w-16"></div>
+              <div className="h-3 bg-neutral-200 dark:bg-neutral-800 rounded w-24 mt-1"></div>
+            </div>
           </div>
         </div>
       </div>
