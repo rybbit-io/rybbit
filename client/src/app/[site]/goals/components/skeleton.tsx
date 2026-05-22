@@ -1,5 +1,5 @@
 export const GoalBarChartSkeleton = () => (
-  <div className="h-8 w-48 shrink-0 flex items-end gap-px">
+  <div className="hidden md:flex h-8 w-48 shrink-0 items-end gap-px">
     {[12, 20, 14, 26, 18, 30, 22, 16, 28, 24, 18, 32].map((height, index) => (
       <div
         key={`${height}-${index}`}

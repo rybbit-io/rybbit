@@ -23,7 +23,7 @@ import { GoalBarChartSkeleton } from "./components/skeleton";
 // Goal card skeleton component
 const GoalCardSkeleton = () => (
   <div className="rounded-lg bg-white dark:bg-neutral-900 border border-neutral-100 dark:border-neutral-800 overflow-hidden relative animate-pulse">
-    <div className="px-4 py-3 flex flex-col gap-3 md:flex-row md:items-center mb-1">
+    <div className="px-4 py-3 flex gap-3 flex-row items-center mb-1">
       {/* Left section skeleton */}
       <div className="w-full min-w-0 md:flex-1 md:pr-4">
         <div className="flex items-center gap-2">
