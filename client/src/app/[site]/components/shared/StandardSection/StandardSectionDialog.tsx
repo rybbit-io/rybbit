@@ -22,6 +22,7 @@ import { useExtracted } from "next-intl";
 import { ReactNode, useEffect, useMemo, useState } from "react";
 import { useInfiniteMetric } from "../../../../../api/analytics/hooks/useGetMetric";
 import { MetricResponse } from "../../../../../api/analytics/endpoints";
+import { ErrorState } from "../../../../../components/ErrorState";
 import { addFilter } from "../../../../../lib/store";
 import { cn, formatSecondsAsMinutesAndSeconds } from "../../../../../lib/utils";
 import { Time } from "../../../../../components/DateSelector/types";
@@ -58,12 +59,13 @@ export function StandardSectionDialogBody({
   customTime,
 }: StandardSectionDialogBodyProps) {
   const t = useExtracted();
-  const { data, isLoading, fetchNextPage, hasNextPage, isFetchingNextPage } = useInfiniteMetric({
-    parameter: filterParameter,
-    limit: 100,
-    customFilters,
-    customTime,
-  });
+  const { data, isLoading, isError, error, refetch, fetchNextPage, hasNextPage, isFetchingNextPage } =
+    useInfiniteMetric({
+      parameter: filterParameter,
+      limit: 100,
+      customFilters,
+      customTime,
+    });
 
   const [searchTerm, setSearchTerm] = useState("");
   const debouncedSearchTerm = useDebounce(searchTerm, 200);
@@ -203,6 +205,16 @@ export function StandardSectionDialogBody({
     manualSorting: false,
     sortDescFirst: true,
   });
+
+  if (isError) {
+    return (
+      <ErrorState
+        title={t("Failed to load data")}
+        message={error?.message || t("An error occurred while fetching data")}
+        refetch={refetch}
+      />
+    );
+  }
 
   if (isLoading || !data) {
     return (

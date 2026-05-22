@@ -173,7 +173,7 @@ export default function GoalsPage() {
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
             />
-            <BucketSelection />
+            <BucketSelection size="default" />
           </div>
           <CreateGoalButton siteId={Number(site)} />
         </div>
