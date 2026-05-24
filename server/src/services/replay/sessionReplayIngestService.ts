@@ -117,10 +117,95 @@ export class SessionReplayIngestService {
       });
     }
 
+    // Extract and store click events for heatmap functionality
+    const clicksToInsert = this.extractClickEvents(
+      events,
+      siteId,
+      sessionId,
+      metadata?.viewportWidth || 0,
+      metadata?.viewportHeight || 0
+    );
+
+    if (clicksToInsert.length > 0) {
+      await clickhouse.insert({
+        table: "session_replay_clicks",
+        values: clicksToInsert,
+        format: "JSONEachRow",
+      });
+    }
+
     // Update or insert metadata
     if (metadata) {
       await this.updateSessionMetadata(siteId, sessionId, userId, identifiedUserId, metadata, requestMeta);
     }
+  }
+
+  /**
+   * Extract click events from rrweb events for heatmap storage
+   * rrweb IncrementalSnapshot (type 3) with source 2 (MouseInteraction) and type 2 (Click) or 4 (DblClick)
+   */
+  private extractClickEvents(
+    events: Array<{ type: number | string; data: any; timestamp: number }>,
+    siteId: number,
+    sessionId: string,
+    viewportWidth: number,
+    viewportHeight: number
+  ): Array<{
+    site_id: number;
+    session_id: string;
+    timestamp: number;
+    x: number;
+    y: number;
+    viewport_width: number;
+    viewport_height: number;
+    click_type: number;
+  }> {
+    const clicks: Array<{
+      site_id: number;
+      session_id: string;
+      timestamp: number;
+      x: number;
+      y: number;
+      viewport_width: number;
+      viewport_height: number;
+      click_type: number;
+    }> = [];
+
+    for (const event of events) {
+      // Check if this is an IncrementalSnapshot (type 3)
+      if (event.type !== 3 && event.type !== "3") continue;
+
+      const data = event.data;
+      if (!data) continue;
+
+      // Check if this is a MouseInteraction (source 2)
+      if (data.source !== 2) continue;
+
+      // Check if this is a Click (type 2) or DblClick (type 4)
+      // rrweb MouseInteractions enum: MouseUp=0, MouseDown=1, Click=2, ContextMenu=3, DblClick=4, Focus=5, Blur=6, TouchStart=7, etc.
+      if (data.type !== 2 && data.type !== 4) continue;
+
+      // Extract coordinates
+      const x = data.x;
+      const y = data.y;
+
+      // Validate coordinates
+      if (typeof x !== "number" || typeof y !== "number") continue;
+      if (x < 0 || y < 0) continue;
+
+      clicks.push({
+        site_id: siteId,
+        session_id: sessionId,
+        timestamp: event.timestamp,
+        x,
+        y,
+        viewport_width: viewportWidth,
+        viewport_height: viewportHeight,
+        click_type: data.type,
+      });
+    }
+
+    return clicks;
   }
 
   private async updateSessionMetadata(

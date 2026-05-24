@@ -174,3 +174,16 @@ export type {
 // Export endpoints
 export { exportPdfReport } from "./export";
 export type { ExportPdfParams } from "./export";
+
+// Heatmap endpoints
+export { fetchClickHeatmap, fetchHeatmapPages } from "./heatmap";
+export type {
+  HeatmapDataPoint,
+  ClickHeatmapResult,
+  ClickHeatmapResponse,
+  HeatmapPage,
+  HeatmapPagesResponse,
+  ViewportBreakpoint,
+  ClickHeatmapParams,
+  HeatmapPagesParams,
+} from "./heatmap";

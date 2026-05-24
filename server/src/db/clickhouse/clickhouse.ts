@@ -202,6 +202,30 @@ export const initializeClickhouse = async () => {
       `,
   });
 
+  // Create session replay clicks table for heatmap data
+  // This stores click coordinates extracted during ingestion for efficient heatmap queries
+  await clickhouse.exec({
+    query: `
+      CREATE TABLE IF NOT EXISTS session_replay_clicks (
+        site_id UInt16,
+        session_id String,
+        timestamp DateTime64(3),
+        -- Click coordinates (viewport-relative)
+        x Float32,
+        y Float32,
+        -- Viewport dimensions for normalization
+        viewport_width UInt16,
+        viewport_height UInt16,
+        -- Click type: 2=Click, 4=DblClick
+        click_type UInt8
+      )
+      ENGINE = MergeTree()
+      PARTITION BY toYYYYMM(timestamp)
+      ORDER BY (site_id, timestamp)
+      TTL toDateTime(timestamp) + INTERVAL 30 DAY
+      `,
+  });
+
   // Create uptime monitor events table
   await clickhouse.exec({
     query: `

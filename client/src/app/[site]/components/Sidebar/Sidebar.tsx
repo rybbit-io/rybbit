@@ -5,6 +5,7 @@ import {
   ChartColumnDecreasing,
   Code,
   File,
+  Flame,
   Funnel,
   Gauge,
   Globe2,
@@ -125,6 +126,16 @@ function SidebarContent() {
               active={isActiveTab("replay")}
               href={getTabPath("replay")}
               icon={<Video className="w-4 h-4" />}
+            />
+          )}
+        </div>
+        <div className="hidden md:block">
+          {!subscription?.planName?.startsWith("appsumo") && !isSubscriptionLoading && (
+            <SidebarComponents.Item
+              label="Heatmaps"
+              active={isActiveTab("heatmaps")}
+              href={getTabPath("heatmaps")}
+              icon={<Flame className="w-4 h-4" />}
             />
           )}
         </div>
