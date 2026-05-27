@@ -3,7 +3,7 @@
 import { useCreateFeatureFlag, useUpdateFeatureFlag } from "@/api/analytics/hooks/featureFlags/useFeatureFlags";
 import type { FeatureFlag, FeatureFlagType } from "@/api/analytics/endpoints";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
@@ -111,6 +111,9 @@ export function FeatureFlagDialog({
     <Dialog open={open} onOpenChange={setOpen}>
       {trigger && <DialogTrigger asChild>{trigger}</DialogTrigger>}
       <DialogContent className="flex max-h-[90vh] w-full max-w-3xl flex-col gap-0 overflow-hidden p-0">
+        <DialogTitle className="sr-only">
+          {isEditing ? t("Edit feature flag {key}", { key: form.key }) : t("Create feature flag")}
+        </DialogTitle>
         {/* Sticky header — flag identity */}
         <div className="border-b border-neutral-150 px-6 pb-4 pt-5 dark:border-neutral-850">
           <div className="mb-3 flex items-center justify-between gap-3">
