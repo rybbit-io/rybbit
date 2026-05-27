@@ -26,11 +26,27 @@ const FLAG_TYPE_ICONS: Record<FeatureFlagType, typeof ToggleRight> = {
   remote_config: Braces,
 };
 
-export function FeatureFlagDialog({ flag, trigger }: { flag?: FeatureFlag; trigger: ReactNode }) {
+export function FeatureFlagDialog({
+  flag,
+  trigger,
+  open: openProp,
+  onOpenChange,
+}: {
+  flag?: FeatureFlag;
+  trigger?: ReactNode;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+}) {
   const t = useExtracted();
   const getFlagTypeLabel = useFlagTypeLabel();
   const getRuntimeLabel = useRuntimeLabel();
-  const [open, setOpen] = useState(false);
+  const [internalOpen, setInternalOpen] = useState(false);
+  const isControlled = openProp !== undefined;
+  const open = isControlled ? openProp : internalOpen;
+  const setOpen = (next: boolean) => {
+    if (!isControlled) setInternalOpen(next);
+    onOpenChange?.(next);
+  };
   const [form, setForm] = useState<FlagFormState>(() => toFormState(flag));
   const createMutation = useCreateFeatureFlag();
   const updateMutation = useUpdateFeatureFlag();
@@ -93,7 +109,7 @@ export function FeatureFlagDialog({ flag, trigger }: { flag?: FeatureFlag; trigg
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>{trigger}</DialogTrigger>
+      {trigger && <DialogTrigger asChild>{trigger}</DialogTrigger>}
       <DialogContent className="flex max-h-[90vh] w-full max-w-3xl flex-col gap-0 overflow-hidden p-0">
         {/* Sticky header — flag identity */}
         <div className="border-b border-neutral-150 px-6 pb-4 pt-5 dark:border-neutral-850">
@@ -126,8 +142,8 @@ export function FeatureFlagDialog({ flag, trigger }: { flag?: FeatureFlag; trigg
               id="flag-key"
               value={form.key}
               disabled={isEditing}
-              onChange={event => updateField("key", event.target.value)}
-              placeholder="new_checkout"
+              onChange={event => updateField("key", event.target.value.replace(/\s+/g, "-"))}
+              placeholder="new-checkout"
               className={cn(
                 "h-auto border-0 bg-transparent px-0 py-0 font-mono text-xl font-medium tracking-tight",
                 "shadow-none focus-visible:ring-0 dark:bg-transparent",

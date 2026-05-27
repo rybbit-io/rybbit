@@ -4,12 +4,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
-import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { GitBranch, Plus, X } from "lucide-react";
 import { useExtracted } from "next-intl";
 import { createEmptyVariant } from "../lib/form";
 import type { VariantFormState } from "../lib/types";
+import { JsonEditor } from "./JsonEditor";
 
 const VARIANT_PALETTE = [
   "bg-accent-500 dark:bg-accent-600",
@@ -177,11 +177,12 @@ export function VariantsEditor({
               <Label className="text-[11px] uppercase tracking-wider text-neutral-500 dark:text-neutral-400">
                 {t("Payload")}
               </Label>
-              <Textarea
-                className="min-h-20 font-mono text-xs"
+              <JsonEditor
+                ariaLabel={t("Payload")}
                 value={variant.payload}
+                onChange={payload => updateVariant(variant.id, { payload })}
                 placeholder='{"copy":"Try it now"}'
-                onChange={event => updateVariant(variant.id, { payload: event.target.value })}
+                height={110}
               />
             </div>
           </div>

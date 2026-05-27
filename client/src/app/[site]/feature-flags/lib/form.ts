@@ -48,7 +48,7 @@ export function createEmptyForm(): FlagFormState {
   return {
     key: "",
     description: "",
-    enabled: false,
+    enabled: true,
     runtime: "client",
     flagType: "boolean",
     conditionSets: [createEmptyConditionSet("boolean", 0)],

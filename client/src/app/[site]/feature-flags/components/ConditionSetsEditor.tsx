@@ -4,12 +4,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
-import { Textarea } from "@/components/ui/textarea";
 import type { FeatureFlagType } from "@/api/analytics/endpoints";
-import { ArrowDown, ArrowUp, Layers, Plus, X } from "lucide-react";
+import { ArrowDown, ArrowUp, Braces, Plus, X } from "lucide-react";
 import { useExtracted } from "next-intl";
+import { useState } from "react";
 import { createEmptyConditionSet } from "../lib/form";
 import type { ConditionSetFormState } from "../lib/types";
+import { JsonEditor } from "./JsonEditor";
 import { TargetingRulesEditor } from "./TargetingRulesEditor";
 import { VariantsEditor } from "./VariantsEditor";
 
@@ -76,8 +77,8 @@ export function ConditionSetsEditor({
           const isFirst = index === 0;
           return (
             <li key={conditionSet.id} className="relative flex gap-3">
-              {/* Numbered rail */}
-              <div className="flex w-7 flex-none flex-col items-center">
+              {/* Numbered rail — pt-3.5 centers chip with the name input row (p-3 body + 2px to center h-7 chip in h-8 input) */}
+              <div className="flex w-7 flex-none flex-col items-center pt-3.5">
                 <div className="flex h-7 w-7 items-center justify-center rounded-full bg-neutral-100 font-mono text-xs font-medium text-neutral-700 dark:bg-neutral-850 dark:text-neutral-300">
                   {index + 1}
                 </div>
@@ -141,20 +142,11 @@ export function ConditionSetsEditor({
                     <div className="grid gap-3">
                       {flagType === "boolean" && <RolloutControl conditionSet={conditionSet} onChange={updateConditionSet} />}
 
-                      <div className="grid gap-1.5">
-                        <div className="flex items-center gap-1.5">
-                          <Layers className="h-3 w-3 text-neutral-500 dark:text-neutral-400" />
-                          <Label className="text-xs uppercase tracking-wider text-neutral-500 dark:text-neutral-400">
-                            {flagType === "remote_config" ? t("Config payload") : t("Payload")}
-                          </Label>
-                        </div>
-                        <Textarea
-                          className="min-h-24 font-mono text-xs"
-                          value={conditionSet.payload}
-                          placeholder={flagType === "remote_config" ? '{"theme":"dark"}' : '{"copy":"Try it now"}'}
-                          onChange={event => updateConditionSet(conditionSet.id, { payload: event.target.value })}
-                        />
-                      </div>
+                      <PayloadField
+                        flagType={flagType}
+                        value={conditionSet.payload}
+                        onChange={payload => updateConditionSet(conditionSet.id, { payload })}
+                      />
                     </div>
                   )}
                 </div>
@@ -164,6 +156,69 @@ export function ConditionSetsEditor({
         })}
       </ol>
     </section>
+  );
+}
+
+function PayloadField({
+  flagType,
+  value,
+  onChange,
+}: {
+  flagType: FeatureFlagType;
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  const t = useExtracted();
+  const isRequired = flagType === "remote_config";
+  const [expanded, setExpanded] = useState(isRequired || value.trim().length > 0);
+
+  const label = isRequired ? t("Config payload") : t("Payload");
+
+  if (!expanded) {
+    return (
+      <button
+        type="button"
+        onClick={() => setExpanded(true)}
+        className="inline-flex w-fit items-center gap-1.5 rounded-md border border-dashed border-neutral-200 px-2 py-1 text-xs text-neutral-500 transition-colors hover:border-neutral-300 hover:bg-neutral-50 hover:text-neutral-700 dark:border-neutral-800 dark:text-neutral-400 dark:hover:border-neutral-700 dark:hover:bg-neutral-900 dark:hover:text-neutral-200"
+      >
+        <Braces className="h-3 w-3" />
+        {t("Add JSON payload")}
+        <span className="text-neutral-400 dark:text-neutral-500">{t("(optional)")}</span>
+      </button>
+    );
+  }
+
+  return (
+    <div className="grid gap-1.5">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-1.5">
+          <Braces className="h-3 w-3 text-neutral-500 dark:text-neutral-400" />
+          <Label className="text-xs uppercase tracking-wider text-neutral-500 dark:text-neutral-400">{label}</Label>
+          {!isRequired && (
+            <span className="text-[10px] text-neutral-400 dark:text-neutral-500">{t("(optional)")}</span>
+          )}
+        </div>
+        {!isRequired && (
+          <button
+            type="button"
+            onClick={() => {
+              onChange("");
+              setExpanded(false);
+            }}
+            className="text-[10px] uppercase tracking-wider text-neutral-400 hover:text-neutral-600 dark:text-neutral-500 dark:hover:text-neutral-300"
+          >
+            {t("Remove")}
+          </button>
+        )}
+      </div>
+      <JsonEditor
+        ariaLabel={label}
+        value={value}
+        onChange={onChange}
+        placeholder={isRequired ? '{"theme":"dark"}' : '{"copy":"Try it now"}'}
+        height={isRequired ? 160 : 120}
+      />
+    </div>
   );
 }
 
