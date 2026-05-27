@@ -82,6 +82,14 @@ export const initializeClickhouse = async () => {
   );
 
   await execClickhouseInitStep(
+    "add feature flag assignments to events table",
+    `
+      ALTER TABLE events
+        ADD COLUMN IF NOT EXISTS feature_flags Map(String, String) DEFAULT map()
+      `
+  );
+
+  await execClickhouseInitStep(
     "create bot events table",
     `
       CREATE TABLE IF NOT EXISTS bot_events (

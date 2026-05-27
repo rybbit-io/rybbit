@@ -13,6 +13,7 @@ export const SYNCED_ANALYTICS_ROUTES = new Set([
   "errors",
   "pages",
   "replay",
+  "feature-flags",
 ]);
 
 export type SiteRouteContext = {

@@ -105,6 +105,7 @@ class PageviewQueue {
         ip: pv.storeIp ? pv.ipAddress : null,
         timezone: timezone,
         tag: pv.tag || "",
+        feature_flags: pv.feature_flags || {},
         import_id: null,
       };
     });

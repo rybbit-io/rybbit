@@ -25,6 +25,7 @@ export type TotalTrackingPayload = TrackingPayload & {
   fcp?: number;
   ttfb?: number;
   tag?: string;
+  feature_flags?: Record<string, string>;
 };
 
 // Infer type from Zod schema

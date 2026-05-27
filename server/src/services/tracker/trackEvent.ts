@@ -25,6 +25,7 @@ const baseEventFields = {
   referrer: z.string().max(2048).optional(),
   user_id: z.string().max(255).optional(),
   tag: z.string().max(256).optional(),
+  feature_flags: z.record(z.string().max(100), z.string().max(2048)).optional(),
   ip_address: z.string().ip().optional(),
   user_agent: z.string().max(512).optional(),
   _bs: z.number().int().min(0).max(10).optional(),

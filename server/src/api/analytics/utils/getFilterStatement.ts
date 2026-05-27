@@ -53,6 +53,11 @@ const wrapLikeValue = (type: FilterType, value: string | number): string => {
 };
 
 export const getSqlParam = (parameter: FilterParameter) => {
+  if (parameter.startsWith("feature_flag:")) {
+    const key = parameter.substring("feature_flag:".length);
+    return `feature_flags[${SqlString.escape(key)}]`;
+  }
+
   // Handle URL parameters through the url_parameters map
   if (parameter.startsWith("utm_") || parameter.startsWith("url_param:")) {
     // For explicit url_param: prefix (e.g., url_param:campaign_id)

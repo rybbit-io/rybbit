@@ -67,6 +67,71 @@
   }
 
   // config.ts
+  function createVisitorId() {
+    try {
+      if (crypto?.randomUUID) {
+        return crypto.randomUUID();
+      }
+    } catch (e2) {
+    }
+    return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 12)}`;
+  }
+  function getOrCreateVisitorId(namespace) {
+    const key = `${namespace}-visitor-id`;
+    try {
+      const stored = localStorage.getItem(key);
+      if (stored) return stored;
+      const visitorId = createVisitorId();
+      localStorage.setItem(key, visitorId);
+      return visitorId;
+    } catch (e2) {
+      return createVisitorId();
+    }
+  }
+  function getIdentifiedUserId(namespace) {
+    try {
+      return localStorage.getItem(`${namespace}-user-id`) || void 0;
+    } catch (e2) {
+      return void 0;
+    }
+  }
+  function getEvaluationPathname(url) {
+    if (url.hash && url.hash.startsWith("#/")) {
+      return url.hash.substring(1);
+    }
+    return url.pathname;
+  }
+  async function fetchFeatureFlags(analyticsHost, siteId, namespace, visitorId) {
+    try {
+      const url = new URL(window.location.href);
+      const response = await fetch(`${analyticsHost}/site/${siteId}/feature-flags/evaluate`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        credentials: "omit",
+        body: JSON.stringify({
+          anonymousId: visitorId,
+          identifiedUserId: getIdentifiedUserId(namespace),
+          hostname: url.hostname,
+          pathname: getEvaluationPathname(url),
+          querystring: url.search,
+          query: Object.fromEntries(url.searchParams.entries()),
+          referrer: document.referrer,
+          language: navigator.language,
+          screenWidth: screen.width,
+          screenHeight: screen.height
+        })
+      });
+      if (!response.ok) {
+        return {};
+      }
+      const data = await response.json();
+      return data?.flags && typeof data.flags === "object" ? data.flags : {};
+    } catch (e2) {
+      return {};
+    }
+  }
   async function parseScriptConfig(scriptTag) {
     const src = scriptTag.getAttribute("src");
     if (!src) {
@@ -84,6 +149,7 @@
       return null;
     }
     const namespace = scriptTag.getAttribute("data-namespace") || "rybbit";
+    const visitorId = getOrCreateVisitorId(namespace);
     const skipPatterns = parseJsonSafely(scriptTag.getAttribute("data-skip-patterns"), []);
     const maskPatterns = parseJsonSafely(scriptTag.getAttribute("data-mask-patterns"), []);
     const sessionReplayMaskTextSelectors = parseJsonSafely(
@@ -115,6 +181,7 @@
       namespace,
       analyticsHost,
       siteId,
+      visitorId,
       debounceDuration,
       sessionReplayBatchSize,
       sessionReplayBatchInterval,
@@ -133,6 +200,7 @@
       trackCopy: false,
       trackFormInteractions: false,
       tag,
+      featureFlags: {},
       // rrweb session replay options (undefined means use rrweb defaults)
       sessionReplayBlockClass,
       sessionReplayBlockSelector,
@@ -146,6 +214,7 @@
       sessionReplaySlimDOMOptions,
       sessionReplaySampleRate
     };
+    let resolvedConfig = defaultConfig;
     try {
       const configUrl = `${analyticsHost}/site/tracking-config/${siteId}`;
       const response = await fetch(configUrl, {
@@ -155,7 +224,7 @@
       });
       if (response.ok) {
         const apiConfig = await response.json();
-        return {
+        resolvedConfig = {
           ...defaultConfig,
           // Map API field names to script config field names
           autoTrackPageview: apiConfig.trackInitialPageView ?? defaultConfig.autoTrackPageview,
@@ -171,12 +240,12 @@
         };
       } else {
         console.warn("Failed to fetch tracking config from API, using defaults");
-        return defaultConfig;
       }
     } catch (error) {
       console.warn("Error fetching tracking config:", error);
-      return defaultConfig;
     }
+    resolvedConfig.featureFlags = await fetchFeatureFlags(analyticsHost, siteId, namespace, visitorId);
+    return resolvedConfig;
   }
 
   // sessionReplay.ts
@@ -472,15 +541,26 @@
         const canvas = document.createElement("canvas");
         const gl = canvas.getContext("webgl") || canvas.getContext("experimental-webgl");
         if (gl) {
-          const debugInfo = gl.getExtension("WEBGL_debug_renderer_info");
-          if (debugInfo) {
-            const renderer = gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL);
-            if (typeof renderer === "string" && renderer.includes("SwiftShader")) {
-              addSignal(CLIENT_BOT_SIGNAL_MASKS.swiftShader, 1);
+          const rendererParts = [];
+          const rendererRaw = gl.getParameter(gl.RENDERER);
+          if (typeof rendererRaw === "string") {
+            rendererParts.push(rendererRaw);
+          }
+          try {
+            const debugInfo = gl.getExtension("WEBGL_debug_renderer_info");
+            if (debugInfo) {
+              const unmaskedRaw = gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL);
+              if (typeof unmaskedRaw === "string") {
+                rendererParts.push(unmaskedRaw);
+              }
             }
+          } catch {
+          }
+          if (rendererParts.join(" ").toLowerCase().includes("swiftshader")) {
+            addSignal(CLIENT_BOT_SIGNAL_MASKS.swiftShader, 1);
           }
         }
-      } catch (e2) {
+      } catch {
       }
       if ((!navigator.plugins || navigator.plugins.length === 0) && isChromeLike) {
         addSignal(CLIENT_BOT_SIGNAL_MASKS.emptyPlugins, 1);
@@ -503,10 +583,64 @@
       this.customUserId = null;
       this.errorDedupeCache = /* @__PURE__ */ new Map();
       this.errorDedupeLastCleanup = 0;
+      this.exposedFeatureFlags = /* @__PURE__ */ new Set();
       this.config = config;
       this.loadUserId();
       if (config.enableSessionReplay) {
         this.initializeSessionReplay();
+      }
+    }
+    serializeFeatureFlagValue(value) {
+      if (value === null || value === void 0) return "";
+      if (typeof value === "string") return value;
+      if (typeof value === "number" || typeof value === "boolean") return String(value);
+      try {
+        return JSON.stringify(value);
+      } catch (e2) {
+        return "";
+      }
+    }
+    getFeatureFlagEventPayload() {
+      const payload = {};
+      for (const [key, assignment] of Object.entries(this.config.featureFlags || {})) {
+        payload[key] = this.serializeFeatureFlagValue(assignment.value);
+      }
+      return payload;
+    }
+    getCurrentUrlContext() {
+      const url = new URL(window.location.href);
+      const pathname = url.hash && url.hash.startsWith("#/") ? url.hash.substring(1) : url.pathname;
+      return {
+        hostname: url.hostname,
+        pathname,
+        querystring: url.search,
+        query: Object.fromEntries(url.searchParams.entries()),
+        referrer: document.referrer,
+        language: navigator.language,
+        screenWidth: screen.width,
+        screenHeight: screen.height
+      };
+    }
+    async refreshFeatureFlags() {
+      try {
+        const response = await fetch(`${this.config.analyticsHost}/site/${this.config.siteId}/feature-flags/evaluate`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            anonymousId: this.config.visitorId,
+            identifiedUserId: this.customUserId || void 0,
+            ...this.getCurrentUrlContext()
+          }),
+          mode: "cors",
+          credentials: "omit",
+          keepalive: true
+        });
+        if (!response.ok) return;
+        const data = await response.json();
+        this.config.featureFlags = data?.flags && typeof data.flags === "object" ? data.flags : {};
+      } catch (e2) {
       }
     }
     loadUserId() {
@@ -579,6 +713,10 @@
       if (this.config.tag) {
         payload.tag = this.config.tag;
       }
+      const featureFlagPayload = this.getFeatureFlagEventPayload();
+      if (Object.keys(featureFlagPayload).length > 0) {
+        payload.feature_flags = featureFlagPayload;
+      }
       return payload;
     }
     async sendTrackingData(payload) {
@@ -605,7 +743,15 @@
       if (!basePayload) {
         return;
       }
-      const typesWithProperties = ["custom_event", "outbound", "error", "button_click", "copy", "form_submit", "input_change"];
+      const typesWithProperties = [
+        "custom_event",
+        "outbound",
+        "error",
+        "button_click",
+        "copy",
+        "form_submit",
+        "input_change"
+      ];
       const payload = {
         ...basePayload,
         type: eventType,
@@ -619,6 +765,40 @@
     }
     trackEvent(name, properties = {}) {
       this.track("custom_event", name, properties);
+    }
+    getFeatureFlag(key, fallback) {
+      const assignment = this.config.featureFlags?.[key];
+      if (!assignment) {
+        return fallback;
+      }
+      const exposureKey = `${key}:${assignment.version}:${this.serializeFeatureFlagValue(assignment.value)}`;
+      if (!this.exposedFeatureFlags.has(exposureKey)) {
+        this.exposedFeatureFlags.add(exposureKey);
+        this.trackEvent("feature_flag_exposure", {
+          key,
+          value: this.serializeFeatureFlagValue(assignment.value),
+          version: assignment.version,
+          reason: assignment.reason
+        });
+      }
+      return assignment.value;
+    }
+    getFeatureFlags() {
+      return Object.fromEntries(
+        Object.entries(this.config.featureFlags || {}).map(([key, assignment]) => [key, assignment.value])
+      );
+    }
+    getFeatureFlagPayload(key, fallback) {
+      const assignment = this.config.featureFlags?.[key];
+      if (!assignment || assignment.payload === void 0) {
+        return fallback;
+      }
+      return assignment.payload;
+    }
+    getFeatureFlagPayloads() {
+      return Object.fromEntries(
+        Object.entries(this.config.featureFlags || {}).filter(([, assignment]) => assignment.payload !== void 0).map(([key, assignment]) => [key, assignment.payload])
+      );
     }
     trackOutbound(url, text = "", target = "_self") {
       this.track("outbound", "", { url, text, target });
@@ -732,7 +912,7 @@
       } catch (e2) {
         console.warn("Could not persist user ID to localStorage");
       }
-      this.sendIdentifyEvent(this.customUserId, traits, true);
+      void this.sendIdentifyEvent(this.customUserId, traits, true).then(() => this.refreshFeatureFlags());
       if (this.sessionReplayRecorder) {
         this.sessionReplayRecorder.updateUserId(this.customUserId);
       }
@@ -747,7 +927,7 @@
         console.warn("Cannot set traits without identifying user first. Call identify() first.");
         return;
       }
-      this.sendIdentifyEvent(userId, traits, false);
+      void this.sendIdentifyEvent(userId, traits, false).then(() => this.refreshFeatureFlags());
     }
     async sendIdentifyEvent(userId, traits, isNewIdentify = true) {
       try {
@@ -775,6 +955,7 @@
         localStorage.removeItem(`${this.config.namespace}-user-id`);
       } catch (e2) {
       }
+      void this.refreshFeatureFlags();
     }
     getUserId() {
       return this.customUserId;
@@ -797,6 +978,7 @@
     }
     // Handle page changes for SPA
     onPageChange() {
+      void this.refreshFeatureFlags();
       if (this.sessionReplayRecorder) {
         this.sessionReplayRecorder.onPageChange();
       }
@@ -1310,6 +1492,12 @@
         clearUserId: () => {
         },
         getUserId: () => null,
+        flag: (_key, fallback) => fallback,
+        flagPayload: (_key, fallback) => fallback,
+        flags: () => ({}),
+        flagPayloads: () => ({}),
+        onReady: () => {
+        },
         startSessionReplay: () => {
         },
         stopSessionReplay: () => {
@@ -1331,6 +1519,11 @@
       setTraits: queueMethod("setTraits"),
       clearUserId: queueMethod("clearUserId"),
       getUserId: () => null,
+      flag: (_key, fallback) => fallback,
+      flagPayload: (_key, fallback) => fallback,
+      flags: () => ({}),
+      flagPayloads: () => ({}),
+      onReady: queueMethod("onReady"),
       startSessionReplay: queueMethod("startSessionReplay"),
       stopSessionReplay: queueMethod("stopSessionReplay"),
       isSessionReplayActive: () => false
@@ -1437,6 +1630,11 @@
       setTraits: (traits) => tracker.setTraits(traits),
       clearUserId: () => tracker.clearUserId(),
       getUserId: () => tracker.getUserId(),
+      flag: (key, fallback) => tracker.getFeatureFlag(key, fallback),
+      flagPayload: (key, fallback) => tracker.getFeatureFlagPayload(key, fallback),
+      flags: () => tracker.getFeatureFlags(),
+      flagPayloads: () => tracker.getFeatureFlagPayloads(),
+      onReady: (callback) => callback(window[config.namespace]),
       startSessionReplay: () => tracker.startSessionReplay(),
       stopSessionReplay: () => tracker.stopSessionReplay(),
       isSessionReplayActive: () => tracker.isSessionReplayActive()

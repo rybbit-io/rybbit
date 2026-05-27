@@ -1,4 +1,14 @@
-import { BasePayload, ScriptConfig, TrackingPayload, WebVitalsData, SessionReplayBatch, ButtonClickProperties, CopyProperties, FormSubmitProperties, InputChangeProperties } from "./types.js";
+import {
+  BasePayload,
+  ScriptConfig,
+  TrackingPayload,
+  WebVitalsData,
+  SessionReplayBatch,
+  ButtonClickProperties,
+  CopyProperties,
+  FormSubmitProperties,
+  InputChangeProperties,
+} from "./types.js";
 import { findMatchingPattern } from "./utils.js";
 import { SessionReplayRecorder } from "./sessionReplay.js";
 import { getBotScore, getBotSignalMask } from "./botSignals.js";
@@ -9,12 +19,76 @@ export class Tracker {
   private sessionReplayRecorder?: SessionReplayRecorder;
   private errorDedupeCache: Map<string, number> = new Map();
   private errorDedupeLastCleanup = 0;
+  private exposedFeatureFlags = new Set<string>();
   constructor(config: ScriptConfig) {
     this.config = config;
     this.loadUserId();
 
     if (config.enableSessionReplay) {
       this.initializeSessionReplay();
+    }
+  }
+
+  private serializeFeatureFlagValue(value: unknown): string {
+    if (value === null || value === undefined) return "";
+    if (typeof value === "string") return value;
+    if (typeof value === "number" || typeof value === "boolean") return String(value);
+
+    try {
+      return JSON.stringify(value);
+    } catch (e) {
+      return "";
+    }
+  }
+
+  private getFeatureFlagEventPayload(): Record<string, string> {
+    const payload: Record<string, string> = {};
+
+    for (const [key, assignment] of Object.entries(this.config.featureFlags || {})) {
+      payload[key] = this.serializeFeatureFlagValue(assignment.value);
+    }
+
+    return payload;
+  }
+
+  private getCurrentUrlContext() {
+    const url = new URL(window.location.href);
+    const pathname = url.hash && url.hash.startsWith("#/") ? url.hash.substring(1) : url.pathname;
+
+    return {
+      hostname: url.hostname,
+      pathname,
+      querystring: url.search,
+      query: Object.fromEntries(url.searchParams.entries()),
+      referrer: document.referrer,
+      language: navigator.language,
+      screenWidth: screen.width,
+      screenHeight: screen.height,
+    };
+  }
+
+  private async refreshFeatureFlags(): Promise<void> {
+    try {
+      const response = await fetch(`${this.config.analyticsHost}/site/${this.config.siteId}/feature-flags/evaluate`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          anonymousId: this.config.visitorId,
+          identifiedUserId: this.customUserId || undefined,
+          ...this.getCurrentUrlContext(),
+        }),
+        mode: "cors",
+        credentials: "omit",
+        keepalive: true,
+      });
+
+      if (!response.ok) return;
+      const data = await response.json();
+      this.config.featureFlags = data?.flags && typeof data.flags === "object" ? data.flags : {};
+    } catch (e) {
+      // Feature flag refresh is best-effort and should never affect analytics collection.
     }
   }
 
@@ -99,6 +173,11 @@ export class Tracker {
       payload.tag = this.config.tag;
     }
 
+    const featureFlagPayload = this.getFeatureFlagEventPayload();
+    if (Object.keys(featureFlagPayload).length > 0) {
+      payload.feature_flags = featureFlagPayload;
+    }
+
     return payload;
   }
 
@@ -129,14 +208,20 @@ export class Tracker {
       return; // Skip tracking
     }
 
-    const typesWithProperties = ["custom_event", "outbound", "error", "button_click", "copy", "form_submit", "input_change"];
+    const typesWithProperties = [
+      "custom_event",
+      "outbound",
+      "error",
+      "button_click",
+      "copy",
+      "form_submit",
+      "input_change",
+    ];
     const payload: TrackingPayload = {
       ...basePayload,
       type: eventType,
       event_name: eventName,
-      properties: typesWithProperties.includes(eventType)
-          ? JSON.stringify(properties)
-          : undefined,
+      properties: typesWithProperties.includes(eventType) ? JSON.stringify(properties) : undefined,
     };
 
     this.sendTrackingData(payload);
@@ -148,6 +233,51 @@ export class Tracker {
 
   trackEvent(name: string, properties: Record<string, any> = {}): void {
     this.track("custom_event", name, properties);
+  }
+
+  getFeatureFlag<T = unknown>(key: string, fallback?: T): T {
+    const assignment = this.config.featureFlags?.[key];
+
+    if (!assignment) {
+      return fallback as T;
+    }
+
+    const exposureKey = `${key}:${assignment.version}:${this.serializeFeatureFlagValue(assignment.value)}`;
+    if (!this.exposedFeatureFlags.has(exposureKey)) {
+      this.exposedFeatureFlags.add(exposureKey);
+      this.trackEvent("feature_flag_exposure", {
+        key,
+        value: this.serializeFeatureFlagValue(assignment.value),
+        version: assignment.version,
+        reason: assignment.reason,
+      });
+    }
+
+    return assignment.value as T;
+  }
+
+  getFeatureFlags(): Record<string, unknown> {
+    return Object.fromEntries(
+      Object.entries(this.config.featureFlags || {}).map(([key, assignment]) => [key, assignment.value])
+    );
+  }
+
+  getFeatureFlagPayload<T = unknown>(key: string, fallback?: T): T {
+    const assignment = this.config.featureFlags?.[key];
+
+    if (!assignment || assignment.payload === undefined) {
+      return fallback as T;
+    }
+
+    return assignment.payload as T;
+  }
+
+  getFeatureFlagPayloads(): Record<string, unknown> {
+    return Object.fromEntries(
+      Object.entries(this.config.featureFlags || {})
+        .filter(([, assignment]) => assignment.payload !== undefined)
+        .map(([key, assignment]) => [key, assignment.payload])
+    );
   }
 
   trackOutbound(url: string, text: string = "", target: string = "_self"): void {
@@ -303,7 +433,7 @@ export class Tracker {
     }
 
     // Send identify event to server (creates alias and stores traits)
-    this.sendIdentifyEvent(this.customUserId, traits, true);
+    void this.sendIdentifyEvent(this.customUserId, traits, true).then(() => this.refreshFeatureFlags());
 
     // Update session replay recorder with new user ID
     if (this.sessionReplayRecorder) {
@@ -323,7 +453,7 @@ export class Tracker {
       return;
     }
 
-    this.sendIdentifyEvent(userId, traits, false);
+    void this.sendIdentifyEvent(userId, traits, false).then(() => this.refreshFeatureFlags());
   }
 
   private async sendIdentifyEvent(
@@ -358,6 +488,7 @@ export class Tracker {
     } catch (e) {
       // localStorage not available
     }
+    void this.refreshFeatureFlags();
   }
 
   getUserId(): string | null {
@@ -385,6 +516,8 @@ export class Tracker {
 
   // Handle page changes for SPA
   onPageChange(): void {
+    void this.refreshFeatureFlags();
+
     if (this.sessionReplayRecorder) {
       this.sessionReplayRecorder.onPageChange();
     }

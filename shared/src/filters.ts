@@ -43,7 +43,8 @@ export type FilterParameter =
   | "lat"
   | "lon"
   | "timezone"
-  | "tag";
+  | "tag"
+  | `feature_flag:${string}`;
 
 export interface Filter {
   parameter: FilterParameter;

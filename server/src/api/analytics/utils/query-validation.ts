@@ -1,4 +1,4 @@
-import { FilterParams } from "@rybbit/shared";
+import { FilterParameter, FilterParams } from "@rybbit/shared";
 import { z } from "zod";
 
 // =============================================================================
@@ -254,7 +254,7 @@ const filterTypeSchema = z.enum([
 /**
  * Schema for filter parameter values
  */
-export const filterParamSchema = z.enum([
+const baseFilterParamSchema = z.enum([
   "browser",
   "operating_system",
   "language",
@@ -285,6 +285,11 @@ export const filterParamSchema = z.enum([
   "timezone",
   "tag",
 ]);
+
+export const filterParamSchema: z.ZodType<FilterParameter> = z.union([
+  baseFilterParamSchema,
+  z.string().regex(/^feature_flag:[A-Za-z][A-Za-z0-9_.:-]{0,99}$/),
+]) as z.ZodType<FilterParameter>;
 
 /**
  * Schema for filter objects

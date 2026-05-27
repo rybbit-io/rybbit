@@ -5,6 +5,7 @@ import {
   ChartColumnDecreasing,
   Code,
   File,
+  Flag,
   Funnel,
   Gauge,
   Globe2,
@@ -39,6 +40,8 @@ function SidebarContent() {
   const { data: site } = useGetSite(Number(pathname.split("/")[1]));
 
   if (hideSidebar) return null;
+
+  const { privateKey } = getSiteRouteContext(pathname);
 
   // Check which tab is active based on the current path
   const getTabPath = (tabName: string) => {
@@ -128,6 +131,14 @@ function SidebarContent() {
             />
           )}
         </div>
+        {!privateKey && (
+          <SidebarComponents.Item
+            label={t("Feature Flags")}
+            active={isActiveTab("feature-flags")}
+            href={getTabPath("feature-flags")}
+            icon={<Flag className="w-4 h-4" />}
+          />
+        )}
         <SidebarComponents.Item
           label={t("Funnels")}
           active={isActiveTab("funnels")}

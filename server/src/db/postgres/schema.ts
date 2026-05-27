@@ -324,6 +324,73 @@ export const goals = pgTable(
   ]
 );
 
+export type FeatureFlagType = "boolean" | "multivariate" | "remote_config";
+
+export type FeatureFlagPayloadValue =
+  | string
+  | number
+  | boolean
+  | null
+  | FeatureFlagPayloadValue[]
+  | { [key: string]: FeatureFlagPayloadValue };
+
+export type FeatureFlagRule = {
+  field:
+    | "hostname"
+    | "pathname"
+    | "query"
+    | "referrer"
+    | "language"
+    | "country"
+    | "region"
+    | "city"
+    | "device_type"
+    | "user_id"
+    | "trait";
+  key?: string;
+  operator: "equals" | "not_equals" | "contains" | "starts_with" | "ends_with" | "regex";
+  value: string | number | boolean | Array<string | number | boolean>;
+};
+
+export type FeatureFlagVariant = {
+  key: string;
+  name?: string;
+  rolloutPercentage: number;
+  payload?: FeatureFlagPayloadValue;
+};
+
+export const featureFlags = pgTable(
+  "feature_flags",
+  {
+    flagId: serial("flag_id").primaryKey().notNull(),
+    siteId: integer("site_id")
+      .notNull()
+      .references(() => sites.siteId, { onDelete: "cascade" }),
+    key: text("key").notNull(),
+    name: text("name"),
+    description: text("description"),
+    enabled: boolean("enabled").default(false).notNull(),
+    clientEnabled: boolean("client_enabled").default(true).notNull(),
+    flagType: text("flag_type").default("boolean").notNull().$type<FeatureFlagType>(),
+    payload: jsonb("payload").$type<FeatureFlagPayloadValue>(),
+    variants: jsonb("variants").default([]).notNull().$type<FeatureFlagVariant[]>(),
+    rolloutPercentage: integer("rollout_percentage").default(100).notNull(),
+    rules: jsonb("rules").default([]).notNull().$type<FeatureFlagRule[]>(),
+    salt: text("salt")
+      .default(sql`md5(random()::text || clock_timestamp()::text)`)
+      .notNull(),
+    version: integer("version").default(1).notNull(),
+    createdAt: timestamp("created_at", { mode: "string" }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { mode: "string" }).defaultNow().notNull(),
+  },
+  table => [
+    unique("feature_flags_site_key_unique").on(table.siteId, table.key),
+    index("feature_flags_site_idx").on(table.siteId),
+    check("feature_flags_rollout_check", sql`rollout_percentage >= 0 AND rollout_percentage <= 100`),
+    check("feature_flags_type_check", sql`flag_type IN ('boolean', 'multivariate', 'remote_config')`),
+  ]
+);
+
 // Telemetry table for tracking self-hosted instances
 export const telemetry = pgTable("telemetry", {
   id: serial("id").primaryKey().notNull(),
