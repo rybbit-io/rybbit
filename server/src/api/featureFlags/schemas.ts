@@ -1,5 +1,6 @@
 import { z } from "zod";
 import type { FeatureFlagPayloadValue } from "../../db/postgres/schema.js";
+import { precompileFeatureFlagRegexPattern, validateFeatureFlagRegexPattern } from "../../services/featureFlags/regex.js";
 
 const payloadValueSchema: z.ZodType<FeatureFlagPayloadValue> = z.lazy(() =>
   z.union([
@@ -47,6 +48,35 @@ export const featureFlagRuleSchema = z
     key: z.string().trim().min(1).max(128).optional(),
     operator: z.enum(["equals", "not_equals", "contains", "starts_with", "ends_with", "regex"]),
     value: ruleValueSchema,
+  })
+  .superRefine((rule, ctx) => {
+    if (rule.operator !== "regex") return;
+
+    const values = Array.isArray(rule.value) ? rule.value : [rule.value];
+    values.forEach((value, index) => {
+      const path = Array.isArray(rule.value) ? ["value", index] : ["value"];
+
+      if (typeof value !== "string") {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Regex rule values must be strings",
+          path,
+        });
+        return;
+      }
+
+      const error = validateFeatureFlagRegexPattern(value);
+      if (error) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: error,
+          path,
+        });
+        return;
+      }
+
+      precompileFeatureFlagRegexPattern(value);
+    });
   })
   .refine(
     rule => {

@@ -12,6 +12,7 @@
     "autocapture",
     "identify-users",
     "tagging",
+    "feature-flags",
     "guides",
     "proxy-guide",
     "sdks",

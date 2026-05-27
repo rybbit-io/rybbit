@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { bucketPercentage, evaluateFeatureFlag, matchesFeatureFlagRule } from "./evaluator.js";
+import { precompileFeatureFlagRegexPattern } from "./regex.js";
 
 const baseFlag = {
   flagId: 1,
@@ -33,6 +34,18 @@ describe("feature flag evaluator", () => {
       matchesFeatureFlagRule(
         { field: "query", key: "plan", operator: "equals", value: ["pro", "team"] },
         { anonymousId: "visitor-1", query: { plan: "team" } }
+      )
+    ).toBe(true);
+  });
+
+  it("matches regex rules using precompiled patterns", () => {
+    const pattern = "^/pricing(/|$)";
+    precompileFeatureFlagRegexPattern(pattern);
+
+    expect(
+      matchesFeatureFlagRule(
+        { field: "pathname", operator: "regex", value: pattern },
+        { anonymousId: "visitor-1", pathname: "/pricing/pro" }
       )
     ).toBe(true);
   });

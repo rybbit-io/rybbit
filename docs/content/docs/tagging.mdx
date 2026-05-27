@@ -5,6 +5,8 @@ description: How to use tags to label and segment analytics data in Rybbit
 
 Tags let you label all events from a script instance with a string identifier. This is useful for A/B testing, deploy labeling, cohort segmentation, and any scenario where you want to slice your analytics by a custom dimension that applies to the entire page.
 
+If you need Rybbit to choose a value at runtime, gradually roll out a feature, or serve remote config, use [Feature Flags](/docs/feature-flags) instead.
+
 ## How It Works
 
 Add a `data-tag` attribute to your Rybbit script tag. Every event (pageviews, custom events, outbound clicks, etc.) sent from that page will include the tag value, which is stored in ClickHouse and available as a filter in the dashboard.

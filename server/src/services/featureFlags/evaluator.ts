@@ -9,6 +9,11 @@ import {
   type FeatureFlagType,
   type FeatureFlagVariant,
 } from "../../db/postgres/schema.js";
+import {
+  getCompiledFeatureFlagRegex,
+  precompileFeatureFlagConditionSetRegexes,
+  precompileFeatureFlagRuleRegexes,
+} from "./regex.js";
 
 export type FeatureFlagContext = {
   anonymousId: string;
@@ -95,12 +100,9 @@ export function matchesFeatureFlagRule(rule: FeatureFlagRule, context: FeatureFl
     case "ends_with":
       return expected.some(value => actual.endsWith(value));
     case "regex":
-      return expected.some(value => {
-        try {
-          return new RegExp(value).test(actual);
-        } catch {
-          return false;
-        }
+      return expectedValues.some(value => {
+        if (typeof value !== "string") return false;
+        return getCompiledFeatureFlagRegex(value)?.test(actual) ?? false;
       });
   }
 }
@@ -167,6 +169,8 @@ function getPayload(conditionSet: FeatureFlagConditionSet, flag: FeatureFlagRow)
 
 export function evaluateFeatureFlag(flag: FeatureFlagRow, context: FeatureFlagContext): FeatureFlagAssignment {
   const rolloutPercentage = clampPercentage(flag.rolloutPercentage);
+  precompileFeatureFlagRuleRegexes(flag.rules);
+  precompileFeatureFlagConditionSetRegexes(flag.conditionSets);
 
   if (!flag.enabled) {
     return {

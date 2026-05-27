@@ -44,6 +44,28 @@ These are the attributes you can pass to the script tag.
 | `data-debounce`   | `string`   | `"500"`| The delay (in milliseconds) before tracking a pageview after URL changes via the History API (`pushState`, `replaceState`). Set to `0` to disable debouncing. |
 | `data-tag`        | `string`   | `""`   | A label applied to all events from this script instance. Useful for A/B testing, deploy versioning, or cohort segmentation. Max 256 characters. See [Tagging](/docs/tagging). |
 
+### Feature Flags
+
+The tracking script automatically evaluates client and both-runtime feature flags when it loads. Read evaluated flags from `window.rybbit` after the script is ready:
+
+```javascript
+window.rybbit.onReady((rybbit) => {
+  const enabled = rybbit.flag("new_checkout", false);
+  const config = rybbit.flagPayload("checkout_config", {});
+});
+```
+
+Available methods:
+
+| Method | Description |
+| --- | --- |
+| `flag(key, fallback)` | Returns a boolean, variant key, or fallback value. Also records a feature flag exposure once per flag value/version. |
+| `flagPayload(key, fallback)` | Returns the payload for a flag, variant, or remote config. |
+| `flags()` | Returns all evaluated flag values. |
+| `flagPayloads()` | Returns all available flag payloads. |
+
+See [Feature Flags](/docs/feature-flags) for targeting rules, remote config, and server-side evaluation.
+
 ### Session Replay Attributes
 
 These attributes configure rrweb session replay behavior. They only apply when session replay is enabled in your site settings.

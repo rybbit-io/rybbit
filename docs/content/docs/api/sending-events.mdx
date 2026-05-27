@@ -157,6 +157,11 @@ All parameters are sent in the request body as JSON.
       type: 'string',
       typeDescription: 'Max 2048 chars (4096 for error events)',
     },
+    feature_flags: {
+      description: 'Optional map of feature flag keys to assigned values. Useful for server-side flag evaluation and filtering analytics by flag value.',
+      type: 'Record<string, string>',
+      typeDescription: 'Keys max 100 chars, values max 2048 chars',
+    },
   }}
 />
 
