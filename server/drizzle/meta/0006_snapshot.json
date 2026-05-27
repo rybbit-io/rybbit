@@ -462,12 +462,6 @@
           "primaryKey": false,
           "notNull": true
         },
-        "name": {
-          "name": "name",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
         "description": {
           "name": "description",
           "type": "text",
@@ -481,12 +475,12 @@
           "notNull": true,
           "default": false
         },
-        "client_enabled": {
-          "name": "client_enabled",
-          "type": "boolean",
+        "runtime": {
+          "name": "runtime",
+          "type": "text",
           "primaryKey": false,
           "notNull": true,
-          "default": true
+          "default": "'client'"
         },
         "flag_type": {
           "name": "flag_type",
@@ -517,6 +511,13 @@
         },
         "rules": {
           "name": "rules",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'[]'::jsonb"
+        },
+        "condition_sets": {
+          "name": "condition_sets",
           "type": "jsonb",
           "primaryKey": false,
           "notNull": true,
@@ -596,6 +597,10 @@
         "feature_flags_type_check": {
           "name": "feature_flags_type_check",
           "value": "flag_type IN ('boolean', 'multivariate', 'remote_config')"
+        },
+        "feature_flags_runtime_check": {
+          "name": "feature_flags_runtime_check",
+          "value": "runtime IN ('client', 'server', 'both')"
         }
       },
       "isRLSEnabled": false

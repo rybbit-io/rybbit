@@ -27,6 +27,7 @@ const featureFlagKeySchema = z
   .regex(/^[A-Za-z][A-Za-z0-9_.:-]*$/, "Key must start with a letter and contain only letters, numbers, _, ., :, or -");
 
 const featureFlagTypeSchema = z.enum(["boolean", "multivariate", "remote_config"]);
+const featureFlagRuntimeSchema = z.enum(["client", "server", "both"]);
 
 export const featureFlagRuleSchema = z
   .object({
@@ -66,36 +67,47 @@ const featureFlagVariantSchema = z.object({
     .trim()
     .min(1)
     .max(100)
-    .regex(/^[A-Za-z][A-Za-z0-9_.:-]*$/, "Variant key must start with a letter and contain only letters, numbers, _, ., :, or -"),
+    .regex(
+      /^[A-Za-z][A-Za-z0-9_.:-]*$/,
+      "Variant key must start with a letter and contain only letters, numbers, _, ., :, or -"
+    ),
   name: z.string().trim().max(120).optional(),
   rolloutPercentage: z.number().int().min(0).max(100),
   payload: payloadValueSchema.optional(),
 });
 
+const featureFlagConditionSetSchema = z.object({
+  name: z.string().trim().max(120).optional(),
+  rules: z.array(featureFlagRuleSchema).max(25).default([]),
+  rolloutPercentage: z.number().int().min(0).max(100).optional(),
+  variants: z.array(featureFlagVariantSchema).max(20).optional(),
+  payload: payloadValueSchema.optional().nullable(),
+});
+
 const featureFlagBaseSchema = z.object({
   key: featureFlagKeySchema,
-  name: z.string().trim().max(120).optional().nullable(),
   description: z.string().trim().max(1000).optional().nullable(),
   enabled: z.boolean().default(false),
-  clientEnabled: z.boolean().default(true),
+  runtime: featureFlagRuntimeSchema.default("client"),
   flagType: featureFlagTypeSchema.default("boolean"),
   payload: payloadValueSchema.optional().nullable(),
   variants: z.array(featureFlagVariantSchema).max(20).default([]),
   rolloutPercentage: z.number().int().min(0).max(100).default(100),
   rules: z.array(featureFlagRuleSchema).max(25).default([]),
+  conditionSets: z.array(featureFlagConditionSetSchema).max(20).default([]),
 });
 
 const featureFlagUpdateBaseSchema = z.object({
   key: featureFlagKeySchema.optional(),
-  name: z.string().trim().max(120).optional().nullable(),
   description: z.string().trim().max(1000).optional().nullable(),
   enabled: z.boolean().optional(),
-  clientEnabled: z.boolean().optional(),
+  runtime: featureFlagRuntimeSchema.optional(),
   flagType: featureFlagTypeSchema.optional(),
   payload: payloadValueSchema.optional().nullable(),
   variants: z.array(featureFlagVariantSchema).max(20).optional(),
   rolloutPercentage: z.number().int().min(0).max(100).optional(),
   rules: z.array(featureFlagRuleSchema).max(25).optional(),
+  conditionSets: z.array(featureFlagConditionSetSchema).max(20).optional(),
 });
 
 export const featureFlagBodySchema = featureFlagBaseSchema.superRefine(validateFeatureFlagShape);
@@ -128,6 +140,7 @@ function validateFeatureFlagShape(
   ctx: z.RefinementCtx
 ) {
   const variants = data.variants ?? [];
+  const conditionSets = data.conditionSets ?? [];
   const flagType = data.flagType;
 
   if (flagType === "remote_config" && variants.length > 0) {
@@ -135,14 +148,6 @@ function validateFeatureFlagShape(
       code: z.ZodIssueCode.custom,
       message: "Remote config flags cannot have variants",
       path: ["variants"],
-    });
-  }
-
-  if (flagType === "remote_config" && data.rules && data.rules.length > 0) {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      message: "Remote config flags cannot have targeting rules",
-      path: ["rules"],
     });
   }
 
@@ -155,7 +160,9 @@ function validateFeatureFlagShape(
   }
 
   if (flagType === "multivariate") {
-    if (variants.length < 2) {
+    const hasConditionSetVariants = conditionSets.some(conditionSet => (conditionSet.variants?.length ?? 0) > 0);
+
+    if (!hasConditionSetVariants && variants.length < 2) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         message: "Multivariate flags require at least two variants",
@@ -181,4 +188,61 @@ function validateFeatureFlagShape(
       });
     }
   }
+
+  conditionSets.forEach((conditionSet, index) => {
+    const setVariants = conditionSet.variants ?? [];
+    const path = ["conditionSets", index];
+
+    if (flagType === "boolean" && setVariants.length > 0) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Boolean condition sets cannot have variants",
+        path: [...path, "variants"],
+      });
+    }
+
+    if (flagType === "remote_config" && setVariants.length > 0) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Remote config condition sets cannot have variants",
+        path: [...path, "variants"],
+      });
+    }
+
+    if (flagType === "multivariate" && setVariants.length > 0) {
+      if (setVariants.length < 2) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Multivariate condition sets require at least two variants",
+          path: [...path, "variants"],
+        });
+      }
+
+      const uniqueSetKeys = new Set(setVariants.map(variant => variant.key));
+      if (uniqueSetKeys.size !== setVariants.length) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Variant keys must be unique",
+          path: [...path, "variants"],
+        });
+      }
+
+      const setTotalRollout = setVariants.reduce((sum, variant) => sum + variant.rolloutPercentage, 0);
+      if (setTotalRollout > 100) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Variant rollout percentages cannot exceed 100",
+          path: [...path, "variants"],
+        });
+      }
+    }
+
+    if (conditionSet.rolloutPercentage !== undefined && flagType === "multivariate" && setVariants.length > 0) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Multivariate condition sets use variant rollout percentages",
+        path: [...path, "rolloutPercentage"],
+      });
+    }
+  });
 }

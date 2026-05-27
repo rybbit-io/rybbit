@@ -1,7 +1,14 @@
 import { createHash } from "node:crypto";
 import { asc, eq } from "drizzle-orm";
 import { db } from "../../db/postgres/postgres.js";
-import { featureFlags, type FeatureFlagRule, type FeatureFlagType } from "../../db/postgres/schema.js";
+import {
+  featureFlags,
+  type FeatureFlagConditionSet,
+  type FeatureFlagRule,
+  type FeatureFlagRuntime,
+  type FeatureFlagType,
+  type FeatureFlagVariant,
+} from "../../db/postgres/schema.js";
 
 export type FeatureFlagContext = {
   anonymousId: string;
@@ -24,6 +31,7 @@ export type FeatureFlagAssignment = {
   flagType: FeatureFlagType;
   payload?: unknown;
   variant?: string;
+  conditionSet?: string;
   version: number;
   reason: "disabled" | "target_mismatch" | "rollout" | "variant" | "remote_config" | "fallthrough";
   matched: boolean;
@@ -97,8 +105,68 @@ export function matchesFeatureFlagRule(rule: FeatureFlagRule, context: FeatureFl
   }
 }
 
+function clampPercentage(value: number | undefined, fallback = 100): number {
+  return Math.min(100, Math.max(0, value ?? fallback));
+}
+
+function getConditionSets(flag: FeatureFlagRow): FeatureFlagConditionSet[] {
+  if (Array.isArray(flag.conditionSets) && flag.conditionSets.length > 0) {
+    return flag.conditionSets;
+  }
+
+  return [
+    {
+      rules: Array.isArray(flag.rules) ? flag.rules : [],
+      rolloutPercentage: flag.rolloutPercentage,
+      variants: Array.isArray(flag.variants) ? flag.variants : [],
+      payload: flag.payload,
+    },
+  ];
+}
+
+function getConditionSetName(conditionSet: FeatureFlagConditionSet, index: number) {
+  return conditionSet.name || `condition_${index + 1}`;
+}
+
+function matchesConditionSet(conditionSet: FeatureFlagConditionSet, context: FeatureFlagContext): boolean {
+  const rules = Array.isArray(conditionSet.rules) ? conditionSet.rules : [];
+  return rules.every(rule => matchesFeatureFlagRule(rule, context));
+}
+
+function selectVariant(variants: FeatureFlagVariant[], bucket: number) {
+  let cumulativeRollout = 0;
+
+  for (const variant of variants) {
+    cumulativeRollout += clampPercentage(variant.rolloutPercentage, 0);
+    if (bucket < cumulativeRollout) {
+      return {
+        variant,
+        totalRollout: Math.min(100, cumulativeRollout),
+      };
+    }
+  }
+
+  return {
+    variant: undefined,
+    totalRollout: Math.min(
+      100,
+      variants.reduce((sum, variant) => sum + clampPercentage(variant.rolloutPercentage, 0), 0)
+    ),
+  };
+}
+
+function runtimeMatches(flagRuntime: FeatureFlagRuntime, runtime?: FeatureFlagRuntime) {
+  if (!runtime) return true;
+  if (flagRuntime === "both") return true;
+  return flagRuntime === runtime;
+}
+
+function getPayload(conditionSet: FeatureFlagConditionSet, flag: FeatureFlagRow) {
+  return conditionSet.payload !== undefined ? conditionSet.payload : flag.payload;
+}
+
 export function evaluateFeatureFlag(flag: FeatureFlagRow, context: FeatureFlagContext): FeatureFlagAssignment {
-  const rolloutPercentage = Math.min(100, Math.max(0, flag.rolloutPercentage));
+  const rolloutPercentage = clampPercentage(flag.rolloutPercentage);
 
   if (!flag.enabled) {
     return {
@@ -112,78 +180,91 @@ export function evaluateFeatureFlag(flag: FeatureFlagRow, context: FeatureFlagCo
     };
   }
 
-  if (flag.flagType === "remote_config") {
-    return {
-      key: flag.key,
-      value: true,
-      flagType: flag.flagType,
-      payload: flag.payload,
-      version: flag.version,
-      reason: "remote_config",
-      matched: true,
-      rolloutPercentage: 100,
-    };
-  }
-
-  const rules = Array.isArray(flag.rules) ? flag.rules : [];
-  const matchesRules = rules.every(rule => matchesFeatureFlagRule(rule, context));
-
-  if (!matchesRules) {
-    return {
-      key: flag.key,
-      value: false,
-      flagType: flag.flagType,
-      version: flag.version,
-      reason: "target_mismatch",
-      matched: false,
-      rolloutPercentage,
-    };
-  }
-
   const bucket = bucketPercentage(`${flag.siteId}:${flag.key}:${context.anonymousId}:${flag.salt}`);
+  const conditionSets = getConditionSets(flag);
 
-  if (flag.flagType === "multivariate") {
-    let cumulativeRollout = 0;
-    const variants = Array.isArray(flag.variants) ? flag.variants : [];
+  for (let index = 0; index < conditionSets.length; index++) {
+    const conditionSet = conditionSets[index];
+    if (!matchesConditionSet(conditionSet, context)) {
+      continue;
+    }
 
-    for (const variant of variants) {
-      cumulativeRollout += Math.min(100, Math.max(0, variant.rolloutPercentage));
-      if (bucket < cumulativeRollout) {
+    const conditionSetName = getConditionSetName(conditionSet, index);
+
+    if (flag.flagType === "remote_config") {
+      return {
+        key: flag.key,
+        value: true,
+        flagType: flag.flagType,
+        payload: getPayload(conditionSet, flag),
+        conditionSet: conditionSetName,
+        version: flag.version,
+        reason: "remote_config",
+        matched: true,
+        rolloutPercentage: 100,
+      };
+    }
+
+    if (flag.flagType === "multivariate") {
+      const variants =
+        Array.isArray(conditionSet.variants) && conditionSet.variants.length > 0
+          ? conditionSet.variants
+          : Array.isArray(flag.variants)
+            ? flag.variants
+            : [];
+      const selected = selectVariant(variants, bucket);
+
+      if (selected.variant) {
         return {
           key: flag.key,
-          value: variant.key,
+          value: selected.variant.key,
           flagType: flag.flagType,
-          variant: variant.key,
-          payload: variant.payload,
+          variant: selected.variant.key,
+          payload: selected.variant.payload,
+          conditionSet: conditionSetName,
           version: flag.version,
           reason: "variant",
           matched: true,
-          rolloutPercentage: variant.rolloutPercentage,
+          rolloutPercentage: selected.variant.rolloutPercentage,
         };
       }
+
+      return {
+        key: flag.key,
+        value: false,
+        flagType: flag.flagType,
+        conditionSet: conditionSetName,
+        version: flag.version,
+        reason: "fallthrough",
+        matched: false,
+        rolloutPercentage: selected.totalRollout,
+      };
     }
+
+    const conditionRolloutPercentage = clampPercentage(conditionSet.rolloutPercentage, rolloutPercentage);
+    const inRollout =
+      conditionRolloutPercentage >= 100 || (conditionRolloutPercentage > 0 && bucket < conditionRolloutPercentage);
 
     return {
       key: flag.key,
-      value: false,
+      value: inRollout,
       flagType: flag.flagType,
+      payload: inRollout ? getPayload(conditionSet, flag) : undefined,
+      conditionSet: conditionSetName,
       version: flag.version,
-      reason: "fallthrough",
-      matched: false,
-      rolloutPercentage: Math.min(100, cumulativeRollout),
+      reason: inRollout ? "rollout" : "fallthrough",
+      matched: inRollout,
+      rolloutPercentage: conditionRolloutPercentage,
     };
   }
 
-  const inRollout = rolloutPercentage >= 100 || (rolloutPercentage > 0 && bucket < rolloutPercentage);
-
   return {
     key: flag.key,
-    value: inRollout,
+    value: false,
     flagType: flag.flagType,
-    payload: inRollout ? flag.payload : undefined,
     version: flag.version,
-    reason: inRollout ? "rollout" : "fallthrough",
-    matched: inRollout,
+    reason: "target_mismatch",
+    matched: false,
     rolloutPercentage,
   };
 }
@@ -191,7 +272,7 @@ export function evaluateFeatureFlag(flag: FeatureFlagRow, context: FeatureFlagCo
 export async function evaluateFeatureFlagsForSite(
   siteId: number,
   context: FeatureFlagContext,
-  options: { clientOnly?: boolean } = {}
+  options: { runtime?: FeatureFlagRuntime } = {}
 ): Promise<Record<string, FeatureFlagAssignment>> {
   const rows = await db
     .select()
@@ -202,7 +283,7 @@ export async function evaluateFeatureFlagsForSite(
   const assignments: Record<string, FeatureFlagAssignment> = {};
 
   for (const flag of rows) {
-    if (options.clientOnly !== false && !flag.clientEnabled) {
+    if (!runtimeMatches(flag.runtime, options.runtime)) {
       continue;
     }
 

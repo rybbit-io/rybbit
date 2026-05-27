@@ -41,6 +41,7 @@ export interface FeatureFlagAssignment {
   flagType: "boolean" | "multivariate" | "remote_config";
   payload?: unknown;
   variant?: string;
+  conditionSet?: string;
   version: number;
   reason: "disabled" | "target_mismatch" | "rollout" | "variant" | "remote_config" | "fallthrough";
   matched: boolean;

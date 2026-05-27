@@ -64,6 +64,7 @@ import {
   createFeatureFlag,
   deleteFeatureFlag,
   evaluateFeatureFlags,
+  evaluateServerFeatureFlags,
   getFeatureFlags,
   updateFeatureFlag,
 } from "./api/featureFlags/index.js";
@@ -287,6 +288,7 @@ async function analyticsRoutes(fastify: FastifyInstance) {
   fastify.post("/sites/:siteId/feature-flags", adminSite, createFeatureFlag);
   fastify.put("/sites/:siteId/feature-flags/:flagId", adminSite, updateFeatureFlag);
   fastify.delete("/sites/:siteId/feature-flags/:flagId", adminSite, deleteFeatureFlag);
+  fastify.post("/sites/:siteId/feature-flags/evaluate", authSite, evaluateServerFeatureFlags);
   fastify.post("/site/:siteId/feature-flags/evaluate", evaluateFeatureFlags);
   fastify.get("/sites/:siteId/events/names", publicSite, getEventNames);
   fastify.get("/sites/:siteId/events/properties", publicSite, getEventProperties);

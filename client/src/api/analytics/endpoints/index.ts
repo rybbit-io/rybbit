@@ -67,9 +67,11 @@ export type {
 export { fetchFeatureFlags, createFeatureFlag, updateFeatureFlag, deleteFeatureFlag } from "./featureFlags";
 export type {
   FeatureFlag,
+  FeatureFlagConditionSet,
   FeatureFlagPayload,
   FeatureFlagPayloadValue,
   FeatureFlagRule,
+  FeatureFlagRuntime,
   FeatureFlagStats,
   FeatureFlagType,
   FeatureFlagUpdatePayload,

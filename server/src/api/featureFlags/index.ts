@@ -136,15 +136,15 @@ export async function createFeatureFlag(
       .values({
         siteId,
         key: body.key,
-        name: body.name || null,
         description: body.description || null,
         enabled: body.enabled,
-        clientEnabled: body.clientEnabled,
+        runtime: body.runtime,
         flagType: body.flagType,
         payload: body.payload,
         variants: body.variants,
         rolloutPercentage: body.rolloutPercentage,
         rules: body.rules,
+        conditionSets: body.conditionSets,
       })
       .returning();
 
@@ -180,19 +180,19 @@ export async function updateFeatureFlag(
     const body = featureFlagUpdateSchema.parse(request.body);
     const updateData: Partial<typeof featureFlags.$inferInsert> = {
       ...body,
-      name: body.name === undefined ? undefined : body.name || null,
       description: body.description === undefined ? undefined : body.description || null,
       updatedAt: new Date().toISOString(),
     };
 
     if (body.key === undefined) delete updateData.key;
     if (body.enabled === undefined) delete updateData.enabled;
-    if (body.clientEnabled === undefined) delete updateData.clientEnabled;
+    if (body.runtime === undefined) delete updateData.runtime;
     if (body.flagType === undefined) delete updateData.flagType;
     if (body.payload === undefined) delete updateData.payload;
     if (body.variants === undefined) delete updateData.variants;
     if (body.rolloutPercentage === undefined) delete updateData.rolloutPercentage;
     if (body.rules === undefined) delete updateData.rules;
+    if (body.conditionSets === undefined) delete updateData.conditionSets;
 
     updateData.version = (
       await db.query.featureFlags.findFirst({
@@ -268,6 +268,27 @@ export async function evaluateFeatureFlags(
   }>,
   reply: FastifyReply
 ) {
+  return evaluateFeatureFlagsForRuntime(request, reply, "client");
+}
+
+export async function evaluateServerFeatureFlags(
+  request: FastifyRequest<{
+    Params: { siteId: string };
+    Body: EvaluateFeatureFlagsBody;
+  }>,
+  reply: FastifyReply
+) {
+  return evaluateFeatureFlagsForRuntime(request, reply, "server");
+}
+
+async function evaluateFeatureFlagsForRuntime(
+  request: FastifyRequest<{
+    Params: { siteId: string };
+    Body: EvaluateFeatureFlagsBody;
+  }>,
+  reply: FastifyReply,
+  runtime: "client" | "server"
+) {
   try {
     const body = evaluateFeatureFlagsSchema.parse(request.body);
     const site = await siteConfig.getConfig(request.params.siteId);
@@ -306,7 +327,7 @@ export async function evaluateFeatureFlags(
         deviceType,
         traits: profile?.traits ?? {},
       },
-      { clientOnly: true }
+      { runtime }
     );
 
     return reply.send({

@@ -325,6 +325,7 @@ export const goals = pgTable(
 );
 
 export type FeatureFlagType = "boolean" | "multivariate" | "remote_config";
+export type FeatureFlagRuntime = "client" | "server" | "both";
 
 export type FeatureFlagPayloadValue =
   | string
@@ -359,6 +360,14 @@ export type FeatureFlagVariant = {
   payload?: FeatureFlagPayloadValue;
 };
 
+export type FeatureFlagConditionSet = {
+  name?: string;
+  rules: FeatureFlagRule[];
+  rolloutPercentage?: number;
+  variants?: FeatureFlagVariant[];
+  payload?: FeatureFlagPayloadValue;
+};
+
 export const featureFlags = pgTable(
   "feature_flags",
   {
@@ -367,15 +376,15 @@ export const featureFlags = pgTable(
       .notNull()
       .references(() => sites.siteId, { onDelete: "cascade" }),
     key: text("key").notNull(),
-    name: text("name"),
     description: text("description"),
     enabled: boolean("enabled").default(false).notNull(),
-    clientEnabled: boolean("client_enabled").default(true).notNull(),
+    runtime: text("runtime").default("client").notNull().$type<FeatureFlagRuntime>(),
     flagType: text("flag_type").default("boolean").notNull().$type<FeatureFlagType>(),
     payload: jsonb("payload").$type<FeatureFlagPayloadValue>(),
     variants: jsonb("variants").default([]).notNull().$type<FeatureFlagVariant[]>(),
     rolloutPercentage: integer("rollout_percentage").default(100).notNull(),
     rules: jsonb("rules").default([]).notNull().$type<FeatureFlagRule[]>(),
+    conditionSets: jsonb("condition_sets").default([]).notNull().$type<FeatureFlagConditionSet[]>(),
     salt: text("salt")
       .default(sql`md5(random()::text || clock_timestamp()::text)`)
       .notNull(),
@@ -387,6 +396,7 @@ export const featureFlags = pgTable(
     unique("feature_flags_site_key_unique").on(table.siteId, table.key),
     index("feature_flags_site_idx").on(table.siteId),
     check("feature_flags_rollout_check", sql`rollout_percentage >= 0 AND rollout_percentage <= 100`),
+    check("feature_flags_runtime_check", sql`runtime IN ('client', 'server', 'both')`),
     check("feature_flags_type_check", sql`flag_type IN ('boolean', 'multivariate', 'remote_config')`),
   ]
 );

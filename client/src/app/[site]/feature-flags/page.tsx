@@ -17,6 +17,7 @@ import {
   FeatureFlagPayload,
   FeatureFlagPayloadValue,
   FeatureFlagRule,
+  FeatureFlagRuntime,
   FeatureFlagType,
 } from "@/api/analytics/endpoints";
 import {
@@ -28,22 +29,22 @@ import {
 import { NothingFound } from "@/components/NothingFound";
 import { useSetPageTitle } from "@/hooks/useSetPageTitle";
 import { cn } from "@/lib/utils";
-import { Edit2, Flag, Plus, Trash2, X } from "lucide-react";
+import { ArrowDown, ArrowUp, Edit2, Flag, Plus, Trash2, X } from "lucide-react";
 import { useExtracted } from "next-intl";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
 
 type FlagFormState = {
   key: string;
-  name: string;
   description: string;
   enabled: boolean;
-  clientEnabled: boolean;
+  runtime: FeatureFlagRuntime;
   flagType: FeatureFlagType;
   payload: string;
   variants: VariantFormState[];
   rolloutPercentage: number;
   rules: RuleFormState[];
+  conditionSets: ConditionSetFormState[];
 };
 
 type RuleField = FeatureFlagRule["field"];
@@ -65,7 +66,17 @@ type VariantFormState = {
   payload: string;
 };
 
+type ConditionSetFormState = {
+  id: string;
+  name: string;
+  rules: RuleFormState[];
+  rolloutPercentage: number;
+  variants: VariantFormState[];
+  payload: string;
+};
+
 const flagTypeOptions: FeatureFlagType[] = ["boolean", "multivariate", "remote_config"];
+const runtimeOptions: FeatureFlagRuntime[] = ["client", "server", "both"];
 
 const ruleFieldOptions: Array<{ value: RuleField; requiresKey?: boolean }> = [
   { value: "hostname" },
@@ -95,6 +106,24 @@ function useFlagTypeLabel() {
           return t("Multiple variants");
         case "remote_config":
           return t("Remote config");
+      }
+    },
+    [t]
+  );
+}
+
+function useRuntimeLabel() {
+  const t = useExtracted();
+
+  return useCallback(
+    (runtime: FeatureFlagRuntime) => {
+      switch (runtime) {
+        case "client":
+          return t("Client");
+        case "server":
+          return t("Server");
+        case "both":
+          return t("Both");
       }
     },
     [t]
@@ -185,18 +214,29 @@ function createEmptyVariant(index: number): VariantFormState {
   };
 }
 
+function createEmptyConditionSet(flagType: FeatureFlagType, index: number): ConditionSetFormState {
+  return {
+    id: createRuleId(),
+    name: index === 0 ? "Default" : `Condition ${index + 1}`,
+    rules: [],
+    rolloutPercentage: 100,
+    variants: flagType === "multivariate" ? [createEmptyVariant(0), createEmptyVariant(1)] : [],
+    payload: flagType === "remote_config" ? "{}" : "",
+  };
+}
+
 function createEmptyForm(): FlagFormState {
   return {
     key: "",
-    name: "",
     description: "",
     enabled: false,
-    clientEnabled: true,
+    runtime: "client",
     flagType: "boolean",
     payload: "",
     variants: [],
     rolloutPercentage: 100,
     rules: [],
+    conditionSets: [createEmptyConditionSet("boolean", 0)],
   };
 }
 
@@ -210,6 +250,10 @@ function formatFlagValue(value: unknown) {
 function formatPayloadValue(value: FeatureFlagPayloadValue | null | undefined) {
   if (value === undefined || value === null) return "";
   return JSON.stringify(value, null, 2);
+}
+
+function getConditionSetPayload(flag: FeatureFlag, conditionSet: FeatureFlag["conditionSets"][number] | undefined) {
+  return conditionSet && conditionSet.payload !== undefined ? conditionSet.payload : flag.payload;
 }
 
 function parseOptionalPayload(value: string): FeatureFlagPayloadValue | undefined {
@@ -266,57 +310,88 @@ function toVariantFormState(variant: FeatureFlag["variants"][number]): VariantFo
   };
 }
 
+function toConditionSetFormState(
+  conditionSet: FeatureFlag["conditionSets"][number],
+  flagType: FeatureFlagType,
+  index: number
+): ConditionSetFormState {
+  return {
+    id: createRuleId(),
+    name: conditionSet.name || (index === 0 ? "Default" : `Condition ${index + 1}`),
+    rules: (conditionSet.rules || []).map(toRuleFormState),
+    rolloutPercentage: conditionSet.rolloutPercentage ?? 100,
+    variants:
+      conditionSet.variants && conditionSet.variants.length > 0
+        ? conditionSet.variants.map(toVariantFormState)
+        : flagType === "multivariate"
+          ? [createEmptyVariant(0), createEmptyVariant(1)]
+          : [],
+    payload: formatPayloadValue(conditionSet.payload),
+  };
+}
+
+function fallbackConditionSetFromFlag(flag: FeatureFlag): ConditionSetFormState {
+  return {
+    id: createRuleId(),
+    name: "Default",
+    rules: (flag.rules || []).map(toRuleFormState),
+    rolloutPercentage: flag.rolloutPercentage,
+    variants: flag.flagType === "multivariate" ? (flag.variants || []).map(toVariantFormState) : [],
+    payload: formatPayloadValue(flag.payload),
+  };
+}
+
 function toFormState(flag?: FeatureFlag): FlagFormState {
   if (!flag) return createEmptyForm();
 
   return {
     key: flag.key,
-    name: flag.name || "",
     description: flag.description || "",
     enabled: flag.enabled,
-    clientEnabled: flag.clientEnabled,
+    runtime: flag.runtime,
     flagType: flag.flagType,
     payload: formatPayloadValue(flag.payload),
     variants: (flag.variants || []).map(toVariantFormState),
     rolloutPercentage: flag.rolloutPercentage,
     rules: (flag.rules || []).map(toRuleFormState),
+    conditionSets:
+      flag.conditionSets && flag.conditionSets.length > 0
+        ? flag.conditionSets.map((conditionSet, index) => toConditionSetFormState(conditionSet, flag.flagType, index))
+        : [fallbackConditionSetFromFlag(flag)],
   };
 }
 
 function buildPayload(form: FlagFormState): FeatureFlagPayload {
-  if (!Number.isInteger(form.rolloutPercentage) || form.rolloutPercentage < 0 || form.rolloutPercentage > 100) {
-    throw new Error("Rollout must be between 0 and 100");
-  }
+  const buildRules = (rules: RuleFormState[]) =>
+    rules.map(rule => {
+      const requiresKey = rule.field === "query" || rule.field === "trait";
+      if (requiresKey && !rule.key.trim()) {
+        throw new Error("Rule key is required");
+      }
+      if (!rule.value.trim()) {
+        throw new Error("Rule value is required");
+      }
 
-  const rules = form.flagType === "remote_config" ? [] : form.rules.map(rule => {
-    const requiresKey = rule.field === "query" || rule.field === "trait";
-    if (requiresKey && !rule.key.trim()) {
-      throw new Error("Rule key is required");
-    }
-    if (!rule.value.trim()) {
-      throw new Error("Rule value is required");
-    }
+      return {
+        field: rule.field,
+        key: requiresKey ? rule.key.trim() : undefined,
+        operator: rule.operator,
+        value: parseRuleValue(rule.value),
+      };
+    });
 
-    return {
-      field: rule.field,
-      key: requiresKey ? rule.key.trim() : undefined,
-      operator: rule.operator,
-      value: parseRuleValue(rule.value),
-    };
-  });
-  const variants =
-    form.flagType === "multivariate"
-      ? form.variants.map(variant => ({
-          key: variant.key.trim(),
-          name: variant.name.trim() || undefined,
-          rolloutPercentage: variant.rolloutPercentage,
-          payload: parseOptionalPayload(variant.payload),
-        }))
-      : [];
-  const variantKeys = new Set(variants.map(variant => variant.key));
-  const variantRolloutTotal = variants.reduce((sum, variant) => sum + variant.rolloutPercentage, 0);
+  const buildVariants = (variants: VariantFormState[]) =>
+    variants.map(variant => ({
+      key: variant.key.trim(),
+      name: variant.name.trim() || undefined,
+      rolloutPercentage: variant.rolloutPercentage,
+      payload: parseOptionalPayload(variant.payload),
+    }));
 
-  if (form.flagType === "multivariate") {
+  const validateVariants = (variants: ReturnType<typeof buildVariants>) => {
+    const variantKeys = new Set(variants.map(variant => variant.key));
+    const variantRolloutTotal = variants.reduce((sum, variant) => sum + variant.rolloutPercentage, 0);
+
     if (variants.length < 2) {
       throw new Error("Multiple variant flags need at least two variants");
     }
@@ -329,26 +404,45 @@ function buildPayload(form: FlagFormState): FeatureFlagPayload {
     if (variantRolloutTotal > 100) {
       throw new Error("Variant rollout percentages cannot exceed 100");
     }
-  }
+  };
 
-  const payload =
-    form.flagType === "remote_config"
-      ? parseRequiredPayload(form.payload)
-      : form.flagType === "boolean"
-        ? parseOptionalPayload(form.payload)
-        : null;
+  const conditionSets = form.conditionSets.map(conditionSet => {
+    if (
+      !Number.isInteger(conditionSet.rolloutPercentage) ||
+      conditionSet.rolloutPercentage < 0 ||
+      conditionSet.rolloutPercentage > 100
+    ) {
+      throw new Error("Rollout must be between 0 and 100");
+    }
+
+    const variants = form.flagType === "multivariate" ? buildVariants(conditionSet.variants) : [];
+    if (form.flagType === "multivariate") {
+      validateVariants(variants);
+    }
+
+    return {
+      name: conditionSet.name.trim() || undefined,
+      rules: buildRules(conditionSet.rules),
+      rolloutPercentage: form.flagType === "boolean" ? conditionSet.rolloutPercentage : undefined,
+      variants: form.flagType === "multivariate" ? variants : undefined,
+      payload:
+        form.flagType === "remote_config"
+          ? parseRequiredPayload(conditionSet.payload)
+          : parseOptionalPayload(conditionSet.payload),
+    };
+  });
 
   return {
     key: form.key.trim(),
-    name: form.name.trim() || null,
     description: form.description.trim() || null,
     enabled: form.enabled,
-    clientEnabled: form.clientEnabled,
+    runtime: form.runtime,
     flagType: form.flagType,
-    payload,
-    variants,
-    rolloutPercentage: form.flagType === "boolean" ? form.rolloutPercentage : 100,
-    rules,
+    payload: null,
+    variants: [],
+    rolloutPercentage: 100,
+    rules: [],
+    conditionSets,
   };
 }
 
@@ -490,7 +584,9 @@ function VariantsEditor({
       <div className="flex items-center justify-between gap-2">
         <div className="grid gap-1">
           <Label>{t("Variants")}</Label>
-          <span className={cn("text-xs", totalRollout > 100 ? "text-red-500" : "text-neutral-500 dark:text-neutral-400")}>
+          <span
+            className={cn("text-xs", totalRollout > 100 ? "text-red-500" : "text-neutral-500 dark:text-neutral-400")}
+          >
             {t("Total rollout")}: {totalRollout}%
           </span>
         </div>
@@ -564,9 +660,154 @@ function VariantsEditor({
   );
 }
 
+function ConditionSetsEditor({
+  flagType,
+  conditionSets,
+  onChange,
+}: {
+  flagType: FeatureFlagType;
+  conditionSets: ConditionSetFormState[];
+  onChange: (conditionSets: ConditionSetFormState[]) => void;
+}) {
+  const t = useExtracted();
+  const conditionSetLabel = flagType === "remote_config" ? t("Targeted configs") : t("Release conditions");
+
+  const updateConditionSet = (id: string, patch: Partial<ConditionSetFormState>) => {
+    onChange(
+      conditionSets.map(conditionSet => (conditionSet.id === id ? { ...conditionSet, ...patch } : conditionSet))
+    );
+  };
+
+  const removeConditionSet = (id: string) => {
+    if (conditionSets.length <= 1) return;
+    onChange(conditionSets.filter(conditionSet => conditionSet.id !== id));
+  };
+
+  const moveConditionSet = (index: number, direction: -1 | 1) => {
+    const nextIndex = index + direction;
+    if (nextIndex < 0 || nextIndex >= conditionSets.length) return;
+
+    const next = [...conditionSets];
+    const [conditionSet] = next.splice(index, 1);
+    next.splice(nextIndex, 0, conditionSet);
+    onChange(next);
+  };
+
+  return (
+    <div className="grid gap-3">
+      <div className="flex items-center justify-between gap-2">
+        <Label>{conditionSetLabel}</Label>
+        <Button
+          type="button"
+          size="sm"
+          variant="secondary"
+          onClick={() => onChange([...conditionSets, createEmptyConditionSet(flagType, conditionSets.length)])}
+        >
+          <Plus className="h-4 w-4" />
+          {t("Add condition")}
+        </Button>
+      </div>
+
+      <div className="grid gap-3">
+        {conditionSets.map((conditionSet, index) => (
+          <div
+            key={conditionSet.id}
+            className="grid gap-4 rounded-md border border-neutral-150 p-3 dark:border-neutral-800"
+          >
+            <div className="flex items-center gap-2">
+              <Badge variant="secondary" className="w-8 justify-center">
+                {index + 1}
+              </Badge>
+              <Input
+                value={conditionSet.name}
+                aria-label={t("Condition name")}
+                placeholder={index === 0 ? t("Default") : t("Condition name")}
+                onChange={event => updateConditionSet(conditionSet.id, { name: event.target.value })}
+              />
+              <Button
+                type="button"
+                size="smIcon"
+                variant="ghost"
+                aria-label={t("Move up")}
+                disabled={index === 0}
+                onClick={() => moveConditionSet(index, -1)}
+              >
+                <ArrowUp className="h-4 w-4" />
+              </Button>
+              <Button
+                type="button"
+                size="smIcon"
+                variant="ghost"
+                aria-label={t("Move down")}
+                disabled={index === conditionSets.length - 1}
+                onClick={() => moveConditionSet(index, 1)}
+              >
+                <ArrowDown className="h-4 w-4" />
+              </Button>
+              <Button
+                type="button"
+                size="smIcon"
+                variant="ghost"
+                aria-label={t("Remove")}
+                disabled={conditionSets.length <= 1}
+                onClick={() => removeConditionSet(conditionSet.id)}
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+
+            <TargetingRulesEditor
+              rules={conditionSet.rules}
+              onChange={rules => updateConditionSet(conditionSet.id, { rules })}
+            />
+
+            {flagType === "multivariate" ? (
+              <VariantsEditor
+                variants={conditionSet.variants}
+                onChange={variants => updateConditionSet(conditionSet.id, { variants })}
+              />
+            ) : (
+              <div className="grid gap-3">
+                {flagType === "boolean" && (
+                  <div className="grid gap-3">
+                    <div className="flex items-center justify-between gap-3">
+                      <Label>{t("Rollout")}</Label>
+                      <span className="text-sm tabular-nums text-neutral-600 dark:text-neutral-300">
+                        {conditionSet.rolloutPercentage}%
+                      </span>
+                    </div>
+                    <Slider
+                      min={0}
+                      max={100}
+                      step={1}
+                      value={[conditionSet.rolloutPercentage]}
+                      onValueChange={value => updateConditionSet(conditionSet.id, { rolloutPercentage: value[0] ?? 0 })}
+                    />
+                  </div>
+                )}
+
+                <div className="grid gap-2">
+                  <Label>{flagType === "remote_config" ? t("Config payload") : t("Payload")}</Label>
+                  <Textarea
+                    className="min-h-24 font-mono text-xs"
+                    value={conditionSet.payload}
+                    placeholder={flagType === "remote_config" ? '{"theme":"dark"}' : '{"copy":"Try it now"}'}
+                    onChange={event => updateConditionSet(conditionSet.id, { payload: event.target.value })}
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function FeatureFlagDialog({ flag, trigger }: { flag?: FeatureFlag; trigger: ReactNode }) {
   const t = useExtracted();
   const getFlagTypeLabel = useFlagTypeLabel();
+  const getRuntimeLabel = useRuntimeLabel();
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState<FlagFormState>(() => toFormState(flag));
   const createMutation = useCreateFeatureFlag();
@@ -586,11 +827,18 @@ function FeatureFlagDialog({ flag, trigger }: { flag?: FeatureFlag; trigger: Rea
     setForm(current => ({
       ...current,
       flagType,
-      payload: flagType === "remote_config" && !current.payload ? "{}" : current.payload,
-      variants:
-        flagType === "multivariate" && current.variants.length === 0
-          ? [createEmptyVariant(0), createEmptyVariant(1)]
-          : current.variants,
+      conditionSets: current.conditionSets.map((conditionSet, index) => ({
+        ...conditionSet,
+        payload: flagType === "remote_config" && !conditionSet.payload ? "{}" : conditionSet.payload,
+        variants:
+          flagType === "multivariate" && conditionSet.variants.length === 0
+            ? [createEmptyVariant(0), createEmptyVariant(1)]
+            : flagType === "multivariate"
+              ? conditionSet.variants
+              : [],
+        rolloutPercentage: flagType === "boolean" ? conditionSet.rolloutPercentage : 100,
+        name: conditionSet.name || (index === 0 ? "Default" : `Condition ${index + 1}`),
+      })),
     }));
   };
 
@@ -632,27 +880,21 @@ function FeatureFlagDialog({ flag, trigger }: { flag?: FeatureFlag; trigger: Rea
             />
           </div>
 
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-            <div className="grid gap-2">
-              <Label htmlFor="flag-name">{t("Name")}</Label>
-              <Input id="flag-name" value={form.name} onChange={event => updateField("name", event.target.value)} />
-            </div>
-            <div className="grid gap-2">
-              <Label>{t("Flag type")}</Label>
-              <ButtonGroup className="w-full">
-                {flagTypeOptions.map(option => (
-                  <Button
-                    key={option}
-                    type="button"
-                    className="flex-1"
-                    variant={form.flagType === option ? "accent" : "secondary"}
-                    onClick={() => handleFlagTypeChange(option)}
-                  >
-                    {getFlagTypeLabel(option)}
-                  </Button>
-                ))}
-              </ButtonGroup>
-            </div>
+          <div className="grid gap-2">
+            <Label>{t("Flag type")}</Label>
+            <ButtonGroup className="w-full">
+              {flagTypeOptions.map(option => (
+                <Button
+                  key={option}
+                  type="button"
+                  className="flex-1"
+                  variant={form.flagType === option ? "accent" : "secondary"}
+                  onClick={() => handleFlagTypeChange(option)}
+                >
+                  {getFlagTypeLabel(option)}
+                </Button>
+              ))}
+            </ButtonGroup>
           </div>
 
           <div className="grid gap-2">
@@ -665,56 +907,34 @@ function FeatureFlagDialog({ flag, trigger }: { flag?: FeatureFlag; trigger: Rea
             />
           </div>
 
-          {form.flagType !== "multivariate" && (
-            <div className="grid gap-2">
-              <Label htmlFor="flag-payload">
-                {form.flagType === "remote_config" ? t("Config payload") : t("Payload")}
-              </Label>
-              <Textarea
-                id="flag-payload"
-                className="min-h-24 font-mono text-xs"
-                value={form.payload}
-                placeholder={form.flagType === "remote_config" ? '{"theme":"dark"}' : '{"copy":"Try it now"}'}
-                onChange={event => updateField("payload", event.target.value)}
-              />
-            </div>
-          )}
-
-          {form.flagType === "multivariate" ? (
-            <VariantsEditor variants={form.variants} onChange={variants => updateField("variants", variants)} />
-          ) : form.flagType === "boolean" ? (
-            <div className="grid gap-3">
-              <div className="flex items-center justify-between gap-3">
-                <Label htmlFor="flag-rollout">{t("Rollout")}</Label>
-                <span className="text-sm tabular-nums text-neutral-600 dark:text-neutral-300">
-                  {form.rolloutPercentage}%
-                </span>
-              </div>
-              <Slider
-                id="flag-rollout"
-                min={0}
-                max={100}
-                step={1}
-                value={[form.rolloutPercentage]}
-                onValueChange={value => updateField("rolloutPercentage", value[0] ?? 0)}
-              />
-            </div>
-          ) : null}
-
           <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
             <label className="flex items-center justify-between rounded-md border border-neutral-150 p-3 dark:border-neutral-800">
               <span className="text-sm font-medium">{t("Enabled")}</span>
               <Switch checked={form.enabled} onCheckedChange={checked => updateField("enabled", checked)} />
             </label>
-            <label className="flex items-center justify-between rounded-md border border-neutral-150 p-3 dark:border-neutral-800">
-              <span className="text-sm font-medium">{t("Client")}</span>
-              <Switch checked={form.clientEnabled} onCheckedChange={checked => updateField("clientEnabled", checked)} />
-            </label>
+            <div className="grid gap-2 rounded-md border border-neutral-150 p-3 dark:border-neutral-800">
+              <Label>{t("Runtime")}</Label>
+              <ButtonGroup className="w-full">
+                {runtimeOptions.map(option => (
+                  <Button
+                    key={option}
+                    type="button"
+                    className="flex-1"
+                    variant={form.runtime === option ? "accent" : "secondary"}
+                    onClick={() => updateField("runtime", option)}
+                  >
+                    {getRuntimeLabel(option)}
+                  </Button>
+                ))}
+              </ButtonGroup>
+            </div>
           </div>
 
-          {form.flagType !== "remote_config" && (
-            <TargetingRulesEditor rules={form.rules} onChange={rules => updateField("rules", rules)} />
-          )}
+          <ConditionSetsEditor
+            flagType={form.flagType}
+            conditionSets={form.conditionSets}
+            onChange={conditionSets => updateField("conditionSets", conditionSets)}
+          />
         </div>
 
         <DialogFooter>
@@ -751,6 +971,8 @@ function FlagStats({ flag }: { flag: FeatureFlag }) {
 function FlagValueSummary({ flag }: { flag: FeatureFlag }) {
   const t = useExtracted();
   const getFlagTypeLabel = useFlagTypeLabel();
+  const firstConditionSet = flag.conditionSets[0];
+  const variants = firstConditionSet?.variants || flag.variants;
 
   if (flag.flagType === "multivariate") {
     return (
@@ -759,13 +981,16 @@ function FlagValueSummary({ flag }: { flag: FeatureFlag }) {
           {getFlagTypeLabel(flag.flagType)}
         </Badge>
         <div className="flex flex-wrap gap-1">
-          {flag.variants.slice(0, 3).map(variant => (
-            <span key={variant.key} className="rounded bg-neutral-100 px-1.5 py-0.5 font-mono text-xs dark:bg-neutral-800">
+          {variants.slice(0, 3).map(variant => (
+            <span
+              key={variant.key}
+              className="rounded bg-neutral-100 px-1.5 py-0.5 font-mono text-xs dark:bg-neutral-800"
+            >
               {variant.key} {variant.rolloutPercentage}%
             </span>
           ))}
-          {flag.variants.length > 3 && (
-            <span className="text-xs text-neutral-500 dark:text-neutral-400">+{flag.variants.length - 3}</span>
+          {variants.length > 3 && (
+            <span className="text-xs text-neutral-500 dark:text-neutral-400">+{variants.length - 3}</span>
           )}
         </div>
       </div>
@@ -779,7 +1004,7 @@ function FlagValueSummary({ flag }: { flag: FeatureFlag }) {
           {getFlagTypeLabel(flag.flagType)}
         </Badge>
         <span className="truncate font-mono text-xs text-neutral-500 dark:text-neutral-400">
-          {formatFlagValue(flag.payload) || t("Payload")}
+          {formatFlagValue(getConditionSetPayload(flag, firstConditionSet)) || t("Payload")}
         </span>
       </div>
     );
@@ -790,9 +1015,9 @@ function FlagValueSummary({ flag }: { flag: FeatureFlag }) {
       <Badge variant="outline" className="w-fit">
         {getFlagTypeLabel(flag.flagType)}
       </Badge>
-      {flag.payload !== undefined && flag.payload !== null && (
+      {(firstConditionSet?.payload !== undefined || (flag.payload !== undefined && flag.payload !== null)) && (
         <span className="truncate font-mono text-xs text-neutral-500 dark:text-neutral-400">
-          {formatFlagValue(flag.payload)}
+          {formatFlagValue(getConditionSetPayload(flag, firstConditionSet))}
         </span>
       )}
     </div>
@@ -804,10 +1029,14 @@ function FlagRolloutSummary({ flag }: { flag: FeatureFlag }) {
     return <span className="text-neutral-400">-</span>;
   }
 
+  const firstConditionSet = flag.conditionSets[0];
   const rolloutPercentage =
     flag.flagType === "multivariate"
-      ? Math.min(100, flag.variants.reduce((sum, variant) => sum + variant.rolloutPercentage, 0))
-      : flag.rolloutPercentage;
+      ? Math.min(
+          100,
+          (firstConditionSet?.variants || flag.variants).reduce((sum, variant) => sum + variant.rolloutPercentage, 0)
+        )
+      : (firstConditionSet?.rolloutPercentage ?? flag.rolloutPercentage);
 
   return (
     <div className="flex items-center gap-2">
@@ -824,6 +1053,7 @@ function FlagRolloutSummary({ flag }: { flag: FeatureFlag }) {
 
 function FeatureFlagTable({ flags }: { flags: FeatureFlag[] }) {
   const t = useExtracted();
+  const getRuntimeLabel = useRuntimeLabel();
   const updateMutation = useUpdateFeatureFlag();
   const deleteMutation = useDeleteFeatureFlag();
 
@@ -861,7 +1091,6 @@ function FeatureFlagTable({ flags }: { flags: FeatureFlag[] }) {
                     <span className="font-mono text-sm font-medium">{flag.key}</span>
                     <Badge variant="secondary">v{flag.version}</Badge>
                   </div>
-                  {flag.name && <div className="mt-1 text-sm text-neutral-500 dark:text-neutral-400">{flag.name}</div>}
                 </div>
               </TableCell>
               <TableCell>
@@ -872,7 +1101,7 @@ function FeatureFlagTable({ flags }: { flags: FeatureFlag[] }) {
                     onCheckedChange={enabled => updateMutation.mutate({ flagId: flag.flagId, payload: { enabled } })}
                   />
                   <Badge variant={flag.enabled ? "success" : "secondary"}>{flag.enabled ? t("On") : t("Off")}</Badge>
-                  {!flag.clientEnabled && <Badge variant="outline">{t("Server")}</Badge>}
+                  <Badge variant="outline">{getRuntimeLabel(flag.runtime)}</Badge>
                 </div>
               </TableCell>
               <TableCell>
@@ -881,7 +1110,10 @@ function FeatureFlagTable({ flags }: { flags: FeatureFlag[] }) {
               <TableCell>
                 <FlagRolloutSummary flag={flag} />
               </TableCell>
-              <TableCell>{flag.flagType === "remote_config" ? "-" : flag.rules.length.toLocaleString()}</TableCell>
+              <TableCell>
+                {flag.conditionSets.length.toLocaleString()} /{" "}
+                {flag.conditionSets.reduce((sum, conditionSet) => sum + conditionSet.rules.length, 0).toLocaleString()}
+              </TableCell>
               <TableCell>
                 <FlagStats flag={flag} />
               </TableCell>
@@ -942,7 +1174,7 @@ export default function FeatureFlagsPage() {
     const query = search.trim().toLowerCase();
     if (!query) return flags || [];
     return (flags || []).filter(flag =>
-      [flag.key, flag.name || "", flag.description || ""].some(value => value.toLowerCase().includes(query))
+      [flag.key, flag.description || ""].some(value => value.toLowerCase().includes(query))
     );
   }, [flags, search]);
 

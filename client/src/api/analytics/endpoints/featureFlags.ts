@@ -1,6 +1,7 @@
 import { authedFetch } from "../../utils";
 
 export type FeatureFlagType = "boolean" | "multivariate" | "remote_config";
+export type FeatureFlagRuntime = "client" | "server" | "both";
 export type FeatureFlagPayloadValue =
   | string
   | number
@@ -34,6 +35,14 @@ export type FeatureFlagVariant = {
   payload?: FeatureFlagPayloadValue;
 };
 
+export type FeatureFlagConditionSet = {
+  name?: string;
+  rules: FeatureFlagRule[];
+  rolloutPercentage?: number;
+  variants?: FeatureFlagVariant[];
+  payload?: FeatureFlagPayloadValue | null;
+};
+
 export type FeatureFlagStats = {
   flag_key: string;
   flag_value: string;
@@ -46,15 +55,15 @@ export type FeatureFlag = {
   flagId: number;
   siteId: number;
   key: string;
-  name: string | null;
   description: string | null;
   enabled: boolean;
-  clientEnabled: boolean;
+  runtime: FeatureFlagRuntime;
   flagType: FeatureFlagType;
   payload?: FeatureFlagPayloadValue | null;
   variants: FeatureFlagVariant[];
   rolloutPercentage: number;
   rules: FeatureFlagRule[];
+  conditionSets: FeatureFlagConditionSet[];
   version: number;
   createdAt: string;
   updatedAt: string;
@@ -63,15 +72,15 @@ export type FeatureFlag = {
 
 export type FeatureFlagPayload = {
   key: string;
-  name?: string | null;
   description?: string | null;
   enabled: boolean;
-  clientEnabled: boolean;
+  runtime: FeatureFlagRuntime;
   flagType: FeatureFlagType;
   payload?: FeatureFlagPayloadValue | null;
   variants: FeatureFlagVariant[];
   rolloutPercentage: number;
   rules: FeatureFlagRule[];
+  conditionSets: FeatureFlagConditionSet[];
 };
 
 export type FeatureFlagUpdatePayload = Partial<FeatureFlagPayload>;
