@@ -289,7 +289,7 @@ async function analyticsRoutes(fastify: FastifyInstance) {
   fastify.put("/sites/:siteId/feature-flags/:flagId", adminSite, updateFeatureFlag);
   fastify.delete("/sites/:siteId/feature-flags/:flagId", adminSite, deleteFeatureFlag);
   fastify.post("/sites/:siteId/feature-flags/evaluate", authSite, evaluateServerFeatureFlags);
-  fastify.post("/site/:siteId/feature-flags/evaluate", authSite, evaluateFeatureFlags);
+  fastify.post("/site/:siteId/feature-flags/evaluate", evaluateFeatureFlags);
   fastify.get("/sites/:siteId/events/names", publicSite, getEventNames);
   fastify.get("/sites/:siteId/events/properties", publicSite, getEventProperties);
   fastify.get("/sites/:siteId/events/outbound", publicSite, getOutboundLinks);
