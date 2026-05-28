@@ -348,6 +348,8 @@ export function CreateExperimentWizard({
   const [step, setStep] = useState<WizardStep>("basics");
   const [form, setForm] = useState<WizardForm>(() => initialForm(experiment));
   const [savedImplementationState, setSavedImplementationState] = useState<ImplementationState | null>(null);
+  const [flagKeyTouched, setFlagKeyTouched] = useState(false);
+  const [goalNameTouched, setGoalNameTouched] = useState(false);
   const isEditing = !!experiment;
 
   const usedFlagIds = useMemo(
@@ -388,6 +390,8 @@ export function CreateExperimentWizard({
     setStep("basics");
     setForm(initialForm(experiment));
     setSavedImplementationState(null);
+    setFlagKeyTouched(!!experiment);
+    setGoalNameTouched(!!experiment);
   }, [experiment?.experimentId, open]);
 
   useEffect(() => {
@@ -413,8 +417,8 @@ export function CreateExperimentWizard({
     setForm(current => ({
       ...current,
       name,
-      flagKey: current.flagKey ? current.flagKey : slugify(name),
-      goalName: current.goalName ? current.goalName : name ? `${name} conversion` : "",
+      flagKey: flagKeyTouched ? current.flagKey : slugify(name),
+      goalName: goalNameTouched ? current.goalName : name ? `${name} conversion` : "",
     }));
   };
 
@@ -491,7 +495,7 @@ export function CreateExperimentWizard({
   };
 
   const goNext = () => {
-    const validationError = validateExperimentConfiguration();
+    const validationError = validateCurrentStep();
     if (validationError) {
       toast.error(validationError);
       return;
@@ -814,7 +818,10 @@ export function CreateExperimentWizard({
                   <Input
                     id="experiment-flag-key"
                     value={form.flagKey}
-                    onChange={event => updateForm("flagKey", slugify(event.target.value))}
+                    onChange={event => {
+                      setFlagKeyTouched(true);
+                      updateForm("flagKey", slugify(event.target.value));
+                    }}
                     placeholder="checkout_cta"
                     className="font-mono"
                   />
@@ -963,7 +970,10 @@ export function CreateExperimentWizard({
                 <Input
                   id="experiment-goal-name"
                   value={form.goalName}
-                  onChange={event => updateForm("goalName", event.target.value)}
+                  onChange={event => {
+                    setGoalNameTouched(true);
+                    updateForm("goalName", event.target.value);
+                  }}
                   placeholder={t("Signup completed")}
                 />
               </div>
