@@ -61,6 +61,13 @@ import {
 } from "./api/analytics/index.js";
 import { getConfig, getVersion } from "./api/getConfig.js";
 import {
+  createExperiment,
+  deleteExperiment,
+  getExperimentResults,
+  getExperiments,
+  updateExperiment,
+} from "./api/experiments/index.js";
+import {
   createFeatureFlag,
   deleteFeatureFlag,
   evaluateFeatureFlags,
@@ -290,6 +297,11 @@ async function analyticsRoutes(fastify: FastifyInstance) {
   fastify.delete("/sites/:siteId/feature-flags/:flagId", adminSite, deleteFeatureFlag);
   fastify.post("/sites/:siteId/feature-flags/evaluate", authSite, evaluateServerFeatureFlags);
   fastify.post("/site/:siteId/feature-flags/evaluate", evaluateFeatureFlags);
+  fastify.get("/sites/:siteId/experiments", authSite, getExperiments);
+  fastify.post("/sites/:siteId/experiments", adminSite, createExperiment);
+  fastify.put("/sites/:siteId/experiments/:experimentId", adminSite, updateExperiment);
+  fastify.delete("/sites/:siteId/experiments/:experimentId", adminSite, deleteExperiment);
+  fastify.get("/sites/:siteId/experiments/:experimentId/results", authSite, getExperimentResults);
   fastify.get("/sites/:siteId/events/names", publicSite, getEventNames);
   fastify.get("/sites/:siteId/events/properties", publicSite, getEventProperties);
   fastify.get("/sites/:siteId/events/outbound", publicSite, getOutboundLinks);

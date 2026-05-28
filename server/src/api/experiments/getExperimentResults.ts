@@ -1,0 +1,117 @@
+import { FastifyReply, FastifyRequest } from "fastify";
+import type { FilterParams } from "@rybbit/shared";
+import SqlString from "sqlstring";
+import { z } from "zod";
+import { clickhouse } from "../../db/clickhouse/clickhouse.js";
+import { buildGoalCondition } from "../analytics/goals/goalConditions.js";
+import { getFilterStatement } from "../analytics/utils/getFilterStatement.js";
+import { getTimeStatement, processResults } from "../analytics/utils/utils.js";
+import type { ExperimentResultRow } from "./types.js";
+import {
+  buildExperimentResults,
+  getExperimentVariantKeys,
+  getExperimentWithRelations,
+  parseExperimentId,
+  parseSiteId,
+  serializeExperiment,
+} from "./utils.js";
+
+export async function getExperimentResults(
+  request: FastifyRequest<{
+    Params: { siteId: string; experimentId: string };
+    Querystring: FilterParams;
+  }>,
+  reply: FastifyReply
+) {
+  try {
+    const siteId = parseSiteId(request.params.siteId, reply);
+    if (!siteId) return;
+
+    const experimentId = parseExperimentId(request.params.experimentId, reply);
+    if (!experimentId) return;
+
+    const record = await getExperimentWithRelations(siteId, experimentId);
+    if (!record) {
+      return reply.status(404).send({ error: "Experiment not found" });
+    }
+
+    const variants = getExperimentVariantKeys(record.featureFlag);
+    const goalCondition = record.primaryGoal ? buildGoalCondition(record.primaryGoal) : null;
+
+    if (!record.primaryGoal || !goalCondition) {
+      return reply.send({
+        data: {
+          experiment: serializeExperiment(record),
+          variants: buildExperimentResults(variants, []),
+          totalExposureSessions: 0,
+          totalConversions: 0,
+          hasGoal: false,
+        },
+      });
+    }
+
+    const timeStatement = getTimeStatement(request.query);
+    const filterStatement = request.query.filters
+      ? getFilterStatement(request.query.filters as string, siteId, timeStatement)
+      : "";
+    const flagKey = record.featureFlag.key;
+
+    const result = await clickhouse.query({
+      query: `
+        WITH
+          exposure_sessions AS (
+            SELECT
+              session_id,
+              JSONExtractString(toString(props), 'value') AS variant,
+              min(timestamp) AS exposed_at,
+              count() AS exposures
+            FROM events
+            WHERE site_id = ${SqlString.escape(siteId)}
+              AND type = 'custom_event'
+              AND event_name = 'feature_flag_exposure'
+              AND JSONExtractString(toString(props), 'key') = ${SqlString.escape(flagKey)}
+              AND JSONExtractString(toString(props), 'value') != ''
+              ${timeStatement}
+              ${filterStatement}
+            GROUP BY session_id, variant
+          ),
+          goal_events AS (
+            SELECT
+              session_id,
+              timestamp
+            FROM events
+            WHERE site_id = ${SqlString.escape(siteId)}
+              AND (${goalCondition})
+          )
+        SELECT
+          e.variant AS variant,
+          uniqExact(e.session_id) AS sessions,
+          sum(e.exposures) AS exposures,
+          uniqExactIf(e.session_id, g.timestamp IS NOT NULL) AS conversions
+        FROM exposure_sessions e
+        LEFT JOIN goal_events g ON g.session_id = e.session_id AND g.timestamp >= e.exposed_at
+        GROUP BY e.variant
+        ORDER BY e.variant ASC
+      `,
+      format: "JSONEachRow",
+    });
+
+    const rows = await processResults<ExperimentResultRow>(result);
+    const variantResults = buildExperimentResults(variants, rows);
+
+    return reply.send({
+      data: {
+        experiment: serializeExperiment(record),
+        variants: variantResults,
+        totalExposureSessions: variantResults.reduce((sum, variant) => sum + variant.sessions, 0),
+        totalConversions: variantResults.reduce((sum, variant) => sum + variant.conversions, 0),
+        hasGoal: true,
+      },
+    });
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return reply.status(400).send({ error: "Validation error", details: error.errors });
+    }
+    return reply.status(500).send({ error: "Failed to get experiment results" });
+  }
+}

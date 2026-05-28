@@ -6,6 +6,7 @@ import {
   Code,
   File,
   Flag,
+  FlaskConical,
   Funnel,
   Gauge,
   Globe2,
@@ -137,6 +138,14 @@ function SidebarContent() {
             active={isActiveTab("feature-flags")}
             href={getTabPath("feature-flags")}
             icon={<Flag className="w-4 h-4" />}
+          />
+        )}
+        {!privateKey && (
+          <SidebarComponents.Item
+            label={t("Experiments")}
+            active={isActiveTab("experiments")}
+            href={getTabPath("experiments")}
+            icon={<FlaskConical className="w-4 h-4" />}
           />
         )}
         <SidebarComponents.Item

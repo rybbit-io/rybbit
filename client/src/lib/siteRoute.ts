@@ -14,6 +14,7 @@ export const SYNCED_ANALYTICS_ROUTES = new Set([
   "pages",
   "replay",
   "feature-flags",
+  "experiments",
 ]);
 
 export type SiteRouteContext = {
