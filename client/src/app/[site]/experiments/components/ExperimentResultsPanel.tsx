@@ -3,7 +3,7 @@
 import type { Experiment, ExperimentVariantResult } from "@/api/analytics/endpoints";
 import { useExperimentResults } from "@/api/analytics/hooks/experiments/useExperiments";
 import { cn } from "@/lib/utils";
-import { Target, TrendingUp, Trophy } from "lucide-react";
+import { Info, Target, TrendingUp, Trophy } from "lucide-react";
 import { useExtracted } from "next-intl";
 import type { ReactNode } from "react";
 import {
@@ -175,6 +175,7 @@ export function ExperimentResultsPanel({ experiment }: { experiment: Experiment 
   const maxRate = Math.max(...results.map(result => result.conversionRate), 0);
   const totalSessions = data?.totalExposureSessions ?? results.reduce((sum, result) => sum + result.sessions, 0);
   const totalConversions = data?.totalConversions ?? results.reduce((sum, result) => sum + result.conversions, 0);
+  const measurement = data?.measurement ?? "exposure";
 
   const officialWinner = experiment.winningVariant || null;
   const isLeaderSignificant = !!leader && !!leaderConfidence?.isSignificant;
@@ -255,6 +256,18 @@ export function ExperimentResultsPanel({ experiment }: { experiment: Experiment 
           );
         })}
       </div>
+
+      {measurement === "assignment" && (
+        <div className="flex items-start gap-2 rounded-md border border-neutral-100 bg-neutral-50/60 px-3 py-2 text-xs text-neutral-500 dark:border-neutral-850 dark:bg-neutral-950/40 dark:text-neutral-400">
+          <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+          <span>
+            {t(
+              'Showing assigned visitors. Call rybbit.flag("{flagKey}") where the variant renders to measure visitors actually exposed to it.',
+              { flagKey: experiment.featureFlag.key }
+            )}
+          </span>
+        </div>
+      )}
     </div>
   );
 }

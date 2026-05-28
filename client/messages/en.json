@@ -353,6 +353,7 @@
   "ttyUm0": "{sessions} sessions · {conversions} conversions",
   "l94vPo": "{confidence}% confidence",
   "qQTwNl": "Not yet significant",
+  "IuPATc": "Showing assigned visitors. Call rybbit.flag(\"{flagKey}\") where the variant renders to measure visitors actually exposed to it.",
   "W1QsrY": "No goal",
   "UBQJK/": "Untitled goal",
   "4IJvOg": "Ended {time}",

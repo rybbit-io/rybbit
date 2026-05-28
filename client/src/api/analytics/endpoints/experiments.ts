@@ -91,6 +91,7 @@ export type ExperimentResults = {
   totalExposureSessions: number;
   totalConversions: number;
   hasGoal: boolean;
+  measurement: "exposure" | "assignment";
 };
 
 export async function fetchExperiments(site: string | number): Promise<Experiment[]> {

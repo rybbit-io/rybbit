@@ -46,6 +46,7 @@ export async function getExperimentResults(
           totalExposureSessions: 0,
           totalConversions: 0,
           hasGoal: false,
+          measurement: "exposure",
         },
       });
     }
@@ -54,10 +55,23 @@ export async function getExperimentResults(
     const filterStatement = request.query.filters
       ? getFilterStatement(request.query.filters as string, siteId, timeStatement)
       : "";
-    const flagKey = record.featureFlag.key;
+    const escapedSiteId = SqlString.escape(siteId);
+    const escapedFlagKey = SqlString.escape(record.featureFlag.key);
 
-    const result = await clickhouse.query({
-      query: `
+    const goalEventsCte = `
+      goal_events AS (
+        SELECT
+          session_id,
+          timestamp
+        FROM events
+        WHERE site_id = ${escapedSiteId}
+          AND (${goalCondition})
+      )`;
+
+    // Exposure-based: counts only sessions that explicitly read the flag via
+    // rybbit.flag(), which emits a feature_flag_exposure event. This is the
+    // statistically correct unit of analysis for an experiment.
+    const exposureQuery = `
         WITH
           exposure_sessions AS (
             SELECT
@@ -66,23 +80,16 @@ export async function getExperimentResults(
               min(timestamp) AS exposed_at,
               count() AS exposures
             FROM events
-            WHERE site_id = ${SqlString.escape(siteId)}
+            WHERE site_id = ${escapedSiteId}
               AND type = 'custom_event'
               AND event_name = 'feature_flag_exposure'
-              AND JSONExtractString(toString(props), 'key') = ${SqlString.escape(flagKey)}
+              AND JSONExtractString(toString(props), 'key') = ${escapedFlagKey}
               AND JSONExtractString(toString(props), 'value') != ''
               ${timeStatement}
               ${filterStatement}
             GROUP BY session_id, variant
           ),
-          goal_events AS (
-            SELECT
-              session_id,
-              timestamp
-            FROM events
-            WHERE site_id = ${SqlString.escape(siteId)}
-              AND (${goalCondition})
-          )
+          ${goalEventsCte}
         SELECT
           e.variant AS variant,
           uniqExact(e.session_id) AS sessions,
@@ -92,11 +99,52 @@ export async function getExperimentResults(
         LEFT JOIN goal_events g ON g.session_id = e.session_id AND g.timestamp >= e.exposed_at
         GROUP BY e.variant
         ORDER BY e.variant ASC
-      `,
-      format: "JSONEachRow",
-    });
+      `;
 
-    const rows = await processResults<ExperimentResultRow>(result);
+    const exposureResult = await clickhouse.query({ query: exposureQuery, format: "JSONEachRow" });
+    let rows = await processResults<ExperimentResultRow>(exposureResult);
+    let measurement: "exposure" | "assignment" = "exposure";
+
+    // Fallback: if no exposures were recorded (the app never calls rybbit.flag
+    // for this key), count sessions that were assigned the variant via the
+    // feature_flags map attached to every event. Looser, but avoids a confusing
+    // empty result when the flag is clearly assigning traffic.
+    const hasExposures = rows.some(row => Number(row.sessions) > 0);
+    if (!hasExposures) {
+      const assignmentQuery = `
+        WITH
+          assignment_sessions AS (
+            SELECT
+              session_id,
+              feature_flags[${escapedFlagKey}] AS variant,
+              min(timestamp) AS assigned_at
+            FROM events
+            WHERE site_id = ${escapedSiteId}
+              AND feature_flags[${escapedFlagKey}] != ''
+              ${timeStatement}
+              ${filterStatement}
+            GROUP BY session_id, variant
+          ),
+          ${goalEventsCte}
+        SELECT
+          a.variant AS variant,
+          uniqExact(a.session_id) AS sessions,
+          uniqExact(a.session_id) AS exposures,
+          uniqExactIf(a.session_id, g.timestamp IS NOT NULL) AS conversions
+        FROM assignment_sessions a
+        LEFT JOIN goal_events g ON g.session_id = a.session_id AND g.timestamp >= a.assigned_at
+        GROUP BY a.variant
+        ORDER BY a.variant ASC
+      `;
+
+      const assignmentResult = await clickhouse.query({ query: assignmentQuery, format: "JSONEachRow" });
+      const assignmentRows = await processResults<ExperimentResultRow>(assignmentResult);
+      if (assignmentRows.some(row => Number(row.sessions) > 0)) {
+        rows = assignmentRows;
+        measurement = "assignment";
+      }
+    }
+
     const variantResults = buildExperimentResults(variants, rows);
 
     return reply.send({
@@ -106,6 +154,7 @@ export async function getExperimentResults(
         totalExposureSessions: variantResults.reduce((sum, variant) => sum + variant.sessions, 0),
         totalConversions: variantResults.reduce((sum, variant) => sum + variant.conversions, 0),
         hasGoal: true,
+        measurement,
       },
     });
   } catch (error) {
