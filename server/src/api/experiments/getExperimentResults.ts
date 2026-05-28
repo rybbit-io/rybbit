@@ -58,14 +58,21 @@ export async function getExperimentResults(
     const escapedSiteId = SqlString.escape(siteId);
     const escapedFlagKey = SqlString.escape(record.featureFlag.key);
 
-    const goalEventsCte = `
-      goal_events AS (
+    // One row per session that completed the goal, scoped to the same time
+    // window and filters the goals page uses, so experiment conversions can
+    // never exceed the goal's own count. Aggregating per session also keeps the
+    // join below one-to-one, so exposure counts aren't inflated.
+    const goalSessionsCte = `
+      goal_sessions AS (
         SELECT
           session_id,
-          timestamp
+          max(timestamp) AS last_goal_at
         FROM events
         WHERE site_id = ${escapedSiteId}
           AND (${goalCondition})
+          ${timeStatement}
+          ${filterStatement}
+        GROUP BY session_id
       )`;
 
     // Exposure-based: counts only sessions that explicitly read the flag via
@@ -89,14 +96,14 @@ export async function getExperimentResults(
               ${filterStatement}
             GROUP BY session_id, variant
           ),
-          ${goalEventsCte}
+          ${goalSessionsCte}
         SELECT
           e.variant AS variant,
           uniqExact(e.session_id) AS sessions,
           sum(e.exposures) AS exposures,
-          uniqExactIf(e.session_id, g.timestamp IS NOT NULL) AS conversions
+          uniqExactIf(e.session_id, g.last_goal_at >= e.exposed_at) AS conversions
         FROM exposure_sessions e
-        LEFT JOIN goal_events g ON g.session_id = e.session_id AND g.timestamp >= e.exposed_at
+        LEFT JOIN goal_sessions g ON g.session_id = e.session_id
         GROUP BY e.variant
         ORDER BY e.variant ASC
       `;
@@ -125,14 +132,14 @@ export async function getExperimentResults(
               ${filterStatement}
             GROUP BY session_id, variant
           ),
-          ${goalEventsCte}
+          ${goalSessionsCte}
         SELECT
           a.variant AS variant,
           uniqExact(a.session_id) AS sessions,
           uniqExact(a.session_id) AS exposures,
-          uniqExactIf(a.session_id, g.timestamp IS NOT NULL) AS conversions
+          uniqExactIf(a.session_id, g.last_goal_at >= a.assigned_at) AS conversions
         FROM assignment_sessions a
-        LEFT JOIN goal_events g ON g.session_id = a.session_id AND g.timestamp >= a.assigned_at
+        LEFT JOIN goal_sessions g ON g.session_id = a.session_id
         GROUP BY a.variant
         ORDER BY a.variant ASC
       `;
