@@ -22,7 +22,7 @@ import { useExtracted } from "next-intl";
 import { useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
 
-type WizardStep = "basics" | "assignment" | "goal" | "review" | "implementation";
+type WizardStep = "basics" | "assignment" | "goal" | "implementation";
 type AssignmentMode = "new" | "existing";
 type GoalMode = "new" | "existing" | "none";
 type GoalType = "path" | "event";
@@ -76,7 +76,7 @@ type WizardForm = {
   eventName: string;
 };
 
-const STEPS: WizardStep[] = ["basics", "assignment", "goal", "review", "implementation"];
+const STEPS: WizardStep[] = ["basics", "assignment", "goal", "implementation"];
 
 const VARIANT_SEGMENT_COLORS = ["bg-accent-500", "bg-accent-400", "bg-accent-600", "bg-accent-300", "bg-accent-700"];
 
@@ -276,20 +276,6 @@ function WizardHelp({ step, isEditing }: { step: WizardStep; isEditing: boolean 
         t("Path goals work when conversion is a URL, like /thank-you. Event goals work for explicit actions."),
         t("You can skip this for now, but conversion results need a goal later."),
       ],
-    },
-    review: {
-      title: isEditing ? t("Review before saving") : t("Review before creating"),
-      body: isEditing
-        ? [
-            t("This will save the experiment metadata and reconnect the selected flag or goal if you changed them."),
-            t("If you chose to create a new flag or goal, it will be created before the experiment is updated."),
-            t("After saving you will see the implementation code for the current assignment flag."),
-          ]
-        : [
-            t("This will create any new flag or goal you configured, then connect them to the experiment."),
-            t("The experiment stays in draft until you start it from the experiment list."),
-            t("After creation you will get implementation code instead of the dialog closing."),
-          ],
     },
     implementation: {
       title: t("Implement and expose"),
@@ -634,7 +620,7 @@ export function CreateExperimentWizard({
   };
 
   const saveExperiment = async () => {
-    const validationError = validateCurrentStep();
+    const validationError = validateExperimentConfiguration();
     if (validationError) {
       toast.error(validationError);
       return;
@@ -1025,47 +1011,6 @@ export function CreateExperimentWizard({
       );
     }
 
-    if (step === "review") {
-      const flagLabel = form.assignmentMode === "new" ? form.flagKey : selectedFlag?.key;
-      const goalLabel =
-        form.goalMode === "none"
-          ? t("No goal yet")
-          : form.goalMode === "new"
-            ? form.goalType === "path"
-              ? form.pathPattern
-              : form.eventName
-            : selectedGoal?.name || selectedGoal?.config.pathPattern || selectedGoal?.config.eventName;
-
-      return (
-        <div className="grid gap-3">
-          {[
-            { label: t("Experiment"), value: form.name },
-            { label: t("Assignment flag"), value: flagLabel },
-            { label: t("Primary goal"), value: goalLabel },
-            ...(isEditing ? [] : [{ label: t("Initial status"), value: t("Draft") }]),
-          ].map(item => (
-            <div
-              key={item.label}
-              className="rounded-lg border border-neutral-150 bg-neutral-50/60 p-3 dark:border-neutral-800 dark:bg-neutral-900/40"
-            >
-              <div className="text-xs uppercase tracking-wider text-neutral-500 dark:text-neutral-400">
-                {item.label}
-              </div>
-              <div className="mt-1 text-sm font-medium text-neutral-900 dark:text-neutral-50">{item.value}</div>
-            </div>
-          ))}
-          {form.hypothesis && (
-            <div className="rounded-lg border border-neutral-150 bg-neutral-50/60 p-3 dark:border-neutral-800 dark:bg-neutral-900/40">
-              <div className="text-xs uppercase tracking-wider text-neutral-500 dark:text-neutral-400">
-                {t("Hypothesis")}
-              </div>
-              <div className="mt-1 text-sm text-neutral-700 dark:text-neutral-200">{form.hypothesis}</div>
-            </div>
-          )}
-        </div>
-      );
-    }
-
     if (!implementationState) return null;
 
     const fallbackVariant = implementationState.variants[0] || "control";
@@ -1156,9 +1101,7 @@ window.rybbit.onReady((rybbit) => {
         ? t("Assignment")
         : step === "goal"
           ? t("Goal")
-          : step === "review"
-            ? t("Review")
-            : t("Implement");
+          : t("Implement");
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -1213,9 +1156,7 @@ window.rybbit.onReady((rybbit) => {
                       ? t("Assignment")
                       : item === "goal"
                         ? t("Goal")
-                        : item === "review"
-                          ? t("Review")
-                          : t("Implement")}
+                        : t("Implement")}
                 </button>
               );
             })}
@@ -1246,7 +1187,7 @@ window.rybbit.onReady((rybbit) => {
                 {t("Back")}
               </Button>
             )}
-            {step === "review" ? (
+            {step === "goal" ? (
               <Button onClick={isEditing ? saveExperiment : submitExperiment} disabled={isSaving || !site}>
                 {isSaving
                   ? isEditing
