@@ -2,7 +2,6 @@
 
 import type { Experiment, ExperimentStatus } from "@/api/analytics/endpoints";
 import { useDeleteExperiment, useUpdateExperiment } from "@/api/analytics/hooks/experiments/useExperiments";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -12,12 +11,24 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { toast } from "@/components/ui/sonner";
-import { MoreHorizontal, Pencil, Trash2 } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { Flag, MoreHorizontal, Pause, Pencil, Play, Square, Target, Trash2, Trophy } from "lucide-react";
 import { useExtracted } from "next-intl";
+import type { ReactNode } from "react";
 import { useState } from "react";
+import { formatRelativeTime } from "../lib/experimentHelpers";
 import { ExperimentDialog } from "./ExperimentDialog";
 import { ExperimentResultsPanel } from "./ExperimentResultsPanel";
 import { StatusBadge } from "./StatusBadge";
+
+function MetaChip({ icon, children }: { icon: ReactNode; children: ReactNode }) {
+  return (
+    <span className="inline-flex min-w-0 items-center gap-1.5 text-xs text-neutral-500 dark:text-neutral-400">
+      <span className="text-neutral-400 dark:text-neutral-500">{icon}</span>
+      <span className="truncate">{children}</span>
+    </span>
+  );
+}
 
 export function ExperimentRow({ experiment, experiments }: { experiment: Experiment; experiments: Experiment[] }) {
   const t = useExtracted();
@@ -26,6 +37,18 @@ export function ExperimentRow({ experiment, experiments }: { experiment: Experim
   const [editOpen, setEditOpen] = useState(false);
   const primaryGoalName =
     experiment.primaryGoal?.name || (experiment.primaryGoalId ? t("Untitled goal") : t("No goal"));
+
+  const startedRel = formatRelativeTime(experiment.startedAt);
+  const endedRel = formatRelativeTime(experiment.endedAt);
+  const createdRel = formatRelativeTime(experiment.createdAt);
+  const lifecycle =
+    experiment.status === "completed" && endedRel
+      ? t("Ended {time}", { time: endedRel })
+      : experiment.startedAt && startedRel
+        ? t("Started {time}", { time: startedRel })
+        : createdRel
+          ? t("Created {time}", { time: createdRel })
+          : null;
 
   const handleDelete = async () => {
     if (!window.confirm(t("Delete this experiment?"))) return;
@@ -47,36 +70,45 @@ export function ExperimentRow({ experiment, experiments }: { experiment: Experim
     }
   };
 
+  const isRunning = experiment.status === "running";
+
   return (
-    <div className="rounded-lg border border-neutral-100 bg-white dark:border-neutral-850 dark:bg-neutral-900">
+    <div
+      className={cn(
+        "overflow-hidden rounded-lg border bg-white dark:bg-neutral-900",
+        isRunning ? "border-emerald-500/20 dark:border-emerald-500/15" : "border-neutral-100 dark:border-neutral-850"
+      )}
+    >
       <div className="flex flex-col gap-3 border-b border-neutral-100 p-4 dark:border-neutral-850 md:flex-row md:items-start md:justify-between">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
             <h3 className="truncate text-base font-medium text-neutral-900 dark:text-neutral-50">{experiment.name}</h3>
             <StatusBadge status={experiment.status} />
             {experiment.winningVariant && (
-              <Badge variant="success">
-                {t("Winner")}: {experiment.winningVariant}
-              </Badge>
+              <span className="inline-flex items-center gap-1 rounded-md bg-emerald-500/15 px-1.5 py-0.5 text-[11px] font-medium text-emerald-700 dark:text-emerald-300">
+                <Trophy className="h-3 w-3" />
+                <span className="font-mono">{experiment.winningVariant}</span>
+              </span>
             )}
           </div>
-          <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-xs text-neutral-500 dark:text-neutral-400">
-            <span>
-              {t("Flag")}:{" "}
+          <div className="mt-1.5 flex flex-wrap items-center gap-x-4 gap-y-1">
+            <MetaChip icon={<Flag className="h-3.5 w-3.5" />}>
               <code className="font-mono text-neutral-700 dark:text-neutral-200">{experiment.featureFlag.key}</code>
-            </span>
-            <span>
-              {t("Goal")}: <span className="text-neutral-700 dark:text-neutral-200">{primaryGoalName}</span>
-            </span>
+            </MetaChip>
+            <MetaChip icon={<Target className="h-3.5 w-3.5" />}>
+              <span className="text-neutral-700 dark:text-neutral-200">{primaryGoalName}</span>
+            </MetaChip>
+            {lifecycle && <span className="text-xs text-neutral-400 dark:text-neutral-500">{lifecycle}</span>}
           </div>
           {experiment.hypothesis && (
             <p className="mt-2 max-w-3xl text-sm text-neutral-600 dark:text-neutral-300">{experiment.hypothesis}</p>
           )}
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex shrink-0 items-center gap-2">
           {experiment.status !== "running" && experiment.status !== "completed" && (
             <Button size="sm" onClick={() => setStatus("running")} disabled={updateMutation.isPending}>
+              <Play className="h-3.5 w-3.5" />
               {t("Start")}
             </Button>
           )}
@@ -87,6 +119,7 @@ export function ExperimentRow({ experiment, experiments }: { experiment: Experim
               onClick={() => setStatus("paused")}
               disabled={updateMutation.isPending}
             >
+              <Pause className="h-3.5 w-3.5" />
               {t("Pause")}
             </Button>
           )}
@@ -97,6 +130,7 @@ export function ExperimentRow({ experiment, experiments }: { experiment: Experim
               onClick={() => setStatus("completed")}
               disabled={updateMutation.isPending}
             >
+              <Square className="h-3.5 w-3.5" />
               {t("Complete")}
             </Button>
           )}
