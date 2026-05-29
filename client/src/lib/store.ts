@@ -3,6 +3,13 @@ import { DateTime } from "luxon";
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { Time } from "../components/DateSelector/types";
+import { LITE_DASHBOARD } from "./const";
+
+// The lite dashboard is backed by hourly materialized views, so anything finer
+// than an hour has no underlying data. Clamp auto-selected buckets up to "hour".
+const SUB_HOUR_BUCKETS: TimeBucket[] = ["minute", "five_minutes", "ten_minutes", "fifteen_minutes"];
+const clampBucketForLite = (bucket: TimeBucket): TimeBucket =>
+  LITE_DASHBOARD && SUB_HOUR_BUCKETS.includes(bucket) ? "hour" : bucket;
 
 // Get system timezone
 const getSystemTimezone = () =>
@@ -283,7 +290,7 @@ export const useStore = create<Store, [["zustand/persist", PersistedStore]]>(
         }
 
         if (changeBucket) {
-          set({ time, previousTime, bucket: bucketToUse });
+          set({ time, previousTime, bucket: clampBucketForLite(bucketToUse) });
         } else {
           set({ time, previousTime });
         }

@@ -1,6 +1,7 @@
 "use client";
 
 import { getTimezone, useStore } from "@/lib/store";
+import { LITE_DASHBOARD } from "@/lib/const";
 import { SelectItem, Select, SelectContent, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { TimeBucket } from "@rybbit/shared";
 import { DateTime } from "luxon";
@@ -74,7 +75,11 @@ export function BucketSelection({ size = "sm" }: { size?: "default" | "sm" }) {
 
   const renderOptions = (options: TimeBucket[], durationMinutes: number | null) => {
     const availableOptions = options.filter(
-      option => durationMinutes === null || durationMinutes >= bucketDurationMinutes(option) * 2
+      option =>
+        // The lite dashboard is backed by hourly materialized views, so buckets
+        // finer than an hour have no underlying data.
+        (!LITE_DASHBOARD || bucketDurationMinutes(option) >= 60) &&
+        (durationMinutes === null || durationMinutes >= bucketDurationMinutes(option) * 2)
     );
 
     return (
