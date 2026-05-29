@@ -49,10 +49,18 @@ function MainPageContent() {
         <SubHeader />
         <MainSectionLite />
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 mt-3">
-          <LazySection><PagesLite /></LazySection>
-          <LazySection><DevicesLite /></LazySection>
-          <LazySection><CountriesLite /></LazySection>
-          <LazySection height="483px"><Events /></LazySection>
+          <LazySection>
+            <PagesLite />
+          </LazySection>
+          <LazySection>
+            <DevicesLite />
+          </LazySection>
+          <LazySection>
+            <CountriesLite />
+          </LazySection>
+          <LazySection height="394px">
+            <Events />
+          </LazySection>
         </div>
       </div>
     );
@@ -63,13 +71,29 @@ function MainPageContent() {
       <SubHeader />
       <MainSection />
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 mt-3">
-        <LazySection><Referrers /></LazySection>
-        <LazySection><Pages /></LazySection>
-        <LazySection><Devices /></LazySection>
-        <LazySection><Countries /></LazySection>
-        <LazySection height="483px"><Events /></LazySection>
-        <LazySection><Weekdays /></LazySection>
-        {IS_CLOUD && <LazySection><SearchConsole /></LazySection>}
+        <LazySection>
+          <Referrers />
+        </LazySection>
+        <LazySection>
+          <Pages />
+        </LazySection>
+        <LazySection>
+          <Devices />
+        </LazySection>
+        <LazySection>
+          <Countries />
+        </LazySection>
+        <LazySection height="394px">
+          <Events />
+        </LazySection>
+        <LazySection>
+          <Weekdays />
+        </LazySection>
+        {IS_CLOUD && (
+          <LazySection>
+            <SearchConsole />
+          </LazySection>
+        )}
       </div>
     </div>
   );
