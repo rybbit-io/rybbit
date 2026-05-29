@@ -36,7 +36,7 @@ export async function getMetricLite(
 
   const site = Number(req.params.siteId);
   const { parameter } = req.query;
-  const limit = Math.min(Number(req.query.limit) || 100, 500);
+  const limit = Math.min(Number(req.query.limit) || 250, 500);
   const timeStatement = getLiteTimeStatement(req.query, "event_hour");
 
   // Percentages are computed in an outer pass so the window function
