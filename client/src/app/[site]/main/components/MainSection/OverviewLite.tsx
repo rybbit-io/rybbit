@@ -6,10 +6,8 @@ import { cn, formatSecondsAsMinutesAndSeconds } from "@/lib/utils";
 import NumberFlow from "@number-flow/react";
 import { useExtracted } from "next-intl";
 import { useState } from "react";
-import {
-  useGetOverviewBucketedLite,
-  useGetOverviewLite,
-} from "../../../../../api/analytics/hooks/useGetOverviewLite";
+import { useGetOverview } from "../../../../../api/analytics/hooks/useGetOverview";
+import { useGetOverviewBucketed } from "../../../../../api/analytics/hooks/useGetOverviewBucketed";
 import { StatType, useStore } from "../../../../../lib/store";
 import { SparklinesChart } from "./SparklinesChart";
 
@@ -52,7 +50,7 @@ const Stat = ({
   const [isHovering, setIsHovering] = useState(false);
   const isSelectable = id !== "total_time";
 
-  const { data } = useGetOverviewBucketedLite({ site, bucket });
+  const { data } = useGetOverviewBucketed({ site, bucket, lite: true });
 
   const sparklinesData =
     data?.data
@@ -129,7 +127,7 @@ export function OverviewLite() {
   const { site } = useStore();
   const t = useExtracted();
 
-  const { data: overviewData, isLoading } = useGetOverviewLite(site);
+  const { data: overviewData, isLoading } = useGetOverview({ site, lite: true });
 
   const users = overviewData?.data?.users ?? 0;
   const sessions = overviewData?.data?.sessions ?? 0;

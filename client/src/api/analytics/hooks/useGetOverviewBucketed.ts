@@ -4,7 +4,7 @@ import { Time } from "../../../components/DateSelector/types";
 import { useStore } from "../../../lib/store";
 import { APIResponse } from "../../types";
 import { buildApiParams } from "../../utils";
-import { fetchOverviewBucketed, GetOverviewBucketedResponse } from "../endpoints";
+import { fetchOverviewBucketed, fetchOverviewBucketedLite, GetOverviewBucketedResponse } from "../endpoints";
 
 type PeriodTime = "current" | "previous";
 
@@ -17,6 +17,7 @@ export function useGetOverviewBucketed({
   overrideTime,
   props,
   useFilters = true,
+  lite = false,
 }: {
   periodTime?: PeriodTime;
   site: number | string;
@@ -26,6 +27,8 @@ export function useGetOverviewBucketed({
   overrideTime?: Time;
   props?: Partial<UseQueryOptions<APIResponse<GetOverviewBucketedResponse>>>;
   useFilters?: boolean;
+  // Read the MV-backed lite endpoint instead of the raw-events one.
+  lite?: boolean;
 }): UseQueryResult<APIResponse<GetOverviewBucketedResponse>> {
   const { time, previousTime, filters: globalFilters, timezone } = useStore();
 
@@ -46,15 +49,17 @@ export function useGetOverviewBucketed({
           combinedFilters,
           useFilters,
           timezone,
+          lite,
         ]
-      : ["overview-bucketed", timeToUse, bucket, site, combinedFilters, useFilters, timezone];
+      : ["overview-bucketed", timeToUse, bucket, site, combinedFilters, useFilters, timezone, lite];
 
   const params = buildApiParams(timeToUse, { filters: combinedFilters });
 
   return useQuery({
     queryKey,
     queryFn: () => {
-      return fetchOverviewBucketed(site, { ...params, bucket }).then(data => ({ data }));
+      const fetcher = lite ? fetchOverviewBucketedLite : fetchOverviewBucketed;
+      return fetcher(site, { ...params, bucket }).then(data => ({ data }));
     },
     refetchInterval,
     placeholderData: (_, query: any) => {

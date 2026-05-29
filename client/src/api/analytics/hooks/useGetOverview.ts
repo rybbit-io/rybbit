@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Time } from "../../../components/DateSelector/types";
 import { useStore } from "../../../lib/store";
 import { buildApiParams } from "../../utils";
-import { fetchOverview } from "../endpoints";
+import { fetchOverview, fetchOverviewLite } from "../endpoints";
 
 type PeriodTime = "current" | "previous";
 
@@ -11,9 +11,11 @@ type UseGetOverviewOptions = {
   site?: number | string;
   overrideTime?: Time;
   useFilters?: boolean;
+  // Read the MV-backed lite endpoint instead of the raw-events one.
+  lite?: boolean;
 };
 
-export function useGetOverview({ periodTime, site, overrideTime, useFilters = true }: UseGetOverviewOptions) {
+export function useGetOverview({ periodTime, site, overrideTime, useFilters = true, lite = false }: UseGetOverviewOptions) {
   const { time, previousTime, filters, timezone } = useStore();
 
   // Use overrideTime if provided, otherwise use store time
@@ -21,12 +23,13 @@ export function useGetOverview({ periodTime, site, overrideTime, useFilters = tr
   const timeToUse = periodTime === "previous" ? previousTime : baseTime;
 
   const params = buildApiParams(timeToUse, { filters: useFilters ? filters : undefined });
-  const queryKey = ["overview", timeToUse, site, filters, useFilters, timezone];
+  const queryKey = ["overview", timeToUse, site, filters, useFilters, timezone, lite];
 
   return useQuery({
     queryKey,
     queryFn: () => {
-      return fetchOverview(site!, params).then(data => ({ data }));
+      const fetcher = lite ? fetchOverviewLite : fetchOverview;
+      return fetcher(site!, params).then(data => ({ data }));
     },
     staleTime: 60_000,
     placeholderData: (_, query: any) => {

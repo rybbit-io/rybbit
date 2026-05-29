@@ -6,6 +6,7 @@ import { useGetOverview } from "../api/analytics/hooks/useGetOverview";
 import { useGetOverviewBucketed } from "../api/analytics/hooks/useGetOverviewBucketed";
 import { ChangePercentage } from "../app/[site]/main/components/MainSection/Overview";
 import { useInView } from "../hooks/useInView";
+import { LITE_DASHBOARD } from "../lib/const";
 import { useStore } from "../lib/store";
 import { formatter } from "../lib/utils";
 import { Favicon } from "./Favicon";
@@ -45,6 +46,7 @@ export function SiteCard({ siteId, name, domain, tags = [], allTags = [], onTags
     site: siteId,
     bucket,
     useFilters: false,
+    lite: LITE_DASHBOARD,
     props: {
       enabled: isInView,
     },
@@ -57,6 +59,7 @@ export function SiteCard({ siteId, name, domain, tags = [], allTags = [], onTags
   } = useGetOverview({
     site: siteId,
     useFilters: false,
+    lite: LITE_DASHBOARD,
   });
 
   // Previous period - automatically handles both regular time-based and past-minutes queries
@@ -64,6 +67,7 @@ export function SiteCard({ siteId, name, domain, tags = [], allTags = [], onTags
     site: siteId,
     periodTime: "previous",
     useFilters: false,
+    lite: LITE_DASHBOARD,
   });
 
   // Update the hasLoadedData ref when data loads successfully

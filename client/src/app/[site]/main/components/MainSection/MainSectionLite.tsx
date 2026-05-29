@@ -2,7 +2,7 @@
 import { Card, CardContent, CardLoader } from "@/components/ui/card";
 import { useExtracted } from "next-intl";
 import Link from "next/link";
-import { useGetOverviewBucketedLite } from "../../../../../api/analytics/hooks/useGetOverviewLite";
+import { useGetOverviewBucketed } from "../../../../../api/analytics/hooks/useGetOverviewBucketed";
 import { BucketSelection } from "../../../../../components/BucketSelection";
 import { RybbitTextLogo } from "../../../../../components/RybbitLogo";
 import { useWhiteLabel } from "../../../../../hooks/useIsWhiteLabel";
@@ -32,7 +32,7 @@ export function MainSectionLite() {
     }
   };
 
-  const { data, isFetching } = useGetOverviewBucketedLite({ site, bucket });
+  const { data, isFetching } = useGetOverviewBucketed({ site, bucket, lite: true });
 
   const max = Math.max(...(data?.data?.map((d: any) => d[selectedStat]) ?? []));
 
