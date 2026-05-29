@@ -52,6 +52,7 @@ function MainPageContent() {
           <LazySection><PagesLite /></LazySection>
           <LazySection><DevicesLite /></LazySection>
           <LazySection><CountriesLite /></LazySection>
+          <LazySection height="483px"><Events /></LazySection>
         </div>
       </div>
     );
