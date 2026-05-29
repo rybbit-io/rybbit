@@ -1,8 +1,9 @@
 import { FilterParams } from "@rybbit/shared";
 import { FastifyReply, FastifyRequest } from "fastify";
 import { clickhouse } from "../../../db/clickhouse/clickhouse.js";
+import { getOverview } from "../getOverview.js";
 import { processResults } from "../utils/utils.js";
-import { getLiteTimeStatement } from "./utils.js";
+import { getLiteTimeStatement, hasLiteFilters } from "./utils.js";
 
 type GetOverviewLiteResponse = {
   sessions: number;
@@ -20,6 +21,11 @@ export async function getOverviewLite(
   }>,
   res: FastifyReply
 ) {
+  // Filters aren't keyed in the MVs — fall back to the raw-events query.
+  if (hasLiteFilters(req.query.filters)) {
+    return getOverview(req, res);
+  }
+
   const site = Number(req.params.siteId);
   const timeStatement = getLiteTimeStatement(req.query, "session_hour");
 

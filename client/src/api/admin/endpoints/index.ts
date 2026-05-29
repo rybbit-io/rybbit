@@ -15,11 +15,13 @@ export type { SiteResponse, GetSitesFromOrgResponse, VerifyScriptResponse } from
 export {
   getUserOrganizations,
   addUserToOrganization,
+  createUserInOrganization,
   USER_ORGANIZATIONS_QUERY_KEY,
 } from "./organizations";
 export type {
   UserOrganization,
   AddUserToOrganizationInput,
+  CreateUserInOrganizationInput,
   RemoveUserFromOrganizationInput,
 } from "./organizations";
 

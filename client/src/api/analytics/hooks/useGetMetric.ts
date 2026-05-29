@@ -94,15 +94,13 @@ export function usePaginatedMetric({
 }): UseQueryResult<PaginatedResponse> {
   const { time, site, filters, timezone } = useStore();
   const timeToUse = customTime ?? time;
-  // Lite endpoints don't accept filters — drop them entirely when lite=true
-  // so the query key and request stay clean.
-  const combinedFilters = lite
-    ? undefined
-    : useFilters
-      ? customFilters.length > 0
-        ? customFilters
-        : [...filters, ...additionalFilters]
-      : undefined;
+  // Lite endpoints forward filters too — the server falls back to raw events
+  // when a filter is active. `lite` only selects the fetcher, not the filters.
+  const combinedFilters = useFilters
+    ? customFilters.length > 0
+      ? customFilters
+      : [...filters, ...additionalFilters]
+    : undefined;
 
   const params = buildApiParams(timeToUse, { filters: combinedFilters });
 
@@ -151,13 +149,13 @@ export function useInfiniteMetric({
 }): UseInfiniteQueryResult<InfiniteData<PaginatedResponse>> {
   const { time, site, filters, timezone } = useStore();
   const timeToUse = customTime ?? time;
-  const combinedFilters = lite
-    ? undefined
-    : useFilters
-      ? customFilters.length > 0
-        ? customFilters
-        : [...filters, ...additionalFilters]
-      : undefined;
+  // Lite endpoints forward filters too — the server falls back to raw events
+  // when a filter is active. `lite` only selects the fetcher, not the filters.
+  const combinedFilters = useFilters
+    ? customFilters.length > 0
+      ? customFilters
+      : [...filters, ...additionalFilters]
+    : undefined;
   const params = buildApiParams(timeToUse, { filters: combinedFilters });
 
   return useInfiniteQuery({

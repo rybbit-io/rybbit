@@ -1,5 +1,6 @@
 // Organization Management
 export { addUserToOrganization } from "./addUserToOrganization.js";
+export { createUserInOrganization } from "./createUserInOrganization.js";
 export { getUserOrganizations } from "./getUserOrganizations.js";
 export { getMyOrganizations } from "./getMyOrganizations.js";
 export { listOrganizationMembers } from "./listOrganizationMembers.js";

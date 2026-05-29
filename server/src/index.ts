@@ -127,6 +127,7 @@ import {
 import {
   addUserToOrganization,
   createUserApiKey,
+  createUserInOrganization,
   getMyOrganizations,
   getUserOrganizations,
   listOrganizationMembers,
@@ -360,6 +361,7 @@ async function organizationsRoutes(fastify: FastifyInstance) {
   fastify.post("/organizations/:organizationId/sites", orgAdminParams, addSite);
   fastify.get("/organizations/:organizationId/members", orgMember, listOrganizationMembers);
   fastify.post("/organizations/:organizationId/members", authOnly, addUserToOrganization);
+  fastify.post("/organizations/:organizationId/users", authOnly, createUserInOrganization);
 
   // Member site access management (admin/owner only)
   fastify.put("/organizations/:organizationId/members/:memberId/sites", orgAdminParams, updateMemberSiteAccess);

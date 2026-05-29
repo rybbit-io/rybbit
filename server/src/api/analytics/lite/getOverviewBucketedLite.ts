@@ -2,9 +2,10 @@ import { FilterParams } from "@rybbit/shared";
 import { FastifyReply, FastifyRequest } from "fastify";
 import SqlString from "sqlstring";
 import { clickhouse } from "../../../db/clickhouse/clickhouse.js";
+import { getOverviewBucketed } from "../getOverviewBucketed.js";
 import { TimeBucket } from "../types.js";
 import { TimeBucketToFn, processResults } from "../utils/utils.js";
-import { getLiteFillClause, getLiteTimeStatement, liteBucket } from "./utils.js";
+import { getLiteFillClause, getLiteTimeStatement, hasLiteFilters, liteBucket } from "./utils.js";
 
 type GetOverviewBucketedLiteResponse = {
   time: string;
@@ -121,6 +122,11 @@ export async function getOverviewBucketedLite(
   }>,
   res: FastifyReply
 ) {
+  // Filters aren't keyed in the MVs — fall back to the raw-events query.
+  if (hasLiteFilters(req.query.filters)) {
+    return getOverviewBucketed(req, res);
+  }
+
   const site = Number(req.params.siteId);
   const bucket = liteBucket(req.query.bucket);
   const fn = TimeBucketToFn[bucket];

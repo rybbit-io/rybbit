@@ -1,8 +1,9 @@
 import { FilterParams } from "@rybbit/shared";
 import { FastifyReply, FastifyRequest } from "fastify";
 import { clickhouse } from "../../../db/clickhouse/clickhouse.js";
+import { getMetric } from "../getMetric.js";
 import { processResults } from "../utils/utils.js";
-import { getLiteTimeStatement } from "./utils.js";
+import { getLiteTimeStatement, hasLiteFilters } from "./utils.js";
 
 // Lite metric supports only dimensions backed by MVs:
 //   - pathname → pathname_hourly_mv_target
@@ -27,6 +28,12 @@ export async function getMetricLite(
   }>,
   res: FastifyReply
 ) {
+  // Filters aren't keyed in the MVs — fall back to the raw-events query, which
+  // supports the full filter set and produces the same response shape.
+  if (hasLiteFilters(req.query.filters)) {
+    return getMetric(req as unknown as Parameters<typeof getMetric>[0], res);
+  }
+
   const site = Number(req.params.siteId);
   const { parameter } = req.query;
   const limit = Math.min(Number(req.query.limit) || 100, 500);
