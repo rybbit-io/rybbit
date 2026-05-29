@@ -9,16 +9,86 @@ import { validateFilters, validateTimeStatementParams } from "../utils/query-val
 // country_hourly_mv, device_type_hourly_mv) instead of raw events. Sub-hour
 // buckets are promoted to hour because the MVs are hour-grained.
 //
-// The MVs are aggregated per-dimension per-hour and carry no arbitrary
-// dimension columns, so they can't answer filtered queries. When a filter is
-// active the lite handlers fall back to the raw `events` table (the standard
-// endpoints) — the MVs are purely a fast path for the common unfiltered case.
+// Filters are served three ways, fastest first:
+//   1. No filter            → the per-dimension hourly rollups (smallest reads).
+//   2. Session-column filter → sessions_mv_target, one row per session. Every
+//      dimension the session rollup carries (country, device_type, browser, …)
+//      can be filtered here without touching raw events.
+//   3. Anything else         → fall back to the raw `events` query (standard
+//      endpoints). pathname/page_title/utm/etc. aren't on the session rollup.
 
-// True when the request carries at least one valid filter, meaning the MV fast
-// path can't serve it and we must fall back to the raw-events query.
+// True when the request carries at least one valid filter.
 export function hasLiteFilters(filters: string | undefined): boolean {
   if (!filters) return false;
   return validateFilters(filters).length > 0;
+}
+
+// Dimension columns carried by sessions_mv_target, keyed by filter parameter.
+// A filter on any of these can be answered from the session rollup; a filter on
+// anything else forces the raw-events fallback.
+const LITE_SESSION_FILTER_COLUMNS: Record<string, string> = {
+  country: "country",
+  region: "region",
+  device_type: "device_type",
+  browser: "browser",
+  operating_system: "operating_system",
+  channel: "channel",
+  referrer: "referrer",
+  hostname: "hostname",
+  entry_page: "entry_pathname",
+};
+
+const LITE_FILTER_OPERATORS: Record<string, string> = {
+  equals: "=",
+  not_equals: "!=",
+  contains: "LIKE",
+  not_contains: "NOT LIKE",
+  starts_with: "LIKE",
+  ends_with: "LIKE",
+};
+
+function wrapLiteLikeValue(type: string, value: string | number): string {
+  const v = String(value);
+  if (type === "contains" || type === "not_contains") return `%${v}%`;
+  if (type === "starts_with") return `${v}%`;
+  if (type === "ends_with") return `%${v}`;
+  return v;
+}
+
+// Build a WHERE-clause fragment (prefixed " AND ") against sessions_mv_target
+// columns. Returns `supported: false` when any filter targets a column or type
+// the session rollup can't serve, signalling the caller to fall back to events.
+export function getLiteSessionFilter(filters: string | undefined): { supported: boolean; sql: string } {
+  if (!filters) return { supported: true, sql: "" };
+
+  const filtersArray = validateFilters(filters);
+  if (filtersArray.length === 0) return { supported: true, sql: "" };
+
+  const conditions: string[] = [];
+
+  for (const filter of filtersArray) {
+    const column = LITE_SESSION_FILTER_COLUMNS[filter.parameter];
+    if (!column) return { supported: false, sql: "" };
+
+    if (filter.type === "is_null") {
+      conditions.push(`(${column} IS NULL OR ${column} = '')`);
+      continue;
+    }
+    if (filter.type === "is_not_null") {
+      conditions.push(`(${column} IS NOT NULL AND ${column} != '')`);
+      continue;
+    }
+
+    const op = LITE_FILTER_OPERATORS[filter.type];
+    if (!op || filter.value.length === 0) return { supported: false, sql: "" };
+
+    const parts = filter.value.map(
+      value => `${column} ${op} ${SqlString.escape(wrapLiteLikeValue(filter.type, value))}`
+    );
+    conditions.push(parts.length === 1 ? parts[0] : `(${parts.join(" OR ")})`);
+  }
+
+  return { supported: true, sql: conditions.length ? `AND ${conditions.join(" AND ")}` : "" };
 }
 
 export type LiteTimeRange = {

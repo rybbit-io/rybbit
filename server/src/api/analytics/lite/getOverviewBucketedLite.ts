@@ -5,7 +5,7 @@ import { clickhouse } from "../../../db/clickhouse/clickhouse.js";
 import { getOverviewBucketed } from "../getOverviewBucketed.js";
 import { TimeBucket } from "../types.js";
 import { TimeBucketToFn, processResults } from "../utils/utils.js";
-import { getLiteFillClause, getLiteTimeStatement, hasLiteFilters, liteBucket } from "./utils.js";
+import { getLiteFillClause, getLiteSessionFilter, getLiteTimeStatement, hasLiteFilters, liteBucket } from "./utils.js";
 
 type GetOverviewBucketedLiteResponse = {
   time: string;
@@ -115,6 +115,56 @@ function buildDayBucketQuery(args: {
   `;
 }
 
+// Filtered charts read sessions_mv_target (one row per session) and bucket by
+// session start. pageviews/users come from the same rollup rather than the
+// dimensionless overview_hourly_mv, so any session-column filter stays on the
+// MVs. Bucketing by session-start instead of event-time is the same negligible
+// approximation the day-bucket path already makes.
+function buildSessionMvFilteredQuery(args: {
+  fn: string;
+  tz: string;
+  sessionsTime: string;
+  fill: string;
+  filterSql: string;
+}) {
+  const { fn, tz, sessionsTime, fill, filterSql } = args;
+  return `
+    SELECT
+      time,
+      sessions,
+      pageviews,
+      users,
+      if(sessions > 0, pageviews / sessions, 0) AS pages_per_session,
+      if(sessions > 0, bounced_sessions * 100.0 / sessions, 0) AS bounce_rate,
+      if(sessions > 0, total_session_duration_seconds / sessions, 0) AS session_duration
+    FROM (
+      SELECT
+        toDateTime(${fn}(toTimeZone(session_start, ${tz}))) AS time,
+        count() AS sessions,
+        sum(session_pageviews) AS pageviews,
+        uniqExact(user_id) AS users,
+        countIf(session_pageviews = 1) AS bounced_sessions,
+        sum(toUInt64(session_end - session_start)) AS total_session_duration_seconds
+      FROM (
+        SELECT
+          session_id,
+          any(user_id) AS user_id,
+          sum(pageviews) AS session_pageviews,
+          min(start_time) AS session_start,
+          max(end_time) AS session_end
+        FROM sessions_mv_target
+        WHERE site_id = {siteId:Int32}
+          ${sessionsTime}
+          ${filterSql}
+        GROUP BY session_id
+      )
+      GROUP BY time
+      ORDER BY time ${fill}
+    )
+    ORDER BY time
+  `;
+}
+
 export async function getOverviewBucketedLite(
   req: FastifyRequest<{
     Params: { siteId: string };
@@ -122,11 +172,6 @@ export async function getOverviewBucketedLite(
   }>,
   res: FastifyReply
 ) {
-  // Filters aren't keyed in the MVs — fall back to the raw-events query.
-  if (hasLiteFilters(req.query.filters)) {
-    return getOverviewBucketed(req, res);
-  }
-
   const site = Number(req.params.siteId);
   const bucket = liteBucket(req.query.bucket);
   const fn = TimeBucketToFn[bucket];
@@ -139,22 +184,41 @@ export async function getOverviewBucketedLite(
     req.query.past_minutes_end === undefined;
   const fill = isAllTime ? "" : getLiteFillClause(req.query, bucket);
 
-  const useDayBucket = bucket === "day" || bucket === "week" || bucket === "month" || bucket === "year";
+  const filtersPresent = hasLiteFilters(req.query.filters);
 
-  const query = useDayBucket
-    ? buildDayBucketQuery({
-        fn,
-        tz,
-        sessionTime: getLiteTimeStatement(req.query, "session_hour"),
-        fill,
-      })
-    : buildHourBucketQuery({
-        fn,
-        tz,
-        overviewTime: getLiteTimeStatement(req.query, "event_hour"),
-        sessionsTime: getLiteTimeStatement(req.query, "start_time"),
-        fill,
-      });
+  let query: string;
+  if (filtersPresent) {
+    // Session-column filters stay on sessions_mv_target; anything else falls
+    // back to the raw-events query.
+    const filter = getLiteSessionFilter(req.query.filters);
+    if (!filter.supported) {
+      return getOverviewBucketed(req, res);
+    }
+    query = buildSessionMvFilteredQuery({
+      fn,
+      tz,
+      sessionsTime: getLiteTimeStatement(req.query, "start_time"),
+      fill,
+      filterSql: filter.sql,
+    });
+  } else {
+    const useDayBucket = bucket === "day" || bucket === "week" || bucket === "month" || bucket === "year";
+
+    query = useDayBucket
+      ? buildDayBucketQuery({
+          fn,
+          tz,
+          sessionTime: getLiteTimeStatement(req.query, "session_hour"),
+          fill,
+        })
+      : buildHourBucketQuery({
+          fn,
+          tz,
+          overviewTime: getLiteTimeStatement(req.query, "event_hour"),
+          sessionsTime: getLiteTimeStatement(req.query, "start_time"),
+          fill,
+        });
+  }
 
   try {
     const result = await clickhouse.query({

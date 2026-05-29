@@ -3,7 +3,7 @@ import { FastifyReply, FastifyRequest } from "fastify";
 import { clickhouse } from "../../../db/clickhouse/clickhouse.js";
 import { getMetric } from "../getMetric.js";
 import { processResults } from "../utils/utils.js";
-import { getLiteTimeStatement, hasLiteFilters } from "./utils.js";
+import { getLiteSessionFilter, getLiteTimeStatement, hasLiteFilters } from "./utils.js";
 
 // Lite metric supports only dimensions backed by MVs:
 //   - pathname → pathname_hourly_mv_target
@@ -19,24 +19,93 @@ type LiteMetricItem = {
   percentage: number;
   pageviews: number;
   pageviews_percentage: number;
+  // count() OVER () — total distinct values across all pages, computed before
+  // LIMIT/OFFSET so it's stable per page. Stripped from the response items.
+  total_count?: number;
 };
 
 export async function getMetricLite(
   req: FastifyRequest<{
     Params: { siteId: string };
-    Querystring: FilterParams<{ parameter: LiteMetricParameter; limit?: number }>;
+    Querystring: FilterParams<{ parameter: LiteMetricParameter; limit?: number; page?: number }>;
   }>,
   res: FastifyReply
 ) {
-  // Filters aren't keyed in the MVs — fall back to the raw-events query, which
-  // supports the full filter set and produces the same response shape.
-  if (hasLiteFilters(req.query.filters)) {
-    return getMetric(req as unknown as Parameters<typeof getMetric>[0], res);
-  }
-
   const site = Number(req.params.siteId);
   const { parameter } = req.query;
   const limit = Math.min(Number(req.query.limit) || 250, 500);
+  const page = Math.max(Number(req.query.page) || 1, 1);
+  const offsetStatement = page > 1 ? `OFFSET ${(page - 1) * limit}` : "";
+  const filtersPresent = hasLiteFilters(req.query.filters);
+
+  // Pull totalCount off the window column and drop it from the returned rows so
+  // items match the standard /metric shape.
+  const sendMetric = (data: LiteMetricItem[]) => {
+    const totalCount = data.length > 0 ? (data[0].total_count ?? data.length) : 0;
+    const items = data.map(({ total_count, ...rest }) => rest);
+    return res.send({ data: { data: items, totalCount } });
+  };
+
+  // Filtered country/device_type lists can be served from sessions_mv_target
+  // (it carries both columns per session), as long as every active filter
+  // targets a session column. pathname isn't on the session rollup — and no
+  // dimensioned MV pairs pathname with another dimension — so any filtered
+  // pathname list falls back to the raw-events query.
+  if (filtersPresent) {
+    const filter = getLiteSessionFilter(req.query.filters);
+    const sessionFastPath = filter.supported && (parameter === "country" || parameter === "device_type");
+    if (!sessionFastPath) {
+      return getMetric(req as unknown as Parameters<typeof getMetric>[0], res);
+    }
+
+    const sessionsTime = getLiteTimeStatement(req.query, "start_time");
+    const nonEmpty = parameter === "device_type" ? `AND ${parameter} <> ''` : "";
+    const query = `
+      SELECT
+        value,
+        pageviews,
+        count,
+        round(count * 100.0 / sum(count) OVER (), 2) AS percentage,
+        round(pageviews * 100.0 / sum(pageviews) OVER (), 2) AS pageviews_percentage,
+        count() OVER () AS total_count
+      FROM (
+        SELECT
+          ${parameter} AS value,
+          sum(session_pageviews) AS pageviews,
+          count() AS count
+        FROM (
+          SELECT
+            session_id,
+            any(${parameter}) AS ${parameter},
+            sum(pageviews) AS session_pageviews
+          FROM sessions_mv_target
+          WHERE site_id = {siteId:Int32}
+            ${sessionsTime}
+            ${nonEmpty}
+            ${filter.sql}
+          GROUP BY session_id
+        )
+        GROUP BY ${parameter}
+      )
+      ORDER BY count DESC
+      LIMIT ${limit}
+      ${offsetStatement}
+    `;
+
+    try {
+      const result = await clickhouse.query({
+        query,
+        format: "JSONEachRow",
+        query_params: { siteId: site },
+      });
+      const data = await processResults<LiteMetricItem>(result);
+      return sendMetric(data);
+    } catch (error) {
+      console.error("Error fetching lite metric:", error);
+      return res.status(500).send({ error: "Failed to fetch metric" });
+    }
+  }
+
   const timeStatement = getLiteTimeStatement(req.query, "event_hour");
 
   // Percentages are computed in an outer pass so the window function
@@ -51,7 +120,8 @@ export async function getMetricLite(
         pageviews,
         count,
         round(count * 100.0 / sum(count) OVER (), 2) AS percentage,
-        round(pageviews * 100.0 / sum(pageviews) OVER (), 2) AS pageviews_percentage
+        round(pageviews * 100.0 / sum(pageviews) OVER (), 2) AS pageviews_percentage,
+        count() OVER () AS total_count
       FROM (
         SELECT
           pathname AS value,
@@ -65,6 +135,7 @@ export async function getMetricLite(
       )
       ORDER BY count DESC
       LIMIT ${limit}
+      ${offsetStatement}
     `;
   } else if (parameter === "country") {
     query = `
@@ -73,7 +144,8 @@ export async function getMetricLite(
         pageviews,
         count,
         round(count * 100.0 / sum(count) OVER (), 2) AS percentage,
-        round(pageviews * 100.0 / sum(pageviews) OVER (), 2) AS pageviews_percentage
+        round(pageviews * 100.0 / sum(pageviews) OVER (), 2) AS pageviews_percentage,
+        count() OVER () AS total_count
       FROM (
         SELECT
           country AS value,
@@ -86,6 +158,7 @@ export async function getMetricLite(
       )
       ORDER BY count DESC
       LIMIT ${limit}
+      ${offsetStatement}
     `;
   } else if (parameter === "device_type") {
     query = `
@@ -94,7 +167,8 @@ export async function getMetricLite(
         pageviews,
         count,
         round(count * 100.0 / sum(count) OVER (), 2) AS percentage,
-        round(pageviews * 100.0 / sum(pageviews) OVER (), 2) AS pageviews_percentage
+        round(pageviews * 100.0 / sum(pageviews) OVER (), 2) AS pageviews_percentage,
+        count() OVER () AS total_count
       FROM (
         SELECT
           device_type AS value,
@@ -108,6 +182,7 @@ export async function getMetricLite(
       )
       ORDER BY count DESC
       LIMIT ${limit}
+      ${offsetStatement}
     `;
   } else {
     return res.status(400).send({ error: "Lite mode does not support this parameter" });
@@ -120,7 +195,7 @@ export async function getMetricLite(
       query_params: { siteId: site },
     });
     const data = await processResults<LiteMetricItem>(result);
-    return res.send({ data: { data, totalCount: data.length } });
+    return sendMetric(data);
   } catch (error) {
     console.error("Error fetching lite metric:", error);
     return res.status(500).send({ error: "Failed to fetch metric" });
