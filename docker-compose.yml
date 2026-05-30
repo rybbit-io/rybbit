@@ -91,6 +91,8 @@ services:
       - CLUSTER_WORKERS=${CLUSTER_WORKERS:-4}
       - DEPLOYMENT=${DEPLOYMENT}
       - LITE_DASHBOARD=${LITE_DASHBOARD}
+      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
+      - OPENROUTER_MODEL=${OPENROUTER_MODEL}
     depends_on:
       clickhouse:
         condition: service_healthy
