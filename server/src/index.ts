@@ -418,12 +418,6 @@ async function stripeAdminRoutes(fastify: FastifyInstance) {
     fastify.post("/stripe/cancellation-feedback", authOnly, submitCancellationFeedback);
     fastify.post("/stripe/webhook", { config: { rawBody: true } }, handleWebhook); // Public - Stripe webhook
 
-    // Admin Routes
-    fastify.get("/admin/sites", adminOnly, getAdminSites);
-    fastify.get("/admin/organizations", adminOnly, getAdminOrganizations);
-    fastify.get("/admin/service-event-count", adminOnly, getAdminServiceEventCount);
-    fastify.post("/admin/telemetry", collectTelemetry); // Public - telemetry collection
-
     // AppSumo Routes
     fastify.post("/as/activate", authOnly, activateAppSumoLicense);
     fastify.post("/as/webhook", handleAppSumoWebhook); // Public - AppSumo webhook

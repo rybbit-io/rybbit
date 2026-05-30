@@ -26,16 +26,23 @@ export function hasLiteFilters(filters: string | undefined): boolean {
 // Dimension columns carried by sessions_mv_target, keyed by filter parameter.
 // A filter on any of these can be answered from the session rollup; a filter on
 // anything else forces the raw-events fallback.
+//
+// Only session-INVARIANT attributes belong here. sessions_mv writes one partial
+// row per insert block per session and the read queries re-aggregate by
+// session_id, so a WHERE filter on these columns is correct only when every
+// partial row of a session shares the value (device, geo, hostname — true for
+// the whole session). Entry/acquisition attributes (entry_page, referrer,
+// channel) are first-event values that differ across a session's events, so a
+// per-partial-row filter would match some rows and drop others, undercounting.
+// Those deliberately fall back to the raw-events query, which derives them with
+// the same argMin/first-value semantics as the standard endpoints.
 const LITE_SESSION_FILTER_COLUMNS: Record<string, string> = {
   country: "country",
   region: "region",
   device_type: "device_type",
   browser: "browser",
   operating_system: "operating_system",
-  channel: "channel",
-  referrer: "referrer",
   hostname: "hostname",
-  entry_page: "entry_pathname",
 };
 
 const LITE_FILTER_OPERATORS: Record<string, string> = {

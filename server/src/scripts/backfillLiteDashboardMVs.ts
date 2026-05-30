@@ -50,10 +50,7 @@ function buildSelectQuery(table: TableKey, where: string): string {
           any(device_type) AS device_type,
           any(browser) AS browser,
           any(operating_system) AS operating_system,
-          any(channel) AS channel,
-          any(referrer) AS referrer,
           any(hostname) AS hostname,
-          argMin(pathname, timestamp) AS entry_pathname,
           max(timestamp) AS last_seen
         FROM events
         ${where}

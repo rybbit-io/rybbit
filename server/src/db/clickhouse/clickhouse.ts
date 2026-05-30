@@ -299,8 +299,21 @@ export const initializeClickhouse = async () => {
 async function initializeLiteDashboardMVs() {
   // Per-session rollup. Replaces the AllSessionPageviews / FilteredSessions
   // CTEs that getOverview and getOverviewBucketed run over raw events.
-  // ReplacingMergeTree keyed by session_id collapses the streaming inserts
-  // into one final row per session as parts merge.
+  //
+  // This is a streaming MV: it fires once per inserted block and writes a
+  // PARTIAL session row for whatever events were in that block. AggregatingMergeTree
+  // then composes the SimpleAggregateFunction columns (min/max/sum) across parts
+  // sharing (site_id, session_id), and the read queries additionally re-aggregate
+  // by session_id at query time — so pageviews/start_time/end_time are always
+  // correct even before merges complete.
+  //
+  // The plain metadata columns below (country, region, device_type, browser,
+  // operating_system, hostname) are session-INVARIANT, so every partial row of a
+  // session carries the same value and `any()` is well-defined. Entry/acquisition
+  // attributes (entry_page, referrer, channel) are deliberately NOT stored here:
+  // they are first-event values that differ across a session's blocks, can't be
+  // composed correctly per-partial-row, and so are served by the raw-events
+  // fallback instead (see LITE_SESSION_FILTER_COLUMNS in lite/utils.ts).
   await clickhouse.exec({
     query: `
       CREATE TABLE IF NOT EXISTS sessions_mv_target (
@@ -316,10 +329,7 @@ async function initializeLiteDashboardMVs() {
         device_type LowCardinality(String),
         browser LowCardinality(String),
         operating_system LowCardinality(String),
-        channel String,
-        referrer String,
         hostname String,
-        entry_pathname String,
         last_seen SimpleAggregateFunction(max, DateTime)
       )
       ENGINE = AggregatingMergeTree()
@@ -345,10 +355,7 @@ async function initializeLiteDashboardMVs() {
         any(device_type) AS device_type,
         any(browser) AS browser,
         any(operating_system) AS operating_system,
-        any(channel) AS channel,
-        any(referrer) AS referrer,
         any(hostname) AS hostname,
-        argMin(pathname, timestamp) AS entry_pathname,
         max(timestamp) AS last_seen
       FROM events
       GROUP BY site_id, session_id
