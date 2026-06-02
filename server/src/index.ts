@@ -149,6 +149,7 @@ import {
 } from "./lib/auth-middleware.js";
 import { mapHeaders } from "./lib/auth-utils.js";
 import { auth } from "./lib/auth.js";
+import { createCorsOptionsDelegate, rejectUntrustedOrigin } from "./lib/cors.js";
 import { IS_CLOUD } from "./lib/const.js";
 import { reengagementService } from "./services/reengagement/reengagementService.js";
 import { sessionsService } from "./services/sessions/sessionsService.js";
@@ -209,13 +210,9 @@ const server = Fastify({
 });
 
 server.register(cors, {
-  origin: (_origin, callback) => {
-    callback(null, true);
-  },
-  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
-  allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With", "x-captcha-response", "x-private-key"],
-  credentials: true,
+  delegator: createCorsOptionsDelegate(),
 });
+server.addHook("onRequest", rejectUntrustedOrigin);
 
 // Serve static files
 server.register(fastifyStatic, {

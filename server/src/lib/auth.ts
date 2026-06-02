@@ -21,6 +21,7 @@ import {
   sendWelcomeEmail,
 } from "./email/email.js";
 import { onboardingTipsService } from "../services/onboardingTips/onboardingTipsService.js";
+import { getTrustedCorsOrigins } from "./cors.js";
 
 dotenv.config();
 
@@ -249,7 +250,7 @@ export const auth = betterAuth({
     },
   },
   plugins: pluginList,
-  trustedOrigins: ["http://localhost:3002"],
+  trustedOrigins: getTrustedCorsOrigins(),
   advanced: {
     useSecureCookies: process.env.NODE_ENV === "production", // don't mark Secure in dev
     defaultCookieAttributes: {
