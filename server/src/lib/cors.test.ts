@@ -16,6 +16,7 @@ async function buildCorsTestApp(env: NodeJS.ProcessEnv) {
   app.addHook("onRequest", createRejectUntrustedOriginHook(env));
 
   app.delete("/api/sites/:siteId", async () => ({ success: true }));
+  app.get("/api/sites/:siteId/sessions", async () => ({ data: [] }));
   app.post("/api/track", async () => ({ success: true }));
   app.get("/api/version", async () => ({ version: "0.0.0" }));
 
@@ -137,6 +138,29 @@ describe("CORS policy", () => {
 
       expect(res.statusCode).toBe(200);
       expect(res.headers["access-control-allow-origin"]).toBe("https://self-hosted.example");
+      expect(res.headers["access-control-allow-credentials"]).toBeUndefined();
+    } finally {
+      await app.close();
+    }
+  });
+
+  it("allows public session-list requests without credentials", async () => {
+    const app = await buildCorsTestApp({
+      NODE_ENV: "production",
+      BASE_URL: "https://demo.rybbit.com",
+    });
+
+    try {
+      const res = await app.inject({
+        method: "GET",
+        url: "/api/sites/81/sessions?past_minutes_start=240&past_minutes_end=0&filters=[]&page=1&limit=100",
+        headers: {
+          origin: "https://docs.rybbit.com",
+        },
+      });
+
+      expect(res.statusCode).toBe(200);
+      expect(res.headers["access-control-allow-origin"]).toBe("https://docs.rybbit.com");
       expect(res.headers["access-control-allow-credentials"]).toBeUndefined();
     } finally {
       await app.close();

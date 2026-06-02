@@ -47,7 +47,16 @@ export function normalizeCorsOrigin(value: string | undefined): string | null {
   }
 }
 
+// Trusted origins are static config (BASE_URL / NODE_ENV); cache per env object so
+// the URL parse + Set build runs once instead of on every request.
+const trustedOriginsCache = new WeakMap<NodeJS.ProcessEnv, string[]>();
+
 export function getTrustedCorsOrigins(env: NodeJS.ProcessEnv = process.env): string[] {
+  const cached = trustedOriginsCache.get(env);
+  if (cached) {
+    return cached;
+  }
+
   const origins = new Set<string>();
   const baseUrlOrigin = normalizeCorsOrigin(env.BASE_URL);
 
@@ -61,7 +70,9 @@ export function getTrustedCorsOrigins(env: NodeJS.ProcessEnv = process.env): str
     }
   }
 
-  return [...origins];
+  const result = [...origins];
+  trustedOriginsCache.set(env, result);
+  return result;
 }
 
 function getRequestPath(request: FastifyRequest): string {
@@ -75,6 +86,7 @@ export function isPublicCorsPath(path: string): boolean {
     path === "/api/version" ||
     path.startsWith("/api/session-replay/record/") ||
     path.startsWith("/api/site/tracking-config/") ||
+    /^\/api\/sites\/[^/]+\/sessions$/.test(path) ||
     /^\/api\/site\/[^/]+\/feature-flags\/evaluate$/.test(path)
   );
 }
@@ -135,10 +147,4 @@ export function createRejectUntrustedOriginHook(env: NodeJS.ProcessEnv = process
       return reply.status(403).send({ error: "Origin not allowed" });
     }
   };
-}
-
-export async function rejectUntrustedOrigin(request: FastifyRequest, reply: FastifyReply) {
-  if (shouldRejectUntrustedOrigin(request)) {
-    return reply.status(403).send({ error: "Origin not allowed" });
-  }
 }
