@@ -87,6 +87,7 @@ export function isPublicCorsPath(path: string): boolean {
     path.startsWith("/api/session-replay/record/") ||
     path.startsWith("/api/site/tracking-config/") ||
     /^\/api\/sites\/[^/]+\/sessions$/.test(path) ||
+    /^\/api\/sites\/[^/]+\/embed-stats$/.test(path) ||
     /^\/api\/site\/[^/]+\/feature-flags\/evaluate$/.test(path)
   );
 }
