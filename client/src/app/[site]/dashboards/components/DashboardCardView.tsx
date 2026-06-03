@@ -55,7 +55,7 @@ export function DashboardCardView({ siteId, card, editMode, onEdit, onRemove }: 
         )}
       </div>
 
-      <div className="relative min-h-0 flex-1 overflow-hidden p-1">
+      <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden p-1">
         {isLoading ? (
           <div className="flex h-full items-center justify-center">
             <Loader2 className="h-5 w-5 animate-spin text-neutral-400" />
@@ -69,9 +69,13 @@ export function DashboardCardView({ siteId, card, editMode, onEdit, onRemove }: 
         ) : card.vizType === "table" ? (
           <ResultsTable columns={columns} rows={sortedRows} sort={activeSort} onSortChange={setSort} />
         ) : card.vizType === "line" ? (
-          <DashboardLineChart rows={rows} mapping={card.mapping} />
+          <div className="min-h-0 flex-1">
+            <DashboardLineChart rows={rows} mapping={card.mapping} />
+          </div>
         ) : (
-          <DashboardBarChart rows={rows} mapping={card.mapping} />
+          <div className="min-h-0 flex-1">
+            <DashboardBarChart rows={rows} mapping={card.mapping} />
+          </div>
         )}
       </div>
     </div>

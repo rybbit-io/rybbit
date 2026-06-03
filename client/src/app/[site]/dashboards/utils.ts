@@ -1,5 +1,6 @@
 import type { CustomQueryRow } from "../../../api/analytics/endpoints";
-import type { DashboardCard, DashboardCardMapping, DashboardConfig } from "@rybbit/shared";
+import type { DashboardCard, DashboardCardMapping, DashboardConfig, TimeBucket } from "@rybbit/shared";
+import { DateTime } from "luxon";
 
 export const CARD_PALETTE = [
   "hsla(217, 75%, 60%, 0.9)",
@@ -117,4 +118,96 @@ export function buildBarData(rows: CustomQueryRow[], mapping: DashboardCardMappi
     return entry;
   });
   return { data, keys: yColumns, indexBy: xColumn };
+}
+
+// ── X-axis tick formatting ───────────────────────────────────────────────────
+
+const TICK_TARGET = 8;
+
+/** Parse a ClickHouse date/datetime string ("yyyy-MM-dd[ HH:mm:ss]"). */
+function parseChartDate(value: unknown): DateTime | null {
+  if (typeof value !== "string" || value === "") return null;
+  let dt = DateTime.fromSQL(value, { zone: "utc" });
+  if (!dt.isValid) dt = DateTime.fromISO(value, { zone: "utc" });
+  return dt.isValid ? dt : null;
+}
+
+/** Luxon format string per bucket, mirroring TimeSeriesChart's tick formatting. */
+function bucketTickFormat(bucket: TimeBucket): string {
+  switch (bucket) {
+    case "minute":
+    case "five_minutes":
+    case "ten_minutes":
+    case "fifteen_minutes":
+    case "hour":
+      return "HH:mm";
+    case "day":
+    case "week":
+      return "MMM d";
+    case "month":
+      return "MMM yyyy";
+    case "year":
+      return "yyyy";
+    default:
+      return "MMM d";
+  }
+}
+
+/** Evenly sample values down to ~TICK_TARGET so labels don't overflow. */
+function strideValues(values: string[], target = TICK_TARGET): string[] | undefined {
+  if (values.length <= target) return undefined; // let Nivo render every tick
+  const stride = Math.ceil(values.length / target);
+  return values.filter((_, index) => index % stride === 0);
+}
+
+export type ChartAxis = {
+  isTime: boolean;
+  format: (value: unknown) => string;
+  tickValues: string[] | undefined;
+};
+
+/**
+ * Build an axis tick formatter + thinned tick set for the X column. Datetime
+ * values are formatted by bucket (e.g. "18:00", "Jun 3") instead of the raw
+ * "2026-06-03 18:00:00"; long categorical labels are truncated.
+ */
+export function buildChartAxis(values: string[], bucket: TimeBucket): ChartAxis {
+  const sample = values.find(value => value !== "" && value != null);
+  const isTime = sample != null && parseChartDate(sample) !== null;
+
+  if (isTime) {
+    const fmt = bucketTickFormat(bucket);
+    return {
+      isTime: true,
+      format: value => {
+        const dt = parseChartDate(value);
+        return dt ? dt.toFormat(fmt) : String(value ?? "");
+      },
+      tickValues: strideValues(values),
+    };
+  }
+
+  return {
+    isTime: false,
+    format: value => {
+      const text = String(value ?? "");
+      return text.length > 16 ? `${text.slice(0, 15)}…` : text;
+    },
+    tickValues: strideValues(values),
+  };
+}
+
+/** Ordered, de-duplicated list of X values from rows for the given column. */
+export function getXValues(rows: CustomQueryRow[], xColumn: string | undefined): string[] {
+  if (!xColumn) return [];
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const row of rows) {
+    const value = formatAxisValue(row[xColumn]);
+    if (!seen.has(value)) {
+      seen.add(value);
+      out.push(value);
+    }
+  }
+  return out;
 }
