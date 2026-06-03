@@ -13,6 +13,14 @@ export { getFunnel } from "./funnels/getFunnel.js";
 export { getFunnelStepSessions } from "./funnels/getFunnelStepSessions.js";
 export { getFunnels } from "./funnels/getFunnels.js";
 
+// Dashboards
+export { createDashboard } from "./dashboards/createDashboard.js";
+export { deleteDashboard } from "./dashboards/deleteDashboard.js";
+export { getDashboard } from "./dashboards/getDashboard.js";
+export { getDashboards } from "./dashboards/getDashboards.js";
+export { updateDashboard } from "./dashboards/updateDashboard.js";
+export { runDashboardCardQuery } from "./runDashboardCardQuery.js";
+
 // Goals
 export { createGoal } from "./goals/createGoal.js";
 export { deleteGoal } from "./goals/deleteGoal.js";

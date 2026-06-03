@@ -12,6 +12,7 @@ import {
   Gauge,
   Globe2,
   LayoutDashboard,
+  LayoutGrid,
   MousePointerClick,
   Rewind,
   Settings,
@@ -130,6 +131,12 @@ function SidebarContent() {
           active={isActiveTab("query")}
           href={getTabPath("query")}
           icon={<Database className="w-4 h-4" />}
+        />
+        <SidebarComponents.Item
+          label={t("Dashboards")}
+          active={isActiveTab("dashboards")}
+          href={getTabPath("dashboards")}
+          icon={<LayoutGrid className="w-4 h-4" />}
         />
         <SidebarComponents.SectionHeader>{t("Product Analytics")}</SidebarComponents.SectionHeader>
         <div className="hidden md:block">

@@ -15,11 +15,15 @@ import {
   getClickhouseQueryLog,
 } from "./api/admin/index.js";
 import {
+  createDashboard,
   createFunnel,
   createGoal,
+  deleteDashboard,
   deleteFunnel,
   deleteGoal,
   generatePdfReport,
+  getDashboard,
+  getDashboards,
   getBotDimension,
   getBotOverview,
   getBotTimeSeries,
@@ -63,6 +67,8 @@ import {
   getUserTraitValues,
   getUsers,
   runCustomQuery,
+  runDashboardCardQuery,
+  updateDashboard,
   updateGoal,
 } from "./api/analytics/index.js";
 import { getConfig, getVersion } from "./api/getConfig.js";
@@ -299,6 +305,12 @@ async function analyticsRoutes(fastify: FastifyInstance) {
   fastify.post("/sites/:siteId/goals", authSite, createGoal);
   fastify.delete("/sites/:siteId/goals/:goalId", authSite, deleteGoal);
   fastify.put("/sites/:siteId/goals/:goalId", authSite, updateGoal);
+  fastify.get("/sites/:siteId/dashboards", authSite, getDashboards);
+  fastify.get("/sites/:siteId/dashboards/:dashboardId", authSite, getDashboard);
+  fastify.post("/sites/:siteId/dashboards", authSite, createDashboard);
+  fastify.put("/sites/:siteId/dashboards/:dashboardId", authSite, updateDashboard);
+  fastify.delete("/sites/:siteId/dashboards/:dashboardId", authSite, deleteDashboard);
+  fastify.post("/sites/:siteId/dashboards/run-card", authSite, runDashboardCardQuery);
   fastify.get("/sites/:siteId/feature-flags", authSite, getFeatureFlags);
   fastify.post("/sites/:siteId/feature-flags", adminSite, createFeatureFlag);
   fastify.put("/sites/:siteId/feature-flags/:flagId", adminSite, updateFeatureFlag);

@@ -1,4 +1,5 @@
 import { sql } from "drizzle-orm";
+import type { DashboardConfig } from "@rybbit/shared";
 import {
   boolean,
   check,
@@ -108,6 +109,16 @@ export const funnels = pgTable("funnels", {
   siteId: integer("site_id").references(() => sites.siteId, { onDelete: "cascade" }),
   userId: text("user_id").references(() => user.id, { onDelete: "set null" }),
   data: jsonb(),
+  createdAt: timestamp("created_at", { mode: "string" }).defaultNow(),
+  updatedAt: timestamp("updated_at", { mode: "string" }).defaultNow(),
+});
+
+export const dashboards = pgTable("dashboards", {
+  dashboardId: serial("dashboard_id").primaryKey().notNull(),
+  siteId: integer("site_id").references(() => sites.siteId, { onDelete: "cascade" }),
+  userId: text("user_id").references(() => user.id, { onDelete: "set null" }),
+  name: text("name").notNull(),
+  config: jsonb("config").notNull().$type<DashboardConfig>().default({ cards: [] }),
   createdAt: timestamp("created_at", { mode: "string" }).defaultNow(),
   updatedAt: timestamp("updated_at", { mode: "string" }).defaultNow(),
 });
