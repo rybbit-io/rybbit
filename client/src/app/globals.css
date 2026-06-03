@@ -559,3 +559,37 @@
     scrollbar-color: hsl(0 0% 40%) hsl(0 0% 7%);
   }
 }
+
+/* react-grid-layout — dashboard editor surface */
+.react-grid-item.react-grid-placeholder {
+  background: hsl(160 84% 39% / 0.12);
+  border: 1px dashed hsl(160 84% 39% / 0.55);
+  border-radius: var(--radius);
+  opacity: 1;
+  transition-duration: 120ms;
+}
+
+.react-grid-item.react-draggable-dragging,
+.react-grid-item.resizing {
+  z-index: 30;
+}
+
+.react-grid-item.react-draggable-dragging {
+  cursor: grabbing;
+}
+
+.react-grid-item > .react-resizable-handle {
+  opacity: 0;
+  transition: opacity 150ms ease;
+}
+
+.react-grid-item:hover > .react-resizable-handle {
+  opacity: 1;
+}
+
+.react-grid-item > .react-resizable-handle::after {
+  width: 7px;
+  height: 7px;
+  border-right-color: hsl(0 0% 55%);
+  border-bottom-color: hsl(0 0% 55%);
+}

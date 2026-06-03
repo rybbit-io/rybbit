@@ -20,7 +20,7 @@ type DashboardCardViewProps = {
 };
 
 export function DashboardCardView({ siteId, card, editMode, onEdit, onRemove }: DashboardCardViewProps) {
-  const { data, isLoading, error } = useDashboardCard(siteId, card.id, card.sql);
+  const { data, isLoading, isFetching, error } = useDashboardCard(siteId, card.id, card.sql);
   const [sort, setSort] = useState<SortState>(null);
 
   const rows = data?.data ?? [];
@@ -37,6 +37,9 @@ export function DashboardCardView({ siteId, card, editMode, onEdit, onRemove }: 
             <GripVertical className="dashboard-card-drag-handle h-4 w-4 shrink-0 cursor-grab text-neutral-400" />
           )}
           <span className="truncate text-sm font-medium text-neutral-900 dark:text-neutral-100">{card.title}</span>
+          {isFetching && !isLoading && (
+            <Loader2 className="h-3 w-3 shrink-0 animate-spin text-neutral-400" aria-label="Updating" />
+          )}
           {truncated && (
             <span className="shrink-0 rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-medium text-amber-700 dark:bg-amber-950 dark:text-amber-400">
               {data?.meta.maxRows} row limit

@@ -4,6 +4,7 @@ import type { DashboardCard, DashboardVizType } from "@rybbit/shared";
 import { useMemo, useState } from "react";
 import { useDashboardCard } from "../../../../api/analytics/hooks/useDashboardCard";
 import { Button } from "../../../../components/ui/button";
+import { ButtonGroup } from "../../../../components/ui/button-group";
 import { Input } from "../../../../components/ui/input";
 import { Label } from "../../../../components/ui/label";
 import { MultiSelect } from "../../../../components/ui/multi-select";
@@ -17,7 +18,7 @@ import {
   SelectValue,
 } from "../../../../components/ui/select";
 import { Sheet, SheetContent, SheetFooter, SheetHeader, SheetTitle } from "../../../../components/ui/sheet";
-import { Loader2 } from "lucide-react";
+import { BarChart3, LineChart, Loader2, Table2 } from "lucide-react";
 import { QueryEditor } from "../../query/components/QueryEditor";
 import { ResultsTable } from "../../query/components/ResultsTable";
 import type { SortState } from "../../query/types";
@@ -39,6 +40,12 @@ type DashboardCardEditorProps = {
 };
 
 const NONE_VALUE = "__none__";
+
+const VIZ_OPTIONS: { value: DashboardVizType; label: string; icon: typeof LineChart }[] = [
+  { value: "line", label: "Line", icon: LineChart },
+  { value: "bar", label: "Bar", icon: BarChart3 },
+  { value: "table", label: "Table", icon: Table2 },
+];
 
 export function DashboardCardEditor({ siteId, card, open, onClose, onSave }: DashboardCardEditorProps) {
   const [title, setTitle] = useState(card.title);
@@ -206,16 +213,25 @@ export function DashboardCardEditor({ siteId, card, open, onClose, onSave }: Das
 
         <div className="space-y-1.5">
           <Label>Visualization</Label>
-          <Select value={vizType} onValueChange={value => setVizType(value as DashboardVizType)}>
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="line">Line chart</SelectItem>
-              <SelectItem value="bar">Bar chart</SelectItem>
-              <SelectItem value="table">Table</SelectItem>
-            </SelectContent>
-          </Select>
+          <ButtonGroup className="w-full">
+            {VIZ_OPTIONS.map(option => {
+              const Icon = option.icon;
+              const active = vizType === option.value;
+              return (
+                <Button
+                  key={option.value}
+                  type="button"
+                  variant={active ? "default" : "outline"}
+                  aria-pressed={active}
+                  className="flex-1"
+                  onClick={() => setVizType(option.value)}
+                >
+                  <Icon className="h-4 w-4" />
+                  {option.label}
+                </Button>
+              );
+            })}
+          </ButtonGroup>
         </div>
 
         {isChart && (

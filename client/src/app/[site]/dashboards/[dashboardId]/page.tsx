@@ -9,9 +9,23 @@ import { useParams, useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { Responsive, WidthProvider, type Layout } from "react-grid-layout";
 import { useGetDashboard, useUpdateDashboard } from "../../../../api/analytics/hooks/useDashboards";
+import { BucketSelection } from "../../../../components/BucketSelection";
+import { DateSelector } from "../../../../components/DateSelector/DateSelector";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "../../../../components/ui/alert-dialog";
 import { Button } from "../../../../components/ui/button";
 import { Input } from "../../../../components/ui/input";
+import { Skeleton } from "../../../../components/ui/skeleton";
 import { useSetPageTitle } from "../../../../hooks/useSetPageTitle";
+import { useStore } from "../../../../lib/store";
 import { DashboardCardEditor } from "../components/DashboardCardEditor";
 import { DashboardCardView } from "../components/DashboardCardView";
 import { createCard } from "../utils";
@@ -27,6 +41,7 @@ export default function DashboardDetailPage() {
   const dashboardId = Number(params.dashboardId);
   const router = useRouter();
 
+  const { time, setTime } = useStore();
   const { data: dashboard, isLoading } = useGetDashboard(siteId, dashboardId);
   const updateDashboard = useUpdateDashboard();
 
@@ -35,6 +50,7 @@ export default function DashboardDetailPage() {
   const [cards, setCards] = useState<DashboardCard[] | null>(null);
   const [dirty, setDirty] = useState(false);
   const [editingCardId, setEditingCardId] = useState<string | null>(null);
+  const [confirmExit, setConfirmExit] = useState(false);
 
   // Working copies fall back to the fetched dashboard until first edit.
   const workingName = name ?? dashboard?.name ?? "";
@@ -100,10 +116,32 @@ export default function DashboardDetailPage() {
     setDirty(false);
   };
 
+  const resetWorkingCopy = () => {
+    setCards(null);
+    setName(null);
+    setDirty(false);
+  };
+
+  const handleExitEdit = () => {
+    if (dirty) {
+      setConfirmExit(true);
+      return;
+    }
+    setEditMode(false);
+  };
+
   if (isLoading) {
     return (
-      <div className="flex h-[calc(100vh-96px)] items-center justify-center">
-        <Loader2 className="h-5 w-5 animate-spin text-neutral-400" />
+      <div className="mx-auto flex max-w-[1600px] flex-col gap-3 p-2 md:p-4">
+        <div className="flex items-center justify-between">
+          <Skeleton className="h-8 w-56" />
+          <Skeleton className="h-8 w-72" />
+        </div>
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+          {Array.from({ length: 4 }).map((_, index) => (
+            <Skeleton key={index} className="h-64 w-full rounded-lg" />
+          ))}
+        </div>
       </div>
     );
   }
@@ -114,14 +152,15 @@ export default function DashboardDetailPage() {
 
   return (
     <div className="mx-auto flex max-w-[1600px] flex-col gap-3 p-2 md:p-4">
-      <div className="flex items-center justify-between gap-2">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex min-w-0 items-center gap-2">
-          <Button size="smIcon" variant="ghost" onClick={() => router.push(`/${siteId}/dashboards`)} aria-label="Back">
+          <Button size="smIcon" variant="ghost" onClick={() => router.push(`/${siteId}/dashboards`)} aria-label="Back to dashboards">
             <ArrowLeft className="h-4 w-4" />
           </Button>
           {editMode ? (
             <Input
               value={workingName}
+              placeholder="Dashboard name"
               onChange={event => {
                 setName(event.target.value);
                 setDirty(true);
@@ -131,45 +170,49 @@ export default function DashboardDetailPage() {
           ) : (
             <h1 className="truncate text-lg font-semibold">{workingName}</h1>
           )}
-        </div>
-        <div className="flex shrink-0 items-center gap-2">
-          {editMode && (
-            <Button variant="outline" onClick={handleAddCard}>
-              <Plus className="h-4 w-4" />
-              Add card
-            </Button>
+          {editMode && dirty && (
+            <span className="shrink-0 rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-medium text-amber-700 dark:bg-amber-950 dark:text-amber-400">
+              Unsaved changes
+            </span>
           )}
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2">
+          <DateSelector time={time} setTime={setTime} />
+          <BucketSelection size="default" />
+          <div className="mx-0.5 hidden h-5 w-px bg-neutral-200 sm:block dark:bg-neutral-800" />
           {editMode ? (
-            <Button onClick={handleSave} disabled={!dirty || updateDashboard.isPending}>
-              {updateDashboard.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
-              Save
-            </Button>
+            <>
+              <Button variant="outline" onClick={handleAddCard}>
+                <Plus className="h-4 w-4" />
+                Add card
+              </Button>
+              <Button onClick={handleSave} disabled={!dirty || updateDashboard.isPending}>
+                {updateDashboard.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
+                Save
+              </Button>
+              <Button variant="ghost" onClick={handleExitEdit}>
+                Done
+              </Button>
+            </>
           ) : (
             <Button variant="outline" onClick={() => setEditMode(true)}>
               <Pencil className="h-4 w-4" />
               Edit
             </Button>
           )}
-          {editMode && (
-            <Button
-              variant="ghost"
-              onClick={() => {
-                // Discard local edits and exit edit mode.
-                setCards(null);
-                setName(null);
-                setDirty(false);
-                setEditMode(false);
-              }}
-            >
-              Done
-            </Button>
-          )}
         </div>
       </div>
 
       {workingCards.length === 0 ? (
-        <div className="flex flex-col items-center justify-center gap-3 rounded-lg border border-dashed border-neutral-200 py-16 text-center dark:border-neutral-800">
-          <div className="text-sm text-neutral-500">This dashboard has no cards yet.</div>
+        <div className="flex flex-col items-center justify-center gap-3 rounded-lg border border-dashed border-neutral-200 py-20 text-center dark:border-neutral-800">
+          <div className="max-w-sm space-y-1">
+            <div className="font-medium text-neutral-900 dark:text-neutral-100">This dashboard is empty</div>
+            <p className="text-sm text-neutral-500">
+              Add a card, write a query (or pick an example), and choose how to visualize it. Cards respect the time
+              range above and can be dragged and resized.
+            </p>
+          </div>
           <Button
             variant="outline"
             onClick={() => {
@@ -182,30 +225,38 @@ export default function DashboardDetailPage() {
           </Button>
         </div>
       ) : (
-        <ResponsiveGridLayout
-          className="layout"
-          layouts={{ lg: layout, md: layout, sm: layout, xs: layout, xxs: layout }}
-          breakpoints={BREAKPOINTS}
-          cols={GRID_COLS}
-          rowHeight={60}
-          margin={[12, 12]}
-          isDraggable={editMode}
-          isResizable={editMode}
-          draggableHandle=".dashboard-card-drag-handle"
-          onLayoutChange={handleLayoutChange}
+        <div
+          className={
+            editMode
+              ? "rounded-lg border border-dashed border-neutral-200 bg-neutral-50/60 p-1 dark:border-neutral-800 dark:bg-neutral-950/40"
+              : undefined
+          }
         >
-          {workingCards.map(card => (
-            <div key={card.id}>
-              <DashboardCardView
-                siteId={siteId}
-                card={card}
-                editMode={editMode}
-                onEdit={() => setEditingCardId(card.id)}
-                onRemove={() => handleRemoveCard(card.id)}
-              />
-            </div>
-          ))}
-        </ResponsiveGridLayout>
+          <ResponsiveGridLayout
+            className="layout"
+            layouts={{ lg: layout, md: layout, sm: layout, xs: layout, xxs: layout }}
+            breakpoints={BREAKPOINTS}
+            cols={GRID_COLS}
+            rowHeight={60}
+            margin={[12, 12]}
+            isDraggable={editMode}
+            isResizable={editMode}
+            draggableHandle=".dashboard-card-drag-handle"
+            onLayoutChange={handleLayoutChange}
+          >
+            {workingCards.map(card => (
+              <div key={card.id}>
+                <DashboardCardView
+                  siteId={siteId}
+                  card={card}
+                  editMode={editMode}
+                  onEdit={() => setEditingCardId(card.id)}
+                  onRemove={() => handleRemoveCard(card.id)}
+                />
+              </div>
+            ))}
+          </ResponsiveGridLayout>
+        </div>
       )}
 
       {editingCard && (
@@ -217,6 +268,30 @@ export default function DashboardDetailPage() {
           onSave={handleSaveCard}
         />
       )}
+
+      <AlertDialog open={confirmExit} onOpenChange={open => !open && setConfirmExit(false)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Discard unsaved changes?</AlertDialogTitle>
+            <AlertDialogDescription>
+              You have edits that haven&apos;t been saved. Leaving edit mode will revert them.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Keep editing</AlertDialogCancel>
+            <AlertDialogAction
+              variant="destructive"
+              onClick={() => {
+                resetWorkingCopy();
+                setEditMode(false);
+                setConfirmExit(false);
+              }}
+            >
+              Discard changes
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
