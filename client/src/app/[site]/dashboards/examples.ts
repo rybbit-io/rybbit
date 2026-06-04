@@ -19,13 +19,93 @@ export type DashboardExample = {
  * '/pricing') are placeholders meant to be edited.
  */
 export const DASHBOARD_EXAMPLES: DashboardExample[] = [
+  // ── Overview ─────────────────────────────────────────────────────────────--
+  {
+    id: "total-pageviews-stat",
+    title: "Total pageviews",
+    description: "Single headline number for the selected range.",
+    category: "Overview",
+    vizType: "stat",
+    mapping: { valueColumn: "pageviews" },
+    sql: `SELECT countIf(type = 'pageview') AS pageviews
+FROM scoped_events`,
+  },
+  {
+    id: "bounce-rate-stat",
+    title: "Bounce rate",
+    description: "Share of sessions with a single pageview.",
+    category: "Overview",
+    vizType: "stat",
+    mapping: { valueColumn: "bounce_rate", valueFormat: "percent" },
+    sql: `SELECT round(100 * countIf(pages = 1) / count(), 1) AS bounce_rate
+FROM (
+  SELECT session_id, countIf(type = 'pageview') AS pages
+  FROM scoped_events
+  GROUP BY session_id
+)`,
+  },
+  {
+    id: "visitors-by-country-map",
+    title: "Visitors by country (map)",
+    description: "Sessions shaded onto a world map.",
+    category: "Overview",
+    vizType: "map",
+    mapping: { countryColumn: "country", valueColumn: "sessions" },
+    sql: `SELECT country,
+       countDistinct(session_id) AS sessions
+FROM scoped_events
+WHERE country != ''
+GROUP BY country`,
+  },
+  {
+    id: "device-type-donut",
+    title: "Device type (donut)",
+    description: "Share of sessions by device class.",
+    category: "Overview",
+    vizType: "pie",
+    mapping: { xColumn: "device_type", valueColumn: "sessions" },
+    sql: `SELECT device_type,
+       countDistinct(session_id) AS sessions
+FROM scoped_events
+WHERE device_type != ''
+GROUP BY device_type
+ORDER BY sessions DESC`,
+  },
+  {
+    id: "top-pages-bar-list",
+    title: "Top pages (bar list)",
+    description: "Most-viewed paths as a ranked list.",
+    category: "Overview",
+    vizType: "hbar",
+    mapping: { xColumn: "pathname", valueColumn: "pageviews" },
+    sql: `SELECT pathname,
+       countIf(type = 'pageview') AS pageviews
+FROM scoped_events
+GROUP BY pathname
+ORDER BY pageviews DESC
+LIMIT 30`,
+  },
+  {
+    id: "daily-pageviews-calendar",
+    title: "Daily pageviews (calendar)",
+    description: "Per-day activity heatmap. Use a wide range for the best effect.",
+    category: "Overview",
+    vizType: "calendar",
+    mapping: { dateColumn: "day", valueColumn: "pageviews" },
+    sql: `SELECT toDate(timestamp) AS day,
+       countIf(type = 'pageview') AS pageviews
+FROM scoped_events
+GROUP BY day
+ORDER BY day`,
+  },
+
   // ── Traffic ────────────────────────────────────────────────────────────────
   {
     id: "pageviews-over-time",
     title: "Pageviews over time",
     description: "Pageview count per time bucket.",
     category: "Traffic",
-    vizType: "line",
+    vizType: "area",
     mapping: { xColumn: "time", yColumns: ["pageviews"] },
     sql: `SELECT toStartOfInterval(timestamp, INTERVAL {{bucket}}) AS time,
        countIf(type = 'pageview') AS pageviews

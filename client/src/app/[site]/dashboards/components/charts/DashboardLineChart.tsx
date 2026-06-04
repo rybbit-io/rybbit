@@ -13,6 +13,8 @@ import { CardLegend, ChartEmpty, DashboardTooltip, toCardSeries } from "./shared
 type DashboardLineChartProps = {
   rows: CustomQueryRow[];
   mapping: DashboardCardMapping;
+  /** Fill the area beneath the line (single-series only). */
+  area?: boolean;
 };
 
 type LinePoint = { x: Date; y: number; label: string };
@@ -22,7 +24,7 @@ type LinePoint = { x: Date; y: number; label: string };
 const SYNTH_EPOCH = Date.UTC(2000, 0, 1);
 const SYNTH_STEP = 86_400_000;
 
-export function DashboardLineChart({ rows, mapping }: DashboardLineChartProps) {
+export function DashboardLineChart({ rows, mapping, area = false }: DashboardLineChartProps) {
   const time = useStore(state => state.time);
   const bucket = useStore(state => state.bucket);
   const timezone = getTimezone();
@@ -94,6 +96,7 @@ export function DashboardLineChart({ rows, mapping }: DashboardLineChartProps) {
           current={multi ? [] : series[0].data}
           series={multi ? series : undefined}
           currentColor={series[0].color}
+          currentAreaOpacity={area && !multi ? 0.25 : 0}
           max={max}
           chartMin={chartMin}
           chartMax={chartMax}

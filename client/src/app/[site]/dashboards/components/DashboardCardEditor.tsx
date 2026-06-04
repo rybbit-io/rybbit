@@ -1,10 +1,9 @@
 "use client";
 
-import type { DashboardCard, DashboardVizType } from "@rybbit/shared";
+import type { DashboardCard, DashboardCardMapping, DashboardValueFormat, DashboardVizType } from "@rybbit/shared";
 import { useMemo, useState } from "react";
 import { useDashboardCard } from "../../../../api/analytics/hooks/useDashboardCard";
 import { Button } from "../../../../components/ui/button";
-import { ButtonGroup } from "../../../../components/ui/button-group";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -25,7 +24,20 @@ import {
   SelectValue,
 } from "../../../../components/ui/select";
 import { Sheet, SheetContent, SheetFooter, SheetHeader, SheetTitle } from "../../../../components/ui/sheet";
-import { BarChart3, ChevronDown, Lightbulb, LineChart, Loader2, Table2 } from "lucide-react";
+import {
+  AreaChart,
+  BarChart3,
+  BarChartHorizontal,
+  CalendarDays,
+  ChevronDown,
+  Hash,
+  Lightbulb,
+  LineChart,
+  Loader2,
+  Map as MapIcon,
+  PieChart,
+  Table2,
+} from "lucide-react";
 import { QueryEditor } from "../../query/components/QueryEditor";
 import { ResultsTable } from "../../query/components/ResultsTable";
 import type { SortState } from "../../query/types";
@@ -36,7 +48,12 @@ import {
   type DashboardExample,
 } from "../examples";
 import { DashboardBarChart } from "./charts/DashboardBarChart";
+import { DashboardBarList } from "./charts/DashboardBarList";
+import { DashboardCalendar } from "./charts/DashboardCalendar";
 import { DashboardLineChart } from "./charts/DashboardLineChart";
+import { DashboardMap } from "./charts/DashboardMap";
+import { DashboardPie } from "./charts/DashboardPie";
+import { DashboardStat } from "./charts/DashboardStat";
 
 type DashboardCardEditorProps = {
   siteId: number;
@@ -50,9 +67,102 @@ const NONE_VALUE = "__none__";
 
 const VIZ_OPTIONS: { value: DashboardVizType; label: string; icon: typeof LineChart }[] = [
   { value: "line", label: "Line", icon: LineChart },
+  { value: "area", label: "Area", icon: AreaChart },
   { value: "bar", label: "Bar", icon: BarChart3 },
+  { value: "hbar", label: "Bar list", icon: BarChartHorizontal },
+  { value: "pie", label: "Donut", icon: PieChart },
+  { value: "stat", label: "Stat", icon: Hash },
   { value: "table", label: "Table", icon: Table2 },
+  { value: "map", label: "Map", icon: MapIcon },
+  { value: "calendar", label: "Calendar", icon: CalendarDays },
 ];
+
+const FORMAT_OPTIONS: { value: DashboardValueFormat; label: string }[] = [
+  { value: "number", label: "Number" },
+  { value: "percent", label: "Percent" },
+  { value: "duration", label: "Duration" },
+  { value: "bytes", label: "Bytes" },
+];
+
+/** Which mapping controls a given viz type needs. */
+type MappingKind = "none" | "xy" | "categoryValue" | "stat" | "map" | "calendar";
+
+function mappingKind(vizType: DashboardVizType): MappingKind {
+  switch (vizType) {
+    case "table":
+      return "none";
+    case "line":
+    case "area":
+    case "bar":
+      return "xy";
+    case "hbar":
+    case "pie":
+      return "categoryValue";
+    case "stat":
+      return "stat";
+    case "map":
+      return "map";
+    case "calendar":
+      return "calendar";
+  }
+}
+
+/** Single-column dropdown shared across the mapping controls. */
+function ColumnSelect({
+  label,
+  value,
+  columns,
+  onChange,
+  includeNone,
+  placeholder = "Select column",
+}: {
+  label: string;
+  value: string | undefined;
+  columns: string[];
+  onChange: (value: string | undefined) => void;
+  includeNone?: boolean;
+  placeholder?: string;
+}) {
+  return (
+    <div className="space-y-1.5">
+      <Label>{label}</Label>
+      <Select value={value ?? NONE_VALUE} onValueChange={next => onChange(next === NONE_VALUE ? undefined : next)}>
+        <SelectTrigger>
+          <SelectValue placeholder={placeholder} />
+        </SelectTrigger>
+        <SelectContent>
+          {includeNone && <SelectItem value={NONE_VALUE}>None</SelectItem>}
+          {columns.map(column => (
+            <SelectItem key={column} value={column}>
+              {column}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    </div>
+  );
+}
+
+/** Value-format dropdown for stat / pie / bar-list / map / calendar cards. */
+function FormatSelect({ value, onChange }: { value: DashboardValueFormat; onChange: (value: DashboardValueFormat) => void }) {
+  return (
+    <div className="space-y-1.5">
+      <Label>Value format</Label>
+      <Select value={value} onValueChange={next => onChange(next as DashboardValueFormat)}>
+        <SelectTrigger>
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          {FORMAT_OPTIONS.map(option => (
+            <SelectItem key={option.value} value={option.value}>
+              {option.label}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    </div>
+  );
+}
 
 export function DashboardCardEditor({ siteId, card, open, onClose, onSave }: DashboardCardEditorProps) {
   const [title, setTitle] = useState(card.title);
@@ -61,6 +171,11 @@ export function DashboardCardEditor({ siteId, card, open, onClose, onSave }: Das
   const [xColumn, setXColumn] = useState(card.mapping.xColumn);
   const [yColumns, setYColumns] = useState<string[]>(card.mapping.yColumns ?? []);
   const [seriesColumn, setSeriesColumn] = useState(card.mapping.seriesColumn);
+  const [valueColumn, setValueColumn] = useState(card.mapping.valueColumn);
+  const [compareColumn, setCompareColumn] = useState(card.mapping.compareColumn);
+  const [valueFormat, setValueFormat] = useState<DashboardValueFormat>(card.mapping.valueFormat ?? "number");
+  const [countryColumn, setCountryColumn] = useState(card.mapping.countryColumn);
+  const [dateColumn, setDateColumn] = useState(card.mapping.dateColumn);
   const [previewSql, setPreviewSql] = useState("");
 
   const [sort, setSort] = useState<SortState>(null);
@@ -71,7 +186,12 @@ export function DashboardCardEditor({ siteId, card, open, onClose, onSave }: Das
   const activeSort = sort && columns.includes(sort.column) ? sort : null;
   const sortedRows = useMemo(() => sortRows(rows, activeSort), [rows, activeSort]);
   const truncated = data?.meta && data.meta.rowCount >= data.meta.maxRows;
-  const hasChartMapping = !!xColumn && yColumns.length > 0;
+  const kind = mappingKind(vizType);
+
+  const mapping: DashboardCardMapping = useMemo(
+    () => ({ xColumn, yColumns, seriesColumn, valueColumn, compareColumn, valueFormat, countryColumn, dateColumn }),
+    [xColumn, yColumns, seriesColumn, valueColumn, compareColumn, valueFormat, countryColumn, dateColumn]
+  );
 
   const applyExample = (example: DashboardExample) => {
     setSql(example.sql);
@@ -79,6 +199,11 @@ export function DashboardCardEditor({ siteId, card, open, onClose, onSave }: Das
     setXColumn(example.mapping.xColumn);
     setYColumns(example.mapping.yColumns ?? []);
     setSeriesColumn(example.mapping.seriesColumn);
+    setValueColumn(example.mapping.valueColumn);
+    setCompareColumn(example.mapping.compareColumn);
+    setValueFormat(example.mapping.valueFormat ?? "number");
+    setCountryColumn(example.mapping.countryColumn);
+    setDateColumn(example.mapping.dateColumn);
     // Only overwrite the title if the user hasn't named the card yet.
     if (!title.trim() || /^Card \d+$/.test(title.trim())) {
       setTitle(example.title);
@@ -92,12 +217,12 @@ export function DashboardCardEditor({ siteId, card, open, onClose, onSave }: Das
       title: title.trim() || card.title,
       sql,
       vizType,
-      mapping: vizType === "table" ? {} : { xColumn, yColumns, seriesColumn },
+      mapping: kind === "none" ? {} : mapping,
     });
     onClose();
   };
 
-  const isChart = vizType === "line" || vizType === "bar";
+  const showPreviewViz = vizType !== "table";
 
   return (
     <Sheet open={open} onOpenChange={value => !value && onClose()}>
@@ -189,19 +314,25 @@ export function DashboardCardEditor({ siteId, card, open, onClose, onSave }: Das
               )}
             </div>
 
-            {isChart && (
+            {showPreviewViz && (
               <div className="h-56 rounded-lg border border-neutral-150 p-1 dark:border-neutral-850">
-                {hasChartMapping ? (
-                  vizType === "line" ? (
-                    <DashboardLineChart rows={rows} mapping={{ xColumn, yColumns, seriesColumn }} />
-                  ) : (
-                    <DashboardBarChart rows={rows} mapping={{ xColumn, yColumns, seriesColumn }} />
-                  )
-                ) : (
-                  <div className="flex h-full items-center justify-center text-xs text-neutral-500">
-                    Map the X axis and Y values below to preview the chart
-                  </div>
-                )}
+                {vizType === "line" ? (
+                  <DashboardLineChart rows={rows} mapping={mapping} />
+                ) : vizType === "area" ? (
+                  <DashboardLineChart rows={rows} mapping={mapping} area />
+                ) : vizType === "bar" ? (
+                  <DashboardBarChart rows={rows} mapping={mapping} />
+                ) : vizType === "hbar" ? (
+                  <DashboardBarList rows={rows} mapping={mapping} />
+                ) : vizType === "pie" ? (
+                  <DashboardPie rows={rows} mapping={mapping} />
+                ) : vizType === "stat" ? (
+                  <DashboardStat rows={rows} mapping={mapping} />
+                ) : vizType === "map" ? (
+                  <DashboardMap rows={rows} mapping={mapping} />
+                ) : vizType === "calendar" ? (
+                  <DashboardCalendar rows={rows} mapping={mapping} />
+                ) : null}
               </div>
             )}
 
@@ -221,7 +352,7 @@ export function DashboardCardEditor({ siteId, card, open, onClose, onSave }: Das
 
         <div className="space-y-1.5">
           <Label>Visualization</Label>
-          <ButtonGroup className="w-full">
+          <div className="grid grid-cols-3 gap-2">
             {VIZ_OPTIONS.map(option => {
               const Icon = option.icon;
               const active = vizType === option.value;
@@ -231,7 +362,8 @@ export function DashboardCardEditor({ siteId, card, open, onClose, onSave }: Das
                   type="button"
                   variant={active ? "default" : "outline"}
                   aria-pressed={active}
-                  className="flex-1"
+                  size="sm"
+                  className="justify-start"
                   onClick={() => setVizType(option.value)}
                 >
                   <Icon className="h-4 w-4" />
@@ -239,59 +371,124 @@ export function DashboardCardEditor({ siteId, card, open, onClose, onSave }: Das
                 </Button>
               );
             })}
-          </ButtonGroup>
+          </div>
         </div>
 
-        {isChart && (
+        {kind !== "none" && (
           <div className="space-y-3 rounded-lg border border-neutral-150 p-3 dark:border-neutral-850">
             <p className="text-xs text-neutral-500">
               {columns.length === 0
-                ? "Run the query above to map result columns to the chart."
-                : "Map result columns to the chart axes."}
+                ? "Run the query above to map result columns to the visualization."
+                : "Map result columns to the visualization."}
             </p>
-            <div className="space-y-1.5">
-              <Label>X axis</Label>
-              <Select value={xColumn ?? NONE_VALUE} onValueChange={value => setXColumn(value === NONE_VALUE ? undefined : value)}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select column" />
-                </SelectTrigger>
-                <SelectContent>
-                  {columns.map(column => (
-                    <SelectItem key={column} value={column}>
-                      {column}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-1.5">
-              <Label>Y values</Label>
-              <MultiSelect
-                options={columns.map(column => ({ value: column, label: column }))}
-                value={yColumns}
-                onValueChange={setYColumns}
-                placeholder="Select numeric columns"
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label>Split by series (optional)</Label>
-              <Select
-                value={seriesColumn ?? NONE_VALUE}
-                onValueChange={value => setSeriesColumn(value === NONE_VALUE ? undefined : value)}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="None" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value={NONE_VALUE}>None</SelectItem>
-                  {columns.map(column => (
-                    <SelectItem key={column} value={column}>
-                      {column}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+
+            {kind === "xy" && (
+              <>
+                <ColumnSelect label="X axis" value={xColumn} columns={columns} onChange={setXColumn} />
+                <div className="space-y-1.5">
+                  <Label>Y values</Label>
+                  <MultiSelect
+                    options={columns.map(column => ({ value: column, label: column }))}
+                    value={yColumns}
+                    onValueChange={setYColumns}
+                    placeholder="Select numeric columns"
+                  />
+                </div>
+                <ColumnSelect
+                  label="Split by series (optional)"
+                  value={seriesColumn}
+                  columns={columns}
+                  onChange={setSeriesColumn}
+                  includeNone
+                  placeholder="None"
+                />
+              </>
+            )}
+
+            {kind === "categoryValue" && (
+              <>
+                <ColumnSelect
+                  label={vizType === "pie" ? "Slice label" : "Category"}
+                  value={xColumn}
+                  columns={columns}
+                  onChange={setXColumn}
+                />
+                <ColumnSelect
+                  label="Value"
+                  value={valueColumn}
+                  columns={columns}
+                  onChange={setValueColumn}
+                  includeNone
+                  placeholder="Auto (first numeric)"
+                />
+                <FormatSelect value={valueFormat} onChange={setValueFormat} />
+              </>
+            )}
+
+            {kind === "stat" && (
+              <>
+                <ColumnSelect
+                  label="Value"
+                  value={valueColumn}
+                  columns={columns}
+                  onChange={setValueColumn}
+                  includeNone
+                  placeholder="Auto (first numeric)"
+                />
+                <ColumnSelect
+                  label="Compare to (optional)"
+                  value={compareColumn}
+                  columns={columns}
+                  onChange={setCompareColumn}
+                  includeNone
+                  placeholder="None"
+                />
+                <ColumnSelect
+                  label="Label (optional)"
+                  value={xColumn}
+                  columns={columns}
+                  onChange={setXColumn}
+                  includeNone
+                  placeholder="None"
+                />
+                <FormatSelect value={valueFormat} onChange={setValueFormat} />
+              </>
+            )}
+
+            {kind === "map" && (
+              <>
+                <ColumnSelect
+                  label="Country column (ISO-2 codes)"
+                  value={countryColumn}
+                  columns={columns}
+                  onChange={setCountryColumn}
+                />
+                <ColumnSelect
+                  label="Value"
+                  value={valueColumn}
+                  columns={columns}
+                  onChange={setValueColumn}
+                  includeNone
+                  placeholder="Auto (first numeric)"
+                />
+                <FormatSelect value={valueFormat} onChange={setValueFormat} />
+              </>
+            )}
+
+            {kind === "calendar" && (
+              <>
+                <ColumnSelect label="Date column" value={dateColumn} columns={columns} onChange={setDateColumn} />
+                <ColumnSelect
+                  label="Value"
+                  value={valueColumn}
+                  columns={columns}
+                  onChange={setValueColumn}
+                  includeNone
+                  placeholder="Auto (first numeric)"
+                />
+                <FormatSelect value={valueFormat} onChange={setValueFormat} />
+              </>
+            )}
           </div>
         )}
 

@@ -1,6 +1,13 @@
 import type { CustomQueryRow } from "../../../api/analytics/endpoints";
-import type { DashboardCard, DashboardCardMapping, DashboardConfig, TimeBucket } from "@rybbit/shared";
+import type {
+  DashboardCard,
+  DashboardCardMapping,
+  DashboardConfig,
+  DashboardValueFormat,
+  TimeBucket,
+} from "@rybbit/shared";
 import { DateTime } from "luxon";
+import { formatSecondsAsMinutesAndSeconds, formatter } from "@/lib/utils";
 
 export const CARD_PALETTE = [
   "hsla(217, 75%, 60%, 0.9)",
@@ -190,4 +197,124 @@ export function getXValues(rows: CustomQueryRow[], xColumn: string | undefined):
     }
   }
   return out;
+}
+
+// ── Value formatting ─────────────────────────────────────────────────────────
+
+/** Format a single magnitude for stat / map / calendar cards. */
+export function formatValue(value: number, format: DashboardValueFormat = "number"): string {
+  switch (format) {
+    case "percent":
+      return `${Number.isInteger(value) ? value : value.toFixed(1)}%`;
+    case "duration":
+      return formatSecondsAsMinutesAndSeconds(Math.round(value));
+    case "bytes": {
+      if (value === 0) return "0 B";
+      const units = ["B", "KB", "MB", "GB", "TB", "PB"];
+      const exponent = Math.min(units.length - 1, Math.floor(Math.log(Math.abs(value)) / Math.log(1024)));
+      const scaled = value / 1024 ** exponent;
+      return `${scaled >= 100 || Number.isInteger(scaled) ? Math.round(scaled) : scaled.toFixed(1)} ${units[exponent]}`;
+    }
+    default:
+      return formatter(value);
+  }
+}
+
+/** First column whose first non-empty value parses as a number. */
+export function firstNumericColumn(rows: CustomQueryRow[]): string | undefined {
+  if (rows.length === 0) return undefined;
+  for (const column of Object.keys(rows[0])) {
+    if (rows.some(row => coerceNumber(row[column]) !== null)) return column;
+  }
+  return undefined;
+}
+
+// ── Single-value (stat) ──────────────────────────────────────────────────────
+
+export type StatValue = { value: number; previous: number | null; label: string | null };
+
+/** Resolve the figure (and optional comparison) for a stat card from the first row. */
+export function getStatValue(rows: CustomQueryRow[], mapping: DashboardCardMapping): StatValue | null {
+  if (rows.length === 0) return null;
+  const row = rows[0];
+  const valueColumn = mapping.valueColumn ?? firstNumericColumn(rows);
+  if (!valueColumn) return null;
+  const value = coerceNumber(row[valueColumn]);
+  if (value === null) return null;
+  const previous = mapping.compareColumn ? coerceNumber(row[mapping.compareColumn]) : null;
+  const label =
+    mapping.xColumn && row[mapping.xColumn] != null ? formatAxisValue(row[mapping.xColumn]) : null;
+  return { value, previous, label };
+}
+
+// ── Pie / donut ──────────────────────────────────────────────────────────────
+
+export type PieSlice = { label: string; value: number };
+
+const PIE_MAX_SLICES = 11;
+
+/** Label/value slices for a pie card, sorted desc with a rolled-up "Other". */
+export function buildPieData(rows: CustomQueryRow[], mapping: DashboardCardMapping): PieSlice[] {
+  const labelColumn = mapping.xColumn;
+  const valueColumn = mapping.valueColumn ?? firstNumericColumn(rows);
+  if (!labelColumn || !valueColumn) return [];
+
+  const slices = rows
+    .map(row => ({ label: formatAxisValue(row[labelColumn]), value: coerceNumber(row[valueColumn]) ?? 0 }))
+    .filter(slice => slice.value > 0)
+    .sort((a, b) => b.value - a.value);
+
+  if (slices.length <= PIE_MAX_SLICES) return slices;
+  const head = slices.slice(0, PIE_MAX_SLICES);
+  const rest = slices.slice(PIE_MAX_SLICES).reduce((sum, slice) => sum + slice.value, 0);
+  return rest > 0 ? [...head, { label: "Other", value: rest }] : head;
+}
+
+// ── Map (country choropleth) ─────────────────────────────────────────────────
+
+export type CountryData = { byCode: Map<string, number>; max: number };
+
+/** ISO_A2 → value lookup for a map card. Codes are upper-cased to match GeoJSON. */
+export function buildCountryData(rows: CustomQueryRow[], mapping: DashboardCardMapping): CountryData {
+  const countryColumn = mapping.countryColumn;
+  const valueColumn = mapping.valueColumn ?? firstNumericColumn(rows);
+  const byCode = new Map<string, number>();
+  let max = 0;
+  if (!countryColumn || !valueColumn) return { byCode, max };
+  for (const row of rows) {
+    const code = formatAxisValue(row[countryColumn]).toUpperCase();
+    if (!code) continue;
+    const value = (byCode.get(code) ?? 0) + (coerceNumber(row[valueColumn]) ?? 0);
+    byCode.set(code, value);
+    if (value > max) max = value;
+  }
+  return { byCode, max };
+}
+
+// ── Calendar heatmap ─────────────────────────────────────────────────────────
+
+export type CalendarDatum = { day: string; value: number };
+export type CalendarData = { data: CalendarDatum[]; from: string; to: string };
+
+/** Day/value data plus the date span for a calendar card. */
+export function buildCalendarData(rows: CustomQueryRow[], mapping: DashboardCardMapping): CalendarData | null {
+  const dateColumn = mapping.dateColumn ?? mapping.xColumn;
+  const valueColumn = mapping.valueColumn ?? firstNumericColumn(rows);
+  if (!dateColumn || !valueColumn) return null;
+
+  const byDay = new Map<string, number>();
+  for (const row of rows) {
+    const parsed = parseChartDate(row[dateColumn]);
+    if (!parsed) continue;
+    const day = parsed.toFormat("yyyy-LL-dd");
+    byDay.set(day, (byDay.get(day) ?? 0) + (coerceNumber(row[valueColumn]) ?? 0));
+  }
+  if (byDay.size === 0) return null;
+
+  const days = Array.from(byDay.keys()).sort();
+  return {
+    data: days.map(day => ({ day, value: byDay.get(day)! })),
+    from: days[0],
+    to: days[days.length - 1],
+  };
 }

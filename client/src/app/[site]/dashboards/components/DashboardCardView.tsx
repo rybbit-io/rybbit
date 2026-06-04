@@ -10,7 +10,12 @@ import { ResultsTable } from "../../query/components/ResultsTable";
 import type { SortState } from "../../query/types";
 import { getColumns, sortRows } from "../../query/utils";
 import { DashboardBarChart } from "./charts/DashboardBarChart";
+import { DashboardBarList } from "./charts/DashboardBarList";
+import { DashboardCalendar } from "./charts/DashboardCalendar";
 import { DashboardLineChart } from "./charts/DashboardLineChart";
+import { DashboardMap } from "./charts/DashboardMap";
+import { DashboardPie } from "./charts/DashboardPie";
+import { DashboardStat } from "./charts/DashboardStat";
 
 type DashboardCardViewProps = {
   siteId: number;
@@ -88,13 +93,27 @@ export function DashboardCardView({ siteId, card, editMode, onEdit, onClone, onR
           <div className="flex h-full items-center justify-center text-xs text-neutral-500">No data</div>
         ) : card.vizType === "table" ? (
           <ResultsTable columns={columns} rows={sortedRows} sort={activeSort} onSortChange={setSort} />
-        ) : card.vizType === "line" ? (
-          <div className="min-h-0 flex-1">
-            <DashboardLineChart rows={rows} mapping={card.mapping} />
-          </div>
         ) : (
           <div className="min-h-0 flex-1">
-            <DashboardBarChart rows={rows} mapping={card.mapping} />
+            {card.vizType === "line" ? (
+              <DashboardLineChart rows={rows} mapping={card.mapping} />
+            ) : card.vizType === "area" ? (
+              <DashboardLineChart rows={rows} mapping={card.mapping} area />
+            ) : card.vizType === "bar" ? (
+              <DashboardBarChart rows={rows} mapping={card.mapping} />
+            ) : card.vizType === "hbar" ? (
+              <DashboardBarList rows={rows} mapping={card.mapping} />
+            ) : card.vizType === "pie" ? (
+              <DashboardPie rows={rows} mapping={card.mapping} />
+            ) : card.vizType === "stat" ? (
+              <DashboardStat rows={rows} mapping={card.mapping} />
+            ) : card.vizType === "map" ? (
+              <DashboardMap rows={rows} mapping={card.mapping} />
+            ) : card.vizType === "calendar" ? (
+              <DashboardCalendar rows={rows} mapping={card.mapping} />
+            ) : (
+              <DashboardBarChart rows={rows} mapping={card.mapping} />
+            )}
           </div>
         )}
       </div>
