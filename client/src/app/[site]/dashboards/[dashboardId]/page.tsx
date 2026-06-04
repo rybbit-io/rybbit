@@ -319,7 +319,7 @@ export default function DashboardDetailPage() {
       ) : (
         <div
           className={cn(
-            "rounded-lg border border-transparent p-1 transition-colors duration-200 motion-reduce:transition-none",
+            "rounded-lg border border-transparent transition-colors duration-200 motion-reduce:transition-none",
             editMode && "border-dashed border-neutral-200 bg-neutral-50/60 dark:border-neutral-800 dark:bg-neutral-950/40"
           )}
         >
@@ -330,6 +330,7 @@ export default function DashboardDetailPage() {
             cols={GRID_COLS}
             rowHeight={60}
             margin={[12, 12]}
+            containerPadding={[0, 0]}
             isDraggable={editMode}
             isResizable={editMode}
             draggableHandle=".dashboard-card-drag-handle"
