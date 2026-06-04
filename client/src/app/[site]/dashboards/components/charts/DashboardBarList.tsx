@@ -4,7 +4,7 @@ import type { DashboardCardMapping } from "@rybbit/shared";
 import { useMemo } from "react";
 import type { CustomQueryRow } from "@/api/analytics/endpoints";
 import { coerceNumber, firstNumericColumn, formatAxisValue, formatValue } from "../../utils";
-import { cardColor, ChartEmpty } from "./shared";
+import { ChartEmpty } from "./shared";
 
 type DashboardBarListProps = {
   rows: CustomQueryRow[];
@@ -28,9 +28,11 @@ export function DashboardBarList({ rows, mapping }: DashboardBarListProps) {
   }, [rows, mapping]);
 
   const format = mapping.valueFormat ?? "number";
-  const fill = cardColor(0);
+  const fill = "hsl(var(--dataviz))";
 
-  if (bars.length === 0) return <ChartEmpty />;
+  if (bars.length === 0) {
+    return <ChartEmpty message={mapping.xColumn ? "No rows to rank." : "Select a category and a value column."} />;
+  }
 
   return (
     <div className="flex h-full flex-col gap-1 overflow-y-auto px-1 py-0.5">

@@ -65,16 +65,40 @@ type DashboardCardEditorProps = {
 
 const NONE_VALUE = "__none__";
 
-const VIZ_OPTIONS: { value: DashboardVizType; label: string; icon: typeof LineChart }[] = [
-  { value: "line", label: "Line", icon: LineChart },
-  { value: "area", label: "Area", icon: AreaChart },
-  { value: "bar", label: "Bar", icon: BarChart3 },
-  { value: "hbar", label: "Bar list", icon: BarChartHorizontal },
-  { value: "pie", label: "Donut", icon: PieChart },
-  { value: "stat", label: "Stat", icon: Hash },
-  { value: "table", label: "Table", icon: Table2 },
-  { value: "map", label: "Map", icon: MapIcon },
-  { value: "calendar", label: "Calendar", icon: CalendarDays },
+type VizOption = { value: DashboardVizType; label: string; icon: typeof LineChart };
+
+// Grouped by what the viz is for, so the picker reads as families rather than a
+// flat wall of nine equal tiles.
+const VIZ_GROUPS: { label: string; options: VizOption[] }[] = [
+  {
+    label: "Trends over time",
+    options: [
+      { value: "line", label: "Line", icon: LineChart },
+      { value: "area", label: "Area", icon: AreaChart },
+    ],
+  },
+  {
+    label: "Comparisons",
+    options: [
+      { value: "bar", label: "Bar", icon: BarChart3 },
+      { value: "hbar", label: "Bar list", icon: BarChartHorizontal },
+      { value: "pie", label: "Donut", icon: PieChart },
+    ],
+  },
+  {
+    label: "Single value & table",
+    options: [
+      { value: "stat", label: "Stat", icon: Hash },
+      { value: "table", label: "Table", icon: Table2 },
+    ],
+  },
+  {
+    label: "Maps & calendars",
+    options: [
+      { value: "map", label: "Map", icon: MapIcon },
+      { value: "calendar", label: "Calendar", icon: CalendarDays },
+    ],
+  },
 ];
 
 const FORMAT_OPTIONS: { value: DashboardValueFormat; label: string }[] = [
@@ -172,7 +196,6 @@ export function DashboardCardEditor({ siteId, card, open, onClose, onSave }: Das
   const [yColumns, setYColumns] = useState<string[]>(card.mapping.yColumns ?? []);
   const [seriesColumn, setSeriesColumn] = useState(card.mapping.seriesColumn);
   const [valueColumn, setValueColumn] = useState(card.mapping.valueColumn);
-  const [compareColumn, setCompareColumn] = useState(card.mapping.compareColumn);
   const [valueFormat, setValueFormat] = useState<DashboardValueFormat>(card.mapping.valueFormat ?? "number");
   const [countryColumn, setCountryColumn] = useState(card.mapping.countryColumn);
   const [dateColumn, setDateColumn] = useState(card.mapping.dateColumn);
@@ -189,8 +212,8 @@ export function DashboardCardEditor({ siteId, card, open, onClose, onSave }: Das
   const kind = mappingKind(vizType);
 
   const mapping: DashboardCardMapping = useMemo(
-    () => ({ xColumn, yColumns, seriesColumn, valueColumn, compareColumn, valueFormat, countryColumn, dateColumn }),
-    [xColumn, yColumns, seriesColumn, valueColumn, compareColumn, valueFormat, countryColumn, dateColumn]
+    () => ({ xColumn, yColumns, seriesColumn, valueColumn, valueFormat, countryColumn, dateColumn }),
+    [xColumn, yColumns, seriesColumn, valueColumn, valueFormat, countryColumn, dateColumn]
   );
 
   const applyExample = (example: DashboardExample) => {
@@ -200,7 +223,6 @@ export function DashboardCardEditor({ siteId, card, open, onClose, onSave }: Das
     setYColumns(example.mapping.yColumns ?? []);
     setSeriesColumn(example.mapping.seriesColumn);
     setValueColumn(example.mapping.valueColumn);
-    setCompareColumn(example.mapping.compareColumn);
     setValueFormat(example.mapping.valueFormat ?? "number");
     setCountryColumn(example.mapping.countryColumn);
     setDateColumn(example.mapping.dateColumn);
@@ -350,28 +372,33 @@ export function DashboardCardEditor({ siteId, card, open, onClose, onSave }: Das
           </div>
         )}
 
-        <div className="space-y-1.5">
+        <div className="space-y-2.5">
           <Label>Visualization</Label>
-          <div className="grid grid-cols-3 gap-2">
-            {VIZ_OPTIONS.map(option => {
-              const Icon = option.icon;
-              const active = vizType === option.value;
-              return (
-                <Button
-                  key={option.value}
-                  type="button"
-                  variant={active ? "default" : "outline"}
-                  aria-pressed={active}
-                  size="sm"
-                  className="justify-start"
-                  onClick={() => setVizType(option.value)}
-                >
-                  <Icon className="h-4 w-4" />
-                  {option.label}
-                </Button>
-              );
-            })}
-          </div>
+          {VIZ_GROUPS.map(group => (
+            <div key={group.label} className="space-y-1.5">
+              <p className="text-[11px] font-medium text-neutral-500">{group.label}</p>
+              <div className="grid grid-cols-3 gap-2">
+                {group.options.map(option => {
+                  const Icon = option.icon;
+                  const active = vizType === option.value;
+                  return (
+                    <Button
+                      key={option.value}
+                      type="button"
+                      variant={active ? "default" : "outline"}
+                      aria-pressed={active}
+                      size="sm"
+                      className="justify-start"
+                      onClick={() => setVizType(option.value)}
+                    >
+                      <Icon className="h-4 w-4" />
+                      {option.label}
+                    </Button>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
         </div>
 
         {kind !== "none" && (
@@ -434,14 +461,6 @@ export function DashboardCardEditor({ siteId, card, open, onClose, onSave }: Das
                   onChange={setValueColumn}
                   includeNone
                   placeholder="Auto (first numeric)"
-                />
-                <ColumnSelect
-                  label="Compare to (optional)"
-                  value={compareColumn}
-                  columns={columns}
-                  onChange={setCompareColumn}
-                  includeNone
-                  placeholder="None"
                 />
                 <ColumnSelect
                   label="Label (optional)"

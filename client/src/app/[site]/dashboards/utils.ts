@@ -10,7 +10,9 @@ import { DateTime } from "luxon";
 import { formatSecondsAsMinutesAndSeconds, formatter } from "@/lib/utils";
 
 export const CARD_PALETTE = [
-  "hsla(217, 75%, 60%, 0.9)",
+  // Lead with the brand data hue (--dataviz periwinkle); escalate to distinct
+  // hues only when a chart has many categories to separate (DESIGN.md).
+  "hsl(var(--dataviz))",
   "hsla(142, 65%, 48%, 0.9)",
   "hsla(24, 80%, 60%, 0.9)",
   "hsla(280, 62%, 62%, 0.9)",
@@ -231,9 +233,9 @@ export function firstNumericColumn(rows: CustomQueryRow[]): string | undefined {
 
 // ── Single-value (stat) ──────────────────────────────────────────────────────
 
-export type StatValue = { value: number; previous: number | null; label: string | null };
+export type StatValue = { value: number; label: string | null };
 
-/** Resolve the figure (and optional comparison) for a stat card from the first row. */
+/** Resolve the single figure for a stat card from the first row. */
 export function getStatValue(rows: CustomQueryRow[], mapping: DashboardCardMapping): StatValue | null {
   if (rows.length === 0) return null;
   const row = rows[0];
@@ -241,10 +243,9 @@ export function getStatValue(rows: CustomQueryRow[], mapping: DashboardCardMappi
   if (!valueColumn) return null;
   const value = coerceNumber(row[valueColumn]);
   if (value === null) return null;
-  const previous = mapping.compareColumn ? coerceNumber(row[mapping.compareColumn]) : null;
   const label =
     mapping.xColumn && row[mapping.xColumn] != null ? formatAxisValue(row[mapping.xColumn]) : null;
-  return { value, previous, label };
+  return { value, label };
 }
 
 // ── Pie / donut ──────────────────────────────────────────────────────────────

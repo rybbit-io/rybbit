@@ -29,8 +29,6 @@ export interface DashboardCardMapping {
   seriesColumn?: string;
   /** Single numeric value: stat figure, pie/bar-list/map/calendar magnitude. */
   valueColumn?: string;
-  /** stat: optional previous-period column; when set, renders a delta vs. value. */
-  compareColumn?: string;
   /** stat / map / calendar value formatting. */
   valueFormat?: DashboardValueFormat;
   /** map: column of ISO 3166-1 alpha-2 country codes (e.g. "US"). */

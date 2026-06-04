@@ -58,7 +58,11 @@ export function DashboardPie({ rows, mapping }: DashboardPieProps) {
     }));
   }, [slices, size, total]);
 
-  if (slices.length === 0) return <ChartEmpty />;
+  if (slices.length === 0) {
+    return (
+      <ChartEmpty message={mapping.xColumn ? "No positive values to chart." : "Select a slice label and a value column."} />
+    );
+  }
 
   const cx = size.width / 2;
   const cy = size.height / 2;

@@ -65,10 +65,24 @@ export function CardLegend({ series }: { series: CardSeries[] }) {
   );
 }
 
-export function ChartEmpty() {
+export function ChartEmpty({ message = "Configure chart columns to render this card" }: { message?: string }) {
   return (
-    <div className="flex h-full items-center justify-center text-xs text-neutral-500">
-      Configure chart columns to render this card
+    <div className="flex h-full items-center justify-center px-3 text-center text-xs text-neutral-500">
+      {message}
     </div>
   );
+}
+
+// ── Shared periwinkle dataviz ramp (DESIGN.md --dataviz, hue 230) ─────────────
+
+/** Sequential periwinkle steps (low → high) for choropleth / calendar cards. */
+export function dataVizSequential(isDark: boolean): string[] {
+  return isDark
+    ? ["#1f2452", "#3b46a0", "#6577e6", "#b3bfff"]
+    : ["#e0e4ff", "#b3bfff", "#7e8ef5", "#4f5fd0"];
+}
+
+/** Endpoints for a continuous periwinkle interpolation (d3.interpolateRgb). */
+export function dataVizRamp(isDark: boolean): [string, string] {
+  return isDark ? ["#262c63", "#b3bfff"] : ["#e0e4ff", "#4f5fd0"];
 }

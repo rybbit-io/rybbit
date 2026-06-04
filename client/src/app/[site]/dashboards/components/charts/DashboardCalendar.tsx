@@ -9,7 +9,7 @@ import type { CustomQueryRow } from "@/api/analytics/endpoints";
 import { ChartTooltip } from "@/components/charts/ChartTooltip";
 import { useNivoTheme } from "@/lib/nivo";
 import { buildCalendarData, formatValue } from "../../utils";
-import { ChartEmpty } from "./shared";
+import { ChartEmpty, dataVizSequential } from "./shared";
 
 type DashboardCalendarProps = {
   rows: CustomQueryRow[];
@@ -31,7 +31,18 @@ export function DashboardCalendar({ rows, mapping }: DashboardCalendarProps) {
     return sorted[Math.floor(sorted.length * 0.95)]?.value;
   }, [calendar]);
 
-  if (!calendar) return <ChartEmpty />;
+  if (!calendar) {
+    const dateColumn = mapping.dateColumn ?? mapping.xColumn;
+    return (
+      <ChartEmpty
+        message={
+          dateColumn
+            ? `Couldn't read dates in "${dateColumn}". Expect YYYY-MM-DD values.`
+            : "Select a date column (YYYY-MM-DD)."
+        }
+      />
+    );
+  }
 
   return (
     <ResponsiveTimeRange
@@ -40,11 +51,7 @@ export function DashboardCalendar({ rows, mapping }: DashboardCalendarProps) {
       from={calendar.from}
       to={calendar.to}
       emptyColor={isDark ? "hsl(var(--neutral-750))" : "hsl(var(--neutral-100))"}
-      colors={
-        isDark
-          ? ["#1e3a8a", "#2563eb", "#3b82f6", "#60a5fa"]
-          : ["#dbeafe", "#93c5fd", "#3b82f6", "#1d4ed8"]
-      }
+      colors={dataVizSequential(isDark)}
       margin={{ top: 20, right: 8, bottom: 8, left: 8 }}
       dayBorderWidth={2}
       daySpacing={3}

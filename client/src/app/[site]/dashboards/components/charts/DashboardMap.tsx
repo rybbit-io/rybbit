@@ -18,7 +18,7 @@ import type { CustomQueryRow } from "@/api/analytics/endpoints";
 import { useCountries } from "@/lib/geo";
 import { CountryFlag } from "../../../components/shared/icons/CountryFlag";
 import { buildCountryData, formatValue } from "../../utils";
-import { ChartEmpty } from "./shared";
+import { dataVizRamp } from "./shared";
 
 type DashboardMapProps = {
   rows: CustomQueryRow[];
@@ -38,9 +38,11 @@ export function DashboardMap({ rows, mapping }: DashboardMapProps) {
   const { data: countriesGeoData } = useCountries();
   const { byCode, max } = useMemo(() => buildCountryData(rows, mapping), [rows, mapping]);
 
-  // Value → fill color (sqrt-skewed so smaller magnitudes stay distinguishable).
+  // Value → fill color: shared periwinkle ramp, sqrt-skewed so small magnitudes
+  // stay distinguishable.
   const colorFor = useMemo(() => {
-    const interpolator = d3.interpolateRgb(isDark ? "#1e3a8a" : "#dbeafe", isDark ? "#60a5fa" : "#1d4ed8");
+    const [low, high] = dataVizRamp(isDark);
+    const interpolator = d3.interpolateRgb(low, high);
     return (value: number) => (max > 0 ? interpolator(Math.pow(value / max, 0.5)) : EMPTY_FILL);
   }, [isDark, max]);
 
@@ -64,6 +66,9 @@ export function DashboardMap({ rows, mapping }: DashboardMapProps) {
       target: mapRef.current,
       view: new View({ center: fromLonLat([10, 35]), zoom }),
       controls: [],
+      // Static choropleth inside a scrollable grid: no wheel-zoom or drag-pan
+      // (otherwise scrolling the dashboard over the card zooms the map).
+      interactions: [],
     });
     mapInstanceRef.current = map;
 
@@ -131,11 +136,22 @@ export function DashboardMap({ rows, mapping }: DashboardMapProps) {
     map.addLayer(layer);
   }, [countriesGeoData, byCode, colorFor, isDark]);
 
-  if (!mapping.countryColumn) return <ChartEmpty />;
+  // Keep the map container mounted (the init effect runs once) and surface
+  // configuration problems as an overlay instead of unmounting.
+  const overlay = !mapping.countryColumn
+    ? "Select a country column with 2-letter ISO codes (US, GB)."
+    : byCode.size === 0
+      ? "No rows matched 2-letter country codes. Use ISO-2 codes (US, GB), not full names."
+      : null;
 
   return (
     <div ref={measureRef} className="relative h-full w-full overflow-hidden rounded">
       <div ref={mapRef} className="h-full w-full" style={{ background: "none", outline: "none" }} />
+      {overlay && (
+        <div className="absolute inset-0 flex items-center justify-center bg-white/70 px-3 text-center text-xs text-neutral-500 dark:bg-neutral-900/70">
+          {overlay}
+        </div>
+      )}
       {tooltip && (
         <div
           className="pointer-events-none fixed z-[9999] max-w-xs rounded-md border border-neutral-200 bg-white p-2 text-xs text-neutral-900 dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-50"
