@@ -29,6 +29,7 @@ import {
   AreaChart,
   BarChart3,
   BarChartHorizontal,
+  Braces,
   CalendarDays,
   ChevronDown,
   Hash,
@@ -40,6 +41,7 @@ import {
   Table2,
   X,
 } from "lucide-react";
+import { cn } from "../../../../lib/utils";
 import { QueryEditor } from "../../query/components/QueryEditor";
 import { ResultsTable } from "../../query/components/ResultsTable";
 import type { SortState } from "../../query/types";
@@ -105,6 +107,56 @@ const FORMAT_OPTIONS: { value: DashboardValueFormat; label: string }[] = [
   { value: "duration", label: "Duration" },
   { value: "bytes", label: "Bytes" },
 ];
+
+type EditorMode = "visual" | "json";
+
+const VIZ_TYPES: DashboardVizType[] = ["table", "line", "area", "bar", "hbar", "pie", "stat", "map", "calendar"];
+
+/**
+ * Validate a raw card edited in the JSON view. `id` is always taken from the
+ * card being edited: changing it in JSON would orphan the card on save (the
+ * dashboard matches updates by id), so it isn't user-editable.
+ */
+function parseCardJson(text: string, id: string): { card: DashboardCard | null; error: string } {
+  let raw: unknown;
+  try {
+    raw = JSON.parse(text);
+  } catch (error) {
+    return { card: null, error: error instanceof Error ? error.message : "Invalid JSON" };
+  }
+  if (typeof raw !== "object" || raw === null || Array.isArray(raw)) {
+    return { card: null, error: "Card must be a JSON object." };
+  }
+  const obj = raw as Record<string, unknown>;
+  if (typeof obj.title !== "string") return { card: null, error: "'title' must be a string." };
+  if (typeof obj.sql !== "string") return { card: null, error: "'sql' must be a string." };
+  if (!VIZ_TYPES.includes(obj.vizType as DashboardVizType)) {
+    return { card: null, error: `'vizType' must be one of: ${VIZ_TYPES.join(", ")}.` };
+  }
+  if (typeof obj.mapping !== "object" || obj.mapping === null || Array.isArray(obj.mapping)) {
+    return { card: null, error: "'mapping' must be an object." };
+  }
+  if (typeof obj.gridPos !== "object" || obj.gridPos === null || Array.isArray(obj.gridPos)) {
+    return { card: null, error: "'gridPos' must be an object." };
+  }
+  const grid = obj.gridPos as Record<string, unknown>;
+  for (const key of ["x", "y", "w", "h"] as const) {
+    if (typeof grid[key] !== "number" || !Number.isFinite(grid[key])) {
+      return { card: null, error: `'gridPos.${key}' must be a number.` };
+    }
+  }
+  return {
+    card: {
+      id,
+      title: obj.title,
+      sql: obj.sql,
+      vizType: obj.vizType as DashboardVizType,
+      mapping: obj.mapping as DashboardCardMapping,
+      gridPos: { x: grid.x as number, y: grid.y as number, w: grid.w as number, h: grid.h as number },
+    },
+    error: "",
+  };
+}
 
 /** Which mapping controls a given viz type needs. */
 type MappingKind = "none" | "xy" | "categoryValue" | "stat" | "map" | "calendar";
@@ -203,10 +255,15 @@ export function DashboardCardEditor({ siteId, card, open, onClose, onSave }: Das
   const [valueFormat, setValueFormat] = useState<DashboardValueFormat>(card.mapping.valueFormat ?? "number");
   const [countryColumn, setCountryColumn] = useState(card.mapping.countryColumn);
   const [dateColumn, setDateColumn] = useState(card.mapping.dateColumn);
+  const [gridPos, setGridPos] = useState(card.gridPos);
   // Seed from the card's SQL so opening the editor runs the query immediately
   // (the editor remounts on each open, so this re-seeds every time). Blank cards
   // have empty SQL, which leaves the query disabled until the user writes one.
   const [previewSql, setPreviewSql] = useState(card.sql);
+
+  const [mode, setMode] = useState<EditorMode>("visual");
+  const [jsonText, setJsonText] = useState("");
+  const [jsonError, setJsonError] = useState<string | null>(null);
 
   const [sort, setSort] = useState<SortState>(null);
 
@@ -240,14 +297,66 @@ export function DashboardCardEditor({ siteId, card, open, onClose, onSave }: Das
     setPreviewSql(example.sql);
   };
 
+  // The card as the current edits describe it. id stays fixed; gridPos passes
+  // through so the JSON view is the complete object.
+  const buildCard = (): DashboardCard => ({
+    id: card.id,
+    title: title.trim() || card.title,
+    sql,
+    vizType,
+    mapping: kind === "none" ? {} : mapping,
+    gridPos,
+  });
+
+  // Push a full card (parsed from JSON) back into the field-level state the
+  // visual editor drives, then re-run so the preview reflects it.
+  const applyCard = (next: DashboardCard) => {
+    setTitle(next.title);
+    setSql(next.sql);
+    setVizType(next.vizType);
+    setXColumn(next.mapping.xColumn);
+    setYColumns(next.mapping.yColumns ?? []);
+    setSeriesColumn(next.mapping.seriesColumn);
+    setValueColumn(next.mapping.valueColumn);
+    setValueFormat(next.mapping.valueFormat ?? "number");
+    setCountryColumn(next.mapping.countryColumn);
+    setDateColumn(next.mapping.dateColumn);
+    setGridPos(next.gridPos);
+    setPreviewSql(next.sql);
+  };
+
+  const switchMode = (next: EditorMode) => {
+    if (next === mode) return;
+    if (next === "json") {
+      setJsonText(JSON.stringify(buildCard(), null, 2));
+      setJsonError(null);
+      setMode("json");
+      return;
+    }
+    // Returning to the visual editor requires valid JSON to apply; otherwise
+    // stay put and surface the error.
+    const result = parseCardJson(jsonText, card.id);
+    if (!result.card) {
+      setJsonError(result.error);
+      return;
+    }
+    applyCard(result.card);
+    setJsonError(null);
+    setMode("visual");
+  };
+
   const handleSave = () => {
-    onSave({
-      ...card,
-      title: title.trim() || card.title,
-      sql,
-      vizType,
-      mapping: kind === "none" ? {} : mapping,
-    });
+    if (mode === "json") {
+      const result = parseCardJson(jsonText, card.id);
+      if (!result.card) {
+        setJsonError(result.error);
+        return;
+      }
+      onSave(result.card);
+      onClose();
+      return;
+    }
+    onSave(buildCard());
     onClose();
   };
 
@@ -434,8 +543,29 @@ export function DashboardCardEditor({ siteId, card, open, onClose, onSave }: Das
             onChange={event => setTitle(event.target.value)}
             placeholder="Untitled card"
             aria-label="Card title"
-            className="min-w-0 flex-1 rounded-md bg-transparent px-2 py-1 text-base font-semibold text-neutral-900 outline-none transition-colors placeholder:text-neutral-400 hover:bg-neutral-100 focus:bg-neutral-100 focus-visible:ring-1 focus-visible:ring-neutral-300 dark:text-neutral-50 dark:placeholder:text-neutral-600 dark:hover:bg-neutral-900 dark:focus:bg-neutral-900 dark:focus-visible:ring-neutral-700"
+            disabled={mode === "json"}
+            className="min-w-0 flex-1 rounded-md bg-transparent px-2 py-1 text-base font-semibold text-neutral-900 outline-none transition-colors placeholder:text-neutral-400 hover:bg-neutral-100 focus:bg-neutral-100 focus-visible:ring-1 focus-visible:ring-neutral-300 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:bg-transparent dark:text-neutral-50 dark:placeholder:text-neutral-600 dark:hover:bg-neutral-900 dark:focus:bg-neutral-900 dark:focus-visible:ring-neutral-700"
           />
+          {/* Mode toggle: visual builder vs. the full card object as JSON. */}
+          <div className="flex shrink-0 items-center rounded-lg border border-neutral-150 p-0.5 dark:border-neutral-850">
+            {(["visual", "json"] as const).map(value => (
+              <button
+                key={value}
+                type="button"
+                onClick={() => switchMode(value)}
+                aria-pressed={mode === value}
+                className={cn(
+                  "flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition-colors",
+                  mode === value
+                    ? "bg-neutral-100 text-neutral-900 dark:bg-neutral-800 dark:text-neutral-100"
+                    : "text-neutral-500 hover:text-neutral-800 dark:hover:text-neutral-300"
+                )}
+              >
+                {value === "json" && <Braces className="h-3.5 w-3.5" />}
+                {value === "visual" ? "Visual" : "JSON"}
+              </button>
+            ))}
+          </div>
           <SheetClose asChild>
             <Button variant="ghost" size="smIcon" aria-label="Close editor" className="shrink-0 text-neutral-500">
               <X className="h-4 w-4" />
@@ -443,141 +573,175 @@ export function DashboardCardEditor({ siteId, card, open, onClose, onSave }: Das
           </SheetClose>
         </div>
 
-        {/* Workbench: data on the left, the visualization it produces on the right. */}
-        <div className="grid min-h-0 flex-1 grid-cols-1 divide-y divide-neutral-150 overflow-y-auto lg:grid-cols-2 lg:divide-x lg:divide-y-0 lg:overflow-hidden dark:divide-neutral-850">
-          {/* Left — query + results */}
-          <div className="flex min-h-0 flex-col gap-3 p-4 lg:overflow-hidden">
-            <QueryEditor
-              value={sql}
-              disabled={false}
-              isRunning={isFetching}
-              onChange={setSql}
-              onFormat={() => setSql(formatQuery(sql))}
-              onRun={() => setPreviewSql(sql)}
-              headerActions={examplesMenu}
+        {mode === "json" ? (
+          /* Raw card object: the full escape hatch, including gridPos. */
+          <div className="flex min-h-0 flex-1 flex-col gap-2 p-4">
+            <div className="flex shrink-0 items-center justify-between gap-2">
+              <span className="text-xs font-medium text-neutral-500">Card JSON</span>
+              <span className="text-[11px] text-neutral-500">
+                Edit any field. <code className="font-mono text-neutral-600 dark:text-neutral-400">id</code> stays
+                fixed.
+              </span>
+            </div>
+            <textarea
+              value={jsonText}
+              onChange={event => {
+                const next = event.target.value;
+                setJsonText(next);
+                setJsonError(parseCardJson(next, card.id).error || null);
+              }}
+              spellCheck={false}
+              aria-label="Card JSON"
+              className="min-h-0 flex-1 resize-none rounded-lg border border-neutral-150 bg-[#fbfcfd] p-3 font-mono text-xs leading-relaxed text-neutral-900 outline-none focus-visible:ring-1 focus-visible:ring-neutral-300 dark:border-neutral-850 dark:bg-[#090d16] dark:text-neutral-100 dark:focus-visible:ring-neutral-700"
             />
-            <p className="shrink-0 text-[11px] leading-relaxed text-neutral-500">
-              Queries read from <code className="font-mono text-neutral-600 dark:text-neutral-400">scoped_events</code>,
-              scoped to the dashboard time range. Use{" "}
-              <code className="font-mono text-neutral-600 dark:text-neutral-400">{"{{bucket}}"}</code> for the selected
-              granularity.
-            </p>
-            {error && (
+            {jsonError ? (
               <p className="shrink-0 rounded-md bg-red-50 px-2.5 py-1.5 text-xs text-red-600 dark:bg-red-950/40 dark:text-red-400">
-                {error instanceof Error ? error.message : "Query failed"}
-              </p>
-            )}
-
-            <div className="flex min-h-0 flex-1 flex-col gap-2">
-              <div className="flex shrink-0 items-center gap-2">
-                <span className="text-xs font-medium text-neutral-500">Results</span>
-                {previewSql && !error && isFetching && (
-                  <Loader2 className="h-3.5 w-3.5 animate-spin text-neutral-400" />
-                )}
-                {previewSql && !error && !isFetching && (
-                  <span className="text-[11px] text-neutral-500">
-                    {data?.meta.rowCount ?? 0} {data?.meta.rowCount === 1 ? "row" : "rows"}
-                  </span>
-                )}
-                {truncated && (
-                  <span className="rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-medium text-amber-700 dark:bg-amber-950 dark:text-amber-400">
-                    capped at {data?.meta.maxRows}
-                  </span>
-                )}
-              </div>
-              <div className="flex h-72 flex-col overflow-hidden rounded-lg border border-neutral-150 lg:h-auto lg:min-h-0 lg:flex-1 dark:border-neutral-850">
-                {!previewSql ? (
-                  <div className="flex h-full flex-col items-center justify-center gap-1 px-6 text-center">
-                    <span className="text-xs text-neutral-500">Run the query to see results</span>
-                  </div>
-                ) : error ? (
-                  <div className="flex h-full items-center justify-center px-6 text-center text-xs text-neutral-500">
-                    Fix the query above to see results.
-                  </div>
-                ) : isFetching && rows.length === 0 ? (
-                  <div className="flex h-full items-center justify-center">
-                    <Loader2 className="h-5 w-5 animate-spin text-neutral-400" />
-                  </div>
-                ) : rows.length === 0 ? (
-                  <div className="flex h-full items-center justify-center text-xs text-neutral-500">
-                    No rows returned
-                  </div>
-                ) : (
-                  <ResultsTable columns={columns} rows={sortedRows} sort={activeSort} onSortChange={setSort} />
-                )}
-              </div>
-            </div>
-          </div>
-
-          {/* Right — chart type, live preview, column mapping */}
-          <div className="flex min-h-0 flex-col gap-4 p-4 lg:overflow-y-auto">
-            <div className="flex flex-col gap-1.5">
-              <Label>Chart type</Label>
-              <Select value={vizType} onValueChange={next => setVizType(next as DashboardVizType)}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {VIZ_GROUPS.map(group => (
-                    <SelectGroup key={group.label}>
-                      <SelectLabel>{group.label}</SelectLabel>
-                      {group.options.map(option => {
-                        const Icon = option.icon;
-                        return (
-                          <SelectItem key={option.value} value={option.value}>
-                            <span className="flex items-center gap-2">
-                              <Icon className="h-4 w-4" />
-                              {option.label}
-                            </span>
-                          </SelectItem>
-                        );
-                      })}
-                    </SelectGroup>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="flex flex-col gap-1.5">
-              <span className="text-xs font-medium text-neutral-500">Preview</span>
-              <div className="h-72 overflow-hidden rounded-lg border border-neutral-150 p-1 dark:border-neutral-850">
-                {vizType === "table" ? (
-                  <div className="flex h-full items-center justify-center px-6 text-center text-xs text-neutral-500">
-                    Table cards render the results from the left.
-                  </div>
-                ) : rows.length === 0 ? (
-                  <div className="flex h-full items-center justify-center px-6 text-center text-xs text-neutral-500">
-                    {previewSql ? "No rows to visualize." : "Run the query to preview the chart."}
-                  </div>
-                ) : (
-                  <div key={vizType} className="h-full animate-in fade-in-0 duration-200 motion-reduce:animate-none">
-                    {chartPreview}
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {kind === "none" ? (
-              <p className="text-xs text-neutral-500">
-                Table cards show every result column. Pick another chart type to map columns.
+                {jsonError}
               </p>
             ) : (
-              <div className="flex flex-col gap-3">
-                <span className="text-xs font-medium text-neutral-500">
-                  {columns.length === 0 ? "Map columns (run the query first)" : "Map columns"}
-                </span>
-                {mappingControls}
-              </div>
+              <p className="shrink-0 text-[11px] text-neutral-500">Valid. Switch to Visual or save to apply.</p>
             )}
           </div>
-        </div>
+        ) : (
+          /* Workbench: data on the left, the visualization it produces on the right. */
+          <div className="grid min-h-0 flex-1 grid-cols-1 divide-y divide-neutral-150 overflow-y-auto lg:grid-cols-2 lg:divide-x lg:divide-y-0 lg:overflow-hidden dark:divide-neutral-850">
+            {/* Left — query + results */}
+            <div className="flex min-h-0 flex-col gap-3 p-4 lg:overflow-hidden">
+              <QueryEditor
+                value={sql}
+                disabled={false}
+                isRunning={isFetching}
+                onChange={setSql}
+                onFormat={() => setSql(formatQuery(sql))}
+                onRun={() => setPreviewSql(sql)}
+                headerActions={examplesMenu}
+              />
+              <p className="shrink-0 text-[11px] leading-relaxed text-neutral-500">
+                Queries read from{" "}
+                <code className="font-mono text-neutral-600 dark:text-neutral-400">scoped_events</code>, scoped to the
+                dashboard time range. Use{" "}
+                <code className="font-mono text-neutral-600 dark:text-neutral-400">{"{{bucket}}"}</code> for the
+                selected granularity.
+              </p>
+              {error && (
+                <p className="shrink-0 rounded-md bg-red-50 px-2.5 py-1.5 text-xs text-red-600 dark:bg-red-950/40 dark:text-red-400">
+                  {error instanceof Error ? error.message : "Query failed"}
+                </p>
+              )}
+
+              <div className="flex min-h-0 flex-1 flex-col gap-2">
+                <div className="flex shrink-0 items-center gap-2">
+                  <span className="text-xs font-medium text-neutral-500">Results</span>
+                  {previewSql && !error && isFetching && (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin text-neutral-400" />
+                  )}
+                  {previewSql && !error && !isFetching && (
+                    <span className="text-[11px] text-neutral-500">
+                      {data?.meta.rowCount ?? 0} {data?.meta.rowCount === 1 ? "row" : "rows"}
+                    </span>
+                  )}
+                  {truncated && (
+                    <span className="rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-medium text-amber-700 dark:bg-amber-950 dark:text-amber-400">
+                      capped at {data?.meta.maxRows}
+                    </span>
+                  )}
+                </div>
+                <div className="flex h-72 flex-col overflow-hidden rounded-lg border border-neutral-150 lg:h-auto lg:min-h-0 lg:flex-1 dark:border-neutral-850">
+                  {!previewSql ? (
+                    <div className="flex h-full flex-col items-center justify-center gap-1 px-6 text-center">
+                      <span className="text-xs text-neutral-500">Run the query to see results</span>
+                    </div>
+                  ) : error ? (
+                    <div className="flex h-full items-center justify-center px-6 text-center text-xs text-neutral-500">
+                      Fix the query above to see results.
+                    </div>
+                  ) : isFetching && rows.length === 0 ? (
+                    <div className="flex h-full items-center justify-center">
+                      <Loader2 className="h-5 w-5 animate-spin text-neutral-400" />
+                    </div>
+                  ) : rows.length === 0 ? (
+                    <div className="flex h-full items-center justify-center text-xs text-neutral-500">
+                      No rows returned
+                    </div>
+                  ) : (
+                    <ResultsTable columns={columns} rows={sortedRows} sort={activeSort} onSortChange={setSort} />
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Right — chart type, live preview, column mapping */}
+            <div className="flex min-h-0 flex-col gap-4 p-4 lg:overflow-y-auto">
+              <div className="flex flex-col gap-1.5">
+                <Label>Chart type</Label>
+                <Select value={vizType} onValueChange={next => setVizType(next as DashboardVizType)}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {VIZ_GROUPS.map(group => (
+                      <SelectGroup key={group.label}>
+                        <SelectLabel>{group.label}</SelectLabel>
+                        {group.options.map(option => {
+                          const Icon = option.icon;
+                          return (
+                            <SelectItem key={option.value} value={option.value}>
+                              <span className="flex items-center gap-2">
+                                <Icon className="h-4 w-4" />
+                                {option.label}
+                              </span>
+                            </SelectItem>
+                          );
+                        })}
+                      </SelectGroup>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <span className="text-xs font-medium text-neutral-500">Preview</span>
+                <div className="h-72 overflow-hidden rounded-lg border border-neutral-150 p-1 dark:border-neutral-850">
+                  {vizType === "table" ? (
+                    <div className="flex h-full items-center justify-center px-6 text-center text-xs text-neutral-500">
+                      Table cards render the results from the left.
+                    </div>
+                  ) : rows.length === 0 ? (
+                    <div className="flex h-full items-center justify-center px-6 text-center text-xs text-neutral-500">
+                      {previewSql ? "No rows to visualize." : "Run the query to preview the chart."}
+                    </div>
+                  ) : (
+                    <div key={vizType} className="h-full animate-in fade-in-0 duration-200 motion-reduce:animate-none">
+                      {chartPreview}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {kind === "none" ? (
+                <p className="text-xs text-neutral-500">
+                  Table cards show every result column. Pick another chart type to map columns.
+                </p>
+              ) : (
+                <div className="flex flex-col gap-3">
+                  <span className="text-xs font-medium text-neutral-500">
+                    {columns.length === 0 ? "Map columns (run the query first)" : "Map columns"}
+                  </span>
+                  {mappingControls}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* Footer: actions pinned so they stay reachable regardless of scroll. */}
         <div className="flex shrink-0 items-center justify-end gap-2 border-t border-neutral-150 px-4 py-3 dark:border-neutral-850">
           <Button variant="outline" onClick={onClose}>
             Cancel
           </Button>
-          <Button onClick={handleSave}>Save card</Button>
+          <Button onClick={handleSave} disabled={mode === "json" && !!jsonError}>
+            Save card
+          </Button>
         </div>
       </SheetContent>
     </Sheet>
