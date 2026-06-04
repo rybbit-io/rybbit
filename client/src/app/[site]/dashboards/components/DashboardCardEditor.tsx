@@ -5,20 +5,27 @@ import { useMemo, useState } from "react";
 import { useDashboardCard } from "../../../../api/analytics/hooks/useDashboardCard";
 import { Button } from "../../../../components/ui/button";
 import { ButtonGroup } from "../../../../components/ui/button-group";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
+  DropdownMenuTrigger,
+} from "../../../../components/ui/dropdown-menu";
 import { Input } from "../../../../components/ui/input";
 import { Label } from "../../../../components/ui/label";
 import { MultiSelect } from "../../../../components/ui/multi-select";
 import {
   Select,
   SelectContent,
-  SelectGroup,
   SelectItem,
-  SelectLabel,
   SelectTrigger,
   SelectValue,
 } from "../../../../components/ui/select";
 import { Sheet, SheetContent, SheetFooter, SheetHeader, SheetTitle } from "../../../../components/ui/sheet";
-import { BarChart3, LineChart, Loader2, Table2 } from "lucide-react";
+import { BarChart3, ChevronDown, Lightbulb, LineChart, Loader2, Table2 } from "lucide-react";
 import { QueryEditor } from "../../query/components/QueryEditor";
 import { ResultsTable } from "../../query/components/ResultsTable";
 import type { SortState } from "../../query/types";
@@ -105,48 +112,49 @@ export function DashboardCardEditor({ siteId, card, open, onClose, onSave }: Das
         </div>
 
         <div className="space-y-1.5">
-          <Label>Start from an example</Label>
-          <Select
-            value=""
-            onValueChange={value => {
-              const example = DASHBOARD_EXAMPLES.find(item => item.id === value);
-              if (example) applyExample(example);
-            }}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Pick an example query…" />
-            </SelectTrigger>
-            <SelectContent className="max-h-[420px]">
-              {DASHBOARD_EXAMPLE_CATEGORIES.map(category => (
-                <SelectGroup key={category}>
-                  <SelectLabel>{category}</SelectLabel>
-                  {DASHBOARD_EXAMPLES.filter(example => example.category === category).map(example => (
-                    <SelectItem key={example.id} value={example.id}>
-                      <div className="flex flex-col">
-                        <span className="flex items-center gap-1.5">
-                          {example.title}
-                          {example.beyondPrebuilt && (
-                            <span className="rounded bg-emerald-100 px-1 py-0.5 text-[9px] font-medium uppercase tracking-wide text-emerald-700 dark:bg-emerald-950 dark:text-emerald-400">
-                              advanced
-                            </span>
-                          )}
-                        </span>
-                        <span className="text-[11px] text-neutral-500">{example.description}</span>
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectGroup>
-              ))}
-            </SelectContent>
-          </Select>
-          <p className="text-[11px] text-neutral-500">
-            <span className="font-medium text-emerald-600 dark:text-emerald-400">Advanced</span> examples cover analyses
-            not available on the prebuilt pages (entry/exit pages, funnels, web-vitals percentiles, and more).
-          </p>
-        </div>
-
-        <div className="space-y-1.5">
-          <Label>Query</Label>
+          <div className="flex items-center justify-between gap-2">
+            <Label>Query</Label>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="-mr-1 h-6 gap-1 px-1.5 text-xs font-normal text-neutral-500 hover:text-neutral-900 dark:hover:text-neutral-100"
+                >
+                  <Lightbulb className="h-3.5 w-3.5" />
+                  Examples
+                  <ChevronDown className="h-3 w-3" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-48">
+                {DASHBOARD_EXAMPLE_CATEGORIES.map(category => (
+                  <DropdownMenuSub key={category}>
+                    <DropdownMenuSubTrigger className="text-sm">{category}</DropdownMenuSubTrigger>
+                    <DropdownMenuSubContent className="max-h-[60vh] w-72 overflow-y-auto">
+                      {DASHBOARD_EXAMPLES.filter(example => example.category === category).map(example => (
+                        <DropdownMenuItem
+                          key={example.id}
+                          className="flex flex-col items-start gap-0.5"
+                          onSelect={() => applyExample(example)}
+                        >
+                          <span className="flex items-center gap-1.5">
+                            {example.title}
+                            {example.beyondPrebuilt && (
+                              <span className="rounded bg-emerald-100 px-1 py-0.5 text-[9px] font-medium uppercase tracking-wide text-emerald-700 dark:bg-emerald-950 dark:text-emerald-400">
+                                advanced
+                              </span>
+                            )}
+                          </span>
+                          <span className="text-[11px] text-neutral-500">{example.description}</span>
+                        </DropdownMenuItem>
+                      ))}
+                    </DropdownMenuSubContent>
+                  </DropdownMenuSub>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
           <QueryEditor
             value={sql}
             disabled={false}

@@ -45,53 +45,19 @@ export function formatAxisValue(value: unknown): string {
   return String(value);
 }
 
-export type NivoLineSeries = {
-  id: string;
-  data: { x: string; y: number }[];
-};
-
-/**
- * Transform query rows into Nivo line series based on the column mapping.
- * - With seriesColumn: one series per distinct value, y = first yColumn.
- * - Without: one series per yColumn.
- */
-export function buildLineSeries(rows: CustomQueryRow[], mapping: DashboardCardMapping): NivoLineSeries[] {
-  const { xColumn, yColumns, seriesColumn } = mapping;
-  if (!xColumn || !yColumns || yColumns.length === 0) return [];
-
-  if (seriesColumn) {
-    const yColumn = yColumns[0];
-    const seriesMap = new Map<string, NivoLineSeries>();
-    for (const row of rows) {
-      const seriesKey = formatAxisValue(row[seriesColumn]);
-      const y = coerceNumber(row[yColumn]);
-      if (y === null) continue;
-      if (!seriesMap.has(seriesKey)) seriesMap.set(seriesKey, { id: seriesKey, data: [] });
-      seriesMap.get(seriesKey)!.data.push({ x: formatAxisValue(row[xColumn]), y });
-    }
-    return Array.from(seriesMap.values());
-  }
-
-  return yColumns.map(yColumn => ({
-    id: yColumn,
-    data: rows
-      .map(row => ({ x: formatAxisValue(row[xColumn]), y: coerceNumber(row[yColumn]) }))
-      .filter((point): point is { x: string; y: number } => point.y !== null),
-  }));
-}
-
-export type NivoBarData = {
+export type WideChartData = {
   data: Record<string, string | number>[];
   keys: string[];
   indexBy: string;
 };
 
 /**
- * Transform query rows into Nivo bar data.
+ * Transform query rows into wide-format chart data (one object per x value, a
+ * numeric field per series). Drives both the line and bar cards.
  * - With seriesColumn: pivot distinct series values into keys, value = first yColumn.
  * - Without: keys = yColumns.
  */
-export function buildBarData(rows: CustomQueryRow[], mapping: DashboardCardMapping): NivoBarData | null {
+export function buildWideData(rows: CustomQueryRow[], mapping: DashboardCardMapping): WideChartData | null {
   const { xColumn, yColumns, seriesColumn } = mapping;
   if (!xColumn || !yColumns || yColumns.length === 0) return null;
 
@@ -125,7 +91,7 @@ export function buildBarData(rows: CustomQueryRow[], mapping: DashboardCardMappi
 const TICK_TARGET = 8;
 
 /** Parse a ClickHouse date/datetime string ("yyyy-MM-dd[ HH:mm:ss]"). */
-function parseChartDate(value: unknown): DateTime | null {
+export function parseChartDate(value: unknown): DateTime | null {
   if (typeof value !== "string" || value === "") return null;
   let dt = DateTime.fromSQL(value, { zone: "utc" });
   if (!dt.isValid) dt = DateTime.fromISO(value, { zone: "utc" });

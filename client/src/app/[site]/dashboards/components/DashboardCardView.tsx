@@ -4,6 +4,7 @@ import type { DashboardCard } from "@rybbit/shared";
 import { GripVertical, Loader2, Pencil, Trash2 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useDashboardCard } from "../../../../api/analytics/hooks/useDashboardCard";
+import { cn } from "../../../../lib/utils";
 import { Button } from "../../../../components/ui/button";
 import { ResultsTable } from "../../query/components/ResultsTable";
 import type { SortState } from "../../query/types";
@@ -28,10 +29,18 @@ export function DashboardCardView({ siteId, card, editMode, onEdit, onRemove }: 
   const activeSort = sort && columns.includes(sort.column) ? sort : null;
   const sortedRows = useMemo(() => sortRows(rows, activeSort), [rows, activeSort]);
   const truncated = data?.meta && data.meta.rowCount >= data.meta.maxRows;
+  // Tables manage their own scroll and must clip; charts must let Nivo tooltips
+  // escape the card edges, so they render without clipping.
+  const isTable = card.vizType === "table";
 
   return (
-    <div className="flex h-full flex-col overflow-hidden rounded-lg border border-neutral-150 bg-white shadow-sm dark:border-neutral-850 dark:bg-neutral-900">
-      <div className="flex h-9 shrink-0 items-center justify-between border-b border-neutral-150 bg-neutral-50 px-2 dark:border-neutral-800 dark:bg-neutral-950">
+    <div
+      className={cn(
+        "flex h-full flex-col rounded-lg border border-neutral-150 bg-white shadow-sm dark:border-neutral-850 dark:bg-neutral-900",
+        isTable ? "overflow-hidden" : "overflow-visible"
+      )}
+    >
+      <div className="flex h-9 shrink-0 items-center justify-between rounded-t-lg border-b border-neutral-150 bg-neutral-50 px-2 dark:border-neutral-800 dark:bg-neutral-950">
         <div className="flex min-w-0 items-center gap-1.5">
           {editMode && (
             <GripVertical className="dashboard-card-drag-handle h-4 w-4 shrink-0 cursor-grab text-neutral-400" />
@@ -58,7 +67,7 @@ export function DashboardCardView({ siteId, card, editMode, onEdit, onRemove }: 
         )}
       </div>
 
-      <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden p-1">
+      <div className={cn("relative flex min-h-0 flex-1 flex-col p-1", isTable ? "overflow-hidden" : "overflow-visible")}>
         {isLoading ? (
           <div className="flex h-full items-center justify-center">
             <Loader2 className="h-5 w-5 animate-spin text-neutral-400" />

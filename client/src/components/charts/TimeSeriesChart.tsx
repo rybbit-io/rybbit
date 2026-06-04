@@ -73,6 +73,8 @@ type TimeSeriesChartProps<
   previousColor?: string;
   tooltipWidth?: number;
   yTickFormat?: (value: number) => string;
+  /** Disable click-drag range zoom (e.g. for embedded dashboard cards). */
+  disableDragZoom?: boolean;
   renderTooltip: (context: TimeSeriesTooltipContext<CurrentPoint, PreviousPoint>) => ReactNode;
 };
 
@@ -189,6 +191,7 @@ export function TimeSeriesChart<
   previousColor,
   tooltipWidth = 220,
   yTickFormat = formatter,
+  disableDragZoom = false,
   renderTooltip,
 }: TimeSeriesChartProps<CurrentPoint, PreviousPoint>) {
   const { time, bucket, setTime, setBucket } = useStore();
@@ -469,7 +472,7 @@ export function TimeSeriesChart<
 
   const handleMouseLeave = () => setHover(null);
 
-  const dragEnabled = canDragSelectBucket(bucket);
+  const dragEnabled = !disableDragZoom && canDragSelectBucket(bucket);
   const [dragRaw, setDragRaw] = useState<{
     startX: number;
     currentX: number;
