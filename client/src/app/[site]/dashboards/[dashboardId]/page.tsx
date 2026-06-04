@@ -22,7 +22,6 @@ import {
   AlertDialogTitle,
 } from "../../../../components/ui/alert-dialog";
 import { Button } from "../../../../components/ui/button";
-import { Input } from "../../../../components/ui/input";
 import { Skeleton } from "../../../../components/ui/skeleton";
 import { toast } from "../../../../components/ui/sonner";
 import { cn } from "../../../../lib/utils";
@@ -250,14 +249,15 @@ export default function DashboardDetailPage() {
             <ArrowLeft className="h-4 w-4" />
           </Button>
           {editMode ? (
-            <Input
+            <input
               value={workingName}
               placeholder="Dashboard name"
+              aria-label="Dashboard name"
               onChange={event => {
                 setName(event.target.value);
                 setDirty(true);
               }}
-              className="h-8 max-w-xs"
+              className="-mx-2 min-w-0 max-w-xs rounded-md bg-transparent px-2 py-0.5 text-lg font-semibold text-neutral-900 outline-none transition-colors placeholder:text-neutral-400 hover:bg-neutral-100 focus:bg-neutral-100 focus-visible:ring-1 focus-visible:ring-neutral-300 dark:text-neutral-50 dark:placeholder:text-neutral-600 dark:hover:bg-neutral-900 dark:focus:bg-neutral-900 dark:focus-visible:ring-neutral-700"
             />
           ) : (
             <h1 className="truncate text-lg font-semibold">{workingName}</h1>
@@ -283,7 +283,11 @@ export default function DashboardDetailPage() {
                 Cancel
               </Button>
               <Button onClick={handleSave} disabled={!dirty || updateDashboard.isPending}>
-                {updateDashboard.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
+                {updateDashboard.isPending ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Check className="h-4 w-4" />
+                )}
                 Save
               </Button>
             </>
@@ -320,7 +324,8 @@ export default function DashboardDetailPage() {
         <div
           className={cn(
             "rounded-lg border border-transparent transition-colors duration-200 motion-reduce:transition-none",
-            editMode && "border-dashed border-neutral-200 bg-neutral-50/60 dark:border-neutral-800 dark:bg-neutral-950/40"
+            editMode &&
+              "border-dashed border-neutral-200 bg-neutral-50/60 dark:border-neutral-800 dark:bg-neutral-950/40"
           )}
         >
           <ResponsiveGridLayout

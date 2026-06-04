@@ -13,7 +13,6 @@ import {
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "../../../../components/ui/dropdown-menu";
-import { Input } from "../../../../components/ui/input";
 import { Label } from "../../../../components/ui/label";
 import { MultiSelect } from "../../../../components/ui/multi-select";
 import {
@@ -25,7 +24,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "../../../../components/ui/select";
-import { Sheet, SheetContent, SheetFooter, SheetHeader, SheetTitle } from "../../../../components/ui/sheet";
+import { Sheet, SheetClose, SheetContent, SheetTitle } from "../../../../components/ui/sheet";
 import {
   AreaChart,
   BarChart3,
@@ -39,6 +38,7 @@ import {
   Map as MapIcon,
   PieChart,
   Table2,
+  X,
 } from "lucide-react";
 import { QueryEditor } from "../../query/components/QueryEditor";
 import { ResultsTable } from "../../query/components/ResultsTable";
@@ -267,128 +267,249 @@ export function DashboardCardEditor({ siteId, card, open, onClose, onSave }: Das
       <DashboardCalendar rows={rows} mapping={mapping} />
     ) : null;
 
+  // Examples picker, folded into the query editor's own toolbar so the editor
+  // owns its chrome instead of duplicating a "Query" label above it.
+  const examplesMenu = (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          className="h-7 gap-1 px-2 text-xs font-medium text-neutral-600 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-neutral-100"
+        >
+          <Lightbulb className="h-3.5 w-3.5" />
+          Examples
+          <ChevronDown className="h-3 w-3" />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-48">
+        {DASHBOARD_EXAMPLE_CATEGORIES.map(category => (
+          <DropdownMenuSub key={category}>
+            <DropdownMenuSubTrigger className="text-sm">{category}</DropdownMenuSubTrigger>
+            <DropdownMenuSubContent className="max-h-[60vh] w-72 overflow-y-auto">
+              {DASHBOARD_EXAMPLES.filter(example => example.category === category).map(example => (
+                <DropdownMenuItem
+                  key={example.id}
+                  className="flex flex-col items-start gap-0.5"
+                  onSelect={() => applyExample(example)}
+                >
+                  <span className="flex items-center gap-1.5">
+                    {example.title}
+                    {example.beyondPrebuilt && (
+                      <span className="rounded bg-emerald-100 px-1 py-0.5 text-[9px] font-medium uppercase tracking-wide text-emerald-700 dark:bg-emerald-950 dark:text-emerald-400">
+                        advanced
+                      </span>
+                    )}
+                  </span>
+                  <span className="text-[11px] text-neutral-500">{example.description}</span>
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuSubContent>
+          </DropdownMenuSub>
+        ))}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+
+  const mappingControls = (
+    <>
+      {kind === "xy" && (
+        <>
+          <ColumnSelect label="X axis" value={xColumn} columns={columns} onChange={setXColumn} />
+          <div className="space-y-1.5">
+            <Label>Y values</Label>
+            <MultiSelect
+              options={columns.map(column => ({ value: column, label: column }))}
+              value={yColumns}
+              onValueChange={setYColumns}
+              placeholder="Select numeric columns"
+            />
+          </div>
+          <ColumnSelect
+            label="Split by series (optional)"
+            value={seriesColumn}
+            columns={columns}
+            onChange={setSeriesColumn}
+            includeNone
+            placeholder="None"
+          />
+        </>
+      )}
+
+      {kind === "categoryValue" && (
+        <>
+          <ColumnSelect
+            label={vizType === "pie" ? "Slice label" : "Category"}
+            value={xColumn}
+            columns={columns}
+            onChange={setXColumn}
+          />
+          <ColumnSelect
+            label="Value"
+            value={valueColumn}
+            columns={columns}
+            onChange={setValueColumn}
+            includeNone
+            placeholder="Auto (first numeric)"
+          />
+          <FormatSelect value={valueFormat} onChange={setValueFormat} />
+        </>
+      )}
+
+      {kind === "stat" && (
+        <>
+          <ColumnSelect
+            label="Value"
+            value={valueColumn}
+            columns={columns}
+            onChange={setValueColumn}
+            includeNone
+            placeholder="Auto (first numeric)"
+          />
+          <ColumnSelect
+            label="Label (optional)"
+            value={xColumn}
+            columns={columns}
+            onChange={setXColumn}
+            includeNone
+            placeholder="None"
+          />
+          <FormatSelect value={valueFormat} onChange={setValueFormat} />
+        </>
+      )}
+
+      {kind === "map" && (
+        <>
+          <ColumnSelect
+            label="Country column (ISO-2 codes)"
+            value={countryColumn}
+            columns={columns}
+            onChange={setCountryColumn}
+          />
+          <ColumnSelect
+            label="Value"
+            value={valueColumn}
+            columns={columns}
+            onChange={setValueColumn}
+            includeNone
+            placeholder="Auto (first numeric)"
+          />
+          <FormatSelect value={valueFormat} onChange={setValueFormat} />
+        </>
+      )}
+
+      {kind === "calendar" && (
+        <>
+          <ColumnSelect label="Date column" value={dateColumn} columns={columns} onChange={setDateColumn} />
+          <ColumnSelect
+            label="Value"
+            value={valueColumn}
+            columns={columns}
+            onChange={setValueColumn}
+            includeNone
+            placeholder="Auto (first numeric)"
+          />
+          <FormatSelect value={valueFormat} onChange={setValueFormat} />
+        </>
+      )}
+    </>
+  );
+
   return (
     <Sheet open={open} onOpenChange={value => !value && onClose()}>
-      <SheetContent side="right" className="flex w-full flex-col gap-5 overflow-y-auto sm:max-w-4xl lg:max-w-6xl">
-        <SheetHeader>
-          <SheetTitle>Edit card</SheetTitle>
-        </SheetHeader>
-
-        <div className="space-y-1.5">
-          <Label htmlFor="card-title">Title</Label>
-          <Input id="card-title" value={title} onChange={event => setTitle(event.target.value)} />
-        </div>
-
-        <div className="space-y-1.5">
-          <div className="flex items-center justify-between gap-2">
-            <Label>Query</Label>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  className="-mr-1 h-6 gap-1 px-1.5 text-xs font-normal text-neutral-500 hover:text-neutral-900 dark:hover:text-neutral-100"
-                >
-                  <Lightbulb className="h-3.5 w-3.5" />
-                  Examples
-                  <ChevronDown className="h-3 w-3" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-48">
-                {DASHBOARD_EXAMPLE_CATEGORIES.map(category => (
-                  <DropdownMenuSub key={category}>
-                    <DropdownMenuSubTrigger className="text-sm">{category}</DropdownMenuSubTrigger>
-                    <DropdownMenuSubContent className="max-h-[60vh] w-72 overflow-y-auto">
-                      {DASHBOARD_EXAMPLES.filter(example => example.category === category).map(example => (
-                        <DropdownMenuItem
-                          key={example.id}
-                          className="flex flex-col items-start gap-0.5"
-                          onSelect={() => applyExample(example)}
-                        >
-                          <span className="flex items-center gap-1.5">
-                            {example.title}
-                            {example.beyondPrebuilt && (
-                              <span className="rounded bg-emerald-100 px-1 py-0.5 text-[9px] font-medium uppercase tracking-wide text-emerald-700 dark:bg-emerald-950 dark:text-emerald-400">
-                                advanced
-                              </span>
-                            )}
-                          </span>
-                          <span className="text-[11px] text-neutral-500">{example.description}</span>
-                        </DropdownMenuItem>
-                      ))}
-                    </DropdownMenuSubContent>
-                  </DropdownMenuSub>
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-          <QueryEditor
-            value={sql}
-            disabled={false}
-            isRunning={isFetching}
-            onChange={setSql}
-            onFormat={() => setSql(formatQuery(sql))}
-            onRun={() => setPreviewSql(sql)}
+      <SheetContent
+        side="right"
+        showClose={false}
+        className="flex h-full w-full flex-col gap-0 overflow-hidden p-0 sm:max-w-4xl lg:max-w-6xl"
+      >
+        {/* Header: the card title is the heading, edited in place. */}
+        <div className="flex shrink-0 items-center gap-2 border-b border-neutral-150 px-4 py-2.5 dark:border-neutral-850">
+          <SheetTitle className="sr-only">Edit card</SheetTitle>
+          <input
+            value={title}
+            onChange={event => setTitle(event.target.value)}
+            placeholder="Untitled card"
+            aria-label="Card title"
+            className="min-w-0 flex-1 rounded-md bg-transparent px-2 py-1 text-base font-semibold text-neutral-900 outline-none transition-colors placeholder:text-neutral-400 hover:bg-neutral-100 focus:bg-neutral-100 focus-visible:ring-1 focus-visible:ring-neutral-300 dark:text-neutral-50 dark:placeholder:text-neutral-600 dark:hover:bg-neutral-900 dark:focus:bg-neutral-900 dark:focus-visible:ring-neutral-700"
           />
-          <p className="text-[11px] text-neutral-500">
-            Queries read from <code className="font-mono">scoped_events</code> and are automatically filtered to the
-            global time range. Use <code className="font-mono">{"{{bucket}}"}</code> for the selected granularity, e.g.{" "}
-            <code className="font-mono">toStartOfInterval(timestamp, INTERVAL {"{{bucket}}"})</code>.
-          </p>
-          {error && <p className="text-xs text-red-500">{error instanceof Error ? error.message : "Query failed"}</p>}
+          <SheetClose asChild>
+            <Button variant="ghost" size="smIcon" aria-label="Close editor" className="shrink-0 text-neutral-500">
+              <X className="h-4 w-4" />
+            </Button>
+          </SheetClose>
         </div>
 
-        <div className="space-y-2">
-          <div className="flex items-center gap-2">
-            <Label>Results</Label>
-            {previewSql && !error && isFetching && <Loader2 className="h-3.5 w-3.5 animate-spin text-neutral-400" />}
-            {previewSql && !error && !isFetching && (
-              <span className="text-[11px] text-neutral-500">
-                {data?.meta.rowCount ?? 0} {data?.meta.rowCount === 1 ? "row" : "rows"}
-              </span>
+        {/* Workbench: data on the left, the visualization it produces on the right. */}
+        <div className="grid min-h-0 flex-1 grid-cols-1 divide-y divide-neutral-150 overflow-y-auto lg:grid-cols-2 lg:divide-x lg:divide-y-0 lg:overflow-hidden dark:divide-neutral-850">
+          {/* Left — query + results */}
+          <div className="flex min-h-0 flex-col gap-3 p-4 lg:overflow-hidden">
+            <QueryEditor
+              value={sql}
+              disabled={false}
+              isRunning={isFetching}
+              onChange={setSql}
+              onFormat={() => setSql(formatQuery(sql))}
+              onRun={() => setPreviewSql(sql)}
+              headerActions={examplesMenu}
+            />
+            <p className="shrink-0 text-[11px] leading-relaxed text-neutral-500">
+              Queries read from <code className="font-mono text-neutral-600 dark:text-neutral-400">scoped_events</code>,
+              scoped to the dashboard time range. Use{" "}
+              <code className="font-mono text-neutral-600 dark:text-neutral-400">{"{{bucket}}"}</code> for the selected
+              granularity.
+            </p>
+            {error && (
+              <p className="shrink-0 rounded-md bg-red-50 px-2.5 py-1.5 text-xs text-red-600 dark:bg-red-950/40 dark:text-red-400">
+                {error instanceof Error ? error.message : "Query failed"}
+              </p>
             )}
-            {truncated && (
-              <span className="rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-medium text-amber-700 dark:bg-amber-950 dark:text-amber-400">
-                limited to {data?.meta.maxRows}
-              </span>
-            )}
-          </div>
-          <div className="flex h-64 flex-col overflow-hidden rounded-lg border border-neutral-150 dark:border-neutral-850">
-            {!previewSql || error ? (
-              <div className="flex h-full items-center justify-center px-6 text-center text-xs text-neutral-500">
-                {error ? "Fix the query above to see results." : "Run the query to see results."}
-              </div>
-            ) : isFetching && rows.length === 0 ? (
-              <div className="flex h-full items-center justify-center">
-                <Loader2 className="h-5 w-5 animate-spin text-neutral-400" />
-              </div>
-            ) : rows.length === 0 ? (
-              <div className="flex h-full items-center justify-center text-xs text-neutral-500">No rows returned</div>
-            ) : (
-              <ResultsTable columns={columns} rows={sortedRows} sort={activeSort} onSortChange={setSort} />
-            )}
-          </div>
-        </div>
 
-        <div className="space-y-2">
-          <Label>Visualization</Label>
-          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-            <div className="h-72 overflow-hidden rounded-lg border border-neutral-150 p-1 dark:border-neutral-850">
-              {vizType === "table" ? (
-                <div className="flex h-full items-center justify-center px-6 text-center text-xs text-neutral-500">
-                  Table cards display the results shown above.
-                </div>
-              ) : rows.length === 0 ? (
-                <div className="flex h-full items-center justify-center px-6 text-center text-xs text-neutral-500">
-                  {previewSql ? "No rows to visualize." : "Run the query to preview the chart."}
-                </div>
-              ) : (
-                chartPreview
-              )}
+            <div className="flex min-h-0 flex-1 flex-col gap-2">
+              <div className="flex shrink-0 items-center gap-2">
+                <span className="text-xs font-medium text-neutral-500">Results</span>
+                {previewSql && !error && isFetching && (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin text-neutral-400" />
+                )}
+                {previewSql && !error && !isFetching && (
+                  <span className="text-[11px] text-neutral-500">
+                    {data?.meta.rowCount ?? 0} {data?.meta.rowCount === 1 ? "row" : "rows"}
+                  </span>
+                )}
+                {truncated && (
+                  <span className="rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-medium text-amber-700 dark:bg-amber-950 dark:text-amber-400">
+                    capped at {data?.meta.maxRows}
+                  </span>
+                )}
+              </div>
+              <div className="flex h-72 flex-col overflow-hidden rounded-lg border border-neutral-150 lg:h-auto lg:min-h-0 lg:flex-1 dark:border-neutral-850">
+                {!previewSql ? (
+                  <div className="flex h-full flex-col items-center justify-center gap-1 px-6 text-center">
+                    <span className="text-xs text-neutral-500">Run the query to see results</span>
+                  </div>
+                ) : error ? (
+                  <div className="flex h-full items-center justify-center px-6 text-center text-xs text-neutral-500">
+                    Fix the query above to see results.
+                  </div>
+                ) : isFetching && rows.length === 0 ? (
+                  <div className="flex h-full items-center justify-center">
+                    <Loader2 className="h-5 w-5 animate-spin text-neutral-400" />
+                  </div>
+                ) : rows.length === 0 ? (
+                  <div className="flex h-full items-center justify-center text-xs text-neutral-500">
+                    No rows returned
+                  </div>
+                ) : (
+                  <ResultsTable columns={columns} rows={sortedRows} sort={activeSort} onSortChange={setSort} />
+                )}
+              </div>
             </div>
+          </div>
 
-            <div className="space-y-3">
+          {/* Right — chart type, live preview, column mapping */}
+          <div className="flex min-h-0 flex-col gap-4 p-4 lg:overflow-y-auto">
+            <div className="flex flex-col gap-1.5">
+              <Label>Chart type</Label>
               <Select value={vizType} onValueChange={next => setVizType(next as DashboardVizType)}>
                 <SelectTrigger>
                   <SelectValue />
@@ -412,130 +533,49 @@ export function DashboardCardEditor({ siteId, card, open, onClose, onSave }: Das
                   ))}
                 </SelectContent>
               </Select>
-
-              {kind === "none" ? (
-                <p className="text-xs text-neutral-500">
-                  Table cards need no column mapping. Pick another visualization to map result columns.
-                </p>
-              ) : (
-                <div className="space-y-3 rounded-lg border border-neutral-150 p-3 dark:border-neutral-850">
-                  <p className="text-xs text-neutral-500">
-                    {columns.length === 0
-                      ? "Run the query to map result columns to the visualization."
-                      : "Map result columns to the visualization."}
-                  </p>
-
-                  {kind === "xy" && (
-                    <>
-                      <ColumnSelect label="X axis" value={xColumn} columns={columns} onChange={setXColumn} />
-                      <div className="space-y-1.5">
-                        <Label>Y values</Label>
-                        <MultiSelect
-                          options={columns.map(column => ({ value: column, label: column }))}
-                          value={yColumns}
-                          onValueChange={setYColumns}
-                          placeholder="Select numeric columns"
-                        />
-                      </div>
-                      <ColumnSelect
-                        label="Split by series (optional)"
-                        value={seriesColumn}
-                        columns={columns}
-                        onChange={setSeriesColumn}
-                        includeNone
-                        placeholder="None"
-                      />
-                    </>
-                  )}
-
-                  {kind === "categoryValue" && (
-                    <>
-                      <ColumnSelect
-                        label={vizType === "pie" ? "Slice label" : "Category"}
-                        value={xColumn}
-                        columns={columns}
-                        onChange={setXColumn}
-                      />
-                      <ColumnSelect
-                        label="Value"
-                        value={valueColumn}
-                        columns={columns}
-                        onChange={setValueColumn}
-                        includeNone
-                        placeholder="Auto (first numeric)"
-                      />
-                      <FormatSelect value={valueFormat} onChange={setValueFormat} />
-                    </>
-                  )}
-
-                  {kind === "stat" && (
-                    <>
-                      <ColumnSelect
-                        label="Value"
-                        value={valueColumn}
-                        columns={columns}
-                        onChange={setValueColumn}
-                        includeNone
-                        placeholder="Auto (first numeric)"
-                      />
-                      <ColumnSelect
-                        label="Label (optional)"
-                        value={xColumn}
-                        columns={columns}
-                        onChange={setXColumn}
-                        includeNone
-                        placeholder="None"
-                      />
-                      <FormatSelect value={valueFormat} onChange={setValueFormat} />
-                    </>
-                  )}
-
-                  {kind === "map" && (
-                    <>
-                      <ColumnSelect
-                        label="Country column (ISO-2 codes)"
-                        value={countryColumn}
-                        columns={columns}
-                        onChange={setCountryColumn}
-                      />
-                      <ColumnSelect
-                        label="Value"
-                        value={valueColumn}
-                        columns={columns}
-                        onChange={setValueColumn}
-                        includeNone
-                        placeholder="Auto (first numeric)"
-                      />
-                      <FormatSelect value={valueFormat} onChange={setValueFormat} />
-                    </>
-                  )}
-
-                  {kind === "calendar" && (
-                    <>
-                      <ColumnSelect label="Date column" value={dateColumn} columns={columns} onChange={setDateColumn} />
-                      <ColumnSelect
-                        label="Value"
-                        value={valueColumn}
-                        columns={columns}
-                        onChange={setValueColumn}
-                        includeNone
-                        placeholder="Auto (first numeric)"
-                      />
-                      <FormatSelect value={valueFormat} onChange={setValueFormat} />
-                    </>
-                  )}
-                </div>
-              )}
             </div>
+
+            <div className="flex flex-col gap-1.5">
+              <span className="text-xs font-medium text-neutral-500">Preview</span>
+              <div className="h-72 overflow-hidden rounded-lg border border-neutral-150 p-1 dark:border-neutral-850">
+                {vizType === "table" ? (
+                  <div className="flex h-full items-center justify-center px-6 text-center text-xs text-neutral-500">
+                    Table cards render the results from the left.
+                  </div>
+                ) : rows.length === 0 ? (
+                  <div className="flex h-full items-center justify-center px-6 text-center text-xs text-neutral-500">
+                    {previewSql ? "No rows to visualize." : "Run the query to preview the chart."}
+                  </div>
+                ) : (
+                  <div key={vizType} className="h-full animate-in fade-in-0 duration-200 motion-reduce:animate-none">
+                    {chartPreview}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {kind === "none" ? (
+              <p className="text-xs text-neutral-500">
+                Table cards show every result column. Pick another chart type to map columns.
+              </p>
+            ) : (
+              <div className="flex flex-col gap-3">
+                <span className="text-xs font-medium text-neutral-500">
+                  {columns.length === 0 ? "Map columns (run the query first)" : "Map columns"}
+                </span>
+                {mappingControls}
+              </div>
+            )}
           </div>
         </div>
 
-        <SheetFooter>
+        {/* Footer: actions pinned so they stay reachable regardless of scroll. */}
+        <div className="flex shrink-0 items-center justify-end gap-2 border-t border-neutral-150 px-4 py-3 dark:border-neutral-850">
           <Button variant="outline" onClick={onClose}>
             Cancel
           </Button>
-          <Button onClick={handleSave}>Done</Button>
-        </SheetFooter>
+          <Button onClick={handleSave}>Save card</Button>
+        </div>
       </SheetContent>
     </Sheet>
   );

@@ -19,9 +19,19 @@ type QueryEditorProps = {
   onChange: (value: string) => void;
   onFormat: () => void;
   onRun: () => void;
+  /** Optional extra controls rendered at the left of the toolbar action group. */
+  headerActions?: React.ReactNode;
 };
 
-export function QueryEditor({ value, disabled, isRunning, onChange, onFormat, onRun }: QueryEditorProps) {
+export function QueryEditor({
+  value,
+  disabled,
+  isRunning,
+  onChange,
+  onFormat,
+  onRun,
+  headerActions,
+}: QueryEditorProps) {
   const t = useExtracted();
   const { resolvedTheme } = useTheme();
   const [isDark, setIsDark] = useState(false);
@@ -54,6 +64,7 @@ export function QueryEditor({ value, disabled, isRunning, onChange, onFormat, on
           </div>
         </div>
         <div className="flex items-center gap-1.5">
+          {headerActions}
           <Button
             type="button"
             size="smIcon"
