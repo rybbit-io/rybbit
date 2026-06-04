@@ -206,14 +206,21 @@ export default function DashboardDetailPage() {
   if (isLoading) {
     return (
       <div className="mx-auto flex max-w-[1600px] flex-col gap-3 p-2 md:p-4">
-        <div className="flex items-center justify-between">
-          <Skeleton className="h-8 w-56" />
-          <Skeleton className="h-8 w-72" />
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <Skeleton className="h-8 w-8 rounded-md" />
+            <Skeleton className="h-6 w-48 rounded-md" />
+          </div>
+          <div className="flex items-center gap-2">
+            <Skeleton className="h-9 w-44 rounded-lg" />
+            <Skeleton className="h-9 w-28 rounded-lg" />
+            <Skeleton className="hidden h-9 w-20 rounded-lg sm:block" />
+          </div>
         </div>
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-          {Array.from({ length: 4 }).map((_, index) => (
-            <Skeleton key={index} className="h-64 w-full rounded-lg" />
-          ))}
+        {/* The real grid layout is unknown until it loads, so a fixed card
+            arrangement makes the load-in jump. A neutral spinner doesn't. */}
+        <div className="flex min-h-[40vh] items-center justify-center">
+          <Loader2 className="h-6 w-6 animate-spin text-neutral-400" />
         </div>
       </div>
     );
