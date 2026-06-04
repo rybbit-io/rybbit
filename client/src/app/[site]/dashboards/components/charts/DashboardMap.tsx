@@ -14,6 +14,7 @@ import { Fill, Stroke, Style } from "ol/style";
 import View from "ol/View";
 import { useTheme } from "next-themes";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import type { CustomQueryRow } from "@/api/analytics/endpoints";
 import { useCountries } from "@/lib/geo";
 import { CountryFlag } from "../../../components/shared/icons/CountryFlag";
@@ -152,20 +153,25 @@ export function DashboardMap({ rows, mapping }: DashboardMapProps) {
           {overlay}
         </div>
       )}
-      {tooltip && (
-        <div
-          className="pointer-events-none fixed z-[9999] max-w-xs rounded-md border border-neutral-200 bg-white p-2 text-xs text-neutral-900 dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-50"
-          style={{ left: tooltip.x, top: tooltip.y - 10, transform: "translate(-50%, -100%)" }}
-        >
-          <div className="mb-1 flex items-center gap-1.5 font-medium">
-            {tooltip.code && <CountryFlag country={tooltip.code} />}
-            {tooltip.name}
-          </div>
-          <div className="tabular-nums text-neutral-600 dark:text-neutral-300">
-            {tooltip.value !== null ? formatValue(tooltip.value, format) : "No data"}
-          </div>
-        </div>
-      )}
+      {/* Portal to the body: dashboard cards sit behind a CSS transform (react-grid-layout),
+          which would otherwise anchor this fixed tooltip to the card and clip it. */}
+      {tooltip &&
+        typeof document !== "undefined" &&
+        createPortal(
+          <div
+            className="pointer-events-none fixed z-[9999] max-w-xs rounded-md border border-neutral-200 bg-white p-2 text-xs text-neutral-900 dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-50"
+            style={{ left: tooltip.x, top: tooltip.y - 10, transform: "translate(-50%, -100%)" }}
+          >
+            <div className="mb-1 flex items-center gap-1.5 font-medium">
+              {tooltip.code && <CountryFlag country={tooltip.code} />}
+              {tooltip.name}
+            </div>
+            <div className="tabular-nums text-neutral-600 dark:text-neutral-300">
+              {tooltip.value !== null ? formatValue(tooltip.value, format) : "No data"}
+            </div>
+          </div>,
+          document.body
+        )}
     </div>
   );
 }

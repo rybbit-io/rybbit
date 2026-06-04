@@ -44,27 +44,34 @@ export function DashboardCalendar({ rows, mapping }: DashboardCalendarProps) {
     );
   }
 
+  // ResponsiveTimeRange measures its parent; in a flex/grid card a bare
+  // height:100% can collapse to 0 (rendering nothing). An absolutely-filled box
+  // gives it a concrete size regardless of the surrounding flex context.
   return (
-    <ResponsiveTimeRange
-      data={calendar.data}
-      theme={nivoTheme}
-      from={calendar.from}
-      to={calendar.to}
-      emptyColor={isDark ? "hsl(var(--neutral-750))" : "hsl(var(--neutral-100))"}
-      colors={dataVizSequential(isDark)}
-      margin={{ top: 20, right: 8, bottom: 8, left: 8 }}
-      dayBorderWidth={2}
-      daySpacing={3}
-      dayBorderColor="rgba(0, 0, 0, 0)"
-      dayRadius={3}
-      weekdayTicks={[]}
-      weekdayLegendOffset={0}
-      maxValue={maxValue}
-      tooltip={({ value, day }) => (
-        <ChartTooltip className="flex gap-1 p-2 text-xs">
-          {day}: {formatValue(Number(value), format)}
-        </ChartTooltip>
-      )}
-    />
+    <div className="relative h-full w-full">
+      <div className="absolute inset-0">
+        <ResponsiveTimeRange
+          data={calendar.data}
+          theme={nivoTheme}
+          from={calendar.from}
+          to={calendar.to}
+          emptyColor={isDark ? "hsl(var(--neutral-750))" : "hsl(var(--neutral-100))"}
+          colors={dataVizSequential(isDark)}
+          margin={{ top: 20, right: 0, bottom: 0, left: 0 }}
+          dayBorderWidth={2}
+          daySpacing={3}
+          dayBorderColor="rgba(0, 0, 0, 0)"
+          dayRadius={3}
+          weekdayTicks={[]}
+          weekdayLegendOffset={0}
+          maxValue={maxValue}
+          tooltip={({ value, day }) => (
+            <ChartTooltip className="flex gap-1 p-2 text-xs">
+              {day}: {formatValue(Number(value), format)}
+            </ChartTooltip>
+          )}
+        />
+      </div>
+    </div>
   );
 }

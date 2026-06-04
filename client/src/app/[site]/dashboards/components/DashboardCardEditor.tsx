@@ -42,6 +42,7 @@ import {
   X,
 } from "lucide-react";
 import { cn } from "../../../../lib/utils";
+import { JsonEditor } from "../../feature-flags/components/JsonEditor";
 import { QueryEditor } from "../../query/components/QueryEditor";
 import { ResultsTable } from "../../query/components/ResultsTable";
 import type { SortState } from "../../query/types";
@@ -583,17 +584,17 @@ export function DashboardCardEditor({ siteId, card, open, onClose, onSave }: Das
                 fixed.
               </span>
             </div>
-            <textarea
-              value={jsonText}
-              onChange={event => {
-                const next = event.target.value;
-                setJsonText(next);
-                setJsonError(parseCardJson(next, card.id).error || null);
-              }}
-              spellCheck={false}
-              aria-label="Card JSON"
-              className="min-h-0 flex-1 resize-none rounded-lg border border-neutral-150 bg-[#fbfcfd] p-3 font-mono text-xs leading-relaxed text-neutral-900 outline-none focus-visible:ring-1 focus-visible:ring-neutral-300 dark:border-neutral-850 dark:bg-[#090d16] dark:text-neutral-100 dark:focus-visible:ring-neutral-700"
-            />
+            <div className="min-h-0 flex-1">
+              <JsonEditor
+                value={jsonText}
+                onChange={next => {
+                  setJsonText(next);
+                  setJsonError(parseCardJson(next, card.id).error || null);
+                }}
+                ariaLabel="Card JSON"
+                height="100%"
+              />
+            </div>
             {jsonError ? (
               <p className="shrink-0 rounded-md bg-red-50 px-2.5 py-1.5 text-xs text-red-600 dark:bg-red-950/40 dark:text-red-400">
                 {jsonError}
