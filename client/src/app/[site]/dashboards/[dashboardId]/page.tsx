@@ -29,7 +29,9 @@ import { useSetPageTitle } from "../../../../hooks/useSetPageTitle";
 import { useStore } from "../../../../lib/store";
 import { DashboardCardEditor } from "../components/DashboardCardEditor";
 import { DashboardCardView } from "../components/DashboardCardView";
-import { cloneCard, createCard } from "../utils";
+import { NewCardDialog } from "../components/NewCardDialog";
+import type { DashboardExample } from "../examples";
+import { cloneCard, createCard, createCardFromExample } from "../utils";
 
 const ResponsiveGridLayout = WidthProvider(Responsive);
 const GRID_COLS = { lg: 12, md: 12, sm: 6, xs: 4, xxs: 2 };
@@ -51,6 +53,7 @@ export default function DashboardDetailPage() {
   const [cards, setCards] = useState<DashboardCard[] | null>(null);
   const [dirty, setDirty] = useState(false);
   const [editingCardId, setEditingCardId] = useState<string | null>(null);
+  const [addingCard, setAddingCard] = useState(false);
   const [confirmExit, setConfirmExit] = useState(false);
   const [pendingRemoveId, setPendingRemoveId] = useState<string | null>(null);
   const [highlightId, setHighlightId] = useState<string | null>(null);
@@ -110,12 +113,27 @@ export default function DashboardDetailPage() {
     window.setTimeout(() => setHighlightId(current => (current === cardId ? null : current)), 1800);
   }, []);
 
-  const handleAddCard = useCallback(() => {
-    const newCard = createCard(workingCards.length + 1, workingCards);
-    setCards([...workingCards, newCard]);
-    setDirty(true);
-    flashNewCard(newCard.id);
-  }, [workingCards, flashNewCard]);
+  const handleAddCard = useCallback(() => setAddingCard(true), []);
+
+  // Add the chosen card (blank or seeded from a preset) to the working copy.
+  // Blank cards need a query before they render, so we drop straight into the
+  // editor; presets are already complete and render live in the grid.
+  const handleCreateCard = useCallback(
+    (example: DashboardExample | null) => {
+      setEditMode(true);
+      const index = workingCards.length + 1;
+      const newCard = example ? createCardFromExample(index, workingCards, example) : createCard(index, workingCards);
+      setCards([...workingCards, newCard]);
+      setDirty(true);
+      setAddingCard(false);
+      if (example) {
+        flashNewCard(newCard.id);
+      } else {
+        setEditingCardId(newCard.id);
+      }
+    },
+    [workingCards, flashNewCard]
+  );
 
   const handleCloneCard = useCallback(
     (cardId: string) => {
@@ -206,13 +224,13 @@ export default function DashboardDetailPage() {
       if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "s") {
         event.preventDefault();
         if (dirty && !updateDashboard.isPending) handleSave();
-      } else if (event.key === "Escape" && !confirmExit && !editingCardId) {
+      } else if (event.key === "Escape" && !confirmExit && !editingCardId && !addingCard) {
         handleCancel();
       }
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [editMode, dirty, confirmExit, editingCardId, updateDashboard.isPending, handleSave, handleCancel]);
+  }, [editMode, dirty, confirmExit, editingCardId, addingCard, updateDashboard.isPending, handleSave, handleCancel]);
 
   if (isLoading) {
     return (
@@ -309,13 +327,7 @@ export default function DashboardDetailPage() {
               range above and can be dragged and resized.
             </p>
           </div>
-          <Button
-            variant="outline"
-            onClick={() => {
-              setEditMode(true);
-              handleAddCard();
-            }}
-          >
+          <Button variant="outline" onClick={handleAddCard}>
             <Plus className="h-4 w-4" />
             Add a card
           </Button>
@@ -364,6 +376,8 @@ export default function DashboardDetailPage() {
           </ResponsiveGridLayout>
         </div>
       )}
+
+      <NewCardDialog open={addingCard} onClose={() => setAddingCard(false)} onSelect={handleCreateCard} />
 
       {editingCard && (
         <DashboardCardEditor

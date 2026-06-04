@@ -4,10 +4,12 @@ import type {
   DashboardCardMapping,
   DashboardConfig,
   DashboardValueFormat,
+  DashboardVizType,
   TimeBucket,
 } from "@rybbit/shared";
 import { DateTime } from "luxon";
 import { formatSecondsAsMinutesAndSeconds, formatter } from "@/lib/utils";
+import type { DashboardExample } from "./examples";
 
 export const CARD_PALETTE = [
   // Lead with the brand data hue (--dataviz periwinkle); escalate to distinct
@@ -22,16 +24,52 @@ export const CARD_PALETTE = [
   "hsla(160, 58%, 48%, 0.9)",
 ];
 
+/** Y just below the lowest existing card, so new cards stack rather than overlap. */
+function nextStackY(existing: DashboardCard[]): number {
+  return existing.reduce((max, card) => Math.max(max, card.gridPos.y + card.gridPos.h), 0);
+}
+
+/** Sensible default footprint per chart type so presets land at a usable size. */
+const VIZ_DEFAULT_SIZE: Record<DashboardVizType, { w: number; h: number }> = {
+  line: { w: 6, h: 5 },
+  area: { w: 6, h: 5 },
+  bar: { w: 6, h: 5 },
+  hbar: { w: 4, h: 6 },
+  pie: { w: 4, h: 5 },
+  stat: { w: 3, h: 3 },
+  table: { w: 6, h: 6 },
+  map: { w: 6, h: 6 },
+  calendar: { w: 8, h: 4 },
+};
+
 export function createCard(index: number, existing: DashboardCard[]): DashboardCard {
-  // Stack new cards below the lowest existing card.
-  const maxBottom = existing.reduce((max, card) => Math.max(max, card.gridPos.y + card.gridPos.h), 0);
   return {
     id: `card-${Date.now()}-${index}`,
     title: `Card ${index}`,
     sql: "",
     vizType: "line",
     mapping: {},
-    gridPos: { x: 0, y: maxBottom, w: 6, h: 6 },
+    gridPos: { x: 0, y: nextStackY(existing), w: 6, h: 6 },
+  };
+}
+
+/** A ready-to-render card seeded from a preset's query, chart type, and mapping. */
+export function createCardFromExample(
+  index: number,
+  existing: DashboardCard[],
+  example: DashboardExample
+): DashboardCard {
+  const size = VIZ_DEFAULT_SIZE[example.vizType] ?? { w: 6, h: 6 };
+  return {
+    id: `card-${Date.now()}-${index}`,
+    title: example.title,
+    sql: example.sql,
+    vizType: example.vizType,
+    mapping: {
+      ...example.mapping,
+      yColumns: example.mapping.yColumns ? [...example.mapping.yColumns] : undefined,
+    },
+    gridPos: { x: 0, y: nextStackY(existing), w: size.w, h: size.h },
   };
 }
 
@@ -240,8 +278,7 @@ export function getStatValue(rows: CustomQueryRow[], mapping: DashboardCardMappi
   if (!valueColumn) return null;
   const value = coerceNumber(row[valueColumn]);
   if (value === null) return null;
-  const label =
-    mapping.xColumn && row[mapping.xColumn] != null ? formatAxisValue(row[mapping.xColumn]) : null;
+  const label = mapping.xColumn && row[mapping.xColumn] != null ? formatAxisValue(row[mapping.xColumn]) : null;
   return { value, label };
 }
 

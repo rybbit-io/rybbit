@@ -203,7 +203,10 @@ export function DashboardCardEditor({ siteId, card, open, onClose, onSave }: Das
   const [valueFormat, setValueFormat] = useState<DashboardValueFormat>(card.mapping.valueFormat ?? "number");
   const [countryColumn, setCountryColumn] = useState(card.mapping.countryColumn);
   const [dateColumn, setDateColumn] = useState(card.mapping.dateColumn);
-  const [previewSql, setPreviewSql] = useState("");
+  // Seed from the card's SQL so opening the editor runs the query immediately
+  // (the editor remounts on each open, so this re-seeds every time). Blank cards
+  // have empty SQL, which leaves the query disabled until the user writes one.
+  const [previewSql, setPreviewSql] = useState(card.sql);
 
   const [sort, setSort] = useState<SortState>(null);
 
