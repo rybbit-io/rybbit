@@ -6,7 +6,7 @@ import "react-resizable/css/styles.css";
 import type { DashboardCard } from "@rybbit/shared";
 import { ArrowLeft, Check, Loader2, Pencil, Plus } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Responsive, WidthProvider, type Layout } from "react-grid-layout";
 import { useGetDashboard, useUpdateDashboard } from "../../../../api/analytics/hooks/useDashboards";
 import { BucketSelection } from "../../../../components/BucketSelection";
@@ -24,6 +24,8 @@ import {
 import { Button } from "../../../../components/ui/button";
 import { Input } from "../../../../components/ui/input";
 import { Skeleton } from "../../../../components/ui/skeleton";
+import { toast } from "../../../../components/ui/sonner";
+import { cn } from "../../../../lib/utils";
 import { useSetPageTitle } from "../../../../hooks/useSetPageTitle";
 import { useStore } from "../../../../lib/store";
 import { DashboardCardEditor } from "../components/DashboardCardEditor";
@@ -51,6 +53,9 @@ export default function DashboardDetailPage() {
   const [dirty, setDirty] = useState(false);
   const [editingCardId, setEditingCardId] = useState<string | null>(null);
   const [confirmExit, setConfirmExit] = useState(false);
+  const [highlightId, setHighlightId] = useState<string | null>(null);
+  // Action to run once the user confirms discarding (exit edit, or navigate away).
+  const pendingActionRef = useRef<(() => void) | null>(null);
 
   // Working copies fall back to the fetched dashboard until first edit.
   const workingName = name ?? dashboard?.name ?? "";
@@ -72,29 +77,48 @@ export default function DashboardDetailPage() {
 
   const editingCard = workingCards.find(card => card.id === editingCardId) ?? null;
 
-  const handleLayoutChange = (next: Layout[]) => {
-    if (!editMode) return;
-    let changed = false;
-    const updated = workingCards.map(card => {
-      const item = next.find(entry => entry.i === card.id);
-      if (!item) return card;
-      if (item.x !== card.gridPos.x || item.y !== card.gridPos.y || item.w !== card.gridPos.w || item.h !== card.gridPos.h) {
-        changed = true;
-        return { ...card, gridPos: { x: item.x, y: item.y, w: item.w, h: item.h } };
-      }
-      return card;
-    });
-    if (changed) {
-      setCards(updated);
-      setDirty(true);
-    }
-  };
+  // Track layout positions into the working copy, but DON'T flag dirty here:
+  // react-grid-layout fires onLayoutChange on mount and on compaction, which
+  // would otherwise mark an untouched dashboard dirty. Dirty is set only by an
+  // actual drag/resize (onDragStop / onResizeStop) or an explicit card edit.
+  const handleLayoutChange = useCallback(
+    (next: Layout[]) => {
+      if (!editMode) return;
+      setCards(prev => {
+        const base = prev ?? dashboard?.config.cards ?? [];
+        let changed = false;
+        const updated = base.map(card => {
+          const item = next.find(entry => entry.i === card.id);
+          if (!item) return card;
+          if (
+            item.x !== card.gridPos.x ||
+            item.y !== card.gridPos.y ||
+            item.w !== card.gridPos.w ||
+            item.h !== card.gridPos.h
+          ) {
+            changed = true;
+            return { ...card, gridPos: { x: item.x, y: item.y, w: item.w, h: item.h } };
+          }
+          return card;
+        });
+        return changed ? updated : prev;
+      });
+    },
+    [editMode, dashboard]
+  );
 
-  const handleAddCard = () => {
-    const next = [...workingCards, createCard(workingCards.length + 1, workingCards)];
-    setCards(next);
+  const handleAddCard = useCallback(() => {
+    const newCard = createCard(workingCards.length + 1, workingCards);
+    setCards([...workingCards, newCard]);
     setDirty(true);
-  };
+    setHighlightId(newCard.id);
+    // Bring the freshly-added card into view (it stacks below existing cards,
+    // often past the fold) and flash it so the click has visible feedback.
+    window.setTimeout(() => {
+      document.getElementById(`dash-card-${newCard.id}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
+    }, 60);
+    window.setTimeout(() => setHighlightId(current => (current === newCard.id ? null : current)), 1800);
+  }, [workingCards]);
 
   const handleRemoveCard = (cardId: string) => {
     setCards(workingCards.filter(card => card.id !== cardId));
@@ -106,29 +130,78 @@ export default function DashboardDetailPage() {
     setDirty(true);
   };
 
-  const handleSave = async () => {
-    await updateDashboard.mutateAsync({
-      siteId,
-      dashboardId,
-      name: workingName,
-      config: { cards: workingCards },
-    });
-    setDirty(false);
-  };
-
-  const resetWorkingCopy = () => {
+  const resetWorkingCopy = useCallback(() => {
     setCards(null);
     setName(null);
     setDirty(false);
-  };
+  }, []);
 
-  const handleExitEdit = () => {
-    if (dirty) {
-      setConfirmExit(true);
-      return;
-    }
+  const exitEditMode = useCallback(() => {
+    resetWorkingCopy();
     setEditMode(false);
-  };
+  }, [resetWorkingCopy]);
+
+  // Any path that leaves unsaved edits routes through one confirm dialog.
+  const guardedRun = useCallback(
+    (action: () => void) => {
+      if (editMode && dirty) {
+        pendingActionRef.current = action;
+        setConfirmExit(true);
+        return;
+      }
+      action();
+    },
+    [editMode, dirty]
+  );
+
+  const handleCancel = useCallback(() => guardedRun(exitEditMode), [guardedRun, exitEditMode]);
+
+  const handleBack = useCallback(
+    () => guardedRun(() => router.push(`/${siteId}/dashboards`)),
+    [guardedRun, router, siteId]
+  );
+
+  const handleSave = useCallback(async () => {
+    try {
+      await updateDashboard.mutateAsync({
+        siteId,
+        dashboardId,
+        name: workingName,
+        config: { cards: workingCards },
+      });
+      toast.success("Dashboard saved");
+      resetWorkingCopy();
+      setEditMode(false);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Couldn't save dashboard");
+    }
+  }, [updateDashboard, siteId, dashboardId, workingName, workingCards, resetWorkingCopy]);
+
+  // Warn before a full reload / tab close with unsaved edits.
+  useEffect(() => {
+    if (!(editMode && dirty)) return;
+    const handler = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      event.returnValue = "";
+    };
+    window.addEventListener("beforeunload", handler);
+    return () => window.removeEventListener("beforeunload", handler);
+  }, [editMode, dirty]);
+
+  // Edit-mode keyboard shortcuts: Cmd/Ctrl+S saves, Esc cancels.
+  useEffect(() => {
+    if (!editMode) return;
+    const handler = (event: KeyboardEvent) => {
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "s") {
+        event.preventDefault();
+        if (dirty && !updateDashboard.isPending) handleSave();
+      } else if (event.key === "Escape" && !confirmExit && !editingCardId) {
+        handleCancel();
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [editMode, dirty, confirmExit, editingCardId, updateDashboard.isPending, handleSave, handleCancel]);
 
   if (isLoading) {
     return (
@@ -154,7 +227,7 @@ export default function DashboardDetailPage() {
     <div className="mx-auto flex max-w-[1600px] flex-col gap-3 p-2 md:p-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex min-w-0 items-center gap-2">
-          <Button size="smIcon" variant="ghost" onClick={() => router.push(`/${siteId}/dashboards`)} aria-label="Back to dashboards">
+          <Button size="smIcon" variant="ghost" onClick={handleBack} aria-label="Back to dashboards">
             <ArrowLeft className="h-4 w-4" />
           </Button>
           {editMode ? (
@@ -187,12 +260,12 @@ export default function DashboardDetailPage() {
                 <Plus className="h-4 w-4" />
                 Add card
               </Button>
+              <Button variant="ghost" onClick={handleCancel}>
+                Cancel
+              </Button>
               <Button onClick={handleSave} disabled={!dirty || updateDashboard.isPending}>
                 {updateDashboard.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
                 Save
-              </Button>
-              <Button variant="ghost" onClick={handleExitEdit}>
-                Done
               </Button>
             </>
           ) : (
@@ -226,11 +299,10 @@ export default function DashboardDetailPage() {
         </div>
       ) : (
         <div
-          className={
-            editMode
-              ? "rounded-lg border border-dashed border-neutral-200 bg-neutral-50/60 p-1 dark:border-neutral-800 dark:bg-neutral-950/40"
-              : undefined
-          }
+          className={cn(
+            "rounded-lg border border-transparent p-1 transition-colors duration-200 motion-reduce:transition-none",
+            editMode && "border-dashed border-neutral-200 bg-neutral-50/60 dark:border-neutral-800 dark:bg-neutral-950/40"
+          )}
         >
           <ResponsiveGridLayout
             className="layout"
@@ -241,12 +313,22 @@ export default function DashboardDetailPage() {
             margin={[12, 12]}
             isDraggable={editMode}
             isResizable={editMode}
-            resizeHandles={["nw", "ne", "sw", "se"]}
+            resizeHandles={["se"]}
             draggableHandle=".dashboard-card-drag-handle"
+            draggableCancel=".dashboard-card-no-drag"
             onLayoutChange={handleLayoutChange}
+            onDragStop={() => setDirty(true)}
+            onResizeStop={() => setDirty(true)}
           >
             {workingCards.map(card => (
-              <div key={card.id}>
+              <div
+                key={card.id}
+                id={`dash-card-${card.id}`}
+                className={cn(
+                  "rounded-lg transition-shadow duration-300 motion-reduce:transition-none",
+                  highlightId === card.id && "ring-2 ring-emerald-500 ring-offset-2 ring-offset-background"
+                )}
+              >
                 <DashboardCardView
                   siteId={siteId}
                   card={card}
@@ -270,12 +352,20 @@ export default function DashboardDetailPage() {
         />
       )}
 
-      <AlertDialog open={confirmExit} onOpenChange={open => !open && setConfirmExit(false)}>
+      <AlertDialog
+        open={confirmExit}
+        onOpenChange={open => {
+          if (!open) {
+            setConfirmExit(false);
+            pendingActionRef.current = null;
+          }
+        }}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Discard unsaved changes?</AlertDialogTitle>
             <AlertDialogDescription>
-              You have edits that haven&apos;t been saved. Leaving edit mode will revert them.
+              You have edits that haven&apos;t been saved. Leaving now will revert them.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -283,9 +373,10 @@ export default function DashboardDetailPage() {
             <AlertDialogAction
               variant="destructive"
               onClick={() => {
-                resetWorkingCopy();
-                setEditMode(false);
+                const action = pendingActionRef.current ?? exitEditMode;
+                pendingActionRef.current = null;
                 setConfirmExit(false);
+                action();
               }}
             >
               Discard changes

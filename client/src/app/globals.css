@@ -585,15 +585,13 @@
   cursor: grabbing;
 }
 
-/* Resize handles: clear corner brackets shown on all four corners while editing.
-   The default faint diagonal-lines icon is dropped; a single bracket is drawn for
-   the SE corner and react-resizable's own per-corner rotate() transforms orient it
-   correctly for NE / NW / SW. */
+/* Resize handle: a single bottom-right triangular tab (Grafana-style), shown
+   while editing. The default faint diagonal-lines icon is dropped. */
 .react-grid-item > .react-resizable-handle {
   width: 20px;
   height: 20px;
   background-image: none;
-  opacity: 0.65;
+  opacity: 0.7;
   transition: opacity 150ms ease;
 }
 
@@ -601,22 +599,20 @@
   opacity: 1;
 }
 
-.react-grid-item > .react-resizable-handle::after {
+.react-grid-item > .react-resizable-handle-se::after {
   content: "";
   position: absolute;
-  right: 4px;
-  bottom: 4px;
-  width: 9px;
-  height: 9px;
-  border: 0 solid hsl(160 84% 39%);
-  border-right-width: 2px;
-  border-bottom-width: 2px;
-  border-bottom-right-radius: 3px;
-  transition: border-color 150ms ease;
+  right: 3px;
+  bottom: 3px;
+  width: 11px;
+  height: 11px;
+  background: hsl(160 84% 39%);
+  clip-path: polygon(100% 0, 100% 100%, 0 100%);
+  transition: background 150ms ease;
 }
 
-.react-grid-item:hover > .react-resizable-handle::after {
-  border-color: hsl(160 84% 45%);
+.react-grid-item:hover > .react-resizable-handle-se::after {
+  background: hsl(160 84% 45%);
 }
 
 /*

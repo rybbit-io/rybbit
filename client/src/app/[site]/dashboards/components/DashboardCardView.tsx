@@ -36,15 +36,19 @@ export function DashboardCardView({ siteId, card, editMode, onEdit, onRemove }: 
   return (
     <div
       className={cn(
-        "flex h-full flex-col rounded-lg border border-neutral-150 bg-white shadow-sm dark:border-neutral-850 dark:bg-neutral-900",
+        "flex h-full flex-col rounded-lg border border-neutral-150 bg-white dark:border-neutral-850 dark:bg-neutral-900",
         isTable ? "overflow-hidden" : "overflow-visible"
       )}
     >
-      <div className="flex h-9 shrink-0 items-center justify-between rounded-t-lg border-b border-neutral-150 bg-neutral-50 px-2 dark:border-neutral-800 dark:bg-neutral-950">
+      <div
+        className={cn(
+          "flex h-9 shrink-0 items-center justify-between rounded-t-lg border-b border-neutral-150 bg-neutral-50 px-2 dark:border-neutral-800 dark:bg-neutral-950",
+          // The whole header is the drag handle in edit mode (the grip is just a hint).
+          editMode && "dashboard-card-drag-handle cursor-grab active:cursor-grabbing"
+        )}
+      >
         <div className="flex min-w-0 items-center gap-1.5">
-          {editMode && (
-            <GripVertical className="dashboard-card-drag-handle h-4 w-4 shrink-0 cursor-grab text-neutral-400" />
-          )}
+          {editMode && <GripVertical className="h-4 w-4 shrink-0 text-neutral-400" />}
           <span className="truncate text-sm font-medium text-neutral-900 dark:text-neutral-100">{card.title}</span>
           {isFetching && !isLoading && (
             <Loader2 className="h-3 w-3 shrink-0 animate-spin text-neutral-400" aria-label="Updating" />
@@ -56,7 +60,7 @@ export function DashboardCardView({ siteId, card, editMode, onEdit, onRemove }: 
           )}
         </div>
         {editMode && (
-          <div className="flex shrink-0 items-center gap-0.5">
+          <div className="dashboard-card-no-drag flex shrink-0 items-center gap-0.5">
             <Button type="button" size="smIcon" variant="ghost" onClick={onEdit} aria-label="Edit card">
               <Pencil className="h-3.5 w-3.5" />
             </Button>
