@@ -22,16 +22,13 @@ export const CARD_PALETTE = [
   "hsla(160, 58%, 48%, 0.9)",
 ];
 
-const DEFAULT_SQL =
-  "SELECT toStartOfInterval(timestamp, INTERVAL {{bucket}}) AS time, count() AS pageviews\nFROM scoped_events\nWHERE type = 'pageview'\nGROUP BY time\nORDER BY time";
-
 export function createCard(index: number, existing: DashboardCard[]): DashboardCard {
   // Stack new cards below the lowest existing card.
   const maxBottom = existing.reduce((max, card) => Math.max(max, card.gridPos.y + card.gridPos.h), 0);
   return {
     id: `card-${Date.now()}-${index}`,
     title: `Card ${index}`,
-    sql: DEFAULT_SQL,
+    sql: "",
     vizType: "line",
     mapping: {},
     gridPos: { x: 0, y: maxBottom, w: 6, h: 6 },

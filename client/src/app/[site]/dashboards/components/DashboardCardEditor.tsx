@@ -19,7 +19,9 @@ import { MultiSelect } from "../../../../components/ui/multi-select";
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
+  SelectLabel,
   SelectTrigger,
   SelectValue,
 } from "../../../../components/ui/select";
@@ -42,11 +44,7 @@ import { QueryEditor } from "../../query/components/QueryEditor";
 import { ResultsTable } from "../../query/components/ResultsTable";
 import type { SortState } from "../../query/types";
 import { formatQuery, getColumns, sortRows } from "../../query/utils";
-import {
-  DASHBOARD_EXAMPLES,
-  DASHBOARD_EXAMPLE_CATEGORIES,
-  type DashboardExample,
-} from "../examples";
+import { DASHBOARD_EXAMPLES, DASHBOARD_EXAMPLE_CATEGORIES, type DashboardExample } from "../examples";
 import { DashboardBarChart } from "./charts/DashboardBarChart";
 import { DashboardBarList } from "./charts/DashboardBarList";
 import { DashboardCalendar } from "./charts/DashboardCalendar";
@@ -168,7 +166,13 @@ function ColumnSelect({
 }
 
 /** Value-format dropdown for stat / pie / bar-list / map / calendar cards. */
-function FormatSelect({ value, onChange }: { value: DashboardValueFormat; onChange: (value: DashboardValueFormat) => void }) {
+function FormatSelect({
+  value,
+  onChange,
+}: {
+  value: DashboardValueFormat;
+  onChange: (value: DashboardValueFormat) => void;
+}) {
   return (
     <div className="space-y-1.5">
       <Label>Value format</Label>
@@ -244,11 +248,28 @@ export function DashboardCardEditor({ siteId, card, open, onClose, onSave }: Das
     onClose();
   };
 
-  const showPreviewViz = vizType !== "table";
+  const chartPreview =
+    vizType === "line" ? (
+      <DashboardLineChart rows={rows} mapping={mapping} />
+    ) : vizType === "area" ? (
+      <DashboardLineChart rows={rows} mapping={mapping} area />
+    ) : vizType === "bar" ? (
+      <DashboardBarChart rows={rows} mapping={mapping} />
+    ) : vizType === "hbar" ? (
+      <DashboardBarList rows={rows} mapping={mapping} />
+    ) : vizType === "pie" ? (
+      <DashboardPie rows={rows} mapping={mapping} />
+    ) : vizType === "stat" ? (
+      <DashboardStat rows={rows} mapping={mapping} />
+    ) : vizType === "map" ? (
+      <DashboardMap rows={rows} mapping={mapping} />
+    ) : vizType === "calendar" ? (
+      <DashboardCalendar rows={rows} mapping={mapping} />
+    ) : null;
 
   return (
     <Sheet open={open} onOpenChange={value => !value && onClose()}>
-      <SheetContent side="right" className="flex w-full flex-col gap-4 overflow-y-auto sm:max-w-2xl">
+      <SheetContent side="right" className="flex w-full flex-col gap-5 overflow-y-auto sm:max-w-4xl lg:max-w-6xl">
         <SheetHeader>
           <SheetTitle>Edit card</SheetTitle>
         </SheetHeader>
@@ -318,198 +339,196 @@ export function DashboardCardEditor({ siteId, card, open, onClose, onSave }: Das
           {error && <p className="text-xs text-red-500">{error instanceof Error ? error.message : "Query failed"}</p>}
         </div>
 
-        {previewSql && !error && (
-          <div className="space-y-2">
-            <div className="flex items-center gap-2">
-              <Label>Preview</Label>
-              {isFetching ? (
-                <Loader2 className="h-3.5 w-3.5 animate-spin text-neutral-400" />
-              ) : (
-                <span className="text-[11px] text-neutral-500">
-                  {data?.meta.rowCount ?? 0} {data?.meta.rowCount === 1 ? "row" : "rows"}
-                </span>
-              )}
-              {truncated && (
-                <span className="rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-medium text-amber-700 dark:bg-amber-950 dark:text-amber-400">
-                  limited to {data?.meta.maxRows}
-                </span>
-              )}
-            </div>
-
-            {showPreviewViz && (
-              <div className="h-56 rounded-lg border border-neutral-150 p-1 dark:border-neutral-850">
-                {vizType === "line" ? (
-                  <DashboardLineChart rows={rows} mapping={mapping} />
-                ) : vizType === "area" ? (
-                  <DashboardLineChart rows={rows} mapping={mapping} area />
-                ) : vizType === "bar" ? (
-                  <DashboardBarChart rows={rows} mapping={mapping} />
-                ) : vizType === "hbar" ? (
-                  <DashboardBarList rows={rows} mapping={mapping} />
-                ) : vizType === "pie" ? (
-                  <DashboardPie rows={rows} mapping={mapping} />
-                ) : vizType === "stat" ? (
-                  <DashboardStat rows={rows} mapping={mapping} />
-                ) : vizType === "map" ? (
-                  <DashboardMap rows={rows} mapping={mapping} />
-                ) : vizType === "calendar" ? (
-                  <DashboardCalendar rows={rows} mapping={mapping} />
-                ) : null}
-              </div>
+        <div className="space-y-2">
+          <div className="flex items-center gap-2">
+            <Label>Results</Label>
+            {previewSql && !error && isFetching && <Loader2 className="h-3.5 w-3.5 animate-spin text-neutral-400" />}
+            {previewSql && !error && !isFetching && (
+              <span className="text-[11px] text-neutral-500">
+                {data?.meta.rowCount ?? 0} {data?.meta.rowCount === 1 ? "row" : "rows"}
+              </span>
             )}
-
-            <div className="flex h-64 flex-col overflow-hidden rounded-lg border border-neutral-150 dark:border-neutral-850">
-              {isFetching && rows.length === 0 ? (
-                <div className="flex h-full items-center justify-center">
-                  <Loader2 className="h-5 w-5 animate-spin text-neutral-400" />
-                </div>
-              ) : rows.length === 0 ? (
-                <div className="flex h-full items-center justify-center text-xs text-neutral-500">No rows returned</div>
-              ) : (
-                <ResultsTable columns={columns} rows={sortedRows} sort={activeSort} onSortChange={setSort} />
-              )}
-            </div>
+            {truncated && (
+              <span className="rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-medium text-amber-700 dark:bg-amber-950 dark:text-amber-400">
+                limited to {data?.meta.maxRows}
+              </span>
+            )}
           </div>
-        )}
-
-        <div className="space-y-2.5">
-          <Label>Visualization</Label>
-          {VIZ_GROUPS.map(group => (
-            <div key={group.label} className="space-y-1.5">
-              <p className="text-[11px] font-medium text-neutral-500">{group.label}</p>
-              <div className="grid grid-cols-3 gap-2">
-                {group.options.map(option => {
-                  const Icon = option.icon;
-                  const active = vizType === option.value;
-                  return (
-                    <Button
-                      key={option.value}
-                      type="button"
-                      variant={active ? "default" : "outline"}
-                      aria-pressed={active}
-                      size="sm"
-                      className="justify-start"
-                      onClick={() => setVizType(option.value)}
-                    >
-                      <Icon className="h-4 w-4" />
-                      {option.label}
-                    </Button>
-                  );
-                })}
+          <div className="flex h-64 flex-col overflow-hidden rounded-lg border border-neutral-150 dark:border-neutral-850">
+            {!previewSql || error ? (
+              <div className="flex h-full items-center justify-center px-6 text-center text-xs text-neutral-500">
+                {error ? "Fix the query above to see results." : "Run the query to see results."}
               </div>
-            </div>
-          ))}
+            ) : isFetching && rows.length === 0 ? (
+              <div className="flex h-full items-center justify-center">
+                <Loader2 className="h-5 w-5 animate-spin text-neutral-400" />
+              </div>
+            ) : rows.length === 0 ? (
+              <div className="flex h-full items-center justify-center text-xs text-neutral-500">No rows returned</div>
+            ) : (
+              <ResultsTable columns={columns} rows={sortedRows} sort={activeSort} onSortChange={setSort} />
+            )}
+          </div>
         </div>
 
-        {kind !== "none" && (
-          <div className="space-y-3 rounded-lg border border-neutral-150 p-3 dark:border-neutral-850">
-            <p className="text-xs text-neutral-500">
-              {columns.length === 0
-                ? "Run the query above to map result columns to the visualization."
-                : "Map result columns to the visualization."}
-            </p>
-
-            {kind === "xy" && (
-              <>
-                <ColumnSelect label="X axis" value={xColumn} columns={columns} onChange={setXColumn} />
-                <div className="space-y-1.5">
-                  <Label>Y values</Label>
-                  <MultiSelect
-                    options={columns.map(column => ({ value: column, label: column }))}
-                    value={yColumns}
-                    onValueChange={setYColumns}
-                    placeholder="Select numeric columns"
-                  />
+        <div className="space-y-2">
+          <Label>Visualization</Label>
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+            <div className="h-72 overflow-hidden rounded-lg border border-neutral-150 p-1 dark:border-neutral-850">
+              {vizType === "table" ? (
+                <div className="flex h-full items-center justify-center px-6 text-center text-xs text-neutral-500">
+                  Table cards display the results shown above.
                 </div>
-                <ColumnSelect
-                  label="Split by series (optional)"
-                  value={seriesColumn}
-                  columns={columns}
-                  onChange={setSeriesColumn}
-                  includeNone
-                  placeholder="None"
-                />
-              </>
-            )}
+              ) : rows.length === 0 ? (
+                <div className="flex h-full items-center justify-center px-6 text-center text-xs text-neutral-500">
+                  {previewSql ? "No rows to visualize." : "Run the query to preview the chart."}
+                </div>
+              ) : (
+                chartPreview
+              )}
+            </div>
 
-            {kind === "categoryValue" && (
-              <>
-                <ColumnSelect
-                  label={vizType === "pie" ? "Slice label" : "Category"}
-                  value={xColumn}
-                  columns={columns}
-                  onChange={setXColumn}
-                />
-                <ColumnSelect
-                  label="Value"
-                  value={valueColumn}
-                  columns={columns}
-                  onChange={setValueColumn}
-                  includeNone
-                  placeholder="Auto (first numeric)"
-                />
-                <FormatSelect value={valueFormat} onChange={setValueFormat} />
-              </>
-            )}
+            <div className="space-y-3">
+              <Select value={vizType} onValueChange={next => setVizType(next as DashboardVizType)}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {VIZ_GROUPS.map(group => (
+                    <SelectGroup key={group.label}>
+                      <SelectLabel>{group.label}</SelectLabel>
+                      {group.options.map(option => {
+                        const Icon = option.icon;
+                        return (
+                          <SelectItem key={option.value} value={option.value}>
+                            <span className="flex items-center gap-2">
+                              <Icon className="h-4 w-4" />
+                              {option.label}
+                            </span>
+                          </SelectItem>
+                        );
+                      })}
+                    </SelectGroup>
+                  ))}
+                </SelectContent>
+              </Select>
 
-            {kind === "stat" && (
-              <>
-                <ColumnSelect
-                  label="Value"
-                  value={valueColumn}
-                  columns={columns}
-                  onChange={setValueColumn}
-                  includeNone
-                  placeholder="Auto (first numeric)"
-                />
-                <ColumnSelect
-                  label="Label (optional)"
-                  value={xColumn}
-                  columns={columns}
-                  onChange={setXColumn}
-                  includeNone
-                  placeholder="None"
-                />
-                <FormatSelect value={valueFormat} onChange={setValueFormat} />
-              </>
-            )}
+              {kind === "none" ? (
+                <p className="text-xs text-neutral-500">
+                  Table cards need no column mapping. Pick another visualization to map result columns.
+                </p>
+              ) : (
+                <div className="space-y-3 rounded-lg border border-neutral-150 p-3 dark:border-neutral-850">
+                  <p className="text-xs text-neutral-500">
+                    {columns.length === 0
+                      ? "Run the query to map result columns to the visualization."
+                      : "Map result columns to the visualization."}
+                  </p>
 
-            {kind === "map" && (
-              <>
-                <ColumnSelect
-                  label="Country column (ISO-2 codes)"
-                  value={countryColumn}
-                  columns={columns}
-                  onChange={setCountryColumn}
-                />
-                <ColumnSelect
-                  label="Value"
-                  value={valueColumn}
-                  columns={columns}
-                  onChange={setValueColumn}
-                  includeNone
-                  placeholder="Auto (first numeric)"
-                />
-                <FormatSelect value={valueFormat} onChange={setValueFormat} />
-              </>
-            )}
+                  {kind === "xy" && (
+                    <>
+                      <ColumnSelect label="X axis" value={xColumn} columns={columns} onChange={setXColumn} />
+                      <div className="space-y-1.5">
+                        <Label>Y values</Label>
+                        <MultiSelect
+                          options={columns.map(column => ({ value: column, label: column }))}
+                          value={yColumns}
+                          onValueChange={setYColumns}
+                          placeholder="Select numeric columns"
+                        />
+                      </div>
+                      <ColumnSelect
+                        label="Split by series (optional)"
+                        value={seriesColumn}
+                        columns={columns}
+                        onChange={setSeriesColumn}
+                        includeNone
+                        placeholder="None"
+                      />
+                    </>
+                  )}
 
-            {kind === "calendar" && (
-              <>
-                <ColumnSelect label="Date column" value={dateColumn} columns={columns} onChange={setDateColumn} />
-                <ColumnSelect
-                  label="Value"
-                  value={valueColumn}
-                  columns={columns}
-                  onChange={setValueColumn}
-                  includeNone
-                  placeholder="Auto (first numeric)"
-                />
-                <FormatSelect value={valueFormat} onChange={setValueFormat} />
-              </>
-            )}
+                  {kind === "categoryValue" && (
+                    <>
+                      <ColumnSelect
+                        label={vizType === "pie" ? "Slice label" : "Category"}
+                        value={xColumn}
+                        columns={columns}
+                        onChange={setXColumn}
+                      />
+                      <ColumnSelect
+                        label="Value"
+                        value={valueColumn}
+                        columns={columns}
+                        onChange={setValueColumn}
+                        includeNone
+                        placeholder="Auto (first numeric)"
+                      />
+                      <FormatSelect value={valueFormat} onChange={setValueFormat} />
+                    </>
+                  )}
+
+                  {kind === "stat" && (
+                    <>
+                      <ColumnSelect
+                        label="Value"
+                        value={valueColumn}
+                        columns={columns}
+                        onChange={setValueColumn}
+                        includeNone
+                        placeholder="Auto (first numeric)"
+                      />
+                      <ColumnSelect
+                        label="Label (optional)"
+                        value={xColumn}
+                        columns={columns}
+                        onChange={setXColumn}
+                        includeNone
+                        placeholder="None"
+                      />
+                      <FormatSelect value={valueFormat} onChange={setValueFormat} />
+                    </>
+                  )}
+
+                  {kind === "map" && (
+                    <>
+                      <ColumnSelect
+                        label="Country column (ISO-2 codes)"
+                        value={countryColumn}
+                        columns={columns}
+                        onChange={setCountryColumn}
+                      />
+                      <ColumnSelect
+                        label="Value"
+                        value={valueColumn}
+                        columns={columns}
+                        onChange={setValueColumn}
+                        includeNone
+                        placeholder="Auto (first numeric)"
+                      />
+                      <FormatSelect value={valueFormat} onChange={setValueFormat} />
+                    </>
+                  )}
+
+                  {kind === "calendar" && (
+                    <>
+                      <ColumnSelect label="Date column" value={dateColumn} columns={columns} onChange={setDateColumn} />
+                      <ColumnSelect
+                        label="Value"
+                        value={valueColumn}
+                        columns={columns}
+                        onChange={setValueColumn}
+                        includeNone
+                        placeholder="Auto (first numeric)"
+                      />
+                      <FormatSelect value={valueFormat} onChange={setValueFormat} />
+                    </>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
-        )}
+        </div>
 
         <SheetFooter>
           <Button variant="outline" onClick={onClose}>
