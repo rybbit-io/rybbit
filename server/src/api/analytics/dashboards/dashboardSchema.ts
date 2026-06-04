@@ -11,6 +11,10 @@ const cardMappingSchema = z.object({
   xColumn: z.string().optional(),
   yColumns: z.array(z.string()).optional(),
   seriesColumn: z.string().optional(),
+  valueColumn: z.string().optional(),
+  valueFormat: z.enum(["number", "percent", "duration", "bytes"]).optional(),
+  countryColumn: z.string().optional(),
+  dateColumn: z.string().optional(),
 });
 
 const cardSchema = z.object({
@@ -19,7 +23,7 @@ const cardSchema = z.object({
   // SQL is intentionally NOT validated here (validated only at execution time),
   // so in-progress / draft queries can be saved.
   sql: z.string(),
-  vizType: z.enum(["table", "line", "bar"]),
+  vizType: z.enum(["table", "line", "area", "bar", "hbar", "pie", "stat", "map", "calendar"]),
   mapping: cardMappingSchema,
   gridPos: gridPosSchema,
 });
