@@ -585,8 +585,15 @@
   cursor: grabbing;
 }
 
+/* Resize handles: clear corner brackets shown on all four corners while editing.
+   The default faint diagonal-lines icon is dropped; a single bracket is drawn for
+   the SE corner and react-resizable's own per-corner rotate() transforms orient it
+   correctly for NE / NW / SW. */
 .react-grid-item > .react-resizable-handle {
-  opacity: 0;
+  width: 20px;
+  height: 20px;
+  background-image: none;
+  opacity: 0.65;
   transition: opacity 150ms ease;
 }
 
@@ -595,10 +602,21 @@
 }
 
 .react-grid-item > .react-resizable-handle::after {
-  width: 7px;
-  height: 7px;
-  border-right-color: hsl(0 0% 55%);
-  border-bottom-color: hsl(0 0% 55%);
+  content: "";
+  position: absolute;
+  right: 4px;
+  bottom: 4px;
+  width: 9px;
+  height: 9px;
+  border: 0 solid hsl(160 84% 39%);
+  border-right-width: 2px;
+  border-bottom-width: 2px;
+  border-bottom-right-radius: 3px;
+  transition: border-color 150ms ease;
+}
+
+.react-grid-item:hover > .react-resizable-handle::after {
+  border-color: hsl(160 84% 45%);
 }
 
 /*

@@ -241,6 +241,7 @@ export default function DashboardDetailPage() {
             margin={[12, 12]}
             isDraggable={editMode}
             isResizable={editMode}
+            resizeHandles={["nw", "ne", "sw", "se"]}
             draggableHandle=".dashboard-card-drag-handle"
             onLayoutChange={handleLayoutChange}
           >
