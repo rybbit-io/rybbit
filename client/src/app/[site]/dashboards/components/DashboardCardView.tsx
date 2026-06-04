@@ -1,7 +1,7 @@
 "use client";
 
 import type { DashboardCard } from "@rybbit/shared";
-import { GripVertical, Loader2, Pencil, Trash2 } from "lucide-react";
+import { Copy, GripVertical, Loader2, Pencil, Trash2 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useDashboardCard } from "../../../../api/analytics/hooks/useDashboardCard";
 import { cn } from "../../../../lib/utils";
@@ -17,10 +17,11 @@ type DashboardCardViewProps = {
   card: DashboardCard;
   editMode: boolean;
   onEdit: () => void;
+  onClone: () => void;
   onRemove: () => void;
 };
 
-export function DashboardCardView({ siteId, card, editMode, onEdit, onRemove }: DashboardCardViewProps) {
+export function DashboardCardView({ siteId, card, editMode, onEdit, onClone, onRemove }: DashboardCardViewProps) {
   const { data, isLoading, isFetching, error } = useDashboardCard(siteId, card.id, card.sql);
   const [sort, setSort] = useState<SortState>(null);
 
@@ -63,6 +64,9 @@ export function DashboardCardView({ siteId, card, editMode, onEdit, onRemove }: 
           <div className="dashboard-card-no-drag flex shrink-0 items-center gap-0.5">
             <Button type="button" size="smIcon" variant="ghost" onClick={onEdit} aria-label="Edit card">
               <Pencil className="h-3.5 w-3.5" />
+            </Button>
+            <Button type="button" size="smIcon" variant="ghost" onClick={onClone} aria-label="Duplicate card">
+              <Copy className="h-3.5 w-3.5" />
             </Button>
             <Button type="button" size="smIcon" variant="ghost" onClick={onRemove} aria-label="Remove card">
               <Trash2 className="h-3.5 w-3.5 text-red-500" />

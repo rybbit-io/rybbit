@@ -30,7 +30,7 @@ import { useSetPageTitle } from "../../../../hooks/useSetPageTitle";
 import { useStore } from "../../../../lib/store";
 import { DashboardCardEditor } from "../components/DashboardCardEditor";
 import { DashboardCardView } from "../components/DashboardCardView";
-import { createCard } from "../utils";
+import { cloneCard, createCard } from "../utils";
 
 const ResponsiveGridLayout = WidthProvider(Responsive);
 const GRID_COLS = { lg: 12, md: 12, sm: 6, xs: 4, xxs: 2 };
@@ -53,6 +53,7 @@ export default function DashboardDetailPage() {
   const [dirty, setDirty] = useState(false);
   const [editingCardId, setEditingCardId] = useState<string | null>(null);
   const [confirmExit, setConfirmExit] = useState(false);
+  const [pendingRemoveId, setPendingRemoveId] = useState<string | null>(null);
   const [highlightId, setHighlightId] = useState<string | null>(null);
   // Action to run once the user confirms discarding (exit edit, or navigate away).
   const pendingActionRef = useRef<(() => void) | null>(null);
@@ -77,48 +78,59 @@ export default function DashboardDetailPage() {
 
   const editingCard = workingCards.find(card => card.id === editingCardId) ?? null;
 
-  // Track layout positions into the working copy, but DON'T flag dirty here:
-  // react-grid-layout fires onLayoutChange on mount and on compaction, which
-  // would otherwise mark an untouched dashboard dirty. Dirty is set only by an
-  // actual drag/resize (onDragStop / onResizeStop) or an explicit card edit.
-  const handleLayoutChange = useCallback(
-    (next: Layout[]) => {
-      if (!editMode) return;
-      setCards(prev => {
-        const base = prev ?? dashboard?.config.cards ?? [];
-        let changed = false;
-        const updated = base.map(card => {
-          const item = next.find(entry => entry.i === card.id);
-          if (!item) return card;
-          if (
-            item.x !== card.gridPos.x ||
-            item.y !== card.gridPos.y ||
-            item.w !== card.gridPos.w ||
-            item.h !== card.gridPos.h
-          ) {
-            changed = true;
-            return { ...card, gridPos: { x: item.x, y: item.y, w: item.w, h: item.h } };
-          }
-          return card;
-        });
-        return changed ? updated : prev;
-      });
-    },
-    [editMode, dashboard]
-  );
+  const handleLayoutChange = (next: Layout[]) => {
+    if (!editMode) return;
+    let changed = false;
+    const updated = workingCards.map(card => {
+      const item = next.find(entry => entry.i === card.id);
+      if (!item) return card;
+      if (
+        item.x !== card.gridPos.x ||
+        item.y !== card.gridPos.y ||
+        item.w !== card.gridPos.w ||
+        item.h !== card.gridPos.h
+      ) {
+        changed = true;
+        return { ...card, gridPos: { x: item.x, y: item.y, w: item.w, h: item.h } };
+      }
+      return card;
+    });
+    if (changed) {
+      setCards(updated);
+      setDirty(true);
+    }
+  };
+
+  // Bring a freshly added/cloned card into view (new cards often land past the
+  // fold) and flash it so the click has visible feedback.
+  const flashNewCard = useCallback((cardId: string) => {
+    setHighlightId(cardId);
+    window.setTimeout(() => {
+      document.getElementById(`dash-card-${cardId}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
+    }, 60);
+    window.setTimeout(() => setHighlightId(current => (current === cardId ? null : current)), 1800);
+  }, []);
 
   const handleAddCard = useCallback(() => {
     const newCard = createCard(workingCards.length + 1, workingCards);
     setCards([...workingCards, newCard]);
     setDirty(true);
-    setHighlightId(newCard.id);
-    // Bring the freshly-added card into view (it stacks below existing cards,
-    // often past the fold) and flash it so the click has visible feedback.
-    window.setTimeout(() => {
-      document.getElementById(`dash-card-${newCard.id}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
-    }, 60);
-    window.setTimeout(() => setHighlightId(current => (current === newCard.id ? null : current)), 1800);
-  }, [workingCards]);
+    flashNewCard(newCard.id);
+  }, [workingCards, flashNewCard]);
+
+  const handleCloneCard = useCallback(
+    (cardId: string) => {
+      const index = workingCards.findIndex(card => card.id === cardId);
+      if (index === -1) return;
+      const newCard = cloneCard(workingCards[index]);
+      const next = [...workingCards];
+      next.splice(index + 1, 0, newCard);
+      setCards(next);
+      setDirty(true);
+      flashNewCard(newCard.id);
+    },
+    [workingCards, flashNewCard]
+  );
 
   const handleRemoveCard = (cardId: string) => {
     setCards(workingCards.filter(card => card.id !== cardId));
@@ -320,12 +332,9 @@ export default function DashboardDetailPage() {
             margin={[12, 12]}
             isDraggable={editMode}
             isResizable={editMode}
-            resizeHandles={["se"]}
             draggableHandle=".dashboard-card-drag-handle"
             draggableCancel=".dashboard-card-no-drag"
             onLayoutChange={handleLayoutChange}
-            onDragStop={() => setDirty(true)}
-            onResizeStop={() => setDirty(true)}
           >
             {workingCards.map(card => (
               <div
@@ -341,7 +350,8 @@ export default function DashboardDetailPage() {
                   card={card}
                   editMode={editMode}
                   onEdit={() => setEditingCardId(card.id)}
-                  onRemove={() => handleRemoveCard(card.id)}
+                  onClone={() => handleCloneCard(card.id)}
+                  onRemove={() => setPendingRemoveId(card.id)}
                 />
               </div>
             ))}
@@ -358,6 +368,34 @@ export default function DashboardDetailPage() {
           onSave={handleSaveCard}
         />
       )}
+
+      <AlertDialog open={pendingRemoveId !== null} onOpenChange={open => !open && setPendingRemoveId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remove this card?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {(() => {
+                const title = workingCards.find(card => card.id === pendingRemoveId)?.title?.trim();
+                return title
+                  ? `"${title}" will be removed from this dashboard. You can still cancel before saving.`
+                  : "This card will be removed from this dashboard. You can still cancel before saving.";
+              })()}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Keep card</AlertDialogCancel>
+            <AlertDialogAction
+              variant="destructive"
+              onClick={() => {
+                if (pendingRemoveId !== null) handleRemoveCard(pendingRemoveId);
+                setPendingRemoveId(null);
+              }}
+            >
+              Remove card
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <AlertDialog
         open={confirmExit}

@@ -29,6 +29,20 @@ export function createCard(index: number, existing: DashboardCard[]): DashboardC
   };
 }
 
+/** Duplicate a card with a fresh id, "(copy)" title, placed just below the original. */
+export function cloneCard(card: DashboardCard): DashboardCard {
+  return {
+    ...card,
+    id: `card-${Date.now()}-${Math.floor(Math.random() * 1_000_000)}`,
+    title: `${card.title} (copy)`,
+    mapping: {
+      ...card.mapping,
+      yColumns: card.mapping.yColumns ? [...card.mapping.yColumns] : undefined,
+    },
+    gridPos: { ...card.gridPos, y: card.gridPos.y + card.gridPos.h },
+  };
+}
+
 export function isEmptyConfig(config: DashboardConfig | undefined): boolean {
   return !config || config.cards.length === 0;
 }
