@@ -1,3 +1,4 @@
+import { MAX_CARDS_PER_DASHBOARD } from "@rybbit/shared";
 import { z } from "zod";
 
 const gridPosSchema = z.object({
@@ -29,7 +30,7 @@ const cardSchema = z.object({
 });
 
 export const dashboardConfigSchema = z.object({
-  cards: z.array(cardSchema),
+  cards: z.array(cardSchema).max(MAX_CARDS_PER_DASHBOARD, `A dashboard can have at most ${MAX_CARDS_PER_DASHBOARD} cards`),
 });
 
 export const createDashboardSchema = z.object({

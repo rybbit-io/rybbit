@@ -3,7 +3,7 @@
 import "react-grid-layout/css/styles.css";
 import "react-resizable/css/styles.css";
 
-import type { DashboardCard } from "@rybbit/shared";
+import { MAX_CARDS_PER_DASHBOARD, type DashboardCard } from "@rybbit/shared";
 import { ArrowLeft, Check, ChevronLeft, ChevronRight, Loader2, Pencil, Plus } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -63,6 +63,7 @@ export default function DashboardDetailPage() {
   // Working copies fall back to the fetched dashboard until first edit.
   const workingName = name ?? dashboard?.name ?? "";
   const workingCards = cards ?? dashboard?.config.cards ?? [];
+  const atCardLimit = workingCards.length >= MAX_CARDS_PER_DASHBOARD;
 
   const layout: Layout[] = useMemo(
     () =>
@@ -120,6 +121,11 @@ export default function DashboardDetailPage() {
   // editor; presets are already complete and render live in the grid.
   const handleCreateCard = useCallback(
     (example: DashboardExample | null) => {
+      if (workingCards.length >= MAX_CARDS_PER_DASHBOARD) {
+        toast.error(`A dashboard can have at most ${MAX_CARDS_PER_DASHBOARD} cards`);
+        setAddingCard(false);
+        return;
+      }
       setEditMode(true);
       const index = workingCards.length + 1;
       const newCard = example ? createCardFromExample(index, workingCards, example) : createCard(index, workingCards);
@@ -137,6 +143,10 @@ export default function DashboardDetailPage() {
 
   const handleCloneCard = useCallback(
     (cardId: string) => {
+      if (workingCards.length >= MAX_CARDS_PER_DASHBOARD) {
+        toast.error(`A dashboard can have at most ${MAX_CARDS_PER_DASHBOARD} cards`);
+        return;
+      }
       const index = workingCards.findIndex(card => card.id === cardId);
       if (index === -1) return;
       const newCard = cloneCard(workingCards[index]);
@@ -310,7 +320,13 @@ export default function DashboardDetailPage() {
           <div className="mx-0.5 hidden h-5 w-px bg-neutral-200 sm:block dark:bg-neutral-800" />
           {editMode ? (
             <>
-              <Button variant="outline" size="sm" onClick={handleAddCard}>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleAddCard}
+                disabled={atCardLimit}
+                title={atCardLimit ? `A dashboard can have at most ${MAX_CARDS_PER_DASHBOARD} cards` : undefined}
+              >
                 <Plus className="h-4 w-4" />
                 Add card
               </Button>

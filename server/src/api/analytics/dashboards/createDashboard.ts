@@ -2,7 +2,6 @@ import { FastifyReply, FastifyRequest } from "fastify";
 import { z } from "zod";
 import { db } from "../../../db/postgres/postgres.js";
 import { dashboards } from "../../../db/postgres/schema.js";
-import { getUserHasAccessToSite } from "../../../lib/auth-utils.js";
 import { createDashboardSchema } from "./dashboardSchema.js";
 
 export async function createDashboard(
@@ -20,11 +19,7 @@ export async function createDashboard(
   try {
     const { name, config } = createDashboardSchema.parse(request.body);
 
-    const userHasAccessToSite = await getUserHasAccessToSite(request, siteId.toString());
-    if (!userHasAccessToSite) {
-      return reply.status(403).send({ error: "Forbidden" });
-    }
-
+    // Site access is enforced by the `authSite` (requireSiteAccess) preHandler.
     const result = await db
       .insert(dashboards)
       .values({

@@ -120,16 +120,19 @@ export function BucketSelection({ size = "sm" }: { size?: "default" | "sm" }) {
     const durationMinutes = getRangeDurationMinutes(time);
 
     if (time.mode === "past-minutes") {
+      const timeDiff = time.pastMinutesStart - (time.pastMinutesEnd ?? 0);
+
       if (time.pastMinutesStart >= 1440) {
-        return renderOptions(
-          ["minute", "five_minutes", "ten_minutes", "fifteen_minutes", "hour", "day"],
-          durationMinutes
-        );
+        return renderOptions(["minute", "five_minutes", "fifteen_minutes", "hour"], durationMinutes);
       }
-      return renderOptions(["minute", "five_minutes", "ten_minutes", "fifteen_minutes", "hour"], durationMinutes);
+      if (timeDiff > 120) {
+        return renderOptions(["hour"], durationMinutes);
+      }
+      // For shorter durations, exclude hour buckets
+      return renderOptions(["minute"], durationMinutes);
     }
     if (time.mode === "day") {
-      return renderOptions(["minute", "five_minutes", "ten_minutes", "fifteen_minutes", "hour"], durationMinutes);
+      return renderOptions(["minute", "five_minutes", "fifteen_minutes", "hour"], durationMinutes);
     }
     if (time.mode === "week") {
       return renderOptions(["fifteen_minutes", "hour", "day"], durationMinutes);
@@ -138,7 +141,7 @@ export function BucketSelection({ size = "sm" }: { size?: "default" | "sm" }) {
       return renderOptions(["hour", "day", "week"], durationMinutes);
     }
     if (time.mode === "year" || time.mode === "all-time") {
-      return renderOptions(["day", "week", "month", "year"], durationMinutes);
+      return renderOptions(["day", "week", "month"], durationMinutes);
     }
 
     if (time.mode === "range") {
@@ -166,7 +169,6 @@ export function BucketSelection({ size = "sm" }: { size?: "default" | "sm" }) {
       if (timeRangeLength >= 1) options.push("day");
       if (timeRangeLength >= 28) options.push("week");
       if (timeRangeLength >= 60) options.push("month");
-      if (timeRangeLength >= 365) options.push("year");
 
       return renderOptions(options, durationMinutes);
     }
@@ -174,7 +176,7 @@ export function BucketSelection({ size = "sm" }: { size?: "default" | "sm" }) {
 
   return (
     <Select value={bucket} onValueChange={setBucket}>
-      <SelectTrigger className={size === "sm" ? "w-[78px]" : "w-[90px]"} size={size}>
+      <SelectTrigger className="w-[90px]" size={size}>
         <div className="flex items-center gap-1">
           <TimerReset className={size === "sm" ? "w-3 h-3" : "w-4 h-4"} />
           <SelectValue />

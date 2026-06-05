@@ -13,9 +13,12 @@ const blockedKeywords = [
   "EXPLAIN",
   "FORMAT",
   "GRANT",
+  "INFILE",
   "INSERT",
+  "INTO",
   "KILL",
   "OPTIMIZE",
+  "OUTFILE",
   "RENAME",
   "RESTORE",
   "REVOKE",
@@ -30,25 +33,48 @@ const blockedKeywords = [
 
 const blockedFunctions = [
   "azureBlobStorage",
+  "azureBlobStorageCluster",
   "cluster",
+  "clusterAllReplicas",
   "cosn",
+  "deltaLake",
+  "dictionary",
   "executable",
   "file",
   "format",
+  "gcs",
   "generateRandom",
   "hdfs",
+  "hdfsCluster",
+  "hudi",
+  "iceberg",
+  "icebergCluster",
   "input",
   "jdbc",
+  "kafka",
+  "loop",
+  "meilisearch",
   "merge",
+  "mergeTreeIndex",
   "mongodb",
   "mysql",
+  "nats",
   "numbers",
   "odbc",
   "postgresql",
+  "prometheus",
+  "rabbitmq",
+  "redis",
   "remote",
+  "remoteSecure",
   "s3",
   "s3Cluster",
+  "sqlite",
   "url",
+  "urlCluster",
+  "values",
+  "view",
+  "viewIfPermitted",
 ] as const;
 
 const blockedTableNames = [
@@ -186,6 +212,19 @@ export function validateScopedQuery(query: string): string | null {
     }
   }
 
+  // Dictionary accessors (dictGet, dictGetString, dictHas, dictGetHierarchy, …)
+  // can read external dictionary data that isn't scoped to the site.
+  if (/\bdict[A-Za-z]*\s*\(/i.test(compactQuery)) {
+    return "Dictionary functions are not allowed in custom analytics queries";
+  }
+
+  // Block any database-qualified reference to system / information_schema,
+  // regardless of how it's reached (FROM, JOIN, scalar subquery, function arg).
+  // readonly=2 still permits SELECTing from these, so this is the real guard.
+  if (/\b(system|information_schema|INFORMATION_SCHEMA)\s*\./i.test(compactQuery)) {
+    return "Queries can only read from scoped_events";
+  }
+
   if (/\bWITH\s+scoped_events\s+AS\b/i.test(compactQuery) || /\bAS\s+scoped_events\b/i.test(compactQuery)) {
     return "scoped_events is reserved and cannot be redefined";
   }
@@ -196,11 +235,15 @@ export function validateScopedQuery(query: string): string | null {
     }
   }
 
-  const tableReferencePattern = /\b(?:FROM|JOIN)\s+([a-zA-Z_][a-zA-Z0-9_.]*|\()/gi;
+  // Match `FROM <identifier>` (requires whitespace, so `FROMx` won't match) and
+  // `FROM(` / `FROM (` (a subquery, captured as undefined → skipped). Every named
+  // target must be scoped_events or a declared CTE.
+  const tableReferencePattern = /\b(?:FROM|JOIN)(?:\s+([a-zA-Z_][a-zA-Z0-9_.]*)|\s*\()/gi;
   let match: RegExpExecArray | null;
   while ((match = tableReferencePattern.exec(compactQuery)) !== null) {
     const tableName = match[1];
-    if (tableName === "(") {
+    if (!tableName) {
+      // Paren branch: a subquery, validated by subsequent FROM/JOIN matches.
       continue;
     }
 

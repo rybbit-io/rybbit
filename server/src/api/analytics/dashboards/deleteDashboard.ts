@@ -2,7 +2,6 @@ import { eq } from "drizzle-orm";
 import { FastifyReply, FastifyRequest } from "fastify";
 import { db } from "../../../db/postgres/postgres.js";
 import { dashboards } from "../../../db/postgres/schema.js";
-import { getUserHasAccessToSite } from "../../../lib/auth-utils.js";
 
 export async function deleteDashboard(
   request: FastifyRequest<{
@@ -36,11 +35,7 @@ export async function deleteDashboard(
       return reply.status(403).send({ error: "Dashboard does not belong to the specified site" });
     }
 
-    const userHasAccessToSite = await getUserHasAccessToSite(request, siteId.toString());
-    if (!userHasAccessToSite) {
-      return reply.status(403).send({ error: "Forbidden" });
-    }
-
+    // Site access is enforced by the `authSite` (requireSiteAccess) preHandler.
     const result = await db
       .delete(dashboards)
       .where(eq(dashboards.dashboardId, dashboardId))

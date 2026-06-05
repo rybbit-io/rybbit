@@ -1,7 +1,7 @@
 "use client";
 
 import { useVirtualizer } from "@tanstack/react-virtual";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { CustomQueryRow } from "../../../../api/analytics/endpoints";
 import { TableSortIndicator } from "../../../../components/ui/table";
 import type { SortState } from "../types";
@@ -22,6 +22,8 @@ export function ResultsTable({ columns, rows, sort, onSortChange }: ResultsTable
   const headerScrollRef = useRef<HTMLDivElement>(null);
   const headerCellRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const [columnWidths, setColumnWidths] = useState<Record<string, number>>({});
+  // Holds the teardown for an in-flight column drag so it can be run on unmount.
+  const resizeCleanupRef = useRef<(() => void) | null>(null);
   const rowVirtualizer = useVirtualizer({
     count: rows.length,
     getScrollElement: () => scrollContainerRef.current,
@@ -45,13 +47,18 @@ export function ResultsTable({ columns, rows, sort, onSortChange }: ResultsTable
       document.removeEventListener("mouseup", handleMouseUp);
       document.body.style.cursor = "";
       document.body.style.userSelect = "";
+      resizeCleanupRef.current = null;
     };
 
     document.addEventListener("mousemove", handleMouseMove);
     document.addEventListener("mouseup", handleMouseUp);
     document.body.style.cursor = "col-resize";
     document.body.style.userSelect = "none";
+    resizeCleanupRef.current = handleMouseUp;
   };
+
+  // Tear down any in-flight drag if the table unmounts mid-resize.
+  useEffect(() => () => resizeCleanupRef.current?.(), []);
 
   const gridTemplateColumns = columns
     .map(column => (columnWidths[column] ? `${columnWidths[column]}px` : "minmax(160px, 1fr)"))

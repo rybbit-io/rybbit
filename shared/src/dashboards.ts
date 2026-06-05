@@ -59,6 +59,9 @@ export interface DashboardConfig {
   cards: DashboardCard[];
 }
 
+/** Cap cards per dashboard: each card fans out its own ClickHouse query. */
+export const MAX_CARDS_PER_DASHBOARD = 10;
+
 export interface Dashboard {
   dashboardId: number;
   siteId: number;
