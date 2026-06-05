@@ -1,5 +1,10 @@
-import { MAX_CARDS_PER_DASHBOARD } from "@rybbit/shared";
 import { z } from "zod";
+
+// Cap cards per dashboard: each card fans out its own ClickHouse query.
+// @rybbit/shared is a types-only package here (its imports are erased at
+// compile time), so this runtime value lives locally. The client mirrors it in
+// dashboards/utils.ts — keep the two in sync.
+export const MAX_CARDS_PER_DASHBOARD = 10;
 
 const gridPosSchema = z.object({
   x: z.number(),

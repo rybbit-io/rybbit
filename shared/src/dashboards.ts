@@ -59,13 +59,6 @@ export interface DashboardConfig {
   cards: DashboardCard[];
 }
 
-/**
- * Cap cards per dashboard: each card fans out its own ClickHouse query.
- * Enforced server-side in dashboardSchema; the client mirrors this as a local
- * literal in dashboards/utils.ts (it imports only types from this package).
- */
-export const MAX_CARDS_PER_DASHBOARD = 10;
-
 export interface Dashboard {
   dashboardId: number;
   siteId: number;

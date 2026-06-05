@@ -12,9 +12,9 @@ import { getTimezone } from "@/lib/store";
 import { formatSecondsAsMinutesAndSeconds, formatter } from "@/lib/utils";
 import type { DashboardExample } from "./examples";
 
-// Mirror of the server's MAX_CARDS_PER_DASHBOARD (@rybbit/shared, enforced in
-// dashboardSchema). Kept as a client-local literal because the client imports
-// only types — not runtime values — from @rybbit/shared. Keep the two in sync.
+// Mirror of the server's MAX_CARDS_PER_DASHBOARD (enforced in dashboardSchema).
+// Kept as a client-local literal because @rybbit/shared is a types-only package
+// here — importing a runtime value from it fails at build/runtime. Keep in sync.
 export const MAX_CARDS_PER_DASHBOARD = 10;
 
 export const CARD_PALETTE = [
