@@ -27,7 +27,7 @@ import { Suspense } from "react";
 import { useGetSite } from "../../../../api/admin/hooks/useSites";
 import { Sidebar as SidebarComponents } from "../../../../components/sidebar/Sidebar";
 import { SiteSettings } from "../../../../components/SiteSettings/SiteSettings";
-import { IS_CLOUD } from "../../../../lib/const";
+import { DEMO_HOSTNAME, IS_CLOUD } from "../../../../lib/const";
 import { getSiteRouteContext } from "../../../../lib/siteRoute";
 import { useEmbedPageOptions } from "../../utils";
 import { SiteSelector } from "./SiteSelector";
@@ -126,18 +126,22 @@ function SidebarContent() {
             icon={<Code className="w-4 h-4" />}
           />
         </div>
-        <SidebarComponents.Item
-          label={t("Query")}
-          active={isActiveTab("query")}
-          href={getTabPath("query")}
-          icon={<Database className="w-4 h-4" />}
-        />
-        <SidebarComponents.Item
-          label={t("Dashboards")}
-          active={isActiveTab("dashboards")}
-          href={getTabPath("dashboards")}
-          icon={<LayoutGrid className="w-4 h-4" />}
-        />
+        {!IS_CLOUD && (
+          <>
+            <SidebarComponents.Item
+              label={t("Query")}
+              active={isActiveTab("query")}
+              href={getTabPath("query")}
+              icon={<Database className="w-4 h-4" />}
+            />
+            <SidebarComponents.Item
+              label={t("Dashboards")}
+              active={isActiveTab("dashboards")}
+              href={getTabPath("dashboards")}
+              icon={<LayoutGrid className="w-4 h-4" />}
+            />
+          </>
+        )}
         <SidebarComponents.SectionHeader>{t("Product Analytics")}</SidebarComponents.SectionHeader>
         <div className="hidden md:block">
           {!isMobileSite && !subscription?.planName?.startsWith("appsumo") && !isSubscriptionLoading && (
