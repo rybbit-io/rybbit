@@ -280,11 +280,6 @@ export default function DashboardDetailPage() {
           ) : (
             <h1 className="truncate text-lg font-semibold">{workingName}</h1>
           )}
-          {editMode && dirty && (
-            <span className="shrink-0 rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-medium text-amber-700 dark:bg-amber-950 dark:text-amber-400">
-              Unsaved changes
-            </span>
-          )}
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
