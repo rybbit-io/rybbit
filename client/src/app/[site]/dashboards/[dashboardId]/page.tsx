@@ -3,7 +3,7 @@
 import "react-grid-layout/css/styles.css";
 import "react-resizable/css/styles.css";
 
-import { MAX_CARDS_PER_DASHBOARD, type DashboardCard } from "@rybbit/shared";
+import type { DashboardCard } from "@rybbit/shared";
 import { ArrowLeft, Check, ChevronLeft, ChevronRight, Loader2, Pencil, Plus } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -31,7 +31,7 @@ import { DashboardCardEditor } from "../components/DashboardCardEditor";
 import { DashboardCardView } from "../components/DashboardCardView";
 import { NewCardDialog } from "../components/NewCardDialog";
 import type { DashboardExample } from "../examples";
-import { cloneCard, createCard, createCardFromExample } from "../utils";
+import { cloneCard, createCard, createCardFromExample, MAX_CARDS_PER_DASHBOARD } from "../utils";
 
 const ResponsiveGridLayout = WidthProvider(Responsive);
 const GRID_COLS = { lg: 12, md: 12, sm: 6, xs: 4, xxs: 2 };
@@ -226,6 +226,53 @@ export default function DashboardDetailPage() {
     window.addEventListener("beforeunload", handler);
     return () => window.removeEventListener("beforeunload", handler);
   }, [editMode, dirty]);
+
+  // Next.js client-side links do not trigger beforeunload, so guard sidebar
+  // and other internal link clicks while the working copy has unsaved edits.
+  useEffect(() => {
+    if (!(editMode && dirty)) return;
+
+    const handler = (event: MouseEvent) => {
+      if (
+        event.defaultPrevented ||
+        event.button !== 0 ||
+        event.metaKey ||
+        event.ctrlKey ||
+        event.shiftKey ||
+        event.altKey
+      ) {
+        return;
+      }
+
+      const target = event.target instanceof Element ? event.target : null;
+      const anchor = target?.closest<HTMLAnchorElement>("a[href]");
+      if (!anchor || anchor.hasAttribute("download") || (anchor.target && anchor.target !== "_self")) return;
+
+      const rawHref = anchor.getAttribute("href");
+      if (!rawHref || rawHref.startsWith("#")) return;
+
+      let url: URL;
+      try {
+        url = new URL(rawHref, window.location.href);
+      } catch {
+        return;
+      }
+
+      if (url.origin !== window.location.origin) return;
+
+      const nextRoute = `${url.pathname}${url.search}`;
+      const currentRoute = `${window.location.pathname}${window.location.search}`;
+      if (nextRoute === currentRoute) return;
+
+      event.preventDefault();
+      event.stopPropagation();
+      pendingActionRef.current = () => router.push(`${nextRoute}${url.hash}`);
+      setConfirmExit(true);
+    };
+
+    document.addEventListener("click", handler, true);
+    return () => document.removeEventListener("click", handler, true);
+  }, [editMode, dirty, router]);
 
   // Edit-mode keyboard shortcuts: Cmd/Ctrl+S saves, Esc cancels.
   useEffect(() => {

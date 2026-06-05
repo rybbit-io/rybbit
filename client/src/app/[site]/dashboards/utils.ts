@@ -8,8 +8,14 @@ import type {
   TimeBucket,
 } from "@rybbit/shared";
 import { DateTime } from "luxon";
+import { getTimezone } from "@/lib/store";
 import { formatSecondsAsMinutesAndSeconds, formatter } from "@/lib/utils";
 import type { DashboardExample } from "./examples";
+
+// Mirror of the server's MAX_CARDS_PER_DASHBOARD (@rybbit/shared, enforced in
+// dashboardSchema). Kept as a client-local literal because the client imports
+// only types — not runtime values — from @rybbit/shared. Keep the two in sync.
+export const MAX_CARDS_PER_DASHBOARD = 10;
 
 export const CARD_PALETTE = [
   // Lead with the brand data hue (--dataviz periwinkle); escalate to distinct
@@ -205,7 +211,7 @@ export function buildChartAxis(values: string[], bucket: TimeBucket): ChartAxis 
       isTime: true,
       format: value => {
         const dt = parseChartDate(value);
-        return dt ? dt.toFormat(fmt) : String(value ?? "");
+        return dt ? dt.setZone(getTimezone()).toFormat(fmt) : String(value ?? "");
       },
       tickValues: strideValues(values),
     };

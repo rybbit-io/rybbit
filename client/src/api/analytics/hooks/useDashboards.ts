@@ -27,15 +27,8 @@ export function useGetDashboard(siteId?: string | number, dashboardId?: number) 
 export function useCreateDashboard() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({
-      siteId,
-      name,
-      config,
-    }: {
-      siteId: string | number;
-      name: string;
-      config?: DashboardConfig;
-    }) => createDashboard(siteId, { name, config }),
+    mutationFn: ({ siteId, name, config }: { siteId: string | number; name: string; config?: DashboardConfig }) =>
+      createDashboard(siteId, { name, config }),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ["get-dashboards", variables.siteId] });
     },
@@ -69,6 +62,7 @@ export function useDeleteDashboard() {
     mutationFn: ({ siteId, dashboardId }: { siteId: string | number; dashboardId: number }) =>
       deleteDashboard(siteId, dashboardId),
     onSuccess: (_, variables) => {
+      queryClient.removeQueries({ queryKey: ["get-dashboard", variables.siteId, variables.dashboardId], exact: true });
       queryClient.invalidateQueries({ queryKey: ["get-dashboards", variables.siteId] });
     },
   });

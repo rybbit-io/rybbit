@@ -22,7 +22,8 @@ import { useSetPageTitle } from "../../../hooks/useSetPageTitle";
 
 function relativeUpdated(updatedAt: string | null | undefined): string | null {
   if (!updatedAt) return null;
-  const dt = DateTime.fromISO(updatedAt);
+  let dt = DateTime.fromISO(updatedAt, { zone: "utc" });
+  if (!dt.isValid) dt = DateTime.fromSQL(updatedAt, { zone: "utc" });
   return dt.isValid ? dt.toRelative() : null;
 }
 
