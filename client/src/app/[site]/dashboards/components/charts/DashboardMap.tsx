@@ -67,9 +67,6 @@ export function DashboardMap({ rows, mapping }: DashboardMapProps) {
       target: mapRef.current,
       view: new View({ center: fromLonLat([10, 35]), zoom }),
       controls: [],
-      // Static choropleth inside a scrollable grid: no wheel-zoom or drag-pan
-      // (otherwise scrolling the dashboard over the card zooms the map).
-      interactions: [],
     });
     mapInstanceRef.current = map;
 

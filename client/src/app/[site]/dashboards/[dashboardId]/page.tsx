@@ -4,7 +4,7 @@ import "react-grid-layout/css/styles.css";
 import "react-resizable/css/styles.css";
 
 import type { DashboardCard } from "@rybbit/shared";
-import { ArrowLeft, Check, Loader2, Pencil, Plus } from "lucide-react";
+import { ArrowLeft, Check, ChevronLeft, ChevronRight, Loader2, Pencil, Plus } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Responsive, WidthProvider, type Layout } from "react-grid-layout";
@@ -26,7 +26,7 @@ import { Skeleton } from "../../../../components/ui/skeleton";
 import { toast } from "../../../../components/ui/sonner";
 import { cn } from "../../../../lib/utils";
 import { useSetPageTitle } from "../../../../hooks/useSetPageTitle";
-import { useStore } from "../../../../lib/store";
+import { canGoForward, goBack, goForward, useStore } from "../../../../lib/store";
 import { DashboardCardEditor } from "../components/DashboardCardEditor";
 import { DashboardCardView } from "../components/DashboardCardView";
 import { NewCardDialog } from "../components/NewCardDialog";
@@ -284,18 +284,40 @@ export default function DashboardDetailPage() {
 
         <div className="flex flex-wrap items-center gap-2">
           <DateSelector time={time} setTime={setTime} />
-          <BucketSelection size="default" />
+          <div className="flex items-center">
+            <Button
+              variant="secondary"
+              size="icon"
+              onClick={goBack}
+              disabled={time.mode === "past-minutes"}
+              className="h-8 w-8 rounded-r-none"
+              aria-label="Previous date range"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="secondary"
+              size="icon"
+              onClick={goForward}
+              disabled={!canGoForward(time)}
+              className="-ml-px h-8 w-8 rounded-l-none"
+              aria-label="Next date range"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
+          <BucketSelection size="sm" />
           <div className="mx-0.5 hidden h-5 w-px bg-neutral-200 sm:block dark:bg-neutral-800" />
           {editMode ? (
             <>
-              <Button variant="outline" onClick={handleAddCard}>
+              <Button variant="outline" size="sm" onClick={handleAddCard}>
                 <Plus className="h-4 w-4" />
                 Add card
               </Button>
-              <Button variant="ghost" onClick={handleCancel}>
+              <Button variant="ghost" size="sm" onClick={handleCancel}>
                 Cancel
               </Button>
-              <Button onClick={handleSave} disabled={!dirty || updateDashboard.isPending}>
+              <Button size="sm" onClick={handleSave} disabled={!dirty || updateDashboard.isPending}>
                 {updateDashboard.isPending ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
                 ) : (
@@ -305,7 +327,7 @@ export default function DashboardDetailPage() {
               </Button>
             </>
           ) : (
-            <Button variant="outline" onClick={() => setEditMode(true)}>
+            <Button variant="outline" size="sm" onClick={() => setEditMode(true)}>
               <Pencil className="h-4 w-4" />
               Edit
             </Button>
