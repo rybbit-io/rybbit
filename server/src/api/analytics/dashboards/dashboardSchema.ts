@@ -4,7 +4,7 @@ import { z } from "zod";
 // @rybbit/shared is a types-only package here (its imports are erased at
 // compile time), so this runtime value lives locally. The client mirrors it in
 // dashboards/utils.ts — keep the two in sync.
-export const MAX_CARDS_PER_DASHBOARD = 10;
+export const MAX_CARDS_PER_DASHBOARD = 20;
 
 const gridPosSchema = z.object({
   x: z.number(),

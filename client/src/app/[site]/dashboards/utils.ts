@@ -15,7 +15,7 @@ import type { DashboardExample } from "./examples";
 // Mirror of the server's MAX_CARDS_PER_DASHBOARD (enforced in dashboardSchema).
 // Kept as a client-local literal because @rybbit/shared is a types-only package
 // here — importing a runtime value from it fails at build/runtime. Keep in sync.
-export const MAX_CARDS_PER_DASHBOARD = 10;
+export const MAX_CARDS_PER_DASHBOARD = 20;
 
 export const CARD_PALETTE = [
   // Lead with the brand data hue (--dataviz periwinkle); escalate to distinct
