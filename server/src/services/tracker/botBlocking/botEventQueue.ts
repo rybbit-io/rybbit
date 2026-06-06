@@ -11,18 +11,8 @@ type BotEventPayload = TotalTrackingPayload &
     sessionId: string;
   };
 
-const parsePositiveInt = (value: string | undefined, fallback: number) => {
-  const parsed = Number(value);
-  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
-};
-
-const DEFAULT_TRACKING_BATCH_SIZE = parsePositiveInt(process.env.TRACKING_BATCH_SIZE, 5000);
-const DEFAULT_TRACKING_FLUSH_INTERVAL_MS = parsePositiveInt(process.env.TRACKING_FLUSH_INTERVAL_MS, 1000);
-const BOT_EVENT_BATCH_SIZE = parsePositiveInt(process.env.BOT_EVENT_BATCH_SIZE, DEFAULT_TRACKING_BATCH_SIZE);
-const BOT_EVENT_FLUSH_INTERVAL_MS = parsePositiveInt(
-  process.env.BOT_EVENT_FLUSH_INTERVAL_MS,
-  DEFAULT_TRACKING_FLUSH_INTERVAL_MS
-);
+const BOT_EVENT_BATCH_SIZE = 5000;
+const BOT_EVENT_FLUSH_INTERVAL_MS = 1000;
 
 class BotEventQueue {
   private queue: BotEventPayload[] = [];

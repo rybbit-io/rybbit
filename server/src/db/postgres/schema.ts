@@ -95,7 +95,11 @@ export const sites = pgTable(
   table => [check("sites_type_check", sql`${table.type} IS NULL OR ${table.type} IN ('web', 'mobile')`)]
 );
 
-// Active sessions table
+// Active sessions table.
+// DEPRECATED: session tracking moved to Redis (see services/sessions/sessionsService.ts).
+// No longer read or written by the app; kept so existing deployments stay drift-free.
+// Drop it once Redis-backed sessions are verified in production:
+//   DROP TABLE IF EXISTS active_sessions;
 export const activeSessions = pgTable(
   "active_sessions",
   {

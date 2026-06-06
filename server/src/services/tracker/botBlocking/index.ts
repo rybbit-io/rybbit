@@ -10,7 +10,8 @@ import { CLIENT_BOT_SCORE_THRESHOLD } from "./config.js";
 import { detectBot } from "./headerHeuristics.js";
 import { classifyUA } from "./uaBots/index.js";
 
-const LOG_BOT_DETECTIONS = process.env.BOT_BLOCKING_LOG_DETECTIONS === "true";
+// Per-detection logging is verbose and costly at high traffic; off by default.
+const LOG_BOT_DETECTIONS = false;
 
 interface BotBlockingPayload {
   siteId: string;

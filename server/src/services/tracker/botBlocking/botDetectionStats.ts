@@ -10,12 +10,7 @@ const BOT_DETECTION_METHODS: readonly BotDetectionMethod[] = [
   "rate_anomaly",
 ];
 
-const parsePositiveInt = (value: string | undefined, fallback: number) => {
-  const parsed = Number(value);
-  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
-};
-
-const BOT_DETECTION_STATS_INTERVAL_MS = parsePositiveInt(process.env.BOT_DETECTION_STATS_INTERVAL_MS, 60_000);
+const BOT_DETECTION_STATS_INTERVAL_MS = 60_000;
 
 const totals: Record<BotDetectionMethod, number> = {
   ua_pattern: 0,

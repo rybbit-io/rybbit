@@ -10,18 +10,8 @@ type TotalPayload = TotalTrackingPayload & {
   sessionId: string;
 };
 
-const parsePositiveInt = (value: string | undefined, fallback: number) => {
-  const parsed = Number(value);
-  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
-};
-
-const DEFAULT_TRACKING_BATCH_SIZE = parsePositiveInt(process.env.TRACKING_BATCH_SIZE, 5000);
-const DEFAULT_TRACKING_FLUSH_INTERVAL_MS = parsePositiveInt(process.env.TRACKING_FLUSH_INTERVAL_MS, 1000);
-const PAGEVIEW_BATCH_SIZE = parsePositiveInt(process.env.TRACKING_PAGEVIEW_BATCH_SIZE, DEFAULT_TRACKING_BATCH_SIZE);
-const PAGEVIEW_FLUSH_INTERVAL_MS = parsePositiveInt(
-  process.env.TRACKING_PAGEVIEW_FLUSH_INTERVAL_MS,
-  DEFAULT_TRACKING_FLUSH_INTERVAL_MS
-);
+const PAGEVIEW_BATCH_SIZE = 5000;
+const PAGEVIEW_FLUSH_INTERVAL_MS = 1000;
 
 const getParsedProperties = (properties: string | undefined) => {
   try {

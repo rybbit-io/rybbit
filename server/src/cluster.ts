@@ -47,7 +47,6 @@ if (workerCount === 0) {
 
   // Start cron jobs on the primary process only
   telemetryService.startTelemetryCron();
-  sessionsService.startCleanupCron();
   usageService.startUsageCheckCron();
   if (IS_CLOUD && process.env.NODE_ENV !== "development") {
     weeklyReportService.startWeeklyReportCron();
@@ -117,7 +116,7 @@ if (workerCount === 0) {
 
     // Stop cron jobs
     usageService.stopUsageCheckCron();
-    sessionsService.stopCleanupCron();
+    void sessionsService.close();
     telemetryService.stopTelemetryCron();
     if (IS_CLOUD) {
       weeklyReportService.stopWeeklyReportCron();

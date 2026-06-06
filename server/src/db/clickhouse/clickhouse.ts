@@ -2,12 +2,7 @@ import { createClient } from "@clickhouse/client";
 import { IS_CLOUD, LITE_DASHBOARD } from "../../lib/const.js";
 import { createServiceLogger } from "../../lib/logger/logger.js";
 
-const parsePositiveInt = (value: string | undefined, fallback: number) => {
-  const parsed = Number(value);
-  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
-};
-
-const CLICKHOUSE_REQUEST_TIMEOUT_MS = parsePositiveInt(process.env.CLICKHOUSE_REQUEST_TIMEOUT_MS, 300_000);
+const CLICKHOUSE_REQUEST_TIMEOUT_MS = 300_000;
 
 export const clickhouse = createClient({
   url: process.env.CLICKHOUSE_HOST,
