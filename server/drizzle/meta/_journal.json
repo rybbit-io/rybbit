@@ -64,13 +64,6 @@
       "when": 1780551464784,
       "tag": "0008_black_prowler",
       "breakpoints": true
-    },
-    {
-      "idx": 9,
-      "version": "7",
-      "when": 1780726377256,
-      "tag": "0009_brief_shooting_star",
-      "breakpoints": true
     }
   ]
 }

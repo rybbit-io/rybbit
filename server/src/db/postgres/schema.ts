@@ -100,20 +100,13 @@ export const sites = pgTable(
 // No longer read or written by the app; kept so existing deployments stay drift-free.
 // Drop it once Redis-backed sessions are verified in production:
 //   DROP TABLE IF EXISTS active_sessions;
-export const activeSessions = pgTable(
-  "active_sessions",
-  {
-    sessionId: text("session_id").primaryKey().notNull(),
-    siteId: integer("site_id"),
-    userId: text("user_id"),
-    startTime: timestamp("start_time").defaultNow(),
-    lastActivity: timestamp("last_activity").defaultNow(),
-  },
-  table => [
-    index("active_sessions_site_user_last_activity_idx").on(table.siteId, table.userId, table.lastActivity),
-    index("active_sessions_last_activity_idx").on(table.lastActivity),
-  ]
-);
+export const activeSessions = pgTable("active_sessions", {
+  sessionId: text("session_id").primaryKey().notNull(),
+  siteId: integer("site_id"),
+  userId: text("user_id"),
+  startTime: timestamp("start_time").defaultNow(),
+  lastActivity: timestamp("last_activity").defaultNow(),
+});
 
 export const funnels = pgTable("funnels", {
   reportId: serial("report_id").primaryKey().notNull(),
