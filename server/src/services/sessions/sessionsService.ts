@@ -12,6 +12,12 @@ const parsePositiveInt = (value: string | undefined, fallback: number) => {
 
 const SESSION_TIMEOUT_MS = 30 * 60 * 1000;
 const SESSION_TOUCH_INTERVAL_MS = parsePositiveInt(process.env.TRACKING_SESSION_TOUCH_INTERVAL_MS, 5 * 60 * 1000);
+const SESSION_DB_STALE_GRACE_MS = SESSION_TOUCH_INTERVAL_MS;
+const SESSION_CACHE_PRUNE_INTERVAL_MS = parsePositiveInt(
+  process.env.TRACKING_SESSION_CACHE_PRUNE_INTERVAL_MS,
+  60 * 1000
+);
+const SESSION_CACHE_MAX_ENTRIES = parsePositiveInt(process.env.TRACKING_SESSION_CACHE_MAX_ENTRIES, 100_000);
 
 interface CachedSession {
   sessionId: string;
@@ -22,11 +28,22 @@ interface CachedSession {
 
 export class SessionsService {
   private cleanupTask: cron.ScheduledTask | null = null;
+  private cacheMaintenanceInterval: NodeJS.Timeout | null = null;
   private logger = createServiceLogger("sessions");
   private sessionCache = new Map<string, CachedSession>();
   private pendingLookups = new Map<string, Promise<{ sessionId: string }>>();
 
-  constructor() {}
+  constructor() {
+    this.startCacheMaintenance();
+  }
+
+  private startCacheMaintenance() {
+    this.cacheMaintenanceInterval = setInterval(() => {
+      this.pruneSessionCache();
+      this.enforceSessionCacheLimit();
+    }, SESSION_CACHE_PRUNE_INTERVAL_MS);
+    this.cacheMaintenanceInterval.unref?.();
+  }
 
   private initializeCleanupCron() {
     this.cleanupTask = cron.schedule(
@@ -50,11 +67,13 @@ export class SessionsService {
   }
 
   private cacheSession(key: string, sessionId: string, nowMs: number, lastActivityMs = nowMs) {
+    this.sessionCache.delete(key);
     this.sessionCache.set(key, {
       sessionId,
       expiresAt: nowMs + SESSION_TIMEOUT_MS,
       touchDueAt: Math.max(nowMs, lastActivityMs + SESSION_TOUCH_INTERVAL_MS),
     });
+    this.enforceSessionCacheLimit();
   }
 
   private pruneSessionCache(nowMs = Date.now()) {
@@ -65,6 +84,14 @@ export class SessionsService {
     }
   }
 
+  private enforceSessionCacheLimit() {
+    while (this.sessionCache.size > SESSION_CACHE_MAX_ENTRIES) {
+      const oldestKey = this.sessionCache.keys().next().value;
+      if (oldestKey === undefined) break;
+      this.sessionCache.delete(oldestKey);
+    }
+  }
+
   private getTimestampMs(value: Date | string | null | undefined) {
     if (!value) return 0;
     const time = value instanceof Date ? value.getTime() : new Date(value).getTime();
@@ -72,7 +99,7 @@ export class SessionsService {
   }
 
   async getExistingSession(userId: string, siteId: number, now = new Date()) {
-    const activeSince = new Date(now.getTime() - SESSION_TIMEOUT_MS);
+    const activeSince = new Date(now.getTime() - SESSION_TIMEOUT_MS - SESSION_DB_STALE_GRACE_MS);
     const [existingSession] = await db
       .select()
       .from(activeSessions)
@@ -127,6 +154,8 @@ export class SessionsService {
 
     if (cached && cached.expiresAt > nowMs) {
       cached.expiresAt = nowMs + SESSION_TIMEOUT_MS;
+      this.sessionCache.delete(key);
+      this.sessionCache.set(key, cached);
       if (cached.touchDueAt <= nowMs) {
         await this.touchCachedSession(key, cached, now, nowMs);
       }
@@ -185,15 +214,16 @@ export class SessionsService {
   }
 
   async cleanupOldSessions(): Promise<number> {
-    // Delete sessions older than 30 minutes
-    const thirtyMinutesAgo = new Date(Date.now() - 30 * 60 * 1000);
+    // Persisted lastActivity can lag the cache by the touch throttle.
+    const expiredBefore = new Date(Date.now() - SESSION_TIMEOUT_MS - SESSION_DB_STALE_GRACE_MS);
 
     const deletedSessions = await db
       .delete(activeSessions)
-      .where(lt(activeSessions.lastActivity, thirtyMinutesAgo))
+      .where(lt(activeSessions.lastActivity, expiredBefore))
       .returning();
 
     this.pruneSessionCache();
+    this.enforceSessionCacheLimit();
 
     // this.logger.debug(`Cleaned up ${deletedSessions.length} sessions`);
     return deletedSessions.length;
@@ -208,6 +238,10 @@ export class SessionsService {
     if (this.cleanupTask) {
       this.cleanupTask.stop();
       this.logger.info("Session cleanup cron stopped");
+    }
+    if (this.cacheMaintenanceInterval) {
+      clearInterval(this.cacheMaintenanceInterval);
+      this.cacheMaintenanceInterval = null;
     }
   }
 }
