@@ -354,23 +354,23 @@ export async function trackEvent(request: FastifyRequest, reply: FastifyReply) {
       trustedServerSideIngestion
     );
 
-    // Update session (use numeric siteId)
-    const { sessionId } = await sessionsService.updateSession({
-      userId: payload.userId,
-      siteId: siteConfiguration.siteId,
-    });
-
     if (botDetectionResult) {
       await botEventQueue.add({
         ...payload,
         ...botDetectionResult.eventProperties,
-        sessionId,
+        sessionId: `bot:${payload.userId}`,
       });
 
       return reply.status(200).send({
         success: true,
       });
     }
+
+    // Update session (use numeric siteId)
+    const { sessionId } = await sessionsService.updateSession({
+      userId: payload.userId,
+      siteId: siteConfiguration.siteId,
+    });
 
     // Add to queue for processing (payload already has numeric siteId)
     await pageviewQueue.add({

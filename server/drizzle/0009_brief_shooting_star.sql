@@ -1,0 +1,2 @@
+CREATE INDEX "active_sessions_site_user_last_activity_idx" ON "active_sessions" USING btree ("site_id","user_id","last_activity");--> statement-breakpoint
+CREATE INDEX "active_sessions_last_activity_idx" ON "active_sessions" USING btree ("last_activity");

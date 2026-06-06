@@ -1,10 +1,10 @@
-import { createHash } from "crypto";
-
 const SECOND = 1000;
 const MINUTE = 60 * SECOND;
 
 const ANOMALY_SCORE_THRESHOLD = 4;
 const CLEANUP_INTERVAL_MS = 60 * SECOND;
+const MAX_COUNTER_BUCKET_SIZE = 512;
+const MAX_DISTINCT_BUCKET_SIZE = 512;
 
 interface AnomalyReason {
   rule: string;
@@ -112,6 +112,9 @@ function pruneTimestamps(bucket: number[], nowMs: number, windowMs: number): num
   if (removeCount > 0) {
     bucket.splice(0, removeCount);
   }
+  if (bucket.length > MAX_COUNTER_BUCKET_SIZE) {
+    bucket.splice(0, bucket.length - MAX_COUNTER_BUCKET_SIZE);
+  }
   return bucket.length;
 }
 
@@ -122,11 +125,21 @@ function pruneDistinct(bucket: Map<string, number>, nowMs: number, windowMs: num
       bucket.delete(value);
     }
   }
+  while (bucket.size > MAX_DISTINCT_BUCKET_SIZE) {
+    const oldestKey = bucket.keys().next().value;
+    if (oldestKey === undefined) break;
+    bucket.delete(oldestKey);
+  }
   return bucket.size;
 }
 
 function hashValue(value: string): string {
-  return createHash("sha256").update(value).digest("base64url").slice(0, 16);
+  let hash = 0x811c9dc5;
+  for (let index = 0; index < value.length; index++) {
+    hash ^= value.charCodeAt(index);
+    hash = Math.imul(hash, 0x01000193);
+  }
+  return (hash >>> 0).toString(36);
 }
 
 function normalizeDimension(value: string | undefined): string {

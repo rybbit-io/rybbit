@@ -31,6 +31,31 @@ export type TotalTrackingPayload = TrackingPayload & {
 // Infer type from Zod schema
 type ValidatedTrackingPayload = z.infer<typeof trackingPayloadSchema>;
 
+// ua-parser-js is regex-heavy and runs on every event. User-agent strings repeat
+// constantly across requests, so memoize parsing in a bounded LRU-ish cache to
+// keep this off the per-event hot path.
+const UA_CACHE_MAX = 10_000;
+const uaCache = new Map<string, UAParser.IResult>();
+
+export function parseUserAgent(userAgent: string): UAParser.IResult {
+  const cached = uaCache.get(userAgent);
+  if (cached) {
+    // Refresh recency: re-insert so frequently-seen UAs survive eviction.
+    uaCache.delete(userAgent);
+    uaCache.set(userAgent, cached);
+    return cached;
+  }
+
+  const result = userAgentParser(userAgent);
+  uaCache.set(userAgent, result);
+  if (uaCache.size > UA_CACHE_MAX) {
+    // Evict the oldest (least recently used) entry.
+    const oldest = uaCache.keys().next().value;
+    if (oldest !== undefined) uaCache.delete(oldest);
+  }
+  return result;
+}
+
 // UTM and URL parameter parsing utilities
 export function getUTMParams(querystring: string): Record<string, string> {
   const params: Record<string, string> = {};
@@ -134,7 +159,7 @@ export async function createBasePayload(
     type: eventType,
     ipAddress: ipAddress,
     timestamp: new Date().toISOString(),
-    ua: userAgentParser(userAgent),
+    ua: parseUserAgent(userAgent),
     userAgent,
     userId: anonymousId, // Always the device fingerprint
     identifiedUserId: identifiedUserId, // Custom user ID when identified

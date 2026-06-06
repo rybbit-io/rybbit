@@ -10,6 +10,8 @@ import { CLIENT_BOT_SCORE_THRESHOLD } from "./config.js";
 import { detectBot } from "./headerHeuristics.js";
 import { classifyUA } from "./uaBots/index.js";
 
+const LOG_BOT_DETECTIONS = process.env.BOT_BLOCKING_LOG_DETECTIONS === "true";
+
 interface BotBlockingPayload {
   siteId: string;
   userAgent?: string;
@@ -279,15 +281,17 @@ export function checkBotBlocking({
     return null;
   }
 
-  logger.info(
-    {
-      siteId: payload.siteId,
-      detectionCount: detections.length,
-      detectionLayers: detections.map(detection => detection.layer),
-      detections,
-    },
-    "Bot request detected"
-  );
+  if (LOG_BOT_DETECTIONS) {
+    logger.info(
+      {
+        siteId: payload.siteId,
+        detectionCount: detections.length,
+        detectionLayers: detections.map(detection => detection.layer),
+        detections,
+      },
+      "Bot request detected"
+    );
+  }
 
   recordBotDetections(detections.map(detection => detection.layer));
 
