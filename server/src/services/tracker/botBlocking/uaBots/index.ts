@@ -10,6 +10,13 @@ export interface BotClassification {
 
 const NON_BOT: BotClassification = { isBot: false, category: null, matchedPattern: null };
 
+// classifyUA runs on every event (when bot blocking is enabled) and, for bot
+// user-agents, scans every compiled pattern. User-agent strings repeat heavily,
+// so memoize the classification in a bounded LRU-ish cache to keep the regex
+// scan off the per-event hot path. Mirrors parseUserAgent in tracker/utils.ts.
+const CLASSIFY_CACHE_MAX = 10_000;
+const classifyCache = new Map<string, BotClassification>();
+
 // Single combined regex for the fast "is this anything at all?" test.
 // Mirrors what isbot does internally.
 const COMBINED_REGEX = new RegExp(ALL_BOT_PATTERNS.map(p => p.pattern).join("|"), "i");
@@ -34,6 +41,25 @@ export function classifyUA(userAgent: string | null | undefined): BotClassificat
   if (typeof userAgent !== "string" || userAgent.length === 0) {
     return NON_BOT;
   }
+
+  const cached = classifyCache.get(userAgent);
+  if (cached) {
+    // Refresh recency so frequently-seen UAs survive eviction.
+    classifyCache.delete(userAgent);
+    classifyCache.set(userAgent, cached);
+    return cached;
+  }
+
+  const result = computeClassification(userAgent);
+  classifyCache.set(userAgent, result);
+  if (classifyCache.size > CLASSIFY_CACHE_MAX) {
+    const oldest = classifyCache.keys().next().value;
+    if (oldest !== undefined) classifyCache.delete(oldest);
+  }
+  return result;
+}
+
+function computeClassification(userAgent: string): BotClassification {
   // Fast path: combined regex test. ~95% of legitimate traffic exits here.
   if (!COMBINED_REGEX.test(userAgent)) {
     return NON_BOT;
