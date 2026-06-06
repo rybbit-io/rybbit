@@ -177,12 +177,12 @@ function getClientSignalResult(payload: BotBlockingPayload, userAgent: string) {
   };
 }
 
-export function checkBotBlocking({
+export async function checkBotBlocking({
   request,
   blockBots,
   trustedServerSideIngestion = false,
   payload,
-}: BotBlockingInput): BotDetectionResult | null {
+}: BotBlockingInput): Promise<BotDetectionResult | null> {
   const userAgent = payload.userAgent || (request.headers["user-agent"] as string) || "";
   const clientSignalResult = getClientSignalResult(payload, userAgent);
   recordBotBlockingRequest(clientSignalResult.scoreForStats, clientSignalResult.maskForStats);
@@ -256,7 +256,7 @@ export function checkBotBlocking({
   }
 
   // Layer 5: Request-rate and crawl-shape anomaly detection.
-  const anomaly = observeTrackingAnomaly({
+  const anomaly = await observeTrackingAnomaly({
     siteId: payload.siteId,
     ipAddress: payload.ipAddress,
     userAgent,

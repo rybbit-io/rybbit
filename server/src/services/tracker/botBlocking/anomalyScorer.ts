@@ -1,3 +1,6 @@
+import { anomalyObserve, type AnomalyCounterSpec } from "../../../db/redis/redis.js";
+import { createServiceLogger } from "../../../lib/logger/logger.js";
+
 const SECOND = 1000;
 const MINUTE = 60 * SECOND;
 
@@ -5,6 +8,15 @@ const ANOMALY_SCORE_THRESHOLD = 4;
 const CLEANUP_INTERVAL_MS = 60 * SECOND;
 const MAX_COUNTER_BUCKET_SIZE = 512;
 const MAX_DISTINCT_BUCKET_SIZE = 512;
+
+const logger = createServiceLogger("anomaly-scorer");
+
+// Counters live in Redis so every worker/replica shares one view; an in-process
+// Map only sees 1/N of the traffic behind a load balancer, diluting the rate
+// thresholds by the worker count. The in-process counters below remain as a
+// fallback for when Redis is unavailable. Set DISABLE_REDIS_ANOMALY=true to pin
+// scoring to the in-process counters (e.g. single-process deployments).
+let redisAnomalyEnabled = process.env.DISABLE_REDIS_ANOMALY !== "true";
 
 interface AnomalyReason {
   rule: string;
@@ -103,6 +115,15 @@ const ipDistinctHosts60s = new RollingDistinctCounter();
 
 let lastCleanupMs = 0;
 
+// Unique-per-event token so each observation is a distinct sorted-set member in
+// the Redis rate counters. pid keeps it unique across workers; the sequence keeps
+// it unique within a millisecond.
+let eventSeq = 0;
+function nextEventToken(nowMs: number): string {
+  eventSeq = (eventSeq + 1) % Number.MAX_SAFE_INTEGER;
+  return `${nowMs}-${process.pid}-${eventSeq}`;
+}
+
 function pruneTimestamps(bucket: number[], nowMs: number, windowMs: number): number {
   const oldestAllowed = nowMs - windowMs;
   let removeCount = 0;
@@ -172,10 +193,20 @@ function maybeCleanup(nowMs: number) {
   ipDistinctHosts60s.cleanup(nowMs, MINUTE);
 }
 
-export function observeTrackingAnomaly(input: AnomalyInput): AnomalyResult {
-  const nowMs = input.nowMs ?? Date.now();
-  maybeCleanup(nowMs);
+// A single counter described once for both backends: its Redis key/member and an
+// equivalent in-process observation. `enabled` is false for the conditional
+// counters (no path/host, or a client score was supplied), which contribute 0.
+interface CounterPlan {
+  name: keyof AnomalyCounters;
+  enabled: boolean;
+  redisKey: string;
+  member: string;
+  windowMs: number;
+  maxSize: number;
+  observeLocal: (nowMs: number) => number;
+}
 
+function buildCounterPlan(input: AnomalyInput, nowMs: number): CounterPlan[] {
   const siteId = input.siteId;
   const ipAddress = normalizeDimension(input.ipAddress);
   const userAgentHash = hashValue(input.userAgent || "");
@@ -185,18 +216,127 @@ export function observeTrackingAnomaly(input: AnomalyInput): AnomalyResult {
   const tupleKey = `${siteId}:${ipAddress}:${userAgentHash}`;
   const ipKey = `${siteId}:${ipAddress}`;
   const siteUserAgentKey = `${siteId}:${userAgentHash}`;
+  const eventToken = nextEventToken(nowMs);
 
-  const counters: AnomalyCounters = {
-    tupleEvents10s: tupleEvents10s.observe(tupleKey, nowMs, 10 * SECOND),
-    tupleEvents60s: tupleEvents60s.observe(tupleKey, nowMs, MINUTE),
-    tupleDistinctPaths60s: pathname ? tupleDistinctPaths60s.observe(tupleKey, pathname, nowMs, MINUTE) : 0,
-    ipEvents60s: ipEvents60s.observe(ipKey, nowMs, MINUTE),
-    ipDistinctUserAgents5m: ipDistinctUserAgents5m.observe(ipKey, userAgentHash, nowMs, 5 * MINUTE),
-    ipDistinctHosts60s: hostname ? ipDistinctHosts60s.observe(ipKey, hostname, nowMs, MINUTE) : 0,
-    siteUserAgentEvents60s: siteUserAgentEvents60s.observe(siteUserAgentKey, nowMs, MINUTE),
-    missingClientScore60s: input.hasClientBotScore ? 0 : missingClientScore60s.observe(tupleKey, nowMs, MINUTE),
+  return [
+    {
+      name: "tupleEvents10s",
+      enabled: true,
+      redisKey: `bot:a:te10:${tupleKey}`,
+      member: eventToken,
+      windowMs: 10 * SECOND,
+      maxSize: MAX_COUNTER_BUCKET_SIZE,
+      observeLocal: now => tupleEvents10s.observe(tupleKey, now, 10 * SECOND),
+    },
+    {
+      name: "tupleEvents60s",
+      enabled: true,
+      redisKey: `bot:a:te60:${tupleKey}`,
+      member: eventToken,
+      windowMs: MINUTE,
+      maxSize: MAX_COUNTER_BUCKET_SIZE,
+      observeLocal: now => tupleEvents60s.observe(tupleKey, now, MINUTE),
+    },
+    {
+      name: "tupleDistinctPaths60s",
+      enabled: pathname !== "",
+      redisKey: `bot:a:tdp:${tupleKey}`,
+      member: pathname,
+      windowMs: MINUTE,
+      maxSize: MAX_DISTINCT_BUCKET_SIZE,
+      observeLocal: now => tupleDistinctPaths60s.observe(tupleKey, pathname, now, MINUTE),
+    },
+    {
+      name: "ipEvents60s",
+      enabled: true,
+      redisKey: `bot:a:ie60:${ipKey}`,
+      member: eventToken,
+      windowMs: MINUTE,
+      maxSize: MAX_COUNTER_BUCKET_SIZE,
+      observeLocal: now => ipEvents60s.observe(ipKey, now, MINUTE),
+    },
+    {
+      name: "ipDistinctUserAgents5m",
+      enabled: true,
+      redisKey: `bot:a:idua:${ipKey}`,
+      member: userAgentHash,
+      windowMs: 5 * MINUTE,
+      maxSize: MAX_DISTINCT_BUCKET_SIZE,
+      observeLocal: now => ipDistinctUserAgents5m.observe(ipKey, userAgentHash, now, 5 * MINUTE),
+    },
+    {
+      name: "ipDistinctHosts60s",
+      enabled: hostname !== "",
+      redisKey: `bot:a:idh:${ipKey}`,
+      member: hostname,
+      windowMs: MINUTE,
+      maxSize: MAX_DISTINCT_BUCKET_SIZE,
+      observeLocal: now => ipDistinctHosts60s.observe(ipKey, hostname, now, MINUTE),
+    },
+    {
+      name: "siteUserAgentEvents60s",
+      enabled: true,
+      redisKey: `bot:a:sue:${siteUserAgentKey}`,
+      member: eventToken,
+      windowMs: MINUTE,
+      maxSize: MAX_COUNTER_BUCKET_SIZE,
+      observeLocal: now => siteUserAgentEvents60s.observe(siteUserAgentKey, now, MINUTE),
+    },
+    {
+      name: "missingClientScore60s",
+      enabled: !input.hasClientBotScore,
+      redisKey: `bot:a:mcs:${tupleKey}`,
+      member: eventToken,
+      windowMs: MINUTE,
+      maxSize: MAX_COUNTER_BUCKET_SIZE,
+      observeLocal: now => missingClientScore60s.observe(tupleKey, now, MINUTE),
+    },
+  ];
+}
+
+function emptyCounters(): AnomalyCounters {
+  return {
+    tupleEvents10s: 0,
+    tupleEvents60s: 0,
+    tupleDistinctPaths60s: 0,
+    ipEvents60s: 0,
+    ipDistinctUserAgents5m: 0,
+    ipDistinctHosts60s: 0,
+    siteUserAgentEvents60s: 0,
+    missingClientScore60s: 0,
   };
+}
 
+async function observeViaRedis(plan: CounterPlan[], nowMs: number): Promise<AnomalyCounters> {
+  const enabled = plan.filter(entry => entry.enabled);
+  const specs: AnomalyCounterSpec[] = enabled.map(entry => ({
+    key: entry.redisKey,
+    member: entry.member,
+    windowMs: entry.windowMs,
+    maxSize: entry.maxSize,
+  }));
+
+  const results = await anomalyObserve(nowMs, specs);
+
+  const counters = emptyCounters();
+  enabled.forEach((entry, index) => {
+    counters[entry.name] = results[index] ?? 0;
+  });
+  return counters;
+}
+
+function observeViaLocal(plan: CounterPlan[], nowMs: number): AnomalyCounters {
+  maybeCleanup(nowMs);
+  const counters = emptyCounters();
+  for (const entry of plan) {
+    if (entry.enabled) {
+      counters[entry.name] = entry.observeLocal(nowMs);
+    }
+  }
+  return counters;
+}
+
+function computeAnomalyResult(counters: AnomalyCounters): AnomalyResult {
   const reasons: AnomalyReason[] = [];
   addReason(reasons, "tuple_events_10s", 4, counters.tupleEvents10s, 30, 10);
   addReason(reasons, "tuple_events_60s", 4, counters.tupleEvents60s, 120, 60);
@@ -217,6 +357,28 @@ export function observeTrackingAnomaly(input: AnomalyInput): AnomalyResult {
   };
 }
 
+export async function observeTrackingAnomaly(input: AnomalyInput): Promise<AnomalyResult> {
+  const nowMs = input.nowMs ?? Date.now();
+  const plan = buildCounterPlan(input, nowMs);
+
+  let counters: AnomalyCounters;
+  if (redisAnomalyEnabled) {
+    try {
+      counters = await observeViaRedis(plan, nowMs);
+    } catch (error) {
+      // A Redis blip must never break ingestion. Fall back to the in-process
+      // counters — accuracy degrades under clustering, but detection keeps working
+      // and recovers automatically once Redis is back.
+      logger.error(error as Error, "Redis anomaly counters failed; using in-process fallback");
+      counters = observeViaLocal(plan, nowMs);
+    }
+  } else {
+    counters = observeViaLocal(plan, nowMs);
+  }
+
+  return computeAnomalyResult(counters);
+}
+
 export function resetAnomalyScorerForTests() {
   tupleEvents10s.clear();
   tupleEvents60s.clear();
@@ -227,4 +389,10 @@ export function resetAnomalyScorerForTests() {
   ipDistinctUserAgents5m.clear();
   ipDistinctHosts60s.clear();
   lastCleanupMs = 0;
+  eventSeq = 0;
+}
+
+/** Force the counter backend in tests (Redis vs. in-process fallback). */
+export function setRedisAnomalyEnabledForTests(enabled: boolean) {
+  redisAnomalyEnabled = enabled;
 }

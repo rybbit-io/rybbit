@@ -289,7 +289,7 @@ export async function trackEvent(request: FastifyRequest, reply: FastifyReply) {
     const trackingIdentity = resolveTrackingIdentity(request, validatedPayload, trustedServerSideIngestion);
     const requestIP = trackingIdentity.ipAddress;
 
-    const botDetectionResult = checkBotBlocking({
+    const botDetectionResult = await checkBotBlocking({
       request,
       blockBots: siteConfiguration.blockBots,
       trustedServerSideIngestion,

@@ -1,12 +1,19 @@
 import { FastifyRequest } from "fastify";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { lookupAsn } from "../../../db/geolocation/asn.js";
-import { resetAnomalyScorerForTests } from "./anomalyScorer.js";
+import { resetAnomalyScorerForTests, setRedisAnomalyEnabledForTests } from "./anomalyScorer.js";
 import { getBotDetectionStats, resetBotDetectionStatsForTests } from "./botDetectionStats.js";
 import { checkBotBlocking } from "./index.js";
 
 vi.mock("../../../db/geolocation/asn.js", () => ({
   lookupAsn: vi.fn(() => null),
+}));
+
+// Drive anomaly scoring through the in-process counters so detection is
+// deterministic and these tests never touch a real Redis.
+vi.mock("../../../db/redis/redis.js", () => ({
+  redis: {},
+  anomalyObserve: vi.fn(),
 }));
 
 function requestWithHeaders(headers: Record<string, string | string[]>): FastifyRequest {
@@ -35,12 +42,13 @@ const clientBotSignalMasks = {
 describe("checkBotBlocking", () => {
   beforeEach(() => {
     resetAnomalyScorerForTests();
+    setRedisAnomalyEnabledForTests(false);
     resetBotDetectionStatsForTests();
     vi.mocked(lookupAsn).mockReturnValue(null);
   });
 
-  it("does nothing when bot blocking is disabled", () => {
-    const result = checkBotBlocking({
+  it("does nothing when bot blocking is disabled", async () => {
+    const result = await checkBotBlocking({
       request: requestWithHeaders({}),
       blockBots: false,
       payload: basePayload,
@@ -49,8 +57,8 @@ describe("checkBotBlocking", () => {
     expect(result).toBeNull();
   });
 
-  it("skips verified trusted server-side ingestion requests", () => {
-    const result = checkBotBlocking({
+  it("skips verified trusted server-side ingestion requests", async () => {
+    const result = await checkBotBlocking({
       request: requestWithHeaders({}),
       blockBots: true,
       trustedServerSideIngestion: true,
@@ -60,8 +68,8 @@ describe("checkBotBlocking", () => {
     expect(result).toBeNull();
   });
 
-  it("does not bypass bot blocking for an unverified bearer header", () => {
-    const result = checkBotBlocking({
+  it("does not bypass bot blocking for an unverified bearer header", async () => {
+    const result = await checkBotBlocking({
       request: requestWithHeaders({ authorization: "Bearer token" }),
       blockBots: true,
       payload: basePayload,
@@ -73,13 +81,13 @@ describe("checkBotBlocking", () => {
     });
   });
 
-  it("counts requests before bot-blocking bypasses for percentage stats", () => {
-    checkBotBlocking({
+  it("counts requests before bot-blocking bypasses for percentage stats", async () => {
+    await checkBotBlocking({
       request: requestWithHeaders({}),
       blockBots: false,
       payload: basePayload,
     });
-    checkBotBlocking({
+    await checkBotBlocking({
       request: requestWithHeaders({}),
       blockBots: true,
       trustedServerSideIngestion: true,
@@ -100,8 +108,8 @@ describe("checkBotBlocking", () => {
     });
   });
 
-  it("returns bot event properties for detected bots", () => {
-    const result = checkBotBlocking({
+  it("returns bot event properties for detected bots", async () => {
+    const result = await checkBotBlocking({
       request: requestWithHeaders({}),
       blockBots: true,
       payload: basePayload,
@@ -133,25 +141,25 @@ describe("checkBotBlocking", () => {
     });
   });
 
-  it("records client bot score and signal aggregates for inspected requests", () => {
+  it("records client bot score and signal aggregates for inspected requests", async () => {
     const request = requestWithHeaders(browserHeaders);
 
-    checkBotBlocking({
+    await checkBotBlocking({
       request,
       blockBots: true,
       payload: basePayload,
     });
-    checkBotBlocking({
+    await checkBotBlocking({
       request,
       blockBots: true,
       payload: { ...basePayload, clientBotScore: 0, clientBotSignalMask: 0 },
     });
-    checkBotBlocking({
+    await checkBotBlocking({
       request,
       blockBots: true,
       payload: { ...basePayload, clientBotScore: 1, clientBotSignalMask: clientBotSignalMasks.swiftShader },
     });
-    checkBotBlocking({
+    await checkBotBlocking({
       request,
       blockBots: true,
       payload: {
@@ -160,7 +168,7 @@ describe("checkBotBlocking", () => {
         clientBotSignalMask: clientBotSignalMasks.zeroOuterDimensions,
       },
     });
-    checkBotBlocking({
+    await checkBotBlocking({
       request,
       blockBots: true,
       payload: { ...basePayload, clientBotScore: 3, clientBotSignalMask: clientBotSignalMasks.automationApi },
@@ -194,8 +202,8 @@ describe("checkBotBlocking", () => {
     });
   });
 
-  it("collects every matching bot signal before returning", () => {
-    const result = checkBotBlocking({
+  it("collects every matching bot signal before returning", async () => {
+    const result = await checkBotBlocking({
       request: requestWithHeaders({
         "user-agent":
           "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/120.0.0.0 Safari/537.36",
@@ -228,8 +236,8 @@ describe("checkBotBlocking", () => {
     ]);
   });
 
-  it("moves default viewport fingerprints into client signals", () => {
-    const result = checkBotBlocking({
+  it("moves default viewport fingerprints into client signals", async () => {
+    const result = await checkBotBlocking({
       request: requestWithHeaders({
         ...browserHeaders,
         "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120 Safari/537.36",
@@ -257,13 +265,13 @@ describe("checkBotBlocking", () => {
     });
   });
 
-  it("does not block generic hosting ASN by itself", () => {
+  it("does not block generic hosting ASN by itself", async () => {
     vi.mocked(lookupAsn).mockReturnValue({
       asn: 16509,
       organization: "Amazon.com, Inc.",
     });
 
-    const result = checkBotBlocking({
+    const result = await checkBotBlocking({
       request: requestWithHeaders(browserHeaders),
       blockBots: true,
       payload: {
@@ -284,13 +292,13 @@ describe("checkBotBlocking", () => {
     });
   });
 
-  it("uses generic hosting ASN as supporting evidence when another layer matched", () => {
+  it("uses generic hosting ASN as supporting evidence when another layer matched", async () => {
     vi.mocked(lookupAsn).mockReturnValue({
       asn: 16509,
       organization: "Amazon.com, Inc.",
     });
 
-    const result = checkBotBlocking({
+    const result = await checkBotBlocking({
       request: requestWithHeaders(browserHeaders),
       blockBots: true,
       payload: {
@@ -313,13 +321,13 @@ describe("checkBotBlocking", () => {
     expect(result?.detections.map(detection => detection.layer)).toEqual(["client_signals", "bot_asn"]);
   });
 
-  it("still blocks curated bot provider ASNs without another matched layer", () => {
+  it("still blocks curated bot provider ASNs without another matched layer", async () => {
     vi.mocked(lookupAsn).mockReturnValue({
       asn: 401518,
       organization: "OpenAI, L.L.C.",
     });
 
-    const result = checkBotBlocking({
+    const result = await checkBotBlocking({
       request: requestWithHeaders(browserHeaders),
       blockBots: true,
       payload: {
@@ -341,12 +349,12 @@ describe("checkBotBlocking", () => {
     expect(result?.detections.map(detection => detection.layer)).toEqual(["bot_asn"]);
   });
 
-  it("adds a rate anomaly layer after a request burst", () => {
+  it("adds a rate anomaly layer after a request burst", async () => {
     const request = requestWithHeaders(browserHeaders);
 
-    let result: ReturnType<typeof checkBotBlocking> = null;
+    let result: Awaited<ReturnType<typeof checkBotBlocking>> = null;
     for (let i = 0; i < 31; i++) {
-      result = checkBotBlocking({
+      result = await checkBotBlocking({
         request,
         blockBots: true,
         payload: {
