@@ -239,7 +239,21 @@ export const normalizeOrigin = (input: string): string => {
 
 // Helper function to get IP address
 export const getIpAddress = (request: FastifyRequest): string => {
-  // Priority 1: X-Forwarded-For - use the first IP, which should be the original client.
+  // Priority 1: X-Real-IP. First-party proxies can set this to the original
+  // visitor IP even when our Cloudflare edge sees the proxy's egress IP.
+  const realIp = request.headers["x-real-ip"];
+  if (realIp && typeof realIp === "string") {
+    return realIp.trim();
+  }
+
+  // Priority 2: Cloudflare header. In our Cloudflare-fronted direct path this
+  // is authoritative; X-Forwarded-For may contain intermediary edge IPs.
+  const cfConnectingIp = request.headers["cf-connecting-ip"];
+  if (cfConnectingIp && typeof cfConnectingIp === "string") {
+    return cfConnectingIp.trim();
+  }
+
+  // Priority 3: X-Forwarded-For - use the first IP, which should be the original client.
   const forwardedFor = request.headers["x-forwarded-for"];
   if (forwardedFor && typeof forwardedFor === "string") {
     const ips = forwardedFor
@@ -247,21 +261,8 @@ export const getIpAddress = (request: FastifyRequest): string => {
       .map(ip => ip.trim())
       .filter(Boolean);
     if (ips.length > 0) {
-      // Always use the first IP - the original client
       return ips[0];
     }
-  }
-
-  // Priority 2: X-Real-IP
-  const realIp = request.headers["x-real-ip"];
-  if (realIp && typeof realIp === "string") {
-    return realIp.trim();
-  }
-
-  // Priority 3: Cloudflare header
-  const cfConnectingIp = request.headers["cf-connecting-ip"];
-  if (cfConnectingIp && typeof cfConnectingIp === "string") {
-    return cfConnectingIp.trim();
   }
 
   return request.ip;

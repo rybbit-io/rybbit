@@ -7,27 +7,32 @@ function requestWithHeaders(headers: Record<string, string | string[]>, ip = "19
 }
 
 describe("getIpAddress", () => {
-  it("uses the first X-Forwarded-For IP before Cloudflare's connecting IP", () => {
+  it("uses X-Real-IP before Cloudflare's connecting IP", () => {
     const request = requestWithHeaders({
       "cf-connecting-ip": "198.51.100.20",
       "x-forwarded-for": "203.0.113.10, 198.51.100.20",
       "x-real-ip": "192.0.2.10",
     });
 
-    expect(getIpAddress(request)).toBe("203.0.113.10");
+    expect(getIpAddress(request)).toBe("192.0.2.10");
   });
 
-  it("uses X-Real-IP before Cloudflare's connecting IP when X-Forwarded-For is missing", () => {
+  it("uses Cloudflare's connecting IP before X-Forwarded-For", () => {
     const request = requestWithHeaders({
-      "cf-connecting-ip": "198.51.100.20",
-      "x-real-ip": "203.0.113.10",
+      "cf-connecting-ip": "203.0.113.10",
+      "x-forwarded-for": "198.51.100.20, 10.0.0.1",
     });
 
     expect(getIpAddress(request)).toBe("203.0.113.10");
   });
 
-  it("falls back to Cloudflare's connecting IP and then the request IP", () => {
-    expect(getIpAddress(requestWithHeaders({ "cf-connecting-ip": "198.51.100.20" }))).toBe("198.51.100.20");
+  it("uses the first X-Forwarded-For IP when higher-priority headers are missing", () => {
+    expect(getIpAddress(requestWithHeaders({ "x-forwarded-for": "203.0.113.10, 198.51.100.20" }))).toBe(
+      "203.0.113.10"
+    );
+  });
+
+  it("falls back to the request IP", () => {
     expect(getIpAddress(requestWithHeaders({}))).toBe("198.51.100.10");
   });
 });

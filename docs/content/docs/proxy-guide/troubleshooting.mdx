@@ -178,7 +178,7 @@ proxy_pass https://app.rybbit.io;
 **Solutions:**
 
 <Callout type="warn">
-**Critical**: The `X-Forwarded-For` and `X-Real-IP` headers must contain the original client IP for accurate geolocation and user identification.
+**Critical**: The `X-Real-IP` header should contain the original client IP for accurate geolocation and user identification. `X-Forwarded-For` is supported as a fallback, but may include intermediary edge IPs.
 </Callout>
 
 **Nginx:**
@@ -225,7 +225,7 @@ proxyHeaders.set('X-Real-IP', clientIp);
 
 **Cause:** Rybbit is seeing the proxy IP instead of the original visitor IP. This is common when a first-party proxy is hosted on CDN or cloud infrastructure. Those networks use hosting/datacenter ASNs, so traffic can look like bot infrastructure if the visitor IP is not passed in a trusted way.
 
-Set `X-Forwarded-For` or `X-Real-IP` to the original visitor IP before forwarding the request to Rybbit. Rybbit reads those headers before the connecting edge IP.
+Set `X-Real-IP` to the original visitor IP before forwarding the request to Rybbit. Also setting `X-Forwarded-For` is fine, but `X-Real-IP` is the preferred header for first-party proxies.
 
 **Cloudflare Workers:**
 

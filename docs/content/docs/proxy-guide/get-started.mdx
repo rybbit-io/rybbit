@@ -169,17 +169,17 @@ For accurate tracking, ensure these headers are forwarded to the Rybbit backend:
 | Header | Purpose | Required |
 |--------|---------|----------|
 | `User-Agent` | Device and browser detection | Yes |
-| `X-Forwarded-For` or `X-Real-IP` | IP address for geolocation | Yes |
+| `X-Real-IP` or `X-Forwarded-For` | IP address for geolocation | Yes |
 | `Referer` | Referrer tracking | Recommended |
 | `Accept-Language` | Language detection | Optional |
 
 <Callout type="warn">
-**IP Forwarding**: Rybbit uses IP addresses for geolocation (country/city) and creating anonymous user identifiers (hashed IP + User Agent). If you don't forward the `X-Forwarded-For` or `X-Real-IP` header, all traffic will appear to come from your proxy server's IP.
+**IP Forwarding**: Rybbit uses IP addresses for geolocation (country/city) and creating anonymous user identifiers (hashed IP + User Agent). If you don't forward the `X-Real-IP` or `X-Forwarded-For` header, all traffic will appear to come from your proxy server's IP.
 </Callout>
 
 ### Forwarded IP Headers
 
-If your proxy runs on infrastructure such as Cloudflare Workers, AWS CloudFront, Fastly, or another edge/CDN provider, make sure the proxy sets `X-Forwarded-For` or `X-Real-IP` to the original visitor IP. Rybbit reads these headers before the connecting edge IP, so this prevents traffic from being geolocated to the proxy or classified by the proxy's ASN.
+If your proxy runs on infrastructure such as Cloudflare Workers, AWS CloudFront, Fastly, or another edge/CDN provider, make sure the proxy sets `X-Real-IP` to the original visitor IP. Rybbit also falls back to `X-Forwarded-For`, but `X-Real-IP` is preferred because Cloudflare-fronted requests may include intermediary IPs in `X-Forwarded-For`.
 
 **Cloudflare Worker example:**
 
