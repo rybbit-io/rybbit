@@ -1,7 +1,8 @@
+import crypto from "crypto";
 import { sql } from "drizzle-orm";
 import { FastifyReply, FastifyRequest } from "fastify";
 import { db } from "../../db/postgres/postgres.js";
-import { IS_CLOUD } from "../../lib/const.js";
+import { APPSUMO_TIER_LIMITS, IS_CLOUD } from "../../lib/const.js";
 import { logger } from "../../lib/logger/logger.js";
 
 interface AppSumoWebhookPayload {
@@ -27,6 +28,45 @@ interface AppSumoWebhookPayload {
  */
 function isAppSumoEnabled(): boolean {
   return IS_CLOUD && !!process.env.APPSUMO_CLIENT_ID && !!process.env.APPSUMO_CLIENT_SECRET;
+}
+
+/**
+ * Verify that a webhook request actually came from AppSumo.
+ *
+ * AppSumo signs every webhook with an HMAC-SHA256 of the raw request body using
+ * the integration's client secret, sent in the `x-appsumo-signature` header.
+ * Without this check the endpoint is fully public and an attacker could forge
+ * license create/activate/upgrade/deactivate events (granting themselves quota
+ * or downgrading victims). Uses a timing-safe comparison.
+ */
+function verifyAppSumoSignature(rawBody: string | undefined, signature: unknown): boolean {
+  const secret = process.env.APPSUMO_CLIENT_SECRET;
+  if (!secret || !rawBody || typeof signature !== "string" || signature.length === 0) {
+    return false;
+  }
+
+  const expected = crypto.createHmac("sha256", secret).update(rawBody).digest("hex");
+  const signatureBuf = Buffer.from(signature);
+  const expectedBuf = Buffer.from(expected);
+
+  // timingSafeEqual throws on length mismatch, so guard first.
+  if (signatureBuf.length !== expectedBuf.length) {
+    return false;
+  }
+  return crypto.timingSafeEqual(signatureBuf, expectedBuf);
+}
+
+/**
+ * Normalize and validate an attacker-supplied tier against the known allowed
+ * tiers. The tier drives plan quotas (APPSUMO_TIER_LIMITS), so an unknown value
+ * must never be persisted. Returns null when the tier is not recognized.
+ */
+function normalizeTier(tier: unknown): string | null {
+  const tierValue = tier?.toString();
+  if (tierValue && tierValue in APPSUMO_TIER_LIMITS) {
+    return tierValue;
+  }
+  return null;
 }
 
 /**
@@ -60,6 +100,13 @@ export async function handleAppSumoWebhook(
     return reply.status(503).send({
       error: "AppSumo integration is not available",
     });
+  }
+
+  // Verify the request is genuinely from AppSumo before trusting any of its
+  // contents (including the test handshake, which AppSumo also signs).
+  if (!verifyAppSumoSignature((request as any).rawBody, request.headers["x-appsumo-signature"])) {
+    logger.warn("[AppSumo] Webhook signature verification failed");
+    return reply.status(401).send({ error: "Invalid signature" });
   }
 
   const payload = request.body;
@@ -179,7 +226,10 @@ export async function handleAppSumoWebhook(
  * Handle purchase event - create placeholder license record
  */
 async function handlePurchaseEvent(licenseKey: string, tier: any, parentLicenseKey?: string) {
-  const tierValue = tier?.toString() || "1";
+  const tierValue = normalizeTier(tier);
+  if (!tierValue) {
+    throw new Error(`Invalid AppSumo tier: ${tier}`);
+  }
   logger.info(
     `[AppSumo] handlePurchaseEvent - license: ${licenseKey}, tier: ${tierValue}, parent: ${parentLicenseKey}`
   );
@@ -220,7 +270,10 @@ async function handlePurchaseEvent(licenseKey: string, tier: any, parentLicenseK
  * Handle activate event - update license status
  */
 async function handleActivateEvent(licenseKey: string, tier: any) {
-  const tierValue = tier?.toString() || "1";
+  const tierValue = normalizeTier(tier);
+  if (!tierValue) {
+    throw new Error(`Invalid AppSumo tier: ${tier}`);
+  }
   logger.info(`[AppSumo] handleActivateEvent - license: ${licenseKey}, tier: ${tierValue}`);
 
   await db.execute(sql`
@@ -239,7 +292,10 @@ async function handleActivateEvent(licenseKey: string, tier: any) {
  * Handle upgrade event - create new license and transfer organization
  */
 async function handleUpgradeEvent(licenseKey: string, tier: any, prevLicenseKey?: string) {
-  const tierValue = tier?.toString() || "1";
+  const tierValue = normalizeTier(tier);
+  if (!tierValue) {
+    throw new Error(`Invalid AppSumo tier: ${tier}`);
+  }
   logger.info(
     `[AppSumo] handleUpgradeEvent - new license: ${licenseKey}, prev license: ${prevLicenseKey}, tier: ${tierValue}`
   );
@@ -257,20 +313,16 @@ async function handleUpgradeEvent(licenseKey: string, tier: any, prevLicenseKey?
 
   logger.info({ oldLicenseResult }, "[AppSumo] Old license query result");
 
-  // If previous license not found, try to find ANY license with an organization (fallback for missed webhooks)
+  // If the previous license is not found, do NOT guess an organization from
+  // unrelated licenses. Picking "the most recently updated org" would let a
+  // forged or out-of-order event bind an attacker-chosen license to an arbitrary
+  // victim organization. Instead, fall through with no organization so a pending,
+  // org-less record is created that the user can activate later.
   if (!Array.isArray(oldLicenseResult) || oldLicenseResult.length === 0) {
     console.warn(
-      `[AppSumo] Old license not found: ${prevLicenseKey}, searching for any license with organization as fallback`
+      `[AppSumo] Old license not found: ${prevLicenseKey}; creating pending org-less license for ${licenseKey}`
     );
-    oldLicenseResult = await db.execute(
-      sql`SELECT organization_id FROM appsumo.licenses WHERE organization_id IS NOT NULL ORDER BY updated_at DESC LIMIT 1`
-    );
-
-    if (!Array.isArray(oldLicenseResult) || oldLicenseResult.length === 0) {
-      console.error(`[AppSumo] No licenses with organization found, cannot process upgrade`);
-      return;
-    }
-    logger.info({ oldLicenseResult }, "[AppSumo] Found fallback license");
+    oldLicenseResult = [{ organization_id: null }] as any;
   }
 
   const oldLicense = oldLicenseResult[0] as any;
@@ -366,7 +418,10 @@ async function handleUpgradeEvent(licenseKey: string, tier: any, prevLicenseKey?
  * Handle downgrade event - create new license and transfer organization
  */
 async function handleDowngradeEvent(licenseKey: string, tier: any, prevLicenseKey?: string) {
-  const tierValue = tier?.toString() || "1";
+  const tierValue = normalizeTier(tier);
+  if (!tierValue) {
+    throw new Error(`Invalid AppSumo tier: ${tier}`);
+  }
   logger.info(
     `[AppSumo] handleDowngradeEvent - new license: ${licenseKey}, prev license: ${prevLicenseKey}, tier: ${tierValue}`
   );
@@ -384,20 +439,16 @@ async function handleDowngradeEvent(licenseKey: string, tier: any, prevLicenseKe
 
   logger.info({ oldLicenseResult }, "[AppSumo] Old license query result");
 
-  // If previous license not found, try to find ANY license with an organization (fallback for missed webhooks)
+  // If the previous license is not found, do NOT guess an organization from
+  // unrelated licenses. Picking "the most recently updated org" would let a
+  // forged or out-of-order event bind an attacker-chosen license to an arbitrary
+  // victim organization. Instead, fall through with no organization so a pending,
+  // org-less record is created that the user can activate later.
   if (!Array.isArray(oldLicenseResult) || oldLicenseResult.length === 0) {
     console.warn(
-      `[AppSumo] Old license not found: ${prevLicenseKey}, searching for any license with organization as fallback`
+      `[AppSumo] Old license not found: ${prevLicenseKey}; creating pending org-less license for ${licenseKey}`
     );
-    oldLicenseResult = await db.execute(
-      sql`SELECT organization_id FROM appsumo.licenses WHERE organization_id IS NOT NULL ORDER BY updated_at DESC LIMIT 1`
-    );
-
-    if (!Array.isArray(oldLicenseResult) || oldLicenseResult.length === 0) {
-      console.error(`[AppSumo] No licenses with organization found, cannot process downgrade`);
-      return;
-    }
-    logger.info({ oldLicenseResult }, "[AppSumo] Found fallback license");
+    oldLicenseResult = [{ organization_id: null }] as any;
   }
 
   const oldLicense = oldLicenseResult[0] as any;
@@ -509,7 +560,10 @@ async function handleDeactivateEvent(licenseKey: string) {
  * Handle migrate event - update parent license for add-ons
  */
 async function handleMigrateEvent(licenseKey: string, tier: any, parentLicenseKey?: string) {
-  const tierValue = tier?.toString() || "1";
+  const tierValue = normalizeTier(tier);
+  if (!tierValue) {
+    throw new Error(`Invalid AppSumo tier: ${tier}`);
+  }
   logger.info(`[AppSumo] handleMigrateEvent - license: ${licenseKey}, tier: ${tierValue}, parent: ${parentLicenseKey}`);
 
   await db.execute(sql`

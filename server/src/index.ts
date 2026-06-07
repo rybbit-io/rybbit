@@ -440,7 +440,22 @@ async function stripeAdminRoutes(fastify: FastifyInstance) {
 
     // AppSumo Routes
     fastify.post("/as/activate", authOnly, activateAppSumoLicense);
-    fastify.post("/as/webhook", handleAppSumoWebhook); // Public - AppSumo webhook
+    // Public AppSumo webhook. It is unauthenticated, so the handler verifies an
+    // HMAC signature over the raw request body. Register it in an encapsulated
+    // scope with a parser that preserves the raw bytes (the signature is computed
+    // over the exact payload, so re-serialized JSON would not match).
+    await fastify.register(async appsumoWebhook => {
+      appsumoWebhook.addContentTypeParser("application/json", { parseAs: "string" }, (req, body, done) => {
+        (req as any).rawBody = body;
+        try {
+          done(null, body ? JSON.parse(body as string) : {});
+        } catch (err) {
+          (err as any).statusCode = 400;
+          done(err as Error, undefined);
+        }
+      });
+      appsumoWebhook.post("/as/webhook", handleAppSumoWebhook); // Public - AppSumo webhook (signature-verified)
+    });
   }
 }
 
