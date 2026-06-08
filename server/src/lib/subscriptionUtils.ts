@@ -191,6 +191,106 @@ export function invalidateStripeSubscriptionCache(stripeCustomerId: string | nul
   if (stripeCustomerId) {
     stripeSubscriptionCache.delete(stripeCustomerId);
   }
+  // Also drop the account-wide snapshot so admin/cron reads pick up the change promptly.
+  allStripeSubscriptionsCache = null;
+}
+
+/**
+ * Account-wide snapshot of the best subscription per customer.
+ *
+ * The admin endpoints and the usage cron both need subscriptions for many/all customers at
+ * once. Instead of one Stripe request per customer, we pull every subscription on the account
+ * in a handful of paginated requests (100/page) and group them — so call volume scales with the
+ * number of subscriptions, not the number of customers or requests. Cached per process.
+ */
+const STRIPE_ALL_SUBSCRIPTIONS_TTL_MS = 5 * 60_000;
+let allStripeSubscriptionsCache: { value: Map<string, Stripe.Subscription>; expiresAt: number } | null = null;
+let allStripeSubscriptionsInflight: Promise<Map<string, Stripe.Subscription>> | null = null;
+
+/** Clears the account-wide subscription snapshot. */
+export function invalidateAllStripeSubscriptionsCache(): void {
+  allStripeSubscriptionsCache = null;
+}
+
+/**
+ * Ranks a subscription so the "best" one per customer wins when grouping: prefer
+ * active/trialing, then the most recently created.
+ */
+function rankSubscription(subscription: Stripe.Subscription): number {
+  const isActiveOrTrialing = subscription.status === "active" || subscription.status === "trialing";
+  // `created` is a unix timestamp (~1.7e9); the status weight (×1e13) dominates so an
+  // active/trialing sub always outranks a canceled one regardless of creation time.
+  return (isActiveOrTrialing ? 1 : 0) * 1e13 + subscription.created;
+}
+
+/**
+ * Returns the best (active/trialing preferred, else most recent) raw subscription per customer
+ * across the whole Stripe account, pulled in bulk and cached. Throws if the bulk fetch fails so
+ * callers can decide whether to preserve previous state rather than treat everyone as free.
+ */
+export async function getAllStripeSubscriptionsByCustomer(): Promise<Map<string, Stripe.Subscription>> {
+  if (!stripe) {
+    return new Map();
+  }
+
+  const cached = allStripeSubscriptionsCache;
+  if (cached && cached.expiresAt > Date.now()) {
+    return cached.value;
+  }
+
+  // De-duplicate concurrent refreshes (e.g. several admin requests landing at once) so only
+  // one bulk pagination runs at a time.
+  if (allStripeSubscriptionsInflight) {
+    return allStripeSubscriptionsInflight;
+  }
+
+  allStripeSubscriptionsInflight = (async () => {
+    try {
+      const byCustomer = new Map<string, Stripe.Subscription>();
+
+      // The SDK auto-paginates this async iterator (100 subscriptions per underlying request).
+      for await (const subscription of (stripe as Stripe).subscriptions.list({
+        status: "all",
+        limit: 100,
+        expand: ["data.plan.product"],
+      })) {
+        const customerId =
+          typeof subscription.customer === "string" ? subscription.customer : subscription.customer.id;
+        const existing = byCustomer.get(customerId);
+        if (!existing || rankSubscription(subscription) > rankSubscription(existing)) {
+          byCustomer.set(customerId, subscription);
+        }
+      }
+
+      allStripeSubscriptionsCache = {
+        value: byCustomer,
+        expiresAt: Date.now() + STRIPE_ALL_SUBSCRIPTIONS_TTL_MS,
+      };
+      return byCustomer;
+    } finally {
+      allStripeSubscriptionsInflight = null;
+    }
+  })();
+
+  return allStripeSubscriptionsInflight;
+}
+
+/**
+ * Resolves a customer's StripeSubscriptionInfo from a bulk snapshot, applying the same
+ * active/trialing-only semantics as getStripeSubscription (canceled/past_due → no sub → free).
+ */
+export function stripeSubscriptionInfoFromSnapshot(
+  snapshot: Map<string, Stripe.Subscription>,
+  stripeCustomerId: string | null
+): StripeSubscriptionInfo | null {
+  if (!stripeCustomerId) {
+    return null;
+  }
+  const subscription = snapshot.get(stripeCustomerId);
+  if (!subscription || (subscription.status !== "active" && subscription.status !== "trialing")) {
+    return null;
+  }
+  return buildStripeSubscriptionInfo(subscription);
 }
 
 /**
@@ -258,53 +358,37 @@ async function fetchStripeSubscription(stripeCustomerId: string): Promise<Stripe
 
   // Pick the most recently created subscription across both active and trialing
   const subscription = allSubs.sort((a, b) => b.created - a.created)[0];
-    const isTrial = subscription.status === "trialing";
+  return buildStripeSubscriptionInfo(subscription);
+}
 
-    const subscriptionItem = subscription.items.data[0];
-    const priceId = subscriptionItem.price.id;
+/**
+ * Builds our StripeSubscriptionInfo from a raw Stripe subscription. Pure — does not call Stripe —
+ * so it is reused for both per-customer lookups and bulk account snapshots.
+ */
+function buildStripeSubscriptionInfo(subscription: Stripe.Subscription): StripeSubscriptionInfo | null {
+  const isTrial = subscription.status === "trialing";
 
-    if (!priceId) {
-      console.error("Subscription item price ID not found");
-      return null;
-    }
+  const subscriptionItem = subscription.items.data[0];
+  const priceId = subscriptionItem?.price.id;
 
-    // Find corresponding plan details from constants
-    const planDetails = getStripePrices().find((plan: StripePlan) => plan.priceId === priceId);
+  if (!priceId) {
+    console.error("Subscription item price ID not found");
+    return null;
+  }
 
-    if (!planDetails) {
-      console.error("Plan details not found for price ID:", priceId);
-      // Return basic info even without plan details
-      return {
-        source: "stripe",
-        subscriptionId: subscription.id,
-        priceId,
-        planName: "Unknown Plan",
-        eventLimit: 0,
-        periodStart: getStartOfMonth(),
-        currentPeriodEnd: new Date(subscriptionItem.current_period_end * 1000),
-        status: subscription.status,
-        interval: subscriptionItem.price.recurring?.interval ?? "unknown",
-        cancelAtPeriodEnd: subscription.cancel_at_period_end,
-        createdAt: new Date(subscription.created * 1000),
-        ...(isTrial && subscription.trial_end ? { trialEnd: new Date(subscription.trial_end * 1000) } : {}),
-      };
-    }
+  // Find corresponding plan details from constants
+  const planDetails = getStripePrices().find((plan: StripePlan) => plan.priceId === priceId);
 
-    // Determine period start
-    const currentMonthStart = DateTime.now().startOf("month");
-    const subscriptionStartDate = DateTime.fromSeconds(subscriptionItem.current_period_start);
-
-    // If subscription started within current month, use that date; otherwise use month start
-    const periodStart =
-      subscriptionStartDate >= currentMonthStart ? (subscriptionStartDate.toISODate() as string) : getStartOfMonth();
-
+  if (!planDetails) {
+    console.error("Plan details not found for price ID:", priceId);
+    // Return basic info even without plan details
     return {
       source: "stripe",
       subscriptionId: subscription.id,
       priceId,
-      planName: planDetails.name,
-      eventLimit: planDetails.limits.events,
-      periodStart,
+      planName: "Unknown Plan",
+      eventLimit: 0,
+      periodStart: getStartOfMonth(),
       currentPeriodEnd: new Date(subscriptionItem.current_period_end * 1000),
       status: subscription.status,
       interval: subscriptionItem.price.recurring?.interval ?? "unknown",
@@ -312,6 +396,30 @@ async function fetchStripeSubscription(stripeCustomerId: string): Promise<Stripe
       createdAt: new Date(subscription.created * 1000),
       ...(isTrial && subscription.trial_end ? { trialEnd: new Date(subscription.trial_end * 1000) } : {}),
     };
+  }
+
+  // Determine period start
+  const currentMonthStart = DateTime.now().startOf("month");
+  const subscriptionStartDate = DateTime.fromSeconds(subscriptionItem.current_period_start);
+
+  // If subscription started within current month, use that date; otherwise use month start
+  const periodStart =
+    subscriptionStartDate >= currentMonthStart ? (subscriptionStartDate.toISODate() as string) : getStartOfMonth();
+
+  return {
+    source: "stripe",
+    subscriptionId: subscription.id,
+    priceId,
+    planName: planDetails.name,
+    eventLimit: planDetails.limits.events,
+    periodStart,
+    currentPeriodEnd: new Date(subscriptionItem.current_period_end * 1000),
+    status: subscription.status,
+    interval: subscriptionItem.price.recurring?.interval ?? "unknown",
+    cancelAtPeriodEnd: subscription.cancel_at_period_end,
+    createdAt: new Date(subscription.created * 1000),
+    ...(isTrial && subscription.trial_end ? { trialEnd: new Date(subscription.trial_end * 1000) } : {}),
+  };
 }
 
 /**
@@ -378,7 +486,6 @@ export async function getBestSubscription(
     getStripeSubscription(stripeCustomerId, { throwOnError: throwOnStripeError }),
   ]);
 
-
   if (stripeSub) {
     return stripeSub;
   }
@@ -387,11 +494,42 @@ export async function getBestSubscription(
     return appsumoSub;
   }
 
-  // Return whichever one exists
-  if (appsumoSub) return appsumoSub;
-  if (stripeSub) return stripeSub;
+  return freeSubscription();
+}
 
-  // Default to free tier
+/**
+ * Like getBestSubscription, but uses an already-resolved Stripe subscription (e.g. from a bulk
+ * account snapshot) instead of making a per-customer Stripe call. Used by callers that resolve
+ * many orgs at once (admin endpoints, the usage cron).
+ * Priority: CustomPlan > Override > Stripe > AppSumo > Free.
+ */
+export async function getBestSubscriptionFromStripeSub(
+  organizationId: string,
+  stripeSub: StripeSubscriptionInfo | null
+): Promise<SubscriptionInfo> {
+  const customSub = await getCustomPlanSubscription(organizationId);
+  if (customSub) {
+    return customSub;
+  }
+
+  const overrideSub = await getOverrideSubscription(organizationId);
+  if (overrideSub) {
+    return overrideSub;
+  }
+
+  if (stripeSub) {
+    return stripeSub;
+  }
+
+  const appsumoSub = await getAppSumoSubscription(organizationId);
+  if (appsumoSub) {
+    return appsumoSub;
+  }
+
+  return freeSubscription();
+}
+
+function freeSubscription(): FreeSubscriptionInfo {
   return {
     source: "free",
     eventLimit: DEFAULT_EVENT_LIMIT,

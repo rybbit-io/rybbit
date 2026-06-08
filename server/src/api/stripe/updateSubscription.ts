@@ -93,7 +93,8 @@ export async function updateSubscription(
       ...(isTrialing && subscription.trial_end && { trial_end: subscription.trial_end }),
     });
 
-    // The plan changed, so drop the cached subscription for this customer.
+    // The plan changed, so drop the cached subscription for this customer (also clears the
+    // account-wide snapshot used by the admin endpoints and usage cron).
     invalidateStripeSubscriptionCache(org.stripeCustomerId);
 
     // Get the updated subscription details

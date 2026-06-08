@@ -1,6 +1,7 @@
 import { and, eq } from "drizzle-orm";
 import { DateTime } from "luxon";
 import * as cron from "node-cron";
+import Stripe from "stripe";
 import { processResults } from "../api/analytics/utils/utils.js";
 import { clickhouse } from "../db/clickhouse/clickhouse.js";
 import { db } from "../db/postgres/postgres.js";
@@ -8,7 +9,11 @@ import { member, organization, sites, user } from "../db/postgres/schema.js";
 import { IS_CLOUD } from "../lib/const.js";
 import { sendApproachingLimitEmail, sendLimitExceededEmail } from "../lib/email/email.js";
 import { createServiceLogger } from "../lib/logger/logger.js";
-import { getBestSubscription } from "../lib/subscriptionUtils.js";
+import {
+  getAllStripeSubscriptionsByCustomer,
+  getBestSubscriptionFromStripeSub,
+  stripeSubscriptionInfoFromSnapshot,
+} from "../lib/subscriptionUtils.js";
 
 type UsageUpdateCallback = () => void;
 
@@ -123,24 +128,24 @@ class UsageService {
    * Checks both AppSumo and Stripe subscriptions and uses the one with the higher event limit.
    * @returns [eventLimit, periodStartDate]
    */
-  private async getOrganizationSubscriptionInfo(orgData: {
-    id: string;
-    stripeCustomerId: string | null;
-    createdAt: string;
-    name: string;
-  }): Promise<[number, string | null]> {
+  private async getOrganizationSubscriptionInfo(
+    orgData: {
+      id: string;
+      stripeCustomerId: string | null;
+      createdAt: string;
+      name: string;
+    },
+    stripeSubscriptions: Map<string, Stripe.Subscription>
+  ): Promise<[number, string | null]> {
     // Special case for specific organizations
     if (orgData.name === "rybbit" || orgData.name === "Zam") {
       return [Infinity, this.getStartOfMonth()];
     }
 
-    // Get the best subscription (highest event limit from AppSumo or Stripe).
-    // throwOnStripeError ensures a transient Stripe failure surfaces as an error here
-    // instead of silently resolving to the free tier (which would wrongly flag a paying
-    // org as over-limit). The caller skips the org when this throws.
-    const subscription = await getBestSubscription(orgData.id, orgData.stripeCustomerId, {
-      throwOnStripeError: true,
-    });
+    // Resolve this org's Stripe subscription from the bulk snapshot (no per-org Stripe call),
+    // then layer in custom plan / override / AppSumo via the same priority rules as elsewhere.
+    const stripeSub = stripeSubscriptionInfoFromSnapshot(stripeSubscriptions, orgData.stripeCustomerId);
+    const subscription = await getBestSubscriptionFromStripeSub(orgData.id, stripeSub);
 
     // Log subscription details
     if (subscription.source === "appsumo") {
@@ -203,6 +208,18 @@ class UsageService {
     this.logger.info("Starting check of monthly event usage for organizations...");
 
     try {
+      // Step 0: Pull every customer's subscription from Stripe in one bulk pass (a handful of
+      // paginated calls) instead of one call per org. If this fails (e.g. rate limit/outage),
+      // skip the whole run rather than treating every paying org as free — which would wrongly
+      // flag them over-limit, block ingestion, and email their owners.
+      let stripeSubscriptions: Map<string, Stripe.Subscription>;
+      try {
+        stripeSubscriptions = await getAllStripeSubscriptionsByCustomer();
+      } catch (error) {
+        this.logger.error(error as Error, "Skipping usage check: failed to fetch Stripe subscriptions in bulk");
+        return;
+      }
+
       // Step 1: Get all sites with their organization IDs
       const allSites = await this.getAllSites();
 
@@ -246,21 +263,7 @@ class UsageService {
           const wasOverLimit = orgData.overMonthlyLimit ?? false;
           const alreadyNotifiedApproaching = orgData.approachingLimitNotifiedPeriodStart === monthStart;
 
-          let eventLimit: number;
-          try {
-            [eventLimit] = await this.getOrganizationSubscriptionInfo(orgData);
-          } catch (error) {
-            // We couldn't determine this org's subscription (e.g. a Stripe rate limit).
-            // Treating that as the free tier would wrongly mark a paying org as over-limit,
-            // blocking its event ingestion and emailing its owner. Skip the org and leave
-            // its existing limit state untouched until a later run can fetch the real plan.
-            this.logger.warn(
-              `Skipping organization ${orgData.name}: could not determine subscription (${
-                (error as Error).message
-              }). Preserving previous limit state.`
-            );
-            continue;
-          }
+          const [eventLimit] = await this.getOrganizationSubscriptionInfo(orgData, stripeSubscriptions);
           const isOverLimit = eventCount > eventLimit;
 
           let sendApproaching = false;

@@ -44,7 +44,8 @@ export async function handleWebhook(request: FastifyRequest, reply: FastifyReply
         const stripeCustomerId = session.customer as string;
         const organizationId = session.metadata?.organizationId; // Retrieve organizationId from metadata
 
-        // A new subscription was created — refresh any cached lookup for this customer.
+        // A new subscription was created — refresh any cached lookup for this customer
+        // (this also clears the account-wide snapshot used by the admin endpoints and cron).
         invalidateStripeSubscriptionCache(stripeCustomerId);
 
         if (stripeCustomerId && organizationId) {
