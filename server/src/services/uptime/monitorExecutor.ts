@@ -417,10 +417,14 @@ export class MonitorExecutor {
     }
   }
 
+  private getIncidentStatus(result: HttpCheckResult | TcpCheckResult): "up" | "down" {
+    return result.status === "success" ? "up" : "down";
+  }
+
   private async updateMonitorStatus(monitorId: number, result: HttpCheckResult | TcpCheckResult): Promise<void> {
     try {
       const now = new Date();
-      const currentStatus = result.status === "success" ? "up" : "down";
+      const currentStatus = this.getIncidentStatus(result);
 
       // Get current status to update consecutive counts
       const existingStatus = await db.query.uptimeMonitorStatus.findFirst({
@@ -566,7 +570,7 @@ export class MonitorExecutor {
     result: HttpCheckResult | TcpCheckResult
   ): Promise<void> {
     try {
-      const currentStatus = result.status === "success" ? "up" : "down";
+      const currentStatus = this.getIncidentStatus(result);
 
       // Get recent events from ClickHouse to determine consecutive counts
       const recentEvents = await clickhouse.query({

@@ -123,22 +123,6 @@ export function getDeviceType(screenWidth: number, screenHeight: number, ua: UAP
   return "Mobile";
 }
 
-// Extract site ID from path
-export const extractSiteId = (path: string) => {
-  // Remove query parameters if present
-  const pathWithoutQuery = path.split("?")[0];
-
-  // Handle route patterns:
-  // /route/:site
-  // /route/:sessionId/:site
-  // /route/:userId/:site
-  const segments = pathWithoutQuery.split("/").filter(Boolean);
-  if (segments.length >= 2) {
-    return segments[segments.length - 1];
-  }
-  return null;
-};
-
 // Cache for string ID to numeric ID lookups to avoid repeated DB queries
 const siteIdCache = new Map<string, number>();
 
@@ -169,19 +153,6 @@ export const resolveNumericSiteId = async (siteIdentifier: string): Promise<numb
   }
 
   return null;
-};
-
-// Replace site ID in URL path with numeric ID
-export const replacePathSiteId = (path: string, numericId: number): string => {
-  const [pathPart, queryPart] = path.split("?");
-  const segments = pathPart.split("/");
-
-  // Replace the last segment (which is the site ID)
-  if (segments.length >= 2) {
-    segments[segments.length - 1] = String(numericId);
-  }
-
-  return queryPart ? `${segments.join("/")}?${queryPart}` : segments.join("/");
 };
 
 // Normalizes a domain/hostname by removing all subdomain prefixes.

@@ -40,19 +40,11 @@ export const truncateString = (str: string, maxLength: number = 35): string => {
   return str.slice(0, maxLength - 1) + "…";
 };
 
-const regionNamesInEnglish = new Intl.DisplayNames(["en"], { type: "region" });
+export { getCountryName } from "@rybbit/shared";
 
 export const getCountryFlagUrl = (countryCode: string): string => {
   if (!countryCode || countryCode.length !== 2) return "";
   return `https://flagcdn.com/w20/${countryCode.toLowerCase()}.png`;
-};
-
-export const getCountryName = (countryCode: string): string => {
-  try {
-    return regionNamesInEnglish.of(countryCode.toUpperCase()) || countryCode;
-  } catch {
-    return countryCode;
-  }
 };
 
 export const formatDateRange = (startDate: string, endDate: string, timeZone: string): string => {

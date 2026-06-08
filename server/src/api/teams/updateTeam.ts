@@ -1,14 +1,9 @@
-import { eq, and, inArray } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 import { FastifyReply, FastifyRequest } from "fastify";
 import { db } from "../../db/postgres/postgres.js";
-import {
-  team,
-  teamMember,
-  teamSiteAccess,
-  member,
-  sites,
-} from "../../db/postgres/schema.js";
+import { team, teamMember, teamSiteAccess } from "../../db/postgres/schema.js";
 import { invalidateSitesAccessCache } from "../../lib/auth-utils.js";
+import { findInvalidOrgMemberIds, findInvalidOrgSiteIds } from "./validation.js";
 
 interface UpdateTeamBody {
   name?: string;
@@ -47,17 +42,7 @@ export async function updateTeam(
 
     // Validate memberUserIds are org members
     if (memberUserIds && memberUserIds.length > 0) {
-      const orgMembers = await db
-        .select({ userId: member.userId })
-        .from(member)
-        .where(
-          and(
-            eq(member.organizationId, organizationId),
-            inArray(member.userId, memberUserIds)
-          )
-        );
-      const validUserIds = new Set(orgMembers.map((m) => m.userId));
-      const invalidUserIds = memberUserIds.filter((id) => !validUserIds.has(id));
+      const invalidUserIds = await findInvalidOrgMemberIds(organizationId, memberUserIds);
       if (invalidUserIds.length > 0) {
         return reply.status(400).send({
           error: `Users not in organization: ${invalidUserIds.join(", ")}`,
@@ -67,17 +52,7 @@ export async function updateTeam(
 
     // Validate siteIds belong to org
     if (siteIds && siteIds.length > 0) {
-      const orgSites = await db
-        .select({ siteId: sites.siteId })
-        .from(sites)
-        .where(
-          and(
-            eq(sites.organizationId, organizationId),
-            inArray(sites.siteId, siteIds)
-          )
-        );
-      const validSiteIds = new Set(orgSites.map((s) => s.siteId));
-      const invalidSiteIds = siteIds.filter((id) => !validSiteIds.has(id));
+      const invalidSiteIds = await findInvalidOrgSiteIds(organizationId, siteIds);
       if (invalidSiteIds.length > 0) {
         return reply.status(400).send({
           error: `Sites not in organization: ${invalidSiteIds.join(", ")}`,

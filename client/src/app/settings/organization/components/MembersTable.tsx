@@ -18,6 +18,7 @@ import {
   TableRow,
 } from "../../../../components/ui/table";
 import { IS_CLOUD } from "../../../../lib/const";
+import { getRoleBadgeLabel } from "../../../../lib/utils";
 import { getTimezone } from "../../../../lib/store";
 import { CreateUserDialog } from "./CreateUserDialog";
 import { EditMemberDialog } from "./EditMemberDialog";
@@ -113,13 +114,7 @@ export function MembersTable({
                     <TableRow key={member.id}>
                       <TableCell>{member.user?.name || "—"}</TableCell>
                       <TableCell>{member.user?.email}</TableCell>
-                      <TableCell className="capitalize">
-                        {member.role === "admin"
-                          ? t("Admin")
-                          : member.role === "owner"
-                            ? t("Owner")
-                            : t("Member")}
-                      </TableCell>
+                      <TableCell className="capitalize">{getRoleBadgeLabel(member.role, t)}</TableCell>
                       <TableCell>
                         {member.role === "member" ? (
                           <Badge

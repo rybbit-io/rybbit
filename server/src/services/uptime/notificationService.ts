@@ -133,14 +133,17 @@ export class NotificationService {
     }
   }
 
+  private getMonitorDisplayName(monitor: Monitor): string {
+    return monitor.name || monitor.httpConfig?.url || `${monitor.tcpConfig?.host}:${monitor.tcpConfig?.port}`;
+  }
+
   private async sendEmailNotification(
     email: string,
     monitor: Monitor,
     incident: Incident,
     eventType: "down" | "recovery"
   ): Promise<void> {
-    const monitorName =
-      monitor.name || monitor.httpConfig?.url || `${monitor.tcpConfig?.host}:${monitor.tcpConfig?.port}`;
+    const monitorName = this.getMonitorDisplayName(monitor);
     const region = incident.region || "local";
     const incidentTime = DateTime.fromSQL(incident.startTime).toLocaleString(DateTime.DATETIME_FULL);
 
@@ -192,8 +195,7 @@ export class NotificationService {
     incident: Incident,
     eventType: "down" | "recovery"
   ): Promise<void> {
-    const monitorName =
-      monitor.name || monitor.httpConfig?.url || `${monitor.tcpConfig?.host}:${monitor.tcpConfig?.port}`;
+    const monitorName = this.getMonitorDisplayName(monitor);
     const region = incident.region || "local";
 
     const embed = {
@@ -277,8 +279,7 @@ export class NotificationService {
     incident: Incident,
     eventType: "down" | "recovery"
   ): Promise<void> {
-    const monitorName =
-      monitor.name || monitor.httpConfig?.url || `${monitor.tcpConfig?.host}:${monitor.tcpConfig?.port}`;
+    const monitorName = this.getMonitorDisplayName(monitor);
     const region = incident.region || "local";
     const emoji = eventType === "down" ? ":red_circle:" : ":white_check_mark:";
 
@@ -372,8 +373,7 @@ export class NotificationService {
     incident: Incident,
     eventType: "down" | "recovery"
   ): Promise<void> {
-    const monitorName =
-      monitor.name || monitor.httpConfig?.url || `${monitor.tcpConfig?.host}:${monitor.tcpConfig?.port}`;
+    const monitorName = this.getMonitorDisplayName(monitor);
     const region = incident.region || "local";
 
     let message: string;

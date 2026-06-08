@@ -1,16 +1,11 @@
 "use client";
 
 import { useExtracted } from "next-intl";
-import { authClient } from "../../../lib/auth";
+import { useIsMemberRole } from "../../../hooks/useIsMemberRole";
 
 export default function BillingLayout({ children }: { children: React.ReactNode }) {
   const t = useExtracted();
-  const { data: session } = authClient.useSession();
-  const { data: activeOrg } = authClient.useActiveOrganization();
-  const currentMember = activeOrg?.members?.find(
-    (m) => m.userId === session?.user?.id
-  );
-  const isMember = currentMember?.role === "member";
+  const isMember = useIsMemberRole();
 
   return (
     <div className="space-y-5">

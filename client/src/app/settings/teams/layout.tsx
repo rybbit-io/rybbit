@@ -3,18 +3,13 @@
 import { Plus } from "lucide-react";
 import { useExtracted } from "next-intl";
 import { Button } from "../../../components/ui/button";
-import { authClient } from "../../../lib/auth";
+import { useIsMemberRole } from "../../../hooks/useIsMemberRole";
 import { CreateEditTeamDialog } from "./components/CreateEditTeamDialog";
 import { ExternalLink } from "../../../components/ExternalLink";
 
 export default function TeamsLayout({ children }: { children: React.ReactNode }) {
   const t = useExtracted();
-  const { data: session } = authClient.useSession();
-  const { data: activeOrg } = authClient.useActiveOrganization();
-  const currentMember = activeOrg?.members?.find(
-    (m) => m.userId === session?.user?.id
-  );
-  const isMember = currentMember?.role === "member";
+  const isMember = useIsMemberRole();
 
   return (
     <div className="space-y-5">

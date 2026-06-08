@@ -6,18 +6,13 @@ import { useState } from "react";
 import { CreateOrganizationDialog } from "../../../components/CreateOrganizationDialog";
 import { OrganizationSelector } from "../../../components/OrganizationSelector";
 import { Button } from "../../../components/ui/button";
-import { authClient } from "../../../lib/auth";
+import { useIsMemberRole } from "../../../hooks/useIsMemberRole";
 
 export default function OrganizationLayout({ children }: { children: React.ReactNode }) {
   const [createOrgDialogOpen, setCreateOrgDialogOpen] = useState(false);
 
   const t = useExtracted();
-  const { data: session } = authClient.useSession();
-  const { data: activeOrg } = authClient.useActiveOrganization();
-  const currentMember = activeOrg?.members?.find(
-    (m) => m.userId === session?.user?.id
-  );
-  const isMember = currentMember?.role === "member";
+  const isMember = useIsMemberRole();
 
   return (
     <>

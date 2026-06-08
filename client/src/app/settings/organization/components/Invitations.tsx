@@ -9,6 +9,7 @@ import { Button } from "../../../../components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../../../../components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../../../../components/ui/table";
 import { authClient } from "../../../../lib/auth";
+import { getRoleBadgeLabel } from "../../../../lib/utils";
 
 interface InvitationsProps {
   organizationId: string;
@@ -87,9 +88,7 @@ export function Invitations({ organizationId, isOwner }: InvitationsProps) {
                   pendingInvitations.map(invitation => (
                     <TableRow key={invitation.id}>
                       <TableCell>{invitation.email}</TableCell>
-                      <TableCell className="capitalize">
-                        {invitation.role === "admin" ? t("Admin") : invitation.role === "owner" ? t("Owner") : t("Member")}
-                      </TableCell>
+                      <TableCell className="capitalize">{getRoleBadgeLabel(invitation.role, t)}</TableCell>
                       <TableCell>
                         <Badge variant="secondary">{t("Pending")}</Badge>
                       </TableCell>

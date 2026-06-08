@@ -2,6 +2,7 @@ import { eq, desc } from "drizzle-orm";
 import { FastifyReply, FastifyRequest } from "fastify";
 import { db } from "../../../db/postgres/postgres.js";
 import { dashboards } from "../../../db/postgres/schema.js";
+import { parsePositiveInteger } from "../../utils/parseParams.js";
 
 export async function getDashboards(
   request: FastifyRequest<{
@@ -11,10 +12,8 @@ export async function getDashboards(
   }>,
   reply: FastifyReply
 ) {
-  const siteId = parseInt(request.params.siteId, 10);
-  if (isNaN(siteId) || siteId <= 0) {
-    return reply.status(400).send({ error: "Invalid site ID" });
-  }
+  const siteId = parsePositiveInteger(request.params.siteId, reply, "Invalid site ID");
+  if (siteId === null) return;
 
   try {
     const siteDashboards = await db.query.dashboards.findMany({

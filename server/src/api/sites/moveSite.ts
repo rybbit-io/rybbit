@@ -5,6 +5,7 @@ import { db } from "../../db/postgres/postgres.js";
 import { member, organization, sites } from "../../db/postgres/schema.js";
 import { IS_CLOUD } from "../../lib/const.js";
 import { getSubscriptionInner } from "../stripe/getSubscription.js";
+import { parsePositiveInteger } from "../utils/parseParams.js";
 import { applySiteMove } from "./applySiteMove.js";
 
 const moveSiteSchema = z.object({
@@ -22,10 +23,8 @@ export async function moveSite(
   request: FastifyRequest<{ Params: { siteId: string }; Body: { organizationId: string } }>,
   reply: FastifyReply
 ) {
-  const siteId = parseInt(request.params.siteId, 10);
-  if (isNaN(siteId) || siteId <= 0) {
-    return reply.status(400).send({ error: "Invalid site ID: must be a positive integer" });
-  }
+  const siteId = parsePositiveInteger(request.params.siteId, reply, "Invalid site ID: must be a positive integer");
+  if (siteId === null) return;
 
   const validation = moveSiteSchema.safeParse(request.body);
   if (!validation.success) {

@@ -7,15 +7,17 @@ import { auth } from "./auth.js";
 import { siteConfig } from "./siteConfig.js";
 import { logger } from "./logger/logger.js";
 
-export function mapHeaders(headers: any) {
-  const entries = Object.entries(headers);
-  const map = new Map();
-  for (const [headerKey, headerValue] of entries) {
-    if (headerValue != null) {
-      map.set(headerKey, headerValue);
-    }
-  }
-  return map;
+/**
+ * Extract an API key from a request. Priority: Authorization: Bearer header
+ * (recommended), then the `api_key` query parameter (testing only).
+ */
+export function extractApiKeyFromRequest(req: FastifyRequest): string | null {
+  const authHeader = req.headers["authorization"];
+  const bearerToken =
+    authHeader && typeof authHeader === "string" && authHeader.startsWith("Bearer ") ? authHeader.substring(7) : null;
+  const queryApiKey = (req.query as any)?.api_key;
+  const apiKey = bearerToken || queryApiKey;
+  return apiKey && typeof apiKey === "string" ? apiKey : null;
 }
 
 export async function getSessionFromReq(req: FastifyRequest) {
@@ -234,15 +236,9 @@ export async function checkApiKey(
   options: { organizationId?: string; siteId?: string | number }
 ): Promise<{ valid: boolean; role: string | null; userId?: string; rateLimited?: boolean }> {
   // Check if a valid API key was provided
-  // Priority: 1. Authorization: Bearer header (recommended), 2. Query parameter (testing only)
-  const authHeader = req.headers["authorization"];
-  const bearerToken =
-    authHeader && typeof authHeader === "string" && authHeader.startsWith("Bearer ") ? authHeader.substring(7) : null;
+  const apiKey = extractApiKeyFromRequest(req);
 
-  const queryApiKey = (req.query as any)?.api_key;
-  const apiKey = bearerToken || queryApiKey;
-
-  if (apiKey && typeof apiKey === "string") {
+  if (apiKey) {
     try {
       // Verify the API key using Better Auth
       const result = await auth.api.verifyApiKey({
@@ -310,13 +306,9 @@ export async function getUserIdFromRequest(req: FastifyRequest): Promise<string 
   }
 
   // Fall back to API key auth
-  const authHeader = req.headers["authorization"];
-  const bearerToken =
-    authHeader && typeof authHeader === "string" && authHeader.startsWith("Bearer ") ? authHeader.substring(7) : null;
-  const queryApiKey = (req.query as any)?.api_key;
-  const apiKey = bearerToken || queryApiKey;
+  const apiKey = extractApiKeyFromRequest(req);
 
-  if (apiKey && typeof apiKey === "string") {
+  if (apiKey) {
     try {
       const result = await auth.api.verifyApiKey({
         body: { key: apiKey },

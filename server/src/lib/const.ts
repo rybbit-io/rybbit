@@ -10,10 +10,6 @@ export const LITE_DASHBOARD = process.env.LITE_DASHBOARD === "true";
 export const SECRET = process.env.BETTER_AUTH_SECRET;
 export const MAPBOX_TOKEN = process.env.MAPBOX_TOKEN;
 
-// Trial constants (commented out as we're replacing with free tier)
-// export const TRIAL_DURATION_DAYS = 14;
-// export const TRIAL_EVENT_LIMIT = 100000;
-
 export const DEFAULT_EVENT_LIMIT = 3_000;
 
 // Site and member limits per plan tier

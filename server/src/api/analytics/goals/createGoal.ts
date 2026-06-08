@@ -2,6 +2,7 @@ import { FastifyReply, FastifyRequest } from "fastify";
 import { db } from "../../../db/postgres/postgres.js";
 import { goals } from "../../../db/postgres/schema.js";
 import { getUserHasAccessToSite } from "../../../lib/auth-utils.js";
+import { parsePositiveInteger } from "../../utils/parseParams.js";
 import { z } from "zod";
 
 // Define validation schema for path pattern
@@ -72,10 +73,8 @@ export async function createGoal(
 ) {
   try {
     // Get siteId from URL params
-    const siteId = parseInt(request.params.siteId, 10);
-    if (isNaN(siteId) || siteId <= 0) {
-      return reply.status(400).send({ error: "Invalid site ID" });
-    }
+    const siteId = parsePositiveInteger(request.params.siteId, reply, "Invalid site ID");
+    if (siteId === null) return;
 
     // Validate the request body
     const validatedData = goalBodySchema.parse(request.body);

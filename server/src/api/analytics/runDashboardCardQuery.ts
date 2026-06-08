@@ -3,6 +3,7 @@ import { z } from "zod";
 import { clickhouse } from "../../db/clickhouse/clickhouse.js";
 import { MAX_CUSTOM_QUERY_LENGTH, normalizeCustomQuery, validateScopedQuery } from "./utils/customQueryValidation.js";
 import { bucketIntervalMap, getTimeStatement } from "./utils/utils.js";
+import { parsePositiveInteger } from "../utils/parseParams.js";
 
 const MAX_EXECUTION_TIME_SECONDS = 10;
 const MAX_RESULT_ROWS = 1000;
@@ -32,10 +33,8 @@ export async function runDashboardCardQuery(
   }>,
   reply: FastifyReply
 ) {
-  const siteId = parseInt(request.params.siteId, 10);
-  if (isNaN(siteId) || siteId <= 0) {
-    return reply.status(400).send({ error: "Invalid site ID" });
-  }
+  const siteId = parsePositiveInteger(request.params.siteId, reply, "Invalid site ID");
+  if (siteId === null) return;
 
   const body = requestBodySchema.safeParse(request.body);
   if (!body.success) {

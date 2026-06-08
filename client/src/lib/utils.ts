@@ -29,13 +29,12 @@ export function formatSecondsAsMinutesAndSeconds(value: number) {
 
 export const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
-export const getCountryName = (countryCode: string) => {
-  try {
-    return regionNamesInEnglish.of(countryCode.toUpperCase()) || countryCode;
-  } catch (error) {
-    return countryCode;
-  }
-};
+/** Localized label for an organization member role, defaulting to "Member". */
+export function getRoleBadgeLabel(role: string | null | undefined, t: (key: string) => string): string {
+  return role === "admin" ? t("Admin") : role === "owner" ? t("Owner") : t("Member");
+}
+
+export { getCountryName } from "@rybbit/shared";
 
 export function truncateString(str: string, n = 50) {
   return str.length > n ? str.substring(0, n) + "..." : str;

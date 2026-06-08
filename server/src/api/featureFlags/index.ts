@@ -12,6 +12,7 @@ import { getRequestUserAgent } from "../../services/tracker/requestIdentity.js";
 import { processResults } from "../analytics/utils/utils.js";
 import { getDeviceType, getIpAddress } from "../../utils.js";
 import { evaluateFeatureFlagsForSite } from "../../services/featureFlags/evaluator.js";
+import { parsePositiveInteger } from "../utils/parseParams.js";
 import {
   evaluateFeatureFlagsSchema,
   featureFlagBodySchema,
@@ -28,15 +29,6 @@ type FeatureFlagStatsRow = {
   events: number;
   exposures: number;
 };
-
-function parseSiteId(siteIdParam: string, reply: FastifyReply): number | null {
-  const siteId = parseInt(siteIdParam, 10);
-  if (isNaN(siteId) || siteId <= 0) {
-    reply.status(400).send({ error: "Invalid site ID" });
-    return null;
-  }
-  return siteId;
-}
 
 function getDuplicateKeyMessage(error: unknown) {
   if (typeof error === "object" && error !== null && "code" in error && error.code === "23505") {
@@ -97,8 +89,8 @@ export async function getFeatureFlags(
   }>,
   reply: FastifyReply
 ) {
-  const siteId = parseSiteId(request.params.siteId, reply);
-  if (!siteId) return;
+  const siteId = parsePositiveInteger(request.params.siteId, reply, "Invalid site ID");
+  if (siteId === null) return;
 
   const rows = await db.query.featureFlags.findMany({
     where: eq(featureFlags.siteId, siteId),
@@ -126,8 +118,8 @@ export async function createFeatureFlag(
   reply: FastifyReply
 ) {
   try {
-    const siteId = parseSiteId(request.params.siteId, reply);
-    if (!siteId) return;
+    const siteId = parsePositiveInteger(request.params.siteId, reply, "Invalid site ID");
+    if (siteId === null) return;
 
     const body = featureFlagBodySchema.parse(request.body);
 
@@ -169,13 +161,11 @@ export async function updateFeatureFlag(
   reply: FastifyReply
 ) {
   try {
-    const siteId = parseSiteId(request.params.siteId, reply);
-    if (!siteId) return;
+    const siteId = parsePositiveInteger(request.params.siteId, reply, "Invalid site ID");
+    if (siteId === null) return;
 
-    const flagId = parseInt(request.params.flagId, 10);
-    if (isNaN(flagId) || flagId <= 0) {
-      return reply.status(400).send({ error: "Invalid feature flag ID" });
-    }
+    const flagId = parsePositiveInteger(request.params.flagId, reply, "Invalid feature flag ID");
+    if (flagId === null) return;
 
     const body = featureFlagUpdateSchema.parse(request.body);
     const updateData: Partial<typeof featureFlags.$inferInsert> = {
@@ -235,13 +225,11 @@ export async function deleteFeatureFlag(
   }>,
   reply: FastifyReply
 ) {
-  const siteId = parseSiteId(request.params.siteId, reply);
-  if (!siteId) return;
+  const siteId = parsePositiveInteger(request.params.siteId, reply, "Invalid site ID");
+  if (siteId === null) return;
 
-  const flagId = parseInt(request.params.flagId, 10);
-  if (isNaN(flagId) || flagId <= 0) {
-    return reply.status(400).send({ error: "Invalid feature flag ID" });
-  }
+  const flagId = parsePositiveInteger(request.params.flagId, reply, "Invalid feature flag ID");
+  if (flagId === null) return;
 
   const [deleted] = await db
     .delete(featureFlags)

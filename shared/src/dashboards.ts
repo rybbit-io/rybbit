@@ -1,5 +1,3 @@
-import type { TimeBucket } from "./time";
-
 export type DashboardVizType =
   | "table"
   | "line"
@@ -13,12 +11,6 @@ export type DashboardVizType =
 
 /** How a single numeric value is formatted in stat / map / calendar cards. */
 export type DashboardValueFormat = "number" | "percent" | "duration" | "bytes";
-
-/**
- * Allowlisted bucket values for the {{bucket}} template variable. Mirrors the
- * server-side bucketIntervalMap keys (which are derived from TimeBucket).
- */
-export type DashboardBucket = TimeBucket;
 
 export interface DashboardCardMapping {
   /** Column used for the X axis / category (also the slice label for pie). */
@@ -37,13 +29,6 @@ export interface DashboardCardMapping {
   dateColumn?: string;
 }
 
-export interface DashboardGridPos {
-  x: number;
-  y: number;
-  w: number;
-  h: number;
-}
-
 export interface DashboardCard {
   /** Client-generated unique id. */
   id: string;
@@ -52,7 +37,7 @@ export interface DashboardCard {
   sql: string;
   vizType: DashboardVizType;
   mapping: DashboardCardMapping;
-  gridPos: DashboardGridPos;
+  gridPos: { x: number; y: number; w: number; h: number };
 }
 
 export interface DashboardConfig {

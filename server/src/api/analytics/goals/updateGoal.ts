@@ -2,6 +2,7 @@ import { FastifyReply, FastifyRequest } from "fastify";
 import { db } from "../../../db/postgres/postgres.js";
 import { goals } from "../../../db/postgres/schema.js";
 import { getUserHasAccessToSite } from "../../../lib/auth-utils.js";
+import { parsePositiveInteger } from "../../utils/parseParams.js";
 import { z } from "zod";
 import { eq } from "drizzle-orm";
 
@@ -76,16 +77,10 @@ export async function updateGoal(
   reply: FastifyReply
 ) {
   try {
-    const siteId = parseInt(request.params.siteId, 10);
-    const goalId = parseInt(request.params.goalId, 10);
-
-    if (isNaN(siteId) || siteId <= 0) {
-      return reply.status(400).send({ error: "Invalid site ID" });
-    }
-
-    if (isNaN(goalId) || goalId <= 0) {
-      return reply.status(400).send({ error: "Invalid goal ID" });
-    }
+    const siteId = parsePositiveInteger(request.params.siteId, reply, "Invalid site ID");
+    if (siteId === null) return;
+    const goalId = parsePositiveInteger(request.params.goalId, reply, "Invalid goal ID");
+    if (goalId === null) return;
 
     // Validate the request body
     const validatedData = updateGoalSchema.parse(request.body);

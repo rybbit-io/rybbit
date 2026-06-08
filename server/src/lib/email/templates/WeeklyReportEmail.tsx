@@ -13,6 +13,7 @@ import {
   pixelBasedPreset,
 } from "@react-email/components";
 import * as React from "react";
+import { getCountryName } from "@rybbit/shared";
 import type { SiteReport, MetricData } from "../../../services/weekyReports/weeklyReportTypes.js";
 
 interface WeeklyReportEmailProps {
@@ -88,8 +89,6 @@ const safeToFixed = (num: number | null | undefined, decimals: number = 1): stri
   return num.toFixed(decimals);
 };
 
-const regionNamesInEnglish = new Intl.DisplayNames(["en"], { type: "region" });
-
 const getCountryFlag = (countryCode: string): string => {
   if (!countryCode || countryCode.length !== 2) return "";
   const codePoints = countryCode
@@ -102,7 +101,7 @@ const getCountryFlag = (countryCode: string): string => {
 const getCountryDisplay = (countryCode: string): string => {
   try {
     const flag = getCountryFlag(countryCode);
-    const name = regionNamesInEnglish.of(countryCode.toUpperCase()) || countryCode;
+    const name = getCountryName(countryCode);
     return `${flag} ${name}`;
   } catch (error) {
     return countryCode;

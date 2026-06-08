@@ -157,7 +157,6 @@ import {
   requireSiteAdminAccess,
   resolveSiteId,
 } from "./lib/auth-middleware.js";
-import { mapHeaders } from "./lib/auth-utils.js";
 import { auth } from "./lib/auth.js";
 import { createCorsOptionsDelegate, createRejectUntrustedOriginHook } from "./lib/cors.js";
 import { IS_CLOUD } from "./lib/const.js";
@@ -242,12 +241,14 @@ server.register(
         }
       );
 
+      const headerMap = (reply: any) =>
+        new Map(Object.entries(reply.getHeaders()).filter(([, v]) => v != null));
       fastify.all("/api/auth/*", async (request, reply: any) => {
-        reply.raw.setHeaders(mapHeaders(reply.getHeaders()));
+        reply.raw.setHeaders(headerMap(reply));
         await authHandler(request.raw, reply.raw);
       });
       fastify.all("/auth/*", async (request, reply: any) => {
-        reply.raw.setHeaders(mapHeaders(reply.getHeaders()));
+        reply.raw.setHeaders(headerMap(reply));
         await authHandler(request.raw, reply.raw);
       });
     });
