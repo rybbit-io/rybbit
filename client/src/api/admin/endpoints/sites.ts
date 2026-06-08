@@ -126,6 +126,9 @@ export function updateSiteConfig(
     blockBots?: boolean;
     excludedIPs?: string[];
     excludedCountries?: string[];
+    excludedPaths?: string[];
+    excludedHostnames?: string[];
+    excludedUserAgents?: string[];
     sessionReplay?: boolean;
     webVitals?: boolean;
     trackErrors?: boolean;

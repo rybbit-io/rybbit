@@ -11,6 +11,9 @@ type SiteRow = {
   blockBots: boolean;
   excludedIPs: unknown;
   excludedCountries: unknown;
+  excludedPaths: unknown;
+  excludedHostnames: unknown;
+  excludedUserAgents: unknown;
   privateLinkKey: string | null;
   sessionReplay: boolean | null;
   webVitals: boolean | null;
@@ -56,6 +59,9 @@ function createSiteRow(overrides: Partial<SiteRow>): SiteRow {
     blockBots: true,
     excludedIPs: [],
     excludedCountries: [],
+    excludedPaths: [],
+    excludedHostnames: [],
+    excludedUserAgents: [],
     privateLinkKey: null,
     sessionReplay: false,
     webVitals: false,
@@ -171,5 +177,44 @@ describe("siteConfig.getConfig", () => {
       { column: "id", value: "123" },
       { column: "site_id", value: 123 },
     ]);
+  });
+});
+
+describe("siteConfig exclusion matchers", () => {
+  it("matches excluded paths with glob wildcards, case-insensitively", async () => {
+    dbMock.rows.push(createSiteRow({ siteId: 1, excludedPaths: ["/admin/*", "/preview"] }));
+
+    expect(await siteConfig.isPathExcluded("/admin/users", 1)).toBe(true);
+    expect(await siteConfig.isPathExcluded("/ADMIN/users", 1)).toBe(true);
+    expect(await siteConfig.isPathExcluded("/preview", 1)).toBe(true);
+    expect(await siteConfig.isPathExcluded("/admin", 1)).toBe(false); // no trailing segment
+    expect(await siteConfig.isPathExcluded("/blog", 1)).toBe(false);
+    expect(await siteConfig.isPathExcluded(undefined, 1)).toBe(false);
+  });
+
+  it("matches excluded hostnames with glob wildcards", async () => {
+    dbMock.rows.push(createSiteRow({ siteId: 2, excludedHostnames: ["localhost", "*.vercel.app"] }));
+
+    expect(await siteConfig.isHostnameExcluded("localhost", 2)).toBe(true);
+    expect(await siteConfig.isHostnameExcluded("my-app.vercel.app", 2)).toBe(true);
+    expect(await siteConfig.isHostnameExcluded("vercel.app", 2)).toBe(false);
+    expect(await siteConfig.isHostnameExcluded("example.com", 2)).toBe(false);
+  });
+
+  it("matches excluded user agents as case-insensitive substrings", async () => {
+    dbMock.rows.push(createSiteRow({ siteId: 3, excludedUserAgents: ["HeadlessChrome", "MyMonitor"] }));
+
+    expect(await siteConfig.isUserAgentExcluded("Mozilla/5.0 HeadlessChrome/120", 3)).toBe(true);
+    expect(await siteConfig.isUserAgentExcluded("mozilla/5.0 headlesschrome/120", 3)).toBe(true);
+    expect(await siteConfig.isUserAgentExcluded("Mozilla/5.0 (real browser)", 3)).toBe(false);
+    expect(await siteConfig.isUserAgentExcluded(undefined, 3)).toBe(false);
+  });
+
+  it("returns false when no exclusions are configured", async () => {
+    dbMock.rows.push(createSiteRow({ siteId: 4 }));
+
+    expect(await siteConfig.isPathExcluded("/admin", 4)).toBe(false);
+    expect(await siteConfig.isHostnameExcluded("localhost", 4)).toBe(false);
+    expect(await siteConfig.isUserAgentExcluded("HeadlessChrome", 4)).toBe(false);
   });
 });

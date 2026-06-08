@@ -57,6 +57,24 @@ export type {
   UpdateExcludedCountriesResponse,
 } from "./excludedCountries";
 
+// Excluded Paths / Hostnames / User Agents endpoints
+export {
+  fetchExcludedPaths,
+  updateExcludedPaths,
+  fetchExcludedHostnames,
+  updateExcludedHostnames,
+  fetchExcludedUserAgents,
+  updateExcludedUserAgents,
+} from "./exclusions";
+export type {
+  ExcludedPathsResponse,
+  ExcludedHostnamesResponse,
+  ExcludedUserAgentsResponse,
+  UpdateExcludedPathsRequest,
+  UpdateExcludedHostnamesRequest,
+  UpdateExcludedUserAgentsRequest,
+} from "./exclusions";
+
 // Account Settings endpoints
 export { updateAccountSettings } from "./accountSettings";
 export type {

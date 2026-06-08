@@ -77,6 +77,9 @@ export const sites = pgTable(
     blockBots: boolean().default(true).notNull(),
     excludedIPs: jsonb("excluded_ips").default([]), // Array of IP addresses/ranges to exclude
     excludedCountries: jsonb("excluded_countries").default([]), // Array of ISO country codes to exclude (e.g., ["US", "GB"])
+    excludedPaths: jsonb("excluded_paths").default([]).$type<string[]>(), // Array of pathname glob patterns to exclude (e.g., ["/admin/*", "/preview"])
+    excludedHostnames: jsonb("excluded_hostnames").default([]).$type<string[]>(), // Array of hostname glob patterns to exclude (e.g., ["localhost", "*.vercel.app"])
+    excludedUserAgents: jsonb("excluded_user_agents").default([]).$type<string[]>(), // Array of case-insensitive user-agent substrings to exclude (e.g., ["HeadlessChrome"])
     sessionReplay: boolean().default(false),
     webVitals: boolean().default(false),
     trackErrors: boolean().default(false),

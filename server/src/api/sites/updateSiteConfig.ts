@@ -29,6 +29,9 @@ const updateSiteConfigSchema = z.object({
     )
     .max(250)
     .optional(),
+  excludedPaths: z.array(z.string().trim().min(1).max(2048)).max(100).optional(),
+  excludedHostnames: z.array(z.string().trim().min(1).max(253)).max(100).optional(),
+  excludedUserAgents: z.array(z.string().trim().min(1).max(512)).max(100).optional(),
 
   // Tags
   tags: z.array(z.string().trim().min(1).max(50)).max(20).optional(),
@@ -165,6 +168,9 @@ export async function updateSiteConfig(
       "blockBots",
       "excludedIPs",
       "excludedCountries",
+      "excludedPaths",
+      "excludedHostnames",
+      "excludedUserAgents",
       "tags",
       "sessionReplay",
       "webVitals",

@@ -346,6 +346,54 @@ export async function trackEvent(request: FastifyRequest, reply: FastifyReply) {
       }
     }
 
+    // Check if the pathname should be excluded from tracking
+    if (siteConfiguration.excludedPaths && siteConfiguration.excludedPaths.length > 0) {
+      const isPathExcluded = await siteConfig.isPathExcluded(validatedPayload.pathname, validatedPayload.site_id);
+      if (isPathExcluded) {
+        logger.info(
+          { siteId: validatedPayload.site_id, pathname: validatedPayload.pathname },
+          "Path excluded from tracking"
+        );
+        return reply.status(200).send({
+          success: true,
+          message: "Event not tracked - path excluded",
+        });
+      }
+    }
+
+    // Check if the hostname should be excluded from tracking
+    if (siteConfiguration.excludedHostnames && siteConfiguration.excludedHostnames.length > 0) {
+      const isHostnameExcluded = await siteConfig.isHostnameExcluded(
+        validatedPayload.hostname,
+        validatedPayload.site_id
+      );
+      if (isHostnameExcluded) {
+        logger.info(
+          { siteId: validatedPayload.site_id, hostname: validatedPayload.hostname },
+          "Hostname excluded from tracking"
+        );
+        return reply.status(200).send({
+          success: true,
+          message: "Event not tracked - hostname excluded",
+        });
+      }
+    }
+
+    // Check if the user agent should be excluded from tracking
+    if (siteConfiguration.excludedUserAgents && siteConfiguration.excludedUserAgents.length > 0) {
+      const isUserAgentExcluded = await siteConfig.isUserAgentExcluded(
+        trackingIdentity.userAgent,
+        validatedPayload.site_id
+      );
+      if (isUserAgentExcluded) {
+        logger.info({ siteId: validatedPayload.site_id }, "User agent excluded from tracking");
+        return reply.status(200).send({
+          success: true,
+          message: "Event not tracked - user agent excluded",
+        });
+      }
+    }
+
     // Create base payload for the event using validated data
     const payload = await createBasePayload(
       request, // Pass request for IP/UA
