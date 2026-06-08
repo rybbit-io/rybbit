@@ -34,7 +34,19 @@ export function getRoleBadgeLabel(role: string | null | undefined, t: (key: stri
   return role === "admin" ? t("Admin") : role === "owner" ? t("Owner") : t("Member");
 }
 
-export { getCountryName } from "@rybbit/shared";
+const regionNamesInEnglish = new Intl.DisplayNames(["en"], { type: "region" });
+const languageNamesInEnglish = new Intl.DisplayNames(["en"], {
+  type: "language",
+});
+
+/** English country name for an ISO 3166-1 alpha-2 code, falling back to the code itself. */
+export function getCountryName(countryCode: string): string {
+  try {
+    return regionNamesInEnglish.of(countryCode.toUpperCase()) || countryCode;
+  } catch {
+    return countryCode;
+  }
+}
 
 export function truncateString(str: string, n = 50) {
   return str.length > n ? str.substring(0, n) + "..." : str;
@@ -66,11 +78,6 @@ export function truncateUrl(url: string, maxLength: number = 60) {
     return `${url.substring(0, maxLength - 3)}...`;
   }
 }
-
-const regionNamesInEnglish = new Intl.DisplayNames(["en"], { type: "region" });
-const languageNamesInEnglish = new Intl.DisplayNames(["en"], {
-  type: "language",
-});
 
 export const getLanguageName = (languageCode: string) => {
   try {
