@@ -54,11 +54,11 @@ export async function recordSessionReplay(
       return reply.status(200).send("Site over monthly limit, event not tracked");
     }
 
-    // Check if the site's plan includes session replay (e.g. it may have been
-    // enabled before a downgrade from Pro)
+    // Check if the site can record replays: the plan may not include them (e.g. enabled
+    // before a downgrade from Pro) or the monthly replay quota may be exhausted
     if (usageService.isSiteWithoutReplay(Number(siteId))) {
-      logger.info(`[SessionReplay] Skipping event for site ${siteId} - plan does not include session replay`);
-      return reply.status(200).send({ success: true, message: "Session replay not included in plan" });
+      logger.info(`[SessionReplay] Skipping event for site ${siteId} - replay not available for plan or quota`);
+      return reply.status(200).send({ success: true, message: "Session replay not available for plan or quota" });
     }
 
     const body = recordSessionReplaySchema.parse(request.body) as RecordSessionReplayRequest;

@@ -8,6 +8,7 @@ import { updateSiteConfig } from "../../../../api/admin/endpoints";
 import { useGetSite } from "../../../../api/admin/hooks/useSites";
 import { Alert, AlertDescription, AlertTitle } from "../../../../components/ui/alert";
 import { Button } from "../../../../components/ui/button";
+import { planIncludesReplay } from "../../../../lib/subscription/planUtils";
 import { useStripeSubscription } from "../../../../lib/subscription/useStripeSubscription";
 import { IS_CLOUD } from "../../../../lib/const";
 
@@ -18,7 +19,7 @@ export function EnableSessionReplay() {
   const { data: siteMetadata, isLoading, refetch } = useGetSite(siteId);
   const { data: subscription } = useStripeSubscription();
 
-  const canEnableReplay = !IS_CLOUD || (!!subscription?.planName.includes("pro") && !(subscription?.isTrial && (subscription?.eventLimit ?? 0) >= 500_000));
+  const canEnableReplay = !IS_CLOUD || planIncludesReplay(subscription);
 
   if (isLoading || siteMetadata?.sessionReplay || !canEnableReplay) return null;
 
@@ -32,7 +33,9 @@ export function EnableSessionReplay() {
           </AlertTitle>
           <AlertDescription className="text-sm text-neutral-700/80 dark:text-neutral-300/80">
             <div className="mb-2">
-              {t("Session replay will make the analytics script")} <b>{t("8x larger")}</b> {t("and the client will send significantly more and larger payloads.")} <b>{t("Only enable this if you will actually use it.")}</b>
+              {t("Session replay will make the analytics script")} <b>{t("8x larger")}</b>{" "}
+              {t("and the client will send significantly more and larger payloads.")}{" "}
+              <b>{t("Only enable this if you will actually use it.")}</b>
             </div>
             <Button
               size="sm"

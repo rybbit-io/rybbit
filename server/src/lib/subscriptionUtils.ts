@@ -3,7 +3,13 @@ import { DateTime } from "luxon";
 import Stripe from "stripe";
 import { db } from "../db/postgres/postgres.js";
 import { organization } from "../db/postgres/schema.js";
-import { APPSUMO_TIER_LIMITS, DEFAULT_EVENT_LIMIT, getStripePrices, StripePlan } from "./const.js";
+import {
+  APPSUMO_REPLAY_LIMITS,
+  APPSUMO_TIER_LIMITS,
+  DEFAULT_EVENT_LIMIT,
+  getStripePrices,
+  StripePlan,
+} from "./const.js";
 import { stripe } from "./stripe.js";
 import { logger } from "./logger/logger.js";
 
@@ -11,6 +17,7 @@ export interface AppSumoSubscriptionInfo {
   source: "appsumo";
   tier: string;
   eventLimit: number;
+  replayLimit: number;
   periodStart: string;
   planName: string;
   status: "active";
@@ -24,6 +31,7 @@ export interface StripeSubscriptionInfo {
   priceId: string;
   planName: string;
   eventLimit: number;
+  replayLimit: number;
   periodStart: string;
   currentPeriodEnd: Date;
   status: string;
@@ -97,6 +105,7 @@ export async function getAppSumoSubscription(organizationId: string): Promise<Ap
         source: "appsumo",
         tier,
         eventLimit,
+        replayLimit: APPSUMO_REPLAY_LIMITS[tier] ?? 0,
         periodStart: getStartOfMonth(),
         planName: `appsumo-${tier}`,
         status: "active",
@@ -139,7 +148,7 @@ export async function getOverrideSubscription(organizationId: string): Promise<O
         source: "override",
         planName: org.planOverride,
         eventLimit,
-        replayLimit: 0, // AppSumo doesn't include replays
+        replayLimit: APPSUMO_REPLAY_LIMITS[tier] ?? 0,
         periodStart: getStartOfMonth(),
         status: "active",
         interval: "lifetime",
@@ -387,6 +396,7 @@ function buildStripeSubscriptionInfo(subscription: Stripe.Subscription): StripeS
       priceId,
       planName: "Unknown Plan",
       eventLimit: 0,
+      replayLimit: 0,
       periodStart: getStartOfMonth(),
       currentPeriodEnd: new Date(subscriptionItem.current_period_end * 1000),
       status: subscription.status,
@@ -411,6 +421,7 @@ function buildStripeSubscriptionInfo(subscription: Stripe.Subscription): StripeS
     priceId,
     planName: planDetails.name,
     eventLimit: planDetails.limits.events,
+    replayLimit: planDetails.limits.replays,
     periodStart,
     currentPeriodEnd: new Date(subscriptionItem.current_period_end * 1000),
     status: subscription.status,
@@ -531,11 +542,12 @@ export async function getBestSubscriptionFromStripeSub(
 /**
  * Whether a subscription's plan includes session replay.
  *
- * Replays are a Pro feature (see pricing page / PRO_FEATURES). This mirrors the
- * client-side gate in EnableSessionReplay/TrackingTab, including the exclusion of
- * large (>=500k event) trials. The per-plan `limits.replays` numbers in const.ts are
- * a volume quota, not an entitlement — basic/standard plans carry them but do not
- * include the feature.
+ * Replays are a Pro feature (see pricing page / PRO_FEATURES), plus AppSumo tiers
+ * with a nonzero replay limit (4-6). This mirrors the client-side gate in
+ * EnableSessionReplay/TrackingTab, including the exclusion of large (>=500k event)
+ * trials. For Stripe plans the `limits.replays` numbers in const.ts are a volume
+ * quota, not an entitlement — basic/standard plans carry them but do not include
+ * the feature.
  */
 export function subscriptionIncludesReplay(subscription: SubscriptionInfo): boolean {
   switch (subscription.source) {
@@ -543,14 +555,37 @@ export function subscriptionIncludesReplay(subscription: SubscriptionInfo): bool
       // Bespoke enterprise plans include everything in Pro
       return true;
     case "override":
-      return subscription.planName.includes("pro");
+      // AppSumo tier overrides carry the tier's replay entitlement;
+      // Stripe-plan overrides follow the same pro-only rule as real Stripe plans
+      return subscription.planName.startsWith("appsumo")
+        ? subscription.replayLimit > 0
+        : subscription.planName.includes("pro");
     case "stripe": {
       const isLargeTrial = subscription.status === "trialing" && subscription.eventLimit >= 500_000;
       return subscription.planName.includes("pro") && !isLargeTrial;
     }
     case "appsumo":
+      return subscription.replayLimit > 0;
     case "free":
       return false;
+  }
+}
+
+/**
+ * Monthly session replay quota for a subscription. Only meaningful when
+ * subscriptionIncludesReplay is true; 0 otherwise.
+ */
+export function getReplayLimit(subscription: SubscriptionInfo): number {
+  switch (subscription.source) {
+    case "custom":
+      // Bespoke enterprise plans have no replay cap
+      return Infinity;
+    case "stripe":
+    case "override":
+    case "appsumo":
+      return subscription.replayLimit;
+    case "free":
+      return 0;
   }
 }
 

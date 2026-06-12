@@ -12,6 +12,7 @@ import { createServiceLogger } from "../lib/logger/logger.js";
 import {
   getAllStripeSubscriptionsByCustomer,
   getBestSubscriptionFromStripeSub,
+  getReplayLimit,
   stripeSubscriptionInfoFromSnapshot,
   subscriptionIncludesReplay,
   SubscriptionInfo,
@@ -21,7 +22,8 @@ type UsageUpdateCallback = () => void;
 
 class UsageService {
   private sitesOverLimit = new Set<number>();
-  // Sites whose organization's plan does not include session replay. Empty until the
+  // Sites that should not record session replays right now: their organization's plan
+  // doesn't include replays, or its monthly replay quota is exhausted. Empty until the
   // usage cron runs (and always empty when self-hosted), so enforcement fails open.
   private sitesWithoutReplay = new Set<number>();
   private usageCheckTask: cron.ScheduledTask | null = null;
@@ -221,6 +223,45 @@ class UsageService {
   }
 
   /**
+   * Gets monthly session replay counts for all sites in a single query (for current month).
+   * The metadata table is a ReplacingMergeTree keyed by (site_id, session_id), so uniq
+   * dedupes the multiple rows written per session before merges run.
+   * Returns a map of site_id -> replay count; empty on failure so quota enforcement fails open.
+   */
+  private async getAllSiteReplayCounts(): Promise<Map<number, number>> {
+    try {
+      const periodStart = this.getStartOfMonth();
+
+      const result = await clickhouse.query({
+        query: `
+          SELECT
+            site_id,
+            uniq(session_id) as count
+          FROM session_replay_metadata
+          WHERE start_time >= toDate({periodStart:String})
+          GROUP BY site_id
+        `,
+        format: "JSONEachRow",
+        query_params: {
+          periodStart: periodStart,
+        },
+      });
+
+      const rows = await processResults<{ site_id: number; count: string }>(result);
+
+      const replayCountMap = new Map<number, number>();
+      for (const row of rows) {
+        replayCountMap.set(row.site_id, parseInt(String(row.count), 10));
+      }
+
+      return replayCountMap;
+    } catch (error) {
+      this.logger.error(error as Error, "Error querying ClickHouse for replay counts");
+      return new Map();
+    }
+  }
+
+  /**
    * Updates monthly event usage for all organizations
    */
   public async updateOrganizationsMonthlyUsage(): Promise<void> {
@@ -242,15 +283,19 @@ class UsageService {
       // Step 1: Get all sites with their organization IDs
       const allSites = await this.getAllSites();
 
-      // Step 2: Get event counts for all sites in a single query (current month)
-      const eventCountMap = await this.getAllSiteEventCounts();
+      // Step 2: Get event and replay counts for all sites (current month, one query each)
+      const [eventCountMap, replayCountMap] = await Promise.all([
+        this.getAllSiteEventCounts(),
+        this.getAllSiteReplayCounts(),
+      ]);
 
-      // Step 3: Build a map of organizationId -> { siteIds, eventCount }
-      const orgDataMap = new Map<string, { siteIds: number[]; eventCount: number }>();
+      // Step 3: Build a map of organizationId -> { siteIds, eventCount, replayCount }
+      const orgDataMap = new Map<string, { siteIds: number[]; eventCount: number; replayCount: number }>();
       for (const site of allSites) {
-        const orgData = orgDataMap.get(site.organizationId) || { siteIds: [], eventCount: 0 };
+        const orgData = orgDataMap.get(site.organizationId) || { siteIds: [], eventCount: 0, replayCount: 0 };
         orgData.siteIds.push(site.siteId);
         orgData.eventCount += eventCountMap.get(site.siteId) || 0;
+        orgData.replayCount += replayCountMap.get(site.siteId) || 0;
         orgDataMap.set(site.organizationId, orgData);
       }
 
@@ -285,7 +330,9 @@ class UsageService {
           const subscription = await this.getOrganizationSubscriptionInfo(orgData, stripeSubscriptions);
           const eventLimit = subscription.eventLimit;
           const isOverLimit = eventCount > eventLimit;
-          const includesReplay = subscriptionIncludesReplay(subscription);
+
+          const replayCount = orgStats?.replayCount || 0;
+          const replayBlocked = !subscriptionIncludesReplay(subscription) || replayCount > getReplayLimit(subscription);
 
           let sendApproaching = false;
           if (!alreadyNotifiedApproaching && !isOverLimit && Number.isFinite(eventLimit) && daysRemaining >= 2) {
@@ -362,13 +409,14 @@ class UsageService {
             }
           }
 
-          // Track sites whose plan doesn't include session replay so ingest/config
-          // endpoints can stop recording for them (e.g. after a downgrade from Pro)
+          // Track sites that shouldn't record session replays — plan doesn't include
+          // them (e.g. after a downgrade from Pro) or the monthly quota is exhausted —
+          // so ingest/config endpoints can stop recording for them
           for (const siteId of siteIds) {
-            if (includesReplay) {
-              this.sitesWithoutReplay.delete(siteId);
-            } else {
+            if (replayBlocked) {
               this.sitesWithoutReplay.add(siteId);
+            } else {
+              this.sitesWithoutReplay.delete(siteId);
             }
           }
 
