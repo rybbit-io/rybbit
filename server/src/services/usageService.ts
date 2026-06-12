@@ -332,7 +332,7 @@ class UsageService {
           const isOverLimit = eventCount > eventLimit;
 
           const replayCount = orgStats?.replayCount || 0;
-          const replayBlocked = !subscriptionIncludesReplay(subscription) || replayCount > getReplayLimit(subscription);
+          const replayBlocked = !subscriptionIncludesReplay(subscription) || replayCount >= getReplayLimit(subscription);
 
           let sendApproaching = false;
           if (!alreadyNotifiedApproaching && !isOverLimit && Number.isFinite(eventLimit) && daysRemaining >= 2) {
