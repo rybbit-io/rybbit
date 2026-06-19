@@ -64,6 +64,13 @@
       "when": 1780551464784,
       "tag": "0008_black_prowler",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1781895152210,
+      "tag": "0009_ambiguous_gabe_jones",
+      "breakpoints": true
     }
   ]
 }
