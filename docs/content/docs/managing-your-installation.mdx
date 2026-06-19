@@ -84,6 +84,25 @@ ALTER TABLE session_replay_events MODIFY TTL toDateTime(timestamp) + INTERVAL 14
 ALTER TABLE session_replay_metadata MODIFY TTL start_time + INTERVAL 14 DAY;
 ```
 
+### Offload Session Replays to S3-Compatible Storage
+
+By default, session replay event data is stored in ClickHouse. For large deployments you can offload replay batches to any S3-compatible object store (AWS S3, Cloudflare R2, MinIO, etc.), keeping only lightweight metadata in ClickHouse. Storage is enabled automatically as soon as credentials are present; when no credentials are configured, replays continue to be stored in ClickHouse.
+
+Add the following variables to the `.env` file at the root of the repository and restart your services:
+
+| Variable | Required | Default | Description |
+| --- | --- | --- | --- |
+| `S3_ACCESS_KEY_ID` | Yes | – | Access key for the bucket |
+| `S3_SECRET_ACCESS_KEY` | Yes | – | Secret key for the bucket |
+| `S3_BUCKET_NAME` | No | `rybbit` | Bucket name |
+| `S3_ENDPOINT` | No | AWS S3 | Custom endpoint, e.g. `https://<account>.r2.cloudflarestorage.com` or `http://minio:9000`. Omit for AWS S3. |
+| `S3_REGION` | No | `auto` | Bucket region |
+| `S3_FORCE_PATH_STYLE` | No | `true` | Use path-style addressing. Required by most non-AWS providers; set to `false` for virtual-hosted AWS S3. |
+
+<Callout type="info">
+For backward compatibility the legacy `R2_*` variables (`R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET_NAME`, `R2_ACCOUNT_ID`) are still honored as a fallback. When `R2_ACCOUNT_ID` is set and `S3_ENDPOINT` is not, the Cloudflare R2 endpoint is derived automatically. Existing R2 deployments need no changes.
+</Callout>
+
 ## Anonymous Usage Telemetry
 
 To help us improve Rybbit, self-hosted instances automatically send anonymous usage statistics to our cloud service. This includes:

@@ -6,7 +6,7 @@ import {
 } from "../../types/sessionReplay.js";
 import { processResults, getTimeStatement } from "../../api/analytics/utils/utils.js";
 import { FilterParams } from "@rybbit/shared";
-import { r2Storage } from "../storage/r2StorageService.js";
+import { objectStorage } from "../storage/s3StorageService.js";
 import { getFilterStatement } from "../../api/analytics/utils/getFilterStatement.js";
 
 /**
@@ -164,7 +164,7 @@ export class SessionReplayQueryService {
 
     const eventsResults = await processResults<EventRow>(eventsResult);
 
-    // Group events by batch key for efficient R2 retrieval
+    // Group events by batch key for efficient object-storage retrieval
     const eventsByBatch = new Map<string | null, EventRow[]>();
     eventsResults.forEach(event => {
       const key = event.event_data_key;
@@ -177,13 +177,13 @@ export class SessionReplayQueryService {
     // Process batches and reconstruct events
     const events = [];
 
-    // Separate R2 and ClickHouse batches
-    const r2Batches: Array<[string, EventRow[]]> = [];
+    // Separate object-storage and ClickHouse batches
+    const objectStorageBatches: Array<[string, EventRow[]]> = [];
     const clickhouseBatches: Array<[string | null, EventRow[]]> = [];
 
     for (const [batchKey, batchEvents] of eventsByBatch) {
-      if (batchKey && r2Storage.isEnabled()) {
-        r2Batches.push([batchKey, batchEvents]);
+      if (batchKey && objectStorage.isEnabled()) {
+        objectStorageBatches.push([batchKey, batchEvents]);
       } else {
         clickhouseBatches.push([batchKey, batchEvents]);
       }
@@ -200,29 +200,29 @@ export class SessionReplayQueryService {
       }
     }
 
-    // Fetch R2 batches in parallel (with increased concurrency for better throughput)
+    // Fetch object-storage batches in parallel (with increased concurrency for better throughput)
     const PARALLEL_BATCH_SIZE = 50;
-    const r2Results: Array<{ batchKey: string; batchEvents: EventRow[]; data: any[] | null }> = [];
+    const objectStorageResults: Array<{ batchKey: string; batchEvents: EventRow[]; data: any[] | null }> = [];
 
-    for (let i = 0; i < r2Batches.length; i += PARALLEL_BATCH_SIZE) {
-      const batchSlice = r2Batches.slice(i, i + PARALLEL_BATCH_SIZE);
+    for (let i = 0; i < objectStorageBatches.length; i += PARALLEL_BATCH_SIZE) {
+      const batchSlice = objectStorageBatches.slice(i, i + PARALLEL_BATCH_SIZE);
 
       const promises = batchSlice.map(async ([batchKey, batchEvents]) => {
         try {
-          const eventDataArray = await r2Storage.getBatch(batchKey);
+          const eventDataArray = await objectStorage.getBatch(batchKey);
           return { batchKey, batchEvents, data: eventDataArray };
         } catch (error) {
-          console.error(`Failed to fetch R2 batch ${batchKey}:`, error);
+          console.error(`Failed to fetch object-storage batch ${batchKey}:`, error);
           return { batchKey, batchEvents, data: null };
         }
       });
 
       const results = await Promise.all(promises);
-      r2Results.push(...results);
+      objectStorageResults.push(...results);
     }
 
-    // Process R2 results
-    for (const { batchEvents, data } of r2Results) {
+    // Process object-storage results
+    for (const { batchEvents, data } of objectStorageResults) {
       if (data) {
         for (const event of batchEvents) {
           if (event.batch_index !== null && data[event.batch_index]) {
@@ -268,13 +268,13 @@ export class SessionReplayQueryService {
    * This includes:
    * - Events from session_replay_events table
    * - Metadata from session_replay_metadata table
-   * - R2 stored data (if enabled)
+   * - Object-storage data (if enabled)
    */
   async deleteSessionReplay(siteId: number, sessionId: string): Promise<void> {
-    // First, get all R2 keys for this session if R2 is enabled
-    if (r2Storage.isEnabled()) {
+    // First, get all object-storage keys for this session if storage is enabled
+    if (objectStorage.isEnabled()) {
       try {
-        const r2KeysResult = await clickhouse.query({
+        const storageKeysResult = await clickhouse.query({
           query: `
             SELECT DISTINCT event_data_key
             FROM session_replay_events
@@ -286,13 +286,13 @@ export class SessionReplayQueryService {
           format: "JSONEachRow",
         });
 
-        const r2Keys = await processResults<{ event_data_key: string }>(r2KeysResult);
+        const storageKeys = await processResults<{ event_data_key: string }>(storageKeysResult);
 
-        // Delete all R2 batches in parallel
-        await Promise.all(r2Keys.map(row => r2Storage.deleteBatch(row.event_data_key)));
+        // Delete all object-storage batches in parallel
+        await Promise.all(storageKeys.map(row => objectStorage.deleteBatch(row.event_data_key)));
       } catch (error) {
-        console.error(`Failed to delete R2 data for session ${sessionId}:`, error);
-        // Continue with ClickHouse deletion even if R2 fails
+        console.error(`Failed to delete object-storage data for session ${sessionId}:`, error);
+        // Continue with ClickHouse deletion even if object storage fails
       }
     }
 

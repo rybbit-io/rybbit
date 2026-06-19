@@ -5,7 +5,7 @@ import { processResults } from "../../api/analytics/utils/utils.js";
 import { parseTrackingData } from "./trackingUtils.js";
 import { sessionsService } from "../sessions/sessionsService.js";
 import { userIdService } from "../userId/userIdService.js";
-import { r2Storage } from "../storage/r2StorageService.js";
+import { objectStorage } from "../storage/s3StorageService.js";
 import { siteConfig } from "../../lib/siteConfig.js";
 
 export interface RequestMetadata {
@@ -48,20 +48,20 @@ export class SessionReplayIngestService {
       siteId,
     });
 
-    // Check if R2 storage is enabled for cloud deployments
-    let r2BatchKey: string | null = null;
+    // Offload event data to object storage when configured
+    let batchKey: string | null = null;
     let eventDataArray: any[] = [];
 
-    if (r2Storage.isEnabled()) {
-      // Extract event data for R2 storage
+    if (objectStorage.isEnabled()) {
+      // Extract event data for object storage
       eventDataArray = events.map(event => event.data);
 
       try {
-        // Store event data batch in R2
-        r2BatchKey = await r2Storage.storeBatch(siteId, sessionId, eventDataArray);
+        // Store event data batch in object storage
+        batchKey = await objectStorage.storeBatch(siteId, sessionId, eventDataArray);
       } catch (error) {
-        console.error("Failed to store in R2, falling back to ClickHouse:", error);
-        r2BatchKey = null;
+        console.error("Failed to store in object storage, falling back to ClickHouse:", error);
+        batchKey = null;
       }
     }
 
@@ -69,8 +69,8 @@ export class SessionReplayIngestService {
     const eventsToInsert = events.map((event, index) => {
       const serializedData = JSON.stringify(event.data);
 
-      if (r2BatchKey) {
-        // R2 storage: store metadata only in ClickHouse
+      if (batchKey) {
+        // Object storage: store metadata only in ClickHouse
         return {
           site_id: siteId,
           session_id: sessionId,
@@ -78,8 +78,8 @@ export class SessionReplayIngestService {
           identified_user_id: identifiedUserId,
           timestamp: event.timestamp,
           event_type: event.type,
-          event_data: "", // Empty string when using R2
-          event_data_key: r2BatchKey,
+          event_data: "", // Empty string when using object storage
+          event_data_key: batchKey,
           batch_index: index,
           sequence_number: index,
           event_size_bytes: serializedData.length,
