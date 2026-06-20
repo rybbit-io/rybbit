@@ -24,7 +24,7 @@ export function EnableSessionReplay() {
   if (isLoading || siteMetadata?.sessionReplay || !canEnableReplay) return null;
 
   return (
-    <Alert className="p-4 bg-neutral-50/50 border-amber-200/50 dark:bg-neutral-800/25 dark:border-amber-600/80">
+    <Alert className="shrink-0 p-4 bg-neutral-50/50 border-amber-200/50 dark:bg-neutral-800/25 dark:border-amber-600/80">
       <div className="flex items-start space-x-3">
         <Video className="h-5 w-5 mt-0.5 text-amber-600 dark:text-neutral-100" />
         <div className="flex-1">
