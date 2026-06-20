@@ -269,22 +269,54 @@ class SiteConfig {
   }
 
   /**
-   * Case-insensitive glob match where `*` matches any sequence of characters.
-   * A pattern with no wildcards must match the whole value exactly.
+   * Case-insensitive glob match where `*` matches any sequence of characters
+   * (including the empty string). A pattern with no wildcards must match the
+   * whole value exactly.
+   *
+   * Implemented as a linear two-pointer scan rather than a compiled RegExp so
+   * that, on the hot ingestion path, we (1) never recompile a pattern per event
+   * and (2) can't trigger catastrophic backtracking — matching is bounded to
+   * O(value.length * pattern.length) regardless of how many wildcards a pattern
+   * contains. Every character other than `*` is treated as a literal.
    */
   private matchesGlob(value: string, pattern: string): boolean {
-    const trimmedPattern = pattern.trim();
-    if (!trimmedPattern) return false;
+    const glob = pattern.trim().toLowerCase();
+    if (!glob) return false;
 
-    // Escape regex metacharacters, then turn the (escaped) `*` back into `.*`.
-    const regexBody = trimmedPattern.replace(/[.*+?^${}()|[\]\\]/g, "\\$&").replace(/\\\*/g, ".*");
+    const text = value.toLowerCase();
 
-    try {
-      return new RegExp(`^${regexBody}$`, "i").test(value);
-    } catch (error) {
-      logger.warn(error as Error, `Invalid exclusion pattern: ${pattern}`);
-      return false;
+    let textIdx = 0;
+    let globIdx = 0;
+    let lastStarGlobIdx = -1;
+    let textIdxAfterStar = 0;
+
+    while (textIdx < text.length) {
+      if (globIdx < glob.length && glob[globIdx] === text[textIdx]) {
+        // Literal character match — advance both pointers.
+        textIdx++;
+        globIdx++;
+      } else if (globIdx < glob.length && glob[globIdx] === "*") {
+        // Record this star and tentatively let it match nothing.
+        lastStarGlobIdx = globIdx;
+        textIdxAfterStar = textIdx;
+        globIdx++;
+      } else if (lastStarGlobIdx !== -1) {
+        // Mismatch, but the most recent star can absorb one more character.
+        globIdx = lastStarGlobIdx + 1;
+        textIdxAfterStar++;
+        textIdx = textIdxAfterStar;
+      } else {
+        return false;
+      }
     }
+
+    // The value is consumed; the match holds only if the rest of the pattern is
+    // entirely trailing stars.
+    while (globIdx < glob.length && glob[globIdx] === "*") {
+      globIdx++;
+    }
+
+    return globIdx === glob.length;
   }
 
   /**

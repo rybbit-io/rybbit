@@ -192,6 +192,21 @@ describe("siteConfig exclusion matchers", () => {
     expect(await siteConfig.isPathExcluded(undefined, 1)).toBe(false);
   });
 
+  it("matches patterns with multiple and consecutive wildcards, bounded against backtracking", async () => {
+    dbMock.rows.push(
+      createSiteRow({ siteId: 5, excludedPaths: ["/a/*/b/*", "/x**y"] }),
+      createSiteRow({ siteId: 6, excludedPaths: ["/" + "*a".repeat(30) + "b"] })
+    );
+
+    expect(await siteConfig.isPathExcluded("/a/1/b/2", 5)).toBe(true);
+    expect(await siteConfig.isPathExcluded("/a//b/", 5)).toBe(true); // wildcards may match empty
+    expect(await siteConfig.isPathExcluded("/a/1/c/2", 5)).toBe(false);
+    expect(await siteConfig.isPathExcluded("/xANYTHINGy", 5)).toBe(true); // consecutive wildcards
+
+    // A pathological pattern must still resolve promptly (no catastrophic backtracking).
+    expect(await siteConfig.isPathExcluded("/" + "a".repeat(2000), 6)).toBe(false);
+  });
+
   it("matches excluded hostnames with glob wildcards", async () => {
     dbMock.rows.push(createSiteRow({ siteId: 2, excludedHostnames: ["localhost", "*.vercel.app"] }));
 
