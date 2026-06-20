@@ -136,3 +136,11 @@ Middleware in `proxy.ts` handles redirects and OAuth callbacks (`/auth/callback/
 - **i18n**: use `useTranslations()` from next-intl; translation files in `messages/`
 - **Error handling**: try/catch with specific error types; let React Query surface API errors
 - **Do not** add unnecessary abstractions, extra error handling for impossible cases, or docstrings to unchanged code
+
+## i18n: the `t` translation function
+
+`t` is the value returned by next-intl's `useTranslations()`. `useTranslations()` is a React hook, so it can **only** be called inside a React component or a custom hook — never at module scope, in a plain utility function, or in a regular (non-hook) callback. Calling it elsewhere violates the Rules of Hooks.
+
+To translate inside a non-component/non-hook helper, **call `useTranslations()` in the component/hook and pass `t` down as a parameter** (typically as an optional `t?: TranslationFunction`, the shared type in `lib/events.ts`). Example: `getEventTypeLabel(type, t)` in `app/[site]/events/components/EventLog/eventLogUtils.tsx`.
+
+Also: only pass real message keys to `t(...)`. Passing an arbitrary string (e.g. a display label like `"Input Change"`) throws `MISSING_MESSAGE: Could not resolve …`. If a value isn't a key in `messages/`, return it as-is instead of running it through `t`.

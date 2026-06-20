@@ -1,13 +1,13 @@
 "use client";
 
 import * as React from "react";
-
 import * as ScrollAreaPrimitive from "@radix-ui/react-scroll-area";
 
 import { cn } from "@/lib/utils";
 import { useTouchPrimary } from "./hooks/useTouchPrimary";
 
 const ScrollAreaContext = React.createContext<boolean>(false);
+
 type Mask = {
   top: boolean;
   bottom: boolean;
@@ -19,11 +19,6 @@ const ScrollArea = React.forwardRef<
   React.ComponentRef<typeof ScrollAreaPrimitive.Root>,
   React.ComponentPropsWithoutRef<typeof ScrollAreaPrimitive.Root> & {
     viewportClassName?: string;
-    /**
-     * `maskHeight` is the height of the mask in pixels.
-     * pass `0` to disable the mask
-     * @default 30
-     */
     maskHeight?: number;
     maskClassName?: string;
   }
@@ -42,6 +37,7 @@ const ScrollArea = React.forwardRef<
     if (!element) return;
 
     const { scrollTop, scrollLeft, scrollWidth, clientWidth, scrollHeight, clientHeight } = element;
+
     setShowMask(prev => ({
       ...prev,
       top: scrollTop > 0,
@@ -62,8 +58,6 @@ const ScrollArea = React.forwardRef<
 
     element.addEventListener("scroll", checkScrollability);
     window.addEventListener("resize", checkScrollability);
-
-    // Run an initial check whenever dependencies change (including pointer mode)
     checkScrollability();
 
     return () => {
