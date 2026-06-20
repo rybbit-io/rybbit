@@ -166,6 +166,29 @@ describe("CORS policy", () => {
       await app.close();
     }
   });
+
+  it("allows credentialed session-list requests from the dashboard origin", async () => {
+    const app = await buildCorsTestApp({
+      NODE_ENV: "production",
+      BASE_URL: "https://demo.rybbit.com",
+    });
+
+    try {
+      const res = await app.inject({
+        method: "GET",
+        url: "/api/sites/81/sessions?past_minutes_start=240&past_minutes_end=0&filters=[]&page=1&limit=100",
+        headers: {
+          origin: "https://demo.rybbit.com",
+        },
+      });
+
+      expect(res.statusCode).toBe(200);
+      expect(res.headers["access-control-allow-origin"]).toBe("https://demo.rybbit.com");
+      expect(res.headers["access-control-allow-credentials"]).toBe("true");
+    } finally {
+      await app.close();
+    }
+  });
 });
 
 describe("trusted CORS origins", () => {

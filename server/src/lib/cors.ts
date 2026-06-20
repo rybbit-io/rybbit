@@ -106,10 +106,15 @@ export function getCorsOptionsForRequest(
   }
 
   if (isPublicCorsPath(getRequestPath(request))) {
+    // These paths are reachable from any origin (e.g. embedded widgets), but they
+    // are also hit by the authenticated dashboard, which sends cookies. Reflect any
+    // origin, but only allow credentials for trusted origins so the dashboard's
+    // credentialed requests get `Access-Control-Allow-Credentials: true` while
+    // arbitrary embed origins stay credential-less.
     return {
       ...commonCorsOptions,
       origin: true,
-      credentials: false,
+      credentials: getTrustedCorsOrigins(env).includes(requestOrigin),
     };
   }
 
