@@ -81,6 +81,7 @@
     "nuqs": "^2.8.8",
     "ol": "^10.6.1",
     "papaparse": "^5.5.3",
+    "radix-ui": "^1.6.0",
     "react": "^19.2.4",
     "react-day-picker": "^10.0.1",
     "react-dom": "^19.2.4",
