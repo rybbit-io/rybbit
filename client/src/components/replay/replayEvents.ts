@@ -33,14 +33,164 @@ export interface MeaningfulEvent {
   /** Number of underlying events represented (typing keystrokes, rage clicks). */
   count: number;
   severity: EventSeverity;
-  /** Optional secondary text: a path, a typed-into field, a console message. */
+  /** Optional secondary text: a path, the clicked element, a typed field, a log. */
   detail?: string;
+  /** Click coordinates, kept for rage-click proximity detection. */
+  x?: number;
+  y?: number;
 }
 
 interface RawEvent {
   timestamp: number;
   type: string | number;
   data?: any;
+}
+
+// ---------------------------------------------------------------------------
+// DOM resolution: map a clicked node id back to a human label by walking the
+// FullSnapshot tree plus any nodes added by later mutations.
+// ---------------------------------------------------------------------------
+
+interface SNode {
+  id?: number;
+  type?: number; // 2 Element, 3 Text
+  tagName?: string;
+  attributes?: Record<string, unknown>;
+  childNodes?: SNode[];
+  textContent?: string;
+}
+
+interface NodeIndex {
+  byId: Map<number, SNode>;
+  parent: Map<number, number>;
+}
+
+const INTERACTIVE_TAGS = new Set(["a", "button", "input", "select", "textarea", "label", "summary", "option"]);
+const INTERACTIVE_ROLES = new Set(["button", "link", "tab", "menuitem", "checkbox", "switch", "radio", "option"]);
+
+function buildNodeIndex(events: RawEvent[]): NodeIndex {
+  const byId = new Map<number, SNode>();
+  const parent = new Map<number, number>();
+
+  const walk = (node: SNode | undefined, parentId: number | null) => {
+    if (!node || typeof node.id !== "number") return;
+    byId.set(node.id, node);
+    if (parentId !== null) parent.set(node.id, parentId);
+    if (Array.isArray(node.childNodes)) {
+      for (const child of node.childNodes) walk(child, node.id);
+    }
+  };
+
+  for (const ev of events) {
+    const type = Number(ev.type);
+    if (type === 2 && ev.data?.node) {
+      walk(ev.data.node, null);
+    } else if (type === 3 && ev.data?.source === 0 && Array.isArray(ev.data?.adds)) {
+      for (const add of ev.data.adds) {
+        walk(add?.node, typeof add?.parentId === "number" ? add.parentId : null);
+      }
+    }
+  }
+
+  return { byId, parent };
+}
+
+function truncate(value: string, max = 40): string {
+  const t = value.trim().replace(/\s+/g, " ");
+  return t.length > max ? `${t.slice(0, max - 1)}…` : t;
+}
+
+function collectText(node: SNode | undefined, budget: { left: number }): string {
+  if (!node || budget.left <= 0) return "";
+  if (node.type === 3) {
+    const text = (node.textContent || "").replace(/\s+/g, " ");
+    budget.left -= text.length;
+    return text;
+  }
+  let out = "";
+  if (Array.isArray(node.childNodes)) {
+    for (const child of node.childNodes) {
+      out += collectText(child, budget);
+      if (budget.left <= 0) break;
+    }
+  }
+  return out;
+}
+
+function isInteractive(node: SNode): boolean {
+  const tag = (node.tagName || "").toLowerCase();
+  if (INTERACTIVE_TAGS.has(tag)) return true;
+  const attrs = node.attributes || {};
+  if (attrs.role && INTERACTIVE_ROLES.has(String(attrs.role))) return true;
+  return attrs.onclick !== undefined || attrs.href !== undefined;
+}
+
+function elementLabel(node: SNode): string | undefined {
+  const attrs = node.attributes || {};
+  const tag = (node.tagName || "").toLowerCase();
+
+  const aria = attrs["aria-label"] || attrs.title || attrs.alt;
+  if (aria) return `“${truncate(String(aria))}”`;
+
+  if (tag === "input") {
+    const itype = String(attrs.type || "text").toLowerCase();
+    if (itype === "submit" || itype === "button") {
+      return attrs.value ? `“${truncate(String(attrs.value))}”` : "button";
+    }
+    const name = attrs.placeholder || attrs.name || attrs.id;
+    return name ? `${itype} field “${truncate(String(name))}”` : `${itype} field`;
+  }
+  if (tag === "img") return attrs.alt ? `image “${truncate(String(attrs.alt))}”` : "image";
+
+  const text = truncate(collectText(node, { left: 80 }));
+  if (text) return `“${text}”`;
+
+  if (attrs.id) return `${tag || "element"}#${attrs.id}`;
+  if (attrs.class) {
+    const first = String(attrs.class).split(/\s+/).filter(Boolean)[0];
+    if (first) return `${tag || "element"}.${first}`;
+  }
+  return tag || undefined;
+}
+
+/** Resolve a node id to the nearest interactive element (climbing a few levels). */
+function resolveElement(id: unknown, index: NodeIndex): SNode | undefined {
+  if (typeof id !== "number") return undefined;
+  let node = index.byId.get(id);
+  if (!node) return undefined;
+
+  // A click often lands on a text node or a child span; climb to its parent first.
+  if (node.type === 3) {
+    const pid = index.parent.get(id);
+    node = pid !== undefined ? index.byId.get(pid) : undefined;
+  }
+  if (!node) return undefined;
+
+  let cur: SNode | undefined = node;
+  let curId: number | undefined = typeof node.id === "number" ? node.id : undefined;
+  for (let i = 0; i < 5 && cur; i++) {
+    if (isInteractive(cur)) return cur;
+    if (curId === undefined) break;
+    const pid = index.parent.get(curId);
+    if (pid === undefined) break;
+    cur = index.byId.get(pid);
+    curId = pid;
+  }
+  return node;
+}
+
+function describeTarget(id: unknown, index: NodeIndex): string | undefined {
+  const node = resolveElement(id, index);
+  return node ? elementLabel(node) : undefined;
+}
+
+function describeField(id: unknown, index: NodeIndex): string | undefined {
+  if (typeof id !== "number") return undefined;
+  const node = index.byId.get(id);
+  if (!node) return undefined;
+  const attrs = node.attributes || {};
+  const name = attrs["aria-label"] || attrs.placeholder || attrs.name || attrs.id;
+  return name ? truncate(String(name)) : undefined;
 }
 
 const RAGE_CLICK_WINDOW_MS = 1000;
@@ -73,6 +223,7 @@ export function getMeaningfulEvents(events: RawEvent[] | undefined): MeaningfulE
   if (!events || events.length === 0) return [];
 
   const first = events[0].timestamp;
+  const index = buildNodeIndex(events);
   const out: MeaningfulEvent[] = [];
   let metaSeen = false;
   // Track the current path so repeated Meta events for the same URL (rrweb emits
@@ -176,6 +327,7 @@ export function getMeaningfulEvents(events: RawEvent[] | undefined): MeaningfulE
           offset,
           count: 1,
           severity: "default",
+          detail: describeField(targetId, index),
         };
         out.push(me);
         openInput = { ev: me, lastTs: ev.timestamp, targetId };
@@ -186,6 +338,9 @@ export function getMeaningfulEvents(events: RawEvent[] | undefined): MeaningfulE
     // Mouse interaction (source 2): clicks only.
     if (source === 2) {
       const interaction = Number(ev.data?.type);
+      const x = typeof ev.data?.x === "number" ? ev.data.x : undefined;
+      const y = typeof ev.data?.y === "number" ? ev.data.y : undefined;
+      const target = describeTarget(ev.data?.id, index);
       if (interaction === 2) {
         closeInput();
         out.push({
@@ -195,7 +350,9 @@ export function getMeaningfulEvents(events: RawEvent[] | undefined): MeaningfulE
           offset,
           count: 1,
           severity: "default",
-          detail: typeof ev.data?.x === "number" ? `${Math.round(ev.data.x)}, ${Math.round(ev.data.y)}` : undefined,
+          detail: target,
+          x,
+          y,
         });
       } else if (interaction === 4) {
         closeInput();
@@ -206,6 +363,9 @@ export function getMeaningfulEvents(events: RawEvent[] | undefined): MeaningfulE
           offset,
           count: 1,
           severity: "default",
+          detail: target,
+          x,
+          y,
         });
       } else if (interaction === 3) {
         closeInput();
@@ -216,6 +376,9 @@ export function getMeaningfulEvents(events: RawEvent[] | undefined): MeaningfulE
           offset,
           count: 1,
           severity: "default",
+          detail: target,
+          x,
+          y,
         });
       }
       continue;
@@ -247,11 +410,8 @@ function collapseRageClicks(events: MeaningfulEvent[]): MeaningfulEvent[] {
   const result: MeaningfulEvent[] = [];
   let i = 0;
 
-  const coords = (e: MeaningfulEvent): [number, number] | null => {
-    if (!e.detail) return null;
-    const [x, y] = e.detail.split(",").map(s => Number(s.trim()));
-    return Number.isFinite(x) && Number.isFinite(y) ? [x, y] : null;
-  };
+  const coords = (e: MeaningfulEvent): [number, number] | null =>
+    typeof e.x === "number" && typeof e.y === "number" ? [e.x, e.y] : null;
 
   while (i < events.length) {
     const e = events[i];
@@ -278,7 +438,6 @@ function collapseRageClicks(events: MeaningfulEvent[]): MeaningfulEvent[] {
         kind: "rageclick",
         count: clusterSize,
         severity: "warn",
-        detail: undefined,
       });
       i = j;
     } else {

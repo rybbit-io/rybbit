@@ -421,7 +421,7 @@ function MeaningfulRow({
             </span>
           )}
         </div>
-        {event.detail && event.kind !== "click" && (
+        {event.detail && (
           <div className="truncate text-[11px] text-neutral-500 dark:text-neutral-400">{event.detail}</div>
         )}
       </div>
