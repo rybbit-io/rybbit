@@ -4,6 +4,7 @@ import {
   Ban,
   Code,
   Download,
+  Globe,
   LayoutDashboard,
   LayoutTemplate,
   Plug,
@@ -22,6 +23,7 @@ import { cn } from "@/lib/utils";
 
 import { ScriptBuilder } from "./ScriptBuilder";
 import { ImportManager } from "./ImportManager";
+import { CustomDomainTab } from "./CustomDomainTab";
 import { GeneralTab } from "./GeneralTab";
 import { TrackingTab } from "./TrackingTab";
 import { ExclusionsTab } from "./ExclusionsTab";
@@ -50,6 +52,7 @@ type TabKey =
   | "exclusions"
   | "integrations"
   | "script"
+  | "custom-domain"
   | "import"
   | "widget-embeds"
   | "dashboard-embed";
@@ -103,6 +106,7 @@ function SiteSettingsInner({ siteMetadata, trigger }: { siteMetadata: SiteRespon
     { key: "exclusions", label: t("Exclusions"), icon: Ban },
     { key: "integrations", label: t("Integrations"), icon: Plug, hidden: !IS_CLOUD },
     { key: "script", label: isMobileSite ? t("React Native SDK") : t("Tracking Script"), icon: Code },
+    { key: "custom-domain", label: t("Custom Domain"), icon: Globe, hidden: isMobileSite },
     { key: "widget-embeds", label: t("Widget Embeds"), icon: LayoutTemplate },
     { key: "dashboard-embed", label: t("Dashboard Embed"), icon: LayoutDashboard },
     { key: "import", label: t("Import"), icon: Download },
@@ -185,6 +189,7 @@ function SiteSettingsInner({ siteMetadata, trigger }: { siteMetadata: SiteRespon
                   appIdentifier={currentSiteMetadata.domain}
                 />
               )}
+              {activeTab === "custom-domain" && <CustomDomainTab siteId={siteMetadata.siteId} disabled={disabled} />}
               {activeTab === "widget-embeds" && (
                 <EmbedTab siteMetadata={currentSiteMetadata} embedEnabled={embedEnabled} />
               )}
