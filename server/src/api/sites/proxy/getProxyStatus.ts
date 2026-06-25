@@ -2,7 +2,12 @@ import { eq } from "drizzle-orm";
 import { FastifyReply, FastifyRequest } from "fastify";
 import { db } from "../../../db/postgres/postgres.js";
 import { sites } from "../../../db/postgres/schema.js";
-import { CloudflareError, getCustomHostname, isCloudflareConfigured } from "../../../lib/cloudflare.js";
+import {
+  CLOUDFLARE_SAAS_CNAME_TARGET,
+  CloudflareError,
+  getCustomHostname,
+  isCloudflareConfigured,
+} from "../../../lib/cloudflare.js";
 import { createServiceLogger } from "../../../lib/logger/logger.js";
 import { buildProxyResponse, mapCloudflareStatus } from "./utils.js";
 
@@ -20,13 +25,20 @@ export async function getProxyStatus(request: FastifyRequest<{ Params: { siteId:
   }
 
   if (!site.proxyEnabled || !site.proxyDomain || !site.proxyCfHostnameId) {
-    return reply.status(200).send({ success: true, enabled: false, domain: site.proxyDomain ?? null });
+    return reply.status(200).send({
+      success: true,
+      configured: isCloudflareConfigured,
+      enabled: false,
+      domain: site.proxyDomain ?? null,
+      cnameTarget: CLOUDFLARE_SAAS_CNAME_TARGET,
+    });
   }
 
   // Without Cloudflare configured we can only report the last persisted status.
   if (!isCloudflareConfigured) {
     return reply.status(200).send({
       success: true,
+      configured: false,
       enabled: true,
       domain: site.proxyDomain,
       status: site.proxyStatus ?? "pending",
@@ -43,7 +55,9 @@ export async function getProxyStatus(request: FastifyRequest<{ Params: { siteId:
       await db.update(sites).set({ proxyStatus: status }).where(eq(sites.siteId, siteId));
     }
 
-    return reply.status(200).send({ success: true, ...buildProxyResponse(site.proxyDomain, siteId, customHostname) });
+    return reply
+      .status(200)
+      .send({ success: true, configured: true, ...buildProxyResponse(site.proxyDomain, siteId, customHostname) });
   } catch (error) {
     // The hostname was deleted out from under us (e.g. by the reconcile sweep or
     // directly in Cloudflare). Report it as failed rather than 500ing.
@@ -51,6 +65,7 @@ export async function getProxyStatus(request: FastifyRequest<{ Params: { siteId:
       await db.update(sites).set({ proxyStatus: "failed" }).where(eq(sites.siteId, siteId));
       return reply.status(200).send({
         success: true,
+        configured: true,
         enabled: true,
         domain: site.proxyDomain,
         status: "failed",
