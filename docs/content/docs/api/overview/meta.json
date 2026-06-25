@@ -1,4 +1,4 @@
 {
   "title": "Overview",
-  "pages": ["overview", "time-series", "metric", "live-visitors"]
+  "pages": ["overview", "time-series", "metric", "page-titles", "live-visitors"]
 }

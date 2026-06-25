@@ -185,14 +185,14 @@ export async function fetchSession(
 
 /**
  * Fetch session locations for map visualization
- * GET /api/session-locations/:site
+ * GET /api/sites/:site/sessions/locations
  */
 export async function fetchSessionLocations(
   site: string | number,
   params: CommonApiParams
 ): Promise<LiveSessionLocation[]> {
   const response = await authedFetch<{ data: LiveSessionLocation[] }>(
-    `/sites/${site}/session-locations`,
+    `/sites/${site}/sessions/locations`,
     toQueryParams(params)
   );
   return response.data;

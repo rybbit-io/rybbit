@@ -12,7 +12,7 @@ import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
 <div>
 
 ```
-GET /api/sites/:site/error-names
+GET /api/sites/:site/errors/names
 ```
 
 Returns a list of unique error messages with occurrence counts and affected session counts.
@@ -92,14 +92,14 @@ Accepts all [Common Parameters](/docs/api/getting-started#common-parameters) plu
 <Tabs items={['cURL', 'JavaScript', 'Python', 'PHP', 'Ruby', 'Go', 'Rust', 'Java', '.NET']}>
   <Tab value="cURL">
 ```bash title="Request"
-curl -X GET "https://app.rybbit.io/api/sites/1/error-names?start_date=2024-01-01&end_date=2024-01-31" \
+curl -X GET "https://app.rybbit.io/api/sites/1/errors/names?start_date=2024-01-01&end_date=2024-01-31" \
   -H "Authorization: Bearer your_api_key_here"
 ```
   </Tab>
   <Tab value="JavaScript">
 ```javascript title="Request"
 const response = await fetch(
-  'https://app.rybbit.io/api/sites/1/error-names?start_date=2024-01-01&end_date=2024-01-31',
+  'https://app.rybbit.io/api/sites/1/errors/names?start_date=2024-01-01&end_date=2024-01-31',
   {
     headers: {
       'Authorization': 'Bearer your_api_key_here'
@@ -115,7 +115,7 @@ const data = await response.json();
 import requests
 
 response = requests.get(
-    'https://app.rybbit.io/api/sites/1/error-names23',
+    'https://app.rybbit.io/api/sites/1/errors/names',
     params={
         'start_date': '2024-01-01',
         'end_date': '2024-01-31'
@@ -131,7 +131,7 @@ data = response.json()
   <Tab value="PHP">
 ```php title="Request"
 $ch = curl_init();
-curl_setopt($ch, CURLOPT_URL, 'https://app.rybbit.io/api/sites/1/error-names?start_date=2024-01-01&end_date=2024-01-31');
+curl_setopt($ch, CURLOPT_URL, 'https://app.rybbit.io/api/sites/1/errors/names?start_date=2024-01-01&end_date=2024-01-31');
 curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
 curl_setopt($ch, CURLOPT_HTTPHEADER, [
     'Authorization: Bearer your_api_key_here'
@@ -148,7 +148,7 @@ $data = json_decode($response, true);
 require 'net/http'
 require 'json'
 
-uri = URI('https://app.rybbit.io/api/sites/1/error-names?start_date=2024-01-01&end_date=2024-01-31')
+uri = URI('https://app.rybbit.io/api/sites/1/errors/names?start_date=2024-01-01&end_date=2024-01-31')
 req = Net::HTTP::Get.new(uri)
 req['Authorization'] = 'Bearer your_api_key_here'
 
@@ -158,7 +158,7 @@ data = JSON.parse(res.body)
   </Tab>
   <Tab value="Go">
 ```go title="Request"
-req, _ := http.NewRequest("GET", "https://app.rybbit.io/api/sites/1/error-names?start_date=2024-01-01&end_date=2024-01-31", nil)
+req, _ := http.NewRequest("GET", "https://app.rybbit.io/api/sites/1/errors/names?start_date=2024-01-01&end_date=2024-01-31", nil)
 req.Header.Set("Authorization", "Bearer your_api_key_here")
 
 client := &http.Client{}
@@ -173,7 +173,7 @@ json.NewDecoder(resp.Body).Decode(&data)
 ```rust title="Request"
 let client = reqwest::Client::new();
 let res = client
-    .get("https://app.rybbit.io/api/sites/1/error-names?start_date=2024-01-01&end_date=2024-01-31")
+    .get("https://app.rybbit.io/api/sites/1/errors/names?start_date=2024-01-01&end_date=2024-01-31")
     .header("Authorization", "Bearer your_api_key_here")
     .send()
     .await?;
@@ -185,7 +185,7 @@ let data: serde_json::Value = res.json().await?;
 ```java title="Request"
 HttpClient client = HttpClient.newHttpClient();
 HttpRequest request = HttpRequest.newBuilder()
-    .uri(URI.create("https://app.rybbit.io/api/sites/1/error-names?start_date=2024-01-01&end_date=2024-01-31"))
+    .uri(URI.create("https://app.rybbit.io/api/sites/1/errors/names?start_date=2024-01-01&end_date=2024-01-31"))
     .header("Authorization", "Bearer your_api_key_here")
     .GET()
     .build();
@@ -198,7 +198,7 @@ HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.o
 using var client = new HttpClient();
 client.DefaultRequestHeaders.Add("Authorization", "Bearer your_api_key_here");
 
-var response = await client.GetAsync("https://app.rybbit.io/api/sites/1/error-names?start_date=2024-01-01&end_date=2024-01-31");
+var response = await client.GetAsync("https://app.rybbit.io/api/sites/1/errors/names?start_date=2024-01-01&end_date=2024-01-31");
 var data = await response.Content.ReadAsStringAsync();
 ```
   </Tab>

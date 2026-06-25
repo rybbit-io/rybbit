@@ -1,6 +1,6 @@
 ---
-title: Get Overview (Time Series)
-description: Returns time-series analytics data broken down by configurable time buckets. Useful for charting trends over time.
+title: Get Event Counts
+description: Returns time-bucketed event counts grouped by event type.
 full: true
 method: GET
 ---
@@ -12,10 +12,10 @@ import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
 <div>
 
 ```
-GET /api/sites/:site/overview/time-series
+GET /api/sites/:site/events/count
 ```
 
-Returns time-series analytics data broken down by configurable time buckets. Useful for charting trends over time.
+Returns time-bucketed event counts grouped by event type.
 
 ### Path Parameters
 
@@ -31,7 +31,7 @@ Returns time-series analytics data broken down by configurable time buckets. Use
 
 ### Query Parameters
 
-Accepts all [Common Parameters](/docs/api/getting-started#common-parameters) plus the following:
+Accepts all [Common Parameters](/docs/api/getting-started#common-parameters) (time and filters).
 
 <TypeTable
   type={{
@@ -39,21 +39,10 @@ Accepts all [Common Parameters](/docs/api/getting-started#common-parameters) plu
       description: 'Time bucket size for grouping data',
       type: 'TimeBucket',
       typeDescription: '"minute" | "five_minutes" | "ten_minutes" | "fifteen_minutes" | "hour" | "day" | "week" | "month" | "year"',
-      required: true,
+      default: 'day',
     },
   }}
 />
-
-#### Bucket Selection Guide
-
-| Bucket | Best For |
-|--------|----------|
-| `minute` | Real-time monitoring (last hour) |
-| `five_minutes` | Short-term analysis (last few hours) |
-| `hour` | Daily analysis |
-| `day` | Weekly/monthly analysis |
-| `week` | Monthly/quarterly analysis |
-| `month` | Yearly analysis |
 
 ### Response
 
@@ -62,31 +51,45 @@ Accepts all [Common Parameters](/docs/api/getting-started#common-parameters) plu
     time: {
       description: 'Start of the time bucket',
       type: 'string',
-      typeDescription: 'ISO 8601 datetime',
     },
-    sessions: {
-      description: 'Number of sessions in this bucket',
-      type: 'number',
-    },
-    pageviews: {
+    pageview_count: {
       description: 'Number of pageviews in this bucket',
       type: 'number',
     },
-    users: {
-      description: 'Unique users in this bucket',
+    custom_event_count: {
+      description: 'Number of custom events in this bucket',
       type: 'number',
     },
-    pages_per_session: {
-      description: 'Average pages viewed per session',
+    performance_count: {
+      description: 'Number of performance events in this bucket',
       type: 'number',
     },
-    bounce_rate: {
-      description: 'Percentage of single-page sessions',
+    outbound_count: {
+      description: 'Number of outbound link events in this bucket',
       type: 'number',
-      typeDescription: 'Range: 0-100',
     },
-    session_duration: {
-      description: 'Average session duration in seconds',
+    error_count: {
+      description: 'Number of error events in this bucket',
+      type: 'number',
+    },
+    button_click_count: {
+      description: 'Number of button click events in this bucket',
+      type: 'number',
+    },
+    copy_count: {
+      description: 'Number of copy events in this bucket',
+      type: 'number',
+    },
+    form_submit_count: {
+      description: 'Number of form submit events in this bucket',
+      type: 'number',
+    },
+    input_change_count: {
+      description: 'Number of input change events in this bucket',
+      type: 'number',
+    },
+    event_count: {
+      description: 'Total events across all types in this bucket',
       type: 'number',
     },
   }}
@@ -98,14 +101,14 @@ Accepts all [Common Parameters](/docs/api/getting-started#common-parameters) plu
 <Tabs items={['cURL', 'JavaScript', 'Python', 'PHP', 'Ruby', 'Go', 'Rust', 'Java', '.NET']}>
   <Tab value="cURL">
 ```bash title="Request"
-curl -X GET "https://app.rybbit.io/api/sites/123/overview/time-series?bucket=day&start_date=2024-01-01&end_date=2024-01-07&time_zone=America/New_York" \
+curl -X GET "https://app.rybbit.io/api/sites/123/events/count?bucket=day&start_date=2024-01-01&end_date=2024-01-07&time_zone=America/New_York" \
   -H "Authorization: Bearer your_api_key_here"
 ```
   </Tab>
   <Tab value="JavaScript">
 ```javascript title="Request"
 const response = await fetch(
-  'https://app.rybbit.io/api/sites/123/overview/time-series?bucket=day&start_date=2024-01-01&end_date=2024-01-07&time_zone=America/New_York',
+  'https://app.rybbit.io/api/sites/123/events/count?bucket=day&start_date=2024-01-01&end_date=2024-01-07&time_zone=America/New_York',
   {
     headers: {
       'Authorization': 'Bearer your_api_key_here'
@@ -121,7 +124,7 @@ const data = await response.json();
 import requests
 
 response = requests.get(
-    'https://app.rybbit.io/api/sites/123/overview/time-series',
+    'https://app.rybbit.io/api/sites/123/events/count',
     params={
         'bucket': 'day',
         'start_date': '2024-01-01',
@@ -139,7 +142,7 @@ data = response.json()
   <Tab value="PHP">
 ```php title="Request"
 $ch = curl_init();
-curl_setopt($ch, CURLOPT_URL, 'https://app.rybbit.io/api/sites/123/overview/time-series?bucket=day&start_date=2024-01-01&end_date=2024-01-07&time_zone=America/New_York');
+curl_setopt($ch, CURLOPT_URL, 'https://app.rybbit.io/api/sites/123/events/count?bucket=day&start_date=2024-01-01&end_date=2024-01-07&time_zone=America/New_York');
 curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
 curl_setopt($ch, CURLOPT_HTTPHEADER, [
     'Authorization: Bearer your_api_key_here'
@@ -156,7 +159,7 @@ $data = json_decode($response, true);
 require 'net/http'
 require 'json'
 
-uri = URI('https://app.rybbit.io/api/sites/123/overview/time-series?bucket=day&start_date=2024-01-01&end_date=2024-01-07&time_zone=America/New_York')
+uri = URI('https://app.rybbit.io/api/sites/123/events/count?bucket=day&start_date=2024-01-01&end_date=2024-01-07&time_zone=America/New_York')
 req = Net::HTTP::Get.new(uri)
 req['Authorization'] = 'Bearer your_api_key_here'
 
@@ -166,7 +169,7 @@ data = JSON.parse(res.body)
   </Tab>
   <Tab value="Go">
 ```go title="Request"
-req, _ := http.NewRequest("GET", "https://app.rybbit.io/api/sites/123/overview/time-series?bucket=day&start_date=2024-01-01&end_date=2024-01-07&time_zone=America/New_York", nil)
+req, _ := http.NewRequest("GET", "https://app.rybbit.io/api/sites/123/events/count?bucket=day&start_date=2024-01-01&end_date=2024-01-07&time_zone=America/New_York", nil)
 req.Header.Set("Authorization", "Bearer your_api_key_here")
 
 client := &http.Client{}
@@ -181,7 +184,7 @@ json.NewDecoder(resp.Body).Decode(&data)
 ```rust title="Request"
 let client = reqwest::Client::new();
 let res = client
-    .get("https://app.rybbit.io/api/sites/123/overview/time-series?bucket=day&start_date=2024-01-01&end_date=2024-01-07&time_zone=America/New_York")
+    .get("https://app.rybbit.io/api/sites/123/events/count?bucket=day&start_date=2024-01-01&end_date=2024-01-07&time_zone=America/New_York")
     .header("Authorization", "Bearer your_api_key_here")
     .send()
     .await?;
@@ -193,7 +196,7 @@ let data: serde_json::Value = res.json().await?;
 ```java title="Request"
 HttpClient client = HttpClient.newHttpClient();
 HttpRequest request = HttpRequest.newBuilder()
-    .uri(URI.create("https://app.rybbit.io/api/sites/123/overview/time-series?bucket=day&start_date=2024-01-01&end_date=2024-01-07&time_zone=America/New_York"))
+    .uri(URI.create("https://app.rybbit.io/api/sites/123/events/count?bucket=day&start_date=2024-01-01&end_date=2024-01-07&time_zone=America/New_York"))
     .header("Authorization", "Bearer your_api_key_here")
     .GET()
     .build();
@@ -206,7 +209,7 @@ HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.o
 using var client = new HttpClient();
 client.DefaultRequestHeaders.Add("Authorization", "Bearer your_api_key_here");
 
-var response = await client.GetAsync("https://app.rybbit.io/api/sites/123/overview/time-series?bucket=day&start_date=2024-01-01&end_date=2024-01-07&time_zone=America/New_York");
+var response = await client.GetAsync("https://app.rybbit.io/api/sites/123/events/count?bucket=day&start_date=2024-01-01&end_date=2024-01-07&time_zone=America/New_York");
 var data = await response.Content.ReadAsStringAsync();
 ```
   </Tab>
@@ -216,31 +219,17 @@ var data = await response.Content.ReadAsStringAsync();
 {
   "data": [
     {
-      "time": "2024-01-01T00:00:00.000Z",
-      "sessions": 1250,
-      "pageviews": 3890,
-      "users": 1100,
-      "pages_per_session": 3.11,
-      "bounce_rate": 41.5,
-      "session_duration": 165.2
-    },
-    {
-      "time": "2024-01-02T00:00:00.000Z",
-      "sessions": 1420,
-      "pageviews": 4520,
-      "users": 1280,
-      "pages_per_session": 3.18,
-      "bounce_rate": 39.8,
-      "session_duration": 178.4
-    },
-    {
-      "time": "2024-01-03T00:00:00.000Z",
-      "sessions": 1380,
-      "pageviews": 4210,
-      "users": 1190,
-      "pages_per_session": 3.05,
-      "bounce_rate": 42.1,
-      "session_duration": 162.8
+      "time": "2024-01-15 00:00:00",
+      "pageview_count": 4820,
+      "custom_event_count": 312,
+      "performance_count": 1200,
+      "outbound_count": 88,
+      "error_count": 14,
+      "button_click_count": 540,
+      "copy_count": 9,
+      "form_submit_count": 33,
+      "input_change_count": 120,
+      "event_count": 7136
     }
   ]
 }

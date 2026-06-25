@@ -107,7 +107,7 @@ export async function fetchGoals(site: string | number, params: GoalsParams): Pr
 
 /**
  * Fetch bucketed conversion data for goals
- * GET /api/goals/bucketed/:site
+ * GET /api/sites/:site/goals/time-series
  */
 export async function fetchGoalTimeSeries(
   site: string | number,
@@ -118,7 +118,7 @@ export async function fetchGoalTimeSeries(
     goal_ids: params.goalIds,
   };
 
-  const response = await authedFetch<{ data: GoalTimeSeriesPoint[] }>(`/sites/${site}/goals/bucketed`, queryParams);
+  const response = await authedFetch<{ data: GoalTimeSeriesPoint[] }>(`/sites/${site}/goals/time-series`, queryParams);
   return response.data;
 }
 

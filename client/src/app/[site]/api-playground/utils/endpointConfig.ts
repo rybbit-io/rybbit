@@ -189,7 +189,7 @@ export const endpointCategories: EndpointCategory[] = [
       },
       {
         method: "GET",
-        path: "/sites/:site/overview-bucketed",
+        path: "/sites/:site/overview/time-series",
         name: "Get Overview (Time Series)",
         description: "Returns time-series analytics data broken down by time buckets",
         hasCommonParams: true,
@@ -242,7 +242,7 @@ export const endpointCategories: EndpointCategory[] = [
       },
       {
         method: "GET",
-        path: "/sites/:site/events/bucketed",
+        path: "/sites/:site/events/time-series",
         name: "Get Event Time Series",
         description: "Returns time-series counts for top custom events",
         hasCommonParams: true,
@@ -279,7 +279,7 @@ export const endpointCategories: EndpointCategory[] = [
     endpoints: [
       {
         method: "GET",
-        path: "/sites/:site/error-names",
+        path: "/sites/:site/errors/names",
         name: "Get Error Names",
         description: "Returns unique error messages with occurrence and session counts",
         hasCommonParams: true,
@@ -287,7 +287,7 @@ export const endpointCategories: EndpointCategory[] = [
       },
       {
         method: "GET",
-        path: "/sites/:site/error-events",
+        path: "/sites/:site/errors/events",
         name: "Get Error Events",
         description: "Returns individual error occurrences with context and stack traces",
         hasCommonParams: true,
@@ -296,12 +296,65 @@ export const endpointCategories: EndpointCategory[] = [
       },
       {
         method: "GET",
-        path: "/sites/:site/error-bucketed",
+        path: "/sites/:site/errors/time-series",
         name: "Get Error Time Series",
         description: "Returns error occurrence counts over time",
         hasCommonParams: true,
         requiredParams: ["errorMessage"],
         specificParams: ["errorMessage", "bucket"],
+      },
+    ],
+  },
+  {
+    name: "Bots",
+    endpoints: [
+      {
+        method: "GET",
+        path: "/sites/:site/bots/overview",
+        name: "Get Bot Overview",
+        description: "Returns aggregate bot-traffic metrics with a breakdown by detection layer",
+        hasCommonParams: true,
+        specificParams: ["layer"],
+      },
+      {
+        method: "GET",
+        path: "/sites/:site/bots/time-series",
+        name: "Get Bot Time Series",
+        description: "Returns bot request counts over time",
+        hasCommonParams: true,
+        specificParams: ["bucket", "layer"],
+      },
+      {
+        method: "GET",
+        path: "/sites/:site/bots/by-dimension",
+        name: "Get Bots by Dimension",
+        description: "Returns bot requests broken down by a dimension",
+        hasCommonParams: true,
+        requiredParams: ["dimension"],
+        specificParams: ["dimension", "limit", "page", "layer"],
+        parameterMetadata: {
+          dimension: {
+            label: "Dimension",
+            type: "select",
+            options: [
+              "browser",
+              "browser_version",
+              "operating_system",
+              "operating_system_version",
+              "country",
+              "region",
+              "city",
+              "device_type",
+              "referrer",
+              "hostname",
+              "pathname",
+              "dimensions",
+              "asn_org",
+              "bot_category",
+              "matched_ua_pattern",
+            ],
+          },
+        },
       },
     ],
   },
@@ -532,7 +585,7 @@ export const endpointCategories: EndpointCategory[] = [
       },
       {
         method: "GET",
-        path: "/sites/:site/session-locations",
+        path: "/sites/:site/sessions/locations",
         name: "Get Session Locations",
         description: "Returns aggregated session locations for map visualization",
         hasCommonParams: true,
@@ -719,6 +772,11 @@ export const parameterMetadata: Record<string, ParameterMetadata> = {
     label: "Dimension",
     type: "select",
     options: ["pathname", "country", "region", "browser", "operating_system", "device_type"],
+  },
+  layer: {
+    label: "Layer",
+    type: "select",
+    options: ["ua_pattern", "header_heuristics", "client_signals", "bot_asn", "rate_anomaly"],
   },
   mode: {
     label: "Mode",

@@ -273,22 +273,22 @@ async function analyticsRoutes(fastify: FastifyInstance) {
   // This endpoint gets called a lot so we don't want to log it
   fastify.get("/sites/:siteId/live-user-count", { logLevel: "silent", ...publicSite }, getLiveUsercount);
   fastify.get("/sites/:siteId/overview", publicSite, getOverview);
-  fastify.get("/sites/:siteId/overview-bucketed", publicSite, getOverviewBucketed);
+  fastify.get("/sites/:siteId/overview/time-series", publicSite, getOverviewBucketed);
   fastify.get("/sites/:siteId/overview-lite", publicSite, getOverviewLite);
   fastify.get("/sites/:siteId/overview-bucketed-lite", publicSite, getOverviewBucketedLite);
   fastify.get("/sites/:siteId/metric-lite", publicSite, getMetricLite);
   fastify.get("/sites/:siteId/metric", publicSite, getMetric);
   fastify.get("/sites/:siteId/page-titles", publicSite, getPageTitles);
-  fastify.get("/sites/:siteId/error-names", publicSite, getErrorNames);
-  fastify.get("/sites/:siteId/error-events", publicSite, getErrorEvents);
-  fastify.get("/sites/:siteId/error-bucketed", publicSite, getErrorBucketed);
+  fastify.get("/sites/:siteId/errors/names", publicSite, getErrorNames);
+  fastify.get("/sites/:siteId/errors/events", publicSite, getErrorEvents);
+  fastify.get("/sites/:siteId/errors/time-series", publicSite, getErrorBucketed);
   fastify.get("/sites/:siteId/retention", publicSite, getRetention);
   fastify.get("/sites/:siteId/has-data", publicSite, getSiteHasData);
   fastify.get("/sites/:siteId/is-public", publicSite, getSiteIsPublic);
   fastify.get("/sites/:siteId/sessions", publicSite, getSessions);
   fastify.get("/sites/:siteId/sessions/:sessionId", publicSite, getSession);
   fastify.get("/sites/:siteId/events", publicSite, getEvents);
-  fastify.get("/sites/:siteId/events/bucketed", publicSite, getEventBucketed);
+  fastify.get("/sites/:siteId/events/time-series", publicSite, getEventBucketed);
   fastify.get("/sites/:siteId/events/count", publicSite, getSiteEventCount);
   fastify.get("/sites/:siteId/users", publicSite, getUsers);
 
@@ -297,7 +297,7 @@ async function analyticsRoutes(fastify: FastifyInstance) {
   fastify.get("/sites/:siteId/user-traits/keys", publicSite, getUserTraitKeys);
   fastify.get("/sites/:siteId/user-traits/values", publicSite, getUserTraitValues);
   fastify.get("/sites/:siteId/user-traits/users", publicSite, getUserTraitValueUsers);
-  fastify.get("/sites/:siteId/session-locations", publicSite, getSessionLocations);
+  fastify.get("/sites/:siteId/sessions/locations", publicSite, getSessionLocations);
   fastify.get("/sites/:siteId/funnels", publicSite, getFunnels);
   fastify.get("/sites/:siteId/journeys", publicSite, getJourneys);
   fastify.post("/sites/:siteId/funnels/analyze", publicSite, getFunnel);
@@ -305,7 +305,7 @@ async function analyticsRoutes(fastify: FastifyInstance) {
   fastify.post("/sites/:siteId/funnels", authSite, createFunnel);
   fastify.delete("/sites/:siteId/funnels/:funnelId", authSite, deleteFunnel);
   fastify.get("/sites/:siteId/goals", publicSite, getGoals);
-  fastify.get("/sites/:siteId/goals/bucketed", publicSite, getGoalTimeSeries);
+  fastify.get("/sites/:siteId/goals/time-series", publicSite, getGoalTimeSeries);
   fastify.get("/sites/:siteId/goals/:goalId/sessions", publicSite, getGoalSessions);
   fastify.post("/sites/:siteId/goals", authSite, createGoal);
   fastify.delete("/sites/:siteId/goals/:goalId", authSite, deleteGoal);

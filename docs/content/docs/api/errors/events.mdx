@@ -12,7 +12,7 @@ import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
 <div>
 
 ```
-GET /api/sites/:site/error-events
+GET /api/sites/:site/errors/events
 ```
 
 Returns individual error occurrences for a specific error message, with full context including stack traces.
@@ -138,14 +138,14 @@ Accepts all [Common Parameters](/docs/api/getting-started#common-parameters) plu
 <Tabs items={['cURL', 'JavaScript', 'Python', 'PHP', 'Ruby', 'Go', 'Rust', 'Java', '.NET']}>
   <Tab value="cURL">
 ```bash title="Request"
-curl -X GET "https://app.rybbit.io/api/sites/1/error-events?errorMessage=Cannot%20read%20property%20%27map%27%20of%20undefined&limit=10" \
+curl -X GET "https://app.rybbit.io/api/sites/1/errors/events?errorMessage=Cannot%20read%20property%20%27map%27%20of%20undefined&limit=10" \
   -H "Authorization: Bearer your_api_key_here"
 ```
   </Tab>
   <Tab value="JavaScript">
 ```javascript title="Request"
 const response = await fetch(
-  `https://app.rybbit.io/api/sites/1/error-events?errorMessage=${encodeURIComponent("Cannot read property 'map' of undefined")}&limit=10`,
+  `https://app.rybbit.io/api/sites/1/errors/events?errorMessage=${encodeURIComponent("Cannot read property 'map' of undefined")}&limit=10`,
   {
     headers: {
       'Authorization': 'Bearer your_api_key_here'
@@ -161,7 +161,7 @@ const data = await response.json();
 import requests
 
 response = requests.get(
-    'https://app.rybbit.io/api/sites/1/error-events',
+    'https://app.rybbit.io/api/sites/1/errors/events',
     params={
         'errorMessage': "Cannot read property 'map' of undefined",
         'limit': 10
@@ -177,7 +177,7 @@ data = response.json()
   <Tab value="PHP">
 ```php title="Request"
 $ch = curl_init();
-curl_setopt($ch, CURLOPT_URL, 'https://app.rybbit.io/api/sites/1/error-events?errorMessage=Cannot%20read%20property%20%27map%27%20of%20undefined&limit=10');
+curl_setopt($ch, CURLOPT_URL, 'https://app.rybbit.io/api/sites/1/errors/events?errorMessage=Cannot%20read%20property%20%27map%27%20of%20undefined&limit=10');
 curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
 curl_setopt($ch, CURLOPT_HTTPHEADER, [
     'Authorization: Bearer your_api_key_here'
@@ -194,7 +194,7 @@ $data = json_decode($response, true);
 require 'net/http'
 require 'json'
 
-uri = URI('https://app.rybbit.io/api/sites/1/error-events?errorMessage=Cannot%20read%20property%20%27map%27%20of%20undefined&limit=10')
+uri = URI('https://app.rybbit.io/api/sites/1/errors/events?errorMessage=Cannot%20read%20property%20%27map%27%20of%20undefined&limit=10')
 req = Net::HTTP::Get.new(uri)
 req['Authorization'] = 'Bearer your_api_key_here'
 
@@ -204,7 +204,7 @@ data = JSON.parse(res.body)
   </Tab>
   <Tab value="Go">
 ```go title="Request"
-req, _ := http.NewRequest("GET", "https://app.rybbit.io/api/sites/1/error-events?errorMessage=Cannot%20read%20property%20%27map%27%20of%20undefined&limit=10", nil)
+req, _ := http.NewRequest("GET", "https://app.rybbit.io/api/sites/1/errors/events?errorMessage=Cannot%20read%20property%20%27map%27%20of%20undefined&limit=10", nil)
 req.Header.Set("Authorization", "Bearer your_api_key_here")
 
 client := &http.Client{}
@@ -219,7 +219,7 @@ json.NewDecoder(resp.Body).Decode(&data)
 ```rust title="Request"
 let client = reqwest::Client::new();
 let res = client
-    .get("https://app.rybbit.io/api/sites/1/error-events?errorMessage=Cannot%20read%20property%20%27map%27%20of%20undefined&limit=10")
+    .get("https://app.rybbit.io/api/sites/1/errors/events?errorMessage=Cannot%20read%20property%20%27map%27%20of%20undefined&limit=10")
     .header("Authorization", "Bearer your_api_key_here")
     .send()
     .await?;
@@ -231,7 +231,7 @@ let data: serde_json::Value = res.json().await?;
 ```java title="Request"
 HttpClient client = HttpClient.newHttpClient();
 HttpRequest request = HttpRequest.newBuilder()
-    .uri(URI.create("https://app.rybbit.io/api/sites/1/error-events?errorMessage=Cannot%20read%20property%20%27map%27%20of%20undefined&limit=10"))
+    .uri(URI.create("https://app.rybbit.io/api/sites/1/errors/events?errorMessage=Cannot%20read%20property%20%27map%27%20of%20undefined&limit=10"))
     .header("Authorization", "Bearer your_api_key_here")
     .GET()
     .build();
@@ -244,7 +244,7 @@ HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.o
 using var client = new HttpClient();
 client.DefaultRequestHeaders.Add("Authorization", "Bearer your_api_key_here");
 
-var response = await client.GetAsync("https://app.rybbit.io/api/sites/1/error-events?errorMessage=Cannot%20read%20property%20%27map%27%20of%20undefined&limit=10");
+var response = await client.GetAsync("https://app.rybbit.io/api/sites/1/errors/events?errorMessage=Cannot%20read%20property%20%27map%27%20of%20undefined&limit=10");
 var data = await response.Content.ReadAsStringAsync();
 ```
   </Tab>

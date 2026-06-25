@@ -64,14 +64,14 @@ export async function fetchOverview(
 
 /**
  * Fetch time-series overview data
- * GET /api/overview-bucketed/:site
+ * GET /api/sites/:site/overview/time-series
  */
 export async function fetchOverviewBucketed(
   site: string | number,
   params: BucketedParams
 ): Promise<GetOverviewBucketedResponse> {
   const response = await authedFetch<{ data: GetOverviewBucketedResponse }>(
-    `/sites/${site}/overview-bucketed`,
+    `/sites/${site}/overview/time-series`,
     toBucketedQueryParams(params)
   );
   return response.data;

@@ -1,4 +1,4 @@
 {
   "title": "Events",
-  "pages": ["list", "names", "properties", "outbound"]
+  "pages": ["list", "names", "time-series", "count", "properties", "outbound"]
 }

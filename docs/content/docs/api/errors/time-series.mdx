@@ -12,7 +12,7 @@ import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
 <div>
 
 ```
-GET /api/sites/:site/error-bucketed
+GET /api/sites/:site/errors/time-series
 ```
 
 Returns error occurrence counts over time for a specific error message. Useful for tracking error trends and identifying when issues started.
@@ -86,14 +86,14 @@ Accepts all [Common Parameters](/docs/api/getting-started#common-parameters) plu
 <Tabs items={['cURL', 'JavaScript', 'Python', 'PHP', 'Ruby', 'Go', 'Rust', 'Java', '.NET']}>
   <Tab value="cURL">
 ```bash title="Request"
-curl -X GET "https://app.rybbit.io/api/sites/1/error-bucketed?errorMessage=Cannot%20read%20property%20%27map%27%20of%20undefined&bucket=hour&start_date=2024-01-30&end_date=2024-01-31&time_zone=UTC" \
+curl -X GET "https://app.rybbit.io/api/sites/1/errors/time-series?errorMessage=Cannot%20read%20property%20%27map%27%20of%20undefined&bucket=hour&start_date=2024-01-30&end_date=2024-01-31&time_zone=UTC" \
   -H "Authorization: Bearer your_api_key_here"
 ```
   </Tab>
   <Tab value="JavaScript">
 ```javascript title="Request"
 const response = await fetch(
-  `https://app.rybbit.io/api/sites/1/error-bucketed?errorMessage=${encodeURIComponent("Cannot read property 'map' of undefined")}&bucket=hour&start_date=2024-01-30&end_date=2024-01-31&time_zone=UTC`,
+  `https://app.rybbit.io/api/sites/1/errors/time-series?errorMessage=${encodeURIComponent("Cannot read property 'map' of undefined")}&bucket=hour&start_date=2024-01-30&end_date=2024-01-31&time_zone=UTC`,
   {
     headers: {
       'Authorization': 'Bearer your_api_key_here'
@@ -109,7 +109,7 @@ const data = await response.json();
 import requests
 
 response = requests.get(
-    'https://app.rybbit.io/api/sites/1/error-bucketed',
+    'https://app.rybbit.io/api/sites/1/errors/time-series',
     params={
         'errorMessage': "Cannot read property 'map' of undefined",
         'bucket': 'hour',
@@ -128,7 +128,7 @@ data = response.json()
   <Tab value="PHP">
 ```php title="Request"
 $ch = curl_init();
-curl_setopt($ch, CURLOPT_URL, 'https://app.rybbit.io/api/sites/1/error-bucketed?errorMessage=Cannot%20read%20property%20%27map%27%20of%20undefined&bucket=hour&start_date=2024-01-30&end_date=2024-01-31&time_zone=UTC');
+curl_setopt($ch, CURLOPT_URL, 'https://app.rybbit.io/api/sites/1/errors/time-series?errorMessage=Cannot%20read%20property%20%27map%27%20of%20undefined&bucket=hour&start_date=2024-01-30&end_date=2024-01-31&time_zone=UTC');
 curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
 curl_setopt($ch, CURLOPT_HTTPHEADER, [
     'Authorization: Bearer your_api_key_here'
@@ -145,7 +145,7 @@ $data = json_decode($response, true);
 require 'net/http'
 require 'json'
 
-uri = URI('https://app.rybbit.io/api/sites/1/error-bucketed?errorMessage=Cannot%20read%20property%20%27map%27%20of%20undefined&bucket=hour&start_date=2024-01-30&end_date=2024-01-31&time_zone=UTC')
+uri = URI('https://app.rybbit.io/api/sites/1/errors/time-series?errorMessage=Cannot%20read%20property%20%27map%27%20of%20undefined&bucket=hour&start_date=2024-01-30&end_date=2024-01-31&time_zone=UTC')
 req = Net::HTTP::Get.new(uri)
 req['Authorization'] = 'Bearer your_api_key_here'
 
@@ -155,7 +155,7 @@ data = JSON.parse(res.body)
   </Tab>
   <Tab value="Go">
 ```go title="Request"
-req, _ := http.NewRequest("GET", "https://app.rybbit.io/api/sites/1/error-bucketed?errorMessage=Cannot%20read%20property%20%27map%27%20of%20undefined&bucket=hour&start_date=2024-01-30&end_date=2024-01-31&time_zone=UTC", nil)
+req, _ := http.NewRequest("GET", "https://app.rybbit.io/api/sites/1/errors/time-series?errorMessage=Cannot%20read%20property%20%27map%27%20of%20undefined&bucket=hour&start_date=2024-01-30&end_date=2024-01-31&time_zone=UTC", nil)
 req.Header.Set("Authorization", "Bearer your_api_key_here")
 
 client := &http.Client{}
@@ -170,7 +170,7 @@ json.NewDecoder(resp.Body).Decode(&data)
 ```rust title="Request"
 let client = reqwest::Client::new();
 let res = client
-    .get("https://app.rybbit.io/api/sites/1/error-bucketed?errorMessage=Cannot%20read%20property%20%27map%27%20of%20undefined&bucket=hour&start_date=2024-01-30&end_date=2024-01-31&time_zone=UTC")
+    .get("https://app.rybbit.io/api/sites/1/errors/time-series?errorMessage=Cannot%20read%20property%20%27map%27%20of%20undefined&bucket=hour&start_date=2024-01-30&end_date=2024-01-31&time_zone=UTC")
     .header("Authorization", "Bearer your_api_key_here")
     .send()
     .await?;
@@ -182,7 +182,7 @@ let data: serde_json::Value = res.json().await?;
 ```java title="Request"
 HttpClient client = HttpClient.newHttpClient();
 HttpRequest request = HttpRequest.newBuilder()
-    .uri(URI.create("https://app.rybbit.io/api/sites/1/error-bucketed?errorMessage=Cannot%20read%20property%20%27map%27%20of%20undefined&bucket=hour&start_date=2024-01-30&end_date=2024-01-31&time_zone=UTC"))
+    .uri(URI.create("https://app.rybbit.io/api/sites/1/errors/time-series?errorMessage=Cannot%20read%20property%20%27map%27%20of%20undefined&bucket=hour&start_date=2024-01-30&end_date=2024-01-31&time_zone=UTC"))
     .header("Authorization", "Bearer your_api_key_here")
     .GET()
     .build();
@@ -195,7 +195,7 @@ HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.o
 using var client = new HttpClient();
 client.DefaultRequestHeaders.Add("Authorization", "Bearer your_api_key_here");
 
-var response = await client.GetAsync("https://app.rybbit.io/api/sites/1/error-bucketed?errorMessage=Cannot%20read%20property%20%27map%27%20of%20undefined&bucket=hour&start_date=2024-01-30&end_date=2024-01-31&time_zone=UTC");
+var response = await client.GetAsync("https://app.rybbit.io/api/sites/1/errors/time-series?errorMessage=Cannot%20read%20property%20%27map%27%20of%20undefined&bucket=hour&start_date=2024-01-30&end_date=2024-01-31&time_zone=UTC");
 var data = await response.Content.ReadAsStringAsync();
 ```
   </Tab>
