@@ -1,4 +1,4 @@
 {
   "title": "Organizations",
-  "pages": ["list", "create-site", "members", "add-member"]
+  "pages": ["list", "sites", "create-site", "members", "add-member", "event-count"]
 }

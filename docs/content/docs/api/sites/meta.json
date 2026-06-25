@@ -1,4 +1,4 @@
 {
   "title": "Sites",
-  "pages": ["get", "delete", "update-config", "excluded-ips", "excluded-countries", "get-private-link", "update-private-link"]
+  "pages": ["get", "has-data", "is-public", "delete", "update-config", "excluded-ips", "excluded-countries", "excluded-paths", "excluded-hostnames", "excluded-user-agents", "get-private-link", "update-private-link", "export-pdf"]
 }

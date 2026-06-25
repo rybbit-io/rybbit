@@ -9,6 +9,7 @@
     "---Analytics---",
     "overview",
     "sessions",
+    "session-replay",
     "users",
     "user-traits",
     "events",
@@ -20,6 +21,9 @@
     "insights",
     "---Management---",
     "organizations",
-    "sites"
+    "teams",
+    "sites",
+    "imports",
+    "api-keys"
   ]
 }
