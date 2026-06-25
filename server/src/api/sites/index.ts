@@ -26,3 +26,6 @@ export { getSiteImports } from "./getSiteImports.js";
 export { createSiteImport } from "./createSiteImport.js";
 export { batchImportEvents } from "./batchImportEvents.js";
 export { deleteSiteImport } from "./deleteSiteImport.js";
+
+// Managed Proxy (Cloudflare for SaaS custom hostname)
+export { enableProxy, getProxyStatus, disableProxy } from "./proxy/index.js";

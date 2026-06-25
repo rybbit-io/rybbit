@@ -109,7 +109,10 @@ import {
   createSiteImport,
   deleteSite,
   deleteSiteImport,
+  disableProxy,
+  enableProxy,
   getEmbedStats,
+  getProxyStatus,
   getSite,
   getSiteExcludedCountries,
   getSiteExcludedHostnames,
@@ -163,6 +166,8 @@ import { mapHeaders } from "./lib/auth-utils.js";
 import { auth } from "./lib/auth.js";
 import { createCorsOptionsDelegate, createRejectUntrustedOriginHook } from "./lib/cors.js";
 import { IS_CLOUD } from "./lib/const.js";
+import { isProxyHost, startProxyDomainRefresh, stopProxyDomainRefresh } from "./lib/proxyDomains.js";
+import { cloudflareReconciliationService } from "./services/cloudflare/cloudflareReconciliationService.js";
 import { reengagementService } from "./services/reengagement/reengagementService.js";
 import { telemetryService } from "./services/telemetryService.js";
 import { handleIdentify } from "./services/tracker/identifyService.js";
@@ -218,6 +223,21 @@ const server = Fastify({
   maxParamLength: 1500,
   trustProxy: true,
   bodyLimit: 10 * 1024 * 1024, // 10MB limit for session replay data
+  // Managed-proxy first-party hostnames (Cloudflare for SaaS custom hostnames) receive
+  // root-level tracking paths — "/script.js", "/track", "/site/tracking-config/:id", etc.
+  // Rewrite them onto the real /api/* routes so the existing handlers serve them
+  // unchanged. Runs before routing. Everything else — the dashboard app, app.rybbit.io
+  // /api/* requests, static assets — passes through untouched.
+  rewriteUrl(req) {
+    const url = req.url || "/";
+    if (url.startsWith("/api/") || url.startsWith("/auth/")) {
+      return url;
+    }
+    if (isProxyHost(req.headers.host)) {
+      return "/api" + (url.startsWith("/") ? url : `/${url}`);
+    }
+    return url;
+  },
 });
 
 server.register(cors, {
@@ -358,6 +378,11 @@ async function sitesRoutes(fastify: FastifyInstance) {
   fastify.delete("/sites/:siteId", adminSite, deleteSite);
   fastify.get("/sites/:siteId/private-link-config", adminSite, getSitePrivateLinkConfig);
   fastify.post("/sites/:siteId/private-link-config", adminSite, updateSitePrivateLinkConfig);
+
+  // Managed proxy (Cloudflare for SaaS custom hostname)
+  fastify.post("/sites/:siteId/proxy", adminSite, enableProxy);
+  fastify.get("/sites/:siteId/proxy", adminSite, getProxyStatus);
+  fastify.delete("/sites/:siteId/proxy", adminSite, disableProxy);
   fastify.get("/site/tracking-config/:siteId", getTrackingConfig); // Public - used by tracking script
   fastify.get("/sites/:siteId/embed-stats", { preHandler: [resolveSiteId] as any }, getEmbedStats); // Public - widget endpoint (handler checks site is public)
   fastify.get("/sites/:siteId/excluded-ips", authSite, getSiteExcludedIPs);
@@ -480,11 +505,16 @@ const start = async () => {
     if (!cluster.isWorker) {
       telemetryService.startTelemetryCron();
       usageService.startUsageCheckCron();
+      cloudflareReconciliationService.start();
       if (IS_CLOUD && process.env.NODE_ENV !== "development") {
         weeklyReportService.startWeeklyReportCron();
         reengagementService.startReengagementCron();
       }
     }
+
+    // Keep the managed-proxy hostname set warm for the rewriteUrl hook (request-serving
+    // process: workers, or this process in single-process mode).
+    startProxyDomainRefresh();
 
     // Start the server first
     await server.listen({ port: 3001, host: "0.0.0.0" });
@@ -542,6 +572,12 @@ const shutdown = async (signal: string) => {
   }, 10000); // 10 second timeout
 
   try {
+    // Stop background work owned by this process
+    stopProxyDomainRefresh();
+    if (!cluster.isWorker) {
+      cloudflareReconciliationService.stop();
+    }
+
     // Stop accepting new connections
     await server.close();
     server.log.info("Server closed");

@@ -3,6 +3,7 @@ import { initializeClickhouse } from "./db/clickhouse/clickhouse.js";
 import { initPostgres } from "./db/postgres/initPostgres.js";
 import { IS_CLOUD } from "./lib/const.js";
 import { createServiceLogger } from "./lib/logger/logger.js";
+import { cloudflareReconciliationService } from "./services/cloudflare/cloudflareReconciliationService.js";
 import { reengagementService } from "./services/reengagement/reengagementService.js";
 import { sessionsService } from "./services/sessions/sessionsService.js";
 import { telemetryService } from "./services/telemetryService.js";
@@ -45,6 +46,7 @@ if (workerCount === 0) {
   // Start cron jobs on the primary process only
   telemetryService.startTelemetryCron();
   usageService.startUsageCheckCron();
+  cloudflareReconciliationService.start();
   if (IS_CLOUD && process.env.NODE_ENV !== "development") {
     weeklyReportService.startWeeklyReportCron();
     reengagementService.startReengagementCron();
@@ -115,6 +117,7 @@ if (workerCount === 0) {
 
     // Stop cron jobs
     usageService.stopUsageCheckCron();
+    cloudflareReconciliationService.stop();
     void sessionsService.close();
     telemetryService.stopTelemetryCron();
     if (IS_CLOUD) {
