@@ -11,6 +11,10 @@ export {
 } from "./sites";
 export type { SiteResponse, GetSitesFromOrgResponse } from "./sites";
 
+// Managed proxy (custom domain) endpoints
+export { fetchProxyStatus, enableProxy, disableProxy } from "./proxy";
+export type { ProxyStatusResponse, ProxyDnsRecord, ProxyStatus } from "./proxy";
+
 // Organizations endpoints
 export {
   getUserOrganizations,

@@ -94,8 +94,19 @@ export const sites = pgTable(
     apiKey: text("api_key"), // Format: rb_{64_hex_chars} = 67 chars total
     privateLinkKey: text("private_link_key"),
     tags: jsonb("tags").default([]).$type<string[]>(),
+    // Managed proxy (Cloudflare for SaaS custom hostname). When enabled, the customer
+    // points a subdomain (e.g. "a.theirdomain.com") at our CNAME target; tracking is
+    // then served first-party through that hostname. See lib/cloudflare.ts.
+    proxyDomain: text("proxy_domain"), // The customer's first-party hostname, e.g. "a.theirdomain.com"
+    proxyEnabled: boolean("proxy_enabled").default(false),
+    proxyStatus: text("proxy_status"), // Coarse status: 'pending' | 'active' | 'failed'
+    proxyCfHostnameId: text("proxy_cf_hostname_id"), // Cloudflare custom_hostname id (for status/teardown)
   },
-  table => [check("sites_type_check", sql`${table.type} IS NULL OR ${table.type} IN ('web', 'mobile')`)]
+  table => [
+    check("sites_type_check", sql`${table.type} IS NULL OR ${table.type} IN ('web', 'mobile')`),
+    // A given first-party hostname can back only one site.
+    unique("sites_proxy_domain_unique").on(table.proxyDomain),
+  ]
 );
 
 // Active sessions table.

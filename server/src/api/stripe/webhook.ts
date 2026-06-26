@@ -5,6 +5,7 @@ import { organization } from "../../db/postgres/schema.js";
 import { eq } from "drizzle-orm";
 import Stripe from "stripe";
 import { invalidateStripeSubscriptionCache } from "../../lib/subscriptionUtils.js";
+import { teardownProxiesForStripeCustomer } from "../../services/cloudflare/cloudflareReconciliationService.js";
 import dotenv from "dotenv";
 
 dotenv.config();
@@ -86,6 +87,13 @@ export async function handleWebhook(request: FastifyRequest, reply: FastifyReply
     case "customer.subscription.deleted":
       const changedSubscription = event.data.object as Stripe.Subscription;
       invalidateStripeSubscriptionCache(changedSubscription.customer as string);
+
+      // On cancellation, tear down the customer's managed-proxy hostnames so we stop
+      // being billed for them. Treats managed proxy as a paid feature; the daily
+      // reconcile sweep is the backstop if this webhook is missed.
+      if (event.type === "customer.subscription.deleted") {
+        await teardownProxiesForStripeCustomer(changedSubscription.customer as string);
+      }
       break;
 
     // ... handle other event types as needed
