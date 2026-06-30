@@ -40,7 +40,7 @@ export function CreateEditTeamDialog({
 }: CreateEditTeamDialogProps) {
   const t = useExtracted();
   const { data: activeOrganization } = authClient.useActiveOrganization();
-  const { data: membersData, isLoading: isLoadingMembers } = useOrganizationMembers(activeOrganization?.id || "");
+  const { data: membersData, isLoading: isLoadingMembers } = useOrganizationMembers(activeOrganization?.id);
   const { data: sitesData, isLoading: isLoadingSites } = useGetSitesFromOrg(activeOrganization?.id);
 
   const createTeam = useCreateTeam();
