@@ -4,6 +4,7 @@ import { db } from "../../db/postgres/postgres.js";
 import { organization, member } from "../../db/postgres/schema.js";
 import { eq, and } from "drizzle-orm";
 import Stripe from "stripe";
+import { invalidateStripeSubscriptionCache } from "../../lib/subscriptionUtils.js";
 
 interface UpdateSubscriptionBody {
   organizationId: string;
@@ -91,6 +92,10 @@ export async function updateSubscription(
       proration_behavior: isTrialing ? "none" : "always_invoice",
       ...(isTrialing && subscription.trial_end && { trial_end: subscription.trial_end }),
     });
+
+    // The plan changed, so drop the cached subscription for this customer (also clears the
+    // account-wide snapshot used by the admin endpoints and usage cron).
+    invalidateStripeSubscriptionCache(org.stripeCustomerId);
 
     // Get the updated subscription details
     const updatedSubscriptionDetails = await (stripe as Stripe).subscriptions.retrieve(updatedSubscription.id);

@@ -72,7 +72,7 @@ const structuredData = {
           name: "How long does Cloudflare keep my data?",
           acceptedAnswer: {
             "@type": "Answer",
-            text: "Cloudflare retains analytics data for only 6 months. Rybbit retains data for 2-5+ years depending on your plan, and you can export your data at any time.",
+            text: "Cloudflare retains analytics data for only 6 months. Rybbit retains data for 3-5+ years depending on your plan, and you can export your data at any time.",
           },
         },
         {

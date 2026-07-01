@@ -10,7 +10,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   // Get all documentation pages
   const docPages = source.getPages().map(page => ({
     url: `${baseUrl}/docs/${page.slugs.join("/")}`,
-    lastModified: page.data.lastModified || new Date(),
+    lastModified: (page.data as { lastModified?: string | Date }).lastModified || new Date(),
     changeFrequency: "weekly" as const,
     priority: 0.8,
   }));

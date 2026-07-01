@@ -66,6 +66,13 @@ class UserIdService {
       .digest("hex")
       .substring(0, 12);
   }
+
+  async generateUserIdFromClientId(clientId: string, siteId: number): Promise<string> {
+    const config = await siteConfig.getConfig(siteId);
+    const salt = config?.saltUserIds ? this.getDailySalt() : "";
+
+    return crypto.createHash("sha256").update(`${siteId}:${clientId}:${salt}`).digest("hex").substring(0, 12);
+  }
 }
 
 export const userIdService = new UserIdService();

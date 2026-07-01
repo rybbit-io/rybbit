@@ -73,7 +73,7 @@ export interface ErrorBucketedParams extends CommonApiParams {
 
 /**
  * Fetch error names with counts
- * GET /api/error-names/:site
+ * GET /api/sites/:site/errors/names
  */
 export async function fetchErrorNames(
   site: string | number,
@@ -86,7 +86,7 @@ export async function fetchErrorNames(
   };
 
   const response = await authedFetch<{ data: ErrorNamesPaginatedResponse }>(
-    `/sites/${site}/error-names`,
+    `/sites/${site}/errors/names`,
     queryParams
   );
   return response.data;
@@ -94,7 +94,7 @@ export async function fetchErrorNames(
 
 /**
  * Fetch individual error events
- * GET /api/error-events/:site
+ * GET /api/sites/:site/errors/events
  */
 export async function fetchErrorEvents(
   site: string | number,
@@ -108,7 +108,7 @@ export async function fetchErrorEvents(
   };
 
   const response = await authedFetch<{ data: ErrorEventsPaginatedResponse }>(
-    `/sites/${site}/error-events`,
+    `/sites/${site}/errors/events`,
     queryParams
   );
   return response.data;
@@ -116,7 +116,7 @@ export async function fetchErrorEvents(
 
 /**
  * Fetch error counts over time
- * GET /api/error-bucketed/:site
+ * GET /api/sites/:site/errors/time-series
  */
 export async function fetchErrorBucketed(
   site: string | number,
@@ -129,7 +129,7 @@ export async function fetchErrorBucketed(
   };
 
   const response = await authedFetch<{ data: GetErrorBucketedResponse }>(
-    `/sites/${site}/error-bucketed`,
+    `/sites/${site}/errors/time-series`,
     queryParams
   );
   return response.data;

@@ -32,6 +32,26 @@ export function addUserToOrganization({ email, role, organizationId }: AddUserTo
   });
 }
 
+export interface CreateUserInOrganizationInput {
+  email: string;
+  name?: string;
+  password: string;
+  role: string;
+  organizationId: string;
+}
+
+export function createUserInOrganization({ email, name, password, role, organizationId }: CreateUserInOrganizationInput) {
+  return authedFetch<{ message: string }>(`/organizations/${organizationId}/users`, undefined, {
+    method: "POST",
+    data: {
+      email,
+      name,
+      password,
+      role,
+    },
+  });
+}
+
 export interface RemoveUserFromOrganizationInput {
   memberIdOrEmail: string;
   organizationId: string;

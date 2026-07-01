@@ -1,8 +1,18 @@
 import { FilterParams } from "@rybbit/shared";
 import { FastifyReply, FastifyRequest } from "fastify";
+import SqlString from "sqlstring";
+import { z } from "zod";
 import { clickhouse } from "../../db/clickhouse/clickhouse.js";
 import { getFilterStatement } from "./utils/getFilterStatement.js";
 import { getTimeStatement, patternToRegex } from "./utils/utils.js";
+
+// stepFilters arrives as a JSON object mapping a (numeric) step index to a path
+// pattern. Both the keys and values are attacker-controlled, so validate the
+// shape before interpolating any of it into the ClickHouse query.
+const stepFiltersSchema = z.record(
+  z.string().regex(/^\d+$/, "Step index must be a non-negative integer"),
+  z.string().max(2048)
+);
 
 export const getJourneys = async (
   request: FastifyRequest<{
@@ -38,11 +48,11 @@ export const getJourneys = async (
     const timeStatement = getTimeStatement(request.query);
     const filterStatement = getFilterStatement(filters, Number(siteId), timeStatement);
 
-    // Parse step filters
-    let parsedStepFilters: Record<number, string> = {};
+    // Parse and validate step filters
+    let parsedStepFilters: Record<string, string> = {};
     if (stepFilters) {
       try {
-        parsedStepFilters = JSON.parse(stepFilters);
+        parsedStepFilters = stepFiltersSchema.parse(JSON.parse(stepFilters));
       } catch (error) {
         return reply.status(400).send({
           error: "Invalid stepFilters format",
@@ -56,12 +66,13 @@ export const getJourneys = async (
       .map(([step, path]) => {
         const stepIndex = parseInt(step, 10) + 1; // ClickHouse arrays are 1-indexed
         if (path.includes("*")) {
-          // Use regex matching for wildcard patterns
+          // Use regex matching for wildcard patterns. SqlString.escape correctly
+          // escapes the regex literal for ClickHouse (handles both ' and \).
           const regex = patternToRegex(path);
-          return `match(journey[${stepIndex}], '${regex.replace(/'/g, "\\'")}')`;
+          return `match(journey[${stepIndex}], ${SqlString.escape(regex)})`;
         }
         // Use exact match for non-wildcard patterns (more efficient)
-        return `journey[${stepIndex}] = '${path.replace(/'/g, "''")}'`;
+        return `journey[${stepIndex}] = ${SqlString.escape(path)}`;
       })
       .join(" AND ");
 

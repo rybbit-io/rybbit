@@ -36,6 +36,41 @@
       "when": 1777182754960,
       "tag": "0004_bored_raider",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1778551960948,
+      "tag": "0005_sticky_gressill",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1779981165610,
+      "tag": "0006_orange_thunderbird",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1779981165611,
+      "tag": "0007_site_type",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1780551464784,
+      "tag": "0008_black_prowler",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1781895152210,
+      "tag": "0009_ambiguous_gabe_jones",
+      "breakpoints": true
     }
   ]
 }

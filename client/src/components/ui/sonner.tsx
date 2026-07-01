@@ -31,18 +31,15 @@ const Toaster = () => {
   );
 };
 
-const toast = Object.assign(
-  (message: string) => hotToast(message),
-  {
-    success: (message: string) => hotToast.success(message),
-    error: (message: string) => hotToast.error(message),
-    info: (message: string) =>
-      hotToast(message, {
-        icon: "ℹ️",
-      }),
-    dismiss: (id?: string) => hotToast.dismiss(id),
-    custom: hotToast.custom,
-  }
-);
+const toast = Object.assign((message: string) => hotToast(message), {
+  success: (message: string) => hotToast.success(message),
+  error: (message: string) => hotToast.error(message),
+  info: (message: string) =>
+    hotToast(message, {
+      icon: "i",
+    }),
+  dismiss: (id?: string) => hotToast.dismiss(id),
+  custom: hotToast.custom,
+});
 
 export { Toaster, toast };

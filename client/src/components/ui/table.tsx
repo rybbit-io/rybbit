@@ -84,9 +84,7 @@ const TableCaption = React.forwardRef<HTMLTableCaptionElement, React.HTMLAttribu
 TableCaption.displayName = "TableCaption";
 
 interface TableSortIndicatorProps {
-  /** The current sort direction: 'asc', 'desc', or false/undefined for unsorted */
   sortDirection?: false | "asc" | "desc";
-  /** Whether sorting is enabled for this column */
   canSort?: boolean;
   className?: string;
 }

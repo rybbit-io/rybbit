@@ -3,6 +3,14 @@ import { DateTime } from "luxon";
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { Time } from "../components/DateSelector/types";
+import { LITE_DASHBOARD } from "./const";
+import { getStoredDashboardDefaultTime } from "./defaultTimeRange";
+
+// The lite dashboard is backed by hourly materialized views, so anything finer
+// than an hour has no underlying data. Clamp auto-selected buckets up to "hour".
+const SUB_HOUR_BUCKETS: TimeBucket[] = ["minute", "five_minutes", "ten_minutes", "fifteen_minutes"];
+const clampBucketForLite = (bucket: TimeBucket): TimeBucket =>
+  LITE_DASHBOARD && SUB_HOUR_BUCKETS.includes(bucket) ? "hour" : bucket;
 
 // Get system timezone
 const getSystemTimezone = () =>
@@ -101,11 +109,120 @@ const recalculateTimeForTimezone = (time: Time, timezone: string): Time | null =
 
 export type StatType = "pageviews" | "sessions" | "users" | "pages_per_session" | "bounce_rate" | "session_duration";
 
+type RangeWithTimes = Extract<Time, { mode: "range" }> & { startTime: string; endTime: string };
+
+const hasRangeTimes = (time: Time): time is RangeWithTimes =>
+  time.mode === "range" && typeof time.startTime === "string" && typeof time.endTime === "string";
+
+const getRangeDateTimeBounds = (time: RangeWithTimes) => {
+  const zone = getTimezone();
+  return {
+    start: DateTime.fromISO(`${time.startDate}T${time.startTime}`, { zone }),
+    end: DateTime.fromISO(`${time.endDate}T${time.endTime}`, { zone }),
+  };
+};
+
+const toRangeWithTimes = (start: DateTime, end: DateTime): RangeWithTimes => ({
+  mode: "range",
+  startDate: start.toISODate() ?? "",
+  startTime: start.toFormat("HH:mm:ss"),
+  endDate: end.toISODate() ?? "",
+  endTime: end.toFormat("HH:mm:ss"),
+});
+
+const getBucketForDateTimeRange = (start: DateTime, end: DateTime): TimeBucket => {
+  const minutes = end.diff(start, "minutes").minutes;
+
+  if (minutes <= 120) return "minute";
+  if (minutes <= 1440) return "five_minutes";
+  if (minutes <= 14 * 1440) return "hour";
+  if (minutes <= 60 * 1440) return "day";
+  if (minutes <= 180 * 1440) return "week";
+  return "month";
+};
+
+const getTimeState = (time: Time): Pick<Store, "time" | "previousTime" | "bucket"> => {
+  let bucketToUse: TimeBucket = "hour";
+  let previousTime: Time;
+
+  if (time.mode === "day") {
+    bucketToUse = "hour";
+    previousTime = {
+      mode: "day",
+      day: DateTime.fromISO(time.day).minus({ days: 1 }).toISODate() ?? "",
+    };
+  } else if (time.mode === "past-minutes") {
+    const timeDiff = time.pastMinutesStart - time.pastMinutesEnd;
+
+    if (timeDiff <= 120) {
+      bucketToUse = "minute";
+    }
+
+    previousTime = {
+      mode: "past-minutes",
+      pastMinutesStart: time.pastMinutesStart + timeDiff,
+      pastMinutesEnd: time.pastMinutesEnd + timeDiff,
+    };
+  } else if (time.mode === "range") {
+    if (hasRangeTimes(time)) {
+      const { start, end } = getRangeDateTimeBounds(time);
+      const duration = end.diff(start);
+      bucketToUse = getBucketForDateTimeRange(start, end);
+
+      previousTime = toRangeWithTimes(start.minus(duration), end.minus(duration));
+    } else {
+      const timeRangeLength = DateTime.fromISO(time.endDate).diff(DateTime.fromISO(time.startDate), "days").days + 1;
+
+      if (timeRangeLength > 180) {
+        bucketToUse = "month";
+      } else if (timeRangeLength > 31) {
+        bucketToUse = "week";
+      } else {
+        bucketToUse = "day";
+      }
+
+      previousTime = {
+        mode: "range",
+        startDate: DateTime.fromISO(time.startDate).minus({ days: timeRangeLength }).toISODate() ?? "",
+        endDate: DateTime.fromISO(time.startDate).minus({ days: 1 }).toISODate() ?? "",
+      };
+    }
+  } else if (time.mode === "week") {
+    bucketToUse = "day";
+    previousTime = {
+      mode: "week",
+      week: DateTime.fromISO(time.week).minus({ weeks: 1 }).toISODate() ?? "",
+    };
+  } else if (time.mode === "month") {
+    bucketToUse = "day";
+    previousTime = {
+      mode: "month",
+      month: DateTime.fromISO(time.month).minus({ months: 1 }).toISODate() ?? "",
+    };
+  } else if (time.mode === "year") {
+    bucketToUse = "month";
+    previousTime = {
+      mode: "year",
+      year: DateTime.fromISO(time.year).minus({ years: 1 }).toISODate() ?? "",
+    };
+  } else if (time.mode === "all-time") {
+    bucketToUse = "day";
+    previousTime = {
+      mode: "all-time",
+    };
+  } else {
+    previousTime = time;
+  }
+
+  return { time, previousTime, bucket: clampBucketForLite(bucketToUse) };
+};
+
 type Store = {
   site: string;
   setSite: (site: string) => void;
   privateKey: string | null;
   setPrivateKey: (privateKey: string | null) => void;
+  setSiteContext: (site: string, privateKey: string | null) => void;
   time: Time;
   previousTime: Time;
   setTime: (time: Time, changeBucket?: boolean) => void;
@@ -119,128 +236,55 @@ type Store = {
   setTimezone: (timezone: string) => void;
 };
 
-export const useStore = create<Store>()(
-  persist(
+type PersistedStore = Pick<Store, "timezone">;
+
+const getUrlParams = () => (typeof window !== "undefined" ? new URLSearchParams(globalThis.location.search) : null);
+
+const getDefaultTime = (): Time => getStoredDashboardDefaultTime(getSystemTimezone());
+
+const getDefaultTimeState = () => getTimeState(getDefaultTime());
+
+const getSiteStateForUrl = (state: Store, site: string, privateKey?: string | null): Partial<Store> => {
+  const urlParams = getUrlParams();
+  const hasTimeInUrl = urlParams?.has("timeMode") || urlParams?.has("wellKnown");
+  const hasBucketInUrl = urlParams?.has("bucket");
+  const hasStatInUrl = urlParams?.has("stat");
+  const hasFiltersInUrl = urlParams?.has("filters");
+  const defaultTimeState = getDefaultTimeState();
+
+  return {
+    site,
+    ...(privateKey !== undefined ? { privateKey } : {}),
+    time: hasTimeInUrl ? state.time : defaultTimeState.time,
+    previousTime: hasTimeInUrl ? state.previousTime : defaultTimeState.previousTime,
+    bucket: hasBucketInUrl ? state.bucket : defaultTimeState.bucket,
+    selectedStat: hasStatInUrl ? state.selectedStat : "users",
+    filters: hasFiltersInUrl ? state.filters : [],
+  };
+};
+
+export const useStore = create<Store, [["zustand/persist", PersistedStore]]>(
+  persist<Store, [], [], PersistedStore>(
     (set, get) => ({
       site: "",
       setSite: site => {
-        // Get current URL search params to check for stored state
-        let urlParams: URLSearchParams | null = null;
-        if (typeof window !== "undefined") {
-          urlParams = new URLSearchParams(globalThis.location.search);
-        }
-
-        // Check if we have state stored in the URL
-        const hasTimeInUrl = urlParams?.has("timeMode");
-        const hasBucketInUrl = urlParams?.has("bucket");
-        const hasStatInUrl = urlParams?.has("stat");
-
-        // Only set defaults if not present in URL
-        set(state => ({
-          site,
-          time: hasTimeInUrl
-            ? state.time
-            : {
-                mode: "day",
-                day: DateTime.now().toISODate(),
-                wellKnown: "today",
-              },
-          previousTime: hasTimeInUrl
-            ? state.previousTime
-            : {
-                mode: "day",
-                day: DateTime.now().minus({ days: 1 }).toISODate(),
-                wellKnown: "yesterday",
-              },
-          bucket: hasBucketInUrl ? state.bucket : "hour",
-          selectedStat: hasStatInUrl ? state.selectedStat : "users",
-        }));
+        set(state => getSiteStateForUrl(state, site));
       },
       privateKey: null,
       setPrivateKey: privateKey => set({ privateKey }),
-      time: {
-        mode: "day",
-        day: DateTime.now().toISODate(),
-        wellKnown: "today",
+      setSiteContext: (site, privateKey) => {
+        set(state => getSiteStateForUrl(state, site, privateKey));
       },
-      previousTime: {
-        mode: "day",
-        day: DateTime.now().minus({ days: 1 }).toISODate(),
-        wellKnown: "yesterday",
-      },
+      ...getDefaultTimeState(),
       setTime: (time, changeBucket = true) => {
-        let bucketToUse: TimeBucket = "hour";
-        let previousTime: Time;
-
-        if (time.mode === "day") {
-          bucketToUse = "hour";
-          previousTime = {
-            mode: "day",
-            day: DateTime.fromISO(time.day).minus({ days: 1 }).toISODate() ?? "",
-          };
-        } else if (time.mode === "past-minutes") {
-          const timeDiff = time.pastMinutesStart - time.pastMinutesEnd;
-
-          if (timeDiff <= 120) {
-            bucketToUse = "minute";
-          }
-
-          previousTime = {
-            mode: "past-minutes",
-            pastMinutesStart: time.pastMinutesStart + timeDiff,
-            pastMinutesEnd: time.pastMinutesEnd + timeDiff,
-          };
-        } else if (time.mode === "range") {
-          const timeRangeLength =
-            DateTime.fromISO(time.endDate).diff(DateTime.fromISO(time.startDate), "days").days + 1;
-
-          if (timeRangeLength > 180) {
-            bucketToUse = "month";
-          } else if (timeRangeLength > 31) {
-            bucketToUse = "week";
-          } else {
-            bucketToUse = "day";
-          }
-
-          previousTime = {
-            mode: "range",
-            startDate: DateTime.fromISO(time.startDate).minus({ days: timeRangeLength }).toISODate() ?? "",
-            endDate: DateTime.fromISO(time.startDate).minus({ days: 1 }).toISODate() ?? "",
-          };
-        } else if (time.mode === "week") {
-          bucketToUse = "day";
-          previousTime = {
-            mode: "week",
-            week: DateTime.fromISO(time.week).minus({ weeks: 1 }).toISODate() ?? "",
-          };
-        } else if (time.mode === "month") {
-          bucketToUse = "day";
-          previousTime = {
-            mode: "month",
-            month: DateTime.fromISO(time.month).minus({ months: 1 }).toISODate() ?? "",
-          };
-        } else if (time.mode === "year") {
-          bucketToUse = "month";
-          previousTime = {
-            mode: "year",
-            year: DateTime.fromISO(time.year).minus({ years: 1 }).toISODate() ?? "",
-          };
-        } else if (time.mode === "all-time") {
-          bucketToUse = "day";
-          previousTime = {
-            mode: "all-time",
-          };
-        } else {
-          previousTime = time; // fallback case
-        }
+        const nextTimeState = getTimeState(time);
 
         if (changeBucket) {
-          set({ time, previousTime, bucket: bucketToUse });
+          set(nextTimeState);
         } else {
-          set({ time, previousTime });
+          set({ time, previousTime: nextTimeState.previousTime });
         }
       },
-      bucket: "hour",
       setBucket: bucket => set({ bucket }),
       selectedStat: "users",
       setSelectedStat: stat => set({ selectedStat: stat }),
@@ -281,10 +325,10 @@ export const toUserTimezone = (dt: DateTime): DateTime => {
 };
 
 export const resetStore = () => {
-  const { setSite, setTime, setBucket, setSelectedStat, setFilters } = useStore.getState();
+  const { setSite, setPrivateKey, setTime, setSelectedStat, setFilters } = useStore.getState();
   setSite("");
-  setTime({ mode: "day", day: DateTime.now().toISODate(), wellKnown: "today" });
-  setBucket("hour");
+  setPrivateKey(null);
+  setTime(getDefaultTime());
   setSelectedStat("users");
   setFilters([]);
 };
@@ -301,10 +345,30 @@ export const goBack = () => {
       false
     );
   } else if (time.mode === "range") {
+    if (hasRangeTimes(time)) {
+      const { start, end } = getRangeDateTimeBounds(time);
+      const duration = end.diff(start);
+
+      setTime(toRangeWithTimes(start.minus(duration), end.minus(duration)), false);
+      return;
+    }
+
     const startDate = DateTime.fromISO(time.startDate);
     const endDate = DateTime.fromISO(time.endDate);
 
     const daysBetweenStartAndEnd = endDate.diff(startDate, "days").days;
+    if (daysBetweenStartAndEnd === 0) {
+      const previousDate = startDate.minus({ days: 1 }).toISODate() ?? "";
+      setTime(
+        {
+          mode: "range",
+          startDate: previousDate,
+          endDate: previousDate,
+        },
+        false
+      );
+      return;
+    }
 
     setTime(
       {
@@ -350,11 +414,44 @@ export const goForward = () => {
       day: DateTime.fromISO(time.day).plus({ days: 1 }).toISODate() ?? "",
     });
   } else if (time.mode === "range") {
+    if (hasRangeTimes(time)) {
+      const { start, end } = getRangeDateTimeBounds(time);
+      const duration = end.diff(start);
+      const proposedStart = start.plus(duration);
+      const proposedEnd = end.plus(duration);
+      const now = DateTime.now().setZone(getTimezone());
+
+      if (proposedStart > now) {
+        return;
+      }
+
+      setTime(toRangeWithTimes(proposedStart, proposedEnd > now ? now : proposedEnd), false);
+      return;
+    }
+
     const startDate = DateTime.fromISO(time.startDate);
     const endDate = DateTime.fromISO(time.endDate);
     const now = DateTime.now();
 
     const daysBetweenStartAndEnd = endDate.diff(startDate, "days").days;
+    if (daysBetweenStartAndEnd === 0) {
+      const proposedDate = startDate.plus({ days: 1 });
+      if (proposedDate > now) {
+        return;
+      }
+
+      const nextDate = proposedDate.toISODate() ?? "";
+      setTime(
+        {
+          mode: "range",
+          startDate: nextDate,
+          endDate: nextDate,
+        },
+        false
+      );
+      return;
+    }
+
     const proposedEndDate = endDate.plus({ days: daysBetweenStartAndEnd });
 
     // Don't allow moving forward if it would put the entire range in the future
@@ -433,6 +530,10 @@ export const canGoForward = (time: Time) => {
   }
 
   if (time.mode === "range") {
+    if (hasRangeTimes(time)) {
+      return !(getRangeDateTimeBounds(time).end >= DateTime.now().setZone(getTimezone()));
+    }
+
     return !(DateTime.fromISO(time.endDate).startOf("day") >= currentDay);
   }
 

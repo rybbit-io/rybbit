@@ -204,7 +204,7 @@ export function UsersTable({
   });
 
   return (
-    <div className="rounded-md border border-neutral-100 dark:border-neutral-800">
+    <div>
       <Table>
         <TableHeader>
           {table.getHeaderGroups().map(headerGroup => (
@@ -254,7 +254,10 @@ export function UsersTable({
           <AlertDialogHeader>
             <AlertDialogTitle>{t("Remove user from organization?")}</AlertDialogTitle>
             <AlertDialogDescription>
-              {t("Select the organization to remove {email} from. They will lose access to all resources in that organization.", { email: selectedUser?.email ?? "" })}
+              {t(
+                "Select the organization to remove {email} from. They will lose access to all resources in that organization.",
+                { email: selectedUser?.email ?? "" }
+              )}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <div className="py-4">

@@ -37,6 +37,7 @@ export function RollupSectionDialog({
   getLink,
   expanded,
   close,
+  lite = false,
 }: {
   title: string;
   filterParameter: FilterParameter;
@@ -47,12 +48,14 @@ export function RollupSectionDialog({
   getLink?: (item: MetricResponse) => string;
   expanded: boolean;
   close: () => void;
+  lite?: boolean;
 }) {
   const t = useExtracted();
   const { data, isLoading } = useRollupMetric({
     siteIds,
     parameter: filterParameter,
     limit: 1000,
+    lite,
   });
 
   const [searchTerm, setSearchTerm] = useState("");

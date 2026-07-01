@@ -2,7 +2,10 @@
 
 import { useExtracted } from "next-intl";
 import { useMemo, useState } from "react";
+import { useGetGoalTimeSeries } from "../../../api/analytics/hooks/goals/useGetGoalTimeSeries";
 import { useGetGoals } from "../../../api/analytics/hooks/goals/useGetGoals";
+import { GoalTimeSeriesPoint } from "../../../api/analytics/endpoints";
+import { BucketSelection } from "../../../components/BucketSelection";
 import { DisabledOverlay } from "../../../components/DisabledOverlay";
 import { NothingFound } from "../../../components/NothingFound";
 import { Pagination } from "../../../components/pagination";
@@ -16,13 +19,14 @@ import GoalsList from "./components/GoalsList";
 import { Target } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { ExternalLink } from "../../../components/ExternalLink";
+import { GoalBarChartSkeleton } from "./components/skeleton";
 
 // Goal card skeleton component
 const GoalCardSkeleton = () => (
   <div className="rounded-lg bg-white dark:bg-neutral-900 border border-neutral-100 dark:border-neutral-800 overflow-hidden relative animate-pulse">
-    <div className="px-4 py-3 flex items-center mb-1">
+    <div className="px-4 py-3 flex gap-3 flex-row items-center mb-1">
       {/* Left section skeleton */}
-      <div className="flex-1 pr-4">
+      <div className="w-full min-w-0 md:flex-1 md:pr-4">
         <div className="flex items-center gap-2">
           <div className="w-4 h-4 bg-neutral-200 dark:bg-neutral-800 rounded"></div>
           <div className="h-5 bg-neutral-200 dark:bg-neutral-800 rounded w-36"></div>
@@ -34,23 +38,27 @@ const GoalCardSkeleton = () => (
       </div>
 
       {/* Center section skeleton */}
-      <div className="flex-1 flex justify-center">
-        <div className="grid grid-cols-2 gap-4 w-full">
-          <div className="text-center">
-            <div className="h-5 bg-neutral-200 dark:bg-neutral-800 rounded w-12 mx-auto"></div>
-            <div className="h-3 bg-neutral-200 dark:bg-neutral-800 rounded w-16 mx-auto mt-1"></div>
+      <div className="w-full md:flex-1 flex justify-start md:justify-center">
+        <div className="grid w-full grid-cols-1 gap-3 sm:grid-cols-2 md:w-auto md:gap-4">
+          <div className="flex items-center gap-3">
+            <GoalBarChartSkeleton />
+            <div className="min-w-[86px] text-left">
+              <div className="h-5 bg-neutral-200 dark:bg-neutral-800 rounded w-14"></div>
+              <div className="h-3 bg-neutral-200 dark:bg-neutral-800 rounded w-20 mt-1"></div>
+            </div>
           </div>
-          <div className="text-center">
-            <div className="h-5 bg-neutral-200 dark:bg-neutral-800 rounded w-12 mx-auto"></div>
-            <div className="h-3 bg-neutral-200 dark:bg-neutral-800 rounded w-16 mx-auto mt-1"></div>
+          <div className="flex items-center gap-3">
+            <GoalBarChartSkeleton />
+            <div className="min-w-[104px] text-left">
+              <div className="h-5 bg-neutral-200 dark:bg-neutral-800 rounded w-16"></div>
+              <div className="h-3 bg-neutral-200 dark:bg-neutral-800 rounded w-24 mt-1"></div>
+            </div>
           </div>
         </div>
       </div>
 
       {/* Right section skeleton */}
-      <div className="flex shrink-0 gap-1 pl-4">
-        <div className="w-7 h-7 bg-neutral-200 dark:bg-neutral-800 rounded"></div>
-        <div className="w-7 h-7 bg-neutral-200 dark:bg-neutral-800 rounded"></div>
+      <div className="flex shrink-0 justify-end gap-1 md:pl-4">
         <div className="w-7 h-7 bg-neutral-200 dark:bg-neutral-800 rounded"></div>
         <div className="w-7 h-7 bg-neutral-200 dark:bg-neutral-800 rounded"></div>
       </div>
@@ -63,7 +71,7 @@ export default function GoalsPage() {
   const t = useExtracted();
   useSetPageTitle("Goals");
   const { data: siteMetadata } = useGetSite();
-  const isApp = siteMetadata?.type === "app";
+  const isApp = siteMetadata?.type === "mobile";
 
   const { site } = useStore();
   const [searchQuery, setSearchQuery] = useState("");
@@ -103,6 +111,24 @@ export default function GoalsPage() {
     });
   }, [goalsData?.data, searchQuery]);
 
+  const goalIds = useMemo(() => filteredGoals.map(goal => goal.goalId), [filteredGoals]);
+
+  const { data: goalTimeSeries, isLoading: isLoadingGoalTimeSeries } = useGetGoalTimeSeries({
+    goalIds,
+  });
+
+  const timeSeriesByGoal = useMemo(() => {
+    const map = new Map<number, GoalTimeSeriesPoint[]>();
+
+    for (const point of goalTimeSeries ?? []) {
+      const points = map.get(point.goal_id) ?? [];
+      points.push(point);
+      map.set(point.goal_id, points);
+    }
+
+    return map;
+  }, [goalTimeSeries]);
+
   // Create pagination controller for TablePagination
   const paginationController = {
     getState: () => ({ pagination }),
@@ -137,23 +163,26 @@ export default function GoalsPage() {
   // Transform data for TablePagination
   const paginationData = goalsData
     ? {
-      items: goalsData.data,
-      total: goalsData.meta.total,
-    }
+        items: goalsData.data,
+        total: goalsData.meta.total,
+      }
     : undefined;
 
   return (
     <DisabledOverlay message="Goals" featurePath="goals" requiredPlan="basic">
       <div className="p-2 md:p-4 max-w-[1400px] mx-auto space-y-3">
         <SubHeader availableFilters={getGoalsPageFilters(isApp)} />
-        <div className="flex items-center justify-between">
-          <Input
-            placeholder={t("Filter goals")}
-            className="w-48"
-            isSearch
-            value={searchQuery}
-            onChange={e => setSearchQuery(e.target.value)}
-          />
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-2">
+            <Input
+              placeholder={t("Filter goals")}
+              className="w-48"
+              isSearch
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+            />
+            <BucketSelection size="default" />
+          </div>
           <CreateGoalButton siteId={Number(site)} />
         </div>
         {/* if site is not loaded, show skeleton */}
@@ -169,7 +198,12 @@ export default function GoalsPage() {
           <NothingFound
             icon={<Target className="w-10 h-10" />}
             title={t("No goals found")}
-            description={<span>{t("Create your first conversion goal to start tracking important user actions.")} <ExternalLink href="https://rybbit.com/docs/goals">{t("Learn more")}</ExternalLink></span>}
+            description={
+              <span>
+                {t("Create your first conversion goal to start tracking important user actions.")}{" "}
+                <ExternalLink href="https://rybbit.com/docs/goals">{t("Learn more")}</ExternalLink>
+              </span>
+            }
             action={<CreateGoalButton siteId={Number(site)} />}
           />
         ) : filteredGoals.length === 0 ? (
@@ -180,7 +214,12 @@ export default function GoalsPage() {
           />
         ) : (
           <div className="space-y-6">
-            <GoalsList goals={filteredGoals} siteId={Number(site)} />
+            <GoalsList
+              goals={filteredGoals}
+              siteId={Number(site)}
+              timeSeriesByGoal={timeSeriesByGoal}
+              isLoadingTimeSeries={isLoadingGoalTimeSeries}
+            />
 
             {goalsData.meta.totalPages > 1 && !searchQuery && (
               <Pagination

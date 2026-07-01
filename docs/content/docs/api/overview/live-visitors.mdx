@@ -1,0 +1,214 @@
+---
+title: Get Live Visitors
+description: Returns the count of unique active sessions within the specified time window. Useful for displaying real-time visitor counts.
+full: true
+method: GET
+---
+
+import { TypeTable } from 'fumadocs-ui/components/type-table';
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+
+<div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
+<div>
+
+```
+GET /api/sites/:site/live-user-count
+```
+
+Returns the count of unique active sessions within the specified time window. Useful for displaying real-time visitor counts.
+
+### Path Parameters
+
+<TypeTable
+  type={{
+    site: {
+      description: 'Site ID or site identifier',
+      type: 'string | number',
+      required: true,
+    },
+  }}
+/>
+
+### Query Parameters
+
+<TypeTable
+  type={{
+    minutes: {
+      description: 'Time window in minutes to count active sessions',
+      type: 'number',
+      default: 5,
+      typeDescription: 'Sessions with activity within the last N minutes are considered "live"',
+    },
+  }}
+/>
+
+### Response
+
+<TypeTable
+  type={{
+    count: {
+      description: 'Number of unique active sessions',
+      type: 'number',
+    },
+  }}
+/>
+
+#### Time Window Guide
+
+| Minutes | Use Case |
+|---------|----------|
+| `1` | Very active visitors (currently browsing) |
+| `5` | Standard "live" count (default) |
+| `15` | Recently active visitors |
+| `30` | Short-term engagement window |
+
+</div>
+<div className="flex flex-col gap-4">
+
+<Tabs items={['cURL', 'JavaScript', 'Python', 'PHP', 'Ruby', 'Go', 'Rust', 'Java', '.NET']}>
+  <Tab value="cURL">
+```bash title="Request"
+curl -X GET "https://app.rybbit.io/api/sites/123/live-user-count?minutes=5" \
+  -H "Authorization: Bearer your_api_key_here"
+```
+  </Tab>
+  <Tab value="JavaScript">
+```javascript title="Request"
+const response = await fetch(
+  'https://app.rybbit.io/api/sites/123/live-user-count?minutes=5',
+  {
+    headers: {
+      'Authorization': 'Bearer your_api_key_here'
+    }
+  }
+);
+
+const { count } = await response.json();
+console.log(`Live visitors: ${count}`);
+```
+  </Tab>
+  <Tab value="Python">
+```python title="Request"
+import requests
+
+response = requests.get(
+    'https://app.rybbit.io/api/sites/123/live-user-count',
+    params={'minutes': 5},
+    headers={
+        'Authorization': 'Bearer your_api_key_here'
+    }
+)
+
+data = response.json()
+print(f"Live visitors: {data['count']}")
+```
+  </Tab>
+  <Tab value="PHP">
+```php title="Request"
+$ch = curl_init();
+curl_setopt($ch, CURLOPT_URL, 'https://app.rybbit.io/api/sites/123/live-user-count?minutes=5');
+curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+curl_setopt($ch, CURLOPT_HTTPHEADER, [
+    'Authorization: Bearer your_api_key_here'
+]);
+
+$response = curl_exec($ch);
+curl_close($ch);
+
+$data = json_decode($response, true);
+echo "Live visitors: " . $data['count'];
+```
+  </Tab>
+  <Tab value="Ruby">
+```ruby title="Request"
+require 'net/http'
+require 'json'
+
+uri = URI('https://app.rybbit.io/api/sites/123/live-user-count?minutes=5')
+req = Net::HTTP::Get.new(uri)
+req['Authorization'] = 'Bearer your_api_key_here'
+
+res = Net::HTTP.start(uri.hostname, uri.port, use_ssl: true) { |http| http.request(req) }
+data = JSON.parse(res.body)
+puts "Live visitors: #{data['count']}"
+```
+  </Tab>
+  <Tab value="Go">
+```go title="Request"
+req, _ := http.NewRequest("GET", "https://app.rybbit.io/api/sites/123/live-user-count?minutes=5", nil)
+req.Header.Set("Authorization", "Bearer your_api_key_here")
+
+client := &http.Client{}
+resp, _ := client.Do(req)
+defer resp.Body.Close()
+
+var data map[string]interface{}
+json.NewDecoder(resp.Body).Decode(&data)
+fmt.Printf("Live visitors: %v\n", data["count"])
+```
+  </Tab>
+  <Tab value="Rust">
+```rust title="Request"
+let client = reqwest::Client::new();
+let res = client
+    .get("https://app.rybbit.io/api/sites/123/live-user-count?minutes=5")
+    .header("Authorization", "Bearer your_api_key_here")
+    .send()
+    .await?;
+
+let data: serde_json::Value = res.json().await?;
+println!("Live visitors: {}", data["count"]);
+```
+  </Tab>
+  <Tab value="Java">
+```java title="Request"
+HttpClient client = HttpClient.newHttpClient();
+HttpRequest request = HttpRequest.newBuilder()
+    .uri(URI.create("https://app.rybbit.io/api/sites/123/live-user-count?minutes=5"))
+    .header("Authorization", "Bearer your_api_key_here")
+    .GET()
+    .build();
+
+HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+```
+  </Tab>
+  <Tab value=".NET">
+```csharp title="Request"
+using var client = new HttpClient();
+client.DefaultRequestHeaders.Add("Authorization", "Bearer your_api_key_here");
+
+var response = await client.GetAsync("https://app.rybbit.io/api/sites/123/live-user-count?minutes=5");
+var data = await response.Content.ReadAsStringAsync();
+```
+  </Tab>
+</Tabs>
+
+```json title="Response"
+{
+  "count": 42
+}
+```
+
+### Polling Example
+
+```javascript title="Real-time Widget"
+async function updateLiveCount() {
+  const response = await fetch(
+    'https://app.rybbit.io/api/sites/123/live-user-count?minutes=5',
+    {
+      headers: {
+        'Authorization': 'Bearer your_api_key'
+      }
+    }
+  );
+  const { count } = await response.json();
+  document.getElementById('live-visitors')
+    .textContent = count;
+}
+
+// Update every 15 seconds
+setInterval(updateLiveCount, 15000);
+```
+
+</div>
+</div>

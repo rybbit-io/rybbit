@@ -114,14 +114,20 @@ export async function createPortalSession(request: FastifyRequest<{ Body: Portal
           return reply.status(404).send({ error: "No active subscription found" });
         }
 
-        const subscriptionId = subscriptions.data[0].id;
+        const subscription = subscriptions.data[0];
 
-        sessionConfig.flow_data = {
-          type: "subscription_cancel",
-          subscription_cancel: {
-            subscription: subscriptionId,
-          },
-        };
+        // Stripe rejects a subscription_cancel flow when the subscription is already scheduled
+        // to cancel at period end ("already set to be canceled at period end"). In that case,
+        // fall back to the plain billing portal so the user can review or resume instead of
+        // hitting a 400.
+        if (!subscription.cancel_at_period_end) {
+          sessionConfig.flow_data = {
+            type: "subscription_cancel",
+            subscription_cancel: {
+              subscription: subscription.id,
+            },
+          };
+        }
       } else if (flowType === "payment_method_update") {
         sessionConfig.flow_data = {
           type: "payment_method_update",

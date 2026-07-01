@@ -6,10 +6,26 @@ import { db } from "../../../db/postgres/postgres.js";
 import { userProfiles } from "../../../db/postgres/schema.js";
 import { validateTimeStatementParams } from "./query-validation.js";
 
+export const normalizeDatetimeForClickhouse = (value: string) => {
+  const normalized = value.includes("T") ? value : value.replace(" ", "T");
+  const withZone = /(?:Z|[+-]\d{2}:?\d{2})$/.test(normalized) ? normalized : `${normalized}Z`;
+  return new Date(withZone).toISOString().slice(0, 19).replace("T", " ");
+};
+
 export function getTimeStatement(
-  params: Pick<FilterParams, "start_date" | "end_date" | "time_zone" | "past_minutes_start" | "past_minutes_end">
+  params: Pick<
+    FilterParams,
+    | "start_date"
+    | "end_date"
+    | "time_zone"
+    | "start_datetime"
+    | "end_datetime"
+    | "past_minutes_start"
+    | "past_minutes_end"
+  >
 ) {
-  const { start_date, end_date, time_zone, past_minutes_start, past_minutes_end } = params;
+  const { start_date, end_date, time_zone, start_datetime, end_datetime, past_minutes_start, past_minutes_end } =
+    params;
 
   // Construct the legacy format for validation
   const pastMinutesRange =
@@ -18,10 +34,12 @@ export function getTimeStatement(
       : undefined;
 
   const date = start_date && end_date && time_zone ? { start_date, end_date, time_zone } : undefined;
+  const dateTimeRange = start_datetime && end_datetime ? { start_datetime, end_datetime } : undefined;
 
   // Sanitize inputs with Zod
   const sanitized = validateTimeStatementParams({
     date,
+    dateTimeRange,
     pastMinutesRange,
   });
 
@@ -44,6 +62,12 @@ export function getTimeStatement(
           'UTC'
         )
       )`;
+  }
+
+  if (sanitized.dateTimeRange) {
+    const { start_datetime, end_datetime } = sanitized.dateTimeRange;
+    return `AND timestamp >= toDateTime(${SqlString.escape(normalizeDatetimeForClickhouse(start_datetime))}, 'UTC')
+      AND timestamp < toDateTime(${SqlString.escape(normalizeDatetimeForClickhouse(end_datetime))}, 'UTC')`;
   }
 
   // Handle specific range of past minutes - convert to exact timestamps for better performance

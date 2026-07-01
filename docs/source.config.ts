@@ -9,6 +9,10 @@ import { z } from 'zod';
 export const { docs, meta } = defineDocs({
   dir: 'content/docs',
   docs: {
+    // `method` powers the HTTP verb badge shown next to API endpoints in the sidebar
+    schema: frontmatterSchema.extend({
+      method: z.enum(['GET', 'POST', 'PUT', 'DELETE', 'PATCH']).optional(),
+    }),
     postprocess: {
       includeProcessedMarkdown: true,
     },

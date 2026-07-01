@@ -11,13 +11,20 @@ import { weeklyReportService } from "./services/weekyReports/weeklyReportService
 
 const logger = createServiceLogger("cluster");
 
+process.on("uncaughtException", error => {
+  logger.error({ err: error }, "Uncaught exception in cluster process");
+  process.exit(1);
+});
+
+process.on("unhandledRejection", reason => {
+  logger.error({ err: reason }, "Unhandled rejection in cluster process");
+  process.exit(1);
+});
+
 // Determine worker count from environment variable
-// Default to 0 (single-process mode) if not set.
+// Default to 0 (single-process mode) if not set
 const requestedWorkers = process.env.CLUSTER_WORKERS;
-const workerCount =
-  requestedWorkers === undefined || requestedWorkers === ""
-    ? 0
-    : parseInt(requestedWorkers, 10);
+const workerCount = requestedWorkers === undefined || requestedWorkers === "" ? 0 : parseInt(requestedWorkers, 10);
 
 if (workerCount === 0) {
   // Single-process mode — no clustering, same as running index.ts directly
@@ -27,21 +34,25 @@ if (workerCount === 0) {
   logger.info(`Primary process ${process.pid} starting with ${workerCount} workers`);
 
   // Initialize databases once before forking workers
-  await Promise.all([initializeClickhouse(), initPostgres()]);
-  logger.info("Database initialization complete");
+  try {
+    await Promise.all([initializeClickhouse(), initPostgres()]);
+    logger.info("Database initialization complete");
+  } catch (error) {
+    logger.error({ err: error }, "Primary process failed during database initialization");
+    process.exit(1);
+  }
 
   // Start cron jobs on the primary process only
   telemetryService.startTelemetryCron();
-  sessionsService.startCleanupCron();
   usageService.startUsageCheckCron();
   if (IS_CLOUD && process.env.NODE_ENV !== "development") {
     weeklyReportService.startWeeklyReportCron();
     reengagementService.startReengagementCron();
   }
 
-  // Broadcast sitesOverLimit to workers after each usage update
+  // Broadcast usage state (sitesOverLimit + sitesWithoutReplay) to workers after each usage update
   usageService.onUsageUpdated(() => {
-    broadcastSitesOverLimit();
+    broadcastUsageState();
   });
 
   // Fork workers
@@ -51,11 +62,11 @@ if (workerCount === 0) {
     cluster.fork();
   }
 
-  // Send current sitesOverLimit to a worker when it comes online
-  cluster.on("online", (worker) => {
+  // Send current usage state to a worker when it comes online
+  cluster.on("online", worker => {
     logger.info(`Worker ${worker.process.pid} is online`);
-    const siteIds = Array.from(usageService.getSitesOverLimit());
-    worker.send({ type: "sites-over-limit", siteIds });
+    worker.send({ type: "sites-over-limit", siteIds: Array.from(usageService.getSitesOverLimit()) });
+    worker.send({ type: "sites-without-replay", siteIds: Array.from(usageService.getSitesWithoutReplay()) });
   });
 
   // Auto-restart crashed workers (unless shutting down)
@@ -64,24 +75,26 @@ if (workerCount === 0) {
       logger.info(`Worker ${worker.process.pid} exited during shutdown`);
       return;
     }
-    logger.warn(
-      `Worker ${worker.process.pid} died (code: ${code}, signal: ${signal}). Restarting...`
-    );
+    logger.warn(`Worker ${worker.process.pid} died (code: ${code}, signal: ${signal}). Restarting...`);
     cluster.fork();
   });
 
   /**
-   * Broadcast the current sitesOverLimit set to all alive workers via IPC
+   * Broadcast the current sitesOverLimit and sitesWithoutReplay sets to all alive workers via IPC
    */
-  function broadcastSitesOverLimit() {
-    const siteIds = Array.from(usageService.getSitesOverLimit());
+  function broadcastUsageState() {
+    const overLimitIds = Array.from(usageService.getSitesOverLimit());
+    const withoutReplayIds = Array.from(usageService.getSitesWithoutReplay());
     for (const id in cluster.workers) {
       const worker = cluster.workers[id];
       if (worker && !worker.isDead()) {
-        worker.send({ type: "sites-over-limit", siteIds });
+        worker.send({ type: "sites-over-limit", siteIds: overLimitIds });
+        worker.send({ type: "sites-without-replay", siteIds: withoutReplayIds });
       }
     }
-    logger.debug(`Broadcasted ${siteIds.length} sites-over-limit to workers`);
+    logger.debug(
+      `Broadcasted ${overLimitIds.length} sites-over-limit and ${withoutReplayIds.length} sites-without-replay to workers`
+    );
   }
 
   // Graceful shutdown
@@ -102,7 +115,7 @@ if (workerCount === 0) {
 
     // Stop cron jobs
     usageService.stopUsageCheckCron();
-    sessionsService.stopCleanupCron();
+    void sessionsService.close();
     telemetryService.stopTelemetryCron();
     if (IS_CLOUD) {
       weeklyReportService.stopWeeklyReportCron();
@@ -116,8 +129,8 @@ if (workerCount === 0) {
     );
 
     const workerExitPromises = activeWorkers.map(
-      (worker) =>
-        new Promise<void>((resolve) => {
+      worker =>
+        new Promise<void>(resolve => {
           worker.on("exit", () => resolve());
         })
     );

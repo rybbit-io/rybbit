@@ -1,6 +1,5 @@
 import { FilterParameter } from "@rybbit/shared";
-import NumberFlow from "@number-flow/react";
-import { round } from "lodash";
+import round from "lodash/round";
 import { ChevronDown, ChevronRight, SquareArrowOutUpRight } from "lucide-react";
 import { ReactNode, useState, useCallback } from "react";
 import { usePaginatedMetric } from "../../../../../api/analytics/hooks/useGetMetric";
@@ -52,11 +51,15 @@ const RowItem = ({
   onFilterToggle: (parameter: FilterParameter, value: string) => void;
   leftContent?: ReactNode;
 }) => {
+  const [isHovered, setIsHovered] = useState(false);
+
   return (
     <div
       key={getKey(item)}
       className="relative h-6 flex items-center cursor-pointer hover:bg-neutral-150/50 dark:hover:bg-neutral-850 group"
       onClick={() => onFilterToggle(filterParameter, getValue(item))}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
     >
       <div
         className="absolute inset-0 bg-dataviz py-2 opacity-25 rounded-md"
@@ -79,7 +82,11 @@ const RowItem = ({
           <div className="hidden group-hover:block text-neutral-600 dark:text-neutral-400">
             {round(item.percentage, 1)}%
           </div>
-          <NumberFlow respectMotionPreference={false} value={item.count} format={{ notation: "compact" }} />
+          <span>
+            {isHovered
+              ? item.count.toLocaleString()
+              : item.count.toLocaleString(undefined, { notation: "compact" })}
+          </span>
         </div>
       </div>
     </div>

@@ -67,6 +67,71 @@
   }
 
   // config.ts
+  function createVisitorId() {
+    try {
+      if (crypto?.randomUUID) {
+        return crypto.randomUUID();
+      }
+    } catch (e2) {
+    }
+    return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 12)}`;
+  }
+  function getOrCreateVisitorId(namespace) {
+    const key = `${namespace}-visitor-id`;
+    try {
+      const stored = localStorage.getItem(key);
+      if (stored) return stored;
+      const visitorId = createVisitorId();
+      localStorage.setItem(key, visitorId);
+      return visitorId;
+    } catch (e2) {
+      return createVisitorId();
+    }
+  }
+  function getIdentifiedUserId(namespace) {
+    try {
+      return localStorage.getItem(`${namespace}-user-id`) || void 0;
+    } catch (e2) {
+      return void 0;
+    }
+  }
+  function getEvaluationPathname(url) {
+    if (url.hash && url.hash.startsWith("#/")) {
+      return url.hash.substring(1);
+    }
+    return url.pathname;
+  }
+  async function fetchFeatureFlags(analyticsHost, siteId, namespace, visitorId) {
+    try {
+      const url = new URL(window.location.href);
+      const response = await fetch(`${analyticsHost}/site/${siteId}/feature-flags/evaluate`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        credentials: "omit",
+        body: JSON.stringify({
+          anonymousId: visitorId,
+          identifiedUserId: getIdentifiedUserId(namespace),
+          hostname: url.hostname,
+          pathname: getEvaluationPathname(url),
+          querystring: url.search,
+          query: Object.fromEntries(url.searchParams.entries()),
+          referrer: document.referrer,
+          language: navigator.language,
+          screenWidth: screen.width,
+          screenHeight: screen.height
+        })
+      });
+      if (!response.ok) {
+        return {};
+      }
+      const data = await response.json();
+      return data?.flags && typeof data.flags === "object" ? data.flags : {};
+    } catch (e2) {
+      return {};
+    }
+  }
   async function parseScriptConfig(scriptTag) {
     const src = scriptTag.getAttribute("src");
     if (!src) {
@@ -84,6 +149,7 @@
       return null;
     }
     const namespace = scriptTag.getAttribute("data-namespace") || "rybbit";
+    const visitorId = getOrCreateVisitorId(namespace);
     const skipPatterns = parseJsonSafely(scriptTag.getAttribute("data-skip-patterns"), []);
     const maskPatterns = parseJsonSafely(scriptTag.getAttribute("data-mask-patterns"), []);
     const sessionReplayMaskTextSelectors = parseJsonSafely(
@@ -115,6 +181,7 @@
       namespace,
       analyticsHost,
       siteId,
+      visitorId,
       debounceDuration,
       sessionReplayBatchSize,
       sessionReplayBatchInterval,
@@ -133,6 +200,7 @@
       trackCopy: false,
       trackFormInteractions: false,
       tag,
+      featureFlags: {},
       // rrweb session replay options (undefined means use rrweb defaults)
       sessionReplayBlockClass,
       sessionReplayBlockSelector,
@@ -146,6 +214,7 @@
       sessionReplaySlimDOMOptions,
       sessionReplaySampleRate
     };
+    let resolvedConfig = defaultConfig;
     try {
       const configUrl = `${analyticsHost}/site/tracking-config/${siteId}`;
       const response = await fetch(configUrl, {
@@ -155,7 +224,7 @@
       });
       if (response.ok) {
         const apiConfig = await response.json();
-        return {
+        resolvedConfig = {
           ...defaultConfig,
           // Map API field names to script config field names
           autoTrackPageview: apiConfig.trackInitialPageView ?? defaultConfig.autoTrackPageview,
@@ -171,12 +240,12 @@
         };
       } else {
         console.warn("Failed to fetch tracking config from API, using defaults");
-        return defaultConfig;
       }
     } catch (error) {
       console.warn("Error fetching tracking config:", error);
-      return defaultConfig;
     }
+    resolvedConfig.featureFlags = await fetchFeatureFlags(analyticsHost, siteId, namespace, visitorId);
+    return resolvedConfig;
   }
 
   // sessionReplay.ts
@@ -381,46 +450,131 @@
   };
 
   // botSignals.ts
+  var CLIENT_BOT_SIGNAL_MASKS = {
+    automationApi: 1 << 0,
+    webdriver: 1 << 0,
+    zeroOuterDimensions: 1 << 1,
+    missingChrome: 1 << 2,
+    swiftShader: 1 << 3,
+    emptyPlugins: 1 << 4,
+    defaultViewport800x600: 1 << 5,
+    defaultViewport1024x768: 1 << 6,
+    impossibleDimensions: 1 << 7,
+    outerDimensionsWeird: 1 << 8,
+    pluginApiAbsence: 1 << 9
+  };
+  var cachedBotSignals = null;
+  var MAX_BOT_SCORE = 10;
   function getBotScore() {
+    return getBotSignals().score;
+  }
+  function getBotSignalMask() {
+    return getBotSignals().mask;
+  }
+  function getBotSignals() {
+    cachedBotSignals ?? (cachedBotSignals = calculateBotSignals());
+    return cachedBotSignals;
+  }
+  function calculateBotSignals() {
     let score = 0;
+    let mask = 0;
+    function addSignal(signalMask, weight) {
+      if ((mask & signalMask) !== 0) {
+        return;
+      }
+      mask |= signalMask;
+      score += weight;
+    }
     try {
-      if (navigator.webdriver === true) {
-        score++;
+      const userAgent = navigator.userAgent;
+      const isChromeLike = /Chrome\//.test(userAgent) && !/\bwv\b|; wv\)/.test(userAgent);
+      const isDesktopUA = /Windows NT|Macintosh|X11|Linux x86_64/.test(userAgent) && !/Mobile|Android|iPhone|iPad/.test(userAgent);
+      const screenWidth = Number(window.screen?.width);
+      const screenHeight = Number(window.screen?.height);
+      const outerWidth = Number(window.outerWidth);
+      const outerHeight = Number(window.outerHeight);
+      const innerWidth = Number(window.innerWidth);
+      const innerHeight = Number(window.innerHeight);
+      const automationGlobalNames = [
+        "__webdriver_evaluate",
+        "__selenium_evaluate",
+        "__webdriver_script_function",
+        "__webdriver_script_func",
+        "__webdriver_script_fn",
+        "__fxdriver_evaluate",
+        "__driver_unwrapped",
+        "__webdriver_unwrapped",
+        "__driver_evaluate",
+        "__selenium_unwrapped",
+        "__fxdriver_unwrapped",
+        "_phantom",
+        "callPhantom",
+        "__nightmare",
+        "domAutomation",
+        "domAutomationController"
+      ];
+      const hasAutomationGlobal = automationGlobalNames.some((name) => name in window || name in document);
+      if (navigator.webdriver === true || hasAutomationGlobal) {
+        addSignal(CLIENT_BOT_SIGNAL_MASKS.automationApi, 3);
       }
-      if (window.outerHeight === 0 || window.outerWidth === 0) {
-        score++;
+      if (outerHeight === 0 || outerWidth === 0) {
+        addSignal(CLIENT_BOT_SIGNAL_MASKS.zeroOuterDimensions, 2);
       }
-      if (navigator.connection?.rtt === 0) {
-        score++;
+      if (!Number.isFinite(screenWidth) || !Number.isFinite(screenHeight) || screenWidth <= 0 || screenHeight <= 0 || screenWidth > 1e5 || screenHeight > 1e5) {
+        addSignal(CLIENT_BOT_SIGNAL_MASKS.impossibleDimensions, 3);
       }
-      if (!window.chrome && /Chrome\//.test(navigator.userAgent) && !/\bwv\b|; wv\)/.test(navigator.userAgent)) {
-        score++;
+      if (isDesktopUA && screenWidth === 800 && screenHeight === 600) {
+        addSignal(CLIENT_BOT_SIGNAL_MASKS.defaultViewport800x600, 3);
+      }
+      if (isDesktopUA && screenWidth === 1024 && screenHeight === 768) {
+        addSignal(CLIENT_BOT_SIGNAL_MASKS.defaultViewport1024x768, 3);
+      }
+      if (Number.isFinite(outerWidth) && Number.isFinite(outerHeight) && Number.isFinite(innerWidth) && Number.isFinite(innerHeight) && outerWidth > 0 && outerHeight > 0 && innerWidth > 0 && innerHeight > 0 && (outerWidth + 8 < innerWidth || outerHeight + 8 < innerHeight)) {
+        addSignal(CLIENT_BOT_SIGNAL_MASKS.outerDimensionsWeird, 2);
+      }
+      let hasPluginOrApiAbsence = false;
+      if (!window.chrome && isChromeLike) {
+        addSignal(CLIENT_BOT_SIGNAL_MASKS.missingChrome, 1);
+        hasPluginOrApiAbsence = true;
       }
       try {
         const canvas = document.createElement("canvas");
         const gl = canvas.getContext("webgl") || canvas.getContext("experimental-webgl");
         if (gl) {
-          const debugInfo = gl.getExtension("WEBGL_debug_renderer_info");
-          if (debugInfo) {
-            const renderer = gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL);
-            if (typeof renderer === "string" && renderer.includes("SwiftShader")) {
-              score++;
+          const rendererParts = [];
+          const rendererRaw = gl.getParameter(gl.RENDERER);
+          if (typeof rendererRaw === "string") {
+            rendererParts.push(rendererRaw);
+          }
+          try {
+            const debugInfo = gl.getExtension("WEBGL_debug_renderer_info");
+            if (debugInfo) {
+              const unmaskedRaw = gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL);
+              if (typeof unmaskedRaw === "string") {
+                rendererParts.push(unmaskedRaw);
+              }
             }
+          } catch {
+          }
+          if (rendererParts.join(" ").toLowerCase().includes("swiftshader")) {
+            addSignal(CLIENT_BOT_SIGNAL_MASKS.swiftShader, 1);
           }
         }
-      } catch (e2) {
+      } catch {
       }
-      if (navigator.plugins.length === 0 && /Chrome\//.test(navigator.userAgent) && !/\bwv\b|; wv\)/.test(navigator.userAgent)) {
-        score++;
+      if ((!navigator.plugins || navigator.plugins.length === 0) && isChromeLike) {
+        addSignal(CLIENT_BOT_SIGNAL_MASKS.emptyPlugins, 1);
+        hasPluginOrApiAbsence = true;
       }
-      try {
-        if (typeof Notification !== "undefined" && Notification.permission === "denied") {
-        }
-      } catch (e2) {
+      if (hasPluginOrApiAbsence) {
+        addSignal(CLIENT_BOT_SIGNAL_MASKS.pluginApiAbsence, 0);
       }
     } catch (e2) {
     }
-    return score;
+    return {
+      score: Math.min(score, MAX_BOT_SCORE),
+      mask
+    };
   }
 
   // tracking.ts
@@ -429,10 +583,64 @@
       this.customUserId = null;
       this.errorDedupeCache = /* @__PURE__ */ new Map();
       this.errorDedupeLastCleanup = 0;
+      this.exposedFeatureFlags = /* @__PURE__ */ new Set();
       this.config = config;
       this.loadUserId();
       if (config.enableSessionReplay) {
         this.initializeSessionReplay();
+      }
+    }
+    serializeFeatureFlagValue(value) {
+      if (value === null || value === void 0) return "";
+      if (typeof value === "string") return value;
+      if (typeof value === "number" || typeof value === "boolean") return String(value);
+      try {
+        return JSON.stringify(value);
+      } catch (e2) {
+        return "";
+      }
+    }
+    getFeatureFlagEventPayload() {
+      const payload = {};
+      for (const [key, assignment] of Object.entries(this.config.featureFlags || {})) {
+        payload[key] = this.serializeFeatureFlagValue(assignment.value);
+      }
+      return payload;
+    }
+    getCurrentUrlContext() {
+      const url = new URL(window.location.href);
+      const pathname = url.hash && url.hash.startsWith("#/") ? url.hash.substring(1) : url.pathname;
+      return {
+        hostname: url.hostname,
+        pathname,
+        querystring: url.search,
+        query: Object.fromEntries(url.searchParams.entries()),
+        referrer: document.referrer,
+        language: navigator.language,
+        screenWidth: screen.width,
+        screenHeight: screen.height
+      };
+    }
+    async refreshFeatureFlags() {
+      try {
+        const response = await fetch(`${this.config.analyticsHost}/site/${this.config.siteId}/feature-flags/evaluate`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            anonymousId: this.config.visitorId,
+            identifiedUserId: this.customUserId || void 0,
+            ...this.getCurrentUrlContext()
+          }),
+          mode: "cors",
+          credentials: "omit",
+          keepalive: true
+        });
+        if (!response.ok) return;
+        const data = await response.json();
+        this.config.featureFlags = data?.flags && typeof data.flags === "object" ? data.flags : {};
+      } catch (e2) {
       }
     }
     loadUserId() {
@@ -496,13 +704,18 @@
         language: navigator.language,
         page_title: document.title,
         referrer: document.referrer,
-        _bs: getBotScore()
+        _bs: getBotScore(),
+        _bsm: getBotSignalMask()
       };
       if (this.customUserId) {
         payload.user_id = this.customUserId;
       }
       if (this.config.tag) {
         payload.tag = this.config.tag;
+      }
+      const featureFlagPayload = this.getFeatureFlagEventPayload();
+      if (Object.keys(featureFlagPayload).length > 0) {
+        payload.feature_flags = featureFlagPayload;
       }
       return payload;
     }
@@ -530,7 +743,15 @@
       if (!basePayload) {
         return;
       }
-      const typesWithProperties = ["custom_event", "outbound", "error", "button_click", "copy", "form_submit", "input_change"];
+      const typesWithProperties = [
+        "custom_event",
+        "outbound",
+        "error",
+        "button_click",
+        "copy",
+        "form_submit",
+        "input_change"
+      ];
       const payload = {
         ...basePayload,
         type: eventType,
@@ -544,6 +765,40 @@
     }
     trackEvent(name, properties = {}) {
       this.track("custom_event", name, properties);
+    }
+    getFeatureFlag(key, fallback) {
+      const assignment = this.config.featureFlags?.[key];
+      if (!assignment) {
+        return fallback;
+      }
+      const exposureKey = `${key}:${assignment.version}:${this.serializeFeatureFlagValue(assignment.value)}`;
+      if (!this.exposedFeatureFlags.has(exposureKey)) {
+        this.exposedFeatureFlags.add(exposureKey);
+        this.trackEvent("feature_flag_exposure", {
+          key,
+          value: this.serializeFeatureFlagValue(assignment.value),
+          version: assignment.version,
+          reason: assignment.reason
+        });
+      }
+      return assignment.value;
+    }
+    getFeatureFlags() {
+      return Object.fromEntries(
+        Object.entries(this.config.featureFlags || {}).map(([key, assignment]) => [key, assignment.value])
+      );
+    }
+    getFeatureFlagPayload(key, fallback) {
+      const assignment = this.config.featureFlags?.[key];
+      if (!assignment || assignment.payload === void 0) {
+        return fallback;
+      }
+      return assignment.payload;
+    }
+    getFeatureFlagPayloads() {
+      return Object.fromEntries(
+        Object.entries(this.config.featureFlags || {}).filter(([, assignment]) => assignment.payload !== void 0).map(([key, assignment]) => [key, assignment.payload])
+      );
     }
     trackOutbound(url, text = "", target = "_self") {
       this.track("outbound", "", { url, text, target });
@@ -657,7 +912,7 @@
       } catch (e2) {
         console.warn("Could not persist user ID to localStorage");
       }
-      this.sendIdentifyEvent(this.customUserId, traits, true);
+      void this.sendIdentifyEvent(this.customUserId, traits, true).then(() => this.refreshFeatureFlags());
       if (this.sessionReplayRecorder) {
         this.sessionReplayRecorder.updateUserId(this.customUserId);
       }
@@ -672,7 +927,7 @@
         console.warn("Cannot set traits without identifying user first. Call identify() first.");
         return;
       }
-      this.sendIdentifyEvent(userId, traits, false);
+      void this.sendIdentifyEvent(userId, traits, false).then(() => this.refreshFeatureFlags());
     }
     async sendIdentifyEvent(userId, traits, isNewIdentify = true) {
       try {
@@ -700,6 +955,7 @@
         localStorage.removeItem(`${this.config.namespace}-user-id`);
       } catch (e2) {
       }
+      void this.refreshFeatureFlags();
     }
     getUserId() {
       return this.customUserId;
@@ -722,6 +978,7 @@
     }
     // Handle page changes for SPA
     onPageChange() {
+      void this.refreshFeatureFlags();
       if (this.sessionReplayRecorder) {
         this.sessionReplayRecorder.onPageChange();
       }
@@ -817,13 +1074,11 @@
         }));
       }));
     }
-    return {
-      get firstHiddenTime() {
-        return u;
-      }, onHidden(e2) {
-        l.add(e2);
-      }
-    };
+    return { get firstHiddenTime() {
+      return u;
+    }, onHidden(e2) {
+      l.add(e2);
+    } };
   };
   var g = (e2) => {
     document.prerendering ? addEventListener("prerenderingchange", (() => e2()), true) : e2();
@@ -1184,6 +1439,7 @@
       const tagName = target.tagName.toUpperCase();
       if (!["INPUT", "SELECT", "TEXTAREA"].includes(tagName)) return;
       if (target.disabled) return;
+      if (target.readOnly) return;
       if (tagName === "INPUT") {
         const inputType = target.type?.toLowerCase();
         if (inputType === "hidden" || inputType === "password") return;
@@ -1212,7 +1468,7 @@
   };
 
   // index.ts
-  (async function () {
+  (async function() {
     const scriptTag = document.currentScript;
     if (!scriptTag) {
       console.error("Could not find current script tag");
@@ -1237,6 +1493,12 @@
         clearUserId: () => {
         },
         getUserId: () => null,
+        flag: (_key, fallback) => fallback,
+        flagPayload: (_key, fallback) => fallback,
+        flags: () => ({}),
+        flagPayloads: () => ({}),
+        onReady: () => {
+        },
         startSessionReplay: () => {
         },
         stopSessionReplay: () => {
@@ -1258,6 +1520,11 @@
       setTraits: queueMethod("setTraits"),
       clearUserId: queueMethod("clearUserId"),
       getUserId: () => null,
+      flag: (_key, fallback) => fallback,
+      flagPayload: (_key, fallback) => fallback,
+      flags: () => ({}),
+      flagPayloads: () => ({}),
+      onReady: queueMethod("onReady"),
       startSessionReplay: queueMethod("startSessionReplay"),
       stopSessionReplay: queueMethod("stopSessionReplay"),
       isSessionReplayActive: () => false
@@ -1306,7 +1573,7 @@
     const trackPageview = () => tracker.trackPageview();
     const debouncedTrackPageview = config.debounceDuration > 0 ? debounce(trackPageview, config.debounceDuration) : trackPageview;
     function setupEventListeners() {
-      document.addEventListener("click", function (e2) {
+      document.addEventListener("click", function(e2) {
         let target = e2.target;
         while (target && target !== document.documentElement) {
           if (target.hasAttribute("data-rybbit-event")) {
@@ -1335,12 +1602,12 @@
       if (config.autoTrackSpa) {
         const originalPushState = history.pushState;
         const originalReplaceState = history.replaceState;
-        history.pushState = function (...args) {
+        history.pushState = function(...args) {
           originalPushState.apply(this, args);
           debouncedTrackPageview();
           tracker.onPageChange();
         };
-        history.replaceState = function (...args) {
+        history.replaceState = function(...args) {
           originalReplaceState.apply(this, args);
           debouncedTrackPageview();
           tracker.onPageChange();
@@ -1364,6 +1631,11 @@
       setTraits: (traits) => tracker.setTraits(traits),
       clearUserId: () => tracker.clearUserId(),
       getUserId: () => tracker.getUserId(),
+      flag: (key, fallback) => tracker.getFeatureFlag(key, fallback),
+      flagPayload: (key, fallback) => tracker.getFeatureFlagPayload(key, fallback),
+      flags: () => tracker.getFeatureFlags(),
+      flagPayloads: () => tracker.getFeatureFlagPayloads(),
+      onReady: (callback) => callback(window[config.namespace]),
       startSessionReplay: () => tracker.startSessionReplay(),
       stopSessionReplay: () => tracker.stopSessionReplay(),
       isSessionReplayActive: () => tracker.isSessionReplayActive()

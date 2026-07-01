@@ -50,7 +50,7 @@ export function GrowthChart({ data, color = "#3b82f6", title }: GrowthChartProps
   if (data === undefined) {
     return (
       <div className="h-64 flex items-center justify-center text-neutral-500 dark:text-neutral-400 text-sm">
-        Loading...
+        Loading&hellip;
       </div>
     );
   }

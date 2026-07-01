@@ -84,8 +84,15 @@ export function AccountInner() {
         throw new Error(response.error.message || t("Failed to update email"));
       }
 
-      toast.success(t("Email updated successfully"));
-      session.refetch();
+      // The email isn't changed yet — better-auth sends a confirmation link
+      // to the current address if it's verified, otherwise to the new one.
+      const confirmationEmail = session.data?.user.emailVerified ? session.data.user.email : email;
+      toast.success(
+        t("A confirmation link has been sent to {email}. Your email will be updated once you confirm the change.", {
+          email: confirmationEmail,
+        })
+      );
+      setEmail(session.data?.user.email ?? "");
     } catch (error) {
       console.error("Error updating email:", error);
       toast.error(error instanceof Error ? error.message : t("Failed to update email"));

@@ -56,37 +56,35 @@ export default function AdminPage() {
       <div className="hidden md:block">
         <AppSidebar />
       </div>
-      <StandardPage showSidebar={false}>
+      <StandardPage showSidebar={false} fullWidth>
         <div className="mb-2">
           <MobileSidebar />
         </div>
-        <AdminLayout>
-          <div className="text-2xl font-bold mb-4">{t("Admin Dashboard")}</div>
-          <Tabs defaultValue="organizations" value={activeTab} onValueChange={setActiveTab}>
-            <TabsList className="mb-4">
-              <TabsTrigger value="organizations">Organizations</TabsTrigger>
-              <TabsTrigger value="sites">Sites</TabsTrigger>
-              <TabsTrigger value="users">Users</TabsTrigger>
-              <TabsTrigger value="settings">Database</TabsTrigger>
-            </TabsList>
+        <div className="text-2xl font-bold mb-4">{t("Admin Dashboard")}</div>
+        <Tabs defaultValue="organizations" value={activeTab} onValueChange={setActiveTab}>
+          <TabsList className="mb-4">
+            <TabsTrigger value="organizations">Organizations</TabsTrigger>
+            <TabsTrigger value="sites">Sites</TabsTrigger>
+            <TabsTrigger value="users">Users</TabsTrigger>
+            <TabsTrigger value="settings">Database</TabsTrigger>
+          </TabsList>
 
-            <TabsContent value="users">
-              <Users />
-            </TabsContent>
+          <TabsContent value="users">
+            <Users />
+          </TabsContent>
 
-            <TabsContent value="organizations">
-              <Organizations />
-            </TabsContent>
+          <TabsContent value="organizations">
+            <Organizations />
+          </TabsContent>
 
-            <TabsContent value="sites">
-              <Sites />
-            </TabsContent>
+          <TabsContent value="sites">
+            <Sites />
+          </TabsContent>
 
-            <TabsContent value="settings">
-              <Database />
-            </TabsContent>
-          </Tabs>
-        </AdminLayout>
+          <TabsContent value="settings">
+            <Database />
+          </TabsContent>
+        </Tabs>
       </StandardPage>
     </div>
   );

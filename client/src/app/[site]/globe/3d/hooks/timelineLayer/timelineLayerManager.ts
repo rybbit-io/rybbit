@@ -1,4 +1,5 @@
-import { isNil, round } from "lodash";
+import isNil from "lodash/isNil";
+import round from "lodash/round";
 import type { GetSessionsResponse } from "../../../../../../api/analytics/endpoints";
 import { SPREAD_RADIUS_DEGREES } from "../../../utils/clusteringConstants";
 import { CLUSTER_COUNT_LAYER_ID, CLUSTER_LAYER_ID, SOURCE_ID } from "./timelineLayerConstants";

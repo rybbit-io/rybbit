@@ -18,9 +18,8 @@ import { useExtracted } from "next-intl";
 import { useState } from "react";
 import { toast } from "@/components/ui/sonner";
 import { Alert } from "../../../../components/ui/alert";
-import { authClient } from "../../../../lib/auth";
 import { validateEmail } from "../../../../lib/auth-utils";
-import { useAddUserToOrganization } from "../../../../api/admin/hooks/useOrganizations";
+import { useCreateUserInOrganization } from "../../../../api/admin/hooks/useOrganizations";
 
 interface CreateUserDialogProps {
   organizationId: string;
@@ -37,7 +36,7 @@ export function CreateUserDialog({ organizationId, onSuccess }: CreateUserDialog
   const [open, setOpen] = useState(false);
   const [error, setError] = useState("");
 
-  const addUserToOrganization = useAddUserToOrganization();
+  const createUserInOrganization = useCreateUserInOrganization();
 
   const resetState = (open = false) => {
     setOpen(open);
@@ -65,14 +64,10 @@ export function CreateUserDialog({ organizationId, onSuccess }: CreateUserDialog
     }
 
     try {
-      await authClient.admin.createUser({
+      await createUserInOrganization.mutateAsync({
         email,
         name: name || email,
         password,
-      });
-
-      await addUserToOrganization.mutateAsync({
-        email,
         role,
         organizationId,
       });
@@ -148,8 +143,8 @@ export function CreateUserDialog({ organizationId, onSuccess }: CreateUserDialog
           <Button variant="outline" onClick={() => resetState(false)}>
             {t("Cancel")}
           </Button>
-          <Button onClick={handleInvite} disabled={addUserToOrganization.isPending} variant="success">
-            {addUserToOrganization.isPending ? t("Creating...") : t("Create User")}
+          <Button onClick={handleInvite} disabled={createUserInOrganization.isPending} variant="success">
+            {createUserInOrganization.isPending ? t("Creating...") : t("Create User")}
           </Button>
         </DialogFooter>
       </DialogContent>

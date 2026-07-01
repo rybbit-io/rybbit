@@ -90,7 +90,7 @@ function StatCard({
 export function UserSidebar({ data, isLoading, sessionCount, getRegionName }: UserSidebarProps) {
   const t = useExtracted();
   const { data: siteMetadata } = useGetSite();
-  const isApp = siteMetadata?.type === "app";
+  const isApp = siteMetadata?.type === "mobile";
   const { formatRelative } = useDateTimeFormat();
   const { configs } = useConfigs();
   const isIdentified = !!data?.identified_user_id;

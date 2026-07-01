@@ -64,14 +64,14 @@ export async function fetchOverview(
 
 /**
  * Fetch time-series overview data
- * GET /api/overview-bucketed/:site
+ * GET /api/sites/:site/overview/time-series
  */
 export async function fetchOverviewBucketed(
   site: string | number,
   params: BucketedParams
 ): Promise<GetOverviewBucketedResponse> {
   const response = await authedFetch<{ data: GetOverviewBucketedResponse }>(
-    `/sites/${site}/overview-bucketed`,
+    `/sites/${site}/overview/time-series`,
     toBucketedQueryParams(params)
   );
   return response.data;
@@ -104,4 +104,48 @@ export async function fetchLiveUserCount(
     { minutes }
   );
   return response;
+}
+
+/**
+ * Fetch lite overview (MV-backed, no filters).
+ * GET /api/sites/:site/overview-lite
+ */
+export async function fetchOverviewLite(
+  site: string | number,
+  params: CommonApiParams
+): Promise<GetOverviewResponse> {
+  const response = await authedFetch<{ data: GetOverviewResponse }>(
+    `/sites/${site}/overview-lite`,
+    toQueryParams(params)
+  );
+  return response.data;
+}
+
+/**
+ * Fetch lite bucketed overview (MV-backed).
+ * GET /api/sites/:site/overview-bucketed-lite
+ */
+export async function fetchOverviewBucketedLite(
+  site: string | number,
+  params: BucketedParams
+): Promise<GetOverviewBucketedResponse> {
+  const response = await authedFetch<{ data: GetOverviewBucketedResponse }>(
+    `/sites/${site}/overview-bucketed-lite`,
+    toBucketedQueryParams(params)
+  );
+  return response.data;
+}
+
+/**
+ * Fetch lite metric (MV-backed). Supports pathname, country, and device type.
+ * GET /api/sites/:site/metric-lite
+ */
+export async function fetchMetricLite(
+  site: string | number,
+  params: MetricParams
+): Promise<{ data: MetricResponse[]; totalCount: number }> {
+  const response = await authedFetch<{
+    data: { data: MetricResponse[]; totalCount: number };
+  }>(`/sites/${site}/metric-lite`, toMetricQueryParams(params));
+  return response.data;
 }

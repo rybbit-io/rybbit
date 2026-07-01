@@ -2,6 +2,9 @@
 // Event Types and Configuration
 // ============================================================================
 
+import { useCallback } from "react";
+import { useExtracted } from "next-intl";
+
 export type TranslationFunction = (key: string, values?: Record<string, string>) => string;
 
 export type EventType =
@@ -42,44 +45,44 @@ export interface EventLike {
   props?: Record<string, any>;
 }
 
-// Helper to generate display name for auto-captured events
-export function getEventDisplayName(item: EventLike, t?: TranslationFunction): string {
-  if (item.event_name) return item.event_name;
+export type EventDisplayNameFormatter = (item: EventLike) => string;
 
-  const translate = (key: string, values?: Record<string, string>) => {
-    const translated = t ? t(key, values) : key;
-    if (!values) return translated;
+// Hook to generate display names for auto-captured events.
+// Keep translation calls literal so next-intl can extract and compile them.
+export function useEventDisplayName(): EventDisplayNameFormatter {
+  const t = useExtracted();
 
-    return Object.entries(values).reduce(
-      (result, [placeholder, value]) => result.replaceAll(`{${placeholder}}`, () => value),
-      translated
-    );
-  };
+  return useCallback(
+    (item: EventLike): string => {
+      if (item.event_name) return item.event_name;
 
-  switch (item.type) {
-    case "outbound":
-      return translate("Outbound Click");
-    case "button_click":
-      if (item.props?.text) return translate("Clicked button with text \"{text}\"", { text: item.props.text });
-      return translate("Clicked button");
-    case "copy": {
-      if (!item.props?.text) return translate("Copied text");
-      const text = String(item.props.text);
-      return translate("Copied \"{text}\"", { text: `${text.substring(0, 50)}${text.length > 50 ? "..." : ""}` });
-    }
-    case "form_submit":
-      if (item.props?.formId) return translate("Submitted form \"{name}\"", { name: item.props.formId });
-      if (item.props?.formName) return translate("Submitted form \"{name}\"", { name: item.props.formName });
-      if (item.props?.formAction) return translate("Submitted form to \"{action}\"", { action: item.props.formAction });
-      return translate("Submitted form");
-    case "input_change": {
-      const inputType = item.props?.inputType ? `${item.props.inputType} ` : "";
-      if (item.props?.inputName) return translate("Changed {type}input \"{name}\"", { type: inputType, name: item.props.inputName });
-      return translate("Changed {type}input", { type: inputType });
-    }
-    default:
-      return translate("Event");
-  }
+      switch (item.type) {
+        case "outbound":
+          return t("Outbound Click");
+        case "button_click":
+          if (item.props?.text) return t("Clicked button with text \"{text}\"", { text: String(item.props.text) });
+          return t("Clicked button");
+        case "copy": {
+          if (!item.props?.text) return t("Copied text");
+          const text = String(item.props.text);
+          return t("Copied \"{text}\"", { text: `${text.substring(0, 50)}${text.length > 50 ? "..." : ""}` });
+        }
+        case "form_submit":
+          if (item.props?.formId) return t("Submitted form \"{name}\"", { name: String(item.props.formId) });
+          if (item.props?.formName) return t("Submitted form \"{name}\"", { name: String(item.props.formName) });
+          if (item.props?.formAction) return t("Submitted form to \"{action}\"", { action: String(item.props.formAction) });
+          return t("Submitted form");
+        case "input_change": {
+          const inputType = item.props?.inputType ? `${item.props.inputType} ` : "";
+          if (item.props?.inputName) return t("Changed {type}input \"{name}\"", { type: inputType, name: String(item.props.inputName) });
+          return t("Changed {type}input", { type: inputType });
+        }
+        default:
+          return t("Event");
+      }
+    },
+    [t]
+  );
 }
 
 // Props to hide from badges (already shown in event name or redundant)

@@ -4,9 +4,9 @@ import { useState } from "react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { Pagination } from "@/components/pagination";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
+import { ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { DateTime } from "luxon";
 import { format as formatSql } from "sql-formatter";
@@ -148,7 +148,7 @@ export function QueryLogTable() {
           </Select>
         </div>
         {isFetching && !isLoading && (
-          <span className="text-xs text-neutral-400">Updating...</span>
+          <span className="text-xs text-neutral-400">Updating&hellip;</span>
         )}
       </div>
 
@@ -292,49 +292,18 @@ export function QueryLogTable() {
 
       {/* Pagination */}
       {data && data.total > 0 && (
-        <div className="flex items-center justify-between">
-          <div className="text-sm text-neutral-400">
-            Showing {(page - 1) * pageSize + 1} to{" "}
-            {Math.min(page * pageSize, data.total)} of {data.total.toLocaleString()} queries
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="flex items-center gap-2 mr-4">
-              <span className="text-sm text-neutral-400">Page size:</span>
-              <Select
-                value={pageSize.toString()}
-                onValueChange={(v) => {
-                  setPageSize(Number(v));
-                  setPage(1);
-                }}
-              >
-                <SelectTrigger className="h-8 w-16">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="10">10</SelectItem>
-                  <SelectItem value="25">25</SelectItem>
-                  <SelectItem value="50">50</SelectItem>
-                  <SelectItem value="100">100</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <Button variant="outline" size="icon" onClick={() => setPage(1)} disabled={page <= 1}>
-              <ChevronsLeft className="h-4 w-4" />
-            </Button>
-            <Button variant="outline" size="icon" onClick={() => setPage(page - 1)} disabled={page <= 1}>
-              <ChevronLeft className="h-4 w-4" />
-            </Button>
-            <span className="text-sm text-neutral-400">
-              Page {page} of {totalPages}
-            </span>
-            <Button variant="outline" size="icon" onClick={() => setPage(page + 1)} disabled={page >= totalPages}>
-              <ChevronRight className="h-4 w-4" />
-            </Button>
-            <Button variant="outline" size="icon" onClick={() => setPage(totalPages)} disabled={page >= totalPages}>
-              <ChevronsRight className="h-4 w-4" />
-            </Button>
-          </div>
-        </div>
+        <Pagination
+          page={page}
+          pageCount={totalPages}
+          totalItems={data.total}
+          pageSize={pageSize}
+          onPageChange={setPage}
+          onPageSizeChange={size => {
+            setPageSize(size);
+            setPage(1);
+          }}
+          itemName="queries"
+        />
       )}
     </div>
   );

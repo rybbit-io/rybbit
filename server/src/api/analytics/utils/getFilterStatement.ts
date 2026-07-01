@@ -23,6 +23,8 @@ const filterTypeToOperator = (type: FilterType) => {
     case "not_equals":
       return "!=";
     case "contains":
+    case "starts_with":
+    case "ends_with":
       return "LIKE";
     case "not_contains":
       return "NOT LIKE";
@@ -30,23 +32,44 @@ const filterTypeToOperator = (type: FilterType) => {
       return ">";
     case "less_than":
       return "<";
+    case "greater_than_or_equal":
+      return ">=";
+    case "less_than_or_equal":
+      return "<=";
     case "regex":
     case "not_regex":
-      return null; // Handled separately with match() function
+    case "is_null":
+    case "is_not_null":
+      return null;
   }
 };
 
+const wrapLikeValue = (type: FilterType, value: string | number): string => {
+  const v = String(value);
+  if (type === "contains" || type === "not_contains") return `%${v}%`;
+  if (type === "starts_with") return `${v}%`;
+  if (type === "ends_with") return `%${v}`;
+  return v;
+};
+
 export const getSqlParam = (parameter: FilterParameter) => {
-  // Handle URL parameters through the url_parameters map
+  if (parameter.startsWith("feature_flag:")) {
+    const key = parameter.substring("feature_flag:".length);
+    return `feature_flags[${SqlString.escape(key)}]`;
+  }
+
+  // Handle URL parameters through the url_parameters map.
+  // The map key is attacker-controlled, so it must be escaped (matching the
+  // feature_flag branch above) — not raw-interpolated — to prevent SQL injection.
   if (parameter.startsWith("utm_") || parameter.startsWith("url_param:")) {
     // For explicit url_param: prefix (e.g., url_param:campaign_id)
     if (parameter.startsWith("url_param:")) {
       const paramName = parameter.substring("url_param:".length);
-      return `url_parameters['${paramName}']`;
+      return `url_parameters[${SqlString.escape(paramName)}]`;
     }
 
     const utm = parameter; // e.g., utm_source, utm_medium, etc.
-    return `url_parameters['${utm}']`;
+    return `url_parameters[${SqlString.escape(utm)}]`;
   }
 
   if (parameter === "referrer") {
@@ -103,8 +126,15 @@ export function getFilterStatement(
     expression: string,
     filterType: FilterType,
     values: (string | number)[],
-    wildcardPrefix: string
+    _legacyWildcardPrefix?: string
   ): string => {
+    if (filterType === "is_null") {
+      return `(${expression} IS NULL OR ${expression} = '')`;
+    }
+    if (filterType === "is_not_null") {
+      return `(${expression} IS NOT NULL AND ${expression} != '')`;
+    }
+
     if (filterType === "regex" || filterType === "not_regex") {
       const pattern = String(values[0] ?? "");
 
@@ -126,10 +156,13 @@ export function getFilterStatement(
       return filterType === "regex" ? matchExpr : `NOT ${matchExpr}`;
     }
 
+    const op = filterTypeToOperator(filterType);
     const condition =
       values.length === 1
-        ? `${expression} ${filterTypeToOperator(filterType)} ${SqlString.escape(wildcardPrefix + values[0] + wildcardPrefix)}`
-        : `(${values.map(value => `${expression} ${filterTypeToOperator(filterType)} ${SqlString.escape(wildcardPrefix + value + wildcardPrefix)}`).join(" OR ")})`;
+        ? `${expression} ${op} ${SqlString.escape(wrapLikeValue(filterType, values[0]))}`
+        : `(${values
+            .map(value => `${expression} ${op} ${SqlString.escape(wrapLikeValue(filterType, value))}`)
+            .join(" OR ")})`;
 
     return condition;
   };
@@ -185,6 +218,7 @@ export function getFilterStatement(
       .map(filter => {
         const x = filter.type === "contains" || filter.type === "not_contains" ? "%" : "";
         const isNumericParam = filter.parameter === "lat" || filter.parameter === "lon";
+        const isNullCheck = filter.type === "is_null" || filter.type === "is_not_null";
 
         // Handle session-level filters (configurable via options).
         // Most parameters match sessions containing an event; channel uses the session's first value.
@@ -199,25 +233,7 @@ export function getFilterStatement(
         if (filter.parameter === "entry_page") {
           const whereClause = [siteIdFilter, timeFilter].filter(Boolean).join(" AND ");
           const whereStatement = whereClause ? `WHERE ${whereClause}` : "";
-
-          if (filter.value.length === 1) {
-            return `session_id IN (
-              SELECT session_id
-              FROM (
-                SELECT
-                  session_id,
-                  argMin(pathname, timestamp) AS entry_pathname
-                FROM events
-                ${whereStatement}
-                GROUP BY session_id
-              )
-              WHERE entry_pathname ${filterTypeToOperator(filter.type)} ${SqlString.escape(x + filter.value[0] + x)}
-            )`;
-          }
-
-          const valuesWithOperator = filter.value.map(
-            value => `entry_pathname ${filterTypeToOperator(filter.type)} ${SqlString.escape(x + value + x)}`
-          );
+          const condition = buildStringFilterCondition("entry_pathname", filter.type, filter.value);
 
           return `session_id IN (
             SELECT session_id
@@ -229,32 +245,14 @@ export function getFilterStatement(
               ${whereStatement}
               GROUP BY session_id
             )
-            WHERE (${valuesWithOperator.join(" OR ")})
+            WHERE ${condition}
           )`;
         }
 
         if (filter.parameter === "exit_page") {
           const whereClause = [siteIdFilter, timeFilter].filter(Boolean).join(" AND ");
           const whereStatement = whereClause ? `WHERE ${whereClause}` : "";
-
-          if (filter.value.length === 1) {
-            return `session_id IN (
-              SELECT session_id
-              FROM (
-                SELECT
-                  session_id,
-                  argMax(pathname, timestamp) AS exit_pathname
-                FROM events
-                ${whereStatement}
-                GROUP BY session_id
-              )
-              WHERE exit_pathname ${filterTypeToOperator(filter.type)} ${SqlString.escape(x + filter.value[0] + x)}
-            )`;
-          }
-
-          const valuesWithOperator = filter.value.map(
-            value => `exit_pathname ${filterTypeToOperator(filter.type)} ${SqlString.escape(x + value + x)}`
-          );
+          const condition = buildStringFilterCondition("exit_pathname", filter.type, filter.value);
 
           return `session_id IN (
             SELECT session_id
@@ -266,7 +264,7 @@ export function getFilterStatement(
               ${whereStatement}
               GROUP BY session_id
             )
-            WHERE (${valuesWithOperator.join(" OR ")})
+            WHERE ${condition}
           )`;
         }
 
@@ -274,42 +272,60 @@ export function getFilterStatement(
         // This is needed because URLs may contain either the device fingerprint (user_id)
         // or the custom identified user ID (identified_user_id)
         if (filter.parameter === "user_id") {
-          if (filter.value.length === 1) {
-            const escapedValue = SqlString.escape(filter.value[0]);
-            if (filter.type === "equals") {
-              return `(user_id = ${escapedValue} OR identified_user_id = ${escapedValue})`;
-            } else if (filter.type === "not_equals") {
-              return `(user_id != ${escapedValue} AND identified_user_id != ${escapedValue})`;
-            }
+          if (filter.type === "is_null") {
+            return `((user_id IS NULL OR user_id = '') AND (identified_user_id IS NULL OR identified_user_id = ''))`;
           }
-
-          const conditions = filter.value.map(value => {
-            const escapedValue = SqlString.escape(value);
-            if (filter.type === "equals") {
-              return `(user_id = ${escapedValue} OR identified_user_id = ${escapedValue})`;
-            } else {
+          if (filter.type === "is_not_null") {
+            return `((user_id IS NOT NULL AND user_id != '') OR (identified_user_id IS NOT NULL AND identified_user_id != ''))`;
+          }
+          if (filter.type === "equals" || filter.type === "not_equals") {
+            if (filter.value.length === 1) {
+              const escapedValue = SqlString.escape(filter.value[0]);
+              if (filter.type === "equals") {
+                return `(user_id = ${escapedValue} OR identified_user_id = ${escapedValue})`;
+              }
               return `(user_id != ${escapedValue} AND identified_user_id != ${escapedValue})`;
             }
-          });
 
-          if (filter.type === "equals") {
-            return `(${conditions.join(" OR ")})`;
-          } else {
+            const conditions = filter.value.map(value => {
+              const escapedValue = SqlString.escape(value);
+              if (filter.type === "equals") {
+                return `(user_id = ${escapedValue} OR identified_user_id = ${escapedValue})`;
+              }
+              return `(user_id != ${escapedValue} AND identified_user_id != ${escapedValue})`;
+            });
+
+            if (filter.type === "equals") {
+              return `(${conditions.join(" OR ")})`;
+            }
             return `(${conditions.join(" AND ")})`;
           }
+        }
+
+        if (isNullCheck) {
+          return buildStringFilterCondition(getSqlParam(filter.parameter), filter.type, filter.value);
         }
 
         if (filter.type === "regex" || filter.type === "not_regex") {
           return buildStringFilterCondition(getSqlParam(filter.parameter), filter.type, filter.value, x);
         }
 
-        // Handle numeric comparison filters (>, <)
-        if (filter.type === "greater_than" || filter.type === "less_than") {
+        // Handle numeric comparison filters (>, <, >=, <=)
+        if (
+          filter.type === "greater_than" ||
+          filter.type === "less_than" ||
+          filter.type === "greater_than_or_equal" ||
+          filter.type === "less_than_or_equal"
+        ) {
           const numericValue = Number(filter.value[0]);
           if (isNaN(numericValue)) {
             throw new Error(`Invalid numeric value for ${filter.type} filter: ${filter.value[0]}`);
           }
           return `${getSqlParam(filter.parameter)} ${filterTypeToOperator(filter.type)} ${numericValue}`;
+        }
+
+        if (filter.type === "starts_with" || filter.type === "ends_with") {
+          return buildStringFilterCondition(getSqlParam(filter.parameter), filter.type, filter.value);
         }
 
         // Special handling for lat/lon with tolerance (only for equals/not_equals)

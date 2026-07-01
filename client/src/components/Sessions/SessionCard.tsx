@@ -39,7 +39,7 @@ export function SessionCard({ session, onClick, userId, expandedByDefault, highl
   const { site } = useParams();
   const t = useExtracted();
   const { data: siteMetadata } = useGetSite();
-  const isApp = siteMetadata?.type === "app";
+  const isApp = siteMetadata?.type === "mobile";
   const { hour12, formatDateTime } = useDateTimeFormat();
   const [expanded, setExpanded] = useState(expandedByDefault || false);
   const [replayDrawerOpen, setReplayDrawerOpen] = useState(false);

@@ -1,0 +1,298 @@
+---
+title: List API Keys
+description: List the API keys for your account or organization.
+full: true
+method: GET
+---
+
+import { Callout } from 'fumadocs-ui/components/callout';
+import { TypeTable } from 'fumadocs-ui/components/type-table';
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+
+<div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
+<div>
+
+```
+GET /api/auth/api-key/list
+```
+
+Returns all API keys owned by the authenticated user, or by a specific organization.
+
+<Callout type="warn">This endpoint authenticates with your logged-in dashboard **session**, not an API key. Send your session cookie with the request.</Callout>
+
+### Query Parameters
+
+<TypeTable
+  type={{
+    organizationId: {
+      description: 'Organization ID. If provided, returns organization-owned keys instead of your user-owned keys.',
+      type: 'string',
+      required: false,
+    },
+    limit: {
+      description: 'Maximum number of keys to return.',
+      type: 'number',
+      required: false,
+    },
+    offset: {
+      description: 'Number of keys to skip.',
+      type: 'number',
+      required: false,
+    },
+    sortBy: {
+      description: 'Field to sort by (e.g. createdAt, name, expiresAt).',
+      type: 'string',
+      required: false,
+    },
+    sortDirection: {
+      description: 'Sort direction.',
+      type: "'asc' | 'desc'",
+      required: false,
+    },
+  }}
+/>
+
+### Response
+
+<TypeTable
+  type={{
+    apiKeys: {
+      description: 'Array of API key objects.',
+      type: 'ApiKey[]',
+    },
+    total: {
+      description: 'Total number of matching keys.',
+      type: 'number',
+    },
+    limit: {
+      description: 'The limit that was applied.',
+      type: 'number | null',
+    },
+    offset: {
+      description: 'The offset that was applied.',
+      type: 'number | null',
+    },
+  }}
+/>
+
+#### ApiKey Object
+
+<TypeTable
+  type={{
+    id: {
+      description: "The key's identifier",
+      type: 'string',
+    },
+    name: {
+      description: 'The label for the key',
+      type: 'string | null',
+    },
+    start: {
+      description: 'Non-secret leading characters of the key, for display',
+      type: 'string | null',
+    },
+    prefix: {
+      description: 'The key prefix',
+      type: 'string | null',
+    },
+    userId: {
+      description: 'ID of the user that owns the key',
+      type: 'string',
+    },
+    enabled: {
+      description: 'Whether the key is currently enabled',
+      type: 'boolean',
+    },
+    expiresAt: {
+      description: 'Expiration timestamp, or null if it never expires',
+      type: 'string | null',
+    },
+    createdAt: {
+      description: 'Creation timestamp',
+      type: 'string',
+    },
+    updatedAt: {
+      description: 'Last update timestamp',
+      type: 'string',
+    },
+    rateLimitEnabled: {
+      description: 'Whether rate limiting is enabled',
+      type: 'boolean',
+    },
+    rateLimitMax: {
+      description: 'Requests allowed per window',
+      type: 'number | null',
+    },
+    rateLimitTimeWindow: {
+      description: 'Window length in milliseconds',
+      type: 'number | null',
+    },
+    requestCount: {
+      description: 'Requests made in the current rate-limit window',
+      type: 'number',
+    },
+    remaining: {
+      description: 'Remaining requests, or null if not limited by count',
+      type: 'number | null',
+    },
+    lastRequest: {
+      description: 'Timestamp of the most recent request',
+      type: 'string | null',
+    },
+    metadata: {
+      description: 'Extra metadata stored on the key',
+      type: 'object | null',
+    },
+    permissions: {
+      description: 'Permissions associated with the key',
+      type: 'object | null',
+    },
+  }}
+/>
+
+</div>
+<div className="flex flex-col gap-4">
+
+<Tabs items={['cURL', 'JavaScript', 'Python', 'PHP', 'Ruby', 'Go', 'Rust', 'Java', '.NET']}>
+  <Tab value="cURL">
+```bash title="Request"
+curl -X GET "https://app.rybbit.io/api/auth/api-key/list?limit=20" \
+  -H "Cookie: better-auth.session_token=YOUR_SESSION_TOKEN"
+```
+  </Tab>
+  <Tab value="JavaScript">
+```javascript title="Request"
+const response = await fetch(
+  'https://app.rybbit.io/api/auth/api-key/list?limit=20',
+  {
+    method: 'GET',
+    credentials: 'include'
+  }
+);
+
+const data = await response.json();
+```
+  </Tab>
+  <Tab value="Python">
+```python title="Request"
+import requests
+
+response = requests.get(
+    'https://app.rybbit.io/api/auth/api-key/list?limit=20',
+    headers={
+        'Cookie': 'better-auth.session_token=YOUR_SESSION_TOKEN'
+    }
+)
+
+data = response.json()
+```
+  </Tab>
+  <Tab value="PHP">
+```php title="Request"
+$ch = curl_init();
+curl_setopt($ch, CURLOPT_URL, "https://app.rybbit.io/api/auth/api-key/list?limit=20");
+curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+curl_setopt($ch, CURLOPT_HTTPHEADER, [
+    'Cookie: better-auth.session_token=YOUR_SESSION_TOKEN'
+]);
+
+$response = curl_exec($ch);
+curl_close($ch);
+
+$data = json_decode($response, true);
+```
+  </Tab>
+  <Tab value="Ruby">
+```ruby title="Request"
+require 'net/http'
+require 'json'
+
+uri = URI("https://app.rybbit.io/api/auth/api-key/list?limit=20")
+req = Net::HTTP::Get.new(uri)
+req['Cookie'] = 'better-auth.session_token=YOUR_SESSION_TOKEN'
+
+res = Net::HTTP.start(uri.hostname, uri.port, use_ssl: true) { |http| http.request(req) }
+data = JSON.parse(res.body)
+```
+  </Tab>
+  <Tab value="Go">
+```go title="Request"
+req, _ := http.NewRequest("GET", "https://app.rybbit.io/api/auth/api-key/list?limit=20", nil)
+req.Header.Set("Cookie", "better-auth.session_token=YOUR_SESSION_TOKEN")
+
+client := &http.Client{}
+resp, _ := client.Do(req)
+defer resp.Body.Close()
+
+var data map[string]interface{}
+json.NewDecoder(resp.Body).Decode(&data)
+```
+  </Tab>
+  <Tab value="Rust">
+```rust title="Request"
+let client = reqwest::Client::new();
+let res = client
+    .get("https://app.rybbit.io/api/auth/api-key/list?limit=20")
+    .header("Cookie", "better-auth.session_token=YOUR_SESSION_TOKEN")
+    .send()
+    .await?;
+
+let data: serde_json::Value = res.json().await?;
+```
+  </Tab>
+  <Tab value="Java">
+```java title="Request"
+HttpClient client = HttpClient.newHttpClient();
+HttpRequest request = HttpRequest.newBuilder()
+    .uri(URI.create("https://app.rybbit.io/api/auth/api-key/list?limit=20"))
+    .header("Cookie", "better-auth.session_token=YOUR_SESSION_TOKEN")
+    .GET()
+    .build();
+
+HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+```
+  </Tab>
+  <Tab value=".NET">
+```csharp title="Request"
+using var client = new HttpClient();
+client.DefaultRequestHeaders.Add("Cookie", "better-auth.session_token=YOUR_SESSION_TOKEN");
+
+var response = await client.GetAsync("https://app.rybbit.io/api/auth/api-key/list?limit=20");
+var data = await response.Content.ReadAsStringAsync();
+```
+  </Tab>
+</Tabs>
+
+<Callout>The secret key value is only returned once, at creation. This endpoint returns the non-secret `start`/`prefix` for display, never the full key.</Callout>
+
+```json title="Response"
+{
+  "apiKeys": [
+    {
+      "id": "key_8f3a1b2c4d5e6f7g",
+      "name": "CI pipeline",
+      "start": "rybbit_sk_live_xxxx",
+      "prefix": "rybbit_sk_live_",
+      "userId": "user_2a9b8c7d6e5f4g3h",
+      "enabled": true,
+      "expiresAt": "2026-07-25T12:00:00.000Z",
+      "createdAt": "2026-06-25T12:00:00.000Z",
+      "updatedAt": "2026-06-25T12:00:00.000Z",
+      "rateLimitEnabled": true,
+      "rateLimitMax": 200,
+      "rateLimitTimeWindow": 60000,
+      "requestCount": 42,
+      "remaining": null,
+      "lastRequest": "2026-06-25T13:30:00.000Z",
+      "metadata": null,
+      "permissions": null
+    }
+  ],
+  "total": 1,
+  "limit": 20,
+  "offset": 0
+}
+```
+
+</div>
+</div>

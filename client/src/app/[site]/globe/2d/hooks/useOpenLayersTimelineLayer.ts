@@ -1,7 +1,9 @@
 import Feature, { FeatureLike } from "ol/Feature";
 import OLMap from "ol/Map";
+import { unByKey as dispose } from "ol/Observable";
 import Overlay from "ol/Overlay";
 import Point from "ol/geom/Point";
+import type { EventsKey } from "ol/events";
 import VectorLayer from "ol/layer/Vector";
 import { fromLonLat } from "ol/proj";
 import Cluster from "ol/source/Cluster";
@@ -16,6 +18,8 @@ import { buildTooltipHTML } from "../../utils/timelineTooltipBuilder";
 
 // OpenLayers-specific clustering constants
 const CLUSTER_RADIUS = 50; // pixels (OpenLayers specific)
+const AVATAR_MARKER_STYLE =
+  "cursor: pointer; border-radius: 50%; overflow: hidden; width: 32px; height: 32px; box-shadow: 0 2px 8px rgba(0,0,0,0.3); transform: translate(-50%, -50%);";
 
 interface TimelineLayerProps {
   mapInstanceRef: React.RefObject<OLMap | null>;
@@ -36,15 +40,17 @@ export function useOpenLayersTimelineLayer({ mapInstanceRef, mapViewRef, mapView
   const overlaysMapRef = useRef<Map<string, OverlayData>>(new Map());
   const clusterLayerRef = useRef<VectorLayer<Cluster> | null>(null);
   const tooltipOverlayRef = useRef<Overlay | null>(null);
-  const [openTooltipSessionId, setOpenTooltipSessionId] = useState<string | null>(null);
+  const openTooltipSessionIdRef = useRef<string | null>(null);
+  const tooltipSessionRef = useRef<GetSessionsResponse[number] | null>(null);
   const [selectedSession, setSelectedSession] = useState<GetSessionsResponse[number] | null>(null);
   const currentZoomRef = useRef<number>(2);
 
   // Close tooltip when timeline time changes
   useEffect(() => {
-    if (tooltipOverlayRef.current && openTooltipSessionId) {
+    if (tooltipOverlayRef.current && openTooltipSessionIdRef.current) {
       tooltipOverlayRef.current.setPosition(undefined);
-      setOpenTooltipSessionId(null);
+      openTooltipSessionIdRef.current = null;
+      tooltipSessionRef.current = null;
     }
   }, [currentTime]);
 
@@ -61,10 +67,10 @@ export function useOpenLayersTimelineLayer({ mapInstanceRef, mapViewRef, mapView
     // Set initial zoom
     handleZoomChange();
 
-    map.on("moveend", handleZoomChange);
+    const moveEndKey = map.on("moveend", handleZoomChange);
 
     return () => {
-      map.un("moveend", handleZoomChange);
+      dispose(moveEndKey);
     };
   }, [mapInstanceRef]);
 
@@ -73,11 +79,28 @@ export function useOpenLayersTimelineLayer({ mapInstanceRef, mapViewRef, mapView
     const map = mapInstanceRef.current;
     if (!map) return;
 
+    const handleTooltipClick = (event: MouseEvent) => {
+      const target = event.target instanceof Element ? event.target : null;
+      const button = target?.closest<HTMLButtonElement>(".view-session-btn");
+      if (!button) return;
+
+      event.stopPropagation();
+
+      const session = tooltipSessionRef.current;
+      if (!session) return;
+
+      setSelectedSession(session);
+      tooltipOverlayRef.current?.setPosition(undefined);
+      openTooltipSessionIdRef.current = null;
+      tooltipSessionRef.current = null;
+    };
+
     if (!tooltipOverlayRef.current) {
       const tooltipElement = document.createElement("div");
       tooltipElement.className = "ol-timeline-tooltip";
-      tooltipElement.style.position = "absolute";
-      tooltipElement.style.zIndex = "1000";
+      tooltipElement.style.cssText = "position: absolute; z-index: 1000;";
+
+      tooltipElement.addEventListener("click", handleTooltipClick);
 
       const tooltip = new Overlay({
         element: tooltipElement,
@@ -92,6 +115,8 @@ export function useOpenLayersTimelineLayer({ mapInstanceRef, mapViewRef, mapView
 
     return () => {
       if (tooltipOverlayRef.current) {
+        const element = tooltipOverlayRef.current.getElement();
+        element?.removeEventListener("click", handleTooltipClick);
         map.removeOverlay(tooltipOverlayRef.current);
         tooltipOverlayRef.current = null;
       }
@@ -122,27 +147,27 @@ export function useOpenLayersTimelineLayer({ mapInstanceRef, mapViewRef, mapView
       return;
     }
 
+    let clusterMoveEndKey: EventsKey | EventsKey[] | null = null;
+
     // Determine if we should use clustering
     const shouldCluster = activeSessions.length > CLUSTERING_THRESHOLD && currentZoomRef.current < CLUSTER_MAX_ZOOM;
 
     if (shouldCluster) {
       // Create features for clustering
-      const features = activeSessions
-        .map(session => {
-          if (!session.lat || !session.lon) return null;
+      const features = activeSessions.flatMap(session => {
+        if (!session.lat || !session.lon) return [];
 
-          const feature = new Feature({
-            geometry: new Point(fromLonLat([session.lon, session.lat])),
-          });
+        const feature = new Feature({
+          geometry: new Point(fromLonLat([session.lon, session.lat])),
+        });
 
-          feature.setProperties({
-            session_id: session.session_id,
-            session,
-          });
+        feature.setProperties({
+          session_id: session.session_id,
+          session,
+        });
 
-          return feature;
-        })
-        .filter(Boolean) as Feature[];
+        return [feature];
+      });
 
       // Create vector source
       const vectorSource = new VectorSource({
@@ -253,28 +278,18 @@ export function useOpenLayersTimelineLayer({ mapInstanceRef, mapViewRef, mapView
             // Create new overlay (same code as non-clustering case)
             const avatarContainer = document.createElement("div");
             avatarContainer.className = "timeline-avatar-marker";
-            avatarContainer.style.cursor = "pointer";
-            avatarContainer.style.borderRadius = "50%";
-            avatarContainer.style.overflow = "hidden";
-            avatarContainer.style.width = "32px";
-            avatarContainer.style.height = "32px";
-            avatarContainer.style.boxShadow = "0 2px 8px rgba(0,0,0,0.3)";
-            avatarContainer.style.transform = "translate(-50%, -50%)";
+            avatarContainer.style.cssText = AVATAR_MARKER_STYLE;
 
             const avatarSVG = generateAvatarSVG(session.user_id, 32);
             avatarContainer.innerHTML = avatarSVG;
 
-            // Track cleanup resources
-            let timeoutId: number | null = null;
-            let buttonHandler: ((e: Event) => void) | null = null;
-            let buttonElement: Element | null = null;
-
             const handleAvatarClick = (e: MouseEvent) => {
               e.stopPropagation();
 
-              if (openTooltipSessionId === session.session_id && tooltipOverlayRef.current) {
+              if (openTooltipSessionIdRef.current === session.session_id && tooltipOverlayRef.current) {
                 tooltipOverlayRef.current.setPosition(undefined);
-                setOpenTooltipSessionId(null);
+                openTooltipSessionIdRef.current = null;
+                tooltipSessionRef.current = null;
                 return;
               }
 
@@ -282,23 +297,8 @@ export function useOpenLayersTimelineLayer({ mapInstanceRef, mapViewRef, mapView
                 const html = buildTooltipHTML(session, session.lon, session.lat);
                 tooltipOverlayRef.current.getElement()!.innerHTML = html;
                 tooltipOverlayRef.current.setPosition(fromLonLat([session.lon, session.lat]));
-                setOpenTooltipSessionId(session.session_id);
-
-                timeoutId = window.setTimeout(() => {
-                  const button = document.querySelector(`[data-session-id="${session.session_id}"]`);
-                  if (button) {
-                    buttonHandler = (e: Event) => {
-                      e.stopPropagation();
-                      setSelectedSession(session);
-                      if (tooltipOverlayRef.current) {
-                        tooltipOverlayRef.current.setPosition(undefined);
-                        setOpenTooltipSessionId(null);
-                      }
-                    };
-                    buttonElement = button;
-                    button.addEventListener("click", buttonHandler);
-                  }
-                }, 0);
+                openTooltipSessionIdRef.current = session.session_id;
+                tooltipSessionRef.current = session;
               }
             };
 
@@ -313,14 +313,8 @@ export function useOpenLayersTimelineLayer({ mapInstanceRef, mapViewRef, mapView
             overlay.setPosition(fromLonLat([session.lon, session.lat]));
             map.addOverlay(overlay);
 
-            // Cleanup function to remove all event listeners and clear timeouts
+            // Cleanup function to remove marker event listeners
             const cleanup = () => {
-              if (timeoutId !== null) {
-                clearTimeout(timeoutId);
-              }
-              if (buttonHandler && buttonElement) {
-                buttonElement.removeEventListener("click", buttonHandler);
-              }
               avatarContainer.removeEventListener("click", handleAvatarClick);
             };
 
@@ -353,22 +347,13 @@ export function useOpenLayersTimelineLayer({ mapInstanceRef, mapViewRef, mapView
       const handleMoveEndForClusters = () => {
         updateUnclusteredOverlays();
       };
-      map.on("moveend", handleMoveEndForClusters);
-
-      // Store handler for cleanup
-      (map as any).__clusterMoveEndHandler = handleMoveEndForClusters;
+      clusterMoveEndKey = map.on("moveend", handleMoveEndForClusters);
     } else {
       // Not clustering - use individual overlays
       // Remove cluster layer
       if (clusterLayerRef.current) {
         map.removeLayer(clusterLayerRef.current);
         clusterLayerRef.current = null;
-      }
-
-      // Remove cluster moveend handler if it exists
-      if ((map as any).__clusterMoveEndHandler) {
-        map.un("moveend", (map as any).__clusterMoveEndHandler);
-        delete (map as any).__clusterMoveEndHandler;
       }
 
       // Build set of current session IDs
@@ -402,30 +387,20 @@ export function useOpenLayersTimelineLayer({ mapInstanceRef, mapViewRef, mapView
           // Create new overlay
           const avatarContainer = document.createElement("div");
           avatarContainer.className = "timeline-avatar-marker";
-          avatarContainer.style.cursor = "pointer";
-          avatarContainer.style.borderRadius = "50%";
-          avatarContainer.style.overflow = "hidden";
-          avatarContainer.style.width = "32px";
-          avatarContainer.style.height = "32px";
-          avatarContainer.style.boxShadow = "0 2px 8px rgba(0,0,0,0.3)";
-          avatarContainer.style.transform = "translate(-50%, -50%)"; // Center the avatar
+          avatarContainer.style.cssText = AVATAR_MARKER_STYLE;
 
           const avatarSVG = generateAvatarSVG(session.user_id, 32);
           avatarContainer.innerHTML = avatarSVG;
-
-          // Track cleanup resources
-          let timeoutId: number | null = null;
-          let buttonHandler: ((e: Event) => void) | null = null;
-          let buttonElement: Element | null = null;
 
           // Add click handler for tooltip
           const handleAvatarClick = (e: MouseEvent) => {
             e.stopPropagation();
 
             // If clicking the same avatar that has the tooltip open, close it
-            if (openTooltipSessionId === session.session_id && tooltipOverlayRef.current) {
+            if (openTooltipSessionIdRef.current === session.session_id && tooltipOverlayRef.current) {
               tooltipOverlayRef.current.setPosition(undefined);
-              setOpenTooltipSessionId(null);
+              openTooltipSessionIdRef.current = null;
+              tooltipSessionRef.current = null;
               return;
             }
 
@@ -434,24 +409,8 @@ export function useOpenLayersTimelineLayer({ mapInstanceRef, mapViewRef, mapView
               const html = buildTooltipHTML(session, session.lon, session.lat);
               tooltipOverlayRef.current.getElement()!.innerHTML = html;
               tooltipOverlayRef.current.setPosition(fromLonLat([session.lon, session.lat]));
-              setOpenTooltipSessionId(session.session_id);
-
-              // Add click handler to "View Details" button
-              timeoutId = window.setTimeout(() => {
-                const button = document.querySelector(`[data-session-id="${session.session_id}"]`);
-                if (button) {
-                  buttonHandler = (e: Event) => {
-                    e.stopPropagation();
-                    setSelectedSession(session);
-                    if (tooltipOverlayRef.current) {
-                      tooltipOverlayRef.current.setPosition(undefined);
-                      setOpenTooltipSessionId(null);
-                    }
-                  };
-                  buttonElement = button;
-                  button.addEventListener("click", buttonHandler);
-                }
-              }, 0);
+              openTooltipSessionIdRef.current = session.session_id;
+              tooltipSessionRef.current = session;
             }
           };
 
@@ -466,14 +425,8 @@ export function useOpenLayersTimelineLayer({ mapInstanceRef, mapViewRef, mapView
           overlay.setPosition(fromLonLat([session.lon, session.lat]));
           map.addOverlay(overlay);
 
-          // Cleanup function to remove all event listeners and clear timeouts
+          // Cleanup function to remove marker event listeners
           const cleanup = () => {
-            if (timeoutId !== null) {
-              clearTimeout(timeoutId);
-            }
-            if (buttonHandler && buttonElement) {
-              buttonElement.removeEventListener("click", buttonHandler);
-            }
             avatarContainer.removeEventListener("click", handleAvatarClick);
           };
 
@@ -521,22 +474,21 @@ export function useOpenLayersTimelineLayer({ mapInstanceRef, mapViewRef, mapView
       handleClusterClick(event);
 
       // Then close tooltip
-      if (tooltipOverlayRef.current && openTooltipSessionId) {
+      if (tooltipOverlayRef.current && openTooltipSessionIdRef.current) {
         tooltipOverlayRef.current.setPosition(undefined);
-        setOpenTooltipSessionId(null);
+        openTooltipSessionIdRef.current = null;
+        tooltipSessionRef.current = null;
       }
     };
 
-    map.on("click", handleMapClick);
+    const mapClickKey = map.on("click", handleMapClick);
 
     // Cleanup function
     return () => {
-      map.un("click", handleMapClick);
+      dispose(mapClickKey);
 
-      // Clean up cluster moveend handler if it exists
-      if ((map as any).__clusterMoveEndHandler) {
-        map.un("moveend", (map as any).__clusterMoveEndHandler);
-        delete (map as any).__clusterMoveEndHandler;
+      if (clusterMoveEndKey) {
+        dispose(clusterMoveEndKey);
       }
 
       overlaysMap.forEach(({ overlay, cleanup }) => {
@@ -550,7 +502,7 @@ export function useOpenLayersTimelineLayer({ mapInstanceRef, mapViewRef, mapView
         clusterLayerRef.current = null;
       }
     };
-  }, [activeSessions, mapView, mapInstanceRef, mapViewRef, openTooltipSessionId]);
+  }, [activeSessions, mapView, mapInstanceRef, mapViewRef]);
 
   return {
     selectedSession,

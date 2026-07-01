@@ -8,11 +8,74 @@
 @custom-variant dark (&:is(.dark *));
 
 :root {
-  --color-fd-primary: rgb(16 185 129); /* emerald-500 */ --radius: 0.625rem; --background: oklch(1 0 0); --foreground: oklch(0.145 0 0); --card: oklch(1 0 0); --card-foreground: oklch(0.145 0 0); --popover: oklch(1 0 0); --popover-foreground: oklch(0.145 0 0); --primary: oklch(0.205 0 0); --primary-foreground: oklch(0.985 0 0); --secondary: oklch(0.97 0 0); --secondary-foreground: oklch(0.205 0 0); --muted: oklch(0.97 0 0); --muted-foreground: oklch(0.556 0 0); --accent: oklch(0.97 0 0); --accent-foreground: oklch(0.205 0 0); --destructive: oklch(0.577 0.245 27.325); --border: oklch(0.922 0 0); --input: oklch(0.922 0 0); --ring: oklch(0.708 0 0); --chart-1: oklch(0.646 0.222 41.116); --chart-2: oklch(0.6 0.118 184.704); --chart-3: oklch(0.398 0.07 227.392); --chart-4: oklch(0.828 0.189 84.429); --chart-5: oklch(0.769 0.188 70.08); --sidebar: oklch(0.985 0 0); --sidebar-foreground: oklch(0.145 0 0); --sidebar-primary: oklch(0.205 0 0); --sidebar-primary-foreground: oklch(0.985 0 0); --sidebar-accent: oklch(0.97 0 0); --sidebar-accent-foreground: oklch(0.205 0 0); --sidebar-border: oklch(0.922 0 0); --sidebar-ring: oklch(0.708 0 0);
+  --color-fd-primary: rgb(16 185 129); /* emerald-500 */
+  --radius: 0.625rem;
+  --background: oklch(1 0 0);
+  --foreground: oklch(0.145 0 0);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.145 0 0);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.145 0 0);
+  --primary: oklch(0.205 0 0);
+  --primary-foreground: oklch(0.985 0 0);
+  --secondary: oklch(0.97 0 0);
+  --secondary-foreground: oklch(0.205 0 0);
+  --muted: oklch(0.97 0 0);
+  --muted-foreground: oklch(0.556 0 0);
+  --accent: oklch(0.97 0 0);
+  --accent-foreground: oklch(0.205 0 0);
+  --destructive: oklch(0.577 0.245 27.325);
+  --border: oklch(0.922 0 0);
+  --input: oklch(0.922 0 0);
+  --ring: oklch(0.708 0 0);
+  --chart-1: oklch(0.646 0.222 41.116);
+  --chart-2: oklch(0.6 0.118 184.704);
+  --chart-3: oklch(0.398 0.07 227.392);
+  --chart-4: oklch(0.828 0.189 84.429);
+  --chart-5: oklch(0.769 0.188 70.08);
+  --sidebar: oklch(0.985 0 0);
+  --sidebar-foreground: oklch(0.145 0 0);
+  --sidebar-primary: oklch(0.205 0 0);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.97 0 0);
+  --sidebar-accent-foreground: oklch(0.205 0 0);
+  --sidebar-border: oklch(0.922 0 0);
+  --sidebar-ring: oklch(0.708 0 0);
 }
 
 .dark {
-  --color-fd-primary: rgb(16 185 129); /* emerald-500 */ --background: oklch(0.145 0 0); --foreground: oklch(0.985 0 0); --card: oklch(0.205 0 0); --card-foreground: oklch(0.985 0 0); --popover: oklch(0.205 0 0); --popover-foreground: oklch(0.985 0 0); --primary: oklch(0.922 0 0); --primary-foreground: oklch(0.205 0 0); --secondary: oklch(0.269 0 0); --secondary-foreground: oklch(0.985 0 0); --muted: oklch(0.269 0 0); --muted-foreground: oklch(0.708 0 0); --accent: oklch(0.269 0 0); --accent-foreground: oklch(0.985 0 0); --destructive: oklch(0.704 0.191 22.216); --border: oklch(1 0 0 / 10%); --input: oklch(1 0 0 / 15%); --ring: oklch(0.556 0 0); --chart-1: oklch(0.488 0.243 264.376); --chart-2: oklch(0.696 0.17 162.48); --chart-3: oklch(0.769 0.188 70.08); --chart-4: oklch(0.627 0.265 303.9); --chart-5: oklch(0.645 0.246 16.439); --sidebar: oklch(0.205 0 0); --sidebar-foreground: oklch(0.985 0 0); --sidebar-primary: oklch(0.488 0.243 264.376); --sidebar-primary-foreground: oklch(0.985 0 0); --sidebar-accent: oklch(0.269 0 0); --sidebar-accent-foreground: oklch(0.985 0 0); --sidebar-border: oklch(1 0 0 / 10%); --sidebar-ring: oklch(0.556 0 0);
+  --color-fd-primary: rgb(16 185 129); /* emerald-500 */
+  --background: oklch(0.145 0 0);
+  --foreground: oklch(0.985 0 0);
+  --card: oklch(0.205 0 0);
+  --card-foreground: oklch(0.985 0 0);
+  --popover: oklch(0.205 0 0);
+  --popover-foreground: oklch(0.985 0 0);
+  --primary: oklch(0.922 0 0);
+  --primary-foreground: oklch(0.205 0 0);
+  --secondary: oklch(0.269 0 0);
+  --secondary-foreground: oklch(0.985 0 0);
+  --muted: oklch(0.269 0 0);
+  --muted-foreground: oklch(0.708 0 0);
+  --accent: oklch(0.269 0 0);
+  --accent-foreground: oklch(0.985 0 0);
+  --destructive: oklch(0.704 0.191 22.216);
+  --border: oklch(1 0 0 / 10%);
+  --input: oklch(1 0 0 / 15%);
+  --ring: oklch(0.556 0 0);
+  --chart-1: oklch(0.488 0.243 264.376);
+  --chart-2: oklch(0.696 0.17 162.48);
+  --chart-3: oklch(0.769 0.188 70.08);
+  --chart-4: oklch(0.627 0.265 303.9);
+  --chart-5: oklch(0.645 0.246 16.439);
+  --sidebar: oklch(0.205 0 0);
+  --sidebar-foreground: oklch(0.985 0 0);
+  --sidebar-primary: oklch(0.488 0.243 264.376);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.269 0 0);
+  --sidebar-accent-foreground: oklch(0.985 0 0);
+  --sidebar-border: oklch(1 0 0 / 10%);
+  --sidebar-ring: oklch(0.556 0 0);
 }
 
 body {
@@ -136,4 +199,74 @@ pre {
   body {
     @apply bg-background text-foreground;
   }
+}
+
+/* ── Docs dark surface ───────────────────────────────────────────────────
+   Lift the docs reading surface a few percent in dark mode so it isn't a near
+   black. Scoped to the notebook layout container (which only exists on docs
+   pages), so the marketing pages — which paint the shadcn `--background`
+   token — are untouched. We set the container background directly (the body
+   `--background` is what shows through the docs area otherwise) and raise the
+   layered fumadocs surface tokens in step so cards / code blocks / sidebar
+   keep their depth against the lighter background. */
+.dark #nd-notebook-layout {
+  --color-fd-background: hsl(0, 0%, 7%);
+  --color-fd-card: hsl(0, 0%, 10.5%);
+  --color-fd-popover: hsl(0, 0%, 11%);
+  --color-fd-secondary: hsl(0, 0%, 13.5%);
+  --color-fd-muted: hsl(0, 0%, 13.5%);
+  background-color: var(--color-fd-background);
+}
+
+/* ── Docs section tabs ───────────────────────────────────────────────────
+   The docs use the fumadocs "notebook" layout with `tabMode="navbar"`, which
+   renders one tab per `root: true` folder (Documentation / API Reference) in
+   the sub-navbar. These rules restyle the stock underline tabs into prominent,
+   Mintlify-style pills so the section switcher reads clearly. Rules are
+   unlayered, so they win over the layered Tailwind utilities the layout emits
+   without needing `!important`. */
+
+/* Folder icon folded into each tab title (layout.tsx). Sized here so it works
+   in both the navbar pills and the mobile section dropdown. */
+.fd-tab-icon {
+  display: inline-flex;
+  align-items: center;
+  margin-inline-end: 0.4rem;
+}
+
+.fd-tab-icon svg {
+  width: 1rem;
+  height: 1rem;
+}
+
+#nd-subnav [data-header-tabs] {
+  align-items: center;
+  gap: 0.375rem;
+}
+
+#nd-subnav [data-header-tabs] a {
+  border-bottom: none;
+  gap: 0;
+  padding-block: 0.3rem;
+  padding-inline: 0.7rem;
+  border-radius: calc(var(--radius) - 2px);
+  border: 1px solid transparent;
+  font-weight: 500;
+  color: var(--color-fd-muted-foreground);
+  transition:
+    color 0.15s ease,
+    background-color 0.15s ease,
+    border-color 0.15s ease;
+}
+
+#nd-subnav [data-header-tabs] a:hover {
+  background-color: var(--color-fd-accent);
+  color: var(--color-fd-accent-foreground);
+}
+
+/* active tab — fumadocs marks the selected link with `border-fd-primary` */
+#nd-subnav [data-header-tabs] a.border-fd-primary {
+  color: var(--color-fd-primary);
+  background-color: color-mix(in oklch, var(--color-fd-primary) 12%, transparent);
+  border-color: color-mix(in oklch, var(--color-fd-primary) 35%, transparent);
 }

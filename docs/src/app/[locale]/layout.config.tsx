@@ -11,6 +11,7 @@ import Image from "next/image";
 export function baseOptions(lang: string): BaseLayoutProps {
   return {
     nav: {
+      transparentMode: "top",
       title: (
         <>
           <Image

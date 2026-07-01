@@ -1,11 +1,24 @@
 "use client";
 
-import { Switch } from "@/components/ui/switch";
-import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { MultiSelect } from "@/components/MultiSelect";
-import { SearchInput } from "../shared/SearchInput";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import { Label } from "@/components/ui/label";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Switch } from "@/components/ui/switch";
+import { cn } from "@/lib/utils";
+import { ChevronsUpDown, X } from "lucide-react";
 import { useExtracted } from "next-intl";
+import { useState } from "react";
+import { SearchInput } from "../shared/SearchInput";
 
 export interface TierOption {
   value: string;
@@ -31,6 +44,96 @@ interface OrganizationFiltersProps {
   setSelectedTiers: (tiers: TierOption[]) => void;
 }
 
+function TierSelect({
+  availableTiers,
+  selectedTiers,
+  setSelectedTiers,
+  placeholder,
+}: {
+  availableTiers: TierOption[];
+  selectedTiers: TierOption[];
+  setSelectedTiers: (tiers: TierOption[]) => void;
+  placeholder: string;
+}) {
+  const t = useExtracted();
+  const [open, setOpen] = useState(false);
+
+  const isSelected = (val: string) => selectedTiers.some(s => s.value === val);
+
+  const toggle = (option: TierOption) => {
+    if (isSelected(option.value)) {
+      setSelectedTiers(selectedTiers.filter(s => s.value !== option.value));
+    } else {
+      setSelectedTiers([...selectedTiers, option]);
+    }
+  };
+
+  const removeOne = (val: string, e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setSelectedTiers(selectedTiers.filter(s => s.value !== val));
+  };
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button
+          variant="outline"
+          role="combobox"
+          aria-expanded={open}
+          className="min-w-[200px] flex-1 justify-between min-h-9 h-auto py-1 font-normal"
+        >
+          <div className="flex flex-wrap gap-1">
+            {selectedTiers.length > 0 ? (
+              selectedTiers.map(option => (
+                <Badge key={option.value} variant="secondary" className="gap-1 pr-1">
+                  {option.label}
+                  <button
+                    type="button"
+                    className="rounded-sm hover:bg-neutral-200 dark:hover:bg-neutral-700 p-0.5"
+                    onMouseDown={e => e.preventDefault()}
+                    onClick={e => removeOne(option.value, e)}
+                    aria-label={t("Remove")}
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </Badge>
+              ))
+            ) : (
+              <span className="text-muted-foreground">{placeholder}</span>
+            )}
+          </div>
+          <ChevronsUpDown className="h-4 w-4 shrink-0 opacity-50 ml-2" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start">
+        <Command>
+          <CommandInput placeholder={t("Search")} />
+          <CommandList>
+            <CommandEmpty>{t("No results")}</CommandEmpty>
+            <CommandGroup>
+              {availableTiers.map(option => {
+                const checked = isSelected(option.value);
+                return (
+                  <CommandItem
+                    key={option.value}
+                    value={option.label}
+                    onSelect={() => toggle(option)}
+                    className="cursor-pointer"
+                  >
+                    <Checkbox checked={checked} className="mr-2" />
+                    <span className="truncate">{option.label}</span>
+                  </CommandItem>
+                );
+              })}
+            </CommandGroup>
+          </CommandList>
+        </Command>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
 export function OrganizationFilters({
   searchQuery,
   setSearchQuery,
@@ -45,31 +148,29 @@ export function OrganizationFilters({
   const t = useExtracted();
 
   const handleQuickTierFilter = (filter: (typeof QUICK_TIER_FILTERS)[number]) => {
-    const matchingTiers = availableTiers.filter((tier) => filter.match(tier.value));
+    const matchingTiers = availableTiers.filter(tier => filter.match(tier.value));
     if (matchingTiers.length === 0) return;
 
-    // Check if all matching tiers are already selected
-    const allSelected = matchingTiers.every((mt) =>
-      selectedTiers.some((st) => st.value === mt.value)
+    const allSelected = matchingTiers.every(mt =>
+      selectedTiers.some(st => st.value === mt.value)
     );
 
     if (allSelected) {
-      // Remove matching tiers
       setSelectedTiers(
-        selectedTiers.filter((st) => !matchingTiers.some((mt) => mt.value === st.value))
+        selectedTiers.filter(st => !matchingTiers.some(mt => mt.value === st.value))
       );
     } else {
-      // Add matching tiers (without duplicates)
-      const existing = new Set(selectedTiers.map((t) => t.value));
-      const newTiers = [...selectedTiers, ...matchingTiers.filter((mt) => !existing.has(mt.value))];
+      const existing = new Set(selectedTiers.map(s => s.value));
+      const newTiers = [...selectedTiers, ...matchingTiers.filter(mt => !existing.has(mt.value))];
       setSelectedTiers(newTiers);
     }
   };
 
   const isQuickFilterActive = (filter: (typeof QUICK_TIER_FILTERS)[number]) => {
-    const matchingTiers = availableTiers.filter((tier) => filter.match(tier.value));
-    return matchingTiers.length > 0 && matchingTiers.every((mt) =>
-      selectedTiers.some((st) => st.value === mt.value)
+    const matchingTiers = availableTiers.filter(tier => filter.match(tier.value));
+    return (
+      matchingTiers.length > 0 &&
+      matchingTiers.every(mt => selectedTiers.some(st => st.value === mt.value))
     );
   };
 
@@ -83,13 +184,13 @@ export function OrganizationFilters({
           className="max-w-sm"
         />
         <div className="flex items-center gap-1">
-          {QUICK_TIER_FILTERS.map((filter) => (
+          {QUICK_TIER_FILTERS.map(filter => (
             <Button
               key={filter.key}
               size="sm"
               variant={isQuickFilterActive(filter) ? "default" : "outline"}
               onClick={() => handleQuickTierFilter(filter)}
-              className="h-9 text-xs"
+              className={cn("h-9 text-xs")}
             >
               {filter.label}
             </Button>
@@ -104,18 +205,20 @@ export function OrganizationFilters({
           </Label>
         </div>
         <div className="flex items-center gap-2">
-          <Switch id="show-only-over-limit" checked={showOnlyOverLimit} onCheckedChange={setShowOnlyOverLimit} />
+          <Switch
+            id="show-only-over-limit"
+            checked={showOnlyOverLimit}
+            onCheckedChange={setShowOnlyOverLimit}
+          />
           <Label htmlFor="show-only-over-limit" className="text-sm cursor-pointer">
             {t("Only over limit")}
           </Label>
         </div>
-        <MultiSelect
-          className="min-w-[200px] flex-1"
-          options={availableTiers}
-          value={selectedTiers}
-          onChange={(newValue) => setSelectedTiers(newValue as TierOption[])}
+        <TierSelect
+          availableTiers={availableTiers}
+          selectedTiers={selectedTiers}
+          setSelectedTiers={setSelectedTiers}
           placeholder={t("All tiers")}
-          isClearable
         />
       </div>
     </div>

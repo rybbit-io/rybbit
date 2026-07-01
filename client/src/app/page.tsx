@@ -20,10 +20,16 @@ import { Button } from "../components/ui/button";
 import { Card, CardDescription, CardTitle } from "../components/ui/card";
 import { Input } from "../components/ui/input";
 import { MultiSelect } from "../components/ui/multi-select";
+import { Pagination } from "../components/pagination";
 import { useSetPageTitle } from "../hooks/useSetPageTitle";
 import { authClient } from "../lib/auth";
 import { canGoForward, goBack, goForward, useStore } from "../lib/store";
 import { AddSite } from "./components/AddSite";
+
+// Only render a bounded slice of site cards at a time. Each card mounts an
+// IntersectionObserver and fires its own analytics queries, so rendering every
+// site at once crashes orgs with thousands of websites.
+const PAGE_SIZE = 20;
 
 export default function Home() {
   const t = useExtracted();
@@ -75,11 +81,18 @@ export default function Home() {
   const [nameFilter, setNameFilter] = useState("");
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [selectedTeamFilter, setSelectedTeamFilter] = useState<string>("all");
+  const [page, setPage] = useState(1);
+
+  // Filters run over the full org list, so changing them should jump back to
+  // the first page of results.
+  useEffect(() => {
+    setPage(1);
+  }, [nameFilter, selectedTags, selectedTeamFilter]);
 
   // Compute unique tags from all sites
   const allTags = useMemo(() => {
     const tags = sites?.sites?.flatMap((s) => s.tags || []) || [];
-    return [...new Set(tags)].sort();
+    return Array.from(new Set(tags)).toSorted();
   }, [sites?.sites]);
 
   // Track hydration to avoid mismatch with date-dependent disabled states
@@ -105,6 +118,17 @@ export default function Home() {
     }
     return matchesDomain && matchesTags && matchesTeam;
   });
+
+  // Paginate the filtered list so only PAGE_SIZE cards mount at once. safePage
+  // clamps the current page when filtering shrinks the result set below it.
+  const totalFiltered = filteredSites?.length ?? 0;
+  const totalPages = Math.max(1, Math.ceil(totalFiltered / PAGE_SIZE));
+  const safePage = Math.min(page, totalPages);
+  const paginatedSites = filteredSites?.slice(
+    (safePage - 1) * PAGE_SIZE,
+    safePage * PAGE_SIZE
+  );
+  const hasNoMatches = totalFiltered === 0;
 
   // Handle successful organization creation
   const handleOrganizationCreated = () => {
@@ -189,7 +213,7 @@ export default function Home() {
 
   const siteCards = (
     <div className="flex flex-col gap-2">
-      {filteredSites?.map((site) => {
+      {paginatedSites?.map((site) => {
         return (
           <SiteCard
             key={site.siteId}
@@ -205,6 +229,16 @@ export default function Home() {
           />
         );
       })}
+      {hasSites && hasNoMatches ? (
+        <Card className="p-6 flex flex-col items-center text-center">
+          <CardTitle className="mb-2 text-xl">
+            {t("No matching websites")}
+          </CardTitle>
+          <CardDescription>
+            {t("Try adjusting your filters")}
+          </CardDescription>
+        </Card>
+      ) : null}
       {hasNoSites ? (
         <Card className="p-6 flex flex-col items-center text-center">
           <CardTitle className="mb-2 text-xl">
@@ -226,11 +260,26 @@ export default function Home() {
     </div>
   );
 
+  const pagination =
+    hasSites && totalPages > 1 ? (
+      <div className="mt-4">
+        <Pagination
+          page={safePage}
+          pageCount={totalPages}
+          totalItems={totalFiltered}
+          pageSize={PAGE_SIZE}
+          onPageChange={setPage}
+          itemName={t("websites")}
+        />
+      </div>
+    ) : null;
+
   const content = (
     <>
       {hasNoOrganizations && <NoOrganization />}
       {filterBar}
       {siteCards}
+      {pagination}
       <CreateOrganizationDialog
         open={createOrgDialogOpen}
         onOpenChange={setCreateOrgDialogOpen}

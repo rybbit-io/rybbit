@@ -8,6 +8,7 @@ import { Avatar } from "../../../../../components/Avatar";
 import { EventTypeIcon } from "../../../../../components/EventIcons";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../../../../../components/ui/tooltip";
 import { useDateTimeFormat } from "../../../../../hooks/useDateTimeFormat";
+import { useEventDisplayName } from "../../../../../lib/events";
 import { getTimezone } from "../../../../../lib/store";
 import { getCountryName, getUserDisplayName, truncateString } from "../../../../../lib/utils";
 import { Browser } from "../../../components/shared/icons/Browser";
@@ -26,7 +27,8 @@ interface EventRowProps {
 export function EventRow({ event, site, onClick }: EventRowProps) {
   const t = useExtracted();
   const { data: siteMetadata } = useGetSite();
-  const isApp = siteMetadata?.type === "app";
+  const isApp = siteMetadata?.type === "mobile";
+  const getEventDisplayName = useEventDisplayName();
   const { locale, hour12, formatRelative } = useDateTimeFormat();
   const eventProperties = parseEventProperties(event);
   const eventTime = DateTime.fromSQL(event.timestamp, { zone: "utc" })
@@ -35,7 +37,7 @@ export function EventRow({ event, site, onClick }: EventRowProps) {
   const pagePath = buildEventPath(event);
   const pageUrl = `https://${event.hostname}${pagePath}`;
   const isPageview = event.type === "pageview";
-  const eventData = isPageview ? null : getMainData(event, eventProperties, t);
+  const eventData = isPageview ? null : getMainData(event, eventProperties, getEventDisplayName, t);
   const userProfileId = event.identified_user_id || event.user_id;
   const displayName = getUserDisplayName({
     identified_user_id: event.identified_user_id || undefined,

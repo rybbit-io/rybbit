@@ -38,6 +38,11 @@ declare global {
       setTraits: () => {},
       clearUserId: () => {},
       getUserId: () => null,
+      flag: (_key: string, fallback?: unknown) => fallback,
+      flagPayload: (_key: string, fallback?: unknown) => fallback,
+      flags: () => ({}),
+      flagPayloads: () => ({}),
+      onReady: () => {},
       startSessionReplay: () => {},
       stopSessionReplay: () => {},
       isSessionReplayActive: () => false,
@@ -48,8 +53,11 @@ declare global {
   // Expose stub API immediately to queue calls made before config is ready
   type QueueEntry = [string, any[]];
   const earlyQueue: QueueEntry[] = [];
-  const queueMethod = (method: string) =>
-    (...args: any[]) => { earlyQueue.push([method, args]); };
+  const queueMethod =
+    (method: string) =>
+    (...args: any[]) => {
+      earlyQueue.push([method, args]);
+    };
 
   window[namespace] = {
     pageview: queueMethod("pageview"),
@@ -60,6 +68,11 @@ declare global {
     setTraits: queueMethod("setTraits"),
     clearUserId: queueMethod("clearUserId"),
     getUserId: () => null,
+    flag: (_key: string, fallback?: unknown) => fallback,
+    flagPayload: (_key: string, fallback?: unknown) => fallback,
+    flags: () => ({}),
+    flagPayloads: () => ({}),
+    onReady: queueMethod("onReady"),
     startSessionReplay: queueMethod("startSessionReplay"),
     stopSessionReplay: queueMethod("stopSessionReplay"),
     isSessionReplayActive: () => false,
@@ -203,6 +216,11 @@ declare global {
     setTraits: (traits: Record<string, unknown>) => tracker.setTraits(traits),
     clearUserId: () => tracker.clearUserId(),
     getUserId: () => tracker.getUserId(),
+    flag: <T = unknown>(key: string, fallback?: T) => tracker.getFeatureFlag<T>(key, fallback),
+    flagPayload: <T = unknown>(key: string, fallback?: T) => tracker.getFeatureFlagPayload<T>(key, fallback),
+    flags: () => tracker.getFeatureFlags(),
+    flagPayloads: () => tracker.getFeatureFlagPayloads(),
+    onReady: (callback: (api: RybbitAPI) => void) => callback(window[config.namespace]),
     startSessionReplay: () => tracker.startSessionReplay(),
     stopSessionReplay: () => tracker.stopSessionReplay(),
     isSessionReplayActive: () => tracker.isSessionReplayActive(),

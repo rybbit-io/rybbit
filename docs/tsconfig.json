@@ -1,6 +1,5 @@
 {
   "compilerOptions": {
-    "baseUrl": ".",
     "target": "ESNext",
     "lib": [
       "dom",
@@ -21,7 +20,7 @@
     "incremental": true,
     "paths": {
       "@/.source": [
-        "./.source/index.ts"
+        "./.source/server.ts"
       ],
       "@/*": [
         "./src/*"

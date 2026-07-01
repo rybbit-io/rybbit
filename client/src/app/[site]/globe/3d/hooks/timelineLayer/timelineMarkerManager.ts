@@ -25,12 +25,8 @@ export function createAvatarMarker(
 ): { marker: mapboxgl.Marker; element: HTMLDivElement; cleanup: () => void } {
   const avatarContainer = document.createElement("div");
   avatarContainer.className = "timeline-avatar-marker";
-  avatarContainer.style.cursor = "pointer";
-  avatarContainer.style.borderRadius = "50%";
-  avatarContainer.style.overflow = "hidden";
-  avatarContainer.style.width = "32px";
-  avatarContainer.style.height = "32px";
-  avatarContainer.style.boxShadow = "0 2px 8px rgba(0,0,0,0.3)";
+  avatarContainer.style.cssText =
+    "cursor: pointer; border-radius: 50%; overflow: hidden; width: 32px; height: 32px; box-shadow: 0 2px 8px rgba(0,0,0,0.3);";
 
   const avatarSVG = generateAvatarSVG(session.user_id, 32);
   avatarContainer.innerHTML = avatarSVG;
@@ -108,7 +104,12 @@ export async function updateMarkers(
   );
 
   // Build set of current session IDs
-  const currentSessionIds = new Set(unclusteredFeatures.map(f => f.properties?.session_id).filter(Boolean));
+  const currentSessionIds = new Set(
+    unclusteredFeatures.flatMap(f => {
+      const sessionId = f.properties?.session_id;
+      return sessionId ? [sessionId] : [];
+    })
+  );
 
   // Remove markers that are no longer unclustered
   const toRemove: string[] = [];

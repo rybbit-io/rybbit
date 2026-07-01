@@ -279,14 +279,35 @@ export const normalizeOrigin = (input: string): string => {
 };
 
 // Helper function to get IP address
+//
+// NOTE: production request paths resolve client IPs via `resolveClientIp()`
+// (resolveClientIp.ts), which wraps this with ASN-based proxy detection. This
+// function is the simple header-precedence primitive it falls back to when no
+// Cloudflare edge is present, and remains the building block for that decision.
+//
+// Header precedence is tuned for first-party proxies (Cloudflare Workers, AWS
+// CloudFront, Fastly, nginx, ...) that front Rybbit and forward the original
+// visitor IP. The hard constraint: when such a proxy sits in front of our
+// Cloudflare edge, `CF-Connecting-IP` is the *proxy's* egress IP, not the
+// visitor — so it must rank BELOW the forwarded headers, otherwise proxied
+// traffic geolocates to the proxy's exit node. (CloudFront, for one, cannot
+// forward `X-Real-IP` at all — it's on AWS's origin custom-header denylist —
+// so `X-Forwarded-For` is the only channel many proxies have.)
+//
+// For the non-proxied path these forwarded headers are client-spoofable, which
+// only lets a visitor corrupt their own (anonymous) geo — acceptable. See
+// resolveClientIp.ts for the ASN-aware variant that removes even that exposure.
 export const getIpAddress = (request: FastifyRequest): string => {
-  // Priority 1: Cloudflare header (already validated by CF)
-  const cfConnectingIp = request.headers["cf-connecting-ip"];
-  if (cfConnectingIp && typeof cfConnectingIp === "string") {
-    return cfConnectingIp.trim();
+  // Priority 1: X-Real-IP. First-party proxies (e.g. nginx, Cloudflare Workers)
+  // set this to the single original visitor IP.
+  const realIp = request.headers["x-real-ip"];
+  if (realIp && typeof realIp === "string") {
+    return realIp.trim();
   }
 
-  // Priority 2: X-Forwarded-For - just use the first IP
+  // Priority 2: X-Forwarded-For - use the first IP, which should be the original
+  // client. Ranks above CF-Connecting-IP so proxied traffic is attributed to the
+  // visitor rather than the proxy's edge node.
   const forwardedFor = request.headers["x-forwarded-for"];
   if (forwardedFor && typeof forwardedFor === "string") {
     const ips = forwardedFor
@@ -294,9 +315,15 @@ export const getIpAddress = (request: FastifyRequest): string => {
       .map(ip => ip.trim())
       .filter(Boolean);
     if (ips.length > 0) {
-      // Always use the first IP - the original client
       return ips[0];
     }
+  }
+
+  // Priority 3: Cloudflare header. Authoritative on the direct Cloudflare-fronted
+  // path; only reached when no forwarded header is present.
+  const cfConnectingIp = request.headers["cf-connecting-ip"];
+  if (cfConnectingIp && typeof cfConnectingIp === "string") {
+    return cfConnectingIp.trim();
   }
 
   return request.ip;

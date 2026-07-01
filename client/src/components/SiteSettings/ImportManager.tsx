@@ -196,7 +196,7 @@ export function ImportManager({ siteId, disabled }: ImportManagerProps) {
       return [];
     }
 
-    return [...data.data].sort((a, b) => {
+    return data.data.toSorted((a, b) => {
       const aTime = new Date(a.startedAt).getTime();
       const bTime = new Date(b.startedAt).getTime();
       return bTime - aTime;

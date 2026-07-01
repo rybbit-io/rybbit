@@ -5,5 +5,6 @@ export function useAdminSites() {
   return useQuery<AdminSiteData[]>({
     queryKey: ["admin-sites"],
     queryFn: getAdminSites,
+    staleTime: 60_000,
   });
 }

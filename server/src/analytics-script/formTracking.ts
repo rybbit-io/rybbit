@@ -53,6 +53,10 @@ export class FormTrackingManager {
     // Skip disabled inputs
     if ((target as HTMLInputElement).disabled) return;
 
+    // Skip readonly inputs since the user can't directly edit them
+    // (e.g. fields computed from another input like a slider)
+    if ((target as HTMLInputElement).readOnly) return;
+
     // Skip hidden inputs and password fields for privacy
     if (tagName === "INPUT") {
       const inputType = (target as HTMLInputElement).type?.toLowerCase();

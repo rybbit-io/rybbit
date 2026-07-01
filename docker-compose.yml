@@ -62,13 +62,42 @@ services:
       retries: 5
       start_period: 10s
     restart: unless-stopped
+    ports:
+      - "5432:5432"
+
+  redis:
+    image: redis:7-alpine
+    container_name: redis
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:-changeme}", "--no-auth-warning", "ping"]
+      interval: 3s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+    restart: unless-stopped
+    # Backs session tracking and the BullMQ queues. noeviction is required by
+    # BullMQ (evicting job keys corrupts queues); session keys carry a 30-minute
+    # TTL so memory stays bounded by active-user count. AOF (everysec) keeps
+    # queues durable across restarts.
+    command:
+      - redis-server
+      - --requirepass
+      - ${REDIS_PASSWORD:-changeme}
+      - --appendonly
+      - "yes"
+      - --appendfsync
+      - everysec
+      - --maxmemory-policy
+      - noeviction
 
   backend:
     image: ghcr.io/rybbit-io/rybbit-backend:${IMAGE_TAG:-latest}
     container_name: backend
     build:
       context: .
-      dockerfile: server/Dockerfile
+      dockerfile: ./server/Dockerfile
     ports:
       - "${HOST_BACKEND_PORT:-127.0.0.1:3001:3001}"
     environment:
@@ -81,16 +110,26 @@ services:
       - POSTGRES_DB=${POSTGRES_DB:-analytics}
       - POSTGRES_USER=${POSTGRES_USER:-frog}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-frog}
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_PASSWORD=${REDIS_PASSWORD:-changeme}
       - BETTER_AUTH_SECRET=${BETTER_AUTH_SECRET}
       - BASE_URL=${BASE_URL}
       - DISABLE_SIGNUP=${DISABLE_SIGNUP}
       - DISABLE_TELEMETRY=${DISABLE_TELEMETRY}
       - MAPBOX_TOKEN=${MAPBOX_TOKEN}
+      - CLUSTER_WORKERS=${CLUSTER_WORKERS:-4}
+      - DEPLOYMENT=${DEPLOYMENT}
+      - LITE_DASHBOARD=${LITE_DASHBOARD}
+      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
+      - OPENROUTER_MODEL=${OPENROUTER_MODEL}
     depends_on:
       clickhouse:
         condition: service_healthy
       postgres:
         condition: service_started
+      redis:
+        condition: service_healthy
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:3001/api/health"]
       interval: 3s
@@ -104,16 +143,19 @@ services:
     container_name: client
     build:
       context: .
-      dockerfile: client/Dockerfile
+      dockerfile: ./client/Dockerfile
       args:
         NEXT_PUBLIC_BACKEND_URL: ${BASE_URL}
         NEXT_PUBLIC_DISABLE_SIGNUP: ${DISABLE_SIGNUP}
+        NEXT_PUBLIC_LITE_DASHBOARD: ${LITE_DASHBOARD}
     ports:
       - "${HOST_CLIENT_PORT:-127.0.0.1:3002:3002}"
     environment:
       - NODE_ENV=production
       - NEXT_PUBLIC_BACKEND_URL=${BASE_URL}
       - NEXT_PUBLIC_DISABLE_SIGNUP=${DISABLE_SIGNUP}
+      - NEXT_PUBLIC_DEPLOYMENT=${DEPLOYMENT}
+      - NEXT_PUBLIC_LITE_DASHBOARD=${LITE_DASHBOARD}
     depends_on:
       - backend
     restart: unless-stopped
@@ -121,6 +163,7 @@ services:
 volumes:
   clickhouse-data:
   postgres-data:
+  redis-data:
   caddy_data: # Persistent volume for Caddy's certificates and state
   caddy_config: # Persistent volume for Caddy's configuration cache (optional but good practice)
 

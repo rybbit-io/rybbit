@@ -43,9 +43,8 @@ const sitesAccessCache = new NodeCache({
 });
 
 export async function getSitesUserHasAccessTo(req: FastifyRequest, adminOnly = false) {
-  const session = await getSessionFromReq(req);
-
-  const userId = session?.user.id;
+  const session = req.user?.id ? null : await getSessionFromReq(req);
+  const userId = req.user?.id ?? session?.user.id;
 
   if (!userId) {
     return [];
@@ -121,14 +120,14 @@ export async function getSitesUserHasAccessTo(req: FastifyRequest, adminOnly = f
         // Get specific sites for restricted members
         restrictedMemberIds.length > 0
           ? (async () => {
-            const siteAccess = await db
-              .select({ siteId: memberSiteAccess.siteId })
-              .from(memberSiteAccess)
-              .where(inArray(memberSiteAccess.memberId, restrictedMemberIds));
-            const siteIds = siteAccess.map(s => s.siteId);
-            if (siteIds.length === 0) return [];
-            return db.select().from(sites).where(inArray(sites.siteId, siteIds));
-          })()
+              const siteAccess = await db
+                .select({ siteId: memberSiteAccess.siteId })
+                .from(memberSiteAccess)
+                .where(inArray(memberSiteAccess.memberId, restrictedMemberIds));
+              const siteIds = siteAccess.map(s => s.siteId);
+              if (siteIds.length === 0) return [];
+              return db.select().from(sites).where(inArray(sites.siteId, siteIds));
+            })()
           : Promise.resolve([]),
       ]);
 
@@ -145,9 +144,7 @@ export async function getSitesUserHasAccessTo(req: FastifyRequest, adminOnly = f
 
       // Apply team-based filtering for non-admin/owner members
       // Members who have full org access (not restricted) still need team filtering
-      const memberOrgIds = memberRecords
-        .filter(r => r.role === "member")
-        .map(r => r.organizationId);
+      const memberOrgIds = memberRecords.filter(r => r.role === "member").map(r => r.organizationId);
 
       if (memberOrgIds.length > 0) {
         // Find all team-gated sites in the member's orgs
@@ -171,7 +168,12 @@ export async function getSitesUserHasAccessTo(req: FastifyRequest, adminOnly = f
             const userTeamSites = await db
               .select({ siteId: teamSiteAccess.siteId })
               .from(teamSiteAccess)
-              .where(inArray(teamSiteAccess.teamId, userTeams.map(t => t.teamId)));
+              .where(
+                inArray(
+                  teamSiteAccess.teamId,
+                  userTeams.map(t => t.teamId)
+                )
+              );
             for (const s of userTeamSites) {
               userTeamSiteIds.add(s.siteId);
             }
@@ -195,11 +197,7 @@ export async function getSitesUserHasAccessTo(req: FastifyRequest, adminOnly = f
 
           // Remove team-gated sites the user can't access (only for member-role orgs)
           for (const [siteId] of siteMap) {
-            if (
-              teamGatedSiteIds.has(siteId) &&
-              !userTeamSiteIds.has(siteId) &&
-              !adminOrgSiteIds.has(siteId)
-            ) {
+            if (teamGatedSiteIds.has(siteId) && !userTeamSiteIds.has(siteId) && !adminOrgSiteIds.has(siteId)) {
               siteMap.delete(siteId);
             }
           }
@@ -234,7 +232,7 @@ export function invalidateSitesAccessCache(userId: string) {
 export async function checkApiKey(
   req: FastifyRequest,
   options: { organizationId?: string; siteId?: string | number }
-): Promise<{ valid: boolean; role: string | null; rateLimited?: boolean }> {
+): Promise<{ valid: boolean; role: string | null; userId?: string; rateLimited?: boolean }> {
   // Check if a valid API key was provided
   // Priority: 1. Authorization: Bearer header (recommended), 2. Query parameter (testing only)
   const authHeader = req.headers["authorization"];
@@ -282,7 +280,7 @@ export async function checkApiKey(
             .limit(1);
 
           if (userMembership.length > 0) {
-            return { valid: true, role: userMembership[0].role };
+            return { valid: true, role: userMembership[0].role, userId: apiKeyUserId };
           }
         }
         return { valid: false, role: null };
@@ -301,6 +299,10 @@ export async function checkApiKey(
 }
 
 export async function getUserIdFromRequest(req: FastifyRequest): Promise<string | null> {
+  if (req.user?.id) {
+    return req.user.id;
+  }
+
   // First, check for session-based auth
   const session = await getSessionFromReq(req);
   if (session?.user?.id) {

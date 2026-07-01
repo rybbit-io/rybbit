@@ -5,7 +5,7 @@ import { useTheme } from "next-themes";
 import { useEffect, useRef } from "react";
 
 const MIN_LINK_HEIGHT = 0;
-const MAX_LINK_HEIGHT = 100;
+const MAX_LINK_HEIGHT = 56;
 const MIN_NODE_HEIGHT = 2;
 
 interface Journey {
@@ -23,13 +23,13 @@ interface SankeyDiagramProps {
 
 export function SankeyDiagram({ journeys, steps, maxJourneys, domain }: SankeyDiagramProps) {
   const svgRef = useRef<SVGSVGElement>(null);
-  const { theme } = useTheme();
+  const { resolvedTheme } = useTheme();
 
   useEffect(() => {
     if (!journeys || !svgRef.current || !domain) return;
 
     // Define theme-based colors
-    const isDark = theme === "dark";
+    const isDark = resolvedTheme === "dark";
     const linkColor = isDark ? "hsl(var(--neutral-500))" : "hsl(var(--neutral-400))";
     const pathTextColor = isDark ? "white" : "hsl(var(--neutral-900))";
 
@@ -110,9 +110,9 @@ export function SankeyDiagram({ journeys, steps, maxJourneys, domain }: SankeyDi
     const width = containerWidth;
     const stepWidth = width / steps;
     const stepSpacing = stepWidth - nodeWidth;
-    const nodeGap = 20; // Gap between nodes
-    const minHeight = 200;
-    const verticalPadding = 10;
+    const nodeGap = 10;
+    const minHeight = 160;
+    const verticalPadding = 6;
 
     // Calculate the total height needed for each step column
     const stepHeights = Array.from(nodesByStep.values()).map(stepNodes => {
@@ -507,11 +507,17 @@ export function SankeyDiagram({ journeys, steps, maxJourneys, domain }: SankeyDi
         tooltip.style("visibility", "hidden");
       });
 
-    // Cleanup tooltip on unmount
-    return () => {
+    const dispose = () => {
+      svg.selectAll("*").on("mouseenter", null).on("mousemove", null).on("mouseleave", null);
+      svg.selectAll("*").remove();
       tooltip.remove();
     };
-  }, [journeys, steps, maxJourneys, domain, theme]);
+
+    // Cleanup tooltip and D3 handlers on unmount
+    return () => {
+      dispose();
+    };
+  }, [journeys, steps, maxJourneys, domain, resolvedTheme]);
 
   return (
     <div className="overflow-x-auto w-full">

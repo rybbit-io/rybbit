@@ -19,7 +19,7 @@ export function Weekdays() {
   const timezone = getTimezone();
   const t = useExtracted();
   const { data: siteMetadata } = useGetSite();
-  const isApp = siteMetadata?.type === "app";
+  const isApp = siteMetadata?.type === "mobile";
 
   const { data, isFetching, error } = useGetOverviewBucketed({
     site,

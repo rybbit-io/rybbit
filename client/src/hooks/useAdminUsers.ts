@@ -70,6 +70,7 @@ export function useAdminUsers() {
   }>({
     queryKey: ["admin-users", pagination.pageIndex, pagination.pageSize, sorting, columnFilters, globalFilter],
     queryFn: fetchUsers,
+    staleTime: 60_000,
   });
 
   // Handle impersonation

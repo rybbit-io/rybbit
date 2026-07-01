@@ -28,6 +28,8 @@ export type PageTitleItem = {
   pathname: string; // A representative pathname
   count: number;
   percentage: number;
+  pageviews?: number;
+  bounce_rate?: number;
   time_on_page_seconds?: number;
 };
 

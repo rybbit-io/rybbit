@@ -1,0 +1,232 @@
+---
+title: Find Where Users Drop Off
+description: Chain the funnel analysis and journeys endpoints to locate the biggest leak in a conversion flow, then discover where the users who abandon actually go instead.
+---
+
+import { Callout } from 'fumadocs-ui/components/callout';
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+import { Step, Steps } from 'fumadocs-ui/components/steps';
+
+A funnel tells you *how many* people fall out at each step. The journeys endpoint tells you *where they went instead*. Putting them together turns "our signup funnel leaks at the pricing page" into "people leave the pricing page for the FAQ — they have unanswered questions."
+
+**Endpoints used:**
+
+- [`POST /funnels/analyze`](/docs/api/funnels/analyze) — step-by-step conversion and drop-off rates
+- [`GET /journeys`](/docs/api/insights/journeys) — the most common navigation paths
+
+## The workflow
+
+<Steps>
+<Step>
+**Analyze the funnel** to get a drop-off rate for every step.
+</Step>
+<Step>
+**Find the worst step** — the one with the highest `dropoff_rate`.
+</Step>
+<Step>
+**Pull journeys that start at that step's page** using `stepFilters`, so you can see the most common next page for people who were there.
+</Step>
+</Steps>
+
+## Step 1 — Analyze the funnel
+
+Define the path a converting user should take and post it to the analyze endpoint.
+
+<Tabs items={['JavaScript', 'Python']}>
+<Tab value="JavaScript">
+```javascript title="Analyze the funnel"
+const API = 'https://app.rybbit.io';
+const SITE = '123';
+const API_KEY = process.env.RYBBIT_API_KEY;
+
+const range = { start_date: '2024-01-01', end_date: '2024-01-31', time_zone: 'America/New_York' };
+
+const funnelSteps = [
+  { type: 'page',  value: '/',                 name: 'Homepage' },
+  { type: 'page',  value: '/pricing',          name: 'Pricing' },
+  { type: 'page',  value: '/signup',           name: 'Signup' },
+  { type: 'event', value: 'signup_complete',   name: 'Complete' },
+];
+
+async function analyzeFunnel() {
+  const url = new URL(`${API}/api/sites/${SITE}/funnels/analyze`);
+  Object.entries(range).forEach(([k, v]) => url.searchParams.set(k, v));
+
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${API_KEY}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ steps: funnelSteps }),
+  });
+  const { data } = await res.json();
+  return data; // array of { step_number, step_name, visitors, conversion_rate, dropoff_rate }
+}
+```
+</Tab>
+<Tab value="Python">
+```python title="Analyze the funnel"
+import os, requests
+
+API = "https://app.rybbit.io"
+SITE = "123"
+API_KEY = os.environ["RYBBIT_API_KEY"]
+
+RANGE = {"start_date": "2024-01-01", "end_date": "2024-01-31", "time_zone": "America/New_York"}
+
+FUNNEL_STEPS = [
+    {"type": "page",  "value": "/",               "name": "Homepage"},
+    {"type": "page",  "value": "/pricing",        "name": "Pricing"},
+    {"type": "page",  "value": "/signup",         "name": "Signup"},
+    {"type": "event", "value": "signup_complete", "name": "Complete"},
+]
+
+
+def analyze_funnel():
+    res = requests.post(
+        f"{API}/api/sites/{SITE}/funnels/analyze",
+        params=RANGE,
+        json={"steps": FUNNEL_STEPS},
+        headers={"Authorization": f"Bearer {API_KEY}"},
+    )
+    res.raise_for_status()
+    return res.json()["data"]  # list of step results
+```
+</Tab>
+</Tabs>
+
+A response looks like this — note that `dropoff_rate` is the percentage who left **between the previous step and this one**:
+
+```json
+{
+  "data": [
+    { "step_number": 1, "step_name": "Homepage", "visitors": 10000, "conversion_rate": 100,  "dropoff_rate": 0 },
+    { "step_number": 2, "step_name": "Pricing",  "visitors": 4500,  "conversion_rate": 45,   "dropoff_rate": 55 },
+    { "step_number": 3, "step_name": "Signup",   "visitors": 1800,  "conversion_rate": 18,   "dropoff_rate": 60 },
+    { "step_number": 4, "step_name": "Complete", "visitors": 1080,  "conversion_rate": 10.8, "dropoff_rate": 40 }
+  ]
+}
+```
+
+## Step 2 — Find the worst step
+
+The leak isn't always the step with the fewest visitors — it's the step with the steepest **drop-off**. Pick the maximum `dropoff_rate`.
+
+<Tabs items={['JavaScript', 'Python']}>
+<Tab value="JavaScript">
+```javascript title="Find the biggest leak"
+function biggestLeak(steps) {
+  // Skip step 1 — it always has 0% drop-off
+  return steps
+    .filter((s) => s.step_number > 1)
+    .reduce((worst, s) => (s.dropoff_rate > worst.dropoff_rate ? s : worst));
+}
+
+const steps = await analyzeFunnel();
+const leak = biggestLeak(steps);
+const enteredStep = steps[leak.step_number - 2]; // the step they were on before leaving
+
+console.log(
+  `Worst leak: ${leak.dropoff_rate}% of users left after "${enteredStep.step_name}" ` +
+  `instead of reaching "${leak.step_name}".`
+);
+```
+</Tab>
+<Tab value="Python">
+```python title="Find the biggest leak"
+def biggest_leak(steps):
+    # Skip step 1 — it always has 0% drop-off
+    return max((s for s in steps if s["step_number"] > 1), key=lambda s: s["dropoff_rate"])
+
+
+steps = analyze_funnel()
+leak = biggest_leak(steps)
+entered_step = steps[leak["step_number"] - 2]  # the step they were on before leaving
+
+print(
+    f'Worst leak: {leak["dropoff_rate"]}% of users left after "{entered_step["step_name"]}" '
+    f'instead of reaching "{leak["step_name"]}".'
+)
+```
+</Tab>
+</Tabs>
+
+In the example above, the steepest drop-off is **60%, between Pricing and Signup** — of the 4,500 people who reached the pricing page, only 1,800 went on to signup. That makes the **pricing page** the one to investigate: it's where the audience was sitting right before the biggest leak.
+
+## Step 3 — See where the leavers went
+
+The [journeys endpoint](/docs/api/insights/journeys) ranks the most common page paths. Use `stepFilters` to anchor step `0` to the page people were dropping from — now every returned journey shows you a common *next* page for that audience.
+
+<Tabs items={['JavaScript', 'Python']}>
+<Tab value="JavaScript">
+```javascript title="What did they do after the leaky page?"
+async function journeysFrom(page) {
+  const stepFilters = JSON.stringify({ '0': page });
+  const url = new URL(`${API}/api/sites/${SITE}/journeys`);
+  url.searchParams.set('steps', '2');
+  url.searchParams.set('limit', '10');
+  url.searchParams.set('stepFilters', stepFilters);
+  Object.entries(range).forEach(([k, v]) => url.searchParams.set(k, v));
+
+  const res = await fetch(url, { headers: { Authorization: `Bearer ${API_KEY}` } });
+  const { journeys } = await res.json();
+  return journeys;
+}
+
+// The leaky step's page — '/pricing' in our example
+const leakyPage = funnelSteps[leak.step_number - 2].value;
+const journeys = await journeysFrom(leakyPage);
+
+console.log(`Where users go after ${leakyPage}:`);
+journeys
+  .filter((j) => j.path[1] && j.path[1] !== '/signup') // exclude the intended next step
+  .slice(0, 5)
+  .forEach((j) => console.log(`  → ${j.path[1]}  (${j.count} sessions, ${j.percentage}%)`));
+```
+</Tab>
+<Tab value="Python">
+```python title="What did they do after the leaky page?"
+import json
+
+
+def journeys_from(page):
+    res = requests.get(
+        f"{API}/api/sites/{SITE}/journeys",
+        params={"steps": 2, "limit": 10, "stepFilters": json.dumps({"0": page}), **RANGE},
+        headers={"Authorization": f"Bearer {API_KEY}"},
+    )
+    res.raise_for_status()
+    return res.json()["journeys"]
+
+
+# The leaky step's page — '/pricing' in our example
+leaky_page = FUNNEL_STEPS[leak["step_number"] - 2]["value"]
+journeys = journeys_from(leaky_page)
+
+print(f"Where users go after {leaky_page}:")
+for j in [j for j in journeys if len(j["path"]) > 1 and j["path"][1] != "/signup"][:5]:
+    print(f'  → {j["path"][1]}  ({j["count"]} sessions, {j["percentage"]}%)')
+```
+</Tab>
+</Tabs>
+
+### The insight
+
+```text
+Where users go after /pricing:
+  → /faq          (1,240 sessions, 27.6%)
+  → /             (820 sessions, 18.2%)
+  → /enterprise   (610 sessions, 13.6%)
+```
+
+More than a quarter of people who hit Pricing and didn't sign up went to the FAQ — a strong signal that pricing raises questions your FAQ has to answer. That's a far more actionable finding than "the pricing page has a 60% drop-off."
+
+<Callout type="info">
+**Quantify before you act.** Combine the funnel and journey numbers into a one-line business case: *"2,700 users/month leave Pricing; 28% head to the FAQ. Surfacing the top FAQ answers on the pricing page could recover a meaningful share of them."*
+</Callout>
+
+## Next steps
+
+- [Compare Marketing Channel Performance](/docs/api/channel-performance) — find out which traffic sources fill the top of this funnel with people who actually convert.
+- [Funnels API reference](/docs/api/funnels/analyze) — event steps, property matching, and per-step session lookups.

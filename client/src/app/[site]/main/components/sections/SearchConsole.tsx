@@ -1,5 +1,5 @@
 import { SiGoogle } from "@icons-pack/react-simple-icons";
-import { round } from "lodash";
+import round from "lodash/round";
 import { Expand, Info, SquareArrowOutUpRight } from "lucide-react";
 import { useExtracted } from "next-intl";
 import { useState } from "react";

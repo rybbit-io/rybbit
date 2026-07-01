@@ -66,10 +66,12 @@ export function MainSection({
   siteIds,
   sites,
   siteColorMap,
+  lite = false,
 }: {
   siteIds: number[];
   sites: SiteRow[];
   siteColorMap: Map<number, string>;
+  lite?: boolean;
 }) {
   const t = useExtracted();
   const { selectedStat, bucket, time } = useStore();
@@ -77,6 +79,7 @@ export function MainSection({
   const { series, isFetching, isLoading } = useRollupBucketed({
     siteIds,
     bucket,
+    lite,
   });
 
   const siteMetaById = useMemo(() => {

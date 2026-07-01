@@ -3,11 +3,20 @@ import { DateTime } from "luxon";
 import { Time } from "../components/DateSelector/types";
 import axios, { AxiosRequestConfig } from "axios";
 import { BACKEND_URL } from "../lib/const";
+import { getSiteRouteContext } from "../lib/siteRoute";
 import { getTimezone, useStore } from "../lib/store";
 import { CommonApiParams } from "./analytics/endpoints/types";
 
 export function getStartAndEndDate(time: Time): { startDate: string | null; endDate: string | null } {
   if (time.mode === "range") {
+    if (time.startTime && time.endTime) {
+      const timeZone = getTimezone();
+      const end = DateTime.fromISO(`${time.endDate}T${time.endTime}`, { zone: timeZone });
+      return {
+        startDate: time.startDate,
+        endDate: end.minus({ milliseconds: 1 }).toISODate(),
+      };
+    }
     return { startDate: time.startDate, endDate: time.endDate };
   }
   if (time.mode === "week") {
@@ -38,17 +47,40 @@ export function getStartAndEndDate(time: Time): { startDate: string | null; endD
  * Build CommonApiParams from a Time object, handling all time modes including past-minutes.
  * This centralizes the logic for converting Time to API params across all hooks.
  */
+function sanitizeFilters(filters?: Filter[]): Filter[] | undefined {
+  if (!filters) return undefined;
+  const cleaned = filters.filter(f => {
+    if (f.type === "is_null" || f.type === "is_not_null") return true;
+    return f.value.length > 0 && f.value.every(v => v !== "" && v !== null && v !== undefined);
+  });
+  return cleaned.length > 0 ? cleaned : undefined;
+}
+
 export function buildApiParams(time: Time, options: { filters?: Filter[] } = {}): CommonApiParams {
   const timeZone = getTimezone();
+  const filters = sanitizeFilters(options.filters);
 
   if (time.mode === "past-minutes") {
     return {
       startDate: "",
       endDate: "",
       timeZone,
-      filters: options.filters,
+      filters,
       pastMinutesStart: time.pastMinutesStart,
       pastMinutesEnd: time.pastMinutesEnd,
+    };
+  }
+
+  if (time.mode === "range" && time.startTime && time.endTime) {
+    const start = DateTime.fromISO(`${time.startDate}T${time.startTime}`, { zone: timeZone });
+    const end = DateTime.fromISO(`${time.endDate}T${time.endTime}`, { zone: timeZone });
+    return {
+      startDate: "",
+      endDate: "",
+      timeZone,
+      filters,
+      startDateTime: start.toUTC().toFormat("yyyy-MM-dd HH:mm:ss"),
+      endDateTime: end.toUTC().toFormat("yyyy-MM-dd HH:mm:ss"),
     };
   }
 
@@ -57,7 +89,7 @@ export function buildApiParams(time: Time, options: { filters?: Filter[] } = {})
     startDate: startDate ?? "",
     endDate: endDate ?? "",
     timeZone,
-    filters: options.filters,
+    filters,
   };
 }
 
@@ -81,7 +113,10 @@ export async function authedFetch<T>(
   }
 
   // Get private key from store and add to headers if present
-  const privateKey = useStore.getState().privateKey;
+  const privateKey =
+    typeof window !== "undefined"
+      ? getSiteRouteContext(globalThis.location.pathname).privateKey
+      : useStore.getState().privateKey;
   const headers = {
     ...config.headers,
     ...(privateKey ? { "x-private-key": privateKey } : {}),

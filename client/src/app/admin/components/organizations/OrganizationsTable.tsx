@@ -54,7 +54,11 @@ export function OrganizationsTable({ organizations, isLoading, searchQuery }: Or
 
   const formatSubscriptionStatus = (subscription: AdminOrganizationData["subscription"]) => {
     const statusColor =
-      subscription.status === "active" || subscription.status === "trialing" ? "default" : subscription.status === "canceled" ? "destructive" : "secondary";
+      subscription.status === "active" || subscription.status === "trialing"
+        ? "default"
+        : subscription.status === "canceled"
+          ? "destructive"
+          : "secondary";
     return <Badge variant={statusColor}>{subscription.planName}</Badge>;
   };
 
@@ -183,91 +187,88 @@ export function OrganizationsTable({ organizations, isLoading, searchQuery }: Or
 
   return (
     <>
-      <div className="rounded-md border border-neutral-100 dark:border-neutral-800">
-        <Table>
-          <TableHeader>
-            {table.getHeaderGroups().map(headerGroup => (
-              <TableRow key={headerGroup.id}>
-                {headerGroup.headers.map(header => (
-                  <TableHead key={header.id} className={header.id === "expand" ? "w-8" : ""}>
-                    {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
-                  </TableHead>
-                ))}
-              </TableRow>
-            ))}
-          </TableHeader>
-          <TableBody>
-            {isLoading ? (
-              Array(pagination.pageSize)
-                .fill(0)
-                .map((_, index) => (
-                  <TableRow key={index}>
-                    <TableCell>
-                      <Skeleton className="h-5 w-5" />
-                    </TableCell>
-                    <TableCell>
-                      <Skeleton className="h-5 w-32" />
-                    </TableCell>
-                    <TableCell>
-                      <Skeleton className="h-5 w-24" />
-                    </TableCell>
-                    <TableCell>
-                      <Skeleton className="h-5 w-24" />
-                    </TableCell>
-                    <TableCell>
-                      <Skeleton className="h-5 w-20" />
-                    </TableCell>
-                    <TableCell>
-                      <Skeleton className="h-5 w-20" />
-                    </TableCell>
-                    <TableCell>
-                      <Skeleton className="h-5 w-20" />
-                    </TableCell>
-                    <TableCell>
-                      <Skeleton className="h-5 w-16" />
-                    </TableCell>
-                    <TableCell>
-                      <Skeleton className="h-5 w-16" />
-                    </TableCell>
-                  </TableRow>
-                ))
-            ) : paginatedOrganizations && paginatedOrganizations.length > 0 ? (
-              paginatedOrganizations.map(row => (
-                <Fragment key={row.id}>
-                  <TableRow className="group">
-                    {row.getVisibleCells().map(cell => (
-                      <TableCell key={cell.id}>{flexRender(cell.column.columnDef.cell, cell.getContext())}</TableCell>
-                    ))}
-                  </TableRow>
-                  {expandedOrgs.has(row.original.id) && (
-                    <TableRow>
-                      <TableCell colSpan={columns.length} className="bg-neutral-50 dark:bg-neutral-900 py-4 px-8">
-                        <OrganizationExpandedRow organization={row.original} />
-                      </TableCell>
-                    </TableRow>
-                  )}
-                </Fragment>
+      <Table>
+        <TableHeader>
+          {table.getHeaderGroups().map(headerGroup => (
+            <TableRow key={headerGroup.id}>
+              {headerGroup.headers.map(header => (
+                <TableHead key={header.id} className={header.id === "expand" ? "w-8" : ""}>
+                  {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
+                </TableHead>
+              ))}
+            </TableRow>
+          ))}
+        </TableHeader>
+        <TableBody>
+          {isLoading ? (
+            Array(pagination.pageSize)
+              .fill(0)
+              .map((_, index) => (
+                <TableRow key={index}>
+                  <TableCell>
+                    <Skeleton className="h-5 w-5" />
+                  </TableCell>
+                  <TableCell>
+                    <Skeleton className="h-5 w-32" />
+                  </TableCell>
+                  <TableCell>
+                    <Skeleton className="h-5 w-24" />
+                  </TableCell>
+                  <TableCell>
+                    <Skeleton className="h-5 w-24" />
+                  </TableCell>
+                  <TableCell>
+                    <Skeleton className="h-5 w-20" />
+                  </TableCell>
+                  <TableCell>
+                    <Skeleton className="h-5 w-20" />
+                  </TableCell>
+                  <TableCell>
+                    <Skeleton className="h-5 w-20" />
+                  </TableCell>
+                  <TableCell>
+                    <Skeleton className="h-5 w-16" />
+                  </TableCell>
+                  <TableCell>
+                    <Skeleton className="h-5 w-16" />
+                  </TableCell>
+                </TableRow>
               ))
-            ) : (
-              <TableRow>
-                <TableCell colSpan={columns.length} className="text-center py-6 text-muted-foreground">
-                  {searchQuery ? t("No organizations match your search") : t("No organizations found")}
-                </TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
-      </div>
-
+          ) : paginatedOrganizations && paginatedOrganizations.length > 0 ? (
+            paginatedOrganizations.map(row => (
+              <Fragment key={row.id}>
+                <TableRow className="group">
+                  {row.getVisibleCells().map(cell => (
+                    <TableCell key={cell.id}>{flexRender(cell.column.columnDef.cell, cell.getContext())}</TableCell>
+                  ))}
+                </TableRow>
+                {expandedOrgs.has(row.original.id) && (
+                  <TableRow>
+                    <TableCell colSpan={columns.length} className="bg-neutral-50 dark:bg-neutral-900 py-4 px-8">
+                      <OrganizationExpandedRow organization={row.original} />
+                    </TableCell>
+                  </TableRow>
+                )}
+              </Fragment>
+            ))
+          ) : (
+            <TableRow>
+              <TableCell colSpan={columns.length} className="text-center py-6 text-muted-foreground">
+                {searchQuery ? t("No organizations match your search") : t("No organizations found")}
+              </TableCell>
+            </TableRow>
+          )}
+        </TableBody>
+      </Table>
       <div className="mt-4">
         <Pagination
           table={paginationController}
           data={
             table.getRowModel().rows.length > 0
               ? {
-                items: table.getRowModel().rows,
-                total: table.getRowModel().rows.length,
-              }
+                  items: table.getRowModel().rows,
+                  total: table.getRowModel().rows.length,
+                }
               : undefined
           }
           pagination={pagination}

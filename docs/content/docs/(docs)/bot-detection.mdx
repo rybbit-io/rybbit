@@ -1,0 +1,169 @@
+---
+title: Bot detection
+description: How Rybbit identifies and filters bot traffic from your analytics
+---
+
+import { Callout } from 'fumadocs-ui/components/callout';
+import { Steps, Step } from 'fumadocs-ui/components/steps';
+
+Rybbit can filter bot traffic before it reaches your normal analytics. When **Block Bot Traffic** is enabled for a site, each incoming tracking request is checked by several detection layers. If any layer identifies the request as bot traffic, the request is excluded from the normal analytics tables and stored separately for bot traffic inspection.
+
+## Enabling Bot Detection
+
+Bot blocking is configured per site:
+
+1. Open your site in the Rybbit dashboard
+2. Go to **Site Settings**
+3. Enable **Block Bot Traffic**
+
+When this setting is off, Rybbit does not block requests based on bot detection.
+
+## What Happens to Detected Bots
+
+Detected bot requests are not added to your normal analytics data. This keeps dashboard totals, reports, journeys, funnels, session lists, and usage metrics focused on human traffic.
+
+Detected bot visits also do not count toward billable analytics usage. If bot blocking filters a request, you are not charged for that bot visit.
+
+Rybbit still stores a compact bot event record so you can inspect what was filtered. Bot event records include route, device, location, ASN, and which detection layers matched.
+
+## Detection Layers
+
+Rybbit runs all detection layers before making a final decision. A request can match multiple layers, and the bot event records every layer that matched.
+
+<Steps>
+
+<Step>
+
+### User-Agent Patterns
+
+The `ua_pattern` layer checks the request user-agent against known bot, crawler, AI agent, SEO tool, monitoring, social preview, framework, and headless browser patterns.
+
+Examples include:
+
+- Search engine crawlers
+- Headless browser user-agents
+- AI crawler and agent user-agents
+- SEO and monitoring tools
+- Script or framework HTTP clients
+
+</Step>
+
+<Step>
+
+### Header Heuristics
+
+The `header_heuristics` layer scores request headers for browser consistency.
+
+It looks for signals such as:
+
+- Missing browser headers
+- Suspicious fetch metadata
+- Inconsistent browser claims
+- Headless or automation-looking headers
+- Stale or unusual Chrome versions
+- Script/framework-style requests that do not look like normal browser traffic
+
+This layer is useful because many bots use a browser-like user-agent but do not send the full set of headers a real browser normally sends.
+
+</Step>
+
+<Step>
+
+### Client Signals
+
+The `client_signals` layer uses lightweight browser-side signals collected by the tracking script.
+
+Signals include:
+
+- Automation APIs
+- Zero or impossible window dimensions
+- Default automation viewport sizes such as `800x600` and `1024x768`
+- Suspicious outer window dimensions
+- Missing browser APIs
+- Missing Chrome globals
+- SwiftShader renderer signals
+- Empty plugin lists
+
+Rybbit combines these into a weighted score. Strong signals can identify bot traffic on their own, while weaker signals contribute supporting evidence.
+
+</Step>
+
+<Step>
+
+### ASN and Network Signals
+
+The `bot_asn` layer uses ASN metadata from the resolved IP address.
+
+There are two kinds of ASN matches:
+
+- **Curated bot provider ASNs**: Known AI, scanner, and internet measurement providers can trigger bot detection directly.
+- **Generic hosting/datacenter ASNs**: Hosting ASNs are treated as supporting evidence. They are recorded when another bot layer also matches, but generic hosting ASN alone is not enough to block a request.
+
+This avoids filtering every legitimate visitor who happens to browse through a cloud, CDN, VPN, corporate gateway, or first-party proxy, while still preserving ASN context when other bot evidence exists.
+
+</Step>
+
+<Step>
+
+### Rate and Anomaly Detection
+
+The `rate_anomaly` layer watches for bursty or crawl-shaped behavior.
+
+It tracks short rolling windows for patterns such as:
+
+- Too many events from the same IP and user-agent
+- Too many events from the same IP
+- Too many distinct paths visited quickly
+- Too many different user-agents from one IP
+- Too many hostnames from one IP
+- High site-wide volume from one user-agent
+- Large volumes of requests missing client-side bot scores
+
+This layer is designed to catch fast crawlers, floods, and replayed tracking requests that may not have obvious user-agent or browser fingerprint signals.
+
+</Step>
+
+</Steps>
+
+## How Decisions Are Made
+
+Rybbit does not stop at the first matching layer. It runs every layer, records all matches, and then makes one final decision.
+
+A request is marked as bot traffic when at least one blocking layer matches. The resulting bot event includes boolean fields for each layer:
+
+- User-agent pattern
+- Header heuristics
+- Client signals
+- Bot ASN
+- Rate anomaly
+
+Because multiple layers can match the same request, per-layer bot counts can add up to more than the total number of bot requests.
+
+## Server-Side Tracking
+
+Requests sent to `/api/track` with `Authorization: Bearer <api key>` and a valid API key are treated as trusted server-side ingestion and bypass bot blocking. Use this for backend-generated events where the request is coming from your server rather than a visitor's browser.
+
+<Callout type="warn">
+Do not expose API keys in browser JavaScript. API keys are only for server-side requests.
+</Callout>
+
+## Proxies and CDN Setups
+
+If you proxy Rybbit through Cloudflare Workers, AWS CloudFront, Nginx, Caddy, or another reverse proxy, forward the original visitor IP:
+
+```txt
+X-Forwarded-For: <visitor-ip>
+X-Real-IP: <visitor-ip>
+```
+
+Also preserve the original `User-Agent`, `Referer`, and `Accept-Language` headers where possible.
+
+If the proxy IP is sent instead of the visitor IP, traffic may be geolocated to the proxy location and may inherit the proxy provider's ASN.
+
+See the [proxy troubleshooting guide](/docs/proxy-guide/troubleshooting) for examples.
+
+## What Bot Detection Does Not Guarantee
+
+Bot detection improves analytics quality, but no bot filter is perfect.
+
+Some sophisticated bots can look like normal browsers. Some legitimate users may browse through unusual network paths or constrained browser environments. Rybbit uses multiple layers to reduce both misses and false positives, but you should still interpret bot counts as an operational signal rather than an exact measurement of all automation on your site.

@@ -1,0 +1,280 @@
+---
+title: Create API Key
+description: Programmatically create a new API key for your account.
+full: true
+method: POST
+---
+
+import { Callout } from 'fumadocs-ui/components/callout';
+import { TypeTable } from 'fumadocs-ui/components/type-table';
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+
+<div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
+<div>
+
+```
+POST /api/user/api-keys
+```
+
+Creates a new API key scoped to your user account (and its organizations).
+
+<Callout type="warn">This endpoint authenticates with your logged-in dashboard **session**, not an API key — it is how you mint your first key, so you cannot bootstrap a key using another key. Send your session cookie with the request.</Callout>
+
+### Request Body
+
+<TypeTable
+  type={{
+    name: {
+      description: 'A label for the key',
+      type: 'string',
+      required: true,
+    },
+    expiresIn: {
+      description: 'Seconds until the key expires. Omit for a key that never expires.',
+      type: 'number',
+      required: false,
+    },
+  }}
+/>
+
+### Response
+
+Returns the created API key object.
+
+<TypeTable
+  type={{
+    id: {
+      description: "The key's identifier",
+      type: 'string',
+    },
+    key: {
+      description: 'The secret key value',
+      type: 'string',
+    },
+    name: {
+      description: 'The label for the key',
+      type: 'string',
+    },
+    start: {
+      description: 'A non-secret prefix of the key for display',
+      type: 'string',
+    },
+    prefix: {
+      description: 'The key prefix',
+      type: 'string',
+    },
+    userId: {
+      description: 'The ID of the user that owns the key',
+      type: 'string',
+    },
+    enabled: {
+      description: 'Whether the key is currently enabled',
+      type: 'boolean',
+    },
+    expiresAt: {
+      description: 'Expiration timestamp, or null if the key never expires',
+      type: 'string | null',
+    },
+    createdAt: {
+      description: 'Creation timestamp',
+      type: 'string',
+    },
+    updatedAt: {
+      description: 'Last update timestamp',
+      type: 'string',
+    },
+    rateLimitEnabled: {
+      description: 'Whether rate limiting is enabled for the key',
+      type: 'boolean',
+    },
+    rateLimitMax: {
+      description: 'Requests allowed per window',
+      type: 'number',
+    },
+    rateLimitTimeWindow: {
+      description: 'Window length in milliseconds',
+      type: 'number',
+    },
+  }}
+/>
+
+**Note:** Additional fields may be present in the response object.
+
+</div>
+<div className="flex flex-col gap-4">
+
+<Tabs items={['cURL', 'JavaScript', 'Python', 'PHP', 'Ruby', 'Go', 'Rust', 'Java', '.NET']}>
+  <Tab value="cURL">
+```bash title="Request"
+curl -X POST "https://app.rybbit.io/api/user/api-keys" \
+  -H "Cookie: better-auth.session_token=YOUR_SESSION_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"name": "CI pipeline", "expiresIn": 2592000}'
+```
+  </Tab>
+  <Tab value="JavaScript">
+```javascript title="Request"
+const response = await fetch(
+  'https://app.rybbit.io/api/user/api-keys',
+  {
+    method: 'POST',
+    credentials: 'include',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      name: 'CI pipeline',
+      expiresIn: 2592000
+    })
+  }
+);
+
+const data = await response.json();
+```
+  </Tab>
+  <Tab value="Python">
+```python title="Request"
+import requests
+
+response = requests.post(
+    'https://app.rybbit.io/api/user/api-keys',
+    json={
+        'name': 'CI pipeline',
+        'expiresIn': 2592000
+    },
+    headers={
+        'Cookie': 'better-auth.session_token=YOUR_SESSION_TOKEN'
+    }
+)
+
+data = response.json()
+```
+  </Tab>
+  <Tab value="PHP">
+```php title="Request"
+$ch = curl_init();
+curl_setopt($ch, CURLOPT_URL, "https://app.rybbit.io/api/user/api-keys");
+curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+curl_setopt($ch, CURLOPT_POST, true);
+curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode([
+    'name' => 'CI pipeline',
+    'expiresIn' => 2592000
+]));
+curl_setopt($ch, CURLOPT_HTTPHEADER, [
+    'Cookie: better-auth.session_token=YOUR_SESSION_TOKEN',
+    'Content-Type: application/json'
+]);
+
+$response = curl_exec($ch);
+curl_close($ch);
+
+$data = json_decode($response, true);
+```
+  </Tab>
+  <Tab value="Ruby">
+```ruby title="Request"
+require 'net/http'
+require 'json'
+
+uri = URI("https://app.rybbit.io/api/user/api-keys")
+req = Net::HTTP::Post.new(uri)
+req['Cookie'] = 'better-auth.session_token=YOUR_SESSION_TOKEN'
+req['Content-Type'] = 'application/json'
+req.body = {
+  name: 'CI pipeline',
+  expiresIn: 2592000
+}.to_json
+
+res = Net::HTTP.start(uri.hostname, uri.port, use_ssl: true) { |http| http.request(req) }
+data = JSON.parse(res.body)
+```
+  </Tab>
+  <Tab value="Go">
+```go title="Request"
+body := bytes.NewBuffer([]byte(`{
+  "name": "CI pipeline",
+  "expiresIn": 2592000
+}`))
+req, _ := http.NewRequest("POST", "https://app.rybbit.io/api/user/api-keys", body)
+req.Header.Set("Cookie", "better-auth.session_token=YOUR_SESSION_TOKEN")
+req.Header.Set("Content-Type", "application/json")
+
+client := &http.Client{}
+resp, _ := client.Do(req)
+defer resp.Body.Close()
+
+var data map[string]interface{}
+json.NewDecoder(resp.Body).Decode(&data)
+```
+  </Tab>
+  <Tab value="Rust">
+```rust title="Request"
+let client = reqwest::Client::new();
+let res = client
+    .post("https://app.rybbit.io/api/user/api-keys")
+    .header("Cookie", "better-auth.session_token=YOUR_SESSION_TOKEN")
+    .json(&serde_json::json!({
+        "name": "CI pipeline",
+        "expiresIn": 2592000
+    }))
+    .send()
+    .await?;
+
+let data: serde_json::Value = res.json().await?;
+```
+  </Tab>
+  <Tab value="Java">
+```java title="Request"
+HttpClient client = HttpClient.newHttpClient();
+String json = "{\"name\": \"CI pipeline\", \"expiresIn\": 2592000}";
+HttpRequest request = HttpRequest.newBuilder()
+    .uri(URI.create("https://app.rybbit.io/api/user/api-keys"))
+    .header("Cookie", "better-auth.session_token=YOUR_SESSION_TOKEN")
+    .header("Content-Type", "application/json")
+    .POST(HttpRequest.BodyPublishers.ofString(json))
+    .build();
+
+HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+```
+  </Tab>
+  <Tab value=".NET">
+```csharp title="Request"
+using var client = new HttpClient();
+client.DefaultRequestHeaders.Add("Cookie", "better-auth.session_token=YOUR_SESSION_TOKEN");
+
+var content = new StringContent(
+    "{\"name\": \"CI pipeline\", \"expiresIn\": 2592000}",
+    Encoding.UTF8,
+    "application/json"
+);
+
+var response = await client.PostAsync("https://app.rybbit.io/api/user/api-keys", content);
+var data = await response.Content.ReadAsStringAsync();
+```
+  </Tab>
+</Tabs>
+
+<Callout type="warn">The full `key` value is returned **only once**, at creation. Store it securely — it cannot be retrieved again.</Callout>
+
+```json title="Response"
+{
+  "id": "key_8f3a1b2c4d5e6f7g",
+  "key": "rybbit_sk_live_xxxxxxxxxxxxxxxxxxxx",
+  "name": "CI pipeline",
+  "start": "rybbit_sk_live_xxxx",
+  "prefix": "rybbit_sk_live_",
+  "userId": "user_2a9b8c7d6e5f4g3h",
+  "enabled": true,
+  "expiresAt": "2026-07-25T12:00:00.000Z",
+  "createdAt": "2026-06-25T12:00:00.000Z",
+  "updatedAt": "2026-06-25T12:00:00.000Z",
+  "rateLimitEnabled": true,
+  "rateLimitMax": 200,
+  "rateLimitTimeWindow": 60000
+}
+```
+
+<Callout>On Rybbit Cloud, API keys require a Standard or Pro plan; free/basic plans receive HTTP 403. Rate limits are applied automatically based on your plan.</Callout>
+
+</div>
+</div>

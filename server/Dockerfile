@@ -42,6 +42,7 @@ ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
 # Copy built application and dependencies
 COPY --from=builder /app/server/package*.json ./
 COPY --from=builder /app/server/GeoLite2-City.mmdb ./GeoLite2-City.mmdb
+COPY --from=builder /app/server/GeoLite2-ASN.mmdb ./GeoLite2-ASN.mmdb
 COPY --from=builder /app/server/dist ./dist
 COPY --from=builder /app/server/node_modules ./node_modules
 COPY --from=builder /app/server/docker-entrypoint.sh /docker-entrypoint.sh

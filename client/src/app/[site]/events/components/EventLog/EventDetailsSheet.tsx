@@ -30,7 +30,7 @@ interface EventDetailsSheetProps {
 export function EventDetailsSheet({ open, onOpenChange, event, site }: EventDetailsSheetProps) {
   const t = useExtracted();
   const { data: siteMetadata } = useGetSite();
-  const isApp = siteMetadata?.type === "app";
+  const isApp = siteMetadata?.type === "mobile";
   const selectedEventProperties = event ? parseEventProperties(event) : {};
 
   const sessionQuery = useQuery({

@@ -6,8 +6,8 @@ const messagesDir = './messages';
 
 await unstable_extractMessages({
   srcPath: './src',
-  sourceLocale: 'en',
   messages: {
+    sourceLocale: 'en',
     path: messagesDir,
     format: 'json',
     locales: ['en', 'de', 'fr', 'zh', 'es', 'pl', 'it', 'ko', 'pt', 'ja'],

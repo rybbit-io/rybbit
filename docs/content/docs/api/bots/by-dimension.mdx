@@ -1,0 +1,248 @@
+---
+title: Get Bots by Dimension
+description: Returns bot requests broken down by a dimension.
+full: true
+method: GET
+---
+
+import { TypeTable } from 'fumadocs-ui/components/type-table';
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+
+<div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
+<div>
+
+```
+GET /api/sites/:site/bots/by-dimension
+```
+
+Returns bot requests broken down by a dimension.
+
+### Path Parameters
+
+<TypeTable
+  type={{
+    site: {
+      description: 'Site ID or site identifier',
+      type: 'string | number',
+      required: true,
+    },
+  }}
+/>
+
+### Query Parameters
+
+Accepts all [Common Parameters](/docs/api/getting-started#common-parameters) (time and filters).
+
+Bot filtering supports a subset of filter parameters: `browser`, `browser_version`, `operating_system`, `operating_system_version`, `country`, `region`, `city`, `device_type`, `referrer`, `hostname`, `pathname`, `querystring`, `dimensions`, `user_id`, `lat`, and `lon`.
+
+<TypeTable
+  type={{
+    dimension: {
+      description: 'The dimension to group by',
+      type: 'string',
+      typeDescription: '"browser" | "browser_version" | "operating_system" | "operating_system_version" | "country" | "region" | "city" | "device_type" | "referrer" | "hostname" | "pathname" | "dimensions" | "asn_org" | "bot_category" | "matched_ua_pattern"',
+      required: true,
+    },
+    limit: {
+      description: 'Number of results per page',
+      type: 'number',
+      default: 100,
+    },
+    page: {
+      description: 'Page number (1-indexed)',
+      type: 'number',
+      default: 1,
+    },
+    layer: {
+      description: 'Restrict results to a single detection layer',
+      type: 'string',
+      typeDescription: '"ua_pattern" | "header_heuristics" | "client_signals" | "bot_asn" | "rate_anomaly"',
+      required: false,
+    },
+  }}
+/>
+
+### Response
+
+<TypeTable
+  type={{
+    data: {
+      description: 'Paginated response object',
+      type: 'PaginatedResponse',
+    },
+  }}
+/>
+
+#### PaginatedResponse Object
+
+<TypeTable
+  type={{
+    data: {
+      description: 'Array of dimension breakdown objects',
+      type: 'BotDimension[]',
+    },
+    totalCount: {
+      description: 'Total number of distinct dimension values',
+      type: 'number',
+    },
+  }}
+/>
+
+#### BotDimension Object
+
+<TypeTable
+  type={{
+    value: {
+      description: 'The dimension value',
+      type: 'string',
+    },
+    hostname: {
+      description: 'Hostname (only populated when dimension is "pathname", otherwise empty)',
+      type: 'string',
+    },
+    count: {
+      description: 'Number of bot requests for this value',
+      type: 'number',
+    },
+    percentage: {
+      description: 'Share of bot requests for this value',
+      type: 'number',
+      typeDescription: 'Range: 0-100',
+    },
+  }}
+/>
+
+</div>
+<div className="flex flex-col gap-4">
+
+<Tabs items={['cURL', 'JavaScript', 'Python', 'PHP', 'Ruby', 'Go', 'Rust', 'Java', '.NET']}>
+  <Tab value="cURL">
+```bash title="Request"
+curl -X GET "https://app.rybbit.io/api/sites/123/bots/by-dimension?dimension=browser&start_date=2024-01-01&end_date=2024-01-31&time_zone=America/New_York" \
+  -H "Authorization: Bearer your_api_key_here"
+```
+  </Tab>
+  <Tab value="JavaScript">
+```javascript title="Request"
+const response = await fetch(
+  'https://app.rybbit.io/api/sites/123/bots/by-dimension?dimension=browser&start_date=2024-01-01&end_date=2024-01-31&time_zone=America/New_York',
+  {
+    headers: {
+      'Authorization': 'Bearer your_api_key_here'
+    }
+  }
+);
+
+const data = await response.json();
+```
+  </Tab>
+  <Tab value="Python">
+```python title="Request"
+import requests
+
+response = requests.get(
+    'https://app.rybbit.io/api/sites/123/bots/by-dimension',
+    params={
+        'dimension': 'browser',
+        'start_date': '2024-01-01',
+        'end_date': '2024-01-31',
+        'time_zone': 'America/New_York'
+    },
+    headers={
+        'Authorization': 'Bearer your_api_key_here'
+    }
+)
+
+data = response.json()
+```
+  </Tab>
+  <Tab value="PHP">
+```php title="Request"
+$ch = curl_init();
+curl_setopt($ch, CURLOPT_URL, 'https://app.rybbit.io/api/sites/123/bots/by-dimension?dimension=browser&start_date=2024-01-01&end_date=2024-01-31&time_zone=America/New_York');
+curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+curl_setopt($ch, CURLOPT_HTTPHEADER, [
+    'Authorization: Bearer your_api_key_here'
+]);
+
+$response = curl_exec($ch);
+curl_close($ch);
+
+$data = json_decode($response, true);
+```
+  </Tab>
+  <Tab value="Ruby">
+```ruby title="Request"
+require 'net/http'
+require 'json'
+
+uri = URI('https://app.rybbit.io/api/sites/123/bots/by-dimension?dimension=browser&start_date=2024-01-01&end_date=2024-01-31&time_zone=America/New_York')
+req = Net::HTTP::Get.new(uri)
+req['Authorization'] = 'Bearer your_api_key_here'
+
+res = Net::HTTP.start(uri.hostname, uri.port, use_ssl: true) { |http| http.request(req) }
+data = JSON.parse(res.body)
+```
+  </Tab>
+  <Tab value="Go">
+```go title="Request"
+req, _ := http.NewRequest("GET", "https://app.rybbit.io/api/sites/123/bots/by-dimension?dimension=browser&start_date=2024-01-01&end_date=2024-01-31&time_zone=America/New_York", nil)
+req.Header.Set("Authorization", "Bearer your_api_key_here")
+
+client := &http.Client{}
+resp, _ := client.Do(req)
+defer resp.Body.Close()
+
+var data map[string]interface{}
+json.NewDecoder(resp.Body).Decode(&data)
+```
+  </Tab>
+  <Tab value="Rust">
+```rust title="Request"
+let client = reqwest::Client::new();
+let res = client
+    .get("https://app.rybbit.io/api/sites/123/bots/by-dimension?dimension=browser&start_date=2024-01-01&end_date=2024-01-31&time_zone=America/New_York")
+    .header("Authorization", "Bearer your_api_key_here")
+    .send()
+    .await?;
+
+let data: serde_json::Value = res.json().await?;
+```
+  </Tab>
+  <Tab value="Java">
+```java title="Request"
+HttpClient client = HttpClient.newHttpClient();
+HttpRequest request = HttpRequest.newBuilder()
+    .uri(URI.create("https://app.rybbit.io/api/sites/123/bots/by-dimension?dimension=browser&start_date=2024-01-01&end_date=2024-01-31&time_zone=America/New_York"))
+    .header("Authorization", "Bearer your_api_key_here")
+    .GET()
+    .build();
+
+HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+```
+  </Tab>
+  <Tab value=".NET">
+```csharp title="Request"
+using var client = new HttpClient();
+client.DefaultRequestHeaders.Add("Authorization", "Bearer your_api_key_here");
+
+var response = await client.GetAsync("https://app.rybbit.io/api/sites/123/bots/by-dimension?dimension=browser&start_date=2024-01-01&end_date=2024-01-31&time_zone=America/New_York");
+var data = await response.Content.ReadAsStringAsync();
+```
+  </Tab>
+</Tabs>
+
+```json title="Response"
+{
+  "data": {
+    "data": [
+      { "value": "Chrome", "hostname": "", "count": 980, "percentage": 53.26 },
+      { "value": "HeadlessChrome", "hostname": "", "count": 540, "percentage": 29.35 }
+    ],
+    "totalCount": 12
+  }
+}
+```
+
+</div>
+</div>

@@ -1,90 +1,88 @@
-import { and, eq, lt } from "drizzle-orm";
 import { nanoid } from "nanoid";
-import * as cron from "node-cron";
-import { db } from "../../db/postgres/postgres.js";
-import { activeSessions } from "../../db/postgres/schema.js";
 import { createServiceLogger } from "../../lib/logger/logger.js";
+import { sessionRedis, sessionGetOrCreate } from "../../db/redis/redis.js";
 
-class SessionsService {
-  private cleanupTask: cron.ScheduledTask | null = null;
+// Sessions expire after this much inactivity. Redis refreshes the TTL on every
+// event (sliding window) and evicts the key automatically once it lapses — there
+// is no table to scan and no cleanup cron to run.
+const SESSION_TTL_MS = 30 * 60 * 1000;
+
+// Bounded in-process mirror of the last session id Redis handed back for each
+// (siteId, userId). It exists purely so a transient Redis failure can reuse the
+// user's *real* session id instead of inventing a divergent one — otherwise a
+// single timed-out command fractures one visitor into multiple sessions (events
+// that reached Redis keep the real id while the failed event mints a new one).
+// Entries slide on every touch and the map is capped LRU-style, so memory stays
+// bounded by the active-user count.
+const FALLBACK_CACHE_MAX = 50_000;
+
+interface CachedSession {
+  sessionId: string;
+  expiresAt: number;
+}
+
+export class SessionsService {
   private logger = createServiceLogger("sessions");
+  private fallbackCache = new Map<string, CachedSession>();
 
-  constructor() {}
-
-  private initializeCleanupCron() {
-    this.cleanupTask = cron.schedule(
-      "* * * * *",
-      async () => {
-        try {
-          const deletedCount = await this.cleanupOldSessions();
-          // Uncomment for debugging
-          this.logger.debug(`Cleaned up ${deletedCount} expired sessions`);
-        } catch (error) {
-          this.logger.error(error as Error, "Error during session cleanup");
-        }
-      },
-      { timezone: "UTC" }
-    );
-
-    this.logger.info("Session cleanup cron initialized (runs every minute)");
-  }
-  async getExistingSession(userId: string, siteId: number) {
-    const [existingSession] = await db
-      .select()
-      .from(activeSessions)
-      .where(and(eq(activeSessions.userId, userId), eq(activeSessions.siteId, siteId)))
-      .limit(1);
-
-    return existingSession || null;
+  private getSessionKey(userId: string, siteId: number): string {
+    return `session:${siteId}:${userId}`;
   }
 
+  /**
+   * Get the active session id for a (userId, siteId) pair, creating one if none
+   * exists, and refresh its sliding 30-minute TTL. Backed by Redis, with an
+   * in-process fallback so a Redis blip never drops — or splits — a session.
+   */
   async updateSession({ userId, siteId }: { userId: string; siteId: number }): Promise<{ sessionId: string }> {
-    const existingSession = await this.getExistingSession(userId, siteId);
+    const key = this.getSessionKey(userId, siteId);
+    const candidate = nanoid(14);
 
-    if (existingSession) {
-      await db
-        .update(activeSessions)
-        .set({
-          lastActivity: new Date(),
-        })
-        .where(eq(activeSessions.sessionId, existingSession.sessionId));
-      return { sessionId: existingSession.sessionId };
+    try {
+      const sessionId = await sessionGetOrCreate(key, candidate, SESSION_TTL_MS);
+      this.rememberSession(key, sessionId);
+      return { sessionId };
+    } catch (error) {
+      // A Redis blip must never drop ingestion — and must never split a session.
+      // Reuse the last id we handed this user (kept alive in-process on a sliding
+      // window) so their events stay glued together until Redis recovers; only
+      // mint a fresh id if we've genuinely never seen them on this worker.
+      this.logger.error(error as Error, "Redis session lookup failed; using in-process fallback session id");
+      return { sessionId: this.fallbackSessionId(key, candidate) };
     }
-
-    const insertData = {
-      sessionId: nanoid(14),
-      siteId,
-      userId,
-      startTime: new Date(),
-      lastActivity: new Date(),
-    };
-
-    await db.insert(activeSessions).values(insertData);
-    return { sessionId: insertData.sessionId };
   }
 
-  async cleanupOldSessions(): Promise<number> {
-    // Delete sessions older than 30 minutes
-    const thirtyMinutesAgo = new Date(Date.now() - 30 * 60 * 1000);
-
-    const deletedSessions = await db
-      .delete(activeSessions)
-      .where(lt(activeSessions.lastActivity, thirtyMinutesAgo))
-      .returning();
-
-    // this.logger.debug(`Cleaned up ${deletedSessions.length} sessions`);
-    return deletedSessions.length;
+  /** Cache the resolved session id with a fresh sliding expiry, LRU-bounded. */
+  private rememberSession(key: string, sessionId: string): void {
+    // Re-insert to mark as most-recently-used (Map preserves insertion order).
+    this.fallbackCache.delete(key);
+    this.fallbackCache.set(key, { sessionId, expiresAt: Date.now() + SESSION_TTL_MS });
+    if (this.fallbackCache.size > FALLBACK_CACHE_MAX) {
+      const oldest = this.fallbackCache.keys().next().value;
+      if (oldest !== undefined) this.fallbackCache.delete(oldest);
+    }
   }
 
-  // Method to stop the cleanup cron job (useful for graceful shutdown)
-  startCleanupCron() {
-    this.initializeCleanupCron();
+  /**
+   * Resolve a session id without Redis. Reuses the last id seen for this user if
+   * it's still within the sliding window (refreshing it), otherwise adopts
+   * `candidate` as a new session. The result is stored back so subsequent events
+   * during the same outage keep the same id — a per-worker stand-in for Redis
+   * that stays stable across the 30-minute boundary instead of resetting on it.
+   */
+  private fallbackSessionId(key: string, candidate: string): string {
+    const cached = this.fallbackCache.get(key);
+    const sessionId = cached && cached.expiresAt > Date.now() ? cached.sessionId : candidate;
+    this.rememberSession(key, sessionId);
+    return sessionId;
   }
 
-  stopCleanupCron() {
-    if (this.cleanupTask) {
-      this.cleanupTask.stop();
-      this.logger.info("Session cleanup cron stopped");
+  /** Close the dedicated session Redis connection during graceful shutdown. */
+  async close(): Promise<void> {
+    try {
+      await sessionRedis.quit();
+    } catch (error) {
+      this.logger.error(error as Error, "Error closing Redis connection");
     }
   }
 }

@@ -46,7 +46,6 @@ import {
   SiVk,
   SiBluesky,
   SiLemmy,
-  SiSlack,
   SiMastodon,
   SiFarcaster,
   SiTelegram,
@@ -232,7 +231,7 @@ const platformIconMap: Record<string, any> = {
   vk: SiVk,
   bluesky: SiBluesky,
   lemmy: SiLemmy,
-  slack: SiSlack,
+  slack: MessageCircle, // Slack removed from simple-icons, using Lucide
   mastodon: SiMastodon,
   warpcast: SiFarcaster,
   telegram: SiTelegram,

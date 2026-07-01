@@ -29,7 +29,8 @@ export const STANDARD_FEATURES = [
   "User profiles",
   "Retention",
   "Sessions",
-  "3D globe view"
+  "3D globe view",
+  "3 year data retention",
 ];
 
 export const PRO_FEATURES = [

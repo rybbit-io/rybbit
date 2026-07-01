@@ -1,7 +1,6 @@
 "use client";
 
 import { useExtracted } from "next-intl";
-import NumberFlow from "@number-flow/react";
 import { BookOpen, ChevronDown, ChevronRight, Info } from "lucide-react";
 import { memo, useState } from "react";
 import { EventName } from "../../../../api/analytics/endpoints";
@@ -178,7 +177,10 @@ export function EventList({ events, isLoading, size = "small" }: EventListProps)
                   <div className="hidden group-hover:block text-neutral-500 dark:text-neutral-400">
                     {Math.round(percentage * 10) / 10}%
                   </div>
-                  <NumberFlow respectMotionPreference={false} value={event.count} format={{ notation: "compact" }} />
+                  <span className="group-hover:hidden">
+                    {event.count.toLocaleString(undefined, { notation: "compact" })}
+                  </span>
+                  <span className="hidden group-hover:inline">{event.count.toLocaleString()}</span>
                 </div>
               </div>
             </div>

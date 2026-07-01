@@ -1,4 +1,5 @@
 import { sql } from "drizzle-orm";
+import type { DashboardConfig } from "@rybbit/shared";
 import {
   boolean,
   check,
@@ -64,40 +65,52 @@ export const verification = pgTable("verification", {
 });
 
 // Sites table
-export const sites = pgTable("sites", {
-  id: text("id").$defaultFn(() => sql`encode(gen_random_bytes(6), 'hex')`),
-  // deprecated - keeping as primary key for backwards compatibility
-  siteId: serial("site_id").primaryKey().notNull(),
-  name: text("name").notNull(),
-  domain: text("domain").notNull(),
-  type: text("type").default("web").notNull(), // 'web', 'app'
-  createdAt: timestamp("created_at", { mode: "string" }).defaultNow(),
-  updatedAt: timestamp("updated_at", { mode: "string" }).defaultNow(),
-  createdBy: text("created_by").references(() => user.id, { onDelete: "set null" }),
-  organizationId: text("organization_id").references(() => organization.id),
-  public: boolean().default(false),
-  saltUserIds: boolean().default(false),
-  blockBots: boolean().default(true).notNull(),
-  excludedIPs: jsonb("excluded_ips").default([]), // Array of IP addresses/ranges to exclude
-  excludedCountries: jsonb("excluded_countries").default([]), // Array of ISO country codes to exclude (e.g., ["US", "GB"])
-  sessionReplay: boolean().default(false),
-  webVitals: boolean().default(false),
-  trackErrors: boolean().default(false),
-  trackOutbound: boolean().default(true),
-  trackUrlParams: boolean().default(true),
-  trackInitialPageView: boolean().default(true),
-  trackSpaNavigation: boolean().default(true),
-  trackIp: boolean().default(false),
-  trackButtonClicks: boolean().default(false),
-  trackCopy: boolean().default(false),
-  trackFormInteractions: boolean().default(false),
-  apiKey: text("api_key"), // Format: rb_{64_hex_chars} = 67 chars total
-  privateLinkKey: text("private_link_key"),
-  tags: jsonb("tags").default([]).$type<string[]>(),
-  icon: bytea("icon"),
-});
+export const sites = pgTable(
+  "sites",
+  {
+    id: text("id").$defaultFn(() => sql`encode(gen_random_bytes(6), 'hex')`),
+    // deprecated - keeping as primary key for backwards compatibility
+    siteId: serial("site_id").primaryKey().notNull(),
+    name: text("name").notNull(),
+    type: text("type").$type<"web" | "mobile" | null>(),
+    domain: text("domain").notNull(),
+    createdAt: timestamp("created_at", { mode: "string" }).defaultNow(),
+    updatedAt: timestamp("updated_at", { mode: "string" }).defaultNow(),
+    createdBy: text("created_by").references(() => user.id, { onDelete: "set null" }),
+    organizationId: text("organization_id").references(() => organization.id),
+    public: boolean().default(false),
+    embedEnabled: boolean("embed_enabled").default(false),
+    saltUserIds: boolean().default(false),
+    blockBots: boolean().default(true).notNull(),
+    excludedIPs: jsonb("excluded_ips").default([]), // Array of IP addresses/ranges to exclude
+    excludedCountries: jsonb("excluded_countries").default([]), // Array of ISO country codes to exclude (e.g., ["US", "GB"])
+    excludedPaths: jsonb("excluded_paths").default([]).$type<string[]>(), // Array of pathname glob patterns to exclude (e.g., ["/admin/*", "/preview"])
+    excludedHostnames: jsonb("excluded_hostnames").default([]).$type<string[]>(), // Array of hostname glob patterns to exclude (e.g., ["localhost", "*.vercel.app"])
+    excludedUserAgents: jsonb("excluded_user_agents").default([]).$type<string[]>(), // Array of case-insensitive user-agent substrings to exclude (e.g., ["HeadlessChrome"])
+    sessionReplay: boolean().default(false),
+    webVitals: boolean().default(false),
+    trackErrors: boolean().default(false),
+    trackOutbound: boolean().default(true),
+    trackUrlParams: boolean().default(true),
+    trackInitialPageView: boolean().default(true),
+    trackSpaNavigation: boolean().default(true),
+    trackIp: boolean().default(false),
+    trackButtonClicks: boolean().default(false),
+    trackCopy: boolean().default(false),
+    trackFormInteractions: boolean().default(false),
+    apiKey: text("api_key"), // Format: rb_{64_hex_chars} = 67 chars total
+    privateLinkKey: text("private_link_key"),
+    tags: jsonb("tags").default([]).$type<string[]>(),
+    icon: bytea("icon"),
+  },
+  table => [check("sites_type_check", sql`${table.type} IS NULL OR ${table.type} IN ('web', 'mobile')`)]
+);
 
-// Active sessions table
+// Active sessions table.
+// DEPRECATED: session tracking moved to Redis (see services/sessions/sessionsService.ts).
+// No longer read or written by the app; kept so existing deployments stay drift-free.
+// Drop it once Redis-backed sessions are verified in production:
+//   DROP TABLE IF EXISTS active_sessions;
 export const activeSessions = pgTable("active_sessions", {
   sessionId: text("session_id").primaryKey().notNull(),
   siteId: integer("site_id"),
@@ -111,6 +124,16 @@ export const funnels = pgTable("funnels", {
   siteId: integer("site_id").references(() => sites.siteId, { onDelete: "cascade" }),
   userId: text("user_id").references(() => user.id, { onDelete: "set null" }),
   data: jsonb(),
+  createdAt: timestamp("created_at", { mode: "string" }).defaultNow(),
+  updatedAt: timestamp("updated_at", { mode: "string" }).defaultNow(),
+});
+
+export const dashboards = pgTable("dashboards", {
+  dashboardId: serial("dashboard_id").primaryKey().notNull(),
+  siteId: integer("site_id").references(() => sites.siteId, { onDelete: "cascade" }),
+  userId: text("user_id").references(() => user.id, { onDelete: "set null" }),
+  name: text("name").notNull(),
+  config: jsonb("config").notNull().$type<DashboardConfig>().default({ cards: [] }),
   createdAt: timestamp("created_at", { mode: "string" }).defaultNow(),
   updatedAt: timestamp("updated_at", { mode: "string" }).defaultNow(),
 });
@@ -329,6 +352,114 @@ export const goals = pgTable(
       foreignColumns: [sites.siteId],
       name: "goals_site_id_sites_site_id_fk",
     }).onDelete("cascade"),
+  ]
+);
+
+export type FeatureFlagType = "boolean" | "multivariate" | "remote_config";
+export type FeatureFlagRuntime = "client" | "server" | "both";
+export type ExperimentStatus = "draft" | "running" | "paused" | "completed";
+
+export type FeatureFlagPayloadValue =
+  | string
+  | number
+  | boolean
+  | null
+  | FeatureFlagPayloadValue[]
+  | { [key: string]: FeatureFlagPayloadValue };
+
+export type FeatureFlagRule = {
+  field:
+    | "hostname"
+    | "pathname"
+    | "query"
+    | "referrer"
+    | "language"
+    | "country"
+    | "region"
+    | "city"
+    | "device_type"
+    | "user_id"
+    | "trait";
+  key?: string;
+  operator: "equals" | "not_equals" | "contains" | "starts_with" | "ends_with" | "regex";
+  value: string | number | boolean | Array<string | number | boolean>;
+};
+
+export type FeatureFlagVariant = {
+  key: string;
+  name?: string;
+  rolloutPercentage: number;
+  payload?: FeatureFlagPayloadValue;
+};
+
+export type FeatureFlagConditionSet = {
+  name?: string;
+  rules: FeatureFlagRule[];
+  rolloutPercentage?: number;
+  variants?: FeatureFlagVariant[];
+  payload?: FeatureFlagPayloadValue;
+};
+
+export const featureFlags = pgTable(
+  "feature_flags",
+  {
+    flagId: serial("flag_id").primaryKey().notNull(),
+    siteId: integer("site_id")
+      .notNull()
+      .references(() => sites.siteId, { onDelete: "cascade" }),
+    key: text("key").notNull(),
+    description: text("description"),
+    enabled: boolean("enabled").default(false).notNull(),
+    runtime: text("runtime").default("client").notNull().$type<FeatureFlagRuntime>(),
+    flagType: text("flag_type").default("boolean").notNull().$type<FeatureFlagType>(),
+    payload: jsonb("payload").$type<FeatureFlagPayloadValue>(),
+    variants: jsonb("variants").default([]).notNull().$type<FeatureFlagVariant[]>(),
+    rolloutPercentage: integer("rollout_percentage").default(100).notNull(),
+    rules: jsonb("rules").default([]).notNull().$type<FeatureFlagRule[]>(),
+    conditionSets: jsonb("condition_sets").default([]).notNull().$type<FeatureFlagConditionSet[]>(),
+    salt: text("salt")
+      .default(sql`md5(random()::text || clock_timestamp()::text)`)
+      .notNull(),
+    version: integer("version").default(1).notNull(),
+    createdAt: timestamp("created_at", { mode: "string" }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { mode: "string" }).defaultNow().notNull(),
+  },
+  table => [
+    unique("feature_flags_site_key_unique").on(table.siteId, table.key),
+    index("feature_flags_site_idx").on(table.siteId),
+    check("feature_flags_rollout_check", sql`rollout_percentage >= 0 AND rollout_percentage <= 100`),
+    check("feature_flags_runtime_check", sql`runtime IN ('client', 'server', 'both')`),
+    check("feature_flags_type_check", sql`flag_type IN ('boolean', 'multivariate', 'remote_config')`),
+  ]
+);
+
+export const experiments = pgTable(
+  "experiments",
+  {
+    experimentId: serial("experiment_id").primaryKey().notNull(),
+    siteId: integer("site_id")
+      .notNull()
+      .references(() => sites.siteId, { onDelete: "cascade" }),
+    featureFlagId: integer("feature_flag_id")
+      .notNull()
+      .references(() => featureFlags.flagId, { onDelete: "cascade" }),
+    primaryGoalId: integer("primary_goal_id").references(() => goals.goalId, { onDelete: "set null" }),
+    name: text("name").notNull(),
+    description: text("description"),
+    hypothesis: text("hypothesis"),
+    status: text("status").default("draft").notNull().$type<ExperimentStatus>(),
+    winningVariant: text("winning_variant"),
+    startedAt: timestamp("started_at", { mode: "string" }),
+    endedAt: timestamp("ended_at", { mode: "string" }),
+    createdAt: timestamp("created_at", { mode: "string" }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { mode: "string" }).defaultNow().notNull(),
+  },
+  table => [
+    unique("experiments_site_flag_unique").on(table.siteId, table.featureFlagId),
+    index("experiments_site_idx").on(table.siteId),
+    index("experiments_feature_flag_idx").on(table.featureFlagId),
+    index("experiments_primary_goal_idx").on(table.primaryGoalId),
+    check("experiments_status_check", sql`status IN ('draft', 'running', 'paused', 'completed')`),
   ]
 );
 

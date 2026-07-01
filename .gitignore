@@ -48,3 +48,9 @@ coverage/
 .claude/
 
 .agents/
+
+.deepsec/
+
+.github/
+
+.impeccable/critique

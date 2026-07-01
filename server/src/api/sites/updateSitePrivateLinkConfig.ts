@@ -44,7 +44,7 @@ export async function updateSitePrivateLinkConfig(request: FastifyRequest, reply
 
     // Update the site config cache
     if (action === "generate_private_link_key" || action === "revoke_private_link_key") {
-      siteConfig.updateConfig(parsedSiteId, { privateLinkKey: updateData.privateLinkKey });
+      await siteConfig.updateConfig(parsedSiteId, { privateLinkKey: updateData.privateLinkKey });
     }
 
     return reply.send({

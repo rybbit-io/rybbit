@@ -43,7 +43,7 @@ export function SessionInfoTab({
   const { getRegionName } = useGetRegionName();
   const t = useExtracted();
   const { data: siteMetadata } = useGetSite();
-  const isApp = siteMetadata?.type === "app";
+  const isApp = siteMetadata?.type === "mobile";
   const isIdentified = !!session.identified_user_id;
 
   return (

@@ -7,7 +7,6 @@ import {
 } from "../../../../../api/analytics/endpoints";
 import { getStartAndEndDate } from "../../../../../api/utils";
 import { fetchGSCConnectionStatus, fetchGSCData, GSCDimension } from "../../../../../api/gsc/endpoints";
-import { IS_CLOUD } from "../../../../../lib/const";
 import { CSVFile, downloadZip, formatDateForFilename } from "../../../../../lib/export";
 import { Time } from "../../../../../components/DateSelector/types";
 import { Filter } from "@rybbit/shared";
@@ -48,18 +47,6 @@ const COUNTRY_METRICS: { param: FilterParameter; filename: string }[] = [
   { param: "timezone", filename: "timezones.csv" },
 ];
 
-const NETWORK_METRICS: { param: FilterParameter; filename: string }[] = [
-  { param: "vpn", filename: "vpn.csv" },
-  { param: "crawler", filename: "crawlers.csv" },
-  { param: "datacenter", filename: "datacenters.csv" },
-  { param: "company", filename: "companies.csv" },
-  { param: "company_type", filename: "company-types.csv" },
-  { param: "company_domain", filename: "company-domains.csv" },
-  { param: "asn_org", filename: "asn-orgs.csv" },
-  { param: "asn_type", filename: "asn-types.csv" },
-  { param: "asn_domain", filename: "asn-domains.csv" },
-];
-
 const GSC_DIMENSIONS: { dimension: GSCDimension; filename: string }[] = [
   { dimension: "query", filename: "gsc-queries.csv" },
   { dimension: "page", filename: "gsc-pages.csv" },
@@ -92,7 +79,6 @@ export async function exportCsv({ site, time, filters, timeZone }: ExportCsvPara
     ...PAGE_METRICS,
     ...DEVICE_METRICS,
     ...COUNTRY_METRICS,
-    ...(IS_CLOUD ? NETWORK_METRICS : []),
   ];
 
   const metricPromises = allMetrics.map(async ({ param, filename }) => {

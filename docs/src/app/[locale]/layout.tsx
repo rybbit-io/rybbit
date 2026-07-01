@@ -8,18 +8,16 @@ import { i18n } from '@/lib/i18n';
 import type { ReactNode } from 'react';
 
 const { provider } = defineI18nUI(i18n, {
-  translations: {
-    en: { displayName: 'English' },
-    zh: { displayName: '中文' },
-    de: { displayName: 'Deutsch' },
-    fr: { displayName: 'Français' },
-    es: { displayName: 'Español' },
-    pl: { displayName: 'Polski' },
-    it: { displayName: 'Italiano' },
-    ko: { displayName: '한국어' },
-    pt: { displayName: 'Português' },
-    ja: { displayName: '日本語' },
-  },
+  en: { displayName: 'English' },
+  zh: { displayName: '中文' },
+  de: { displayName: 'Deutsch' },
+  fr: { displayName: 'Français' },
+  es: { displayName: 'Español' },
+  pl: { displayName: 'Polski' },
+  it: { displayName: 'Italiano' },
+  ko: { displayName: '한국어' },
+  pt: { displayName: 'Português' },
+  ja: { displayName: '日本語' },
 });
 
 export function generateStaticParams() {
@@ -47,6 +45,7 @@ export default async function LocaleLayout({
           enableSystem: true,
         }}
         i18n={provider(locale)}
+        search={{ options: { type: 'static' } }}
       >
         {children}
       </RootProvider>

@@ -2,6 +2,7 @@ export interface ScriptConfig {
   namespace: string;
   analyticsHost: string;
   siteId: string;
+  visitorId: string;
   debounceDuration: number;
   autoTrackPageview: boolean;
   autoTrackSpa: boolean;
@@ -31,6 +32,20 @@ export interface ScriptConfig {
   trackCopy: boolean;
   trackFormInteractions: boolean;
   tag: string;
+  featureFlags: Record<string, FeatureFlagAssignment>;
+}
+
+export interface FeatureFlagAssignment {
+  key: string;
+  value: unknown;
+  flagType: "boolean" | "multivariate" | "remote_config";
+  payload?: unknown;
+  variant?: string;
+  conditionSet?: string;
+  version: number;
+  reason: "disabled" | "target_mismatch" | "rollout" | "variant" | "remote_config" | "fallthrough";
+  matched: boolean;
+  rolloutPercentage: number;
 }
 
 export interface BasePayload {
@@ -45,11 +60,22 @@ export interface BasePayload {
   referrer: string;
   user_id?: string;
   tag?: string;
-  _bs?: number; // Client-side bot detection score
+  feature_flags?: Record<string, string>;
+  _bs?: number; // Client-side weighted bot detection score
+  _bsm?: number; // Client-side bot detection signal bitmask
 }
 
 export interface TrackingPayload extends BasePayload {
-  type: "pageview" | "custom_event" | "outbound" | "performance" | "error" | "button_click" | "copy" | "form_submit" | "input_change";
+  type:
+    | "pageview"
+    | "custom_event"
+    | "outbound"
+    | "performance"
+    | "error"
+    | "button_click"
+    | "copy"
+    | "form_submit"
+    | "input_change";
   event_name?: string;
   properties?: string;
   // Web vitals metrics
@@ -115,6 +141,11 @@ export interface RybbitAPI {
   setTraits: (traits: Record<string, unknown>) => void;
   clearUserId: () => void;
   getUserId: () => string | null;
+  flag: <T = unknown>(key: string, fallback?: T) => T;
+  flagPayload: <T = unknown>(key: string, fallback?: T) => T;
+  flags: () => Record<string, unknown>;
+  flagPayloads: () => Record<string, unknown>;
+  onReady: (callback: (api: RybbitAPI) => void) => void;
   startSessionReplay: () => void;
   stopSessionReplay: () => void;
   isSessionReplayActive: () => boolean;

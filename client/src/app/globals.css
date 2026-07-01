@@ -559,3 +559,129 @@
     scrollbar-color: hsl(0 0% 40%) hsl(0 0% 7%);
   }
 }
+
+/* react-grid-layout — dashboard editor surface */
+.react-grid-item.react-grid-placeholder {
+  background: hsl(160 84% 39% / 0.12);
+  border: 1px dashed hsl(160 84% 39% / 0.55);
+  border-radius: var(--radius);
+  opacity: 1;
+  transition-duration: 120ms;
+}
+
+/* Hovered cards lift above neighbors so chart tooltips overflowing the card
+   edge are not painted under adjacent grid items (each item is its own
+   stacking context via its transform). */
+.react-grid-item:hover {
+  z-index: 5;
+}
+
+.react-grid-item.react-draggable-dragging,
+.react-grid-item.resizing {
+  z-index: 30;
+}
+
+.react-grid-item.react-draggable-dragging {
+  cursor: grabbing;
+}
+
+/* Resize handle: a single bottom-right triangular tab (Grafana-style), shown
+   while editing. The default faint diagonal-lines icon is dropped. */
+.react-grid-item > .react-resizable-handle {
+  width: 20px;
+  height: 20px;
+  background-image: none;
+  opacity: 0.7;
+  transition: opacity 150ms ease;
+}
+
+.react-grid-item:hover > .react-resizable-handle {
+  opacity: 1;
+}
+
+.react-grid-item > .react-resizable-handle-se::after {
+  content: "";
+  position: absolute;
+  right: 3px;
+  bottom: 3px;
+  width: 11px;
+  height: 11px;
+  background: hsl(160 84% 39%);
+  clip-path: polygon(100% 0, 100% 100%, 0 100%);
+  transition: background 150ms ease;
+}
+
+.react-grid-item:hover > .react-resizable-handle-se::after {
+  background: hsl(160 84% 45%);
+}
+
+/*
+  ---break---
+*/
+:root {
+  --chart-1: oklch(0.32 0 none);
+  --chart-2: oklch(0.41 0 none);
+  --chart-3: oklch(0.54 0 none);
+  --chart-4: oklch(0.71 0 none);
+  --chart-5: oklch(0.89 0 none);
+  --chart-background: oklch(1 0 0);
+  --chart-foreground: oklch(0.145 0.004 285);
+  --chart-foreground-muted: oklch(0.55 0.014 260);
+  --chart-line-primary: var(--chart-1);
+  --chart-line-secondary: var(--chart-2);
+  --chart-crosshair: oklch(0.4 0.1828 274.34);
+  --chart-grid: oklch(0.9 0 0);
+  --chart-tooltip-background: oklch(0.21 0.006 285 / 0.8);
+  --chart-tooltip-foreground: oklch(0.985 0 0);
+  --chart-tooltip-muted: oklch(0.65 0.01 260);
+  --chart-marker-background: oklch(0.97 0.005 260);
+  --chart-marker-border: oklch(0.85 0.01 260);
+  --chart-marker-foreground: oklch(0.3 0.01 260);
+  --chart-ring-background: oklch(0.9 0.005 260 / 0.25);
+  --chart-label: oklch(0.45 0.01 260);
+}
+/*
+  ---break---
+*/
+.dark {
+  --chart-1: oklch(1 0 none);
+  --chart-2: oklch(0.73 0 none);
+  --chart-3: oklch(0.51 0 none);
+  --chart-4: oklch(0.39 0 none);
+  --chart-5: oklch(0.32 0 none);
+  --chart-background: oklch(0.145 0 0);
+  --chart-foreground: oklch(0.45 0 0);
+  --chart-foreground-muted: oklch(0.65 0.01 260);
+  --chart-crosshair: oklch(0.45 0 0);
+  --chart-grid: oklch(0.25 0 0);
+  --chart-marker-background: oklch(0.25 0.01 260);
+  --chart-marker-border: oklch(0.4 0.01 260);
+  --chart-marker-foreground: oklch(0.9 0 0);
+  --chart-ring-background: oklch(0.35 0.01 260 / 0.25);
+  --chart-label: oklch(0.75 0.01 260);
+}
+/*
+  ---break---
+*/
+@theme inline {
+  --color-chart-1: var(----chart-1);
+  --color-chart-2: var(----chart-2);
+  --color-chart-3: var(----chart-3);
+  --color-chart-4: var(----chart-4);
+  --color-chart-5: var(----chart-5);
+  --color-chart-background: var(----chart-background);
+  --color-chart-foreground: var(----chart-foreground);
+  --color-chart-foreground-muted: var(----chart-foreground-muted);
+  --chart-line-primary: var(----chart-line-primary);
+  --chart-line-secondary: var(----chart-line-secondary);
+  --color-chart-crosshair: var(----chart-crosshair);
+  --color-chart-grid: var(----chart-grid);
+  --color-chart-tooltip-background: var(----chart-tooltip-background);
+  --color-chart-tooltip-foreground: var(----chart-tooltip-foreground);
+  --color-chart-tooltip-muted: var(----chart-tooltip-muted);
+  --color-chart-marker-background: var(----chart-marker-background);
+  --color-chart-marker-border: var(----chart-marker-border);
+  --color-chart-marker-foreground: var(----chart-marker-foreground);
+  --color-chart-ring-background: var(----chart-ring-background);
+  --color-chart-label: var(----chart-label);
+}

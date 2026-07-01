@@ -1,11 +1,11 @@
-import { Filter } from "@rybbit/shared";
+import { Filter, FilterParameter, FilterType } from "@rybbit/shared";
 import { DateTime } from "luxon";
 import { create } from "zustand";
 import { EndpointConfig } from "../utils/endpointConfig";
 
 interface PlaygroundFilter {
-  parameter: string;
-  operator: string;
+  parameter: FilterParameter;
+  operator: FilterType;
   value: string;
 }
 
@@ -17,9 +17,13 @@ interface PlaygroundState {
   // Common parameters (independent from store.ts)
   startDate: string;
   endDate: string;
+  startTime: string;
+  endTime: string;
   timeZone: string;
   setStartDate: (date: string) => void;
   setEndDate: (date: string) => void;
+  setStartTime: (time: string) => void;
+  setEndTime: (time: string) => void;
   setTimeZone: (tz: string) => void;
 
   // Filters
@@ -74,14 +78,12 @@ const getToday = () => DateTime.now().toISODate() ?? "";
 export const usePlaygroundStore = create<PlaygroundState>((set, get) => ({
   // Selected endpoint
   selectedEndpoint: null,
-  setSelectedEndpoint: (endpoint) =>
+  setSelectedEndpoint: endpoint =>
     set({
       selectedEndpoint: endpoint,
       endpointParams: {},
       pathParams: {},
-      requestBody: endpoint?.requestBodyExample
-        ? JSON.stringify(endpoint.requestBodyExample, null, 2)
-        : "",
+      requestBody: endpoint?.requestBodyExample ? JSON.stringify(endpoint.requestBodyExample, null, 2) : "",
       response: null,
       responseError: null,
       responseTime: null,
@@ -90,26 +92,27 @@ export const usePlaygroundStore = create<PlaygroundState>((set, get) => ({
   // Common parameters
   startDate: getToday(),
   endDate: getToday(),
+  startTime: "",
+  endTime: "",
   timeZone: getDefaultTimezone(),
-  setStartDate: (date) => set({ startDate: date }),
-  setEndDate: (date) => set({ endDate: date }),
-  setTimeZone: (tz) => set({ timeZone: tz }),
+  setStartDate: date => set({ startDate: date }),
+  setEndDate: date => set({ endDate: date }),
+  setStartTime: time => set({ startTime: time }),
+  setEndTime: time => set({ endTime: time }),
+  setTimeZone: tz => set({ timeZone: tz }),
 
   // Filters
   filters: [],
   addFilter: () =>
-    set((state) => ({
-      filters: [
-        ...state.filters,
-        { parameter: "country", operator: "equals", value: "" },
-      ],
+    set(state => ({
+      filters: [...state.filters, { parameter: "country", operator: "equals", value: "" }],
     })),
   updateFilter: (index, filter) =>
-    set((state) => ({
+    set(state => ({
       filters: state.filters.map((f, i) => (i === index ? filter : f)),
     })),
-  removeFilter: (index) =>
-    set((state) => ({
+  removeFilter: index =>
+    set(state => ({
       filters: state.filters.filter((_, i) => i !== index),
     })),
   clearFilters: () => set({ filters: [] }),
@@ -117,18 +120,18 @@ export const usePlaygroundStore = create<PlaygroundState>((set, get) => ({
   getApiFilters: () => {
     const { filters } = get();
     return filters
-      .filter((f) => f.value.trim() !== "")
-      .map((f) => ({
-        parameter: f.parameter as Filter["parameter"],
-        type: f.operator as Filter["type"],
-        value: [f.value] as (string | number)[],
+      .filter(f => f.operator === "is_null" || f.operator === "is_not_null" || f.value.trim() !== "")
+      .map(f => ({
+        parameter: f.parameter,
+        type: f.operator,
+        value: f.operator === "is_null" || f.operator === "is_not_null" ? [] : ([f.value] as (string | number)[]),
       }));
   },
 
   // Endpoint params
   endpointParams: {},
   setEndpointParam: (key, value) =>
-    set((state) => ({
+    set(state => ({
       endpointParams: { ...state.endpointParams, [key]: value },
     })),
   clearEndpointParams: () => set({ endpointParams: {} }),
@@ -136,14 +139,14 @@ export const usePlaygroundStore = create<PlaygroundState>((set, get) => ({
   // Path params
   pathParams: {},
   setPathParam: (key, value) =>
-    set((state) => ({
+    set(state => ({
       pathParams: { ...state.pathParams, [key]: value },
     })),
   clearPathParams: () => set({ pathParams: {} }),
 
   // Request body
   requestBody: "",
-  setRequestBody: (body) => set({ requestBody: body }),
+  setRequestBody: body => set({ requestBody: body }),
 
   // Response
   response: null,
@@ -157,15 +160,14 @@ export const usePlaygroundStore = create<PlaygroundState>((set, get) => ({
       responseError: null,
       isLoading: false,
     }),
-  setResponseError: (error) =>
+  setResponseError: error =>
     set({
       responseError: error,
       response: null,
       isLoading: false,
     }),
-  setIsLoading: (loading) => set({ isLoading: loading }),
-  clearResponse: () =>
-    set({ response: null, responseError: null, responseTime: null }),
+  setIsLoading: loading => set({ isLoading: loading }),
+  clearResponse: () => set({ response: null, responseError: null, responseTime: null }),
 
   // Reset
   reset: () =>
@@ -173,6 +175,8 @@ export const usePlaygroundStore = create<PlaygroundState>((set, get) => ({
       selectedEndpoint: null,
       startDate: getToday(),
       endDate: getToday(),
+      startTime: "",
+      endTime: "",
       timeZone: getDefaultTimezone(),
       filters: [],
       endpointParams: {},
@@ -187,27 +191,50 @@ export const usePlaygroundStore = create<PlaygroundState>((set, get) => ({
 
 // Filter parameter options (hardcoded, no dynamic fetching)
 export const filterParameters = [
-  { value: "country", label: "Country" },
-  { value: "region", label: "Region" },
-  { value: "city", label: "City" },
-  { value: "browser", label: "Browser" },
-  { value: "operating_system", label: "Operating System" },
-  { value: "device_type", label: "Device Type" },
   { value: "pathname", label: "Path" },
+  { value: "page_title", label: "Page Title" },
+  { value: "querystring", label: "Query" },
+  { value: "hostname", label: "Hostname" },
+  { value: "user_id", label: "User ID" },
+  { value: "event_name", label: "Event Name" },
   { value: "referrer", label: "Referrer" },
-  { value: "utm_source", label: "UTM Source" },
-  { value: "utm_medium", label: "UTM Medium" },
-  { value: "utm_campaign", label: "UTM Campaign" },
   { value: "channel", label: "Channel" },
   { value: "entry_page", label: "Entry Page" },
   { value: "exit_page", label: "Exit Page" },
+  { value: "country", label: "Country" },
+  { value: "region", label: "Region" },
+  { value: "city", label: "City" },
+  { value: "device_type", label: "Device Type" },
+  { value: "operating_system", label: "Operating System" },
+  { value: "operating_system_version", label: "Operating System Version" },
+  { value: "browser", label: "Browser" },
+  { value: "browser_version", label: "Browser Version" },
   { value: "language", label: "Language" },
-];
+  { value: "dimensions", label: "Screen Dimensions" },
+  { value: "utm_source", label: "UTM Source" },
+  { value: "utm_medium", label: "UTM Medium" },
+  { value: "utm_campaign", label: "UTM Campaign" },
+  { value: "utm_term", label: "UTM Term" },
+  { value: "utm_content", label: "UTM Content" },
+  { value: "tag", label: "Tag" },
+  { value: "lat", label: "Lat" },
+  { value: "lon", label: "Lon" },
+  { value: "timezone", label: "Timezone" },
+] satisfies { value: FilterParameter; label: string }[];
 
 export const filterOperators = [
   { value: "equals", label: "Equals" },
   { value: "not_equals", label: "Not Equals" },
   { value: "contains", label: "Contains" },
   { value: "not_contains", label: "Not Contains" },
+  { value: "starts_with", label: "Starts With" },
+  { value: "ends_with", label: "Ends With" },
   { value: "regex", label: "Regex" },
-];
+  { value: "not_regex", label: "Not Regex" },
+  { value: "is_null", label: "Is Null" },
+  { value: "is_not_null", label: "Is Not Null" },
+  { value: "greater_than", label: "Greater Than" },
+  { value: "less_than", label: "Less Than" },
+  { value: "greater_than_or_equal", label: "Greater Than or Equal" },
+  { value: "less_than_or_equal", label: "Less Than or Equal" },
+] satisfies { value: FilterType; label: string }[];

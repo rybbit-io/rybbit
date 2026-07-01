@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { Tracker } from "./tracking.js";
 import { ScriptConfig } from "./types.js";
+import { resetBotScoreCacheForTests } from "./botSignals.js";
 
 // Mock fetch globally
 global.fetch = vi.fn();
@@ -11,6 +12,8 @@ describe("Tracker", () => {
   let mockLocation: any;
 
   beforeEach(() => {
+    resetBotScoreCacheForTests();
+
     // Reset fetch mock
     vi.mocked(global.fetch).mockReset();
     vi.mocked(global.fetch).mockResolvedValue({} as Response);
@@ -74,10 +77,16 @@ describe("Tracker", () => {
       writable: true,
     });
 
+    Object.defineProperty(HTMLCanvasElement.prototype, "getContext", {
+      value: vi.fn(() => null),
+      configurable: true,
+    });
+
     config = {
       namespace: "rybbit",
       analyticsHost: "https://analytics.example.com",
       siteId: "123",
+      visitorId: "visitor-123",
       debounceDuration: 0,
       autoTrackPageview: true,
       autoTrackSpa: true,
@@ -95,6 +104,7 @@ describe("Tracker", () => {
       trackCopy: false,
       trackFormInteractions: false,
       tag: "",
+      featureFlags: {},
     };
 
     tracker = new Tracker(config);
@@ -118,6 +128,8 @@ describe("Tracker", () => {
         language: "en-US",
         page_title: "Test Page",
         referrer: "https://google.com",
+        _bs: expect.any(Number),
+        _bsm: expect.any(Number),
       });
     });
 
@@ -173,6 +185,26 @@ describe("Tracker", () => {
       const payload = tracker.createBasePayload();
       expect(payload?.user_id).toBe("user-123");
     });
+
+    it("should include evaluated feature flags in payloads", () => {
+      config.featureFlags = {
+        new_checkout: {
+          key: "new_checkout",
+          value: true,
+          flagType: "boolean",
+          payload: { copy: "Try it now" },
+          version: 1,
+          reason: "rollout",
+          matched: true,
+          rolloutPercentage: 100,
+        },
+      };
+      tracker = new Tracker(config);
+
+      const payload = tracker.createBasePayload();
+      expect(payload?.feature_flags).toEqual({ new_checkout: "true" });
+      expect(tracker.getFeatureFlagPayload("new_checkout")).toEqual({ copy: "Try it now" });
+    });
   });
 
   describe("tracking methods", () => {
@@ -204,6 +236,36 @@ describe("Tracker", () => {
       const body = JSON.parse(vi.mocked(global.fetch).mock.calls[0][1]!.body as string);
       expect(body.event_name).toBe("button_click");
       expect(body.properties).toBe(JSON.stringify({ button: "submit" }));
+    });
+
+    it("should track feature flag exposure once when a flag is read", () => {
+      config.featureFlags = {
+        new_checkout: {
+          key: "new_checkout",
+          value: true,
+          flagType: "boolean",
+          version: 1,
+          reason: "rollout",
+          matched: true,
+          rolloutPercentage: 100,
+        },
+      };
+      tracker = new Tracker(config);
+      vi.mocked(global.fetch).mockClear();
+
+      expect(tracker.getFeatureFlag("new_checkout", false)).toBe(true);
+      expect(tracker.getFeatureFlag("new_checkout", false)).toBe(true);
+
+      expect(global.fetch).toHaveBeenCalledTimes(1);
+      const body = JSON.parse(vi.mocked(global.fetch).mock.calls[0][1]!.body as string);
+      expect(body.type).toBe("custom_event");
+      expect(body.event_name).toBe("feature_flag_exposure");
+      expect(JSON.parse(body.properties)).toMatchObject({
+        key: "new_checkout",
+        value: "true",
+        version: 1,
+        reason: "rollout",
+      });
     });
 
     it("should validate custom event name", () => {

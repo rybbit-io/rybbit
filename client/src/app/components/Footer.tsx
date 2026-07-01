@@ -7,11 +7,15 @@ import { HeartIcon } from "lucide-react";
 import { Button } from "../../components/ui/button";
 import { LanguageSwitcher } from "../../components/LanguageSwitcher";
 
-export function Footer() {
+interface FooterProps {
+  disabled?: boolean;
+}
+
+export function Footer({ disabled = false }: FooterProps) {
   const APP_VERSION = process.env.NEXT_PUBLIC_APP_VERSION;
   const { isWhiteLabel } = useWhiteLabel();
   const t = useExtracted();
-  if (isWhiteLabel) {
+  if (disabled || isWhiteLabel) {
     return null;
   }
 
@@ -22,7 +26,14 @@ export function Footer() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mb-8">
           {/* Company Info */}
           <div className="space-y-4">
-            <Image src="/rybbit/horizontal_white.svg" alt="Rybbit" width={140} height={0} style={{ height: "auto" }} className="dark:invert-0 invert" />
+            <Image
+              src="/rybbit/horizontal_white.svg"
+              alt="Rybbit"
+              width={140}
+              height={28}
+              style={{ width: 140, height: 28, objectFit: "contain" }}
+              className="dark:invert-0 invert"
+            />
             {!IS_CLOUD && (
               <div className="space-y-3">
                 <div className="text-sm text-neutral-600 dark:text-neutral-200">

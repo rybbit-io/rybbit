@@ -144,7 +144,7 @@ export const InputWithSuggestions = React.forwardRef<HTMLInputElement, InputWith
               {filteredSuggestions.map(suggestion => (
                 <div
                   key={suggestion.value}
-                  className="relative cursor-pointer mx-1 px-2 py-2 text-sm hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-md"
+                  className="relative cursor-pointer mx-1 p-2 text-sm hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-md"
                   onMouseDown={e => e.preventDefault()}
                   onClick={() => handleSuggestionClick(suggestion.value)}
                 >

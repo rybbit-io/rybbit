@@ -1,0 +1,256 @@
+---
+title: Get Organization Members
+description: Returns all members of an organization with their user details and roles. Requires membership in the organization.
+full: true
+method: GET
+---
+
+import { TypeTable } from 'fumadocs-ui/components/type-table';
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+
+<div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
+<div>
+
+```
+GET /api/organizations/:organizationId/members
+```
+
+Returns all members of an organization with their user details and roles. Requires membership in the organization.
+
+### Path Parameters
+
+<TypeTable
+  type={{
+    organizationId: {
+      description: 'Organization ID',
+      type: 'string',
+      required: true,
+    },
+  }}
+/>
+
+### Response
+
+<TypeTable
+  type={{
+    success: {
+      description: 'Whether the request was successful',
+      type: 'boolean',
+    },
+    data: {
+      description: 'Array of organization members',
+      type: 'array',
+    },
+  }}
+/>
+
+#### Member Object
+
+Each member in the `data` array contains:
+
+<TypeTable
+  type={{
+    id: {
+      description: 'Member record ID',
+      type: 'string',
+    },
+    role: {
+      description: 'Member role in the organization',
+      type: 'string',
+      typeDescription: '"owner" | "admin" | "member"',
+    },
+    userId: {
+      description: 'User ID',
+      type: 'string',
+    },
+    organizationId: {
+      description: 'Organization ID',
+      type: 'string',
+    },
+    createdAt: {
+      description: 'Timestamp when member was added',
+      type: 'string',
+      typeDescription: 'ISO 8601 datetime',
+    },
+    user: {
+      description: 'User details',
+      type: 'object',
+    },
+  }}
+/>
+
+#### User Object
+
+<TypeTable
+  type={{
+    id: {
+      description: 'User ID',
+      type: 'string',
+    },
+    name: {
+      description: 'User display name',
+      type: 'string',
+    },
+    email: {
+      description: 'User email address',
+      type: 'string',
+    },
+  }}
+/>
+
+</div>
+<div className="flex flex-col gap-4">
+
+<Tabs items={['cURL', 'JavaScript', 'Python', 'PHP', 'Ruby', 'Go', 'Rust', 'Java', '.NET']}>
+  <Tab value="cURL">
+```bash title="Request"
+curl -X GET "https://app.rybbit.io/api/organizations/org_123/members" \
+  -H "Authorization: Bearer your_api_key_here"
+```
+  </Tab>
+  <Tab value="JavaScript">
+```javascript title="Request"
+const organizationId = 'org_123';
+const response = await fetch(
+  `https://app.rybbit.io/api/organizations/${organizationId}/members`,
+  {
+    headers: {
+      'Authorization': 'Bearer your_api_key_here'
+    }
+  }
+);
+
+const data = await response.json();
+```
+  </Tab>
+  <Tab value="Python">
+```python title="Request"
+import requests
+
+organization_id = 'org_123'
+response = requests.get(
+    f'https://app.rybbit.io/api/organizations/{organization_id}/members',
+    headers={
+        'Authorization': 'Bearer your_api_key_here'
+    }
+)
+
+data = response.json()
+```
+  </Tab>
+  <Tab value="PHP">
+```php title="Request"
+$organizationId = 'org_123';
+$ch = curl_init();
+curl_setopt($ch, CURLOPT_URL, "https://app.rybbit.io/api/organizations/{$organizationId}/members");
+curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+curl_setopt($ch, CURLOPT_HTTPHEADER, [
+    'Authorization: Bearer your_api_key_here'
+]);
+
+$response = curl_exec($ch);
+curl_close($ch);
+
+$data = json_decode($response, true);
+```
+  </Tab>
+  <Tab value="Ruby">
+```ruby title="Request"
+require 'net/http'
+require 'json'
+
+organization_id = 'org_123'
+uri = URI("https://app.rybbit.io/api/organizations/#{organization_id}/members")
+req = Net::HTTP::Get.new(uri)
+req['Authorization'] = 'Bearer your_api_key_here'
+
+res = Net::HTTP.start(uri.hostname, uri.port, use_ssl: true) { |http| http.request(req) }
+data = JSON.parse(res.body)
+```
+  </Tab>
+  <Tab value="Go">
+```go title="Request"
+organizationId := "org_123"
+req, _ := http.NewRequest("GET", "https://app.rybbit.io/api/organizations/"+organizationId+"/members", nil)
+req.Header.Set("Authorization", "Bearer your_api_key_here")
+
+client := &http.Client{}
+resp, _ := client.Do(req)
+defer resp.Body.Close()
+
+var data map[string]interface{}
+json.NewDecoder(resp.Body).Decode(&data)
+```
+  </Tab>
+  <Tab value="Rust">
+```rust title="Request"
+let organization_id = "org_123";
+let client = reqwest::Client::new();
+let res = client
+    .get(format!("https://app.rybbit.io/api/organizations/{}/members", organization_id))
+    .header("Authorization", "Bearer your_api_key_here")
+    .send()
+    .await?;
+
+let data: serde_json::Value = res.json().await?;
+```
+  </Tab>
+  <Tab value="Java">
+```java title="Request"
+String organizationId = "org_123";
+HttpClient client = HttpClient.newHttpClient();
+HttpRequest request = HttpRequest.newBuilder()
+    .uri(URI.create("https://app.rybbit.io/api/organizations/" + organizationId + "/members"))
+    .header("Authorization", "Bearer your_api_key_here")
+    .GET()
+    .build();
+
+HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+```
+  </Tab>
+  <Tab value=".NET">
+```csharp title="Request"
+var organizationId = "org_123";
+using var client = new HttpClient();
+client.DefaultRequestHeaders.Add("Authorization", "Bearer your_api_key_here");
+
+var response = await client.GetAsync($"https://app.rybbit.io/api/organizations/{organizationId}/members");
+var data = await response.Content.ReadAsStringAsync();
+```
+  </Tab>
+</Tabs>
+
+```json title="Response"
+{
+  "success": true,
+  "data": [
+    {
+      "id": "member_abc123",
+      "role": "owner",
+      "userId": "user_xyz789",
+      "organizationId": "org_123",
+      "createdAt": "2024-01-15T10:30:00.000Z",
+      "user": {
+        "id": "user_xyz789",
+        "name": "John Doe",
+        "email": "john@example.com"
+      }
+    },
+    {
+      "id": "member_def456",
+      "role": "member",
+      "userId": "user_abc456",
+      "organizationId": "org_123",
+      "createdAt": "2024-02-20T14:15:00.000Z",
+      "user": {
+        "id": "user_abc456",
+        "name": "Jane Smith",
+        "email": "jane@example.com"
+      }
+    }
+  ]
+}
+```
+
+</div>
+</div>

@@ -20,6 +20,8 @@ export type PageTitleItem = {
   pathname: string;
   count: number;
   percentage: number;
+  pageviews?: number;
+  bounce_rate?: number;
   time_on_page_seconds?: number;
 };
 
@@ -59,6 +61,17 @@ const getPageTitlesQuery = (request: FastifyRequest<GetPageTitlesRequest>, isCou
   // We also need a representative pathname and calculate average time on page.
   // Using argMax to get the pathname from the most recent event for that title in a session.
   const baseCteQuery = `
+    SessionPageCounts AS (
+        SELECT
+            session_id,
+            COUNT() as pageviews_in_session
+        FROM events
+        WHERE
+            site_id = {siteId:Int32}
+            AND type = 'pageview'
+            ${timeStatement}
+        GROUP BY session_id
+    ),
     EventTimes AS (
         SELECT
             session_id,
@@ -77,19 +90,23 @@ const getPageTitlesQuery = (request: FastifyRequest<GetPageTitlesRequest>, isCou
     ),
     PageDurations AS (
         SELECT
-            session_id,
-            page_title,
-            pathname,
-            timestamp,
-            next_timestamp,
-            if(isNull(next_timestamp), 0, dateDiff('second', timestamp, next_timestamp)) as time_diff_seconds
-        FROM EventTimes
+            e.session_id as session_id,
+            e.page_title as page_title,
+            e.pathname as pathname,
+            e.timestamp as timestamp,
+            e.next_timestamp as next_timestamp,
+            if(isNull(e.next_timestamp), 0, dateDiff('second', e.timestamp, e.next_timestamp)) as time_diff_seconds,
+            spc.pageviews_in_session as pageviews_in_session
+        FROM EventTimes e
+        LEFT JOIN SessionPageCounts spc ON e.session_id = spc.session_id
     ),
     PageTitleStats AS (
         SELECT
             page_title as value,
             argMax(pathname, timestamp) as pathname,
             count(DISTINCT session_id) as unique_sessions,
+            count() as pageviews,
+            countIf(DISTINCT session_id, pageviews_in_session = 1) as bounced_sessions,
             avg(if(time_diff_seconds < 0, 0, if(time_diff_seconds > 1800, 1800, time_diff_seconds))) as avg_time_on_page_seconds
         FROM PageDurations
         GROUP BY page_title
@@ -113,6 +130,11 @@ const getPageTitlesQuery = (request: FastifyRequest<GetPageTitlesRequest>, isCou
             unique_sessions * 100.0 / SUM(unique_sessions) OVER (),
             2
         ) as percentage,
+        pageviews,
+        ROUND(
+            bounced_sessions * 100.0 / nullIf(unique_sessions, 0),
+            2
+        ) as bounce_rate,
         avg_time_on_page_seconds as time_on_page_seconds
     FROM PageTitleStats
     ORDER BY count DESC

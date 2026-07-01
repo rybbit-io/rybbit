@@ -202,7 +202,7 @@ export async function fetchOutboundLinks(
 
 /**
  * Fetch bucketed event counts for top custom events
- * GET /sites/:site/events/bucketed
+ * GET /api/sites/:site/events/time-series
  */
 export async function fetchEventBucketed(
   site: string | number,
@@ -214,7 +214,7 @@ export async function fetchEventBucketed(
   };
 
   const response = await authedFetch<{ data: EventBucketedPoint[] }>(
-    `/sites/${site}/events/bucketed`,
+    `/sites/${site}/events/time-series`,
     queryParams
   );
   return response.data;

@@ -12,10 +12,22 @@ import { resolveNumericSiteId } from "../utils.js";
 import { db } from "../db/postgres/postgres.js";
 
 type AuthMiddleware = (request: FastifyRequest, reply: FastifyReply) => Promise<void>;
+type ApiKeyResult = Awaited<ReturnType<typeof checkApiKey>>;
 
 const getSiteIdFromParams = (request: FastifyRequest): string | undefined => {
-  const params = request.params as Record<string, string>;
-  return params.siteId;
+  const params = request.params as Record<string, string> | undefined;
+  return params?.siteId;
+};
+
+const getOrganizationIdFromParams = (request: FastifyRequest): string | undefined => {
+  const params = request.params as Record<string, string> | undefined;
+  return params?.organizationId;
+};
+
+const attachApiKeyUser = (request: FastifyRequest, apiKeyResult: ApiKeyResult) => {
+  if (apiKeyResult.userId) {
+    request.user = { id: apiKeyResult.userId };
+  }
 };
 
 /**
@@ -36,7 +48,7 @@ export const resolveSiteId: AuthMiddleware = async (request, reply) => {
 };
 
 /**
- * Requires valid session or API key. Attaches user to request if session available.
+ * Requires valid session or scoped API key. Attaches the authenticated user id to the request.
  */
 export const requireAuth: AuthMiddleware = async (request, reply) => {
   const session = await getSessionFromReq(request);
@@ -45,9 +57,12 @@ export const requireAuth: AuthMiddleware = async (request, reply) => {
     return;
   }
 
-  // API key provides access but doesn't populate request.user
-  const apiKeyResult = await checkApiKey(request, {});
+  // API keys are validated in the relevant site/org scope when one is present.
+  const organizationId = getOrganizationIdFromParams(request);
+  const siteId = getSiteIdFromParams(request);
+  const apiKeyResult = await checkApiKey(request, { organizationId, siteId });
   if (apiKeyResult.valid) {
+    attachApiKeyUser(request, apiKeyResult);
     return;
   }
 
@@ -79,9 +94,10 @@ export const requireSiteAccess: AuthMiddleware = async (request, reply) => {
     return reply.status(400).send({ error: "Site ID required" });
   }
 
-  // Check API key first (doesn't populate request.user)
+  // Check API key first.
   const apiKeyResult = await checkApiKey(request, { siteId });
   if (apiKeyResult.valid) {
+    attachApiKeyUser(request, apiKeyResult);
     return;
   }
 
@@ -109,9 +125,10 @@ export const requireSiteAdminAccess: AuthMiddleware = async (request, reply) => 
     return reply.status(400).send({ error: "Site ID required" });
   }
 
-  // Check API key with admin/owner role first (doesn't populate request.user)
+  // Check API key with admin/owner role first.
   const apiKeyResult = await checkApiKey(request, { siteId });
   if (apiKeyResult.valid && (apiKeyResult.role === "admin" || apiKeyResult.role === "owner")) {
+    attachApiKeyUser(request, apiKeyResult);
     return;
   }
 
@@ -141,6 +158,7 @@ export const allowPublicSiteAccess: AuthMiddleware = async (request, reply) => {
 
   const apiKeyResult = await checkApiKey(request, { siteId });
   if (apiKeyResult.valid) {
+    attachApiKeyUser(request, apiKeyResult);
     return;
   }
 
@@ -171,6 +189,7 @@ export const requireOrgMember: AuthMiddleware = async (request, reply) => {
 
   const apiKeyResult = await checkApiKey(request, { organizationId });
   if (apiKeyResult.valid) {
+    attachApiKeyUser(request, apiKeyResult);
     return;
   }
 
@@ -204,6 +223,7 @@ export const requireOrgAdminFromParams: AuthMiddleware = async (request, reply) 
   // Check API key first - must have admin/owner role
   const apiKeyResult = await checkApiKey(request, { organizationId });
   if (apiKeyResult.valid && (apiKeyResult.role === "admin" || apiKeyResult.role === "owner")) {
+    attachApiKeyUser(request, apiKeyResult);
     return;
   }
 

@@ -3,8 +3,10 @@ import { authClient } from "../../../lib/auth";
 import {
   getUserOrganizations,
   addUserToOrganization,
+  createUserInOrganization,
   USER_ORGANIZATIONS_QUERY_KEY,
   AddUserToOrganizationInput,
+  CreateUserInOrganizationInput,
   RemoveUserFromOrganizationInput,
 } from "../endpoints";
 
@@ -51,6 +53,26 @@ export function useAddUserToOrganization() {
       queryClient.invalidateQueries({ queryKey: ["admin-organizations"] });
       queryClient.invalidateQueries({ queryKey: [USER_ORGANIZATIONS_QUERY_KEY] });
       queryClient.invalidateQueries({ queryKey: ["admin-users"] });
+    },
+  });
+}
+
+export function useCreateUserInOrganization() {
+  const queryClient = useQueryClient();
+
+  return useMutation<{ message: string }, Error, CreateUserInOrganizationInput>({
+    mutationFn: async (input: CreateUserInOrganizationInput) => {
+      try {
+        return await createUserInOrganization(input);
+      } catch (error) {
+        throw new Error(error instanceof Error ? error.message : "Failed to create user");
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin-organizations"] });
+      queryClient.invalidateQueries({ queryKey: [USER_ORGANIZATIONS_QUERY_KEY] });
+      queryClient.invalidateQueries({ queryKey: ["admin-users"] });
+      queryClient.invalidateQueries({ queryKey: ["organization-members"] });
     },
   });
 }

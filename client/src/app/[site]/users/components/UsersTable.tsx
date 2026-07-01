@@ -41,6 +41,11 @@ import { DeviceIcon } from "../../components/shared/icons/Device";
 import { useGetSite } from "../../../../api/admin/hooks/useSites";
 
 const columnHelper = createColumnHelper<UsersResponse>();
+const TIME_COLUMN_WIDTH = "10rem";
+const TIME_COLUMN_WIDTH_CLASS = "w-40";
+const TIME_COLUMN_IDS = new Set(["last_seen", "first_seen"]);
+
+const isTimeColumn = (columnId: string) => TIME_COLUMN_IDS.has(columnId);
 
 const handleFilterClick = (e: React.MouseEvent, parameter: FilterParameter, value: string | undefined) => {
   e.stopPropagation();
@@ -69,7 +74,7 @@ const SortHeader = ({ column, children }: any) => {
 export function UsersTable() {
   const t = useExtracted();
   const { data: siteMetadata } = useGetSite();
-  const isApp = siteMetadata?.type === "app";
+  const isApp = siteMetadata?.type === "mobile";
   const { formatRelative, formatDateTime } = useDateTimeFormat();
 
   const formatRelativeTime = (dateStr: string) => {
@@ -81,6 +86,21 @@ export function UsersTable() {
     }
 
     return formatRelative(date);
+  };
+
+  const renderTimeCell = (dateStr: string) => {
+    const date = DateTime.fromSQL(dateStr, {
+      zone: "utc",
+    }).setZone(getTimezone());
+    const formattedDate = formatDateTime(date, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+    const relativeTime = formatRelativeTime(dateStr);
+
+    return (
+      <div className={`grid ${TIME_COLUMN_WIDTH_CLASS} whitespace-nowrap`}>
+        <span className="col-start-1 row-start-1 group-hover:invisible">{relativeTime}</span>
+        <span className="col-start-1 row-start-1 invisible group-hover:visible">{formattedDate}</span>
+      </div>
+    );
   };
   const { site } = useParams();
 
@@ -271,37 +291,11 @@ export function UsersTable() {
     }),
     columnHelper.accessor("last_seen", {
       header: ({ column }) => <SortHeader column={column}>{t("Last Seen")}</SortHeader>,
-      cell: info => {
-        const date = DateTime.fromSQL(info.getValue(), {
-          zone: "utc",
-        }).setZone(getTimezone());
-        const formattedDate = formatDateTime(date, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
-        const relativeTime = formatRelativeTime(info.getValue());
-
-        return (
-          <div className="whitespace-nowrap">
-            <span className="group-hover:hidden">{relativeTime}</span>
-            <span className="hidden group-hover:inline">{formattedDate}</span>
-          </div>
-        );
-      },
+      cell: info => renderTimeCell(info.getValue()),
     }),
     columnHelper.accessor("first_seen", {
       header: ({ column }) => <SortHeader column={column}>{t("First Seen")}</SortHeader>,
-      cell: info => {
-        const date = DateTime.fromSQL(info.getValue(), {
-          zone: "utc",
-        }).setZone(getTimezone());
-        const formattedDate = formatDateTime(date, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
-        const relativeTime = formatRelativeTime(info.getValue());
-
-        return (
-          <div className="whitespace-nowrap">
-            <span className="group-hover:hidden">{relativeTime}</span>
-            <span className="hidden group-hover:inline">{formattedDate}</span>
-          </div>
-        );
-      },
+      cell: info => renderTimeCell(info.getValue()),
     }),
   ];
 
@@ -388,7 +382,9 @@ export function UsersTable() {
                     scope="col"
                     className="h-8 px-2 text-left align-middle font-medium text-xs text-neutral-500 dark:text-neutral-400 whitespace-nowrap first:rounded-l-xl last:rounded-r-xl"
                     style={{
-                      minWidth: header.id === "user_id" ? "100px" : "auto",
+                      minWidth:
+                        header.id === "user_id" ? "100px" : isTimeColumn(header.id) ? TIME_COLUMN_WIDTH : "auto",
+                      width: isTimeColumn(header.id) ? TIME_COLUMN_WIDTH : undefined,
                     }}
                   >
                     {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
@@ -402,7 +398,7 @@ export function UsersTable() {
               Array.from({ length: 15 }).map((_, index) => (
                 <tr key={index} className="border-b border-neutral-100 dark:border-neutral-800 animate-pulse">
                   {Array.from({ length: columns.length }).map((_, cellIndex) => (
-                    <td key={cellIndex} className="px-3 py-3">
+                    <td key={cellIndex} className="p-3">
                       <div className="h-4 bg-neutral-200 dark:bg-neutral-800 rounded"></div>
                     </td>
                   ))}
@@ -425,7 +421,10 @@ export function UsersTable() {
                 return (
                   <tr key={row.id} className="border-b border-neutral-100 dark:border-neutral-800 group hover:bg-neutral-50 dark:hover:bg-neutral-850">
                     {row.getVisibleCells().map(cell => (
-                      <td key={cell.id} className="px-3 py-3 relative">
+                      <td
+                        key={cell.id}
+                        className={isTimeColumn(cell.column.id) ? `p-3 relative ${TIME_COLUMN_WIDTH_CLASS}` : "p-3 relative"}
+                      >
                         {/* <Link
                             href={href}
                             className="absolute inset-0 z-10"

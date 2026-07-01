@@ -21,7 +21,7 @@ export function EventTypeFilter({
 }: EventTypeFilterProps) {
   const t = useExtracted();
   const { data: siteMetadata } = useGetSite();
-  const isApp = siteMetadata?.type === "app";
+  const isApp = siteMetadata?.type === "mobile";
 
   const translatedLabels: Record<string, string> = {
     Pageview: isApp ? t("Screenview") : t("Pageview"),

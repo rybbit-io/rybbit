@@ -90,7 +90,7 @@ export function PricingSection({ isAnnual, setIsAnnual }: { isAnnual: boolean, s
     t("Retention"),
     t("Sessions"),
     t("Email reports"),
-    t("2 year data retention"),
+    t("3 year data retention"),
     t("API access"),
     t("Email support"),
   ];

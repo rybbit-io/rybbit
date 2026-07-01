@@ -92,7 +92,7 @@ export function MapComponent({ height, mapView: controlledMapView }: MapComponen
           <div className="absolute inset-0 bg-neutral-900/30 backdrop-blur-sm z-10 flex items-center justify-center">
             <div className="flex flex-col items-center gap-2">
               <div className="h-8 w-8 rounded-full border-2 border-accent-400 border-t-transparent animate-spin"></div>
-              <span className="text-sm text-neutral-300">Loading map data...</span>
+              <span className="text-sm text-neutral-300">Loading map data&hellip;</span>
             </div>
           </div>
         ))}

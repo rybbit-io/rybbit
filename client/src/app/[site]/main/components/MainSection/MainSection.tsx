@@ -14,7 +14,6 @@ import { authClient } from "../../../../../lib/auth";
 import { getTimezone, useStore } from "../../../../../lib/store";
 import { Chart } from "./Chart";
 import { Overview } from "./Overview";
-import { PreviousChart } from "./PreviousChart";
 
 // Moved inside component to use static t() calls
 
@@ -28,7 +27,7 @@ export function MainSection() {
   const session = authClient.useSession();
   const t = useExtracted();
   const { data: siteMetadata } = useGetSite();
-  const isApp = siteMetadata?.type === "app";
+  const isApp = siteMetadata?.type === "mobile";
 
   const { selectedStat, time, site, bucket } = useStore();
 
@@ -45,7 +44,7 @@ export function MainSection() {
   };
 
   // Current period data
-  const { data, isFetching, error } = useGetOverviewBucketed({
+  const { data, isFetching, isPlaceholderData, error } = useGetOverviewBucketed({
     site,
     bucket,
   });
@@ -79,6 +78,7 @@ export function MainSection() {
   // overlay shows the full prior period as a backdrop.
   const timezone = getTimezone();
   const chartXMax = (() => {
+    if (isPlaceholderData) return undefined;
     if (time.mode !== "range") return undefined;
     const points = data?.data;
     if (!points?.length) return undefined;
@@ -108,25 +108,20 @@ export function MainSection() {
                   href={session.data ? "/" : "https://rybbit.com"}
                   className="opacity-75"
                 >
-                  <RybbitTextLogo width={80} height={0} />
+                  <RybbitTextLogo width={80} />
                 </Link>
               )}
             </div>
             <span className="text-sm text-neutral-700 dark:text-neutral-200">{getSelectedStatLabel()}</span>
             <BucketSelection />
           </div>
-          <div className="h-[200px] md:h-[290px] relative">
-            <div className="absolute top-0 left-0 w-full h-full">
-              <PreviousChart data={previousData} max={maxOfDataAndPreviousData} chartXMax={chartXMax} />
-            </div>
-            <div className="absolute top-0 left-0 w-full h-full">
-              <Chart
-                data={data}
-                max={maxOfDataAndPreviousData}
-                previousData={time.mode === "all-time" ? undefined : previousData}
-                chartXMax={chartXMax}
-              />
-            </div>
+          <div className="h-[200px] md:h-[290px]">
+            <Chart
+              data={data}
+              max={maxOfDataAndPreviousData}
+              previousData={time.mode === "all-time" ? undefined : previousData}
+              chartXMax={chartXMax}
+            />
           </div>
         </CardContent>
       </Card>

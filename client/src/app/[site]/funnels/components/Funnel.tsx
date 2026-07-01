@@ -1,7 +1,7 @@
 "use client";
 
 import { useExtracted } from "next-intl";
-import { round } from "lodash";
+import round from "lodash/round";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import { useState } from "react";
 import { FunnelResponse, FunnelStep } from "../../../../api/analytics/endpoints";

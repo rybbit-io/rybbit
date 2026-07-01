@@ -1,7 +1,8 @@
 import { FastifyReply, FastifyRequest } from "fastify";
 import { ConnectGSCRequest } from "./types.js";
-import { getUserHasAccessToSite } from "../../lib/auth-utils.js";
+import { getSessionFromReq, getUserHasAccessToSite } from "../../lib/auth-utils.js";
 import { logger } from "../../lib/logger/logger.js";
+import { signGSCState } from "./utils.js";
 
 /**
  * Initiates the OAuth flow for Google Search Console
@@ -22,6 +23,11 @@ export async function connectGSC(req: FastifyRequest<ConnectGSCRequest>, res: Fa
       return res.status(403).send({ error: "Access denied" });
     }
 
+    const session = await getSessionFromReq(req);
+    if (!session) {
+      return res.status(401).send({ error: "Unauthorized" });
+    }
+
     const clientId = process.env.GOOGLE_CLIENT_ID;
     const redirectUri = process.env.GOOGLE_REDIRECT_URI || `${process.env.SERVER_URL}/api/gsc/callback`;
 
@@ -31,7 +37,9 @@ export async function connectGSC(req: FastifyRequest<ConnectGSCRequest>, res: Fa
 
     // Build OAuth URL
     const scope = "https://www.googleapis.com/auth/webmasters.readonly";
-    const state = numericSiteId.toString(); // Pass siteId in state to retrieve after OAuth
+    // Signed state binds the flow to this user + site so the callback can't be
+    // tricked into binding tokens to a site the caller doesn't control.
+    const state = signGSCState(numericSiteId, session.user.id);
 
     const authUrl = new URL("https://accounts.google.com/o/oauth2/v2/auth");
     authUrl.searchParams.set("client_id", clientId);

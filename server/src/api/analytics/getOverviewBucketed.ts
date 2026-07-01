@@ -3,7 +3,13 @@ import { FastifyReply, FastifyRequest } from "fastify";
 import SqlString from "sqlstring";
 import { clickhouse } from "../../db/clickhouse/clickhouse.js";
 import { validateTimeStatementFillParams } from "./utils/query-validation.js";
-import { getTimeStatement, processResults, TimeBucketToFn, bucketIntervalMap } from "./utils/utils.js";
+import {
+  getTimeStatement,
+  normalizeDatetimeForClickhouse,
+  processResults,
+  TimeBucketToFn,
+  bucketIntervalMap,
+} from "./utils/utils.js";
 import { getFilterStatement } from "./utils/getFilterStatement.js";
 import { TimeBucket } from "./types.js";
 
@@ -27,6 +33,23 @@ function getTimeStatementFill(params: FilterParams, bucket: TimeBucket) {
           )}))) + INTERVAL 1 DAY,
           'UTC'
         )
+      ) STEP INTERVAL ${bucketIntervalMap[validatedBucket]}`;
+  }
+  if (validatedParams.start_datetime && validatedParams.end_datetime && validatedParams.time_zone) {
+    const { start_datetime, end_datetime, time_zone } = validatedParams;
+    const normalizedStartDatetime = normalizeDatetimeForClickhouse(start_datetime);
+    const normalizedEndDatetime = normalizeDatetimeForClickhouse(end_datetime);
+    return `WITH FILL FROM toTimeZone(
+      toDateTime(${TimeBucketToFn[validatedBucket]}(toTimeZone(toDateTime(${SqlString.escape(
+        normalizedStartDatetime
+      )}, 'UTC'), ${SqlString.escape(time_zone)}))),
+      'UTC'
+      )
+      TO toTimeZone(
+        toDateTime(${TimeBucketToFn[validatedBucket]}(toTimeZone(toDateTime(${SqlString.escape(
+          normalizedEndDatetime
+        )}, 'UTC'), ${SqlString.escape(time_zone)}))),
+        'UTC'
       ) STEP INTERVAL ${bucketIntervalMap[validatedBucket]}`;
   }
   // For specific past minutes range - convert to exact timestamps for better performance
@@ -67,7 +90,17 @@ function getTimeStatementFill(params: FilterParams, bucket: TimeBucket) {
 }
 
 const getQuery = (params: FilterParams<{ bucket: TimeBucket }>, siteId: number) => {
-  const { start_date, end_date, time_zone, bucket = "hour", filters, past_minutes_start, past_minutes_end } = params;
+  const {
+    start_date,
+    end_date,
+    time_zone,
+    bucket = "hour",
+    filters,
+    start_datetime,
+    end_datetime,
+    past_minutes_start,
+    past_minutes_end,
+  } = params;
   const timeStatement = getTimeStatement(params);
   const filterStatement = getFilterStatement(filters, siteId, timeStatement);
   const pastMinutesRange =
@@ -75,7 +108,7 @@ const getQuery = (params: FilterParams<{ bucket: TimeBucket }>, siteId: number) 
       ? { start: Number(past_minutes_start), end: Number(past_minutes_end) }
       : undefined;
 
-  const isAllTime = !start_date && !end_date && !pastMinutesRange;
+  const isAllTime = !start_date && !end_date && !start_datetime && !end_datetime && !pastMinutesRange;
   const fillClause = isAllTime ? "" : getTimeStatementFill(params, bucket);
   const tzEscaped = SqlString.escape(time_zone);
 
@@ -161,7 +194,17 @@ export async function getOverviewBucketed(
   }>,
   res: FastifyReply
 ) {
-  const { start_date, end_date, time_zone, bucket, filters, past_minutes_start, past_minutes_end } = req.query;
+  const {
+    start_date,
+    end_date,
+    time_zone,
+    bucket,
+    filters,
+    start_datetime,
+    end_datetime,
+    past_minutes_start,
+    past_minutes_end,
+  } = req.query;
   const site = req.params.siteId;
 
   const query = getQuery(
@@ -171,6 +214,8 @@ export async function getOverviewBucketed(
       time_zone,
       bucket,
       filters,
+      start_datetime,
+      end_datetime,
       past_minutes_start,
       past_minutes_end,
     },

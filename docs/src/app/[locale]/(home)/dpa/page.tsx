@@ -18,7 +18,7 @@ export default function DataProcessingAgreement() {
 
       <div className="prose prose-invert max-w-none">
         <p className="text-lg">
-          Last updated: December 10, 2025
+          Last updated: June 25, 2026
         </p>
 
         <h2 className="text-2xl font-semibold mt-8 mb-4">1. Introduction</h2>
@@ -108,7 +108,7 @@ export default function DataProcessingAgreement() {
             <strong>Resend:</strong> Email delivery
           </li>
           <li>
-            <strong>ipapi.is:</strong> IP geolocation (IP addresses are processed but not stored)
+            <strong>Maxmind:</strong> IP geolocation (IP addresses are processed but not stored)
           </li>
         </ul>
 
@@ -136,9 +136,10 @@ export default function DataProcessingAgreement() {
 
         <h2 className="text-2xl font-semibold mt-8 mb-4">10. Data Retention</h2>
         <p>
-          Rybbit retains Personal Data for the duration specified in our Privacy Policy or as agreed with the
-          Controller. Upon termination of the Services, Personal Data will be deleted or returned as requested by the
-          Controller within 30 days.
+          Rybbit retains Personal Data for the retention period associated with the Controller&apos;s plan, as set out in
+          our Privacy Policy — currently 3 years for Standard plans and 5 years for Pro plans, and indefinitely for
+          Enterprise plans — or for such other period as agreed with the Controller. Upon termination of the Services,
+          Personal Data will be deleted or returned as requested by the Controller within 30 days.
         </p>
 
         <h2 className="text-2xl font-semibold mt-8 mb-4">11. Audits</h2>

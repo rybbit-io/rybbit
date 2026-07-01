@@ -19,9 +19,8 @@ export default async function Page(props: {
   if (!page) notFound();
 
   const MDXContent = page.data.body;
-  // Remove /docs prefix from page.url to get the file path
-  const filePath = page.url.replace(/^\/docs/, '');
-
+  // page.path is the source file path relative to the content dir
+  // (e.g. "(docs)/script.mdx"), which maps to the real GitHub location.
   return (
     <DocsPage toc={page.data.toc} full={page.data.full}>
       <DocsTitle>{page.data.title}</DocsTitle>
@@ -30,7 +29,7 @@ export default async function Page(props: {
         <LLMCopyButton markdownUrl={`${page.url}.mdx`} />
         <ViewOptions
           markdownUrl={`${page.url}.mdx`}
-          githubUrl={`https://github.com/rybbit-io/rybbit/blob/master/docs/content/docs${filePath}.mdx`}
+          githubUrl={`https://github.com/rybbit-io/rybbit/blob/master/docs/content/docs/${page.path}`}
         />
       </div>
       <DocsBody>

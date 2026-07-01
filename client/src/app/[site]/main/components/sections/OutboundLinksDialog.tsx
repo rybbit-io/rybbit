@@ -1,11 +1,5 @@
 "use client";
 
-import {
-  ResponsiveDialog,
-  ResponsiveDialogContent,
-  ResponsiveDialogHeader,
-  ResponsiveDialogTitle,
-} from "@/components/ui/responsive-dialog";
 import { Input } from "@/components/ui/input";
 import { getTimezone } from "@/lib/store";
 import { useDebounce, useIntersectionObserver } from "@uidotdev/usehooks";
@@ -17,10 +11,8 @@ import { useDateTimeFormat } from "../../../../../hooks/useDateTimeFormat";
 import { OutboundLink } from "../../../../../api/analytics/endpoints";
 import { cn } from "../../../../../lib/utils";
 
-interface OutboundLinksDialogProps {
+interface OutboundLinksDialogBodyProps {
   outboundLinks: OutboundLink[];
-  expanded: boolean;
-  close: () => void;
 }
 
 const INITIAL_ROWS = 100;
@@ -28,7 +20,7 @@ const BATCH_SIZE = 100;
 
 type SortKey = "url" | "count" | "percentage" | "lastClicked";
 
-export function OutboundLinksDialog({ outboundLinks, expanded, close }: OutboundLinksDialogProps) {
+export function OutboundLinksDialogBody({ outboundLinks }: OutboundLinksDialogBodyProps) {
   const t = useExtracted();
   const { formatRelative } = useDateTimeFormat();
   const [searchTerm, setSearchTerm] = useState("");
@@ -95,11 +87,7 @@ export function OutboundLinksDialog({ outboundLinks, expanded, close }: Outbound
   }
 
   return (
-    <ResponsiveDialog open={expanded} onOpenChange={close}>
-      <ResponsiveDialogContent className="max-w-[1000px] w-[calc(100vw-2rem)] p-2 sm:p-4 space-y-2">
-        <ResponsiveDialogHeader>
-          <ResponsiveDialogTitle>{t("Outbound Links")}</ResponsiveDialogTitle>
-        </ResponsiveDialogHeader>
+    <div className="flex min-h-0 flex-1 flex-col gap-2">
         <div className="relative mb-2">
           <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-neutral-600 dark:text-neutral-400" />
           <Input
@@ -110,8 +98,8 @@ export function OutboundLinksDialog({ outboundLinks, expanded, close }: Outbound
             onChange={e => setSearchTerm(e.target.value)}
           />
         </div>
-        <div className="flex flex-col gap-2 overflow-x-auto">
-          <div className="max-h-[80vh] overflow-y-auto">
+        <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-x-auto">
+          <div className="min-h-0 flex-1 overflow-y-auto">
             <table className="w-full text-xs text-left min-w-max">
               <thead className="bg-neutral-100 dark:bg-neutral-900 text-neutral-600 dark:text-neutral-400 sticky top-0 z-10">
                 <tr>
@@ -166,7 +154,7 @@ export function OutboundLinksDialog({ outboundLinks, expanded, close }: Outbound
                       rowIndex % 2 === 0 ? "bg-white dark:bg-neutral-900" : "bg-neutral-50 dark:bg-neutral-950"
                     )}
                   >
-                    <td className="px-2 py-2">
+                    <td className="p-2">
                       <div className="flex items-center gap-1">
                         <a
                           href={row.url}
@@ -185,9 +173,9 @@ export function OutboundLinksDialog({ outboundLinks, expanded, close }: Outbound
                         </a>
                       </div>
                     </td>
-                    <td className="px-2 py-2 text-right">{row.count.toLocaleString()}</td>
-                    <td className="px-2 py-2 text-right">{row.percentage.toFixed(1)}%</td>
-                    <td className="px-2 py-2 text-right text-neutral-600 dark:text-neutral-300">
+                    <td className="p-2 text-right">{row.count.toLocaleString()}</td>
+                    <td className="p-2 text-right">{row.percentage.toFixed(1)}%</td>
+                    <td className="p-2 text-right text-neutral-600 dark:text-neutral-300">
                       {(() => {
                         try {
                           const dt = DateTime.fromSQL(row.lastClicked, { zone: "utc" }).setZone(getTimezone());
@@ -214,7 +202,6 @@ export function OutboundLinksDialog({ outboundLinks, expanded, close }: Outbound
             )}
           </div>
         </div>
-      </ResponsiveDialogContent>
-    </ResponsiveDialog>
+    </div>
   );
 }

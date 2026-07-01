@@ -1,16 +1,20 @@
 import { FastifyReply, FastifyRequest } from "fastify";
 import { z } from "zod";
 import { db } from "../../db/postgres/postgres.js";
-import { sites } from "../../db/postgres/schema.js";
+import { organization, sites } from "../../db/postgres/schema.js";
 import { eq } from "drizzle-orm";
+import { IS_CLOUD } from "../../lib/const.js";
 import { siteConfig } from "../../lib/siteConfig.js";
 import { validateIPPattern } from "../../lib/ipUtils.js";
+import { getBestSubscription, subscriptionIncludesReplay } from "../../lib/subscriptionUtils.js";
 
 // Schema for the update request - all fields are optional but validated when present
 const updateSiteConfigSchema = z.object({
   // Site settings
   name: z.string().min(1).max(255).optional(),
+  type: z.enum(["web", "mobile"]).nullable().optional(),
   public: z.boolean().optional(),
+  embedEnabled: z.boolean().optional(),
   saltUserIds: z.boolean().optional(),
   blockBots: z.boolean().optional(),
   domain: z.string().min(1).max(253).optional(),
@@ -25,6 +29,9 @@ const updateSiteConfigSchema = z.object({
     )
     .max(250)
     .optional(),
+  excludedPaths: z.array(z.string().trim().min(1).max(2048)).max(100).optional(),
+  excludedHostnames: z.array(z.string().trim().min(1).max(253)).max(100).optional(),
+  excludedUserAgents: z.array(z.string().trim().min(1).max(512)).max(100).optional(),
 
   // Tags
   tags: z.array(z.string().trim().min(1).max(50)).max(20).optional(),
@@ -80,25 +87,53 @@ export async function updateSiteConfig(
       return reply.status(404).send({ error: "Site not found" });
     }
 
-    // Validate domain based on site type
-    if (updateData.domain) {
-      const siteType = (site as any).type || "web";
-      if (siteType === "web") {
-        const domainRegex = /^(?:[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,}$/;
-        if (!domainRegex.test(updateData.domain)) {
-          return reply.status(400).send({
-            success: false,
-            error: "Invalid domain format. Must be a valid domain like example.com or sub.example.com",
-          });
-        }
-      } else {
-        const packageNameRegex = /^[a-zA-Z][a-zA-Z0-9_]*(\.[a-zA-Z][a-zA-Z0-9_]*)+$/;
-        if (!packageNameRegex.test(updateData.domain)) {
-          return reply.status(400).send({
-            success: false,
-            error: "Invalid package name format. Must be like com.example.app",
-          });
-        }
+    const nextSiteType = updateData.type === undefined ? site.type || "web" : updateData.type || "web";
+
+    const nextDomain = updateData.domain ?? site.domain;
+    const cleanedDomain = nextDomain.replace(/^https?:\/\//, "").replace(/\/+$/, "");
+
+    if (updateData.domain !== undefined || updateData.type !== undefined) {
+      const domainRegex = /^(?:[\p{L}\p{N}](?:[\p{L}\p{N}-]{0,61}[\p{L}\p{N}])?\.)+\p{L}{2,}$/u;
+      const appIdentifierRegex = /^[A-Za-z0-9][A-Za-z0-9._-]{0,252}$/;
+      if (nextSiteType === "web" && !domainRegex.test(cleanedDomain)) {
+        return reply.status(400).send({
+          success: false,
+          error: "Invalid domain format. Must be a valid domain like example.com or sub.example.com",
+        });
+      }
+      if (nextSiteType === "mobile" && !appIdentifierRegex.test(cleanedDomain)) {
+        return reply.status(400).send({
+          success: false,
+          error: "Invalid app identifier. Use a bundle/package identifier like com.example.app",
+        });
+      }
+    }
+
+    if (nextSiteType === "mobile" && (updateData.sessionReplay || updateData.webVitals)) {
+      return reply.status(400).send({
+        success: false,
+        error: "Session replay and Web Vitals are only available for web sites",
+      });
+    }
+
+    // Session replay is a Pro feature — block enabling it (turning it off is always allowed)
+    if (IS_CLOUD && updateData.sessionReplay === true) {
+      let includesReplay = false;
+      if (site.organizationId) {
+        const orgResult = await db
+          .select({ stripeCustomerId: organization.stripeCustomerId })
+          .from(organization)
+          .where(eq(organization.id, site.organizationId))
+          .limit(1);
+        const subscription = await getBestSubscription(site.organizationId, orgResult[0]?.stripeCustomerId ?? null);
+        includesReplay = subscriptionIncludesReplay(subscription);
+      }
+
+      if (!includesReplay) {
+        return reply.status(403).send({
+          success: false,
+          error: "Session replay requires a Pro plan",
+        });
       }
     }
 
@@ -128,11 +163,14 @@ export async function updateSiteConfig(
     const directMappings = [
       "name",
       "public",
+      "embedEnabled",
       "saltUserIds",
       "blockBots",
-      "domain",
       "excludedIPs",
       "excludedCountries",
+      "excludedPaths",
+      "excludedHostnames",
+      "excludedUserAgents",
       "tags",
       "sessionReplay",
       "webVitals",
@@ -153,6 +191,17 @@ export async function updateSiteConfig(
       }
     }
 
+    if (updateData.type !== undefined) {
+      dbUpdateData.type = nextSiteType === "web" ? null : nextSiteType;
+    }
+    if (updateData.domain !== undefined) {
+      dbUpdateData.domain = cleanedDomain;
+    }
+    if (nextSiteType === "mobile") {
+      dbUpdateData.sessionReplay = false;
+      dbUpdateData.webVitals = false;
+    }
+
     // Only proceed if there are fields to update
     if (Object.keys(dbUpdateData).length === 0) {
       return reply.status(400).send({
@@ -168,7 +217,7 @@ export async function updateSiteConfig(
     await db.update(sites).set(dbUpdateData).where(eq(sites.siteId, siteId));
 
     // Update the site config cache
-    await siteConfig.updateConfig(siteId, updateData);
+    await siteConfig.updateConfig(siteId, dbUpdateData);
 
     // Get the updated configuration to return
     const updatedConfig = await siteConfig.getConfig(siteId);

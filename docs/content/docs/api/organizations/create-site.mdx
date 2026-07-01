@@ -1,0 +1,433 @@
+---
+title: Create Site
+description: Creates a new site within an organization. Requires admin or owner role in the organization.
+full: true
+method: POST
+---
+
+import { TypeTable } from 'fumadocs-ui/components/type-table';
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+
+<div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
+<div>
+
+```
+POST /api/organizations/:organizationId/sites
+```
+
+Creates a new site within an organization. Requires admin or owner role in the organization.
+
+### Path Parameters
+
+<TypeTable
+  type={{
+    organizationId: {
+      description: 'Organization ID to add the site to',
+      type: 'string',
+      required: true,
+    },
+  }}
+/>
+
+### Request Body
+
+<TypeTable
+  type={{
+    domain: {
+      description: 'Site domain',
+      type: 'string',
+      typeDescription: 'Valid domain format (e.g., example.com)',
+      required: true,
+    },
+    name: {
+      description: 'Site display name',
+      type: 'string',
+      required: true,
+    },
+    public: {
+      description: 'Make analytics publicly accessible',
+      type: 'boolean',
+      default: false,
+    },
+    saltUserIds: {
+      description: 'Salt user IDs for privacy',
+      type: 'boolean',
+      default: false,
+    },
+    blockBots: {
+      description: 'Block bot traffic',
+      type: 'boolean',
+      default: true,
+    },
+    excludedIPs: {
+      description: 'Array of IP addresses to exclude from tracking',
+      type: 'string[]',
+      default: '[]',
+    },
+    excludedCountries: {
+      description: 'Array of ISO country codes to exclude (e.g., ["US", "GB"])',
+      type: 'string[]',
+      default: '[]',
+    },
+    sessionReplay: {
+      description: 'Enable session replay recording',
+      type: 'boolean',
+      default: false,
+    },
+    webVitals: {
+      description: 'Enable Core Web Vitals tracking',
+      type: 'boolean',
+      default: false,
+    },
+    trackErrors: {
+      description: 'Enable JavaScript error tracking',
+      type: 'boolean',
+      default: false,
+    },
+    trackOutbound: {
+      description: 'Track outbound link clicks',
+      type: 'boolean',
+      default: true,
+    },
+    trackUrlParams: {
+      description: 'Track URL parameters (UTM, etc.)',
+      type: 'boolean',
+      default: true,
+    },
+    trackInitialPageView: {
+      description: 'Automatically track the initial page view',
+      type: 'boolean',
+      default: true,
+    },
+    trackSpaNavigation: {
+      description: 'Track SPA navigation events',
+      type: 'boolean',
+      default: true,
+    },
+    trackIp: {
+      description: 'Store visitor IP addresses',
+      type: 'boolean',
+      default: false,
+    },
+    trackButtonClicks: {
+      description: 'Track button click events',
+      type: 'boolean',
+      default: false,
+    },
+    trackCopy: {
+      description: 'Track copy events',
+      type: 'boolean',
+      default: false,
+    },
+    trackFormInteractions: {
+      description: 'Track form interaction events',
+      type: 'boolean',
+      default: false,
+    },
+    tags: {
+      description: 'Array of tags for organizing the site',
+      type: 'string[]',
+      default: '[]',
+    },
+  }}
+/>
+
+### Response
+
+Returns the created site object with the assigned `siteId`.
+
+<TypeTable
+  type={{
+    siteId: {
+      description: 'Numeric site ID (auto-assigned)',
+      type: 'number',
+    },
+    id: {
+      description: 'Site UUID',
+      type: 'string',
+    },
+    domain: {
+      description: 'Site domain',
+      type: 'string',
+    },
+    name: {
+      description: 'Site name',
+      type: 'string',
+    },
+    organizationId: {
+      description: 'Organization ID',
+      type: 'string',
+    },
+    createdBy: {
+      description: 'User ID who created the site',
+      type: 'string',
+    },
+    public: {
+      description: 'Whether analytics are public',
+      type: 'boolean',
+    },
+    saltUserIds: {
+      description: 'Whether user IDs are salted',
+      type: 'boolean',
+    },
+    blockBots: {
+      description: 'Whether bot traffic is blocked',
+      type: 'boolean',
+    },
+    excludedIPs: {
+      description: 'Excluded IP addresses',
+      type: 'string[]',
+    },
+    excludedCountries: {
+      description: 'Excluded country codes',
+      type: 'string[]',
+    },
+    sessionReplay: {
+      description: 'Whether session replay is enabled',
+      type: 'boolean',
+    },
+    webVitals: {
+      description: 'Whether Web Vitals tracking is enabled',
+      type: 'boolean',
+    },
+    trackErrors: {
+      description: 'Whether error tracking is enabled',
+      type: 'boolean',
+    },
+    trackOutbound: {
+      description: 'Whether outbound link tracking is enabled',
+      type: 'boolean',
+    },
+    trackUrlParams: {
+      description: 'Whether URL parameter tracking is enabled',
+      type: 'boolean',
+    },
+    trackInitialPageView: {
+      description: 'Whether initial page view is tracked automatically',
+      type: 'boolean',
+    },
+    trackSpaNavigation: {
+      description: 'Whether SPA navigation is tracked',
+      type: 'boolean',
+    },
+    trackIp: {
+      description: 'Whether IP addresses are stored',
+      type: 'boolean',
+    },
+    trackButtonClicks: {
+      description: 'Whether button clicks are tracked',
+      type: 'boolean',
+    },
+    trackCopy: {
+      description: 'Whether copy events are tracked',
+      type: 'boolean',
+    },
+    trackFormInteractions: {
+      description: 'Whether form interactions are tracked',
+      type: 'boolean',
+    },
+    tags: {
+      description: 'Site tags',
+      type: 'string[]',
+    },
+  }}
+/>
+
+</div>
+<div className="flex flex-col gap-4">
+
+<Tabs items={['cURL', 'JavaScript', 'Python', 'PHP', 'Ruby', 'Go', 'Rust', 'Java', '.NET']}>
+  <Tab value="cURL">
+```bash title="Request"
+curl -X POST "https://app.rybbit.io/api/organizations/org_123/sites" \
+  -H "Authorization: Bearer your_api_key_here" \
+  -H "Content-Type: application/json" \
+  -d '{"domain": "example.com", "name": "My Website", "blockBots": true}'
+```
+  </Tab>
+  <Tab value="JavaScript">
+```javascript title="Request"
+const organizationId = 'org_123';
+const response = await fetch(
+  `https://app.rybbit.io/api/organizations/${organizationId}/sites`,
+  {
+    method: 'POST',
+    headers: {
+      'Authorization': 'Bearer your_api_key_here',
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      domain: 'example.com',
+      name: 'My Website',
+      blockBots: true
+    })
+  }
+);
+
+const data = await response.json();
+```
+  </Tab>
+  <Tab value="Python">
+```python title="Request"
+import requests
+
+organization_id = 'org_123'
+response = requests.post(
+    f'https://app.rybbit.io/api/organizations/{organization_id}/sites',
+    json={
+        'domain': 'example.com',
+        'name': 'My Website',
+        'blockBots': True
+    },
+    headers={
+        'Authorization': 'Bearer your_api_key_here'
+    }
+)
+
+data = response.json()
+```
+  </Tab>
+  <Tab value="PHP">
+```php title="Request"
+$organizationId = 'org_123';
+$ch = curl_init();
+curl_setopt($ch, CURLOPT_URL, "https://app.rybbit.io/api/organizations/{$organizationId}/sites");
+curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+curl_setopt($ch, CURLOPT_POST, true);
+curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode([
+    'domain' => 'example.com',
+    'name' => 'My Website',
+    'blockBots' => true
+]));
+curl_setopt($ch, CURLOPT_HTTPHEADER, [
+    'Authorization: Bearer your_api_key_here',
+    'Content-Type: application/json'
+]);
+
+$response = curl_exec($ch);
+curl_close($ch);
+
+$data = json_decode($response, true);
+```
+  </Tab>
+  <Tab value="Ruby">
+```ruby title="Request"
+require 'net/http'
+require 'json'
+
+organization_id = 'org_123'
+uri = URI("https://app.rybbit.io/api/organizations/#{organization_id}/sites")
+req = Net::HTTP::Post.new(uri)
+req['Authorization'] = 'Bearer your_api_key_here'
+req['Content-Type'] = 'application/json'
+req.body = {
+  domain: 'example.com',
+  name: 'My Website',
+  blockBots: true
+}.to_json
+
+res = Net::HTTP.start(uri.hostname, uri.port, use_ssl: true) { |http| http.request(req) }
+data = JSON.parse(res.body)
+```
+  </Tab>
+  <Tab value="Go">
+```go title="Request"
+organizationId := "org_123"
+body := bytes.NewBuffer([]byte(`{
+  "domain": "example.com",
+  "name": "My Website",
+  "blockBots": true
+}`))
+req, _ := http.NewRequest("POST", "https://app.rybbit.io/api/organizations/"+organizationId+"/sites", body)
+req.Header.Set("Authorization", "Bearer your_api_key_here")
+req.Header.Set("Content-Type", "application/json")
+
+client := &http.Client{}
+resp, _ := client.Do(req)
+defer resp.Body.Close()
+
+var data map[string]interface{}
+json.NewDecoder(resp.Body).Decode(&data)
+```
+  </Tab>
+  <Tab value="Rust">
+```rust title="Request"
+let organization_id = "org_123";
+let client = reqwest::Client::new();
+let res = client
+    .post(format!("https://app.rybbit.io/api/organizations/{}/sites", organization_id))
+    .header("Authorization", "Bearer your_api_key_here")
+    .json(&serde_json::json!({
+        "domain": "example.com",
+        "name": "My Website",
+        "blockBots": true
+    }))
+    .send()
+    .await?;
+
+let data: serde_json::Value = res.json().await?;
+```
+  </Tab>
+  <Tab value="Java">
+```java title="Request"
+String organizationId = "org_123";
+HttpClient client = HttpClient.newHttpClient();
+String json = "{\"domain\": \"example.com\", \"name\": \"My Website\", \"blockBots\": true}";
+HttpRequest request = HttpRequest.newBuilder()
+    .uri(URI.create("https://app.rybbit.io/api/organizations/" + organizationId + "/sites"))
+    .header("Authorization", "Bearer your_api_key_here")
+    .header("Content-Type", "application/json")
+    .POST(HttpRequest.BodyPublishers.ofString(json))
+    .build();
+
+HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+```
+  </Tab>
+  <Tab value=".NET">
+```csharp title="Request"
+var organizationId = "org_123";
+using var client = new HttpClient();
+client.DefaultRequestHeaders.Add("Authorization", "Bearer your_api_key_here");
+
+var content = new StringContent(
+    "{\"domain\": \"example.com\", \"name\": \"My Website\", \"blockBots\": true}",
+    Encoding.UTF8,
+    "application/json"
+);
+
+var response = await client.PostAsync($"https://app.rybbit.io/api/organizations/{organizationId}/sites", content);
+var data = await response.Content.ReadAsStringAsync();
+```
+  </Tab>
+</Tabs>
+
+```json title="Response"
+{
+  "siteId": 456,
+  "id": "a1b2c3d4e5f6",
+  "domain": "example.com",
+  "name": "My Website",
+  "organizationId": "org_123",
+  "createdBy": "user_xyz789",
+  "public": false,
+  "saltUserIds": false,
+  "blockBots": true,
+  "excludedIPs": [],
+  "excludedCountries": [],
+  "sessionReplay": false,
+  "webVitals": false,
+  "trackErrors": false,
+  "trackOutbound": true,
+  "trackUrlParams": true,
+  "trackInitialPageView": true,
+  "trackSpaNavigation": true,
+  "trackIp": false,
+  "trackButtonClicks": false,
+  "trackCopy": false,
+  "trackFormInteractions": false,
+  "tags": []
+}
+```
+
+</div>
+</div>

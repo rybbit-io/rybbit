@@ -6,6 +6,7 @@ import { useGetOverview } from "../api/analytics/hooks/useGetOverview";
 import { useGetOverviewBucketed } from "../api/analytics/hooks/useGetOverviewBucketed";
 import { ChangePercentage } from "../app/[site]/main/components/MainSection/Overview";
 import { useInView } from "../hooks/useInView";
+import { LITE_DASHBOARD } from "../lib/const";
 import { useStore } from "../lib/store";
 import { formatter } from "../lib/utils";
 import { Favicon } from "./Favicon";
@@ -25,10 +26,20 @@ interface SiteCardProps {
   onTagsUpdated?: () => void;
   selectedTags?: string[];
   onTagClick?: (tag: string) => void;
-  siteType?: "web" | "app";
+  siteType?: "web" | "mobile" | null;
 }
 
-export function SiteCard({ siteId, name, domain, tags = [], allTags = [], onTagsUpdated, selectedTags = [], onTagClick, siteType }: SiteCardProps) {
+export function SiteCard({
+  siteId,
+  name,
+  domain,
+  tags = [],
+  allTags = [],
+  onTagsUpdated,
+  selectedTags = [],
+  onTagClick,
+  siteType,
+}: SiteCardProps) {
   const t = useExtracted();
   const { ref, isInView } = useInView({
     // Start loading slightly before the card comes into view
@@ -46,6 +57,7 @@ export function SiteCard({ siteId, name, domain, tags = [], allTags = [], onTags
     site: siteId,
     bucket,
     useFilters: false,
+    lite: LITE_DASHBOARD,
     props: {
       enabled: isInView,
     },
@@ -58,6 +70,7 @@ export function SiteCard({ siteId, name, domain, tags = [], allTags = [], onTags
   } = useGetOverview({
     site: siteId,
     useFilters: false,
+    lite: LITE_DASHBOARD,
   });
 
   // Previous period - automatically handles both regular time-based and past-minutes queries
@@ -65,6 +78,7 @@ export function SiteCard({ siteId, name, domain, tags = [], allTags = [], onTags
     site: siteId,
     periodTime: "previous",
     useFilters: false,
+    lite: LITE_DASHBOARD,
   });
 
   // Update the hasLoadedData ref when data loads successfully
@@ -86,8 +100,8 @@ export function SiteCard({ siteId, name, domain, tags = [], allTags = [], onTags
         {showSkeleton ? (
           <>
             <div className="flex gap-2 items-center">
-              <Skeleton className="w-6 h-6 rounded" />
-              <Skeleton className="h-5 w-32" />
+              <Favicon domain={domain} className="w-6 h-6" />
+              <span className="text-lg font-medium truncate group-hover:underline transition-all">{name}</span>
             </div>
             <div className="flex gap-2 items-center">
               <Skeleton className="h-[64px] w-[200px] rounded-md" />
@@ -114,7 +128,7 @@ export function SiteCard({ siteId, name, domain, tags = [], allTags = [], onTags
                   {t("App")}
                 </Badge>
               )}
-              <div onClick={(e) => e.preventDefault()}>
+              <div onClick={e => e.preventDefault()}>
                 <Tooltip>
                   <SiteSettings
                     siteId={siteId}
@@ -130,7 +144,7 @@ export function SiteCard({ siteId, name, domain, tags = [], allTags = [], onTags
                 </Tooltip>
               </div>
               {/* Tags display */}
-              <div onClick={(e) => e.preventDefault()} className="flex items-center gap-1">
+              <div onClick={e => e.preventDefault()} className="flex items-center gap-1">
                 {tags.slice(0, 3).map(tag => {
                   return (
                     <Badge

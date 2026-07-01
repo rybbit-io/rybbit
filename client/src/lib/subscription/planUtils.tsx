@@ -41,6 +41,19 @@ export function findPriceForTier(
   return selectedPlan;
 }
 
+// Whether a plan includes session replay: Pro plans (excluding large trials),
+// AppSumo tiers 4-6, and custom (enterprise) plans. Mirrors the server-side
+// subscriptionIncludesReplay rule.
+export function planIncludesReplay(
+  subscription: { planName: string; isTrial?: boolean; eventLimit?: number } | null | undefined
+): boolean {
+  if (!subscription) return false;
+  if (subscription.planName === "custom") return true;
+  if (/^appsumo-[456]$/.test(subscription.planName)) return true;
+  const isLargeTrial = !!subscription.isTrial && (subscription.eventLimit ?? 0) >= 500_000;
+  return subscription.planName.includes("pro") && !isLargeTrial;
+}
+
 // Format event tier for display
 export function formatEventTier(tier: number | string): string {
   if (typeof tier === "string") {

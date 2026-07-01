@@ -12,7 +12,7 @@ export function Favicon({
 }: {
   domain: string;
   className?: string;
-  siteType?: "web" | "app";
+  siteType?: "web" | "mobile" | null;
   siteId?: number;
   iconVersion?: number;
 }) {

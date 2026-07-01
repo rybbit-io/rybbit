@@ -2,8 +2,6 @@ import { FilterParameter } from "@rybbit/shared";
 import {
   AppWindow,
   Brain,
-  Bug,
-  Building,
   Clock,
   FileText,
   Flag,
@@ -23,12 +21,14 @@ import {
   Puzzle,
   Radio,
   Search,
-  Server,
-  Shield,
   TabletSmartphone,
   Tag,
   Target,
   User,
+  Bug,
+  Building,
+  Server,
+  Shield,
 } from "lucide-react";
 import React from "react";
 
@@ -261,15 +261,26 @@ export const StringOperatorOptions = [
   { label: "Is not", value: "not_equals" },
   { label: "Contains", value: "contains" },
   { label: "Not contains", value: "not_contains" },
-  { label: "Matches regex", value: "regex" },
-  { label: "Not matches regex", value: "not_regex" },
+  { label: "Starts with", value: "starts_with" },
+  { label: "Ends with", value: "ends_with" },
+  { label: "Regex", value: "regex" },
+  { label: "Is null", value: "is_null" },
+  { label: "Is not null", value: "is_not_null" },
+  { label: "Greater than", value: "greater_than" },
+  { label: "Less than", value: "less_than" },
+  { label: "Greater than or equal to", value: "greater_than_or_equal" },
+  { label: "Less than or equal to", value: "less_than_or_equal" },
 ];
 
 export const NumericOperatorOptions = [
   { label: "Equals", value: "equals" },
   { label: "Not equals", value: "not_equals" },
-  { label: ">", value: "greater_than" },
-  { label: "<", value: "less_than" },
+  { label: "Is null", value: "is_null" },
+  { label: "Is not null", value: "is_not_null" },
+  { label: "Greater than", value: "greater_than" },
+  { label: "Less than", value: "less_than" },
+  { label: "Greater than or equal to", value: "greater_than_or_equal" },
+  { label: "Less than or equal to", value: "less_than_or_equal" },
 ];
 
 export const NUMERIC_PARAMETERS: FilterParameter[] = ["lat", "lon"];

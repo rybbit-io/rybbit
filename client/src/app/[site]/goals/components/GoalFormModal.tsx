@@ -69,8 +69,7 @@ const formSchema = z
       return true;
     },
     {
-      message:
-        "Enter a path (e.g., /checkout), not a full URL. The domain is already determined by your site.",
+      message: "Enter a path (e.g., /checkout), not a full URL. The domain is already determined by your site.",
       path: ["config", "pathPattern"],
     }
   );
@@ -80,13 +79,29 @@ type FormValues = z.infer<typeof formSchema>;
 interface GoalFormModalProps {
   siteId: number;
   goal?: Goal; // Optional goal for editing mode
-  trigger: React.ReactNode;
+  trigger?: React.ReactNode;
   isCloneMode?: boolean; // Optional clone mode flag
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
-export default function GoalFormModal({ siteId, goal, trigger, isCloneMode = false }: GoalFormModalProps) {
+export default function GoalFormModal({
+  siteId,
+  goal,
+  trigger,
+  isCloneMode = false,
+  open,
+  onOpenChange,
+}: GoalFormModalProps) {
   const t = useExtracted();
-  const [isOpen, setIsOpen] = useState(false);
+  const [internalOpen, setInternalOpen] = useState(false);
+  const isOpen = open ?? internalOpen;
+  const setIsOpen = (nextOpen: boolean) => {
+    if (open === undefined) {
+      setInternalOpen(nextOpen);
+    }
+    onOpenChange?.(nextOpen);
+  };
 
   // Initialize useProperties based on either new propertyFilters or legacy properties
   const hasProperties = !!(
@@ -258,9 +273,11 @@ export default function GoalFormModal({ siteId, goal, trigger, isCloneMode = fal
         }
       }}
     >
-      <DialogTrigger asChild>
-        <div onClick={() => setIsOpen(true)}>{trigger}</div>
-      </DialogTrigger>
+      {trigger && (
+        <DialogTrigger asChild>
+          <div onClick={() => setIsOpen(true)}>{trigger}</div>
+        </DialogTrigger>
+      )}
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
           <DialogTitle>{isEditMode ? t("Edit Goal") : isCloneMode ? t("Clone Goal") : t("Create Goal")}</DialogTitle>

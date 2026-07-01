@@ -1,5 +1,12 @@
 export type HttpMethod = "GET" | "POST" | "PUT" | "DELETE";
 
+type ParameterMetadata = {
+  label: string;
+  type: "text" | "number" | "select";
+  options?: string[];
+  placeholder?: string;
+};
+
 export interface EndpointConfig {
   method: HttpMethod;
   path: string;
@@ -11,6 +18,7 @@ export interface EndpointConfig {
   pathParams?: string[];
   hasRequestBody?: boolean;
   requestBodyExample?: object;
+  parameterMetadata?: Record<string, ParameterMetadata>;
 }
 
 export interface EndpointCategory {
@@ -27,6 +35,20 @@ export const endpointCategories: EndpointCategory[] = [
         path: "/sites/:site",
         name: "Get Site",
         description: "Returns details for a specific site",
+        hasCommonParams: false,
+      },
+      {
+        method: "GET",
+        path: "/sites/:site/has-data",
+        name: "Get Site Has Data",
+        description: "Returns whether the site has received analytics events",
+        hasCommonParams: false,
+      },
+      {
+        method: "GET",
+        path: "/sites/:site/is-public",
+        name: "Get Site Public Status",
+        description: "Returns whether the site is publicly accessible",
         hasCommonParams: false,
       },
       {
@@ -65,6 +87,27 @@ export const endpointCategories: EndpointCategory[] = [
       },
       {
         method: "GET",
+        path: "/sites/:site/excluded-paths",
+        name: "Get Excluded Paths",
+        description: "Returns the list of excluded URL paths",
+        hasCommonParams: false,
+      },
+      {
+        method: "GET",
+        path: "/sites/:site/excluded-hostnames",
+        name: "Get Excluded Hostnames",
+        description: "Returns the list of excluded hostnames",
+        hasCommonParams: false,
+      },
+      {
+        method: "GET",
+        path: "/sites/:site/excluded-user-agents",
+        name: "Get Excluded User Agents",
+        description: "Returns the list of excluded user-agent patterns",
+        hasCommonParams: false,
+      },
+      {
+        method: "GET",
         path: "/sites/:site/private-link-config",
         name: "Get Private Link Config",
         description: "Returns the private link key configuration",
@@ -90,7 +133,8 @@ export const endpointCategories: EndpointCategory[] = [
         method: "GET",
         path: "/organizations",
         name: "Get My Organizations",
-        description: "Returns all organizations the authenticated user is a member of, including all members for each organization",
+        description:
+          "Returns all organizations the authenticated user is a member of, including all members for each organization",
         hasCommonParams: false,
       },
       {
@@ -125,6 +169,14 @@ export const endpointCategories: EndpointCategory[] = [
       },
       {
         method: "GET",
+        path: "/organizations/:organizationId/sites",
+        name: "Get Organization Sites",
+        description: "Returns all sites in an organization visible to the authenticated user",
+        hasCommonParams: false,
+        pathParams: ["organizationId"],
+      },
+      {
+        method: "GET",
         path: "/organizations/:organizationId/members",
         name: "Get Organization Members",
         description: "Returns all members of an organization with user details",
@@ -147,6 +199,53 @@ export const endpointCategories: EndpointCategory[] = [
     ],
   },
   {
+    name: "Teams",
+    endpoints: [
+      {
+        method: "GET",
+        path: "/organizations/:organizationId/teams",
+        name: "Get Teams",
+        description: "Returns the teams in an organization with members and sites",
+        hasCommonParams: false,
+        pathParams: ["organizationId"],
+      },
+      {
+        method: "POST",
+        path: "/organizations/:organizationId/teams",
+        name: "Create Team",
+        description: "Creates a team. Requires admin/owner role.",
+        hasCommonParams: false,
+        pathParams: ["organizationId"],
+        hasRequestBody: true,
+        requestBodyExample: {
+          name: "Marketing",
+          memberUserIds: [],
+          siteIds: [],
+        },
+      },
+      {
+        method: "PUT",
+        path: "/organizations/:organizationId/teams/:teamId",
+        name: "Update Team",
+        description: "Updates a team's name, members, or sites. Requires admin/owner role.",
+        hasCommonParams: false,
+        pathParams: ["organizationId", "teamId"],
+        hasRequestBody: true,
+        requestBodyExample: {
+          name: "Growth",
+        },
+      },
+      {
+        method: "DELETE",
+        path: "/organizations/:organizationId/teams/:teamId",
+        name: "Delete Team",
+        description: "Deletes a team. Requires admin/owner role.",
+        hasCommonParams: false,
+        pathParams: ["organizationId", "teamId"],
+      },
+    ],
+  },
+  {
     name: "Overview",
     endpoints: [
       {
@@ -158,7 +257,7 @@ export const endpointCategories: EndpointCategory[] = [
       },
       {
         method: "GET",
-        path: "/sites/:site/overview-bucketed",
+        path: "/sites/:site/overview/time-series",
         name: "Get Overview (Time Series)",
         description: "Returns time-series analytics data broken down by time buckets",
         hasCommonParams: true,
@@ -172,6 +271,14 @@ export const endpointCategories: EndpointCategory[] = [
         hasCommonParams: true,
         specificParams: ["parameter", "limit", "page"],
         requiredParams: ["parameter"],
+      },
+      {
+        method: "GET",
+        path: "/sites/:site/page-titles",
+        name: "Get Page Titles",
+        description: "Returns page title metrics with pagination",
+        hasCommonParams: true,
+        specificParams: ["limit", "page"],
       },
       {
         method: "GET",
@@ -203,6 +310,22 @@ export const endpointCategories: EndpointCategory[] = [
       },
       {
         method: "GET",
+        path: "/sites/:site/events/time-series",
+        name: "Get Event Time Series",
+        description: "Returns time-series counts for top custom events",
+        hasCommonParams: true,
+        specificParams: ["bucket", "limit"],
+      },
+      {
+        method: "GET",
+        path: "/sites/:site/events/count",
+        name: "Get Event Counts",
+        description: "Returns time-series event counts grouped by event type",
+        hasCommonParams: true,
+        specificParams: ["bucket"],
+      },
+      {
+        method: "GET",
         path: "/sites/:site/events/properties",
         name: "Get Event Properties",
         description: "Returns property key-value pairs for a specific event",
@@ -224,7 +347,7 @@ export const endpointCategories: EndpointCategory[] = [
     endpoints: [
       {
         method: "GET",
-        path: "/sites/:site/error-names",
+        path: "/sites/:site/errors/names",
         name: "Get Error Names",
         description: "Returns unique error messages with occurrence and session counts",
         hasCommonParams: true,
@@ -232,7 +355,7 @@ export const endpointCategories: EndpointCategory[] = [
       },
       {
         method: "GET",
-        path: "/sites/:site/error-events",
+        path: "/sites/:site/errors/events",
         name: "Get Error Events",
         description: "Returns individual error occurrences with context and stack traces",
         hasCommonParams: true,
@@ -241,12 +364,65 @@ export const endpointCategories: EndpointCategory[] = [
       },
       {
         method: "GET",
-        path: "/sites/:site/error-bucketed",
+        path: "/sites/:site/errors/time-series",
         name: "Get Error Time Series",
         description: "Returns error occurrence counts over time",
         hasCommonParams: true,
         requiredParams: ["errorMessage"],
         specificParams: ["errorMessage", "bucket"],
+      },
+    ],
+  },
+  {
+    name: "Bots",
+    endpoints: [
+      {
+        method: "GET",
+        path: "/sites/:site/bots/overview",
+        name: "Get Bot Overview",
+        description: "Returns aggregate bot-traffic metrics with a breakdown by detection layer",
+        hasCommonParams: true,
+        specificParams: ["layer"],
+      },
+      {
+        method: "GET",
+        path: "/sites/:site/bots/time-series",
+        name: "Get Bot Time Series",
+        description: "Returns bot request counts over time",
+        hasCommonParams: true,
+        specificParams: ["bucket", "layer"],
+      },
+      {
+        method: "GET",
+        path: "/sites/:site/bots/by-dimension",
+        name: "Get Bots by Dimension",
+        description: "Returns bot requests broken down by a dimension",
+        hasCommonParams: true,
+        requiredParams: ["dimension"],
+        specificParams: ["dimension", "limit", "page", "layer"],
+        parameterMetadata: {
+          dimension: {
+            label: "Dimension",
+            type: "select",
+            options: [
+              "browser",
+              "browser_version",
+              "operating_system",
+              "operating_system_version",
+              "country",
+              "region",
+              "city",
+              "device_type",
+              "referrer",
+              "hostname",
+              "pathname",
+              "dimensions",
+              "asn_org",
+              "bot_category",
+              "matched_ua_pattern",
+            ],
+          },
+        },
       },
     ],
   },
@@ -260,6 +436,15 @@ export const endpointCategories: EndpointCategory[] = [
         description: "Returns paginated list of goals with conversion metrics",
         hasCommonParams: true,
         specificParams: ["page", "page_size", "sort", "order"],
+      },
+      {
+        method: "GET",
+        path: "/sites/:site/goals/time-series",
+        name: "Get Goal Time Series",
+        description: "Returns goal conversions and conversion rate over time",
+        hasCommonParams: true,
+        requiredParams: ["goal_ids"],
+        specificParams: ["goal_ids", "bucket"],
       },
       {
         method: "GET",
@@ -344,6 +529,10 @@ export const endpointCategories: EndpointCategory[] = [
         hasCommonParams: true,
         pathParams: ["stepNumber"],
         specificParams: ["mode", "page", "limit"],
+        requiredParams: ["mode"],
+        parameterMetadata: {
+          mode: { label: "Mode", type: "select", options: ["reached", "dropped"] },
+        },
         hasRequestBody: true,
         requestBodyExample: {
           steps: [
@@ -403,6 +592,51 @@ export const endpointCategories: EndpointCategory[] = [
         hasCommonParams: true,
         requiredParams: ["dimension"],
         specificParams: ["dimension", "page", "limit", "sort_by", "sort_order"],
+        parameterMetadata: {
+          dimension: {
+            label: "Dimension",
+            type: "select",
+            options: ["pathname", "country", "region", "browser", "operating_system", "device_type"],
+          },
+          sort_by: {
+            label: "Sort By",
+            type: "select",
+            options: [
+              "pathname",
+              "country",
+              "region",
+              "browser",
+              "operating_system",
+              "device_type",
+              "event_count",
+              "lcp_avg",
+              "lcp_p50",
+              "lcp_p75",
+              "lcp_p90",
+              "lcp_p99",
+              "cls_avg",
+              "cls_p50",
+              "cls_p75",
+              "cls_p90",
+              "cls_p99",
+              "inp_avg",
+              "inp_p50",
+              "inp_p75",
+              "inp_p90",
+              "inp_p99",
+              "fcp_avg",
+              "fcp_p50",
+              "fcp_p75",
+              "fcp_p90",
+              "fcp_p99",
+              "ttfb_avg",
+              "ttfb_p50",
+              "ttfb_p75",
+              "ttfb_p90",
+              "ttfb_p99",
+            ],
+          },
+        },
       },
     ],
   },
@@ -415,7 +649,7 @@ export const endpointCategories: EndpointCategory[] = [
         name: "Get Sessions",
         description: "Returns a paginated list of sessions",
         hasCommonParams: true,
-        specificParams: ["page", "limit", "user_id", "identified_only"],
+        specificParams: ["page", "limit", "user_id", "identified_only", "min_pageviews", "min_events", "min_duration"],
       },
       {
         method: "GET",
@@ -424,14 +658,43 @@ export const endpointCategories: EndpointCategory[] = [
         description: "Returns detailed session information with events",
         hasCommonParams: false,
         pathParams: ["sessionId"],
-        specificParams: ["limit", "offset"],
+        specificParams: ["limit", "offset", "minutes"],
       },
       {
         method: "GET",
-        path: "/sites/:site/session-locations",
+        path: "/sites/:site/sessions/locations",
         name: "Get Session Locations",
         description: "Returns aggregated session locations for map visualization",
         hasCommonParams: true,
+      },
+    ],
+  },
+  {
+    name: "Session Replay",
+    endpoints: [
+      {
+        method: "GET",
+        path: "/sites/:site/session-replay/list",
+        name: "Get Session Replays",
+        description: "Returns session replay recordings with pagination",
+        hasCommonParams: true,
+        specificParams: ["limit", "offset", "userId", "minDuration"],
+      },
+      {
+        method: "GET",
+        path: "/sites/:site/session-replay/:sessionId",
+        name: "Get Session Replay Events",
+        description: "Returns rrweb events and metadata for a session replay",
+        hasCommonParams: false,
+        pathParams: ["sessionId"],
+      },
+      {
+        method: "DELETE",
+        path: "/sites/:site/session-replay/:sessionId",
+        name: "Delete Session Replay",
+        description: "Deletes a session replay recording",
+        hasCommonParams: false,
+        pathParams: ["sessionId"],
       },
     ],
   },
@@ -444,7 +707,14 @@ export const endpointCategories: EndpointCategory[] = [
         name: "Get Users",
         description: "Returns a paginated list of users",
         hasCommonParams: true,
-        specificParams: ["page", "page_size", "sort_by", "sort_order", "identified_only"],
+        specificParams: ["page", "page_size", "sort_by", "sort_order", "identified_only", "search", "search_field"],
+        parameterMetadata: {
+          sort_by: {
+            label: "Sort By",
+            type: "select",
+            options: ["first_seen", "last_seen", "pageviews", "sessions", "events"],
+          },
+        },
       },
       {
         method: "GET",
@@ -452,6 +722,7 @@ export const endpointCategories: EndpointCategory[] = [
         name: "Get User Session Count",
         description: "Returns daily session counts for a specific user",
         hasCommonParams: false,
+        requiredParams: ["user_id"],
         specificParams: ["user_id", "time_zone"],
       },
       {
@@ -465,6 +736,36 @@ export const endpointCategories: EndpointCategory[] = [
     ],
   },
   {
+    name: "User Traits",
+    endpoints: [
+      {
+        method: "GET",
+        path: "/sites/:site/user-traits/keys",
+        name: "Get User Trait Keys",
+        description: "Returns known user trait keys with user counts",
+        hasCommonParams: false,
+      },
+      {
+        method: "GET",
+        path: "/sites/:site/user-traits/values",
+        name: "Get User Trait Values",
+        description: "Returns values for a user trait key",
+        hasCommonParams: false,
+        requiredParams: ["key"],
+        specificParams: ["key", "limit", "offset"],
+      },
+      {
+        method: "GET",
+        path: "/sites/:site/user-traits/users",
+        name: "Get Users by Trait",
+        description: "Returns users matching a trait key and value",
+        hasCommonParams: false,
+        requiredParams: ["key", "value"],
+        specificParams: ["key", "value", "limit", "offset"],
+      },
+    ],
+  },
+  {
     name: "Misc",
     endpoints: [
       {
@@ -474,6 +775,9 @@ export const endpointCategories: EndpointCategory[] = [
         description: "Returns cohort-based retention analysis",
         hasCommonParams: false,
         specificParams: ["mode", "range"],
+        parameterMetadata: {
+          mode: { label: "Mode", type: "select", options: ["day", "week"] },
+        },
       },
       {
         method: "GET",
@@ -481,7 +785,16 @@ export const endpointCategories: EndpointCategory[] = [
         name: "Get Journeys",
         description: "Returns most common page navigation paths",
         hasCommonParams: true,
-        specificParams: ["steps", "limit"],
+        specificParams: ["steps", "limit", "stepFilters"],
+      },
+      {
+        method: "GET",
+        path: "/org-event-count/:organizationId",
+        name: "Get Organization Event Count",
+        description: "Returns daily event usage counts for an organization",
+        hasCommonParams: false,
+        pathParams: ["organizationId"],
+        specificParams: ["start_date", "end_date", "time_zone"],
       },
     ],
   },
@@ -491,10 +804,7 @@ export const endpointCategories: EndpointCategory[] = [
 export const allEndpoints: EndpointConfig[] = endpointCategories.flatMap(cat => cat.endpoints);
 
 // Parameter metadata for dynamic form generation
-export const parameterMetadata: Record<
-  string,
-  { label: string; type: "text" | "number" | "select"; options?: string[]; placeholder?: string }
-> = {
+export const parameterMetadata: Record<string, ParameterMetadata> = {
   bucket: {
     label: "Bucket",
     type: "select",
@@ -506,29 +816,44 @@ export const parameterMetadata: Record<
     options: [
       "pathname",
       "page_title",
+      "querystring",
+      "hostname",
+      "user_id",
+      "event_name",
+      "referrer",
+      "channel",
+      "entry_page",
+      "exit_page",
       "country",
       "region",
       "city",
-      "browser",
-      "operating_system",
       "device_type",
-      "referrer",
-      "channel",
+      "operating_system",
+      "operating_system_version",
+      "browser",
+      "browser_version",
+      "language",
+      "dimensions",
       "utm_source",
       "utm_medium",
       "utm_campaign",
       "utm_term",
       "utm_content",
-      "language",
-      "entry_page",
-      "exit_page",
-      "event_name",
+      "tag",
+      "lat",
+      "lon",
+      "timezone",
     ],
   },
   dimension: {
     label: "Dimension",
     type: "select",
-    options: ["pathname", "country", "browser", "operating_system", "device_type"],
+    options: ["pathname", "country", "region", "browser", "operating_system", "device_type"],
+  },
+  layer: {
+    label: "Layer",
+    type: "select",
+    options: ["ua_pattern", "header_heuristics", "client_signals", "bot_asn", "rate_anomaly"],
   },
   mode: {
     label: "Mode",
@@ -558,23 +883,36 @@ export const parameterMetadata: Record<
   page: { label: "Page", type: "number", placeholder: "1" },
   limit: { label: "Limit", type: "number", placeholder: "10" },
   page_size: { label: "Page Size", type: "number", placeholder: "10" },
+  min_pageviews: { label: "Min Pageviews", type: "number", placeholder: "0" },
+  min_events: { label: "Min Events", type: "number", placeholder: "0" },
+  min_duration: { label: "Min Duration (s)", type: "number", placeholder: "0" },
+  minDuration: { label: "Min Duration (s)", type: "number", placeholder: "30" },
   minutes: { label: "Minutes", type: "number", placeholder: "5" },
   steps: { label: "Steps", type: "number", placeholder: "3" },
+  stepFilters: { label: "Step Filters", type: "text", placeholder: 'JSON, e.g. {"1":"/pricing"}' },
   range: { label: "Range (days)", type: "number", placeholder: "90" },
   offset: { label: "Offset", type: "number", placeholder: "0" },
+  start_date: { label: "Start Date", type: "text", placeholder: "YYYY-MM-DD" },
+  end_date: { label: "End Date", type: "text", placeholder: "YYYY-MM-DD" },
   since_timestamp: { label: "Since Timestamp", type: "text", placeholder: "ISO 8601, e.g. 2024-01-31T14:00:00.000Z" },
   before_timestamp: { label: "Before Timestamp", type: "text", placeholder: "ISO 8601, e.g. 2024-01-31T14:00:00.000Z" },
   event_name: { label: "Event Name", type: "text", placeholder: "e.g., purchase" },
   errorMessage: { label: "Error Message", type: "text", placeholder: "Error message to filter by" },
   user_id: { label: "User ID", type: "text", placeholder: "User ID" },
+  userId: { label: "User ID", type: "text", placeholder: "User ID" },
+  key: { label: "Key", type: "text", placeholder: "Trait key" },
+  value: { label: "Value", type: "text", placeholder: "Trait value" },
+  search: { label: "Search", type: "text", placeholder: "Search users" },
+  search_field: { label: "Search Field", type: "select", options: ["username", "name", "email", "user_id"] },
   time_zone: { label: "Time Zone", type: "text", placeholder: "America/New_York" },
   identified_only: { label: "Identified Only", type: "select", options: ["true", "false"] },
   // Path params
   orgId: { label: "Organization ID", type: "text", placeholder: "org_abc123" },
   goalId: { label: "Goal ID", type: "number", placeholder: "Goal ID" },
+  goal_ids: { label: "Goal IDs", type: "text", placeholder: "e.g. 1,2" },
   funnelId: { label: "Funnel ID", type: "number", placeholder: "Funnel ID" },
+  teamId: { label: "Team ID", type: "text", placeholder: "team_abc123" },
   sessionId: { label: "Session ID", type: "text", placeholder: "Session ID" },
-  userId: { label: "User ID", type: "text", placeholder: "User ID" },
   stepNumber: { label: "Step Number", type: "number", placeholder: "Step number (1-indexed)" },
   siteId: { label: "Site ID", type: "number", placeholder: "Site ID" },
   organizationId: { label: "Organization ID", type: "text", placeholder: "org_abc123" },

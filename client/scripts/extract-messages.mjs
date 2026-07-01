@@ -6,11 +6,11 @@ const messagesDir = "./messages";
 
 await unstable_extractMessages({
   srcPath: "./src",
-  sourceLocale: "en",
   messages: {
+    sourceLocale: "en",
     path: messagesDir,
     format: "json",
-    locales: ["en", "de", "fr", "zh", "es", "pl", "it", "ko", "pt", "ja"],
+    locales: ["en", "de", "fr", "zh", "es", "pl", "it", "ko", "pt", "ja", "cs", "uk"],
   },
 });
 
@@ -21,7 +21,7 @@ for (const file of readdirSync(messagesDir)) {
   const sorted = Object.fromEntries(
     Object.keys(data)
       .sort()
-      .map((k) => [k, data[k]])
+      .map(k => [k, data[k]])
   );
   writeFileSync(path, JSON.stringify(sorted, null, 2) + "\n");
 }

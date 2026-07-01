@@ -36,6 +36,12 @@ describe("getSqlParam", () => {
     });
   });
 
+  describe("Feature flag parameters", () => {
+    it("should handle feature_flag:key", () => {
+      expect(getSqlParam("feature_flag:new_checkout" as FilterParameter)).toBe("feature_flags['new_checkout']");
+    });
+  });
+
   describe("Special parameters", () => {
     it("should handle referrer", () => {
       expect(getSqlParam("referrer")).toBe("domainWithoutWWW(referrer)");

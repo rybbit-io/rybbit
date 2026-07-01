@@ -1,11 +1,12 @@
 "use client";
 
 import { Filter, FilterParameter } from "@rybbit/shared";
-import { Info } from "lucide-react";
+import { useIntersectionObserver } from "@uidotdev/usehooks";
+import { Info, Loader2 } from "lucide-react";
 import { useExtracted } from "next-intl";
 import Link from "next/link";
-import { ReactNode } from "react";
-import { usePaginatedMetric } from "../../../../../api/analytics/hooks/useGetMetric";
+import { ReactNode, useEffect, useMemo } from "react";
+import { useInfiniteMetric } from "../../../../../api/analytics/hooks/useGetMetric";
 import { MetricResponse } from "../../../../../api/analytics/endpoints";
 import { ErrorState } from "../../../../../components/ErrorState";
 import { CardLoader } from "../../../../../components/ui/card";
@@ -17,7 +18,27 @@ import { StandardSkeleton } from "./Skeleton";
 import { StandardSectionDialog } from "./StandardSectionDialog";
 import { Time } from "../../../../../components/DateSelector/types";
 
-const MAX_ITEMS_TO_DISPLAY = 10;
+export type StandardSectionBaseProps = {
+  title: string;
+  getKey: (item: MetricResponse) => string;
+  getLabel: (item: MetricResponse) => ReactNode;
+  getValue: (item: MetricResponse) => string;
+  getFilterLabel?: (item: MetricResponse) => string;
+  getLink?: (item: MetricResponse) => string;
+  countLabel?: string;
+  filterParameter: FilterParameter;
+  hasSubrow?: boolean;
+  getSubrowLabel?: (item: MetricResponse) => ReactNode;
+  customFilters?: Filter[];
+  customTime?: Time;
+  lite?: boolean;
+};
+
+type StandardSectionProps = StandardSectionBaseProps & {
+  expanded?: boolean;
+  close?: () => void;
+  renderDialog?: boolean;
+};
 
 export function StandardSection({
   title,
@@ -34,38 +55,41 @@ export function StandardSection({
   getSubrowLabel,
   customFilters,
   customTime,
-}: {
-  title: string;
-  getKey: (item: MetricResponse) => string;
-  getLabel: (item: MetricResponse) => ReactNode;
-  getValue: (item: MetricResponse) => string;
-  getFilterLabel?: (item: MetricResponse) => string;
-  getLink?: (item: MetricResponse) => string;
-  countLabel?: string;
-  filterParameter: FilterParameter;
-  expanded: boolean;
-  close: () => void;
-  hasSubrow?: boolean;
-  getSubrowLabel?: (item: MetricResponse) => ReactNode;
-  customFilters?: Filter[];
-  customTime?: Time;
-}) {
+  lite = false,
+  renderDialog = true,
+}: StandardSectionProps) {
   const t = useExtracted();
-  const { data, isLoading, isFetching, error, refetch } = usePaginatedMetric({
-    parameter: filterParameter,
-    limit: 100,
-    page: 1,
-    customFilters,
-    customTime,
+  const { data, isLoading, isFetching, error, refetch, fetchNextPage, hasNextPage, isFetchingNextPage } =
+    useInfiniteMetric({
+      parameter: filterParameter,
+      limit: 100,
+      customFilters,
+      customTime,
+      lite,
+    });
+
+  // Load more when the sentinel near the bottom of the scroll area becomes
+  // visible. root: null relies on IntersectionObserver respecting the
+  // ScrollArea viewport's clipping, matching the dialog's infinite scroll.
+  const [loadMoreRef, entry] = useIntersectionObserver({
+    threshold: 0,
+    root: null,
+    rootMargin: "0px 0px 200px 0px",
   });
 
-  const itemsForDisplay = data?.data;
+  const itemsForDisplay = useMemo(() => data?.pages.flatMap(page => page.data), [data]);
+
+  useEffect(() => {
+    if (entry?.isIntersecting && hasNextPage && !isFetchingNextPage && !isLoading) {
+      fetchNextPage();
+    }
+  }, [entry?.isIntersecting, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading]);
 
   const ratio = itemsForDisplay?.[0]?.percentage ? 100 / itemsForDisplay[0].percentage : 1;
 
   return (
     <>
-      {isFetching && (
+      {isFetching && !isFetchingNextPage && (
         <div className="absolute top-[-8px] left-0 w-full h-full">
           <CardLoader />
         </div>
@@ -80,8 +104,12 @@ export function StandardSection({
               </TooltipTrigger>
               <TooltipContent>
                 {t("Geolocation by")}{" "}
-                <Link href="https://ipapi.is/" target="_blank" className="text-emerald-400 hover:text-emerald-300">
-                  ipapi.is
+                <Link
+                  href="https://www.maxmind.com/"
+                  target="_blank"
+                  className="text-emerald-400 hover:text-emerald-300"
+                >
+                  Maxmind
                 </Link>
               </TooltipContent>
             </Tooltip>
@@ -120,13 +148,19 @@ export function StandardSection({
                   {t("No Data")}
                 </div>
               )}
+              {itemsForDisplay?.length ? (
+                <div ref={loadMoreRef} className="flex justify-center py-1">
+                  {isFetchingNextPage && (
+                    <Loader2 className="h-4 w-4 animate-spin text-neutral-600 dark:text-neutral-400" />
+                  )}
+                </div>
+              ) : null}
             </>
           )}
-          {!isLoading && !error && itemsForDisplay?.length ? (
+          {renderDialog && close && !isLoading && !error && itemsForDisplay?.length ? (
             <div className="flex flex-row gap-2 justify-between items-center">
               <StandardSectionDialog
                 title={title}
-                ratio={ratio}
                 getKey={getKey}
                 getLabel={getLabel}
                 getValue={getValue}
@@ -136,6 +170,9 @@ export function StandardSection({
                 filterParameter={filterParameter}
                 expanded={expanded}
                 close={close}
+                customFilters={customFilters}
+                customTime={customTime}
+                lite={lite}
               />
             </div>
           ) : null}

@@ -13,6 +13,7 @@ describe("parseScriptConfig", () => {
     mockScriptTag = document.createElement("script");
     consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
     consoleWarnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    localStorage.clear();
     vi.clearAllMocks();
   });
 
@@ -26,18 +27,35 @@ describe("parseScriptConfig", () => {
     mockScriptTag.setAttribute("data-site-id", "123");
 
     // Mock successful API response
-    (global.fetch as any).mockResolvedValueOnce({
-      ok: true,
-      json: async () => ({
-        sessionReplay: true,
-        webVitals: true,
-        trackErrors: false,
-        trackOutbound: true,
-        trackUrlParams: false,
-        trackInitialPageView: true,
-        trackSpaNavigation: false,
-      }),
-    });
+    (global.fetch as any)
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          sessionReplay: true,
+          webVitals: true,
+          trackErrors: false,
+          trackOutbound: true,
+          trackUrlParams: false,
+          trackInitialPageView: true,
+          trackSpaNavigation: false,
+        }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          flags: {
+            new_checkout: {
+              key: "new_checkout",
+              value: true,
+              flagType: "boolean",
+              version: 1,
+              reason: "rollout",
+              matched: true,
+              rolloutPercentage: 100,
+            },
+          },
+        }),
+      });
 
     const config = await parseScriptConfig(mockScriptTag);
 
@@ -45,6 +63,7 @@ describe("parseScriptConfig", () => {
       namespace: "rybbit",
       analyticsHost: "https://analytics.example.com",
       siteId: "123",
+      visitorId: expect.any(String),
       debounceDuration: 500,
       autoTrackPageview: true, // trackInitialPageView from API
       autoTrackSpa: false, // trackSpaNavigation from API
@@ -56,6 +75,18 @@ describe("parseScriptConfig", () => {
       trackButtonClicks: false,
       trackCopy: false,
       trackFormInteractions: false,
+      tag: "",
+      featureFlags: {
+        new_checkout: {
+          key: "new_checkout",
+          value: true,
+          flagType: "boolean",
+          version: 1,
+          reason: "rollout",
+          matched: true,
+          rolloutPercentage: 100,
+        },
+      },
       skipPatterns: [],
       maskPatterns: [],
       sessionReplayBatchInterval: 5000,
@@ -75,13 +106,10 @@ describe("parseScriptConfig", () => {
       sessionReplaySampleRate: undefined,
     });
 
-    expect(global.fetch).toHaveBeenCalledWith(
-      "https://analytics.example.com/site/tracking-config/123",
-      {
-        method: "GET",
-        credentials: "omit",
-      }
-    );
+    expect(global.fetch).toHaveBeenCalledWith("https://analytics.example.com/site/tracking-config/123", {
+      method: "GET",
+      credentials: "omit",
+    });
   });
 
   it("should use defaults when API call fails", async () => {
@@ -100,6 +128,7 @@ describe("parseScriptConfig", () => {
       namespace: "rybbit",
       analyticsHost: "https://analytics.example.com",
       siteId: "123",
+      visitorId: expect.any(String),
       debounceDuration: 500,
       autoTrackPageview: true,
       autoTrackSpa: true,
@@ -111,6 +140,8 @@ describe("parseScriptConfig", () => {
       trackButtonClicks: false,
       trackCopy: false,
       trackFormInteractions: false,
+      tag: "",
+      featureFlags: {},
       skipPatterns: [],
       maskPatterns: [],
       sessionReplayBatchInterval: 5000,
@@ -129,9 +160,7 @@ describe("parseScriptConfig", () => {
       sessionReplaySampleRate: undefined,
     });
 
-    expect(consoleWarnSpy).toHaveBeenCalledWith(
-      "Failed to fetch tracking config from API, using defaults"
-    );
+    expect(consoleWarnSpy).toHaveBeenCalledWith("Failed to fetch tracking config from API, using defaults");
   });
 
   it("should use defaults when network error occurs", async () => {
@@ -147,6 +176,7 @@ describe("parseScriptConfig", () => {
       namespace: "rybbit",
       analyticsHost: "https://analytics.example.com",
       siteId: "123",
+      visitorId: expect.any(String),
       debounceDuration: 500,
       autoTrackPageview: true,
       autoTrackSpa: true,
@@ -158,6 +188,8 @@ describe("parseScriptConfig", () => {
       trackButtonClicks: false,
       trackCopy: false,
       trackFormInteractions: false,
+      tag: "",
+      featureFlags: {},
       skipPatterns: [],
       maskPatterns: [],
       sessionReplayBatchInterval: 5000,
@@ -176,10 +208,7 @@ describe("parseScriptConfig", () => {
       sessionReplaySampleRate: undefined,
     });
 
-    expect(consoleWarnSpy).toHaveBeenCalledWith(
-      "Error fetching tracking config:",
-      expect.any(Error)
-    );
+    expect(consoleWarnSpy).toHaveBeenCalledWith("Error fetching tracking config:", expect.any(Error));
   });
 
   it("should handle missing src attribute", async () => {
@@ -366,7 +395,10 @@ describe("parseScriptConfig", () => {
   it("should parse session replay mask text selectors", async () => {
     mockScriptTag.setAttribute("src", "https://analytics.example.com/script.js");
     mockScriptTag.setAttribute("data-site-id", "123");
-    mockScriptTag.setAttribute("data-replay-mask-text-selectors", '[".user-name", ".email-address", "[data-sensitive]"]');
+    mockScriptTag.setAttribute(
+      "data-replay-mask-text-selectors",
+      '[".user-name", ".email-address", "[data-sensitive]"]'
+    );
 
     // Mock successful API response
     (global.fetch as any).mockResolvedValueOnce({

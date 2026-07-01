@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { Mail, Github, Bell, Twitter } from "lucide-react";
+import { Mail, Bell } from "lucide-react";
+import { SiX } from "@icons-pack/react-simple-icons";
 import { useExtracted } from "next-intl";
 import { createMetadata, createOGImageUrl } from "@/lib/metadata";
 
@@ -58,7 +59,7 @@ export default function Contact() {
 
           <div className="flex items-start md:items-center gap-4 flex-col md:flex-row">
             <div className="bg-neutral-200 dark:bg-neutral-800 p-3 rounded-lg">
-              <Twitter className="w-6 h-6 text-neutral-600 dark:text-neutral-300" />
+              <SiX className="w-6 h-6 text-neutral-600 dark:text-neutral-300" />
             </div>
             <div>
               <h2 className="text-xl font-medium mb-1">{t("X (Twitter)")}</h2>

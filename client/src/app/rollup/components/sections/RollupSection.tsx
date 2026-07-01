@@ -7,7 +7,7 @@ import { ReactNode } from "react";
 import { ErrorState } from "@/components/ErrorState";
 import { CardLoader } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { round } from "lodash";
+import round from "lodash/round";
 import { StandardSkeleton } from "@/app/[site]/components/shared/StandardSection/Skeleton";
 import { MetricResponse } from "@/api/analytics/endpoints";
 import { useRollupMetric } from "../../hooks/useRollupMetric";
@@ -25,6 +25,7 @@ export function RollupSection({
   countLabel,
   expanded,
   close,
+  lite = false,
 }: {
   title: string;
   filterParameter: FilterParameter;
@@ -37,12 +38,14 @@ export function RollupSection({
   countLabel?: string;
   expanded: boolean;
   close: () => void;
+  lite?: boolean;
 }) {
   const t = useExtracted();
   const { data, isLoading, isFetching, error } = useRollupMetric({
     siteIds,
     parameter: filterParameter,
     limit: 100,
+    lite,
   });
 
   const items = data;
@@ -128,6 +131,7 @@ export function RollupSection({
           getLink={getLink}
           expanded={expanded}
           close={close}
+          lite={lite}
         />
       )}
     </>

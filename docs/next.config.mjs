@@ -4,8 +4,12 @@ import { createMDX } from 'fumadocs-mdx/next';
 const withNextIntl = createNextIntlPlugin({
   experimental: {
     srcPath: './src',
-    extract: { sourceLocale: 'en' },
+    // Enables `useExtracted` (compile-time message extraction). Required for the
+    // production build — without it, `useExtracted` throws at runtime. The
+    // source locale now lives in `messages.sourceLocale` below.
+    extract: true,
     messages: {
+      sourceLocale: 'en',
       path: './messages',
       format: 'json',
       locales: ['en', 'de', 'fr', 'zh', 'es', 'pl', 'it', 'ko', 'pt', 'ja'],

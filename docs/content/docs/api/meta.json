@@ -1,4 +1,34 @@
 {
-  "title": "API",
-  "pages": ["getting-started", "sending-events", "stats", "organizations", "sites"]
+  "title": "API Reference",
+  "description": "REST API endpoints and authentication",
+  "icon": "Terminal",
+  "root": true,
+  "pages": [
+    "getting-started",
+    "---Guides---",
+    "weekly-report",
+    "funnel-dropoff",
+    "channel-performance",
+    "live-feed",
+    "---Endpoints---",
+    "sending-events",
+    "overview",
+    "sessions",
+    "session-replay",
+    "users",
+    "user-traits",
+    "events",
+    "goals",
+    "funnels",
+    "performance",
+    "errors",
+    "bots",
+    "insights",
+    "---Management---",
+    "organizations",
+    "teams",
+    "sites",
+    "imports",
+    "api-keys"
+  ]
 }

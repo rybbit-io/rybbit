@@ -5,5 +5,6 @@ export function useAdminOrganizations() {
   return useQuery<AdminOrganizationData[]>({
     queryKey: ["admin-organizations"],
     queryFn: getAdminOrganizations,
+    staleTime: 60_000,
   });
 }

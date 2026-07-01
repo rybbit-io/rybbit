@@ -34,6 +34,9 @@ export function useCreateGoal() {
       queryClient.invalidateQueries({
         queryKey: ["goals", variables.siteId.toString()],
       });
+      queryClient.invalidateQueries({
+        queryKey: ["goal-time-series", variables.siteId.toString()],
+      });
     },
   });
 }

@@ -15,7 +15,7 @@ export default function EventsPage() {
   const t = useExtracted();
   useSetPageTitle("Events");
   const { data: siteMetadata } = useGetSite();
-  const isApp = siteMetadata?.type === "app";
+  const isApp = siteMetadata?.type === "mobile";
 
   const { data: eventNamesData, isLoading: isLoadingEventNames } = useGetEventNames();
 

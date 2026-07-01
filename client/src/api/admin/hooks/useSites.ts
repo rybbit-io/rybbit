@@ -1,4 +1,4 @@
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { usePathname } from "next/navigation";
 import { authClient } from "../../../lib/auth";
 import { useStore } from "../../../lib/store";
@@ -8,8 +8,6 @@ import {
   fetchSiteIsPublic,
   fetchSitesFromOrg,
   GetSitesFromOrgResponse,
-  verifyScript,
-  VerifyScriptResponse
 } from "../endpoints";
 
 export function useGetSitesFromOrg(organizationId?: string) {
@@ -75,12 +73,6 @@ export function useGetSiteIsPublic(siteId?: string | number) {
     },
     staleTime: 60000,
     enabled: !!siteId,
-  });
-}
-
-export function useVerifyScript() {
-  return useMutation<VerifyScriptResponse, Error, number | string>({
-    mutationFn: (siteId: number | string) => verifyScript(siteId),
   });
 }
 

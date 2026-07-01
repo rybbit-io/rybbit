@@ -93,11 +93,7 @@ interface LandingPageTemplateProps {
   showEUFlag?: boolean;
 }
 
-export function LandingPageTemplate({
-  title,
-  subtitle,
-  showEUFlag = true,
-}: LandingPageTemplateProps) {
+export function LandingPageTemplate({ title, subtitle, showEUFlag = true }: LandingPageTemplateProps) {
   const t = useExtracted();
 
   const features = [
@@ -194,7 +190,7 @@ export function LandingPageTemplate({
         <div className="max-w-[1200px] mx-auto px-4">
           <div className="text-center mb-10 md:mb-12">
             <p className="text-neutral-500 dark:text-neutral-400 text-sm uppercase tracking-wider font-medium">
-              {t("Trusted by 4,000+ organizations worldwide")}
+              {t("Trusted by 10,000+ organizations worldwide")}
             </p>
           </div>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8 items-center justify-items-center">
@@ -298,9 +294,7 @@ export function LandingPageTemplate({
                   <Icon size={20} className="text-neutral-600 dark:text-neutral-400" />
                   {feature.title}
                 </h3>
-                <p className="text-sm text-neutral-600 dark:text-neutral-400 leading-relaxed">
-                  {feature.description}
-                </p>
+                <p className="text-sm text-neutral-600 dark:text-neutral-400 leading-relaxed">{feature.description}</p>
               </div>
             );
           })}
@@ -365,16 +359,15 @@ export function LandingPageTemplate({
                 <TweetCard id="1920899082253434950" />
                 <TweetCard id="2000788904778326334" />
                 <TweetCard id="2015102995789381815" />
-                <TweetCard id="1982378431166963982" />
                 <TweetCard id="1980082738934993142" />
                 <TweetCard id="1976495558480232672" />
               </Marquee>
 
               {/* Column 3 - hidden on mobile */}
               <Marquee vertical pauseOnHover className="hidden md:flex [--duration:60s]" repeat={2}>
+                <TweetCard id="1982378431166963982" />
                 <TweetCard id="2009548405488615871" />
                 <TweetCard id="1920470706761929048" />
-                <TweetCard id="1981795864118243355" />
                 <TweetCard id="1979830490006974510" />
                 <TweetCard id="1970265809122705759" />
               </Marquee>

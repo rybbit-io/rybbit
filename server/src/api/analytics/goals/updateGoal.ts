@@ -31,11 +31,9 @@ const eventConfigSchema = z
     }
   );
 
-// Define validation schema for the goal request
+// Define validation schema for the goal request body
 const updateGoalSchema = z
   .object({
-    goalId: z.number().int().positive("Goal ID must be a positive integer"),
-    siteId: z.number().int().positive("Site ID must be a positive integer"),
     name: z.string().optional(),
     goalType: z.enum(["path", "event"]),
     config: z.object({
@@ -43,10 +41,14 @@ const updateGoalSchema = z
       eventName: z.string().optional(),
       eventPropertyKey: z.string().optional(),
       eventPropertyValue: z.union([z.string(), z.number(), z.boolean()]).optional(),
-      propertyFilters: z.array(z.object({
-        key: z.string(),
-        value: z.union([z.string(), z.number(), z.boolean()]),
-      })).optional(),
+      propertyFilters: z
+        .array(
+          z.object({
+            key: z.string(),
+            value: z.union([z.string(), z.number(), z.boolean()]),
+          })
+        )
+        .optional(),
     }),
   })
   .refine(
@@ -68,14 +70,26 @@ type UpdateGoalRequest = z.infer<typeof updateGoalSchema>;
 
 export async function updateGoal(
   request: FastifyRequest<{
+    Params: { siteId: string; goalId: string };
     Body: UpdateGoalRequest;
   }>,
   reply: FastifyReply
 ) {
   try {
+    const siteId = parseInt(request.params.siteId, 10);
+    const goalId = parseInt(request.params.goalId, 10);
+
+    if (isNaN(siteId) || siteId <= 0) {
+      return reply.status(400).send({ error: "Invalid site ID" });
+    }
+
+    if (isNaN(goalId) || goalId <= 0) {
+      return reply.status(400).send({ error: "Invalid goal ID" });
+    }
+
     // Validate the request body
     const validatedData = updateGoalSchema.parse(request.body);
-    const { goalId, siteId, name, goalType, config } = validatedData;
+    const { name, goalType, config } = validatedData;
 
     // Check if the goal exists
     const existingGoal = await db.query.goals.findFirst({

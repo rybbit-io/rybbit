@@ -1,0 +1,133 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-06-02T00:00:00.000Z",
+  "title": "Design System: Rybbit",
+  "extensions": {
+    "colorMeta": {
+      "background": { "role": "neutral", "displayName": "Canvas", "canonical": "hsl(0 0% 8%)", "tonalRamp": ["#0a0a0a", "#131313", "#1b1b1b", "#242424", "#303030", "#4a4a4a", "#808080", "#f7f7f7"] },
+      "surface": { "role": "neutral", "displayName": "Surface", "canonical": "hsl(0 0% 10.5%)", "tonalRamp": ["#0a0a0a", "#131313", "#1b1b1b", "#242424", "#303030", "#4a4a4a", "#999999", "#f2f2f2"] },
+      "foreground": { "role": "neutral", "displayName": "Primary Text", "canonical": "hsl(0 0% 98%)", "tonalRamp": ["#131313", "#303030", "#4a4a4a", "#808080", "#999999", "#cccccc", "#e6e6e6", "#fafafa"] },
+      "muted-foreground": { "role": "neutral", "displayName": "Muted Text", "canonical": "hsl(0 0% 60%)", "tonalRamp": ["#303030", "#4a4a4a", "#5e5e5e", "#737373", "#808080", "#999999", "#b3b3b3", "#cccccc"] },
+      "accent": { "role": "primary", "displayName": "Emerald Signal", "canonical": "hsl(160.1 84.1% 39.4%)", "tonalRamp": ["#022c22", "#064e3b", "#065f46", "#047857", "#059669", "#10b981", "#34d399", "#6ee7b7"] },
+      "dataviz": { "role": "secondary", "displayName": "Periwinkle Data Line", "canonical": "hsl(230 100% 85%)", "tonalRamp": ["#1e2a66", "#33408c", "#4d5cb3", "#6677d9", "#8090ff", "#99aaff", "#b3bfff", "#ccd4ff"] },
+      "destructive": { "role": "tertiary", "displayName": "Destructive Red", "canonical": "hsl(0 84.2% 60.2%)", "tonalRamp": ["#450a0a", "#7f1d1d", "#991b1b", "#b91c1c", "#dc2626", "#ef4444", "#f87171", "#fca5a5"] },
+      "warning": { "role": "tertiary", "displayName": "Warning Yellow", "canonical": "hsl(45.4 93.4% 47.5%)", "tonalRamp": ["#422006", "#713f12", "#854d0e", "#a16207", "#ca8a04", "#eab308", "#facc15", "#fde047"] },
+      "info": { "role": "tertiary", "displayName": "Info Blue", "canonical": "hsl(217.2 91.2% 59.8%)", "tonalRamp": ["#172554", "#1e3a8a", "#1e40af", "#1d4ed8", "#2563eb", "#3b82f6", "#60a5fa", "#93c5fd"] }
+    },
+    "typographyMeta": {
+      "headline": { "displayName": "Headline", "purpose": "Large stat values and primary metric numbers; tabular figures." },
+      "title": { "displayName": "Title", "purpose": "Card titles, section and panel headings." },
+      "body": { "displayName": "Body", "purpose": "Dominant size: table cells, descriptions, most UI text." },
+      "label": { "displayName": "Label", "purpose": "Badges, chips, captions, axis labels, metadata." }
+    },
+    "shadows": [],
+    "motion": [
+      { "name": "transition-colors", "value": "150ms ease", "purpose": "Default for button/badge/input color and border state changes." },
+      { "name": "transition-all-card", "value": "300ms ease", "purpose": "Card hover border-color shift; the only depth motion." },
+      { "name": "accordion", "value": "0.2s ease-out", "purpose": "Radix accordion open/close height." }
+    ],
+    "breakpoints": [
+      { "name": "sm", "value": "640px" },
+      { "name": "md", "value": "768px" },
+      { "name": "lg", "value": "1024px" },
+      { "name": "xl", "value": "1280px" },
+      { "name": "2xl", "value": "1400px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Accent Button",
+      "kind": "button",
+      "refersTo": "button-accent",
+      "description": "Primary call to action / success. The one emerald button per view.",
+      "html": "<button class=\"ds-btn-accent\">Save changes</button>",
+      "css": ".ds-btn-accent { display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 36px; padding: 8px 12px; font-family: Inter, system-ui, sans-serif; font-size: 14px; font-weight: 500; color: #fafafa; background: #059669; border: 1px solid #047857; border-radius: 4.8px; cursor: pointer; transition: background-color 150ms ease, border-color 150ms ease; } .ds-btn-accent:hover { background: rgba(5,150,105,0.9); } .ds-btn-accent:focus-visible { outline: none; box-shadow: 0 0 0 1px #d4d4d4; }"
+    },
+    {
+      "name": "Default Button",
+      "kind": "button",
+      "refersTo": "button-default",
+      "description": "Neutral workhorse button: raised surface with a hairline border.",
+      "html": "<button class=\"ds-btn-default\">Add filter</button>",
+      "css": ".ds-btn-default { display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 36px; padding: 8px 12px; font-family: Inter, system-ui, sans-serif; font-size: 14px; font-weight: 500; color: #fafafa; background: #242424; border: 1px solid #3d3d3d; border-radius: 4.8px; cursor: pointer; transition: background-color 150ms ease, border-color 150ms ease; } .ds-btn-default:hover { background: rgba(48,48,48,0.9); border-color: #4a4a4a; } .ds-btn-default:focus-visible { outline: none; box-shadow: 0 0 0 1px #d4d4d4; }"
+    },
+    {
+      "name": "Outline Button",
+      "kind": "button",
+      "refersTo": "button-outline",
+      "description": "Secondary/tertiary action: transparent with muted text.",
+      "html": "<button class=\"ds-btn-outline\">Cancel</button>",
+      "css": ".ds-btn-outline { display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 36px; padding: 8px 12px; font-family: Inter, system-ui, sans-serif; font-size: 14px; font-weight: 500; color: #d4d4d4; background: transparent; border: 1px solid #4a4a4a; border-radius: 4.8px; cursor: pointer; transition: background-color 150ms ease, color 150ms ease, border-color 150ms ease; } .ds-btn-outline:hover { background: #1b1b1b; color: #fafafa; border-color: #5e5e5e; } .ds-btn-outline:focus-visible { outline: none; box-shadow: 0 0 0 1px #d4d4d4; }"
+    },
+    {
+      "name": "Card",
+      "kind": "card",
+      "refersTo": "card",
+      "description": "Flat surface one step off the canvas, hairline border, no resting shadow.",
+      "html": "<div class=\"ds-card\"><div class=\"ds-card-title\">Unique visitors</div><div class=\"ds-card-metric\">12,480</div><div class=\"ds-card-desc\">Last 7 days</div></div>",
+      "css": ".ds-card { background: #1b1b1b; color: #fafafa; border: 1px solid #242424; border-radius: 4.8px; padding: 16px; overflow: hidden; transition: border-color 300ms ease; } .ds-card:hover { border-color: #303030; } .ds-card-title { font-family: Inter, system-ui, sans-serif; font-size: 16px; font-weight: 600; line-height: 1; letter-spacing: -0.01em; } .ds-card-metric { font-family: Inter, system-ui, sans-serif; font-size: 30px; font-weight: 600; line-height: 1.1; letter-spacing: -0.01em; font-variant-numeric: tabular-nums; margin-top: 8px; } .ds-card-desc { font-family: Inter, system-ui, sans-serif; font-size: 14px; color: #999999; margin-top: 6px; }"
+    },
+    {
+      "name": "Search Input",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "Transparent field, hairline border, leading search icon, neutral focus ring.",
+      "html": "<div class=\"ds-input-wrap\"><svg class=\"ds-input-icon\" xmlns=\"http://www.w3.org/2000/svg\" width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><circle cx=\"11\" cy=\"11\" r=\"8\"></circle><path d=\"m21 21-4.3-4.3\"></path></svg><input class=\"ds-input\" type=\"text\" placeholder=\"Search pages\" /></div>",
+      "css": ".ds-input-wrap { position: relative; display: inline-block; } .ds-input-icon { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: #999999; pointer-events: none; } .ds-input { height: 36px; width: 100%; padding: 4px 12px 4px 36px; font-family: Inter, system-ui, sans-serif; font-size: 14px; color: #fafafa; background: transparent; border: 1px solid #303030; border-radius: 4.8px; transition: border-color 150ms ease; } .ds-input::placeholder { color: #999999; } .ds-input:focus-visible { outline: none; box-shadow: 0 0 0 1px #d4d4d4; }"
+    },
+    {
+      "name": "Success Badge",
+      "kind": "chip",
+      "refersTo": "badge-success",
+      "description": "Semantic tint badge: 20% hue fill with the lighter text shade, transparent border.",
+      "html": "<span class=\"ds-badge-success\">Verified</span>",
+      "css": ".ds-badge-success { display: inline-flex; align-items: center; padding: 2px 6px; font-family: Inter, system-ui, sans-serif; font-size: 12px; font-weight: 500; color: #34d399; background: rgba(16,185,129,0.20); border: 1px solid transparent; border-radius: 2.8px; }"
+    },
+    {
+      "name": "Neutral Badge",
+      "kind": "chip",
+      "refersTo": "badge-default",
+      "description": "Default grayscale chip for tags and metadata.",
+      "html": "<span class=\"ds-badge\">Direct</span>",
+      "css": ".ds-badge { display: inline-flex; align-items: center; padding: 2px 6px; font-family: Inter, system-ui, sans-serif; font-size: 12px; font-weight: 500; color: #e6e6e6; background: #242424; border: 1px solid #242424; border-radius: 2.8px; transition: background-color 150ms ease; } .ds-badge:hover { background: #303030; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Instrument Panel",
+    "overview": "Rybbit is a precise, legible cockpit for understanding a website. Every surface is flat; depth comes from tonal layering of a pure-grayscale ramp, not from shadows. The canvas recedes (near-black in the default dark theme), panels lift one notch, interactive chrome lifts one more, and hairline 1px borders draw the seams. Onto that calm gray instrument, two signals are painted with intent: a single emerald for action and success, and a single periwinkle for the data lines themselves. The data is the instrument; the chrome stays out of the way. The personality is friendly, precise, and trustworthy: approachable without being toy-like. Warmth lives at the edges, never on top of the numbers. Density is a feature here: this is a tool people open to answer a specific question, and the layout should put that answer in front of them in seconds with depth one layer down.",
+    "keyCharacteristics": [
+      "Dark-mode-default; a full light theme mirrors every token.",
+      "Flat by default: depth via a 21-step grayscale ramp + 1px borders, never shadows.",
+      "One accent (emerald) for action/success, one data hue (periwinkle) for charts.",
+      "Tight geometry: 4.8px max radius, Inter throughout, compact 36px controls.",
+      "Density with legibility: dense data, but body text stays ≥4.5:1 contrast."
+    ],
+    "rules": [
+      { "name": "The Signal-Not-Decoration Rule", "body": "Emerald marks primary actions, success, and current selection only. It never tints a surface, never fills a background, never decorates. If emerald is on screen and nothing actionable or successful is being communicated, remove it.", "section": "colors" },
+      { "name": "The Two-Voice Rule", "body": "The interface speaks in grayscale. Exactly two chromatic voices are allowed on top: emerald for action, periwinkle for data. State colors (red/yellow/blue) are whispers that appear only when state demands them.", "section": "colors" },
+      { "name": "The Flat Rule", "body": "No box-shadow for resting elevation. Depth is the grayscale ramp plus 1px borders. If two surfaces need separating, change the neutral step or add a hairline border, not a shadow.", "section": "elevation" },
+      { "name": "The Tonal-Depth Rule", "body": "Separation is achieved by moving one step on the neutral ramp or adding a 1px border, never by stacking shadows. Floating overlays (dropdowns, dialogs, popovers) may use minimal platform elevation, but in-page surfaces stay flat.", "section": "elevation" },
+      { "name": "The One-Family Rule", "body": "Inter does every job: headings, body, labels, data. Do not introduce a second UI typeface. Hierarchy comes from weight (400/500/600) and size, never from a new face.", "section": "typography" },
+      { "name": "The No-Shrinking-Headline Rule", "body": "Type uses a fixed rem scale, not fluid clamp(). Users view at a consistent DPI inside an app shell; a heading that shrinks in a sidebar looks worse, not better.", "section": "typography" }
+    ],
+    "dos": [
+      "Do keep surfaces flat: convey depth with the neutral ramp (#141414 -> #1b1b1b -> #242424) and 1px borders.",
+      "Do reserve emerald for action, success, and current selection (The Signal-Not-Decoration Rule).",
+      "Do keep data viz in periwinkle (--dataviz) and the broader ramp; never use the data hue on chrome.",
+      "Do use Inter at fixed rem sizes with weight contrast (400/500/600) for all hierarchy.",
+      "Do keep radii tight (<=4.8px) and controls compact (36px default height).",
+      "Do keep a visible focus-visible ring on every interactive element, and honor prefers-reduced-motion.",
+      "Do mirror every token across dark and light themes; dark is the default."
+    ],
+    "donts": [
+      "Don't ship the generic SaaS template: no purple gradients, no hero-metric template, no endless identical icon+heading+text card grids.",
+      "Don't let the frog or friendly tone tip into over-playful / toy-like territory that undermines trust in the numbers.",
+      "Don't recreate the cluttered GA4 maze or cold enterprise-BI heaviness: surface the likely answer first, depth one layer down.",
+      "Don't add resting box-shadow for elevation (The Flat Rule).",
+      "Don't use border-left/border-right > 1px as a colored accent stripe.",
+      "Don't use gradient text (background-clip: text) or decorative glassmorphism.",
+      "Don't introduce a second UI typeface or fluid clamp() headings.",
+      "Don't tint surfaces or backgrounds with emerald, or paint chrome in the periwinkle data hue."
+    ]
+  }
+}

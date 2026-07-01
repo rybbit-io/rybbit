@@ -22,7 +22,7 @@ export default function SessionsPage() {
   const t = useExtracted();
   useSetPageTitle("Sessions");
   const { data: siteMetadata } = useGetSite();
-  const isApp = siteMetadata?.type === "app";
+  const isApp = siteMetadata?.type === "mobile";
   const [page, setPage] = useState(1);
   const [identifiedOnly, setIdentifiedOnly] = useState(false);
   const [minPageviews, setMinPageviews] = useState<number | undefined>(undefined);

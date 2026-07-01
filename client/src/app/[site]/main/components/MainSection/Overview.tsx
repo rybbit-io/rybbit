@@ -158,7 +158,7 @@ export function Overview() {
   const { site } = useStore();
   const t = useExtracted();
   const { data: siteMetadata } = useGetSite();
-  const isApp = siteMetadata?.type === "app";
+  const isApp = siteMetadata?.type === "mobile";
 
   // Current period - automatically handles both regular time-based and past-minutes queries
   const {

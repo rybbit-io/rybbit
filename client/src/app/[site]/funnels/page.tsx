@@ -64,7 +64,7 @@ export default function FunnelsPage() {
   const t = useExtracted();
   useSetPageTitle("Funnels");
   const { data: siteMetadata } = useGetSite();
-  const isApp = siteMetadata?.type === "app";
+  const isApp = siteMetadata?.type === "mobile";
 
   const { site } = useStore();
   const { data: funnels, isLoading, error } = useGetFunnels(site);
