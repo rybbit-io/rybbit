@@ -1,10 +1,12 @@
 import { authedFetch } from "../../utils";
 
+export type SiteType = "web" | "mobile";
+
 export type SiteResponse = {
   id: string | null;
   siteId: number;
   name: string;
-  type: "web" | "mobile" | null;
+  type: SiteType | null;
   domain: string;
   createdAt: string;
   updatedAt: string;
@@ -46,7 +48,7 @@ export type GetSitesFromOrgResponse = {
     id: string | null;
     siteId: number;
     name: string;
-    type: "web" | "mobile" | null;
+    type: SiteType | null;
     domain: string;
     createdAt: string;
     updatedAt: string;
@@ -78,7 +80,7 @@ export function addSite(
   name: string,
   organizationId: string,
   settings?: {
-    type?: "web" | "mobile";
+    type?: SiteType;
     isPublic?: boolean;
     saltUserIds?: boolean;
     blockBots?: boolean;
@@ -118,7 +120,7 @@ export function updateSiteConfig(
   siteId: number,
   config: {
     name?: string;
-    type?: "web" | "mobile" | null;
+    type?: SiteType | null;
     domain?: string;
     public?: boolean;
     embedEnabled?: boolean;
