@@ -10,10 +10,6 @@ const WEB_ONLY_FILTERS: FilterParameter[] = [
   "utm_campaign",
   "utm_term",
   "utm_content",
-  "dimensions",
-  "user_id",
-  "lat",
-  "lon",
   "tag",
 ];
 
@@ -51,7 +47,7 @@ export function getSessionPageFilters(isApp: boolean): FilterParameter[] {
 }
 
 export function getEventFilters(isApp: boolean): FilterParameter[] {
-  return [...getBaseFilters(isApp), "pathname", "page_title", "event_name", "entry_page", "exit_page"];
+  return [...getBaseFilters(isApp), "pathname", "event_name", "entry_page", "exit_page"];
 }
 
 export function getGoalsPageFilters(isApp: boolean): FilterParameter[] {

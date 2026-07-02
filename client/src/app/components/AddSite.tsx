@@ -83,7 +83,7 @@ export function AddSite({ trigger, disabled }: { trigger?: React.ReactNode; disa
         saltUserIds,
       });
 
-      if (iconBase64) {
+      if (siteType === "mobile" && iconBase64) {
         try {
           await uploadSiteIcon(site.siteId, iconBase64);
         } catch (iconError) {

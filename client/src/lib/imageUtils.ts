@@ -23,7 +23,11 @@ export function resizeImageToIcon(
         return;
       }
 
-      ctx.drawImage(img, 0, 0, size, size);
+      // Fit the image inside the square canvas, preserving aspect ratio
+      const scale = Math.min(size / img.width, size / img.height);
+      const drawWidth = img.width * scale;
+      const drawHeight = img.height * scale;
+      ctx.drawImage(img, (size - drawWidth) / 2, (size - drawHeight) / 2, drawWidth, drawHeight);
 
       const dataUrl = canvas.toDataURL("image/png");
       // Strip the "data:image/png;base64," prefix

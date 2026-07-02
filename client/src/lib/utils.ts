@@ -121,7 +121,9 @@ export function isValidDomain(domain: string): boolean {
 }
 
 export function isValidPackageName(name: string): boolean {
-  return /^[a-zA-Z][a-zA-Z0-9_]*(\.[a-zA-Z][a-zA-Z0-9_]*)+$/.test(name);
+  // Android package segments allow letters, digits and underscores; iOS bundle
+  // identifiers additionally allow hyphens. Accept the union of both.
+  return /^[a-zA-Z][a-zA-Z0-9_-]*(\.[a-zA-Z][a-zA-Z0-9_-]*)+$/.test(name);
 }
 
 export function getUserDisplayName<

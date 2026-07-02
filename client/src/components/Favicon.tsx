@@ -20,10 +20,10 @@ export function Favicon({
   const firstLetter = domain.charAt(0).toUpperCase();
 
   if (siteType && siteType !== "web") {
-    if (siteId && !imageError) {
+    if (siteId !== undefined && !imageError) {
       return (
         <img
-          src={`${BACKEND_URL}/sites/${siteId}/icon${iconVersion ? `?v=${iconVersion}` : ""}`}
+          src={`${BACKEND_URL}/sites/${siteId}/icon${iconVersion !== undefined ? `?v=${iconVersion}` : ""}`}
           className={cn("rounded", className ?? "w-4 h-4")}
           alt={`Icon for ${domain}`}
           onError={() => setImageError(true)}

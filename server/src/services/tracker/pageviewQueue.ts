@@ -90,7 +90,11 @@ class PageviewQueue {
         language: pv.language || "",
         screen_width: pv.screenWidth || 0,
         screen_height: pv.screenHeight || 0,
-        device_type: getDeviceType(pv.screenWidth, pv.screenHeight, pv.ua),
+        device_type: getDeviceType(
+          pv.screenWidth,
+          pv.screenHeight,
+          sdkUA ? { ...pv.ua, os: { ...pv.ua.os, name: sdkUA.os } } : pv.ua
+        ),
         country: countryCode,
         region: countryCode && regionCode ? countryCode + "-" + regionCode : "",
         city: city || "",

@@ -20,10 +20,18 @@ import { Referrers } from "./components/sections/Referrers";
 import { SearchConsole } from "./components/sections/SearchConsole";
 import { Weekdays } from "./components/sections/Weekdays";
 
-function LazySection({ children, height = "405px" }: { children: ReactNode; height?: string }) {
+function LazySection({
+  children,
+  height = "405px",
+  className,
+}: {
+  children: ReactNode;
+  height?: string;
+  className?: string;
+}) {
   const { ref, isInView } = useInView({ persistVisibility: true, rootMargin: "100px 0px" });
   return (
-    <div ref={ref} style={{ minHeight: isInView ? undefined : height }}>
+    <div ref={ref} className={className} style={{ minHeight: isInView ? undefined : height }}>
       {isInView ? children : null}
     </div>
   );
@@ -91,10 +99,8 @@ function MainPageContent() {
         <LazySection height="394px">
           <Events />
         </LazySection>
-        <LazySection>
-          <div className={isApp ? "lg:col-span-2" : ""}>
-            <Weekdays />
-          </div>
+        <LazySection className={isApp ? "lg:col-span-2" : undefined}>
+          <Weekdays />
         </LazySection>
         {IS_CLOUD && !isApp && (
           <LazySection>

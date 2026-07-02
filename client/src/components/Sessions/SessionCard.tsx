@@ -172,24 +172,31 @@ export function SessionCard({ session, onClick, userId, expandedByDefault, highl
               <TooltipContent>{t("Events")}</TooltipContent>
             </Tooltip>
             {isApp ? (
-              <>
-                {session.device_model && (
-                  <Badge
-                    className="flex items-center gap-1 bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-300 cursor-pointer hover:opacity-70"
-                    onClick={e => handleFilterClick(e, "device_model", session.device_model)}
-                  >
-                    <Smartphone className="w-3 h-3" />
-                    <span>{session.device_model}</span>
-                  </Badge>
-                )}
-                {session.app_version && (
-                  <Badge className="flex items-center gap-1 bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-300 cursor-pointer hover:opacity-70"
-                    onClick={e => handleFilterClick(e, "app_version", session.app_version)}
-                  >
-                    <span>v{session.app_version}</span>
-                  </Badge>
-                )}
-              </>
+              session.device_model || session.app_version ? (
+                <>
+                  {session.device_model && (
+                    <Badge
+                      className="flex items-center gap-1 bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-300 cursor-pointer hover:opacity-70"
+                      onClick={e => handleFilterClick(e, "device_model", session.device_model)}
+                    >
+                      <Smartphone className="w-3 h-3" />
+                      <span>{session.device_model}</span>
+                    </Badge>
+                  )}
+                  {session.app_version && (
+                    <Badge className="flex items-center gap-1 bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-300 cursor-pointer hover:opacity-70"
+                      onClick={e => handleFilterClick(e, "app_version", session.app_version)}
+                    >
+                      <span>v{session.app_version}</span>
+                    </Badge>
+                  )}
+                </>
+              ) : (
+                <Badge className="flex items-center gap-1 bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-300">
+                  <Smartphone className="w-3 h-3" />
+                  <span>—</span>
+                </Badge>
+              )
             ) : (
               <Channel
                 channel={session.channel}
@@ -287,24 +294,31 @@ export function SessionCard({ session, onClick, userId, expandedByDefault, highl
               <TooltipContent>{t("Events")}</TooltipContent>
             </Tooltip>
             {isApp ? (
-              <>
-                {session.device_model && (
-                  <Badge
-                    className="flex items-center gap-1 bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-300 cursor-pointer hover:opacity-70"
-                    onClick={e => handleFilterClick(e, "device_model", session.device_model)}
-                  >
-                    <Smartphone className="w-3 h-3" />
-                    <span>{session.device_model}</span>
-                  </Badge>
-                )}
-                {session.app_version && (
-                  <Badge className="flex items-center gap-1 bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-300 cursor-pointer hover:opacity-70"
-                    onClick={e => handleFilterClick(e, "app_version", session.app_version)}
-                  >
-                    <span>v{session.app_version}</span>
-                  </Badge>
-                )}
-              </>
+              session.device_model || session.app_version ? (
+                <>
+                  {session.device_model && (
+                    <Badge
+                      className="flex items-center gap-1 bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-300 cursor-pointer hover:opacity-70"
+                      onClick={e => handleFilterClick(e, "device_model", session.device_model)}
+                    >
+                      <Smartphone className="w-3 h-3" />
+                      <span>{session.device_model}</span>
+                    </Badge>
+                  )}
+                  {session.app_version && (
+                    <Badge className="flex items-center gap-1 bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-300 cursor-pointer hover:opacity-70"
+                      onClick={e => handleFilterClick(e, "app_version", session.app_version)}
+                    >
+                      <span>v{session.app_version}</span>
+                    </Badge>
+                  )}
+                </>
+              ) : (
+                <Badge className="flex items-center gap-1 bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-300">
+                  <Smartphone className="w-3 h-3" />
+                  <span>—</span>
+                </Badge>
+              )
             ) : (
               <Channel
                 channel={session.channel}

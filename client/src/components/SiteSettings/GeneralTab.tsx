@@ -75,6 +75,7 @@ export function GeneralTab({ siteMetadata, disabled = false, onClose, onPublicCh
   const [iconVersion, setIconVersion] = useState(0);
   const [isUploadingIcon, setIsUploadingIcon] = useState(false);
   const [isDeletingIcon, setIsDeletingIcon] = useState(false);
+  const isMutatingIcon = isUploadingIcon || isDeletingIcon;
 
   // Organizations the user can move the site into: those they administer,
   // excluding the site's current organization.
@@ -336,7 +337,7 @@ export function GeneralTab({ siteMetadata, disabled = false, onClose, onPublicCh
               <Button
                 variant="outline"
                 size="sm"
-                disabled={disabled || isUploadingIcon}
+                disabled={disabled || isMutatingIcon}
                 onClick={() => {
                   const input = document.createElement("input");
                   input.type = "file";
@@ -366,7 +367,7 @@ export function GeneralTab({ siteMetadata, disabled = false, onClose, onPublicCh
                 variant="ghost"
                 size="sm"
                 className="text-muted-foreground"
-                disabled={disabled || isDeletingIcon}
+                disabled={disabled || isMutatingIcon}
                 onClick={async () => {
                   setIsDeletingIcon(true);
                   try {
