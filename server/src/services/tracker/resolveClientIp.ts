@@ -55,8 +55,21 @@ function cfConnectingIp(request: FastifyRequest): string | null {
 }
 
 /**
+ * Cloudflare sets this documented synthetic IP as `CF-Connecting-IP` on
+ * cross-zone Worker subrequests — the topology produced by the first-party
+ * Worker proxy pattern in our docs (visitor → customer's Worker → our zone).
+ * Non-spoofable on the direct path: Cloudflare always overwrites
+ * `CF-Connecting-IP` at the edge, so only a real Worker subrequest presents it.
+ * https://developers.cloudflare.com/fundamentals/reference/http-headers/#cf-connecting-ip
+ */
+const CF_WORKER_SUBREQUEST_IP = "2a06:98c0:3600::103";
+
+/**
  * Whether the connecting edge IP belongs to hosting/datacenter infrastructure —
  * positive evidence that a first-party proxy sits in front of our edge.
+ *
+ * The Cloudflare Worker subrequest IP is recognised unconditionally so the
+ * documented Worker proxy setup keeps working even when the ASN DB is missing.
  *
  * Fallback semantics matter: if the ASN DB is unavailable, `lookupAsn` returns
  * null and this returns `false` — i.e. unknown edges are treated as direct and
@@ -67,6 +80,7 @@ function cfConnectingIp(request: FastifyRequest): string | null {
  * direct-path anti-spoofing).
  */
 function isProxiedEdge(ip: string): boolean {
+  if (ip.toLowerCase() === CF_WORKER_SUBREQUEST_IP) return true;
   const asn = lookupAsn(ip);
   return isDatacenterAsn(asn?.asn);
 }
