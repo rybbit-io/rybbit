@@ -179,6 +179,19 @@ export async function getSitesUserHasAccessTo(req: FastifyRequest, adminOnly = f
             }
           }
 
+          // Team access is additive: a restricted member's siteMap only has
+          // their explicit grants, so team-granted sites must be added back
+          const memberOrgIdSet = new Set(memberOrgIds);
+          const missingTeamSiteIds = Array.from(userTeamSiteIds).filter(id => !siteMap.has(id));
+          if (missingTeamSiteIds.length > 0) {
+            const teamSites = await db.select().from(sites).where(inArray(sites.siteId, missingTeamSiteIds));
+            for (const site of teamSites) {
+              if (site.organizationId && memberOrgIdSet.has(site.organizationId)) {
+                siteMap.set(site.siteId, site);
+              }
+            }
+          }
+
           // For sites from admin/owner orgs, keep all (no team filtering)
           // For sites from member orgs, apply team filtering
           const adminOrgSiteIds = new Set<number>();
@@ -195,9 +208,17 @@ export async function getSitesUserHasAccessTo(req: FastifyRequest, adminOnly = f
             }
           }
 
+          // Explicit per-member grants always win over team gating
+          const explicitGrantSiteIds = new Set(restrictedSites.map(s => s.siteId));
+
           // Remove team-gated sites the user can't access (only for member-role orgs)
           for (const [siteId] of siteMap) {
-            if (teamGatedSiteIds.has(siteId) && !userTeamSiteIds.has(siteId) && !adminOrgSiteIds.has(siteId)) {
+            if (
+              teamGatedSiteIds.has(siteId) &&
+              !userTeamSiteIds.has(siteId) &&
+              !adminOrgSiteIds.has(siteId) &&
+              !explicitGrantSiteIds.has(siteId)
+            ) {
               siteMap.delete(siteId);
             }
           }

@@ -1,18 +1,11 @@
-import { eq, and, inArray } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { FastifyRequest, FastifyReply } from "fastify";
 import { clickhouse } from "../../db/clickhouse/clickhouse.js";
 import { db } from "../../db/postgres/postgres.js";
-import {
-  sites,
-  member,
-  organization,
-  memberSiteAccess,
-  team,
-  teamMember,
-  teamSiteAccess,
-} from "../../db/postgres/schema.js";
+import { sites, member, organization, team, teamSiteAccess } from "../../db/postgres/schema.js";
 import { IS_CLOUD, DEFAULT_EVENT_LIMIT } from "../../lib/const.js";
 import { getUserIdFromRequest } from "../../lib/auth-utils.js";
+import { filterSitesByMemberAccess } from "../../lib/siteAccess.js";
 import { processResults } from "../analytics/utils/utils.js";
 import { getSubscriptionInner } from "../stripe/getSubscription.js";
 
@@ -43,57 +36,18 @@ export async function getSitesFromOrg(
       db.select().from(organization).where(eq(organization.id, organizationId)).limit(1),
     ]);
 
-    // Filter sites based on member's access restrictions
+    // Filter sites based on member's access restrictions and teams
     let sitesData = allSitesData;
     const memberRecord = memberCheck[0];
 
-    if (memberRecord?.role === "member" && memberRecord.hasRestrictedSiteAccess) {
-      // Get the sites this member has access to
-      const accessibleSites = await db
-        .select({ siteId: memberSiteAccess.siteId })
-        .from(memberSiteAccess)
-        .where(eq(memberSiteAccess.memberId, memberRecord.id));
-
-      const accessibleSiteIds = new Set(accessibleSites.map(s => s.siteId));
-      sitesData = allSitesData.filter(site => accessibleSiteIds.has(site.siteId));
-    }
-
-    // Team-based filtering for regular members
     if (memberRecord?.role === "member" && userId) {
-      // Find all team-gated site IDs in this org
-      const allTeamSites = await db
-        .select({ siteId: teamSiteAccess.siteId })
-        .from(teamSiteAccess)
-        .innerJoin(team, eq(teamSiteAccess.teamId, team.id))
-        .where(eq(team.organizationId, organizationId));
-
-      const teamGatedSiteIds = new Set(allTeamSites.map(s => s.siteId));
-
-      if (teamGatedSiteIds.size > 0) {
-        // Find teams the user belongs to in this org
-        const userTeams = await db
-          .select({ teamId: teamMember.teamId })
-          .from(teamMember)
-          .innerJoin(team, eq(teamMember.teamId, team.id))
-          .where(and(eq(teamMember.userId, userId), eq(team.organizationId, organizationId)));
-
-        const userTeamIds = userTeams.map(t => t.teamId);
-
-        // Get sites accessible through user's teams
-        const userTeamSiteIds = new Set<number>();
-        if (userTeamIds.length > 0) {
-          const userTeamSites = await db
-            .select({ siteId: teamSiteAccess.siteId })
-            .from(teamSiteAccess)
-            .where(inArray(teamSiteAccess.teamId, userTeamIds));
-          for (const s of userTeamSites) {
-            userTeamSiteIds.add(s.siteId);
-          }
-        }
-
-        // Keep sites that are NOT team-gated OR are in the user's teams
-        sitesData = sitesData.filter(site => !teamGatedSiteIds.has(site.siteId) || userTeamSiteIds.has(site.siteId));
-      }
+      sitesData = await filterSitesByMemberAccess(
+        allSitesData,
+        organizationId,
+        userId,
+        memberRecord.id,
+        memberRecord.hasRestrictedSiteAccess
+      );
     }
 
     // Query session counts for the sites

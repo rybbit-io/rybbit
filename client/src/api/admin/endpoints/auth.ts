@@ -16,6 +16,10 @@ export type GetOrganizationMembersResponse = {
       hasRestrictedSiteAccess: boolean;
       siteIds: number[];
     };
+    teams: {
+      id: string;
+      name: string;
+    }[];
   }[];
 };
 

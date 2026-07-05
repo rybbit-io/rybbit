@@ -2,11 +2,12 @@ import * as cron from "node-cron";
 import { DateTime } from "luxon";
 import { eq } from "drizzle-orm";
 import { db } from "../../db/postgres/postgres.js";
-import { organization, member, user, sites, memberSiteAccess } from "../../db/postgres/schema.js";
+import { organization, member, user, sites } from "../../db/postgres/schema.js";
 import { clickhouse } from "../../db/clickhouse/clickhouse.js";
 import { processResults } from "../../api/analytics/utils/utils.js";
 import { createServiceLogger } from "../../lib/logger/logger.js";
 import { sendWeeklyReportEmail } from "../../lib/email/email.js";
+import { filterSitesByMemberAccess } from "../../lib/siteAccess.js";
 import { IS_CLOUD } from "../../lib/const.js";
 import type { OverviewData, MetricData, SiteReport, OrganizationReport } from "./weeklyReportTypes.js";
 
@@ -324,6 +325,7 @@ class WeeklyReportService {
         .select({
           memberId: member.id,
           userId: member.userId,
+          role: member.role,
           email: user.email,
           name: user.name,
           sendAutoEmailReports: user.sendAutoEmailReports,
@@ -340,26 +342,24 @@ class WeeklyReportService {
           continue;
         }
 
-        // Get allowed sites for this member
-        let allowedSiteIds: Set<number> | null = null;
-        if (memberData.hasRestrictedSiteAccess) {
-          const accessRecords = await db
-            .select({ siteId: memberSiteAccess.siteId })
-            .from(memberSiteAccess)
-            .where(eq(memberSiteAccess.memberId, memberData.memberId));
-          allowedSiteIds = new Set(accessRecords.map((r) => r.siteId));
+        // Only report on sites the member can actually access
+        let allowedSites = report.sites;
+        if (memberData.role === "member") {
+          allowedSites = await filterSitesByMemberAccess(
+            report.sites,
+            report.organizationId,
+            memberData.userId,
+            memberData.memberId,
+            memberData.hasRestrictedSiteAccess
+          );
 
           // Skip this member entirely if they have no site access
-          if (allowedSiteIds.size === 0) {
+          if (allowedSites.length === 0) {
             continue;
           }
         }
 
-        for (const site of report.sites) {
-          // Skip sites the member doesn't have access to
-          if (allowedSiteIds && !allowedSiteIds.has(site.siteId)) {
-            continue;
-          }
+        for (const site of allowedSites) {
 
           try {
             await sendWeeklyReportEmail(memberData.email, memberData.name, report.organizationName, site);

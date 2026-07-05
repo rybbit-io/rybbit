@@ -1555,5 +1555,8 @@
   "zvbn/a": "Použít jiný email",
   "zxvhnE": "Denně",
   "zyQ3nw": "Přidat další vlastnost",
-  "zz0om1": "IP výjimky"
+  "zz0om1": "IP výjimky",
+  "qO9iuL": "Přístup udělen prostřednictvím webů tohoto týmu",
+  "9YyR5G": "Tento člen bude mít přístup k vybraným webům a také k webům uděleným prostřednictvím jeho týmů ({teams}).",
+  "wDjYR2": "Tento člen má přístup k webům uděleným prostřednictvím jeho týmů ({teams}) a také ke všem webům nepřiřazeným žádnému týmu."
 }

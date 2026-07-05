@@ -1555,5 +1555,8 @@
   "zvbn/a": "Use a different email",
   "zxvhnE": "Daily",
   "zyQ3nw": "Add Another Property",
-  "zz0om1": "IP Exclusions"
+  "zz0om1": "IP Exclusions",
+  "qO9iuL": "Access granted through this team's sites",
+  "9YyR5G": "This member will have access to the selected sites, plus sites granted through their teams ({teams}).",
+  "wDjYR2": "This member has access to sites granted through their teams ({teams}), plus any site not assigned to a team."
 }

@@ -1555,5 +1555,8 @@
   "zvbn/a": "Utiliser une autre adresse e-mail",
   "zxvhnE": "Quotidien",
   "zyQ3nw": "Ajouter une autre propriété",
-  "zz0om1": "Exclusions IP"
+  "zz0om1": "Exclusions IP",
+  "qO9iuL": "Accès accordé via les sites de cette équipe",
+  "9YyR5G": "Ce membre aura accès aux sites sélectionnés, ainsi qu'aux sites accordés via ses équipes ({teams}).",
+  "wDjYR2": "Ce membre a accès aux sites accordés via ses équipes ({teams}), ainsi qu'à tout site non attribué à une équipe."
 }

@@ -201,12 +201,22 @@ export function EditMemberDialog({
                 <div className="pl-6">
                   <SiteAccessMultiSelect selectedSiteIds={selectedSiteIds} onChange={setSelectedSiteIds} />
                   <p className="text-xs text-neutral-500 dark:text-neutral-300 mt-2">
-                    {t("This member will only have access to the selected sites.")}
+                    {member.teams?.length
+                      ? t(
+                          "This member will have access to the selected sites, plus sites granted through their teams ({teams}).",
+                          { teams: member.teams.map(team => team.name).join(", ") }
+                        )
+                      : t("This member will only have access to the selected sites.")}
                   </p>
                 </div>
               ) : (
                 <p className="text-sm text-neutral-500 dark:text-neutral-300 pl-6">
-                  {t("This member has access to all sites in the organization.")}
+                  {member.teams?.length
+                    ? t(
+                        "This member has access to sites granted through their teams ({teams}), plus any site not assigned to a team.",
+                        { teams: member.teams.map(team => team.name).join(", ") }
+                      )
+                    : t("This member has access to all sites in the organization.")}
                 </p>
               )}
             </>

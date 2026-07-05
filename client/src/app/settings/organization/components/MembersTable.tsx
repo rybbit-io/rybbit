@@ -122,17 +122,28 @@ export function MembersTable({
                       </TableCell>
                       <TableCell>
                         {member.role === "member" ? (
-                          <Badge
-                            variant={
-                              member.siteAccess?.hasRestrictedSiteAccess ? "default" : "secondary"
-                            }
-                          >
-                            {member.siteAccess?.hasRestrictedSiteAccess
-                              ? t("{count} sites", {
+                          <div className="flex flex-wrap gap-1">
+                            {member.siteAccess?.hasRestrictedSiteAccess && (
+                              <Badge variant="default">
+                                {t("{count} sites", {
                                   count: String(member.siteAccess.siteIds.length),
-                                })
-                              : t("All sites")}
-                          </Badge>
+                                })}
+                              </Badge>
+                            )}
+                            {member.teams?.map(team => (
+                              <Badge
+                                key={team.id}
+                                variant="outline"
+                                title={t("Access granted through this team's sites")}
+                              >
+                                {team.name}
+                              </Badge>
+                            ))}
+                            {!member.siteAccess?.hasRestrictedSiteAccess &&
+                              !member.teams?.length && (
+                                <Badge variant="secondary">{t("All sites")}</Badge>
+                              )}
+                          </div>
                         ) : (
                           <Badge variant="outline">{t("All sites")}</Badge>
                         )}

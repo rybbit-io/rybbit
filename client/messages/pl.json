@@ -1555,5 +1555,8 @@
   "zvbn/a": "Użyj innego adresu e-mail",
   "zxvhnE": "Dziennie",
   "zyQ3nw": "Dodaj kolejną właściwość",
-  "zz0om1": "Wykluczenia IP"
+  "zz0om1": "Wykluczenia IP",
+  "qO9iuL": "Dostęp przyznany poprzez witryny tego zespołu",
+  "9YyR5G": "Ten członek będzie mieć dostęp do wybranych witryn oraz do witryn przyznanych poprzez jego zespoły ({teams}).",
+  "wDjYR2": "Ten członek ma dostęp do witryn przyznanych poprzez jego zespoły ({teams}) oraz do wszystkich witryn nieprzypisanych do żadnego zespołu."
 }

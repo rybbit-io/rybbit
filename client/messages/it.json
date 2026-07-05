@@ -1555,5 +1555,8 @@
   "zvbn/a": "Usa un'email diversa",
   "zxvhnE": "Giornaliero",
   "zyQ3nw": "Aggiungi un'altra proprietà",
-  "zz0om1": "Esclusioni IP"
+  "zz0om1": "Esclusioni IP",
+  "qO9iuL": "Accesso concesso tramite i siti di questo team",
+  "9YyR5G": "Questo membro avrà accesso ai siti selezionati, oltre ai siti concessi tramite i suoi team ({teams}).",
+  "wDjYR2": "Questo membro ha accesso ai siti concessi tramite i suoi team ({teams}), oltre a qualsiasi sito non assegnato a un team."
 }
