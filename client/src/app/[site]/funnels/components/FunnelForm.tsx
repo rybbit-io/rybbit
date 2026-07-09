@@ -7,7 +7,14 @@ import { cn } from "@/lib/utils";
 import { Reorder } from "framer-motion";
 import { ChevronDown, ChevronUp, GripVertical, Plus, Save, Trash2, X } from "lucide-react";
 import { useMemo, useState } from "react";
-import { FunnelResponse, FunnelStep, FunnelStepType, hasIncompleteSteps } from "../../../../api/analytics/endpoints";
+import {
+  AutocaptureValue,
+  FunnelResponse,
+  FunnelStep,
+  FunnelStepType,
+  hasIncompleteSteps,
+} from "../../../../api/analytics/endpoints";
+import { useAutocaptureValues } from "../../../../api/analytics/hooks/events/useAutocaptureValues";
 import { useMetric } from "../../../../api/analytics/hooks/useGetMetric";
 import { ThreeDotLoader } from "../../../../components/Loaders";
 import { Label } from "../../../../components/ui/label";
@@ -147,6 +154,25 @@ export function FunnelForm({
       value: item.value,
       label: item.value,
     })) || [];
+
+  // Suggestions for autocapture step values, fetched only for types in use
+  const stepHasType = (type: FunnelStepType) => steps.some(step => step.type === type);
+  const { data: outboundValues } = useAutocaptureValues("outbound", stepHasType("outbound"));
+  const { data: buttonClickValues } = useAutocaptureValues("button_click", stepHasType("button_click"));
+  const { data: formSubmitValues } = useAutocaptureValues("form_submit", stepHasType("form_submit"));
+  const { data: copyValues } = useAutocaptureValues("copy", stepHasType("copy"));
+
+  const toSuggestions = (values?: AutocaptureValue[]): SuggestionOption[] =>
+    values?.map(item => ({ value: item.value, label: item.value })) || [];
+
+  const stepSuggestions: Record<FunnelStepType, SuggestionOption[]> = {
+    page: pathSuggestions,
+    event: eventSuggestions,
+    outbound: toSuggestions(outboundValues),
+    button_click: toSuggestions(buttonClickValues),
+    form_submit: toSuggestions(formSubmitValues),
+    copy: toSuggestions(copyValues),
+  };
 
   // Handle reordering steps via drag-and-drop
   const handleReorder = (newOrder: string[]) => {
@@ -302,9 +328,7 @@ export function FunnelForm({
                       </Select>
                       <div className="flex flex-col">
                         <InputWithSuggestions
-                          suggestions={
-                            step.type === "page" ? pathSuggestions : step.type === "event" ? eventSuggestions : []
-                          }
+                          suggestions={stepSuggestions[step.type]}
                           placeholder={stepValuePlaceholders[step.type]}
                           value={step.value}
                           className={cn(

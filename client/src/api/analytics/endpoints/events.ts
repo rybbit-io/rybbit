@@ -60,6 +60,12 @@ export type EventProperty = {
   count: number;
 };
 
+// Common value of an autocapture event type's primary props (used for suggestions)
+export type AutocaptureValue = {
+  value: string;
+  count: number;
+};
+
 // Outbound link click data
 export type OutboundLink = {
   url: string;
@@ -194,6 +200,27 @@ export async function fetchOutboundLinks(
   const response = await authedFetch<{ data: OutboundLink[] }>(
     `/sites/${site}/events/outbound`,
     toQueryParams(params)
+  );
+  return response.data;
+}
+
+/**
+ * Fetch common values for an autocapture event type (outbound urls, button
+ * texts, form names/ids, copied texts)
+ * GET /api/sites/:site/events/autocapture-values
+ */
+export async function fetchAutocaptureValues(
+  site: string | number,
+  params: CommonApiParams & { type: string }
+): Promise<AutocaptureValue[]> {
+  const queryParams = {
+    ...toQueryParams(params),
+    type: params.type,
+  };
+
+  const response = await authedFetch<{ data: AutocaptureValue[] }>(
+    `/sites/${site}/events/autocapture-values`,
+    queryParams
   );
   return response.data;
 }

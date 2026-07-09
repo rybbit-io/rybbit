@@ -33,6 +33,7 @@ import {
   generateCustomQuery,
   getEventBucketed,
   getEventNames,
+  getAutocaptureValues,
   getEventProperties,
   getEvents,
   getFunnel,
@@ -340,6 +341,7 @@ async function analyticsRoutes(fastify: FastifyInstance) {
   fastify.get("/sites/:siteId/experiments/:experimentId/results", authSite, getExperimentResults);
   fastify.get("/sites/:siteId/events/names", publicSite, getEventNames);
   fastify.get("/sites/:siteId/events/properties", publicSite, getEventProperties);
+  fastify.get("/sites/:siteId/events/autocapture-values", publicSite, getAutocaptureValues);
   fastify.get("/sites/:siteId/events/outbound", publicSite, getOutboundLinks);
   fastify.get("/org-event-count/:organizationId", orgMember, getOrgEventCount);
   fastify.post("/organizations/:organizationId/analytics/query", orgMember, runCustomQuery);

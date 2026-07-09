@@ -8,6 +8,7 @@ import * as z from "zod";
 import { useCreateGoal } from "../../../../api/analytics/hooks/goals/useCreateGoal";
 import { Goal, GoalType } from "../../../../api/analytics/endpoints";
 import { useUpdateGoal } from "../../../../api/analytics/hooks/goals/useUpdateGoal";
+import { useAutocaptureValues } from "../../../../api/analytics/hooks/events/useAutocaptureValues";
 import { useMetric } from "../../../../api/analytics/hooks/useGetMetric";
 import { EventTypeIcon } from "../../../../components/EventIcons";
 import { AutocaptureTargetType, isAutocaptureTargetType, targetTypeToEventType } from "../../../../lib/events";
@@ -325,6 +326,15 @@ export default function GoalFormModal({
 
   const goalType = form.watch("goalType");
 
+  // Suggestions for autocapture pattern values (urls, button texts, form names, copied texts)
+  const { data: autocaptureValuesData } = useAutocaptureValues(goalType, isOpen && isAutocaptureTargetType(goalType));
+
+  const autocaptureSuggestions: SuggestionOption[] =
+    autocaptureValuesData?.map(item => ({
+      value: item.value,
+      label: item.value,
+    })) || [];
+
   // Handle form submission
   const onSubmit = async (values: FormValues) => {
     try {
@@ -430,34 +440,25 @@ export default function GoalFormModal({
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>{t("Goal Type")}</FormLabel>
-                  {isEditMode ? (
-                    <div className="flex items-center gap-2 mt-1">
-                      <div className="flex items-center gap-1 bg-neutral-800/50 py-2 px-3 rounded">
-                        <EventTypeIcon type={targetTypeToEventType(field.value)} />
-                        <span>{goalTypeOptions.find(option => option.value === field.value)?.label}</span>
-                      </div>
+                  <FormControl>
+                    <div className="grid grid-cols-2 gap-2 mt-1">
+                      {goalTypeOptions.map(option => (
+                        <Button
+                          key={option.value}
+                          type="button"
+                          variant={field.value === option.value ? "default" : "outline"}
+                          className={cn(
+                            "flex items-center justify-start gap-2",
+                            field.value === option.value && "border-blue-500"
+                          )}
+                          onClick={() => field.onChange(option.value)}
+                        >
+                          <EventTypeIcon type={targetTypeToEventType(option.value)} />
+                          <span>{option.label}</span>
+                        </Button>
+                      ))}
                     </div>
-                  ) : (
-                    <FormControl>
-                      <div className="grid grid-cols-2 gap-2 mt-1">
-                        {goalTypeOptions.map(option => (
-                          <Button
-                            key={option.value}
-                            type="button"
-                            variant={field.value === option.value ? "default" : "outline"}
-                            className={cn(
-                              "flex items-center justify-start gap-2",
-                              field.value === option.value && "border-blue-500"
-                            )}
-                            onClick={() => field.onChange(option.value)}
-                          >
-                            <EventTypeIcon type={targetTypeToEventType(option.value)} />
-                            <span>{option.label}</span>
-                          </Button>
-                        ))}
-                      </div>
-                    </FormControl>
-                  )}
+                  </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
@@ -543,7 +544,11 @@ export default function GoalFormModal({
                     <FormItem>
                       <FormLabel>{autocaptureFieldMeta[goalType].label}</FormLabel>
                       <FormControl>
-                        <Input placeholder={autocaptureFieldMeta[goalType].placeholder} autoComplete="off" {...field} />
+                        <InputWithSuggestions
+                          suggestions={autocaptureSuggestions}
+                          placeholder={autocaptureFieldMeta[goalType].placeholder}
+                          {...field}
+                        />
                       </FormControl>
                       <FormMessage />
                       <div className="text-xs text-neutral-500 mt-1">
