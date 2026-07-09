@@ -7,7 +7,7 @@ import { Plus } from "lucide-react";
 import { useState } from "react";
 import { toast } from "@/components/ui/sonner";
 import { useGetFunnel, useSaveFunnel } from "../../../../api/analytics/hooks/funnels/useGetFunnel";
-import { FunnelStep } from "../../../../api/analytics/endpoints";
+import { FunnelStep, hasIncompleteSteps } from "../../../../api/analytics/endpoints";
 import { FunnelForm } from "./FunnelForm";
 
 export function CreateFunnelDialog() {
@@ -30,7 +30,7 @@ export function CreateFunnelDialog() {
     error,
     isLoading: isPending,
   } = useGetFunnel(
-    steps.some(step => !step.value)
+    hasIncompleteSteps(steps)
       ? undefined
       : {
           steps,
@@ -44,7 +44,7 @@ export function CreateFunnelDialog() {
   // Query funnel without saving
   const handleQueryFunnel = () => {
     // Validate steps have values
-    const hasEmptySteps = steps.some(step => !step.value);
+    const hasEmptySteps = hasIncompleteSteps(steps);
     if (hasEmptySteps) {
       alert(t("All steps must have values"));
       return;
@@ -60,7 +60,7 @@ export function CreateFunnelDialog() {
     }
 
     // Validate steps have values
-    const hasEmptySteps = steps.some(step => !step.value);
+    const hasEmptySteps = hasIncompleteSteps(steps);
     if (hasEmptySteps) {
       alert(t("All steps must have values"));
       return;

@@ -4,74 +4,12 @@ import { goals } from "../../../db/postgres/schema.js";
 import { getUserHasAccessToSite } from "../../../lib/auth-utils.js";
 import { z } from "zod";
 import { eq } from "drizzle-orm";
-
-// Define validation schema for path pattern
-const pathPatternSchema = z.string().min(1, "Path pattern cannot be empty");
-
-// Define validation schema for event config
-const eventConfigSchema = z
-  .object({
-    eventName: z.string().min(1, "Event name cannot be empty"),
-    eventPropertyKey: z.string().optional(),
-    eventPropertyValue: z.union([z.string(), z.number(), z.boolean()]).optional(),
-  })
-  .refine(
-    data => {
-      // If one property matching field is provided, both must be provided
-      if (data.eventPropertyKey && data.eventPropertyValue === undefined) {
-        return false;
-      }
-      if (data.eventPropertyValue !== undefined && !data.eventPropertyKey) {
-        return false;
-      }
-      return true;
-    },
-    {
-      message: "Both eventPropertyKey and eventPropertyValue must be provided together or omitted together",
-    }
-  );
-
-// Define validation schema for the goal request body
-const updateGoalSchema = z
-  .object({
-    name: z.string().optional(),
-    goalType: z.enum(["path", "event"]),
-    config: z.object({
-      pathPattern: z.string().optional(),
-      eventName: z.string().optional(),
-      eventPropertyKey: z.string().optional(),
-      eventPropertyValue: z.union([z.string(), z.number(), z.boolean()]).optional(),
-      propertyFilters: z
-        .array(
-          z.object({
-            key: z.string(),
-            value: z.union([z.string(), z.number(), z.boolean()]),
-          })
-        )
-        .optional(),
-    }),
-  })
-  .refine(
-    data => {
-      if (data.goalType === "path") {
-        return !!data.config.pathPattern;
-      } else if (data.goalType === "event") {
-        return !!data.config.eventName;
-      }
-      return false;
-    },
-    {
-      message: "Configuration must match goal type",
-      path: ["config"],
-    }
-  );
-
-type UpdateGoalRequest = z.infer<typeof updateGoalSchema>;
+import { GoalBody, goalBodySchema } from "./goalSchema.js";
 
 export async function updateGoal(
   request: FastifyRequest<{
     Params: { siteId: string; goalId: string };
-    Body: UpdateGoalRequest;
+    Body: GoalBody;
   }>,
   reply: FastifyReply
 ) {
@@ -88,7 +26,7 @@ export async function updateGoal(
     }
 
     // Validate the request body
-    const validatedData = updateGoalSchema.parse(request.body);
+    const validatedData = goalBodySchema.parse(request.body);
     const { name, goalType, config } = validatedData;
 
     // Check if the goal exists
@@ -109,19 +47,6 @@ export async function updateGoal(
     const userHasAccessToSite = await getUserHasAccessToSite(request, siteId.toString());
     if (!userHasAccessToSite) {
       return reply.status(403).send({ error: "Forbidden" });
-    }
-
-    // Additional validation based on goal type
-    if (goalType === "path") {
-      // Validate path pattern
-      pathPatternSchema.parse(config.pathPattern);
-    } else if (goalType === "event") {
-      // Validate event configuration
-      eventConfigSchema.parse({
-        eventName: config.eventName,
-        eventPropertyKey: config.eventPropertyKey,
-        eventPropertyValue: config.eventPropertyValue,
-      });
     }
 
     // Update the goal

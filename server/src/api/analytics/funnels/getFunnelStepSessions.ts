@@ -1,23 +1,10 @@
 import { FilterParams } from "@rybbit/shared";
 import { FastifyReply, FastifyRequest } from "fastify";
-import SqlString from "sqlstring";
 import { clickhouse } from "../../../db/clickhouse/clickhouse.js";
-import { enrichWithTraits, getTimeStatement, patternToRegex, processResults } from "../utils/utils.js";
+import { enrichWithTraits, getTimeStatement, processResults } from "../utils/utils.js";
 import { GetSessionsResponse } from "../sessions/getSessions.js";
 import { getFilterStatement } from "../utils/getFilterStatement.js";
-
-type FunnelStep = {
-  value: string;
-  name?: string;
-  type: "page" | "event";
-  hostname?: string;
-  eventPropertyKey?: string;
-  eventPropertyValue?: string | number | boolean;
-  propertyFilters?: Array<{
-    key: string;
-    value: string | number | boolean;
-  }>;
-};
+import { buildFunnelStepCondition, FunnelStep } from "./funnelSteps.js";
 
 type Funnel = {
   steps: FunnelStep[];
@@ -72,53 +59,7 @@ export async function getFunnelStepSessions(req: FastifyRequest<GetFunnelStepSes
 
     // Build conditional statements for each step we need
     const stepsToCheck = mode === "reached" ? stepNumber : stepNumber + 1;
-    const stepConditions = steps.slice(0, stepsToCheck).map((step) => {
-      let condition = "";
-
-      if (step.type === "page") {
-        const regex = patternToRegex(step.value);
-        condition = `type = 'pageview' AND match(pathname, ${SqlString.escape(regex)})`;
-
-        // Support both new propertyFilters array and legacy single property
-        const filters = step.propertyFilters || (
-          step.eventPropertyKey && step.eventPropertyValue !== undefined
-            ? [{ key: step.eventPropertyKey, value: step.eventPropertyValue }]
-            : []
-        );
-
-        // Add property matching for page steps (URL parameters)
-        for (const filter of filters) {
-          const propValueAccessor = `url_parameters[${SqlString.escape(filter.key)}]`;
-          condition += ` AND ${propValueAccessor} = ${SqlString.escape(String(filter.value))}`;
-        }
-      } else {
-        condition = `type = 'custom_event' AND event_name = ${SqlString.escape(step.value)}`;
-
-        // Support both new propertyFilters array and legacy single property
-        const filters = step.propertyFilters || (
-          step.eventPropertyKey && step.eventPropertyValue !== undefined
-            ? [{ key: step.eventPropertyKey, value: step.eventPropertyValue }]
-            : []
-        );
-
-        // Add property matching for event steps
-        for (const filter of filters) {
-          if (typeof filter.value === "string") {
-            condition += ` AND JSONExtractString(toString(props), ${SqlString.escape(filter.key)}) = ${SqlString.escape(filter.value)}`;
-          } else if (typeof filter.value === "number") {
-            condition += ` AND toFloat64(JSONExtractString(toString(props), ${SqlString.escape(filter.key)})) = ${SqlString.escape(filter.value)}`;
-          } else if (typeof filter.value === "boolean") {
-            condition += ` AND JSONExtractString(toString(props), ${SqlString.escape(filter.key)}) = ${SqlString.escape(filter.value ? 'true' : 'false')}`;
-          }
-        }
-      }
-
-      if (step.hostname) {
-        condition += ` AND hostname = ${SqlString.escape(step.hostname)}`;
-      }
-
-      return condition;
-    });
+    const stepConditions = steps.slice(0, stepsToCheck).map(step => buildFunnelStepCondition(step));
 
     // Build CTEs for each funnel step to identify qualifying sessions
     const stepCTEs = [

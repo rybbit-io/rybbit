@@ -2,11 +2,14 @@ import { authedFetch } from "../../utils";
 import { CommonApiParams, PaginationParams, toQueryParams } from "./types";
 import type { GetSessionsResponse } from "./sessions";
 
+// Funnel step types: page paths, custom events, and autocaptured event types
+export type FunnelStepType = "page" | "event" | "outbound" | "button_click" | "form_submit" | "copy";
+
 // Funnel step type
 export type FunnelStep = {
   value: string;
   name?: string;
-  type: "page" | "event";
+  type: FunnelStepType;
   hostname?: string;
   // Deprecated fields - kept for backwards compatibility
   eventPropertyKey?: string;
@@ -17,6 +20,16 @@ export type FunnelStep = {
     value: string | number | boolean;
   }>;
 };
+
+// Page and event steps need a value; autocapture steps may leave it empty to
+// match any event of their type
+export function stepRequiresValue(step: FunnelStep): boolean {
+  return step.type === "page" || step.type === "event";
+}
+
+export function hasIncompleteSteps(steps: FunnelStep[]): boolean {
+  return steps.some(step => stepRequiresValue(step) && !step.value);
+}
 
 // Funnel request type
 export type FunnelRequest = {

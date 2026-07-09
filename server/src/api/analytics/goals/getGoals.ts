@@ -3,10 +3,11 @@ import { db } from "../../../db/postgres/postgres.js";
 import { goals } from "../../../db/postgres/schema.js";
 import { clickhouse } from "../../../db/clickhouse/clickhouse.js";
 import { eq, desc, asc, sql } from "drizzle-orm";
-import { getTimeStatement, processResults, patternToRegex } from "../utils/utils.js";
+import { getTimeStatement, processResults } from "../utils/utils.js";
 import SqlString from "sqlstring";
 import { FilterParams } from "@rybbit/shared";
 import { getFilterStatement } from "../utils/getFilterStatement.js";
+import { buildGoalCondition } from "./goalConditions.js";
 
 // Types for the response
 interface GoalWithConversions {
@@ -148,69 +149,16 @@ export async function getGoals(
     let conditionalClauses: string[] = [];
 
     for (const goal of siteGoals) {
-      if (goal.goalType === "path") {
-        const pathPattern = goal.config.pathPattern;
-        if (!pathPattern) continue;
+      const goalCondition = buildGoalCondition(goal);
+      if (!goalCondition) continue;
 
-        const regex = patternToRegex(pathPattern);
-        let pathClause = `type = 'pageview' AND match(pathname, ${SqlString.escape(regex)})`;
-
-        // Support both new propertyFilters array and legacy single property
-        const filters = goal.config.propertyFilters || (
-          goal.config.eventPropertyKey && goal.config.eventPropertyValue !== undefined
-            ? [{ key: goal.config.eventPropertyKey, value: goal.config.eventPropertyValue }]
-            : []
-        );
-
-        // Add property matching for page goals (URL parameters)
-        for (const filter of filters) {
-          // Access URL parameters from the url_parameters map
-          const propValueAccessor = `url_parameters[${SqlString.escape(filter.key)}]`;
-
-          // URL parameters are stored as strings in the Map
-          pathClause += ` AND ${propValueAccessor} = ${SqlString.escape(String(filter.value))}`;
-        }
-
-        conditionalClauses.push(`
-          COUNT(DISTINCT IF(
-            ${pathClause},
-            session_id,
-            NULL
-          )) AS goal_${goal.goalId}_conversions
-        `);
-      } else if (goal.goalType === "event") {
-        const eventName = goal.config.eventName;
-
-        if (!eventName) continue;
-
-        let eventClause = `type = 'custom_event' AND event_name = ${SqlString.escape(eventName)}`;
-
-        // Support both new propertyFilters array and legacy single property
-        const filters = goal.config.propertyFilters || (
-          goal.config.eventPropertyKey && goal.config.eventPropertyValue !== undefined
-            ? [{ key: goal.config.eventPropertyKey, value: goal.config.eventPropertyValue }]
-            : []
-        );
-
-        // Add property matching if needed
-        for (const filter of filters) {
-          if (typeof filter.value === "string") {
-            eventClause += ` AND JSONExtractString(toString(props), ${SqlString.escape(filter.key)}) = ${SqlString.escape(filter.value)}`;
-          } else if (typeof filter.value === "number") {
-            eventClause += ` AND toFloat64(JSONExtractString(toString(props), ${SqlString.escape(filter.key)})) = ${SqlString.escape(filter.value)}`;
-          } else if (typeof filter.value === "boolean") {
-            eventClause += ` AND JSONExtractString(toString(props), ${SqlString.escape(filter.key)}) = ${SqlString.escape(filter.value ? 'true' : 'false')}`;
-          }
-        }
-
-        conditionalClauses.push(`
-          COUNT(DISTINCT IF(
-            ${eventClause},
-            session_id,
-            NULL
-          )) AS goal_${goal.goalId}_conversions
-        `);
-      }
+      conditionalClauses.push(`
+        COUNT(DISTINCT IF(
+          ${goalCondition},
+          session_id,
+          NULL
+        )) AS goal_${goal.goalId}_conversions
+      `);
     }
 
     if (conditionalClauses.length === 0) {

@@ -6,6 +6,7 @@ import type {
   FeatureFlagType,
   FeatureFlagVariant,
 } from "./featureFlags";
+import type { GoalConfig, GoalType } from "./goals";
 import { CommonApiParams, toQueryParams } from "./types";
 
 export type ExperimentStatus = "draft" | "running" | "paused" | "completed";
@@ -31,17 +32,8 @@ export type ExperimentGoal = {
   goalId: number;
   siteId: number;
   name: string | null;
-  goalType: "path" | "event";
-  config: {
-    pathPattern?: string;
-    eventName?: string;
-    eventPropertyKey?: string;
-    eventPropertyValue?: string | number | boolean;
-    propertyFilters?: Array<{
-      key: string;
-      value: string | number | boolean;
-    }>;
-  };
+  goalType: GoalType;
+  config: GoalConfig;
   createdAt: string;
 };
 

@@ -10,11 +10,12 @@ import { useState } from "react";
 import { toast } from "@/components/ui/sonner";
 import { useDeleteFunnel } from "../../../../api/analytics/hooks/funnels/useDeleteFunnel";
 import { useGetFunnel } from "../../../../api/analytics/hooks/funnels/useGetFunnel";
-import { SavedFunnel } from "../../../../api/analytics/endpoints";
+import { FunnelStepType, SavedFunnel } from "../../../../api/analytics/endpoints";
 import { ThreeDotLoader } from "../../../../components/Loaders";
 import { EditFunnelDialog } from "./EditFunnel";
 import { Funnel } from "./Funnel";
-import { EventIcon, PageviewIcon } from "../../../../components/EventIcons";
+import { EventTypeIcon } from "../../../../components/EventIcons";
+import { targetTypeToEventType } from "../../../../lib/events";
 
 interface FunnelRowProps {
   funnel: SavedFunnel;
@@ -23,6 +24,15 @@ interface FunnelRowProps {
 
 export function FunnelRow({ funnel, index }: FunnelRowProps) {
   const t = useExtracted();
+
+  const stepTypeLabels: Record<FunnelStepType, string> = {
+    page: t("Page"),
+    event: t("Event"),
+    outbound: t("Outbound"),
+    button_click: t("Button"),
+    form_submit: t("Form"),
+    copy: t("Copy"),
+  };
   const [expanded, setExpanded] = useState(index === 0);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -77,13 +87,9 @@ export function FunnelRow({ funnel, index }: FunnelRowProps) {
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <span className="rounded bg-neutral-100 dark:bg-neutral-800 px-1.5 py-0.5 whitespace-nowrap overflow-hidden text-ellipsis flex items-center cursor-default">
-                        {step.type === "page" ? (
-                          <PageviewIcon className="h-3 w-3 mr-1" />
-                        ) : (
-                          <EventIcon className="h-3 w-3 mr-1" />
-                        )}
+                        <EventTypeIcon type={targetTypeToEventType(step.type)} className="h-3 w-3 mr-1" />
                         <span className="max-w-[120px] overflow-hidden text-ellipsis inline-block">
-                          {step.name || step.value}
+                          {step.name || step.value || stepTypeLabels[step.type]}
                           {step.type === "event" && step.eventPropertyKey && (
                             <span className="text-xs text-yellow-400 ml-1">*</span>
                           )}
@@ -92,7 +98,7 @@ export function FunnelRow({ funnel, index }: FunnelRowProps) {
                     </TooltipTrigger>
                     <TooltipContent side="bottom" className="text-xs">
                       <div>
-                        <span className="font-semibold">{step.type === "page" ? t("Page") : t("Event")}:</span> {step.value}
+                        <span className="font-semibold">{stepTypeLabels[step.type]}:</span> {step.value || t("Any")}
                       </div>
                       {step.name && (
                         <div>

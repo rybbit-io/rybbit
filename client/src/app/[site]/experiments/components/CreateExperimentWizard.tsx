@@ -1,6 +1,6 @@
 "use client";
 
-import type { Experiment, FeatureFlagVariant } from "@/api/analytics/endpoints";
+import type { Experiment, FeatureFlagVariant, GoalType as AnyGoalType } from "@/api/analytics/endpoints";
 import { useCreateExperiment, useUpdateExperiment } from "@/api/analytics/hooks/experiments/useExperiments";
 import { useCreateFeatureFlag, useFeatureFlags } from "@/api/analytics/hooks/featureFlags/useFeatureFlags";
 import { useCreateGoal } from "@/api/analytics/hooks/goals/useCreateGoal";
@@ -55,7 +55,7 @@ type ImplementationState = {
   flagKey: string;
   variants: string[];
   goalMode: GoalMode;
-  goalType?: GoalType;
+  goalType?: AnyGoalType;
   goalLabel?: string;
 };
 
@@ -131,7 +131,7 @@ function initialForm(experiment?: Experiment): WizardForm {
       goalMode: experiment.primaryGoalId ? "existing" : "none",
       existingGoalId: experiment.primaryGoalId ? String(experiment.primaryGoalId) : "",
       goalName: primaryGoal?.name || "",
-      goalType: primaryGoal?.goalType || "path",
+      goalType: primaryGoal?.goalType === "event" ? "event" : "path",
       pathPattern: primaryGoal?.config.pathPattern || "",
       eventName: primaryGoal?.config.eventName || "",
     };
@@ -570,7 +570,7 @@ export function CreateExperimentWizard({
       }
 
       let primaryGoalId: number | null = form.goalMode === "existing" ? Number(form.existingGoalId) : null;
-      let goalType: GoalType | undefined = selectedGoal?.goalType;
+      let goalType: AnyGoalType | undefined = selectedGoal?.goalType;
       let goalLabel =
         selectedGoal?.goalType === "path"
           ? selectedGoal.config.pathPattern
@@ -665,7 +665,7 @@ export function CreateExperimentWizard({
       }
 
       let primaryGoalId: number | null = form.goalMode === "existing" ? Number(form.existingGoalId) : null;
-      let goalType: GoalType | undefined = selectedGoal?.goalType;
+      let goalType: AnyGoalType | undefined = selectedGoal?.goalType;
       let goalLabel =
         selectedGoal?.goalType === "path"
           ? selectedGoal.config.pathPattern

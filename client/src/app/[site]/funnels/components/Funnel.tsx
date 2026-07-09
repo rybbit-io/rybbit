@@ -6,7 +6,8 @@ import { ChevronDown, ChevronUp } from "lucide-react";
 import { useState } from "react";
 import { FunnelResponse, FunnelStep } from "../../../../api/analytics/endpoints";
 import { useGetFunnelStepSessions } from "../../../../api/analytics/hooks/funnels/useGetFunnelStepSessions";
-import { EventIcon, PageviewIcon } from "../../../../components/EventIcons";
+import { EventTypeIcon } from "../../../../components/EventIcons";
+import { targetTypeToEventType } from "../../../../lib/events";
 import { SessionsList } from "../../../../components/Sessions/SessionsList";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../../../components/ui/tabs";
 import { useStore } from "../../../../lib/store";
@@ -110,7 +111,7 @@ function FunnelStepComponent({ step, index, steps, chartData, firstStep, siteId 
           {step.stepNumber}
         </div>
         <div className="font-medium text-sm flex items-center gap-2 flex-1">
-          {steps[index]?.type === "page" ? <PageviewIcon /> : <EventIcon />}
+          <EventTypeIcon type={targetTypeToEventType(steps[index]?.type || "event")} />
           {step.stepName}
         </div>
         <div className="shrink-0">

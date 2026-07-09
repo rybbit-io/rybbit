@@ -3,20 +3,7 @@ import { FastifyReply, FastifyRequest } from "fastify";
 import { db } from "../../../db/postgres/postgres.js";
 import { funnels as funnelsTable } from "../../../db/postgres/schema.js";
 import { getUserHasAccessToSite } from "../../../lib/auth-utils.js";
-import { Filter } from "../types.js";
-
-type FunnelStep = {
-  value: string;
-  name?: string;
-  type: "page" | "event";
-  hostname?: string;
-  eventPropertyKey?: string;
-  eventPropertyValue?: string | number | boolean;
-  propertyFilters?: Array<{
-    key: string;
-    value: string | number | boolean;
-  }>;
-};
+import { FunnelStep } from "./funnelSteps.js";
 
 type Funnel = {
   steps: FunnelStep[];
@@ -40,6 +27,11 @@ export async function createFunnel(
   // Validate request
   if (!steps || steps.length < 2) {
     return reply.status(400).send({ error: "At least 2 steps are required for a funnel" });
+  }
+
+  // Page and event steps need a value; autocapture steps may match any event of their type
+  if (steps.some(step => (step.type === "page" || step.type === "event") && !step.value)) {
+    return reply.status(400).send({ error: "Page and event steps require a value" });
   }
 
   if (!name) {

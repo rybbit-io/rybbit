@@ -1,0 +1,95 @@
+import SqlString from "sqlstring";
+import { patternToRegex } from "./utils.js";
+
+export type PropertyFilter = {
+  key: string;
+  value: string | number | boolean;
+};
+
+// Autocaptured event types that goals and funnel steps can target, mapped to
+// the props keys their value pattern is matched against.
+export const AUTOCAPTURE_PATTERN_PROPS = {
+  outbound: ["url"],
+  button_click: ["text"],
+  form_submit: ["formName", "formId"],
+  copy: ["text"],
+} as const;
+
+export type AutocaptureTargetType = keyof typeof AUTOCAPTURE_PATTERN_PROPS;
+
+export function isAutocaptureTargetType(type: string): type is AutocaptureTargetType {
+  return type in AUTOCAPTURE_PATTERN_PROPS;
+}
+
+type LegacyPropertyConfig = {
+  eventPropertyKey?: string;
+  eventPropertyValue?: string | number | boolean;
+  propertyFilters?: PropertyFilter[];
+};
+
+// Support both the propertyFilters array and the legacy single-property fields
+export function resolvePropertyFilters(config: LegacyPropertyConfig): PropertyFilter[] {
+  return (
+    config.propertyFilters ||
+    (config.eventPropertyKey && config.eventPropertyValue !== undefined
+      ? [{ key: config.eventPropertyKey, value: config.eventPropertyValue }]
+      : [])
+  );
+}
+
+function propsFilterCondition(filter: PropertyFilter): string {
+  const key = SqlString.escape(filter.key);
+  if (typeof filter.value === "number") {
+    return `toFloat64(JSONExtractString(toString(props), ${key})) = ${SqlString.escape(filter.value)}`;
+  }
+  const value = typeof filter.value === "boolean" ? (filter.value ? "true" : "false") : filter.value;
+  return `JSONExtractString(toString(props), ${key}) = ${SqlString.escape(value)}`;
+}
+
+export function buildPageCondition(pathPattern: string, filters: PropertyFilter[]): string {
+  const regex = patternToRegex(pathPattern);
+  let condition = `type = 'pageview' AND match(pathname, ${SqlString.escape(regex)})`;
+
+  // Page targets match property filters against URL parameters
+  for (const filter of filters) {
+    condition += ` AND url_parameters[${SqlString.escape(filter.key)}] = ${SqlString.escape(String(filter.value))}`;
+  }
+
+  return condition;
+}
+
+export function buildEventCondition(eventName: string, filters: PropertyFilter[]): string {
+  let condition = `type = 'custom_event' AND event_name = ${SqlString.escape(eventName)}`;
+
+  for (const filter of filters) {
+    condition += ` AND ${propsFilterCondition(filter)}`;
+  }
+
+  return condition;
+}
+
+// Matches an autocaptured event type, optionally narrowed by a wildcard
+// pattern against the type's primary props (e.g. the destination url for
+// outbound clicks) and by exact-match property filters.
+export function buildAutocaptureCondition(
+  type: AutocaptureTargetType,
+  pattern: string | undefined,
+  filters: PropertyFilter[]
+): string {
+  let condition = `type = ${SqlString.escape(type)}`;
+
+  const trimmedPattern = pattern?.trim();
+  if (trimmedPattern) {
+    const regex = SqlString.escape(patternToRegex(trimmedPattern));
+    const patternMatches = AUTOCAPTURE_PATTERN_PROPS[type].map(
+      prop => `match(JSONExtractString(toString(props), ${SqlString.escape(prop)}), ${regex})`
+    );
+    condition += ` AND (${patternMatches.join(" OR ")})`;
+  }
+
+  for (const filter of filters) {
+    condition += ` AND ${propsFilterCondition(filter)}`;
+  }
+
+  return condition;
+}

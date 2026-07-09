@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils";
 import { Reorder } from "framer-motion";
 import { ChevronDown, ChevronUp, GripVertical, Plus, Save, Trash2, X } from "lucide-react";
 import { useMemo, useState } from "react";
-import { FunnelResponse, FunnelStep } from "../../../../api/analytics/endpoints";
+import { FunnelResponse, FunnelStep, FunnelStepType, hasIncompleteSteps } from "../../../../api/analytics/endpoints";
 import { useMetric } from "../../../../api/analytics/hooks/useGetMetric";
 import { ThreeDotLoader } from "../../../../components/Loaders";
 import { Label } from "../../../../components/ui/label";
@@ -50,6 +50,25 @@ export function FunnelForm({
   funnelData,
 }: FunnelFormProps) {
   const t = useExtracted();
+
+  const stepTypeLabels: Record<FunnelStepType, string> = {
+    page: t("Path"),
+    event: t("Event"),
+    outbound: t("Outbound"),
+    button_click: t("Button"),
+    form_submit: t("Form"),
+    copy: t("Copy"),
+  };
+
+  const stepValuePlaceholders: Record<FunnelStepType, string> = {
+    page: t("Path (e.g. /pricing)"),
+    event: t("Event name"),
+    outbound: t("URL pattern (optional)"),
+    button_click: t("Button text (optional)"),
+    form_submit: t("Form name or ID (optional)"),
+    copy: t("Copied text (optional)"),
+  };
+
   // State to track which event steps have property filtering enabled
   const [useProperties, setUseProperties] = useState<boolean[]>(() =>
     steps.map(
@@ -184,7 +203,7 @@ export function FunnelForm({
   };
 
   // Handle step type changes
-  const updateStepType = (index: number, type: "page" | "event") => {
+  const updateStepType = (index: number, type: FunnelStepType) => {
     const newSteps = [...steps];
     newSteps[index] = {
       ...newSteps[index],
@@ -217,7 +236,7 @@ export function FunnelForm({
     funnelArea = <Funnel data={funnelData} isError={isError} error={error} isPending={isPending} steps={steps} />;
   }
 
-  if (steps.some(step => !step.value)) {
+  if (hasIncompleteSteps(steps)) {
     funnelArea = (
       <div className="flex items-center justify-center rounded-lg h-full">
         <div className="text-center p-6">
@@ -269,22 +288,24 @@ export function FunnelForm({
                       <div className="shrink-0 w-6 h-6 rounded-full border border-neutral-300 dark:border-neutral-700 flex items-center justify-center text-xs">
                         {index + 1}
                       </div>
-                      <Select
-                        value={step.type}
-                        onValueChange={value => updateStepType(index, value as "page" | "event")}
-                      >
-                        <SelectTrigger className="min-w-[80px] max-w-[80px] border-neutral-300 dark:border-neutral-700">
+                      <Select value={step.type} onValueChange={value => updateStepType(index, value as FunnelStepType)}>
+                        <SelectTrigger className="min-w-[105px] max-w-[105px] border-neutral-300 dark:border-neutral-700">
                           <SelectValue placeholder={t("Type")} />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="page">{t("Path")}</SelectItem>
-                          <SelectItem value="event">{t("Event")}</SelectItem>
+                          {(Object.keys(stepTypeLabels) as FunnelStepType[]).map(type => (
+                            <SelectItem key={type} value={type}>
+                              {stepTypeLabels[type]}
+                            </SelectItem>
+                          ))}
                         </SelectContent>
                       </Select>
                       <div className="flex flex-col">
                         <InputWithSuggestions
-                          suggestions={step.type === "page" ? pathSuggestions : eventSuggestions}
-                          placeholder={step.type === "page" ? t("Path (e.g. /pricing)") : t("Event name")}
+                          suggestions={
+                            step.type === "page" ? pathSuggestions : step.type === "event" ? eventSuggestions : []
+                          }
+                          placeholder={stepValuePlaceholders[step.type]}
                           value={step.value}
                           className={cn(
                             "border-neutral-300 dark:border-neutral-700 w-[260px]",

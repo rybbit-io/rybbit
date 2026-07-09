@@ -5,7 +5,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { useEffect, useState } from "react";
 import { toast } from "@/components/ui/sonner";
 import { useGetFunnel, useSaveFunnel } from "../../../../api/analytics/hooks/funnels/useGetFunnel";
-import { FunnelStep, SavedFunnel } from "../../../../api/analytics/endpoints";
+import { FunnelStep, hasIncompleteSteps, SavedFunnel } from "../../../../api/analytics/endpoints";
 import { FunnelForm } from "./FunnelForm";
 
 interface EditFunnelDialogProps {
@@ -42,7 +42,7 @@ export function EditFunnelDialog({ funnel, isOpen, onClose, isCloneMode = false 
   // Query funnel without saving
   const handleQueryFunnel = () => {
     // Validate steps have values
-    const hasEmptySteps = steps.some(step => !step.value);
+    const hasEmptySteps = hasIncompleteSteps(steps);
     if (hasEmptySteps) {
       alert(t("All steps must have values"));
       return;
@@ -58,7 +58,7 @@ export function EditFunnelDialog({ funnel, isOpen, onClose, isCloneMode = false 
     }
 
     // Validate steps have values
-    const hasEmptySteps = steps.some(step => !step.value);
+    const hasEmptySteps = hasIncompleteSteps(steps);
     if (hasEmptySteps) {
       alert(t("All steps must have values"));
       return;

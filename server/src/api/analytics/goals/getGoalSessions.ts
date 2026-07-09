@@ -3,10 +3,10 @@ import { clickhouse } from "../../../db/clickhouse/clickhouse.js";
 import { db } from "../../../db/postgres/postgres.js";
 import { goals } from "../../../db/postgres/schema.js";
 import { eq } from "drizzle-orm";
-import { getTimeStatement, processResults, patternToRegex } from "../utils/utils.js";
+import { getTimeStatement, processResults } from "../utils/utils.js";
 import { FilterParams } from "@rybbit/shared";
 import { GetSessionsResponse } from "../sessions/getSessions.js";
-import SqlString from "sqlstring";
+import { buildGoalCondition } from "./goalConditions.js";
 
 export interface GetGoalSessionsRequest {
   Params: {
@@ -45,56 +45,9 @@ export async function getGoalSessions(req: FastifyRequest<GetGoalSessionsRequest
     const timeStatement = getTimeStatement(req.query);
 
     // Build the goal matching condition
-    let goalCondition = "";
-
-    if (goalData.goalType === "path") {
-      const pathPattern = goalData.config.pathPattern;
-      if (!pathPattern) {
-        return res.status(400).send({ error: "Invalid path goal configuration" });
-      }
-
-      const regex = patternToRegex(pathPattern);
-      goalCondition = `type = 'pageview' AND match(pathname, ${SqlString.escape(regex)})`;
-
-      // Support both new propertyFilters array and legacy single property
-      const filters = goalData.config.propertyFilters || (
-        goalData.config.eventPropertyKey && goalData.config.eventPropertyValue !== undefined
-          ? [{ key: goalData.config.eventPropertyKey, value: goalData.config.eventPropertyValue }]
-          : []
-      );
-
-      // Add property matching for page goals (URL parameters)
-      for (const filter of filters) {
-        const propValueAccessor = `url_parameters[${SqlString.escape(filter.key)}]`;
-        goalCondition += ` AND ${propValueAccessor} = ${SqlString.escape(String(filter.value))}`;
-      }
-    } else if (goalData.goalType === "event") {
-      const eventName = goalData.config.eventName;
-      if (!eventName) {
-        return res.status(400).send({ error: "Invalid event goal configuration" });
-      }
-
-      goalCondition = `type = 'custom_event' AND event_name = ${SqlString.escape(eventName)}`;
-
-      // Support both new propertyFilters array and legacy single property
-      const filters = goalData.config.propertyFilters || (
-        goalData.config.eventPropertyKey && goalData.config.eventPropertyValue !== undefined
-          ? [{ key: goalData.config.eventPropertyKey, value: goalData.config.eventPropertyValue }]
-          : []
-      );
-
-      // Add property matching for event goals
-      for (const filter of filters) {
-        if (typeof filter.value === "string") {
-          goalCondition += ` AND JSONExtractString(toString(props), ${SqlString.escape(filter.key)}) = ${SqlString.escape(filter.value)}`;
-        } else if (typeof filter.value === "number") {
-          goalCondition += ` AND toFloat64(JSONExtractString(toString(props), ${SqlString.escape(filter.key)})) = ${SqlString.escape(filter.value)}`;
-        } else if (typeof filter.value === "boolean") {
-          goalCondition += ` AND JSONExtractString(toString(props), ${SqlString.escape(filter.key)}) = ${SqlString.escape(filter.value ? 'true' : 'false')}`;
-        }
-      }
-    } else {
-      return res.status(400).send({ error: "Invalid goal type" });
+    const goalCondition = buildGoalCondition(goalData);
+    if (!goalCondition) {
+      return res.status(400).send({ error: "Invalid goal configuration" });
     }
 
     // Build query to find sessions that match the goal
