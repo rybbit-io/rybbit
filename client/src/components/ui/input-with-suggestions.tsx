@@ -41,7 +41,7 @@ export const InputWithSuggestions = React.forwardRef<HTMLInputElement, InputWith
     const value = controlledValue !== undefined ? controlledValue : internalValue;
 
     const filteredSuggestions = suggestions.filter(suggestion =>
-      suggestion.value.toLowerCase().includes(String(value).toLowerCase())
+      String(suggestion.value).toLowerCase().includes(String(value).toLowerCase())
     );
 
     const updateDropdownPosition = React.useCallback(() => {
@@ -146,7 +146,7 @@ export const InputWithSuggestions = React.forwardRef<HTMLInputElement, InputWith
                   key={suggestion.value}
                   className="relative cursor-pointer mx-1 p-2 text-sm hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-md"
                   onMouseDown={e => e.preventDefault()}
-                  onClick={() => handleSuggestionClick(suggestion.value)}
+                  onClick={() => handleSuggestionClick(String(suggestion.value))}
                 >
                   {suggestion.label || suggestion.value}
                 </div>

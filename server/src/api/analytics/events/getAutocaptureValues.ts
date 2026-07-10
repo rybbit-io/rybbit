@@ -65,7 +65,9 @@ export async function getAutocaptureValues(req: FastifyRequest<GetAutocaptureVal
     });
 
     const data = await processResults<GetAutocaptureValuesResponse[number]>(result);
-    return res.send({ data });
+    // processResults coerces any column that looks numeric into a number; `value`
+    // is free-form captured text (e.g. a button labeled "100") and must stay a string.
+    return res.send({ data: data.map(row => ({ ...row, value: String(row.value) })) });
   } catch (error) {
     console.error("Error fetching autocapture values:", error);
     return res.status(500).send({ error: "Failed to fetch autocapture values" });
