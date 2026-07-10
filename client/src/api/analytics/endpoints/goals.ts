@@ -1,3 +1,4 @@
+import type { AutocaptureTargetType } from "../../../lib/events";
 import { authedFetch } from "../../utils";
 import {
   BucketedParams,
@@ -10,7 +11,7 @@ import {
 import type { GetSessionsResponse } from "./sessions";
 
 // Goal types: page paths, custom events, and autocaptured event types
-export type GoalType = "path" | "event" | "outbound" | "button_click" | "form_submit" | "copy";
+export type GoalType = "path" | "event" | AutocaptureTargetType;
 
 export interface GoalConfig {
   pathPattern?: string;

@@ -51,6 +51,25 @@ export function targetTypeToEventType(type: string): EventType {
   return EVENT_TYPE_CONFIG.some(config => config.value === type) ? (type as EventType) : "custom_event";
 }
 
+export type PropertyFilter = { key: string; value: string | number | boolean };
+
+type LegacyPropertyConfig = {
+  propertyFilters?: PropertyFilter[];
+  eventPropertyKey?: string;
+  eventPropertyValue?: string | number | boolean;
+};
+
+// Support both the propertyFilters array and the legacy single-property fields,
+// for goals and funnel steps of any type.
+export function resolvePropertyFilters(config: LegacyPropertyConfig): PropertyFilter[] {
+  return (
+    config.propertyFilters ||
+    (config.eventPropertyKey && config.eventPropertyValue !== undefined
+      ? [{ key: config.eventPropertyKey, value: config.eventPropertyValue }]
+      : [])
+  );
+}
+
 // ============================================================================
 // Event Display Utilities
 // ============================================================================

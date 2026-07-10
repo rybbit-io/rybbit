@@ -6,20 +6,22 @@ export type PropertyFilter = {
   value: string | number | boolean;
 };
 
-// Autocaptured event types that goals and funnel steps can target, mapped to
-// the props keys their value pattern is matched against.
-export const AUTOCAPTURE_PATTERN_PROPS = {
+// Autocaptured event types that goals and funnel steps can target directly
+export const AUTOCAPTURE_TARGET_TYPES = ["outbound", "button_click", "form_submit", "copy"] as const;
+
+export type AutocaptureTargetType = (typeof AUTOCAPTURE_TARGET_TYPES)[number];
+
+export function isAutocaptureTargetType(type: string): type is AutocaptureTargetType {
+  return (AUTOCAPTURE_TARGET_TYPES as readonly string[]).includes(type);
+}
+
+// Maps each autocapture type to the props keys its value pattern is matched against.
+export const AUTOCAPTURE_PATTERN_PROPS: Record<AutocaptureTargetType, readonly string[]> = {
   outbound: ["url"],
   button_click: ["text"],
   form_submit: ["formName", "formId", "formAction"],
   copy: ["text"],
-} as const;
-
-export type AutocaptureTargetType = keyof typeof AUTOCAPTURE_PATTERN_PROPS;
-
-export function isAutocaptureTargetType(type: string): type is AutocaptureTargetType {
-  return type in AUTOCAPTURE_PATTERN_PROPS;
-}
+};
 
 type LegacyPropertyConfig = {
   eventPropertyKey?: string;

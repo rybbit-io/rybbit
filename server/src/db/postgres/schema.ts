@@ -321,14 +321,16 @@ export const goals = pgTable(
     goalId: serial("goal_id").primaryKey().notNull(),
     siteId: integer("site_id").notNull(),
     name: text("name"), // Optional, user-defined name for the goal
-    goalType: text("goal_type").notNull(), // 'path' or 'event'
+    goalType: text("goal_type").notNull(), // 'path', 'event', 'outbound', 'button_click', 'form_submit', or 'copy'
     // Configuration specific to the goal type
     config: jsonb("config").notNull().$type<{
       // For 'path' type
       pathPattern?: string; // e.g., "/pricing", "/product/*/view", "/docs/**"
       // For 'event' type
       eventName?: string; // e.g., "signup_completed", "file_downloaded"
-      // Property filters (for both path and event types)
+      // For autocapture types ('outbound', 'button_click', 'form_submit', 'copy')
+      valuePattern?: string; // e.g., "https://example.com/**", "Sign Up*"
+      // Property filters (for all goal types)
       eventPropertyKey?: string; // Deprecated - use propertyFilters instead
       eventPropertyValue?: string | number | boolean; // Deprecated - use propertyFilters instead
       propertyFilters?: Array<{

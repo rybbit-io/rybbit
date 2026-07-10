@@ -2,6 +2,7 @@ import { FastifyReply, FastifyRequest } from "fastify";
 import SqlString from "sqlstring";
 import { clickhouse } from "../../../db/clickhouse/clickhouse.js";
 import { getTimeStatement, processResults } from "../utils/utils.js";
+import { getFilterStatement } from "../utils/getFilterStatement.js";
 import { FilterParams } from "@rybbit/shared";
 import { AUTOCAPTURE_PATTERN_PROPS, isAutocaptureTargetType } from "../utils/eventConditions.js";
 
@@ -23,7 +24,7 @@ export interface GetAutocaptureValuesRequest {
 // (outbound urls, button texts, form names/ids, copied texts), used as
 // suggestions when configuring goals and funnel steps.
 export async function getAutocaptureValues(req: FastifyRequest<GetAutocaptureValuesRequest>, res: FastifyReply) {
-  const { type } = req.query;
+  const { type, filters } = req.query;
   const site = req.params.siteId;
 
   if (!type || !isAutocaptureTargetType(type)) {
@@ -31,6 +32,7 @@ export async function getAutocaptureValues(req: FastifyRequest<GetAutocaptureVal
   }
 
   const timeStatement = getTimeStatement(req.query);
+  const filterStatement = filters ? getFilterStatement(filters, Number(site), timeStatement) : "";
 
   const propExtracts = AUTOCAPTURE_PATTERN_PROPS[type]
     .map(prop => `JSONExtractString(toString(props), ${SqlString.escape(prop)})`)
@@ -45,6 +47,7 @@ export async function getAutocaptureValues(req: FastifyRequest<GetAutocaptureVal
         site_id = {siteId:Int32}
         AND type = ${SqlString.escape(type)}
         ${timeStatement}
+        ${filterStatement}
     )
     WHERE value <> ''
     GROUP BY value

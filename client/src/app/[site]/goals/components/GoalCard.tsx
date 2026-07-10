@@ -8,7 +8,7 @@ import { useDeleteGoal } from "../../../../api/analytics/hooks/goals/useDeleteGo
 import { Goal, GoalTimeSeriesPoint } from "../../../../api/analytics/endpoints";
 import { useGetGoalSessions } from "../../../../api/analytics/hooks/goals/useGetGoalSessions";
 import { EventTypeIcon } from "../../../../components/EventIcons";
-import { targetTypeToEventType } from "../../../../lib/events";
+import { resolvePropertyFilters, targetTypeToEventType } from "../../../../lib/events";
 import { SessionsList } from "../../../../components/Sessions/SessionsList";
 import {
   AlertDialog,
@@ -183,6 +183,8 @@ export default function GoalCard({ goal, siteId, timeSeries, isLoadingTimeSeries
     }
   };
 
+  const propertyFilters = resolvePropertyFilters(goal.config);
+
   const allSessions = sessionsData?.data || [];
   const hasNextPage = allSessions.length > LIMIT;
   const sessions = allSessions.slice(0, LIMIT);
@@ -219,11 +221,11 @@ export default function GoalCard({ goal, siteId, timeSeries, isLoadingTimeSeries
                     : goal.config.valuePattern || t("Any")}
               </code>
 
-              {goal.goalType === "event" && goal.config.eventPropertyKey && (
+              {propertyFilters.length > 0 && (
                 <div className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
                   {t("Property")}:{" "}
                   <code className="text-xs bg-neutral-100 dark:bg-neutral-800 px-1 py-0.5 rounded text-neutral-900 dark:text-neutral-100">
-                    {goal.config.eventPropertyKey}: {String(goal.config.eventPropertyValue)}
+                    {propertyFilters.map(f => `${f.key}: ${f.value}`).join(", ")}
                   </code>
                 </div>
               )}

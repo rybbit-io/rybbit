@@ -1,6 +1,7 @@
 import { z } from "zod";
+import { AUTOCAPTURE_TARGET_TYPES } from "../utils/eventConditions.js";
 
-export const GOAL_TYPES = ["path", "event", "outbound", "button_click", "form_submit", "copy"] as const;
+export const GOAL_TYPES = ["path", "event", ...AUTOCAPTURE_TARGET_TYPES] as const;
 
 export const goalBodySchema = z
   .object({

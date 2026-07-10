@@ -7,18 +7,13 @@ import { cn } from "@/lib/utils";
 import { Reorder } from "framer-motion";
 import { ChevronDown, ChevronUp, GripVertical, Plus, Save, Trash2, X } from "lucide-react";
 import { useMemo, useState } from "react";
-import {
-  AutocaptureValue,
-  FunnelResponse,
-  FunnelStep,
-  FunnelStepType,
-  hasIncompleteSteps,
-} from "../../../../api/analytics/endpoints";
-import { useAutocaptureValues } from "../../../../api/analytics/hooks/events/useAutocaptureValues";
+import { FunnelResponse, FunnelStep, FunnelStepType, hasIncompleteSteps } from "../../../../api/analytics/endpoints";
+import { useAutocaptureValuesByType } from "../../../../api/analytics/hooks/events/useAutocaptureValues";
 import { useMetric } from "../../../../api/analytics/hooks/useGetMetric";
 import { ThreeDotLoader } from "../../../../components/Loaders";
 import { Label } from "../../../../components/ui/label";
 import { Switch } from "../../../../components/ui/switch";
+import { isAutocaptureTargetType } from "../../../../lib/events";
 import { Funnel } from "./Funnel";
 
 const URL_PATTERN = /^(https?:\/\/|www\.|[a-zA-Z0-9-]+\.[a-zA-Z]{2,}\/)/i;
@@ -137,42 +132,41 @@ export function FunnelForm({
   });
 
   // Transform data into SuggestionOption format
-  const pathSuggestions: SuggestionOption[] =
-    pathsData?.data?.map(item => ({
-      value: item.value,
-      label: item.value,
-    })) || [];
+  const pathSuggestions: SuggestionOption[] = useMemo(
+    () => pathsData?.data?.map(item => ({ value: item.value, label: item.value })) || [],
+    [pathsData]
+  );
 
-  const eventSuggestions: SuggestionOption[] =
-    eventsData?.data?.map(item => ({
-      value: item.value,
-      label: item.value,
-    })) || [];
+  const eventSuggestions: SuggestionOption[] = useMemo(
+    () => eventsData?.data?.map(item => ({ value: item.value, label: item.value })) || [],
+    [eventsData]
+  );
 
-  const hostnameSuggestions: SuggestionOption[] =
-    hostnamesData?.data?.map(item => ({
-      value: item.value,
-      label: item.value,
-    })) || [];
+  const hostnameSuggestions: SuggestionOption[] = useMemo(
+    () => hostnamesData?.data?.map(item => ({ value: item.value, label: item.value })) || [],
+    [hostnamesData]
+  );
 
   // Suggestions for autocapture step values, fetched only for types in use
-  const stepHasType = (type: FunnelStepType) => steps.some(step => step.type === type);
-  const { data: outboundValues } = useAutocaptureValues("outbound", stepHasType("outbound"));
-  const { data: buttonClickValues } = useAutocaptureValues("button_click", stepHasType("button_click"));
-  const { data: formSubmitValues } = useAutocaptureValues("form_submit", stepHasType("form_submit"));
-  const { data: copyValues } = useAutocaptureValues("copy", stepHasType("copy"));
+  const enabledAutocaptureTypes = useMemo(
+    () => new Set(steps.map(step => step.type).filter(isAutocaptureTargetType)),
+    [steps]
+  );
+  const autocaptureValuesByType = useAutocaptureValuesByType(enabledAutocaptureTypes);
 
-  const toSuggestions = (values?: AutocaptureValue[]): SuggestionOption[] =>
-    values?.map(item => ({ value: item.value, label: item.value })) || [];
+  const stepSuggestions: Record<FunnelStepType, SuggestionOption[]> = useMemo(() => {
+    const toSuggestions = (values?: { value: string }[]): SuggestionOption[] =>
+      values?.map(item => ({ value: item.value, label: item.value })) || [];
 
-  const stepSuggestions: Record<FunnelStepType, SuggestionOption[]> = {
-    page: pathSuggestions,
-    event: eventSuggestions,
-    outbound: toSuggestions(outboundValues),
-    button_click: toSuggestions(buttonClickValues),
-    form_submit: toSuggestions(formSubmitValues),
-    copy: toSuggestions(copyValues),
-  };
+    return {
+      page: pathSuggestions,
+      event: eventSuggestions,
+      outbound: toSuggestions(autocaptureValuesByType.outbound),
+      button_click: toSuggestions(autocaptureValuesByType.button_click),
+      form_submit: toSuggestions(autocaptureValuesByType.form_submit),
+      copy: toSuggestions(autocaptureValuesByType.copy),
+    };
+  }, [pathSuggestions, eventSuggestions, autocaptureValuesByType]);
 
   // Handle reordering steps via drag-and-drop
   const handleReorder = (newOrder: string[]) => {

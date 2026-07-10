@@ -1,9 +1,10 @@
+import type { AutocaptureTargetType } from "../../../lib/events";
 import { authedFetch } from "../../utils";
 import { CommonApiParams, PaginationParams, toQueryParams } from "./types";
 import type { GetSessionsResponse } from "./sessions";
 
 // Funnel step types: page paths, custom events, and autocaptured event types
-export type FunnelStepType = "page" | "event" | "outbound" | "button_click" | "form_submit" | "copy";
+export type FunnelStepType = "page" | "event" | AutocaptureTargetType;
 
 // Funnel step type
 export type FunnelStep = {

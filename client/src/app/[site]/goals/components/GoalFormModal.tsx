@@ -11,7 +11,12 @@ import { useUpdateGoal } from "../../../../api/analytics/hooks/goals/useUpdateGo
 import { useAutocaptureValues } from "../../../../api/analytics/hooks/events/useAutocaptureValues";
 import { useMetric } from "../../../../api/analytics/hooks/useGetMetric";
 import { EventTypeIcon } from "../../../../components/EventIcons";
-import { AutocaptureTargetType, isAutocaptureTargetType, targetTypeToEventType } from "../../../../lib/events";
+import {
+  AUTOCAPTURE_TARGET_TYPES,
+  AutocaptureTargetType,
+  isAutocaptureTargetType,
+  targetTypeToEventType,
+} from "../../../../lib/events";
 import { Button } from "../../../../components/ui/button";
 import {
   Dialog,
@@ -34,7 +39,7 @@ import { Plus, X } from "lucide-react";
 const formSchema = z
   .object({
     name: z.string().optional(),
-    goalType: z.enum(["path", "event", "outbound", "button_click", "form_submit", "copy"]),
+    goalType: z.enum(["path", "event", ...AUTOCAPTURE_TARGET_TYPES]),
     config: z.object({
       pathPattern: z.string().optional(),
       eventName: z.string().optional(),
@@ -224,6 +229,36 @@ export default function GoalFormModal({
       placeholder: t("e.g., PROMO*"),
       help: t("Matches the text that was copied. Leave empty to count any copied text."),
     },
+  };
+
+  // Copy for the property-filter toggle/inputs, per goal type. The 4 autocapture
+  // types all filter on event props, so they share one entry.
+  const autocapturePropertyFilterMeta = {
+    id: "use-properties-autocapture",
+    toggleLabel: t("Match specific event properties"),
+    keyPlaceholder: "e.g., text",
+    valuePlaceholder: "e.g., Sign Up",
+    addButtonLabel: t("Add Another Property"),
+  };
+  const propertyFilterMeta: Record<GoalType, typeof autocapturePropertyFilterMeta> = {
+    path: {
+      id: "use-properties",
+      toggleLabel: t("Match specific URL parameters"),
+      keyPlaceholder: "e.g., utm_source",
+      valuePlaceholder: "e.g., adwords",
+      addButtonLabel: t("Add Another Parameter"),
+    },
+    event: {
+      id: "use-properties-event",
+      toggleLabel: t("Match specific event properties"),
+      keyPlaceholder: "e.g., plan_type",
+      valuePlaceholder: "e.g., premium",
+      addButtonLabel: t("Add Another Property"),
+    },
+    outbound: autocapturePropertyFilterMeta,
+    button_click: autocapturePropertyFilterMeta,
+    form_submit: autocapturePropertyFilterMeta,
+    copy: autocapturePropertyFilterMeta,
   };
 
   // Initialize useProperties based on either new propertyFilters or legacy properties
@@ -476,113 +511,83 @@ export default function GoalFormModal({
             />
 
             {goalType === "path" && (
-              <>
-                <FormField
-                  control={form.control}
-                  name="config.pathPattern"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>{t("Path Pattern")}</FormLabel>
-                      <FormControl>
-                        <InputWithSuggestions
-                          suggestions={pathSuggestions}
-                          placeholder="/checkout/complete or /product/*/view"
-                          {...field}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                      <div className="text-xs text-neutral-500 mt-1">
-                        {t("Use * to match a single path segment. Use ** to match across segments.")}
-                      </div>
-                    </FormItem>
-                  )}
-                />
-
-                <PropertyFilterSection
-                  id="use-properties"
-                  toggleLabel={t("Match specific URL parameters")}
-                  keyPlaceholder="e.g., utm_source"
-                  valuePlaceholder="e.g., adwords"
-                  addButtonLabel={t("Add Another Parameter")}
-                  useProperties={useProperties}
-                  setUseProperties={setUseProperties}
-                  propertyFilters={propertyFilters}
-                  setPropertyFilters={setPropertyFilters}
-                />
-              </>
+              <FormField
+                control={form.control}
+                name="config.pathPattern"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>{t("Path Pattern")}</FormLabel>
+                    <FormControl>
+                      <InputWithSuggestions
+                        suggestions={pathSuggestions}
+                        placeholder="/checkout/complete or /product/*/view"
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                    <div className="text-xs text-neutral-500 mt-1">
+                      {t("Use * to match a single path segment. Use ** to match across segments.")}
+                    </div>
+                  </FormItem>
+                )}
+              />
             )}
 
             {goalType === "event" && (
-              <>
-                <FormField
-                  control={form.control}
-                  name="config.eventName"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>{t("Event Name")}</FormLabel>
-                      <FormControl>
-                        <InputWithSuggestions
-                          suggestions={eventSuggestions}
-                          placeholder={t("e.g., sign_up_completed")}
-                          {...field}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <PropertyFilterSection
-                  id="use-properties-event"
-                  toggleLabel={t("Match specific event properties")}
-                  keyPlaceholder="e.g., plan_type"
-                  valuePlaceholder="e.g., premium"
-                  addButtonLabel={t("Add Another Property")}
-                  useProperties={useProperties}
-                  setUseProperties={setUseProperties}
-                  propertyFilters={propertyFilters}
-                  setPropertyFilters={setPropertyFilters}
-                />
-              </>
+              <FormField
+                control={form.control}
+                name="config.eventName"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>{t("Event Name")}</FormLabel>
+                    <FormControl>
+                      <InputWithSuggestions
+                        suggestions={eventSuggestions}
+                        placeholder={t("e.g., sign_up_completed")}
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
             )}
 
             {isAutocaptureTargetType(goalType) && (
-              <>
-                <FormField
-                  control={form.control}
-                  name="config.valuePattern"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>{autocaptureFieldMeta[goalType].label}</FormLabel>
-                      <FormControl>
-                        <InputWithSuggestions
-                          suggestions={autocaptureSuggestions}
-                          placeholder={autocaptureFieldMeta[goalType].placeholder}
-                          {...field}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                      <div className="text-xs text-neutral-500 mt-1">
-                        {autocaptureFieldMeta[goalType].help}{" "}
-                        {t("Use * to match within a segment. Use ** to match anything.")}
-                      </div>
-                    </FormItem>
-                  )}
-                />
-
-                <PropertyFilterSection
-                  id="use-properties-autocapture"
-                  toggleLabel={t("Match specific event properties")}
-                  keyPlaceholder="e.g., text"
-                  valuePlaceholder="e.g., Sign Up"
-                  addButtonLabel={t("Add Another Property")}
-                  useProperties={useProperties}
-                  setUseProperties={setUseProperties}
-                  propertyFilters={propertyFilters}
-                  setPropertyFilters={setPropertyFilters}
-                />
-              </>
+              <FormField
+                control={form.control}
+                name="config.valuePattern"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>{autocaptureFieldMeta[goalType].label}</FormLabel>
+                    <FormControl>
+                      <InputWithSuggestions
+                        suggestions={autocaptureSuggestions}
+                        placeholder={autocaptureFieldMeta[goalType].placeholder}
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                    <div className="text-xs text-neutral-500 mt-1">
+                      {autocaptureFieldMeta[goalType].help}{" "}
+                      {t("Use * to match within a segment. Use ** to match anything.")}
+                    </div>
+                  </FormItem>
+                )}
+              />
             )}
+
+            <PropertyFilterSection
+              id={propertyFilterMeta[goalType].id}
+              toggleLabel={propertyFilterMeta[goalType].toggleLabel}
+              keyPlaceholder={propertyFilterMeta[goalType].keyPlaceholder}
+              valuePlaceholder={propertyFilterMeta[goalType].valuePlaceholder}
+              addButtonLabel={propertyFilterMeta[goalType].addButtonLabel}
+              useProperties={useProperties}
+              setUseProperties={setUseProperties}
+              propertyFilters={propertyFilters}
+              setPropertyFilters={setPropertyFilters}
+            />
 
             <div className="flex justify-end space-x-2">
               <Button variant="outline" type="button" onClick={onClose}>
