@@ -16,11 +16,21 @@ export function isAutocaptureTargetType(type: string): type is AutocaptureTarget
 }
 
 // Maps each autocapture type to the props keys its value pattern is matched against.
+// formAction (the form's submit-destination URL) is included as a fallback so
+// unnamed forms (no formName/formId) can still be matched.
 export const AUTOCAPTURE_PATTERN_PROPS: Record<AutocaptureTargetType, readonly string[]> = {
   outbound: ["url"],
   button_click: ["text"],
   form_submit: ["formName", "formId", "formAction"],
   copy: ["text"],
+};
+
+// Props surfaced as autocomplete suggestions. Narrower than AUTOCAPTURE_PATTERN_PROPS
+// for form_submit: formAction is present on nearly every form, so including it here
+// would flood the "Form Name or ID" suggestions with action URLs.
+export const AUTOCAPTURE_SUGGESTION_PROPS: Record<AutocaptureTargetType, readonly string[]> = {
+  ...AUTOCAPTURE_PATTERN_PROPS,
+  form_submit: ["formName", "formId"],
 };
 
 type LegacyPropertyConfig = {

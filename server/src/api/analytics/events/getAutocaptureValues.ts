@@ -4,7 +4,7 @@ import { clickhouse } from "../../../db/clickhouse/clickhouse.js";
 import { getTimeStatement, processResults } from "../utils/utils.js";
 import { getFilterStatement } from "../utils/getFilterStatement.js";
 import { FilterParams } from "@rybbit/shared";
-import { AUTOCAPTURE_PATTERN_PROPS, isAutocaptureTargetType } from "../utils/eventConditions.js";
+import { AUTOCAPTURE_SUGGESTION_PROPS, isAutocaptureTargetType } from "../utils/eventConditions.js";
 
 export type GetAutocaptureValuesResponse = {
   value: string;
@@ -34,7 +34,7 @@ export async function getAutocaptureValues(req: FastifyRequest<GetAutocaptureVal
   const timeStatement = getTimeStatement(req.query);
   const filterStatement = filters ? getFilterStatement(filters, Number(site), timeStatement) : "";
 
-  const propExtracts = AUTOCAPTURE_PATTERN_PROPS[type]
+  const propExtracts = AUTOCAPTURE_SUGGESTION_PROPS[type]
     .map(prop => `JSONExtractString(toString(props), ${SqlString.escape(prop)})`)
     .join(", ");
 
