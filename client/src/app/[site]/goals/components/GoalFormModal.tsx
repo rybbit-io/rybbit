@@ -25,6 +25,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Input } from "../../../../components/ui/input";
 import { InputWithSuggestions, SuggestionOption } from "../../../../components/ui/input-with-suggestions";
 import { Label } from "../../../../components/ui/label";
+import { toast } from "../../../../components/ui/sonner";
 import { Switch } from "../../../../components/ui/switch";
 import { cn } from "../../../../lib/utils";
 import { Plus, X } from "lucide-react";
@@ -37,7 +38,7 @@ const formSchema = z
     config: z.object({
       pathPattern: z.string().optional(),
       eventName: z.string().optional(),
-      valuePattern: z.string().optional(),
+      valuePattern: z.string().max(512).optional(),
       eventPropertyKey: z.string().optional(),
       eventPropertyValue: z.string().optional(),
       propertyFilters: z
@@ -386,6 +387,7 @@ export default function GoalFormModal({
       setIsOpen(false);
     } catch (error) {
       console.error("Error saving goal:", error);
+      toast.error(error instanceof Error ? error.message : t("Failed to save goal"));
     }
   };
 
@@ -451,7 +453,16 @@ export default function GoalFormModal({
                             "flex items-center justify-start gap-2",
                             field.value === option.value && "border-blue-500"
                           )}
-                          onClick={() => field.onChange(option.value)}
+                          onClick={() => {
+                            // Property filters are interpreted differently per goal type
+                            // (URL params vs. event props), so clear them on type change
+                            // instead of silently reinterpreting them.
+                            if (field.value !== option.value) {
+                              setUseProperties(false);
+                              setPropertyFilters([{ key: "", value: "" }]);
+                            }
+                            field.onChange(option.value);
+                          }}
                         >
                           <EventTypeIcon type={targetTypeToEventType(option.value)} />
                           <span>{option.label}</span>

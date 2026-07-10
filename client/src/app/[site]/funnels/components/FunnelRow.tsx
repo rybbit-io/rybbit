@@ -89,7 +89,7 @@ export function FunnelRow({ funnel, index }: FunnelRowProps) {
                       <span className="rounded bg-neutral-100 dark:bg-neutral-800 px-1.5 py-0.5 whitespace-nowrap overflow-hidden text-ellipsis flex items-center cursor-default">
                         <EventTypeIcon type={targetTypeToEventType(step.type)} className="h-3 w-3 mr-1" />
                         <span className="max-w-[120px] overflow-hidden text-ellipsis inline-block">
-                          {step.name || step.value || stepTypeLabels[step.type]}
+                          {step.name || step.value || stepTypeLabels[step.type] || t("Event")}
                           {step.type === "event" && step.eventPropertyKey && (
                             <span className="text-xs text-yellow-400 ml-1">*</span>
                           )}
@@ -98,7 +98,8 @@ export function FunnelRow({ funnel, index }: FunnelRowProps) {
                     </TooltipTrigger>
                     <TooltipContent side="bottom" className="text-xs">
                       <div>
-                        <span className="font-semibold">{stepTypeLabels[step.type]}:</span> {step.value || t("Any")}
+                        <span className="font-semibold">{stepTypeLabels[step.type] || t("Event")}:</span>{" "}
+                        {step.value || t("Any")}
                       </div>
                       {step.name && (
                         <div>

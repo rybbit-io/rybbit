@@ -4,7 +4,7 @@ import { useExtracted } from "next-intl";
 import round from "lodash/round";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import { useState } from "react";
-import { FunnelResponse, FunnelStep } from "../../../../api/analytics/endpoints";
+import { FunnelResponse, FunnelStep, FunnelStepType } from "../../../../api/analytics/endpoints";
 import { useGetFunnelStepSessions } from "../../../../api/analytics/hooks/funnels/useGetFunnelStepSessions";
 import { EventTypeIcon } from "../../../../components/EventIcons";
 import { targetTypeToEventType } from "../../../../lib/events";
@@ -41,6 +41,16 @@ interface FunnelStepComponentProps {
 
 function FunnelStepComponent({ step, index, steps, chartData, firstStep, siteId }: FunnelStepComponentProps) {
   const t = useExtracted();
+
+  const stepTypeLabels: Record<FunnelStepType, string> = {
+    page: t("Page"),
+    event: t("Event"),
+    outbound: t("Outbound"),
+    button_click: t("Button"),
+    form_submit: t("Form"),
+    copy: t("Copy"),
+  };
+
   const [isExpanded, setIsExpanded] = useState(false);
   const [currentTab, setCurrentTab] = useState<"reached" | "dropped">("reached");
   const [reachedPage, setReachedPage] = useState(1);
@@ -112,7 +122,7 @@ function FunnelStepComponent({ step, index, steps, chartData, firstStep, siteId 
         </div>
         <div className="font-medium text-sm flex items-center gap-2 flex-1">
           <EventTypeIcon type={targetTypeToEventType(steps[index]?.type || "event")} />
-          {step.stepName}
+          {step.stepName || stepTypeLabels[steps[index]?.type || "event"]}
         </div>
         <div className="shrink-0">
           {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}

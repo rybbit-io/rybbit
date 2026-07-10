@@ -230,12 +230,26 @@ export function FunnelForm({
 
   // Handle step type changes
   const updateStepType = (index: number, type: FunnelStepType) => {
+    // Property filters are interpreted differently per step type (URL params vs.
+    // event props), so clear them instead of silently reinterpreting them under
+    // the new type's semantics.
     const newSteps = [...steps];
     newSteps[index] = {
       ...newSteps[index],
       type,
+      eventPropertyKey: undefined,
+      eventPropertyValue: undefined,
+      propertyFilters: undefined,
     };
     setSteps(newSteps);
+
+    const newUseProperties = [...useProperties];
+    newUseProperties[index] = false;
+    setUseProperties(newUseProperties);
+
+    const newStepPropertyFilters = [...stepPropertyFilters];
+    newStepPropertyFilters[index] = [{ key: "", value: "" }];
+    setStepPropertyFilters(newStepPropertyFilters);
   };
 
   // Handle property filtering toggle

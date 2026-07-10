@@ -3,6 +3,7 @@ import { FastifyReply, FastifyRequest } from "fastify";
 import { db } from "../../../db/postgres/postgres.js";
 import { funnels as funnelsTable } from "../../../db/postgres/schema.js";
 import { getUserHasAccessToSite } from "../../../lib/auth-utils.js";
+import { isAutocaptureTargetType } from "../utils/eventConditions.js";
 import { FunnelStep } from "./funnelSteps.js";
 
 type Funnel = {
@@ -27,6 +28,11 @@ export async function createFunnel(
   // Validate request
   if (!steps || steps.length < 2) {
     return reply.status(400).send({ error: "At least 2 steps are required for a funnel" });
+  }
+
+  // Reject unrecognized step types instead of silently matching them as custom events
+  if (steps.some(step => step.type !== "page" && step.type !== "event" && !isAutocaptureTargetType(step.type))) {
+    return reply.status(400).send({ error: "Invalid step type" });
   }
 
   // Page and event steps need a value; autocapture steps may match any event of their type

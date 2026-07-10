@@ -11,7 +11,7 @@ export type PropertyFilter = {
 export const AUTOCAPTURE_PATTERN_PROPS = {
   outbound: ["url"],
   button_click: ["text"],
-  form_submit: ["formName", "formId"],
+  form_submit: ["formName", "formId", "formAction"],
   copy: ["text"],
 } as const;
 
@@ -68,6 +68,18 @@ export function buildEventCondition(eventName: string, filters: PropertyFilter[]
   return condition;
 }
 
+// Converts a free-text wildcard pattern into a regex for autocapture value
+// matching. Unlike patternToRegex (used for path patterns, where a single '*'
+// must not cross a '/' segment boundary), autocapture values (button text,
+// copied text, form name/id) have no such boundary, so '*' may match '/' too.
+function textPatternToRegex(pattern: string): string {
+  const escapedPattern = pattern.replace(/[.+?^${}()|[\]\\]/g, "\\$&");
+  const withDoubleStar = escapedPattern.replace(/\*\*/g, "{{DOUBLE_STAR}}");
+  const withSingleStar = withDoubleStar.replace(/\*/g, ".+");
+  const finalRegex = withSingleStar.replace(/{{DOUBLE_STAR}}/g, ".*");
+  return `^${finalRegex}$`;
+}
+
 // Matches an autocaptured event type, optionally narrowed by a wildcard
 // pattern against the type's primary props (e.g. the destination url for
 // outbound clicks) and by exact-match property filters.
@@ -80,7 +92,7 @@ export function buildAutocaptureCondition(
 
   const trimmedPattern = pattern?.trim();
   if (trimmedPattern) {
-    const regex = SqlString.escape(patternToRegex(trimmedPattern));
+    const regex = SqlString.escape(textPatternToRegex(trimmedPattern));
     const patternMatches = AUTOCAPTURE_PATTERN_PROPS[type].map(
       prop => `match(JSONExtractString(toString(props), ${SqlString.escape(prop)}), ${regex})`
     );

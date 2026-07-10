@@ -92,9 +92,10 @@ export default function GoalsPage() {
       // Search in goal name
       if (goal.name?.toLowerCase().includes(query)) return true;
 
-      // Search in path pattern or event name
+      // Search in path pattern, event name, or autocapture value pattern
       if (goal.goalType === "path" && goal.config.pathPattern?.toLowerCase().includes(query)) return true;
       if (goal.goalType === "event" && goal.config.eventName?.toLowerCase().includes(query)) return true;
+      if (goal.config.valuePattern?.toLowerCase().includes(query)) return true;
 
       // Search in event property key/value
       if (
