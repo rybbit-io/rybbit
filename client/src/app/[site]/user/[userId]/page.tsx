@@ -32,7 +32,7 @@ import { Badge } from "../../../../components/ui/badge";
 import { Pagination } from "../../../../components/pagination";
 import { Skeleton } from "../../../../components/ui/skeleton";
 import { generateName } from "../../../../components/Avatar";
-import { formatter } from "../../../../lib/utils";
+import { formatter, getUserDisplayName } from "../../../../lib/utils";
 import { UserJourneys } from "./components/UserJourneys";
 import { UserTopPages } from "./components/UserTopPages";
 
@@ -70,10 +70,9 @@ export default function UserPage() {
 
   const { getRegionName } = useGetRegionName();
 
-  const traitsUsername = data?.traits?.username as string | undefined;
-  const traitsName = data?.traits?.name as string | undefined;
-  const isIdentified = !!data?.identified_user_id;
-  const displayName = traitsUsername || traitsName || (isIdentified ? userId : generateName(userId));
+  // Same resolution the session cards use; before user info arrives, fall back
+  // to the deterministic generated name for the route id
+  const displayName = data ? getUserDisplayName(data) : generateName(userId);
 
   useSetPageTitle(isLoading ? "User" : displayName);
 
