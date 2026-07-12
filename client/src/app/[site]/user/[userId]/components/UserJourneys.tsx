@@ -2,9 +2,11 @@
 
 import { useState } from "react";
 import { useExtracted } from "next-intl";
+import { Route } from "lucide-react";
 import { useGetSite } from "../../../../../api/admin/hooks/useSites";
 import { useJourneys } from "../../../../../api/analytics/hooks/useGetJourneys";
-import { Card, CardContent } from "../../../../../components/ui/card";
+import { ErrorState } from "../../../../../components/ErrorState";
+import { Skeleton } from "../../../../../components/ui/skeleton";
 import { Slider } from "../../../../../components/ui/slider";
 import { useStore } from "../../../../../lib/store";
 import { SankeyDiagram } from "../../../journeys/components/SankeyDiagram";
@@ -18,7 +20,7 @@ export function UserJourneys({ userId }: { userId: string }) {
   const { data: siteMetadata } = useGetSite();
   const { time } = useStore();
 
-  const { data, isLoading, error } = useJourneys({
+  const { data, isLoading, error, refetch } = useJourneys({
     siteId: siteMetadata?.siteId,
     steps,
     time,
@@ -29,48 +31,62 @@ export function UserJourneys({ userId }: { userId: string }) {
   const journeys = data?.journeys ?? [];
 
   return (
-    <Card>
-      <CardContent className="mt-2">
-        <div className="flex items-center justify-between gap-4 mb-3">
-          <h3 className="text-sm font-medium text-neutral-700 dark:text-neutral-200">{t("Journeys")}</h3>
-          <div className="flex items-center gap-3 w-[160px]">
-            <span className="text-sm text-neutral-600 dark:text-neutral-300 whitespace-nowrap">
-              {t("{steps} steps", { steps: String(steps) })}
-            </span>
-            <Slider
-              value={[steps]}
-              onValueChange={([value]) => setSteps(value)}
-              min={2}
-              max={6}
-              step={1}
-              className="flex-1"
-            />
+    <div>
+      <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <p className="max-w-xl text-sm text-neutral-600 dark:text-neutral-400">
+          {t("The most common page sequences for this user, ordered from first step to last.")}
+        </p>
+        <div className="flex w-full shrink-0 items-center gap-3 sm:w-[190px]">
+          <span className="whitespace-nowrap text-xs font-medium text-neutral-700 dark:text-neutral-300">
+            {t("{steps} steps", { steps: String(steps) })}
+          </span>
+          <Slider
+            value={[steps]}
+            onValueChange={([value]) => setSteps(value)}
+            min={2}
+            max={6}
+            step={1}
+            aria-label={t("Journey steps")}
+            className="flex-1"
+          />
+        </div>
+      </div>
+
+      <div className="min-h-[220px]">
+        {isLoading ? (
+          <div className="space-y-5 py-5" aria-label={t("Loading journey data...")}>
+            <Skeleton className="h-3 w-3/4 motion-reduce:animate-none" />
+            <Skeleton className="h-12 w-full motion-reduce:animate-none" />
+            <Skeleton className="h-12 w-5/6 motion-reduce:animate-none" />
+            <Skeleton className="h-12 w-2/3 motion-reduce:animate-none" />
           </div>
-        </div>
-        <div className="relative min-h-[80px]">
-          {isLoading && (
-            <div className="absolute inset-0 bg-white/30 dark:bg-neutral-900/30 backdrop-blur-sm z-10 flex items-center justify-center">
-              <div className="flex flex-col items-center gap-2">
-                <div className="h-8 w-8 rounded-full border-2 border-accent-400 border-t-transparent animate-spin"></div>
-                <span className="text-sm text-neutral-600 dark:text-neutral-300">{t("Loading journey data...")}</span>
-              </div>
+        ) : error ? (
+          <ErrorState
+            title={t("Failed to load journey data")}
+            message={t("The path summary is temporarily unavailable. Try again in a moment.")}
+            refetch={refetch}
+          />
+        ) : journeys.length > 0 && siteMetadata?.domain ? (
+          <div className="overflow-x-auto pb-2">
+            <div className="min-w-[620px]">
+              <SankeyDiagram
+                journeys={journeys}
+                steps={steps}
+                maxJourneys={MAX_JOURNEYS}
+                domain={siteMetadata.domain}
+              />
             </div>
-          )}
-          {journeys.length > 0 && siteMetadata?.domain ? (
-            <SankeyDiagram journeys={journeys} steps={steps} maxJourneys={MAX_JOURNEYS} domain={siteMetadata.domain} />
-          ) : null}
-          {error && (
-            <p className="text-sm text-neutral-500 dark:text-neutral-400 py-4">
-              {t("Failed to load journey data. Please try again.")}
+          </div>
+        ) : (
+          <div className="flex min-h-[220px] flex-col items-center justify-center gap-2 px-4 text-center">
+            <Route className="h-7 w-7 text-neutral-400 dark:text-neutral-500" aria-hidden="true" />
+            <p className="text-sm font-medium text-neutral-800 dark:text-neutral-200">{t("No journey data yet")}</p>
+            <p className="max-w-md text-sm text-neutral-600 dark:text-neutral-400">
+              {t("Journeys appear after this user has visited at least two pages in the selected range.")}
             </p>
-          )}
-          {journeys.length === 0 && !isLoading && !error && (
-            <p className="text-sm text-neutral-500 dark:text-neutral-400 py-4">
-              {t("No journey data found for the selected criteria.")}
-            </p>
-          )}
-        </div>
-      </CardContent>
-    </Card>
+          </div>
+        )}
+      </div>
+    </div>
   );
 }

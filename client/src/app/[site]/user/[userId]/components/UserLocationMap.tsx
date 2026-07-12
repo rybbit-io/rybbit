@@ -5,7 +5,9 @@ import "mapbox-gl/dist/mapbox-gl.css";
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useRef } from "react";
 import { useTheme } from "next-themes";
+import { useExtracted } from "next-intl";
 import { useConfigs } from "../../../../../lib/configs";
+import { Skeleton } from "../../../../../components/ui/skeleton";
 
 interface UserLocationMapProps {
   country: string;
@@ -14,17 +16,19 @@ interface UserLocationMapProps {
 }
 
 export function UserLocationMap({ country, region, city }: UserLocationMapProps) {
+  const t = useExtracted();
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
   const markerRef = useRef<mapboxgl.Marker | null>(null);
   const { configs } = useConfigs();
   const { resolvedTheme } = useTheme();
+  const isDark = resolvedTheme === "dark";
 
   const query = [city, region, country].filter(Boolean).join(", ");
 
-  const style = resolvedTheme === "dark" ? "mapbox://styles/mapbox/dark-v11" : "mapbox://styles/mapbox/light-v11";
+  const style = isDark ? "mapbox://styles/mapbox/dark-v11" : "mapbox://styles/mapbox/light-v11";
 
-  const { data: coordinates } = useQuery({
+  const { data: coordinates, isLoading } = useQuery({
     queryKey: ["user-location-geocode", configs?.mapboxToken, query],
     queryFn: () => geocodeUserLocation(configs!.mapboxToken, query),
     enabled: Boolean(configs?.mapboxToken && query),
@@ -58,7 +62,9 @@ export function UserLocationMap({ country, region, city }: UserLocationMapProps)
 
     mapRef.current = map;
 
-    markerRef.current = new mapboxgl.Marker({ color: "#10b981" }).setLngLat(coordinates).addTo(map);
+    markerRef.current = new mapboxgl.Marker({ color: isDark ? "#b3bfff" : "#99aaff" })
+      .setLngLat(coordinates)
+      .addTo(map);
 
     return () => {
       markerRef.current?.remove();
@@ -66,9 +72,13 @@ export function UserLocationMap({ country, region, city }: UserLocationMapProps)
       mapRef.current?.remove();
       mapRef.current = null;
     };
-  }, [configs?.mapboxToken, coordinates, style]);
+  }, [configs?.mapboxToken, coordinates, isDark, style]);
 
   if (!query || coordinates === null) return null;
+
+  if (isLoading) {
+    return <Skeleton className="h-full w-full rounded-none motion-reduce:animate-none" aria-label={t("Loading map")} />;
+  }
 
   return (
     <div

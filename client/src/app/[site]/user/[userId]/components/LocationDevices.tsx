@@ -35,7 +35,7 @@ function ShareRow({
           {icon}
           <span className="truncate text-neutral-700 dark:text-neutral-200">{label}</span>
         </div>
-        <span className="shrink-0 text-neutral-500 dark:text-neutral-400">{Math.round(share)}%</span>
+        <span className="shrink-0 text-neutral-600 dark:text-neutral-400">{Math.round(share)}%</span>
       </div>
     </div>
   );
@@ -56,22 +56,24 @@ function BreakdownList<T>({
   const [showAll, setShowAll] = useState(false);
 
   const total = items.reduce((sum, item) => sum + getSessions(item), 0);
-  const max = Math.max(...items.map(getSessions));
+  const max = Math.max(...items.map(getSessions), 1);
   const visible = showAll ? items : items.slice(0, COLLAPSED_ROWS);
   const hiddenCount = items.length - COLLAPSED_ROWS;
 
   return (
     <div>
-      <div className="text-[10px] text-neutral-500 dark:text-neutral-400 uppercase tracking-wide mt-2 mb-1">
+      <div className="mb-1.5 mt-3 text-xs font-medium text-neutral-700 dark:text-neutral-300">
         {label} ({items.length})
       </div>
       <div className="flex flex-col gap-1">
-        {visible.map(item => renderRow(item, (getSessions(item) / total) * 100, (getSessions(item) / max) * 100))}
+        {visible.map(item =>
+          renderRow(item, total > 0 ? (getSessions(item) / total) * 100 : 0, (getSessions(item) / max) * 100)
+        )}
       </div>
       {hiddenCount > 0 && (
         <button
           type="button"
-          className="mt-1 text-[11px] text-neutral-500 dark:text-neutral-400 hover:text-neutral-800 dark:hover:text-neutral-200 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-neutral-400 rounded-sm"
+          className="mt-1 rounded-sm text-xs text-neutral-600 hover:text-neutral-900 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-neutral-400 dark:text-neutral-400 dark:hover:text-neutral-100"
           onClick={() => setShowAll(prev => !prev)}
         >
           {showAll ? t("Show less") : t("+{count} more", { count: String(hiddenCount) })}

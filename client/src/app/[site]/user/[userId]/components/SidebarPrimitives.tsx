@@ -1,23 +1,47 @@
 import { ReactNode } from "react";
-import { Skeleton } from "../../../../../components/ui/skeleton";
 
-// Reusable card wrapper for sidebar sections
-export function SidebarCard({ children, className = "" }: { children: ReactNode; className?: string }) {
+import { Skeleton } from "@/components/ui/skeleton";
+import { cn } from "@/lib/utils";
+
+export function SidebarSection({
+  title,
+  description,
+  action,
+  children,
+  className,
+}: {
+  title: string;
+  description?: string;
+  action?: ReactNode;
+  children: ReactNode;
+  className?: string;
+}) {
   return (
-    <div
-      className={`bg-white dark:bg-neutral-900 rounded-lg border border-neutral-100 dark:border-neutral-850 p-4 ${className}`}
+    <section
+      className={cn(
+        "border-t border-neutral-100 py-4 first:border-t-0 first:pt-0 last:pb-0 dark:border-neutral-850",
+        className
+      )}
     >
+      <div className="mb-2.5 flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <h3 className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">{title}</h3>
+          {description && (
+            <p className="mt-0.5 text-xs leading-relaxed text-neutral-600 dark:text-neutral-400">{description}</p>
+          )}
+        </div>
+        {action}
+      </div>
       {children}
-    </div>
+    </section>
   );
 }
 
-// Info row component for consistent styling
 export function InfoRow({ icon, label, value }: { icon?: ReactNode; label: ReactNode; value: ReactNode }) {
   return (
-    <div className="flex items-center justify-between py-1.5 border-b border-neutral-50 dark:border-neutral-850 last:border-0 text-xs">
-      <span className="text-neutral-500 dark:text-neutral-400">{label}</span>
-      <span className="text-neutral-700 dark:text-neutral-200 flex items-center gap-1.5">
+    <div className="grid min-w-0 grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)] items-start gap-3 border-b border-neutral-100 py-2 text-xs last:border-0 dark:border-neutral-850">
+      <span className="min-w-0 text-neutral-600 dark:text-neutral-400">{label}</span>
+      <span className="flex min-w-0 items-center justify-end gap-1.5 text-right font-medium text-neutral-800 dark:text-neutral-200">
         {icon}
         {value}
       </span>
@@ -25,53 +49,22 @@ export function InfoRow({ icon, label, value }: { icon?: ReactNode; label: React
   );
 }
 
-// Skeleton matching InfoRow's shape, for card loading states
-export function InfoRowSkeleton({ labelWidth = "w-14", valueWidth = "w-24", withIcon = false }: {
+export function InfoRowSkeleton({
+  labelWidth = "w-14",
+  valueWidth = "w-24",
+  withIcon = false,
+}: {
   labelWidth?: string;
   valueWidth?: string;
   withIcon?: boolean;
 }) {
   return (
-    <div className="flex items-center justify-between py-1.5 border-b border-neutral-50 dark:border-neutral-850 last:border-0">
-      <Skeleton className={`h-3 ${labelWidth} rounded`} />
+    <div className="flex items-center justify-between border-b border-neutral-100 py-2 last:border-0 dark:border-neutral-850">
+      <Skeleton className={`h-3 ${labelWidth} motion-reduce:animate-none`} />
       <div className="flex items-center gap-1.5">
-        {withIcon && <Skeleton className="w-4 h-4 rounded" />}
-        <Skeleton className={`h-3 ${valueWidth} rounded`} />
+        {withIcon && <Skeleton className="h-4 w-4 motion-reduce:animate-none" />}
+        <Skeleton className={`h-3 ${valueWidth} motion-reduce:animate-none`} />
       </div>
-    </div>
-  );
-}
-
-// Stat card component
-export function StatCard({
-  icon,
-  label,
-  value,
-  isLoading,
-}: {
-  icon: ReactNode;
-  label: string;
-  value: ReactNode;
-  isLoading: boolean;
-}) {
-  if (isLoading) {
-    return (
-      <div className="flex flex-col gap-0.5">
-        <div className="text-[10px] text-neutral-500 dark:text-neutral-400 flex items-center gap-1 uppercase tracking-wide">
-          <Skeleton className="w-3 h-3 rounded" />
-          <Skeleton className="h-2.5 w-14 rounded" />
-        </div>
-        <Skeleton className="h-4 w-16 rounded" />
-      </div>
-    );
-  }
-  return (
-    <div className="flex flex-col gap-0.5">
-      <div className="text-[10px] text-neutral-500 dark:text-neutral-400 flex items-center gap-1 uppercase tracking-wide">
-        {icon}
-        {label}
-      </div>
-      <div className="text-sm">{value}</div>
     </div>
   );
 }
