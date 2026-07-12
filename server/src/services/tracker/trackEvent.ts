@@ -418,6 +418,7 @@ export async function trackEvent(request: FastifyRequest, reply: FastifyReply) {
     // Update session (use numeric siteId)
     const { sessionId } = await sessionsService.updateSession({
       userId: payload.userId,
+      identifiedUserId: payload.identifiedUserId,
       siteId: siteConfiguration.siteId,
     });
 

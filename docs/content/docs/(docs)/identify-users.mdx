@@ -110,6 +110,7 @@ if (currentUserId) {
 
 ## Important Notes
 
+- **Identified sessions**: When a custom user ID is present, session assignment includes both the anonymous device fingerprint and the custom user ID. Different identified users therefore remain in separate sessions even when they share the same IP address and user agent.
 - **Shared devices**: If multiple users log in from the same device (same IP address and user agent), calling `identify()` with a new user ID updates the alias to point to the new user. Future events will be attributed to the most recently identified user. Past events that were already backfilled retain their original attribution.
 - **Cross-device tracking**: Identifying the same user on different devices creates separate aliases. Events from each device are linked to the user independently via the `identified_user_id` field.
 - **Retroactive backfill**: The backfill runs asynchronously when a new alias is first created. ClickHouse mutations may take a short time to propagate depending on table size. Subsequent `identify()` calls from the same device (even with a different user ID) do not re-backfill old events.

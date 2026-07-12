@@ -435,6 +435,12 @@
     }
     // Update user ID when it changes
     updateUserId(userId) {
+      if (userId === this.userId) {
+        return;
+      }
+      if (this.eventBuffer.length > 0) {
+        void this.flushEvents();
+      }
       this.userId = userId;
     }
     // Handle page navigation for SPAs
@@ -967,6 +973,9 @@
       try {
         localStorage.removeItem(`${this.config.namespace}-user-id`);
       } catch (e2) {
+      }
+      if (this.sessionReplayRecorder) {
+        this.sessionReplayRecorder.updateUserId("");
       }
       void this.refreshFeatureFlags();
     }

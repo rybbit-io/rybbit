@@ -461,11 +461,19 @@ describe("Tracker", () => {
     });
 
     it("should clear user ID", () => {
+      const updateReplayUserId = vi.fn();
+      (
+        tracker as unknown as { sessionReplayRecorder: { updateUserId: (userId: string) => void } }
+      ).sessionReplayRecorder = {
+        updateUserId: updateReplayUserId,
+      };
+
       tracker.identify("user-789");
       tracker.clearUserId();
 
       expect(window.localStorage.removeItem).toHaveBeenCalledWith(`${config.namespace}-user-id`);
       expect(tracker.getUserId()).toBeNull();
+      expect(updateReplayUserId).toHaveBeenLastCalledWith("");
     });
 
     it("should handle localStorage errors", () => {

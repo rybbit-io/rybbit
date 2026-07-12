@@ -54,6 +54,53 @@ describe("SessionsService (Redis-backed)", () => {
     expect(keys).toEqual(["session:1:u1", "session:2:u1", "session:1:u2"]);
   });
 
+  it("keeps the anonymous Redis key unchanged when identified user ID is empty", async () => {
+    mocks.sessionGetOrCreate.mockResolvedValue("x");
+
+    await service.updateSession({ userId: "anonymous-user", identifiedUserId: "", siteId: 42 });
+
+    expect(mocks.sessionGetOrCreate.mock.calls[0][0]).toBe("session:42:anonymous-user");
+  });
+
+  it("separates identified users that share the same anonymous fingerprint", async () => {
+    mocks.sessionGetOrCreate.mockResolvedValue("x");
+
+    await service.updateSession({ userId: "shared-fingerprint", identifiedUserId: "employee-alice", siteId: 42 });
+    await service.updateSession({ userId: "shared-fingerprint", identifiedUserId: "employee-bob", siteId: 42 });
+
+    const keys = mocks.sessionGetOrCreate.mock.calls.map(call => call[0] as string);
+    expect(new Set(keys).size).toBe(2);
+    expect(keys.every(key => key.startsWith("session:42:identified:"))).toBe(true);
+    expect(keys.every(key => !key.includes("employee-alice") && !key.includes("employee-bob"))).toBe(true);
+  });
+
+  it("separates the same identified user across distinct anonymous fingerprints", async () => {
+    mocks.sessionGetOrCreate.mockResolvedValue("x");
+
+    await service.updateSession({ userId: "device-a", identifiedUserId: "employee-alice", siteId: 42 });
+    await service.updateSession({ userId: "device-b", identifiedUserId: "employee-alice", siteId: 42 });
+
+    const keys = mocks.sessionGetOrCreate.mock.calls.map(call => call[0]);
+    expect(new Set(keys).size).toBe(2);
+  });
+
+  it("keeps colliding identified users separate during a Redis outage", async () => {
+    mocks.sessionGetOrCreate.mockRejectedValue(new Error("redis down"));
+
+    const alice = await service.updateSession({
+      userId: "shared-fingerprint",
+      identifiedUserId: "employee-alice",
+      siteId: 42,
+    });
+    const bob = await service.updateSession({
+      userId: "shared-fingerprint",
+      identifiedUserId: "employee-bob",
+      siteId: 42,
+    });
+
+    expect(alice.sessionId).not.toBe(bob.sessionId);
+  });
+
   it("falls back to a window-stable id when Redis fails, without throwing", async () => {
     mocks.sessionGetOrCreate.mockRejectedValue(new Error("redis down"));
 

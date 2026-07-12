@@ -488,6 +488,11 @@ export class Tracker {
     } catch (e) {
       // localStorage not available
     }
+
+    if (this.sessionReplayRecorder) {
+      this.sessionReplayRecorder.updateUserId("");
+    }
+
     void this.refreshFeatureFlags();
   }
 
