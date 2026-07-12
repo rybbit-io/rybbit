@@ -11,12 +11,13 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
 interface IdentifiedBadgeProps {
   className?: string;
   traits?: Record<string, unknown> | null;
+  showLabel?: boolean;
   // Identified user id; when set and the viewer is signed in, clicking the
   // badge opens the trait editor
   userId?: string;
 }
 
-export function IdentifiedBadge({ className, traits, userId }: IdentifiedBadgeProps) {
+export function IdentifiedBadge({ className, traits, showLabel = false, userId }: IdentifiedBadgeProps) {
   const t = useExtracted();
   const { user } = userStore();
   const [editOpen, setEditOpen] = useState(false);
@@ -33,6 +34,7 @@ export function IdentifiedBadge({ className, traits, userId }: IdentifiedBadgePr
   const badge = (
     <Badge variant="success" className={className}>
       <IdCard className="w-3 h-3" />
+      {showLabel && <span>{t("Identified")}</span>}
     </Badge>
   );
 
