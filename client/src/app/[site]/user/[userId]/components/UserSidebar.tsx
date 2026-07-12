@@ -1,18 +1,11 @@
 "use client";
 
 import { useExtracted } from "next-intl";
-import { getTimezone } from "@/lib/store";
-import { Calendar, CalendarCheck, Clock, Files, Globe, Laptop, Monitor, Pencil, Smartphone, Tablet } from "lucide-react";
-import { DateTime } from "luxon";
+import { Pencil } from "lucide-react";
 import { useState } from "react";
-import { Avatar, generateName } from "../../../../../components/Avatar";
-import { Badge } from "../../../../../components/ui/badge";
 import { Button } from "../../../../../components/ui/button";
-import { IdentifiedBadge } from "../../../../../components/IdentifiedBadge";
-import { useDateTimeFormat } from "../../../../../hooks/useDateTimeFormat";
-import { formatDuration } from "../../../../../lib/dateTimeUtils";
+import { Skeleton } from "../../../../../components/ui/skeleton";
 import { VisitCalendar } from "./Calendar";
-import { EventIcon, PageviewIcon } from "../../../../../components/EventIcons";
 import { UserInfo, UserSessionCountResponse } from "../../../../../api/analytics/endpoints";
 import { ChannelIcon, extractDomain, getDisplayName } from "../../../../../components/Channel";
 import { Favicon } from "../../../../../components/Favicon";
@@ -29,21 +22,21 @@ import {
 } from "../../../performance/utils/performanceUtils";
 import { EditTraitsDialog } from "../../../../../components/EditTraitsDialog";
 import { LocationDevices } from "./LocationDevices";
-import { InfoRow, InfoRowSkeleton, SidebarCard, StatCard } from "./SidebarPrimitives";
+import { InfoRow, InfoRowSkeleton, SidebarCard, SidebarHeader } from "./SidebarPrimitives";
 import { UserLocationMap } from "./UserLocationMap";
 
 interface UserSidebarProps {
   data: UserInfo | undefined;
   isLoading: boolean;
   sessionCount: UserSessionCountResponse[];
+  isLoadingCalendar: boolean;
   getRegionName: (region: string) => string;
 }
 
 const VITALS_ORDER: PerformanceMetric[] = ["lcp", "cls", "inp", "fcp", "ttfb"];
 
-export function UserSidebar({ data, isLoading, sessionCount, getRegionName }: UserSidebarProps) {
+export function UserSidebar({ data, isLoading, sessionCount, isLoadingCalendar, getRegionName }: UserSidebarProps) {
   const t = useExtracted();
-  const { formatRelative } = useDateTimeFormat();
   const { configs } = useConfigs();
   const { user } = userStore();
   const [traitsOpen, setTraitsOpen] = useState(false);
@@ -60,64 +53,13 @@ export function UserSidebar({ data, isLoading, sessionCount, getRegionName }: Us
   const vitalsToShow = vitals
     ? VITALS_ORDER.filter(metric => vitals[`${metric}_p75`] != null)
     : [];
+  const showMap = !!configs?.mapboxToken && !!data?.country;
 
   return (
-    <div className="w-full lg:w-[300px] md:shrink-0 space-y-3">
-      {/* Stats Grid */}
-      <SidebarCard>
-        <div className="grid grid-cols-2 gap-4">
-          <StatCard
-            icon={<Files className="w-3 h-3" />}
-            label={t("Sessions")}
-            value={data?.sessions ?? "—"}
-            isLoading={isLoading}
-          />
-          <StatCard
-            icon={<PageviewIcon className="w-3 h-3" />}
-            label={t("Pageviews")}
-            value={data?.pageviews ?? "—"}
-            isLoading={isLoading}
-          />
-          <StatCard
-            icon={<EventIcon className="w-3 h-3" />}
-            label={t("Events")}
-            value={data?.events ?? "—"}
-            isLoading={isLoading}
-          />
-          <StatCard
-            icon={<Clock className="w-3 h-3" />}
-            label={t("Avg Duration")}
-            value={data?.duration ? formatDuration(data.duration) : "—"}
-            isLoading={isLoading}
-          />
-          <StatCard
-            icon={<Calendar className="w-3 h-3" />}
-            label={t("First Seen")}
-            value={
-              data?.first_seen
-                ? DateTime.fromSQL(data.first_seen, { zone: "utc" }).setZone(getTimezone()).toLocaleString(DateTime.DATE_MED)
-                : "—"
-            }
-            isLoading={isLoading}
-          />
-          <StatCard
-            icon={<CalendarCheck className="w-3 h-3" />}
-            label={t("Last Seen")}
-            value={
-              data?.last_seen
-                ? DateTime.fromSQL(data.last_seen, { zone: "utc" }).setZone(getTimezone()).toLocaleString(DateTime.DATE_MED)
-                : "—"
-            }
-            isLoading={isLoading}
-          />
-        </div>
-      </SidebarCard>
-
+    <div className="w-full lg:w-[300px] lg:shrink-0 space-y-3">
       {/* Acquisition (first-touch attribution) */}
       <SidebarCard>
-        <h3 className="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wide mb-2">
-          {t("Acquisition")}
-        </h3>
+        <SidebarHeader title={t("Acquisition")} />
         {isLoading ? (
           <div>
             <InfoRowSkeleton labelWidth="w-14" valueWidth="w-24" withIcon />
@@ -179,31 +121,51 @@ export function UserSidebar({ data, isLoading, sessionCount, getRegionName }: Us
 
       {/* Location & Device Info */}
       <SidebarCard>
-        <h3 className="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wide mb-2">
-          {t("Location & Device")}
-        </h3>
+        <SidebarHeader title={t("Location & Device")} />
+        {showMap && data && !isLoading && (
+          <UserLocationMap
+            country={data.country}
+            region={data.region}
+            city={data.city}
+            className="mb-3 h-[132px]"
+          />
+        )}
         <LocationDevices data={data} isLoading={isLoading} getRegionName={getRegionName} />
       </SidebarCard>
 
-      {/* Activity Calendar */}
-      <SidebarCard className="h-[180px]">
-        <h3 className="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wide mb-2">
-          {t("Activity Calendar")}
-        </h3>
+      {/* Activity Calendar — always the user's full recent history, independent
+          of the selected date range */}
+      <SidebarCard>
+        <SidebarHeader
+          title={t("Activity Calendar")}
+          right={
+            <span className="text-[10px] uppercase tracking-wide text-neutral-400 dark:text-neutral-500">
+              {t("Last 4 months")}
+            </span>
+          }
+        />
         <div className="h-[140px]">
-          <VisitCalendar sessionCount={sessionCount} />
+          {isLoadingCalendar ? (
+            <Skeleton className="h-full w-full rounded-md" />
+          ) : sessionCount.length > 0 ? (
+            <VisitCalendar sessionCount={sessionCount} />
+          ) : (
+            <div className="flex h-full items-center justify-center text-xs text-neutral-500 dark:text-neutral-400">
+              {t("No visits in the last 4 months")}
+            </div>
+          )}
         </div>
       </SidebarCard>
 
       {/* Web Vitals (p75 across this user's performance events) */}
       {vitals && vitalsToShow.length > 0 && (
         <SidebarCard>
-          <div className="flex items-center justify-between mb-2">
-            <h3 className="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wide">
-              {t("Web Vitals")}
-            </h3>
-            <span className="text-[10px] text-neutral-400 dark:text-neutral-500 uppercase tracking-wide">p75</span>
-          </div>
+          <SidebarHeader
+            title={t("Web Vitals")}
+            right={
+              <span className="text-[10px] uppercase tracking-wide text-neutral-400 dark:text-neutral-500">p75</span>
+            }
+          />
           <div>
             {vitalsToShow.map(metric => {
               const value = vitals[`${metric}_p75`] as number;
@@ -234,22 +196,22 @@ export function UserSidebar({ data, isLoading, sessionCount, getRegionName }: Us
       {/* User Traits (identified users only) */}
       {isIdentified && data && (customTraits.length > 0 || !!user) && (
         <SidebarCard>
-          <div className="flex items-center justify-between mb-2">
-            <h3 className="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wide">
-              {t("User Traits")}
-            </h3>
-            {user && (
-              <Button
-                variant="ghost"
-                size="smIcon"
-                className="-my-1.5 -mr-1.5 h-6 w-6 text-neutral-500"
-                aria-label={t("Edit Traits")}
-                onClick={() => setTraitsOpen(true)}
-              >
-                <Pencil className="w-3 h-3" />
-              </Button>
-            )}
-          </div>
+          <SidebarHeader
+            title={t("User Traits")}
+            right={
+              user ? (
+                <Button
+                  variant="ghost"
+                  size="smIcon"
+                  className="-my-1.5 -mr-1.5 h-6 w-6 text-neutral-500"
+                  aria-label={t("Edit Traits")}
+                  onClick={() => setTraitsOpen(true)}
+                >
+                  <Pencil className="w-3 h-3" />
+                </Button>
+              ) : undefined
+            }
+          />
           {customTraits.length > 0 ? (
             <div className="space-y-1">
               {customTraits.map(([key, value]) => (
@@ -273,42 +235,6 @@ export function UserSidebar({ data, isLoading, sessionCount, getRegionName }: Us
           />
         </SidebarCard>
       )}
-
-      {/* Location Map */}
-      {configs?.mapboxToken && data?.country && (
-        <div className="bg-white dark:bg-neutral-900 rounded-lg border border-neutral-100 dark:border-neutral-850 aspect-square overflow-hidden">
-          <UserLocationMap
-            country={data.country}
-            region={data.region}
-            city={data.city}
-          />
-        </div>
-      )}
-
-      {/* Linked Devices (identified users only) */}
-      {/* {isIdentified && data?.linked_devices && data.linked_devices.length > 0 && (
-        <SidebarCard>
-          <h3 className="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wide mb-2 flex items-center gap-1.5">
-            <Laptop className="w-3 h-3" />
-            Linked Devices ({data.linked_devices.length})
-          </h3>
-          <div className="space-y-1 max-h-32 overflow-y-auto">
-            {data.linked_devices.map(device => (
-              <div
-                key={device.anonymous_id}
-                className="flex items-center justify-between py-1 border-b border-neutral-50 dark:border-neutral-850 last:border-0"
-              >
-                <span className="text-neutral-600 dark:text-neutral-300 font-mono text-xs truncate max-w-[140px]">
-                  {device.anonymous_id}
-                </span>
-                <span className="text-neutral-400 dark:text-neutral-500 text-xs">
-                  {formatRelative(DateTime.fromISO(device.created_at))}
-                </span>
-              </div>
-            ))}
-          </div>
-        </SidebarCard>
-      )} */}
     </div>
   );
 }

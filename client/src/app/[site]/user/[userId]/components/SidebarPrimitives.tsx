@@ -12,6 +12,19 @@ export function SidebarCard({ children, className = "" }: { children: ReactNode;
   );
 }
 
+// Uniform section header: micro-label title on the left, optional control or
+// hint on the right (edit button, "p75", ...)
+export function SidebarHeader({ title, right }: { title: ReactNode; right?: ReactNode }) {
+  return (
+    <div className="mb-2 flex items-center justify-between gap-2">
+      <h3 className="text-[11px] font-medium uppercase tracking-wide text-neutral-500 dark:text-neutral-400">
+        {title}
+      </h3>
+      {right}
+    </div>
+  );
+}
+
 // Info row component for consistent styling
 export function InfoRow({ icon, label, value }: { icon?: ReactNode; label: ReactNode; value: ReactNode }) {
   return (
@@ -38,40 +51,6 @@ export function InfoRowSkeleton({ labelWidth = "w-14", valueWidth = "w-24", with
         {withIcon && <Skeleton className="w-4 h-4 rounded" />}
         <Skeleton className={`h-3 ${valueWidth} rounded`} />
       </div>
-    </div>
-  );
-}
-
-// Stat card component
-export function StatCard({
-  icon,
-  label,
-  value,
-  isLoading,
-}: {
-  icon: ReactNode;
-  label: string;
-  value: ReactNode;
-  isLoading: boolean;
-}) {
-  if (isLoading) {
-    return (
-      <div className="flex flex-col gap-0.5">
-        <div className="text-[10px] text-neutral-500 dark:text-neutral-400 flex items-center gap-1 uppercase tracking-wide">
-          <Skeleton className="w-3 h-3 rounded" />
-          <Skeleton className="h-2.5 w-14 rounded" />
-        </div>
-        <Skeleton className="h-4 w-16 rounded" />
-      </div>
-    );
-  }
-  return (
-    <div className="flex flex-col gap-0.5">
-      <div className="text-[10px] text-neutral-500 dark:text-neutral-400 flex items-center gap-1 uppercase tracking-wide">
-        {icon}
-        {label}
-      </div>
-      <div className="text-sm">{value}</div>
     </div>
   );
 }

@@ -76,20 +76,24 @@ export function SessionCard({ session, onClick, userId, expandedByDefault, highl
       <div className="p-3 cursor-pointer" onClick={handleCardClick}>
         {/* Mobile layout - two rows */}
         <div className="flex flex-col gap-2 md:hidden">
-          {/* Top row on mobile - User name (left) + Timestamp (right) */}
+          {/* Top row on mobile - User name (left) + Timestamp (right).
+              On a single user's page the name repeats on every card, so it is
+              hidden there, matching the desktop layout. */}
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Avatar
-                size={24}
-                id={session.user_id}
-                lastActiveTime={DateTime.fromSQL(session.session_end, { zone: "utc" })}
-              />
-              <span className="text-xs text-neutral-600 dark:text-neutral-200 truncate max-w-[150px]">
-                {getUserDisplayName(session)}
-              </span>
-              {!!session.identified_user_id && <IdentifiedBadge traits={session.traits} userId={session.identified_user_id} />}
-            </div>
-            <span className="text-xs text-neutral-500 dark:text-neutral-400 ">
+            {!userId && (
+              <div className="flex items-center gap-2">
+                <Avatar
+                  size={24}
+                  id={session.user_id}
+                  lastActiveTime={DateTime.fromSQL(session.session_end, { zone: "utc" })}
+                />
+                <span className="text-xs text-neutral-600 dark:text-neutral-200 truncate max-w-[150px]">
+                  {getUserDisplayName(session)}
+                </span>
+                {!!session.identified_user_id && <IdentifiedBadge traits={session.traits} userId={session.identified_user_id} />}
+              </div>
+            )}
+            <span className="ml-auto text-xs text-neutral-500 dark:text-neutral-400">
               <span className="group-hover/card:hidden">
                 {formatDateTime(DateTime.fromSQL(session.session_start, { zone: "utc" }), {
                   month: "short",
@@ -365,11 +369,13 @@ export const SessionCardSkeleton = memo(({ userId, count }: { userId?: string; c
         <div className="flex flex-col gap-2 md:hidden">
           {/* Top row - Avatar + name (left) + timestamp (right) */}
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Skeleton className="h-6 w-6 rounded-full" />
-              <Skeleton className="h-3 w-24" />
-            </div>
-            <Skeleton className={cn("h-3", getRandomTimeWidth())} />
+            {!userId && (
+              <div className="flex items-center gap-2">
+                <Skeleton className="h-6 w-6 rounded-full" />
+                <Skeleton className="h-3 w-24" />
+              </div>
+            )}
+            <Skeleton className={cn("ml-auto h-3", getRandomTimeWidth())} />
           </div>
 
           {/* Bottom row - Icons, badges, channel */}

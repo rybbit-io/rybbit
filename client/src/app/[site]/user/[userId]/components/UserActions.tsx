@@ -6,6 +6,7 @@ import { useState } from "react";
 
 import { UserInfo } from "@/api/analytics/endpoints";
 import { Button } from "@/components/ui/button";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { DeleteUserDialog } from "./DeleteUserDialog";
 import { IdentifyUserDialog } from "./IdentifyUserDialog";
 
@@ -29,15 +30,20 @@ export function UserActions({ userId, data }: UserActionsProps) {
           {t("Identify User")}
         </Button>
       )}
-      <Button
-        variant="ghost"
-        size="smIcon"
-        aria-label={t("Delete User")}
-        className="text-neutral-500 hover:bg-red-500/10 hover:text-red-500 dark:hover:text-red-400"
-        onClick={() => setDeleteOpen(true)}
-      >
-        <Trash2 className="w-3.5 h-3.5" />
-      </Button>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button
+            variant="ghost"
+            size="smIcon"
+            aria-label={t("Delete User")}
+            className="text-neutral-500 hover:bg-red-500/10 hover:text-red-500 dark:hover:text-red-400"
+            onClick={() => setDeleteOpen(true)}
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent>{t("Delete User")}</TooltipContent>
+      </Tooltip>
 
       <IdentifyUserDialog anonymousId={data.user_id || userId} open={identifyOpen} onOpenChange={setIdentifyOpen} />
       <DeleteUserDialog userId={userId} open={deleteOpen} onOpenChange={setDeleteOpen} />

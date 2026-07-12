@@ -1,15 +1,39 @@
 "use client";
 
+import { Route } from "lucide-react";
 import { useState } from "react";
 import { useExtracted } from "next-intl";
 import { useGetSite } from "../../../../../api/admin/hooks/useSites";
 import { useJourneys } from "../../../../../api/analytics/hooks/useGetJourneys";
-import { Card, CardContent } from "../../../../../components/ui/card";
+import { ErrorState } from "../../../../../components/ErrorState";
+import { Card, CardContent, CardLoader } from "../../../../../components/ui/card";
+import { Skeleton } from "../../../../../components/ui/skeleton";
 import { Slider } from "../../../../../components/ui/slider";
 import { useStore } from "../../../../../lib/store";
 import { SankeyDiagram } from "../../../journeys/components/SankeyDiagram";
 
 const MAX_JOURNEYS = 50;
+
+// Sankey-shaped placeholder: three columns of node blocks thinning to the right
+const SKELETON_COLUMNS: string[][] = [
+  ["h-12", "h-7", "h-4"],
+  ["h-9", "h-5", "h-3"],
+  ["h-6", "h-4"],
+];
+
+function JourneysSkeleton() {
+  return (
+    <div className="flex min-h-[160px] items-start gap-10 py-2" aria-hidden>
+      {SKELETON_COLUMNS.map((column, i) => (
+        <div key={i} className="flex flex-1 flex-col gap-2.5">
+          {column.map((height, j) => (
+            <Skeleton key={j} className={`${height} w-full rounded`} />
+          ))}
+        </div>
+      ))}
+    </div>
+  );
+}
 
 export function UserJourneys({ userId }: { userId: string }) {
   const t = useExtracted();
@@ -18,7 +42,7 @@ export function UserJourneys({ userId }: { userId: string }) {
   const { data: siteMetadata } = useGetSite();
   const { time } = useStore();
 
-  const { data, isLoading, error } = useJourneys({
+  const { data, isLoading, isFetching, error, refetch } = useJourneys({
     siteId: siteMetadata?.siteId,
     steps,
     time,
@@ -30,11 +54,14 @@ export function UserJourneys({ userId }: { userId: string }) {
 
   return (
     <Card>
-      <CardContent className="mt-2">
-        <div className="flex items-center justify-between gap-4 mb-3">
-          <h3 className="text-sm font-medium text-neutral-700 dark:text-neutral-200">{t("Journeys")}</h3>
-          <div className="flex items-center gap-3 w-[160px]">
-            <span className="text-sm text-neutral-600 dark:text-neutral-300 whitespace-nowrap">
+      <CardContent className="pt-3">
+        {/* Step changes keep the previous diagram on screen; signal the refresh
+            the same way StandardSection does */}
+        {isFetching && !isLoading && <CardLoader />}
+        <div className="mb-3 flex items-center justify-between gap-4">
+          <h2 className="text-sm font-medium text-neutral-700 dark:text-neutral-200">{t("Journeys")}</h2>
+          <div className="flex w-[150px] items-center gap-2.5">
+            <span className="whitespace-nowrap text-xs tabular-nums text-neutral-500 dark:text-neutral-400">
               {t("{steps} steps", { steps: String(steps) })}
             </span>
             <Slider
@@ -47,29 +74,21 @@ export function UserJourneys({ userId }: { userId: string }) {
             />
           </div>
         </div>
-        <div className="relative min-h-[80px]">
-          {isLoading && (
-            <div className="absolute inset-0 bg-white/30 dark:bg-neutral-900/30 backdrop-blur-sm z-10 flex items-center justify-center">
-              <div className="flex flex-col items-center gap-2">
-                <div className="h-8 w-8 rounded-full border-2 border-accent-400 border-t-transparent animate-spin"></div>
-                <span className="text-sm text-neutral-600 dark:text-neutral-300">{t("Loading journey data...")}</span>
-              </div>
-            </div>
-          )}
-          {journeys.length > 0 && siteMetadata?.domain ? (
-            <SankeyDiagram journeys={journeys} steps={steps} maxJourneys={MAX_JOURNEYS} domain={siteMetadata.domain} />
-          ) : null}
-          {error && (
-            <p className="text-sm text-neutral-500 dark:text-neutral-400 py-4">
-              {t("Failed to load journey data. Please try again.")}
+        {isLoading ? (
+          <JourneysSkeleton />
+        ) : error ? (
+          <ErrorState title={t("Failed to load data")} message={error.message} refetch={refetch} />
+        ) : journeys.length > 0 && siteMetadata?.domain ? (
+          <SankeyDiagram journeys={journeys} steps={steps} maxJourneys={MAX_JOURNEYS} domain={siteMetadata.domain} />
+        ) : (
+          <div className="flex min-h-[160px] flex-col items-center justify-center gap-1 py-4 text-center">
+            <Route className="mb-1 h-5 w-5 text-neutral-400 dark:text-neutral-500" />
+            <p className="text-sm text-neutral-700 dark:text-neutral-200">{t("No journeys in this range")}</p>
+            <p className="max-w-[340px] text-xs text-neutral-500 dark:text-neutral-400">
+              {t("Journeys map the paths this user takes through your site. Try a wider date range.")}
             </p>
-          )}
-          {journeys.length === 0 && !isLoading && !error && (
-            <p className="text-sm text-neutral-500 dark:text-neutral-400 py-4">
-              {t("No journey data found for the selected criteria.")}
-            </p>
-          )}
-        </div>
+          </div>
+        )}
       </CardContent>
     </Card>
   );

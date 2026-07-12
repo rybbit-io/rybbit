@@ -52,6 +52,8 @@ export function useGetSessions({
       });
     },
     staleTime: Infinity,
+    // Wait for the store to hydrate; an empty site produces a malformed URL
+    enabled: !!site,
   });
 }
 

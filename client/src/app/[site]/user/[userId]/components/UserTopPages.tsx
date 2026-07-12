@@ -17,7 +17,7 @@ export function UserTopPages({ userId }: { userId: string }) {
 
   return (
     <Card>
-      <CardContent className="mt-2">
+      <CardContent className="pt-3">
         <Tabs defaultValue="pages" value={tab} onValueChange={value => setTab(value as Tab)}>
           <div className="flex flex-row gap-2 items-center">
             <TabsList>
