@@ -55,12 +55,17 @@ export class SessionReplayIngestService {
       batch_index: number | null;
     };
     const findExistingBatch = async () => {
+      // Retried batches never leave the recording page, so their event timestamps
+      // are at most hours old — the bound prunes partitions that predate the
+      // batch_id skip index. A clock-skewed client can fall outside it, but the
+      // insert deduplication token still prevents duplicate rows.
       const result = await clickhouse.query({
         query: `
           SELECT session_id, batch_index
           FROM session_replay_events
           WHERE site_id = {siteId:UInt16}
             AND batch_id = {batchId:String}
+            AND timestamp >= now() - INTERVAL 2 DAY
         `,
         query_params: { siteId, batchId },
         format: "JSONEachRow",

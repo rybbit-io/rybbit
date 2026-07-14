@@ -221,7 +221,8 @@ export const initializeClickhouse = async () => {
         event_size_bytes UInt32,
         viewport_width Nullable(UInt16),
         viewport_height Nullable(UInt16),
-        is_complete UInt8 DEFAULT 0
+        is_complete UInt8 DEFAULT 0,
+        INDEX idx_batch_id batch_id TYPE bloom_filter GRANULARITY 4
       )
       ENGINE = MergeTree()
       PARTITION BY toYYYYMM(timestamp)
@@ -248,6 +249,18 @@ export const initializeClickhouse = async () => {
     ensureInsertDeduplication("bot_events"),
     ensureInsertDeduplication("session_replay_events"),
   ]);
+
+  // Replay ingestion looks batches up by (site_id, batch_id), which the sort key
+  // cannot serve. Parts written before the index exists are left unmaterialized;
+  // they age out through the 30-day TTL.
+  await execClickhouseInitStep(
+    "add session replay batch id index",
+    `
+      ALTER TABLE session_replay_events
+        ADD INDEX IF NOT EXISTS idx_batch_id batch_id TYPE bloom_filter GRANULARITY 4
+    `,
+    { lockAcquireTimeoutSeconds: 15 }
+  );
 
   await clickhouse.exec({
     query: `
