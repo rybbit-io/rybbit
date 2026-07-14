@@ -20,7 +20,7 @@ const requestBodySchema = z.object({
   history: z.array(generationMessageSchema).max(12).optional().default([]),
 });
 
-const EVENT_SCHEMA = `
+export const EVENT_SCHEMA = `
 scoped_events columns:
 - site_id UInt16: Numeric Rybbit site id. scoped_events is already limited to sites the user can access.
 - timestamp DateTime: Event ingest time in ClickHouse. Use ClickHouse date functions such as toStartOfDay(timestamp).

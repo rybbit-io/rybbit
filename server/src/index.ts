@@ -168,6 +168,7 @@ import {
 } from "./lib/auth-middleware.js";
 import { mapHeaders } from "./lib/auth-utils.js";
 import { auth } from "./lib/auth.js";
+import { mcpRoutes } from "./mcp/index.js";
 import { createCorsOptionsDelegate, createRejectUntrustedOriginHook } from "./lib/cors.js";
 import { IS_CLOUD } from "./lib/const.js";
 import { reengagementService } from "./services/reengagement/reengagementService.js";
@@ -483,6 +484,7 @@ async function apiRoutes(fastify: FastifyInstance) {
   await fastify.register(userRoutes);
   await fastify.register(gscRoutes);
   await fastify.register(stripeAdminRoutes);
+  await fastify.register(mcpRoutes);
 
   // Health check
   fastify.get("/health", { logLevel: "silent" }, (_: FastifyRequest, reply: FastifyReply) => reply.send("OK"));
