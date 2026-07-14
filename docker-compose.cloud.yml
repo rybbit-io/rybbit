@@ -116,7 +116,6 @@ services:
       - BETTER_AUTH_SECRET=${BETTER_AUTH_SECRET}
       - BASE_URL=${BASE_URL}
       - MCP_ALLOWED_ORIGINS=${MCP_ALLOWED_ORIGINS:-}
-      - MCP_ENABLE_RAW_DATA_TOOLS=${MCP_ENABLE_RAW_DATA_TOOLS:-false}
       - DISABLE_SIGNUP=${DISABLE_SIGNUP}
       # below is only for rybbit cloud
       - CLOUD=${CLOUD}

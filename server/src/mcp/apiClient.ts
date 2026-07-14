@@ -23,9 +23,9 @@ export class RybbitApiClient {
   ) {}
 
   async call<T = unknown>(
-    method: "GET" | "POST",
+    method: "GET" | "POST" | "PUT" | "DELETE",
     path: string,
-    options: { query?: Record<string, string | number | undefined>; body?: unknown } = {}
+    options: { query?: Record<string, string | number | boolean | undefined>; body?: unknown } = {}
   ): Promise<T> {
     const query: Record<string, string> = {};
     for (const [key, value] of Object.entries(options.query ?? {})) {

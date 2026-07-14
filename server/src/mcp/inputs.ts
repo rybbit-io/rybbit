@@ -141,3 +141,70 @@ export function toTimeQuery(args: TimeArgs): Record<string, string | number | un
 export function toFiltersQuery(filters: FilterArgs): Record<string, string | undefined> {
   return { filters: filters && filters.length > 0 ? JSON.stringify(filters) : undefined };
 }
+
+export const organizationIdInput = z.string().min(1).describe("Organization ID from list_sites");
+
+export const memberRoleInput = z
+  .enum(["admin", "member", "owner"])
+  .describe("Role in the organization; only an owner key can grant 'owner'");
+
+export const propertyFilterInput = z.object({
+  key: z.string(),
+  value: z.union([z.string(), z.number(), z.boolean()]),
+});
+
+// Kept in sync with AUTOCAPTURE_TARGET_TYPES in api/analytics/utils/eventConditions.ts
+// and GOAL_TYPES in api/analytics/goals/goalSchema.ts. Inlined rather than imported:
+// their import chains reach the Postgres client, which would break MCP test hermeticity.
+export const AUTOCAPTURE_TYPES = ["outbound", "button_click", "form_submit", "copy"] as const;
+export const GOAL_TYPES = ["path", "event", ...AUTOCAPTURE_TYPES] as const;
+
+export const goalTypeInput = z
+  .enum(GOAL_TYPES)
+  .describe("'path' matches pageviews, 'event' matches custom events; autocapture types match captured interactions");
+
+export const goalConfigInput = z.object({
+  pathPattern: z
+    .string()
+    .optional()
+    .describe("Required for path goals. Supports * (one path segment) and ** (across segments), e.g. /blog/**"),
+  eventName: z.string().optional().describe("Required for event goals"),
+  valuePattern: z.string().optional().describe("Autocapture goals: pattern the captured value must match; omit to match any"),
+  eventPropertyKey: z.string().optional().describe("Event goals: only count events where this property..."),
+  eventPropertyValue: z
+    .union([z.string(), z.number(), z.boolean()])
+    .optional()
+    .describe("...has this value (key and value must be provided together)"),
+  propertyFilters: z.array(propertyFilterInput).optional(),
+});
+
+export const funnelStepInput = z.object({
+  type: z
+    .enum(["page", "event", ...AUTOCAPTURE_TYPES])
+    .describe("'page' matches a pathname, 'event' matches a custom event name; autocapture types match captured interactions"),
+  value: z.string().describe("The pathname (e.g. /pricing) or custom event name; may be empty for autocapture steps"),
+  name: z.string().optional().describe("Optional label for the step"),
+  hostname: z.string().optional(),
+  propertyFilters: z.array(propertyFilterInput).optional(),
+});
+
+export const traitsInput = z.record(z.unknown()).describe("Key-value traits, max 2KB serialized");
+
+// Site feature toggles shared by create_site and update_site_config; keys match
+// the REST body (updateSiteConfigSchema / addSite) verbatim.
+export const siteFeatureInputs = {
+  public: z.boolean().optional().describe("Make the site dashboard publicly viewable"),
+  saltUserIds: z.boolean().optional().describe("Salt user IDs daily for stronger anonymity"),
+  blockBots: z.boolean().optional().describe("Drop bot traffic at ingestion"),
+  sessionReplay: z.boolean().optional().describe("Record session replays"),
+  webVitals: z.boolean().optional().describe("Collect Core Web Vitals"),
+  trackErrors: z.boolean().optional().describe("Capture JavaScript errors"),
+  trackOutbound: z.boolean().optional().describe("Track outbound link clicks"),
+  trackUrlParams: z.boolean().optional().describe("Keep URL query parameters in analytics"),
+  trackInitialPageView: z.boolean().optional(),
+  trackSpaNavigation: z.boolean().optional(),
+  trackIp: z.boolean().optional().describe("Store visitor IP addresses"),
+  trackButtonClicks: z.boolean().optional(),
+  trackCopy: z.boolean().optional(),
+  trackFormInteractions: z.boolean().optional(),
+};

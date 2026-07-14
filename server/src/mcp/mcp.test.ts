@@ -41,9 +41,14 @@ async function listTools(app: FastifyInstance): Promise<{ name: string; annotati
 
 describe("mcp endpoint", () => {
   let app: FastifyInstance;
-  let gatedApp: FastifyInstance;
   // Captures what the MCP tools forward to the REST API
-  let captured: { url?: string; query?: Record<string, unknown>; authorization?: string; body?: unknown };
+  let captured: {
+    url?: string;
+    method?: string;
+    query?: Record<string, unknown>;
+    authorization?: string;
+    body?: unknown;
+  };
 
   async function buildApp(options: McpRouteOptions): Promise<FastifyInstance> {
     const instance = Fastify();
@@ -98,6 +103,37 @@ describe("mcp endpoint", () => {
         fastify.get("/sites/:siteId/goals", async (_request, reply) => {
           return reply.status(403).send({ error: "You don't have access to this site" });
         });
+
+        fastify.post("/sites/:siteId/goals", async request => {
+          captured.url = request.url;
+          captured.method = request.method;
+          captured.body = request.body;
+          return { success: true, goalId: 42 };
+        });
+
+        fastify.post("/sites/:siteId/funnels", async request => {
+          captured.url = request.url;
+          captured.body = request.body;
+          return { success: true, funnelId: 7 };
+        });
+
+        fastify.delete("/sites/:siteId", async request => {
+          captured.url = request.url;
+          captured.method = request.method;
+          return { success: true };
+        });
+
+        fastify.post("/organizations/:organizationId/members", async request => {
+          captured.url = request.url;
+          captured.body = request.body;
+          return { message: "User added to organization successfully" };
+        });
+
+        fastify.post("/sites/:siteId/users/identify", async request => {
+          captured.url = request.url;
+          captured.body = request.body;
+          return { success: true };
+        });
       },
       { prefix: "/api" }
     );
@@ -107,13 +143,11 @@ describe("mcp endpoint", () => {
 
   beforeEach(async () => {
     captured = {};
-    app = await buildApp({ authenticate, enableRawDataTools: true });
-    gatedApp = await buildApp({ authenticate });
+    app = await buildApp({ authenticate });
   });
 
   afterEach(async () => {
     await app.close();
-    await gatedApp.close();
   });
 
   it("rejects requests without an Authorization header", async () => {
@@ -180,10 +214,11 @@ describe("mcp endpoint", () => {
     expect(result.instructions).toContain("run_query");
   });
 
-  it("lists the analytics tools with read-only annotations and output schemas", async () => {
+  it("lists all 39 tools with output schemas", async () => {
     const tools = await listTools(app);
     const names = tools.map(tool => tool.name);
 
+    expect(tools).toHaveLength(39);
     expect(names).toContain("list_sites");
     expect(names).toContain("get_overview");
     expect(names).toContain("get_breakdown");
@@ -191,34 +226,56 @@ describe("mcp endpoint", () => {
     expect(names).toContain("get_sessions");
     expect(names).toContain("run_query");
     expect(names).toContain("get_query_schema");
-    expect(tools.every(tool => tool.annotations?.readOnlyHint === true)).toBe(true);
+    expect(names).toContain("create_goal");
+    expect(names).toContain("get_users");
+    expect(names).toContain("list_members");
 
     const overview = tools.find(tool => tool.name === "get_overview");
     expect(overview?.outputSchema).toBeTruthy();
   });
 
-  it("hides raw data tools and run_query by default", async () => {
-    const tools = await listTools(gatedApp);
-    const names = tools.map(tool => tool.name);
+  it("partitions tools into reads, writes, and destructive deletes", async () => {
+    const tools = await listTools(app);
 
-    expect(names).toContain("get_overview");
-    expect(names).toContain("analyze_funnel");
-    expect(names).not.toContain("get_sessions");
-    expect(names).not.toContain("get_events");
-    expect(names).not.toContain("run_query");
-    expect(names).not.toContain("get_query_schema");
+    expect(tools.every(tool => typeof tool.annotations?.readOnlyHint === "boolean")).toBe(true);
 
-    const response = await gatedApp.inject({
-      method: "POST",
-      url: "/api/mcp",
-      headers: MCP_HEADERS,
-      payload: rpc("initialize", {
-        protocolVersion: "2025-03-26",
-        capabilities: {},
-        clientInfo: { name: "test", version: "1.0" },
-      }),
-    });
-    expect(response.json().result.instructions).not.toContain("run_query");
+    const destructive = tools
+      .filter(tool => tool.annotations?.destructiveHint)
+      .map(tool => tool.name)
+      .sort();
+    expect(destructive).toEqual(["delete_funnel", "delete_goal", "delete_site", "delete_team", "delete_user"]);
+
+    const writes = tools
+      .filter(tool => tool.annotations?.readOnlyHint === false)
+      .map(tool => tool.name)
+      .sort();
+    expect(writes).toEqual(
+      [
+        "add_member",
+        "create_goal",
+        "create_site",
+        "create_team",
+        "delete_funnel",
+        "delete_goal",
+        "delete_site",
+        "delete_team",
+        "delete_user",
+        "identify_user",
+        "save_funnel",
+        "update_goal",
+        "update_member_site_access",
+        "update_site_config",
+        "update_team",
+        "update_user_traits",
+      ].sort()
+    );
+
+    const reads = tools.filter(tool => tool.annotations?.readOnlyHint === true);
+    expect(reads.every(tool => tool.annotations?.destructiveHint === false)).toBe(true);
+
+    const updates = tools.filter(tool => tool.name.startsWith("update_"));
+    expect(updates.length).toBeGreaterThan(0);
+    expect(updates.every(tool => tool.annotations?.idempotentHint === true)).toBe(true);
   });
 
   it("list_sites forwards the API key and strips member details", async () => {
@@ -270,17 +327,80 @@ describe("mcp endpoint", () => {
     expect(captured.query).not.toHaveProperty("past_minutes_start");
   });
 
-  it("get_sessions redacts IPs and strips bidi control characters", async () => {
+  it("get_sessions passes rows through but strips bidi control characters", async () => {
     const result = await callTool(app, "get_sessions", { site_id: 5 });
 
     expect(result.isError).toBeFalsy();
     const text = result.content[0].text as string;
-    expect(text).not.toContain("203.0.113.7");
     expect(text).not.toContain("\u202E");
     const row = result.structuredContent.data[0];
-    expect(row).not.toHaveProperty("ip");
+    // Full REST parity: session rows are returned as the API sends them.
+    expect(row.ip).toBe("203.0.113.7");
     expect(row.user_id).toBe("device_1");
     expect(row.entry_page).toBe("/pricing desrever");
+  });
+
+  it("create_goal maps goal_type onto the REST body", async () => {
+    const result = await callTool(app, "create_goal", {
+      site_id: 5,
+      name: "Signups",
+      goal_type: "event",
+      config: { eventName: "signup" },
+    });
+
+    expect(result.isError).toBeFalsy();
+    expect(captured.url).toBe("/api/sites/5/goals");
+    expect(captured.method).toBe("POST");
+    expect(captured.body).toEqual({ name: "Signups", goalType: "event", config: { eventName: "signup" } });
+    expect(result.structuredContent).toEqual({ success: true, goalId: 42 });
+  });
+
+  it("save_funnel maps funnel_id onto the REST reportId", async () => {
+    const steps = [
+      { type: "page", value: "/pricing" },
+      { type: "event", value: "signup" },
+    ];
+    const result = await callTool(app, "save_funnel", { site_id: 5, name: "Signup funnel", steps, funnel_id: 7 });
+
+    expect(result.isError).toBeFalsy();
+    expect(captured.url).toBe("/api/sites/5/funnels");
+    expect(captured.body).toEqual({ name: "Signup funnel", steps, reportId: 7 });
+    expect(result.structuredContent).toEqual({ success: true, funnelId: 7 });
+  });
+
+  it("delete_site issues a DELETE to the site route", async () => {
+    const result = await callTool(app, "delete_site", { site_id: 5 });
+
+    expect(result.isError).toBeFalsy();
+    expect(captured.url).toBe("/api/sites/5");
+    expect(captured.method).toBe("DELETE");
+    expect(result.structuredContent).toEqual({ success: true });
+  });
+
+  it("add_member tolerates responses without a success field", async () => {
+    const result = await callTool(app, "add_member", {
+      organization_id: "org_1",
+      email: "new@acme.com",
+      role: "member",
+    });
+
+    expect(result.isError).toBeFalsy();
+    expect(captured.url).toBe("/api/organizations/org_1/members");
+    expect(captured.body).toEqual({ email: "new@acme.com", role: "member" });
+    expect(result.structuredContent).toEqual({ message: "User added to organization successfully" });
+  });
+
+  it("identify_user forwards the identify body verbatim", async () => {
+    const result = await callTool(app, "identify_user", {
+      site_id: 5,
+      anonymous_id: "anon_1",
+      user_id: "app_user_9",
+      traits: { plan: "pro" },
+    });
+
+    expect(result.isError).toBeFalsy();
+    expect(captured.url).toBe("/api/sites/5/users/identify");
+    expect(captured.body).toEqual({ anonymous_id: "anon_1", user_id: "app_user_9", traits: { plan: "pro" } });
   });
 
   it("analyze_funnel sends steps as the POST body", async () => {
@@ -302,6 +422,7 @@ describe("mcp endpoint", () => {
     expect(result.content[0].text).toContain("403");
     expect(result.content[0].text).toContain("You don't have access to this site");
     expect(result.content[0].text).toContain("list_sites");
+    expect(result.content[0].text).toContain("admin/owner role");
   });
 
   it("rejects invalid tool arguments before hitting the API", async () => {

@@ -1,13 +1,13 @@
 ---
 title: AI integrations (MCP)
-description: Connect an AI assistant to your Rybbit analytics through the hosted Model Context Protocol server
+description: Let an AI assistant explore and manage your Rybbit analytics through the hosted Model Context Protocol server
 ---
 
 import { Callout } from "fumadocs-ui/components/callout";
 
-Rybbit includes a hosted [Model Context Protocol](https://modelcontextprotocol.io/) (MCP) endpoint. It lets an AI assistant explore your analytics through read-only tools that call the same API the Rybbit dashboard uses, with the same access checks and rate limits.
+Rybbit includes a hosted [Model Context Protocol](https://modelcontextprotocol.io/) (MCP) endpoint. It gives an AI assistant read and write access to your analytics: exploring traffic and behavior data, and managing sites, goals, funnels, organization members, teams, and user profiles — through the same API the dashboard uses, with the same access checks, roles, and rate limits.
 
-Your MCP client connects to Rybbit over HTTPS and sends your API key with each protocol request. Rybbit verifies the key before processing any message, and every tool call is authorized against the sites that user can currently access.
+Your MCP client connects to Rybbit over HTTPS and sends your API key with each protocol request. Rybbit verifies the key before processing any message, and every tool call is authorized against the key user's role and site access.
 
 ## Connect a client
 
@@ -17,7 +17,7 @@ Your MCP client connects to Rybbit over HTTPS and sends your API key with each p
 2. Create a key in the **API Keys** section.
 3. Copy it immediately. Rybbit only shows a new key once.
 
-The key is user-scoped: the MCP server can access the same sites as that user. Deleting the key revokes the connection.
+The key is user-scoped: the MCP server can do what that user can do. Deleting the key revokes the connection.
 
 ### 2. Add the endpoint
 
@@ -57,58 +57,113 @@ MCP clients use different configuration formats. A typical remote-server configu
 Use your client's secret or environment-variable support when available instead of saving the key in a file. Query-string API keys are not accepted by the MCP endpoint.
 
 <Callout type="warn">
-  This first version uses API-key authentication, not interactive OAuth. It works with MCP clients that support custom
-  HTTP headers. A client that requires browser-based OAuth cannot connect yet.
+  This version uses API-key authentication, not interactive OAuth. It works with MCP clients that support custom HTTP
+  headers. A client that requires browser-based OAuth cannot connect yet.
 </Callout>
 
 ### 3. Start with context
 
 Ask the assistant to call `list_sites`, or prompt it with something like:
 
-> List my Rybbit sites, then summarize the last 30 days of traffic for my documentation site.
+> List my Rybbit sites, summarize last month's traffic for the docs site, and create a goal for signups.
 
-`list_sites` returns the numeric `site_id` required by every other tool. It does not return API keys, organization members, or email addresses.
+`list_sites` returns the numeric `site_id` and `organization_id` required by the other tools, plus the key's role in each organization. It does not return API keys or member email addresses.
 
 ## Available tools
 
-| Tool                      | Returns                                                                                  |
-| ------------------------- | ---------------------------------------------------------------------------------------- |
-| `list_sites`              | Organizations and sites the API key can access                                           |
-| `get_overview`            | Sessions, pageviews, users, pages per session, bounce rate, and session duration         |
-| `get_overview_timeseries` | The overview KPIs bucketed over time                                                     |
-| `get_breakdown`           | Sessions broken down by one dimension (pages, referrers, countries, devices, UTM, ...)   |
-| `get_live_stats`          | Visitors active on the site right now                                                    |
-| `get_event_names`         | Custom event names tracked on the site with counts                                       |
-| `get_errors`              | JavaScript errors grouped by name/message with occurrence counts                         |
-| `get_web_vitals`          | Core Web Vitals percentiles (LCP, CLS, INP, FCP, TTFB)                                   |
-| `get_retention`           | User retention cohort table                                                              |
-| `get_journeys`            | Most common page-to-page navigation paths                                                |
-| `get_goals`               | Configured conversion goals with conversion rates                                        |
-| `get_funnels`             | Saved funnel definitions                                                                 |
-| `analyze_funnel`          | Conversion and drop-off for an ad-hoc ordered funnel                                     |
+### Analytics (read)
 
-Tools accept optional time inputs (`start_date`/`end_date` with an IANA `time_zone`, or `past_minutes`) and the same filters as the dashboard. Omitting time inputs queries all time.
+| Tool                      | Returns                                                                                 |
+| ------------------------- | --------------------------------------------------------------------------------------- |
+| `get_overview`            | Sessions, pageviews, users, pages per session, bounce rate, and session duration        |
+| `get_overview_timeseries` | The overview KPIs bucketed over time                                                    |
+| `get_breakdown`           | Sessions broken down by one dimension (pages, referrers, countries, devices, UTM, ...)  |
+| `get_live_stats`          | Visitors active on the site right now                                                   |
+| `get_event_names`         | Custom event names tracked on the site with counts                                      |
+| `get_errors`              | JavaScript errors grouped by name/message with occurrence counts                        |
+| `get_web_vitals`          | Core Web Vitals percentiles (LCP, CLS, INP, FCP, TTFB)                                  |
+| `get_retention`           | User retention cohort table                                                             |
+| `get_journeys`            | Most common page-to-page navigation paths                                               |
 
-### Raw data tools (opt-in, self-hosted)
+### Sites
 
-Three additional tools return session-level data and accept raw SQL: `get_sessions`, `get_events`, and `run_query` (with its companion `get_query_schema`). They are **disabled by default** and hidden from the tool list. Self-hosters can enable them:
+| Tool                 | Does                                                                                    |
+| -------------------- | ---------------------------------------------------------------------------------------- |
+| `list_sites`         | List organizations and sites the key can access (call this first)                       |
+| `get_site`           | One site's full configuration                                                           |
+| `create_site`        | Add a new site to an organization *(admin)*                                             |
+| `update_site_config` | Change site settings: name, domain, tracking features, exclusions, tags *(admin)*       |
+| `delete_site`        | Permanently delete a site and its data *(admin, destructive)*                           |
 
-```dotenv
-MCP_ENABLE_RAW_DATA_TOOLS=true
-```
+### Goals & funnels
 
-Enable them only if you are comfortable exposing visitor-level records (device identifiers, geolocation, custom event properties) to the AI client you connect. Visitor IP addresses are never returned through MCP, even with raw tools enabled, and `run_query` remains restricted to a read-only, site-scoped table with row and execution-time caps.
+| Tool             | Does                                                                  |
+| ---------------- | ---------------------------------------------------------------------- |
+| `get_goals`      | Conversion goals with conversion stats                                |
+| `create_goal`    | Create a path, event, or autocapture goal                             |
+| `update_goal`    | Replace a goal's definition                                           |
+| `delete_goal`    | Permanently delete a goal *(destructive)*                             |
+| `get_funnels`    | Saved funnel definitions                                              |
+| `analyze_funnel` | Compute an ad-hoc funnel without saving it                            |
+| `save_funnel`    | Save a funnel, or update one by passing `funnel_id`                   |
+| `delete_funnel`  | Permanently delete a saved funnel *(destructive)*                     |
+
+### People
+
+| Tool                 | Does                                                                             |
+| -------------------- | --------------------------------------------------------------------------------- |
+| `get_users`          | Person inventory with per-user aggregates and traits (sortable, searchable)      |
+| `get_user`           | One person's profile: traits, linked devices, vitals, locations                  |
+| `identify_user`      | Link an anonymous device to your user ID and merge traits                        |
+| `update_user_traits` | Replace a person's traits wholesale                                              |
+| `delete_user`        | GDPR erasure of one person's analytics data *(admin, destructive)*               |
+
+### Organization & teams
+
+| Tool                        | Does                                                              |
+| --------------------------- | ------------------------------------------------------------------ |
+| `list_members`              | Organization members with roles, site access, and teams          |
+| `add_member`                | Add an existing Rybbit user to the organization *(admin)*        |
+| `update_member_site_access` | Restrict a member to specific sites *(admin)*                    |
+| `list_teams`                | Teams with members and site access                               |
+| `create_team`               | Create a team *(admin)*                                          |
+| `update_team`               | Rename a team or replace its members/sites *(admin)*             |
+| `delete_team`               | Permanently delete a team *(admin, destructive)*                 |
+
+### Raw data & SQL
+
+| Tool               | Does                                                                          |
+| ------------------ | ------------------------------------------------------------------------------ |
+| `get_sessions`     | Recent visitor sessions with full attribution                                 |
+| `get_session`      | One session's detail plus its event timeline                                  |
+| `get_events`       | Raw recent events, newest first                                               |
+| `get_query_schema` | The ClickHouse schema and rules for `run_query`                               |
+| `run_query`        | Read-only ClickHouse SQL against the site-scoped `scoped_events` table        |
+
+Analytics tools accept optional time inputs (`start_date`/`end_date` with an IANA `time_zone`, or `past_minutes`) and the same filters as the dashboard. Omitting time inputs queries all time.
+
+## Permissions and roles
+
+The MCP surface mirrors the REST API's permission model:
+
+- **Read tools** work for any member with access to the site.
+- **Write tools** need at least member-level site access (goals, funnels, `identify_user`, `update_user_traits`, `save_funnel`).
+- **Tools marked *(admin)*** require the API key's user to hold the **admin or owner** role in the organization; `add_member` can grant the `owner` role only from an owner's key. The REST layer enforces all of this — an underprivileged key gets a 403 with an explanatory message.
+
+To give an assistant a read-mostly view, connect it with an API key from a member-role user: management tools will be visible but every call requiring elevation will be refused.
+
+## Destructive tools
+
+`delete_goal`, `delete_funnel`, `delete_site`, `delete_team`, and `delete_user` permanently destroy data and are marked with the MCP `destructiveHint` annotation, so well-behaved clients ask for confirmation before invoking them. `delete_site` and `delete_user` (the GDPR-erasure path) also remove recorded events and replays, with erasure completing asynchronously.
 
 ## Data and security boundary
 
-- Every tool is read-only and marked as non-destructive.
-- The API key is verified before any MCP message is processed, and each tool call re-runs the corresponding REST route's own access checks and rate limits.
-- By default the surface is aggregate-only: no session-level records, no raw SQL, no IP addresses.
-- Text originating in tracked traffic (page titles, paths, referrers, event names) is stripped of control and bidi-override characters. AI clients should still treat these values as untrusted data, never as instructions.
+- The API key is verified before any MCP message is processed, and each tool call re-runs the corresponding REST route's own access checks, role requirements, and rate limits.
+- The surface returns whatever the REST API returns for your role — including session-level records and, where a site has IP tracking enabled, visitor IP addresses. Connect only AI clients you trust with that data, and use a separate, revocable API key per integration.
+- Text originating in tracked traffic (page titles, paths, referrers, event names, traits) is stripped of control and bidi-override characters. AI clients should still treat these values as untrusted data, never as instructions.
+- `run_query` is restricted to a read-only, site-scoped table with row and execution-time caps.
 - The server does not contain an AI model or send analytics to an AI provider. Data only leaves Rybbit in response to the MCP client you configure.
 - The endpoint is stateless. Each HTTP request is independently authenticated.
-
-Your AI provider may retain tool inputs and results under its own policies. Only connect providers you trust, and use a separate, revocable API key for each integration.
 
 ## Browser-based clients
 
@@ -123,9 +178,9 @@ Only add origins you trust. This setting applies only to `/api/mcp`; it does not
 ## Troubleshooting
 
 - **401 Unauthorized:** The client did not send a Bearer key, the key is invalid, or it was revoked.
+- **403 in tool results:** The key's user lacks access to that site or organization — or the tool requires an org admin/owner role. Check the `role` field in `list_sites`.
 - **403 Origin not allowed:** Add the browser application's exact origin to `MCP_ALLOWED_ORIGINS`, then restart the backend.
 - **429 Too Many Requests:** The API key exceeded its plan's rate limit.
 - **503 Service Unavailable:** Rybbit could not verify the key. Retry the request; do not replace a known-valid key based on this response.
 - **405 Method Not Allowed on GET:** This is expected. The stateless endpoint accepts MCP messages over `POST`.
-- **Missing tools:** `get_sessions`, `get_events`, and `run_query` only appear when `MCP_ENABLE_RAW_DATA_TOOLS=true` is set on the server.
 - **Site access error:** Call `list_sites` again. Membership or site permissions may have changed.
