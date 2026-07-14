@@ -71,6 +71,13 @@
       "when": 1781895152210,
       "tag": "0009_ambiguous_gabe_jones",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1784070943021,
+      "tag": "0010_tiny_diamondback",
+      "breakpoints": true
     }
   ]
 }
