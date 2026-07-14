@@ -1,0 +1,116 @@
+---
+title: AI integrations (MCP)
+description: Connect an AI assistant to your Rybbit analytics through the hosted Model Context Protocol server
+---
+
+import { Callout } from "fumadocs-ui/components/callout";
+
+Rybbit includes a hosted [Model Context Protocol](https://modelcontextprotocol.io/) (MCP) endpoint. It lets an AI assistant inspect your aggregate analytics through a small set of read-only tools instead of giving the model database or raw SQL access.
+
+Your MCP client connects to Rybbit over HTTPS, sends your API key with each protocol request, and discovers the tools Rybbit exposes. When the assistant calls a tool, Rybbit verifies the key, resolves the sites that user can currently access, runs a bounded analytics query, and returns structured data to the assistant.
+
+## Connect a client
+
+### 1. Create an API key
+
+1. Open **Settings → Account** in Rybbit.
+2. Create a key in the **API Keys** section.
+3. Copy it immediately. Rybbit only shows a new key once.
+
+The key is user-scoped. The MCP server can access the same sites as that user, and Rybbit checks the user's current site access on every protocol request. Deleting the key revokes the connection.
+
+### 2. Add the endpoint
+
+Use this Streamable HTTP URL for Rybbit Cloud:
+
+```text
+https://app.rybbit.io/api/mcp
+```
+
+For a self-hosted installation, replace the host with your configured `BASE_URL`:
+
+```text
+https://analytics.example.com/api/mcp
+```
+
+Configure your client to send this header on every request:
+
+```text
+Authorization: Bearer <RYBBIT_API_KEY>
+```
+
+MCP clients use different configuration formats. A typical remote-server configuration has this shape:
+
+```json
+{
+  "mcpServers": {
+    "rybbit": {
+      "url": "https://app.rybbit.io/api/mcp",
+      "headers": {
+        "Authorization": "Bearer <RYBBIT_API_KEY>"
+      }
+    }
+  }
+}
+```
+
+Use your client's secret or environment-variable support when available instead of saving the key in a file. Query-string API keys are not accepted by the MCP endpoint.
+
+<Callout type="warn">
+  This first version uses API-key authentication, not interactive OAuth. It works with MCP clients that support custom
+  HTTP headers. A client that requires browser-based OAuth cannot connect yet.
+</Callout>
+
+### 3. Start with context
+
+Ask the assistant to call `get_context`, or prompt it with something like:
+
+> Show me the sites available in Rybbit, then summarize the last 30 days for my documentation site in America/Los_Angeles.
+
+`get_context` returns the numeric `siteId` required by the analytics tools. You can search it by site name, domain, or ID, and each response is capped at 100 sites. It does not return API keys, internal user IDs, billing details, or organization members.
+
+## Available tools
+
+| Tool               | Returns                                                                                            |
+| ------------------ | -------------------------------------------------------------------------------------------------- |
+| `get_context`      | Searchable organizations and sites the authenticated user can access                               |
+| `query_overview`   | Sessions, users, pageviews, pages per session, bounce rate, and average session duration           |
+| `query_timeseries` | Sessions, users, pageviews, events, custom events, and errors by hour, day, week, or month         |
+| `query_breakdown`  | A metric ranked by page, source, location, device, campaign, event, or another supported dimension |
+| `query_funnel`     | Conversion and drop-off for an ordered two-to-six-step funnel                                      |
+| `query_errors`     | Aggregate JavaScript error names, counts, affected sessions, and last-seen times                   |
+
+All analytics tools accept a site, inclusive start and end dates, an IANA timezone, and optional filters. Date ranges are limited to 366 days, breakdowns and error lists are capped at 100 rows, and expensive queries have server-side execution limits.
+
+## Data and security boundary
+
+The MCP server is deliberately narrower than the full Rybbit API:
+
+- Every tool is read-only and marked as non-destructive.
+- The model cannot submit SQL or choose arbitrary database fields.
+- Site authorization happens before a ClickHouse query runs.
+- Results are aggregate and bounded. The error tool excludes messages, stack traces, IP addresses, and user data.
+- Labels originating in tracked traffic are length-bounded and stripped of control characters. AI clients should still treat page titles, paths, event names, and other analytics labels as untrusted data, never as instructions.
+- The server does not contain an AI model or send analytics to an AI provider. Data only leaves Rybbit in response to the MCP client you configure.
+- The endpoint is stateless. Each HTTP request is independently authenticated and authorized.
+
+Your AI provider may retain tool inputs and results under its own policies. Only connect providers you trust, and use a separate, revocable API key for each integration.
+
+## Browser-based clients
+
+Normal desktop and server-side MCP clients do not send an HTTP `Origin` header and need no extra server configuration. If a browser application calls the MCP endpoint directly, self-hosters must explicitly allow its origin:
+
+```dotenv
+MCP_ALLOWED_ORIGINS=https://assistant.example.com,https://inspector.example.com
+```
+
+Only add origins you trust. This setting applies only to `/api/mcp`; it does not grant those origins access to other authenticated Rybbit routes. Browser MCP responses never use cookie credentials.
+
+## Troubleshooting
+
+- **401 Unauthorized:** The client did not send a Bearer key, the key is invalid, or it was revoked.
+- **403 Origin not allowed:** Add the browser application's exact origin to `MCP_ALLOWED_ORIGINS`, then restart the backend.
+- **429 Too Many Requests:** The API key exceeded its plan's rate limit.
+- **503 Service Unavailable:** Rybbit could not verify the key or load current site access. Retry the request; do not replace a known-valid key based on this response.
+- **405 Method Not Allowed on GET:** This is expected. The stateless endpoint accepts MCP messages over `POST`.
+- **Site access error:** Call `get_context` again. Membership or site permissions may have changed.

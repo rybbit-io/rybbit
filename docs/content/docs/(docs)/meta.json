@@ -18,6 +18,7 @@
     "guides",
     "proxy-guide",
     "sdks",
+    "mcp",
     "hiding-own-traffic",
     "filter-traffic",
     "bot-detection",

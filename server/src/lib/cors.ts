@@ -1,7 +1,16 @@
 import type { FastifyReply, FastifyRequest } from "fastify";
 
 const corsMethods = ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"];
-const corsAllowedHeaders = ["Content-Type", "Authorization", "X-Requested-With", "x-captcha-response", "x-private-key"];
+const corsAllowedHeaders = [
+  "Content-Type",
+  "Authorization",
+  "X-Requested-With",
+  "x-captcha-response",
+  "x-private-key",
+  "MCP-Protocol-Version",
+  "MCP-Session-Id",
+  "Last-Event-ID",
+];
 
 type CorsOptions = {
   origin: boolean;
@@ -75,6 +84,17 @@ export function getTrustedCorsOrigins(env: NodeJS.ProcessEnv = process.env): str
   return result;
 }
 
+export function getAllowedMcpOrigins(env: NodeJS.ProcessEnv = process.env): string[] {
+  const origins = new Set(getTrustedCorsOrigins(env));
+  for (const value of env.MCP_ALLOWED_ORIGINS?.split(",") ?? []) {
+    const origin = normalizeCorsOrigin(value);
+    if (origin) {
+      origins.add(origin);
+    }
+  }
+  return [...origins];
+}
+
 function getRequestPath(request: FastifyRequest): string {
   return (request.url || "/").split("?")[0] || "/";
 }
@@ -92,15 +112,24 @@ export function isPublicCorsPath(path: string): boolean {
   );
 }
 
-export function getCorsOptionsForRequest(
-  request: FastifyRequest,
-  env: NodeJS.ProcessEnv = process.env
-): CorsOptions {
+function isMcpPath(path: string): boolean {
+  return path === "/api/mcp";
+}
+
+export function getCorsOptionsForRequest(request: FastifyRequest, env: NodeJS.ProcessEnv = process.env): CorsOptions {
   const requestOrigin = normalizeCorsOrigin(request.headers.origin);
   if (!requestOrigin) {
     return {
       ...commonCorsOptions,
       origin: false,
+      credentials: false,
+    };
+  }
+
+  if (isMcpPath(getRequestPath(request))) {
+    return {
+      ...commonCorsOptions,
+      origin: getAllowedMcpOrigins(env).includes(requestOrigin),
       credentials: false,
     };
   }
@@ -125,17 +154,23 @@ export function getCorsOptionsForRequest(
   };
 }
 
-export function shouldRejectUntrustedOrigin(
-  request: FastifyRequest,
-  env: NodeJS.ProcessEnv = process.env
-): boolean {
+export function shouldRejectUntrustedOrigin(request: FastifyRequest, env: NodeJS.ProcessEnv = process.env): boolean {
   if (!unsafeMethods.has(request.method)) {
     return false;
   }
 
-  const requestOrigin = normalizeCorsOrigin(request.headers.origin);
-  if (!requestOrigin || isPublicCorsPath(getRequestPath(request))) {
+  const path = getRequestPath(request);
+  if (request.headers.origin === undefined || isPublicCorsPath(path)) {
     return false;
+  }
+
+  const requestOrigin = normalizeCorsOrigin(request.headers.origin);
+  if (!requestOrigin) {
+    return true;
+  }
+
+  if (isMcpPath(path)) {
+    return !getAllowedMcpOrigins(env).includes(requestOrigin);
   }
 
   return !getTrustedCorsOrigins(env).includes(requestOrigin);

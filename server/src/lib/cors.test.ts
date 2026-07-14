@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 import {
   createCorsOptionsDelegate,
   createRejectUntrustedOriginHook,
+  getAllowedMcpOrigins,
   getTrustedCorsOrigins,
   normalizeCorsOrigin,
 } from "./cors.js";
@@ -18,6 +19,7 @@ async function buildCorsTestApp(env: NodeJS.ProcessEnv) {
   app.delete("/api/sites/:siteId", async () => ({ success: true }));
   app.get("/api/sites/:siteId/sessions", async () => ({ data: [] }));
   app.post("/api/track", async () => ({ success: true }));
+  app.post("/api/mcp", async () => ({ success: true }));
   app.get("/api/version", async () => ({ version: "0.0.0" }));
 
   await app.ready();
@@ -144,6 +146,56 @@ describe("CORS policy", () => {
     }
   });
 
+  it("allows only explicitly configured browser origins for MCP", async () => {
+    const app = await buildCorsTestApp({
+      NODE_ENV: "production",
+      BASE_URL: "https://rybbit.example.com",
+      MCP_ALLOWED_ORIGINS: "https://inspector.example, https://agent.example/path",
+    });
+
+    try {
+      const preflight = await app.inject({
+        method: "OPTIONS",
+        url: "/api/mcp",
+        headers: {
+          origin: "https://inspector.example",
+          "access-control-request-method": "POST",
+          "access-control-request-headers": "Authorization,MCP-Protocol-Version",
+        },
+      });
+      expect(preflight.statusCode).toBe(204);
+      expect(preflight.headers["access-control-allow-origin"]).toBe("https://inspector.example");
+      expect(preflight.headers["access-control-allow-credentials"]).toBeUndefined();
+      expect(preflight.headers["access-control-allow-headers"]).toContain("MCP-Protocol-Version");
+
+      const allowed = await app.inject({
+        method: "POST",
+        url: "/api/mcp",
+        headers: { origin: "https://agent.example" },
+      });
+      expect(allowed.statusCode).toBe(200);
+
+      const blocked = await app.inject({
+        method: "POST",
+        url: "/api/mcp",
+        headers: { origin: "https://attacker.example" },
+      });
+      expect(blocked.statusCode).toBe(403);
+
+      const opaqueOrigin = await app.inject({
+        method: "POST",
+        url: "/api/mcp",
+        headers: { origin: "null" },
+      });
+      expect(opaqueOrigin.statusCode).toBe(403);
+
+      const serverSideClient = await app.inject({ method: "POST", url: "/api/mcp" });
+      expect(serverSideClient.statusCode).toBe(200);
+    } finally {
+      await app.close();
+    }
+  });
+
   it("allows public session-list requests without credentials", async () => {
     const app = await buildCorsTestApp({
       NODE_ENV: "production",
@@ -211,5 +263,16 @@ describe("trusted CORS origins", () => {
         BASE_URL: "https://rybbit.example.com",
       })
     ).toEqual(["https://rybbit.example.com", "http://localhost:3002", "http://127.0.0.1:3002"]);
+  });
+
+  it("adds MCP_ALLOWED_ORIGINS without granting them to other management routes", () => {
+    const env = {
+      NODE_ENV: "production",
+      BASE_URL: "https://rybbit.example.com",
+      MCP_ALLOWED_ORIGINS: "https://inspector.example,not-a-url",
+    };
+
+    expect(getAllowedMcpOrigins(env)).toEqual(["https://rybbit.example.com", "https://inspector.example"]);
+    expect(getTrustedCorsOrigins(env)).toEqual(["https://rybbit.example.com"]);
   });
 });

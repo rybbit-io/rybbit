@@ -101,6 +101,7 @@ import {
   selectGSCProperty,
 } from "./api/gsc/index.js";
 import { updateMemberSiteAccess } from "./api/memberAccess/index.js";
+import { mcpRoutes } from "./api/mcp/index.js";
 import { listTeams, createTeam, updateTeam, deleteTeam } from "./api/teams/index.js";
 import {
   deleteSessionReplay,
@@ -483,6 +484,7 @@ async function apiRoutes(fastify: FastifyInstance) {
   await fastify.register(userRoutes);
   await fastify.register(gscRoutes);
   await fastify.register(stripeAdminRoutes);
+  await fastify.register(mcpRoutes);
 
   // Health check
   fastify.get("/health", { logLevel: "silent" }, (_: FastifyRequest, reply: FastifyReply) => reply.send("OK"));
