@@ -1,12 +1,12 @@
 import { describe, expect, it, vi } from "vitest";
+import { matchesCIDR, matchesRange, validateIPPattern } from "./ipUtils.js";
 
 // The logger uses a pino-pretty transport (a worker thread); stub it so these
-// pure-logic tests stay deterministic and quiet.
+// pure-logic tests stay deterministic and quiet. Vitest hoists vi.mock above
+// the imports, so the mock still applies despite being declared below them.
 vi.mock("./logger/logger.js", () => ({
   logger: { warn: vi.fn(), info: vi.fn(), error: vi.fn(), debug: vi.fn() },
 }));
-
-import { matchesCIDR, matchesRange, validateIPPattern } from "./ipUtils.js";
 
 describe("validateIPPattern", () => {
   it("treats empty or whitespace-only patterns as valid", () => {
