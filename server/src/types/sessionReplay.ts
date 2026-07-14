@@ -46,11 +46,13 @@ export interface SessionReplayMetadata {
 }
 
 export interface RecordSessionReplayRequest {
+  batchId?: string;
   userId: string;
   events: Array<{
     type: string | number;
     data: any;
     timestamp: number;
+    sequence?: number;
   }>;
   metadata?: {
     pageUrl: string;

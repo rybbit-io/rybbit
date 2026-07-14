@@ -1,3 +1,4 @@
+import crypto from "crypto";
 import { DateTime } from "luxon";
 import { clickhouse } from "../../db/clickhouse/clickhouse.js";
 import { RecordSessionReplayRequest } from "../../types/sessionReplay.js";
@@ -26,6 +27,12 @@ export class SessionReplayIngestService {
     requestMeta?: RequestMetadata
   ): Promise<void> {
     const { userId: clientUserId, events, metadata } = request;
+    const batchId =
+      request.batchId ??
+      crypto
+        .createHash("sha256")
+        .update(JSON.stringify({ siteId, userId: clientUserId, events, metadata }))
+        .digest("hex");
 
     // Always generate device fingerprint (anonymous user ID) server-side
     const deviceFingerprint = await userIdService.generateUserId(
@@ -50,17 +57,36 @@ export class SessionReplayIngestService {
       siteId,
     });
 
+    const existingBatchResult = await clickhouse.query({
+      query: `
+        SELECT batch_index
+        FROM session_replay_events
+        WHERE site_id = {siteId:UInt16}
+          AND session_id = {sessionId:String}
+          AND batch_id = {batchId:String}
+      `,
+      query_params: { siteId, sessionId, batchId },
+      format: "JSONEachRow",
+    });
+    const existingBatchRows = await processResults<{ batch_index: number | null }>(existingBatchResult);
+    const storedBatchIndices = new Set(
+      existingBatchRows.flatMap(row => (row.batch_index === null ? [] : [row.batch_index]))
+    );
+    const missingEvents = events
+      .map((event, index) => ({ event, index }))
+      .filter(({ index }) => !storedBatchIndices.has(index));
+
     // Check if R2 storage is enabled for cloud deployments
     let r2BatchKey: string | null = null;
     let eventDataArray: any[] = [];
 
-    if (r2Storage.isEnabled()) {
+    if (missingEvents.length > 0 && r2Storage.isEnabled()) {
       // Extract event data for R2 storage
       eventDataArray = events.map(event => event.data);
 
       try {
         // Store event data batch in R2
-        r2BatchKey = await r2Storage.storeBatch(siteId, sessionId, eventDataArray);
+        r2BatchKey = await r2Storage.storeBatch(siteId, sessionId, batchId, eventDataArray);
       } catch (error) {
         console.error("Failed to store in R2, falling back to ClickHouse:", error);
         r2BatchKey = null;
@@ -68,7 +94,7 @@ export class SessionReplayIngestService {
     }
 
     // Prepare events for batch insert
-    const eventsToInsert = events.map((event, index) => {
+    const eventsToInsert = missingEvents.map(({ event, index }) => {
       const serializedData = JSON.stringify(event.data);
 
       if (r2BatchKey) {
@@ -76,6 +102,7 @@ export class SessionReplayIngestService {
         return {
           site_id: siteId,
           session_id: sessionId,
+          batch_id: batchId,
           user_id: userId,
           identified_user_id: identifiedUserId,
           timestamp: event.timestamp,
@@ -83,7 +110,7 @@ export class SessionReplayIngestService {
           event_data: "", // Empty string when using R2
           event_data_key: r2BatchKey,
           batch_index: index,
-          sequence_number: index,
+          sequence_number: event.sequence ?? index,
           event_size_bytes: serializedData.length,
           viewport_width: metadata?.viewportWidth || null,
           viewport_height: metadata?.viewportHeight || null,
@@ -94,14 +121,15 @@ export class SessionReplayIngestService {
         return {
           site_id: siteId,
           session_id: sessionId,
+          batch_id: batchId,
           user_id: userId,
           identified_user_id: identifiedUserId,
           timestamp: event.timestamp,
           event_type: event.type,
           event_data: serializedData,
           event_data_key: null,
-          batch_index: null,
-          sequence_number: index,
+          batch_index: index,
+          sequence_number: event.sequence ?? index,
           event_size_bytes: serializedData.length,
           viewport_width: metadata?.viewportWidth || null,
           viewport_height: metadata?.viewportHeight || null,

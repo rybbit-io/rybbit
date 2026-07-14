@@ -69,13 +69,12 @@ class R2StorageService {
    * Store a batch of event data in R2
    * Returns the storage key if successful, null if R2 is disabled
    */
-  async storeBatch(siteId: number, sessionId: string, eventDataArray: any[]): Promise<string | null> {
+  async storeBatch(siteId: number, sessionId: string, batchId: string, eventDataArray: any[]): Promise<string | null> {
     if (!this.enabled || !this.client) {
       return null;
     }
 
-    const timestamp = Date.now();
-    const key = `${siteId}/${sessionId}/${timestamp}.json.zst`;
+    const key = `${siteId}/${sessionId}/${batchId}.json.zst`;
 
     try {
       // Compress with zstd - much faster decompression than brotli

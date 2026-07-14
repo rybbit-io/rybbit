@@ -171,8 +171,11 @@ import { auth } from "./lib/auth.js";
 import { createCorsOptionsDelegate, createRejectUntrustedOriginHook } from "./lib/cors.js";
 import { IS_CLOUD } from "./lib/const.js";
 import { reengagementService } from "./services/reengagement/reengagementService.js";
+import { sessionsService } from "./services/sessions/sessionsService.js";
 import { telemetryService } from "./services/telemetryService.js";
+import { botEventQueue } from "./services/tracker/botBlocking/botEventQueue.js";
 import { handleIdentify } from "./services/tracker/identifyService.js";
+import { pageviewQueue } from "./services/tracker/pageviewQueue.js";
 import { trackEvent } from "./services/tracker/trackEvent.js";
 import { usageService } from "./services/usageService.js";
 import { weeklyReportService } from "./services/weekyReports/weeklyReportService.js";
@@ -570,6 +573,9 @@ const shutdown = async (signal: string) => {
     // Stop accepting new connections
     await server.close();
     server.log.info("Server closed");
+
+    await Promise.all([pageviewQueue.close(), botEventQueue.close(), sessionsService.close()]);
+    server.log.info("Ingestion queues drained");
 
     // Shutdown uptime service
     // await uptimeService.shutdown();

@@ -7,21 +7,26 @@ import { RecordSessionReplayRequest } from "../../types/sessionReplay.js";
 import { resolveClientIp } from "../../services/tracker/resolveClientIp.js";
 import { logger } from "../../lib/logger/logger.js";
 import { getLocation } from "../../db/geolocation/geolocation.js";
+import { CLICKHOUSE_UINT16_CAPACITY, CLICKHOUSE_UINT16_MAX } from "../../lib/clickhouseLimits.js";
 
 const recordSessionReplaySchema = z.object({
-  userId: z.string(),
-  events: z.array(
-    z.object({
-      type: z.union([z.string(), z.number()]),
-      data: z.any(),
-      timestamp: z.number(),
-    })
-  ),
+  batchId: z.string().uuid().optional(),
+  userId: z.string().max(255),
+  events: z
+    .array(
+      z.object({
+        type: z.union([z.string(), z.number()]),
+        data: z.any(),
+        timestamp: z.number().int().nonnegative(),
+        sequence: z.number().int().nonnegative().max(0xffff_ffff).optional(),
+      })
+    )
+    .max(CLICKHOUSE_UINT16_CAPACITY),
   metadata: z
     .object({
       pageUrl: z.string(),
-      viewportWidth: z.number().optional(),
-      viewportHeight: z.number().optional(),
+      viewportWidth: z.number().int().nonnegative().max(CLICKHOUSE_UINT16_MAX).optional(),
+      viewportHeight: z.number().int().nonnegative().max(CLICKHOUSE_UINT16_MAX).optional(),
       language: z.string().optional(),
     })
     .optional(),

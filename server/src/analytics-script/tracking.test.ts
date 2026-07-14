@@ -487,5 +487,27 @@ describe("Tracker", () => {
 
       consoleSpy.mockRestore();
     });
+
+    it("waits for earlier tracking requests before sending identify", async () => {
+      let finishTracking!: () => void;
+      const trackingResponse = new Promise<Response>(resolve => {
+        finishTracking = () => resolve({ ok: true } as Response);
+      });
+      vi.mocked(global.fetch)
+        .mockReturnValueOnce(trackingResponse)
+        .mockResolvedValueOnce({ ok: true } as Response)
+        .mockResolvedValue({ ok: true, json: async () => ({ flags: {} }) } as Response);
+
+      tracker.trackPageview();
+      tracker.identify("user-ordered");
+
+      expect(global.fetch).toHaveBeenCalledTimes(1);
+      expect(vi.mocked(global.fetch).mock.calls[0][0]).toBe("https://analytics.example.com/track");
+
+      finishTracking();
+      await vi.waitFor(() =>
+        expect(global.fetch).toHaveBeenCalledWith("https://analytics.example.com/identify", expect.any(Object))
+      );
+    });
   });
 });

@@ -1,17 +1,17 @@
 import { DateTime } from "luxon";
 import { clickhouse } from "../../db/clickhouse/clickhouse.js";
 import { getLocation } from "../../db/geolocation/geolocation.js";
-import { createServiceLogger } from "../../lib/logger/logger.js";
 import { getDeviceType } from "../../utils.js";
 import { getChannel } from "./getChannel.js";
 import { clearSelfReferrer, getAllUrlParams, TotalTrackingPayload } from "./utils.js";
+import { ReliableBatchQueue } from "./reliableBatchQueue.js";
 
 type TotalPayload = TotalTrackingPayload & {
   sessionId: string;
 };
 
 const PAGEVIEW_BATCH_SIZE = 5000;
-const PAGEVIEW_FLUSH_INTERVAL_MS = 1000;
+const PAGEVIEW_FLUSH_INTERVAL_MS = 250;
 
 const getParsedProperties = (properties: string | undefined) => {
   try {
@@ -21,39 +21,20 @@ const getParsedProperties = (properties: string | undefined) => {
   }
 };
 
-class PageviewQueue {
-  private queue: TotalPayload[] = [];
-  private batchSize = PAGEVIEW_BATCH_SIZE;
-  private interval = PAGEVIEW_FLUSH_INTERVAL_MS;
-  private processing = false;
-  private logger = createServiceLogger("pageview-queue");
+async function processPageviewBatch(batch: TotalPayload[]): Promise<void> {
+  const ips = [...new Set(batch.map(pv => pv.ipAddress))];
 
-  constructor() {
-    // Start processing interval
-    setInterval(() => this.processQueue(), this.interval);
-  }
+  const geoData = await getLocation(ips);
 
-  async add(pageview: TotalPayload) {
-    this.queue.push(pageview);
-  }
-
-  private async processQueue() {
-    if (this.processing || this.queue.length === 0) return;
-    this.processing = true;
-
-    // Get batch of pageviews
-    const batch = this.queue.splice(0, this.batchSize);
-    const ips = [...new Set(batch.map(pv => pv.ipAddress))];
-
-    const geoData = await getLocation(ips);
-
-    // Process each pageview with its geo data
-    const processedPageviews = batch.filter(pv => {
+  // Process each pageview with its geo data
+  const processedPageviews = batch
+    .filter(pv => {
       if (pv.site_id == 9133 && pv.screenWidth == 800 && pv.screenHeight == 600) {
         return false;
       }
       return true;
-    }).map(pv => {
+    })
+    .map(pv => {
       const dataForIp = geoData?.[pv.ipAddress];
 
       const countryCode = dataForIp?.countryIso || "";
@@ -68,7 +49,6 @@ class PageviewQueue {
 
       // Get all URL parameters for the url_parameters map
       const allUrlParams = getAllUrlParams(pv.querystring || "");
-
 
       return {
         site_id: pv.site_id,
@@ -115,21 +95,17 @@ class PageviewQueue {
       };
     });
 
-    // this.logger.info({ count: processedPageviews.length }, "Bulk insert to ClickHouse");
-    // Bulk insert into database
-    try {
-      await clickhouse.insert({
-        table: "events",
-        values: processedPageviews,
-        format: "JSONEachRow",
-      });
-    } catch (error) {
-      this.logger.error(error, "Error processing pageview queue");
-    } finally {
-      this.processing = false;
-    }
-  }
+  await clickhouse.insert({
+    table: "events",
+    values: processedPageviews,
+    format: "JSONEachRow",
+  });
 }
 
 // Create singleton instance
-export const pageviewQueue = new PageviewQueue();
+export const pageviewQueue = new ReliableBatchQueue<TotalPayload>({
+  name: "pageview-queue",
+  batchSize: PAGEVIEW_BATCH_SIZE,
+  flushIntervalMs: PAGEVIEW_FLUSH_INTERVAL_MS,
+  processBatch: processPageviewBatch,
+});

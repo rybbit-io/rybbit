@@ -155,9 +155,11 @@ export interface SessionReplayEvent {
   type: string | number;
   data: any;
   timestamp: number;
+  sequence?: number;
 }
 
 export interface SessionReplayBatch {
+  batchId: string;
   userId: string;
   events: SessionReplayEvent[];
   metadata?: {

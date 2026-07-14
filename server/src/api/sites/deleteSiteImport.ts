@@ -2,7 +2,6 @@ import { FastifyReply, FastifyRequest } from "fastify";
 import { z } from "zod";
 import { getImportById, deleteImport } from "../../services/import/importStatusManager.js";
 import { clickhouse } from "../../db/clickhouse/clickhouse.js";
-import { importQuotaManager } from "../../services/import/importQuotaManager.js";
 import { db } from "../../db/postgres/postgres.js";
 import { organization, sites } from "../../db/postgres/schema.js";
 import { eq } from "drizzle-orm";
@@ -86,8 +85,6 @@ export async function deleteSiteImport(request: FastifyRequest<DeleteImportReque
     } catch (dbError) {
       return reply.status(500).send({ error: "Failed to delete import record" });
     }
-
-    importQuotaManager.completeImport(importRecord.organizationId);
 
     return reply.send();
   } catch (error) {

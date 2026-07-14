@@ -1,6 +1,6 @@
 import { FastifyReply, FastifyRequest } from "fastify";
-import { importQuotaManager } from "../../services/import/importQuotaManager.js";
 import { createImport } from "../../services/import/importStatusManager.js";
+import { ImportQuotaTracker } from "../../services/import/importQuotaTracker.js";
 import { DateTime } from "luxon";
 import { z } from "zod";
 import { db } from "../../db/postgres/postgres.js";
@@ -65,12 +65,8 @@ export async function createSiteImport(request: FastifyRequest<CreateSiteImportR
       }
     }
 
-    if (!importQuotaManager.startImport(organizationId)) {
-      return reply.status(429).send({ error: "Only 1 concurrent import allowed per organization" });
-    }
-
     try {
-      const quotaTracker = await importQuotaManager.getTracker(organizationId);
+      const quotaTracker = await ImportQuotaTracker.create(organizationId);
       const oldestAllowedMonth = quotaTracker.getOldestAllowedMonth();
 
       const earliestAllowedDate = DateTime.fromFormat(oldestAllowedMonth + "01", "yyyyMMdd", {
@@ -82,7 +78,12 @@ export async function createSiteImport(request: FastifyRequest<CreateSiteImportR
         siteId,
         organizationId,
         platform,
+        enforceSingleActive: IS_CLOUD,
       });
+
+      if (!importRecord) {
+        return reply.status(429).send({ error: "Only 1 concurrent import allowed per organization" });
+      }
 
       return reply.send({
         data: {
@@ -94,7 +95,6 @@ export async function createSiteImport(request: FastifyRequest<CreateSiteImportR
         },
       });
     } catch (error) {
-      importQuotaManager.completeImport(organizationId);
       console.error("Error creating import:", error);
       return reply.status(500).send({ error: "Internal server error" });
     }

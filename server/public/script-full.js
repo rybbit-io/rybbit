@@ -250,6 +250,20 @@
 
   // sessionReplay.ts
   var SAMPLE_STORAGE_KEY = "rybbit-replay-sampled";
+  function createReplayBatchId() {
+    const bytes = new Uint8Array(16);
+    if (globalThis.crypto?.getRandomValues) {
+      globalThis.crypto.getRandomValues(bytes);
+    } else {
+      for (let index = 0; index < bytes.length; index++) {
+        bytes[index] = Math.floor(Math.random() * 256);
+      }
+    }
+    bytes[6] = bytes[6] & 15 | 64;
+    bytes[8] = bytes[8] & 63 | 128;
+    const hex = [...bytes].map((byte) => byte.toString(16).padStart(2, "0"));
+    return `${hex.slice(0, 4).join("")}-${hex.slice(4, 6).join("")}-${hex.slice(6, 8).join("")}-${hex.slice(8, 10).join("")}-${hex.slice(10).join("")}`;
+  }
   function shouldSampleSession(sampleRate) {
     if (sampleRate >= 100) return true;
     if (sampleRate <= 0) return false;
@@ -269,6 +283,9 @@
     constructor(config, userId, sendBatch) {
       this.isRecording = false;
       this.eventBuffer = [];
+      this.pendingBatches = [];
+      this.nextSequence = 0;
+      this.sendLoop = null;
       this.config = config;
       this.userId = userId;
       this.sendBatch = sendBatch;
@@ -384,15 +401,15 @@
       }
       this.isRecording = false;
       this.clearBatchTimer();
-      if (this.eventBuffer.length > 0) {
-        this.flushEvents();
+      if (this.eventBuffer.length > 0 || this.pendingBatches.length > 0) {
+        void this.flushEvents();
       }
     }
     isActive() {
       return this.isRecording;
     }
     addEvent(event) {
-      this.eventBuffer.push(event);
+      this.eventBuffer.push({ ...event, sequence: this.nextSequence++ });
       if (this.eventBuffer.length >= this.config.sessionReplayBatchSize) {
         this.flushEvents();
       }
@@ -400,8 +417,8 @@
     setupBatchTimer() {
       this.clearBatchTimer();
       this.batchTimer = window.setInterval(() => {
-        if (this.eventBuffer.length > 0) {
-          this.flushEvents();
+        if (this.eventBuffer.length > 0 || this.pendingBatches.length > 0) {
+          void this.flushEvents();
         }
       }, this.config.sessionReplayBatchInterval);
     }
@@ -412,26 +429,45 @@
       }
     }
     async flushEvents() {
-      if (this.eventBuffer.length === 0) {
-        return;
+      if (this.eventBuffer.length > 0) {
+        const batch = {
+          batchId: createReplayBatchId(),
+          userId: this.userId,
+          events: this.eventBuffer,
+          metadata: {
+            pageUrl: window.location.href,
+            viewportWidth: screen.width,
+            viewportHeight: screen.height,
+            language: navigator.language
+          }
+        };
+        this.eventBuffer = [];
+        this.pendingBatches.push(batch);
       }
-      const events = [...this.eventBuffer];
-      this.eventBuffer = [];
-      const batch = {
-        userId: this.userId,
-        events,
-        metadata: {
-          pageUrl: window.location.href,
-          viewportWidth: screen.width,
-          viewportHeight: screen.height,
-          language: navigator.language
+      await this.drainPendingBatches();
+    }
+    drainPendingBatches() {
+      if (this.sendLoop) {
+        const activeLoop = this.sendLoop;
+        return activeLoop.then(() => {
+          if (this.pendingBatches.length > 0 && this.sendLoop === null) {
+            return this.drainPendingBatches();
+          }
+        });
+      }
+      this.sendLoop = (async () => {
+        while (this.pendingBatches.length > 0) {
+          try {
+            await this.sendBatch(this.pendingBatches[0]);
+            this.pendingBatches.shift();
+          } catch {
+            return;
+          }
         }
-      };
-      try {
-        await this.sendBatch(batch);
-      } catch (error) {
-        this.eventBuffer.unshift(...events);
-      }
+      })().finally(() => {
+        this.sendLoop = null;
+      });
+      return this.sendLoop;
     }
     // Update user ID when it changes
     updateUserId(userId) {
@@ -446,7 +482,7 @@
     // Handle page navigation for SPAs
     onPageChange() {
       if (this.isRecording) {
-        this.flushEvents();
+        void this.flushEvents();
       }
     }
     // Cleanup on page unload
@@ -600,6 +636,7 @@
   var Tracker = class {
     constructor(config) {
       this.customUserId = null;
+      this.pendingTrackingRequests = /* @__PURE__ */ new Set();
       this.errorDedupeCache = /* @__PURE__ */ new Map();
       this.errorDedupeLastCleanup = 0;
       this.exposedFeatureFlags = /* @__PURE__ */ new Set();
@@ -738,20 +775,25 @@
       }
       return payload;
     }
-    async sendTrackingData(payload) {
-      try {
-        await fetch(`${this.config.analyticsHost}/track`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify(payload),
-          mode: "cors",
-          keepalive: true
-        });
-      } catch (error) {
-        console.error("Failed to send tracking data:", error);
-      }
+    sendTrackingData(payload) {
+      const request = (async () => {
+        try {
+          await fetch(`${this.config.analyticsHost}/track`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json"
+            },
+            body: JSON.stringify(payload),
+            mode: "cors",
+            keepalive: true
+          });
+        } catch (error) {
+          console.error("Failed to send tracking data:", error);
+        }
+      })();
+      this.pendingTrackingRequests.add(request);
+      void request.finally(() => this.pendingTrackingRequests.delete(request));
+      return request;
     }
     track(eventType, eventName = "", properties = {}) {
       if (eventType === "custom_event" && (!eventName || typeof eventName !== "string")) {
@@ -931,7 +973,9 @@
       } catch (e2) {
         console.warn("Could not persist user ID to localStorage");
       }
-      void this.sendIdentifyEvent(this.customUserId, traits, true).then(() => this.refreshFeatureFlags());
+      const identifiedUserId = this.customUserId;
+      const earlierTrackingRequests = [...this.pendingTrackingRequests];
+      void Promise.allSettled(earlierTrackingRequests).then(() => this.sendIdentifyEvent(identifiedUserId, traits, true)).then(() => this.refreshFeatureFlags());
       if (this.sessionReplayRecorder) {
         this.sessionReplayRecorder.updateUserId(this.customUserId);
       }

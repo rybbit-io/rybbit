@@ -3,6 +3,7 @@ import { getChannel } from "../../tracker/getChannel.js";
 import { RybbitEvent } from "./rybbit.js";
 import { z } from "zod";
 import { deriveKeyOnlySchema } from "./utils.js";
+import { CLICKHOUSE_UINT16_MAX } from "../../../lib/clickhouseLimits.js";
 
 export type UmamiEvent = z.input<typeof UmamiImportMapper.umamiEventKeyOnlySchema>;
 
@@ -77,7 +78,11 @@ export class UmamiImportMapper {
     screen: z
       .string()
       .regex(/^\d{1,5}x\d{1,5}$/)
-      .or(z.literal("")),
+      .or(z.literal(""))
+      .refine(value => {
+        if (!value) return true;
+        return value.split("x").every(dimension => Number(dimension) <= CLICKHOUSE_UINT16_MAX);
+      }),
     language: z.string().max(35),
     country: z
       .string()
