@@ -263,6 +263,17 @@ server.register(
         }
       );
 
+      // OAuth token requests (RFC 6749) are application/x-www-form-urlencoded;
+      // pass them through untouched too or Fastify 415s before the better-auth
+      // handler can read the raw stream.
+      fastify.addContentTypeParser(
+        "application/x-www-form-urlencoded",
+        /* c8 ignore next 3 */
+        (_request, _payload, done) => {
+          done(null, null);
+        }
+      );
+
       fastify.all("/api/auth/*", async (request, reply: any) => {
         reply.raw.setHeaders(mapHeaders(reply.getHeaders()));
         await authHandler(request.raw, reply.raw);
