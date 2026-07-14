@@ -51,9 +51,20 @@ export function createOAuthWellKnownRoutes(dependencies: OAuthWellKnownDependenc
       }
     };
 
-    fastify.get("/.well-known/oauth-authorization-server", (_request, reply) =>
-      send(reply, dependencies.getAuthorizationServerMetadata)
-    );
+    // MCP clients try several discovery documents: RFC 8414 authorization
+    // server metadata, OIDC discovery, and the path-inserted variants of both
+    // for the /api/mcp resource. Serve the same metadata at all of them — the
+    // better-auth MCP plugin's metadata is OIDC-compatible.
+    const authorizationServerPaths = [
+      "/.well-known/oauth-authorization-server",
+      "/.well-known/oauth-authorization-server/api/mcp",
+      "/.well-known/openid-configuration",
+      "/.well-known/openid-configuration/api/mcp",
+    ];
+    for (const path of authorizationServerPaths) {
+      fastify.get(path, (_request, reply) => send(reply, dependencies.getAuthorizationServerMetadata));
+    }
+
     fastify.get("/.well-known/oauth-protected-resource", (_request, reply) =>
       send(reply, dependencies.getProtectedResourceMetadata)
     );

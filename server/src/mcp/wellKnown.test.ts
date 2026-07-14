@@ -35,14 +35,22 @@ describe("oauth well-known routes", () => {
     await app?.close();
   });
 
-  it("serves authorization server metadata at the root well-known path", async () => {
+  it("serves authorization server metadata at every discovery variant clients try", async () => {
     await buildApp();
-    const response = await app.inject({ method: "GET", url: "/.well-known/oauth-authorization-server" });
 
-    expect(response.statusCode).toBe(200);
-    expect(response.headers["content-type"]).toContain("application/json");
-    expect(response.headers["cache-control"]).toContain("max-age");
-    expect(response.json()).toEqual(AS_METADATA);
+    for (const url of [
+      "/.well-known/oauth-authorization-server",
+      "/.well-known/oauth-authorization-server/api/mcp",
+      "/.well-known/openid-configuration",
+      "/.well-known/openid-configuration/api/mcp",
+    ]) {
+      const response = await app.inject({ method: "GET", url });
+
+      expect(response.statusCode).toBe(200);
+      expect(response.headers["content-type"]).toContain("application/json");
+      expect(response.headers["cache-control"]).toContain("max-age");
+      expect(response.json()).toEqual(AS_METADATA);
+    }
   });
 
   it("serves protected resource metadata at both path variants", async () => {

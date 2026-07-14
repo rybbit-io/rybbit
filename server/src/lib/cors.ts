@@ -93,9 +93,10 @@ export function isPublicCorsPath(path: string): boolean {
     path === "/api/track" ||
     path === "/api/identify" ||
     path === "/api/version" ||
-    // OAuth discovery documents (RFC 8414/9728) are public metadata that
+    // OAuth/OIDC discovery documents (RFC 8414/9728) are public metadata that
     // browser-based MCP clients fetch cross-origin.
     path.startsWith("/.well-known/oauth-") ||
+    path.startsWith("/.well-known/openid-configuration") ||
     path.startsWith("/api/session-replay/record/") ||
     path.startsWith("/api/site/tracking-config/") ||
     /^\/api\/sites\/[^/]+\/sessions$/.test(path) ||
