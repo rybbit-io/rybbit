@@ -1,0 +1,131 @@
+---
+title: AI integrations (MCP)
+description: Connect an AI assistant to your Rybbit analytics through the hosted Model Context Protocol server
+---
+
+import { Callout } from "fumadocs-ui/components/callout";
+
+Rybbit includes a hosted [Model Context Protocol](https://modelcontextprotocol.io/) (MCP) endpoint. It lets an AI assistant explore your analytics through read-only tools that call the same API the Rybbit dashboard uses, with the same access checks and rate limits.
+
+Your MCP client connects to Rybbit over HTTPS and sends your API key with each protocol request. Rybbit verifies the key before processing any message, and every tool call is authorized against the sites that user can currently access.
+
+## Connect a client
+
+### 1. Create an API key
+
+1. Open **Settings → Account** in Rybbit.
+2. Create a key in the **API Keys** section.
+3. Copy it immediately. Rybbit only shows a new key once.
+
+The key is user-scoped: the MCP server can access the same sites as that user. Deleting the key revokes the connection.
+
+### 2. Add the endpoint
+
+Use this Streamable HTTP URL for Rybbit Cloud:
+
+```text
+https://app.rybbit.io/api/mcp
+```
+
+For a self-hosted installation, replace the host with your configured `BASE_URL`:
+
+```text
+https://analytics.example.com/api/mcp
+```
+
+Configure your client to send this header on every request:
+
+```text
+Authorization: Bearer <RYBBIT_API_KEY>
+```
+
+MCP clients use different configuration formats. A typical remote-server configuration has this shape:
+
+```json
+{
+  "mcpServers": {
+    "rybbit": {
+      "url": "https://app.rybbit.io/api/mcp",
+      "headers": {
+        "Authorization": "Bearer <RYBBIT_API_KEY>"
+      }
+    }
+  }
+}
+```
+
+Use your client's secret or environment-variable support when available instead of saving the key in a file. Query-string API keys are not accepted by the MCP endpoint.
+
+<Callout type="warn">
+  This first version uses API-key authentication, not interactive OAuth. It works with MCP clients that support custom
+  HTTP headers. A client that requires browser-based OAuth cannot connect yet.
+</Callout>
+
+### 3. Start with context
+
+Ask the assistant to call `list_sites`, or prompt it with something like:
+
+> List my Rybbit sites, then summarize the last 30 days of traffic for my documentation site.
+
+`list_sites` returns the numeric `site_id` required by every other tool. It does not return API keys, organization members, or email addresses.
+
+## Available tools
+
+| Tool                      | Returns                                                                                  |
+| ------------------------- | ---------------------------------------------------------------------------------------- |
+| `list_sites`              | Organizations and sites the API key can access                                           |
+| `get_overview`            | Sessions, pageviews, users, pages per session, bounce rate, and session duration         |
+| `get_overview_timeseries` | The overview KPIs bucketed over time                                                     |
+| `get_breakdown`           | Sessions broken down by one dimension (pages, referrers, countries, devices, UTM, ...)   |
+| `get_live_stats`          | Visitors active on the site right now                                                    |
+| `get_event_names`         | Custom event names tracked on the site with counts                                       |
+| `get_errors`              | JavaScript errors grouped by name/message with occurrence counts                         |
+| `get_web_vitals`          | Core Web Vitals percentiles (LCP, CLS, INP, FCP, TTFB)                                   |
+| `get_retention`           | User retention cohort table                                                              |
+| `get_journeys`            | Most common page-to-page navigation paths                                                |
+| `get_goals`               | Configured conversion goals with conversion rates                                        |
+| `get_funnels`             | Saved funnel definitions                                                                 |
+| `analyze_funnel`          | Conversion and drop-off for an ad-hoc ordered funnel                                     |
+
+Tools accept optional time inputs (`start_date`/`end_date` with an IANA `time_zone`, or `past_minutes`) and the same filters as the dashboard. Omitting time inputs queries all time.
+
+### Raw data tools (opt-in, self-hosted)
+
+Three additional tools return session-level data and accept raw SQL: `get_sessions`, `get_events`, and `run_query` (with its companion `get_query_schema`). They are **disabled by default** and hidden from the tool list. Self-hosters can enable them:
+
+```dotenv
+MCP_ENABLE_RAW_DATA_TOOLS=true
+```
+
+Enable them only if you are comfortable exposing visitor-level records (device identifiers, geolocation, custom event properties) to the AI client you connect. Visitor IP addresses are never returned through MCP, even with raw tools enabled, and `run_query` remains restricted to a read-only, site-scoped table with row and execution-time caps.
+
+## Data and security boundary
+
+- Every tool is read-only and marked as non-destructive.
+- The API key is verified before any MCP message is processed, and each tool call re-runs the corresponding REST route's own access checks and rate limits.
+- By default the surface is aggregate-only: no session-level records, no raw SQL, no IP addresses.
+- Text originating in tracked traffic (page titles, paths, referrers, event names) is stripped of control and bidi-override characters. AI clients should still treat these values as untrusted data, never as instructions.
+- The server does not contain an AI model or send analytics to an AI provider. Data only leaves Rybbit in response to the MCP client you configure.
+- The endpoint is stateless. Each HTTP request is independently authenticated.
+
+Your AI provider may retain tool inputs and results under its own policies. Only connect providers you trust, and use a separate, revocable API key for each integration.
+
+## Browser-based clients
+
+Normal desktop and server-side MCP clients do not send an HTTP `Origin` header and need no extra server configuration. If a browser application calls the MCP endpoint directly, self-hosters must explicitly allow its origin:
+
+```dotenv
+MCP_ALLOWED_ORIGINS=https://assistant.example.com,https://inspector.example.com
+```
+
+Only add origins you trust. This setting applies only to `/api/mcp`; it does not grant those origins access to other authenticated Rybbit routes. Browser MCP responses never use cookie credentials.
+
+## Troubleshooting
+
+- **401 Unauthorized:** The client did not send a Bearer key, the key is invalid, or it was revoked.
+- **403 Origin not allowed:** Add the browser application's exact origin to `MCP_ALLOWED_ORIGINS`, then restart the backend.
+- **429 Too Many Requests:** The API key exceeded its plan's rate limit.
+- **503 Service Unavailable:** Rybbit could not verify the key. Retry the request; do not replace a known-valid key based on this response.
+- **405 Method Not Allowed on GET:** This is expected. The stateless endpoint accepts MCP messages over `POST`.
+- **Missing tools:** `get_sessions`, `get_events`, and `run_query` only appear when `MCP_ENABLE_RAW_DATA_TOOLS=true` is set on the server.
+- **Site access error:** Call `list_sites` again. Membership or site permissions may have changed.
