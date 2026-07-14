@@ -247,7 +247,73 @@ export function invalidateSitesAccessCache(userId: string) {
 }
 
 /**
- * Verify an API key from the request and check organization membership.
+ * Resolve the org membership role for a bearer-authenticated user, scoped to
+ * either an explicit organization or the organization owning a site.
+ */
+async function resolveBearerUserOrgRole(
+  userId: string,
+  options: { organizationId?: string; siteId?: string | number }
+): Promise<{ valid: boolean; role: string | null; userId?: string }> {
+  // Determine the organization ID - either directly provided or looked up from site
+  let organizationId = options.organizationId;
+
+  if (!organizationId && options.siteId) {
+    // Get the site's organization
+    const siteRecords = await db
+      .select({
+        organizationId: sites.organizationId,
+      })
+      .from(sites)
+      .where(eq(sites.siteId, Number(options.siteId)))
+      .limit(1);
+
+    if (siteRecords.length > 0 && siteRecords[0].organizationId) {
+      organizationId = siteRecords[0].organizationId;
+    }
+  }
+
+  if (organizationId) {
+    // Check if the bearer credential's user is a member of the organization
+    const userMembership = await db
+      .select()
+      .from(member)
+      .where(and(eq(member.userId, userId), eq(member.organizationId, organizationId)))
+      .limit(1);
+
+    if (userMembership.length > 0) {
+      return { valid: true, role: userMembership[0].role, userId };
+    }
+  }
+  return { valid: false, role: null };
+}
+
+/**
+ * Resolve a bearer token as an OAuth access token issued by the better-auth
+ * MCP plugin. Returns the token's userId, or null when the token is unknown or
+ * expired. Lookup failures (e.g. OAuth tables not migrated yet) resolve to
+ * null so API-key and session auth are unaffected.
+ */
+async function getOAuthTokenUserId(bearerToken: string): Promise<string | null> {
+  try {
+    const token = await auth.api.getMcpSession({
+      headers: new Headers({ authorization: `Bearer ${bearerToken}` }),
+    });
+    if (!token?.userId) {
+      return null;
+    }
+    if (token.accessTokenExpiresAt && new Date(token.accessTokenExpiresAt).getTime() <= Date.now()) {
+      return null;
+    }
+    return token.userId;
+  } catch (error) {
+    logger.debug(error, "OAuth access token lookup failed");
+    return null;
+  }
+}
+
+/**
+ * Verify a bearer credential (API key, or an OAuth access token from the MCP
+ * plugin) from the request and check organization membership.
  * Returns rateLimited flag when the key is rejected due to rate limiting.
  */
 export async function checkApiKey(
@@ -271,40 +337,7 @@ export async function checkApiKey(
       });
 
       if (result.valid && result.key) {
-        // Get the userId from the API key
-        const apiKeyUserId = result.key.referenceId;
-
-        // Determine the organization ID - either directly provided or looked up from site
-        let organizationId = options.organizationId;
-
-        if (!organizationId && options.siteId) {
-          // Get the site's organization
-          const siteRecords = await db
-            .select({
-              organizationId: sites.organizationId,
-            })
-            .from(sites)
-            .where(eq(sites.siteId, Number(options.siteId)))
-            .limit(1);
-
-          if (siteRecords.length > 0 && siteRecords[0].organizationId) {
-            organizationId = siteRecords[0].organizationId;
-          }
-        }
-
-        if (organizationId) {
-          // Check if the API key's user is a member of the organization
-          const userMembership = await db
-            .select()
-            .from(member)
-            .where(and(eq(member.userId, apiKeyUserId), eq(member.organizationId, organizationId)))
-            .limit(1);
-
-          if (userMembership.length > 0) {
-            return { valid: true, role: userMembership[0].role, userId: apiKeyUserId };
-          }
-        }
-        return { valid: false, role: null };
+        return resolveBearerUserOrgRole(result.key.referenceId, options);
       }
 
       // Check if the key was rejected due to rate limiting
@@ -313,7 +346,14 @@ export async function checkApiKey(
       }
     } catch (error) {
       logger.error(error, "Error verifying API key");
-      // Continue to return false if API key verification fails
+      // Continue to the OAuth fallback if API key verification fails
+    }
+
+    // Not a valid API key — try it as an OAuth access token (MCP clients
+    // connected through the OAuth flow).
+    const oauthUserId = await getOAuthTokenUserId(apiKey);
+    if (oauthUserId) {
+      return resolveBearerUserOrgRole(oauthUserId, options);
     }
   }
   return { valid: false, role: null };
@@ -347,6 +387,13 @@ export async function getUserIdFromRequest(req: FastifyRequest): Promise<string 
       }
     } catch (error) {
       logger.error(error, "Error verifying API key");
+    }
+
+    // Not a valid API key — try it as an OAuth access token (MCP clients
+    // connected through the OAuth flow).
+    const oauthUserId = await getOAuthTokenUserId(apiKey);
+    if (oauthUserId) {
+      return oauthUserId;
     }
   }
 

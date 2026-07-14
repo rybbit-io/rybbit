@@ -13,12 +13,21 @@ function rpc(method: string, params?: unknown, id = 1) {
   return { jsonrpc: "2.0", id, method, ...(params !== undefined ? { params } : {}) };
 }
 
-// Exercises the real authenticator logic with a fake better-auth verifier.
+// Exercises the real authenticator logic with fake better-auth verifiers.
 const authenticate = createMcpAuthenticator({
   verifyApiKey: async apiKey => {
     if (apiKey === "rb_test_key") return { valid: true, key: { referenceId: "user_1" } };
     if (apiKey === "rb_limited_key") return { valid: false, error: { code: "RATE_LIMITED" } };
     return { valid: false, error: { code: "KEY_NOT_FOUND" } };
+  },
+  getOAuthSession: async bearerToken => {
+    if (bearerToken === "oauth_valid_token") {
+      return { userId: "user_2", accessTokenExpiresAt: new Date(Date.now() + 3600_000) };
+    }
+    if (bearerToken === "oauth_expired_token") {
+      return { userId: "user_2", accessTokenExpiresAt: new Date(Date.now() - 1000) };
+    }
+    return null;
   },
 });
 
@@ -175,6 +184,54 @@ describe("mcp endpoint", () => {
     expect(response.statusCode).toBe(401);
     expect(response.headers["www-authenticate"]).toContain("Bearer");
     expect(response.json().error.message).toContain("Invalid");
+  });
+
+  it("accepts OAuth access tokens as the bearer credential", async () => {
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/mcp",
+      headers: { ...MCP_HEADERS, authorization: "Bearer oauth_valid_token" },
+      payload: rpc("tools/list"),
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json().result.tools.length).toBeGreaterThan(0);
+  });
+
+  it("rejects expired OAuth access tokens", async () => {
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/mcp",
+      headers: { ...MCP_HEADERS, authorization: "Bearer oauth_expired_token" },
+      payload: rpc("tools/list"),
+    });
+
+    expect(response.statusCode).toBe(401);
+  });
+
+  it("advertises RFC 9728 resource metadata on 401 when BASE_URL is set", async () => {
+    const previousBaseUrl = process.env.BASE_URL;
+    process.env.BASE_URL = "https://rybbit.example.com";
+    try {
+      const response = await app.inject({
+        method: "POST",
+        url: "/api/mcp",
+        headers: { ...MCP_HEADERS, authorization: "Bearer rb_wrong_key" },
+        payload: rpc("tools/list"),
+      });
+
+      expect(response.statusCode).toBe(401);
+      expect(response.headers["www-authenticate"]).toContain(
+        'resource_metadata="https://rybbit.example.com/.well-known/oauth-protected-resource"'
+      );
+      expect(response.headers["access-control-expose-headers"]).toContain("WWW-Authenticate");
+    } finally {
+      if (previousBaseUrl === undefined) {
+        delete process.env.BASE_URL;
+      } else {
+        process.env.BASE_URL = previousBaseUrl;
+      }
+    }
   });
 
   it("maps rate-limited keys to 429 with Retry-After", async () => {

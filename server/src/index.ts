@@ -169,6 +169,7 @@ import {
 import { mapHeaders } from "./lib/auth-utils.js";
 import { auth } from "./lib/auth.js";
 import { mcpRoutes } from "./mcp/index.js";
+import { oauthWellKnownRoutes } from "./mcp/wellKnown.js";
 import { createCorsOptionsDelegate, createRejectUntrustedOriginHook } from "./lib/cors.js";
 import { IS_CLOUD } from "./lib/const.js";
 import { reengagementService } from "./services/reengagement/reengagementService.js";
@@ -274,6 +275,11 @@ server.register(
   },
   { auth: auth! }
 );
+
+// OAuth discovery documents for MCP clients (RFC 8414 + RFC 9728). Clients
+// look these up at the domain root; the underlying metadata comes from the
+// better-auth MCP plugin.
+server.register(oauthWellKnownRoutes);
 
 // Serve analytics scripts with generic names to avoid ad-blocker detection.
 // Cache them so browsers stop revalidating on every page load — without this they

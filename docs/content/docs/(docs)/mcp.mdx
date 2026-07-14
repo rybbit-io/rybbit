@@ -56,9 +56,13 @@ MCP clients use different configuration formats. A typical remote-server configu
 
 Use your client's secret or environment-variable support when available instead of saving the key in a file. Query-string API keys are not accepted by the MCP endpoint.
 
-<Callout type="warn">
-  This version uses API-key authentication, not interactive OAuth. It works with MCP clients that support custom HTTP
-  headers. A client that requires browser-based OAuth cannot connect yet.
+### Or connect with OAuth
+
+Clients that support the MCP authorization flow can skip API keys entirely: add the endpoint URL with no headers, and the client discovers Rybbit's authorization server through the standard well-known metadata (`/.well-known/oauth-protected-resource`), registers itself, and opens a browser window for you to log in and approve access. The resulting access token acts with your user's role, exactly like an API key would.
+
+<Callout type="info">
+  Self-hosted instances need the OAuth tables created once before OAuth clients can connect: run `npm run db:push` in
+  `server/` after upgrading. API-key authentication works regardless.
 </Callout>
 
 ### 3. Start with context
@@ -177,7 +181,8 @@ Only add origins you trust. This setting applies only to `/api/mcp`; it does not
 
 ## Troubleshooting
 
-- **401 Unauthorized:** The client did not send a Bearer key, the key is invalid, or it was revoked.
+- **401 Unauthorized:** The client did not send a Bearer credential, or the key/token is invalid, expired, or revoked. OAuth-capable clients re-authenticate automatically via the `WWW-Authenticate` challenge.
+- **OAuth login loop or "table does not exist" (self-hosted):** Run `npm run db:push` in `server/` to create the OAuth tables, then retry.
 - **403 in tool results:** The key's user lacks access to that site or organization — or the tool requires an org admin/owner role. Check the `role` field in `list_sites`.
 - **403 Origin not allowed:** Add the browser application's exact origin to `MCP_ALLOWED_ORIGINS`, then restart the backend.
 - **429 Too Many Requests:** The API key exceeded its plan's rate limit.

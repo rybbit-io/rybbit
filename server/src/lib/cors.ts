@@ -104,6 +104,9 @@ export function isPublicCorsPath(path: string): boolean {
     path === "/api/track" ||
     path === "/api/identify" ||
     path === "/api/version" ||
+    // OAuth discovery documents (RFC 8414/9728) are public metadata that
+    // browser-based MCP clients fetch cross-origin.
+    path.startsWith("/.well-known/oauth-") ||
     path.startsWith("/api/session-replay/record/") ||
     path.startsWith("/api/site/tracking-config/") ||
     /^\/api\/sites\/[^/]+\/sessions$/.test(path) ||
@@ -112,8 +115,10 @@ export function isPublicCorsPath(path: string): boolean {
   );
 }
 
+// The MCP endpoint plus the better-auth MCP plugin's OAuth endpoints
+// (authorize/token/register), which browser-based MCP clients call directly.
 function isMcpPath(path: string): boolean {
-  return path === "/api/mcp";
+  return path === "/api/mcp" || path.startsWith("/api/auth/mcp/");
 }
 
 export function getCorsOptionsForRequest(request: FastifyRequest, env: NodeJS.ProcessEnv = process.env): CorsOptions {

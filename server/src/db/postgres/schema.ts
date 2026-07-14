@@ -314,6 +314,53 @@ export const apiKey = pgTable("apikey", {
   metadata: jsonb(),
 });
 
+// OAuth provider tables for the MCP plugin (better-auth oidc-provider schema).
+// Field names and nullability mirror better-auth's model definitions; tokens
+// are validated by better-auth via auth.api.getMcpSession.
+export const oauthApplication = pgTable("oauthApplication", {
+  id: text().primaryKey().notNull(),
+  name: text().notNull(),
+  icon: text(),
+  metadata: text(),
+  clientId: text().notNull().unique(),
+  clientSecret: text(),
+  redirectUrls: text().notNull(),
+  type: text().notNull(),
+  disabled: boolean().default(false),
+  userId: text().references(() => user.id, { onDelete: "cascade" }),
+  createdAt: timestamp({ mode: "string" }).notNull(),
+  updatedAt: timestamp({ mode: "string" }).notNull(),
+});
+
+export const oauthAccessToken = pgTable("oauthAccessToken", {
+  id: text().primaryKey().notNull(),
+  accessToken: text().notNull().unique(),
+  refreshToken: text().unique(),
+  accessTokenExpiresAt: timestamp({ mode: "string" }).notNull(),
+  refreshTokenExpiresAt: timestamp({ mode: "string" }),
+  clientId: text()
+    .notNull()
+    .references(() => oauthApplication.clientId, { onDelete: "cascade" }),
+  userId: text().references(() => user.id, { onDelete: "cascade" }),
+  scopes: text().notNull(),
+  createdAt: timestamp({ mode: "string" }).notNull(),
+  updatedAt: timestamp({ mode: "string" }).notNull(),
+});
+
+export const oauthConsent = pgTable("oauthConsent", {
+  id: text().primaryKey().notNull(),
+  clientId: text()
+    .notNull()
+    .references(() => oauthApplication.clientId, { onDelete: "cascade" }),
+  userId: text()
+    .notNull()
+    .references(() => user.id, { onDelete: "cascade" }),
+  scopes: text().notNull(),
+  consentGiven: boolean().notNull(),
+  createdAt: timestamp({ mode: "string" }).notNull(),
+  updatedAt: timestamp({ mode: "string" }).notNull(),
+});
+
 // Goals table for tracking conversion goals
 export const goals = pgTable(
   "goals",

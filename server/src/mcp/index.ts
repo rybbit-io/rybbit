@@ -4,6 +4,7 @@ import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { RybbitApiClient } from "./apiClient.js";
 import { authenticateMcpRequest, McpAuthenticationError, type McpAuthenticator } from "./auth.js";
 import { registerTools, type ToolRegistrationConfig } from "./tools/index.js";
+import { getResourceMetadataUrl } from "./wellKnown.js";
 
 const INSTRUCTIONS = `Rybbit web analytics: read tools for traffic and behavior data, plus write tools to manage sites, goals, funnels, organization members, teams, and user profiles.
 Start with list_sites to resolve the numeric site_id and organization_id used by other tools; its role field shows the API key's role per organization.
@@ -47,7 +48,16 @@ export async function mcpRoutes(fastify: FastifyInstance, options: McpRouteOptio
     } catch (error) {
       if (error instanceof McpAuthenticationError) {
         if (error.statusCode === 401) {
-          reply.header("WWW-Authenticate", 'Bearer realm="rybbit-mcp"');
+          // RFC 9728: point OAuth-capable clients at the protected-resource
+          // metadata so they can discover the authorization server.
+          const resourceMetadataUrl = getResourceMetadataUrl();
+          reply.header(
+            "WWW-Authenticate",
+            resourceMetadataUrl
+              ? `Bearer realm="rybbit-mcp", resource_metadata="${resourceMetadataUrl}"`
+              : 'Bearer realm="rybbit-mcp"'
+          );
+          reply.header("Access-Control-Expose-Headers", "WWW-Authenticate");
         } else {
           reply.header("Retry-After", error.statusCode === 429 ? "60" : "30");
         }

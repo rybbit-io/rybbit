@@ -1,6 +1,6 @@
 import { betterAuth } from "better-auth";
 import { APIError, createAuthMiddleware } from "better-auth/api";
-import { admin, captcha, emailOTP, organization } from "better-auth/plugins";
+import { admin, captcha, emailOTP, mcp, organization } from "better-auth/plugins";
 import dotenv from "dotenv";
 import { and, asc, eq, inArray } from "drizzle-orm";
 import pg from "pg";
@@ -30,6 +30,13 @@ const authLogger = createServiceLogger("better-auth");
 
 const pluginList = [
   admin(),
+  // OAuth provider for MCP clients (RFC 8414/9728 discovery, dynamic client
+  // registration, authorization-code + PKCE). The root /.well-known routes are
+  // registered in index.ts; token validation happens via auth.api.getMcpSession.
+  mcp({
+    loginPage: "/login",
+    ...(process.env.BASE_URL ? { resource: `${process.env.BASE_URL.replace(/\/$/, "")}/api/mcp` } : {}),
+  }),
   apiKey({
     ...(IS_CLOUD
       ? {
