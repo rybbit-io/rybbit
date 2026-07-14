@@ -110,20 +110,47 @@ perform_backup() {
     fi
 }
 
-# Rotate old backups (keep last N days)
+# Rotate old backups (delete backups older than RETENTION_DAYS days)
+# The storage box's restricted shell has no pipes/sort/while, so list via sftp,
+# pick old files locally by the date in the filename, and delete via sftp batch.
 rotate_backups() {
-    log "Rotating old backups (keeping last $RETENTION_DAYS backups)..."
+    log "Rotating old backups (deleting backups older than $RETENTION_DAYS days)..."
 
-    # List all backup files, sort, and delete old ones
-    ssh "$STORAGE_BOX_HOST" "
-        cd $BACKUP_BASE_DIR 2>/dev/null || exit 0
-        ls -1 clickhouse-backup-*.tar 2>/dev/null | sort -r | tail -n +$((RETENTION_DAYS + 1)) | while read file; do
-            echo \"Removing old backup: \$file\"
-            rm -f \"\$file\"
-        done
-    " || log "Warning: Failed to rotate some backups"
+    local cutoff_date
+    cutoff_date=$(date -d "$RETENTION_DAYS days ago" '+%Y-%m-%d')
+    log "Cutoff date: $cutoff_date (backups dated before this will be deleted)"
 
-    log "Backup rotation completed"
+    local backups
+    backups=$(echo "ls ${BACKUP_BASE_DIR}/clickhouse-backup-*.tar" | sftp -b - "$STORAGE_BOX_HOST" 2>/dev/null \
+        | grep -o 'clickhouse-backup-[0-9]\{4\}-[0-9]\{2\}-[0-9]\{2\}\.tar' | sort -u) || true
+
+    if [ -z "$backups" ]; then
+        log "No backups found on storage box, nothing to rotate"
+        return 0
+    fi
+
+    # ISO dates compare correctly as strings; "-rm" keeps the batch going on failure
+    local delete_batch=""
+    local file file_date
+    while read -r file; do
+        file_date="${file#clickhouse-backup-}"
+        file_date="${file_date%.tar}"
+        if [[ "$file_date" < "$cutoff_date" ]]; then
+            log "Deleting old backup: $file"
+            delete_batch+="-rm ${BACKUP_BASE_DIR}/${file}"$'\n'
+        fi
+    done <<< "$backups"
+
+    if [ -z "$delete_batch" ]; then
+        log "No backups older than $RETENTION_DAYS days"
+        return 0
+    fi
+
+    if echo "$delete_batch" | sftp -b - "$STORAGE_BOX_HOST" 2>&1 | tee -a "$LOG_FILE"; then
+        log "Backup rotation completed"
+    else
+        log "Warning: Failed to delete some old backups"
+    fi
 }
 
 # Main execution

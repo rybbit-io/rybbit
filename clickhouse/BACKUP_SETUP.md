@@ -6,7 +6,7 @@ This guide walks you through setting up automated daily backups of your ClickHou
 
 - **Backup Method**: Compressed tar archives transferred via SCP
 - **Schedule**: Daily at midnight
-- **Retention**: Last 14 backups
+- **Retention**: Backups older than 14 days are deleted automatically after each backup
 - **Destination**: Hetzner Storage Box (`u506048.your-storagebox.de`)
 
 ## Prerequisites
@@ -305,7 +305,7 @@ nano /home/rybbit/clickhouse/backup-clickhouse.sh
 
 1. **Change retention period** (default: 14 days):
    ```bash
-   RETENTION_DAYS=30  # Keep 30 backups instead
+   RETENTION_DAYS=30  # Keep 30 days of backups instead
    ```
 
 2. **Change backup directory** on storage box:
