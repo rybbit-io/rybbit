@@ -4,7 +4,6 @@ import { describe, expect, it } from "vitest";
 import {
   createCorsOptionsDelegate,
   createRejectUntrustedOriginHook,
-  getAllowedMcpOrigins,
   getTrustedCorsOrigins,
   normalizeCorsOrigin,
 } from "./cors.js";
@@ -146,11 +145,10 @@ describe("CORS policy", () => {
     }
   });
 
-  it("allows only explicitly configured browser origins for MCP", async () => {
+  it("treats /api/mcp like other authenticated routes: trusted origins or no Origin at all", async () => {
     const app = await buildCorsTestApp({
       NODE_ENV: "production",
       BASE_URL: "https://rybbit.example.com",
-      MCP_ALLOWED_ORIGINS: "https://inspector.example, https://agent.example/path",
     });
 
     try {
@@ -158,29 +156,21 @@ describe("CORS policy", () => {
         method: "OPTIONS",
         url: "/api/mcp",
         headers: {
-          origin: "https://inspector.example",
+          origin: "https://rybbit.example.com",
           "access-control-request-method": "POST",
           "access-control-request-headers": "Authorization,MCP-Protocol-Version",
         },
       });
       expect(preflight.statusCode).toBe(204);
-      expect(preflight.headers["access-control-allow-origin"]).toBe("https://inspector.example");
-      expect(preflight.headers["access-control-allow-credentials"]).toBeUndefined();
+      expect(preflight.headers["access-control-allow-origin"]).toBe("https://rybbit.example.com");
       expect(preflight.headers["access-control-allow-headers"]).toContain("MCP-Protocol-Version");
 
-      const allowed = await app.inject({
-        method: "POST",
-        url: "/api/mcp",
-        headers: { origin: "https://agent.example" },
-      });
-      expect(allowed.statusCode).toBe(200);
-
-      const blocked = await app.inject({
+      const untrusted = await app.inject({
         method: "POST",
         url: "/api/mcp",
         headers: { origin: "https://attacker.example" },
       });
-      expect(blocked.statusCode).toBe(403);
+      expect(untrusted.statusCode).toBe(403);
 
       const opaqueOrigin = await app.inject({
         method: "POST",
@@ -189,6 +179,7 @@ describe("CORS policy", () => {
       });
       expect(opaqueOrigin.statusCode).toBe(403);
 
+      // Server-side MCP clients send no Origin header and pass through.
       const serverSideClient = await app.inject({ method: "POST", url: "/api/mcp" });
       expect(serverSideClient.statusCode).toBe(200);
     } finally {
@@ -265,14 +256,4 @@ describe("trusted CORS origins", () => {
     ).toEqual(["https://rybbit.example.com", "http://localhost:3002", "http://127.0.0.1:3002"]);
   });
 
-  it("adds MCP_ALLOWED_ORIGINS without granting them to other management routes", () => {
-    const env = {
-      NODE_ENV: "production",
-      BASE_URL: "https://rybbit.example.com",
-      MCP_ALLOWED_ORIGINS: "https://inspector.example,not-a-url",
-    };
-
-    expect(getAllowedMcpOrigins(env)).toEqual(["https://rybbit.example.com", "https://inspector.example"]);
-    expect(getTrustedCorsOrigins(env)).toEqual(["https://rybbit.example.com"]);
-  });
 });

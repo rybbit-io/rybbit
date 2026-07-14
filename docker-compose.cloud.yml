@@ -115,7 +115,6 @@ services:
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-frog}
       - BETTER_AUTH_SECRET=${BETTER_AUTH_SECRET}
       - BASE_URL=${BASE_URL}
-      - MCP_ALLOWED_ORIGINS=${MCP_ALLOWED_ORIGINS:-}
       - DISABLE_SIGNUP=${DISABLE_SIGNUP}
       # below is only for rybbit cloud
       - CLOUD=${CLOUD}

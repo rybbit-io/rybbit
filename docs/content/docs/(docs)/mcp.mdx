@@ -169,22 +169,11 @@ To give an assistant a read-mostly view, connect it with an API key from a membe
 - The server does not contain an AI model or send analytics to an AI provider. Data only leaves Rybbit in response to the MCP client you configure.
 - The endpoint is stateless. Each HTTP request is independently authenticated.
 
-## Browser-based clients
-
-Normal desktop and server-side MCP clients do not send an HTTP `Origin` header and need no extra server configuration. If a browser application calls the MCP endpoint directly, self-hosters must explicitly allow its origin:
-
-```dotenv
-MCP_ALLOWED_ORIGINS=https://assistant.example.com,https://inspector.example.com
-```
-
-Only add origins you trust. This setting applies only to `/api/mcp`; it does not grant those origins access to other authenticated Rybbit routes. Browser MCP responses never use cookie credentials.
-
 ## Troubleshooting
 
 - **401 Unauthorized:** The client did not send a Bearer credential, or the key/token is invalid, expired, or revoked. OAuth-capable clients re-authenticate automatically via the `WWW-Authenticate` challenge.
 - **OAuth login loop or "table does not exist" (self-hosted):** Run `npm run db:push` in `server/` to create the OAuth tables, then retry.
 - **403 in tool results:** The key's user lacks access to that site or organization — or the tool requires an org admin/owner role. Check the `role` field in `list_sites`.
-- **403 Origin not allowed:** Add the browser application's exact origin to `MCP_ALLOWED_ORIGINS`, then restart the backend.
 - **429 Too Many Requests:** The API key exceeded its plan's rate limit.
 - **503 Service Unavailable:** Rybbit could not verify the key. Retry the request; do not replace a known-valid key based on this response.
 - **405 Method Not Allowed on GET:** This is expected. The stateless endpoint accepts MCP messages over `POST`.
