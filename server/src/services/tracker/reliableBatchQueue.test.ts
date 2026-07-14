@@ -35,7 +35,7 @@ describe("ReliableBatchQueue", () => {
     await queue.close();
 
     await expect(delivery).resolves.toBeUndefined();
-    expect(processBatch).toHaveBeenCalledWith([1]);
+    expect(processBatch).toHaveBeenCalledWith([1], { batchId: expect.any(String) });
   });
 
   it("applies bounded backpressure", async () => {
@@ -46,5 +46,33 @@ describe("ReliableBatchQueue", () => {
     await expect(queue.add(2)).rejects.toBeInstanceOf(QueueFullError);
     await queue.close();
     await expect(firstDelivery).resolves.toBeUndefined();
+  });
+
+  it("retries the exact same batch with a stable insertion id", async () => {
+    const calls: Array<{ batch: number[]; batchId: string | undefined }> = [];
+    const processBatch = vi
+      .fn()
+      .mockImplementationOnce(async (batch: number[], context?: { batchId: string }) => {
+        calls.push({ batch, batchId: context?.batchId });
+        throw new Error("ambiguous insert result");
+      })
+      .mockImplementation(async (batch: number[], context?: { batchId: string }) => {
+        calls.push({ batch, batchId: context?.batchId });
+      });
+    const queue = createQueue(processBatch);
+    const firstDelivery = queue.add(1);
+
+    await queue.processQueue({ ignoreBackoff: true });
+    const secondDelivery = queue.add(2);
+    await queue.processQueue({ ignoreBackoff: true });
+
+    await expect(firstDelivery).resolves.toBeUndefined();
+    expect(calls.slice(0, 2).map(call => call.batch)).toEqual([[1], [1]]);
+    expect(calls[0].batchId).toBeTruthy();
+    expect(calls[1].batchId).toBe(calls[0].batchId);
+
+    await queue.processQueue({ ignoreBackoff: true });
+    await expect(secondDelivery).resolves.toBeUndefined();
+    await queue.close();
   });
 });

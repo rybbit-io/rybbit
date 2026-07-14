@@ -2,7 +2,7 @@ import { DateTime } from "luxon";
 import { clickhouse } from "../../../db/clickhouse/clickhouse.js";
 import { getLocation } from "../../../db/geolocation/geolocation.js";
 import { getDeviceType } from "../../../utils.js";
-import { ReliableBatchQueue } from "../reliableBatchQueue.js";
+import { ReliableBatchContext, ReliableBatchQueue } from "../reliableBatchQueue.js";
 import { clearSelfReferrer, type TotalTrackingPayload } from "../utils.js";
 import type { BotEventProperties } from "./index.js";
 
@@ -14,7 +14,7 @@ type BotEventPayload = TotalTrackingPayload &
 const BOT_EVENT_BATCH_SIZE = 5000;
 const BOT_EVENT_FLUSH_INTERVAL_MS = 250;
 
-async function processBotEventBatch(batch: BotEventPayload[]): Promise<void> {
+async function processBotEventBatch(batch: BotEventPayload[], context: ReliableBatchContext): Promise<void> {
   const ips = [...new Set(batch.map(event => event.ipAddress))];
   const geoData = await getLocation(ips);
 
@@ -63,6 +63,9 @@ async function processBotEventBatch(batch: BotEventPayload[]): Promise<void> {
     table: "bot_events",
     values: processedBotEvents,
     format: "JSONEachRow",
+    clickhouse_settings: {
+      insert_deduplication_token: context.batchId,
+    },
   });
 }
 

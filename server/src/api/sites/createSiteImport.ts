@@ -66,7 +66,9 @@ export async function createSiteImport(request: FastifyRequest<CreateSiteImportR
     }
 
     try {
-      const quotaTracker = await ImportQuotaTracker.create(organizationId);
+      // This endpoint only needs the allowed date range; avoid loading historical
+      // monthly usage until an actual event batch arrives.
+      const quotaTracker = await ImportQuotaTracker.create(organizationId, { timestamps: [] });
       const oldestAllowedMonth = quotaTracker.getOldestAllowedMonth();
 
       const earliestAllowedDate = DateTime.fromFormat(oldestAllowedMonth + "01", "yyyyMMdd", {

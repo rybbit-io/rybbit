@@ -3,6 +3,7 @@ import { IS_CLOUD, LITE_DASHBOARD } from "../../lib/const.js";
 import { createServiceLogger } from "../../lib/logger/logger.js";
 
 const CLICKHOUSE_REQUEST_TIMEOUT_MS = 300_000;
+const INSERT_DEDUPLICATION_WINDOW = 10_000;
 
 export const clickhouse = createClient({
   url: process.env.CLICKHOUSE_HOST,
@@ -92,6 +93,17 @@ async function ensureEventsColumns() {
   );
 }
 
+async function ensureInsertDeduplication(table: string) {
+  await execClickhouseInitStep(
+    `enable insert deduplication for ${table}`,
+    `
+      ALTER TABLE ${table}
+        MODIFY SETTING non_replicated_deduplication_window = ${INSERT_DEDUPLICATION_WINDOW}
+    `,
+    { lockAcquireTimeoutSeconds: 15 }
+  );
+}
+
 export const initializeClickhouse = async () => {
   // Create events table
   await execClickhouseInitStep(
@@ -140,6 +152,7 @@ export const initializeClickhouse = async () => {
       ENGINE = MergeTree()
       PARTITION BY toYYYYMM(timestamp)
       ORDER BY (site_id, timestamp)
+      SETTINGS non_replicated_deduplication_window = ${INSERT_DEDUPLICATION_WINDOW}
       `
   );
 
@@ -187,6 +200,7 @@ export const initializeClickhouse = async () => {
       PARTITION BY toYYYYMM(timestamp)
       ORDER BY (site_id, timestamp)
       TTL timestamp + INTERVAL 3 MONTH
+      SETTINGS non_replicated_deduplication_window = ${INSERT_DEDUPLICATION_WINDOW}
       `
   );
 
@@ -213,6 +227,7 @@ export const initializeClickhouse = async () => {
       PARTITION BY toYYYYMM(timestamp)
       ORDER BY (site_id, session_id, sequence_number)
       TTL toDateTime(timestamp) + INTERVAL 30 DAY
+      SETTINGS non_replicated_deduplication_window = ${INSERT_DEDUPLICATION_WINDOW}
       `,
   });
 
@@ -225,6 +240,14 @@ export const initializeClickhouse = async () => {
         ADD COLUMN IF NOT EXISTS identified_user_id String DEFAULT ''
       `,
   });
+
+  // Retried inserts use stable tokens. Heal existing installations where these
+  // tables predate the deduplication settings in their CREATE statements.
+  await Promise.all([
+    ensureInsertDeduplication("events"),
+    ensureInsertDeduplication("bot_events"),
+    ensureInsertDeduplication("session_replay_events"),
+  ]);
 
   await clickhouse.exec({
     query: `

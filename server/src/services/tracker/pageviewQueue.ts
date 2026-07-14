@@ -4,7 +4,7 @@ import { getLocation } from "../../db/geolocation/geolocation.js";
 import { getDeviceType } from "../../utils.js";
 import { getChannel } from "./getChannel.js";
 import { clearSelfReferrer, getAllUrlParams, TotalTrackingPayload } from "./utils.js";
-import { ReliableBatchQueue } from "./reliableBatchQueue.js";
+import { ReliableBatchContext, ReliableBatchQueue } from "./reliableBatchQueue.js";
 
 type TotalPayload = TotalTrackingPayload & {
   sessionId: string;
@@ -21,7 +21,7 @@ const getParsedProperties = (properties: string | undefined) => {
   }
 };
 
-async function processPageviewBatch(batch: TotalPayload[]): Promise<void> {
+async function processPageviewBatch(batch: TotalPayload[], context: ReliableBatchContext): Promise<void> {
   const ips = [...new Set(batch.map(pv => pv.ipAddress))];
 
   const geoData = await getLocation(ips);
@@ -99,6 +99,9 @@ async function processPageviewBatch(batch: TotalPayload[]): Promise<void> {
     table: "events",
     values: processedPageviews,
     format: "JSONEachRow",
+    clickhouse_settings: {
+      insert_deduplication_token: context.batchId,
+    },
   });
 }
 

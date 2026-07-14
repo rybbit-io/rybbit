@@ -40,7 +40,7 @@ export class ImportQuotaTracker {
     this.oldestAllowedMonth = oldestAllowedMonth;
   }
 
-  static async create(organizationId: string): Promise<ImportQuotaTracker> {
+  static async create(organizationId: string, options: { timestamps?: string[] } = {}): Promise<ImportQuotaTracker> {
     if (!IS_CLOUD) {
       return new ImportQuotaTracker(new Map(), Infinity, "190001");
     }
@@ -57,32 +57,68 @@ export class ImportQuotaTracker {
 
     const subscription = await getBestSubscription(organizationId, org.stripeCustomerId);
 
-    const monthlyLimit = subscription.eventLimit;
-    const historicalWindowMonths = getHistoricalWindowMonths(subscription);
-
-    const oldestAllowedDate = DateTime.utc().minus({ months: historicalWindowMonths }).startOf("month");
-    const oldestAllowedMonth = oldestAllowedDate.toFormat("yyyyMM");
-
     const siteRecords = await db
       .select({ siteId: sites.siteId })
       .from(sites)
       .where(eq(sites.organizationId, organizationId));
 
-    const siteIds = siteRecords.map(s => s.siteId);
+    return ImportQuotaTracker.createFromSnapshot({
+      siteIds: siteRecords.map(site => site.siteId),
+      subscription,
+      timestamps: options.timestamps,
+    });
+  }
 
-    if (siteIds.length === 0) {
-      return new ImportQuotaTracker(new Map(), monthlyLimit, oldestAllowedMonth);
+  static async createFromSnapshot({
+    siteIds,
+    subscription,
+    timestamps,
+  }: {
+    siteIds: number[];
+    subscription: SubscriptionInfo;
+    timestamps?: string[];
+  }): Promise<ImportQuotaTracker> {
+    if (!IS_CLOUD) {
+      return new ImportQuotaTracker(new Map(), Infinity, "190001");
     }
 
-    const monthlyUsage = await ImportQuotaTracker.queryMonthlyUsage(siteIds, oldestAllowedDate.toFormat("yyyy-MM-dd"));
+    const monthlyLimit = subscription.eventLimit;
+    const historicalWindowMonths = getHistoricalWindowMonths(subscription);
+    const oldestAllowedDate = DateTime.utc().minus({ months: historicalWindowMonths }).startOf("month");
+    const oldestAllowedMonth = oldestAllowedDate.toFormat("yyyyMM");
+    const now = DateTime.utc();
+
+    const relevantMonths =
+      timestamps === undefined
+        ? undefined
+        : [
+            ...new Set(
+              timestamps.flatMap(timestamp => {
+                const date = DateTime.fromFormat(timestamp, "yyyy-MM-dd HH:mm:ss", { zone: "utc" });
+                if (!date.isValid || date > now) return [];
+                const month = date.toFormat("yyyyMM");
+                return month >= oldestAllowedMonth ? [Number(month)] : [];
+              })
+            ),
+          ].sort((left, right) => left - right);
+
+    const monthlyUsage = await ImportQuotaTracker.queryMonthlyUsage(
+      siteIds,
+      oldestAllowedDate.toFormat("yyyy-MM-dd"),
+      relevantMonths
+    );
 
     return new ImportQuotaTracker(monthlyUsage, monthlyLimit, oldestAllowedMonth);
   }
 
-  private static async queryMonthlyUsage(siteIds: number[], startDate: string): Promise<Map<string, number>> {
+  private static async queryMonthlyUsage(
+    siteIds: number[],
+    startDate: string,
+    months?: number[]
+  ): Promise<Map<string, number>> {
     const monthlyUsage = new Map<string, number>();
 
-    if (siteIds.length === 0) {
+    if (siteIds.length === 0 || (months !== undefined && months.length === 0)) {
       return monthlyUsage;
     }
 
@@ -109,6 +145,7 @@ export class ImportQuotaTracker {
               WHERE site_id IN {grandfatheredSites:Array(Int32)}
                 AND type = 'pageview'
                 AND timestamp >= toDate({startDate:String})
+                ${months !== undefined ? "AND toYYYYMM(timestamp) IN {months:Array(UInt32)}" : ""}
             `
                 : ""
             }
@@ -123,6 +160,7 @@ export class ImportQuotaTracker {
               WHERE site_id IN {newSites:Array(Int32)}
                 AND type IN ('pageview', 'custom_event', 'performance')
                 AND timestamp >= toDate({startDate:String})
+                ${months !== undefined ? "AND toYYYYMM(timestamp) IN {months:Array(UInt32)}" : ""}
             `
                 : ""
             }
@@ -134,13 +172,14 @@ export class ImportQuotaTracker {
           ...(grandfatheredSites.length > 0 && { grandfatheredSites }),
           ...(newSites.length > 0 && { newSites }),
           startDate: startDate,
+          ...(months !== undefined && { months }),
         },
         format: "JSONEachRow",
       });
 
-      const rows = await processResults<{ month: string; count: number }>(result);
+      const rows = await processResults<{ month: number; count: number }>(result);
       for (const row of rows) {
-        monthlyUsage.set(row.month, row.count);
+        monthlyUsage.set(String(row.month), row.count);
       }
 
       return monthlyUsage;

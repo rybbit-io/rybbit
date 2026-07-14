@@ -722,7 +722,7 @@
     }
     async sendSessionReplayBatch(batch) {
       try {
-        await fetch(`${this.config.analyticsHost}/session-replay/record/${this.config.siteId}`, {
+        const response = await fetch(`${this.config.analyticsHost}/session-replay/record/${this.config.siteId}`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json"
@@ -732,6 +732,9 @@
           keepalive: false
           // Disable keepalive for large session replay requests
         });
+        if (!response.ok) {
+          throw new Error(`Session replay delivery failed: ${response.status} ${response.statusText}`.trim());
+        }
       } catch (error) {
         console.error("Failed to send session replay batch:", error);
         throw error;

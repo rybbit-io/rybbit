@@ -14,7 +14,7 @@ import { ImportQuotaTracker } from "../../services/import/importQuotaTracker.js"
 import { db } from "../../db/postgres/postgres.js";
 import { organization, sites } from "../../db/postgres/schema.js";
 import { eq } from "drizzle-orm";
-import { getBestSubscription } from "../../lib/subscriptionUtils.js";
+import { getBestSubscription, type SubscriptionInfo } from "../../lib/subscriptionUtils.js";
 import { IS_CLOUD } from "../../lib/const.js";
 
 const batchImportRequestSchema = z
@@ -77,8 +77,9 @@ export async function batchImportEvents(request: FastifyRequest<BatchImportReque
     }
     const organizationId = siteRecord.organizationId;
 
+    let subscription: SubscriptionInfo | null = null;
     if (IS_CLOUD) {
-      const subscription = await getBestSubscription(organizationId, siteRecord.stripeCustomerId);
+      subscription = await getBestSubscription(organizationId, siteRecord.stripeCustomerId);
 
       if (subscription.source === "free") {
         return reply.status(403).send({
@@ -100,16 +101,30 @@ export async function batchImportEvents(request: FastifyRequest<BatchImportReque
     const invalidEventCount = events.length - transformedEvents.length;
 
     try {
-      await withOrganizationImportLock(organizationId, async () => {
-        const currentImport = await getImportById(importId);
+      await withOrganizationImportLock(organizationId, async tx => {
+        const currentImport = await getImportById(importId, tx);
         if (!currentImport || currentImport.completedAt !== null) {
           throw new Error("IMPORT_ALREADY_COMPLETED");
         }
 
-        // Recompute from ClickHouse while holding the cross-worker lock. The
-        // tracker is discarded on failure, so reservations cannot leak.
-        const quotaTracker = await ImportQuotaTracker.create(organizationId);
         const timestamps = transformedEvents.map(event => event.timestamp);
+        let quotaTracker: ImportQuotaTracker;
+
+        if (IS_CLOUD) {
+          if (!subscription) throw new Error("Subscription could not be resolved");
+          const organizationSites = await tx
+            .select({ siteId: sites.siteId })
+            .from(sites)
+            .where(eq(sites.organizationId, organizationId));
+          quotaTracker = await ImportQuotaTracker.createFromSnapshot({
+            siteIds: organizationSites.map(site => site.siteId),
+            subscription,
+            timestamps,
+          });
+        } else {
+          quotaTracker = await ImportQuotaTracker.create(organizationId, { timestamps });
+        }
+
         const allowedIndices = quotaTracker.canImportBatch(timestamps);
         const eventsWithinQuota = allowedIndices.map(index => transformedEvents[index]);
         const skippedDueToQuota = transformedEvents.length - eventsWithinQuota.length;
@@ -122,10 +137,10 @@ export async function batchImportEvents(request: FastifyRequest<BatchImportReque
           });
         }
 
-        await updateImportProgress(importId, eventsWithinQuota.length, skippedDueToQuota, invalidEventCount);
+        await updateImportProgress(importId, eventsWithinQuota.length, skippedDueToQuota, invalidEventCount, tx);
 
         if (isLastBatch) {
-          await completeImport(importId);
+          await completeImport(importId, tx);
         }
       });
 

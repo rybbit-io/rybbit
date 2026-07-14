@@ -50,25 +50,36 @@ export class SessionReplayIngestService {
     // scopes session assignment so stored user identity semantics stay unchanged.
     const userId = deviceFingerprint;
 
-    // Get or create a session ID from the sessions service
-    const { sessionId } = await sessionsService.updateSession({
-      userId,
-      identifiedUserId,
-      siteId,
-    });
+    type ExistingBatchRow = {
+      session_id: string;
+      batch_index: number | null;
+    };
+    const findExistingBatch = async () => {
+      const result = await clickhouse.query({
+        query: `
+          SELECT session_id, batch_index
+          FROM session_replay_events
+          WHERE site_id = {siteId:UInt16}
+            AND batch_id = {batchId:String}
+        `,
+        query_params: { siteId, batchId },
+        format: "JSONEachRow",
+      });
+      return processResults<ExistingBatchRow>(result);
+    };
 
-    const existingBatchResult = await clickhouse.query({
-      query: `
-        SELECT batch_index
-        FROM session_replay_events
-        WHERE site_id = {siteId:UInt16}
-          AND session_id = {sessionId:String}
-          AND batch_id = {batchId:String}
-      `,
-      query_params: { siteId, sessionId, batchId },
-      format: "JSONEachRow",
-    });
-    const existingBatchRows = await processResults<{ batch_index: number | null }>(existingBatchResult);
+    let existingBatchRows = await findExistingBatch();
+    let sessionId = existingBatchRows[0]?.session_id;
+
+    if (!sessionId) {
+      const session = await sessionsService.updateSession({
+        userId,
+        identifiedUserId,
+        siteId,
+      });
+      sessionId = session.sessionId;
+    }
+
     const storedBatchIndices = new Set(
       existingBatchRows.flatMap(row => (row.batch_index === null ? [] : [row.batch_index]))
     );
@@ -140,11 +151,24 @@ export class SessionReplayIngestService {
 
     // Batch insert events
     if (eventsToInsert.length > 0) {
+      const insertDeduplicationToken = crypto
+        .createHash("sha256")
+        .update(JSON.stringify([siteId, batchId, missingEvents.map(({ index }) => index)]))
+        .digest("hex");
+
       await clickhouse.insert({
         table: "session_replay_events",
         values: eventsToInsert,
         format: "JSONEachRow",
+        clickhouse_settings: {
+          insert_deduplication_token: insertDeduplicationToken,
+        },
       });
+
+      // A concurrent retry may have won the deduplicated insert with a different
+      // newly-resolved session. Always use the session that actually owns the rows.
+      existingBatchRows = await findExistingBatch();
+      sessionId = existingBatchRows[0]?.session_id ?? sessionId;
     }
 
     // Update or insert metadata

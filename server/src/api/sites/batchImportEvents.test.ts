@@ -1,13 +1,19 @@
 import type { FastifyReply, FastifyRequest } from "fastify";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const mocks = vi.hoisted(() => ({
-  completeImport: vi.fn(),
-  getImportById: vi.fn(),
-  insert: vi.fn(),
-  updateImportProgress: vi.fn(),
-  withOrganizationImportLock: vi.fn(async (_organizationId: string, work: () => Promise<unknown>) => work()),
-}));
+const mocks = vi.hoisted(() => {
+  const transactionExecutor = {};
+  return {
+    completeImport: vi.fn(),
+    getImportById: vi.fn(),
+    insert: vi.fn(),
+    transactionExecutor,
+    updateImportProgress: vi.fn(),
+    withOrganizationImportLock: vi.fn(async (_organizationId: string, work: (tx: unknown) => Promise<unknown>) =>
+      work(transactionExecutor)
+    ),
+  };
+});
 
 const dbChain = {
   from: vi.fn(),
@@ -100,5 +106,28 @@ describe("batchImportEvents failure semantics", () => {
 
     expect(reply.status).toHaveBeenCalledWith(500);
     expect(mocks.completeImport).not.toHaveBeenCalled();
+  });
+
+  it("keeps import state writes on the transaction holding the organization lock", async () => {
+    const request = {
+      params: { siteId: 42, importId: "76c8fb17-e7b5-41f7-b4f9-a21a4efca1d4" },
+      body: { events: [event], isLastBatch: true },
+    } as unknown as FastifyRequest;
+    const reply = replyStub();
+
+    await batchImportEvents(request as any, reply);
+
+    expect(mocks.getImportById).toHaveBeenCalledWith("76c8fb17-e7b5-41f7-b4f9-a21a4efca1d4", mocks.transactionExecutor);
+    expect(mocks.updateImportProgress).toHaveBeenCalledWith(
+      "76c8fb17-e7b5-41f7-b4f9-a21a4efca1d4",
+      1,
+      0,
+      0,
+      mocks.transactionExecutor
+    );
+    expect(mocks.completeImport).toHaveBeenCalledWith(
+      "76c8fb17-e7b5-41f7-b4f9-a21a4efca1d4",
+      mocks.transactionExecutor
+    );
   });
 });

@@ -324,6 +324,35 @@ describe("Tracker", () => {
       consoleSpy.mockRestore();
     });
 
+    it("rejects replay delivery when the server returns an HTTP error", async () => {
+      const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+      vi.mocked(global.fetch).mockResolvedValue({
+        ok: false,
+        status: 503,
+        statusText: "Service Unavailable",
+      } as Response);
+
+      const sendSessionReplayBatch = (
+        tracker as unknown as {
+          sendSessionReplayBatch: (batch: {
+            batchId: string;
+            userId: string;
+            events: Array<{ type: number; data: object; timestamp: number }>;
+          }) => Promise<void>;
+        }
+      ).sendSessionReplayBatch.bind(tracker);
+
+      await expect(
+        sendSessionReplayBatch({
+          batchId: "76c8fb17-e7b5-41f7-b4f9-a21a4efca1d4",
+          userId: "employee-alice",
+          events: [{ type: 2, data: {}, timestamp: 1_700_000_000_000 }],
+        })
+      ).rejects.toThrow("503 Service Unavailable");
+
+      consoleSpy.mockRestore();
+    });
+
     describe("error tracking", () => {
       it("should track first-party errors", () => {
         // Enable error tracking for this test

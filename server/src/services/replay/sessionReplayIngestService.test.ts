@@ -123,6 +123,9 @@ describe("SessionReplayIngestService identity", () => {
 
     expect(mocks.insert).toHaveBeenCalledWith(
       expect.objectContaining({
+        clickhouse_settings: {
+          insert_deduplication_token: expect.stringMatching(/^[a-f0-9]{64}$/),
+        },
         values: [
           expect.objectContaining({
             batch_id: "76c8fb17-e7b5-41f7-b4f9-a21a4efca1d4",
@@ -135,7 +138,28 @@ describe("SessionReplayIngestService identity", () => {
   });
 
   it("does not insert a replay batch whose indices are already stored", async () => {
-    mocks.query.mockResolvedValue({ json: async () => [{ batch_index: 0 }] });
+    mocks.query.mockResolvedValue({ json: async () => [{ session_id: "original-session", batch_index: 0 }] });
+    const service = new SessionReplayIngestService();
+
+    await service.recordEvents(
+      42,
+      {
+        batchId: "76c8fb17-e7b5-41f7-b4f9-a21a4efca1d4",
+        userId: "employee-alice",
+        events: [{ type: 3, data: { ordered: true }, timestamp: 1_700_000_000_000, sequence: 73 }],
+      },
+      requestMeta
+    );
+
+    expect(mocks.insert).not.toHaveBeenCalled();
+  });
+
+  it("deduplicates a retry even when session resolution would return a different session", async () => {
+    mocks.updateSession.mockResolvedValue({ sessionId: "new-session" });
+    mocks.query.mockImplementation(async options => ({
+      json: async () =>
+        "sessionId" in options.query_params ? [] : [{ session_id: "original-session", batch_index: 0 }],
+    }));
     const service = new SessionReplayIngestService();
 
     await service.recordEvents(

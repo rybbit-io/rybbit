@@ -28,8 +28,12 @@ describe("PageviewQueue delivery", () => {
     mocks.getLocation.mockResolvedValue({});
     mocks.insert.mockResolvedValue(undefined);
     (pageviewQueue as any).queue = [];
+    (pageviewQueue as any).retryBatch = null;
+    (pageviewQueue as any).activeBatch = null;
+    (pageviewQueue as any).activeProcess = null;
     (pageviewQueue as any).processing = false;
     (pageviewQueue as any).closing = false;
+    (pageviewQueue as any).nextAttemptAt = 0;
   });
 
   it("does not acknowledge an event until ClickHouse stores its batch", async () => {
@@ -44,6 +48,13 @@ describe("PageviewQueue delivery", () => {
     await (pageviewQueue as any).processQueue();
     await delivery;
     expect(acknowledged).toBe(true);
+    expect(mocks.insert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        clickhouse_settings: {
+          insert_deduplication_token: expect.any(String),
+        },
+      })
+    );
   });
 
   it("requeues a transiently failed batch instead of dropping it", async () => {
@@ -51,7 +62,7 @@ describe("PageviewQueue delivery", () => {
     const delivery = pageviewQueue.add(payload);
 
     await (pageviewQueue as any).processQueue();
-    expect((pageviewQueue as any).queue).toHaveLength(1);
+    expect((pageviewQueue as any).retryBatch.entries).toHaveLength(1);
 
     await (pageviewQueue as any).processQueue({ ignoreBackoff: true });
     await expect(delivery).resolves.toBeUndefined();
@@ -64,7 +75,7 @@ describe("PageviewQueue delivery", () => {
 
     await expect((pageviewQueue as any).processQueue()).resolves.toBeUndefined();
     expect((pageviewQueue as any).processing).toBe(false);
-    expect((pageviewQueue as any).queue).toHaveLength(1);
+    expect((pageviewQueue as any).retryBatch.entries).toHaveLength(1);
 
     await (pageviewQueue as any).processQueue({ ignoreBackoff: true });
     await expect(delivery).resolves.toBeUndefined();

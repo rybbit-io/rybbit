@@ -6,6 +6,7 @@ const mocks = vi.hoisted(() => {
   const insertReturning = vi.fn();
   const transaction = vi.fn();
   const updateWhere = vi.fn();
+  const findActiveWithLimit = vi.fn();
 
   const lockChain = { from: vi.fn(), where: vi.fn(), for: forUpdate };
   lockChain.from.mockReturnValue(lockChain);
@@ -17,6 +18,16 @@ const mocks = vi.hoisted(() => {
   const insertChain = { values: vi.fn(), returning: insertReturning };
   insertChain.values.mockReturnValue(insertChain);
 
+  const activeImportChain = { from: vi.fn(), where: vi.fn(), limit: findActiveWithLimit };
+  activeImportChain.from.mockReturnValue(activeImportChain);
+  activeImportChain.where.mockReturnValue(activeImportChain);
+
+  const tx = {
+    insert: vi.fn(() => insertChain),
+    select: vi.fn((selection?: unknown) => (selection ? lockChain : activeImportChain)),
+    update: vi.fn(() => updateChain),
+  };
+
   const db = {
     insert: vi.fn(() => insertChain),
     query: { importStatus: { findFirst: findActive } },
@@ -27,11 +38,13 @@ const mocks = vi.hoisted(() => {
   return {
     db,
     findActive,
+    findActiveWithLimit,
     forUpdate,
     insertChain,
     insertReturning,
     lockChain,
     transaction,
+    tx,
     updateChain,
     updateWhere,
   };
@@ -50,11 +63,12 @@ describe("cluster-safe import creation", () => {
     mocks.insertChain.values.mockReturnValue(mocks.insertChain);
     mocks.forUpdate.mockResolvedValue([{ id: "org-1" }]);
     mocks.updateWhere.mockResolvedValue(undefined);
-    mocks.transaction.mockImplementation(async callback => callback({ select: () => mocks.lockChain }));
+    mocks.transaction.mockImplementation(async callback => callback(mocks.tx));
   });
 
   it("locks the organization row and rejects a second active import", async () => {
     mocks.findActive.mockResolvedValue({ importId: "existing" });
+    mocks.findActiveWithLimit.mockResolvedValue([{ importId: "existing" }]);
 
     const result = await createImport({
       siteId: 42,
@@ -65,11 +79,12 @@ describe("cluster-safe import creation", () => {
 
     expect(result).toBeNull();
     expect(mocks.forUpdate).toHaveBeenCalledWith("update");
-    expect(mocks.db.insert).not.toHaveBeenCalled();
+    expect(mocks.tx.insert).not.toHaveBeenCalled();
   });
 
   it("creates the import while holding the same organization lock", async () => {
     mocks.findActive.mockResolvedValue(undefined);
+    mocks.findActiveWithLimit.mockResolvedValue([]);
     mocks.insertReturning.mockResolvedValue([{ importId: "new-import" }]);
 
     const result = await createImport({
@@ -81,6 +96,7 @@ describe("cluster-safe import creation", () => {
 
     expect(result).toEqual({ importId: "new-import" });
     expect(mocks.forUpdate).toHaveBeenCalledWith("update");
-    expect(mocks.db.insert).toHaveBeenCalledTimes(1);
+    expect(mocks.tx.insert).toHaveBeenCalledTimes(1);
+    expect(mocks.db.insert).not.toHaveBeenCalled();
   });
 });
