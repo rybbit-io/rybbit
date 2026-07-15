@@ -242,7 +242,9 @@ export function registerAnalyticsTools(server: McpServer, api: RybbitApiClient, 
       inputSchema: {
         site_id: siteIdInput,
         mode: z.enum(["day", "week"]).default("week").describe("Cohort granularity"),
-        range: z.number().int().min(1).max(365).default(90).describe("How many trailing days of data to include"),
+        // The endpoint clamps to a 7-day floor, so reject smaller ranges here
+        // rather than silently returning a wider window than requested.
+        range: z.number().int().min(7).max(365).default(90).describe("How many trailing days of data to include (min 7)"),
       },
       outputSchema: retentionOutput,
       annotations: readOnly,

@@ -119,12 +119,27 @@ export const filtersInput = z
 
 export type FilterArgs = z.infer<typeof filtersInput>;
 
+/** A tool argument the caller can fix, surfaced verbatim to the MCP client. */
+export class ToolInputError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "ToolInputError";
+  }
+}
+
 /**
  * Maps the tool-level time arguments onto the REST API's query params.
  * Omitting every time input is valid and means "all time".
  */
 export function toTimeQuery(args: TimeArgs): Record<string, string | number | undefined> {
   if (args.past_minutes !== undefined) {
+    if (args.start_date || args.end_date) {
+      // Silently preferring one over the other would answer a different
+      // question than the model asked and present it as correct.
+      throw new ToolInputError(
+        "Provide either past_minutes or start_date/end_date, not both. Use past_minutes for a trailing window or start_date/end_date for a fixed range."
+      );
+    }
     // The API expects a [start, end) window in minutes-ago, oldest first.
     return { past_minutes_start: args.past_minutes, past_minutes_end: 0 };
   }

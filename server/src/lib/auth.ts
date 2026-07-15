@@ -42,9 +42,10 @@ const pluginList = [
       // Registers the custom resource:action scopes so /mcp/authorize's
       // invalid_scope check accepts them (merged after the standard scopes).
       scopes: [...ALL_SCOPE_STRINGS],
-      // Advertised metadata is NOT derived from `scopes`; this feeds both the
-      // RFC 8414 authorization-server metadata and the RFC 9728
-      // protected-resource metadata.
+      // Advertised metadata is NOT derived from `scopes`. This feeds the
+      // RFC 9728 protected-resource document; the RFC 8414 authorization-server
+      // document is augmented in mcp/wellKnown.ts (better-auth builds it from a
+      // top-level option the mcp() plugin type doesn't expose).
       metadata: {
         scopes_supported: [...OIDC_STANDARD_SCOPES, ...ALL_SCOPE_STRINGS],
       },

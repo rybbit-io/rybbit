@@ -12,12 +12,19 @@ interface ApiKeyScopePickerProps {
   onChange: (next: ScopeSelection) => void;
 }
 
-// write implies read on the server, so selecting write keeps read on and locked.
-function toggleAction(current: ScopeAction[] | undefined, action: ScopeAction, checked: boolean): ScopeAction[] {
+// write implies read on the server, so selecting write keeps read on and
+// locked — but only for resources that actually support read (ingest is
+// write-only, and adding read there produces a combination the server rejects).
+function toggleAction(
+  current: ScopeAction[] | undefined,
+  action: ScopeAction,
+  checked: boolean,
+  available: readonly ScopeAction[]
+): ScopeAction[] {
   const set = new Set(current ?? []);
   if (checked) {
     set.add(action);
-    if (action === "write") set.add("read");
+    if (action === "write" && available.includes("read")) set.add("read");
   } else {
     set.delete(action);
     if (action === "read") set.delete("write");
@@ -71,7 +78,7 @@ export function ApiKeyScopePicker({ value, onChange }: ApiKeyScopePickerProps) {
                         checked={selected.includes(action)}
                         disabled={forcedByWrite}
                         onCheckedChange={checked =>
-                          setResource(descriptor.resource, toggleAction(selected, action, !!checked))
+                          setResource(descriptor.resource, toggleAction(selected, action, !!checked, available))
                         }
                         aria-label={`${descriptor.label} ${action}`}
                       />

@@ -70,7 +70,9 @@ export function registerSiteTools(server: McpServer, api: RybbitApiClient, guard
             site_id: Number.isNaN(Number(site.id)) ? site.id : Number(site.id),
             name: site.name,
             domain: site.domain,
-            public: site.public,
+            // The column is nullable; coalesce so the strict boolean output
+            // schema never throws and breaks this entry-point tool.
+            public: site.public ?? false,
           })),
         })),
       });

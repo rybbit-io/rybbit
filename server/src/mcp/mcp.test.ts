@@ -1,7 +1,32 @@
 import Fastify, { type FastifyInstance } from "fastify";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { createMcpAuthenticator } from "./auth.js";
+import { createMcpAuthenticator, extractBearerToken } from "./auth.js";
 import { mcpRoutes, type McpRouteOptions } from "./index.js";
+
+describe("extractBearerToken", () => {
+  // Must mirror the REST layer's parsing exactly (startsWith("Bearer ") +
+  // substring(7)) so the MCP gate and the routes it proxies never disagree.
+  it("accepts the canonical form", () => {
+    expect(extractBearerToken("Bearer rb_key")).toBe("rb_key");
+  });
+
+  it("rejects a lowercase scheme, matching the case-sensitive REST parser", () => {
+    expect(extractBearerToken("bearer rb_key")).toBeNull();
+  });
+
+  it("returns null for an empty token", () => {
+    expect(extractBearerToken("Bearer ")).toBeNull();
+  });
+
+  it("preserves the substring exactly (no trimming) so it matches REST", () => {
+    expect(extractBearerToken("Bearer  rb_key")).toBe(" rb_key");
+  });
+
+  it("returns null for non-string or missing headers", () => {
+    expect(extractBearerToken(undefined)).toBeNull();
+    expect(extractBearerToken(["Bearer a"])).toBeNull();
+  });
+});
 
 const MCP_HEADERS = {
   "content-type": "application/json",
@@ -429,6 +454,20 @@ describe("mcp endpoint", () => {
       time_zone: "UTC",
     });
     expect(captured.query).not.toHaveProperty("past_minutes_start");
+  });
+
+  it("rejects mixing past_minutes with an explicit date range instead of silently picking one", async () => {
+    const result = await callTool(app, "get_overview", {
+      site_id: 5,
+      past_minutes: 60,
+      start_date: "2026-07-01",
+      end_date: "2026-07-07",
+    });
+
+    expect(result.isError).toBe(true);
+    expect(result.content[0].text).toContain("not both");
+    // The conflicting call never reaches the REST layer.
+    expect(captured.url).toBeUndefined();
   });
 
   it("get_sessions passes rows through but strips bidi control characters", async () => {

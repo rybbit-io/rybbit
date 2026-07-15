@@ -2,7 +2,7 @@ import { FastifyRequest, FastifyReply } from "fastify";
 import { db } from "../../db/postgres/postgres.js";
 import { and, eq } from "drizzle-orm";
 import { member, organization, sites, user } from "../../db/postgres/schema.js";
-import { getUserIdFromRequest } from "../../lib/auth-utils.js";
+import { getSessionFromReq, getUserIdFromRequest } from "../../lib/auth-utils.js";
 import { filterSitesByMemberAccess } from "../../lib/siteAccess.js";
 
 export const getMyOrganizations = async (request: FastifyRequest, reply: FastifyReply) => {
@@ -11,6 +11,14 @@ export const getMyOrganizations = async (request: FastifyRequest, reply: Fastify
     if (!userId) {
       return reply.status(401).send({ error: "Unauthorized" });
     }
+
+    // This route is scope-exempt so any credential can resolve site/org IDs
+    // (it backs the MCP list_sites entry tool). The member roster carries names
+    // and emails, though, so only cookie-session dashboard requests get it —
+    // bearer credentials (API keys, OAuth tokens) use the org:read-gated
+    // /organizations/:id/members route for member data.
+    const session = await getSessionFromReq(request);
+    const includeMembers = !!session?.user;
 
     // First, get all organizations the user is a member of
     const userOrganizations = await db
@@ -93,17 +101,19 @@ export const getMyOrganizations = async (request: FastifyRequest, reply: Fastify
           logo: org.logo,
           createdAt: org.createdAt,
           role: org.role,
-          members: organizationMembers.map(m => ({
-            id: m.id,
-            role: m.role,
-            userId: m.userId,
-            createdAt: m.createdAt,
-            user: {
-              id: m.userActualId,
-              name: m.userName,
-              email: m.userEmail,
-            },
-          })),
+          members: includeMembers
+            ? organizationMembers.map(m => ({
+                id: m.id,
+                role: m.role,
+                userId: m.userId,
+                createdAt: m.createdAt,
+                user: {
+                  id: m.userActualId,
+                  name: m.userName,
+                  email: m.userEmail,
+                },
+              }))
+            : [],
           sites: organizationSites.map(site => ({
             id: String(site.siteId ?? site.siteUuid),
             domain: site.domain,

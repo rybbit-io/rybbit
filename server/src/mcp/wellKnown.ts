@@ -1,3 +1,4 @@
+import { ALL_SCOPE_STRINGS, OIDC_STANDARD_SCOPES } from "../lib/scopes.js";
 import type { FastifyInstance, FastifyReply } from "fastify";
 
 export interface OAuthWellKnownDependencies {
@@ -5,16 +6,29 @@ export interface OAuthWellKnownDependencies {
   getProtectedResourceMetadata: () => Promise<object | null>;
 }
 
+const SCOPES_SUPPORTED = [...OIDC_STANDARD_SCOPES, ...ALL_SCOPE_STRINGS];
+
+// better-auth's authorization-server metadata builder only reads a top-level
+// `metadata` option (which the mcp() plugin type doesn't expose), so it can't
+// advertise our custom resource:action scopes — it hardcodes the 4 OIDC ones.
+// We re-serve this document at the domain root, so inject scopes_supported here
+// where clients actually read it. (The protected-resource document does honor
+// oidcConfig.metadata, but we normalize both for consistency.)
+function withScopesSupported(metadata: object | null): object | null {
+  if (!metadata) return metadata;
+  return { ...metadata, scopes_supported: SCOPES_SUPPORTED };
+}
+
 // Dynamic imports keep this module (and its tests) from loading the full
 // better-auth dependency chain at import time.
 const defaultDependencies: OAuthWellKnownDependencies = {
   getAuthorizationServerMetadata: async () => {
     const { auth } = await import("../lib/auth.js");
-    return auth.api.getMcpOAuthConfig();
+    return withScopesSupported(await auth.api.getMcpOAuthConfig());
   },
   getProtectedResourceMetadata: async () => {
     const { auth } = await import("../lib/auth.js");
-    return auth.api.getMCPProtectedResource();
+    return withScopesSupported(await auth.api.getMCPProtectedResource());
   },
 };
 

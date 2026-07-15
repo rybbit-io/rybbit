@@ -44,9 +44,15 @@ export function extractBearerToken(authorization: string | string[] | undefined)
     return null;
   }
 
-  const match = authorization.match(/^Bearer\s+(.+)$/i);
-  const token = match?.[1]?.trim();
-  return token || null;
+  // Match the REST layer's parsing EXACTLY (auth-utils checkApiKey uses
+  // `startsWith("Bearer ") ? substring(7) : null`). If the gate accepted a
+  // looser form (lowercase scheme, extra spaces) than the routes it proxies,
+  // initialize/tools-list would authenticate here and then every tools/call
+  // would 401 downstream.
+  if (!authorization.startsWith("Bearer ")) {
+    return null;
+  }
+  return authorization.substring(7) || null;
 }
 
 // Dynamic imports keep the MCP module (and its tests) from loading the full

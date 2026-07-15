@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { hasScope, type ScopeAction, type ScopeResource, type ScopeStatements } from "../../lib/scopes.js";
 import { RybbitApiError } from "../apiClient.js";
-import { toFiltersQuery, toTimeQuery, type FilterArgs, type TimeArgs } from "../inputs.js";
+import { toFiltersQuery, ToolInputError, toTimeQuery, type FilterArgs, type TimeArgs } from "../inputs.js";
 
 export interface ToolRegistrationConfig {
   /** Sink for unexpected (non-API) tool errors; details are logged here, never returned to the client. */
@@ -81,6 +81,11 @@ export function createGuard(log?: (message: string) => void): ToolGuard {
       if (error instanceof RybbitApiError) {
         const hint = ERROR_HINTS[error.status];
         return fail(`Rybbit API error ${error.status}: ${error.message}${hint ? ` — ${hint}` : ""}`);
+      }
+      // Argument problems the caller can correct — surface the message so the
+      // model can fix its next call.
+      if (error instanceof ToolInputError) {
+        return fail(error.message);
       }
       // Unexpected errors may carry internals (stack traces, hostnames); log
       // them server-side and return a generic message.
