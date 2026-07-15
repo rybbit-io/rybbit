@@ -1,8 +1,19 @@
+import {
+  ALL_SCOPE_STRINGS,
+  isValidScopePair,
+  OIDC_STANDARD_SCOPES,
+  SCOPE_MATRIX,
+  SCOPE_RESOURCES,
+  type ScopeAction,
+  type ScopeRequirement,
+  type ScopeResource,
+  type ScopeStatements,
+} from "@rybbit/shared";
 import { role } from "better-auth/plugins/access";
 import { z } from "zod";
 
 /**
- * Scope taxonomy for bearer credentials (API keys and OAuth access tokens).
+ * Enforcement helpers for the scope taxonomy defined in @rybbit/shared.
  *
  * The same resource:action pairs serve both credential types: API keys store
  * them as a Record<resource, actions[]> in better-auth's `permissions` field,
@@ -20,45 +31,11 @@ import { z } from "zod";
  * Leaf module: keep free of ./auth.js imports so the MCP tools and their tests
  * can load it without dragging in the better-auth init chain.
  */
-export const SCOPE_MATRIX = {
-  analytics: ["read"],
-  sessions: ["read"],
-  events: ["read"],
-  users: ["read", "write"],
-  goals: ["read", "write"],
-  funnels: ["read", "write"],
-  dashboards: ["read", "write"],
-  flags: ["read", "write"],
-  experiments: ["read", "write"],
-  sites: ["read", "write"],
-  gsc: ["read", "write"],
-  org: ["read", "write"],
-  replay: ["read", "write"],
-  sql: ["read"],
-  ingest: ["write"],
-} as const;
+// Re-export the shared taxonomy so existing server imports keep resolving here.
+export { ALL_SCOPE_STRINGS, OIDC_STANDARD_SCOPES, SCOPE_MATRIX };
+export type { ScopeAction, ScopeRequirement, ScopeResource, ScopeStatements };
 
-export type ScopeResource = keyof typeof SCOPE_MATRIX;
-export type ScopeAction = "read" | "write";
-export type ScopeStatements = Partial<Record<ScopeResource, ScopeAction[]>>;
-export interface ScopeRequirement {
-  resource: ScopeResource;
-  action: ScopeAction;
-}
-
-export const OIDC_STANDARD_SCOPES = ["openid", "profile", "email", "offline_access"] as const;
-
-const SCOPE_RESOURCES = Object.keys(SCOPE_MATRIX) as ScopeResource[];
-
-function isValidPair(resource: string, action: string): resource is ScopeResource {
-  const actions = SCOPE_MATRIX[resource as ScopeResource] as readonly string[] | undefined;
-  return !!actions && actions.includes(action);
-}
-
-/** Every valid "resource:action" string, e.g. "analytics:read", "goals:write". */
-export const ALL_SCOPE_STRINGS: readonly string[] = SCOPE_RESOURCES.flatMap(resource =>
-  (SCOPE_MATRIX[resource] as readonly string[]).map(action => `${resource}:${action}`)
-);
+const isValidPair = isValidScopePair;
 
 export function scopeToString(requirement: ScopeRequirement): string {
   return `${requirement.resource}:${requirement.action}`;

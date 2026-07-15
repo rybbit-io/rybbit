@@ -21,7 +21,7 @@ export const useCreateApiKey = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (data: { name: string; expiresIn?: number }) => {
+    mutationFn: async (data: { name: string; expiresIn?: number; permissions?: Record<string, string[]> }) => {
       return authedFetch<{ key: string; id: string }>("/user/api-keys", undefined, {
         method: "POST",
         data,

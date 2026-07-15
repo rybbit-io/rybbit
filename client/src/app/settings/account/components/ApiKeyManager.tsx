@@ -5,6 +5,7 @@ import { useState } from "react";
 import { toast } from "@/components/ui/sonner";
 import { Button } from "../../../../components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../../../../components/ui/card";
+import { Checkbox } from "../../../../components/ui/checkbox";
 import { Input } from "../../../../components/ui/input";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "../../../../components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../../../../components/ui/table";
@@ -13,12 +14,15 @@ import { DateTime } from "luxon";
 import { useListApiKeys, useCreateApiKey, useDeleteApiKey } from "../../../../api/admin/hooks/useUserApiKeys";
 import { useStripeSubscription } from "../../../../lib/subscription/useStripeSubscription";
 import { IS_CLOUD } from "../../../../lib/const";
+import { ApiKeyScopePicker, type ScopeSelection } from "./ApiKeyScopePicker";
 
 export function ApiKeyManager() {
   const t = useExtracted();
   const [apiKeyName, setApiKeyName] = useState("");
   const [showApiKeyDialog, setShowApiKeyDialog] = useState(false);
   const [createdApiKey, setCreatedApiKey] = useState<string | null>(null);
+  const [restrictScopes, setRestrictScopes] = useState(false);
+  const [scopes, setScopes] = useState<ScopeSelection>({});
 
   const { data: subscription } = useStripeSubscription();
   const { data: apiKeysData, isLoading: isLoadingApiKeys, isError, error, refetch } = useListApiKeys();
@@ -37,11 +41,19 @@ export function ApiKeyManager() {
       return;
     }
 
+    const permissions = restrictScopes ? (scopes as Record<string, string[]>) : undefined;
+    if (permissions && Object.keys(permissions).length === 0) {
+      toast.error(t("Select at least one permission, or turn off restrictions for a full-access key"));
+      return;
+    }
+
     try {
-      const result = await createApiKey.mutateAsync({ name: apiKeyName });
+      const result = await createApiKey.mutateAsync({ name: apiKeyName, permissions });
       setCreatedApiKey(result.key);
       setShowApiKeyDialog(true);
       setApiKeyName("");
+      setRestrictScopes(false);
+      setScopes({});
       toast.success(t("API key created successfully"));
     } catch (error) {
       console.error("Error creating API key:", error);
@@ -87,26 +99,49 @@ export function ApiKeyManager() {
                 </p>
               </div>
             ) : (
-              <div className="flex space-x-2">
-                <Input
-                  id="apiKeyName"
-                  value={apiKeyName}
-                  onChange={({ target }) => setApiKeyName(target.value)}
-                  placeholder={t("API Key Name")}
-                  onKeyDown={e => {
-                    if (e.key === "Enter") {
-                      e.preventDefault();
-                      handleCreateApiKey();
-                    }
-                  }}
-                />
-                <Button
-                  variant="outline"
-                  onClick={handleCreateApiKey}
-                  disabled={createApiKey.isPending || !apiKeyName.trim()}
-                >
-                  {createApiKey.isPending ? t("Creating...") : t("Create")}
-                </Button>
+              <div className="space-y-3">
+                <div className="flex space-x-2">
+                  <Input
+                    id="apiKeyName"
+                    value={apiKeyName}
+                    onChange={({ target }) => setApiKeyName(target.value)}
+                    placeholder={t("API Key Name")}
+                    onKeyDown={e => {
+                      if (e.key === "Enter" && !restrictScopes) {
+                        e.preventDefault();
+                        handleCreateApiKey();
+                      }
+                    }}
+                  />
+                  <Button
+                    variant="outline"
+                    onClick={handleCreateApiKey}
+                    disabled={createApiKey.isPending || !apiKeyName.trim()}
+                  >
+                    {createApiKey.isPending ? t("Creating...") : t("Create")}
+                  </Button>
+                </div>
+
+                <div className="flex items-start gap-2">
+                  <Checkbox
+                    id="restrictScopes"
+                    checked={restrictScopes}
+                    onCheckedChange={checked => setRestrictScopes(!!checked)}
+                    className="mt-0.5"
+                  />
+                  <div>
+                    <Label htmlFor="restrictScopes" className="text-sm">
+                      {t("Restrict permissions")}
+                    </Label>
+                    <p className="text-xs text-neutral-500">
+                      {t(
+                        "Limit this key to specific resources. Leave off for a full-access key that can do everything you can."
+                      )}
+                    </p>
+                  </div>
+                </div>
+
+                {restrictScopes && <ApiKeyScopePicker value={scopes} onChange={setScopes} />}
               </div>
             )}
           </div>
