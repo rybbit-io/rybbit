@@ -1,28 +1,74 @@
 "use client";
 
+import { AlertTriangle, Check, Copy, KeyRound, Trash2 } from "lucide-react";
+import { DateTime } from "luxon";
+import Link from "next/link";
 import { useExtracted } from "next-intl";
 import { useState } from "react";
 import { toast } from "@/components/ui/sonner";
+import { useCreateApiKey, useDeleteApiKey, useListApiKeys } from "../../../../api/admin/hooks/useUserApiKeys";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "../../../../components/ui/alert-dialog";
+import { Badge } from "../../../../components/ui/badge";
 import { Button } from "../../../../components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../../../../components/ui/card";
 import { Checkbox } from "../../../../components/ui/checkbox";
-import { Input } from "../../../../components/ui/input";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "../../../../components/ui/dialog";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../../../../components/ui/table";
+import { Input } from "../../../../components/ui/input";
 import { Label } from "../../../../components/ui/label";
-import { DateTime } from "luxon";
-import { useListApiKeys, useCreateApiKey, useDeleteApiKey } from "../../../../api/admin/hooks/useUserApiKeys";
-import { useStripeSubscription } from "../../../../lib/subscription/useStripeSubscription";
+import { Skeleton } from "../../../../components/ui/skeleton";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../../../../components/ui/table";
+import { Tooltip, TooltipContent, TooltipTrigger } from "../../../../components/ui/tooltip";
 import { IS_CLOUD } from "../../../../lib/const";
-import { ApiKeyScopePicker, type ScopeSelection } from "./ApiKeyScopePicker";
+import { useStripeSubscription } from "../../../../lib/subscription/useStripeSubscription";
+import { ApiKeyScopePicker, getScopeLabel, type ScopeSelection } from "./ApiKeyScopePicker";
+
+function PermissionsBadge({ permissions }: { permissions: Record<string, string[]> | null | undefined }) {
+  const t = useExtracted();
+  const entries = permissions ? Object.entries(permissions) : [];
+
+  if (entries.length === 0) {
+    return <Badge variant="secondary">{t("Full access")}</Badge>;
+  }
+
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Badge variant="outline" className="cursor-default">
+          {t("{count, plural, one {# resource} other {# resources}}", { count: entries.length })}
+        </Badge>
+      </TooltipTrigger>
+      <TooltipContent align="start">
+        <div className="space-y-1">
+          {entries.map(([resource, actions]) => (
+            <div key={resource} className="flex items-center justify-between gap-6">
+              <span>{getScopeLabel(resource)}</span>
+              <span className="text-neutral-500 dark:text-neutral-400">{actions.join(", ")}</span>
+            </div>
+          ))}
+        </div>
+      </TooltipContent>
+    </Tooltip>
+  );
+}
 
 export function ApiKeyManager() {
   const t = useExtracted();
   const [apiKeyName, setApiKeyName] = useState("");
   const [showApiKeyDialog, setShowApiKeyDialog] = useState(false);
   const [createdApiKey, setCreatedApiKey] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
   const [restrictScopes, setRestrictScopes] = useState(false);
   const [scopes, setScopes] = useState<ScopeSelection>({});
+  const [pendingDelete, setPendingDelete] = useState<{ id: string; name: string | null } | null>(null);
 
   const { data: subscription } = useStripeSubscription();
   const { data: apiKeysData, isLoading: isLoadingApiKeys, isError, error, refetch } = useListApiKeys();
@@ -50,34 +96,38 @@ export function ApiKeyManager() {
     try {
       const result = await createApiKey.mutateAsync({ name: apiKeyName, permissions });
       setCreatedApiKey(result.key);
+      setCopied(false);
       setShowApiKeyDialog(true);
       setApiKeyName("");
       setRestrictScopes(false);
       setScopes({});
-      toast.success(t("API key created successfully"));
     } catch (error) {
       console.error("Error creating API key:", error);
       toast.error(error instanceof Error ? error.message : t("Failed to create API key"));
     }
   };
 
-  const handleDeleteApiKey = async (keyId: string, keyName: string | null) => {
-    if (!confirm(t("Are you sure you want to delete the API key \"{keyName}\"?", { keyName: keyName || t("Unnamed") }))) {
-      return;
-    }
+  const handleConfirmDelete = async () => {
+    if (!pendingDelete) return;
 
     try {
-      await deleteApiKey.mutateAsync(keyId);
-      toast.success(t("API key deleted successfully"));
+      await deleteApiKey.mutateAsync(pendingDelete.id);
+      toast.success(t("API key deleted"));
+      setPendingDelete(null);
     } catch (error) {
       console.error("Error deleting API key:", error);
       toast.error(error instanceof Error ? error.message : t("Failed to delete API key"));
     }
   };
 
-  const copyToClipboard = (text: string) => {
-    navigator.clipboard.writeText(text);
-    toast.success(t("Copied to clipboard"));
+  const handleCopy = async () => {
+    if (!createdApiKey) return;
+    try {
+      await navigator.clipboard.writeText(createdApiKey);
+      setCopied(true);
+    } catch {
+      toast.error(t("Couldn't copy to clipboard. Select the key and copy it manually."));
+    }
   };
 
   return (
@@ -93,9 +143,15 @@ export function ApiKeyManager() {
               {t("Generate API keys to access analytics endpoints from your applications")}
             </p>
             {isPlanGated ? (
-              <div className="rounded-lg bg-neutral-50 dark:bg-neutral-900 p-3 border border-neutral-200 dark:border-neutral-800">
+              <div className="rounded-lg bg-neutral-50 dark:bg-neutral-900 p-3 border border-neutral-100 dark:border-neutral-800">
                 <p className="text-xs text-neutral-600 dark:text-neutral-400">
-                  {t("API keys are available on Standard and Pro plans.")}
+                  {t("API keys are available on Standard and Pro plans.")}{" "}
+                  <Link
+                    href="/settings/billing"
+                    className="font-medium text-neutral-900 underline underline-offset-2 hover:text-neutral-700 dark:text-neutral-100 dark:hover:text-neutral-300"
+                  >
+                    {t("Upgrade your plan")}
+                  </Link>
                 </p>
               </div>
             ) : (
@@ -106,15 +162,16 @@ export function ApiKeyManager() {
                     value={apiKeyName}
                     onChange={({ target }) => setApiKeyName(target.value)}
                     placeholder={t("API Key Name")}
+                    aria-label={t("API Key Name")}
                     onKeyDown={e => {
-                      if (e.key === "Enter" && !restrictScopes) {
+                      if (e.key === "Enter") {
                         e.preventDefault();
                         handleCreateApiKey();
                       }
                     }}
                   />
                   <Button
-                    variant="outline"
+                    variant="success"
                     onClick={handleCreateApiKey}
                     disabled={createApiKey.isPending || !apiKeyName.trim()}
                   >
@@ -149,11 +206,16 @@ export function ApiKeyManager() {
           <div className="space-y-2">
             <h4 className="text-sm font-medium">{t("Your API Keys")}</h4>
             {isLoadingApiKeys ? (
-              <p className="text-xs text-neutral-500">{t("Loading API keys...")}</p>
+              <div className="space-y-2" aria-hidden="true">
+                <Skeleton className="h-8 w-full" />
+                <Skeleton className="h-8 w-full" />
+                <Skeleton className="h-8 w-3/4" />
+              </div>
             ) : isError ? (
               <div className="space-y-2">
                 <p className="text-xs text-red-500">
-                  {t("Failed to load API keys")}{error?.message ? `: ${error.message}` : ""}
+                  {t("Failed to load API keys")}
+                  {error?.message ? `: ${error.message}` : ""}
                 </p>
                 <Button variant="outline" size="sm" onClick={() => refetch()}>
                   {t("Retry")}
@@ -166,24 +228,43 @@ export function ApiKeyManager() {
                     <TableRow>
                       <TableHead>{t("Name")}</TableHead>
                       <TableHead>{t("Key")}</TableHead>
+                      <TableHead>{t("Permissions")}</TableHead>
                       <TableHead>{t("Created")}</TableHead>
-                      <TableHead className="text-right">{t("Actions")}</TableHead>
+                      <TableHead>{t("Last used")}</TableHead>
+                      <TableHead className="w-10">
+                        <span className="sr-only">{t("Actions")}</span>
+                      </TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {apiKeys.map(key => (
                       <TableRow key={key.id}>
-                        <TableCell className="font-medium">{key.name || t("Unnamed")}</TableCell>
-                        <TableCell className="font-mono text-xs">{key.start || "****"}...</TableCell>
-                        <TableCell>{DateTime.fromJSDate(new Date(key.createdAt)).toLocaleString(DateTime.DATETIME_SHORT)}</TableCell>
+                        <TableCell className="font-medium">
+                          {key.name || <span className="font-normal italic text-neutral-500">{t("Unnamed")}</span>}
+                        </TableCell>
+                        <TableCell className="font-mono text-xs text-neutral-600 dark:text-neutral-400">
+                          {key.start ? `${key.start}…` : "••••"}
+                        </TableCell>
+                        <TableCell>
+                          <PermissionsBadge permissions={key.permissions} />
+                        </TableCell>
+                        <TableCell className="text-neutral-600 dark:text-neutral-400">
+                          {DateTime.fromJSDate(new Date(key.createdAt)).toLocaleString(DateTime.DATE_MED)}
+                        </TableCell>
+                        <TableCell className="text-neutral-600 dark:text-neutral-400">
+                          {key.lastRequest
+                            ? DateTime.fromJSDate(new Date(key.lastRequest)).toRelative()
+                            : t("Never")}
+                        </TableCell>
                         <TableCell className="text-right">
                           <Button
-                            variant="destructive"
-                            size="sm"
-                            onClick={() => handleDeleteApiKey(key.id, key.name)}
-                            disabled={deleteApiKey.isPending}
+                            variant="ghost"
+                            size="smIcon"
+                            className="text-neutral-500 hover:text-red-500 dark:text-neutral-400 dark:hover:text-red-400"
+                            onClick={() => setPendingDelete({ id: key.id, name: key.name })}
+                            aria-label={t("Delete API key {name}", { name: key.name || t("Unnamed") })}
                           >
-                            {t("Delete")}
+                            <Trash2 />
                           </Button>
                         </TableCell>
                       </TableRow>
@@ -192,7 +273,13 @@ export function ApiKeyManager() {
                 </Table>
               </div>
             ) : (
-              <p className="text-xs text-neutral-500">{t("No API keys created yet")}</p>
+              <div className="rounded-lg border border-neutral-100 px-4 py-8 text-center dark:border-neutral-800">
+                <KeyRound className="mx-auto h-5 w-5 text-neutral-400 dark:text-neutral-500" aria-hidden="true" />
+                <p className="mt-2 text-sm font-medium">{t("No API keys yet")}</p>
+                <p className="mt-1 text-xs text-neutral-500">
+                  {t("API keys let your scripts and integrations access your analytics data.")}
+                </p>
+              </div>
             )}
           </div>
         </CardContent>
@@ -202,37 +289,55 @@ export function ApiKeyManager() {
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>{t("API Key Created")}</DialogTitle>
-            <DialogDescription>{t("Save this API key securely. You won't be able to see it again.")}</DialogDescription>
+            <DialogDescription>
+              {t("This is the only time you'll see this key. Copy it now and store it somewhere safe.")}
+            </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label>{t("Your API Key")}</Label>
-              <div className="flex space-x-2">
-                <Input value={createdApiKey || ""} readOnly className="font-mono text-xs" />
-                <Button variant="outline" onClick={() => createdApiKey && copyToClipboard(createdApiKey)}>
-                  {t("Copy")}
-                </Button>
-              </div>
+          <div className="space-y-3">
+            <code className="block select-all break-all rounded-lg border border-neutral-100 bg-neutral-50 p-3 font-mono text-xs leading-relaxed dark:border-neutral-800 dark:bg-neutral-900">
+              {createdApiKey}
+            </code>
+            <div className="flex gap-2">
+              <Button variant="success" className="flex-1" onClick={handleCopy}>
+                {copied ? <Check /> : <Copy />}
+                {copied ? t("Copied") : t("Copy key")}
+              </Button>
+              <Button variant="outline" onClick={() => setShowApiKeyDialog(false)}>
+                {t("Done")}
+              </Button>
             </div>
-            <div className="rounded-lg bg-yellow-50 dark:bg-yellow-950 p-3 border border-yellow-200 dark:border-yellow-800">
-              <p className="text-xs text-yellow-800 dark:text-yellow-200">
-                <strong>{t("Important")}:</strong> {t("Store this key securely. It won't be displayed again.")}
-              </p>
-            </div>
-
-            <Button
-              className="w-full"
-              onClick={() => {
-                setShowApiKeyDialog(false);
-                setCreatedApiKey(null);
-              }}
-              variant="success"
-            >
-              {t("Done")}
-            </Button>
           </div>
         </DialogContent>
       </Dialog>
+
+      <AlertDialog open={!!pendingDelete} onOpenChange={open => !open && setPendingDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5" color="hsl(var(--red-500))" />
+              {t("Delete this API key?")}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {t('"{name}" will be revoked immediately. Anything still using it will stop working.', {
+                name: pendingDelete?.name || t("Unnamed"),
+              })}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleteApiKey.isPending}>{t("Cancel")}</AlertDialogCancel>
+            <AlertDialogAction
+              variant="destructive"
+              disabled={deleteApiKey.isPending}
+              onClick={e => {
+                e.preventDefault();
+                handleConfirmDelete();
+              }}
+            >
+              {deleteApiKey.isPending ? t("Deleting...") : t("Delete key")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }
