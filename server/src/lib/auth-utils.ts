@@ -4,6 +4,13 @@ import NodeCache from "node-cache";
 import { db } from "../db/postgres/postgres.js";
 import { member, memberSiteAccess, sites, user, team, teamMember, teamSiteAccess } from "../db/postgres/schema.js";
 import { auth } from "./auth.js";
+import {
+  hasScope,
+  parseOAuthScopes,
+  statementsFromApiKeyPermissions,
+  type ScopeRequirement,
+  type ScopeStatements,
+} from "./scopes.js";
 import { siteConfig } from "./siteConfig.js";
 import { logger } from "./logger/logger.js";
 
@@ -289,11 +296,11 @@ async function resolveBearerUserOrgRole(
 
 /**
  * Resolve a bearer token as an OAuth access token issued by the better-auth
- * MCP plugin. Returns the token's userId, or null when the token is unknown or
- * expired. Lookup failures (e.g. OAuth tables not migrated yet) resolve to
- * null so API-key and session auth are unaffected.
+ * MCP plugin. Returns the token's userId and scope string, or null when the
+ * token is unknown or expired. Lookup failures (e.g. OAuth tables not migrated
+ * yet) resolve to null so API-key and session auth are unaffected.
  */
-async function getOAuthTokenUserId(bearerToken: string): Promise<string | null> {
+async function getOAuthTokenSession(bearerToken: string): Promise<{ userId: string; scopes: string | null } | null> {
   try {
     const token = await auth.api.getMcpSession({
       headers: new Headers({ authorization: `Bearer ${bearerToken}` }),
@@ -304,11 +311,24 @@ async function getOAuthTokenUserId(bearerToken: string): Promise<string | null> 
     if (token.accessTokenExpiresAt && new Date(token.accessTokenExpiresAt).getTime() <= Date.now()) {
       return null;
     }
-    return token.userId;
+    return { userId: token.userId, scopes: typeof token.scopes === "string" ? token.scopes : null };
   } catch (error) {
     logger.debug(error, "OAuth access token lookup failed");
     return null;
   }
+}
+
+export interface BearerAuthResult {
+  valid: boolean;
+  role: string | null;
+  userId?: string;
+  rateLimited?: boolean;
+  /**
+   * Scope statements carried by the credential. null = unrestricted (legacy
+   * key with no permissions, or OAuth token with no custom scopes). Guards
+   * enforce these; this function only carries them.
+   */
+  statements: ScopeStatements | null;
 }
 
 /**
@@ -319,7 +339,7 @@ async function getOAuthTokenUserId(bearerToken: string): Promise<string | null> 
 export async function checkApiKey(
   req: FastifyRequest,
   options: { organizationId?: string; siteId?: string | number }
-): Promise<{ valid: boolean; role: string | null; userId?: string; rateLimited?: boolean }> {
+): Promise<BearerAuthResult> {
   // Check if a valid API key was provided
   // Priority: 1. Authorization: Bearer header (recommended), 2. Query parameter (testing only)
   const authHeader = req.headers["authorization"];
@@ -337,12 +357,13 @@ export async function checkApiKey(
       });
 
       if (result.valid && result.key) {
-        return resolveBearerUserOrgRole(result.key.referenceId, options);
+        const membership = await resolveBearerUserOrgRole(result.key.referenceId, options);
+        return { ...membership, statements: statementsFromApiKeyPermissions(result.key.permissions) };
       }
 
       // Check if the key was rejected due to rate limiting
       if (!result.valid && result.error?.code === "RATE_LIMITED") {
-        return { valid: false, role: null, rateLimited: true };
+        return { valid: false, role: null, rateLimited: true, statements: null };
       }
     } catch (error) {
       logger.error(error, "Error verifying API key");
@@ -351,12 +372,13 @@ export async function checkApiKey(
 
     // Not a valid API key — try it as an OAuth access token (MCP clients
     // connected through the OAuth flow).
-    const oauthUserId = await getOAuthTokenUserId(apiKey);
-    if (oauthUserId) {
-      return resolveBearerUserOrgRole(oauthUserId, options);
+    const oauthToken = await getOAuthTokenSession(apiKey);
+    if (oauthToken) {
+      const membership = await resolveBearerUserOrgRole(oauthToken.userId, options);
+      return { ...membership, statements: parseOAuthScopes(oauthToken.scopes) };
     }
   }
-  return { valid: false, role: null };
+  return { valid: false, role: null, statements: null };
 }
 
 export async function getUserIdFromRequest(req: FastifyRequest): Promise<string | null> {
@@ -391,9 +413,9 @@ export async function getUserIdFromRequest(req: FastifyRequest): Promise<string 
 
     // Not a valid API key — try it as an OAuth access token (MCP clients
     // connected through the OAuth flow).
-    const oauthUserId = await getOAuthTokenUserId(apiKey);
-    if (oauthUserId) {
-      return oauthUserId;
+    const oauthToken = await getOAuthTokenSession(apiKey);
+    if (oauthToken) {
+      return oauthToken.userId;
     }
   }
 
@@ -401,7 +423,11 @@ export async function getUserIdFromRequest(req: FastifyRequest): Promise<string 
 }
 
 // for routes that are potentially public
-export async function getUserHasAccessToSitePublic(req: FastifyRequest, siteId: string | number) {
+export async function getUserHasAccessToSitePublic(
+  req: FastifyRequest,
+  siteId: string | number,
+  requiredScope?: ScopeRequirement
+) {
   const [userSites, config] = await Promise.all([getSitesUserHasAccessTo(req), siteConfig.getConfig(siteId)]);
 
   // Check if user has direct access to the site
@@ -421,8 +447,10 @@ export async function getUserHasAccessToSitePublic(req: FastifyRequest, siteId: 
     return true;
   }
 
+  // Bearer-credential fallback. Scopes apply here too — without this check a
+  // scoped key could reach any public-guard route on a private site.
   const result = await checkApiKey(req, { siteId });
-  if (result.valid) {
+  if (result.valid && (!requiredScope || hasScope(result.statements, requiredScope))) {
     return true;
   }
 

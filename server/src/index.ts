@@ -167,6 +167,7 @@ import {
   resolveSiteId,
 } from "./lib/auth-middleware.js";
 import { mapHeaders } from "./lib/auth-utils.js";
+import type { ScopeAction, ScopeResource } from "./lib/scopes.js";
 import { auth } from "./lib/auth.js";
 import { mcpRoutes } from "./mcp/index.js";
 import { oauthWellKnownRoutes } from "./mcp/wellKnown.js";
@@ -192,13 +193,67 @@ const validateTimeParams = async (request: FastifyRequest, reply: FastifyReply) 
 
 // Pre-composed middleware chains for common auth patterns
 // Cast as any to work around Fastify's type inference limitations with preHandler
-const publicSite = { preHandler: [resolveSiteId, allowPublicSiteAccess, validateTimeParams] as any };
-const authSite = { preHandler: [resolveSiteId, requireSiteAccess, validateTimeParams] as any };
-const adminSite = { preHandler: [resolveSiteId, requireSiteAdminAccess] as any };
-const authOnly = { preHandler: [requireAuth] as any };
+//
+// Each scoped chain names the resource:action a BEARER credential (API key or
+// OAuth token) must be granted; unrestricted legacy credentials and cookie
+// sessions always pass. See lib/scopes.ts for the taxonomy.
+const publicSiteScoped = (resource: ScopeResource, action: ScopeAction) => ({
+  preHandler: [resolveSiteId, allowPublicSiteAccess({ resource, action }), validateTimeParams] as any,
+});
+const authSiteScoped = (resource: ScopeResource, action: ScopeAction) => ({
+  preHandler: [resolveSiteId, requireSiteAccess({ resource, action }), validateTimeParams] as any,
+});
+const adminSiteScoped = (resource: ScopeResource, action: ScopeAction) => ({
+  preHandler: [resolveSiteId, requireSiteAdminAccess({ resource, action })] as any,
+});
+const orgMemberScoped = (resource: ScopeResource, action: ScopeAction) => ({
+  preHandler: [requireOrgMember({ resource, action })] as any,
+});
+const orgAdminScoped = (resource: ScopeResource, action: ScopeAction) => ({
+  preHandler: [requireOrgAdminFromParams({ resource, action })] as any,
+});
+const authOnlyScoped = (resource: ScopeResource, action: ScopeAction) => ({
+  preHandler: [requireAuth({ resource, action })] as any,
+});
+
+// Reused scoped chains
+const publicAnalyticsRead = publicSiteScoped("analytics", "read");
+const publicSessionsRead = publicSiteScoped("sessions", "read");
+const publicEventsRead = publicSiteScoped("events", "read");
+const publicUsersRead = publicSiteScoped("users", "read");
+const publicFunnelsRead = publicSiteScoped("funnels", "read");
+const publicGoalsRead = publicSiteScoped("goals", "read");
+const publicSitesRead = publicSiteScoped("sites", "read");
+const publicReplayRead = publicSiteScoped("replay", "read");
+const publicGscRead = publicSiteScoped("gsc", "read");
+const authUsersWrite = authSiteScoped("users", "write");
+const authGoalsWrite = authSiteScoped("goals", "write");
+const authFunnelsWrite = authSiteScoped("funnels", "write");
+const authAnalyticsRead = authSiteScoped("analytics", "read");
+const authReplayWrite = authSiteScoped("replay", "write");
+const authOrgRead = authOnlyScoped("org", "read");
+const adminSitesRead = adminSiteScoped("sites", "read");
+const authDashboardsRead = authSiteScoped("dashboards", "read");
+const authDashboardsWrite = authSiteScoped("dashboards", "write");
+const authFlagsRead = authSiteScoped("flags", "read");
+const authExperimentsRead = authSiteScoped("experiments", "read");
+const authSitesRead = authSiteScoped("sites", "read");
+const adminUsersWrite = adminSiteScoped("users", "write");
+const adminFlagsWrite = adminSiteScoped("flags", "write");
+const adminExperimentsWrite = adminSiteScoped("experiments", "write");
+const adminSitesWrite = adminSiteScoped("sites", "write");
+const adminGscWrite = adminSiteScoped("gsc", "write");
+const orgAnalyticsRead = orgMemberScoped("analytics", "read");
+const orgSqlRead = orgMemberScoped("sql", "read");
+const orgOrgRead = orgMemberScoped("org", "read");
+const orgAdminSitesWrite = orgAdminScoped("sites", "write");
+const orgAdminOrgWrite = orgAdminScoped("org", "write");
+const authOrgWrite = authOnlyScoped("org", "write");
+
+// Scope-exempt / non-bearer chains. "deny-scoped" rejects scoped credentials
+// on surfaces with no taxonomy resource (account settings, billing).
 const adminOnly = { preHandler: [requireAdmin] as any };
-const orgMember = { preHandler: [requireOrgMember] as any };
-const orgAdminParams = { preHandler: [requireOrgAdminFromParams] as any };
+const authOnlyNoScopedKeys = { preHandler: [requireAuth("deny-scoped")] as any };
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -306,161 +361,161 @@ async function analyticsRoutes(fastify: FastifyInstance) {
   // WEB & PRODUCT ANALYTICS
 
   // This endpoint gets called a lot so we don't want to log it
-  fastify.get("/sites/:siteId/live-user-count", { logLevel: "silent", ...publicSite }, getLiveUsercount);
-  fastify.get("/sites/:siteId/overview", publicSite, getOverview);
-  fastify.get("/sites/:siteId/overview/time-series", publicSite, getOverviewBucketed);
-  fastify.get("/sites/:siteId/overview-lite", publicSite, getOverviewLite);
-  fastify.get("/sites/:siteId/overview-bucketed-lite", publicSite, getOverviewBucketedLite);
-  fastify.get("/sites/:siteId/metric-lite", publicSite, getMetricLite);
-  fastify.get("/sites/:siteId/metric", publicSite, getMetric);
-  fastify.get("/sites/:siteId/page-titles", publicSite, getPageTitles);
-  fastify.get("/sites/:siteId/errors/names", publicSite, getErrorNames);
-  fastify.get("/sites/:siteId/errors/events", publicSite, getErrorEvents);
-  fastify.get("/sites/:siteId/errors/time-series", publicSite, getErrorBucketed);
-  fastify.get("/sites/:siteId/retention", publicSite, getRetention);
-  fastify.get("/sites/:siteId/has-data", publicSite, getSiteHasData);
-  fastify.get("/sites/:siteId/is-public", publicSite, getSiteIsPublic);
-  fastify.get("/sites/:siteId/sessions", publicSite, getSessions);
-  fastify.get("/sites/:siteId/sessions/:sessionId", publicSite, getSession);
-  fastify.get("/sites/:siteId/events", publicSite, getEvents);
-  fastify.get("/sites/:siteId/events/time-series", publicSite, getEventBucketed);
-  fastify.get("/sites/:siteId/events/count", publicSite, getSiteEventCount);
-  fastify.get("/sites/:siteId/users", publicSite, getUsers);
+  fastify.get("/sites/:siteId/live-user-count", { logLevel: "silent", ...publicAnalyticsRead }, getLiveUsercount);
+  fastify.get("/sites/:siteId/overview", publicAnalyticsRead, getOverview);
+  fastify.get("/sites/:siteId/overview/time-series", publicAnalyticsRead, getOverviewBucketed);
+  fastify.get("/sites/:siteId/overview-lite", publicAnalyticsRead, getOverviewLite);
+  fastify.get("/sites/:siteId/overview-bucketed-lite", publicAnalyticsRead, getOverviewBucketedLite);
+  fastify.get("/sites/:siteId/metric-lite", publicAnalyticsRead, getMetricLite);
+  fastify.get("/sites/:siteId/metric", publicAnalyticsRead, getMetric);
+  fastify.get("/sites/:siteId/page-titles", publicAnalyticsRead, getPageTitles);
+  fastify.get("/sites/:siteId/errors/names", publicAnalyticsRead, getErrorNames);
+  fastify.get("/sites/:siteId/errors/events", publicAnalyticsRead, getErrorEvents);
+  fastify.get("/sites/:siteId/errors/time-series", publicAnalyticsRead, getErrorBucketed);
+  fastify.get("/sites/:siteId/retention", publicAnalyticsRead, getRetention);
+  fastify.get("/sites/:siteId/has-data", publicSitesRead, getSiteHasData);
+  fastify.get("/sites/:siteId/is-public", publicSitesRead, getSiteIsPublic);
+  fastify.get("/sites/:siteId/sessions", publicSessionsRead, getSessions);
+  fastify.get("/sites/:siteId/sessions/:sessionId", publicSessionsRead, getSession);
+  fastify.get("/sites/:siteId/events", publicEventsRead, getEvents);
+  fastify.get("/sites/:siteId/events/time-series", publicEventsRead, getEventBucketed);
+  fastify.get("/sites/:siteId/events/count", publicEventsRead, getSiteEventCount);
+  fastify.get("/sites/:siteId/users", publicUsersRead, getUsers);
 
-  fastify.get("/sites/:siteId/users/session-count", publicSite, getUserSessionCount);
-  fastify.get("/sites/:siteId/users/:userId", publicSite, getUserInfo);
-  fastify.post("/sites/:siteId/users/identify", authSite, identifyUser);
-  fastify.put("/sites/:siteId/users/:userId/traits", authSite, updateUserTraits);
-  fastify.delete("/sites/:siteId/users/:userId", adminSite, deleteUser);
-  fastify.get("/sites/:siteId/user-traits/keys", publicSite, getUserTraitKeys);
-  fastify.get("/sites/:siteId/user-traits/values", publicSite, getUserTraitValues);
-  fastify.get("/sites/:siteId/user-traits/users", publicSite, getUserTraitValueUsers);
-  fastify.get("/sites/:siteId/sessions/locations", publicSite, getSessionLocations);
-  fastify.get("/sites/:siteId/funnels", publicSite, getFunnels);
-  fastify.get("/sites/:siteId/journeys", publicSite, getJourneys);
-  fastify.post("/sites/:siteId/funnels/analyze", publicSite, getFunnel);
-  fastify.post("/sites/:siteId/funnels/:stepNumber/sessions", publicSite, getFunnelStepSessions);
-  fastify.post("/sites/:siteId/funnels", authSite, createFunnel);
-  fastify.delete("/sites/:siteId/funnels/:funnelId", authSite, deleteFunnel);
-  fastify.get("/sites/:siteId/goals", publicSite, getGoals);
-  fastify.get("/sites/:siteId/goals/time-series", publicSite, getGoalTimeSeries);
-  fastify.get("/sites/:siteId/goals/:goalId/sessions", publicSite, getGoalSessions);
-  fastify.post("/sites/:siteId/goals", authSite, createGoal);
-  fastify.delete("/sites/:siteId/goals/:goalId", authSite, deleteGoal);
-  fastify.put("/sites/:siteId/goals/:goalId", authSite, updateGoal);
-  fastify.get("/sites/:siteId/dashboards", authSite, getDashboards);
-  fastify.get("/sites/:siteId/dashboards/:dashboardId", authSite, getDashboard);
-  fastify.post("/sites/:siteId/dashboards", authSite, createDashboard);
-  fastify.put("/sites/:siteId/dashboards/:dashboardId", authSite, updateDashboard);
-  fastify.delete("/sites/:siteId/dashboards/:dashboardId", authSite, deleteDashboard);
-  fastify.post("/sites/:siteId/dashboards/run-card", authSite, runDashboardCardQuery);
-  fastify.get("/sites/:siteId/feature-flags", authSite, getFeatureFlags);
-  fastify.post("/sites/:siteId/feature-flags", adminSite, createFeatureFlag);
-  fastify.put("/sites/:siteId/feature-flags/:flagId", adminSite, updateFeatureFlag);
-  fastify.delete("/sites/:siteId/feature-flags/:flagId", adminSite, deleteFeatureFlag);
-  fastify.post("/sites/:siteId/feature-flags/evaluate", authSite, evaluateServerFeatureFlags);
+  fastify.get("/sites/:siteId/users/session-count", publicUsersRead, getUserSessionCount);
+  fastify.get("/sites/:siteId/users/:userId", publicUsersRead, getUserInfo);
+  fastify.post("/sites/:siteId/users/identify", authUsersWrite, identifyUser);
+  fastify.put("/sites/:siteId/users/:userId/traits", authUsersWrite, updateUserTraits);
+  fastify.delete("/sites/:siteId/users/:userId", adminUsersWrite, deleteUser);
+  fastify.get("/sites/:siteId/user-traits/keys", publicUsersRead, getUserTraitKeys);
+  fastify.get("/sites/:siteId/user-traits/values", publicUsersRead, getUserTraitValues);
+  fastify.get("/sites/:siteId/user-traits/users", publicUsersRead, getUserTraitValueUsers);
+  fastify.get("/sites/:siteId/sessions/locations", publicSessionsRead, getSessionLocations);
+  fastify.get("/sites/:siteId/funnels", publicFunnelsRead, getFunnels);
+  fastify.get("/sites/:siteId/journeys", publicAnalyticsRead, getJourneys);
+  fastify.post("/sites/:siteId/funnels/analyze", publicFunnelsRead, getFunnel);
+  fastify.post("/sites/:siteId/funnels/:stepNumber/sessions", publicFunnelsRead, getFunnelStepSessions);
+  fastify.post("/sites/:siteId/funnels", authFunnelsWrite, createFunnel);
+  fastify.delete("/sites/:siteId/funnels/:funnelId", authFunnelsWrite, deleteFunnel);
+  fastify.get("/sites/:siteId/goals", publicGoalsRead, getGoals);
+  fastify.get("/sites/:siteId/goals/time-series", publicGoalsRead, getGoalTimeSeries);
+  fastify.get("/sites/:siteId/goals/:goalId/sessions", publicGoalsRead, getGoalSessions);
+  fastify.post("/sites/:siteId/goals", authGoalsWrite, createGoal);
+  fastify.delete("/sites/:siteId/goals/:goalId", authGoalsWrite, deleteGoal);
+  fastify.put("/sites/:siteId/goals/:goalId", authGoalsWrite, updateGoal);
+  fastify.get("/sites/:siteId/dashboards", authDashboardsRead, getDashboards);
+  fastify.get("/sites/:siteId/dashboards/:dashboardId", authDashboardsRead, getDashboard);
+  fastify.post("/sites/:siteId/dashboards", authDashboardsWrite, createDashboard);
+  fastify.put("/sites/:siteId/dashboards/:dashboardId", authDashboardsWrite, updateDashboard);
+  fastify.delete("/sites/:siteId/dashboards/:dashboardId", authDashboardsWrite, deleteDashboard);
+  fastify.post("/sites/:siteId/dashboards/run-card", authDashboardsRead, runDashboardCardQuery);
+  fastify.get("/sites/:siteId/feature-flags", authFlagsRead, getFeatureFlags);
+  fastify.post("/sites/:siteId/feature-flags", adminFlagsWrite, createFeatureFlag);
+  fastify.put("/sites/:siteId/feature-flags/:flagId", adminFlagsWrite, updateFeatureFlag);
+  fastify.delete("/sites/:siteId/feature-flags/:flagId", adminFlagsWrite, deleteFeatureFlag);
+  fastify.post("/sites/:siteId/feature-flags/evaluate", authFlagsRead, evaluateServerFeatureFlags);
   fastify.post("/site/:siteId/feature-flags/evaluate", evaluateFeatureFlags);
-  fastify.get("/sites/:siteId/experiments", authSite, getExperiments);
-  fastify.post("/sites/:siteId/experiments", adminSite, createExperiment);
-  fastify.put("/sites/:siteId/experiments/:experimentId", adminSite, updateExperiment);
-  fastify.delete("/sites/:siteId/experiments/:experimentId", adminSite, deleteExperiment);
-  fastify.get("/sites/:siteId/experiments/:experimentId/results", authSite, getExperimentResults);
-  fastify.get("/sites/:siteId/events/names", publicSite, getEventNames);
-  fastify.get("/sites/:siteId/events/properties", publicSite, getEventProperties);
-  fastify.get("/sites/:siteId/events/autocapture", publicSite, getAutocaptureEvents);
-  fastify.get("/sites/:siteId/events/autocapture-values", publicSite, getAutocaptureValues);
-  fastify.get("/sites/:siteId/events/outbound", publicSite, getOutboundLinks);
-  fastify.get("/org-event-count/:organizationId", orgMember, getOrgEventCount);
-  fastify.post("/organizations/:organizationId/analytics/query", orgMember, runCustomQuery);
-  fastify.post("/organizations/:organizationId/analytics/query/generate", orgMember, generateCustomQuery);
-  fastify.get("/sites/:siteId/performance/overview", publicSite, getPerformanceOverview);
-  fastify.get("/sites/:siteId/performance/time-series", publicSite, getPerformanceTimeSeries);
-  fastify.get("/sites/:siteId/performance/by-dimension", publicSite, getPerformanceByDimension);
-  fastify.get("/sites/:siteId/bots/overview", publicSite, getBotOverview);
-  fastify.get("/sites/:siteId/bots/time-series", publicSite, getBotTimeSeries);
-  fastify.get("/sites/:siteId/bots/by-dimension", publicSite, getBotDimension);
-  fastify.get("/sites/:siteId/export/pdf", authSite, generatePdfReport);
+  fastify.get("/sites/:siteId/experiments", authExperimentsRead, getExperiments);
+  fastify.post("/sites/:siteId/experiments", adminExperimentsWrite, createExperiment);
+  fastify.put("/sites/:siteId/experiments/:experimentId", adminExperimentsWrite, updateExperiment);
+  fastify.delete("/sites/:siteId/experiments/:experimentId", adminExperimentsWrite, deleteExperiment);
+  fastify.get("/sites/:siteId/experiments/:experimentId/results", authExperimentsRead, getExperimentResults);
+  fastify.get("/sites/:siteId/events/names", publicEventsRead, getEventNames);
+  fastify.get("/sites/:siteId/events/properties", publicEventsRead, getEventProperties);
+  fastify.get("/sites/:siteId/events/autocapture", publicEventsRead, getAutocaptureEvents);
+  fastify.get("/sites/:siteId/events/autocapture-values", publicEventsRead, getAutocaptureValues);
+  fastify.get("/sites/:siteId/events/outbound", publicEventsRead, getOutboundLinks);
+  fastify.get("/org-event-count/:organizationId", orgAnalyticsRead, getOrgEventCount);
+  fastify.post("/organizations/:organizationId/analytics/query", orgSqlRead, runCustomQuery);
+  fastify.post("/organizations/:organizationId/analytics/query/generate", orgSqlRead, generateCustomQuery);
+  fastify.get("/sites/:siteId/performance/overview", publicAnalyticsRead, getPerformanceOverview);
+  fastify.get("/sites/:siteId/performance/time-series", publicAnalyticsRead, getPerformanceTimeSeries);
+  fastify.get("/sites/:siteId/performance/by-dimension", publicAnalyticsRead, getPerformanceByDimension);
+  fastify.get("/sites/:siteId/bots/overview", publicAnalyticsRead, getBotOverview);
+  fastify.get("/sites/:siteId/bots/time-series", publicAnalyticsRead, getBotTimeSeries);
+  fastify.get("/sites/:siteId/bots/by-dimension", publicAnalyticsRead, getBotDimension);
+  fastify.get("/sites/:siteId/export/pdf", authAnalyticsRead, generatePdfReport);
 }
 
 async function sessionReplayRoutes(fastify: FastifyInstance) {
   // Session Replay
   fastify.post("/session-replay/record/:siteId", recordSessionReplay); // Public - tracking endpoint
-  fastify.get("/sites/:siteId/session-replay/list", publicSite, getSessionReplays);
-  fastify.get("/sites/:siteId/session-replay/:sessionId", publicSite, getSessionReplayEvents);
-  fastify.delete("/sites/:siteId/session-replay/:sessionId", authSite, deleteSessionReplay);
+  fastify.get("/sites/:siteId/session-replay/list", publicReplayRead, getSessionReplays);
+  fastify.get("/sites/:siteId/session-replay/:sessionId", publicReplayRead, getSessionReplayEvents);
+  fastify.delete("/sites/:siteId/session-replay/:sessionId", authReplayWrite, deleteSessionReplay);
 }
 
 async function sitesRoutes(fastify: FastifyInstance) {
   // Sites
-  fastify.get("/sites/:siteId", publicSite, getSite);
-  fastify.put("/sites/:siteId/config", adminSite, updateSiteConfig);
-  fastify.put("/sites/:siteId/move", adminSite, moveSite);
-  fastify.delete("/sites/:siteId", adminSite, deleteSite);
-  fastify.get("/sites/:siteId/private-link-config", adminSite, getSitePrivateLinkConfig);
-  fastify.post("/sites/:siteId/private-link-config", adminSite, updateSitePrivateLinkConfig);
+  fastify.get("/sites/:siteId", publicSitesRead, getSite);
+  fastify.put("/sites/:siteId/config", adminSitesWrite, updateSiteConfig);
+  fastify.put("/sites/:siteId/move", adminSitesWrite, moveSite);
+  fastify.delete("/sites/:siteId", adminSitesWrite, deleteSite);
+  fastify.get("/sites/:siteId/private-link-config", adminSitesWrite, getSitePrivateLinkConfig);
+  fastify.post("/sites/:siteId/private-link-config", adminSitesWrite, updateSitePrivateLinkConfig);
   fastify.get("/site/tracking-config/:siteId", getTrackingConfig); // Public - used by tracking script
   fastify.get("/sites/:siteId/embed-stats", { preHandler: [resolveSiteId] as any }, getEmbedStats); // Public - widget endpoint (handler checks site is public)
-  fastify.get("/sites/:siteId/excluded-ips", authSite, getSiteExcludedIPs);
-  fastify.get("/sites/:siteId/excluded-countries", authSite, getSiteExcludedCountries);
-  fastify.get("/sites/:siteId/excluded-paths", authSite, getSiteExcludedPaths);
-  fastify.get("/sites/:siteId/excluded-hostnames", authSite, getSiteExcludedHostnames);
-  fastify.get("/sites/:siteId/excluded-user-agents", authSite, getSiteExcludedUserAgents);
+  fastify.get("/sites/:siteId/excluded-ips", authSitesRead, getSiteExcludedIPs);
+  fastify.get("/sites/:siteId/excluded-countries", authSitesRead, getSiteExcludedCountries);
+  fastify.get("/sites/:siteId/excluded-paths", authSitesRead, getSiteExcludedPaths);
+  fastify.get("/sites/:siteId/excluded-hostnames", authSitesRead, getSiteExcludedHostnames);
+  fastify.get("/sites/:siteId/excluded-user-agents", authSitesRead, getSiteExcludedUserAgents);
 
   // Site Usage
-  fastify.get("/sites/:siteId/usage", authSite, getSiteUsage);
+  fastify.get("/sites/:siteId/usage", authSitesRead, getSiteUsage);
 
   // Site Imports
-  fastify.get("/sites/:siteId/imports", adminSite, getSiteImports);
-  fastify.post("/sites/:siteId/imports", adminSite, createSiteImport);
+  fastify.get("/sites/:siteId/imports", adminSitesRead, getSiteImports);
+  fastify.post("/sites/:siteId/imports", adminSitesWrite, createSiteImport);
   fastify.post(
     "/sites/:siteId/imports/:importId/events",
-    { ...adminSite, bodyLimit: 50 * 1024 * 1024 },
+    { ...adminSitesWrite, bodyLimit: 50 * 1024 * 1024 },
     batchImportEvents
   );
-  fastify.delete("/sites/:siteId/imports/:importId", adminSite, deleteSiteImport);
+  fastify.delete("/sites/:siteId/imports/:importId", adminSitesWrite, deleteSiteImport);
 }
 
 async function organizationsRoutes(fastify: FastifyInstance) {
   // Organizations
   fastify.get("/organizations", getMyOrganizations);
-  fastify.get("/organizations/:organizationId/sites", orgMember, getSitesFromOrg);
-  fastify.post("/organizations/:organizationId/sites", orgAdminParams, addSite);
-  fastify.get("/organizations/:organizationId/members", orgMember, listOrganizationMembers);
-  fastify.post("/organizations/:organizationId/members", authOnly, addUserToOrganization);
-  fastify.post("/organizations/:organizationId/users", authOnly, createUserInOrganization);
+  fastify.get("/organizations/:organizationId/sites", orgOrgRead, getSitesFromOrg);
+  fastify.post("/organizations/:organizationId/sites", orgAdminSitesWrite, addSite);
+  fastify.get("/organizations/:organizationId/members", orgOrgRead, listOrganizationMembers);
+  fastify.post("/organizations/:organizationId/members", authOrgWrite, addUserToOrganization);
+  fastify.post("/organizations/:organizationId/users", authOrgWrite, createUserInOrganization);
 
   // Member site access management (admin/owner only)
-  fastify.put("/organizations/:organizationId/members/:memberId/sites", orgAdminParams, updateMemberSiteAccess);
+  fastify.put("/organizations/:organizationId/members/:memberId/sites", orgAdminOrgWrite, updateMemberSiteAccess);
 }
 
 async function teamsRoutes(fastify: FastifyInstance) {
   // Teams
-  fastify.get("/organizations/:organizationId/teams", orgMember, listTeams);
-  fastify.post("/organizations/:organizationId/teams", orgAdminParams, createTeam);
-  fastify.put("/organizations/:organizationId/teams/:teamId", orgAdminParams, updateTeam);
-  fastify.delete("/organizations/:organizationId/teams/:teamId", orgAdminParams, deleteTeam);
+  fastify.get("/organizations/:organizationId/teams", orgOrgRead, listTeams);
+  fastify.post("/organizations/:organizationId/teams", orgAdminOrgWrite, createTeam);
+  fastify.put("/organizations/:organizationId/teams/:teamId", orgAdminOrgWrite, updateTeam);
+  fastify.delete("/organizations/:organizationId/teams/:teamId", orgAdminOrgWrite, deleteTeam);
 }
 
 async function userRoutes(fastify: FastifyInstance) {
   // User
   fastify.get("/config", getConfig); // Public - returns app config
   fastify.get("/version", getVersion); // Public - returns app version
-  fastify.get("/user/organizations", authOnly, getUserOrganizations);
-  fastify.post("/user/account-settings", authOnly, updateAccountSettings);
-  fastify.post("/user/unsubscribe-marketing", authOnly, unsubscribeMarketing);
+  fastify.get("/user/organizations", authOrgRead, getUserOrganizations);
+  fastify.post("/user/account-settings", authOnlyNoScopedKeys, updateAccountSettings);
+  fastify.post("/user/unsubscribe-marketing", authOnlyNoScopedKeys, unsubscribeMarketing);
   fastify.get("/user/unsubscribe-marketing-oneclick", oneClickUnsubscribeMarketing); // Public - for link clicks
   fastify.post("/user/unsubscribe-marketing-oneclick", oneClickUnsubscribeMarketing); // Public - for List-Unsubscribe header
-  fastify.post("/user/api-keys", authOnly, createUserApiKey);
+  fastify.post("/user/api-keys", authOnlyNoScopedKeys, createUserApiKey);
 }
 
 async function gscRoutes(fastify: FastifyInstance) {
   // GOOGLE SEARCH CONSOLE
-  fastify.get("/sites/:siteId/gsc/connect", adminSite, connectGSC);
+  fastify.get("/sites/:siteId/gsc/connect", adminGscWrite, connectGSC);
   fastify.get("/gsc/callback", gscCallback); // Public - OAuth callback
-  fastify.get("/sites/:siteId/gsc/status", publicSite, getGSCStatus);
-  fastify.delete("/sites/:siteId/gsc/disconnect", adminSite, disconnectGSC);
-  fastify.post("/sites/:siteId/gsc/select-property", adminSite, selectGSCProperty);
-  fastify.get("/sites/:siteId/gsc/data", publicSite, getGSCData);
+  fastify.get("/sites/:siteId/gsc/status", publicGscRead, getGSCStatus);
+  fastify.delete("/sites/:siteId/gsc/disconnect", adminGscWrite, disconnectGSC);
+  fastify.post("/sites/:siteId/gsc/select-property", adminGscWrite, selectGSCProperty);
+  fastify.get("/sites/:siteId/gsc/data", publicGscRead, getGSCData);
 }
 
 async function stripeAdminRoutes(fastify: FastifyInstance) {
@@ -476,17 +531,17 @@ async function stripeAdminRoutes(fastify: FastifyInstance) {
   // STRIPE & ADMIN
   if (IS_CLOUD) {
     // Stripe Routes
-    fastify.post("/stripe/create-checkout-session", authOnly, createCheckoutSession);
-    fastify.post("/stripe/create-portal-session", authOnly, createPortalSession);
-    fastify.post("/stripe/preview-subscription-update", authOnly, previewSubscriptionUpdate);
-    fastify.post("/stripe/update-subscription", authOnly, updateSubscription);
-    fastify.get("/stripe/subscription", authOnly, getSubscription);
-    fastify.get("/stripe/invoices", authOnly, getInvoices);
-    fastify.post("/stripe/cancellation-feedback", authOnly, submitCancellationFeedback);
+    fastify.post("/stripe/create-checkout-session", authOnlyNoScopedKeys, createCheckoutSession);
+    fastify.post("/stripe/create-portal-session", authOnlyNoScopedKeys, createPortalSession);
+    fastify.post("/stripe/preview-subscription-update", authOnlyNoScopedKeys, previewSubscriptionUpdate);
+    fastify.post("/stripe/update-subscription", authOnlyNoScopedKeys, updateSubscription);
+    fastify.get("/stripe/subscription", authOnlyNoScopedKeys, getSubscription);
+    fastify.get("/stripe/invoices", authOnlyNoScopedKeys, getInvoices);
+    fastify.post("/stripe/cancellation-feedback", authOnlyNoScopedKeys, submitCancellationFeedback);
     fastify.post("/stripe/webhook", { config: { rawBody: true } }, handleWebhook); // Public - Stripe webhook
 
     // AppSumo Routes
-    fastify.post("/as/activate", authOnly, activateAppSumoLicense);
+    fastify.post("/as/activate", authOnlyNoScopedKeys, activateAppSumoLicense);
     fastify.post("/as/webhook", handleAppSumoWebhook); // Public - AppSumo webhook
   }
 }

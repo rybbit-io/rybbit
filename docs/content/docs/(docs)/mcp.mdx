@@ -17,7 +17,7 @@ Your MCP client connects to Rybbit over HTTPS and sends your API key with each p
 2. Create a key in the **API Keys** section.
 3. Copy it immediately. Rybbit only shows a new key once.
 
-The key is user-scoped: the MCP server can do what that user can do. Deleting the key revokes the connection.
+A key created without permissions can do everything its user can do. To hand an agent a narrower credential, create the key with scoped permissions (`POST /api/user/api-keys` with a `permissions` object, e.g. `{"analytics": ["read"], "goals": ["read", "write"]}`): the MCP tool list and every API call are then limited to those `resource:action` scopes. `write` implies `read` on the same resource, and scopes never elevate — org admin/owner requirements still apply. Deleting the key revokes the connection.
 
 ### 2. Add the endpoint
 
@@ -59,6 +59,8 @@ Use your client's secret or environment-variable support when available instead 
 ### Or connect with OAuth
 
 Clients that support the MCP authorization flow can skip API keys entirely: add the endpoint URL with no headers, and the client discovers Rybbit's authorization server through the standard well-known metadata (`/.well-known/oauth-protected-resource`), registers itself, and opens a browser window for you to log in and approve access. The resulting access token acts with your user's role, exactly like an API key would.
+
+OAuth grants support the same `resource:action` scopes as API keys (advertised in `scopes_supported`). A grant that requests only the standard OIDC scopes is unrestricted; a grant that requests custom scopes like `analytics:read` is limited to them. The requesting client controls which scopes it asks for — consent is currently approve-or-deny as a whole.
 
 <Callout type="info">
   Self-hosted instances need the OAuth tables created once before OAuth clients can connect: run `npm run db:push` in
@@ -154,7 +156,9 @@ The MCP surface mirrors the REST API's permission model:
 - **Write tools** need at least member-level site access (goals, funnels, `identify_user`, `update_user_traits`, `save_funnel`).
 - **Tools marked *(admin)*** require the API key's user to hold the **admin or owner** role in the organization; `add_member` can grant the `owner` role only from an owner's key. The REST layer enforces all of this — an underprivileged key gets a 403 with an explanatory message.
 
-To give an assistant a read-mostly view, connect it with an API key from a member-role user: management tools will be visible but every call requiring elevation will be refused.
+To give an assistant a read-only or read-mostly view, create a **scoped** API key (see step 1): grant only the `resource:action` scopes it needs — e.g. `{"analytics": ["read"], "sessions": ["read"]}` for a reporting agent. The MCP tool list is filtered to those scopes, and any out-of-scope call returns `403 { "error": "Insufficient scope", "required": "goals:write" }`. Alternatively, connecting with a member-role user's key hides nothing but refuses every call requiring the admin/owner role.
+
+OAuth clients request scopes through the standard grant. Rybbit advertises the same `resource:action` scopes in its discovery metadata; a grant carrying no custom scopes (or only the standard OIDC scopes) is treated as full access, for backward compatibility.
 
 ## Destructive tools
 
@@ -174,6 +178,7 @@ To give an assistant a read-mostly view, connect it with an API key from a membe
 - **401 Unauthorized:** The client did not send a Bearer credential, or the key/token is invalid, expired, or revoked. OAuth-capable clients re-authenticate automatically via the `WWW-Authenticate` challenge.
 - **OAuth login loop or "table does not exist" (self-hosted):** Run `npm run db:push` in `server/` to create the OAuth tables, then retry.
 - **403 in tool results:** The key's user lacks access to that site or organization — or the tool requires an org admin/owner role. Check the `role` field in `list_sites`.
+- **403 "Insufficient scope":** The credential was created without the `resource:action` scope this tool needs (the `required` field names it). Use a key or OAuth grant that includes it.
 - **429 Too Many Requests:** The API key exceeded its plan's rate limit.
 - **503 Service Unavailable:** Rybbit could not verify the key. Retry the request; do not replace a known-valid key based on this response.
 - **405 Method Not Allowed on GET:** This is expected. The stateless endpoint accepts MCP messages over `POST`.

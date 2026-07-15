@@ -17,12 +17,26 @@ function rpc(method: string, params?: unknown, id = 1) {
 const authenticate = createMcpAuthenticator({
   verifyApiKey: async apiKey => {
     if (apiKey === "rb_test_key") return { valid: true, key: { referenceId: "user_1" } };
+    if (apiKey === "rb_scoped_key") {
+      return {
+        valid: true,
+        key: { referenceId: "user_1", permissions: { goals: ["read", "write"], sites: ["read"] } },
+      };
+    }
     if (apiKey === "rb_limited_key") return { valid: false, error: { code: "RATE_LIMITED" } };
     return { valid: false, error: { code: "KEY_NOT_FOUND" } };
   },
   getOAuthSession: async bearerToken => {
     if (bearerToken === "oauth_valid_token") {
-      return { userId: "user_2", accessTokenExpiresAt: new Date(Date.now() + 3600_000) };
+      // Legacy grant: standard scopes only = unrestricted.
+      return { userId: "user_2", accessTokenExpiresAt: new Date(Date.now() + 3600_000), scopes: "openid" };
+    }
+    if (bearerToken === "oauth_scoped_token") {
+      return {
+        userId: "user_2",
+        accessTokenExpiresAt: new Date(Date.now() + 3600_000),
+        scopes: "openid analytics:read",
+      };
     }
     if (bearerToken === "oauth_expired_token") {
       return { userId: "user_2", accessTokenExpiresAt: new Date(Date.now() - 1000) };
@@ -42,8 +56,16 @@ async function callTool(app: FastifyInstance, name: string, args: Record<string,
   return response.json().result;
 }
 
-async function listTools(app: FastifyInstance): Promise<{ name: string; annotations?: Record<string, unknown>; outputSchema?: unknown }[]> {
-  const response = await app.inject({ method: "POST", url: "/api/mcp", headers: MCP_HEADERS, payload: rpc("tools/list") });
+async function listTools(
+  app: FastifyInstance,
+  authorization = MCP_HEADERS.authorization
+): Promise<{ name: string; annotations?: Record<string, unknown>; outputSchema?: unknown }[]> {
+  const response = await app.inject({
+    method: "POST",
+    url: "/api/mcp",
+    headers: { ...MCP_HEADERS, authorization },
+    payload: rpc("tools/list"),
+  });
   expect(response.statusCode).toBe(200);
   return response.json().result.tools;
 }
@@ -289,6 +311,31 @@ describe("mcp endpoint", () => {
 
     const overview = tools.find(tool => tool.name === "get_overview");
     expect(overview?.outputSchema).toBeTruthy();
+  });
+
+  it("filters tools/list to the API key's scopes, keeping list_sites", async () => {
+    const tools = await listTools(app, "Bearer rb_scoped_key");
+    const names = tools.map(tool => tool.name).sort();
+
+    // goals read+write, sites read (write implies read is covered elsewhere).
+    expect(names).toEqual(["create_goal", "delete_goal", "get_goals", "get_site", "list_sites", "update_goal"]);
+  });
+
+  it("filters tools/list to the OAuth grant's scopes", async () => {
+    const tools = await listTools(app, "Bearer oauth_scoped_token");
+    const names = tools.map(tool => tool.name);
+
+    expect(names).toContain("list_sites");
+    expect(names).toContain("get_overview");
+    expect(names).toContain("get_web_vitals");
+    expect(names).not.toContain("get_sessions");
+    expect(names).not.toContain("create_goal");
+    expect(names).not.toContain("run_query");
+  });
+
+  it("legacy OAuth grants with only standard scopes stay unrestricted", async () => {
+    const tools = await listTools(app, "Bearer oauth_valid_token");
+    expect(tools).toHaveLength(39);
   });
 
   it("partitions tools into reads, writes, and destructive deletes", async () => {

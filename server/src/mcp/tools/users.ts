@@ -12,7 +12,7 @@ import {
   siteQuery,
   successOutput,
   writeTool,
-  type ToolGuard,
+  type ScopeCheck, type ToolGuard,
 } from "./shared.js";
 
 const usersOutput = z
@@ -28,7 +28,8 @@ const userOutput = z.object({ data: looseRow.optional() }).passthrough();
 
 const userIdInput = z.string().min(1).describe("The user's id from get_users (device fingerprint id or identified user id)");
 
-export function registerUserTools(server: McpServer, api: RybbitApiClient, guard: ToolGuard): void {
+export function registerUserTools(server: McpServer, api: RybbitApiClient, guard: ToolGuard, allowed: ScopeCheck): void {
+  if (allowed("users", "read"))
   server.registerTool(
     "get_users",
     {
@@ -59,6 +60,7 @@ export function registerUserTools(server: McpServer, api: RybbitApiClient, guard
     )
   );
 
+  if (allowed("users", "read"))
   server.registerTool(
     "get_user",
     {
@@ -74,6 +76,7 @@ export function registerUserTools(server: McpServer, api: RybbitApiClient, guard
     )
   );
 
+  if (allowed("users", "write"))
   server.registerTool(
     "identify_user",
     {
@@ -94,6 +97,7 @@ export function registerUserTools(server: McpServer, api: RybbitApiClient, guard
     )
   );
 
+  if (allowed("users", "write"))
   server.registerTool(
     "update_user_traits",
     {
@@ -109,6 +113,7 @@ export function registerUserTools(server: McpServer, api: RybbitApiClient, guard
     )
   );
 
+  if (allowed("users", "write"))
   server.registerTool(
     "delete_user",
     {

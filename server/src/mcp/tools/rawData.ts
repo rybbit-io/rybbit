@@ -3,7 +3,7 @@ import { z } from "zod";
 import { EVENT_SCHEMA } from "../../api/analytics/utils/eventSchema.js";
 import { RybbitApiClient } from "../apiClient.js";
 import { filtersInput, organizationIdInput, siteIdInput, timeInputs } from "../inputs.js";
-import { looseRow, looseRows, ok, readOnly, siteQuery, type ToolGuard } from "./shared.js";
+import { looseRow, looseRows, ok, readOnly, siteQuery, type ScopeCheck, type ToolGuard } from "./shared.js";
 
 const sessionsOutput = z.object({ data: looseRows.optional() }).passthrough();
 
@@ -32,7 +32,8 @@ const eventsOutput = z
 
 const runQueryOutput = z.object({ data: looseRows.optional(), meta: looseRow.optional() }).passthrough();
 
-export function registerRawDataTools(server: McpServer, api: RybbitApiClient, guard: ToolGuard): void {
+export function registerRawDataTools(server: McpServer, api: RybbitApiClient, guard: ToolGuard, allowed: ScopeCheck): void {
+  if (allowed("sessions", "read"))
   server.registerTool(
     "get_sessions",
     {
@@ -55,6 +56,7 @@ export function registerRawDataTools(server: McpServer, api: RybbitApiClient, gu
     )
   );
 
+  if (allowed("sessions", "read"))
   server.registerTool(
     "get_session",
     {
@@ -79,6 +81,7 @@ export function registerRawDataTools(server: McpServer, api: RybbitApiClient, gu
     )
   );
 
+  if (allowed("events", "read"))
   server.registerTool(
     "get_events",
     {
@@ -98,6 +101,7 @@ export function registerRawDataTools(server: McpServer, api: RybbitApiClient, gu
     )
   );
 
+  if (allowed("sql", "read"))
   server.registerTool(
     "get_query_schema",
     {
@@ -121,6 +125,7 @@ export function registerRawDataTools(server: McpServer, api: RybbitApiClient, gu
     )
   );
 
+  if (allowed("sql", "read"))
   server.registerTool(
     "run_query",
     {

@@ -2,7 +2,7 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { RybbitApiClient } from "../apiClient.js";
 import { FILTER_PARAMETERS, TIME_BUCKETS, filtersInput, siteIdInput, timeInputs } from "../inputs.js";
-import { looseRow, ok, readOnly, siteQuery, type ToolGuard } from "./shared.js";
+import { looseRow, ok, readOnly, siteQuery, type ScopeCheck, type ToolGuard } from "./shared.js";
 
 const overviewMetrics = z
   .object({
@@ -104,7 +104,8 @@ const journeysOutput = z
   })
   .passthrough();
 
-export function registerAnalyticsTools(server: McpServer, api: RybbitApiClient, guard: ToolGuard): void {
+export function registerAnalyticsTools(server: McpServer, api: RybbitApiClient, guard: ToolGuard, allowed: ScopeCheck): void {
+  if (allowed("analytics", "read"))
   server.registerTool(
     "get_overview",
     {
@@ -118,6 +119,7 @@ export function registerAnalyticsTools(server: McpServer, api: RybbitApiClient, 
     guard(async ({ site_id, ...rest }) => ok(await api.call("GET", `/sites/${site_id}/overview`, { query: siteQuery(rest) })))
   );
 
+  if (allowed("analytics", "read"))
   server.registerTool(
     "get_overview_timeseries",
     {
@@ -138,6 +140,7 @@ export function registerAnalyticsTools(server: McpServer, api: RybbitApiClient, 
     )
   );
 
+  if (allowed("analytics", "read"))
   server.registerTool(
     "get_breakdown",
     {
@@ -164,6 +167,7 @@ export function registerAnalyticsTools(server: McpServer, api: RybbitApiClient, 
     )
   );
 
+  if (allowed("analytics", "read"))
   server.registerTool(
     "get_live_stats",
     {
@@ -179,6 +183,7 @@ export function registerAnalyticsTools(server: McpServer, api: RybbitApiClient, 
     guard(async ({ site_id, minutes }) => ok(await api.call("GET", `/sites/${site_id}/live-user-count`, { query: { minutes } })))
   );
 
+  if (allowed("events", "read"))
   server.registerTool(
     "get_event_names",
     {
@@ -191,6 +196,7 @@ export function registerAnalyticsTools(server: McpServer, api: RybbitApiClient, 
     guard(async ({ site_id, ...rest }) => ok(await api.call("GET", `/sites/${site_id}/events/names`, { query: siteQuery(rest) })))
   );
 
+  if (allowed("analytics", "read"))
   server.registerTool(
     "get_errors",
     {
@@ -211,6 +217,7 @@ export function registerAnalyticsTools(server: McpServer, api: RybbitApiClient, 
     )
   );
 
+  if (allowed("analytics", "read"))
   server.registerTool(
     "get_web_vitals",
     {
@@ -225,6 +232,7 @@ export function registerAnalyticsTools(server: McpServer, api: RybbitApiClient, 
     )
   );
 
+  if (allowed("analytics", "read"))
   server.registerTool(
     "get_retention",
     {
@@ -242,6 +250,7 @@ export function registerAnalyticsTools(server: McpServer, api: RybbitApiClient, 
     guard(async ({ site_id, mode, range }) => ok(await api.call("GET", `/sites/${site_id}/retention`, { query: { mode, range } })))
   );
 
+  if (allowed("analytics", "read"))
   server.registerTool(
     "get_journeys",
     {

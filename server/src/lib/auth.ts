@@ -1,6 +1,7 @@
 import { betterAuth } from "better-auth";
 import { APIError, createAuthMiddleware } from "better-auth/api";
 import { admin, captcha, emailOTP, mcp, organization } from "better-auth/plugins";
+import { ALL_SCOPE_STRINGS, OIDC_STANDARD_SCOPES } from "./scopes.js";
 import dotenv from "dotenv";
 import { and, asc, eq, inArray } from "drizzle-orm";
 import pg from "pg";
@@ -36,6 +37,18 @@ const pluginList = [
   mcp({
     loginPage: "/login",
     ...(process.env.BASE_URL ? { resource: `${process.env.BASE_URL.replace(/\/$/, "")}/api/mcp` } : {}),
+    oidcConfig: {
+      loginPage: "/login",
+      // Registers the custom resource:action scopes so /mcp/authorize's
+      // invalid_scope check accepts them (merged after the standard scopes).
+      scopes: [...ALL_SCOPE_STRINGS],
+      // Advertised metadata is NOT derived from `scopes`; this feeds both the
+      // RFC 8414 authorization-server metadata and the RFC 9728
+      // protected-resource metadata.
+      metadata: {
+        scopes_supported: [...OIDC_STANDARD_SCOPES, ...ALL_SCOPE_STRINGS],
+      },
+    },
   }),
   apiKey({
     ...(IS_CLOUD

@@ -1,6 +1,8 @@
 import { FastifyReply, FastifyRequest } from "fastify";
+import { z } from "zod";
 import { auth } from "../../lib/auth.js";
 import { getSessionFromReq } from "../../lib/auth-utils.js";
+import { apiKeyPermissionsSchema } from "../../lib/scopes.js";
 import { getSubscriptionInner } from "../stripe/getSubscription.js";
 import {
   API_RATE_LIMIT_WINDOW,
@@ -9,13 +11,21 @@ import {
   STANDARD_API_RATE_LIMIT,
 } from "../../lib/const.js";
 
+const createApiKeyBodySchema = z.object({
+  name: z.string().trim().min(1, "Name is required"),
+  expiresIn: z.number().int().positive().optional(),
+  // Scope the key to specific resource:action pairs (see lib/scopes.ts).
+  // Omit entirely for a full-access key.
+  permissions: apiKeyPermissionsSchema.optional(),
+});
+
 /**
- * Creates an API key with plan-appropriate rate limits.
- * On cloud: blocks free/basic, sets standard or pro limits.
+ * Creates an API key with plan-appropriate rate limits and optional scoped
+ * permissions. On cloud: blocks free/basic, sets standard or pro limits.
  * On self-hosted: uses standard limits as default.
  */
 export async function createUserApiKey(
-  request: FastifyRequest<{ Body: { name: string; expiresIn?: number } }>,
+  request: FastifyRequest<{ Body: { name: string; expiresIn?: number; permissions?: Record<string, string[]> } }>,
   reply: FastifyReply
 ) {
   const session = await getSessionFromReq(request);
@@ -23,10 +33,11 @@ export async function createUserApiKey(
     return reply.status(401).send({ error: "Unauthorized" });
   }
 
-  const { name, expiresIn } = request.body;
-  if (!name?.trim()) {
-    return reply.status(400).send({ error: "Name is required" });
+  const parsed = createApiKeyBodySchema.safeParse(request.body);
+  if (!parsed.success) {
+    return reply.status(400).send({ error: parsed.error.errors[0]?.message ?? "Invalid request body" });
   }
+  const { name, expiresIn, permissions } = parsed.data;
 
   let rateLimitEnabled = false;
   let rateLimitMax: number | undefined;
@@ -64,6 +75,7 @@ export async function createUserApiKey(
         rateLimitTimeWindow,
         rateLimitMax,
         userId: session.user.id,
+        ...(permissions ? { permissions: permissions as Record<string, string[]> } : {}),
       },
     });
 

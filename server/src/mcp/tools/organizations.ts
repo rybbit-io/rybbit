@@ -10,7 +10,7 @@ import {
   readOnly,
   successOutput,
   writeTool,
-  type ToolGuard,
+  type ScopeCheck, type ToolGuard,
 } from "./shared.js";
 
 const membersOutput = z.object({ success: z.boolean(), data: looseRows.optional() }).partial().passthrough();
@@ -28,7 +28,8 @@ const teamOutput = z.object({ id: z.string(), name: z.string() }).partial().pass
 
 const teamIdInput = z.string().min(1).describe("Team ID from list_teams");
 
-export function registerOrganizationTools(server: McpServer, api: RybbitApiClient, guard: ToolGuard): void {
+export function registerOrganizationTools(server: McpServer, api: RybbitApiClient, guard: ToolGuard, allowed: ScopeCheck): void {
+  if (allowed("org", "read"))
   server.registerTool(
     "list_members",
     {
@@ -44,6 +45,7 @@ export function registerOrganizationTools(server: McpServer, api: RybbitApiClien
     )
   );
 
+  if (allowed("org", "write"))
   server.registerTool(
     "add_member",
     {
@@ -63,6 +65,7 @@ export function registerOrganizationTools(server: McpServer, api: RybbitApiClien
     )
   );
 
+  if (allowed("org", "write"))
   server.registerTool(
     "update_member_site_access",
     {
@@ -89,6 +92,7 @@ export function registerOrganizationTools(server: McpServer, api: RybbitApiClien
     )
   );
 
+  if (allowed("org", "read"))
   server.registerTool(
     "list_teams",
     {
@@ -103,6 +107,7 @@ export function registerOrganizationTools(server: McpServer, api: RybbitApiClien
     )
   );
 
+  if (allowed("org", "write"))
   server.registerTool(
     "create_team",
     {
@@ -126,6 +131,7 @@ export function registerOrganizationTools(server: McpServer, api: RybbitApiClien
     )
   );
 
+  if (allowed("org", "write"))
   server.registerTool(
     "update_team",
     {
@@ -153,6 +159,7 @@ export function registerOrganizationTools(server: McpServer, api: RybbitApiClien
     )
   );
 
+  if (allowed("org", "write"))
   server.registerTool(
     "delete_team",
     {

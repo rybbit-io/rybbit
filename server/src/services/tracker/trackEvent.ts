@@ -8,6 +8,7 @@ import { pageviewQueue } from "./pageviewQueue.js";
 import { createBasePayload } from "./utils.js";
 import { getLocation } from "../../db/geolocation/geolocation.js";
 import { checkApiKey } from "../../lib/auth-utils.js";
+import { hasScope } from "../../lib/scopes.js";
 import { botEventQueue } from "./botBlocking/botEventQueue.js";
 import { checkBotBlocking } from "./botBlocking/index.js";
 import { resolveTrackingIdentity } from "./requestIdentity.js";
@@ -254,8 +255,10 @@ async function isTrustedServerSideIngestion(request: FastifyRequest, siteId: num
     return false;
   }
 
+  // An under-scoped bearer degrades to untrusted client-side traffic (no 4xx)
+  // — this is a public ingestion endpoint, not an authenticated API.
   const apiKeyResult = await checkApiKey(request, { siteId });
-  return apiKeyResult.valid;
+  return apiKeyResult.valid && hasScope(apiKeyResult.statements, { resource: "ingest", action: "write" });
 }
 
 // Unified handler for all events (pageviews and custom events)

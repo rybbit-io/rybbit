@@ -2,7 +2,7 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { RybbitApiClient } from "../apiClient.js";
 import { organizationIdInput, siteFeatureInputs, siteIdInput } from "../inputs.js";
-import { destructiveTool, idempotentWrite, looseRow, ok, readOnly, writeTool, type ToolGuard } from "./shared.js";
+import { destructiveTool, idempotentWrite, looseRow, ok, readOnly, writeTool, type ScopeCheck, type ToolGuard } from "./shared.js";
 
 const listSitesOutput = z.object({
   organizations: z.array(
@@ -39,7 +39,7 @@ const updateSiteConfigOutput = z
   .partial()
   .passthrough();
 
-export function registerSiteTools(server: McpServer, api: RybbitApiClient, guard: ToolGuard): void {
+export function registerSiteTools(server: McpServer, api: RybbitApiClient, guard: ToolGuard, allowed: ScopeCheck): void {
   server.registerTool(
     "list_sites",
     {
@@ -77,6 +77,7 @@ export function registerSiteTools(server: McpServer, api: RybbitApiClient, guard
     })
   );
 
+  if (allowed("sites", "read"))
   server.registerTool(
     "get_site",
     {
@@ -90,6 +91,7 @@ export function registerSiteTools(server: McpServer, api: RybbitApiClient, guard
     guard(async ({ site_id }) => ok(await api.call("GET", `/sites/${site_id}`)))
   );
 
+  if (allowed("sites", "write"))
   server.registerTool(
     "create_site",
     {
@@ -117,6 +119,7 @@ export function registerSiteTools(server: McpServer, api: RybbitApiClient, guard
     )
   );
 
+  if (allowed("sites", "write"))
   server.registerTool(
     "update_site_config",
     {
@@ -143,6 +146,7 @@ export function registerSiteTools(server: McpServer, api: RybbitApiClient, guard
     guard(async ({ site_id, ...body }) => ok(await api.call("PUT", `/sites/${site_id}/config`, { body })))
   );
 
+  if (allowed("sites", "write"))
   server.registerTool(
     "delete_site",
     {

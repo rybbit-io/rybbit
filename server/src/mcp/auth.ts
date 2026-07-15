@@ -1,9 +1,11 @@
 import type { FastifyRequest } from "fastify";
+import { parseOAuthScopes, statementsFromApiKeyPermissions, type ScopeStatements } from "../lib/scopes.js";
 
 interface ApiKeyVerificationResult {
   valid: boolean;
   key?: {
     referenceId?: string | null;
+    permissions?: unknown;
   } | null;
   error?: {
     code?: string;
@@ -13,6 +15,7 @@ interface ApiKeyVerificationResult {
 export type OAuthTokenResult = {
   userId?: string | null;
   accessTokenExpiresAt?: Date | string | null;
+  scopes?: string | null;
 } | null;
 
 export interface McpAuthenticatorDependencies {
@@ -22,6 +25,8 @@ export interface McpAuthenticatorDependencies {
 
 export interface McpAuthContext {
   userId: string;
+  /** null = unrestricted credential (legacy key / full OAuth grant). */
+  scopes: ScopeStatements | null;
 }
 
 export class McpAuthenticationError extends Error {
@@ -96,7 +101,7 @@ export function createMcpAuthenticator(dependencies: McpAuthenticatorDependencie
       if (!userId) {
         throw new McpAuthenticationError("API key is not associated with a Rybbit user", 401);
       }
-      return { userId };
+      return { userId, scopes: statementsFromApiKeyPermissions(verification.key?.permissions) };
     }
 
     if (verification?.error?.code === "RATE_LIMITED") {
@@ -114,7 +119,7 @@ export function createMcpAuthenticator(dependencies: McpAuthenticatorDependencie
     }
 
     if (isUsableOAuthToken(oauthToken)) {
-      return { userId: oauthToken.userId as string };
+      return { userId: oauthToken.userId as string, scopes: parseOAuthScopes(oauthToken.scopes) };
     }
 
     if (verificationFailed) {

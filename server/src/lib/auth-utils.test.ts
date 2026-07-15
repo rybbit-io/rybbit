@@ -8,6 +8,7 @@ vi.mock("./auth.js", () => ({
     api: {
       getSession: vi.fn(async () => null),
       verifyApiKey: vi.fn(async () => ({ valid: false })),
+      getMcpSession: vi.fn(async () => null),
     },
   },
 }));
@@ -25,7 +26,8 @@ vi.mock("../db/postgres/postgres.js", async () => {
 
 import { db, sql } from "../db/postgres/postgres.js";
 import { member, memberSiteAccess, sites, team, teamMember, teamSiteAccess } from "../db/postgres/schema.js";
-import { getSitesUserHasAccessTo, invalidateSitesAccessCache } from "./auth-utils.js";
+import { auth } from "./auth.js";
+import { checkApiKey, getSitesUserHasAccessTo, invalidateSitesAccessCache } from "./auth-utils.js";
 import { filterSitesByMemberAccess } from "./siteAccess.js";
 
 // Only the tables getSitesUserHasAccessTo touches. Column names must match the
@@ -226,5 +228,71 @@ describe("filterSitesByMemberAccess", () => {
   it("restricted member with no team and no grants sees nothing", async () => {
     await db.delete(teamMember);
     expect(await filteredIdsFor(true)).toEqual([]);
+  });
+});
+
+describe("checkApiKey — scope carrying", () => {
+  const request = (token = "rb_key") => ({ headers: { authorization: `Bearer ${token}` }, query: {} }) as any;
+
+  beforeEach(async () => {
+    vi.mocked(auth.api.verifyApiKey).mockReset();
+    vi.mocked(auth.api.getMcpSession as any).mockReset();
+    vi.mocked(auth.api.verifyApiKey).mockResolvedValue({ valid: false } as any);
+    vi.mocked(auth.api.getMcpSession as any).mockResolvedValue(null);
+    await db.delete(member).where(eq(member.organizationId, "org_scope"));
+    await db
+      .insert(member)
+      .values({ id: "m_scope", organizationId: "org_scope", userId: "user_scope", role: "member", createdAt: NOW });
+  });
+
+  it("carries API key permissions as statements", async () => {
+    vi.mocked(auth.api.verifyApiKey).mockResolvedValue({
+      valid: true,
+      key: { referenceId: "user_scope", permissions: { goals: ["read"] } },
+    } as any);
+
+    const result = await checkApiKey(request(), { organizationId: "org_scope" });
+
+    expect(result.valid).toBe(true);
+    expect(result.role).toBe("member");
+    expect(result.statements).toEqual({ goals: ["read"] });
+  });
+
+  it("legacy keys (null permissions) carry null statements", async () => {
+    vi.mocked(auth.api.verifyApiKey).mockResolvedValue({
+      valid: true,
+      key: { referenceId: "user_scope", permissions: null },
+    } as any);
+
+    const result = await checkApiKey(request(), { organizationId: "org_scope" });
+
+    expect(result.valid).toBe(true);
+    expect(result.statements).toBeNull();
+  });
+
+  it("carries OAuth token scopes as statements via the fallback", async () => {
+    vi.mocked(auth.api.getMcpSession as any).mockResolvedValue({
+      userId: "user_scope",
+      scopes: "openid goals:read",
+      accessTokenExpiresAt: new Date(Date.now() + 3600_000),
+    });
+
+    const result = await checkApiKey(request("oauth_token"), { organizationId: "org_scope" });
+
+    expect(result.valid).toBe(true);
+    expect(result.statements).toEqual({ goals: ["read"] });
+  });
+
+  it("OAuth tokens without custom scopes are unrestricted", async () => {
+    vi.mocked(auth.api.getMcpSession as any).mockResolvedValue({
+      userId: "user_scope",
+      scopes: "openid",
+      accessTokenExpiresAt: new Date(Date.now() + 3600_000),
+    });
+
+    const result = await checkApiKey(request("oauth_token"), { organizationId: "org_scope" });
+
+    expect(result.valid).toBe(true);
+    expect(result.statements).toBeNull();
   });
 });

@@ -11,7 +11,7 @@ import {
   siteQuery,
   successOutput,
   writeTool,
-  type ToolGuard,
+  type ScopeCheck, type ToolGuard,
 } from "./shared.js";
 
 const goalsOutput = z
@@ -29,7 +29,8 @@ const goalWriteOutput = z.object({ success: z.boolean(), goalId: z.number() }).p
 
 const goalIdInput = z.number().int().positive().describe("Goal ID from get_goals");
 
-export function registerGoalTools(server: McpServer, api: RybbitApiClient, guard: ToolGuard): void {
+export function registerGoalTools(server: McpServer, api: RybbitApiClient, guard: ToolGuard, allowed: ScopeCheck): void {
+  if (allowed("goals", "read"))
   server.registerTool(
     "get_goals",
     {
@@ -50,6 +51,7 @@ export function registerGoalTools(server: McpServer, api: RybbitApiClient, guard
     )
   );
 
+  if (allowed("goals", "write"))
   server.registerTool(
     "create_goal",
     {
@@ -70,6 +72,7 @@ export function registerGoalTools(server: McpServer, api: RybbitApiClient, guard
     )
   );
 
+  if (allowed("goals", "write"))
   server.registerTool(
     "update_goal",
     {
@@ -91,6 +94,7 @@ export function registerGoalTools(server: McpServer, api: RybbitApiClient, guard
     )
   );
 
+  if (allowed("goals", "write"))
   server.registerTool(
     "delete_goal",
     {

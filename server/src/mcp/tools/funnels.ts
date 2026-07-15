@@ -10,7 +10,7 @@ import {
   siteQuery,
   successOutput,
   writeTool,
-  type ToolGuard,
+  type ScopeCheck, type ToolGuard,
 } from "./shared.js";
 
 const funnelsOutput = z.object({ data: looseRows.optional() }).passthrough();
@@ -30,7 +30,8 @@ const analyzeFunnelOutput = z.object({ data: z.array(funnelStepResult).optional(
 
 const saveFunnelOutput = z.object({ success: z.boolean(), funnelId: z.number() }).partial().passthrough();
 
-export function registerFunnelTools(server: McpServer, api: RybbitApiClient, guard: ToolGuard): void {
+export function registerFunnelTools(server: McpServer, api: RybbitApiClient, guard: ToolGuard, allowed: ScopeCheck): void {
+  if (allowed("funnels", "read"))
   server.registerTool(
     "get_funnels",
     {
@@ -43,6 +44,7 @@ export function registerFunnelTools(server: McpServer, api: RybbitApiClient, gua
     guard(async ({ site_id }) => ok(await api.call("GET", `/sites/${site_id}/funnels`)))
   );
 
+  if (allowed("funnels", "read"))
   server.registerTool(
     "analyze_funnel",
     {
@@ -63,6 +65,7 @@ export function registerFunnelTools(server: McpServer, api: RybbitApiClient, gua
     )
   );
 
+  if (allowed("funnels", "write"))
   server.registerTool(
     "save_funnel",
     {
@@ -83,6 +86,7 @@ export function registerFunnelTools(server: McpServer, api: RybbitApiClient, gua
     )
   );
 
+  if (allowed("funnels", "write"))
   server.registerTool(
     "delete_funnel",
     {
