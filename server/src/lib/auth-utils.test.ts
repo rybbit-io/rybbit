@@ -28,6 +28,7 @@ import { db, sql } from "../db/postgres/postgres.js";
 import { member, memberSiteAccess, sites, team, teamMember, teamSiteAccess } from "../db/postgres/schema.js";
 import { auth } from "./auth.js";
 import { checkApiKey, getSitesUserHasAccessTo, invalidateSitesAccessCache } from "./auth-utils.js";
+import { INTERNAL_BEARER_HANDOFF_HEADER, registerBearerHandoff, releaseBearerHandoff } from "./bearerAuth.js";
 import { filterSitesByMemberAccess } from "./siteAccess.js";
 
 // Only the tables getSitesUserHasAccessTo touches. Column names must match the
@@ -294,5 +295,49 @@ describe("checkApiKey — scope carrying", () => {
 
     expect(result.valid).toBe(true);
     expect(result.statements).toBeNull();
+  });
+
+  it("reuses a valid handoff without re-verifying the key (no double rate-limit)", async () => {
+    const nonce = registerBearerHandoff("rb_key", {
+      status: "valid",
+      userId: "user_scope",
+      statements: { goals: ["read"] },
+    });
+    const req = {
+      headers: { authorization: "Bearer rb_key", [INTERNAL_BEARER_HANDOFF_HEADER]: nonce },
+      query: {},
+    } as any;
+
+    const result = await checkApiKey(req, { organizationId: "org_scope" });
+
+    expect(result.valid).toBe(true);
+    expect(result.role).toBe("member");
+    expect(result.statements).toEqual({ goals: ["read"] });
+    // The whole point: the proxied call did not hit better-auth again.
+    expect(auth.api.verifyApiKey).not.toHaveBeenCalled();
+    releaseBearerHandoff(nonce);
+  });
+
+  it("ignores a handoff whose token does not match the request and verifies normally", async () => {
+    const nonce = registerBearerHandoff("some_other_token", {
+      status: "valid",
+      userId: "user_scope",
+      statements: null,
+    });
+    vi.mocked(auth.api.verifyApiKey).mockResolvedValue({
+      valid: true,
+      key: { referenceId: "user_scope", permissions: null },
+    } as any);
+    const req = {
+      headers: { authorization: "Bearer rb_key", [INTERNAL_BEARER_HANDOFF_HEADER]: nonce },
+      query: {},
+    } as any;
+
+    const result = await checkApiKey(req, { organizationId: "org_scope" });
+
+    expect(result.valid).toBe(true);
+    // Forged/mismatched handoff falls through to real verification.
+    expect(auth.api.verifyApiKey).toHaveBeenCalledTimes(1);
+    releaseBearerHandoff(nonce);
   });
 });

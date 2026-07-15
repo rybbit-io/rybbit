@@ -1,4 +1,5 @@
 import type { FastifyInstance } from "fastify";
+import { INTERNAL_BEARER_HANDOFF_HEADER } from "../lib/bearerAuth.js";
 
 export class RybbitApiError extends Error {
   constructor(
@@ -15,11 +16,16 @@ export class RybbitApiError extends Error {
  * MCP request's Authorization header. Requests run through the full route
  * lifecycle (API key verification, site access checks, rate limits, time
  * param validation) exactly as if they arrived over HTTP.
+ *
+ * The optional handoff nonce lets the target route's guards reuse the
+ * credential the MCP gate already verified, so a tool call verifies (and rate-
+ * limits) the key once rather than twice.
  */
 export class RybbitApiClient {
   constructor(
     private readonly fastify: FastifyInstance,
-    private readonly authorization: string
+    private readonly authorization: string,
+    private readonly handoffNonce?: string
   ) {}
 
   async call<T = unknown>(
@@ -40,6 +46,7 @@ export class RybbitApiClient {
       query,
       headers: {
         authorization: this.authorization,
+        ...(this.handoffNonce ? { [INTERNAL_BEARER_HANDOFF_HEADER]: this.handoffNonce } : {}),
         ...(options.body !== undefined ? { "content-type": "application/json" } : {}),
       },
       ...(options.body !== undefined ? { payload: JSON.stringify(options.body) } : {}),

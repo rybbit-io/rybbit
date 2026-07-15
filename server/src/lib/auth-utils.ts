@@ -5,14 +5,31 @@ import { db } from "../db/postgres/postgres.js";
 import { member, memberSiteAccess, sites, user, team, teamMember, teamSiteAccess } from "../db/postgres/schema.js";
 import { auth } from "./auth.js";
 import {
-  hasScope,
-  parseOAuthScopes,
-  statementsFromApiKeyPermissions,
-  type ScopeRequirement,
-  type ScopeStatements,
-} from "./scopes.js";
+  consumeBearerHandoff,
+  extractBearerToken,
+  INTERNAL_BEARER_HANDOFF_HEADER,
+  resolveBearerIdentity,
+  type BearerResolverDeps,
+} from "./bearerAuth.js";
+import { hasScope, type ScopeRequirement, type ScopeStatements } from "./scopes.js";
 import { siteConfig } from "./siteConfig.js";
 import { logger } from "./logger/logger.js";
+
+// The MCP gate injects fakes; the REST layer always uses better-auth.
+const bearerResolverDeps: BearerResolverDeps = {
+  verifyApiKey: apiKey => auth.api.verifyApiKey({ body: { key: apiKey } }),
+  getOAuthSession: token => auth.api.getMcpSession({ headers: new Headers({ authorization: `Bearer ${token}` }) }),
+};
+
+function resolveBearerTokenFromRequest(req: FastifyRequest): string | null {
+  // Priority: Authorization: Bearer header (recommended), then ?api_key= (testing).
+  const bearerToken = extractBearerToken(req.headers["authorization"]);
+  if (bearerToken) {
+    return bearerToken;
+  }
+  const queryApiKey = (req.query as any)?.api_key;
+  return typeof queryApiKey === "string" ? queryApiKey : null;
+}
 
 export function mapHeaders(headers: any) {
   const entries = Object.entries(headers);
@@ -294,30 +311,6 @@ async function resolveBearerUserOrgRole(
   return { valid: false, role: null };
 }
 
-/**
- * Resolve a bearer token as an OAuth access token issued by the better-auth
- * MCP plugin. Returns the token's userId and scope string, or null when the
- * token is unknown or expired. Lookup failures (e.g. OAuth tables not migrated
- * yet) resolve to null so API-key and session auth are unaffected.
- */
-async function getOAuthTokenSession(bearerToken: string): Promise<{ userId: string; scopes: string | null } | null> {
-  try {
-    const token = await auth.api.getMcpSession({
-      headers: new Headers({ authorization: `Bearer ${bearerToken}` }),
-    });
-    if (!token?.userId) {
-      return null;
-    }
-    if (token.accessTokenExpiresAt && new Date(token.accessTokenExpiresAt).getTime() <= Date.now()) {
-      return null;
-    }
-    return { userId: token.userId, scopes: typeof token.scopes === "string" ? token.scopes : null };
-  } catch (error) {
-    logger.debug(error, "OAuth access token lookup failed");
-    return null;
-  }
-}
-
 export interface BearerAuthResult {
   valid: boolean;
   role: string | null;
@@ -340,43 +333,23 @@ export async function checkApiKey(
   req: FastifyRequest,
   options: { organizationId?: string; siteId?: string | number }
 ): Promise<BearerAuthResult> {
-  // Check if a valid API key was provided
-  // Priority: 1. Authorization: Bearer header (recommended), 2. Query parameter (testing only)
-  const authHeader = req.headers["authorization"];
-  const bearerToken =
-    authHeader && typeof authHeader === "string" && authHeader.startsWith("Bearer ") ? authHeader.substring(7) : null;
+  const apiKey = resolveBearerTokenFromRequest(req);
+  if (!apiKey) {
+    return { valid: false, role: null, statements: null };
+  }
 
-  const queryApiKey = (req.query as any)?.api_key;
-  const apiKey = bearerToken || queryApiKey;
+  // Reuse the MCP gate's verification when this is an in-process proxy call, so
+  // a tool call doesn't verify (and rate-limit) the key a second time.
+  const identity =
+    consumeBearerHandoff(req.headers[INTERNAL_BEARER_HANDOFF_HEADER], apiKey) ??
+    (await resolveBearerIdentity(apiKey, bearerResolverDeps));
 
-  if (apiKey && typeof apiKey === "string") {
-    try {
-      // Verify the API key using Better Auth
-      const result = await auth.api.verifyApiKey({
-        body: { key: apiKey },
-      });
-
-      if (result.valid && result.key) {
-        const membership = await resolveBearerUserOrgRole(result.key.referenceId, options);
-        return { ...membership, statements: statementsFromApiKeyPermissions(result.key.permissions) };
-      }
-
-      // Check if the key was rejected due to rate limiting
-      if (!result.valid && result.error?.code === "RATE_LIMITED") {
-        return { valid: false, role: null, rateLimited: true, statements: null };
-      }
-    } catch (error) {
-      logger.error(error, "Error verifying API key");
-      // Continue to the OAuth fallback if API key verification fails
-    }
-
-    // Not a valid API key — try it as an OAuth access token (MCP clients
-    // connected through the OAuth flow).
-    const oauthToken = await getOAuthTokenSession(apiKey);
-    if (oauthToken) {
-      const membership = await resolveBearerUserOrgRole(oauthToken.userId, options);
-      return { ...membership, statements: parseOAuthScopes(oauthToken.scopes) };
-    }
+  if (identity.status === "rate_limited") {
+    return { valid: false, role: null, rateLimited: true, statements: null };
+  }
+  if (identity.status === "valid" && identity.userId) {
+    const membership = await resolveBearerUserOrgRole(identity.userId, options);
+    return { ...membership, statements: identity.statements };
   }
   return { valid: false, role: null, statements: null };
 }
@@ -392,30 +365,14 @@ export async function getUserIdFromRequest(req: FastifyRequest): Promise<string 
     return session.user.id;
   }
 
-  // Fall back to API key auth
-  const authHeader = req.headers["authorization"];
-  const bearerToken =
-    authHeader && typeof authHeader === "string" && authHeader.startsWith("Bearer ") ? authHeader.substring(7) : null;
-  const queryApiKey = (req.query as any)?.api_key;
-  const apiKey = bearerToken || queryApiKey;
-
-  if (apiKey && typeof apiKey === "string") {
-    try {
-      const result = await auth.api.verifyApiKey({
-        body: { key: apiKey },
-      });
-      if (result.valid && result.key?.referenceId) {
-        return result.key.referenceId;
-      }
-    } catch (error) {
-      logger.error(error, "Error verifying API key");
-    }
-
-    // Not a valid API key — try it as an OAuth access token (MCP clients
-    // connected through the OAuth flow).
-    const oauthToken = await getOAuthTokenSession(apiKey);
-    if (oauthToken) {
-      return oauthToken.userId;
+  // Fall back to bearer auth (API key or OAuth token).
+  const apiKey = resolveBearerTokenFromRequest(req);
+  if (apiKey) {
+    const identity =
+      consumeBearerHandoff(req.headers[INTERNAL_BEARER_HANDOFF_HEADER], apiKey) ??
+      (await resolveBearerIdentity(apiKey, bearerResolverDeps));
+    if (identity.status === "valid" && identity.userId) {
+      return identity.userId;
     }
   }
 

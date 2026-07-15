@@ -1,32 +1,21 @@
 import type { FastifyRequest } from "fastify";
-import { parseOAuthScopes, statementsFromApiKeyPermissions, type ScopeStatements } from "../lib/scopes.js";
+import {
+  extractBearerToken,
+  resolveBearerIdentity,
+  type BearerIdentity,
+  type BearerResolverDeps,
+} from "../lib/bearerAuth.js";
+import type { ScopeStatements } from "../lib/scopes.js";
 
-interface ApiKeyVerificationResult {
-  valid: boolean;
-  key?: {
-    referenceId?: string | null;
-    permissions?: unknown;
-  } | null;
-  error?: {
-    code?: string;
-  } | null;
-}
-
-export type OAuthTokenResult = {
-  userId?: string | null;
-  accessTokenExpiresAt?: Date | string | null;
-  scopes?: string | null;
-} | null;
-
-export interface McpAuthenticatorDependencies {
-  verifyApiKey: (apiKey: string) => Promise<ApiKeyVerificationResult>;
-  getOAuthSession: (bearerToken: string) => Promise<OAuthTokenResult>;
-}
+export { extractBearerToken };
+export type McpAuthenticatorDependencies = BearerResolverDeps;
 
 export interface McpAuthContext {
   userId: string;
   /** null = unrestricted credential (legacy key / full OAuth grant). */
   scopes: ScopeStatements | null;
+  /** The resolved identity, so the endpoint can register a proxy handoff. */
+  identity: BearerIdentity;
 }
 
 export class McpAuthenticationError extends Error {
@@ -37,22 +26,6 @@ export class McpAuthenticationError extends Error {
     super(message);
     this.name = "McpAuthenticationError";
   }
-}
-
-export function extractBearerToken(authorization: string | string[] | undefined): string | null {
-  if (typeof authorization !== "string") {
-    return null;
-  }
-
-  // Match the REST layer's parsing EXACTLY (auth-utils checkApiKey uses
-  // `startsWith("Bearer ") ? substring(7) : null`). If the gate accepted a
-  // looser form (lowercase scheme, extra spaces) than the routes it proxies,
-  // initialize/tools-list would authenticate here and then every tools/call
-  // would 401 downstream.
-  if (!authorization.startsWith("Bearer ")) {
-    return null;
-  }
-  return authorization.substring(7) || null;
 }
 
 // Dynamic imports keep the MCP module (and its tests) from loading the full
@@ -67,14 +40,6 @@ const defaultDependencies: McpAuthenticatorDependencies = {
     return auth.api.getMcpSession({ headers: new Headers({ authorization: `Bearer ${bearerToken}` }) });
   },
 };
-
-export function isUsableOAuthToken(token: OAuthTokenResult): token is NonNullable<OAuthTokenResult> {
-  if (!token?.userId) {
-    return false;
-  }
-  // Defense in depth: reject expired tokens even if the lookup returned one.
-  return !token.accessTokenExpiresAt || new Date(token.accessTokenExpiresAt).getTime() > Date.now();
-}
 
 /**
  * Verifies the bearer credential once per MCP HTTP request, before any
@@ -94,44 +59,17 @@ export function createMcpAuthenticator(dependencies: McpAuthenticatorDependencie
       );
     }
 
-    let verification: ApiKeyVerificationResult | null = null;
-    let verificationFailed = false;
-    try {
-      verification = await dependencies.verifyApiKey(bearerToken);
-    } catch {
-      verificationFailed = true;
+    const identity = await resolveBearerIdentity(bearerToken, dependencies);
+    switch (identity.status) {
+      case "valid":
+        return { userId: identity.userId!, scopes: identity.statements, identity };
+      case "rate_limited":
+        throw new McpAuthenticationError("API key rate limit exceeded", 429);
+      case "verify_error":
+        throw new McpAuthenticationError("Rybbit could not verify the API key", 503);
+      default:
+        throw new McpAuthenticationError("Invalid or expired credentials", 401);
     }
-
-    if (verification?.valid) {
-      const userId = verification.key?.referenceId;
-      if (!userId) {
-        throw new McpAuthenticationError("API key is not associated with a Rybbit user", 401);
-      }
-      return { userId, scopes: statementsFromApiKeyPermissions(verification.key?.permissions) };
-    }
-
-    if (verification?.error?.code === "RATE_LIMITED") {
-      throw new McpAuthenticationError("API key rate limit exceeded", 429);
-    }
-
-    // Not a valid API key — try it as an OAuth access token. Tolerate lookup
-    // failures (e.g. self-hosted instances that have not migrated the OAuth
-    // tables yet) so API-key behavior is unaffected.
-    let oauthToken: OAuthTokenResult = null;
-    try {
-      oauthToken = await dependencies.getOAuthSession(bearerToken);
-    } catch {
-      oauthToken = null;
-    }
-
-    if (isUsableOAuthToken(oauthToken)) {
-      return { userId: oauthToken.userId as string, scopes: parseOAuthScopes(oauthToken.scopes) };
-    }
-
-    if (verificationFailed) {
-      throw new McpAuthenticationError("Rybbit could not verify the API key", 503);
-    }
-    throw new McpAuthenticationError("Invalid or expired credentials", 401);
   };
 }
 

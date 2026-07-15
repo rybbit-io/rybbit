@@ -1,6 +1,11 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
+import {
+  extractBearerToken,
+  registerBearerHandoff,
+  releaseBearerHandoff,
+} from "../lib/bearerAuth.js";
 import { RybbitApiClient } from "./apiClient.js";
 import { authenticateMcpRequest, McpAuthenticationError, type McpAuthenticator } from "./auth.js";
 import { registerTools, type ToolRegistrationConfig } from "./tools/index.js";
@@ -19,9 +24,14 @@ export interface McpRouteOptions {
   authenticate?: McpAuthenticator;
 }
 
-function buildMcpServer(fastify: FastifyInstance, authorization: string, config: ToolRegistrationConfig): McpServer {
+function buildMcpServer(
+  fastify: FastifyInstance,
+  authorization: string,
+  handoffNonce: string | undefined,
+  config: ToolRegistrationConfig
+): McpServer {
   const server = new McpServer({ name: "rybbit", version: "0.3.0" }, { instructions: INSTRUCTIONS });
-  registerTools(server, new RybbitApiClient(fastify, authorization), config);
+  registerTools(server, new RybbitApiClient(fastify, authorization, handoffNonce), config);
   return server;
 }
 
@@ -78,7 +88,14 @@ export async function mcpRoutes(fastify: FastifyInstance, options: McpRouteOptio
       });
     }
 
-    const server = buildMcpServer(fastify, request.headers.authorization as string, {
+    // Hand the verified credential to the in-process proxy so each tool call's
+    // REST guard reuses it instead of verifying (and rate-limiting) the key a
+    // second time. Released when the request ends.
+    const authorization = request.headers.authorization as string;
+    const handoffToken = extractBearerToken(authorization);
+    const handoffNonce = handoffToken ? registerBearerHandoff(handoffToken, authContext.identity) : undefined;
+
+    const server = buildMcpServer(fastify, authorization, handoffNonce, {
       log: message => request.log.error(message),
       scopes: authContext.scopes,
     });
@@ -90,6 +107,7 @@ export async function mcpRoutes(fastify: FastifyInstance, options: McpRouteOptio
     // The transport writes directly to the raw response; keep Fastify out of it.
     reply.hijack();
     reply.raw.on("close", () => {
+      releaseBearerHandoff(handoffNonce);
       transport.close();
       server.close();
     });
