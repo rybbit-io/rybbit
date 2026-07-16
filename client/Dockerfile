@@ -40,6 +40,17 @@ ENV NEXT_PUBLIC_DEPLOYMENT=${NEXT_PUBLIC_DEPLOYMENT}
 ENV NEXT_PUBLIC_LITE_DASHBOARD=${NEXT_PUBLIC_LITE_DASHBOARD}
 
 WORKDIR /app/client
+
+# npm installs the file:../shared dependency as a relative symlink
+# (node_modules/@rybbit/shared -> ../../../shared). Turbopack treats
+# /app/client as the project root and won't resolve packages through a symlink
+# that escapes it, and Next's standalone output tracing re-homes node_modules
+# at runtime. Materialize the package into a real directory instead — same fix
+# as the server image (commit 00a52750).
+RUN rm -rf node_modules/@rybbit/shared \
+ && mkdir -p node_modules/@rybbit/shared \
+ && cp -r /app/shared/package.json /app/shared/dist node_modules/@rybbit/shared/
+
 RUN npm run build
 
 # Production image, copy all the files and run next
