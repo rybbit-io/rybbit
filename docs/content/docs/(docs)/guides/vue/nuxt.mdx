@@ -160,10 +160,10 @@ From any Vue component within your Nuxt.js application, you can track custom eve
 
 <script setup>
 function trackCustomEvent() {
-  if (process.client && window.rybbit) { // Ensure running on client and rybbit exists
+  if (import.meta.client && window.rybbit) { // Ensure running on client and rybbit exists
     window.rybbit.event('nuxt_interaction', { detail: 'User clicked important button' });
   }
 }
 </script>
 ```
-Using `process.client` (Nuxt 2) or checking `typeof window !== 'undefined'` (Nuxt 3, or generally) is good practice before accessing `window` if your component might render or execute logic on the server side.
+Using `import.meta.client` (Nuxt 3+) or checking `typeof window !== 'undefined'` is good practice before accessing `window` if your component might render or execute logic on the server side. (On Nuxt 2, use the legacy `process.client` flag instead.)

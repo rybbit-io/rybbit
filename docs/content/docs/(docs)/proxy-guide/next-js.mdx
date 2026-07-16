@@ -377,9 +377,9 @@ Next.js automatically caches responses when possible, but you can optimize furth
 If deployed on Vercel, your rewrites benefit from the global Edge Network, which caches static scripts close to users worldwide.
 
 **Custom caching headers:**
-The Rybbit server sets appropriate cache headers, which Next.js respects:
-- Scripts (`.js` files): Cached for 1 hour
-- Configuration: Cached for 5 minutes
+The Rybbit server sets cache headers on its scripts, which Next.js respects:
+- Scripts (`.js` files): Cached for 1 hour (`script.js`) to 1 day (`replay.js`, `metrics.js`)
+- Configuration: Not cached by the server (you may cache it for ~5 minutes at your proxy if desired)
 - Tracking POSTs: Not cached
 
 ### Server Load

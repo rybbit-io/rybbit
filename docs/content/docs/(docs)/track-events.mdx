@@ -31,7 +31,7 @@ This approach requires no JavaScript and works on any clickable element.
 
 Tracks a custom event with optional properties.
 
-*   `eventName` (String): The name of the custom event (max 255 characters).
+*   `eventName` (String): The name of the custom event (max 256 characters).
 *   `properties` (Object, Optional): An object containing custom data (max 2KB characters). Only strings numbers are supported as values.
 
 ```javascript
@@ -48,7 +48,7 @@ window.rybbit.event("Item Added To Cart", {
 
 ### `window.rybbit.pageview()`
 
-Tracks a pageview. Useful when `data-track-spa` is set to `"false"` or when you need to manually trigger a pageview.
+Tracks a pageview. Useful when automatic SPA navigation tracking is disabled in your site settings, or when you need to manually trigger a pageview.
 
 ```javascript
 // Track a pageview

@@ -46,7 +46,7 @@ page {
   includeJS {
       rybbit = https://app.rybbit.io/api/script.js
       rybbit.defer = 1
-      rybbit.data.data-site-id = YOUR_SITE_ID
+      rybbit.data-site-id = YOUR_SITE_ID
   }
   # ...
 }
@@ -54,6 +54,11 @@ page {
 
 This creates a new `<script>` tag, loads the rybbit script and adds the Site ID
 data attribute.
+
+Per-include attributes like `data-site-id` require TYPO3 12.1+ (Feature #91499).
+On older TYPO3 versions `includeJS` cannot emit `data-*` attributes, so you'll
+need a different install method (for example, adding the full `<script>` tag via
+`page.headerData`).
 
 Most likely you will already have the line `page = PAGE` somewhere in your
 codebase, this also identifies the file, that is most likely to be your main
@@ -68,7 +73,7 @@ page {
   includeJS {
       rybbit = https://app.rybbit.io/api/script.js
       rybbit.defer = 1
-      rybbit.data.data-site-id = YOUR_SITE_ID
+      rybbit.data-site-id = YOUR_SITE_ID
   }
 }
 [END]

@@ -6,7 +6,6 @@
   "pages": [
     "index",
     "comparison",
-    "architecture",
     "self-host-vs-cloud",
     "---Usage---",
     "script",

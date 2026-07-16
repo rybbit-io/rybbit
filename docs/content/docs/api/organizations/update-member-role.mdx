@@ -46,18 +46,7 @@ Updates the role(s) assigned to an existing organization member.
 
 ### Response
 
-Returns the updated member object.
-
-<TypeTable
-  type={{
-    member: {
-      description: 'The member that was updated',
-      type: 'Member',
-    },
-  }}
-/>
-
-#### Member Object
+Returns the updated member object directly — the fields are at the top level, **not** nested under a `member` key.
 
 <TypeTable
   type={{
@@ -240,13 +229,11 @@ var data = await response.Content.ReadAsStringAsync();
 
 ```json title="Response"
 {
-  "member": {
-    "id": "mem_7c6d5e4f3g2h",
-    "userId": "user_5f4g...",
-    "organizationId": "org_123",
-    "role": "admin",
-    "createdAt": "2026-01-10T12:00:00.000Z"
-  }
+  "id": "mem_7c6d5e4f3g2h",
+  "userId": "user_5f4g...",
+  "organizationId": "org_123",
+  "role": "admin",
+  "createdAt": "2026-01-10T12:00:00.000Z"
 }
 ```
 

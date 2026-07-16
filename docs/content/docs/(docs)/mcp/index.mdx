@@ -18,7 +18,7 @@ If your client supports the MCP authorization flow — Claude Code, Codex, Claud
 ### 1. Create an API key
 
 1. Open **Settings → Account** in Rybbit.
-2. Create a key in the **API Keys** section.
+2. Create a key in the **Personal API Keys** section.
 3. Copy it immediately. Rybbit only shows a new key once.
 
 A key created without permissions can do everything its user can do. To hand an agent a narrower credential, create the key with scoped permissions (`POST /api/user/api-keys` with a `permissions` object, e.g. `{"analytics": ["read"], "goals": ["read", "write"]}`): the MCP tool list and every API call are then limited to those `resource:action` scopes. `write` implies `read` on the same resource, and scopes never elevate — org admin/owner requirements still apply. Deleting the key revokes the connection.

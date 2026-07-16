@@ -88,7 +88,7 @@ ALTER TABLE session_replay_metadata MODIFY TTL start_time + INTERVAL 14 DAY;
 
 To help us improve Rybbit, self-hosted instances automatically send anonymous usage statistics to our cloud service. This includes:
 
-- Number of rows in each ClickHouse table
+- Number of rows in a few core ClickHouse tables (events and the session replay tables)
 - Total database size
 - Your Rybbit version
 - A hashed instance identifier

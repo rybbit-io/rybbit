@@ -1,6 +1,6 @@
 ---
-title: Create API Key
-description: Programmatically create a new API key for your account.
+title: Create Organization API Key
+description: Programmatically create an API key owned by an organization.
 full: true
 method: POST
 ---
@@ -13,12 +13,24 @@ import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
 <div>
 
 ```
-POST /api/user/api-keys
+POST /api/organizations/:organizationId/api-keys
 ```
 
-Creates a new API key scoped to your user account (and its organizations). To create a key owned by an organization instead, see [Create Organization API Key](/docs/api/api-keys/create-org).
+Creates an API key **owned by the organization itself**, rather than by your user account. The key authenticates as the organization (org-admin authority over its sites), so it survives member departures, and its plan gating, rate limits, and key-count limit all follow the owning organization's subscription. Organization keys are issued with the `rb_org_` prefix.
 
-<Callout type="warn">This endpoint accepts your logged-in dashboard **session** or an **unrestricted (full-access) user API key**. Scoped keys and organization keys are rejected — so a scoped key cannot mint new keys, but a session or full-access key can. Send your session cookie or `Authorization: Bearer` header with the request.</Callout>
+<Callout type="warn">You must be an **owner or admin** of the target organization. This endpoint accepts your dashboard **session** or an **unrestricted (full-access) user API key** — scoped keys and organization keys are rejected, so an organization key cannot mint other keys.</Callout>
+
+### Path Parameters
+
+<TypeTable
+  type={{
+    organizationId: {
+      description: 'The ID of the organization that will own the key',
+      type: 'string',
+      required: true,
+    },
+  }}
+/>
 
 ### Request Body
 
@@ -34,12 +46,17 @@ Creates a new API key scoped to your user account (and its organizations). To cr
       type: 'number',
       required: false,
     },
+    permissions: {
+      description: 'Scope the key to specific `resource: action[]` pairs (e.g. `{ "analytics": ["read"], "goals": ["read", "write"] }`). Omit entirely for a full-access key.',
+      type: 'object',
+      required: false,
+    },
   }}
 />
 
 ### Response
 
-Returns the created API key object.
+Returns the created API key object. The full `key` value carries the `rb_org_` prefix.
 
 <TypeTable
   type={{
@@ -48,7 +65,7 @@ Returns the created API key object.
       type: 'string',
     },
     key: {
-      description: 'The secret key value',
+      description: 'The secret key value (prefixed with `rb_org_`)',
       type: 'string',
     },
     name: {
@@ -63,8 +80,12 @@ Returns the created API key object.
       description: 'The key prefix',
       type: 'string',
     },
+    referenceId: {
+      description: 'The ID of the organization that owns the key',
+      type: 'string',
+    },
     userId: {
-      description: 'The ID of the user that owns the key',
+      description: 'The ID of the admin/owner who created the key',
       type: 'string',
     },
     enabled: {
@@ -106,7 +127,7 @@ Returns the created API key object.
 <Tabs items={['cURL', 'JavaScript', 'Python', 'PHP', 'Ruby', 'Go', 'Rust', 'Java', '.NET']}>
   <Tab value="cURL">
 ```bash title="Request"
-curl -X POST "https://app.rybbit.io/api/user/api-keys" \
+curl -X POST "https://app.rybbit.io/api/organizations/org_123/api-keys" \
   -H "Cookie: better-auth.session_token=YOUR_SESSION_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"name": "CI pipeline", "expiresIn": 2592000}'
@@ -115,7 +136,7 @@ curl -X POST "https://app.rybbit.io/api/user/api-keys" \
   <Tab value="JavaScript">
 ```javascript title="Request"
 const response = await fetch(
-  'https://app.rybbit.io/api/user/api-keys',
+  'https://app.rybbit.io/api/organizations/org_123/api-keys',
   {
     method: 'POST',
     credentials: 'include',
@@ -137,7 +158,7 @@ const data = await response.json();
 import requests
 
 response = requests.post(
-    'https://app.rybbit.io/api/user/api-keys',
+    'https://app.rybbit.io/api/organizations/org_123/api-keys',
     json={
         'name': 'CI pipeline',
         'expiresIn': 2592000
@@ -153,7 +174,7 @@ data = response.json()
   <Tab value="PHP">
 ```php title="Request"
 $ch = curl_init();
-curl_setopt($ch, CURLOPT_URL, "https://app.rybbit.io/api/user/api-keys");
+curl_setopt($ch, CURLOPT_URL, "https://app.rybbit.io/api/organizations/org_123/api-keys");
 curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
 curl_setopt($ch, CURLOPT_POST, true);
 curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode([
@@ -176,7 +197,7 @@ $data = json_decode($response, true);
 require 'net/http'
 require 'json'
 
-uri = URI("https://app.rybbit.io/api/user/api-keys")
+uri = URI("https://app.rybbit.io/api/organizations/org_123/api-keys")
 req = Net::HTTP::Post.new(uri)
 req['Cookie'] = 'better-auth.session_token=YOUR_SESSION_TOKEN'
 req['Content-Type'] = 'application/json'
@@ -195,7 +216,7 @@ body := bytes.NewBuffer([]byte(`{
   "name": "CI pipeline",
   "expiresIn": 2592000
 }`))
-req, _ := http.NewRequest("POST", "https://app.rybbit.io/api/user/api-keys", body)
+req, _ := http.NewRequest("POST", "https://app.rybbit.io/api/organizations/org_123/api-keys", body)
 req.Header.Set("Cookie", "better-auth.session_token=YOUR_SESSION_TOKEN")
 req.Header.Set("Content-Type", "application/json")
 
@@ -211,7 +232,7 @@ json.NewDecoder(resp.Body).Decode(&data)
 ```rust title="Request"
 let client = reqwest::Client::new();
 let res = client
-    .post("https://app.rybbit.io/api/user/api-keys")
+    .post("https://app.rybbit.io/api/organizations/org_123/api-keys")
     .header("Cookie", "better-auth.session_token=YOUR_SESSION_TOKEN")
     .json(&serde_json::json!({
         "name": "CI pipeline",
@@ -228,7 +249,7 @@ let data: serde_json::Value = res.json().await?;
 HttpClient client = HttpClient.newHttpClient();
 String json = "{\"name\": \"CI pipeline\", \"expiresIn\": 2592000}";
 HttpRequest request = HttpRequest.newBuilder()
-    .uri(URI.create("https://app.rybbit.io/api/user/api-keys"))
+    .uri(URI.create("https://app.rybbit.io/api/organizations/org_123/api-keys"))
     .header("Cookie", "better-auth.session_token=YOUR_SESSION_TOKEN")
     .header("Content-Type", "application/json")
     .POST(HttpRequest.BodyPublishers.ofString(json))
@@ -248,7 +269,7 @@ var content = new StringContent(
     "application/json"
 );
 
-var response = await client.PostAsync("https://app.rybbit.io/api/user/api-keys", content);
+var response = await client.PostAsync("https://app.rybbit.io/api/organizations/org_123/api-keys", content);
 var data = await response.Content.ReadAsStringAsync();
 ```
   </Tab>
@@ -259,10 +280,11 @@ var data = await response.Content.ReadAsStringAsync();
 ```json title="Response"
 {
   "id": "key_8f3a1b2c4d5e6f7g",
-  "key": "rybbit_sk_live_xxxxxxxxxxxxxxxxxxxx",
+  "key": "rb_org_xxxxxxxxxxxxxxxxxxxx",
   "name": "CI pipeline",
-  "start": "rybbit_sk_live_xxxx",
-  "prefix": "rybbit_sk_live_",
+  "start": "rb_org_xxxx",
+  "prefix": "rb_org_",
+  "referenceId": "org_123",
   "userId": "user_2a9b8c7d6e5f4g3h",
   "enabled": true,
   "expiresAt": "2026-07-25T12:00:00.000Z",
@@ -274,7 +296,7 @@ var data = await response.Content.ReadAsStringAsync();
 }
 ```
 
-<Callout>On Rybbit Cloud, API keys require a Standard or Pro plan; free/basic plans receive HTTP 403. Rate limits are applied automatically based on your plan.</Callout>
+<Callout>On Rybbit Cloud, organization API keys require the organization to be on a Standard or Pro plan; free/basic plans receive HTTP 403. Each organization also has a plan-based key-count limit — creating a key past the limit returns HTTP 403.</Callout>
 
 </div>
 </div>

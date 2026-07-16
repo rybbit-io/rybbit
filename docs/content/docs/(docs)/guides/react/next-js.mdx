@@ -108,10 +108,28 @@ module.exports = {
         source: "/api/track",
         destination: `${process.env.NEXT_PUBLIC_RYBBIT_HOST}/api/track`,
       },
+      {
+        source: "/api/identify",
+        destination: `${process.env.NEXT_PUBLIC_RYBBIT_HOST}/api/identify`,
+      },
+      {
+        source: "/api/replay.js",
+        destination: `${process.env.NEXT_PUBLIC_RYBBIT_HOST}/api/replay.js`,
+      },
+      {
+        source: "/api/site/:path*",
+        destination: `${process.env.NEXT_PUBLIC_RYBBIT_HOST}/api/site/:path*`,
+      },
+      {
+        source: "/api/session-replay/:path*",
+        destination: `${process.env.NEXT_PUBLIC_RYBBIT_HOST}/api/session-replay/:path*`,
+      },
     ]
   },
 }
 ```
+
+The script derives its API base from its own `src`, so once you serve it from `/api/script.js` it will call every other endpoint under `/api` on your own domain too. All six rewrites are required: `script.js` and `track` cover the script and pageview/event traffic, `identify` covers `identify()`, `replay.js` and `session-replay/:path*` cover session replay, and `site/:path*` covers the tracking-config and feature-flag requests. If you omit the `site/:path*` rewrite, the tracking-config fetch fails and the script silently falls back to its defaults, disabling web vitals, error tracking, session replay, and button/copy/form autocapture.
 
 and where you are using the script:
 
