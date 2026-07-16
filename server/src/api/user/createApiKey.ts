@@ -1,6 +1,6 @@
 import { FastifyReply, FastifyRequest } from "fastify";
 import { z } from "zod";
-import { apiKeyLimitForPlan, countApiKeysForReference } from "../../lib/apiKeyLimits.js";
+import { apiKeyLimitForPlan, createApiKeyWithinLimit } from "../../lib/apiKeyLimits.js";
 import { auth } from "../../lib/auth.js";
 import { getSessionFromReq } from "../../lib/auth-utils.js";
 import { apiKeyPermissionsSchema } from "../../lib/scopes.js";
@@ -69,28 +69,37 @@ export async function createUserApiKey(
   }
 
   const keyLimit = apiKeyLimitForPlan(planName);
-  const existingCount = await countApiKeysForReference(session.user.id);
-  if (existingCount >= keyLimit) {
-    return reply.status(403).send({
-      error: `You have reached your limit of ${keyLimit} API keys. Delete an unused key or upgrade your plan.`,
-    });
-  }
 
   try {
-    const result = await auth.api.createApiKey({
-      body: {
-        name,
-        expiresIn: expiresIn ?? undefined,
-        rateLimitEnabled,
-        rateLimitTimeWindow,
-        rateLimitMax,
-        userId: session.user.id,
-        ...(permissions ? { permissions: permissions as Record<string, string[]> } : {}),
-      },
-    });
+    const outcome = await createApiKeyWithinLimit(session.user.id, keyLimit, () =>
+      auth.api.createApiKey({
+        body: {
+          name,
+          expiresIn: expiresIn ?? undefined,
+          rateLimitEnabled,
+          rateLimitTimeWindow,
+          rateLimitMax,
+          userId: session.user.id,
+          ...(permissions ? { permissions: permissions as Record<string, string[]> } : {}),
+        },
+      })
+    );
 
-    return reply.send(result);
-  } catch (error: any) {
-    return reply.status(500).send({ error: error.message || "Failed to create API key" });
+    if (!outcome.allowed) {
+      return reply.status(403).send({
+        error: `You have reached your limit of ${keyLimit} API keys. Delete an unused key or upgrade your plan.`,
+      });
+    }
+
+    return reply.send(outcome.result);
+  } catch (error: unknown) {
+    // Surface better-auth's own 4xx rejections by message; anything else stays
+    // a generic 500 so internal error detail never reaches the client.
+    const err = error as { name?: string; statusCode?: unknown; message?: string };
+    if (err?.name === "APIError" && typeof err.statusCode === "number" && err.statusCode >= 400 && err.statusCode < 500) {
+      return reply.status(err.statusCode).send({ error: err.message || "Failed to create API key" });
+    }
+    console.error("Error creating API key:", error);
+    return reply.status(500).send({ error: "Failed to create API key" });
   }
 }

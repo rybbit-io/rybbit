@@ -4,14 +4,23 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
   createApiKey: vi.fn(async () => ({ id: "key_1", key: "rb_org_new" })),
   apiKeyLimitForPlan: vi.fn(() => 50),
-  countApiKeysForReference: vi.fn(async () => 0),
+  createApiKeyWithinLimit: vi.fn(
+    async (
+      _ref: string,
+      _limit: number,
+      create: () => Promise<unknown>
+    ): Promise<{ allowed: boolean; result?: unknown }> => ({
+      allowed: true,
+      result: await create(),
+    })
+  ),
 }));
 
 vi.mock("../../lib/auth.js", () => ({ auth: { api: { createApiKey: mocks.createApiKey } } }));
 vi.mock("../stripe/getSubscription.js", () => ({ getSubscriptionInner: vi.fn(async () => null) }));
 vi.mock("../../lib/apiKeyLimits.js", () => ({
   apiKeyLimitForPlan: mocks.apiKeyLimitForPlan,
-  countApiKeysForReference: mocks.countApiKeysForReference,
+  createApiKeyWithinLimit: mocks.createApiKeyWithinLimit,
 }));
 vi.mock("../../lib/const.js", () => ({
   IS_CLOUD: false,
@@ -31,7 +40,10 @@ describe("createOrgApiKey", () => {
     vi.clearAllMocks();
     mocks.createApiKey.mockResolvedValue({ id: "key_1", key: "rb_org_new" });
     mocks.apiKeyLimitForPlan.mockReturnValue(50);
-    mocks.countApiKeysForReference.mockResolvedValue(0);
+    mocks.createApiKeyWithinLimit.mockImplementation(async (_ref, _limit, create) => ({
+      allowed: true,
+      result: await create(),
+    }));
     currentUser = { id: "user_1" };
     app = Fastify();
     app.addHook("preHandler", async req => {
@@ -78,9 +90,9 @@ describe("createOrgApiKey", () => {
     expect(mocks.createApiKey).not.toHaveBeenCalled();
   });
 
-  it("enforces the org's key-count limit", async () => {
+  it("enforces the org's key-count limit through the atomic reservation", async () => {
     mocks.apiKeyLimitForPlan.mockReturnValue(5);
-    mocks.countApiKeysForReference.mockResolvedValue(5);
+    mocks.createApiKeyWithinLimit.mockResolvedValue({ allowed: false });
 
     const response = await app.inject({
       method: "POST",
@@ -90,13 +102,14 @@ describe("createOrgApiKey", () => {
 
     expect(response.statusCode).toBe(403);
     expect(response.json().error).toContain("limit of 5 API keys");
-    expect(mocks.countApiKeysForReference).toHaveBeenCalledWith("org_1");
+    expect(mocks.createApiKeyWithinLimit).toHaveBeenCalledWith("org_1", 5, expect.any(Function));
     expect(mocks.createApiKey).not.toHaveBeenCalled();
   });
 
-  it("surfaces better-auth authorization failures with their status", async () => {
+  it("surfaces better-auth 4xx rejections with their status and message", async () => {
     mocks.createApiKey.mockRejectedValue(
       Object.assign(new Error("You are not a member of the organization that owns this API key."), {
+        name: "APIError",
         statusCode: 403,
       })
     );
@@ -108,6 +121,35 @@ describe("createOrgApiKey", () => {
     });
 
     expect(response.statusCode).toBe(403);
+    expect(response.json().error).toContain("not a member");
+  });
+
+  it("never forwards arbitrary error internals to the client", async () => {
+    mocks.createApiKey.mockRejectedValue(
+      Object.assign(new Error("connect ECONNREFUSED 10.0.0.5:5432 (password=hunter2)"), { statusCode: 500 })
+    );
+
+    const response = await app.inject({
+      method: "POST",
+      url: "/organizations/org_1/api-keys",
+      payload: { name: "boom" },
+    });
+
+    expect(response.statusCode).toBe(500);
+    expect(response.json().error).toBe("Failed to create API key");
+  });
+
+  it("does not trust a 4xx statusCode on non-APIError exceptions", async () => {
+    mocks.createApiKey.mockRejectedValue(Object.assign(new Error("internal detail"), { statusCode: 402 }));
+
+    const response = await app.inject({
+      method: "POST",
+      url: "/organizations/org_1/api-keys",
+      payload: { name: "boom" },
+    });
+
+    expect(response.statusCode).toBe(500);
+    expect(response.json().error).toBe("Failed to create API key");
   });
 
   it("rejects invalid permissions", async () => {

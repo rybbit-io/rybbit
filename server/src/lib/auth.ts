@@ -108,16 +108,16 @@ const pluginList = [
       enabled: true,
     },
     organizationHooks: {
-      afterDeleteOrganization: async ({ organization: org }) => {
+      beforeDeleteOrganization: async ({ organization: org }) => {
         // apikey.referenceId has no FK (it holds user OR org ids), so
-        // org-owned keys must be purged explicitly with their organization.
-        try {
-          await db
-            .delete(schema.apiKey)
-            .where(and(eq(schema.apiKey.referenceId, org.id), eq(schema.apiKey.configId, ORG_API_KEY_CONFIG_ID)));
-        } catch (error) {
-          console.error("Error deleting API keys for removed organization:", error);
-        }
+        // org-owned keys are purged explicitly. Runs BEFORE the deletion and
+        // lets failures propagate: a failed purge aborts the deletion instead
+        // of leaving live credentials for a dead organization. If the purge
+        // succeeds but the deletion then fails, keys are gone while the org
+        // survives — the safe direction (admins can mint new ones).
+        await db
+          .delete(schema.apiKey)
+          .where(and(eq(schema.apiKey.referenceId, org.id), eq(schema.apiKey.configId, ORG_API_KEY_CONFIG_ID)));
       },
       beforeCreateInvitation: async ({ invitation: newInvitation }) => {
         const invite = newInvitation as typeof newInvitation & {
@@ -425,6 +425,14 @@ export const auth = betterAuth({
             .where(and(eq(member.userId, userId), eq(member.organizationId, referenceId)))
             .limit(1);
           if (membership.length === 0) return;
+
+          // createdBy must identify the session user who minted the key —
+          // never caller-supplied metadata. The Fastify endpoint sets it
+          // server-side; this covers direct /api-key/create calls. In-place
+          // mutation is effective: better-auth hands this same body object to
+          // the endpoint.
+          const orgKeyBody = ctx.body as { metadata?: Record<string, unknown> };
+          orgKeyBody.metadata = { ...orgKeyBody.metadata, createdBy: userId };
         }
 
         let planName: string | null = null;
@@ -446,6 +454,12 @@ export const auth = betterAuth({
           }
         }
 
+        // Best-effort pre-check: the insert happens inside the plugin after
+        // this hook returns, so no lock can span check-and-create here.
+        // Concurrent direct calls can overshoot the cap slightly — it's an
+        // advisory quota on the caller's own plan, not a security boundary.
+        // The Fastify endpoints (the documented path) enforce it atomically
+        // via createApiKeyWithinLimit.
         const limit = apiKeyLimitForPlan(planName);
         const existing = await countApiKeysForReference(referenceId);
         if (existing >= limit) {

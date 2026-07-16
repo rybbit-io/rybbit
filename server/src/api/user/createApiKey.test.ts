@@ -11,7 +11,10 @@ vi.mock("../../lib/auth-utils.js", () => ({ getSessionFromReq: mocks.getSessionF
 vi.mock("../stripe/getSubscription.js", () => ({ getSubscriptionInner: vi.fn(async () => null) }));
 vi.mock("../../lib/apiKeyLimits.js", () => ({
   apiKeyLimitForPlan: vi.fn(() => 50),
-  countApiKeysForReference: vi.fn(async () => 0),
+  createApiKeyWithinLimit: vi.fn(async (_ref: string, _limit: number, create: () => Promise<unknown>) => ({
+    allowed: true,
+    result: await create(),
+  })),
 }));
 vi.mock("../../lib/const.js", () => ({
   IS_CLOUD: false,

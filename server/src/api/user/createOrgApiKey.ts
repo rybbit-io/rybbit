@@ -1,6 +1,6 @@
 import { FastifyReply, FastifyRequest } from "fastify";
 import { z } from "zod";
-import { apiKeyLimitForPlan, countApiKeysForReference } from "../../lib/apiKeyLimits.js";
+import { apiKeyLimitForPlan, createApiKeyWithinLimit } from "../../lib/apiKeyLimits.js";
 import { auth } from "../../lib/auth.js";
 import { ORG_API_KEY_CONFIG_ID } from "../../lib/bearerAuth.js";
 import {
@@ -75,34 +75,41 @@ export async function createOrgApiKey(
   }
 
   const keyLimit = apiKeyLimitForPlan(planName);
-  const existingCount = await countApiKeysForReference(organizationId);
-  if (existingCount >= keyLimit) {
-    return reply.status(403).send({
-      error: `This organization has reached its limit of ${keyLimit} API keys. Delete an unused key or upgrade your plan.`,
-    });
-  }
 
   try {
-    const result = await auth.api.createApiKey({
-      body: {
-        name,
-        expiresIn: expiresIn ?? undefined,
-        configId: ORG_API_KEY_CONFIG_ID,
-        organizationId,
-        userId,
-        metadata: { createdBy: userId },
-        rateLimitEnabled,
-        rateLimitTimeWindow,
-        rateLimitMax,
-        ...(permissions ? { permissions: permissions as Record<string, string[]> } : {}),
-      },
-    });
+    const outcome = await createApiKeyWithinLimit(organizationId, keyLimit, () =>
+      auth.api.createApiKey({
+        body: {
+          name,
+          expiresIn: expiresIn ?? undefined,
+          configId: ORG_API_KEY_CONFIG_ID,
+          organizationId,
+          userId,
+          metadata: { createdBy: userId },
+          rateLimitEnabled,
+          rateLimitTimeWindow,
+          rateLimitMax,
+          ...(permissions ? { permissions: permissions as Record<string, string[]> } : {}),
+        },
+      })
+    );
 
-    return reply.send(result);
-  } catch (error: any) {
-    // better-auth throws APIError with a useful message (not a member, plan
-    // config missing, etc.) — surface it with its status where possible.
-    const status = typeof error?.statusCode === "number" ? error.statusCode : 500;
-    return reply.status(status).send({ error: error.message || "Failed to create API key" });
+    if (!outcome.allowed) {
+      return reply.status(403).send({
+        error: `This organization has reached its limit of ${keyLimit} API keys. Delete an unused key or upgrade your plan.`,
+      });
+    }
+
+    return reply.send(outcome.result);
+  } catch (error: unknown) {
+    // Surface better-auth's own 4xx rejections (membership, permission,
+    // validation) by message; anything else stays a generic 500 so internal
+    // error detail never reaches the client.
+    const err = error as { name?: string; statusCode?: unknown; message?: string };
+    if (err?.name === "APIError" && typeof err.statusCode === "number" && err.statusCode >= 400 && err.statusCode < 500) {
+      return reply.status(err.statusCode).send({ error: err.message || "Failed to create API key" });
+    }
+    console.error("Error creating organization API key:", error);
+    return reply.status(500).send({ error: "Failed to create API key" });
   }
 }

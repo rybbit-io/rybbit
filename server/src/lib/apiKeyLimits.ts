@@ -1,6 +1,8 @@
-import { and, count, eq, gt, isNull, or } from "drizzle-orm";
+import { and, count, eq, gt, isNull, or, sql } from "drizzle-orm";
 import { db } from "../db/postgres/postgres.js";
 import { apiKey } from "../db/postgres/schema.js";
+
+type DbLike = Pick<typeof db, "select">;
 import {
   IS_CLOUD,
   PRO_API_KEY_LIMIT,
@@ -26,8 +28,8 @@ export function apiKeyLimitForPlan(planName: string | null | undefined): number 
  * block the cap. User and org ids live in disjoint id spaces, so counting by
  * referenceId alone is exact.
  */
-export async function countApiKeysForReference(referenceId: string): Promise<number> {
-  const [row] = await db
+export async function countApiKeysForReference(referenceId: string, executor: DbLike = db): Promise<number> {
+  const [row] = await executor
     .select({ value: count() })
     .from(apiKey)
     .where(
@@ -38,4 +40,25 @@ export async function countApiKeysForReference(referenceId: string): Promise<num
       )
     );
   return row?.value ?? 0;
+}
+
+/**
+ * Runs `create` only if the owner still has a free key slot. Check-and-create
+ * is serialized per owner with a Postgres transaction advisory lock, so
+ * concurrent requests — across server instances — cannot overshoot the limit:
+ * the next holder counts only after `create` has committed (better-auth
+ * commits on its own connection before this transaction releases the lock).
+ */
+export async function createApiKeyWithinLimit<T>(
+  referenceId: string,
+  limit: number,
+  create: () => Promise<T>
+): Promise<{ allowed: true; result: T } | { allowed: false }> {
+  return db.transaction(async tx => {
+    await tx.execute(sql`select pg_advisory_xact_lock(hashtextextended(${referenceId}, 0))`);
+    if ((await countApiKeysForReference(referenceId, tx)) >= limit) {
+      return { allowed: false as const };
+    }
+    return { allowed: true as const, result: await create() };
+  });
 }
