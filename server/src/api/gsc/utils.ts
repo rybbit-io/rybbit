@@ -89,10 +89,10 @@ export async function refreshGSCToken(siteId: number): Promise<string | null> {
     const now = new Date();
     const fiveMinutesFromNow = new Date(now.getTime() + 5 * 60 * 1000);
 
-    // if (expiresAt > fiveMinutesFromNow) {
-    //   // Token is still valid
-    //   return connection.accessToken;
-    // }
+    if (expiresAt > fiveMinutesFromNow) {
+      // Token is still valid
+      return connection.accessToken;
+    }
 
     // Token is expired or about to expire, refresh it
     const tokenResponse = await fetch("https://oauth2.googleapis.com/token", {
