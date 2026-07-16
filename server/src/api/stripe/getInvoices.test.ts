@@ -107,16 +107,16 @@ describe("getInvoices — authorization", () => {
     expect(reply.body).toEqual([expectedMappedInvoice]);
   });
 
-  it("also allows a plain (non-owner) member — membership suffices for this read", async () => {
-    // Pinned drift: unlike the five billing mutation routes (owner-only), getInvoices
-    // only requires membership. Any member of the org can read its full invoice
-    // history, including hosted invoice URLs and PDFs.
+  it("rejects a non-owner member with 403 and never calls Stripe", async () => {
+    // Invoices carry unauthenticated Stripe hosted/PDF URLs, so this read is
+    // owner-only like the other five billing routes.
     const reply = replyStub();
 
     await getInvoices(requestStub("u_member", { organizationId: "org_1" }), reply);
 
-    expect(reply.statusCode).toBe(200);
-    expect(reply.body).toEqual([expectedMappedInvoice]);
+    expect(reply.statusCode).toBe(403);
+    expect(reply.body.error).toBe("Only organization owners can manage billing");
+    expect(mocks.invoicesList).not.toHaveBeenCalled();
   });
 
   it("rejects a user with no membership in the target org (cross-org attempt)", async () => {
@@ -126,7 +126,7 @@ describe("getInvoices — authorization", () => {
     await getInvoices(requestStub("u_outsider", { organizationId: "org_1" }), reply);
 
     expect(reply.statusCode).toBe(403);
-    expect(reply.body.error).toBe("You do not have access to this organization");
+    expect(reply.body.error).toBe("Only organization owners can manage billing");
     expect(mocks.invoicesList).not.toHaveBeenCalled();
   });
 

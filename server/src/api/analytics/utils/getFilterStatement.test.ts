@@ -461,16 +461,23 @@ describe("getFilterStatement", () => {
       expect(getFilterStatement(filters)).toBe("AND (pathname LIKE '/blog%' OR pathname LIKE '/docs%')");
     });
 
-    it("does not escape % in user values, so they act as LIKE wildcards", () => {
-      // Pinned behavior: a literal "%" in the value is passed straight into the
-      // LIKE pattern, so starts_with "50%" matches anything starting with "50".
+    it("escapes % in user values so they match literally", () => {
+      // A literal "%" in the value is escaped to \% in the LIKE pattern, so
+      // starts_with "50%" only matches strings starting with the literal "50%".
       const filters = JSON.stringify([{ parameter: "pathname", type: "starts_with", value: ["50%"] }]);
-      expect(getFilterStatement(filters)).toBe("AND pathname LIKE '50%%'");
+      expect(getFilterStatement(filters)).toBe("AND pathname LIKE '50\\\\%%'");
     });
 
-    it("does not escape _ in user values, so it acts as a single-char wildcard", () => {
+    it("escapes _ in user values so it matches literally", () => {
       const filters = JSON.stringify([{ parameter: "pathname", type: "ends_with", value: ["a_b"] }]);
-      expect(getFilterStatement(filters)).toBe("AND pathname LIKE '%a_b'");
+      expect(getFilterStatement(filters)).toBe("AND pathname LIKE '%a\\\\_b'");
+    });
+
+    it("escapes backslashes in user values before LIKE wrapping", () => {
+      const filters = JSON.stringify([{ parameter: "pathname", type: "starts_with", value: ["C:\\temp"] }]);
+      // The value's backslash is LIKE-escaped to \\, then SqlString doubles
+      // each backslash in the string literal.
+      expect(getFilterStatement(filters)).toBe("AND pathname LIKE 'C:\\\\\\\\temp%'");
     });
   });
 
@@ -516,10 +523,9 @@ describe("getFilterStatement", () => {
       );
     });
 
-    it("passes % and _ in multi-value contains straight into the LIKE pattern", () => {
-      // Pinned behavior: user-supplied wildcard characters are not escaped.
+    it("escapes % and _ in multi-value contains so they match literally", () => {
       const filters = JSON.stringify([{ parameter: "pathname", type: "contains", value: ["100%", "a_b"] }]);
-      expect(getFilterStatement(filters)).toBe("AND (pathname LIKE '%100%%' OR pathname LIKE '%a_b%')");
+      expect(getFilterStatement(filters)).toBe("AND (pathname LIKE '%100\\\\%%' OR pathname LIKE '%a\\\\_b%')");
     });
 
     it("should OR-join multiple contains values on transformed params", () => {
@@ -604,11 +610,10 @@ describe("getFilterStatement", () => {
       expect(result).toBe("AND utm_source = 'google' AND utm_medium LIKE '%cpc%'");
     });
 
-    it("BUG: rewrites mapping tokens inside user-supplied string literals", () => {
-      // The mapping is applied as a global regex replace over the finished SQL,
-      // so a filter VALUE that happens to contain a mapped token is rewritten
-      // too — the query then filters for the wrong literal ('page_path'
-      // instead of 'pathname'). Pinning current (buggy) behavior.
+    it("does not rewrite mapping tokens inside user-supplied string literals", () => {
+      // Mappings are applied where column identifiers are emitted, never as a
+      // rewrite over the finished SQL, so a filter VALUE that happens to equal
+      // a mapped token is left untouched.
       const filters = JSON.stringify([
         { parameter: "pathname", type: "equals", value: ["/pricing"] },
         { parameter: "page_title", type: "equals", value: ["pathname"] },
@@ -616,14 +621,12 @@ describe("getFilterStatement", () => {
       const result = getFilterStatement(filters, undefined, undefined, {
         fieldMappings: { pathname: "page_path" },
       });
-      expect(result).toBe("AND page_path = '/pricing' AND page_title = 'page_path'");
+      expect(result).toBe("AND page_path = '/pricing' AND page_title = 'pathname'");
     });
 
-    it("does not rewrite quote-containing tokens inside values, because SQL escaping breaks the match", () => {
-      // The mappings used in production all contain single quotes
-      // (url_parameters['x']). Inside a value, SqlString escapes ' to \', so
-      // the mapping regex no longer matches and the value survives intact —
-      // accidental protection that only covers tokens containing quotes.
+    it("does not rewrite quote-containing mapping tokens inside values", () => {
+      // Values containing a production-shaped mapping token
+      // (url_parameters['x']) also survive intact.
       const filters = JSON.stringify([
         { parameter: "page_title", type: "equals", value: ["url_parameters['utm_source']"] },
       ]);

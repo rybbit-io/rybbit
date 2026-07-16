@@ -124,10 +124,9 @@ describe("addSite — cloud standard-feature gating (active subscription require
     expect(state.insertedValues).toHaveLength(0);
   });
 
-  it("rejects standard features on a trialing pro subscription (status !== 'active')", async () => {
-    // Pinning actual behavior: a paying pro TRIAL cannot enable webVitals/trackErrors/etc.
-    // because the gate checks status === "active" exactly. Session replay, a strictly more
-    // premium feature, IS allowed during a pro trial (it only checks planName). Suspicious.
+  it("allows standard features on a trialing subscription (trialing counts as paying)", async () => {
+    // A pro trial gets standard features, consistent with session replay also being
+    // granted during trial.
     mocks.getSubscriptionInner.mockResolvedValue(
       subscription({ planName: "pro-1m", status: "trialing", siteLimit: null })
     );
@@ -135,9 +134,8 @@ describe("addSite — cloud standard-feature gating (active subscription require
 
     await addSite(makeRequest({ trackCopy: true, trackFormInteractions: true }), reply);
 
-    expect(reply.statusCode).toBe(403);
-    expect(reply.body.error).toContain("trackCopy, trackFormInteractions");
-    expect(state.insertedValues).toHaveLength(0);
+    expect(reply.statusCode).toBe(201);
+    expect(state.insertedValues[0]).toMatchObject({ trackCopy: true, trackFormInteractions: true });
   });
 
   it("allows standard features on any active subscription", async () => {
@@ -208,12 +206,23 @@ describe("addSite — cloud site-limit enforcement", () => {
     expect(reply.statusCode).toBe(201);
   });
 
-  it("applies no site limit at all when the org has no subscription record", async () => {
-    // Pinning actual behavior: getSubscriptionInner returns null only when the organization
-    // row is missing, and `subscription?.siteLimit ?? null` then means UNLIMITED sites.
-    // A nonexistent/broken org is less restricted than the free tier (limit 1). Suspicious.
+  it("fails closed to the free-tier limit when the org has no subscription record", async () => {
+    // getSubscriptionInner returns null only when the organization row is missing; that
+    // case falls back to FREE_SITE_LIMIT (1) instead of granting unlimited sites.
     mocks.getSubscriptionInner.mockResolvedValue(null);
-    state.existingSiteCount = 500;
+    state.existingSiteCount = 1;
+    const reply = replyStub();
+
+    await addSite(makeRequest({}), reply);
+
+    expect(reply.statusCode).toBe(403);
+    expect(reply.body.error).toContain("limit of 1 website for your plan");
+    expect(state.insertedValues).toHaveLength(0);
+  });
+
+  it("still allows a first plain site when the org has no subscription record", async () => {
+    mocks.getSubscriptionInner.mockResolvedValue(null);
+    state.existingSiteCount = 0;
     const reply = replyStub();
 
     await addSite(makeRequest({}), reply);

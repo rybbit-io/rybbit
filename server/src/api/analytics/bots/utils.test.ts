@@ -119,11 +119,8 @@ describe("buildStringFilterCondition", () => {
     expect(() => buildStringFilterCondition("pathname", "regex", [""])).toThrow("Regex pattern cannot be empty");
   });
 
-  it("throws a raw SyntaxError for invalid regex, unlike the main filter builder", () => {
-    // Drift from getFilterStatement.ts: the main fork wraps RegExp construction
-    // in try/catch and rethrows "Invalid regex pattern: ...". The bot fork calls
-    // new RegExp(pattern) bare, so callers see the raw V8 SyntaxError instead.
-    expect(() => buildStringFilterCondition("pathname", "regex", ["[invalid"])).toThrow("Invalid regular expression");
+  it("wraps invalid regex errors with the same message as the main filter builder", () => {
+    expect(() => buildStringFilterCondition("pathname", "regex", ["[invalid"])).toThrow("Invalid regex pattern");
   });
 
   it("should throw for regex pattern exceeding max length", () => {
@@ -204,9 +201,9 @@ describe("getBotFilterStatement", () => {
       expect(getBotFilterStatement(filters)).toBe("AND pathname NOT LIKE '%/admin%'");
     });
 
-    it("should handle starts_with, leaving user wildcards unescaped", () => {
+    it("should handle starts_with, escaping user wildcards like the main builder", () => {
       const filters = JSON.stringify([{ parameter: "pathname", type: "starts_with", value: ["50%"] }]);
-      expect(getBotFilterStatement(filters)).toBe("AND pathname LIKE '50%%'");
+      expect(getBotFilterStatement(filters)).toBe("AND pathname LIKE '50\\\\%%'");
     });
 
     it("should handle ends_with", () => {
@@ -278,9 +275,10 @@ describe("getBotFilterStatement", () => {
     });
 
     it("does NOT check identified_user_id for user_id filters, unlike the main builder", () => {
-      // Drift from getFilterStatement.ts: the main fork expands user_id filters
-      // to also match identified_user_id. The bot fork treats user_id as a
-      // plain column, so identified users are not matched by their custom ID.
+      // Structural divergence, not fixable drift: the bot_events ClickHouse
+      // table (src/db/clickhouse/clickhouse.ts) has a user_id column but no
+      // identified_user_id column — bots are never identified — so the main
+      // builder's user_id -> identified_user_id expansion cannot apply here.
       const filters = JSON.stringify([{ parameter: "user_id", type: "equals", value: ["user123"] }]);
       expect(getBotFilterStatement(filters)).toBe("AND user_id = 'user123'");
     });

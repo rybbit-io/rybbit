@@ -54,11 +54,16 @@ const LITE_FILTER_OPERATORS: Record<string, string> = {
   ends_with: "LIKE",
 };
 
+// Escape LIKE pattern metacharacters in user-supplied values so they match
+// literally. Only the % wildcards that wrapLiteLikeValue itself adds around
+// the value remain functional.
+const escapeLikePattern = (value: string): string => value.replace(/[\\%_]/g, "\\$&");
+
 export function wrapLiteLikeValue(type: string, value: string | number): string {
   const v = String(value);
-  if (type === "contains" || type === "not_contains") return `%${v}%`;
-  if (type === "starts_with") return `${v}%`;
-  if (type === "ends_with") return `%${v}`;
+  if (type === "contains" || type === "not_contains") return `%${escapeLikePattern(v)}%`;
+  if (type === "starts_with") return `${escapeLikePattern(v)}%`;
+  if (type === "ends_with") return `%${escapeLikePattern(v)}`;
   return v;
 }
 
@@ -168,10 +173,7 @@ export function liteBucket(bucket: TimeBucket | undefined): TimeBucket {
   return bucket;
 }
 
-export function getLiteFillClause(
-  params: FilterParams,
-  bucket: TimeBucket
-): string {
+export function getLiteFillClause(params: FilterParams, bucket: TimeBucket): string {
   const { start_date, end_date, past_minutes_start, past_minutes_end } = params;
   const time_zone = params.time_zone || "UTC";
   const fn = TimeBucketToFn[bucket];

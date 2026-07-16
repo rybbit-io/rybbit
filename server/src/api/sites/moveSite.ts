@@ -49,15 +49,9 @@ export async function moveSite(
       return reply.status(400).send({ error: "Site is already in this organization" });
     }
 
-    // Target organization must exist.
-    const targetOrg = await db.query.organization.findFirst({
-      where: eq(organization.id, targetOrganizationId),
-    });
-    if (!targetOrg) {
-      return reply.status(404).send({ error: "Target organization not found" });
-    }
-
-    // Caller must be an admin/owner of the target organization.
+    // Caller must be an admin/owner of the target organization. This runs BEFORE the
+    // org-existence check so a caller without target-org access gets the same 403
+    // whether or not the org exists — no org-ID existence oracle.
     const targetMembership = await db.query.member.findFirst({
       where: and(eq(member.userId, userId), eq(member.organizationId, targetOrganizationId)),
     });
@@ -66,6 +60,16 @@ export async function moveSite(
     }
     if (targetMembership.role !== "admin" && targetMembership.role !== "owner") {
       return reply.status(403).send({ error: "You must be an admin or owner of the target organization" });
+    }
+
+    // Target organization must exist. Only reachable by target-org admins/owners
+    // (a membership row for a nonexistent org shouldn't exist, but guard against
+    // stale rows) so the 404 can't be used to probe org IDs.
+    const targetOrg = await db.query.organization.findFirst({
+      where: eq(organization.id, targetOrganizationId),
+    });
+    if (!targetOrg) {
+      return reply.status(404).send({ error: "Target organization not found" });
     }
 
     // Enforce the target organization's site limit on cloud.

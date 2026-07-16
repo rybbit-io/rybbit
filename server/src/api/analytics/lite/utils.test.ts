@@ -316,6 +316,19 @@ describe("wrapLiteLikeValue", () => {
   it("should stringify numbers", () => {
     expect(wrapLiteLikeValue("contains", 42)).toBe("%42%");
   });
+
+  it("should escape % and _ in user values so they match literally", () => {
+    expect(wrapLiteLikeValue("contains", "50%")).toBe("%50\\%%");
+    expect(wrapLiteLikeValue("starts_with", "a_b")).toBe("a\\_b%");
+  });
+
+  it("should escape backslashes in user values", () => {
+    expect(wrapLiteLikeValue("ends_with", "C:\\temp")).toBe("%C:\\\\temp");
+  });
+
+  it("should not escape values for non-LIKE types", () => {
+    expect(wrapLiteLikeValue("equals", "50%")).toBe("50%");
+  });
 });
 
 describe("hasLiteFilters", () => {

@@ -13,6 +13,9 @@ export interface FilterStatementOptions {
 
   // Field name mappings for CTEs that extract fields to different column names
   // e.g., { "url_parameters['utm_source']": "utm_source" }
+  // Keys must exactly match the emitted column expression (the getSqlParam
+  // output); the mapping is applied where column identifiers are produced, so
+  // user-supplied filter values are never rewritten.
   fieldMappings?: Record<string, string>;
 }
 
@@ -46,11 +49,16 @@ const filterTypeToOperator = (type: FilterType) => {
   }
 };
 
+// Escape LIKE pattern metacharacters in user-supplied values so they match
+// literally. Only the % wildcards that wrapLikeValue itself adds around the
+// value remain functional.
+const escapeLikePattern = (value: string): string => value.replace(/[\\%_]/g, "\\$&");
+
 const wrapLikeValue = (type: FilterType, value: string | number): string => {
   const v = String(value);
-  if (type === "contains" || type === "not_contains") return `%${v}%`;
-  if (type === "starts_with") return `${v}%`;
-  if (type === "ends_with") return `%${v}`;
+  if (type === "contains" || type === "not_contains") return `%${escapeLikePattern(v)}%`;
+  if (type === "starts_with") return `${escapeLikePattern(v)}%`;
+  if (type === "ends_with") return `%${escapeLikePattern(v)}`;
   return v;
 };
 
@@ -120,6 +128,12 @@ export function getFilterStatement(
   }
 
   const sessionLevelParams = options?.sessionLevelParams ?? DEFAULT_SESSION_LEVEL_PARAMS;
+
+  // Map an emitted column expression to its CTE alias, if the caller provided
+  // one. Applied at column-identifier emission time — never as a rewrite over
+  // finished SQL — so user-supplied values can't be affected.
+  const mapField = (expression: string): string => options?.fieldMappings?.[expression] ?? expression;
+
   const siteIdFilter = siteId ? `site_id = ${siteId}` : "";
   // Strip leading "AND " from timeStatement since we'll be constructing WHERE clauses
   const timeFilter = timeStatement ? timeStatement.replace(/^AND\s+/i, "").trim() : "";
@@ -214,7 +228,7 @@ export function getFilterStatement(
           )`;
   };
 
-  let result =
+  const result =
     "AND " +
     filtersArray
       .map(filter => {
@@ -305,11 +319,11 @@ export function getFilterStatement(
         }
 
         if (isNullCheck) {
-          return buildStringFilterCondition(getSqlParam(filter.parameter), filter.type, filter.value);
+          return buildStringFilterCondition(mapField(getSqlParam(filter.parameter)), filter.type, filter.value);
         }
 
         if (filter.type === "regex" || filter.type === "not_regex") {
-          return buildStringFilterCondition(getSqlParam(filter.parameter), filter.type, filter.value, x);
+          return buildStringFilterCondition(mapField(getSqlParam(filter.parameter)), filter.type, filter.value, x);
         }
 
         // Handle numeric comparison filters (>, <, >=, <=)
@@ -323,11 +337,11 @@ export function getFilterStatement(
           if (isNaN(numericValue)) {
             throw new Error(`Invalid numeric value for ${filter.type} filter: ${filter.value[0]}`);
           }
-          return `${getSqlParam(filter.parameter)} ${filterTypeToOperator(filter.type)} ${numericValue}`;
+          return `${mapField(getSqlParam(filter.parameter))} ${filterTypeToOperator(filter.type)} ${numericValue}`;
         }
 
         if (filter.type === "starts_with" || filter.type === "ends_with") {
-          return buildStringFilterCondition(getSqlParam(filter.parameter), filter.type, filter.value);
+          return buildStringFilterCondition(mapField(getSqlParam(filter.parameter)), filter.type, filter.value);
         }
 
         // Special handling for lat/lon with tolerance (only for equals/not_equals)
@@ -343,30 +357,23 @@ export function getFilterStatement(
         }
 
         if (filter.value.length === 1) {
-          const value = isNumericParam ? filter.value[0] : SqlString.escape(x + filter.value[0] + x);
-          return `${getSqlParam(filter.parameter)} ${filterTypeToOperator(filter.type)} ${value}`;
+          const value = isNumericParam
+            ? filter.value[0]
+            : SqlString.escape(wrapLikeValue(filter.type, filter.value[0]));
+          return `${mapField(getSqlParam(filter.parameter))} ${filterTypeToOperator(filter.type)} ${value}`;
         }
 
         // Negative filters must AND-join across values (NOT IN semantics): OR-joining
         // negations is a tautology — (x != 'a' OR x != 'b') matches every row.
         const joiner = filter.type === "not_equals" || filter.type === "not_contains" ? " AND " : " OR ";
         const valuesWithOperator = filter.value.map(value => {
-          const escapedValue = isNumericParam ? value : SqlString.escape(x + value + x);
-          return `${getSqlParam(filter.parameter)} ${filterTypeToOperator(filter.type)} ${escapedValue}`;
+          const escapedValue = isNumericParam ? value : SqlString.escape(wrapLikeValue(filter.type, value));
+          return `${mapField(getSqlParam(filter.parameter))} ${filterTypeToOperator(filter.type)} ${escapedValue}`;
         });
 
         return `(${valuesWithOperator.join(joiner)})`;
       })
       .join(" AND ");
-
-  // Apply field mappings if provided (for CTEs that extract fields to different column names)
-  if (options?.fieldMappings) {
-    for (const [from, to] of Object.entries(options.fieldMappings)) {
-      // Escape special regex characters in the 'from' string
-      const escapedFrom = from.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-      result = result.replace(new RegExp(escapedFrom, "g"), to);
-    }
-  }
 
   return result;
 }

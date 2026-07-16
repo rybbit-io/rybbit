@@ -3,7 +3,7 @@ import { eq } from "drizzle-orm";
 import { FastifyReply, FastifyRequest } from "fastify";
 import { db } from "../../db/postgres/postgres.js";
 import { sites } from "../../db/postgres/schema.js";
-import { IS_CLOUD } from "../../lib/const.js";
+import { FREE_SITE_LIMIT, IS_CLOUD } from "../../lib/const.js";
 import { getSubscriptionInner } from "../stripe/getSubscription.js";
 
 export async function addSite(
@@ -98,14 +98,19 @@ export async function addSite(
 
       const standardFeatures = { webVitals, trackErrors, trackButtonClicks, trackCopy, trackFormInteractions };
       const requestedStandard = Object.entries(standardFeatures).filter(([, v]) => v);
-      if (requestedStandard.length > 0 && subscription?.status !== "active") {
+      // Trialing counts as paying: a pro trial gets standard features, consistent with
+      // session replay being granted during trial above.
+      const hasActiveSubscription = subscription?.status === "active" || subscription?.status === "trialing";
+      if (requestedStandard.length > 0 && !hasActiveSubscription) {
         return reply.status(403).send({
           error: `The following features require an active subscription: ${requestedStandard.map(([k]) => k).join(", ")}`,
         });
       }
 
-      // Enforce site limit
-      const siteLimit = subscription?.siteLimit ?? null;
+      // Enforce site limit. A null siteLimit on a real subscription means unlimited, but a
+      // missing subscription (org row not found) must fail CLOSED to the free-tier limit —
+      // matching computeLimits' free fallback — rather than granting unlimited sites.
+      const siteLimit = subscription ? (subscription.siteLimit ?? null) : FREE_SITE_LIMIT;
       if (siteLimit !== null) {
         const existingSites = await db
           .select({ siteId: sites.siteId })

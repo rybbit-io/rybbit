@@ -203,11 +203,29 @@ describe("moveSite — request and target validation", () => {
     expect(mocks.applySiteMove).not.toHaveBeenCalled();
   });
 
-  it("returns 404 when the target organization does not exist", async () => {
-    // Note: this existence check runs BEFORE the membership check, so a non-member
-    // can distinguish existing org IDs (403) from nonexistent ones (404).
-    state.targetOrg = null;
+  it("gives a non-member the same 403 whether or not the target org exists (no existence oracle)", async () => {
     state.targetMembership = null;
+
+    state.targetOrg = { id: "org_target", name: "Target Org" };
+    const existingOrgReply = replyStub();
+    await moveSite(makeRequest(), existingOrgReply);
+
+    state.targetOrg = null;
+    const missingOrgReply = replyStub();
+    await moveSite(makeRequest(), missingOrgReply);
+
+    expect(existingOrgReply.statusCode).toBe(403);
+    expect(missingOrgReply.statusCode).toBe(403);
+    expect(missingOrgReply.body).toEqual(existingOrgReply.body);
+    expect(missingOrgReply.body.error).toBe("You are not a member of the target organization");
+    expect(mocks.applySiteMove).not.toHaveBeenCalled();
+  });
+
+  it("returns 404 for a missing target org only after the membership check passes", async () => {
+    // Only reachable with a (stale) admin membership row for the missing org, so the
+    // 404 cannot be used by outsiders to probe org IDs.
+    state.targetOrg = null;
+    state.targetMembership = { role: "admin" };
     const reply = replyStub();
 
     await moveSite(makeRequest(), reply);
