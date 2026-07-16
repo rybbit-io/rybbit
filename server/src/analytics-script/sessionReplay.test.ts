@@ -70,4 +70,35 @@ describe("SessionReplayRecorder identity", () => {
       events: [{ data: { user: "employee-bob" } }],
     });
   });
+
+  it("uses a stable batch id when retrying a failed delivery", async () => {
+    sendBatch.mockRejectedValueOnce(new Error("network failed")).mockResolvedValueOnce(undefined);
+    emit({ type: 2, data: { retry: true }, timestamp: 1_700_000_000_000 });
+
+    recorder.onPageChange();
+    await vi.waitFor(() => expect(sendBatch).toHaveBeenCalledTimes(1));
+    const firstAttempt = sendBatch.mock.calls[0][0];
+
+    recorder.onPageChange();
+    await vi.waitFor(() => expect(sendBatch).toHaveBeenCalledTimes(2));
+    const secondAttempt = sendBatch.mock.calls[1][0];
+
+    expect(firstAttempt.batchId).toMatch(/^[0-9a-f-]{36}$/i);
+    expect(secondAttempt.batchId).toBe(firstAttempt.batchId);
+    expect(secondAttempt.events).toEqual(firstAttempt.events);
+  });
+
+  it("assigns globally increasing sequence numbers across batches", async () => {
+    (config as ScriptConfig).sessionReplayBatchSize = 1;
+    recorder.cleanup();
+    recorder = new SessionReplayRecorder(config, "employee-alice", sendBatch);
+    await recorder.initialize();
+
+    emit({ type: 3, data: { order: 1 }, timestamp: 1_700_000_000_000 });
+    emit({ type: 3, data: { order: 2 }, timestamp: 1_700_000_000_000 });
+
+    await vi.waitFor(() => expect(sendBatch).toHaveBeenCalledTimes(2));
+    expect(sendBatch.mock.calls.map(call => call[0].events[0].sequence)).toEqual([0, 1]);
+    expect(new Set(sendBatch.mock.calls.map(call => call[0].batchId)).size).toBe(2);
+  });
 });

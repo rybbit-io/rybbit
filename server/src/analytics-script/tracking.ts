@@ -17,6 +17,7 @@ export class Tracker {
   private config: ScriptConfig;
   private customUserId: string | null = null;
   private sessionReplayRecorder?: SessionReplayRecorder;
+  private pendingTrackingRequests = new Set<Promise<void>>();
   private errorDedupeCache: Map<string, number> = new Map();
   private errorDedupeLastCleanup = 0;
   private exposedFeatureFlags = new Set<string>();
@@ -116,7 +117,7 @@ export class Tracker {
 
   private async sendSessionReplayBatch(batch: SessionReplayBatch): Promise<void> {
     try {
-      await fetch(`${this.config.analyticsHost}/session-replay/record/${this.config.siteId}`, {
+      const response = await fetch(`${this.config.analyticsHost}/session-replay/record/${this.config.siteId}`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -125,6 +126,9 @@ export class Tracker {
         mode: "cors",
         keepalive: false, // Disable keepalive for large session replay requests
       });
+      if (!response.ok) {
+        throw new Error(`Session replay delivery failed: ${response.status} ${response.statusText}`.trim());
+      }
     } catch (error) {
       console.error("Failed to send session replay batch:", error);
       throw error;
@@ -181,20 +185,26 @@ export class Tracker {
     return payload;
   }
 
-  async sendTrackingData(payload: TrackingPayload): Promise<void> {
-    try {
-      await fetch(`${this.config.analyticsHost}/track`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(payload),
-        mode: "cors",
-        keepalive: true,
-      });
-    } catch (error) {
-      console.error("Failed to send tracking data:", error);
-    }
+  sendTrackingData(payload: TrackingPayload): Promise<void> {
+    const request = (async () => {
+      try {
+        await fetch(`${this.config.analyticsHost}/track`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(payload),
+          mode: "cors",
+          keepalive: true,
+        });
+      } catch (error) {
+        console.error("Failed to send tracking data:", error);
+      }
+    })();
+
+    this.pendingTrackingRequests.add(request);
+    void request.finally(() => this.pendingTrackingRequests.delete(request));
+    return request;
   }
 
   track(eventType: TrackingPayload["type"], eventName: string = "", properties: Record<string, any> = {}): void {
@@ -432,8 +442,13 @@ export class Tracker {
       console.warn("Could not persist user ID to localStorage");
     }
 
-    // Send identify event to server (creates alias and stores traits)
-    void this.sendIdentifyEvent(this.customUserId, traits, true).then(() => this.refreshFeatureFlags());
+    // The server only acknowledges tracking once ClickHouse has stored it. Wait
+    // for older anonymous events before requesting their identify backfill.
+    const identifiedUserId = this.customUserId;
+    const earlierTrackingRequests = [...this.pendingTrackingRequests];
+    void Promise.allSettled(earlierTrackingRequests)
+      .then(() => this.sendIdentifyEvent(identifiedUserId, traits, true))
+      .then(() => this.refreshFeatureFlags());
 
     // Update session replay recorder with new user ID
     if (this.sessionReplayRecorder) {

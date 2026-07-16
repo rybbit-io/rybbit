@@ -1,15 +1,20 @@
 import { FastifyReply, FastifyRequest } from "fastify";
 import { z } from "zod";
 import { clickhouse } from "../../db/clickhouse/clickhouse.js";
-import { updateImportProgress, completeImport, getImportById } from "../../services/import/importStatusManager.js";
+import {
+  updateImportProgress,
+  completeImport,
+  getImportById,
+  withOrganizationImportLock,
+} from "../../services/import/importStatusManager.js";
 import { UmamiEvent, UmamiImportMapper } from "../../services/import/mappers/umami.js";
 import { SimpleAnalyticsEvent, SimpleAnalyticsImportMapper } from "../../services/import/mappers/simpleAnalytics.js";
 import { PlausibleEvent, PlausibleImportMapper } from "../../services/import/mappers/plausible.js";
-import { importQuotaManager } from "../../services/import/importQuotaManager.js";
+import { ImportQuotaTracker } from "../../services/import/importQuotaTracker.js";
 import { db } from "../../db/postgres/postgres.js";
 import { organization, sites } from "../../db/postgres/schema.js";
 import { eq } from "drizzle-orm";
-import { getBestSubscription } from "../../lib/subscriptionUtils.js";
+import { getBestSubscription, type SubscriptionInfo } from "../../lib/subscriptionUtils.js";
 import { IS_CLOUD } from "../../lib/const.js";
 
 const batchImportRequestSchema = z
@@ -70,9 +75,11 @@ export async function batchImportEvents(request: FastifyRequest<BatchImportReque
     if (!siteRecord || !siteRecord.organizationId) {
       return reply.status(404).send({ error: "Site not found" });
     }
+    const organizationId = siteRecord.organizationId;
 
+    let subscription: SubscriptionInfo | null = null;
     if (IS_CLOUD) {
-      const subscription = await getBestSubscription(siteRecord.organizationId, siteRecord.stripeCustomerId);
+      subscription = await getBestSubscription(organizationId, siteRecord.stripeCustomerId);
 
       if (subscription.source === "free") {
         return reply.status(403).send({
@@ -81,50 +88,69 @@ export async function batchImportEvents(request: FastifyRequest<BatchImportReque
       }
     }
 
+    let transformedEvents;
+    if (importRecord.platform === "umami") {
+      transformedEvents = UmamiImportMapper.transform(events as UmamiEvent[], siteId, importId);
+    } else if (importRecord.platform === "simple_analytics") {
+      transformedEvents = SimpleAnalyticsImportMapper.transform(events as SimpleAnalyticsEvent[], siteId, importId);
+    } else if (importRecord.platform === "plausible") {
+      transformedEvents = PlausibleImportMapper.transform(events as PlausibleEvent[], siteId, importId);
+    } else {
+      return reply.status(400).send({ error: "Unsupported platform" });
+    }
+    const invalidEventCount = events.length - transformedEvents.length;
+
     try {
-      const quotaTracker = await importQuotaManager.getTracker(siteRecord.organizationId);
+      await withOrganizationImportLock(organizationId, async tx => {
+        const currentImport = await getImportById(importId, tx);
+        if (!currentImport || currentImport.completedAt !== null) {
+          throw new Error("IMPORT_ALREADY_COMPLETED");
+        }
 
-      let transformedEvents;
-      if (importRecord.platform === "umami") {
-        transformedEvents = UmamiImportMapper.transform(events as UmamiEvent[], siteId, importId);
-      } else if (importRecord.platform === "simple_analytics") {
-        transformedEvents = SimpleAnalyticsImportMapper.transform(events as SimpleAnalyticsEvent[], siteId, importId);
-      } else if (importRecord.platform === "plausible") {
-        transformedEvents = PlausibleImportMapper.transform(events as PlausibleEvent[], siteId, importId);
-      } else {
-        return reply.status(400).send({ error: "Unsupported platform" });
-      }
-      const invalidEventCount = events.length - transformedEvents.length;
+        const timestamps = transformedEvents.map(event => event.timestamp);
+        let quotaTracker: ImportQuotaTracker;
 
-      const timestamps = transformedEvents.map(e => e.timestamp);
-      const allowedIndices = quotaTracker.canImportBatch(timestamps);
+        if (IS_CLOUD) {
+          if (!subscription) throw new Error("Subscription could not be resolved");
+          const organizationSites = await tx
+            .select({ siteId: sites.siteId })
+            .from(sites)
+            .where(eq(sites.organizationId, organizationId));
+          quotaTracker = await ImportQuotaTracker.createFromSnapshot({
+            siteIds: organizationSites.map(site => site.siteId),
+            subscription,
+            timestamps,
+          });
+        } else {
+          quotaTracker = await ImportQuotaTracker.create(organizationId, { timestamps });
+        }
 
-      const eventsWithinQuota = allowedIndices.map(i => transformedEvents[i]);
-      const skippedDueToQuota = transformedEvents.length - eventsWithinQuota.length;
+        const allowedIndices = quotaTracker.canImportBatch(timestamps);
+        const eventsWithinQuota = allowedIndices.map(index => transformedEvents[index]);
+        const skippedDueToQuota = transformedEvents.length - eventsWithinQuota.length;
 
-      if (eventsWithinQuota.length > 0) {
-        await clickhouse.insert({
-          table: "events",
-          values: eventsWithinQuota,
-          format: "JSONEachRow",
-        });
-      }
+        if (eventsWithinQuota.length > 0) {
+          await clickhouse.insert({
+            table: "events",
+            values: eventsWithinQuota,
+            format: "JSONEachRow",
+          });
+        }
 
-      await updateImportProgress(importId, eventsWithinQuota.length, skippedDueToQuota, invalidEventCount);
+        await updateImportProgress(importId, eventsWithinQuota.length, skippedDueToQuota, invalidEventCount, tx);
 
-      if (isLastBatch) {
-        await completeImport(importId);
-        importQuotaManager.completeImport(siteRecord.organizationId);
-      }
+        if (isLastBatch) {
+          await completeImport(importId, tx);
+        }
+      });
 
       return reply.send();
     } catch (insertError) {
       const errorMessage = insertError instanceof Error ? insertError.message : "Unknown error";
       console.error("Failed to insert events:", errorMessage);
 
-      if (isLastBatch) {
-        await completeImport(importId);
-        importQuotaManager.completeImport(siteRecord.organizationId);
+      if (errorMessage === "IMPORT_ALREADY_COMPLETED") {
+        return reply.status(409).send({ error: "Import is already complete" });
       }
 
       return reply.status(500).send({

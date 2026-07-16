@@ -3,6 +3,7 @@ import { IS_CLOUD, LITE_DASHBOARD } from "../../lib/const.js";
 import { createServiceLogger } from "../../lib/logger/logger.js";
 
 const CLICKHOUSE_REQUEST_TIMEOUT_MS = 300_000;
+const INSERT_DEDUPLICATION_WINDOW = 10_000;
 
 export const clickhouse = createClient({
   url: process.env.CLICKHOUSE_HOST,
@@ -92,6 +93,17 @@ async function ensureEventsColumns() {
   );
 }
 
+async function ensureInsertDeduplication(table: string) {
+  await execClickhouseInitStep(
+    `enable insert deduplication for ${table}`,
+    `
+      ALTER TABLE ${table}
+        MODIFY SETTING non_replicated_deduplication_window = ${INSERT_DEDUPLICATION_WINDOW}
+    `,
+    { lockAcquireTimeoutSeconds: 15 }
+  );
+}
+
 export const initializeClickhouse = async () => {
   // Create events table
   await execClickhouseInitStep(
@@ -140,6 +152,7 @@ export const initializeClickhouse = async () => {
       ENGINE = MergeTree()
       PARTITION BY toYYYYMM(timestamp)
       ORDER BY (site_id, timestamp)
+      SETTINGS non_replicated_deduplication_window = ${INSERT_DEDUPLICATION_WINDOW}
       `
   );
 
@@ -187,6 +200,7 @@ export const initializeClickhouse = async () => {
       PARTITION BY toYYYYMM(timestamp)
       ORDER BY (site_id, timestamp)
       TTL timestamp + INTERVAL 3 MONTH
+      SETTINGS non_replicated_deduplication_window = ${INSERT_DEDUPLICATION_WINDOW}
       `
   );
 
@@ -196,6 +210,7 @@ export const initializeClickhouse = async () => {
       CREATE TABLE IF NOT EXISTS session_replay_events (
         site_id UInt16,
         session_id String,
+        batch_id String DEFAULT '',
         user_id String,
         timestamp DateTime64(3),
         event_type LowCardinality(String),
@@ -206,23 +221,46 @@ export const initializeClickhouse = async () => {
         event_size_bytes UInt32,
         viewport_width Nullable(UInt16),
         viewport_height Nullable(UInt16),
-        is_complete UInt8 DEFAULT 0
+        is_complete UInt8 DEFAULT 0,
+        INDEX idx_batch_id batch_id TYPE bloom_filter GRANULARITY 4
       )
       ENGINE = MergeTree()
       PARTITION BY toYYYYMM(timestamp)
       ORDER BY (site_id, session_id, sequence_number)
       TTL toDateTime(timestamp) + INTERVAL 30 DAY
+      SETTINGS non_replicated_deduplication_window = ${INSERT_DEDUPLICATION_WINDOW}
       `,
   });
 
   await clickhouse.exec({
     query: `
       ALTER TABLE session_replay_events
+        ADD COLUMN IF NOT EXISTS batch_id String DEFAULT '',
         ADD COLUMN IF NOT EXISTS event_data_key Nullable(String), -- R2 storage key for cloud deployments
         ADD COLUMN IF NOT EXISTS batch_index Nullable(UInt16), -- Index within the R2 batch
         ADD COLUMN IF NOT EXISTS identified_user_id String DEFAULT ''
       `,
   });
+
+  // Retried inserts use stable tokens. Heal existing installations where these
+  // tables predate the deduplication settings in their CREATE statements.
+  await Promise.all([
+    ensureInsertDeduplication("events"),
+    ensureInsertDeduplication("bot_events"),
+    ensureInsertDeduplication("session_replay_events"),
+  ]);
+
+  // Replay ingestion looks batches up by (site_id, batch_id), which the sort key
+  // cannot serve. Parts written before the index exists are left unmaterialized;
+  // they age out through the 30-day TTL.
+  await execClickhouseInitStep(
+    "add session replay batch id index",
+    `
+      ALTER TABLE session_replay_events
+        ADD INDEX IF NOT EXISTS idx_batch_id batch_id TYPE bloom_filter GRANULARITY 4
+    `,
+    { lockAcquireTimeoutSeconds: 15 }
+  );
 
   await clickhouse.exec({
     query: `

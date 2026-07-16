@@ -6,6 +6,7 @@ import { UAParser } from "ua-parser-js";
 import { DateTime } from "luxon";
 import { getDeviceType } from "../../../utils.js";
 import { deriveKeyOnlySchema } from "./utils.js";
+import { CLICKHOUSE_UINT16_MAX } from "../../../lib/clickhouseLimits.js";
 
 export type SimpleAnalyticsEvent = z.input<typeof SimpleAnalyticsImportMapper.simpleAnalyticsEventKeyOnlySchema>;
 
@@ -26,8 +27,14 @@ export class SimpleAnalyticsImportMapper {
       .string()
       .max(2048)
       .transform(querystring => (querystring ? `?${querystring}` : "")),
-    screen_height: z.string().regex(/^\d+$/),
-    screen_width: z.string().regex(/^\d+$/),
+    screen_height: z
+      .string()
+      .regex(/^\d+$/)
+      .refine(value => Number(value) <= CLICKHOUSE_UINT16_MAX),
+    screen_width: z
+      .string()
+      .regex(/^\d+$/)
+      .refine(value => Number(value) <= CLICKHOUSE_UINT16_MAX),
     session_id: z.string().uuid(),
     user_agent: z.string().max(1024),
     uuid: z.string().uuid(),

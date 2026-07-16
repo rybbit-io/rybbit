@@ -220,4 +220,20 @@ describe("recordSessionReplay exclusions", () => {
       message: "Session replay not recorded - user agent excluded",
     });
   });
+
+  it("rejects viewport dimensions that cannot fit ClickHouse UInt16 columns", async () => {
+    const reply = createReply();
+    await recordSessionReplay(
+      createRequest({
+        body: {
+          ...baseBody,
+          metadata: { ...baseBody.metadata!, viewportWidth: 65_536 },
+        },
+      }),
+      reply
+    );
+
+    expect(reply.status).toHaveBeenCalledWith(400);
+    expect(mocks.recordEvents).not.toHaveBeenCalled();
+  });
 });

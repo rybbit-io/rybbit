@@ -53,7 +53,7 @@ vi.mock("./utils.js", () => ({
   createBasePayload: mocks.createBasePayload,
 }));
 
-import { trackEvent } from "./trackEvent.js";
+import { trackEvent, trackingPayloadSchema } from "./trackEvent.js";
 
 const siteConfiguration = {
   id: "site_abc",
@@ -118,5 +118,23 @@ describe("trackEvent session identity", () => {
         identifiedUserId: "employee-alice",
       })
     );
+  });
+});
+
+describe("tracking payload storage bounds", () => {
+  const payload = {
+    type: "pageview" as const,
+    site_id: "site_abc",
+  };
+
+  it("accepts the largest ClickHouse UInt16 screen dimensions", () => {
+    expect(trackingPayloadSchema.safeParse({ ...payload, screenWidth: 65_535, screenHeight: 65_535 }).success).toBe(
+      true
+    );
+  });
+
+  it("rejects dimensions that cannot be stored in ClickHouse", () => {
+    expect(trackingPayloadSchema.safeParse({ ...payload, screenWidth: 65_536 }).success).toBe(false);
+    expect(trackingPayloadSchema.safeParse({ ...payload, screenHeight: 65_536 }).success).toBe(false);
   });
 });

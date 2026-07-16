@@ -1,5 +1,5 @@
 import { FastifyReply, FastifyRequest } from "fastify";
-import { eq, and, sql } from "drizzle-orm";
+import { sql } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "../../db/postgres/postgres.js";
 import { clickhouse } from "../../db/clickhouse/clickhouse.js";
@@ -18,7 +18,7 @@ const MAX_TRAITS_SIZE = 2048;
 const identifyPayloadSchema = z.object({
   site_id: z.string().min(1),
   anonymous_id: z.string().min(1).max(255).optional(),
-  user_id: z.string().min(1).max(255),
+  user_id: z.string().trim().min(1).max(255),
   ip_address: z.string().ip().optional(),
   user_agent: z.string().max(512).optional(),
   traits: z
@@ -68,6 +68,7 @@ export async function backfillIdentifiedUserId(
     logger.info({ siteId, anonymousId, userId }, "Backfilled identified_user_id in ClickHouse");
   } catch (error) {
     logger.error({ siteId, anonymousId, userId, error }, "Error backfilling identified_user_id");
+    throw error;
   }
 }
 
@@ -104,50 +105,22 @@ export async function handleIdentify(request: FastifyRequest, reply: FastifyRepl
           siteId
         );
 
-    // Create alias if this is a new identify call (links anonymous_id to user_id)
-    if (is_new_identify) {
-      // Ensure a user_profiles row exists at identify time so the user is
-      // discoverable via search/inventory queries even when no traits are set,
-      // and so createdAt reflects identification time rather than first setTraits.
-      try {
-        await db.insert(userProfiles).values({ siteId, userId: user_id }).onConflictDoNothing();
-      } catch (error) {
-        logger.error({ siteId, userId: user_id, error }, "Error creating user profile shell");
-      }
-
-      try {
-        // Check if alias already exists
-        const existingAlias = await db
-          .select()
-          .from(userAliases)
-          .where(and(eq(userAliases.siteId, siteId), eq(userAliases.anonymousId, anonymousId)))
-          .limit(1);
-
-        if (existingAlias.length === 0) {
-          // Create new alias
-          await db.insert(userAliases).values({
-            siteId,
-            anonymousId,
-            userId: user_id,
+    await db.transaction(async tx => {
+      if (is_new_identify) {
+        // Keep profile and alias creation atomic. The conflict update also handles
+        // simultaneous identify calls for the same anonymous visitor.
+        await tx.insert(userProfiles).values({ siteId, userId: user_id }).onConflictDoNothing();
+        await tx
+          .insert(userAliases)
+          .values({ siteId, anonymousId, userId: user_id })
+          .onConflictDoUpdate({
+            target: [userAliases.siteId, userAliases.anonymousId],
+            set: { userId: user_id },
           });
-          // Fire-and-forget: backfill identified_user_id on past anonymous events
-          backfillIdentifiedUserId(siteId, anonymousId, user_id);
-        } else if (existingAlias[0].userId !== user_id) {
-          // Update alias to point to new user
-          await db
-            .update(userAliases)
-            .set({ userId: user_id })
-            .where(and(eq(userAliases.siteId, siteId), eq(userAliases.anonymousId, anonymousId)));
-        }
-      } catch (error) {
-        // Handle unique constraint violation gracefully (race condition)
-        logger.debug({ siteId, anonymousId, userId: user_id, error }, "Alias may already exist");
       }
-    }
 
-    // Atomic upsert: merge non-null traits and remove keys explicitly set to null.
-    if (traits && Object.keys(traits).length > 0) {
-      try {
+      // Atomic upsert: merge non-null traits and remove keys explicitly set to null.
+      if (traits && Object.keys(traits).length > 0) {
         const filteredTraits = Object.fromEntries(Object.entries(traits).filter(([_, v]) => v !== null));
         const nullKeys = Object.entries(traits)
           .filter(([_, v]) => v === null)
@@ -160,7 +133,7 @@ export async function handleIdentify(request: FastifyRequest, reply: FastifyRepl
             ? sql`(${userProfiles.traits} - ${nullKeys}::text[]) || ${JSON.stringify(filteredTraits)}::jsonb`
             : sql`${userProfiles.traits} || ${JSON.stringify(filteredTraits)}::jsonb`;
 
-        await db
+        await tx
           .insert(userProfiles)
           .values({ siteId, userId: user_id, traits: filteredTraits })
           .onConflictDoUpdate({
@@ -170,9 +143,13 @@ export async function handleIdentify(request: FastifyRequest, reply: FastifyRepl
               updatedAt: sql`now()`,
             },
           });
-      } catch (error) {
-        logger.error({ siteId, userId: user_id, error }, "Error updating user profile");
       }
+    });
+
+    if (is_new_identify) {
+      // Await the mutation so failures are visible and a retried identify call
+      // re-runs the idempotent `identified_user_id = ''` backfill.
+      await backfillIdentifiedUserId(siteId, anonymousId, user_id);
     }
 
     return reply.status(200).send({

@@ -324,6 +324,35 @@ describe("Tracker", () => {
       consoleSpy.mockRestore();
     });
 
+    it("rejects replay delivery when the server returns an HTTP error", async () => {
+      const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+      vi.mocked(global.fetch).mockResolvedValue({
+        ok: false,
+        status: 503,
+        statusText: "Service Unavailable",
+      } as Response);
+
+      const sendSessionReplayBatch = (
+        tracker as unknown as {
+          sendSessionReplayBatch: (batch: {
+            batchId: string;
+            userId: string;
+            events: Array<{ type: number; data: object; timestamp: number }>;
+          }) => Promise<void>;
+        }
+      ).sendSessionReplayBatch.bind(tracker);
+
+      await expect(
+        sendSessionReplayBatch({
+          batchId: "76c8fb17-e7b5-41f7-b4f9-a21a4efca1d4",
+          userId: "employee-alice",
+          events: [{ type: 2, data: {}, timestamp: 1_700_000_000_000 }],
+        })
+      ).rejects.toThrow("503 Service Unavailable");
+
+      consoleSpy.mockRestore();
+    });
+
     describe("error tracking", () => {
       it("should track first-party errors", () => {
         // Enable error tracking for this test
@@ -486,6 +515,28 @@ describe("Tracker", () => {
       expect(consoleSpy).toHaveBeenCalledWith("Could not persist user ID to localStorage");
 
       consoleSpy.mockRestore();
+    });
+
+    it("waits for earlier tracking requests before sending identify", async () => {
+      let finishTracking!: () => void;
+      const trackingResponse = new Promise<Response>(resolve => {
+        finishTracking = () => resolve({ ok: true } as Response);
+      });
+      vi.mocked(global.fetch)
+        .mockReturnValueOnce(trackingResponse)
+        .mockResolvedValueOnce({ ok: true } as Response)
+        .mockResolvedValue({ ok: true, json: async () => ({ flags: {} }) } as Response);
+
+      tracker.trackPageview();
+      tracker.identify("user-ordered");
+
+      expect(global.fetch).toHaveBeenCalledTimes(1);
+      expect(vi.mocked(global.fetch).mock.calls[0][0]).toBe("https://analytics.example.com/track");
+
+      finishTracking();
+      await vi.waitFor(() =>
+        expect(global.fetch).toHaveBeenCalledWith("https://analytics.example.com/identify", expect.any(Object))
+      );
     });
   });
 });

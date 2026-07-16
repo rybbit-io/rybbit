@@ -12,6 +12,8 @@ import { hasScope } from "../../lib/scopes.js";
 import { botEventQueue } from "./botBlocking/botEventQueue.js";
 import { checkBotBlocking } from "./botBlocking/index.js";
 import { resolveTrackingIdentity } from "./requestIdentity.js";
+import { CLICKHOUSE_UINT16_MAX } from "../../lib/clickhouseLimits.js";
+import { QueueFullError } from "./reliableBatchQueue.js";
 
 // Shared fields for all event types
 const baseEventFields = {
@@ -19,8 +21,8 @@ const baseEventFields = {
   hostname: z.string().max(253).optional(),
   pathname: z.string().max(2048).optional(),
   querystring: z.string().max(2048).optional(),
-  screenWidth: z.number().int().nonnegative().optional(),
-  screenHeight: z.number().int().nonnegative().optional(),
+  screenWidth: z.number().int().nonnegative().max(CLICKHOUSE_UINT16_MAX).optional(),
+  screenHeight: z.number().int().nonnegative().max(CLICKHOUSE_UINT16_MAX).optional(),
   language: z.string().max(35).optional(),
   page_title: z.string().max(512).optional(),
   referrer: z.string().max(2048).optional(),
@@ -441,6 +443,12 @@ export async function trackEvent(request: FastifyRequest, reply: FastifyReply) {
         success: false,
         error: "Invalid payload format",
         details: error.flatten(),
+      });
+    }
+    if (error instanceof QueueFullError) {
+      return reply.status(503).send({
+        success: false,
+        error: "Ingestion queue is at capacity",
       });
     }
     return reply.status(500).send({

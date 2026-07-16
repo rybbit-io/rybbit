@@ -144,7 +144,8 @@ export class SessionReplayQueryService {
           event_type as type,
           event_data as data,
           event_data_key,
-          batch_index
+          batch_index,
+          sequence_number
         FROM session_replay_events
         WHERE site_id = {siteId:UInt16} 
           AND session_id = {sessionId:String}
@@ -160,6 +161,7 @@ export class SessionReplayQueryService {
       data: string;
       event_data_key: string | null;
       batch_index: number | null;
+      sequence_number: number;
     };
 
     const eventsResults = await processResults<EventRow>(eventsResult);
@@ -196,6 +198,7 @@ export class SessionReplayQueryService {
           timestamp: event.timestamp,
           type: event.type,
           data: JSON.parse(event.data),
+          sequence: event.sequence_number,
         });
       }
     }
@@ -225,11 +228,12 @@ export class SessionReplayQueryService {
     for (const { batchEvents, data } of r2Results) {
       if (data) {
         for (const event of batchEvents) {
-          if (event.batch_index !== null && data[event.batch_index]) {
+          if (event.batch_index !== null && event.batch_index < data.length) {
             events.push({
               timestamp: event.timestamp,
               type: event.type,
               data: data[event.batch_index],
+              sequence: event.sequence_number,
             });
           }
         }
@@ -237,10 +241,10 @@ export class SessionReplayQueryService {
     }
 
     // Sort events by timestamp (in case batches were processed out of order)
-    events.sort((a, b) => a.timestamp - b.timestamp);
+    events.sort((a, b) => a.timestamp - b.timestamp || a.sequence - b.sequence);
 
     return {
-      events,
+      events: events.map(({ sequence: _sequence, ...event }) => event),
       metadata,
     };
   }

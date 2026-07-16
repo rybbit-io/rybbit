@@ -2,6 +2,21 @@ import { ScriptConfig, SessionReplayEvent, SessionReplayBatch } from "./types.js
 
 const SAMPLE_STORAGE_KEY = "rybbit-replay-sampled";
 
+function createReplayBatchId(): string {
+  const bytes = new Uint8Array(16);
+  if (globalThis.crypto?.getRandomValues) {
+    globalThis.crypto.getRandomValues(bytes);
+  } else {
+    for (let index = 0; index < bytes.length; index++) {
+      bytes[index] = Math.floor(Math.random() * 256);
+    }
+  }
+  bytes[6] = (bytes[6] & 0x0f) | 0x40;
+  bytes[8] = (bytes[8] & 0x3f) | 0x80;
+  const hex = [...bytes].map(byte => byte.toString(16).padStart(2, "0"));
+  return `${hex.slice(0, 4).join("")}-${hex.slice(4, 6).join("")}-${hex.slice(6, 8).join("")}-${hex.slice(8, 10).join("")}-${hex.slice(10).join("")}`;
+}
+
 /**
  * Determines if this session should have replay enabled based on sample rate.
  * Uses sessionStorage to persist the decision for the entire browser session.
@@ -60,6 +75,9 @@ export class SessionReplayRecorder {
   private stopRecordingFn?: () => void;
   private userId: string;
   private eventBuffer: SessionReplayEvent[] = [];
+  private pendingBatches: SessionReplayBatch[] = [];
+  private nextSequence = 0;
+  private sendLoop: Promise<void> | null = null;
   private batchTimer?: number;
   private sendBatch: (batch: SessionReplayBatch) => Promise<void>;
 
@@ -156,11 +174,11 @@ export class SessionReplayRecorder {
         checkoutEveryNms: 60000, // Checkout every 60 seconds
         checkoutEveryNth: 500, // Checkout every 500 events
         // Use config values with fallbacks to defaults
-        blockClass: this.config.sessionReplayBlockClass ?? 'rr-block',
+        blockClass: this.config.sessionReplayBlockClass ?? "rr-block",
         blockSelector: this.config.sessionReplayBlockSelector ?? null,
-        ignoreClass: this.config.sessionReplayIgnoreClass ?? 'rr-ignore',
+        ignoreClass: this.config.sessionReplayIgnoreClass ?? "rr-ignore",
         ignoreSelector: this.config.sessionReplayIgnoreSelector ?? null,
-        maskTextClass: this.config.sessionReplayMaskTextClass ?? 'rr-mask',
+        maskTextClass: this.config.sessionReplayMaskTextClass ?? "rr-mask",
         maskAllInputs: this.config.sessionReplayMaskAllInputs ?? true,
         maskInputOptions: this.config.sessionReplayMaskInputOptions ?? { password: true, email: true },
         collectFonts: this.config.sessionReplayCollectFonts ?? true,
@@ -170,7 +188,7 @@ export class SessionReplayRecorder {
 
       // Add custom text masking selectors if configured
       if (this.config.sessionReplayMaskTextSelectors && this.config.sessionReplayMaskTextSelectors.length > 0) {
-        recordingOptions.maskTextSelector = this.config.sessionReplayMaskTextSelectors.join(', ');
+        recordingOptions.maskTextSelector = this.config.sessionReplayMaskTextSelectors.join(", ");
       }
 
       this.stopRecordingFn = window.rrweb.record(recordingOptions);
@@ -195,8 +213,8 @@ export class SessionReplayRecorder {
     this.clearBatchTimer();
 
     // Send any remaining events
-    if (this.eventBuffer.length > 0) {
-      this.flushEvents();
+    if (this.eventBuffer.length > 0 || this.pendingBatches.length > 0) {
+      void this.flushEvents();
     }
   }
 
@@ -205,7 +223,7 @@ export class SessionReplayRecorder {
   }
 
   private addEvent(event: SessionReplayEvent): void {
-    this.eventBuffer.push(event);
+    this.eventBuffer.push({ ...event, sequence: this.nextSequence++ });
 
     // Auto-flush if buffer is full
     if (this.eventBuffer.length >= this.config.sessionReplayBatchSize) {
@@ -216,8 +234,8 @@ export class SessionReplayRecorder {
   private setupBatchTimer(): void {
     this.clearBatchTimer();
     this.batchTimer = window.setInterval(() => {
-      if (this.eventBuffer.length > 0) {
-        this.flushEvents();
+      if (this.eventBuffer.length > 0 || this.pendingBatches.length > 0) {
+        void this.flushEvents();
       }
     }, this.config.sessionReplayBatchInterval);
   }
@@ -230,30 +248,50 @@ export class SessionReplayRecorder {
   }
 
   private async flushEvents(): Promise<void> {
-    if (this.eventBuffer.length === 0) {
-      return;
+    if (this.eventBuffer.length > 0) {
+      const batch: SessionReplayBatch = {
+        batchId: createReplayBatchId(),
+        userId: this.userId,
+        events: this.eventBuffer,
+        metadata: {
+          pageUrl: window.location.href,
+          viewportWidth: screen.width,
+          viewportHeight: screen.height,
+          language: navigator.language,
+        },
+      };
+      this.eventBuffer = [];
+      this.pendingBatches.push(batch);
     }
 
-    const events = [...this.eventBuffer];
-    this.eventBuffer = [];
+    await this.drainPendingBatches();
+  }
 
-    const batch: SessionReplayBatch = {
-      userId: this.userId,
-      events,
-      metadata: {
-        pageUrl: window.location.href,
-        viewportWidth: screen.width,
-        viewportHeight: screen.height,
-        language: navigator.language,
-      },
-    };
-
-    try {
-      await this.sendBatch(batch);
-    } catch (error) {
-      // Re-queue the events for retry since this batch failed
-      this.eventBuffer.unshift(...events);
+  private drainPendingBatches(): Promise<void> {
+    if (this.sendLoop) {
+      const activeLoop = this.sendLoop;
+      return activeLoop.then(() => {
+        if (this.pendingBatches.length > 0 && this.sendLoop === null) {
+          return this.drainPendingBatches();
+        }
+      });
     }
+
+    this.sendLoop = (async () => {
+      while (this.pendingBatches.length > 0) {
+        try {
+          await this.sendBatch(this.pendingBatches[0]);
+          this.pendingBatches.shift();
+        } catch {
+          // Keep the exact batch (including identity and batch id) for retry.
+          return;
+        }
+      }
+    })().finally(() => {
+      this.sendLoop = null;
+    });
+
+    return this.sendLoop;
   }
 
   // Update user ID when it changes
@@ -276,7 +314,7 @@ export class SessionReplayRecorder {
   public onPageChange(): void {
     if (this.isRecording) {
       // Flush current events before page change
-      this.flushEvents();
+      void this.flushEvents();
     }
   }
 
