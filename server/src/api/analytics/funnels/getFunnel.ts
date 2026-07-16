@@ -2,17 +2,9 @@ import { FilterParams } from "@rybbit/shared";
 import { FastifyReply, FastifyRequest } from "fastify";
 import SqlString from "sqlstring";
 import { clickhouse } from "../../../db/clickhouse/clickhouse.js";
-import { getTimeStatement, patternToRegex, processResults } from "../utils/utils.js";
+import { getTimeStatement, processResults } from "../utils/utils.js";
 import { getFilterStatement } from "../utils/getFilterStatement.js";
-
-type FunnelStep = {
-  value: string;
-  name?: string;
-  type: "page" | "event";
-  hostname?: string;
-  eventPropertyKey?: string;
-  eventPropertyValue?: string | number | boolean;
-};
+import { buildFunnelStepCondition, FunnelStep } from "./funnelSteps.js";
 
 type Funnel = {
   steps: FunnelStep[];
@@ -30,14 +22,14 @@ export async function getFunnel(
   request: FastifyRequest<{
     Body: Funnel;
     Params: {
-      site: string;
+      siteId: string;
     };
     Querystring: FilterParams<{}>;
   }>,
   reply: FastifyReply
 ) {
   const { steps } = request.body;
-  const { site } = request.params;
+  const { siteId } = request.params;
 
   // Validate request
   if (!steps || steps.length < 2) {
@@ -46,50 +38,10 @@ export async function getFunnel(
 
   try {
     const timeStatement = getTimeStatement(request.query);
-    const filterStatement = getFilterStatement(request.query.filters, Number(site), timeStatement);
+    const filterStatement = getFilterStatement(request.query.filters, Number(siteId), timeStatement);
 
     // Build conditional statements for each step
-    const stepConditions = steps.map(step => {
-      let condition = "";
-
-      if (step.type === "page") {
-        // Use pattern matching for page paths to support wildcards
-        const regex = patternToRegex(step.value);
-        // Manually escape single quotes in the regex and wrap in quotes
-        // Don't use SqlString.escape() as it doesn't preserve the regex correctly
-        const safeRegex = regex.replace(/'/g, "\\'");
-        condition = `type = 'pageview' AND match(pathname, '${safeRegex}')`;
-      } else {
-        // Start with the base event match condition
-        condition = `type = 'custom_event' AND event_name = ${SqlString.escape(step.value)}`;
-
-        // Add property matching if both key and value are provided
-        if (step.eventPropertyKey && step.eventPropertyValue !== undefined) {
-          // Access the sub-column directly for native JSON type
-          const propValueAccessor = `props.${SqlString.escapeId(step.eventPropertyKey)}`;
-
-          // Comparison needs to handle the dynamic type returned
-          // Let ClickHouse handle the comparison based on the provided value type
-          if (typeof step.eventPropertyValue === "string") {
-            condition += ` AND toString(${propValueAccessor}) = ${SqlString.escape(step.eventPropertyValue)}`;
-          } else if (typeof step.eventPropertyValue === "number") {
-            // Use toFloat64 or toInt* depending on expected number type
-            condition += ` AND toFloat64OrNull(${propValueAccessor}) = ${SqlString.escape(step.eventPropertyValue)}`;
-          } else if (typeof step.eventPropertyValue === "boolean") {
-            // Booleans might be stored as 0/1 or true/false in JSON
-            // Comparing toUInt8 seems robust
-            condition += ` AND toUInt8OrNull(${propValueAccessor}) = ${step.eventPropertyValue ? 1 : 0}`;
-          }
-        }
-      }
-
-      // Add hostname filtering if specified
-      if (step.hostname) {
-        condition += ` AND hostname = ${SqlString.escape(step.hostname)}`;
-      }
-
-      return condition;
-    });
+    const stepConditions = steps.map(step => buildFunnelStepCondition(step));
 
     // Build the funnel query - session-based tracking
     const query = `
@@ -103,7 +55,8 @@ export async function getFunnel(
         event_name,
         type,
         props,
-        hostname
+        hostname,
+        url_parameters
       FROM events
       WHERE
         site_id = {siteId:Int32}
@@ -180,7 +133,7 @@ export async function getFunnel(
       query,
       format: "JSONEachRow",
       query_params: {
-        siteId: Number(site),
+        siteId: Number(siteId),
         stepNumber: steps.length,
       },
     });

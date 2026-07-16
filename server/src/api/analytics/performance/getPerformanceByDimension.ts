@@ -6,7 +6,7 @@ import { getFilterStatement } from "../utils/getFilterStatement.js";
 
 interface GetPerformanceByDimensionRequest {
   Params: {
-    site: string;
+    siteId: string;
   };
   Querystring: FilterParams<{
     limit?: number;
@@ -65,7 +65,7 @@ const getQuery = (request: FastifyRequest<GetPerformanceByDimensionRequest>, isC
   }
 
   const timeStatement = getTimeStatement(request.query);
-  const filterStatement = getFilterStatement(filters, Number(request.params.site), timeStatement);
+  const filterStatement = getFilterStatement(filters, Number(request.params.siteId), timeStatement);
 
   let validatedLimit: number | null = null;
   if (!isCountQuery && limit !== undefined) {
@@ -211,7 +211,7 @@ export async function getPerformanceByDimension(
   res: FastifyReply
 ) {
   const { page, dimension } = req.query;
-  const site = req.params.site;
+  const site = req.params.siteId;
 
   const isPaginatedRequest = page !== undefined;
 

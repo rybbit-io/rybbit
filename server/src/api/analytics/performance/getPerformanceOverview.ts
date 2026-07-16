@@ -41,13 +41,13 @@ const getQuery = (params: FilterParams, siteId: number) => {
 
 export interface PerformanceOverviewRequest {
   Params: {
-    site: string;
+    siteId: string;
   };
   Querystring: FilterParams;
 }
 
 export async function getPerformanceOverview(req: FastifyRequest<PerformanceOverviewRequest>, res: FastifyReply) {
-  const site = req.params.site;
+  const site = req.params.siteId;
 
   const query = getQuery(req.query, Number(site));
 

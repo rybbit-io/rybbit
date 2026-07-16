@@ -3,13 +3,8 @@ import { FastifyReply, FastifyRequest } from "fastify";
 import { db } from "../../../db/postgres/postgres.js";
 import { funnels as funnelsTable } from "../../../db/postgres/schema.js";
 import { getUserHasAccessToSite } from "../../../lib/auth-utils.js";
-import { Filter } from "../types.js";
-
-type FunnelStep = {
-  value: string;
-  name?: string;
-  type: "page" | "event";
-};
+import { isAutocaptureTargetType } from "../utils/eventConditions.js";
+import { FunnelStep } from "./funnelSteps.js";
 
 type Funnel = {
   steps: FunnelStep[];
@@ -21,13 +16,13 @@ export async function createFunnel(
   request: FastifyRequest<{
     Body: Funnel;
     Params: {
-      site: string;
+      siteId: string;
     };
   }>,
   reply: FastifyReply
 ) {
   const { steps, name, reportId } = request.body;
-  const { site } = request.params;
+  const { siteId } = request.params;
   const userId = request.user?.id;
 
   // Validate request
@@ -35,12 +30,22 @@ export async function createFunnel(
     return reply.status(400).send({ error: "At least 2 steps are required for a funnel" });
   }
 
+  // Reject unrecognized step types instead of silently matching them as custom events
+  if (steps.some(step => step.type !== "page" && step.type !== "event" && !isAutocaptureTargetType(step.type))) {
+    return reply.status(400).send({ error: "Invalid step type" });
+  }
+
+  // Page and event steps need a value; autocapture steps may match any event of their type
+  if (steps.some(step => (step.type === "page" || step.type === "event") && !step.value)) {
+    return reply.status(400).send({ error: "Page and event steps require a value" });
+  }
+
   if (!name) {
     return reply.status(400).send({ error: "Funnel name is required" });
   }
 
   // Check user access to site
-  const userHasAccessToSite = await getUserHasAccessToSite(request, site);
+  const userHasAccessToSite = await getUserHasAccessToSite(request, siteId);
   if (!userHasAccessToSite) {
     return reply.status(403).send({ error: "Forbidden" });
   }
@@ -58,7 +63,7 @@ export async function createFunnel(
         return reply.status(404).send({ error: "Funnel not found" });
       }
 
-      if (existingFunnel.siteId !== Number(site)) {
+      if (existingFunnel.siteId !== Number(siteId)) {
         return reply.status(403).send({ error: "Funnel does not belong to this site" });
       }
 
@@ -83,7 +88,7 @@ export async function createFunnel(
       result = await db
         .insert(funnelsTable)
         .values({
-          siteId: Number(site),
+          siteId: Number(siteId),
           userId,
           data: {
             name,

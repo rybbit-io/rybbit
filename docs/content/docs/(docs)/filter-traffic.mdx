@@ -1,0 +1,148 @@
+---
+title: Filter traffic
+description: Exclude traffic by IP address, country, path, hostname, or user agent
+---
+
+import { Callout } from 'fumadocs-ui/components/callout';
+
+Rybbit provides server-side traffic filtering to keep unwanted data out of your analytics. You can exclude your own traffic, staging and preview environments, internal tools, monitoring checks, or entire countries.
+
+Filters are configured from **Site Settings → Exclusions**.
+
+## Available Filters
+
+| Filter | Use it for | Matching behavior | Limit |
+| --- | --- | --- | --- |
+| **IP Exclusions** | Your home, office, VPN, or internal network traffic | Single IPs, CIDR ranges, and IPv4 ranges | 100 entries |
+| **Country Exclusions** | Regional filtering or compliance requirements | Two-letter ISO country codes, such as `US`, `GB`, or `DE` | 250 entries |
+| **Path Exclusions** | Admin pages, private pages, preview routes, or test pages | Case-insensitive glob patterns using `*` | 100 entries |
+| **Hostname Exclusions** | Localhost, staging domains, preview deployments, or temporary domains | Case-insensitive glob patterns using `*` | 100 entries |
+| **User Agent Exclusions** | Monitoring tools, headless browsers, or custom crawlers | Case-insensitive substring matching | 100 entries |
+
+When a request matches an exclusion, Rybbit returns a successful response but does not write the event to analytics storage.
+
+## IP Exclusions
+
+Block traffic from specific IP addresses or ranges at the server level. This is usually the best way to hide your own traffic.
+
+Supported formats:
+
+- **Single IPv4**: `192.168.1.1`
+- **Single IPv6**: `2001:db8::1`
+- **CIDR notation**: `192.168.1.0/24`, `2001:db8::/32`
+- **IPv4 ranges**: `192.168.1.1-192.168.1.10`
+
+For setup instructions and best practices, see [Hiding Your Own Traffic](/docs/hiding-own-traffic).
+
+## Country Exclusions
+
+Block all traffic geolocated to specific countries. Rybbit resolves the visitor IP address with the MaxMind GeoLite2 database, then compares the resulting country code to your exclusion list.
+
+Use two-letter ISO country codes:
+
+- `US` for United States
+- `GB` for United Kingdom
+- `CN` for China
+- `DE` for Germany
+
+Country codes are stored as uppercase values in the dashboard and API.
+
+<Callout type="warning">
+**Private IP addresses**: Country exclusion cannot work for private IP addresses such as `127.0.0.1`, `192.168.x.x`, `10.x.x.x`, or `172.16.x.x` because they cannot be geolocated. This includes localhost and Docker container IPs during local development.
+</Callout>
+
+<Callout type="info">
+**VPNs and proxies**: Visitors using VPNs or proxies are detected based on the VPN or proxy server location, not their physical location.
+</Callout>
+
+## Path Exclusions
+
+Exclude traffic to specific page paths. Path exclusions match the pathname only, not the query string.
+
+Examples:
+
+```txt
+/admin/*
+/preview
+/internal/*
+```
+
+Matching is case-insensitive. A `*` wildcard matches any sequence of characters, so `/admin/*` matches `/admin/users` and `/admin/settings`.
+
+Use path exclusions for pages that should not appear in analytics at all, such as admin dashboards, internal previews, or test routes.
+
+<Callout type="info">
+For client-side-only pageview skipping, you can also use the tracking script's `data-skip-patterns` option. Site-level path exclusions are enforced on the server and also apply to session replay ingestion.
+</Callout>
+
+## Hostname Exclusions
+
+Exclude traffic from specific hostnames. This is useful when the same site ID is used across production, staging, preview, and local environments.
+
+Examples:
+
+```txt
+localhost
+staging.example.com
+*.vercel.app
+*.netlify.app
+```
+
+Matching is case-insensitive. A `*` wildcard matches any sequence of characters, so `*.vercel.app` matches `my-preview.vercel.app` but not `vercel.app`.
+
+## User Agent Exclusions
+
+Exclude traffic from requests whose user agent contains a configured substring.
+
+Examples:
+
+```txt
+HeadlessChrome
+MyMonitor
+Pingdom
+```
+
+Matching is case-insensitive and uses substring matching, so `HeadlessChrome` matches `Mozilla/5.0 HeadlessChrome/120`.
+
+Use user-agent exclusions for uptime monitors, synthetic checks, internal crawlers, or other tools with predictable user-agent strings.
+
+## What Filters Apply To
+
+Traffic filters run before normal analytics data is stored. They apply to:
+
+- Pageviews
+- Custom events
+- Performance and Web Vitals events
+- Error events
+- Autocapture events
+- Session replay batches
+
+## How Filters Are Evaluated
+
+Rybbit checks exclusions in this order:
+
+1. IP address
+2. Country
+3. Path
+4. Hostname
+5. User agent
+
+If any filter matches, the event is accepted with a `200` response but is not tracked. Changes usually take effect within 60 seconds because site configuration is cached briefly on the server.
+
+## Testing Filters Locally
+
+To test country filtering locally, send a public IP through the `X-Real-IP` header:
+
+```bash
+curl -X POST http://localhost:3000/track \
+  -H "Content-Type: application/json" \
+  -H "X-Real-IP: 8.8.8.8" \
+  -d '{
+    "type": "pageview",
+    "site_id": "your-site-id",
+    "hostname": "example.com",
+    "pathname": "/test"
+  }'
+```
+
+For path and hostname filters, set `pathname` and `hostname` in the event payload to values that should match your configured exclusions.

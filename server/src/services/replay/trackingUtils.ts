@@ -37,7 +37,7 @@ export async function parseTrackingData(
   // Parse user agent
   const ua = UAParser(userAgent);
 
-  const geoData = await getLocation([ipAddress], true);
+  const geoData = await getLocation([ipAddress]);
 
   const countryCode = geoData?.[ipAddress]?.countryIso || "";
   const regionCode = geoData?.[ipAddress]?.region || "";

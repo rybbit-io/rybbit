@@ -24,9 +24,14 @@ const BASE_FILTERS: FilterParameter[] = [
   "user_id",
   "lat",
   "lon",
+  "tag",
 ];
 
-export const SESSION_PAGE_FILTERS: FilterParameter[] = [...BASE_FILTERS, "entry_page", "exit_page", "event_name"];
+export const SESSION_PAGE_FILTERS: FilterParameter[] = [...BASE_FILTERS, "pathname", "entry_page", "exit_page", "event_name"];
+
+// Single-user detail page: the page is already scoped to one user, so the
+// user_id filter is excluded.
+export const USER_DETAIL_PAGE_FILTERS: FilterParameter[] = SESSION_PAGE_FILTERS.filter(f => f !== "user_id");
 
 export const EVENT_FILTERS: FilterParameter[] = [
   ...BASE_FILTERS,
@@ -42,18 +47,10 @@ export const GOALS_PAGE_FILTERS: FilterParameter[] = [...BASE_FILTERS];
 export const FUNNEL_PAGE_FILTERS: FilterParameter[] = [...BASE_FILTERS];
 
 export const USER_PAGE_FILTERS: FilterParameter[] = [
-  "hostname",
-  "browser",
-  "browser_version",
-  "operating_system",
-  "operating_system_version",
-  "language",
-  "country",
-  "region",
-  "city",
-  "device_type",
-  "referrer",
-  "user_id",
+  ...BASE_FILTERS,
+  "pathname",
+  "entry_page",
+  "exit_page",
 ];
 
 export const JOURNEY_PAGE_FILTERS: FilterParameter[] = [

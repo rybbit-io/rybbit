@@ -1,0 +1,91 @@
+---
+title: Funnels
+description: Analyze conversion through multi-step user journeys
+---
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+import { Step, Steps } from 'fumadocs-ui/components/steps';
+
+![Funnels Dashboard](/docs/funnels/1.png)
+
+Funnels let you define a sequence of steps — page visits or custom events — and measure how many users progress through each stage. You can see where users convert, where they drop off, and drill into the sessions at each step to understand why.
+
+## Creating a Funnel
+
+![Creating a Funnel](/docs/funnels/2.png)
+<Steps>
+<Step>
+### Click "Create Funnel"
+Each funnel has:
+
+- **Name** — A label for the funnel (e.g., "Signup Flow", "Checkout Process")
+- **Steps** — Two or more sequential steps, each tracking a page visit or custom event
+
+</Step>
+<Step>
+### Add Steps
+
+A funnel always must have at least two steps.
+
+There are two types of steps: **Path Steps** and **Event Steps**.
+
+<Tabs items={['Path Steps', 'Event Steps']}>
+<Tab value="Path Steps">
+Path steps match pageview events by URL path.
+
+- Enter a URL path starting with `/`
+- Wildcards are supported:
+  - `*` matches a single path segment — `/products/*` matches `/products/shoes`
+  - `**` matches multiple segments — `/docs/**` matches `/docs/api/v2/intro`
+
+</Tab>
+<Tab value="Event Steps">
+Event steps match custom events by name (e.g., `add_to_cart`, `purchase_completed`).
+
+Events must be tracked using the Rybbit tracking script. See [Track Events](/docs/track-events) for setup instructions.
+</Tab>
+</Tabs>
+</Step>
+<Step>
+### Configure Step Options (optional)
+
+![Step Options](/docs/funnels/4.png)
+
+Each step has additional configuration options:
+
+- **Label** (optional) — A friendly display name for the step
+- **Hostname** (optional) — Restrict matching to a specific domain, useful for multi-domain sites
+- **Property Filters** (optional) — Filter by URL parameters (for page steps) or event properties (for event steps). Multiple filters can be added per step, and all must match.
+
+</Step>
+</Steps>
+## Reading Funnel Results
+
+The funnel visualization updates in real time as you configure steps. For each step, you'll see:
+
+- **Sessions** — How many sessions reached this step
+- **Conversion Rate** — Percentage of the first step's sessions that reached this step
+- **Dropped** — How many sessions completed the previous step but not this one
+- **Dropoff Rate** — Percentage of the previous step's sessions lost at this point
+
+The horizontal bar for each step shows two layers:
+- **Solid bar** — Overall conversion from the first step
+- **Striped overlay** — Conversion from the immediately previous step
+
+Steps are evaluated sequentially — each step must occur after the previous one within the same session.
+
+## Viewing Sessions
+
+![Viewing Sessions](/docs/funnels/3.png)
+
+Click any step to expand it and view the sessions associated with that step:
+
+- **Reached** tab — Sessions that completed this step
+- **Dropped Off** tab — Sessions that reached the previous step but didn't make it to this one (available for step 2 and beyond)
+
+Each session shows entry/exit pages, duration, location, device info, referrer, UTM parameters, and user ID if identified. Sessions are paginated.
+
+---
+
+**Related Documentation:**
+- [Goals](/docs/goals) — Track single-action conversions
+- [Track Events](/docs/track-events) — Set up custom event tracking

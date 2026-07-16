@@ -1,0 +1,4 @@
+{
+  "title": "Sessions",
+  "pages": ["list", "get", "locations"]
+}

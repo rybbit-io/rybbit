@@ -30,6 +30,9 @@ export function useGetFunnel(config?: FunnelRequest, debounce?: boolean) {
         name: configToUse.name,
       });
     },
+    // Keep showing the previous result while a changed configuration refetches,
+    // so the live preview updates in place instead of flashing a loader
+    placeholderData: previousData => previousData,
     enabled: !!site && !!configToUse,
   });
 }

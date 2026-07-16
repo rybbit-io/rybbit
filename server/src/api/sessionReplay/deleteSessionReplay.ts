@@ -1,41 +1,32 @@
 import { FastifyReply, FastifyRequest } from "fastify";
-import { getUserHasAccessToSite } from "../../lib/auth-utils.js";
 import { SessionReplayQueryService } from "../../services/replay/sessionReplayQueryService.js";
 
 export async function deleteSessionReplay(
   request: FastifyRequest<{
     Params: {
       sessionId: string;
-      site: string;
+      siteId: string;
     };
   }>,
   reply: FastifyReply
 ) {
-  const { sessionId, site } = request.params;
+  const { sessionId, siteId } = request.params;
 
   try {
-    // Parse site ID
-    const siteId = parseInt(site);
-    if (isNaN(siteId)) {
+    const numericSiteId = parseInt(siteId);
+    if (isNaN(numericSiteId)) {
       return reply.status(400).send({ error: "Invalid site ID" });
     }
 
-    // Check user access to site
-    const userHasAccessToSite = await getUserHasAccessToSite(request, site);
-    if (!userHasAccessToSite) {
-      return reply.status(403).send({ error: "Forbidden" });
-    }
-
-    // Check if session replay exists
     const sessionReplayQueryService = new SessionReplayQueryService();
-    const metadata = await sessionReplayQueryService.getSessionReplayMetadata(siteId, sessionId);
+    const metadata = await sessionReplayQueryService.getSessionReplayMetadata(numericSiteId, sessionId);
 
     if (!metadata) {
       return reply.status(404).send({ error: "Session replay not found" });
     }
 
     // Delete the session replay
-    await sessionReplayQueryService.deleteSessionReplay(siteId, sessionId);
+    await sessionReplayQueryService.deleteSessionReplay(numericSiteId, sessionId);
 
     return reply.status(200).send({ success: true });
   } catch (error) {

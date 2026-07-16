@@ -8,6 +8,15 @@
         reverse_proxy backend:3001
     }
 
+    # OAuth/OIDC discovery documents for MCP clients (RFC 8414/9728) are
+    # served by the backend but must live at the domain root.
+    handle /.well-known/oauth-* {
+        reverse_proxy backend:3001
+    }
+    handle /.well-known/openid-configuration* {
+        reverse_proxy backend:3001
+    }
+
     # Proxy all other requests to the client service
     handle {
         reverse_proxy client:3002

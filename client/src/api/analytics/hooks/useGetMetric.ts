@@ -10,7 +10,7 @@ import { useStore } from "../../../lib/store";
 import { APIResponse } from "../../types";
 import { buildApiParams } from "../../utils";
 import { Time } from "../../../components/DateSelector/types";
-import { fetchMetric, MetricResponse } from "../endpoints";
+import { fetchMetric, fetchMetricLite, MetricResponse } from "../endpoints";
 
 type PeriodTime = "current" | "previous";
 
@@ -80,6 +80,7 @@ export function usePaginatedMetric({
   additionalFilters = [],
   customFilters = [],
   customTime,
+  lite = false,
 }: {
   parameter: FilterParameter;
   limit?: number;
@@ -89,9 +90,12 @@ export function usePaginatedMetric({
   additionalFilters?: Filter[];
   customFilters?: Filter[];
   customTime?: Time;
+  lite?: boolean;
 }): UseQueryResult<PaginatedResponse> {
   const { time, site, filters, timezone } = useStore();
   const timeToUse = customTime ?? time;
+  // Lite endpoints forward filters too — the server falls back to raw events
+  // when a filter is active. `lite` only selects the fetcher, not the filters.
   const combinedFilters = useFilters
     ? customFilters.length > 0
       ? customFilters
@@ -101,9 +105,10 @@ export function usePaginatedMetric({
   const params = buildApiParams(timeToUse, { filters: combinedFilters });
 
   return useQuery({
-    queryKey: [parameter, customTime, time, site, filters, limit, page, additionalFilters, customFilters, timezone],
+    queryKey: [parameter, customTime, time, site, filters, limit, page, additionalFilters, customFilters, timezone, lite],
     queryFn: async () => {
-      return fetchMetric(site, {
+      const fetcher = lite ? fetchMetricLite : fetchMetric;
+      return fetcher(site, {
         ...params,
         parameter,
         limit,
@@ -129,18 +134,47 @@ export function useInfiniteMetric({
   parameter,
   limit = 25,
   useFilters = true,
+  additionalFilters = [],
+  customFilters = [],
+  customTime,
+  lite = false,
 }: {
   parameter: FilterParameter;
   limit?: number;
   useFilters?: boolean;
+  additionalFilters?: Filter[];
+  customFilters?: Filter[];
+  customTime?: Time;
+  lite?: boolean;
 }): UseInfiniteQueryResult<InfiniteData<PaginatedResponse>> {
   const { time, site, filters, timezone } = useStore();
-  const params = buildApiParams(time, { filters: useFilters ? filters : undefined });
+  const timeToUse = customTime ?? time;
+  // Lite endpoints forward filters too — the server falls back to raw events
+  // when a filter is active. `lite` only selects the fetcher, not the filters.
+  const combinedFilters = useFilters
+    ? customFilters.length > 0
+      ? customFilters
+      : [...filters, ...additionalFilters]
+    : undefined;
+  const params = buildApiParams(timeToUse, { filters: combinedFilters });
 
   return useInfiniteQuery({
-    queryKey: [parameter, time, site, filters, limit, "infinite-metric", timezone],
+    queryKey: [
+      parameter,
+      customTime,
+      time,
+      site,
+      filters,
+      limit,
+      additionalFilters,
+      customFilters,
+      "infinite-metric",
+      timezone,
+      lite,
+    ],
     queryFn: async ({ pageParam = 1 }) => {
-      return fetchMetric(site, {
+      const fetcher = lite ? fetchMetricLite : fetchMetric;
+      return fetcher(site, {
         ...params,
         parameter,
         limit,

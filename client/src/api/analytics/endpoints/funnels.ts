@@ -1,16 +1,36 @@
+import type { AutocaptureTargetType } from "../../../lib/events";
 import { authedFetch } from "../../utils";
 import { CommonApiParams, PaginationParams, toQueryParams } from "./types";
 import type { GetSessionsResponse } from "./sessions";
+
+// Funnel step types: page paths, custom events, and autocaptured event types
+export type FunnelStepType = "page" | "event" | AutocaptureTargetType;
 
 // Funnel step type
 export type FunnelStep = {
   value: string;
   name?: string;
-  type: "page" | "event";
+  type: FunnelStepType;
   hostname?: string;
+  // Deprecated fields - kept for backwards compatibility
   eventPropertyKey?: string;
   eventPropertyValue?: string | number | boolean;
+  // New field for multiple property filters
+  propertyFilters?: Array<{
+    key: string;
+    value: string | number | boolean;
+  }>;
 };
+
+// Page and event steps need a value; autocapture steps may leave it empty to
+// match any event of their type
+export function stepRequiresValue(step: FunnelStep): boolean {
+  return step.type === "page" || step.type === "event";
+}
+
+export function hasIncompleteSteps(steps: FunnelStep[]): boolean {
+  return steps.some(step => stepRequiresValue(step) && !step.value);
+}
 
 // Funnel request type
 export type FunnelRequest = {
@@ -70,7 +90,7 @@ export async function fetchFunnels(
   site: string | number
 ): Promise<SavedFunnel[]> {
   const response = await authedFetch<{ data: SavedFunnel[] }>(
-    `/funnels/${site}`
+    `/sites/${site}/funnels`
   );
   return response.data;
 }
@@ -86,7 +106,7 @@ export async function analyzeFunnel(
   const queryParams = toQueryParams(params);
 
   const response = await authedFetch<{ data: FunnelResponse[] }>(
-    `/funnels/analyze/${site}`,
+    `/sites/${site}/funnels/analyze`,
     queryParams,
     {
       method: "POST",
@@ -115,7 +135,7 @@ export async function fetchFunnelStepSessions(
   };
 
   const response = await authedFetch<{ data: GetSessionsResponse }>(
-    `/funnels/${params.stepNumber}/sessions/${site}`,
+    `/sites/${site}/funnels/${params.stepNumber}/sessions`,
     queryParams,
     {
       method: "POST",
@@ -134,7 +154,7 @@ export async function saveFunnel(
   params: SaveFunnelParams
 ): Promise<{ success: boolean; funnelId: number }> {
   const response = await authedFetch<{ success: boolean; funnelId: number }>(
-    `/funnels/${site}`,
+    `/sites/${site}/funnels`,
     undefined,
     {
       method: "POST",
@@ -153,7 +173,7 @@ export async function deleteFunnel(
   funnelId: number
 ): Promise<{ success: boolean }> {
   const response = await authedFetch<{ success: boolean }>(
-    `/funnels/${funnelId}/${site}`,
+    `/sites/${site}/funnels/${funnelId}`,
     undefined,
     {
       method: "DELETE",

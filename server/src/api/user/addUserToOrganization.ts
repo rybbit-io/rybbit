@@ -2,9 +2,8 @@ import { and, eq } from "drizzle-orm";
 import { FastifyReply, FastifyRequest } from "fastify";
 import { db } from "../../db/postgres/postgres.js";
 import { member, user } from "../../db/postgres/schema.js";
-
 import { randomBytes } from "crypto";
-import { getIsUserAdmin, getUserIsInOrg } from "../../lib/auth-utils.js";
+import { getIsUserAdmin } from "../../lib/auth-utils.js";
 
 function generateId(len = 32) {
   const alphabet = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
@@ -30,14 +29,21 @@ export async function addUserToOrganization(request: FastifyRequest<AddUserToOrg
   try {
     const { organizationId } = request.params;
     const { email, role } = request.body;
+    const userId = request.user?.id;
 
-    const [userIsInOrg, isAdmin] = await Promise.all([
-      getUserIsInOrg(request, organizationId),
-      getIsUserAdmin(request),
-    ]);
+    const isAdmin = await getIsUserAdmin(request);
 
-    if (!isAdmin && (!userIsInOrg || (userIsInOrg.role !== "admin" && userIsInOrg.role !== "owner"))) {
-      return reply.status(401).send({ error: "Unauthorized" });
+    let callerMembership = null;
+    if (!isAdmin) {
+      if (!userId) {
+        return reply.status(401).send({ error: "Unauthorized" });
+      }
+      callerMembership = await db.query.member.findFirst({
+        where: and(eq(member.userId, userId), eq(member.organizationId, organizationId)),
+      });
+      if (!callerMembership || (callerMembership.role !== "admin" && callerMembership.role !== "owner")) {
+        return reply.status(401).send({ error: "Unauthorized" });
+      }
     }
 
     // Validate input
@@ -51,6 +57,13 @@ export async function addUserToOrganization(request: FastifyRequest<AddUserToOrg
       return reply.status(400).send({
         error: "Role must be either admin, member, or owner",
       });
+    }
+
+    // Only an organization owner (or a system admin) may grant the owner role.
+    // Otherwise an org admin could mint an owner — an account with higher
+    // privileges than their own — which is a privilege-escalation path.
+    if (role === "owner" && !isAdmin && callerMembership?.role !== "owner") {
+      return reply.status(403).send({ error: "Only an organization owner can assign the owner role" });
     }
 
     const foundUser = await db.query.user.findFirst({

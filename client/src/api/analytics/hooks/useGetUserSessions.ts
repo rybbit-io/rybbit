@@ -1,5 +1,5 @@
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
-import { SESSION_PAGE_FILTERS } from "../../../lib/filterGroups";
+import { SESSION_PAGE_FILTERS, USER_DETAIL_PAGE_FILTERS } from "../../../lib/filterGroups";
 import { getFilteredFilters, getTimezone, useStore } from "../../../lib/store";
 import { buildApiParams } from "../../utils";
 import {
@@ -18,25 +18,27 @@ export function useGetSessions({
   limit = 100,
   identifiedOnly = false,
   timeOverride,
+  minPageviews,
+  minEvents,
+  minDuration,
 }: {
   userId?: string;
   page?: number;
   limit?: number;
   identifiedOnly?: boolean;
   timeOverride?: Time;
+  minPageviews?: number;
+  minEvents?: number;
+  minDuration?: number;
 }) {
   const { time, site, timezone } = useStore();
 
   const filteredFilters = getFilteredFilters(SESSION_PAGE_FILTERS);
 
-  // When filtering by userId, we fetch all sessions for that user (no time filter)
-  // Otherwise use buildApiParams which handles past-minutes mode
-  const params = userId
-    ? { startDate: "", endDate: "", timeZone: getTimezone(), filters: filteredFilters }
-    : buildApiParams(timeOverride || time, { filters: filteredFilters });
+  const params = buildApiParams(timeOverride || time, { filters: filteredFilters });
 
   return useQuery<{ data: GetSessionsResponse }>({
-    queryKey: ["sessions", timeOverride || time, site, filteredFilters, userId, page, limit, identifiedOnly, timezone],
+    queryKey: ["sessions", timeOverride || time, site, filteredFilters, userId, page, limit, identifiedOnly, timezone, minPageviews, minEvents, minDuration],
     queryFn: () => {
       return fetchSessions(site, {
         ...params,
@@ -44,9 +46,14 @@ export function useGetSessions({
         limit,
         userId,
         identifiedOnly,
+        minPageviews,
+        minEvents,
+        minDuration,
       });
     },
     staleTime: Infinity,
+    // Wait for the store to hydrate; an empty site produces a malformed URL
+    enabled: !!site,
   });
 }
 
@@ -130,13 +137,17 @@ export function useGetSessionDetailsInfinite(sessionId: string | null) {
 
 export function useGetUserSessionCount(userId: string) {
   const { site, timezone } = useStore();
+  // The calendar always spans the user's full history, so it only takes the
+  // dimension filters, not the selected time range.
+  const filteredFilters = getFilteredFilters(USER_DETAIL_PAGE_FILTERS);
 
   return useQuery<{ data: UserSessionCountResponse[] }>({
-    queryKey: ["user-session-count", userId, site, timezone],
+    queryKey: ["user-session-count", userId, site, timezone, filteredFilters],
     queryFn: () => {
       return fetchUserSessionCount(site, {
         userId,
         timeZone: getTimezone(),
+        filters: filteredFilters,
       });
     },
     staleTime: Infinity,

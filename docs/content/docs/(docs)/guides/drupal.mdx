@@ -1,0 +1,61 @@
+---
+title: Drupal
+description: Integrate Rybbit Analytics with your Drupal site using the rybbit module
+---
+
+import { Steps, Step } from 'fumadocs-ui/components/steps';
+import { Callout } from 'fumadocs-ui/components/callout';
+
+Drupal is a flexible and secure content management system that features robust content modeling and user management tools. You can add Rybbit to Drupal to track anonymous and logged-in users.
+
+## How to Add Rybbit to Drupal
+
+You can add Rybbit to your site by installing the [Rybbit](https://drupal.org/project/rybbit) module from Drupal.org
+
+<Steps>
+<Step>
+
+### Get Your Tracking Script
+
+First, you'll need your Rybbit tracking script. You can find this in your Rybbit dashboard under **Site Settings > Tracking Code**. It will look something like this:
+
+```html
+<script defer src="https://app.rybbit.io/api/script.js" data-site-id="YOUR_SITE_ID"></script>
+```
+
+Replace `YOUR_SITE_ID` with your actual Site ID from your Rybbit dashboard.
+</Step>
+<Step>
+
+### Download and install the Rybbit module
+
+Follow Drupal's [recommended procedure](https://www.drupal.org/docs/extending-drupal/installing-modules) for installing the Rybbit module from https://www.drupal.org/project/rybbit:
+```
+  $ composer require drupal/rybbit
+  $ drush en rybbit
+```
+</Step>
+<Step>
+
+### Configure module settings
+
+Visit `admin/services/rybbit` and add your Site ID to the site's configuration page.
+
+You can also modify the script's source and loading optimizations, set rules for when the script gets loaded, and configure the site to use the `identify()` method to pass details about logged-in users from Drupal to Rybbit.
+</Step>
+</Steps>
+
+## Verify Integration
+
+<Steps>
+<Step>
+
+### Test Your Integration
+
+- Open your live Drupal website in a browser.
+- Navigate through a few pages.
+- Check your Rybbit dashboard for incoming data. It might take a few minutes for the first events to appear.
+</Step>
+</Steps>
+
+That's it! Rybbit Analytics should now be integrated with your Drupal site.

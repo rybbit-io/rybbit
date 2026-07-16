@@ -1,31 +1,33 @@
-import { getTimezone } from "@/lib/store";
 import { ResponsiveTimeRange } from "@nivo/calendar";
-import _ from "lodash";
 import { DateTime } from "luxon";
+import get from "lodash/get";
+import sortBy from "lodash/sortBy";
+import { useExtracted } from "next-intl";
 import { useTheme } from "next-themes";
 import { UserSessionCountResponse } from "../../../../../api/analytics/endpoints";
 import { useNivoTheme } from "../../../../../lib/nivo";
 import { ChartTooltip } from "../../../../../components/charts/ChartTooltip";
 
 export const VisitCalendar = ({ sessionCount }: { sessionCount: UserSessionCountResponse[] }) => {
+  const t = useExtracted();
   const { resolvedTheme } = useTheme();
   const nivoTheme = useNivoTheme();
+
   const data = sessionCount
     .map(e => ({
       value: e.sessions,
-      day: DateTime.fromSQL(e.date ?? 0, { zone: "utc" })
-        .setZone(getTimezone())
-        .toFormat("y-LL-dd"),
+      day: DateTime.fromSQL(e.date ?? 0).toFormat("y-LL-dd"),
     }))
     .reverse();
 
-  const maxValue = _.get(_.sortBy(data, "value")[Math.floor(data.length * 0.95)], "value");
+
+  const maxValue = get(sortBy(data, "value")[Math.floor(data.length * 0.95)], "value");
 
   if (data.length === 0) {
     return null;
   }
 
-  const toDate = DateTime.now().toFormat("y-LL-dd");
+  const toDate = DateTime.now().plus({ days: 1 }).toFormat("y-LL-dd");
   const fromDate = DateTime.now().minus({ days: 120 }).toFormat("y-LL-dd");
 
   return (
@@ -40,7 +42,7 @@ export const VisitCalendar = ({ sessionCount }: { sessionCount: UserSessionCount
           ? ["#10452A", "#006D32", "#3E9058", "#3CD456"]
           : ["#9be9a8", "#40c463", "#30a14e", "#216e39"]
       }
-      margin={{ top: 20, right: 20, bottom: 0, left: -10 }}
+      margin={{ top: 20, right: 0, bottom: 0, left: 0 }}
       dayBorderWidth={2}
       daySpacing={3}
       dayBorderColor="rgba(0, 0, 0, 0)"
@@ -51,8 +53,7 @@ export const VisitCalendar = ({ sessionCount }: { sessionCount: UserSessionCount
       tooltip={({ value, day }) => {
         return (
           <ChartTooltip className="p-2 flex gap-1">
-            {value}
-            <span className="text-neutral-600 dark:text-neutral-300">session{Number(value) > 1 && "s"} on</span> {day}
+            {t("{count} sessions on {day}", { count: String(value), day })}
           </ChartTooltip>
         );
       }}

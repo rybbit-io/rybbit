@@ -1,0 +1,155 @@
+import cluster from "node:cluster";
+import { initializeClickhouse } from "./db/clickhouse/clickhouse.js";
+import { initPostgres } from "./db/postgres/initPostgres.js";
+import { IS_CLOUD } from "./lib/const.js";
+import { createServiceLogger } from "./lib/logger/logger.js";
+import { reengagementService } from "./services/reengagement/reengagementService.js";
+import { sessionsService } from "./services/sessions/sessionsService.js";
+import { telemetryService } from "./services/telemetryService.js";
+import { usageService } from "./services/usageService.js";
+import { weeklyReportService } from "./services/weekyReports/weeklyReportService.js";
+
+const logger = createServiceLogger("cluster");
+
+process.on("uncaughtException", error => {
+  logger.error({ err: error }, "Uncaught exception in cluster process");
+  process.exit(1);
+});
+
+process.on("unhandledRejection", reason => {
+  logger.error({ err: reason }, "Unhandled rejection in cluster process");
+  process.exit(1);
+});
+
+// Determine worker count from environment variable
+// Default to 0 (single-process mode) if not set
+const requestedWorkers = process.env.CLUSTER_WORKERS;
+const workerCount = requestedWorkers === undefined || requestedWorkers === "" ? 0 : parseInt(requestedWorkers, 10);
+
+if (workerCount === 0) {
+  // Single-process mode — no clustering, same as running index.ts directly
+  logger.info("CLUSTER_WORKERS=0, running in single-process mode");
+  import("./index.js");
+} else if (cluster.isPrimary) {
+  logger.info(`Primary process ${process.pid} starting with ${workerCount} workers`);
+
+  // Initialize databases once before forking workers
+  try {
+    await Promise.all([initializeClickhouse(), initPostgres()]);
+    logger.info("Database initialization complete");
+  } catch (error) {
+    logger.error({ err: error }, "Primary process failed during database initialization");
+    process.exit(1);
+  }
+
+  // Start cron jobs on the primary process only
+  telemetryService.startTelemetryCron();
+  usageService.startUsageCheckCron();
+  if (IS_CLOUD && process.env.NODE_ENV !== "development") {
+    weeklyReportService.startWeeklyReportCron();
+    reengagementService.startReengagementCron();
+  }
+
+  // Broadcast usage state (sitesOverLimit + sitesWithoutReplay) to workers after each usage update
+  usageService.onUsageUpdated(() => {
+    broadcastUsageState();
+  });
+
+  // Fork workers
+  let isShuttingDown = false;
+
+  for (let i = 0; i < workerCount; i++) {
+    cluster.fork();
+  }
+
+  // Send current usage state to a worker when it comes online
+  cluster.on("online", worker => {
+    logger.info(`Worker ${worker.process.pid} is online`);
+    worker.send({ type: "sites-over-limit", siteIds: Array.from(usageService.getSitesOverLimit()) });
+    worker.send({ type: "sites-without-replay", siteIds: Array.from(usageService.getSitesWithoutReplay()) });
+  });
+
+  // Auto-restart crashed workers (unless shutting down)
+  cluster.on("exit", (worker, code, signal) => {
+    if (isShuttingDown) {
+      logger.info(`Worker ${worker.process.pid} exited during shutdown`);
+      return;
+    }
+    logger.warn(`Worker ${worker.process.pid} died (code: ${code}, signal: ${signal}). Restarting...`);
+    cluster.fork();
+  });
+
+  /**
+   * Broadcast the current sitesOverLimit and sitesWithoutReplay sets to all alive workers via IPC
+   */
+  function broadcastUsageState() {
+    const overLimitIds = Array.from(usageService.getSitesOverLimit());
+    const withoutReplayIds = Array.from(usageService.getSitesWithoutReplay());
+    for (const id in cluster.workers) {
+      const worker = cluster.workers[id];
+      if (worker && !worker.isDead()) {
+        worker.send({ type: "sites-over-limit", siteIds: overLimitIds });
+        worker.send({ type: "sites-without-replay", siteIds: withoutReplayIds });
+      }
+    }
+    logger.debug(
+      `Broadcasted ${overLimitIds.length} sites-over-limit and ${withoutReplayIds.length} sites-without-replay to workers`
+    );
+  }
+
+  // Graceful shutdown
+  const shutdown = async (signal: string) => {
+    if (isShuttingDown) {
+      logger.warn(`${signal} received during shutdown, forcing exit...`);
+      process.exit(1);
+    }
+
+    isShuttingDown = true;
+    logger.info(`${signal} received, shutting down gracefully...`);
+
+    // Force exit timeout
+    const forceExitTimeout = setTimeout(() => {
+      logger.error("Shutdown timeout exceeded, forcing exit...");
+      process.exit(1);
+    }, 30000);
+
+    // Stop cron jobs
+    usageService.stopUsageCheckCron();
+    void sessionsService.close();
+    telemetryService.stopTelemetryCron();
+    if (IS_CLOUD) {
+      weeklyReportService.stopWeeklyReportCron();
+      reengagementService.stopReengagementCron();
+    }
+
+    // Attach exit listeners before sending SIGTERM to avoid a race where
+    // a worker exits before the listener is registered (which would hang shutdown).
+    const activeWorkers = Object.values(cluster.workers ?? {}).filter(
+      (w): w is NonNullable<typeof w> => w != null && !w.isDead()
+    );
+
+    const workerExitPromises = activeWorkers.map(
+      worker =>
+        new Promise<void>(resolve => {
+          worker.on("exit", () => resolve());
+        })
+    );
+
+    // Now signal all workers to shut down
+    for (const worker of activeWorkers) {
+      worker.process.kill("SIGTERM");
+    }
+
+    await Promise.all(workerExitPromises);
+    logger.info("All workers exited");
+
+    clearTimeout(forceExitTimeout);
+    process.exit(0);
+  };
+
+  process.on("SIGTERM", () => shutdown("SIGTERM"));
+  process.on("SIGINT", () => shutdown("SIGINT"));
+} else {
+  // Worker process — start the HTTP server
+  import("./index.js");
+}

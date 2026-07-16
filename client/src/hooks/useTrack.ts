@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { authClient } from "@/lib/auth";
 import { useStripeSubscription } from "../lib/subscription/useStripeSubscription";
-import { useGetSitesFromOrg } from "../api/admin/sites";
+import { useGetSitesFromOrg } from "../api/admin/hooks/useSites";
 
 export function useTrack() {
   const { data: subscription, isLoading } = useStripeSubscription();

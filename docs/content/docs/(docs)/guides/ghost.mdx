@@ -1,0 +1,59 @@
+---
+title: Ghost
+description: Integrate Rybbit Analytics with your Ghost blog or publication
+---
+
+import { Steps, Step } from 'fumadocs-ui/components/steps';
+import { Callout } from 'fumadocs-ui/components/callout';
+
+Ghost is a powerful publishing platform for blogs and publications. You can easily add Rybbit Analytics using Ghost's built-in code injection feature.
+
+## How to Add Rybbit to Ghost
+
+<Steps>
+<Step>
+### Access Code Injection Settings
+
+1. Log in to your Ghost Admin panel
+2. Go to **Settings** (gear icon in the bottom left)
+3. Scroll down and click on **Code injection**
+</Step>
+
+<Step>
+### Add the Tracking Script
+
+In the **Site Header** section, paste the following code:
+
+```html
+<script
+  src="https://app.rybbit.io/api/script.js"
+  data-site-id="YOUR_SITE_ID"
+  defer
+></script>
+```
+
+Replace `YOUR_SITE_ID` with your actual Site ID from your Rybbit dashboard.
+</Step>
+
+<Step>
+### Save Changes
+
+Click **Save** in the top right corner. The script will now be loaded on all pages of your Ghost site.
+</Step>
+</Steps>
+
+## Troubleshooting
+
+### Script not appearing
+
+1. Make sure you clicked **Save** after adding the code
+2. Clear your browser cache and refresh the page
+3. Check "View Page Source" and search for `rybbit` to verify the script is present
+
+### Using a Ghost theme with custom code
+
+If your theme has its own code injection or you're modifying theme files directly, you can add the script to your theme's `default.hbs` file, just before the closing `</head>` tag.
+
+### Membership/Subscriber tracking
+
+Ghost's membership features work normally with Rybbit. All page views, including member-only content, will be tracked (for visitors who have access to view the content).

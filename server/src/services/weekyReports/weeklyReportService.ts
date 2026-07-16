@@ -7,8 +7,11 @@ import { clickhouse } from "../../db/clickhouse/clickhouse.js";
 import { processResults } from "../../api/analytics/utils/utils.js";
 import { createServiceLogger } from "../../lib/logger/logger.js";
 import { sendWeeklyReportEmail } from "../../lib/email/email.js";
+import { filterSitesByMemberAccess } from "../../lib/siteAccess.js";
 import { IS_CLOUD } from "../../lib/const.js";
 import type { OverviewData, MetricData, SiteReport, OrganizationReport } from "./weeklyReportTypes.js";
+
+const MAX_SITE_REPORTS_PER_ORG = 10;
 
 class WeeklyReportService {
   private cronTask: cron.ScheduledTask | null = null;
@@ -296,6 +299,14 @@ class WeeklyReportService {
       const siteReports: SiteReport[] = [];
 
       for (const site of orgSites) {
+        if (siteReports.length >= MAX_SITE_REPORTS_PER_ORG) {
+          this.logger.info(
+            { organizationId, totalSites: orgSites.length, limit: MAX_SITE_REPORTS_PER_ORG },
+            "Reached site report limit for organization, skipping remaining sites"
+          );
+          break;
+        }
+
         const report = await this.generateSiteReport(site.siteId, site.name, site.domain);
         if (report) {
           siteReports.push(report);
@@ -319,13 +330,16 @@ class WeeklyReportService {
 
   private async sendReportsToOrganization(report: OrganizationReport): Promise<void> {
     try {
-      // Fetch all members of the organization
+      // Fetch all members of the organization with their access restrictions
       const members = await db
         .select({
+          memberId: member.id,
           userId: member.userId,
+          role: member.role,
           email: user.email,
           name: user.name,
           sendAutoEmailReports: user.sendAutoEmailReports,
+          hasRestrictedSiteAccess: member.hasRestrictedSiteAccess,
         })
         .from(member)
         .innerJoin(user, eq(member.userId, user.id))
@@ -338,16 +352,27 @@ class WeeklyReportService {
           continue;
         }
 
-        for (const site of report.sites) {
-          try {
-            // Create a report with just this single site
-            const singleSiteReport: OrganizationReport = {
-              organizationId: report.organizationId,
-              organizationName: report.organizationName,
-              sites: [site],
-            };
+        // Only report on sites the member can actually access
+        let allowedSites = report.sites;
+        if (memberData.role === "member") {
+          allowedSites = await filterSitesByMemberAccess(
+            report.sites,
+            report.organizationId,
+            memberData.userId,
+            memberData.memberId,
+            memberData.hasRestrictedSiteAccess
+          );
 
-            await sendWeeklyReportEmail(memberData.email, memberData.name, singleSiteReport);
+          // Skip this member entirely if they have no site access
+          if (allowedSites.length === 0) {
+            continue;
+          }
+        }
+
+        for (const site of allowedSites) {
+
+          try {
+            await sendWeeklyReportEmail(memberData.email, memberData.name, report.organizationName, site);
             this.logger.info(
               {
                 email: memberData.email,

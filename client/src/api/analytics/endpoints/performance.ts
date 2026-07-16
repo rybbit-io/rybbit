@@ -112,7 +112,7 @@ export async function fetchPerformanceOverview(
   };
 
   const response = await authedFetch<{ data: GetPerformanceOverviewResponse }>(
-    `/performance/overview/${site}`,
+    `/sites/${site}/performance/overview`,
     queryParams
   );
   return response.data;
@@ -132,7 +132,7 @@ export async function fetchPerformanceTimeSeries(
   };
 
   const response = await authedFetch<{ data: GetPerformanceTimeSeriesResponse }>(
-    `/performance/time-series/${site}`,
+    `/sites/${site}/performance/time-series`,
     queryParams
   );
   return response.data;
@@ -157,7 +157,7 @@ export async function fetchPerformanceByDimension(
   };
 
   const response = await authedFetch<{ data: PaginatedPerformanceResponse }>(
-    `/performance/by-dimension/${site}`,
+    `/sites/${site}/performance/by-dimension`,
     queryParams
   );
   return response.data;

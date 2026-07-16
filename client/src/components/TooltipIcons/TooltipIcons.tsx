@@ -22,11 +22,13 @@ export function CountryFlagTooltipIcon({
   city,
   region,
   className,
+  onClick,
 }: {
   country: string;
   city: string;
   region: string;
   className?: string;
+  onClick?: (e: React.MouseEvent) => void;
 }) {
   const getFullLocation = <T extends { country: string; city: string; region: string }>(session: T) => {
     let location = "";
@@ -45,7 +47,10 @@ export function CountryFlagTooltipIcon({
   return (
     <Tooltip>
       <TooltipTrigger asChild>
-        <div className="flex items-center">
+        <div
+          className={`flex items-center ${onClick ? "cursor-pointer hover:opacity-70" : ""}`}
+          onClick={onClick}
+        >
           <CountryFlag country={country} className={className} />
         </div>
       </TooltipTrigger>
@@ -60,15 +65,20 @@ export function BrowserTooltipIcon({
   browser,
   browser_version,
   size = 16,
+  onClick,
 }: {
   browser: string;
   browser_version?: string;
   size?: number;
+  onClick?: (e: React.MouseEvent) => void;
 }) {
   return (
     <Tooltip>
       <TooltipTrigger asChild>
-        <div className="shrink-0">
+        <div
+          className={`shrink-0 ${onClick ? "cursor-pointer hover:opacity-70" : ""}`}
+          onClick={onClick}
+        >
           <Browser browser={browser || "Unknown"} size={size} />
         </div>
       </TooltipTrigger>
@@ -86,15 +96,20 @@ export function OperatingSystemTooltipIcon({
   operating_system,
   operating_system_version,
   size = 16,
+  onClick,
 }: {
   operating_system: string;
   operating_system_version?: string;
   size?: number;
+  onClick?: (e: React.MouseEvent) => void;
 }) {
   return (
     <Tooltip>
       <TooltipTrigger asChild>
-        <div className="shrink-0">
+        <div
+          className={`shrink-0 ${onClick ? "cursor-pointer hover:opacity-70" : ""}`}
+          onClick={onClick}
+        >
           <OperatingSystem os={operating_system || ""} size={size} />
         </div>
       </TooltipTrigger>
@@ -113,16 +128,21 @@ export function DeviceTypeTooltipIcon({
   screen_width,
   screen_height,
   size = 18,
+  onClick,
 }: {
   device_type: string;
   screen_width?: number;
   screen_height?: number;
   size?: number;
+  onClick?: (e: React.MouseEvent) => void;
 }) {
   return (
     <Tooltip>
       <TooltipTrigger asChild>
-        <div>
+        <div
+          className={onClick ? "cursor-pointer hover:opacity-70" : ""}
+          onClick={onClick}
+        >
           <DeviceIcon deviceType={device_type || ""} size={size} />
         </div>
       </TooltipTrigger>

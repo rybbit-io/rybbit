@@ -1,0 +1,360 @@
+---
+title: Get Goals
+description: Returns a paginated list of goals with their conversion metrics.
+full: true
+method: GET
+---
+
+import { TypeTable } from 'fumadocs-ui/components/type-table';
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+
+<div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
+<div>
+
+```
+GET /api/sites/:site/goals
+```
+
+Returns a paginated list of goals with their conversion metrics.
+
+### Path Parameters
+
+<TypeTable
+  type={{
+    site: {
+      description: 'Site ID or site identifier',
+      type: 'string | number',
+      required: true,
+    },
+  }}
+/>
+
+### Query Parameters
+
+Accepts all [Common Parameters](/docs/api/getting-started#common-parameters) plus the following:
+
+<TypeTable
+  type={{
+    page: {
+      description: 'Page number (1-indexed)',
+      type: 'number',
+      default: 1,
+    },
+    page_size: {
+      description: 'Number of results per page (max 100)',
+      type: 'number',
+      default: 10,
+    },
+    sort: {
+      description: 'Field to sort by',
+      type: 'string',
+      typeDescription: '"goalId" | "name" | "goalType" | "createdAt"',
+      default: 'createdAt',
+    },
+    order: {
+      description: 'Sort direction',
+      type: 'string',
+      typeDescription: '"asc" | "desc"',
+      default: 'desc',
+    },
+  }}
+/>
+
+### Response
+
+<TypeTable
+  type={{
+    data: {
+      description: 'Array of goal objects with conversion data',
+      type: 'Goal[]',
+    },
+    meta: {
+      description: 'Pagination metadata',
+      type: 'PaginationMeta',
+    },
+  }}
+/>
+
+#### Goal Object
+
+<TypeTable
+  type={{
+    goalId: {
+      description: 'Unique goal identifier',
+      type: 'number',
+    },
+    name: {
+      description: 'Goal name',
+      type: 'string | null',
+    },
+    goalType: {
+      description: 'Type of goal',
+      type: 'string',
+      typeDescription: '"path" | "event"',
+    },
+    config: {
+      description: 'Goal configuration',
+      type: 'GoalConfig',
+    },
+    createdAt: {
+      description: 'Creation timestamp',
+      type: 'string',
+      typeDescription: 'ISO 8601 datetime',
+    },
+    total_conversions: {
+      description: 'Number of sessions that completed the goal',
+      type: 'number',
+    },
+    total_sessions: {
+      description: 'Total sessions in the time period',
+      type: 'number',
+    },
+    conversion_rate: {
+      description: 'Conversion rate (0-1)',
+      type: 'number',
+    },
+  }}
+/>
+
+#### GoalConfig Object
+
+<TypeTable
+  type={{
+    pathPattern: {
+      description: 'URL path pattern (for path goals). Supports wildcards (*)',
+      type: 'string',
+      required: false,
+    },
+    eventName: {
+      description: 'Event name to match (for event goals)',
+      type: 'string',
+      required: false,
+    },
+    eventPropertyKey: {
+      description: 'Event property key to match',
+      type: 'string',
+      required: false,
+    },
+    eventPropertyValue: {
+      description: 'Event property value to match',
+      type: 'string | number | boolean',
+      required: false,
+    },
+  }}
+/>
+
+</div>
+<div className="flex flex-col gap-4">
+
+<Tabs items={['cURL', 'JavaScript', 'Python', 'PHP', 'Ruby', 'Go', 'Rust', 'Java', '.NET']}>
+  <Tab value="cURL">
+```bash title="Request"
+curl -X GET "https://app.rybbit.io/api/sites/1/goals?start_date=2024-01-01&end_date=2024-01-31" \
+  -H "Authorization: Bearer your_api_key_here"
+```
+  </Tab>
+  <Tab value="JavaScript">
+```javascript title="Request"
+const response = await fetch(
+  'https://app.rybbit.io/api/sites/1/goals?start_date=2024-01-01&end_date=2024-01-31',
+  {
+    headers: {
+      'Authorization': 'Bearer your_api_key_here'
+    }
+  }
+);
+
+const data = await response.json();
+```
+  </Tab>
+  <Tab value="Python">
+```python title="Request"
+import requests
+
+response = requests.get(
+    'https://app.rybbit.io/api/sites/1/goals23',
+    params={
+        'start_date': '2024-01-01',
+        'end_date': '2024-01-31'
+    },
+    headers={
+        'Authorization': 'Bearer your_api_key_here'
+    }
+)
+
+data = response.json()
+```
+  </Tab>
+  <Tab value="PHP">
+```php title="Request"
+<?php
+$ch = curl_init();
+
+curl_setopt($ch, CURLOPT_URL, 'https://app.rybbit.io/api/sites/1/goals?start_date=2024-01-01&end_date=2024-01-31');
+curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+curl_setopt($ch, CURLOPT_HTTPHEADER, [
+    'Authorization: Bearer your_api_key_here'
+]);
+
+$response = curl_exec($ch);
+curl_close($ch);
+
+$data = json_decode($response, true);
+?>
+```
+  </Tab>
+  <Tab value="Ruby">
+```ruby title="Request"
+require 'net/http'
+require 'json'
+require 'uri'
+
+uri = URI('https://app.rybbit.io/api/sites/1/goals?start_date=2024-01-01&end_date=2024-01-31')
+req = Net::HTTP::Get.new(uri)
+req['Authorization'] = 'Bearer your_api_key_here'
+
+res = Net::HTTP.start(uri.hostname, uri.port, use_ssl: true) do |http|
+  http.request(req)
+end
+
+data = JSON.parse(res.body)
+```
+  </Tab>
+  <Tab value="Go">
+```go title="Request"
+package main
+
+import (
+    "encoding/json"
+    "io"
+    "net/http"
+)
+
+func main() {
+    url := "https://app.rybbit.io/api/sites/1/goals?start_date=2024-01-01&end_date=2024-01-31"
+
+    req, _ := http.NewRequest("GET", url, nil)
+    req.Header.Add("Authorization", "Bearer your_api_key_here")
+
+    client := &http.Client{}
+    resp, _ := client.Do(req)
+    defer resp.Body.Close()
+
+    body, _ := io.ReadAll(resp.Body)
+
+    var data map[string]interface{}
+    json.Unmarshal(body, &data)
+}
+```
+  </Tab>
+  <Tab value="Rust">
+```rust title="Request"
+use reqwest;
+use serde_json::Value;
+
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let client = reqwest::Client::new();
+
+    let response = client
+        .get("https://app.rybbit.io/api/sites/1/goals?start_date=2024-01-01&end_date=2024-01-31")
+        .header("Authorization", "Bearer your_api_key_here")
+        .send()
+        .await?;
+
+    let data: Value = response.json().await?;
+
+    Ok(())
+}
+```
+  </Tab>
+  <Tab value="Java">
+```java title="Request"
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+
+public class Main {
+    public static void main(String[] args) throws Exception {
+        HttpClient client = HttpClient.newHttpClient();
+
+        HttpRequest request = HttpRequest.newBuilder()
+            .uri(URI.create("https://app.rybbit.io/api/sites/1/goals?start_date=2024-01-01&end_date=2024-01-31"))
+            .header("Authorization", "Bearer your_api_key_here")
+            .GET()
+            .build();
+
+        HttpResponse<String> response = client.send(request,
+            HttpResponse.BodyHandlers.ofString());
+
+        String data = response.body();
+    }
+}
+```
+  </Tab>
+  <Tab value=".NET">
+```csharp title="Request"
+using System;
+using System.Net.Http;
+using System.Threading.Tasks;
+
+class Program
+{
+    static async Task Main(string[] args)
+    {
+        using var client = new HttpClient();
+
+        client.DefaultRequestHeaders.Add("Authorization", "Bearer your_api_key_here");
+
+        var response = await client.GetAsync(
+            "https://app.rybbit.io/api/sites/1/goals?start_date=2024-01-01&end_date=2024-01-31");
+
+        var data = await response.Content.ReadAsStringAsync();
+    }
+}
+```
+  </Tab>
+</Tabs>
+
+```json title="Response"
+{
+  "data": [
+    {
+      "goalId": 1,
+      "name": "Signup Completed",
+      "goalType": "path",
+      "config": {
+        "pathPattern": "/signup/complete"
+      },
+      "createdAt": "2024-01-10T12:00:00.000Z",
+      "total_conversions": 1250,
+      "total_sessions": 15420,
+      "conversion_rate": 0.081
+    },
+    {
+      "goalId": 2,
+      "name": "Purchase Made",
+      "goalType": "event",
+      "config": {
+        "eventName": "purchase",
+        "eventPropertyKey": "value",
+        "eventPropertyValue": 100
+      },
+      "createdAt": "2024-01-15T09:30:00.000Z",
+      "total_conversions": 320,
+      "total_sessions": 15420,
+      "conversion_rate": 0.021
+    }
+  ],
+  "meta": {
+    "total": 2,
+    "page": 1,
+    "pageSize": 10,
+    "totalPages": 1
+  }
+}
+```
+
+</div>
+</div>

@@ -1,0 +1,116 @@
+---
+title: VitePress
+description: Integrate Rybbit Analytics with your VitePress documentation site
+---
+
+import { Tabs, Tab } from 'fumadocs-ui/components/tabs';
+import { Callout } from 'fumadocs-ui/components/callout';
+
+VitePress is a static site generator powered by Vite and Vue, commonly used for documentation. Here's how to add Rybbit Analytics to your VitePress site.
+
+## How to Add Rybbit to VitePress
+
+<Tabs items={['Config File (Recommended)', 'Custom Theme']}>
+<Tab>
+### Using VitePress Config
+
+The simplest way to add Rybbit is through your VitePress configuration file.
+
+Edit your `.vitepress/config.ts` (or `.js`/`.mts`):
+
+```typescript
+import { defineConfig } from 'vitepress'
+
+export default defineConfig({
+  // ... your other config
+  head: [
+    [
+      'script',
+      {
+        src: 'https://app.rybbit.io/api/script.js',
+        'data-site-id': 'YOUR_SITE_ID',
+        defer: ''
+      }
+    ]
+  ]
+})
+```
+
+Replace `YOUR_SITE_ID` with your actual Site ID from your Rybbit dashboard.
+
+<Callout type="info">
+The empty string for `defer` is intentional - VitePress will render it as a boolean attribute.
+</Callout>
+</Tab>
+
+<Tab>
+### Using Custom Theme
+
+If you need more control, you can add the script through a custom theme.
+
+Create or edit `.vitepress/theme/index.ts`:
+
+```typescript
+import { type Theme } from 'vitepress'
+import DefaultTheme from 'vitepress/theme'
+import { onMounted } from 'vue'
+
+export default {
+  extends: DefaultTheme,
+  enhanceApp({ app }) {
+    // Only run in browser
+    if (typeof window !== 'undefined') {
+      onMounted(() => {
+        const script = document.createElement('script')
+        script.src = 'https://app.rybbit.io/api/script.js'
+        script.defer = true
+        script.setAttribute('data-site-id', 'YOUR_SITE_ID')
+        document.head.appendChild(script)
+      })
+    }
+  }
+} satisfies Theme
+```
+
+Replace `YOUR_SITE_ID` with your actual Site ID.
+</Tab>
+</Tabs>
+
+## SPA Navigation
+
+VitePress uses client-side navigation between pages. The Rybbit script automatically tracks page views during SPA navigation, so no additional configuration is needed.
+
+## Development vs Production
+
+The script will load in both development and production environments. If you only want to track production:
+
+```typescript
+import { defineConfig } from 'vitepress'
+
+const isProd = process.env.NODE_ENV === 'production'
+
+export default defineConfig({
+  head: isProd ? [
+    [
+      'script',
+      {
+        src: 'https://app.rybbit.io/api/script.js',
+        'data-site-id': 'YOUR_SITE_ID',
+        defer: ''
+      }
+    ]
+  ] : []
+})
+```
+
+## Troubleshooting
+
+### Script not loading in development
+
+By default, the script loads on all environments. Check your browser's developer tools Network tab to see if the script is being requested.
+
+### Page views not tracking on navigation
+
+VitePress handles this automatically through the History API. If you're experiencing issues:
+1. Ensure you're using a recent version of VitePress
+2. Check the browser console for any JavaScript errors

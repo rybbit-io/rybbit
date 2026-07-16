@@ -1,5 +1,5 @@
 import { FilterParameter } from "@rybbit/shared/dist/filters";
-import { round } from "lodash";
+import round from "lodash/round";
 import mapboxgl from "mapbox-gl";
 import { useEffect, useRef } from "react";
 import { useGetSessionLocations } from "../../../../../api/analytics/hooks/useGetSessionLocations";
@@ -31,6 +31,7 @@ export function useCoordinatesLayer({
 
   useEffect(() => {
     if (!map.current || !liveSessionLocations || !mapLoaded) return;
+    const mapInstance = map.current;
 
     // Initialize popup once
     if (!popupRef.current) {
@@ -42,8 +43,6 @@ export function useCoordinatesLayer({
     }
 
     const addCoordinatesLayer = () => {
-      if (!map.current) return;
-
       const maxCount = liveSessionLocations.reduce((acc, curr) => Math.max(acc, curr.count), 0) || 1;
       const topSize = Math.pow(maxCount, 0.5);
 
@@ -91,16 +90,16 @@ export function useCoordinatesLayer({
       };
 
       // Add or update source
-      if (map.current.getSource("realtime-coordinates")) {
-        (map.current.getSource("realtime-coordinates") as mapboxgl.GeoJSONSource).setData(geojsonData);
+      if (mapInstance.getSource("realtime-coordinates")) {
+        (mapInstance.getSource("realtime-coordinates") as mapboxgl.GeoJSONSource).setData(geojsonData);
       } else {
-        map.current.addSource("realtime-coordinates", {
+        mapInstance.addSource("realtime-coordinates", {
           type: "geojson",
           data: geojsonData,
         });
 
         // Add hexbin layer (using circle layer for simplicity, can be enhanced with custom hexbin implementation)
-        map.current.addLayer({
+        mapInstance.addLayer({
           id: "realtime-coordinates-layer",
           type: "circle",
           source: "realtime-coordinates",
@@ -173,89 +172,11 @@ export function useCoordinatesLayer({
             visibility: mapView === "coordinates" ? "visible" : "none",
           },
         });
-
-        // Add mouse events for tooltip and popover
-        map.current.on("mouseenter", "realtime-coordinates-layer", () => {
-          if (!map.current) return;
-          map.current.getCanvas().style.cursor = "pointer";
-        });
-
-        map.current.on("mousemove", "realtime-coordinates-layer", e => {
-          if (!map.current || !e.features || e.features.length === 0 || !popupRef.current) return;
-
-          const feature = e.features[0];
-          const city = feature.properties?.city || "Unknown";
-          const count = feature.properties?.count || 0;
-
-          const countryCode = feature.properties?.country?.length === 2 ? feature.properties?.country : "";
-          const flagSVG = renderCountryFlag(countryCode);
-
-          const coordinates = e.lngLat;
-          const html = `
-            <div class="bg-neutral-850 border border-neutral-750 rounded-lg p-2" style="pointer-events: none;">
-              <div class="flex items-center gap-2 mb-1">
-                ${flagSVG}
-                <span class="text-sm font-medium text-white">${city}</span>
-              </div>
-              <div class="text-sm">
-                <span class="font-bold text-accent-400">${count.toLocaleString()}</span>
-                <span class="text-neutral-300"> sessions</span>
-              </div>
-            </div>
-          `;
-
-          popupRef.current.setLngLat(coordinates).setHTML(html).addTo(map.current);
-        });
-
-        map.current.on("mouseleave", "realtime-coordinates-layer", () => {
-          if (!map.current || !popupRef.current) return;
-          map.current.getCanvas().style.cursor = "";
-          popupRef.current.remove();
-        });
-
-        map.current.on("click", "realtime-coordinates-layer", e => {
-          if (!map.current || !e.features || e.features.length === 0) return;
-
-          const feature = e.features[0];
-          const city = feature.properties?.city || "Unknown";
-          const count = feature.properties?.count || 0;
-          const isCurrentlyFiltered = feature.properties?.isFiltered;
-
-          // Use the stored lat/lon properties instead of geometry coordinates
-          // to avoid Mapbox coordinate transformations at different zoom levels
-          const lat = feature.properties?.lat;
-          const lon = feature.properties?.lon;
-
-          if (lat === undefined || lon === undefined) return;
-
-          // If this location is already filtered, remove the filters
-          if (isCurrentlyFiltered) {
-            const { filters } = useStore.getState();
-            const latFilter = filters.find(f => f.parameter === "lat");
-            const lonFilter = filters.find(f => f.parameter === "lon");
-
-            if (latFilter) removeFilter(latFilter);
-            if (lonFilter) removeFilter(lonFilter);
-          } else {
-            // Otherwise, add the filters
-            addFilter({
-              parameter: "lat" as FilterParameter,
-              value: [lat],
-              type: "equals",
-            });
-
-            addFilter({
-              parameter: "lon" as FilterParameter,
-              value: [lon],
-              type: "equals",
-            });
-          }
-        });
       }
 
       // Update paint properties when data changes
-      if (map.current.getLayer("realtime-coordinates-layer")) {
-        map.current.setPaintProperty("realtime-coordinates-layer", "circle-radius", [
+      if (mapInstance.getLayer("realtime-coordinates-layer")) {
+        mapInstance.setPaintProperty("realtime-coordinates-layer", "circle-radius", [
           "interpolate",
           ["exponential", 2],
           ["zoom"],
@@ -268,31 +189,31 @@ export function useCoordinatesLayer({
           15,
           ["interpolate", ["linear"], ["sqrt", ["get", "count"]], 1, 15 * sizeMultiplier, topSize, 40 * sizeMultiplier],
         ]);
-        map.current.setPaintProperty("realtime-coordinates-layer", "circle-color", [
+        mapInstance.setPaintProperty("realtime-coordinates-layer", "circle-color", [
           "case",
           ["get", "isFiltered"],
           "#3b82f6",
           "#fff4d6",
         ]);
-        map.current.setPaintProperty("realtime-coordinates-layer", "circle-opacity", [
+        mapInstance.setPaintProperty("realtime-coordinates-layer", "circle-opacity", [
           "case",
           ["get", "isFiltered"],
           0.9,
           0.7,
         ]);
-        map.current.setPaintProperty("realtime-coordinates-layer", "circle-stroke-width", [
+        mapInstance.setPaintProperty("realtime-coordinates-layer", "circle-stroke-width", [
           "case",
           ["get", "isFiltered"],
           2,
           1,
         ]);
-        map.current.setPaintProperty("realtime-coordinates-layer", "circle-stroke-color", [
+        mapInstance.setPaintProperty("realtime-coordinates-layer", "circle-stroke-color", [
           "case",
           ["get", "isFiltered"],
           "#60a5fa",
           "#fff",
         ]);
-        map.current.setPaintProperty("realtime-coordinates-layer", "circle-stroke-opacity", [
+        mapInstance.setPaintProperty("realtime-coordinates-layer", "circle-stroke-opacity", [
           "case",
           ["get", "isFiltered"],
           1,
@@ -302,5 +223,101 @@ export function useCoordinatesLayer({
     };
 
     addCoordinatesLayer();
-  }, [liveSessionLocations, mapLoaded, map, minutes, filters]);
+
+    const setCursor = (cursor: string) => {
+      const canvas = mapInstance.getCanvas() as HTMLCanvasElement | undefined;
+      if (canvas) {
+        canvas.style.cursor = cursor;
+      }
+    };
+
+    // Add mouse events for tooltip and popover
+    const handleMouseEnter = () => {
+      setCursor("pointer");
+    };
+
+    const handleMouseMove = (e: mapboxgl.MapLayerMouseEvent) => {
+      if (!e.features || e.features.length === 0 || !popupRef.current) return;
+
+      const feature = e.features[0];
+      const city = feature.properties?.city || "Unknown";
+      const count = feature.properties?.count || 0;
+
+      const countryCode = feature.properties?.country?.length === 2 ? feature.properties?.country : "";
+      const flagSVG = renderCountryFlag(countryCode);
+
+      const coordinates = e.lngLat;
+      const html = `
+            <div class="bg-neutral-850 border border-neutral-750 rounded-lg p-2" style="pointer-events: none;">
+              <div class="flex items-center gap-2 mb-1">
+                ${flagSVG}
+                <span class="text-sm font-medium text-white">${city}</span>
+              </div>
+              <div class="text-sm">
+                <span class="font-bold text-accent-400">${count.toLocaleString()}</span>
+                <span class="text-neutral-300"> sessions</span>
+              </div>
+            </div>
+          `;
+
+      popupRef.current.setLngLat(coordinates).setHTML(html).addTo(mapInstance);
+    };
+
+    const handleMouseLeave = () => {
+      if (!popupRef.current) return;
+      setCursor("");
+      popupRef.current.remove();
+    };
+
+    const handleClick = (e: mapboxgl.MapLayerMouseEvent) => {
+      if (!e.features || e.features.length === 0) return;
+
+      const feature = e.features[0];
+      const isCurrentlyFiltered = feature.properties?.isFiltered;
+
+      // Use the stored lat/lon properties instead of geometry coordinates
+      // to avoid Mapbox coordinate transformations at different zoom levels
+      const lat = feature.properties?.lat;
+      const lon = feature.properties?.lon;
+
+      if (lat === undefined || lon === undefined) return;
+
+      // If this location is already filtered, remove the filters
+      if (isCurrentlyFiltered) {
+        const { filters } = useStore.getState();
+        const latFilter = filters.find(f => f.parameter === "lat");
+        const lonFilter = filters.find(f => f.parameter === "lon");
+
+        if (latFilter) removeFilter(latFilter);
+        if (lonFilter) removeFilter(lonFilter);
+      } else {
+        // Otherwise, add the filters
+        addFilter({
+          parameter: "lat" as FilterParameter,
+          value: [lat],
+          type: "equals",
+        });
+
+        addFilter({
+          parameter: "lon" as FilterParameter,
+          value: [lon],
+          type: "equals",
+        });
+      }
+    };
+
+    mapInstance.on("mouseenter", "realtime-coordinates-layer", handleMouseEnter);
+    mapInstance.on("mousemove", "realtime-coordinates-layer", handleMouseMove);
+    mapInstance.on("mouseleave", "realtime-coordinates-layer", handleMouseLeave);
+    mapInstance.on("click", "realtime-coordinates-layer", handleClick);
+
+    return () => {
+      mapInstance.off("mouseenter", "realtime-coordinates-layer", handleMouseEnter);
+      mapInstance.off("mousemove", "realtime-coordinates-layer", handleMouseMove);
+      mapInstance.off("mouseleave", "realtime-coordinates-layer", handleMouseLeave);
+      mapInstance.off("click", "realtime-coordinates-layer", handleClick);
+      setCursor("");
+      popupRef.current?.remove();
+    };
+  }, [liveSessionLocations, mapLoaded, map, minutes, filters, mapView]);
 }

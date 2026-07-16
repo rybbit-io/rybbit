@@ -2,8 +2,8 @@ import { FastifyReply, FastifyRequest } from "fastify";
 import { GSCCallbackRequest } from "./types.js";
 import { gscConnections } from "../../db/postgres/schema.js";
 import { eq } from "drizzle-orm";
-import { getGSCProperties } from "./utils.js";
-import { getSessionFromReq } from "../../lib/auth-utils.js";
+import { getGSCProperties, verifyGSCState } from "./utils.js";
+import { getSessionFromReq, getUserHasAdminAccessToSite } from "../../lib/auth-utils.js";
 import { db } from "../../db/postgres/postgres.js";
 import { logger } from "../../lib/logger/logger.js";
 
@@ -25,23 +25,38 @@ export async function gscCallback(req: FastifyRequest<GSCCallbackRequest>, res: 
 
     if (error) {
       logger.info(`OAuth cancelled or failed: ${error}`);
-      const siteId = state;
-      return res.redirect(`${process.env.BASE_URL}/${siteId}/main`);
+      return res.redirect(`${process.env.BASE_URL}`);
     }
 
     if (!code || !state) {
       return res.status(400).send({ error: "Missing code or state parameter" });
     }
 
-    const siteId = Number(state);
-    if (isNaN(siteId)) {
-      return res.status(400).send({ error: "Invalid site ID in state" });
+    // Verify the signed state: this is the only trustworthy source of the target
+    // siteId. A tampered/forged/expired state is rejected.
+    const statePayload = verifyGSCState(state);
+    if (!statePayload) {
+      return res.status(400).send({ error: "Invalid or expired state parameter" });
     }
+    const { siteId } = statePayload;
 
     // Get session to retrieve userId
     const session = await getSessionFromReq(req);
     if (!session) {
       return res.status(401).send({ error: "Unauthorized" });
+    }
+
+    // The session completing the callback must be the same user that initiated
+    // the flow (defends against connection fixation / cross-user state reuse).
+    if (session.user.id !== statePayload.userId) {
+      return res.status(403).send({ error: "State does not match session" });
+    }
+
+    // Verify the caller actually has admin access to the target site before
+    // writing OAuth tokens against it (prevents IDOR / connection hijack).
+    const hasAccess = await getUserHasAdminAccessToSite(req, siteId);
+    if (!hasAccess) {
+      return res.status(403).send({ error: "Access denied" });
     }
 
     const clientId = process.env.GOOGLE_CLIENT_ID;

@@ -1,19 +1,22 @@
-import { useState } from "react";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../../../../components/ui/basic-tabs";
-import { Card, CardContent, CardLoader } from "../../../../../components/ui/card";
-import { Button } from "../../../../../components/ui/button";
+import { useExtracted } from "next-intl";
+import { useGetAutocaptureEvents } from "../../../../../api/analytics/hooks/events/useGetAutocaptureEvents";
 import { useGetEventNames } from "../../../../../api/analytics/hooks/events/useGetEventNames";
+import { useGetOutboundLinks } from "../../../../../api/analytics/hooks/events/useGetOutboundLinks";
+import { CardLoader } from "../../../../../components/ui/card";
+import { ScrollArea } from "../../../../../components/ui/scroll-area";
+import { AutocaptureTargetType } from "../../../../../lib/events";
+import { AutocaptureEventsList } from "../../../events/components/AutocaptureEventsList";
 import { EventList } from "../../../events/components/EventList";
 import { OutboundLinksList } from "../../../events/components/OutboundLinksList";
-import { OutboundLinksDialog } from "./OutboundLinksDialog";
-import { useGetOutboundLinks } from "../../../../../api/analytics/hooks/events/useGetOutboundLinks";
-import { Expand } from "lucide-react";
-import { ScrollArea } from "../../../../../components/ui/scroll-area";
+import { TabbedSectionCard, type TabbedSectionItem } from "../../../components/shared/TabbedSectionCard";
+import { AutocaptureEventsDialogBody } from "./AutocaptureEventsDialog";
+import { OutboundLinksDialogBody } from "./OutboundLinksDialog";
 
-type Tab = "events" | "outbound";
+type Tab = "events" | "outbound" | "buttons" | "forms" | "copies";
 
-function Events_() {
+function EventsContent() {
   const { data: eventNamesData, isLoading: isLoadingEventNames } = useGetEventNames();
+  const t = useExtracted();
 
   return (
     <>
@@ -24,10 +27,11 @@ function Events_() {
       )}
       <div className="relative pr-2">
         <div className="flex flex-row gap-2 justify-between pr-1 text-xs text-neutral-600 dark:text-neutral-400 mb-2">
-          <div>Custom Events</div>
-          <div>Count</div>
+          <div>{t("Custom Events")}</div>
+          <div>{t("Count")}</div>
         </div>
-        <ScrollArea className="h-[394px]">
+        {/* [&>div]:!block forces Radix's display:table viewport wrapper to block so name truncate is bounded */}
+        <ScrollArea className="h-[394px]" viewportClassName="[&>div]:!block">
           <EventList events={eventNamesData || []} isLoading={isLoadingEventNames} />
         </ScrollArea>
       </div>
@@ -35,8 +39,9 @@ function Events_() {
   );
 }
 
-function OutboundLinks({ expanded, close }: { expanded: boolean; close: () => void }) {
+function OutboundLinksContent() {
   const { data: outboundLinksData, isLoading: isLoadingOutboundLinks } = useGetOutboundLinks();
+  const t = useExtracted();
 
   return (
     <>
@@ -47,45 +52,130 @@ function OutboundLinks({ expanded, close }: { expanded: boolean; close: () => vo
       )}
       <div className="relative">
         <div className="flex flex-row gap-2 justify-between pr-1 text-xs text-neutral-600 dark:text-neutral-400 mb-2">
-          <div>Outbound Links</div>
-          <div>Clicks</div>
+          <div>{t("Outbound Links")}</div>
+          <div>{t("Clicks")}</div>
         </div>
-        <OutboundLinksList outboundLinks={(outboundLinksData || []).slice(0, 10)} isLoading={isLoadingOutboundLinks} />
-        <OutboundLinksDialog outboundLinks={outboundLinksData || []} expanded={expanded} close={close} />
+        <OutboundLinksList outboundLinks={outboundLinksData || []} isLoading={isLoadingOutboundLinks} />
       </div>
     </>
   );
 }
 
-export function Events() {
-  const [tab, setTab] = useState<Tab>("events");
-  const [expandedOutbound, setExpandedOutbound] = useState(false);
+function OutboundLinksDialogContent() {
+  const { data: outboundLinksData } = useGetOutboundLinks();
+  return <OutboundLinksDialogBody outboundLinks={outboundLinksData || []} />;
+}
+
+function AutocaptureContent({
+  type,
+  valueLabel,
+  countLabel,
+}: {
+  type: AutocaptureTargetType;
+  valueLabel: string;
+  countLabel: string;
+}) {
+  const { data, isLoading } = useGetAutocaptureEvents(type);
 
   return (
-    <Card className="h-[483px]">
-      <CardContent className="mt-2">
-        <Tabs defaultValue="events" value={tab} onValueChange={value => setTab(value as Tab)}>
-          <div className="flex flex-row gap-2 justify-between items-center">
-            <div className="overflow-x-auto">
-              <TabsList>
-                <TabsTrigger value="events">Custom Events</TabsTrigger>
-                <TabsTrigger value="outbound">Outbound Links</TabsTrigger>
-              </TabsList>
-            </div>
-            {tab === "outbound" && (
-              <Button size="smIcon" onClick={() => setExpandedOutbound(true)}>
-                <Expand className="w-4 h-4" />
-              </Button>
-            )}
-          </div>
-          <TabsContent value="events">
-            <Events_ />
-          </TabsContent>
-          <TabsContent value="outbound">
-            <OutboundLinks expanded={expandedOutbound} close={() => setExpandedOutbound(false)} />
-          </TabsContent>
-        </Tabs>
-      </CardContent>
-    </Card>
+    <>
+      {isLoading && (
+        <div className="absolute top-[-8px] left-0 w-full h-full">
+          <CardLoader />
+        </div>
+      )}
+      <div className="relative">
+        <div className="flex flex-row gap-2 justify-between pr-1 text-xs text-neutral-600 dark:text-neutral-400 mb-2">
+          <div>{valueLabel}</div>
+          <div>{countLabel}</div>
+        </div>
+        <AutocaptureEventsList events={data || []} isLoading={isLoading} />
+      </div>
+    </>
   );
+}
+
+function AutocaptureDialogContent({
+  type,
+  valueLabel,
+  countLabel,
+  lastLabel,
+}: {
+  type: AutocaptureTargetType;
+  valueLabel: string;
+  countLabel: string;
+  lastLabel: string;
+}) {
+  const { data } = useGetAutocaptureEvents(type);
+  return (
+    <AutocaptureEventsDialogBody
+      events={data || []}
+      valueLabel={valueLabel}
+      countLabel={countLabel}
+      lastLabel={lastLabel}
+    />
+  );
+}
+
+export function Events() {
+  const t = useExtracted();
+
+  const tabs: TabbedSectionItem<Tab>[] = [
+    {
+      value: "events",
+      label: t("Custom Events"),
+      content: <EventsContent />,
+    },
+    {
+      value: "outbound",
+      label: t("Outbound"),
+      content: <OutboundLinksContent />,
+      dialogContent: <OutboundLinksDialogContent />,
+      dialogTitle: t("Outbound Links"),
+    },
+    {
+      value: "buttons",
+      label: t("Buttons"),
+      content: <AutocaptureContent type="button_click" valueLabel={t("Buttons")} countLabel={t("Clicks")} />,
+      dialogContent: (
+        <AutocaptureDialogContent
+          type="button_click"
+          valueLabel={t("Button Text")}
+          countLabel={t("Clicks")}
+          lastLabel={t("Last Clicked")}
+        />
+      ),
+      dialogTitle: t("Button Clicks"),
+    },
+    {
+      value: "forms",
+      label: t("Forms"),
+      content: <AutocaptureContent type="form_submit" valueLabel={t("Forms")} countLabel={t("Submissions")} />,
+      dialogContent: (
+        <AutocaptureDialogContent
+          type="form_submit"
+          valueLabel={t("Form")}
+          countLabel={t("Submissions")}
+          lastLabel={t("Last Submitted")}
+        />
+      ),
+      dialogTitle: t("Form Submissions"),
+    },
+    {
+      value: "copies",
+      label: t("Copies"),
+      content: <AutocaptureContent type="copy" valueLabel={t("Copied Text")} countLabel={t("Copies")} />,
+      dialogContent: (
+        <AutocaptureDialogContent
+          type="copy"
+          valueLabel={t("Copied Text")}
+          countLabel={t("Copies")}
+          lastLabel={t("Last Copied")}
+        />
+      ),
+      dialogTitle: t("Copies"),
+    },
+  ];
+
+  return <TabbedSectionCard defaultValue="events" tabs={tabs} className="h-[483px]" />;
 }

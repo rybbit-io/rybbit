@@ -5,7 +5,7 @@ import { enrichWithTraits } from "../analytics/utils/utils.js";
 
 export async function getSessionReplays(
   request: FastifyRequest<{
-    Params: { site: string };
+    Params: { siteId: string };
     Querystring: FilterParams<{
       limit?: string;
       offset?: string;
@@ -16,7 +16,7 @@ export async function getSessionReplays(
   reply: FastifyReply
 ) {
   try {
-    const siteId = Number(request.params.site);
+    const siteId = Number(request.params.siteId);
     const { limit, offset, userId, minDuration, filters } = request.query;
 
     const sessionReplayService = new SessionReplayQueryService();

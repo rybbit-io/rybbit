@@ -1,33 +1,50 @@
+import { Filter } from "@rybbit/shared";
 import { authedFetch } from "../../utils";
-import { CommonApiParams, PaginationParams, toQueryParams } from "./types";
+import {
+  BucketedParams,
+  CommonApiParams,
+  toBucketedQueryParams,
+  toQueryParams,
+} from "./types";
 
 // Event type
 export type Event = {
   timestamp: string;
   event_name: string;
   properties: string;
+  session_id: string;
   user_id: string;
+  identified_user_id: string;
   hostname: string;
   pathname: string;
   querystring: string;
   page_title: string;
   referrer: string;
   browser: string;
+  browser_version: string;
   operating_system: string;
+  operating_system_version: string;
+  language: string;
   country: string;
+  region: string;
+  city: string;
+  lat: number;
+  lon: number;
+  screen_width: number;
+  screen_height: number;
   device_type: string;
   type: string;
+  traits?: Record<string, unknown> | null;
 };
 
-// Events response with pagination
-export interface EventsResponse {
+// Response types for cursor-based API
+export interface NewEventsResponse {
   data: Event[];
-  pagination: {
-    total: number;
-    page: number;
-    pageSize: number;
-    totalPages: number;
-  };
+}
+
+export interface CursorEventsResponse {
+  data: Event[];
+  cursor: { hasMore: boolean; oldestTimestamp: string | null };
 }
 
 // Event name with count
@@ -43,6 +60,12 @@ export type EventProperty = {
   count: number;
 };
 
+// Common value of an autocapture event type's primary props (used for suggestions)
+export type AutocaptureValue = {
+  value: string;
+  count: number;
+};
+
 // Outbound link click data
 export type OutboundLink = {
   url: string;
@@ -50,33 +73,93 @@ export type OutboundLink = {
   lastClicked: string;
 };
 
-export interface EventsParams extends CommonApiParams, PaginationParams {
-  pageSize?: number;
+// Autocapture events (button clicks, form submissions, copies) grouped by
+// their display value
+export type AutocaptureEvent = {
+  value: string;
+  count: number;
+  lastOccurred: string;
+};
+
+// Event counts over time
+export type EventBucketedPoint = {
+  time: string;
+  event_name: string;
+  event_count: number;
+};
+
+export interface EventBucketedParams extends BucketedParams {
+  limit?: number;
 }
+
+// Site-level event count breakdown by type
+export type SiteEventCountPoint = {
+  time: string;
+  pageview_count: number;
+  custom_event_count: number;
+  performance_count: number;
+  outbound_count: number;
+  error_count: number;
+  button_click_count: number;
+  copy_count: number;
+  form_submit_count: number;
+  input_change_count: number;
+  event_count: number;
+};
+
+export type SiteEventCountParams = BucketedParams;
 
 export interface EventPropertiesParams extends CommonApiParams {
   eventName: string;
 }
 
 /**
- * Fetch paginated events
- * GET /api/events/:site
+ * Poll for events newer than sinceTimestamp (Realtime mode).
+ * Only sends filters — no time range.
  */
-export async function fetchEvents(
+export async function fetchNewEvents(
   site: string | number,
-  params: EventsParams
-): Promise<EventsResponse> {
-  const queryParams = {
-    ...toQueryParams(params),
-    page: params.page,
-    page_size: params.pageSize ?? params.limit,
+  params: { sinceTimestamp: string; filters?: Filter[]; timeZone: string }
+): Promise<NewEventsResponse> {
+  const queryParams: Record<string, any> = {
+    since_timestamp: params.sinceTimestamp,
+    time_zone: params.timeZone,
+    start_date: "",
+    end_date: "",
   };
+  if (params.filters?.length) {
+    queryParams.filters = params.filters;
+  }
 
-  const response = await authedFetch<EventsResponse>(
-    `/events/${site}`,
+  return authedFetch<NewEventsResponse>(
+    `/sites/${site}/events`,
     queryParams
   );
-  return response;
+}
+
+/**
+ * Cursor-based fetch for historical scrolling / initial load.
+ */
+export async function fetchEventsCursor(
+  site: string | number,
+  params: CommonApiParams & {
+    beforeTimestamp?: string;
+    pageSize?: number;
+  }
+): Promise<CursorEventsResponse> {
+  const queryParams: Record<string, any> = {
+    ...toQueryParams(params),
+    page_size: params.pageSize ?? 50,
+  };
+
+  if (params.beforeTimestamp) {
+    queryParams.before_timestamp = params.beforeTimestamp;
+  }
+
+  return authedFetch<CursorEventsResponse>(
+    `/sites/${site}/events`,
+    queryParams
+  );
 }
 
 /**
@@ -88,7 +171,7 @@ export async function fetchEventNames(
   params: CommonApiParams
 ): Promise<EventName[]> {
   const response = await authedFetch<{ data: EventName[] }>(
-    `/events/names/${site}`,
+    `/sites/${site}/events/names`,
     toQueryParams(params)
   );
   return response.data;
@@ -108,7 +191,7 @@ export async function fetchEventProperties(
   };
 
   const response = await authedFetch<{ data: EventProperty[] }>(
-    `/events/properties/${site}`,
+    `/sites/${site}/events/properties`,
     queryParams
   );
   return response.data;
@@ -123,8 +206,85 @@ export async function fetchOutboundLinks(
   params: CommonApiParams
 ): Promise<OutboundLink[]> {
   const response = await authedFetch<{ data: OutboundLink[] }>(
-    `/events/outbound/${site}`,
+    `/sites/${site}/events/outbound`,
     toQueryParams(params)
+  );
+  return response.data;
+}
+
+/**
+ * Fetch autocapture events of a type (button clicks, form submissions,
+ * copies) grouped by display value, with counts and last occurrence
+ * GET /api/sites/:site/events/autocapture
+ */
+export async function fetchAutocaptureEvents(
+  site: string | number,
+  params: CommonApiParams & { type: string }
+): Promise<AutocaptureEvent[]> {
+  const queryParams = {
+    ...toQueryParams(params),
+    type: params.type,
+  };
+
+  const response = await authedFetch<{ data: AutocaptureEvent[] }>(
+    `/sites/${site}/events/autocapture`,
+    queryParams
+  );
+  return response.data;
+}
+
+/**
+ * Fetch common values for an autocapture event type (outbound urls, button
+ * texts, form names/ids, copied texts)
+ * GET /api/sites/:site/events/autocapture-values
+ */
+export async function fetchAutocaptureValues(
+  site: string | number,
+  params: CommonApiParams & { type: string }
+): Promise<AutocaptureValue[]> {
+  const queryParams = {
+    ...toQueryParams(params),
+    type: params.type,
+  };
+
+  const response = await authedFetch<{ data: AutocaptureValue[] }>(
+    `/sites/${site}/events/autocapture-values`,
+    queryParams
+  );
+  return response.data;
+}
+
+/**
+ * Fetch bucketed event counts for top custom events
+ * GET /api/sites/:site/events/time-series
+ */
+export async function fetchEventBucketed(
+  site: string | number,
+  params: EventBucketedParams
+): Promise<EventBucketedPoint[]> {
+  const queryParams = {
+    ...toBucketedQueryParams(params),
+    limit: params.limit,
+  };
+
+  const response = await authedFetch<{ data: EventBucketedPoint[] }>(
+    `/sites/${site}/events/time-series`,
+    queryParams
+  );
+  return response.data;
+}
+
+/**
+ * Fetch site-level event count breakdown by type
+ * GET /sites/:site/events/count
+ */
+export async function fetchSiteEventCount(
+  site: string | number,
+  params: SiteEventCountParams
+): Promise<SiteEventCountPoint[]> {
+  const response = await authedFetch<{ data: SiteEventCountPoint[] }>(
+    `/sites/${site}/events/count`,
+    toBucketedQueryParams(params)
   );
   return response.data;
 }

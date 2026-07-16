@@ -8,8 +8,6 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - Build: `npm run build`
 - Production: `npm start`
 - Type Check: `tsc --noEmit`
-- Content Processing: `fumadocs-mdx` (runs automatically on postinstall)
-
 ## Project Overview
 
 This is the documentation and marketing website for Rybbit, built with Next.js 16 and Fumadocs. The site includes:
@@ -43,20 +41,22 @@ This is the documentation and marketing website for Rybbit, built with Next.js 1
 - `app/api/tools/`: API endpoints for tool functionality (SEO generators, analytics detector, etc.)
 - `app/llms.mdx/` and `app/llms-full.txt/`: LLM-optimized documentation endpoints
 
-### Key Components
+### Internationalization (i18n)
 
-- **Layout**: `app/layout.config.tsx` defines shared navigation and links for Fumadocs
-- **Tools**: Various analytics and SEO tools in `app/(home)/tools/` with form components and API routes
-- **Cards**: Feature demonstration components in `src/components/Cards/`
-- **UI Components**: Radix UI-based components in `src/components/ui/`
-
-### External Integrations
-
-- **OpenRouter**: LLM API integration via `src/lib/openrouter.ts` for tool functionality
-  - Uses `OPENROUTER_API_KEY` and `OPENROUTER_MODEL` environment variables
-  - Model: `z-ai/glm-4.6` (configurable)
-- **Search**: Fumadocs search with Orama, English language support
-- **Analytics**: Event tracking via `src/lib/trackAdEvent.ts`
+- **Library**: `next-intl` v4 with experimental extract mode enabled
+- **Supported Locales**: `en` (default), `de`, `fr`, `zh`, `es`, `pl`, `it`, `ko`, `pt`, `ja`
+- **Message Files**: `messages/{locale}.json` — one JSON file per locale with ~242 keys
+- **Config Files** in `src/i18n/`:
+  - `routing.ts`: Locale list and prefix strategy (`as-needed` — no prefix for default `en`)
+  - `request.ts`: Server-side locale resolution with fallback to `en`
+  - `navigation.ts`: Locale-aware `Link`, `redirect`, `usePathname`, `useRouter` exports
+- **Middleware**: `src/proxy.ts` uses `next-intl/middleware` for automatic locale detection from URL or `Accept-Language` header
+- **URL Structure**: Default locale has no prefix (`/pricing`); others are prefixed (`/fr/pricing`)
+- **Fumadocs i18n**: `src/lib/i18n.ts` configures the Fumadocs doc tree with the same locales
+- **Usage in components**: `const t = useExtracted()` from `next-intl`, then `t("key")` or `t("Welcome {name}", { name })`
+- **Language Switcher**: `src/components/LanguageSwitcher.tsx` — client component dropdown for all 10 locales
+- **Adding translations**: Add keys to `messages/en.json`, then run `npm run extract` to sync all locale files
+- **Automated translation**: `.github/workflows/translate-docs.yml` detects untranslated strings on push to master and opens a PR with AI-generated translations
 
 ### Path Aliases
 
@@ -65,13 +65,8 @@ This is the documentation and marketing website for Rybbit, built with Next.js 1
 
 ## Code Conventions
 
-- TypeScript with strict mode enabled
-- React 19 functional components
-- Next.js App Router with route groups
-- Fumadocs for documentation infrastructure
+- Fumadocs for documentation infrastructure; MDX components defined in `src/mdx-components.tsx`
 - Tailwind CSS v4 with dark mode support
-- Path-based imports using `@/` alias
-- MDX components defined in `src/mdx-components.tsx`
 
 ## Important Notes
 

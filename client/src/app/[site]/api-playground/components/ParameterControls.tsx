@@ -4,14 +4,17 @@ import { authedFetch } from "@/api/utils";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Loader2, Play } from "lucide-react";
+import { useExtracted } from "next-intl";
 import { useParams } from "next/navigation";
 import { usePlaygroundStore } from "../hooks/usePlaygroundStore";
 import { methodColors, parameterMetadata } from "../utils/endpointConfig";
+import { buildCommonQueryParams } from "../utils/queryParams";
 import { FilterBuilder } from "./FilterBuilder";
 import { TimezoneSelect } from "./TimezoneSelect";
 import { RequestBodyEditor } from "./RequestBodyEditor";
 
 export function ParameterControls() {
+  const t = useExtracted();
   const params = useParams();
   const siteId = params.site as string;
 
@@ -19,10 +22,14 @@ export function ParameterControls() {
     selectedEndpoint,
     startDate,
     endDate,
+    startTime,
+    endTime,
     timeZone,
     filters,
     setStartDate,
     setEndDate,
+    setStartTime,
+    setEndTime,
     endpointParams,
     setEndpointParam,
     pathParams,
@@ -42,7 +49,7 @@ export function ParameterControls() {
     if (selectedEndpoint.pathParams) {
       for (const param of selectedEndpoint.pathParams) {
         if (!pathParams[param]) {
-          setResponseError(`Missing required path parameter: ${param}`);
+          setResponseError(t("Missing required path parameter: {param}", { param }));
           return;
         }
       }
@@ -52,7 +59,7 @@ export function ParameterControls() {
     if (selectedEndpoint.requiredParams) {
       for (const param of selectedEndpoint.requiredParams) {
         if (!endpointParams[param]) {
-          setResponseError(`Missing required parameter: ${param}`);
+          setResponseError(t("Missing required parameter: {param}", { param }));
           return;
         }
       }
@@ -64,13 +71,13 @@ export function ParameterControls() {
       try {
         parsedBody = JSON.parse(requestBody);
       } catch {
-        setResponseError("Invalid JSON in request body");
+        setResponseError(t("Invalid JSON in request body"));
         return;
       }
     }
 
     setIsLoading(true);
-    const startTime = performance.now();
+    const requestStartTime = performance.now();
 
     try {
       // Build the path
@@ -85,20 +92,10 @@ export function ParameterControls() {
       const queryParams: Record<string, any> = {};
 
       if (selectedEndpoint.hasCommonParams) {
-        queryParams.start_date = startDate;
-        queryParams.end_date = endDate;
-        queryParams.time_zone = timeZone;
-
-        const apiFilters = filters
-          .filter(f => f.value.trim() !== "")
-          .map(f => ({
-            parameter: f.parameter,
-            type: f.operator,
-            value: [f.value],
-          }));
-        if (apiFilters.length > 0) {
-          queryParams.filters = JSON.stringify(apiFilters);
-        }
+        Object.assign(
+          queryParams,
+          buildCommonQueryParams({ startDate, endDate, startTime, endTime, timeZone, filters })
+        );
       }
 
       // Add endpoint-specific params
@@ -122,17 +119,17 @@ export function ParameterControls() {
           : undefined
       );
 
-      const endTime = performance.now();
-      setResponse(result, Math.round(endTime - startTime));
+      const requestEndTime = performance.now();
+      setResponse(result, Math.round(requestEndTime - requestStartTime));
     } catch (err: any) {
-      setResponseError(err.message || "Request failed");
+      setResponseError(err.message || t("Request failed"));
     }
   };
 
   if (!selectedEndpoint) {
     return (
       <div className="h-full flex items-center justify-center text-neutral-500 dark:text-neutral-400 p-4">
-        <p className="text-sm text-center">Select an endpoint from the list to configure parameters</p>
+        <p className="text-sm text-center">{t("Select an endpoint from the list to configure parameters")}</p>
       </div>
     );
   }
@@ -161,6 +158,8 @@ export function ParameterControls() {
       return <span key={index}>{part}</span>;
     });
   };
+
+  const getParamMetadata = (param: string) => selectedEndpoint.parameterMetadata?.[param] ?? parameterMetadata[param];
 
   return (
     <div className="h-full overflow-y-auto p-4 space-y-6">
@@ -197,7 +196,7 @@ export function ParameterControls() {
               <Loader2 className="h-4 w-4 animate-spin" />
             ) : (
               <>
-                Run
+                {t("Run")}
                 <Play className="h-3.5 w-3.5 fill-current" />
               </>
             )}
@@ -209,10 +208,10 @@ export function ParameterControls() {
       {selectedEndpoint.pathParams && selectedEndpoint.pathParams.length > 0 && (
         <div className="space-y-3">
           <h3 className="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">
-            Path Parameters
+            {t("Path Parameters")}
           </h3>
           {selectedEndpoint.pathParams.map(param => {
-            const meta = parameterMetadata[param];
+            const meta = getParamMetadata(param);
             return (
               <div key={param} className="space-y-1">
                 <label className="text-sm font-medium text-neutral-700 dark:text-neutral-300">
@@ -235,11 +234,11 @@ export function ParameterControls() {
       {selectedEndpoint.hasCommonParams && (
         <div className="space-y-3">
           <h3 className="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">
-            Time Range
+            {t("Time Range")}
           </h3>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1">
-              <label className="text-sm font-medium text-neutral-700 dark:text-neutral-300">Start Date</label>
+              <label className="text-sm font-medium text-neutral-700 dark:text-neutral-300">{t("Start Date")}</label>
               <Input
                 type="date"
                 value={startDate}
@@ -248,8 +247,30 @@ export function ParameterControls() {
               />
             </div>
             <div className="space-y-1">
-              <label className="text-sm font-medium text-neutral-700 dark:text-neutral-300">End Date</label>
+              <label className="text-sm font-medium text-neutral-700 dark:text-neutral-300">{t("End Date")}</label>
               <Input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="h-8 text-xs" />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <label className="text-sm font-medium text-neutral-700 dark:text-neutral-300">{t("Start Time")}</label>
+              <Input
+                type="time"
+                step={1}
+                value={startTime}
+                onChange={e => setStartTime(e.target.value)}
+                className="h-8 text-xs"
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="text-sm font-medium text-neutral-700 dark:text-neutral-300">{t("End Time")}</label>
+              <Input
+                type="time"
+                step={1}
+                value={endTime}
+                onChange={e => setEndTime(e.target.value)}
+                className="h-8 text-xs"
+              />
             </div>
           </div>
           <TimezoneSelect />
@@ -261,10 +282,10 @@ export function ParameterControls() {
       {selectedEndpoint.specificParams && selectedEndpoint.specificParams.length > 0 && (
         <div className="space-y-3">
           <h3 className="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">
-            {selectedEndpoint.hasCommonParams ? "Additional Parameters" : "Parameters"}
+            {selectedEndpoint.hasCommonParams ? t("Additional Parameters") : t("Parameters")}
           </h3>
           {selectedEndpoint.specificParams.map(param => {
-            const meta = parameterMetadata[param];
+            const meta = getParamMetadata(param);
             const isRequired = selectedEndpoint.requiredParams?.includes(param);
             if (!meta) {
               return (

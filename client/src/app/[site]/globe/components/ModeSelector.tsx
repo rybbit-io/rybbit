@@ -1,5 +1,6 @@
 import { cn } from "@/lib/utils";
 import { Clock, Globe2, HouseIcon, Radio } from "lucide-react";
+import { useExtracted } from "next-intl";
 import { useGlobeStore } from "../globeStore";
 
 export type MapView = "countries" | "subdivisions" | "coordinates" | "timeline";
@@ -29,6 +30,7 @@ function TabButton({ active, onClick, icon, label }: TabButtonProps) {
 
 export default function MapViewSelector() {
   const { mapView, setMapView, mapMode, setMapMode } = useGlobeStore();
+  const t = useExtracted();
 
   return (
     <div className="flex items-center gap-2 overflow-x-auto w-full">
@@ -43,25 +45,25 @@ export default function MapViewSelector() {
           active={mapView === "timeline"}
           onClick={() => setMapView("timeline")}
           icon={<Clock className="mr-1 md:opacity-60" size={14} />}
-          label="Timeline"
+          label={t("Timeline")}
         />
         <TabButton
           active={mapView === "coordinates"}
           onClick={() => setMapView("coordinates")}
           icon={<Radio className="mr-1 md:opacity-60" size={14} />}
-          label="Coordinates"
+          label={t("Coordinates")}
         />
         <TabButton
           active={mapView === "countries"}
           onClick={() => setMapView("countries")}
           icon={<Globe2 className="mr-1 md:opacity-60" size={14} />}
-          label="Countries"
+          label={t("Countries")}
         />
         <TabButton
           active={mapView === "subdivisions"}
           onClick={() => setMapView("subdivisions")}
           icon={<HouseIcon className="mr-1 md:opacity-60" size={14} />}
-          label="Subdivisions"
+          label={t("Subdivisions")}
         />
       </div>
     </div>

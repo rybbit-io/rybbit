@@ -1,7 +1,71 @@
+import crypto from "crypto";
 import { db } from "../../db/postgres/postgres.js";
 import { gscConnections } from "../../db/postgres/schema.js";
 import { eq } from "drizzle-orm";
 import { logger } from "../../lib/logger/logger.js";
+import { SECRET } from "../../lib/const.js";
+
+// How long a signed OAuth state remains valid (15 minutes).
+const GSC_STATE_TTL_MS = 15 * 60 * 1000;
+
+interface GSCStatePayload {
+  siteId: number;
+  userId: string;
+  ts: number;
+}
+
+function gscStateSecret(): string {
+  if (!SECRET) {
+    throw new Error("BETTER_AUTH_SECRET is not set; cannot sign GSC OAuth state");
+  }
+  return SECRET;
+}
+
+/**
+ * Create a signed, tamper-proof OAuth `state` value binding the flow to the
+ * initiating user and the target site. Prevents the callback from trusting an
+ * attacker-supplied siteId (IDOR) and mitigates OAuth CSRF / connection fixation.
+ */
+export function signGSCState(siteId: number, userId: string): string {
+  const payload: GSCStatePayload = { siteId, userId, ts: Date.now() };
+  const body = Buffer.from(JSON.stringify(payload)).toString("base64url");
+  const signature = crypto.createHmac("sha256", gscStateSecret()).update(body).digest("base64url");
+  return `${body}.${signature}`;
+}
+
+/**
+ * Verify a signed OAuth `state` value. Returns the decoded payload if the
+ * signature is valid and not expired, otherwise null.
+ */
+export function verifyGSCState(state: string): GSCStatePayload | null {
+  const parts = state.split(".");
+  if (parts.length !== 2) {
+    return null;
+  }
+  const [body, signature] = parts;
+
+  const expected = crypto.createHmac("sha256", gscStateSecret()).update(body).digest("base64url");
+  const sigBuf = Buffer.from(signature);
+  const expectedBuf = Buffer.from(expected);
+  if (sigBuf.length !== expectedBuf.length || !crypto.timingSafeEqual(sigBuf, expectedBuf)) {
+    return null;
+  }
+
+  try {
+    const payload = JSON.parse(Buffer.from(body, "base64url").toString()) as GSCStatePayload;
+    if (
+      typeof payload.siteId !== "number" ||
+      typeof payload.userId !== "string" ||
+      typeof payload.ts !== "number" ||
+      Date.now() - payload.ts > GSC_STATE_TTL_MS
+    ) {
+      return null;
+    }
+    return payload;
+  } catch {
+    return null;
+  }
+}
 
 interface GSCTokens {
   access_token: string;

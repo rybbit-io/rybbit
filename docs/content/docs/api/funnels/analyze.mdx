@@ -1,0 +1,415 @@
+---
+title: Analyze Funnel
+description: Analyzes a funnel and returns step-by-step conversion data. Sessions must complete steps in order (step 2 must occur after step 1, etc.).
+full: true
+method: POST
+---
+
+import { TypeTable } from 'fumadocs-ui/components/type-table';
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+
+<div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
+<div>
+
+```
+POST /api/sites/:site/funnels/analyze
+```
+
+Analyzes a funnel and returns step-by-step conversion data. Sessions must complete steps in order (step 2 must occur after step 1, etc.).
+
+### Path Parameters
+
+<TypeTable
+  type={{
+    site: {
+      description: 'Site ID or site identifier',
+      type: 'string | number',
+      required: true,
+    },
+  }}
+/>
+
+### Query Parameters
+
+Accepts all [Common Parameters](/docs/api/getting-started#common-parameters) (time and filters).
+
+### Request Body
+
+<TypeTable
+  type={{
+    steps: {
+      description: 'Array of funnel steps (minimum 2)',
+      type: 'FunnelStep[]',
+      required: true,
+    },
+  }}
+/>
+
+#### FunnelStep Object
+
+<TypeTable
+  type={{
+    type: {
+      description: 'Step type',
+      type: 'string',
+      typeDescription: '"page" | "event"',
+      required: true,
+    },
+    value: {
+      description: 'Page path pattern or event name',
+      type: 'string',
+      required: true,
+    },
+    name: {
+      description: 'Display name for the step',
+      type: 'string',
+      required: false,
+    },
+    hostname: {
+      description: 'Filter by specific hostname',
+      type: 'string',
+      required: false,
+    },
+    eventPropertyKey: {
+      description: 'Event property key to match (for event steps)',
+      type: 'string',
+      required: false,
+    },
+    eventPropertyValue: {
+      description: 'Event property value to match',
+      type: 'string | number | boolean',
+      required: false,
+    },
+  }}
+/>
+
+### Response
+
+<TypeTable
+  type={{
+    data: {
+      description: 'Array of step results',
+      type: 'FunnelStepResult[]',
+    },
+  }}
+/>
+
+#### FunnelStepResult Object
+
+<TypeTable
+  type={{
+    step_number: {
+      description: 'Step number (1-indexed)',
+      type: 'number',
+    },
+    step_name: {
+      description: 'Step name',
+      type: 'string',
+    },
+    visitors: {
+      description: 'Number of sessions that reached this step',
+      type: 'number',
+    },
+    conversion_rate: {
+      description: 'Percentage of step 1 visitors who reached this step',
+      type: 'number',
+      typeDescription: 'Range: 0-100',
+    },
+    dropoff_rate: {
+      description: 'Percentage who dropped off from the previous step',
+      type: 'number',
+      typeDescription: 'Range: 0-100',
+    },
+  }}
+/>
+
+</div>
+<div className="flex flex-col gap-4">
+
+<Tabs items={['cURL', 'JavaScript', 'Python', 'PHP', 'Ruby', 'Go', 'Rust', 'Java', '.NET']}>
+  <Tab value="cURL">
+```bash title="Request"
+curl -X POST "https://app.rybbit.io/api/sites/1/funnels/analyze?start_date=2024-01-01&end_date=2024-01-31" \
+  -H "Authorization: Bearer your_api_key_here" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "steps": [
+      { "type": "page", "value": "/", "name": "Homepage" },
+      { "type": "page", "value": "/pricing", "name": "Pricing" },
+      { "type": "page", "value": "/signup", "name": "Signup" },
+      { "type": "event", "value": "signup_complete", "name": "Complete" }
+    ]
+  }'
+```
+  </Tab>
+  <Tab value="JavaScript">
+```javascript title="Request"
+const response = await fetch(
+  'https://app.rybbit.io/api/sites/1/funnels/analyze?start_date=2024-01-01&end_date=2024-01-31',
+  {
+    method: 'POST',
+    headers: {
+      'Authorization': 'Bearer your_api_key_here',
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      steps: [
+        { type: 'page', value: '/', name: 'Homepage' },
+        { type: 'page', value: '/pricing', name: 'Pricing' },
+        { type: 'page', value: '/signup', name: 'Signup' },
+        { type: 'event', value: 'signup_complete', name: 'Complete' }
+      ]
+    })
+  }
+);
+
+const data = await response.json();
+```
+  </Tab>
+  <Tab value="Python">
+```python title="Request"
+import requests
+
+response = requests.post(
+    'https://app.rybbit.io/api/sites/1/funnels/analyze',
+    params={
+        'start_date': '2024-01-01',
+        'end_date': '2024-01-31'
+    },
+    json={
+        'steps': [
+            { 'type': 'page', 'value': '/', 'name': 'Homepage' },
+            { 'type': 'page', 'value': '/pricing', 'name': 'Pricing' },
+            { 'type': 'page', 'value': '/signup', 'name': 'Signup' },
+            { 'type': 'event', 'value': 'signup_complete', 'name': 'Complete' }
+        ]
+    },
+    headers={
+        'Authorization': 'Bearer your_api_key_here'
+    }
+)
+
+data = response.json()
+```
+  </Tab>
+  <Tab value="PHP">
+```php title="Request"
+$body = [
+    'steps' => [
+        ['type' => 'page', 'value' => '/', 'name' => 'Homepage'],
+        ['type' => 'page', 'value' => '/pricing', 'name' => 'Pricing'],
+        ['type' => 'page', 'value' => '/signup', 'name' => 'Signup'],
+        ['type' => 'event', 'value' => 'signup_complete', 'name' => 'Complete']
+    ]
+];
+
+$ch = curl_init();
+curl_setopt($ch, CURLOPT_URL, 'https://app.rybbit.io/api/sites/1/funnels/analyze?start_date=2024-01-01&end_date=2024-01-31');
+curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+curl_setopt($ch, CURLOPT_POST, true);
+curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($body));
+curl_setopt($ch, CURLOPT_HTTPHEADER, [
+    'Authorization: Bearer your_api_key_here',
+    'Content-Type: application/json'
+]);
+
+$response = curl_exec($ch);
+curl_close($ch);
+
+$data = json_decode($response, true);
+```
+  </Tab>
+  <Tab value="Ruby">
+```ruby title="Request"
+require 'net/http'
+require 'json'
+
+uri = URI('https://app.rybbit.io/api/sites/1/funnels/analyze?start_date=2024-01-01&end_date=2024-01-31')
+request = Net::HTTP::Post.new(uri)
+request['Authorization'] = 'Bearer your_api_key_here'
+request['Content-Type'] = 'application/json'
+request.body = {
+  steps: [
+    { type: 'page', value: '/', name: 'Homepage' },
+    { type: 'page', value: '/pricing', name: 'Pricing' },
+    { type: 'page', value: '/signup', name: 'Signup' },
+    { type: 'event', value: 'signup_complete', name: 'Complete' }
+  ]
+}.to_json
+
+response = Net::HTTP.start(uri.hostname, uri.port, use_ssl: true) do |http|
+  http.request(request)
+end
+
+data = JSON.parse(response.body)
+```
+  </Tab>
+  <Tab value="Go">
+```go title="Request"
+package main
+
+import (
+    "bytes"
+    "encoding/json"
+    "io"
+    "net/http"
+)
+
+func main() {
+    body := map[string]interface{}{
+        "steps": []map[string]string{
+            {"type": "page", "value": "/", "name": "Homepage"},
+            {"type": "page", "value": "/pricing", "name": "Pricing"},
+            {"type": "page", "value": "/signup", "name": "Signup"},
+            {"type": "event", "value": "signup_complete", "name": "Complete"},
+        },
+    }
+    jsonBody, _ := json.Marshal(body)
+
+    client := &http.Client{}
+    req, _ := http.NewRequest("POST", "https://app.rybbit.io/api/sites/1/funnels/analyze?start_date=2024-01-01&end_date=2024-01-31", bytes.NewBuffer(jsonBody))
+    req.Header.Set("Authorization", "Bearer your_api_key_here")
+    req.Header.Set("Content-Type", "application/json")
+
+    resp, _ := client.Do(req)
+    defer resp.Body.Close()
+
+    respBody, _ := io.ReadAll(resp.Body)
+    var data map[string]interface{}
+    json.Unmarshal(respBody, &data)
+}
+```
+  </Tab>
+  <Tab value="Rust">
+```rust title="Request"
+use reqwest;
+use serde_json::{json, Value};
+
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let body = json!({
+        "steps": [
+            {"type": "page", "value": "/", "name": "Homepage"},
+            {"type": "page", "value": "/pricing", "name": "Pricing"},
+            {"type": "page", "value": "/signup", "name": "Signup"},
+            {"type": "event", "value": "signup_complete", "name": "Complete"}
+        ]
+    });
+
+    let client = reqwest::Client::new();
+    let response = client
+        .post("https://app.rybbit.io/api/sites/1/funnels/analyze?start_date=2024-01-01&end_date=2024-01-31")
+        .header("Authorization", "Bearer your_api_key_here")
+        .header("Content-Type", "application/json")
+        .json(&body)
+        .send()
+        .await?;
+
+    let data: Value = response.json().await?;
+    Ok(())
+}
+```
+  </Tab>
+  <Tab value="Java">
+```java title="Request"
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+
+String json = """
+{
+  "steps": [
+    {"type": "page", "value": "/", "name": "Homepage"},
+    {"type": "page", "value": "/pricing", "name": "Pricing"},
+    {"type": "page", "value": "/signup", "name": "Signup"},
+    {"type": "event", "value": "signup_complete", "name": "Complete"}
+  ]
+}
+""";
+
+HttpClient client = HttpClient.newHttpClient();
+HttpRequest request = HttpRequest.newBuilder()
+    .uri(URI.create("https://app.rybbit.io/api/sites/1/funnels/analyze?start_date=2024-01-01&end_date=2024-01-31"))
+    .header("Authorization", "Bearer your_api_key_here")
+    .header("Content-Type", "application/json")
+    .POST(HttpRequest.BodyPublishers.ofString(json))
+    .build();
+
+HttpResponse<String> response = client.send(request,
+    HttpResponse.BodyHandlers.ofString());
+String data = response.body();
+```
+  </Tab>
+  <Tab value=".NET">
+```csharp title="Request"
+using System.Net.Http;
+using System.Net.Http.Headers;
+using System.Text;
+using System.Text.Json;
+
+var body = new
+{
+    steps = new[]
+    {
+        new { type = "page", value = "/", name = "Homepage" },
+        new { type = "page", value = "/pricing", name = "Pricing" },
+        new { type = "page", value = "/signup", name = "Signup" },
+        new { type = "event", value = "signup_complete", name = "Complete" }
+    }
+};
+
+var client = new HttpClient();
+client.DefaultRequestHeaders.Authorization =
+    new AuthenticationHeaderValue("Bearer", "your_api_key_here");
+
+var content = new StringContent(
+    JsonSerializer.Serialize(body),
+    Encoding.UTF8,
+    "application/json");
+
+var response = await client.PostAsync(
+    "https://app.rybbit.io/api/sites/1/funnels/analyze?start_date=2024-01-01&end_date=2024-01-31",
+    content);
+var data = await response.Content.ReadAsStringAsync();
+```
+  </Tab>
+</Tabs>
+
+```json title="Response"
+{
+  "data": [
+    {
+      "step_number": 1,
+      "step_name": "Homepage",
+      "visitors": 10000,
+      "conversion_rate": 100,
+      "dropoff_rate": 0
+    },
+    {
+      "step_number": 2,
+      "step_name": "Pricing",
+      "visitors": 4500,
+      "conversion_rate": 45,
+      "dropoff_rate": 55
+    },
+    {
+      "step_number": 3,
+      "step_name": "Signup",
+      "visitors": 1800,
+      "conversion_rate": 18,
+      "dropoff_rate": 60
+    },
+    {
+      "step_number": 4,
+      "step_name": "Complete",
+      "visitors": 720,
+      "conversion_rate": 7.2,
+      "dropoff_rate": 60
+    }
+  ]
+}
+```
+
+</div>
+</div>

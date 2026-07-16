@@ -2,8 +2,9 @@
 
 import { useQueryClient } from "@tanstack/react-query";
 import { AlertTriangle } from "lucide-react";
+import { useExtracted } from "next-intl";
 import { useState } from "react";
-import { toast } from "sonner";
+import { toast } from "@/components/ui/sonner";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -24,6 +25,7 @@ export function DeleteAccount() {
   const [isDeleting, setIsDeleting] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
   const queryClient = useQueryClient();
+  const t = useExtracted();
 
   const handleAccountDeletion = async () => {
     try {
@@ -31,15 +33,15 @@ export function DeleteAccount() {
       const response = await authClient.deleteUser();
 
       if (response.error) {
-        toast.error(`Failed to delete account: ${response.error.message || "Unknown error"}`);
+        toast.error(t("Failed to delete account: {error}", { error: response.error.message || t("Unknown error") }));
         return;
       }
       queryClient.clear();
-      toast.success("Account successfully deleted");
+      toast.success(t("Account successfully deleted"));
       setIsOpen(false);
       window.location.reload();
     } catch (error) {
-      toast.error(`Failed to delete account: ${error}`);
+      toast.error(t("Failed to delete account: {error}", { error: String(error) }));
     } finally {
       setIsDeleting(false);
     }
@@ -56,25 +58,25 @@ export function DeleteAccount() {
     <AlertDialog open={isOpen} onOpenChange={setIsOpen}>
       <AlertDialogTrigger asChild>
         <Button variant="destructive" className="w-full" onClick={() => setIsOpen(true)}>
-          Delete Account
+          {t("Delete Account")}
         </Button>
       </AlertDialogTrigger>
       <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle className="flex items-center gap-2">
             <AlertTriangle className="h-5 w-5" color="hsl(var(--red-500))" />
-            {accountNotDeletable ? "Cannot delete account" : "Delete your account?"}
+            {accountNotDeletable ? t("Cannot delete account") : t("Delete your account?")}
           </AlertDialogTitle>
           <AlertDialogDescription>
             {accountNotDeletable
-              ? "You have an active subscription. Please cancel your subscription before deleting your account."
-              : "This action cannot be undone. This will permanently delete your account and remove all your data from our servers."}
+              ? t("You have an active subscription. Please cancel your subscription before deleting your account.")
+              : t("This action cannot be undone. This will permanently delete your account and remove all your data from our servers.")}
           </AlertDialogDescription>
         </AlertDialogHeader>
 
         <AlertDialogFooter>
           <AlertDialogCancel onClick={handleClose} disabled={isDeleting}>
-            Cancel
+            {t("Cancel")}
           </AlertDialogCancel>
           {!accountNotDeletable && (
             <AlertDialogAction
@@ -85,7 +87,7 @@ export function DeleteAccount() {
               variant="destructive"
               disabled={isDeleting}
             >
-              {isDeleting ? "Deleting..." : "Delete Account"}
+              {isDeleting ? t("Deleting...") : t("Delete Account")}
             </AlertDialogAction>
           )}
         </AlertDialogFooter>

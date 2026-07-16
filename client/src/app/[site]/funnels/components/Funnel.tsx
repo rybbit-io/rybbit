@@ -1,11 +1,13 @@
 "use client";
 
-import { round } from "lodash";
+import { useExtracted } from "next-intl";
+import round from "lodash/round";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import { useState } from "react";
-import { FunnelResponse, FunnelStep } from "../../../../api/analytics/endpoints";
+import { FunnelResponse, FunnelStep, FunnelStepType } from "../../../../api/analytics/endpoints";
 import { useGetFunnelStepSessions } from "../../../../api/analytics/hooks/funnels/useGetFunnelStepSessions";
-import { EventIcon, PageviewIcon } from "../../../../components/EventIcons";
+import { EventTypeIcon } from "../../../../components/EventIcons";
+import { targetTypeToEventType } from "../../../../lib/events";
 import { SessionsList } from "../../../../components/Sessions/SessionsList";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../../../components/ui/tabs";
 import { useStore } from "../../../../lib/store";
@@ -38,6 +40,17 @@ interface FunnelStepComponentProps {
 }
 
 function FunnelStepComponent({ step, index, steps, chartData, firstStep, siteId }: FunnelStepComponentProps) {
+  const t = useExtracted();
+
+  const stepTypeLabels: Record<FunnelStepType, string> = {
+    page: t("Page"),
+    event: t("Event"),
+    outbound: t("Outbound"),
+    button_click: t("Button"),
+    form_submit: t("Form"),
+    copy: t("Copy"),
+  };
+
   const [isExpanded, setIsExpanded] = useState(false);
   const [currentTab, setCurrentTab] = useState<"reached" | "dropped">("reached");
   const [reachedPage, setReachedPage] = useState(1);
@@ -108,8 +121,8 @@ function FunnelStepComponent({ step, index, steps, chartData, firstStep, siteId 
           {step.stepNumber}
         </div>
         <div className="font-medium text-sm flex items-center gap-2 flex-1">
-          {steps[index]?.type === "page" ? <PageviewIcon /> : <EventIcon />}
-          {step.stepName}
+          <EventTypeIcon type={targetTypeToEventType(steps[index]?.type || "event")} />
+          {step.stepName || stepTypeLabels[steps[index]?.type || "event"]}
         </div>
         <div className="shrink-0">
           {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
@@ -122,11 +135,11 @@ function FunnelStepComponent({ step, index, steps, chartData, firstStep, siteId 
         <div className="shrink-0 min-w-[130px] mr-4 space-y-1">
           <div className="flex items-baseline">
             <span className="text-base font-semibold">{step.visitors.toLocaleString()}</span>
-            <span className="text-sm text-neutral-500 dark:text-neutral-400 ml-1">sessions</span>
+            <span className="text-sm text-neutral-500 dark:text-neutral-400 ml-1">{t("sessions")}</span>
           </div>
           {index !== 0 && (
             <div className="flex items-baseline text-orange-500 text-xs font-medium">
-              {droppedFromPrevious.toLocaleString()} dropped
+              {t("{count} dropped", { count: droppedFromPrevious.toLocaleString() })}
             </div>
           )}
         </div>
@@ -162,9 +175,9 @@ function FunnelStepComponent({ step, index, steps, chartData, firstStep, siteId 
         <div className=" ml-4 p-4">
           <Tabs value={currentTab} onValueChange={val => setCurrentTab(val as "reached" | "dropped")}>
             <TabsList className="mb-1">
-              <TabsTrigger value="reached">Reached ({step.visitors.toLocaleString()})</TabsTrigger>
+              <TabsTrigger value="reached">{t("Reached ({count})", { count: step.visitors.toLocaleString() })}</TabsTrigger>
               {!isFirstStep && (
-                <TabsTrigger value="dropped">Dropped Off ({droppedFromPrevious.toLocaleString()})</TabsTrigger>
+                <TabsTrigger value="dropped">{t("Dropped Off ({count})", { count: droppedFromPrevious.toLocaleString() })}</TabsTrigger>
               )}
             </TabsList>
 
@@ -176,7 +189,7 @@ function FunnelStepComponent({ step, index, steps, chartData, firstStep, siteId 
                 onPageChange={setReachedPage}
                 hasNextPage={hasNextReached}
                 hasPrevPage={hasPrevReached}
-                emptyMessage="No sessions reached this step in the selected time period."
+                emptyMessage={t("No sessions reached this step in the selected time period.")}
               />
             </TabsContent>
 
@@ -189,7 +202,7 @@ function FunnelStepComponent({ step, index, steps, chartData, firstStep, siteId 
                   onPageChange={setDroppedPage}
                   hasNextPage={hasNextDropped}
                   hasPrevPage={hasPrevDropped}
-                  emptyMessage="No sessions dropped off before reaching this step in the selected time period."
+                  emptyMessage={t("No sessions dropped off before reaching this step in the selected time period.")}
                 />
               </TabsContent>
             )}
@@ -201,6 +214,7 @@ function FunnelStepComponent({ step, index, steps, chartData, firstStep, siteId 
 }
 
 export function Funnel({ data, steps, isError, error, isPending }: FunnelProps) {
+  const t = useExtracted();
   const { site } = useStore();
 
   // Prepare chart data
@@ -223,7 +237,7 @@ export function Funnel({ data, steps, isError, error, isPending }: FunnelProps) 
       {isError ? (
         <div className="h-[400px] flex items-center justify-center">
           <div className="text-red-500">
-            Error: {error instanceof Error ? error.message : "Failed to analyze funnel"}
+            {t("Error:")} {error instanceof Error ? error.message : t("Failed to analyze funnel")}
           </div>
         </div>
       ) : data && chartData.length > 0 ? (
@@ -243,7 +257,7 @@ export function Funnel({ data, steps, isError, error, isPending }: FunnelProps) 
       ) : (
         <div className="h-[400px] flex items-center justify-center">
           <div className="text-neutral-500 dark:text-neutral-400 text-sm">
-            {isPending ? "Analyzing funnel..." : "Configure your funnel steps and click 'Analyze Funnel'"}
+            {isPending ? t("Analyzing funnel...") : t("Configure your funnel steps")}
           </div>
         </div>
       )}
@@ -251,7 +265,7 @@ export function Funnel({ data, steps, isError, error, isPending }: FunnelProps) 
         <div className="flex items-center gap-4 mt-3 text-xs text-neutral-500 dark:text-neutral-400">
           <div className="flex items-center">
             <div className="w-3 h-3 bg-emerald-500/70 rounded-sm mr-1"></div>
-            <span>Overall conversion</span>
+            <span>{t("Overall conversion")}</span>
           </div>
           <div className="flex items-center">
             <div
@@ -266,7 +280,7 @@ export function Funnel({ data, steps, isError, error, isPending }: FunnelProps) 
                     )`,
               }}
             ></div>
-            <span>Conversion from previous step</span>
+            <span>{t("Conversion from previous step")}</span>
           </div>
         </div>
       </div>

@@ -1,104 +1,112 @@
-import { FilterParameter, FilterType } from "@rybbit/shared";
+"use client";
+
+import { FilterParameter } from "@rybbit/shared";
 import { X } from "lucide-react";
+import { useExtracted } from "next-intl";
+import { Button } from "../../../../../components/ui/button";
+import { ButtonGroup } from "../../../../../components/ui/button-group";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../../../../../components/ui/tooltip";
 import { useGetRegionName } from "../../../../../lib/geo";
 import { removeFilter, updateFilter, useStore } from "../../../../../lib/store";
 import { cn } from "../../../../../lib/utils";
 import { isNumericParameter } from "./const";
-import { filterTypeToLabel, getParameterNameLabel, getParameterValueLabel } from "./utils";
+import {
+  formatDisplayValue,
+  getParameterIcon,
+  useParameterLabel,
+  operatorNeedsValue,
+  useOperatorLabel,
+} from "./labels";
+import { OperatorPopover } from "./OperatorPopover";
+import { ParameterPopover } from "./ParameterPopover";
+import { ValuePopover } from "./ValuePopover";
 
 export function Filters({ availableFilters }: { availableFilters?: FilterParameter[] }) {
+  const t = useExtracted();
   const { filters } = useStore();
   const { getRegionName } = useGetRegionName();
+  const getParameterLabel = useParameterLabel();
+  const getOperatorLabel = useOperatorLabel();
 
   return (
     <div className="flex gap-2 flex-wrap">
       {filters.map((filter, i) => {
         const disabled = availableFilters && !availableFilters.includes(filter.parameter);
+        const isNumeric = isNumericParameter(filter.parameter);
+        const displayValue = formatDisplayValue(filter, getRegionName);
+        const hasValue = filter.value.length > 0;
 
-        return (
-          <Tooltip key={filter.parameter}>
-            {disabled && (
-              <TooltipContent>
-                <p>Filter not active for this page</p>
-              </TooltipContent>
-            )}
-            <TooltipTrigger>
-              <div
-                key={filter.parameter}
+        const onUpdate = (next: typeof filter) => updateFilter(next, i);
+
+        const pill = (
+          <ButtonGroup>
+            <ParameterPopover filter={filter} onUpdate={onUpdate} availableFilters={availableFilters}>
+              <Button
+                variant="secondary"
+                size="sm"
+                disabled={disabled}
                 className={cn(
-                  "px-2 py-1 rounded-lg text-neutral-500 dark:text-neutral-400 flex items-center gap-1 text-sm",
-                  disabled ? "bg-neutral-200 dark:bg-neutral-900" : "bg-neutral-100 dark:bg-neutral-850"
+                  "font-normal py-1.5 px-2 gap-1.5",
+                  disabled
+                    ? "text-neutral-400 dark:text-neutral-500"
+                    : "text-neutral-700 dark:text-neutral-100"
                 )}
               >
-                <div
+                {getParameterIcon(filter.parameter)}
+                {getParameterLabel(filter.parameter)}
+              </Button>
+            </ParameterPopover>
+            <OperatorPopover filter={filter} onUpdate={onUpdate}>
+              <Button
+                variant="secondary"
+                size="sm"
+                disabled={disabled}
+                className={cn("font-normal p-1.5 text-neutral-500 dark:text-neutral-400")}
+              >
+                {getOperatorLabel(filter.type, isNumeric)}
+              </Button>
+            </OperatorPopover>
+            {operatorNeedsValue(filter.type) && (
+              <ValuePopover filter={filter} onUpdate={onUpdate}>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  disabled={disabled}
                   className={cn(
-                    disabled ? "text-neutral-400 dark:text-neutral-500" : "text-neutral-600 dark:text-neutral-300"
-                  )}
-                >
-                  {getParameterNameLabel(filter.parameter)}
-                </div>
-                <div
-                  className={cn(
-                    "text-emerald-400 font cursor-pointer whitespace-nowrap",
-                    (filter.type === "not_equals" || filter.type === "not_contains" || filter.type === "not_regex") &&
-                      "text-red-400"
-                  )}
-                  onClick={() => {
-                    const isNumeric = isNumericParameter(filter.parameter);
-                    let newType: FilterType = "equals";
-
-                    if (isNumeric) {
-                      // Numeric cycle: equals -> not_equals -> greater_than -> less_than -> equals
-                      if (filter.type === "equals") {
-                        newType = "not_equals";
-                      } else if (filter.type === "not_equals") {
-                        newType = "greater_than";
-                      } else if (filter.type === "greater_than") {
-                        newType = "less_than";
-                      } else if (filter.type === "less_than") {
-                        newType = "equals";
-                      }
-                    } else {
-                      // String cycle: equals -> not_equals -> contains -> not_contains -> regex -> not_regex -> equals
-                      if (filter.type === "equals") {
-                        newType = "not_equals";
-                      } else if (filter.type === "not_equals") {
-                        newType = "contains";
-                      } else if (filter.type === "contains") {
-                        newType = "not_contains";
-                      } else if (filter.type === "not_contains") {
-                        newType = "regex";
-                      } else if (filter.type === "regex") {
-                        newType = "not_regex";
-                      } else if (filter.type === "not_regex") {
-                        newType = "equals";
-                      }
-                    }
-
-                    updateFilter({ ...filter, type: newType }, i);
-                  }}
-                >
-                  {filterTypeToLabel(filter.type)}
-                </div>
-                <div
-                  className={cn(
-                    "text-neutral-900 dark:text-neutral-100 font-medium whitespace-nowrap",
+                    "max-w-[260px] truncate py-1.5 px-2",
+                    hasValue
+                      ? "text-neutral-900 dark:text-neutral-100 font-medium"
+                      : "text-neutral-500 dark:text-neutral-400 italic font-normal",
                     disabled && "text-neutral-400 dark:text-neutral-500"
                   )}
                 >
-                  {getParameterValueLabel(filter, getRegionName)}
-                </div>
-                <div
-                  className="text-neutral-500 dark:text-neutral-400 cursor-pointer hover:text-neutral-700 dark:hover:text-neutral-200"
-                  onClick={() => removeFilter(filter)}
-                >
-                  <X size={16} strokeWidth={3} />
-                </div>
-              </div>
-            </TooltipTrigger>
-          </Tooltip>
+                  <span className="truncate">{hasValue ? displayValue : t("pick value")}</span>
+                </Button>
+              </ValuePopover>
+            )}
+            <Button
+              variant="secondary"
+              size="sm"
+              className="text-neutral-500 dark:text-neutral-400 px-1.5"
+              onClick={() => removeFilter(filter)}
+              aria-label={t("Remove filter")}
+            >
+              <X size={14} strokeWidth={2.5} />
+            </Button>
+          </ButtonGroup>
         );
+
+        if (disabled) {
+          return (
+            <Tooltip key={i}>
+              <TooltipTrigger asChild>{pill}</TooltipTrigger>
+              <TooltipContent>
+                <p>{t("Filter not active for this page")}</p>
+              </TooltipContent>
+            </Tooltip>
+          );
+        }
+        return <div key={i}>{pill}</div>;
       })}
     </div>
   );

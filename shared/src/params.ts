@@ -3,6 +3,8 @@ export interface BaseParams {
   end_date: string;
   time_zone: string;
   filters: string;
+  start_datetime?: string;
+  end_datetime?: string;
   past_minutes_start?: number;
   past_minutes_end?: number;
 }

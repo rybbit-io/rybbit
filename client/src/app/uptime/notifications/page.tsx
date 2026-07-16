@@ -16,7 +16,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { cn } from "@/lib/utils";
 import { Bell, Edit, MoreHorizontal, Power, Trash2 } from "lucide-react";
 import { useState } from "react";
-import { toast } from "sonner";
+import { toast } from "@/components/ui/sonner";
 import {
   NotificationChannel,
   useDeleteChannel,
@@ -202,23 +202,23 @@ export default function NotificationsPage() {
                               </DropdownMenuTrigger>
                               <DropdownMenuContent align="end">
                                 <DropdownMenuItem onClick={() => handleToggleChannel(channel)}>
-                                  <Power className="mr-2 h-4 w-4" />
+                                  <Power className="h-4 w-4" />
                                   {channel.enabled ? "Disable" : "Enable"}
                                 </DropdownMenuItem>
                                 <DropdownMenuItem
                                   onClick={() => handleTestChannel(channel)}
                                   disabled={!channel.enabled}
                                 >
-                                  <Bell className="mr-2 h-4 w-4" />
+                                  <Bell className="h-4 w-4" />
                                   Test
                                 </DropdownMenuItem>
                                 <DropdownMenuItem onClick={() => openEditDialog(channel)}>
-                                  <Edit className="mr-2 h-4 w-4" />
+                                  <Edit className="h-4 w-4" />
                                   Edit
                                 </DropdownMenuItem>
                                 <DropdownMenuSeparator />
                                 <DropdownMenuItem onClick={() => openDeleteModal(channel)} className="text-red-600">
-                                  <Trash2 className="mr-2 h-4 w-4" />
+                                  <Trash2 className="h-4 w-4" />
                                   Delete
                                 </DropdownMenuItem>
                               </DropdownMenuContent>

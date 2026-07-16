@@ -3,11 +3,12 @@ import { clickhouse } from "../../db/clickhouse/clickhouse.js";
 import { FilterParameter } from "./types.js";
 import { getTimeStatement, processResults } from "./utils/utils.js";
 import { getFilterStatement, getSqlParam } from "./utils/getFilterStatement.js";
+import { SESSION_CHANNEL_AGG } from "./utils/sessionAttribution.js";
 import { FilterParams } from "@rybbit/shared";
 
 interface GetMetricRequest {
   Params: {
-    site: string;
+    siteId: string;
   };
   Querystring: FilterParams<{
     parameter: FilterParameter;
@@ -20,6 +21,8 @@ type GetMetricResponse = {
   value: string;
   // title is only used for pathname
   title?: string;
+  // hostname from ClickHouse events data
+  hostname?: string;
   // count means sessions where this page was the entry/exit
   count: number;
   percentage: number;
@@ -35,6 +38,7 @@ type MetricItem = {
   value: string;
   title?: string;
   pathname?: string;
+  hostname?: string;
   count: number;
   percentage: number;
   pageviews?: number;
@@ -51,7 +55,7 @@ type GetMetricPaginatedResponse = {
 
 const getQuery = (request: FastifyRequest<GetMetricRequest>, isCountQuery: boolean = false) => {
   const { filters, parameter, limit, page } = request.query;
-  const site = request.params.site;
+  const site = request.params.siteId;
 
   const timeStatement = getTimeStatement(request.query);
 
@@ -103,7 +107,7 @@ const getQuery = (request: FastifyRequest<GetMetricRequest>, isCountQuery: boole
       ${filterStatement}
       ${timeStatement}
       AND type = 'custom_event'
-    GROUP BY event_name ORDER BY count desc
+    GROUP BY event_name ORDER BY count desc, event_name asc
     ${limitStatement}
     ${offsetStatement};
   `;
@@ -171,7 +175,7 @@ const getQuery = (request: FastifyRequest<GetMetricRequest>, isCountQuery: boole
           ) as bounce_rate
       FROM TitleStatsWithSessions
       GROUP BY value
-      ORDER BY count DESC
+      ORDER BY count DESC, value ASC
       ${limitStatement}
       ${offsetStatement};
     `;
@@ -209,6 +213,7 @@ const getQuery = (request: FastifyRequest<GetMetricRequest>, isCountQuery: boole
           SELECT
               session_id,
               pathname,
+              hostname,
               timestamp,
               pageviews_in_session,
               leadInFrame(timestamp) OVER (PARTITION BY session_id ORDER BY timestamp ROWS BETWEEN CURRENT ROW AND 1 FOLLOWING) as next_timestamp,
@@ -219,6 +224,7 @@ const getQuery = (request: FastifyRequest<GetMetricRequest>, isCountQuery: boole
           SELECT
               session_id,
               pathname,
+              hostname,
               timestamp,
               next_timestamp,
               row_num,
@@ -234,6 +240,7 @@ const getQuery = (request: FastifyRequest<GetMetricRequest>, isCountQuery: boole
       PathStats AS (
           SELECT
               pathname,
+              anyHeavy(hostname) as top_hostname,
               count(DISTINCT session_id) as unique_sessions,
               count() as visits,
               avg(if(time_diff_seconds < 0, 0, if(time_diff_seconds > 1800, 1800, time_diff_seconds))) as avg_time_on_page_seconds,
@@ -255,6 +262,7 @@ const getQuery = (request: FastifyRequest<GetMetricRequest>, isCountQuery: boole
     WITH ${baseCteQuery}
     SELECT
         pathname as value,
+        top_hostname as hostname,
         unique_sessions as count,
         round((unique_sessions / sum(unique_sessions) OVER ()) * 100, 2) as percentage,
         visits as pageviews,
@@ -262,7 +270,7 @@ const getQuery = (request: FastifyRequest<GetMetricRequest>, isCountQuery: boole
         avg_time_on_page_seconds as time_on_page_seconds,
         round((bounced_sessions / nullIf(unique_sessions, 0)) * 100, 2) as bounce_rate
     FROM PathStats
-    ORDER BY unique_sessions DESC
+    ORDER BY unique_sessions DESC, pathname ASC
     ${limitStatement}
     ${offsetStatement};`;
   }
@@ -284,6 +292,7 @@ const getQuery = (request: FastifyRequest<GetMetricRequest>, isCountQuery: boole
           SELECT
               e.session_id,
               e.pathname,
+              e.hostname,
               e.timestamp,
               spc.pageviews_in_session,
               leadInFrame(e.timestamp) OVER (PARTITION BY e.session_id ORDER BY e.timestamp ROWS BETWEEN CURRENT ROW AND 1 FOLLOWING) as next_timestamp
@@ -299,6 +308,7 @@ const getQuery = (request: FastifyRequest<GetMetricRequest>, isCountQuery: boole
           SELECT
               session_id,
               pathname,
+              hostname,
               timestamp,
               next_timestamp,
               pageviews_in_session,
@@ -308,6 +318,7 @@ const getQuery = (request: FastifyRequest<GetMetricRequest>, isCountQuery: boole
       PathStats AS (
           SELECT
               pathname,
+              anyHeavy(hostname) as top_hostname,
               count() as visits,
               count(DISTINCT session_id) as unique_sessions,
               avg(if(time_diff_seconds < 0, 0, if(time_diff_seconds > 1800, 1800, time_diff_seconds))) as avg_time_on_page_seconds,
@@ -326,6 +337,7 @@ const getQuery = (request: FastifyRequest<GetMetricRequest>, isCountQuery: boole
     WITH ${baseCteQuery}
     SELECT
         pathname as value,
+        top_hostname as hostname,
         unique_sessions as count,
         round((unique_sessions / sum(unique_sessions) OVER ()) * 100, 2) as percentage,
         visits as pageviews,
@@ -333,7 +345,7 @@ const getQuery = (request: FastifyRequest<GetMetricRequest>, isCountQuery: boole
         avg_time_on_page_seconds as time_on_page_seconds,
         round((bounced_sessions / nullIf(unique_sessions, 0)) * 100, 2) as bounce_rate
     FROM PathStats
-    ORDER BY unique_sessions DESC
+    ORDER BY unique_sessions DESC, pathname ASC
     ${limitStatement}
     ${offsetStatement};
     `;
@@ -341,16 +353,26 @@ const getQuery = (request: FastifyRequest<GetMetricRequest>, isCountQuery: boole
 
   // Default case for other parameters
   const sqlParam = getSqlParam(parameter);
+
+  // Sessions are attributed to their first attributed channel (matching the
+  // sessions views), not the first event's channel, which is often 'Direct'.
+  const valueExpression = parameter === "channel" ? SESSION_CHANNEL_AGG : `argMin(${sqlParam}, e.timestamp)`;
+
   if (isCountQuery) {
     return `
-    SELECT COUNT(DISTINCT ${sqlParam}) as totalCount
-    FROM events
-    WHERE
-        site_id = {siteId:Int32}
-        AND ${sqlParam} IS NOT NULL
-        AND ${sqlParam} <> ''
-        ${filterStatement}
-        ${timeStatement};
+    SELECT COUNT(DISTINCT value) as totalCount
+    FROM (
+        SELECT
+            ${valueExpression} as value
+        FROM events e
+        WHERE
+            e.site_id = {siteId:Int32}
+            AND ${sqlParam} IS NOT NULL
+            AND ${sqlParam} <> ''
+            ${filterStatement}
+            ${timeStatement}
+        GROUP BY e.session_id
+    );
     `;
   }
 
@@ -368,9 +390,9 @@ const getQuery = (request: FastifyRequest<GetMetricRequest>, isCountQuery: boole
     ),
     SessionData AS (
         SELECT
-            ${sqlParam} as value,
+            ${valueExpression} as value,
             e.session_id,
-            spc.pageviews_in_session
+            any(spc.pageviews_in_session) as pageviews_in_session
         FROM events e
         LEFT JOIN SessionPageCounts spc ON e.session_id = spc.session_id
         WHERE
@@ -379,6 +401,7 @@ const getQuery = (request: FastifyRequest<GetMetricRequest>, isCountQuery: boole
             AND ${sqlParam} <> ''
             ${filterStatement}
             ${timeStatement}
+        GROUP BY e.session_id
     )
     SELECT
         value,
@@ -389,7 +412,7 @@ const getQuery = (request: FastifyRequest<GetMetricRequest>, isCountQuery: boole
         round((countIf(DISTINCT session_id, pageviews_in_session = 1) / nullIf(COUNT(DISTINCT session_id), 0)) * 100, 2) as bounce_rate
     FROM SessionData
     GROUP BY value
-    ORDER BY count desc
+    ORDER BY count desc, value asc
     ${limitStatement}
     ${offsetStatement};
   `;
@@ -397,7 +420,7 @@ const getQuery = (request: FastifyRequest<GetMetricRequest>, isCountQuery: boole
 
 export async function getMetric(req: FastifyRequest<GetMetricRequest>, res: FastifyReply) {
   const { parameter, page } = req.query;
-  const site = req.params.site;
+  const site = req.params.siteId;
 
   const isPaginatedRequest = page !== undefined;
 

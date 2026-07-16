@@ -4,6 +4,7 @@ import { db } from "../../db/postgres/postgres.js";
 import { organization } from "../../db/postgres/schema.js";
 import { eq } from "drizzle-orm";
 import Stripe from "stripe";
+import { invalidateStripeSubscriptionCache } from "../../lib/subscriptionUtils.js";
 import dotenv from "dotenv";
 
 dotenv.config();
@@ -43,6 +44,10 @@ export async function handleWebhook(request: FastifyRequest, reply: FastifyReply
         const stripeCustomerId = session.customer as string;
         const organizationId = session.metadata?.organizationId; // Retrieve organizationId from metadata
 
+        // A new subscription was created — refresh any cached lookup for this customer
+        // (this also clears the account-wide snapshot used by the admin endpoints and cron).
+        invalidateStripeSubscriptionCache(stripeCustomerId);
+
         if (stripeCustomerId && organizationId) {
           try {
             // Check if organization already has this customer ID
@@ -74,17 +79,14 @@ export async function handleWebhook(request: FastifyRequest, reply: FastifyReply
       }
       break;
 
-    // case "customer.subscription.updated":
-    //   const subscriptionUpdated = event.data.object as Stripe.Subscription;
-    //   console.log("Subscription updated:", subscriptionUpdated.id, subscriptionUpdated.status);
-    //   // Potential actions: Update user roles/permissions based on status
-    //   break;
-
-    // case "customer.subscription.deleted":
-    //   const subscriptionDeleted = event.data.object as Stripe.Subscription;
-    //   console.log("Subscription deleted:", subscriptionDeleted.id);
-    //   // Potential actions: Update user roles/permissions, mark as unsubscribed
-    //   break;
+    // Subscription changes made outside updateSubscription (e.g. via the Stripe billing
+    // portal) only reach us through these events — drop the cached lookup so the change
+    // is reflected on the next read instead of waiting out the full TTL.
+    case "customer.subscription.updated":
+    case "customer.subscription.deleted":
+      const changedSubscription = event.data.object as Stripe.Subscription;
+      invalidateStripeSubscriptionCache(changedSubscription.customer as string);
+      break;
 
     // ... handle other event types as needed
 

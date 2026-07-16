@@ -20,13 +20,28 @@ function getTimeStatementFill(params: FilterParams, bucket: TimeBucket) {
       )
       TO if(
         toDate(${SqlString.escape(end_date)}) = toDate(now(), ${SqlString.escape(time_zone)}),
-        now(),
+        toTimeZone(now(), 'UTC'),
         toTimeZone(
           toDateTime(${TimeBucketToFn[validatedBucket]}(toDateTime(${SqlString.escape(end_date)}, ${SqlString.escape(
             time_zone
           )}))) + INTERVAL 1 DAY,
           'UTC'
         )
+      ) STEP INTERVAL ${bucketIntervalMap[validatedBucket]}`;
+  }
+  if (validatedParams.start_datetime && validatedParams.end_datetime && validatedParams.time_zone) {
+    const { start_datetime, end_datetime, time_zone } = validatedParams;
+    return `WITH FILL FROM toTimeZone(
+      toDateTime(${TimeBucketToFn[validatedBucket]}(toTimeZone(toDateTime(${SqlString.escape(
+        start_datetime
+      )}, 'UTC'), ${SqlString.escape(time_zone)}))),
+      'UTC'
+      )
+      TO toTimeZone(
+        toDateTime(${TimeBucketToFn[validatedBucket]}(toTimeZone(toDateTime(${SqlString.escape(
+          end_datetime
+        )}, 'UTC'), ${SqlString.escape(time_zone)}))),
+        'UTC'
       ) STEP INTERVAL ${bucketIntervalMap[validatedBucket]}`;
   }
   // For specific past minutes range - convert to exact timestamps for better performance
@@ -67,15 +82,26 @@ function getTimeStatementFill(params: FilterParams, bucket: TimeBucket) {
 }
 
 const getQuery = (params: FilterParams<{ bucket: TimeBucket }>, siteId: number) => {
-  const { start_date, end_date, time_zone, bucket = "hour", filters, past_minutes_start, past_minutes_end } = params;
+  const {
+    start_date,
+    end_date,
+    time_zone,
+    bucket = "hour",
+    filters,
+    start_datetime,
+    end_datetime,
+    past_minutes_start,
+    past_minutes_end,
+  } = params;
   const timeStatement = getTimeStatement(params);
   const filterStatement = getFilterStatement(filters, siteId, timeStatement);
 
-  const isAllTime = !start_date && !end_date && !past_minutes_start && !past_minutes_end;
+  const isAllTime =
+    !start_date && !end_date && !start_datetime && !end_datetime && !past_minutes_start && !past_minutes_end;
 
   const query = `
 SELECT
-    toDateTime(${TimeBucketToFn[bucket]}(toTimeZone(timestamp, ${SqlString.escape(time_zone)}))) AS time,
+    toDateTime(${TimeBucketToFn[bucket]}(toTimeZone(timestamp, ${SqlString.escape(time_zone || "UTC")}))) AS time,
     quantile(0.5)(lcp) AS lcp_p50,
     quantile(0.75)(lcp) AS lcp_p75,
     quantile(0.9)(lcp) AS lcp_p90,
@@ -111,7 +137,7 @@ GROUP BY time ORDER BY time ${isAllTime ? "" : getTimeStatementFill(params, buck
 export async function getPerformanceTimeSeries(
   req: FastifyRequest<{
     Params: {
-      site: string;
+      siteId: string;
     };
     Querystring: FilterParams<{
       bucket: TimeBucket;
@@ -119,7 +145,7 @@ export async function getPerformanceTimeSeries(
   }>,
   res: FastifyReply
 ) {
-  const site = req.params.site;
+  const site = req.params.siteId;
 
   const query = getQuery(req.query, Number(site));
 

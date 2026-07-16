@@ -23,6 +23,16 @@ function getTimeStatementFill(params: FilterParams, bucket: TimeBucket) {
         )})) + INTERVAL 1 DAY
       ) STEP INTERVAL ${bucketIntervalMap[validatedBucket]}`;
   }
+  if (validatedParams.start_datetime && validatedParams.end_datetime && validatedParams.time_zone) {
+    const { start_datetime, end_datetime, time_zone } = validatedParams;
+    return `WITH FILL FROM ${TimeBucketToFn[validatedBucket]}(
+        toTimeZone(toDateTime(${SqlString.escape(start_datetime)}, 'UTC'), ${SqlString.escape(time_zone)})
+      )
+      TO ${TimeBucketToFn[validatedBucket]}(
+        toTimeZone(toDateTime(${SqlString.escape(end_datetime)}, 'UTC'), ${SqlString.escape(time_zone)})
+      )
+      STEP INTERVAL ${bucketIntervalMap[validatedBucket]}`;
+  }
   // For specific past minutes range - convert to exact timestamps for better performance
   if (validatedParams.past_minutes_start !== undefined && validatedParams.past_minutes_end !== undefined) {
     return `WITH FILL FROM now() - INTERVAL ${validatedParams.past_minutes_start} MINUTE
@@ -35,7 +45,7 @@ function getTimeStatementFill(params: FilterParams, bucket: TimeBucket) {
 
 interface GetErrorBucketedRequest {
   Params: {
-    site: string;
+    siteId: string;
   };
   Querystring: FilterParams<{
     bucket: TimeBucket;
@@ -49,7 +59,7 @@ export type GetErrorBucketedResponse = {
 }[];
 
 export async function getErrorBucketed(req: FastifyRequest<GetErrorBucketedRequest>, res: FastifyReply) {
-  const site = req.params.site;
+  const site = req.params.siteId;
   const { bucket, errorMessage } = req.query;
 
   if (!errorMessage) {

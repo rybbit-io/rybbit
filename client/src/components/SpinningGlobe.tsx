@@ -1,6 +1,8 @@
 "use client";
 
-import { isNil, round, throttle } from "lodash";
+import isNil from "lodash/isNil";
+import round from "lodash/round";
+import throttle from "lodash/throttle";
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 import { useEffect, useRef, useState } from "react";
@@ -117,12 +119,24 @@ const SECONDS_PER_REVOLUTION = 120;
 const MAX_SPIN_ZOOM = 5;
 const SLOW_SPIN_ZOOM = 3;
 
+// Mapbox GL v3 requires WebGL 2 (globe projection + standard style won't run otherwise).
+function isWebGL2Supported(): boolean {
+  if (typeof window === "undefined") return false;
+  try {
+    const canvas = document.createElement("canvas");
+    return !!canvas.getContext("webgl2");
+  } catch {
+    return false;
+  }
+}
+
 export function SpinningGlobe() {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
   const markersMapRef = useRef<Map<string, MarkerData>>(new Map());
   const isUserInteractingRef = useRef(false);
   const [mapLoaded, setMapLoaded] = useState(false);
+  const [isSupported] = useState(isWebGL2Supported);
   const { configs, isLoading: isLoadingConfigs } = useConfigs();
 
   // Fetch demo sessions
@@ -130,7 +144,7 @@ export function SpinningGlobe() {
     queryKey: ["demo-sessions"],
     queryFn: async () => {
       const response = await fetch(
-        "https://demo.rybbit.com/api/sessions/1?past_minutes_start=120&past_minutes_end=0&filters=[]&page=1&limit=100"
+        "https://demo.rybbit.com/api/sites/81/sessions?past_minutes_start=240&past_minutes_end=0&filters=[]&page=1&limit=100"
       );
       return response.json();
     },
@@ -141,27 +155,92 @@ export function SpinningGlobe() {
 
   // Initialize map
   useEffect(() => {
-    if (!containerRef.current || !configs?.mapboxToken || mapRef.current) {
+    if (!containerRef.current || !configs?.mapboxToken || mapRef.current || !isSupported) {
       return;
     }
 
     mapboxgl.accessToken = configs.mapboxToken;
 
-    const map = new mapboxgl.Map({
-      container: containerRef.current,
-      style: "mapbox://styles/mapbox/standard",
-      projection: { name: "globe" },
-      zoom: 1.5,
-      center: [0, 20],
-      pitch: 0,
-      bearing: 0,
-      antialias: true,
-      attributionControl: false,
-    });
+    let map: mapboxgl.Map;
+    try {
+      map = new mapboxgl.Map({
+        container: containerRef.current,
+        style: "mapbox://styles/mapbox/standard",
+        projection: { name: "globe" },
+        zoom: 1.5,
+        center: [0, 20],
+        pitch: 0,
+        bearing: 0,
+        antialias: true,
+        attributionControl: false,
+      });
+    } catch {
+      return;
+    }
 
     mapRef.current = map;
 
-    map.on("style.load", () => {
+    // Spin globe function using easeTo for smooth animation
+    const spinGlobe = () => {
+      if (!mapRef.current) return;
+      const zoom = mapRef.current.getZoom();
+      if (!isUserInteractingRef.current && zoom < MAX_SPIN_ZOOM) {
+        let distancePerSecond = 360 / SECONDS_PER_REVOLUTION;
+        if (zoom > SLOW_SPIN_ZOOM) {
+          // Slow spinning at higher zooms
+          const zoomDif = (MAX_SPIN_ZOOM - zoom) / (MAX_SPIN_ZOOM - SLOW_SPIN_ZOOM);
+          distancePerSecond *= zoomDif;
+        }
+        const center = mapRef.current.getCenter();
+        center.lng -= distancePerSecond;
+        // Smoothly animate the map over one second
+        mapRef.current.easeTo({ center, duration: 1000, easing: n => n });
+      }
+    };
+
+    const handleClusterClick = (e: mapboxgl.MapLayerMouseEvent) => {
+      const features = map.queryRenderedFeatures(e.point, { layers: [CLUSTER_LAYER_ID] });
+      if (!features.length) return;
+
+      const clusterId = features[0].properties?.cluster_id;
+      const source = map.getSource(SOURCE_ID) as mapboxgl.GeoJSONSource;
+
+      source.getClusterExpansionZoom(clusterId, (err, zoom) => {
+        if (err || !zoom) return;
+        const coordinates = (features[0].geometry as any).coordinates;
+        map.easeTo({ center: coordinates, zoom, duration: 500 });
+      });
+    };
+
+    const setCursor = (cursor: string) => {
+      const canvas = map.getCanvas() as HTMLCanvasElement | undefined;
+      if (canvas) {
+        canvas.style.cursor = cursor;
+      }
+    };
+
+    const handleClusterMouseEnter = () => {
+      setCursor("pointer");
+    };
+
+    const handleClusterMouseLeave = () => {
+      setCursor("");
+    };
+
+    const handleMouseDown = () => {
+      isUserInteractingRef.current = true;
+    };
+
+    const handleInteractionEnd = () => {
+      isUserInteractingRef.current = false;
+      spinGlobe();
+    };
+
+    const handleMoveEnd = () => {
+      spinGlobe();
+    };
+
+    const handleStyleLoad = () => {
       // Apply custom styling
       try {
         if (map.getLayer("water")) {
@@ -235,81 +314,43 @@ export function SpinningGlobe() {
       });
 
       // Cluster click handler
-      map.on("click", CLUSTER_LAYER_ID, e => {
-        const features = map.queryRenderedFeatures(e.point, { layers: [CLUSTER_LAYER_ID] });
-        if (!features.length) return;
-
-        const clusterId = features[0].properties?.cluster_id;
-        const source = map.getSource(SOURCE_ID) as mapboxgl.GeoJSONSource;
-
-        source.getClusterExpansionZoom(clusterId, (err, zoom) => {
-          if (err || !zoom) return;
-          const coordinates = (features[0].geometry as any).coordinates;
-          map.easeTo({ center: coordinates, zoom, duration: 500 });
-        });
-      });
+      map.on("click", CLUSTER_LAYER_ID, handleClusterClick);
 
       // Cursor change on cluster hover
-      map.on("mouseenter", CLUSTER_LAYER_ID, () => {
-        map.getCanvas().style.cursor = "pointer";
-      });
-      map.on("mouseleave", CLUSTER_LAYER_ID, () => {
-        map.getCanvas().style.cursor = "";
-      });
-
-      // Spin globe function using easeTo for smooth animation
-      const spinGlobe = () => {
-        if (!mapRef.current) return;
-        const zoom = mapRef.current.getZoom();
-        if (!isUserInteractingRef.current && zoom < MAX_SPIN_ZOOM) {
-          let distancePerSecond = 360 / SECONDS_PER_REVOLUTION;
-          if (zoom > SLOW_SPIN_ZOOM) {
-            // Slow spinning at higher zooms
-            const zoomDif = (MAX_SPIN_ZOOM - zoom) / (MAX_SPIN_ZOOM - SLOW_SPIN_ZOOM);
-            distancePerSecond *= zoomDif;
-          }
-          const center = mapRef.current.getCenter();
-          center.lng -= distancePerSecond;
-          // Smoothly animate the map over one second
-          mapRef.current.easeTo({ center, duration: 1000, easing: n => n });
-        }
-      };
+      map.on("mouseenter", CLUSTER_LAYER_ID, handleClusterMouseEnter);
+      map.on("mouseleave", CLUSTER_LAYER_ID, handleClusterMouseLeave);
 
       // Pause spinning on interaction
-      map.on("mousedown", () => {
-        isUserInteractingRef.current = true;
-      });
+      map.on("mousedown", handleMouseDown);
 
       // Restart spinning after interaction ends
-      map.on("mouseup", () => {
-        isUserInteractingRef.current = false;
-        spinGlobe();
-      });
-      map.on("dragend", () => {
-        isUserInteractingRef.current = false;
-        spinGlobe();
-      });
-      map.on("pitchend", () => {
-        isUserInteractingRef.current = false;
-        spinGlobe();
-      });
-      map.on("rotateend", () => {
-        isUserInteractingRef.current = false;
-        spinGlobe();
-      });
+      map.on("mouseup", handleInteractionEnd);
+      map.on("dragend", handleInteractionEnd);
+      map.on("pitchend", handleInteractionEnd);
+      map.on("rotateend", handleInteractionEnd);
 
       // When animation completes, spin again (creates continuous rotation)
-      map.on("moveend", () => {
-        spinGlobe();
-      });
+      map.on("moveend", handleMoveEnd);
 
       setMapLoaded(true);
 
       // Start spinning
       spinGlobe();
-    });
+    };
+
+    map.on("style.load", handleStyleLoad);
 
     return () => {
+      map.off("style.load", handleStyleLoad);
+      map.off("click", CLUSTER_LAYER_ID, handleClusterClick);
+      map.off("mouseenter", CLUSTER_LAYER_ID, handleClusterMouseEnter);
+      map.off("mouseleave", CLUSTER_LAYER_ID, handleClusterMouseLeave);
+      map.off("mousedown", handleMouseDown);
+      map.off("mouseup", handleInteractionEnd);
+      map.off("dragend", handleInteractionEnd);
+      map.off("pitchend", handleInteractionEnd);
+      map.off("rotateend", handleInteractionEnd);
+      map.off("moveend", handleMoveEnd);
       // Clear markers
       markersMapRef.current.forEach(({ marker }) => marker.remove());
       markersMapRef.current.clear();
@@ -412,7 +453,12 @@ export function SpinningGlobe() {
       }
 
       // Build set of current session IDs
-      const currentSessionIds = new Set(unclusteredFeatures.map(f => f.properties?.session_id).filter(Boolean));
+      const currentSessionIds = new Set(
+        unclusteredFeatures.flatMap(f => {
+          const sessionId = f.properties?.session_id;
+          return sessionId ? [sessionId] : [];
+        })
+      );
 
       // Remove markers no longer visible
       const toRemove: string[] = [];
@@ -441,12 +487,8 @@ export function SpinningGlobe() {
           // Create avatar marker
           const avatarContainer = document.createElement("div");
           avatarContainer.className = "timeline-avatar-marker";
-          avatarContainer.style.cursor = "pointer";
-          avatarContainer.style.borderRadius = "50%";
-          avatarContainer.style.overflow = "hidden";
-          avatarContainer.style.width = "32px";
-          avatarContainer.style.height = "32px";
-          avatarContainer.style.boxShadow = "0 2px 8px rgba(0,0,0,0.3)";
+          avatarContainer.style.cssText =
+            "cursor: pointer; border-radius: 50%; overflow: hidden; width: 32px; height: 32px; box-shadow: 0 2px 8px rgba(0,0,0,0.3);";
           avatarContainer.innerHTML = generateAvatarSVG(session.user_id, 32);
 
           const marker = new mapboxgl.Marker({
@@ -490,7 +532,7 @@ export function SpinningGlobe() {
     };
   }, [sessions, mapLoaded]);
 
-  if (isLoadingConfigs || !configs?.mapboxToken) {
+  if (isLoadingConfigs || !configs?.mapboxToken || !isSupported) {
     return null;
   }
 

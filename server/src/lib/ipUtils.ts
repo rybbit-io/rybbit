@@ -85,17 +85,45 @@ export function validateIPPattern(pattern: string): { valid: boolean; error?: st
  */
 export function matchesCIDR(ipAddress: string, cidr: string): boolean {
   try {
-    // Try IPv4 first
+    // Try IPv4
+    let isIPv4 = false;
+    let isIPv6 = false;
+    let ipv4: Address4 | undefined;
+    let ipv6: Address6 | undefined;
+
     try {
-      const ipv4 = new Address4(ipAddress);
-      const cidrv4 = new Address4(cidr);
-      return ipv4.isInSubnet(cidrv4);
+      ipv4 = new Address4(ipAddress);
+      isIPv4 = true;
     } catch {
-      // Try IPv6
-      const ipv6 = new Address6(ipAddress);
-      const cidrv6 = new Address6(cidr);
-      return ipv6.isInSubnet(cidrv6);
+      try {
+        ipv6 = new Address6(ipAddress);
+        isIPv6 = true;
+      } catch {
+        return false;
+      }
     }
+
+    if (isIPv4 && ipv4) {
+      try {
+        const cidrv4 = new Address4(cidr);
+        return ipv4.isInSubnet(cidrv4);
+      } catch {
+        // CIDR is not IPv4 (likely IPv6), so it can't match an IPv4 address
+        return false;
+      }
+    }
+
+    if (isIPv6 && ipv6) {
+      try {
+        const cidrv6 = new Address6(cidr);
+        return ipv6.isInSubnet(cidrv6);
+      } catch {
+        // CIDR is not IPv6, so it can't match an IPv6 address
+        return false;
+      }
+    }
+
+    return false;
   } catch (error) {
     logger.warn(error, `Error matching CIDR ${cidr} for IP ${ipAddress}`);
     return false;

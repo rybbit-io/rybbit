@@ -2,6 +2,15 @@
  * Convert wildcard pattern to regex
  */
 export function patternToRegex(pattern: string): RegExp {
+  const REGEX_PREFIX = "re:";
+  if (pattern.startsWith(REGEX_PREFIX)) {
+    const rawRegex = pattern.slice(REGEX_PREFIX.length);
+    if (!rawRegex) {
+      throw new Error("Empty regex pattern");
+    }
+    return new RegExp(rawRegex);
+  }
+
   const DOUBLE_WILDCARD_TOKEN = "__DOUBLE_ASTERISK_TOKEN__";
   const SINGLE_WILDCARD_TOKEN = "__SINGLE_ASTERISK_TOKEN__";
 

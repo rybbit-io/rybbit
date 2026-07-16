@@ -19,82 +19,60 @@ const getQuery = (params: FilterParams, siteId: number) => {
 
   return `
     WITH
-    -- First, calculate total pageviews per session (no filters except time)
     AllSessionPageviews AS (
         SELECT
             session_id,
-            COUNT(CASE WHEN type = 'pageview' THEN 1 END) AS total_pageviews_in_session
+            countIf(type = 'pageview') AS total_pageviews_in_session
         FROM events
         WHERE
             site_id = {siteId:Int32}
             ${timeStatement}
         GROUP BY session_id
     ),
-    -- Then get session data with filters applied
-    FilteredSessions AS (
+    FilteredSessionsWithStats AS (
         SELECT
             session_id,
+            anyLast(user_id) AS user_id,
             MIN(timestamp) AS start_time,
-            MAX(timestamp) AS end_time
+            MAX(timestamp) AS end_time,
+            countIf(type = 'pageview') AS filtered_pageviews
         FROM events
         WHERE
             site_id = {siteId:Int32}
             ${filterStatement}
             ${timeStatement}
         GROUP BY session_id
-    ),
-    -- Join to get sessions with their total pageviews
-    SessionsWithPageviews AS (
-        SELECT
-            fs.session_id,
-            fs.start_time,
-            fs.end_time,
-            asp.total_pageviews_in_session
-        FROM FilteredSessions fs
-        LEFT JOIN AllSessionPageviews asp ON fs.session_id = asp.session_id
     )
     SELECT
-        session_stats.sessions,
-        session_stats.pages_per_session,
-        session_stats.bounce_rate * 100 AS bounce_rate,
-        session_stats.session_duration,
-        page_stats.pageviews,
-        page_stats.users
-    FROM
-    (
-        -- Session-level metrics
-        SELECT
-            COUNT() AS sessions,
-            AVG(total_pageviews_in_session) AS pages_per_session,
-            sumIf(1, total_pageviews_in_session = 1) / COUNT() AS bounce_rate,
-            AVG(end_time - start_time) AS session_duration
-        FROM SessionsWithPageviews
-    ) AS session_stats
-    CROSS JOIN
-    (
-        -- Page-level and user-level metrics
-        SELECT
-            COUNT(CASE WHEN type = 'pageview' THEN 1 END) AS pageviews,
-            COUNT(DISTINCT user_id)    AS users
-        FROM events
-        WHERE
-            site_id = {siteId:Int32}
-            ${filterStatement}
-            ${timeStatement}
-            -- AND type = 'pageview'
-    ) AS page_stats`;
+        COUNT() AS sessions,
+        AVG(asp.total_pageviews_in_session) AS pages_per_session,
+        sumIf(1, asp.total_pageviews_in_session = 1) / COUNT() * 100 AS bounce_rate,
+        AVG(f.end_time - f.start_time) AS session_duration,
+        SUM(f.filtered_pageviews) AS pageviews,
+        COUNT(DISTINCT f.user_id) AS users
+    FROM FilteredSessionsWithStats f
+    LEFT JOIN AllSessionPageviews asp ON f.session_id = asp.session_id`;
 };
 
 export interface OverviewRequest {
   Params: {
-    site: string;
+    siteId: string;
   };
   Querystring: FilterParams;
 }
 
 export async function getOverview(req: FastifyRequest<OverviewRequest>, res: FastifyReply) {
-  const { start_date, end_date, time_zone, filters, past_minutes_start, past_minutes_end } = req.query;
-  const site = req.params.site;
+  const {
+    start_date,
+    end_date,
+    time_zone,
+    filters,
+    start_datetime,
+    end_datetime,
+    past_minutes_start,
+    past_minutes_end,
+  } = req.query;
+  const site = req.params.siteId;
 
   const query = getQuery(
     {
@@ -102,6 +80,8 @@ export async function getOverview(req: FastifyRequest<OverviewRequest>, res: Fas
       end_date,
       time_zone,
       filters,
+      start_datetime,
+      end_datetime,
       past_minutes_start,
       past_minutes_end,
     },

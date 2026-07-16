@@ -1,10 +1,14 @@
 <p align="center">
-  <img src="https://github.com/user-attachments/assets/be982e50-8d59-471c-9fb7-e8982658a608" height="100">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/public/rybbit/horizontal_white.svg">
+    <source media="(prefers-color-scheme: light)" srcset="docs/public/rybbit/horizontal_black.svg">
+    <img src="docs/public/rybbit/horizontal_black.svg" height="70" alt="Rybbit">
+  </picture>
     <p align="center">Open Source Web & Product Analytics</p>
 
 <p align="center">
     <a href="https://rybbit.com" target="_blank">Website</a> |
-    <a href="https://demo.rybbit.com/1" target="_blank">Demo</a> |
+    <a href="https://demo.rybbit.com/81" target="_blank">Demo</a> |
     <a href="https://rybbit.com/docs" target="_blank">Documentation</a> |
     <a href="https://discord.gg/DEhGb4hYBj" target="_blank">Discord</a> |
     <a href="https://github.com/rybbit-io/rybbit?tab=AGPL-3.0-1-ov-file" target="_blank">License (AGPL-3)</a> |
@@ -20,7 +24,7 @@
 </p>
 
 <p align="center">
-  <strong><a href="https://demo.rybbit.com/1">🔍 View Live Demo</a></strong> - See Rybbit running on a real-life production site with over a million visits a month.
+  <strong><a href="https://demo.rybbit.com/81">🔍 View Live Demo</a></strong> - See Rybbit running on a real-life production site.
 </p>
 
 <img width="1299" height="797" alt="Screenshot 2025-10-16 at 7 25 20 PM" src="https://github.com/user-attachments/assets/7988ba04-64ee-4410-9972-847d278efa2f" />
@@ -33,16 +37,12 @@ There are two ways to start using Rybbit:
 
 | Option                                                   | Description                                                   |
 | -------------------------------------------------------- | ------------------------------------------------------------- |
-| **[Hosted Service](https://rybbit.com)**                 | Free tier available - the fastest way to get started          |
+| **[Hosted Service](https://rybbit.com)**                 | The fastest way to get started                                |
 | **[Self-Hosting](https://rybbit.com/docs/self-hosting)** | Deploy and manage Rybbit on your own VPS for complete control |
 
 📚 Explore our [documentation](https://rybbit.com/docs) to learn more about installation, configuration, and usage.
 
 <hr>
-
-## Sponsors
-
-<!-- sponsors -->No sponsors yet. Be the first to support this project!<!-- sponsors -->
 
 ## ✨ Key Features
 
@@ -82,7 +82,6 @@ See how Rybbit compares to other analytics solutions:
 | **Error Tracking**                | ✅     | ❌         | ❌         | ❌         |
 | **Public Dashboards**             | ✅     | ❌         | ✅         | ❌         |
 | **Organizations**                 | ✅     | ✅         | ✅         | ✅         |
-| **Free Tier**                     | ✅     | ✅         | ❌         | ✅         |
 | **Frog 🐸**                       | ✅     | ❌         | ❌         | ❌         |
 
 \* Plausible's Community Edition has very limited features compared to their cloud version

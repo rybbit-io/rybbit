@@ -5,6 +5,43 @@ import { enrichTweet, type TweetProps } from "react-tweet";
 import { getTweet, type Tweet } from "react-tweet/api";
 import { TweetBody, TweetHeader, TweetMedia } from "./TweetClient";
 
+type TweetEntities = NonNullable<Tweet["entities"]>;
+
+type TweetEntityBuckets = Partial<Record<keyof TweetEntities, unknown>>;
+
+const getEntityBucket = <Key extends keyof TweetEntities>(
+  entities: TweetEntityBuckets | null | undefined,
+  key: Key
+): NonNullable<TweetEntities[Key]> => {
+  const bucket = entities?.[key];
+  return (Array.isArray(bucket) ? bucket : []) as NonNullable<TweetEntities[Key]>;
+};
+
+const normalizeTweetEntities = (entities: TweetEntityBuckets | null | undefined): TweetEntities => {
+  const media = getEntityBucket(entities, "media");
+
+  return {
+    hashtags: getEntityBucket(entities, "hashtags"),
+    urls: getEntityBucket(entities, "urls"),
+    user_mentions: getEntityBucket(entities, "user_mentions"),
+    symbols: getEntityBucket(entities, "symbols"),
+    ...(media.length > 0 ? { media } : {}),
+  };
+};
+
+const normalizeTweetForEnrichment = (tweet: Tweet): Tweet => ({
+  ...tweet,
+  entities: normalizeTweetEntities(tweet.entities),
+  ...(tweet.quoted_tweet
+    ? {
+        quoted_tweet: {
+          ...tweet.quoted_tweet,
+          entities: normalizeTweetEntities(tweet.quoted_tweet.entities),
+        },
+      }
+    : {}),
+});
+
 const Skeleton = ({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) => {
   return <div className={cn("rounded-md bg-primary/10", className)} {...props} />;
 };
@@ -29,11 +66,11 @@ export const TweetNotFound = ({ className, ...props }: { className?: string; [ke
 );
 
 export const MagicTweet = ({ tweet, className, ...props }: { tweet: Tweet; className?: string }) => {
-  const enrichedTweet = enrichTweet(tweet);
+  const enrichedTweet = enrichTweet(normalizeTweetForEnrichment(tweet));
   return (
     <div
       className={cn(
-        "relative flex size-full max-w-lg flex-col gap-2 overflow-hidden rounded-lg p-4 backdrop-blur-md bg-neutral-100/50 dark:bg-neutral-800/20 border border-neutral-300/50 dark:border-neutral-800/50",
+        "relative flex w-full max-w-lg flex-col gap-2 rounded-lg p-4 backdrop-blur-md bg-neutral-100/50 dark:bg-neutral-800/20 border border-neutral-300/50 dark:border-neutral-800/50",
         className
       )}
       {...props}

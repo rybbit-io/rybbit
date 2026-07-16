@@ -30,7 +30,7 @@ export function ErrorListItem({ errorData }: ErrorListItemProps) {
 
   return (
     <div
-      className="mb-3 rounded-lg bg-white dark:bg-neutral-900 border border-neutral-100 dark:border-neutral-800"
+      className="mb-3 rounded-lg bg-white dark:bg-neutral-900 border border-neutral-100 dark:border-neutral-850"
       onMouseEnter={() => setIsHovering(true)}
       onMouseLeave={() => setIsHovering(false)}
     >

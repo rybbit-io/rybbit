@@ -28,6 +28,8 @@ export type PageTitleItem = {
   pathname: string; // A representative pathname
   count: number;
   percentage: number;
+  pageviews?: number;
+  bounce_rate?: number;
   time_on_page_seconds?: number;
 };
 
@@ -44,6 +46,12 @@ export type OrgEventCountResponse = {
   pageview_count: number;
   custom_event_count: number;
   performance_count: number;
+  outbound_count: number;
+  error_count: number;
+  button_click_count: number;
+  copy_count: number;
+  form_submit_count: number;
+  input_change_count: number;
   event_count: number;
 }[];
 
@@ -73,7 +81,7 @@ export async function fetchRetention(
   const { mode = "week", range = 90 } = params;
 
   const response = await authedFetch<{ data: ProcessedRetentionData }>(
-    `/retention/${site}`,
+    `/sites/${site}/retention`,
     { mode, range }
   );
   return response.data;
@@ -98,7 +106,7 @@ export async function fetchJourneys(
   };
 
   const response = await authedFetch<JourneysResponse>(
-    `/journeys/${site}`,
+    `/sites/${site}/journeys`,
     queryParams
   );
   return response;
@@ -129,7 +137,7 @@ export async function fetchPageTitles(
   };
 
   const response = await authedFetch<{ data: PageTitlesPaginatedResponse }>(
-    `/page-titles/${site}`,
+    `/sites/${site}/page-titles`,
     queryParams
   );
   return response.data;

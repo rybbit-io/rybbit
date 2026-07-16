@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { useCreateMonitor, useUpdateMonitor, UptimeMonitor } from "@/api/uptime/monitors";
-import { toast } from "sonner";
+import { toast } from "@/components/ui/sonner";
 import { Loader2 } from "lucide-react";
 import { createMonitorSchema, updateMonitorSchema } from "../monitorSchemas";
 import { Form } from "@/components/ui/form";
@@ -269,9 +269,7 @@ export function MonitorDialog({ monitor, open, onOpenChange }: MonitorDialogProp
                   (!isEdit && (isPending || !activeOrganization))
                 }
               >
-                {(createMonitor.isPending || updateMonitor.isPending) && (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                )}
+                {(createMonitor.isPending || updateMonitor.isPending) && <Loader2 className="h-4 w-4 animate-spin" />}
                 {isEdit ? "Update" : "Create"} Monitor
               </Button>
             </DialogFooter>

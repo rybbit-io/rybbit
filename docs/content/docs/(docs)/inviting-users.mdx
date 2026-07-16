@@ -1,0 +1,70 @@
+---
+title: Inviting users
+description: Invite team members to your Rybbit organization and control their access to specific sites
+---
+
+import { Steps, Step } from 'fumadocs-ui/components/steps';
+import { Callout } from 'fumadocs-ui/components/callout';
+
+<Callout type="info">
+  On self-hosted instances, this workflow is slightly different. Instead of inviting users, you can create a new user and set their password directly since self-hosted instances don't send emails.
+</Callout>
+
+<Steps>
+<Step>
+### Add the user to your organization
+
+Go to **Settings > Organization** and click the "Invite Member" button. Enter the user's email address.
+</Step>
+
+<Step>
+### Select the user's role
+
+You can assign the user one of three roles:
+
+**Owners** have full access to all features including billing, organization deletion, and member management.
+
+**Admins** can manage members and access all sites, but cannot delete the organization or manage billing.
+
+**Members** can view analytics for assigned sites only. They cannot manage settings or other members.
+
+#### Restricting site access for members
+
+When inviting a member, you can optionally restrict their access to specific sites. Check the "Restrict access to specific sites" option and select which sites the member should be able to view.
+
+If you don't enable this option, the member will have access to all sites in your organization.
+
+<Callout type="info">
+  Site access restrictions only apply to members. Admins and owners always have full access to all sites.
+</Callout>
+</Step>
+
+<Step>
+### Assign teams (optional)
+
+If your organization has [teams](/docs/teams) set up, you can assign the new member to one or more teams during the invitation. When the member accepts the invitation, they will automatically be added to the selected teams.
+
+This is useful for ensuring new members immediately have access to the right group of sites without needing to configure access separately.
+</Step>
+
+<Step>
+### Send the invite
+
+Click the "Invite" button. The user will receive an email with a link to sign up for Rybbit. You can manage all pending invitations in the Organization settings page.
+</Step>
+</Steps>
+
+## Managing site access for existing members
+
+You can change a member's site access at any time after they've joined your organization.
+
+1. Go to **Settings > Organization**
+2. Find the member in the list and click on their "Site Access" badge
+3. Toggle "Restrict access to specific sites" and select the sites they should have access to
+4. Click "Save changes"
+
+The member will immediately only see the sites you've selected. If you disable the restriction, they'll regain access to all sites.
+
+<Callout type="info">
+  Currently, each user can only be in one organization.
+</Callout>

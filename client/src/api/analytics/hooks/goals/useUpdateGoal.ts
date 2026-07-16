@@ -1,18 +1,13 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useStore } from "../../../../lib/store";
-import { updateGoal } from "../../endpoints";
+import { GoalConfig, GoalType, updateGoal } from "../../endpoints";
 
 export interface UpdateGoalRequest {
   goalId: number;
   siteId: number;
   name?: string;
-  goalType: "path" | "event";
-  config: {
-    pathPattern?: string;
-    eventName?: string;
-    eventPropertyKey?: string;
-    eventPropertyValue?: string | number | boolean;
-  };
+  goalType: GoalType;
+  config: GoalConfig;
 }
 
 interface UpdateGoalResponse {
@@ -28,6 +23,7 @@ export function useUpdateGoal() {
     mutationFn: async goalData => {
       return updateGoal(goalData.siteId, {
         goalId: goalData.goalId,
+        siteId: goalData.siteId,
         name: goalData.name,
         goalType: goalData.goalType,
         config: goalData.config,
@@ -37,6 +33,9 @@ export function useUpdateGoal() {
       // Invalidate goals query to refetch with the updated goal
       queryClient.invalidateQueries({
         queryKey: ["goals", site],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["goal-time-series", site],
       });
     },
   });

@@ -1,17 +1,103 @@
 import { createClient } from "@clickhouse/client";
-import { IS_CLOUD } from "../../lib/const.js";
+import { IS_CLOUD, LITE_DASHBOARD } from "../../lib/const.js";
+import { createServiceLogger } from "../../lib/logger/logger.js";
+
+const CLICKHOUSE_REQUEST_TIMEOUT_MS = 300_000;
 
 export const clickhouse = createClient({
   url: process.env.CLICKHOUSE_HOST,
   database: process.env.CLICKHOUSE_DB,
   username: process.env.CLICKHOUSE_USER,
   password: process.env.CLICKHOUSE_PASSWORD,
+  request_timeout: CLICKHOUSE_REQUEST_TIMEOUT_MS,
 });
+
+const logger = createServiceLogger("clickhouse");
+
+async function execClickhouseInitStep(
+  step: string,
+  query: string,
+  options?: { optional?: boolean; lockAcquireTimeoutSeconds?: number }
+) {
+  try {
+    await clickhouse.exec({
+      query,
+      clickhouse_settings: options?.lockAcquireTimeoutSeconds
+        ? { lock_acquire_timeout: options.lockAcquireTimeoutSeconds }
+        : undefined,
+    });
+  } catch (error) {
+    logger.error(
+      { err: error, step, requestTimeoutMs: CLICKHOUSE_REQUEST_TIMEOUT_MS },
+      "ClickHouse initialization step failed"
+    );
+    if (!options?.optional) {
+      throw error;
+    }
+  }
+}
+
+type ColumnDefinition = {
+  name: string;
+  definition: string;
+};
+
+const EVENTS_COLUMNS_TO_ENSURE: ColumnDefinition[] = [
+  { name: "lcp", definition: "lcp Nullable(Float64)" },
+  { name: "cls", definition: "cls Nullable(Float64)" },
+  { name: "inp", definition: "inp Nullable(Float64)" },
+  { name: "fcp", definition: "fcp Nullable(Float64)" },
+  { name: "ttfb", definition: "ttfb Nullable(Float64)" },
+  { name: "ip", definition: "ip Nullable(String)" },
+  { name: "timezone", definition: "timezone LowCardinality(String) DEFAULT ''" },
+  { name: "identified_user_id", definition: "identified_user_id String DEFAULT ''" },
+  { name: "import_id", definition: "import_id Nullable(UUID)" },
+  { name: "tag", definition: "tag LowCardinality(String) DEFAULT ''" },
+  { name: "feature_flags", definition: "feature_flags Map(String, String) DEFAULT map()" },
+];
+
+async function getTableColumns(table: string) {
+  const result = await clickhouse.query({
+    query: `
+      SELECT name
+      FROM system.columns
+      WHERE database = currentDatabase()
+        AND table = {table:String}
+    `,
+    query_params: { table },
+    format: "JSONEachRow",
+  });
+
+  const rows = await result.json<{ name: string }>();
+  return new Set(rows.map(row => row.name));
+}
+
+async function ensureEventsColumns() {
+  const existingColumns = await getTableColumns("events");
+  const missingColumns = EVENTS_COLUMNS_TO_ENSURE.filter(column => !existingColumns.has(column.name));
+
+  if (missingColumns.length === 0) {
+    logger.debug("Events table columns are up to date");
+    return;
+  }
+
+  logger.info({ missingColumns: missingColumns.map(column => column.name) }, "Adding missing events table columns");
+
+  await execClickhouseInitStep(
+    "add missing events columns",
+    `
+      ALTER TABLE events
+        ${missingColumns.map(column => `ADD COLUMN IF NOT EXISTS ${column.definition}`).join(",\n        ")}
+      `,
+    { lockAcquireTimeoutSeconds: 15 }
+  );
+}
 
 export const initializeClickhouse = async () => {
   // Create events table
-  await clickhouse.exec({
-    query: `
+  await execClickhouseInitStep(
+    "create events table",
+    `
       CREATE TABLE IF NOT EXISTS events (
         site_id UInt16,
         timestamp DateTime,
@@ -37,58 +123,73 @@ export const initializeClickhouse = async () => {
         screen_width UInt16,
         screen_height UInt16,
         device_type LowCardinality(String),
-        -- either 'pageview', 'custom_event', 'performance', 'outbound_link', 'error'
         type LowCardinality(String) DEFAULT 'pageview',
-        -- only for custom_event
         event_name String,
-        props JSON
+        props JSON,
+        lcp Nullable(Float64),
+        cls Nullable(Float64),
+        inp Nullable(Float64),
+        fcp Nullable(Float64),
+        ttfb Nullable(Float64),
+        ip Nullable(String),
+        timezone LowCardinality(String) DEFAULT '',
+        identified_user_id String DEFAULT '',
+        import_id Nullable(UUID),
+        tag LowCardinality(String) DEFAULT '',
+        feature_flags Map(String, String) DEFAULT map()
       )
       ENGINE = MergeTree()
       PARTITION BY toYYYYMM(timestamp)
       ORDER BY (site_id, timestamp)
-      `,
-  });
+      `
+  );
 
-  // Add columns to the events table
-  await clickhouse.exec({
-    query: `
-      ALTER TABLE events
-        ADD COLUMN IF NOT EXISTS lcp Nullable(Float64),
-        ADD COLUMN IF NOT EXISTS cls Nullable(Float64),
-        ADD COLUMN IF NOT EXISTS inp Nullable(Float64),
-        ADD COLUMN IF NOT EXISTS fcp Nullable(Float64),
-        ADD COLUMN IF NOT EXISTS ttfb Nullable(Float64),
-        ADD COLUMN IF NOT EXISTS ip Nullable(String),
-        ADD COLUMN IF NOT EXISTS timezone LowCardinality(String) DEFAULT '',
-        ADD COLUMN IF NOT EXISTS identified_user_id String DEFAULT '',
-        ADD COLUMN IF NOT EXISTS import_id Nullable(UUID)
-    `,
-  });
+  // Heal tables created by older versions (or by the window where the CREATE
+  // TABLE above was missing these columns). Only columns that are actually
+  // missing are altered in — even a no-op ALTER needs the events table ALTER lock.
+  await ensureEventsColumns();
 
-  if (IS_CLOUD) {
-    await clickhouse.exec({
-      query: `
-        ALTER TABLE events
-          ADD COLUMN IF NOT EXISTS company String DEFAULT '',
-          ADD COLUMN IF NOT EXISTS company_domain String DEFAULT '',
-          ADD COLUMN IF NOT EXISTS company_type LowCardinality(String) DEFAULT '',
-          ADD COLUMN IF NOT EXISTS company_abuse_score Nullable(Float64),
-  
-          ADD COLUMN IF NOT EXISTS asn Nullable(UInt32),
-          ADD COLUMN IF NOT EXISTS asn_org String DEFAULT '',
-          ADD COLUMN IF NOT EXISTS asn_domain String DEFAULT '',
-          ADD COLUMN IF NOT EXISTS asn_type LowCardinality(String) DEFAULT '',
-          ADD COLUMN IF NOT EXISTS asn_abuse_score Nullable(Float64),
-  
-          ADD COLUMN IF NOT EXISTS vpn LowCardinality(String) DEFAULT '',
-          ADD COLUMN IF NOT EXISTS crawler LowCardinality(String) DEFAULT '',
-          ADD COLUMN IF NOT EXISTS datacenter LowCardinality(String) DEFAULT '',
-          ADD COLUMN IF NOT EXISTS is_proxy Nullable(Boolean),
-          ADD COLUMN IF NOT EXISTS is_tor Nullable(Boolean),
-          ADD COLUMN IF NOT EXISTS is_satellite Nullable(Boolean)
-      `,
-    });
-  }
+  await execClickhouseInitStep(
+    "create bot events table",
+    `
+      CREATE TABLE IF NOT EXISTS bot_events (
+        site_id UInt16,
+        timestamp DateTime,
+        session_id String,
+        user_id String,
+        hostname String,
+        pathname String,
+        querystring String,
+        referrer String,
+        browser LowCardinality(String),
+        browser_version LowCardinality(String),
+        operating_system LowCardinality(String),
+        operating_system_version LowCardinality(String),
+        country LowCardinality(FixedString(2)),
+        region LowCardinality(String),
+        city String,
+        lat Float64,
+        lon Float64,
+        screen_width UInt16,
+        screen_height UInt16,
+        device_type LowCardinality(String),
+        type LowCardinality(String) DEFAULT 'pageview',
+        asn Nullable(UInt32),
+        asn_org String DEFAULT '',
+        detected_ua_pattern Bool DEFAULT false,
+        detected_header_heuristics Bool DEFAULT false,
+        detected_client_signals Bool DEFAULT false,
+        detected_bot_asn Bool DEFAULT false,
+        detected_rate_anomaly Bool DEFAULT false,
+        matched_ua_pattern String DEFAULT '',
+        bot_category LowCardinality(String) DEFAULT ''
+      )
+      ENGINE = MergeTree()
+      PARTITION BY toYYYYMM(timestamp)
+      ORDER BY (site_id, timestamp)
+      TTL timestamp + INTERVAL 3 MONTH
+      `
+  );
 
   // Create session replay tables
   await clickhouse.exec({
@@ -246,4 +347,268 @@ export const initializeClickhouse = async () => {
       `,
     });
   }
+
+  if (LITE_DASHBOARD) {
+    await initializeLiteDashboardMVs();
+  }
 };
+
+// Materialized views that back the simplified high-traffic dashboard.
+// All views are hourly-bucketed and feed the lite endpoints; raw `events`
+// is still queried for filters that aren't keyed in these MVs.
+async function initializeLiteDashboardMVs() {
+  // Per-session rollup. Replaces the AllSessionPageviews / FilteredSessions
+  // CTEs that getOverview and getOverviewBucketed run over raw events.
+  //
+  // This is a streaming MV: it fires once per inserted block and writes a
+  // PARTIAL session row for whatever events were in that block. AggregatingMergeTree
+  // then composes the SimpleAggregateFunction columns (min/max/sum) across parts
+  // sharing (site_id, session_id), and the read queries additionally re-aggregate
+  // by session_id at query time — so pageviews/start_time/end_time are always
+  // correct even before merges complete.
+  //
+  // The plain metadata columns below (country, region, device_type, browser,
+  // operating_system, hostname) are session-INVARIANT, so every partial row of a
+  // session carries the same value and `any()` is well-defined. Entry/acquisition
+  // attributes (entry_page, referrer, channel) are deliberately NOT stored here:
+  // they are first-event values that differ across a session's blocks, can't be
+  // composed correctly per-partial-row, and so are served by the raw-events
+  // fallback instead (see LITE_SESSION_FILTER_COLUMNS in lite/utils.ts).
+  await clickhouse.exec({
+    query: `
+      CREATE TABLE IF NOT EXISTS sessions_mv_target (
+        site_id UInt16,
+        session_id String,
+        user_id String,
+        start_time SimpleAggregateFunction(min, DateTime),
+        end_time SimpleAggregateFunction(max, DateTime),
+        pageviews SimpleAggregateFunction(sum, UInt64),
+        events SimpleAggregateFunction(sum, UInt64),
+        country LowCardinality(FixedString(2)),
+        region LowCardinality(String),
+        device_type LowCardinality(String),
+        browser LowCardinality(String),
+        operating_system LowCardinality(String),
+        hostname String,
+        last_seen SimpleAggregateFunction(max, DateTime)
+      )
+      ENGINE = AggregatingMergeTree()
+      PARTITION BY toYYYYMM(start_time)
+      ORDER BY (site_id, session_id)
+    `,
+  });
+
+  await clickhouse.exec({
+    query: `
+      CREATE MATERIALIZED VIEW IF NOT EXISTS sessions_mv
+      TO sessions_mv_target
+      AS SELECT
+        site_id,
+        session_id,
+        any(user_id) AS user_id,
+        min(timestamp) AS start_time,
+        max(timestamp) AS end_time,
+        countIf(type = 'pageview') AS pageviews,
+        count() AS events,
+        any(country) AS country,
+        any(region) AS region,
+        any(device_type) AS device_type,
+        any(browser) AS browser,
+        any(operating_system) AS operating_system,
+        any(hostname) AS hostname,
+        max(timestamp) AS last_seen
+      FROM events
+      GROUP BY site_id, session_id
+    `,
+  });
+
+  // Hourly overview rollup. Drives the bucketed chart and overview cards.
+  await clickhouse.exec({
+    query: `
+      CREATE TABLE IF NOT EXISTS overview_hourly_mv_target (
+        site_id UInt16,
+        event_hour DateTime,
+        pageviews SimpleAggregateFunction(sum, UInt64),
+        events SimpleAggregateFunction(sum, UInt64),
+        users AggregateFunction(uniq, String),
+        sessions AggregateFunction(uniq, String)
+      )
+      ENGINE = AggregatingMergeTree()
+      PARTITION BY toYYYYMM(event_hour)
+      ORDER BY (site_id, event_hour)
+    `,
+  });
+
+  await clickhouse.exec({
+    query: `
+      CREATE MATERIALIZED VIEW IF NOT EXISTS overview_hourly_mv
+      TO overview_hourly_mv_target
+      AS SELECT
+        site_id,
+        toStartOfHour(timestamp) AS event_hour,
+        countIf(type = 'pageview') AS pageviews,
+        count() AS events,
+        uniqState(user_id) AS users,
+        uniqState(session_id) AS sessions
+      FROM events
+      GROUP BY site_id, event_hour
+    `,
+  });
+
+  // Top-pathname rollup. Cardinality is bounded by hour, so high-URL sites
+  // still get smaller-than-raw storage. Filtered queries fall back to events.
+  await clickhouse.exec({
+    query: `
+      CREATE TABLE IF NOT EXISTS pathname_hourly_mv_target (
+        site_id UInt16,
+        event_hour DateTime,
+        pathname String,
+        hostname String,
+        pageviews SimpleAggregateFunction(sum, UInt64),
+        users AggregateFunction(uniq, String),
+        sessions AggregateFunction(uniq, String)
+      )
+      ENGINE = AggregatingMergeTree()
+      PARTITION BY toYYYYMM(event_hour)
+      ORDER BY (site_id, event_hour, pathname)
+    `,
+  });
+
+  await clickhouse.exec({
+    query: `
+      CREATE MATERIALIZED VIEW IF NOT EXISTS pathname_hourly_mv
+      TO pathname_hourly_mv_target
+      AS SELECT
+        site_id,
+        toStartOfHour(timestamp) AS event_hour,
+        pathname,
+        any(hostname) AS hostname,
+        countIf(type = 'pageview') AS pageviews,
+        uniqState(user_id) AS users,
+        uniqState(session_id) AS sessions
+      FROM events
+      WHERE type = 'pageview'
+      GROUP BY site_id, event_hour, pathname
+    `,
+  });
+
+  // Country/region rollup. Cardinality is naturally bounded.
+  await clickhouse.exec({
+    query: `
+      CREATE TABLE IF NOT EXISTS country_hourly_mv_target (
+        site_id UInt16,
+        event_hour DateTime,
+        country LowCardinality(FixedString(2)),
+        region LowCardinality(String),
+        pageviews SimpleAggregateFunction(sum, UInt64),
+        users AggregateFunction(uniq, String),
+        sessions AggregateFunction(uniq, String)
+      )
+      ENGINE = AggregatingMergeTree()
+      PARTITION BY toYYYYMM(event_hour)
+      ORDER BY (site_id, event_hour, country, region)
+    `,
+  });
+
+  await clickhouse.exec({
+    query: `
+      CREATE MATERIALIZED VIEW IF NOT EXISTS country_hourly_mv
+      TO country_hourly_mv_target
+      AS SELECT
+        site_id,
+        toStartOfHour(timestamp) AS event_hour,
+        country,
+        region,
+        countIf(type = 'pageview') AS pageviews,
+        uniqState(user_id) AS users,
+        uniqState(session_id) AS sessions
+      FROM events
+      GROUP BY site_id, event_hour, country, region
+    `,
+  });
+
+  // Device-type rollup.
+  await clickhouse.exec({
+    query: `
+      CREATE TABLE IF NOT EXISTS device_type_hourly_mv_target (
+        site_id UInt16,
+        event_hour DateTime,
+        device_type LowCardinality(String),
+        pageviews SimpleAggregateFunction(sum, UInt64),
+        users AggregateFunction(uniq, String),
+        sessions AggregateFunction(uniq, String)
+      )
+      ENGINE = AggregatingMergeTree()
+      PARTITION BY toYYYYMM(event_hour)
+      ORDER BY (site_id, event_hour, device_type)
+    `,
+  });
+
+  await clickhouse.exec({
+    query: `
+      CREATE MATERIALIZED VIEW IF NOT EXISTS device_type_hourly_mv
+      TO device_type_hourly_mv_target
+      AS SELECT
+        site_id,
+        toStartOfHour(timestamp) AS event_hour,
+        device_type,
+        countIf(type = 'pageview') AS pageviews,
+        uniqState(user_id) AS users,
+        uniqState(session_id) AS sessions
+      FROM events
+      GROUP BY site_id, event_hour, device_type
+    `,
+  });
+
+  // Session-keyed hourly rollup, populated by a REFRESHABLE materialized view.
+  // Streaming MVs can't compute bounce_rate or session_duration because they
+  // see one event at a time, never the full per-session state. The refreshable
+  // MV re-runs its SELECT every 5 minutes against the fully-merged sessions,
+  // which is cheap (~720 rows/site/month) and unlocks all 6 overview metrics
+  // from a single table read.
+  await clickhouse.exec({
+    query: `
+      CREATE TABLE IF NOT EXISTS session_hourly_mv_target (
+        site_id UInt16,
+        session_hour DateTime,
+        sessions UInt64,
+        pageviews UInt64,
+        users AggregateFunction(uniq, String),
+        total_session_duration_seconds UInt64,
+        bounced_sessions UInt64
+      )
+      ENGINE = MergeTree()
+      PARTITION BY toYYYYMM(session_hour)
+      ORDER BY (site_id, session_hour)
+    `,
+  });
+
+  await clickhouse.exec({
+    query: `
+      CREATE MATERIALIZED VIEW IF NOT EXISTS session_hourly_mv
+      REFRESH EVERY 5 MINUTE
+      TO session_hourly_mv_target
+      AS
+      SELECT
+        site_id,
+        toStartOfHour(session_start) AS session_hour,
+        count() AS sessions,
+        sum(session_pageviews) AS pageviews,
+        uniqState(user_id) AS users,
+        sum(toUInt64(session_end - session_start)) AS total_session_duration_seconds,
+        countIf(session_pageviews = 1) AS bounced_sessions
+      FROM (
+        SELECT
+          site_id,
+          session_id,
+          any(user_id) AS user_id,
+          countIf(type = 'pageview') AS session_pageviews,
+          min(timestamp) AS session_start,
+          max(timestamp) AS session_end
+        FROM events
+        GROUP BY site_id, session_id
+      ) AS s
+      GROUP BY site_id, session_hour
+    `,
+  });
+}

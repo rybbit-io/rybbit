@@ -1,0 +1,265 @@
+---
+title: Automated Weekly Report
+description: Combine the overview and metric endpoints into a scheduled digest that summarizes last week's traffic, the week-over-week change, and your top pages and traffic sources.
+---
+
+import { Callout } from 'fumadocs-ui/components/callout';
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+import { Step, Steps } from 'fumadocs-ui/components/steps';
+
+This guide builds a script you can run on a schedule (a cron job, GitHub Action, or serverless function) that pulls last week's numbers, compares them to the week before, and posts a digest to Slack, email, or anywhere else.
+
+**Endpoints used:**
+
+- [`GET /overview`](/docs/api/overview/overview) — headline metrics for a date range
+- [`GET /metric`](/docs/api/overview/metric) — top pages and traffic sources
+
+<Callout type="info">
+Every analytics endpoint takes the same [time parameters](/docs/api/getting-started#time-parameters). The trick behind any comparison report is simply calling the same endpoint twice with two adjacent date ranges.
+</Callout>
+
+## The workflow
+
+<Steps>
+<Step>
+**Fetch this week's overview** for the last 7 days.
+</Step>
+<Step>
+**Fetch last week's overview** for the 7 days before that, so you can compute the change.
+</Step>
+<Step>
+**Fetch top pages and top sources** from the `metric` endpoint to add context.
+</Step>
+<Step>
+**Format and deliver** the digest.
+</Step>
+</Steps>
+
+## Full script
+
+This example posts a formatted message to a Slack incoming webhook, but the `buildReport` function returns plain data you can route anywhere.
+
+<Tabs items={['JavaScript', 'Python']}>
+<Tab value="JavaScript">
+```javascript title="weekly-report.js"
+const API = 'https://app.rybbit.io';
+const SITE = '123';
+const API_KEY = process.env.RYBBIT_API_KEY;
+const SLACK_WEBHOOK = process.env.SLACK_WEBHOOK;
+const TZ = 'America/New_York';
+
+// Helper: format a Date as YYYY-MM-DD
+const ymd = (d) => d.toISOString().slice(0, 10);
+
+async function get(path, params) {
+  const url = new URL(`${API}/api/sites/${SITE}${path}`);
+  Object.entries(params).forEach(([k, v]) => url.searchParams.set(k, v));
+  const res = await fetch(url, {
+    headers: { Authorization: `Bearer ${API_KEY}` },
+  });
+  if (!res.ok) throw new Error(`${path} failed: ${res.status}`);
+  return res.json();
+}
+
+async function overview(start, end) {
+  const { data } = await get('/overview', {
+    start_date: ymd(start),
+    end_date: ymd(end),
+    time_zone: TZ,
+  });
+  return data;
+}
+
+async function topMetric(parameter, start, end, limit = 5) {
+  const { data } = await get('/metric', {
+    parameter,
+    start_date: ymd(start),
+    end_date: ymd(end),
+    time_zone: TZ,
+    limit,
+  });
+  return data.data; // metric nests results under data.data
+}
+
+function pctChange(current, previous) {
+  if (!previous) return null;
+  return ((current - previous) / previous) * 100;
+}
+
+async function buildReport() {
+  const now = new Date();
+  const thisWeekStart = new Date(now); thisWeekStart.setDate(now.getDate() - 7);
+  const lastWeekEnd   = new Date(now); lastWeekEnd.setDate(now.getDate() - 8);
+  const lastWeekStart = new Date(now); lastWeekStart.setDate(now.getDate() - 14);
+
+  const [thisWeek, lastWeek, topPages, topSources] = await Promise.all([
+    overview(thisWeekStart, now),
+    overview(lastWeekStart, lastWeekEnd),
+    topMetric('pathname', thisWeekStart, now),
+    topMetric('referrer', thisWeekStart, now),
+  ]);
+
+  return {
+    sessions: { value: thisWeek.sessions, change: pctChange(thisWeek.sessions, lastWeek.sessions) },
+    users:    { value: thisWeek.users,    change: pctChange(thisWeek.users, lastWeek.users) },
+    pageviews:{ value: thisWeek.pageviews, change: pctChange(thisWeek.pageviews, lastWeek.pageviews) },
+    bounceRate: thisWeek.bounce_rate,
+    topPages,
+    topSources,
+  };
+}
+
+function arrow(change) {
+  if (change === null) return '';
+  const sign = change >= 0 ? '▲' : '▼';
+  return ` ${sign} ${Math.abs(change).toFixed(1)}%`;
+}
+
+async function postToSlack(r) {
+  const lines = [
+    `*📊 Weekly Analytics Report*`,
+    ``,
+    `• Sessions: *${r.sessions.value.toLocaleString()}*${arrow(r.sessions.change)}`,
+    `• Unique users: *${r.users.value.toLocaleString()}*${arrow(r.users.change)}`,
+    `• Pageviews: *${r.pageviews.value.toLocaleString()}*${arrow(r.pageviews.change)}`,
+    `• Bounce rate: *${r.bounceRate.toFixed(1)}%*`,
+    ``,
+    `*Top pages*`,
+    ...r.topPages.map((p) => `   ${p.value} — ${p.count.toLocaleString()}`),
+    ``,
+    `*Top sources*`,
+    ...r.topSources.map((s) => `   ${s.value || 'Direct'} — ${s.count.toLocaleString()}`),
+  ];
+  await fetch(SLACK_WEBHOOK, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ text: lines.join('\n') }),
+  });
+}
+
+buildReport().then(postToSlack).catch(console.error);
+```
+</Tab>
+<Tab value="Python">
+```python title="weekly_report.py"
+import os
+from datetime import datetime, timedelta
+import requests
+
+API = "https://app.rybbit.io"
+SITE = "123"
+API_KEY = os.environ["RYBBIT_API_KEY"]
+SLACK_WEBHOOK = os.environ["SLACK_WEBHOOK"]
+TZ = "America/New_York"
+
+session = requests.Session()
+session.headers["Authorization"] = f"Bearer {API_KEY}"
+
+
+def ymd(d: datetime) -> str:
+    return d.strftime("%Y-%m-%d")
+
+
+def get(path: str, **params):
+    res = session.get(f"{API}/api/sites/{SITE}{path}", params=params)
+    res.raise_for_status()
+    return res.json()
+
+
+def overview(start, end):
+    return get("/overview", start_date=ymd(start), end_date=ymd(end), time_zone=TZ)["data"]
+
+
+def top_metric(parameter, start, end, limit=5):
+    # metric nests results under data.data
+    return get("/metric", parameter=parameter, start_date=ymd(start),
+               end_date=ymd(end), time_zone=TZ, limit=limit)["data"]["data"]
+
+
+def pct_change(current, previous):
+    return None if not previous else (current - previous) / previous * 100
+
+
+def build_report():
+    now = datetime.utcnow()
+    this_start = now - timedelta(days=7)
+    last_end = now - timedelta(days=8)
+    last_start = now - timedelta(days=14)
+
+    this_week = overview(this_start, now)
+    last_week = overview(last_start, last_end)
+
+    return {
+        "sessions": (this_week["sessions"], pct_change(this_week["sessions"], last_week["sessions"])),
+        "users": (this_week["users"], pct_change(this_week["users"], last_week["users"])),
+        "pageviews": (this_week["pageviews"], pct_change(this_week["pageviews"], last_week["pageviews"])),
+        "bounce_rate": this_week["bounce_rate"],
+        "top_pages": top_metric("pathname", this_start, now),
+        "top_sources": top_metric("referrer", this_start, now),
+    }
+
+
+def arrow(change):
+    if change is None:
+        return ""
+    return f" {'▲' if change >= 0 else '▼'} {abs(change):.1f}%"
+
+
+def post_to_slack(r):
+    lines = [
+        "*📊 Weekly Analytics Report*", "",
+        f"• Sessions: *{r['sessions'][0]:,}*{arrow(r['sessions'][1])}",
+        f"• Unique users: *{r['users'][0]:,}*{arrow(r['users'][1])}",
+        f"• Pageviews: *{r['pageviews'][0]:,}*{arrow(r['pageviews'][1])}",
+        f"• Bounce rate: *{r['bounce_rate']:.1f}%*", "",
+        "*Top pages*",
+        *[f"   {p['value']} — {p['count']:,}" for p in r["top_pages"]], "",
+        "*Top sources*",
+        *[f"   {s['value'] or 'Direct'} — {s['count']:,}" for s in r["top_sources"]],
+    ]
+    requests.post(SLACK_WEBHOOK, json={"text": "\n".join(lines)})
+
+
+post_to_slack(build_report())
+```
+</Tab>
+</Tabs>
+
+## Example output
+
+```text
+📊 Weekly Analytics Report
+
+• Sessions: 15,420 ▲ 12.3%
+• Unique users: 12,847 ▲ 9.8%
+• Pageviews: 48,933 ▼ 2.1%
+• Bounce rate: 42.8%
+
+Top pages
+   / — 8,230
+   /pricing — 3,120
+   /blog/getting-started — 1,940
+
+Top sources
+   google.com — 6,410
+   Direct — 4,220
+   twitter.com — 1,180
+```
+
+## Schedule it
+
+Run the script every Monday morning with cron:
+
+```bash title="crontab -e"
+# Every Monday at 9:00 AM
+0 9 * * 1 RYBBIT_API_KEY=xxx SLACK_WEBHOOK=https://hooks.slack.com/... node /path/to/weekly-report.js
+```
+
+<Callout type="info">
+**Want a richer report?** The same pattern extends naturally. Add `topMetric('channel', ...)` for marketing channels, `topMetric('country', ...)` for geography, or call the [`time-series` endpoint](/docs/api/overview/time-series) with `bucket=day` to attach a 7-point trend line.
+</Callout>
+
+## Next steps
+
+- [Compare Marketing Channel Performance](/docs/api/channel-performance) — go beyond traffic counts and rank sources by how well they convert.
+- [Export Raw Events to Your Warehouse](/docs/api/export-events) — if you'd rather build reports in your own BI tool.

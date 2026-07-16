@@ -3,12 +3,36 @@ title: Getting Started
 description: Authentication, common parameters, and best practices for the Rybbit Stats API
 ---
 
+import { Callout } from 'fumadocs-ui/components/callout';
 import { TypeTable } from 'fumadocs-ui/components/type-table';
 import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
 
 <Callout type="warn">
 The API is currently in beta. There may be breaking changes as we continue to improve and expand the API.
 </Callout>
+
+## API Playground
+
+The easiest way to explore and test the API is using the built-in **API Playground** in your Rybbit dashboard. Access it by navigating to any site and clicking "API Playground" in the sidebar.
+
+The playground provides:
+- **Endpoint browser** - Browse all available API endpoints
+- **Parameter controls** - Configure request parameters with a visual interface
+- **Exact time ranges** - Test date ranges with optional start and end times
+- **Live responses** - See real API responses with your actual data
+- **Code generation** - Copy ready-to-use code snippets
+
+This is the recommended way to familiarize yourself with the API before integrating it into your applications.
+
+## Guides
+
+Looking for what to *build* with the API? These end-to-end recipes chain endpoints together to solve a real problem:
+
+- [**Automated Weekly Report**](/docs/api/weekly-report) — a scheduled digest of last week's traffic, week-over-week change, and top pages and sources.
+- [**Find Where Users Drop Off**](/docs/api/funnel-dropoff) — locate the biggest leak in a funnel, then see where the people who abandon go instead.
+- [**Compare Channel Performance**](/docs/api/channel-performance) — rank acquisition channels by how well they convert, not just how much traffic they send.
+- [**Build a Live Visitor Feed**](/docs/api/live-feed) — poll the events endpoint for a real-time activity stream you can render or alert on.
+- [**Export Events to a Warehouse**](/docs/api/export-events) — backfill your full event history and keep it in sync with an incremental job.
 
 ## Authentication
 
@@ -40,10 +64,19 @@ API keys are user-scoped and grant organization-level access:
 4. Click **Create**
 5. Copy the key immediately (it won't be shown again)
 
-### Rate Limits
+### Rate Limits (Cloud Only)
 
-- **500 requests per 10 minutes** per API key
-- Keys are tied to your user account and grant access to all sites in your organization(s)
+API key rate limits depend on your plan:
+
+| Plan | Limit |
+|------|-------|
+| **Free / Basic** | API keys not available |
+| **Standard** | 20 requests per minute |
+| **Pro** | 200 requests per minute |
+
+Self-hosted instances have no rate limits.
+
+Keys are tied to your user account and grant access to all sites in your organization(s).
 
 ---
 
@@ -53,7 +86,7 @@ The following parameters are shared across all analytics endpoints.
 
 ### Time Parameters
 
-All endpoints require either date-based or relative time parameters:
+All endpoints require date-based, exact datetime, or relative time parameters:
 
 <TypeTable
   type={{
@@ -72,7 +105,19 @@ All endpoints require either date-based or relative time parameters:
     time_zone: {
       description: 'IANA timezone identifier',
       type: 'string',
-      typeDescription: 'e.g., "America/New_York", "Europe/London", "Asia/Tokyo"',
+      typeDescription: 'e.g., "America/New_York", "Europe/London", "Asia/Tokyo". Required with date and exact datetime ranges.',
+      required: false,
+    },
+    start_datetime: {
+      description: 'Exact UTC start timestamp for the query period',
+      type: 'string',
+      typeDescription: 'Format: YYYY-MM-DD HH:mm:ss (e.g., "2024-01-15 13:00:00")',
+      required: false,
+    },
+    end_datetime: {
+      description: 'Exact UTC end timestamp for the query period. This boundary is exclusive.',
+      type: 'string',
+      typeDescription: 'Format: YYYY-MM-DD HH:mm:ss (e.g., "2024-01-15 15:00:00")',
       required: false,
     },
     past_minutes_start: {
@@ -92,6 +137,7 @@ All endpoints require either date-based or relative time parameters:
 
 **Note:** You must provide either:
 - All three date parameters (`start_date`, `end_date`, `time_zone`), OR
+- All three exact datetime parameters (`start_datetime`, `end_datetime`, `time_zone`), OR
 - Both relative parameters (`past_minutes_start`, `past_minutes_end`)
 
 #### Examples
@@ -99,6 +145,11 @@ All endpoints require either date-based or relative time parameters:
 **Date-based query (last 30 days):**
 ```
 ?start_date=2024-01-01&end_date=2024-01-31&time_zone=America/New_York
+```
+
+**Exact datetime query (8 AM to 10 AM in New York on Jan 15, sent as UTC):**
+```
+?start_datetime=2024-01-15%2013:00:00&end_datetime=2024-01-15%2015:00:00&time_zone=America/New_York
 ```
 
 **Relative query (last 60 minutes):**
@@ -453,28 +504,3 @@ All endpoints return standard HTTP status codes:
   "error": "Error message describing what went wrong"
 }
 ```
-
----
-
-## Best Practices
-
-1. **Cache responses** - Analytics data doesn't change frequently. Cache for at least 5-10 minutes.
-2. **Use date ranges** - For recent data, use `past_minutes_start/end`. For historical data, use `start_date/end_date`.
-3. **Filter strategically** - Apply filters to reduce data transfer and improve performance.
-4. **Paginate results** - Use the `limit` and `page` parameters for large datasets.
-5. **Monitor rate limits** - Implement exponential backoff if you receive 429 responses.
-
----
-
-## Rate Limiting
-
-When you exceed the rate limit, you'll receive a `429 Too Many Requests` response:
-
-```json
-{
-  "success": false,
-  "error": "Rate limit exceeded. Maximum 500 requests per 10 minutes per API key."
-}
-```
-
-Wait for the rate limit window to reset before making additional requests.

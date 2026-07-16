@@ -1,31 +1,22 @@
 import { Card } from "./Card";
 import { Eye, Filter } from "lucide-react";
+import { useExtracted } from "next-intl";
 
-const funnelData = [
-  {
-    step: 1,
-    label: "Homepage",
-    users: 608,
-  },
-  {
-    step: 2,
-    label: "Signup",
-    users: 59,
-  },
-  {
-    step: 3,
-    label: "Purchase",
-    users: 5,
-  },
-];
+const funnelUsers = [608, 59, 5];
 
 export function Funnels() {
-  const totalUsers = funnelData[0].users;
+  const t = useExtracted();
+  const funnelData = [
+    { step: 1, label: t("Homepage"), users: funnelUsers[0] },
+    { step: 2, label: t("Signup"), users: funnelUsers[1] },
+    { step: 3, label: t("Purchase"), users: funnelUsers[2] },
+  ];
+  const totalUsers = funnelUsers[0];
 
   return (
     <Card
-      title="Conversion Funnels"
-      description="Visualize user journeys and identify where users drop off."
+      title={t("Conversion Funnels")}
+      description={t("Visualize user journeys and identify where users drop off.")}
       icon={Filter}
     >
       {/* Funnel Steps */}

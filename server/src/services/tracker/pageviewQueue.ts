@@ -10,6 +10,9 @@ type TotalPayload = TotalTrackingPayload & {
   sessionId: string;
 };
 
+const PAGEVIEW_BATCH_SIZE = 5000;
+const PAGEVIEW_FLUSH_INTERVAL_MS = 1000;
+
 const getParsedProperties = (properties: string | undefined) => {
   try {
     return properties ? JSON.parse(properties) : undefined;
@@ -20,8 +23,8 @@ const getParsedProperties = (properties: string | undefined) => {
 
 class PageviewQueue {
   private queue: TotalPayload[] = [];
-  private batchSize = 5000;
-  private interval = 10000;
+  private batchSize = PAGEVIEW_BATCH_SIZE;
+  private interval = PAGEVIEW_FLUSH_INTERVAL_MS;
   private processing = false;
   private logger = createServiceLogger("pageview-queue");
 
@@ -45,7 +48,12 @@ class PageviewQueue {
     const geoData = await getLocation(ips);
 
     // Process each pageview with its geo data
-    const processedPageviews = batch.map(pv => {
+    const processedPageviews = batch.filter(pv => {
+      if (pv.site_id == 9133 && pv.screenWidth == 800 && pv.screenHeight == 600) {
+        return false;
+      }
+      return true;
+    }).map(pv => {
       const dataForIp = geoData?.[pv.ipAddress];
 
       const countryCode = dataForIp?.countryIso || "";
@@ -61,12 +69,12 @@ class PageviewQueue {
       // Get all URL parameters for the url_parameters map
       const allUrlParams = getAllUrlParams(pv.querystring || "");
 
+
       return {
         site_id: pv.site_id,
         timestamp: DateTime.fromISO(pv.timestamp).toFormat("yyyy-MM-dd HH:mm:ss"),
         session_id: pv.sessionId,
         user_id: pv.userId, // Always the device fingerprint
-        anonymous_id: pv.anonymousId,
         identified_user_id: pv.identifiedUserId || "", // Custom user ID when identified
         hostname: pv.hostname || "",
         pathname: pv.pathname || "",
@@ -91,34 +99,23 @@ class PageviewQueue {
         event_name: pv.event_name || "",
         props: getParsedProperties(pv.properties),
         url_parameters: allUrlParams,
-        // Performance metrics (only included for performance events)
-        lcp: pv.lcp || null,
-        cls: pv.cls || null,
-        inp: pv.inp || null,
-        fcp: pv.fcp || null,
-        ttfb: pv.ttfb || null,
+        // Performance metrics (only included for performance events).
+        // ?? not ||: 0 is a legitimate measurement (a perfect CLS score is 0)
+        // and must not be coerced to NULL, which would skew percentiles.
+        lcp: pv.lcp ?? null,
+        cls: pv.cls ?? null,
+        inp: pv.inp ?? null,
+        fcp: pv.fcp ?? null,
+        ttfb: pv.ttfb ?? null,
         ip: pv.storeIp ? pv.ipAddress : null,
         timezone: timezone,
+        tag: pv.tag || "",
+        feature_flags: pv.feature_flags || {},
         import_id: null,
-        company: dataForIp?.company?.name || "",
-        company_domain: dataForIp?.company?.domain || "",
-        company_type: dataForIp?.company?.type || "",
-        company_abuse_score: dataForIp?.company?.abuseScore ?? null,
-        asn: dataForIp?.asn?.asn || null,
-        asn_org: dataForIp?.asn?.org || "",
-        asn_domain: dataForIp?.asn?.domain || "",
-        asn_type: dataForIp?.asn?.type || "",
-        asn_abuse_score: dataForIp?.asn?.abuseScore ?? null,
-        vpn: dataForIp?.vpn || "",
-        crawler: dataForIp?.crawler || "",
-        datacenter: dataForIp?.datacenter || "",
-        is_proxy: dataForIp?.isProxy ?? null,
-        is_tor: dataForIp?.isTor ?? null,
-        is_satellite: dataForIp?.isSatellite ?? null,
       };
     });
 
-    this.logger.info({ count: processedPageviews.length }, "Bulk insert to ClickHouse");
+    // this.logger.info({ count: processedPageviews.length }, "Bulk insert to ClickHouse");
     // Bulk insert into database
     try {
       await clickhouse.insert({

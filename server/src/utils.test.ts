@@ -1,5 +1,42 @@
 import { describe, it, expect } from "vitest";
-import { normalizeOrigin } from "./utils.js";
+import { FastifyRequest } from "fastify";
+import { getIpAddress, normalizeOrigin } from "./utils.js";
+
+function requestWithHeaders(headers: Record<string, string | string[]>, ip = "198.51.100.10"): FastifyRequest {
+  return { headers, ip } as unknown as FastifyRequest;
+}
+
+describe("getIpAddress", () => {
+  it("uses X-Real-IP before all other headers", () => {
+    const request = requestWithHeaders({
+      "cf-connecting-ip": "198.51.100.20",
+      "x-forwarded-for": "203.0.113.10, 198.51.100.20",
+      "x-real-ip": "192.0.2.10",
+    });
+
+    expect(getIpAddress(request)).toBe("192.0.2.10");
+  });
+
+  it("uses the first X-Forwarded-For IP before Cloudflare's connecting IP", () => {
+    // The proxied case: a first-party proxy (e.g. CloudFront) forwards the visitor
+    // in X-Forwarded-For, while CF-Connecting-IP is our Cloudflare edge seeing the
+    // proxy's egress node. The visitor must win.
+    const request = requestWithHeaders({
+      "cf-connecting-ip": "198.51.100.20",
+      "x-forwarded-for": "203.0.113.10, 198.51.100.20",
+    });
+
+    expect(getIpAddress(request)).toBe("203.0.113.10");
+  });
+
+  it("falls back to Cloudflare's connecting IP when no forwarded headers are present", () => {
+    expect(getIpAddress(requestWithHeaders({ "cf-connecting-ip": "203.0.113.10" }))).toBe("203.0.113.10");
+  });
+
+  it("falls back to the request IP", () => {
+    expect(getIpAddress(requestWithHeaders({}))).toBe("198.51.100.10");
+  });
+});
 
 describe("normalizeOrigin", () => {
   describe("Basic subdomain removal", () => {

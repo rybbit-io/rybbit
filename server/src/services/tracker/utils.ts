@@ -1,21 +1,21 @@
 import { FastifyRequest } from "fastify";
 import UAParser, { UAParser as userAgentParser } from "ua-parser-js";
 import { z } from "zod";
-import { getIpAddress } from "../../utils.js";
 import { userIdService } from "../userId/userIdService.js";
 import { trackingPayloadSchema } from "./trackEvent.js";
 import { TrackingPayload } from "./types.js";
 import { SiteConfigData } from "../../lib/siteConfig.js";
+import { resolveTrackingIdentity } from "./requestIdentity.js";
 
 export type TotalTrackingPayload = TrackingPayload & {
-  userId: string; // Always the device fingerprint (same as anonymousId)
-  anonymousId: string; // Always the hash of IP+UserAgent (device fingerprint)
+  userId: string; // Always the device fingerprint
   identifiedUserId: string; // Custom user ID when identified, empty string otherwise
   timestamp: string;
   type?: string;
   event_name?: string;
   properties?: string;
   ua: UAParser.IResult;
+  userAgent: string;
   referrer: string;
   ipAddress: string;
   storeIp?: boolean;
@@ -24,10 +24,37 @@ export type TotalTrackingPayload = TrackingPayload & {
   inp?: number;
   fcp?: number;
   ttfb?: number;
+  tag?: string;
+  feature_flags?: Record<string, string>;
 };
 
 // Infer type from Zod schema
 type ValidatedTrackingPayload = z.infer<typeof trackingPayloadSchema>;
+
+// ua-parser-js is regex-heavy and runs on every event. User-agent strings repeat
+// constantly across requests, so memoize parsing in a bounded LRU-ish cache to
+// keep this off the per-event hot path.
+const UA_CACHE_MAX = 10_000;
+const uaCache = new Map<string, UAParser.IResult>();
+
+export function parseUserAgent(userAgent: string): UAParser.IResult {
+  const cached = uaCache.get(userAgent);
+  if (cached) {
+    // Refresh recency: re-insert so frequently-seen UAs survive eviction.
+    uaCache.delete(userAgent);
+    uaCache.set(userAgent, cached);
+    return cached;
+  }
+
+  const result = userAgentParser(userAgent);
+  uaCache.set(userAgent, result);
+  if (uaCache.size > UA_CACHE_MAX) {
+    // Evict the oldest (least recently used) entry.
+    const oldest = uaCache.keys().next().value;
+    if (oldest !== undefined) uaCache.delete(oldest);
+  }
+  return result;
+}
 
 // UTM and URL parameter parsing utilities
 export function getUTMParams(querystring: string): Record<string, string> {
@@ -93,28 +120,33 @@ export function clearSelfReferrer(referrer: string, hostname: string): string {
 // Create base tracking payload from request
 export async function createBasePayload(
   request: FastifyRequest,
-  eventType: "pageview" | "custom_event" | "performance" | "error" | "outbound" = "pageview",
+  eventType:
+    | "pageview"
+    | "custom_event"
+    | "performance"
+    | "error"
+    | "outbound"
+    | "button_click"
+    | "copy"
+    | "form_submit"
+    | "input_change" = "pageview",
   validatedBody: ValidatedTrackingPayload,
-  siteConfiguration: SiteConfigData
+  siteConfiguration: SiteConfigData,
+  trustedServerSideIngestion = false
 ): Promise<TotalTrackingPayload> {
-  // Use custom user agent if provided, otherwise fall back to header
-  const userAgent = validatedBody.user_agent || request.headers["user-agent"] || "";
-  // Override IP if provided in payload
-  const ipAddress = validatedBody.ip_address || getIpAddress(request);
+  const { ipAddress, userAgent } = resolveTrackingIdentity(request, validatedBody, trustedServerSideIngestion);
+  const { ip_address: _ipAddressOverride, user_agent: _userAgentOverride, ...payloadBody } = validatedBody;
 
-  // Always compute anonymous_id based on IP+UserAgent (device fingerprint)
-  const anonymousId = await userIdService.generateUserId(
-    ipAddress,
-    userAgent,
-    siteConfiguration.siteId
-  );
+  const anonymousId = validatedBody.anonymous_id
+    ? await userIdService.generateUserIdFromClientId(validatedBody.anonymous_id, siteConfiguration.siteId)
+    : await userIdService.generateUserId(ipAddress, userAgent, siteConfiguration.siteId);
 
   // userId is always the device fingerprint
   // identifiedUserId is the custom user ID when provided, empty string otherwise
   const identifiedUserId = validatedBody.user_id ? validatedBody.user_id.trim() : "";
 
   return {
-    ...validatedBody,
+    ...payloadBody,
     site_id: siteConfiguration.siteId, // Use the numeric site ID
     hostname: validatedBody.hostname || "",
     pathname: validatedBody.pathname || "",
@@ -127,9 +159,9 @@ export async function createBasePayload(
     type: eventType,
     ipAddress: ipAddress,
     timestamp: new Date().toISOString(),
-    ua: userAgentParser(userAgent),
+    ua: parseUserAgent(userAgent),
+    userAgent,
     userId: anonymousId, // Always the device fingerprint
-    anonymousId: anonymousId,
     identifiedUserId: identifiedUserId, // Custom user ID when identified
     storeIp: siteConfiguration.trackIp,
   } as any;

@@ -1,19 +1,18 @@
 "use client";
 
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { getTimezone } from "@/lib/store";
 import { useDebounce, useIntersectionObserver } from "@uidotdev/usehooks";
 import { DateTime } from "luxon";
 import { ChevronDown, ChevronUp, Loader2, Search, SquareArrowOutUpRight } from "lucide-react";
+import { useExtracted } from "next-intl";
 import { useEffect, useMemo, useState } from "react";
+import { useDateTimeFormat } from "../../../../../hooks/useDateTimeFormat";
 import { OutboundLink } from "../../../../../api/analytics/endpoints";
 import { cn } from "../../../../../lib/utils";
 
-interface OutboundLinksDialogProps {
+interface OutboundLinksDialogBodyProps {
   outboundLinks: OutboundLink[];
-  expanded: boolean;
-  close: () => void;
 }
 
 const INITIAL_ROWS = 100;
@@ -21,7 +20,9 @@ const BATCH_SIZE = 100;
 
 type SortKey = "url" | "count" | "percentage" | "lastClicked";
 
-export function OutboundLinksDialog({ outboundLinks, expanded, close }: OutboundLinksDialogProps) {
+export function OutboundLinksDialogBody({ outboundLinks }: OutboundLinksDialogBodyProps) {
+  const t = useExtracted();
+  const { formatRelative } = useDateTimeFormat();
   const [searchTerm, setSearchTerm] = useState("");
   const debouncedSearchTerm = useDebounce(searchTerm, 200);
   const [sortKey, setSortKey] = useState<SortKey>("count");
@@ -86,23 +87,19 @@ export function OutboundLinksDialog({ outboundLinks, expanded, close }: Outbound
   }
 
   return (
-    <Dialog open={expanded} onOpenChange={close}>
-      <DialogContent className="max-w-[1000px] w-[calc(100vw-2rem)] p-2 sm:p-4">
-        <DialogHeader>
-          <DialogTitle>Outbound Links</DialogTitle>
-        </DialogHeader>
+    <div className="flex min-h-0 flex-1 flex-col gap-2">
         <div className="relative mb-2">
           <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-neutral-600 dark:text-neutral-400" />
           <Input
             type="text"
-            placeholder={`Filter ${outboundLinks.length} links...`}
+            placeholder={t("Filter {count} links...", { count: String(outboundLinks.length) })}
             className="pl-9 bg-white dark:bg-neutral-900 border-neutral-200 dark:border-neutral-700 text-xs"
             value={searchTerm}
             onChange={e => setSearchTerm(e.target.value)}
           />
         </div>
-        <div className="flex flex-col gap-2 overflow-x-auto">
-          <div className="max-h-[80vh] overflow-y-auto">
+        <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-x-auto">
+          <div className="min-h-0 flex-1 overflow-y-auto">
             <table className="w-full text-xs text-left min-w-max">
               <thead className="bg-neutral-100 dark:bg-neutral-900 text-neutral-600 dark:text-neutral-400 sticky top-0 z-10">
                 <tr>
@@ -111,7 +108,7 @@ export function OutboundLinksDialog({ outboundLinks, expanded, close }: Outbound
                     onClick={() => toggleSort("url")}
                   >
                     <div className="flex items-center gap-1">
-                      Outbound Link
+                      {t("Outbound Link")}
                       {sortKey === "url" &&
                         (sortDesc ? <ChevronDown className="h-3 w-3" /> : <ChevronUp className="h-3 w-3" />)}
                     </div>
@@ -121,7 +118,7 @@ export function OutboundLinksDialog({ outboundLinks, expanded, close }: Outbound
                     onClick={() => toggleSort("count")}
                   >
                     <div className="flex items-center gap-1 justify-end">
-                      Clicks
+                      {t("Clicks")}
                       {sortKey === "count" &&
                         (sortDesc ? <ChevronDown className="h-3 w-3" /> : <ChevronUp className="h-3 w-3" />)}
                     </div>
@@ -131,7 +128,7 @@ export function OutboundLinksDialog({ outboundLinks, expanded, close }: Outbound
                     onClick={() => toggleSort("percentage")}
                   >
                     <div className="flex items-center gap-1 justify-end">
-                      Click %
+                      {t("Click %")}
                       {sortKey === "percentage" &&
                         (sortDesc ? <ChevronDown className="h-3 w-3" /> : <ChevronUp className="h-3 w-3" />)}
                     </div>
@@ -141,7 +138,7 @@ export function OutboundLinksDialog({ outboundLinks, expanded, close }: Outbound
                     onClick={() => toggleSort("lastClicked")}
                   >
                     <div className="flex items-center gap-1 justify-end">
-                      Last Clicked
+                      {t("Last Clicked")}
                       {sortKey === "lastClicked" &&
                         (sortDesc ? <ChevronDown className="h-3 w-3" /> : <ChevronUp className="h-3 w-3" />)}
                     </div>
@@ -157,7 +154,7 @@ export function OutboundLinksDialog({ outboundLinks, expanded, close }: Outbound
                       rowIndex % 2 === 0 ? "bg-white dark:bg-neutral-900" : "bg-neutral-50 dark:bg-neutral-950"
                     )}
                   >
-                    <td className="px-2 py-2">
+                    <td className="p-2">
                       <div className="flex items-center gap-1">
                         <a
                           href={row.url}
@@ -176,13 +173,13 @@ export function OutboundLinksDialog({ outboundLinks, expanded, close }: Outbound
                         </a>
                       </div>
                     </td>
-                    <td className="px-2 py-2 text-right">{row.count.toLocaleString()}</td>
-                    <td className="px-2 py-2 text-right">{row.percentage.toFixed(1)}%</td>
-                    <td className="px-2 py-2 text-right text-neutral-600 dark:text-neutral-300">
+                    <td className="p-2 text-right">{row.count.toLocaleString()}</td>
+                    <td className="p-2 text-right">{row.percentage.toFixed(1)}%</td>
+                    <td className="p-2 text-right text-neutral-600 dark:text-neutral-300">
                       {(() => {
                         try {
                           const dt = DateTime.fromSQL(row.lastClicked, { zone: "utc" }).setZone(getTimezone());
-                          return dt.toRelative();
+                          return formatRelative(dt);
                         } catch {
                           return "-";
                         }
@@ -196,16 +193,15 @@ export function OutboundLinksDialog({ outboundLinks, expanded, close }: Outbound
               <div ref={ref} className="py-4 flex justify-center">
                 <div className="flex items-center gap-2 text-neutral-600 dark:text-neutral-400 text-xs">
                   <Loader2 className="h-4 w-4 animate-spin" />
-                  Loading more...
+                  {t("Loading more...")}
                 </div>
               </div>
             )}
             {!hasMore && (
-              <div className="py-4 text-center text-neutral-500 dark:text-neutral-500 text-xs">All items loaded</div>
+              <div className="py-4 text-center text-neutral-500 dark:text-neutral-500 text-xs">{t("All items loaded")}</div>
             )}
           </div>
         </div>
-      </DialogContent>
-    </Dialog>
+    </div>
   );
 }

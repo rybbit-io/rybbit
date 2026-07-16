@@ -1,0 +1,169 @@
+---
+title: BigCommerce
+description: Integrate Rybbit Analytics with your BigCommerce store
+---
+
+import { Steps, Step } from 'fumadocs-ui/components/steps';
+import { Tabs, Tab } from 'fumadocs-ui/components/tabs';
+import { Callout } from 'fumadocs-ui/components/callout';
+
+BigCommerce is a leading e-commerce platform for online stores. You can integrate Rybbit Analytics to track visitor behavior and conversions.
+
+## How to Add Rybbit to BigCommerce
+
+<Tabs items={['Script Manager (Recommended)', 'Theme Files']}>
+<Tab>
+### Using Script Manager
+
+The easiest way to add Rybbit to BigCommerce is through the Script Manager.
+
+<Steps>
+<Step>
+### Access Script Manager
+
+1. Log in to your BigCommerce admin panel
+2. Go to **Storefront** > **Script Manager**
+3. Click **Create a Script**
+</Step>
+
+<Step>
+### Configure the Script
+
+Fill in the following settings:
+
+- **Name**: Rybbit Analytics
+- **Description**: Rybbit Analytics tracking script
+- **Placement**: Head
+- **Location**: All pages
+- **Script category**: Analytics
+- **Script type**: Script
+
+In the **Script contents** box, paste:
+
+```html
+<script>
+(function() {
+  var s = document.createElement('script');
+  s.src = 'https://app.rybbit.io/api/script.js';
+  s.defer = true;
+  s.setAttribute('data-site-id', 'YOUR_SITE_ID');
+  document.head.appendChild(s);
+})();
+</script>
+```
+
+Replace `YOUR_SITE_ID` with your actual Site ID.
+</Step>
+
+<Step>
+### Save the Script
+
+Click **Save** to activate the script on your store.
+</Step>
+</Steps>
+</Tab>
+
+<Tab>
+### Editing Theme Files
+
+You can also add the script directly to your theme files for more control.
+
+<Callout type="warn">
+Editing theme files requires some technical knowledge. Make a backup of your theme before making changes.
+</Callout>
+
+<Steps>
+<Step>
+### Access Theme Files
+
+1. Go to **Storefront** > **Themes**
+2. Click **Advanced** on your current theme
+3. Select **Edit Theme Files**
+</Step>
+
+<Step>
+### Edit the Header Template
+
+1. Navigate to **templates** > **components** > **common**
+2. Open `head.html`
+3. Add the following code before the closing `</head>` or at the end of the file:
+
+```html
+<script>
+(function() {
+  var s = document.createElement('script');
+  s.src = 'https://app.rybbit.io/api/script.js';
+  s.defer = true;
+  s.setAttribute('data-site-id', 'YOUR_SITE_ID');
+  document.head.appendChild(s);
+})();
+</script>
+```
+</Step>
+
+<Step>
+### Save and Apply
+
+Click **Save** to apply the changes to your live store.
+</Step>
+</Steps>
+</Tab>
+</Tabs>
+
+## Tracking E-commerce Events
+
+To get the most out of Rybbit with BigCommerce, you can track key e-commerce events like product views and purchases.
+
+### Track Purchases
+
+To track completed purchases, create another script in Script Manager with these settings:
+
+- **Placement**: Footer
+- **Location**: Order Confirmation
+- **Script type**: Script
+
+```html
+<script>
+(function() {
+  function waitForRybbit(callback, timeout) {
+    var start = Date.now();
+    (function check() {
+      if (window.rybbit && typeof window.rybbit.event === 'function') {
+        callback();
+      } else if (Date.now() - start < timeout) {
+        setTimeout(check, 100);
+      }
+    })();
+  }
+
+  waitForRybbit(function() {
+    // BigCommerce provides order data via Handlebars
+    {{#if checkout.order}}
+    window.rybbit.event('purchase', {
+      transaction_id: '{{checkout.order.id}}',
+      value: {{checkout.subtotal.value}},
+      currency: '{{checkout.currency.code}}'
+    });
+    {{/if}}
+  }, 5000);
+})();
+</script>
+```
+
+<Callout type="info">
+BigCommerce uses Handlebars templating. The `{{}}` syntax is processed by BigCommerce to inject order data.
+</Callout>
+
+## Troubleshooting
+
+### Script not loading
+
+1. Check Script Manager to ensure the script is enabled
+2. Clear your store's cache: **Server Settings** > **Store-level caching** > **Purge cache**
+3. Check the browser console for any errors
+
+### E-commerce events not tracking
+
+1. Make sure the purchase tracking script is set to **Order Confirmation** location
+2. Verify the Handlebars variables match your BigCommerce version
+3. Test by completing a test order

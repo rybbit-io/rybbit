@@ -1,65 +1,49 @@
-import { Shield } from "lucide-react";
+import { Clock, Shield } from "lucide-react";
 import { useState } from "react";
-import { toast } from "sonner";
-import { DateTime } from "luxon";
-import { Alert } from "../../ui/alert";
+import { toast } from "@/components/ui/sonner";
+import { Alert, AlertDescription, AlertTitle } from "../../ui/alert";
 import { Button } from "../../ui/button";
 import { Card, CardContent } from "../../ui/card";
-import { Progress } from "../../ui/progress";
 import { BACKEND_URL } from "../../../lib/const";
-import { getStripePrices } from "../../../lib/stripe";
+import { getPlanType, getStripePrices } from "../../../lib/stripe";
 import { formatDate } from "../../../lib/subscription/planUtils";
 import { useStripeSubscription } from "../../../lib/subscription/useStripeSubscription";
 import { UsageChart } from "../../UsageChart";
 import { authClient } from "@/lib/auth";
-import { PlanDialog } from "./PlanDialog";
+import { InvoicesCard } from "../components/InvoicesCard";
+import { UsageCards } from "../components/UsageCards";
+import { CancellationDialog } from "./CancellationDialog";
+import { PlanDialog } from "../components/PlanDialog";
 
 export function PaidPlan() {
   const { data: activeSubscription, isLoading, error: subscriptionError, refetch } = useStripeSubscription();
 
   const { data: activeOrg } = authClient.useActiveOrganization();
-
-  // Get the active organization ID
   const organizationId = activeOrg?.id;
-
-  // Get last 30 days of data for the chart
-  const endDate = DateTime.now().toISODate();
-  const startDate = DateTime.now().minus({ days: 30 }).toISODate();
 
   const [isProcessing, setIsProcessing] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const [showPlanDialog, setShowPlanDialog] = useState(false);
+  const [showCancellationDialog, setShowCancellationDialog] = useState(false);
+
+  const isTrial = !!activeSubscription?.isTrial;
+  const trialDaysRemaining = activeSubscription?.trialDaysRemaining || 0;
 
   const eventLimit = activeSubscription?.eventLimit || 0;
   const currentUsage = activeSubscription?.monthlyEventCount || 0;
-  const usagePercentage = eventLimit > 0 ? Math.min((currentUsage / eventLimit) * 100, 100) : 0;
   const isAnnualPlan = activeSubscription?.interval === "year";
 
   const stripePlan = getStripePrices().find(p => p.name === activeSubscription?.planName);
 
-  const isPro = activeSubscription?.planName?.startsWith("pro");
+  const planType = activeSubscription ? getPlanType(activeSubscription.planName) : null;
 
   const currentPlanDetails = activeSubscription
     ? {
-        id: isPro ? "pro" : "standard",
-        name: isPro ? "Pro" : "Standard",
-        price: `$${stripePlan?.price}`,
-        interval: stripePlan?.interval,
-        description: isPro ? "Premium features for professional teams" : "Advanced analytics for growing projects",
-        features: isPro
-          ? [
-              "5+ year data retention",
-              "Session replays",
-              "Unlimited team members",
-              "Unlimited websites",
-              "Priority support",
-            ]
-          : ["1 year data retention", "Standard support", "Core analytics features"],
-        color: isPro
-          ? "bg-linear-to-br from-purple-50 to-indigo-100 dark:from-purple-800 dark:to-indigo-800"
-          : "bg-linear-to-br from-green-50 to-emerald-100 dark:from-green-800 dark:to-emerald-800",
-        icon: <Shield className="h-5 w-5" />,
-      }
+      id: planType,
+      name: planType,
+      price: `$${stripePlan?.price}`,
+      interval: stripePlan?.interval,
+    }
     : null;
 
   const createPortalSession = async (flowType?: string) => {
@@ -105,8 +89,7 @@ export function PaidPlan() {
   };
 
   const handleChangePlan = () => setShowPlanDialog(true);
-  const handleViewSubscription = () => createPortalSession();
-  const handleCancelSubscription = () => createPortalSession("subscription_cancel");
+  const handleCancelSubscription = () => setShowCancellationDialog(true);
 
   const getFormattedPrice = () => {
     if (!currentPlanDetails) return "$0/month";
@@ -119,6 +102,9 @@ export function PaidPlan() {
 
     if (activeSubscription.cancelAtPeriodEnd) {
       return `Cancels on ${formattedDate}`;
+    }
+    if (activeSubscription.status === "trialing") {
+      return `Trial ends on ${formattedDate}`;
     }
     if (activeSubscription.status === "active") {
       return isAnnualPlan ? `Renews annually on ${formattedDate}` : `Renews monthly on ${formattedDate}`;
@@ -139,6 +125,16 @@ export function PaidPlan() {
         currentPlanName={activeSubscription?.planName}
         hasActiveSubscription={!!activeSubscription}
       />
+      {activeSubscription && organizationId && (
+        <CancellationDialog
+          open={showCancellationDialog}
+          onOpenChange={setShowCancellationDialog}
+          subscription={activeSubscription}
+          organizationId={organizationId}
+          onProceedToStripe={() => createPortalSession("subscription_cancel")}
+          onChangePlan={handleChangePlan}
+        />
+      )}
       <Card>
         <CardContent>
           <div className="space-y-6 mt-3 p-2">
@@ -150,52 +146,55 @@ export function PaidPlan() {
                 </p>
                 {isAnnualPlan && (
                   <div className="mt-2 text-sm text-emerald-400">
-                    <p>You save by paying annually (2 months free)</p>
+                    <p>You save by paying annually (4 months free)</p>
                   </div>
                 )}
                 <p className="text-neutral-400 text-sm">{formatRenewalDate()}</p>
               </div>
               <div className="space-x-2">
+                <Button
+                  variant="outline"
+                  onClick={() => createPortalSession("payment_method_update")}
+                  disabled={isProcessing}
+                >
+                  Manage Payment Details
+                </Button>
                 <Button variant="success" onClick={handleChangePlan}>
                   Change Plan
                 </Button>
-                <Button variant="outline" onClick={handleViewSubscription} disabled={isProcessing}>
-                  View Details
-                </Button>
               </div>
             </div>
-
-            <div className="space-y-2">
-              <h3 className="font-medium mb-2">Usage this month</h3>
-              <div className="space-y-4">
-                <div>
-                  <div className="flex justify-between mb-1">
-                    <span className="text-sm">Events</span>
-                    <span className="text-sm">
-                      {currentUsage.toLocaleString()} / {eventLimit.toLocaleString()}
-                    </span>
-                  </div>
-                  <Progress value={usagePercentage} />
+            {currentUsage >= eventLimit && (
+              <div className="mt-4 p-3 bg-amber-50 dark:bg-amber-900/20 rounded-md border border-amber-200 dark:border-amber-800">
+                <div className="flex items-center justify-between">
+                  <p className="text-sm text-amber-700 dark:text-amber-300">
+                    <strong>Usage limit reached!</strong> You've exceeded your plan's event limit.
+                  </p>
+                  <Button variant="success" size="sm" onClick={handleChangePlan}>
+                    Upgrade Plan
+                  </Button>
                 </div>
-
-                {currentUsage >= eventLimit && (
-                  <div className="mt-4 p-3 bg-amber-50 dark:bg-amber-900/20 rounded-md border border-amber-200 dark:border-amber-800">
-                    <div className="flex items-center justify-between">
-                      <p className="text-sm text-amber-700 dark:text-amber-300">
-                        <strong>Usage limit reached!</strong> You've exceeded your plan's event limit.
-                      </p>
-                      <Button variant="success" size="sm" onClick={handleChangePlan}>
-                        Upgrade Plan
-                      </Button>
-                    </div>
-                  </div>
-                )}
               </div>
-            </div>
+            )}
+            <UsageCards />
 
-            {organizationId && <UsageChart organizationId={organizationId} startDate={startDate} endDate={endDate} />}
+            {organizationId && <UsageChart organizationId={organizationId} />}
 
-            {isAnnualPlan && (
+            {isTrial && (
+              <Alert className="bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800">
+                <Clock className="h-4 w-4 text-blue-500 dark:text-blue-400" />
+                <AlertTitle>Trial Status</AlertTitle>
+                <AlertDescription>
+                  {trialDaysRemaining > 0 ? (
+                    <>Your trial ends in <strong>{trialDaysRemaining} days</strong> on {formatDate(activeSubscription.currentPeriodEnd)}.</>
+                  ) : (
+                    <>Your trial ends today. Upgrade to continue tracking.</>
+                  )}
+                </AlertDescription>
+              </Alert>
+            )}
+
+            {isAnnualPlan && !isTrial && (
               <div className="pt-2 pb-0 px-3 bg-emerald-50 dark:bg-emerald-900/20 rounded-md border border-emerald-100 dark:border-emerald-800">
                 <p className="text-sm text-emerald-700 dark:text-emerald-300 py-2">
                   <strong>Annual Billing:</strong> You're on annual billing which saves you money compared to monthly
@@ -213,12 +212,13 @@ export function PaidPlan() {
                 size="sm"
                 className="dark:hover:bg-red-700/60"
               >
-                Cancel Subscription
+                {isTrial ? "Cancel Trial" : "Cancel Subscription"}
               </Button>
             </div>
           </div>
         </CardContent>
       </Card>
-    </div>
+      <InvoicesCard />
+    </div >
   );
 }

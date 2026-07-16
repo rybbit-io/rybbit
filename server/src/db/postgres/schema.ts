@@ -1,4 +1,5 @@
 import { sql } from "drizzle-orm";
+import type { DashboardConfig } from "@rybbit/shared";
 import {
   boolean,
   check,
@@ -41,6 +42,7 @@ export const user = pgTable(
     // deprecated
     monthlyEventCount: integer().default(0),
     sendAutoEmailReports: boolean().default(true),
+    scheduledTipEmailIds: jsonb("scheduled_tip_email_ids").$type<string[]>().default([]),
   },
   table => [unique("user_username_unique").on(table.username), unique("user_email_unique").on(table.email)]
 );
@@ -56,34 +58,51 @@ export const verification = pgTable("verification", {
 });
 
 // Sites table
-export const sites = pgTable("sites", {
-  id: text("id").$defaultFn(() => sql`encode(gen_random_bytes(6), 'hex')`),
-  // deprecated - keeping as primary key for backwards compatibility
-  siteId: serial("site_id").primaryKey().notNull(),
-  name: text("name").notNull(),
-  domain: text("domain").notNull(),
-  createdAt: timestamp("created_at", { mode: "string" }).defaultNow(),
-  updatedAt: timestamp("updated_at", { mode: "string" }).defaultNow(),
-  createdBy: text("created_by").references(() => user.id, { onDelete: "set null" }),
-  organizationId: text("organization_id").references(() => organization.id),
-  public: boolean().default(false),
-  saltUserIds: boolean().default(false),
-  blockBots: boolean().default(true).notNull(),
-  excludedIPs: jsonb("excluded_ips").default([]), // Array of IP addresses/ranges to exclude
-  excludedCountries: jsonb("excluded_countries").default([]), // Array of ISO country codes to exclude (e.g., ["US", "GB"])
-  sessionReplay: boolean().default(false),
-  webVitals: boolean().default(false),
-  trackErrors: boolean().default(false),
-  trackOutbound: boolean().default(true),
-  trackUrlParams: boolean().default(true),
-  trackInitialPageView: boolean().default(true),
-  trackSpaNavigation: boolean().default(true),
-  trackIp: boolean().default(false),
-  apiKey: text("api_key"), // Format: rb_{64_hex_chars} = 67 chars total
-  privateLinkKey: text("private_link_key"),
-});
+export const sites = pgTable(
+  "sites",
+  {
+    id: text("id").$defaultFn(() => sql`encode(gen_random_bytes(6), 'hex')`),
+    // deprecated - keeping as primary key for backwards compatibility
+    siteId: serial("site_id").primaryKey().notNull(),
+    name: text("name").notNull(),
+    type: text("type").$type<"web" | "mobile" | null>(),
+    domain: text("domain").notNull(),
+    createdAt: timestamp("created_at", { mode: "string" }).defaultNow(),
+    updatedAt: timestamp("updated_at", { mode: "string" }).defaultNow(),
+    createdBy: text("created_by").references(() => user.id, { onDelete: "set null" }),
+    organizationId: text("organization_id").references(() => organization.id),
+    public: boolean().default(false),
+    embedEnabled: boolean("embed_enabled").default(false),
+    saltUserIds: boolean().default(false),
+    blockBots: boolean().default(true).notNull(),
+    excludedIPs: jsonb("excluded_ips").default([]), // Array of IP addresses/ranges to exclude
+    excludedCountries: jsonb("excluded_countries").default([]), // Array of ISO country codes to exclude (e.g., ["US", "GB"])
+    excludedPaths: jsonb("excluded_paths").default([]).$type<string[]>(), // Array of pathname glob patterns to exclude (e.g., ["/admin/*", "/preview"])
+    excludedHostnames: jsonb("excluded_hostnames").default([]).$type<string[]>(), // Array of hostname glob patterns to exclude (e.g., ["localhost", "*.vercel.app"])
+    excludedUserAgents: jsonb("excluded_user_agents").default([]).$type<string[]>(), // Array of case-insensitive user-agent substrings to exclude (e.g., ["HeadlessChrome"])
+    sessionReplay: boolean().default(false),
+    webVitals: boolean().default(false),
+    trackErrors: boolean().default(false),
+    trackOutbound: boolean().default(true),
+    trackUrlParams: boolean().default(true),
+    trackInitialPageView: boolean().default(true),
+    trackSpaNavigation: boolean().default(true),
+    trackIp: boolean().default(false),
+    trackButtonClicks: boolean().default(false),
+    trackCopy: boolean().default(false),
+    trackFormInteractions: boolean().default(false),
+    apiKey: text("api_key"), // Format: rb_{64_hex_chars} = 67 chars total
+    privateLinkKey: text("private_link_key"),
+    tags: jsonb("tags").default([]).$type<string[]>(),
+  },
+  table => [check("sites_type_check", sql`${table.type} IS NULL OR ${table.type} IN ('web', 'mobile')`)]
+);
 
-// Active sessions table
+// Active sessions table.
+// DEPRECATED: session tracking moved to Redis (see services/sessions/sessionsService.ts).
+// No longer read or written by the app; kept so existing deployments stay drift-free.
+// Drop it once Redis-backed sessions are verified in production:
+//   DROP TABLE IF EXISTS active_sessions;
 export const activeSessions = pgTable("active_sessions", {
   sessionId: text("session_id").primaryKey().notNull(),
   siteId: integer("site_id"),
@@ -97,6 +116,16 @@ export const funnels = pgTable("funnels", {
   siteId: integer("site_id").references(() => sites.siteId, { onDelete: "cascade" }),
   userId: text("user_id").references(() => user.id, { onDelete: "set null" }),
   data: jsonb(),
+  createdAt: timestamp("created_at", { mode: "string" }).defaultNow(),
+  updatedAt: timestamp("updated_at", { mode: "string" }).defaultNow(),
+});
+
+export const dashboards = pgTable("dashboards", {
+  dashboardId: serial("dashboard_id").primaryKey().notNull(),
+  siteId: integer("site_id").references(() => sites.siteId, { onDelete: "cascade" }),
+  userId: text("user_id").references(() => user.id, { onDelete: "set null" }),
+  name: text("name").notNull(),
+  config: jsonb("config").notNull().$type<DashboardConfig>().default({ cards: [] }),
   createdAt: timestamp("created_at", { mode: "string" }).defaultNow(),
   updatedAt: timestamp("updated_at", { mode: "string" }).defaultNow(),
 });
@@ -133,7 +162,13 @@ export const organization = pgTable(
     stripeCustomerId: text(),
     monthlyEventCount: integer().default(0),
     overMonthlyLimit: boolean().default(false),
+    approachingLimitNotifiedPeriodStart: text(),
     planOverride: text(), // Plan name override (e.g., "pro1m", "standard500k")
+    customPlan: jsonb("custom_plan").$type<{
+      events: number;
+      members: number | null; // null = unlimited
+      websites: number | null; // null = unlimited
+    }>(),
   },
   table => [unique("organization_slug_unique").on(table.slug)]
 );
@@ -149,6 +184,8 @@ export const member = pgTable("member", {
     .references(() => user.id, { onDelete: "cascade" }),
   role: text().notNull(),
   createdAt: timestamp({ mode: "string" }).notNull(),
+  // Site access restriction: false = all sites (default), true = only sites in member_site_access
+  hasRestrictedSiteAccess: boolean("has_restricted_site_access").default(false).notNull(),
 });
 
 // Invitation table (BetterAuth)
@@ -161,8 +198,72 @@ export const invitation = pgTable("invitation", {
     .references(() => organization.id),
   role: text().notNull(),
   status: text().notNull(),
+  createdAt: timestamp({ mode: "string" }),
   expiresAt: timestamp({ mode: "string" }).notNull(),
+  // Site access restriction for the invited member
+  hasRestrictedSiteAccess: boolean("has_restricted_site_access").default(false).notNull(),
+  siteIds: jsonb("site_ids").default([]).$type<number[]>(), // Array of site IDs to grant access to
+  teamId: text().references(() => team.id, { onDelete: "set null" }),
 });
+
+// Member site access junction table - stores which sites a member has access to
+// Only used when member.hasRestrictedSiteAccess = true
+export const memberSiteAccess = pgTable(
+  "member_site_access",
+  {
+    id: serial("id").primaryKey().notNull(),
+    memberId: text("member_id")
+      .notNull()
+      .references(() => member.id, { onDelete: "cascade" }),
+    siteId: integer("site_id")
+      .notNull()
+      .references(() => sites.siteId, { onDelete: "cascade" }),
+    createdAt: timestamp("created_at", { mode: "string" }).defaultNow().notNull(),
+    createdBy: text("created_by").references(() => user.id, { onDelete: "set null" }),
+  },
+  (table) => [
+    unique("member_site_access_unique").on(table.memberId, table.siteId),
+    index("member_site_access_member_idx").on(table.memberId),
+    index("member_site_access_site_idx").on(table.siteId),
+  ]
+);
+
+// Team table (BetterAuth)
+export const team = pgTable("team", {
+  id: text().primaryKey(),
+  name: text().notNull(),
+  organizationId: text().notNull().references(() => organization.id, { onDelete: "cascade" }),
+  createdAt: timestamp({ mode: "string" }).notNull(),
+  updatedAt: timestamp({ mode: "string" }),
+});
+
+// Team member table (BetterAuth)
+export const teamMember = pgTable("teamMember", {
+  id: text().primaryKey(),
+  teamId: text().notNull().references(() => team.id, { onDelete: "cascade" }),
+  userId: text().notNull().references(() => user.id, { onDelete: "cascade" }),
+  createdAt: timestamp({ mode: "string" }),
+});
+
+// Team site access junction table - stores which sites belong to a team
+export const teamSiteAccess = pgTable(
+  "team_site_access",
+  {
+    id: serial("id").primaryKey().notNull(),
+    teamId: text("team_id")
+      .notNull()
+      .references(() => team.id, { onDelete: "cascade" }),
+    siteId: integer("site_id")
+      .notNull()
+      .references(() => sites.siteId, { onDelete: "cascade" }),
+    createdAt: timestamp("created_at", { mode: "string" }).defaultNow().notNull(),
+  },
+  (table) => [
+    unique("team_site_access_unique").on(table.teamId, table.siteId),
+    index("team_site_access_team_idx").on(table.teamId),
+    index("team_site_access_site_idx").on(table.siteId),
+  ]
+);
 
 // Session table (BetterAuth)
 export const session = pgTable(
@@ -180,6 +281,7 @@ export const session = pgTable(
       .references(() => user.id, { onDelete: "cascade" }),
     impersonatedBy: text(),
     activeOrganizationId: text(),
+    activeTeamId: text(),
   },
   table => [unique("session_token_unique").on(table.token)]
 );
@@ -191,7 +293,7 @@ export const apiKey = pgTable("apikey", {
   start: text(),
   prefix: text(),
   key: text().notNull(),
-  userId: text()
+  referenceId: text()
     .notNull()
     .references(() => user.id, { onDelete: "cascade" }),
   refillInterval: integer(),
@@ -207,8 +309,56 @@ export const apiKey = pgTable("apikey", {
   expiresAt: timestamp({ mode: "string" }),
   createdAt: timestamp({ mode: "string" }).notNull(),
   updatedAt: timestamp({ mode: "string" }).notNull(),
+  configId: text(),
   permissions: text(),
   metadata: jsonb(),
+});
+
+// OAuth provider tables for the MCP plugin (better-auth oidc-provider schema).
+// Field names and nullability mirror better-auth's model definitions; tokens
+// are validated by better-auth via auth.api.getMcpSession.
+export const oauthApplication = pgTable("oauthApplication", {
+  id: text().primaryKey().notNull(),
+  name: text().notNull(),
+  icon: text(),
+  metadata: text(),
+  clientId: text().notNull().unique(),
+  clientSecret: text(),
+  redirectUrls: text().notNull(),
+  type: text().notNull(),
+  disabled: boolean().default(false),
+  userId: text().references(() => user.id, { onDelete: "cascade" }),
+  createdAt: timestamp({ mode: "string" }).notNull(),
+  updatedAt: timestamp({ mode: "string" }).notNull(),
+});
+
+export const oauthAccessToken = pgTable("oauthAccessToken", {
+  id: text().primaryKey().notNull(),
+  accessToken: text().notNull().unique(),
+  refreshToken: text().unique(),
+  accessTokenExpiresAt: timestamp({ mode: "string" }).notNull(),
+  refreshTokenExpiresAt: timestamp({ mode: "string" }),
+  clientId: text()
+    .notNull()
+    .references(() => oauthApplication.clientId, { onDelete: "cascade" }),
+  userId: text().references(() => user.id, { onDelete: "cascade" }),
+  scopes: text().notNull(),
+  createdAt: timestamp({ mode: "string" }).notNull(),
+  updatedAt: timestamp({ mode: "string" }).notNull(),
+});
+
+export const oauthConsent = pgTable("oauthConsent", {
+  id: text().primaryKey().notNull(),
+  clientId: text()
+    .notNull()
+    .references(() => oauthApplication.clientId, { onDelete: "cascade" }),
+  userId: text()
+    .notNull()
+    .references(() => user.id, { onDelete: "cascade" }),
+  scopes: text().notNull(),
+  consentGiven: boolean().notNull(),
+  createdAt: timestamp({ mode: "string" }).notNull(),
+  updatedAt: timestamp({ mode: "string" }).notNull(),
 });
 
 // Goals table for tracking conversion goals
@@ -218,15 +368,22 @@ export const goals = pgTable(
     goalId: serial("goal_id").primaryKey().notNull(),
     siteId: integer("site_id").notNull(),
     name: text("name"), // Optional, user-defined name for the goal
-    goalType: text("goal_type").notNull(), // 'path' or 'event'
+    goalType: text("goal_type").notNull(), // 'path', 'event', 'outbound', 'button_click', 'form_submit', or 'copy'
     // Configuration specific to the goal type
     config: jsonb("config").notNull().$type<{
       // For 'path' type
       pathPattern?: string; // e.g., "/pricing", "/product/*/view", "/docs/**"
       // For 'event' type
       eventName?: string; // e.g., "signup_completed", "file_downloaded"
-      eventPropertyKey?: string; // Optional property key to match
-      eventPropertyValue?: string | number | boolean; // Optional property value to match (exact match)
+      // For autocapture types ('outbound', 'button_click', 'form_submit', 'copy')
+      valuePattern?: string; // e.g., "https://example.com/**", "Sign Up*"
+      // Property filters (for all goal types)
+      eventPropertyKey?: string; // Deprecated - use propertyFilters instead
+      eventPropertyValue?: string | number | boolean; // Deprecated - use propertyFilters instead
+      propertyFilters?: Array<{
+        key: string;
+        value: string | number | boolean;
+      }>; // Array of property filters to match (all must match)
     }>(),
     createdAt: timestamp("created_at", { mode: "string" }).defaultNow(),
   },
@@ -236,6 +393,114 @@ export const goals = pgTable(
       foreignColumns: [sites.siteId],
       name: "goals_site_id_sites_site_id_fk",
     }).onDelete("cascade"),
+  ]
+);
+
+export type FeatureFlagType = "boolean" | "multivariate" | "remote_config";
+export type FeatureFlagRuntime = "client" | "server" | "both";
+export type ExperimentStatus = "draft" | "running" | "paused" | "completed";
+
+export type FeatureFlagPayloadValue =
+  | string
+  | number
+  | boolean
+  | null
+  | FeatureFlagPayloadValue[]
+  | { [key: string]: FeatureFlagPayloadValue };
+
+export type FeatureFlagRule = {
+  field:
+    | "hostname"
+    | "pathname"
+    | "query"
+    | "referrer"
+    | "language"
+    | "country"
+    | "region"
+    | "city"
+    | "device_type"
+    | "user_id"
+    | "trait";
+  key?: string;
+  operator: "equals" | "not_equals" | "contains" | "starts_with" | "ends_with" | "regex";
+  value: string | number | boolean | Array<string | number | boolean>;
+};
+
+export type FeatureFlagVariant = {
+  key: string;
+  name?: string;
+  rolloutPercentage: number;
+  payload?: FeatureFlagPayloadValue;
+};
+
+export type FeatureFlagConditionSet = {
+  name?: string;
+  rules: FeatureFlagRule[];
+  rolloutPercentage?: number;
+  variants?: FeatureFlagVariant[];
+  payload?: FeatureFlagPayloadValue;
+};
+
+export const featureFlags = pgTable(
+  "feature_flags",
+  {
+    flagId: serial("flag_id").primaryKey().notNull(),
+    siteId: integer("site_id")
+      .notNull()
+      .references(() => sites.siteId, { onDelete: "cascade" }),
+    key: text("key").notNull(),
+    description: text("description"),
+    enabled: boolean("enabled").default(false).notNull(),
+    runtime: text("runtime").default("client").notNull().$type<FeatureFlagRuntime>(),
+    flagType: text("flag_type").default("boolean").notNull().$type<FeatureFlagType>(),
+    payload: jsonb("payload").$type<FeatureFlagPayloadValue>(),
+    variants: jsonb("variants").default([]).notNull().$type<FeatureFlagVariant[]>(),
+    rolloutPercentage: integer("rollout_percentage").default(100).notNull(),
+    rules: jsonb("rules").default([]).notNull().$type<FeatureFlagRule[]>(),
+    conditionSets: jsonb("condition_sets").default([]).notNull().$type<FeatureFlagConditionSet[]>(),
+    salt: text("salt")
+      .default(sql`md5(random()::text || clock_timestamp()::text)`)
+      .notNull(),
+    version: integer("version").default(1).notNull(),
+    createdAt: timestamp("created_at", { mode: "string" }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { mode: "string" }).defaultNow().notNull(),
+  },
+  table => [
+    unique("feature_flags_site_key_unique").on(table.siteId, table.key),
+    index("feature_flags_site_idx").on(table.siteId),
+    check("feature_flags_rollout_check", sql`rollout_percentage >= 0 AND rollout_percentage <= 100`),
+    check("feature_flags_runtime_check", sql`runtime IN ('client', 'server', 'both')`),
+    check("feature_flags_type_check", sql`flag_type IN ('boolean', 'multivariate', 'remote_config')`),
+  ]
+);
+
+export const experiments = pgTable(
+  "experiments",
+  {
+    experimentId: serial("experiment_id").primaryKey().notNull(),
+    siteId: integer("site_id")
+      .notNull()
+      .references(() => sites.siteId, { onDelete: "cascade" }),
+    featureFlagId: integer("feature_flag_id")
+      .notNull()
+      .references(() => featureFlags.flagId, { onDelete: "cascade" }),
+    primaryGoalId: integer("primary_goal_id").references(() => goals.goalId, { onDelete: "set null" }),
+    name: text("name").notNull(),
+    description: text("description"),
+    hypothesis: text("hypothesis"),
+    status: text("status").default("draft").notNull().$type<ExperimentStatus>(),
+    winningVariant: text("winning_variant"),
+    startedAt: timestamp("started_at", { mode: "string" }),
+    endedAt: timestamp("ended_at", { mode: "string" }),
+    createdAt: timestamp("created_at", { mode: "string" }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { mode: "string" }).defaultNow().notNull(),
+  },
+  table => [
+    unique("experiments_site_flag_unique").on(table.siteId, table.featureFlagId),
+    index("experiments_site_idx").on(table.siteId),
+    index("experiments_feature_flag_idx").on(table.featureFlagId),
+    index("experiments_primary_goal_idx").on(table.primaryGoalId),
+    check("experiments_status_check", sql`status IN ('draft', 'running', 'paused', 'completed')`),
   ]
 );
 
@@ -295,35 +560,35 @@ export const uptimeMonitors = pgTable("uptime_monitors", {
   validationRules: jsonb("validation_rules").notNull().default([]).$type<
     Array<
       | {
-          type: "status_code";
-          operator: "equals" | "not_equals" | "in" | "not_in";
-          value: number | number[];
-        }
+        type: "status_code";
+        operator: "equals" | "not_equals" | "in" | "not_in";
+        value: number | number[];
+      }
       | {
-          type: "response_time";
-          operator: "less_than" | "greater_than";
-          value: number;
-        }
+        type: "response_time";
+        operator: "less_than" | "greater_than";
+        value: number;
+      }
       | {
-          type: "response_body_contains" | "response_body_not_contains";
-          value: string;
-          caseSensitive?: boolean;
-        }
+        type: "response_body_contains" | "response_body_not_contains";
+        value: string;
+        caseSensitive?: boolean;
+      }
       | {
-          type: "header_exists";
-          header: string;
-        }
+        type: "header_exists";
+        header: string;
+      }
       | {
-          type: "header_value";
-          header: string;
-          operator: "equals" | "contains";
-          value: string;
-        }
+        type: "header_value";
+        header: string;
+        operator: "equals" | "contains";
+        value: string;
+      }
       | {
-          type: "response_size";
-          operator: "less_than" | "greater_than";
-          value: number;
-        }
+        type: "response_size";
+        operator: "less_than" | "greater_than";
+        value: number;
+      }
     >
   >(),
 
@@ -564,7 +829,22 @@ export const userAliases = pgTable(
   ]
 );
 
-export const importPlatforms = ["umami", "simple_analytics"] as const;
+// Cancellation feedback for churn reduction
+export const cancellationFeedback = pgTable("cancellation_feedback", {
+  id: serial("id").primaryKey().notNull(),
+  organizationId: text("organization_id").notNull(),
+  userId: text("user_id").notNull(),
+  reason: text("reason").notNull(),
+  reasonDetails: text("reason_details"),
+  retentionOfferShown: text("retention_offer_shown"),
+  retentionOfferAccepted: boolean("retention_offer_accepted").default(false),
+  outcome: text("outcome").notNull(),
+  planNameAtCancellation: text("plan_name_at_cancellation"),
+  monthlyEventCountAtCancellation: integer("monthly_event_count_at_cancellation"),
+  createdAt: timestamp("created_at", { mode: "string" }).defaultNow().notNull(),
+});
+
+export const importPlatforms = ["umami", "simple_analytics", "plausible"] as const;
 
 export const importPlatformEnum = pgEnum("import_platform_enum", importPlatforms);
 

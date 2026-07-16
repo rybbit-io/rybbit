@@ -208,6 +208,10 @@ const COUNTRIES = [
   { code: "ZW", name: "Zimbabwe" },
 ];
 
+export function getCountryName(code: string): string {
+  return COUNTRIES.find(country => country.code === code)?.name ?? code;
+}
+
 interface CountrySelectorProps {
   onSelect: (countryCode: string) => void;
   selectedCountries: string[];

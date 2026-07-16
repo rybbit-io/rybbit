@@ -3,10 +3,16 @@ export type FilterType =
   | "not_equals"
   | "contains"
   | "not_contains"
+  | "starts_with"
+  | "ends_with"
   | "regex"
   | "not_regex"
+  | "is_null"
+  | "is_not_null"
   | "greater_than"
-  | "less_than";
+  | "less_than"
+  | "greater_than_or_equal"
+  | "less_than_or_equal";
 
 export type FilterParameter =
   | "browser"
@@ -37,15 +43,8 @@ export type FilterParameter =
   | "lat"
   | "lon"
   | "timezone"
-  | "vpn"
-  | "crawler"
-  | "datacenter"
-  | "company"
-  | "company_type"
-  | "company_domain"
-  | "asn_org"
-  | "asn_type"
-  | "asn_domain";
+  | "tag"
+  | `feature_flag:${string}`;
 
 export interface Filter {
   parameter: FilterParameter;

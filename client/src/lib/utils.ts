@@ -41,6 +41,33 @@ export function truncateString(str: string, n = 50) {
   return str.length > n ? str.substring(0, n) + "..." : str;
 }
 
+// Function to truncate URL for display
+export function truncateUrl(url: string, maxLength: number = 60) {
+  if (!url) return "-";
+  if (url.length <= maxLength) return url;
+
+  try {
+    const urlObj = new URL(url);
+    const domain = urlObj.hostname;
+    const path = urlObj.pathname + urlObj.search;
+
+    if (domain.length + path.length <= maxLength) {
+      return `${domain}${path}`;
+    }
+
+    // If still too long, truncate the path
+    const availableSpace = maxLength - domain.length - 3; // 3 for "..."
+    if (availableSpace > 0) {
+      return `${domain}${path.substring(0, availableSpace)}...`;
+    } else {
+      return `${domain.substring(0, maxLength - 3)}...`;
+    }
+  } catch (e) {
+    // If URL parsing fails, just truncate the string
+    return `${url.substring(0, maxLength - 3)}...`;
+  }
+}
+
 const regionNamesInEnglish = new Intl.DisplayNames(["en"], { type: "region" });
 const languageNamesInEnglish = new Intl.DisplayNames(["en"], {
   type: "language",
@@ -89,7 +116,7 @@ export function normalizeDomain(domain: string): string {
  * - Requires the TLD to be alphabetical (e.g. .com)
  */
 export function isValidDomain(domain: string): boolean {
-  const domainRegex = /^(?:https?:\/\/)?(?:[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,}$/;
+  const domainRegex = /^(?:https?:\/\/)?(?:[\p{L}\p{N}](?:[\p{L}\p{N}-]{0,61}[\p{L}\p{N}])?\.)+\p{L}{2,}\/?$/u;
   return domainRegex.test(domain);
 }
 

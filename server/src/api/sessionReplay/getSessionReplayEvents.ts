@@ -4,12 +4,12 @@ import { enrichWithTraits } from "../analytics/utils/utils.js";
 
 export async function getSessionReplayEvents(
   request: FastifyRequest<{
-    Params: { site: string; sessionId: string };
+    Params: { siteId: string; sessionId: string };
   }>,
   reply: FastifyReply
 ) {
   try {
-    const siteId = Number(request.params.site);
+    const siteId = Number(request.params.siteId);
     const { sessionId } = request.params;
 
     const sessionReplayService = new SessionReplayQueryService();

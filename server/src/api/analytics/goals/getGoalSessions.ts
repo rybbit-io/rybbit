@@ -3,14 +3,14 @@ import { clickhouse } from "../../../db/clickhouse/clickhouse.js";
 import { db } from "../../../db/postgres/postgres.js";
 import { goals } from "../../../db/postgres/schema.js";
 import { eq } from "drizzle-orm";
-import { getTimeStatement, processResults, patternToRegex } from "../utils/utils.js";
+import { getTimeStatement, processResults } from "../utils/utils.js";
 import { FilterParams } from "@rybbit/shared";
-import { GetSessionsResponse } from "../getSessions.js";
-import SqlString from "sqlstring";
+import { GetSessionsResponse } from "../sessions/getSessions.js";
+import { buildGoalCondition } from "./goalConditions.js";
 
 export interface GetGoalSessionsRequest {
   Params: {
-    site: string;
+    siteId: string;
     goalId: string;
   };
   Querystring: FilterParams<{
@@ -20,7 +20,7 @@ export interface GetGoalSessionsRequest {
 }
 
 export async function getGoalSessions(req: FastifyRequest<GetGoalSessionsRequest>, res: FastifyReply) {
-  const { goalId, site } = req.params;
+  const { goalId, siteId } = req.params;
   const { page, limit } = req.query;
 
   try {
@@ -38,48 +38,16 @@ export async function getGoalSessions(req: FastifyRequest<GetGoalSessionsRequest
     const goalData = goal[0];
 
     // Verify the goal belongs to the site
-    if (goalData.siteId !== Number(site)) {
+    if (goalData.siteId !== Number(siteId)) {
       return res.status(403).send({ error: "Goal does not belong to this site" });
     }
 
     const timeStatement = getTimeStatement(req.query);
 
     // Build the goal matching condition
-    let goalCondition = "";
-
-    if (goalData.goalType === "path") {
-      const pathPattern = goalData.config.pathPattern;
-      if (!pathPattern) {
-        return res.status(400).send({ error: "Invalid path goal configuration" });
-      }
-
-      const regex = patternToRegex(pathPattern);
-      goalCondition = `type = 'pageview' AND match(pathname, ${SqlString.escape(regex)})`;
-    } else if (goalData.goalType === "event") {
-      const eventName = goalData.config.eventName;
-      if (!eventName) {
-        return res.status(400).send({ error: "Invalid event goal configuration" });
-      }
-
-      goalCondition = `type = 'custom_event' AND event_name = ${SqlString.escape(eventName)}`;
-
-      // Add property matching if needed
-      const eventPropertyKey = goalData.config.eventPropertyKey;
-      const eventPropertyValue = goalData.config.eventPropertyValue;
-
-      if (eventPropertyKey && eventPropertyValue !== undefined) {
-        const propValueAccessor = `props.${SqlString.escapeId(eventPropertyKey)}`;
-
-        if (typeof eventPropertyValue === "string") {
-          goalCondition += ` AND toString(${propValueAccessor}) = ${SqlString.escape(eventPropertyValue)}`;
-        } else if (typeof eventPropertyValue === "number") {
-          goalCondition += ` AND toFloat64OrNull(${propValueAccessor}) = ${SqlString.escape(eventPropertyValue)}`;
-        } else if (typeof eventPropertyValue === "boolean") {
-          goalCondition += ` AND toUInt8OrNull(${propValueAccessor}) = ${eventPropertyValue ? 1 : 0}`;
-        }
-      }
-    } else {
-      return res.status(400).send({ error: "Invalid goal type" });
+    const goalCondition = buildGoalCondition(goalData);
+    if (!goalCondition) {
+      return res.status(400).send({ error: "Invalid goal configuration" });
     }
 
     // Build query to find sessions that match the goal
@@ -129,7 +97,8 @@ export async function getGoalSessions(req: FastifyRequest<GetGoalSessionsRequest
         countIf(e.type = 'outbound') AS outbound,
         argMax(e.ip, e.timestamp) AS ip,
         argMax(e.lat, e.timestamp) AS lat,
-        argMax(e.lon, e.timestamp) AS lon
+        argMax(e.lon, e.timestamp) AS lon,
+        argMax(e.tag, e.timestamp) AS tag
       FROM events e
       INNER JOIN GoalSessions gs ON e.session_id = gs.session_id
       WHERE
@@ -149,9 +118,9 @@ export async function getGoalSessions(req: FastifyRequest<GetGoalSessionsRequest
       query,
       format: "JSONEachRow",
       query_params: {
-        siteId: Number(site),
+        siteId: Number(siteId),
         limit: limit || 25,
-        offset: (page - 1) * (limit || 25),
+        offset: ((page || 1) - 1) * (limit || 25),
       },
     });
 

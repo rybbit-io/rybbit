@@ -1,61 +1,88 @@
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
-import { Time } from "../../../../components/DateSelector/types";
 import { getTimezone, useStore } from "../../../../lib/store";
 import { buildApiParams } from "../../../utils";
-import { EventsResponse, fetchEvents } from "../../endpoints";
+import {
+  CursorEventsResponse,
+  fetchEventsCursor,
+  fetchNewEvents,
+} from "../../endpoints";
 
-export interface GetEventsOptions {
-  time?: Time;
-  page?: number;
-  pageSize?: number;
-  count?: number; // For backward compatibility
-  isRealtime?: boolean;
-}
-
-export function useGetEvents(count = 10) {
-  const { site, timezone } = useStore();
+/**
+ * Polls for new events since a given timestamp (Realtime mode).
+ * The sinceTimestamp is read from a callback at query time so the query key
+ * stays stable and doesn't cause refetch storms.
+ */
+export function useNewEventsPoll(options: {
+  getSinceTimestamp: () => string | null;
+  enabled: boolean;
+}) {
+  const { site, filters, timezone } = useStore();
+  const tz = getTimezone();
 
   return useQuery({
-    queryKey: ["events", site, count, timezone],
-    refetchInterval: 5000,
-    queryFn: () =>
-      fetchEvents(site, {
+    queryKey: ["events-poll", site, filters, timezone],
+    queryFn: () => {
+      const since = options.getSinceTimestamp();
+      if (!since) return { data: [] };
+      return fetchNewEvents(site, {
+        sinceTimestamp: since,
+        filters: filters?.length ? filters : undefined,
+        timeZone: tz,
+      });
+    },
+    refetchInterval: 2000,
+    enabled: !!site && options.enabled,
+  });
+}
+
+/**
+ * Cursor-based infinite query for loading events.
+ * In Realtime mode: no time range, just filters.
+ * In Historical mode: uses global time + filters from store.
+ */
+export function useGetEventsCursor(options: {
+  isRealtime: boolean;
+  pageSize?: number;
+}) {
+  const { site, time, filters, timezone } = useStore();
+  const pageSize = options.pageSize ?? 50;
+
+  // In realtime mode we skip time params; in historical mode use global time
+  const params = options.isRealtime
+    ? {
         startDate: "",
         endDate: "",
         timeZone: getTimezone(),
-        limit: count,
-      }).then(res => res.data),
-    enabled: !!site,
-  });
-}
+        filters: filters?.length ? filters : undefined,
+      }
+    : buildApiParams(time, {
+        filters: filters?.length ? filters : undefined,
+      });
 
-// Hook with pagination and filtering support
-export function useGetEventsInfinite(options: GetEventsOptions = {}) {
-  const { site, time, filters, timezone } = useStore();
-  const pageSize = options.pageSize || 20;
-
-  const params = buildApiParams(time, {
-    filters: filters && filters.length > 0 ? filters : undefined,
-  });
-
-  return useInfiniteQuery<EventsResponse, Error>({
-    queryKey: ["events-infinite", site, time, filters, pageSize, options.isRealtime, timezone],
-    initialPageParam: 1,
+  return useInfiniteQuery<CursorEventsResponse, Error>({
+    queryKey: [
+      "events-cursor",
+      site,
+      options.isRealtime,
+      options.isRealtime ? null : time,
+      filters,
+      pageSize,
+      timezone,
+    ],
+    initialPageParam: null as string | null,
     queryFn: async ({ pageParam }) => {
-      return fetchEvents(site, {
+      return fetchEventsCursor(site, {
         ...params,
-        page: pageParam as number,
+        beforeTimestamp: (pageParam as string) ?? undefined,
         pageSize,
-        limit: options.count,
       });
     },
-    getNextPageParam: (lastPage: EventsResponse) => {
-      if (lastPage.pagination.page < lastPage.pagination.totalPages) {
-        return lastPage.pagination.page + 1;
+    getNextPageParam: (lastPage: CursorEventsResponse) => {
+      if (lastPage.cursor?.hasMore && lastPage.cursor.oldestTimestamp) {
+        return lastPage.cursor.oldestTimestamp;
       }
       return undefined;
     },
-    refetchInterval: options.isRealtime ? 5000 : undefined,
     enabled: !!site,
   });
 }

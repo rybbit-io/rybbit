@@ -6,7 +6,7 @@ import { getFilterStatement } from "./utils/getFilterStatement.js";
 
 interface GetErrorEventsRequest {
   Params: {
-    site: string;
+    siteId: string;
   };
   Querystring: FilterParams<{
     errorMessage: string;
@@ -50,7 +50,7 @@ const getErrorEventsQuery = (request: FastifyRequest<GetErrorEventsRequest>, isC
   const { filters, limit, page } = request.query;
 
   const timeStatement = getTimeStatement(request.query);
-  const filterStatement = getFilterStatement(filters, Number(request.params.site), timeStatement);
+  const filterStatement = getFilterStatement(filters, Number(request.params.siteId), timeStatement);
 
   let validatedLimit: number | null = null;
   if (!isCountQuery && limit !== undefined) {
@@ -132,7 +132,7 @@ const getErrorEventsQuery = (request: FastifyRequest<GetErrorEventsRequest>, isC
 };
 
 export async function getErrorEvents(req: FastifyRequest<GetErrorEventsRequest>, res: FastifyReply) {
-  const site = req.params.site;
+  const site = req.params.siteId;
   const { errorMessage, page } = req.query;
 
   if (!errorMessage) {

@@ -1,25 +1,23 @@
 import { FastifyReply, FastifyRequest } from "fastify";
 import { z } from "zod";
 import { db } from "../../db/postgres/postgres.js";
-import { sites } from "../../db/postgres/schema.js";
+import { organization, sites } from "../../db/postgres/schema.js";
 import { eq } from "drizzle-orm";
-import { getUserHasAdminAccessToSite } from "../../lib/auth-utils.js";
+import { IS_CLOUD } from "../../lib/const.js";
 import { siteConfig } from "../../lib/siteConfig.js";
 import { validateIPPattern } from "../../lib/ipUtils.js";
+import { getBestSubscription, subscriptionIncludesReplay } from "../../lib/subscriptionUtils.js";
 
 // Schema for the update request - all fields are optional but validated when present
 const updateSiteConfigSchema = z.object({
   // Site settings
+  name: z.string().min(1).max(255).optional(),
+  type: z.enum(["web", "mobile"]).nullable().optional(),
   public: z.boolean().optional(),
+  embedEnabled: z.boolean().optional(),
   saltUserIds: z.boolean().optional(),
   blockBots: z.boolean().optional(),
-  domain: z
-    .string()
-    .regex(
-      /^(?:[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,}$/,
-      "Invalid domain format. Must be a valid domain like example.com or sub.example.com"
-    )
-    .optional(),
+  domain: z.string().min(1).max(253).optional(),
   excludedIPs: z.array(z.string().trim().min(1)).max(100).optional(),
   excludedCountries: z
     .array(
@@ -31,6 +29,12 @@ const updateSiteConfigSchema = z.object({
     )
     .max(250)
     .optional(),
+  excludedPaths: z.array(z.string().trim().min(1).max(2048)).max(100).optional(),
+  excludedHostnames: z.array(z.string().trim().min(1).max(253)).max(100).optional(),
+  excludedUserAgents: z.array(z.string().trim().min(1).max(512)).max(100).optional(),
+
+  // Tags
+  tags: z.array(z.string().trim().min(1).max(50)).max(20).optional(),
 
   // Analytics features
   sessionReplay: z.boolean().optional(),
@@ -41,17 +45,20 @@ const updateSiteConfigSchema = z.object({
   trackInitialPageView: z.boolean().optional(),
   trackSpaNavigation: z.boolean().optional(),
   trackIp: z.boolean().optional(),
+  trackButtonClicks: z.boolean().optional(),
+  trackCopy: z.boolean().optional(),
+  trackFormInteractions: z.boolean().optional(),
 });
 
 type UpdateSiteConfigRequest = z.infer<typeof updateSiteConfigSchema>;
 
 export async function updateSiteConfig(
-  request: FastifyRequest<{ Params: { id: string }; Body: UpdateSiteConfigRequest }>,
+  request: FastifyRequest<{ Params: { siteId: string }; Body: UpdateSiteConfigRequest }>,
   reply: FastifyReply
 ) {
   try {
     // Get siteId from path params
-    const siteId = parseInt(request.params.id, 10);
+    const siteId = parseInt(request.params.siteId, 10);
     if (isNaN(siteId) || siteId <= 0) {
       return reply.status(400).send({
         success: false,
@@ -71,12 +78,6 @@ export async function updateSiteConfig(
 
     const updateData = validationResult.data;
 
-    // Check user permissions
-    const userHasAdminAccessToSite = await getUserHasAdminAccessToSite(request, String(siteId));
-    if (!userHasAdminAccessToSite) {
-      return reply.status(403).send({ error: "Forbidden" });
-    }
-
     // Check if site exists
     const site = await db.query.sites.findFirst({
       where: eq(sites.siteId, siteId),
@@ -84,6 +85,56 @@ export async function updateSiteConfig(
 
     if (!site) {
       return reply.status(404).send({ error: "Site not found" });
+    }
+
+    const nextSiteType = updateData.type === undefined ? site.type || "web" : updateData.type || "web";
+
+    const nextDomain = updateData.domain ?? site.domain;
+    const cleanedDomain = nextDomain.replace(/^https?:\/\//, "").replace(/\/+$/, "");
+
+    if (updateData.domain !== undefined || updateData.type !== undefined) {
+      const domainRegex = /^(?:[\p{L}\p{N}](?:[\p{L}\p{N}-]{0,61}[\p{L}\p{N}])?\.)+\p{L}{2,}$/u;
+      const appIdentifierRegex = /^[A-Za-z0-9][A-Za-z0-9._-]{0,252}$/;
+      if (nextSiteType === "web" && !domainRegex.test(cleanedDomain)) {
+        return reply.status(400).send({
+          success: false,
+          error: "Invalid domain format. Must be a valid domain like example.com or sub.example.com",
+        });
+      }
+      if (nextSiteType === "mobile" && !appIdentifierRegex.test(cleanedDomain)) {
+        return reply.status(400).send({
+          success: false,
+          error: "Invalid app identifier. Use a bundle/package identifier like com.example.app",
+        });
+      }
+    }
+
+    if (nextSiteType === "mobile" && (updateData.sessionReplay || updateData.webVitals)) {
+      return reply.status(400).send({
+        success: false,
+        error: "Session replay and Web Vitals are only available for web sites",
+      });
+    }
+
+    // Session replay is a Pro feature — block enabling it (turning it off is always allowed)
+    if (IS_CLOUD && updateData.sessionReplay === true) {
+      let includesReplay = false;
+      if (site.organizationId) {
+        const orgResult = await db
+          .select({ stripeCustomerId: organization.stripeCustomerId })
+          .from(organization)
+          .where(eq(organization.id, site.organizationId))
+          .limit(1);
+        const subscription = await getBestSubscription(site.organizationId, orgResult[0]?.stripeCustomerId ?? null);
+        includesReplay = subscriptionIncludesReplay(subscription);
+      }
+
+      if (!includesReplay) {
+        return reply.status(403).send({
+          success: false,
+          error: "Session replay requires a Pro plan",
+        });
+      }
     }
 
     // Additional validation for excluded IPs if provided
@@ -110,12 +161,17 @@ export async function updateSiteConfig(
 
     // Map the fields that exist in both request and database
     const directMappings = [
+      "name",
       "public",
+      "embedEnabled",
       "saltUserIds",
       "blockBots",
-      "domain",
       "excludedIPs",
       "excludedCountries",
+      "excludedPaths",
+      "excludedHostnames",
+      "excludedUserAgents",
+      "tags",
       "sessionReplay",
       "webVitals",
       "trackErrors",
@@ -124,12 +180,26 @@ export async function updateSiteConfig(
       "trackInitialPageView",
       "trackSpaNavigation",
       "trackIp",
+      "trackButtonClicks",
+      "trackCopy",
+      "trackFormInteractions",
     ];
 
     for (const field of directMappings) {
       if (updateData[field as keyof typeof updateData] !== undefined) {
         dbUpdateData[field] = updateData[field as keyof typeof updateData];
       }
+    }
+
+    if (updateData.type !== undefined) {
+      dbUpdateData.type = nextSiteType === "web" ? null : nextSiteType;
+    }
+    if (updateData.domain !== undefined) {
+      dbUpdateData.domain = cleanedDomain;
+    }
+    if (nextSiteType === "mobile") {
+      dbUpdateData.sessionReplay = false;
+      dbUpdateData.webVitals = false;
     }
 
     // Only proceed if there are fields to update
@@ -147,7 +217,7 @@ export async function updateSiteConfig(
     await db.update(sites).set(dbUpdateData).where(eq(sites.siteId, siteId));
 
     // Update the site config cache
-    await siteConfig.updateConfig(siteId, updateData);
+    await siteConfig.updateConfig(siteId, dbUpdateData);
 
     // Get the updated configuration to return
     const updatedConfig = await siteConfig.getConfig(siteId);

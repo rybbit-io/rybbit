@@ -1,5 +1,4 @@
 import { FastifyReply, FastifyRequest } from "fastify";
-import { getUserHasAdminAccessToSite } from "../../lib/auth-utils.js";
 import { getImportsForSite } from "../../services/import/importStatusManager.js";
 import { z } from "zod";
 import { db } from "../../db/postgres/postgres.js";
@@ -11,7 +10,7 @@ import { IS_CLOUD } from "../../lib/const.js";
 const getSiteImportsRequestSchema = z
   .object({
     params: z.object({
-      site: z.coerce.number().int().positive(),
+      siteId: z.coerce.number().int().positive(),
     }),
   })
   .strict();
@@ -30,12 +29,7 @@ export async function getSiteImports(request: FastifyRequest<GetSiteImportsReque
       return reply.status(400).send({ error: "Validation error" });
     }
 
-    const { site } = parsed.data.params;
-
-    const userHasAccess = await getUserHasAdminAccessToSite(request, site);
-    if (!userHasAccess) {
-      return reply.status(403).send({ error: "Forbidden" });
-    }
+    const { siteId } = parsed.data.params;
 
     if (IS_CLOUD) {
       const [siteRecord] = await db
@@ -45,7 +39,7 @@ export async function getSiteImports(request: FastifyRequest<GetSiteImportsReque
         })
         .from(sites)
         .leftJoin(organization, eq(sites.organizationId, organization.id))
-        .where(eq(sites.siteId, site))
+        .where(eq(sites.siteId, siteId))
         .limit(1);
 
       if (siteRecord.organizationId) {
@@ -59,7 +53,7 @@ export async function getSiteImports(request: FastifyRequest<GetSiteImportsReque
       }
     }
 
-    const imports = await getImportsForSite(site);
+    const imports = await getImportsForSite(siteId);
 
     return reply.send({
       data: imports.map(

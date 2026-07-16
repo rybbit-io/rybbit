@@ -6,17 +6,17 @@ import { getUserHasAdminAccessToSite } from "../../lib/auth-utils.js";
 
 interface GetSiteParams {
   Params: {
-    id: string;
+    siteId: string;
   };
 }
 
 export async function getSite(request: FastifyRequest<GetSiteParams>, reply: FastifyReply) {
-  const { id } = request.params;
+  const { siteId } = request.params;
 
   try {
     // Get site info
     const site = await db.query.sites.findFirst({
-      where: eq(sites.siteId, Number(id)),
+      where: eq(sites.siteId, Number(siteId)),
     });
 
     if (!site) {
@@ -30,13 +30,15 @@ export async function getSite(request: FastifyRequest<GetSiteParams>, reply: Fas
       id: site.id,
       siteId: site.siteId,
       name: site.name,
-      domain: site.domain,
+      type: site.type || "web",
+      domain: site.domain || "",
       createdAt: site.createdAt,
       updatedAt: site.updatedAt,
       createdBy: site.createdBy,
       organizationId: site.organizationId,
       saltUserIds: site.saltUserIds,
       public: site.public,
+      embedEnabled: site.embedEnabled,
       blockBots: site.blockBots,
       trackIp: site.trackIp,
       isOwner: isOwner,
@@ -48,6 +50,9 @@ export async function getSite(request: FastifyRequest<GetSiteParams>, reply: Fas
       trackUrlParams: site.trackUrlParams,
       trackInitialPageView: site.trackInitialPageView,
       trackSpaNavigation: site.trackSpaNavigation,
+      trackButtonClicks: site.trackButtonClicks,
+      trackCopy: site.trackCopy,
+      trackFormInteractions: site.trackFormInteractions,
     });
   } catch (error) {
     console.error("Error retrieving site:", error);

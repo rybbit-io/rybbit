@@ -1,14 +1,3 @@
-import {
-  CLUSTER_MAX_ZOOM,
-  MIN_CLUSTER_SIZE,
-  CLUSTERING_THRESHOLD,
-  SPREAD_START_ZOOM,
-  SPREAD_RADIUS_DEGREES,
-} from "../../../utils/clusteringConstants";
-
-// Re-export shared constants
-export { CLUSTER_MAX_ZOOM, MIN_CLUSTER_SIZE, CLUSTERING_THRESHOLD, SPREAD_START_ZOOM, SPREAD_RADIUS_DEGREES };
-
 // Mapbox layer and source IDs
 export const SOURCE_ID = "timeline-sessions";
 export const CLUSTER_LAYER_ID = "timeline-clusters";

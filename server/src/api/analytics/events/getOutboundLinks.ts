@@ -12,29 +12,32 @@ export type GetOutboundLinksResponse = {
 
 export interface GetOutboundLinksRequest {
   Params: {
-    site: string;
+    siteId: string;
   };
   Querystring: FilterParams<{}>;
 }
 
 export async function getOutboundLinks(req: FastifyRequest<GetOutboundLinksRequest>, res: FastifyReply) {
   const { filters } = req.query;
-  const site = req.params.site;
+  const site = req.params.siteId;
 
   const timeStatement = getTimeStatement(req.query);
   const filterStatement = filters ? getFilterStatement(filters, Number(site), timeStatement) : "";
 
   const query = `
     SELECT
-      toString(props) as properties,
-      timestamp
+      JSONExtractString(toString(props), 'url') AS url,
+      COUNT(*) AS count,
+      toString(MAX(timestamp)) AS lastClicked
     FROM events
     WHERE
       site_id = {siteId:Int32}
       AND type = 'outbound'
       ${timeStatement}
       ${filterStatement}
-    ORDER BY timestamp DESC
+    GROUP BY url
+    ORDER BY count DESC
+    LIMIT 1000
   `;
 
   try {
@@ -46,41 +49,7 @@ export async function getOutboundLinks(req: FastifyRequest<GetOutboundLinksReque
       },
     });
 
-    interface RawOutboundEvent {
-      properties: string;
-      timestamp: string;
-    }
-
-    const rawData = await processResults<RawOutboundEvent>(result);
-
-    const urlCounts = new Map<string, { count: number; lastClicked: string }>();
-
-    rawData.forEach(event => {
-      try {
-        const props = JSON.parse(event.properties);
-        const url = props.url;
-        if (url) {
-          const existing = urlCounts.get(url);
-          if (existing) {
-            existing.count++;
-            // Keep the most recent timestamp
-            if (event.timestamp > existing.lastClicked) {
-              existing.lastClicked = event.timestamp;
-            }
-          } else {
-            urlCounts.set(url, { count: 1, lastClicked: event.timestamp });
-          }
-        }
-      } catch (e) {
-        // Skip events with invalid JSON
-      }
-    });
-
-    // Convert to response format
-    const data: GetOutboundLinksResponse = Array.from(urlCounts.entries())
-      .map(([url, { count, lastClicked }]) => ({ url, count, lastClicked }))
-      .sort((a, b) => b.count - a.count); // Sort by count descending
-
+    const data = await processResults<GetOutboundLinksResponse[number]>(result);
     return res.send({ data });
   } catch (error) {
     console.error("Generated Query:", query);

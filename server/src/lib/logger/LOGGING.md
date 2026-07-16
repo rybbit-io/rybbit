@@ -130,8 +130,6 @@ Replace console statements with appropriate logger calls:
 
 - `LOG_LEVEL`: Set the minimum log level (trace, debug, info, warn, error, fatal)
 - `NODE_ENV`: Determines log format (production vs development)
-- `AXIOM_DATASET`: Axiom dataset name for centralized logging (optional)
-- `AXIOM_TOKEN`: Axiom API token for log ingestion (optional)
 
 ## Example Service Refactoring
 

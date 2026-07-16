@@ -2,9 +2,34 @@ import { and, eq, inArray } from "drizzle-orm";
 import { FastifyRequest } from "fastify";
 import NodeCache from "node-cache";
 import { db } from "../db/postgres/postgres.js";
-import { member, sites, user } from "../db/postgres/schema.js";
+import { member, memberSiteAccess, sites, user, team, teamMember, teamSiteAccess } from "../db/postgres/schema.js";
 import { auth } from "./auth.js";
+import {
+  consumeBearerHandoff,
+  extractBearerToken,
+  INTERNAL_BEARER_HANDOFF_HEADER,
+  resolveBearerIdentity,
+  type BearerResolverDeps,
+} from "./bearerAuth.js";
+import { hasScope, type ScopeRequirement, type ScopeStatements } from "./scopes.js";
 import { siteConfig } from "./siteConfig.js";
+import { logger } from "./logger/logger.js";
+
+// The MCP gate injects fakes; the REST layer always uses better-auth.
+const bearerResolverDeps: BearerResolverDeps = {
+  verifyApiKey: apiKey => auth.api.verifyApiKey({ body: { key: apiKey } }),
+  getOAuthSession: token => auth.api.getMcpSession({ headers: new Headers({ authorization: `Bearer ${token}` }) }),
+};
+
+function resolveBearerTokenFromRequest(req: FastifyRequest): string | null {
+  // Priority: Authorization: Bearer header (recommended), then ?api_key= (testing).
+  const bearerToken = extractBearerToken(req.headers["authorization"]);
+  if (bearerToken) {
+    return bearerToken;
+  }
+  const queryApiKey = (req.query as any)?.api_key;
+  return typeof queryApiKey === "string" ? queryApiKey : null;
+}
 
 export function mapHeaders(headers: any) {
   const entries = Object.entries(headers);
@@ -42,9 +67,8 @@ const sitesAccessCache = new NodeCache({
 });
 
 export async function getSitesUserHasAccessTo(req: FastifyRequest, adminOnly = false) {
-  const session = await getSessionFromReq(req);
-
-  const userId = session?.user.id;
+  const session = req.user?.id ? null : await getSessionFromReq(req);
+  const userId = req.user?.id ?? session?.user.id;
 
   if (!userId) {
     return [];
@@ -65,7 +89,12 @@ export async function getSitesUserHasAccessTo(req: FastifyRequest, adminOnly = f
       const [isAdmin, memberRecords] = await Promise.all([
         getIsUserAdmin(req),
         db
-          .select({ organizationId: member.organizationId, role: member.role })
+          .select({
+            id: member.id,
+            organizationId: member.organizationId,
+            role: member.role,
+            hasRestrictedSiteAccess: member.hasRestrictedSiteAccess,
+          })
           .from(member)
           .where(eq(member.userId, userId)),
       ]);
@@ -79,15 +108,148 @@ export async function getSitesUserHasAccessTo(req: FastifyRequest, adminOnly = f
         return [];
       }
 
-      // Extract organization IDs
-      const organizationIds = memberRecords
-        .filter(record => !adminOnly || record.role !== "member")
-        .map(record => record.organizationId);
+      // Separate members by access type
+      // 1. Admin/owner members - full access to their orgs
+      // 2. Unrestricted members - full access to their orgs
+      // 3. Restricted members - only access to specific sites via member_site_access
+      const fullAccessOrgIds: string[] = [];
+      const restrictedMemberIds: string[] = [];
 
-      // Get sites for these organizations
-      const siteRecords = await db.select().from(sites).where(inArray(sites.organizationId, organizationIds));
+      for (const record of memberRecords) {
+        // If adminOnly is true, skip members with "member" role
+        if (adminOnly && record.role === "member") {
+          continue;
+        }
 
-      return siteRecords;
+        // Admin/owner roles always have full access
+        if (record.role === "admin" || record.role === "owner") {
+          fullAccessOrgIds.push(record.organizationId);
+        }
+        // Member role with hasRestrictedSiteAccess = true - only specific sites
+        else if (record.role === "member" && record.hasRestrictedSiteAccess) {
+          restrictedMemberIds.push(record.id);
+        }
+        // Member role with hasRestrictedSiteAccess = false - full org access
+        else {
+          fullAccessOrgIds.push(record.organizationId);
+        }
+      }
+
+      // Fetch sites in parallel
+      const [orgSites, restrictedSites] = await Promise.all([
+        // Get all sites from orgs with full access
+        fullAccessOrgIds.length > 0
+          ? db.select().from(sites).where(inArray(sites.organizationId, fullAccessOrgIds))
+          : Promise.resolve([]),
+        // Get specific sites for restricted members
+        restrictedMemberIds.length > 0
+          ? (async () => {
+              const siteAccess = await db
+                .select({ siteId: memberSiteAccess.siteId })
+                .from(memberSiteAccess)
+                .where(inArray(memberSiteAccess.memberId, restrictedMemberIds));
+              const siteIds = siteAccess.map(s => s.siteId);
+              if (siteIds.length === 0) return [];
+              return db.select().from(sites).where(inArray(sites.siteId, siteIds));
+            })()
+          : Promise.resolve([]),
+      ]);
+
+      // Combine and dedupe by siteId
+      const siteMap = new Map<number, (typeof orgSites)[0]>();
+      for (const site of orgSites) {
+        siteMap.set(site.siteId, site);
+      }
+      for (const site of restrictedSites) {
+        if (!siteMap.has(site.siteId)) {
+          siteMap.set(site.siteId, site);
+        }
+      }
+
+      // Apply team-based filtering for non-admin/owner members
+      // Members who have full org access (not restricted) still need team filtering
+      const memberOrgIds = memberRecords.filter(r => r.role === "member").map(r => r.organizationId);
+
+      if (memberOrgIds.length > 0) {
+        // Find all team-gated sites in the member's orgs
+        const allTeamSites = await db
+          .select({ siteId: teamSiteAccess.siteId })
+          .from(teamSiteAccess)
+          .innerJoin(team, eq(teamSiteAccess.teamId, team.id))
+          .where(inArray(team.organizationId, memberOrgIds));
+
+        const teamGatedSiteIds = new Set(allTeamSites.map(s => s.siteId));
+
+        if (teamGatedSiteIds.size > 0) {
+          // Find teams the user belongs to
+          const userTeams = await db
+            .select({ teamId: teamMember.teamId })
+            .from(teamMember)
+            .where(eq(teamMember.userId, userId));
+
+          const userTeamSiteIds = new Set<number>();
+          if (userTeams.length > 0) {
+            const userTeamSites = await db
+              .select({ siteId: teamSiteAccess.siteId })
+              .from(teamSiteAccess)
+              .where(
+                inArray(
+                  teamSiteAccess.teamId,
+                  userTeams.map(t => t.teamId)
+                )
+              );
+            for (const s of userTeamSites) {
+              userTeamSiteIds.add(s.siteId);
+            }
+          }
+
+          // Team access is additive: a restricted member's siteMap only has
+          // their explicit grants, so team-granted sites must be added back
+          const memberOrgIdSet = new Set(memberOrgIds);
+          const missingTeamSiteIds = Array.from(userTeamSiteIds).filter(id => !siteMap.has(id));
+          if (missingTeamSiteIds.length > 0) {
+            const teamSites = await db.select().from(sites).where(inArray(sites.siteId, missingTeamSiteIds));
+            for (const site of teamSites) {
+              if (site.organizationId && memberOrgIdSet.has(site.organizationId)) {
+                siteMap.set(site.siteId, site);
+              }
+            }
+          }
+
+          // For sites from admin/owner orgs, keep all (no team filtering)
+          // For sites from member orgs, apply team filtering
+          const adminOrgSiteIds = new Set<number>();
+          if (fullAccessOrgIds.length > 0) {
+            // Sites from orgs where user is admin/owner should not be team-filtered
+            for (const record of memberRecords) {
+              if (record.role === "admin" || record.role === "owner") {
+                for (const [siteId, site] of siteMap) {
+                  if (site.organizationId === record.organizationId) {
+                    adminOrgSiteIds.add(siteId);
+                  }
+                }
+              }
+            }
+          }
+
+          // Explicit per-member grants always win over team gating
+          const explicitGrantSiteIds = new Set(restrictedSites.map(s => s.siteId));
+
+          // Remove team-gated sites the user can't access (only for member-role orgs)
+          for (const [siteId] of siteMap) {
+            if (
+              teamGatedSiteIds.has(siteId) &&
+              !userTeamSiteIds.has(siteId) &&
+              !adminOrgSiteIds.has(siteId) &&
+              !explicitGrantSiteIds.has(siteId)
+            ) {
+              siteMap.delete(siteId);
+            }
+          }
+        }
+      }
+
+      return Array.from(siteMap.values());
     } catch (error) {
       console.error("Error getting sites user has access to:", error);
       // Remove from cache on error so it can be retried
@@ -102,8 +264,127 @@ export async function getSitesUserHasAccessTo(req: FastifyRequest, adminOnly = f
   return promise;
 }
 
+// Cache invalidation helper - call this when member site access changes
+export function invalidateSitesAccessCache(userId: string) {
+  sitesAccessCache.del(`${userId}:true`);
+  sitesAccessCache.del(`${userId}:false`);
+}
+
+/**
+ * Resolve the org membership role for a bearer-authenticated user, scoped to
+ * either an explicit organization or the organization owning a site.
+ */
+async function resolveBearerUserOrgRole(
+  userId: string,
+  options: { organizationId?: string; siteId?: string | number }
+): Promise<{ valid: boolean; role: string | null; userId?: string }> {
+  // Determine the organization ID - either directly provided or looked up from site
+  let organizationId = options.organizationId;
+
+  if (!organizationId && options.siteId) {
+    // Get the site's organization
+    const siteRecords = await db
+      .select({
+        organizationId: sites.organizationId,
+      })
+      .from(sites)
+      .where(eq(sites.siteId, Number(options.siteId)))
+      .limit(1);
+
+    if (siteRecords.length > 0 && siteRecords[0].organizationId) {
+      organizationId = siteRecords[0].organizationId;
+    }
+  }
+
+  if (organizationId) {
+    // Check if the bearer credential's user is a member of the organization
+    const userMembership = await db
+      .select()
+      .from(member)
+      .where(and(eq(member.userId, userId), eq(member.organizationId, organizationId)))
+      .limit(1);
+
+    if (userMembership.length > 0) {
+      return { valid: true, role: userMembership[0].role, userId };
+    }
+  }
+  return { valid: false, role: null };
+}
+
+export interface BearerAuthResult {
+  valid: boolean;
+  role: string | null;
+  userId?: string;
+  rateLimited?: boolean;
+  /**
+   * Scope statements carried by the credential. null = unrestricted (legacy
+   * key with no permissions, or OAuth token with no custom scopes). Guards
+   * enforce these; this function only carries them.
+   */
+  statements: ScopeStatements | null;
+}
+
+/**
+ * Verify a bearer credential (API key, or an OAuth access token from the MCP
+ * plugin) from the request and check organization membership.
+ * Returns rateLimited flag when the key is rejected due to rate limiting.
+ */
+export async function checkApiKey(
+  req: FastifyRequest,
+  options: { organizationId?: string; siteId?: string | number }
+): Promise<BearerAuthResult> {
+  const apiKey = resolveBearerTokenFromRequest(req);
+  if (!apiKey) {
+    return { valid: false, role: null, statements: null };
+  }
+
+  // Reuse the MCP gate's verification when this is an in-process proxy call, so
+  // a tool call doesn't verify (and rate-limit) the key a second time.
+  const identity =
+    consumeBearerHandoff(req.headers[INTERNAL_BEARER_HANDOFF_HEADER], apiKey) ??
+    (await resolveBearerIdentity(apiKey, bearerResolverDeps));
+
+  if (identity.status === "rate_limited") {
+    return { valid: false, role: null, rateLimited: true, statements: null };
+  }
+  if (identity.status === "valid" && identity.userId) {
+    const membership = await resolveBearerUserOrgRole(identity.userId, options);
+    return { ...membership, statements: identity.statements };
+  }
+  return { valid: false, role: null, statements: null };
+}
+
+export async function getUserIdFromRequest(req: FastifyRequest): Promise<string | null> {
+  if (req.user?.id) {
+    return req.user.id;
+  }
+
+  // First, check for session-based auth
+  const session = await getSessionFromReq(req);
+  if (session?.user?.id) {
+    return session.user.id;
+  }
+
+  // Fall back to bearer auth (API key or OAuth token).
+  const apiKey = resolveBearerTokenFromRequest(req);
+  if (apiKey) {
+    const identity =
+      consumeBearerHandoff(req.headers[INTERNAL_BEARER_HANDOFF_HEADER], apiKey) ??
+      (await resolveBearerIdentity(apiKey, bearerResolverDeps));
+    if (identity.status === "valid" && identity.userId) {
+      return identity.userId;
+    }
+  }
+
+  return null;
+}
+
 // for routes that are potentially public
-export async function getUserHasAccessToSitePublic(req: FastifyRequest, siteId: string | number) {
+export async function getUserHasAccessToSitePublic(
+  req: FastifyRequest,
+  siteId: string | number,
+  requiredScope?: ScopeRequirement
+) {
   const [userSites, config] = await Promise.all([getSitesUserHasAccessTo(req), siteConfig.getConfig(siteId)]);
 
   // Check if user has direct access to the site
@@ -123,53 +404,11 @@ export async function getUserHasAccessToSitePublic(req: FastifyRequest, siteId: 
     return true;
   }
 
-  // Check if a valid API key was provided
-  // Priority: 1. Authorization: Bearer header (recommended), 2. Query parameter (testing only)
-  const authHeader = req.headers["authorization"];
-  const bearerToken = authHeader && typeof authHeader === "string" && authHeader.startsWith("Bearer ")
-    ? authHeader.substring(7)
-    : null;
-
-  const queryApiKey = (req.query as any)?.api_key;
-  const apiKey = bearerToken || queryApiKey;
-
-  if (apiKey && typeof apiKey === "string") {
-    try {
-      // Verify the API key using Better Auth
-      const result = await auth.api.verifyApiKey({
-        body: { key: apiKey },
-      });
-
-      if (result.valid && result.key) {
-        // Get the userId from the API key
-        const apiKeyUserId = result.key.userId;
-
-        // Get the site's organization
-        const siteRecords = await db
-          .select({
-            organizationId: sites.organizationId,
-          })
-          .from(sites)
-          .where(eq(sites.siteId, Number(siteId)))
-          .limit(1);
-
-        if (siteRecords.length > 0 && siteRecords[0].organizationId) {
-          // Check if the API key's user is a member of the organization
-          const userMembership = await db
-            .select()
-            .from(member)
-            .where(and(eq(member.userId, apiKeyUserId), eq(member.organizationId, siteRecords[0].organizationId)))
-            .limit(1);
-
-          if (userMembership.length > 0) {
-            return true;
-          }
-        }
-      }
-    } catch (error) {
-      console.error("Error verifying API key:", error);
-      // Continue to return false if API key verification fails
-    }
+  // Bearer-credential fallback. Scopes apply here too — without this check a
+  // scoped key could reach any public-guard route on a private site.
+  const result = await checkApiKey(req, { siteId });
+  if (result.valid && (!requiredScope || hasScope(result.statements, requiredScope))) {
+    return true;
   }
 
   return false;

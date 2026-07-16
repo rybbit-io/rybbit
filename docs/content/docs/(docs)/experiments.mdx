@@ -1,0 +1,173 @@
+---
+title: Experiments
+description: Run A/B tests on feature flag variants and measure conversion lift
+---
+
+import { Callout } from 'fumadocs-ui/components/callout';
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+import { Step, Steps } from 'fumadocs-ui/components/steps';
+
+Experiments are A/B tests built on top of Rybbit. Each experiment splits your visitors across the variants of a [multivariate feature flag](/docs/feature-flags), then measures how often each variant completes a [conversion goal](/docs/goals). Rybbit calculates the conversion rate for every variant, the **lift** relative to your control, and how confident you can be that the difference is real.
+
+<Callout type="info">
+An experiment ties together two features you may already use: a **multivariate feature flag** decides which variant each visitor sees, and a **goal** defines the conversion you are optimizing for. If you understand those two pieces, you understand experiments.
+</Callout>
+
+## How Experiments Work
+
+An experiment has three moving parts:
+
+| Part | What it does |
+| --- | --- |
+| **Assignment** | A multivariate feature flag assigns each visitor to one stable variant (for example `control` or `variant_a`) based on its rollout percentages. |
+| **Exposure** | When your code reads the flag with `rybbit.flag()`, Rybbit records an exposure for that variant. Exposures are the denominator for each variant's conversion rate. |
+| **Conversion** | The experiment's primary goal — a page visit or a custom event — counts as a conversion for whichever variant the visitor was assigned. |
+
+Because assignment is sticky for a given visitor, a person sees the same variant on repeat visits, which keeps your results consistent.
+
+## Creating an Experiment
+
+Open your site in the Rybbit dashboard, go to **Experiments**, and click **New experiment**. A guided wizard walks you through each step.
+
+<Steps>
+<Step>
+### Basics
+
+Give the experiment a **name** and, optionally, a **hypothesis** and **description**. The hypothesis is internal context for your team — something like *"Changing the CTA copy will increase signups."* It does not affect assignment or tracking.
+
+New experiments are created as **drafts** so you can add the implementation code before any traffic is split.
+</Step>
+
+<Step>
+### Assignment
+
+Choose how visitors are split into variants:
+
+- **Create a new flag** — Define a new multivariate flag with its own variants and rollout split. Each variant needs a unique key, and the rollout percentages must add up to **100%**.
+- **Use an existing flag** — Pick a multivariate flag that is not already attached to another experiment.
+
+<Callout type="info">
+Each experiment uses its own multivariate flag. The flag's variant keys (such as `control` and `variant_a`) are what you branch on in code.
+</Callout>
+</Step>
+
+<Step>
+### Goal
+
+Pick the conversion you want to compare variants against:
+
+- **Create a new goal** — Define a **page goal** (a URL path such as `/signup/complete`) or an **event goal** (a custom event such as `signup_completed`). The form provides autocomplete suggestions based on paths and events already seen on your site.
+- **Use an existing goal** — Connect a goal you already track.
+- **Skip for now** — Create the experiment without a goal and add one later. Conversion results require a goal.
+</Step>
+
+<Step>
+### Review and Implement
+
+Review the assignment flag and goal, then create the experiment. Rybbit creates any new flag or goal you configured, connects them, and shows you the **implementation code** for the flag. The experiment stays in **draft** until you start it from the experiment list.
+</Step>
+</Steps>
+
+## Implementing in Code
+
+Read the experiment's flag in your app and branch your UI or behavior on the returned variant. Reading the flag also records the exposure that powers your results, so make sure it runs wherever the tested experience is shown.
+
+<Tabs items={['JavaScript', 'TypeScript']}>
+<Tab value="JavaScript">
+```javascript
+window.rybbit.onReady((rybbit) => {
+  const variant = rybbit.flag("checkout_cta", "control");
+
+  if (variant === "variant_a") {
+    // Render the variant experience.
+  } else {
+    // Render the control experience.
+  }
+});
+```
+</Tab>
+<Tab value="TypeScript">
+```typescript
+type ExperimentVariant = "control" | "variant_a";
+
+window.rybbit.onReady((rybbit) => {
+  const variant = rybbit.flag("checkout_cta", "control") as ExperimentVariant;
+
+  switch (variant) {
+    case "variant_a":
+      // Render the variant experience.
+      break;
+    default:
+      // Render the control experience.
+      break;
+  }
+});
+```
+</Tab>
+</Tabs>
+
+If your primary goal is an **event goal**, fire that event when the conversion action happens:
+
+```javascript
+window.rybbit.onReady((rybbit) => {
+  rybbit.event("signup_completed");
+});
+```
+
+**Page goals** need no extra code — Rybbit counts sessions that reach the goal's path automatically.
+
+<Callout type="info">
+Use a stable variant for the `rybbit.flag()` fallback (usually `"control"`) so visitors still get a sensible experience before the flag resolves or if the experiment is paused.
+</Callout>
+
+## Reading Results
+
+Each experiment shows a results panel comparing every variant. Results respect the global date range and filters applied on the page.
+
+| Metric | Description |
+| --- | --- |
+| **Variant** | The variant key, with the **Control** marked as the baseline. |
+| **Sessions** | Sessions exposed to that variant, alongside the number that converted. |
+| **Conversion rate** | Conversions divided by exposures for that variant. |
+| **Lift** | The percentage change in conversion rate relative to the control. Positive lift is shown in green, negative in red. |
+| **Confidence** | How confident Rybbit is that the variant's difference from the control is real, based on a two-proportion comparison. |
+
+Rybbit summarizes the state of each experiment at a glance:
+
+- **Gathering data** — Not enough exposures or conversions yet to draw a conclusion.
+- **Leading** — A variant is outperforming the control with at least **95% confidence**.
+- **Winner** — The variant recorded as the winner once the experiment is decided.
+
+<Callout type="warn">
+Avoid stopping an experiment the moment a variant looks ahead. Let it run until it reaches 95% confidence with a meaningful number of conversions, otherwise early noise can masquerade as a real difference.
+</Callout>
+
+## Experiment Lifecycle
+
+Experiments move through four statuses, which you control from the experiment list:
+
+| Status | Meaning |
+| --- | --- |
+| **Draft** | Created but not yet collecting results. Add your implementation code here. |
+| **Running** | Actively splitting traffic and recording exposures and conversions. |
+| **Paused** | Temporarily stopped. Visitors keep their existing assignments. |
+| **Completed** | Finished. Use this once you have a result and have shipped (or rolled back) the change. |
+
+Use **Start**, **Pause**, and **Complete** on each experiment to move between states.
+
+## Best Practices
+
+- Change one thing at a time so you can attribute any lift to a single difference.
+- Make sure your variant rollout percentages add up to 100% unless you intentionally want unassigned traffic.
+- Read the flag wherever the tested experience renders so every exposed visitor is counted.
+- Pick a primary goal that directly reflects the outcome you care about, not a proxy metric.
+- Wait for 95% confidence and a healthy sample size before declaring a winner.
+- After completing an experiment, ship the winning variant and remove the flag branch to keep your code clean.
+
+---
+
+**Related Documentation:**
+- [Feature Flags](/docs/feature-flags) — The assignment mechanism behind experiments
+- [Goals](/docs/goals) — Define the conversion an experiment measures
+- [Track Events](/docs/track-events) — Fire custom events for event goals
+- [Tracking Script](/docs/script) — Load the script and use `onReady()`

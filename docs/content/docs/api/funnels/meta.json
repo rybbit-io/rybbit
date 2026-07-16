@@ -1,0 +1,4 @@
+{
+  "title": "Funnels",
+  "pages": ["list", "analyze", "step-sessions", "create", "delete"]
+}

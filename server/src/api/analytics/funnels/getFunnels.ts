@@ -6,19 +6,19 @@ import { funnels as funnelsTable } from "../../../db/postgres/schema.js";
 export async function getFunnels(
   request: FastifyRequest<{
     Params: {
-      site: string;
+      siteId: string;
     };
   }>,
   reply: FastifyReply
 ) {
-  const { site } = request.params;
+  const { siteId } = request.params;
 
   try {
     // Fetch all funnels for the site
     const funnelRecords = await db
       .select()
       .from(funnelsTable)
-      .where(eq(funnelsTable.siteId, Number(site)))
+      .where(eq(funnelsTable.siteId, Number(siteId)))
       .orderBy(funnelsTable.createdAt);
 
     // Transform the records to a more frontend-friendly structure

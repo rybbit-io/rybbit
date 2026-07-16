@@ -10,14 +10,14 @@ import { GetGSCStatusRequest } from "./types.js";
  */
 export async function getGSCStatus(req: FastifyRequest<GetGSCStatusRequest>, res: FastifyReply) {
   try {
-    const { site } = req.params;
-    const siteId = Number(site);
+    const { siteId } = req.params;
+    const numericSiteId = Number(siteId);
 
-    if (isNaN(siteId)) {
+    if (isNaN(numericSiteId)) {
       return res.status(400).send({ error: "Invalid site ID" });
     }
 
-    const [connection] = await db.select().from(gscConnections).where(eq(gscConnections.siteId, siteId));
+    const [connection] = await db.select().from(gscConnections).where(eq(gscConnections.siteId, numericSiteId));
 
     if (!connection) {
       return res.send({

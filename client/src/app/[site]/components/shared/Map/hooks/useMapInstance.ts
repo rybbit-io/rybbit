@@ -1,5 +1,6 @@
 import { FilterParameter } from "@rybbit/shared";
 import Map from "ol/Map";
+import { unByKey as dispose } from "ol/Observable";
 import View from "ol/View";
 import { fromLonLat } from "ol/proj";
 import { useEffect, useRef } from "react";
@@ -62,17 +63,18 @@ export function useMapInstance({
     mapInstanceRef.current = map;
 
     // Handle zoom changes
-    map.getView().on("change:resolution", () => {
+    const handleResolutionChange = () => {
       const currentZoom = map.getView().getZoom() || 1;
       const newMapView = currentZoom >= 5 ? "subdivisions" : "countries";
       if (newMapView !== mapViewRef.current) {
         setInternalMapView(newMapView);
         setTooltipContent(null);
       }
-    });
+    };
+    const resolutionChangeKey = map.getView().on("change:resolution", handleResolutionChange);
 
     // Handle pointer move for hover effects
-    map.on("pointermove", evt => {
+    const handlePointerMove = (evt: any) => {
       if (evt.dragging) {
         return;
       }
@@ -112,10 +114,11 @@ export function useMapInstance({
         setHoveredId(null);
         setTooltipContent(null);
       }
-    });
+    };
+    const pointerMoveKey = map.on("pointermove", handlePointerMove);
 
     // Handle click for filtering
-    map.on("click", evt => {
+    const handleClick = (evt: any) => {
       const pixel = map.getEventPixel(evt.originalEvent);
       const feature = map.forEachFeatureAtPixel(pixel, feature => feature);
 
@@ -131,9 +134,11 @@ export function useMapInstance({
           type: "equals",
         });
       }
-    });
+    };
+    const clickKey = map.on("click", handleClick);
 
     return () => {
+      dispose([resolutionChangeKey, pointerMoveKey, clickKey]);
       map.setTarget(undefined);
     };
   }, []);

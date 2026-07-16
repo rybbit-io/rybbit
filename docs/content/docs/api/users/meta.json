@@ -1,0 +1,4 @@
+{
+  "title": "Users",
+  "pages": ["list", "session-count", "info"]
+}

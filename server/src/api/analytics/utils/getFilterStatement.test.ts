@@ -36,6 +36,12 @@ describe("getSqlParam", () => {
     });
   });
 
+  describe("Feature flag parameters", () => {
+    it("should handle feature_flag:key", () => {
+      expect(getSqlParam("feature_flag:new_checkout" as FilterParameter)).toBe("feature_flags['new_checkout']");
+    });
+  });
+
   describe("Special parameters", () => {
     it("should handle referrer", () => {
       expect(getSqlParam("referrer")).toBe("domainWithoutWWW(referrer)");
@@ -136,10 +142,10 @@ describe("getFilterStatement", () => {
       expect(result).toBe("AND browser != 'Chrome'");
     });
 
-    it("should handle multiple not_equals values", () => {
+    it("should handle multiple not_equals values with NOT IN semantics", () => {
       const filters = JSON.stringify([{ parameter: "browser", type: "not_equals", value: ["Chrome", "Firefox"] }]);
       const result = getFilterStatement(filters);
-      expect(result).toBe("AND (browser != 'Chrome' OR browser != 'Firefox')");
+      expect(result).toBe("AND (browser != 'Chrome' AND browser != 'Firefox')");
     });
   });
 
@@ -274,6 +280,29 @@ describe("getFilterStatement", () => {
       const filters = JSON.stringify([{ parameter: "event_name", type: "equals", value: ["click"] }]);
       const result = getFilterStatement(filters, 123, "AND timestamp > now() - INTERVAL 1 DAY");
       expect(result).toContain("timestamp > now() - INTERVAL 1 DAY");
+    });
+  });
+
+  describe("Channel session acquisition filter", () => {
+    it("should filter by the first attributed channel in each session", () => {
+      const filters = JSON.stringify([{ parameter: "channel", type: "equals", value: ["Organic Search"] }]);
+      const result = getFilterStatement(filters, 123, "AND timestamp > now() - INTERVAL 1 DAY");
+
+      expect(result).toContain("session_id IN");
+      expect(result).toContain("argMinIf(channel, timestamp, channel NOT IN ('Direct', 'Internal', ''))");
+      expect(result).toContain("AS session_channel");
+      expect(result).toContain("site_id = 123");
+      expect(result).toContain("timestamp > now() - INTERVAL 1 DAY");
+      expect(result).toContain("session_channel = 'Organic Search'");
+    });
+
+    it("should allow callers to opt out of session-level channel filtering", () => {
+      const filters = JSON.stringify([{ parameter: "channel", type: "equals", value: ["Organic Search"] }]);
+      const result = getFilterStatement(filters, undefined, undefined, {
+        sessionLevelParams: ["event_name"],
+      });
+
+      expect(result).toBe("AND channel = 'Organic Search'");
     });
   });
 

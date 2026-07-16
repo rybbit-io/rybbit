@@ -1,6 +1,7 @@
 import { useNivoTheme } from "@/lib/nivo";
 import { ResponsiveLine } from "@nivo/line";
 import { DateTime } from "luxon";
+import { useExtracted } from "next-intl";
 import { useMemo } from "react";
 import { GetOverviewBucketedResponse } from "../api/analytics/endpoints";
 import { formatChartDateTime } from "../lib/dateTimeUtils";
@@ -12,6 +13,7 @@ interface SiteSessionChartProps {
 }
 
 export function SiteSessionChart({ data }: SiteSessionChartProps) {
+  const t = useExtracted();
   const { bucket } = useStore();
   const chartData = useMemo(() => {
     if (!data || data.length === 0) {
@@ -79,7 +81,7 @@ export function SiteSessionChart({ data }: SiteSessionChartProps) {
         return (
           <ChartTooltip>
             <div className="p-2">
-              <div className="text-xs mb-1">Sessions</div>
+              <div className="text-xs mb-1">{t("Sessions")}</div>
               <div className="flex justify-between text-xs gap-3">
                 <div className="text-muted-foreground">{formatChartDateTime(currentTime, bucket)}</div>
                 <div className="font-medium">{currentY.toLocaleString()}</div>

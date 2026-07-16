@@ -1,8 +1,8 @@
 import { FastifyReply, FastifyRequest } from "fastify";
 import { clickhouse } from "../../db/clickhouse/clickhouse.js";
 
-export async function getSiteHasData(request: FastifyRequest<{ Params: { site: string } }>, reply: FastifyReply) {
-  const { site } = request.params;
+export async function getSiteHasData(request: FastifyRequest<{ Params: { siteId: string } }>, reply: FastifyReply) {
+  const { siteId } = request.params;
 
   try {
     // Check if site has data using original method
@@ -11,7 +11,7 @@ export async function getSiteHasData(request: FastifyRequest<{ Params: { site: s
         query: `SELECT count(*) as count FROM events WHERE site_id = {siteId:Int32}`,
         format: "JSONEachRow",
         query_params: {
-          siteId: Number(site),
+          siteId: Number(siteId),
         },
       })
       .then(res => res.json());

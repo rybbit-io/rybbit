@@ -1,0 +1,83 @@
+---
+title: Widget Embeds
+description: Embed a compact live visitor widget on your own site
+---
+
+import { Callout } from 'fumadocs-ui/components/callout';
+import { EmbedWidgetDemo } from '@/components/EmbedWidgetDemo';
+
+Widget Embeds let you place a compact live visitor widget on another site with a self-contained iframe. There is no script tag, no JavaScript on your site, and no dependency on the Rybbit tracking script.
+
+## Try It
+
+Configure the widget below to see how it'll look. The preview shows live data from [demo.rybbit.com](https://demo.rybbit.com).
+
+<EmbedWidgetDemo />
+
+## Requirements
+
+The widget needs a public read-only data endpoint, so you must enable **Widget Embeds** on the site. This is separate from **Public Analytics**. Turning it on only exposes the live count, time series, and top countries to the widget endpoint, not your full dashboard.
+
+<Callout type="info">
+  Enabling Widget Embeds does **not** make your dashboard public. Only the data shown in the widget itself (visitor count, per-minute / per-hour / per-day series, top 5 countries) is accessible; no individual sessions, events, pages, or referrers are exposed.
+</Callout>
+
+## Setup
+
+1. Open your site in the Rybbit dashboard and click the settings icon.
+2. Go to the **Widget Embeds** tab.
+3. Toggle **Widget Enabled** on.
+4. Pick your options: variant, time window, theme, accent color, and display settings.
+5. Copy the generated `<iframe>` snippet and paste it anywhere on your site.
+
+## Variants
+
+### Card
+
+A self-contained dashboard card showing the live count, an optional bar chart of users over time, and an optional list of top countries.
+
+| Option        | Values                         | Default | Description                                              |
+| ------------- | ------------------------------ | ------- | -------------------------------------------------------- |
+| Time window   | 30 minutes / 24 hours / 7 days | 30 min  | Window the count and chart cover                         |
+| Bar chart     | on / off                       | on      | Show a bar chart bucketed per minute / hour / day        |
+| Top countries | on / off                       | on      | List the top 5 countries in the window                   |
+| Width         | 240-800 px                     | 360 px  | Iframe width; use `max-width: 100%` for responsive sites |
+
+### Inline Pill
+
+A compact pill that fits inline with your site's chrome, such as in a header or footer. It shows the pulsing dot, the live count over the last 30 minutes, and the Rybbit wordmark.
+
+## Appearance
+
+- **Theme**: `dark` or `light`. The widget background is transparent, so rounded-corner edges blend into whatever sits behind the iframe.
+- **Accent color**: any hex color. Used for the pulsing live-indicator dot and the bar-chart bars. Defaults to Rybbit emerald.
+
+## Example
+
+```html
+<iframe
+  src="https://app.rybbit.io/widget/YOUR_SITE_ID?variant=card&theme=dark&minutes=30&chart=true&countries=true"
+  style="border: 0; width: 360px; height: 390px; max-width: 100%;"
+  loading="lazy"
+  title="Live visitors"
+></iframe>
+```
+
+If you self-host Rybbit, replace `app.rybbit.io` with your own domain.
+
+## URL Parameters
+
+You don't usually need to build the URL by hand because the dashboard generates the snippet for you, but the widget URL accepts these parameters:
+
+| Parameter   | Values                                  | Description                                |
+| ----------- | --------------------------------------- | ------------------------------------------ |
+| `variant`   | `card`, `inline`                        | Layout variant                             |
+| `theme`     | `dark`, `light`                         | Color scheme                               |
+| `accent`    | 6-character hex, no `#`, e.g. `10b981`  | Pulse / bar color                          |
+| `minutes`   | `30`, `1440`, `10080`                   | Time window in minutes, card variant only  |
+| `chart`     | `true`, `false`                         | Show the bar chart, card variant only      |
+| `countries` | `true`, `false`                         | Show top countries, card variant only      |
+
+## Caching
+
+The widget HTML and the underlying stats endpoint are both cached for 60 seconds on the server, so embedding the widget on a high-traffic page won't put pressure on your Rybbit instance. The visible count refreshes once per minute.

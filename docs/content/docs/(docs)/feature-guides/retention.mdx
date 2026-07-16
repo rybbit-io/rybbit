@@ -1,0 +1,44 @@
+---
+title: Retention
+description: Measure how many users return over time
+---
+
+![Retention Dashboard](/blog/rybbit_retention_dashboard.png)
+
+Retention analysis shows how many users come back to your site over time, revealing whether users find lasting value.
+
+## Understanding Cohorts
+
+A cohort is a group of users who share a common start date. For example, all users who first visited on January 15th form one cohort.
+
+## Reading the Retention Table
+
+### Rows
+Each row is a different cohort, grouped by first visit date.
+
+### Columns
+- **Day/Week 0** - Starting point (always 100%)
+- **Day/Week 1, 2, 3...** - Users who returned after that period
+
+### Numbers
+Percentages show what portion of the original cohort returned. 40% in the "Day 7" column means 40% of users came back after a week.
+
+### Color Coding
+- Lighter colors = higher retention
+- Darker colors = more drop-off
+
+## Key Insights
+
+- **Day 1 retention** - Did users find enough value to return the next day?
+- **Day 7 retention** - Did users integrate your product into their routine?
+- **Day 30 retention** - Have users formed a habit?
+
+## Common Patterns
+
+- **Cliff drop** - Sharp decline in first few days indicates onboarding issues
+- **Steady decline** - Gradual drop suggests novelty wearing off
+- **Plateau** - When retention levels off, you've found your core users
+
+## Note on User ID Salting
+
+If [User ID Salting](/docs/site-settings) is enabled, retention beyond 24 hours becomes less accurate since user identifiers reset daily.

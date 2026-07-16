@@ -1,12 +1,12 @@
 import {
   Body,
-  Button,
   Container,
   Head,
-  Heading,
+  Hr,
   Html,
+  Img,
+  Link,
   Preview,
-  Section,
   Text,
   Tailwind,
   pixelBasedPreset,
@@ -26,7 +26,7 @@ export const InvitationEmail = ({ email, invitedBy, organizationName, inviteLink
   return (
     <Html>
       <Head />
-      <Preview>You're Invited to Join {organizationName} on Rybbit</Preview>
+      <Preview>You're invited to join {organizationName} on Rybbit</Preview>
       <Tailwind
         config={{
           presets: [pixelBasedPreset],
@@ -34,8 +34,6 @@ export const InvitationEmail = ({ email, invitedBy, organizationName, inviteLink
             extend: {
               colors: {
                 brand: "#10b981",
-                lightBg: "#ffffff",
-                cardBg: "#f9fafb",
                 darkText: "#111827",
                 mutedText: "#6b7280",
                 borderColor: "#e5e7eb",
@@ -44,41 +42,39 @@ export const InvitationEmail = ({ email, invitedBy, organizationName, inviteLink
           },
         }}
       >
-        <Body className="bg-lightBg font-sans">
-          <Container className="mx-auto py-10 px-6 max-w-[600px]">
-            <Section className="text-center">
-              <div className="inline-block bg-brand/10 text-brand px-3 py-1.5 rounded-full text-sm font-medium mb-4">
-                New Invitation
-              </div>
-              <Heading className="text-darkText text-3xl font-semibold mb-6">You've Been Invited!</Heading>
-            </Section>
+        <Body className="bg-white font-sans">
+          <Container className="mx-auto py-8 px-6 max-w-[600px]">
+            <Img
+              src="https://app.rybbit.io/rybbit/horizontal_black.svg"
+              alt="Rybbit"
+              width="120"
+              height="28"
+              className="mb-8"
+            />
 
-            <Section className="mb-8">
-              <Text className="text-darkText text-base leading-relaxed mb-4">
-                {invitedBy} has invited you to join <span className="font-bold text-brand">{organizationName}</span> on
-                Rybbit Analytics.
-              </Text>
-              <Text className="text-darkText text-base leading-relaxed">
-                Rybbit is an open-source analytics platform that helps you understand your website traffic while
-                respecting user privacy.
-              </Text>
-            </Section>
+            <Text className="text-darkText text-base leading-relaxed mb-4">Hi there,</Text>
 
-            <Section className="text-center mb-10">
-              <Button
-                href={inviteLink}
-                className="bg-brand text-white px-8 py-3 rounded-md font-bold text-base no-underline inline-block"
-              >
-                Accept Invitation
-              </Button>
-            </Section>
+            <Text className="text-darkText text-base leading-relaxed mb-4">
+              {invitedBy} has invited you to join <span className="font-semibold">{organizationName}</span> on Rybbit
+              Analytics.
+            </Text>
 
-            <Section className="text-center border-t border-borderColor pt-5">
-              <Text className="text-mutedText text-xs mb-2">
-                This invitation was sent to <span className="text-brand">{email}</span>.
-              </Text>
-              <Text className="text-mutedText text-xs">© {currentYear} Rybbit Analytics</Text>
-            </Section>
+            <Text className="text-darkText text-base leading-relaxed mb-4">
+              Rybbit is an open-source analytics platform that helps you understand your website traffic while
+              respecting user privacy.
+            </Text>
+
+            <Text className="text-darkText text-base leading-relaxed mb-4">
+              <Link href={inviteLink} className="text-brand underline">
+                Accept the invitation
+              </Link>
+            </Text>
+
+            <Text className="text-mutedText text-sm leading-relaxed">This invitation was sent to {email}.</Text>
+
+            <Hr className="border-borderColor my-8" />
+
+            <Text className="text-mutedText text-xs">© {currentYear} Rybbit Analytics</Text>
           </Container>
         </Body>
       </Tailwind>

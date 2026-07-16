@@ -46,3 +46,13 @@ coverage/
 .cursor/
 
 .claude/
+
+.codex/
+
+.agents/
+
+.deepsec/
+
+.github/
+
+.impeccable/critique

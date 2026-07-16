@@ -1,0 +1,193 @@
+---
+title: Build a Live Visitor Feed
+description: Poll the live visitor count and the events endpoint to build a real-time activity stream — the foundation for a live dashboard, an internal "who's online" widget, or an alert when a key page gets traffic.
+---
+
+import { Callout } from 'fumadocs-ui/components/callout';
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+import { Step, Steps } from 'fumadocs-ui/components/steps';
+
+Rybbit doesn't push a websocket stream, but the events endpoint is built for polling: pass a `since_timestamp` and you get only the events that happened after it. This guide builds a self-advancing feed loop you can wire into a dashboard, a terminal ticker, or an alerting rule.
+
+**Endpoints used:**
+
+- [`GET /live-user-count`](/docs/api/overview/live-visitors) — how many visitors are active right now
+- [`GET /events`](/docs/api/events/list) — the event stream, polled incrementally
+
+## How incremental polling works
+
+The events endpoint returns the newest events first. To stream without duplicates, remember the timestamp of the most recent event you've seen and send it as `since_timestamp` on the next request — the API returns only events newer than that, up to 500 per call.
+
+<Steps>
+<Step>
+**Fetch the initial batch** to establish a starting watermark (the newest timestamp).
+</Step>
+<Step>
+**On an interval, request events `since_timestamp`** = your watermark.
+</Step>
+<Step>
+**Process the new events** (print, render, alert) and advance the watermark to the newest one returned.
+</Step>
+</Steps>
+
+<Callout type="info">
+`since_timestamp` returns up to **500** events per call. If you expect more than 500 events between polls (a very high-traffic site with a long interval), poll more frequently so each batch stays under the cap.
+</Callout>
+
+## Full script
+
+A Node script that prints a live count plus a rolling feed of activity. The same loop drives a browser dashboard — just replace `console.log` with DOM updates.
+
+<Tabs items={['JavaScript', 'Python']}>
+<Tab value="JavaScript">
+```javascript title="live-feed.js"
+const API = 'https://app.rybbit.io';
+const SITE = '123';
+const API_KEY = process.env.RYBBIT_API_KEY;
+const POLL_MS = 10000; // every 10 seconds
+
+async function get(path, params = {}) {
+  const url = new URL(`${API}/api/sites/${SITE}${path}`);
+  Object.entries(params).forEach(([k, v]) => url.searchParams.set(k, v));
+  const res = await fetch(url, { headers: { Authorization: `Bearer ${API_KEY}` } });
+  if (!res.ok) throw new Error(`${path} failed: ${res.status}`);
+  return res.json();
+}
+
+async function liveCount() {
+  const { count } = await get('/live-user-count', { minutes: 5 });
+  return count;
+}
+
+function describe(e) {
+  const where = e.city ? `${e.city}, ${e.country}` : e.country || 'Unknown';
+  if (e.type === 'pageview')     return `👀 viewed ${e.pathname} — ${where}`;
+  if (e.type === 'custom_event') return `⚡ ${e.event_name} (${e.pathname}) — ${where}`;
+  if (e.type === 'outbound')     return `↗️  left via ${e.pathname} — ${where}`;
+  return `• ${e.type} — ${where}`;
+}
+
+let watermark = null; // ISO timestamp of the newest event we've shown
+
+async function poll() {
+  try {
+    const params = watermark ? { since_timestamp: watermark } : { page_size: 20 };
+    const [{ data: events }, count] = await Promise.all([get('/events', params), liveCount()]);
+
+    // Events come back newest-first; show oldest-first so the feed reads top-to-bottom
+    for (const e of [...events].reverse()) {
+      console.log(`[${new Date(e.timestamp).toLocaleTimeString()}] ${describe(e)}`);
+    }
+    if (events.length) watermark = events[0].timestamp; // newest event becomes the new watermark
+
+    process.stdout.write(`\n🟢 ${count} visitors online\n`);
+  } catch (err) {
+    console.error('poll error:', err.message);
+  }
+}
+
+console.log('Starting live feed… (Ctrl+C to stop)');
+poll();
+setInterval(poll, POLL_MS);
+```
+</Tab>
+<Tab value="Python">
+```python title="live_feed.py"
+import os, time
+from datetime import datetime
+import requests
+
+API = "https://app.rybbit.io"
+SITE = "123"
+API_KEY = os.environ["RYBBIT_API_KEY"]
+POLL_SECONDS = 10
+
+session = requests.Session()
+session.headers["Authorization"] = f"Bearer {API_KEY}"
+
+
+def get(path, **params):
+    res = session.get(f"{API}/api/sites/{SITE}{path}", params=params)
+    res.raise_for_status()
+    return res.json()
+
+
+def live_count():
+    return get("/live-user-count", minutes=5)["count"]
+
+
+def describe(e):
+    where = f'{e["city"]}, {e["country"]}' if e.get("city") else e.get("country") or "Unknown"
+    if e["type"] == "pageview":
+        return f'👀 viewed {e["pathname"]} — {where}'
+    if e["type"] == "custom_event":
+        return f'⚡ {e["event_name"]} ({e["pathname"]}) — {where}'
+    if e["type"] == "outbound":
+        return f'↗️  left via {e["pathname"]} — {where}'
+    return f'• {e["type"]} — {where}'
+
+
+watermark = None  # ISO timestamp of the newest event we've shown
+
+print("Starting live feed… (Ctrl+C to stop)")
+while True:
+    try:
+        params = {"since_timestamp": watermark} if watermark else {"page_size": 20}
+        events = get("/events", **params)["data"]
+
+        # Events come back newest-first; show oldest-first so the feed reads top-to-bottom
+        for e in reversed(events):
+            ts = datetime.fromisoformat(e["timestamp"].replace("Z", "+00:00")).strftime("%H:%M:%S")
+            print(f"[{ts}] {describe(e)}")
+        if events:
+            watermark = events[0]["timestamp"]  # newest event becomes the new watermark
+
+        print(f"\n🟢 {live_count()} visitors online\n")
+    except Exception as err:
+        print(f"poll error: {err}")
+    time.sleep(POLL_SECONDS)
+```
+</Tab>
+</Tabs>
+
+## Example output
+
+```text
+Starting live feed… (Ctrl+C to stop)
+[14:22:01] 👀 viewed /pricing — San Francisco, US
+[14:22:03] ⚡ signup (/signup) — London, GB
+[14:22:05] ↗️  left via /docs — Berlin, DE
+
+🟢 42 visitors online
+```
+
+## Turn it into an alert
+
+Because each poll hands you the raw events, you can act on them instead of just printing. For example, ping a channel whenever someone hits your enterprise pricing page:
+
+<Tabs items={['JavaScript']}>
+<Tab value="JavaScript">
+```javascript title="React to specific events"
+for (const e of events) {
+  if (e.type === 'pageview' && e.pathname === '/enterprise') {
+    await fetch(process.env.SLACK_WEBHOOK, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        text: `🏢 Enterprise page visit from ${e.city || e.country} (${e.referrer || 'direct'})`,
+      }),
+    });
+  }
+}
+```
+</Tab>
+</Tabs>
+
+<Callout type="warn">
+**Mind the rate limits.** On Rybbit Cloud, API keys are capped per minute by plan (see [Rate Limits](/docs/api/getting-started#rate-limits-cloud-only)). A 10-second poll is 6 requests/minute — well within the Standard tier. If you add the live-count call, that's 12/minute. Lengthen the interval or drop the count call if you're close to your limit. Self-hosted instances have no limit.
+</Callout>
+
+## Next steps
+
+- [Events API reference](/docs/api/events/list) — full event object fields, plus `before_timestamp` for scrolling backwards through history.
+- [Export Raw Events to Your Warehouse](/docs/api/export-events) — the same `since_timestamp` mechanism, used for durable incremental syncs instead of a live view.

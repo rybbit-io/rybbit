@@ -1,11 +1,12 @@
 import { FastifyReply, FastifyRequest } from "fastify";
-import { eq, and } from "drizzle-orm";
+import { eq, and, sql } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "../../db/postgres/postgres.js";
+import { clickhouse } from "../../db/clickhouse/clickhouse.js";
 import { userProfiles, userAliases } from "../../db/postgres/schema.js";
 import { siteConfig } from "../../lib/siteConfig.js";
 import { userIdService } from "../userId/userIdService.js";
-import { getIpAddress } from "../../utils.js";
+import { resolveClientIp } from "./resolveClientIp.js";
 import { createServiceLogger } from "../../lib/logger/logger.js";
 
 const logger = createServiceLogger("identify-service");
@@ -16,12 +17,15 @@ const MAX_TRAITS_SIZE = 2048;
 // Validation schema for identify requests
 const identifyPayloadSchema = z.object({
   site_id: z.string().min(1),
+  anonymous_id: z.string().min(1).max(255).optional(),
   user_id: z.string().min(1).max(255),
+  ip_address: z.string().ip().optional(),
+  user_agent: z.string().max(512).optional(),
   traits: z
     .record(z.unknown())
     .optional()
     .refine(
-      (traits) => {
+      traits => {
         if (!traits) return true;
         const size = new TextEncoder().encode(JSON.stringify(traits)).length;
         return size <= MAX_TRAITS_SIZE;
@@ -30,6 +34,42 @@ const identifyPayloadSchema = z.object({
     ),
   is_new_identify: z.boolean().default(true),
 });
+
+// Backfill window limits partition scanning to recent data only.
+// Anonymous events older than this are unlikely to belong to the identifying user.
+const BACKFILL_DAYS = 30;
+
+// days: null backfills the device's full history — only for explicit admin
+// actions (dashboard identify), where the operator asserts the whole history
+// belongs to this user and the unbounded partition scan is a one-off.
+export async function backfillIdentifiedUserId(
+  siteId: number,
+  anonymousId: string,
+  userId: string,
+  days: number | null = BACKFILL_DAYS
+) {
+  try {
+    // session_replay_metadata has no `timestamp` column; its time column is
+    // `start_time`. Using `timestamp` there throws ClickHouse error 47
+    // (UNKNOWN_IDENTIFIER), so map each table to its actual time column.
+    const tables: Array<{ name: string; timeColumn: string }> = [
+      { name: "events", timeColumn: "timestamp" },
+      { name: "session_replay_events", timeColumn: "timestamp" },
+      { name: "session_replay_metadata", timeColumn: "start_time" },
+    ];
+    for (const { name, timeColumn } of tables) {
+      await clickhouse.command({
+        query: `ALTER TABLE ${name} UPDATE identified_user_id = {userId: String} WHERE site_id = {siteId: UInt16} AND user_id = {anonymousId: String} AND identified_user_id = ''${
+          days !== null ? ` AND ${timeColumn} >= now() - INTERVAL {days: UInt16} DAY` : ""
+        }`,
+        query_params: { userId, siteId, anonymousId, ...(days !== null ? { days } : {}) },
+      });
+    }
+    logger.info({ siteId, anonymousId, userId }, "Backfilled identified_user_id in ClickHouse");
+  } catch (error) {
+    logger.error({ siteId, anonymousId, userId, error }, "Error backfilling identified_user_id");
+  }
+}
 
 export async function handleIdentify(request: FastifyRequest, reply: FastifyReply) {
   try {
@@ -43,7 +83,7 @@ export async function handleIdentify(request: FastifyRequest, reply: FastifyRepl
       });
     }
 
-    const { site_id, user_id, traits, is_new_identify } = validationResult.data;
+    const { site_id, anonymous_id, user_id, traits, is_new_identify, ip_address, user_agent } = validationResult.data;
 
     // Get site configuration
     const siteConfiguration = await siteConfig.getConfig(site_id);
@@ -56,13 +96,25 @@ export async function handleIdentify(request: FastifyRequest, reply: FastifyRepl
 
     const siteId = siteConfiguration.siteId;
 
-    // Compute anonymous_id from request (same logic as tracking)
-    const ipAddress = getIpAddress(request);
-    const userAgent = request.headers["user-agent"] || "";
-    const anonymousId = await userIdService.generateUserId(ipAddress, userAgent, siteId);
+    const anonymousId = anonymous_id
+      ? await userIdService.generateUserIdFromClientId(anonymous_id, siteId)
+      : await userIdService.generateUserId(
+          ip_address || resolveClientIp(request),
+          user_agent || request.headers["user-agent"] || "",
+          siteId
+        );
 
     // Create alias if this is a new identify call (links anonymous_id to user_id)
     if (is_new_identify) {
+      // Ensure a user_profiles row exists at identify time so the user is
+      // discoverable via search/inventory queries even when no traits are set,
+      // and so createdAt reflects identification time rather than first setTraits.
+      try {
+        await db.insert(userProfiles).values({ siteId, userId: user_id }).onConflictDoNothing();
+      } catch (error) {
+        logger.error({ siteId, userId: user_id, error }, "Error creating user profile shell");
+      }
+
       try {
         // Check if alias already exists
         const existingAlias = await db
@@ -78,19 +130,14 @@ export async function handleIdentify(request: FastifyRequest, reply: FastifyRepl
             anonymousId,
             userId: user_id,
           });
-
-          logger.info({ siteId, anonymousId, userId: user_id }, "Created new user alias");
+          // Fire-and-forget: backfill identified_user_id on past anonymous events
+          backfillIdentifiedUserId(siteId, anonymousId, user_id);
         } else if (existingAlias[0].userId !== user_id) {
-          // Anonymous ID already linked to a different user - log but don't error
-          logger.warn(
-            {
-              siteId,
-              anonymousId,
-              existingUserId: existingAlias[0].userId,
-              newUserId: user_id,
-            },
-            "Anonymous ID already linked to different user"
-          );
+          // Update alias to point to new user
+          await db
+            .update(userAliases)
+            .set({ userId: user_id })
+            .where(and(eq(userAliases.siteId, siteId), eq(userAliases.anonymousId, anonymousId)));
         }
       } catch (error) {
         // Handle unique constraint violation gracefully (race condition)
@@ -98,51 +145,33 @@ export async function handleIdentify(request: FastifyRequest, reply: FastifyRepl
       }
     }
 
-    // Update or create user profile with traits
+    // Atomic upsert: merge non-null traits and remove keys explicitly set to null.
     if (traits && Object.keys(traits).length > 0) {
       try {
-        const existingProfile = await db
-          .select()
-          .from(userProfiles)
-          .where(and(eq(userProfiles.siteId, siteId), eq(userProfiles.userId, user_id)))
-          .limit(1);
+        const filteredTraits = Object.fromEntries(Object.entries(traits).filter(([_, v]) => v !== null));
+        const nullKeys = Object.entries(traits)
+          .filter(([_, v]) => v === null)
+          .map(([k]) => k);
 
-        if (existingProfile.length > 0) {
-          // Merge new traits with existing (new traits override old)
-          // Traits with null values are removed from the result
-          const merged = {
-            ...((existingProfile[0].traits as Record<string, unknown>) || {}),
-            ...traits,
-          };
-          const mergedTraits = Object.fromEntries(
-            Object.entries(merged).filter(([_, value]) => value !== null)
-          );
+        // When nullKeys is empty, drizzle serializes [] as `()` which is invalid
+        // Postgres array literal syntax. Skip the subtract clause in that case.
+        const traitsExpr =
+          nullKeys.length > 0
+            ? sql`(${userProfiles.traits} - ${nullKeys}::text[]) || ${JSON.stringify(filteredTraits)}::jsonb`
+            : sql`${userProfiles.traits} || ${JSON.stringify(filteredTraits)}::jsonb`;
 
-          await db
-            .update(userProfiles)
-            .set({
-              traits: mergedTraits,
-              updatedAt: new Date().toISOString(),
-            })
-            .where(and(eq(userProfiles.siteId, siteId), eq(userProfiles.userId, user_id)));
-
-          logger.info({ siteId, userId: user_id }, "Updated user profile traits");
-        } else {
-          // Create new profile (filter out null values)
-          const filteredTraits = Object.fromEntries(
-            Object.entries(traits).filter(([_, value]) => value !== null)
-          );
-          await db.insert(userProfiles).values({
-            siteId,
-            userId: user_id,
-            traits: filteredTraits,
+        await db
+          .insert(userProfiles)
+          .values({ siteId, userId: user_id, traits: filteredTraits })
+          .onConflictDoUpdate({
+            target: [userProfiles.siteId, userProfiles.userId],
+            set: {
+              traits: traitsExpr,
+              updatedAt: sql`now()`,
+            },
           });
-
-          logger.info({ siteId, userId: user_id }, "Created new user profile");
-        }
       } catch (error) {
         logger.error({ siteId, userId: user_id, error }, "Error updating user profile");
-        // Don't fail the request if profile update fails
       }
     }
 

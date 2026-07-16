@@ -1,6 +1,6 @@
 "use client";
 
-import { cn } from "@/lib/utils";
+import { ToggleChip } from "@/components/ToggleChip";
 import { PercentileLevel, usePerformanceStore } from "../performanceStore";
 
 const PERCENTILE_OPTIONS: {
@@ -19,28 +19,15 @@ export function PercentileSelector() {
 
   return (
     <div className="flex items-center space-x-2">
-      {PERCENTILE_OPTIONS.map(option => {
-        const isSelected = selectedPercentile === option.value;
-
-        return (
-          <button
-            key={option.value}
-            onClick={() => setSelectedPercentile(option.value)}
-            className={cn(
-              "flex items-center space-x-1.5 px-2 py-1 rounded text-xs font-medium transition-all",
-              isSelected
-                ? "bg-neutral-200 dark:bg-neutral-800 text-neutral-900 dark:text-white"
-                : "bg-neutral-100 dark:bg-neutral-900 text-neutral-600 dark:text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-400"
-            )}
-          >
-            <div
-              className={cn("w-3 h-3 rounded-sm transition-opacity", isSelected ? "opacity-100" : "opacity-30")}
-              style={{ backgroundColor: option.color }}
-            />
-            <span>{option.label}</span>
-          </button>
-        );
-      })}
+      {PERCENTILE_OPTIONS.map(option => (
+        <ToggleChip
+          key={option.value}
+          isSelected={selectedPercentile === option.value}
+          onClick={() => setSelectedPercentile(option.value)}
+          swatchColor={option.color}
+          label={option.label}
+        />
+      ))}
     </div>
   );
 }

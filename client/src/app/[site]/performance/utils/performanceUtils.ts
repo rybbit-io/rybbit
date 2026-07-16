@@ -1,4 +1,4 @@
-import { round } from "lodash";
+import round from "lodash/round";
 import { PerformanceMetric } from "../performanceStore";
 
 // Performance metric thresholds for color coding based on Web Vitals standards

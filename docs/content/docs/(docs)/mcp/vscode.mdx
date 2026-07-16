@@ -1,0 +1,45 @@
+---
+title: VS Code
+description: Connect VS Code and Copilot agent mode to Rybbit's MCP server
+---
+
+Connecting VS Code to Rybbit gives Copilot's agent mode access to your analytics — checking whether a fixed error still occurs, looking up which pages matter before a refactor, or creating goals for a feature as you build it.
+
+This page covers client setup only. The [MCP overview](/docs/mcp) covers the endpoint, API keys and scopes, the full tool list, and troubleshooting.
+
+## Add the server
+
+1. [Create an API key](/docs/mcp#1-create-an-api-key) in Rybbit.
+2. Create `.vscode/mcp.json` in your workspace. The `inputs` block keeps the key out of the file — VS Code prompts for it once when the server first starts and stores it securely, so this file is safe to commit:
+
+```json
+{
+  "inputs": [
+    {
+      "type": "promptString",
+      "id": "rybbit-api-key",
+      "description": "Rybbit API key",
+      "password": true
+    }
+  ],
+  "servers": {
+    "rybbit": {
+      "type": "http",
+      "url": "https://app.rybbit.io/api/mcp",
+      "headers": {
+        "Authorization": "Bearer ${input:rybbit-api-key}"
+      }
+    }
+  }
+}
+```
+
+For a self-hosted installation, replace the host with your configured `BASE_URL`.
+
+To make the server available in every workspace instead, run **MCP: Open User Configuration** from the Command Palette and add the same JSON there. **MCP: Add Server** offers a guided setup as an alternative to editing the file.
+
+## Verify
+
+Run **MCP: List Servers** from the Command Palette — Rybbit should be listed with its tools, which also appear in the tools picker in Copilot's agent mode. Then ask the agent:
+
+> List my Rybbit sites and summarize last week's traffic for each.

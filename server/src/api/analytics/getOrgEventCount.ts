@@ -9,6 +9,12 @@ type OrgEventCountResponse = {
   pageview_count: number;
   custom_event_count: number;
   performance_count: number;
+  outbound_count: number;
+  error_count: number;
+  button_click_count: number;
+  copy_count: number;
+  form_submit_count: number;
+  input_change_count: number;
   event_count: number;
 }[];
 
@@ -75,10 +81,10 @@ export async function getOrgEventCount(
         )
       )`;
     } else {
-      // Default to last 30 days if no date range provided
-      timeFilter = "AND event_hour >= now() - INTERVAL 30 DAY";
-      fillFromDate = "FROM now() - INTERVAL 30 DAY";
-      fillToDate = "TO now() + INTERVAL 1 DAY";
+      // No date range: return all data without WITH FILL
+      timeFilter = "";
+      fillFromDate = "";
+      fillToDate = "";
     }
 
     const query = `
@@ -87,14 +93,20 @@ export async function getOrgEventCount(
         countIf(type = 'pageview') as pageview_count,
         countIf(type = 'custom_event') as custom_event_count,
         countIf(type = 'performance') as performance_count,
+        countIf(type = 'outbound') as outbound_count,
+        countIf(type = 'error') as error_count,
+        countIf(type = 'button_click') as button_click_count,
+        countIf(type = 'copy') as copy_count,
+        countIf(type = 'form_submit') as form_submit_count,
+        countIf(type = 'input_change') as input_change_count,
         count() as event_count
       FROM events
       WHERE site_id IN (${siteIds.map((id: number) => SqlString.escape(id)).join(", ")})
-        AND type IN ('pageview', 'custom_event', 'performance')
+        AND type IN ('pageview', 'custom_event', 'performance', 'outbound', 'error', 'button_click', 'copy', 'form_submit', 'input_change')
         ${timeFilter.replace(/event_hour/g, "timestamp")}
       GROUP BY event_date
       ORDER BY event_date
-      WITH FILL ${fillFromDate} ${fillToDate} STEP INTERVAL 1 DAY
+      ${fillFromDate ? `WITH FILL ${fillFromDate} ${fillToDate} STEP INTERVAL 1 DAY` : ""}
     `;
 
     const result = await clickhouse.query({

@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 import { authClient } from "../lib/auth";
-import { useUserOrganizations } from "../api/admin/organizations";
+import { useUserOrganizations } from "../api/admin/hooks/useOrganizations";
 import { useTrack } from "../hooks/useTrack";
 
 function OrganizationInitializerInner() {

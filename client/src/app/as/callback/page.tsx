@@ -8,24 +8,17 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { motion } from "framer-motion";
 import { ArrowRight, Check, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import React, { Suspense, useEffect, useState } from "react";
-import { addSite } from "../../../api/admin/sites";
+import { addSite } from "../../../api/admin/endpoints";
 import { RybbitTextLogo } from "../../../components/RybbitLogo";
 import { useSetPageTitle } from "../../../hooks/useSetPageTitle";
 import { authClient } from "../../../lib/auth";
 import { IS_CLOUD } from "../../../lib/const";
 import { userStore } from "../../../lib/userStore";
 import { cn, isValidDomain, normalizeDomain } from "../../../lib/utils";
-
-// Animation variants for step transitions
-const contentVariants = {
-  hidden: { opacity: 0, x: 20 },
-  visible: { opacity: 1, x: 0, transition: { duration: 0.3 } },
-};
 
 // Client component to handle AppSumo code from URL params
 function AppSumoCodeHandler({
@@ -54,7 +47,7 @@ function AppSumoCodeHandler({
 }
 
 export default function AppSumoSignupPage() {
-  useSetPageTitle("Rybbit · AppSumo Signup");
+  useSetPageTitle("AppSumo Signup");
 
   const [currentStep, setCurrentStep] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
@@ -299,7 +292,7 @@ export default function AppSumoSignupPage() {
     switch (currentStep) {
       case 1:
         return (
-          <motion.div initial="hidden" animate="visible" variants={contentVariants}>
+          <div>
             <h2 className="text-2xl font-semibold mb-2">Welcome to Rybbit!</h2>
             <p className="text-sm text-muted-foreground mb-6">Activate your AppSumo license by creating an account</p>
             <div className="space-y-4">
@@ -354,11 +347,11 @@ export default function AppSumoSignupPage() {
                 </Link>
               </div>
             </div>
-          </motion.div>
+          </div>
         );
       case 2:
         return (
-          <motion.div initial="hidden" animate="visible" variants={contentVariants}>
+          <div>
             <h2 className="text-2xl font-semibold mb-2">
               {isExistingUser ? "Create an organization" : "Create your organization"}
             </h2>
@@ -391,11 +384,11 @@ export default function AppSumoSignupPage() {
                 <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
             </div>
-          </motion.div>
+          </div>
         );
       case 3:
         return (
-          <motion.div initial="hidden" animate="visible" variants={contentVariants}>
+          <div>
             <h2 className="text-2xl font-semibold mb-2">Add your site (optional)</h2>
             <p className="text-sm text-muted-foreground mb-6">You can always add sites later from your dashboard</p>
             <div className="space-y-4">
@@ -432,7 +425,7 @@ export default function AppSumoSignupPage() {
                 </Button>
               </div>
             </div>
-          </motion.div>
+          </div>
         );
       default:
         return null;
@@ -445,7 +438,7 @@ export default function AppSumoSignupPage() {
       <div className="flex justify-center items-center h-dvh w-full p-4 bg-background">
         <div className="flex flex-col items-center gap-4">
           <Loader2 className="h-8 w-8 animate-spin text-emerald-600 dark:text-emerald-500" />
-          <p className="text-muted-foreground">Loading...</p>
+          <p className="text-muted-foreground">Loading&hellip;</p>
         </div>
       </div>
     );

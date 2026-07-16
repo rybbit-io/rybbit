@@ -1,5 +1,6 @@
 "use client";
 
+import { useExtracted } from "next-intl";
 import { useGetErrorNamesPaginated } from "@/api/analytics/hooks/errors/useGetErrorNames";
 import { ErrorNameItem } from "@/api/analytics/endpoints";
 import { Pagination } from "@/components/pagination";
@@ -17,6 +18,7 @@ import { NothingFound } from "../../../components/NothingFound";
 const PAGE_SIZE = 10;
 
 export default function Errors() {
+  const t = useExtracted();
   const { site } = useStore();
 
   const [pagination, setPagination] = useState({
@@ -25,7 +27,7 @@ export default function Errors() {
   });
   const [totalPages, setTotalPages] = useState(0);
 
-  useSetPageTitle("Rybbit · Errors");
+  useSetPageTitle("Errors");
 
   // Get page number (1-based) from pageIndex (0-based)
   const pageNumber = pagination.pageIndex + 1;
@@ -106,7 +108,7 @@ export default function Errors() {
           <ErrorListSkeleton count={pagination.pageSize} />
         ) : isErrorErrors ? (
           <div className="text-center p-8 text-destructive">
-            <p>Error loading errors data</p>
+            <p>{t("Error loading errors data")}</p>
             <p className="text-sm">{errorsError?.toString()}</p>
           </div>
         ) : errorsDataArray && errorsDataArray.length > 0 ? (
@@ -127,8 +129,8 @@ export default function Errors() {
           </>
         ) : !isLoadingErrors && !isFetching ? (
           <NothingFound
-            title={"No error events found"}
-            description={"Errors will appear here once error tracking is enabled and errors occur on your site."}
+            title={t("No error events found")}
+            description={t("Errors will appear here once error tracking is enabled and errors occur on your site.")}
           />
         ) : null}
       </div>

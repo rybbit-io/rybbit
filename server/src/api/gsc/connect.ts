@@ -1,7 +1,8 @@
 import { FastifyReply, FastifyRequest } from "fastify";
 import { ConnectGSCRequest } from "./types.js";
-import { getUserHasAccessToSite } from "../../lib/auth-utils.js";
+import { getSessionFromReq, getUserHasAdminAccessToSite } from "../../lib/auth-utils.js";
 import { logger } from "../../lib/logger/logger.js";
+import { signGSCState } from "./utils.js";
 
 /**
  * Initiates the OAuth flow for Google Search Console
@@ -9,17 +10,24 @@ import { logger } from "../../lib/logger/logger.js";
  */
 export async function connectGSC(req: FastifyRequest<ConnectGSCRequest>, res: FastifyReply) {
   try {
-    const { site } = req.params;
-    const siteId = Number(site);
+    const { siteId } = req.params;
+    const numericSiteId = Number(siteId);
 
-    if (isNaN(siteId)) {
+    if (isNaN(numericSiteId)) {
       return res.status(400).send({ error: "Invalid site ID" });
     }
 
-    // Check if user has access to this site
-    const hasAccess = await getUserHasAccessToSite(req, siteId);
+    // Require admin access to match the callback, which writes OAuth tokens and
+    // demands admin. A member who could start the flow would be stranded on a
+    // 403 after Google consent.
+    const hasAccess = await getUserHasAdminAccessToSite(req, numericSiteId);
     if (!hasAccess) {
       return res.status(403).send({ error: "Access denied" });
+    }
+
+    const session = await getSessionFromReq(req);
+    if (!session) {
+      return res.status(401).send({ error: "Unauthorized" });
     }
 
     const clientId = process.env.GOOGLE_CLIENT_ID;
@@ -31,7 +39,9 @@ export async function connectGSC(req: FastifyRequest<ConnectGSCRequest>, res: Fa
 
     // Build OAuth URL
     const scope = "https://www.googleapis.com/auth/webmasters.readonly";
-    const state = siteId.toString(); // Pass siteId in state to retrieve after OAuth
+    // Signed state binds the flow to this user + site so the callback can't be
+    // tricked into binding tokens to a site the caller doesn't control.
+    const state = signGSCState(numericSiteId, session.user.id);
 
     const authUrl = new URL("https://accounts.google.com/o/oauth2/v2/auth");
     authUrl.searchParams.set("client_id", clientId);
