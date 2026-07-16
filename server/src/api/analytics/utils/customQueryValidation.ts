@@ -79,7 +79,7 @@ const blockedFunctions = [
 
 const quotedIdentifierError = "Quoted identifiers are not allowed in custom analytics queries";
 
-function hasQuotedIdentifierSyntax(query: string) {
+export function hasQuotedIdentifierSyntax(query: string) {
   let index = 0;
   let state: "normal" | "single" | "line-comment" | "block-comment" = "normal";
 
@@ -125,7 +125,7 @@ function hasQuotedIdentifierSyntax(query: string) {
   return false;
 }
 
-function stripSqlLiteralsAndComments(query: string) {
+export function stripSqlLiteralsAndComments(query: string) {
   let result = "";
   let index = 0;
   let state: "normal" | "single" | "double" | "backtick" | "line-comment" | "block-comment" = "normal";
@@ -210,7 +210,7 @@ export function normalizeCustomQuery(query: string) {
   return query.trim().replace(/;+$/g, "").trim();
 }
 
-function getCteNames(query: string) {
+export function getCteNames(query: string) {
   const cteNames = new Set<string>();
   const ctePattern = /(?:\bWITH|,)\s*([a-zA-Z_][a-zA-Z0-9_]*)\s+AS\s*\(/gi;
   let match: RegExpExecArray | null;
@@ -269,7 +269,7 @@ function skipWhitespace(query: string, index: number): number {
 // each FROM/JOIN and every comma-separated entry in a FROM list (`FROM a, b`), which
 // a FROM/JOIN-keyword-only scan would miss. Subquery references (`FROM ( SELECT … )`)
 // are skipped here — their inner FROM/JOIN clauses are reached by this same scan.
-function collectTableReferences(query: string): string[] {
+export function collectTableReferences(query: string): string[] {
   const references: string[] = [];
   const length = query.length;
 
@@ -336,7 +336,7 @@ function collectTableReferences(query: string): string[] {
   return references;
 }
 
-function collectInTableReferences(query: string): string[] {
+export function collectInTableReferences(query: string): string[] {
   const references: string[] = [];
   const inPattern = /\b(?:GLOBAL\s+)?(?:NOT\s+)?IN\b/gi;
   let match: RegExpExecArray | null;

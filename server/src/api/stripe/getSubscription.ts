@@ -28,7 +28,7 @@ function getStartOfNextMonth() {
  * Computes memberLimit and siteLimit from a subscription.
  * null = unlimited.
  */
-function computeLimits(
+export function computeLimits(
   subscription: SubscriptionInfo,
   stripeCreatedAt?: Date
 ): { memberLimit: number | null; siteLimit: number | null } {

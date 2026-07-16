@@ -54,7 +54,7 @@ const LITE_FILTER_OPERATORS: Record<string, string> = {
   ends_with: "LIKE",
 };
 
-function wrapLiteLikeValue(type: string, value: string | number): string {
+export function wrapLiteLikeValue(type: string, value: string | number): string {
   const v = String(value);
   if (type === "contains" || type === "not_contains") return `%${v}%`;
   if (type === "starts_with") return `${v}%`;
