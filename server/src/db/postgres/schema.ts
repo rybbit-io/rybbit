@@ -293,9 +293,10 @@ export const apiKey = pgTable("apikey", {
   start: text(),
   prefix: text(),
   key: text().notNull(),
-  referenceId: text()
-    .notNull()
-    .references(() => user.id, { onDelete: "cascade" }),
+  // A user id (configId NULL/"default") or an organization id (configId
+  // "org") — polymorphic, so no FK. Cleanup happens in auth.ts's
+  // deleteUser.afterDelete and afterDeleteOrganization hooks.
+  referenceId: text().notNull(),
   refillInterval: integer(),
   refillAmount: integer(),
   lastRefillAt: timestamp({ mode: "string" }),

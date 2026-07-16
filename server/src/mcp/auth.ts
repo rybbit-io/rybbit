@@ -11,7 +11,10 @@ export { extractBearerToken };
 export type McpAuthenticatorDependencies = BearerResolverDeps;
 
 export interface McpAuthContext {
-  userId: string;
+  /** Set for user API keys and OAuth tokens. */
+  userId?: string;
+  /** Set for organization-owned API keys. Exactly one of the two is set. */
+  organizationId?: string;
   /** null = unrestricted credential (legacy key / full OAuth grant). */
   scopes: ScopeStatements | null;
   /** The resolved identity, so the endpoint can register a proxy handoff. */
@@ -62,7 +65,12 @@ export function createMcpAuthenticator(dependencies: McpAuthenticatorDependencie
     const identity = await resolveBearerIdentity(bearerToken, dependencies);
     switch (identity.status) {
       case "valid":
-        return { userId: identity.userId!, scopes: identity.statements, identity };
+        return {
+          userId: identity.userId,
+          organizationId: identity.organizationId,
+          scopes: identity.statements,
+          identity,
+        };
       case "rate_limited":
         throw new McpAuthenticationError("API key rate limit exceeded", 429);
       case "verify_error":

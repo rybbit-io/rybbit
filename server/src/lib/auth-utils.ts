@@ -66,7 +66,38 @@ const sitesAccessCache = new NodeCache({
   useClones: false, // Don't clone objects for better performance with promises
 });
 
+// All sites of an organization, for org-owned API keys. Cached under an
+// "org:"-prefixed key (org and user ids never collide, the prefix is hygiene).
+async function getSitesForOrganization(organizationId: string) {
+  const cacheKey = `org:${organizationId}`;
+
+  const cached = sitesAccessCache.get<Promise<any[]>>(cacheKey);
+  if (cached) {
+    return cached;
+  }
+
+  const promise = (async () => {
+    try {
+      return await db.select().from(sites).where(eq(sites.organizationId, organizationId));
+    } catch (error) {
+      console.error("Error getting sites for organization:", error);
+      sitesAccessCache.del(cacheKey);
+      return [];
+    }
+  })();
+
+  sitesAccessCache.set(cacheKey, promise);
+  return promise;
+}
+
 export async function getSitesUserHasAccessTo(req: FastifyRequest, adminOnly = false) {
+  // Organization-owned API key (attached by the auth guards): org-admin
+  // authority over exactly its organization's sites, so member/team
+  // restrictions and the adminOnly flag don't apply.
+  if (!req.user?.id && req.apiKeyOrganizationId) {
+    return getSitesForOrganization(req.apiKeyOrganizationId);
+  }
+
   const session = req.user?.id ? null : await getSessionFromReq(req);
   const userId = req.user?.id ?? session?.user.id;
 
@@ -271,18 +302,18 @@ export function invalidateSitesAccessCache(userId: string) {
 }
 
 /**
- * Resolve the org membership role for a bearer-authenticated user, scoped to
- * either an explicit organization or the organization owning a site.
+ * Resolve the organization a request is targeting: an explicit organization
+ * param, or the organization owning the site param.
  */
-async function resolveBearerUserOrgRole(
-  userId: string,
-  options: { organizationId?: string; siteId?: string | number }
-): Promise<{ valid: boolean; role: string | null; userId?: string }> {
-  // Determine the organization ID - either directly provided or looked up from site
-  let organizationId = options.organizationId;
+async function resolveTargetOrganizationId(options: {
+  organizationId?: string;
+  siteId?: string | number;
+}): Promise<string | null> {
+  if (options.organizationId) {
+    return options.organizationId;
+  }
 
-  if (!organizationId && options.siteId) {
-    // Get the site's organization
+  if (options.siteId) {
     const siteRecords = await db
       .select({
         organizationId: sites.organizationId,
@@ -292,9 +323,22 @@ async function resolveBearerUserOrgRole(
       .limit(1);
 
     if (siteRecords.length > 0 && siteRecords[0].organizationId) {
-      organizationId = siteRecords[0].organizationId;
+      return siteRecords[0].organizationId;
     }
   }
+
+  return null;
+}
+
+/**
+ * Resolve the org membership role for a bearer-authenticated user, scoped to
+ * either an explicit organization or the organization owning a site.
+ */
+async function resolveBearerUserOrgRole(
+  userId: string,
+  options: { organizationId?: string; siteId?: string | number }
+): Promise<{ valid: boolean; role: string | null; userId?: string }> {
+  const organizationId = await resolveTargetOrganizationId(options);
 
   if (organizationId) {
     // Check if the bearer credential's user is a member of the organization
@@ -315,6 +359,8 @@ export interface BearerAuthResult {
   valid: boolean;
   role: string | null;
   userId?: string;
+  /** Set instead of userId when the credential is an organization-owned key. */
+  organizationId?: string;
   rateLimited?: boolean;
   /**
    * Scope statements carried by the credential. null = unrestricted (legacy
@@ -346,6 +392,21 @@ export async function checkApiKey(
 
   if (identity.status === "rate_limited") {
     return { valid: false, role: null, rateLimited: true, statements: null };
+  }
+  if (identity.status === "valid" && identity.organizationId) {
+    // Organization-owned key: valid only against its own organization (or a
+    // site belonging to it). It acts with org-admin authority — creation is
+    // restricted to org admins/owners, and scopes narrow it further.
+    const targetOrganizationId = await resolveTargetOrganizationId(options);
+    if (targetOrganizationId && targetOrganizationId === identity.organizationId) {
+      return {
+        valid: true,
+        role: "admin",
+        organizationId: identity.organizationId,
+        statements: identity.statements,
+      };
+    }
+    return { valid: false, role: null, statements: null };
   }
   if (identity.status === "valid" && identity.userId) {
     const membership = await resolveBearerUserOrgRole(identity.userId, options);

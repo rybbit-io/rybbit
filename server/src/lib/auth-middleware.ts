@@ -23,14 +23,15 @@ type AuthMiddleware = (request: FastifyRequest, reply: FastifyReply) => Promise<
  *   legacy/unrestricted credentials always pass; write implies read).
  * - "deny-scoped": scoped credentials are rejected outright; unrestricted
  *   credentials and sessions pass. For surfaces with no taxonomy resource
- *   (account settings, billing).
+ *   (account settings, billing). Organization-owned keys are also rejected
+ *   here — these surfaces are inherently user-centric.
  * - undefined: route is scope-exempt; any valid bearer credential passes.
  */
 export type RouteScope = ScopeRequirement | "deny-scoped";
 
 const bearerScopeOk = (result: BearerAuthResult, scope?: RouteScope): boolean => {
   if (!scope) return true;
-  if (scope === "deny-scoped") return result.statements === null;
+  if (scope === "deny-scoped") return result.statements === null && !result.organizationId;
   return hasScope(result.statements, scope);
 };
 
@@ -50,9 +51,15 @@ const getOrganizationIdFromParams = (request: FastifyRequest): string | undefine
   return params?.organizationId;
 };
 
+// Attach the authenticated bearer principal. User keys become request.user
+// like a session; org keys have no user (handlers that attribute a creator
+// record null) — they set apiKeyOrganizationId instead, which the site-access
+// resolver (getSitesUserHasAccessTo) maps to the org's full site set.
 const attachApiKeyUser = (request: FastifyRequest, apiKeyResult: BearerAuthResult) => {
   if (apiKeyResult.userId) {
     request.user = { id: apiKeyResult.userId };
+  } else if (apiKeyResult.organizationId) {
+    request.apiKeyOrganizationId = apiKeyResult.organizationId;
   }
 };
 

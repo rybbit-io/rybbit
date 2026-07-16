@@ -1,5 +1,6 @@
 import { FastifyReply, FastifyRequest } from "fastify";
 import { z } from "zod";
+import { apiKeyLimitForPlan, countApiKeysForReference } from "../../lib/apiKeyLimits.js";
 import { auth } from "../../lib/auth.js";
 import { getSessionFromReq } from "../../lib/auth-utils.js";
 import { apiKeyPermissionsSchema } from "../../lib/scopes.js";
@@ -39,6 +40,7 @@ export async function createUserApiKey(
   }
   const { name, expiresIn, permissions } = parsed.data;
 
+  let planName: string | null = null;
   let rateLimitEnabled = false;
   let rateLimitMax: number | undefined;
   let rateLimitTimeWindow: number | undefined;
@@ -50,7 +52,7 @@ export async function createUserApiKey(
     }
 
     const subscription = await getSubscriptionInner(activeOrgId);
-    const planName = subscription?.planName || "free";
+    planName = subscription?.planName || "free";
 
     if (planName === "free" || planName.includes("basic")) {
       return reply.status(403).send({
@@ -64,6 +66,14 @@ export async function createUserApiKey(
       planName.includes("pro") || planName === "custom"
         ? PRO_API_RATE_LIMIT
         : STANDARD_API_RATE_LIMIT;
+  }
+
+  const keyLimit = apiKeyLimitForPlan(planName);
+  const existingCount = await countApiKeysForReference(session.user.id);
+  if (existingCount >= keyLimit) {
+    return reply.status(403).send({
+      error: `You have reached your limit of ${keyLimit} API keys. Delete an unused key or upgrade your plan.`,
+    });
   }
 
   try {

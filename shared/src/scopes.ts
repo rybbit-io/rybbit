@@ -2,6 +2,12 @@
 // Pure data — no runtime dependencies — so both the server (enforcement,
 // zod validation) and the client (scope picker) can share one source of truth.
 
+// better-auth configId of the organization-owned API key configuration. Keys
+// from this config authenticate as the organization itself; keys from any
+// other config (including legacy NULL configIds) are user-owned. The server
+// (bearerAuth, auth.ts) and the client (org key management) must agree on it.
+export const ORG_API_KEY_CONFIG_ID = "org";
+
 export const SCOPE_MATRIX = {
   analytics: ["read"],
   sessions: ["read"],

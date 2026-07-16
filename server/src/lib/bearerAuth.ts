@@ -22,9 +22,12 @@ export function extractBearerToken(authorization: string | string[] | undefined)
   return authorization.substring(7) || null;
 }
 
+export { ORG_API_KEY_CONFIG_ID } from "@rybbit/shared";
+import { ORG_API_KEY_CONFIG_ID } from "@rybbit/shared";
+
 export interface ApiKeyVerification {
   valid: boolean;
-  key?: { referenceId?: string | null; permissions?: unknown } | null;
+  key?: { referenceId?: string | null; permissions?: unknown; configId?: string | null } | null;
   error?: { code?: string } | null;
 }
 
@@ -43,7 +46,11 @@ export type BearerIdentityStatus = "valid" | "invalid" | "rate_limited" | "verif
 
 export interface BearerIdentity {
   status: BearerIdentityStatus;
+  /** Set when the credential resolves to a person: user API key or OAuth token. */
   userId?: string;
+  /** Set when the credential is an organization-owned API key. Exactly one of
+   *  userId/organizationId is set on a valid identity. */
+  organizationId?: string;
   /** null = unrestricted (legacy key / full OAuth grant); enforced by callers. */
   statements: ScopeStatements | null;
 }
@@ -72,11 +79,13 @@ export async function resolveBearerIdentity(token: string, deps: BearerResolverD
   }
 
   if (verification?.valid && verification.key?.referenceId) {
-    return {
-      status: "valid",
-      userId: verification.key.referenceId,
-      statements: statementsFromApiKeyPermissions(verification.key.permissions),
-    };
+    const statements = statementsFromApiKeyPermissions(verification.key.permissions);
+    // referenceId is a user id or an organization id depending on which key
+    // configuration minted the key (legacy keys have a NULL configId = user).
+    if (verification.key.configId === ORG_API_KEY_CONFIG_ID) {
+      return { status: "valid", organizationId: verification.key.referenceId, statements };
+    }
+    return { status: "valid", userId: verification.key.referenceId, statements };
   }
 
   if (verification?.error?.code === "RATE_LIMITED") {

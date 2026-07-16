@@ -3,7 +3,7 @@ import { authClient } from "../../../lib/auth";
 import { authedFetch } from "../../utils";
 
 // List all API keys for the current user
-export const useListApiKeys = () => {
+export const useListApiKeys = (enabled = true) => {
   return useQuery({
     queryKey: ["userApiKeys"],
     queryFn: async () => {
@@ -13,6 +13,7 @@ export const useListApiKeys = () => {
       }
       return response.data;
     },
+    enabled,
   });
 };
 

@@ -144,6 +144,7 @@ import {
 } from "./api/stripe/index.js";
 import {
   addUserToOrganization,
+  createOrgApiKey,
   createUserApiKey,
   createUserInOrganization,
   getMyOrganizations,
@@ -254,6 +255,7 @@ const authOrgWrite = authOnlyScoped("org", "write");
 // on surfaces with no taxonomy resource (account settings, billing).
 const adminOnly = { preHandler: [requireAdmin] as any };
 const authOnlyNoScopedKeys = { preHandler: [requireAuth("deny-scoped")] as any };
+const orgAdminNoScopedKeys = { preHandler: [requireOrgAdminFromParams("deny-scoped")] as any };
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -506,6 +508,7 @@ async function userRoutes(fastify: FastifyInstance) {
   fastify.get("/user/unsubscribe-marketing-oneclick", oneClickUnsubscribeMarketing); // Public - for link clicks
   fastify.post("/user/unsubscribe-marketing-oneclick", oneClickUnsubscribeMarketing); // Public - for List-Unsubscribe header
   fastify.post("/user/api-keys", authOnlyNoScopedKeys, createUserApiKey);
+  fastify.post("/organizations/:organizationId/api-keys", orgAdminNoScopedKeys, createOrgApiKey);
 }
 
 async function gscRoutes(fastify: FastifyInstance) {
@@ -666,5 +669,7 @@ process.on("SIGINT", () => shutdown("SIGINT"));
 declare module "fastify" {
   interface FastifyRequest {
     user?: any; // Or define a more specific user type
+    /** Set by the auth guards when the bearer credential is an org-owned API key. */
+    apiKeyOrganizationId?: string;
   }
 }

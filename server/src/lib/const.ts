@@ -42,6 +42,11 @@ export const API_RATE_LIMIT_WINDOW = 60_000; // 1 minute
 export const STANDARD_API_RATE_LIMIT = 20; // 20 req/min
 export const PRO_API_RATE_LIMIT = 200; // 200 req/min
 
+// Maximum number of API keys per owner (a user or an organization)
+export const STANDARD_API_KEY_LIMIT = 5;
+export const PRO_API_KEY_LIMIT = 20;
+export const SELF_HOSTED_API_KEY_LIMIT = 50;
+
 export const APPSUMO_SITE_LIMITS: Record<string, number | null> = {
   "1": 3,
   "2": 10,

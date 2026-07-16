@@ -1,6 +1,8 @@
 import { betterAuth } from "better-auth";
-import { APIError, createAuthMiddleware } from "better-auth/api";
+import { APIError, createAuthMiddleware, getSessionFromCtx } from "better-auth/api";
 import { admin, captcha, emailOTP, mcp, organization } from "better-auth/plugins";
+import { createAccessControl } from "better-auth/plugins/access";
+import { adminAc, defaultStatements, memberAc, ownerAc } from "better-auth/plugins/organization/access";
 import { ALL_SCOPE_STRINGS, OIDC_STANDARD_SCOPES } from "./scopes.js";
 import dotenv from "dotenv";
 import { and, asc, eq, inArray } from "drizzle-orm";
@@ -11,7 +13,9 @@ import { apiKey } from "@better-auth/api-key"
 import { db } from "../db/postgres/postgres.js";
 import * as schema from "../db/postgres/schema.js";
 import { invitation, member, memberSiteAccess, sites, user } from "../db/postgres/schema.js";
+import { apiKeyLimitForPlan, countApiKeysForReference } from "./apiKeyLimits.js";
 import { invalidateSitesAccessCache } from "./auth-utils.js";
+import { ORG_API_KEY_CONFIG_ID } from "./bearerAuth.js";
 import { API_RATE_LIMIT_WINDOW, DISABLE_SIGNUP, IS_CLOUD, STANDARD_API_RATE_LIMIT } from "./const.js";
 import {
   addContactToAudience,
@@ -28,6 +32,30 @@ import { createServiceLogger } from "./logger/logger.js";
 dotenv.config();
 
 const authLogger = createServiceLogger("better-auth");
+
+// The organization plugin's default access control, extended with an `apiKey`
+// resource. The @better-auth/api-key plugin consults it (via hasPermission)
+// for every operation on organization-owned keys: owners and admins manage
+// them, members can't see them.
+const ORG_API_KEY_ACTIONS = ["create", "read", "update", "delete"] as const;
+const orgAccessControl = createAccessControl({
+  ...defaultStatements,
+  apiKey: [...ORG_API_KEY_ACTIONS],
+});
+const orgRoles = {
+  owner: orgAccessControl.newRole({ ...ownerAc.statements, apiKey: [...ORG_API_KEY_ACTIONS] }),
+  admin: orgAccessControl.newRole({ ...adminAc.statements, apiKey: [...ORG_API_KEY_ACTIONS] }),
+  member: orgAccessControl.newRole({ ...memberAc.statements }),
+};
+
+// Default per-key rate limits; the create endpoints override them per plan.
+const apiKeyRateLimit = IS_CLOUD
+  ? {
+      enabled: true,
+      timeWindow: API_RATE_LIMIT_WINDOW,
+      maxRequests: STANDARD_API_RATE_LIMIT,
+    }
+  : { maxRequests: 10000, timeWindow: 86400000 };
 
 const pluginList = [
   admin(),
@@ -51,25 +79,46 @@ const pluginList = [
       },
     },
   }),
-  apiKey({
-    ...(IS_CLOUD
-      ? {
-          rateLimit: {
-            enabled: true,
-            timeWindow: API_RATE_LIMIT_WINDOW,
-            maxRequests: STANDARD_API_RATE_LIMIT,
-          },
-        }
-      : { rateLimit: { maxRequests: 10000, timeWindow: 86400000 } }),
-  }),
+  apiKey([
+    {
+      // User-owned keys. Pre-existing rows (NULL configId) resolve here.
+      configId: "default",
+      rateLimit: apiKeyRateLimit,
+    },
+    {
+      // Organization-owned keys: referenceId is an organization id and the
+      // key authenticates as the org itself (bearerAuth.ts branches on this
+      // configId). Management is authorized through orgRoles' apiKey resource.
+      configId: ORG_API_KEY_CONFIG_ID,
+      references: "organization",
+      defaultPrefix: "rb_org_",
+      // Org keys store { createdBy } so actions stay attributable to the
+      // admin who minted the key.
+      enableMetadata: true,
+      rateLimit: apiKeyRateLimit,
+    },
+  ]),
   dash(),
   organization({
     allowUserToCreateOrganization: true,
     creatorRole: "owner",
+    ac: orgAccessControl,
+    roles: orgRoles,
     teams: {
       enabled: true,
     },
     organizationHooks: {
+      afterDeleteOrganization: async ({ organization: org }) => {
+        // apikey.referenceId has no FK (it holds user OR org ids), so
+        // org-owned keys must be purged explicitly with their organization.
+        try {
+          await db
+            .delete(schema.apiKey)
+            .where(and(eq(schema.apiKey.referenceId, org.id), eq(schema.apiKey.configId, ORG_API_KEY_CONFIG_ID)));
+        } catch (error) {
+          console.error("Error deleting API keys for removed organization:", error);
+        }
+      },
       beforeCreateInvitation: async ({ invitation: newInvitation }) => {
         const invite = newInvitation as typeof newInvitation & {
           hasRestrictedSiteAccess?: boolean;
@@ -263,6 +312,17 @@ export const auth = betterAuth({
     },
     deleteUser: {
       enabled: true,
+      // apikey.referenceId no longer has a cascading FK to user.id (it holds
+      // user OR org ids), so the user's keys are purged explicitly. Keys of a
+      // user removed through other paths are unusable anyway — bearer auth
+      // requires a live org membership — this is hygiene, not security.
+      afterDelete: async deletedUser => {
+        try {
+          await db.delete(schema.apiKey).where(eq(schema.apiKey.referenceId, deletedUser.id));
+        } catch (error) {
+          console.error("Error deleting API keys for removed user:", error);
+        }
+      },
     },
     changeEmail: {
       enabled: true,
@@ -340,6 +400,61 @@ export const auth = betterAuth({
   },
   hooks: {
     before: createAuthMiddleware(async (ctx) => {
+      // Gate API key creation on better-auth's own /api-key/create route. This
+      // is the only choke point that covers direct client calls — the Fastify
+      // endpoints (createUserApiKey / createOrgApiKey) do richer plan checks
+      // before calling in server-side (no ctx.request), so they gate there.
+      if (ctx.path === "/api-key/create" && ctx.request) {
+        const body = (ctx.body ?? {}) as { configId?: string; organizationId?: string };
+        const isOrgKey = body.configId === ORG_API_KEY_CONFIG_ID;
+        const session = await getSessionFromCtx(ctx);
+
+        // The key's owner: the org for org keys, the session user otherwise.
+        const referenceId = isOrgKey ? body.organizationId : session?.user?.id;
+        if (!referenceId) return; // the api-key plugin rejects these itself
+
+        // Don't reveal an org's plan tier or key quota to non-members: skip
+        // the gate and let the plugin's own membership/permission check
+        // produce its canonical rejection.
+        if (isOrgKey) {
+          const userId = session?.user?.id;
+          if (!userId) return;
+          const membership = await db
+            .select({ id: member.id })
+            .from(member)
+            .where(and(eq(member.userId, userId), eq(member.organizationId, referenceId)))
+            .limit(1);
+          if (membership.length === 0) return;
+        }
+
+        let planName: string | null = null;
+        if (IS_CLOUD) {
+          // Billing org: the owning org for org keys, the active org for user keys.
+          const billingOrgId = isOrgKey
+            ? body.organizationId
+            : ((session?.session as any)?.activeOrganizationId as string | undefined);
+          if (!billingOrgId) {
+            throw new APIError("BAD_REQUEST", { message: "No active organization" });
+          }
+          const { getSubscriptionInner } = await import("../api/stripe/getSubscription.js");
+          const subscription = await getSubscriptionInner(billingOrgId);
+          planName = subscription?.planName || "free";
+          if (planName === "free" || planName.includes("basic")) {
+            throw new APIError("FORBIDDEN", {
+              message: "API keys require a Standard or Pro plan. Please upgrade to create API keys.",
+            });
+          }
+        }
+
+        const limit = apiKeyLimitForPlan(planName);
+        const existing = await countApiKeysForReference(referenceId);
+        if (existing >= limit) {
+          throw new APIError("FORBIDDEN", {
+            message: `You have reached the limit of ${limit} API keys. Delete an unused key or upgrade your plan.`,
+          });
+        }
+      }
+
       if (IS_CLOUD && ctx.path === "/organization/invite-member") {
         const body = ctx.body as { organizationId?: string } | undefined;
         const organizationId = body?.organizationId;
