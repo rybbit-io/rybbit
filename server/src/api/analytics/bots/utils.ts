@@ -120,7 +120,7 @@ export const getBotSqlParam = (parameter: BotDimensionKey) => {
   return parameter;
 };
 
-const buildStringFilterCondition = (expression: string, filterType: FilterType, values: (string | number)[]) => {
+export const buildStringFilterCondition = (expression: string, filterType: FilterType, values: (string | number)[]) => {
   if (filterType === "is_null") {
     return `(${expression} IS NULL OR ${expression} = '')`;
   }
