@@ -57,7 +57,7 @@ export function createMcpAuthenticator(dependencies: McpAuthenticatorDependencie
     const bearerToken = extractBearerToken(request.headers.authorization);
     if (!bearerToken) {
       throw new McpAuthenticationError(
-        "Unauthorized: send a Rybbit API key as 'Authorization: Bearer <key>' (Settings > Account > API Keys), or connect with an OAuth-capable MCP client.",
+        "Unauthorized: send a Rybbit API key as 'Authorization: Bearer <key>' (Settings > Account > Personal API Keys), or connect with an OAuth-capable MCP client.",
         401
       );
     }

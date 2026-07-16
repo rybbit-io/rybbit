@@ -56,13 +56,26 @@ Query parameters expose API keys in server logs and browser history. Use only fo
 
 ## Generating API Keys
 
-API keys are user-scoped and grant organization-level access:
+Rybbit has two kinds of API keys:
+
+- **Organization API keys** (recommended for integrations) — the organization's own credential. They can access every site in the organization and keep working when team members leave. Only organization admins and owners can create and manage them.
+- **Personal API keys** — act as you, with exactly your access, including any site restrictions, across every organization you belong to. Best for personal scripts and for connecting MCP clients.
+
+### Organization keys
+
+1. Navigate to **Settings → Organization** in your Rybbit dashboard
+2. Scroll to the **Organization API Keys** section (visible to admins and owners)
+3. Enter a name for the key and click **Create**
+4. Copy the key immediately (it won't be shown again)
+
+### Personal keys
 
 1. Navigate to **Settings → Account** in your Rybbit dashboard
-2. Scroll to the **API Keys** section
-3. Enter a name for your API key
-4. Click **Create**
-5. Copy the key immediately (it won't be shown again)
+2. Scroll to the **Personal API Keys** section
+3. Enter a name for the key and click **Create**
+4. Copy the key immediately (it won't be shown again)
+
+Both kinds support restricting a key to specific permissions when you create it — leave restrictions off for a full-access key.
 
 ### Rate Limits (Cloud Only)
 
@@ -75,8 +88,6 @@ API key rate limits depend on your plan:
 | **Pro** | 200 requests per minute |
 
 Self-hosted instances have no rate limits.
-
-Keys are tied to your user account and grant access to all sites in your organization(s).
 
 ---
 

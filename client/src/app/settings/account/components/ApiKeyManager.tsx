@@ -153,7 +153,9 @@ export function ApiKeyManager({ organizationId }: { organizationId?: string }) {
     <>
       <Card className="p-2">
         <CardHeader>
-          <CardTitle className="text-xl">{organizationId ? t("Organization API Keys") : t("API Keys")}</CardTitle>
+          <CardTitle className="text-xl">
+            {organizationId ? t("Organization API Keys") : t("Personal API Keys")}
+          </CardTitle>
         </CardHeader>
         <CardContent className="space-y-6">
           <div className="space-y-2">
@@ -161,10 +163,24 @@ export function ApiKeyManager({ organizationId }: { organizationId?: string }) {
             <p className="text-xs text-neutral-500">
               {organizationId
                 ? t(
-                    "Organization keys have access to all of this organization's sites and keep working when members leave. Use them for production integrations."
+                    "An organization key is the organization's own credential: it can access all of this organization's sites and keeps working when members leave. Use it for production integrations."
                   )
-                : t("Generate API keys to access analytics endpoints from your applications")}
+                : t(
+                    "A personal key acts as you, with exactly your access — for personal scripts and connecting MCP clients."
+                  )}
             </p>
+            {!organizationId && (
+              <p className="text-xs text-neutral-500">
+                {t("Building a production integration?")}{" "}
+                <Link
+                  href="/settings/organization"
+                  className="font-medium text-neutral-900 underline underline-offset-2 hover:text-neutral-700 dark:text-neutral-100 dark:hover:text-neutral-300"
+                >
+                  {t("Use an organization API key instead")}
+                </Link>{" "}
+                {t("— it keeps working when team members change (admins and owners only).")}
+              </p>
+            )}
             {isPlanGated ? (
               <div className="rounded-lg bg-neutral-50 dark:bg-neutral-900 p-3 border border-neutral-100 dark:border-neutral-800">
                 <p className="text-xs text-neutral-600 dark:text-neutral-400">
@@ -228,7 +244,7 @@ export function ApiKeyManager({ organizationId }: { organizationId?: string }) {
 
           <div className="space-y-2">
             <h4 className="text-sm font-medium">
-              {organizationId ? t("This organization's API keys") : t("Your API Keys")}
+              {organizationId ? t("This organization's API keys") : t("Your personal API keys")}
             </h4>
             {isLoadingApiKeys ? (
               <div className="space-y-2" aria-hidden="true">
