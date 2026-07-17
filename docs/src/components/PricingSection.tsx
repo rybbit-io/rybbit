@@ -139,11 +139,11 @@ export function PricingSection({ isAnnual, setIsAnnual }: { isAnnual: boolean, s
   return (
     <section className="py-16 md:py-24 w-full relative z-10">
       <div className="max-w-[1200px] mx-auto px-4">
-        <div className="mb-12 text-center max-w-3xl mx-auto">
-          <h2 className="text-4xl md:text-5xl font-bold tracking-tight pb-4 text-transparent bg-clip-text bg-gradient-to-b from-neutral-900 via-neutral-700 to-neutral-500 dark:from-white dark:via-gray-200 dark:to-gray-400">
+        <div className="mb-12 max-w-2xl">
+          <h2 className="text-3xl md:text-4xl font-semibold tracking-tight text-neutral-900 dark:text-white [text-wrap:balance]">
             {t("Pricing")}
           </h2>
-          <p className="text-lg text-neutral-600 dark:text-neutral-300">
+          <p className="mt-3 text-base md:text-lg text-neutral-600 dark:text-neutral-400">
             {t("Start your 7-day free trial — no credit card charges until the trial ends.")}
           </p>
         </div>
@@ -157,34 +157,36 @@ export function PricingSection({ isAnnual, setIsAnnual }: { isAnnual: boolean, s
                 {typeof eventLimit === "number" ? eventLimit.toLocaleString() : t("Custom")}
               </div>
             </div>
-            <div className="flex flex-col items-end relative">
-              {/* Billing toggle */}
-              <div className="flex mb-2 text-sm bg-neutral-200 dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 rounded-full p-1">
-                <button
-                  onClick={() => setIsAnnual(false)}
-                  className={cn(
-                    "px-3 py-1 rounded-full transition-colors cursor-pointer",
-                    !isAnnual
-                      ? "bg-white dark:bg-white/20 text-neutral-700 dark:text-neutral-100 font-medium"
-                      : "text-neutral-600 dark:text-neutral-400 hover:text-neutral-800 dark:hover:text-neutral-200"
-                  )}
-                >
-                  {t("Monthly")}
-                </button>
-                <button
-                  onClick={() => setIsAnnual(true)}
-                  className={cn(
-                    "px-3 py-1 rounded-full transition-colors cursor-pointer",
-                    isAnnual
-                      ? "bg-white dark:bg-white/20 text-neutral-700 dark:text-neutral-100 font-medium"
-                      : "text-neutral-600 dark:text-neutral-400 hover:text-neutral-800 dark:hover:text-neutral-200"
-                  )}
-                >
-                  {t("Annual")}
-                </button>
-                <div className="text-xs text-white absolute top-0 right-0 -translate-y-3 bg-emerald-500 dark:bg-emerald-500 rounded-full px-2 py-0.5 whitespace-nowrap">
-                  {t("4 months free")}
+            <div className="flex flex-col items-end">
+              <div className="flex items-center mb-2">
+                {/* Billing toggle */}
+                <div className="flex text-sm bg-neutral-100 dark:bg-neutral-800 rounded-full p-1">
+                  <button
+                    onClick={() => setIsAnnual(false)}
+                    className={cn(
+                      "px-3 py-1 rounded-full transition-colors cursor-pointer",
+                      !isAnnual
+                        ? "bg-white dark:bg-white/20 text-neutral-700 dark:text-neutral-100 font-medium"
+                        : "text-neutral-600 dark:text-neutral-400 hover:text-neutral-800 dark:hover:text-neutral-200"
+                    )}
+                  >
+                    {t("Monthly")}
+                  </button>
+                  <button
+                    onClick={() => setIsAnnual(true)}
+                    className={cn(
+                      "px-3 py-1 rounded-full transition-colors cursor-pointer",
+                      isAnnual
+                        ? "bg-white dark:bg-white/20 text-neutral-700 dark:text-neutral-100 font-medium"
+                        : "text-neutral-600 dark:text-neutral-400 hover:text-neutral-800 dark:hover:text-neutral-200"
+                    )}
+                  >
+                    {t("Annual")}
+                  </button>
                 </div>
+                <span className="ml-2 rounded-full bg-emerald-500/15 px-2 py-0.5 text-xs font-medium text-emerald-700 dark:text-emerald-400 whitespace-nowrap">
+                  {t("4 months free")}
+                </span>
               </div>
             </div>
           </div>
@@ -201,7 +203,7 @@ export function PricingSection({ isAnnual, setIsAnnual }: { isAnnual: boolean, s
 
           <div className="flex justify-between text-xs text-neutral-400">
             {EVENT_TIERS.map((tier, index) => (
-              <span key={index} className={cn(eventLimitIndex === index && "font-bold text-emerald-400")}>
+              <span key={index} className={cn(eventLimitIndex === index && "font-semibold text-emerald-600 dark:text-emerald-400")}>
                 {index === EVENT_TIERS.length - 1
                   ? "50M+"
                   : typeof tier === "number" && tier >= 1_000_000

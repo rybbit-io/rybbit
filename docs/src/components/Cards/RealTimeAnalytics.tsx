@@ -195,7 +195,7 @@ export function RealTimeAnalytics() {
       description={t("See your site performance as it happens with instant data updates and live visitor activity.")}
       icon={Activity}
     >
-      <div className="space-y-4 mt-4 transform -rotate-2 translate-x-8 translate-y-8 bg-neutral-100/50 dark:bg-neutral-800/20 border border-neutral-300/50 dark:border-neutral-800/50 pb-20 rounded-lg p-4 -mb-[90px] transition-transform duration-300 hover:scale-105 hover:-rotate-1">
+      <div className="mt-4 rounded-lg border border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-950 p-3">
         <div className="relative" style={{ height: "280px" }}>
           {events.map((event, index) => (
             <EventCard key={event.id} event={event} index={index} isNew={event.isNew} />

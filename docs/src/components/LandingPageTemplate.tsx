@@ -1,10 +1,8 @@
-import { BackgroundGrid } from "@/components/BackgroundGrid";
 import { CTASection } from "@/components/CTASection";
 import { FAQAccordion } from "@/components/FAQAccordion";
 import { HeroSection } from "@/components/HeroSection";
 import { IntegrationsGrid } from "@/components/Integration";
 import { Marquee } from "@/components/magicui/marquee";
-import { SectionBadge } from "@/components/SectionBadge";
 import { TweetCard } from "@/components/Tweet";
 import { ActivityIcon } from "@/components/ui/activity";
 import { ArrowDownIcon } from "@/components/ui/arrow-down";
@@ -93,6 +91,22 @@ interface LandingPageTemplateProps {
   showEUFlag?: boolean;
 }
 
+const HAIRLINE = "border-neutral-200 dark:border-neutral-800";
+
+/** Left-aligned section heading — the uniform header system for every content section. */
+function SectionHeader({ title, description }: { title: string; description?: string }) {
+  return (
+    <div className="max-w-2xl">
+      <h2 className="text-3xl md:text-4xl font-semibold tracking-tight text-neutral-900 dark:text-white [text-wrap:balance]">
+        {title}
+      </h2>
+      {description ? (
+        <p className="mt-3 text-base md:text-lg text-neutral-600 dark:text-neutral-400">{description}</p>
+      ) : null}
+    </div>
+  );
+}
+
 export function LandingPageTemplate({ title, subtitle, showEUFlag = true }: LandingPageTemplateProps) {
   const t = useExtracted();
 
@@ -179,226 +193,193 @@ export function LandingPageTemplate({ title, subtitle, showEUFlag = true }: Land
     },
   ];
 
-  return (
-    <>
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }} />
-      <BackgroundGrid />
-      <HeroSection title={title} subtitle={subtitle} showEUFlag={showEUFlag} />
+  const logos: { src: string; alt: string; width: number; href?: string; className: string }[] = [
+    {
+      src: "/logos/automatio.webp",
+      alt: "automatio",
+      width: 130,
+      href: "https://automatio.ai",
+      className: "grayscale invert dark:invert-0",
+    },
+    { src: "/logos/convex.svg", alt: "Convex", width: 120, className: "grayscale invert dark:invert-0 dark:grayscale-0" },
+    { src: "/logos/onyx.webp", alt: "Onyx", width: 100, href: "https://onyx.app", className: "dark:invert" },
+    { src: "/logos/vanguard.webp", alt: "Vanguard", width: 120, className: "dark:invert" },
+    { src: "/logos/ustwo.svg", alt: "ustwo", width: 100, className: "dark:invert" },
+    { src: "/logos/mydramalist.png", alt: "MyDramaList", width: 120, className: "invert dark:invert-0" },
+    { src: "/logos/dtelecom.svg", alt: "DTelecom", width: 120, className: "grayscale invert dark:invert-0" },
+    { src: "/logos/dpm.webp", alt: "DPM.lol", width: 120, className: "grayscale invert dark:invert-0" },
+  ];
 
-      {/* Logo Section */}
-      <section className="py-12 md:py-16 w-full">
-        <div className="max-w-[1200px] mx-auto px-4">
-          <div className="text-center mb-10 md:mb-12">
-            <p className="text-neutral-500 dark:text-neutral-400 text-sm uppercase tracking-wider font-medium">
+  return (
+    <div className="relative">
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }} />
+
+      {/* The measured column: continuous hairlines at the container edges, header to CTA */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-y-0 left-1/2 z-0 hidden w-full max-w-[1200px] -translate-x-1/2 border-x border-neutral-200 sm:block dark:border-neutral-800"
+      />
+
+      <div className="relative z-10">
+        <HeroSection title={title} subtitle={subtitle} showEUFlag={showEUFlag} />
+
+        {/* Social proof */}
+        <section className={`border-t ${HAIRLINE}`}>
+          <div className="mx-auto max-w-[1200px] px-6 py-12 md:py-14">
+            <p className="text-center text-sm text-neutral-500 dark:text-neutral-400">
               {t("Trusted by 10,000+ organizations worldwide")}
             </p>
-          </div>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-8 items-center justify-items-center">
-            <div className="flex items-center justify-center">
-              <Link href="https://automatio.ai" target="_blank">
-                <Image
-                  src="/logos/automatio.webp"
-                  alt="automatio"
-                  width={130}
-                  height={40}
-                  className="opacity-50 hover:opacity-80 dark:opacity-70 dark:hover:opacity-100 transition-opacity grayscale invert dark:invert-0"
-                />
-              </Link>
-            </div>
-            <div className="flex items-center justify-center">
-              <Image
-                src="/logos/convex.svg"
-                alt="Convex"
-                width={120}
-                height={40}
-                className="opacity-40 hover:opacity-70 dark:opacity-60 dark:hover:opacity-100 transition-opacity grayscale invert dark:invert-0 dark:grayscale-0"
-              />
-            </div>
-            <div className="flex items-center justify-center">
-              <Link href="https://onyx.app" target="_blank">
-                <Image
-                  src="/logos/onyx.webp"
-                  alt="Onyx"
-                  width={100}
-                  height={40}
-                  className="opacity-40 hover:opacity-70 dark:opacity-60 dark:hover:opacity-100 transition-opacity dark:invert"
-                />
-              </Link>
-            </div>
-            <div className="flex items-center justify-center">
-              <Image
-                src="/logos/vanguard.webp"
-                alt="Vanguard"
-                width={120}
-                height={40}
-                className="opacity-40 hover:opacity-70 dark:opacity-60 dark:hover:opacity-100 transition-opacity dark:invert"
-              />
-            </div>
-            <div className="flex items-center justify-center">
-              <Image
-                src="/logos/ustwo.svg"
-                alt="ustwo"
-                width={100}
-                height={40}
-                className="opacity-40 hover:opacity-70 dark:opacity-60 dark:hover:opacity-100 transition-opacity dark:invert"
-              />
-            </div>
-            <div className="flex items-center justify-center">
-              <Image
-                src="/logos/mydramalist.png"
-                alt="MyDramaList"
-                width={120}
-                height={40}
-                className="opacity-50 hover:opacity-80 dark:opacity-60 dark:hover:opacity-100 transition-opacity invert dark:invert-0"
-              />
-            </div>
-            <div className="flex items-center justify-center">
-              <Image
-                src="/logos/dtelecom.svg"
-                alt="DTelecom"
-                width={120}
-                height={40}
-                className="opacity-40 hover:opacity-70 dark:opacity-60 dark:hover:opacity-100 transition-opacity grayscale invert dark:invert-0"
-              />
-            </div>
-            <div className="flex items-center justify-center">
-              <Image
-                src="/logos/dpm.webp"
-                alt="DPM.lol"
-                width={120}
-                height={40}
-                className="opacity-40 hover:opacity-70 dark:opacity-60 dark:hover:opacity-100 transition-opacity grayscale invert dark:invert-0"
-              />
+            <div
+              className={`mt-8 grid grid-cols-2 md:grid-cols-4 gap-px overflow-hidden rounded-xl border ${HAIRLINE} bg-neutral-200 dark:bg-neutral-800`}
+            >
+              {logos.map(logo => {
+                const image = (
+                  <Image
+                    src={logo.src}
+                    alt={logo.alt}
+                    width={logo.width}
+                    height={40}
+                    className={`${logo.className} opacity-60 dark:opacity-70 hover:opacity-100 dark:hover:opacity-100 transition-opacity`}
+                  />
+                );
+                return (
+                  <div key={logo.alt} className="flex h-20 md:h-24 items-center justify-center bg-background p-4">
+                    {logo.href ? (
+                      <Link href={logo.href} target="_blank" rel="noopener noreferrer">
+                        {image}
+                      </Link>
+                    ) : (
+                      image
+                    )}
+                  </div>
+                );
+              })}
             </div>
           </div>
-        </div>
-      </section>
+        </section>
 
-      <section className="py-14 md:py-20 w-full max-w-[1200px] px-4 mx-auto">
-        <div className="text-center mb-10 md:mb-12">
-          <SectionBadge className="mb-4">{t("Why Rybbit")}</SectionBadge>
-          <h2 className="text-3xl md:text-5xl font-bold tracking-tight">{t("Everything you need")}</h2>
-          <p className="mt-4 text-base md:text-xl text-neutral-600 dark:text-neutral-300 max-w-2xl mx-auto font-light">
-            {t("Powerful analytics without the complexity. Privacy-friendly tools that just work.")}
-          </p>
-        </div>
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-4">
-          {features.map(feature => {
-            const Icon = feature.icon;
-            return (
-              <div
-                key={feature.title}
-                className="bg-neutral-100/50 dark:bg-neutral-800/20 border border-neutral-300/50 dark:border-neutral-800/50 rounded-lg p-5 transition-colors"
-              >
-                <h3 className="font-semibold mb-2 flex items-center gap-2">
-                  <Icon size={20} className="text-neutral-600 dark:text-neutral-400" />
-                  {feature.title}
-                </h3>
-                <p className="text-sm text-neutral-600 dark:text-neutral-400 leading-relaxed">{feature.description}</p>
+        {/* Feature index */}
+        <section className={`border-t ${HAIRLINE}`}>
+          <div className="mx-auto max-w-[1200px] px-6 py-20 md:py-24">
+            <SectionHeader
+              title={t("Everything you need")}
+              description={t("Powerful analytics without the complexity. Privacy-friendly tools that just work.")}
+            />
+            <div
+              className={`mt-12 grid grid-cols-2 md:grid-cols-4 gap-px overflow-hidden rounded-xl border ${HAIRLINE} bg-neutral-200 dark:bg-neutral-800`}
+            >
+              {features.map(feature => {
+                const Icon = feature.icon;
+                return (
+                  <div
+                    key={feature.title}
+                    className="group bg-background p-5 transition-colors hover:bg-neutral-50 dark:hover:bg-neutral-900"
+                  >
+                    <Icon
+                      size={18}
+                      className="text-neutral-400 dark:text-neutral-500 transition-colors group-hover:text-neutral-600 dark:group-hover:text-neutral-300"
+                    />
+                    <h3 className="mt-3 text-sm font-medium text-neutral-900 dark:text-white">{feature.title}</h3>
+                    <p className="mt-1 text-sm leading-relaxed text-neutral-500 dark:text-neutral-400">
+                      {feature.description}
+                    </p>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </section>
+
+        {/* Product showcase */}
+        <section className={`border-t ${HAIRLINE}`}>
+          <div className="mx-auto max-w-[1200px] px-6 py-20 md:py-24">
+            <SectionHeader
+              title={t("See it in action")}
+              description={t("Powerful tools designed for clarity, not complexity.")}
+            />
+            <div className="mt-12 grid grid-cols-1 gap-4 md:grid-cols-2">
+              <RealTimeAnalytics />
+              <SessionReplay />
+              <UserSessions />
+              <Funnels />
+            </div>
+          </div>
+        </section>
+
+        {/* Integrations */}
+        <section className={`border-t ${HAIRLINE}`}>
+          <div className="mx-auto max-w-[1200px] px-6 py-20 md:py-24">
+            <div className="grid grid-cols-1 gap-10 md:grid-cols-[1fr_2fr] md:gap-16">
+              <div className="md:sticky md:top-24 md:self-start">
+                <SectionHeader
+                  title={t("Works with all your favorite platforms")}
+                  description={t("Integrate Rybbit with any platform in minutes")}
+                />
               </div>
-            );
-          })}
-        </div>
-      </section>
-
-      <section className="py-14 md:py-20 w-full max-w-[1200px] px-4 mx-auto">
-        <div className="text-center mb-10 md:mb-16">
-          <SectionBadge className="mb-4">{t("Analytics Reimagined")}</SectionBadge>
-          <h2 className="text-3xl md:text-5xl font-bold tracking-tight">{t("See it in action")}</h2>
-          <p className="mt-4 text-base md:text-xl text-neutral-600 dark:text-neutral-300 max-w-2xl mx-auto font-light">
-            {t("Powerful tools designed for clarity, not complexity.")}
-          </p>
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
-          <RealTimeAnalytics />
-          <SessionReplay />
-          <UserSessions />
-          <Funnels />
-        </div>
-      </section>
-
-      {/* Integrations Section */}
-      <section className="py-12 md:py-20 w-full">
-        <div className="max-w-[1200px] mx-auto px-4">
-          <div className="grid grid-cols-1 md:grid-cols-[1fr_2fr] gap-8 md:gap-16">
-            <div className="md:sticky md:top-24 md:self-start">
-              <SectionBadge className="mb-4">{t("Seamless Integration")}</SectionBadge>
-              <h2 className="text-3xl md:text-4xl font-bold">{t("Works with all your favorite platforms")}</h2>
-              <p className="mt-4 text-neutral-600 dark:text-neutral-300 font-light">
-                {t("Integrate Rybbit with any platform in minutes")}
-              </p>
+              <IntegrationsGrid />
             </div>
-            <IntegrationsGrid />
           </div>
-        </div>
-      </section>
+        </section>
 
-      {/* Testimonial Section */}
-      <section className="py-10 md:py-16 w-full overflow-hidden">
-        <div className="max-w-[1200px] mx-auto px-4">
-          <div className="text-center mb-10 md:mb-16">
-            <SectionBadge className="mb-4">{t("User Testimonials")}</SectionBadge>
-            <h2 className="text-3xl md:text-5xl font-bold tracking-tight">{t("People love Rybbit")}</h2>
-            <p className="mt-4 text-base md:text-xl text-neutral-600 dark:text-neutral-300 max-w-2xl mx-auto font-light">
-              {t("See what others think about Rybbit Analytics")}
-            </p>
-          </div>
-          <div className="relative bg-neutral-100/50 dark:bg-neutral-800/20 backdrop-blur-sm border border-neutral-300/50 dark:border-neutral-800/50 rounded-3xl overflow-hidden">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 h-[600px] md:h-[700px] p-4">
-              {/* Column 1 - visible on all screen sizes */}
-              <Marquee vertical pauseOnHover className="[--duration:60s]" repeat={2}>
-                <TweetCard id="1991296442611184125" />
-                <TweetCard id="1921928423284629758" />
-                <TweetCard id="2000974573005889706" />
-                <TweetCard id="1927817460993884321" />
-                <TweetCard id="1977471983278535071" />
-              </Marquee>
+        {/* Testimonials */}
+        <section className={`border-t ${HAIRLINE}`}>
+          <div className="mx-auto max-w-[1200px] px-6 py-20 md:py-24">
+            <SectionHeader
+              title={t("People love Rybbit")}
+              description={t("See what others think about Rybbit Analytics")}
+            />
+            <div className="relative mt-12 h-[600px] md:h-[680px] overflow-hidden [mask-image:linear-gradient(to_bottom,transparent,black_12%,black_88%,transparent)]">
+              <div className="grid h-full grid-cols-1 gap-4 md:grid-cols-3">
+                <Marquee vertical pauseOnHover className="[--duration:60s]" repeat={2}>
+                  <TweetCard id="1991296442611184125" />
+                  <TweetCard id="1921928423284629758" />
+                  <TweetCard id="2000974573005889706" />
+                  <TweetCard id="1927817460993884321" />
+                  <TweetCard id="1977471983278535071" />
+                </Marquee>
 
-              {/* Column 2 - hidden on mobile */}
-              <Marquee vertical pauseOnHover reverse className="hidden md:flex [--duration:60s]" repeat={2}>
-                <TweetCard id="1920899082253434950" />
-                <TweetCard id="2000788904778326334" />
-                <TweetCard id="2015102995789381815" />
-                <TweetCard id="1980082738934993142" />
-                <TweetCard id="1976495558480232672" />
-              </Marquee>
+                <Marquee vertical pauseOnHover reverse className="hidden md:flex [--duration:60s]" repeat={2}>
+                  <TweetCard id="1920899082253434950" />
+                  <TweetCard id="2000788904778326334" />
+                  <TweetCard id="2015102995789381815" />
+                  <TweetCard id="1980082738934993142" />
+                  <TweetCard id="1976495558480232672" />
+                </Marquee>
 
-              {/* Column 3 - hidden on mobile */}
-              <Marquee vertical pauseOnHover className="hidden md:flex [--duration:60s]" repeat={2}>
-                <TweetCard id="1982378431166963982" />
-                <TweetCard id="2009548405488615871" />
-                <TweetCard id="1920470706761929048" />
-                <TweetCard id="1979830490006974510" />
-                <TweetCard id="1970265809122705759" />
-              </Marquee>
+                <Marquee vertical pauseOnHover className="hidden md:flex [--duration:60s]" repeat={2}>
+                  <TweetCard id="1982378431166963982" />
+                  <TweetCard id="2009548405488615871" />
+                  <TweetCard id="1920470706761929048" />
+                  <TweetCard id="1979830490006974510" />
+                  <TweetCard id="1970265809122705759" />
+                </Marquee>
+              </div>
             </div>
-
-            {/* Gradient overlays */}
-            <div className="pointer-events-none absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-neutral-100/90 dark:from-neutral-900/90 to-transparent"></div>
-            <div className="pointer-events-none absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-neutral-100/90 dark:from-neutral-900/90 to-transparent"></div>
           </div>
-        </div>
-      </section>
+        </section>
 
-      {/* FAQ Section */}
-      <section className="py-10 md:py-16 w-full">
-        <div className="max-w-[1200px] mx-auto px-4">
-          <div className="grid grid-cols-1 md:grid-cols-[1fr_2fr] gap-8 md:gap-16">
-            <div className="md:sticky md:top-24 md:self-start">
-              <h2 className="text-3xl md:text-4xl font-bold">{t("Frequently Asked Questions")}</h2>
-              <p className="mt-4 text-neutral-600 dark:text-neutral-300 font-light">
-                {t("Everything you need to know about Rybbit Analytics")}
-              </p>
+        {/* FAQ */}
+        <section className={`border-t ${HAIRLINE}`}>
+          <div className="mx-auto max-w-[1200px] px-6 py-20 md:py-24">
+            <div className="grid grid-cols-1 gap-10 md:grid-cols-[1fr_2fr] md:gap-16">
+              <div className="md:sticky md:top-24 md:self-start">
+                <SectionHeader
+                  title={t("Frequently Asked Questions")}
+                  description={t("Everything you need to know about Rybbit Analytics")}
+                />
+              </div>
+              <FAQAccordion />
             </div>
-            <FAQAccordion />
           </div>
+        </section>
+
+        {/* Pricing */}
+        <div className={`border-t ${HAIRLINE}`}>
+          <LandingPricing />
         </div>
-      </section>
 
-      {/* Pricing Section */}
-      <LandingPricing />
-
-      <CTASection />
-    </>
+        <CTASection />
+      </div>
+    </div>
   );
 }

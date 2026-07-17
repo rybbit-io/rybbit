@@ -1,5 +1,3 @@
-import { cn } from "@/lib/utils";
-import { SectionBadge } from "@/components/SectionBadge";
 import Link from "next/link";
 import {
   SiAngular,
@@ -83,28 +81,29 @@ const platforms: { name: string; icon: ComponentType<IconProps>; path: string }[
 
 const PlatformLogo = ({ name, icon: Icon, path }: { name: string; icon: ComponentType<IconProps>; path: string }) => {
   return (
-    <Link href={path} className="block">
-      <div
-        className={cn(
-          "flex flex-col justify-center gap-4 p-4",
-          "bg-neutral-100/50 dark:bg-neutral-800/20 backdrop-blur-sm rounded-lg",
-          "border border-neutral-300/50 dark:border-neutral-800/50 hover:border-neutral-500 dark:hover:border-neutral-700 transition-colors duration-200",
-          "cursor-pointer hover:scale-105 transition-transform"
-        )}
-      >
-        <Icon className="h-6 w-6 text-neutral-700 dark:text-neutral-300" />
-        <span className="text-sm text-neutral-600 dark:text-neutral-400">{name}</span>
-      </div>
+    <Link
+      href={path}
+      className="group flex items-center gap-2 bg-background px-3 py-3.5 transition-colors hover:bg-neutral-50 dark:hover:bg-neutral-900"
+    >
+      <Icon className="h-[18px] w-[18px] shrink-0 text-neutral-500 dark:text-neutral-400 transition-colors group-hover:text-neutral-700 dark:group-hover:text-neutral-300" />
+      <span className="truncate text-sm text-neutral-600 dark:text-neutral-400 transition-colors group-hover:text-neutral-900 dark:group-hover:text-white">
+        {name}
+      </span>
     </Link>
   );
 };
 
 export function IntegrationsGrid() {
   return (
-    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-5">
-      {platforms.map((platform) => (
+    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-px overflow-hidden rounded-xl border border-neutral-200 dark:border-neutral-800 bg-neutral-200 dark:bg-neutral-800">
+      {platforms.map(platform => (
         <PlatformLogo key={platform.name} {...platform} />
       ))}
+      {/* Filler cells keep the hairline grid rectangular at each column count:
+          34 items = exact at 2 cols, +2 at 3 cols, +1 at 5 cols */}
+      <div aria-hidden className="hidden md:block lg:hidden bg-background" />
+      <div aria-hidden className="hidden md:block lg:hidden bg-background" />
+      <div aria-hidden className="hidden lg:block bg-background" />
     </div>
   );
 }

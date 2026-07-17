@@ -108,6 +108,7 @@ pre {
 @theme inline {
   --animate-marquee: marquee var(--duration) infinite linear;
   --animate-marquee-vertical: marquee-vertical var(--duration) linear infinite;
+  --animate-rise: rise 0.7s cubic-bezier(0.16, 1, 0.3, 1) both;
 
   @keyframes marquee {
     from {
@@ -124,6 +125,26 @@ pre {
     to {
       transform: translateY(calc(-100% - var(--gap)));
     }
+  }
+  @keyframes rise {
+    from {
+      opacity: 0;
+      transform: translateY(16px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+}
+
+/* Reduced motion: entrance animations and marquees render static.
+   Content stays fully visible — motion only enhances. */
+@media (prefers-reduced-motion: reduce) {
+  .animate-rise,
+  .animate-marquee,
+  .animate-marquee-vertical {
+    animation: none;
   }
 }
 
