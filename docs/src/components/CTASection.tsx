@@ -1,5 +1,4 @@
 import { TrackedButton } from "@/components/TrackedButton";
-import { DEFAULT_EVENT_LIMIT } from "@/lib/const";
 import { useExtracted } from "next-intl";
 
 interface CTASectionProps {
@@ -23,50 +22,31 @@ export function CTASection({
 }: CTASectionProps) {
   const t = useExtracted();
   const resolvedTitle = title ?? t("Ready for better analytics?");
-  const resolvedDescription = description ?? t("Powerful insights without the complexity. Privacy-focused analytics that just works.");
+  const resolvedDescription =
+    description ?? t("Powerful insights without the complexity. Privacy-focused analytics that just works.");
   const resolvedPrimaryButtonText = primaryButtonText ?? t("Start for $0");
   const resolvedSecondaryButtonText = secondaryButtonText ?? t("Live demo");
 
   return (
-    <section className="py-12 md:py-20 w-full relative z-10">
-      <div className="max-w-[1200px] mx-auto px-4">
-        <div className="relative overflow-hidden rounded-3xl bg-neutral-950 p-10 md:p-16 lg:p-20">
-          {/* Noise texture overlay */}
-          <svg
-            className="absolute inset-0 w-full h-full opacity-[0.12] pointer-events-none"
-            aria-hidden="true"
-          >
-            <filter id="cta-noise">
-              <feTurbulence
-                type="fractalNoise"
-                baseFrequency="0.8"
-                numOctaves="4"
-                stitchTiles="stitch"
-              />
-              <feColorMatrix type="saturate" values="0" />
-            </filter>
-            <rect width="100%" height="100%" filter="url(#cta-noise)" />
-          </svg>
-
-          {/* Gradient orbs for organic background effect */}
-          <div className="absolute top-0 left-0 w-[400px] h-[400px] bg-emerald-600/30 rounded-full blur-[120px] -translate-x-1/2 -translate-y-1/2"></div>
-          <div className="absolute bottom-0 left-1/4 w-[300px] h-[300px] bg-emerald-500/20 rounded-full blur-[100px] translate-y-1/2"></div>
-          <div className="absolute top-1/2 right-0 w-[250px] h-[250px] bg-teal-600/15 rounded-full blur-[80px] translate-x-1/2"></div>
-
-          <div className="relative z-10 flex flex-col items-center justify-center text-center">
-            <h2 className="text-2xl md:text-3xl lg:text-4xl font-semibold text-white mb-4 md:mb-6 tracking-tight">
+    <section className="border-t border-neutral-200 py-6 dark:border-neutral-800 md:py-8">
+      <div className="mx-auto w-[calc(100%-1.5rem)] max-w-[1240px] md:w-[calc(100%-2rem)]">
+        <div className="grid items-end gap-8 overflow-hidden rounded-xl bg-neutral-950 px-6 py-10 text-white sm:px-10 md:grid-cols-12 md:px-12 md:py-14 lg:px-16 lg:py-16">
+          <div className="md:col-span-7">
+            <h2 className="max-w-[13ch] text-3xl font-semibold leading-none tracking-[-0.03em] text-white sm:text-4xl lg:text-5xl">
               {resolvedTitle}
             </h2>
-            <p className="text-sm md:text-base text-neutral-400 mb-8 md:mb-10 mx-auto max-w-[500px]">
+            <p className="mt-5 max-w-[58ch] text-sm leading-6 text-neutral-400 md:text-base">
               {resolvedDescription}
             </p>
+          </div>
 
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-4 md:gap-6 mb-6 w-full sm:w-auto">
+          <div className="md:col-span-5 md:justify-self-end">
+            <div className="flex flex-col gap-2 sm:flex-row">
               <TrackedButton
                 href={primaryButtonHref}
                 eventName="signup"
                 eventProps={{ location: eventLocation, button_text: resolvedPrimaryButtonText }}
-                className="w-full whitespace-nowrap sm:w-auto bg-emerald-600 hover:bg-emerald-500 text-white font-medium px-6 py-3 rounded-lg shadow-lg shadow-emerald-900/20 transform hover:-translate-y-0.5 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-emerald-200 focus:ring-opacity-50 cursor-pointer"
+                className="inline-flex h-11 w-full items-center justify-center whitespace-nowrap rounded-md border border-emerald-800 bg-emerald-700 px-5 text-sm font-semibold text-white transition-colors hover:bg-emerald-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-400 sm:w-auto"
               >
                 {resolvedPrimaryButtonText}
               </TrackedButton>
@@ -76,15 +56,12 @@ export function CTASection({
                 target="_blank"
                 rel="noopener noreferrer"
                 eventProps={{ location: eventLocation, button_text: resolvedSecondaryButtonText }}
-                className="w-full whitespace-nowrap sm:w-auto bg-neutral-800 hover:bg-neutral-700 text-white font-medium px-6 py-3 rounded-lg transform hover:-translate-y-0.5 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-neutral-400 focus:ring-opacity-50 cursor-pointer"
+                className="inline-flex h-11 w-full items-center justify-center whitespace-nowrap rounded-md border border-neutral-700 bg-transparent px-5 text-sm font-semibold text-white transition-colors hover:border-neutral-500 hover:bg-neutral-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neutral-400 sm:w-auto"
               >
                 {resolvedSecondaryButtonText}
               </TrackedButton>
             </div>
-
-            <p className="text-neutral-500 text-sm">
-              {t("7-day free trial. Cancel anytime.")}
-            </p>
+            <p className="mt-4 text-sm text-neutral-500 md:text-right">{t("7-day free trial. Cancel anytime.")}</p>
           </div>
         </div>
       </div>

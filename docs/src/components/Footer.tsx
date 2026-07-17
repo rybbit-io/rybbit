@@ -8,7 +8,7 @@ export function Footer() {
   const t = useExtracted();
   return (
     <footer className="border-t border-neutral-200 dark:border-neutral-800">
-      <div className="max-w-[1200px] mx-auto px-4 py-12">
+      <div className="mx-auto w-[calc(100%-1.5rem)] max-w-[1240px] py-12 md:w-[calc(100%-2rem)]">
         {/* Main Footer Content */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-8 mb-8">
           {/* Company Info */}
@@ -25,6 +25,8 @@ export function Footer() {
               href="https://www.producthunt.com/products/rybbit?embed=true&utm_source=badge-top-post-badge&utm_medium=badge&utm_source=badge-rybbit&#0045;2"
               target="_blank"
             >
+              {/* Product Hunt serves this badge dynamically; preserving its own image URL keeps the badge current. */}
+              {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src="https://api.producthunt.com/widgets/embed-image/v1/top-post-badge.svg?post_id=1028220&theme=neutral&period=daily&t=1761001525479"
                 alt="Rybbit - Open&#0032;Source&#0032;Google&#0032;Analytics&#0032;Replacement | Product Hunt"

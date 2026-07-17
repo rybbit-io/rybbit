@@ -2,19 +2,16 @@
 
 import { useTheme } from "next-themes";
 import { Moon, Sun } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useSyncExternalStore } from "react";
+
+const subscribe = () => () => {};
 
 export function ThemeSwitcher() {
   const { resolvedTheme, setTheme } = useTheme();
-  const [mounted, setMounted] = useState(false);
-
-  // Avoid hydration mismatch
-  useEffect(() => {
-    setMounted(true);
-  }, []);
+  const mounted = useSyncExternalStore(subscribe, () => true, () => false);
 
   if (!mounted) {
-    return <div className="bg-neutral-200 dark:bg-neutral-800 p-0.5 rounded-full w-[46px] h-[24px]" />;
+    return <div className="h-11 w-16 rounded-full bg-neutral-200 p-1 dark:bg-neutral-800" />;
   }
 
   const isDark = resolvedTheme === "dark";
@@ -22,18 +19,18 @@ export function ThemeSwitcher() {
   return (
     <button
       onClick={() => setTheme(isDark ? "light" : "dark")}
-      className="bg-neutral-200 dark:bg-neutral-800 p-0.5 rounded-full flex items-center gap-0.5 transition-colors hover:bg-neutral-300 dark:hover:bg-neutral-700"
+      className="flex h-11 w-16 items-center justify-center gap-1 rounded-full bg-neutral-200 p-1 transition-colors hover:bg-neutral-300 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-500 dark:bg-neutral-800 dark:hover:bg-neutral-700"
       aria-label="Toggle theme"
     >
-      <div className={`p-1 rounded-full transition-all ${!isDark ? "bg-white shadow-sm" : "bg-transparent"}`}>
-        <Sun className={`w-3 h-3 ${!isDark ? "text-neutral-900" : "text-neutral-500"}`} />
+      <div className={`rounded-full p-1.5 transition-colors ${!isDark ? "bg-white" : "bg-transparent"}`}>
+        <Sun className={`size-3.5 ${!isDark ? "text-neutral-900" : "text-neutral-500"}`} />
       </div>
       <div
-        className={`p-1 rounded-full transition-all ${
-          isDark ? "bg-neutral-900 dark:bg-neutral-700 shadow-sm" : "bg-transparent"
+        className={`rounded-full p-1.5 transition-colors ${
+          isDark ? "bg-neutral-900 dark:bg-neutral-700" : "bg-transparent"
         }`}
       >
-        <Moon className={`w-3 h-3 ${isDark ? "text-white" : "text-neutral-500"}`} />
+        <Moon className={`size-3.5 ${isDark ? "text-white" : "text-neutral-500"}`} />
       </div>
     </button>
   );

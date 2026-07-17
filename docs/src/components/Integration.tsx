@@ -1,5 +1,4 @@
 import { cn } from "@/lib/utils";
-import { SectionBadge } from "@/components/SectionBadge";
 import Link from "next/link";
 import {
   SiAngular,
@@ -83,25 +82,21 @@ const platforms: { name: string; icon: ComponentType<IconProps>; path: string }[
 
 const PlatformLogo = ({ name, icon: Icon, path }: { name: string; icon: ComponentType<IconProps>; path: string }) => {
   return (
-    <Link href={path} className="block">
-      <div
-        className={cn(
-          "flex flex-col justify-center gap-4 p-4",
-          "bg-neutral-100/50 dark:bg-neutral-800/20 backdrop-blur-sm rounded-lg",
-          "border border-neutral-300/50 dark:border-neutral-800/50 hover:border-neutral-500 dark:hover:border-neutral-700 transition-colors duration-200",
-          "cursor-pointer hover:scale-105 transition-transform"
-        )}
-      >
-        <Icon className="h-6 w-6 text-neutral-700 dark:text-neutral-300" />
-        <span className="text-sm text-neutral-600 dark:text-neutral-400">{name}</span>
-      </div>
+    <Link
+      href={path}
+      className={cn(
+        "group flex min-h-16 items-center gap-3 border-t border-neutral-200 py-4 text-neutral-600 transition-colors hover:text-neutral-950 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-500 dark:border-neutral-800 dark:text-neutral-400 dark:hover:text-white"
+      )}
+    >
+      <Icon className="size-5 shrink-0 transition-colors group-hover:text-emerald-600 dark:group-hover:text-emerald-400" />
+      <span className="text-sm font-medium">{name}</span>
     </Link>
   );
 };
 
 export function IntegrationsGrid() {
   return (
-    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-5">
+    <div className="grid grid-cols-2 gap-x-6 sm:grid-cols-3">
       {platforms.map((platform) => (
         <PlatformLogo key={platform.name} {...platform} />
       ))}

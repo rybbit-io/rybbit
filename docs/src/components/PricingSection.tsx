@@ -5,7 +5,7 @@ import { Slider } from "@/components/ui/slider";
 import { cn } from "@/lib/utils";
 import { getCalApi } from "@calcom/embed-react";
 import { useExtracted } from "next-intl";
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState } from "react";
 import { STANDARD_SITE_LIMIT, STANDARD_TEAM_LIMIT } from "../lib/const";
 import { PricingCard } from "./PricingCard";
 
@@ -70,11 +70,18 @@ export function PricingSection({ isAnnual, setIsAnnual }: { isAnnual: boolean, s
 
   useEffect(() => {
     if (!carouselApi) return;
-    setSlideCount(carouselApi.scrollSnapList().length);
-    setCurrentSlide(carouselApi.selectedScrollSnap());
-    carouselApi.on("select", () => {
+
+    const updateCarouselState = () => {
+      setSlideCount(carouselApi.scrollSnapList().length);
       setCurrentSlide(carouselApi.selectedScrollSnap());
-    });
+    };
+    const frame = requestAnimationFrame(updateCarouselState);
+    carouselApi.on("select", updateCarouselState);
+
+    return () => {
+      cancelAnimationFrame(frame);
+      carouselApi.off("select", updateCarouselState);
+    };
   }, [carouselApi]);
 
   const STANDARD_FEATURES = [
@@ -137,19 +144,19 @@ export function PricingSection({ isAnnual, setIsAnnual }: { isAnnual: boolean, s
   }
 
   return (
-    <section className="py-16 md:py-24 w-full relative z-10">
-      <div className="max-w-[1200px] mx-auto px-4">
-        <div className="mb-12 text-center max-w-3xl mx-auto">
-          <h2 className="text-4xl md:text-5xl font-bold tracking-tight pb-4 text-transparent bg-clip-text bg-gradient-to-b from-neutral-900 via-neutral-700 to-neutral-500 dark:from-white dark:via-gray-200 dark:to-gray-400">
+    <section className="w-full border-t border-neutral-200 py-20 dark:border-neutral-800 md:py-28">
+      <div className="mx-auto w-[calc(100%-1.5rem)] max-w-[1240px] md:w-[calc(100%-2rem)]">
+        <div className="mb-14 grid items-end gap-5 md:grid-cols-12 md:gap-6">
+          <h2 className="text-5xl font-semibold leading-none tracking-[-0.035em] md:col-span-7 md:text-7xl">
             {t("Pricing")}
           </h2>
-          <p className="text-lg text-neutral-600 dark:text-neutral-300">
+          <p className="max-w-xl text-base leading-7 text-neutral-600 md:col-span-5 md:justify-self-end md:text-lg dark:text-neutral-400">
             {t("Start your 7-day free trial — no credit card charges until the trial ends.")}
           </p>
         </div>
 
         {/* Shared controls section */}
-        <div className="max-w-xl mx-auto mb-8">
+        <div className="mx-auto mb-10 max-w-2xl rounded-xl border border-neutral-200 bg-neutral-50 p-5 dark:border-neutral-800 dark:bg-neutral-900 md:p-6">
           <div className="flex justify-between mb-6 items-center">
             <div>
               <h3 className="font-semibold mb-2">{t("Monthly pageviews")}</h3>
@@ -159,11 +166,11 @@ export function PricingSection({ isAnnual, setIsAnnual }: { isAnnual: boolean, s
             </div>
             <div className="flex flex-col items-end relative">
               {/* Billing toggle */}
-              <div className="flex mb-2 text-sm bg-neutral-200 dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 rounded-full p-1">
+              <div className="mb-2 flex rounded-md border border-neutral-300 bg-neutral-200 p-1 text-sm dark:border-neutral-700 dark:bg-neutral-800">
                 <button
                   onClick={() => setIsAnnual(false)}
                   className={cn(
-                    "px-3 py-1 rounded-full transition-colors cursor-pointer",
+                    "cursor-pointer rounded-sm px-3 py-1 transition-colors",
                     !isAnnual
                       ? "bg-white dark:bg-white/20 text-neutral-700 dark:text-neutral-100 font-medium"
                       : "text-neutral-600 dark:text-neutral-400 hover:text-neutral-800 dark:hover:text-neutral-200"
@@ -174,7 +181,7 @@ export function PricingSection({ isAnnual, setIsAnnual }: { isAnnual: boolean, s
                 <button
                   onClick={() => setIsAnnual(true)}
                   className={cn(
-                    "px-3 py-1 rounded-full transition-colors cursor-pointer",
+                    "cursor-pointer rounded-sm px-3 py-1 transition-colors",
                     isAnnual
                       ? "bg-white dark:bg-white/20 text-neutral-700 dark:text-neutral-100 font-medium"
                       : "text-neutral-600 dark:text-neutral-400 hover:text-neutral-800 dark:hover:text-neutral-200"
@@ -182,7 +189,7 @@ export function PricingSection({ isAnnual, setIsAnnual }: { isAnnual: boolean, s
                 >
                   {t("Annual")}
                 </button>
-                <div className="text-xs text-white absolute top-0 right-0 -translate-y-3 bg-emerald-500 dark:bg-emerald-500 rounded-full px-2 py-0.5 whitespace-nowrap">
+                <div className="absolute right-0 top-0 -translate-y-3 whitespace-nowrap rounded-sm bg-emerald-600 px-2 py-0.5 text-xs text-white">
                   {t("4 months free")}
                 </div>
               </div>
@@ -303,7 +310,7 @@ export function PricingSection({ isAnnual, setIsAnnual }: { isAnnual: boolean, s
               </div>
 
               {/* Desktop grid */}
-              <div className="hidden min-[700px]:grid min-[1100px]:grid-cols-3 min-[700px]:grid-cols-2 gap-4 mx-auto justify-center items-stretch">
+              <div className="mx-auto hidden items-stretch justify-center gap-3 min-[700px]:grid min-[700px]:grid-cols-2 min-[1100px]:grid-cols-3">
                 {standardCard}
                 {proCard}
                 {enterpriseCard}
