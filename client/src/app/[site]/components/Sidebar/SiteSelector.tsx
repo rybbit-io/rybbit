@@ -7,7 +7,7 @@ import { Favicon } from "../../../../components/Favicon";
 import { Button } from "../../../../components/ui/button";
 import { Command, CommandEmpty, CommandInput, CommandItem, CommandList } from "../../../../components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "../../../../components/ui/popover";
-import { authClient } from "../../../../lib/auth";
+import { useActiveOrganizationId } from "../../../../hooks/useActiveOrganizationId";
 import { useStore } from "../../../../lib/store";
 import { userStore } from "../../../../lib/userStore";
 import { cn, formatter } from "../../../../lib/utils";
@@ -77,8 +77,8 @@ function SiteSkeletonRow() {
 
 function SiteSelectorContent({ onSiteSelect }: { onSiteSelect: () => void }) {
   const t = useExtracted();
-  const { data: activeOrganization } = authClient.useActiveOrganization();
-  const { data: sites } = useGetSitesFromOrg(activeOrganization?.id);
+  const activeOrganizationId = useActiveOrganizationId();
+  const { data: sites } = useGetSitesFromOrg(activeOrganizationId);
   const embed = useEmbedablePage();
 
   const pathname = usePathname();

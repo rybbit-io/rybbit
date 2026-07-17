@@ -1,6 +1,6 @@
-import { authClient } from "@/lib/auth";
 import { useQuery, UseQueryResult } from "@tanstack/react-query";
 import { authedFetch } from "../../api/utils";
+import { useActiveOrganizationId } from "../../hooks/useActiveOrganizationId";
 import { IS_CLOUD } from "../const";
 
 export interface SubscriptionData {
@@ -23,21 +23,21 @@ export interface SubscriptionData {
 }
 
 export function useStripeSubscription(): UseQueryResult<SubscriptionData | undefined, Error> {
-  const { data: activeOrg } = authClient.useActiveOrganization();
+  const activeOrgId = useActiveOrganizationId();
 
   const fetchSubscription = async () => {
-    if (!activeOrg || !IS_CLOUD) {
+    if (!activeOrgId || !IS_CLOUD) {
       return undefined;
     }
 
-    return authedFetch<SubscriptionData>(`/stripe/subscription?organizationId=${activeOrg.id}`);
+    return authedFetch<SubscriptionData>(`/stripe/subscription?organizationId=${activeOrgId}`);
   };
 
   return useQuery<SubscriptionData | undefined>({
-    queryKey: ["stripe-subscription", activeOrg?.id],
+    queryKey: ["stripe-subscription", activeOrgId],
     queryFn: fetchSubscription,
     staleTime: 5 * 60 * 1000,
     retry: false,
-    enabled: !!activeOrg,
+    enabled: !!activeOrgId,
   });
 }

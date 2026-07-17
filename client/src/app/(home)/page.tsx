@@ -20,8 +20,8 @@ import { Card, CardDescription, CardTitle } from "../../components/ui/card";
 import { Input } from "../../components/ui/input";
 import { MultiSelect } from "../../components/ui/multi-select";
 import { Pagination } from "../../components/pagination";
+import { useActiveOrganizationId } from "../../hooks/useActiveOrganizationId";
 import { useSetPageTitle } from "../../hooks/useSetPageTitle";
-import { authClient } from "../../lib/auth";
 import { canGoForward, goBack, goForward, useStore } from "../../lib/store";
 import { AddSite } from "../components/AddSite";
 import { SiteCard } from "./SiteCard";
@@ -39,9 +39,9 @@ export default function Home() {
   const isDesktop = width !== null && width >= 768;
 
   const { time, setTime } = useStore();
-  const { data: activeOrganization, isPending } = authClient.useActiveOrganization();
+  const activeOrganizationId = useActiveOrganizationId();
 
-  const { data: sites, refetch: refetchSites, isLoading: isLoadingSites } = useGetSitesFromOrg(activeOrganization?.id);
+  const { data: sites, refetch: refetchSites, isLoading: isLoadingSites } = useGetSitesFromOrg(activeOrganizationId);
 
   const {
     data: userOrganizationsData,
@@ -49,15 +49,16 @@ export default function Home() {
     refetch: refetchOrganizations,
   } = useUserOrganizations();
 
-  // Consolidated loading state
-  const isLoading = isLoadingOrganizations || isPending || isLoadingSites;
+  // Consolidated loading state. Resolving the active org id no longer depends on
+  // the heavy get-full-organization call, so loading tracks the org list and sites.
+  const isLoading = isLoadingOrganizations || isLoadingSites;
 
   // Check if user has organizations
   const hasOrganizations = Array.isArray(userOrganizationsData) && userOrganizationsData.length > 0;
   const hasNoOrganizations = !isLoading && !hasOrganizations;
 
   // Check user permissions for the active organization
-  const activeOrgMembership = userOrganizationsData?.find(org => org.id === activeOrganization?.id);
+  const activeOrgMembership = userOrganizationsData?.find(org => org.id === activeOrganizationId);
 
   const isUserMember = activeOrgMembership?.role === "member";
   const canAddSites = hasOrganizations && !isUserMember;
@@ -66,7 +67,7 @@ export default function Home() {
   const shouldShowSites = hasOrganizations && !isLoading;
   const hasNoSites = shouldShowSites && (!sites?.sites || sites.sites.length === 0);
 
-  const { data: teamsData } = useTeams(activeOrganization?.id);
+  const { data: teamsData } = useTeams(activeOrganizationId);
 
   const [createOrgDialogOpen, setCreateOrgDialogOpen] = useState(false);
   const [nameFilter, setNameFilter] = useState("");

@@ -3,7 +3,7 @@ import { AppWindow, Building2, Combine, CreditCard, UserCircle, Users } from "lu
 import { useExtracted } from "next-intl";
 import { usePathname } from "next/navigation";
 import { useUserOrganizations } from "../../api/admin/hooks/useOrganizations";
-import { authClient } from "../../lib/auth";
+import { useActiveOrganizationId } from "../../hooks/useActiveOrganizationId";
 import { IS_CLOUD } from "../../lib/const";
 import { OrganizationSelector } from "../OrganizationSelector";
 import { Sidebar } from "./Sidebar";
@@ -11,11 +11,11 @@ import { Sidebar } from "./Sidebar";
 export function NavigationSidebar() {
   const t = useExtracted();
   const pathname = usePathname();
-  const { data: activeOrganization } = authClient.useActiveOrganization();
+  const activeOrganizationId = useActiveOrganizationId();
   const { data: userOrganizations } = useUserOrganizations();
 
   const currentMember = userOrganizations?.find(
-    (org) => org.id === activeOrganization?.id
+    (org) => org.id === activeOrganizationId
   );
   const isAdminOrOwner =
     currentMember?.role === "admin" || currentMember?.role === "owner";

@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { usePathname } from "next/navigation";
-import { authClient } from "../../../lib/auth";
+import { useActiveOrganizationId } from "../../../hooks/useActiveOrganizationId";
 import { useStore } from "../../../lib/store";
 import {
   fetchSite,
@@ -87,8 +87,8 @@ export function useGetSiteIsPublic(siteId?: string | number) {
 }
 
 export const useCurrentSite = () => {
-  const { data: activeOrganization } = authClient.useActiveOrganization();
-  const { data: sites } = useGetSitesFromOrg(activeOrganization?.id);
+  const activeOrganizationId = useActiveOrganizationId();
+  const { data: sites } = useGetSitesFromOrg(activeOrganizationId);
   const pathname = usePathname();
 
   return {
