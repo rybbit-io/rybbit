@@ -134,7 +134,7 @@ export const endpointCategories: EndpointCategory[] = [
         path: "/organizations",
         name: "Get My Organizations",
         description:
-          "Returns all organizations the authenticated user is a member of, including all members for each organization",
+          "Returns all organizations the authenticated user is a member of. The members array is only populated for session-cookie requests; Bearer/API-key callers receive an empty members array and should use Get Organization Members instead.",
         hasCommonParams: false,
       },
       {
@@ -332,6 +332,38 @@ export const endpointCategories: EndpointCategory[] = [
         hasCommonParams: true,
         specificParams: ["event_name"],
         requiredParams: ["event_name"],
+      },
+      {
+        method: "GET",
+        path: "/sites/:site/events/autocapture",
+        name: "Get Autocapture Events",
+        description: "Returns autocapture events of a given type grouped by display value with counts",
+        hasCommonParams: true,
+        requiredParams: ["type"],
+        specificParams: ["type"],
+        parameterMetadata: {
+          type: {
+            label: "Type",
+            type: "select",
+            options: ["outbound", "button_click", "form_submit", "copy"],
+          },
+        },
+      },
+      {
+        method: "GET",
+        path: "/sites/:site/events/autocapture-values",
+        name: "Get Autocapture Values",
+        description: "Returns the most common prop values for an autocapture type (goal/funnel suggestions)",
+        hasCommonParams: true,
+        requiredParams: ["type"],
+        specificParams: ["type"],
+        parameterMetadata: {
+          type: {
+            label: "Type",
+            type: "select",
+            options: ["outbound", "button_click", "form_submit", "copy"],
+          },
+        },
       },
       {
         method: "GET",
@@ -649,7 +681,16 @@ export const endpointCategories: EndpointCategory[] = [
         name: "Get Sessions",
         description: "Returns a paginated list of sessions",
         hasCommonParams: true,
-        specificParams: ["page", "limit", "user_id", "identified_only", "min_pageviews", "min_events", "min_duration"],
+        specificParams: [
+          "page",
+          "limit",
+          "user_id",
+          "session_id",
+          "identified_only",
+          "min_pageviews",
+          "min_events",
+          "min_duration",
+        ],
       },
       {
         method: "GET",
@@ -900,6 +941,7 @@ export const parameterMetadata: Record<string, ParameterMetadata> = {
   errorMessage: { label: "Error Message", type: "text", placeholder: "Error message to filter by" },
   user_id: { label: "User ID", type: "text", placeholder: "User ID" },
   userId: { label: "User ID", type: "text", placeholder: "User ID" },
+  session_id: { label: "Session ID", type: "text", placeholder: "Session ID" },
   key: { label: "Key", type: "text", placeholder: "Trait key" },
   value: { label: "Value", type: "text", placeholder: "Trait value" },
   search: { label: "Search", type: "text", placeholder: "Search users" },
