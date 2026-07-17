@@ -5,7 +5,7 @@ import Link from "next/link";
 export function FAQAccordion() {
   const t = useExtracted();
   return (
-    <div className="bg-neutral-100/50 dark:bg-neutral-800/20 backdrop-blur-sm border border-neutral-300/50 dark:border-neutral-800/50 rounded-xl overflow-hidden">
+    <div className="overflow-hidden border-t border-neutral-200 dark:border-neutral-800">
       <Accordion type="single" collapsible className="w-full">
         <AccordionItem value="item-1">
           <AccordionTrigger className="md:text-lg">{t("Is Rybbit GDPR and CCPA compliant?")}</AccordionTrigger>

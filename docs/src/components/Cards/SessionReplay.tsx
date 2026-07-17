@@ -1,12 +1,9 @@
 "use client";
 
 import { Card } from "./Card";
-import { Play, Pause, SkipBack, SkipForward, Maximize2, Volume2, Laptop, Film } from "lucide-react";
+import { Film, Pause, Play } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useExtracted } from "next-intl";
-import { CountryFlag } from "../Country";
-import { Browser } from "../Browser";
-import { OperatingSystem } from "../OperatingSystem";
 
 export function SessionReplay() {
   const t = useExtracted();
@@ -55,7 +52,7 @@ export function SessionReplay() {
       description={t("Watch real user sessions to understand their behavior and identify pain points.")}
       icon={Film}
     >
-      <div className=" mt-4 transform rotate-2 translate-x-8 translate-y-8 bg-neutral-200 dark:bg-neutral-900 rounded-lg -mb-[30px] rounded-xl transition-transform duration-300 hover:scale-105 hover:rotate-3">
+      <div className="ml-4 mt-6 -mb-8 overflow-hidden rounded-md border border-neutral-200 bg-neutral-100 dark:border-neutral-800 dark:bg-neutral-900">
         {/* Video player container */}
         <div className="relative">
           {/* Mock website content */}
@@ -68,7 +65,7 @@ export function SessionReplay() {
                 <div className="w-2 h-2 rounded-full bg-green-500"></div>
               </div>
               <div className="flex-1 mx-3">
-                <div className="bg-neutral-100 dark:bg-neutral-700 rounded px-2 py-0.5 text-[10px] text-neutral-900 dark:text-neutral-300">
+                <div className="rounded bg-neutral-100 px-2 py-0.5 text-xs text-neutral-900 dark:bg-neutral-700 dark:text-neutral-300">
                   https://example.com/products
                 </div>
               </div>
@@ -95,8 +92,8 @@ export function SessionReplay() {
               {/* Product grid */}
               <div className="grid grid-cols-3 gap-2">
                 <div
-                  className={`bg-neutral-100 rounded p-1.5 transition-all duration-300 ${
-                    hoveredProduct === 0 ? "shadow-lg scale-105" : ""
+                  className={`rounded bg-neutral-100 p-1.5 transition-all duration-300 motion-reduce:transition-none ${
+                    hoveredProduct === 0 ? "scale-[1.02] ring-1 ring-neutral-400" : ""
                   }`}
                 >
                   <div className="w-full h-16 bg-neutral-300 rounded mb-1.5"></div>
@@ -104,8 +101,8 @@ export function SessionReplay() {
                   <div className="w-12 h-2 bg-emerald-500 rounded"></div>
                 </div>
                 <div
-                  className={`bg-neutral-100 rounded p-1.5 transition-all duration-300 ${
-                    hoveredProduct === 1 ? "shadow-lg scale-105" : ""
+                  className={`rounded bg-neutral-100 p-1.5 transition-all duration-300 motion-reduce:transition-none ${
+                    hoveredProduct === 1 ? "scale-[1.02] ring-1 ring-neutral-400" : ""
                   }`}
                 >
                   <div className="w-full h-16 bg-neutral-300 rounded mb-1.5 relative">
@@ -115,8 +112,8 @@ export function SessionReplay() {
                   <div className="w-12 h-2 bg-emerald-500 rounded"></div>
                 </div>
                 <div
-                  className={`bg-neutral-100 rounded p-1.5 transition-all duration-300 ${
-                    hoveredProduct === 2 ? "shadow-lg scale-105" : ""
+                  className={`rounded bg-neutral-100 p-1.5 transition-all duration-300 motion-reduce:transition-none ${
+                    hoveredProduct === 2 ? "scale-[1.02] ring-1 ring-neutral-400" : ""
                   }`}
                 >
                   <div className="w-full h-16 bg-neutral-300 rounded mb-1.5"></div>
@@ -128,7 +125,7 @@ export function SessionReplay() {
 
             {/* Mouse cursor */}
             <div
-              className="absolute w-4 h-4 transform -rotate-12 transition-all duration-1000 ease-in-out"
+              className="absolute size-4 -rotate-12 transform transition-all duration-1000 ease-in-out motion-reduce:transition-none"
               style={{
                 left: `${cursorPosition.x}px`,
                 top: `${cursorPosition.y}px`,
@@ -142,7 +139,7 @@ export function SessionReplay() {
             {/* Click ripple effect */}
             {clickPosition && (
               <div
-                className="absolute w-8 h-8 rounded-full border-2 border-blue-500 animate-ping"
+                className="absolute size-8 animate-ping rounded-full border-2 border-blue-500 motion-reduce:animate-none"
                 style={{
                   left: `${clickPosition.x - 16}px`,
                   top: `${clickPosition.y - 16}px`,
@@ -152,7 +149,7 @@ export function SessionReplay() {
 
             {/* Scroll indicator */}
             {isPlaying && cursorPosition.y > 160 && (
-              <div className="absolute bottom-2 right-2 bg-black/50 text-white text-[8px] px-2 py-1 rounded">
+              <div className="absolute bottom-2 right-2 rounded bg-black/60 px-2 py-1 text-xs text-white">
                 {t("Scrolling...")}
               </div>
             )}
@@ -160,7 +157,7 @@ export function SessionReplay() {
         </div>
 
         {/* Video controls */}
-        <div className="bg-neutral-100/50 dark:bg-neutral-800/20 backdrop-blur-sm p-2 pb-10">
+        <div className="bg-neutral-100 p-2 pb-10 dark:bg-neutral-800">
           <div className="flex items-center gap-3">
             {/* Play/Pause button */}
             <button
@@ -178,7 +175,7 @@ export function SessionReplay() {
             </div>
 
             {/* Time display */}
-            <div className="text-[10px] text-neutral-600 dark:text-neutral-400 tabular-nums">2:34 / 5:12</div>
+            <div className="text-xs tabular-nums text-neutral-600 dark:text-neutral-400">2:34 / 5:12</div>
           </div>
         </div>
       </div>

@@ -101,7 +101,7 @@ function EventCard({ event, index, isNew }: { event: Event; index: number; isNew
 
   return (
     <div
-      className="absolute w-full rounded-md border border-neutral-300/50 dark:border-neutral-800/50 bg-neutral-100/50 dark:bg-neutral-800/20 overflow-hidden p-2 flex flex-col transition-all duration-500"
+      className="absolute flex w-full flex-col overflow-hidden rounded-md border border-neutral-300/50 bg-neutral-100/50 p-2 transition-all duration-500 motion-reduce:transition-none dark:border-neutral-800/50 dark:bg-neutral-800/20"
       style={{
         transform: isAnimating && index === 0 ? `translateY(-70px)` : `translateY(${index * 70}px)`,
         opacity: isAnimating && index === 0 ? 0 : index < 4 ? 1 : 0,
@@ -152,7 +152,6 @@ export function RealTimeAnalytics() {
     { ...eventTemplates[1], id: 2, timestamp: t("45 sec ago") },
     { ...eventTemplates[2], id: 3, timestamp: t("just now") },
   ]);
-  const [onlineCount, setOnlineCount] = useState(28);
   const [nextId, setNextId] = useState(4);
 
   useEffect(() => {
@@ -179,15 +178,10 @@ export function RealTimeAnalytics() {
 
       setNextId(prev => prev + 1);
 
-      // Randomly update online count
-      setOnlineCount(prev => {
-        const change = Math.random() > 0.5 ? 1 : -1;
-        return Math.max(15, Math.min(45, prev + change));
-      });
     }, 3000); // Add new event every 3 seconds
 
     return () => clearInterval(interval);
-  }, [nextId]);
+  }, [nextId, t]);
 
   return (
     <Card
@@ -195,7 +189,7 @@ export function RealTimeAnalytics() {
       description={t("See your site performance as it happens with instant data updates and live visitor activity.")}
       icon={Activity}
     >
-      <div className="space-y-4 mt-4 transform -rotate-2 translate-x-8 translate-y-8 bg-neutral-100/50 dark:bg-neutral-800/20 border border-neutral-300/50 dark:border-neutral-800/50 pb-20 rounded-lg p-4 -mb-[90px] transition-transform duration-300 hover:scale-105 hover:-rotate-1">
+      <div className="ml-4 mt-6 -mb-8 space-y-4 rounded-md border border-neutral-200 bg-neutral-50 p-4 pb-12 dark:border-neutral-800 dark:bg-neutral-900">
         <div className="relative" style={{ height: "280px" }}>
           {events.map((event, index) => (
             <EventCard key={event.id} event={event} index={index} isNew={event.isNew} />

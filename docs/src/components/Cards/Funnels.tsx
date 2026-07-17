@@ -20,11 +20,9 @@ export function Funnels() {
       icon={Filter}
     >
       {/* Funnel Steps */}
-      <div className="space-y-4 mt-4 transform -rotate-2 translate-x-8 translate-y-8 bg-neutral-100/50 dark:bg-neutral-800/20 border border-neutral-300/50 dark:border-neutral-800/50 pb-20 rounded-lg p-4 -mb-[40px] transition-transform duration-300 hover:scale-105 hover:-rotate-1">
-        {funnelData.map((item, index) => {
+      <div className="ml-4 mt-6 -mb-8 space-y-4 rounded-md border border-neutral-200 bg-neutral-50 p-4 pb-16 dark:border-neutral-800 dark:bg-neutral-900">
+        {funnelData.map((item) => {
           const overallConversion = (item.users / totalUsers) * 100;
-          const previousUsers = index > 0 ? funnelData[index - 1].users : item.users;
-
           return (
             <div key={item.step} className="flex items-center gap-3">
               {/* Step number */}

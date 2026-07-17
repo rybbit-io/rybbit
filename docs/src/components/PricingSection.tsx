@@ -5,7 +5,7 @@ import { Slider } from "@/components/ui/slider";
 import { cn } from "@/lib/utils";
 import { getCalApi } from "@calcom/embed-react";
 import { useExtracted } from "next-intl";
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState } from "react";
 import { STANDARD_SITE_LIMIT, STANDARD_TEAM_LIMIT } from "../lib/const";
 import { PricingCard } from "./PricingCard";
 
@@ -66,16 +66,21 @@ export function PricingSection({ isAnnual, setIsAnnual }: { isAnnual: boolean, s
   const [eventLimitIndex, setEventLimitIndex] = useState(0); // Default to 100k (index 0)
   const [carouselApi, setCarouselApi] = useState<CarouselApi>();
   const [currentSlide, setCurrentSlide] = useState(0);
-  const [slideCount, setSlideCount] = useState(0);
 
   useEffect(() => {
     if (!carouselApi) return;
-    setSlideCount(carouselApi.scrollSnapList().length);
-    setCurrentSlide(carouselApi.selectedScrollSnap());
-    carouselApi.on("select", () => {
+    const updateCurrentSlide = () => {
       setCurrentSlide(carouselApi.selectedScrollSnap());
-    });
+    };
+
+    queueMicrotask(updateCurrentSlide);
+    carouselApi.on("select", updateCurrentSlide);
+    return () => {
+      carouselApi.off("select", updateCurrentSlide);
+    };
   }, [carouselApi]);
+
+  const slideCount = carouselApi?.scrollSnapList().length ?? 0;
 
   const STANDARD_FEATURES = [
     t("Up to {count} websites", { count: String(STANDARD_SITE_LIMIT) }),
@@ -137,35 +142,35 @@ export function PricingSection({ isAnnual, setIsAnnual }: { isAnnual: boolean, s
   }
 
   return (
-    <section className="py-16 md:py-24 w-full relative z-10">
-      <div className="max-w-[1200px] mx-auto px-4">
-        <div className="mb-12 text-center max-w-3xl mx-auto">
-          <h2 className="text-4xl md:text-5xl font-bold tracking-tight pb-4 text-transparent bg-clip-text bg-gradient-to-b from-neutral-900 via-neutral-700 to-neutral-500 dark:from-white dark:via-gray-200 dark:to-gray-400">
+    <section className="relative z-10 border-b border-neutral-200 dark:border-neutral-800">
+      <div className="mx-auto max-w-[1200px] border-x border-neutral-200 px-5 py-16 dark:border-neutral-800 sm:px-8 md:py-24 lg:px-10">
+        <div className="mb-14 grid gap-6 lg:grid-cols-12 lg:items-end">
+          <h2 className="text-4xl font-semibold leading-[1.04] tracking-[-0.035em] md:text-5xl lg:col-span-4">
             {t("Pricing")}
           </h2>
-          <p className="text-lg text-neutral-600 dark:text-neutral-300">
+          <p className="max-w-2xl text-lg leading-8 text-neutral-600 dark:text-neutral-400 lg:col-span-8">
             {t("Start your 7-day free trial — no credit card charges until the trial ends.")}
           </p>
         </div>
 
         {/* Shared controls section */}
-        <div className="max-w-xl mx-auto mb-8">
-          <div className="flex justify-between mb-6 items-center">
+        <div className="mb-10 border-y border-neutral-200 py-8 dark:border-neutral-800">
+          <div className="mb-7 flex items-end justify-between gap-5">
             <div>
-              <h3 className="font-semibold mb-2">{t("Monthly pageviews")}</h3>
-              <div className="text-3xl font-bold text-emerald-600 dark:text-emerald-400">
+              <h3 className="mb-2 text-sm font-medium text-neutral-600 dark:text-neutral-400">{t("Monthly pageviews")}</h3>
+              <div className="text-3xl font-semibold tabular-nums tracking-tight">
                 {typeof eventLimit === "number" ? eventLimit.toLocaleString() : t("Custom")}
               </div>
             </div>
-            <div className="flex flex-col items-end relative">
+            <div className="relative flex flex-col items-end">
               {/* Billing toggle */}
-              <div className="flex mb-2 text-sm bg-neutral-200 dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 rounded-full p-1">
+              <div className="mb-2 flex rounded-md border border-neutral-300 bg-neutral-100 p-1 text-sm dark:border-neutral-700 dark:bg-neutral-900">
                 <button
                   onClick={() => setIsAnnual(false)}
                   className={cn(
-                    "px-3 py-1 rounded-full transition-colors cursor-pointer",
+                    "cursor-pointer rounded-sm px-3 py-1.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-500",
                     !isAnnual
-                      ? "bg-white dark:bg-white/20 text-neutral-700 dark:text-neutral-100 font-medium"
+                      ? "bg-white text-neutral-950 dark:bg-neutral-800 dark:text-white font-medium"
                       : "text-neutral-600 dark:text-neutral-400 hover:text-neutral-800 dark:hover:text-neutral-200"
                   )}
                 >
@@ -174,15 +179,15 @@ export function PricingSection({ isAnnual, setIsAnnual }: { isAnnual: boolean, s
                 <button
                   onClick={() => setIsAnnual(true)}
                   className={cn(
-                    "px-3 py-1 rounded-full transition-colors cursor-pointer",
+                    "cursor-pointer rounded-sm px-3 py-1.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-500",
                     isAnnual
-                      ? "bg-white dark:bg-white/20 text-neutral-700 dark:text-neutral-100 font-medium"
+                      ? "bg-white text-neutral-950 dark:bg-neutral-800 dark:text-white font-medium"
                       : "text-neutral-600 dark:text-neutral-400 hover:text-neutral-800 dark:hover:text-neutral-200"
                   )}
                 >
                   {t("Annual")}
                 </button>
-                <div className="text-xs text-white absolute top-0 right-0 -translate-y-3 bg-emerald-500 dark:bg-emerald-500 rounded-full px-2 py-0.5 whitespace-nowrap">
+                <div className="absolute right-0 top-0 -translate-y-4 whitespace-nowrap rounded-sm bg-emerald-600 px-2 py-0.5 text-xs font-medium text-white">
                   {t("4 months free")}
                 </div>
               </div>
@@ -199,9 +204,9 @@ export function PricingSection({ isAnnual, setIsAnnual }: { isAnnual: boolean, s
             className="mb-3"
           />
 
-          <div className="flex justify-between text-xs text-neutral-400">
+          <div className="flex justify-between text-xs text-neutral-500 dark:text-neutral-400">
             {EVENT_TIERS.map((tier, index) => (
-              <span key={index} className={cn(eventLimitIndex === index && "font-bold text-emerald-400")}>
+              <span key={index} className={cn(eventLimitIndex === index && "font-semibold text-emerald-700 dark:text-emerald-400")}>
                 {index === EVENT_TIERS.length - 1
                   ? "50M+"
                   : typeof tier === "number" && tier >= 1_000_000
@@ -286,13 +291,14 @@ export function PricingSection({ isAnnual, setIsAnnual }: { isAnnual: boolean, s
                   </CarouselContent>
                 </Carousel>
                 {/* Dot indicators */}
-                <div className="flex justify-center gap-2 mt-4">
+                <div className="mt-4 flex justify-center gap-2">
                   {Array.from({ length: slideCount }).map((_, i) => (
                     <button
                       key={i}
                       onClick={() => carouselApi?.scrollTo(i)}
+                      aria-label={t("Go to pricing option {number}", { number: String(i + 1) })}
                       className={cn(
-                        "w-2 h-2 rounded-full transition-colors cursor-pointer",
+                        "size-2 cursor-pointer rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2",
                         currentSlide === i
                           ? "bg-emerald-500"
                           : "bg-neutral-400 dark:bg-neutral-600"
@@ -303,7 +309,7 @@ export function PricingSection({ isAnnual, setIsAnnual }: { isAnnual: boolean, s
               </div>
 
               {/* Desktop grid */}
-              <div className="hidden min-[700px]:grid min-[1100px]:grid-cols-3 min-[700px]:grid-cols-2 gap-4 mx-auto justify-center items-stretch">
+              <div className="mx-auto hidden items-stretch justify-center gap-3 min-[700px]:grid min-[700px]:grid-cols-2 min-[1100px]:grid-cols-3">
                 {standardCard}
                 {proCard}
                 {enterpriseCard}

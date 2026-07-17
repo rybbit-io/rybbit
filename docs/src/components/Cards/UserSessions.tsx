@@ -14,7 +14,7 @@ export function UserSessions() {
       description={t("Track complete user journeys through your site with detailed session timelines.")}
       icon={Users}
     >
-      <div className="space-y-4 mt-4 transform rotate-2 translate-x-8 translate-y-6  bg-neutral-100/50 dark:bg-neutral-800/20 border border-neutral-300/50 dark:border-neutral-800/50 pb-20 rounded-lg p-4 -mb-[100px] transition-transform duration-300 hover:scale-105 hover:rotate-3">
+      <div className="ml-4 mt-6 -mb-16 space-y-4 rounded-md border border-neutral-200 bg-neutral-50 p-4 pb-20 dark:border-neutral-800 dark:bg-neutral-900">
         <div className="flex justify-between items-center mb-3">
           <div className="flex items-center gap-2">
             <Avatar size={28} id="john-doe" />

@@ -1,5 +1,5 @@
 import { TrackedButton } from "@/components/TrackedButton";
-import { DEFAULT_EVENT_LIMIT } from "@/lib/const";
+import { ArrowRight, ExternalLink } from "lucide-react";
 import { useExtracted } from "next-intl";
 
 interface CTASectionProps {
@@ -28,64 +28,41 @@ export function CTASection({
   const resolvedSecondaryButtonText = secondaryButtonText ?? t("Live demo");
 
   return (
-    <section className="py-12 md:py-20 w-full relative z-10">
-      <div className="max-w-[1200px] mx-auto px-4">
-        <div className="relative overflow-hidden rounded-3xl bg-neutral-950 p-10 md:p-16 lg:p-20">
-          {/* Noise texture overlay */}
-          <svg
-            className="absolute inset-0 w-full h-full opacity-[0.12] pointer-events-none"
-            aria-hidden="true"
-          >
-            <filter id="cta-noise">
-              <feTurbulence
-                type="fractalNoise"
-                baseFrequency="0.8"
-                numOctaves="4"
-                stitchTiles="stitch"
-              />
-              <feColorMatrix type="saturate" values="0" />
-            </filter>
-            <rect width="100%" height="100%" filter="url(#cta-noise)" />
-          </svg>
+    <section className="border-b border-emerald-800 bg-emerald-700 text-white">
+      <div className="mx-auto grid max-w-[1200px] border-x border-emerald-600 lg:grid-cols-12">
+        <div className="border-b border-emerald-600 px-5 py-16 sm:px-8 md:py-24 lg:col-span-8 lg:border-b-0 lg:border-r lg:px-10">
+          <h2 className="max-w-3xl text-4xl font-semibold leading-[1.02] tracking-[-0.035em] md:text-6xl text-balance">
+            {resolvedTitle}
+          </h2>
+        </div>
 
-          {/* Gradient orbs for organic background effect */}
-          <div className="absolute top-0 left-0 w-[400px] h-[400px] bg-emerald-600/30 rounded-full blur-[120px] -translate-x-1/2 -translate-y-1/2"></div>
-          <div className="absolute bottom-0 left-1/4 w-[300px] h-[300px] bg-emerald-500/20 rounded-full blur-[100px] translate-y-1/2"></div>
-          <div className="absolute top-1/2 right-0 w-[250px] h-[250px] bg-teal-600/15 rounded-full blur-[80px] translate-x-1/2"></div>
+        <div className="flex flex-col justify-center px-5 py-12 sm:px-8 lg:col-span-4 lg:px-10">
+          <p className="max-w-md text-base leading-7 text-emerald-50">{resolvedDescription}</p>
 
-          <div className="relative z-10 flex flex-col items-center justify-center text-center">
-            <h2 className="text-2xl md:text-3xl lg:text-4xl font-semibold text-white mb-4 md:mb-6 tracking-tight">
-              {resolvedTitle}
-            </h2>
-            <p className="text-sm md:text-base text-neutral-400 mb-8 md:mb-10 mx-auto max-w-[500px]">
-              {resolvedDescription}
-            </p>
-
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-4 md:gap-6 mb-6 w-full sm:w-auto">
-              <TrackedButton
-                href={primaryButtonHref}
-                eventName="signup"
-                eventProps={{ location: eventLocation, button_text: resolvedPrimaryButtonText }}
-                className="w-full whitespace-nowrap sm:w-auto bg-emerald-600 hover:bg-emerald-500 text-white font-medium px-6 py-3 rounded-lg shadow-lg shadow-emerald-900/20 transform hover:-translate-y-0.5 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-emerald-200 focus:ring-opacity-50 cursor-pointer"
-              >
-                {resolvedPrimaryButtonText}
-              </TrackedButton>
-              <TrackedButton
-                href={secondaryButtonHref}
-                eventName="demo"
-                target="_blank"
-                rel="noopener noreferrer"
-                eventProps={{ location: eventLocation, button_text: resolvedSecondaryButtonText }}
-                className="w-full whitespace-nowrap sm:w-auto bg-neutral-800 hover:bg-neutral-700 text-white font-medium px-6 py-3 rounded-lg transform hover:-translate-y-0.5 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-neutral-400 focus:ring-opacity-50 cursor-pointer"
-              >
-                {resolvedSecondaryButtonText}
-              </TrackedButton>
-            </div>
-
-            <p className="text-neutral-500 text-sm">
-              {t("7-day free trial. Cancel anytime.")}
-            </p>
+          <div className="mt-8 flex flex-col gap-3 sm:flex-row lg:flex-col xl:flex-row">
+            <TrackedButton
+              href={primaryButtonHref}
+              eventName="signup"
+              eventProps={{ location: eventLocation, button_text: resolvedPrimaryButtonText }}
+              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md bg-white px-5 py-2.5 text-sm font-medium text-emerald-800 transition-colors duration-200 hover:bg-emerald-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-emerald-700"
+            >
+              {resolvedPrimaryButtonText}
+              <ArrowRight className="size-4" aria-hidden="true" />
+            </TrackedButton>
+            <TrackedButton
+              href={secondaryButtonHref}
+              eventName="demo"
+              target="_blank"
+              rel="noopener noreferrer"
+              eventProps={{ location: eventLocation, button_text: resolvedSecondaryButtonText }}
+              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md border border-emerald-400 px-5 py-2.5 text-sm font-medium text-white transition-colors duration-200 hover:bg-emerald-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+            >
+              {resolvedSecondaryButtonText}
+              <ExternalLink className="size-3.5" aria-hidden="true" />
+            </TrackedButton>
           </div>
+
+          <p className="mt-6 text-sm text-emerald-100">{t("7-day free trial. Cancel anytime.")}</p>
         </div>
       </div>
     </section>
