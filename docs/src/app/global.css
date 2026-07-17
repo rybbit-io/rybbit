@@ -87,6 +87,31 @@ pre {
   font-family: ui-monospace, SFMono-Regular, "SF Mono", Consolas, "Liberation Mono", Menlo, monospace;
 }
 
+/* ── Landing hero entrance ───────────────────────────────────────────────
+   One orchestrated load-in for the hero stack (badge → headline → lede →
+   actions → demo window), staggered via inline [animation-delay:*]. Pure CSS
+   so content is never gated on JS; reduced motion renders instantly. */
+@keyframes hero-rise {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.hero-rise {
+  animation: hero-rise 0.7s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-rise {
+    animation: none;
+  }
+}
+
 @keyframes accordion-down {
   from {
     height: 0;

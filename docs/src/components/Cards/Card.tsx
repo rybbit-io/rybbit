@@ -12,16 +12,37 @@ interface CardProps {
 export function Card({ title, description, children, className, icon: Icon }: CardProps) {
   return (
     <div
-      className={cn("bg-neutral-100/50 dark:bg-neutral-800/20 p-4 md:p-6 rounded-xl border border-neutral-300/50 dark:border-neutral-800/50 overflow-hidden", className)}
-    >
-      {Icon && (
-        <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-emerald-600/20 to-emerald-700/15 dark:from-emerald-600/15 dark:to-emerald-700/10 border border-emerald-600/30 dark:border-emerald-600/20 shadow-md shadow-emerald-600/10 dark:shadow-emerald-600/5 flex items-center justify-center mb-3">
-          <Icon className="w-4 h-4 text-emerald-600 dark:text-emerald-300" />
-        </div>
+      className={cn(
+        "flex flex-col overflow-hidden rounded-xl border border-neutral-200 dark:border-neutral-800 bg-neutral-50/80 dark:bg-neutral-900/50 p-5 md:p-6",
+        className
       )}
-      <h3 className="text-xl font-semibold mb-2">{title}</h3>
-      {description && <p className="text-neutral-600 dark:text-neutral-300 text-sm mb-3">{description}</p>}
+    >
+      <div className="flex items-center gap-2.5">
+        {Icon && <Icon className="h-[18px] w-[18px] shrink-0 text-neutral-500 dark:text-neutral-400" />}
+        <h3 className="text-lg font-semibold text-neutral-900 dark:text-neutral-100">{title}</h3>
+      </div>
+      {description && (
+        <p className="mt-1.5 text-sm leading-relaxed text-neutral-600 dark:text-neutral-400">{description}</p>
+      )}
       {children}
+    </div>
+  );
+}
+
+/* A product "screen" peeking into the card from the bottom-right corner.
+   Shared by every showcase card so the motif reads as one system: hairline
+   top/left seam, canvas-colored surface, clipped by the card's rounding. */
+export function CardScreen({ children, className }: { children: React.ReactNode; className?: string }) {
+  return (
+    <div className="mt-6 flex grow flex-col justify-end">
+      <div
+        className={cn(
+          "relative -mb-5 -mr-5 ml-4 overflow-hidden rounded-tl-lg border-l border-t border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-950 p-4 md:-mb-6 md:-mr-6 md:ml-10",
+          className
+        )}
+      >
+        {children}
+      </div>
     </div>
   );
 }

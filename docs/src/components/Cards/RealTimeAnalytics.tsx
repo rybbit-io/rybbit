@@ -6,7 +6,7 @@ import { useExtracted } from "next-intl";
 import { Browser } from "../Browser";
 import { CountryFlag } from "../Country";
 import { OperatingSystem } from "../OperatingSystem";
-import { Card } from "./Card";
+import { Card, CardScreen } from "./Card";
 
 // Mock event templates
 const eventTemplates = [
@@ -101,7 +101,7 @@ function EventCard({ event, index, isNew }: { event: Event; index: number; isNew
 
   return (
     <div
-      className="absolute w-full rounded-md border border-neutral-300/50 dark:border-neutral-800/50 bg-neutral-100/50 dark:bg-neutral-800/20 overflow-hidden p-2 flex flex-col transition-all duration-500"
+      className="absolute w-full rounded-md border border-neutral-200 dark:border-neutral-800 bg-neutral-50/80 dark:bg-neutral-900/70 overflow-hidden p-2 flex flex-col transition-all duration-500 motion-reduce:transition-none"
       style={{
         transform: isAnimating && index === 0 ? `translateY(-70px)` : `translateY(${index * 70}px)`,
         opacity: isAnimating && index === 0 ? 0 : index < 4 ? 1 : 0,
@@ -195,13 +195,23 @@ export function RealTimeAnalytics() {
       description={t("See your site performance as it happens with instant data updates and live visitor activity.")}
       icon={Activity}
     >
-      <div className="space-y-4 mt-4 transform -rotate-2 translate-x-8 translate-y-8 bg-neutral-100/50 dark:bg-neutral-800/20 border border-neutral-300/50 dark:border-neutral-800/50 pb-20 rounded-lg p-4 -mb-[90px] transition-transform duration-300 hover:scale-105 hover:-rotate-1">
-        <div className="relative" style={{ height: "280px" }}>
+      <CardScreen>
+        <div className="mb-3 flex items-center justify-between">
+          <span className="text-xs font-medium text-neutral-500 dark:text-neutral-400">{t("Live events")}</span>
+          <span className="flex items-center gap-1.5 text-xs text-neutral-500 dark:text-neutral-400">
+            <span className="relative flex h-1.5 w-1.5" aria-hidden>
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-60 motion-reduce:hidden" />
+              <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-500" />
+            </span>
+            {t("{count} online", { count: String(onlineCount) })}
+          </span>
+        </div>
+        <div className="relative" style={{ height: "272px" }}>
           {events.map((event, index) => (
             <EventCard key={event.id} event={event} index={index} isNew={event.isNew} />
           ))}
         </div>
-      </div>
+      </CardScreen>
     </Card>
   );
 }
