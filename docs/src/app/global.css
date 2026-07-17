@@ -127,6 +127,45 @@ pre {
   }
 }
 
+/* ── Landing page entrance motion ────────────────────────────────────────
+   Content is visible by default; the rise only applies when the visitor
+   allows motion. Time-based CSS animation (not class-gated transitions), so
+   it completes even in headless renderers. */
+@media (prefers-reduced-motion: no-preference) {
+  .landing-rise {
+    opacity: 0;
+    animation: landing-rise 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  }
+  .landing-rise-1 {
+    animation-delay: 90ms;
+  }
+  .landing-rise-2 {
+    animation-delay: 180ms;
+  }
+  .landing-rise-3 {
+    animation-delay: 300ms;
+  }
+}
+
+@keyframes landing-rise {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Marquees (testimonial columns) hold still for reduced-motion visitors. */
+@media (prefers-reduced-motion: reduce) {
+  .animate-marquee,
+  .animate-marquee-vertical {
+    animation: none;
+  }
+}
+
 /* Override prose list styles for tool pages */
 .prose ul li.flex,
 .prose ol li.flex {

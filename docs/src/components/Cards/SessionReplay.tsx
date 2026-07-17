@@ -1,6 +1,7 @@
 "use client";
 
-import { Card } from "./Card";
+import { Card, cardVisualFrame } from "./Card";
+import { cn } from "@/lib/utils";
 import { Play, Pause, SkipBack, SkipForward, Maximize2, Volume2, Laptop, Film } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useExtracted } from "next-intl";
@@ -55,7 +56,9 @@ export function SessionReplay() {
       description={t("Watch real user sessions to understand their behavior and identify pain points.")}
       icon={Film}
     >
-      <div className=" mt-4 transform rotate-2 translate-x-8 translate-y-8 bg-neutral-200 dark:bg-neutral-900 rounded-lg -mb-[30px] rounded-xl transition-transform duration-300 hover:scale-105 hover:rotate-3">
+      {/* The replay player is a bounded object, so unlike the other card
+          mock-ups it sits fully inside the card rather than bleeding off. */}
+      <div className="mx-1 mt-6 overflow-hidden rounded-xl border border-neutral-200 bg-white transition-transform duration-500 ease-out group-hover:-translate-y-1.5 motion-reduce:transition-none motion-reduce:group-hover:translate-y-0 sm:mx-6 dark:border-neutral-800 dark:bg-neutral-950">
         {/* Video player container */}
         <div className="relative">
           {/* Mock website content */}
@@ -160,7 +163,7 @@ export function SessionReplay() {
         </div>
 
         {/* Video controls */}
-        <div className="bg-neutral-100/50 dark:bg-neutral-800/20 backdrop-blur-sm p-2 pb-10">
+        <div className="bg-neutral-100/50 dark:bg-neutral-800/20 p-2">
           <div className="flex items-center gap-3">
             {/* Play/Pause button */}
             <button
