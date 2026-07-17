@@ -575,14 +575,13 @@ describe("getFilterStatement", () => {
       );
     });
 
-    it("uses the raw parameter name, not getSqlParam, inside generic session subqueries", () => {
-      // Pinned behavior: buildSessionLevelSubquery interpolates the parameter
-      // name directly, so transformed params like city lose their concat()
-      // mapping when routed session-level.
+    it("applies getSqlParam transforms inside generic session subqueries", () => {
+      // Transformed params like city keep their concat() expression when
+      // routed session-level.
       const filters = JSON.stringify([{ parameter: "city", type: "equals", value: ["CA-San Francisco"] }]);
       const result = getFilterStatement(filters, undefined, undefined, { sessionLevelParams: ["city"] });
       expect(normalize(result)).toBe(
-        "AND session_id IN ( SELECT DISTINCT session_id FROM events WHERE city = 'CA-San Francisco' )"
+        "AND session_id IN ( SELECT DISTINCT session_id FROM events WHERE concat(toString(region), '-', toString(city)) = 'CA-San Francisco' )"
       );
     });
   });
@@ -622,6 +621,25 @@ describe("getFilterStatement", () => {
         fieldMappings: { pathname: "page_path" },
       });
       expect(result).toBe("AND page_path = '/pricing' AND page_title = 'pathname'");
+    });
+
+    it("should apply mappings to the lat/lon tolerance branch", () => {
+      const filters = JSON.stringify([{ parameter: "lat", type: "equals", value: ["40.7128"] }]);
+      const result = getFilterStatement(filters, undefined, undefined, {
+        fieldMappings: { lat: "latitude" },
+      });
+      expect(result).toContain("latitude >= 40.7118");
+      expect(result).toContain("latitude <= 40.7138");
+      expect(result).not.toContain("(lat >=");
+    });
+
+    it("should apply mappings to negated multi-value lat/lon filters", () => {
+      const filters = JSON.stringify([{ parameter: "lon", type: "not_equals", value: ["-74.006", "-73.5"] }]);
+      const result = getFilterStatement(filters, undefined, undefined, {
+        fieldMappings: { lon: "longitude" },
+      });
+      expect(result).toContain("NOT ((longitude >= -74.007 AND longitude <= -74.005)");
+      expect(result).toContain("(longitude >= -73.501 AND longitude <= -73.499)");
     });
 
     it("does not rewrite quote-containing mapping tokens inside values", () => {

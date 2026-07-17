@@ -90,13 +90,14 @@ describe("addSite — cloud pro-feature gating (session replay)", () => {
     expect(state.insertedValues).toHaveLength(0);
   });
 
-  it("rejects session replay when the org has no subscription record", async () => {
+  it("returns 404 before any feature gating when the org does not exist", async () => {
     mocks.getSubscriptionInner.mockResolvedValue(null);
     const reply = replyStub();
 
     await addSite(makeRequest({ sessionReplay: true }), reply);
 
-    expect(reply.statusCode).toBe(403);
+    expect(reply.statusCode).toBe(404);
+    expect(reply.body.error).toBe("Organization not found");
     expect(state.insertedValues).toHaveLength(0);
   });
 
@@ -206,29 +207,20 @@ describe("addSite — cloud site-limit enforcement", () => {
     expect(reply.statusCode).toBe(201);
   });
 
-  it("fails closed to the free-tier limit when the org has no subscription record", async () => {
-    // getSubscriptionInner returns null only when the organization row is missing; that
-    // case falls back to FREE_SITE_LIMIT (1) instead of granting unlimited sites.
+  it("returns 404 and inserts nothing when the organization does not exist", async () => {
+    // getSubscriptionInner returns null only when the organization row is missing;
+    // a missing org gets no site at all, regardless of existing site count.
     mocks.getSubscriptionInner.mockResolvedValue(null);
-    state.existingSiteCount = 1;
-    const reply = replyStub();
+    for (const existingSiteCount of [0, 500]) {
+      state.existingSiteCount = existingSiteCount;
+      const reply = replyStub();
 
-    await addSite(makeRequest({}), reply);
+      await addSite(makeRequest({}), reply);
 
-    expect(reply.statusCode).toBe(403);
-    expect(reply.body.error).toContain("limit of 1 website for your plan");
+      expect(reply.statusCode).toBe(404);
+      expect(reply.body.error).toBe("Organization not found");
+    }
     expect(state.insertedValues).toHaveLength(0);
-  });
-
-  it("still allows a first plain site when the org has no subscription record", async () => {
-    mocks.getSubscriptionInner.mockResolvedValue(null);
-    state.existingSiteCount = 0;
-    const reply = replyStub();
-
-    await addSite(makeRequest({}), reply);
-
-    expect(reply.statusCode).toBe(201);
-    expect(state.insertedValues).toHaveLength(1);
   });
 });
 

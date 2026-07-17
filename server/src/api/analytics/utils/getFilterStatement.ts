@@ -194,7 +194,11 @@ export function getFilterStatement(
     wildcardPrefix: string
   ): string => {
     const whereClause = [siteIdFilter, timeFilter].filter(Boolean).join(" AND ");
-    const condition = buildStringFilterCondition(param, filterType, values, wildcardPrefix);
+    // getSqlParam keeps transformed params (city, browser_version, ...) correct
+    // inside the subquery. fieldMappings deliberately do NOT apply here: the
+    // subquery selects from the raw events table, where the caller's CTE
+    // aliases don't exist.
+    const condition = buildStringFilterCondition(getSqlParam(param), filterType, values, wildcardPrefix);
 
     const finalWhere = whereClause ? `WHERE ${whereClause} AND ${condition}` : `WHERE ${condition}`;
 
@@ -347,9 +351,10 @@ export function getFilterStatement(
         // Special handling for lat/lon with tolerance (only for equals/not_equals)
         if (filter.parameter === "lat" || filter.parameter === "lon") {
           const tolerance = 0.001;
+          const column = mapField(getSqlParam(filter.parameter));
           const rangeConditions = filter.value.map(value => {
             const targetValue = Number(value);
-            return `(${filter.parameter} >= ${targetValue - tolerance} AND ${filter.parameter} <= ${targetValue + tolerance})`;
+            return `(${column} >= ${targetValue - tolerance} AND ${column} <= ${targetValue + tolerance})`;
           });
           const rangeCondition =
             rangeConditions.length === 1 ? rangeConditions[0] : `(${rangeConditions.join(" OR ")})`;

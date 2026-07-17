@@ -51,26 +51,30 @@ describe("applyValidationRules", () => {
       ]);
     });
 
-    it("silently passes when the status code is falsy", () => {
-      // Pinned current behavior: `if (!result.statusCode) return null` skips the rule
-      // entirely, so a missing status code (connection failure) or a literal 0 never
-      // fails a status_code rule — even one demanding equals 200.
+    it("fails explicitly when the status code is falsy", () => {
+      // Fail-closed: a missing status code (connection-level failure) or a literal 0
+      // means no response was received, so a status_code rule must fail explicitly
+      // rather than silently pass.
       const rule: ValidationRule = { type: "status_code", operator: "equals", value: 200 };
-      expect(applyValidationRules(createResult({ statusCode: undefined }), [rule])).toEqual([]);
-      expect(applyValidationRules(createResult({ statusCode: 0 }), [rule])).toEqual([]);
+      expect(applyValidationRules(createResult({ statusCode: undefined }), [rule])).toEqual([
+        "No status code available to validate",
+      ]);
+      expect(applyValidationRules(createResult({ statusCode: 0 }), [rule])).toEqual([
+        "No status code available to validate",
+      ]);
     });
 
-    it("silently passes 'in' and 'not_in' when the value is not an array", () => {
-      // Pinned current behavior: the in/not_in branches guard on Array.isArray(value)
-      // and produce no error for a scalar value, so a misconfigured rule passes.
+    it("fails 'in' and 'not_in' when the value is not an array", () => {
+      // Fail-closed: a scalar operand on in/not_in is a misconfigured rule and must
+      // surface as a validation failure instead of silently passing.
       expect(
         applyValidationRules(createResult({ statusCode: 404 }), [{ type: "status_code", operator: "in", value: 200 }])
-      ).toEqual([]);
+      ).toEqual(['Validation rule misconfigured: "in" operator requires an array value']);
       expect(
         applyValidationRules(createResult({ statusCode: 500 }), [
           { type: "status_code", operator: "not_in", value: 500 },
         ])
-      ).toEqual([]);
+      ).toEqual(['Validation rule misconfigured: "not_in" operator requires an array value']);
     });
   });
 

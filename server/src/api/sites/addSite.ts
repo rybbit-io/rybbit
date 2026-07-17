@@ -3,7 +3,7 @@ import { eq } from "drizzle-orm";
 import { FastifyReply, FastifyRequest } from "fastify";
 import { db } from "../../db/postgres/postgres.js";
 import { sites } from "../../db/postgres/schema.js";
-import { FREE_SITE_LIMIT, IS_CLOUD } from "../../lib/const.js";
+import { IS_CLOUD } from "../../lib/const.js";
 import { getSubscriptionInner } from "../stripe/getSubscription.js";
 
 export async function addSite(
@@ -90,7 +90,13 @@ export async function addSite(
     if (IS_CLOUD) {
       const subscription = await getSubscriptionInner(organizationId);
 
-      if (sessionReplay && !subscription?.planName.includes("pro")) {
+      // getSubscriptionInner returns null only when the organization row doesn't exist.
+      // Middleware makes this near-unreachable, but a missing org gets no site at all.
+      if (!subscription) {
+        return reply.status(404).send({ error: "Organization not found" });
+      }
+
+      if (sessionReplay && !subscription.planName.includes("pro")) {
         return reply.status(403).send({
           error: "Session replay requires a Pro subscription",
         });
@@ -107,10 +113,9 @@ export async function addSite(
         });
       }
 
-      // Enforce site limit. A null siteLimit on a real subscription means unlimited, but a
-      // missing subscription (org row not found) must fail CLOSED to the free-tier limit —
-      // matching computeLimits' free fallback — rather than granting unlimited sites.
-      const siteLimit = subscription ? (subscription.siteLimit ?? null) : FREE_SITE_LIMIT;
+      // Enforce site limit. A null siteLimit means unlimited; the missing-org case
+      // already returned 404 above.
+      const siteLimit = subscription.siteLimit ?? null;
       if (siteLimit !== null) {
         const existingSites = await db
           .select({ siteId: sites.siteId })

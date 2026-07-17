@@ -25,16 +25,8 @@ vi.mock("../../api/analytics/utils/utils.js", () => ({
 
 // The constructor is private; tests build trackers directly with injected state
 // instead of going through the DB/ClickHouse-backed static create().
-function makeTracker(
-  usage: Record<string, number>,
-  limit: number,
-  oldestAllowedMonth: string
-): ImportQuotaTracker {
-  return new (ImportQuotaTracker as any)(
-    new Map(Object.entries(usage)),
-    limit,
-    oldestAllowedMonth
-  );
+function makeTracker(usage: Record<string, number>, limit: number, oldestAllowedMonth: string): ImportQuotaTracker {
+  return new (ImportQuotaTracker as any)(new Map(Object.entries(usage)), limit, oldestAllowedMonth);
 }
 
 // Drizzle query builders are thenable; create() awaits `.limit(1)` for the org
@@ -70,11 +62,7 @@ describe("ImportQuotaTracker", () => {
   describe("canImportBatch", () => {
     it("should allow all timestamps when under the monthly limit", () => {
       const tracker = makeTracker({}, 10, "202312");
-      const result = tracker.canImportBatch([
-        "2024-06-01 00:00:00",
-        "2024-06-10 08:15:30",
-        "2024-06-14 23:59:59",
-      ]);
+      const result = tracker.canImportBatch(["2024-06-01 00:00:00", "2024-06-10 08:15:30", "2024-06-14 23:59:59"]);
       expect(result).toEqual([0, 1, 2]);
     });
 
@@ -114,27 +102,19 @@ describe("ImportQuotaTracker", () => {
 
     it("should allow exactly one more event when one below the limit", () => {
       const tracker = makeTracker({ "202406": 4 }, 5, "202312");
-      expect(
-        tracker.canImportBatch(["2024-06-01 10:00:00", "2024-06-02 10:00:00"])
-      ).toEqual([0]);
+      expect(tracker.canImportBatch(["2024-06-01 10:00:00", "2024-06-02 10:00:00"])).toEqual([0]);
     });
 
     it("should accumulate increments across successive calls", () => {
       const tracker = makeTracker({}, 3, "202312");
-      expect(
-        tracker.canImportBatch(["2024-06-01 10:00:00", "2024-06-02 10:00:00"])
-      ).toEqual([0, 1]);
-      expect(
-        tracker.canImportBatch(["2024-06-03 10:00:00", "2024-06-04 10:00:00"])
-      ).toEqual([0]);
+      expect(tracker.canImportBatch(["2024-06-01 10:00:00", "2024-06-02 10:00:00"])).toEqual([0, 1]);
+      expect(tracker.canImportBatch(["2024-06-03 10:00:00", "2024-06-04 10:00:00"])).toEqual([0]);
       expect(tracker.canImportBatch(["2024-06-05 10:00:00"])).toEqual([]);
     });
 
     it("should reject future timestamps", () => {
       const tracker = makeTracker({}, 10, "202312");
-      expect(
-        tracker.canImportBatch(["2024-06-15 12:00:01", "2025-01-01 00:00:00"])
-      ).toEqual([]);
+      expect(tracker.canImportBatch(["2024-06-15 12:00:01", "2025-01-01 00:00:00"])).toEqual([]);
     });
 
     it("should allow a timestamp exactly at the current time", () => {
@@ -145,9 +125,7 @@ describe("ImportQuotaTracker", () => {
 
     it("should reject timestamps older than the allowed window", () => {
       const tracker = makeTracker({}, 10, "202312");
-      expect(
-        tracker.canImportBatch(["2023-11-30 23:59:59", "2020-01-01 00:00:00"])
-      ).toEqual([]);
+      expect(tracker.canImportBatch(["2023-11-30 23:59:59", "2020-01-01 00:00:00"])).toEqual([]);
     });
 
     it("should allow timestamps exactly in the oldest allowed month", () => {
@@ -180,21 +158,22 @@ describe("ImportQuotaTracker", () => {
 
     it("should keep valid events interleaved with rejected ones", () => {
       const tracker = makeTracker({}, 10, "202312");
-      const result = tracker.canImportBatch([
-        "2024-06-01 10:00:00",
-        "garbage",
-        "2024-06-02 10:00:00",
-      ]);
+      const result = tracker.canImportBatch(["2024-06-01 10:00:00", "garbage", "2024-06-02 10:00:00"]);
       expect(result).toEqual([0, 2]);
     });
 
-    it("should allow everything when the limit is Infinity, without validating timestamps", () => {
+    it("should still reject malformed and future timestamps when the limit is Infinity", () => {
       const tracker = makeTracker({}, Infinity, "190001");
-      // Pinned behavior: the Infinity fast path returns every index up front,
-      // so even invalid and future timestamps are "allowed" for self-hosted.
-      expect(
-        tracker.canImportBatch(["not-a-date", "2099-01-01 00:00:00", "2024-06-01 10:00:00"])
-      ).toEqual([0, 1, 2]);
+      // Self-hosted: quota accounting is disabled, but timestamp validation
+      // applies exactly like the cloud path.
+      expect(tracker.canImportBatch(["not-a-date", "2099-01-01 00:00:00", "2024-06-01 10:00:00"])).toEqual([2]);
+    });
+
+    it("should ignore the historical window when the limit is Infinity", () => {
+      // The window is tier/quota-derived, so it is disabled for self-hosted
+      // even if oldestAllowedMonth would otherwise reject the timestamp.
+      const tracker = makeTracker({}, Infinity, "202401");
+      expect(tracker.canImportBatch(["2020-01-01 00:00:00"])).toEqual([0]);
     });
   });
 
@@ -246,20 +225,14 @@ describe("ImportQuotaTracker", () => {
         source: "free",
         eventLimit: 2,
       });
-      expect(
-        tracker.canImportBatch([
-          "2024-06-01 10:00:00",
-          "2024-06-02 10:00:00",
-          "2024-06-03 10:00:00",
-        ])
-      ).toEqual([0, 1]);
+      expect(tracker.canImportBatch(["2024-06-01 10:00:00", "2024-06-02 10:00:00", "2024-06-03 10:00:00"])).toEqual([
+        0, 1,
+      ]);
     });
 
     it("should throw when the organization is not found", async () => {
       vi.mocked(db.select as any).mockReturnValueOnce(chainResolving([]));
-      await expect(ImportQuotaTracker.create("missing-org")).rejects.toThrow(
-        "Organization missing-org not found"
-      );
+      await expect(ImportQuotaTracker.create("missing-org")).rejects.toThrow("Organization missing-org not found");
     });
   });
 });

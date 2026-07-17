@@ -1,3 +1,4 @@
+import Stripe from "stripe";
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
@@ -184,14 +185,35 @@ describe("updateSubscription — plan-change branches", () => {
     });
   });
 
-  it("returns 400 for an invalid price ID without updating the subscription", async () => {
-    mocks.pricesRetrieve.mockRejectedValue(new Error("No such price"));
+  it("returns 400 when Stripe reports the price does not exist, without updating the subscription", async () => {
+    mocks.pricesRetrieve.mockRejectedValue(
+      new Stripe.errors.StripeInvalidRequestError({
+        type: "invalid_request_error",
+        code: "resource_missing",
+        param: "price",
+        message: "No such price: 'price_bogus'",
+      } as any)
+    );
     const reply = replyStub();
 
     await updateSubscription(requestStub("u_owner", { organizationId: "org_1", newPriceId: "price_bogus" }), reply);
 
     expect(reply.statusCode).toBe(400);
     expect(reply.body.error).toBe("Invalid price ID");
+    expectNoStripeMutation();
+  });
+
+  it("returns 500 for a transient Stripe failure during price validation, without updating the subscription", async () => {
+    // An outage/rate-limit style failure must not be misreported as a bad price ID.
+    mocks.pricesRetrieve.mockRejectedValue(
+      new Stripe.errors.StripeAPIError({ type: "api_error", message: "Stripe is temporarily unavailable" } as any)
+    );
+    const reply = replyStub();
+
+    await updateSubscription(requestStub("u_owner", { organizationId: "org_1", newPriceId: "price_new" }), reply);
+
+    expect(reply.statusCode).toBe(500);
+    expect(reply.body.error).toBe("Failed to update subscription");
     expectNoStripeMutation();
   });
 

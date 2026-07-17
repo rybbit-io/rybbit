@@ -1,6 +1,6 @@
 import { FilterParams } from "@rybbit/shared";
 import SqlString from "sqlstring";
-import { TimeBucket } from "../types.js";
+import { FilterType, TimeBucket } from "../types.js";
 import { TimeBucketToFn, bucketIntervalMap } from "../utils/utils.js";
 import { validateFilters, validateTimeStatementParams } from "../utils/query-validation.js";
 
@@ -59,7 +59,7 @@ const LITE_FILTER_OPERATORS: Record<string, string> = {
 // the value remain functional.
 const escapeLikePattern = (value: string): string => value.replace(/[\\%_]/g, "\\$&");
 
-export function wrapLiteLikeValue(type: string, value: string | number): string {
+export function wrapLiteLikeValue(type: FilterType, value: string | number): string {
   const v = String(value);
   if (type === "contains" || type === "not_contains") return `%${escapeLikePattern(v)}%`;
   if (type === "starts_with") return `${escapeLikePattern(v)}%`;

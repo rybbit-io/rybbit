@@ -2,8 +2,10 @@ import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { Settings } from "luxon";
 import { SimpleAnalyticsImportMapper } from "./simpleAnalytics.js";
 
-const TEST_SESSION_ID = "9e3779b1-3c6e-4362-da4f-81b88c81f013";
-const TEST_UUID = "12345678-90ab-4def-1234-567890abcdef";
+// Valid RFC4122 v4 UUIDs (variant nibble 8/9) — zod v3's .uuid() is lax, but
+// stricter validators must still accept the happy-path fixtures.
+const TEST_SESSION_ID = "9e3779b1-3c6e-4362-8a4f-81b88c81f013";
+const TEST_UUID = "12345678-90ab-4def-9234-567890abcdef";
 
 const CHROME_WINDOWS_UA =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36";
@@ -138,11 +140,7 @@ describe("SimpleAnalyticsImportMapper", () => {
       });
 
       it("should fall back to screen dimensions when the user agent is empty", () => {
-        const result = SimpleAnalyticsImportMapper.transform(
-          [makeEvent({ user_agent: "" })],
-          1,
-          "i"
-        );
+        const result = SimpleAnalyticsImportMapper.transform([makeEvent({ user_agent: "" })], 1, "i");
         expect(result).toHaveLength(1);
         expect(result[0].browser).toBe("");
         expect(result[0].browser_version).toBe("");
@@ -175,11 +173,7 @@ describe("SimpleAnalyticsImportMapper", () => {
 
     describe("querystring handling", () => {
       it("should prefix a non-empty query with ?", () => {
-        const result = SimpleAnalyticsImportMapper.transform(
-          [makeEvent({ query: "a=1&b=2" })],
-          1,
-          "i"
-        );
+        const result = SimpleAnalyticsImportMapper.transform([makeEvent({ query: "a=1&b=2" })], 1, "i");
         expect(result[0].querystring).toBe("?a=1&b=2");
         expect(result[0].url_parameters).toEqual({ a: "1", b: "2" });
       });
@@ -211,11 +205,7 @@ describe("SimpleAnalyticsImportMapper", () => {
       });
 
       it("should leave an empty referrer empty", () => {
-        const result = SimpleAnalyticsImportMapper.transform(
-          [makeEvent({ document_referrer: "" })],
-          1,
-          "i"
-        );
+        const result = SimpleAnalyticsImportMapper.transform([makeEvent({ document_referrer: "" })], 1, "i");
         expect(result[0].referrer).toBe("");
       });
     });
@@ -236,40 +226,24 @@ describe("SimpleAnalyticsImportMapper", () => {
 
       it("should drop rows with an invalid country code", () => {
         for (const country_code of ["USA", "us", "1A"]) {
-          const result = SimpleAnalyticsImportMapper.transform(
-            [makeEvent({ country_code })],
-            1,
-            "i"
-          );
+          const result = SimpleAnalyticsImportMapper.transform([makeEvent({ country_code })], 1, "i");
           expect(result).toHaveLength(0);
         }
       });
 
       it("should allow an empty country code", () => {
-        const result = SimpleAnalyticsImportMapper.transform(
-          [makeEvent({ country_code: "" })],
-          1,
-          "i"
-        );
+        const result = SimpleAnalyticsImportMapper.transform([makeEvent({ country_code: "" })], 1, "i");
         expect(result).toHaveLength(1);
         expect(result[0].country).toBe("");
       });
 
       it("should drop rows with an invalid session uuid", () => {
-        const result = SimpleAnalyticsImportMapper.transform(
-          [makeEvent({ session_id: "not-a-uuid" })],
-          1,
-          "i"
-        );
+        const result = SimpleAnalyticsImportMapper.transform([makeEvent({ session_id: "not-a-uuid" })], 1, "i");
         expect(result).toHaveLength(0);
       });
 
       it("should drop rows with an invalid user uuid", () => {
-        const result = SimpleAnalyticsImportMapper.transform(
-          [makeEvent({ uuid: "not-a-uuid" })],
-          1,
-          "i"
-        );
+        const result = SimpleAnalyticsImportMapper.transform([makeEvent({ uuid: "not-a-uuid" })], 1, "i");
         expect(result).toHaveLength(0);
       });
     });
@@ -282,7 +256,7 @@ describe("SimpleAnalyticsImportMapper", () => {
       ];
       const result = SimpleAnalyticsImportMapper.transform(events, 1, "i");
       expect(result).toHaveLength(2);
-      expect(result.map((e) => e.pathname)).toEqual(["/valid", "/also-valid"]);
+      expect(result.map(e => e.pathname)).toEqual(["/valid", "/also-valid"]);
     });
 
     it("should return empty array for empty input", () => {

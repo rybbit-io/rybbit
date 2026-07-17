@@ -1,10 +1,12 @@
 import type { SQL } from "drizzle-orm";
 import { PgDialect } from "drizzle-orm/pg-core";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => {
   // The handler captures STRIPE_WEBHOOK_SECRET at module load time, so it has
   // to exist before ./webhook.js is imported (vi.hoisted runs before imports).
+  // Capture whatever was there so afterAll can restore it.
+  const previousWebhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
   process.env.STRIPE_WEBHOOK_SECRET = "whsec_test_secret";
 
   const selectLimit = vi.fn(async (): Promise<{ id: string }[]> => []);
@@ -17,6 +19,7 @@ const mocks = vi.hoisted(() => {
   const update = vi.fn(() => ({ set: updateSet }));
 
   return {
+    previousWebhookSecret,
     constructEvent: vi.fn(),
     invalidateStripeSubscriptionCache: vi.fn(),
     select,
@@ -87,6 +90,16 @@ function expectNoDbWrites() {
 beforeEach(() => {
   vi.clearAllMocks();
   mocks.selectLimit.mockResolvedValue([]);
+  mocks.updateWhere.mockResolvedValue(undefined);
+});
+
+afterAll(() => {
+  // Restore whatever STRIPE_WEBHOOK_SECRET held before this suite mutated it.
+  if (mocks.previousWebhookSecret === undefined) {
+    delete process.env.STRIPE_WEBHOOK_SECRET;
+  } else {
+    process.env.STRIPE_WEBHOOK_SECRET = mocks.previousWebhookSecret;
+  }
 });
 
 describe("handleWebhook — signature verification", () => {
@@ -213,6 +226,45 @@ describe("handleWebhook — checkout.session.completed", () => {
     expect(reply.payload).toEqual({ received: true });
   });
 
+  it("returns 500 (retriable) when the idempotency lookup fails, so Stripe retries", async () => {
+    mocks.selectLimit.mockRejectedValue(new Error("db down"));
+    mocks.constructEvent.mockReturnValue(
+      stripeEvent("checkout.session.completed", {
+        id: "cs_err_read",
+        mode: "subscription",
+        customer: "cus_123",
+        metadata: { organizationId: "org_1" },
+      })
+    );
+
+    const reply = createReply();
+    await handleWebhook(createRequest(), reply);
+
+    expect(reply.statusCode).toBe(500);
+    expect(reply.payload).toEqual({ error: "Failed to link organization to Stripe customer." });
+    expect(mocks.update).not.toHaveBeenCalled();
+  });
+
+  it("returns 500 (retriable) when writing the customer id fails, so Stripe retries", async () => {
+    mocks.updateWhere.mockRejectedValue(new Error("write failed"));
+    mocks.constructEvent.mockReturnValue(
+      stripeEvent("checkout.session.completed", {
+        id: "cs_err_write",
+        mode: "subscription",
+        customer: "cus_123",
+        metadata: { organizationId: "org_1" },
+      })
+    );
+
+    const reply = createReply();
+    await handleWebhook(createRequest(), reply);
+
+    expect(reply.statusCode).toBe(500);
+    expect(reply.payload).toEqual({ error: "Failed to link organization to Stripe customer." });
+  });
+
+  // Non-retriable: a Stripe retry would redeliver the same metadata-less
+  // session, so the handler acks with 200 instead of asking for a retry.
   it.each([
     ["missing metadata", undefined],
     ["missing organizationId", {}],

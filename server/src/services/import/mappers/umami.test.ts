@@ -1,7 +1,9 @@
 import { describe, it, expect } from "vitest";
 import { UmamiImportMapper } from "./umami.js";
 
-const TEST_SESSION_ID = "9e3779b1-3c6e-4362-da4f-81b88c81f013";
+// Valid RFC4122 v4 UUID (variant nibble 8) — zod v3's .uuid() is lax, but
+// stricter validators must still accept the happy-path fixtures.
+const TEST_SESSION_ID = "9e3779b1-3c6e-4362-8a4f-81b88c81f013";
 
 function makeEvent(overrides: Record<string, string> = {}) {
   return {
@@ -224,22 +226,14 @@ describe("UmamiImportMapper", () => {
       });
 
       it("should leave the referrer empty when domain and path are empty", () => {
-        const result = UmamiImportMapper.transform(
-          [makeEvent({ referrer_domain: "", referrer_path: "" })],
-          1,
-          "i"
-        );
+        const result = UmamiImportMapper.transform([makeEvent({ referrer_domain: "", referrer_path: "" })], 1, "i");
         expect(result[0].referrer).toBe("");
       });
     });
 
     describe("invalid rows", () => {
       it("should drop rows with an invalid session uuid", () => {
-        const result = UmamiImportMapper.transform(
-          [makeEvent({ session_id: "not-a-uuid" })],
-          1,
-          "i"
-        );
+        const result = UmamiImportMapper.transform([makeEvent({ session_id: "not-a-uuid" })], 1, "i");
         expect(result).toHaveLength(0);
       });
 
@@ -282,7 +276,7 @@ describe("UmamiImportMapper", () => {
         ];
         const result = UmamiImportMapper.transform(events, 1, "i");
         expect(result).toHaveLength(2);
-        expect(result.map((e) => e.pathname)).toEqual(["/valid", "/also-valid"]);
+        expect(result.map(e => e.pathname)).toEqual(["/valid", "/also-valid"]);
       });
     });
 

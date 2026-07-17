@@ -69,9 +69,15 @@ export async function handleWebhook(request: FastifyRequest, reply: FastifyReply
             }
           } catch (dbError: any) {
             console.error(`Database error updating organization with Stripe customer ID: ${dbError.message}`);
-            // Decide if you should still return 200 to Stripe or signal an error
+            // Retriable failure: the org is still not linked to its Stripe customer.
+            // Return a 5xx so Stripe retries the webhook; acking here would drop the
+            // event permanently and leave the organization unlinked forever.
+            return reply.status(500).send({ error: "Failed to link organization to Stripe customer." });
           }
         } else {
+          // Non-retriable: the checkout session itself lacks organizationId metadata,
+          // so a Stripe retry would deliver the exact same payload. Ack with 200 and
+          // log — retrying can never fix this.
           console.error(
             `Missing required metadata in checkout session ${session.id}. Customer ID: ${stripeCustomerId}, Organization ID: ${organizationId}`
           );
@@ -82,6 +88,8 @@ export async function handleWebhook(request: FastifyRequest, reply: FastifyReply
     // Subscription changes made outside updateSubscription (e.g. via the Stripe billing
     // portal) only reach us through these events — drop the cached lookup so the change
     // is reflected on the next read instead of waiting out the full TTL.
+    // Note: invalidateStripeSubscriptionCache is a synchronous in-process Map delete —
+    // it cannot fail, so there is no swallowed-error path here to convert to a 5xx.
     case "customer.subscription.updated":
     case "customer.subscription.deleted":
       const changedSubscription = event.data.object as Stripe.Subscription;

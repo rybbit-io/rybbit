@@ -1,5 +1,5 @@
 import { FilterParams } from "@rybbit/shared";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { TimeBucket } from "../types.js";
 import {
   getLiteFillClause,
@@ -176,6 +176,10 @@ describe("getLiteSessionFilter", () => {
 });
 
 describe("getLiteTimeStatement", () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   it("should build a timezone-aware day range against the given column", () => {
     const result = getLiteTimeStatement(
       { start_date: "2024-01-01", end_date: "2024-01-31", time_zone: "America/New_York" },
@@ -213,8 +217,6 @@ describe("getLiteTimeStatement", () => {
     expect(result).toBe(
       "AND start_time > toDateTime('2024-06-15 10:00:00') AND start_time <= toDateTime('2024-06-15 12:00:00')"
     );
-
-    vi.useRealTimers();
   });
 
   it("should return empty string with no time params", () => {
@@ -227,6 +229,10 @@ describe("getLiteTimeStatement", () => {
 });
 
 describe("getLiteFillClause", () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   it("should build a date-range fill clause with the bucket fn and interval", () => {
     const result = getLiteFillClause(
       params({ start_date: "2024-01-01", end_date: "2024-01-31", time_zone: "UTC" }),
@@ -267,8 +273,6 @@ describe("getLiteFillClause", () => {
         TO toStartOfHour(toDateTime('2024-06-15 12:00:00')) + INTERVAL 1 HOUR
         STEP INTERVAL 1 HOUR`)
     );
-
-    vi.useRealTimers();
   });
 
   it("should return empty string with no time params", () => {
