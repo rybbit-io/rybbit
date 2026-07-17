@@ -5,11 +5,12 @@ import { useExtracted } from "next-intl";
 import { useState } from "react";
 
 import { Team } from "@/api/admin/endpoints/teams";
+import { useUserOrganizations } from "@/api/admin/hooks/useOrganizations";
 import { useTeams } from "@/api/admin/hooks/useTeams";
 import { NoOrganization } from "@/components/NoOrganization";
 import { Button } from "@/components/ui/button";
+import { useActiveOrganizationId } from "@/hooks/useActiveOrganizationId";
 import { useSetPageTitle } from "@/hooks/useSetPageTitle";
-import { authClient } from "@/lib/auth";
 import { cn } from "@/lib/utils";
 import { CreateEditTeamDialog } from "./components/CreateEditTeamDialog";
 import { DeleteTeamDialog } from "./components/DeleteTeamDialog";
@@ -17,11 +18,13 @@ import { DeleteTeamDialog } from "./components/DeleteTeamDialog";
 export default function TeamsPage() {
   useSetPageTitle("Organization Teams");
   const t = useExtracted();
-  const { data: activeOrganization, isPending } =
-    authClient.useActiveOrganization();
-  const { data: teamsData, isLoading: teamsLoading } = useTeams(
-    activeOrganization?.id
-  );
+  // Resolve the org from the lightweight /user/organizations rather than the
+  // heavy get-full-organization call, so the page doesn't hang on its loading
+  // state. See useActiveOrganizationId.
+  const activeOrganizationId = useActiveOrganizationId();
+  const { data: organizations, isLoading: orgsLoading } = useUserOrganizations();
+  const activeOrganization = organizations?.find(org => org.id === activeOrganizationId) ?? organizations?.[0];
+  const { data: teamsData, isLoading: teamsLoading } = useTeams(activeOrganizationId);
 
   const [editingTeam, setEditingTeam] = useState<Team | null>(null);
   const [expandedTeams, setExpandedTeams] = useState<Set<string>>(new Set());
@@ -38,7 +41,7 @@ export default function TeamsPage() {
     });
   };
 
-  if (isPending) {
+  if (orgsLoading) {
     return (
       <div className="flex justify-center py-8">
         <div className="animate-pulse">{t("Loading organization...")}</div>

@@ -1,4 +1,4 @@
-import { authClient } from "@/lib/auth";
+import { useActiveOrganizationId } from "@/hooks/useActiveOrganizationId";
 import { Shield } from "lucide-react";
 import { useExtracted } from "next-intl";
 import { useStripeSubscription } from "../../lib/subscription/useStripeSubscription";
@@ -12,9 +12,7 @@ import { useUsageStats } from "./components/useUsageStats";
 export function OverridePlan() {
   const t = useExtracted();
   const { data: subscription } = useStripeSubscription();
-  const { data: activeOrg } = authClient.useActiveOrganization();
-
-  const organizationId = activeOrg?.id;
+  const organizationId = useActiveOrganizationId();
   const { isNearLimit, isLimitExceeded } = useUsageStats(subscription);
 
   if (!subscription) return null;

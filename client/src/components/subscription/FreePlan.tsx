@@ -1,4 +1,4 @@
-import { authClient } from "@/lib/auth";
+import { useActiveOrganizationId } from "@/hooks/useActiveOrganizationId";
 import { ArrowRight } from "lucide-react";
 import { useExtracted } from "next-intl";
 import { useState } from "react";
@@ -15,10 +15,9 @@ import { useUsageStats } from "./components/useUsageStats";
 export function FreePlan() {
   const t = useExtracted();
   const { data: subscription } = useStripeSubscription();
-  const { data: activeOrg } = authClient.useActiveOrganization();
   const [showPlanDialog, setShowPlanDialog] = useState(false);
 
-  const organizationId = activeOrg?.id;
+  const organizationId = useActiveOrganizationId();
   const { isNearLimit, isLimitExceeded } = useUsageStats(subscription);
 
   if (!subscription) return null;

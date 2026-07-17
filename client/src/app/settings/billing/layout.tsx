@@ -1,15 +1,16 @@
 "use client";
 
 import { useExtracted } from "next-intl";
-import { authClient } from "../../../lib/auth";
+import { useUserOrganizations } from "../../../api/admin/hooks/useOrganizations";
+import { useActiveOrganizationId } from "../../../hooks/useActiveOrganizationId";
 
 export default function BillingLayout({ children }: { children: React.ReactNode }) {
   const t = useExtracted();
-  const { data: session } = authClient.useSession();
-  const { data: activeOrg } = authClient.useActiveOrganization();
-  const currentMember = activeOrg?.members?.find(
-    (m) => m.userId === session?.user?.id
-  );
+  // The user's role comes from /user/organizations rather than the heavy
+  // get-full-organization call, so the permission gate resolves reliably.
+  const activeOrganizationId = useActiveOrganizationId();
+  const { data: organizations } = useUserOrganizations();
+  const currentMember = organizations?.find(org => org.id === activeOrganizationId);
   const isMember = currentMember?.role === "member";
 
   return (

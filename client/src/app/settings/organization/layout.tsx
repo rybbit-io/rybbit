@@ -3,20 +3,21 @@
 import { Plus } from "lucide-react";
 import { useExtracted } from "next-intl";
 import { useState } from "react";
+import { useUserOrganizations } from "../../../api/admin/hooks/useOrganizations";
 import { CreateOrganizationDialog } from "../../../components/CreateOrganizationDialog";
 import { OrganizationSelector } from "../../../components/OrganizationSelector";
 import { Button } from "../../../components/ui/button";
-import { authClient } from "../../../lib/auth";
+import { useActiveOrganizationId } from "../../../hooks/useActiveOrganizationId";
 
 export default function OrganizationLayout({ children }: { children: React.ReactNode }) {
   const [createOrgDialogOpen, setCreateOrgDialogOpen] = useState(false);
 
   const t = useExtracted();
-  const { data: session } = authClient.useSession();
-  const { data: activeOrg } = authClient.useActiveOrganization();
-  const currentMember = activeOrg?.members?.find(
-    (m) => m.userId === session?.user?.id
-  );
+  // The current user's role comes from /user/organizations rather than the
+  // heavy get-full-organization call, so the permission gate resolves reliably.
+  const activeOrganizationId = useActiveOrganizationId();
+  const { data: organizations } = useUserOrganizations();
+  const currentMember = organizations?.find(org => org.id === activeOrganizationId);
   const isMember = currentMember?.role === "member";
 
   return (

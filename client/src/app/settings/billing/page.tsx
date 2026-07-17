@@ -12,6 +12,8 @@ import { OverridePlan } from "../../../components/subscription/OverridePlan";
 import { CustomPlan } from "../../../components/subscription/CustomPlan";
 import { Building } from "lucide-react";
 import { useExtracted } from "next-intl";
+import { useUserOrganizations } from "../../../api/admin/hooks/useOrganizations";
+import { useActiveOrganizationId } from "../../../hooks/useActiveOrganizationId";
 import { authClient } from "@/lib/auth";
 import { useEffect } from "react";
 import { AppSumoPlan } from "../../../components/subscription/AppSumoPlan";
@@ -21,8 +23,14 @@ export default function OrganizationBillingPage() {
   const t = useExtracted();
   const { data: activeSubscription, isLoading: isLoadingSubscription } = useStripeSubscription();
 
-  const { data: activeOrg, isPending } = authClient.useActiveOrganization();
+  // Resolve the org and the current user's role from the lightweight
+  // /user/organizations rather than the heavy get-full-organization call, so
+  // the page doesn't hang on its loading state. See useActiveOrganizationId.
+  const activeOrganizationId = useActiveOrganizationId();
+  const { data: organizations, isLoading: isLoadingOrganizations } = useUserOrganizations();
   const { data: session } = authClient.useSession();
+
+  const activeOrg = organizations?.find(org => org.id === activeOrganizationId) ?? organizations?.[0];
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -31,15 +39,14 @@ export default function OrganizationBillingPage() {
     }
   }, [session?.user?.email]);
 
-  // Check if the current user is an owner by looking at the members in the active organization
-  const currentUserMember = activeOrg?.members?.find(member => member.userId === session?.user?.id);
-  const isOwner = currentUserMember?.role === "owner";
+  // The user's role in the active org comes from /user/organizations.
+  const isOwner = activeOrg?.role === "owner";
 
-  const isLoading = isLoadingSubscription || isPending;
+  const isLoading = isLoadingSubscription || isLoadingOrganizations;
 
   // Determine which plan to display
   const renderPlanComponent = () => {
-    if (!activeOrg && !isPending) {
+    if (!activeOrg && !isLoadingOrganizations) {
       return <NoOrganization message={t("You need to select an organization to manage your subscription.")} />;
     }
 

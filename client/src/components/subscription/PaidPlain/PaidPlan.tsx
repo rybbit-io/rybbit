@@ -9,7 +9,7 @@ import { getPlanType, getStripePrices } from "../../../lib/stripe";
 import { formatDate } from "../../../lib/subscription/planUtils";
 import { useStripeSubscription } from "../../../lib/subscription/useStripeSubscription";
 import { UsageChart } from "../../UsageChart";
-import { authClient } from "@/lib/auth";
+import { useActiveOrganizationId } from "@/hooks/useActiveOrganizationId";
 import { InvoicesCard } from "../components/InvoicesCard";
 import { UsageCards } from "../components/UsageCards";
 import { CancellationDialog } from "./CancellationDialog";
@@ -18,8 +18,7 @@ import { PlanDialog } from "../components/PlanDialog";
 export function PaidPlan() {
   const { data: activeSubscription, isLoading, error: subscriptionError, refetch } = useStripeSubscription();
 
-  const { data: activeOrg } = authClient.useActiveOrganization();
-  const organizationId = activeOrg?.id;
+  const organizationId = useActiveOrganizationId();
 
   const [isProcessing, setIsProcessing] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);

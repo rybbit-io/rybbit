@@ -2,7 +2,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Slider } from "@/components/ui/slider";
 import { toast } from "@/components/ui/sonner";
-import { authClient } from "@/lib/auth";
+import { useActiveOrganizationId } from "@/hooks/useActiveOrganizationId";
 import { BACKEND_URL } from "@/lib/const";
 import { STRIPE_TIERS } from "@/lib/stripe";
 import { EVENT_TIERS, findPriceForTier, formatEventTier } from "@/lib/subscription/planUtils";
@@ -57,14 +57,14 @@ export function PlanDialog({ open, onOpenChange, currentPlanName, hasActiveSubsc
   const [pendingPlanName, setPendingPlanName] = useState<string | null>(null);
   const [checkoutClientSecret, setCheckoutClientSecret] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const { data: activeOrg } = authClient.useActiveOrganization();
+  const activeOrganizationId = useActiveOrganizationId();
   const previewMutation = usePreviewSubscriptionUpdate();
   const updateMutation = useUpdateSubscription();
 
   const eventLimit = EVENT_TIERS[eventLimitIndex];
 
   const handleSelectPlan = async () => {
-    if (!activeOrg) {
+    if (!activeOrganizationId) {
       toast.error("Please select an organization");
       return;
     }
@@ -92,7 +92,7 @@ export function PlanDialog({ open, onOpenChange, currentPlanName, hasActiveSubsc
 
       if (hasActiveSubscription) {
         await previewMutation.mutateAsync({
-          organizationId: activeOrg.id,
+          organizationId: activeOrganizationId,
           newPriceId: price.priceId,
         });
         setShowProrationDialog(true);
@@ -108,7 +108,7 @@ export function PlanDialog({ open, onOpenChange, currentPlanName, hasActiveSubsc
           body: JSON.stringify({
             priceId: price.priceId,
             returnUrl,
-            organizationId: activeOrg.id,
+            organizationId: activeOrganizationId,
             referral: window.Rewardful?.referral || undefined,
           }),
         });
@@ -134,11 +134,11 @@ export function PlanDialog({ open, onOpenChange, currentPlanName, hasActiveSubsc
   };
 
   const confirmSubscriptionUpdate = async () => {
-    if (!activeOrg || !pendingPriceId) return;
+    if (!activeOrganizationId || !pendingPriceId) return;
 
     try {
       await updateMutation.mutateAsync({
-        organizationId: activeOrg.id,
+        organizationId: activeOrganizationId,
         newPriceId: pendingPriceId,
       });
       window.location.reload();

@@ -1,4 +1,4 @@
-import { authClient } from "@/lib/auth";
+import { useActiveOrganizationId } from "@/hooks/useActiveOrganizationId";
 import { useGetSitesFromOrg } from "@/api/admin/hooks/useSites";
 import { useOrganizationMembers } from "@/api/admin/hooks/useOrganizationMembers";
 import { useStripeSubscription } from "../../../lib/subscription/useStripeSubscription";
@@ -36,8 +36,7 @@ function UsageCard({ label, current, limit }: UsageCardItem) {
 
 export function UsageCards() {
   const { data: subscription } = useStripeSubscription();
-  const { data: activeOrg } = authClient.useActiveOrganization();
-  const organizationId = activeOrg?.id;
+  const organizationId = useActiveOrganizationId();
 
   const { data: sitesData } = useGetSitesFromOrg(organizationId);
   const { data: membersData } = useOrganizationMembers(organizationId ?? "");

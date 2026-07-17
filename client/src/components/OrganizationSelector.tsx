@@ -1,6 +1,7 @@
 import { Building2 } from "lucide-react";
 import { useExtracted } from "next-intl";
 import { useState, useEffect } from "react";
+import { useActiveOrganizationId } from "../hooks/useActiveOrganizationId";
 import { authClient } from "../lib/auth";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
 import { useUserOrganizations } from "../api/admin/hooks/useOrganizations";
@@ -8,17 +9,19 @@ import { useUserOrganizations } from "../api/admin/hooks/useOrganizations";
 export function OrganizationSelector() {
   const t = useExtracted();
   const { data: organizations, isLoading: isLoadingOrganizations } = useUserOrganizations();
-  const { data: activeOrganization, isPending } = authClient.useActiveOrganization();
+  // The active org id resolves from the lightweight session rather than the
+  // heavy get-full-organization call, so the selector never hangs on "Loading".
+  const activeOrganizationId = useActiveOrganizationId();
 
   // Local state to handle the delay when switching organizations
   const [selectedOrgId, setSelectedOrgId] = useState<string | null>(null);
 
-  // Update local state when activeOrganization changes
+  // Update local state when the active organization changes
   useEffect(() => {
-    if (activeOrganization?.id) {
-      setSelectedOrgId(activeOrganization.id);
+    if (activeOrganizationId) {
+      setSelectedOrgId(activeOrganizationId);
     }
-  }, [activeOrganization?.id]);
+  }, [activeOrganizationId]);
 
   const handleValueChange = (organizationId: string) => {
     // Update local state immediately for responsive UI
@@ -39,8 +42,8 @@ export function OrganizationSelector() {
     );
   }
 
-  // Show placeholder when loading or no active organization
-  if (isPending || !activeOrganization) {
+  // Show placeholder only while the organization list is still loading
+  if (isLoadingOrganizations && !organizations) {
     return (
       <Select disabled>
         <SelectTrigger className="w-full">
@@ -57,7 +60,7 @@ export function OrganizationSelector() {
 
   return (
     <Select
-      value={selectedOrgId || activeOrganization?.id}
+      value={selectedOrgId || activeOrganizationId || undefined}
       onValueChange={handleValueChange}
       disabled={!organizations || organizations.length === 0}
     >

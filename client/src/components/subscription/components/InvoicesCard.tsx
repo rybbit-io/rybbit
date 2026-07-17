@@ -1,4 +1,4 @@
-import { authClient } from "@/lib/auth";
+import { useActiveOrganizationId } from "@/hooks/useActiveOrganizationId";
 import { useQuery } from "@tanstack/react-query";
 import { ExternalLink } from "lucide-react";
 import { useExtracted, useLocale } from "next-intl";
@@ -22,12 +22,12 @@ interface Invoice {
 }
 
 function useInvoices() {
-  const { data: activeOrg } = authClient.useActiveOrganization();
+  const activeOrganizationId = useActiveOrganizationId();
 
   return useQuery<Invoice[]>({
-    queryKey: ["stripe-invoices", activeOrg?.id],
-    queryFn: () => authedFetch<Invoice[]>(`/stripe/invoices?organizationId=${activeOrg!.id}`),
-    enabled: !!activeOrg && IS_CLOUD,
+    queryKey: ["stripe-invoices", activeOrganizationId],
+    queryFn: () => authedFetch<Invoice[]>(`/stripe/invoices?organizationId=${activeOrganizationId!}`),
+    enabled: !!activeOrganizationId && IS_CLOUD,
     staleTime: 5 * 60 * 1000,
   });
 }

@@ -3,11 +3,12 @@ import { useExtracted } from "next-intl";
 import { useEffect, useState } from "react";
 import { toast } from "@/components/ui/sonner";
 import { useOrganizationMembers } from "../../../api/admin/hooks/useOrganizationMembers";
-import { useOrganizationInvitations } from "../../../api/admin/hooks/useOrganizations";
+import { useOrganizationInvitations, useUserOrganizations } from "../../../api/admin/hooks/useOrganizations";
 import { NoOrganization } from "../../../components/NoOrganization";
 import { Button } from "../../../components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../../../components/ui/card";
 import { Input } from "../../../components/ui/input";
+import { useActiveOrganizationId } from "../../../hooks/useActiveOrganizationId";
 import { useSetPageTitle } from "../../../hooks/useSetPageTitle";
 import { authClient } from "../../../lib/auth";
 import { ApiKeyManager } from "../account/components/ApiKeyManager";
@@ -149,9 +150,17 @@ function Organization({
 export default function MembersPage() {
   useSetPageTitle("Organization Members");
   const t = useExtracted();
-  const { data: activeOrganization, isPending } = authClient.useActiveOrganization();
+  // Resolve the org from the lightweight /user/organizations rather than the
+  // heavy get-full-organization call (useActiveOrganization). This page fetches
+  // its members and invitations from dedicated endpoints anyway, so it only
+  // needs the org's id/name/slug — and this avoids the page hanging on that
+  // call's loading state. See useActiveOrganizationId.
+  const activeOrganizationId = useActiveOrganizationId();
+  const { data: organizations, isLoading } = useUserOrganizations();
 
-  if (isPending) {
+  const activeOrganization = organizations?.find(org => org.id === activeOrganizationId) ?? organizations?.[0];
+
+  if (isLoading) {
     return (
       <div className="flex justify-center py-8">
         <div className="animate-pulse">{t("Loading organization...")}</div>
@@ -167,7 +176,15 @@ export default function MembersPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <Organization key={activeOrganization.id} org={activeOrganization} />
+      <Organization
+        key={activeOrganization.id}
+        org={{
+          id: activeOrganization.id,
+          name: activeOrganization.name,
+          slug: activeOrganization.slug,
+          createdAt: new Date(activeOrganization.createdAt),
+        }}
+      />
     </div>
   );
 }
