@@ -142,7 +142,7 @@ export function Footer() {
             {footerGroups.map((group) => (
               <section
                 key={group.title}
-                className="border-b border-neutral-200 px-5 py-10 odd:border-r last:border-b-0 dark:border-neutral-800 sm:px-8 [&:nth-last-child(2)]:border-b-0 md:border-b-0 md:border-r md:px-6 md:py-14 md:last:border-r-0"
+                className="border-b border-neutral-200 px-5 py-10 last:border-b-0 dark:border-neutral-800 sm:px-8 [&:nth-last-child(2)]:border-b-0 md:border-b-0 md:px-6 md:py-14"
               >
                 <h2 className="text-sm font-semibold text-neutral-950 dark:text-neutral-50">{group.title}</h2>
                 <ul className="mt-4">
