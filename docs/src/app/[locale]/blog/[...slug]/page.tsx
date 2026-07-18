@@ -9,6 +9,7 @@ import { Pre } from "fumadocs-ui/components/codeblock";
 import Script from "next/script";
 import { CTASection } from "@/components/CTASection";
 import { GridCrosses } from "@/components/GridCrosses";
+import { createOGImageUrl } from "@/lib/metadata";
 
 export function generateStaticParams() {
   return blogSource.getPages().map(page => ({
@@ -23,7 +24,8 @@ export async function generateMetadata(props: { params: Promise<{ slug: string[]
 
   const url = `https://rybbit.com/blog/${params.slug.join("/")}`;
   const publishedTime = page.data.date ? new Date(page.data.date).toISOString() : undefined;
-  const ogImage = page.data.image || "/opengraph-image.png";
+  const ogImage =
+    page.data.image || createOGImageUrl(page.data.title, page.data.description, "Blog").url;
 
   return {
     title: page.data.title,

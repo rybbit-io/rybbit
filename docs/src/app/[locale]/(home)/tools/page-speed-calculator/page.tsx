@@ -13,20 +13,11 @@ export const metadata: Metadata = {
     type: "website",
     url: "https://rybbit.com/tools/page-speed-calculator",
     siteName: "Rybbit",
-    images: [
-      {
-        url: "https://rybbit.com/og-image.png",
-        width: 1200,
-        height: 630,
-        alt: "Page Speed Calculator",
-      },
-    ],
   },
   twitter: {
     card: "summary_large_image",
     title: "Free Page Speed Calculator | Website Load Time Impact Calculator",
     description: "Calculate how page load time affects your conversions and revenue.",
-    images: ["https://rybbit.com/og-image.png"],
   },
   alternates: {
     canonical: "https://rybbit.com/tools/page-speed-calculator",
