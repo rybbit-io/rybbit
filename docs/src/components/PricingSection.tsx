@@ -138,18 +138,18 @@ export function PricingSection({ isAnnual, setIsAnnual }: { isAnnual: boolean, s
 
   return (
     <section className="py-16 md:py-24 w-full relative z-10">
-      <div className="max-w-[1200px] mx-auto px-4">
-        <div className="mb-12 text-center max-w-3xl mx-auto">
-          <h2 className="text-4xl md:text-5xl font-bold tracking-tight pb-4 text-transparent bg-clip-text bg-gradient-to-b from-neutral-900 via-neutral-700 to-neutral-500 dark:from-white dark:via-gray-200 dark:to-gray-400">
+      <div className="max-w-[1200px] mx-auto px-5 sm:px-8 md:px-12">
+        <div className="mb-10 max-w-2xl md:mb-14">
+          <h2 className="text-balance text-3xl font-semibold tracking-tight text-neutral-900 md:text-4xl dark:text-white">
             {t("Pricing")}
           </h2>
-          <p className="text-lg text-neutral-600 dark:text-neutral-300">
+          <p className="mt-3 text-base text-neutral-600 md:text-lg dark:text-neutral-400">
             {t("Start your 7-day free trial — no credit card charges until the trial ends.")}
           </p>
         </div>
 
         {/* Shared controls section */}
-        <div className="max-w-xl mx-auto mb-8">
+        <div className="max-w-xl mb-8">
           <div className="flex justify-between mb-6 items-center">
             <div>
               <h3 className="font-semibold mb-2">{t("Monthly pageviews")}</h3>

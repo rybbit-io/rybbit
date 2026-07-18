@@ -1,5 +1,4 @@
 import { cn } from "@/lib/utils";
-import { SectionBadge } from "@/components/SectionBadge";
 import Link from "next/link";
 import {
   SiAngular,
@@ -83,27 +82,30 @@ const platforms: { name: string; icon: ComponentType<IconProps>; path: string }[
 
 const PlatformLogo = ({ name, icon: Icon, path }: { name: string; icon: ComponentType<IconProps>; path: string }) => {
   return (
-    <Link href={path} className="block">
-      <div
-        className={cn(
-          "flex flex-col justify-center gap-4 p-4",
-          "bg-neutral-100/50 dark:bg-neutral-800/20 backdrop-blur-sm rounded-lg",
-          "border border-neutral-300/50 dark:border-neutral-800/50 hover:border-neutral-500 dark:hover:border-neutral-700 transition-colors duration-200",
-          "cursor-pointer hover:scale-105 transition-transform"
-        )}
-      >
-        <Icon className="h-6 w-6 text-neutral-700 dark:text-neutral-300" />
-        <span className="text-sm text-neutral-600 dark:text-neutral-400">{name}</span>
-      </div>
+    <Link
+      href={path}
+      className={cn(
+        "group flex items-center gap-2.5 border-b border-r border-border px-4 py-3.5",
+        "transition-colors hover:bg-neutral-50 dark:hover:bg-neutral-900/40"
+      )}
+    >
+      <Icon className="h-4 w-4 shrink-0 text-neutral-500 transition-colors group-hover:text-neutral-900 dark:text-neutral-400 dark:group-hover:text-white" />
+      <span className="truncate text-sm text-neutral-700 dark:text-neutral-300">{name}</span>
     </Link>
   );
 };
 
 export function IntegrationsGrid() {
+  // Fillers square off the ruled grid's last row at the 3-column breakpoint.
+  const fillerCount = (3 - (platforms.length % 3)) % 3;
+
   return (
-    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-5">
-      {platforms.map((platform) => (
-        <PlatformLogo key={platform.name} {...platform} />
+    <div className="grid grid-cols-2 border-l border-t border-border sm:grid-cols-3">
+      {platforms.map(platform => (
+        <PlatformLogo key={`${platform.name}-${platform.path}`} {...platform} />
+      ))}
+      {Array.from({ length: fillerCount }).map((_, i) => (
+        <div key={i} aria-hidden="true" className="hidden border-b border-r border-border sm:block" />
       ))}
     </div>
   );

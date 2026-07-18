@@ -201,6 +201,45 @@ pre {
   }
 }
 
+/* ── Landing page system ─────────────────────────────────────────────────
+   Shared motion vocabulary for the marketing surface. Entrance animations
+   only ever *add* motion on top of a visible-at-rest element (fill-mode
+   backwards + no base opacity class), so content still renders when
+   animations never run (reduced motion, headless renderers, hidden tabs). */
+@media (prefers-reduced-motion: no-preference) {
+  .lp-rise {
+    animation: lp-rise 0.7s cubic-bezier(0.22, 1, 0.36, 1) backwards;
+    animation-delay: calc(var(--lp-rise-delay, 0) * 90ms);
+  }
+  .lp-pulse::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background-color: currentColor;
+    animation: lp-ping 2.4s cubic-bezier(0, 0, 0.2, 1) infinite;
+  }
+}
+
+@keyframes lp-rise {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+}
+
+@keyframes lp-ping {
+  0% {
+    transform: scale(1);
+    opacity: 0.6;
+  }
+  70%,
+  100% {
+    transform: scale(2.75);
+    opacity: 0;
+  }
+}
+
 /* ── Docs dark surface ───────────────────────────────────────────────────
    Lift the docs reading surface a few percent in dark mode so it isn't a near
    black. Scoped to the notebook layout container (which only exists on docs

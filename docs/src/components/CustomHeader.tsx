@@ -19,7 +19,10 @@ export function CustomHeader() {
     <header className="sticky top-0 z-50 w-full">
       {/* <BlackFridayBanner /> */}
       {/* <WelcomeBanner /> */}
-      <nav className="mx-auto flex max-w-[1167px] items-center justify-between px-4 py-3 sm:border border-neutral-200 sm:rounded-xl dark:border-neutral-800 bg-neutral-50/50 dark:bg-neutral-900/80 backdrop-blur-md sm:mt-1 shadow-md" aria-label="Global">
+      <nav
+        className="mx-auto flex max-w-[1200px] items-center justify-between border-neutral-200 bg-white/80 px-5 py-3 backdrop-blur-md sm:mt-2 sm:rounded-xl sm:border dark:border-neutral-800 dark:bg-neutral-950/80"
+        aria-label="Global"
+      >
         {/* Logo */}
         <div className="flex items-center">
           <Link href="/" className="flex items-center">
@@ -103,7 +106,7 @@ export function CustomHeader() {
             <AppLink href="https://app.rybbit.io" target="_blank">
               <button
                 onClick={() => trackAdEvent("login", { location: "header" })}
-                className="bg-neutral-200 dark:bg-neutral-800 hover:bg-neutral-300 dark:hover:bg-neutral-700 text-neutral-900 dark:text-white text-sm font-medium px-3 py-1.5 rounded-md transform hover:-translate-y-0.5 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-neutral-400 focus:ring-opacity-50"
+                className="cursor-pointer rounded-lg border border-neutral-300 bg-transparent px-3.5 py-1.5 text-sm font-medium text-neutral-900 transition-colors hover:bg-neutral-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neutral-400 dark:border-neutral-700 dark:text-white dark:hover:bg-neutral-800"
               >
                 {t("Login")}
               </button>
@@ -111,7 +114,7 @@ export function CustomHeader() {
             <AppLink href="https://app.rybbit.io/signup" target="_blank">
               <button
                 onClick={() => trackAdEvent("signup", { location: "header" })}
-                className="bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-medium px-3 py-1.5 rounded-md transform hover:-translate-y-0.5 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-emerald-200 focus:ring-opacity-50"
+                className="cursor-pointer rounded-lg bg-emerald-600 px-3.5 py-1.5 text-sm font-medium text-white transition-colors hover:bg-emerald-500 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-500"
               >
                 {t("Sign up")}
               </button>
@@ -134,7 +137,7 @@ export function CustomHeader() {
 
       {/* Mobile menu */}
       {mobileMenuOpen && (
-        <div className="md:hidden bg-neutral-50/50 dark:bg-neutral-900/80 backdrop-blur-md">
+        <div className="md:hidden border-b border-neutral-200 bg-white/95 backdrop-blur-md dark:border-neutral-800 dark:bg-neutral-950/95">
           <div className="space-y-1 px-4 pb-3 pt-2">
             <Link
               href="/pricing"

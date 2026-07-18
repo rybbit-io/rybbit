@@ -52,17 +52,16 @@ export function PricingCard({
 
   return (
     <div className="w-full flex-shrink-0 h-full">
-      <div className="bg-neutral-200/40 dark:bg-neutral-900/40 p-2 rounded-3xl border border-neutral-300 dark:border-neutral-800 h-full">
-        <div
-          className={cn(
-            "rounded-2xl border overflow-hidden backdrop-blur-sm shadow-xl h-full",
-            recommended
-              ? "bg-neutral-100/80 dark:bg-neutral-800 border-emerald-500 border-2"
-              : isFree
-                ? "bg-neutral-100/30 dark:bg-neutral-800/15 border-neutral-300/60 dark:border-neutral-800/60 text-neutral-600 dark:text-neutral-300"
-                : "bg-neutral-50 dark:bg-neutral-900 border-neutral-300 dark:border-neutral-800"
-          )}
-        >
+      <div
+        className={cn(
+          "rounded-xl border overflow-hidden h-full",
+          recommended
+            ? "border-emerald-600/70 bg-neutral-50 dark:border-emerald-500/60 dark:bg-neutral-900/60"
+            : isFree
+              ? "border-border bg-neutral-50/50 text-neutral-600 dark:bg-neutral-900/20 dark:text-neutral-300"
+              : "border-border bg-neutral-50/80 dark:bg-neutral-900/40"
+        )}
+      >
           <div className="p-6">
             <div className="mb-4">
               <div className="flex items-center gap-2 mb-2">
@@ -94,10 +93,10 @@ export function PricingCard({
                   data-rybbit-event={eventLocation ? "signup" : undefined}
                   data-rybbit-prop-location={eventLocation}
                   className={cn(
-                    "w-full font-medium px-5 py-3 rounded-lg transform hover:-translate-y-0.5 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-opacity-50 cursor-pointer",
+                    "w-full cursor-pointer rounded-lg px-5 py-3 font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2",
                     isPrimary
-                      ? "bg-emerald-600 hover:bg-emerald-500 text-white shadow-lg shadow-emerald-900/20 focus:ring-emerald-200 disabled:opacity-50 disabled:pointer-events-none"
-                      : "bg-neutral-300 dark:bg-neutral-700 hover:bg-neutral-200 dark:hover:bg-neutral-600 text-neutral-900 dark:text-white"
+                      ? "bg-emerald-600 text-white hover:bg-emerald-500 focus-visible:outline-emerald-500 disabled:opacity-50 disabled:pointer-events-none"
+                      : "border border-neutral-300 bg-transparent text-neutral-900 hover:bg-neutral-100 focus-visible:outline-neutral-400 dark:border-neutral-700 dark:text-white dark:hover:bg-neutral-800"
                   )}
                 >
                   {buttonText}
@@ -108,10 +107,10 @@ export function PricingCard({
                 onClick={onClick}
                 disabled={disabled}
                 className={cn(
-                  "w-full font-medium px-5 py-3 rounded-lg transform hover:-translate-y-0.5 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-opacity-50 cursor-pointer",
+                  "w-full cursor-pointer rounded-lg px-5 py-3 font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2",
                   isPrimary
-                    ? "bg-emerald-600 hover:bg-emerald-500 text-white shadow-lg shadow-emerald-900/20 focus:ring-emerald-500 disabled:opacity-50 disabled:pointer-events-none"
-                    : "bg-neutral-300 dark:bg-neutral-700 hover:bg-neutral-200 dark:hover:bg-neutral-600 text-neutral-900 dark:text-white"
+                    ? "bg-emerald-600 text-white hover:bg-emerald-500 focus-visible:outline-emerald-500 disabled:opacity-50 disabled:pointer-events-none"
+                    : "border border-neutral-300 bg-transparent text-neutral-900 hover:bg-neutral-100 focus-visible:outline-neutral-400 dark:border-neutral-700 dark:text-white dark:hover:bg-neutral-800"
                 )}
               >
                 {buttonText}
@@ -141,7 +140,7 @@ export function PricingCard({
               {shouldShowToggle && (
                 <button
                   onClick={() => setIsExpanded(!isExpanded)}
-                  className="flex items-center text-sm text-neutral-400 dark:text-neutral-400 hover:text-neutral-200 dark:hover:text-neutral-300 transition-colors cursor-pointer mt-2"
+                  className="flex items-center text-sm text-neutral-500 hover:text-neutral-800 dark:text-neutral-400 dark:hover:text-neutral-200 transition-colors cursor-pointer mt-2"
                 >
                   {isExpanded ? (
                     <>
@@ -163,7 +162,6 @@ export function PricingCard({
                 {footerText}
               </p>
             )}
-          </div>
         </div>
       </div>
     </div>

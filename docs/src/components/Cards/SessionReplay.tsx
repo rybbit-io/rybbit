@@ -55,7 +55,7 @@ export function SessionReplay() {
       description={t("Watch real user sessions to understand their behavior and identify pain points.")}
       icon={Film}
     >
-      <div className=" mt-4 transform rotate-2 translate-x-8 translate-y-8 bg-neutral-200 dark:bg-neutral-900 rounded-lg -mb-[30px] rounded-xl transition-transform duration-300 hover:scale-105 hover:rotate-3">
+      <div className="mt-6 translate-x-6 sm:translate-x-10 overflow-hidden rounded-tl-xl border border-border bg-neutral-100 dark:bg-neutral-950/70 -mb-[30px]">
         {/* Video player container */}
         <div className="relative">
           {/* Mock website content */}
