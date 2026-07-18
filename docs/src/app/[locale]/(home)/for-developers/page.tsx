@@ -3,14 +3,10 @@ import { CTASection } from "@/components/CTASection";
 import { GitHubStarButton } from "@/components/GitHubStarButton";
 import { GridCrosses } from "@/components/GridCrosses";
 import { InteriorPageHero } from "@/components/InteriorPageHero";
+import { PersonaCrossLinks } from "@/components/persona/PersonaCrossLinks";
+import { PersonaFaqSection } from "@/components/persona/PersonaFaqSection";
 import { SectionKicker } from "@/components/deco/SectionKicker";
 import { TrackingSnippet } from "@/components/deco/TrackingSnippet";
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "@/components/ui/accordion";
 import { createMetadata, createOGImageUrl } from "@/lib/metadata";
 import { ArrowRight } from "lucide-react";
 import Link from "next/link";
@@ -79,16 +75,6 @@ const faqItems = [
       "Yes. Rybbit doesn't use cookies or collect personal data that could identify visitors, so sites using it don't need a consent banner for analytics.",
   },
 ];
-
-const faqSchema = {
-  "@context": "https://schema.org",
-  "@type": "FAQPage",
-  mainEntity: faqItems.map(item => ({
-    "@type": "Question",
-    name: item.question,
-    acceptedAnswer: { "@type": "Answer", text: item.answer },
-  })),
-};
 
 const tokenPlain = "";
 const tokenName = "text-neutral-700 dark:text-neutral-300";
@@ -165,9 +151,7 @@ const selfHostTokens = [
 
 export default function ForDevelopersPage() {
   return (
-    <>
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }} />
-      <div className="overflow-x-clip">
+    <div className="overflow-x-clip">
         <InteriorPageHero
           eyebrow="Rybbit for developers"
           title="Analytics that behaves like good software."
@@ -341,61 +325,8 @@ export default function ForDevelopersPage() {
           </div>
         </section>
 
-        <section className="border-b border-neutral-200 dark:border-neutral-800" aria-labelledby="dev-faq-title">
-          <div className="relative mx-auto grid max-w-[1200px] grid-cols-1 border-x border-neutral-200 dark:border-neutral-800 lg:grid-cols-12">
-            <GridCrosses />
-            <div className="border-b border-neutral-200 px-5 py-12 dark:border-neutral-800 sm:px-8 lg:col-span-4 lg:border-b-0 lg:border-r lg:px-10 lg:py-16">
-              <div className="lg:sticky lg:top-24">
-                <h2
-                  id="dev-faq-title"
-                  className="max-w-sm text-4xl font-semibold leading-[1.04] tracking-[-0.035em] md:text-5xl"
-                >
-                  Developer questions, answered plainly.
-                </h2>
-              </div>
-            </div>
-            <Accordion type="single" collapsible className="lg:col-span-8">
-              {faqItems.map((faq, index) => (
-                <AccordionItem key={faq.question} value={`item-${index}`} className="last:border-b-0">
-                  <AccordionTrigger className="px-5 py-5 text-left sm:px-8 lg:px-10">{faq.question}</AccordionTrigger>
-                  <AccordionContent className="px-5 pb-6 sm:px-8 lg:px-10">{faq.answer}</AccordionContent>
-                </AccordionItem>
-              ))}
-            </Accordion>
-          </div>
-        </section>
-
-        <section className="border-b border-neutral-200 dark:border-neutral-800" aria-label="Related pages">
-          <div className="relative mx-auto max-w-[1200px] border-x border-neutral-200 dark:border-neutral-800">
-            <GridCrosses />
-            <Link
-              href="/for-agencies"
-              className="group grid border-b border-neutral-200 px-5 py-7 transition-colors hover:bg-neutral-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-neutral-500 dark:border-neutral-800 dark:hover:bg-neutral-900/60 sm:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)_auto] sm:items-center sm:gap-6 sm:px-8 lg:px-10"
-            >
-              <span className="font-semibold">Rybbit for agencies</span>
-              <span className="mt-1 text-sm leading-6 text-neutral-500 dark:text-neutral-400 sm:mt-0">
-                One workspace for every client site, with dashboards clients can read on their own.
-              </span>
-              <ArrowRight
-                className="mt-4 size-4 text-neutral-400 transition-transform group-hover:translate-x-1 motion-reduce:transition-none sm:mt-0"
-                aria-hidden="true"
-              />
-            </Link>
-            <Link
-              href="/compare"
-              className="group grid px-5 py-7 transition-colors hover:bg-neutral-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-neutral-500 dark:hover:bg-neutral-900/60 sm:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)_auto] sm:items-center sm:gap-6 sm:px-8 lg:px-10"
-            >
-              <span className="font-semibold">Compare Rybbit</span>
-              <span className="mt-1 text-sm leading-6 text-neutral-500 dark:text-neutral-400 sm:mt-0">
-                Side-by-side with Google Analytics, Plausible, Matomo, PostHog, and more.
-              </span>
-              <ArrowRight
-                className="mt-4 size-4 text-neutral-400 transition-transform group-hover:translate-x-1 motion-reduce:transition-none sm:mt-0"
-                aria-hidden="true"
-              />
-            </Link>
-          </div>
-        </section>
+        <PersonaFaqSection heading="Developer questions, answered plainly." items={faqItems} />
+        <PersonaCrossLinks current="for-developers" />
 
         <CTASection
           title="Ship analytics in the next ten minutes."
@@ -403,6 +334,5 @@ export default function ForDevelopersPage() {
           eventLocation="for_developers_bottom_cta"
         />
       </div>
-    </>
   );
 }
