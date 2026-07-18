@@ -96,50 +96,50 @@ const customerLogos = [
     alt: "Automatio",
     width: 130,
     href: "https://automatio.ai",
-    className: "opacity-50 hover:opacity-80 grayscale invert dark:opacity-70 dark:hover:opacity-100 dark:invert-0",
+    className: "opacity-55 hover:opacity-100 grayscale brightness-0 invert",
   },
   {
     src: "/logos/convex.svg",
     alt: "Convex",
     width: 120,
-    className: "opacity-40 hover:opacity-70 grayscale invert dark:opacity-60 dark:hover:opacity-100 dark:invert-0 dark:grayscale-0",
+    className: "opacity-55 hover:opacity-100 grayscale brightness-0 invert",
   },
   {
     src: "/logos/onyx.webp",
     alt: "Onyx",
     width: 100,
     href: "https://onyx.app",
-    className: "opacity-40 hover:opacity-70 dark:opacity-60 dark:hover:opacity-100 dark:invert",
+    className: "opacity-55 hover:opacity-100 grayscale brightness-0 invert",
   },
   {
     src: "/logos/vanguard.webp",
     alt: "Vanguard",
     width: 120,
-    className: "opacity-40 hover:opacity-70 dark:opacity-60 dark:hover:opacity-100 dark:invert",
+    className: "opacity-55 hover:opacity-100 grayscale brightness-0 invert",
   },
   {
     src: "/logos/ustwo.svg",
     alt: "ustwo",
     width: 100,
-    className: "opacity-40 hover:opacity-70 dark:opacity-60 dark:hover:opacity-100 dark:invert",
+    className: "opacity-55 hover:opacity-100 grayscale brightness-0 invert",
   },
   {
     src: "/logos/mydramalist.png",
     alt: "MyDramaList",
     width: 120,
-    className: "opacity-50 hover:opacity-80 invert dark:opacity-60 dark:hover:opacity-100 dark:invert-0",
+    className: "opacity-55 hover:opacity-100 grayscale brightness-0 invert",
   },
   {
     src: "/logos/dtelecom.svg",
     alt: "DTelecom",
     width: 120,
-    className: "opacity-40 hover:opacity-70 grayscale invert dark:opacity-60 dark:hover:opacity-100 dark:invert-0",
+    className: "opacity-55 hover:opacity-100 grayscale brightness-0 invert",
   },
   {
     src: "/logos/dpm.webp",
     alt: "DPM.lol",
     width: 120,
-    className: "opacity-40 hover:opacity-70 grayscale invert dark:opacity-60 dark:hover:opacity-100 dark:invert-0",
+    className: "opacity-55 hover:opacity-100 grayscale brightness-0 invert",
   },
 ];
 
@@ -150,29 +150,67 @@ export function LandingPageTemplate({ title, subtitle, showEUFlag = true }: Land
     {
       title: t("Understand"),
       description: t("A clear read on what is happening, without configuring a report first."),
+      surface: "bg-[var(--marketing-action-soft)] dark:bg-emerald-950/35",
+      accent: "text-emerald-700 dark:text-emerald-300",
       features: [
-        { icon: ZapIcon, title: t("Setup in minutes"), description: t("Add one line of code and start seeing real-time data instantly.") },
-        { icon: ActivityIcon, title: t("Realtime data"), description: t("See what's happening on your site right now.") },
-        { icon: GaugeIcon, title: t("Web vitals"), description: t("Monitor Core Web Vitals for fast user experiences.") },
+        {
+          icon: ZapIcon,
+          title: t("Setup in minutes"),
+          description: t("Add one line of code and start seeing real-time data instantly."),
+        },
+        {
+          icon: ActivityIcon,
+          title: t("Realtime data"),
+          description: t("See what's happening on your site right now."),
+        },
+        {
+          icon: GaugeIcon,
+          title: t("Web vitals"),
+          description: t("Monitor Core Web Vitals for fast user experiences."),
+        },
         { icon: BellIcon, title: t("Email reports"), description: t("Automated reports delivered to your inbox.") },
       ],
     },
     {
       title: t("Investigate"),
       description: t("Move from the headline number to the behavior behind it."),
+      surface: "bg-[var(--marketing-data-soft)] dark:bg-indigo-950/35",
+      accent: "text-indigo-700 dark:text-indigo-300",
       features: [
-        { icon: PlayIcon, title: t("Session replay"), description: t("Watch real user sessions to spot usability issues.") },
-        { icon: RouteIcon, title: t("User journeys"), description: t("Map how users navigate from landing to conversion.") },
-        { icon: EarthIcon, title: t("Globe views"), description: t("Watch traffic flow with detailed 3D globe visualizations.") },
+        {
+          icon: PlayIcon,
+          title: t("Session replay"),
+          description: t("Watch real user sessions to spot usability issues."),
+        },
+        {
+          icon: RouteIcon,
+          title: t("User journeys"),
+          description: t("Map how users navigate from landing to conversion."),
+        },
+        {
+          icon: EarthIcon,
+          title: t("Globe views"),
+          description: t("Watch traffic flow with detailed 3D globe visualizations."),
+        },
         { icon: UsersIcon, title: t("Organizations"), description: t("Manage sites and team access in one place.") },
       ],
     },
     {
       title: t("Measure"),
       description: t("Define the outcomes that matter and follow them end to end."),
+      surface: "bg-[var(--marketing-data-soft)] dark:bg-indigo-950/35",
+      accent: "text-indigo-700 dark:text-indigo-300",
       features: [
-        { icon: ArrowDownIcon, title: t("Funnels"), description: t("Visualize conversion paths and find where visitors drop off.") },
-        { icon: LayersIcon, title: t("Custom events"), description: t("Track sign-ups, purchases, and any user interaction.") },
+        {
+          icon: ArrowDownIcon,
+          title: t("Funnels"),
+          description: t("Visualize conversion paths and find where visitors drop off."),
+        },
+        {
+          icon: LayersIcon,
+          title: t("Custom events"),
+          description: t("Track sign-ups, purchases, and any user interaction."),
+        },
         { icon: LinkIcon, title: t("API"), description: t("Full API access to build custom integrations.") },
         { icon: DownloadIcon, title: t("Data export"), description: t("Export your raw data anytime. No lock-in.") },
       ],
@@ -180,11 +218,29 @@ export function LandingPageTemplate({ title, subtitle, showEUFlag = true }: Land
     {
       title: t("Stay private"),
       description: t("Clean data and a lighter privacy footprint, by default."),
+      surface: "bg-[var(--marketing-action-soft)] dark:bg-emerald-950/35",
+      accent: "text-emerald-700 dark:text-emerald-300",
       features: [
-        { icon: BotIcon, title: t("Bot blocking"), description: t("Automatically filter out bots to keep data clean.") },
-        { icon: BanIcon, title: t("No cookies"), description: t("Zero cookies, zero banners. Cleaner visitor experiences.") },
-        { icon: ShieldCheckIcon, title: t("GDPR & CCPA"), description: t("Privacy-first design means you're compliant out of the box.") },
-        { icon: TerminalIcon, title: t("Open source"), description: t("100% open source. Self-host or use our cloud.") },
+        {
+          icon: BotIcon,
+          title: t("Bot blocking"),
+          description: t("Automatically filter out bots to keep data clean."),
+        },
+        {
+          icon: BanIcon,
+          title: t("No cookies"),
+          description: t("Zero cookies, zero banners. Cleaner visitor experiences."),
+        },
+        {
+          icon: ShieldCheckIcon,
+          title: t("GDPR & CCPA"),
+          description: t("Privacy-first design means you're compliant out of the box."),
+        },
+        {
+          icon: TerminalIcon,
+          title: t("Open source"),
+          description: t("100% open source. Self-host or use our cloud."),
+        },
       ],
     },
   ];
@@ -201,14 +257,15 @@ export function LandingPageTemplate({ title, subtitle, showEUFlag = true }: Land
       <div className="overflow-clip">
         <HeroSection title={title} subtitle={subtitle} showEUFlag={showEUFlag} />
 
-        <section className="border-b border-neutral-200 dark:border-neutral-800" aria-labelledby="customer-proof">
-          <div className="mx-auto grid max-w-[1200px] grid-cols-2 gap-px border-x border-neutral-200 bg-neutral-200 p-px dark:border-neutral-800 dark:bg-neutral-800 sm:grid-cols-4 lg:grid-cols-8">
-            <div className="col-span-full flex min-h-14 items-center bg-white px-5 dark:bg-neutral-950 sm:px-8">
-              <p id="customer-proof" className="text-sm font-medium text-neutral-600 dark:text-neutral-400">
+        <section className="border-b border-neutral-800 bg-neutral-950" aria-labelledby="customer-proof">
+          <div className="mx-auto grid max-w-[1200px] grid-cols-2 gap-px border-x border-white/10 bg-white/10 p-px sm:grid-cols-4 lg:grid-cols-8">
+            <div className="col-span-full flex min-h-14 items-center gap-2 bg-neutral-950 px-5 sm:px-8">
+              <span className="size-2 rounded-full bg-emerald-400" aria-hidden="true" />
+              <p id="customer-proof" className="text-sm font-medium text-[var(--marketing-data)]">
                 {t("Trusted by 10,000+ organizations worldwide")}
               </p>
             </div>
-            {customerLogos.map((logo) => {
+            {customerLogos.map(logo => {
               const image = (
                 <Image
                   src={logo.src}
@@ -222,7 +279,7 @@ export function LandingPageTemplate({ title, subtitle, showEUFlag = true }: Land
               return (
                 <div
                   key={logo.alt}
-                  className="flex min-h-24 items-center justify-center bg-white dark:bg-neutral-950"
+                  className="flex min-h-24 items-center justify-center bg-neutral-950 transition-colors duration-200 hover:bg-neutral-900"
                 >
                   {logo.href ? (
                     <Link href={logo.href} target="_blank" rel="noopener noreferrer" aria-label={logo.alt}>
@@ -239,34 +296,47 @@ export function LandingPageTemplate({ title, subtitle, showEUFlag = true }: Land
 
         <section className="border-b border-neutral-200 dark:border-neutral-800" aria-labelledby="capabilities-title">
           <div className="mx-auto grid max-w-[1200px] border-x border-neutral-200 dark:border-neutral-800 lg:grid-cols-12">
-            <div className="border-b border-neutral-200 px-5 py-16 dark:border-neutral-800 sm:px-8 md:py-24 lg:col-span-4 lg:border-b-0 lg:border-r lg:px-10">
+            <div className="border-b border-[var(--marketing-data-ink)]/15 bg-[var(--marketing-data)] px-5 py-16 text-[var(--marketing-data-ink)] sm:px-8 md:py-24 lg:col-span-4 lg:border-b-0 lg:border-r lg:px-10">
               <div className="lg:sticky lg:top-24">
-                <h2 id="capabilities-title" className="max-w-sm text-4xl font-semibold leading-[1.02] tracking-[-0.035em] md:text-5xl">
+                <h2
+                  id="capabilities-title"
+                  className="max-w-sm text-4xl font-semibold leading-[1.02] tracking-[-0.035em] md:text-5xl"
+                >
                   {t("The whole picture, in one place.")}
                 </h2>
-                <p className="mt-6 max-w-sm text-base leading-7 text-neutral-600 dark:text-neutral-400">
-                  {t("Rybbit connects the essential analytics workflows into one coherent product, so every answer starts from the same source of truth.")}
+                <p className="mt-6 max-w-sm text-base leading-7 text-[var(--marketing-data-ink)]/75">
+                  {t(
+                    "Rybbit connects the essential analytics workflows into one coherent product, so every answer starts from the same source of truth."
+                  )}
                 </p>
+                <div className="mt-10 flex items-center gap-3 text-sm font-medium text-[var(--marketing-data-ink)]/70">
+                  <span className="h-px w-12 bg-[var(--marketing-data-ink)]/30" aria-hidden="true" />
+                  {t("One connected workspace")}
+                </div>
               </div>
             </div>
 
             <div className="grid lg:col-span-8 md:grid-cols-2">
-              {featureGroups.map((group) => (
+              {featureGroups.map(group => (
                 <article
                   key={group.title}
-                  className="border-b border-neutral-200 px-5 py-12 last:border-b-0 dark:border-neutral-800 sm:px-8 md:odd:border-r md:[&:nth-last-child(-n+2)]:border-b-0 lg:px-10"
+                  className={`${group.surface} border-b border-neutral-200 px-5 py-12 last:border-b-0 dark:border-neutral-800 sm:px-8 md:odd:border-r md:[&:nth-last-child(-n+2)]:border-b-0 lg:px-10`}
                 >
                   <h3 className="text-xl font-semibold tracking-tight">{group.title}</h3>
-                  <p className="mt-2 min-h-12 max-w-md text-sm leading-6 text-neutral-600 dark:text-neutral-400">{group.description}</p>
+                  <p className="mt-2 min-h-12 max-w-md text-sm leading-6 text-neutral-600 dark:text-neutral-400">
+                    {group.description}
+                  </p>
                   <div className="mt-8 divide-y divide-neutral-200 border-t border-neutral-200 dark:divide-neutral-800 dark:border-neutral-800">
-                    {group.features.map((feature) => {
+                    {group.features.map(feature => {
                       const Icon = feature.icon;
                       return (
                         <div key={feature.title} className="grid grid-cols-[24px_1fr] gap-x-3 py-4">
-                          <Icon size={18} className="mt-0.5 text-neutral-500 dark:text-neutral-400" />
+                          <Icon size={18} className={`mt-0.5 ${group.accent}`} />
                           <div>
                             <h4 className="text-sm font-medium">{feature.title}</h4>
-                            <p className="mt-1 text-sm leading-5 text-neutral-600 dark:text-neutral-400">{feature.description}</p>
+                            <p className="mt-1 text-sm leading-5 text-neutral-600 dark:text-neutral-400">
+                              {feature.description}
+                            </p>
                           </div>
                         </div>
                       );
@@ -280,39 +350,67 @@ export function LandingPageTemplate({ title, subtitle, showEUFlag = true }: Land
 
         <section className="border-b border-neutral-200 dark:border-neutral-800" aria-labelledby="product-title">
           <div className="mx-auto max-w-[1200px] border-x border-neutral-200 dark:border-neutral-800">
-            <div className="grid border-b border-neutral-200 dark:border-neutral-800 lg:grid-cols-12">
-              <div className="border-b border-neutral-200 px-5 py-14 dark:border-neutral-800 sm:px-8 md:py-20 lg:col-span-7 lg:border-b-0 lg:border-r lg:px-10">
-                <p className="text-base font-semibold tracking-tight text-neutral-950 dark:text-neutral-50">
+            <div className="grid border-b border-neutral-800 bg-neutral-950 text-white lg:grid-cols-12">
+              <div className="border-b border-neutral-800 px-5 py-14 sm:px-8 md:py-20 lg:col-span-7 lg:border-b-0 lg:border-r lg:px-10">
+                <p className="flex items-center gap-2 text-base font-semibold tracking-tight text-emerald-300">
+                  <span className="relative flex size-2" aria-hidden="true">
+                    <span className="absolute inline-flex size-full animate-ping rounded-full bg-emerald-400 opacity-60 motion-reduce:hidden" />
+                    <span className="relative inline-flex size-2 rounded-full bg-emerald-400" />
+                  </span>
                   {t("One connected workspace")}
                 </p>
-                <h2 id="product-title" className="mt-5 max-w-2xl text-4xl font-semibold leading-[1.04] tracking-[-0.035em] md:text-5xl text-balance">
+                <h2
+                  id="product-title"
+                  className="mt-5 max-w-2xl text-4xl font-semibold leading-[1.04] tracking-[-0.035em] md:text-5xl text-balance"
+                >
                   {t("Go from signal to explanation without changing tools.")}
                 </h2>
               </div>
               <div className="flex items-end px-5 py-10 sm:px-8 md:py-20 lg:col-span-5 lg:px-10">
-                <p className="max-w-md text-lg leading-8 text-neutral-600 dark:text-neutral-400 text-pretty">
-                  {t("Start with live traffic, inspect the people and paths behind it, then measure where they convert.")}
+                <p className="max-w-md text-lg leading-8 text-neutral-300 text-pretty">
+                  {t(
+                    "Start with live traffic, inspect the people and paths behind it, then measure where they convert."
+                  )}
                 </p>
               </div>
             </div>
 
             <div className="grid gap-px bg-neutral-200 p-px dark:bg-neutral-800 lg:grid-cols-12">
-              <div className="bg-white dark:bg-neutral-950 lg:col-span-7 [&>div]:h-full"><RealTimeAnalytics /></div>
-              <div className="bg-white dark:bg-neutral-950 lg:col-span-5 [&>div]:h-full"><SessionReplay /></div>
-              <div className="bg-white dark:bg-neutral-950 lg:col-span-5 [&>div]:h-full"><UserSessions /></div>
-              <div className="bg-white dark:bg-neutral-950 lg:col-span-7 [&>div]:h-full"><Funnels /></div>
+              <div className="bg-white dark:bg-neutral-950 lg:col-span-7 [&>div]:h-full">
+                <RealTimeAnalytics />
+              </div>
+              <div className="bg-white dark:bg-neutral-950 lg:col-span-5 [&>div]:h-full">
+                <SessionReplay />
+              </div>
+              <div className="bg-white dark:bg-neutral-950 lg:col-span-5 [&>div]:h-full">
+                <UserSessions />
+              </div>
+              <div className="bg-white dark:bg-neutral-950 lg:col-span-7 [&>div]:h-full">
+                <Funnels />
+              </div>
             </div>
           </div>
         </section>
 
         <section className="border-b border-neutral-200 dark:border-neutral-800" aria-labelledby="integrations-title">
           <div className="mx-auto grid max-w-[1200px] border-x border-neutral-200 dark:border-neutral-800 lg:grid-cols-12">
-            <div className="border-b border-neutral-200 px-5 py-16 dark:border-neutral-800 sm:px-8 md:py-24 lg:col-span-4 lg:border-b-0 lg:border-r lg:px-10">
-              <div className="lg:sticky lg:top-24">
-                <h2 id="integrations-title" className="max-w-sm text-4xl font-semibold leading-[1.04] tracking-[-0.035em] md:text-5xl">
+            <div className="relative overflow-hidden border-b border-white/10 bg-[var(--marketing-action-deep)] px-5 py-16 text-white sm:px-8 md:py-24 lg:col-span-4 lg:border-b-0 lg:border-r lg:px-10">
+              <Image
+                src="/rybbit/frog_white.svg"
+                alt=""
+                width={260}
+                height={260}
+                aria-hidden="true"
+                className="pointer-events-none absolute -bottom-14 -right-12 w-56 -rotate-6 opacity-[0.08]"
+              />
+              <div className="relative z-10 lg:sticky lg:top-24">
+                <h2
+                  id="integrations-title"
+                  className="max-w-sm text-4xl font-semibold leading-[1.04] tracking-[-0.035em] md:text-5xl"
+                >
                   {t("Made to meet your stack.")}
                 </h2>
-                <p className="mt-6 max-w-sm text-base leading-7 text-neutral-600 dark:text-neutral-400">
+                <p className="mt-6 max-w-sm text-base leading-7 text-emerald-100/75">
                   {t("Install Rybbit on the platform you already use. Most integrations take only a few minutes.")}
                 </p>
               </div>
@@ -326,19 +424,22 @@ export function LandingPageTemplate({ title, subtitle, showEUFlag = true }: Land
         <section className="border-b border-neutral-200 dark:border-neutral-800" aria-labelledby="testimonials-title">
           <div className="mx-auto max-w-[1200px] border-x border-neutral-200 dark:border-neutral-800">
             <div className="grid border-b border-neutral-200 dark:border-neutral-800 md:grid-cols-3">
-              <div className="border-b border-neutral-200 px-5 py-14 dark:border-neutral-800 sm:px-8 md:col-span-2 md:border-b-0 md:border-r md:py-20 lg:px-10">
-                <p className="text-base font-semibold tracking-tight text-neutral-950 dark:text-neutral-50">
+              <div className="border-b border-[var(--marketing-data-ink)]/15 bg-[var(--marketing-data)] px-5 py-14 text-[var(--marketing-data-ink)] sm:px-8 md:col-span-2 md:border-b-0 md:border-r md:py-20 lg:px-10">
+                <p className="text-base font-semibold tracking-tight text-[var(--marketing-data-ink)]/75">
                   {t("From the community")}
                 </p>
-                <h2 id="testimonials-title" className="mt-5 max-w-3xl text-4xl font-semibold leading-[1.04] tracking-[-0.035em] md:text-5xl text-balance">
+                <h2
+                  id="testimonials-title"
+                  className="mt-5 max-w-3xl text-4xl font-semibold leading-[1.04] tracking-[-0.035em] md:text-5xl text-balance"
+                >
                   {t("Built in public. Used in the real world.")}
                 </h2>
               </div>
-              <div className="flex flex-col justify-between px-5 py-10 sm:px-8 md:py-20 lg:px-10">
-                <p className="max-w-md text-base leading-7 text-neutral-600 dark:text-neutral-400 text-pretty">
+              <div className="flex flex-col justify-between bg-[var(--marketing-data-soft)] px-5 py-10 text-[var(--marketing-data-ink)] sm:px-8 md:py-20 lg:px-10">
+                <p className="max-w-md text-base leading-7 text-[var(--marketing-data-ink)]/75 text-pretty">
                   {t("What teams say after replacing heavier analytics products with Rybbit.")}
                 </p>
-                <div className="mt-10 flex items-center justify-between border-t border-neutral-200 pt-4 text-sm text-neutral-500 dark:border-neutral-800 dark:text-neutral-400 md:text-xs">
+                <div className="mt-10 flex items-center justify-between border-t border-[var(--marketing-data-ink)]/15 pt-4 text-sm text-[var(--marketing-data-ink)]/60 md:text-xs">
                   <span>{t("Customer notes")}</span>
                   <span className="hidden md:inline">{t("Pause on hover")}</span>
                 </div>
@@ -346,7 +447,7 @@ export function LandingPageTemplate({ title, subtitle, showEUFlag = true }: Land
             </div>
 
             <div className="border-b border-neutral-200 dark:border-neutral-800">
-              <div className="relative grid h-[560px] grid-cols-1 gap-4 overflow-hidden p-4 md:grid-cols-3">
+              <div className="relative grid h-[560px] grid-cols-1 gap-4 overflow-hidden bg-[var(--marketing-data-soft)] p-4 dark:bg-neutral-950 md:grid-cols-3">
                 {tweetColumns.map((ids, columnIndex) => (
                   <Marquee
                     key={ids[0]}
@@ -356,11 +457,13 @@ export function LandingPageTemplate({ title, subtitle, showEUFlag = true }: Land
                     className={`${columnIndex > 0 ? "hidden md:flex" : ""} [--duration:60s] motion-reduce:[animation-play-state:paused]`}
                     repeat={2}
                   >
-                    {ids.map((id) => <TweetCard key={id} id={id} />)}
+                    {ids.map(id => (
+                      <TweetCard key={id} id={id} />
+                    ))}
                   </Marquee>
                 ))}
-                <div className="pointer-events-none absolute inset-x-0 top-0 h-16 bg-gradient-to-b from-white to-transparent dark:from-neutral-950" />
-                <div className="pointer-events-none absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-white to-transparent dark:from-neutral-950" />
+                <div className="pointer-events-none absolute inset-x-0 top-0 h-16 bg-gradient-to-b from-[var(--marketing-data-soft)] to-transparent dark:from-neutral-950" />
+                <div className="pointer-events-none absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-[var(--marketing-data-soft)] to-transparent dark:from-neutral-950" />
               </div>
             </div>
           </div>
@@ -368,9 +471,12 @@ export function LandingPageTemplate({ title, subtitle, showEUFlag = true }: Land
 
         <section className="border-b border-neutral-200 dark:border-neutral-800" aria-labelledby="faq-title">
           <div className="mx-auto grid max-w-[1200px] border-x border-neutral-200 dark:border-neutral-800 lg:grid-cols-12">
-            <div className="border-b border-neutral-200 px-5 py-16 dark:border-neutral-800 sm:px-8 md:py-24 lg:col-span-4 lg:border-b-0 lg:border-r lg:px-10">
+            <div className="border-b border-emerald-900/15 bg-[var(--marketing-action-soft)] px-5 py-16 sm:px-8 md:py-24 lg:col-span-4 lg:border-b-0 lg:border-r lg:px-10 dark:border-neutral-800 dark:bg-emerald-950/35">
               <div className="lg:sticky lg:top-24">
-                <h2 id="faq-title" className="max-w-sm text-4xl font-semibold leading-[1.04] tracking-[-0.035em] md:text-5xl">
+                <h2
+                  id="faq-title"
+                  className="max-w-sm text-4xl font-semibold leading-[1.04] tracking-[-0.035em] md:text-5xl"
+                >
                   {t("Questions, answered plainly.")}
                 </h2>
                 <p className="mt-6 max-w-sm text-base leading-7 text-neutral-600 dark:text-neutral-400">

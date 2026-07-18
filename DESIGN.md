@@ -16,6 +16,10 @@ colors:
   # Data visualization
   dataviz: "#b3bfff"           # hsl(230 100% 85%) — primary chart series (periwinkle, dark)
   dataviz-2: "#c2caff"         # hsl(230 100% 92%) — secondary chart series (dark)
+  marketing-data: "oklch(0.86 0.075 275)"      # committed periwinkle field on brand surfaces
+  marketing-data-soft: "oklch(0.96 0.025 275)" # pale data-tinted brand surface
+  marketing-action-deep: "oklch(0.25 0.075 163)" # deep emerald brand field
+  marketing-action-soft: "oklch(0.96 0.035 163)" # pale emerald brand surface
   # Semantic state
   destructive: "#ef4444"       # red-500
   warning: "#eab308"           # yellow-500
@@ -45,6 +49,12 @@ typography:
     fontSize: "0.75rem"
     fontWeight: 500
     lineHeight: 1.3
+    letterSpacing: "normal"
+  code:
+    fontFamily: "ui-monospace, SFMono-Regular, SF Mono, Consolas, Liberation Mono, Menlo, monospace"
+    fontSize: "0.875rem"
+    fontWeight: 400
+    lineHeight: 1.5
     letterSpacing: "normal"
 rounded:
   sm: "0.8px"   # calc(var(--radius) - 4px)
@@ -145,11 +155,15 @@ A full Tailwind-style ramp (red, orange, amber, yellow, lime, green, emerald, te
 
 **The Two-Voice Rule.** The interface speaks in grayscale. Exactly two chromatic voices are allowed on top: emerald for *action*, periwinkle for *data*. State colors (red/yellow/blue) are whispers that appear only when state demands them.
 
+**The Marketing Live-Signal Rule.** Marketing pages may shift from Restrained to a Committed use of the same two voices: deep emerald fields communicate privacy and brand conviction; periwinkle fields frame analytics, evidence, and community proof. Soft tints can separate long-form sections. Solid color blocks, clean chart-like traces, and low-opacity frog marks are the decorative vocabulary. This exception does not change the authenticated product, where emerald remains action/state-only and periwinkle remains data-only.
+
 **The Flat Rule.** No `box-shadow` for resting elevation. Depth is the grayscale ramp plus 1px borders. If two surfaces need separating, change the neutral step or add a hairline border, not a shadow.
 
 ## 3. Typography
 
 **Display / Body / Label Font:** Inter (with `system-ui, sans-serif` fallback), loaded via `next/font`.
+
+**Code Font:** `ui-monospace` with SF Mono, Consolas, Liberation Mono, and Menlo fallbacks. Reserved for code and preformatted technical content, never interface labels.
 
 **Character:** One family, carried by weight and size contrast, not by pairing. Inter is neutral, screen-legible at small sizes, and tabular-friendly for numbers, which is exactly right for a dense analytics tool. There is no display typeface; product UI does not need one.
 
@@ -158,9 +172,10 @@ A full Tailwind-style ramp (red, orange, amber, yellow, lime, green, emerald, te
 - **Title** (600, 1rem / 16px, `leading-none`, `tracking-tight`): Card titles, section headers, panel headings.
 - **Body** (400, 0.875rem / 14px, line-height ~1.4): The dominant size. Table cells, descriptions, most UI text. Cap prose at 65–75ch; tables may run denser.
 - **Label** (500, 0.75rem / 12px): Badges, chips, small captions, axis labels, secondary metadata.
+- **Code** (400, 0.875rem / 14px, line-height 1.5): Documentation snippets and preformatted technical content only.
 
 ### Named Rules
-**The One-Family Rule.** Inter does every job: headings, body, labels, data. Do not introduce a second UI typeface. Hierarchy comes from weight (400/500/600) and size, never from a new face.
+**The One-Family Rule.** Inter does every UI job: headings, body, labels, and data. Do not introduce a second UI typeface. Hierarchy comes from weight (400/500/600) and size, never from a new face. Monospace is the functional exception for code and preformatted technical content.
 
 **The No-Shrinking-Headline Rule.** Type uses a fixed rem scale, not fluid `clamp()`. Users view at a consistent DPI inside an app shell; a heading that shrinks in a sidebar looks worse, not better.
 

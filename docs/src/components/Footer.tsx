@@ -86,7 +86,7 @@ export function Footer() {
     <footer className="border-t border-neutral-200 dark:border-neutral-800">
       <div className="mx-auto max-w-[1200px] border-x border-neutral-200 dark:border-neutral-800">
         <div className="grid border-b border-neutral-200 dark:border-neutral-800 lg:grid-cols-12">
-          <div className="border-b border-neutral-200 px-5 py-10 dark:border-neutral-800 sm:px-8 lg:col-span-3 lg:border-b-0 lg:border-r lg:py-14">
+          <div className="border-b border-[var(--marketing-data-ink)]/15 bg-[var(--marketing-data-soft)] px-5 py-10 text-[var(--marketing-data-ink)] sm:px-8 lg:col-span-3 lg:border-b-0 lg:border-r lg:py-14 dark:border-neutral-800 dark:bg-neutral-900 dark:text-white">
             <div className="flex h-full flex-col">
               <div>
                 <Link
@@ -139,14 +139,14 @@ export function Footer() {
           </div>
 
           <nav aria-label="Footer" className="grid grid-cols-2 lg:col-span-9 md:grid-cols-4">
-            {footerGroups.map((group) => (
+            {footerGroups.map(group => (
               <section
                 key={group.title}
                 className="border-b border-neutral-200 px-5 py-10 last:border-b-0 dark:border-neutral-800 sm:px-8 [&:nth-last-child(2)]:border-b-0 md:border-b-0 md:px-6 md:py-14"
               >
                 <h2 className="text-sm font-semibold text-neutral-950 dark:text-neutral-50">{group.title}</h2>
                 <ul className="mt-4">
-                  {group.links.map((link) => (
+                  {group.links.map(link => (
                     <li key={link.href}>
                       {link.external ? (
                         <a

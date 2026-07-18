@@ -9,6 +9,11 @@
 
 :root {
   --color-fd-primary: rgb(16 185 129); /* emerald-500 */
+  --marketing-data: oklch(0.86 0.075 275);
+  --marketing-data-soft: oklch(0.96 0.025 275);
+  --marketing-data-ink: oklch(0.23 0.055 275);
+  --marketing-action-deep: oklch(0.25 0.075 163);
+  --marketing-action-soft: oklch(0.96 0.035 163);
   --radius: 0.625rem;
   --background: oklch(1 0 0);
   --foreground: oklch(0.145 0 0);
@@ -80,6 +85,23 @@
 
 body {
   font-family: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+}
+
+@keyframes marketing-signal-flow {
+  to {
+    stroke-dashoffset: -36;
+  }
+}
+
+.marketing-signal-flow {
+  stroke-dasharray: 10 8;
+  animation: marketing-signal-flow 4s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .marketing-signal-flow {
+    animation: none;
+  }
 }
 
 code,

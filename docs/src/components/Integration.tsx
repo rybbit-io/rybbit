@@ -83,7 +83,7 @@ const PlatformLogo = ({ name, icon: Icon, path }: { name: string; icon: Componen
   return (
     <Link
       href={path}
-      className="flex min-h-20 items-center gap-3 bg-white px-4 text-neutral-600 transition-colors duration-200 hover:bg-neutral-50 hover:text-neutral-950 focus-visible:z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 dark:bg-neutral-950 dark:text-neutral-400 dark:hover:bg-neutral-900 dark:hover:text-white"
+      className="flex min-h-20 items-center gap-3 bg-[var(--marketing-action-soft)] px-4 text-emerald-900 transition-colors duration-200 hover:bg-[var(--marketing-data)] hover:text-[var(--marketing-data-ink)] focus-visible:z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 dark:bg-neutral-950 dark:text-emerald-300 dark:hover:bg-neutral-900 dark:hover:text-white"
     >
       <Icon className="size-5 shrink-0" />
       <span className="text-sm font-medium">{name}</span>
@@ -93,8 +93,8 @@ const PlatformLogo = ({ name, icon: Icon, path }: { name: string; icon: Componen
 
 export function IntegrationsGrid() {
   return (
-    <div className="grid min-h-full grid-cols-2 gap-px bg-neutral-200 p-px dark:bg-neutral-800 sm:grid-cols-3 xl:grid-cols-4">
-      {platforms.map((platform) => (
+    <div className="grid min-h-full grid-cols-2 gap-px bg-emerald-200 p-px dark:bg-neutral-800 sm:grid-cols-3 xl:grid-cols-4">
+      {platforms.map(platform => (
         <PlatformLogo key={platform.name} {...platform} />
       ))}
     </div>

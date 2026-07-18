@@ -1,4 +1,5 @@
 import { TrackedButton } from "@/components/TrackedButton";
+import { MarketingSignal } from "@/components/MarketingSignal";
 import { ArrowRight, ExternalLink } from "lucide-react";
 import { useExtracted } from "next-intl";
 import Image from "next/image";
@@ -24,16 +25,14 @@ export function CTASection({
 }: CTASectionProps) {
   const t = useExtracted();
   const resolvedTitle = title ?? t("Ready for better analytics?");
-  const resolvedDescription = description ?? t("Powerful insights without the complexity. Privacy-focused analytics that just works.");
+  const resolvedDescription =
+    description ?? t("Powerful insights without the complexity. Privacy-focused analytics that just works.");
   const resolvedPrimaryButtonText = primaryButtonText ?? t("Start for $0");
   const resolvedSecondaryButtonText = secondaryButtonText ?? t("Live demo");
 
   return (
-    <section className="relative overflow-hidden border-b border-emerald-900 bg-emerald-950 text-white">
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute inset-0 opacity-60 [background-image:linear-gradient(to_right,rgba(255,255,255,0.045)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.045)_1px,transparent_1px)] [background-size:40px_40px] [mask-image:linear-gradient(to_bottom,black,transparent_92%)]"
-      />
+    <section className="relative overflow-hidden border-b border-emerald-900 bg-[var(--marketing-action-deep)] text-white">
+      <MarketingSignal className="pointer-events-none absolute -bottom-10 left-0 w-full text-emerald-300/20" />
       <div className="relative mx-auto grid max-w-[1200px] border-x border-white/10 lg:grid-cols-12">
         <Image
           src="/rybbit/frog_white.svg"

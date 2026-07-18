@@ -10,7 +10,20 @@ import { STANDARD_SITE_LIMIT, STANDARD_TEAM_LIMIT } from "../lib/const";
 import { PricingCard } from "./PricingCard";
 
 // Available event tiers for the slider
-const EVENT_TIERS = [100_000, 250_000, 500_000, 1_000_000, 2_000_000, 5_000_000, 10_000_000, 20_000_000, 30_000_000, 40_000_000, 50_000_000, "Custom"];
+const EVENT_TIERS = [
+  100_000,
+  250_000,
+  500_000,
+  1_000_000,
+  2_000_000,
+  5_000_000,
+  10_000_000,
+  20_000_000,
+  30_000_000,
+  40_000_000,
+  50_000_000,
+  "Custom",
+];
 
 export const formatter = Intl.NumberFormat("en", {
   notation: "compact",
@@ -61,7 +74,13 @@ function getFormattedPrice(eventLimit: number | string, planType: "standard" | "
   };
 }
 
-export function PricingSection({ isAnnual, setIsAnnual }: { isAnnual: boolean, setIsAnnual: (isAnnual: boolean) => void }) {
+export function PricingSection({
+  isAnnual,
+  setIsAnnual,
+}: {
+  isAnnual: boolean;
+  setIsAnnual: (isAnnual: boolean) => void;
+}) {
   const t = useExtracted();
   const [eventLimitIndex, setEventLimitIndex] = useState(0); // Default to 100k (index 0)
   const [carouselApi, setCarouselApi] = useState<CarouselApi>();
@@ -142,7 +161,7 @@ export function PricingSection({ isAnnual, setIsAnnual }: { isAnnual: boolean, s
   }
 
   return (
-    <section className="relative z-10 border-b border-neutral-200 dark:border-neutral-800">
+    <section className="relative z-10 border-b border-neutral-200 bg-[var(--marketing-data-soft)] dark:border-neutral-800 dark:bg-neutral-950">
       <div className="mx-auto max-w-[1200px] border-x border-neutral-200 px-5 py-16 dark:border-neutral-800 sm:px-8 md:py-24 lg:px-10">
         <div className="mb-14 grid gap-6 lg:grid-cols-12 lg:items-end">
           <h2 className="text-4xl font-semibold leading-[1.04] tracking-[-0.035em] md:text-5xl lg:col-span-4">
@@ -157,7 +176,9 @@ export function PricingSection({ isAnnual, setIsAnnual }: { isAnnual: boolean, s
         <div className="mb-10 border-y border-neutral-200 py-8 dark:border-neutral-800">
           <div className="mb-7 flex items-end justify-between gap-5">
             <div>
-              <h3 className="mb-2 text-sm font-medium text-neutral-600 dark:text-neutral-400">{t("Monthly pageviews")}</h3>
+              <h3 className="mb-2 text-sm font-medium text-neutral-600 dark:text-neutral-400">
+                {t("Monthly pageviews")}
+              </h3>
               <div className="text-3xl font-semibold tabular-nums tracking-tight">
                 {typeof eventLimit === "number" ? eventLimit.toLocaleString() : t("Custom")}
               </div>
@@ -206,7 +227,10 @@ export function PricingSection({ isAnnual, setIsAnnual }: { isAnnual: boolean, s
 
           <div className="flex justify-between text-xs text-neutral-500 dark:text-neutral-400">
             {EVENT_TIERS.map((tier, index) => (
-              <span key={index} className={cn(eventLimitIndex === index && "font-semibold text-emerald-700 dark:text-emerald-400")}>
+              <span
+                key={index}
+                className={cn(eventLimitIndex === index && "font-semibold text-emerald-700 dark:text-emerald-400")}
+              >
                 {index === EVENT_TIERS.length - 1
                   ? "50M+"
                   : typeof tier === "number" && tier >= 1_000_000
@@ -299,9 +323,7 @@ export function PricingSection({ isAnnual, setIsAnnual }: { isAnnual: boolean, s
                       aria-label={t("Go to pricing option {number}", { number: String(i + 1) })}
                       className={cn(
                         "size-2 cursor-pointer rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2",
-                        currentSlide === i
-                          ? "bg-emerald-500"
-                          : "bg-neutral-400 dark:bg-neutral-600"
+                        currentSlide === i ? "bg-emerald-500" : "bg-neutral-400 dark:bg-neutral-600"
                       )}
                     />
                   ))}
