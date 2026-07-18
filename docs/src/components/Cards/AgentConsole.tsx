@@ -35,8 +35,8 @@ const DWELL_MS = 7000;
  * A live transcript of an AI assistant working against the Rybbit MCP
  * endpoint. The first scenario is fully rendered on the server so the card
  * never depends on JS or animation to show its content; once scrolled into
- * view (and only when motion is allowed) it replays the other scenarios in a
- * loop, tool call by tool call.
+ * view (and only when motion is allowed) it clears, types the first scenario
+ * from scratch, and keeps cycling through the rest, tool call by tool call.
  */
 export function AgentConsole() {
   const t = useExtracted();
@@ -103,8 +103,9 @@ export function AgentConsole() {
       });
 
     const play = async () => {
-      let index = 0;
-      await wait(DWELL_MS);
+      // Start typing scenario 0 from scratch the moment the console scrolls
+      // into view, then keep cycling through the rest.
+      let index = -1;
       while (!cancelled) {
         index = (index + 1) % scenariosRef.current.length;
         const scenario = scenariosRef.current[index];
