@@ -1,7 +1,9 @@
 import { cn } from "@/lib/utils";
 
+// Jagged polyline echoing the product's own sparklines: an overall upward
+// trend with retraces and one deeper drawdown, not a smooth straight climb.
 const LINE_PATH =
-  "M-8 216 C40 210 70 214 104 198 C138 182 158 188 190 178 C224 167 244 172 272 150 C300 128 330 138 362 130 C394 122 414 128 444 106 C474 84 506 94 536 86 C566 78 590 82 620 60 C650 38 682 48 712 40 C736 34 758 30 784 22";
+  "M-8 214 L16 208 L40 211 L64 199 L88 203 L112 190 L136 171 L160 178 L184 158 L208 166 L232 143 L256 150 L280 128 L304 138 L328 146 L352 118 L376 126 L400 98 L424 110 L448 84 L472 94 L496 68 L520 88 L544 60 L568 72 L592 44 L616 56 L640 34 L664 48 L688 26 L712 38 L736 24 L760 34 L784 22";
 
 interface HeroDataLineProps {
   /** Unique per instance — namespaces the SVG gradient id. */
@@ -25,6 +27,11 @@ export function HeroDataLine({ id, className }: HeroDataLineProps) {
         className
       )}
     >
+      {/* Faint graph paper under the plotted line, fading upward so the
+          grid reads as the chart's base without touching the headline. */}
+      <div
+        className="absolute inset-0 [background-image:linear-gradient(to_right,rgba(0,0,0,0.05)_1px,transparent_1px),linear-gradient(to_bottom,rgba(0,0,0,0.05)_1px,transparent_1px)] [background-size:24px_24px] [mask-image:linear-gradient(to_top,black_25%,transparent_92%)] dark:[background-image:linear-gradient(to_right,rgba(255,255,255,0.06)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.06)_1px,transparent_1px)]"
+      />
       <svg
         className="size-full"
         viewBox="0 0 800 240"
@@ -49,6 +56,7 @@ export function HeroDataLine({ id, className }: HeroDataLineProps) {
           stroke="var(--dataviz)"
           strokeWidth="1.5"
           strokeLinecap="round"
+          strokeLinejoin="round"
           vectorEffect="non-scaling-stroke"
         />
       </svg>

@@ -5,6 +5,8 @@ import { RealTimeAnalytics } from "@/components/Cards/RealTimeAnalytics";
 import { SessionReplay } from "@/components/Cards/SessionReplay";
 import { UserSessions } from "@/components/Cards/UserSessions";
 import { GridCrosses } from "@/components/GridCrosses";
+import { SectionKicker } from "@/components/deco/SectionKicker";
+import { TrackingSnippet } from "@/components/deco/TrackingSnippet";
 import { HeroSection } from "@/components/HeroSection";
 import { IntegrationsGrid } from "@/components/Integration";
 import { LandingPricing } from "@/components/LandingPricing";
@@ -285,34 +287,34 @@ export function LandingPageTemplate({ title, subtitle, showEUFlag = true }: Land
           </div>
         </section>
 
-        {/* Forced-dark band: the product is shown in its native dark-mode habitat
-            in both themes, so the marketing page carries one committed "instrument
-            panel" surface mid-scroll. The `dark` class flips every dark: variant
-            inside; explicit colors on the section itself replace the light values. */}
-        <section className="dark border-b border-neutral-800 bg-neutral-950 text-neutral-50" aria-labelledby="product-title">
-          <div className="relative mx-auto max-w-[1200px] border-x border-neutral-800">
+        <section className="border-b border-neutral-200 dark:border-neutral-800" aria-labelledby="product-title">
+          <div className="relative mx-auto max-w-[1200px] border-x border-neutral-200 dark:border-neutral-800">
             <GridCrosses />
-            <div className="grid border-b border-neutral-800 lg:grid-cols-12">
-              <div className="border-b border-neutral-800 px-5 py-14 sm:px-8 md:py-20 lg:col-span-7 lg:border-b-0 lg:border-r lg:px-10">
-                <p className="text-base font-semibold tracking-tight text-emerald-400">
-                  {t("One connected workspace")}
-                </p>
-                <h2 id="product-title" className="mt-5 max-w-2xl text-4xl font-semibold leading-[1.04] tracking-[-0.035em] md:text-5xl text-balance">
-                  {t("Go from signal to explanation without changing tools.")}
-                </h2>
+            <div className="grid border-b border-neutral-200 dark:border-neutral-800 lg:grid-cols-12">
+              <div className="relative border-b border-neutral-200 bg-plate-accent px-5 py-14 dark:border-neutral-800 sm:px-8 md:py-20 lg:col-span-7 lg:border-b-0 lg:border-r lg:px-10">
+                <div
+                  aria-hidden="true"
+                  className="pointer-events-none absolute inset-0 bg-graph-accent [mask-image:linear-gradient(to_bottom,black,transparent_92%)]"
+                />
+                <div className="relative">
+                  <SectionKicker>{t("One connected workspace")}</SectionKicker>
+                  <h2 id="product-title" className="mt-5 max-w-2xl text-4xl font-semibold leading-[1.04] tracking-[-0.035em] md:text-5xl text-balance">
+                    {t("Go from signal to explanation without changing tools.")}
+                  </h2>
+                </div>
               </div>
               <div className="flex items-end px-5 py-10 sm:px-8 md:py-20 lg:col-span-5 lg:px-10">
-                <p className="max-w-md text-lg leading-8 text-neutral-400 text-pretty">
+                <p className="max-w-md text-lg leading-8 text-neutral-600 dark:text-neutral-400 text-pretty">
                   {t("Start with live traffic, inspect the people and paths behind it, then measure where they convert.")}
                 </p>
               </div>
             </div>
 
-            <div className="grid gap-px bg-neutral-800 p-px lg:grid-cols-12">
-              <div className="bg-neutral-950 lg:col-span-7 [&>div]:h-full"><RealTimeAnalytics /></div>
-              <div className="bg-neutral-950 lg:col-span-5 [&>div]:h-full"><SessionReplay /></div>
-              <div className="bg-neutral-950 lg:col-span-5 [&>div]:h-full"><UserSessions /></div>
-              <div className="bg-neutral-950 lg:col-span-7 [&>div]:h-full"><Funnels /></div>
+            <div className="grid gap-px bg-neutral-200 p-px dark:bg-neutral-800 lg:grid-cols-12">
+              <div className="bg-white dark:bg-neutral-950 lg:col-span-7 [&>div]:h-full"><RealTimeAnalytics /></div>
+              <div className="bg-white dark:bg-neutral-950 lg:col-span-5 [&>div]:h-full"><SessionReplay /></div>
+              <div className="bg-white dark:bg-neutral-950 lg:col-span-5 [&>div]:h-full"><UserSessions /></div>
+              <div className="bg-white dark:bg-neutral-950 lg:col-span-7 [&>div]:h-full"><Funnels /></div>
             </div>
           </div>
         </section>
@@ -328,6 +330,7 @@ export function LandingPageTemplate({ title, subtitle, showEUFlag = true }: Land
                 <p className="mt-6 max-w-sm text-base leading-7 text-neutral-600 dark:text-neutral-400">
                   {t("Install Rybbit on the platform you already use. Most integrations take only a few minutes.")}
                 </p>
+                <TrackingSnippet className="mt-10 max-w-sm" />
               </div>
             </div>
             <div className="lg:col-span-8">
@@ -340,13 +343,17 @@ export function LandingPageTemplate({ title, subtitle, showEUFlag = true }: Land
           <div className="relative mx-auto max-w-[1200px] border-x border-neutral-200 dark:border-neutral-800">
             <GridCrosses />
             <div className="grid border-b border-neutral-200 dark:border-neutral-800 md:grid-cols-3">
-              <div className="border-b border-neutral-200 px-5 py-14 dark:border-neutral-800 sm:px-8 md:col-span-2 md:border-b-0 md:border-r md:py-20 lg:px-10">
-                <p className="text-base font-semibold tracking-tight text-emerald-600 dark:text-emerald-400">
-                  {t("From the community")}
-                </p>
-                <h2 id="testimonials-title" className="mt-5 max-w-3xl text-4xl font-semibold leading-[1.04] tracking-[-0.035em] md:text-5xl text-balance">
-                  {t("Built in public. Used in the real world.")}
-                </h2>
+              <div className="relative border-b border-neutral-200 bg-plate-accent px-5 py-14 dark:border-neutral-800 sm:px-8 md:col-span-2 md:border-b-0 md:border-r md:py-20 lg:px-10">
+                <div
+                  aria-hidden="true"
+                  className="pointer-events-none absolute inset-0 bg-graph-accent [mask-image:linear-gradient(to_bottom,black,transparent_92%)]"
+                />
+                <div className="relative">
+                  <SectionKicker>{t("From the community")}</SectionKicker>
+                  <h2 id="testimonials-title" className="mt-5 max-w-3xl text-4xl font-semibold leading-[1.04] tracking-[-0.035em] md:text-5xl text-balance">
+                    {t("Built in public. Used in the real world.")}
+                  </h2>
+                </div>
               </div>
               <div className="flex flex-col justify-between px-5 py-10 sm:px-8 md:py-20 lg:px-10">
                 <p className="max-w-md text-base leading-7 text-neutral-600 dark:text-neutral-400 text-pretty">
