@@ -6,7 +6,7 @@ import Image from "next/image";
 import Link from "next/link";
 
 const footerLinkClassName =
-  "inline-flex min-h-11 items-center text-sm leading-5 text-neutral-600 transition-colors hover:text-neutral-950 focus-visible:rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-500 dark:text-neutral-400 dark:hover:text-white md:min-h-8";
+  "inline-flex min-h-11 items-center text-sm leading-5 text-neutral-600 transition-colors hover:text-emerald-700 focus-visible:rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-500 dark:text-neutral-400 dark:hover:text-emerald-400 md:min-h-8";
 
 const socialLinks = [
   { label: "GitHub", href: "https://github.com/rybbit-io/rybbit", icon: SiGithub },
@@ -128,7 +128,7 @@ export function Footer() {
                     href={href}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex size-11 items-center justify-center rounded-md text-neutral-500 transition-colors hover:bg-neutral-100 hover:text-neutral-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-500 dark:text-neutral-400 dark:hover:bg-neutral-900 dark:hover:text-white"
+                    className="inline-flex size-11 items-center justify-center rounded-md text-neutral-500 transition-colors hover:bg-emerald-50/70 hover:text-emerald-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-500 dark:text-neutral-400 dark:hover:bg-emerald-950/30 dark:hover:text-emerald-300"
                     aria-label={label}
                   >
                     <Icon className="size-5" aria-hidden="true" />

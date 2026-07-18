@@ -147,7 +147,7 @@ export default function SponsorsPage() {
                     href={sponsor.url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="group flex min-h-40 items-center gap-5 bg-white px-5 py-8 transition-colors hover:bg-neutral-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-neutral-500 dark:bg-neutral-950 dark:hover:bg-neutral-900/60 sm:px-8 lg:px-10"
+                    className="group flex min-h-40 items-center gap-5 bg-white px-5 py-8 transition-colors hover:bg-emerald-50/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-emerald-500 dark:bg-neutral-950 dark:hover:bg-emerald-950/30 sm:px-8 lg:px-10"
                   >
                     <div className="relative size-14 shrink-0">
                       <Image src={sponsor.logo} alt={sponsor.name} fill sizes="56px" className="object-contain" />

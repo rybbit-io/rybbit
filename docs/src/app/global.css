@@ -127,6 +127,45 @@ pre {
   }
 }
 
+/* ── Signal decor ────────────────────────────────────────────────────────
+   Draw-in for the decorative hero chart (SignalDecor.tsx). Paths carry
+   pathLength={1} so the dash math is unit-based. Reduced motion renders the
+   finished chart statically — the decor never depends on the animation. */
+@keyframes chart-draw {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+.chart-draw {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation: chart-draw 1.6s cubic-bezier(0.22, 1, 0.36, 1) 0.2s forwards;
+}
+
+@keyframes chart-fill-in {
+  to {
+    opacity: 1;
+  }
+}
+
+.chart-fill {
+  opacity: 0;
+  animation: chart-fill-in 0.9s ease-out 0.9s forwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .chart-draw {
+    animation: none;
+    stroke-dasharray: none;
+    stroke-dashoffset: 0;
+  }
+  .chart-fill {
+    animation: none;
+    opacity: 1;
+  }
+}
+
 /* Override prose list styles for tool pages */
 .prose ul li.flex,
 .prose ol li.flex {

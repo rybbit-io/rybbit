@@ -237,7 +237,7 @@ export function ComparisonSection({ isAnnual }: { isAnnual: boolean }) {
     <section className="border-b border-neutral-200 dark:border-neutral-800" aria-labelledby="plan-comparison-title">
       <div className="mx-auto max-w-[1200px] border-x border-neutral-200 dark:border-neutral-800">
         <div className="border-b border-neutral-200 px-5 py-12 dark:border-neutral-800 sm:px-8 lg:px-10 lg:py-16">
-          <p className="text-sm font-semibold text-neutral-500 dark:text-neutral-400">{t("Plan details")}</p>
+          <p className="text-sm font-semibold text-emerald-700 dark:text-emerald-400">{t("Plan details")}</p>
           <h2 id="plan-comparison-title" className="mt-4 text-3xl font-semibold tracking-[-0.03em] md:text-4xl">
             {t("Compare Plans")}
           </h2>

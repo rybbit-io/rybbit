@@ -6,6 +6,7 @@ import { SessionReplay } from "@/components/Cards/SessionReplay";
 import { UserSessions } from "@/components/Cards/UserSessions";
 import { HeroSection } from "@/components/HeroSection";
 import { IntegrationsGrid } from "@/components/Integration";
+import { SparklineDecor } from "@/components/SignalDecor";
 import { LandingPricing } from "@/components/LandingPricing";
 import { Marquee } from "@/components/magicui/marquee";
 import { TweetCard } from "@/components/Tweet";
@@ -203,7 +204,11 @@ export function LandingPageTemplate({ title, subtitle, showEUFlag = true }: Land
 
         <section className="border-b border-neutral-200 dark:border-neutral-800" aria-labelledby="customer-proof">
           <div className="mx-auto grid max-w-[1200px] grid-cols-2 gap-px border-x border-neutral-200 bg-neutral-200 p-px dark:border-neutral-800 dark:bg-neutral-800 sm:grid-cols-4 lg:grid-cols-8">
-            <div className="col-span-full flex min-h-14 items-center bg-white px-5 dark:bg-neutral-950 sm:px-8">
+            <div className="col-span-full flex min-h-14 items-center gap-2.5 bg-white px-5 dark:bg-neutral-950 sm:px-8">
+              <span className="relative flex size-2 shrink-0" aria-hidden="true">
+                <span className="absolute inline-flex size-full animate-ping rounded-full bg-emerald-500 opacity-60 motion-reduce:hidden" />
+                <span className="relative inline-flex size-2 rounded-full bg-emerald-500" />
+              </span>
               <p id="customer-proof" className="text-sm font-medium text-neutral-600 dark:text-neutral-400">
                 {t("Trusted by 10,000+ organizations worldwide")}
               </p>
@@ -247,6 +252,7 @@ export function LandingPageTemplate({ title, subtitle, showEUFlag = true }: Land
                 <p className="mt-6 max-w-sm text-base leading-7 text-neutral-600 dark:text-neutral-400">
                   {t("Rybbit connects the essential analytics workflows into one coherent product, so every answer starts from the same source of truth.")}
                 </p>
+                <SparklineDecor className="mt-10 h-10 w-44 text-emerald-500" />
               </div>
             </div>
 
@@ -263,7 +269,7 @@ export function LandingPageTemplate({ title, subtitle, showEUFlag = true }: Land
                       const Icon = feature.icon;
                       return (
                         <div key={feature.title} className="grid grid-cols-[24px_1fr] gap-x-3 py-4">
-                          <Icon size={18} className="mt-0.5 text-neutral-500 dark:text-neutral-400" />
+                          <Icon size={18} className="mt-0.5 text-emerald-600 dark:text-emerald-400" />
                           <div>
                             <h4 className="text-sm font-medium">{feature.title}</h4>
                             <p className="mt-1 text-sm leading-5 text-neutral-600 dark:text-neutral-400">{feature.description}</p>
@@ -282,7 +288,7 @@ export function LandingPageTemplate({ title, subtitle, showEUFlag = true }: Land
           <div className="mx-auto max-w-[1200px] border-x border-neutral-200 dark:border-neutral-800">
             <div className="grid border-b border-neutral-200 dark:border-neutral-800 lg:grid-cols-12">
               <div className="border-b border-neutral-200 px-5 py-14 dark:border-neutral-800 sm:px-8 md:py-20 lg:col-span-7 lg:border-b-0 lg:border-r lg:px-10">
-                <p className="text-base font-semibold tracking-tight text-neutral-950 dark:text-neutral-50">
+                <p className="text-base font-semibold tracking-tight text-emerald-700 dark:text-emerald-400">
                   {t("One connected workspace")}
                 </p>
                 <h2 id="product-title" className="mt-5 max-w-2xl text-4xl font-semibold leading-[1.04] tracking-[-0.035em] md:text-5xl text-balance">
@@ -327,7 +333,7 @@ export function LandingPageTemplate({ title, subtitle, showEUFlag = true }: Land
           <div className="mx-auto max-w-[1200px] border-x border-neutral-200 dark:border-neutral-800">
             <div className="grid border-b border-neutral-200 dark:border-neutral-800 md:grid-cols-3">
               <div className="border-b border-neutral-200 px-5 py-14 dark:border-neutral-800 sm:px-8 md:col-span-2 md:border-b-0 md:border-r md:py-20 lg:px-10">
-                <p className="text-base font-semibold tracking-tight text-neutral-950 dark:text-neutral-50">
+                <p className="text-base font-semibold tracking-tight text-emerald-700 dark:text-emerald-400">
                   {t("From the community")}
                 </p>
                 <h2 id="testimonials-title" className="mt-5 max-w-3xl text-4xl font-semibold leading-[1.04] tracking-[-0.035em] md:text-5xl text-balance">

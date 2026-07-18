@@ -1,3 +1,4 @@
+import { CtaChartDecor } from "@/components/SignalDecor";
 import { TrackedButton } from "@/components/TrackedButton";
 import { ArrowRight, ExternalLink } from "lucide-react";
 import { useExtracted } from "next-intl";
@@ -34,6 +35,7 @@ export function CTASection({
         aria-hidden="true"
         className="pointer-events-none absolute inset-0 opacity-60 [background-image:linear-gradient(to_right,rgba(255,255,255,0.045)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.045)_1px,transparent_1px)] [background-size:40px_40px] [mask-image:linear-gradient(to_bottom,black,transparent_92%)]"
       />
+      <CtaChartDecor className="pointer-events-none absolute inset-x-0 bottom-0 h-24 w-full text-white md:h-32" />
       <div className="relative mx-auto grid max-w-[1200px] border-x border-white/10 lg:grid-cols-12">
         <Image
           src="/rybbit/frog_white.svg"

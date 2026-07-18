@@ -83,7 +83,7 @@ const PlatformLogo = ({ name, icon: Icon, path }: { name: string; icon: Componen
   return (
     <Link
       href={path}
-      className="flex min-h-20 items-center gap-3 bg-white px-4 text-neutral-600 transition-colors duration-200 hover:bg-neutral-50 hover:text-neutral-950 focus-visible:z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 dark:bg-neutral-950 dark:text-neutral-400 dark:hover:bg-neutral-900 dark:hover:text-white"
+      className="flex min-h-20 items-center gap-3 bg-white px-4 text-neutral-600 transition-colors duration-200 hover:bg-emerald-50/70 hover:text-emerald-800 focus-visible:z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 dark:bg-neutral-950 dark:text-neutral-400 dark:hover:bg-emerald-950/30 dark:hover:text-emerald-300"
     >
       <Icon className="size-5 shrink-0" />
       <span className="text-sm font-medium">{name}</span>
