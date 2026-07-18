@@ -1,3 +1,4 @@
+import { AgentsSection } from "@/components/AgentsSection";
 import { CTASection } from "@/components/CTASection";
 import { FAQAccordion } from "@/components/FAQAccordion";
 import { Funnels } from "@/components/Cards/Funnels";
@@ -383,6 +384,8 @@ export function LandingPageTemplate({ title, subtitle, showEUFlag = true }: Land
             </div>
           </div>
         </section>
+
+        <AgentsSection />
 
         <section className="border-b border-neutral-200 dark:border-neutral-800" aria-labelledby="testimonials-title">
           <div className="relative mx-auto max-w-[1200px] border-x border-neutral-200 dark:border-neutral-800">
