@@ -1,13 +1,8 @@
 import { GitHubStarButton } from "@/components/GitHubStarButton";
 import { TrackedButton } from "@/components/TrackedButton";
-import { CircleCheckIcon } from "@/components/ui/circle-check";
+import { landingButtonPrimary, landingButtonSecondary, landingContainer } from "@/components/landing/section";
 import { cn } from "@/lib/utils";
 import { useExtracted } from "next-intl";
-import { Tilt_Warp } from "next/font/google";
-
-const tilt_wrap = Tilt_Warp({
-  subsets: ["latin"],
-});
 
 const EUFlag = () => (
   <svg
@@ -16,7 +11,7 @@ const EUFlag = () => (
     viewBox="0 0 767 512"
     role="img"
     aria-label="European flag"
-    className="inline mr-2 w-8 rounded align-sub"
+    className="inline ml-2 w-6 rounded-[2px] align-[-2px]"
   >
     <title>European flag</title>
     <path className="fill-[#233E90]/80" d="M766 1H1v510h765V1Z"></path>
@@ -34,39 +29,33 @@ interface HeroSectionProps {
   showGitHubStar?: boolean;
 }
 
-export function HeroSection({
-  title,
-  subtitle,
-  showEUFlag = true,
-  showGitHubStar = true,
-}: HeroSectionProps) {
+export function HeroSection({ title, subtitle, showEUFlag = true, showGitHubStar = true }: HeroSectionProps) {
   const t = useExtracted();
 
   return (
-    <>
-      <div className="flex flex-col items-center justify-center overflow-x-hidden pt-16 md:pt-24 relative z-10">
-        {showGitHubStar && <GitHubStarButton />}
-
-        <h1
-          className={cn(
-            "text-4xl md:text-5xl lg:text-7xl px-4 tracking-tight max-w-4xl text-center text-neutral-900 dark:text-transparent dark:bg-clip-text dark:bg-gradient-to-b dark:from-white dark:via-gray-100 dark:to-gray-400",
-            tilt_wrap.className
+    <section className="w-full overflow-x-hidden">
+      <div className={cn(landingContainer, "pt-14 pb-16 md:pt-20 md:pb-24")}>
+        <div className="max-w-3xl">
+          {showGitHubStar && (
+            <div className="mb-6">
+              <GitHubStarButton />
+            </div>
           )}
-        >
-          {title}
-        </h1>
-        <h2 className="text-base md:text-xl pt-4 md:pt-6 px-4 tracking-tight max-w-4xl text-center text-neutral-600 dark:text-neutral-300 font-light">
-          {subtitle}
-          {showEUFlag && <EUFlag />}
-        </h2>
 
-        <div className="flex flex-col items-center my-8 md:my-10">
-          <div className="flex flex-row items-center justify-center gap-4 md:gap-6 text-base md:text-lg">
+          <h1 className="text-4xl leading-[1.05] font-semibold tracking-[-0.03em] text-neutral-900 md:text-6xl dark:text-neutral-50">
+            {title}
+          </h1>
+          <p className="mt-5 max-w-2xl text-base leading-relaxed text-neutral-600 md:text-lg dark:text-neutral-400">
+            {subtitle}
+            {showEUFlag && <EUFlag />}
+          </p>
+
+          <div className="mt-8 flex flex-col gap-3 sm:flex-row">
             <TrackedButton
               href="https://app.rybbit.io/signup"
               eventName="signup"
               eventProps={{ location: "hero", button_text: "get started" }}
-              className="w-full whitespace-nowrap sm:w-auto bg-emerald-600 hover:bg-emerald-500 text-white font-medium px-6 py-3 rounded-lg shadow-lg shadow-emerald-900/20 transform hover:-translate-y-0.5 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-emerald-200 focus:ring-opacity-50 cursor-pointer"
+              className={landingButtonPrimary}
             >
               {t("Start for $0")}
             </TrackedButton>
@@ -76,47 +65,44 @@ export function HeroSection({
               target="_blank"
               rel="noopener noreferrer"
               eventProps={{ location: "hero", button_text: "Live demo" }}
-              className="w-full whitespace-nowrap sm:w-auto bg-neutral-200 dark:bg-neutral-800 hover:bg-neutral-300 dark:hover:bg-neutral-700 text-neutral-900 dark:text-white font-medium px-6 py-3 rounded-lg transform hover:-translate-y-0.5 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-neutral-400 focus:ring-opacity-50 cursor-pointer"
+              className={landingButtonSecondary}
             >
               {t("Live demo")}
             </TrackedButton>
           </div>
-          {/* <p className="text-neutral-500 dark:text-neutral-400 text-xs md:text-sm flex items-center justify-center gap-2 mt-6">
-            <CircleCheckIcon size={16} className="text-neutral-500 dark:text-neutral-400" />
-            {t("7-day free trial.")}
-          </p> */}
         </div>
-        <div className="relative w-full max-w-[1300px] mb-10">
-          {/* Background gradients - overlapping circles for organic feel */}
-          <div className="absolute top-0 left-0 w-[550px] h-[550px] bg-emerald-500/30 dark:bg-emerald-500/40 rounded-full blur-[80px] opacity-80 dark:opacity-70"></div>
-          <div className="absolute top-20 left-20 w-[400px] h-[400px] bg-emerald-600/20 dark:bg-emerald-600/30 rounded-full blur-[70px] opacity-60 dark:opacity-50"></div>
 
-          <div className="absolute bottom-0 right-0 w-[500px] h-[500px] bg-blue-500/30 dark:bg-blue-500/40 rounded-full blur-[80px] opacity-70 dark:opacity-60"></div>
-          <div className="absolute bottom-40 right-20 w-[350px] h-[350px] bg-indigo-500/20 dark:bg-indigo-500/30 rounded-full blur-[75px] opacity-60 dark:opacity-50"></div>
-
-          <div className="absolute top-1/4 right-0 w-[320px] h-[320px] bg-purple-500/30 dark:bg-purple-500/40 rounded-full blur-[70px] opacity-60 dark:opacity-50"></div>
-          <div className="absolute top-1/3 right-20 w-[250px] h-[250px] bg-violet-500/20 dark:bg-violet-500/30 rounded-full blur-[65px] opacity-50 dark:opacity-40"></div>
-
-          <div className="absolute bottom-1/3 left-0 w-[320px] h-[320px] bg-emerald-400/20 dark:bg-emerald-400/30 rounded-full blur-[70px] opacity-70 dark:opacity-60"></div>
-          <div className="absolute bottom-1/4 left-20 w-[240px] h-[240px] bg-teal-400/15 dark:bg-teal-400/25 rounded-full blur-[65px] opacity-60 dark:opacity-50"></div>
-
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[450px] h-[450px] bg-indigo-400/20 dark:bg-indigo-400/30 rounded-full blur-[80px] opacity-60 dark:opacity-50"></div>
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/3 -translate-y-1/3 w-[350px] h-[350px] bg-sky-400/15 dark:bg-sky-400/20 rounded-full blur-[75px] opacity-50 dark:opacity-40"></div>
-
-          {/* Iframe container with responsive visibility */}
-          <div className="relative z-10 rounded-2xl overflow-hidden bg-neutral-400/10 dark:bg-neutral-100/5 border-8 shadow-2xl shadow-neutral-900/20 dark:shadow-emerald-900/10">
-            {/* Remove mobile message and show iframe on all devices */}
+        {/* Live demo, framed like the product window it is */}
+        <div className="mt-14 md:mt-20">
+          <div className="overflow-hidden rounded-lg border border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-900">
+            {/* Window chrome */}
+            <div className="flex h-10 items-center gap-3 border-b border-neutral-200 px-4 dark:border-neutral-800">
+              <div className="flex gap-1.5" aria-hidden="true">
+                <span className="h-2.5 w-2.5 rounded-full bg-neutral-300 dark:bg-neutral-700" />
+                <span className="h-2.5 w-2.5 rounded-full bg-neutral-300 dark:bg-neutral-700" />
+                <span className="h-2.5 w-2.5 rounded-full bg-neutral-300 dark:bg-neutral-700" />
+              </div>
+              <div className="flex flex-1 justify-center">
+                <span className="inline-flex items-center rounded-md bg-neutral-100 px-2.5 py-1 text-xs text-neutral-500 dark:bg-neutral-950 dark:text-neutral-400">
+                  demo.rybbit.com
+                </span>
+              </div>
+              <span className="flex items-center gap-1.5 text-xs text-neutral-500 dark:text-neutral-400">
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 motion-safe:animate-pulse" />
+                {t("Live")}
+              </span>
+            </div>
             <iframe
               src="https://demo.rybbit.com/81/main"
               width="1300"
               height="750"
-              className="w-full h-[600px] md:h-[700px] lg:h-[750px] rounded-xl"
+              className="block h-[540px] w-full md:h-[680px] lg:h-[760px]"
               style={{ border: "none" }}
               title="Rybbit Analytics Demo"
             ></iframe>
           </div>
         </div>
       </div>
-    </>
+    </section>
   );
 }

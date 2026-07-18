@@ -5,18 +5,18 @@ import Link from "next/link";
 export function FAQAccordion() {
   const t = useExtracted();
   return (
-    <div className="bg-neutral-100/50 dark:bg-neutral-800/20 backdrop-blur-sm border border-neutral-300/50 dark:border-neutral-800/50 rounded-xl overflow-hidden">
-      <Accordion type="single" collapsible className="w-full">
+    <div>
+      <Accordion type="single" collapsible className="w-full border-t border-neutral-200 dark:border-neutral-800">
         <AccordionItem value="item-1">
-          <AccordionTrigger className="md:text-lg">{t("Is Rybbit GDPR and CCPA compliant?")}</AccordionTrigger>
-          <AccordionContent>
+          <AccordionTrigger className="px-0 text-left">{t("Is Rybbit GDPR and CCPA compliant?")}</AccordionTrigger>
+          <AccordionContent className="px-0">
             {t("Yes, Rybbit is fully compliant with GDPR, CCPA, and other privacy regulations. We don't use cookies or collect any personal data that could identify your users. We salt user IDs daily to ensure users are not fingerprinted. You will not need to display a cookie consent banner to your users.")}
           </AccordionContent>
         </AccordionItem>
 
         <AccordionItem value="item-2">
-          <AccordionTrigger className="md:text-lg">{t("Rybbit vs. Google Analytics")}</AccordionTrigger>
-          <AccordionContent>
+          <AccordionTrigger className="px-0 text-left">{t("Rybbit vs. Google Analytics")}</AccordionTrigger>
+          <AccordionContent className="px-0">
             <p>
               {t("Google Analytics is free because Google uses it as a funnel into their ecosystem and to sell ads. Rybbit's only goal is to provide you with high quality analytics. No more confusing dashboards pushing random AI features nobody wants.")}
             </p>
@@ -35,8 +35,8 @@ export function FAQAccordion() {
         </AccordionItem>
 
         <AccordionItem value="item-3">
-          <AccordionTrigger className="md:text-lg">{t("Rybbit vs. Plausible/Umami/Fathom")}</AccordionTrigger>
-          <AccordionContent>
+          <AccordionTrigger className="px-0 text-left">{t("Rybbit vs. Plausible/Umami/Fathom")}</AccordionTrigger>
+          <AccordionContent className="px-0">
             <p>
               {t("Rybbit is similar to these simple and privacy-focused analytics platforms, but we are raising the bar when it comes to UX and the quality and scope of our feature set.")}
             </p>
@@ -47,8 +47,8 @@ export function FAQAccordion() {
           </AccordionContent>
         </AccordionItem>
         <AccordionItem value="item-4">
-          <AccordionTrigger className="md:text-lg">{t("Rybbit vs. Posthog/Mixpanel/Amplitude")}</AccordionTrigger>
-          <AccordionContent>
+          <AccordionTrigger className="px-0 text-left">{t("Rybbit vs. Posthog/Mixpanel/Amplitude")}</AccordionTrigger>
+          <AccordionContent className="px-0">
             <p>
               {t("Rybbit has most of the features of enterprise analytics platforms, but packaged in a way that is usable for small and medium sized teams.")}
             </p>
@@ -60,8 +60,8 @@ export function FAQAccordion() {
         </AccordionItem>
 
         <AccordionItem value="item-5">
-          <AccordionTrigger className="md:text-lg">{t("Can I self-host Rybbit?")}</AccordionTrigger>
-          <AccordionContent>
+          <AccordionTrigger className="px-0 text-left">{t("Can I self-host Rybbit?")}</AccordionTrigger>
+          <AccordionContent className="px-0">
             {t("Absolutely! Rybbit is available as a self-hosted option. You can install it on your own server and have complete control over your data.")}{" "}
             <Link
               href="/docs/self-hosting"
@@ -74,8 +74,8 @@ export function FAQAccordion() {
         </AccordionItem>
 
         <AccordionItem value="item-6">
-          <AccordionTrigger className="md:text-lg">{t("How easy is it to set up Rybbit?")}</AccordionTrigger>
-          <AccordionContent>
+          <AccordionTrigger className="px-0 text-left">{t("How easy is it to set up Rybbit?")}</AccordionTrigger>
+          <AccordionContent className="px-0">
             <Link
               href="/docs/script"
               className="text-emerald-600 dark:text-emerald-400 hover:text-emerald-500 dark:hover:text-emerald-300"
@@ -87,8 +87,8 @@ export function FAQAccordion() {
         </AccordionItem>
 
         <AccordionItem value="item-7">
-          <AccordionTrigger className="md:text-lg">{t("What platforms does Rybbit support?")}</AccordionTrigger>
-          <AccordionContent>
+          <AccordionTrigger className="px-0 text-left">{t("What platforms does Rybbit support?")}</AccordionTrigger>
+          <AccordionContent className="px-0">
             {t("Rybbit works with virtually any website platform. Whether you're using WordPress, Shopify, Next.js, React, Vue, or any other framework, our simple tracking snippet integrates seamlessly. You can also use @rybbit/js, our web SDK you can install from npm. Check out our")}{" "}
             <Link
               href="/docs"
@@ -100,8 +100,8 @@ export function FAQAccordion() {
           </AccordionContent>
         </AccordionItem>
         <AccordionItem value="item-8">
-          <AccordionTrigger className="md:text-lg">{t("Is Rybbit open source?")}</AccordionTrigger>
-          <AccordionContent>
+          <AccordionTrigger className="px-0 text-left">{t("Is Rybbit open source?")}</AccordionTrigger>
+          <AccordionContent className="px-0">
             {t("Yes, Rybbit is open source under the AGPL v3.0 license. You are free to")}{" "}
             <Link
               href="/docs/self-hosting"
@@ -114,22 +114,22 @@ export function FAQAccordion() {
         </AccordionItem>
 
         <AccordionItem value="item-9">
-          <AccordionTrigger className="md:text-lg">{t("Can I invite my team to my organization?")}</AccordionTrigger>
-          <AccordionContent>
+          <AccordionTrigger className="px-0 text-left">{t("Can I invite my team to my organization?")}</AccordionTrigger>
+          <AccordionContent className="px-0">
             {t("Yes, you can invite unlimited team members to your organization. Each member can have different permission levels to view or manage your analytics dashboards.")}
           </AccordionContent>
         </AccordionItem>
 
         <AccordionItem value="item-10">
-          <AccordionTrigger className="md:text-lg">{t("Can I share my dashboard publicly?")}</AccordionTrigger>
-          <AccordionContent>
+          <AccordionTrigger className="px-0 text-left">{t("Can I share my dashboard publicly?")}</AccordionTrigger>
+          <AccordionContent className="px-0">
             {t("Yes, you can share your dashboard publicly in two ways: with a secret link that only people with the URL can access, or as a completely public dashboard that anyone can view.")}
           </AccordionContent>
         </AccordionItem>
 
         <AccordionItem value="item-11">
-          <AccordionTrigger className="md:text-lg">{t("Does Rybbit have an API?")}</AccordionTrigger>
-          <AccordionContent>
+          <AccordionTrigger className="px-0 text-left">{t("Does Rybbit have an API?")}</AccordionTrigger>
+          <AccordionContent className="px-0">
             {t("Yes, Rybbit provides a comprehensive")}{" "}
             <Link
               href="/docs/api/getting-started"

@@ -201,6 +201,14 @@ pre {
   }
 }
 
+/* Reduced motion: freeze the testimonial marquee and preview-card animations */
+@media (prefers-reduced-motion: reduce) {
+  .animate-marquee,
+  .animate-marquee-vertical {
+    animation: none !important;
+  }
+}
+
 /* ── Docs dark surface ───────────────────────────────────────────────────
    Lift the docs reading surface a few percent in dark mode so it isn't a near
    black. Scoped to the notebook layout container (which only exists on docs

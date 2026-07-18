@@ -52,29 +52,23 @@ export function PricingCard({
 
   return (
     <div className="w-full flex-shrink-0 h-full">
-      <div className="bg-neutral-200/40 dark:bg-neutral-900/40 p-2 rounded-3xl border border-neutral-300 dark:border-neutral-800 h-full">
-        <div
-          className={cn(
-            "rounded-2xl border overflow-hidden backdrop-blur-sm shadow-xl h-full",
-            recommended
-              ? "bg-neutral-100/80 dark:bg-neutral-800 border-emerald-500 border-2"
-              : isFree
-                ? "bg-neutral-100/30 dark:bg-neutral-800/15 border-neutral-300/60 dark:border-neutral-800/60 text-neutral-600 dark:text-neutral-300"
-                : "bg-neutral-50 dark:bg-neutral-900 border-neutral-300 dark:border-neutral-800"
-          )}
-        >
-          <div className="p-6">
-            <div className="mb-4">
-              <div className="flex items-center gap-2 mb-2">
-                <h3 className="text-xl font-bold">{title}</h3>
-                {recommended && (
-                  <span className="px-2 py-0.5 text-xs font-semibold bg-emerald-500/30 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 rounded-full border border-emerald-500/40 dark:border-emerald-500/30">
-                    {t("Recommended")}
-                  </span>
-                )}
-              </div>
-              <p className="text-sm text-neutral-600 dark:text-neutral-400 h-10">{description}</p>
+      <div
+        className={cn(
+          "h-full rounded-lg border bg-white dark:bg-neutral-900",
+          recommended ? "border-emerald-500" : "border-neutral-200 dark:border-neutral-800",
+          isFree && "text-neutral-600 dark:text-neutral-300"
+        )}
+      >
+        <div className="p-6">
+          <div className="mb-4">
+            <div className="flex items-center gap-2 mb-2">
+              <h3 className="text-base font-semibold">{title}</h3>
+              {recommended && (
+                <span className="text-xs font-medium text-emerald-600 dark:text-emerald-400">{t("Recommended")}</span>
+              )}
             </div>
+            <p className="text-sm text-neutral-600 dark:text-neutral-400 h-10">{description}</p>
+          </div>
 
             {/* Price display */}
             <div className="mb-6">{priceDisplay}</div>
@@ -94,10 +88,10 @@ export function PricingCard({
                   data-rybbit-event={eventLocation ? "signup" : undefined}
                   data-rybbit-prop-location={eventLocation}
                   className={cn(
-                    "w-full font-medium px-5 py-3 rounded-lg transform hover:-translate-y-0.5 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-opacity-50 cursor-pointer",
+                    "w-full h-10 cursor-pointer rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 disabled:pointer-events-none disabled:opacity-50",
                     isPrimary
-                      ? "bg-emerald-600 hover:bg-emerald-500 text-white shadow-lg shadow-emerald-900/20 focus:ring-emerald-200 disabled:opacity-50 disabled:pointer-events-none"
-                      : "bg-neutral-300 dark:bg-neutral-700 hover:bg-neutral-200 dark:hover:bg-neutral-600 text-neutral-900 dark:text-white"
+                      ? "bg-emerald-600 text-white hover:bg-emerald-500 focus-visible:ring-emerald-400/60"
+                      : "border border-neutral-300 text-neutral-900 hover:bg-neutral-100 focus-visible:ring-neutral-400/50 dark:border-neutral-700 dark:text-white dark:hover:bg-neutral-800"
                   )}
                 >
                   {buttonText}
@@ -108,10 +102,10 @@ export function PricingCard({
                 onClick={onClick}
                 disabled={disabled}
                 className={cn(
-                  "w-full font-medium px-5 py-3 rounded-lg transform hover:-translate-y-0.5 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-opacity-50 cursor-pointer",
+                  "w-full h-10 cursor-pointer rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 disabled:pointer-events-none disabled:opacity-50",
                   isPrimary
-                    ? "bg-emerald-600 hover:bg-emerald-500 text-white shadow-lg shadow-emerald-900/20 focus:ring-emerald-500 disabled:opacity-50 disabled:pointer-events-none"
-                    : "bg-neutral-300 dark:bg-neutral-700 hover:bg-neutral-200 dark:hover:bg-neutral-600 text-neutral-900 dark:text-white"
+                    ? "bg-emerald-600 text-white hover:bg-emerald-500 focus-visible:ring-emerald-400/60"
+                    : "border border-neutral-300 text-neutral-900 hover:bg-neutral-100 focus-visible:ring-neutral-400/50 dark:border-neutral-700 dark:text-white dark:hover:bg-neutral-800"
                 )}
               >
                 {buttonText}
@@ -163,7 +157,6 @@ export function PricingCard({
                 {footerText}
               </p>
             )}
-          </div>
         </div>
       </div>
     </div>

@@ -9,19 +9,30 @@ interface CardProps {
   icon?: LucideIcon;
 }
 
+/**
+ * Flat product-preview card: a header row plus an inset "screen" that the
+ * animated mock UI lives in. The screen is bottom-cropped like a viewport.
+ */
 export function Card({ title, description, children, className, icon: Icon }: CardProps) {
   return (
     <div
-      className={cn("bg-neutral-100/50 dark:bg-neutral-800/20 p-4 md:p-6 rounded-xl border border-neutral-300/50 dark:border-neutral-800/50 overflow-hidden", className)}
-    >
-      {Icon && (
-        <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-emerald-600/20 to-emerald-700/15 dark:from-emerald-600/15 dark:to-emerald-700/10 border border-emerald-600/30 dark:border-emerald-600/20 shadow-md shadow-emerald-600/10 dark:shadow-emerald-600/5 flex items-center justify-center mb-3">
-          <Icon className="w-4 h-4 text-emerald-600 dark:text-emerald-300" />
-        </div>
+      className={cn(
+        "flex flex-col overflow-hidden rounded-lg border border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-900",
+        className
       )}
-      <h3 className="text-xl font-semibold mb-2">{title}</h3>
-      {description && <p className="text-neutral-600 dark:text-neutral-300 text-sm mb-3">{description}</p>}
-      {children}
+    >
+      <div className="px-5 pt-5 md:px-6 md:pt-6">
+        <div className="flex items-center gap-2">
+          {Icon && <Icon className="h-4 w-4 text-neutral-500 dark:text-neutral-400" />}
+          <h3 className="text-sm font-medium text-neutral-900 dark:text-neutral-100">{title}</h3>
+        </div>
+        {description && <p className="mt-1.5 text-sm text-neutral-500 dark:text-neutral-400">{description}</p>}
+      </div>
+      <div className="mt-5 flex-1 px-5 md:px-6">{children}</div>
     </div>
   );
 }
+
+/** Shared classes for the inset viewport each preview renders into. */
+export const previewScreen =
+  "h-[300px] overflow-hidden rounded-t-md border border-b-0 border-neutral-200 bg-neutral-50 dark:border-neutral-800 dark:bg-neutral-950";

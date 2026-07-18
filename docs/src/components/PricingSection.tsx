@@ -3,6 +3,7 @@
 import { Carousel, CarouselContent, CarouselItem, type CarouselApi } from "@/components/ui/carousel";
 import { Slider } from "@/components/ui/slider";
 import { cn } from "@/lib/utils";
+import { landingContainer } from "@/components/landing/section";
 import { getCalApi } from "@calcom/embed-react";
 import { useExtracted } from "next-intl";
 import { useEffect, useState, useCallback } from "react";
@@ -137,19 +138,19 @@ export function PricingSection({ isAnnual, setIsAnnual }: { isAnnual: boolean, s
   }
 
   return (
-    <section className="py-16 md:py-24 w-full relative z-10">
-      <div className="max-w-[1200px] mx-auto px-4">
-        <div className="mb-12 text-center max-w-3xl mx-auto">
-          <h2 className="text-4xl md:text-5xl font-bold tracking-tight pb-4 text-transparent bg-clip-text bg-gradient-to-b from-neutral-900 via-neutral-700 to-neutral-500 dark:from-white dark:via-gray-200 dark:to-gray-400">
+    <section className="w-full border-t border-neutral-200 dark:border-neutral-800">
+      <div className={`${landingContainer} py-16 md:py-24`}>
+        <div className="mb-10 md:mb-14">
+          <h2 className="text-2xl font-semibold tracking-[-0.02em] text-neutral-900 md:text-[2rem] md:leading-[1.15] dark:text-neutral-50">
             {t("Pricing")}
           </h2>
-          <p className="text-lg text-neutral-600 dark:text-neutral-300">
+          <p className="mt-3 max-w-xl text-base text-neutral-600 dark:text-neutral-400">
             {t("Start your 7-day free trial — no credit card charges until the trial ends.")}
           </p>
         </div>
 
         {/* Shared controls section */}
-        <div className="max-w-xl mx-auto mb-8">
+        <div className="max-w-xl mb-10">
           <div className="flex justify-between mb-6 items-center">
             <div>
               <h3 className="font-semibold mb-2">{t("Monthly pageviews")}</h3>
@@ -157,34 +158,36 @@ export function PricingSection({ isAnnual, setIsAnnual }: { isAnnual: boolean, s
                 {typeof eventLimit === "number" ? eventLimit.toLocaleString() : t("Custom")}
               </div>
             </div>
-            <div className="flex flex-col items-end relative">
+            <div className="flex flex-col items-end">
               {/* Billing toggle */}
-              <div className="flex mb-2 text-sm bg-neutral-200 dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 rounded-full p-1">
-                <button
-                  onClick={() => setIsAnnual(false)}
-                  className={cn(
-                    "px-3 py-1 rounded-full transition-colors cursor-pointer",
-                    !isAnnual
-                      ? "bg-white dark:bg-white/20 text-neutral-700 dark:text-neutral-100 font-medium"
-                      : "text-neutral-600 dark:text-neutral-400 hover:text-neutral-800 dark:hover:text-neutral-200"
-                  )}
-                >
-                  {t("Monthly")}
-                </button>
-                <button
-                  onClick={() => setIsAnnual(true)}
-                  className={cn(
-                    "px-3 py-1 rounded-full transition-colors cursor-pointer",
-                    isAnnual
-                      ? "bg-white dark:bg-white/20 text-neutral-700 dark:text-neutral-100 font-medium"
-                      : "text-neutral-600 dark:text-neutral-400 hover:text-neutral-800 dark:hover:text-neutral-200"
-                  )}
-                >
-                  {t("Annual")}
-                </button>
-                <div className="text-xs text-white absolute top-0 right-0 -translate-y-3 bg-emerald-500 dark:bg-emerald-500 rounded-full px-2 py-0.5 whitespace-nowrap">
-                  {t("4 months free")}
+              <div className="flex items-center gap-3">
+                <div className="flex text-sm border border-neutral-300 dark:border-neutral-700 rounded-md p-0.5">
+                  <button
+                    onClick={() => setIsAnnual(false)}
+                    className={cn(
+                      "px-3 py-1 rounded-[5px] transition-colors cursor-pointer",
+                      !isAnnual
+                        ? "bg-neutral-100 dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 font-medium"
+                        : "text-neutral-500 dark:text-neutral-400 hover:text-neutral-800 dark:hover:text-neutral-200"
+                    )}
+                  >
+                    {t("Monthly")}
+                  </button>
+                  <button
+                    onClick={() => setIsAnnual(true)}
+                    className={cn(
+                      "px-3 py-1 rounded-[5px] transition-colors cursor-pointer",
+                      isAnnual
+                        ? "bg-neutral-100 dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 font-medium"
+                        : "text-neutral-500 dark:text-neutral-400 hover:text-neutral-800 dark:hover:text-neutral-200"
+                    )}
+                  >
+                    {t("Annual")}
+                  </button>
                 </div>
+                <span className="text-xs font-medium text-emerald-600 dark:text-emerald-400 whitespace-nowrap">
+                  {t("4 months free")}
+                </span>
               </div>
             </div>
           </div>
@@ -234,6 +237,7 @@ export function PricingSection({ isAnnual, setIsAnnual }: { isAnnual: boolean, s
               }
               buttonText={standardPrices.custom ? t("Contact us") : t("Start for $0")}
               buttonHref={standardPrices.custom ? "https://www.rybbit.com/contact" : "https://app.rybbit.io/signup"}
+              buttonVariant="default"
               features={STANDARD_FEATURES}
               eventLocation={standardPrices.custom ? undefined : "standard"}
             />
@@ -271,6 +275,7 @@ export function PricingSection({ isAnnual, setIsAnnual }: { isAnnual: boolean, s
               features={ENTERPRISE_FEATURES}
               buttonText={t("Contact us")}
               buttonHref={"https://www.rybbit.com/contact"}
+              buttonVariant="default"
             />
           );
 
