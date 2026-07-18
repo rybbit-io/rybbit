@@ -1,7 +1,14 @@
 "use client";
 
-import { CheckCircle, Copy, Loader2 } from "lucide-react";
 import { useState } from "react";
+import {
+  CopyButton,
+  ToolButton,
+  ToolCallout,
+  ToolField,
+  ToolSelect,
+  ToolTextarea,
+} from "../../components/tool-ui";
 import type { PostGeneratorPlatformConfig } from "./post-generator-platform-configs";
 
 interface PostGeneratorProps {
@@ -15,7 +22,6 @@ export default function PostGenerator({ platform }: PostGeneratorProps) {
   const [posts, setPosts] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
-  const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
   const [remainingRequests, setRemainingRequests] = useState<number | null>(
     null
   );
@@ -64,49 +70,31 @@ export default function PostGenerator({ platform }: PostGeneratorProps) {
     }
   };
 
-  const copyToClipboard = async (text: string, index: number) => {
-    try {
-      await navigator.clipboard.writeText(text);
-      setCopiedIndex(index);
-      setTimeout(() => setCopiedIndex(null), 2000);
-    } catch (err) {
-      console.error("Failed to copy:", err);
-    }
-  };
-
   return (
     <div className="space-y-6">
-      <div>
-        <label
-          htmlFor="topic"
-          className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-2"
-        >
-          What do you want to post about?
-        </label>
-        <textarea
-          id="topic"
+      <ToolField
+        label="What do you want to post about?"
+        htmlFor="post-topic"
+        hint={`${topic.length} / 1000 characters`}
+      >
+        <ToolTextarea
+          id="post-topic"
           rows={4}
-          className="w-full px-4 py-3 bg-white dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 rounded-lg text-neutral-900 dark:text-white placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 resize-y"
+          className="resize-y"
           placeholder={`Describe your post topic or key message (e.g., "Sharing lessons learned from building a startup" or "Tips for productivity")`}
           value={topic}
           onChange={(e) => setTopic(e.target.value)}
           maxLength={1000}
         />
-        <p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
-          {topic.length} / 1000 characters
-        </p>
-      </div>
+      </ToolField>
 
-      <div>
-        <label
-          htmlFor="style"
-          className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-2"
-        >
-          Post Style
-        </label>
-        <select
-          id="style"
-          className="w-full px-4 py-3 bg-white dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 rounded-lg text-neutral-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+      <ToolField
+        label="Post Style"
+        htmlFor="post-style"
+        hint="Choose a style that fits your content and audience"
+      >
+        <ToolSelect
+          id="post-style"
           value={style}
           onChange={(e) => setStyle(e.target.value)}
         >
@@ -115,84 +103,58 @@ export default function PostGenerator({ platform }: PostGeneratorProps) {
               {styleOption}
             </option>
           ))}
-        </select>
-        <p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
-          Choose a style that fits your content and audience
-        </p>
-      </div>
+        </ToolSelect>
+      </ToolField>
 
-      <div>
-        <label
-          htmlFor="additionalContext"
-          className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-2"
-        >
-          Additional Context (Optional)
-        </label>
-        <textarea
-          id="additionalContext"
+      <ToolField
+        label="Additional Context (Optional)"
+        htmlFor="post-additional-context"
+      >
+        <ToolTextarea
+          id="post-additional-context"
           rows={2}
-          className="w-full px-4 py-3 bg-white dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 rounded-lg text-neutral-900 dark:text-white placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 resize-y"
+          className="resize-y"
           placeholder="Any specific details, CTAs, or hashtags you want to include"
           value={additionalContext}
           onChange={(e) => setAdditionalContext(e.target.value)}
           maxLength={500}
         />
-      </div>
+      </ToolField>
 
-      <button
+      <ToolButton
         onClick={generatePosts}
-        disabled={isLoading || !topic.trim()}
-        className="w-full px-6 py-3 bg-emerald-600 hover:bg-emerald-500 disabled:bg-neutral-400 dark:disabled:bg-neutral-700 text-white font-medium rounded-lg transition-colors flex items-center justify-center gap-2"
+        loading={isLoading}
+        disabled={!topic.trim()}
+        className="w-full"
       >
-        {isLoading ? (
-          <>
-            <Loader2 className="w-5 h-5 animate-spin" />
-            Generating Posts...
-          </>
-        ) : (
-          "Generate Posts"
-        )}
-      </button>
+        {isLoading ? "Generating Posts..." : "Generate Posts"}
+      </ToolButton>
 
       {remainingRequests !== null && (
-        <p className="text-sm text-center text-neutral-600 dark:text-neutral-400">
+        <p className="text-center text-sm text-neutral-500 dark:text-neutral-400">
           {remainingRequests} requests remaining this minute
         </p>
       )}
 
-      {error && (
-        <div className="p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
-          <p className="text-sm text-red-800 dark:text-red-200">{error}</p>
-        </div>
-      )}
+      {error && <ToolCallout variant="error">{error}</ToolCallout>}
 
       {posts.length > 0 && (
-        <div className="space-y-4">
-          <h3 className="text-lg font-semibold text-neutral-900 dark:text-white">
+        <div className="space-y-3 border-t border-neutral-200 pt-6 dark:border-neutral-800">
+          <h3 className="text-base font-semibold text-neutral-900 dark:text-white">
             Generated Posts
           </h3>
           {posts.map((post, index) => (
             <div
               key={index}
-              className="p-4 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg"
+              className="rounded-md border border-neutral-200 bg-neutral-50 p-4 dark:border-neutral-800 dark:bg-neutral-900/50"
             >
-              <div className="flex items-start justify-between gap-3 mb-3">
-                <p className="flex-1 text-neutral-900 dark:text-white whitespace-pre-wrap leading-relaxed">
+              <div className="flex items-start justify-between gap-4">
+                <p className="flex-1 whitespace-pre-wrap leading-relaxed text-neutral-900 dark:text-white">
                   {post}
                 </p>
-                <button
-                  onClick={() => copyToClipboard(post, index)}
-                  className="flex-shrink-0 p-2 hover:bg-neutral-100 dark:hover:bg-neutral-700 rounded-lg transition-colors"
-                  title="Copy to clipboard"
-                >
-                  {copiedIndex === index ? (
-                    <CheckCircle className="w-5 h-5 text-emerald-600" />
-                  ) : (
-                    <Copy className="w-5 h-5 text-neutral-600 dark:text-neutral-400" />
-                  )}
-                </button>
+                <CopyButton value={post} className="shrink-0" />
               </div>
-              <p className="text-xs text-neutral-500 dark:text-neutral-400">
+              <p className="mt-2 text-xs text-neutral-500 dark:text-neutral-400">
                 {post.length} characters
                 {platform.characterLimit &&
                   ` / ${platform.characterLimit} limit`}
@@ -202,11 +164,9 @@ export default function PostGenerator({ platform }: PostGeneratorProps) {
         </div>
       )}
 
-      <div className="p-4 bg-neutral-50 dark:bg-neutral-800/50 border border-neutral-200 dark:border-neutral-700 rounded-lg">
-        <p className="text-sm text-neutral-700 dark:text-neutral-300">
-          <strong>Platform Guidelines:</strong> {platform.contextGuidelines}
-        </p>
-      </div>
+      <ToolCallout variant="info" title="Platform Guidelines">
+        {platform.contextGuidelines}
+      </ToolCallout>
     </div>
   );
 }

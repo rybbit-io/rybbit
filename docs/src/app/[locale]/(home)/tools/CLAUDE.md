@@ -29,14 +29,32 @@ All tools use `ToolPageLayout` with 6 sections: Header, Tool, Educational Conten
 - `ctaButtonText`: Default `"Start tracking for free"`
 - `structuredData`: JSON-LD object
 
-## Styling
+## Styling — use the shared primitives
 
-- Primary: `bg-emerald-600 hover:bg-emerald-500`
-- Success: `bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800`
-- Error: `bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800`
-- Backgrounds: `bg-white dark:bg-neutral-900`
-- Borders: `border-neutral-200 dark:border-neutral-800`
-- Text: `text-neutral-900 dark:text-white` (headings), `text-neutral-700 dark:text-neutral-300` (body)
+**Build the interactive tool out of the primitives in `components/tool-ui.tsx`.** They encode
+Rybbit's "instrument panel" vocabulary (tight `rounded-md` geometry, hairline borders, flat
+surfaces, `font-semibold`/`font-medium` weights, a single emerald accent) so every tool matches
+the rest of the app. Do NOT hand-roll `rounded-lg` inputs, `bg-emerald-600` buttons, `font-bold`
+headings, or tinted `bg-blue-50`/`bg-orange-50` boxes — that is the exact divergence these
+primitives replace.
+
+Import from `../components/tool-ui` (calculators/AI/utility tools) or `../../components/tool-ui`
+(social-media tools under `(social-media-tools)/components/`):
+
+- `ToolField({ label, htmlFor, required, hint })` — wraps a control with its label + hint.
+- `ToolInput` / `ToolTextarea` / `ToolSelect` — styled form controls (`h-10`, `rounded-md`).
+- `ToolButton({ variant: "primary" | "secondary" | "ghost", loading, icon })` — actions.
+- `CopyButton({ value })` — self-contained copy-to-clipboard (don't re-implement copied state).
+- `ToolResult({ label, value })` — the one headline metric a tool outputs.
+- `ToolStat({ label, value })` — compact secondary stat, for a grid under the result.
+- `ToolCallout({ variant: "info" | "tip" | "success" | "warning" | "error", title })` — notes/tips.
+- `ToolResultDivider` — opens the results region below the inputs.
+
+Reference implementations: `conversion-rate-calculator/ConversionRateForm.tsx` (calculator),
+`seo-title-generator/SEOTitleForm.tsx` (AI generator), `utm-builder/UTMBuilderForm.tsx` (copy result).
+
+**Do NOT add an FAQ or CTA inside the form** — `ToolPageLayout` already renders both (the FAQ from
+the `faqs` prop and a `ToolCTA` at the bottom). Embedding them duplicates the sections on the page.
 
 ## CRITICAL Rules
 
@@ -49,18 +67,22 @@ All tools use `ToolPageLayout` with 6 sections: Header, Tool, Educational Conten
 ## Common Patterns
 
 ```tsx
-// Loading
+import { ToolButton, ToolCallout, ToolField, ToolInput, CopyButton } from "../components/tool-ui";
+
+// Field + input
+<ToolField label="Total Visitors" htmlFor="tv" required hint="Sessions in the period">
+  <ToolInput id="tv" type="number" value={visitors} onChange={e => setVisitors(e.target.value)} />
+</ToolField>
+
+// Loading action
 const [isLoading, setIsLoading] = useState(false);
-<button disabled={isLoading}>{isLoading ? "Processing..." : "Calculate"}</button>;
+<ToolButton onClick={run} loading={isLoading}>{isLoading ? "Generating…" : "Generate"}</ToolButton>;
 
-// Error
-const [error, setError] = useState<string | null>(null);
-{
-  error && <div className="p-4 bg-red-50...">{error}</div>;
-}
+// Error / tip
+{error && <ToolCallout variant="error">{error}</ToolCallout>}
 
-// Copy
-await navigator.clipboard.writeText(result);
+// Copy (no local state needed)
+<CopyButton value={result} />
 ```
 
 ## API Routes (if needed)

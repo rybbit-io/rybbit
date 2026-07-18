@@ -1,7 +1,14 @@
 "use client";
 
+import { Download, Palette, RefreshCw } from "lucide-react";
 import { useState } from "react";
-import { Palette, Download, AlertCircle, Loader2, RefreshCw } from "lucide-react";
+import {
+  ToolButton,
+  ToolCallout,
+  ToolField,
+  ToolInput,
+  ToolSelect,
+} from "../../components/tool-ui";
 import type { LogoGeneratorPlatformConfig } from "./logo-generator-platform-configs";
 
 interface LogoGeneratorProps {
@@ -116,164 +123,114 @@ export function LogoGenerator({ platform }: LogoGeneratorProps) {
   };
 
   return (
-    <div className="w-full max-w-4xl mx-auto">
+    <div className="mx-auto w-full max-w-4xl space-y-6">
       {/* Context Guidelines */}
-      <div className="mb-8 p-4 bg-neutral-50 dark:bg-neutral-800/50 border border-neutral-200 dark:border-neutral-700 rounded-lg">
-        <div className="flex gap-3">
-          <div className="p-2 bg-emerald-100 dark:bg-emerald-900/30 rounded-lg h-fit">
-            <Palette className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
-          </div>
-          <div>
-            <h3 className="text-sm font-medium text-neutral-900 dark:text-white mb-1">
-              {platform.name} Logo Guidelines
-            </h3>
-            <p className="text-sm text-neutral-600 dark:text-neutral-400">{platform.contextGuidelines}</p>
-          </div>
-        </div>
-      </div>
+      <ToolCallout variant="info" icon={Palette} title={`${platform.name} Logo Guidelines`}>
+        {platform.contextGuidelines}
+      </ToolCallout>
 
       {/* Generator Form */}
-      <div className="space-y-6 mb-8">
-        {/* Brand Name Input */}
-        <div>
-          <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-200 mb-2">
-            Brand or Company Name *
-          </label>
-          <input
+      <div className="space-y-6">
+        <ToolField label="Brand or Company Name" htmlFor="logo-brand-name" required>
+          <ToolInput
+            id="logo-brand-name"
             type="text"
             value={brandName}
             onChange={e => setBrandName(e.target.value)}
             placeholder="Enter your brand or company name"
-            className="w-full px-4 py-3 bg-white dark:bg-neutral-900 border border-neutral-300 dark:border-neutral-700 rounded-lg focus:ring-2 focus:ring-emerald-500 dark:focus:ring-emerald-400 focus:border-transparent text-neutral-900 dark:text-white placeholder-neutral-400 dark:placeholder-neutral-500"
           />
-        </div>
+        </ToolField>
 
-        {/* Industry Input */}
-        <div>
-          <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-200 mb-2">
-            Industry or Niche (Optional)
-          </label>
-          <input
+        <ToolField label="Industry or Niche (Optional)" htmlFor="logo-industry">
+          <ToolInput
+            id="logo-industry"
             type="text"
             value={industry}
             onChange={e => setIndustry(e.target.value)}
             placeholder="e.g., Technology, Food & Beverage, Fashion, Fitness"
-            className="w-full px-4 py-3 bg-white dark:bg-neutral-900 border border-neutral-300 dark:border-neutral-700 rounded-lg focus:ring-2 focus:ring-emerald-500 dark:focus:ring-emerald-400 focus:border-transparent text-neutral-900 dark:text-white placeholder-neutral-400 dark:placeholder-neutral-500"
           />
-        </div>
+        </ToolField>
 
-        {/* Style Selector */}
-        <div>
-          <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-200 mb-2">Design Style</label>
-          <select
-            value={style}
-            onChange={e => setStyle(e.target.value)}
-            className="w-full px-4 py-3 bg-white dark:bg-neutral-900 border border-neutral-300 dark:border-neutral-700 rounded-lg focus:ring-2 focus:ring-emerald-500 dark:focus:ring-emerald-400 focus:border-transparent text-neutral-900 dark:text-white"
-          >
+        <ToolField label="Design Style" htmlFor="logo-style">
+          <ToolSelect id="logo-style" value={style} onChange={e => setStyle(e.target.value)}>
             {DESIGN_STYLES.map(s => (
               <option key={s.id} value={s.id}>
                 {s.name} - {s.description}
               </option>
             ))}
-          </select>
-        </div>
+          </ToolSelect>
+        </ToolField>
 
-        {/* Colors Input */}
-        <div>
-          <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-200 mb-2">
-            Color Preferences (Optional)
-          </label>
-          <input
+        <ToolField label="Color Preferences (Optional)" htmlFor="logo-colors">
+          <ToolInput
+            id="logo-colors"
             type="text"
             value={colors}
             onChange={e => setColors(e.target.value)}
             placeholder="e.g., Blue and white, Earth tones, Vibrant colors"
-            className="w-full px-4 py-3 bg-white dark:bg-neutral-900 border border-neutral-300 dark:border-neutral-700 rounded-lg focus:ring-2 focus:ring-emerald-500 dark:focus:ring-emerald-400 focus:border-transparent text-neutral-900 dark:text-white placeholder-neutral-400 dark:placeholder-neutral-500"
           />
-        </div>
+        </ToolField>
 
-        {/* Generate Button */}
-        <button
+        <ToolButton
           onClick={handleGenerate}
-          disabled={loading || !brandName.trim()}
-          className="w-full px-6 py-3 bg-emerald-600 hover:bg-emerald-700 disabled:bg-neutral-300 dark:disabled:bg-neutral-700 text-white font-medium rounded-lg transition-colors duration-200 flex items-center justify-center gap-2"
+          loading={loading}
+          disabled={!brandName.trim()}
+          icon={Palette}
+          className="w-full"
         >
-          {loading ? (
-            <>
-              <Loader2 className="w-5 h-5 animate-spin" />
-              Generating Logo...
-            </>
-          ) : (
-            <>
-              <Palette className="w-5 h-5" />
-              Generate Logo
-            </>
-          )}
-        </button>
+          {loading ? "Generating Logo..." : "Generate Logo"}
+        </ToolButton>
       </div>
 
       {/* Rate Limit Info */}
       {rateLimit && (
-        <div className="mb-6 p-4 bg-neutral-50 dark:bg-neutral-900/50 border border-neutral-200 dark:border-neutral-800 rounded-lg">
-          <p className="text-sm text-neutral-600 dark:text-neutral-400">
-            Rate limit: {rateLimit.remaining} of {rateLimit.limit} requests remaining
-          </p>
-        </div>
+        <p className="text-sm text-neutral-500 dark:text-neutral-400">
+          Rate limit: {rateLimit.remaining} of {rateLimit.limit} requests remaining
+        </p>
       )}
 
       {/* Error Message */}
-      {error && (
-        <div className="mb-6 p-4 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800 rounded-lg flex items-start gap-3">
-          <AlertCircle className="w-5 h-5 text-red-600 dark:text-red-400 mt-0.5 flex-shrink-0" />
-          <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
-        </div>
-      )}
+      {error && <ToolCallout variant="error">{error}</ToolCallout>}
 
       {/* Generated Logo */}
       {imageUrl && (
         <div className="space-y-4">
-          <h3 className="text-lg font-semibold text-neutral-900 dark:text-white mb-4">Your Generated Logo</h3>
+          <h3 className="text-base font-semibold text-neutral-900 dark:text-white">Your Generated Logo</h3>
 
-          <div className="p-6 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-lg">
+          <div className="rounded-md border border-neutral-200 bg-neutral-50 p-6 dark:border-neutral-800 dark:bg-neutral-900/50">
             {/* Logo Display */}
-            <div className="flex justify-center mb-6">
-              <div className="relative bg-neutral-100 dark:bg-neutral-800 rounded-lg p-4">
+            <div className="mb-6 flex justify-center">
+              <div className="relative rounded-md bg-neutral-100 p-4 dark:bg-neutral-800">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={imageUrl}
                   alt={`Generated logo for ${brandName}`}
-                  className="max-w-full max-h-[400px] object-contain rounded-lg"
+                  className="max-h-[400px] max-w-full rounded-md object-contain"
                 />
               </div>
             </div>
 
             {/* Actions */}
-            <div className="flex flex-col sm:flex-row gap-3 justify-center">
-              <button
-                onClick={handleDownload}
-                className="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-medium rounded-lg transition-colors duration-200 flex items-center justify-center gap-2"
-              >
-                <Download className="w-4 h-4" />
+            <div className="flex flex-col justify-center gap-3 sm:flex-row">
+              <ToolButton onClick={handleDownload} icon={Download}>
                 Download PNG
-              </button>
-              <button
+              </ToolButton>
+              <ToolButton
+                variant="secondary"
                 onClick={handleGenerate}
                 disabled={loading}
-                className="px-6 py-2.5 bg-neutral-100 dark:bg-neutral-800 hover:bg-neutral-200 dark:hover:bg-neutral-700 text-neutral-700 dark:text-neutral-200 font-medium rounded-lg transition-colors duration-200 flex items-center justify-center gap-2"
+                icon={RefreshCw}
               >
-                <RefreshCw className="w-4 h-4" />
                 Regenerate
-              </button>
+              </ToolButton>
             </div>
           </div>
 
           {/* Tips */}
-          <div className="p-4 bg-neutral-50 dark:bg-neutral-800/50 border border-neutral-200 dark:border-neutral-700 rounded-lg">
-            <p className="text-sm text-neutral-600 dark:text-neutral-400">
-              <strong>Tip:</strong> Not quite right? Try adjusting your style or color preferences and regenerate. Each
-              generation creates a unique design.
-            </p>
-          </div>
+          <ToolCallout variant="tip" title="Tip">
+            Not quite right? Try adjusting your style or color preferences and regenerate. Each
+            generation creates a unique design.
+          </ToolCallout>
         </div>
       )}
     </div>

@@ -1,8 +1,7 @@
 "use client";
 
-import { TrackedButton } from "@/components/TrackedButton";
-import { CheckCircle, Copy } from "lucide-react";
 import { useState } from "react";
+import { CopyButton, ToolButton, ToolField, ToolInput } from "../components/tool-ui";
 
 export function PrivacyPolicyBuilderForm() {
   const [companyName, setCompanyName] = useState("");
@@ -12,7 +11,6 @@ export function PrivacyPolicyBuilderForm() {
   const [usesCookies, setUsesCookies] = useState(false);
   const [usesAnalytics, setUsesAnalytics] = useState(false);
   const [sharesData, setSharesData] = useState(false);
-  const [copied, setCopied] = useState(false);
 
   const generatePolicy = () => {
     if (!companyName || !websiteUrl || !contactEmail) return "";
@@ -126,14 +124,6 @@ If you have any questions about this Privacy Policy, please contact us at:
 
   const policy = generatePolicy();
 
-  const copyToClipboard = async () => {
-    if (policy) {
-      await navigator.clipboard.writeText(policy);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    }
-  };
-
   const downloadPolicy = () => {
     if (!policy) return;
 
@@ -156,179 +146,122 @@ If you have any questions about this Privacy Policy, please contact us at:
     setUsesCookies(false);
     setUsesAnalytics(false);
     setSharesData(false);
-    setCopied(false);
   };
 
   return (
-    <div className="mb-16">
-      <div className="space-y-6">
-        {/* Company Name */}
-        <div>
-          <label className="block text-sm font-medium text-neutral-900 dark:text-white mb-2">
-            Company Name <span className="text-red-500">*</span>
-          </label>
+    <div className="space-y-6">
+      <ToolField label="Company Name" htmlFor="privacy-company" required>
+        <ToolInput
+          id="privacy-company"
+          type="text"
+          value={companyName}
+          onChange={e => setCompanyName(e.target.value)}
+          placeholder="Acme Inc."
+        />
+      </ToolField>
+
+      <ToolField label="Website URL" htmlFor="privacy-url" required>
+        <ToolInput
+          id="privacy-url"
+          type="text"
+          value={websiteUrl}
+          onChange={e => setWebsiteUrl(e.target.value)}
+          placeholder="https://example.com"
+        />
+      </ToolField>
+
+      <ToolField label="Contact Email" htmlFor="privacy-email" required>
+        <ToolInput
+          id="privacy-email"
+          type="email"
+          value={contactEmail}
+          onChange={e => setContactEmail(e.target.value)}
+          placeholder="privacy@example.com"
+        />
+      </ToolField>
+
+      {/* Checkboxes */}
+      <div className="space-y-3 border-t border-neutral-200 pt-4 dark:border-neutral-800">
+        <p className="mb-3 text-sm font-medium text-neutral-900 dark:text-white">What does your website do?</p>
+
+        <label className="flex cursor-pointer items-start gap-3">
           <input
-            type="text"
-            value={companyName}
-            onChange={e => setCompanyName(e.target.value)}
-            placeholder="Acme Inc."
-            className="w-full px-4 py-3 bg-white dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 rounded-lg text-neutral-900 dark:text-white placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+            type="checkbox"
+            checked={collectsPersonalData}
+            onChange={e => setCollectsPersonalData(e.target.checked)}
+            className="mt-1 size-4 rounded border-neutral-300 text-emerald-600 focus:ring-emerald-500 dark:border-neutral-700"
           />
-        </div>
-
-        {/* Website URL */}
-        <div>
-          <label className="block text-sm font-medium text-neutral-900 dark:text-white mb-2">
-            Website URL <span className="text-red-500">*</span>
-          </label>
-          <input
-            type="text"
-            value={websiteUrl}
-            onChange={e => setWebsiteUrl(e.target.value)}
-            placeholder="https://example.com"
-            className="w-full px-4 py-3 bg-white dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 rounded-lg text-neutral-900 dark:text-white placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-          />
-        </div>
-
-        {/* Contact Email */}
-        <div>
-          <label className="block text-sm font-medium text-neutral-900 dark:text-white mb-2">
-            Contact Email <span className="text-red-500">*</span>
-          </label>
-          <input
-            type="email"
-            value={contactEmail}
-            onChange={e => setContactEmail(e.target.value)}
-            placeholder="privacy@example.com"
-            className="w-full px-4 py-3 bg-white dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 rounded-lg text-neutral-900 dark:text-white placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-          />
-        </div>
-
-        {/* Checkboxes */}
-        <div className="space-y-3 pt-4 border-t border-neutral-200 dark:border-neutral-800">
-          <p className="text-sm font-medium text-neutral-900 dark:text-white mb-3">What does your website do?</p>
-
-          <label className="flex items-start gap-3 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={collectsPersonalData}
-              onChange={e => setCollectsPersonalData(e.target.checked)}
-              className="mt-1 w-4 h-4 text-emerald-600 border-neutral-300 dark:border-neutral-700 rounded focus:ring-emerald-500"
-            />
-            <div>
-              <div className="text-sm font-medium text-neutral-900 dark:text-white">Collects personal data</div>
-              <div className="text-xs text-neutral-600 dark:text-neutral-400">
-                Name, email, phone number, payment info, etc.
-              </div>
-            </div>
-          </label>
-
-          <label className="flex items-start gap-3 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={usesCookies}
-              onChange={e => setUsesCookies(e.target.checked)}
-              className="mt-1 w-4 h-4 text-emerald-600 border-neutral-300 dark:border-neutral-700 rounded focus:ring-emerald-500"
-            />
-            <div>
-              <div className="text-sm font-medium text-neutral-900 dark:text-white">Uses cookies</div>
-              <div className="text-xs text-neutral-600 dark:text-neutral-400">
-                Session cookies, tracking cookies, etc.
-              </div>
-            </div>
-          </label>
-
-          <label className="flex items-start gap-3 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={usesAnalytics}
-              onChange={e => setUsesAnalytics(e.target.checked)}
-              className="mt-1 w-4 h-4 text-emerald-600 border-neutral-300 dark:border-neutral-700 rounded focus:ring-emerald-500"
-            />
-            <div>
-              <div className="text-sm font-medium text-neutral-900 dark:text-white">Uses analytics</div>
-              <div className="text-xs text-neutral-600 dark:text-neutral-400">
-                Google Analytics, Rybbit, Plausible, etc.
-              </div>
-            </div>
-          </label>
-
-          <label className="flex items-start gap-3 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={sharesData}
-              onChange={e => setSharesData(e.target.checked)}
-              className="mt-1 w-4 h-4 text-emerald-600 border-neutral-300 dark:border-neutral-700 rounded focus:ring-emerald-500"
-            />
-            <div>
-              <div className="text-sm font-medium text-neutral-900 dark:text-white">Shares data with third parties</div>
-              <div className="text-xs text-neutral-600 dark:text-neutral-400">
-                Service providers, partners, advertisers, etc.
-              </div>
-            </div>
-          </label>
-        </div>
-
-        {/* Preview */}
-        {policy && (
-          <div className="pt-6 border-t border-neutral-200 dark:border-neutral-800">
-            <div className="flex items-center justify-between mb-3">
-              <label className="block text-sm font-medium text-neutral-900 dark:text-white">
-                Your Privacy Policy (Markdown)
-              </label>
-              <div className="flex gap-2">
-                <button
-                  onClick={copyToClipboard}
-                  className="px-4 py-2 bg-neutral-200 dark:bg-neutral-800 hover:bg-neutral-300 dark:hover:bg-neutral-700 text-neutral-900 dark:text-white text-sm font-medium rounded-lg transition-colors flex items-center gap-2"
-                >
-                  {copied ? <CheckCircle className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-                  {copied ? "Copied!" : "Copy"}
-                </button>
-                <button
-                  onClick={downloadPolicy}
-                  className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-medium rounded-lg transition-colors"
-                >
-                  Download
-                </button>
-              </div>
-            </div>
-            <div className="max-h-96 overflow-y-auto p-4 bg-white dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 rounded-lg">
-              <pre className="text-xs text-neutral-900 dark:text-neutral-100 whitespace-pre-wrap font-mono">
-                {policy}
-              </pre>
+          <div>
+            <div className="text-sm font-medium text-neutral-900 dark:text-white">Collects personal data</div>
+            <div className="text-xs text-neutral-600 dark:text-neutral-400">
+              Name, email, phone number, payment info, etc.
             </div>
           </div>
-        )}
+        </label>
 
-        {/* Buttons */}
-        <div className="flex gap-4 pt-4">
-          <button
-            onClick={clearForm}
-            className="px-6 py-3 bg-neutral-200 dark:bg-neutral-800 hover:bg-neutral-300 dark:hover:bg-neutral-700 text-neutral-900 dark:text-white font-medium rounded-lg transition-colors"
-          >
-            Clear
-          </button>
-        </div>
+        <label className="flex cursor-pointer items-start gap-3">
+          <input
+            type="checkbox"
+            checked={usesCookies}
+            onChange={e => setUsesCookies(e.target.checked)}
+            className="mt-1 size-4 rounded border-neutral-300 text-emerald-600 focus:ring-emerald-500 dark:border-neutral-700"
+          />
+          <div>
+            <div className="text-sm font-medium text-neutral-900 dark:text-white">Uses cookies</div>
+            <div className="text-xs text-neutral-600 dark:text-neutral-400">Session cookies, tracking cookies, etc.</div>
+          </div>
+        </label>
+
+        <label className="flex cursor-pointer items-start gap-3">
+          <input
+            type="checkbox"
+            checked={usesAnalytics}
+            onChange={e => setUsesAnalytics(e.target.checked)}
+            className="mt-1 size-4 rounded border-neutral-300 text-emerald-600 focus:ring-emerald-500 dark:border-neutral-700"
+          />
+          <div>
+            <div className="text-sm font-medium text-neutral-900 dark:text-white">Uses analytics</div>
+            <div className="text-xs text-neutral-600 dark:text-neutral-400">Google Analytics, Rybbit, Plausible, etc.</div>
+          </div>
+        </label>
+
+        <label className="flex cursor-pointer items-start gap-3">
+          <input
+            type="checkbox"
+            checked={sharesData}
+            onChange={e => setSharesData(e.target.checked)}
+            className="mt-1 size-4 rounded border-neutral-300 text-emerald-600 focus:ring-emerald-500 dark:border-neutral-700"
+          />
+          <div>
+            <div className="text-sm font-medium text-neutral-900 dark:text-white">Shares data with third parties</div>
+            <div className="text-xs text-neutral-600 dark:text-neutral-400">
+              Service providers, partners, advertisers, etc.
+            </div>
+          </div>
+        </label>
       </div>
 
-      {/* CTA */}
-      <div className="border-t border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 py-20 -mx-6 mt-16">
-        <div className="max-w-4xl mx-auto px-6 text-center">
-          <h2 className="text-3xl md:text-4xl font-bold text-neutral-900 dark:text-white mb-4">
-            Privacy-first analytics with Rybbit
-          </h2>
-          <p className="text-lg text-neutral-600 dark:text-neutral-400 mb-8 max-w-2xl mx-auto">
-            No cookies, no tracking, full GDPR compliance. Get powerful analytics without compromising your users' privacy.
-          </p>
-          <TrackedButton
-            href="https://app.rybbit.io/signup"
-            eventName="signup"
-            eventProps={{ location: "privacy_policy_builder_cta" }}
-            className="inline-block bg-emerald-600 hover:bg-emerald-500 text-white font-semibold px-10 py-4 text-lg rounded-lg shadow-lg shadow-emerald-900/20 transform hover:-translate-y-0.5 transition-all duration-200"
-          >
-            Start tracking for free
-          </TrackedButton>
+      {/* Preview */}
+      {policy && (
+        <div className="border-t border-neutral-200 pt-6 dark:border-neutral-800">
+          <div className="mb-3 flex items-center justify-between gap-4">
+            <span className="text-sm font-medium text-neutral-900 dark:text-white">Your Privacy Policy (Markdown)</span>
+            <div className="flex gap-2">
+              <CopyButton value={policy} copiedLabel="Copied!" />
+              <ToolButton onClick={downloadPolicy}>Download</ToolButton>
+            </div>
+          </div>
+          <div className="max-h-96 overflow-y-auto rounded-md border border-neutral-200 bg-neutral-50 p-4 dark:border-neutral-800 dark:bg-neutral-900/50">
+            <pre className="whitespace-pre-wrap font-mono text-xs text-neutral-900 dark:text-neutral-100">{policy}</pre>
+          </div>
         </div>
+      )}
+
+      {/* Buttons */}
+      <div className="flex gap-4 pt-4">
+        <ToolButton variant="secondary" onClick={clearForm}>
+          Clear
+        </ToolButton>
       </div>
     </div>
   );

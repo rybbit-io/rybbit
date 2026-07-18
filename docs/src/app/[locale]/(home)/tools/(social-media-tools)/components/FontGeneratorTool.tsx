@@ -1,7 +1,7 @@
 "use client";
 
-import { CheckCircle, Copy } from "lucide-react";
 import { useState } from "react";
+import { CopyButton, ToolCallout, ToolField, ToolTextarea } from "../../components/tool-ui";
 
 interface FontStyle {
   name: string;
@@ -1648,17 +1648,6 @@ interface FontGeneratorToolProps {
 
 export function FontGeneratorTool({ platformName, characterLimit }: FontGeneratorToolProps) {
   const [inputText, setInputText] = useState("");
-  const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
-
-  const copyToClipboard = async (text: string, index: number) => {
-    try {
-      await navigator.clipboard.writeText(text);
-      setCopiedIndex(index);
-      setTimeout(() => setCopiedIndex(null), 2000);
-    } catch (err) {
-      console.error("Failed to copy:", err);
-    }
-  };
 
   const transformedTexts = fontStyles.map(style => ({
     ...style,
@@ -1666,74 +1655,56 @@ export function FontGeneratorTool({ platformName, characterLimit }: FontGenerato
     length: inputText ? style.transform(inputText).length : 0,
   }));
 
+  const overLimit = Boolean(characterLimit && inputText && inputText.length > characterLimit);
+
   return (
     <div className="space-y-6">
-      <div>
-        <label className="block text-sm font-medium text-neutral-900 dark:text-white mb-2">
-          Enter your text {platformName && `for ${platformName}`}
-        </label>
-        <textarea
+      <ToolField
+        label={`Enter your text${platformName ? ` for ${platformName}` : ""}`}
+        htmlFor="font-input"
+        hint={
+          characterLimit && inputText ? (
+            <span className={overLimit ? "text-red-600 dark:text-red-400" : undefined}>
+              {inputText.length} / {characterLimit} characters
+              {overLimit && ` (${inputText.length - characterLimit} over limit)`}
+            </span>
+          ) : undefined
+        }
+      >
+        <ToolTextarea
+          id="font-input"
           value={inputText}
           onChange={e => setInputText(e.target.value)}
-          placeholder="Type your text here..."
+          placeholder="Type your text here…"
           rows={3}
-          className="w-full px-4 py-3 bg-white dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 rounded-lg text-neutral-900 dark:text-white placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 resize-none"
+          className="resize-none"
         />
-        {characterLimit && inputText && (
-          <p
-            className={`text-xs mt-1 ${
-              inputText.length > characterLimit
-                ? "text-red-600 dark:text-red-400"
-                : "text-neutral-500 dark:text-neutral-400"
-            }`}
-          >
-            {inputText.length} / {characterLimit} characters
-            {inputText.length > characterLimit && ` (${inputText.length - characterLimit} over limit)`}
-          </p>
-        )}
-      </div>
+      </ToolField>
 
-      {inputText && (
-        <div className="space-y-3">
-          <h3 className="text-lg font-semibold text-neutral-900 dark:text-white">Font Styles</h3>
+      {inputText ? (
+        <div className="space-y-3 border-t border-neutral-200 pt-6 dark:border-neutral-800">
+          <h3 className="text-base font-semibold text-neutral-900 dark:text-white">Font styles</h3>
           <div className="grid gap-3">
             {transformedTexts.map((style, index) => (
               <div
                 key={index}
-                className="p-4 bg-white dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 rounded-lg hover:border-emerald-500/40 dark:hover:border-emerald-500/30 transition-colors"
+                className="rounded-md border border-neutral-200 bg-neutral-50 p-4 transition-colors hover:border-neutral-300 dark:border-neutral-800 dark:bg-neutral-900/50 dark:hover:border-neutral-700"
               >
                 <div className="flex items-start justify-between gap-4">
-                  <div className="flex-1 min-w-0">
-                    <p className="text-xs font-medium text-neutral-500 dark:text-neutral-400 mb-1">{style.name}</p>
-                    <p className="text-neutral-900 dark:text-white break-words font-medium text-lg">{style.result}</p>
+                  <div className="min-w-0 flex-1">
+                    <p className="mb-1 text-xs font-medium text-neutral-500 dark:text-neutral-400">{style.name}</p>
+                    <p className="break-words text-lg font-medium text-neutral-900 dark:text-white">{style.result}</p>
                   </div>
-                  <button
-                    onClick={() => copyToClipboard(style.result, index)}
-                    className="flex-shrink-0 px-3 py-1.5 bg-neutral-200 dark:bg-neutral-700 hover:bg-neutral-300 dark:hover:bg-neutral-600 text-neutral-900 dark:text-white text-sm rounded-lg transition-colors flex items-center gap-2"
-                  >
-                    {copiedIndex === index ? (
-                      <>
-                        <CheckCircle className="w-4 h-4" />
-                        Copied
-                      </>
-                    ) : (
-                      <>
-                        <Copy className="w-4 h-4" />
-                        Copy
-                      </>
-                    )}
-                  </button>
+                  <CopyButton value={style.result} className="shrink-0" />
                 </div>
               </div>
             ))}
           </div>
         </div>
-      )}
-
-      {!inputText && (
-        <div className="text-center py-12 text-neutral-500 dark:text-neutral-400">
-          Enter text above to see it transformed into different font styles
-        </div>
+      ) : (
+        <ToolCallout variant="info" icon={null} className="justify-center text-center">
+          Enter text above to see it transformed into different font styles.
+        </ToolCallout>
       )}
     </div>
   );

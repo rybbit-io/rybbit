@@ -1,8 +1,17 @@
 "use client";
 
-import { CheckCircle, Copy, Loader2 } from "lucide-react";
 import { useState } from "react";
 import type { PageNamePlatformConfig } from "./page-name-platform-configs";
+import {
+  CopyButton,
+  ToolButton,
+  ToolCallout,
+  ToolField,
+  ToolInput,
+  ToolResultDivider,
+  ToolSelect,
+  ToolTextarea,
+} from "../../components/tool-ui";
 
 interface PageNameGeneratorProps {
   platform: PageNamePlatformConfig;
@@ -23,7 +32,6 @@ export default function PageNameGenerator({
   const [names, setNames] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
-  const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
   const [remainingRequests, setRemainingRequests] = useState<number | null>(
     null
   );
@@ -73,146 +81,83 @@ export default function PageNameGenerator({
     }
   };
 
-  const copyToClipboard = async (text: string, index: number) => {
-    try {
-      await navigator.clipboard.writeText(text);
-      setCopiedIndex(index);
-      setTimeout(() => setCopiedIndex(null), 2000);
-    } catch (err) {
-      console.error("Failed to copy:", err);
-    }
-  };
-
   return (
     <div className="space-y-6">
-      <div>
-        <label
-          htmlFor="topic"
-          className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-2"
-        >
-          {platform.pageType} Topic/Purpose
-        </label>
-        <textarea
-          id="topic"
+      <ToolField
+        label={`${platform.pageType} Topic/Purpose`}
+        htmlFor="pagename-topic"
+        hint={`${topic.length} / 500 characters`}
+      >
+        <ToolTextarea
+          id="pagename-topic"
           rows={3}
-          className="w-full px-4 py-3 bg-white dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 rounded-lg text-neutral-900 dark:text-white placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 resize-y"
+          className="resize-y"
           placeholder={`Describe what your ${platform.pageType.toLowerCase()} is about (e.g., "A gaming community for strategy game players" or "Tech startup focused on AI tools")`}
           value={topic}
-          onChange={(e) => setTopic(e.target.value)}
+          onChange={e => setTopic(e.target.value)}
           maxLength={500}
         />
-        <p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
-          {topic.length} / 500 characters
-        </p>
-      </div>
+      </ToolField>
 
-      <div>
-        <label
-          htmlFor="keywords"
-          className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-2"
-        >
-          Keywords (Optional)
-        </label>
-        <input
-          id="keywords"
+      <ToolField label="Keywords (Optional)" htmlFor="pagename-keywords">
+        <ToolInput
+          id="pagename-keywords"
           type="text"
-          className="w-full px-4 py-3 bg-white dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 rounded-lg text-neutral-900 dark:text-white placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-emerald-500"
           placeholder="Keywords to include (e.g., gaming, tech, creative)"
           value={keywords}
-          onChange={(e) => setKeywords(e.target.value)}
+          onChange={e => setKeywords(e.target.value)}
           maxLength={100}
         />
-      </div>
+      </ToolField>
 
-      <div>
-        <label
-          htmlFor="length"
-          className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-2"
-        >
-          Name Length
-        </label>
-        <select
-          id="length"
-          className="w-full px-4 py-3 bg-white dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 rounded-lg text-neutral-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
-          value={length}
-          onChange={(e) => setLength(e.target.value)}
-        >
-          {lengthOptions.map((option) => (
+      <ToolField label="Name Length" htmlFor="pagename-length">
+        <ToolSelect id="pagename-length" value={length} onChange={e => setLength(e.target.value)}>
+          {lengthOptions.map(option => (
             <option key={option.value} value={option.value}>
               {option.label} - {option.description}
             </option>
           ))}
-        </select>
-      </div>
+        </ToolSelect>
+      </ToolField>
 
-      <button
-        onClick={generateNames}
-        disabled={isLoading || !topic.trim()}
-        className="w-full px-6 py-3 bg-emerald-600 hover:bg-emerald-500 disabled:bg-neutral-400 dark:disabled:bg-neutral-700 text-white font-medium rounded-lg transition-colors flex items-center justify-center gap-2"
-      >
-        {isLoading ? (
-          <>
-            <Loader2 className="w-5 h-5 animate-spin" />
-            Generating Names...
-          </>
-        ) : (
-          "Generate Names"
-        )}
-      </button>
+      <ToolButton onClick={generateNames} loading={isLoading} disabled={!topic.trim()} className="w-full">
+        {isLoading ? "Generating Names..." : "Generate Names"}
+      </ToolButton>
 
       {remainingRequests !== null && (
-        <p className="text-sm text-center text-neutral-600 dark:text-neutral-400">
+        <p className="text-sm text-neutral-500 dark:text-neutral-400">
           {remainingRequests} requests remaining this minute
         </p>
       )}
 
-      {error && (
-        <div className="p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
-          <p className="text-sm text-red-800 dark:text-red-200">{error}</p>
-        </div>
-      )}
+      {error && <ToolCallout variant="error">{error}</ToolCallout>}
 
       {names.length > 0 && (
-        <div className="space-y-4">
-          <h3 className="text-lg font-semibold text-neutral-900 dark:text-white">
+        <ToolResultDivider>
+          <h3 className="text-base font-semibold text-neutral-900 dark:text-white">
             Generated {platform.pageType} Names
           </h3>
           {names.map((name, index) => (
             <div
               key={index}
-              className="p-4 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg"
+              className="rounded-md border border-neutral-200 bg-neutral-50 p-4 dark:border-neutral-800 dark:bg-neutral-900/50"
             >
               <div className="flex items-center justify-between gap-3">
-                <p className="flex-1 text-lg font-medium text-neutral-900 dark:text-white">
-                  {name}
-                </p>
-                <button
-                  onClick={() => copyToClipboard(name, index)}
-                  className="flex-shrink-0 p-2 hover:bg-neutral-100 dark:hover:bg-neutral-700 rounded-lg transition-colors"
-                  title="Copy to clipboard"
-                >
-                  {copiedIndex === index ? (
-                    <CheckCircle className="w-5 h-5 text-emerald-600" />
-                  ) : (
-                    <Copy className="w-5 h-5 text-neutral-600 dark:text-neutral-400" />
-                  )}
-                </button>
+                <p className="flex-1 text-lg font-medium text-neutral-900 dark:text-white">{name}</p>
+                <CopyButton value={name} className="shrink-0" />
               </div>
-              <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">
+              <p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
                 {name.length} characters
-                {platform.characterLimit &&
-                  ` / ${platform.characterLimit} limit`}
+                {platform.characterLimit && ` / ${platform.characterLimit} limit`}
               </p>
             </div>
           ))}
-        </div>
+        </ToolResultDivider>
       )}
 
-      <div className="p-4 bg-neutral-50 dark:bg-neutral-800/50 border border-neutral-200 dark:border-neutral-700 rounded-lg">
-        <p className="text-sm text-neutral-700 dark:text-neutral-300">
-          <strong>Platform Guidelines:</strong> {platform.contextGuidelines}
-        </p>
-      </div>
+      <ToolCallout variant="info" title="Platform Guidelines">
+        {platform.contextGuidelines}
+      </ToolCallout>
     </div>
   );
 }

@@ -1,7 +1,7 @@
 "use client";
 
-import { CheckCircle, Copy, Loader2 } from "lucide-react";
 import { useState } from "react";
+import { CopyButton, ToolButton, ToolCallout, ToolField, ToolInput, ToolSelect, ToolTextarea } from "../components/tool-ui";
 
 interface OGVariation {
   variation: string;
@@ -20,7 +20,6 @@ export function OGTagForm() {
   const [variations, setVariations] = useState<OGVariation[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
-  const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
   const [remainingRequests, setRemainingRequests] = useState<number | null>(null);
 
   const generateOGTags = async () => {
@@ -57,142 +56,95 @@ export function OGTagForm() {
     }
   };
 
-  const copyCode = async (code: string, index: number) => {
-    await navigator.clipboard.writeText(code);
-    setCopiedIndex(index);
-    setTimeout(() => setCopiedIndex(null), 2000);
-  };
-
   return (
     <div className="space-y-6">
-      <div>
-        <label className="block text-sm font-medium text-neutral-900 dark:text-white mb-2">
-          Page Title <span className="text-red-500">*</span>
-        </label>
-        <input
+      <ToolField label="Page Title" htmlFor="og-title" required>
+        <ToolInput
+          id="og-title"
           type="text"
           value={pageTitle}
           onChange={e => setPageTitle(e.target.value)}
           placeholder="e.g., The Ultimate Guide to Web Analytics"
           disabled={isLoading}
-          className="w-full px-4 py-3 bg-white dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 rounded-lg text-neutral-900 dark:text-white placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 disabled:opacity-50"
         />
-      </div>
+      </ToolField>
 
-      <div>
-        <label className="block text-sm font-medium text-neutral-900 dark:text-white mb-2">
-          Page Description <span className="text-red-500">*</span>
-        </label>
-        <textarea
+      <ToolField label="Page Description" htmlFor="og-description" required>
+        <ToolTextarea
+          id="og-description"
           value={pageDescription}
           onChange={e => setPageDescription(e.target.value)}
           placeholder="e.g., Learn how to track website visitors, measure conversions, and grow your business with privacy-focused analytics..."
           disabled={isLoading}
           rows={4}
-          className="w-full px-4 py-3 bg-white dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 rounded-lg text-neutral-900 dark:text-white placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 disabled:opacity-50"
         />
-      </div>
+      </ToolField>
 
-      <div>
-        <label className="block text-sm font-medium text-neutral-900 dark:text-white mb-2">
-          Page Type
-        </label>
-        <select
+      <ToolField label="Page Type" htmlFor="og-type">
+        <ToolSelect
+          id="og-type"
           value={pageType}
           onChange={e => setPageType(e.target.value as typeof pageType)}
           disabled={isLoading}
-          className="w-full px-4 py-3 bg-white dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 rounded-lg text-neutral-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 disabled:opacity-50"
         >
           <option value="website">Website</option>
           <option value="article">Article</option>
           <option value="blog">Blog Post</option>
           <option value="product">Product</option>
-        </select>
-      </div>
+        </ToolSelect>
+      </ToolField>
 
-      {error && (
-        <div className="p-4 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900 rounded-lg">
-          <p className="text-sm text-red-900 dark:text-red-200">{error}</p>
-        </div>
-      )}
+      {error && <ToolCallout variant="error">{error}</ToolCallout>}
 
       {remainingRequests !== null && (
-        <p className="text-sm text-neutral-500 dark:text-neutral-400">
-          {remainingRequests} requests remaining this minute
-        </p>
+        <p className="text-sm text-neutral-500 dark:text-neutral-400">{remainingRequests} requests remaining this minute</p>
       )}
 
-      <button
-        onClick={generateOGTags}
-        disabled={isLoading}
-        className="w-full px-6 py-3 bg-emerald-600 hover:bg-emerald-500 disabled:bg-neutral-400 dark:disabled:bg-neutral-700 text-white font-medium rounded-lg transition-colors flex items-center justify-center gap-2"
-      >
-        {isLoading ? (
-          <>
-            <Loader2 className="w-5 h-5 animate-spin" />
-            Generating OG Tags...
-          </>
-        ) : (
-          "Generate Open Graph Tags"
-        )}
-      </button>
+      <ToolButton onClick={generateOGTags} loading={isLoading} className="w-full">
+        {isLoading ? "Generating OG Tags..." : "Generate Open Graph Tags"}
+      </ToolButton>
 
       {variations.length > 0 && (
-        <div className="pt-6 border-t border-neutral-200 dark:border-neutral-800 space-y-6">
-          <h3 className="text-lg font-semibold text-neutral-900 dark:text-white">Generated Variations</h3>
+        <div className="space-y-6 border-t border-neutral-200 pt-6 dark:border-neutral-800">
+          <h3 className="text-base font-semibold text-neutral-900 dark:text-white">Generated Variations</h3>
           {variations.map((variation, index) => (
             <div
               key={index}
-              className="p-6 bg-white dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 rounded-lg"
+              className="rounded-md border border-neutral-200 bg-neutral-50 p-6 dark:border-neutral-800 dark:bg-neutral-900/50"
             >
-              <div className="flex items-center justify-between mb-4">
-                <h4 className="text-lg font-semibold text-neutral-900 dark:text-white">{variation.variation}</h4>
-                <button
-                  onClick={() => copyCode(variation.htmlCode, index)}
-                  className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-medium rounded-lg transition-colors flex items-center gap-2"
-                >
-                  {copiedIndex === index ? (
-                    <>
-                      <CheckCircle className="w-4 h-4" />
-                      Copied!
-                    </>
-                  ) : (
-                    <>
-                      <Copy className="w-4 h-4" />
-                      Copy HTML
-                    </>
-                  )}
-                </button>
+              <div className="mb-4 flex items-center justify-between gap-4">
+                <h4 className="text-base font-semibold text-neutral-900 dark:text-white">{variation.variation}</h4>
+                <CopyButton value={variation.htmlCode} variant="primary" label="Copy HTML" copiedLabel="Copied!" className="shrink-0" />
               </div>
 
-              <div className="space-y-3 mb-4">
+              <div className="mb-4 space-y-3">
                 <div>
-                  <p className="text-xs text-neutral-500 dark:text-neutral-400 mb-1">Title</p>
-                  <p className="text-sm text-neutral-900 dark:text-white font-medium">{variation.ogTitle}</p>
+                  <p className="mb-1 text-xs text-neutral-500 dark:text-neutral-400">Title</p>
+                  <p className="text-sm font-medium text-neutral-900 dark:text-white">{variation.ogTitle}</p>
                 </div>
                 <div>
-                  <p className="text-xs text-neutral-500 dark:text-neutral-400 mb-1">Description</p>
+                  <p className="mb-1 text-xs text-neutral-500 dark:text-neutral-400">Description</p>
                   <p className="text-sm text-neutral-900 dark:text-white">{variation.ogDescription}</p>
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <p className="text-xs text-neutral-500 dark:text-neutral-400 mb-1">Type</p>
+                    <p className="mb-1 text-xs text-neutral-500 dark:text-neutral-400">Type</p>
                     <p className="text-sm text-neutral-900 dark:text-white">{variation.ogType}</p>
                   </div>
                   <div>
-                    <p className="text-xs text-neutral-500 dark:text-neutral-400 mb-1">Twitter Card</p>
+                    <p className="mb-1 text-xs text-neutral-500 dark:text-neutral-400">Twitter Card</p>
                     <p className="text-sm text-neutral-900 dark:text-white">{variation.twitterCard}</p>
                   </div>
                 </div>
                 <div>
-                  <p className="text-xs text-neutral-500 dark:text-neutral-400 mb-1">Image Suggestion</p>
+                  <p className="mb-1 text-xs text-neutral-500 dark:text-neutral-400">Image Suggestion</p>
                   <p className="text-sm text-neutral-600 dark:text-neutral-300">{variation.ogImageSuggestion}</p>
                 </div>
               </div>
 
               <div>
-                <p className="text-xs text-neutral-500 dark:text-neutral-400 mb-2">HTML Code</p>
-                <pre className="p-3 bg-neutral-100 dark:bg-neutral-900 border border-neutral-300 dark:border-neutral-700 rounded-lg overflow-x-auto">
+                <p className="mb-2 text-xs text-neutral-500 dark:text-neutral-400">HTML Code</p>
+                <pre className="overflow-x-auto rounded-md border border-neutral-200 bg-neutral-100 p-3 dark:border-neutral-800 dark:bg-neutral-950">
                   <code className="text-xs text-neutral-900 dark:text-neutral-100">{variation.htmlCode}</code>
                 </pre>
               </div>

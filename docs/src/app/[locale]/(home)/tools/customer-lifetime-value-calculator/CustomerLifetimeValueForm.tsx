@@ -1,6 +1,16 @@
 "use client";
 
 import { useState } from "react";
+import {
+  ToolButton,
+  ToolCallout,
+  ToolField,
+  ToolInput,
+  ToolResult,
+  ToolResultDivider,
+  ToolSelect,
+  ToolStat,
+} from "../components/tool-ui";
 
 export function CustomerLifetimeValueForm() {
   const [averageValue, setAverageValue] = useState("");
@@ -73,217 +83,166 @@ export function CustomerLifetimeValueForm() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <label className="block text-sm font-medium text-neutral-900 dark:text-white mb-2">
-          Average Purchase Value ($) <span className="text-red-500">*</span>
-        </label>
-        <input
+      <ToolField
+        label="Average Purchase Value ($)"
+        htmlFor="clv-average-value"
+        required
+        hint="Average amount a customer spends per purchase"
+      >
+        <ToolInput
+          id="clv-average-value"
           type="number"
           value={averageValue}
-          onChange={(e) => setAverageValue(e.target.value)}
-          onKeyPress={(e) => e.key === "Enter" && calculateCLV()}
+          onChange={e => setAverageValue(e.target.value)}
+          onKeyDown={e => e.key === "Enter" && calculateCLV()}
           placeholder="100"
-          className="w-full px-4 py-3 bg-white dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 rounded-lg text-neutral-900 dark:text-white placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-emerald-500"
         />
-        <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">
-          Average amount a customer spends per purchase
-        </p>
-      </div>
+      </ToolField>
 
-      <div>
-        <label className="block text-sm font-medium text-neutral-900 dark:text-white mb-2">
-          Purchase Frequency (per year) <span className="text-red-500">*</span>
-        </label>
-        <input
+      <ToolField
+        label="Purchase Frequency (per year)"
+        htmlFor="clv-purchase-frequency"
+        required
+        hint="Number of purchases per customer per year"
+      >
+        <ToolInput
+          id="clv-purchase-frequency"
           type="number"
           value={purchaseFrequency}
-          onChange={(e) => setPurchaseFrequency(e.target.value)}
-          onKeyPress={(e) => e.key === "Enter" && calculateCLV()}
+          onChange={e => setPurchaseFrequency(e.target.value)}
+          onKeyDown={e => e.key === "Enter" && calculateCLV()}
           placeholder="12"
-          className="w-full px-4 py-3 bg-white dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 rounded-lg text-neutral-900 dark:text-white placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-emerald-500"
         />
-        <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">
-          Number of purchases per customer per year
-        </p>
-      </div>
+      </ToolField>
 
-      <div>
-        <label className="block text-sm font-medium text-neutral-900 dark:text-white mb-2">
-          Customer Lifespan (years) <span className="text-red-500">*</span>
-        </label>
-        <input
+      <ToolField
+        label="Customer Lifespan (years)"
+        htmlFor="clv-lifespan"
+        required
+        hint="Average number of years a customer stays with you"
+      >
+        <ToolInput
+          id="clv-lifespan"
           type="number"
           value={customerLifespan}
-          onChange={(e) => setCustomerLifespan(e.target.value)}
-          onKeyPress={(e) => e.key === "Enter" && calculateCLV()}
+          onChange={e => setCustomerLifespan(e.target.value)}
+          onKeyDown={e => e.key === "Enter" && calculateCLV()}
           placeholder="3"
-          className="w-full px-4 py-3 bg-white dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 rounded-lg text-neutral-900 dark:text-white placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-emerald-500"
         />
-        <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">
-          Average number of years a customer stays with you
-        </p>
-      </div>
+      </ToolField>
 
-      <div>
-        <label className="block text-sm font-medium text-neutral-900 dark:text-white mb-2">
-          Profit Margin (%) <span className="text-red-500">*</span>
-        </label>
-        <input
+      <ToolField
+        label="Profit Margin (%)"
+        htmlFor="clv-margin"
+        required
+        hint="Average profit margin percentage"
+      >
+        <ToolInput
+          id="clv-margin"
           type="number"
           value={profitMargin}
-          onChange={(e) => setProfitMargin(e.target.value)}
-          onKeyPress={(e) => e.key === "Enter" && calculateCLV()}
+          onChange={e => setProfitMargin(e.target.value)}
+          onKeyDown={e => e.key === "Enter" && calculateCLV()}
           placeholder="20"
-          className="w-full px-4 py-3 bg-white dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 rounded-lg text-neutral-900 dark:text-white placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-emerald-500"
         />
-        <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">
-          Average profit margin percentage
-        </p>
-      </div>
+      </ToolField>
 
-      <div>
-        <label className="block text-sm font-medium text-neutral-900 dark:text-white mb-2">
-          Retention Rate (%) <span className="text-red-500">*</span>
-        </label>
-        <input
+      <ToolField
+        label="Retention Rate (%)"
+        htmlFor="clv-retention"
+        required
+        hint={
+          <>
+            Percentage of customers retained annually
+            {churnRate && ` (Churn rate: ${churnRate}%)`}
+          </>
+        }
+      >
+        <ToolInput
+          id="clv-retention"
           type="number"
           value={retentionRate}
-          onChange={(e) => setRetentionRate(e.target.value)}
-          onKeyPress={(e) => e.key === "Enter" && calculateCLV()}
+          onChange={e => setRetentionRate(e.target.value)}
+          onKeyDown={e => e.key === "Enter" && calculateCLV()}
           placeholder="85"
           max="100"
-          className="w-full px-4 py-3 bg-white dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 rounded-lg text-neutral-900 dark:text-white placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-emerald-500"
         />
-        <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">
-          Percentage of customers retained annually
-          {churnRate && ` (Churn rate: ${churnRate}%)`}
-        </p>
-      </div>
+      </ToolField>
 
-      <div>
-        <label className="block text-sm font-medium text-neutral-900 dark:text-white mb-2">
-          Industry
-        </label>
-        <select
-          value={selectedIndustry}
-          onChange={(e) => setSelectedIndustry(e.target.value)}
-          className="w-full px-4 py-3 bg-white dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 rounded-lg text-neutral-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
-        >
-          {Object.keys(industryBenchmarks).map((industry) => (
+      <ToolField label="Industry" htmlFor="clv-industry" hint="Select your industry to compare against benchmarks">
+        <ToolSelect id="clv-industry" value={selectedIndustry} onChange={e => setSelectedIndustry(e.target.value)}>
+          {Object.keys(industryBenchmarks).map(industry => (
             <option key={industry} value={industry}>
               {industry}
             </option>
           ))}
-        </select>
-        <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">
-          Select your industry to compare against benchmarks
-        </p>
-      </div>
+        </ToolSelect>
+      </ToolField>
 
       {clv !== null && (
-        <div className="pt-6 border-t border-neutral-200 dark:border-neutral-800 space-y-4">
-          <div className="px-4 py-6 bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-300 dark:border-emerald-800 rounded-lg text-center">
-            <div className="text-sm text-emerald-700 dark:text-emerald-300 font-medium mb-2">
-              Customer Lifetime Value
-            </div>
-            <div className="text-4xl font-bold text-emerald-600 dark:text-emerald-400">
-              ${clv.toFixed(2)}
-            </div>
-          </div>
+        <ToolResultDivider>
+          <ToolResult label="Customer Lifetime Value" value={`$${clv.toFixed(2)}`} />
 
           {comparison && (
-            <div
-              className={`px-4 py-4 rounded-lg border ${
-                comparison.difference >= 0
-                  ? "bg-emerald-50 dark:bg-emerald-950/30 border-emerald-300 dark:border-emerald-800"
-                  : comparison.difference >= -20
-                  ? "bg-blue-50 dark:bg-blue-950/30 border-blue-200 dark:border-blue-900"
-                  : "bg-orange-50 dark:bg-orange-950/30 border-orange-200 dark:border-orange-900"
-              }`}
+            <ToolCallout
+              variant={comparison.difference >= 0 ? "success" : comparison.difference >= -20 ? "info" : "warning"}
+              icon={null}
+              title={`Industry Benchmark: ${selectedIndustry} — $${comparison.benchmark.toLocaleString()}`}
             >
-              <div className="text-sm font-medium text-neutral-900 dark:text-white mb-2">
-                Industry Benchmark: {selectedIndustry}
-              </div>
-              <div className="text-2xl font-bold text-neutral-900 dark:text-white mb-2">
-                ${comparison.benchmark.toLocaleString()}
-              </div>
-              <div className="text-sm text-neutral-700 dark:text-neutral-300">
-                {comparison.difference >= 0 ? (
-                  <>
-                    Your CLV is{" "}
-                    <span className="font-semibold text-emerald-600 dark:text-emerald-400">
-                      {comparison.difference.toFixed(1)}% above
-                    </span>{" "}
-                    the industry average
-                  </>
-                ) : (
-                  <>
-                    Your CLV is{" "}
-                    <span className="font-semibold text-orange-600 dark:text-orange-400">
-                      {Math.abs(comparison.difference).toFixed(1)}% below
-                    </span>{" "}
-                    the industry average
-                  </>
-                )}
-              </div>
-            </div>
+              {comparison.difference >= 0 ? (
+                <>
+                  Your CLV is{" "}
+                  <span className="font-semibold text-emerald-600 dark:text-emerald-400">
+                    {comparison.difference.toFixed(1)}% above
+                  </span>{" "}
+                  the industry average
+                </>
+              ) : (
+                <>
+                  Your CLV is{" "}
+                  <span className="font-semibold text-amber-600 dark:text-amber-500">
+                    {Math.abs(comparison.difference).toFixed(1)}% below
+                  </span>{" "}
+                  the industry average
+                </>
+              )}
+            </ToolCallout>
           )}
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="px-4 py-3 bg-neutral-50 dark:bg-neutral-900/50 border border-neutral-200 dark:border-neutral-800 rounded-lg">
-              <div className="text-xs text-neutral-500 dark:text-neutral-400 mb-1">
-                Annual Customer Value
-              </div>
-              <div className="text-lg font-semibold text-neutral-900 dark:text-white">
-                $
-                {(
-                  parseFloat(averageValue) *
-                  parseFloat(purchaseFrequency) *
-                  (parseFloat(profitMargin) / 100)
-                ).toFixed(2)}
-              </div>
-            </div>
-            <div className="px-4 py-3 bg-neutral-50 dark:bg-neutral-900/50 border border-neutral-200 dark:border-neutral-800 rounded-lg">
-              <div className="text-xs text-neutral-500 dark:text-neutral-400 mb-1">
-                Total Revenue Potential
-              </div>
-              <div className="text-lg font-semibold text-neutral-900 dark:text-white">
-                $
-                {(
-                  parseFloat(averageValue) *
-                  parseFloat(purchaseFrequency) *
-                  parseFloat(customerLifespan)
-                ).toFixed(2)}
-              </div>
-            </div>
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+            <ToolStat
+              label="Annual Customer Value"
+              value={`$${(
+                parseFloat(averageValue) *
+                parseFloat(purchaseFrequency) *
+                (parseFloat(profitMargin) / 100)
+              ).toFixed(2)}`}
+            />
+            <ToolStat
+              label="Total Revenue Potential"
+              value={`$${(
+                parseFloat(averageValue) *
+                parseFloat(purchaseFrequency) *
+                parseFloat(customerLifespan)
+              ).toFixed(2)}`}
+            />
           </div>
 
-          <div className="px-4 py-3 bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-900 rounded-lg">
-            <div className="text-sm font-medium text-blue-900 dark:text-blue-200 mb-1">
-              CLV:CAC Ratio Guidance
-            </div>
-            <div className="text-xs text-blue-700 dark:text-blue-300">
-              A healthy business should have a CLV that's at least <strong>3x</strong> your
-              Customer Acquisition Cost (CAC). With a CLV of ${clv.toFixed(2)}, your maximum
-              sustainable CAC is approximately <strong>${(clv / 3).toFixed(2)}</strong>.
-            </div>
-          </div>
-        </div>
+          <ToolCallout variant="info" title="CLV:CAC Ratio Guidance">
+            A healthy business should have a CLV that's at least <strong>3x</strong> your Customer Acquisition Cost
+            (CAC). With a CLV of ${clv.toFixed(2)}, your maximum sustainable CAC is approximately{" "}
+            <strong>${(clv / 3).toFixed(2)}</strong>.
+          </ToolCallout>
+        </ToolResultDivider>
       )}
 
-      <div className="flex gap-4 pt-4">
-        <button
-          onClick={calculateCLV}
-          className="flex-1 px-6 py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-medium rounded-lg transition-colors"
-        >
+      <div className="flex gap-3 pt-2">
+        <ToolButton onClick={calculateCLV} className="flex-1">
           Calculate CLV
-        </button>
-        <button
-          onClick={clearForm}
-          className="px-6 py-3 bg-neutral-200 dark:bg-neutral-800 hover:bg-neutral-300 dark:hover:bg-neutral-700 text-neutral-900 dark:text-white font-medium rounded-lg transition-colors"
-        >
+        </ToolButton>
+        <ToolButton variant="secondary" onClick={clearForm}>
           Clear
-        </button>
+        </ToolButton>
       </div>
     </div>
   );

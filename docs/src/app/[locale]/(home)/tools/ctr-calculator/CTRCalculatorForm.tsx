@@ -1,11 +1,21 @@
 "use client";
 
 import { useState } from "react";
+import {
+  ToolButton,
+  ToolCallout,
+  ToolField,
+  ToolInput,
+  ToolResult,
+  ToolResultDivider,
+  ToolSelect,
+  ToolStat,
+} from "../components/tool-ui";
 
 const industryBenchmarks: Record<string, number> = {
   "Search Ads": 3.17,
   "Display Ads": 0.46,
-  "Social Media": 0.90,
+  "Social Media": 0.9,
   "Email Marketing": 2.6,
   "E-commerce": 2.69,
   "B2B": 2.41,
@@ -34,125 +44,93 @@ export function CTRCalculatorForm() {
   };
 
   return (
-    <>
-      {/* Tool Section */}
-      <div className="mb-16">
-        <div className="space-y-6">
-          {/* Impressions */}
-          <div>
-            <label className="block text-sm font-medium text-neutral-900 dark:text-white mb-2">
-              Total Impressions <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="number"
-              value={impressions}
-              onChange={e => setImpressions(e.target.value)}
-              placeholder="10000"
-              className="w-full px-4 py-3 bg-white dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 rounded-lg text-neutral-900 dark:text-white placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+    <div className="space-y-6">
+      <ToolField label="Total Impressions" htmlFor="ctr-impressions" required hint="How many times your ad was shown">
+        <ToolInput
+          id="ctr-impressions"
+          type="number"
+          value={impressions}
+          onChange={e => setImpressions(e.target.value)}
+          placeholder="10000"
+        />
+      </ToolField>
+
+      <ToolField label="Total Clicks" htmlFor="ctr-clicks" required hint="How many clicks your ad received">
+        <ToolInput
+          id="ctr-clicks"
+          type="number"
+          value={clicks}
+          onChange={e => setClicks(e.target.value)}
+          placeholder="300"
+        />
+      </ToolField>
+
+      <ToolField
+        label="Industry / Channel"
+        htmlFor="ctr-industry"
+        hint="Select your industry to compare with benchmarks"
+      >
+        <ToolSelect id="ctr-industry" value={industry} onChange={e => setIndustry(e.target.value)}>
+          {Object.keys(industryBenchmarks).map(ind => (
+            <option key={ind} value={ind}>
+              {ind}
+            </option>
+          ))}
+        </ToolSelect>
+      </ToolField>
+
+      {ctr !== null && (
+        <ToolResultDivider>
+          <ToolResult label="Your CTR" value={`${ctr.toFixed(2)}%`} />
+
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+            <ToolStat label={`${industry} Benchmark`} value={`${benchmark.toFixed(2)}%`} />
+            <ToolStat
+              label="vs. Benchmark"
+              value={
+                <span
+                  className={
+                    ctr >= benchmark ? "text-emerald-600 dark:text-emerald-400" : "text-amber-600 dark:text-amber-500"
+                  }
+                >
+                  {ctr >= benchmark ? "+" : ""}
+                  {(((ctr - benchmark) / benchmark) * 100).toFixed(1)}%
+                </span>
+              }
             />
-            <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">How many times your ad was shown</p>
           </div>
 
-          {/* Clicks */}
-          <div>
-            <label className="block text-sm font-medium text-neutral-900 dark:text-white mb-2">
-              Total Clicks <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="number"
-              value={clicks}
-              onChange={e => setClicks(e.target.value)}
-              placeholder="300"
-              className="w-full px-4 py-3 bg-white dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 rounded-lg text-neutral-900 dark:text-white placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-            />
-            <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">How many clicks your ad received</p>
-          </div>
+          <ToolCallout
+            variant={ctr >= benchmark ? "success" : "warning"}
+            icon={null}
+            title={ctr >= benchmark ? "Great job!" : "Room for improvement"}
+          >
+            {ctr >= benchmark ? (
+              <>
+                Your CTR is{" "}
+                <span className="font-semibold text-emerald-600 dark:text-emerald-400">
+                  {(((ctr - benchmark) / benchmark) * 100).toFixed(1)}%
+                </span>{" "}
+                higher than the {industry.toLowerCase()} benchmark.
+              </>
+            ) : (
+              <>
+                Your CTR is{" "}
+                <span className="font-semibold text-amber-600 dark:text-amber-500">
+                  {Math.abs(((ctr - benchmark) / benchmark) * 100).toFixed(1)}%
+                </span>{" "}
+                below the {industry.toLowerCase()} benchmark. Consider improving your ad copy, targeting, or creative.
+              </>
+            )}
+          </ToolCallout>
+        </ToolResultDivider>
+      )}
 
-          {/* Industry */}
-          <div>
-            <label className="block text-sm font-medium text-neutral-900 dark:text-white mb-2">Industry / Channel</label>
-            <select
-              value={industry}
-              onChange={e => setIndustry(e.target.value)}
-              className="w-full px-4 py-3 bg-white dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 rounded-lg text-neutral-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
-            >
-              {Object.keys(industryBenchmarks).map(ind => (
-                <option key={ind} value={ind}>
-                  {ind}
-                </option>
-              ))}
-            </select>
-            <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">
-              Select your industry to compare with benchmarks
-            </p>
-          </div>
-
-          {/* Results */}
-          {ctr !== null && (
-            <div className="pt-6 border-t border-neutral-200 dark:border-neutral-800 space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-neutral-900 dark:text-white mb-2">Your CTR</label>
-                <div className="px-4 py-6 bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-300 dark:border-emerald-800 rounded-lg text-center">
-                  <div className="text-4xl font-bold text-emerald-600 dark:text-emerald-400">{ctr.toFixed(2)}%</div>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-neutral-900 dark:text-white mb-2">
-                    {industry} Benchmark
-                  </label>
-                  <div className="px-4 py-4 bg-neutral-100 dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 rounded-lg text-center">
-                    <div className="text-2xl font-bold text-neutral-900 dark:text-white">{benchmark.toFixed(2)}%</div>
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-neutral-900 dark:text-white mb-2">
-                    vs. Benchmark
-                  </label>
-                  <div className="px-4 py-4 bg-neutral-100 dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 rounded-lg text-center">
-                    <div
-                      className={`text-2xl font-bold ${
-                        ctr >= benchmark
-                          ? "text-emerald-600 dark:text-emerald-400"
-                          : "text-orange-600 dark:text-orange-400"
-                      }`}
-                    >
-                      {ctr >= benchmark ? "+" : ""}
-                      {((ctr - benchmark) / benchmark * 100).toFixed(1)}%
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="p-4 bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-900 rounded-lg">
-                <p className="text-sm text-blue-900 dark:text-blue-200">
-                  {ctr >= benchmark ? (
-                    <>
-                      <strong>Great job!</strong> Your CTR is {((ctr - benchmark) / benchmark * 100).toFixed(1)}% higher than the {industry.toLowerCase()} benchmark.
-                    </>
-                  ) : (
-                    <>
-                      <strong>Room for improvement.</strong> Your CTR is {Math.abs((ctr - benchmark) / benchmark * 100).toFixed(1)}% below the {industry.toLowerCase()} benchmark. Consider improving your ad copy, targeting, or creative.
-                    </>
-                  )}
-                </p>
-              </div>
-            </div>
-          )}
-
-          {/* Buttons */}
-          <div className="flex gap-4 pt-4">
-            <button
-              onClick={clearForm}
-              className="px-6 py-3 bg-neutral-200 dark:bg-neutral-800 hover:bg-neutral-300 dark:hover:bg-neutral-700 text-neutral-900 dark:text-white font-medium rounded-lg transition-colors"
-            >
-              Clear
-            </button>
-          </div>
-        </div>
+      <div className="flex gap-3 pt-2">
+        <ToolButton variant="secondary" onClick={clearForm}>
+          Clear
+        </ToolButton>
       </div>
-    </>
+    </div>
   );
 }

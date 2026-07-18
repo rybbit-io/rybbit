@@ -1,7 +1,14 @@
 "use client";
 
-import { CheckCircle, Copy, Loader2 } from "lucide-react";
 import { useState } from "react";
+import {
+  CopyButton,
+  ToolButton,
+  ToolCallout,
+  ToolField,
+  ToolSelect,
+  ToolTextarea,
+} from "../../components/tool-ui";
 import type { CommentPlatformConfig } from "./comment-platform-configs";
 
 interface AICommentFormProps {
@@ -50,7 +57,6 @@ export default function AICommentForm({ platform }: AICommentFormProps) {
   const [comments, setComments] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
-  const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
   const [remainingRequests, setRemainingRequests] = useState<number | null>(
     null
   );
@@ -98,52 +104,34 @@ export default function AICommentForm({ platform }: AICommentFormProps) {
     }
   };
 
-  const copyToClipboard = async (text: string, index: number) => {
-    try {
-      await navigator.clipboard.writeText(text);
-      setCopiedIndex(index);
-      setTimeout(() => setCopiedIndex(null), 2000);
-    } catch (err) {
-      console.error("Failed to copy:", err);
-    }
-  };
-
   return (
     <div className="space-y-6">
-      <div>
-        <label
-          htmlFor="original-content"
-          className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-2"
-        >
-          Original Content
-        </label>
-        <textarea
-          id="original-content"
+      <ToolField
+        label="Original Content"
+        htmlFor="comment-original-content"
+        hint={
+          <>
+            {originalContent.length}
+            {platform.characterLimit && ` / ${platform.characterLimit}`}{" "}
+            characters
+          </>
+        }
+      >
+        <ToolTextarea
+          id="comment-original-content"
           rows={6}
-          className="w-full px-4 py-3 bg-white dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 rounded-lg text-neutral-900 dark:text-white placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 resize-y"
+          className="resize-y"
           placeholder={`Paste the ${platform.name} post or content you want to comment on...`}
           value={originalContent}
           onChange={(e) => setOriginalContent(e.target.value)}
           maxLength={platform.characterLimit || 10000}
         />
-        <p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
-          {originalContent.length}
-          {platform.characterLimit && ` / ${platform.characterLimit}`}{" "}
-          characters
-        </p>
-      </div>
+      </ToolField>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div>
-          <label
-            htmlFor="tone"
-            className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-2"
-          >
-            Tone
-          </label>
-          <select
-            id="tone"
-            className="w-full px-4 py-3 bg-white dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 rounded-lg text-neutral-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+        <ToolField label="Tone" htmlFor="comment-tone">
+          <ToolSelect
+            id="comment-tone"
             value={tone}
             onChange={(e) => setTone(e.target.value)}
           >
@@ -152,19 +140,12 @@ export default function AICommentForm({ platform }: AICommentFormProps) {
                 {option.label} - {option.description}
               </option>
             ))}
-          </select>
-        </div>
+          </ToolSelect>
+        </ToolField>
 
-        <div>
-          <label
-            htmlFor="length"
-            className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-2"
-          >
-            Length
-          </label>
-          <select
-            id="length"
-            className="w-full px-4 py-3 bg-white dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 rounded-lg text-neutral-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+        <ToolField label="Length" htmlFor="comment-length">
+          <ToolSelect
+            id="comment-length"
             value={length}
             onChange={(e) => setLength(e.target.value)}
           >
@@ -173,64 +154,44 @@ export default function AICommentForm({ platform }: AICommentFormProps) {
                 {option.label} - {option.description}
               </option>
             ))}
-          </select>
-        </div>
+          </ToolSelect>
+        </ToolField>
       </div>
 
-      <button
+      <ToolButton
         onClick={generateComments}
-        disabled={isLoading || !originalContent.trim()}
-        className="w-full px-6 py-3 bg-emerald-600 hover:bg-emerald-500 disabled:bg-neutral-400 dark:disabled:bg-neutral-700 text-white font-medium rounded-lg transition-colors flex items-center justify-center gap-2"
+        loading={isLoading}
+        disabled={!originalContent.trim()}
+        className="w-full"
       >
-        {isLoading ? (
-          <>
-            <Loader2 className="w-5 h-5 animate-spin" />
-            Generating Comments...
-          </>
-        ) : (
-          "Generate Comments"
-        )}
-      </button>
+        {isLoading ? "Generating Comments..." : "Generate Comments"}
+      </ToolButton>
 
       {remainingRequests !== null && (
-        <p className="text-sm text-center text-neutral-600 dark:text-neutral-400">
+        <p className="text-center text-sm text-neutral-500 dark:text-neutral-400">
           {remainingRequests} requests remaining this minute
         </p>
       )}
 
-      {error && (
-        <div className="p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
-          <p className="text-sm text-red-800 dark:text-red-200">{error}</p>
-        </div>
-      )}
+      {error && <ToolCallout variant="error">{error}</ToolCallout>}
 
       {comments.length > 0 && (
-        <div className="space-y-4">
-          <h3 className="text-lg font-semibold text-neutral-900 dark:text-white">
+        <div className="space-y-3 border-t border-neutral-200 pt-6 dark:border-neutral-800">
+          <h3 className="text-base font-semibold text-neutral-900 dark:text-white">
             Generated Comments
           </h3>
           {comments.map((comment, index) => (
             <div
               key={index}
-              className="p-4 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg"
+              className="rounded-md border border-neutral-200 bg-neutral-50 p-4 dark:border-neutral-800 dark:bg-neutral-900/50"
             >
-              <div className="flex items-start justify-between gap-3 mb-2">
-                <p className="flex-1 text-neutral-900 dark:text-white whitespace-pre-wrap">
+              <div className="flex items-start justify-between gap-4">
+                <p className="flex-1 whitespace-pre-wrap text-neutral-900 dark:text-white">
                   {comment}
                 </p>
-                <button
-                  onClick={() => copyToClipboard(comment, index)}
-                  className="flex-shrink-0 p-2 hover:bg-neutral-100 dark:hover:bg-neutral-700 rounded-lg transition-colors"
-                  title="Copy to clipboard"
-                >
-                  {copiedIndex === index ? (
-                    <CheckCircle className="w-5 h-5 text-emerald-600" />
-                  ) : (
-                    <Copy className="w-5 h-5 text-neutral-600 dark:text-neutral-400" />
-                  )}
-                </button>
+                <CopyButton value={comment} className="shrink-0" />
               </div>
-              <p className="text-xs text-neutral-500 dark:text-neutral-400">
+              <p className="mt-2 text-xs text-neutral-500 dark:text-neutral-400">
                 {comment.length} characters
               </p>
             </div>
@@ -238,11 +199,9 @@ export default function AICommentForm({ platform }: AICommentFormProps) {
         </div>
       )}
 
-      <div className="p-4 bg-neutral-50 dark:bg-neutral-800/50 border border-neutral-200 dark:border-neutral-700 rounded-lg">
-        <p className="text-sm text-neutral-700 dark:text-neutral-300">
-          <strong>Platform Context:</strong> {platform.contextGuidelines}
-        </p>
-      </div>
+      <ToolCallout variant="info" title="Platform Context">
+        {platform.contextGuidelines}
+      </ToolCallout>
     </div>
   );
 }

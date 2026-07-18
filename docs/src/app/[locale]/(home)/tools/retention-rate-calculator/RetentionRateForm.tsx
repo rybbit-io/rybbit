@@ -1,6 +1,16 @@
 "use client";
 
 import { useState } from "react";
+import {
+  ToolButton,
+  ToolCallout,
+  ToolField,
+  ToolInput,
+  ToolResult,
+  ToolResultDivider,
+  ToolSelect,
+  ToolStat,
+} from "../components/tool-ui";
 
 export function RetentionRateForm() {
   const [customersStart, setCustomersStart] = useState("");
@@ -54,203 +64,140 @@ export function RetentionRateForm() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <label className="block text-sm font-medium text-neutral-900 dark:text-white mb-2">
-          Customers at Start of Period <span className="text-red-500">*</span>
-        </label>
-        <input
+      <ToolField
+        label="Customers at Start of Period"
+        htmlFor="rr-start"
+        required
+        hint="Number of customers at the beginning of the period"
+      >
+        <ToolInput
+          id="rr-start"
           type="number"
           value={customersStart}
-          onChange={(e) => setCustomersStart(e.target.value)}
-          onKeyPress={(e) => e.key === "Enter" && calculateRetentionRate()}
+          onChange={e => setCustomersStart(e.target.value)}
+          onKeyDown={e => e.key === "Enter" && calculateRetentionRate()}
           placeholder="1000"
-          className="w-full px-4 py-3 bg-white dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 rounded-lg text-neutral-900 dark:text-white placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-emerald-500"
         />
-        <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">
-          Number of customers at the beginning of the period
-        </p>
-      </div>
+      </ToolField>
 
-      <div>
-        <label className="block text-sm font-medium text-neutral-900 dark:text-white mb-2">
-          Customers at End of Period <span className="text-red-500">*</span>
-        </label>
-        <input
+      <ToolField
+        label="Customers at End of Period"
+        htmlFor="rr-end"
+        required
+        hint="Number of customers at the end of the period"
+      >
+        <ToolInput
+          id="rr-end"
           type="number"
           value={customersEnd}
-          onChange={(e) => setCustomersEnd(e.target.value)}
-          onKeyPress={(e) => e.key === "Enter" && calculateRetentionRate()}
+          onChange={e => setCustomersEnd(e.target.value)}
+          onKeyDown={e => e.key === "Enter" && calculateRetentionRate()}
           placeholder="920"
-          className="w-full px-4 py-3 bg-white dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 rounded-lg text-neutral-900 dark:text-white placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-emerald-500"
         />
-        <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">
-          Number of customers at the end of the period
-        </p>
-      </div>
+      </ToolField>
 
-      <div>
-        <label className="block text-sm font-medium text-neutral-900 dark:text-white mb-2">
-          New Customers Acquired <span className="text-red-500">*</span>
-        </label>
-        <input
+      <ToolField
+        label="New Customers Acquired"
+        htmlFor="rr-new"
+        required
+        hint="Number of new customers acquired during the period"
+      >
+        <ToolInput
+          id="rr-new"
           type="number"
           value={newCustomers}
-          onChange={(e) => setNewCustomers(e.target.value)}
-          onKeyPress={(e) => e.key === "Enter" && calculateRetentionRate()}
+          onChange={e => setNewCustomers(e.target.value)}
+          onKeyDown={e => e.key === "Enter" && calculateRetentionRate()}
           placeholder="150"
-          className="w-full px-4 py-3 bg-white dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 rounded-lg text-neutral-900 dark:text-white placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-emerald-500"
         />
-        <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">
-          Number of new customers acquired during the period
-        </p>
-      </div>
+      </ToolField>
 
-      <div>
-        <label className="block text-sm font-medium text-neutral-900 dark:text-white mb-2">
-          Industry
-        </label>
-        <select
-          value={selectedIndustry}
-          onChange={(e) => setSelectedIndustry(e.target.value)}
-          className="w-full px-4 py-3 bg-white dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 rounded-lg text-neutral-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
-        >
-          {Object.keys(industryBenchmarks).map((industry) => (
+      <ToolField label="Industry" htmlFor="rr-industry" hint="Select your industry to compare against benchmarks">
+        <ToolSelect id="rr-industry" value={selectedIndustry} onChange={e => setSelectedIndustry(e.target.value)}>
+          {Object.keys(industryBenchmarks).map(industry => (
             <option key={industry} value={industry}>
               {industry}
             </option>
           ))}
-        </select>
-        <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">
-          Select your industry to compare against benchmarks
-        </p>
-      </div>
+        </ToolSelect>
+      </ToolField>
 
       {retentionRate !== null && (
-        <div className="pt-6 border-t border-neutral-200 dark:border-neutral-800 space-y-4">
-          <div className="px-4 py-6 bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-300 dark:border-emerald-800 rounded-lg text-center">
-            <div className="text-sm text-emerald-700 dark:text-emerald-300 font-medium mb-2">
-              Retention Rate
-            </div>
-            <div className="text-4xl font-bold text-emerald-600 dark:text-emerald-400">
-              {retentionRate.toFixed(2)}%
-            </div>
-            <div className="text-xs text-emerald-700 dark:text-emerald-300 mt-2">
-              Churn Rate: {(100 - retentionRate).toFixed(2)}%
-            </div>
-          </div>
+        <ToolResultDivider>
+          <ToolResult
+            label="Retention Rate"
+            value={`${retentionRate.toFixed(2)}%`}
+            sub={`Churn Rate: ${(100 - retentionRate).toFixed(2)}%`}
+          />
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
             {monthlyComparison && (
-              <div
-                className={`px-4 py-4 rounded-lg border ${
-                  monthlyComparison.difference >= 0
-                    ? "bg-emerald-50 dark:bg-emerald-950/30 border-emerald-300 dark:border-emerald-800"
-                    : "bg-orange-50 dark:bg-orange-950/30 border-orange-200 dark:border-orange-900"
-                }`}
+              <ToolCallout
+                variant={monthlyComparison.difference >= 0 ? "success" : "warning"}
+                icon={null}
+                title={`Monthly Benchmark — ${monthlyComparison.benchmark}%`}
               >
-                <div className="text-sm font-medium text-neutral-900 dark:text-white mb-2">
-                  Monthly Benchmark
-                </div>
-                <div className="text-2xl font-bold text-neutral-900 dark:text-white mb-2">
-                  {monthlyComparison.benchmark}%
-                </div>
-                <div className="text-sm text-neutral-700 dark:text-neutral-300">
-                  {monthlyComparison.difference >= 0 ? (
-                    <>
-                      <span className="font-semibold text-emerald-600 dark:text-emerald-400">
-                        {monthlyComparison.difference.toFixed(1)}%
-                      </span>{" "}
-                      above average
-                    </>
-                  ) : (
-                    <>
-                      <span className="font-semibold text-orange-600 dark:text-orange-400">
-                        {Math.abs(monthlyComparison.difference).toFixed(1)}%
-                      </span>{" "}
-                      below average
-                    </>
-                  )}
-                </div>
-              </div>
+                {monthlyComparison.difference >= 0 ? (
+                  <>
+                    <span className="font-semibold text-emerald-600 dark:text-emerald-400">
+                      {monthlyComparison.difference.toFixed(1)}%
+                    </span>{" "}
+                    above average
+                  </>
+                ) : (
+                  <>
+                    <span className="font-semibold text-amber-600 dark:text-amber-500">
+                      {Math.abs(monthlyComparison.difference).toFixed(1)}%
+                    </span>{" "}
+                    below average
+                  </>
+                )}
+              </ToolCallout>
             )}
 
             {annualComparison && (
-              <div
-                className={`px-4 py-4 rounded-lg border ${
-                  annualComparison.difference >= 0
-                    ? "bg-emerald-50 dark:bg-emerald-950/30 border-emerald-300 dark:border-emerald-800"
-                    : "bg-orange-50 dark:bg-orange-950/30 border-orange-200 dark:border-orange-900"
-                }`}
+              <ToolCallout
+                variant={annualComparison.difference >= 0 ? "success" : "warning"}
+                icon={null}
+                title={`Annual Benchmark — ${annualComparison.benchmark}%`}
               >
-                <div className="text-sm font-medium text-neutral-900 dark:text-white mb-2">
-                  Annual Benchmark
-                </div>
-                <div className="text-2xl font-bold text-neutral-900 dark:text-white mb-2">
-                  {annualComparison.benchmark}%
-                </div>
-                <div className="text-sm text-neutral-700 dark:text-neutral-300">
-                  {annualComparison.difference >= 0 ? (
-                    <>
-                      <span className="font-semibold text-emerald-600 dark:text-emerald-400">
-                        {annualComparison.difference.toFixed(1)}%
-                      </span>{" "}
-                      above average
-                    </>
-                  ) : (
-                    <>
-                      <span className="font-semibold text-orange-600 dark:text-orange-400">
-                        {Math.abs(annualComparison.difference).toFixed(1)}%
-                      </span>{" "}
-                      below average
-                    </>
-                  )}
-                </div>
-              </div>
+                {annualComparison.difference >= 0 ? (
+                  <>
+                    <span className="font-semibold text-emerald-600 dark:text-emerald-400">
+                      {annualComparison.difference.toFixed(1)}%
+                    </span>{" "}
+                    above average
+                  </>
+                ) : (
+                  <>
+                    <span className="font-semibold text-amber-600 dark:text-amber-500">
+                      {Math.abs(annualComparison.difference).toFixed(1)}%
+                    </span>{" "}
+                    below average
+                  </>
+                )}
+              </ToolCallout>
             )}
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="px-4 py-3 bg-neutral-50 dark:bg-neutral-900/50 border border-neutral-200 dark:border-neutral-800 rounded-lg">
-              <div className="text-xs text-neutral-500 dark:text-neutral-400 mb-1">
-                Starting Customers
-              </div>
-              <div className="text-lg font-semibold text-neutral-900 dark:text-white">
-                {parseFloat(customersStart).toLocaleString()}
-              </div>
-            </div>
-            <div className="px-4 py-3 bg-neutral-50 dark:bg-neutral-900/50 border border-neutral-200 dark:border-neutral-800 rounded-lg">
-              <div className="text-xs text-neutral-500 dark:text-neutral-400 mb-1">
-                Ending Customers
-              </div>
-              <div className="text-lg font-semibold text-neutral-900 dark:text-white">
-                {parseFloat(customersEnd).toLocaleString()}
-              </div>
-            </div>
-            <div className="px-4 py-3 bg-neutral-50 dark:bg-neutral-900/50 border border-neutral-200 dark:border-neutral-800 rounded-lg">
-              <div className="text-xs text-neutral-500 dark:text-neutral-400 mb-1">
-                Retained Customers
-              </div>
-              <div className="text-lg font-semibold text-neutral-900 dark:text-white">
-                {(parseFloat(customersEnd) - parseFloat(newCustomers)).toLocaleString()}
-              </div>
-            </div>
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+            <ToolStat label="Starting Customers" value={parseFloat(customersStart).toLocaleString()} />
+            <ToolStat label="Ending Customers" value={parseFloat(customersEnd).toLocaleString()} />
+            <ToolStat
+              label="Retained Customers"
+              value={(parseFloat(customersEnd) - parseFloat(newCustomers)).toLocaleString()}
+            />
           </div>
-        </div>
+        </ToolResultDivider>
       )}
 
-      <div className="flex gap-4 pt-4">
-        <button
-          onClick={calculateRetentionRate}
-          className="flex-1 px-6 py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-medium rounded-lg transition-colors"
-        >
+      <div className="flex gap-3 pt-2">
+        <ToolButton onClick={calculateRetentionRate} className="flex-1">
           Calculate Retention Rate
-        </button>
-        <button
-          onClick={clearForm}
-          className="px-6 py-3 bg-neutral-200 dark:bg-neutral-800 hover:bg-neutral-300 dark:hover:bg-neutral-700 text-neutral-900 dark:text-white font-medium rounded-lg transition-colors"
-        >
+        </ToolButton>
+        <ToolButton variant="secondary" onClick={clearForm}>
           Clear
-        </button>
+        </ToolButton>
       </div>
     </div>
   );

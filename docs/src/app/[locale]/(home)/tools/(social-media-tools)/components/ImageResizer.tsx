@@ -5,6 +5,7 @@ import Cropper, { Area } from "react-easy-crop";
 import { Upload, Download, RotateCw, ZoomIn, Image as ImageIcon, X } from "lucide-react";
 import { ImageResizerPlatformConfig } from "./image-resizer-platform-configs";
 import getCroppedImg from "./image-resizer-utils";
+import { ToolButton, ToolCallout, ToolField } from "../../components/tool-ui";
 
 interface ImageResizerProps {
   platform: ImageResizerPlatformConfig;
@@ -84,19 +85,16 @@ export default function ImageResizer({ platform }: ImageResizerProps) {
   return (
     <div className="space-y-8">
       {/* Controls Section */}
-      <div className="space-y-4">
-        <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300">
-          Select Image Type
-        </label>
+      <ToolField label="Select Image Type">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           {platform.dimensions.map((dim, index) => (
             <button
               key={index}
               onClick={() => setSelectedDimensionIndex(index)}
-              className={`p-3 rounded-lg border text-left transition-all ${
+              className={`p-3 rounded-md border text-left transition-colors ${
                 selectedDimensionIndex === index
-                  ? "border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20 ring-1 ring-emerald-500"
-                  : "border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 hover:border-emerald-300 dark:hover:border-emerald-700"
+                  ? "border-emerald-500 bg-emerald-50 dark:bg-emerald-950/25 ring-1 ring-emerald-500"
+                  : "border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900/50 hover:border-emerald-300 dark:hover:border-emerald-700"
               }`}
             >
               <div className="font-medium text-neutral-900 dark:text-white">
@@ -113,10 +111,10 @@ export default function ImageResizer({ platform }: ImageResizerProps) {
             </button>
           ))}
         </div>
-      </div>
+      </ToolField>
 
       {/* Editor Section */}
-      <div className="bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl overflow-hidden">
+      <div className="bg-white dark:bg-neutral-900/50 border border-neutral-200 dark:border-neutral-800 rounded-lg overflow-hidden">
         {!imageSrc ? (
           <div 
             className="h-80 flex flex-col items-center justify-center bg-neutral-50 dark:bg-neutral-900/50 cursor-pointer hover:bg-neutral-100 dark:hover:bg-neutral-900 transition-colors border-2 border-dashed border-neutral-300 dark:border-neutral-700 m-4 rounded-lg"
@@ -163,7 +161,7 @@ export default function ImageResizer({ platform }: ImageResizerProps) {
             </div>
 
             {/* Editing Controls */}
-            <div className="p-6 space-y-6 border-t border-neutral-200 dark:border-neutral-700">
+            <div className="p-6 space-y-6 border-t border-neutral-200 dark:border-neutral-800">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-2">
                   <div className="flex justify-between text-sm text-neutral-600 dark:text-neutral-400">
@@ -180,7 +178,7 @@ export default function ImageResizer({ platform }: ImageResizerProps) {
                     step={0.1}
                     aria-labelledby="Zoom"
                     onChange={(e) => setZoom(Number(e.target.value))}
-                    className="w-full h-2 bg-neutral-200 dark:bg-neutral-700 rounded-lg appearance-none cursor-pointer accent-emerald-600"
+                    className="w-full h-2 bg-neutral-200 dark:bg-neutral-800 rounded-md appearance-none cursor-pointer accent-emerald-600"
                   />
                 </div>
 
@@ -199,49 +197,27 @@ export default function ImageResizer({ platform }: ImageResizerProps) {
                     step={1}
                     aria-labelledby="Rotation"
                     onChange={(e) => setRotation(Number(e.target.value))}
-                    className="w-full h-2 bg-neutral-200 dark:bg-neutral-700 rounded-lg appearance-none cursor-pointer accent-emerald-600"
+                    className="w-full h-2 bg-neutral-200 dark:bg-neutral-800 rounded-md appearance-none cursor-pointer accent-emerald-600"
                   />
                 </div>
               </div>
 
-              <div className="flex items-center justify-between pt-4 border-t border-neutral-200 dark:border-neutral-700">
+              <div className="flex items-center justify-between pt-4 border-t border-neutral-200 dark:border-neutral-800">
                 <div className="text-sm text-neutral-500 dark:text-neutral-400">
                   Output: <span className="font-mono text-neutral-900 dark:text-white">{selectedDimension.width} x {selectedDimension.height}px</span>
                 </div>
-                <button
-                  onClick={onDownload}
-                  disabled={isGenerating}
-                  className="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-medium rounded-lg transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {isGenerating ? (
-                    "Processing..."
-                  ) : (
-                    <>
-                      <Download className="w-4 h-4" /> Download Image
-                    </>
-                  )}
-                </button>
+                <ToolButton onClick={onDownload} loading={isGenerating} icon={Download}>
+                  {isGenerating ? "Processing..." : "Download Image"}
+                </ToolButton>
               </div>
             </div>
           </div>
         )}
       </div>
       
-      <div className="p-4 bg-neutral-50 dark:bg-neutral-800/50 border border-neutral-200 dark:border-neutral-700 rounded-lg">
-        <div className="flex gap-3">
-          <div className="p-2 bg-emerald-100 dark:bg-emerald-900/30 rounded-lg h-fit">
-            <ImageIcon className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
-          </div>
-          <div>
-            <h3 className="text-sm font-medium text-neutral-900 dark:text-white mb-1">
-              Why use this tool?
-            </h3>
-            <p className="text-sm text-neutral-600 dark:text-neutral-400">
-              {platform.educationalContent} This tool ensures your images are perfectly sized to avoid automatic cropping or quality loss.
-            </p>
-          </div>
-        </div>
-      </div>
+      <ToolCallout variant="tip" icon={ImageIcon} title="Why use this tool?">
+        {platform.educationalContent} This tool ensures your images are perfectly sized to avoid automatic cropping or quality loss.
+      </ToolCallout>
     </div>
   );
 }

@@ -1,6 +1,16 @@
 "use client";
 
 import { useState } from "react";
+import {
+  ToolButton,
+  ToolCallout,
+  ToolField,
+  ToolInput,
+  ToolResult,
+  ToolResultDivider,
+  ToolSelect,
+  ToolStat,
+} from "../components/tool-ui";
 
 export function CostPerViewForm() {
   const [spend, setSpend] = useState("");
@@ -50,163 +60,99 @@ export function CostPerViewForm() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <label className="block text-sm font-medium text-neutral-900 dark:text-white mb-2">
-          Total Ad Spend ($) <span className="text-red-500">*</span>
-        </label>
-        <input
+      <ToolField
+        label="Total Ad Spend ($)"
+        htmlFor="cpv-spend"
+        required
+        hint="Total amount spent on video advertising"
+      >
+        <ToolInput
+          id="cpv-spend"
           type="number"
           value={spend}
-          onChange={(e) => setSpend(e.target.value)}
-          onKeyPress={(e) => e.key === "Enter" && calculateCPV()}
+          onChange={e => setSpend(e.target.value)}
+          onKeyDown={e => e.key === "Enter" && calculateCPV()}
           placeholder="1000"
-          className="w-full px-4 py-3 bg-white dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 rounded-lg text-neutral-900 dark:text-white placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-emerald-500"
         />
-        <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">
-          Total amount spent on video advertising
-        </p>
-      </div>
+      </ToolField>
 
-      <div>
-        <label className="block text-sm font-medium text-neutral-900 dark:text-white mb-2">
-          Total Video Views <span className="text-red-500">*</span>
-        </label>
-        <input
+      <ToolField
+        label="Total Video Views"
+        htmlFor="cpv-views"
+        required
+        hint="Number of times your video ad was viewed"
+      >
+        <ToolInput
+          id="cpv-views"
           type="number"
           value={views}
-          onChange={(e) => setViews(e.target.value)}
-          onKeyPress={(e) => e.key === "Enter" && calculateCPV()}
+          onChange={e => setViews(e.target.value)}
+          onKeyDown={e => e.key === "Enter" && calculateCPV()}
           placeholder="15000"
-          className="w-full px-4 py-3 bg-white dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 rounded-lg text-neutral-900 dark:text-white placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-emerald-500"
         />
-        <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">
-          Number of times your video ad was viewed
-        </p>
-      </div>
+      </ToolField>
 
-      <div>
-        <label className="block text-sm font-medium text-neutral-900 dark:text-white mb-2">
-          Platform
-        </label>
-        <select
-          value={selectedPlatform}
-          onChange={(e) => setSelectedPlatform(e.target.value)}
-          className="w-full px-4 py-3 bg-white dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 rounded-lg text-neutral-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
-        >
-          {Object.keys(platformBenchmarks).map((platform) => (
+      <ToolField label="Platform" htmlFor="cpv-platform" hint="Select platform to compare against benchmarks">
+        <ToolSelect id="cpv-platform" value={selectedPlatform} onChange={e => setSelectedPlatform(e.target.value)}>
+          {Object.keys(platformBenchmarks).map(platform => (
             <option key={platform} value={platform}>
               {platform}
             </option>
           ))}
-        </select>
-        <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">
-          Select platform to compare against benchmarks
-        </p>
-      </div>
+        </ToolSelect>
+      </ToolField>
 
       {cpv !== null && (
-        <div className="pt-6 border-t border-neutral-200 dark:border-neutral-800 space-y-4">
-          <div className="px-4 py-6 bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-300 dark:border-emerald-800 rounded-lg text-center">
-            <div className="text-sm text-emerald-700 dark:text-emerald-300 font-medium mb-2">
-              Cost Per View
-            </div>
-            <div className="text-4xl font-bold text-emerald-600 dark:text-emerald-400">
-              ${cpv.toFixed(3)}
-            </div>
-          </div>
+        <ToolResultDivider>
+          <ToolResult label="Cost Per View" value={`$${cpv.toFixed(3)}`} />
 
           {comparison && (
-            <div
-              className={`px-4 py-4 rounded-lg border ${
-                comparison.difference <= 0
-                  ? "bg-emerald-50 dark:bg-emerald-950/30 border-emerald-300 dark:border-emerald-800"
-                  : comparison.difference <= 20
-                  ? "bg-blue-50 dark:bg-blue-950/30 border-blue-200 dark:border-blue-900"
-                  : "bg-orange-50 dark:bg-orange-950/30 border-orange-200 dark:border-orange-900"
-              }`}
+            <ToolCallout
+              variant={comparison.difference <= 0 ? "success" : comparison.difference <= 20 ? "info" : "warning"}
+              icon={null}
+              title={`Platform Benchmark: ${selectedPlatform} — $${comparison.benchmark.toFixed(3)}`}
             >
-              <div className="text-sm font-medium text-neutral-900 dark:text-white mb-2">
-                Platform Benchmark: {selectedPlatform}
-              </div>
-              <div className="text-2xl font-bold text-neutral-900 dark:text-white mb-2">
-                ${comparison.benchmark.toFixed(3)}
-              </div>
-              <div className="text-sm text-neutral-700 dark:text-neutral-300">
-                {comparison.difference <= 0 ? (
-                  <>
-                    Your CPV is{" "}
-                    <span className="font-semibold text-emerald-600 dark:text-emerald-400">
-                      {Math.abs(comparison.difference).toFixed(1)}% below
-                    </span>{" "}
-                    the platform average
-                  </>
-                ) : (
-                  <>
-                    Your CPV is{" "}
-                    <span className="font-semibold text-orange-600 dark:text-orange-400">
-                      {comparison.difference.toFixed(1)}% above
-                    </span>{" "}
-                    the platform average
-                  </>
-                )}
-              </div>
-            </div>
+              {comparison.difference <= 0 ? (
+                <>
+                  Your CPV is{" "}
+                  <span className="font-semibold text-emerald-600 dark:text-emerald-400">
+                    {Math.abs(comparison.difference).toFixed(1)}% below
+                  </span>{" "}
+                  the platform average
+                </>
+              ) : (
+                <>
+                  Your CPV is{" "}
+                  <span className="font-semibold text-amber-600 dark:text-amber-500">
+                    {comparison.difference.toFixed(1)}% above
+                  </span>{" "}
+                  the platform average
+                </>
+              )}
+            </ToolCallout>
           )}
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="px-4 py-3 bg-neutral-50 dark:bg-neutral-900/50 border border-neutral-200 dark:border-neutral-800 rounded-lg">
-              <div className="text-xs text-neutral-500 dark:text-neutral-400 mb-1">
-                Total Spend
-              </div>
-              <div className="text-lg font-semibold text-neutral-900 dark:text-white">
-                ${parseFloat(spend).toLocaleString()}
-              </div>
-            </div>
-            <div className="px-4 py-3 bg-neutral-50 dark:bg-neutral-900/50 border border-neutral-200 dark:border-neutral-800 rounded-lg">
-              <div className="text-xs text-neutral-500 dark:text-neutral-400 mb-1">
-                Total Views
-              </div>
-              <div className="text-lg font-semibold text-neutral-900 dark:text-white">
-                {parseFloat(views).toLocaleString()}
-              </div>
-            </div>
-            <div className="px-4 py-3 bg-neutral-50 dark:bg-neutral-900/50 border border-neutral-200 dark:border-neutral-800 rounded-lg">
-              <div className="text-xs text-neutral-500 dark:text-neutral-400 mb-1">
-                Cost Per 1K Views
-              </div>
-              <div className="text-lg font-semibold text-neutral-900 dark:text-white">
-                ${(cpv * 1000).toFixed(2)}
-              </div>
-            </div>
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+            <ToolStat label="Total Spend" value={`$${parseFloat(spend).toLocaleString()}`} />
+            <ToolStat label="Total Views" value={parseFloat(views).toLocaleString()} />
+            <ToolStat label="Cost Per 1K Views" value={`$${(cpv * 1000).toFixed(2)}`} />
           </div>
 
-          <div className="px-4 py-3 bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-900 rounded-lg">
-            <div className="text-sm font-medium text-blue-900 dark:text-blue-200 mb-1">
-              View-Through Rate (VTR)
-            </div>
-            <div className="text-xs text-blue-700 dark:text-blue-300">
-              If you received {parseFloat(views).toLocaleString()} views from{" "}
-              {Math.round(parseFloat(views) * 2).toLocaleString()} impressions, your
-              view-through rate would be <strong>50%</strong>. Higher VTR indicates more
-              engaging content and better targeting.
-            </div>
-          </div>
-        </div>
+          <ToolCallout variant="info" title="View-Through Rate (VTR)">
+            If you received {parseFloat(views).toLocaleString()} views from{" "}
+            {Math.round(parseFloat(views) * 2).toLocaleString()} impressions, your view-through rate would be{" "}
+            <strong>50%</strong>. Higher VTR indicates more engaging content and better targeting.
+          </ToolCallout>
+        </ToolResultDivider>
       )}
 
-      <div className="flex gap-4 pt-4">
-        <button
-          onClick={calculateCPV}
-          className="flex-1 px-6 py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-medium rounded-lg transition-colors"
-        >
+      <div className="flex gap-3 pt-2">
+        <ToolButton onClick={calculateCPV} className="flex-1">
           Calculate CPV
-        </button>
-        <button
-          onClick={clearForm}
-          className="px-6 py-3 bg-neutral-200 dark:bg-neutral-800 hover:bg-neutral-300 dark:hover:bg-neutral-700 text-neutral-900 dark:text-white font-medium rounded-lg transition-colors"
-        >
+        </ToolButton>
+        <ToolButton variant="secondary" onClick={clearForm}>
           Clear
-        </button>
+        </ToolButton>
       </div>
     </div>
   );
