@@ -201,6 +201,50 @@ pre {
   }
 }
 
+@keyframes landing-copy-enter {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes landing-product-enter {
+  from {
+    opacity: 0;
+    transform: translateY(24px);
+    clip-path: inset(0 0 12% 0);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+    clip-path: inset(0 0 0 0);
+  }
+}
+
+.landing-hero-copy {
+  animation: landing-copy-enter 700ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.landing-hero-aside {
+  animation: landing-copy-enter 700ms 100ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.landing-product-stage {
+  animation: landing-product-enter 900ms 180ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .landing-hero-copy,
+  .landing-hero-aside,
+  .landing-product-stage {
+    animation: none;
+  }
+}
+
 /* ── Docs dark surface ───────────────────────────────────────────────────
    Lift the docs reading surface a few percent in dark mode so it isn't a near
    black. Scoped to the notebook layout container (which only exists on docs

@@ -11,17 +11,32 @@ interface CardProps {
 
 export function Card({ title, description, children, className, icon: Icon }: CardProps) {
   return (
-    <div
-      className={cn("bg-neutral-100/50 dark:bg-neutral-800/20 p-4 md:p-6 rounded-xl border border-neutral-300/50 dark:border-neutral-800/50 overflow-hidden", className)}
-    >
-      {Icon && (
-        <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-emerald-600/20 to-emerald-700/15 dark:from-emerald-600/15 dark:to-emerald-700/10 border border-emerald-600/30 dark:border-emerald-600/20 shadow-md shadow-emerald-600/10 dark:shadow-emerald-600/5 flex items-center justify-center mb-3">
-          <Icon className="w-4 h-4 text-emerald-600 dark:text-emerald-300" />
-        </div>
+    <article
+      className={cn(
+        "group flex h-full flex-col overflow-hidden rounded-lg border border-neutral-300 bg-white dark:border-neutral-800 dark:bg-neutral-900",
+        className
       )}
-      <h3 className="text-xl font-semibold mb-2">{title}</h3>
-      {description && <p className="text-neutral-600 dark:text-neutral-300 text-sm mb-3">{description}</p>}
-      {children}
-    </div>
+    >
+      <div className="flex items-start gap-4 p-6 md:p-8">
+        {Icon && (
+          <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-neutral-300 text-neutral-700 dark:border-neutral-700 dark:text-neutral-200">
+            <Icon className="h-4 w-4" aria-hidden="true" />
+          </div>
+        )}
+        <div>
+          <h3 className="text-xl font-semibold tracking-[-0.02em] text-neutral-950 dark:text-white md:text-2xl">
+            {title}
+          </h3>
+          {description && (
+            <p className="mt-2 max-w-[55ch] text-sm leading-6 text-neutral-600 dark:text-neutral-300 md:text-base">
+              {description}
+            </p>
+          )}
+        </div>
+      </div>
+      <div className="mt-auto border-t border-neutral-300 bg-neutral-950 p-2 dark:border-neutral-800 md:p-3">
+        {children}
+      </div>
+    </article>
   );
 }

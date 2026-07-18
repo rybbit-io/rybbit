@@ -43,11 +43,11 @@ const normalizeTweetForEnrichment = (tweet: Tweet): Tweet => ({
 });
 
 const Skeleton = ({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) => {
-  return <div className={cn("rounded-md bg-primary/10", className)} {...props} />;
+  return <div className={cn("rounded-md bg-neutral-200 dark:bg-neutral-800", className)} {...props} />;
 };
 
 export const TweetSkeleton = ({ className, ...props }: { className?: string; [key: string]: unknown }) => (
-  <div className={cn("flex size-full max-h-max min-w-72 flex-col gap-2 rounded-lg border p-4", className)} {...props}>
+  <div className={cn("flex size-full min-h-64 min-w-72 flex-col gap-3 rounded-lg border border-neutral-300 bg-white p-5 dark:border-neutral-700 dark:bg-neutral-900", className)} {...props}>
     <div className="flex flex-row gap-2">
       <Skeleton className="size-10 shrink-0 rounded-full" />
       <Skeleton className="h-10 w-full" />
@@ -58,7 +58,7 @@ export const TweetSkeleton = ({ className, ...props }: { className?: string; [ke
 
 export const TweetNotFound = ({ className, ...props }: { className?: string; [key: string]: unknown }) => (
   <div
-    className={cn("flex size-full flex-col items-center justify-center gap-2 rounded-lg border p-4", className)}
+    className={cn("flex size-full min-h-64 flex-col items-center justify-center gap-2 rounded-lg border border-neutral-300 bg-white p-5 dark:border-neutral-700 dark:bg-neutral-900", className)}
     {...props}
   >
     <h3>Tweet not found</h3>
@@ -70,7 +70,7 @@ export const MagicTweet = ({ tweet, className, ...props }: { tweet: Tweet; class
   return (
     <div
       className={cn(
-        "relative flex w-full max-w-lg flex-col gap-2 rounded-lg p-4 backdrop-blur-md bg-neutral-100/50 dark:bg-neutral-800/20 border border-neutral-300/50 dark:border-neutral-800/50",
+        "relative flex h-full min-h-64 w-full flex-col gap-3 rounded-lg border border-neutral-300 bg-white p-5 dark:border-neutral-700 dark:bg-neutral-900 md:p-6",
         className
       )}
       {...props}

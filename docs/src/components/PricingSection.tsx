@@ -137,35 +137,35 @@ export function PricingSection({ isAnnual, setIsAnnual }: { isAnnual: boolean, s
   }
 
   return (
-    <section className="py-16 md:py-24 w-full relative z-10">
-      <div className="max-w-[1200px] mx-auto px-4">
-        <div className="mb-12 text-center max-w-3xl mx-auto">
-          <h2 className="text-4xl md:text-5xl font-bold tracking-tight pb-4 text-transparent bg-clip-text bg-gradient-to-b from-neutral-900 via-neutral-700 to-neutral-500 dark:from-white dark:via-gray-200 dark:to-gray-400">
-            {t("Pricing")}
+    <section className="w-full py-20 md:py-28">
+      <div className="mx-auto w-full max-w-[1280px] px-5 sm:px-6 lg:px-8">
+        <div className="mb-12 grid grid-cols-1 gap-6 border-b border-neutral-200 pb-10 dark:border-neutral-800 md:grid-cols-12 md:pb-12">
+          <h2 className="text-4xl font-semibold tracking-[-0.035em] text-neutral-950 dark:text-white md:col-span-5 md:text-6xl">
+            {t("Simple pricing")}
           </h2>
-          <p className="text-lg text-neutral-600 dark:text-neutral-300">
-            {t("Start your 7-day free trial — no credit card charges until the trial ends.")}
+          <p className="max-w-[44ch] self-end text-base leading-7 text-neutral-600 dark:text-neutral-300 md:col-span-5 md:col-start-8 md:text-lg">
+            {t("Start free, then pay for the volume you use. Every plan includes the same clear analytics foundation.")}
           </p>
         </div>
 
         {/* Shared controls section */}
-        <div className="max-w-xl mx-auto mb-8">
-          <div className="flex justify-between mb-6 items-center">
+        <div className="mx-auto mb-10 max-w-2xl rounded-lg border border-neutral-300 bg-neutral-100/70 p-5 dark:border-neutral-700 dark:bg-neutral-900/60 sm:p-6">
+          <div className="mb-6 flex items-center justify-between gap-5">
             <div>
-              <h3 className="font-semibold mb-2">{t("Monthly pageviews")}</h3>
-              <div className="text-3xl font-bold text-emerald-600 dark:text-emerald-400">
+              <h3 className="mb-1 text-sm font-medium text-neutral-600 dark:text-neutral-400">{t("Monthly events")}</h3>
+              <div className="text-3xl font-semibold tracking-[-0.03em] text-neutral-950 dark:text-white">
                 {typeof eventLimit === "number" ? eventLimit.toLocaleString() : t("Custom")}
               </div>
             </div>
-            <div className="flex flex-col items-end relative">
+            <div className="flex flex-col items-end">
               {/* Billing toggle */}
-              <div className="flex mb-2 text-sm bg-neutral-200 dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 rounded-full p-1">
+              <div className="flex rounded-md border border-neutral-300 bg-white p-1 text-sm dark:border-neutral-700 dark:bg-neutral-950">
                 <button
                   onClick={() => setIsAnnual(false)}
                   className={cn(
-                    "px-3 py-1 rounded-full transition-colors cursor-pointer",
+                    "rounded-sm px-3 py-1.5 transition-colors cursor-pointer",
                     !isAnnual
-                      ? "bg-white dark:bg-white/20 text-neutral-700 dark:text-neutral-100 font-medium"
+                      ? "bg-neutral-200 text-neutral-950 font-medium dark:bg-neutral-800 dark:text-white"
                       : "text-neutral-600 dark:text-neutral-400 hover:text-neutral-800 dark:hover:text-neutral-200"
                   )}
                 >
@@ -174,17 +174,17 @@ export function PricingSection({ isAnnual, setIsAnnual }: { isAnnual: boolean, s
                 <button
                   onClick={() => setIsAnnual(true)}
                   className={cn(
-                    "px-3 py-1 rounded-full transition-colors cursor-pointer",
+                    "rounded-sm px-3 py-1.5 transition-colors cursor-pointer",
                     isAnnual
-                      ? "bg-white dark:bg-white/20 text-neutral-700 dark:text-neutral-100 font-medium"
+                      ? "bg-neutral-200 text-neutral-950 font-medium dark:bg-neutral-800 dark:text-white"
                       : "text-neutral-600 dark:text-neutral-400 hover:text-neutral-800 dark:hover:text-neutral-200"
                   )}
                 >
                   {t("Annual")}
                 </button>
-                <div className="text-xs text-white absolute top-0 right-0 -translate-y-3 bg-emerald-500 dark:bg-emerald-500 rounded-full px-2 py-0.5 whitespace-nowrap">
-                  {t("4 months free")}
-                </div>
+              </div>
+              <div className="mt-2 text-xs font-medium text-emerald-700 dark:text-emerald-400">
+                {t("4 months free")}
               </div>
             </div>
           </div>
@@ -199,18 +199,11 @@ export function PricingSection({ isAnnual, setIsAnnual }: { isAnnual: boolean, s
             className="mb-3"
           />
 
-          <div className="flex justify-between text-xs text-neutral-400">
-            {EVENT_TIERS.map((tier, index) => (
-              <span key={index} className={cn(eventLimitIndex === index && "font-bold text-emerald-400")}>
-                {index === EVENT_TIERS.length - 1
-                  ? "50M+"
-                  : typeof tier === "number" && tier >= 1_000_000
-                    ? `${tier / 1_000_000}M`
-                    : typeof tier === "number"
-                      ? `${tier / 1_000}K`
-                      : t("Custom")}
-              </span>
-            ))}
+          <div className="flex justify-between text-xs text-neutral-500 dark:text-neutral-400" aria-hidden="true">
+            <span>100K</span>
+            <span>1M</span>
+            <span>10M</span>
+            <span>50M+</span>
           </div>
         </div>
 
@@ -290,20 +283,24 @@ export function PricingSection({ isAnnual, setIsAnnual }: { isAnnual: boolean, s
                   {Array.from({ length: slideCount }).map((_, i) => (
                     <button
                       key={i}
+                      type="button"
                       onClick={() => carouselApi?.scrollTo(i)}
-                      className={cn(
-                        "w-2 h-2 rounded-full transition-colors cursor-pointer",
-                        currentSlide === i
-                          ? "bg-emerald-500"
-                          : "bg-neutral-400 dark:bg-neutral-600"
-                      )}
-                    />
+                      className="inline-flex h-11 w-11 items-center justify-center rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
+                      aria-label={t("Show pricing plan {number}", { number: String(i + 1) })}
+                    >
+                      <span
+                        className={cn(
+                          "h-2 w-2 rounded-full transition-colors",
+                          currentSlide === i ? "bg-emerald-500" : "bg-neutral-400 dark:bg-neutral-600"
+                        )}
+                      />
+                    </button>
                   ))}
                 </div>
               </div>
 
               {/* Desktop grid */}
-              <div className="hidden min-[700px]:grid min-[1100px]:grid-cols-3 min-[700px]:grid-cols-2 gap-4 mx-auto justify-center items-stretch">
+              <div className="mx-auto hidden items-stretch justify-center gap-4 min-[700px]:grid min-[700px]:grid-cols-2 min-[1100px]:grid-cols-3">
                 {standardCard}
                 {proCard}
                 {enterpriseCard}
