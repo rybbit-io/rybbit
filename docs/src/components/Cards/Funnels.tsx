@@ -20,39 +20,41 @@ export function Funnels() {
       icon={Filter}
     >
       {/* Funnel Steps */}
-      <div className="space-y-4 mt-4 transform -rotate-2 translate-x-8 translate-y-8 bg-neutral-100/50 dark:bg-neutral-800/20 border border-neutral-300/50 dark:border-neutral-800/50 pb-20 rounded-lg p-4 -mb-[40px] transition-transform duration-300 hover:scale-105 hover:-rotate-1">
-        {funnelData.map((item, index) => {
-          const overallConversion = (item.users / totalUsers) * 100;
-          const previousUsers = index > 0 ? funnelData[index - 1].users : item.users;
+      <div className="mt-5 flex-1 min-h-[300px] overflow-hidden rounded-lg border border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-950/60 p-4">
+        <div className="flex h-full flex-col justify-center gap-6">
+          {funnelData.map(item => {
+            const overallConversion = (item.users / totalUsers) * 100;
 
-          return (
-            <div key={item.step} className="flex items-center gap-3">
-              {/* Step number */}
-              <div className="flex-shrink-0 w-8 h-8 mt-7 bg-neutral-50 dark:bg-neutral-800 border border-neutral-300/70 dark:border-neutral-800/70 rounded-full flex items-center justify-center text-xs">
-                {item.step}
-              </div>
-
-              {/* Step info and bars */}
-              <div className="flex-1">
-                {/* Label and counts */}
-                <div className="flex items-center gap-2 mb-2">
-                  <Eye className="w-4 h-4 text-blue-400" />
-                  <span className="text-sm font-medium">{item.label}</span>
+            return (
+              <div key={item.step} className="flex items-center gap-3">
+                {/* Step number */}
+                <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-900 text-xs text-neutral-600 dark:text-neutral-300">
+                  {item.step}
                 </div>
 
-                <div className="h-8 bg-neutral-200 dark:bg-neutral-800 relative">
-                  <div
-                    className="h-8 bg-emerald-600 rounded flex items-center justify-end pr-3"
-                    style={{ width: `${overallConversion}%` }}
-                  />
-                  <div className="absolute top-2 right-1.5 text-right text-xs">
-                    {overallConversion.toFixed(overallConversion === 100 ? 0 : 2)}%
+                {/* Step info and bar */}
+                <div className="flex-1">
+                  <div className="mb-1.5 flex items-center justify-between gap-2">
+                    <span className="flex items-center gap-2 text-sm font-medium">
+                      <Eye className="w-4 h-4 text-blue-400" />
+                      {item.label}
+                    </span>
+                    <span className="text-xs text-neutral-500 dark:text-neutral-400 tabular-nums">
+                      {item.users.toLocaleString()} ·{" "}
+                      {overallConversion.toFixed(overallConversion === 100 ? 0 : 2)}%
+                    </span>
+                  </div>
+                  <div className="h-2 overflow-hidden rounded-full bg-neutral-200 dark:bg-neutral-800">
+                    <div
+                      className="h-full rounded-full bg-emerald-500"
+                      style={{ width: `${Math.max(overallConversion, 2)}%` }}
+                    />
                   </div>
                 </div>
               </div>
-            </div>
-          );
-        })}
+            );
+          })}
+        </div>
       </div>
     </Card>
   );

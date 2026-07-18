@@ -55,124 +55,120 @@ export function SessionReplay() {
       description={t("Watch real user sessions to understand their behavior and identify pain points.")}
       icon={Film}
     >
-      <div className=" mt-4 transform rotate-2 translate-x-8 translate-y-8 bg-neutral-200 dark:bg-neutral-900 rounded-lg -mb-[30px] rounded-xl transition-transform duration-300 hover:scale-105 hover:rotate-3">
-        {/* Video player container */}
-        <div className="relative">
-          {/* Mock website content */}
-          <div className="relative overflow-hidden">
-            {/* Browser chrome */}
-            <div className="bg-neutral-200 dark:bg-neutral-800 h-7 flex items-center px-2 gap-2 rounded-t-lg">
-              <div className="flex gap-1">
-                <div className="w-2 h-2 rounded-full bg-red-500"></div>
-                <div className="w-2 h-2 rounded-full bg-yellow-500"></div>
-                <div className="w-2 h-2 rounded-full bg-green-500"></div>
-              </div>
-              <div className="flex-1 mx-3">
-                <div className="bg-neutral-100 dark:bg-neutral-700 rounded px-2 py-0.5 text-[10px] text-neutral-900 dark:text-neutral-300">
-                  https://example.com/products
-                </div>
+      <div className="mt-5 flex flex-1 flex-col min-h-[300px] overflow-hidden rounded-lg border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-950/60">
+        <div className="relative flex-1">
+          {/* Browser chrome */}
+          <div className="bg-neutral-100 dark:bg-neutral-900 border-b border-neutral-200 dark:border-neutral-800 h-8 flex items-center px-3 gap-2">
+            <div className="flex gap-1">
+              <div className="w-2 h-2 rounded-full bg-red-500"></div>
+              <div className="w-2 h-2 rounded-full bg-yellow-500"></div>
+              <div className="w-2 h-2 rounded-full bg-green-500"></div>
+            </div>
+            <div className="flex-1 mx-3">
+              <div className="bg-white dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded px-2 py-0.5 text-[10px] text-neutral-500 dark:text-neutral-400">
+                https://example.com/products
               </div>
             </div>
-
-            {/* Mock website content */}
-            <div className="p-3 bg-white">
-              {/* Header */}
-              <div className="flex items-center justify-between mb-4">
-                <div className="w-20 h-4 bg-neutral-300 rounded"></div>
-                <div className="flex gap-3">
-                  <div className="w-12 h-3 bg-neutral-200 rounded"></div>
-                  <div className="w-12 h-3 bg-neutral-200 rounded"></div>
-                  <div className="w-12 h-3 bg-neutral-200 rounded"></div>
-                </div>
-              </div>
-
-              {/* Hero section */}
-              <div className="mb-4">
-                <div className="w-40 h-6 bg-neutral-800 rounded mb-1.5"></div>
-                <div className="w-52 h-3 bg-neutral-200 rounded"></div>
-              </div>
-
-              {/* Product grid */}
-              <div className="grid grid-cols-3 gap-2">
-                <div
-                  className={`bg-neutral-100 rounded p-1.5 transition-all duration-300 ${
-                    hoveredProduct === 0 ? "shadow-lg scale-105" : ""
-                  }`}
-                >
-                  <div className="w-full h-16 bg-neutral-300 rounded mb-1.5"></div>
-                  <div className="w-full h-2 bg-neutral-200 rounded mb-1"></div>
-                  <div className="w-12 h-2 bg-emerald-500 rounded"></div>
-                </div>
-                <div
-                  className={`bg-neutral-100 rounded p-1.5 transition-all duration-300 ${
-                    hoveredProduct === 1 ? "shadow-lg scale-105" : ""
-                  }`}
-                >
-                  <div className="w-full h-16 bg-neutral-300 rounded mb-1.5 relative">
-                    <div className="absolute top-0.5 left-0.5 w-6 h-2 bg-red-500 rounded"></div>
-                  </div>
-                  <div className="w-full h-2 bg-neutral-200 rounded mb-1"></div>
-                  <div className="w-12 h-2 bg-emerald-500 rounded"></div>
-                </div>
-                <div
-                  className={`bg-neutral-100 rounded p-1.5 transition-all duration-300 ${
-                    hoveredProduct === 2 ? "shadow-lg scale-105" : ""
-                  }`}
-                >
-                  <div className="w-full h-16 bg-neutral-300 rounded mb-1.5"></div>
-                  <div className="w-full h-2 bg-neutral-200 rounded mb-1"></div>
-                  <div className="w-12 h-2 bg-emerald-500 rounded"></div>
-                </div>
-              </div>
-            </div>
-
-            {/* Mouse cursor */}
-            <div
-              className="absolute w-4 h-4 transform -rotate-12 transition-all duration-1000 ease-in-out"
-              style={{
-                left: `${cursorPosition.x}px`,
-                top: `${cursorPosition.y}px`,
-              }}
-            >
-              <svg viewBox="0 0 24 24" fill="none" className="w-full h-full drop-shadow-sm">
-                <path d="M5.5 3.5L20.5 12L12 14.5L9.5 22L5.5 3.5Z" fill="white" stroke="black" strokeWidth="1" />
-              </svg>
-            </div>
-
-            {/* Click ripple effect */}
-            {clickPosition && (
-              <div
-                className="absolute w-8 h-8 rounded-full border-2 border-blue-500 animate-ping"
-                style={{
-                  left: `${clickPosition.x - 16}px`,
-                  top: `${clickPosition.y - 16}px`,
-                }}
-              ></div>
-            )}
-
-            {/* Scroll indicator */}
-            {isPlaying && cursorPosition.y > 160 && (
-              <div className="absolute bottom-2 right-2 bg-black/50 text-white text-[8px] px-2 py-1 rounded">
-                {t("Scrolling...")}
-              </div>
-            )}
           </div>
+
+          {/* Mock website content */}
+          <div className="p-3 bg-white">
+            {/* Header */}
+            <div className="flex items-center justify-between mb-4">
+              <div className="w-20 h-4 bg-neutral-300 rounded"></div>
+              <div className="flex gap-3">
+                <div className="w-12 h-3 bg-neutral-200 rounded"></div>
+                <div className="w-12 h-3 bg-neutral-200 rounded"></div>
+                <div className="w-12 h-3 bg-neutral-200 rounded"></div>
+              </div>
+            </div>
+
+            {/* Hero section */}
+            <div className="mb-4">
+              <div className="w-40 h-6 bg-neutral-800 rounded mb-1.5"></div>
+              <div className="w-52 h-3 bg-neutral-200 rounded"></div>
+            </div>
+
+            {/* Product grid */}
+            <div className="grid grid-cols-3 gap-2">
+              <div
+                className={`bg-neutral-100 rounded p-1.5 transition-all duration-300 ${
+                  hoveredProduct === 0 ? "shadow-lg scale-105" : ""
+                }`}
+              >
+                <div className="w-full h-16 bg-neutral-300 rounded mb-1.5"></div>
+                <div className="w-full h-2 bg-neutral-200 rounded mb-1"></div>
+                <div className="w-12 h-2 bg-emerald-500 rounded"></div>
+              </div>
+              <div
+                className={`bg-neutral-100 rounded p-1.5 transition-all duration-300 ${
+                  hoveredProduct === 1 ? "shadow-lg scale-105" : ""
+                }`}
+              >
+                <div className="w-full h-16 bg-neutral-300 rounded mb-1.5 relative">
+                  <div className="absolute top-0.5 left-0.5 w-6 h-2 bg-red-500 rounded"></div>
+                </div>
+                <div className="w-full h-2 bg-neutral-200 rounded mb-1"></div>
+                <div className="w-12 h-2 bg-emerald-500 rounded"></div>
+              </div>
+              <div
+                className={`bg-neutral-100 rounded p-1.5 transition-all duration-300 ${
+                  hoveredProduct === 2 ? "shadow-lg scale-105" : ""
+                }`}
+              >
+                <div className="w-full h-16 bg-neutral-300 rounded mb-1.5"></div>
+                <div className="w-full h-2 bg-neutral-200 rounded mb-1"></div>
+                <div className="w-12 h-2 bg-emerald-500 rounded"></div>
+              </div>
+            </div>
+          </div>
+
+          {/* Mouse cursor */}
+          <div
+            className="absolute w-4 h-4 transform -rotate-12 transition-all duration-1000 ease-in-out"
+            style={{
+              left: `${cursorPosition.x}px`,
+              top: `${cursorPosition.y}px`,
+            }}
+          >
+            <svg viewBox="0 0 24 24" fill="none" className="w-full h-full drop-shadow-sm">
+              <path d="M5.5 3.5L20.5 12L12 14.5L9.5 22L5.5 3.5Z" fill="white" stroke="black" strokeWidth="1" />
+            </svg>
+          </div>
+
+          {/* Click ripple effect */}
+          {clickPosition && (
+            <div
+              className="absolute w-8 h-8 rounded-full border-2 border-blue-500 animate-ping"
+              style={{
+                left: `${clickPosition.x - 16}px`,
+                top: `${clickPosition.y - 16}px`,
+              }}
+            ></div>
+          )}
+
+          {/* Scroll indicator */}
+          {isPlaying && cursorPosition.y > 160 && (
+            <div className="absolute bottom-2 right-2 bg-black/50 text-white text-[8px] px-2 py-1 rounded">
+              {t("Scrolling...")}
+            </div>
+          )}
         </div>
 
         {/* Video controls */}
-        <div className="bg-neutral-100/50 dark:bg-neutral-800/20 backdrop-blur-sm p-2 pb-10">
+        <div className="border-t border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-900 p-2">
           <div className="flex items-center gap-3">
             {/* Play/Pause button */}
             <button
               onClick={() => setIsPlaying(!isPlaying)}
-              className="bg-emerald-600 hover:bg-emerald-500 text-white rounded-full p-1.5 transition-colors"
+              className="bg-emerald-600 hover:bg-emerald-500 text-white rounded-full p-1.5 transition-colors cursor-pointer"
             >
               {isPlaying ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5" />}
             </button>
 
             {/* Progress bar */}
             <div className="flex-1">
-              <div className="relative h-1 bg-neutral-400 dark:bg-neutral-700 rounded-full overflow-hidden">
+              <div className="relative h-1 bg-neutral-300 dark:bg-neutral-700 rounded-full overflow-hidden">
                 <div className="absolute left-0 top-0 h-full w-1/2 bg-emerald-500 rounded-full"></div>
               </div>
             </div>
