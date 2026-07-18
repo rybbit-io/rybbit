@@ -66,6 +66,7 @@ export async function GET(
       description,
       logoSrc,
       label,
+      path: searchParams.has('title') ? undefined : pageSlug.join('/'),
     }),
     {
       width: 1200,
