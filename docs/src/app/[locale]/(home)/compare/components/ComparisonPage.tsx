@@ -117,14 +117,14 @@ export function ComparisonPage({
       {chooseRybbit && chooseCompetitor && (
         <section className="border-b border-neutral-200 dark:border-neutral-800" aria-labelledby="comparison-fit-title">
           <div className="mx-auto grid max-w-[1200px] border-x border-neutral-200 dark:border-neutral-800 lg:grid-cols-12">
-            <div className="border-b border-neutral-200 px-5 py-12 dark:border-neutral-800 sm:px-8 lg:col-span-4 lg:border-b-0 lg:border-r lg:px-10 lg:py-16">
-              <p className="text-sm font-semibold text-neutral-500 dark:text-neutral-400">{t("Comparison")}</p>
+            <div className="border-b border-amber-400 bg-amber-300 px-5 py-12 text-amber-950 sm:px-8 lg:col-span-4 lg:border-b-0 lg:border-r lg:px-10 lg:py-16">
+              <p className="text-sm font-semibold text-amber-950/75">{t("Comparison")}</p>
               <h2 id="comparison-fit-title" className="mt-4 text-3xl font-semibold tracking-[-0.03em] md:text-4xl">
                 {t("Which is right for you?")}
               </h2>
             </div>
             <div className="grid lg:col-span-8 md:grid-cols-2">
-              <div className="border-b border-neutral-200 px-5 py-10 dark:border-neutral-800 sm:px-8 md:border-b-0 md:border-r lg:px-10">
+              <div className="border-b border-emerald-200 bg-emerald-50 px-5 py-10 dark:border-emerald-900/60 dark:bg-emerald-950/20 sm:px-8 md:border-b-0 md:border-r lg:px-10">
                 <h3 className="text-lg font-semibold text-emerald-600 dark:text-emerald-400">
                   {t("Choose Rybbit if...")}
                 </h3>
@@ -157,8 +157,8 @@ export function ComparisonPage({
 
       <section className="border-b border-neutral-200 dark:border-neutral-800" aria-labelledby="comparison-table-title">
         <div className="mx-auto max-w-[1200px] border-x border-neutral-200 dark:border-neutral-800">
-          <div className="border-b border-neutral-200 px-5 py-12 dark:border-neutral-800 sm:px-8 lg:px-10 lg:py-16">
-            <p className="text-sm font-semibold text-neutral-500 dark:text-neutral-400">{t("Feature by feature")}</p>
+          <div className="border-b border-indigo-300 bg-[#b3bfff] px-5 py-12 text-indigo-950 sm:px-8 lg:px-10 lg:py-16">
+            <p className="text-sm font-semibold text-indigo-950/75">{t("Feature by feature")}</p>
             <h2 id="comparison-table-title" className="mt-4 max-w-3xl text-3xl font-semibold tracking-[-0.03em] md:text-4xl">
               {t("Why choose Rybbit over {competitor}?", { competitor: competitorName })}
             </h2>
@@ -168,12 +168,13 @@ export function ComparisonPage({
               <thead>
                 <tr className="border-b border-neutral-200 dark:border-neutral-800">
                   <th className="w-2/5 px-6 py-5 text-left font-medium text-neutral-500 lg:px-10">{t("Capability")}</th>
-                  <th className="border-l border-neutral-200 px-6 py-5 text-center dark:border-neutral-800">
+                  <th className="border-l border-emerald-200 bg-emerald-50 px-6 py-5 text-center dark:border-emerald-900/60 dark:bg-emerald-950/20">
                     <Image
                       src="/rybbit/horizontal_white.svg"
                       alt="Rybbit"
                       width={92}
-                      height={25}
+                      height={18}
+                      style={{ width: "auto", height: "auto" }}
                       className="mx-auto invert dark:invert-0"
                     />
                   </th>
@@ -193,7 +194,7 @@ export function ComparisonPage({
                     {section.features.map((feature) => (
                       <tr key={`${section.title}-${feature.name}`} className="border-b border-neutral-200 last:border-b-0 dark:border-neutral-800">
                         <th className="px-6 py-4 text-left font-medium text-neutral-700 dark:text-neutral-300 lg:px-10">{feature.name}</th>
-                        <td className="border-l border-neutral-200 px-6 py-4 text-center dark:border-neutral-800">
+                        <td className="border-l border-emerald-200 bg-emerald-50/70 px-6 py-4 text-center dark:border-emerald-900/60 dark:bg-emerald-950/15">
                           <div className="flex justify-center">{renderFeatureValue(feature.rybbitValue)}</div>
                         </td>
                         <td className="border-l border-neutral-200 px-6 py-4 text-center dark:border-neutral-800">
@@ -222,7 +223,7 @@ export function ComparisonPage({
               {[rybbitPricing, competitorPricing].map((pricing, pricingIndex) => (
                 <article
                   key={pricing.name}
-                  className="border-b border-neutral-200 px-5 py-10 last:border-b-0 dark:border-neutral-800 sm:px-8 md:border-b-0 md:first:border-r lg:px-10"
+                  className={`border-b border-neutral-200 px-5 py-10 last:border-b-0 dark:border-neutral-800 sm:px-8 md:border-b-0 md:first:border-r lg:px-10 ${pricingIndex === 0 ? "bg-emerald-50 dark:bg-emerald-950/20" : ""}`}
                 >
                   <p className="text-sm text-neutral-500 dark:text-neutral-400">{pricing.model}</p>
                   <h3 className="mt-2 text-xl font-semibold">{pricing.name}</h3>
@@ -255,8 +256,8 @@ export function ComparisonPage({
       {faqItems && faqItems.length > 0 && (
         <section className="border-b border-neutral-200 dark:border-neutral-800" aria-labelledby="comparison-faq-title">
           <div className="mx-auto grid max-w-[1200px] border-x border-neutral-200 dark:border-neutral-800 lg:grid-cols-12">
-            <div className="border-b border-neutral-200 px-5 py-12 dark:border-neutral-800 sm:px-8 lg:col-span-4 lg:border-b-0 lg:border-r lg:px-10 lg:py-16">
-              <p className="text-sm font-semibold text-neutral-500 dark:text-neutral-400">{t("FAQ")}</p>
+            <div className="border-b border-emerald-200 bg-emerald-50 px-5 py-12 dark:border-emerald-900/60 dark:bg-emerald-950/20 sm:px-8 lg:col-span-4 lg:border-b-0 lg:border-r lg:px-10 lg:py-16">
+              <p className="text-sm font-semibold text-emerald-700 dark:text-emerald-300">{t("FAQ")}</p>
               <h2 id="comparison-faq-title" className="mt-4 text-3xl font-semibold tracking-[-0.03em] md:text-4xl">
                 {t("Frequently asked questions")}
               </h2>

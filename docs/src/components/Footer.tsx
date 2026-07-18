@@ -6,7 +6,7 @@ import Image from "next/image";
 import Link from "next/link";
 
 const footerLinkClassName =
-  "inline-flex min-h-11 items-center text-sm leading-5 text-neutral-600 transition-colors hover:text-neutral-950 focus-visible:rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-500 dark:text-neutral-400 dark:hover:text-white md:min-h-8";
+  "inline-flex min-h-11 min-w-11 items-center text-sm leading-5 text-neutral-600 transition-colors hover:text-neutral-950 focus-visible:rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-500 dark:text-neutral-400 dark:hover:text-white md:min-h-8 md:min-w-0";
 
 const socialLinks = [
   { label: "GitHub", href: "https://github.com/rybbit-io/rybbit", icon: SiGithub },
@@ -92,14 +92,14 @@ export function Footer() {
                 <Link
                   href="/"
                   aria-label="Rybbit home"
-                  className="inline-flex rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-500"
+                  className="inline-flex min-h-11 items-center rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-500"
                 >
                   <Image
                     src="/rybbit/horizontal_white.svg"
                     alt="Rybbit"
                     width={120}
-                    height={0}
-                    style={{ height: "auto" }}
+                    height={24}
+                    style={{ width: "auto", height: "auto" }}
                     className="invert dark:invert-0"
                   />
                 </Link>
@@ -182,7 +182,7 @@ export function Footer() {
                 target="_blank"
                 rel="noopener noreferrer"
                 title="Tomato.gg"
-                className="inline-flex min-h-11 items-center rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-500 sm:min-h-8"
+                className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-500 sm:min-h-8 sm:min-w-0"
               >
                 🐸🍅
               </a>

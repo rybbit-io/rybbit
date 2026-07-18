@@ -2,6 +2,7 @@ import { GitHubStarButton } from "@/components/GitHubStarButton";
 import { TrackedButton } from "@/components/TrackedButton";
 import { ArrowRight, ExternalLink } from "lucide-react";
 import { useExtracted } from "next-intl";
+import { MarketingSignal } from "@/components/MarketingSignal";
 
 const EUFlag = () => (
   <svg
@@ -40,20 +41,23 @@ export function HeroSection({
     <section className="border-b border-neutral-200 dark:border-neutral-800">
       <div className="mx-auto w-full min-w-0 max-w-[1200px] border-x border-neutral-200 dark:border-neutral-800">
         <div className="grid min-w-0 lg:grid-cols-12">
-          <div className="min-w-0 border-b border-neutral-200 px-5 py-10 dark:border-neutral-800 sm:px-8 sm:py-12 lg:col-span-7 lg:border-b-0 lg:border-r lg:px-10 lg:py-12 xl:py-14">
-            {showGitHubStar && <GitHubStarButton />}
-            <h1 className="mt-7 max-w-3xl text-[clamp(3rem,5.25vw,4.75rem)] font-semibold leading-[0.96] tracking-[-0.04em] text-neutral-950 dark:text-neutral-50 text-balance">
+          <div className="relative min-w-0 overflow-hidden border-b border-emerald-800 bg-emerald-950 px-5 py-10 text-white sm:px-8 sm:py-12 lg:col-span-7 lg:border-b-0 lg:border-r lg:px-10 lg:py-12 xl:py-14">
+            <MarketingSignal className="opacity-80 [mask-image:linear-gradient(to_left,black,transparent_86%)]" />
+            <div className="relative z-10">
+              {showGitHubStar && <GitHubStarButton inverse />}
+              <h1 className="mt-7 max-w-3xl text-[clamp(3rem,5.25vw,4.75rem)] font-semibold leading-[0.96] tracking-[-0.04em] text-white text-balance">
               {title}
-            </h1>
+              </h1>
+            </div>
           </div>
 
-          <div className="flex min-w-0 flex-col justify-center px-5 py-10 sm:px-8 sm:py-12 lg:col-span-5 lg:px-10 lg:py-12 xl:py-14">
-            <p className="max-w-lg text-base leading-7 text-neutral-600 dark:text-neutral-300 sm:text-lg sm:leading-8 text-pretty">
+          <div className="flex min-w-0 flex-col justify-center bg-emerald-50/60 px-5 py-10 dark:bg-emerald-950/20 sm:px-8 sm:py-12 lg:col-span-5 lg:px-10 lg:py-12 xl:py-14">
+            <p className="max-w-lg text-base leading-7 text-emerald-950/80 dark:text-emerald-50/80 sm:text-lg sm:leading-8 text-pretty">
               {subtitle}
             </p>
 
             {showEUFlag && (
-              <div className="mt-5 flex items-center gap-2 text-xs font-medium text-neutral-500 dark:text-neutral-400">
+              <div className="mt-5 flex items-center gap-2 text-xs font-medium text-emerald-900/75 dark:text-emerald-100/75">
                 <EUFlag />
                 <span>{t("EU-hosted cloud")}</span>
               </div>
@@ -82,25 +86,25 @@ export function HeroSection({
               </TrackedButton>
             </div>
 
-            <p className="mt-4 text-sm text-neutral-500 dark:text-neutral-400">
+            <p className="mt-4 text-sm text-emerald-900/75 dark:text-emerald-100/75">
               {t("7-day free trial. Cancel anytime.")}
             </p>
           </div>
         </div>
 
-        <div className="min-w-0 border-t border-neutral-200 bg-neutral-100 p-2 dark:border-neutral-800 dark:bg-neutral-900 sm:p-3">
+        <div className="min-w-0 border-t border-indigo-200 bg-indigo-50 p-2 dark:border-indigo-900/70 dark:bg-indigo-950/25 sm:p-3">
           <div className="min-w-0 max-w-full overflow-hidden rounded-lg border border-neutral-300 bg-white dark:border-neutral-700 dark:bg-neutral-950">
-            <div className="grid h-10 grid-cols-[1fr_auto_1fr] items-center gap-2 border-b border-neutral-200 px-3 dark:border-neutral-800 sm:px-4">
+            <div className="grid min-h-12 grid-cols-[1fr_auto_1fr] items-center gap-2 border-b border-neutral-200 px-3 dark:border-neutral-800 sm:px-4">
               <div className="flex gap-1.5" aria-hidden="true">
-                <span className="size-2.5 rounded-full bg-neutral-300 dark:bg-neutral-700" />
-                <span className="size-2.5 rounded-full bg-neutral-300 dark:bg-neutral-700" />
-                <span className="size-2.5 rounded-full bg-neutral-300 dark:bg-neutral-700" />
+                <span className="size-2.5 rounded-full bg-rose-400" />
+                <span className="size-2.5 rounded-full bg-amber-400" />
+                <span className="size-2.5 rounded-full bg-emerald-400" />
               </div>
               <a
                 href="https://demo.rybbit.com/81"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="truncate rounded-md border border-neutral-200 bg-neutral-50 px-2.5 py-0.5 font-mono text-xs text-neutral-500 transition-colors hover:text-neutral-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-500 dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-400 dark:hover:text-white"
+                className="inline-flex min-h-11 items-center truncate rounded-md border border-neutral-200 bg-neutral-50 px-2.5 py-0.5 font-mono text-xs text-neutral-500 transition-colors hover:text-neutral-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-500 dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-400 dark:hover:text-white"
               >
                 demo.rybbit.com
               </a>

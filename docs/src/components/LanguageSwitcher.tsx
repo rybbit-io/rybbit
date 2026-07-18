@@ -52,7 +52,7 @@ export function LanguageSwitcher() {
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="flex items-center gap-2 bg-transparent text-sm text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white transition-colors cursor-pointer border border-neutral-300 dark:border-neutral-700 rounded-md px-2 py-1 focus:outline-none focus:ring-1 focus:ring-neutral-400"
+        className="flex min-h-11 items-center gap-2 bg-transparent text-sm text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white transition-colors cursor-pointer border border-neutral-300 dark:border-neutral-700 rounded-md px-2 py-1 focus:outline-none focus:ring-1 focus:ring-neutral-400"
         aria-label="Select language"
       >
         <CountryFlag country={current.country} className="w-4" />
@@ -65,7 +65,7 @@ export function LanguageSwitcher() {
               key={option.value}
               type="button"
               onClick={() => handleLocaleChange(option.value)}
-              className={`flex w-full items-center gap-2 px-3 py-1.5 text-sm hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors ${
+              className={`flex min-h-11 w-full items-center gap-2 px-3 py-1.5 text-sm hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors ${
                 option.value === currentLocale
                   ? "text-neutral-900 dark:text-white font-medium"
                   : "text-neutral-600 dark:text-neutral-400"

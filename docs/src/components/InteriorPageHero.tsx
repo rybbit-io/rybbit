@@ -2,6 +2,7 @@ import { TrackedButton } from "@/components/TrackedButton";
 import { ArrowRight, ExternalLink } from "lucide-react";
 import { useExtracted } from "next-intl";
 import type { ReactNode } from "react";
+import { MarketingSignal } from "@/components/MarketingSignal";
 
 interface HeroAction {
   href: string;
@@ -52,19 +53,22 @@ export function InteriorPageHero({
   return (
     <section className="border-b border-neutral-200 dark:border-neutral-800">
       <div className="mx-auto grid max-w-[1200px] border-x border-neutral-200 dark:border-neutral-800 lg:grid-cols-12">
-        <div className="border-b border-neutral-200 px-5 py-12 dark:border-neutral-800 sm:px-8 sm:py-16 lg:col-span-7 lg:border-b-0 lg:border-r lg:px-10 lg:py-20">
-          {eyebrow && (
-            <p className="mb-6 text-sm font-semibold text-neutral-500 dark:text-neutral-400">
-              {eyebrow}
-            </p>
-          )}
-          <h1 className="max-w-3xl text-[clamp(3rem,5.25vw,4.75rem)] font-semibold leading-[0.96] tracking-[-0.04em] text-neutral-950 text-balance dark:text-neutral-50">
-            {title}
-          </h1>
+        <div className="relative overflow-hidden border-b border-emerald-800 bg-emerald-950 px-5 py-12 text-white sm:px-8 sm:py-16 lg:col-span-7 lg:border-b-0 lg:border-r lg:px-10 lg:py-20">
+          <MarketingSignal className="opacity-75 [mask-image:linear-gradient(to_left,black,transparent_88%)]" />
+          <div className="relative z-10">
+            {eyebrow && (
+              <p className="mb-6 text-sm font-semibold text-emerald-200">
+                {eyebrow}
+              </p>
+            )}
+            <h1 className="max-w-3xl text-[clamp(3rem,5.25vw,4.75rem)] font-semibold leading-[0.96] tracking-[-0.04em] text-white text-balance">
+              {title}
+            </h1>
+          </div>
         </div>
 
-        <div className="flex flex-col justify-center px-5 py-10 sm:px-8 sm:py-12 lg:col-span-5 lg:px-10 lg:py-16">
-          <p className="max-w-lg text-base leading-7 text-neutral-600 text-pretty dark:text-neutral-300 sm:text-lg sm:leading-8">
+        <div className="flex flex-col justify-center bg-emerald-50/60 px-5 py-10 dark:bg-emerald-950/20 sm:px-8 sm:py-12 lg:col-span-5 lg:px-10 lg:py-16">
+          <p className="max-w-lg text-base leading-7 text-emerald-950/80 text-pretty dark:text-emerald-50/80 sm:text-lg sm:leading-8">
             {description}
           </p>
 
@@ -100,7 +104,7 @@ export function InteriorPageHero({
           )}
 
           {resolvedNote && (
-            <p className="mt-4 text-sm text-neutral-500 dark:text-neutral-400">{resolvedNote}</p>
+            <p className="mt-4 text-sm text-emerald-900/75 dark:text-emerald-100/75">{resolvedNote}</p>
           )}
         </div>
       </div>

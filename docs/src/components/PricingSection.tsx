@@ -154,10 +154,10 @@ export function PricingSection({ isAnnual, setIsAnnual }: { isAnnual: boolean, s
         </div>
 
         {/* Shared controls section */}
-        <div className="mb-10 border-y border-neutral-200 py-8 dark:border-neutral-800">
+        <div className="-mx-5 mb-10 border-y border-[#b3bfff]/40 bg-[#b3bfff]/10 px-5 py-8 dark:border-[#6677d9]/35 dark:bg-[#1e2a66]/20 sm:-mx-8 sm:px-8 lg:-mx-10 lg:px-10">
           <div className="mb-7 flex items-end justify-between gap-5">
             <div>
-              <h3 className="mb-2 text-sm font-medium text-neutral-600 dark:text-neutral-400">{t("Monthly pageviews")}</h3>
+              <h3 className="mb-2 text-sm font-medium text-[#33408c] dark:text-[#c2caff]/70">{t("Monthly pageviews")}</h3>
               <div className="text-3xl font-semibold tabular-nums tracking-tight">
                 {typeof eventLimit === "number" ? eventLimit.toLocaleString() : t("Custom")}
               </div>
@@ -168,7 +168,7 @@ export function PricingSection({ isAnnual, setIsAnnual }: { isAnnual: boolean, s
                 <button
                   onClick={() => setIsAnnual(false)}
                   className={cn(
-                    "cursor-pointer rounded-sm px-3 py-1.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-500",
+                    "min-h-11 cursor-pointer rounded-sm px-3 py-1.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-500",
                     !isAnnual
                       ? "bg-white text-neutral-950 dark:bg-neutral-800 dark:text-white font-medium"
                       : "text-neutral-600 dark:text-neutral-400 hover:text-neutral-800 dark:hover:text-neutral-200"
@@ -179,7 +179,7 @@ export function PricingSection({ isAnnual, setIsAnnual }: { isAnnual: boolean, s
                 <button
                   onClick={() => setIsAnnual(true)}
                   className={cn(
-                    "cursor-pointer rounded-sm px-3 py-1.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-500",
+                    "min-h-11 cursor-pointer rounded-sm px-3 py-1.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-500",
                     isAnnual
                       ? "bg-white text-neutral-950 dark:bg-neutral-800 dark:text-white font-medium"
                       : "text-neutral-600 dark:text-neutral-400 hover:text-neutral-800 dark:hover:text-neutral-200"
@@ -297,13 +297,18 @@ export function PricingSection({ isAnnual, setIsAnnual }: { isAnnual: boolean, s
                       key={i}
                       onClick={() => carouselApi?.scrollTo(i)}
                       aria-label={t("Go to pricing option {number}", { number: String(i + 1) })}
-                      className={cn(
-                        "size-2 cursor-pointer rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2",
-                        currentSlide === i
-                          ? "bg-emerald-500"
-                          : "bg-neutral-400 dark:bg-neutral-600"
-                      )}
-                    />
+                      className="flex size-11 cursor-pointer items-center justify-center rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2"
+                    >
+                      <span
+                        className={cn(
+                          "size-2 rounded-full transition-colors",
+                          currentSlide === i
+                            ? "bg-emerald-500"
+                            : "bg-neutral-400 dark:bg-neutral-600"
+                        )}
+                        aria-hidden="true"
+                      />
+                    </button>
                   ))}
                 </div>
               </div>

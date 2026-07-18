@@ -115,12 +115,12 @@ export default function ComparePage() {
 
         <section className="border-b border-neutral-200 dark:border-neutral-800" aria-labelledby="comparison-directory-title">
           <div className="mx-auto grid max-w-[1200px] border-x border-neutral-200 dark:border-neutral-800 lg:grid-cols-12">
-            <div className="border-b border-neutral-200 px-5 py-12 dark:border-neutral-800 sm:px-8 lg:col-span-4 lg:border-b-0 lg:border-r lg:px-10 lg:py-16">
+            <div className="border-b border-indigo-300 bg-[#b3bfff] px-5 py-12 text-indigo-950 sm:px-8 lg:col-span-4 lg:border-b-0 lg:border-r lg:px-10 lg:py-16">
               <div className="lg:sticky lg:top-24">
                 <h2 id="comparison-directory-title" className="text-3xl font-semibold tracking-[-0.03em] md:text-4xl">
                   Compare the field
                 </h2>
-                <p className="mt-5 max-w-sm text-base leading-7 text-neutral-600 dark:text-neutral-400">
+                <p className="mt-5 max-w-sm text-base leading-7 text-indigo-950/75">
                   Direct comparisons across product scope, privacy, ownership, and pricing.
                 </p>
               </div>
@@ -130,15 +130,15 @@ export default function ComparePage() {
               <Link
                 key={competitor.slug}
                 href={`/compare/${competitor.slug}`}
-                className="group flex min-h-48 flex-col justify-between bg-white px-5 py-9 transition-colors hover:bg-neutral-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-neutral-500 dark:bg-neutral-950 dark:hover:bg-neutral-900/60 sm:px-8 lg:px-10"
+                className="group flex min-h-48 flex-col justify-between bg-indigo-50/60 px-5 py-9 text-indigo-950 transition-colors hover:bg-indigo-100/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-indigo-500 dark:bg-indigo-950/20 dark:text-indigo-100 dark:hover:bg-indigo-950/35 sm:px-8 lg:px-10"
               >
                 <div>
-                  <p className="text-xs font-medium uppercase tracking-[0.12em] text-neutral-400">Rybbit vs</p>
+                  <p className="text-xs font-medium uppercase tracking-[0.12em] text-indigo-950/65 dark:text-indigo-100/65">Rybbit vs</p>
                   <h3 className="mt-2 text-xl font-semibold tracking-tight">{competitor.name}</h3>
                 </div>
                 <div className="mt-8 flex items-end justify-between gap-4">
-                  <p className="max-w-xs text-sm leading-6 text-neutral-600 dark:text-neutral-400">{competitor.description}</p>
-                  <ArrowRight className="mb-1 size-4 shrink-0 text-neutral-400 transition-transform group-hover:translate-x-1 group-hover:text-emerald-500" aria-hidden="true" />
+                  <p className="max-w-xs text-sm leading-6 text-indigo-950/65 dark:text-indigo-100/65">{competitor.description}</p>
+                  <ArrowRight className="mb-1 size-4 shrink-0 text-indigo-600 transition-transform group-hover:translate-x-1 group-hover:text-emerald-600 dark:text-indigo-300 dark:group-hover:text-emerald-300" aria-hidden="true" />
                 </div>
               </Link>
             ))}

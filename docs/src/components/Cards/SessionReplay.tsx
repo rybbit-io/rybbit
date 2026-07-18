@@ -162,7 +162,8 @@ export function SessionReplay() {
             {/* Play/Pause button */}
             <button
               onClick={() => setIsPlaying(!isPlaying)}
-              className="bg-emerald-600 hover:bg-emerald-500 text-white rounded-full p-1.5 transition-colors"
+              aria-label={isPlaying ? "Pause session replay" : "Play session replay"}
+              className="flex size-11 shrink-0 items-center justify-center rounded-full bg-emerald-600 text-white transition-colors hover:bg-emerald-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:ring-offset-2 focus-visible:ring-offset-neutral-800"
             >
               {isPlaying ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5" />}
             </button>

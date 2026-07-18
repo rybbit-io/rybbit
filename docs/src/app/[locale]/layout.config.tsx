@@ -18,8 +18,8 @@ export function baseOptions(lang: string): BaseLayoutProps {
             src="/rybbit/horizontal_white.svg"
             alt="Rybbit"
             width={120}
-            height={0}
-            style={{ height: "auto" }}
+            height={24}
+            style={{ width: "auto", height: "auto" }}
             className="mr-2 invert dark:invert-0"
           />
         </>

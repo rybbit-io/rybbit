@@ -105,6 +105,42 @@ pre {
   }
 }
 
+@keyframes marketing-signal-trace {
+  to {
+    stroke-dashoffset: -144;
+  }
+}
+
+@keyframes marketing-signal-pulse {
+  0%,
+  100% {
+    opacity: 0.16;
+    transform: scale(0.85);
+  }
+  50% {
+    opacity: 0.3;
+    transform: scale(1.15);
+  }
+}
+
+.marketing-signal-trace {
+  stroke-dasharray: 7 17;
+  animation: marketing-signal-trace 9s linear infinite;
+}
+
+.marketing-signal-pulse {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: marketing-signal-pulse 2.4s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .marketing-signal-trace,
+  .marketing-signal-pulse {
+    animation: none;
+  }
+}
+
 @theme inline {
   --animate-marquee: marquee var(--duration) infinite linear;
   --animate-marquee-vertical: marquee-vertical var(--duration) linear infinite;
@@ -249,7 +285,7 @@ pre {
   gap: 0;
   padding-block: 0.3rem;
   padding-inline: 0.7rem;
-  border-radius: calc(var(--radius) - 2px);
+  border-radius: var(--radius-md);
   border: 1px solid transparent;
   font-weight: 500;
   color: var(--color-fd-muted-foreground);

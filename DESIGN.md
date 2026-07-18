@@ -16,6 +16,9 @@ colors:
   # Data visualization
   dataviz: "#b3bfff"           # hsl(230 100% 85%) — primary chart series (periwinkle, dark)
   dataviz-2: "#c2caff"         # hsl(230 100% 92%) — secondary chart series (dark)
+  # Marketing palette — public brand surfaces only
+  marketing-activity: "#fcd34d" # amber-300 — behavior, live activity, and community proof
+  marketing-access: "#67e8f9"   # cyan-300 — integrations, access, and connected systems
   # Semantic state
   destructive: "#ef4444"       # red-500
   warning: "#eab308"           # yellow-500
@@ -46,6 +49,8 @@ typography:
     fontWeight: 500
     lineHeight: 1.3
     letterSpacing: "normal"
+  code:
+    fontFamily: "ui-monospace, SFMono-Regular, SF Mono, Consolas, Liberation Mono, Menlo, monospace"
 rounded:
   sm: "0.8px"   # calc(var(--radius) - 4px)
   md: "2.8px"   # calc(var(--radius) - 2px)
@@ -145,11 +150,15 @@ A full Tailwind-style ramp (red, orange, amber, yellow, lime, green, emerald, te
 
 **The Two-Voice Rule.** The interface speaks in grayscale. Exactly two chromatic voices are allowed on top: emerald for *action*, periwinkle for *data*. State colors (red/yellow/blue) are whispers that appear only when state demands them.
 
+**The Marketing Signal Exception.** Public marketing surfaces use a Full Palette strategy inspired by the color discipline of Stripe's product artifacts, recast as a Rybbit-specific live oscilloscope signal. Emerald remains the dominant brand/action/privacy color; periwinkle carries data; amber carries behavior and community; cyan carries access and connected systems. Large color fields, low-chroma section washes, colored product artifacts, and the live-signal/ripple motif are allowed on marketing pages. The colors must retain those roles, and this exception does not apply to the authenticated analytics product or docs reading surface.
+
 **The Flat Rule.** No `box-shadow` for resting elevation. Depth is the grayscale ramp plus 1px borders. If two surfaces need separating, change the neutral step or add a hairline border, not a shadow.
 
 ## 3. Typography
 
 **Display / Body / Label Font:** Inter (with `system-ui, sans-serif` fallback), loaded via `next/font`.
+
+**Code Font:** The platform monospace stack (`ui-monospace`, SF Mono, Consolas, Liberation Mono, Menlo), reserved for code, URLs, and technical values.
 
 **Character:** One family, carried by weight and size contrast, not by pairing. Inter is neutral, screen-legible at small sizes, and tabular-friendly for numbers, which is exactly right for a dense analytics tool. There is no display typeface; product UI does not need one.
 
@@ -161,6 +170,8 @@ A full Tailwind-style ramp (red, orange, amber, yellow, lime, green, emerald, te
 
 ### Named Rules
 **The One-Family Rule.** Inter does every job: headings, body, labels, data. Do not introduce a second UI typeface. Hierarchy comes from weight (400/500/600) and size, never from a new face.
+
+**The Technical Exception.** Monospace is reserved for literal code, URLs, and technical values. It is never used as decorative brand shorthand.
 
 **The No-Shrinking-Headline Rule.** Type uses a fixed rem scale, not fluid `clamp()`. Users view at a consistent DPI inside an app shell; a heading that shrinks in a sidebar looks worse, not better.
 
@@ -212,6 +223,7 @@ This system is **flat by default**. There is no resting shadow vocabulary; depth
 - **Do** keep radii tight (≤4.8px) and controls compact (36px default height).
 - **Do** keep a visible `focus-visible` ring on every interactive element, and honor `prefers-reduced-motion`.
 - **Do** mirror every token across dark and light themes; dark is the default.
+- **Do** use the marketing palette decisively on public pages to establish rhythm and meaning; keep the authenticated product on the Two-Voice Rule.
 
 ### Don't:
 - **Don't** ship the **generic SaaS template**: no purple gradients, no hero-metric template (big number + tiny label + gradient accent), no endless identical icon+heading+text card grids.
@@ -222,3 +234,4 @@ This system is **flat by default**. There is no resting shadow vocabulary; depth
 - **Don't** use gradient text (`background-clip: text`) or decorative glassmorphism.
 - **Don't** introduce a second UI typeface or fluid `clamp()` headings.
 - **Don't** tint surfaces or backgrounds with emerald, or paint chrome in the periwinkle data hue.
+- **Don't** bring marketing's amber/cyan fields, signal traces, or ripple decoration into the authenticated product shell.

@@ -35,9 +35,11 @@ import {
   SiWordpress,
 } from "@icons-pack/react-simple-icons";
 import { ComponentType } from "react";
+import { cn } from "@/lib/utils";
 
 type IconProps = {
   className?: string;
+  color?: string;
   size?: number;
 };
 
@@ -79,14 +81,29 @@ const platforms: { name: string; icon: ComponentType<IconProps>; path: string }[
   { name: "WordPress", icon: SiWordpress, path: "/docs/guides/wordpress" },
 ];
 
-const PlatformLogo = ({ name, icon: Icon, path }: { name: string; icon: ComponentType<IconProps>; path: string }) => {
+const PlatformLogo = ({
+  name,
+  icon: Icon,
+  path,
+  className,
+}: {
+  name: string;
+  icon: ComponentType<IconProps>;
+  path: string;
+  className?: string;
+}) => {
   return (
     <Link
       href={path}
-      className="flex min-h-20 items-center gap-3 bg-white px-4 text-neutral-600 transition-colors duration-200 hover:bg-neutral-50 hover:text-neutral-950 focus-visible:z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 dark:bg-neutral-950 dark:text-neutral-400 dark:hover:bg-neutral-900 dark:hover:text-white"
+      className={cn(
+        "group flex min-h-20 items-center gap-3 bg-white px-4 transition-colors duration-200 hover:bg-amber-50 focus-visible:z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 dark:bg-neutral-950 dark:hover:bg-amber-950/20",
+        className
+      )}
     >
-      <Icon className="size-5 shrink-0" />
-      <span className="text-sm font-medium">{name}</span>
+      <span className="flex size-9 shrink-0 items-center justify-center rounded-md bg-neutral-100 transition-transform duration-200 group-hover:-translate-y-0.5 dark:bg-white">
+        <Icon className="size-5" color="default" />
+      </span>
+      <span className="text-sm font-medium text-neutral-950 transition-colors group-hover:text-amber-950 dark:text-white dark:group-hover:text-amber-100">{name}</span>
     </Link>
   );
 };
@@ -94,8 +111,15 @@ const PlatformLogo = ({ name, icon: Icon, path }: { name: string; icon: Componen
 export function IntegrationsGrid() {
   return (
     <div className="grid min-h-full grid-cols-2 gap-px bg-neutral-200 p-px dark:bg-neutral-800 sm:grid-cols-3 xl:grid-cols-4">
-      {platforms.map((platform) => (
-        <PlatformLogo key={platform.name} {...platform} />
+      {platforms.map((platform, index) => (
+        <PlatformLogo
+          key={platform.name}
+          {...platform}
+          className={cn(
+            index === platforms.length - 2 && "xl:col-span-2",
+            index === platforms.length - 1 && "sm:col-span-3 xl:col-span-2"
+          )}
+        />
       ))}
     </div>
   );

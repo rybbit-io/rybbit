@@ -30,10 +30,15 @@ export function CTASection({
 
   return (
     <section className="relative overflow-hidden border-b border-emerald-900 bg-emerald-950 text-white">
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute inset-0 opacity-60 [background-image:linear-gradient(to_right,rgba(255,255,255,0.045)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.045)_1px,transparent_1px)] [background-size:40px_40px] [mask-image:linear-gradient(to_bottom,black,transparent_92%)]"
-      />
+      <div aria-hidden="true" className="pointer-events-none absolute -right-44 top-1/2 size-[620px] -translate-y-1/2 opacity-80">
+        <span className="absolute inset-0 rounded-full border border-emerald-300/10" />
+        <span className="absolute inset-20 rounded-full border border-emerald-300/15" />
+        <span className="absolute inset-40 rounded-full border border-[#b3bfff]/20" />
+        <span className="absolute inset-60 rounded-full border border-amber-300/30" />
+        <span className="absolute left-[76px] top-1/2 size-2 rounded-full bg-[#b3bfff]" />
+        <span className="absolute left-[232px] top-[106px] size-2 rounded-full bg-amber-300" />
+        <span className="absolute bottom-[124px] left-[142px] size-2 rounded-full bg-emerald-300" />
+      </div>
       <div className="relative mx-auto grid max-w-[1200px] border-x border-white/10 lg:grid-cols-12">
         <Image
           src="/rybbit/frog_white.svg"

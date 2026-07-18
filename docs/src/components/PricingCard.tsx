@@ -59,12 +59,12 @@ export function PricingCard({
   return (
     <div
       className={cn(
-        "h-full overflow-hidden rounded-lg border bg-white dark:bg-neutral-950",
+        "h-full overflow-hidden rounded-lg border",
         recommended
-          ? "border-emerald-500"
+          ? "border-emerald-500 bg-emerald-50 dark:bg-emerald-950/20"
           : isFree
-            ? "border-neutral-200 text-neutral-600 dark:border-neutral-800 dark:text-neutral-300"
-            : "border-neutral-300 dark:border-neutral-800"
+            ? "border-neutral-200 bg-white text-neutral-600 dark:border-neutral-800 dark:bg-neutral-950 dark:text-neutral-300"
+            : "border-neutral-300 bg-white dark:border-neutral-800 dark:bg-neutral-950"
       )}
     >
       <div className="p-6">
@@ -130,7 +130,7 @@ export function PricingCard({
             <button
               onClick={() => setIsExpanded((expanded) => !expanded)}
               aria-expanded={isExpanded}
-              className="mt-2 flex cursor-pointer items-center gap-3 rounded-sm text-sm text-neutral-600 transition-colors hover:text-neutral-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-500 dark:text-neutral-400 dark:hover:text-white"
+              className="mt-2 flex min-h-11 cursor-pointer items-center gap-3 rounded-sm text-sm text-neutral-600 transition-colors hover:text-neutral-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-500 dark:text-neutral-400 dark:hover:text-white"
             >
               {isExpanded ? <ArrowUp className="size-4" aria-hidden="true" /> : <ArrowDown className="size-4" aria-hidden="true" />}
               {isExpanded ? t("Show less") : t("Show more ({count} more)", { count: String(features.length - 7) })}

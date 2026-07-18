@@ -86,9 +86,9 @@ export function FeaturePage({
 
       {demoUrl && (
         <section className="border-b border-neutral-200 dark:border-neutral-800" aria-label={`${featureName} demo`}>
-          <div className="mx-auto max-w-[1200px] border-x border-neutral-200 bg-neutral-100 p-2 dark:border-neutral-800 dark:bg-neutral-900 sm:p-3">
+          <div className="mx-auto max-w-[1200px] border-x border-indigo-200 bg-indigo-50 p-2 dark:border-indigo-900/70 dark:bg-indigo-950/25 sm:p-3">
             <div className="overflow-hidden rounded-lg border border-neutral-300 bg-white dark:border-neutral-700 dark:bg-neutral-950">
-              <div className="grid h-10 grid-cols-[1fr_auto_1fr] items-center gap-2 border-b border-neutral-200 px-3 dark:border-neutral-800 sm:px-4">
+              <div className="grid min-h-12 grid-cols-[1fr_auto_1fr] items-center gap-2 border-b border-neutral-200 px-3 dark:border-neutral-800 sm:px-4">
                 <div className="flex gap-1.5" aria-hidden="true">
                   <span className="size-2.5 rounded-full bg-neutral-300 dark:bg-neutral-700" />
                   <span className="size-2.5 rounded-full bg-neutral-300 dark:bg-neutral-700" />
@@ -98,7 +98,7 @@ export function FeaturePage({
                   href={demoUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="truncate rounded-md border border-neutral-200 bg-neutral-50 px-2.5 py-0.5 font-mono text-xs text-neutral-500 transition-colors hover:text-neutral-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-500 dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-400 dark:hover:text-white"
+                  className="inline-flex min-h-11 items-center truncate rounded-md border border-neutral-200 bg-neutral-50 px-2.5 py-0.5 font-mono text-xs text-neutral-500 transition-colors hover:text-neutral-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-500 dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-400 dark:hover:text-white"
                 >
                   demo.rybbit.com
                 </a>
@@ -147,9 +147,9 @@ export function FeaturePage({
 
       <section className="border-b border-neutral-200 dark:border-neutral-800" aria-labelledby="capabilities-title">
         <div className="mx-auto grid max-w-[1200px] border-x border-neutral-200 dark:border-neutral-800 lg:grid-cols-12">
-          <div className="border-b border-neutral-200 px-5 py-12 dark:border-neutral-800 sm:px-8 lg:col-span-4 lg:border-b-0 lg:border-r lg:px-10 lg:py-16">
-            <div className="lg:sticky lg:top-24">
-              <p className="text-sm font-semibold text-neutral-500 dark:text-neutral-400">{t("Capabilities")}</p>
+            <div className="border-b border-indigo-300 bg-[#b3bfff] px-5 py-12 text-indigo-950 sm:px-8 lg:col-span-4 lg:border-b-0 lg:border-r lg:px-10 lg:py-16">
+              <div className="lg:sticky lg:top-24">
+              <p className="text-sm font-semibold text-indigo-950/75">{t("Capabilities")}</p>
               <h2 id="capabilities-title" className="mt-4 text-3xl font-semibold tracking-[-0.03em] md:text-4xl">
                 {t("What you can do")}
               </h2>
@@ -159,9 +159,9 @@ export function FeaturePage({
             {capabilities.map((capability) => (
               <article
                 key={capability.title}
-                className="border-b border-neutral-200 px-5 py-10 dark:border-neutral-800 sm:px-8 md:odd:border-r md:[&:nth-last-child(-n+2)]:border-b-0 lg:px-10"
+                className="border-b border-indigo-200 bg-indigo-50/70 px-5 py-10 dark:border-indigo-900/70 dark:bg-indigo-950/20 sm:px-8 md:odd:border-r md:[&:nth-last-child(-n+2)]:border-b-0 lg:px-10"
               >
-                <div className="mb-5 flex size-9 items-center justify-center rounded-md border border-neutral-200 text-neutral-600 dark:border-neutral-800 dark:text-neutral-400">
+                <div className="mb-5 flex size-9 items-center justify-center rounded-md border border-indigo-200 bg-white/60 text-indigo-700 dark:border-indigo-800 dark:bg-indigo-950/40 dark:text-indigo-300">
                   {capability.icon}
                 </div>
                 <h3 className="text-lg font-semibold tracking-tight">{capability.title}</h3>
@@ -176,9 +176,9 @@ export function FeaturePage({
 
       <section className="border-b border-neutral-200 dark:border-neutral-800" aria-labelledby="how-it-works-title">
         <div className="mx-auto grid max-w-[1200px] border-x border-neutral-200 dark:border-neutral-800 lg:grid-cols-12">
-          <div className="border-b border-neutral-200 px-5 py-12 dark:border-neutral-800 sm:px-8 lg:col-span-4 lg:border-b-0 lg:border-r lg:px-10 lg:py-16">
-            <div className="lg:sticky lg:top-24">
-              <p className="text-sm font-semibold text-neutral-500 dark:text-neutral-400">{t("Getting Started")}</p>
+            <div className="border-b border-amber-400 bg-amber-300 px-5 py-12 text-amber-950 sm:px-8 lg:col-span-4 lg:border-b-0 lg:border-r lg:px-10 lg:py-16">
+              <div className="lg:sticky lg:top-24">
+              <p className="text-sm font-semibold text-amber-950/75">{t("Getting Started")}</p>
               <h2 id="how-it-works-title" className="mt-4 text-3xl font-semibold tracking-[-0.03em] md:text-4xl">
                 {t("How it works")}
               </h2>
@@ -188,9 +188,9 @@ export function FeaturePage({
             {howItWorks.map((step) => (
               <li
                 key={step.step}
-                className="grid border-b border-neutral-200 px-5 py-9 last:border-b-0 dark:border-neutral-800 sm:grid-cols-[64px_1fr] sm:px-8 lg:px-10"
+                className="grid border-b border-amber-200 bg-amber-50/60 px-5 py-9 last:border-b-0 dark:border-amber-900/70 dark:bg-amber-950/15 sm:grid-cols-[64px_1fr] sm:px-8 lg:px-10"
               >
-                <span className="mb-4 font-mono text-sm text-emerald-600 dark:text-emerald-400 sm:mb-0">
+                <span className="mb-4 font-mono text-sm font-semibold text-amber-700 dark:text-amber-300 sm:mb-0">
                   {String(step.step).padStart(2, "0")}
                 </span>
                 <div>
@@ -207,8 +207,8 @@ export function FeaturePage({
 
       <section className="border-b border-neutral-200 dark:border-neutral-800" aria-labelledby="who-uses-title">
         <div className="mx-auto grid max-w-[1200px] border-x border-neutral-200 dark:border-neutral-800 lg:grid-cols-12">
-          <div className="border-b border-neutral-200 px-5 py-12 dark:border-neutral-800 sm:px-8 lg:col-span-4 lg:border-b-0 lg:border-r lg:px-10 lg:py-16">
-            <p className="text-sm font-semibold text-neutral-500 dark:text-neutral-400">{t("Use Cases")}</p>
+            <div className="border-b border-cyan-400 bg-cyan-300 px-5 py-12 text-cyan-950 sm:px-8 lg:col-span-4 lg:border-b-0 lg:border-r lg:px-10 lg:py-16">
+            <p className="text-sm font-semibold text-cyan-950/75">{t("Use Cases")}</p>
             <h2 id="who-uses-title" className="mt-4 text-3xl font-semibold tracking-[-0.03em] md:text-4xl">
               {t("Who uses this")}
             </h2>
@@ -217,9 +217,9 @@ export function FeaturePage({
             {whoUses.map((item) => (
               <article
                 key={item.title}
-                className="border-b border-neutral-200 px-5 py-10 last:border-b-0 dark:border-neutral-800 sm:px-8 md:border-b-0 md:border-r md:last:border-r-0 lg:px-8"
+                className="border-b border-cyan-200 bg-cyan-50/60 px-5 py-10 last:border-b-0 dark:border-cyan-900/70 dark:bg-cyan-950/15 sm:px-8 md:border-b-0 md:border-r md:last:border-r-0 lg:px-8"
               >
-                <div className="mb-5 text-neutral-500 dark:text-neutral-400">{item.icon}</div>
+                <div className="mb-5 text-cyan-700 dark:text-cyan-300">{item.icon}</div>
                 <h3 className="font-semibold tracking-tight">{item.title}</h3>
                 <p className="mt-2 text-sm leading-6 text-neutral-600 dark:text-neutral-400">{item.description}</p>
               </article>
@@ -231,8 +231,8 @@ export function FeaturePage({
       {faqItems.length > 0 && (
         <section className="border-b border-neutral-200 dark:border-neutral-800" aria-labelledby="feature-faq-title">
           <div className="mx-auto grid max-w-[1200px] border-x border-neutral-200 dark:border-neutral-800 lg:grid-cols-12">
-            <div className="border-b border-neutral-200 px-5 py-12 dark:border-neutral-800 sm:px-8 lg:col-span-4 lg:border-b-0 lg:border-r lg:px-10 lg:py-16">
-              <p className="text-sm font-semibold text-neutral-500 dark:text-neutral-400">{t("FAQ")}</p>
+              <div className="border-b border-emerald-200 bg-emerald-50 px-5 py-12 dark:border-emerald-900/60 dark:bg-emerald-950/20 sm:px-8 lg:col-span-4 lg:border-b-0 lg:border-r lg:px-10 lg:py-16">
+              <p className="text-sm font-semibold text-emerald-700 dark:text-emerald-300">{t("FAQ")}</p>
               <h2 id="feature-faq-title" className="mt-4 text-3xl font-semibold tracking-[-0.03em] md:text-4xl">
                 {t("Frequently asked questions")}
               </h2>

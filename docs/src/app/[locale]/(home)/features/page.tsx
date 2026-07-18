@@ -57,6 +57,7 @@ export const metadata: Metadata = createMetadata({
 interface FeatureGridProps {
   title: string;
   description: string;
+  tone: "data" | "behavior" | "access" | "privacy" | "cloud";
   features: Array<{
     icon: React.ReactNode;
     title: string;
@@ -64,20 +65,55 @@ interface FeatureGridProps {
   }>;
 }
 
-function FeatureGrid({ title, description, features }: FeatureGridProps) {
+const featureToneStyles = {
+  data: {
+    lead: "border-indigo-300 bg-[#b3bfff] text-indigo-950",
+    description: "text-indigo-950/75",
+    item: "bg-indigo-50/70 dark:bg-indigo-950/20",
+    icon: "text-indigo-700 dark:text-indigo-300",
+  },
+  behavior: {
+    lead: "border-amber-400 bg-amber-300 text-amber-950",
+    description: "text-amber-950/75",
+    item: "bg-amber-50/70 dark:bg-amber-950/20",
+    icon: "text-amber-700 dark:text-amber-300",
+  },
+  access: {
+    lead: "border-cyan-400 bg-cyan-300 text-cyan-950",
+    description: "text-cyan-950/75",
+    item: "bg-cyan-50/70 dark:bg-cyan-950/20",
+    icon: "text-cyan-700 dark:text-cyan-300",
+  },
+  privacy: {
+    lead: "border-emerald-600 bg-emerald-500 text-emerald-950",
+    description: "text-emerald-950/85",
+    item: "bg-emerald-50/70 dark:bg-emerald-950/20",
+    icon: "text-emerald-700 dark:text-emerald-300",
+  },
+  cloud: {
+    lead: "border-neutral-800 bg-neutral-950 text-white",
+    description: "text-neutral-300",
+    item: "bg-indigo-50/50 dark:bg-indigo-950/15",
+    icon: "text-indigo-700 dark:text-indigo-300",
+  },
+};
+
+function FeatureGrid({ title, description, tone, features }: FeatureGridProps) {
+  const styles = featureToneStyles[tone];
+
   return (
     <section className="border-b border-neutral-200 dark:border-neutral-800">
       <div className="mx-auto grid max-w-[1200px] border-x border-neutral-200 dark:border-neutral-800 lg:grid-cols-12">
-        <div className="border-b border-neutral-200 px-5 py-12 dark:border-neutral-800 sm:px-8 lg:col-span-4 lg:border-b-0 lg:border-r lg:px-10 lg:py-16">
+        <div className={`border-b px-5 py-12 sm:px-8 lg:col-span-4 lg:border-b-0 lg:border-r lg:px-10 lg:py-16 ${styles.lead}`}>
           <div className="lg:sticky lg:top-24">
             <h2 className="text-3xl font-semibold tracking-[-0.03em] md:text-4xl">{title}</h2>
-            <p className="mt-5 max-w-sm text-base leading-7 text-neutral-600 dark:text-neutral-400">{description}</p>
+            <p className={`mt-5 max-w-sm text-base leading-7 ${styles.description}`}>{description}</p>
           </div>
         </div>
         <div className="grid gap-px bg-neutral-200 dark:bg-neutral-800 lg:col-span-8 md:grid-cols-2">
           {features.map((feature) => (
-            <article key={feature.title} className="bg-white px-5 py-9 dark:bg-neutral-950 sm:px-8 lg:px-10">
-              <div className="mb-5 text-neutral-500 dark:text-neutral-400">{feature.icon}</div>
+            <article key={feature.title} className={`px-5 py-9 sm:px-8 lg:px-10 ${styles.item}`}>
+              <div className={`mb-5 ${styles.icon}`}>{feature.icon}</div>
               <h3 className="font-semibold tracking-tight">{feature.title}</h3>
               <p className="mt-2 max-w-md text-sm leading-6 text-neutral-600 dark:text-neutral-400">{feature.description}</p>
             </article>
@@ -315,30 +351,35 @@ export default function FeaturesPage() {
       />
 
       <FeatureGrid
+        tone="data"
         title={t("Core Web Analytics")}
         description={t("Track every metric that matters. Make data-driven decisions with comprehensive analytics designed for clarity.")}
         features={coreWebAnalyticsFeatures}
       />
 
       <FeatureGrid
+        tone="behavior"
         title={t("Advanced Analytics")}
         description={t("Go deeper with powerful tools for session replay, funnels, comparisons, and advanced user behavior analysis.")}
         features={advancedAnalyticsFeatures}
       />
 
       <FeatureGrid
+        tone="access"
         title={t("Access")}
         description={t("Flexible sharing and collaboration tools to get insights into the right hands, securely.")}
         features={accessFeatures}
       />
 
       <FeatureGrid
+        tone="privacy"
         title={t("Privacy")}
         description={t("Privacy isn't a feature—it's the foundation. Analytics that respect your users and comply with regulations automatically.")}
         features={privacyFeatures}
       />
 
       <FeatureGrid
+        tone="cloud"
         title={t("Cloud")}
         description={t("Enterprise-grade infrastructure without the enterprise headache. Reliable, fast, and fully managed.")}
         features={cloudFeatures}
