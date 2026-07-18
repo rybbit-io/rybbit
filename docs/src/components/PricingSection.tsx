@@ -1,5 +1,6 @@
 "use client";
 
+import { HAIRLINE, Section, SectionHeader } from "@/components/landing/primitives";
 import { Carousel, CarouselContent, CarouselItem, type CarouselApi } from "@/components/ui/carousel";
 import { Slider } from "@/components/ui/slider";
 import { cn } from "@/lib/utils";
@@ -137,23 +138,19 @@ export function PricingSection({ isAnnual, setIsAnnual }: { isAnnual: boolean, s
   }
 
   return (
-    <section className="py-16 md:py-24 w-full relative z-10">
-      <div className="max-w-[1200px] mx-auto px-4">
-        <div className="mb-12 text-center max-w-3xl mx-auto">
-          <h2 className="text-4xl md:text-5xl font-bold tracking-tight pb-4 text-transparent bg-clip-text bg-gradient-to-b from-neutral-900 via-neutral-700 to-neutral-500 dark:from-white dark:via-gray-200 dark:to-gray-400">
-            {t("Pricing")}
-          </h2>
-          <p className="text-lg text-neutral-600 dark:text-neutral-300">
-            {t("Start your 7-day free trial — no credit card charges until the trial ends.")}
-          </p>
-        </div>
+    <Section>
+      <div className="w-full">
+        <SectionHeader
+          title={t("Pricing")}
+          sub={t("Start your 7-day free trial — no credit card charges until the trial ends.")}
+        />
 
         {/* Shared controls section */}
-        <div className="max-w-xl mx-auto mb-8">
+        <div className={cn("mt-10 rounded-xl border p-5 md:p-6", HAIRLINE)}>
           <div className="flex justify-between mb-6 items-center">
             <div>
-              <h3 className="font-semibold mb-2">{t("Monthly pageviews")}</h3>
-              <div className="text-3xl font-bold text-emerald-600 dark:text-emerald-400">
+              <h3 className="text-sm font-medium text-neutral-600 dark:text-neutral-400 mb-1.5">{t("Monthly pageviews")}</h3>
+              <div className="text-2xl md:text-3xl font-semibold tracking-tight tabular-nums text-emerald-600 dark:text-emerald-400">
                 {typeof eventLimit === "number" ? eventLimit.toLocaleString() : t("Custom")}
               </div>
             </div>
@@ -277,7 +274,7 @@ export function PricingSection({ isAnnual, setIsAnnual }: { isAnnual: boolean, s
           return (
             <>
               {/* Mobile carousel */}
-              <div className="min-[700px]:hidden">
+              <div className="min-[700px]:hidden mt-8">
                 <Carousel setApi={setCarouselApi} opts={{ startIndex: 1 }}>
                   <CarouselContent>
                     <CarouselItem>{standardCard}</CarouselItem>
@@ -303,7 +300,7 @@ export function PricingSection({ isAnnual, setIsAnnual }: { isAnnual: boolean, s
               </div>
 
               {/* Desktop grid */}
-              <div className="hidden min-[700px]:grid min-[1100px]:grid-cols-3 min-[700px]:grid-cols-2 gap-4 mx-auto justify-center items-stretch">
+              <div className="hidden min-[700px]:grid min-[1100px]:grid-cols-3 min-[700px]:grid-cols-2 gap-5 mx-auto justify-center items-stretch mt-8">
                 {standardCard}
                 {proCard}
                 {enterpriseCard}
@@ -312,6 +309,6 @@ export function PricingSection({ isAnnual, setIsAnnual }: { isAnnual: boolean, s
           );
         })()}
       </div>
-    </section>
+    </Section>
   );
 }

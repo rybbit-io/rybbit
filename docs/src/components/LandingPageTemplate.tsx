@@ -1,10 +1,21 @@
-import { BackgroundGrid } from "@/components/BackgroundGrid";
+import { Funnels } from "@/components/Cards/Funnels";
+import { RealTimeAnalytics } from "@/components/Cards/RealTimeAnalytics";
+import { SessionReplay } from "@/components/Cards/SessionReplay";
+import { UserSessions } from "@/components/Cards/UserSessions";
 import { CTASection } from "@/components/CTASection";
 import { FAQAccordion } from "@/components/FAQAccordion";
 import { HeroSection } from "@/components/HeroSection";
 import { IntegrationsGrid } from "@/components/Integration";
+import { LandingPricing } from "@/components/LandingPricing";
+import {
+  HAIRLINE,
+  LandingRail,
+  Section,
+  SectionHeader,
+  SECTION_SUB_CLASS,
+  SECTION_TITLE_CLASS,
+} from "@/components/landing/primitives";
 import { Marquee } from "@/components/magicui/marquee";
-import { SectionBadge } from "@/components/SectionBadge";
 import { TweetCard } from "@/components/Tweet";
 import { ActivityIcon } from "@/components/ui/activity";
 import { ArrowDownIcon } from "@/components/ui/arrow-down";
@@ -22,14 +33,10 @@ import { ShieldCheckIcon } from "@/components/ui/shield-check";
 import { TerminalIcon } from "@/components/ui/terminal";
 import { UsersIcon } from "@/components/ui/users";
 import { ZapIcon } from "@/components/ui/zap";
+import { cn } from "@/lib/utils";
 import { useExtracted } from "next-intl";
 import Image from "next/image";
 import Link from "next/link";
-import { Funnels } from "@/components/Cards/Funnels";
-import { RealTimeAnalytics } from "@/components/Cards/RealTimeAnalytics";
-import { SessionReplay } from "@/components/Cards/SessionReplay";
-import { UserSessions } from "@/components/Cards/UserSessions";
-import { LandingPricing } from "@/components/LandingPricing";
 
 // FAQ Structured Data
 const faqSchema = {
@@ -87,6 +94,72 @@ const faqSchema = {
   ],
 };
 
+// Customer logos. Per-logo classes compensate for each asset's native color.
+const logos: {
+  src: string;
+  alt: string;
+  href?: string;
+  width: number;
+  className: string;
+}[] = [
+  {
+    src: "/logos/automatio.webp",
+    alt: "Automatio",
+    href: "https://automatio.ai",
+    width: 120,
+    className: "opacity-50 dark:opacity-60 grayscale invert dark:invert-0",
+  },
+  {
+    src: "/logos/convex.svg",
+    alt: "Convex",
+    width: 110,
+    className: "opacity-45 dark:opacity-60 grayscale invert dark:invert-0 dark:grayscale-0",
+  },
+  {
+    src: "/logos/onyx.webp",
+    alt: "Onyx",
+    href: "https://onyx.app",
+    width: 90,
+    className: "opacity-45 dark:opacity-60 dark:invert",
+  },
+  {
+    src: "/logos/vanguard.webp",
+    alt: "Vanguard",
+    width: 110,
+    className: "opacity-45 dark:opacity-60 dark:invert",
+  },
+  {
+    src: "/logos/ustwo.svg",
+    alt: "ustwo",
+    width: 90,
+    className: "opacity-45 dark:opacity-60 dark:invert",
+  },
+  {
+    src: "/logos/mydramalist.png",
+    alt: "MyDramaList",
+    width: 110,
+    className: "opacity-50 dark:opacity-60 invert dark:invert-0",
+  },
+  {
+    src: "/logos/dtelecom.svg",
+    alt: "DTelecom",
+    width: 110,
+    className: "opacity-45 dark:opacity-60 grayscale invert dark:invert-0",
+  },
+  {
+    src: "/logos/dpm.webp",
+    alt: "DPM.lol",
+    width: 110,
+    className: "opacity-45 dark:opacity-60 grayscale invert dark:invert-0",
+  },
+];
+
+const TWEET_COLUMNS: string[][] = [
+  ["1991296442611184125", "1921928423284629758", "2000974573005889706", "1927817460993884321", "1977471983278535071"],
+  ["1920899082253434950", "2000788904778326334", "2015102995789381815", "1980082738934993142", "1976495558480232672"],
+  ["1982378431166963982", "2009548405488615871", "1920470706761929048", "1979830490006974510", "1970265809122705759"],
+];
+
 interface LandingPageTemplateProps {
   title: React.ReactNode;
   subtitle: React.ReactNode;
@@ -96,309 +169,265 @@ interface LandingPageTemplateProps {
 export function LandingPageTemplate({ title, subtitle, showEUFlag = true }: LandingPageTemplateProps) {
   const t = useExtracted();
 
-  const features = [
+  // The 16 capabilities, grouped so the list reads as an index, not a card wall.
+  const featureGroups = [
     {
-      icon: ZapIcon,
-      title: t("Setup in minutes"),
-      description: t("Add one line of code and start seeing real-time data instantly."),
+      title: t("Measure everything"),
+      blurb: t("The full analytics toolkit, live within seconds of adding one script."),
+      items: [
+        {
+          icon: ActivityIcon,
+          title: t("Realtime data"),
+          description: t("See what's happening on your site right now."),
+        },
+        {
+          icon: PlayIcon,
+          title: t("Session replay"),
+          description: t("Watch real user sessions to spot usability issues."),
+        },
+        {
+          icon: ArrowDownIcon,
+          title: t("Funnels"),
+          description: t("Visualize conversion paths and find where visitors drop off."),
+        },
+        {
+          icon: RouteIcon,
+          title: t("User journeys"),
+          description: t("Map how users navigate from landing to conversion."),
+        },
+        {
+          icon: GaugeIcon,
+          title: t("Web vitals"),
+          description: t("Monitor Core Web Vitals for fast user experiences."),
+        },
+        {
+          icon: LayersIcon,
+          title: t("Custom events"),
+          description: t("Track sign-ups, purchases, and any user interaction."),
+        },
+        {
+          icon: EarthIcon,
+          title: t("Globe views"),
+          description: t("Watch traffic flow with stunning 3D globe visualizations."),
+        },
+      ],
     },
     {
-      icon: ActivityIcon,
-      title: t("Realtime data"),
-      description: t("See what's happening on your site right now."),
+      title: t("Private by default"),
+      blurb: t("No cookies, no fingerprinting, no consent banner. Compliant out of the box."),
+      items: [
+        {
+          icon: BanIcon,
+          title: t("No cookies"),
+          description: t("Zero cookies, zero banners. Cleaner visitor experiences."),
+        },
+        {
+          icon: ShieldCheckIcon,
+          title: t("GDPR & CCPA"),
+          description: t("Privacy-first design means you're compliant out of the box."),
+        },
+        {
+          icon: BotIcon,
+          title: t("Bot blocking"),
+          description: t("Automatically filter out bots to keep data clean."),
+        },
+      ],
     },
     {
-      icon: PlayIcon,
-      title: t("Session replay"),
-      description: t("Watch real user sessions to spot usability issues."),
-    },
-    {
-      icon: ArrowDownIcon,
-      title: t("Funnels"),
-      description: t("Visualize conversion paths and find where visitors drop off."),
-    },
-    {
-      icon: RouteIcon,
-      title: t("User journeys"),
-      description: t("Map how users navigate from landing to conversion."),
-    },
-    {
-      icon: GaugeIcon,
-      title: t("Web vitals"),
-      description: t("Monitor Core Web Vitals for fast user experiences."),
-    },
-    {
-      icon: LayersIcon,
-      title: t("Custom events"),
-      description: t("Track sign-ups, purchases, and any user interaction."),
-    },
-    {
-      icon: BotIcon,
-      title: t("Bot blocking"),
-      description: t("Automatically filter out bots to keep data clean."),
-    },
-    {
-      icon: BanIcon,
-      title: t("No cookies"),
-      description: t("Zero cookies, zero banners. Cleaner visitor experiences."),
-    },
-    {
-      icon: ShieldCheckIcon,
-      title: t("GDPR & CCPA"),
-      description: t("Privacy-first design means you're compliant out of the box."),
-    },
-    {
-      icon: EarthIcon,
-      title: t("Globe views"),
-      description: t("Watch traffic flow with stunning 3D globe visualizations."),
-    },
-    {
-      icon: TerminalIcon,
-      title: t("Open source"),
-      description: t("100% open source. Self-host or use our cloud."),
-    },
-    {
-      icon: LinkIcon,
-      title: t("API"),
-      description: t("Full API access to build custom integrations."),
-    },
-    {
-      icon: DownloadIcon,
-      title: t("Data export"),
-      description: t("Export your raw data anytime. No lock-in."),
-    },
-    {
-      icon: BellIcon,
-      title: t("Email reports"),
-      description: t("Automated reports delivered to your inbox."),
-    },
-    {
-      icon: UsersIcon,
-      title: t("Organizations"),
-      description: t("Manage sites and team access in one place."),
+      title: t("Yours to run"),
+      blurb: t("Open source and self-hostable, with full API access and clean data export."),
+      items: [
+        {
+          icon: TerminalIcon,
+          title: t("Open source"),
+          description: t("100% open source. Self-host or use our cloud."),
+        },
+        {
+          icon: ZapIcon,
+          title: t("Setup in minutes"),
+          description: t("Add one line of code and start seeing real-time data instantly."),
+        },
+        {
+          icon: LinkIcon,
+          title: t("API"),
+          description: t("Full API access to build custom integrations."),
+        },
+        {
+          icon: DownloadIcon,
+          title: t("Data export"),
+          description: t("Export your raw data anytime. No lock-in."),
+        },
+        {
+          icon: BellIcon,
+          title: t("Email reports"),
+          description: t("Automated reports delivered to your inbox."),
+        },
+        {
+          icon: UsersIcon,
+          title: t("Organizations"),
+          description: t("Manage sites and team access in one place."),
+        },
+      ],
     },
   ];
 
   return (
     <>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }} />
-      <BackgroundGrid />
-      <HeroSection title={title} subtitle={subtitle} showEUFlag={showEUFlag} />
 
-      {/* Logo Section */}
-      <section className="py-12 md:py-16 w-full">
-        <div className="max-w-[1200px] mx-auto px-4">
-          <div className="text-center mb-10 md:mb-12">
-            <p className="text-neutral-500 dark:text-neutral-400 text-sm uppercase tracking-wider font-medium">
-              {t("Trusted by 10,000+ organizations worldwide")}
-            </p>
-          </div>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-8 items-center justify-items-center">
-            <div className="flex items-center justify-center">
-              <Link href="https://automatio.ai" target="_blank">
-                <Image
-                  src="/logos/automatio.webp"
-                  alt="automatio"
-                  width={130}
-                  height={40}
-                  className="opacity-50 hover:opacity-80 dark:opacity-70 dark:hover:opacity-100 transition-opacity grayscale invert dark:invert-0"
-                />
-              </Link>
-            </div>
-            <div className="flex items-center justify-center">
-              <Image
-                src="/logos/convex.svg"
-                alt="Convex"
-                width={120}
-                height={40}
-                className="opacity-40 hover:opacity-70 dark:opacity-60 dark:hover:opacity-100 transition-opacity grayscale invert dark:invert-0 dark:grayscale-0"
-              />
-            </div>
-            <div className="flex items-center justify-center">
-              <Link href="https://onyx.app" target="_blank">
-                <Image
-                  src="/logos/onyx.webp"
-                  alt="Onyx"
-                  width={100}
-                  height={40}
-                  className="opacity-40 hover:opacity-70 dark:opacity-60 dark:hover:opacity-100 transition-opacity dark:invert"
-                />
-              </Link>
-            </div>
-            <div className="flex items-center justify-center">
-              <Image
-                src="/logos/vanguard.webp"
-                alt="Vanguard"
-                width={120}
-                height={40}
-                className="opacity-40 hover:opacity-70 dark:opacity-60 dark:hover:opacity-100 transition-opacity dark:invert"
-              />
-            </div>
-            <div className="flex items-center justify-center">
-              <Image
-                src="/logos/ustwo.svg"
-                alt="ustwo"
-                width={100}
-                height={40}
-                className="opacity-40 hover:opacity-70 dark:opacity-60 dark:hover:opacity-100 transition-opacity dark:invert"
-              />
-            </div>
-            <div className="flex items-center justify-center">
-              <Image
-                src="/logos/mydramalist.png"
-                alt="MyDramaList"
-                width={120}
-                height={40}
-                className="opacity-50 hover:opacity-80 dark:opacity-60 dark:hover:opacity-100 transition-opacity invert dark:invert-0"
-              />
-            </div>
-            <div className="flex items-center justify-center">
-              <Image
-                src="/logos/dtelecom.svg"
-                alt="DTelecom"
-                width={120}
-                height={40}
-                className="opacity-40 hover:opacity-70 dark:opacity-60 dark:hover:opacity-100 transition-opacity grayscale invert dark:invert-0"
-              />
-            </div>
-            <div className="flex items-center justify-center">
-              <Image
-                src="/logos/dpm.webp"
-                alt="DPM.lol"
-                width={120}
-                height={40}
-                className="opacity-40 hover:opacity-70 dark:opacity-60 dark:hover:opacity-100 transition-opacity grayscale invert dark:invert-0"
-              />
-            </div>
-          </div>
-        </div>
-      </section>
+      <div className="relative">
+        <LandingRail />
 
-      <section className="py-14 md:py-20 w-full max-w-[1200px] px-4 mx-auto">
-        <div className="text-center mb-10 md:mb-12">
-          <SectionBadge className="mb-4">{t("Why Rybbit")}</SectionBadge>
-          <h2 className="text-3xl md:text-5xl font-bold tracking-tight">{t("Everything you need")}</h2>
-          <p className="mt-4 text-base md:text-xl text-neutral-600 dark:text-neutral-300 max-w-2xl mx-auto font-light">
-            {t("Powerful analytics without the complexity. Privacy-friendly tools that just work.")}
+        <HeroSection title={title} subtitle={subtitle} showEUFlag={showEUFlag} />
+
+        {/* Logo wall */}
+        <Section className="py-12 md:py-16">
+          <p className="text-sm text-neutral-500 dark:text-neutral-400">
+            {t("Trusted by 10,000+ organizations worldwide")}
           </p>
-        </div>
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-4">
-          {features.map(feature => {
-            const Icon = feature.icon;
-            return (
+          <div className={cn("mt-6 grid grid-cols-2 border-l border-t md:grid-cols-4", HAIRLINE)}>
+            {logos.map(logo => {
+              const image = (
+                <Image
+                  src={logo.src}
+                  alt={logo.alt}
+                  width={logo.width}
+                  height={40}
+                  className={cn("transition-opacity hover:opacity-90", logo.className)}
+                />
+              );
+              return (
+                <div key={logo.alt} className={cn("flex h-20 items-center justify-center border-b border-r px-6 md:h-24", HAIRLINE)}>
+                  {logo.href ? (
+                    <Link href={logo.href} target="_blank">
+                      {image}
+                    </Link>
+                  ) : (
+                    image
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </Section>
+
+        {/* Capability index */}
+        <Section>
+          <SectionHeader
+            title={t("Everything you need")}
+            sub={t("Powerful analytics without the complexity. Privacy-friendly tools that just work.")}
+          />
+          <div className="mt-12 flex flex-col gap-14 md:mt-16">
+            {featureGroups.map(group => (
               <div
-                key={feature.title}
-                className="bg-neutral-100/50 dark:bg-neutral-800/20 border border-neutral-300/50 dark:border-neutral-800/50 rounded-lg p-5 transition-colors"
+                key={group.title}
+                className={cn("grid gap-x-12 gap-y-8 border-t pt-8 md:grid-cols-[220px_1fr] lg:grid-cols-[260px_1fr]", HAIRLINE)}
               >
-                <h3 className="font-semibold mb-2 flex items-center gap-2">
-                  <Icon size={20} className="text-neutral-600 dark:text-neutral-400" />
-                  {feature.title}
-                </h3>
-                <p className="text-sm text-neutral-600 dark:text-neutral-400 leading-relaxed">{feature.description}</p>
+                <div>
+                  <h3 className="text-base font-semibold text-neutral-950 dark:text-white">{group.title}</h3>
+                  <p className="mt-2 max-w-[38ch] text-sm leading-relaxed text-neutral-600 dark:text-neutral-400">
+                    {group.blurb}
+                  </p>
+                </div>
+                <div className="grid gap-x-8 gap-y-8 sm:grid-cols-2 lg:grid-cols-3">
+                  {group.items.map(feature => {
+                    const Icon = feature.icon;
+                    return (
+                      <div key={feature.title}>
+                        <div className="flex items-center gap-2">
+                          <Icon size={16} className="shrink-0 text-neutral-500 dark:text-neutral-400" />
+                          <h4 className="text-[15px] font-medium text-neutral-950 dark:text-white">{feature.title}</h4>
+                        </div>
+                        <p className="mt-1.5 text-sm leading-relaxed text-neutral-600 dark:text-neutral-400">
+                          {feature.description}
+                        </p>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
-            );
-          })}
-        </div>
-      </section>
+            ))}
+          </div>
+        </Section>
 
-      <section className="py-14 md:py-20 w-full max-w-[1200px] px-4 mx-auto">
-        <div className="text-center mb-10 md:mb-16">
-          <SectionBadge className="mb-4">{t("Analytics Reimagined")}</SectionBadge>
-          <h2 className="text-3xl md:text-5xl font-bold tracking-tight">{t("See it in action")}</h2>
-          <p className="mt-4 text-base md:text-xl text-neutral-600 dark:text-neutral-300 max-w-2xl mx-auto font-light">
-            {t("Powerful tools designed for clarity, not complexity.")}
-          </p>
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
-          <RealTimeAnalytics />
-          <SessionReplay />
-          <UserSessions />
-          <Funnels />
-        </div>
-      </section>
+        {/* Product showcase */}
+        <Section>
+          <SectionHeader
+            title={t("See it in action")}
+            sub={t("Powerful tools designed for clarity, not complexity.")}
+          />
+          <div className="mt-10 grid grid-cols-1 gap-5 md:mt-12 md:grid-cols-2">
+            <RealTimeAnalytics />
+            <SessionReplay />
+            <UserSessions />
+            <Funnels />
+          </div>
+        </Section>
 
-      {/* Integrations Section */}
-      <section className="py-12 md:py-20 w-full">
-        <div className="max-w-[1200px] mx-auto px-4">
-          <div className="grid grid-cols-1 md:grid-cols-[1fr_2fr] gap-8 md:gap-16">
+        {/* Integrations */}
+        <Section>
+          <div className="grid gap-10 md:grid-cols-[minmax(0,300px)_1fr] md:gap-16">
             <div className="md:sticky md:top-24 md:self-start">
-              <SectionBadge className="mb-4">{t("Seamless Integration")}</SectionBadge>
-              <h2 className="text-3xl md:text-4xl font-bold">{t("Works with all your favorite platforms")}</h2>
-              <p className="mt-4 text-neutral-600 dark:text-neutral-300 font-light">
-                {t("Integrate Rybbit with any platform in minutes")}
-              </p>
+              <h2 className={SECTION_TITLE_CLASS}>{t("Works with all your favorite platforms")}</h2>
+              <p className={SECTION_SUB_CLASS}>{t("Integrate Rybbit with any platform in minutes")}</p>
+              <Link
+                href="/docs"
+                className="mt-5 inline-block text-sm font-medium text-emerald-700 hover:text-emerald-600 dark:text-emerald-400 dark:hover:text-emerald-300"
+              >
+                {t("All integration guides")} <span aria-hidden>→</span>
+              </Link>
             </div>
             <IntegrationsGrid />
           </div>
-        </div>
-      </section>
+        </Section>
 
-      {/* Testimonial Section */}
-      <section className="py-10 md:py-16 w-full overflow-hidden">
-        <div className="max-w-[1200px] mx-auto px-4">
-          <div className="text-center mb-10 md:mb-16">
-            <SectionBadge className="mb-4">{t("User Testimonials")}</SectionBadge>
-            <h2 className="text-3xl md:text-5xl font-bold tracking-tight">{t("People love Rybbit")}</h2>
-            <p className="mt-4 text-base md:text-xl text-neutral-600 dark:text-neutral-300 max-w-2xl mx-auto font-light">
-              {t("See what others think about Rybbit Analytics")}
-            </p>
-          </div>
-          <div className="relative bg-neutral-100/50 dark:bg-neutral-800/20 backdrop-blur-sm border border-neutral-300/50 dark:border-neutral-800/50 rounded-3xl overflow-hidden">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 h-[600px] md:h-[700px] p-4">
-              {/* Column 1 - visible on all screen sizes */}
-              <Marquee vertical pauseOnHover className="[--duration:60s]" repeat={2}>
-                <TweetCard id="1991296442611184125" />
-                <TweetCard id="1921928423284629758" />
-                <TweetCard id="2000974573005889706" />
-                <TweetCard id="1927817460993884321" />
-                <TweetCard id="1977471983278535071" />
-              </Marquee>
-
-              {/* Column 2 - hidden on mobile */}
-              <Marquee vertical pauseOnHover reverse className="hidden md:flex [--duration:60s]" repeat={2}>
-                <TweetCard id="1920899082253434950" />
-                <TweetCard id="2000788904778326334" />
-                <TweetCard id="2015102995789381815" />
-                <TweetCard id="1980082738934993142" />
-                <TweetCard id="1976495558480232672" />
-              </Marquee>
-
-              {/* Column 3 - hidden on mobile */}
-              <Marquee vertical pauseOnHover className="hidden md:flex [--duration:60s]" repeat={2}>
-                <TweetCard id="1982378431166963982" />
-                <TweetCard id="2009548405488615871" />
-                <TweetCard id="1920470706761929048" />
-                <TweetCard id="1979830490006974510" />
-                <TweetCard id="1970265809122705759" />
-              </Marquee>
+        {/* Testimonials */}
+        <Section>
+          <SectionHeader
+            title={t("People love Rybbit")}
+            sub={t("See what others think about Rybbit Analytics")}
+          />
+          <div className="relative mt-10 h-[540px] overflow-hidden md:mt-12 md:h-[620px]">
+            <div className="grid h-full grid-cols-1 gap-4 md:grid-cols-3">
+              {TWEET_COLUMNS.map((column, i) => (
+                <Marquee
+                  key={i}
+                  vertical
+                  pauseOnHover
+                  reverse={i === 1}
+                  repeat={2}
+                  className={cn(
+                    "[--duration:60s] motion-reduce:[&>div]:[animation-play-state:paused]",
+                    i > 0 && "hidden md:flex"
+                  )}
+                >
+                  {column.map(id => (
+                    <TweetCard key={id} id={id} />
+                  ))}
+                </Marquee>
+              ))}
             </div>
-
-            {/* Gradient overlays */}
-            <div className="pointer-events-none absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-neutral-100/90 dark:from-neutral-900/90 to-transparent"></div>
-            <div className="pointer-events-none absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-neutral-100/90 dark:from-neutral-900/90 to-transparent"></div>
+            <div className="pointer-events-none absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-white to-transparent dark:from-neutral-950" />
+            <div className="pointer-events-none absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-white to-transparent dark:from-neutral-950" />
           </div>
-        </div>
-      </section>
+        </Section>
 
-      {/* FAQ Section */}
-      <section className="py-10 md:py-16 w-full">
-        <div className="max-w-[1200px] mx-auto px-4">
-          <div className="grid grid-cols-1 md:grid-cols-[1fr_2fr] gap-8 md:gap-16">
+        {/* FAQ */}
+        <Section>
+          <div className="grid gap-10 md:grid-cols-[minmax(0,300px)_1fr] md:gap-16">
             <div className="md:sticky md:top-24 md:self-start">
-              <h2 className="text-3xl md:text-4xl font-bold">{t("Frequently Asked Questions")}</h2>
-              <p className="mt-4 text-neutral-600 dark:text-neutral-300 font-light">
-                {t("Everything you need to know about Rybbit Analytics")}
-              </p>
+              <h2 className={SECTION_TITLE_CLASS}>{t("Frequently Asked Questions")}</h2>
+              <p className={SECTION_SUB_CLASS}>{t("Everything you need to know about Rybbit Analytics")}</p>
             </div>
             <FAQAccordion />
           </div>
-        </div>
-      </section>
+        </Section>
 
-      {/* Pricing Section */}
-      <LandingPricing />
+        {/* Pricing */}
+        <LandingPricing />
 
-      <CTASection />
+        <CTASection />
+      </div>
     </>
   );
 }

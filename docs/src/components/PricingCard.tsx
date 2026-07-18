@@ -52,23 +52,22 @@ export function PricingCard({
 
   return (
     <div className="w-full flex-shrink-0 h-full">
-      <div className="bg-neutral-200/40 dark:bg-neutral-900/40 p-2 rounded-3xl border border-neutral-300 dark:border-neutral-800 h-full">
-        <div
-          className={cn(
-            "rounded-2xl border overflow-hidden backdrop-blur-sm shadow-xl h-full",
-            recommended
-              ? "bg-neutral-100/80 dark:bg-neutral-800 border-emerald-500 border-2"
-              : isFree
-                ? "bg-neutral-100/30 dark:bg-neutral-800/15 border-neutral-300/60 dark:border-neutral-800/60 text-neutral-600 dark:text-neutral-300"
-                : "bg-neutral-50 dark:bg-neutral-900 border-neutral-300 dark:border-neutral-800"
-          )}
-        >
+      <div
+        className={cn(
+          "rounded-xl border overflow-hidden h-full",
+          recommended
+            ? "border-emerald-600/60 dark:border-emerald-500/50 bg-neutral-50 dark:bg-neutral-900/70"
+            : isFree
+              ? "border-neutral-200 dark:border-neutral-800 bg-transparent text-neutral-600 dark:text-neutral-300"
+              : "border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-900/50"
+        )}
+      >
           <div className="p-6">
             <div className="mb-4">
               <div className="flex items-center gap-2 mb-2">
-                <h3 className="text-xl font-bold">{title}</h3>
+                <h3 className="text-lg font-semibold tracking-tight">{title}</h3>
                 {recommended && (
-                  <span className="px-2 py-0.5 text-xs font-semibold bg-emerald-500/30 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 rounded-full border border-emerald-500/40 dark:border-emerald-500/30">
+                  <span className="px-1.5 py-0.5 text-xs font-medium text-emerald-700 dark:text-emerald-400 rounded-sm border border-emerald-600/40 dark:border-emerald-500/40">
                     {t("Recommended")}
                   </span>
                 )}
@@ -94,9 +93,9 @@ export function PricingCard({
                   data-rybbit-event={eventLocation ? "signup" : undefined}
                   data-rybbit-prop-location={eventLocation}
                   className={cn(
-                    "w-full font-medium px-5 py-3 rounded-lg transform hover:-translate-y-0.5 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-opacity-50 cursor-pointer",
+                    "w-full font-medium h-11 inline-flex items-center justify-center rounded-md transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/70 cursor-pointer",
                     isPrimary
-                      ? "bg-emerald-600 hover:bg-emerald-500 text-white shadow-lg shadow-emerald-900/20 focus:ring-emerald-200 disabled:opacity-50 disabled:pointer-events-none"
+                      ? "bg-emerald-600 hover:bg-emerald-500 text-white focus:ring-emerald-200 disabled:opacity-50 disabled:pointer-events-none"
                       : "bg-neutral-300 dark:bg-neutral-700 hover:bg-neutral-200 dark:hover:bg-neutral-600 text-neutral-900 dark:text-white"
                   )}
                 >
@@ -108,9 +107,9 @@ export function PricingCard({
                 onClick={onClick}
                 disabled={disabled}
                 className={cn(
-                  "w-full font-medium px-5 py-3 rounded-lg transform hover:-translate-y-0.5 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-opacity-50 cursor-pointer",
+                  "w-full font-medium h-11 inline-flex items-center justify-center rounded-md transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/70 cursor-pointer",
                   isPrimary
-                    ? "bg-emerald-600 hover:bg-emerald-500 text-white shadow-lg shadow-emerald-900/20 focus:ring-emerald-500 disabled:opacity-50 disabled:pointer-events-none"
+                    ? "bg-emerald-600 hover:bg-emerald-500 text-white focus:ring-emerald-500 disabled:opacity-50 disabled:pointer-events-none"
                     : "bg-neutral-300 dark:bg-neutral-700 hover:bg-neutral-200 dark:hover:bg-neutral-600 text-neutral-900 dark:text-white"
                 )}
               >
@@ -164,7 +163,6 @@ export function PricingCard({
               </p>
             )}
           </div>
-        </div>
       </div>
     </div>
   );

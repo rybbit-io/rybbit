@@ -1,13 +1,7 @@
-import { GitHubStarButton } from "@/components/GitHubStarButton";
 import { TrackedButton } from "@/components/TrackedButton";
-import { CircleCheckIcon } from "@/components/ui/circle-check";
+import { BUTTON_LG, BUTTON_PRIMARY, BUTTON_SECONDARY, CONTAINER, HAIRLINE } from "@/components/landing/primitives";
 import { cn } from "@/lib/utils";
 import { useExtracted } from "next-intl";
-import { Tilt_Warp } from "next/font/google";
-
-const tilt_wrap = Tilt_Warp({
-  subsets: ["latin"],
-});
 
 const EUFlag = () => (
   <svg
@@ -16,7 +10,7 @@ const EUFlag = () => (
     viewBox="0 0 767 512"
     role="img"
     aria-label="European flag"
-    className="inline mr-2 w-8 rounded align-sub"
+    className="inline w-6 rounded-[3px] align-[-3px] ml-1.5"
   >
     <title>European flag</title>
     <path className="fill-[#233E90]/80" d="M766 1H1v510h765V1Z"></path>
@@ -34,39 +28,46 @@ interface HeroSectionProps {
   showGitHubStar?: boolean;
 }
 
-export function HeroSection({
-  title,
-  subtitle,
-  showEUFlag = true,
-  showGitHubStar = true,
-}: HeroSectionProps) {
+export function HeroSection({ title, subtitle, showEUFlag = true }: HeroSectionProps) {
   const t = useExtracted();
 
   return (
-    <>
-      <div className="flex flex-col items-center justify-center overflow-x-hidden pt-16 md:pt-24 relative z-10">
-        {showGitHubStar && <GitHubStarButton />}
+    <div className="relative overflow-hidden">
+      {/* Graph-paper backdrop, faded out before the demo panel */}
+      <div
+        aria-hidden
+        className={cn(
+          "absolute inset-x-0 top-0 h-[560px]",
+          "[background-size:40px_40px]",
+          "[background-image:linear-gradient(to_right,#e5e5e5_1px,transparent_1px),linear-gradient(to_bottom,#e5e5e5_1px,transparent_1px)]",
+          "dark:[background-image:linear-gradient(to_right,#232323_1px,transparent_1px),linear-gradient(to_bottom,#232323_1px,transparent_1px)]",
+          "[mask-image:linear-gradient(to_bottom,black,transparent),linear-gradient(to_right,transparent,black_15%,black_85%,transparent)]",
+          "[mask-composite:intersect]"
+        )}
+      />
 
-        <h1
-          className={cn(
-            "text-4xl md:text-5xl lg:text-7xl px-4 tracking-tight max-w-4xl text-center text-neutral-900 dark:text-transparent dark:bg-clip-text dark:bg-gradient-to-b dark:from-white dark:via-gray-100 dark:to-gray-400",
-            tilt_wrap.className
-          )}
-        >
-          {title}
-        </h1>
-        <h2 className="text-base md:text-xl pt-4 md:pt-6 px-4 tracking-tight max-w-4xl text-center text-neutral-600 dark:text-neutral-300 font-light">
-          {subtitle}
-          {showEUFlag && <EUFlag />}
-        </h2>
+      <section className="relative">
+        <div className={cn(CONTAINER, "flex flex-col items-center pt-16 md:pt-24 text-center")}>
+          <h1 className="landing-rise max-w-3xl text-4xl md:text-[3.5rem] md:leading-[1.05] font-semibold tracking-[-0.03em] text-neutral-950 dark:text-white text-balance">
+            {title}
+          </h1>
+          <p
+            className="landing-rise mt-5 max-w-2xl text-base md:text-lg leading-relaxed text-neutral-600 dark:text-neutral-400 text-pretty"
+            style={{ animationDelay: "80ms" }}
+          >
+            {subtitle}
+            {showEUFlag && <EUFlag />}
+          </p>
 
-        <div className="flex flex-col items-center my-8 md:my-10">
-          <div className="flex flex-row items-center justify-center gap-4 md:gap-6 text-base md:text-lg">
+          <div
+            className="landing-rise mt-8 flex w-full flex-col items-center justify-center gap-3 sm:w-auto sm:flex-row"
+            style={{ animationDelay: "160ms" }}
+          >
             <TrackedButton
               href="https://app.rybbit.io/signup"
               eventName="signup"
               eventProps={{ location: "hero", button_text: "get started" }}
-              className="w-full whitespace-nowrap sm:w-auto bg-emerald-600 hover:bg-emerald-500 text-white font-medium px-6 py-3 rounded-lg shadow-lg shadow-emerald-900/20 transform hover:-translate-y-0.5 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-emerald-200 focus:ring-opacity-50 cursor-pointer"
+              className={cn(BUTTON_PRIMARY, BUTTON_LG, "w-full sm:w-auto")}
             >
               {t("Start for $0")}
             </TrackedButton>
@@ -76,47 +77,63 @@ export function HeroSection({
               target="_blank"
               rel="noopener noreferrer"
               eventProps={{ location: "hero", button_text: "Live demo" }}
-              className="w-full whitespace-nowrap sm:w-auto bg-neutral-200 dark:bg-neutral-800 hover:bg-neutral-300 dark:hover:bg-neutral-700 text-neutral-900 dark:text-white font-medium px-6 py-3 rounded-lg transform hover:-translate-y-0.5 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-neutral-400 focus:ring-opacity-50 cursor-pointer"
+              className={cn(BUTTON_SECONDARY, BUTTON_LG, "w-full sm:w-auto")}
             >
               {t("Live demo")}
             </TrackedButton>
           </div>
-          {/* <p className="text-neutral-500 dark:text-neutral-400 text-xs md:text-sm flex items-center justify-center gap-2 mt-6">
-            <CircleCheckIcon size={16} className="text-neutral-500 dark:text-neutral-400" />
-            {t("7-day free trial.")}
-          </p> */}
+
+          <p
+            className="landing-rise mt-5 text-[13px] text-neutral-500 dark:text-neutral-500"
+            style={{ animationDelay: "240ms" }}
+          >
+            {t("7-day free trial · No credit card · 5-minute setup")}
+          </p>
         </div>
-        <div className="relative w-full max-w-[1300px] mb-10">
-          {/* Background gradients - overlapping circles for organic feel */}
-          <div className="absolute top-0 left-0 w-[550px] h-[550px] bg-emerald-500/30 dark:bg-emerald-500/40 rounded-full blur-[80px] opacity-80 dark:opacity-70"></div>
-          <div className="absolute top-20 left-20 w-[400px] h-[400px] bg-emerald-600/20 dark:bg-emerald-600/30 rounded-full blur-[70px] opacity-60 dark:opacity-50"></div>
 
-          <div className="absolute bottom-0 right-0 w-[500px] h-[500px] bg-blue-500/30 dark:bg-blue-500/40 rounded-full blur-[80px] opacity-70 dark:opacity-60"></div>
-          <div className="absolute bottom-40 right-20 w-[350px] h-[350px] bg-indigo-500/20 dark:bg-indigo-500/30 rounded-full blur-[75px] opacity-60 dark:opacity-50"></div>
-
-          <div className="absolute top-1/4 right-0 w-[320px] h-[320px] bg-purple-500/30 dark:bg-purple-500/40 rounded-full blur-[70px] opacity-60 dark:opacity-50"></div>
-          <div className="absolute top-1/3 right-20 w-[250px] h-[250px] bg-violet-500/20 dark:bg-violet-500/30 rounded-full blur-[65px] opacity-50 dark:opacity-40"></div>
-
-          <div className="absolute bottom-1/3 left-0 w-[320px] h-[320px] bg-emerald-400/20 dark:bg-emerald-400/30 rounded-full blur-[70px] opacity-70 dark:opacity-60"></div>
-          <div className="absolute bottom-1/4 left-20 w-[240px] h-[240px] bg-teal-400/15 dark:bg-teal-400/25 rounded-full blur-[65px] opacity-60 dark:opacity-50"></div>
-
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[450px] h-[450px] bg-indigo-400/20 dark:bg-indigo-400/30 rounded-full blur-[80px] opacity-60 dark:opacity-50"></div>
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/3 -translate-y-1/3 w-[350px] h-[350px] bg-sky-400/15 dark:bg-sky-400/20 rounded-full blur-[75px] opacity-50 dark:opacity-40"></div>
-
-          {/* Iframe container with responsive visibility */}
-          <div className="relative z-10 rounded-2xl overflow-hidden bg-neutral-400/10 dark:bg-neutral-100/5 border-8 shadow-2xl shadow-neutral-900/20 dark:shadow-emerald-900/10">
-            {/* Remove mobile message and show iframe on all devices */}
-            <iframe
-              src="https://demo.rybbit.com/81/main"
-              width="1300"
-              height="750"
-              className="w-full h-[600px] md:h-[700px] lg:h-[750px] rounded-xl"
-              style={{ border: "none" }}
-              title="Rybbit Analytics Demo"
-            ></iframe>
+        {/* The product is the hero image: the live demo, framed as an instrument. */}
+        <div className={cn(CONTAINER, "relative mt-12 md:mt-16 pb-14 md:pb-20")}>
+          <div className="landing-rise relative" style={{ animationDelay: "320ms" }}>
+            <div
+              aria-hidden
+              className="absolute -top-12 left-1/2 h-48 w-[85%] -translate-x-1/2 rounded-[100%] bg-emerald-500/15 blur-3xl dark:bg-emerald-500/10"
+            />
+            <div
+              className={cn(
+                "relative overflow-hidden rounded-xl border bg-white shadow-xl shadow-neutral-900/[0.07] dark:bg-[#101010] dark:shadow-none",
+                HAIRLINE
+              )}
+            >
+              <div className={cn("flex h-10 items-center gap-2 border-b bg-neutral-50 px-4 dark:bg-neutral-900/70", HAIRLINE)}>
+                <div className="flex gap-1.5" aria-hidden>
+                  <span className="size-2.5 rounded-full bg-neutral-300 dark:bg-neutral-700" />
+                  <span className="size-2.5 rounded-full bg-neutral-300 dark:bg-neutral-700" />
+                  <span className="size-2.5 rounded-full bg-neutral-300 dark:bg-neutral-700" />
+                </div>
+                <div className="mx-auto flex items-center gap-1.5 rounded-md border border-neutral-200 bg-white px-2.5 py-0.5 font-mono text-xs text-neutral-500 dark:border-neutral-800 dark:bg-neutral-950 dark:text-neutral-400">
+                  demo.rybbit.com
+                </div>
+                <div className="flex items-center gap-1.5 text-xs text-neutral-500 dark:text-neutral-400">
+                  <span className="relative flex size-2" aria-hidden>
+                    <span className="absolute inline-flex size-full animate-ping rounded-full bg-emerald-500 opacity-60 motion-reduce:hidden" />
+                    <span className="relative inline-flex size-2 rounded-full bg-emerald-500" />
+                  </span>
+                  {t("Live")}
+                </div>
+              </div>
+              <iframe
+                src="https://demo.rybbit.com/81/main"
+                width="1300"
+                height="750"
+                loading="lazy"
+                className="h-[560px] w-full md:h-[660px] lg:h-[720px]"
+                style={{ border: "none" }}
+                title="Rybbit Analytics Demo"
+              ></iframe>
+            </div>
           </div>
         </div>
-      </div>
-    </>
+      </section>
+    </div>
   );
 }

@@ -1,4 +1,5 @@
-import { Card } from "./Card";
+import { Card, CARD_WELL } from "./Card";
+import { cn } from "@/lib/utils";
 import { Eye, Filter } from "lucide-react";
 import { useExtracted } from "next-intl";
 
@@ -20,7 +21,7 @@ export function Funnels() {
       icon={Filter}
     >
       {/* Funnel Steps */}
-      <div className="space-y-4 mt-4 transform -rotate-2 translate-x-8 translate-y-8 bg-neutral-100/50 dark:bg-neutral-800/20 border border-neutral-300/50 dark:border-neutral-800/50 pb-20 rounded-lg p-4 -mb-[40px] transition-transform duration-300 hover:scale-105 hover:-rotate-1">
+      <div className={cn(CARD_WELL, "space-y-4")}>
         {funnelData.map((item, index) => {
           const overallConversion = (item.users / totalUsers) * 100;
           const previousUsers = index > 0 ? funnelData[index - 1].users : item.users;
