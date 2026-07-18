@@ -91,14 +91,56 @@ interface LandingPageTemplateProps {
 }
 
 const customerLogos = [
-  { src: "/logos/automatio.webp", alt: "Automatio", width: 130, href: "https://automatio.ai" },
-  { src: "/logos/convex.svg", alt: "Convex", width: 120 },
-  { src: "/logos/onyx.webp", alt: "Onyx", width: 100, href: "https://onyx.app" },
-  { src: "/logos/vanguard.webp", alt: "Vanguard", width: 120 },
-  { src: "/logos/ustwo.svg", alt: "ustwo", width: 100 },
-  { src: "/logos/mydramalist.png", alt: "MyDramaList", width: 120 },
-  { src: "/logos/dtelecom.svg", alt: "DTelecom", width: 120 },
-  { src: "/logos/dpm.webp", alt: "DPM.lol", width: 120 },
+  {
+    src: "/logos/automatio.webp",
+    alt: "Automatio",
+    width: 130,
+    href: "https://automatio.ai",
+    className: "opacity-50 hover:opacity-80 grayscale invert dark:opacity-70 dark:hover:opacity-100 dark:invert-0",
+  },
+  {
+    src: "/logos/convex.svg",
+    alt: "Convex",
+    width: 120,
+    className: "opacity-40 hover:opacity-70 grayscale invert dark:opacity-60 dark:hover:opacity-100 dark:invert-0 dark:grayscale-0",
+  },
+  {
+    src: "/logos/onyx.webp",
+    alt: "Onyx",
+    width: 100,
+    href: "https://onyx.app",
+    className: "opacity-40 hover:opacity-70 dark:opacity-60 dark:hover:opacity-100 dark:invert",
+  },
+  {
+    src: "/logos/vanguard.webp",
+    alt: "Vanguard",
+    width: 120,
+    className: "opacity-40 hover:opacity-70 dark:opacity-60 dark:hover:opacity-100 dark:invert",
+  },
+  {
+    src: "/logos/ustwo.svg",
+    alt: "ustwo",
+    width: 100,
+    className: "opacity-40 hover:opacity-70 dark:opacity-60 dark:hover:opacity-100 dark:invert",
+  },
+  {
+    src: "/logos/mydramalist.png",
+    alt: "MyDramaList",
+    width: 120,
+    className: "opacity-50 hover:opacity-80 invert dark:opacity-60 dark:hover:opacity-100 dark:invert-0",
+  },
+  {
+    src: "/logos/dtelecom.svg",
+    alt: "DTelecom",
+    width: 120,
+    className: "opacity-40 hover:opacity-70 grayscale invert dark:opacity-60 dark:hover:opacity-100 dark:invert-0",
+  },
+  {
+    src: "/logos/dpm.webp",
+    alt: "DPM.lol",
+    width: 120,
+    className: "opacity-40 hover:opacity-70 grayscale invert dark:opacity-60 dark:hover:opacity-100 dark:invert-0",
+  },
 ];
 
 export function LandingPageTemplate({ title, subtitle, showEUFlag = true }: LandingPageTemplateProps) {
@@ -173,7 +215,7 @@ export function LandingPageTemplate({ title, subtitle, showEUFlag = true }: Land
                   alt={logo.alt}
                   width={logo.width}
                   height={40}
-                  className="max-h-7 w-auto max-w-[112px] opacity-45 grayscale transition-opacity duration-200 hover:opacity-80 dark:invert"
+                  className={`max-h-7 w-auto max-w-[112px] transition-opacity duration-200 ${logo.className}`}
                 />
               );
 

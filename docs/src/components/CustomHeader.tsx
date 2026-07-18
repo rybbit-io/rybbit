@@ -23,7 +23,7 @@ export function CustomHeader() {
   return (
     <header className="sticky top-0 z-50 w-full border-b border-neutral-200 bg-white/95 backdrop-blur-sm dark:border-neutral-800 dark:bg-neutral-950/95">
       <nav
-        className="mx-auto flex h-16 max-w-[1200px] items-center justify-between border-x border-neutral-200 px-5 dark:border-neutral-800 sm:px-8 lg:px-10"
+        className="mx-auto flex h-14 max-w-[1200px] items-center justify-between border-x border-neutral-200 px-5 dark:border-neutral-800 sm:px-8 lg:px-10"
         aria-label="Global"
       >
         <Link
@@ -34,7 +34,7 @@ export function CustomHeader() {
           <Image
             src="/rybbit/horizontal_white.svg"
             alt="Rybbit"
-            width={112}
+            width={104}
             height={0}
             priority
             style={{ height: "auto" }}
@@ -47,7 +47,7 @@ export function CustomHeader() {
             <Link
               key={item.href}
               href={item.href}
-              className="rounded-md px-3 py-2 text-sm font-medium text-neutral-600 transition-colors hover:bg-neutral-100 hover:text-neutral-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-500 dark:text-neutral-400 dark:hover:bg-neutral-900 dark:hover:text-white"
+              className="rounded-md px-2.5 py-1.5 text-sm font-medium text-neutral-600 transition-colors hover:bg-neutral-100 hover:text-neutral-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-500 dark:text-neutral-400 dark:hover:bg-neutral-900 dark:hover:text-white"
             >
               {item.label}
             </Link>
@@ -61,7 +61,7 @@ export function CustomHeader() {
             target="_blank"
             rel="noopener noreferrer"
             onClick={() => trackAdEvent("login", { location: "header" })}
-            className="inline-flex h-9 items-center justify-center rounded-md px-3 text-sm font-medium text-neutral-700 transition-colors hover:bg-neutral-100 hover:text-neutral-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-500 dark:text-neutral-300 dark:hover:bg-neutral-900 dark:hover:text-white"
+            className="inline-flex h-8 items-center justify-center rounded-md px-2.5 text-sm font-medium text-neutral-700 transition-colors hover:bg-neutral-100 hover:text-neutral-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-500 dark:text-neutral-300 dark:hover:bg-neutral-900 dark:hover:text-white"
           >
             {t("Login")}
           </AppLink>
@@ -70,7 +70,7 @@ export function CustomHeader() {
             target="_blank"
             rel="noopener noreferrer"
             onClick={() => trackAdEvent("signup", { location: "header" })}
-            className="inline-flex h-9 items-center justify-center rounded-md bg-emerald-600 px-3.5 text-sm font-medium text-white transition-colors hover:bg-emerald-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:focus-visible:ring-offset-neutral-950"
+            className="inline-flex h-8 items-center justify-center rounded-md bg-emerald-600 px-3 text-sm font-medium text-white transition-colors hover:bg-emerald-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:focus-visible:ring-offset-neutral-950"
           >
             {t("Sign up")}
           </AppLink>

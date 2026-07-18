@@ -10,7 +10,7 @@ const EUFlag = () => (
     viewBox="0 0 767 512"
     role="img"
     aria-label="European flag"
-    className="ml-2 inline w-7 rounded-sm align-middle"
+    className="h-4 w-6 shrink-0 rounded-[2px]"
   >
     <title>European flag</title>
     <path className="fill-[#233E90]" d="M766 1H1v510h765V1Z" />
@@ -40,20 +40,26 @@ export function HeroSection({
     <section className="border-b border-neutral-200 dark:border-neutral-800">
       <div className="mx-auto w-full min-w-0 max-w-[1200px] border-x border-neutral-200 dark:border-neutral-800">
         <div className="grid min-w-0 lg:grid-cols-12">
-          <div className="flex min-h-[460px] min-w-0 flex-col justify-between border-b border-neutral-200 px-5 py-14 dark:border-neutral-800 sm:px-8 sm:py-16 lg:col-span-8 lg:min-h-[570px] lg:border-b-0 lg:border-r lg:px-10 lg:py-20">
-            <div>{showGitHubStar && <GitHubStarButton />}</div>
-            <h1 className="max-w-4xl text-[clamp(3.25rem,7.25vw,5.75rem)] font-semibold leading-[0.94] tracking-[-0.04em] text-neutral-950 dark:text-neutral-50 text-balance">
+          <div className="min-w-0 border-b border-neutral-200 px-5 py-10 dark:border-neutral-800 sm:px-8 sm:py-12 lg:col-span-7 lg:border-b-0 lg:border-r lg:px-10 lg:py-12 xl:py-14">
+            {showGitHubStar && <GitHubStarButton />}
+            <h1 className="mt-7 max-w-3xl text-[clamp(3rem,5.25vw,4.75rem)] font-semibold leading-[0.96] tracking-[-0.04em] text-neutral-950 dark:text-neutral-50 text-balance">
               {title}
             </h1>
           </div>
 
-          <div className="flex min-w-0 flex-col justify-end px-5 py-10 sm:px-8 lg:col-span-4 lg:min-h-[570px] lg:px-10 lg:py-20">
-            <p className="max-w-md text-lg leading-8 text-neutral-600 dark:text-neutral-300 text-pretty">
+          <div className="flex min-w-0 flex-col justify-center px-5 py-10 sm:px-8 sm:py-12 lg:col-span-5 lg:px-10 lg:py-12 xl:py-14">
+            <p className="max-w-lg text-base leading-7 text-neutral-600 dark:text-neutral-300 sm:text-lg sm:leading-8 text-pretty">
               {subtitle}
-              {showEUFlag && <EUFlag />}
             </p>
 
-            <div className="mt-8 flex flex-col gap-3 sm:flex-row lg:flex-col xl:flex-row">
+            {showEUFlag && (
+              <div className="mt-5 flex items-center gap-2 text-xs font-medium text-neutral-500 dark:text-neutral-400">
+                <EUFlag />
+                <span>{t("EU-hosted cloud")}</span>
+              </div>
+            )}
+
+            <div className="mt-6 flex flex-col gap-3 sm:flex-row">
               <TrackedButton
                 href="https://app.rybbit.io/signup"
                 eventName="signup"
@@ -76,31 +82,35 @@ export function HeroSection({
               </TrackedButton>
             </div>
 
-            <p className="mt-6 text-sm text-neutral-500 dark:text-neutral-400">
-              {t("7-day free trial. No credit card required.")}
+            <p className="mt-4 text-sm text-neutral-500 dark:text-neutral-400">
+              {t("7-day free trial. Cancel anytime.")}
             </p>
           </div>
         </div>
 
         <div className="min-w-0 border-t border-neutral-200 bg-neutral-100 p-2 dark:border-neutral-800 dark:bg-neutral-900 sm:p-3">
           <div className="min-w-0 max-w-full overflow-hidden rounded-lg border border-neutral-300 bg-white dark:border-neutral-700 dark:bg-neutral-950">
-            <div className="flex h-11 items-center justify-between border-b border-neutral-200 px-3 dark:border-neutral-800 sm:px-4">
-              <div className="flex min-w-0 items-center gap-3">
-                <span className="flex size-2 shrink-0 rounded-full bg-emerald-500" aria-hidden="true" />
-                <span className="truncate text-xs font-medium text-neutral-700 dark:text-neutral-300">
-                  {t("Live Rybbit dashboard")}
-                </span>
+            <div className="grid h-10 grid-cols-[1fr_auto_1fr] items-center gap-2 border-b border-neutral-200 px-3 dark:border-neutral-800 sm:px-4">
+              <div className="flex gap-1.5" aria-hidden="true">
+                <span className="size-2.5 rounded-full bg-neutral-300 dark:bg-neutral-700" />
+                <span className="size-2.5 rounded-full bg-neutral-300 dark:bg-neutral-700" />
+                <span className="size-2.5 rounded-full bg-neutral-300 dark:bg-neutral-700" />
               </div>
               <a
                 href="https://demo.rybbit.com/81"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-1.5 text-xs text-neutral-500 transition-colors hover:text-neutral-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-500 dark:text-neutral-400 dark:hover:text-white"
+                className="truncate rounded-md border border-neutral-200 bg-neutral-50 px-2.5 py-0.5 font-mono text-xs text-neutral-500 transition-colors hover:text-neutral-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-500 dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-400 dark:hover:text-white"
               >
-                <span className="hidden sm:inline">demo.rybbit.com</span>
-                <ExternalLink className="size-3.5" aria-hidden="true" />
-                <span className="sr-only">{t("Open live demo")}</span>
+                demo.rybbit.com
               </a>
+              <div className="flex items-center justify-self-end gap-1.5 text-xs text-neutral-500 dark:text-neutral-400">
+                <span className="relative flex size-2" aria-hidden="true">
+                  <span className="absolute inline-flex size-full animate-ping rounded-full bg-emerald-500 opacity-60 motion-reduce:hidden" />
+                  <span className="relative inline-flex size-2 rounded-full bg-emerald-500" />
+                </span>
+                <span className="hidden sm:inline">{t("Live")}</span>
+              </div>
             </div>
             <iframe
               src="https://demo.rybbit.com/81/main"
