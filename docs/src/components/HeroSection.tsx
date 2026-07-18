@@ -1,3 +1,4 @@
+import { SectionCrosses } from "@/components/deco/GridCross";
 import { GitHubStarButton } from "@/components/GitHubStarButton";
 import { TrackedButton } from "@/components/TrackedButton";
 import { ArrowRight, ExternalLink } from "lucide-react";
@@ -37,14 +38,21 @@ export function HeroSection({
   const t = useExtracted();
 
   return (
-    <section className="border-b border-neutral-200 dark:border-neutral-800">
+    <section className="relative border-b border-neutral-200 dark:border-neutral-800">
+      <SectionCrosses className="top-auto bottom-0" />
       <div className="mx-auto w-full min-w-0 max-w-[1200px] border-x border-neutral-200 dark:border-neutral-800">
         <div className="grid min-w-0 lg:grid-cols-12">
-          <div className="min-w-0 border-b border-neutral-200 px-5 py-10 dark:border-neutral-800 sm:px-8 sm:py-12 lg:col-span-7 lg:border-b-0 lg:border-r lg:px-10 lg:py-12 xl:py-14">
+          <div className="relative min-w-0 border-b border-neutral-200 px-5 py-10 dark:border-neutral-800 sm:px-8 sm:py-12 lg:col-span-7 lg:border-b-0 lg:border-r lg:px-10 lg:py-12 xl:py-14">
+            <div
+              aria-hidden="true"
+              className="pointer-events-none absolute inset-0 bg-graph [mask-image:linear-gradient(to_top,black,transparent_70%)]"
+            />
+            <div className="relative">
             {showGitHubStar && <GitHubStarButton />}
             <h1 className="mt-7 max-w-3xl text-[clamp(3rem,5.25vw,4.75rem)] font-semibold leading-[0.96] tracking-[-0.04em] text-neutral-950 dark:text-neutral-50 text-balance">
               {title}
             </h1>
+            </div>
           </div>
 
           <div className="flex min-w-0 flex-col justify-center px-5 py-10 sm:px-8 sm:py-12 lg:col-span-5 lg:px-10 lg:py-12 xl:py-14">
@@ -88,13 +96,13 @@ export function HeroSection({
           </div>
         </div>
 
-        <div className="min-w-0 border-t border-neutral-200 bg-neutral-100 p-2 dark:border-neutral-800 dark:bg-neutral-900 sm:p-3">
+        <div className="min-w-0 border-t border-neutral-200 bg-neutral-100 bg-graph p-2 dark:border-neutral-800 dark:bg-neutral-900 sm:p-3">
           <div className="min-w-0 max-w-full overflow-hidden rounded-lg border border-neutral-300 bg-white dark:border-neutral-700 dark:bg-neutral-950">
             <div className="grid h-10 grid-cols-[1fr_auto_1fr] items-center gap-2 border-b border-neutral-200 px-3 dark:border-neutral-800 sm:px-4">
               <div className="flex gap-1.5" aria-hidden="true">
-                <span className="size-2.5 rounded-full bg-neutral-300 dark:bg-neutral-700" />
-                <span className="size-2.5 rounded-full bg-neutral-300 dark:bg-neutral-700" />
-                <span className="size-2.5 rounded-full bg-neutral-300 dark:bg-neutral-700" />
+                <span className="size-2.5 rounded-full bg-[#ff5f57]" />
+                <span className="size-2.5 rounded-full bg-[#febc2e]" />
+                <span className="size-2.5 rounded-full bg-[#28c840]" />
               </div>
               <a
                 href="https://demo.rybbit.com/81"

@@ -97,6 +97,10 @@ export function IntegrationsGrid() {
       {platforms.map((platform) => (
         <PlatformLogo key={platform.name} {...platform} />
       ))}
+      {/* 34 platforms leave 2 empty slots at the 3- and 4-column breakpoints;
+          fill the remainder with a quiet sheet of the site's graph paper
+          instead of a flat gray hole. */}
+      <div aria-hidden="true" className="hidden bg-white bg-graph dark:bg-neutral-950 sm:block sm:col-span-2" />
     </div>
   );
 }

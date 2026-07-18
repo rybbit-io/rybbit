@@ -1,3 +1,5 @@
+import { SectionCrosses } from "@/components/deco/GridCross";
+import { SectionKicker } from "@/components/deco/SectionKicker";
 import { TrackedButton } from "@/components/TrackedButton";
 import { ArrowRight, ExternalLink } from "lucide-react";
 import { useExtracted } from "next-intl";
@@ -50,17 +52,20 @@ export function InteriorPageHero({
   const resolvedNote = note === undefined ? t("7-day free trial. Cancel anytime.") : note;
 
   return (
-    <section className="border-b border-neutral-200 dark:border-neutral-800">
+    <section className="relative border-b border-neutral-200 dark:border-neutral-800">
+      <SectionCrosses className="top-auto bottom-0" />
       <div className="mx-auto grid max-w-[1200px] border-x border-neutral-200 dark:border-neutral-800 lg:grid-cols-12">
-        <div className="border-b border-neutral-200 px-5 py-12 dark:border-neutral-800 sm:px-8 sm:py-16 lg:col-span-7 lg:border-b-0 lg:border-r lg:px-10 lg:py-20">
-          {eyebrow && (
-            <p className="mb-6 text-sm font-semibold text-neutral-500 dark:text-neutral-400">
-              {eyebrow}
-            </p>
-          )}
-          <h1 className="max-w-3xl text-[clamp(3rem,5.25vw,4.75rem)] font-semibold leading-[0.96] tracking-[-0.04em] text-neutral-950 text-balance dark:text-neutral-50">
-            {title}
-          </h1>
+        <div className="relative border-b border-neutral-200 px-5 py-12 dark:border-neutral-800 sm:px-8 sm:py-16 lg:col-span-7 lg:border-b-0 lg:border-r lg:px-10 lg:py-20">
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-0 bg-graph [mask-image:linear-gradient(to_top,black,transparent_70%)]"
+          />
+          <div className="relative">
+            {eyebrow && <SectionKicker className="mb-6 text-sm">{eyebrow}</SectionKicker>}
+            <h1 className="max-w-3xl text-[clamp(3rem,5.25vw,4.75rem)] font-semibold leading-[0.96] tracking-[-0.04em] text-neutral-950 text-balance dark:text-neutral-50">
+              {title}
+            </h1>
+          </div>
         </div>
 
         <div className="flex flex-col justify-center px-5 py-10 sm:px-8 sm:py-12 lg:col-span-5 lg:px-10 lg:py-16">

@@ -1,3 +1,4 @@
+import { SectionCrosses } from "@/components/deco/GridCross";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { ThemeSwitcher } from "@/components/ThemeSwitcher";
 import { SiDiscord, SiGithub, SiX } from "@icons-pack/react-simple-icons";
@@ -83,7 +84,8 @@ export function Footer() {
   ];
 
   return (
-    <footer className="border-t border-neutral-200 dark:border-neutral-800">
+    <footer className="relative border-t border-neutral-200 dark:border-neutral-800">
+      <SectionCrosses />
       <div className="mx-auto max-w-[1200px] border-x border-neutral-200 dark:border-neutral-800">
         <div className="grid border-b border-neutral-200 dark:border-neutral-800 lg:grid-cols-12">
           <div className="border-b border-neutral-200 px-5 py-10 dark:border-neutral-800 sm:px-8 lg:col-span-3 lg:border-b-0 lg:border-r lg:py-14">

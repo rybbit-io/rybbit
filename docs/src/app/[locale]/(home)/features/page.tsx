@@ -77,7 +77,7 @@ function FeatureGrid({ title, description, features }: FeatureGridProps) {
         <div className="grid gap-px bg-neutral-200 dark:bg-neutral-800 lg:col-span-8 md:grid-cols-2">
           {features.map((feature) => (
             <article key={feature.title} className="bg-white px-5 py-9 dark:bg-neutral-950 sm:px-8 lg:px-10">
-              <div className="mb-5 text-neutral-500 dark:text-neutral-400">{feature.icon}</div>
+              <div className="mb-5 text-emerald-600 dark:text-emerald-400">{feature.icon}</div>
               <h3 className="font-semibold tracking-tight">{feature.title}</h3>
               <p className="mt-2 max-w-md text-sm leading-6 text-neutral-600 dark:text-neutral-400">{feature.description}</p>
             </article>

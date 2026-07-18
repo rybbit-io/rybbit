@@ -1,4 +1,8 @@
 import { CTASection } from "@/components/CTASection";
+import { SectionCrosses } from "@/components/deco/GridCross";
+import { SectionKicker } from "@/components/deco/SectionKicker";
+import { SignalSparkline } from "@/components/deco/SignalSparkline";
+import { TrackingSnippet } from "@/components/deco/TrackingSnippet";
 import { FAQAccordion } from "@/components/FAQAccordion";
 import { Funnels } from "@/components/Cards/Funnels";
 import { RealTimeAnalytics } from "@/components/Cards/RealTimeAnalytics";
@@ -203,8 +207,9 @@ export function LandingPageTemplate({ title, subtitle, showEUFlag = true }: Land
 
         <section className="border-b border-neutral-200 dark:border-neutral-800" aria-labelledby="customer-proof">
           <div className="mx-auto grid max-w-[1200px] grid-cols-2 gap-px border-x border-neutral-200 bg-neutral-200 p-px dark:border-neutral-800 dark:bg-neutral-800 sm:grid-cols-4 lg:grid-cols-8">
-            <div className="col-span-full flex min-h-14 items-center bg-white px-5 dark:bg-neutral-950 sm:px-8">
-              <p id="customer-proof" className="text-sm font-medium text-neutral-600 dark:text-neutral-400">
+            <div className="col-span-full flex min-h-14 items-center gap-2.5 bg-plate-accent px-5 sm:px-8">
+              <span aria-hidden="true" className="size-2 shrink-0 rounded-[1px] bg-emerald-600 dark:bg-emerald-400" />
+              <p id="customer-proof" className="text-sm font-medium text-neutral-700 dark:text-neutral-300">
                 {t("Trusted by 10,000+ organizations worldwide")}
               </p>
             </div>
@@ -247,6 +252,7 @@ export function LandingPageTemplate({ title, subtitle, showEUFlag = true }: Land
                 <p className="mt-6 max-w-sm text-base leading-7 text-neutral-600 dark:text-neutral-400">
                   {t("Rybbit connects the essential analytics workflows into one coherent product, so every answer starts from the same source of truth.")}
                 </p>
+                <SignalSparkline className="mt-10 max-w-[300px]" />
               </div>
             </div>
 
@@ -263,7 +269,7 @@ export function LandingPageTemplate({ title, subtitle, showEUFlag = true }: Land
                       const Icon = feature.icon;
                       return (
                         <div key={feature.title} className="grid grid-cols-[24px_1fr] gap-x-3 py-4">
-                          <Icon size={18} className="mt-0.5 text-neutral-500 dark:text-neutral-400" />
+                          <Icon size={18} className="mt-0.5 text-emerald-600 dark:text-emerald-400" />
                           <div>
                             <h4 className="text-sm font-medium">{feature.title}</h4>
                             <p className="mt-1 text-sm leading-5 text-neutral-600 dark:text-neutral-400">{feature.description}</p>
@@ -278,16 +284,21 @@ export function LandingPageTemplate({ title, subtitle, showEUFlag = true }: Land
           </div>
         </section>
 
-        <section className="border-b border-neutral-200 dark:border-neutral-800" aria-labelledby="product-title">
+        <section className="relative border-b border-neutral-200 dark:border-neutral-800" aria-labelledby="product-title">
+          <SectionCrosses />
           <div className="mx-auto max-w-[1200px] border-x border-neutral-200 dark:border-neutral-800">
             <div className="grid border-b border-neutral-200 dark:border-neutral-800 lg:grid-cols-12">
-              <div className="border-b border-neutral-200 px-5 py-14 dark:border-neutral-800 sm:px-8 md:py-20 lg:col-span-7 lg:border-b-0 lg:border-r lg:px-10">
-                <p className="text-base font-semibold tracking-tight text-neutral-950 dark:text-neutral-50">
-                  {t("One connected workspace")}
-                </p>
-                <h2 id="product-title" className="mt-5 max-w-2xl text-4xl font-semibold leading-[1.04] tracking-[-0.035em] md:text-5xl text-balance">
-                  {t("Go from signal to explanation without changing tools.")}
-                </h2>
+              <div className="relative border-b border-neutral-200 bg-plate-accent px-5 py-14 dark:border-neutral-800 sm:px-8 md:py-20 lg:col-span-7 lg:border-b-0 lg:border-r lg:px-10">
+                <div
+                  aria-hidden="true"
+                  className="pointer-events-none absolute inset-0 bg-graph-accent [mask-image:linear-gradient(to_bottom,black,transparent_92%)]"
+                />
+                <div className="relative">
+                  <SectionKicker>{t("One connected workspace")}</SectionKicker>
+                  <h2 id="product-title" className="mt-5 max-w-2xl text-4xl font-semibold leading-[1.04] tracking-[-0.035em] md:text-5xl text-balance">
+                    {t("Go from signal to explanation without changing tools.")}
+                  </h2>
+                </div>
               </div>
               <div className="flex items-end px-5 py-10 sm:px-8 md:py-20 lg:col-span-5 lg:px-10">
                 <p className="max-w-md text-lg leading-8 text-neutral-600 dark:text-neutral-400 text-pretty">
@@ -315,6 +326,7 @@ export function LandingPageTemplate({ title, subtitle, showEUFlag = true }: Land
                 <p className="mt-6 max-w-sm text-base leading-7 text-neutral-600 dark:text-neutral-400">
                   {t("Install Rybbit on the platform you already use. Most integrations take only a few minutes.")}
                 </p>
+                <TrackingSnippet className="mt-10 max-w-sm" />
               </div>
             </div>
             <div className="lg:col-span-8">
@@ -326,13 +338,17 @@ export function LandingPageTemplate({ title, subtitle, showEUFlag = true }: Land
         <section className="border-b border-neutral-200 dark:border-neutral-800" aria-labelledby="testimonials-title">
           <div className="mx-auto max-w-[1200px] border-x border-neutral-200 dark:border-neutral-800">
             <div className="grid border-b border-neutral-200 dark:border-neutral-800 md:grid-cols-3">
-              <div className="border-b border-neutral-200 px-5 py-14 dark:border-neutral-800 sm:px-8 md:col-span-2 md:border-b-0 md:border-r md:py-20 lg:px-10">
-                <p className="text-base font-semibold tracking-tight text-neutral-950 dark:text-neutral-50">
-                  {t("From the community")}
-                </p>
-                <h2 id="testimonials-title" className="mt-5 max-w-3xl text-4xl font-semibold leading-[1.04] tracking-[-0.035em] md:text-5xl text-balance">
-                  {t("Built in public. Used in the real world.")}
-                </h2>
+              <div className="relative border-b border-neutral-200 bg-plate-accent px-5 py-14 dark:border-neutral-800 sm:px-8 md:col-span-2 md:border-b-0 md:border-r md:py-20 lg:px-10">
+                <div
+                  aria-hidden="true"
+                  className="pointer-events-none absolute inset-0 bg-graph-accent [mask-image:linear-gradient(to_bottom,black,transparent_92%)]"
+                />
+                <div className="relative">
+                  <SectionKicker>{t("From the community")}</SectionKicker>
+                  <h2 id="testimonials-title" className="mt-5 max-w-3xl text-4xl font-semibold leading-[1.04] tracking-[-0.035em] md:text-5xl text-balance">
+                    {t("Built in public. Used in the real world.")}
+                  </h2>
+                </div>
               </div>
               <div className="flex flex-col justify-between px-5 py-10 sm:px-8 md:py-20 lg:px-10">
                 <p className="max-w-md text-base leading-7 text-neutral-600 dark:text-neutral-400 text-pretty">

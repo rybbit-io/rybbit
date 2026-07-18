@@ -3,6 +3,7 @@
 import { CircleCheckBig, Minus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { AppLink } from "@/components/AppLink";
+import { SectionKicker } from "@/components/deco/SectionKicker";
 import { STANDARD_SITE_LIMIT, STANDARD_TEAM_LIMIT } from "@/lib/const";
 import { useExtracted } from "next-intl";
 
@@ -237,7 +238,7 @@ export function ComparisonSection({ isAnnual }: { isAnnual: boolean }) {
     <section className="border-b border-neutral-200 dark:border-neutral-800" aria-labelledby="plan-comparison-title">
       <div className="mx-auto max-w-[1200px] border-x border-neutral-200 dark:border-neutral-800">
         <div className="border-b border-neutral-200 px-5 py-12 dark:border-neutral-800 sm:px-8 lg:px-10 lg:py-16">
-          <p className="text-sm font-semibold text-neutral-500 dark:text-neutral-400">{t("Plan details")}</p>
+          <SectionKicker className="text-sm">{t("Plan details")}</SectionKicker>
           <h2 id="plan-comparison-title" className="mt-4 text-3xl font-semibold tracking-[-0.03em] md:text-4xl">
             {t("Compare Plans")}
           </h2>

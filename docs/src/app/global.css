@@ -82,6 +82,47 @@ body {
   font-family: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
 }
 
+/* ── Marketing decoration: graph paper + signal ──────────────────────────
+   The marketing pages are laid out as a bordered instrument sheet (1200px
+   container, hairline seams). These utilities give selected cells the sheet's
+   material back: a fine graph-paper grid, in a neutral ink or the emerald
+   signal ink. Pair `.bg-graph-accent` with a low-alpha emerald wash on the
+   same element (e.g. `bg-emerald-500/[0.04]`) to make a section header read
+   as a "signal plate". Line colors are theme-aware and deliberately faint so
+   text contrast on top is unaffected. */
+:root {
+  --graph-line: oklch(0 0 0 / 0.05);
+  --graph-line-accent: oklch(0.55 0.12 163 / 0.16);
+}
+.dark {
+  --graph-line: oklch(1 0 0 / 0.055);
+  --graph-line-accent: oklch(0.75 0.14 163 / 0.13);
+}
+.bg-graph,
+.bg-graph-accent {
+  background-image:
+    linear-gradient(to right, var(--_graph-ink) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--_graph-ink) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+.bg-graph {
+  --_graph-ink: var(--graph-line);
+}
+.bg-graph-accent {
+  --_graph-ink: var(--graph-line-accent);
+}
+
+/* Solid (opaque) emerald-tinted surface for section header plates. Solid on
+   purpose: plates often sit inside `gap-px` grids where a translucent cell
+   would let the seam color bleed through. */
+.bg-plate-accent {
+  background-color: color-mix(in oklab, #ffffff 95.5%, #059669);
+}
+.dark .bg-plate-accent {
+  background-color: color-mix(in oklab, #0a0a0a 94%, #34d399);
+}
+
+
 code,
 pre {
   font-family: ui-monospace, SFMono-Regular, "SF Mono", Consolas, "Liberation Mono", Menlo, monospace;

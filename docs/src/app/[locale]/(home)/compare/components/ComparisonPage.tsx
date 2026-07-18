@@ -1,4 +1,5 @@
 import { CTASection } from "@/components/CTASection";
+import { SectionKicker } from "@/components/deco/SectionKicker";
 import { InteriorPageHero } from "@/components/InteriorPageHero";
 import {
   Accordion,
@@ -118,7 +119,7 @@ export function ComparisonPage({
         <section className="border-b border-neutral-200 dark:border-neutral-800" aria-labelledby="comparison-fit-title">
           <div className="mx-auto grid max-w-[1200px] border-x border-neutral-200 dark:border-neutral-800 lg:grid-cols-12">
             <div className="border-b border-neutral-200 px-5 py-12 dark:border-neutral-800 sm:px-8 lg:col-span-4 lg:border-b-0 lg:border-r lg:px-10 lg:py-16">
-              <p className="text-sm font-semibold text-neutral-500 dark:text-neutral-400">{t("Comparison")}</p>
+              <SectionKicker className="text-sm">{t("Comparison")}</SectionKicker>
               <h2 id="comparison-fit-title" className="mt-4 text-3xl font-semibold tracking-[-0.03em] md:text-4xl">
                 {t("Which is right for you?")}
               </h2>
@@ -158,7 +159,7 @@ export function ComparisonPage({
       <section className="border-b border-neutral-200 dark:border-neutral-800" aria-labelledby="comparison-table-title">
         <div className="mx-auto max-w-[1200px] border-x border-neutral-200 dark:border-neutral-800">
           <div className="border-b border-neutral-200 px-5 py-12 dark:border-neutral-800 sm:px-8 lg:px-10 lg:py-16">
-            <p className="text-sm font-semibold text-neutral-500 dark:text-neutral-400">{t("Feature by feature")}</p>
+            <SectionKicker className="text-sm">{t("Feature by feature")}</SectionKicker>
             <h2 id="comparison-table-title" className="mt-4 max-w-3xl text-3xl font-semibold tracking-[-0.03em] md:text-4xl">
               {t("Why choose Rybbit over {competitor}?", { competitor: competitorName })}
             </h2>
@@ -168,7 +169,7 @@ export function ComparisonPage({
               <thead>
                 <tr className="border-b border-neutral-200 dark:border-neutral-800">
                   <th className="w-2/5 px-6 py-5 text-left font-medium text-neutral-500 lg:px-10">{t("Capability")}</th>
-                  <th className="border-l border-neutral-200 px-6 py-5 text-center dark:border-neutral-800">
+                  <th className="border-l border-neutral-200 bg-emerald-500/[0.04] px-6 py-5 text-center dark:border-neutral-800 dark:bg-emerald-400/[0.05]">
                     <Image
                       src="/rybbit/horizontal_white.svg"
                       alt="Rybbit"
@@ -193,7 +194,7 @@ export function ComparisonPage({
                     {section.features.map((feature) => (
                       <tr key={`${section.title}-${feature.name}`} className="border-b border-neutral-200 last:border-b-0 dark:border-neutral-800">
                         <th className="px-6 py-4 text-left font-medium text-neutral-700 dark:text-neutral-300 lg:px-10">{feature.name}</th>
-                        <td className="border-l border-neutral-200 px-6 py-4 text-center dark:border-neutral-800">
+                        <td className="border-l border-neutral-200 bg-emerald-500/[0.04] px-6 py-4 text-center dark:border-neutral-800 dark:bg-emerald-400/[0.05]">
                           <div className="flex justify-center">{renderFeatureValue(feature.rybbitValue)}</div>
                         </td>
                         <td className="border-l border-neutral-200 px-6 py-4 text-center dark:border-neutral-800">
@@ -213,7 +214,7 @@ export function ComparisonPage({
         <section className="border-b border-neutral-200 dark:border-neutral-800" aria-labelledby="pricing-comparison-title">
           <div className="mx-auto grid max-w-[1200px] border-x border-neutral-200 dark:border-neutral-800 lg:grid-cols-12">
             <div className="border-b border-neutral-200 px-5 py-12 dark:border-neutral-800 sm:px-8 lg:col-span-4 lg:border-b-0 lg:border-r lg:px-10 lg:py-16">
-              <p className="text-sm font-semibold text-neutral-500 dark:text-neutral-400">{t("Pricing")}</p>
+              <SectionKicker className="text-sm">{t("Pricing")}</SectionKicker>
               <h2 id="pricing-comparison-title" className="mt-4 text-3xl font-semibold tracking-[-0.03em] md:text-4xl">
                 {t("Pricing comparison")}
               </h2>
@@ -256,7 +257,7 @@ export function ComparisonPage({
         <section className="border-b border-neutral-200 dark:border-neutral-800" aria-labelledby="comparison-faq-title">
           <div className="mx-auto grid max-w-[1200px] border-x border-neutral-200 dark:border-neutral-800 lg:grid-cols-12">
             <div className="border-b border-neutral-200 px-5 py-12 dark:border-neutral-800 sm:px-8 lg:col-span-4 lg:border-b-0 lg:border-r lg:px-10 lg:py-16">
-              <p className="text-sm font-semibold text-neutral-500 dark:text-neutral-400">{t("FAQ")}</p>
+              <SectionKicker className="text-sm">{t("FAQ")}</SectionKicker>
               <h2 id="comparison-faq-title" className="mt-4 text-3xl font-semibold tracking-[-0.03em] md:text-4xl">
                 {t("Frequently asked questions")}
               </h2>
@@ -277,7 +278,7 @@ export function ComparisonPage({
         <section className="border-b border-neutral-200 dark:border-neutral-800" aria-labelledby="related-resources-title">
           <div className="mx-auto grid max-w-[1200px] border-x border-neutral-200 dark:border-neutral-800 lg:grid-cols-12">
             <div className="border-b border-neutral-200 px-5 py-12 dark:border-neutral-800 sm:px-8 lg:col-span-4 lg:border-b-0 lg:border-r lg:px-10 lg:py-16">
-              <p className="text-sm font-semibold text-neutral-500 dark:text-neutral-400">{t("Resources")}</p>
+              <SectionKicker className="text-sm">{t("Resources")}</SectionKicker>
               <h2 id="related-resources-title" className="mt-4 text-3xl font-semibold tracking-[-0.03em] md:text-4xl">
                 {t("Related resources")}
               </h2>

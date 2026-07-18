@@ -1,4 +1,5 @@
 import { CTASection } from "@/components/CTASection";
+import { SectionKicker } from "@/components/deco/SectionKicker";
 import { InteriorPageHero } from "@/components/InteriorPageHero";
 import {
   Accordion,
@@ -90,9 +91,9 @@ export function FeaturePage({
             <div className="overflow-hidden rounded-lg border border-neutral-300 bg-white dark:border-neutral-700 dark:bg-neutral-950">
               <div className="grid h-10 grid-cols-[1fr_auto_1fr] items-center gap-2 border-b border-neutral-200 px-3 dark:border-neutral-800 sm:px-4">
                 <div className="flex gap-1.5" aria-hidden="true">
-                  <span className="size-2.5 rounded-full bg-neutral-300 dark:bg-neutral-700" />
-                  <span className="size-2.5 rounded-full bg-neutral-300 dark:bg-neutral-700" />
-                  <span className="size-2.5 rounded-full bg-neutral-300 dark:bg-neutral-700" />
+                  <span className="size-2.5 rounded-full bg-[#ff5f57]" />
+                  <span className="size-2.5 rounded-full bg-[#febc2e]" />
+                  <span className="size-2.5 rounded-full bg-[#28c840]" />
                 </div>
                 <a
                   href={demoUrl}
@@ -129,7 +130,7 @@ export function FeaturePage({
       <section className="border-b border-neutral-200 dark:border-neutral-800">
         <div className="mx-auto grid max-w-[1200px] border-x border-neutral-200 dark:border-neutral-800 lg:grid-cols-12">
           <div className="border-b border-neutral-200 px-5 py-12 dark:border-neutral-800 sm:px-8 lg:col-span-4 lg:border-b-0 lg:border-r lg:px-10 lg:py-16">
-            <p className="text-sm font-semibold text-neutral-500 dark:text-neutral-400">{badgeText}</p>
+            <SectionKicker className="text-sm">{badgeText}</SectionKicker>
             <h2 className="mt-4 text-3xl font-semibold tracking-[-0.03em] md:text-4xl">{featureName}</h2>
           </div>
           <div className="space-y-5 px-5 py-12 sm:px-8 lg:col-span-8 lg:px-10 lg:py-16">
@@ -149,7 +150,7 @@ export function FeaturePage({
         <div className="mx-auto grid max-w-[1200px] border-x border-neutral-200 dark:border-neutral-800 lg:grid-cols-12">
           <div className="border-b border-neutral-200 px-5 py-12 dark:border-neutral-800 sm:px-8 lg:col-span-4 lg:border-b-0 lg:border-r lg:px-10 lg:py-16">
             <div className="lg:sticky lg:top-24">
-              <p className="text-sm font-semibold text-neutral-500 dark:text-neutral-400">{t("Capabilities")}</p>
+              <SectionKicker className="text-sm">{t("Capabilities")}</SectionKicker>
               <h2 id="capabilities-title" className="mt-4 text-3xl font-semibold tracking-[-0.03em] md:text-4xl">
                 {t("What you can do")}
               </h2>
@@ -161,7 +162,7 @@ export function FeaturePage({
                 key={capability.title}
                 className="border-b border-neutral-200 px-5 py-10 dark:border-neutral-800 sm:px-8 md:odd:border-r md:[&:nth-last-child(-n+2)]:border-b-0 lg:px-10"
               >
-                <div className="mb-5 flex size-9 items-center justify-center rounded-md border border-neutral-200 text-neutral-600 dark:border-neutral-800 dark:text-neutral-400">
+                <div className="mb-5 flex size-9 items-center justify-center rounded-md border border-emerald-600/20 bg-emerald-500/[0.06] text-emerald-600 dark:border-emerald-400/20 dark:bg-emerald-400/[0.07] dark:text-emerald-400">
                   {capability.icon}
                 </div>
                 <h3 className="text-lg font-semibold tracking-tight">{capability.title}</h3>
@@ -178,7 +179,7 @@ export function FeaturePage({
         <div className="mx-auto grid max-w-[1200px] border-x border-neutral-200 dark:border-neutral-800 lg:grid-cols-12">
           <div className="border-b border-neutral-200 px-5 py-12 dark:border-neutral-800 sm:px-8 lg:col-span-4 lg:border-b-0 lg:border-r lg:px-10 lg:py-16">
             <div className="lg:sticky lg:top-24">
-              <p className="text-sm font-semibold text-neutral-500 dark:text-neutral-400">{t("Getting Started")}</p>
+              <SectionKicker className="text-sm">{t("Getting Started")}</SectionKicker>
               <h2 id="how-it-works-title" className="mt-4 text-3xl font-semibold tracking-[-0.03em] md:text-4xl">
                 {t("How it works")}
               </h2>
@@ -208,7 +209,7 @@ export function FeaturePage({
       <section className="border-b border-neutral-200 dark:border-neutral-800" aria-labelledby="who-uses-title">
         <div className="mx-auto grid max-w-[1200px] border-x border-neutral-200 dark:border-neutral-800 lg:grid-cols-12">
           <div className="border-b border-neutral-200 px-5 py-12 dark:border-neutral-800 sm:px-8 lg:col-span-4 lg:border-b-0 lg:border-r lg:px-10 lg:py-16">
-            <p className="text-sm font-semibold text-neutral-500 dark:text-neutral-400">{t("Use Cases")}</p>
+            <SectionKicker className="text-sm">{t("Use Cases")}</SectionKicker>
             <h2 id="who-uses-title" className="mt-4 text-3xl font-semibold tracking-[-0.03em] md:text-4xl">
               {t("Who uses this")}
             </h2>
@@ -219,7 +220,7 @@ export function FeaturePage({
                 key={item.title}
                 className="border-b border-neutral-200 px-5 py-10 last:border-b-0 dark:border-neutral-800 sm:px-8 md:border-b-0 md:border-r md:last:border-r-0 lg:px-8"
               >
-                <div className="mb-5 text-neutral-500 dark:text-neutral-400">{item.icon}</div>
+                <div className="mb-5 text-emerald-600 dark:text-emerald-400">{item.icon}</div>
                 <h3 className="font-semibold tracking-tight">{item.title}</h3>
                 <p className="mt-2 text-sm leading-6 text-neutral-600 dark:text-neutral-400">{item.description}</p>
               </article>
@@ -232,7 +233,7 @@ export function FeaturePage({
         <section className="border-b border-neutral-200 dark:border-neutral-800" aria-labelledby="feature-faq-title">
           <div className="mx-auto grid max-w-[1200px] border-x border-neutral-200 dark:border-neutral-800 lg:grid-cols-12">
             <div className="border-b border-neutral-200 px-5 py-12 dark:border-neutral-800 sm:px-8 lg:col-span-4 lg:border-b-0 lg:border-r lg:px-10 lg:py-16">
-              <p className="text-sm font-semibold text-neutral-500 dark:text-neutral-400">{t("FAQ")}</p>
+              <SectionKicker className="text-sm">{t("FAQ")}</SectionKicker>
               <h2 id="feature-faq-title" className="mt-4 text-3xl font-semibold tracking-[-0.03em] md:text-4xl">
                 {t("Frequently asked questions")}
               </h2>
@@ -253,7 +254,7 @@ export function FeaturePage({
         <section className="border-b border-neutral-200 dark:border-neutral-800" aria-labelledby="related-features-title">
           <div className="mx-auto grid max-w-[1200px] border-x border-neutral-200 dark:border-neutral-800 lg:grid-cols-12">
             <div className="border-b border-neutral-200 px-5 py-12 dark:border-neutral-800 sm:px-8 lg:col-span-4 lg:border-b-0 lg:border-r lg:px-10 lg:py-16">
-              <p className="text-sm font-semibold text-neutral-500 dark:text-neutral-400">{t("Explore More")}</p>
+              <SectionKicker className="text-sm">{t("Explore More")}</SectionKicker>
               <h2 id="related-features-title" className="mt-4 text-3xl font-semibold tracking-[-0.03em] md:text-4xl">
                 {t("Related features")}
               </h2>
