@@ -6,6 +6,7 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
+import { cn } from "@/lib/utils";
 import { ArrowRight, CheckCircle, CircleMinus } from "lucide-react";
 import { useExtracted } from "next-intl";
 import Image from "next/image";
@@ -73,16 +74,20 @@ export function ComparisonPage({
   const t = useExtracted();
   const hasNewSections = !!chooseRybbit;
 
-  const renderFeatureValue = (value: string | boolean) => {
+  const renderFeatureValue = (value: string | boolean, highlighted = false) => {
     if (typeof value === "boolean") {
       return value ? (
-        <CheckCircle className="size-5 text-emerald-500" aria-label={t("Included")} />
+        <CheckCircle className="size-5 text-emerald-600 dark:text-emerald-400" aria-label={t("Included")} />
       ) : (
         <CircleMinus className="size-5 text-neutral-400" aria-label={t("Not included")} />
       );
     }
 
-    return <span className="text-neutral-700 dark:text-neutral-300">{value}</span>;
+    return (
+      <span className={highlighted ? "font-medium text-emerald-950 dark:text-emerald-100" : "text-neutral-700 dark:text-neutral-300"}>
+        {value}
+      </span>
+    );
   };
 
   return (
@@ -124,14 +129,14 @@ export function ComparisonPage({
               </h2>
             </div>
             <div className="grid lg:col-span-8 md:grid-cols-2">
-              <div className="border-b border-neutral-200 px-5 py-10 dark:border-neutral-800 sm:px-8 md:border-b-0 md:border-r lg:px-10">
-                <h3 className="text-lg font-semibold text-emerald-600 dark:text-emerald-400">
+              <div className="border-b border-[var(--marketing-signal-border)] bg-[var(--marketing-signal-field)] px-5 py-10 text-[var(--marketing-signal-ink)] sm:px-8 md:border-b-0 md:border-r lg:px-10">
+                <h3 className="text-lg font-semibold">
                   {t("Choose Rybbit if...")}
                 </h3>
                 <ul className="mt-6 space-y-4">
                   {chooseRybbit.map((item) => (
-                    <li key={item} className="flex items-start gap-3 text-sm leading-6 text-neutral-700 dark:text-neutral-300">
-                      <CheckCircle className="mt-0.5 size-4 shrink-0 text-emerald-500" aria-hidden="true" />
+                    <li key={item} className="flex items-start gap-3 text-sm leading-6 text-[var(--marketing-signal-ink)]">
+                      <CheckCircle className="mt-0.5 size-4 shrink-0 text-[var(--marketing-signal-muted)]" aria-hidden="true" />
                       <span>{item}</span>
                     </li>
                   ))}
@@ -168,13 +173,13 @@ export function ComparisonPage({
               <thead>
                 <tr className="border-b border-neutral-200 dark:border-neutral-800">
                   <th className="w-2/5 px-6 py-5 text-left font-medium text-neutral-500 lg:px-10">{t("Capability")}</th>
-                  <th className="border-l border-neutral-200 px-6 py-5 text-center dark:border-neutral-800">
+                  <th className="border-l border-[var(--marketing-signal-border)] bg-[var(--marketing-signal-field)] px-6 py-5 text-center">
                     <Image
                       src="/rybbit/horizontal_white.svg"
                       alt="Rybbit"
                       width={92}
                       height={25}
-                      className="mx-auto invert dark:invert-0"
+                      className="mx-auto"
                     />
                   </th>
                   <th className="border-l border-neutral-200 px-6 py-5 text-center font-semibold dark:border-neutral-800">
@@ -193,8 +198,8 @@ export function ComparisonPage({
                     {section.features.map((feature) => (
                       <tr key={`${section.title}-${feature.name}`} className="border-b border-neutral-200 last:border-b-0 dark:border-neutral-800">
                         <th className="px-6 py-4 text-left font-medium text-neutral-700 dark:text-neutral-300 lg:px-10">{feature.name}</th>
-                        <td className="border-l border-neutral-200 px-6 py-4 text-center dark:border-neutral-800">
-                          <div className="flex justify-center">{renderFeatureValue(feature.rybbitValue)}</div>
+                        <td className="border-l border-[var(--marketing-signal-soft-border)] bg-[var(--marketing-signal-soft)] px-6 py-4 text-center">
+                          <div className="flex justify-center">{renderFeatureValue(feature.rybbitValue, true)}</div>
                         </td>
                         <td className="border-l border-neutral-200 px-6 py-4 text-center dark:border-neutral-800">
                           <div className="flex justify-center">{renderFeatureValue(feature.competitorValue)}</div>
@@ -222,17 +227,20 @@ export function ComparisonPage({
               {[rybbitPricing, competitorPricing].map((pricing, pricingIndex) => (
                 <article
                   key={pricing.name}
-                  className="border-b border-neutral-200 px-5 py-10 last:border-b-0 dark:border-neutral-800 sm:px-8 md:border-b-0 md:first:border-r lg:px-10"
+                  className={cn(
+                    "border-b border-neutral-200 px-5 py-10 last:border-b-0 dark:border-neutral-800 sm:px-8 md:border-b-0 md:first:border-r lg:px-10",
+                    pricingIndex === 0 && "border-[var(--marketing-signal-border)] bg-[var(--marketing-signal-field)] text-[var(--marketing-signal-ink)]"
+                  )}
                 >
-                  <p className="text-sm text-neutral-500 dark:text-neutral-400">{pricing.model}</p>
+                  <p className={cn("text-sm text-neutral-500 dark:text-neutral-400", pricingIndex === 0 && "text-[var(--marketing-signal-muted)] dark:text-[var(--marketing-signal-muted)]")}>{pricing.model}</p>
                   <h3 className="mt-2 text-xl font-semibold">{pricing.name}</h3>
-                  <p className={`mt-6 text-3xl font-semibold tracking-tight ${pricingIndex === 0 ? "text-emerald-600 dark:text-emerald-400" : ""}`}>
+                  <p className={cn("mt-6 text-3xl font-semibold tracking-tight", pricingIndex === 0 && "text-white")}>
                     {pricing.startingPrice}
                   </p>
                   <ul className="mt-7 space-y-3">
                     {pricing.highlights.map((highlight) => (
-                      <li key={highlight} className="flex items-start gap-3 text-sm leading-6 text-neutral-700 dark:text-neutral-300">
-                        <CheckCircle className={`mt-0.5 size-4 shrink-0 ${pricingIndex === 0 ? "text-emerald-500" : "text-neutral-400"}`} aria-hidden="true" />
+                      <li key={highlight} className={cn("flex items-start gap-3 text-sm leading-6 text-neutral-700 dark:text-neutral-300", pricingIndex === 0 && "text-[var(--marketing-signal-ink)] dark:text-[var(--marketing-signal-ink)]")}>
+                        <CheckCircle className={cn("mt-0.5 size-4 shrink-0", pricingIndex === 0 ? "text-[var(--marketing-signal-muted)]" : "text-neutral-400")} aria-hidden="true" />
                         <span>{highlight}</span>
                       </li>
                     ))}
@@ -287,11 +295,11 @@ export function ComparisonPage({
                 <Link
                   key={resource.href}
                   href={resource.href}
-                  className="group grid border-b border-neutral-200 px-5 py-7 last:border-b-0 transition-colors hover:bg-neutral-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-neutral-500 dark:border-neutral-800 dark:hover:bg-neutral-900/60 sm:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)_auto] sm:items-center sm:gap-6 sm:px-8 lg:px-10"
+                  className="group grid border-b border-neutral-200 px-5 py-7 last:border-b-0 transition-colors hover:bg-[var(--marketing-signal-soft)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-emerald-600 dark:border-neutral-800 sm:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)_auto] sm:items-center sm:gap-6 sm:px-8 lg:px-10"
                 >
                   <span className="font-semibold">{resource.title}</span>
                   <span className="mt-1 text-sm leading-6 text-neutral-500 dark:text-neutral-400 sm:mt-0">{resource.description}</span>
-                  <ArrowRight className="mt-4 size-4 text-neutral-400 transition-transform group-hover:translate-x-1 sm:mt-0" aria-hidden="true" />
+                  <ArrowRight className="mt-4 size-4 text-neutral-400 transition-transform group-hover:translate-x-1 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 sm:mt-0" aria-hidden="true" />
                 </Link>
               ))}
             </div>

@@ -86,8 +86,8 @@ export function FeaturePage({
 
       {demoUrl && (
         <section className="border-b border-neutral-200 dark:border-neutral-800" aria-label={`${featureName} demo`}>
-          <div className="mx-auto max-w-[1200px] border-x border-neutral-200 bg-neutral-100 p-2 dark:border-neutral-800 dark:bg-neutral-900 sm:p-3">
-            <div className="overflow-hidden rounded-lg border border-neutral-300 bg-white dark:border-neutral-700 dark:bg-neutral-950">
+          <div className="mx-auto max-w-[1200px] border-x border-[var(--marketing-signal-border)] bg-[var(--marketing-signal-field)] p-2 sm:p-3">
+            <div className="overflow-hidden rounded-lg border border-[var(--marketing-signal-border)] bg-white dark:bg-neutral-950">
               <div className="grid h-10 grid-cols-[1fr_auto_1fr] items-center gap-2 border-b border-neutral-200 px-3 dark:border-neutral-800 sm:px-4">
                 <div className="flex gap-1.5" aria-hidden="true">
                   <span className="size-2.5 rounded-full bg-neutral-300 dark:bg-neutral-700" />
@@ -118,7 +118,7 @@ export function FeaturePage({
               />
             </div>
             {demoCaption && (
-              <p className="px-2 pb-1 pt-3 text-center text-sm text-neutral-500 dark:text-neutral-400">
+              <p className="px-2 pb-1 pt-3 text-center text-sm text-[var(--marketing-signal-muted)]">
                 {demoCaption}
               </p>
             )}
@@ -147,9 +147,9 @@ export function FeaturePage({
 
       <section className="border-b border-neutral-200 dark:border-neutral-800" aria-labelledby="capabilities-title">
         <div className="mx-auto grid max-w-[1200px] border-x border-neutral-200 dark:border-neutral-800 lg:grid-cols-12">
-          <div className="border-b border-neutral-200 px-5 py-12 dark:border-neutral-800 sm:px-8 lg:col-span-4 lg:border-b-0 lg:border-r lg:px-10 lg:py-16">
+          <div className="border-b border-[var(--marketing-signal-border)] bg-[var(--marketing-signal-field)] px-5 py-12 text-[var(--marketing-signal-ink)] sm:px-8 lg:col-span-4 lg:border-b-0 lg:border-r lg:px-10 lg:py-16">
             <div className="lg:sticky lg:top-24">
-              <p className="text-sm font-semibold text-neutral-500 dark:text-neutral-400">{t("Capabilities")}</p>
+              <p className="text-sm font-semibold text-[var(--marketing-signal-muted)]">{t("Capabilities")}</p>
               <h2 id="capabilities-title" className="mt-4 text-3xl font-semibold tracking-[-0.03em] md:text-4xl">
                 {t("What you can do")}
               </h2>
@@ -161,7 +161,7 @@ export function FeaturePage({
                 key={capability.title}
                 className="border-b border-neutral-200 px-5 py-10 dark:border-neutral-800 sm:px-8 md:odd:border-r md:[&:nth-last-child(-n+2)]:border-b-0 lg:px-10"
               >
-                <div className="mb-5 flex size-9 items-center justify-center rounded-md border border-neutral-200 text-neutral-600 dark:border-neutral-800 dark:text-neutral-400">
+                <div className="mb-5 flex size-9 items-center justify-center rounded-md border border-[var(--marketing-signal-soft-border)] bg-[var(--marketing-signal-soft)] text-emerald-700 dark:text-emerald-300">
                   {capability.icon}
                 </div>
                 <h3 className="text-lg font-semibold tracking-tight">{capability.title}</h3>
@@ -263,11 +263,11 @@ export function FeaturePage({
                 <Link
                   key={feature.href}
                   href={feature.href}
-                  className="group grid border-b border-neutral-200 px-5 py-7 last:border-b-0 transition-colors hover:bg-neutral-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-neutral-500 dark:border-neutral-800 dark:hover:bg-neutral-900/60 sm:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)_auto] sm:items-center sm:gap-6 sm:px-8 lg:px-10"
+                  className="group grid border-b border-neutral-200 px-5 py-7 last:border-b-0 transition-colors hover:bg-[var(--marketing-signal-soft)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-emerald-600 dark:border-neutral-800 sm:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)_auto] sm:items-center sm:gap-6 sm:px-8 lg:px-10"
                 >
                   <span className="font-semibold">{feature.title}</span>
                   <span className="mt-1 text-sm leading-6 text-neutral-500 dark:text-neutral-400 sm:mt-0">{feature.description}</span>
-                  <ArrowRight className="mt-4 size-4 text-neutral-400 transition-transform group-hover:translate-x-1 sm:mt-0" aria-hidden="true" />
+                  <ArrowRight className="mt-4 size-4 text-neutral-400 transition-transform group-hover:translate-x-1 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 sm:mt-0" aria-hidden="true" />
                 </Link>
               ))}
             </div>

@@ -51,7 +51,9 @@ export function PricingCard({
 
   const buttonClasses = cn(
     "inline-flex min-h-11 w-full cursor-pointer items-center justify-center rounded-md px-5 py-2.5 text-sm font-medium transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:pointer-events-none disabled:opacity-50 dark:focus-visible:ring-offset-neutral-950",
-    isPrimary
+    recommended
+      ? "bg-white text-emerald-950 hover:bg-emerald-50 focus-visible:ring-white focus-visible:ring-offset-[var(--marketing-signal-field)] dark:focus-visible:ring-offset-[var(--marketing-signal-field)]"
+      : isPrimary
       ? "bg-emerald-600 text-white hover:bg-emerald-500 focus-visible:ring-emerald-500"
       : "border border-neutral-300 text-neutral-900 hover:bg-neutral-100 focus-visible:ring-neutral-500 dark:border-neutral-700 dark:text-white dark:hover:bg-neutral-800"
   );
@@ -59,12 +61,12 @@ export function PricingCard({
   return (
     <div
       className={cn(
-        "h-full overflow-hidden rounded-lg border bg-white dark:bg-neutral-950",
+        "h-full overflow-hidden rounded-lg border",
         recommended
-          ? "border-emerald-500"
+          ? "border-[var(--marketing-signal-border)] bg-[var(--marketing-signal-field)] text-[var(--marketing-signal-ink)]"
           : isFree
-            ? "border-neutral-200 text-neutral-600 dark:border-neutral-800 dark:text-neutral-300"
-            : "border-neutral-300 dark:border-neutral-800"
+            ? "border-neutral-200 bg-white text-neutral-600 dark:border-neutral-800 dark:bg-neutral-950 dark:text-neutral-300"
+            : "border-neutral-300 bg-white dark:border-neutral-800 dark:bg-neutral-950"
       )}
     >
       <div className="p-6">
@@ -72,12 +74,12 @@ export function PricingCard({
           <div className="mb-2 flex items-center gap-2">
             <h3 className="text-xl font-semibold tracking-tight">{title}</h3>
             {recommended && (
-              <span className="rounded-sm bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
+              <span className="rounded-sm bg-white px-2 py-0.5 text-xs font-medium text-emerald-950">
                 {t("Recommended")}
               </span>
             )}
           </div>
-          <p className="min-h-10 text-sm leading-5 text-neutral-600 dark:text-neutral-400">{description}</p>
+          <p className={cn("min-h-10 text-sm leading-5", recommended ? "text-[var(--marketing-signal-muted)]" : "text-neutral-600 dark:text-neutral-400")}>{description}</p>
         </div>
 
         <div className="mb-6">{priceDisplay}</div>
@@ -117,7 +119,7 @@ export function PricingCard({
             return (
               <div key={index} className="flex items-center gap-3">
                 {included ? (
-                  <Check className="size-4 shrink-0 text-emerald-600 dark:text-emerald-400" aria-hidden="true" />
+                  <Check className={cn("size-4 shrink-0", recommended ? "text-[var(--marketing-signal-muted)]" : "text-emerald-600 dark:text-emerald-400")} aria-hidden="true" />
                 ) : (
                   <X className="size-4 shrink-0 text-neutral-500" aria-hidden="true" />
                 )}
@@ -130,7 +132,12 @@ export function PricingCard({
             <button
               onClick={() => setIsExpanded((expanded) => !expanded)}
               aria-expanded={isExpanded}
-              className="mt-2 flex cursor-pointer items-center gap-3 rounded-sm text-sm text-neutral-600 transition-colors hover:text-neutral-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-500 dark:text-neutral-400 dark:hover:text-white"
+              className={cn(
+                "mt-2 flex cursor-pointer items-center gap-3 rounded-sm text-sm transition-colors focus-visible:outline-none focus-visible:ring-2",
+                recommended
+                  ? "text-[var(--marketing-signal-muted)] hover:text-white focus-visible:ring-white"
+                  : "text-neutral-600 hover:text-neutral-950 focus-visible:ring-neutral-500 dark:text-neutral-400 dark:hover:text-white"
+              )}
             >
               {isExpanded ? <ArrowUp className="size-4" aria-hidden="true" /> : <ArrowDown className="size-4" aria-hidden="true" />}
               {isExpanded ? t("Show less") : t("Show more ({count} more)", { count: String(features.length - 7) })}
@@ -139,7 +146,7 @@ export function PricingCard({
         </div>
 
         {footerText && (
-          <p className="mt-4 flex items-center justify-center gap-2 text-center text-sm text-neutral-600 dark:text-neutral-400">
+          <p className={cn("mt-4 flex items-center justify-center gap-2 text-center text-sm", recommended ? "text-[var(--marketing-signal-muted)]" : "text-neutral-600 dark:text-neutral-400")}>
             {footerText}
           </p>
         )}

@@ -57,6 +57,7 @@ export const metadata: Metadata = createMetadata({
 interface FeatureGridProps {
   title: string;
   description: string;
+  emphasis?: boolean;
   features: Array<{
     icon: React.ReactNode;
     title: string;
@@ -64,20 +65,26 @@ interface FeatureGridProps {
   }>;
 }
 
-function FeatureGrid({ title, description, features }: FeatureGridProps) {
+function FeatureGrid({ title, description, features, emphasis = false }: FeatureGridProps) {
   return (
     <section className="border-b border-neutral-200 dark:border-neutral-800">
       <div className="mx-auto grid max-w-[1200px] border-x border-neutral-200 dark:border-neutral-800 lg:grid-cols-12">
-        <div className="border-b border-neutral-200 px-5 py-12 dark:border-neutral-800 sm:px-8 lg:col-span-4 lg:border-b-0 lg:border-r lg:px-10 lg:py-16">
+        <div
+          className={`border-b px-5 py-12 sm:px-8 lg:col-span-4 lg:border-b-0 lg:border-r lg:px-10 lg:py-16 ${
+            emphasis
+              ? "border-[var(--marketing-signal-border)] bg-[var(--marketing-signal-field)] text-[var(--marketing-signal-ink)]"
+              : "border-neutral-200 dark:border-neutral-800"
+          }`}
+        >
           <div className="lg:sticky lg:top-24">
             <h2 className="text-3xl font-semibold tracking-[-0.03em] md:text-4xl">{title}</h2>
-            <p className="mt-5 max-w-sm text-base leading-7 text-neutral-600 dark:text-neutral-400">{description}</p>
+            <p className={`mt-5 max-w-sm text-base leading-7 ${emphasis ? "text-[var(--marketing-signal-muted)]" : "text-neutral-600 dark:text-neutral-400"}`}>{description}</p>
           </div>
         </div>
         <div className="grid gap-px bg-neutral-200 dark:bg-neutral-800 lg:col-span-8 md:grid-cols-2">
           {features.map((feature) => (
             <article key={feature.title} className="bg-white px-5 py-9 dark:bg-neutral-950 sm:px-8 lg:px-10">
-              <div className="mb-5 text-neutral-500 dark:text-neutral-400">{feature.icon}</div>
+              <div className="mb-5 flex size-9 items-center justify-center rounded-md border border-[var(--marketing-signal-soft-border)] bg-[var(--marketing-signal-soft)] text-emerald-700 dark:text-emerald-300">{feature.icon}</div>
               <h3 className="font-semibold tracking-tight">{feature.title}</h3>
               <p className="mt-2 max-w-md text-sm leading-6 text-neutral-600 dark:text-neutral-400">{feature.description}</p>
             </article>
@@ -318,6 +325,7 @@ export default function FeaturesPage() {
         title={t("Core Web Analytics")}
         description={t("Track every metric that matters. Make data-driven decisions with comprehensive analytics designed for clarity.")}
         features={coreWebAnalyticsFeatures}
+        emphasis
       />
 
       <FeatureGrid

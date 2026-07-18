@@ -203,8 +203,8 @@ export function LandingPageTemplate({ title, subtitle, showEUFlag = true }: Land
 
         <section className="border-b border-neutral-200 dark:border-neutral-800" aria-labelledby="customer-proof">
           <div className="mx-auto grid max-w-[1200px] grid-cols-2 gap-px border-x border-neutral-200 bg-neutral-200 p-px dark:border-neutral-800 dark:bg-neutral-800 sm:grid-cols-4 lg:grid-cols-8">
-            <div className="col-span-full flex min-h-14 items-center bg-white px-5 dark:bg-neutral-950 sm:px-8">
-              <p id="customer-proof" className="text-sm font-medium text-neutral-600 dark:text-neutral-400">
+            <div className="col-span-full flex min-h-14 items-center bg-[var(--marketing-signal-soft)] px-5 sm:px-8">
+              <p id="customer-proof" className="text-sm font-semibold text-emerald-950 dark:text-emerald-100">
                 {t("Trusted by 10,000+ organizations worldwide")}
               </p>
             </div>
@@ -239,12 +239,12 @@ export function LandingPageTemplate({ title, subtitle, showEUFlag = true }: Land
 
         <section className="border-b border-neutral-200 dark:border-neutral-800" aria-labelledby="capabilities-title">
           <div className="mx-auto grid max-w-[1200px] border-x border-neutral-200 dark:border-neutral-800 lg:grid-cols-12">
-            <div className="border-b border-neutral-200 px-5 py-16 dark:border-neutral-800 sm:px-8 md:py-24 lg:col-span-4 lg:border-b-0 lg:border-r lg:px-10">
+            <div className="border-b border-[var(--marketing-signal-border)] bg-[var(--marketing-signal-field)] px-5 py-16 text-[var(--marketing-signal-ink)] sm:px-8 md:py-24 lg:col-span-4 lg:border-b-0 lg:border-r lg:px-10">
               <div className="lg:sticky lg:top-24">
                 <h2 id="capabilities-title" className="max-w-sm text-4xl font-semibold leading-[1.02] tracking-[-0.035em] md:text-5xl">
                   {t("The whole picture, in one place.")}
                 </h2>
-                <p className="mt-6 max-w-sm text-base leading-7 text-neutral-600 dark:text-neutral-400">
+                <p className="mt-6 max-w-sm text-base leading-7 text-[var(--marketing-signal-muted)]">
                   {t("Rybbit connects the essential analytics workflows into one coherent product, so every answer starts from the same source of truth.")}
                 </p>
               </div>
@@ -289,8 +289,8 @@ export function LandingPageTemplate({ title, subtitle, showEUFlag = true }: Land
                   {t("Go from signal to explanation without changing tools.")}
                 </h2>
               </div>
-              <div className="flex items-end px-5 py-10 sm:px-8 md:py-20 lg:col-span-5 lg:px-10">
-                <p className="max-w-md text-lg leading-8 text-neutral-600 dark:text-neutral-400 text-pretty">
+              <div className="flex items-end bg-[var(--marketing-signal-soft)] px-5 py-10 sm:px-8 md:py-20 lg:col-span-5 lg:px-10">
+                <p className="max-w-md text-lg leading-8 text-emerald-950 dark:text-emerald-100 text-pretty">
                   {t("Start with live traffic, inspect the people and paths behind it, then measure where they convert.")}
                 </p>
               </div>
@@ -334,11 +334,11 @@ export function LandingPageTemplate({ title, subtitle, showEUFlag = true }: Land
                   {t("Built in public. Used in the real world.")}
                 </h2>
               </div>
-              <div className="flex flex-col justify-between px-5 py-10 sm:px-8 md:py-20 lg:px-10">
-                <p className="max-w-md text-base leading-7 text-neutral-600 dark:text-neutral-400 text-pretty">
+              <div className="flex flex-col justify-between bg-[var(--marketing-signal-soft)] px-5 py-10 sm:px-8 md:py-20 lg:px-10">
+                <p className="max-w-md text-base leading-7 text-emerald-950 dark:text-emerald-100 text-pretty">
                   {t("What teams say after replacing heavier analytics products with Rybbit.")}
                 </p>
-                <div className="mt-10 flex items-center justify-between border-t border-neutral-200 pt-4 text-sm text-neutral-500 dark:border-neutral-800 dark:text-neutral-400 md:text-xs">
+                <div className="mt-10 flex items-center justify-between border-t border-[var(--marketing-signal-soft-border)] pt-4 text-sm text-emerald-800 dark:text-emerald-200 md:text-xs">
                   <span>{t("Customer notes")}</span>
                   <span className="hidden md:inline">{t("Pause on hover")}</span>
                 </div>

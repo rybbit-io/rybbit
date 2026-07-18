@@ -272,18 +272,21 @@ export function ComparisonSection({ isAnnual }: { isAnnual: boolean }) {
               ].map((plan) => (
                 <div
                   key={plan.name}
-                  className="flex flex-col items-center border-r border-neutral-200 px-4 py-7 text-center last:border-r-0 dark:border-neutral-800"
+                  className={cn(
+                    "flex flex-col items-center border-r border-neutral-200 px-4 py-7 text-center last:border-r-0 dark:border-neutral-800",
+                    plan.featured && "border-[var(--marketing-signal-border)] bg-[var(--marketing-signal-field)] text-[var(--marketing-signal-ink)]"
+                  )}
                 >
-                  <h3 className={cn("text-lg font-semibold", plan.featured && "text-emerald-600 dark:text-emerald-400")}>
+                  <h3 className="text-lg font-semibold">
                     {plan.name}
                   </h3>
-                  <p className="mt-1 text-sm text-neutral-500 dark:text-neutral-400">{plan.price}</p>
+                  <p className={cn("mt-1 text-sm text-neutral-500 dark:text-neutral-400", plan.featured && "text-[var(--marketing-signal-muted)] dark:text-[var(--marketing-signal-muted)]")}>{plan.price}</p>
                   <AppLink
                     href={plan.href}
                     className={cn(
                       "mt-5 inline-flex min-h-10 items-center justify-center rounded-md px-4 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-500",
                       plan.featured
-                        ? "bg-emerald-600 text-white hover:bg-emerald-500"
+                        ? "bg-white text-emerald-950 hover:bg-emerald-50 focus-visible:ring-white"
                         : "border border-neutral-300 text-neutral-900 hover:bg-neutral-100 dark:border-neutral-700 dark:text-white dark:hover:bg-neutral-900"
                     )}
                   >
@@ -309,7 +312,7 @@ export function ComparisonSection({ isAnnual }: { isAnnual: boolean }) {
                     <div className="flex items-center justify-center border-r border-neutral-200 px-4 py-4 dark:border-neutral-800">
                       <FeatureCell value={feature.standard} />
                     </div>
-                    <div className="flex items-center justify-center border-r border-neutral-200 px-4 py-4 dark:border-neutral-800">
+                    <div className="flex items-center justify-center border-r border-[var(--marketing-signal-soft-border)] bg-[var(--marketing-signal-soft)] px-4 py-4">
                       <FeatureCell value={feature.pro} />
                     </div>
                     <div className="flex items-center justify-center px-4 py-4">

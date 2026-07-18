@@ -1,6 +1,7 @@
 "use client";
 
 import { Carousel, CarouselContent, CarouselItem, type CarouselApi } from "@/components/ui/carousel";
+import { ProductSignal } from "@/components/ProductSignal";
 import { Slider } from "@/components/ui/slider";
 import { cn } from "@/lib/utils";
 import { getCalApi } from "@calcom/embed-react";
@@ -143,180 +144,206 @@ export function PricingSection({ isAnnual, setIsAnnual }: { isAnnual: boolean, s
 
   return (
     <section className="relative z-10 border-b border-neutral-200 dark:border-neutral-800">
-      <div className="mx-auto max-w-[1200px] border-x border-neutral-200 px-5 py-16 dark:border-neutral-800 sm:px-8 md:py-24 lg:px-10">
-        <div className="mb-14 grid gap-6 lg:grid-cols-12 lg:items-end">
-          <h2 className="text-4xl font-semibold leading-[1.04] tracking-[-0.035em] md:text-5xl lg:col-span-4">
+      <div className="mx-auto max-w-[1200px] border-x border-neutral-200 dark:border-neutral-800">
+        <div className="relative isolate grid gap-6 overflow-hidden border-b border-[var(--marketing-signal-border)] bg-[var(--marketing-signal-field)] px-5 py-12 text-[var(--marketing-signal-ink)] sm:px-8 md:py-16 lg:grid-cols-12 lg:items-end lg:px-10">
+          <ProductSignal className="absolute inset-x-0 bottom-0 h-16 w-full opacity-30 sm:inset-y-0 sm:left-auto sm:right-0 sm:h-auto sm:w-3/5 sm:opacity-[0.38]" />
+          <h2 className="relative z-10 text-4xl font-semibold leading-[1.04] tracking-[-0.035em] md:text-5xl lg:col-span-4">
             {t("Pricing")}
           </h2>
-          <p className="max-w-2xl text-lg leading-8 text-neutral-600 dark:text-neutral-400 lg:col-span-8">
+          <p className="relative z-10 max-w-2xl text-lg leading-8 text-[var(--marketing-signal-muted)] lg:col-span-8">
             {t("Start your 7-day free trial — no credit card charges until the trial ends.")}
           </p>
         </div>
 
-        {/* Shared controls section */}
-        <div className="mb-10 border-y border-neutral-200 py-8 dark:border-neutral-800">
-          <div className="mb-7 flex items-end justify-between gap-5">
-            <div>
-              <h3 className="mb-2 text-sm font-medium text-neutral-600 dark:text-neutral-400">{t("Monthly pageviews")}</h3>
-              <div className="text-3xl font-semibold tabular-nums tracking-tight">
-                {typeof eventLimit === "number" ? eventLimit.toLocaleString() : t("Custom")}
+        <div className="px-5 py-12 sm:px-8 md:py-16 lg:px-10">
+          {/* Shared controls section */}
+          <div className="mb-10 border-b border-neutral-200 pb-8 dark:border-neutral-800">
+            <div className="mb-7 flex items-end justify-between gap-5">
+              <div>
+                <h3 className="mb-2 text-sm font-medium text-neutral-600 dark:text-neutral-400">
+                  {t("Monthly pageviews")}
+                </h3>
+                <div className="text-3xl font-semibold tabular-nums tracking-tight">
+                  {typeof eventLimit === "number" ? eventLimit.toLocaleString() : t("Custom")}
+                </div>
               </div>
-            </div>
-            <div className="relative flex flex-col items-end">
-              {/* Billing toggle */}
-              <div className="mb-2 flex rounded-md border border-neutral-300 bg-neutral-100 p-1 text-sm dark:border-neutral-700 dark:bg-neutral-900">
-                <button
-                  onClick={() => setIsAnnual(false)}
-                  className={cn(
-                    "cursor-pointer rounded-sm px-3 py-1.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-500",
-                    !isAnnual
-                      ? "bg-white text-neutral-950 dark:bg-neutral-800 dark:text-white font-medium"
-                      : "text-neutral-600 dark:text-neutral-400 hover:text-neutral-800 dark:hover:text-neutral-200"
-                  )}
-                >
-                  {t("Monthly")}
-                </button>
-                <button
-                  onClick={() => setIsAnnual(true)}
-                  className={cn(
-                    "cursor-pointer rounded-sm px-3 py-1.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-500",
-                    isAnnual
-                      ? "bg-white text-neutral-950 dark:bg-neutral-800 dark:text-white font-medium"
-                      : "text-neutral-600 dark:text-neutral-400 hover:text-neutral-800 dark:hover:text-neutral-200"
-                  )}
-                >
-                  {t("Annual")}
-                </button>
-                <div className="absolute right-0 top-0 -translate-y-4 whitespace-nowrap rounded-sm bg-emerald-600 px-2 py-0.5 text-xs font-medium text-white">
-                  {t("4 months free")}
+              <div className="relative flex flex-col items-end">
+                {/* Billing toggle */}
+                <div className="mb-2 flex rounded-md border border-neutral-300 bg-neutral-100 p-1 text-sm dark:border-neutral-700 dark:bg-neutral-900">
+                  <button
+                    onClick={() => setIsAnnual(false)}
+                    className={cn(
+                      "cursor-pointer rounded-sm px-3 py-1.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-500",
+                      !isAnnual
+                        ? "bg-white text-neutral-950 dark:bg-neutral-800 dark:text-white font-medium"
+                        : "text-neutral-600 dark:text-neutral-400 hover:text-neutral-800 dark:hover:text-neutral-200"
+                    )}
+                  >
+                    {t("Monthly")}
+                  </button>
+                  <button
+                    onClick={() => setIsAnnual(true)}
+                    className={cn(
+                      "cursor-pointer rounded-sm px-3 py-1.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-500",
+                      isAnnual
+                        ? "bg-white text-neutral-950 dark:bg-neutral-800 dark:text-white font-medium"
+                        : "text-neutral-600 dark:text-neutral-400 hover:text-neutral-800 dark:hover:text-neutral-200"
+                    )}
+                  >
+                    {t("Annual")}
+                  </button>
+                  <div className="absolute right-0 top-0 -translate-y-4 whitespace-nowrap rounded-sm bg-emerald-600 px-2 py-0.5 text-xs font-medium text-white">
+                    {t("4 months free")}
+                  </div>
                 </div>
               </div>
             </div>
+
+            {/* Slider */}
+            <Slider
+              defaultValue={[0]}
+              max={EVENT_TIERS.length - 1}
+              min={0}
+              step={1}
+              onValueChange={handleSliderChange}
+              className="mb-3"
+            />
+
+            <div className="flex justify-between text-xs text-neutral-500 dark:text-neutral-400">
+              {EVENT_TIERS.map((tier, index) => (
+                <span
+                  key={index}
+                  className={cn(
+                    eventLimitIndex === index &&
+                      "font-semibold text-emerald-700 dark:text-emerald-400"
+                  )}
+                >
+                  {index === EVENT_TIERS.length - 1
+                    ? "50M+"
+                    : typeof tier === "number" && tier >= 1_000_000
+                      ? `${tier / 1_000_000}M`
+                      : typeof tier === "number"
+                        ? `${tier / 1_000}K`
+                        : t("Custom")}
+                </span>
+              ))}
+            </div>
           </div>
 
-          {/* Slider */}
-          <Slider
-            defaultValue={[0]}
-            max={EVENT_TIERS.length - 1}
-            min={0}
-            step={1}
-            onValueChange={handleSliderChange}
-            className="mb-3"
-          />
+          {/* Pricing cards - carousel on mobile, grid on desktop */}
+          {(() => {
+            const standardCard = (
+              <PricingCard
+                title={t("Standard")}
+                description={t("Everything you need to get started as a small business")}
+                priceDisplay={
+                  standardPrices.custom ? (
+                    <div className="text-3xl font-bold">{t("Custom")}</div>
+                  ) : (
+                    <div>
+                      <span className="text-3xl font-bold">
+                        $
+                        {isAnnual
+                          ? Math.round(standardPrices.annual! / 12)
+                          : standardPrices.monthly}
+                      </span>
+                      <span className="ml-1 text-neutral-400">{t("/month")}</span>
+                    </div>
+                  )
+                }
+                buttonText={standardPrices.custom ? t("Contact us") : t("Start for $0")}
+                buttonHref={
+                  standardPrices.custom
+                    ? "https://www.rybbit.com/contact"
+                    : "https://app.rybbit.io/signup"
+                }
+                features={STANDARD_FEATURES}
+                eventLocation={standardPrices.custom ? undefined : "standard"}
+              />
+            );
 
-          <div className="flex justify-between text-xs text-neutral-500 dark:text-neutral-400">
-            {EVENT_TIERS.map((tier, index) => (
-              <span key={index} className={cn(eventLimitIndex === index && "font-semibold text-emerald-700 dark:text-emerald-400")}>
-                {index === EVENT_TIERS.length - 1
-                  ? "50M+"
-                  : typeof tier === "number" && tier >= 1_000_000
-                    ? `${tier / 1_000_000}M`
-                    : typeof tier === "number"
-                      ? `${tier / 1_000}K`
-                      : t("Custom")}
-              </span>
-            ))}
-          </div>
+            const proCard = (
+              <PricingCard
+                title={t("Pro")}
+                description={t("Advanced features for professional teams")}
+                priceDisplay={
+                  proPrices.custom ? (
+                    <div className="text-3xl font-bold">{t("Custom")}</div>
+                  ) : (
+                    <div>
+                      <span className="text-3xl font-bold">
+                        ${isAnnual ? Math.round(proPrices.annual! / 12) : proPrices.monthly}
+                      </span>
+                      <span className="ml-1 text-[var(--marketing-signal-muted)]">
+                        {t("/month")}
+                      </span>
+                    </div>
+                  )
+                }
+                buttonText={proPrices.custom ? t("Contact us") : t("Start for $0")}
+                buttonHref={
+                  proPrices.custom
+                    ? "https://www.rybbit.com/contact"
+                    : "https://app.rybbit.io/signup"
+                }
+                features={PRO_FEATURES}
+                eventLocation={proPrices.custom ? undefined : "pro"}
+                recommended={true}
+              />
+            );
+
+            const enterpriseCard = (
+              <PricingCard
+                title={t("Enterprise")}
+                description={t("Advanced features for enterprise teams")}
+                priceDisplay={<div className="text-3xl font-bold">{t("Custom")}</div>}
+                features={ENTERPRISE_FEATURES}
+                buttonText={t("Contact us")}
+                buttonHref="https://www.rybbit.com/contact"
+              />
+            );
+
+            return (
+              <>
+                {/* Mobile carousel */}
+                <div className="min-[700px]:hidden">
+                  <Carousel setApi={setCarouselApi} opts={{ startIndex: 1 }}>
+                    <CarouselContent>
+                      <CarouselItem>{standardCard}</CarouselItem>
+                      <CarouselItem>{proCard}</CarouselItem>
+                      <CarouselItem>{enterpriseCard}</CarouselItem>
+                    </CarouselContent>
+                  </Carousel>
+                  {/* Dot indicators */}
+                  <div className="mt-4 flex justify-center gap-2">
+                    {Array.from({ length: slideCount }).map((_, i) => (
+                      <button
+                        key={i}
+                        onClick={() => carouselApi?.scrollTo(i)}
+                        aria-label={t("Go to pricing option {number}", {
+                          number: String(i + 1),
+                        })}
+                        className={cn(
+                          "size-2 cursor-pointer rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2",
+                          currentSlide === i
+                            ? "bg-emerald-500"
+                            : "bg-neutral-400 dark:bg-neutral-600"
+                        )}
+                      />
+                    ))}
+                  </div>
+                </div>
+
+                {/* Desktop grid */}
+                <div className="mx-auto hidden items-stretch justify-center gap-3 min-[700px]:grid min-[700px]:grid-cols-2 min-[1100px]:grid-cols-3">
+                  {standardCard}
+                  {proCard}
+                  {enterpriseCard}
+                </div>
+              </>
+            );
+          })()}
         </div>
-
-        {/* Pricing cards - carousel on mobile, grid on desktop */}
-        {(() => {
-          const standardCard = (
-            <PricingCard
-              title={t("Standard")}
-              description={t("Everything you need to get started as a small business")}
-              priceDisplay={
-                standardPrices.custom ? (
-                  <div className="text-3xl font-bold">{t("Custom")}</div>
-                ) : (
-                  <div>
-                    <span className="text-3xl font-bold">
-                      ${isAnnual ? Math.round(standardPrices.annual! / 12) : standardPrices.monthly}
-                    </span>
-                    <span className="ml-1 text-neutral-400">{t("/month")}</span>
-                  </div>
-                )
-              }
-              buttonText={standardPrices.custom ? t("Contact us") : t("Start for $0")}
-              buttonHref={standardPrices.custom ? "https://www.rybbit.com/contact" : "https://app.rybbit.io/signup"}
-              features={STANDARD_FEATURES}
-              eventLocation={standardPrices.custom ? undefined : "standard"}
-            />
-          );
-
-          const proCard = (
-            <PricingCard
-              title={t("Pro")}
-              description={t("Advanced features for professional teams")}
-              priceDisplay={
-                proPrices.custom ? (
-                  <div className="text-3xl font-bold">{t("Custom")}</div>
-                ) : (
-                  <div>
-                    <span className="text-3xl font-bold">
-                      ${isAnnual ? Math.round(proPrices.annual! / 12) : proPrices.monthly}
-                    </span>
-                    <span className="ml-1 text-neutral-400">{t("/month")}</span>
-                  </div>
-                )
-              }
-              buttonText={proPrices.custom ? t("Contact us") : t("Start for $0")}
-              buttonHref={proPrices.custom ? "https://www.rybbit.com/contact" : "https://app.rybbit.io/signup"}
-              features={PRO_FEATURES}
-              eventLocation={proPrices.custom ? undefined : "pro"}
-              recommended={true}
-            />
-          );
-
-          const enterpriseCard = (
-            <PricingCard
-              title={t("Enterprise")}
-              description={t("Advanced features for enterprise teams")}
-              priceDisplay={<div className="text-3xl font-bold">{t("Custom")}</div>}
-              features={ENTERPRISE_FEATURES}
-              buttonText={t("Contact us")}
-              buttonHref={"https://www.rybbit.com/contact"}
-            />
-          );
-
-          return (
-            <>
-              {/* Mobile carousel */}
-              <div className="min-[700px]:hidden">
-                <Carousel setApi={setCarouselApi} opts={{ startIndex: 1 }}>
-                  <CarouselContent>
-                    <CarouselItem>{standardCard}</CarouselItem>
-                    <CarouselItem>{proCard}</CarouselItem>
-                    <CarouselItem>{enterpriseCard}</CarouselItem>
-                  </CarouselContent>
-                </Carousel>
-                {/* Dot indicators */}
-                <div className="mt-4 flex justify-center gap-2">
-                  {Array.from({ length: slideCount }).map((_, i) => (
-                    <button
-                      key={i}
-                      onClick={() => carouselApi?.scrollTo(i)}
-                      aria-label={t("Go to pricing option {number}", { number: String(i + 1) })}
-                      className={cn(
-                        "size-2 cursor-pointer rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2",
-                        currentSlide === i
-                          ? "bg-emerald-500"
-                          : "bg-neutral-400 dark:bg-neutral-600"
-                      )}
-                    />
-                  ))}
-                </div>
-              </div>
-
-              {/* Desktop grid */}
-              <div className="mx-auto hidden items-stretch justify-center gap-3 min-[700px]:grid min-[700px]:grid-cols-2 min-[1100px]:grid-cols-3">
-                {standardCard}
-                {proCard}
-                {enterpriseCard}
-              </div>
-            </>
-          );
-        })()}
       </div>
     </section>
   );

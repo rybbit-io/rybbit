@@ -43,18 +43,18 @@ interface Sponsor {
   amount: number;
 }
 
-function getTier(amount: number): { name: string; colorClass: string } | null {
+function getTier(amount: number): { name: string; colorClass: string; surfaceClass: string } | null {
   if (amount >= 1000) {
-    return { name: "Diamond", colorClass: "text-cyan-400" };
+    return { name: "Diamond", colorClass: "text-cyan-700 dark:text-cyan-300", surfaceClass: "bg-cyan-50 hover:bg-cyan-100 dark:bg-cyan-950/30 dark:hover:bg-cyan-950/50" };
   }
   if (amount >= 500) {
-    return { name: "Gold", colorClass: "text-yellow-500" };
+    return { name: "Gold", colorClass: "text-amber-700 dark:text-amber-300", surfaceClass: "bg-amber-50 hover:bg-amber-100 dark:bg-amber-950/30 dark:hover:bg-amber-950/50" };
   }
   if (amount >= 100) {
-    return { name: "Silver", colorClass: "text-gray-400" };
+    return { name: "Silver", colorClass: "text-slate-600 dark:text-slate-300", surfaceClass: "bg-slate-50 hover:bg-slate-100 dark:bg-slate-900/40 dark:hover:bg-slate-900/70" };
   }
   if (amount >= 50) {
-    return { name: "Bronze", colorClass: "text-amber-600" };
+    return { name: "Bronze", colorClass: "text-orange-700 dark:text-orange-300", surfaceClass: "bg-orange-50 hover:bg-orange-100 dark:bg-orange-950/25 dark:hover:bg-orange-950/45" };
   }
   return null;
 }
@@ -147,7 +147,10 @@ export default function SponsorsPage() {
                     href={sponsor.url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="group flex min-h-40 items-center gap-5 bg-white px-5 py-8 transition-colors hover:bg-neutral-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-neutral-500 dark:bg-neutral-950 dark:hover:bg-neutral-900/60 sm:px-8 lg:px-10"
+                    className={cn(
+                      "group flex min-h-40 items-center gap-5 px-5 py-8 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-emerald-600 sm:px-8 lg:px-10",
+                      tier?.surfaceClass || "bg-white hover:bg-[var(--marketing-signal-soft)] dark:bg-neutral-950"
+                    )}
                   >
                     <div className="relative size-14 shrink-0">
                       <Image src={sponsor.logo} alt={sponsor.name} fill sizes="56px" className="object-contain" />

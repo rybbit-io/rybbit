@@ -143,6 +143,8 @@ A full Tailwind-style ramp (red, orange, amber, yellow, lime, green, emerald, te
 ### Named Rules
 **The Signal-Not-Decoration Rule.** Emerald marks primary actions, success, and current selection only. It never tints a surface, never fills a background, never decorates. If emerald is on screen and nothing actionable or successful is being communicated, remove it.
 
+**Marketing exception — Product Signal fields.** On Rybbit marketing routes, a solid deep-emerald field may frame the primary product promise or the recommended choice. Limit it to one dominant field per viewport and pair it with real product evidence or an action; never use it as ambient decoration. Periwinkle remains data-only and may appear in an actual chart trace inside that field. This exception does not apply to the analytics product UI.
+
 **The Two-Voice Rule.** The interface speaks in grayscale. Exactly two chromatic voices are allowed on top: emerald for *action*, periwinkle for *data*. State colors (red/yellow/blue) are whispers that appear only when state demands them.
 
 **The Flat Rule.** No `box-shadow` for resting elevation. Depth is the grayscale ramp plus 1px borders. If two surfaces need separating, change the neutral step or add a hairline border, not a shadow.
