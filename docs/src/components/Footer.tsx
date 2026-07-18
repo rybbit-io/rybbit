@@ -59,6 +59,8 @@ export function Footer() {
       links: [
         { href: "/docs", label: t("Documentation") },
         { href: "/features", label: t("Features") },
+        { href: "/for-agencies", label: t("For Agencies") },
+        { href: "/for-developers", label: t("For Developers") },
         { href: "/pricing", label: t("Pricing") },
         { href: "/blog", label: t("Blog") },
         { href: "/tools", label: t("Tools") },

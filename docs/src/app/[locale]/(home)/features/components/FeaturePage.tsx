@@ -42,6 +42,8 @@ export interface RelatedFeature {
 
 export interface FeaturePageProps {
   featureName: string;
+  /** Human-readable name shown as the intro section heading; falls back to featureName. */
+  displayTitle?: string;
   headline: string;
   subtitle: string;
   badgeText: string;
@@ -59,6 +61,7 @@ export interface FeaturePageProps {
 
 export function FeaturePage({
   featureName,
+  displayTitle,
   headline,
   subtitle,
   badgeText,
@@ -130,7 +133,7 @@ export function FeaturePage({
         <div className="mx-auto grid max-w-[1200px] border-x border-neutral-200 dark:border-neutral-800 lg:grid-cols-12">
           <div className="border-b border-neutral-200 px-5 py-12 dark:border-neutral-800 sm:px-8 lg:col-span-4 lg:border-b-0 lg:border-r lg:px-10 lg:py-16">
             <p className="text-sm font-semibold text-neutral-500 dark:text-neutral-400">{badgeText}</p>
-            <h2 className="mt-4 text-3xl font-semibold tracking-[-0.03em] md:text-4xl">{featureName}</h2>
+            <h2 className="mt-4 text-3xl font-semibold tracking-[-0.03em] md:text-4xl">{displayTitle ?? featureName}</h2>
           </div>
           <div className="space-y-5 px-5 py-12 sm:px-8 lg:col-span-8 lg:px-10 lg:py-16">
             {introParagraphs.map((paragraph, index) => (
