@@ -296,6 +296,27 @@ const server = Fastify({
   bodyLimit: 10 * 1024 * 1024, // 10MB limit for session replay data
 });
 
+// Global error handler — ensures uncaught route errors are always logged with
+// request context, even on routes that opt out of request logging via
+// `logLevel: "silent"` (e.g. /sites/:siteId/live-user-count, /health). Without
+// this, transient ClickHouse / Postgres outages return 500 to the dashboard
+// with no log signal.
+server.setErrorHandler((error, request, reply) => {
+  request.log.error(
+    { err: error, reqId: request.id, method: request.method, url: request.url },
+    "Unhandled route error"
+  );
+  const statusCode = error.statusCode && error.statusCode >= 400 ? error.statusCode : 500;
+  reply.status(statusCode).send({
+    error: statusCode >= 500 ? "Internal Server Error" : error.message,
+    statusCode,
+  });
+});
+
+server.setNotFoundHandler((request, reply) => {
+  reply.status(404).send({ error: "Not Found", statusCode: 404, path: request.url });
+});
+
 server.register(cors, {
   delegator: createCorsOptionsDelegate(),
 });
