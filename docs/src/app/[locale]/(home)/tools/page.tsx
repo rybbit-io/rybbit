@@ -342,19 +342,21 @@ function ToolCell({ tool }: { tool: Tool }) {
   return (
     <Link
       href={tool.href}
-      className="group block bg-white px-5 py-8 transition-colors duration-200 hover:bg-neutral-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-emerald-500 dark:bg-neutral-950 dark:hover:bg-neutral-900/60 sm:px-8"
+      className="group grid min-h-20 grid-cols-[2rem_minmax(0,1fr)_auto] items-start gap-3 bg-white px-5 py-5 transition-colors duration-200 hover:bg-neutral-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-emerald-500 dark:bg-neutral-950 dark:hover:bg-neutral-900/60 sm:grid-cols-[2rem_minmax(10rem,0.75fr)_minmax(12rem,1.25fr)_auto] sm:items-center sm:gap-4 sm:px-8"
     >
-      <div className="mb-5 text-neutral-500 dark:text-neutral-400">
-        <Icon className="size-5" aria-hidden="true" />
+      <div className="flex size-8 items-center justify-center rounded-md bg-neutral-100 text-neutral-500 dark:bg-neutral-900 dark:text-neutral-400">
+        <Icon className="size-4" aria-hidden="true" />
       </div>
-      <h3 className="flex items-baseline justify-between gap-3 font-semibold tracking-tight text-neutral-950 dark:text-neutral-50">
+      <h3 className="self-center text-sm font-semibold tracking-tight text-neutral-950 dark:text-neutral-50">
         {tool.title}
-        <ArrowRight
-          className="size-3.5 shrink-0 self-center text-neutral-400 transition-transform duration-200 group-hover:translate-x-0.5 motion-reduce:transition-none dark:text-neutral-600"
-          aria-hidden="true"
-        />
       </h3>
-      <p className="mt-2 max-w-md text-sm leading-6 text-neutral-600 dark:text-neutral-400">{tool.description}</p>
+      <p className="col-start-2 text-sm leading-5 text-neutral-500 dark:text-neutral-400 sm:col-start-auto">
+        {tool.description}
+      </p>
+      <ArrowRight
+        className="row-span-2 size-3.5 self-center text-neutral-400 transition-transform duration-200 group-hover:translate-x-0.5 motion-reduce:transition-none dark:text-neutral-600 sm:row-span-1"
+        aria-hidden="true"
+      />
     </Link>
   );
 }
@@ -373,7 +375,7 @@ function ToolSection({
   return (
     <section className="border-b border-neutral-200 dark:border-neutral-800" aria-labelledby={id}>
       <div className="relative mx-auto grid max-w-[1200px] border-x border-neutral-200 dark:border-neutral-800 lg:grid-cols-12">
-        <GridCrosses />
+        <GridCrosses className="hidden sm:block" />
         <div className="border-b border-neutral-200 px-5 py-12 dark:border-neutral-800 sm:px-8 lg:col-span-4 lg:border-b-0 lg:border-r lg:px-10 lg:py-16">
           <div className="lg:sticky lg:top-24">
             <h2 id={id} className="text-3xl font-semibold tracking-[-0.03em] md:text-4xl">
@@ -382,16 +384,22 @@ function ToolSection({
             <p className="mt-5 max-w-sm text-base leading-7 text-neutral-600 dark:text-neutral-400">{description}</p>
           </div>
         </div>
-        <div className="grid gap-px bg-neutral-200 dark:bg-neutral-800 md:grid-cols-2 lg:col-span-8">
+        <div className="divide-y divide-neutral-200 dark:divide-neutral-800 lg:col-span-8">
           {tools.map(tool => (
             <ToolCell key={tool.href} tool={tool} />
           ))}
-          {tools.length % 2 === 1 && <div aria-hidden="true" className="hidden bg-white dark:bg-neutral-950 md:block" />}
         </div>
       </div>
     </section>
   );
 }
+
+const directoryLinks = [
+  { href: "#calculators-title", label: "Calculators", count: calculators.length },
+  { href: "#ai-tools-title", label: "AI tools", count: aiPoweredTools.length },
+  { href: "#utilities-title", label: "Utilities", count: utilityTools.length },
+  { href: "#social-tools-title", label: "Social media", count: socialToolCount },
+];
 
 export default function ToolsPage() {
   return (
@@ -400,7 +408,27 @@ export default function ToolsPage() {
         title={`${totalToolCount} free marketing tools`}
         description="Calculators, generators, and utilities to help you make data-driven marketing decisions. Every tool is free — no account required."
         eventLocation="tools_hero"
+        primaryAction={null}
+        secondaryAction={null}
+        note="No signup. No usage limits."
       />
+
+      <nav aria-label="Tool categories" className="border-b border-neutral-200 dark:border-neutral-800">
+        <div className="mx-auto grid max-w-[1200px] border-x border-neutral-200 dark:border-neutral-800 sm:grid-cols-2 lg:grid-cols-4">
+          {directoryLinks.map((item, index) => (
+            <Link
+              key={item.href}
+              href={item.href}
+              className={`group flex min-h-14 items-center justify-between gap-4 border-neutral-200 px-5 text-sm font-medium text-neutral-700 transition-colors hover:bg-neutral-50 hover:text-neutral-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-emerald-500 dark:border-neutral-800 dark:text-neutral-300 dark:hover:bg-neutral-900/60 dark:hover:text-neutral-50 ${
+                index < directoryLinks.length - 1 ? "border-b sm:border-b-0 sm:odd:border-r lg:border-r" : ""
+              }`}
+            >
+              <span>{item.label}</span>
+              <span className="tabular-nums text-neutral-400 dark:text-neutral-500">{item.count}</span>
+            </Link>
+          ))}
+        </div>
+      </nav>
 
       <ToolSection
         id="calculators-title"
@@ -425,7 +453,7 @@ export default function ToolsPage() {
 
       <section className="border-b border-neutral-200 dark:border-neutral-800" aria-labelledby="social-tools-title">
         <div className="relative mx-auto grid max-w-[1200px] border-x border-neutral-200 dark:border-neutral-800 lg:grid-cols-12">
-          <GridCrosses />
+          <GridCrosses className="hidden sm:block" />
           <div className="border-b border-neutral-200 px-5 py-12 dark:border-neutral-800 sm:px-8 lg:col-span-4 lg:border-b-0 lg:border-r lg:px-10 lg:py-16">
             <div className="lg:sticky lg:top-24">
               <h2 id="social-tools-title" className="text-3xl font-semibold tracking-[-0.03em] md:text-4xl">

@@ -13,15 +13,11 @@ interface ToolCTAProps {
 export function ToolCTA({ title, description, eventLocation, buttonText = "Start tracking for free" }: ToolCTAProps) {
   return (
     <section className="relative overflow-hidden border-b border-emerald-900 bg-emerald-950 text-white">
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute inset-0 opacity-60 [background-image:linear-gradient(to_right,rgba(255,255,255,0.045)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.045)_1px,transparent_1px)] [background-size:40px_40px] [mask-image:linear-gradient(to_bottom,black,transparent_92%)]"
-      />
       <div className="relative mx-auto grid max-w-[1200px] border-x border-white/10 lg:grid-cols-12">
-        <GridCrosses className="text-white/30 dark:text-white/30" />
+        <GridCrosses className="hidden text-white/30 sm:block dark:text-white/30" />
 
-        <div className="relative z-10 border-b border-white/10 px-5 py-16 sm:px-8 md:py-20 lg:col-span-8 lg:border-b-0 lg:border-r lg:px-10">
-          <h2 className="max-w-2xl text-3xl font-semibold leading-[1.04] tracking-[-0.035em] text-balance md:text-5xl">
+        <div className="relative z-10 border-b border-white/10 px-5 py-14 sm:px-8 md:py-16 lg:col-span-8 lg:border-b-0 lg:border-r lg:px-10">
+          <h2 className="max-w-2xl text-3xl font-semibold leading-tight tracking-[-0.03em] text-balance md:text-4xl">
             {title}
           </h2>
         </div>

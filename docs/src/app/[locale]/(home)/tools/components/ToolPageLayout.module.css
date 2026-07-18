@@ -1,0 +1,148 @@
+.workspace {
+  min-width: 0;
+  width: 100%;
+  color: var(--foreground);
+}
+
+.workspace pre {
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.workspace > :global(.mb-16),
+.workspace > :global(.mb-12),
+.workspace > :global(.mb-8) {
+  margin-bottom: 0;
+}
+
+.workspace > :global(.max-w-4xl) {
+  max-width: none;
+  margin-inline: 0;
+}
+
+.workspace :global(.space-y-6),
+.workspace :global(.space-y-4),
+.workspace :global(.space-y-3) {
+  display: flex;
+  flex-direction: column;
+}
+
+.workspace :global(.space-y-6) {
+  gap: 1rem;
+}
+
+.workspace :global(.space-y-4) {
+  gap: 0.75rem;
+}
+
+.workspace :global(.space-y-3) {
+  gap: 0.5rem;
+}
+
+.workspace :global(.space-y-6) > *,
+.workspace :global(.space-y-4) > *,
+.workspace :global(.space-y-3) > * {
+  margin-block: 0;
+}
+
+.workspace input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]),
+.workspace select,
+.workspace textarea {
+  min-height: 2.5rem;
+  border-radius: 0.3rem;
+  border-color: var(--input);
+  background-color: var(--card);
+  padding: 0.5rem 0.75rem;
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+  transition:
+    border-color 160ms ease,
+    box-shadow 160ms ease,
+    background-color 160ms ease;
+}
+
+.workspace textarea {
+  min-height: 7.5rem;
+}
+
+.workspace input::placeholder,
+.workspace textarea::placeholder {
+  color: var(--muted-foreground);
+  opacity: 1;
+}
+
+.workspace input:focus-visible,
+.workspace select:focus-visible,
+.workspace textarea:focus-visible {
+  outline: none;
+  border-color: var(--ring);
+  box-shadow: 0 0 0 1px var(--ring);
+}
+
+.workspace button {
+  min-height: 2.5rem;
+  border-radius: 0.3rem;
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+  transition-duration: 160ms;
+}
+
+.workspace button:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
+.workspace :global(.rounded-xl),
+.workspace :global(.rounded-lg) {
+  border-radius: 0.3rem;
+}
+
+.workspace :global(.shadow-lg) {
+  box-shadow: none;
+}
+
+.workspace :global(.grid.grid-cols-2) {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.workspace :global(.flex.gap-4) {
+  flex-wrap: wrap;
+}
+
+.workspace :global(.flex.gap-2) {
+  flex-wrap: wrap;
+}
+
+.workspace :global(.flex.gap-2) > input {
+  min-width: 0;
+  flex: 1 1 16rem;
+}
+
+.workspace :global(.flex.gap-4) > button {
+  flex: 1 1 10rem;
+}
+
+@media (min-width: 640px) {
+  .workspace :global(.grid.grid-cols-2) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (pointer: coarse) {
+  .workspace input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]),
+  .workspace select,
+  .workspace button {
+    min-height: 2.75rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .workspace *,
+  .workspace *::before,
+  .workspace *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}

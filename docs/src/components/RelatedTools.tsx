@@ -1370,34 +1370,40 @@ export function RelatedTools({ currentToolHref, category, maxTools = 6 }: Relate
   }
 
   return (
-    <div className="mt-20 pt-16 border-t border-neutral-200 dark:border-neutral-800">
-      <div className="mb-6">
-        <h2 className="text-xl font-semibold text-neutral-900 dark:text-white mb-4">Related Tools</h2>
-        <ul className="space-y-3">
-          {relatedTools.map(tool => (
-            <li key={tool.href}>
-              <Link
-                href={tool.href}
-                className="group flex items-center gap-2 text-neutral-700 dark:text-neutral-300 hover:text-neutral-900 dark:hover:text-neutral-100 transition-colors"
-              >
-                <ArrowRight className="w-4 h-4 flex-shrink-0 group-hover:translate-x-1 transition-transform" />
-                <span className="font-medium">{tool.name}</span>
-                <span className="text-sm text-neutral-500 dark:text-neutral-500">— {tool.description}</span>
-              </Link>
-            </li>
-          ))}
-        </ul>
-      </div>
-
-      <div className="mt-6">
+    <div>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <h2 className="text-xl font-semibold tracking-tight text-neutral-950 dark:text-neutral-50">Related tools</h2>
+          <p className="mt-1 text-sm text-neutral-500 dark:text-neutral-400">Keep working with a nearby calculator or utility.</p>
+        </div>
         <Link
           href="/tools"
-          className="inline-flex items-center gap-2 text-sm text-neutral-700 dark:text-neutral-300 hover:text-neutral-900 dark:hover:text-neutral-100 font-medium transition-colors"
+          className="inline-flex min-h-9 items-center gap-2 rounded-md text-sm font-medium text-neutral-700 transition-colors hover:text-neutral-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-500 dark:text-neutral-300 dark:hover:text-neutral-50"
         >
           View all tools
-          <ArrowRight className="w-4 h-4" />
+          <ArrowRight className="size-4" aria-hidden="true" />
         </Link>
       </div>
+
+      <ul className="mt-6 grid border-x border-t border-neutral-200 dark:border-neutral-800 sm:grid-cols-2 lg:grid-cols-3">
+        {relatedTools.map(tool => (
+          <li key={tool.href} className="border-b border-neutral-200 dark:border-neutral-800 sm:odd:border-r lg:border-r lg:nth-[3n]:border-r-0">
+            <Link
+              href={tool.href}
+              className="group flex h-full min-h-28 flex-col justify-between gap-4 px-4 py-4 transition-colors hover:bg-neutral-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-neutral-500 dark:hover:bg-neutral-900/50"
+            >
+              <span>
+                <span className="block text-sm font-semibold text-neutral-900 dark:text-neutral-100">{tool.name}</span>
+                <span className="mt-1 block text-sm leading-5 text-neutral-500 dark:text-neutral-400">{tool.description}</span>
+              </span>
+              <ArrowRight
+                className="size-3.5 text-neutral-400 transition-transform duration-200 group-hover:translate-x-0.5 motion-reduce:transition-none dark:text-neutral-600"
+                aria-hidden="true"
+              />
+            </Link>
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }
