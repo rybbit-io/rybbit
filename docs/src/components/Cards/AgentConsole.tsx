@@ -182,7 +182,7 @@ export function AgentConsole() {
 
       <div
         aria-hidden="true"
-        className="relative min-h-[360px] flex-1 px-4 py-5 font-mono text-sm leading-6 sm:px-5 md:min-h-[330px] lg:px-6 lg:py-6"
+        className="relative min-h-[380px] flex-1 px-4 py-5 font-mono text-sm leading-6 sm:px-5 md:min-h-[330px] lg:px-6 lg:py-6"
       >
         <div className="flex gap-2 text-neutral-100">
           <span className="select-none text-emerald-400">›</span>
@@ -192,14 +192,14 @@ export function AgentConsole() {
           </span>
         </div>
 
-        <div className="mt-4 space-y-2">
+        <div className="mt-6">
           {scenario.tools.map((tool, index) => {
             const state = index < view.done ? "done" : index === view.running ? "running" : "hidden";
             if (state === "hidden") return null;
             return (
               <div
                 key={tool.name}
-                className={cn("flex min-w-0 items-center gap-2 text-xs", state === "running" && "console-rise")}
+                className={cn("flex min-w-0 items-center gap-2", state === "running" && "console-rise")}
               >
                 <span
                   className={cn(
@@ -216,10 +216,10 @@ export function AgentConsole() {
 
         {view.showAnswer && (
           <>
-            <p key={view.scenario} className="console-rise mt-4 max-w-[52ch] text-pretty text-neutral-300">
+            <p key={view.scenario} className="console-rise mt-6 text-pretty text-neutral-300">
               {scenario.answer}
             </p>
-            <div className="mt-5 flex gap-2">
+            <div className="mt-6 flex gap-2">
               <span className="select-none text-emerald-400">›</span>
               <span className="console-caret inline-block h-3.5 w-[7px] translate-y-[5px] bg-emerald-400/80 motion-reduce:opacity-60" />
             </div>
