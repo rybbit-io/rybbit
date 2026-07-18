@@ -20,7 +20,7 @@ export default function HomePage() {
   return (
     <LandingPageTemplate
       title={t("The Modern Google Analytics Replacement")}
-      subtitle={t("Rybbit is powerful, lightweight, and super easy to use analytics. Cookieless and GDPR compliant. Hosted on EU infrastructure in Germany ")}
+      subtitle={t("Rybbit is powerful, lightweight, and easy to use analytics. Cookieless and GDPR compliant.")}
       showEUFlag
     />
   );
