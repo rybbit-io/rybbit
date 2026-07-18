@@ -281,14 +281,16 @@ export function LandingPageTemplate({ title, subtitle, showEUFlag = true }: Land
         <section className="border-b border-neutral-200 dark:border-neutral-800" aria-labelledby="product-title">
           <div className="mx-auto max-w-[1200px] border-x border-neutral-200 dark:border-neutral-800">
             <div className="grid border-b border-neutral-200 dark:border-neutral-800 lg:grid-cols-12">
-              <div className="px-5 pt-16 sm:px-8 md:pt-24 lg:col-span-4 lg:px-10">
-                <p className="text-sm font-medium text-emerald-700 dark:text-emerald-400">{t("One connected workspace")}</p>
-              </div>
-              <div className="px-5 pb-14 pt-4 sm:px-8 md:pb-20 lg:col-span-8 lg:px-10 lg:pt-16">
-                <h2 id="product-title" className="max-w-3xl text-4xl font-semibold leading-[1.04] tracking-[-0.035em] md:text-5xl">
+              <div className="border-b border-neutral-200 px-5 py-14 dark:border-neutral-800 sm:px-8 md:py-20 lg:col-span-7 lg:border-b-0 lg:border-r lg:px-10">
+                <p className="text-base font-semibold tracking-tight text-neutral-950 dark:text-neutral-50">
+                  {t("One connected workspace")}
+                </p>
+                <h2 id="product-title" className="mt-5 max-w-2xl text-4xl font-semibold leading-[1.04] tracking-[-0.035em] md:text-5xl text-balance">
                   {t("Go from signal to explanation without changing tools.")}
                 </h2>
-                <p className="mt-6 max-w-2xl text-base leading-7 text-neutral-600 dark:text-neutral-400">
+              </div>
+              <div className="flex items-end px-5 py-10 sm:px-8 md:py-20 lg:col-span-5 lg:px-10">
+                <p className="max-w-md text-lg leading-8 text-neutral-600 dark:text-neutral-400 text-pretty">
                   {t("Start with live traffic, inspect the people and paths behind it, then measure where they convert.")}
                 </p>
               </div>
@@ -323,25 +325,27 @@ export function LandingPageTemplate({ title, subtitle, showEUFlag = true }: Land
 
         <section className="border-b border-neutral-200 dark:border-neutral-800" aria-labelledby="testimonials-title">
           <div className="mx-auto max-w-[1200px] border-x border-neutral-200 dark:border-neutral-800">
-            <div className="grid border-b border-neutral-200 dark:border-neutral-800 lg:grid-cols-12">
-              <div className="px-5 pt-16 sm:px-8 md:pt-24 lg:col-span-4 lg:px-10">
-                <p className="text-sm font-medium text-emerald-700 dark:text-emerald-400">{t("From the community")}</p>
-              </div>
-              <div className="px-5 pb-14 pt-4 sm:px-8 md:pb-20 lg:col-span-8 lg:px-10 lg:pt-16">
-                <h2 id="testimonials-title" className="max-w-3xl text-4xl font-semibold leading-[1.04] tracking-[-0.035em] md:text-5xl">
+            <div className="grid border-b border-neutral-200 dark:border-neutral-800 md:grid-cols-3">
+              <div className="border-b border-neutral-200 px-5 py-14 dark:border-neutral-800 sm:px-8 md:col-span-2 md:border-b-0 md:border-r md:py-20 lg:px-10">
+                <p className="text-base font-semibold tracking-tight text-neutral-950 dark:text-neutral-50">
+                  {t("From the community")}
+                </p>
+                <h2 id="testimonials-title" className="mt-5 max-w-3xl text-4xl font-semibold leading-[1.04] tracking-[-0.035em] md:text-5xl text-balance">
                   {t("Built in public. Used in the real world.")}
                 </h2>
-                <p className="mt-6 max-w-2xl text-base leading-7 text-neutral-600 dark:text-neutral-400">
+              </div>
+              <div className="flex flex-col justify-between px-5 py-10 sm:px-8 md:py-20 lg:px-10">
+                <p className="max-w-md text-base leading-7 text-neutral-600 dark:text-neutral-400 text-pretty">
                   {t("What teams say after replacing heavier analytics products with Rybbit.")}
                 </p>
+                <div className="mt-10 flex items-center justify-between border-t border-neutral-200 pt-4 text-sm text-neutral-500 dark:border-neutral-800 dark:text-neutral-400 md:text-xs">
+                  <span>{t("Customer notes")}</span>
+                  <span className="hidden md:inline">{t("Pause on hover")}</span>
+                </div>
               </div>
             </div>
 
             <div className="border-b border-neutral-200 dark:border-neutral-800">
-              <div className="flex h-11 items-center justify-between border-b border-neutral-200 px-5 text-xs text-neutral-500 dark:border-neutral-800 dark:text-neutral-400 sm:px-8">
-                <span>{t("Customer notes")}</span>
-                <span>{t("Pause on hover")}</span>
-              </div>
               <div className="relative grid h-[560px] grid-cols-1 gap-4 overflow-hidden p-4 md:grid-cols-3">
                 {tweetColumns.map((ids, columnIndex) => (
                   <Marquee
