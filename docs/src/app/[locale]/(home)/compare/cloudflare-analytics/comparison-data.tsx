@@ -77,7 +77,7 @@ export const cloudflareAnalyticsExtendedData = {
     model: "Events-based pricing",
     startingPrice: "$19/mo",
     highlights: [
-      "7-day free trial, no credit card required",
+      "7-day free trial, card charged after the trial",
       "All features included on every plan",
       "100% unsampled, accurate data",
       "3-5+ years data retention",

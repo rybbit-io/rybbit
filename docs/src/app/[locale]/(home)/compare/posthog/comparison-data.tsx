@@ -78,7 +78,7 @@ export const posthogExtendedData = {
     model: "Events-based pricing",
     startingPrice: "$19/mo",
     highlights: [
-      "7-day free trial, no credit card required",
+      "7-day free trial, card charged after the trial",
       "All features included, no add-on costs",
       "Session replay available on Pro plan",
       "Predictable billing with no overages",

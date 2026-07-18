@@ -77,7 +77,7 @@ export const simpleAnalyticsExtendedData = {
     model: "Events-based pricing",
     startingPrice: "$19/mo",
     highlights: [
-      "7-day free trial, no credit card required",
+      "7-day free trial, card charged after the trial",
       "Session replay available on Pro plan",
       "Funnels, user journeys, and error tracking included",
       "Self-hosting option available (free)",

@@ -77,7 +77,7 @@ export const umamiExtendedData = {
     model: "Events-based pricing",
     startingPrice: "$19/mo",
     highlights: [
-      "7-day free trial, no credit card required",
+      "7-day free trial, card charged after the trial",
       "All features included on every plan",
       "Session replay available on Pro plan",
       "Unlimited team members",
