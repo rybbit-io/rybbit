@@ -1,4 +1,5 @@
 import { CTASection } from "@/components/CTASection";
+import { AgentAnalyticsSection } from "@/components/AgentAnalyticsSection";
 import { FAQAccordion } from "@/components/FAQAccordion";
 import { Funnels } from "@/components/Cards/Funnels";
 import { RealTimeAnalytics } from "@/components/Cards/RealTimeAnalytics";
@@ -360,6 +361,8 @@ export function LandingPageTemplate({ title, subtitle, showEUFlag = true }: Land
             </div>
           </div>
         </section>
+
+        <AgentAnalyticsSection />
 
         <section className="border-b border-neutral-200 dark:border-neutral-800" aria-labelledby="integrations-title">
           <div className="relative mx-auto grid max-w-[1200px] border-x border-neutral-200 dark:border-neutral-800 lg:grid-cols-12">
