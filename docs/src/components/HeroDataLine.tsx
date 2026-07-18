@@ -1,9 +1,11 @@
 import { cn } from "@/lib/utils";
 
-// Jagged polyline echoing the product's own sparklines: an overall upward
-// trend with retraces and one deeper drawdown, not a smooth straight climb.
+// Jagged polyline echoing the product's own sparklines. Sampled from a
+// seeded momentum random walk (not hand-placed), then endpoint-pinned:
+// a flat intro, a breakout rally, consolidation, a mid-course dip, and a
+// grind to new highs — the shape of a real traffic chart.
 const LINE_PATH =
-  "M-8 214 L16 208 L40 211 L64 199 L88 203 L112 190 L136 171 L160 178 L184 158 L208 166 L232 143 L256 150 L280 128 L304 138 L328 146 L352 118 L376 126 L400 98 L424 110 L448 84 L472 94 L496 68 L520 88 L544 60 L568 72 L592 44 L616 56 L640 34 L664 48 L688 26 L712 38 L736 24 L760 34 L784 22";
+  "M-8 214 L18 214 L31 214 L59 209 L77 211 L109 211 L128 213 L150 200 L168 185 L192 151 L219 148 L237 147 L258 135 L289 125 L308 128 L336 122 L359 110 L374 72 L402 37 L419 54 L447 51 L468 49 L494 42 L513 34 L528 53 L563 45 L578 33 L609 27 L629 27 L647 28 L674 42 L689 41 L714 39 L742 28 L754 28 L784 22";
 
 interface HeroDataLineProps {
   /** Unique per instance — namespaces the SVG gradient id. */
