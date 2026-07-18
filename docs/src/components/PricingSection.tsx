@@ -138,12 +138,12 @@ export function PricingSection({ isAnnual, setIsAnnual }: { isAnnual: boolean, s
 
   return (
     <section className="py-16 md:py-24 w-full relative z-10">
-      <div className="max-w-[1200px] mx-auto px-4">
+      <div className="max-w-6xl mx-auto px-6">
         <div className="mb-12 text-center max-w-3xl mx-auto">
-          <h2 className="text-4xl md:text-5xl font-bold tracking-tight pb-4 text-transparent bg-clip-text bg-gradient-to-b from-neutral-900 via-neutral-700 to-neutral-500 dark:from-white dark:via-gray-200 dark:to-gray-400">
+          <h2 className="text-3xl md:text-4xl font-semibold tracking-tight text-balance text-neutral-900 dark:text-white">
             {t("Pricing")}
           </h2>
-          <p className="text-lg text-neutral-600 dark:text-neutral-300">
+          <p className="mt-3 text-base md:text-lg text-neutral-600 dark:text-neutral-400">
             {t("Start your 7-day free trial — no credit card charges until the trial ends.")}
           </p>
         </div>

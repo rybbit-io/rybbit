@@ -6,7 +6,7 @@ import { useExtracted } from "next-intl";
 import { Browser } from "../Browser";
 import { CountryFlag } from "../Country";
 import { OperatingSystem } from "../OperatingSystem";
-import { Card } from "./Card";
+import { Card, CardViewport } from "./Card";
 
 // Mock event templates
 const eventTemplates = [
@@ -101,9 +101,9 @@ function EventCard({ event, index, isNew }: { event: Event; index: number; isNew
 
   return (
     <div
-      className="absolute w-full rounded-md border border-neutral-300/50 dark:border-neutral-800/50 bg-neutral-100/50 dark:bg-neutral-800/20 overflow-hidden p-2 flex flex-col transition-all duration-500"
+      className="absolute w-full rounded-md border border-neutral-200 bg-white overflow-hidden p-2.5 flex flex-col transition-all duration-500 dark:border-neutral-800 dark:bg-neutral-900"
       style={{
-        transform: isAnimating && index === 0 ? `translateY(-70px)` : `translateY(${index * 70}px)`,
+        transform: isAnimating && index === 0 ? `translateY(-56px)` : `translateY(${index * 56}px)`,
         opacity: isAnimating && index === 0 ? 0 : index < 4 ? 1 : 0,
         zIndex: 10 - index,
       }}
@@ -195,13 +195,17 @@ export function RealTimeAnalytics() {
       description={t("See your site performance as it happens with instant data updates and live visitor activity.")}
       icon={Activity}
     >
-      <div className="space-y-4 mt-4 transform -rotate-2 translate-x-8 translate-y-8 bg-neutral-100/50 dark:bg-neutral-800/20 border border-neutral-300/50 dark:border-neutral-800/50 pb-20 rounded-lg p-4 -mb-[90px] transition-transform duration-300 hover:scale-105 hover:-rotate-1">
-        <div className="relative" style={{ height: "280px" }}>
+      <CardViewport className="p-4">
+        <div className="relative h-full pt-8">
           {events.map((event, index) => (
             <EventCard key={event.id} event={event} index={index} isNew={event.isNew} />
           ))}
         </div>
-      </div>
+        <div className="absolute right-3 top-3 z-20 flex items-center gap-1.5 rounded-full border border-neutral-200 bg-white/90 px-2.5 py-1 text-xs font-medium text-neutral-600 backdrop-blur-sm dark:border-neutral-800 dark:bg-neutral-900/90 dark:text-neutral-400">
+          <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+          <span className="tabular-nums">{onlineCount}</span> {t("online")}
+        </div>
+      </CardViewport>
     </Card>
   );
 }

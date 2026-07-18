@@ -3,7 +3,7 @@ import { useExtracted } from "next-intl";
 import { Browser } from "../Browser";
 import { CountryFlag } from "../Country";
 import { OperatingSystem } from "../OperatingSystem";
-import { Card } from "./Card";
+import { Card, CardViewport } from "./Card";
 import { Avatar } from "../Avatar";
 
 export function UserSessions() {
@@ -14,7 +14,7 @@ export function UserSessions() {
       description={t("Track complete user journeys through your site with detailed session timelines.")}
       icon={Users}
     >
-      <div className="space-y-4 mt-4 transform rotate-2 translate-x-8 translate-y-6  bg-neutral-100/50 dark:bg-neutral-800/20 border border-neutral-300/50 dark:border-neutral-800/50 pb-20 rounded-lg p-4 -mb-[100px] transition-transform duration-300 hover:scale-105 hover:rotate-3">
+      <CardViewport className="p-4">
         <div className="flex justify-between items-center mb-3">
           <div className="flex items-center gap-2">
             <Avatar size={28} id="john-doe" />
@@ -30,17 +30,6 @@ export function UserSessions() {
             <Laptop className="w-4 h-4" />
           </div>
         </div>
-        {/*         
-        <div className="flex gap-2 mb-3">
-          <div className="flex items-center gap-1 text-xs bg-blue-500/20 text-blue-400 px-2 py-1 rounded">
-            <Eye className="w-3 h-3" />
-            <span>Pageviews: 5</span>
-          </div>
-          <div className="flex items-center gap-1 text-xs bg-amber-500/20 text-amber-400 px-2 py-1 rounded">
-            <MousePointerClick className="w-3 h-3" />
-            <span>Events: 2</span>
-          </div>
-        </div> */}
 
         {/* Timeline */}
         <div className="px-1 py-1">
@@ -130,6 +119,7 @@ export function UserSessions() {
           {/* Event 4 */}
           <div className="flex mb-2">
             <div className="relative flex-shrink-0">
+              <div className="absolute top-7 left-3.5 w-[1px] bg-neutral-300 dark:bg-neutral-700 h-[calc(100%-16px)]" />
               <div className="flex items-center justify-center w-7 h-7 rounded-full bg-neutral-50 border border-neutral-200 dark:bg-neutral-600/25 dark:border-neutral-600/25">
                 <span className="text-xs font-medium">4</span>
               </div>
@@ -158,7 +148,7 @@ export function UserSessions() {
             </div>
           </div>
         </div>
-      </div>
+      </CardViewport>
     </Card>
   );
 }

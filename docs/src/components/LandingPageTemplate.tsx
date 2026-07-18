@@ -1,10 +1,8 @@
-import { BackgroundGrid } from "@/components/BackgroundGrid";
 import { CTASection } from "@/components/CTASection";
 import { FAQAccordion } from "@/components/FAQAccordion";
 import { HeroSection } from "@/components/HeroSection";
 import { IntegrationsGrid } from "@/components/Integration";
 import { Marquee } from "@/components/magicui/marquee";
-import { SectionBadge } from "@/components/SectionBadge";
 import { TweetCard } from "@/components/Tweet";
 import { ActivityIcon } from "@/components/ui/activity";
 import { ArrowDownIcon } from "@/components/ui/arrow-down";
@@ -22,6 +20,7 @@ import { ShieldCheckIcon } from "@/components/ui/shield-check";
 import { TerminalIcon } from "@/components/ui/terminal";
 import { UsersIcon } from "@/components/ui/users";
 import { ZapIcon } from "@/components/ui/zap";
+import { cn } from "@/lib/utils";
 import { useExtracted } from "next-intl";
 import Image from "next/image";
 import Link from "next/link";
@@ -91,6 +90,36 @@ interface LandingPageTemplateProps {
   title: React.ReactNode;
   subtitle: React.ReactNode;
   showEUFlag?: boolean;
+}
+
+/**
+ * Page band: full-width section separated by a hairline, content snapped to
+ * the single shared container. Every section on the page uses this shell so
+ * the rails and the vertical rhythm stay consistent.
+ */
+function Band({ children, className }: { children: React.ReactNode; className?: string }) {
+  return (
+    <section className={cn("w-full border-t border-neutral-200 dark:border-neutral-800", className)}>
+      <div className="mx-auto max-w-6xl px-6 py-16 md:py-24">{children}</div>
+    </section>
+  );
+}
+
+/**
+ * The one section-header grammar for the whole page: left-aligned heading +
+ * muted subline. No eyebrow badges, no per-section variations.
+ */
+function SectionHeader({ title, description }: { title: string; description?: string }) {
+  return (
+    <div className="mb-10 max-w-2xl md:mb-14">
+      <h2 className="text-3xl font-semibold tracking-tight text-balance text-neutral-900 md:text-4xl dark:text-white">
+        {title}
+      </h2>
+      {description && (
+        <p className="mt-3 text-base text-pretty text-neutral-600 md:text-lg dark:text-neutral-400">{description}</p>
+      )}
+    </div>
+  );
 }
 
 export function LandingPageTemplate({ title, subtitle, showEUFlag = true }: LandingPageTemplateProps) {
@@ -182,221 +211,170 @@ export function LandingPageTemplate({ title, subtitle, showEUFlag = true }: Land
   return (
     <>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }} />
-      <BackgroundGrid />
       <HeroSection title={title} subtitle={subtitle} showEUFlag={showEUFlag} />
 
-      {/* Logo Section */}
-      <section className="py-12 md:py-16 w-full">
-        <div className="max-w-[1200px] mx-auto px-4">
-          <div className="text-center mb-10 md:mb-12">
-            <p className="text-neutral-500 dark:text-neutral-400 text-sm uppercase tracking-wider font-medium">
-              {t("Trusted by 10,000+ organizations worldwide")}
-            </p>
-          </div>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-8 items-center justify-items-center">
-            <div className="flex items-center justify-center">
-              <Link href="https://automatio.ai" target="_blank">
-                <Image
-                  src="/logos/automatio.webp"
-                  alt="automatio"
-                  width={130}
-                  height={40}
-                  className="opacity-50 hover:opacity-80 dark:opacity-70 dark:hover:opacity-100 transition-opacity grayscale invert dark:invert-0"
-                />
-              </Link>
-            </div>
-            <div className="flex items-center justify-center">
-              <Image
-                src="/logos/convex.svg"
-                alt="Convex"
-                width={120}
-                height={40}
-                className="opacity-40 hover:opacity-70 dark:opacity-60 dark:hover:opacity-100 transition-opacity grayscale invert dark:invert-0 dark:grayscale-0"
-              />
-            </div>
-            <div className="flex items-center justify-center">
-              <Link href="https://onyx.app" target="_blank">
-                <Image
-                  src="/logos/onyx.webp"
-                  alt="Onyx"
-                  width={100}
-                  height={40}
-                  className="opacity-40 hover:opacity-70 dark:opacity-60 dark:hover:opacity-100 transition-opacity dark:invert"
-                />
-              </Link>
-            </div>
-            <div className="flex items-center justify-center">
-              <Image
-                src="/logos/vanguard.webp"
-                alt="Vanguard"
-                width={120}
-                height={40}
-                className="opacity-40 hover:opacity-70 dark:opacity-60 dark:hover:opacity-100 transition-opacity dark:invert"
-              />
-            </div>
-            <div className="flex items-center justify-center">
-              <Image
-                src="/logos/ustwo.svg"
-                alt="ustwo"
-                width={100}
-                height={40}
-                className="opacity-40 hover:opacity-70 dark:opacity-60 dark:hover:opacity-100 transition-opacity dark:invert"
-              />
-            </div>
-            <div className="flex items-center justify-center">
-              <Image
-                src="/logos/mydramalist.png"
-                alt="MyDramaList"
-                width={120}
-                height={40}
-                className="opacity-50 hover:opacity-80 dark:opacity-60 dark:hover:opacity-100 transition-opacity invert dark:invert-0"
-              />
-            </div>
-            <div className="flex items-center justify-center">
-              <Image
-                src="/logos/dtelecom.svg"
-                alt="DTelecom"
-                width={120}
-                height={40}
-                className="opacity-40 hover:opacity-70 dark:opacity-60 dark:hover:opacity-100 transition-opacity grayscale invert dark:invert-0"
-              />
-            </div>
-            <div className="flex items-center justify-center">
-              <Image
-                src="/logos/dpm.webp"
-                alt="DPM.lol"
-                width={120}
-                height={40}
-                className="opacity-40 hover:opacity-70 dark:opacity-60 dark:hover:opacity-100 transition-opacity grayscale invert dark:invert-0"
-              />
-            </div>
-          </div>
+      {/* Logo cloud */}
+      <Band>
+        <p className="text-center text-sm text-neutral-500 dark:text-neutral-400">
+          {t("Trusted by 10,000+ organizations worldwide")}
+        </p>
+        <div className="mt-10 flex flex-wrap items-center justify-center gap-x-12 gap-y-8">
+          <Link href="https://automatio.ai" target="_blank">
+            <Image
+              src="/logos/automatio.webp"
+              alt="automatio"
+              width={130}
+              height={40}
+              className="h-7 w-auto opacity-60 grayscale invert transition-opacity hover:opacity-100 dark:opacity-70 dark:invert-0 dark:hover:opacity-100"
+            />
+          </Link>
+          <Image
+            src="/logos/convex.svg"
+            alt="Convex"
+            width={120}
+            height={40}
+            className="h-7 w-auto opacity-60 grayscale invert transition-opacity hover:opacity-100 dark:opacity-70 dark:grayscale-0 dark:invert-0 dark:hover:opacity-100"
+          />
+          <Link href="https://onyx.app" target="_blank">
+            <Image
+              src="/logos/onyx.webp"
+              alt="Onyx"
+              width={100}
+              height={40}
+              className="h-7 w-auto opacity-60 transition-opacity hover:opacity-100 dark:opacity-70 dark:invert dark:hover:opacity-100"
+            />
+          </Link>
+          <Image
+            src="/logos/vanguard.webp"
+            alt="Vanguard"
+            width={120}
+            height={40}
+            className="h-7 w-auto opacity-60 transition-opacity hover:opacity-100 dark:opacity-70 dark:invert dark:hover:opacity-100"
+          />
+          <Image
+            src="/logos/ustwo.svg"
+            alt="ustwo"
+            width={100}
+            height={40}
+            className="h-7 w-auto opacity-60 transition-opacity hover:opacity-100 dark:opacity-70 dark:invert dark:hover:opacity-100"
+          />
+          <Image
+            src="/logos/mydramalist.png"
+            alt="MyDramaList"
+            width={120}
+            height={40}
+            className="h-7 w-auto opacity-60 invert transition-opacity hover:opacity-100 dark:opacity-70 dark:invert-0 dark:hover:opacity-100"
+          />
+          <Image
+            src="/logos/dtelecom.svg"
+            alt="DTelecom"
+            width={120}
+            height={40}
+            className="h-7 w-auto opacity-60 grayscale invert transition-opacity hover:opacity-100 dark:opacity-70 dark:invert-0 dark:hover:opacity-100"
+          />
+          <Image
+            src="/logos/dpm.webp"
+            alt="DPM.lol"
+            width={120}
+            height={40}
+            className="h-7 w-auto opacity-60 grayscale invert transition-opacity hover:opacity-100 dark:opacity-70 dark:invert-0 dark:hover:opacity-100"
+          />
         </div>
-      </section>
+      </Band>
 
-      <section className="py-14 md:py-20 w-full max-w-[1200px] px-4 mx-auto">
-        <div className="text-center mb-10 md:mb-12">
-          <SectionBadge className="mb-4">{t("Why Rybbit")}</SectionBadge>
-          <h2 className="text-3xl md:text-5xl font-bold tracking-tight">{t("Everything you need")}</h2>
-          <p className="mt-4 text-base md:text-xl text-neutral-600 dark:text-neutral-300 max-w-2xl mx-auto font-light">
-            {t("Powerful analytics without the complexity. Privacy-friendly tools that just work.")}
-          </p>
-        </div>
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-4">
+      {/* Feature spec sheet */}
+      <Band>
+        <SectionHeader
+          title={t("Everything you need")}
+          description={t("Powerful analytics without the complexity. Privacy-friendly tools that just work.")}
+        />
+        <div className="grid grid-cols-1 gap-x-8 gap-y-10 sm:grid-cols-2 lg:grid-cols-4">
           {features.map(feature => {
             const Icon = feature.icon;
             return (
-              <div
-                key={feature.title}
-                className="bg-neutral-100/50 dark:bg-neutral-800/20 border border-neutral-300/50 dark:border-neutral-800/50 rounded-lg p-5 transition-colors"
-              >
-                <h3 className="font-semibold mb-2 flex items-center gap-2">
-                  <Icon size={20} className="text-neutral-600 dark:text-neutral-400" />
-                  {feature.title}
-                </h3>
-                <p className="text-sm text-neutral-600 dark:text-neutral-400 leading-relaxed">{feature.description}</p>
+              <div key={feature.title} className="border-t border-neutral-200 pt-5 dark:border-neutral-800">
+                <Icon size={18} className="text-neutral-400 dark:text-neutral-500" />
+                <h3 className="mt-3 text-sm font-semibold text-neutral-900 dark:text-white">{feature.title}</h3>
+                <p className="mt-1.5 text-sm leading-6 text-neutral-600 dark:text-neutral-400">
+                  {feature.description}
+                </p>
               </div>
             );
           })}
         </div>
-      </section>
+      </Band>
 
-      <section className="py-14 md:py-20 w-full max-w-[1200px] px-4 mx-auto">
-        <div className="text-center mb-10 md:mb-16">
-          <SectionBadge className="mb-4">{t("Analytics Reimagined")}</SectionBadge>
-          <h2 className="text-3xl md:text-5xl font-bold tracking-tight">{t("See it in action")}</h2>
-          <p className="mt-4 text-base md:text-xl text-neutral-600 dark:text-neutral-300 max-w-2xl mx-auto font-light">
-            {t("Powerful tools designed for clarity, not complexity.")}
-          </p>
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
+      {/* Product showcase */}
+      <Band>
+        <SectionHeader
+          title={t("See it in action")}
+          description={t("Powerful tools designed for clarity, not complexity.")}
+        />
+        <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
           <RealTimeAnalytics />
           <SessionReplay />
           <UserSessions />
           <Funnels />
         </div>
-      </section>
+      </Band>
 
-      {/* Integrations Section */}
-      <section className="py-12 md:py-20 w-full">
-        <div className="max-w-[1200px] mx-auto px-4">
-          <div className="grid grid-cols-1 md:grid-cols-[1fr_2fr] gap-8 md:gap-16">
-            <div className="md:sticky md:top-24 md:self-start">
-              <SectionBadge className="mb-4">{t("Seamless Integration")}</SectionBadge>
-              <h2 className="text-3xl md:text-4xl font-bold">{t("Works with all your favorite platforms")}</h2>
-              <p className="mt-4 text-neutral-600 dark:text-neutral-300 font-light">
-                {t("Integrate Rybbit with any platform in minutes")}
-              </p>
-            </div>
-            <IntegrationsGrid />
+      {/* Integrations */}
+      <Band>
+        <SectionHeader
+          title={t("Works with all your favorite platforms")}
+          description={t("Integrate Rybbit with any platform in minutes.")}
+        />
+        <IntegrationsGrid />
+      </Band>
+
+      {/* Testimonials */}
+      <Band>
+        <SectionHeader title={t("People love Rybbit")} description={t("See what others think about Rybbit Analytics.")} />
+        <div className="relative h-[560px] overflow-hidden rounded-lg border border-neutral-200 md:h-[640px] dark:border-neutral-800 [mask-image:linear-gradient(to_bottom,transparent,black_12%,black_88%,transparent)]">
+          <div className="grid h-full grid-cols-1 gap-4 p-4 md:grid-cols-3">
+            {/* Column 1 - visible on all screen sizes */}
+            <Marquee vertical pauseOnHover className="[--duration:60s]" repeat={2}>
+              <TweetCard id="1991296442611184125" />
+              <TweetCard id="1921928423284629758" />
+              <TweetCard id="2000974573005889706" />
+              <TweetCard id="1927817460993884321" />
+              <TweetCard id="1977471983278535071" />
+            </Marquee>
+
+            {/* Column 2 - hidden on mobile */}
+            <Marquee vertical pauseOnHover reverse className="hidden md:flex [--duration:60s]" repeat={2}>
+              <TweetCard id="1920899082253434950" />
+              <TweetCard id="2000788904778326334" />
+              <TweetCard id="2015102995789381815" />
+              <TweetCard id="1980082738934993142" />
+              <TweetCard id="1976495558480232672" />
+            </Marquee>
+
+            {/* Column 3 - hidden on mobile */}
+            <Marquee vertical pauseOnHover className="hidden md:flex [--duration:60s]" repeat={2}>
+              <TweetCard id="1982378431166963982" />
+              <TweetCard id="2009548405488615871" />
+              <TweetCard id="1920470706761929048" />
+              <TweetCard id="1979830490006974510" />
+              <TweetCard id="1970265809122705759" />
+            </Marquee>
           </div>
         </div>
-      </section>
+      </Band>
 
-      {/* Testimonial Section */}
-      <section className="py-10 md:py-16 w-full overflow-hidden">
-        <div className="max-w-[1200px] mx-auto px-4">
-          <div className="text-center mb-10 md:mb-16">
-            <SectionBadge className="mb-4">{t("User Testimonials")}</SectionBadge>
-            <h2 className="text-3xl md:text-5xl font-bold tracking-tight">{t("People love Rybbit")}</h2>
-            <p className="mt-4 text-base md:text-xl text-neutral-600 dark:text-neutral-300 max-w-2xl mx-auto font-light">
-              {t("See what others think about Rybbit Analytics")}
-            </p>
-          </div>
-          <div className="relative bg-neutral-100/50 dark:bg-neutral-800/20 backdrop-blur-sm border border-neutral-300/50 dark:border-neutral-800/50 rounded-3xl overflow-hidden">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 h-[600px] md:h-[700px] p-4">
-              {/* Column 1 - visible on all screen sizes */}
-              <Marquee vertical pauseOnHover className="[--duration:60s]" repeat={2}>
-                <TweetCard id="1991296442611184125" />
-                <TweetCard id="1921928423284629758" />
-                <TweetCard id="2000974573005889706" />
-                <TweetCard id="1927817460993884321" />
-                <TweetCard id="1977471983278535071" />
-              </Marquee>
+      {/* FAQ */}
+      <Band>
+        <SectionHeader
+          title={t("Frequently Asked Questions")}
+          description={t("Everything you need to know about Rybbit Analytics.")}
+        />
+        <FAQAccordion />
+      </Band>
 
-              {/* Column 2 - hidden on mobile */}
-              <Marquee vertical pauseOnHover reverse className="hidden md:flex [--duration:60s]" repeat={2}>
-                <TweetCard id="1920899082253434950" />
-                <TweetCard id="2000788904778326334" />
-                <TweetCard id="2015102995789381815" />
-                <TweetCard id="1980082738934993142" />
-                <TweetCard id="1976495558480232672" />
-              </Marquee>
-
-              {/* Column 3 - hidden on mobile */}
-              <Marquee vertical pauseOnHover className="hidden md:flex [--duration:60s]" repeat={2}>
-                <TweetCard id="1982378431166963982" />
-                <TweetCard id="2009548405488615871" />
-                <TweetCard id="1920470706761929048" />
-                <TweetCard id="1979830490006974510" />
-                <TweetCard id="1970265809122705759" />
-              </Marquee>
-            </div>
-
-            {/* Gradient overlays */}
-            <div className="pointer-events-none absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-neutral-100/90 dark:from-neutral-900/90 to-transparent"></div>
-            <div className="pointer-events-none absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-neutral-100/90 dark:from-neutral-900/90 to-transparent"></div>
-          </div>
-        </div>
-      </section>
-
-      {/* FAQ Section */}
-      <section className="py-10 md:py-16 w-full">
-        <div className="max-w-[1200px] mx-auto px-4">
-          <div className="grid grid-cols-1 md:grid-cols-[1fr_2fr] gap-8 md:gap-16">
-            <div className="md:sticky md:top-24 md:self-start">
-              <h2 className="text-3xl md:text-4xl font-bold">{t("Frequently Asked Questions")}</h2>
-              <p className="mt-4 text-neutral-600 dark:text-neutral-300 font-light">
-                {t("Everything you need to know about Rybbit Analytics")}
-              </p>
-            </div>
-            <FAQAccordion />
-          </div>
-        </div>
-      </section>
-
-      {/* Pricing Section */}
-      <LandingPricing />
+      {/* Pricing */}
+      <div className="w-full border-t border-neutral-200 dark:border-neutral-800">
+        <LandingPricing />
+      </div>
 
       <CTASection />
     </>

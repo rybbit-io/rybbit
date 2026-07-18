@@ -127,6 +127,35 @@ pre {
   }
 }
 
+/* ── Marketing entrance motion ───────────────────────────────────────────
+   One restrained page-load reveal for the marketing hero. Content is visible
+   by default; the keyframe only plays on load, and reduced motion disables it
+   (along with the tweet marquee) so nothing is ever gated on animation. */
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-up {
+  animation: fade-up 0.7s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-fade-up {
+    animation: none;
+  }
+  .animate-marquee,
+  .animate-marquee-vertical {
+    animation: none;
+  }
+}
+
 /* Override prose list styles for tool pages */
 .prose ul li.flex,
 .prose ol li.flex {

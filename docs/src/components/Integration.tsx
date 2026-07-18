@@ -1,5 +1,6 @@
 import { cn } from "@/lib/utils";
-import { SectionBadge } from "@/components/SectionBadge";
+import { ArrowRight } from "lucide-react";
+import { useExtracted } from "next-intl";
 import Link from "next/link";
 import {
   SiAngular,
@@ -83,28 +84,38 @@ const platforms: { name: string; icon: ComponentType<IconProps>; path: string }[
 
 const PlatformLogo = ({ name, icon: Icon, path }: { name: string; icon: ComponentType<IconProps>; path: string }) => {
   return (
-    <Link href={path} className="block">
-      <div
-        className={cn(
-          "flex flex-col justify-center gap-4 p-4",
-          "bg-neutral-100/50 dark:bg-neutral-800/20 backdrop-blur-sm rounded-lg",
-          "border border-neutral-300/50 dark:border-neutral-800/50 hover:border-neutral-500 dark:hover:border-neutral-700 transition-colors duration-200",
-          "cursor-pointer hover:scale-105 transition-transform"
-        )}
-      >
-        <Icon className="h-6 w-6 text-neutral-700 dark:text-neutral-300" />
-        <span className="text-sm text-neutral-600 dark:text-neutral-400">{name}</span>
-      </div>
+    <Link
+      href={path}
+      className={cn(
+        "flex items-center gap-3 bg-white px-5 py-4 dark:bg-neutral-950",
+        "transition-colors hover:bg-neutral-50 dark:hover:bg-neutral-900"
+      )}
+    >
+      <Icon className="h-5 w-5 shrink-0 text-neutral-500 dark:text-neutral-400" />
+      <span className="text-sm text-neutral-700 dark:text-neutral-300">{name}</span>
     </Link>
   );
 };
 
 export function IntegrationsGrid() {
+  const t = useExtracted();
   return (
-    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-5">
-      {platforms.map((platform) => (
-        <PlatformLogo key={platform.name} {...platform} />
-      ))}
+    <div className="overflow-hidden rounded-lg border border-neutral-200 dark:border-neutral-800">
+      <div className="grid grid-cols-2 gap-px bg-neutral-200 sm:grid-cols-3 lg:grid-cols-5 dark:bg-neutral-800">
+        {platforms.map((platform) => (
+          <PlatformLogo key={platform.name} {...platform} />
+        ))}
+        <Link
+          href="/docs"
+          className={cn(
+            "flex items-center gap-3 bg-white px-5 py-4 dark:bg-neutral-950",
+            "transition-colors hover:bg-neutral-50 dark:hover:bg-neutral-900"
+          )}
+        >
+          <ArrowRight className="h-5 w-5 shrink-0 text-emerald-600 dark:text-emerald-400" />
+          <span className="text-sm font-medium text-neutral-900 dark:text-white">{t("All guides")}</span>
+        </Link>
+      </div>
     </div>
   );
 }

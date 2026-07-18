@@ -1,4 +1,4 @@
-import { Card } from "./Card";
+import { Card, CardViewport } from "./Card";
 import { Eye, Filter } from "lucide-react";
 import { useExtracted } from "next-intl";
 
@@ -19,41 +19,31 @@ export function Funnels() {
       description={t("Visualize user journeys and identify where users drop off.")}
       icon={Filter}
     >
-      {/* Funnel Steps */}
-      <div className="space-y-4 mt-4 transform -rotate-2 translate-x-8 translate-y-8 bg-neutral-100/50 dark:bg-neutral-800/20 border border-neutral-300/50 dark:border-neutral-800/50 pb-20 rounded-lg p-4 -mb-[40px] transition-transform duration-300 hover:scale-105 hover:-rotate-1">
-        {funnelData.map((item, index) => {
+      <CardViewport className="flex flex-col justify-center gap-6 p-6">
+        {funnelData.map(item => {
           const overallConversion = (item.users / totalUsers) * 100;
-          const previousUsers = index > 0 ? funnelData[index - 1].users : item.users;
 
           return (
-            <div key={item.step} className="flex items-center gap-3">
-              {/* Step number */}
-              <div className="flex-shrink-0 w-8 h-8 mt-7 bg-neutral-50 dark:bg-neutral-800 border border-neutral-300/70 dark:border-neutral-800/70 rounded-full flex items-center justify-center text-xs">
-                {item.step}
+            <div key={item.step}>
+              {/* Label and counts */}
+              <div className="flex items-center gap-2 mb-1.5">
+                <Eye className="w-3.5 h-3.5 text-blue-400" />
+                <span className="text-sm font-medium">{item.label}</span>
+                <span className="ml-auto text-xs text-neutral-500 dark:text-neutral-400 tabular-nums">
+                  {item.users.toLocaleString()} · {overallConversion.toFixed(overallConversion === 100 ? 0 : 2)}%
+                </span>
               </div>
 
-              {/* Step info and bars */}
-              <div className="flex-1">
-                {/* Label and counts */}
-                <div className="flex items-center gap-2 mb-2">
-                  <Eye className="w-4 h-4 text-blue-400" />
-                  <span className="text-sm font-medium">{item.label}</span>
-                </div>
-
-                <div className="h-8 bg-neutral-200 dark:bg-neutral-800 relative">
-                  <div
-                    className="h-8 bg-emerald-600 rounded flex items-center justify-end pr-3"
-                    style={{ width: `${overallConversion}%` }}
-                  />
-                  <div className="absolute top-2 right-1.5 text-right text-xs">
-                    {overallConversion.toFixed(overallConversion === 100 ? 0 : 2)}%
-                  </div>
-                </div>
+              <div className="h-7 rounded-sm bg-neutral-100 dark:bg-neutral-800">
+                <div
+                  className="h-7 rounded-sm bg-emerald-600"
+                  style={{ width: `${Math.max(overallConversion, 2)}%` }}
+                />
               </div>
             </div>
           );
         })}
-      </div>
+      </CardViewport>
     </Card>
   );
 }

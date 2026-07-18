@@ -14,7 +14,7 @@ const AccordionItem = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <AccordionPrimitive.Item
     ref={ref}
-    className={cn("border-b border-neutral-300/50 dark:border-neutral-800/50", className)}
+    className={cn("border-b border-neutral-200 dark:border-neutral-800", className)}
     {...props}
   />
 ))
@@ -28,13 +28,13 @@ const AccordionTrigger = React.forwardRef<
     <AccordionPrimitive.Trigger
       ref={ref}
       className={cn(
-        "flex flex-1 items-center justify-between px-6 py-4 text-base font-medium transition-colors hover:text-emerald-500 dark:hover:text-emerald-400 [&[data-state=open]>svg]:rotate-180",
+        "flex flex-1 items-center justify-between py-5 text-left text-base font-medium text-neutral-900 dark:text-white transition-colors hover:text-emerald-600 dark:hover:text-emerald-400 [&[data-state=open]>svg]:rotate-180",
         className
       )}
       {...props}
     >
       {children}
-      <ChevronDown className="h-4 w-4 shrink-0 transition-transform duration-200" />
+      <ChevronDown className="h-4 w-4 shrink-0 text-neutral-400 transition-transform duration-200" />
     </AccordionPrimitive.Trigger>
   </AccordionPrimitive.Header>
 ))
@@ -49,7 +49,7 @@ const AccordionContent = React.forwardRef<
     className="overflow-hidden text-sm transition-all data-[state=closed]:animate-accordion-up data-[state=open]:animate-accordion-down"
     {...props}
   >
-    <div className={cn("px-6 pb-4 pt-0 text-neutral-700 dark:text-neutral-300", className)}>{children}</div>
+    <div className={cn("max-w-3xl pb-5 pr-8 pt-0 leading-6 text-neutral-600 dark:text-neutral-400", className)}>{children}</div>
   </AccordionPrimitive.Content>
 ))
 
