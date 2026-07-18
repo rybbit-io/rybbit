@@ -15,7 +15,7 @@ export function Card({ title, description, children, className, icon: Icon }: Ca
       className={cn("overflow-hidden bg-white p-5 dark:bg-neutral-950 md:p-8", className)}
     >
       <div className="flex items-center gap-2.5">
-        {Icon && <Icon className="size-4 text-emerald-600 dark:text-emerald-400" aria-hidden="true" />}
+        {Icon && <Icon className="size-4 text-[#6879d1] dark:text-[#b3bfff]" aria-hidden="true" />}
         <h3 className="text-lg font-semibold tracking-tight">{title}</h3>
       </div>
       {description && <p className="mt-2 max-w-lg text-sm leading-6 text-neutral-600 dark:text-neutral-400">{description}</p>}

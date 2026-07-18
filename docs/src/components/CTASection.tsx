@@ -29,11 +29,20 @@ export function CTASection({
   const resolvedSecondaryButtonText = secondaryButtonText ?? t("Live demo");
 
   return (
-    <section className="relative overflow-hidden border-b border-emerald-900 bg-emerald-950 text-white">
-      <div
+    <section className="relative overflow-hidden border-b border-emerald-800 bg-emerald-900 text-white">
+      <svg
+        viewBox="0 0 640 420"
+        fill="none"
         aria-hidden="true"
-        className="pointer-events-none absolute inset-0 opacity-60 [background-image:linear-gradient(to_right,rgba(255,255,255,0.045)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.045)_1px,transparent_1px)] [background-size:40px_40px] [mask-image:linear-gradient(to_bottom,black,transparent_92%)]"
-      />
+        className="pointer-events-none absolute -right-32 -top-32 w-[640px] opacity-70"
+      >
+        <circle cx="360" cy="210" r="76" stroke="rgba(255,255,255,0.12)" />
+        <circle cx="360" cy="210" r="132" stroke="rgba(255,255,255,0.09)" />
+        <circle cx="360" cy="210" r="190" stroke="rgba(255,255,255,0.07)" />
+        <path d="M75 328 C166 285 210 354 278 272 C349 186 426 256 486 142 C524 70 573 77 640 38" stroke="#b3bfff" strokeWidth="2" />
+        <circle cx="278" cy="272" r="5" fill="#b3bfff" />
+        <circle cx="486" cy="142" r="6" fill="#b3bfff" className="animate-pulse motion-reduce:animate-none" />
+      </svg>
       <div className="relative mx-auto grid max-w-[1200px] border-x border-white/10 lg:grid-cols-12">
         <Image
           src="/rybbit/frog_white.svg"
@@ -41,7 +50,7 @@ export function CTASection({
           aria-hidden="true"
           width={360}
           height={360}
-          className="pointer-events-none absolute -bottom-12 -right-8 hidden w-64 -rotate-6 opacity-[0.07] md:block lg:w-80"
+          className="pointer-events-none absolute -bottom-20 left-[42%] hidden h-auto w-72 -rotate-6 opacity-[0.1] md:block lg:w-80"
         />
 
         <div className="relative z-10 border-b border-white/10 px-5 py-16 sm:px-8 md:py-24 lg:col-span-8 lg:border-b-0 lg:border-r lg:px-10">
@@ -51,14 +60,14 @@ export function CTASection({
         </div>
 
         <div className="relative z-10 flex flex-col justify-center px-5 py-12 sm:px-8 lg:col-span-4 lg:px-10">
-          <p className="max-w-md text-base leading-7 text-emerald-100/80">{resolvedDescription}</p>
+          <p className="max-w-md text-base leading-7 text-emerald-50/85">{resolvedDescription}</p>
 
           <div className="mt-8 flex flex-col gap-3 sm:flex-row lg:flex-col xl:flex-row">
             <TrackedButton
               href={primaryButtonHref}
               eventName="signup"
               eventProps={{ location: eventLocation, button_text: resolvedPrimaryButtonText }}
-              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md bg-white px-5 py-2.5 text-sm font-medium text-emerald-950 transition-colors duration-200 hover:bg-emerald-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-emerald-950"
+              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md bg-white px-5 py-2.5 text-sm font-medium text-emerald-950 transition-colors duration-200 hover:bg-emerald-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-emerald-900"
             >
               {resolvedPrimaryButtonText}
               <ArrowRight className="size-4" aria-hidden="true" />
@@ -76,7 +85,7 @@ export function CTASection({
             </TrackedButton>
           </div>
 
-          <p className="mt-6 text-sm text-emerald-100/60">{t("7-day free trial. Cancel anytime.")}</p>
+          <p className="mt-6 text-sm text-emerald-100/75">{t("7-day free trial. Cancel anytime.")}</p>
         </div>
       </div>
     </section>

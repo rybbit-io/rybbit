@@ -25,6 +25,7 @@ import { ShieldCheckIcon } from "@/components/ui/shield-check";
 import { TerminalIcon } from "@/components/ui/terminal";
 import { UsersIcon } from "@/components/ui/users";
 import { ZapIcon } from "@/components/ui/zap";
+import { Quote } from "lucide-react";
 import { useExtracted } from "next-intl";
 import Image from "next/image";
 import Link from "next/link";
@@ -150,6 +151,9 @@ export function LandingPageTemplate({ title, subtitle, showEUFlag = true }: Land
     {
       title: t("Understand"),
       description: t("A clear read on what is happening, without configuring a report first."),
+      panelClassName: "bg-[#f1f3ff] dark:bg-[#191c2b]",
+      dotClassName: "bg-[#7182dc] dark:bg-[#b3bfff]",
+      iconClassName: "text-[#6474c8] dark:text-[#b3bfff]",
       features: [
         { icon: ZapIcon, title: t("Setup in minutes"), description: t("Add one line of code and start seeing real-time data instantly.") },
         { icon: ActivityIcon, title: t("Realtime data"), description: t("See what's happening on your site right now.") },
@@ -160,6 +164,9 @@ export function LandingPageTemplate({ title, subtitle, showEUFlag = true }: Land
     {
       title: t("Investigate"),
       description: t("Move from the headline number to the behavior behind it."),
+      panelClassName: "bg-amber-50/70 dark:bg-amber-950/20",
+      dotClassName: "bg-amber-500 dark:bg-amber-300",
+      iconClassName: "text-amber-700 dark:text-amber-300",
       features: [
         { icon: PlayIcon, title: t("Session replay"), description: t("Watch real user sessions to spot usability issues.") },
         { icon: RouteIcon, title: t("User journeys"), description: t("Map how users navigate from landing to conversion.") },
@@ -170,6 +177,9 @@ export function LandingPageTemplate({ title, subtitle, showEUFlag = true }: Land
     {
       title: t("Measure"),
       description: t("Define the outcomes that matter and follow them end to end."),
+      panelClassName: "bg-sky-50/70 dark:bg-sky-950/20",
+      dotClassName: "bg-sky-500 dark:bg-sky-300",
+      iconClassName: "text-sky-700 dark:text-sky-300",
       features: [
         { icon: ArrowDownIcon, title: t("Funnels"), description: t("Visualize conversion paths and find where visitors drop off.") },
         { icon: LayersIcon, title: t("Custom events"), description: t("Track sign-ups, purchases, and any user interaction.") },
@@ -180,6 +190,9 @@ export function LandingPageTemplate({ title, subtitle, showEUFlag = true }: Land
     {
       title: t("Stay private"),
       description: t("Clean data and a lighter privacy footprint, by default."),
+      panelClassName: "bg-emerald-50/80 dark:bg-emerald-950/25",
+      dotClassName: "bg-emerald-500 dark:bg-emerald-300",
+      iconClassName: "text-emerald-700 dark:text-emerald-300",
       features: [
         { icon: BotIcon, title: t("Bot blocking"), description: t("Automatically filter out bots to keep data clean.") },
         { icon: BanIcon, title: t("No cookies"), description: t("Zero cookies, zero banners. Cleaner visitor experiences.") },
@@ -203,8 +216,12 @@ export function LandingPageTemplate({ title, subtitle, showEUFlag = true }: Land
 
         <section className="border-b border-neutral-200 dark:border-neutral-800" aria-labelledby="customer-proof">
           <div className="mx-auto grid max-w-[1200px] grid-cols-2 gap-px border-x border-neutral-200 bg-neutral-200 p-px dark:border-neutral-800 dark:bg-neutral-800 sm:grid-cols-4 lg:grid-cols-8">
-            <div className="col-span-full flex min-h-14 items-center bg-white px-5 dark:bg-neutral-950 sm:px-8">
-              <p id="customer-proof" className="text-sm font-medium text-neutral-600 dark:text-neutral-400">
+            <div className="col-span-full flex min-h-14 items-center gap-2.5 bg-emerald-50 px-5 dark:bg-emerald-950 sm:px-8">
+              <span className="relative flex size-2" aria-hidden="true">
+                <span className="absolute inline-flex size-full animate-ping rounded-full bg-emerald-500 opacity-50 motion-reduce:hidden" />
+                <span className="relative inline-flex size-2 rounded-full bg-emerald-600 dark:bg-emerald-400" />
+              </span>
+              <p id="customer-proof" className="text-sm font-medium text-emerald-950 dark:text-emerald-100">
                 {t("Trusted by 10,000+ organizations worldwide")}
               </p>
             </div>
@@ -254,16 +271,19 @@ export function LandingPageTemplate({ title, subtitle, showEUFlag = true }: Land
               {featureGroups.map((group) => (
                 <article
                   key={group.title}
-                  className="border-b border-neutral-200 px-5 py-12 last:border-b-0 dark:border-neutral-800 sm:px-8 md:odd:border-r md:[&:nth-last-child(-n+2)]:border-b-0 lg:px-10"
+                  className={`border-b border-neutral-200 px-5 py-12 last:border-b-0 dark:border-neutral-800 sm:px-8 md:odd:border-r md:[&:nth-last-child(-n+2)]:border-b-0 lg:px-10 ${group.panelClassName}`}
                 >
-                  <h3 className="text-xl font-semibold tracking-tight">{group.title}</h3>
+                  <div className="flex items-center gap-3">
+                    <span className={`size-2.5 rounded-full ${group.dotClassName}`} aria-hidden="true" />
+                    <h3 className="text-xl font-semibold tracking-tight">{group.title}</h3>
+                  </div>
                   <p className="mt-2 min-h-12 max-w-md text-sm leading-6 text-neutral-600 dark:text-neutral-400">{group.description}</p>
                   <div className="mt-8 divide-y divide-neutral-200 border-t border-neutral-200 dark:divide-neutral-800 dark:border-neutral-800">
                     {group.features.map((feature) => {
                       const Icon = feature.icon;
                       return (
                         <div key={feature.title} className="grid grid-cols-[24px_1fr] gap-x-3 py-4">
-                          <Icon size={18} className="mt-0.5 text-neutral-500 dark:text-neutral-400" />
+                          <Icon size={18} className={`mt-0.5 ${group.iconClassName}`} />
                           <div>
                             <h4 className="text-sm font-medium">{feature.title}</h4>
                             <p className="mt-1 text-sm leading-5 text-neutral-600 dark:text-neutral-400">{feature.description}</p>
@@ -280,23 +300,23 @@ export function LandingPageTemplate({ title, subtitle, showEUFlag = true }: Land
 
         <section className="border-b border-neutral-200 dark:border-neutral-800" aria-labelledby="product-title">
           <div className="mx-auto max-w-[1200px] border-x border-neutral-200 dark:border-neutral-800">
-            <div className="grid border-b border-neutral-200 dark:border-neutral-800 lg:grid-cols-12">
-              <div className="border-b border-neutral-200 px-5 py-14 dark:border-neutral-800 sm:px-8 md:py-20 lg:col-span-7 lg:border-b-0 lg:border-r lg:px-10">
-                <p className="text-base font-semibold tracking-tight text-neutral-950 dark:text-neutral-50">
+            <div className="grid border-b border-[#303653] dark:border-[#303653] lg:grid-cols-12">
+              <div className="border-b border-[#303653] bg-[#202541] px-5 py-14 text-white sm:px-8 md:py-20 lg:col-span-7 lg:border-b-0 lg:border-r lg:px-10">
+                <p className="text-base font-semibold tracking-tight text-[#b3bfff]">
                   {t("One connected workspace")}
                 </p>
                 <h2 id="product-title" className="mt-5 max-w-2xl text-4xl font-semibold leading-[1.04] tracking-[-0.035em] md:text-5xl text-balance">
                   {t("Go from signal to explanation without changing tools.")}
                 </h2>
               </div>
-              <div className="flex items-end px-5 py-10 sm:px-8 md:py-20 lg:col-span-5 lg:px-10">
-                <p className="max-w-md text-lg leading-8 text-neutral-600 dark:text-neutral-400 text-pretty">
+              <div className="flex items-end bg-[#b3bfff] px-5 py-10 text-[#171a2d] sm:px-8 md:py-20 lg:col-span-5 lg:px-10">
+                <p className="max-w-md text-lg leading-8 text-[#252a47] text-pretty">
                   {t("Start with live traffic, inspect the people and paths behind it, then measure where they convert.")}
                 </p>
               </div>
             </div>
 
-            <div className="grid gap-px bg-neutral-200 p-px dark:bg-neutral-800 lg:grid-cols-12">
+            <div className="grid gap-px bg-[#cbd1f5] p-px dark:bg-[#303653] lg:grid-cols-12">
               <div className="bg-white dark:bg-neutral-950 lg:col-span-7 [&>div]:h-full"><RealTimeAnalytics /></div>
               <div className="bg-white dark:bg-neutral-950 lg:col-span-5 [&>div]:h-full"><SessionReplay /></div>
               <div className="bg-white dark:bg-neutral-950 lg:col-span-5 [&>div]:h-full"><UserSessions /></div>
@@ -307,12 +327,20 @@ export function LandingPageTemplate({ title, subtitle, showEUFlag = true }: Land
 
         <section className="border-b border-neutral-200 dark:border-neutral-800" aria-labelledby="integrations-title">
           <div className="mx-auto grid max-w-[1200px] border-x border-neutral-200 dark:border-neutral-800 lg:grid-cols-12">
-            <div className="border-b border-neutral-200 px-5 py-16 dark:border-neutral-800 sm:px-8 md:py-24 lg:col-span-4 lg:border-b-0 lg:border-r lg:px-10">
-              <div className="lg:sticky lg:top-24">
+            <div className="relative overflow-hidden border-b border-emerald-900 bg-emerald-950 px-5 py-16 text-white sm:px-8 md:py-24 lg:col-span-4 lg:border-b-0 lg:border-r lg:px-10">
+              <Image
+                src="/rybbit/frog_white.svg"
+                alt=""
+                aria-hidden="true"
+                width={280}
+                height={280}
+                className="pointer-events-none absolute -bottom-20 -right-16 h-auto w-64 -rotate-12 opacity-[0.08]"
+              />
+              <div className="relative z-10 lg:sticky lg:top-24">
                 <h2 id="integrations-title" className="max-w-sm text-4xl font-semibold leading-[1.04] tracking-[-0.035em] md:text-5xl">
                   {t("Made to meet your stack.")}
                 </h2>
-                <p className="mt-6 max-w-sm text-base leading-7 text-neutral-600 dark:text-neutral-400">
+                <p className="mt-6 max-w-sm text-base leading-7 text-emerald-100/80">
                   {t("Install Rybbit on the platform you already use. Most integrations take only a few minutes.")}
                 </p>
               </div>
@@ -334,18 +362,23 @@ export function LandingPageTemplate({ title, subtitle, showEUFlag = true }: Land
                   {t("Built in public. Used in the real world.")}
                 </h2>
               </div>
-              <div className="flex flex-col justify-between px-5 py-10 sm:px-8 md:py-20 lg:px-10">
-                <p className="max-w-md text-base leading-7 text-neutral-600 dark:text-neutral-400 text-pretty">
+              <div className="relative flex flex-col justify-between overflow-hidden bg-[#eef0ff] px-5 py-10 text-[#171a2d] dark:bg-[#1b1e2e] dark:text-white sm:px-8 md:py-20 lg:px-10">
+                <Quote
+                  className="pointer-events-none absolute -right-4 -top-8 size-40 fill-[#b3bfff]/20 text-[#b3bfff]/35 dark:fill-[#b3bfff]/5 dark:text-[#b3bfff]/10"
+                  strokeWidth={1}
+                  aria-hidden="true"
+                />
+                <p className="relative max-w-md text-base leading-7 text-[#40476b] dark:text-[#c9cfff] text-pretty">
                   {t("What teams say after replacing heavier analytics products with Rybbit.")}
                 </p>
-                <div className="mt-10 flex items-center justify-between border-t border-neutral-200 pt-4 text-sm text-neutral-500 dark:border-neutral-800 dark:text-neutral-400 md:text-xs">
+                <div className="relative mt-10 flex items-center justify-between border-t border-[#cbd1f5] pt-4 text-sm text-[#59618a] dark:border-[#303653] dark:text-[#aeb8ef] md:text-xs">
                   <span>{t("Customer notes")}</span>
                   <span className="hidden md:inline">{t("Pause on hover")}</span>
                 </div>
               </div>
             </div>
 
-            <div className="border-b border-neutral-200 dark:border-neutral-800">
+            <div className="border-b border-neutral-200 bg-[#f8f8ff] dark:border-neutral-800 dark:bg-[#151722]">
               <div className="relative grid h-[560px] grid-cols-1 gap-4 overflow-hidden p-4 md:grid-cols-3">
                 {tweetColumns.map((ids, columnIndex) => (
                   <Marquee
@@ -359,8 +392,8 @@ export function LandingPageTemplate({ title, subtitle, showEUFlag = true }: Land
                     {ids.map((id) => <TweetCard key={id} id={id} />)}
                   </Marquee>
                 ))}
-                <div className="pointer-events-none absolute inset-x-0 top-0 h-16 bg-gradient-to-b from-white to-transparent dark:from-neutral-950" />
-                <div className="pointer-events-none absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-white to-transparent dark:from-neutral-950" />
+                <div className="pointer-events-none absolute inset-x-0 top-0 h-16 bg-gradient-to-b from-[#f8f8ff] to-transparent dark:from-[#151722]" />
+                <div className="pointer-events-none absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-[#f8f8ff] to-transparent dark:from-[#151722]" />
               </div>
             </div>
           </div>
@@ -368,7 +401,7 @@ export function LandingPageTemplate({ title, subtitle, showEUFlag = true }: Land
 
         <section className="border-b border-neutral-200 dark:border-neutral-800" aria-labelledby="faq-title">
           <div className="mx-auto grid max-w-[1200px] border-x border-neutral-200 dark:border-neutral-800 lg:grid-cols-12">
-            <div className="border-b border-neutral-200 px-5 py-16 dark:border-neutral-800 sm:px-8 md:py-24 lg:col-span-4 lg:border-b-0 lg:border-r lg:px-10">
+            <div className="border-b border-emerald-100 bg-emerald-50 px-5 py-16 dark:border-emerald-950 dark:bg-emerald-950/25 sm:px-8 md:py-24 lg:col-span-4 lg:border-b-0 lg:border-r lg:px-10">
               <div className="lg:sticky lg:top-24">
                 <h2 id="faq-title" className="max-w-sm text-4xl font-semibold leading-[1.04] tracking-[-0.035em] md:text-5xl">
                   {t("Questions, answered plainly.")}

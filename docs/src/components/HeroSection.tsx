@@ -2,6 +2,7 @@ import { GitHubStarButton } from "@/components/GitHubStarButton";
 import { TrackedButton } from "@/components/TrackedButton";
 import { ArrowRight, ExternalLink } from "lucide-react";
 import { useExtracted } from "next-intl";
+import Image from "next/image";
 
 const EUFlag = () => (
   <svg
@@ -40,9 +41,48 @@ export function HeroSection({
     <section className="border-b border-neutral-200 dark:border-neutral-800">
       <div className="mx-auto w-full min-w-0 max-w-[1200px] border-x border-neutral-200 dark:border-neutral-800">
         <div className="grid min-w-0 lg:grid-cols-12">
-          <div className="min-w-0 border-b border-neutral-200 px-5 py-10 dark:border-neutral-800 sm:px-8 sm:py-12 lg:col-span-7 lg:border-b-0 lg:border-r lg:px-10 lg:py-12 xl:py-14">
-            {showGitHubStar && <GitHubStarButton />}
-            <h1 className="mt-7 max-w-3xl text-[clamp(3rem,5.25vw,4.75rem)] font-semibold leading-[0.96] tracking-[-0.04em] text-neutral-950 dark:text-neutral-50 text-balance">
+          <div className="relative min-w-0 overflow-hidden border-b border-emerald-900 bg-emerald-950 px-5 py-10 text-white sm:px-8 sm:py-12 lg:col-span-7 lg:border-b-0 lg:border-r lg:px-10 lg:py-12 xl:py-14">
+            <Image
+              src="/rybbit/frog_white.svg"
+              alt=""
+              aria-hidden="true"
+              width={320}
+              height={320}
+              className="pointer-events-none absolute -bottom-24 -right-14 h-auto w-64 -rotate-12 opacity-[0.07] sm:w-72 lg:-right-10 lg:w-80"
+            />
+
+            <svg
+              viewBox="0 0 720 180"
+              preserveAspectRatio="none"
+              aria-hidden="true"
+              className="pointer-events-none absolute inset-x-0 bottom-0 h-32 w-full opacity-70"
+            >
+              <defs>
+                <linearGradient id="hero-signal-fill" x1="0" x2="0" y1="0" y2="1">
+                  <stop offset="0" stopColor="#b3bfff" stopOpacity="0.22" />
+                  <stop offset="1" stopColor="#b3bfff" stopOpacity="0" />
+                </linearGradient>
+              </defs>
+              <path
+                d="M0 150 C65 142 85 118 132 126 C185 136 211 69 266 86 C316 101 345 124 389 89 C435 52 462 94 506 73 C552 52 588 26 624 48 C662 71 688 29 720 16 L720 180 L0 180 Z"
+                fill="url(#hero-signal-fill)"
+              />
+              <path
+                d="M0 150 C65 142 85 118 132 126 C185 136 211 69 266 86 C316 101 345 124 389 89 C435 52 462 94 506 73 C552 52 588 26 624 48 C662 71 688 29 720 16"
+                fill="none"
+                stroke="#b3bfff"
+                strokeWidth="2"
+                vectorEffect="non-scaling-stroke"
+              />
+              <circle cx="266" cy="86" r="4" fill="#b3bfff" />
+              <circle cx="506" cy="73" r="4" fill="#b3bfff" />
+              <circle cx="624" cy="48" r="5" fill="#b3bfff" />
+            </svg>
+
+            <div className="relative z-10">
+              {showGitHubStar && <GitHubStarButton />}
+            </div>
+            <h1 className="relative z-10 mt-7 max-w-3xl text-[clamp(3rem,5.25vw,4.75rem)] font-semibold leading-[0.96] tracking-[-0.04em] text-balance">
               {title}
             </h1>
           </div>
@@ -88,13 +128,13 @@ export function HeroSection({
           </div>
         </div>
 
-        <div className="min-w-0 border-t border-neutral-200 bg-neutral-100 p-2 dark:border-neutral-800 dark:bg-neutral-900 sm:p-3">
-          <div className="min-w-0 max-w-full overflow-hidden rounded-lg border border-neutral-300 bg-white dark:border-neutral-700 dark:bg-neutral-950">
+        <div className="min-w-0 border-t border-[#d9deff] bg-[#eef0ff] p-2 dark:border-[#303653] dark:bg-[#1b1e2e] sm:p-3">
+          <div className="min-w-0 max-w-full overflow-hidden rounded-lg border border-[#c6ceff] bg-white dark:border-[#3b4266] dark:bg-neutral-950">
             <div className="grid h-10 grid-cols-[1fr_auto_1fr] items-center gap-2 border-b border-neutral-200 px-3 dark:border-neutral-800 sm:px-4">
               <div className="flex gap-1.5" aria-hidden="true">
-                <span className="size-2.5 rounded-full bg-neutral-300 dark:bg-neutral-700" />
-                <span className="size-2.5 rounded-full bg-neutral-300 dark:bg-neutral-700" />
-                <span className="size-2.5 rounded-full bg-neutral-300 dark:bg-neutral-700" />
+                <span className="size-2.5 rounded-full bg-red-400 dark:bg-red-500" />
+                <span className="size-2.5 rounded-full bg-amber-400 dark:bg-amber-500" />
+                <span className="size-2.5 rounded-full bg-emerald-400 dark:bg-emerald-500" />
               </div>
               <a
                 href="https://demo.rybbit.com/81"
