@@ -1,6 +1,6 @@
-import { AgentSession } from "@/components/AgentSession";
 import { CTASection } from "@/components/CTASection";
 import { FAQAccordion } from "@/components/FAQAccordion";
+import { AgentConsole } from "@/components/Cards/AgentConsole";
 import { Funnels } from "@/components/Cards/Funnels";
 import { RealTimeAnalytics } from "@/components/Cards/RealTimeAnalytics";
 import { SessionReplay } from "@/components/Cards/SessionReplay";
@@ -385,13 +385,11 @@ export function LandingPageTemplate({ title, subtitle, showEUFlag = true }: Land
                 </h2>
                 <p className="mt-6 max-w-sm text-base leading-7 text-neutral-600 dark:text-neutral-400">
                   {t(
-                    "Rybbit ships a hosted MCP server on top of a full REST API. Connect an agent and it can read your traffic, investigate errors, build funnels, and manage sites — with the same permissions as any teammate."
+                    "A hosted MCP server on top of Rybbit's full REST API. Your agent reads live traffic, debugs errors, and manages goals — with the same permissions as a teammate."
                   )}
                 </p>
                 <div className="mt-10 max-w-sm">
-                  <p className="text-sm font-medium text-neutral-500 dark:text-neutral-400">
-                    {t("Guides for every MCP client")}
-                  </p>
+                  <p className="text-sm font-medium text-neutral-500 dark:text-neutral-400">{t("Works with")}</p>
                   <ul className="mt-3 flex flex-wrap gap-2">
                     {mcpClients.map(client => (
                       <li key={client.name}>
@@ -424,44 +422,11 @@ export function LandingPageTemplate({ title, subtitle, showEUFlag = true }: Land
               </div>
             </div>
 
-            <div className="lg:col-span-8">
-              <div className="relative border-b border-neutral-200 bg-neutral-100 p-5 [background-image:radial-gradient(circle,rgba(0,0,0,0.08)_1px,transparent_1px)] [background-size:14px_14px] dark:border-neutral-800 dark:bg-neutral-900 dark:[background-image:radial-gradient(circle,rgba(255,255,255,0.07)_1px,transparent_1px)] sm:p-8 lg:p-12">
-                <AgentSession />
-              </div>
-              <div className="grid gap-px bg-neutral-200 p-px dark:bg-neutral-800 sm:grid-cols-2">
-                {[
-                  {
-                    title: t("39 tools, one endpoint"),
-                    description: t(
-                      "Traffic, goals, funnels, sessions, people, and teams — plus read-only SQL over your raw events."
-                    ),
-                  },
-                  {
-                    title: t("Scoped credentials"),
-                    description: t(
-                      "Connect with OAuth or a per-agent API key, scoped down to exactly the resources it needs."
-                    ),
-                  },
-                  {
-                    title: t("The dashboard's own API"),
-                    description: t(
-                      "Every tool call runs through the same REST routes, access checks, roles, and rate limits as the dashboard."
-                    ),
-                  },
-                  {
-                    title: t("Docs agents can read"),
-                    description: t(
-                      "llms.txt endpoints and every docs page served as plain Markdown, ready for a model's context window."
-                    ),
-                  },
-                ].map(fact => (
-                  <div key={fact.title} className="bg-white px-5 py-6 dark:bg-neutral-950 sm:px-8 lg:px-10">
-                    <h3 className="text-sm font-semibold">{fact.title}</h3>
-                    <p className="mt-2 max-w-md text-sm leading-6 text-neutral-600 dark:text-neutral-400">
-                      {fact.description}
-                    </p>
-                  </div>
-                ))}
+            <div className="min-w-0 lg:col-span-8">
+              <div className="relative flex h-full items-center bg-neutral-100 p-5 [background-image:radial-gradient(circle,rgba(0,0,0,0.08)_1px,transparent_1px)] [background-size:14px_14px] dark:bg-neutral-900 dark:[background-image:radial-gradient(circle,rgba(255,255,255,0.07)_1px,transparent_1px)] sm:p-8 lg:p-12">
+                <div className="w-full min-w-0">
+                  <AgentConsole />
+                </div>
               </div>
             </div>
           </div>

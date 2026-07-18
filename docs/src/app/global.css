@@ -172,6 +172,46 @@ pre {
   }
 }
 
+/* ── Agent console decoration ────────────────────────────────────────────
+   Used by the homepage AgentConsole card. Base state is fully visible; the
+   animations are additive polish, so reduced motion simply removes them. */
+.console-caret {
+  animation: console-caret-blink 1.1s steps(1) infinite;
+}
+
+.console-rise {
+  animation: console-rise 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes console-caret-blink {
+  0%,
+  49% {
+    opacity: 1;
+  }
+  50%,
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes console-rise {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .console-caret,
+  .console-rise {
+    animation: none;
+  }
+}
+
 @keyframes accordion-down {
   from {
     height: 0;
