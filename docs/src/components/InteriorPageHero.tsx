@@ -1,3 +1,4 @@
+import { HeroDataLine } from "@/components/HeroDataLine";
 import { TrackedButton } from "@/components/TrackedButton";
 import { ArrowRight, ExternalLink } from "lucide-react";
 import { useExtracted } from "next-intl";
@@ -52,15 +53,18 @@ export function InteriorPageHero({
   return (
     <section className="border-b border-neutral-200 dark:border-neutral-800">
       <div className="mx-auto grid max-w-[1200px] border-x border-neutral-200 dark:border-neutral-800 lg:grid-cols-12">
-        <div className="border-b border-neutral-200 px-5 py-12 dark:border-neutral-800 sm:px-8 sm:py-16 lg:col-span-7 lg:border-b-0 lg:border-r lg:px-10 lg:py-20">
-          {eyebrow && (
-            <p className="mb-6 text-sm font-semibold text-neutral-500 dark:text-neutral-400">
-              {eyebrow}
-            </p>
-          )}
-          <h1 className="max-w-3xl text-[clamp(3rem,5.25vw,4.75rem)] font-semibold leading-[0.96] tracking-[-0.04em] text-neutral-950 text-balance dark:text-neutral-50">
-            {title}
-          </h1>
+        <div className="relative border-b border-neutral-200 px-5 py-12 dark:border-neutral-800 sm:px-8 sm:py-16 lg:col-span-7 lg:border-b-0 lg:border-r lg:px-10 lg:py-20">
+          <HeroDataLine id="interior" className="hidden h-28 sm:block lg:h-36" />
+          <div className="relative">
+            {eyebrow && (
+              <p className="mb-6 text-sm font-semibold text-emerald-600 dark:text-emerald-400">
+                {eyebrow}
+              </p>
+            )}
+            <h1 className="max-w-3xl text-[clamp(3rem,5.25vw,4.75rem)] font-semibold leading-[0.96] tracking-[-0.04em] text-neutral-950 text-balance dark:text-neutral-50">
+              {title}
+            </h1>
+          </div>
         </div>
 
         <div className="flex flex-col justify-center px-5 py-10 sm:px-8 sm:py-12 lg:col-span-5 lg:px-10 lg:py-16">

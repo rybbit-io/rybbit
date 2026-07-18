@@ -34,7 +34,7 @@ export function GitHubStarButton() {
         <span>Open source on GitHub</span>
         <span className="h-3.5 w-px bg-neutral-300 dark:bg-neutral-700" aria-hidden="true" />
         <span className="flex min-w-10 items-center justify-end gap-1 tabular-nums">
-          <Star className="size-3 fill-current" aria-hidden="true" />
+          <Star className="size-3 fill-current text-amber-500 dark:text-amber-400" aria-hidden="true" />
           {isLoading ? (
             <span className="h-3 w-7 animate-pulse rounded-sm bg-neutral-300 dark:bg-neutral-700" />
           ) : (

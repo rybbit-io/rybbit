@@ -9,6 +9,7 @@
 
 :root {
   --color-fd-primary: rgb(16 185 129); /* emerald-500 */
+  --dataviz: #7c8fe8; /* periwinkle data hue, deepened one step for white surfaces */
   --radius: 0.625rem;
   --background: oklch(1 0 0);
   --foreground: oklch(0.145 0 0);
@@ -45,6 +46,7 @@
 
 .dark {
   --color-fd-primary: rgb(16 185 129); /* emerald-500 */
+  --dataviz: #b3bfff; /* periwinkle data hue (DESIGN.md, dark) */
   --background: oklch(0.145 0 0);
   --foreground: oklch(0.985 0 0);
   --card: oklch(0.205 0 0);
@@ -85,6 +87,50 @@ body {
 code,
 pre {
   font-family: ui-monospace, SFMono-Regular, "SF Mono", Consolas, "Liberation Mono", Menlo, monospace;
+}
+
+/* ── Marketing data-line decoration ──────────────────────────────────────
+   The plotted line draws itself on load (pathLength=1, so dasharray/offset
+   run 1 → 0). Base state is the fully-drawn line: with reduced motion the
+   animation is simply removed and the decoration is static. */
+.dataline-path {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 0;
+  animation: dataline-draw 1.8s cubic-bezier(0.22, 1, 0.36, 1) 0.15s both;
+}
+
+.dataline-area {
+  animation: dataline-fade 1s ease-out 0.9s both;
+}
+
+.dataline-dot {
+  animation: dataline-fade 0.5s ease-out 1.5s both;
+}
+
+@keyframes dataline-draw {
+  from {
+    stroke-dashoffset: 1;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes dataline-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dataline-path,
+  .dataline-area,
+  .dataline-dot {
+    animation: none;
+  }
 }
 
 @keyframes accordion-down {

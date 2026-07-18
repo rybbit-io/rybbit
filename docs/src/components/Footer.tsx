@@ -1,3 +1,4 @@
+import { GridCrosses } from "@/components/GridCrosses";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { ThemeSwitcher } from "@/components/ThemeSwitcher";
 import { SiDiscord, SiGithub, SiX } from "@icons-pack/react-simple-icons";
@@ -84,7 +85,8 @@ export function Footer() {
 
   return (
     <footer className="border-t border-neutral-200 dark:border-neutral-800">
-      <div className="mx-auto max-w-[1200px] border-x border-neutral-200 dark:border-neutral-800">
+      <div className="relative mx-auto max-w-[1200px] border-x border-neutral-200 dark:border-neutral-800">
+        <GridCrosses />
         <div className="grid border-b border-neutral-200 dark:border-neutral-800 lg:grid-cols-12">
           <div className="border-b border-neutral-200 px-5 py-10 dark:border-neutral-800 sm:px-8 lg:col-span-3 lg:border-b-0 lg:border-r lg:py-14">
             <div className="flex h-full flex-col">

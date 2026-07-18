@@ -1,6 +1,7 @@
 "use client";
 
 import { Carousel, CarouselContent, CarouselItem, type CarouselApi } from "@/components/ui/carousel";
+import { GridCrosses } from "@/components/GridCrosses";
 import { Slider } from "@/components/ui/slider";
 import { cn } from "@/lib/utils";
 import { getCalApi } from "@calcom/embed-react";
@@ -143,7 +144,8 @@ export function PricingSection({ isAnnual, setIsAnnual }: { isAnnual: boolean, s
 
   return (
     <section className="relative z-10 border-b border-neutral-200 dark:border-neutral-800">
-      <div className="mx-auto max-w-[1200px] border-x border-neutral-200 px-5 py-16 dark:border-neutral-800 sm:px-8 md:py-24 lg:px-10">
+      <div className="relative mx-auto max-w-[1200px] border-x border-neutral-200 px-5 py-16 dark:border-neutral-800 sm:px-8 md:py-24 lg:px-10">
+        <GridCrosses />
         <div className="mb-14 grid gap-6 lg:grid-cols-12 lg:items-end">
           <h2 className="text-4xl font-semibold leading-[1.04] tracking-[-0.035em] md:text-5xl lg:col-span-4">
             {t("Pricing")}

@@ -61,7 +61,7 @@ export function PricingCard({
       className={cn(
         "h-full overflow-hidden rounded-lg border bg-white dark:bg-neutral-950",
         recommended
-          ? "border-emerald-500"
+          ? "border-emerald-500 bg-gradient-to-b from-emerald-500/[0.07] via-transparent to-transparent"
           : isFree
             ? "border-neutral-200 text-neutral-600 dark:border-neutral-800 dark:text-neutral-300"
             : "border-neutral-300 dark:border-neutral-800"
