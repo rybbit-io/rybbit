@@ -118,4 +118,47 @@ describe("siteConfigurationLifecycle", () => {
     expect(state.deletes).toBe(0);
     expect(mocks.invalidate).not.toHaveBeenCalled();
   });
+
+  describe("saltUserIds / persistentClientIds mutual exclusion", () => {
+    it("rejects enabling persistentClientIds while saltUserIds is already on", async () => {
+      state.site = { ...makeSite(), saltUserIds: true };
+
+      await expect(siteConfigurationLifecycle.update(1, { persistentClientIds: true })).rejects.toThrow(
+        "cannot both be enabled"
+      );
+      expect(state.updates).toHaveLength(0);
+    });
+
+    it("rejects enabling saltUserIds while persistentClientIds is already on", async () => {
+      state.site = { ...makeSite(), persistentClientIds: true };
+
+      await expect(siteConfigurationLifecycle.update(1, { saltUserIds: true })).rejects.toThrow(
+        "cannot both be enabled"
+      );
+      expect(state.updates).toHaveLength(0);
+    });
+
+    it("rejects enabling both in the same update", async () => {
+      await expect(
+        siteConfigurationLifecycle.update(1, { saltUserIds: true, persistentClientIds: true })
+      ).rejects.toThrow("cannot both be enabled");
+      expect(state.updates).toHaveLength(0);
+    });
+
+    it("allows enabling persistentClientIds when saltUserIds is disabled in the same update", async () => {
+      state.site = { ...makeSite(), saltUserIds: true };
+
+      await siteConfigurationLifecycle.update(1, { saltUserIds: false, persistentClientIds: true });
+
+      expect(state.updates).toHaveLength(1);
+      expect(state.updates[0]).toMatchObject({ saltUserIds: false, persistentClientIds: true });
+    });
+
+    it("allows enabling persistentClientIds when saltUserIds was never on", async () => {
+      await siteConfigurationLifecycle.update(1, { persistentClientIds: true });
+
+      expect(state.updates).toHaveLength(1);
+      expect(state.updates[0]).toMatchObject({ persistentClientIds: true });
+    });
+  });
 });

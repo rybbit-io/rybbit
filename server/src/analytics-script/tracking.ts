@@ -169,6 +169,10 @@ export class Tracker {
       payload.user_id = this.customUserId;
     }
 
+    if (this.config.persistentClientId) {
+      payload.anonymous_id = this.config.persistentClientId;
+    }
+
     if (this.config.tag) {
       payload.tag = this.config.tag;
     }

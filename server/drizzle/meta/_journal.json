@@ -92,6 +92,13 @@
       "when": 1784511287442,
       "tag": "0012_perfect_nebula",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1784532118944,
+      "tag": "0013_dizzy_celestials",
+      "breakpoints": true
     }
   ]
 }

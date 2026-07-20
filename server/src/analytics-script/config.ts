@@ -28,6 +28,33 @@ function getOrCreateVisitorId(namespace: string): string {
   }
 }
 
+// Only created/persisted when the site has opted into persistentClientIds
+// (consented, since this stores an identifier on the visitor's device).
+function getOrCreatePersistentClientId(namespace: string): string | undefined {
+  const key = `${namespace}-persistent-id`;
+
+  try {
+    const stored = localStorage.getItem(key);
+    if (stored) return stored;
+
+    const id = createVisitorId();
+    localStorage.setItem(key, id);
+    return id;
+  } catch (e) {
+    return undefined;
+  }
+}
+
+// If the site disabled persistentClientIds after previously enabling it, drop
+// any identifier already stored — it must not linger once consent is withdrawn.
+function clearPersistentClientId(namespace: string): void {
+  try {
+    localStorage.removeItem(`${namespace}-persistent-id`);
+  } catch (e) {
+    // localStorage unavailable; nothing to clear
+  }
+}
+
 function getIdentifiedUserId(namespace: string): string | undefined {
   try {
     return localStorage.getItem(`${namespace}-user-id`) || undefined;
@@ -228,6 +255,12 @@ export async function parseScriptConfig(scriptTag: HTMLScriptElement): Promise<S
         trackCopy: apiConfig.trackCopy ?? defaultConfig.trackCopy,
         trackFormInteractions: apiConfig.trackFormInteractions ?? defaultConfig.trackFormInteractions,
       };
+
+      if (apiConfig.persistentClientIds) {
+        resolvedConfig.persistentClientId = getOrCreatePersistentClientId(namespace);
+      } else {
+        clearPersistentClientId(namespace);
+      }
     } else {
       // If API call fails, log warning and use defaults
       console.warn("Failed to fetch tracking config from API, using defaults");

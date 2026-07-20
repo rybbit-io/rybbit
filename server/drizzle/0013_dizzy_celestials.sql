@@ -1,0 +1,1 @@
+ALTER TABLE "sites" ADD COLUMN "persistent_client_ids" boolean DEFAULT false;

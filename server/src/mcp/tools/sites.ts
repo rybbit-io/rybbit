@@ -140,6 +140,12 @@ export function registerSiteTools(server: McpServer, api: RybbitApiClient, guard
           .describe(
             "Site is fronted by a first-party proxy (Cloudflare Worker, CloudFront, nginx); visitor IPs are read from forwarded headers"
           ),
+        persistentClientIds: z
+          .boolean()
+          .optional()
+          .describe(
+            "Use a persistent localStorage identifier (sent as anonymous_id) instead of the cookieless IP+UA fingerprint, for stronger identification accuracy. Requires the site's own consent banner, since this stores an identifier on the visitor's device; mutually exclusive with saltUserIds"
+          ),
         excludedIPs: z.array(z.string()).optional().describe("Replaces the exclusion list wholesale"),
         excludedCountries: z.array(z.string()).optional(),
         excludedPaths: z.array(z.string()).optional(),

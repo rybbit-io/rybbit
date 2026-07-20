@@ -6,13 +6,14 @@ import { parseTrackingData } from "./trackingUtils.js";
 import { sessionsService } from "../sessions/sessionsService.js";
 import { userIdService } from "../userId/userIdService.js";
 import { r2Storage } from "../storage/r2StorageService.js";
-import { siteConfig } from "../../lib/siteConfig.js";
 
 export interface RequestMetadata {
   userAgent: string;
   ipAddress: string;
   origin: string;
   referrer: string;
+  /** Whether the site has opted into persistent client IDs (see userIdService). */
+  persistentClientIds?: boolean;
 }
 
 /**
@@ -25,14 +26,17 @@ export class SessionReplayIngestService {
     request: RecordSessionReplayRequest,
     requestMeta?: RequestMetadata
   ): Promise<void> {
-    const { userId: clientUserId, events, metadata } = request;
+    const { userId: clientUserId, anonymousId, events, metadata } = request;
 
-    // Always generate device fingerprint (anonymous user ID) server-side
-    const deviceFingerprint = await userIdService.generateUserId(
-      requestMeta?.ipAddress || "",
-      requestMeta?.userAgent || "",
-      siteId
-    );
+    // Generate the device fingerprint (anonymous user ID) server-side. When the
+    // site has opted into persistent client IDs, prefer the client's persistent
+    // identifier so replay identity matches the fingerprint pageview tracking
+    // computes for the same visitor (createBasePayload) — otherwise the two
+    // would diverge and replay would fork onto its own session lineage.
+    const deviceFingerprint =
+      requestMeta?.persistentClientIds && anonymousId
+        ? await userIdService.generateUserIdFromClientId(anonymousId, siteId)
+        : await userIdService.generateUserId(requestMeta?.ipAddress || "", requestMeta?.userAgent || "", siteId);
 
     // Check if client provided an identified user ID (different from device fingerprint)
     const trimmedClientUserId = clientUserId?.trim() || "";

@@ -78,6 +78,7 @@ export function GeneralTab({ siteMetadata, disabled = false, onClose, onPublicCh
     saltUserIds: siteMetadata.saltUserIds || false,
     blockBots: siteMetadata.blockBots || false,
     firstPartyProxy: siteMetadata.firstPartyProxy || false,
+    persistentClientIds: siteMetadata.persistentClientIds || false,
     trackIp: siteMetadata.trackIp ?? false,
   });
 
@@ -206,9 +207,12 @@ export function GeneralTab({ siteMetadata, disabled = false, onClose, onPublicCh
     {
       id: "saltUserIds",
       label: t("User ID Salting"),
-      description: t("User IDs will be salted with a daily rotating key for enhanced privacy"),
+      description: toggleStates.persistentClientIds
+        ? t("Disable Persistent Client IDs first — the two settings are mutually exclusive.")
+        : t("User IDs will be salted with a daily rotating key for enhanced privacy"),
       value: toggleStates.saltUserIds,
       key: "saltUserIds",
+      disabled: toggleStates.persistentClientIds,
       enabledMessage: t("User ID salting enabled"),
       disabledMessage: t("User ID salting disabled"),
     },
@@ -231,6 +235,20 @@ export function GeneralTab({ siteMetadata, disabled = false, onClose, onPublicCh
       key: "firstPartyProxy",
       enabledMessage: t("First-party proxy mode enabled"),
       disabledMessage: t("First-party proxy mode disabled"),
+    },
+    {
+      id: "persistentClientIds",
+      label: t("Persistent Client IDs"),
+      description: toggleStates.saltUserIds
+        ? t("Disable User ID Salting first — the two settings are mutually exclusive.")
+        : t(
+            "Store a persistent identifier in the visitor's browser for more accurate user identification than the cookieless IP+UA fingerprint. This requires your own consent banner, since it stores an identifier on the visitor's device."
+          ),
+      value: toggleStates.persistentClientIds,
+      key: "persistentClientIds",
+      disabled: toggleStates.saltUserIds,
+      enabledMessage: t("Persistent client IDs enabled"),
+      disabledMessage: t("Persistent client IDs disabled"),
     },
     {
       id: "trackIp",

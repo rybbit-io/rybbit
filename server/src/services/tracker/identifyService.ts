@@ -96,13 +96,16 @@ export async function handleIdentify(request: FastifyRequest, reply: FastifyRepl
 
     const siteId = siteConfiguration.siteId;
 
-    const anonymousId = anonymous_id
-      ? await userIdService.generateUserIdFromClientId(anonymous_id, siteId)
-      : await userIdService.generateUserId(
-          ip_address || resolveClientIp(request, { firstPartyProxy: siteConfiguration.firstPartyProxy }),
-          user_agent || request.headers["user-agent"] || "",
-          siteId
-        );
+    // Only honor a client-supplied anonymous_id when the site has opted into
+    // persistent client IDs — see createBasePayload for why.
+    const anonymousId =
+      siteConfiguration.persistentClientIds && anonymous_id
+        ? await userIdService.generateUserIdFromClientId(anonymous_id, siteId)
+        : await userIdService.generateUserId(
+            ip_address || resolveClientIp(request, { firstPartyProxy: siteConfiguration.firstPartyProxy }),
+            user_agent || request.headers["user-agent"] || "",
+            siteId
+          );
 
     // Create alias if this is a new identify call (links anonymous_id to user_id)
     if (is_new_identify) {

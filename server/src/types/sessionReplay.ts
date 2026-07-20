@@ -47,6 +47,9 @@ export interface SessionReplayMetadata {
 
 export interface RecordSessionReplayRequest {
   userId: string;
+  // Client-side persistent identifier (localStorage), only honored when the
+  // site has opted into persistentClientIds; see sessionReplayIngestService.
+  anonymousId?: string;
   events: Array<{
     type: string | number;
     data: any;

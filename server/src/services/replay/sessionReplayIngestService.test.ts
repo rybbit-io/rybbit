@@ -3,6 +3,7 @@ import type { RecordSessionReplayRequest } from "../../types/sessionReplay.js";
 
 const mocks = vi.hoisted(() => ({
   generateUserId: vi.fn(),
+  generateUserIdFromClientId: vi.fn(),
   insert: vi.fn(),
   updateSession: vi.fn(),
 }));
@@ -22,6 +23,7 @@ vi.mock("../sessions/sessionsService.js", () => ({
 vi.mock("../userId/userIdService.js", () => ({
   userIdService: {
     generateUserId: mocks.generateUserId,
+    generateUserIdFromClientId: mocks.generateUserIdFromClientId,
   },
 }));
 
@@ -29,10 +31,6 @@ vi.mock("../storage/r2StorageService.js", () => ({
   r2Storage: {
     isEnabled: () => false,
   },
-}));
-
-vi.mock("../../lib/siteConfig.js", () => ({
-  siteConfig: {},
 }));
 
 import { SessionReplayIngestService } from "./sessionReplayIngestService.js";
@@ -44,9 +42,10 @@ const requestMeta = {
   referrer: "",
 };
 
-function replayRequest(identifiedUserId: string): RecordSessionReplayRequest {
+function replayRequest(identifiedUserId: string, anonymousId?: string): RecordSessionReplayRequest {
   return {
     userId: identifiedUserId,
+    anonymousId,
     events: [{ type: 2, data: { user: identifiedUserId }, timestamp: 1_700_000_000_000 }],
   };
 }
@@ -55,6 +54,7 @@ describe("SessionReplayIngestService identity", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.generateUserId.mockResolvedValue("shared-fingerprint");
+    mocks.generateUserIdFromClientId.mockResolvedValue("persistent-fingerprint");
     mocks.updateSession.mockImplementation(
       async ({ userId, identifiedUserId }: { userId: string; identifiedUserId?: string }) => ({
         sessionId: `session-${userId}-${identifiedUserId || "anonymous"}`,
@@ -99,5 +99,40 @@ describe("SessionReplayIngestService identity", () => {
       identifiedUserId: "",
       siteId: 42,
     });
+  });
+
+  it("uses the persistent client id when the site has opted in", async () => {
+    const service = new SessionReplayIngestService();
+
+    await service.recordEvents(42, replayRequest("", "visitor-abc"), {
+      ...requestMeta,
+      persistentClientIds: true,
+    });
+
+    expect(mocks.generateUserIdFromClientId).toHaveBeenCalledWith("visitor-abc", 42);
+    expect(mocks.generateUserId).not.toHaveBeenCalled();
+    expect(mocks.updateSession).toHaveBeenCalledWith({
+      userId: "persistent-fingerprint",
+      identifiedUserId: "",
+      siteId: 42,
+    });
+  });
+
+  it("ignores a client-supplied anonymousId when the site has not opted in", async () => {
+    const service = new SessionReplayIngestService();
+
+    await service.recordEvents(42, replayRequest("", "visitor-abc"), requestMeta);
+
+    expect(mocks.generateUserIdFromClientId).not.toHaveBeenCalled();
+    expect(mocks.generateUserId).toHaveBeenCalledWith(requestMeta.ipAddress, requestMeta.userAgent, 42);
+  });
+
+  it("falls back to the IP+UA fingerprint when opted in but no anonymousId is sent", async () => {
+    const service = new SessionReplayIngestService();
+
+    await service.recordEvents(42, replayRequest(""), { ...requestMeta, persistentClientIds: true });
+
+    expect(mocks.generateUserIdFromClientId).not.toHaveBeenCalled();
+    expect(mocks.generateUserId).toHaveBeenCalledWith(requestMeta.ipAddress, requestMeta.userAgent, 42);
   });
 });

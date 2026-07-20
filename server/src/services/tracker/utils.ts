@@ -142,9 +142,13 @@ export async function createBasePayload(
   );
   const { ip_address: _ipAddressOverride, user_agent: _userAgentOverride, ...payloadBody } = validatedBody;
 
-  const anonymousId = validatedBody.anonymous_id
-    ? await userIdService.generateUserIdFromClientId(validatedBody.anonymous_id, siteConfiguration.siteId)
-    : await userIdService.generateUserId(ipAddress, userAgent, siteConfiguration.siteId);
+  // Only honor a client-supplied anonymous_id when the site has opted into
+  // persistent client IDs — otherwise it's an unverified value from the
+  // browser and any visitor could claim to be any other visitor's identity.
+  const anonymousId =
+    siteConfiguration.persistentClientIds && validatedBody.anonymous_id
+      ? await userIdService.generateUserIdFromClientId(validatedBody.anonymous_id, siteConfiguration.siteId)
+      : await userIdService.generateUserId(ipAddress, userAgent, siteConfiguration.siteId);
 
   // userId is always the device fingerprint
   // identifiedUserId is the custom user ID when provided, empty string otherwise

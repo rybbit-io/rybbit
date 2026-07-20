@@ -70,4 +70,27 @@ describe("SessionReplayRecorder identity", () => {
       events: [{ data: { user: "employee-bob" } }],
     });
   });
+
+  it("attaches anonymousId to batches when a persistent client id is configured", async () => {
+    const persistentConfig: ScriptConfig = { ...config, persistentClientId: "visitor-abc-123" };
+    const persistentSendBatch = vi.fn().mockResolvedValue(undefined);
+    const persistentRecorder = new SessionReplayRecorder(persistentConfig, "", persistentSendBatch);
+    await persistentRecorder.initialize();
+
+    emit({ type: 2, data: {}, timestamp: 1_700_000_002_000 });
+    persistentRecorder.stopRecording();
+
+    await vi.waitFor(() => expect(persistentSendBatch).toHaveBeenCalledTimes(1));
+    expect(persistentSendBatch.mock.calls[0][0]).toMatchObject({ anonymousId: "visitor-abc-123" });
+
+    persistentRecorder.cleanup();
+  });
+
+  it("omits anonymousId when no persistent client id is configured", async () => {
+    emit({ type: 2, data: { user: "employee-alice" }, timestamp: 1_700_000_003_000 });
+    recorder.stopRecording();
+
+    await vi.waitFor(() => expect(sendBatch).toHaveBeenCalledTimes(1));
+    expect(sendBatch.mock.calls[0][0].anonymousId).toBeUndefined();
+  });
 });
