@@ -2,6 +2,7 @@ import crypto from "crypto";
 import { SECRET } from "../../lib/const.js";
 import { siteConfig } from "../../lib/siteConfig.js";
 import { bucketIpForIdentity } from "./identityIpBucket.js";
+import { resolveStickyUserId } from "./stickyUserId.js";
 
 class UserIdService {
   private cachedSalt: string | null = null;
@@ -55,21 +56,23 @@ class UserIdService {
 
     // Only apply salt if the site has salting enabled
     const config = await siteConfig.getConfig(siteId);
-    if (config && config.saltUserIds) {
-      const dailySalt = this.getDailySalt(); // Get the salt for the current day
-      return crypto
-        .createHash("sha256")
-        .update(identityIp + userAgent + dailySalt)
-        .digest("hex")
-        .substring(0, 12);
-    }
-
-    // Otherwise, just hash IP and user agent
-    return crypto
+    const salted = !!config?.saltUserIds;
+    const rawUserId = crypto
       .createHash("sha256")
-      .update(identityIp + userAgent)
+      .update(identityIp + userAgent + (salted ? this.getDailySalt() : ""))
       .digest("hex")
       .substring(0, 12);
+
+    // Rotation can still cross bucket boundaries; sticky re-attachment glues an
+    // unambiguously-matching new fingerprint back onto its previous identity.
+    return resolveStickyUserId({
+      siteId,
+      rawUserId,
+      ipAddress: ip,
+      userAgent,
+      // cacheDate is the UTC date the salt in rawUserId was built from.
+      saltScope: salted ? (this.cacheDate ?? "") : "",
+    });
   }
 
   async generateUserIdFromClientId(clientId: string, siteId: number): Promise<string> {

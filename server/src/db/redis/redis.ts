@@ -1,5 +1,6 @@
 import { Redis } from "ioredis";
 import { createServiceLogger } from "../../lib/logger/logger.js";
+import { STICKY_RESOLVE_LUA } from "./stickyResolveLua.js";
 
 const logger = createServiceLogger("redis");
 
@@ -78,6 +79,81 @@ interface SessionRedis extends Redis {
  */
 export function sessionGetOrCreate(key: string, candidateId: string, ttlMs: number): Promise<string> {
   return (sessionRedis as SessionRedis).sessionGetOrCreate(key, candidateId, ttlMs);
+}
+
+// Dedicated connection for sticky identity re-attachment, isolated for the same
+// reason as `sessionRedis`: a slow call on a shared connection would head-of-line
+// block session resolution for unrelated requests.
+export const identityRedis = createRedisClient("identity");
+
+// Sticky identity re-attachment: when a visitor behind a rotating proxy egress
+// gets a brand-new fingerprint hash mid-visit, re-attach them to their previous
+// identity instead of minting a phantom user — but only when the evidence is
+// unambiguous (exactly one recently-active candidate under the same user agent).
+//
+// State per site:
+//   seen:<userId>   flag: this fingerprint is a known identity (sliding TTL)
+//   cand (ZSET)     identities recently seen through *datacenter egress* under
+//                   one (site, UA[, salt day]), scored by last-seen ms — only
+//                   eligible requests register, so a residential visitor can
+//                   never be the lone candidate a datacenter arrival merges into
+//   alias (chain)   durable re-attachment decision: raw fingerprint -> canonical;
+//                   resolution follows chains to the terminal id and compresses
+//
+// Flow: alias hit -> follow it; known fingerprint -> keep it; new fingerprint ->
+// attach iff eligible (datacenter egress) and exactly one candidate, else abstain
+// and register as a new identity. Abstention means the failure mode stays "split"
+// (status quo), never "merge". Runs as one Lua call so decisions are atomic
+// across workers. Keys for the seen/alias touches of *other* identities are
+// composed inside the script from prefix ARGVs — fine on single-node Redis, not
+// cluster-safe. Script body lives in stickyResolveLua.ts so the behavioral tests
+// exercise the identical Lua.
+identityRedis.defineCommand("stickyResolve", {
+  numberOfKeys: 3,
+  lua: STICKY_RESOLVE_LUA,
+});
+
+export type StickyResolveOutcome = "alias" | "known" | "attach" | "abstain_none" | "abstain_multi" | "new";
+
+export interface StickyResolveInput {
+  seenKey: string;
+  candidatesKey: string;
+  aliasKey: string;
+  rawUserId: string;
+  nowMs: number;
+  candidateWindowMs: number;
+  seenTtlMs: number;
+  aliasTtlMs: number;
+  /** Whether this request may attempt re-attachment (datacenter-egress IPs only). */
+  eligible: boolean;
+  seenKeyPrefix: string;
+  aliasKeyPrefix: string;
+  maxCandidates: number;
+}
+
+interface IdentityRedis extends Redis {
+  stickyResolve(...args: (string | number)[]): Promise<[string, StickyResolveOutcome]>;
+}
+
+/**
+ * Resolve the canonical user id for a raw fingerprint hash, re-attaching rotated
+ * proxy identities when unambiguous. Atomic across all workers; one round-trip.
+ */
+export function stickyResolve(input: StickyResolveInput): Promise<[string, StickyResolveOutcome]> {
+  return (identityRedis as IdentityRedis).stickyResolve(
+    input.seenKey,
+    input.candidatesKey,
+    input.aliasKey,
+    input.rawUserId,
+    input.nowMs,
+    input.candidateWindowMs,
+    input.seenTtlMs,
+    input.aliasTtlMs,
+    input.eligible ? "1" : "0",
+    input.seenKeyPrefix,
+    input.aliasKeyPrefix,
+    input.maxCandidates
+  );
 }
 
 // Rolling-window counters for the bot anomaly scorer. Each counter is a sorted

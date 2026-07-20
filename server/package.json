@@ -75,6 +75,7 @@
   },
   "devDependencies": {
     "@electric-sql/pglite": "^0.5.4",
+    "@types/ioredis-mock": "^8.2.7",
     "@types/jsdom": "^21.1.7",
     "@types/luxon": "3.7.1",
     "@types/node": "^20.14.8",
@@ -85,6 +86,7 @@
     "@types/sqlstring": "2.3.2",
     "drizzle-kit": "0.31.9",
     "esbuild": "^0.25.5",
+    "ioredis-mock": "^8.13.1",
     "jsdom": "^26.1.0",
     "knip": "^5.60.2",
     "pino-pretty": "^13.1.1",
