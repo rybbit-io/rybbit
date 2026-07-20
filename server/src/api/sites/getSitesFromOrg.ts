@@ -3,11 +3,12 @@ import { FastifyRequest, FastifyReply } from "fastify";
 import { clickhouse } from "../../db/clickhouse/clickhouse.js";
 import { db } from "../../db/postgres/postgres.js";
 import { sites, member, organization, team, teamSiteAccess } from "../../db/postgres/schema.js";
-import { IS_CLOUD, DEFAULT_EVENT_LIMIT } from "../../lib/const.js";
+import { DEFAULT_EVENT_LIMIT, IS_CLOUD, LITE_DASHBOARD } from "../../lib/const.js";
 import { getUserIdFromRequest } from "../../lib/auth-utils.js";
 import { filterSitesByMemberAccess } from "../../lib/siteAccess.js";
 import { processResults } from "../analytics/utils/utils.js";
 import { getSubscriptionInner } from "../stripe/getSubscription.js";
+import { buildSiteSessionCountsQuery } from "./siteSessionCountsQuery.js";
 
 export async function getSitesFromOrg(
   req: FastifyRequest<{
@@ -57,15 +58,8 @@ export async function getSitesFromOrg(
       const siteIds = sitesData.map(site => site.siteId);
 
       const sessionCountsResult = await clickhouse.query({
-        query: `
-          SELECT 
-            site_id, 
-            uniqExact(session_id) AS total_sessions 
-          FROM events 
-          WHERE timestamp >= now() - INTERVAL 1 DAY 
-            AND site_id IN (${siteIds.join(",")})
-          GROUP BY site_id
-        `,
+        query: buildSiteSessionCountsQuery(LITE_DASHBOARD),
+        query_params: { siteIds },
         format: "JSONEachRow",
       });
       const sessionCounts = await processResults(sessionCountsResult);
