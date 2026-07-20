@@ -244,9 +244,10 @@ configs:
         <profiles>
           <default>
             <enable_json_type>1</enable_json_type>
-            <!-- 26.3+ enables async_insert by default; the backend already
-                 batches app-side, so keep inserts synchronous -->
-            <async_insert>0</async_insert>
+            <!-- Combine concurrent inserts into larger blocks inside ClickHouse.
+                 Wait for the flush so the backend still receives insert errors. -->
+            <async_insert>1</async_insert>
+            <wait_for_async_insert>1</wait_for_async_insert>
             <log_queries>1</log_queries>
             <log_query_threads>0</log_query_threads>
             <log_processors_profiles>0</log_processors_profiles>
