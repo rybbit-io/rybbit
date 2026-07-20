@@ -3,6 +3,10 @@ export interface ScriptConfig {
   analyticsHost: string;
   siteId: string;
   visitorId: string;
+  // Persistent localStorage identifier, only present when the site has opted
+  // into persistentClientIds. Sent as anonymous_id on tracking payloads and
+  // replay batches for stronger identification accuracy than IP+UA.
+  persistentClientId?: string;
   debounceDuration: number;
   autoTrackPageview: boolean;
   autoTrackSpa: boolean;
@@ -59,6 +63,7 @@ export interface BasePayload {
   page_title: string;
   referrer: string;
   user_id?: string;
+  anonymous_id?: string;
   tag?: string;
   feature_flags?: Record<string, string>;
   _bs?: number; // Client-side weighted bot detection score
@@ -159,6 +164,7 @@ export interface SessionReplayEvent {
 
 export interface SessionReplayBatch {
   userId: string;
+  anonymousId?: string;
   events: SessionReplayEvent[];
   metadata?: {
     pageUrl: string;

@@ -32,6 +32,7 @@ export async function getTrackingConfig(request: FastifyRequest<{ Params: { site
       trackButtonClicks: config.trackButtonClicks || false,
       trackCopy: config.trackCopy || false,
       trackFormInteractions: config.trackFormInteractions || false,
+      persistentClientIds: config.persistentClientIds || false,
     });
   } catch (error) {
     request.log.error({ err: error }, "Error getting tracking config");

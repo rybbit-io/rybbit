@@ -239,6 +239,7 @@ export class SessionReplayRecorder {
 
     const batch: SessionReplayBatch = {
       userId: this.userId,
+      ...(this.config.persistentClientId && { anonymousId: this.config.persistentClientId }),
       events,
       metadata: {
         pageUrl: window.location.href,

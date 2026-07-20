@@ -14,6 +14,7 @@ export interface SiteConfigData {
   domain: string;
   blockBots: boolean;
   firstPartyProxy: boolean;
+  persistentClientIds: boolean;
   excludedIPs: string[];
   excludedCountries: string[];
   excludedPaths: string[];
@@ -102,6 +103,7 @@ class SiteConfig {
         domain: site.domain || "",
         blockBots: site.blockBots === undefined ? true : site.blockBots,
         firstPartyProxy: site.firstPartyProxy || false,
+        persistentClientIds: site.persistentClientIds || false,
         excludedIPs: Array.isArray(site.excludedIPs) ? site.excludedIPs : [],
         excludedCountries: Array.isArray(site.excludedCountries) ? site.excludedCountries : [],
         excludedPaths: Array.isArray(site.excludedPaths) ? site.excludedPaths : [],

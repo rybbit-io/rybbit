@@ -9,6 +9,7 @@ import { decideSiteExclusion } from "../../services/sites/siteExclusionDecision.
 
 const recordSessionReplaySchema = z.object({
   userId: z.string(),
+  anonymousId: z.string().min(1).max(255).optional(),
   events: z.array(
     z.object({
       type: z.union([z.string(), z.number()]),
@@ -120,6 +121,7 @@ export async function recordSessionReplay(
       ipAddress: requestIP,
       origin,
       referrer,
+      persistentClientIds: siteConfiguration.persistentClientIds,
     });
 
     return reply.send({ success: true });

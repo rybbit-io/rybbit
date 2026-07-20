@@ -45,6 +45,7 @@ export type UpdateSiteConfigurationInput = {
   saltUserIds?: boolean;
   blockBots?: boolean;
   firstPartyProxy?: boolean;
+  persistentClientIds?: boolean;
   domain?: string;
   excludedIPs?: string[];
   excludedCountries?: string[];
@@ -77,7 +78,8 @@ export type SiteLifecycleErrorCode =
   | "site_not_found"
   | "invalid_ip_patterns"
   | "empty_update"
-  | "domain_conflict";
+  | "domain_conflict"
+  | "salting_persistent_id_conflict";
 
 export class SiteLifecycleError extends Error {
   constructor(
@@ -107,6 +109,7 @@ const DIRECT_UPDATE_FIELDS = [
   "saltUserIds",
   "blockBots",
   "firstPartyProxy",
+  "persistentClientIds",
   "excludedIPs",
   "excludedCountries",
   "excludedPaths",
@@ -158,6 +161,26 @@ function validateMobileFeatures(type: SiteType, input: Pick<CreateSiteInput, "se
       "mobile_feature_not_supported",
       400,
       "Session replay and Web Vitals are only available for web sites"
+    );
+  }
+}
+
+// Salting (daily-rotating anonymity) and persistent client IDs (consented
+// cross-session linkage) are opposite privacy postures; enabling both would
+// mean the persistent ID re-splits every UTC midnight while still carrying the
+// consent obligation, which is worse than either setting alone.
+function validateIdentitySettings(
+  site: Pick<SiteRow, "saltUserIds" | "persistentClientIds">,
+  input: Pick<UpdateSiteConfigurationInput, "saltUserIds" | "persistentClientIds">
+): void {
+  const nextSaltUserIds = input.saltUserIds ?? site.saltUserIds ?? false;
+  const nextPersistentClientIds = input.persistentClientIds ?? site.persistentClientIds ?? false;
+
+  if (nextSaltUserIds && nextPersistentClientIds) {
+    throw new SiteLifecycleError(
+      "salting_persistent_id_conflict",
+      400,
+      "User ID salting and persistent client IDs cannot both be enabled: disable one before enabling the other"
     );
   }
 }
@@ -287,6 +310,7 @@ class SiteConfigurationLifecycle {
       validateSiteIdentity(nextSiteType, domain);
     }
     validateMobileFeatures(nextSiteType, input);
+    validateIdentitySettings(site, input);
 
     if (IS_CLOUD && input.sessionReplay === true) {
       const subscription = site.organizationId ? await getSubscriptionInner(site.organizationId) : null;

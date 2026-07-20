@@ -79,6 +79,11 @@ export const sites = pgTable(
     // nginx, ...) fronts their tracking traffic, so forwarded headers carry the
     // real visitor IP and must win over the connecting edge IP.
     firstPartyProxy: boolean("first_party_proxy").default(false),
+    // Site owner opts into a persistent client-side identifier (localStorage,
+    // sent as anonymous_id) for stronger identification accuracy than the
+    // cookieless IP+UA fingerprint. Requires the site's own consent banner;
+    // mutually exclusive with saltUserIds (opposite privacy postures).
+    persistentClientIds: boolean("persistent_client_ids").default(false),
     excludedIPs: jsonb("excluded_ips").default([]), // Array of IP addresses/ranges to exclude
     excludedCountries: jsonb("excluded_countries").default([]), // Array of ISO country codes to exclude (e.g., ["US", "GB"])
     excludedPaths: jsonb("excluded_paths").default([]).$type<string[]>(), // Array of pathname glob patterns to exclude (e.g., ["/admin/*", "/preview"])

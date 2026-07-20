@@ -88,6 +88,24 @@
       return createVisitorId();
     }
   }
+  function getOrCreatePersistentClientId(namespace) {
+    const key = `${namespace}-persistent-id`;
+    try {
+      const stored = localStorage.getItem(key);
+      if (stored) return stored;
+      const id = createVisitorId();
+      localStorage.setItem(key, id);
+      return id;
+    } catch (e2) {
+      return void 0;
+    }
+  }
+  function clearPersistentClientId(namespace) {
+    try {
+      localStorage.removeItem(`${namespace}-persistent-id`);
+    } catch (e2) {
+    }
+  }
   function getIdentifiedUserId(namespace) {
     try {
       return localStorage.getItem(`${namespace}-user-id`) || void 0;
@@ -238,6 +256,11 @@
           trackCopy: apiConfig.trackCopy ?? defaultConfig.trackCopy,
           trackFormInteractions: apiConfig.trackFormInteractions ?? defaultConfig.trackFormInteractions
         };
+        if (apiConfig.persistentClientIds) {
+          resolvedConfig.persistentClientId = getOrCreatePersistentClientId(namespace);
+        } else {
+          clearPersistentClientId(namespace);
+        }
       } else {
         console.warn("Failed to fetch tracking config from API, using defaults");
       }
@@ -419,6 +442,7 @@
       this.eventBuffer = [];
       const batch = {
         userId: this.userId,
+        ...this.config.persistentClientId && { anonymousId: this.config.persistentClientId },
         events,
         metadata: {
           pageUrl: window.location.href,
@@ -728,6 +752,9 @@
       };
       if (this.customUserId) {
         payload.user_id = this.customUserId;
+      }
+      if (this.config.persistentClientId) {
+        payload.anonymous_id = this.config.persistentClientId;
       }
       if (this.config.tag) {
         payload.tag = this.config.tag;
