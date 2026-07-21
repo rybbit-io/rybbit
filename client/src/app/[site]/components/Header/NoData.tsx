@@ -123,7 +123,9 @@ export function NoData() {
   const { data: siteHasData, isLoading } = useSiteHasData(site);
   const { data: siteMetadata, isLoading: isLoadingSiteMetadata } = useGetSite(site);
 
-  if (siteHasData || isLoading || isLoadingSiteMetadata) {
+  const siteId = siteMetadata?.id ?? siteMetadata?.siteId ?? (site || undefined);
+
+  if (siteHasData || isLoading || isLoadingSiteMetadata || !siteId) {
     return null;
   }
 
@@ -131,7 +133,6 @@ export function NoData() {
   const hiddenCount = PLATFORM_GUIDES.length - VISIBLE_PLATFORM_COUNT;
 
   const isMobileSite = siteMetadata?.type === "mobile";
-  const siteId = siteMetadata?.id ?? siteMetadata?.siteId;
   const scriptUrl = `${globalThis.location.origin}/api/script.js`;
 
   const htmlSnippet = `<script\n    src="${scriptUrl}"\n    data-site-id="${siteId}"\n    defer\n></script>`;

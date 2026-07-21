@@ -10,6 +10,12 @@ export async function proxy(request: NextRequest) {
     return NextResponse.next();
   }
 
+  // Embed widget routes — hex public site ids are 12 chars and would otherwise
+  // match the private-key pattern below (/widget/<hexId>).
+  if (path.startsWith("/widget/")) {
+    return NextResponse.next();
+  }
+
   // Handle GitHub OAuth callback redirect
   if (path.includes("/auth/callback/github") || path.includes("/auth/callback/google")) {
     const redirectUrl = new URL(`/api${path}${request.nextUrl.search}`, request.url);
