@@ -61,7 +61,7 @@ export function EventDetailsSheet({ open, onOpenChange, event, site }: EventDeta
           <SheetTitle>
             <div className="flex items-center gap-2">
               <EventTypeIcon type={event?.type || ""} className="w-5 h-5" />
-              <span className="font-medium">{getEventTypeLabel(event?.type || "", t)}</span>
+              <span className="font-medium">{getEventTypeLabel(event?.type || "")}</span>
             </div>
           </SheetTitle>
         </SheetHeader>
