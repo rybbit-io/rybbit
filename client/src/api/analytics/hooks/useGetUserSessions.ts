@@ -89,6 +89,10 @@ export function useGetSessionsInfinite({
     },
     staleTime: Infinity,
     refetchInterval,
+    // Without this the hook fires while the store's site is still empty, requesting
+    // /api/sites//sessions (400). LiveUserCount renders on every [site] page, so
+    // this ran on every page load.
+    enabled: !!site,
   });
 }
 
