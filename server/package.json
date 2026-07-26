@@ -30,9 +30,9 @@
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.842.0",
-    "@better-auth/api-key": "^1.6.23",
+    "@better-auth/api-key": "^1.6.25",
     "@better-auth/infra": "^0.1.12",
-    "@better-auth/sso": "^1.6.23",
+    "@better-auth/sso": "^1.6.25",
     "@clickhouse/client": "1.11.1",
     "@fastify/cors": "11.2.0",
     "@fastify/rate-limit": "^10.3.0",
@@ -43,10 +43,10 @@
     "@react-email/components": "1.0.1",
     "@react-email/tailwind": "2.0.1",
     "@rybbit/shared": "file:../shared",
-    "better-auth": "1.6.23",
+    "better-auth": "1.6.25",
     "bullmq": "^5.56.5",
     "dotenv": "16.5.0",
-    "drizzle-orm": "0.45.1",
+    "drizzle-orm": "0.45.2",
     "fastify": "5.8.5",
     "i18n-iso-countries": "^7.14.0",
     "ioredis": "^5.8.2",
@@ -94,5 +94,8 @@
     "terser": "^5.40.0",
     "typescript": "^5.8.3",
     "vitest": "^3.2.2"
+  },
+  "overrides": {
+    "kysely": "0.28.17"
   }
 }
