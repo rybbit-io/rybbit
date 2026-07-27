@@ -56,9 +56,14 @@ export default function UserPage() {
   const sessionsRef = useRef<HTMLDivElement>(null);
 
   const { data, isLoading } = useUserInfo(Number(site), userId);
-  const { data: sessionCount, isLoading: isLoadingCalendar } = useGetUserSessionCount(userId);
+  // The route can still be a device fingerprint after that device has been
+  // identified — the server resolves the alias for user info, so every other panel
+  // has to query the identity it resolved to or they all come back empty. Anonymous
+  // visitors have no identified_user_id, so they keep querying the route id.
+  const queryUserId = data?.identified_user_id || userId;
+  const { data: sessionCount, isLoading: isLoadingCalendar } = useGetUserSessionCount(queryUserId);
   const { data: sessionsData, isLoading: isLoadingSessions } = useGetSessions({
-    userId,
+    userId: queryUserId,
     page: page,
     limit: LIMIT + 1,
   });
@@ -143,8 +148,8 @@ export default function UserPage() {
           row-reverse puts the profile rail back on the left on desktop */}
       <div className="flex flex-col gap-4 lg:flex-row-reverse">
         <div className="flex-1 min-w-0 space-y-4">
-          <UserTopPages userId={userId} />
-          <UserJourneys userId={userId} />
+          <UserTopPages userId={queryUserId} />
+          <UserJourneys userId={queryUserId} />
           <div ref={sessionsRef} className="scroll-mt-4 space-y-3">
             <SessionsList
               sessions={sessions}
@@ -153,7 +158,7 @@ export default function UserPage() {
               onPageChange={setPage}
               hasNextPage={hasNextPage}
               hasPrevPage={hasPrevPage}
-              userId={userId}
+              userId={queryUserId}
               headerElement={
                 <div className="flex items-center gap-2">
                   <h2 className="text-sm font-medium text-neutral-700 dark:text-neutral-200">{t("Sessions")}</h2>

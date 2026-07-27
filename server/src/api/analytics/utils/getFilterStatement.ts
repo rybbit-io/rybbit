@@ -2,6 +2,7 @@ import SqlString from "sqlstring";
 import { filterParamSchema, validateFilters } from "./query-validation.js";
 import { SESSION_CHANNEL_AGG } from "./sessionAttribution.js";
 import { FilterParameter, FilterType } from "../types.js";
+import { doesNotMatchUser, matchesUser } from "./effectiveUserId.js";
 
 // Options for customizing filter behavior
 export interface FilterStatementOptions {
@@ -312,17 +313,17 @@ export function getFilterStatement(
             if (filter.value.length === 1) {
               const escapedValue = SqlString.escape(filter.value[0]);
               if (filter.type === "equals") {
-                return `(user_id = ${escapedValue} OR identified_user_id = ${escapedValue})`;
+                return matchesUser(escapedValue);
               }
-              return `(user_id != ${escapedValue} AND identified_user_id != ${escapedValue})`;
+              return doesNotMatchUser(escapedValue);
             }
 
             const conditions = filter.value.map(value => {
               const escapedValue = SqlString.escape(value);
               if (filter.type === "equals") {
-                return `(user_id = ${escapedValue} OR identified_user_id = ${escapedValue})`;
+                return matchesUser(escapedValue);
               }
-              return `(user_id != ${escapedValue} AND identified_user_id != ${escapedValue})`;
+              return doesNotMatchUser(escapedValue);
             });
 
             if (filter.type === "equals") {

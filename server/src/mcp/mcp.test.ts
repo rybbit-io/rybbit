@@ -153,7 +153,10 @@ describe("mcp endpoint", () => {
         fastify.post("/sites/:siteId/funnels/analyze", async request => {
           captured.body = request.body;
           captured.query = request.query as Record<string, unknown>;
-          return { data: [{ step_number: 1, step_name: "Step 1", visitors: 10, conversion_rate: 100, dropoff_rate: 0 }] };
+          // The API returns `sessions` plus the deprecated `visitors` alias.
+          return {
+            data: [{ step_number: 1, step_name: "Step 1", sessions: 10, visitors: 10, conversion_rate: 100, dropoff_rate: 0 }],
+          };
         });
 
         fastify.get("/sites/:siteId/goals", async (_request, reply) => {

@@ -6,6 +6,7 @@ import { userProfiles, userAliases } from "../../../db/postgres/schema.js";
 import { getFilterStatement } from "../utils/getFilterStatement.js";
 import { SESSION_CHANNEL_AGG, SESSION_REFERRER_AGG } from "../utils/sessionAttribution.js";
 import { getTimeStatement } from "../utils/utils.js";
+import { matchesUser } from "../utils/effectiveUserId.js";
 import { runAnalyticsQuery } from "../utils/analyticsQuery.js";
 
 interface UserPageviewData {
@@ -98,7 +99,7 @@ export const buildUserInfoQueries = (query: FilterParams, siteId: number) => {
         SELECT *
         FROM events
         WHERE
-            (events.identified_user_id = {userId:String} OR events.user_id = {userId:String})
+            ${matchesUser("{userId:String}", "events")}
             AND site_id = {site:Int32}
             ${timeStatement}
             ${filterStatement}
@@ -250,13 +251,9 @@ export async function getUserInfo(
 
   const { sessionsQuery, vitalsQuery, locationsQuery, devicesQuery } = buildUserInfoQueries(req.query, numericSiteId);
 
-  const chParams = {
-    userId,
-    site: siteId,
-  };
-
-  try {
-    const [data, vitalsData, locations, devices, profileResult, aliasesResult] = await Promise.all([
+  const loadUser = (effectiveUserId: string) => {
+    const chParams = { userId: effectiveUserId, site: siteId };
+    return Promise.all([
       runAnalyticsQuery<UserPageviewData>({ query: sessionsQuery, params: chParams }),
       runAnalyticsQuery<UserVitalsData>({ query: vitalsQuery, params: chParams }),
       runAnalyticsQuery<UserLocationBreakdown>({ query: locationsQuery, params: chParams }),
@@ -265,7 +262,7 @@ export async function getUserInfo(
       db
         .select()
         .from(userProfiles)
-        .where(and(eq(userProfiles.siteId, numericSiteId), eq(userProfiles.userId, userId)))
+        .where(and(eq(userProfiles.siteId, numericSiteId), eq(userProfiles.userId, effectiveUserId)))
         .limit(1),
       // Get linked devices (all anonymous IDs for this user) from Postgres
       db
@@ -274,8 +271,30 @@ export async function getUserInfo(
           created_at: userAliases.createdAt,
         })
         .from(userAliases)
-        .where(and(eq(userAliases.siteId, numericSiteId), eq(userAliases.userId, userId))),
+        .where(and(eq(userAliases.siteId, numericSiteId), eq(userAliases.userId, effectiveUserId))),
     ]);
+  };
+
+  try {
+    let [data, vitalsData, locations, devices, profileResult, aliasesResult] = await loadUser(userId);
+
+    // A device whose events have all been claimed by an identity — the dashboard's
+    // "Identify User" action backfills the full history — no longer has anonymous
+    // rows, so the anonymous branch of the query matches nothing. Follow the alias
+    // rather than 404ing a route the operator was just looking at. Only on a miss:
+    // while a shared fingerprint still has anonymous activity of its own, that
+    // activity is what this route is about, and resolving early would put someone
+    // else's identity on it.
+    if (data.length === 0) {
+      const alias = await db
+        .select({ userId: userAliases.userId })
+        .from(userAliases)
+        .where(and(eq(userAliases.siteId, numericSiteId), eq(userAliases.anonymousId, userId)))
+        .limit(1);
+      if (alias.length > 0 && alias[0].userId !== userId) {
+        [data, vitalsData, locations, devices, profileResult, aliasesResult] = await loadUser(alias[0].userId);
+      }
+    }
 
     // If no data found for user
     if (data.length === 0) {

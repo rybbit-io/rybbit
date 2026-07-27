@@ -232,31 +232,48 @@ describe("getFilterStatement", () => {
   });
 
   describe("User ID special handling", () => {
-    it("should check both user_id and identified_user_id for equals", () => {
+    // A filter value can be either a custom user ID or an anonymous fingerprint.
+    // The fingerprint branch is guarded on identified_user_id = '' so that filtering
+    // by a fingerprint shared behind one IP+browser doesn't sweep in every identified
+    // user sitting behind it.
+    it("matches an identified user, or a device only while it is still anonymous", () => {
       const filters = JSON.stringify([{ parameter: "user_id", type: "equals", value: ["user123"] }]);
       const result = getFilterStatement(filters);
-      expect(result).toBe("AND (user_id = 'user123' OR identified_user_id = 'user123')");
+      expect(result).toBe(
+        "AND (identified_user_id = 'user123' OR (user_id = 'user123' AND identified_user_id = ''))"
+      );
     });
 
-    it("should check both user_id and identified_user_id for not_equals", () => {
+    it("negates exactly the equals predicate for not_equals", () => {
       const filters = JSON.stringify([{ parameter: "user_id", type: "not_equals", value: ["user123"] }]);
       const result = getFilterStatement(filters);
-      expect(result).toBe("AND (user_id != 'user123' AND identified_user_id != 'user123')");
+      expect(result).toBe(
+        "AND NOT (identified_user_id = 'user123' OR (user_id = 'user123' AND identified_user_id = ''))"
+      );
     });
 
     it("should handle multiple user IDs with equals using OR", () => {
       const filters = JSON.stringify([{ parameter: "user_id", type: "equals", value: ["user1", "user2"] }]);
       const result = getFilterStatement(filters);
-      expect(result).toContain("user_id = 'user1' OR identified_user_id = 'user1'");
-      expect(result).toContain("user_id = 'user2' OR identified_user_id = 'user2'");
+      expect(result).toContain("identified_user_id = 'user1' OR (user_id = 'user1' AND identified_user_id = '')");
+      expect(result).toContain("identified_user_id = 'user2' OR (user_id = 'user2' AND identified_user_id = '')");
       expect(result).toContain(" OR ");
     });
 
     it("should handle multiple user IDs with not_equals using AND", () => {
       const filters = JSON.stringify([{ parameter: "user_id", type: "not_equals", value: ["user1", "user2"] }]);
       const result = getFilterStatement(filters);
-      expect(result).toContain("user_id != 'user1' AND identified_user_id != 'user1'");
-      expect(result).toContain("user_id != 'user2' AND identified_user_id != 'user2'");
+      expect(result).toContain("NOT (identified_user_id = 'user1' OR (user_id = 'user1' AND identified_user_id = ''))");
+      expect(result).toContain("NOT (identified_user_id = 'user2' OR (user_id = 'user2' AND identified_user_id = ''))");
+      expect(result).toContain(" AND ");
+    });
+
+    it("does not attribute one person's identified events to a device fingerprint they share", () => {
+      // The regression this guard exists for: alice and bob behind one corporate
+      // proxy share fingerprint 'fp1'. Filtering on 'fp1' must not return alice's rows.
+      const result = getFilterStatement(JSON.stringify([{ parameter: "user_id", type: "equals", value: ["fp1"] }]));
+      expect(result).not.toMatch(/user_id = 'fp1'\s*\)\s*$/);
+      expect(result).toContain("identified_user_id = ''");
     });
   });
 

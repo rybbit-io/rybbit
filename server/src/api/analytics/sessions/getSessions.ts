@@ -4,6 +4,7 @@ import { getFilterStatement } from "../utils/getFilterStatement.js";
 import { SESSION_CHANNEL_AGG, SESSION_REFERRER_AGG } from "../utils/sessionAttribution.js";
 import { enrichWithTraits, getTimeStatement } from "../utils/utils.js";
 import { analyticsRoute, runAnalyticsQuery, QuerySpec } from "../utils/analyticsQuery.js";
+import { matchesUser } from "../utils/effectiveUserId.js";
 
 export type GetSessionsResponse = {
   session_id: string;
@@ -151,7 +152,7 @@ export const buildSessionsQuery = (query: GetSessionsRequest["Querystring"], sit
       FROM events
       WHERE
           site_id = {siteId:Int32}
-          ${userId ? ` AND (events.user_id = {user_id:String} OR events.identified_user_id = {user_id:String})` : ""}
+          ${userId ? ` AND ${matchesUser("{user_id:String}", "events")}` : ""}
           ${sessionId ? ` AND events.session_id = {session_id:String}` : ""}
           ${timeStatement}
       GROUP BY

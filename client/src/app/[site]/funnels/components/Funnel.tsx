@@ -14,7 +14,7 @@ import { useStore } from "../../../../lib/store";
 
 export type FunnelChartData = {
   stepName: string;
-  visitors: number;
+  sessions: number;
   conversionRate: number;
   dropoffRate: number;
   stepNumber: number;
@@ -58,12 +58,12 @@ function FunnelStepComponent({ step, index, steps, chartData, firstStep, siteId 
   const { time } = useStore();
 
   const maxBarWidth = 100;
-  const ratio = firstStep?.visitors ? step.visitors / firstStep.visitors : 0;
+  const ratio = firstStep?.sessions ? step.sessions / firstStep.sessions : 0;
   const barWidth = Math.max(ratio * maxBarWidth, 0);
 
   const prevStep = index > 0 ? chartData[index - 1] : null;
-  const droppedFromPrevious = prevStep ? prevStep.visitors - step.visitors : 0;
-  const dropoffPercent = prevStep ? (droppedFromPrevious / prevStep.visitors) * 100 : 0;
+  const droppedFromPrevious = prevStep ? prevStep.sessions - step.sessions : 0;
+  const dropoffPercent = prevStep ? (droppedFromPrevious / prevStep.sessions) * 100 : 0;
   const isFirstStep = index === 0;
 
   // Fetch sessions for "reached" mode
@@ -134,7 +134,7 @@ function FunnelStepComponent({ step, index, steps, chartData, firstStep, siteId 
         {/* Metrics */}
         <div className="shrink-0 min-w-[130px] mr-4 space-y-1">
           <div className="flex items-baseline">
-            <span className="text-base font-semibold">{step.visitors.toLocaleString()}</span>
+            <span className="text-base font-semibold">{step.sessions.toLocaleString()}</span>
             <span className="text-sm text-neutral-500 dark:text-neutral-400 ml-1">{t("sessions")}</span>
           </div>
           {index !== 0 && (
@@ -151,7 +151,7 @@ function FunnelStepComponent({ step, index, steps, chartData, firstStep, siteId 
             <div
               className="absolute h-full rounded-md"
               style={{
-                width: `${(step.visitors / prevStep.visitors) * 100}%`,
+                width: `${(step.sessions / prevStep.sessions) * 100}%`,
                 background: `repeating-linear-gradient(
                     45deg,
                     rgba(16, 185, 129, 0.25),
@@ -175,7 +175,7 @@ function FunnelStepComponent({ step, index, steps, chartData, firstStep, siteId 
         <div className=" ml-4 p-4">
           <Tabs value={currentTab} onValueChange={val => setCurrentTab(val as "reached" | "dropped")}>
             <TabsList className="mb-1">
-              <TabsTrigger value="reached">{t("Reached ({count})", { count: step.visitors.toLocaleString() })}</TabsTrigger>
+              <TabsTrigger value="reached">{t("Reached ({count})", { count: step.sessions.toLocaleString() })}</TabsTrigger>
               {!isFirstStep && (
                 <TabsTrigger value="dropped">{t("Dropped Off ({count})", { count: droppedFromPrevious.toLocaleString() })}</TabsTrigger>
               )}
@@ -221,7 +221,7 @@ export function Funnel({ data, steps, isError, error, isPending }: FunnelProps) 
   const chartData =
     data?.map(step => ({
       stepName: step.step_name,
-      visitors: step.visitors,
+      sessions: step.sessions,
       conversionRate: step.conversion_rate,
       dropoffRate: step.dropoff_rate,
       stepNumber: step.step_number,

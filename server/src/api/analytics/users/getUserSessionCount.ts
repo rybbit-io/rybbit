@@ -1,6 +1,7 @@
 import { FastifyReply, FastifyRequest } from "fastify";
 import { getFilterStatement } from "../utils/getFilterStatement.js";
 import { analyticsRoute, runAnalyticsQuery } from "../utils/analyticsQuery.js";
+import { matchesUser } from "../utils/effectiveUserId.js";
 import SqlString from "sqlstring";
 
 export interface GetUserSessionCountRequest {
@@ -33,7 +34,7 @@ export const buildUserSessionCountQuery = (query: GetUserSessionCountRequest["Qu
     FROM events
     WHERE
       site_id = {siteId:Int32}
-      AND (user_id = {userId:String} OR identified_user_id = {userId:String})
+      AND ${matchesUser("{userId:String}")}
       ${filterStatement}
     GROUP BY date
     ORDER BY date ASC

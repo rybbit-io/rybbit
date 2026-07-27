@@ -49,7 +49,7 @@ export type SaveFunnelRequest = {
 export type FunnelResponse = {
   step_number: number;
   step_name: string;
-  visitors: number;
+  sessions: number;
   conversion_rate: number;
   dropoff_rate: number;
 };

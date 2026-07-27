@@ -1,6 +1,6 @@
 ---
 title: Get Live Visitors
-description: Returns the count of unique active sessions within the specified time window. Useful for displaying real-time visitor counts.
+description: Returns the count of unique active visitors within the specified time window. Useful for displaying real-time visitor counts.
 full: true
 method: GET
 ---
@@ -15,7 +15,9 @@ import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
 GET /api/sites/:site/live-user-count
 ```
 
-Returns the count of unique active sessions within the specified time window. Useful for displaying real-time visitor counts.
+Returns the count of unique active visitors within the specified time window. Useful for displaying real-time visitor counts.
+
+Visitors are counted by identity where one is available (see [Identify Users](/docs/identify-users)) and by anonymous device otherwise, so one person who starts a second session inside the window still counts once.
 
 ### Path Parameters
 
@@ -34,10 +36,10 @@ Returns the count of unique active sessions within the specified time window. Us
 <TypeTable
   type={{
     minutes: {
-      description: 'Time window in minutes to count active sessions',
+      description: 'Time window in minutes to count active visitors',
       type: 'number',
       default: 5,
-      typeDescription: 'Sessions with activity within the last N minutes are considered "live"',
+      typeDescription: 'Visitors with activity within the last N minutes are considered "live"',
     },
   }}
 />
@@ -47,7 +49,7 @@ Returns the count of unique active sessions within the specified time window. Us
 <TypeTable
   type={{
     count: {
-      description: 'Number of unique active sessions',
+      description: 'Number of unique active visitors',
       type: 'number',
     },
   }}
