@@ -5,8 +5,23 @@ import { useExtracted } from "next-intl";
 import { useState } from "react";
 
 import { SiteResponse } from "@/api/admin/endpoints";
-import { useGeneratePrivateLinkKey, useGetPrivateLinkConfig } from "@/api/admin/hooks/usePrivateLink";
+import {
+  useGeneratePrivateLinkKey,
+  useGetPrivateLinkConfig,
+  useRevokePrivateLinkKey,
+} from "@/api/admin/hooks/usePrivateLink";
 import { CodeSnippet } from "@/components/CodeSnippet";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/components/ui/sonner";
 import { Switch } from "@/components/ui/switch";
@@ -47,7 +62,9 @@ export function DashboardEmbedTab({ siteMetadata, disabled = false }: DashboardE
     data: generatedPrivateLink,
     mutate: generatePrivateLinkKey,
     isPending: isGeneratingPrivateLink,
+    reset: resetGeneratedPrivateLink,
   } = useGeneratePrivateLinkKey();
+  const { mutate: revokePrivateLinkKey, isPending: isRevokingPrivateLink } = useRevokePrivateLinkKey();
   const privateLinkKey = privateLink?.privateLinkKey ?? generatedPrivateLink?.privateLinkKey ?? null;
   const hasPrivateLink = !!privateLinkKey;
   const dashboardEmbedAvailable = hasPrivateLink;
@@ -88,6 +105,18 @@ export function DashboardEmbedTab({ siteMetadata, disabled = false }: DashboardE
     });
   };
 
+  const handleRevokePrivateLink = () => {
+    revokePrivateLinkKey(siteId, {
+      onSuccess: () => {
+        resetGeneratedPrivateLink();
+        toast.success(t("Dashboard embed disabled"));
+      },
+      onError: error => {
+        toast.error(error instanceof Error ? error.message : t("Failed to disable dashboard embed"));
+      },
+    });
+  };
+
   return (
     <SettingsSections className="min-w-0 overflow-x-hidden">
       <SettingsSection description={t("Embed the main analytics dashboard on another site using a private link.")}>
@@ -103,10 +132,35 @@ export function DashboardEmbedTab({ siteMetadata, disabled = false }: DashboardE
             )}
           >
             {hasPrivateLink ? (
-              <span className="inline-flex items-center gap-1.5 rounded-md border border-neutral-150 bg-neutral-50 px-2 py-1 text-xs text-muted-foreground dark:border-neutral-800 dark:bg-neutral-900">
-                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" aria-hidden />
-                {t("Private link enabled")}
-              </span>
+              <>
+                <span className="inline-flex items-center gap-1.5 rounded-md border border-neutral-150 bg-neutral-50 px-2 py-1 text-xs text-muted-foreground dark:border-neutral-800 dark:bg-neutral-900">
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" aria-hidden />
+                  {t("Private link enabled")}
+                </span>
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button type="button" size="sm" variant="outline" disabled={isRevokingPrivateLink}>
+                      {isRevokingPrivateLink ? t("Disabling...") : t("Disable")}
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>{t("Disable dashboard embed?")}</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        {t(
+                          "This revokes the private link for this site. Any embedded dashboards and shared dashboard links using it will stop working immediately. You can generate a new private link later, but it will have a different URL."
+                        )}
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>{t("Cancel")}</AlertDialogCancel>
+                      <AlertDialogAction onClick={handleRevokePrivateLink} disabled={isRevokingPrivateLink}>
+                        {isRevokingPrivateLink ? t("Disabling...") : t("Yes, disable embed")}
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              </>
             ) : !isLoadingPrivateLink ? (
               <Button
                 type="button"
