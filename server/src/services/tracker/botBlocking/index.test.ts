@@ -306,6 +306,48 @@ describe("checkBotBlocking", () => {
     });
   });
 
+  it("convicts the 1280x1200 headless window geometry on a desktop UA", async () => {
+    const result = await checkBotBlocking({
+      request: requestWithHeaders({
+        ...browserHeaders,
+        "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/116 Safari/537.36",
+      }),
+      blockBots: true,
+      payload: {
+        ...basePayload,
+        clientBotScore: 0,
+        clientBotSignalMask: 0,
+        screenWidth: 1280,
+        screenHeight: 1200,
+      },
+    });
+
+    expect(result?.detections.map(detection => detection.layer)).toEqual(["client_signals"]);
+    expect(result?.detections[0]).toMatchObject({
+      clientSignals: ["defaultViewport1280x1200"],
+    });
+  });
+
+  it("leaves 1280x1200 alone on a mobile UA, where it is not a headless tell", async () => {
+    const result = await checkBotBlocking({
+      request: requestWithHeaders({
+        ...browserHeaders,
+        "user-agent":
+          "Mozilla/5.0 (iPhone; CPU iPhone OS 18_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.5 Mobile/15E148 Safari/604.1",
+      }),
+      blockBots: true,
+      payload: {
+        ...basePayload,
+        clientBotScore: 0,
+        clientBotSignalMask: 0,
+        screenWidth: 1280,
+        screenHeight: 1200,
+      },
+    });
+
+    expect(result).toBeNull();
+  });
+
   it("does not convict on weak client signals alone", async () => {
     // zeroOuterDimensions (2) + swiftShader (1) reaches the score threshold,
     // but both occur on real devices (prerendering, low-end GPUs) — weak

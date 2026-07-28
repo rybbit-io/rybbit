@@ -75,6 +75,12 @@ describe("getBotScore", () => {
 
     expect(getBotScore()).toBe(3);
     expect(getBotSignalMask()).toBe(CLIENT_BOT_SIGNAL_MASKS.defaultViewport1024x768);
+
+    resetBotScoreCacheForTests();
+    setWindowProperty("screen", { width: 1280, height: 1200 });
+
+    expect(getBotScore()).toBe(3);
+    expect(getBotSignalMask()).toBe(CLIENT_BOT_SIGNAL_MASKS.defaultViewport1280x1200);
   });
 
   it("weights impossible dimensions as a blocking-strength signal", () => {

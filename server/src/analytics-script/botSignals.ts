@@ -17,6 +17,7 @@ export const CLIENT_BOT_SIGNAL_MASKS = {
   impossibleDimensions: 1 << 7,
   outerDimensionsWeird: 1 << 8,
   pluginApiAbsence: 1 << 9,
+  defaultViewport1280x1200: 1 << 10,
 } as const;
 
 interface BotSignalResult {
@@ -117,12 +118,19 @@ function calculateBotSignals(): BotSignalResult {
       addSignal(CLIENT_BOT_SIGNAL_MASKS.impossibleDimensions, 3);
     }
 
-    // 4. Default automation/display server viewport sizes
+    // 4. Default automation/display server viewport sizes. 1280x1200 is not a
+    //    panel size any desktop ships; it is a headless window geometry, and in
+    //    production it appears essentially only on scraper fleets (27M events in
+    //    one week from a single crawler, against a few hundred from everything
+    //    else combined).
     if (isDesktopUA && screenWidth === 800 && screenHeight === 600) {
       addSignal(CLIENT_BOT_SIGNAL_MASKS.defaultViewport800x600, 3);
     }
     if (isDesktopUA && screenWidth === 1024 && screenHeight === 768) {
       addSignal(CLIENT_BOT_SIGNAL_MASKS.defaultViewport1024x768, 3);
+    }
+    if (isDesktopUA && screenWidth === 1280 && screenHeight === 1200) {
+      addSignal(CLIENT_BOT_SIGNAL_MASKS.defaultViewport1280x1200, 3);
     }
 
     // 5. Outer dimensions smaller than inner dimensions should not happen in normal desktop browsers

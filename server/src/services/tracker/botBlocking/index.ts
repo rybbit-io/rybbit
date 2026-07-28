@@ -20,6 +20,7 @@ interface BotBlockingPayload {
   clientBotSignalMask?: number;
   screenWidth?: number;
   screenHeight?: number;
+  language?: string;
   hostname?: string;
   pathname?: string;
   eventType?: string;
@@ -58,6 +59,7 @@ const CLIENT_SIGNAL_MASKS = {
   impossibleDimensions: 1 << 7,
   outerDimensionsWeird: 1 << 8,
   pluginApiAbsence: 1 << 9,
+  defaultViewport1280x1200: 1 << 10,
 } as const;
 
 type ClientSignalName = keyof typeof CLIENT_SIGNAL_MASKS;
@@ -76,6 +78,7 @@ const CLIENT_SIGNAL_WEIGHTS: Record<ClientSignalName, number> = {
   impossibleDimensions: 3,
   outerDimensionsWeird: 2,
   pluginApiAbsence: 0,
+  defaultViewport1280x1200: 3,
 };
 
 // Signals that are automation-specific enough to convict on their own. The
@@ -87,7 +90,8 @@ const STRONG_CLIENT_SIGNAL_BITS =
   CLIENT_SIGNAL_MASKS.automationApi |
   CLIENT_SIGNAL_MASKS.impossibleDimensions |
   CLIENT_SIGNAL_MASKS.defaultViewport800x600 |
-  CLIENT_SIGNAL_MASKS.defaultViewport1024x768;
+  CLIENT_SIGNAL_MASKS.defaultViewport1024x768 |
+  CLIENT_SIGNAL_MASKS.defaultViewport1280x1200;
 
 function sumClientSignalWeights(mask: number): number {
   return Object.entries(CLIENT_SIGNAL_MASKS).reduce(
@@ -211,6 +215,9 @@ function getClientSignalResult(payload: BotBlockingPayload, userAgent: string) {
     }
     if (screenWidth === 1024 && screenHeight === 768) {
       addInferredSignal("defaultViewport1024x768", 3);
+    }
+    if (screenWidth === 1280 && screenHeight === 1200) {
+      addInferredSignal("defaultViewport1280x1200", 3);
     }
   }
 
@@ -337,6 +344,9 @@ export async function checkBotBlocking({
     pathname: payload.pathname,
     eventType: payload.eventType,
     hasClientBotScore: typeof payload.clientBotScore === "number",
+    screenWidth: payload.screenWidth,
+    screenHeight: payload.screenHeight,
+    language: payload.language,
   });
   if (anomaly.isAnomalous) {
     addDetection("Bot detected using rate anomaly", {

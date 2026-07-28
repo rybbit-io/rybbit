@@ -26,6 +26,9 @@ const baseInput = {
   nowMs: 1_000_000,
 };
 
+/** Rolling counters report their cardinality as `total`; `top`/`distinct` stay 0. */
+const rollingReadings = (...totals: number[]) => totals.map(total => ({ total, top: 0, distinct: 0 }));
+
 describe("observeTrackingAnomaly (in-process fallback)", () => {
   beforeEach(() => {
     resetAnomalyScorerForTests();
@@ -130,6 +133,80 @@ describe("observeTrackingAnomaly (in-process fallback)", () => {
   });
 });
 
+describe("cohort version uniformity (in-process fallback)", () => {
+  beforeEach(() => {
+    resetAnomalyScorerForTests();
+    setRedisAnomalyEnabledForTests(false);
+  });
+
+  const cohortInput = {
+    ...baseInput,
+    screenWidth: 1280,
+    screenHeight: 1200,
+    language: "en-US",
+  };
+
+  const desktopChrome = (version: number) =>
+    `Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/${version}.0.0.0 Safari/537.36`;
+
+  /**
+   * Feed one cohort a run of events. Each identity is distinct (a fresh IP), and
+   * events are spaced minutes apart, so no per-identity rate rule can fire — the
+   * cohort rule is the only thing left that could convict.
+   */
+  async function driveCohort(versions: number[]) {
+    let result = await observeTrackingAnomaly({ ...cohortInput, userAgent: desktopChrome(versions[0]) });
+    for (const [index, version] of versions.entries()) {
+      result = await observeTrackingAnomaly({
+        ...cohortInput,
+        ipAddress: `198.51.100.${index % 254}`,
+        userAgent: desktopChrome(version),
+        pathname: `/summoners/${index}`,
+        nowMs: baseInput.nowMs + index,
+      });
+    }
+    return result;
+  }
+
+  it("convicts a busy cohort spread evenly across many browser versions", async () => {
+    // 16 rotated versions in equal shares — the scraper fleet's shape.
+    const versions = Array.from({ length: 480 }, (_, index) => 103 + (index % 16));
+
+    const result = await driveCohort(versions);
+
+    expect(result.isAnomalous).toBe(true);
+    expect(result.reasons.map(reason => reason.rule)).toContain("cohort_version_uniformity_60s");
+    expect(result.counters.cohortDistinctVersions60s).toBe(16);
+  });
+
+  it("leaves an equally busy organic cohort alone (one dominant current version)", async () => {
+    // Same volume, but 87% on the current version and a long stale tail — the
+    // measured shape of a real high-traffic population.
+    const versions = Array.from({ length: 480 }, (_, index) => (index % 100 < 87 ? 150 : 140 + (index % 10)));
+
+    const result = await driveCohort(versions);
+
+    expect(result.isAnomalous).toBe(false);
+    expect(result.reasons.map(reason => reason.rule)).not.toContain("cohort_version_uniformity_60s");
+  });
+
+  it("ignores a flat cohort that is too small to be a fleet", async () => {
+    const versions = Array.from({ length: 100 }, (_, index) => 103 + (index % 16));
+
+    const result = await driveCohort(versions);
+
+    expect(result.isAnomalous).toBe(false);
+    expect(result.counters.cohortEvents60s).toBeLessThan(300);
+  });
+
+  it("skips the cohort counter when the fingerprint is incomplete", async () => {
+    const result = await observeTrackingAnomaly({ ...baseInput, screenWidth: undefined });
+
+    expect(result.counters.cohortEvents60s).toBe(0);
+    expect(result.counters.cohortDistinctVersions60s).toBe(0);
+  });
+});
+
 describe("observeTrackingAnomaly (Redis-backed)", () => {
   beforeEach(() => {
     resetAnomalyScorerForTests();
@@ -139,7 +216,7 @@ describe("observeTrackingAnomaly (Redis-backed)", () => {
 
   it("sends one spec per enabled counter and maps results back by counter name", async () => {
     // 8 counters, all enabled (path + host present, no client score).
-    mocks.anomalyObserve.mockResolvedValue([31, 5, 2, 9, 3, 1, 4, 7]);
+    mocks.anomalyObserve.mockResolvedValue(rollingReadings(31, 5, 2, 9, 3, 1, 4, 7));
 
     const result = await observeTrackingAnomaly({ ...baseInput, hasClientBotScore: false });
 
@@ -166,7 +243,7 @@ describe("observeTrackingAnomaly (Redis-backed)", () => {
 
   it("omits conditional counters that don't apply and reports them as zero", async () => {
     // No pathname, no hostname, client score present → 3 counters dropped.
-    mocks.anomalyObserve.mockResolvedValue([1, 1, 1, 1, 1]);
+    mocks.anomalyObserve.mockResolvedValue(rollingReadings(1, 1, 1, 1, 1));
 
     const result = await observeTrackingAnomaly({
       ...baseInput,
@@ -187,7 +264,7 @@ describe("observeTrackingAnomaly (Redis-backed)", () => {
     // + site_user_agent_events_60s (1) = 9, but zero individual evidence: a busy
     // carrier-NAT IP on a popular site looks exactly like this.
     // Enabled specs for pageview input: te10, te60, tdp, ie60, idua, idh, sue.
-    mocks.anomalyObserve.mockResolvedValue([1, 2, 1, 500, 40, 12, 5000]);
+    mocks.anomalyObserve.mockResolvedValue(rollingReadings(1, 2, 1, 500, 40, 12, 5000));
 
     const result = await observeTrackingAnomaly(baseInput);
 
@@ -203,7 +280,7 @@ describe("observeTrackingAnomaly (Redis-backed)", () => {
 
   it("counts crowd rules once individual evidence exists", async () => {
     // tuple_events_10s fires (31 > 30) → crowd corroboration counts too.
-    mocks.anomalyObserve.mockResolvedValue([31, 31, 1, 500, 40, 12, 5000]);
+    mocks.anomalyObserve.mockResolvedValue(rollingReadings(31, 31, 1, 500, 40, 12, 5000));
 
     const result = await observeTrackingAnomaly(baseInput);
 

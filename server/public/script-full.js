@@ -482,7 +482,8 @@
     defaultViewport1024x768: 1 << 6,
     impossibleDimensions: 1 << 7,
     outerDimensionsWeird: 1 << 8,
-    pluginApiAbsence: 1 << 9
+    pluginApiAbsence: 1 << 9,
+    defaultViewport1280x1200: 1 << 10
   };
   var cachedBotSignals = null;
   var MAX_BOT_SCORE = 10;
@@ -492,7 +493,13 @@
   function getBotSignalMask() {
     return getBotSignals().mask;
   }
+  function isPrerendering() {
+    return document.prerendering === true;
+  }
   function getBotSignals() {
+    if (isPrerendering()) {
+      return calculateBotSignals();
+    }
     cachedBotSignals ?? (cachedBotSignals = calculateBotSignals());
     return cachedBotSignals;
   }
@@ -538,7 +545,7 @@
       if (navigator.webdriver === true || hasAutomationGlobal) {
         addSignal(CLIENT_BOT_SIGNAL_MASKS.automationApi, 3);
       }
-      if (outerHeight === 0 || outerWidth === 0) {
+      if ((outerHeight === 0 || outerWidth === 0) && !isPrerendering()) {
         addSignal(CLIENT_BOT_SIGNAL_MASKS.zeroOuterDimensions, 2);
       }
       if (!Number.isFinite(screenWidth) || !Number.isFinite(screenHeight) || screenWidth <= 0 || screenHeight <= 0 || screenWidth > 1e5 || screenHeight > 1e5) {
@@ -549,6 +556,9 @@
       }
       if (isDesktopUA && screenWidth === 1024 && screenHeight === 768) {
         addSignal(CLIENT_BOT_SIGNAL_MASKS.defaultViewport1024x768, 3);
+      }
+      if (isDesktopUA && screenWidth === 1280 && screenHeight === 1200) {
+        addSignal(CLIENT_BOT_SIGNAL_MASKS.defaultViewport1280x1200, 3);
       }
       if (Number.isFinite(outerWidth) && Number.isFinite(outerHeight) && Number.isFinite(innerWidth) && Number.isFinite(innerHeight) && outerWidth > 0 && outerHeight > 0 && innerWidth > 0 && innerHeight > 0 && (outerWidth + 8 < innerWidth || outerHeight + 8 < innerHeight)) {
         addSignal(CLIENT_BOT_SIGNAL_MASKS.outerDimensionsWeird, 2);

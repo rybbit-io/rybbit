@@ -169,26 +169,59 @@ export function stickyResolve(input: StickyResolveInput): Promise<[string, Stick
 // shares one view — an in-process Map would only ever see 1/N of the traffic
 // behind a load balancer, diluting the thresholds by the worker count.
 //
+// A second counter kind ("distribution") answers a question a sorted set cannot:
+// how concentrated is a cohort's traffic across some dimension? It is a hash of
+// value -> count inside a fixed time bucket (the bucket is encoded in the key by
+// the caller, so the hash simply expires), and it returns the bucket total, the
+// largest single value's count, and the number of distinct values. The ratio
+// top/total is the modal share, which separates an organic population (one
+// dominant browser version) from a fleet rotating a fixed list of user agents.
+//
 // numberOfKeys is omitted so the key count can be passed per call. KEYS holds the
-// counter keys; ARGV is [nowMs, member1, windowMs1, maxSize1, member2, ...] with
-// one (member, windowMs, maxSize) triple per key. Returns one count per key.
+// counter keys; ARGV is [nowMs, then (kind, member, windowMs, maxSize) per key].
+// Every key yields three results — [count, 0, 0] for rolling counters and
+// [total, top, distinct] for distributions — so the caller can index by position.
 redis.defineCommand("anomalyObserve", {
   lua: `
     local now = tonumber(ARGV[1])
     local results = {}
     for i = 1, #KEYS do
       local key = KEYS[i]
-      local base = (i - 1) * 3 + 1
-      local member = ARGV[base + 1]
-      local windowMs = tonumber(ARGV[base + 2])
-      local maxSize = tonumber(ARGV[base + 3])
-      redis.call('ZADD', key, now, member)
-      redis.call('ZREMRANGEBYSCORE', key, '-inf', '(' .. (now - windowMs))
-      if maxSize > 0 then
-        redis.call('ZREMRANGEBYRANK', key, 0, -maxSize - 1)
+      local base = (i - 1) * 4 + 1
+      local kind = ARGV[base + 1]
+      local member = ARGV[base + 2]
+      local windowMs = tonumber(ARGV[base + 3])
+      local maxSize = tonumber(ARGV[base + 4])
+      local out = (i - 1) * 3
+      if kind == 'h' then
+        -- Only admit a new field while under the cap; already-tracked fields keep
+        -- counting, so a high-cardinality flood cannot grow the hash without bound.
+        if maxSize <= 0 or redis.call('HEXISTS', key, member) == 1 or redis.call('HLEN', key) < maxSize then
+          redis.call('HINCRBY', key, member, 1)
+        end
+        redis.call('PEXPIRE', key, windowMs)
+        local total = 0
+        local top = 0
+        local values = redis.call('HVALS', key)
+        for j = 1, #values do
+          local value = tonumber(values[j])
+          total = total + value
+          if value > top then top = value end
+        end
+        results[out + 1] = total
+        results[out + 2] = top
+        results[out + 3] = #values
+      else
+        redis.call('ZADD', key, now, member)
+        redis.call('ZREMRANGEBYSCORE', key, '-inf', '(' .. (now - windowMs))
+        if maxSize > 0 then
+          redis.call('ZREMRANGEBYRANK', key, 0, -maxSize - 1)
+        end
+        redis.call('PEXPIRE', key, windowMs)
+        results[out + 1] = redis.call('ZCARD', key)
+        results[out + 2] = 0
+        results[out + 3] = 0
       end
-      redis.call('PEXPIRE', key, windowMs)
-      results[i] = redis.call('ZCARD', key)
     end
     return results
   `,
@@ -197,11 +230,24 @@ redis.defineCommand("anomalyObserve", {
 export interface AnomalyCounterSpec {
   /** Fully-namespaced Redis key for this counter. */
   key: string;
-  /** Unique per-event token (rate counters) or observed value (distinct counters). */
+  /**
+   * Rolling sorted-set counter (default) or fixed-bucket value distribution. A
+   * distribution key must already encode its time bucket.
+   */
+  kind?: "rolling" | "distribution";
+  /** Unique per-event token (rate counters) or observed value (distinct/distribution counters). */
   member: string;
+  /** Rolling window for `rolling`; key TTL for `distribution`. */
   windowMs: number;
-  /** Hard cap on stored members; 0 disables trimming. */
+  /** Hard cap on stored members/fields; 0 disables trimming. */
   maxSize: number;
+}
+
+/** Bucket total, the largest single value's count, and the distinct value count. */
+export interface AnomalyDistribution {
+  total: number;
+  top: number;
+  distinct: number;
 }
 
 interface AnomalyRedis extends Redis {
@@ -209,15 +255,21 @@ interface AnomalyRedis extends Redis {
 }
 
 /**
- * Observe one event against a batch of rolling-window counters and return each
- * counter's current cardinality, in the same order as `specs`. Atomic across all
- * workers; a single round-trip regardless of how many counters are passed.
+ * Observe one event against a batch of counters and return each counter's
+ * current reading, in the same order as `specs`. Atomic across all workers; a
+ * single round-trip regardless of how many counters are passed. Rolling counters
+ * report cardinality in `total`; distributions fill all three fields.
  */
-export function anomalyObserve(nowMs: number, specs: AnomalyCounterSpec[]): Promise<number[]> {
+export async function anomalyObserve(nowMs: number, specs: AnomalyCounterSpec[]): Promise<AnomalyDistribution[]> {
   const keys = specs.map(spec => spec.key);
   const args: (string | number)[] = [specs.length, ...keys, nowMs];
   for (const spec of specs) {
-    args.push(spec.member, spec.windowMs, spec.maxSize);
+    args.push(spec.kind === "distribution" ? "h" : "z", spec.member, spec.windowMs, spec.maxSize);
   }
-  return (redis as AnomalyRedis).anomalyObserve(...args);
+  const flat = await (redis as AnomalyRedis).anomalyObserve(...args);
+  return specs.map((_, index) => ({
+    total: flat[index * 3] ?? 0,
+    top: flat[index * 3 + 1] ?? 0,
+    distinct: flat[index * 3 + 2] ?? 0,
+  }));
 }
