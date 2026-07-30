@@ -13,7 +13,17 @@
     const analyticsHost = src.split("/frog.js")[0].replace("/api", "");
     const trackUrl = analyticsHost + "/api/track";
     console.log(LOG, "Initialized", { siteId, analyticsHost });
-    function buildPayload(type, imgSrc) {
+    const AD_SELECTOR = 'img[alt="ad"], img[data-ad], video[alt="ad"], video[data-ad]';
+    function creativeType(el) {
+      return el instanceof HTMLVideoElement ? "video" : "image";
+    }
+    function creativeUrl(el) {
+      if (el instanceof HTMLVideoElement) {
+        return el.currentSrc || el.src || el.querySelector("source")?.src || "";
+      }
+      return el.src || "";
+    }
+    function buildPayload(type, el, url) {
       return {
         type,
         site_id: siteId,
@@ -24,7 +34,7 @@
         language: navigator.language,
         page_title: document.title,
         referrer: document.referrer,
-        properties: JSON.stringify({ creative_url: imgSrc })
+        properties: JSON.stringify({ creative_url: url, creative_type: creativeType(el) })
       };
     }
     function sendEvent(payload) {
@@ -40,52 +50,49 @@
     }
     document.addEventListener("click", function(e) {
       const target = e.target;
-      const adImg = target.closest('img[alt="ad"]');
-      if (!adImg) return;
-      const imgSrc = adImg.src;
-      if (!imgSrc) return;
-      const anchor = adImg.closest("a");
-      console.log(LOG, "Ad click detected", { imgSrc, href: anchor?.href });
-      sendEvent(buildPayload("ad_click", imgSrc));
+      const creative = target.closest(AD_SELECTOR);
+      if (!creative) return;
+      const url = creativeUrl(creative);
+      if (!url) return;
+      const anchor = creative.closest("a");
+      console.log(LOG, "Ad click detected", { url, type: creativeType(creative), href: anchor?.href });
+      sendEvent(buildPayload("ad_click", creative, url));
     });
     const observedElements = /* @__PURE__ */ new WeakSet();
     const impressionObserver = new IntersectionObserver(
       (entries) => {
         for (const entry of entries) {
-          if (entry.isIntersecting) {
-            const img = entry.target;
-            const imgSrc = img.src;
-            if (imgSrc) {
-              console.log(LOG, "Ad impression detected", { imgSrc });
-              sendEvent(buildPayload("ad_impression", imgSrc));
-            }
-            impressionObserver.unobserve(img);
-          }
+          if (!entry.isIntersecting) continue;
+          const creative = entry.target;
+          const url = creativeUrl(creative);
+          if (!url) continue;
+          console.log(LOG, "Ad impression detected", { url, type: creativeType(creative) });
+          sendEvent(buildPayload("ad_impression", creative, url));
+          impressionObserver.unobserve(creative);
         }
       },
       { threshold: 0.5 }
     );
-    function observeAdImages(root = document) {
-      const imgs = root.querySelectorAll('img[alt="ad"]');
-      imgs.forEach((img) => {
-        if (!observedElements.has(img)) {
-          observedElements.add(img);
-          impressionObserver.observe(img);
+    function observeAdCreatives(root = document) {
+      root.querySelectorAll(AD_SELECTOR).forEach((creative) => {
+        if (!observedElements.has(creative)) {
+          observedElements.add(creative);
+          impressionObserver.observe(creative);
         }
       });
     }
-    observeAdImages();
+    observeAdCreatives();
     const mutationObserver = new MutationObserver((mutations) => {
       for (const mutation of mutations) {
         for (const node of mutation.addedNodes) {
           if (node instanceof HTMLElement) {
-            if (node.matches('img[alt="ad"]')) {
+            if (node.matches(AD_SELECTOR)) {
               if (!observedElements.has(node)) {
                 observedElements.add(node);
                 impressionObserver.observe(node);
               }
             } else {
-              observeAdImages(node);
+              observeAdCreatives(node);
             }
           }
         }

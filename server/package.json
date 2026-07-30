@@ -7,8 +7,9 @@
   "scripts": {
     "dev": "tsc && node dist/index.js",
     "dev:cluster": "tsc && node dist/cluster.js",
-    "build": "tsc && npm run build:analytics",
+    "build": "tsc && npm run build:analytics && npm run build:ads",
     "build:analytics": "cd src/analytics-script && node build.js",
+    "build:ads": "cd src/ad-script && node build.js",
     "start": "node dist/index.js",
     "start:cluster": "node dist/cluster.js",
     "test": "vitest",

@@ -21,8 +21,11 @@ interface AdsBreakdownRow {
   percentage: number;
 }
 
-const ALLOWED_PARAMETERS = ["country", "pathname", "creative_url"] as const;
+const ALLOWED_PARAMETERS = ["country", "pathname", "creative_url", "creative_type"] as const;
 const ALLOWED_TYPES = ["ad_click", "ad_impression"] as const;
+
+// Parameters stored inside the event's props JSON rather than as event columns.
+const PROP_PARAMETERS: readonly string[] = ["creative_url", "creative_type"];
 
 export async function getAdsBreakdown(
   req: FastifyRequest<GetAdsBreakdownRequest>,
@@ -44,10 +47,10 @@ export async function getAdsBreakdown(
     ? getFilterStatement(filters, Number(site), timeStatement)
     : "";
 
-  const valueExpr =
-    parameter === "creative_url"
-      ? "JSONExtractString(toString(props), 'creative_url')"
-      : parameter;
+  // Safe to interpolate: parameter is checked against ALLOWED_PARAMETERS above.
+  const valueExpr = PROP_PARAMETERS.includes(parameter)
+    ? `JSONExtractString(toString(props), '${parameter}')`
+    : parameter;
 
   const query = `
     SELECT
