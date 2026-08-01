@@ -100,7 +100,7 @@ const customerLogos = [
   { src: "/logos/govuk-logo.svg", alt: "GOV.UK", width: 120, className: whiteSvgLogo },
   { src: "/logos/royalcaribbean.svg", alt: "Royal Caribbean", width: 120, className: whiteSvgLogo },
   { src: "/logos/netapp.svg", alt: "NetApp", width: 120, className: whiteSvgLogo },
-  { src: "/logos/trafigura.svg", alt: "Trafigura", width: 120, className: whiteSvgLogo },
+  { src: "/logos/obelinf.svg", alt: "Obelinf", width: 120, className: whiteSvgLogo, href: "https://obelinf.com" },
   { src: "/logos/op.svg", alt: "OP.GG", width: 120, className: whiteSvgLogo },
   // { src: "/logos/softr.svg", alt: "Softr", width: 100, className: whiteSvgLogo },
   // {
