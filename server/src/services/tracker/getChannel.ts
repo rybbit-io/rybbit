@@ -187,6 +187,7 @@ export function getChannel(referrer: string, querystring: string, hostname?: str
   if (
     (referringDomain === "$direct" || (!referrer && !selfReferral)) &&
     !utmMedium &&
+    !utmCampaign &&
     (!utmSource || utmSource === "direct" || utmSource === "(direct)")
   ) {
     return "Direct";

@@ -6,6 +6,7 @@ describe("getChannel - UTM parameter fallback", () => {
     expect(getChannel("", "utm_source=my_app&utm_medium=custom")).toBe("Referral");
     expect(getChannel("", "utm_source=gsuite_extension")).toBe("Referral");
     expect(getChannel("", "utm_medium=custom_link")).toBe("Referral");
+    expect(getChannel("", "utm_campaign=custom_campaign")).toBe("Referral");
   });
 
   it("retains Direct classification when no referrer and no UTM parameters exist", () => {
@@ -14,5 +15,8 @@ describe("getChannel - UTM parameter fallback", () => {
 
   it("retains Referral classification for external referring domains", () => {
     expect(getChannel("https://external-site.com/blog", "")).toBe("Referral");
+    expect(
+      getChannel("https://example.com/page", "utm_source=custom_source", "example.com"),
+    ).not.toBe("Referral");    
   });
 });
