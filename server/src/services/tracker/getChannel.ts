@@ -287,9 +287,11 @@ export function getChannel(referrer: string, querystring: string, hostname?: str
   if (/event|conference|webinar/.test(utmCampaign)) return "Event";
   if (/social|facebook|twitter|instagram|linkedin/.test(utmCampaign)) return "Organic Social";
 
-  // If referring domain exists but we couldn't categorize it
-  // Don't mark as referral if it's a self-referral
-  if (referringDomain && referringDomain !== "$direct" && !selfReferral) return "Referral";
+  // If referring domain or UTM parameters exist but couldn't be categorized into a specific channel,
+  // classify as Referral (unless it's a self-referral)
+  if ((utmSource || utmMedium || utmCampaign || (referringDomain && referringDomain !== "$direct")) && !selfReferral) {
+    return "Referral";
+  }
 
   // Default fallback
   return "Unknown";
