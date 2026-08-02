@@ -3,7 +3,7 @@
   // index.ts
   (function() {
     const LOG = "[rybbit-ad]";
-    const siteId = "d38451f43f87";
+    const DEFAULT_SITE_ID = "d38451f43f87";
     const scriptTag = document.currentScript;
     if (!scriptTag) {
       console.warn(LOG, "Could not find script tag");
@@ -12,10 +12,17 @@
     const src = scriptTag.getAttribute("src") || "";
     const analyticsHost = src.split("/frog.js")[0].replace("/api", "");
     const trackUrl = analyticsHost + "/api/track";
+    const siteId = new URLSearchParams(src.split("?")[1] || "").get("siteid") || DEFAULT_SITE_ID;
     console.log(LOG, "Initialized", { siteId, analyticsHost });
-    const AD_SELECTOR = 'img[alt="ad"], img[data-ad], video[alt="ad"], video[data-ad]';
+    const MARKED_CREATIVE_SELECTOR = 'img[alt="ad"], img[data-ad], video[alt="ad"], video[data-ad]';
+    const SLOT_CREATIVE_SELECTOR = "[data-ad] img, [data-ad] video";
+    const AD_SELECTOR = `${MARKED_CREATIVE_SELECTOR}, ${SLOT_CREATIVE_SELECTOR}`;
+    const MIN_CREATIVE_PX = 50;
     function creativeType(el) {
       return el instanceof HTMLVideoElement ? "video" : "image";
+    }
+    function adSlot(el) {
+      return el.closest("[data-ad]")?.getAttribute("data-ad") || "";
     }
     function creativeUrl(el) {
       if (el instanceof HTMLVideoElement) {
@@ -34,7 +41,11 @@
         language: navigator.language,
         page_title: document.title,
         referrer: document.referrer,
-        properties: JSON.stringify({ creative_url: url, creative_type: creativeType(el) })
+        properties: JSON.stringify({
+          creative_url: url,
+          creative_type: creativeType(el),
+          ad_slot: adSlot(el)
+        })
       };
     }
     function sendEvent(payload) {
@@ -55,7 +66,12 @@
       const url = creativeUrl(creative);
       if (!url) return;
       const anchor = creative.closest("a");
-      console.log(LOG, "Ad click detected", { url, type: creativeType(creative), href: anchor?.href });
+      console.log(LOG, "Ad click detected", {
+        url,
+        type: creativeType(creative),
+        slot: adSlot(creative),
+        href: anchor?.href
+      });
       sendEvent(buildPayload("ad_click", creative, url));
     });
     const observedElements = /* @__PURE__ */ new WeakSet();
@@ -64,9 +80,14 @@
         for (const entry of entries) {
           if (!entry.isIntersecting) continue;
           const creative = entry.target;
+          const box = entry.boundingClientRect;
+          if (!creative.matches(MARKED_CREATIVE_SELECTOR) && (box.width < MIN_CREATIVE_PX || box.height < MIN_CREATIVE_PX)) {
+            impressionObserver.unobserve(creative);
+            continue;
+          }
           const url = creativeUrl(creative);
           if (!url) continue;
-          console.log(LOG, "Ad impression detected", { url, type: creativeType(creative) });
+          console.log(LOG, "Ad impression detected", { url, type: creativeType(creative), slot: adSlot(creative) });
           sendEvent(buildPayload("ad_impression", creative, url));
           impressionObserver.unobserve(creative);
         }

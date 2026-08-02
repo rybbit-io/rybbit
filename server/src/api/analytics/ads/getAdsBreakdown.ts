@@ -21,11 +21,11 @@ interface AdsBreakdownRow {
   percentage: number;
 }
 
-const ALLOWED_PARAMETERS = ["country", "pathname", "creative_url", "creative_type"] as const;
+const ALLOWED_PARAMETERS = ["country", "pathname", "creative_url", "creative_type", "ad_slot"] as const;
 const ALLOWED_TYPES = ["ad_click", "ad_impression"] as const;
 
 // Parameters stored inside the event's props JSON rather than as event columns.
-const PROP_PARAMETERS: readonly string[] = ["creative_url", "creative_type"];
+const PROP_PARAMETERS: readonly string[] = ["creative_url", "creative_type", "ad_slot"];
 
 export async function getAdsBreakdown(
   req: FastifyRequest<GetAdsBreakdownRequest>,

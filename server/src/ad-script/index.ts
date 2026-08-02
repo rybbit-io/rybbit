@@ -1,6 +1,6 @@
 (function () {
   const LOG = "[rybbit-ad]";
-  const siteId = "d38451f43f87";
+  const DEFAULT_SITE_ID = "d38451f43f87";
 
   const scriptTag = document.currentScript as HTMLScriptElement;
   if (!scriptTag) {
@@ -12,15 +12,31 @@
   const analyticsHost = src.split("/frog.js")[0].replace("/api", "");
   const trackUrl = analyticsHost + "/api/track";
 
+  // Loaders embed the site as ?siteid=… so one build can serve several sites.
+  // Fall back to the baked-in id for embeds that omit it.
+  const siteId = new URLSearchParams(src.split("?")[1] || "").get("siteid") || DEFAULT_SITE_ID;
+
   console.log(LOG, "Initialized", { siteId, analyticsHost });
 
-  // Ad creatives are marked with alt="ad" or data-ad. <video> has no alt
-  // attribute, so video creatives should use data-ad; alt="ad" is still matched
-  // on video so a single convention works across both formats.
-  const AD_SELECTOR = 'img[alt="ad"], img[data-ad], video[alt="ad"], video[data-ad]';
+  // A creative can be marked directly (alt="ad" or data-ad — <video> has no alt
+  // attribute, so data-ad is the valid marker there), or it can be injected by
+  // an ad server into a slot the page marked with data-ad. In the slot case the
+  // creative markup is out of our control, so match its img/video descendants.
+  const MARKED_CREATIVE_SELECTOR = 'img[alt="ad"], img[data-ad], video[alt="ad"], video[data-ad]';
+  const SLOT_CREATIVE_SELECTOR = "[data-ad] img, [data-ad] video";
+  const AD_SELECTOR = `${MARKED_CREATIVE_SELECTOR}, ${SLOT_CREATIVE_SELECTOR}`;
+
+  // Ad slots also contain 1x1 tracking pixels. Only creatives we matched via a
+  // slot need this guard; an explicitly marked creative is trusted at any size.
+  const MIN_CREATIVE_PX = 50;
 
   function creativeType(el: Element): "image" | "video" {
     return el instanceof HTMLVideoElement ? "video" : "image";
+  }
+
+  // The publisher's slot name, e.g. data-ad="inline-house-block".
+  function adSlot(el: Element): string {
+    return el.closest("[data-ad]")?.getAttribute("data-ad") || "";
   }
 
   // For <video>, currentSrc is the URL the browser actually picked, but it stays
@@ -44,7 +60,11 @@
       language: navigator.language,
       page_title: document.title,
       referrer: document.referrer,
-      properties: JSON.stringify({ creative_url: url, creative_type: creativeType(el) }),
+      properties: JSON.stringify({
+        creative_url: url,
+        creative_type: creativeType(el),
+        ad_slot: adSlot(el),
+      }),
     };
   }
 
@@ -74,7 +94,12 @@
     if (!url) return;
 
     const anchor = creative.closest("a");
-    console.log(LOG, "Ad click detected", { url, type: creativeType(creative), href: anchor?.href });
+    console.log(LOG, "Ad click detected", {
+      url,
+      type: creativeType(creative),
+      slot: adSlot(creative),
+      href: anchor?.href,
+    });
 
     sendEvent(buildPayload("ad_click", creative, url));
   });
@@ -88,12 +113,23 @@
         if (!entry.isIntersecting) continue;
 
         const creative = entry.target;
+
+        // Slot-matched creatives include tracking pixels; drop the tiny ones.
+        const box = entry.boundingClientRect;
+        if (
+          !creative.matches(MARKED_CREATIVE_SELECTOR) &&
+          (box.width < MIN_CREATIVE_PX || box.height < MIN_CREATIVE_PX)
+        ) {
+          impressionObserver.unobserve(creative);
+          continue;
+        }
+
         const url = creativeUrl(creative);
         // Keep observing when there is no URL yet (e.g. a <source> added later)
         // so the impression isn't dropped on the next visibility change.
         if (!url) continue;
 
-        console.log(LOG, "Ad impression detected", { url, type: creativeType(creative) });
+        console.log(LOG, "Ad impression detected", { url, type: creativeType(creative), slot: adSlot(creative) });
         sendEvent(buildPayload("ad_impression", creative, url));
         impressionObserver.unobserve(creative);
       }
