@@ -30,7 +30,7 @@ export async function connectGSC(req: FastifyRequest<ConnectGSCRequest>, res: Fa
     }
 
     const clientId = process.env.GOOGLE_CLIENT_ID;
-    const redirectUri = process.env.GOOGLE_REDIRECT_URI || `${process.env.SERVER_URL}/api/gsc/callback`;
+    const redirectUri = process.env.GOOGLE_REDIRECT_URI || `${process.env.BASE_URL}/api/gsc/callback`;
 
     if (!clientId) {
       return res.status(500).send({ error: "Google OAuth not configured" });
