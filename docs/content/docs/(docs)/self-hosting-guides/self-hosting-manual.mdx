@@ -47,6 +47,11 @@ DISABLE_SIGNUP=false
 # Optional but recommended: Mapbox token for globe visualizations
 MAPBOX_TOKEN=your_mapbox_token
 
+# Optional: enables the Google Search Console integration
+GOOGLE_CLIENT_ID=your_google_client_id
+GOOGLE_CLIENT_SECRET=your_google_client_secret
+GOOGLE_REDIRECT_URI=https://your.domain.com/api/gsc/callback
+
 # Optional: Custom ports (only needed if you want different ports)
 # HOST_BACKEND_PORT="3001:3001"
 # HOST_CLIENT_PORT="3002:3002"
@@ -236,6 +241,30 @@ HOST_BACKEND_PORT="8080:3001"
 HOST_CLIENT_PORT="8081:3002"
 ```
 
+### Google Search Console
+
+The Search Console integration appears in Site Settings → Integrations once the
+backend has Google OAuth credentials. No client rebuild is needed — the setting is
+served at runtime from `/api/config`.
+
+1. In the [Google Cloud console](https://console.cloud.google.com/apis/credentials),
+   create an OAuth 2.0 Client ID of type "Web application" and enable the
+   Google Search Console API for the project.
+2. Add `https://your.domain.com/api/gsc/callback` as an authorized redirect URI.
+   It must match `GOOGLE_REDIRECT_URI` exactly.
+3. Set `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` and `GOOGLE_REDIRECT_URI` in your
+   `.env`, then restart the backend:
+
+   ```bash
+   docker compose up -d backend
+   ```
+
+4. Open Site Settings → Integrations and click Connect.
+
+The Google account you authorize must already have access to the Search Console
+property. Note that if you also enable Public Analytics for a site, its Search
+Console data becomes readable by anonymous visitors to that dashboard.
+
 ### Using with Coolify
 
 Since Coolify uses Traefik instead of Caddy as proxy, some modifications have to be made in a `docker-compose.yaml` file to avoid conflicts. Specifically, you need to:
@@ -349,6 +378,9 @@ services:
       - DISABLE_SIGNUP=${DISABLE_SIGNUP}
       - DISABLE_TELEMETRY=${DISABLE_TELEMETRY}
       - MAPBOX_TOKEN=${MAPBOX_TOKEN}
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
+      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
+      - GOOGLE_REDIRECT_URI=${GOOGLE_REDIRECT_URI}
     depends_on:
       clickhouse:
         condition: service_healthy

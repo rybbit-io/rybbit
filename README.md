@@ -127,7 +127,7 @@ See how Rybbit compares to other analytics solutions:
 
 <img width="1299" height="797" alt="Screenshot 2025-10-16 at 7 34 20 PM" src="https://github.com/user-attachments/assets/c56a31ac-7af5-419b-82a5-d3aedb68debc" />
 
-### Web Vitals (Cloud only)
+### Web Vitals
 
 <img width="1299" height="797" alt="Screenshot 2025-10-16 at 7 28 01 PM" src="https://github.com/user-attachments/assets/d88b8be0-cd30-4dd6-a0e5-5446c890c0f9" />
 
