@@ -125,25 +125,9 @@ class PageviewQueue {
         tag: pv.tag || "",
         feature_flags: pv.feature_flags || {},
         import_id: null,
-        // MaxMind is the primary ASN source; the IP-intel provider only fills
-        // the gaps it leaves, so both deployments agree on asn/asn_org.
-        asn: asnInfo?.asn ?? dataForIp?.asn?.asn ?? null,
-        asn_org: asnInfo?.organization || dataForIp?.asn?.org || "",
+        asn: asnInfo?.asn ?? null,
+        asn_org: asnInfo?.organization || "",
         is_datacenter_asn: asnInfo && isDatacenterAsn(asnInfo.asn) ? 1 : 0,
-        // Fields below have no MaxMind equivalent — cloud-only IP intel.
-        company: dataForIp?.company?.name || "",
-        company_domain: dataForIp?.company?.domain || "",
-        company_type: dataForIp?.company?.type || "",
-        company_abuse_score: dataForIp?.company?.abuseScore ?? null,
-        asn_domain: dataForIp?.asn?.domain || "",
-        asn_type: dataForIp?.asn?.type || "",
-        asn_abuse_score: dataForIp?.asn?.abuseScore ?? null,
-        vpn: dataForIp?.vpn || "",
-        crawler: dataForIp?.crawler || "",
-        datacenter: dataForIp?.datacenter || "",
-        is_proxy: dataForIp?.isProxy ?? null,
-        is_tor: dataForIp?.isTor ?? null,
-        is_satellite: dataForIp?.isSatellite ?? null,
         app_version: pv.app_version || "",
         device_model: pv.device_model || sdkUA?.deviceModel || "",
       };

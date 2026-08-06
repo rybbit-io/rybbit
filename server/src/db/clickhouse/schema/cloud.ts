@@ -1,45 +1,7 @@
-import { execClickhouseInitStep, getTableColumns } from "../initUtils.js";
-
-// IP intelligence beyond what MaxMind provides. Only the paid provider fills
-// these, so they stay out of the core schema — asn/asn_org live there instead.
-const IP_INTEL_COLUMNS_TO_ENSURE = [
-  { name: "company", definition: "company String DEFAULT ''" },
-  { name: "company_domain", definition: "company_domain String DEFAULT ''" },
-  { name: "company_type", definition: "company_type LowCardinality(String) DEFAULT ''" },
-  { name: "company_abuse_score", definition: "company_abuse_score Nullable(Float64)" },
-  { name: "asn_domain", definition: "asn_domain String DEFAULT ''" },
-  { name: "asn_type", definition: "asn_type LowCardinality(String) DEFAULT ''" },
-  { name: "asn_abuse_score", definition: "asn_abuse_score Nullable(Float64)" },
-  { name: "vpn", definition: "vpn LowCardinality(String) DEFAULT ''" },
-  { name: "crawler", definition: "crawler LowCardinality(String) DEFAULT ''" },
-  { name: "datacenter", definition: "datacenter LowCardinality(String) DEFAULT ''" },
-  { name: "is_proxy", definition: "is_proxy Nullable(Boolean)" },
-  { name: "is_tor", definition: "is_tor Nullable(Boolean)" },
-  { name: "is_satellite", definition: "is_satellite Nullable(Boolean)" },
-];
-
-async function ensureIpIntelColumns() {
-  const existingColumns = await getTableColumns("events");
-  const missingColumns = IP_INTEL_COLUMNS_TO_ENSURE.filter(column => !existingColumns.has(column.name));
-
-  if (missingColumns.length === 0) {
-    return;
-  }
-
-  await execClickhouseInitStep(
-    "add missing IP intel columns",
-    `
-      ALTER TABLE events
-        ${missingColumns.map(column => `ADD COLUMN IF NOT EXISTS ${column.definition}`).join(",\n        ")}
-      `,
-    { lockAcquireTimeoutSeconds: 15 }
-  );
-}
+import { execClickhouseInitStep } from "../initUtils.js";
 
 // Hourly per-site event counts, used by cloud usage tracking / billing.
 export async function initializeCloudTables() {
-  await ensureIpIntelColumns();
-
   await execClickhouseInitStep(
     "create hourly events by site target table",
     `

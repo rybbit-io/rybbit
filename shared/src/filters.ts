@@ -45,15 +45,6 @@ export type FilterParameter =
   | "lat"
   | "lon"
   | "timezone"
-  | "vpn"
-  | "crawler"
-  | "datacenter"
-  | "company"
-  | "company_type"
-  | "company_domain"
-  | "asn_org"
-  | "asn_type"
-  | "asn_domain"
   | "tag"
   | `feature_flag:${string}`;
 
