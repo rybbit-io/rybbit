@@ -100,7 +100,7 @@ export function SiteCard({
         {showSkeleton ? (
           <>
             <div className="flex gap-2 items-center">
-              <Favicon domain={domain} className="w-6 h-6" />
+              <Favicon domain={domain} className="w-6 h-6" siteType={siteType} siteId={siteId} />
               <span className="text-lg font-medium truncate group-hover:underline transition-all">{name}</span>
             </div>
             <div className="flex gap-2 items-center">
