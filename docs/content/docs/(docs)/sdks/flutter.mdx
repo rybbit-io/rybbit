@@ -1,0 +1,151 @@
+---
+title: Flutter
+description: Community Flutter SDK for Rybbit Analytics
+---
+
+import { Callout } from 'fumadocs-ui/components/callout';
+
+The `rybbit_flutter_sdk` package tracks screen views, events, errors, and users in Flutter apps across Android, iOS, macOS, Windows, Linux, and web. Like React Native, mobile sites get the App Analytics dashboard mode with mobile-specific labels.
+
+<Callout type="info">
+This is a community-maintained SDK, not an official Rybbit package. Source and issues: [nks-hub/rybbit-flutter-sdk](https://github.com/nks-hub/rybbit-flutter-sdk).
+</Callout>
+
+## Creating a Mobile App Site
+
+Before installing the SDK, create a site for your app in the Rybbit dashboard:
+
+1. Click **Add Site** and pick the mobile app option instead of Website.
+2. Enter an app identifier (e.g. `com.example.app`). Letters, numbers, dots, hyphens, and underscores are allowed.
+3. Copy the Site ID — you'll pass it to `Rybbit.init()`.
+
+## Installation
+
+```yaml
+dependencies:
+  rybbit_flutter_sdk:
+    git:
+      url: https://github.com/nks-hub/rybbit-flutter-sdk.git
+      ref: main
+```
+
+## Initialization
+
+Call `Rybbit.init()` once, before `runApp()`. Events tracked before initialization completes are queued (up to 100) and replayed once the SDK is ready.
+
+```dart
+import 'package:rybbit_flutter_sdk/rybbit_flutter_sdk.dart';
+
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  await Rybbit.init(
+    host: 'https://app.rybbit.io',
+    siteId: '1',
+  );
+
+  runApp(const MyApp());
+}
+```
+
+### Configuration Options
+
+| Option                | Type                  | Default | Description                                                    |
+| --------------------- | --------------------- | ------- | -------------------------------------------------------------- |
+| `host`                | `String`              | —       | **Required.** Base URL of your Rybbit instance.                 |
+| `siteId`              | `String`              | —       | **Required.** Site ID from the dashboard.                       |
+| `debug`               | `bool`                | `false` | Verbose logging.                                                |
+| `dryRun`              | `bool`                | `false` | Log payloads without sending them.                              |
+| `autoTrackLifecycle`  | `bool`                | `true`  | Emit `app_open`, `app_foreground`, `app_background`.            |
+| `autoTrackErrors`     | `bool`                | `true`  | Capture uncaught Flutter and Dart errors.                       |
+| `autoUploadIcon`      | `bool`                | `true`  | Attempt to upload the launcher icon on first run. See below.    |
+| `iconAssetPath`       | `String?`             | `null`  | Asset to upload instead of the platform launcher icon.          |
+| `globalProperties`    | `Map<String, dynamic>`| `{}`    | Merged into every event's properties.                           |
+| `maxOfflineEvents`    | `int`                 | `1000`  | Offline queue size.                                             |
+| `offlineTtlDays`      | `int`                 | `7`     | How long queued events stay valid.                              |
+| `flushInterval`       | `Duration`            | `10s`   | Buffer flush period.                                            |
+| `flushThreshold`      | `int`                 | `20`    | Flush immediately after this many buffered events.              |
+
+## Tracking Screens
+
+```dart
+Rybbit.instance.screenView('/checkout', title: 'Checkout');
+```
+
+For automatic tracking, attach the navigator observer:
+
+```dart
+MaterialApp(
+  navigatorObservers: [RybbitNavigatorObserver()],
+);
+```
+
+## Tracking Custom Events
+
+```dart
+Rybbit.instance.event('button_click', properties: {'button': 'cta'});
+```
+
+The GA4 extension adds typed helpers for common events:
+
+```dart
+import 'package:rybbit_flutter_sdk/ga4_events.dart';
+
+Rybbit.instance.trackPurchase(transactionId: 'tx-1', value: 299.0, currency: 'CZK');
+Rybbit.instance.trackLogin(method: 'google');
+Rybbit.instance.trackSearch(searchTerm: 'query', resultsCount: 42);
+```
+
+## Error Tracking
+
+Uncaught errors are captured automatically when `autoTrackErrors` is on. To report one yourself:
+
+```dart
+try {
+  await risky();
+} catch (error, stackTrace) {
+  Rybbit.instance.trackError(error, stackTrace, context: {'screen': '/checkout'});
+}
+```
+
+To also catch errors thrown outside the Flutter zone, start the app through the SDK:
+
+```dart
+Rybbit.runApp(const MyApp());
+```
+
+## User Identification
+
+```dart
+Rybbit.instance.identify('user-123', traits: {'plan': 'pro'});
+Rybbit.instance.setTraits({'plan': 'enterprise'});
+Rybbit.instance.clearUserId();
+```
+
+## Device and App Metadata
+
+Every event carries the app version and device model, which the dashboard surfaces as filters and on the user detail page. The SDK derives them from `package_info_plus` and `device_info_plus` and sends them both as explicit fields and inside an RFC 7231 User-Agent:
+
+```
+MyApp/1.4.2 (com.example.app; Android 14; SM-G991B) RybbitFlutter/0.2.4
+```
+
+The server prefers the explicit fields and falls back to parsing the User-Agent, so older SDK versions keep reporting correctly.
+
+## App Icon
+
+Mobile sites can carry an icon, shown as their favicon in the sidebar, site selector, and site cards. Upload it from **Site Settings → General → App Icon**.
+
+<Callout type="warning">
+The SDK's `autoUploadIcon` option tries to upload the launcher icon on first run, but `PUT /api/sites/:siteId/icon` requires an authenticated site admin — an app shipping to end users has no such session, so the request is rejected and the SDK logs a warning. Set `autoUploadIcon: false` and upload the icon from the dashboard instead.
+</Callout>
+
+## Offline Handling and Retries
+
+Events are buffered in memory and flushed on a timer or once the buffer fills. Failed sends move to a Hive-backed persistent queue that survives app restarts, retries up to three times, and drains automatically when connectivity returns.
+
+## Differences from the Web SDK
+
+- **Session replay** and **Web Vitals** are web-only and not available for Flutter apps.
+- No automatic outbound link, button click, form, or copy tracking (there is no DOM).
+- The anonymous visitor ID is generated by the SDK and persisted locally, rather than derived from browser fingerprinting.
