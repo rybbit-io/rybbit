@@ -8,13 +8,11 @@ export function Favicon({
   className,
   siteType,
   siteId,
-  iconVersion,
 }: {
   domain: string;
   className?: string;
   siteType?: "web" | "mobile" | null;
   siteId?: number;
-  iconVersion?: number;
 }) {
   const [imageError, setImageError] = useState(false);
   const firstLetter = domain.charAt(0).toUpperCase();
@@ -23,7 +21,7 @@ export function Favicon({
     if (siteId !== undefined && !imageError) {
       return (
         <img
-          src={`${BACKEND_URL}/sites/${siteId}/icon${iconVersion !== undefined ? `?v=${iconVersion}` : ""}`}
+          src={`${BACKEND_URL}/sites/${siteId}/icon`}
           className={cn("rounded", className ?? "w-4 h-4")}
           alt={`Icon for ${domain}`}
           onError={() => setImageError(true)}

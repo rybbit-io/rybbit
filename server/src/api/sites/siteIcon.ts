@@ -1,3 +1,4 @@
+import { createHash } from "crypto";
 import { eq } from "drizzle-orm";
 import { FastifyReply, FastifyRequest } from "fastify";
 import { db } from "../../db/postgres/postgres.js";
@@ -30,10 +31,20 @@ export async function getSiteIcon(
       return reply.status(404).send({ error: "No icon found" });
     }
 
+    const icon = Buffer.from(site.icon);
+    // The URL is fixed, so without revalidation a re-uploaded icon would stay
+    // stale in every sidebar and site card until the cache expired.
+    const etag = `"${createHash("sha1").update(icon).digest("hex")}"`;
+
+    if (request.headers["if-none-match"] === etag) {
+      return reply.header("ETag", etag).header("Cache-Control", "public, max-age=0, must-revalidate").status(304).send();
+    }
+
     return reply
       .header("Content-Type", "image/png")
-      .header("Cache-Control", "public, max-age=86400")
-      .send(Buffer.from(site.icon));
+      .header("ETag", etag)
+      .header("Cache-Control", "public, max-age=0, must-revalidate")
+      .send(icon);
   } catch (error) {
     console.error("Error retrieving site icon:", error);
     return reply.status(500).send({ error: "Internal server error" });
