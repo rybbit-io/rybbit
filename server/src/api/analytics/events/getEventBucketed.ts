@@ -1,9 +1,9 @@
 import { FilterParams } from "@rybbit/shared";
 import { FastifyReply, FastifyRequest } from "fastify";
-import { clickhouse } from "../../../db/clickhouse/clickhouse.js";
 import { TimeBucket } from "../types.js";
 import { getFilterStatement } from "../utils/getFilterStatement.js";
-import { getTimeStatement, processResults, TimeBucketToFn } from "../utils/utils.js";
+import { getTimeStatement, TimeBucketToFn } from "../utils/utils.js";
+import { analyticsRoute, runAnalyticsQuery } from "../utils/analyticsQuery.js";
 
 export type GetEventBucketedResponse = {
   time: string;
@@ -29,21 +29,13 @@ const parseLimit = (limit?: string) => {
   return Math.min(Math.max(Math.floor(parsed), 1), 10);
 };
 
-export async function getEventBucketed(req: FastifyRequest<GetEventBucketedRequest>, res: FastifyReply) {
-  const site = req.params.siteId;
-  const { bucket = "hour", limit } = req.query;
-  const timeZone = req.query.time_zone || "UTC";
+export const buildEventBucketedQuery = (query: GetEventBucketedRequest["Querystring"], siteId: number) => {
+  const { bucket = "hour" } = query;
 
-  if (!TimeBucketToFn[bucket]) {
-    return res.status(400).send({ error: `Invalid bucket value: ${bucket}` });
-  }
+  const timeStatement = getTimeStatement(query);
+  const filterStatement = getFilterStatement(query.filters, siteId, timeStatement);
 
-  const topLimit = parseLimit(limit);
-
-  const timeStatement = getTimeStatement(req.query);
-  const filterStatement = getFilterStatement(req.query.filters, Number(site), timeStatement);
-
-  const query = `
+  return `
     WITH top_events AS (
       SELECT
         event_name
@@ -75,23 +67,28 @@ export async function getEventBucketed(req: FastifyRequest<GetEventBucketedReque
     GROUP BY time, event_name
     ORDER BY time
   `;
+};
 
-  try {
-    const result = await clickhouse.query({
-      query,
-      format: "JSONEachRow",
-      query_params: {
+export const getEventBucketed = analyticsRoute<GetEventBucketedRequest>(
+  "bucketed event data",
+  async (req: FastifyRequest<GetEventBucketedRequest>, res: FastifyReply) => {
+    const site = req.params.siteId;
+    const { bucket = "hour", limit } = req.query;
+    const timeZone = req.query.time_zone || "UTC";
+
+    if (!TimeBucketToFn[bucket]) {
+      return res.status(400).send({ error: `Invalid bucket value: ${bucket}` });
+    }
+
+    const data = await runAnalyticsQuery<GetEventBucketedResponse[number]>({
+      query: buildEventBucketedQuery(req.query, Number(site)),
+      params: {
         siteId: Number(site),
-        limit: topLimit,
+        limit: parseLimit(limit),
         timeZone,
       },
     });
 
-    const data = await processResults<GetEventBucketedResponse[number]>(result);
     return res.send({ data });
-  } catch (error) {
-    console.error("Generated Query:", query);
-    console.error("Error fetching bucketed event data:", error);
-    return res.status(500).send({ error: "Failed to fetch bucketed event data" });
   }
-}
+);

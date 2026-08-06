@@ -69,6 +69,21 @@ Wrapper around axios that:
 
 Converts a `Time` object to `CommonApiParams` for analytics endpoints.
 
+### `useAnalyticsQuery` / `useAnalyticsInfiniteQuery` (`analytics/useAnalyticsQuery.ts`)
+
+The standard base for analytics query hooks. Reads the store context (site,
+time, previousTime, filters, timezone) once, derives the wire params, and
+builds the queryKey from the same params object — key and request cannot
+drift. Owns the same-site placeholder policy, `staleTime: 60_000`, and
+`enabled: !!site`. A per-endpoint hook declares only:
+
+- `key` — the historical key prefix (mutations invalidate by it)
+- `extraParams` — endpoint params beyond time/filters (also keyed automatically)
+- `keyExtras` — only for values that select the fetcher itself (e.g. `lite`)
+- `fetch` — the endpoint function, plus any response reshaping
+
+Do not hand-assemble queryKeys that list store inputs in analytics hooks.
+
 ## Conventions
 
 - **Naming**: Endpoint functions use `fetch*`, `create*`, `update*`, `delete*` prefixes

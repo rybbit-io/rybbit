@@ -45,20 +45,20 @@ function Calendar({
         nav: cn("absolute inset-x-0 top-0 flex w-full items-center justify-between gap-1", defaultClassNames.nav),
         button_previous: cn(
           buttonVariants({ variant: buttonVariant }),
-          "h-[--cell-size] w-[--cell-size] select-none p-0 aria-disabled:opacity-50",
+          "h-[var(--cell-size)] w-[var(--cell-size)] select-none p-0 aria-disabled:opacity-50",
           defaultClassNames.button_previous
         ),
         button_next: cn(
           buttonVariants({ variant: buttonVariant }),
-          "h-[--cell-size] w-[--cell-size] select-none p-0 aria-disabled:opacity-50",
+          "h-[var(--cell-size)] w-[var(--cell-size)] select-none p-0 aria-disabled:opacity-50",
           defaultClassNames.button_next
         ),
         month_caption: cn(
-          "flex h-[--cell-size] w-full items-center justify-center px-[--cell-size]",
+          "flex h-[var(--cell-size)] w-full items-center justify-center px-[var(--cell-size)]",
           defaultClassNames.month_caption
         ),
         dropdowns: cn(
-          "flex h-[--cell-size] w-full items-center justify-center gap-1.5 text-sm font-medium",
+          "flex h-[var(--cell-size)] w-full items-center justify-center gap-1.5 text-sm font-medium",
           defaultClassNames.dropdowns
         ),
         dropdown_root: cn(
@@ -80,7 +80,7 @@ function Calendar({
           defaultClassNames.weekday
         ),
         week: cn("mt-2 flex w-full", defaultClassNames.week),
-        week_number_header: cn("w-[--cell-size] select-none", defaultClassNames.week_number_header),
+        week_number_header: cn("w-[var(--cell-size)] select-none", defaultClassNames.week_number_header),
         week_number: cn(
           "select-none text-[0.8rem] text-neutral-500 dark:text-neutral-400",
           defaultClassNames.week_number
@@ -123,7 +123,7 @@ function Calendar({
         WeekNumber: ({ children, ...props }) => {
           return (
             <td {...props}>
-              <div className="flex size-[--cell-size] items-center justify-center text-center">{children}</div>
+              <div className="flex size-[var(--cell-size)] items-center justify-center text-center">{children}</div>
             </td>
           );
         },
@@ -145,7 +145,7 @@ const dayButtonBaseClasses = cn(
   "dark:data-[range-end=true]:bg-neutral-200 dark:data-[range-end=true]:text-neutral-900",
   "group-data-[focused=true]/day:border-neutral-700 group-data-[focused=true]/day:ring-neutral-700/50",
   "dark:group-data-[focused=true]/day:border-neutral-400 dark:group-data-[focused=true]/day:ring-neutral-400/50",
-  "flex aspect-square h-auto w-full min-w-[--cell-size] flex-col gap-1 font-normal leading-none",
+  "flex aspect-square h-auto w-full min-w-[var(--cell-size)] flex-col gap-1 font-normal leading-none",
   "group-data-[focused=true]/day:relative group-data-[focused=true]/day:z-10 group-data-[focused=true]/day:ring-[3px]",
   "data-[range-end=true]:rounded-md data-[range-middle=true]:rounded-none data-[range-start=true]:rounded-md",
   "[&>span]:text-xs [&>span]:opacity-70"

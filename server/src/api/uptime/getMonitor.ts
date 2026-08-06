@@ -56,7 +56,7 @@ export async function getMonitor(request: FastifyRequest<GetMonitorParams>, repl
 
     return reply.status(200).send(monitorWithStatus);
   } catch (error) {
-    console.error("Error retrieving monitor:", error);
+    request.log.error({ err: error }, "Error retrieving monitor");
     return reply.status(500).send({ error: "Internal server error" });
   }
 }

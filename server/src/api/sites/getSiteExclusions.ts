@@ -15,7 +15,12 @@ const siteParamsSchema = z.object({
 async function getExclusionColumn(
   request: FastifyRequest,
   reply: FastifyReply,
-  column: typeof sites.excludedPaths | typeof sites.excludedHostnames | typeof sites.excludedUserAgents,
+  column:
+    | typeof sites.excludedPaths
+    | typeof sites.excludedHostnames
+    | typeof sites.excludedUserAgents
+    | typeof sites.excludedASNs
+    | typeof sites.excludedQueryParams,
   responseKey: string
 ) {
   try {
@@ -53,7 +58,7 @@ async function getExclusionColumn(
       [responseKey]: value,
     });
   } catch (error) {
-    console.error(`Error getting ${responseKey}:`, error);
+    request.log.error({ err: error }, `Error getting ${responseKey}`);
     return reply.status(500).send({
       success: false,
       error: `Failed to get ${responseKey}`,
@@ -71,4 +76,12 @@ export function getSiteExcludedHostnames(request: FastifyRequest, reply: Fastify
 
 export function getSiteExcludedUserAgents(request: FastifyRequest, reply: FastifyReply) {
   return getExclusionColumn(request, reply, sites.excludedUserAgents, "excludedUserAgents");
+}
+
+export function getSiteExcludedASNs(request: FastifyRequest, reply: FastifyReply) {
+  return getExclusionColumn(request, reply, sites.excludedASNs, "excludedASNs");
+}
+
+export function getSiteExcludedQueryParams(request: FastifyRequest, reply: FastifyReply) {
+  return getExclusionColumn(request, reply, sites.excludedQueryParams, "excludedQueryParams");
 }

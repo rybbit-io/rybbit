@@ -59,7 +59,7 @@ export class NotificationService {
         await this.sendSMSNotification(channel.config.phoneNumber, monitor, incident, eventType);
       }
     } catch (error) {
-      this.logger.error({ channelType: channel.type, error }, "Failed to send test notification");
+      this.logger.error({ channelType: channel.type, err: error }, "Failed to send test notification");
       throw error;
     }
   }
@@ -125,11 +125,14 @@ export class NotificationService {
             .set({ lastNotifiedAt: now.toISOString() })
             .where(eq(notificationChannels.id, channel.id));
         } catch (error) {
-          this.logger.error({ channelType: channel.type, channelId: channel.id, error }, "Failed to send notification");
+          this.logger.error(
+            { channelType: channel.type, channelId: channel.id, err: error },
+            "Failed to send notification"
+          );
         }
       }
     } catch (error) {
-      this.logger.error(error, "Failed to send incident notifications");
+      this.logger.error({ err: error }, "Failed to send incident notifications");
     }
   }
 
@@ -183,7 +186,7 @@ export class NotificationService {
     }
 
     await sendEmail(email, subject, html);
-    this.logger.info({ eventType, email, monitorId: monitor.id }, "Sent email notification");
+    this.logger.info({ eventType, monitorId: monitor.id }, "Sent email notification");
   }
 
   private async sendDiscordNotification(
@@ -403,6 +406,6 @@ export class NotificationService {
       throw new Error(result.error || "Failed to send SMS");
     }
 
-    this.logger.info({ eventType, phoneNumber, monitorId: monitor.id }, "Sent SMS notification");
+    this.logger.info({ eventType, monitorId: monitor.id }, "Sent SMS notification");
   }
 }

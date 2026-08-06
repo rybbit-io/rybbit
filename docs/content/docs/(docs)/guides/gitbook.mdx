@@ -1,33 +1,21 @@
 ---
 title: GitBook
-description: Integrate Rybbit Analytics with your GitBook documentation
+description: Options for using Rybbit Analytics with GitBook documentation
 ---
 
-import { Steps, Step } from 'fumadocs-ui/components/steps';
 import { Callout } from 'fumadocs-ui/components/callout';
 
-GitBook is a popular platform for creating documentation and knowledge bases. You can add Rybbit Analytics to track how visitors use your documentation.
+GitBook is a popular platform for creating documentation and knowledge bases.
 
 <Callout type="warn">
-Custom scripts require a **Pro plan or higher** and a **custom domain** configured for your GitBook space.
+GitBook no longer supports adding arbitrary custom scripts (JS/HTML) to published sites. The old **Custom scripts → Head** setting this guide previously described has been removed, so the standard Rybbit `<script>` snippet cannot be pasted into a GitBook-hosted site. Analytics on GitBook now works through its built-in integrations, and Rybbit does not currently have a prebuilt GitBook integration.
 </Callout>
 
-## How to Add Rybbit to GitBook
+## Current options
 
-<Steps>
-<Step>
-### Open Space Settings
+### Build a custom GitBook integration
 
-1. Navigate to your GitBook space
-2. Click on the **Settings** icon (gear) in the top right
-3. Go to **Integrations** in the sidebar
-</Step>
-
-<Step>
-### Add Custom Script
-
-1. Scroll to the **Custom scripts** section
-2. In the **Head** section, add the following code:
+GitBook's [developer platform](https://gitbook.com/docs/integrations) lets you build and install your own integration, and integrations can inject scripts into published content — this is how GitBook's own analytics integrations (Google Analytics, Fathom, etc.) work. A minimal custom integration that injects the Rybbit snippet:
 
 ```html
 <script
@@ -37,38 +25,16 @@ Custom scripts require a **Pro plan or higher** and a **custom domain** configur
 ></script>
 ```
 
-Replace `YOUR_SITE_ID` with your actual Site ID from your Rybbit dashboard.
-</Step>
+Refer to GitBook's integration documentation for the current manifest format and publishing flow, and note that script injection only applies to published spaces (typically on a custom domain).
 
-<Step>
-### Save Changes
+### Host your docs on a platform with custom-code support
 
-Click **Save** to apply the script to your documentation site.
-</Step>
-</Steps>
+If building an integration isn't worth it for your use case, platforms like [Docusaurus](/docs/guides/docusaurus), [VitePress](/docs/guides/vitepress), [Mintlify](/docs/guides/mintlify), or [Hugo](/docs/guides/hugo) support adding the Rybbit script directly — see their guides.
 
-## Requirements
+## Verifying installation
 
-For custom scripts to work on GitBook, you need:
+If you do get the script injected via an integration:
 
-1. **Pro, Team, or Enterprise plan** - Custom scripts are not available on the free plan
-2. **Custom domain** - Scripts only load on custom domains, not on `*.gitbook.io` URLs
-
-## Troubleshooting
-
-### Script not appearing
-
-1. Ensure you have a Pro plan or higher
-2. Verify your custom domain is properly configured
-3. Check that you're viewing the site through your custom domain, not `*.gitbook.io`
-
-### Changes not reflecting
-
-GitBook may cache pages. Try:
-- Hard refresh (Ctrl+Shift+R or Cmd+Shift+R)
-- Viewing in an incognito/private window
-- Waiting a few minutes for cache to update
-
-### Tracking internal vs public docs
-
-The tracking script will work for both public documentation and internal/private spaces (when accessed by authenticated users through your custom domain).
+1. Visit your published documentation through its public URL
+2. Open the browser Network tab and confirm `script.js` loads and `POST` requests go to `/api/track`
+3. Check your Rybbit dashboard for incoming pageviews

@@ -1,4 +1,6 @@
 // Events
+export { getAutocaptureEvents } from "./events/getAutocaptureEvents.js";
+export { getAutocaptureValues } from "./events/getAutocaptureValues.js";
 export { getEventBucketed } from "./events/getEventBucketed.js";
 export { getEventNames } from "./events/getEventNames.js";
 export { getEventProperties } from "./events/getEventProperties.js";
@@ -62,7 +64,10 @@ export { runCustomQuery } from "./runCustomQuery.js";
 export { getSession } from "./sessions/getSession.js";
 export { getSessionLocations } from "./sessions/getSessionLocations.js";
 export { getSessions } from "./sessions/getSessions.js";
+export { deleteUser } from "./users/deleteUser.js";
 export { getUserInfo } from "./users/getUserInfo.js";
 export { getUserSessionCount } from "./users/getUserSessionCount.js";
 export { getUsers } from "./users/getUsers.js";
 export { getUserTraitKeys, getUserTraitValues, getUserTraitValueUsers } from "./users/getUserTraits.js";
+export { identifyUser } from "./users/identifyUser.js";
+export { updateUserTraits } from "./users/updateUserTraits.js";

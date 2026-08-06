@@ -1,9 +1,10 @@
 import { FastifyReply, FastifyRequest } from "fastify";
-import { clickhouse } from "../../db/clickhouse/clickhouse.js";
 import { FilterParameter } from "./types.js";
-import { getTimeStatement, processResults } from "./utils/utils.js";
+import { getTimeStatement } from "./utils/utils.js";
 import { getFilterStatement, getSqlParam } from "./utils/getFilterStatement.js";
+import { SESSION_CHANNEL_AGG } from "./utils/sessionAttribution.js";
 import { FilterParams } from "@rybbit/shared";
+import { analyticsRoute, getPaginationStatements, runPaginatedQuery } from "./utils/analyticsQuery.js";
 
 interface GetMetricRequest {
   Params: {
@@ -52,32 +53,18 @@ type GetMetricPaginatedResponse = {
   totalCount: number;
 };
 
-const getQuery = (request: FastifyRequest<GetMetricRequest>, isCountQuery: boolean = false) => {
-  const { filters, parameter, limit, page } = request.query;
-  const site = request.params.siteId;
+export const buildMetricQuery = (
+  query: GetMetricRequest["Querystring"],
+  siteId: number,
+  isCountQuery: boolean = false
+) => {
+  const { filters, parameter } = query;
 
-  const timeStatement = getTimeStatement(request.query);
+  const timeStatement = getTimeStatement(query);
 
-  const filterStatement = getFilterStatement(filters, Number(site), timeStatement);
+  const filterStatement = getFilterStatement(filters, siteId, timeStatement);
 
-  let validatedLimit: number | null = null;
-  if (!isCountQuery && limit !== undefined) {
-    const parsedLimit = parseInt(String(limit), 10);
-    if (!isNaN(parsedLimit) && parsedLimit > 0) {
-      validatedLimit = parsedLimit;
-    }
-  }
-  const limitStatement = !isCountQuery && validatedLimit ? `LIMIT ${validatedLimit}` : isCountQuery ? "" : "LIMIT 100";
-
-  let validatedOffset: number | null = null;
-  if (!isCountQuery && page !== undefined) {
-    const parsedPage = parseInt(String(page), 10);
-    if (!isNaN(parsedPage) && parsedPage >= 1) {
-      const pageOffset = (parsedPage - 1) * (validatedLimit || 100);
-      validatedOffset = pageOffset;
-    }
-  }
-  const offsetStatement = !isCountQuery && validatedOffset ? `OFFSET ${validatedOffset}` : "";
+  const { limitStatement, offsetStatement } = getPaginationStatements(query, 100, isCountQuery);
 
   if (parameter === "event_name") {
     if (isCountQuery) {
@@ -106,7 +93,7 @@ const getQuery = (request: FastifyRequest<GetMetricRequest>, isCountQuery: boole
       ${filterStatement}
       ${timeStatement}
       AND type = 'custom_event'
-    GROUP BY event_name ORDER BY count desc
+    GROUP BY event_name ORDER BY count desc, event_name asc
     ${limitStatement}
     ${offsetStatement};
   `;
@@ -174,7 +161,7 @@ const getQuery = (request: FastifyRequest<GetMetricRequest>, isCountQuery: boole
           ) as bounce_rate
       FROM TitleStatsWithSessions
       GROUP BY value
-      ORDER BY count DESC
+      ORDER BY count DESC, value ASC
       ${limitStatement}
       ${offsetStatement};
     `;
@@ -269,7 +256,7 @@ const getQuery = (request: FastifyRequest<GetMetricRequest>, isCountQuery: boole
         avg_time_on_page_seconds as time_on_page_seconds,
         round((bounced_sessions / nullIf(unique_sessions, 0)) * 100, 2) as bounce_rate
     FROM PathStats
-    ORDER BY unique_sessions DESC
+    ORDER BY unique_sessions DESC, pathname ASC
     ${limitStatement}
     ${offsetStatement};`;
   }
@@ -344,7 +331,7 @@ const getQuery = (request: FastifyRequest<GetMetricRequest>, isCountQuery: boole
         avg_time_on_page_seconds as time_on_page_seconds,
         round((bounced_sessions / nullIf(unique_sessions, 0)) * 100, 2) as bounce_rate
     FROM PathStats
-    ORDER BY unique_sessions DESC
+    ORDER BY unique_sessions DESC, pathname ASC
     ${limitStatement}
     ${offsetStatement};
     `;
@@ -353,12 +340,16 @@ const getQuery = (request: FastifyRequest<GetMetricRequest>, isCountQuery: boole
   // Default case for other parameters
   const sqlParam = getSqlParam(parameter);
 
+  // Sessions are attributed to their first attributed channel (matching the
+  // sessions views), not the first event's channel, which is often 'Direct'.
+  const valueExpression = parameter === "channel" ? SESSION_CHANNEL_AGG : `argMin(${sqlParam}, e.timestamp)`;
+
   if (isCountQuery) {
     return `
     SELECT COUNT(DISTINCT value) as totalCount
     FROM (
         SELECT
-            argMin(${sqlParam}, e.timestamp) as value
+            ${valueExpression} as value
         FROM events e
         WHERE
             e.site_id = {siteId:Int32}
@@ -385,7 +376,7 @@ const getQuery = (request: FastifyRequest<GetMetricRequest>, isCountQuery: boole
     ),
     SessionData AS (
         SELECT
-            argMin(${sqlParam}, e.timestamp) as value,
+            ${valueExpression} as value,
             e.session_id,
             any(spc.pageviews_in_session) as pageviews_in_session
         FROM events e
@@ -407,51 +398,23 @@ const getQuery = (request: FastifyRequest<GetMetricRequest>, isCountQuery: boole
         round((countIf(DISTINCT session_id, pageviews_in_session = 1) / nullIf(COUNT(DISTINCT session_id), 0)) * 100, 2) as bounce_rate
     FROM SessionData
     GROUP BY value
-    ORDER BY count desc
+    ORDER BY count desc, value asc
     ${limitStatement}
     ${offsetStatement};
   `;
 };
 
-export async function getMetric(req: FastifyRequest<GetMetricRequest>, res: FastifyReply) {
-  const { parameter, page } = req.query;
-  const site = req.params.siteId;
+export const getMetric = analyticsRoute<GetMetricRequest>(
+  req => req.query.parameter,
+  async (req: FastifyRequest<GetMetricRequest>, res: FastifyReply) => {
+    const siteId = Number(req.params.siteId);
+    const params = { siteId };
 
-  const isPaginatedRequest = page !== undefined;
+    const result = await runPaginatedQuery<MetricItem>(
+      { query: buildMetricQuery(req.query, siteId, false), params },
+      { query: buildMetricQuery(req.query, siteId, true), params }
+    );
 
-  const dataQuery = getQuery(req, false);
-  const countQuery = getQuery(req, true);
-
-  try {
-    // Run both queries in parallel
-    const [dataResult, countResult] = await Promise.all([
-      clickhouse.query({
-        query: dataQuery,
-        format: "JSONEachRow",
-        query_params: {
-          siteId: Number(site),
-        },
-      }),
-      clickhouse.query({
-        query: countQuery,
-        format: "JSONEachRow",
-        query_params: {
-          siteId: Number(site),
-        },
-      }),
-    ]);
-
-    const items = await processResults<MetricItem>(dataResult);
-    const countData = await processResults<{ totalCount: number }>(countResult);
-    const totalCount = countData.length > 0 ? countData[0].totalCount : 0;
-
-    return res.send({ data: { data: items, totalCount } });
-  } catch (error) {
-    console.error(`Error fetching ${parameter}:`, error);
-    console.error("Failed dataQuery:", dataQuery);
-    if (isPaginatedRequest) {
-      console.error("Failed countQuery:", countQuery);
-    }
-    return res.status(500).send({ error: `Failed to fetch ${parameter}` });
+    return res.send({ data: result });
   }
-}
+);

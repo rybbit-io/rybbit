@@ -1,10 +1,10 @@
 "use client";
 
+import { useQueryClient } from "@tanstack/react-query";
 import { useExtracted } from "next-intl";
 import { useState, useCallback, ReactNode } from "react";
 import { toast } from "@/components/ui/sonner";
 
-import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 
 import { updateSiteConfig, SiteResponse } from "@/api/admin/endpoints";
@@ -13,6 +13,8 @@ import { planIncludesReplay } from "@/lib/subscription/planUtils";
 import { useStripeSubscription } from "@/lib/subscription/useStripeSubscription";
 import { Badge } from "@/components/ui/badge";
 import { IS_CLOUD } from "@/lib/const";
+
+import { SettingRow, SettingsSection, SettingsSections } from "./SettingsSection";
 
 interface TrackingTabProps {
   siteMetadata: SiteResponse;
@@ -33,6 +35,7 @@ interface ToggleConfig {
 
 export function TrackingTab({ siteMetadata, disabled = false }: TrackingTabProps) {
   const t = useExtracted();
+  const queryClient = useQueryClient();
   const { refetch } = useGetSitesFromOrg(siteMetadata?.organizationId ?? "");
   const isMobileSite = siteMetadata.type === "mobile";
 
@@ -68,6 +71,8 @@ export function TrackingTab({ siteMetadata, disabled = false }: TrackingTabProps
           : `${key.replace(/([A-Z])/g, " $1").toLowerCase()} ${checked ? "enabled" : "disabled"}`;
         toast.success(message);
         refetch();
+        // Prefix match so both string- and number-keyed useGetSite instances update
+        queryClient.invalidateQueries({ queryKey: ["get-site"] });
       } catch (error) {
         console.error(`Error updating ${key}:`, error);
         toast.error(`Failed to update ${key.replace(/([A-Z])/g, " $1").toLowerCase()}`);
@@ -76,7 +81,7 @@ export function TrackingTab({ siteMetadata, disabled = false }: TrackingTabProps
         setLoadingStates(prev => ({ ...prev, [key]: false }));
       }
     },
-    [siteMetadata.siteId, refetch]
+    [siteMetadata.siteId, refetch, queryClient]
   );
 
   const { data: subscription, isLoading: isSubscriptionLoading } = useStripeSubscription();
@@ -91,7 +96,7 @@ export function TrackingTab({ siteMetadata, disabled = false }: TrackingTabProps
     IS_CLOUD;
 
   const analyticsToggles: ToggleConfig[] = [
-    // Hide the replay toggle for AppSumo tiers without replays (1-3); tiers 4-6 include them
+    // Hide the replay toggle for AppSumo tiers without replays (1-3); tiers 4-7 include them
     ...(!isMobileSite &&
     !isSubscriptionLoading &&
     (!subscription?.planName?.startsWith("appsumo") || planIncludesReplay(subscription))
@@ -226,16 +231,15 @@ export function TrackingTab({ siteMetadata, disabled = false }: TrackingTabProps
   ];
 
   const renderToggleSection = (toggles: ToggleConfig[], title: string) => (
-    <div className="space-y-4">
-      <h4 className="text-sm font-semibold text-foreground">{title}</h4>
+    <SettingsSection title={title}>
       {toggles.map(toggle => (
-        <div key={toggle.id} className="flex items-center justify-between">
-          <div>
-            <Label htmlFor={toggle.id} className="text-sm font-medium text-foreground flex items-center gap-2">
-              {toggle.label} {toggle.badge && IS_CLOUD && toggle.badge}
-            </Label>
-            <p className="text-xs text-muted-foreground mt-1">{toggle.description}</p>
-          </div>
+        <SettingRow
+          key={toggle.id}
+          label={toggle.label}
+          htmlFor={toggle.id}
+          description={toggle.description}
+          badge={IS_CLOUD ? toggle.badge : undefined}
+        >
           <Switch
             id={toggle.id}
             checked={toggle.value}
@@ -250,15 +254,15 @@ export function TrackingTab({ siteMetadata, disabled = false }: TrackingTabProps
               )
             }
           />
-        </div>
+        </SettingRow>
       ))}
-    </div>
+    </SettingsSection>
   );
 
   return (
-    <div className="space-y-6">
+    <SettingsSections>
       {renderToggleSection(analyticsToggles, t("Analytics Features"))}
       {renderToggleSection(autoCaptureToggles, t("Auto Capture"))}
-    </div>
+    </SettingsSections>
   );
 }

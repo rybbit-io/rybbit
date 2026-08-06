@@ -15,10 +15,11 @@ const DropdownMenuTrigger = React.forwardRef<
     ButtonProps & {
       unstyled?: boolean;
     }
->(({ className, variant, size, unstyled, ...props }, ref) => (
+>(({ asChild, className, variant, size, unstyled, ...props }, ref) => (
   <DropdownMenuPrimitive.Trigger
     ref={ref}
-    className={unstyled ? className : cn(buttonVariants({ variant, size, className }))}
+    asChild={asChild}
+    className={unstyled || asChild ? className : cn(buttonVariants({ variant, size, className }))}
     {...props}
   />
 ));
@@ -60,7 +61,7 @@ const DropdownMenuSubContent = React.forwardRef<
   <DropdownMenuPrimitive.SubContent
     ref={ref}
     className={cn(
-      "z-50 min-w-32 overflow-hidden rounded-md border border-neutral-150 bg-white p-1 text-neutral-950 shadow-lg data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 origin-[--radix-dropdown-menu-content-transform-origin] dark:border-neutral-800 dark:bg-neutral-850 dark:text-neutral-50",
+      "z-50 min-w-32 overflow-hidden rounded-md border border-neutral-150 bg-white p-1 text-neutral-950 shadow-lg data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 origin-[var(--radix-dropdown-menu-content-transform-origin)] dark:border-neutral-800 dark:bg-neutral-850 dark:text-neutral-50",
       className
     )}
     {...props}
@@ -78,7 +79,7 @@ const DropdownMenuContent = React.forwardRef<
       sideOffset={sideOffset}
       className={cn(
         "z-50 max-h-[var(--radix-dropdown-menu-content-available-height)] min-w-32 overflow-y-auto overflow-x-hidden rounded-lg border border-neutral-150 bg-white p-1 text-neutral-950 shadow-2xl dark:border-neutral-750 dark:bg-neutral-850 dark:text-neutral-50",
-        "data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 origin-[--radix-dropdown-menu-content-transform-origin]",
+        "data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 origin-[var(--radix-dropdown-menu-content-transform-origin)]",
         className
       )}
       {...props}

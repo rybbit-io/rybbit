@@ -9,6 +9,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { cn, formatSecondsAsMinutesAndSeconds } from "@/lib/utils";
 import { StatType, useStore } from "@/lib/store";
 import { useRollupBucketed } from "../../hooks/useRollupBucketed";
+import { useRollupOverview } from "../../hooks/useRollupOverview";
 import { Chart } from "./Chart";
 
 type SiteRow = GetSitesFromOrgResponse["sites"][number];
@@ -81,6 +82,12 @@ export function MainSection({
     bucket,
     lite,
   });
+  // Stat cards read range totals; the chart reads the bucketed series.
+  const { overviews, isLoading: isLoadingOverview } = useRollupOverview({
+    siteIds,
+    lite,
+  });
+  const statsLoading = isLoading || isLoadingOverview;
 
   const siteMetaById = useMemo(() => {
     const m = new Map<
@@ -93,7 +100,10 @@ export function MainSection({
     return m;
   }, [sites]);
 
-  // Aggregate totals across all sites and time buckets.
+  // Aggregate totals across sites from each site's range total, NOT by summing the
+  // chart's buckets: a distinct-user count isn't additive over time, so summing
+  // buckets counts anyone active on two days twice and makes the headline number
+  // depend on the bucket size. Rates stay session-weighted across sites.
   const totals = useMemo(() => {
     let pageviews = 0;
     let sessions = 0;
@@ -101,15 +111,14 @@ export function MainSection({
     let weightedBounce = 0;
     let weightedDuration = 0;
     let weightedPagesPerSession = 0;
-    for (const s of series) {
-      for (const b of s.data) {
-        pageviews += b.pageviews;
-        sessions += b.sessions;
-        users += b.users;
-        weightedBounce += b.bounce_rate * b.sessions;
-        weightedDuration += b.session_duration * b.sessions;
-        weightedPagesPerSession += b.pages_per_session * b.sessions;
-      }
+    for (const o of overviews) {
+      const d = o.data;
+      pageviews += d.pageviews;
+      sessions += d.sessions;
+      users += d.users;
+      weightedBounce += d.bounce_rate * d.sessions;
+      weightedDuration += d.session_duration * d.sessions;
+      weightedPagesPerSession += d.pages_per_session * d.sessions;
     }
     return {
       pageviews,
@@ -119,7 +128,7 @@ export function MainSection({
       session_duration: sessions ? weightedDuration / sessions : 0,
       pages_per_session: sessions ? weightedPagesPerSession / sessions : 0,
     };
-  }, [series]);
+  }, [overviews]);
 
   const getSelectedStatLabel = () => {
     switch (selectedStat) {
@@ -149,26 +158,26 @@ export function MainSection({
               title={t("Unique Users")}
               id="users"
               value={totals.users}
-              isLoading={isLoading}
+              isLoading={statsLoading}
             />
             <Stat
               title={t("Sessions")}
               id="sessions"
               value={totals.sessions}
-              isLoading={isLoading}
+              isLoading={statsLoading}
             />
             <Stat
               title={t("Pageviews")}
               id="pageviews"
               value={totals.pageviews}
-              isLoading={isLoading}
+              isLoading={statsLoading}
             />
             <Stat
               title={t("Pages per Session")}
               id="pages_per_session"
               value={totals.pages_per_session}
               decimals={1}
-              isLoading={isLoading}
+              isLoading={statsLoading}
             />
             <Stat
               title={t("Bounce Rate")}
@@ -176,14 +185,14 @@ export function MainSection({
               value={totals.bounce_rate}
               postfix="%"
               decimals={1}
-              isLoading={isLoading}
+              isLoading={statsLoading}
             />
             <Stat
               title={t("Session Duration")}
               id="session_duration"
               value={totals.session_duration}
               valueFormatter={formatSecondsAsMinutesAndSeconds}
-              isLoading={isLoading}
+              isLoading={statsLoading}
             />
           </div>
         </CardContent>

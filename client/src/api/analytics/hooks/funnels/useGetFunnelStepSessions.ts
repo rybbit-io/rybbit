@@ -1,9 +1,13 @@
-import { useQuery } from "@tanstack/react-query";
 import { Time } from "../../../../components/DateSelector/types";
 import { FUNNEL_PAGE_FILTERS } from "../../../../lib/filterGroups";
-import { getFilteredFilters, useStore } from "../../../../lib/store";
-import { buildApiParams } from "../../../utils";
-import { fetchFunnelStepSessions, FunnelStep } from "../../endpoints";
+import { getFilteredFilters } from "../../../../lib/store";
+import {
+  fetchFunnelStepSessions,
+  FunnelStep,
+  FunnelStepSessionsParams,
+  GetSessionsResponse,
+} from "../../endpoints";
+import { useAnalyticsQuery } from "../../useAnalyticsQuery";
 
 export function useGetFunnelStepSessions({
   steps,
@@ -24,22 +28,18 @@ export function useGetFunnelStepSessions({
   limit?: number;
   enabled?: boolean;
 }) {
-  const { timezone } = useStore();
+  // Only the funnel page's filter parameters apply; an empty subset means no
+  // filters at all (not the store's full filter list).
   const filteredFilters = getFilteredFilters(FUNNEL_PAGE_FILTERS);
-  const params = buildApiParams(time, { filters: filteredFilters });
 
-  return useQuery({
-    queryKey: ["funnel-step-sessions", steps, stepNumber, siteId, time, mode, page, limit, filteredFilters, timezone],
-    queryFn: async () => {
-      return fetchFunnelStepSessions(siteId, {
-        ...params,
-        steps,
-        stepNumber,
-        mode,
-        page,
-        limit,
-      });
-    },
-    enabled: !!siteId && !!steps && steps.length >= 2 && enabled,
+  return useAnalyticsQuery<{ data: GetSessionsResponse }, FunnelStepSessionsParams>({
+    key: "funnel-step-sessions",
+    site: siteId,
+    overrideTime: time,
+    useFilters: filteredFilters.length > 0,
+    customFilters: filteredFilters,
+    extraParams: { steps, stepNumber, mode, page, limit },
+    enabled: !!steps && steps.length >= 2 && enabled,
+    fetch: (site, params) => fetchFunnelStepSessions(site, params),
   });
 }

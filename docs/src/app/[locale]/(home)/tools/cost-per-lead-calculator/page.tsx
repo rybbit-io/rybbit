@@ -163,7 +163,7 @@ const educationalContent = (
       CPL vs CPA: Understanding the Difference
     </h3>
     <p className="text-neutral-700 dark:text-neutral-300 leading-relaxed mb-4">
-      CPL and CPA represent different stages of the customer journey:
+      CPL and CPA measure different stages of the funnel:
     </p>
     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
       <div className="px-4 py-3 bg-neutral-50 dark:bg-neutral-900/50 border border-neutral-200 dark:border-neutral-800 rounded-lg">
@@ -207,7 +207,7 @@ const educationalContent = (
         poor-fit leads
       </li>
       <li>
-        <strong>Leverage organic channels:</strong> Invest in SEO and content marketing for long-term low-CPL lead
+        <strong>Use organic channels:</strong> Invest in SEO and content marketing for long-term low-CPL lead
         generation
       </li>
     </ol>

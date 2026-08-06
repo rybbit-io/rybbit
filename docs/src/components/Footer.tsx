@@ -1,309 +1,199 @@
+import { GridCrosses } from "@/components/GridCrosses";
+import { LanguageSwitcher } from "@/components/LanguageSwitcher";
+import { ThemeSwitcher } from "@/components/ThemeSwitcher";
+import { SiDiscord, SiGithub, SiX } from "@icons-pack/react-simple-icons";
+import { useExtracted } from "next-intl";
 import Image from "next/image";
 import Link from "next/link";
-import { useExtracted } from "next-intl";
-import { LanguageSwitcher } from "@/components/LanguageSwitcher";
-import { ThemeSwitcher } from "./ThemeSwitcher";
+
+const footerLinkClassName =
+  "inline-flex min-h-11 items-center text-sm leading-5 text-neutral-600 transition-colors hover:text-neutral-950 focus-visible:rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-500 dark:text-neutral-400 dark:hover:text-white md:min-h-8";
+
+const socialLinks = [
+  { label: "GitHub", href: "https://github.com/rybbit-io/rybbit", icon: SiGithub },
+  { label: "Discord", href: "https://discord.gg/DEhGb4hYBj", icon: SiDiscord },
+  { label: "X", href: "https://x.com/yang_frog", icon: SiX },
+];
+
+interface FooterLink {
+  href: string;
+  label: string;
+  external?: boolean;
+}
 
 export function Footer() {
   const t = useExtracted();
+
+  const footerGroups: Array<{ title: string; links: FooterLink[] }> = [
+    {
+      title: t("Comparisons"),
+      links: [
+        { href: "/compare/google-analytics", label: t("vs Google Analytics") },
+        { href: "/compare/cloudflare-analytics", label: t("vs Cloudflare Analytics") },
+        { href: "/compare/plausible", label: t("vs Plausible") },
+        { href: "/compare/umami", label: t("vs Umami") },
+        { href: "/compare/fathom", label: t("vs Fathom") },
+        { href: "/compare/simpleanalytics", label: t("vs Simple Analytics") },
+        { href: "/compare/matomo", label: t("vs Matomo") },
+        { href: "/compare/posthog", label: t("vs PostHog") },
+      ],
+    },
+    {
+      title: t("Features"),
+      links: [
+        { href: "/features/web-analytics", label: t("Web Analytics") },
+        { href: "/features/session-replay", label: t("Session Replay") },
+        { href: "/features/funnels", label: t("Funnels") },
+        { href: "/features/user-journeys", label: t("User Journeys") },
+        { href: "/features/goals", label: t("Goals") },
+        { href: "/features/custom-events", label: t("Custom Events") },
+        { href: "/features/sessions", label: t("Sessions") },
+        { href: "/features/retention", label: t("Retention") },
+        { href: "/features/web-vitals", label: t("Web Vitals") },
+        { href: "/features/error-tracking", label: t("Error Tracking") },
+        { href: "/features/user-profiles", label: t("User Profiles") },
+      ],
+    },
+    {
+      title: t("Resources"),
+      links: [
+        { href: "/docs", label: t("Documentation") },
+        { href: "/features", label: t("Features") },
+        { href: "/pricing", label: t("Pricing") },
+        { href: "/blog", label: t("Blog") },
+        { href: "/tools", label: t("Tools") },
+        { href: "https://github.com/rybbit-io/rybbit", label: "GitHub", external: true },
+        { href: "/docs/api/getting-started", label: t("API Reference") },
+        { href: "/oss-friends", label: t("OSS Friends") },
+        { href: "/affiliate", label: t("50% Affiliate Program") },
+      ],
+    },
+    {
+      title: t("Company"),
+      links: [
+        { href: "/contact", label: t("Contact") },
+        { href: "/privacy", label: t("Privacy Policy") },
+        { href: "/terms-and-conditions", label: t("Terms and Conditions") },
+        { href: "/security", label: t("Security") },
+        { href: "/dpa", label: t("DPA") },
+        { href: "/brand", label: t("Brand Kit") },
+        { href: "mailto:hello@rybbit.com", label: t("Support"), external: true },
+      ],
+    },
+  ];
+
   return (
     <footer className="border-t border-neutral-200 dark:border-neutral-800">
-      <div className="max-w-[1200px] mx-auto px-4 py-12">
-        {/* Main Footer Content */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-8 mb-8">
-          {/* Company Info */}
-          <div className="space-y-4">
-            <Image src="/rybbit/horizontal_white.svg" alt="Rybbit" width={140} height={0} style={{ height: "auto" }}
-              className="dark:invert-0 invert"
+      <div className="relative mx-auto max-w-[1200px] border-x border-neutral-200 dark:border-neutral-800">
+        <GridCrosses className="hidden sm:block" />
+        <div className="grid border-b border-neutral-200 dark:border-neutral-800 lg:grid-cols-12">
+          <div className="border-b border-neutral-200 px-5 py-10 dark:border-neutral-800 sm:px-8 lg:col-span-3 lg:border-b-0 lg:border-r lg:py-14">
+            <div className="flex h-full flex-col">
+              <div>
+                <Link
+                  href="/"
+                  aria-label="Rybbit home"
+                  className="inline-flex rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-500"
+                >
+                  <Image
+                    src="/rybbit/horizontal_white.svg"
+                    alt="Rybbit"
+                    width={120}
+                    height={0}
+                    style={{ height: "auto" }}
+                    className="invert dark:invert-0"
+                  />
+                </Link>
 
-            />
-            {/* <p className="text-sm text-neutral-400 max-w-xs">
-              Open source, privacy-focused web analytics platform that respects
-              user privacy.
-            </p> */}
-            <a
-              href="https://www.producthunt.com/products/rybbit?embed=true&utm_source=badge-top-post-badge&utm_medium=badge&utm_source=badge-rybbit&#0045;2"
-              target="_blank"
-            >
-              <img
-                src="https://api.producthunt.com/widgets/embed-image/v1/top-post-badge.svg?post_id=1028220&theme=neutral&period=daily&t=1761001525479"
-                alt="Rybbit - Open&#0032;Source&#0032;Google&#0032;Analytics&#0032;Replacement | Product Hunt"
-                style={{ width: "250px", height: "54px", margin: "20px 0px" }}
-                width="250"
-                height="54"
-              />
-            </a>
-            {/* Social Media Links */}
-            <div className="flex gap-4">
-              <a
-                href="https://github.com/rybbit-io/rybbit"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white transition-colors"
-                aria-label="GitHub"
-              >
-                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z" />
-                </svg>
-              </a>
-              <a
-                href="https://discord.gg/DEhGb4hYBj"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white transition-colors"
-                aria-label="Discord"
-              >
-                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515a.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0a12.64 12.64 0 0 0-.617-1.25a.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057a19.9 19.9 0 0 0 5.993 3.03a.078.078 0 0 0 .084-.028a14.09 14.09 0 0 0 1.226-1.994a.076.076 0 0 0-.041-.106a13.107 13.107 0 0 1-1.872-.892a.077.077 0 0 1-.008-.128a10.2 10.2 0 0 0 .372-.292a.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127a12.299 12.299 0 0 1-1.873.892a.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028a19.839 19.839 0 0 0 6.002-3.03a.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419c0-1.333.956-2.419 2.157-2.419c1.21 0 2.176 1.096 2.157 2.42c0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419c0-1.333.955-2.419 2.157-2.419c1.21 0 2.176 1.096 2.157 2.42c0 1.333-.946 2.418-2.157 2.418z" />
-                </svg>
-              </a>
-              <a
-                href="https://x.com/yang_frog"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white transition-colors"
-                aria-label="Twitter"
-              >
-                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
-                </svg>
-              </a>
+                <a
+                  href="https://www.producthunt.com/products/rybbit?embed=true&utm_source=badge-top-post-badge&utm_medium=badge&utm_source=badge-rybbit&#0045;2"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="mt-8 inline-flex max-w-full rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-500"
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src="https://api.producthunt.com/widgets/embed-image/v1/top-post-badge.svg?post_id=1028220&theme=neutral&period=daily&t=1761001525479"
+                    alt="Rybbit: Product Hunt number one product of the day"
+                    width="250"
+                    height="54"
+                    className="h-auto max-w-full"
+                  />
+                </a>
+              </div>
+
+              <div className="mt-8 flex items-center lg:mt-auto lg:pt-12">
+                {socialLinks.map(({ label, href, icon: Icon }) => (
+                  <a
+                    key={label}
+                    href={href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex size-11 items-center justify-center rounded-md text-neutral-500 transition-colors hover:bg-neutral-100 hover:text-neutral-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-500 dark:text-neutral-400 dark:hover:bg-neutral-900 dark:hover:text-white"
+                    aria-label={label}
+                  >
+                    <Icon className="size-5" aria-hidden="true" />
+                  </a>
+                ))}
+              </div>
             </div>
           </div>
 
-          {/* Comparisons */}
-          <div className="space-y-4">
-            <h3 className="text-sm font-semibold">{t("Comparisons")}</h3>
-            <ul className="space-y-2 text-sm">
-              <li>
-                <Link href="/compare/google-analytics" className="text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white transition-colors">
-                  {t("vs Google Analytics")}
-                </Link>
-              </li>
-              <li>
-                <Link
-                  href="/compare/cloudflare-analytics"
-                  className="text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white transition-colors"
-                >
-                  {t("vs Cloudflare Analytics")}
-                </Link>
-              </li>
-              <li>
-                <Link href="/compare/plausible" className="text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white transition-colors">
-                  {t("vs Plausible")}
-                </Link>
-              </li>
-              <li>
-                <Link href="/compare/umami" className="text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white transition-colors">
-                  {t("vs Umami")}
-                </Link>
-              </li>
-              <li>
-                <Link href="/compare/fathom" className="text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white transition-colors">
-                  {t("vs Fathom")}
-                </Link>
-              </li>
-              <li>
-                <Link href="/compare/simpleanalytics" className="text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white transition-colors">
-                  {t("vs Simple Analytics")}
-                </Link>
-              </li>
-              <li>
-                <Link href="/compare/matomo" className="text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white transition-colors">
-                  {t("vs Matomo")}
-                </Link>
-              </li>
-              <li>
-                <Link href="/compare/posthog" className="text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white transition-colors">
-                  {t("vs PostHog")}
-                </Link>
-              </li>
-            </ul>
-          </div>
-
-          {/* Features */}
-          <div className="space-y-4">
-            <h3 className="text-sm font-semibold">{t("Features")}</h3>
-            <ul className="space-y-2 text-sm">
-              <li>
-                <Link href="/features/web-analytics" className="text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white transition-colors">
-                  {t("Web Analytics")}
-                </Link>
-              </li>
-              <li>
-                <Link href="/features/session-replay" className="text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white transition-colors">
-                  {t("Session Replay")}
-                </Link>
-              </li>
-              <li>
-                <Link href="/features/funnels" className="text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white transition-colors">
-                  {t("Funnels")}
-                </Link>
-              </li>
-              <li>
-                <Link href="/features/user-journeys" className="text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white transition-colors">
-                  {t("User Journeys")}
-                </Link>
-              </li>
-              <li>
-                <Link href="/features/goals" className="text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white transition-colors">
-                  {t("Goals")}
-                </Link>
-              </li>
-              <li>
-                <Link href="/features/custom-events" className="text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white transition-colors">
-                  {t("Custom Events")}
-                </Link>
-              </li>
-              <li>
-                <Link href="/features/sessions" className="text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white transition-colors">
-                  {t("Sessions")}
-                </Link>
-              </li>
-              <li>
-                <Link href="/features/retention" className="text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white transition-colors">
-                  {t("Retention")}
-                </Link>
-              </li>
-              <li>
-                <Link href="/features/web-vitals" className="text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white transition-colors">
-                  {t("Web Vitals")}
-                </Link>
-              </li>
-              <li>
-                <Link href="/features/error-tracking" className="text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white transition-colors">
-                  {t("Error Tracking")}
-                </Link>
-              </li>
-              <li>
-                <Link href="/features/user-profiles" className="text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white transition-colors">
-                  {t("User Profiles")}
-                </Link>
-              </li>
-            </ul>
-          </div>
-
-          {/* Resources */}
-          <div className="space-y-4">
-            <h3 className="text-sm font-semibold">{t("Resources")}</h3>
-            <ul className="space-y-2 text-sm">
-              <li>
-                <Link href="/docs" className="text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white transition-colors">
-                  {t("Documentation")}
-                </Link>
-              </li>
-              <li>
-                <Link href="/features" className="text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white transition-colors">
-                  {t("Features")}
-                </Link>
-              </li>
-              <li>
-                <Link href="/pricing" className="text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white transition-colors">
-                  {t("Pricing")}
-                </Link>
-              </li>
-              <li>
-                <Link href="/blog" className="text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white transition-colors">
-                  {t("Blog")}
-                </Link>
-              </li>
-              <li>
-                <Link href="/tools" className="text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white transition-colors">
-                  {t("Tools")}
-                </Link>
-              </li>
-              <li>
-                <a
-                  href="https://github.com/rybbit-io/rybbit"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white transition-colors"
-                >
-                  GitHub
-                </a>
-              </li>
-              <li>
-                <a
-                  href="https://discord.gg/DEhGb4hYBj"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white transition-colors"
-                >
-                  {t("Community")}
-                </a>
-              </li>
-              <li>
-                <Link href="/docs/api/getting-started" className="text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white transition-colors">
-                  {t("API Reference")}
-                </Link>
-              </li>
-              <li>
-                <Link href="/oss-friends" className="text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white transition-colors">
-                  {t("OSS Friends")}
-                </Link>
-              </li>
-              <li>
-                <Link href="/affiliate" className="text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white transition-colors">
-                  {t("50% Affiliate Program")}
-                </Link>
-              </li>
-            </ul>
-          </div>
-
-          {/* Company */}
-          <div className="space-y-4">
-            <h3 className="text-sm font-semibold">{t("Company")}</h3>
-            <ul className="space-y-2 text-sm">
-              <li>
-                <Link href="/contact" className="text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white transition-colors">
-                  {t("Contact")}
-                </Link>
-              </li>
-              <li>
-                <Link href="/privacy" className="text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white transition-colors">
-                  {t("Privacy Policy")}
-                </Link>
-              </li>
-              <li>
-                <Link href="/terms-and-conditions" className="text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white transition-colors">
-                  {t("Terms and Conditions")}
-                </Link>
-              </li>
-              <li>
-                <Link href="/security" className="text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white transition-colors">
-                  {t("Security")}
-                </Link>
-              </li>
-              <li>
-                <Link href="/dpa" className="text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white transition-colors">
-                  {t("DPA")}
-                </Link>
-              </li>
-              <li>
-                <Link href="/brand" className="text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white transition-colors">
-                  {t("Brand Kit")}
-                </Link>
-              </li>
-              <li>
-                <a href="mailto:hello@rybbit.com" className="text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white transition-colors">
-                  {t("Support")}
-                </a>
-              </li>
-            </ul>
-          </div>
+          <nav aria-label="Footer" className="grid grid-cols-2 lg:col-span-9 md:grid-cols-4">
+            {footerGroups.map(group => (
+              <section
+                key={group.title}
+                className="border-b border-neutral-200 px-5 py-10 last:border-b-0 dark:border-neutral-800 sm:px-8 [&:nth-last-child(2)]:border-b-0 md:border-b-0 md:px-6 md:py-14"
+              >
+                <h2 className="text-sm font-semibold text-neutral-950 dark:text-neutral-50">{group.title}</h2>
+                <ul className="mt-4">
+                  {group.links.map(link => (
+                    <li key={link.href}>
+                      {link.external ? (
+                        <a
+                          href={link.href}
+                          target={link.href.startsWith("http") ? "_blank" : undefined}
+                          rel={link.href.startsWith("http") ? "noopener noreferrer" : undefined}
+                          className={footerLinkClassName}
+                        >
+                          {link.label}
+                        </a>
+                      ) : (
+                        <Link href={link.href} className={footerLinkClassName}>
+                          {link.label}
+                        </Link>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            ))}
+          </nav>
         </div>
 
-        {/* Bottom Bar */}
-        <div className="pt-8 border-t border-neutral-200 dark:border-neutral-800">
-          <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-            <div className="text-sm text-neutral-400">{t("© {year} Rybbit. All rights reserved.", { year: String(new Date().getFullYear()) })}</div>
-            <div className="text-sm text-neutral-400 space-x-4 flex items-center">
+        <div className="grid lg:grid-cols-12">
+          <div className="flex items-center border-b border-neutral-200 px-5 py-5 text-sm text-neutral-500 dark:border-neutral-800 dark:text-neutral-400 sm:px-8 lg:col-span-3 lg:border-b-0 lg:border-r">
+            {t("© {year} Rybbit. All rights reserved.", { year: String(new Date().getFullYear()) })}
+          </div>
+          <div className="flex flex-col gap-4 px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-8 lg:col-span-9 lg:px-6">
+            <div className="flex items-center gap-1.5 text-sm text-neutral-500 dark:text-neutral-400">
+              <span>{t("Made with ❤️ by frogs")}</span>
+              <a
+                href="https://tomato.gg"
+                target="_blank"
+                rel="noopener noreferrer"
+                title="Tomato.gg"
+                className="group/frogs inline-flex min-h-11 items-center rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-500 sm:min-h-8"
+              >
+                <span className="inline-block group-hover/frogs:[animation:frog-hop_0.45s_cubic-bezier(0.22,1,0.36,1)] motion-reduce:group-hover/frogs:animate-none">
+                  🐸
+                </span>
+                🍅
+              </a>
+            </div>
+            <div className="flex items-center gap-2">
               <ThemeSwitcher />
               <LanguageSwitcher />
-              {t("Made with ❤️ by frogs")}{" "}
-              <a href="https://tomato.gg" target="_blank" title="Tomato.gg">
-                🐸🍅
-              </a>
             </div>
           </div>
         </div>

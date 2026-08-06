@@ -32,15 +32,32 @@ import { useExtracted } from "next-intl";
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { Favicon } from "../../../../components/Favicon";
+import { Pagination } from "../../../../components/pagination";
 import { useDateTimeFormat } from "../../../../hooks/useDateTimeFormat";
 import { parseUtcTimestamp } from "../../../../lib/dateTimeUtils";
-import { formatter, truncateString } from "../../../../lib/utils";
-import { AdminLayout } from "../shared/AdminLayout";
-import { AdminTablePagination } from "../shared/AdminTablePagination";
+import { cn, formatter, truncateString } from "../../../../lib/utils";
 import { ErrorAlert } from "../shared/ErrorAlert";
 import { GrowthChart } from "../shared/GrowthChart";
+import { Panel, TableShell } from "../shared/Panel";
 import { SearchInput } from "../shared/SearchInput";
 import { SortableHeader } from "../shared/SortableHeader";
+
+type ColumnAlignMeta = { align?: "right" };
+
+const SKELETON_CELLS: Array<{ width: string; right?: boolean }> = [
+  { width: "w-10" },
+  { width: "w-40" },
+  { width: "w-24" },
+  { width: "w-14" },
+  { width: "w-16", right: true },
+  { width: "w-16", right: true },
+  { width: "w-8", right: true },
+  { width: "w-8", right: true },
+  { width: "w-10" },
+  { width: "w-20" },
+  { width: "w-40" },
+  { width: "w-14" },
+];
 
 function MoveSiteCell({ site }: { site: AdminSiteData }) {
   const t = useExtracted();
@@ -144,18 +161,20 @@ export function Sites() {
         accessorKey: "siteId",
         header: ({ column }) => <SortableHeader column={column}>{t("Site ID")}</SortableHeader>,
         cell: ({ row }) => (
-          <div>
-            <Link href={`/${row.getValue("siteId")}`} target="_blank" className="hover:underline">
-              {row.getValue("siteId")}
-            </Link>
-          </div>
+          <Link
+            href={`/${row.getValue("siteId")}`}
+            target="_blank"
+            className="tabular-nums text-neutral-600 hover:underline dark:text-neutral-300"
+          >
+            {row.getValue("siteId")}
+          </Link>
         ),
       },
       {
         accessorKey: "name",
         header: ({ column }) => <SortableHeader column={column}>{t("Name")}</SortableHeader>,
         cell: ({ row }) => (
-          <div className="font-medium flex items-center gap-2">
+          <div className="flex items-center gap-2 font-medium">
             <Favicon domain={row.original.domain} className="w-5 h-5 shrink-0" />
             <Link href={`https://${row.original.domain}`} target="_blank" className="hover:underline">
               {truncateString(row.original.domain, 35)}
@@ -166,45 +185,57 @@ export function Sites() {
       {
         accessorKey: "createdAt",
         header: ({ column }) => <SortableHeader column={column}>{t("Created")}</SortableHeader>,
-        cell: ({ row }) => <div>{formatRelative(parseUtcTimestamp(row.getValue("createdAt")))}</div>,
+        cell: ({ row }) => (
+          <div className="text-neutral-600 dark:text-neutral-300">
+            {formatRelative(parseUtcTimestamp(row.getValue("createdAt")))}
+          </div>
+        ),
       },
       {
         accessorKey: "public",
         header: ({ column }) => <SortableHeader column={column}>{t("Public")}</SortableHeader>,
-        cell: ({ row }) => (
-          <div>
-            {row.getValue("public") ? <Badge>{t("Public")}</Badge> : <Badge variant="outline">{t("Private")}</Badge>}
-          </div>
-        ),
+        cell: ({ row }) =>
+          row.getValue("public") ? (
+            <Badge>{t("Public")}</Badge>
+          ) : (
+            <Badge variant="outline">{t("Private")}</Badge>
+          ),
       },
       {
         accessorKey: "eventsLast24Hours",
+        meta: { align: "right" } satisfies ColumnAlignMeta,
         header: ({ column }) => <SortableHeader column={column}>{t("Events (24h)")}</SortableHeader>,
-        cell: ({ row }) => <div>{formatter(Number(row.getValue("eventsLast24Hours")))}</div>,
+        cell: ({ row }) => <span className="tabular-nums">{formatter(Number(row.getValue("eventsLast24Hours")))}</span>,
       },
       {
         accessorKey: "eventsLast30Days",
+        meta: { align: "right" } satisfies ColumnAlignMeta,
         header: ({ column }) => <SortableHeader column={column}>{t("Events (30d)")}</SortableHeader>,
-        cell: ({ row }) => <div>{formatter(Number(row.getValue("eventsLast30Days")))}</div>,
+        cell: ({ row }) => <span className="tabular-nums">{formatter(Number(row.getValue("eventsLast30Days")))}</span>,
       },
       {
         accessorKey: "goalsCount",
+        meta: { align: "right" } satisfies ColumnAlignMeta,
         header: ({ column }) => <SortableHeader column={column}>{t("Goals")}</SortableHeader>,
-        cell: ({ row }) => <div>{row.getValue("goalsCount")}</div>,
+        cell: ({ row }) => <span className="tabular-nums">{row.getValue("goalsCount")}</span>,
       },
       {
         accessorKey: "funnelsCount",
+        meta: { align: "right" } satisfies ColumnAlignMeta,
         header: ({ column }) => <SortableHeader column={column}>{t("Funnels")}</SortableHeader>,
-        cell: ({ row }) => <div>{row.getValue("funnelsCount")}</div>,
+        cell: ({ row }) => <span className="tabular-nums">{row.getValue("funnelsCount")}</span>,
       },
       {
         accessorKey: "sessionReplay",
         header: ({ column }) => <SortableHeader column={column}>{t("Replay")}</SortableHeader>,
-        cell: ({ row }) => (
-          <div>
-            {row.getValue("sessionReplay") ? <Badge>{t("On")}</Badge> : <Badge variant="outline">{t("Off")}</Badge>}
-          </div>
-        ),
+        cell: ({ row }) =>
+          row.getValue("sessionReplay") ? (
+            <Badge variant="success">{t("On")}</Badge>
+          ) : (
+            <Badge variant="ghost" className="text-neutral-500 dark:text-neutral-400">
+              {t("Off")}
+            </Badge>
+          ),
       },
       {
         id: "subscription",
@@ -212,19 +243,23 @@ export function Sites() {
         accessorFn: row => row.subscription.planName,
         cell: ({ row }) => {
           const subscription = row.original.subscription;
-          const statusColor =
-            subscription.status === "active" || subscription.status === "trialing"
-              ? "default"
-              : subscription.status === "canceled"
-                ? "destructive"
-                : "secondary";
-          return <Badge variant={statusColor}>{subscription.planName}</Badge>;
+          const variant =
+            subscription.status === "canceled"
+              ? ("destructive" as const)
+              : subscription.status === "active" || subscription.status === "trialing"
+                ? ("default" as const)
+                : ("secondary" as const);
+          return <Badge variant={variant}>{subscription.planName}</Badge>;
         },
       },
       {
         accessorKey: "organizationOwnerEmail",
         header: ({ column }) => <SortableHeader column={column}>{t("Owner Email")}</SortableHeader>,
-        cell: ({ row }) => <div>{row.getValue("organizationOwnerEmail") || "-"}</div>,
+        cell: ({ row }) => (
+          <div className="text-neutral-600 dark:text-neutral-300">
+            {row.getValue("organizationOwnerEmail") || "-"}
+          </div>
+        ),
       },
       {
         id: "actions",
@@ -252,101 +287,99 @@ export function Sites() {
   });
 
   if (isError) {
-    return (
-      <AdminLayout>
-        <ErrorAlert message={t("Failed to load sites data. Please try again later.")} />
-      </AdminLayout>
-    );
+    return <ErrorAlert message={t("Failed to load sites data. Please try again later.")} />;
   }
 
   return (
-    <AdminLayout>
-      <GrowthChart data={sites} title={t("Sites")} color="#10b981" />
+    <div className="space-y-6">
+      <Panel
+        title={t("New sites per day")}
+        actions={
+          sites ? (
+            <span className="text-xs tabular-nums text-neutral-500 dark:text-neutral-400">
+              {t("{count} total", { count: sites.length.toLocaleString() })}
+            </span>
+          ) : undefined
+        }
+      >
+        <GrowthChart data={sites} title={t("Sites")} />
+      </Panel>
 
-      <div className="mb-4">
-        <SearchInput
-          placeholder={t("Search by domain or owner email...")}
-          value={searchQuery}
-          onChange={setSearchQuery}
-        />
-      </div>
+      <div className="space-y-3">
+        <div className="flex flex-wrap items-center gap-2">
+          <SearchInput
+            placeholder={t("Search by domain or owner email...")}
+            value={searchQuery}
+            onChange={setSearchQuery}
+            className="w-full sm:w-auto sm:min-w-[280px]"
+          />
+          {!isLoading && searchQuery && (
+            <span className="text-sm tabular-nums text-neutral-500 dark:text-neutral-400">
+              {t("{count} matching", { count: filteredSites.length.toLocaleString() })}
+            </span>
+          )}
+        </div>
 
-      <Table>
-        <TableHeader>
-          {table.getHeaderGroups().map(headerGroup => (
-            <TableRow key={headerGroup.id}>
-              {headerGroup.headers.map(header => (
-                <TableHead key={header.id}>
-                  {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
-                </TableHead>
+        <TableShell>
+          <Table>
+            <TableHeader>
+              {table.getHeaderGroups().map(headerGroup => (
+                <TableRow key={headerGroup.id}>
+                  {headerGroup.headers.map(header => (
+                    <TableHead
+                      key={header.id}
+                      className={cn(
+                        (header.column.columnDef.meta as ColumnAlignMeta | undefined)?.align === "right" &&
+                          "text-right"
+                      )}
+                    >
+                      {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
+                    </TableHead>
+                  ))}
+                </TableRow>
               ))}
-            </TableRow>
-          ))}
-        </TableHeader>
-        <TableBody>
-          {isLoading ? (
-            Array(pagination.pageSize)
-              .fill(0)
-              .map((_, index) => (
-                <TableRow key={index}>
-                  <TableCell>
-                    <Skeleton className="h-5 w-10" />
-                  </TableCell>
-                  <TableCell>
-                    <Skeleton className="h-5 w-40" />
-                  </TableCell>
-                  <TableCell>
-                    <Skeleton className="h-5 w-24" />
-                  </TableCell>
-                  <TableCell>
-                    <Skeleton className="h-5 w-16" />
-                  </TableCell>
-                  <TableCell>
-                    <Skeleton className="h-5 w-16" />
-                  </TableCell>
-                  <TableCell>
-                    <Skeleton className="h-5 w-16" />
-                  </TableCell>
-                  <TableCell>
-                    <Skeleton className="h-5 w-12" />
-                  </TableCell>
-                  <TableCell>
-                    <Skeleton className="h-5 w-12" />
-                  </TableCell>
-                  <TableCell>
-                    <Skeleton className="h-5 w-12" />
-                  </TableCell>
-                  <TableCell>
-                    <Skeleton className="h-5 w-20" />
-                  </TableCell>
-                  <TableCell>
-                    <Skeleton className="h-5 w-40" />
-                  </TableCell>
-                  <TableCell>
-                    <Skeleton className="h-5 w-16" />
+            </TableHeader>
+            <TableBody>
+              {isLoading ? (
+                Array(10)
+                  .fill(0)
+                  .map((_, index) => (
+                    <TableRow key={index}>
+                      {SKELETON_CELLS.map((cell, cellIndex) => (
+                        <TableCell key={cellIndex}>
+                          <Skeleton className={cn("h-5", cell.width, cell.right && "ml-auto")} />
+                        </TableCell>
+                      ))}
+                    </TableRow>
+                  ))
+              ) : table.getRowModel().rows.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={columns.length} className="py-8 text-center text-muted-foreground">
+                    {searchQuery ? t("No sites match your search") : t("No sites found")}
                   </TableCell>
                 </TableRow>
-              ))
-          ) : table.getRowModel().rows.length === 0 ? (
-            <TableRow>
-              <TableCell colSpan={columns.length} className="text-center py-6 text-muted-foreground">
-                {searchQuery ? t("No sites match your search") : t("No sites found")}
-              </TableCell>
-            </TableRow>
-          ) : (
-            table.getRowModel().rows.map(row => (
-              <TableRow key={row.id}>
-                {row.getVisibleCells().map(cell => (
-                  <TableCell key={cell.id}>{flexRender(cell.column.columnDef.cell, cell.getContext())}</TableCell>
-                ))}
-              </TableRow>
-            ))
-          )}
-        </TableBody>
-      </Table>
+              ) : (
+                table.getRowModel().rows.map(row => (
+                  <TableRow key={row.id}>
+                    {row.getVisibleCells().map(cell => (
+                      <TableCell
+                        key={cell.id}
+                        className={cn(
+                          (cell.column.columnDef.meta as ColumnAlignMeta | undefined)?.align === "right" &&
+                            "text-right"
+                        )}
+                      >
+                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                      </TableCell>
+                    ))}
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </TableShell>
 
-      <div className="mt-4">
-        <AdminTablePagination
+        <Pagination
           table={table}
           data={filteredSites ? { items: filteredSites, total: filteredSites.length } : undefined}
           pagination={pagination}
@@ -355,6 +388,6 @@ export function Sites() {
           itemName="sites"
         />
       </div>
-    </AdminLayout>
+    </div>
   );
 }

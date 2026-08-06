@@ -7,7 +7,8 @@ import { useMemo, useState } from "react";
 import { useDeleteGoal } from "../../../../api/analytics/hooks/goals/useDeleteGoal";
 import { Goal, GoalTimeSeriesPoint } from "../../../../api/analytics/endpoints";
 import { useGetGoalSessions } from "../../../../api/analytics/hooks/goals/useGetGoalSessions";
-import { EventIcon, PageviewIcon } from "../../../../components/EventIcons";
+import { EventTypeIcon } from "../../../../components/EventIcons";
+import { resolvePropertyFilters, targetTypeToEventType } from "../../../../lib/events";
 import { SessionsList } from "../../../../components/Sessions/SessionsList";
 import {
   AlertDialog,
@@ -182,6 +183,8 @@ export default function GoalCard({ goal, siteId, timeSeries, isLoadingTimeSeries
     }
   };
 
+  const propertyFilters = resolvePropertyFilters(goal.config);
+
   const allSessions = sessionsData?.data || [];
   const hasNextPage = allSessions.length > LIMIT;
   const sessions = allSessions.slice(0, LIMIT);
@@ -204,39 +207,25 @@ export default function GoalCard({ goal, siteId, timeSeries, isLoadingTimeSeries
           {/* Left section - Title and type */}
           <div className=" min-w-0 md:flex-1 md:pr-4">
             <h3 className="font-medium text-base flex items-center gap-2 min-w-0">
-              {goal.goalType === "path" ? (
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <PageviewIcon />
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>{t("Page Goal")}</p>
-                  </TooltipContent>
-                </Tooltip>
-              ) : (
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <EventIcon />
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>{t("Event Goal")}</p>
-                  </TooltipContent>
-                </Tooltip>
-              )}
+              <EventTypeIcon type={targetTypeToEventType(goal.goalType)} />
               <span className="truncate">{goal.name || t("Goal #{goalId}", { goalId: String(goal.goalId) })}</span>
             </h3>
 
             <div className="mt-1 min-w-0">
               <span className="text-xs text-neutral-500 dark:text-neutral-400 mr-2">{t("Pattern")}:</span>
               <code className="inline-block max-w-full truncate align-bottom text-xs bg-neutral-100 dark:bg-neutral-800 px-1 py-0.5 rounded">
-                {goal.goalType === "path" ? goal.config.pathPattern : goal.config.eventName}
+                {goal.goalType === "path"
+                  ? goal.config.pathPattern
+                  : goal.goalType === "event"
+                    ? goal.config.eventName
+                    : goal.config.valuePattern || t("Any")}
               </code>
 
-              {goal.goalType === "event" && goal.config.eventPropertyKey && (
+              {propertyFilters.length > 0 && (
                 <div className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
                   {t("Property")}:{" "}
                   <code className="text-xs bg-neutral-100 dark:bg-neutral-800 px-1 py-0.5 rounded text-neutral-900 dark:text-neutral-100">
-                    {goal.config.eventPropertyKey}: {String(goal.config.eventPropertyValue)}
+                    {propertyFilters.map(f => `${f.key}: ${f.value}`).join(", ")}
                   </code>
                 </div>
               )}
@@ -265,7 +254,7 @@ export default function GoalCard({ goal, siteId, timeSeries, isLoadingTimeSeries
           <div className="flex shrink-0 justify-end gap-1 md:pl-4">
             <div onClick={e => e.stopPropagation()}>
               <DropdownMenu>
-                <DropdownMenuTrigger asChild variant="ghost" size="smIcon" aria-label={t("Goal actions")}>
+                <DropdownMenuTrigger asChild>
                   <Button variant="ghost" size="smIcon" aria-label={t("Goal actions")}>
                     <MoreHorizontal className="h-4 w-4" />
                   </Button>

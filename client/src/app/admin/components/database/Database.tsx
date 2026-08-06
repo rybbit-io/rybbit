@@ -3,16 +3,16 @@
 import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useClickhouseStats } from "@/api/admin/hooks/useClickhouseStats";
-import { TableStatsCards } from "./TableStatsCards";
 import { RowsTrendChart } from "./RowsTrendChart";
 import { InsertRateChart } from "./InsertRateChart";
 import { QueryLogTable } from "./QueryLogTable";
 import { RefreshControls } from "./RefreshControls";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Panel } from "../shared/Panel";
+import { StatStrip } from "../shared/StatStrip";
 
 function formatNumber(num: number): string {
   if (num >= 1_000_000_000) {
@@ -27,10 +27,23 @@ function formatNumber(num: number): string {
   return num.toLocaleString();
 }
 
+function formatBytes(bytes: number): string {
+  if (bytes >= 1024 * 1024 * 1024) {
+    return (bytes / (1024 * 1024 * 1024)).toFixed(2) + " GB";
+  }
+  if (bytes >= 1024 * 1024) {
+    return (bytes / (1024 * 1024)).toFixed(2) + " MB";
+  }
+  if (bytes >= 1024) {
+    return (bytes / 1024).toFixed(2) + " KB";
+  }
+  return bytes + " B";
+}
+
 function TableStatsTable({ tableStats, isLoading }: { tableStats: any[] | undefined; isLoading: boolean }) {
   if (isLoading) {
     return (
-      <div className="space-y-2">
+      <div className="space-y-2 p-4">
         {[...Array(4)].map((_, i) => (
           <Skeleton key={i} className="h-10 w-full" />
         ))}
@@ -40,45 +53,43 @@ function TableStatsTable({ tableStats, isLoading }: { tableStats: any[] | undefi
 
   if (!tableStats || tableStats.length === 0) {
     return (
-      <div className="text-center py-8 text-neutral-500 dark:text-neutral-400">
+      <div className="py-8 text-center text-neutral-500 dark:text-neutral-400">
         No table statistics available
       </div>
     );
   }
 
   return (
-    <div className="border rounded-lg overflow-hidden dark:border-neutral-800">
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Table</TableHead>
-            <TableHead className="text-right">Rows</TableHead>
-            <TableHead className="text-right">Compressed</TableHead>
-            <TableHead className="text-right">Uncompressed</TableHead>
-            <TableHead className="text-right">Ratio</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {tableStats.map(table => {
-            const compressionRatio =
-              table.uncompressedBytes > 0
-                ? ((1 - table.compressedBytes / table.uncompressedBytes) * 100).toFixed(1)
-                : "0";
-            return (
-              <TableRow key={table.table}>
-                <TableCell className="font-medium font-mono text-xs">{table.table}</TableCell>
-                <TableCell className="text-right text-xs">{formatNumber(table.totalRows)}</TableCell>
-                <TableCell className="text-right text-xs">{table.compressedSize}</TableCell>
-                <TableCell className="text-right text-xs">{table.uncompressedSize}</TableCell>
-                <TableCell className="text-right text-xs text-emerald-600 dark:text-emerald-400">
-                  {compressionRatio}%
-                </TableCell>
-              </TableRow>
-            );
-          })}
-        </TableBody>
-      </Table>
-    </div>
+    <Table>
+      <TableHeader>
+        <TableRow>
+          <TableHead>Table</TableHead>
+          <TableHead className="text-right">Rows</TableHead>
+          <TableHead className="text-right">Compressed</TableHead>
+          <TableHead className="text-right">Uncompressed</TableHead>
+          <TableHead className="text-right">Ratio</TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {tableStats.map(table => {
+          const compressionRatio =
+            table.uncompressedBytes > 0
+              ? ((1 - table.compressedBytes / table.uncompressedBytes) * 100).toFixed(1)
+              : "0";
+          return (
+            <TableRow key={table.table}>
+              <TableCell className="font-medium font-mono text-xs">{table.table}</TableCell>
+              <TableCell className="text-right text-xs tabular-nums">{formatNumber(table.totalRows)}</TableCell>
+              <TableCell className="text-right text-xs tabular-nums">{table.compressedSize}</TableCell>
+              <TableCell className="text-right text-xs tabular-nums">{table.uncompressedSize}</TableCell>
+              <TableCell className="text-right text-xs tabular-nums text-neutral-500 dark:text-neutral-400">
+                {compressionRatio}%
+              </TableCell>
+            </TableRow>
+          );
+        })}
+      </TableBody>
+    </Table>
   );
 }
 
@@ -104,19 +115,46 @@ export function Database() {
 
   const isInsertRateUnavailable = stats?.unavailableFeatures?.includes("insertRate") ?? false;
 
+  const tableStats = stats?.tableStats;
+  const totalRows = tableStats?.reduce((sum, t) => sum + t.totalRows, 0) ?? 0;
+  const totalCompressedBytes = tableStats?.reduce((sum, t) => sum + t.compressedBytes, 0) ?? 0;
+  const totalUncompressedBytes = tableStats?.reduce((sum, t) => sum + t.uncompressedBytes, 0) ?? 0;
+  const totalParts = tableStats?.reduce((sum, t) => sum + t.partsCount, 0) ?? 0;
+  const compressionRatio =
+    totalUncompressedBytes > 0 ? ((1 - totalCompressedBytes / totalUncompressedBytes) * 100).toFixed(1) : "0";
+
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-lg font-semibold">ClickHouse Database Health</h2>
-          <p className="text-sm text-neutral-500 dark:text-neutral-400">
-            Monitor database performance and storage metrics
-          </p>
-        </div>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h2 className="text-base font-semibold">ClickHouse</h2>
         <RefreshControls lastUpdated={lastUpdated} onRefresh={handleRefresh} isRefetching={isRefetching} />
       </div>
 
-      <TableStatsCards tableStats={stats?.tableStats} isLoading={statsLoading} />
+      <StatStrip
+        isLoading={statsLoading}
+        stats={[
+          {
+            label: "Total rows",
+            value: tableStats ? formatNumber(totalRows) : "-",
+            hint: tableStats ? `across ${tableStats.length} tables` : undefined,
+          },
+          {
+            label: "Compressed",
+            value: tableStats ? formatBytes(totalCompressedBytes) : "-",
+            hint: tableStats ? `${compressionRatio}% compression` : undefined,
+          },
+          {
+            label: "Uncompressed",
+            value: tableStats ? formatBytes(totalUncompressedBytes) : "-",
+            hint: tableStats ? "original size" : undefined,
+          },
+          {
+            label: "Parts",
+            value: tableStats ? formatNumber(totalParts) : "-",
+            hint: tableStats ? "active data parts" : undefined,
+          },
+        ]}
+      />
 
       <Tabs defaultValue="overview" value={activeTab} onValueChange={setActiveTab}>
         <TabsList>
@@ -124,32 +162,26 @@ export function Database() {
           <TabsTrigger value="query-log">Query Log</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="overview" className="space-y-4 mt-4">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base">Table Statistics</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <TableStatsTable tableStats={stats?.tableStats} isLoading={statsLoading} />
-              </CardContent>
-            </Card>
+        <TabsContent value="overview" className="mt-4 space-y-4">
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+            <Panel title="Table statistics" flush>
+              <TableStatsTable tableStats={tableStats} isLoading={statsLoading} />
+            </Panel>
 
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base">Insert Rate (Last 24h)</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <InsertRateChart insertRate={stats?.insertRate} isLoading={statsLoading} isUnavailable={isInsertRateUnavailable} />
-              </CardContent>
-            </Card>
+            <Panel title="Insert rate (last 24h)">
+              <InsertRateChart
+                insertRate={stats?.insertRate}
+                isLoading={statsLoading}
+                isUnavailable={isInsertRateUnavailable}
+              />
+            </Panel>
           </div>
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle className="text-base">Rows Inserted by Table</CardTitle>
-              <Select value={String(rowsDays)} onValueChange={(v) => setRowsDays(Number(v))}>
-                <SelectTrigger className="w-[140px] h-8 text-xs">
+          <Panel
+            title="Rows inserted by table"
+            actions={
+              <Select value={String(rowsDays)} onValueChange={v => setRowsDays(Number(v))}>
+                <SelectTrigger className="h-8 w-[140px] text-xs">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -163,29 +195,17 @@ export function Database() {
                   <SelectItem value="0">All time</SelectItem>
                 </SelectContent>
               </Select>
-            </CardHeader>
-            <CardContent>
-              <RowsTrendChart rowsByDate={stats?.rowsByDate} isLoading={statsLoading} days={rowsDays} />
-            </CardContent>
-          </Card>
+            }
+          >
+            <RowsTrendChart rowsByDate={stats?.rowsByDate} isLoading={statsLoading} days={rowsDays} />
+          </Panel>
         </TabsContent>
 
         <TabsContent value="query-log" className="mt-4">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">
-                Query Log
-                <span className="ml-2 text-sm font-normal text-neutral-500 dark:text-neutral-400">
-                  (last 24 hours)
-                </span>
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <QueryLogTable />
-            </CardContent>
-          </Card>
+          <Panel title="Query log" actions={<span className="text-xs text-neutral-500 dark:text-neutral-400">last 24 hours</span>}>
+            <QueryLogTable />
+          </Panel>
         </TabsContent>
-
       </Tabs>
     </div>
   );

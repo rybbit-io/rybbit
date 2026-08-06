@@ -14,10 +14,9 @@ import {
 import { Label } from "@/components/ui/label";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Switch } from "@/components/ui/switch";
-import { cn } from "@/lib/utils";
 import { ChevronsUpDown, X } from "lucide-react";
 import { useExtracted } from "next-intl";
-import { useState } from "react";
+import { ReactNode, useState } from "react";
 import { SearchInput } from "../shared/SearchInput";
 
 export interface TierOption {
@@ -42,6 +41,8 @@ interface OrganizationFiltersProps {
   availableTiers: TierOption[];
   selectedTiers: TierOption[];
   setSelectedTiers: (tiers: TierOption[]) => void;
+  /** Rendered at the right edge of the toolbar (e.g. the copy-emails action). */
+  actions?: ReactNode;
 }
 
 function TierSelect({
@@ -81,7 +82,7 @@ function TierSelect({
           variant="outline"
           role="combobox"
           aria-expanded={open}
-          className="min-w-[200px] flex-1 justify-between min-h-9 h-auto py-1 font-normal"
+          className="min-w-[160px] max-w-md justify-between min-h-9 h-auto py-1 font-normal"
         >
           <div className="flex flex-wrap gap-1">
             {selectedTiers.length > 0 ? (
@@ -144,6 +145,7 @@ export function OrganizationFilters({
   availableTiers,
   selectedTiers,
   setSelectedTiers,
+  actions,
 }: OrganizationFiltersProps) {
   const t = useExtracted();
 
@@ -176,12 +178,12 @@ export function OrganizationFilters({
 
   return (
     <div className="space-y-2">
-      <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         <SearchInput
           placeholder={t("Search by name, slug, domain, or member email...")}
           value={searchQuery}
           onChange={setSearchQuery}
-          className="max-w-sm"
+          className="w-full sm:w-auto sm:min-w-[280px]"
         />
         <div className="flex items-center gap-1">
           {QUICK_TIER_FILTERS.map(filter => (
@@ -190,14 +192,21 @@ export function OrganizationFilters({
               size="sm"
               variant={isQuickFilterActive(filter) ? "default" : "outline"}
               onClick={() => handleQuickTierFilter(filter)}
-              className={cn("h-9 text-xs")}
+              className="h-9 text-xs"
             >
               {filter.label}
             </Button>
           ))}
         </div>
+        <TierSelect
+          availableTiers={availableTiers}
+          selectedTiers={selectedTiers}
+          setSelectedTiers={setSelectedTiers}
+          placeholder={t("All tiers")}
+        />
+        {actions && <div className="ml-auto">{actions}</div>}
       </div>
-      <div className="flex items-start gap-4 sm:flex-row flex-col sm:items-center">
+      <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
         <div className="flex items-center gap-2">
           <Switch id="show-zero-events" checked={showZeroEvents} onCheckedChange={setShowZeroEvents} />
           <Label htmlFor="show-zero-events" className="text-sm cursor-pointer">
@@ -214,12 +223,6 @@ export function OrganizationFilters({
             {t("Only over limit")}
           </Label>
         </div>
-        <TierSelect
-          availableTiers={availableTiers}
-          selectedTiers={selectedTiers}
-          setSelectedTiers={setSelectedTiers}
-          placeholder={t("All tiers")}
-        />
       </div>
     </div>
   );

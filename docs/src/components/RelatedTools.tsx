@@ -46,6 +46,12 @@ const allTools: Tool[] = [
     href: "/tools/utm-builder",
     category: "seo",
   },
+  {
+    name: "Color Picker",
+    description: "Convert color formats and check accessible contrast",
+    href: "/tools/color-picker",
+    category: "seo",
+  },
 
   // Calculator/Analytics Tools
   {
@@ -145,12 +151,79 @@ const allTools: Tool[] = [
     category: "analytics",
     toolType: "calculator",
   },
+  {
+    name: "NPS Calculator",
+    description: "Calculate Net Promoter Score from survey responses",
+    href: "/tools/nps-calculator",
+    category: "analytics",
+    toolType: "calculator",
+  },
+  {
+    name: "Engagement Rate Calculator",
+    description: "Measure engagement by followers, reach, or impressions",
+    href: "/tools/engagement-rate-calculator",
+    category: "analytics",
+    toolType: "calculator",
+  },
+  {
+    name: "ROAS Calculator",
+    description: "Calculate return on ad spend and campaign profit",
+    href: "/tools/roas-calculator",
+    category: "analytics",
+    toolType: "calculator",
+  },
+  {
+    name: "Payback Period Calculator",
+    description: "Estimate how quickly acquisition costs are recovered",
+    href: "/tools/payback-period-calculator",
+    category: "analytics",
+    toolType: "calculator",
+  },
+  {
+    name: "CAC Calculator",
+    description: "Calculate customer acquisition cost from total spend",
+    href: "/tools/cac-calculator",
+    category: "analytics",
+    toolType: "calculator",
+  },
+  {
+    name: "Churn Rate Calculator",
+    description: "Measure customer or revenue churn over a period",
+    href: "/tools/churn-rate-calculator",
+    category: "analytics",
+    toolType: "calculator",
+  },
+  {
+    name: "MRR / ARR Calculator",
+    description: "Calculate monthly and annual recurring revenue",
+    href: "/tools/mrr-arr-calculator",
+    category: "analytics",
+    toolType: "calculator",
+  },
+  {
+    name: "Core Web Vitals Checker",
+    description: "Check field and lab performance metrics for a page",
+    href: "/tools/core-web-vitals-checker",
+    category: "analytics",
+  },
+  {
+    name: "Tracking Pixel Generator",
+    description: "Generate a consent-conscious image tracking snippet",
+    href: "/tools/tracking-pixel-generator",
+    category: "analytics",
+  },
 
   // Privacy Tools
   {
     name: "Analytics Detector",
     description: "Detect analytics tools on any website",
     href: "/tools/analytics-detector",
+    category: "privacy",
+  },
+  {
+    name: "Cookie / Tracker Scanner",
+    description: "Inspect response cookies and recognizable tracking scripts",
+    href: "/tools/cookie-tracker-scanner",
     category: "privacy",
   },
   {
@@ -998,189 +1071,189 @@ const allTools: Tool[] = [
   {
     name: "Facebook Photo Resizer",
     description: "Resize images for Facebook profiles, covers, posts, and stories",
-    href: "/tools/facebook-image-resizer",
+    href: "/tools/facebook-photo-resizer",
     category: "social-media",
     platform: "facebook",
   },
   {
     name: "Instagram Photo Resizer",
     description: "Crop and resize photos for Instagram posts, stories, and profiles",
-    href: "/tools/instagram-image-resizer",
+    href: "/tools/instagram-photo-resizer",
     category: "social-media",
     platform: "instagram",
   },
   {
     name: "X (Twitter) Photo Resizer",
     description: "Resize images for X posts, headers, and profile pictures",
-    href: "/tools/x-image-resizer",
+    href: "/tools/x-photo-resizer",
     category: "social-media",
     platform: "x",
   },
   {
     name: "LinkedIn Photo Resizer",
     description: "Professional image resizing for LinkedIn profiles and banners",
-    href: "/tools/linkedin-image-resizer",
+    href: "/tools/linkedin-photo-resizer",
     category: "social-media",
     platform: "linkedin",
   },
   {
     name: "YouTube Photo Resizer",
     description: "Create perfect YouTube thumbnails and channel art",
-    href: "/tools/youtube-image-resizer",
+    href: "/tools/youtube-photo-resizer",
     category: "social-media",
     platform: "youtube",
   },
   {
     name: "TikTok Photo Resizer",
     description: "Resize images for TikTok profile pictures and video covers",
-    href: "/tools/tiktok-image-resizer",
+    href: "/tools/tiktok-photo-resizer",
     category: "social-media",
     platform: "tiktok",
   },
   {
     name: "Pinterest Photo Resizer",
     description: "Create perfectly sized Pins and board covers",
-    href: "/tools/pinterest-image-resizer",
+    href: "/tools/pinterest-photo-resizer",
     category: "social-media",
     platform: "pinterest",
   },
   {
     name: "Discord Photo Resizer",
     description: "Resize images for Discord avatars, server icons, and banners",
-    href: "/tools/discord-image-resizer",
+    href: "/tools/discord-photo-resizer",
     category: "social-media",
     platform: "discord",
   },
   {
     name: "Reddit Photo Resizer",
     description: "Resize images for Reddit community icons, banners, and posts",
-    href: "/tools/reddit-image-resizer",
+    href: "/tools/reddit-photo-resizer",
     category: "social-media",
     platform: "reddit",
   },
   {
     name: "Twitch Photo Resizer",
     description: "Create Twitch offline screens, profile banners, and panel images",
-    href: "/tools/twitch-image-resizer",
+    href: "/tools/twitch-photo-resizer",
     category: "social-media",
     platform: "twitch",
   },
   {
     name: "Bluesky Photo Resizer",
     description: "Resize images for Bluesky profiles and posts",
-    href: "/tools/bluesky-image-resizer",
+    href: "/tools/bluesky-photo-resizer",
     category: "social-media",
     platform: "bluesky",
   },
   {
     name: "Threads Photo Resizer",
     description: "Resize photos for Threads profiles and posts",
-    href: "/tools/threads-image-resizer",
+    href: "/tools/threads-photo-resizer",
     category: "social-media",
     platform: "threads",
   },
   {
     name: "Mastodon Photo Resizer",
     description: "Resize images for Mastodon profiles and headers",
-    href: "/tools/mastodon-image-resizer",
+    href: "/tools/mastodon-photo-resizer",
     category: "social-media",
     platform: "mastodon",
   },
   {
     name: "Snapchat Photo Resizer",
     description: "Create content for Snapchat Stories and ads",
-    href: "/tools/snapchat-image-resizer",
+    href: "/tools/snapchat-photo-resizer",
     category: "social-media",
     platform: "snapchat",
   },
   {
     name: "Spotify Photo Resizer",
     description: "Resize images for Spotify playlists and artist profiles",
-    href: "/tools/spotify-image-resizer",
+    href: "/tools/spotify-photo-resizer",
     category: "social-media",
     platform: "spotify",
   },
   {
     name: "Steam Photo Resizer",
     description: "Create Steam avatars and workshop images",
-    href: "/tools/steam-image-resizer",
+    href: "/tools/steam-photo-resizer",
     category: "social-media",
     platform: "steam",
   },
   {
     name: "VK Photo Resizer",
     description: "Resize images for VK posts, communities, and profiles",
-    href: "/tools/vk-image-resizer",
+    href: "/tools/vk-photo-resizer",
     category: "social-media",
     platform: "vk",
   },
   {
     name: "Tumblr Photo Resizer",
     description: "Resize images for Tumblr blogs and posts",
-    href: "/tools/tumblr-image-resizer",
+    href: "/tools/tumblr-photo-resizer",
     category: "social-media",
     platform: "tumblr",
   },
   {
     name: "Substack Photo Resizer",
     description: "Resize publication logos and cover images for Substack",
-    href: "/tools/substack-image-resizer",
+    href: "/tools/substack-photo-resizer",
     category: "social-media",
     platform: "substack",
   },
   {
     name: "Telegram Photo Resizer",
     description: "Resize images for Telegram profiles and channels",
-    href: "/tools/telegram-image-resizer",
+    href: "/tools/telegram-photo-resizer",
     category: "social-media",
     platform: "telegram",
   },
   {
     name: "Nostr Photo Resizer",
     description: "Resize images for Nostr clients",
-    href: "/tools/nostr-image-resizer",
+    href: "/tools/nostr-photo-resizer",
     category: "social-media",
     platform: "nostr",
   },
   {
     name: "Dribbble Photo Resizer",
     description: "Format your design shots for Dribbble",
-    href: "/tools/dribbble-image-resizer",
+    href: "/tools/dribbble-photo-resizer",
     category: "social-media",
     platform: "dribbble",
   },
   {
     name: "Lemmy Photo Resizer",
     description: "Resize icons and banners for Lemmy communities",
-    href: "/tools/lemmy-image-resizer",
+    href: "/tools/lemmy-photo-resizer",
     category: "social-media",
     platform: "lemmy",
   },
   {
     name: "Slack Photo Resizer",
     description: "Create perfect Slack profile photos and emojis",
-    href: "/tools/slack-image-resizer",
+    href: "/tools/slack-photo-resizer",
     category: "social-media",
     platform: "slack",
   },
   {
     name: "Medium Photo Resizer",
     description: "Resize images for Medium articles and profiles",
-    href: "/tools/medium-image-resizer",
+    href: "/tools/medium-photo-resizer",
     category: "social-media",
     platform: "medium",
   },
   {
     name: "GitHub Photo Resizer",
     description: "Resize images for GitHub profiles and social previews",
-    href: "/tools/github-image-resizer",
+    href: "/tools/github-photo-resizer",
     category: "social-media",
     platform: "github",
   },
   {
     name: "Warpcast Photo Resizer",
     description: "Resize images for Farcaster/Warpcast profiles",
-    href: "/tools/warpcast-image-resizer",
+    href: "/tools/warpcast-photo-resizer",
     category: "social-media",
     platform: "warpcast",
   },
@@ -1328,6 +1401,17 @@ const allTools: Tool[] = [
   },
 ];
 
+// Retired 2026-07-18 (off-brand / no organic traffic) — excluded from related-tool listings; pages 301 → /tools.
+const RETIRED_TOOL_SUFFIXES = ["-logo-generator", "-hashtag-generator"];
+const RETIRED_PLATFORMS = new Set(["nostr", "lemmy", "warpcast", "dribbble", "mastodon", "medium", "whatsapp", "tumblr"]);
+const RETIRED_HREFS = new Set(["/tools/vk-comment-generator", "/tools/vk-photo-resizer"]);
+const activeTools = allTools.filter(
+  tool =>
+    !RETIRED_TOOL_SUFFIXES.some(suffix => tool.href.endsWith(suffix)) &&
+    !(tool.platform && RETIRED_PLATFORMS.has(tool.platform)) &&
+    !RETIRED_HREFS.has(tool.href)
+);
+
 interface RelatedToolsProps {
   currentToolHref: string;
   category?: "seo" | "analytics" | "privacy" | "social-media";
@@ -1336,11 +1420,11 @@ interface RelatedToolsProps {
 
 export function RelatedTools({ currentToolHref, category, maxTools = 6 }: RelatedToolsProps) {
   // Determine current tool properties
-  const currentTool = allTools.find(t => t.href === currentToolHref);
+  const currentTool = activeTools.find(t => t.href === currentToolHref);
   const currentPlatform = currentTool?.platform;
   const currentToolType = currentTool?.toolType;
 
-  let relatedTools = allTools.filter(tool => tool.href !== currentToolHref);
+  let relatedTools = activeTools.filter(tool => tool.href !== currentToolHref);
 
   // For social media tools: prioritize same platform, randomized
   if (category === "social-media" && currentPlatform) {
@@ -1370,34 +1454,47 @@ export function RelatedTools({ currentToolHref, category, maxTools = 6 }: Relate
   }
 
   return (
-    <div className="mt-20 pt-16 border-t border-neutral-200 dark:border-neutral-800">
-      <div className="mb-6">
-        <h2 className="text-xl font-semibold text-neutral-900 dark:text-white mb-4">Related Tools</h2>
-        <ul className="space-y-3">
-          {relatedTools.map(tool => (
-            <li key={tool.href}>
-              <Link
-                href={tool.href}
-                className="group flex items-center gap-2 text-neutral-700 dark:text-neutral-300 hover:text-neutral-900 dark:hover:text-neutral-100 transition-colors"
-              >
-                <ArrowRight className="w-4 h-4 flex-shrink-0 group-hover:translate-x-1 transition-transform" />
-                <span className="font-medium">{tool.name}</span>
-                <span className="text-sm text-neutral-500 dark:text-neutral-500">— {tool.description}</span>
-              </Link>
-            </li>
-          ))}
-        </ul>
-      </div>
-
-      <div className="mt-6">
+    <div>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <h2 className="text-xl font-semibold tracking-tight text-neutral-950 dark:text-neutral-50">Related tools</h2>
+          <p className="mt-1 text-sm text-neutral-500 dark:text-neutral-400">
+            Keep working with a nearby calculator or utility.
+          </p>
+        </div>
         <Link
           href="/tools"
-          className="inline-flex items-center gap-2 text-sm text-neutral-700 dark:text-neutral-300 hover:text-neutral-900 dark:hover:text-neutral-100 font-medium transition-colors"
+          className="inline-flex min-h-9 items-center gap-2 rounded-md text-sm font-medium text-neutral-700 transition-colors hover:text-neutral-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-500 dark:text-neutral-300 dark:hover:text-neutral-50"
         >
           View all tools
-          <ArrowRight className="w-4 h-4" />
+          <ArrowRight className="size-4" aria-hidden="true" />
         </Link>
       </div>
+
+      <ul className="mt-6 grid border-x border-t border-neutral-200 dark:border-neutral-800 sm:grid-cols-2 lg:grid-cols-3">
+        {relatedTools.map(tool => (
+          <li
+            key={tool.href}
+            className="border-b border-neutral-200 dark:border-neutral-800 sm:odd:border-r lg:border-r lg:nth-[3n]:border-r-0"
+          >
+            <Link
+              href={tool.href}
+              className="group flex h-full min-h-28 flex-col justify-between gap-4 px-4 py-4 transition-colors hover:bg-neutral-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-neutral-500 dark:hover:bg-neutral-900/50"
+            >
+              <span>
+                <span className="block text-sm font-semibold text-neutral-900 dark:text-neutral-100">{tool.name}</span>
+                <span className="mt-1 block text-sm leading-5 text-neutral-500 dark:text-neutral-400">
+                  {tool.description}
+                </span>
+              </span>
+              <ArrowRight
+                className="size-3.5 text-neutral-400 transition-transform duration-200 group-hover:translate-x-0.5 motion-reduce:transition-none dark:text-neutral-600"
+                aria-hidden="true"
+              />
+            </Link>
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }

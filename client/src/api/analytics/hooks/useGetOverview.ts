@@ -1,8 +1,6 @@
-import { useQuery } from "@tanstack/react-query";
 import { Time } from "../../../components/DateSelector/types";
-import { useStore } from "../../../lib/store";
-import { buildApiParams } from "../../utils";
 import { fetchOverview, fetchOverviewLite } from "../endpoints";
+import { useAnalyticsQuery } from "../useAnalyticsQuery";
 
 type PeriodTime = "current" | "previous";
 
@@ -16,32 +14,13 @@ type UseGetOverviewOptions = {
 };
 
 export function useGetOverview({ periodTime, site, overrideTime, useFilters = true, lite = false }: UseGetOverviewOptions) {
-  const { time, previousTime, filters, timezone } = useStore();
-
-  // Use overrideTime if provided, otherwise use store time
-  const baseTime = overrideTime || time;
-  const timeToUse = periodTime === "previous" ? previousTime : baseTime;
-
-  const params = buildApiParams(timeToUse, { filters: useFilters ? filters : undefined });
-  const queryKey = ["overview", timeToUse, site, filters, useFilters, timezone, lite];
-
-  return useQuery({
-    queryKey,
-    queryFn: () => {
-      const fetcher = lite ? fetchOverviewLite : fetchOverview;
-      return fetcher(site!, params).then(data => ({ data }));
-    },
-    staleTime: 60_000,
-    placeholderData: (_, query: any) => {
-      if (!query?.queryKey) return undefined;
-      const prevQueryKey = query.queryKey;
-      const [, , prevSite] = prevQueryKey;
-
-      if (prevSite === site) {
-        return query.state.data;
-      }
-      return undefined;
-    },
-    enabled: !!site,
+  return useAnalyticsQuery({
+    key: "overview",
+    site,
+    periodTime,
+    overrideTime,
+    useFilters,
+    keyExtras: [lite],
+    fetch: (site, params) => (lite ? fetchOverviewLite : fetchOverview)(site, params).then(data => ({ data })),
   });
 }

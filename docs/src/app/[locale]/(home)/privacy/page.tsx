@@ -1,3 +1,4 @@
+import { LegalPageShell } from "@/components/LegalPageShell";
 import { createMetadata, createOGImageUrl } from "@/lib/metadata";
 
 export const metadata = createMetadata({
@@ -13,14 +14,7 @@ export const metadata = createMetadata({
 
 export default function PrivacyPolicy() {
   return (
-    <div className="max-w-4xl mx-auto px-4 py-12">
-      <h1 className="text-3xl md:text-4xl font-bold mb-8">Privacy Policy</h1>
-
-      <div className="prose prose-invert max-w-none">
-        <p className="text-lg">
-          Last updated: June 25, 2026
-        </p>
-
+    <LegalPageShell title="Privacy Policy" lastUpdated="June 25, 2026">
         <h2 className="text-2xl font-semibold mt-8 mb-4">Overview</h2>
         <p>
           Rybbit is an open-source, privacy-friendly web analytics alternative to Google Analytics. This privacy policy
@@ -56,7 +50,7 @@ export default function PrivacyPolicy() {
         <p>
           When processing visitor data, IP addresses are only used temporarily to determine geographic location (country
           and region) using{" "}
-          <a href="https://www.maxmind.com/" className="text-emerald-400 hover:text-emerald-300" target="_blank">
+          <a href="https://www.maxmind.com/" target="_blank" rel="noopener noreferrer">
             Maxmind
           </a>
           . The actual IP addresses are never stored in our database, preserving visitor anonymity while still providing
@@ -126,7 +120,7 @@ export default function PrivacyPolicy() {
         <p>
           As an open-source project, our code is publicly available for review. This includes our data collection
           mechanisms, which you can audit to verify our privacy claims.
-          <a href="https://github.com/rybbit-io/rybbit" className="text-emerald-400 hover:text-emerald-300 ml-1">
+          <a href="https://github.com/rybbit-io/rybbit" className="ml-1">
             View our GitHub repository
           </a>
           .
@@ -135,11 +129,10 @@ export default function PrivacyPolicy() {
         <h2 className="text-2xl font-semibold mt-8 mb-4">Contact Us</h2>
         <p>
           If you have questions about this privacy policy or Rybbit&apos;s data practices, please contact us at:
-          <a href="https://www.rybbit.com/contact" className="text-emerald-400 hover:text-emerald-300 ml-1">
+          <a href="https://www.rybbit.com/contact" className="ml-1">
             hello@rybbit.com
           </a>
         </p>
-      </div>
-    </div>
+    </LegalPageShell>
   );
 }

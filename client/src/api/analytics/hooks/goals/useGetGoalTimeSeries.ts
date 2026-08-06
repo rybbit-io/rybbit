@@ -1,25 +1,22 @@
-import { useQuery } from "@tanstack/react-query";
 import { TimeBucket } from "@rybbit/shared";
 import { GOALS_PAGE_FILTERS } from "../../../../lib/filterGroups";
 import { getFilteredFilters, useStore } from "../../../../lib/store";
-import { buildApiParams } from "../../../utils";
-import { fetchGoalTimeSeries } from "../../endpoints";
+import { fetchGoalTimeSeries, GoalTimeSeriesParams, GoalTimeSeriesPoint } from "../../endpoints";
+import { useAnalyticsQuery } from "../../useAnalyticsQuery";
 
 export function useGetGoalTimeSeries({ goalIds, bucket }: { goalIds: number[]; bucket?: TimeBucket }) {
-  const { site, time, bucket: storeBucket, timezone } = useStore();
-  const filteredFilters = getFilteredFilters(GOALS_PAGE_FILTERS);
+  const { bucket: storeBucket } = useStore();
   const bucketToUse = bucket || storeBucket;
-  const params = buildApiParams(time, { filters: filteredFilters });
+  // Only the goals page's filter parameters apply; an empty subset means no
+  // filters at all (not the store's full filter list).
+  const filteredFilters = getFilteredFilters(GOALS_PAGE_FILTERS);
 
-  return useQuery({
-    queryKey: ["goal-time-series", site, time, bucketToUse, filteredFilters, goalIds, timezone],
-    queryFn: async () => {
-      return fetchGoalTimeSeries(site, {
-        ...params,
-        bucket: bucketToUse,
-        goalIds,
-      });
-    },
-    enabled: !!site && goalIds.length > 0,
+  return useAnalyticsQuery<GoalTimeSeriesPoint[], GoalTimeSeriesParams>({
+    key: "goal-time-series",
+    useFilters: filteredFilters.length > 0,
+    customFilters: filteredFilters,
+    extraParams: { bucket: bucketToUse, goalIds },
+    enabled: goalIds.length > 0,
+    fetch: (site, params) => fetchGoalTimeSeries(site, params),
   });
 }

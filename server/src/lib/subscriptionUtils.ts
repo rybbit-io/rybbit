@@ -138,8 +138,8 @@ export async function getOverrideSubscription(organizationId: string): Promise<O
       return null;
     }
 
-    // Check if it's an AppSumo tier override (e.g., "appsumo-1", "appsumo-2", "appsumo-3", "appsumo-4", "appsumo-5", "appsumo-6")
-    const appsumoMatch = org.planOverride.match(/^appsumo-([123456])$/);
+    // Check if it's an AppSumo tier override (e.g., "appsumo-1" through "appsumo-7")
+    const appsumoMatch = org.planOverride.match(/^appsumo-([1-7])$/);
     if (appsumoMatch) {
       const tier = appsumoMatch[1] as keyof typeof APPSUMO_TIER_LIMITS;
       const eventLimit = APPSUMO_TIER_LIMITS[tier];

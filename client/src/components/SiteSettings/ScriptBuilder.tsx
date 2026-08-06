@@ -9,6 +9,8 @@ import { ChevronRight } from "lucide-react";
 import { useExtracted } from "next-intl";
 import { useState } from "react";
 
+import { SettingsSection, SettingsSections } from "./SettingsSection";
+
 interface ScriptBuilderProps {
   siteId: string;
   siteType?: "web" | "mobile" | null;
@@ -105,13 +107,15 @@ ${dataAttributes.map(attr => `    ${formatAttr(attr)}`).join("\n")}
     defer
 ></script>`;
 
-  const jsSnippet = `(function () {
-  var el = document.createElement("script");
-  el.src = "${scriptUrl}";
-${dataAttributes.map(([key, value]) => `  el.setAttribute("${key}", ${JSON.stringify(value)});`).join("\n")}
-  el.defer = true;
-  document.head.appendChild(el);
-})();`;
+  const jsSnippet = `<script>
+  (function() {
+    var el = document.createElement("script");
+    el.src = "${scriptUrl}";
+    el.defer = true;
+${dataAttributes.map(([key, value]) => `    el.setAttribute("${key}", ${JSON.stringify(value)});`).join("\n")}
+    document.head.appendChild(el);
+  })();
+</script>`;
 
   const inlineScript = `<script src="${scriptUrl}" ${dataAttributes.map(formatAttr).join(" ")} defer></script>`;
 
@@ -138,30 +142,18 @@ await rybbit.event("signup_started", { plan: "pro" });`;
 
   if (siteType === "mobile") {
     return (
-      <div className="space-y-6">
-        <div className="space-y-3">
-          <div>
-            <h4 className="text-sm font-semibold text-foreground">{t("React Native SDK")}</h4>
-            <p className="text-xs text-muted-foreground">
-              {t("Install the React Native package and initialize it in your app entry point")}
-            </p>
-          </div>
+      <SettingsSections>
+        <SettingsSection description={t("Install the React Native package and initialize it in your app entry point")}>
           <CodeSnippet language="bash" code={reactNativeInstall} />
           <CodeSnippet language="TypeScript" code={reactNativeSnippet} />
-        </div>
-      </div>
+        </SettingsSection>
+      </SettingsSections>
     );
   }
 
   return (
-    <div className="space-y-6">
-      <div className="space-y-3">
-        <div>
-          <h4 className="text-sm font-semibold text-foreground">{t("Tracking Script")}</h4>
-          <p className="text-xs text-muted-foreground">
-            {t("Add this script to the {headTag} of your website", { headTag: "<head>" })}
-          </p>
-        </div>
+    <SettingsSections>
+      <SettingsSection description={t("Add this script to the {headTag} of your website", { headTag: "<head>" })}>
         <Tabs defaultValue="html">
           <TabsList>
             <TabsTrigger value="html">HTML</TabsTrigger>
@@ -184,9 +176,9 @@ await rybbit.event("signup_started", { plan: "pro" });`;
               {showJsFallback && (
                 <div className="mt-2 flex flex-col gap-2">
                   <p className="text-xs text-muted-foreground">
-                    {t("Run this in any JavaScript that loads on every page:")}
+                    {t("Paste this into the {headTag} of your website:", { headTag: "<head>" })}
                   </p>
-                  <CodeSnippet language="javascript" code={jsSnippet} />
+                  <CodeSnippet language="HTML" code={jsSnippet} />
                 </div>
               )}
             </div>
@@ -198,78 +190,77 @@ await rybbit.event("signup_started", { plan: "pro" });`;
             <CodeSnippet code={aiPrompt} />
           </TabsContent>
         </Tabs>
+      </SettingsSection>
 
-        {/* Script Options Section */}
-        <div className="space-y-4">
-          {/* Skip Patterns Option */}
-          <div className="space-y-2">
-            <div>
-              <Label htmlFor="skipPatterns" className="text-sm font-medium text-foreground block">
-                {t("Skip Patterns")}
-              </Label>
-              <p className="text-xs text-muted-foreground mt-1">
-                {t("URL patterns to exclude from tracking (one per line)")}
-              </p>
-              <p className="text-xs text-muted-foreground mt-1">
-                {t("Use * for single segment wildcard, ** for multi-segment wildcard")}
-              </p>
-              <Textarea
-                id="skipPatterns"
-                placeholder="/admin/**&#10;/preview/*"
-                className="mt-2 font-mono text-sm"
-                value={skipPatternsText}
-                onChange={handleSkipPatternsChange}
-              />
-            </div>
-          </div>
-
-          {/* Mask Patterns Option */}
-          <div className="space-y-2">
-            <div>
-              <Label htmlFor="maskPatterns" className="text-sm font-medium text-foreground block">
-                {t("Mask Patterns")}
-              </Label>
-              <p className="text-xs text-muted-foreground mt-1">
-                {t("URL patterns to anonymize in analytics (one per line)")}
-              </p>
-              <p className="text-xs text-muted-foreground mt-1">
-                {t("E.g. /users/*/profile will hide usernames, /orders/** will hide order details")}
-              </p>
-              <Textarea
-                id="maskPatterns"
-                placeholder="/users/*/profile&#10;/orders/**"
-                className="mt-2 font-mono text-sm"
-                value={maskPatternsText}
-                onChange={handleMaskPatternsChange}
-              />
-            </div>
-          </div>
-
-          {/* Debounce Option */}
-          <div className="space-y-2">
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="debounce" className="text-sm font-medium text-foreground">
-                {t("Debounce Duration (ms)")}
-              </Label>
-              <div className="flex items-center gap-2">
-                <Input
-                  id="debounce"
-                  type="number"
-                  min="0"
-                  max="5000"
-                  value={debounceValue}
-                  onChange={e => setDebounceValue(parseInt(e.target.value) || 0)}
-                  className="max-w-[120px]"
-                />
-                <span className="text-xs text-muted-foreground">{t("Default: 500ms")}</span>
-              </div>
-            </div>
-            <p className="text-xs text-muted-foreground">
-              {t("Time to wait before tracking a pageview after URL changes")}
+      <SettingsSection title={t("Options")}>
+        {/* Skip Patterns Option */}
+        <div className="space-y-2">
+          <div>
+            <Label htmlFor="skipPatterns" className="text-sm font-medium text-foreground block">
+              {t("Skip Patterns")}
+            </Label>
+            <p className="text-xs text-muted-foreground mt-1">
+              {t("URL patterns to exclude from tracking (one per line)")}
             </p>
+            <p className="text-xs text-muted-foreground mt-1">
+              {t("Use * for single segment wildcard, ** for multi-segment wildcard")}
+            </p>
+            <Textarea
+              id="skipPatterns"
+              placeholder="/admin/**&#10;/preview/*"
+              className="mt-2 font-mono text-sm"
+              value={skipPatternsText}
+              onChange={handleSkipPatternsChange}
+            />
           </div>
         </div>
-      </div>
-    </div>
+
+        {/* Mask Patterns Option */}
+        <div className="space-y-2">
+          <div>
+            <Label htmlFor="maskPatterns" className="text-sm font-medium text-foreground block">
+              {t("Mask Patterns")}
+            </Label>
+            <p className="text-xs text-muted-foreground mt-1">
+              {t("URL patterns to anonymize in analytics (one per line)")}
+            </p>
+            <p className="text-xs text-muted-foreground mt-1">
+              {t("E.g. /users/*/profile will hide usernames, /orders/** will hide order details")}
+            </p>
+            <Textarea
+              id="maskPatterns"
+              placeholder="/users/*/profile&#10;/orders/**"
+              className="mt-2 font-mono text-sm"
+              value={maskPatternsText}
+              onChange={handleMaskPatternsChange}
+            />
+          </div>
+        </div>
+
+        {/* Debounce Option */}
+        <div className="space-y-2">
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="debounce" className="text-sm font-medium text-foreground">
+              {t("Debounce Duration (ms)")}
+            </Label>
+            <div className="flex items-center gap-2">
+              <Input
+                id="debounce"
+                type="number"
+                min="0"
+                max="5000"
+                value={debounceValue}
+                onChange={e => setDebounceValue(parseInt(e.target.value) || 0)}
+                className="max-w-[120px]"
+              />
+              <span className="text-xs text-muted-foreground">{t("Default: 500ms")}</span>
+            </div>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            {t("Time to wait before tracking a pageview after URL changes")}
+          </p>
+        </div>
+      </SettingsSection>
+    </SettingsSections>
   );
 }

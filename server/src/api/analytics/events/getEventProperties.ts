@@ -1,8 +1,8 @@
 import { FastifyReply, FastifyRequest } from "fastify";
-import { clickhouse } from "../../../db/clickhouse/clickhouse.js";
-import { getTimeStatement, processResults } from "../utils/utils.js";
+import { getTimeStatement } from "../utils/utils.js";
 import { FilterParams } from "@rybbit/shared";
 import { getFilterStatement } from "../utils/getFilterStatement.js";
+import { analyticsRoute, runAnalyticsQuery } from "../utils/analyticsQuery.js";
 
 export type GetEventPropertiesResponse = {
   propertyKey: string;
@@ -19,19 +19,14 @@ export interface GetEventPropertiesRequest {
   }>;
 }
 
-export async function getEventProperties(req: FastifyRequest<GetEventPropertiesRequest>, res: FastifyReply) {
-  const { event_name: eventName, filters } = req.query;
-  const site = req.params.siteId;
+export const buildEventPropertiesQuery = (query: GetEventPropertiesRequest["Querystring"], siteId: number) => {
+  const { filters } = query;
 
-  if (!eventName) {
-    return res.status(400).send({ error: "Event name is required" });
-  }
+  const timeStatement = getTimeStatement(query);
 
-  const timeStatement = getTimeStatement(req.query);
+  const filterStatement = filters ? getFilterStatement(filters, siteId, timeStatement) : "";
 
-  const filterStatement = filters ? getFilterStatement(filters, Number(site), timeStatement) : "";
-
-  const query = `
+  return `
     SELECT
       kv.1 AS propertyKey, -- Access tuple elements
       replaceRegexpAll(kv.2, '^"|"$', '') AS propertyValue, -- Remove surrounding quotes if they exist
@@ -49,22 +44,26 @@ export async function getEventProperties(req: FastifyRequest<GetEventPropertiesR
     ORDER BY propertyKey ASC, count DESC
     LIMIT 500
   `;
+};
 
-  try {
-    const result = await clickhouse.query({
-      query,
-      format: "JSONEachRow",
-      query_params: {
+export const getEventProperties = analyticsRoute<GetEventPropertiesRequest>(
+  "event properties",
+  async (req: FastifyRequest<GetEventPropertiesRequest>, res: FastifyReply) => {
+    const { event_name: eventName } = req.query;
+    const site = req.params.siteId;
+
+    if (!eventName) {
+      return res.status(400).send({ error: "Event name is required" });
+    }
+
+    const data = await runAnalyticsQuery<GetEventPropertiesResponse[number]>({
+      query: buildEventPropertiesQuery(req.query, Number(site)),
+      params: {
         siteId: Number(site),
         eventName,
       },
     });
 
-    const data = await processResults<GetEventPropertiesResponse[number]>(result);
     return res.send({ data });
-  } catch (error) {
-    console.error("Generated Query:", query);
-    console.error("Error fetching event properties:", error);
-    return res.status(500).send({ error: "Failed to fetch event properties" });
   }
-}
+);

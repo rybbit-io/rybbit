@@ -1,8 +1,8 @@
 import { FastifyReply, FastifyRequest } from "fastify";
-import { clickhouse } from "../../db/clickhouse/clickhouse.js";
-import { getTimeStatement, processResults } from "./utils/utils.js";
+import { getTimeStatement } from "./utils/utils.js";
 import { FilterParams } from "@rybbit/shared";
 import { getFilterStatement } from "./utils/getFilterStatement.js";
+import { analyticsRoute, getPaginationStatements, runAnalyticsQuery, runPaginatedQuery } from "./utils/analyticsQuery.js";
 
 interface GetErrorEventsRequest {
   Params: {
@@ -46,31 +46,18 @@ type ErrorEventsPaginatedResponse = {
   totalCount: number;
 };
 
-const getErrorEventsQuery = (request: FastifyRequest<GetErrorEventsRequest>, isCountQuery: boolean = false) => {
-  const { filters, limit, page } = request.query;
+export const buildErrorEventsQuery = (
+  query: GetErrorEventsRequest["Querystring"],
+  siteId: number,
+  isCountQuery: boolean = false
+) => {
+  const { filters } = query;
 
-  const timeStatement = getTimeStatement(request.query);
-  const filterStatement = getFilterStatement(filters, Number(request.params.siteId), timeStatement);
+  const timeStatement = getTimeStatement(query);
+  const filterStatement = getFilterStatement(filters, siteId, timeStatement);
 
-  let validatedLimit: number | null = null;
-  if (!isCountQuery && limit !== undefined) {
-    const parsedLimit = parseInt(String(limit), 10);
-    if (!isNaN(parsedLimit) && parsedLimit > 0) {
-      validatedLimit = parsedLimit;
-    }
-  }
   // Default to 20 for error events
-  const limitStatement = !isCountQuery && validatedLimit ? `LIMIT ${validatedLimit}` : isCountQuery ? "" : "LIMIT 20";
-
-  let validatedOffset: number | null = null;
-  if (!isCountQuery && page !== undefined) {
-    const parsedPage = parseInt(String(page), 10);
-    if (!isNaN(parsedPage) && parsedPage >= 1) {
-      const pageOffset = (parsedPage - 1) * (validatedLimit || 20);
-      validatedOffset = pageOffset;
-    }
-  }
-  const offsetStatement = !isCountQuery && validatedOffset ? `OFFSET ${validatedOffset}` : "";
+  const { limitStatement, offsetStatement } = getPaginationStatements(query, 20, isCountQuery);
 
   if (isCountQuery) {
     return `
@@ -131,52 +118,28 @@ const getErrorEventsQuery = (request: FastifyRequest<GetErrorEventsRequest>, isC
   `;
 };
 
-export async function getErrorEvents(req: FastifyRequest<GetErrorEventsRequest>, res: FastifyReply) {
-  const site = req.params.siteId;
-  const { errorMessage, page } = req.query;
+export const getErrorEvents = analyticsRoute<GetErrorEventsRequest>(
+  "error events",
+  async (req: FastifyRequest<GetErrorEventsRequest>, res: FastifyReply) => {
+    const { errorMessage } = req.query;
 
-  if (!errorMessage) {
-    return res.status(400).send({ error: "errorMessage parameter is required" });
-  }
+    if (!errorMessage) {
+      return res.status(400).send({ error: "errorMessage parameter is required" });
+    }
 
-  const isPaginatedRequest = page !== undefined;
+    const siteId = Number(req.params.siteId);
+    const params = { siteId, errorMessage };
+    const dataSpec = { query: buildErrorEventsQuery(req.query, siteId, false), params };
 
-  const dataQuery = getErrorEventsQuery(req, false);
-
-  try {
-    const dataResult = await clickhouse.query({
-      query: dataQuery,
-      format: "JSONEachRow",
-      query_params: {
-        siteId: Number(site),
-        errorMessage: errorMessage,
-      },
-    });
-    const items = await processResults<ErrorEvent>(dataResult);
-
-    if (isPaginatedRequest) {
-      const countQuery = getErrorEventsQuery(req, true);
-      const countResult = await clickhouse.query({
-        query: countQuery,
-        format: "JSONEachRow",
-        query_params: {
-          siteId: Number(site),
-          errorMessage: errorMessage,
-        },
+    if (req.query.page !== undefined) {
+      const result = await runPaginatedQuery<ErrorEvent>(dataSpec, {
+        query: buildErrorEventsQuery(req.query, siteId, true),
+        params,
       });
-      const countData = await processResults<{ totalCount: number }>(countResult);
-      const totalCount = countData.length > 0 ? countData[0].totalCount : 0;
-      return res.send({ data: { data: items, totalCount } });
-    } else {
-      return res.send({ data: items });
+      return res.send({ data: result });
     }
-  } catch (error) {
-    console.error(`Error fetching error events:`, error);
-    console.error("Failed dataQuery:", dataQuery);
-    if (isPaginatedRequest) {
-      const countQuery = getErrorEventsQuery(req, true);
-      console.error("Failed countQuery:", countQuery);
-    }
-    return res.status(500).send({ error: `Failed to fetch error events` });
+
+    const items = await runAnalyticsQuery<ErrorEvent>(dataSpec);
+    return res.send({ data: items });
   }
-}
+);

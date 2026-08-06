@@ -45,13 +45,14 @@ import {
 
 **Rybbit** is a powerful open source web and products analytics platform. Check out our [live demo](https://demo.rybbit.com/81) using a real production site.
 
-<div className="relative rounded-lg overflow-hidden border-8 border-neutral-100/5 shadow-2xl shadow-emerald-900/10">
+{/* md+: render the demo at a 117.6% viewport and scale to 0.85 so it shows
+    its desktop layout at preview size. Keep 1:1 on mobile — a scaled viewport
+    would land between the demo's responsive breakpoints. The two values must
+    stay reciprocal. */}
+<div className="relative rounded-lg overflow-hidden border-8 border-neutral-100/5 shadow-2xl shadow-emerald-900/10 h-[600px] md:h-[700px] lg:h-[750px]">
   <iframe
     src="https://demo.rybbit.com/81"
-    width="1300"
-    height="750"
-    className="w-full h-[600px] md:h-[700px] lg:h-[750px]"
-    style={{ border: "none" }}
+    className="block w-full h-full border-none md:w-[117.6%] md:h-[117.6%] md:origin-top-left md:scale-[0.85]"
     title="Rybbit Analytics Demo"
   ></iframe>
 </div>

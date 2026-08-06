@@ -25,6 +25,8 @@ export {
   fetchEventsCursor,
   fetchEventNames,
   fetchEventProperties,
+  fetchAutocaptureEvents,
+  fetchAutocaptureValues,
   fetchOutboundLinks,
   fetchSiteEventCount,
 } from "./events";
@@ -35,6 +37,8 @@ export type {
   CursorEventsResponse,
   EventName,
   EventProperty,
+  AutocaptureEvent,
+  AutocaptureValue,
   OutboundLink,
   EventBucketedParams,
   EventPropertiesParams,
@@ -82,6 +86,8 @@ export type {
 export { fetchGoals, fetchGoalTimeSeries, fetchGoalSessions, createGoal, updateGoal, deleteGoal } from "./goals";
 export type {
   Goal,
+  GoalType,
+  GoalConfig,
   GoalTimeSeriesPoint,
   PaginationMeta,
   GoalsResponse,
@@ -127,10 +133,19 @@ export type {
 } from "./experiments";
 
 // Funnels endpoints
-export { fetchFunnels, analyzeFunnel, fetchFunnelStepSessions, saveFunnel, deleteFunnel } from "./funnels";
+export {
+  fetchFunnels,
+  analyzeFunnel,
+  fetchFunnelStepSessions,
+  saveFunnel,
+  deleteFunnel,
+  stepRequiresValue,
+  hasIncompleteSteps,
+} from "./funnels";
 export type {
   SavedFunnel,
   FunnelStep,
+  FunnelStepType,
   FunnelRequest,
   SaveFunnelRequest,
   FunnelResponse,
@@ -180,16 +195,27 @@ export type {
 } from "./sessions";
 
 // Users endpoints
-export { fetchUsers, fetchUserSessionCount, fetchUserInfo } from "./users";
+export {
+  fetchUsers,
+  fetchUserSessionCount,
+  fetchUserInfo,
+  identifyUser,
+  updateUserTraits,
+  deleteUser,
+} from "./users";
 export type {
   UsersResponse,
   UserInfo,
+  UserVitals,
+  UserLocationBreakdown,
+  UserDeviceBreakdown,
   LinkedDevice,
   UserSessionCountResponse,
   UsersParams,
   UserSessionsParams,
   UserSessionCountParams,
   UsersListResponse,
+  IdentifyUserPayload,
 } from "./users";
 
 // Misc endpoints (retention, journeys, page titles, org event count)

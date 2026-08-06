@@ -41,7 +41,7 @@ Creates a new goal for tracking conversions.
     goalType: {
       description: 'Type of goal',
       type: 'string',
-      typeDescription: '"path" | "event"',
+      typeDescription: '"path" | "event" | "outbound" | "button_click" | "form_submit" | "copy"',
       required: true,
     },
     config: {
@@ -108,7 +108,7 @@ Creates a new goal for tracking conversions.
 <Tabs items={['cURL', 'JavaScript', 'Python', 'PHP', 'Ruby', 'Go', 'Rust', 'Java', '.NET']}>
   <Tab value="cURL">
 ```bash title="Path Goal"
-curl -X POST "https://app.rybbit.io/api/sites/1/goals23" \
+curl -X POST "https://app.rybbit.io/api/sites/1/goals" \
   -H "Authorization: Bearer your_api_key_here" \
   -H "Content-Type: application/json" \
   -d '{
@@ -123,7 +123,7 @@ curl -X POST "https://app.rybbit.io/api/sites/1/goals23" \
   <Tab value="JavaScript">
 ```javascript title="Event Goal"
 const response = await fetch(
-  'https://app.rybbit.io/api/sites/1/goals23',
+  'https://app.rybbit.io/api/sites/1/goals',
   {
     method: 'POST',
     headers: {
@@ -150,7 +150,7 @@ const data = await response.json();
 import requests
 
 response = requests.post(
-    'https://app.rybbit.io/api/sites/1/goals23',
+    'https://app.rybbit.io/api/sites/1/goals',
     json={
         'name': 'Signup Complete',
         'goalType': 'path',
@@ -177,7 +177,7 @@ $body = [
 ];
 
 $ch = curl_init();
-curl_setopt($ch, CURLOPT_URL, 'https://app.rybbit.io/api/sites/1/goals23');
+curl_setopt($ch, CURLOPT_URL, 'https://app.rybbit.io/api/sites/1/goals');
 curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
 curl_setopt($ch, CURLOPT_POST, true);
 curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($body));
@@ -197,7 +197,7 @@ $data = json_decode($response, true);
 require 'net/http'
 require 'json'
 
-uri = URI('https://app.rybbit.io/api/sites/1/goals23')
+uri = URI('https://app.rybbit.io/api/sites/1/goals')
 request = Net::HTTP::Post.new(uri)
 request['Authorization'] = 'Bearer your_api_key_here'
 request['Content-Type'] = 'application/json'
@@ -225,7 +225,7 @@ body := map[string]interface{}{
 }
 jsonBody, _ := json.Marshal(body)
 
-req, _ := http.NewRequest("POST", "https://app.rybbit.io/api/sites/1/goals23", bytes.NewBuffer(jsonBody))
+req, _ := http.NewRequest("POST", "https://app.rybbit.io/api/sites/1/goals", bytes.NewBuffer(jsonBody))
 req.Header.Set("Authorization", "Bearer your_api_key_here")
 req.Header.Set("Content-Type", "application/json")
 
@@ -249,7 +249,7 @@ let body = serde_json::json!({
 
 let client = reqwest::Client::new();
 let res = client
-    .post("https://app.rybbit.io/api/sites/1/goals23")
+    .post("https://app.rybbit.io/api/sites/1/goals")
     .header("Authorization", "Bearer your_api_key_here")
     .json(&body)
     .send()
@@ -272,7 +272,7 @@ String json = """
 
 HttpClient client = HttpClient.newHttpClient();
 HttpRequest request = HttpRequest.newBuilder()
-    .uri(URI.create("https://app.rybbit.io/api/sites/1/goals23"))
+    .uri(URI.create("https://app.rybbit.io/api/sites/1/goals"))
     .header("Authorization", "Bearer your_api_key_here")
     .header("Content-Type", "application/json")
     .POST(HttpRequest.BodyPublishers.ofString(json))
@@ -298,7 +298,7 @@ var content = new StringContent(
     Encoding.UTF8,
     "application/json");
 
-var response = await client.PostAsync("https://app.rybbit.io/api/sites/1/goals23", content);
+var response = await client.PostAsync("https://app.rybbit.io/api/sites/1/goals", content);
 var data = await response.Content.ReadAsStringAsync();
 ```
   </Tab>

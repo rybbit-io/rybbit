@@ -24,7 +24,9 @@ export function applyValidationRules(
 function validateRule(result: HttpCheckResult, rule: ValidationRule, responseBody?: string): string | null {
   switch (rule.type) {
     case "status_code":
-      if (!result.statusCode) return null;
+      // Fail closed: a missing status code means the check never got a response,
+      // so a status_code expectation cannot be considered satisfied.
+      if (!result.statusCode) return "No status code available to validate";
       return validateStatusCode(result.statusCode, rule);
 
     case "response_time":
@@ -69,13 +71,21 @@ function validateStatusCode(statusCode: number, rule: ValidationRule): string | 
       break;
 
     case "in":
-      if (Array.isArray(value) && !value.includes(statusCode)) {
+      // Fail closed: a non-array operand is a misconfigured rule, not a pass.
+      if (!Array.isArray(value)) {
+        return `Validation rule misconfigured: "in" operator requires an array value`;
+      }
+      if (!value.includes(statusCode)) {
         return `Status code ${statusCode} is not in [${value.join(", ")}]`;
       }
       break;
 
     case "not_in":
-      if (Array.isArray(value) && value.includes(statusCode)) {
+      // Fail closed: a non-array operand is a misconfigured rule, not a pass.
+      if (!Array.isArray(value)) {
+        return `Validation rule misconfigured: "not_in" operator requires an array value`;
+      }
+      if (value.includes(statusCode)) {
         return `Status code ${statusCode} is in [${value.join(", ")}]`;
       }
       break;

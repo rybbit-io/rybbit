@@ -84,7 +84,7 @@ export async function createMonitor(request: FastifyRequest<CreateMonitorBody>, 
         details: zodError.errors,
       });
     }
-    console.error("Error creating monitor:", error);
+    request.log.error({ err: error }, "Error creating monitor");
     return reply.status(500).send({ error: "Internal server error" });
   }
 }

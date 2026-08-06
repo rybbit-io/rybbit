@@ -180,7 +180,7 @@ export async function getMonitorUptime(request: FastifyRequest<GetMonitorUptimeR
       failedChecks: stats.total_downtime_checks,
     });
   } catch (error) {
-    console.error("Error retrieving monitor uptime:", error);
+    request.log.error({ err: error }, "Error retrieving monitor uptime");
     return reply.status(500).send({ error: "Internal server error" });
   }
 }

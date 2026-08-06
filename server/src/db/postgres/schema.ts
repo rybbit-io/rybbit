@@ -82,11 +82,17 @@ export const sites = pgTable(
     embedEnabled: boolean("embed_enabled").default(false),
     saltUserIds: boolean().default(false),
     blockBots: boolean().default(true).notNull(),
+    // Site owner declares a first-party proxy (Cloudflare Worker, CloudFront,
+    // nginx, ...) fronts their tracking traffic, so forwarded headers carry the
+    // real visitor IP and must win over the connecting edge IP.
+    firstPartyProxy: boolean("first_party_proxy").default(false),
     excludedIPs: jsonb("excluded_ips").default([]), // Array of IP addresses/ranges to exclude
     excludedCountries: jsonb("excluded_countries").default([]), // Array of ISO country codes to exclude (e.g., ["US", "GB"])
     excludedPaths: jsonb("excluded_paths").default([]).$type<string[]>(), // Array of pathname glob patterns to exclude (e.g., ["/admin/*", "/preview"])
     excludedHostnames: jsonb("excluded_hostnames").default([]).$type<string[]>(), // Array of hostname glob patterns to exclude (e.g., ["localhost", "*.vercel.app"])
     excludedUserAgents: jsonb("excluded_user_agents").default([]).$type<string[]>(), // Array of case-insensitive user-agent substrings to exclude (e.g., ["HeadlessChrome"])
+    excludedASNs: jsonb("excluded_asns").default([]).$type<string[]>(), // Array of autonomous system numbers to exclude, with or without "AS" prefix (e.g., ["AS13335", "16509"])
+    excludedQueryParams: jsonb("excluded_query_params").default([]).$type<string[]>(), // Array of query param exclusions: "name" (param present) or "name=value" (value supports * glob), e.g. ["preview", "utm_source=internal-*"]
     sessionReplay: boolean().default(false),
     webVitals: boolean().default(false),
     trackErrors: boolean().default(false),
@@ -301,9 +307,10 @@ export const apiKey = pgTable("apikey", {
   start: text(),
   prefix: text(),
   key: text().notNull(),
-  referenceId: text()
-    .notNull()
-    .references(() => user.id, { onDelete: "cascade" }),
+  // A user id (configId NULL/"default") or an organization id (configId
+  // "org") — polymorphic, so no FK. Cleanup happens in auth.ts's
+  // deleteUser.afterDelete and afterDeleteOrganization hooks.
+  referenceId: text().notNull(),
   refillInterval: integer(),
   refillAmount: integer(),
   lastRefillAt: timestamp({ mode: "string" }),
@@ -322,6 +329,53 @@ export const apiKey = pgTable("apikey", {
   metadata: jsonb(),
 });
 
+// OAuth provider tables for the MCP plugin (better-auth oidc-provider schema).
+// Field names and nullability mirror better-auth's model definitions; tokens
+// are validated by better-auth via auth.api.getMcpSession.
+export const oauthApplication = pgTable("oauthApplication", {
+  id: text().primaryKey().notNull(),
+  name: text().notNull(),
+  icon: text(),
+  metadata: text(),
+  clientId: text().notNull().unique(),
+  clientSecret: text(),
+  redirectUrls: text().notNull(),
+  type: text().notNull(),
+  disabled: boolean().default(false),
+  userId: text().references(() => user.id, { onDelete: "cascade" }),
+  createdAt: timestamp({ mode: "string" }).notNull(),
+  updatedAt: timestamp({ mode: "string" }).notNull(),
+});
+
+export const oauthAccessToken = pgTable("oauthAccessToken", {
+  id: text().primaryKey().notNull(),
+  accessToken: text().notNull().unique(),
+  refreshToken: text().unique(),
+  accessTokenExpiresAt: timestamp({ mode: "string" }).notNull(),
+  refreshTokenExpiresAt: timestamp({ mode: "string" }),
+  clientId: text()
+    .notNull()
+    .references(() => oauthApplication.clientId, { onDelete: "cascade" }),
+  userId: text().references(() => user.id, { onDelete: "cascade" }),
+  scopes: text().notNull(),
+  createdAt: timestamp({ mode: "string" }).notNull(),
+  updatedAt: timestamp({ mode: "string" }).notNull(),
+});
+
+export const oauthConsent = pgTable("oauthConsent", {
+  id: text().primaryKey().notNull(),
+  clientId: text()
+    .notNull()
+    .references(() => oauthApplication.clientId, { onDelete: "cascade" }),
+  userId: text()
+    .notNull()
+    .references(() => user.id, { onDelete: "cascade" }),
+  scopes: text().notNull(),
+  consentGiven: boolean().notNull(),
+  createdAt: timestamp({ mode: "string" }).notNull(),
+  updatedAt: timestamp({ mode: "string" }).notNull(),
+});
+
 // Goals table for tracking conversion goals
 export const goals = pgTable(
   "goals",
@@ -329,14 +383,16 @@ export const goals = pgTable(
     goalId: serial("goal_id").primaryKey().notNull(),
     siteId: integer("site_id").notNull(),
     name: text("name"), // Optional, user-defined name for the goal
-    goalType: text("goal_type").notNull(), // 'path' or 'event'
+    goalType: text("goal_type").notNull(), // 'path', 'event', 'outbound', 'button_click', 'form_submit', or 'copy'
     // Configuration specific to the goal type
     config: jsonb("config").notNull().$type<{
       // For 'path' type
       pathPattern?: string; // e.g., "/pricing", "/product/*/view", "/docs/**"
       // For 'event' type
       eventName?: string; // e.g., "signup_completed", "file_downloaded"
-      // Property filters (for both path and event types)
+      // For autocapture types ('outbound', 'button_click', 'form_submit', 'copy')
+      valuePattern?: string; // e.g., "https://example.com/**", "Sign Up*"
+      // Property filters (for all goal types)
       eventPropertyKey?: string; // Deprecated - use propertyFilters instead
       eventPropertyValue?: string | number | boolean; // Deprecated - use propertyFilters instead
       propertyFilters?: Array<{

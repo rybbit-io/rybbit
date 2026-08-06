@@ -70,7 +70,7 @@ const structuredData = {
           name: "How do I track title performance?",
           acceptedAnswer: {
             "@type": "Answer",
-            text: "Use analytics to track CTR from search results. Tools like Rybbit can show you which pages get the most organic traffic, helping you identify successful titles and opportunities for improvement.",
+            text: "Use analytics to track CTR from search results. Tools like Rybbit can show you which pages get the most organic traffic and which titles are working.",
           },
         },
         {
@@ -200,8 +200,7 @@ const faqs = [
         <Link href="https://app.rybbit.io" className="text-emerald-600 dark:text-emerald-400 hover:underline">
           Rybbit
         </Link>{" "}
-        can show you which pages get the most organic traffic, helping you identify successful titles and opportunities
-        for improvement.
+        can show you which pages get the most organic traffic and which titles are working.
       </>
     ),
   },

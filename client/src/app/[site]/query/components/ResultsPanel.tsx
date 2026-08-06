@@ -4,6 +4,7 @@ import { AlertCircle } from "lucide-react";
 import { useExtracted } from "next-intl";
 import type { CustomQueryRow } from "../../../../api/analytics/endpoints";
 import type { QueryTab, SortState } from "../types";
+import { QueryResultsExportMenu } from "./QueryResultsExportMenu";
 import { ResultsTable } from "./ResultsTable";
 
 type ResultsPanelProps = {
@@ -21,16 +22,21 @@ export function ResultsPanel({ activeTab, columns, rows, sort, onSortChange }: R
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border border-neutral-150 bg-white dark:border-neutral-850 dark:bg-neutral-900">
       <div className="flex h-10 items-center justify-between border-b border-neutral-100 px-3 dark:border-neutral-850">
         <div className="text-sm font-medium text-neutral-900 dark:text-neutral-100">{t("Results")}</div>
-        <div className="text-xs text-neutral-500 dark:text-neutral-400">
-          {activeTab?.resultError ? (
-            <span className="inline-flex items-center gap-1 text-red-600 dark:text-red-400">
-              <AlertCircle className="h-3.5 w-3.5" />
-              {t("Error")}
-            </span>
-          ) : activeTab?.hasRun ? (
-            t("{count} rows", { count: activeTab.rows.length.toLocaleString() })
-          ) : (
-            t("Not run")
+        <div className="flex items-center gap-2">
+          <div className="text-xs text-neutral-500 dark:text-neutral-400">
+            {activeTab?.resultError ? (
+              <span className="inline-flex items-center gap-1 text-red-600 dark:text-red-400">
+                <AlertCircle className="h-3.5 w-3.5" />
+                {t("Error")}
+              </span>
+            ) : activeTab?.hasRun ? (
+              t("{count} rows", { count: activeTab.rows.length.toLocaleString() })
+            ) : (
+              t("Not run")
+            )}
+          </div>
+          {activeTab?.hasRun && !activeTab.resultError && rows.length > 0 && (
+            <QueryResultsExportMenu rows={rows} columns={columns} filenameBase={activeTab.name || "query-results"} />
           )}
         </div>
       </div>

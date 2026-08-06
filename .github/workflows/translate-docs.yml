@@ -120,7 +120,7 @@ jobs:
             2. git commit -m "Update docs translations"
             3. git push origin master
           claude_args: >-
-            --model claude-sonnet-4-6
+            --model claude-sonnet-5
             --max-turns 50
             --allowedTools "Edit" "Read" "Write" "Glob" "Grep"
             "Bash(python3 *)" "Bash(git add *)"

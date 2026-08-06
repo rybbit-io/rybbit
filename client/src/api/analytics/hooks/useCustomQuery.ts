@@ -3,8 +3,8 @@ import { CustomQueryGenerationMessage, generateCustomQuery, runCustomQuery } fro
 
 export function useRunCustomQuery() {
   return useMutation({
-    mutationFn: ({ organizationId, query }: { organizationId: string; query: string }) =>
-      runCustomQuery(organizationId, query),
+    mutationFn: ({ organizationId, query, siteId }: { organizationId: string; query: string; siteId?: number }) =>
+      runCustomQuery(organizationId, query, siteId),
   });
 }
 

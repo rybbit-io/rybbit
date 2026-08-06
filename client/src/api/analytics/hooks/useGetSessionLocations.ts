@@ -1,10 +1,9 @@
-import { useQuery } from "@tanstack/react-query";
 import { useStore } from "../../../lib/store";
-import { buildApiParams } from "../../utils";
 import { fetchSessionLocations, LiveSessionLocation } from "../endpoints";
+import { useAnalyticsQuery } from "../useAnalyticsQuery";
 
 export function useGetSessionLocations() {
-  const { time, site, filters, timezone } = useStore();
+  const { filters } = useStore();
 
   // Filter out location-related filters to avoid circular dependencies
   const locationExcludedFilters = filters.filter(
@@ -16,13 +15,12 @@ export function useGetSessionLocations() {
       f.parameter !== "region"
   );
 
-  const params = buildApiParams(time, { filters: locationExcludedFilters });
-
-  return useQuery<LiveSessionLocation[]>({
-    queryKey: ["session-locations", site, time, locationExcludedFilters, timezone],
-    queryFn: () => {
-      return fetchSessionLocations(site, params);
-    },
-    enabled: !!site,
+  return useAnalyticsQuery<LiveSessionLocation[]>({
+    key: "session-locations",
+    // customFilters fall back to the store filters when empty; disable filters
+    // entirely instead so the excluded location filters stay excluded.
+    useFilters: locationExcludedFilters.length > 0,
+    customFilters: locationExcludedFilters,
+    fetch: (site, params) => fetchSessionLocations(site, params),
   });
 }

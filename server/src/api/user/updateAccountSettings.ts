@@ -63,7 +63,7 @@ export const updateAccountSettings = async (
       },
     });
   } catch (error) {
-    console.error("Error updating account settings:", error);
+    request.log.error({ err: error }, "Error updating account settings");
     return reply.status(500).send({ error: "Failed to update account settings" });
   }
 };

@@ -1,9 +1,7 @@
-import crypto from "crypto";
 import { FastifyReply, FastifyRequest } from "fastify";
 import { z } from "zod";
-import { siteConfig } from "../../lib/siteConfig.js";
+import { SiteLifecycleError, siteConfigurationLifecycle } from "../../services/sites/siteConfigurationLifecycle.js";
 
-// Schema for updating API configuration
 const updatePrivateLinkConfigSchema = z.object({
   action: z.enum(["generate_private_link_key", "revoke_private_link_key"]),
 });
@@ -11,13 +9,12 @@ const updatePrivateLinkConfigSchema = z.object({
 export async function updateSitePrivateLinkConfig(request: FastifyRequest, reply: FastifyReply) {
   try {
     const { siteId } = request.params as { siteId: string };
-    const parsedSiteId = parseInt(siteId, 10);
+    const parsedSiteId = Number(siteId);
 
-    if (isNaN(parsedSiteId)) {
+    if (!Number.isInteger(parsedSiteId) || parsedSiteId <= 0) {
       return reply.status(400).send({ success: false, error: "Invalid site ID" });
     }
 
-    // Validate request body
     const validationResult = updatePrivateLinkConfigSchema.safeParse(request.body);
     if (!validationResult.success) {
       return reply.status(400).send({
@@ -27,34 +24,21 @@ export async function updateSitePrivateLinkConfig(request: FastifyRequest, reply
       });
     }
 
-    const { action } = validationResult.data;
-
-    let updateData: any = {};
-
-    switch (action) {
-      case "generate_private_link_key":
-        const privateLinkKey = `${crypto.randomBytes(6).toString("hex")}`;
-        updateData.privateLinkKey = privateLinkKey;
-        break;
-
-      case "revoke_private_link_key":
-        updateData.privateLinkKey = null;
-        break;
-    }
-
-    // Update the site config cache
-    if (action === "generate_private_link_key" || action === "revoke_private_link_key") {
-      await siteConfig.updateConfig(parsedSiteId, { privateLinkKey: updateData.privateLinkKey });
-    }
+    const privateLinkKey = await siteConfigurationLifecycle.updatePrivateLink(
+      parsedSiteId,
+      validationResult.data.action
+    );
 
     return reply.send({
       success: true,
-      data: {
-        privateLinkKey: updateData.privateLinkKey,
-      },
+      data: { privateLinkKey },
     });
   } catch (error) {
-    console.error("Error updating site dev config:", error);
+    if (error instanceof SiteLifecycleError) {
+      return reply.status(error.statusCode).send({ success: false, error: error.message });
+    }
+
+    request.log.error({ err: error }, "Error updating site private link config");
     return reply.status(500).send({
       success: false,
       error: "Failed to update site API configuration",

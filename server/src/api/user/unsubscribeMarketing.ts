@@ -7,10 +7,7 @@ import { unsubscribeContact, cancelScheduledEmail } from "../../lib/email/email.
 import { onboardingTipsService } from "../../services/onboardingTips/onboardingTipsService.js";
 
 // Authenticated user unsubscribe
-export const unsubscribeMarketing = async (
-  request: FastifyRequest,
-  reply: FastifyReply
-) => {
+export const unsubscribeMarketing = async (request: FastifyRequest, reply: FastifyReply) => {
   try {
     const userId = request.user?.id;
     if (!userId) {
@@ -48,7 +45,7 @@ export const unsubscribeMarketing = async (
 
     return reply.send({ success: true, message: "Successfully unsubscribed from marketing emails" });
   } catch (error) {
-    console.error("Error unsubscribing from marketing emails:", error);
+    request.log.error({ err: error }, "Error unsubscribing from marketing emails");
     return reply.status(500).send({ error: "Failed to unsubscribe" });
   }
 };
@@ -121,7 +118,7 @@ export const oneClickUnsubscribeMarketing = async (
     // For POST requests (email client List-Unsubscribe), return 200 OK as per RFC 8058
     return reply.status(200).send();
   } catch (error) {
-    console.error("Error in one-click unsubscribe:", error);
+    request.log.error({ err: error }, "Error in one-click unsubscribe");
     // Still return 200 to not confuse email clients
     return reply.status(200).send();
   }

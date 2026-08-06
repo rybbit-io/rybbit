@@ -159,7 +159,7 @@ ORDER BY day`,
     category: "Traffic",
     vizType: "area",
     mapping: { xColumn: "time", yColumns: ["pageviews"] },
-    sql: `SELECT toStartOfInterval(timestamp, INTERVAL {{bucket}}) AS time,
+    sql: `SELECT toDateTime(toStartOfInterval(toTimeZone(timestamp, {{tz}}), INTERVAL {{bucket}})) AS time,
        countIf(type = 'pageview') AS pageviews
 FROM scoped_events
 GROUP BY time
@@ -172,7 +172,7 @@ ORDER BY time`,
     category: "Traffic",
     vizType: "line",
     mapping: { xColumn: "time", yColumns: ["sessions", "users"] },
-    sql: `SELECT toStartOfInterval(timestamp, INTERVAL {{bucket}}) AS time,
+    sql: `SELECT toDateTime(toStartOfInterval(toTimeZone(timestamp, {{tz}}), INTERVAL {{bucket}})) AS time,
        countDistinct(session_id) AS sessions,
        countDistinct(user_id) AS users
 FROM scoped_events
@@ -186,7 +186,7 @@ ORDER BY time`,
     category: "Traffic",
     vizType: "line",
     mapping: { xColumn: "time", yColumns: ["bounce_rate"] },
-    sql: `SELECT toStartOfInterval(session_start, INTERVAL {{bucket}}) AS time,
+    sql: `SELECT toDateTime(toStartOfInterval(toTimeZone(session_start, {{tz}}), INTERVAL {{bucket}})) AS time,
        round(100 * countIf(pages = 1) / count(), 1) AS bounce_rate
 FROM (
   SELECT session_id,
@@ -460,7 +460,7 @@ LIMIT 20`,
     beyondPrebuilt: true,
     vizType: "line",
     mapping: { xColumn: "time", yColumns: ["avg_seconds"] },
-    sql: `SELECT toStartOfInterval(session_start, INTERVAL {{bucket}}) AS time,
+    sql: `SELECT toDateTime(toStartOfInterval(toTimeZone(session_start, {{tz}}), INTERVAL {{bucket}})) AS time,
        round(avg(duration_seconds)) AS avg_seconds
 FROM (
   SELECT session_id,
@@ -508,9 +508,9 @@ WHERE has_pricing = 1`,
   WHERE user_id != ''
   GROUP BY user_id
 )
-SELECT toStartOfInterval(e.timestamp, INTERVAL {{bucket}}) AS time,
+SELECT toDateTime(toStartOfInterval(toTimeZone(e.timestamp, {{tz}}), INTERVAL {{bucket}})) AS time,
        if(
-         toStartOfInterval(e.timestamp, INTERVAL {{bucket}}) = toStartOfInterval(f.first_seen_at, INTERVAL {{bucket}}),
+         toStartOfInterval(toTimeZone(e.timestamp, {{tz}}), INTERVAL {{bucket}}) = toStartOfInterval(toTimeZone(f.first_seen_at, {{tz}}), INTERVAL {{bucket}}),
          'New in range',
          'Returning in range'
        ) AS visitor_type,
@@ -629,7 +629,7 @@ LIMIT 50`,
     beyondPrebuilt: true,
     vizType: "line",
     mapping: { xColumn: "time", yColumns: ["conversion_rate_pct"] },
-    sql: `SELECT toStartOfInterval(session_start, INTERVAL {{bucket}}) AS time,
+    sql: `SELECT toDateTime(toStartOfInterval(toTimeZone(session_start, {{tz}}), INTERVAL {{bucket}})) AS time,
        round(100 * countIf(converted = 1) / nullIf(count(), 0), 1) AS conversion_rate_pct
 FROM (
   SELECT session_id,
@@ -692,6 +692,142 @@ ORDER BY dead_end_rate_pct DESC, exit_sessions DESC
 LIMIT 50`,
   },
 
+  // ── Behavior: derived insights ─────────────────────────────────────────────
+  {
+    id: "page-attention-between-views",
+    title: "Page attention between views",
+    description: "Median and p90 time until the next pageview, excluding exits and gaps over 30 minutes.",
+    category: "Behavior",
+    beyondPrebuilt: true,
+    vizType: "table",
+    mapping: {},
+    sql: `WITH ordered_pageviews AS (
+  SELECT session_id,
+         pathname,
+         timestamp,
+         leadInFrame(timestamp, 1, toDateTime(0)) OVER (
+           PARTITION BY session_id
+           ORDER BY timestamp
+           ROWS BETWEEN CURRENT ROW AND 1 FOLLOWING
+         ) AS next_page_at
+  FROM scoped_events
+  WHERE type = 'pageview' AND pathname != ''
+)
+SELECT pathname,
+       count() AS measured_pageviews,
+       round(quantile(0.5)(dateDiff('second', timestamp, next_page_at))) AS median_seconds,
+       round(quantile(0.9)(dateDiff('second', timestamp, next_page_at))) AS p90_seconds
+FROM ordered_pageviews
+WHERE next_page_at > timestamp
+  AND dateDiff('second', timestamp, next_page_at) BETWEEN 1 AND 1800
+GROUP BY pathname
+HAVING measured_pageviews >= 5
+ORDER BY median_seconds DESC
+LIMIT 50`,
+  },
+  {
+    id: "navigation-u-turns",
+    title: "Navigation U-turns",
+    description: "Immediate A → B → A backtracks that can reveal confusing detours or missing information.",
+    category: "Behavior",
+    beyondPrebuilt: true,
+    vizType: "table",
+    mapping: {},
+    sql: `WITH ordered_pageviews AS (
+  SELECT session_id,
+         pathname AS current_path,
+         lagInFrame(pathname, 1, '') OVER (
+           PARTITION BY session_id
+           ORDER BY timestamp
+           ROWS BETWEEN 2 PRECEDING AND CURRENT ROW
+         ) AS previous_path,
+         lagInFrame(pathname, 2, '') OVER (
+           PARTITION BY session_id
+           ORDER BY timestamp
+           ROWS BETWEEN 2 PRECEDING AND CURRENT ROW
+         ) AS two_back_path
+  FROM scoped_events
+  WHERE type = 'pageview' AND pathname != ''
+)
+SELECT two_back_path AS returned_to,
+       previous_path AS detour,
+       count() AS backtracks,
+       countDistinct(session_id) AS affected_sessions
+FROM ordered_pageviews
+WHERE current_path = two_back_path
+  AND current_path != previous_path
+  AND two_back_path != ''
+GROUP BY returned_to, detour
+ORDER BY backtracks DESC
+LIMIT 50`,
+  },
+  {
+    id: "beyond-bounce-session-quality",
+    title: "Beyond bounce: session quality",
+    description:
+      "Splits one-page sessions into inactive vs engaged through another tracked action or 30+ seconds of activity.",
+    category: "Behavior",
+    beyondPrebuilt: true,
+    vizType: "pie",
+    mapping: { xColumn: "session_quality", valueColumn: "sessions" },
+    sql: `SELECT multiIf(
+         pages > 1, 'Multi-page',
+         meaningful_actions > 0 OR duration_seconds >= 30, 'Engaged single-page',
+         'Inactive single-page'
+       ) AS session_quality,
+       count() AS sessions
+FROM (
+  SELECT session_id,
+         countIf(type = 'pageview') AS pages,
+         countIf(type IN ('custom_event', 'outbound', 'button_click', 'copy', 'form_submit', 'input_change')) AS meaningful_actions,
+         dateDiff('second', min(timestamp), max(timestamp)) AS duration_seconds
+  FROM scoped_events
+  GROUP BY session_id
+)
+WHERE pages > 0
+GROUP BY session_quality
+ORDER BY sessions DESC`,
+  },
+  {
+    id: "conversion-assist-pages",
+    title: "Pages associated with conversion",
+    description:
+      "Pages seen anywhere in converting sessions, ranked by lift over baseline. Correlation, not attribution; edit event_name.",
+    category: "Behavior",
+    beyondPrebuilt: true,
+    vizType: "table",
+    mapping: {},
+    sql: `WITH session_rollup AS (
+  SELECT session_id,
+         groupUniqArrayIf(pathname, type = 'pageview' AND pathname != '') AS pages,
+         maxIf(1, type = 'custom_event' AND event_name = 'signup') AS converted
+  FROM scoped_events
+  GROUP BY session_id
+),
+baseline AS (
+  SELECT avg(converted) AS baseline_rate
+  FROM session_rollup
+),
+page_sessions AS (
+  SELECT session_id,
+         converted,
+         page
+  FROM session_rollup
+  ARRAY JOIN pages AS page
+)
+SELECT page AS pathname,
+       count() AS page_sessions,
+       countIf(converted = 1) AS conversions,
+       round(100 * avg(converted), 1) AS conversion_rate_pct,
+       round(100 * any(baseline_rate), 1) AS baseline_rate_pct,
+       round(avg(converted) / nullIf(any(baseline_rate), 0), 2) AS conversion_lift
+FROM page_sessions
+CROSS JOIN baseline
+GROUP BY pathname
+HAVING page_sessions >= 10
+ORDER BY conversion_lift DESC, conversions DESC
+LIMIT 50`,
+  },
   // ── Events & interactions ───────────────────────────────────────────────────
   {
     id: "custom-events-over-time",
@@ -700,7 +836,7 @@ LIMIT 50`,
     category: "Events",
     vizType: "line",
     mapping: { xColumn: "time", yColumns: ["events"], seriesColumn: "event_name" },
-    sql: `SELECT toStartOfInterval(timestamp, INTERVAL {{bucket}}) AS time,
+    sql: `SELECT toDateTime(toStartOfInterval(toTimeZone(timestamp, {{tz}}), INTERVAL {{bucket}})) AS time,
        event_name,
        count() AS events
 FROM scoped_events
@@ -809,7 +945,7 @@ LIMIT 50`,
     category: "Events",
     vizType: "line",
     mapping: { xColumn: "time", yColumns: ["errors"] },
-    sql: `SELECT toStartOfInterval(timestamp, INTERVAL {{bucket}}) AS time,
+    sql: `SELECT toDateTime(toStartOfInterval(toTimeZone(timestamp, {{tz}}), INTERVAL {{bucket}})) AS time,
        count() AS errors
 FROM scoped_events
 WHERE type = 'error'
@@ -840,7 +976,7 @@ LIMIT 50`,
     beyondPrebuilt: true,
     vizType: "line",
     mapping: { xColumn: "time", yColumns: ["errors_per_1k_pageviews"] },
-    sql: `SELECT toStartOfInterval(timestamp, INTERVAL {{bucket}}) AS time,
+    sql: `SELECT toDateTime(toStartOfInterval(toTimeZone(timestamp, {{tz}}), INTERVAL {{bucket}})) AS time,
        round(1000 * countIf(type = 'error') / nullIf(countIf(type = 'pageview'), 0), 1) AS errors_per_1k_pageviews
 FROM scoped_events
 GROUP BY time
@@ -954,6 +1090,84 @@ ORDER BY clicks DESC
 LIMIT 50`,
   },
 
+  // ── Events: derived insights ───────────────────────────────────────────────
+  {
+    id: "form-field-friction",
+    title: "Form field friction",
+    description: "Fields associated with repeat edits and sessions that never submitted the same form.",
+    category: "Events",
+    beyondPrebuilt: true,
+    vizType: "table",
+    mapping: {},
+    sql: `WITH form_events AS (
+  SELECT session_id,
+         type,
+         coalesce(
+           nullIf(JSONExtractString(toString(props), 'formName'), ''),
+           nullIf(JSONExtractString(toString(props), 'formId'), ''),
+           '(unnamed form)'
+         ) AS form_name,
+         JSONExtractString(toString(props), 'inputName') AS field_name
+  FROM scoped_events
+  WHERE type IN ('input_change', 'form_submit')
+),
+field_edits AS (
+  SELECT session_id,
+         form_name,
+         field_name,
+         count() AS changes
+  FROM form_events
+  WHERE type = 'input_change' AND field_name != ''
+  GROUP BY session_id, form_name, field_name
+),
+form_outcomes AS (
+  SELECT session_id,
+         form_name,
+         max(type = 'form_submit') AS submitted
+  FROM form_events
+  GROUP BY session_id, form_name
+)
+SELECT form_name,
+       field_name,
+       count() AS editing_sessions,
+       round(avg(changes), 2) AS changes_per_session,
+       countIf(changes >= 3) AS repeated_edit_sessions,
+       countIf(submitted = 0) AS abandoned_sessions,
+       round(100 * countIf(submitted = 0) / count(), 1) AS abandonment_rate_pct
+FROM field_edits
+INNER JOIN form_outcomes USING (session_id, form_name)
+GROUP BY form_name, field_name
+HAVING editing_sessions >= 5
+ORDER BY repeated_edit_sessions DESC, abandonment_rate_pct DESC
+LIMIT 50`,
+  },
+  {
+    id: "error-exposure-impact",
+    title: "Error exposure impact",
+    description:
+      "Compares engagement and a chosen goal for sessions with vs without a JavaScript error; edit event_name.",
+    category: "Events",
+    beyondPrebuilt: true,
+    vizType: "table",
+    mapping: {},
+    sql: `SELECT if(errors > 0, 'Saw a JavaScript error', 'No JavaScript error') AS session_cohort,
+       count() AS sessions,
+       round(avg(pages), 2) AS pages_per_session,
+       round(100 * countIf(pages = 1) / count(), 1) AS bounce_rate_pct,
+       countIf(converted = 1) AS conversions,
+       round(100 * countIf(converted = 1) / count(), 1) AS conversion_rate_pct
+FROM (
+  SELECT session_id,
+         countIf(type = 'pageview') AS pages,
+         countIf(type = 'error') AS errors,
+         maxIf(1, type = 'custom_event' AND event_name = 'signup') AS converted
+  FROM scoped_events
+  GROUP BY session_id
+)
+WHERE pages > 0
+GROUP BY session_cohort
+ORDER BY session_cohort`,
+  },
   // ── Performance ────────────────────────────────────────────────────────────
   {
     id: "web-vitals-over-time",
@@ -963,7 +1177,7 @@ LIMIT 50`,
     beyondPrebuilt: true,
     vizType: "line",
     mapping: { xColumn: "time", yColumns: ["lcp_p75", "inp_p75"] },
-    sql: `SELECT toStartOfInterval(timestamp, INTERVAL {{bucket}}) AS time,
+    sql: `SELECT toDateTime(toStartOfInterval(toTimeZone(timestamp, {{tz}}), INTERVAL {{bucket}})) AS time,
        round(quantile(0.75)(lcp)) AS lcp_p75,
        round(quantile(0.75)(inp)) AS inp_p75
 FROM scoped_events
@@ -1044,6 +1258,39 @@ ORDER BY coverage_pct ASC, pageviews DESC
 LIMIT 50`,
   },
 
+  // ── Performance: derived insights ──────────────────────────────────────────
+  {
+    id: "lcp-impact-on-engagement",
+    title: "LCP vs. engagement",
+    description:
+      "Compares bounce and a chosen goal across first-recorded LCP bands. This shows association, not causation.",
+    category: "Performance",
+    beyondPrebuilt: true,
+    vizType: "table",
+    mapping: {},
+    sql: `WITH session_quality AS (
+  SELECT session_id,
+         argMinIf(lcp, timestamp, type = 'performance' AND lcp IS NOT NULL) AS first_lcp_ms,
+         countIf(type = 'pageview') AS pages,
+         maxIf(1, type = 'custom_event' AND event_name = 'signup') AS converted
+  FROM scoped_events
+  GROUP BY session_id
+)
+SELECT multiIf(
+         first_lcp_ms <= 2500, 'Good (≤2.5s)',
+         first_lcp_ms <= 4000, 'Needs improvement (2.5–4s)',
+         'Poor (>4s)'
+       ) AS lcp_band,
+       count() AS sessions,
+       round(avg(first_lcp_ms)) AS avg_lcp_ms,
+       round(avg(pages), 2) AS pages_per_session,
+       round(100 * countIf(pages = 1) / count(), 1) AS bounce_rate_pct,
+       round(100 * countIf(converted = 1) / count(), 1) AS conversion_rate_pct
+FROM session_quality
+WHERE first_lcp_ms IS NOT NULL AND pages > 0
+GROUP BY lcp_band
+ORDER BY min(first_lcp_ms)`,
+  },
   // ── Marketing ──────────────────────────────────────────────────────────────
   {
     id: "utm-campaigns",
@@ -1158,7 +1405,7 @@ LIMIT 50`,
     beyondPrebuilt: true,
     vizType: "line",
     mapping: { xColumn: "time", yColumns: ["sessions"], seriesColumn: "channel" },
-    sql: `SELECT toStartOfInterval(timestamp, INTERVAL {{bucket}}) AS time,
+    sql: `SELECT toDateTime(toStartOfInterval(toTimeZone(timestamp, {{tz}}), INTERVAL {{bucket}})) AS time,
        channel,
        countDistinct(session_id) AS sessions
 FROM scoped_events
@@ -1168,6 +1415,94 @@ ORDER BY time`,
   },
 
   // ── Power user ─────────────────────────────────────────────────────────────
+  {
+    id: "experiment-guardrails-by-variant",
+    title: "Experiment guardrails by variant",
+    description: "Post-exposure errors, LCP, and a chosen goal for an experiment. Edit the flag key and event_name.",
+    category: "Power user",
+    beyondPrebuilt: true,
+    vizType: "table",
+    mapping: {},
+    sql: `WITH first_exposures AS (
+  SELECT session_id,
+         argMin(JSONExtractString(toString(props), 'value'), timestamp) AS variant,
+         min(timestamp) AS exposed_at
+  FROM scoped_events
+  WHERE type = 'custom_event'
+    AND event_name = 'feature_flag_exposure'
+    AND JSONExtractString(toString(props), 'key') = 'new_checkout'
+  GROUP BY session_id
+),
+session_guardrails AS (
+  SELECT x.session_id,
+         x.variant,
+         countIf(e.type = 'pageview' AND e.timestamp >= x.exposed_at) AS pageviews,
+         countIf(e.type = 'error' AND e.timestamp >= x.exposed_at) AS errors,
+         maxIf(e.lcp, e.type = 'performance' AND e.timestamp >= x.exposed_at AND e.lcp IS NOT NULL) AS lcp_ms,
+         maxIf(1, e.type = 'custom_event' AND e.event_name = 'signup' AND e.timestamp >= x.exposed_at) AS converted
+  FROM first_exposures x
+  INNER JOIN scoped_events e ON e.session_id = x.session_id
+  GROUP BY x.session_id, x.variant
+)
+SELECT variant,
+       count() AS exposed_sessions,
+       round(avg(pageviews), 2) AS pageviews_per_session,
+       round(100 * countIf(errors > 0) / count(), 1) AS error_session_rate_pct,
+       round(quantileIf(0.75)(lcp_ms, lcp_ms IS NOT NULL)) AS lcp_p75_ms,
+       countIf(converted = 1) AS conversions,
+       round(100 * countIf(converted = 1) / count(), 1) AS conversion_rate_pct
+FROM session_guardrails
+WHERE variant != ''
+GROUP BY variant
+ORDER BY exposed_sessions DESC`,
+  },
+  {
+    id: "query-parameter-privacy-audit",
+    title: "Query parameter privacy audit",
+    description: "High-cardinality URL parameter keys that may contain IDs or tokens, without displaying their values.",
+    category: "Power user",
+    beyondPrebuilt: true,
+    vizType: "table",
+    mapping: {},
+    sql: `SELECT parameter,
+       uniqExact(session_id) AS sessions,
+       uniqExact(url_parameters[parameter]) AS distinct_values,
+       round(uniqExact(url_parameters[parameter]) / nullIf(uniqExact(session_id), 0), 2) AS values_per_session
+FROM scoped_events
+ARRAY JOIN mapKeys(url_parameters) AS parameter
+WHERE parameter != ''
+GROUP BY parameter
+HAVING sessions >= 5
+ORDER BY values_per_session DESC, sessions DESC
+LIMIT 50`,
+  },
+  {
+    id: "duplicate-pageview-fires",
+    title: "Likely duplicate pageview fires",
+    description:
+      "Same-session pageviews for the same path in one second, which can flag double-loaded tracking or reload loops.",
+    category: "Power user",
+    beyondPrebuilt: true,
+    vizType: "table",
+    mapping: {},
+    sql: `SELECT pathname,
+       sum(occurrences - 1) AS extra_pageviews,
+       count() AS duplicate_clusters,
+       uniqExact(session_id) AS affected_sessions
+FROM (
+  SELECT session_id,
+         pathname,
+         timestamp,
+         count() AS occurrences
+  FROM scoped_events
+  WHERE type = 'pageview' AND pathname != ''
+  GROUP BY session_id, pathname, timestamp
+  HAVING occurrences > 1
+)
+GROUP BY pathname
+ORDER BY extra_pageviews DESC
+LIMIT 50`,
+  },
   {
     id: "identified-users",
     title: "Most active identified users",

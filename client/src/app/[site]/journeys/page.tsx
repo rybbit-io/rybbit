@@ -40,6 +40,7 @@ export default function JourneysPage() {
     pathsData?.data?.map(item => ({
       value: item.value,
       label: item.value,
+      count: item.count,
     })) ?? [];
 
   const { data, isLoading, error } = useJourneys({

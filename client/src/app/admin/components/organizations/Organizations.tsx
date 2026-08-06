@@ -3,32 +3,30 @@
 import { useState, useMemo } from "react";
 import { useAdminOrganizations } from "@/api/admin/hooks/useAdminOrganizations";
 import { Button } from "@/components/ui/button";
-import { Tabs, TabsContent } from "@/components/ui/tabs";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { toast } from "@/components/ui/sonner";
+import { cn, formatter } from "@/lib/utils";
 import { DateTime } from "luxon";
+import { Copy } from "lucide-react";
+import { useExtracted } from "next-intl";
 import { ErrorAlert } from "../shared/ErrorAlert";
-import { AdminLayout } from "../shared/AdminLayout";
 import { GrowthChart } from "../shared/GrowthChart";
+import { Panel } from "../shared/Panel";
+import { StatStrip } from "../shared/StatStrip";
 import { ServiceUsageChart } from "../shared/ServiceUsageChart";
 import { SubscriptionTiersTable } from "./SubscriptionTiersTable";
 import { OrganizationsTable } from "./OrganizationsTable";
 import { OrganizationFilters, TierOption } from "./OrganizationFilters";
-import { FilteredStatsCards } from "./FilteredStatsCards";
 import { useFilteredOrganizations } from "./useFilteredOrganizations";
-import { DownloadIcon } from "lucide-react";
-import { useExtracted } from "next-intl";
+
+const TIME_PERIODS = ["30d", "60d", "120d", "all"] as const;
+type TimePeriod = (typeof TIME_PERIODS)[number];
 
 export function Organizations() {
   const { data: organizations, isLoading, isError } = useAdminOrganizations();
   const t = useExtracted();
 
-  const [activeTab, setActiveTab] = useState("growth");
+  const [chartTab, setChartTab] = useState("growth");
   const [searchQuery, setSearchQuery] = useState("");
 
   // Filter states
@@ -37,7 +35,7 @@ export function Organizations() {
   const [selectedTiers, setSelectedTiers] = useState<TierOption[]>([]);
 
   // Time period for service usage chart
-  const [timePeriod, setTimePeriod] = useState<"30d" | "60d" | "120d" | "all">("30d");
+  const [timePeriod, setTimePeriod] = useState<TimePeriod>("30d");
 
   // Calculate available tiers from organizations data
   const availableTiers = useMemo(() => {
@@ -71,78 +69,102 @@ export function Organizations() {
     showOnlyOverLimit,
   });
 
-  if (isError) {
-    return (
-      <AdminLayout>
-        <ErrorAlert message={t("Failed to load organizations data. Please try again later.")} />
-      </AdminLayout>
+  const stats = useMemo(() => {
+    const orgs = filteredOrganizations ?? [];
+    const active = orgs.filter(org => org.sites.some(site => site.eventsLast30Days > 0)).length;
+    const events24h = orgs.reduce(
+      (total, org) => total + org.sites.reduce((sum, site) => sum + Number(site.eventsLast24Hours || 0), 0),
+      0
     );
+    const events30d = orgs.reduce(
+      (total, org) => total + org.sites.reduce((sum, site) => sum + Number(site.eventsLast30Days || 0), 0),
+      0
+    );
+    return { total: orgs.length, active, events24h, events30d };
+  }, [filteredOrganizations]);
+
+  if (isError) {
+    return <ErrorAlert message={t("Failed to load organizations data. Please try again later.")} />;
   }
 
+  const copyOwnerEmails = () => {
+    if (!filteredOrganizations?.length) return;
+    const emails = [...filteredOrganizations]
+      .sort((a, b) => a.name.localeCompare(b.name))
+      .flatMap(org => org.members.filter(m => m.role === "owner").map(m => m.email))
+      .filter(Boolean);
+    const unique = [...new Set(emails)];
+    navigator.clipboard.writeText(unique.join("\n"));
+    toast.success(t("Copied {count} owner emails", { count: String(unique.length) }));
+  };
+
   return (
-    <AdminLayout>
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="mb-6">
-        <div className="flex items-center justify-between mb-2">
-          <Select value={activeTab} onValueChange={setActiveTab}>
-            <SelectTrigger className="w-[200px]">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="growth">{t("Organization Growth")}</SelectItem>
-              <SelectItem value="usage">{t("Service Usage")}</SelectItem>
-              <SelectItem value="subscriptions">{t("Subscription Tiers")}</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-        <TabsContent value="growth">
-          <GrowthChart data={organizations} color="#8b5cf6" title={t("Organizations")} />
-        </TabsContent>
-        <TabsContent value="usage">
-          <div className="flex items-center gap-1 bg-neutral-100 dark:bg-neutral-800 p-1 rounded-lg">
-            <Button
-              size="sm"
-              variant={timePeriod === "30d" ? "default" : "ghost"}
-              onClick={() => setTimePeriod("30d")}
-              className="h-7 text-xs"
-            >
-              30d
-            </Button>
-            <Button
-              size="sm"
-              variant={timePeriod === "60d" ? "default" : "ghost"}
-              onClick={() => setTimePeriod("60d")}
-              className="h-7 text-xs"
-            >
-              60d
-            </Button>
-            <Button
-              size="sm"
-              variant={timePeriod === "120d" ? "default" : "ghost"}
-              onClick={() => setTimePeriod("120d")}
-              className="h-7 text-xs"
-            >
-              120d
-            </Button>
-            <Button
-              size="sm"
-              variant={timePeriod === "all" ? "default" : "ghost"}
-              onClick={() => setTimePeriod("all")}
-              className="h-7 text-xs"
-            >
-              {t("All Time")}
-            </Button>
-          </div>
-          <ServiceUsageChart
-            startDate={startDate}
-            endDate={endDate}
-            title={timePeriod === "all" ? t("Service-wide Usage - All Time") : t("Service-wide Usage - Last {timePeriod}", { timePeriod })}
-          />
-        </TabsContent>
-        <TabsContent value="subscriptions">
-          <SubscriptionTiersTable organizations={organizations} isLoading={isLoading} />
-        </TabsContent>
+    <div className="space-y-6">
+      <Tabs value={chartTab} onValueChange={setChartTab}>
+        <Panel
+          flush
+          title={
+            <TabsList className="h-8 p-0.5">
+              <TabsTrigger value="growth" className="h-7 px-2.5 text-xs">
+                {t("Growth")}
+              </TabsTrigger>
+              <TabsTrigger value="usage" className="h-7 px-2.5 text-xs">
+                {t("Usage")}
+              </TabsTrigger>
+              <TabsTrigger value="tiers" className="h-7 px-2.5 text-xs">
+                {t("Tiers")}
+              </TabsTrigger>
+            </TabsList>
+          }
+          actions={
+            chartTab === "usage" ? (
+              <div className="flex items-center gap-0.5 rounded-lg bg-neutral-100 p-0.5 dark:bg-neutral-800">
+                {TIME_PERIODS.map(period => (
+                  <button
+                    key={period}
+                    type="button"
+                    onClick={() => setTimePeriod(period)}
+                    className={cn(
+                      "h-6 rounded-md px-2 text-xs font-medium transition-colors",
+                      "focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-neutral-400 dark:focus-visible:ring-neutral-500",
+                      timePeriod === period
+                        ? "bg-white text-neutral-950 shadow-sm dark:bg-neutral-950 dark:text-neutral-50"
+                        : "text-neutral-500 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-neutral-100"
+                    )}
+                  >
+                    {period === "all" ? t("All") : period}
+                  </button>
+                ))}
+              </div>
+            ) : undefined
+          }
+        >
+          <TabsContent value="growth" className="mt-0 p-4">
+            <GrowthChart data={organizations} title={t("Organizations")} />
+          </TabsContent>
+          <TabsContent value="usage" className="mt-0 p-4">
+            <ServiceUsageChart startDate={startDate} endDate={endDate} />
+          </TabsContent>
+          <TabsContent value="tiers" className="mt-0 p-4">
+            <SubscriptionTiersTable organizations={organizations} isLoading={isLoading} />
+          </TabsContent>
+        </Panel>
       </Tabs>
-      <div className="space-y-2">
+
+      <div className="space-y-3">
+        <StatStrip
+          isLoading={isLoading}
+          stats={[
+            { label: t("Organizations"), value: stats.total.toLocaleString() },
+            {
+              label: t("Active (30d)"),
+              value: stats.active.toLocaleString(),
+              hint: t("with events in the last 30 days"),
+            },
+            { label: t("Events (24h)"), value: formatter(stats.events24h) },
+            { label: t("Events (30d)"), value: formatter(stats.events30d) },
+          ]}
+        />
         <OrganizationFilters
           searchQuery={searchQuery}
           setSearchQuery={setSearchQuery}
@@ -153,32 +175,20 @@ export function Organizations() {
           availableTiers={availableTiers}
           selectedTiers={selectedTiers}
           setSelectedTiers={setSelectedTiers}
+          actions={
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={copyOwnerEmails}
+              disabled={isLoading || !filteredOrganizations?.length}
+            >
+              <Copy className="h-3.5 w-3.5" />
+              {t("Copy owner emails")}
+            </Button>
+          }
         />
-        <FilteredStatsCards organizations={filteredOrganizations} isLoading={isLoading} />
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => {
-            if (!filteredOrganizations) return;
-            const emails = filteredOrganizations
-              .sort((a, b) => a.name.localeCompare(b.name))
-              .flatMap((org) =>
-                org.members.filter((m) => m.role === "owner").map((m) => m.email)
-              )
-              .filter(Boolean);
-            const unique = [...new Set(emails)];
-            navigator.clipboard.writeText(unique.join("\n"));
-          }}
-        >
-          <DownloadIcon className="w-4 h-4" />
-          {t("Export")}
-        </Button>
-        <OrganizationsTable
-          organizations={filteredOrganizations}
-          isLoading={isLoading}
-          searchQuery={searchQuery}
-        />
+        <OrganizationsTable organizations={filteredOrganizations} isLoading={isLoading} searchQuery={searchQuery} />
       </div>
-    </AdminLayout >
+    </div>
   );
 }

@@ -268,7 +268,7 @@ const educationalContent = (
     <ul className="space-y-2 text-neutral-700 dark:text-neutral-300 mb-4">
       <li>Improve website conversion rates</li>
       <li>Optimize landing pages for campaigns</li>
-      <li>Streamline checkout and purchase process</li>
+      <li>Simplify the checkout and purchase process</li>
       <li>Improve product-market fit</li>
       <li>Increase average order value</li>
       <li>Maximize customer retention</li>

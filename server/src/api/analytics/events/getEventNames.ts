@@ -1,8 +1,8 @@
 import { FastifyReply, FastifyRequest } from "fastify";
-import { clickhouse } from "../../../db/clickhouse/clickhouse.js";
-import { getTimeStatement, processResults } from "../utils/utils.js";
+import { getTimeStatement } from "../utils/utils.js";
 import { FilterParams } from "@rybbit/shared";
 import { getFilterStatement } from "../utils/getFilterStatement.js";
+import { analyticsRoute, runAnalyticsQuery } from "../utils/analyticsQuery.js";
 
 export type GetEventNamesResponse = {
   eventName: string;
@@ -18,15 +18,14 @@ export interface GetEventNamesRequest {
   }>;
 }
 
-export async function getEventNames(req: FastifyRequest<GetEventNamesRequest>, res: FastifyReply) {
-  const { filters } = req.query;
-  const site = req.params.siteId;
+export const buildEventNamesQuery = (query: GetEventNamesRequest["Querystring"], siteId: number) => {
+  const { filters } = query;
 
-  const timeStatement = getTimeStatement(req.query);
+  const timeStatement = getTimeStatement(query);
 
-  const filterStatement = filters ? getFilterStatement(filters, Number(site), timeStatement) : "";
+  const filterStatement = filters ? getFilterStatement(filters, siteId, timeStatement) : "";
 
-  const query = `
+  return `
     SELECT
       event_name AS eventName,
       count() AS count
@@ -42,21 +41,18 @@ export async function getEventNames(req: FastifyRequest<GetEventNamesRequest>, r
     ORDER BY count DESC
     LIMIT 1000
   `;
+};
 
-  try {
-    const result = await clickhouse.query({
-      query,
-      format: "JSONEachRow",
-      query_params: {
-        siteId: Number(site),
-      },
+export const getEventNames = analyticsRoute<GetEventNamesRequest>(
+  "event names",
+  async (req: FastifyRequest<GetEventNamesRequest>, res: FastifyReply) => {
+    const site = req.params.siteId;
+
+    const data = await runAnalyticsQuery<GetEventNamesResponse[number]>({
+      query: buildEventNamesQuery(req.query, Number(site)),
+      params: { siteId: Number(site) },
     });
 
-    const data = await processResults<GetEventNamesResponse[number]>(result);
     return res.send({ data });
-  } catch (error) {
-    console.error("Generated Query:", query);
-    console.error("Error fetching event names:", error);
-    return res.status(500).send({ error: "Failed to fetch event names" });
   }
-}
+);

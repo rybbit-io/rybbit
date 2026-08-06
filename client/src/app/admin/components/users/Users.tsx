@@ -1,7 +1,5 @@
 "use client";
 
-import { AdminLayout } from "@/app/admin/components/shared/AdminLayout";
-import { AdminTablePagination } from "@/app/admin/components/shared/AdminTablePagination";
 import { ErrorAlert } from "@/app/admin/components/shared/ErrorAlert";
 import { UserFilters } from "@/app/admin/components/users/UserFilters";
 import { UsersTable } from "@/app/admin/components/users/UsersTable";
@@ -14,15 +12,10 @@ export function Users() {
   const t = useExtracted();
 
   const {
-    // Data
     users,
     total,
-
-    // Loading state
     isLoading,
     isError,
-
-    // Table state
     sorting,
     setSorting,
     columnFilters,
@@ -31,12 +24,21 @@ export function Users() {
     setPagination,
     globalFilter,
     setGlobalFilter,
-
-    // Actions
     handleImpersonate,
   } = useAdminUsers();
 
-  const data = { users, total };
+  const getFilterValue = (columnId: string) =>
+    (columnFilters.find(filter => filter.id === columnId)?.value as string) ?? "";
+
+  const setFilterValue = (columnId: string, value: string) => {
+    const next = columnFilters.filter(filter => filter.id !== columnId);
+    if (value) {
+      next.push({ id: columnId, value });
+    }
+    setColumnFilters(next);
+    // A new filter invalidates the current page
+    setPagination({ ...pagination, pageIndex: 0 });
+  };
 
   // Handle impersonation with navigation
   const onImpersonate = async (userId: string) => {
@@ -48,83 +50,31 @@ export function Users() {
   };
 
   if (isError) {
-    return (
-      <AdminLayout>
-        <ErrorAlert message={t("Failed to load users. Please try again later.")} />
-      </AdminLayout>
-    );
+    return <ErrorAlert message={t("Failed to load users. Please try again later.")} />;
   }
 
   return (
-    <AdminLayout>
-      <div className="space-y-4">
-        {/* Filters */}
-        <UserFilters
-          table={
-            {
-              getColumn: (columnId: string) => {
-                const getFilterValue = () => columnFilters.find(filter => filter.id === columnId)?.value ?? "";
-
-                const setFilterValue = (value: string) => {
-                  const newFilters = columnFilters.filter(filter => filter.id !== columnId);
-                  if (value) {
-                    newFilters.push({ id: columnId, value });
-                  }
-                  setColumnFilters(newFilters);
-                };
-
-                return {
-                  getFilterValue,
-                  setFilterValue,
-                };
-              },
-            } as any
-          }
-        />
-
-        {/* Users Table */}
-        <UsersTable
-          data={data}
-          isLoading={isLoading}
-          pagination={pagination}
-          setPagination={setPagination}
-          sorting={sorting}
-          setSorting={setSorting}
-          columnFilters={columnFilters}
-          setColumnFilters={setColumnFilters}
-          globalFilter={globalFilter}
-          setGlobalFilter={setGlobalFilter}
-          onImpersonate={onImpersonate}
-        />
-
-        {/* Pagination */}
-        <AdminTablePagination
-          table={
-            {
-              getCanPreviousPage: () => pagination.pageIndex > 0,
-              getCanNextPage: () => pagination.pageIndex < Math.ceil(total / pagination.pageSize) - 1,
-              getPageCount: () => Math.ceil(total / pagination.pageSize),
-              getState: () => ({ pagination }),
-              setPageIndex: (index: number) => setPagination({ ...pagination, pageIndex: index }),
-              previousPage: () =>
-                setPagination({
-                  ...pagination,
-                  pageIndex: Math.max(0, pagination.pageIndex - 1),
-                }),
-              nextPage: () =>
-                setPagination({
-                  ...pagination,
-                  pageIndex: Math.min(Math.ceil(total / pagination.pageSize) - 1, pagination.pageIndex + 1),
-                }),
-            } as any
-          }
-          data={data ? { items: data.users, total: data.total } : undefined}
-          pagination={pagination}
-          setPagination={setPagination}
-          isLoading={isLoading}
-          itemName="users"
-        />
-      </div>
-    </AdminLayout>
+    <div className="space-y-3">
+      <UserFilters
+        email={getFilterValue("email")}
+        onEmailChange={value => setFilterValue("email", value)}
+        role={getFilterValue("role")}
+        onRoleChange={value => setFilterValue("role", value)}
+      />
+      <UsersTable
+        data={{ users, total }}
+        isLoading={isLoading}
+        pagination={pagination}
+        setPagination={setPagination}
+        sorting={sorting}
+        setSorting={setSorting}
+        columnFilters={columnFilters}
+        setColumnFilters={setColumnFilters}
+        globalFilter={globalFilter}
+        setGlobalFilter={setGlobalFilter}
+        onImpersonate={onImpersonate}
+        hasActiveFilters={columnFilters.length > 0}
+      />
+    </div>
   );
 }

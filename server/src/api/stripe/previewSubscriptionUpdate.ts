@@ -164,7 +164,7 @@ export async function previewSubscriptionUpdate(
       },
     });
   } catch (error: any) {
-    console.error("Subscription Preview Error:", error);
+    request.log.error({ err: error }, "Subscription Preview Error");
     return reply.status(500).send({
       error: "Failed to preview subscription update",
       details: error.message,

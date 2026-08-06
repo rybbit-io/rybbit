@@ -1,11 +1,11 @@
 "use client";
 
 import { useExtracted } from "next-intl";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { useEffect, useState } from "react";
+import { Dialog, DialogContentFullScreen } from "@/components/ui/dialog";
+import { useState } from "react";
 import { toast } from "@/components/ui/sonner";
 import { useGetFunnel, useSaveFunnel } from "../../../../api/analytics/hooks/funnels/useGetFunnel";
-import { FunnelStep, SavedFunnel } from "../../../../api/analytics/endpoints";
+import { FunnelStep, hasIncompleteSteps, SavedFunnel } from "../../../../api/analytics/endpoints";
 import { FunnelForm } from "./FunnelForm";
 
 interface EditFunnelDialogProps {
@@ -23,48 +23,21 @@ export function EditFunnelDialog({ funnel, isOpen, onClose, isCloneMode = false 
   // Funnel name - initialized from funnel, with "(Copy)" suffix for clone mode
   const [name, setName] = useState(isCloneMode ? `${funnel.name} (Copy)` : funnel.name);
 
-  // Funnel analysis query
+  // Funnel analysis query (drives the live preview)
   const {
     data,
     isError,
     error,
     isLoading: isPending,
-  } = useGetFunnel(
-    {
-      steps,
-    },
-    true
-  );
+  } = useGetFunnel(hasIncompleteSteps(steps) ? undefined : { steps }, true);
 
   // Funnel save mutation
-  const { mutate: saveFunnel, isPending: isSaving, error: saveError } = useSaveFunnel();
+  const { mutate: saveFunnel, isPending: isSaving } = useSaveFunnel();
 
-  // Query funnel without saving
-  const handleQueryFunnel = () => {
-    // Validate steps have values
-    const hasEmptySteps = steps.some(step => !step.value);
-    if (hasEmptySteps) {
-      alert(t("All steps must have values"));
-      return;
-    }
-  };
-
-  // Update or clone funnel
+  // Update or clone funnel (the save button is disabled while invalid)
   const handleUpdateFunnel = () => {
-    // Validate name
-    if (!name.trim()) {
-      alert(t("Please enter a funnel name"));
-      return;
-    }
+    if (!name.trim() || hasIncompleteSteps(steps)) return;
 
-    // Validate steps have values
-    const hasEmptySteps = steps.some(step => !step.value);
-    if (hasEmptySteps) {
-      alert(t("All steps must have values"));
-      return;
-    }
-
-    // Update funnel with the report ID (or create new if cloning)
     saveFunnel(
       {
         steps,
@@ -73,49 +46,46 @@ export function EditFunnelDialog({ funnel, isOpen, onClose, isCloneMode = false 
       },
       {
         onSuccess: () => {
-          // Close dialog on successful save
           onClose();
-          // Show success message
           toast?.success(isCloneMode ? t("Funnel cloned successfully") : t("Funnel updated successfully"));
         },
         onError: error => {
-          // Show error but don't close dialog
-          toast?.error(isCloneMode ? t("Failed to clone funnel: {message}", { message: error.message }) : t("Failed to update funnel: {message}", { message: error.message }));
+          // Show error but don't close the editor
+          toast?.error(
+            isCloneMode
+              ? t("Failed to clone funnel: {message}", { message: error.message })
+              : t("Failed to update funnel: {message}", { message: error.message })
+          );
         },
       }
     );
   };
 
-  // Load existing funnel data on first render
-  useEffect(() => {
-    // Pre-load the funnel visualization
-    handleQueryFunnel();
-  }, []);
-
   return (
     <Dialog open={isOpen} onOpenChange={open => !open && onClose()}>
-      <DialogContent className="max-w-[95vw]">
-        <DialogHeader>
-          <DialogTitle>{isCloneMode ? t("Clone Funnel") : t("Edit Funnel")}</DialogTitle>
-        </DialogHeader>
-
+      <DialogContentFullScreen
+        aria-describedby={undefined}
+        onOpenAutoFocus={e => {
+          e.preventDefault();
+          document.getElementById("funnel-name-input")?.focus();
+        }}
+      >
         <FunnelForm
+          title={isCloneMode ? t("Clone Funnel") : t("Edit Funnel")}
           name={name}
           setName={setName}
           steps={steps}
           setSteps={setSteps}
           onSave={handleUpdateFunnel}
           onCancel={onClose}
-          onQuery={handleQueryFunnel}
           saveButtonText={isCloneMode ? t("Clone Funnel") : t("Update Funnel")}
           isSaving={isSaving}
           isError={isError}
           isPending={isPending}
           error={error}
-          saveError={saveError}
           funnelData={data}
         />
-      </DialogContent>
+      </DialogContentFullScreen>
     </Dialog>
   );
 }

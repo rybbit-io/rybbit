@@ -29,10 +29,10 @@ export const sendSMS = async (phoneNumber: string, message: string): Promise<{ s
       to: phoneNumber,
     });
 
-    logger.info({ phoneNumber, sid: result.sid }, "Successfully sent SMS");
+    logger.info({ messageId: result.sid }, "Successfully sent SMS");
     return { success: true };
   } catch (error) {
-    logger.error({ phoneNumber, error }, "Failed to send SMS");
+    logger.error({ err: error }, "Failed to send SMS");
     return {
       success: false,
       error: error instanceof Error ? error.message : "Failed to send SMS",

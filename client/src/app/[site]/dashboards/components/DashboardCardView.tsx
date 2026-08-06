@@ -6,6 +6,7 @@ import { useMemo, useState } from "react";
 import { useDashboardCard } from "../../../../api/analytics/hooks/useDashboardCard";
 import { cn } from "../../../../lib/utils";
 import { Button } from "../../../../components/ui/button";
+import { QueryResultsExportMenu } from "../../query/components/QueryResultsExportMenu";
 import { ResultsTable } from "../../query/components/ResultsTable";
 import type { SortState } from "../../query/types";
 import { getColumns, sortRows } from "../../query/utils";
@@ -65,22 +66,36 @@ export function DashboardCardView({ siteId, card, editMode, onEdit, onClone, onR
             </span>
           )}
         </div>
-        {editMode && (
+        {(rows.length > 0 || editMode) && (
           <div className="dashboard-card-no-drag flex shrink-0 items-center gap-0.5">
-            <Button type="button" size="smIcon" variant="ghost" onClick={onEdit} aria-label="Edit card">
-              <Pencil className="h-3.5 w-3.5" />
-            </Button>
-            <Button type="button" size="smIcon" variant="ghost" onClick={onClone} aria-label="Duplicate card">
-              <Copy className="h-3.5 w-3.5" />
-            </Button>
-            <Button type="button" size="smIcon" variant="ghost" onClick={onRemove} aria-label="Remove card">
-              <Trash2 className="h-3.5 w-3.5 text-red-500" />
-            </Button>
+            {rows.length > 0 && (
+              <QueryResultsExportMenu
+                rows={sortedRows}
+                columns={columns}
+                filenameBase={`dashboard-${card.title || "card"}`}
+                compact
+              />
+            )}
+            {editMode && (
+              <>
+                <Button type="button" size="smIcon" variant="ghost" onClick={onEdit} aria-label="Edit card">
+                  <Pencil className="h-3.5 w-3.5" />
+                </Button>
+                <Button type="button" size="smIcon" variant="ghost" onClick={onClone} aria-label="Duplicate card">
+                  <Copy className="h-3.5 w-3.5" />
+                </Button>
+                <Button type="button" size="smIcon" variant="ghost" onClick={onRemove} aria-label="Remove card">
+                  <Trash2 className="h-3.5 w-3.5 text-red-500" />
+                </Button>
+              </>
+            )}
           </div>
         )}
       </div>
 
-      <div className={cn("relative flex min-h-0 flex-1 flex-col p-1", isTable ? "overflow-hidden" : "overflow-visible")}>
+      <div
+        className={cn("relative flex min-h-0 flex-1 flex-col p-1", isTable ? "overflow-hidden" : "overflow-visible")}
+      >
         {isLoading ? (
           <div className="flex h-full items-center justify-center">
             <Loader2 className="h-5 w-5 animate-spin text-neutral-400" />

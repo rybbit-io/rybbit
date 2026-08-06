@@ -1,36 +1,34 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useDebounce } from "@uidotdev/usehooks";
 import { FUNNEL_PAGE_FILTERS } from "../../../../lib/filterGroups";
 import { getFilteredFilters, useStore } from "../../../../lib/store";
-import { buildApiParams } from "../../../utils";
-import { analyzeFunnel, FunnelRequest, FunnelResponse, saveFunnel, SaveFunnelRequest } from "../../endpoints";
+import {
+  analyzeFunnel,
+  AnalyzeFunnelParams,
+  FunnelRequest,
+  FunnelResponse,
+  saveFunnel,
+  SaveFunnelRequest,
+} from "../../endpoints";
+import { useAnalyticsQuery } from "../../useAnalyticsQuery";
 
 /**
  * Hook for analyzing conversion funnels through a series of steps
  */
 export function useGetFunnel(config?: FunnelRequest, debounce?: boolean) {
-  const { site, time, timezone } = useStore();
-
   const debouncedConfig = useDebounce(config, 500);
-  const filteredFilters = getFilteredFilters(FUNNEL_PAGE_FILTERS);
-  const params = buildApiParams(time, { filters: filteredFilters });
-
   const configToUse = debounce ? debouncedConfig : config;
+  // Only the funnel page's filter parameters apply; an empty subset means no
+  // filters at all (not the store's full filter list).
+  const filteredFilters = getFilteredFilters(FUNNEL_PAGE_FILTERS);
 
-  return useQuery<FunnelResponse[], Error>({
-    queryKey: ["funnel", site, time, filteredFilters, configToUse?.steps, timezone],
-    queryFn: async () => {
-      if (!configToUse) {
-        throw new Error("Funnel configuration is required");
-      }
-
-      return analyzeFunnel(site, {
-        ...params,
-        steps: configToUse.steps,
-        name: configToUse.name,
-      });
-    },
-    enabled: !!site && !!configToUse,
+  return useAnalyticsQuery<FunnelResponse[], AnalyzeFunnelParams>({
+    key: "funnel",
+    useFilters: filteredFilters.length > 0,
+    customFilters: filteredFilters,
+    extraParams: { steps: configToUse?.steps ?? [], name: configToUse?.name },
+    enabled: !!configToUse,
+    fetch: (site, params) => analyzeFunnel(site, params),
   });
 }
 

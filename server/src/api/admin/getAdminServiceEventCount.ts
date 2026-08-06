@@ -89,7 +89,7 @@ export async function getAdminServiceEventCount(
     const data = await processResults<ServiceEventCountResponse[number]>(result);
     return res.send({ data });
   } catch (error) {
-    console.error("Error fetching service event count:", error);
+    req.log.error({ err: error }, "Error fetching service event count");
     return res.status(500).send({ error: "Failed to fetch service event count" });
   }
 }

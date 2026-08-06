@@ -1,7 +1,7 @@
 import { FilterParams } from "@rybbit/shared";
 import { FastifyReply, FastifyRequest } from "fastify";
-import { clickhouse } from "../../../db/clickhouse/clickhouse.js";
-import { getTimeStatement, processResults } from "../utils/utils.js";
+import { getTimeStatement } from "../utils/utils.js";
+import { analyticsRoute, runAnalyticsQuery } from "../utils/analyticsQuery.js";
 import { type BotLayerKey, getBotFilterStatement, getBotLayerStatement } from "./utils.js";
 
 type BotOverviewResponse = {
@@ -24,10 +24,10 @@ export interface BotOverviewRequest {
   }>;
 }
 
-const getQuery = (params: BotOverviewRequest["Querystring"]) => {
-  const timeStatement = getTimeStatement(params);
-  const filterStatement = getBotFilterStatement(params.filters);
-  const layerStatement = getBotLayerStatement(params.layer);
+export const buildBotOverviewQuery = (query: BotOverviewRequest["Querystring"]) => {
+  const timeStatement = getTimeStatement(query);
+  const filterStatement = getBotFilterStatement(query.filters);
+  const layerStatement = getBotLayerStatement(query.layer);
 
   return `
     WITH
@@ -78,20 +78,14 @@ const getQuery = (params: BotOverviewRequest["Querystring"]) => {
   `;
 };
 
-export async function getBotOverview(req: FastifyRequest<BotOverviewRequest>, res: FastifyReply) {
-  try {
-    const result = await clickhouse.query({
-      query: getQuery(req.query),
-      format: "JSONEachRow",
-      query_params: {
-        siteId: Number(req.params.siteId),
-      },
+export const getBotOverview = analyticsRoute<BotOverviewRequest>(
+  "bot overview",
+  async (req: FastifyRequest<BotOverviewRequest>, res: FastifyReply) => {
+    const data = await runAnalyticsQuery<BotOverviewResponse>({
+      query: buildBotOverviewQuery(req.query),
+      params: { siteId: Number(req.params.siteId) },
     });
 
-    const data = await processResults<BotOverviewResponse>(result);
     return res.send({ data: data[0] });
-  } catch (error) {
-    console.error("Error fetching bot overview:", error);
-    return res.status(500).send({ error: "Failed to fetch bot overview" });
   }
-}
+);

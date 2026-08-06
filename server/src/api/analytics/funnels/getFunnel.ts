@@ -1,24 +1,10 @@
 import { FilterParams } from "@rybbit/shared";
 import { FastifyReply, FastifyRequest } from "fastify";
 import SqlString from "sqlstring";
-import { clickhouse } from "../../../db/clickhouse/clickhouse.js";
-import { getTimeStatement, patternToRegex, processResults } from "../utils/utils.js";
+import { getTimeStatement } from "../utils/utils.js";
 import { getFilterStatement } from "../utils/getFilterStatement.js";
-
-type FunnelStep = {
-  value: string;
-  name?: string;
-  type: "page" | "event";
-  hostname?: string;
-  // Deprecated fields - kept for backwards compatibility
-  eventPropertyKey?: string;
-  eventPropertyValue?: string | number | boolean;
-  // New field for multiple property filters
-  propertyFilters?: Array<{
-    key: string;
-    value: string | number | boolean;
-  }>;
-};
+import { AnalyticsQueryError, runAnalyticsQuery } from "../utils/analyticsQuery.js";
+import { buildFunnelStepCondition, FunnelStep } from "./funnelSteps.js";
 
 type Funnel = {
   steps: FunnelStep[];
@@ -27,93 +13,21 @@ type Funnel = {
 type FunnelResponse = {
   step_number: number;
   step_name: string;
-  visitors: number;
+  /** Sessions that reached this step. Funnels are session-scoped, not person-scoped. */
+  sessions: number;
   conversion_rate: number;
   dropoff_rate: number;
 };
 
-export async function getFunnel(
-  request: FastifyRequest<{
-    Body: Funnel;
-    Params: {
-      siteId: string;
-    };
-    Querystring: FilterParams<{}>;
-  }>,
-  reply: FastifyReply
-) {
-  const { steps } = request.body;
-  const { siteId } = request.params;
+export const buildFunnelQuery = (query: FilterParams<{}>, siteId: number, steps: FunnelStep[]) => {
+  const timeStatement = getTimeStatement(query);
+  const filterStatement = getFilterStatement(query.filters, siteId, timeStatement);
 
-  // Validate request
-  if (!steps || steps.length < 2) {
-    return reply.status(400).send({ error: "At least 2 steps are required for a funnel" });
-  }
+  // Build conditional statements for each step
+  const stepConditions = steps.map(step => buildFunnelStepCondition(step));
 
-  try {
-    const timeStatement = getTimeStatement(request.query);
-    const filterStatement = getFilterStatement(request.query.filters, Number(siteId), timeStatement);
-
-    // Build conditional statements for each step
-    const stepConditions = steps.map(step => {
-      let condition = "";
-
-      if (step.type === "page") {
-        // Use pattern matching for page paths to support wildcards
-        const regex = patternToRegex(step.value);
-        // Manually escape single quotes in the regex and wrap in quotes
-        // Don't use SqlString.escape() as it doesn't preserve the regex correctly
-        const safeRegex = regex.replace(/'/g, "\\'");
-        condition = `type = 'pageview' AND match(pathname, '${safeRegex}')`;
-
-        // Support both new propertyFilters array and legacy single property
-        const filters = step.propertyFilters || (
-          step.eventPropertyKey && step.eventPropertyValue !== undefined
-            ? [{ key: step.eventPropertyKey, value: step.eventPropertyValue }]
-            : []
-        );
-
-        // Add property matching for page steps (URL parameters)
-        for (const filter of filters) {
-          // Access URL parameters from the url_parameters map
-          const propValueAccessor = `url_parameters[${SqlString.escape(filter.key)}]`;
-
-          // URL parameters are stored as strings in the Map
-          condition += ` AND ${propValueAccessor} = ${SqlString.escape(String(filter.value))}`;
-        }
-      } else {
-        // Start with the base event match condition
-        condition = `type = 'custom_event' AND event_name = ${SqlString.escape(step.value)}`;
-
-        // Support both new propertyFilters array and legacy single property
-        const filters = step.propertyFilters || (
-          step.eventPropertyKey && step.eventPropertyValue !== undefined
-            ? [{ key: step.eventPropertyKey, value: step.eventPropertyValue }]
-            : []
-        );
-
-        // Add property matching if both key and value are provided
-        for (const filter of filters) {
-          if (typeof filter.value === "string") {
-            condition += ` AND JSONExtractString(toString(props), ${SqlString.escape(filter.key)}) = ${SqlString.escape(filter.value)}`;
-          } else if (typeof filter.value === "number") {
-            condition += ` AND toFloat64(JSONExtractString(toString(props), ${SqlString.escape(filter.key)})) = ${SqlString.escape(filter.value)}`;
-          } else if (typeof filter.value === "boolean") {
-            condition += ` AND JSONExtractString(toString(props), ${SqlString.escape(filter.key)}) = ${SqlString.escape(filter.value ? 'true' : 'false')}`;
-          }
-        }
-      }
-
-      // Add hostname filtering if specified
-      if (step.hostname) {
-        condition += ` AND hostname = ${SqlString.escape(step.hostname)}`;
-      }
-
-      return condition;
-    });
-
-    // Build the funnel query - session-based tracking
-    const query = `
+  // Build the funnel query - session-based tracking
+  return `
     WITH
     -- Get all session actions in the time period
     SessionActions AS (
@@ -170,48 +84,73 @@ export async function getFunnel(
           SELECT
             ${index + 1} as step_number,
             ${SqlString.escape(step.name || step.value)} as step_name,
-            count(DISTINCT session_id) as visitors
+            count(DISTINCT session_id) as sessions
           FROM Step${index + 1}
         `
         )
         .join("\nUNION ALL\n")}
     )
-    
+
     -- Final results with calculated conversion and dropoff rates
     SELECT
       s1.step_number,
       s1.step_name,
-      s1.visitors as visitors,
-      round(s1.visitors * 100.0 / first_step.visitors, 2) as conversion_rate,
-      CASE 
+      s1.sessions as sessions,
+      round(s1.sessions * 100.0 / first_step.sessions, 2) as conversion_rate,
+      CASE
         WHEN s1.step_number = 1 THEN 0
-        ELSE round((1 - (s1.visitors / prev_step.visitors)) * 100.0, 2)
+        ELSE round((1 - (s1.sessions / prev_step.sessions)) * 100.0, 2)
       END as dropoff_rate
     FROM StepCounts s1
-    CROSS JOIN (SELECT visitors FROM StepCounts WHERE step_number = 1) as first_step
+    CROSS JOIN (SELECT sessions FROM StepCounts WHERE step_number = 1) as first_step
     LEFT JOIN (
-      SELECT step_number + 1 as next_step_number, visitors
+      SELECT step_number + 1 as next_step_number, sessions
       FROM StepCounts
       WHERE step_number < {stepNumber:Int32}
     ) as prev_step ON s1.step_number = prev_step.next_step_number
     ORDER BY s1.step_number
     `;
+};
 
-    // Execute the query
-    const result = await clickhouse.query({
-      query,
-      format: "JSONEachRow",
-      query_params: {
+export async function getFunnel(
+  request: FastifyRequest<{
+    Body: Funnel;
+    Params: {
+      siteId: string;
+    };
+    Querystring: FilterParams<{}>;
+  }>,
+  reply: FastifyReply
+) {
+  const { steps } = request.body;
+  const { siteId } = request.params;
+
+  // Validate request
+  if (!steps || steps.length < 2) {
+    return reply.status(400).send({ error: "At least 2 steps are required for a funnel" });
+  }
+
+  try {
+    const data = await runAnalyticsQuery<FunnelResponse>({
+      query: buildFunnelQuery(request.query, Number(siteId), steps),
+      params: {
         siteId: Number(siteId),
         stepNumber: steps.length,
       },
     });
 
-    // Process the results
-    const data = await processResults<FunnelResponse>(result);
-    return reply.send({ data });
+    // `visitors` is the pre-rename name of `sessions`, kept so existing API and
+    // MCP consumers don't break. Deprecated: drop once consumers have migrated.
+    return reply.send({ data: data.map(step => ({ ...step, visitors: step.sessions })) });
   } catch (error) {
-    console.error("Error executing funnel query:", error);
+    if (error instanceof AnalyticsQueryError) {
+      request.log.error({ err: error.original }, "Error executing funnel query");
+      for (const query of error.queries) {
+        request.log.debug({ query }, "Failed funnel query");
+      }
+    } else {
+      request.log.error({ err: error }, "Error executing funnel query");
+    }
     return reply.status(500).send({ error: "Failed to execute funnel analysis" });
   }
 }

@@ -1,8 +1,13 @@
 import { FilterParams } from "@rybbit/shared";
 import SqlString from "sqlstring";
-import { FilterParameter, FilterType, TimeBucket } from "../types.js";
-import { validateFilters, validateTimeStatementFillParams } from "../utils/query-validation.js";
+import { FilterParameter, TimeBucket } from "../types.js";
+import { getFilterStatement, getSqlParam } from "../utils/getFilterStatement.js";
+import { validateTimeStatementFillParams } from "../utils/query-validation.js";
 import { bucketIntervalMap, normalizeDatetimeForClickhouse, TimeBucketToFn } from "../utils/utils.js";
+
+// Condition rendering is shared with the events surface; re-exported here for
+// existing importers and tests.
+export { buildStringFilterCondition } from "../utils/getFilterStatement.js";
 
 export const BOT_LAYER_COLUMNS = {
   ua_pattern: "detected_ua_pattern",
@@ -61,135 +66,25 @@ export function getBotLayerStatement(layer?: string | null) {
   return column ? `AND ${column}` : "";
 }
 
-const filterTypeToOperator = (type: FilterType) => {
-  switch (type) {
-    case "equals":
-      return "=";
-    case "not_equals":
-      return "!=";
-    case "contains":
-    case "starts_with":
-    case "ends_with":
-      return "LIKE";
-    case "not_contains":
-      return "NOT LIKE";
-    case "greater_than":
-      return ">";
-    case "less_than":
-      return "<";
-    case "greater_than_or_equal":
-      return ">=";
-    case "less_than_or_equal":
-      return "<=";
-    case "regex":
-    case "not_regex":
-    case "is_null":
-    case "is_not_null":
-      return null;
-  }
-};
-
-const wrapLikeValue = (type: FilterType, value: string | number): string => {
-  const v = String(value);
-  if (type === "contains" || type === "not_contains") return `%${v}%`;
-  if (type === "starts_with") return `${v}%`;
-  if (type === "ends_with") return `%${v}`;
-  return v;
-};
+// Dimension keys that only exist on bot_events; everything else shares the
+// events-surface column expressions from getSqlParam.
+const BOT_ONLY_DIMENSIONS = new Set<BotDimensionKey>(["asn_org", "bot_category", "matched_ua_pattern"]);
 
 export const getBotSqlParam = (parameter: BotDimensionKey) => {
-  if (parameter === "referrer") {
-    return "domainWithoutWWW(referrer)";
+  if (BOT_ONLY_DIMENSIONS.has(parameter)) {
+    return parameter;
   }
-  if (parameter === "dimensions") {
-    return "concat(toString(screen_width), 'x', toString(screen_height))";
-  }
-  if (parameter === "city") {
-    return "concat(toString(region), '-', toString(city))";
-  }
-  if (parameter === "browser_version") {
-    return "concat(toString(browser), ' ', toString(browser_version))";
-  }
-  if (parameter === "operating_system_version") {
-    return `CASE
-      WHEN concat(toString(operating_system), ' ', toString(operating_system_version)) = 'Windows 10'
-      THEN 'Windows 10/11'
-      ELSE concat(toString(operating_system), ' ', toString(operating_system_version))
-    END`;
-  }
-  return parameter;
+  return getSqlParam(parameter as FilterParameter);
 };
 
-const buildStringFilterCondition = (expression: string, filterType: FilterType, values: (string | number)[]) => {
-  if (filterType === "is_null") {
-    return `(${expression} IS NULL OR ${expression} = '')`;
-  }
-  if (filterType === "is_not_null") {
-    return `(${expression} IS NOT NULL AND ${expression} != '')`;
-  }
-
-  if (filterType === "regex" || filterType === "not_regex") {
-    const pattern = String(values[0] ?? "");
-    if (!pattern) {
-      throw new Error("Regex pattern cannot be empty");
-    }
-    new RegExp(pattern);
-    if (pattern.length > 500) {
-      throw new Error("Regex pattern too long (max 500 characters)");
-    }
-    const matchExpr = `match(${expression}, ${SqlString.escape(pattern)})`;
-    return filterType === "regex" ? matchExpr : `NOT ${matchExpr}`;
-  }
-
-  const op = filterTypeToOperator(filterType);
-  const joiner = filterType === "not_equals" || filterType === "not_contains" ? " AND " : " OR ";
-  const conditions = values.map(value => `${expression} ${op} ${SqlString.escape(wrapLikeValue(filterType, value))}`);
-  return conditions.length === 1 ? conditions[0] : `(${conditions.join(joiner)})`;
-};
-
+// bot_events is a flat table: no session-level subqueries, no
+// identified_user_id column, and only a subset of the filterable parameters.
 export function getBotFilterStatement(filters?: string) {
-  if (!filters) {
-    return "";
-  }
-
-  const filtersArray = validateFilters(filters).filter(filter => BOT_FILTER_PARAMETERS.has(filter.parameter));
-  if (filtersArray.length === 0) {
-    return "";
-  }
-
-  const conditions = filtersArray.map(filter => {
-    const expression = getBotSqlParam(filter.parameter);
-    if (filter.type === "is_null" || filter.type === "is_not_null") {
-      return buildStringFilterCondition(expression, filter.type, filter.value);
-    }
-
-    if (
-      filter.type === "greater_than" ||
-      filter.type === "less_than" ||
-      filter.type === "greater_than_or_equal" ||
-      filter.type === "less_than_or_equal"
-    ) {
-      const numericValue = Number(filter.value[0]);
-      if (isNaN(numericValue)) {
-        throw new Error(`Invalid numeric value for ${filter.type} filter: ${filter.value[0]}`);
-      }
-      return `${expression} ${filterTypeToOperator(filter.type)} ${numericValue}`;
-    }
-
-    if (filter.parameter === "lat" || filter.parameter === "lon") {
-      const tolerance = 0.001;
-      const rangeConditions = filter.value.map(value => {
-        const targetValue = Number(value);
-        return `(${filter.parameter} >= ${targetValue - tolerance} AND ${filter.parameter} <= ${targetValue + tolerance})`;
-      });
-      const rangeCondition = rangeConditions.length === 1 ? rangeConditions[0] : `(${rangeConditions.join(" OR ")})`;
-      return filter.type === "not_equals" ? `NOT ${rangeCondition}` : rangeCondition;
-    }
-
-    return buildStringFilterCondition(expression, filter.type, filter.value);
+  return getFilterStatement(filters || "", undefined, undefined, {
+    sessionLevelParams: [],
+    parameterAllowlist: BOT_FILTER_PARAMETERS,
+    dualUserIdColumns: false,
   });
-
-  return `AND ${conditions.join(" AND ")}`;
 }
 
 export function getBotTimeStatementFill(params: FilterParams, bucket: TimeBucket) {

@@ -47,6 +47,8 @@ coverage/
 
 .claude/
 
+.codex/
+
 .agents/
 
 .deepsec/

@@ -12,7 +12,11 @@ import { getRequestUserAgent } from "../../services/tracker/requestIdentity.js";
 import { processResults } from "../analytics/utils/utils.js";
 import { getDeviceType } from "../../utils.js";
 import { resolveClientIp } from "../../services/tracker/resolveClientIp.js";
-import { evaluateFeatureFlagsForSite } from "../../services/featureFlags/evaluator.js";
+import {
+  getFeatureFlagDefinitionsForRuntime,
+  invalidateFeatureFlagDefinitions,
+} from "../../services/featureFlags/definitions.js";
+import { evaluateFeatureFlagDefinitions } from "../../services/featureFlags/evaluator.js";
 import {
   evaluateFeatureFlagsSchema,
   featureFlagBodySchema,
@@ -149,6 +153,8 @@ export async function createFeatureFlag(
       })
       .returning();
 
+    await invalidateFeatureFlagDefinitions(siteId);
+
     return reply.status(201).send({ success: true, data: created });
   } catch (error) {
     const duplicateMessage = getDuplicateKeyMessage(error);
@@ -217,6 +223,8 @@ export async function updateFeatureFlag(
       return reply.status(404).send({ error: "Feature flag not found" });
     }
 
+    await invalidateFeatureFlagDefinitions(siteId);
+
     return reply.send({ success: true, data: updated });
   } catch (error) {
     const duplicateMessage = getDuplicateKeyMessage(error);
@@ -252,6 +260,8 @@ export async function deleteFeatureFlag(
   if (!deleted) {
     return reply.status(404).send({ error: "Feature flag not found" });
   }
+
+  await invalidateFeatureFlagDefinitions(siteId);
 
   return reply.send({ success: true });
 }
@@ -298,7 +308,12 @@ async function evaluateFeatureFlagsForRuntime(
       return reply.status(404).send({ error: "Site not found" });
     }
 
-    const ipAddress = resolveClientIp(request);
+    const definitions = await getFeatureFlagDefinitionsForRuntime(site.siteId, runtime);
+    if (definitions.length === 0) {
+      return reply.send({ flags: {}, featureFlagsEnabled: false, generatedAt: new Date().toISOString() });
+    }
+
+    const ipAddress = resolveClientIp(request, { firstPartyProxy: site.firstPartyProxy });
     const [locationByIp, profile] = await Promise.all([
       getLocation([ipAddress]).catch(() => ({}) as Awaited<ReturnType<typeof getLocation>>),
       body.identifiedUserId
@@ -312,8 +327,8 @@ async function evaluateFeatureFlagsForRuntime(
     const ua = userAgentParser(getRequestUserAgent(request));
     const deviceType = getDeviceType(body.screenWidth || 0, body.screenHeight || 0, ua);
 
-    const assignments = await evaluateFeatureFlagsForSite(
-      site.siteId,
+    const assignments = evaluateFeatureFlagDefinitions(
+      definitions,
       {
         anonymousId: body.anonymousId,
         identifiedUserId: body.identifiedUserId,
@@ -333,6 +348,7 @@ async function evaluateFeatureFlagsForRuntime(
 
     return reply.send({
       flags: assignments,
+      featureFlagsEnabled: true,
       generatedAt: new Date().toISOString(),
     });
   } catch (error) {

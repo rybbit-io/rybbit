@@ -85,19 +85,19 @@ export default function UserJourneysPage() {
       <FeaturePage
         featureName="user-journeys"
         headline="Map how users really navigate"
-        subtitle="Interactive Sankey diagrams that reveal the actual paths users take through your site — from landing page to conversion and beyond."
+        subtitle="Interactive Sankey diagrams that reveal the actual paths users take through your site, from landing page to conversion and beyond."
         badgeText="User Journeys"
         demoUrl="https://demo.rybbit.com/81/journeys"
-        demoCaption="Live user journeys demo — interactive Sankey diagrams from real traffic"
+        demoCaption="Live user journeys demo: interactive Sankey diagrams from real traffic"
         introParagraphs={[
           <>
-            You designed your site with a specific flow in mind. But do users actually follow it? <strong className="text-neutral-900 dark:text-white">User journeys show you the real navigation patterns</strong> — the paths users take, the pages they skip, and the detours they make before reaching your goal.
+            You designed your site with a specific flow in mind. But do users actually follow it? <strong className="text-neutral-900 dark:text-white">User journeys show you the real navigation patterns</strong>: the paths users take, the pages they skip, and the detours they make before reaching your goal.
           </>,
           <>
-            Unlike funnels, which track a predefined sequence, user journeys are <strong className="text-neutral-900 dark:text-white">exploratory</strong>. They reveal paths you didn&apos;t design for — the blog post that accidentally became your best conversion page, the documentation section that&apos;s acting as a landing page, or the settings page where users get stuck.
+            Unlike funnels, which track a predefined sequence, user journeys are <strong className="text-neutral-900 dark:text-white">exploratory</strong>. They reveal paths you didn&apos;t design for: the blog post that accidentally became your best conversion page, the documentation section that&apos;s acting as a landing page, or the settings page where users get stuck.
           </>,
           <>
-            Rybbit renders your journey data as <strong className="text-neutral-900 dark:text-white">interactive Sankey diagrams</strong> where flow thickness represents user volume. Hover over any path to see exact numbers. Filter by wildcards to group similar pages. Adjust depth from 2 to 6 steps to zoom in or out. It works out of the box with <strong className="text-neutral-900 dark:text-white">zero setup</strong> — just install Rybbit and your journey data is ready.
+            Rybbit renders your journey data as <strong className="text-neutral-900 dark:text-white">interactive Sankey diagrams</strong> where flow thickness represents user volume. Hover over any path to see exact numbers. Filter by wildcards to group similar pages. Adjust depth from 2 to 6 steps to zoom in or out. There&apos;s <strong className="text-neutral-900 dark:text-white">zero setup</strong>: install Rybbit and your journey data is ready.
           </>,
         ]}
         capabilities={capabilities}

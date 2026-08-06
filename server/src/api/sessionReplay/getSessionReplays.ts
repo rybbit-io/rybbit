@@ -41,7 +41,7 @@ export async function getSessionReplays(
 
     return reply.send({ data: replaysWithTraits });
   } catch (error) {
-    console.error("Error fetching session replays:", error);
+    request.log.error({ err: error }, "Error fetching session replays");
     return reply.status(500).send({ error: "Internal server error" });
   }
 }

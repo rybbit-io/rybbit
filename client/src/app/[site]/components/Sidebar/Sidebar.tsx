@@ -32,6 +32,7 @@ import { getSiteRouteContext } from "../../../../lib/siteRoute";
 import { useEmbedPageOptions } from "../../utils";
 import { SiteSelector } from "./SiteSelector";
 import { useStripeSubscription } from "../../../../lib/subscription/useStripeSubscription";
+import { useAppEnv } from "../../../../hooks/useIsProduction";
 
 function SidebarContent() {
   const t = useExtracted();
@@ -39,9 +40,10 @@ function SidebarContent() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const { embed, hideSidebar } = useEmbedPageOptions();
+  const appEnv = useAppEnv();
 
   const { data: site } = useGetSite(Number(pathname.split("/")[1]));
-  const isApp = site?.type === "mobile";
+  const isMobileSite = site?.type === "mobile";
 
   if (hideSidebar) return null;
 
@@ -72,9 +74,9 @@ function SidebarContent() {
       <div className="flex flex-col p-3 border-b border-neutral-200 dark:border-neutral-800">
         <SiteSelector />
       </div>
-      <div className="flex flex-col p-3 pt-1">
+      <div className="flex min-h-0 flex-1 flex-col overflow-y-auto p-3 pt-1">
         <SidebarComponents.SectionHeader>
-          {isApp ? t("App Analytics") : t("Web Analytics")}
+          {isMobileSite ? t("App Analytics") : t("Web Analytics")}
         </SidebarComponents.SectionHeader>
         <SidebarComponents.Item
           label={t("Main")}
@@ -90,13 +92,13 @@ function SidebarContent() {
         />
         {IS_CLOUD && (
           <SidebarComponents.Item
-            label={isApp ? t("Screens") : t("Pages")}
+            label={isMobileSite ? t("Screens") : t("Pages")}
             active={isActiveTab("pages")}
             href={getTabPath("pages")}
             icon={<File className="w-4 h-4" />}
           />
         )}
-        {IS_CLOUD && !isApp && (
+        {IS_CLOUD && !isMobileSite && (
           <SidebarComponents.Item
             label={t("Performance")}
             active={isActiveTab("performance")}
@@ -144,14 +146,17 @@ function SidebarContent() {
         )}
         <SidebarComponents.SectionHeader>{t("Product Analytics")}</SidebarComponents.SectionHeader>
         <div className="hidden md:block">
-          {!isApp && !subscription?.planName?.startsWith("appsumo") && !isSubscriptionLoading && (
-            <SidebarComponents.Item
-              label={t("Replay")}
-              active={isActiveTab("replay")}
-              href={getTabPath("replay")}
-              icon={<Video className="w-4 h-4" />}
-            />
-          )}
+          {!isMobileSite &&
+            !subscription?.planName?.startsWith("appsumo") &&
+            !isSubscriptionLoading &&
+            appEnv !== "demo" && (
+              <SidebarComponents.Item
+                label={t("Replay")}
+                active={isActiveTab("replay")}
+                href={getTabPath("replay")}
+                icon={<Video className="w-4 h-4" />}
+              />
+            )}
         </div>
         {/* {!privateKey && (
           <SidebarComponents.Item

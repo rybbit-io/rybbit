@@ -1,7 +1,7 @@
 import { useStore } from "@/lib/store";
-import { useQuery, UseQueryResult } from "@tanstack/react-query";
-import { buildApiParams } from "../../../utils";
-import { fetchErrorBucketed, GetErrorBucketedResponse } from "../../endpoints";
+import { UseQueryResult } from "@tanstack/react-query";
+import { ErrorBucketedParams, fetchErrorBucketed, GetErrorBucketedResponse } from "../../endpoints";
+import { useAnalyticsQuery } from "../../useAnalyticsQuery";
 
 type UseGetErrorBucketedOptions = {
   errorMessage: string;
@@ -10,20 +10,13 @@ type UseGetErrorBucketedOptions = {
 export function useGetErrorBucketed({
   errorMessage,
 }: UseGetErrorBucketedOptions): UseQueryResult<GetErrorBucketedResponse> {
-  const { time, site, filters, bucket, timezone } = useStore();
+  const { bucket } = useStore();
 
-  const params = buildApiParams(time, { filters });
-
-  return useQuery({
-    queryKey: ["error-bucketed", time, site, filters, bucket, errorMessage, timezone],
-    queryFn: () => {
-      return fetchErrorBucketed(site, {
-        ...params,
-        errorMessage,
-        bucket,
-      });
-    },
-    enabled: !!errorMessage && !!site,
+  return useAnalyticsQuery<GetErrorBucketedResponse, ErrorBucketedParams>({
+    key: "error-bucketed",
+    extraParams: { errorMessage, bucket },
+    enabled: !!errorMessage,
     staleTime: Infinity,
+    fetch: (site, params) => fetchErrorBucketed(site, params),
   });
 }

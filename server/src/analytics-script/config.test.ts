@@ -31,6 +31,7 @@ describe("parseScriptConfig", () => {
       .mockResolvedValueOnce({
         ok: true,
         json: async () => ({
+          featureFlagsEnabled: true,
           sessionReplay: true,
           webVitals: true,
           trackErrors: false,
@@ -76,6 +77,7 @@ describe("parseScriptConfig", () => {
       trackCopy: false,
       trackFormInteractions: false,
       tag: "",
+      featureFlagsEnabled: true,
       featureFlags: {
         new_checkout: {
           key: "new_checkout",
@@ -112,6 +114,43 @@ describe("parseScriptConfig", () => {
     });
   });
 
+  it("should not request feature flag evaluation when the site has no flags", async () => {
+    mockScriptTag.setAttribute("src", "https://analytics.example.com/script.js");
+    mockScriptTag.setAttribute("data-site-id", "123");
+
+    (global.fetch as any).mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ featureFlagsEnabled: false }),
+    });
+
+    const config = await parseScriptConfig(mockScriptTag);
+
+    expect(global.fetch).toHaveBeenCalledTimes(1);
+    expect(config?.featureFlagsEnabled).toBe(false);
+    expect(config?.featureFlags).toEqual({});
+  });
+
+  it("stops future evaluation when flags are deleted between configuration and evaluation", async () => {
+    mockScriptTag.setAttribute("src", "https://analytics.example.com/script.js");
+    mockScriptTag.setAttribute("data-site-id", "123");
+
+    (global.fetch as any)
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ featureFlagsEnabled: true }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ featureFlagsEnabled: false, flags: {} }),
+      });
+
+    const config = await parseScriptConfig(mockScriptTag);
+
+    expect(global.fetch).toHaveBeenCalledTimes(2);
+    expect(config?.featureFlagsEnabled).toBe(false);
+    expect(config?.featureFlags).toEqual({});
+  });
+
   it("should use defaults when API call fails", async () => {
     mockScriptTag.setAttribute("src", "https://analytics.example.com/script.js");
     mockScriptTag.setAttribute("data-site-id", "123");
@@ -141,6 +180,7 @@ describe("parseScriptConfig", () => {
       trackCopy: false,
       trackFormInteractions: false,
       tag: "",
+      featureFlagsEnabled: false,
       featureFlags: {},
       skipPatterns: [],
       maskPatterns: [],
@@ -189,6 +229,7 @@ describe("parseScriptConfig", () => {
       trackCopy: false,
       trackFormInteractions: false,
       tag: "",
+      featureFlagsEnabled: false,
       featureFlags: {},
       skipPatterns: [],
       maskPatterns: [],

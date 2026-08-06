@@ -57,6 +57,27 @@ const DialogContent = React.forwardRef<
 ));
 DialogContent.displayName = DialogPrimitive.Content.displayName;
 
+// Full-viewport editor surface: no overlay (the content is opaque and covers
+// everything), no padding or close button — callers own the entire layout.
+const DialogContentFullScreen = React.forwardRef<
+  React.ElementRef<typeof DialogPrimitive.Content>,
+  React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content>
+>(({ className, children, ...props }, ref) => (
+  <DialogPortal>
+    <DialogPrimitive.Content
+      ref={ref}
+      className={cn(
+        "fixed inset-0 z-50 flex h-dvh w-screen flex-col bg-background duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 motion-reduce:animate-none",
+        className
+      )}
+      {...props}
+    >
+      {children}
+    </DialogPrimitive.Content>
+  </DialogPortal>
+));
+DialogContentFullScreen.displayName = "DialogContentFullScreen";
+
 const DialogHeader = ({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) => (
   <div className={cn("flex flex-col space-y-1.5 text-center sm:text-left", className)} {...props} />
 );
@@ -98,6 +119,7 @@ export {
   DialogTrigger,
   DialogClose,
   DialogContent,
+  DialogContentFullScreen,
   DialogHeader,
   DialogFooter,
   DialogTitle,

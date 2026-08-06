@@ -48,8 +48,13 @@ Generate API keys to access Rybbit's analytics endpoints from your applications.
 ### Creating an API Key
 
 1. Enter a name for your API key (e.g., "Production App", "Development")
-2. Click "Create"
-3. Copy and save the generated key immediately
+2. Optionally enable **Restrict permissions** to limit the key to specific resources. Leave it off for a full-access key that can do everything you can.
+3. Click "Create"
+4. Copy and save the generated key immediately
+
+<Callout type="warn">
+  On Rybbit Cloud, API keys require a Standard or Pro plan. On a free plan you'll see an upgrade prompt in place of the creation form.
+</Callout>
 
 <Callout type="warn">
   API keys are only shown once when created. Store your key securely as you won't be able to view it again.
@@ -60,7 +65,9 @@ Generate API keys to access Rybbit's analytics endpoints from your applications.
 Your existing API keys are displayed in a table showing:
 - **Name** - The name you assigned to the key
 - **Key** - A preview of the key (first few characters)
+- **Permissions** - Whether the key has full access or is restricted to specific scopes
 - **Created** - When the key was created
+- **Last used** - When the key last made a request
 
 You can delete API keys that are no longer needed. Deleting a key immediately revokes access for any applications using it.
 

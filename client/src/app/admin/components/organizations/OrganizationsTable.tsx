@@ -7,9 +7,8 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useDateTimeFormat } from "../../../../hooks/useDateTimeFormat";
 import { parseUtcTimestamp } from "@/lib/dateTimeUtils";
-import { formatter } from "@/lib/utils";
-import { ChevronDown, ChevronRight } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { cn, formatter } from "@/lib/utils";
+import { ChevronRight } from "lucide-react";
 import { Pagination } from "@/components/pagination";
 import {
   ColumnDef,
@@ -20,6 +19,7 @@ import {
   SortingState,
 } from "@tanstack/react-table";
 import { SortableHeader } from "../shared/SortableHeader";
+import { TableShell } from "../shared/Panel";
 import { OrganizationExpandedRow } from "./OrganizationExpandedRow";
 import { useExtracted } from "next-intl";
 
@@ -29,37 +29,50 @@ interface OrganizationsTableProps {
   searchQuery: string;
 }
 
+type ColumnAlignMeta = { align?: "right" };
+
+const SKELETON_CELLS: Array<{ width: string; right?: boolean }> = [
+  { width: "w-4" },
+  { width: "w-32" },
+  { width: "w-24" },
+  { width: "w-20", right: true },
+  { width: "w-16", right: true },
+  { width: "w-16", right: true },
+  { width: "w-20" },
+  { width: "w-8", right: true },
+  { width: "w-8", right: true },
+];
+
 export function OrganizationsTable({ organizations, isLoading, searchQuery }: OrganizationsTableProps) {
   const t = useExtracted();
   const { formatRelative } = useDateTimeFormat();
   const [expandedOrgs, setExpandedOrgs] = useState<Set<string>>(new Set());
-  const [sorting, setSorting] = useState<SortingState>([]);
+  const [sorting, setSorting] = useState<SortingState>([{ id: "monthlyEventCount", desc: true }]);
   const [pagination, setPagination] = useState({
     pageIndex: 0,
     pageSize: 50,
   });
 
-  const toggleExpand = useCallback(
-    (orgId: string) => {
-      const newExpanded = new Set(expandedOrgs);
-      if (newExpanded.has(orgId)) {
-        newExpanded.delete(orgId);
+  const toggleExpand = useCallback((orgId: string) => {
+    setExpandedOrgs(prev => {
+      const next = new Set(prev);
+      if (next.has(orgId)) {
+        next.delete(orgId);
       } else {
-        newExpanded.add(orgId);
+        next.add(orgId);
       }
-      setExpandedOrgs(newExpanded);
-    },
-    [expandedOrgs]
-  );
+      return next;
+    });
+  }, []);
 
   const formatSubscriptionStatus = (subscription: AdminOrganizationData["subscription"]) => {
-    const statusColor =
-      subscription.status === "active" || subscription.status === "trialing"
-        ? "default"
-        : subscription.status === "canceled"
-          ? "destructive"
-          : "secondary";
-    return <Badge variant={statusColor}>{subscription.planName}</Badge>;
+    const variant =
+      subscription.status === "canceled"
+        ? ("destructive" as const)
+        : subscription.status === "active" || subscription.status === "trialing"
+          ? ("default" as const)
+          : ("secondary" as const);
+    return <Badge variant={variant}>{subscription.planName}</Badge>;
   };
 
   const columns = useMemo<ColumnDef<AdminOrganizationData>[]>(
@@ -68,13 +81,20 @@ export function OrganizationsTable({ organizations, isLoading, searchQuery }: Or
         id: "expand",
         header: "",
         cell: ({ row }) => (
-          <Button variant="ghost" size="icon" className="h-5 w-5 p-0" onClick={() => toggleExpand(row.original.id)}>
-            {expandedOrgs.has(row.original.id) ? (
-              <ChevronDown className="h-4 w-4" />
-            ) : (
-              <ChevronRight className="h-4 w-4" />
-            )}
-          </Button>
+          <button
+            type="button"
+            aria-expanded={expandedOrgs.has(row.original.id)}
+            aria-label={t("Toggle details")}
+            onClick={e => {
+              e.stopPropagation();
+              toggleExpand(row.original.id);
+            }}
+            className="flex h-5 w-5 items-center justify-center rounded-sm text-neutral-400 hover:text-neutral-900 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-neutral-400 dark:hover:text-neutral-100"
+          >
+            <ChevronRight
+              className={cn("h-4 w-4 transition-transform", expandedOrgs.has(row.original.id) && "rotate-90")}
+            />
+          </button>
         ),
         enableSorting: false,
       },
@@ -86,39 +106,43 @@ export function OrganizationsTable({ organizations, isLoading, searchQuery }: Or
       {
         accessorKey: "createdAt",
         header: ({ column }) => <SortableHeader column={column}>{t("Created")}</SortableHeader>,
-        cell: ({ row }) => <div>{formatRelative(parseUtcTimestamp(row.getValue("createdAt")))}</div>,
+        cell: ({ row }) => (
+          <div className="text-neutral-600 dark:text-neutral-300">
+            {formatRelative(parseUtcTimestamp(row.getValue("createdAt")))}
+          </div>
+        ),
       },
       {
         accessorKey: "monthlyEventCount",
+        meta: { align: "right" } satisfies ColumnAlignMeta,
         header: ({ column }) => <SortableHeader column={column}>{t("Monthly Events")}</SortableHeader>,
         cell: ({ row }) => {
           const count = row.getValue("monthlyEventCount") as number;
           const isOverLimit = row.original.overMonthlyLimit;
+          const limit = row.original.subscription.eventLimit;
           return (
-            <div className={`font-medium ${isOverLimit ? "text-red-400" : ""}`}>
+            <div className={cn("tabular-nums", isOverLimit && "font-medium text-red-500 dark:text-red-400")}>
               {formatter(count || 0)}
-              {isOverLimit && <span className="text-red-400 ml-1">⚠️</span>}
+              {isOverLimit && limit ? (
+                <span className="ml-1 text-xs text-neutral-500 dark:text-neutral-400">/ {formatter(limit)}</span>
+              ) : null}
             </div>
           );
         },
       },
       {
         id: "eventsLast24Hours",
+        meta: { align: "right" } satisfies ColumnAlignMeta,
         header: ({ column }) => <SortableHeader column={column}>{t("24h Events")}</SortableHeader>,
         accessorFn: row => row.sites.reduce((total, site) => total + Number(site.eventsLast24Hours || 0), 0),
-        cell: ({ row }) => {
-          const total = row.original.sites.reduce((sum, site) => sum + Number(site.eventsLast24Hours || 0), 0);
-          return formatter(total);
-        },
+        cell: ({ getValue }) => <span className="tabular-nums">{formatter(getValue<number>())}</span>,
       },
       {
         id: "eventsLast30Days",
+        meta: { align: "right" } satisfies ColumnAlignMeta,
         header: ({ column }) => <SortableHeader column={column}>{t("30d Events")}</SortableHeader>,
         accessorFn: row => row.sites.reduce((total, site) => total + Number(site.eventsLast30Days || 0), 0),
-        cell: ({ row }) => {
-          const total = row.original.sites.reduce((sum, site) => sum + Number(site.eventsLast30Days || 0), 0);
-          return formatter(total);
-        },
+        cell: ({ getValue }) => <span className="tabular-nums">{formatter(getValue<number>())}</span>,
       },
       {
         id: "subscription",
@@ -128,15 +152,17 @@ export function OrganizationsTable({ organizations, isLoading, searchQuery }: Or
       },
       {
         id: "sites",
+        meta: { align: "right" } satisfies ColumnAlignMeta,
         header: ({ column }) => <SortableHeader column={column}>{t("Sites")}</SortableHeader>,
         accessorFn: row => row.sites.length,
-        cell: ({ row }) => row.original.sites.length,
+        cell: ({ row }) => <span className="tabular-nums">{row.original.sites.length}</span>,
       },
       {
         id: "members",
+        meta: { align: "right" } satisfies ColumnAlignMeta,
         header: ({ column }) => <SortableHeader column={column}>{t("Members")}</SortableHeader>,
         accessorFn: row => row.members.length,
-        cell: ({ row }) => row.original.members.length,
+        cell: ({ row }) => <span className="tabular-nums">{row.original.members.length}</span>,
       },
     ],
     [toggleExpand, expandedOrgs]
@@ -187,80 +213,77 @@ export function OrganizationsTable({ organizations, isLoading, searchQuery }: Or
 
   return (
     <>
-      <Table>
-        <TableHeader>
-          {table.getHeaderGroups().map(headerGroup => (
-            <TableRow key={headerGroup.id}>
-              {headerGroup.headers.map(header => (
-                <TableHead key={header.id} className={header.id === "expand" ? "w-8" : ""}>
-                  {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
-                </TableHead>
-              ))}
-            </TableRow>
-          ))}
-        </TableHeader>
-        <TableBody>
-          {isLoading ? (
-            Array(pagination.pageSize)
-              .fill(0)
-              .map((_, index) => (
-                <TableRow key={index}>
-                  <TableCell>
-                    <Skeleton className="h-5 w-5" />
-                  </TableCell>
-                  <TableCell>
-                    <Skeleton className="h-5 w-32" />
-                  </TableCell>
-                  <TableCell>
-                    <Skeleton className="h-5 w-24" />
-                  </TableCell>
-                  <TableCell>
-                    <Skeleton className="h-5 w-24" />
-                  </TableCell>
-                  <TableCell>
-                    <Skeleton className="h-5 w-20" />
-                  </TableCell>
-                  <TableCell>
-                    <Skeleton className="h-5 w-20" />
-                  </TableCell>
-                  <TableCell>
-                    <Skeleton className="h-5 w-20" />
-                  </TableCell>
-                  <TableCell>
-                    <Skeleton className="h-5 w-16" />
-                  </TableCell>
-                  <TableCell>
-                    <Skeleton className="h-5 w-16" />
-                  </TableCell>
-                </TableRow>
-              ))
-          ) : paginatedOrganizations && paginatedOrganizations.length > 0 ? (
-            paginatedOrganizations.map(row => (
-              <Fragment key={row.id}>
-                <TableRow className="group">
-                  {row.getVisibleCells().map(cell => (
-                    <TableCell key={cell.id}>{flexRender(cell.column.columnDef.cell, cell.getContext())}</TableCell>
-                  ))}
-                </TableRow>
-                {expandedOrgs.has(row.original.id) && (
-                  <TableRow>
-                    <TableCell colSpan={columns.length} className="bg-neutral-50 dark:bg-neutral-900 py-4 px-8">
-                      <OrganizationExpandedRow organization={row.original} />
-                    </TableCell>
+      <TableShell>
+        <Table>
+          <TableHeader>
+            {table.getHeaderGroups().map(headerGroup => (
+              <TableRow key={headerGroup.id}>
+                {headerGroup.headers.map(header => (
+                  <TableHead
+                    key={header.id}
+                    className={cn(
+                      header.id === "expand" && "w-8",
+                      (header.column.columnDef.meta as ColumnAlignMeta | undefined)?.align === "right" && "text-right"
+                    )}
+                  >
+                    {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
+                  </TableHead>
+                ))}
+              </TableRow>
+            ))}
+          </TableHeader>
+          <TableBody>
+            {isLoading ? (
+              Array(10)
+                .fill(0)
+                .map((_, index) => (
+                  <TableRow key={index}>
+                    {SKELETON_CELLS.map((cell, cellIndex) => (
+                      <TableCell key={cellIndex}>
+                        <Skeleton className={cn("h-5", cell.width, cell.right && "ml-auto")} />
+                      </TableCell>
+                    ))}
                   </TableRow>
-                )}
-              </Fragment>
-            ))
-          ) : (
-            <TableRow>
-              <TableCell colSpan={columns.length} className="text-center py-6 text-muted-foreground">
-                {searchQuery ? t("No organizations match your search") : t("No organizations found")}
-              </TableCell>
-            </TableRow>
-          )}
-        </TableBody>
-      </Table>
-      <div className="mt-4">
+                ))
+            ) : paginatedOrganizations && paginatedOrganizations.length > 0 ? (
+              paginatedOrganizations.map(row => (
+                <Fragment key={row.id}>
+                  <TableRow className="cursor-pointer" onClick={() => toggleExpand(row.original.id)}>
+                    {row.getVisibleCells().map(cell => (
+                      <TableCell
+                        key={cell.id}
+                        className={cn(
+                          (cell.column.columnDef.meta as ColumnAlignMeta | undefined)?.align === "right" &&
+                            "text-right"
+                        )}
+                      >
+                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                      </TableCell>
+                    ))}
+                  </TableRow>
+                  {expandedOrgs.has(row.original.id) && (
+                    <TableRow className="hover:bg-transparent dark:hover:bg-transparent">
+                      <TableCell
+                        colSpan={columns.length}
+                        className="bg-neutral-50 px-8 py-4 dark:bg-neutral-950/40"
+                      >
+                        <OrganizationExpandedRow organization={row.original} />
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </Fragment>
+              ))
+            ) : (
+              <TableRow>
+                <TableCell colSpan={columns.length} className="py-8 text-center text-muted-foreground">
+                  {searchQuery ? t("No organizations match your search") : t("No organizations found")}
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
+      </TableShell>
+      <div className="mt-3">
         <Pagination
           table={paginationController}
           data={

@@ -4,16 +4,17 @@ import { useExtracted } from "next-intl";
 import round from "lodash/round";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import { useState } from "react";
-import { FunnelResponse, FunnelStep } from "../../../../api/analytics/endpoints";
+import { FunnelResponse, FunnelStep, FunnelStepType } from "../../../../api/analytics/endpoints";
 import { useGetFunnelStepSessions } from "../../../../api/analytics/hooks/funnels/useGetFunnelStepSessions";
-import { EventIcon, PageviewIcon } from "../../../../components/EventIcons";
+import { EventTypeIcon } from "../../../../components/EventIcons";
+import { targetTypeToEventType } from "../../../../lib/events";
 import { SessionsList } from "../../../../components/Sessions/SessionsList";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../../../components/ui/tabs";
 import { useStore } from "../../../../lib/store";
 
 export type FunnelChartData = {
   stepName: string;
-  visitors: number;
+  sessions: number;
   conversionRate: number;
   dropoffRate: number;
   stepNumber: number;
@@ -40,6 +41,16 @@ interface FunnelStepComponentProps {
 
 function FunnelStepComponent({ step, index, steps, chartData, firstStep, siteId }: FunnelStepComponentProps) {
   const t = useExtracted();
+
+  const stepTypeLabels: Record<FunnelStepType, string> = {
+    page: t("Page"),
+    event: t("Event"),
+    outbound: t("Outbound"),
+    button_click: t("Button"),
+    form_submit: t("Form"),
+    copy: t("Copy"),
+  };
+
   const [isExpanded, setIsExpanded] = useState(false);
   const [currentTab, setCurrentTab] = useState<"reached" | "dropped">("reached");
   const [reachedPage, setReachedPage] = useState(1);
@@ -47,12 +58,12 @@ function FunnelStepComponent({ step, index, steps, chartData, firstStep, siteId 
   const { time } = useStore();
 
   const maxBarWidth = 100;
-  const ratio = firstStep?.visitors ? step.visitors / firstStep.visitors : 0;
+  const ratio = firstStep?.sessions ? step.sessions / firstStep.sessions : 0;
   const barWidth = Math.max(ratio * maxBarWidth, 0);
 
   const prevStep = index > 0 ? chartData[index - 1] : null;
-  const droppedFromPrevious = prevStep ? prevStep.visitors - step.visitors : 0;
-  const dropoffPercent = prevStep ? (droppedFromPrevious / prevStep.visitors) * 100 : 0;
+  const droppedFromPrevious = prevStep ? prevStep.sessions - step.sessions : 0;
+  const dropoffPercent = prevStep ? (droppedFromPrevious / prevStep.sessions) * 100 : 0;
   const isFirstStep = index === 0;
 
   // Fetch sessions for "reached" mode
@@ -110,8 +121,8 @@ function FunnelStepComponent({ step, index, steps, chartData, firstStep, siteId 
           {step.stepNumber}
         </div>
         <div className="font-medium text-sm flex items-center gap-2 flex-1">
-          {steps[index]?.type === "page" ? <PageviewIcon /> : <EventIcon />}
-          {step.stepName}
+          <EventTypeIcon type={targetTypeToEventType(steps[index]?.type || "event")} />
+          {step.stepName || stepTypeLabels[steps[index]?.type || "event"]}
         </div>
         <div className="shrink-0">
           {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
@@ -123,7 +134,7 @@ function FunnelStepComponent({ step, index, steps, chartData, firstStep, siteId 
         {/* Metrics */}
         <div className="shrink-0 min-w-[130px] mr-4 space-y-1">
           <div className="flex items-baseline">
-            <span className="text-base font-semibold">{step.visitors.toLocaleString()}</span>
+            <span className="text-base font-semibold">{step.sessions.toLocaleString()}</span>
             <span className="text-sm text-neutral-500 dark:text-neutral-400 ml-1">{t("sessions")}</span>
           </div>
           {index !== 0 && (
@@ -140,7 +151,7 @@ function FunnelStepComponent({ step, index, steps, chartData, firstStep, siteId 
             <div
               className="absolute h-full rounded-md"
               style={{
-                width: `${(step.visitors / prevStep.visitors) * 100}%`,
+                width: `${(step.sessions / prevStep.sessions) * 100}%`,
                 background: `repeating-linear-gradient(
                     45deg,
                     rgba(16, 185, 129, 0.25),
@@ -164,7 +175,7 @@ function FunnelStepComponent({ step, index, steps, chartData, firstStep, siteId 
         <div className=" ml-4 p-4">
           <Tabs value={currentTab} onValueChange={val => setCurrentTab(val as "reached" | "dropped")}>
             <TabsList className="mb-1">
-              <TabsTrigger value="reached">{t("Reached ({count})", { count: step.visitors.toLocaleString() })}</TabsTrigger>
+              <TabsTrigger value="reached">{t("Reached ({count})", { count: step.sessions.toLocaleString() })}</TabsTrigger>
               {!isFirstStep && (
                 <TabsTrigger value="dropped">{t("Dropped Off ({count})", { count: droppedFromPrevious.toLocaleString() })}</TabsTrigger>
               )}
@@ -210,7 +221,7 @@ export function Funnel({ data, steps, isError, error, isPending }: FunnelProps) 
   const chartData =
     data?.map(step => ({
       stepName: step.step_name,
-      visitors: step.visitors,
+      sessions: step.sessions,
       conversionRate: step.conversion_rate,
       dropoffRate: step.dropoff_rate,
       stepNumber: step.step_number,

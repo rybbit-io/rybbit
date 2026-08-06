@@ -3,13 +3,41 @@ title: React Native
 description: Official React Native SDK for Rybbit Analytics
 ---
 
+import { Callout } from 'fumadocs-ui/components/callout';
+
+The `@rybbit/react-native` SDK lets you track screens, events, errors, and users in React Native apps. Mobile sites get an App Analytics dashboard mode with mobile-specific labels (e.g. screen views instead of pageviews).
+
+## Creating a Mobile App Site
+
+Before installing the SDK, create a site for your app in the Rybbit dashboard:
+
+1. Click **Add Site** and select the **React Native app** option instead of Website.
+2. Enter an app identifier (e.g. `com.example.app`). Letters, numbers, dots, hyphens, and underscores are allowed.
+3. Copy the Site ID — you'll pass it to `init()`.
+
 ## Installation
 
 ```bash
 npm install @rybbit/react-native @react-native-async-storage/async-storage
 ```
 
+<Callout type="info">
+`@react-native-async-storage/async-storage` is recommended but not strictly required. The SDK accepts any storage adapter with `getItem`/`setItem`/`removeItem`. Without one, it falls back to in-memory storage and the anonymous visitor ID will not persist across app launches, so every launch counts as a new visitor.
+</Callout>
+
 ## Initialization
+
+<Callout type="warning">
+`rybbit.init()` **must** be called once before any other tracking methods. Calling other methods first throws an error.
+</Callout>
+
+### Syntax
+
+```typescript
+async rybbit.init(config: RybbitConfig): Promise<void>;
+```
+
+### Example
 
 ```tsx
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -19,31 +47,250 @@ await rybbit.init({
   analyticsHost: "https://app.rybbit.io/api",
   siteId: "1",
   appIdentifier: "com.example.app",
+  appVersion: "1.4.2",
   storage: AsyncStorage,
   initialScreenName: "Home",
 });
 ```
 
-## Track Events
+### Configuration Options
+
+#### Required Options
+
+| Option          | Type               | Description                                                                        |
+| :-------------- | :----------------- | :--------------------------------------------------------------------------------- |
+| `analyticsHost` | `string`           | URL of your Rybbit instance's API (e.g., `https://rybbit.yourdomain.com/api`).     |
+| `siteId`        | `string \| number` | The Site ID for your app obtained from your Rybbit instance.                       |
+
+#### Optional Options
+
+| Option                  | Type            | Default     | Description                                                                                                                                 |
+| :---------------------- | :-------------- | :---------- | :------------------------------------------------------------------------------------------------------------------------------------------ |
+| `appIdentifier`         | `string`        | `""`        | Identifier for your app (e.g., `com.example.app`). Used as the hostname in tracked data. Falls back to `bundleId`, then the site ID.        |
+| `bundleId`              | `string`        | `""`        | Alias for `appIdentifier`; used when `appIdentifier` is not set.                                                                            |
+| `appVersion`            | `string`        | `""`        | Your app's version. Appended to the synthetic user agent sent with each event.                                                              |
+| `tag`                   | `string`        | `""`        | A tag added to every event, useful for segmenting data (e.g., by environment or build channel).                                             |
+| `storage`               | `RybbitStorage` | in-memory   | Storage adapter used to persist the anonymous visitor ID and identified user ID. Pass `AsyncStorage` or any compatible object.              |
+| `storageKeyPrefix`      | `string`        | `"@rybbit"` | Prefix for storage keys. Keys are namespaced per site: `{prefix}:{siteId}:anonymous-id`.                                                    |
+| `debug`                 | `boolean`       | `false`     | Log SDK warnings (failed requests, config fetch failures) to the console.                                                                   |
+| `autoTrackAppLifecycle` | `boolean`       | `true`      | Automatically track `app_open` and `app_background` events on `AppState` changes. See [App Lifecycle Events](#app-lifecycle-events).        |
+| `initialScreenName`     | `string`        | `""`        | If set, a screen view for this name is tracked during `init()` (unless Track Initial Pageview is disabled in your dashboard).               |
+| `configTimeoutMs`       | `number`        | `3000`      | Timeout in milliseconds for fetching remote tracking config during `init()`. On timeout or failure, the SDK proceeds with defaults.         |
+| `maxQueueSize`          | `number`        | `100`       | Maximum number of failed events kept in the in-memory retry queue. See [Offline Handling](#offline-handling-and-retries).                   |
+| `fetch`                 | `typeof fetch`  | global      | Custom `fetch` implementation. Defaults to the global `fetch`.                                                                              |
+
+#### Remote Configuration
+
+During `init()`, the SDK fetches your site's tracking settings from the dashboard. Two of them affect the React Native SDK:
+
+| Dashboard Setting      | Effect                                                                       |
+| :--------------------- | :---------------------------------------------------------------------------- |
+| Track Initial Pageview | When disabled, the `initialScreenName` screen view is not tracked on init.    |
+| Capture Errors         | When disabled, calls to `rybbit.error()` are silently ignored.                |
+
+Web-only settings (session replay, Web Vitals, outbound links, autocapture) do not apply to mobile apps.
+
+## Tracking Screens
+
+Screens are the mobile equivalent of pageviews. Each screen view is tracked with the screen name as both the path and title.
+
+### Syntax
+
+```typescript
+rybbit.screen(name: string, properties?: TrackProperties, context?: TrackContext): Promise<void>;
+```
+
+### Parameters
+
+- **`name`** (`string`, Required): The screen name (e.g., `"Home"`, `"Checkout"`). Used as the pathname (`/Home`) and page title.
+- **`properties`** (`object`, Optional): Additional key-value pairs attached to the screen view.
+- **`context`** (`object`, Optional): Overrides for the tracked payload. See [Track Context](#track-context).
+
+### Example
 
 ```tsx
-await rybbit.event("signup_started", { plan: "pro" });
-await rybbit.identify("user_123", { plan: "pro" });
-await rybbit.error(error);
+await rybbit.screen("Checkout");
+
+// With properties and an explicit path
+await rybbit.screen("Product", { productId: "sku-123" }, { pathname: "/products/sku-123" });
+```
+
+You can also track a raw path directly, mirroring the web SDK:
+
+```typescript
+rybbit.pageview(path?: string, context?: TrackContext): Promise<void>;
 ```
 
 ## React Navigation
 
+The SDK ships a navigation tracker that hooks into React Navigation's `NavigationContainer` and automatically tracks a screen view whenever the active route changes. Consecutive events for the same route name are deduplicated.
+
 ```tsx
+import { NavigationContainer, useNavigationContainerRef } from "@react-navigation/native";
+import rybbit from "@rybbit/react-native";
+
 const navigationTracker = rybbit.createNavigationTracker();
 
-<NavigationContainer
-  ref={navigationRef}
-  onReady={() => navigationTracker.onReady(navigationRef.current)}
-  onStateChange={() => navigationTracker.onStateChange(navigationRef.current)}
->
-  {/* screens */}
-</NavigationContainer>
+function App() {
+  const navigationRef = useNavigationContainerRef();
+
+  return (
+    <NavigationContainer
+      ref={navigationRef}
+      onReady={() => navigationTracker.onReady(navigationRef)}
+      onStateChange={() => navigationTracker.onStateChange(navigationRef)}
+    >
+      {/* screens */}
+    </NavigationContainer>
+  );
+}
 ```
 
-Session replay and Web Vitals are web-only features and are not available for React Native apps.
+### Options
+
+```typescript
+rybbit.createNavigationTracker(options?: NavigationTrackerOptions): NavigationTracker;
+```
+
+| Option              | Type                    | Default                          | Description                                                                       |
+| :------------------ | :---------------------- | :------------------------------- | :--------------------------------------------------------------------------------- |
+| `includeRouteParams`| `boolean`               | `false`                          | Include the route's params as a `routeParams` property on the screen view.        |
+| `getRouteName`      | `(route) => string`     | `route.name`                     | Customize how the screen name is derived from the current route.                  |
+| `getPath`           | `(route) => string`     | `route.path` or `route.name`     | Customize the tracked pathname for the current route.                             |
+
+The returned tracker exposes `onReady`, `onStateChange`, and `trackCurrentRoute` — all take the navigation ref and track the current route if it changed. It works with any navigation library whose ref exposes a `getCurrentRoute()` method.
+
+<Callout type="warning">
+Route params can contain sensitive data (IDs, tokens, emails). Only enable `includeRouteParams` if your route params are safe to store in analytics.
+</Callout>
+
+## Tracking Custom Events
+
+### Syntax
+
+```typescript
+rybbit.event(name: string, properties?: TrackProperties, context?: TrackContext): Promise<void>;
+```
+
+### Parameters
+
+- **`name`** (`string`, Required): The name of the event you want to track.
+- **`properties`** (`object`, Optional): Additional key-value pairs related to the event.
+
+### Example
+
+```tsx
+await rybbit.event("signup_started", { plan: "pro" });
+
+await rybbit.event("purchase_completed", {
+  orderId: "order-123",
+  total: 49.99,
+  currency: "USD",
+});
+```
+
+## Error Tracking
+
+Capture handled errors with additional context. Error tracking must be enabled in your Rybbit dashboard (Capture Errors) — when disabled, `error()` calls are ignored.
+
+### Syntax
+
+```typescript
+rybbit.error(error: Error | unknown, properties?: TrackProperties, context?: TrackContext): Promise<void>;
+```
+
+Non-`Error` values are converted to an `Error`. The message is truncated to 500 characters and the stack trace to 2,000.
+
+### Example
+
+```tsx
+try {
+  await processPayment(order);
+} catch (error) {
+  await rybbit.error(error, { component: "checkout", orderId: order.id });
+  showErrorMessage();
+}
+```
+
+<Callout type="info">
+Unlike the web SDK, the React Native SDK does not automatically capture uncaught exceptions — wrap the code you care about and call `rybbit.error()` yourself.
+</Callout>
+
+## User Identification
+
+Associate events with a user ID and optional traits. The ID is persisted through the configured storage adapter and attached to all subsequent events.
+
+```typescript
+rybbit.identify(userId: string, traits?: Record<string, unknown>): Promise<void>;
+rybbit.setTraits(traits: Record<string, unknown>): Promise<void>;
+rybbit.clearUserId(): Promise<void>;
+rybbit.getUserId(): string | null;
+```
+
+```tsx
+// After login
+await rybbit.identify("user_123", { plan: "pro", signupDate: "2026-01-15" });
+
+// Update traits later without changing the ID
+await rybbit.setTraits({ plan: "enterprise" });
+
+// After logout
+await rybbit.clearUserId();
+```
+
+<Callout type="info">
+`setTraits()` throws if no user has been identified yet — call `identify()` first.
+</Callout>
+
+## App Lifecycle Events
+
+With `autoTrackAppLifecycle` enabled (the default), the SDK listens to React Native's `AppState` and tracks:
+
+- **`app_open`** — when the app launches in the foreground or returns to the foreground from the background.
+- **`app_background`** — when the app leaves the foreground, with a `state` property (`"background"` or `"inactive"`).
+
+Set `autoTrackAppLifecycle: false` in `init()` to disable these events.
+
+## Offline Handling and Retries
+
+Events that fail to send (e.g., no network) are kept in an in-memory queue, capped at `maxQueueSize` (default 100, oldest dropped first). Queued events are retried when `init()` completes and whenever you call:
+
+```typescript
+rybbit.flush(): Promise<void>;
+```
+
+<Callout type="warning">
+The retry queue is in-memory only — events still queued when the app is killed are lost.
+</Callout>
+
+## Track Context
+
+All tracking methods accept an optional `context` object to override what's sent with that event:
+
+| Field           | Type     | Description                                                     |
+| :-------------- | :------- | :--------------------------------------------------------------- |
+| `appIdentifier` | `string` | Override the hostname for this event.                            |
+| `pathname`      | `string` | Override the tracked path.                                       |
+| `querystring`   | `string` | Query string to attach to the event.                             |
+| `screen`        | `string` | Screen name, used as the path/title fallback.                    |
+| `title`         | `string` | Override the page title.                                         |
+| `referrer`      | `string` | Referrer value (empty by default on mobile).                     |
+| `language`      | `string` | Override the detected device locale.                             |
+| `userAgent`     | `string` | Override the synthetic user agent.                               |
+
+Device locale, screen dimensions, and a platform-appropriate user agent (including your `appVersion`) are detected automatically.
+
+## Cleanup
+
+Removes the `AppState` lifecycle listener. Call it if you tear down the SDK, e.g. in tests or when unmounting your app root.
+
+```typescript
+rybbit.cleanup(): void;
+```
+
+## Differences from the Web SDK
+
+- **Session replay** and **Web Vitals** are web-only and not available for React Native apps.
+- No automatic outbound link, button click, form, or copy tracking (there is no DOM).
+- Uncaught errors are not captured automatically — use `rybbit.error()` in your own error boundaries and catch blocks.
+- The anonymous visitor ID is generated by the SDK and persisted via your storage adapter, rather than derived from browser fingerprinting.

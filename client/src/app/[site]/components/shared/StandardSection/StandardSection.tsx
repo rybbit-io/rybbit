@@ -30,6 +30,7 @@ export type StandardSectionBaseProps = {
   hasSubrow?: boolean;
   getSubrowLabel?: (item: MetricResponse) => ReactNode;
   customFilters?: Filter[];
+  additionalFilters?: Filter[];
   customTime?: Time;
   lite?: boolean;
 };
@@ -54,6 +55,7 @@ export function StandardSection({
   hasSubrow,
   getSubrowLabel,
   customFilters,
+  additionalFilters,
   customTime,
   lite = false,
   renderDialog = true,
@@ -64,6 +66,7 @@ export function StandardSection({
       parameter: filterParameter,
       limit: 100,
       customFilters,
+      additionalFilters,
       customTime,
       lite,
     });
@@ -77,7 +80,21 @@ export function StandardSection({
     rootMargin: "0px 0px 200px 0px",
   });
 
-  const itemsForDisplay = useMemo(() => data?.pages.flatMap(page => page.data), [data]);
+  // Dedupe by key across pages: offset pagination can return the same row on
+  // two pages when the underlying data shifts between fetches, which would
+  // render duplicate React keys.
+  const itemsForDisplay = useMemo(() => {
+    if (!data) return undefined;
+    const seen = new Set<string>();
+    return data.pages
+      .flatMap(page => page.data)
+      .filter(item => {
+        const key = getKey(item);
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+  }, [data, getKey]);
 
   useEffect(() => {
     if (entry?.isIntersecting && hasNextPage && !isFetchingNextPage && !isLoading) {
@@ -171,6 +188,7 @@ export function StandardSection({
                 expanded={expanded}
                 close={close}
                 customFilters={customFilters}
+                additionalFilters={additionalFilters}
                 customTime={customTime}
                 lite={lite}
               />

@@ -9,11 +9,7 @@ import { IS_CLOUD } from "../../lib/const.js";
  * Check if AppSumo integration is enabled
  */
 function isAppSumoEnabled(): boolean {
-  return (
-    IS_CLOUD &&
-    !!process.env.APPSUMO_CLIENT_ID &&
-    !!process.env.APPSUMO_CLIENT_SECRET
-  );
+  return IS_CLOUD && !!process.env.APPSUMO_CLIENT_ID && !!process.env.APPSUMO_CLIENT_SECRET;
 }
 
 /**
@@ -127,7 +123,7 @@ export async function activateAppSumoLicense(
     try {
       tokenData = await exchangeCodeForToken(code);
     } catch (error) {
-      console.error("Error exchanging code for token:", error);
+      request.log.error({ err: error }, "Error exchanging code for token");
       return reply.status(400).send({
         error: "Failed to exchange authorization code",
         message: error instanceof Error ? error.message : "Unknown error",
@@ -139,7 +135,7 @@ export async function activateAppSumoLicense(
     try {
       licenseData = await fetchLicenseKey(tokenData.accessToken);
     } catch (error) {
-      console.error("Error fetching license key:", error);
+      request.log.error({ err: error }, "Error fetching license key");
       return reply.status(400).send({
         error: "Failed to fetch license key",
         message: error instanceof Error ? error.message : "Unknown error",
@@ -204,7 +200,7 @@ export async function activateAppSumoLicense(
       },
     });
   } catch (error) {
-    console.error("Error activating AppSumo license:", error);
+    request.log.error({ err: error }, "Error activating AppSumo license");
     return reply.status(500).send({
       error: "Internal server error",
       message: error instanceof Error ? error.message : "Unknown error",

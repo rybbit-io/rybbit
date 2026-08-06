@@ -4,6 +4,7 @@ export { deleteSite } from "./deleteSite.js";
 export { getSite } from "./getSite.js";
 export { getSiteHasData } from "./getSiteHasData.js";
 export { getSiteIsPublic } from "./getSiteIsPublic.js";
+export { getSiteUsage } from "./getSiteUsage.js";
 export { getEmbedStats } from "./getEmbedStats.js";
 export { getSitesFromOrg } from "./getSitesFromOrg.js";
 export { moveSite } from "./moveSite.js";
@@ -19,6 +20,8 @@ export {
   getSiteExcludedPaths,
   getSiteExcludedHostnames,
   getSiteExcludedUserAgents,
+  getSiteExcludedASNs,
+  getSiteExcludedQueryParams,
 } from "./getSiteExclusions.js";
 
 // Site Imports

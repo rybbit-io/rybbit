@@ -203,7 +203,7 @@ export async function getMonitorUptimeBuckets(
         details: zodError.errors,
       });
     }
-    console.error("Error retrieving monitor uptime buckets:", error);
+    request.log.error({ err: error }, "Error retrieving monitor uptime buckets");
     return reply.status(500).send({ error: "Internal server error" });
   }
 }

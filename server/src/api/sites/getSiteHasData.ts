@@ -21,7 +21,7 @@ export async function getSiteHasData(request: FastifyRequest<{ Params: { siteId:
       hasData,
     };
   } catch (error) {
-    console.error("Error checking if site has data:", error);
+    request.log.error({ err: error }, "Error checking if site has data");
     return reply.status(500).send({ error: "Internal server error" });
   }
 }

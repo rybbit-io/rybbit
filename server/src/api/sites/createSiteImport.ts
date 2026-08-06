@@ -95,11 +95,11 @@ export async function createSiteImport(request: FastifyRequest<CreateSiteImportR
       });
     } catch (error) {
       importQuotaManager.completeImport(organizationId);
-      console.error("Error creating import:", error);
+      request.log.error({ err: error }, "Error creating import");
       return reply.status(500).send({ error: "Internal server error" });
     }
   } catch (error) {
-    console.error("Error creating import:", error);
+    request.log.error({ err: error }, "Error creating import");
     return reply.status(500).send({ error: "Internal server error" });
   }
 }

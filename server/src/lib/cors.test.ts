@@ -18,6 +18,7 @@ async function buildCorsTestApp(env: NodeJS.ProcessEnv) {
   app.delete("/api/sites/:siteId", async () => ({ success: true }));
   app.get("/api/sites/:siteId/sessions", async () => ({ data: [] }));
   app.post("/api/track", async () => ({ success: true }));
+  app.post("/api/mcp", async () => ({ success: true }));
   app.get("/api/version", async () => ({ version: "0.0.0" }));
 
   await app.ready();
@@ -144,6 +145,48 @@ describe("CORS policy", () => {
     }
   });
 
+  it("treats /api/mcp like other authenticated routes: trusted origins or no Origin at all", async () => {
+    const app = await buildCorsTestApp({
+      NODE_ENV: "production",
+      BASE_URL: "https://rybbit.example.com",
+    });
+
+    try {
+      const preflight = await app.inject({
+        method: "OPTIONS",
+        url: "/api/mcp",
+        headers: {
+          origin: "https://rybbit.example.com",
+          "access-control-request-method": "POST",
+          "access-control-request-headers": "Authorization,MCP-Protocol-Version",
+        },
+      });
+      expect(preflight.statusCode).toBe(204);
+      expect(preflight.headers["access-control-allow-origin"]).toBe("https://rybbit.example.com");
+      expect(preflight.headers["access-control-allow-headers"]).toContain("MCP-Protocol-Version");
+
+      const untrusted = await app.inject({
+        method: "POST",
+        url: "/api/mcp",
+        headers: { origin: "https://attacker.example" },
+      });
+      expect(untrusted.statusCode).toBe(403);
+
+      const opaqueOrigin = await app.inject({
+        method: "POST",
+        url: "/api/mcp",
+        headers: { origin: "null" },
+      });
+      expect(opaqueOrigin.statusCode).toBe(403);
+
+      // Server-side MCP clients send no Origin header and pass through.
+      const serverSideClient = await app.inject({ method: "POST", url: "/api/mcp" });
+      expect(serverSideClient.statusCode).toBe(200);
+    } finally {
+      await app.close();
+    }
+  });
+
   it("allows public session-list requests without credentials", async () => {
     const app = await buildCorsTestApp({
       NODE_ENV: "production",
@@ -212,4 +255,5 @@ describe("trusted CORS origins", () => {
       })
     ).toEqual(["https://rybbit.example.com", "http://localhost:3002", "http://127.0.0.1:3002"]);
   });
+
 });

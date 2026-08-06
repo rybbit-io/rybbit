@@ -128,7 +128,7 @@ export function ReplayCard({ replay, onSelect }: { replay: SessionReplayListItem
         <span className="text-xs font-medium text-neutral-800 dark:text-neutral-200 truncate min-w-0">
           {getUserDisplayName(replay)}
         </span>
-        {replay.identified_user_id && <IdentifiedBadge traits={replay.traits} />}
+        {replay.identified_user_id && <IdentifiedBadge traits={replay.traits} userId={replay.identified_user_id} />}
 
         <AlertDialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <AlertDialogTrigger asChild>

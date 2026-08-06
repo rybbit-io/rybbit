@@ -146,7 +146,7 @@ export function TraitValueUsersList({
               </span>
             </Link>
             <div className="flex items-center gap-1.5 shrink-0">
-              {isIdentified && <IdentifiedBadge traits={user.traits} />}
+              {isIdentified && <IdentifiedBadge traits={user.traits} userId={user.identified_user_id} />}
               <CountryFlagTooltipIcon
                 country={user.country || ""}
                 city={user.city || ""}

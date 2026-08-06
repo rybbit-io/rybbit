@@ -1,9 +1,9 @@
-import { useQuery } from "@tanstack/react-query";
+import { Filter } from "@rybbit/shared";
 import { Time } from "../../../components/DateSelector/types";
 import { JOURNEY_PAGE_FILTERS } from "../../../lib/filterGroups";
-import { getFilteredFilters, useStore } from "../../../lib/store";
-import { buildApiParams } from "../../utils";
-import { fetchJourneys, Journey, JourneysResponse } from "../endpoints";
+import { getFilteredFilters } from "../../../lib/store";
+import { fetchJourneys, JourneysParams as JourneysApiParams, JourneysResponse } from "../endpoints";
+import { useAnalyticsQuery } from "../useAnalyticsQuery";
 
 export interface JourneyParams {
   siteId?: number;
@@ -12,23 +12,24 @@ export interface JourneyParams {
   time: Time;
   limit?: number;
   stepFilters?: Record<number, string>;
+  // Merged with the store filters (e.g. scoping journeys to a single user)
+  additionalFilters?: Filter[];
 }
 
-export const useJourneys = ({ siteId, steps = 3, time, limit = 100, stepFilters }: JourneyParams) => {
-  const { timezone } = useStore();
+export const useJourneys = ({ siteId, steps = 3, time, limit = 100, stepFilters, additionalFilters }: JourneyParams) => {
   const filteredFilters = getFilteredFilters(JOURNEY_PAGE_FILTERS);
-  const params = buildApiParams(time, { filters: filteredFilters });
+  const combinedFilters = additionalFilters?.length ? [...filteredFilters, ...additionalFilters] : filteredFilters;
 
-  return useQuery<JourneysResponse>({
-    queryKey: ["journeys", siteId, steps, time, limit, filteredFilters, stepFilters, timezone],
-    queryFn: () =>
-      fetchJourneys(siteId!, {
-        ...params,
-        steps,
-        limit,
-        stepFilters,
-      }),
-    enabled: !!siteId,
-    placeholderData: previousData => previousData,
+  return useAnalyticsQuery<JourneysResponse, JourneysApiParams>({
+    key: "journeys",
+    site: siteId,
+    overrideTime: time,
+    // customFilters fall back to the store filters when empty; disable filters
+    // entirely instead so an empty page-filter set stays unfiltered.
+    useFilters: combinedFilters.length > 0,
+    customFilters: combinedFilters,
+    extraParams: { steps, limit, stepFilters },
+    enabled: siteId !== undefined,
+    fetch: (site, params) => fetchJourneys(site, params),
   });
 };

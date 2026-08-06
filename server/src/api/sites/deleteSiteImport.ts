@@ -91,7 +91,7 @@ export async function deleteSiteImport(request: FastifyRequest<DeleteImportReque
 
     return reply.send();
   } catch (error) {
-    console.error("Error deleting import:", error);
+    request.log.error({ err: error }, "Error deleting import");
     return reply.status(500).send({ error: "Internal server error" });
   }
 }

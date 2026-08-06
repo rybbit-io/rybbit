@@ -166,7 +166,12 @@ describe("checkBotBlocking", () => {
       request: requestWithHeaders({ "user-agent": "okhttp/4.12.0" }),
       blockBots: true,
       isMobileSite: true,
-      payload: { ...basePayload, userAgent: "okhttp/4.12.0", clientBotScore: 5 },
+      payload: {
+        ...basePayload,
+        userAgent: "okhttp/4.12.0",
+        clientBotScore: 3,
+        clientBotSignalMask: clientBotSignalMasks.automationApi,
+      },
     });
 
     expect(result).toMatchObject({
@@ -299,6 +304,127 @@ describe("checkBotBlocking", () => {
     expect(result?.detections[0]).toMatchObject({
       clientSignals: ["defaultViewport1024x768"],
     });
+  });
+
+  it("convicts the 1280x1200 headless window geometry on a desktop UA", async () => {
+    const result = await checkBotBlocking({
+      request: requestWithHeaders({
+        ...browserHeaders,
+        "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/116 Safari/537.36",
+      }),
+      blockBots: true,
+      payload: {
+        ...basePayload,
+        clientBotScore: 0,
+        clientBotSignalMask: 0,
+        screenWidth: 1280,
+        screenHeight: 1200,
+      },
+    });
+
+    expect(result?.detections.map(detection => detection.layer)).toEqual(["client_signals"]);
+    expect(result?.detections[0]).toMatchObject({
+      clientSignals: ["defaultViewport1280x1200"],
+    });
+  });
+
+  it("leaves 1280x1200 alone on a mobile UA, where it is not a headless tell", async () => {
+    const result = await checkBotBlocking({
+      request: requestWithHeaders({
+        ...browserHeaders,
+        "user-agent":
+          "Mozilla/5.0 (iPhone; CPU iPhone OS 18_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.5 Mobile/15E148 Safari/604.1",
+      }),
+      blockBots: true,
+      payload: {
+        ...basePayload,
+        clientBotScore: 0,
+        clientBotSignalMask: 0,
+        screenWidth: 1280,
+        screenHeight: 1200,
+      },
+    });
+
+    expect(result).toBeNull();
+  });
+
+  it("does not convict on weak client signals alone", async () => {
+    // zeroOuterDimensions (2) + swiftShader (1) reaches the score threshold,
+    // but both occur on real devices (prerendering, low-end GPUs) — weak
+    // signals corroborate, never convict.
+    const result = await checkBotBlocking({
+      request: requestWithHeaders(browserHeaders),
+      blockBots: true,
+      payload: {
+        ...basePayload,
+        clientBotScore: 3,
+        clientBotSignalMask: clientBotSignalMasks.zeroOuterDimensions | clientBotSignalMasks.swiftShader,
+      },
+    });
+
+    expect(result).toBeNull();
+  });
+
+  it("does not convict on a client score sent without a signal mask", async () => {
+    // Without the mask the score cannot be decomposed into strong vs. weak
+    // signals, so it can only ever corroborate.
+    const result = await checkBotBlocking({
+      request: requestWithHeaders(browserHeaders),
+      blockBots: true,
+      payload: { ...basePayload, clientBotScore: 5 },
+    });
+
+    expect(result).toBeNull();
+  });
+
+  it("uses weak client signals as supporting evidence when another layer matched", async () => {
+    const result = await checkBotBlocking({
+      request: requestWithHeaders({
+        ...browserHeaders,
+        "user-agent":
+          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/120.0.0.0 Safari/537.36",
+      }),
+      blockBots: true,
+      payload: {
+        ...basePayload,
+        clientBotScore: 3,
+        clientBotSignalMask: clientBotSignalMasks.zeroOuterDimensions | clientBotSignalMasks.swiftShader,
+      },
+    });
+
+    expect(result).toMatchObject({
+      isBot: true,
+      message: "Bot detected using ua-pattern",
+      eventProperties: {
+        detectedUaPattern: true,
+        detectedClientSignals: true,
+        clientBotScore: 3,
+        clientSignalMask: clientBotSignalMasks.zeroOuterDimensions | clientBotSignalMasks.swiftShader,
+      },
+    });
+    expect(result?.detections.map(detection => detection.layer)).toContain("client_signals");
+  });
+
+  it("does not let two supporting signals convict each other", async () => {
+    // Weak client signals + generic hosting ASN are both supporting-only;
+    // together they still must not convict.
+    vi.mocked(lookupAsn).mockReturnValue({
+      asn: 16509,
+      organization: "Amazon.com, Inc.",
+    });
+
+    const result = await checkBotBlocking({
+      request: requestWithHeaders(browserHeaders),
+      blockBots: true,
+      payload: {
+        ...basePayload,
+        ipAddress: "18.0.0.1",
+        clientBotScore: 3,
+        clientBotSignalMask: clientBotSignalMasks.zeroOuterDimensions | clientBotSignalMasks.swiftShader,
+      },
+    });
+
+    expect(result).toBeNull();
   });
 
   it("does not block generic hosting ASN by itself", async () => {

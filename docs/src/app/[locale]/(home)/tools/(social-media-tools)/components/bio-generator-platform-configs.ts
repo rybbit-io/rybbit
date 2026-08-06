@@ -402,6 +402,8 @@ Great Spotify bios tell your musical journey, describe your sound and influences
   },
 };
 
-export const bioGeneratorPlatformList = Object.values(
-  bioGeneratorPlatformConfigs
+// Retired 2026-07-18 (off-brand / no organic traffic) — pages 301 → /tools via next.config.mjs.
+const RETIRED_PLATFORMS = ["mastodon", "medium"];
+export const bioGeneratorPlatformList = Object.values(bioGeneratorPlatformConfigs).filter(
+  p => !RETIRED_PLATFORMS.includes(p.id)
 );

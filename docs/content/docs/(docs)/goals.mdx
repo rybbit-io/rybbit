@@ -1,13 +1,13 @@
 ---
 title: Goals
-description: Track conversions by monitoring page visits and custom events
+description: Track conversions from page visits, custom events, and autocaptured interactions
 ---
 import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
 import { Step, Steps } from 'fumadocs-ui/components/steps';
 
 ![Goals Dashboard](/docs/goals/1.png)
 
-Goals let you define specific actions — visiting a page or triggering an event — and measure how often your visitors complete them. Each goal tracks a conversion rate against total sessions, giving you a clear picture of how effectively your site drives key outcomes.
+Goals let you define specific actions — from visiting a page to clicking a button — and measure how often your visitors complete them. Each goal tracks a conversion rate against total sessions, giving you a clear picture of how effectively your site drives key outcomes.
 
 ## Creating a Goal
 
@@ -18,21 +18,17 @@ Goals let you define specific actions — visiting a page or triggering an event
 Every goal has:
 
 - **Name** (optional) — A friendly label like "Completed Checkout" or "Signed Up"
-- **Type** — Either **Page Goal** or **Event Goal**
-- **Value** — The path pattern (for page goals) or event name (for event goals)
-
-<Callout type="warn" title="Goal type is permanent">
-You cannot change a goal's type after creation. If you need a different type, create a new goal.
-</Callout>
+- **Type** — Page, custom event, outbound link, button click, form submission, or copied text
+- **Value** — A required path or custom event name, or an optional pattern that narrows an autocaptured interaction
 
 </Step>
 <Step>
 ### Choose a Goal Type
 
-There are two types of goals: **Page Goals** and **Event Goals**.
+There are six goal types. Page and custom event goals require a value. For the four autocaptured interaction types, the pattern is optional—leave it empty to count every interaction of that type.
 
-<Tabs items={['Page Goals', 'Event Goals']}>
-<Tab value="Page Goals">
+<Tabs items={['Page', 'Custom Event', 'Outbound Link', 'Button Click', 'Form Submit', 'Copy']}>
+<Tab value="Page">
 Page goals track when a user visits a URL matching a given path pattern.
 
 - The value must be a path starting with `/` (not a full URL)
@@ -43,12 +39,47 @@ Page goals track when a user visits a URL matching a given path pattern.
 The form provides autocomplete suggestions based on actual paths seen on your site.
 
 </Tab>
-<Tab value="Event Goals">
-Event goals track when a custom event with a specific name is fired. The value is the event name (e.g., `signup_clicked`, `purchase_completed`).
+<Tab value="Custom Event">
+Custom event goals track when an event with a specific name is fired. The value is the event name (e.g., `signup_clicked`, `purchase_completed`).
 
 Events must be tracked using the Rybbit tracking script. See [Track Events](/docs/track-events) for setup instructions.
 </Tab>
+<Tab value="Outbound Link">
+Outbound link goals track clicks on links that lead away from your site.
+
+- Enter a destination URL pattern such as `https://example.com/pricing` or `https://*.example.com/**`
+- Leave the pattern empty to count clicks to any external URL
+
+Outbound link tracking is enabled by default.
+</Tab>
+<Tab value="Button Click">
+Button click goals track clicks on buttons, button/submit inputs, and elements with `role="button"`.
+
+- Enter a visible button-text pattern such as `Sign Up` or `Start * Trial`
+- Leave the pattern empty to count any button click
+
+Buttons that already use `data-rybbit-event` are recorded as custom events instead.
+</Tab>
+<Tab value="Form Submit">
+Form submit goals track submissions of HTML forms.
+
+- Enter a form name or ID pattern such as `signup-form`
+- The pattern can also match the form's action URL
+- Leave the pattern empty to count any form submission
+</Tab>
+<Tab value="Copy">
+Copy goals track text that visitors copy from your site.
+
+- Enter a copied-text pattern such as `PROMO*`
+- Leave the pattern empty to count any copied text
+</Tab>
 </Tabs>
+
+Autocaptured interaction patterns support wildcards: `*` matches one or more characters and `**` also matches an empty value. The form suggests values already observed on your site.
+
+<Callout type="info" title="Enable autocapture first">
+Button click, form interaction, and copy tracking are disabled by default. Enable the event types you want to use in the **Tracking** tab of your site settings. Only interactions collected after tracking is enabled can count toward a goal. See [Autocapture](/docs/autocapture) for the properties collected with each type.
+</Callout>
 </Step>
 <Step>
 ### Add Property Filters (optional)
@@ -58,7 +89,8 @@ Events must be tracked using the Rybbit tracking script. See [Track Events](/doc
 You can narrow a goal to only count conversions when specific properties match:
 
 - **Page goals** — Filter by URL parameters (e.g., only count visits where `utm_source=adwords`)
-- **Event goals** — Filter by event properties (e.g., only count events where `plan=premium`)
+- **Custom event goals** — Filter by event properties (e.g., only count events where `plan=premium`)
+- **Autocaptured interaction goals** — Filter by captured properties such as `url`, `text`, `formName`, `formId`, or `formAction`
 
 Toggle **Match specific URL parameters** or **Match specific event properties** to add filters. You can add multiple filters per goal — all filters must match for a session to count as a conversion.
 
@@ -91,5 +123,6 @@ Sessions are sorted by most recent first and paginated.
 ---
 
 **Related Documentation:**
+- [Autocapture](/docs/autocapture) — Configure automatically captured interactions
 - [Track Events](/docs/track-events) — Set up custom event tracking
 - [Funnels](/docs/funnels) — Analyze multi-step conversion paths

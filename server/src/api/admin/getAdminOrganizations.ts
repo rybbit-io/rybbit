@@ -4,7 +4,6 @@ import { DateTime } from "luxon";
 import { clickhouse } from "../../db/clickhouse/clickhouse.js";
 import { db } from "../../db/postgres/postgres.js";
 import { member, sites, user } from "../../db/postgres/schema.js";
-import { logger } from "../../lib/logger/logger.js";
 import { getOrganizationSubscriptions } from "../../services/admin/subscriptionService.js";
 
 interface EventCountResult {
@@ -149,7 +148,7 @@ export async function getAdminOrganizations(request: FastifyRequest, reply: Fast
         siteEventMap30d.set(Number(event.site_id), event.total_events);
       }
     } catch (clickhouseError) {
-      logger.warn(clickhouseError as Error, "ClickHouse query failed, continuing without event counts");
+      request.log.warn(clickhouseError as Error, "ClickHouse query failed, continuing without event counts");
     }
 
     // Create map of organization IDs to their sites with event counts
@@ -191,7 +190,7 @@ export async function getAdminOrganizations(request: FastifyRequest, reply: Fast
 
     return reply.status(200).send(enrichedOrganizations);
   } catch (error) {
-    console.error("Get Admin Organizations Error:", error);
+    request.log.error({ err: error }, "Get Admin Organizations Error");
     return reply.status(500).send({
       error: "Failed to fetch organizations data",
       details: error instanceof Error ? error.message : "Unknown error",

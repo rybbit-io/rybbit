@@ -30,7 +30,7 @@ export const capabilities: FeatureCapability[] = [
     icon: <MousePointerClick className="w-5 h-5" />,
     title: "Event-based goals",
     description:
-      "Track conversions triggered by custom events — signups, purchases, downloads, or any interaction you define.",
+      "Track conversions triggered by custom events: signups, purchases, downloads, or any interaction you define.",
   },
   {
     icon: <BarChart3 className="w-5 h-5" />,
@@ -81,7 +81,7 @@ export const howItWorks: HowItWorksStep[] = [
     step: 4,
     title: "Iterate and improve",
     description:
-      "Use goal data alongside funnels and session replay to understand not just how many users convert, but why others don't.",
+      "Use goal data alongside funnels and session replay to understand how many users convert, and why the others don't.",
   },
 ];
 
@@ -108,7 +108,7 @@ export const whoUses: WhoUsesItem[] = [
     icon: <Rocket className="w-6 h-6" />,
     title: "Startup founders",
     description:
-      "Set clear conversion targets and track them without building custom analytics infrastructure. Focus on what moves the needle.",
+      "Set clear conversion targets and track them without building custom analytics infrastructure.",
   },
   {
     icon: <PenTool className="w-6 h-6" />,
@@ -128,7 +128,7 @@ export const faqItems: FAQItem[] = [
   {
     question: "What's the difference between goals and funnels?",
     answer:
-      "Goals track a single conversion point — 'did the user complete this action?' Funnels track a multi-step sequence — 'where did users drop off along the way?' Use goals for simple conversion tracking and funnels when you need to understand the journey to conversion.",
+      "Goals track a single conversion point: 'did the user complete this action?' Funnels track a multi-step sequence: 'where did users drop off along the way?' Use goals for simple conversion tracking and funnels when you need to understand the journey to conversion.",
   },
   {
     question: "Can I set goals based on custom event properties?",

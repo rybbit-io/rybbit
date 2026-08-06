@@ -1,4 +1,5 @@
-import { ComparisonSection, FAQItem, PricingInfo, RelatedResource } from "../components/ComparisonPage";
+import Link from "next/link";
+import { ComparisonSection, DeepDive, FAQItem, PricingInfo, RelatedResource } from "../components/ComparisonPage";
 
 export const umamiComparisonData: ComparisonSection[] = [
   {
@@ -40,7 +41,7 @@ export const umamiComparisonData: ComparisonSection[] = [
       { name: "Script size", rybbitValue: "18KB", competitorValue: "~2KB" },
       { name: "Bypasses ad blockers", rybbitValue: true, competitorValue: true },
       { name: "API access", rybbitValue: true, competitorValue: true },
-      { name: "Starting price", rybbitValue: "$19/mo", competitorValue: "$20/mo" },
+      { name: "Starting price", rybbitValue: "$19/mo", competitorValue: "Free (Hobby)" },
     ],
   },
 ];
@@ -51,7 +52,7 @@ export const umamiExtendedData = {
   introHeading: "Why consider Rybbit over Umami?",
   introParagraphs: [
     "Umami is a popular open-source analytics tool known for its tiny 2KB script and simple, clean interface. It's a solid choice for personal blogs and small sites that just need basic traffic metrics. But Umami's simplicity comes at the cost of advanced features: no session replay, no error tracking, no Web Vitals monitoring, and limited organization support for teams.",
-    "Rybbit shares Umami's open-source DNA and privacy-first values but offers a much deeper feature set. You get session replay to watch how users interact with your site, funnel analysis to find conversion bottlenecks, user journey visualization with Sankey diagrams, and error tracking to catch issues before your users report them. All while maintaining the clean, intuitive dashboard experience that makes simple analytics tools appealing.",
+    "Rybbit shares Umami's open-source DNA and privacy-first values but offers a much deeper feature set. You get session replay to watch how users interact with your site, funnel analysis to find conversion bottlenecks, user journey visualization with Sankey diagrams, and error tracking to catch issues before your users report them, without giving up the clean dashboard that draws people to simpler tools.",
     "On the technical side, Rybbit uses ClickHouse for analytics queries, delivering fast performance even at high traffic volumes. Umami supports PostgreSQL and MySQL for self-hosting, which may be more familiar but can struggle with large datasets. Rybbit also offers a mature managed cloud service, so you don't have to maintain infrastructure if you'd rather not. If you've outgrown Umami's basic metrics and need analytics that can grow with your product, Rybbit is the natural next step.",
   ],
 
@@ -77,7 +78,7 @@ export const umamiExtendedData = {
     model: "Events-based pricing",
     startingPrice: "$19/mo",
     highlights: [
-      "7-day free trial, no credit card required",
+      "7-day free trial, card charged after the trial",
       "All features included on every plan",
       "Session replay available on Pro plan",
       "Unlimited team members",
@@ -86,15 +87,108 @@ export const umamiExtendedData = {
 
   competitorPricing: {
     name: "Umami",
-    model: "Usage-based + flat fee",
-    startingPrice: "$20/mo",
+    model: "Free tier + paid cloud",
+    startingPrice: "Free",
     highlights: [
-      "Hobby plan at $20/mo for 100k events",
-      "Self-hosted version is completely free",
-      "Cloud plans scale with usage",
-      "No free cloud tier available",
+      "Cloud Hobby plan is free forever",
+      "Pro plan at $20/mo for 1M events",
+      "14-day free trial on paid plans",
+      "Self-hosted version is completely free (MIT)",
     ],
   } satisfies PricingInfo,
+
+  deepDive: {
+    title: "Umami vs Rybbit, in depth",
+    sections: [
+      {
+        heading: "Both open source, built for different jobs",
+        paragraphs: [
+          <>
+            This isn&apos;t an open-vs-proprietary comparison: both tools are open source and self-hostable, and
+            that shapes what the real question is. Umami is a deliberately minimal analytics tool: a small,
+            MIT-licensed Node app with a database behind it, famously easy to run yourself, with reporting that stays
+            intentionally lean: pageviews, referrers, custom events, and a set of basic reports. That
+            minimalism is a philosophy, not a shortcoming, and it&apos;s why Umami is so widely deployed on personal
+            sites and side projects.
+          </>,
+          <>
+            Rybbit makes the other bet: a full analytics platform that happens to also be open source. Alongside the
+            traffic stats you&apos;d expect, it ships <Link href="/features/session-replay">session replay</Link>,{" "}
+            <Link href="/features/funnels">funnels</Link>, user journey visualization, error tracking, Web Vitals
+            monitoring, and user profiles. Both tools can show you a funnel; the difference appears when a number
+            raises a question. In Umami the report is where the trail ends. In Rybbit you can open the sessions behind
+            a drop-off, watch the replays, and see whether a JavaScript error or a confusing form is the culprit.
+          </>,
+        ],
+      },
+      {
+        heading: "Pricing and self-hosting, honestly",
+        paragraphs: [
+          <>
+            Umami&apos;s cloud has a Hobby plan that is free forever, and the Pro plan is $20/mo for 1M events with a
+            14-day trial, though most Umami adoption is the free tier or self-hosting, and for basic traffic
+            stats at $0 that is genuinely hard to beat. Rybbit starts at $19/mo for 100k events with a 7-day trial,
+            and every plan includes every feature. Per event, Umami Pro is cheaper; what you&apos;re paying Rybbit for
+            is depth of reporting, not the traffic counting. See the full breakdown on the{" "}
+            <Link href="/pricing">pricing page</Link>.
+          </>,
+          <>
+            Both self-host for free. Umami is the lighter operational lift: a small Node app plus a Postgres or
+            MySQL database you probably already know how to run. Rybbit&apos;s{" "}
+            <Link href="/docs/self-hosting">self-hosted deployment</Link> is a Docker Compose stack with more moving
+            parts, because features like session replay and fast queries over large event volumes need more
+            infrastructure behind them. If your goal is the smallest possible thing to maintain, Umami wins that
+            trade; if you want the full platform on your own hardware, Rybbit&apos;s setup is still a single Docker
+            install.
+          </>,
+        ],
+      },
+      {
+        heading: "Switching from Umami to Rybbit",
+        paragraphs: [
+          <>
+            Unlike most analytics migrations, you don&apos;t have to start from zero: Rybbit ships a data importer for
+            Umami (imports are supported for Plausible, Umami, and Simple Analytics), so your historical traffic comes
+            with you. A low-risk path looks like this:
+          </>,
+          <ol>
+            <li>
+              Add the Rybbit tracking script and leave Umami running. Both are lightweight and cookieless, and the two
+              scripts don&apos;t conflict, so running them side by side costs you nothing.
+            </li>
+            <li>
+              Import your Umami history with the built-in importer (see the{" "}
+              <Link href="/docs">docs</Link> for the walkthrough) so your Rybbit dashboard starts with
+              continuity instead of a blank chart.
+            </li>
+            <li>
+              Recreate your custom events and goals. Umami&apos;s event model maps cleanly onto Rybbit&apos;s custom
+              events with attributes.
+            </li>
+            <li>
+              Compare the two dashboards for a week or two. Once the numbers line up, remove the Umami script,
+              or keep the instance around; a self-hosted Umami costs nothing to leave running.
+            </li>
+          </ol>,
+        ],
+      },
+      {
+        heading: "When Umami is the better choice",
+        paragraphs: [
+          <>
+            Plenty of sites should just use Umami. If you&apos;re running a personal blog or hobby project and your
+            analytics budget is $0, Umami&apos;s free-forever cloud tier or a tiny self-hosted instance is the right
+            answer; Rybbit&apos;s extra features would sit unused. The same goes if you want the lightest
+            possible footprint (Umami&apos;s ~2KB script is about as small as tracking gets), or if you specifically
+            want an MIT license for your stack. Where the calculus changes is when a project becomes a business:
+            the moment you need to know <em>why</em> a conversion rate dropped, rather than only that it did,
+            you&apos;ve outgrown minimal analytics. For a wider survey of the options, see our guide to the{" "}
+            <Link href="/blog/best-web-analytics-tools">best web analytics tools</Link>.
+          </>,
+        ],
+      },
+    ],
+  } satisfies DeepDive,
 
   faqItems: [
     {

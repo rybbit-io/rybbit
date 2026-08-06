@@ -25,13 +25,13 @@ export const capabilities: FeatureCapability[] = [
     icon: <Route className="w-5 h-5" />,
     title: "Interactive Sankey diagrams",
     description:
-      "See user navigation paths as beautiful, interactive flow diagrams. Hover over any path to see the exact number of users who took it.",
+      "See user navigation paths as interactive flow diagrams. Hover over any path to see the exact number of users who took it.",
   },
   {
     icon: <Settings className="w-5 h-5" />,
     title: "Adjustable depth",
     description:
-      "Control how many navigation steps to visualize — from 2 to 6 steps deep. Zoom in on early navigation or follow the full journey.",
+      "Control how many navigation steps to visualize, from 2 to 6 steps deep. Zoom in on early navigation or follow paths further.",
   },
   {
     icon: <Filter className="w-5 h-5" />,
@@ -49,7 +49,7 @@ export const capabilities: FeatureCapability[] = [
     icon: <Layers className="w-5 h-5" />,
     title: "Volume visualization",
     description:
-      "Flow thickness represents the number of users on each path. Instantly spot the most popular and least common navigation patterns.",
+      "Flow thickness represents the number of users on each path. Spot the most popular and least common navigation patterns.",
   },
   {
     icon: <Search className="w-5 h-5" />,
@@ -64,7 +64,7 @@ export const howItWorks: HowItWorksStep[] = [
     step: 1,
     title: "Pageviews are tracked automatically",
     description:
-      "Rybbit tracks every pageview and navigation event out of the box. No extra setup needed — journey data is available immediately.",
+      "Rybbit tracks every pageview and navigation event. No extra setup needed; journey data is available immediately.",
   },
   {
     step: 2,
@@ -139,7 +139,7 @@ export const faqItems: FAQItem[] = [
   {
     question: "Can I filter journeys by traffic source or device?",
     answer:
-      "Yes. All the standard filters in Rybbit — country, device, browser, referrer, UTM parameters — apply to user journey data. This lets you see how navigation patterns differ across segments.",
+      "Yes. All the standard filters in Rybbit (country, device, browser, referrer, UTM parameters) apply to user journey data. This lets you see how navigation patterns differ across segments.",
   },
   {
     question: "How many journey steps can I visualize?",
@@ -184,6 +184,6 @@ export const relatedFeatures: RelatedFeature[] = [
   {
     title: "Custom Events",
     href: "/features/custom-events",
-    description: "Track specific interactions along the user journey.",
+    description: "Track specific interactions along each navigation path.",
   },
 ];

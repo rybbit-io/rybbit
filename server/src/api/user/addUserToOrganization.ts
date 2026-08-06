@@ -97,7 +97,7 @@ export async function addUserToOrganization(request: FastifyRequest<AddUserToOrg
       message: "User added to organization successfully",
     });
   } catch (error: any) {
-    console.error(String(error));
+    request.log.error({ err: error }, "Error adding user to organization");
     return reply.status(500).send({ error: String(error) });
   }
 }

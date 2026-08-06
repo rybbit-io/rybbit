@@ -37,6 +37,7 @@ export interface StandardSectionDialogBodyProps {
   countLabel?: string;
   filterParameter: FilterParameter;
   customFilters?: Filter[];
+  additionalFilters?: Filter[];
   customTime?: Time;
   lite?: boolean;
 }
@@ -50,6 +51,7 @@ const columnHelper = createColumnHelper<MetricResponse>();
 
 export function StandardSectionDialogBody({
   title,
+  getKey,
   getLabel,
   getValue,
   getFilterLabel,
@@ -57,6 +59,7 @@ export function StandardSectionDialogBody({
   countLabel,
   filterParameter,
   customFilters,
+  additionalFilters,
   customTime,
   lite = false,
 }: StandardSectionDialogBodyProps) {
@@ -66,6 +69,7 @@ export function StandardSectionDialogBody({
       parameter: filterParameter,
       limit: 100,
       customFilters,
+      additionalFilters,
       customTime,
       lite,
     });
@@ -81,11 +85,20 @@ export function StandardSectionDialogBody({
     rootMargin: "0px 0px 200px 0px", // Load more when user is 200px from the bottom
   });
 
-  // Flatten the pages data
+  // Flatten the pages data, deduping by key: offset pagination can return the
+  // same row on two pages when the underlying data shifts between fetches.
   const allItems = useMemo(() => {
     if (!data) return [];
-    return data.pages.flatMap(page => page.data);
-  }, [data]);
+    const seen = new Set<string>();
+    return data.pages
+      .flatMap(page => page.data)
+      .filter(item => {
+        const key = getKey(item);
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+  }, [data, getKey]);
 
   // Filter data based on search term
   const filteredData = useMemo(() => {

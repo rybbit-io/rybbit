@@ -3,13 +3,14 @@
 import { CircleCheckBig, Minus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { AppLink } from "@/components/AppLink";
+import { GridCrosses } from "@/components/GridCrosses";
+import { SectionKicker } from "@/components/deco/SectionKicker";
 import { STANDARD_SITE_LIMIT, STANDARD_TEAM_LIMIT } from "@/lib/const";
 import { useExtracted } from "next-intl";
 
 interface FeatureCellProps {
   value: boolean | string;
 }
-
 function FeatureCell({ value }: FeatureCellProps) {
   if (typeof value === "boolean") {
     return value ? (
@@ -19,7 +20,7 @@ function FeatureCell({ value }: FeatureCellProps) {
     );
   }
 
-  return <span className={cn("text-sm text-center block text-neutral-900 dark:text-white")}>{value}</span>;
+  return <span className={cn("block text-center text-sm text-neutral-900 dark:text-white")}>{value}</span>;
 }
 
 export function ComparisonSection({ isAnnual }: { isAnnual: boolean }) {
@@ -235,86 +236,95 @@ export function ComparisonSection({ isAnnual }: { isAnnual: boolean }) {
   ];
 
   return (
-    <section className="-mt-8 pb-8 w-full relative z-10">
-      <div className="max-w-[1200px] mx-auto px-4 overflow-x-auto">
-        <div className="bg-neutral-200/40 dark:bg-neutral-900/40 p-2 rounded-3xl border border-neutral-300 dark:border-neutral-800">
-          <div className="bg-neutral-50 dark:bg-neutral-900 backdrop-blur-sm rounded-2xl border border-neutral-300 dark:border-neutral-800 overflow-hidden min-w-[900px]">
-            {/* Table Header */}
-            <div className="grid grid-cols-4 gap-0 py-6 bg-neutral-100/50 dark:bg-neutral-800/20">
-              <div className="flex items-center px-6 border-r border-neutral-400/50 dark:border-neutral-700/50 text-xl font-semibold text-neutral-800 dark:text-neutral-200">
-                {t("Compare Plans")}
+    <section className="border-b border-neutral-200 dark:border-neutral-800" aria-labelledby="plan-comparison-title">
+      <div className="relative mx-auto max-w-[1200px] border-x border-neutral-200 dark:border-neutral-800">
+        <GridCrosses />
+        <div className="relative border-b border-neutral-200 bg-plate-accent px-5 py-14 dark:border-neutral-800 sm:px-8 md:py-20 lg:px-10">
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-0 bg-graph-accent [mask-image:linear-gradient(to_bottom,black,transparent_92%),linear-gradient(to_left,transparent,black_40px)] [mask-composite:intersect]"
+          />
+          <div className="relative">
+            <SectionKicker>{t("Plan details")}</SectionKicker>
+            <h2
+              id="plan-comparison-title"
+              className="mt-5 max-w-2xl text-4xl font-semibold leading-[1.04] tracking-[-0.035em] md:text-5xl text-balance"
+            >
+              {t("Compare Plans")}
+            </h2>
+          </div>
+        </div>
+
+        <div className="overflow-x-auto">
+          <div className="min-w-[900px]">
+            <div className="grid grid-cols-4 border-b border-neutral-200 dark:border-neutral-800">
+              <div className="flex items-end border-r border-neutral-200 px-6 py-7 text-sm font-medium text-neutral-500 dark:border-neutral-800 lg:px-10">
+                {t("Included in each plan")}
               </div>
-              <div className="flex flex-col items-center justify-center px-4 border-r border-neutral-400/50 dark:border-neutral-700/50">
-                <div className="font-semibold text-lg text-center mb-3">
-                  {t("Standard")}{" "}
-                  <span className="text-sm text-neutral-500 dark:text-neutral-400 font-normal block">From ${isAnnual ? "13" : "19"} /month</span>
-                </div>
-                <AppLink
-                  href="https://app.rybbit.io/signup"
-                  className="inline-flex items-center justify-center px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-medium rounded-lg shadow-lg shadow-emerald-900/20 transform hover:-translate-y-0.5 transition-all duration-200"
+              {[
+                {
+                  name: t("Standard"),
+                  price: "From $" + (isAnnual ? "13" : "19") + " /month",
+                  href: "https://app.rybbit.io/signup",
+                  cta: t("Start for $0"),
+                },
+                {
+                  name: t("Pro"),
+                  price: "From $" + (isAnnual ? "26" : "39") + " /month",
+                  href: "https://app.rybbit.io/signup",
+                  cta: t("Start for $0"),
+                  featured: true,
+                },
+                {
+                  name: t("Enterprise"),
+                  price: t("Custom"),
+                  href: "https://www.rybbit.com/contact",
+                  cta: t("Contact us"),
+                },
+              ].map((plan) => (
+                <div
+                  key={plan.name}
+                  className="flex flex-col items-center border-r border-neutral-200 px-4 py-7 text-center last:border-r-0 dark:border-neutral-800"
                 >
-                  {t("Start for $0")}
-                </AppLink>
-              </div>
-              <div className="flex flex-col items-center justify-center px-4 border-r border-neutral-400/50 dark:border-neutral-700/50">
-                <div className="font-semibold text-lg text-emerald-600 dark:text-emerald-400 text-center mb-3">
-                  {t("Pro")}{" "}
-                  <span className="text-sm text-neutral-500 dark:text-neutral-400 font-normal block">From ${isAnnual ? "26" : "39"} /month</span>
+                  <h3 className={cn("text-lg font-semibold", plan.featured && "text-emerald-600 dark:text-emerald-400")}>
+                    {plan.name}
+                  </h3>
+                  <p className="mt-1 text-sm text-neutral-500 dark:text-neutral-400">{plan.price}</p>
+                  <AppLink
+                    href={plan.href}
+                    className={cn(
+                      "mt-5 inline-flex min-h-10 items-center justify-center rounded-md px-4 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-500",
+                      plan.featured
+                        ? "bg-emerald-600 text-white hover:bg-emerald-500"
+                        : "border border-neutral-300 text-neutral-900 hover:bg-neutral-100 dark:border-neutral-700 dark:text-white dark:hover:bg-neutral-900"
+                    )}
+                  >
+                    {plan.cta}
+                  </AppLink>
                 </div>
-                <AppLink
-                  href="https://app.rybbit.io/signup"
-                  className="inline-flex items-center justify-center px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-medium rounded-lg shadow-lg shadow-emerald-900/20 transform hover:-translate-y-0.5 transition-all duration-200"
-                >
-                  {t("Start for $0")}
-                </AppLink>
-              </div>
-              <div className="flex flex-col items-center justify-center px-4">
-                <div className="font-semibold text-lg text-center mb-3">
-                  {t("Enterprise")}{" "}
-                  <span className="text-sm text-neutral-500 dark:text-neutral-400 font-normal block">{t("Custom")}</span>
-                </div>
-                <a
-                  href="https://www.rybbit.com/contact"
-                  className="inline-flex items-center justify-center px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-medium rounded-lg shadow-lg shadow-emerald-900/20 transform hover:-translate-y-0.5 transition-all duration-200"
-                >
-                  {t("Contact us")}
-                </a>
-              </div>
+              ))}
             </div>
 
-            {/* Feature Categories */}
-            {COMPARISON_FEATURES.map((category, categoryIndex) => (
-              <div key={categoryIndex}>
-                {/* Category Header - Skip for "Usage" category */}
-                {category.category !== "Usage" && (
-                  <div className="grid grid-cols-4 gap-0 py-3 border-b border-neutral-400 dark:border-neutral-700 bg-neutral-100/30 dark:bg-neutral-800/10">
-                    <div className="flex items-center px-6 border-r border-neutral-400/50 dark:border-neutral-700/50">
-                      <h3 className="font-semibold text-neutral-800 dark:text-neutral-100 text-base">
-                        {category.category}
-                      </h3>
-                    </div>
-                    <div className="border-r border-neutral-400/50 dark:border-neutral-700/50"></div>
-                    <div className="border-r border-neutral-400/50 dark:border-neutral-700/50"></div>
-                    <div></div>
-                  </div>
-                )}
-
-                {/* Category Features */}
-                {category.features.map((feature, featureIndex) => (
+            {COMPARISON_FEATURES.map((category) => (
+              <div key={category.category}>
+                <div className="border-b border-neutral-200 bg-neutral-50 px-6 py-3 text-xs font-semibold uppercase tracking-[0.12em] text-neutral-500 dark:border-neutral-800 dark:bg-neutral-900/60 lg:px-10">
+                  {category.category}
+                </div>
+                {category.features.map((feature) => (
                   <div
-                    key={featureIndex}
-                    className="grid grid-cols-4 gap-0 py-3 hover:bg-neutral-100/50 dark:hover:bg-neutral-800/20 transition-colors border-b border-neutral-300/30 dark:border-neutral-800/30 last:border-b-0"
+                    key={feature.name}
+                    className="grid grid-cols-4 border-b border-neutral-200 text-sm last:border-b-0 dark:border-neutral-800"
                   >
-                    <div className="flex items-center px-6 border-r border-neutral-400/50 dark:border-neutral-700/50">
-                      <span className="text-sm text-neutral-700 dark:text-neutral-300">{feature.name}</span>
+                    <div className="flex items-center border-r border-neutral-200 px-6 py-4 font-medium text-neutral-700 dark:border-neutral-800 dark:text-neutral-300 lg:px-10">
+                      {feature.name}
                     </div>
-                    <div className="flex items-center justify-center px-4 border-r border-neutral-400/50 dark:border-neutral-700/50">
+                    <div className="flex items-center justify-center border-r border-neutral-200 px-4 py-4 dark:border-neutral-800">
                       <FeatureCell value={feature.standard} />
                     </div>
-                    <div className="flex items-center justify-center px-4 border-r border-neutral-400/50 dark:border-neutral-700/50">
+                    <div className="flex items-center justify-center border-r border-neutral-200 px-4 py-4 dark:border-neutral-800">
                       <FeatureCell value={feature.pro} />
                     </div>
-                    <div className="flex items-center justify-center px-4">
+                    <div className="flex items-center justify-center px-4 py-4">
                       <FeatureCell value={feature.enterprise} />
                     </div>
                   </div>

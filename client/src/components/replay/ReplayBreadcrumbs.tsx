@@ -367,7 +367,7 @@ function UserHeader({ data, siteId }: { data: any; siteId: number }) {
           }
         />
         <span className="truncate">{getUserDisplayName(data.metadata)}</span>
-        {isIdentified && <IdentifiedBadge traits={data.metadata.traits} />}
+        {isIdentified && <IdentifiedBadge traits={data.metadata.traits} userId={data.metadata.identified_user_id} />}
       </div>
       <Link href={userLink} className="shrink-0">
         <Button size="sm">{t("View User")}</Button>

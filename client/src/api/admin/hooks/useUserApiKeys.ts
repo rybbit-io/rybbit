@@ -3,7 +3,7 @@ import { authClient } from "../../../lib/auth";
 import { authedFetch } from "../../utils";
 
 // List all API keys for the current user
-export const useListApiKeys = () => {
+export const useListApiKeys = (enabled = true) => {
   return useQuery({
     queryKey: ["userApiKeys"],
     queryFn: async () => {
@@ -13,6 +13,7 @@ export const useListApiKeys = () => {
       }
       return response.data;
     },
+    enabled,
   });
 };
 
@@ -21,7 +22,7 @@ export const useCreateApiKey = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (data: { name: string; expiresIn?: number }) => {
+    mutationFn: async (data: { name: string; expiresIn?: number; permissions?: Record<string, string[]> }) => {
       return authedFetch<{ key: string; id: string }>("/user/api-keys", undefined, {
         method: "POST",
         data,

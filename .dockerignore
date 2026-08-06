@@ -1,0 +1,10 @@
+# Keep host-side artifacts out of image builds: node_modules are installed
+# inside the Dockerfiles (host copies are platform-mismatched on macOS),
+# dist/.next are rebuilt inside, and stale *.tsbuildinfo can make tsc skip
+# emitting into a dist the context no longer carries.
+.git
+**/node_modules
+**/*.tsbuildinfo
+client/.next
+server/dist
+shared/dist

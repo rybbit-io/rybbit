@@ -1,25 +1,21 @@
-import { useQuery } from "@tanstack/react-query";
-import { useStore } from "../../../../lib/store";
 import { useBotsStore } from "../../../../app/[site]/bots/botsStore";
-import { buildApiParams } from "../../../utils";
-import { fetchBotOverview } from "../../endpoints";
+import { useStore } from "../../../../lib/store";
+import { type BotOverviewParams, fetchBotOverview, type GetBotOverviewResponse } from "../../endpoints";
+import { useAnalyticsQuery } from "../../useAnalyticsQuery";
 import { BOT_AVAILABLE_FILTERS } from "./constants";
 
 export function useGetBotOverview({ site }: { site?: number | string }) {
-  const { time, filters, timezone } = useStore();
+  const { filters } = useStore();
   const { selectedLayer } = useBotsStore();
   const botFilters = filters.filter(filter => BOT_AVAILABLE_FILTERS.includes(filter.parameter));
-  const params = buildApiParams(time, { filters: botFilters });
 
-  return useQuery({
-    queryKey: ["bot-overview", time, site, botFilters, selectedLayer, timezone],
-    queryFn: () => fetchBotOverview(site!, { ...params, layer: selectedLayer }).then(data => ({ data })),
-    staleTime: 60_000,
-    placeholderData: (_, query: any) => {
-      if (!query?.queryKey) return undefined;
-      const [, , prevSite] = query.queryKey;
-      return prevSite === site ? query.state.data : undefined;
-    },
-    enabled: !!site,
+  return useAnalyticsQuery<{ data: GetBotOverviewResponse }, BotOverviewParams>({
+    key: "bot-overview",
+    site,
+    // Only bot-relevant filters go on the wire; when none apply, send no filters.
+    useFilters: botFilters.length > 0,
+    customFilters: botFilters,
+    extraParams: { layer: selectedLayer },
+    fetch: (site, params) => fetchBotOverview(site, params).then(data => ({ data })),
   });
 }

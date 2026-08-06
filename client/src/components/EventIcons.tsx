@@ -35,12 +35,18 @@ const EVENT_TYPE_COLORS: Record<string, string> = Object.fromEntries(
 interface EventTypeIconProps {
   type: EventType | string;
   className?: string;
+  // Disable when the icon sits next to its own label (e.g. select options)
+  tooltip?: boolean;
 }
 
-export function EventTypeIcon({ type, className }: EventTypeIconProps) {
+export function EventTypeIcon({ type, className, tooltip = true }: EventTypeIconProps) {
   const t = useExtracted();
   const Icon = EVENT_TYPE_ICONS[type as EventType] || MousePointerClick;
   const colorClass = EVENT_TYPE_COLORS[type] || "text-amber-400";
+
+  if (!tooltip) {
+    return <Icon className={cn("h-4 w-4", className, colorClass)} />;
+  }
 
   const translatedLabels: Record<string, string> = {
     pageview: t("Pageview"),

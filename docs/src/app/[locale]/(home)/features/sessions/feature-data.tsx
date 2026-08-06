@@ -28,13 +28,13 @@ export const capabilities: FeatureCapability[] = [
     icon: <List className="w-5 h-5" />,
     title: "Rich session cards",
     description:
-      "Each session displays the user, country, browser, OS, device type, entry and exit pages, duration, pageview count, and event count — all at a glance.",
+      "Each session displays the user, country, browser, OS, device type, entry and exit pages, duration, pageview count, and event count.",
   },
   {
     icon: <Filter className="w-5 h-5" />,
     title: "Click-to-filter everything",
     description:
-      "Click any country flag, browser icon, device type, or page path in a session card to instantly filter down to matching sessions.",
+      "Click any country flag, browser icon, device type, or page path in a session card to filter down to matching sessions.",
   },
   {
     icon: <UserCheck className="w-5 h-5" />,
@@ -85,7 +85,7 @@ export const howItWorks: HowItWorksStep[] = [
     step: 1,
     title: "Sessions are tracked automatically",
     description:
-      "Every visitor session is recorded with full metadata — device, location, referrer, pages visited, events fired, and duration. No extra configuration needed.",
+      "Every visitor session is recorded with full metadata: device, location, referrer, pages visited, events fired, and duration. No extra configuration needed.",
   },
   {
     step: 2,
@@ -103,7 +103,7 @@ export const howItWorks: HowItWorksStep[] = [
     step: 4,
     title: "Expand for full detail",
     description:
-      "Click any session to see its complete event timeline — every pageview, click, form submission, and custom event in chronological order. Jump to replay for sessions that have it.",
+      "Click any session to see its complete event timeline: every pageview, click, form submission, and custom event in chronological order. Jump to replay for sessions that have it.",
   },
 ];
 
@@ -112,7 +112,7 @@ export const whoUses: WhoUsesItem[] = [
     icon: <Headset className="w-6 h-6" />,
     title: "Support teams",
     description:
-      "Look up a specific user's sessions when they report an issue. See their exact path, the events they triggered, and their device context — without asking them to describe it.",
+      "Look up a specific user's sessions when they report an issue. See their exact path, the events they triggered, and their device context without asking them to describe it.",
   },
   {
     icon: <TrendingUp className="w-6 h-6" />,
@@ -150,7 +150,7 @@ export const faqItems: FAQItem[] = [
   {
     question: "What's the difference between Sessions and Session Replay?",
     answer:
-      "Sessions is an analytical browser — it shows structured data about each session: metadata, metrics, and a chronological event timeline. Session Replay is a visual recording that lets you watch the actual screen interactions. Think of Sessions as the spreadsheet view and Replay as the video view. They complement each other — you can jump from a session card directly into its replay.",
+      "Sessions is an analytical browser. It shows structured data about each session: metadata, metrics, and a chronological event timeline. Session Replay is a visual recording that lets you watch the actual screen interactions. Think of Sessions as the spreadsheet view and Replay as the video view. They complement each other, and you can jump from a session card directly into its replay.",
   },
   {
     question: "Do I need to set up anything for session tracking?",

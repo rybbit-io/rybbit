@@ -1,15 +1,20 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-06-02T00:00:00.000Z",
+  "generatedAt": "2026-07-19T21:11:46Z",
   "title": "Design System: Rybbit",
   "extensions": {
     "colorMeta": {
       "background": { "role": "neutral", "displayName": "Canvas", "canonical": "hsl(0 0% 8%)", "tonalRamp": ["#0a0a0a", "#131313", "#1b1b1b", "#242424", "#303030", "#4a4a4a", "#808080", "#f7f7f7"] },
       "surface": { "role": "neutral", "displayName": "Surface", "canonical": "hsl(0 0% 10.5%)", "tonalRamp": ["#0a0a0a", "#131313", "#1b1b1b", "#242424", "#303030", "#4a4a4a", "#999999", "#f2f2f2"] },
+      "surface-raised": { "role": "neutral", "displayName": "Raised Surface", "canonical": "hsl(0 0% 14%)", "tonalRamp": ["#0a0a0a", "#141414", "#1b1b1b", "#242424", "#303030", "#4a4a4a", "#999999", "#f7f7f7"] },
       "foreground": { "role": "neutral", "displayName": "Primary Text", "canonical": "hsl(0 0% 98%)", "tonalRamp": ["#131313", "#303030", "#4a4a4a", "#808080", "#999999", "#cccccc", "#e6e6e6", "#fafafa"] },
       "muted-foreground": { "role": "neutral", "displayName": "Muted Text", "canonical": "hsl(0 0% 60%)", "tonalRamp": ["#303030", "#4a4a4a", "#5e5e5e", "#737373", "#808080", "#999999", "#b3b3b3", "#cccccc"] },
+      "border": { "role": "neutral", "displayName": "Hairline Border", "canonical": "hsl(0 0% 12%)", "tonalRamp": ["#0a0a0a", "#141414", "#1b1b1b", "#1f1f1f", "#303030", "#4a4a4a", "#999999", "#e6e6e6"] },
       "accent": { "role": "primary", "displayName": "Emerald Signal", "canonical": "hsl(160.1 84.1% 39.4%)", "tonalRamp": ["#022c22", "#064e3b", "#065f46", "#047857", "#059669", "#10b981", "#34d399", "#6ee7b7"] },
+      "accent-strong": { "role": "primary", "displayName": "Emerald Action", "canonical": "#059669", "tonalRamp": ["#022c22", "#064e3b", "#065f46", "#047857", "#059669", "#10b981", "#34d399", "#6ee7b7"] },
+      "accent-deep": { "role": "primary", "displayName": "Emerald Deep", "canonical": "#065f46", "tonalRamp": ["#022c22", "#064e3b", "#065f46", "#047857", "#059669", "#10b981", "#34d399", "#6ee7b7"] },
       "dataviz": { "role": "secondary", "displayName": "Periwinkle Data Line", "canonical": "hsl(230 100% 85%)", "tonalRamp": ["#1e2a66", "#33408c", "#4d5cb3", "#6677d9", "#8090ff", "#99aaff", "#b3bfff", "#ccd4ff"] },
+      "dataviz-2": { "role": "secondary", "displayName": "Periwinkle Secondary Line", "canonical": "hsl(230 100% 92%)", "tonalRamp": ["#1e2a66", "#33408c", "#4d5cb3", "#6677d9", "#8090ff", "#b3bfff", "#c2caff", "#e6e9ff"] },
       "destructive": { "role": "tertiary", "displayName": "Destructive Red", "canonical": "hsl(0 84.2% 60.2%)", "tonalRamp": ["#450a0a", "#7f1d1d", "#991b1b", "#b91c1c", "#dc2626", "#ef4444", "#f87171", "#fca5a5"] },
       "warning": { "role": "tertiary", "displayName": "Warning Yellow", "canonical": "hsl(45.4 93.4% 47.5%)", "tonalRamp": ["#422006", "#713f12", "#854d0e", "#a16207", "#ca8a04", "#eab308", "#facc15", "#fde047"] },
       "info": { "role": "tertiary", "displayName": "Info Blue", "canonical": "hsl(217.2 91.2% 59.8%)", "tonalRamp": ["#172554", "#1e3a8a", "#1e40af", "#1d4ed8", "#2563eb", "#3b82f6", "#60a5fa", "#93c5fd"] }

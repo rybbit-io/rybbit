@@ -1,24 +1,28 @@
 "use client";
 
 import { useExtracted } from "next-intl";
-import { getTimezone } from "@/lib/store";
-import { Calendar, CalendarCheck, Clock, Files, Globe, Laptop, Monitor, Smartphone, Tablet } from "lucide-react";
-import { DateTime } from "luxon";
-import { Avatar, generateName } from "../../../../../components/Avatar";
-import { Badge } from "../../../../../components/ui/badge";
+import { Pencil } from "lucide-react";
+import { useState } from "react";
+import { Button } from "../../../../../components/ui/button";
 import { Skeleton } from "../../../../../components/ui/skeleton";
-import { IdentifiedBadge } from "../../../../../components/IdentifiedBadge";
-import { useDateTimeFormat } from "../../../../../hooks/useDateTimeFormat";
-import { formatDuration } from "../../../../../lib/dateTimeUtils";
-import { getCountryName, getLanguageName } from "../../../../../lib/utils";
-import { Browser } from "../../../components/shared/icons/Browser";
-import { CountryFlag } from "../../../components/shared/icons/CountryFlag";
-import { OperatingSystem } from "../../../components/shared/icons/OperatingSystem";
 import { VisitCalendar } from "./Calendar";
-import { EventIcon, PageviewIcon } from "../../../../../components/EventIcons";
 import { UserInfo, UserSessionCountResponse } from "../../../../../api/analytics/endpoints";
-import { DeviceIcon } from "../../../components/shared/icons/Device";
+import { ChannelIcon, extractDomain, getDisplayName } from "../../../../../components/Channel";
+import { Favicon } from "../../../../../components/Favicon";
+import { Tooltip, TooltipContent, TooltipTrigger } from "../../../../../components/ui/tooltip";
 import { useConfigs } from "../../../../../lib/configs";
+import { userStore } from "../../../../../lib/userStore";
+import { PerformanceMetric } from "../../../performance/performanceStore";
+import {
+  formatMetricValue,
+  getMetricColor,
+  getMetricUnit,
+  METRIC_LABELS,
+  METRIC_LABELS_SHORT,
+} from "../../../performance/utils/performanceUtils";
+import { EditTraitsDialog } from "../../../../../components/EditTraitsDialog";
+import { LocationDevices } from "./LocationDevices";
+import { InfoRow, InfoRowSkeleton, SidebarCard, SidebarHeader } from "./SidebarPrimitives";
 import { UserLocationMap } from "./UserLocationMap";
 import { useGetSite } from "../../../../../api/admin/hooks/useSites";
 
@@ -26,73 +30,19 @@ interface UserSidebarProps {
   data: UserInfo | undefined;
   isLoading: boolean;
   sessionCount: UserSessionCountResponse[];
+  isLoadingCalendar: boolean;
   getRegionName: (region: string) => string;
 }
 
-// Reusable card wrapper for sidebar sections
-function SidebarCard({ children, className = "" }: { children: React.ReactNode; className?: string }) {
-  return (
-    <div
-      className={`bg-white dark:bg-neutral-900 rounded-lg border border-neutral-100 dark:border-neutral-850 p-4 ${className}`}
-    >
-      {children}
-    </div>
-  );
-}
+const VITALS_ORDER: PerformanceMetric[] = ["lcp", "cls", "inp", "fcp", "ttfb"];
 
-// Info row component for consistent styling
-function InfoRow({ icon, label, value }: { icon?: React.ReactNode; label: string; value: React.ReactNode }) {
-  return (
-    <div className="flex items-center justify-between py-1.5 border-b border-neutral-50 dark:border-neutral-850 last:border-0 text-xs">
-      <span className="text-neutral-500 dark:text-neutral-400">{label}</span>
-      <span className="text-neutral-700 dark:text-neutral-200 flex items-center gap-1.5">
-        {icon}
-        {value}
-      </span>
-    </div>
-  );
-}
-
-// Stat card component
-function StatCard({
-  icon,
-  label,
-  value,
-  isLoading,
-}: {
-  icon: React.ReactNode;
-  label: string;
-  value: React.ReactNode;
-  isLoading: boolean;
-}) {
-  if (isLoading) {
-    return (
-      <div className="flex flex-col gap-0.5">
-        <div className="text-[10px] text-neutral-500 dark:text-neutral-400 flex items-center gap-1 uppercase tracking-wide">
-          <Skeleton className="w-3 h-3 rounded" />
-          <Skeleton className="h-2.5 w-14 rounded" />
-        </div>
-        <Skeleton className="h-4 w-16 rounded" />
-      </div>
-    );
-  }
-  return (
-    <div className="flex flex-col gap-0.5">
-      <div className="text-[10px] text-neutral-500 dark:text-neutral-400 flex items-center gap-1 uppercase tracking-wide">
-        {icon}
-        {label}
-      </div>
-      <div className="text-sm">{value}</div>
-    </div>
-  );
-}
-
-export function UserSidebar({ data, isLoading, sessionCount, getRegionName }: UserSidebarProps) {
+export function UserSidebar({ data, isLoading, sessionCount, isLoadingCalendar, getRegionName }: UserSidebarProps) {
   const t = useExtracted();
   const { data: siteMetadata } = useGetSite();
   const isApp = siteMetadata?.type === "mobile";
-  const { formatRelative } = useDateTimeFormat();
   const { configs } = useConfigs();
+  const { user } = userStore();
+  const [traitsOpen, setTraitsOpen] = useState(false);
   const isIdentified = !!data?.identified_user_id;
 
   // Filter custom traits (exclude username, name, email)
@@ -100,239 +50,197 @@ export function UserSidebar({ data, isLoading, sessionCount, getRegionName }: Us
     ? Object.entries(data.traits).filter(([key]) => !["username", "name", "email"].includes(key))
     : [];
 
-  return (
-    <div className="w-full lg:w-[300px] md:shrink-0 space-y-3">
-      {/* Stats Grid */}
-      <SidebarCard>
-        <div className="grid grid-cols-2 gap-4">
-          <StatCard
-            icon={<Files className="w-3 h-3" />}
-            label={t("Sessions")}
-            value={data?.sessions ?? "—"}
-            isLoading={isLoading}
-          />
-          <StatCard
-            icon={<PageviewIcon className="w-3 h-3" />}
-            label={isApp ? t("Screenviews") : t("Pageviews")}
-            value={data?.pageviews ?? "—"}
-            isLoading={isLoading}
-          />
-          <StatCard
-            icon={<EventIcon className="w-3 h-3" />}
-            label={t("Events")}
-            value={data?.events ?? "—"}
-            isLoading={isLoading}
-          />
-          <StatCard
-            icon={<Clock className="w-3 h-3" />}
-            label={t("Avg Duration")}
-            value={data?.duration ? formatDuration(data.duration) : "—"}
-            isLoading={isLoading}
-          />
-          <StatCard
-            icon={<Calendar className="w-3 h-3" />}
-            label={t("First Seen")}
-            value={
-              data?.first_seen
-                ? DateTime.fromSQL(data.first_seen, { zone: "utc" }).setZone(getTimezone()).toLocaleString(DateTime.DATE_MED)
-                : "—"
-            }
-            isLoading={isLoading}
-          />
-          <StatCard
-            icon={<CalendarCheck className="w-3 h-3" />}
-            label={t("Last Seen")}
-            value={
-              data?.last_seen
-                ? DateTime.fromSQL(data.last_seen, { zone: "utc" }).setZone(getTimezone()).toLocaleString(DateTime.DATE_MED)
-                : "—"
-            }
-            isLoading={isLoading}
-          />
-        </div>
-      </SidebarCard>
+  const firstReferrerDomain = data?.first_referrer ? extractDomain(data.first_referrer) : null;
+  const channelChanged = !!data?.last_channel && data.last_channel !== data.first_channel;
+  const vitals = data?.vitals ?? null;
+  const vitalsToShow = vitals
+    ? VITALS_ORDER.filter(metric => vitals[`${metric}_p75`] != null)
+    : [];
+  const showMap = !!configs?.mapboxToken && !!data?.country;
 
-      {/* Location & Device Info */}
+  return (
+    <div className="w-full lg:w-[300px] lg:shrink-0 space-y-3">
+      {/* Acquisition (first-touch attribution). Channels, referrers and landing
+          pages are web concepts — native app traffic has none of them. */}
+      {!isApp && (
       <SidebarCard>
-        <h3 className="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wide mb-2">
-          {t("Location & Device")}
-        </h3>
+        <SidebarHeader title={t("Acquisition")} />
         {isLoading ? (
-          <div className="space-y-0">
-            {/* Country */}
-            <div className="flex items-center justify-between py-1.5 border-b border-neutral-50 dark:border-neutral-850">
-              <Skeleton className="h-3 w-14 rounded" />
-              <div className="flex items-center gap-1.5">
-                <Skeleton className="w-4 h-4 rounded" />
-                <Skeleton className="h-3 w-24 rounded" />
-              </div>
-            </div>
-            {/* Region */}
-            <div className="flex items-center justify-between py-1.5 border-b border-neutral-50 dark:border-neutral-850">
-              <Skeleton className="h-3 w-12 rounded" />
-              <Skeleton className="h-3 w-32 rounded" />
-            </div>
-            {/* Language */}
-            <div className="flex items-center justify-between py-1.5 border-b border-neutral-50 dark:border-neutral-850">
-              <Skeleton className="h-3 w-16 rounded" />
-              <Skeleton className="h-3 w-20 rounded" />
-            </div>
-            {/* Device */}
-            <div className="flex items-center justify-between py-1.5 border-b border-neutral-50 dark:border-neutral-850">
-              <Skeleton className="h-3 w-12 rounded" />
-              <div className="flex items-center gap-1.5">
-                <Skeleton className="w-4 h-4 rounded" />
-                <Skeleton className="h-3 w-14 rounded" />
-              </div>
-            </div>
-            {/* Browser */}
-            <div className="flex items-center justify-between py-1.5 border-b border-neutral-50 dark:border-neutral-850">
-              <Skeleton className="h-3 w-14 rounded" />
-              <div className="flex items-center gap-1.5">
-                <Skeleton className="w-4 h-4 rounded" />
-                <Skeleton className="h-3 w-20 rounded" />
-              </div>
-            </div>
-            {/* OS */}
-            <div className="flex items-center justify-between py-1.5 border-b border-neutral-50 dark:border-neutral-850">
-              <Skeleton className="h-3 w-8 rounded" />
-              <div className="flex items-center gap-1.5">
-                <Skeleton className="w-4 h-4 rounded" />
-                <Skeleton className="h-3 w-24 rounded" />
-              </div>
-            </div>
-            {/* Screen */}
-            <div className="flex items-center justify-between py-1.5">
-              <Skeleton className="h-3 w-12 rounded" />
-              <Skeleton className="h-3 w-16 rounded" />
-            </div>
+          <div>
+            <InfoRowSkeleton labelWidth="w-14" valueWidth="w-24" withIcon />
+            <InfoRowSkeleton labelWidth="w-12" valueWidth="w-20" withIcon />
+            <InfoRowSkeleton labelWidth="w-16" valueWidth="w-28" />
           </div>
         ) : (
           <div>
             <InfoRow
-              icon={<CountryFlag country={data?.country || ""} className="w-4 h-4" />}
-              label={t("Country")}
-              value={data?.country ? getCountryName(data.country) : "—"}
+              icon={data?.first_channel ? <ChannelIcon channel={data.first_channel} className="w-3.5 h-3.5" /> : undefined}
+              label={t("Channel")}
+              value={data?.first_channel || "—"}
             />
             <InfoRow
-              label={t("Region")}
+              icon={firstReferrerDomain ? <Favicon domain={firstReferrerDomain} className="w-3.5 h-3.5" /> : undefined}
+              label={t("Referrer")}
+              value={firstReferrerDomain ? getDisplayName(firstReferrerDomain) : "—"}
+            />
+            <InfoRow
+              label={t("Landing page")}
               value={
-                <span className="truncate max-w-[160px] inline-block">
-                  {data?.region ? getRegionName(data.region) : "—"}
-                  {data?.city && `, ${data.city}`}
-                </span>
+                data?.first_entry_page ? (
+                  <span className="truncate max-w-[160px] inline-block" title={data.first_entry_page}>
+                    {data.first_entry_page}
+                  </span>
+                ) : (
+                  "—"
+                )
               }
             />
-            <InfoRow label={t("Language")} value={data?.language ? getLanguageName(data.language) : "—"} />
-            {!isApp && (
+            {data?.first_utm_source && (
               <InfoRow
-                icon={
-                  <DeviceIcon deviceType={data?.device_type || ""} size={13} />
-                }
-                label={t("Device")}
-                value={data?.device_type ?? "—"}
+                label={t("Source")}
+                value={<span className="truncate max-w-[160px] inline-block">{data.first_utm_source}</span>}
               />
             )}
-            {isApp ? (
-              <>
-                <InfoRow
-                  label={t("Device Model")}
-                  value={data?.device_model || "—"}
-                />
-                <InfoRow
-                  label={t("App Version")}
-                  value={data?.app_version ? `v${data.app_version}` : "—"}
-                />
-              </>
-            ) : (
+            {data?.first_utm_medium && (
               <InfoRow
-                icon={<Browser browser={data?.browser || "Unknown"} size={13} />}
-                label={t("Browser")}
-                value={data?.browser ? `${data.browser}${data.browser_version ? ` v${data.browser_version}` : ""}` : "—"}
+                label={t("Medium")}
+                value={<span className="truncate max-w-[160px] inline-block">{data.first_utm_medium}</span>}
               />
             )}
-            <InfoRow
-              icon={<OperatingSystem os={data?.operating_system || ""} size={13} />}
-              label={t("OS")}
-              value={
-                data?.operating_system
-                  ? `${data.operating_system}${data.operating_system_version ? ` v${data.operating_system_version}` : ""}`
-                  : "—"
-              }
-            />
-            <InfoRow
-              label={t("Screen")}
-              value={data?.screen_width && data?.screen_height ? `${data.screen_width}×${data.screen_height}` : "—"}
-            />
+            {data?.first_utm_campaign && (
+              <InfoRow
+                label={t("Campaign")}
+                value={<span className="truncate max-w-[160px] inline-block">{data.first_utm_campaign}</span>}
+              />
+            )}
+            {channelChanged && (
+              <InfoRow
+                icon={<ChannelIcon channel={data.last_channel} className="w-3.5 h-3.5" />}
+                label={t("Latest channel")}
+                value={data.last_channel}
+              />
+            )}
           </div>
         )}
       </SidebarCard>
-
-      {/* Activity Calendar */}
-      <SidebarCard className="h-[180px]">
-        <h3 className="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wide mb-2">
-          {t("Activity Calendar")}
-        </h3>
-        <div className="h-[140px]">
-          <VisitCalendar sessionCount={sessionCount} />
-        </div>
-      </SidebarCard>
-
-      {/* User Traits (identified users only) */}
-      {isIdentified && customTraits.length > 0 && (
-        <SidebarCard>
-          <h3 className="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wide mb-2">
-            {t("User Traits")}
-          </h3>
-          <div className="space-y-1">
-            {customTraits.map(([key, value]) => (
-              <div
-                key={key}
-                className="flex items-center justify-between py-1 border-b border-neutral-50 dark:border-neutral-850 last:border-0 text-xs"
-              >
-                <span className="text-neutral-500 dark:text-neutral-400 capitalize">{key.replace(/_/g, " ")}</span>
-                <span className="text-neutral-700 dark:text-neutral-200 truncate max-w-[160px]">{String(value)}</span>
-              </div>
-            ))}
-          </div>
-        </SidebarCard>
       )}
 
-      {/* Location Map */}
-      {configs?.mapboxToken && data?.country && (
-        <div className="bg-white dark:bg-neutral-900 rounded-lg border border-neutral-100 dark:border-neutral-850 aspect-square overflow-hidden">
+      {/* Location & Device Info */}
+      <SidebarCard>
+        <SidebarHeader title={t("Location & Device")} />
+        {showMap && data && !isLoading && (
           <UserLocationMap
             country={data.country}
             region={data.region}
             city={data.city}
+            className="mb-3 h-[132px]"
           />
-        </div>
-      )}
+        )}
+        <LocationDevices data={data} isLoading={isLoading} getRegionName={getRegionName} />
+      </SidebarCard>
 
-      {/* Linked Devices (identified users only) */}
-      {/* {isIdentified && data?.linked_devices && data.linked_devices.length > 0 && (
+      {/* Activity Calendar — always the user's full recent history, independent
+          of the selected date range */}
+      <SidebarCard>
+        <SidebarHeader
+          title={t("Activity Calendar")}
+          right={
+            <span className="text-[10px] uppercase tracking-wide text-neutral-400 dark:text-neutral-500">
+              {t("Last 4 months")}
+            </span>
+          }
+        />
+        <div className="h-[140px]">
+          {isLoadingCalendar ? (
+            <Skeleton className="h-full w-full rounded-md" />
+          ) : sessionCount.length > 0 ? (
+            <VisitCalendar sessionCount={sessionCount} />
+          ) : (
+            <div className="flex h-full items-center justify-center text-xs text-neutral-500 dark:text-neutral-400">
+              {t("No visits in the last 4 months")}
+            </div>
+          )}
+        </div>
+      </SidebarCard>
+
+      {/* Web Vitals (p75 across this user's performance events) */}
+      {!isApp && vitals && vitalsToShow.length > 0 && (
         <SidebarCard>
-          <h3 className="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wide mb-2 flex items-center gap-1.5">
-            <Laptop className="w-3 h-3" />
-            Linked Devices ({data.linked_devices.length})
-          </h3>
-          <div className="space-y-1 max-h-32 overflow-y-auto">
-            {data.linked_devices.map(device => (
-              <div
-                key={device.anonymous_id}
-                className="flex items-center justify-between py-1 border-b border-neutral-50 dark:border-neutral-850 last:border-0"
-              >
-                <span className="text-neutral-600 dark:text-neutral-300 font-mono text-xs truncate max-w-[140px]">
-                  {device.anonymous_id}
-                </span>
-                <span className="text-neutral-400 dark:text-neutral-500 text-xs">
-                  {formatRelative(DateTime.fromISO(device.created_at))}
-                </span>
-              </div>
-            ))}
+          <SidebarHeader
+            title={t("Web Vitals")}
+            right={
+              <span className="text-[10px] uppercase tracking-wide text-neutral-400 dark:text-neutral-500">p75</span>
+            }
+          />
+          <div>
+            {vitalsToShow.map(metric => {
+              const value = vitals[`${metric}_p75`] as number;
+              return (
+                <InfoRow
+                  key={metric}
+                  label={
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <span className="cursor-default">{METRIC_LABELS_SHORT[metric]}</span>
+                      </TooltipTrigger>
+                      <TooltipContent>{METRIC_LABELS[metric]}</TooltipContent>
+                    </Tooltip>
+                  }
+                  value={
+                    <span className={getMetricColor(metric, value)}>
+                      {formatMetricValue(metric, value)}
+                      {getMetricUnit(metric, value)}
+                    </span>
+                  }
+                />
+              );
+            })}
           </div>
         </SidebarCard>
-      )} */}
+      )}
+
+      {/* User Traits (identified users only) */}
+      {isIdentified && data && (customTraits.length > 0 || !!user) && (
+        <SidebarCard>
+          <SidebarHeader
+            title={t("User Traits")}
+            right={
+              user ? (
+                <Button
+                  variant="ghost"
+                  size="smIcon"
+                  className="-my-1.5 -mr-1.5 h-6 w-6 text-neutral-500"
+                  aria-label={t("Edit Traits")}
+                  onClick={() => setTraitsOpen(true)}
+                >
+                  <Pencil className="w-3 h-3" />
+                </Button>
+              ) : undefined
+            }
+          />
+          {customTraits.length > 0 ? (
+            <div className="space-y-1">
+              {customTraits.map(([key, value]) => (
+                <div
+                  key={key}
+                  className="flex items-center justify-between py-1 border-b border-neutral-50 dark:border-neutral-850 last:border-0 text-xs"
+                >
+                  <span className="text-neutral-500 dark:text-neutral-400 capitalize">{key.replace(/_/g, " ")}</span>
+                  <span className="text-neutral-700 dark:text-neutral-200 truncate max-w-[160px]">{String(value)}</span>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-xs text-neutral-400 dark:text-neutral-500">{t("No traits yet")}</p>
+          )}
+          <EditTraitsDialog
+            userId={data.identified_user_id}
+            traits={data.traits}
+            open={traitsOpen}
+            onOpenChange={setTraitsOpen}
+          />
+        </SidebarCard>
+      )}
     </div>
   );
 }

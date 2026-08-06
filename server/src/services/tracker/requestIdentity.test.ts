@@ -25,6 +25,8 @@ describe("resolveTrackingIdentity", () => {
     ).toEqual({
       ipAddress: "198.51.100.20",
       userAgent: "Mozilla/5.0 Chrome/120 Safari/537.36",
+      // Exclusion candidates still include everything the request presented.
+      candidateIps: ["198.51.100.20", "10.0.0.1", "198.51.100.10"],
     });
   });
 
@@ -46,6 +48,7 @@ describe("resolveTrackingIdentity", () => {
     ).toEqual({
       ipAddress: "203.0.113.10",
       userAgent: "Mozilla/5.0 Chrome/120 Safari/537.36",
+      candidateIps: ["203.0.113.10", "198.51.100.20", "198.51.100.10"],
     });
   });
 });

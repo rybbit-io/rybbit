@@ -1,22 +1,15 @@
 import { FastifyReply, FastifyRequest } from "fastify";
 import { z } from "zod";
-import { db } from "../../db/postgres/postgres.js";
-import { organization, sites } from "../../db/postgres/schema.js";
-import { eq } from "drizzle-orm";
-import { IS_CLOUD } from "../../lib/const.js";
-import { siteConfig } from "../../lib/siteConfig.js";
-import { validateIPPattern } from "../../lib/ipUtils.js";
-import { getBestSubscription, subscriptionIncludesReplay } from "../../lib/subscriptionUtils.js";
+import { SiteLifecycleError, siteConfigurationLifecycle } from "../../services/sites/siteConfigurationLifecycle.js";
 
-// Schema for the update request - all fields are optional but validated when present
 const updateSiteConfigSchema = z.object({
-  // Site settings
   name: z.string().min(1).max(255).optional(),
   type: z.enum(["web", "mobile"]).nullable().optional(),
   public: z.boolean().optional(),
   embedEnabled: z.boolean().optional(),
   saltUserIds: z.boolean().optional(),
   blockBots: z.boolean().optional(),
+  firstPartyProxy: z.boolean().optional(),
   domain: z.string().min(1).max(253).optional(),
   excludedIPs: z.array(z.string().trim().min(1)).max(100).optional(),
   excludedCountries: z
@@ -32,11 +25,32 @@ const updateSiteConfigSchema = z.object({
   excludedPaths: z.array(z.string().trim().min(1).max(2048)).max(100).optional(),
   excludedHostnames: z.array(z.string().trim().min(1).max(253)).max(100).optional(),
   excludedUserAgents: z.array(z.string().trim().min(1).max(512)).max(100).optional(),
-
-  // Tags
+  excludedASNs: z
+    .array(
+      z
+        .string()
+        .trim()
+        .regex(/^(?:AS)?\d{1,10}$/i, "ASN must be a number, optionally prefixed with AS (e.g., AS13335 or 13335)")
+        .refine(value => Number(value.replace(/^AS/i, "")) <= 4294967295, {
+          message: "ASN must be at most 4294967295",
+        })
+    )
+    .max(100)
+    .optional(),
+  excludedQueryParams: z
+    .array(
+      z
+        .string()
+        .trim()
+        .min(1)
+        .max(512)
+        .refine(value => !value.startsWith("="), {
+          message: "Query param rule must have a name before '=' (e.g., preview or utm_source=internal)",
+        })
+    )
+    .max(100)
+    .optional(),
   tags: z.array(z.string().trim().min(1).max(50)).max(20).optional(),
-
-  // Analytics features
   sessionReplay: z.boolean().optional(),
   webVitals: z.boolean().optional(),
   trackErrors: z.boolean().optional(),
@@ -57,16 +71,14 @@ export async function updateSiteConfig(
   reply: FastifyReply
 ) {
   try {
-    // Get siteId from path params
-    const siteId = parseInt(request.params.siteId, 10);
-    if (isNaN(siteId) || siteId <= 0) {
+    const siteId = Number(request.params.siteId);
+    if (!Number.isInteger(siteId) || siteId <= 0) {
       return reply.status(400).send({
         success: false,
         error: "Invalid site ID: must be a positive integer",
       });
     }
 
-    // Validate request body
     const validationResult = updateSiteConfigSchema.safeParse(request.body);
     if (!validationResult.success) {
       return reply.status(400).send({
@@ -76,151 +88,7 @@ export async function updateSiteConfig(
       });
     }
 
-    const updateData = validationResult.data;
-
-    // Check if site exists
-    const site = await db.query.sites.findFirst({
-      where: eq(sites.siteId, siteId),
-    });
-
-    if (!site) {
-      return reply.status(404).send({ error: "Site not found" });
-    }
-
-    const nextSiteType = updateData.type === undefined ? site.type || "web" : updateData.type || "web";
-
-    const nextDomain = updateData.domain ?? site.domain;
-    const cleanedDomain = nextDomain.replace(/^https?:\/\//, "").replace(/\/+$/, "");
-
-    if (updateData.domain !== undefined || updateData.type !== undefined) {
-      const domainRegex = /^(?:[\p{L}\p{N}](?:[\p{L}\p{N}-]{0,61}[\p{L}\p{N}])?\.)+\p{L}{2,}$/u;
-      const appIdentifierRegex = /^[A-Za-z0-9][A-Za-z0-9._-]{0,252}$/;
-      if (nextSiteType === "web" && !domainRegex.test(cleanedDomain)) {
-        return reply.status(400).send({
-          success: false,
-          error: "Invalid domain format. Must be a valid domain like example.com or sub.example.com",
-        });
-      }
-      if (nextSiteType === "mobile" && !appIdentifierRegex.test(cleanedDomain)) {
-        return reply.status(400).send({
-          success: false,
-          error: "Invalid app identifier. Use a bundle/package identifier like com.example.app",
-        });
-      }
-    }
-
-    if (nextSiteType === "mobile" && (updateData.sessionReplay || updateData.webVitals)) {
-      return reply.status(400).send({
-        success: false,
-        error: "Session replay and Web Vitals are only available for web sites",
-      });
-    }
-
-    // Session replay is a Pro feature — block enabling it (turning it off is always allowed)
-    if (IS_CLOUD && updateData.sessionReplay === true) {
-      let includesReplay = false;
-      if (site.organizationId) {
-        const orgResult = await db
-          .select({ stripeCustomerId: organization.stripeCustomerId })
-          .from(organization)
-          .where(eq(organization.id, site.organizationId))
-          .limit(1);
-        const subscription = await getBestSubscription(site.organizationId, orgResult[0]?.stripeCustomerId ?? null);
-        includesReplay = subscriptionIncludesReplay(subscription);
-      }
-
-      if (!includesReplay) {
-        return reply.status(403).send({
-          success: false,
-          error: "Session replay requires a Pro plan",
-        });
-      }
-    }
-
-    // Additional validation for excluded IPs if provided
-    if (updateData.excludedIPs) {
-      const validationErrors: string[] = [];
-      for (const ip of updateData.excludedIPs) {
-        const validation = validateIPPattern(ip);
-        if (!validation.valid) {
-          validationErrors.push(`${ip}: ${validation.error}`);
-        }
-      }
-
-      if (validationErrors.length > 0) {
-        return reply.status(400).send({
-          success: false,
-          error: "Invalid IP patterns",
-          details: validationErrors,
-        });
-      }
-    }
-
-    // Build the update object - only include fields that were provided
-    const dbUpdateData: any = {};
-
-    // Map the fields that exist in both request and database
-    const directMappings = [
-      "name",
-      "public",
-      "embedEnabled",
-      "saltUserIds",
-      "blockBots",
-      "excludedIPs",
-      "excludedCountries",
-      "excludedPaths",
-      "excludedHostnames",
-      "excludedUserAgents",
-      "tags",
-      "sessionReplay",
-      "webVitals",
-      "trackErrors",
-      "trackOutbound",
-      "trackUrlParams",
-      "trackInitialPageView",
-      "trackSpaNavigation",
-      "trackIp",
-      "trackButtonClicks",
-      "trackCopy",
-      "trackFormInteractions",
-    ];
-
-    for (const field of directMappings) {
-      if (updateData[field as keyof typeof updateData] !== undefined) {
-        dbUpdateData[field] = updateData[field as keyof typeof updateData];
-      }
-    }
-
-    if (updateData.type !== undefined) {
-      dbUpdateData.type = nextSiteType === "web" ? null : nextSiteType;
-    }
-    if (updateData.domain !== undefined) {
-      dbUpdateData.domain = cleanedDomain;
-    }
-    if (nextSiteType === "mobile") {
-      dbUpdateData.sessionReplay = false;
-      dbUpdateData.webVitals = false;
-    }
-
-    // Only proceed if there are fields to update
-    if (Object.keys(dbUpdateData).length === 0) {
-      return reply.status(400).send({
-        success: false,
-        error: "No fields to update",
-      });
-    }
-
-    // Add updatedAt timestamp
-    dbUpdateData.updatedAt = new Date().toISOString();
-
-    // Update the database
-    await db.update(sites).set(dbUpdateData).where(eq(sites.siteId, siteId));
-
-    // Update the site config cache
-    await siteConfig.updateConfig(siteId, dbUpdateData);
-
-    // Get the updated configuration to return
-    const updatedConfig = await siteConfig.getConfig(siteId);
+    const updatedConfig = await siteConfigurationLifecycle.update(siteId, validationResult.data);
 
     return reply.status(200).send({
       success: true,
@@ -228,16 +96,15 @@ export async function updateSiteConfig(
       config: updatedConfig,
     });
   } catch (error) {
-    console.error("Error updating site configuration:", error);
-
-    // Check for unique constraint violation on domain
-    if (String(error).includes("duplicate key value violates unique constraint")) {
-      return reply.status(409).send({
+    if (error instanceof SiteLifecycleError) {
+      return reply.status(error.statusCode).send({
         success: false,
-        error: "Domain already in use",
+        error: error.message,
+        ...(error.details !== undefined && { details: error.details }),
       });
     }
 
+    request.log.error({ err: error }, "Error updating site configuration");
     return reply.status(500).send({
       success: false,
       error: "Failed to update site configuration",

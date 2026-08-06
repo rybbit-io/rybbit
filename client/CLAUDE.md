@@ -94,7 +94,9 @@ export function useGetSomething(siteId?: string) {
 - Converts array params to JSON strings
 - Extracts and throws backend errors from `response.data.error`
 
-**`buildApiParams(time, timezone, filters?)`** returns `CommonApiParams` with `.toQueryParams()` / `.toBucketedQueryParams()` helpers for converting the time store state into API-ready parameters.
+**`buildApiParams(time, { filters? })`** (`api/utils.ts`) returns a plain `CommonApiParams` object; the free functions `toQueryParams` / `toBucketedQueryParams` / `toMetricQueryParams` (`api/analytics/endpoints/types.ts`) convert it to snake_case wire params inside endpoint functions.
+
+**`useAnalyticsQuery` / `useAnalyticsInfiniteQuery`** (`api/analytics/useAnalyticsQuery.ts`) — the standard way to build analytics hooks. Reads site/time/filters/timezone from the store once, derives the wire params, and builds the queryKey from the same params object so key and request cannot drift. Handles the same-site placeholder policy, `staleTime`, and `enabled: !!site`. Per-endpoint hooks only declare their key prefix, endpoint-specific `extraParams`, and fetcher. Never hand-assemble a queryKey listing store inputs in an analytics hook.
 
 ## State Management
 

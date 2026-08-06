@@ -87,16 +87,16 @@ export default function GoalsPage() {
         subtitle="Define conversion goals with page paths or custom events. See real-time completion counts and rates without any complex setup."
         badgeText="Goals"
         demoUrl="https://demo.rybbit.com/81/goals"
-        demoCaption="Live goals demo — real conversion tracking data"
+        demoCaption="Live goals demo: real conversion tracking data"
         introParagraphs={[
           <>
-            Every website has a purpose — a signup, a purchase, a download, a contact form submission. <strong className="text-neutral-900 dark:text-white">Goals let you track these conversions</strong> with a single click. No tag managers, no conversion pixels, no third-party scripts. Just define what success looks like and Rybbit does the rest.
+            Every website has a purpose: a signup, a purchase, a download, a contact form submission. <strong className="text-neutral-900 dark:text-white">Goals let you track these conversions</strong> with a single click. No tag managers, no conversion pixels, no third-party scripts. Just define what success looks like.
           </>,
           <>
             Create <strong className="text-neutral-900 dark:text-white">path-based goals</strong> that trigger when users visit specific URLs, or <strong className="text-neutral-900 dark:text-white">event-based goals</strong> that trigger on custom events with specific property values. Track purchases only when the plan is &ldquo;enterprise,&rdquo; or count signups only from a specific landing page.
           </>,
           <>
-            Goals work seamlessly with the rest of Rybbit&apos;s toolset. Filter your goals by any dimension — traffic source, country, device — to understand <strong className="text-neutral-900 dark:text-white">which segments convert best</strong>. Pair with funnels to see the path to conversion, and session replay to watch what happens when users <em>don&apos;t</em> convert.
+            Goals work alongside the rest of Rybbit. Filter your goals by any dimension (traffic source, country, device) to understand <strong className="text-neutral-900 dark:text-white">which segments convert best</strong>. Pair with funnels to see the path to conversion, and session replay to watch what happens when users <em>don&apos;t</em> convert.
           </>,
         ]}
         capabilities={capabilities}

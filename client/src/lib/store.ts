@@ -4,7 +4,15 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { Time } from "../components/DateSelector/types";
 import { LITE_DASHBOARD } from "./const";
-import { getStoredDashboardDefaultTime } from "./defaultTimeRange";
+import { getDashboardTimeForRange, getStoredDashboardDefaultTime } from "./defaultTimeRange";
+import {
+  canGoForward as canGoForwardFrom,
+  deriveTimeState,
+  hasRangeTimes,
+  recalculateTimeForTimezone,
+  shiftTimeBackward,
+  shiftTimeForward,
+} from "./time";
 
 // The lite dashboard is backed by hourly materialized views, so anything finer
 // than an hour has no underlying data. Clamp auto-selected buckets up to "hour".
@@ -16,205 +24,14 @@ const clampBucketForLite = (bucket: TimeBucket): TimeBucket =>
 const getSystemTimezone = () =>
   typeof window !== "undefined" ? Intl.DateTimeFormat().resolvedOptions().timeZone : "UTC";
 
-// Recalculate time based on wellKnown value for a new timezone
-const recalculateTimeForTimezone = (time: Time, timezone: string): Time | null => {
-  if (!time.wellKnown) return null;
-
-  const now = DateTime.now().setZone(timezone);
-  const today = now.toISODate() ?? "";
-  const yesterday = now.minus({ days: 1 }).toISODate() ?? "";
-
-  switch (time.wellKnown) {
-    case "today":
-      return { mode: "day", day: today, wellKnown: "today" };
-    case "yesterday":
-      return { mode: "day", day: yesterday, wellKnown: "yesterday" };
-    case "last-3-days":
-      return {
-        mode: "range",
-        startDate: now.minus({ days: 2 }).toISODate() ?? "",
-        endDate: today,
-        wellKnown: "last-3-days",
-      };
-    case "last-7-days":
-      return {
-        mode: "range",
-        startDate: now.minus({ days: 6 }).toISODate() ?? "",
-        endDate: today,
-        wellKnown: "last-7-days",
-      };
-    case "last-14-days":
-      return {
-        mode: "range",
-        startDate: now.minus({ days: 13 }).toISODate() ?? "",
-        endDate: today,
-        wellKnown: "last-14-days",
-      };
-    case "last-30-days":
-      return {
-        mode: "range",
-        startDate: now.minus({ days: 29 }).toISODate() ?? "",
-        endDate: today,
-        wellKnown: "last-30-days",
-      };
-    case "last-60-days":
-      return {
-        mode: "range",
-        startDate: now.minus({ days: 59 }).toISODate() ?? "",
-        endDate: today,
-        wellKnown: "last-60-days",
-      };
-    case "this-week":
-      return {
-        mode: "week",
-        week: now.startOf("week").toISODate() ?? "",
-        wellKnown: "this-week",
-      };
-    case "last-week":
-      return {
-        mode: "week",
-        week: now.minus({ weeks: 1 }).startOf("week").toISODate() ?? "",
-        wellKnown: "last-week",
-      };
-    case "this-month":
-      return {
-        mode: "month",
-        month: now.startOf("month").toISODate() ?? "",
-        wellKnown: "this-month",
-      };
-    case "last-month":
-      return {
-        mode: "month",
-        month: now.minus({ months: 1 }).startOf("month").toISODate() ?? "",
-        wellKnown: "last-month",
-      };
-    case "this-year":
-      return {
-        mode: "year",
-        year: now.startOf("year").toISODate() ?? "",
-        wellKnown: "this-year",
-      };
-    case "all-time":
-      return { mode: "all-time", wellKnown: "all-time" };
-    // past-minutes modes don't need date recalculation (they're relative to "now")
-    case "last-30-minutes":
-    case "last-1-hour":
-    case "last-6-hours":
-    case "last-24-hours":
-      return null;
-    default:
-      return null;
-  }
-};
-
 export type StatType = "pageviews" | "sessions" | "users" | "pages_per_session" | "bounce_rate" | "session_duration";
 
-type RangeWithTimes = Extract<Time, { mode: "range" }> & { startTime: string; endTime: string };
-
-const hasRangeTimes = (time: Time): time is RangeWithTimes =>
-  time.mode === "range" && typeof time.startTime === "string" && typeof time.endTime === "string";
-
-const getRangeDateTimeBounds = (time: RangeWithTimes) => {
-  const zone = getTimezone();
-  return {
-    start: DateTime.fromISO(`${time.startDate}T${time.startTime}`, { zone }),
-    end: DateTime.fromISO(`${time.endDate}T${time.endTime}`, { zone }),
-  };
-};
-
-const toRangeWithTimes = (start: DateTime, end: DateTime): RangeWithTimes => ({
-  mode: "range",
-  startDate: start.toISODate() ?? "",
-  startTime: start.toFormat("HH:mm:ss"),
-  endDate: end.toISODate() ?? "",
-  endTime: end.toFormat("HH:mm:ss"),
-});
-
-const getBucketForDateTimeRange = (start: DateTime, end: DateTime): TimeBucket => {
-  const minutes = end.diff(start, "minutes").minutes;
-
-  if (minutes <= 120) return "minute";
-  if (minutes <= 1440) return "five_minutes";
-  if (minutes <= 14 * 1440) return "hour";
-  if (minutes <= 60 * 1440) return "day";
-  if (minutes <= 180 * 1440) return "week";
-  return "month";
-};
-
 const getTimeState = (time: Time): Pick<Store, "time" | "previousTime" | "bucket"> => {
-  let bucketToUse: TimeBucket = "hour";
-  let previousTime: Time;
-
-  if (time.mode === "day") {
-    bucketToUse = "hour";
-    previousTime = {
-      mode: "day",
-      day: DateTime.fromISO(time.day).minus({ days: 1 }).toISODate() ?? "",
-    };
-  } else if (time.mode === "past-minutes") {
-    const timeDiff = time.pastMinutesStart - time.pastMinutesEnd;
-
-    if (timeDiff <= 120) {
-      bucketToUse = "minute";
-    }
-
-    previousTime = {
-      mode: "past-minutes",
-      pastMinutesStart: time.pastMinutesStart + timeDiff,
-      pastMinutesEnd: time.pastMinutesEnd + timeDiff,
-    };
-  } else if (time.mode === "range") {
-    if (hasRangeTimes(time)) {
-      const { start, end } = getRangeDateTimeBounds(time);
-      const duration = end.diff(start);
-      bucketToUse = getBucketForDateTimeRange(start, end);
-
-      previousTime = toRangeWithTimes(start.minus(duration), end.minus(duration));
-    } else {
-      const timeRangeLength = DateTime.fromISO(time.endDate).diff(DateTime.fromISO(time.startDate), "days").days + 1;
-
-      if (timeRangeLength > 180) {
-        bucketToUse = "month";
-      } else if (timeRangeLength > 31) {
-        bucketToUse = "week";
-      } else {
-        bucketToUse = "day";
-      }
-
-      previousTime = {
-        mode: "range",
-        startDate: DateTime.fromISO(time.startDate).minus({ days: timeRangeLength }).toISODate() ?? "",
-        endDate: DateTime.fromISO(time.startDate).minus({ days: 1 }).toISODate() ?? "",
-      };
-    }
-  } else if (time.mode === "week") {
-    bucketToUse = "day";
-    previousTime = {
-      mode: "week",
-      week: DateTime.fromISO(time.week).minus({ weeks: 1 }).toISODate() ?? "",
-    };
-  } else if (time.mode === "month") {
-    bucketToUse = "day";
-    previousTime = {
-      mode: "month",
-      month: DateTime.fromISO(time.month).minus({ months: 1 }).toISODate() ?? "",
-    };
-  } else if (time.mode === "year") {
-    bucketToUse = "month";
-    previousTime = {
-      mode: "year",
-      year: DateTime.fromISO(time.year).minus({ years: 1 }).toISODate() ?? "",
-    };
-  } else if (time.mode === "all-time") {
-    bucketToUse = "day";
-    previousTime = {
-      mode: "all-time",
-    };
-  } else {
-    previousTime = time;
-  }
-
-  return { time, previousTime, bucket: clampBucketForLite(bucketToUse) };
+  // Resolve the zone lazily: this runs during store creation (before useStore
+  // exists), and only range-with-times values actually need the zone.
+  const zone = hasRangeTimes(time) ? getTimezone() : "UTC";
+  const { previousTime, bucket } = deriveTimeState(time, zone);
+  return { time, previousTime, bucket: clampBucketForLite(bucket) };
 };
 
 type Store = {
@@ -243,6 +60,11 @@ const getUrlParams = () => (typeof window !== "undefined" ? new URLSearchParams(
 const getDefaultTime = (): Time => getStoredDashboardDefaultTime(getSystemTimezone());
 
 const getDefaultTimeState = () => getTimeState(getDefaultTime());
+
+// The store is created during both server rendering and the browser's first
+// render. Keep that initial state independent of localStorage so React hydrates
+// the same markup; client-side URL/default-range initialization runs afterward.
+const getInitialTimeState = () => getTimeState(getDashboardTimeForRange("today", "UTC"));
 
 const getSiteStateForUrl = (state: Store, site: string, privateKey?: string | null): Partial<Store> => {
   const urlParams = getUrlParams();
@@ -275,7 +97,7 @@ export const useStore = create<Store, [["zustand/persist", PersistedStore]]>(
       setSiteContext: (site, privateKey) => {
         set(state => getSiteStateForUrl(state, site, privateKey));
       },
-      ...getDefaultTimeState(),
+      ...getInitialTimeState(),
       setTime: (time, changeBucket = true) => {
         const nextTimeState = getTimeState(time);
 
@@ -335,163 +157,19 @@ export const resetStore = () => {
 
 export const goBack = () => {
   const { time, setTime } = useStore.getState();
-
-  if (time.mode === "day") {
-    setTime(
-      {
-        mode: "day",
-        day: DateTime.fromISO(time.day).minus({ days: 1 }).toISODate() ?? "",
-      },
-      false
-    );
-  } else if (time.mode === "range") {
-    if (hasRangeTimes(time)) {
-      const { start, end } = getRangeDateTimeBounds(time);
-      const duration = end.diff(start);
-
-      setTime(toRangeWithTimes(start.minus(duration), end.minus(duration)), false);
-      return;
-    }
-
-    const startDate = DateTime.fromISO(time.startDate);
-    const endDate = DateTime.fromISO(time.endDate);
-
-    const daysBetweenStartAndEnd = endDate.diff(startDate, "days").days;
-    if (daysBetweenStartAndEnd === 0) {
-      const previousDate = startDate.minus({ days: 1 }).toISODate() ?? "";
-      setTime(
-        {
-          mode: "range",
-          startDate: previousDate,
-          endDate: previousDate,
-        },
-        false
-      );
-      return;
-    }
-
-    setTime(
-      {
-        mode: "range",
-        startDate: startDate.minus({ days: daysBetweenStartAndEnd }).toISODate() ?? "",
-        endDate: startDate.toISODate() ?? "",
-      },
-      false
-    );
-  } else if (time.mode === "week") {
-    setTime(
-      {
-        mode: "week",
-        week: DateTime.fromISO(time.week).minus({ weeks: 1 }).toISODate() ?? "",
-      },
-      false
-    );
-  } else if (time.mode === "month") {
-    setTime(
-      {
-        mode: "month",
-        month: DateTime.fromISO(time.month).minus({ months: 1 }).toISODate() ?? "",
-      },
-      false
-    );
-  } else if (time.mode === "year") {
-    setTime(
-      {
-        mode: "year",
-        year: DateTime.fromISO(time.year).minus({ years: 1 }).toISODate() ?? "",
-      },
-      false
-    );
+  const next = shiftTimeBackward(time, getTimezone());
+  if (next) {
+    setTime(next, false);
   }
 };
 
 export const goForward = () => {
   const { time, setTime } = useStore.getState();
-
-  if (time.mode === "day") {
-    setTime({
-      mode: "day",
-      day: DateTime.fromISO(time.day).plus({ days: 1 }).toISODate() ?? "",
-    });
-  } else if (time.mode === "range") {
-    if (hasRangeTimes(time)) {
-      const { start, end } = getRangeDateTimeBounds(time);
-      const duration = end.diff(start);
-      const proposedStart = start.plus(duration);
-      const proposedEnd = end.plus(duration);
-      const now = DateTime.now().setZone(getTimezone());
-
-      if (proposedStart > now) {
-        return;
-      }
-
-      setTime(toRangeWithTimes(proposedStart, proposedEnd > now ? now : proposedEnd), false);
-      return;
-    }
-
-    const startDate = DateTime.fromISO(time.startDate);
-    const endDate = DateTime.fromISO(time.endDate);
-    const now = DateTime.now();
-
-    const daysBetweenStartAndEnd = endDate.diff(startDate, "days").days;
-    if (daysBetweenStartAndEnd === 0) {
-      const proposedDate = startDate.plus({ days: 1 });
-      if (proposedDate > now) {
-        return;
-      }
-
-      const nextDate = proposedDate.toISODate() ?? "";
-      setTime(
-        {
-          mode: "range",
-          startDate: nextDate,
-          endDate: nextDate,
-        },
-        false
-      );
-      return;
-    }
-
-    const proposedEndDate = endDate.plus({ days: daysBetweenStartAndEnd });
-
-    // Don't allow moving forward if it would put the entire range in the future
-    if (startDate.plus({ days: daysBetweenStartAndEnd }) > now) {
-      return;
-    }
-
-    setTime(
-      {
-        mode: "range",
-        startDate: startDate.plus({ days: daysBetweenStartAndEnd }).toISODate() ?? "",
-        // Cap the end date at today
-        endDate: proposedEndDate.toISODate() ?? "",
-      },
-      false
-    );
-  } else if (time.mode === "week") {
-    setTime(
-      {
-        mode: "week",
-        week: DateTime.fromISO(time.week).plus({ weeks: 1 }).toISODate() ?? "",
-      },
-      false
-    );
-  } else if (time.mode === "month") {
-    setTime(
-      {
-        mode: "month",
-        month: DateTime.fromISO(time.month).plus({ months: 1 }).toISODate() ?? "",
-      },
-      false
-    );
-  } else if (time.mode === "year") {
-    setTime(
-      {
-        mode: "year",
-        year: DateTime.fromISO(time.year).plus({ years: 1 }).toISODate() ?? "",
-      },
-      false
-    );
+  const next = shiftTimeForward(time, getTimezone());
+  if (next) {
+    // Historical quirk kept as-is: forward day steps recalculate the bucket,
+    // every other mode keeps the current one (matching goBack).
+    setTime(next, next.mode === "day");
   }
 };
 
@@ -523,31 +201,4 @@ export const getFilteredFilters = (parameters: FilterParameter[]) => {
   return filters.filter(f => parameters.includes(f.parameter));
 };
 
-export const canGoForward = (time: Time) => {
-  const currentDay = DateTime.now().startOf("day");
-  if (time.mode === "day") {
-    return !(DateTime.fromISO(time.day).startOf("day") >= currentDay);
-  }
-
-  if (time.mode === "range") {
-    if (hasRangeTimes(time)) {
-      return !(getRangeDateTimeBounds(time).end >= DateTime.now().setZone(getTimezone()));
-    }
-
-    return !(DateTime.fromISO(time.endDate).startOf("day") >= currentDay);
-  }
-
-  if (time.mode === "week") {
-    return !(DateTime.fromISO(time.week).startOf("week") >= currentDay);
-  }
-
-  if (time.mode === "month") {
-    return !(DateTime.fromISO(time.month).startOf("month") >= currentDay);
-  }
-
-  if (time.mode === "year") {
-    return !(DateTime.fromISO(time.year).startOf("year") >= currentDay);
-  }
-
-  return false;
-};
+export const canGoForward = (time: Time) => canGoForwardFrom(time, getTimezone());

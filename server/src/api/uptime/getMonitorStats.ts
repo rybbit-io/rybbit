@@ -211,7 +211,7 @@ export async function getMonitorStats(request: FastifyRequest<GetMonitorStatsReq
         details: zodError.errors,
       });
     }
-    console.error("Error retrieving monitor stats:", error);
+    request.log.error({ err: error }, "Error retrieving monitor stats");
     return reply.status(500).send({ error: "Internal server error" });
   }
 }

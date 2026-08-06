@@ -1,14 +1,7 @@
 import { eq, and, inArray } from "drizzle-orm";
 import { FastifyReply, FastifyRequest } from "fastify";
 import { db } from "../../db/postgres/postgres.js";
-import {
-  team,
-  teamMember,
-  teamSiteAccess,
-  sites,
-  member,
-  user,
-} from "../../db/postgres/schema.js";
+import { team, teamMember, teamSiteAccess, sites, member, user } from "../../db/postgres/schema.js";
 import { getUserIdFromRequest } from "../../lib/auth-utils.js";
 
 export async function listTeams(
@@ -26,24 +19,15 @@ export async function listTeams(
       ? await db
           .select({ id: member.id, role: member.role })
           .from(member)
-          .where(
-            and(
-              eq(member.organizationId, organizationId),
-              eq(member.userId, userId)
-            )
-          )
+          .where(and(eq(member.organizationId, organizationId), eq(member.userId, userId)))
           .limit(1)
       : [];
 
     const isAdminOrOwner =
-      memberRecord.length > 0 &&
-      (memberRecord[0].role === "admin" || memberRecord[0].role === "owner");
+      memberRecord.length > 0 && (memberRecord[0].role === "admin" || memberRecord[0].role === "owner");
 
     // Get all teams in the org
-    let teamsData = await db
-      .select()
-      .from(team)
-      .where(eq(team.organizationId, organizationId));
+    let teamsData = await db.select().from(team).where(eq(team.organizationId, organizationId));
 
     // If not admin/owner, filter to only teams the user belongs to
     if (!isAdminOrOwner && userId) {
@@ -52,15 +36,15 @@ export async function listTeams(
         .from(teamMember)
         .where(eq(teamMember.userId, userId));
 
-      const userTeamIdSet = new Set(userTeamIds.map((t) => t.teamId));
-      teamsData = teamsData.filter((t) => userTeamIdSet.has(t.id));
+      const userTeamIdSet = new Set(userTeamIds.map(t => t.teamId));
+      teamsData = teamsData.filter(t => userTeamIdSet.has(t.id));
     }
 
     if (teamsData.length === 0) {
       return reply.send({ teams: [] });
     }
 
-    const teamIds = teamsData.map((t) => t.id);
+    const teamIds = teamsData.map(t => t.id);
 
     // Fetch members and sites for all teams in parallel
     const [membersData, sitesData] = await Promise.all([
@@ -87,10 +71,7 @@ export async function listTeams(
     ]);
 
     // Build lookup maps
-    const membersMap = new Map<
-      string,
-      { userId: string; userName: string | null; userEmail: string }[]
-    >();
+    const membersMap = new Map<string, { userId: string; userName: string | null; userEmail: string }[]>();
     for (const m of membersData) {
       const existing = membersMap.get(m.teamId) || [];
       existing.push({
@@ -101,10 +82,7 @@ export async function listTeams(
       membersMap.set(m.teamId, existing);
     }
 
-    const sitesMap = new Map<
-      string,
-      { siteId: number; domain: string; name: string }[]
-    >();
+    const sitesMap = new Map<string, { siteId: number; domain: string; name: string }[]>();
     for (const s of sitesData) {
       const existing = sitesMap.get(s.teamId) || [];
       existing.push({ siteId: s.siteId, domain: s.domain, name: s.name });
@@ -112,7 +90,7 @@ export async function listTeams(
     }
 
     return reply.send({
-      teams: teamsData.map((t) => ({
+      teams: teamsData.map(t => ({
         id: t.id,
         name: t.name,
         organizationId: t.organizationId,
@@ -123,7 +101,7 @@ export async function listTeams(
       })),
     });
   } catch (error) {
-    console.error("Error listing teams:", error);
+    request.log.error({ err: error }, "Error listing teams");
     return reply.status(500).send({ error: "Failed to list teams" });
   }
 }

@@ -67,6 +67,7 @@
   }
 
   // config.ts
+  var FEATURE_FLAG_REQUEST_TIMEOUT_MS = 2e3;
   function createVisitorId() {
     try {
       if (crypto?.randomUUID) {
@@ -102,6 +103,8 @@
     return url.pathname;
   }
   async function fetchFeatureFlags(analyticsHost, siteId, namespace, visitorId) {
+    const controller = new AbortController();
+    const timeout = window.setTimeout(() => controller.abort(), FEATURE_FLAG_REQUEST_TIMEOUT_MS);
     try {
       const url = new URL(window.location.href);
       const response = await fetch(`${analyticsHost}/site/${siteId}/feature-flags/evaluate`, {
@@ -110,6 +113,7 @@
           "Content-Type": "application/json"
         },
         credentials: "omit",
+        signal: controller.signal,
         body: JSON.stringify({
           anonymousId: visitorId,
           identifiedUserId: getIdentifiedUserId(namespace),
@@ -124,12 +128,17 @@
         })
       });
       if (!response.ok) {
-        return {};
+        return { enabled: true, flags: {} };
       }
       const data = await response.json();
-      return data?.flags && typeof data.flags === "object" ? data.flags : {};
+      return {
+        enabled: data?.featureFlagsEnabled !== false,
+        flags: data?.flags && typeof data.flags === "object" ? data.flags : {}
+      };
     } catch (e2) {
-      return {};
+      return { enabled: true, flags: {} };
+    } finally {
+      window.clearTimeout(timeout);
     }
   }
   async function parseScriptConfig(scriptTag) {
@@ -200,6 +209,7 @@
       trackCopy: false,
       trackFormInteractions: false,
       tag,
+      featureFlagsEnabled: false,
       featureFlags: {},
       // rrweb session replay options (undefined means use rrweb defaults)
       sessionReplayBlockClass,
@@ -236,7 +246,8 @@
           enableSessionReplay: apiConfig.sessionReplay ?? defaultConfig.enableSessionReplay,
           trackButtonClicks: apiConfig.trackButtonClicks ?? defaultConfig.trackButtonClicks,
           trackCopy: apiConfig.trackCopy ?? defaultConfig.trackCopy,
-          trackFormInteractions: apiConfig.trackFormInteractions ?? defaultConfig.trackFormInteractions
+          trackFormInteractions: apiConfig.trackFormInteractions ?? defaultConfig.trackFormInteractions,
+          featureFlagsEnabled: apiConfig.featureFlagsEnabled === true
         };
       } else {
         console.warn("Failed to fetch tracking config from API, using defaults");
@@ -244,7 +255,11 @@
     } catch (error) {
       console.warn("Error fetching tracking config:", error);
     }
-    resolvedConfig.featureFlags = await fetchFeatureFlags(analyticsHost, siteId, namespace, visitorId);
+    if (resolvedConfig.featureFlagsEnabled) {
+      const result = await fetchFeatureFlags(analyticsHost, siteId, namespace, visitorId);
+      resolvedConfig.featureFlagsEnabled = result.enabled;
+      resolvedConfig.featureFlags = result.flags;
+    }
     return resolvedConfig;
   }
 
@@ -435,6 +450,12 @@
     }
     // Update user ID when it changes
     updateUserId(userId) {
+      if (userId === this.userId) {
+        return;
+      }
+      if (this.eventBuffer.length > 0) {
+        void this.flushEvents();
+      }
       this.userId = userId;
     }
     // Handle page navigation for SPAs
@@ -461,7 +482,8 @@
     defaultViewport1024x768: 1 << 6,
     impossibleDimensions: 1 << 7,
     outerDimensionsWeird: 1 << 8,
-    pluginApiAbsence: 1 << 9
+    pluginApiAbsence: 1 << 9,
+    defaultViewport1280x1200: 1 << 10
   };
   var cachedBotSignals = null;
   var MAX_BOT_SCORE = 10;
@@ -471,7 +493,13 @@
   function getBotSignalMask() {
     return getBotSignals().mask;
   }
+  function isPrerendering() {
+    return document.prerendering === true;
+  }
   function getBotSignals() {
+    if (isPrerendering()) {
+      return calculateBotSignals();
+    }
     cachedBotSignals ?? (cachedBotSignals = calculateBotSignals());
     return cachedBotSignals;
   }
@@ -517,7 +545,7 @@
       if (navigator.webdriver === true || hasAutomationGlobal) {
         addSignal(CLIENT_BOT_SIGNAL_MASKS.automationApi, 3);
       }
-      if (outerHeight === 0 || outerWidth === 0) {
+      if ((outerHeight === 0 || outerWidth === 0) && !isPrerendering()) {
         addSignal(CLIENT_BOT_SIGNAL_MASKS.zeroOuterDimensions, 2);
       }
       if (!Number.isFinite(screenWidth) || !Number.isFinite(screenHeight) || screenWidth <= 0 || screenHeight <= 0 || screenWidth > 1e5 || screenHeight > 1e5) {
@@ -528,6 +556,9 @@
       }
       if (isDesktopUA && screenWidth === 1024 && screenHeight === 768) {
         addSignal(CLIENT_BOT_SIGNAL_MASKS.defaultViewport1024x768, 3);
+      }
+      if (isDesktopUA && screenWidth === 1280 && screenHeight === 1200) {
+        addSignal(CLIENT_BOT_SIGNAL_MASKS.defaultViewport1280x1200, 3);
       }
       if (Number.isFinite(outerWidth) && Number.isFinite(outerHeight) && Number.isFinite(innerWidth) && Number.isFinite(innerHeight) && outerWidth > 0 && outerHeight > 0 && innerWidth > 0 && innerHeight > 0 && (outerWidth + 8 < innerWidth || outerHeight + 8 < innerHeight)) {
         addSignal(CLIENT_BOT_SIGNAL_MASKS.outerDimensionsWeird, 2);
@@ -541,23 +572,27 @@
         const canvas = document.createElement("canvas");
         const gl = canvas.getContext("webgl") || canvas.getContext("experimental-webgl");
         if (gl) {
-          const rendererParts = [];
-          const rendererRaw = gl.getParameter(gl.RENDERER);
-          if (typeof rendererRaw === "string") {
-            rendererParts.push(rendererRaw);
-          }
           try {
-            const debugInfo = gl.getExtension("WEBGL_debug_renderer_info");
-            if (debugInfo) {
-              const unmaskedRaw = gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL);
-              if (typeof unmaskedRaw === "string") {
-                rendererParts.push(unmaskedRaw);
-              }
+            const rendererParts = [];
+            const rendererRaw = gl.getParameter(gl.RENDERER);
+            if (typeof rendererRaw === "string") {
+              rendererParts.push(rendererRaw);
             }
-          } catch {
-          }
-          if (rendererParts.join(" ").toLowerCase().includes("swiftshader")) {
-            addSignal(CLIENT_BOT_SIGNAL_MASKS.swiftShader, 1);
+            try {
+              const debugInfo = gl.getExtension("WEBGL_debug_renderer_info");
+              if (debugInfo) {
+                const unmaskedRaw = gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL);
+                if (typeof unmaskedRaw === "string") {
+                  rendererParts.push(unmaskedRaw);
+                }
+              }
+            } catch {
+            }
+            if (rendererParts.join(" ").toLowerCase().includes("swiftshader")) {
+              addSignal(CLIENT_BOT_SIGNAL_MASKS.swiftShader, 1);
+            }
+          } finally {
+            releaseWebGlContext(canvas, gl);
           }
         }
       } catch {
@@ -576,8 +611,18 @@
       mask
     };
   }
+  function releaseWebGlContext(canvas, gl) {
+    try {
+      const loseContextExt = gl.getExtension("WEBGL_lose_context");
+      loseContextExt?.loseContext?.();
+    } catch {
+    }
+    canvas.width = 0;
+    canvas.height = 0;
+  }
 
   // tracking.ts
+  var FEATURE_FLAG_REQUEST_TIMEOUT_MS2 = 2e3;
   var Tracker = class {
     constructor(config) {
       this.customUserId = null;
@@ -622,6 +667,9 @@
       };
     }
     async refreshFeatureFlags() {
+      if (!this.config.featureFlagsEnabled) return;
+      const controller = new AbortController();
+      const timeout = window.setTimeout(() => controller.abort(), FEATURE_FLAG_REQUEST_TIMEOUT_MS2);
       try {
         const response = await fetch(`${this.config.analyticsHost}/site/${this.config.siteId}/feature-flags/evaluate`, {
           method: "POST",
@@ -635,12 +683,18 @@
           }),
           mode: "cors",
           credentials: "omit",
-          keepalive: true
+          keepalive: true,
+          signal: controller.signal
         });
         if (!response.ok) return;
         const data = await response.json();
         this.config.featureFlags = data?.flags && typeof data.flags === "object" ? data.flags : {};
+        if (data?.featureFlagsEnabled === false) {
+          this.config.featureFlagsEnabled = false;
+        }
       } catch (e2) {
+      } finally {
+        window.clearTimeout(timeout);
       }
     }
     loadUserId() {
@@ -954,6 +1008,9 @@
       try {
         localStorage.removeItem(`${this.config.namespace}-user-id`);
       } catch (e2) {
+      }
+      if (this.sessionReplayRecorder) {
+        this.sessionReplayRecorder.updateUserId("");
       }
       void this.refreshFeatureFlags();
     }
@@ -1289,8 +1346,10 @@
   };
 
   // clickTracking.ts
+  var CLICK_THROTTLE_MS = 1e3;
   var ClickTrackingManager = class {
     constructor(tracker, config) {
+      this.lastClickAt = /* @__PURE__ */ new WeakMap();
       this.tracker = tracker;
       this.config = config;
     }
@@ -1324,6 +1383,10 @@
       const buttonElement = this.findButton(element);
       if (!buttonElement) return;
       if (buttonElement.hasAttribute("data-rybbit-event")) return;
+      const now = Date.now();
+      const lastAt = this.lastClickAt.get(buttonElement);
+      if (lastAt !== void 0 && now - lastAt < CLICK_THROTTLE_MS) return;
+      this.lastClickAt.set(buttonElement, now);
       const properties = {
         text: this.getElementText(buttonElement),
         ...this.extractDataAttributes(buttonElement)

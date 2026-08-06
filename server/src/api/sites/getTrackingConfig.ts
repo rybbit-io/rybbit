@@ -1,5 +1,6 @@
 import { FastifyReply, FastifyRequest } from "fastify";
 import { siteConfig } from "../../lib/siteConfig.js";
+import { hasFeatureFlagsForRuntime } from "../../services/featureFlags/definitions.js";
 import { usageService } from "../../services/usageService.js";
 
 export async function getTrackingConfig(request: FastifyRequest<{ Params: { siteId: string } }>, reply: FastifyReply) {
@@ -17,11 +18,13 @@ export async function getTrackingConfig(request: FastifyRequest<{ Params: { site
       config.type === "mobile"
         ? false
         : (config.sessionReplay && !usageService.isSiteWithoutReplay(config.siteId)) || false;
+    const featureFlagsEnabled = await hasFeatureFlagsForRuntime(config.siteId, "client");
 
     // Return tracking configuration
     // This endpoint is public since the analytics script needs to fetch it
     return reply.send({
       type: config.type,
+      featureFlagsEnabled,
       sessionReplay,
       webVitals: config.type === "mobile" ? false : config.webVitals || false,
       trackErrors: config.trackErrors || false,
@@ -34,7 +37,7 @@ export async function getTrackingConfig(request: FastifyRequest<{ Params: { site
       trackFormInteractions: config.trackFormInteractions || false,
     });
   } catch (error) {
-    console.error("Error getting tracking config:", error);
+    request.log.error({ err: error }, "Error getting tracking config");
     return reply.status(500).send({ error: "Failed to get tracking configuration" });
   }
 }

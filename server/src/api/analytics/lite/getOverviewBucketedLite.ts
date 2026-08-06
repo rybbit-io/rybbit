@@ -1,10 +1,10 @@
 import { FilterParams } from "@rybbit/shared";
 import { FastifyReply, FastifyRequest } from "fastify";
 import SqlString from "sqlstring";
-import { clickhouse } from "../../../db/clickhouse/clickhouse.js";
 import { getOverviewBucketed } from "../getOverviewBucketed.js";
 import { TimeBucket } from "../types.js";
-import { TimeBucketToFn, processResults } from "../utils/utils.js";
+import { TimeBucketToFn } from "../utils/utils.js";
+import { analyticsRoute, runAnalyticsQuery } from "../utils/analyticsQuery.js";
 import { getLiteFillClause, getLiteSessionFilter, getLiteTimeStatement, hasLiteFilters, liteBucket } from "./utils.js";
 
 type GetOverviewBucketedLiteResponse = {
@@ -165,71 +165,66 @@ function buildSessionMvFilteredQuery(args: {
   `;
 }
 
-export async function getOverviewBucketedLite(
-  req: FastifyRequest<{
-    Params: { siteId: string };
-    Querystring: FilterParams<{ bucket: TimeBucket }>;
-  }>,
-  res: FastifyReply
-) {
-  const site = Number(req.params.siteId);
-  const bucket = liteBucket(req.query.bucket);
-  const fn = TimeBucketToFn[bucket];
-  const tz = SqlString.escape(req.query.time_zone || "UTC");
-
-  const isAllTime =
-    !req.query.start_date &&
-    !req.query.end_date &&
-    req.query.past_minutes_start === undefined &&
-    req.query.past_minutes_end === undefined;
-  const fill = isAllTime ? "" : getLiteFillClause(req.query, bucket);
-
-  const filtersPresent = hasLiteFilters(req.query.filters);
-
-  let query: string;
-  if (filtersPresent) {
-    // Session-column filters stay on sessions_mv_target; anything else falls
-    // back to the raw-events query.
-    const filter = getLiteSessionFilter(req.query.filters);
-    if (!filter.supported) {
-      return getOverviewBucketed(req, res);
-    }
-    query = buildSessionMvFilteredQuery({
-      fn,
-      tz,
-      sessionsTime: getLiteTimeStatement(req.query, "start_time"),
-      fill,
-      filterSql: filter.sql,
-    });
-  } else {
-    const useDayBucket = bucket === "day" || bucket === "week" || bucket === "month" || bucket === "year";
-
-    query = useDayBucket
-      ? buildDayBucketQuery({
-          fn,
-          tz,
-          sessionTime: getLiteTimeStatement(req.query, "session_hour"),
-          fill,
-        })
-      : buildHourBucketQuery({
-          fn,
-          tz,
-          overviewTime: getLiteTimeStatement(req.query, "event_hour"),
-          sessionsTime: getLiteTimeStatement(req.query, "start_time"),
-          fill,
-        });
-  }
-
-  try {
-    const result = await clickhouse.query({
-      query,
-      format: "JSONEachRow",
-      query_params: { siteId: site },
-    });
-    const data = await processResults<GetOverviewBucketedLiteResponse[number]>(result);
-    return res.send({ data });
-  } catch (error) {
-    console.error("Error fetching lite bucketed overview:", error);
-    return res.status(500).send({ error: "Failed to fetch overview" });
-  }
+interface GetOverviewBucketedLiteRequest {
+  Params: { siteId: string };
+  Querystring: FilterParams<{ bucket: TimeBucket }>;
 }
+
+export const getOverviewBucketedLite = analyticsRoute<GetOverviewBucketedLiteRequest>(
+  "overview",
+  async (req: FastifyRequest<GetOverviewBucketedLiteRequest>, res: FastifyReply) => {
+    const site = Number(req.params.siteId);
+    const bucket = liteBucket(req.query.bucket);
+    const fn = TimeBucketToFn[bucket];
+    const tz = SqlString.escape(req.query.time_zone || "UTC");
+
+    const isAllTime =
+      !req.query.start_date &&
+      !req.query.end_date &&
+      req.query.past_minutes_start === undefined &&
+      req.query.past_minutes_end === undefined;
+    const fill = isAllTime ? "" : getLiteFillClause(req.query, bucket);
+
+    const filtersPresent = hasLiteFilters(req.query.filters);
+
+    let query: string;
+    if (filtersPresent) {
+      // Session-column filters stay on sessions_mv_target; anything else falls
+      // back to the raw-events query.
+      const filter = getLiteSessionFilter(req.query.filters);
+      if (!filter.supported) {
+        return getOverviewBucketed(req, res);
+      }
+      query = buildSessionMvFilteredQuery({
+        fn,
+        tz,
+        sessionsTime: getLiteTimeStatement(req.query, "start_time"),
+        fill,
+        filterSql: filter.sql,
+      });
+    } else {
+      const useDayBucket = bucket === "day" || bucket === "week" || bucket === "month" || bucket === "year";
+
+      query = useDayBucket
+        ? buildDayBucketQuery({
+            fn,
+            tz,
+            sessionTime: getLiteTimeStatement(req.query, "session_hour"),
+            fill,
+          })
+        : buildHourBucketQuery({
+            fn,
+            tz,
+            overviewTime: getLiteTimeStatement(req.query, "event_hour"),
+            sessionsTime: getLiteTimeStatement(req.query, "start_time"),
+            fill,
+          });
+    }
+
+    const data = await runAnalyticsQuery<GetOverviewBucketedLiteResponse[number]>({
+      query,
+      params: { siteId: site },
+    });
+    return res.send({ data });
+  }
+);

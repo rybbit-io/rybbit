@@ -1,9 +1,5 @@
 "use client";
 
-import { TrackedButton } from "@/components/TrackedButton";
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { DEFAULT_EVENT_LIMIT } from "@/lib/const";
-import Link from "next/link";
 import { useState } from "react";
 
 interface CalculateImpactResult {
@@ -317,88 +313,6 @@ export function PageSpeedForm() {
               Clear
             </button>
           </div>
-        </div>
-      </div>
-
-      {/* FAQ Section */}
-      <div className="mb-16">
-        <h2 className="text-2xl font-bold text-neutral-900 dark:text-white mb-6">Frequently Asked Questions</h2>
-        <div className="bg-neutral-100/50 dark:bg-neutral-800/20 backdrop-blur-sm border border-neutral-300/50 dark:border-neutral-800/50 rounded-xl overflow-hidden">
-          <Accordion type="single" collapsible className="w-full">
-            <AccordionItem value="item-1">
-              <AccordionTrigger>How much does page speed really matter?</AccordionTrigger>
-              <AccordionContent>
-                Studies show that for every 1 second delay in page load time, conversions decrease by approximately 7%,
-                bounce rate increases by 7%, and customer satisfaction drops by 16%. A 2-second delay can result in
-                abandonment rates up to 87% for e-commerce sites. This makes page speed a critical business metric.
-              </AccordionContent>
-            </AccordionItem>
-
-            <AccordionItem value="item-2">
-              <AccordionTrigger>What are Google Core Web Vitals and why are they important?</AccordionTrigger>
-              <AccordionContent>
-                Google Core Web Vitals are three key metrics that measure user experience: Largest Contentful Paint
-                (LCP, visual loading speed), First Input Delay (FID, responsiveness), and Cumulative Layout Shift (CLS,
-                visual stability). Google uses these metrics as ranking factors in search results, making them essential
-                for SEO. Meeting these thresholds directly impacts your site's visibility and traffic.
-              </AccordionContent>
-            </AccordionItem>
-
-            <AccordionItem value="item-3">
-              <AccordionTrigger>What's a good page load time?</AccordionTrigger>
-              <AccordionContent>
-                Google recommends pages load in under 3 seconds on mobile. However, the faster the better—pages that
-                load in under 1 second see significantly higher engagement. Amazon found that every 100ms improvement in
-                load time increased revenue by 1%. Most successful e-commerce sites target between 1-2 seconds.
-              </AccordionContent>
-            </AccordionItem>
-
-            <AccordionItem value="item-4">
-              <AccordionTrigger>What are the best ways to improve page speed?</AccordionTrigger>
-              <AccordionContent>
-                Key improvements include: optimizing images (compress and use modern formats like WebP), minifying
-                CSS/JS files, enabling browser caching, using a Content Delivery Network (CDN), reducing server response
-                time, eliminating render-blocking resources, lazy-loading below-the-fold content, and choosing
-                lightweight analytics tools like{" "}
-                <Link href="https://app.rybbit.io" className="text-emerald-600 dark:text-emerald-400 hover:underline">
-                  Rybbit
-                </Link>{" "}
-                which adds minimal overhead (just 3KB).
-              </AccordionContent>
-            </AccordionItem>
-
-            <AccordionItem value="item-5" className="border-b-0">
-              <AccordionTrigger>How can analytics tools affect my page speed?</AccordionTrigger>
-              <AccordionContent>
-                Many analytics tools can significantly impact page performance by loading large scripts synchronously
-                and making blocking network requests. This reduces your page's speed and negatively affects user
-                experience. Tools like Rybbit are designed to minimize this impact with lightweight asynchronous loading
-                (3KB script, loaded after page interactive), ensuring you get the insights you need without compromising
-                performance.
-              </AccordionContent>
-            </AccordionItem>
-          </Accordion>
-        </div>
-      </div>
-
-      {/* CTA */}
-      <div className="border-t border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 py-20">
-        <div className="max-w-4xl mx-auto px-6 text-center">
-          <h2 className="text-3xl md:text-4xl font-bold text-neutral-900 dark:text-white mb-4">
-            Lightning-fast analytics that won't slow you down
-          </h2>
-          <p className="text-lg text-neutral-600 dark:text-neutral-400 mb-8 max-w-2xl mx-auto">
-            Rybbit's tiny 3KB script loads asynchronously and won't impact your page speed. Get started for free with up
-            to {DEFAULT_EVENT_LIMIT.toLocaleString()} pageviews per month.
-          </p>
-          <TrackedButton
-            href="https://app.rybbit.io/signup"
-            eventName="signup"
-            eventProps={{ location: "page_speed_calculator_cta" }}
-            className="inline-block bg-emerald-600 hover:bg-emerald-500 text-white font-semibold px-10 py-4 text-lg rounded-lg shadow-lg shadow-emerald-900/20 transform hover:-translate-y-0.5 transition-all duration-200"
-          >
-            Start tracking for free
-          </TrackedButton>
         </div>
       </div>
     </>

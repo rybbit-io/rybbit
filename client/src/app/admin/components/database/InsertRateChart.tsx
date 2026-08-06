@@ -117,7 +117,7 @@ export function InsertRateChart({ insertRate, isLoading, isUnavailable }: Insert
         useMesh={true}
         animate={false}
         enableSlices="x"
-        colors={["hsl(var(--emerald-400))"]}
+        colors={["hsl(var(--dataviz))"]}
         enableArea={true}
         areaOpacity={0.1}
         sliceTooltip={({ slice }) => {

@@ -45,8 +45,8 @@ This minimal setup enables basic pageview and event tracking, but won't support 
 | Endpoint | Method | Purpose | Cache |
 |----------|--------|---------|-------|
 | `/api/script.js` | GET | Main tracking script (minified) | 1 hour |
-| `/api/replay.js` | GET | Session replay recording script | 1 hour |
-| `/api/metrics.js` | GET | Web Vitals metrics script | 1 hour |
+| `/api/replay.js` | GET | Session replay recording script | 1 day |
+| `/api/metrics.js` | GET | Web Vitals metrics script | 1 day |
 | `/api/track` | POST | Event tracking endpoint | No cache |
 | `/api/identify` | POST | User identification endpoint | No cache |
 | `/api/session-replay/record/:siteId` | POST | Session replay data upload | No cache |
@@ -82,10 +82,15 @@ Your domain path          →  Rybbit backend
 
 **Key requirements:**
 - Preserve the HTTP method (GET or POST)
-- Forward necessary headers (User-Agent, X-Forwarded-For, Referer)
+- Forward the browser's original request headers — pass through **all** incoming headers except `Host` and hop-by-hop headers (`Connection`, `Content-Length`), rather than hand-picking a few. See [Request Header Forwarding](#request-header-forwarding) for why this matters.
 - Maintain request/response body for POST requests
 - Set appropriate Content-Type headers
-- For CDN or edge proxies, forward the visitor IP in `X-Forwarded-For` or `X-Real-IP`
+- Forward the visitor IP in `X-Forwarded-For`
+- Enable the **First-Party Proxy** toggle for your site (see below)
+
+### Enable First-Party Proxy in Site Settings
+
+In your Rybbit dashboard, open **Site Settings → Privacy & Security** and enable **First-Party Proxy**. This tells Rybbit that requests for this site arrive via your proxy, so the visitor IP in `X-Forwarded-For` is trusted directly instead of being inferred from network topology. Without it, Rybbit may attribute traffic to your proxy server's IP — producing wrong geolocation and merging all visitors into a few users.
 
 ### Configure Caching (Optional but Recommended)
 
@@ -164,22 +169,35 @@ Access-Control-Allow-Headers: Content-Type
 
 ## Request Header Forwarding
 
-For accurate tracking, ensure these headers are forwarded to the Rybbit backend:
+Forward the browser's original headers to the Rybbit backend. The simplest and most robust approach is to pass through **every** incoming request header except `Host` and hop-by-hop headers (`Connection`, `Content-Length` — let your HTTP client recompute those).
+
+Why this matters: Rybbit's bot detection scores requests on headers that every real browser sends. A proxy that forwards only `User-Agent` and the visitor IP produces requests that look exactly like a script — the events return `200 OK` but are classified as bot traffic and never appear in your dashboard.
+
+If you must whitelist headers instead of passing everything through, this is the minimum set:
 
 | Header | Purpose | Required |
 |--------|---------|----------|
 | `User-Agent` | Device and browser detection | Yes |
-| `X-Real-IP` or `X-Forwarded-For` | IP address for geolocation | Yes |
+| `X-Forwarded-For` | Visitor IP for geolocation and user identification | Yes |
+| `Accept-Language` | Language detection, bot filtering | Yes |
+| `Accept` | Bot filtering | Yes |
+| `Accept-Encoding` | Bot filtering (must include `gzip`) | Yes |
+| `Sec-Fetch-Site`, `Sec-Fetch-Mode`, `Sec-Fetch-Dest` | Bot filtering (sent by all Chromium browsers) | Yes |
+| `Sec-CH-UA`, `Sec-CH-UA-Mobile`, `Sec-CH-UA-Platform` | Browser detection | Recommended |
 | `Referer` | Referrer tracking | Recommended |
-| `Accept-Language` | Language detection | Optional |
+| `Content-Type` | POST body parsing | Yes (POSTs) |
 
 <Callout type="warn">
-**IP Forwarding**: Rybbit uses IP addresses for geolocation (country/city) and creating anonymous user identifiers (hashed IP + User Agent). If you don't forward the `X-Real-IP` or `X-Forwarded-For` header, all traffic will appear to come from your proxy server's IP.
+**IP Forwarding**: Rybbit uses IP addresses for geolocation (country/city) and creating anonymous user identifiers (hashed IP + User Agent). If you don't forward the visitor IP in `X-Forwarded-For`, all traffic will appear to come from your proxy server's IP.
 </Callout>
 
 ### Forwarded IP Headers
 
-If your proxy runs on infrastructure such as Cloudflare Workers, AWS CloudFront, Fastly, or another edge/CDN provider, make sure the proxy sets `X-Forwarded-For` (or `X-Real-IP`) to the original visitor IP. Rybbit reads both **before** the connecting edge IP, so this prevents traffic from being geolocated to the proxy's exit node. `X-Real-IP` takes precedence if both are present, but `X-Forwarded-For` is fully supported and is the right choice on platforms that can't set `X-Real-IP` — notably AWS CloudFront, where `X-Real-IP` is on the [origin custom-header denylist](https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/add-origin-custom-headers.html#add-origin-custom-headers-denylist).
+Set `X-Forwarded-For` to the original visitor IP before forwarding the request to Rybbit, and enable the **First-Party Proxy** toggle in your site settings so Rybbit trusts it unconditionally.
+
+<Callout type="warn">
+**Use `X-Forwarded-For`, not `X-Real-IP`.** On Rybbit Cloud, `X-Real-IP` is consumed by our edge network (Cloudflare treats it as an internal header) and never reaches the backend — a proxy that relies on it will silently fall back to the wrong IP. `X-Forwarded-For` passes through intact. Coincidentally, AWS CloudFront also cannot send `X-Real-IP` (it's on the [origin custom-header denylist](https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/add-origin-custom-headers.html#add-origin-custom-headers-denylist)). Setting `X-Real-IP` as well does no harm on self-hosted instances, but never make it the only IP header.
+</Callout>
 
 **Cloudflare Worker example:**
 
@@ -319,8 +337,9 @@ If something isn't working, check:
 1. **Script loads but no events tracked**: Verify all tracking endpoints (`/api/track`, etc.) are proxied
 2. **CORS errors**: Ensure CORS headers are preserved from Rybbit backend
 3. **404 errors**: Check that URL paths exactly match expected format
-4. **Incorrect geolocation**: Verify `X-Forwarded-For` or `X-Real-IP` is set to the visitor IP
-5. **Session replay not working**: Add `/api/replay.js` and `/api/session-replay/record/:siteId` endpoints
+4. **Incorrect geolocation**: Verify `X-Forwarded-For` is set to the visitor IP and the **First-Party Proxy** toggle is enabled in site settings
+5. **`/track` returns 200 but nothing appears in the dashboard**: Your proxy is probably forwarding too few headers and events are being classified as bot traffic — forward the full browser header set (see [Request Header Forwarding](#request-header-forwarding))
+6. **Session replay not working**: Add `/api/replay.js` and `/api/session-replay/record/:siteId` endpoints
 
 For more detailed troubleshooting, see our [troubleshooting guide](/docs/proxy-guide/troubleshooting).
 

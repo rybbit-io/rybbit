@@ -142,7 +142,7 @@ export async function getMonitorEvents(request: FastifyRequest<GetMonitorEventsR
         details: zodError.errors,
       });
     }
-    console.error("Error retrieving monitor events:", error);
+    request.log.error({ err: error }, "Error retrieving monitor events");
     return reply.status(500).send({ error: "Internal server error" });
   }
 }

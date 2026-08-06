@@ -1,9 +1,9 @@
 import { FilterParams } from "@rybbit/shared";
 import { FastifyReply, FastifyRequest } from "fastify";
 import SqlString from "sqlstring";
-import { clickhouse } from "../../../db/clickhouse/clickhouse.js";
 import { TimeBucket } from "../types.js";
-import { getTimeStatement, processResults, TimeBucketToFn } from "../utils/utils.js";
+import { getTimeStatement, TimeBucketToFn } from "../utils/utils.js";
+import { analyticsRoute, runAnalyticsQuery } from "../utils/analyticsQuery.js";
 import { type BotLayerKey, getBotFilterStatement, getBotLayerStatement, getBotTimeStatementFill } from "./utils.js";
 
 type BotTimeSeriesPoint = {
@@ -21,16 +21,16 @@ export interface BotTimeSeriesRequest {
   }>;
 }
 
-const getQuery = (params: BotTimeSeriesRequest["Querystring"]) => {
-  const { bucket = "hour", time_zone } = params;
-  const timeStatement = getTimeStatement(params);
-  const filterStatement = getBotFilterStatement(params.filters);
-  const layerStatement = getBotLayerStatement(params.layer);
+export const buildBotTimeSeriesQuery = (query: BotTimeSeriesRequest["Querystring"]) => {
+  const { bucket = "hour", time_zone } = query;
+  const timeStatement = getTimeStatement(query);
+  const filterStatement = getBotFilterStatement(query.filters);
+  const layerStatement = getBotLayerStatement(query.layer);
   const hasBoundedTime =
-    Boolean(params.start_date && params.end_date) ||
-    Boolean(params.start_datetime && params.end_datetime) ||
-    (params.past_minutes_start !== undefined && params.past_minutes_end !== undefined);
-  const fillClause = hasBoundedTime ? getBotTimeStatementFill(params, bucket) : "";
+    Boolean(query.start_date && query.end_date) ||
+    Boolean(query.start_datetime && query.end_datetime) ||
+    (query.past_minutes_start !== undefined && query.past_minutes_end !== undefined);
+  const fillClause = hasBoundedTime ? getBotTimeStatementFill(query, bucket) : "";
   const timezone = SqlString.escape(time_zone || "UTC");
 
   return `
@@ -47,20 +47,14 @@ const getQuery = (params: BotTimeSeriesRequest["Querystring"]) => {
   `;
 };
 
-export async function getBotTimeSeries(req: FastifyRequest<BotTimeSeriesRequest>, res: FastifyReply) {
-  try {
-    const result = await clickhouse.query({
-      query: getQuery(req.query),
-      format: "JSONEachRow",
-      query_params: {
-        siteId: Number(req.params.siteId),
-      },
+export const getBotTimeSeries = analyticsRoute<BotTimeSeriesRequest>(
+  "bot time series",
+  async (req: FastifyRequest<BotTimeSeriesRequest>, res: FastifyReply) => {
+    const data = await runAnalyticsQuery<BotTimeSeriesPoint>({
+      query: buildBotTimeSeriesQuery(req.query),
+      params: { siteId: Number(req.params.siteId) },
     });
 
-    const data = await processResults<BotTimeSeriesPoint>(result);
     return res.send({ data });
-  } catch (error) {
-    console.error("Error fetching bot time series:", error);
-    return res.status(500).send({ error: "Failed to fetch bot time series" });
   }
-}
+);

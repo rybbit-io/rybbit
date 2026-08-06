@@ -14,7 +14,7 @@ export class RegionHealthChecker {
   }
 
   async start(): Promise<void> {
-    this.logger.info(`Starting region health checker with interval: ${this.intervalMs}ms`);
+    this.logger.info({ intervalMs: this.intervalMs }, "Starting region health checker");
 
     // Run initial check
     await this.checkAllRegions();
@@ -42,11 +42,11 @@ export class RegionHealthChecker {
       // Filter out local region
       const remoteRegions = regions.filter(r => r.code !== "local");
 
-      this.logger.debug(`Checking health of ${remoteRegions.length} remote regions`);
+      this.logger.debug({ regionCount: remoteRegions.length }, "Checking remote region health");
 
       const healthPromises = remoteRegions.map(region =>
         this.checkRegionHealth(region).catch(error => {
-          this.logger.error(error, `Error checking health of region ${region.code}`);
+          this.logger.error({ err: error, regionCode: region.code }, "Error checking region health");
           return { region, isHealthy: false };
         })
       );
@@ -67,7 +67,7 @@ export class RegionHealthChecker {
       const healthyCount = results.filter(r => r.isHealthy).length;
       this.logger.info({ healthyCount, totalRegions: remoteRegions.length }, "Region health check complete");
     } catch (error) {
-      this.logger.error(error, "Error in region health check");
+      this.logger.error({ err: error }, "Error in region health check");
     }
   }
 
@@ -93,7 +93,7 @@ export class RegionHealthChecker {
       this.logger.warn({ regionCode: region.code, response: data }, "Region returned unexpected response");
       return { region, isHealthy: false };
     } catch (error) {
-      this.logger.error({ regionCode: region.code, error }, "Health check failed for region");
+      this.logger.error({ regionCode: region.code, err: error }, "Health check failed for region");
       return { region, isHealthy: false };
     }
   }

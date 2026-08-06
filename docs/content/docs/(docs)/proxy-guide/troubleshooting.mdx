@@ -178,7 +178,7 @@ proxy_pass https://app.rybbit.io;
 **Solutions:**
 
 <Callout type="warn">
-**Critical**: The `X-Forwarded-For` (or `X-Real-IP`) header must contain the original client IP for accurate geolocation and user identification. Rybbit reads both before the connecting edge IP. On AWS CloudFront use `X-Forwarded-For` — it cannot forward `X-Real-IP`.
+**Critical**: The `X-Forwarded-For` header must contain the original client IP for accurate geolocation and user identification, and the **First-Party Proxy** toggle must be enabled in your site settings. Don't rely on `X-Real-IP` — on Rybbit Cloud it never reaches the backend (our edge network consumes it), and AWS CloudFront cannot send it at all.
 </Callout>
 
 **Nginx:**
@@ -209,7 +209,7 @@ onProxyReq: (proxyReq, req) => {
 **Cloudflare Workers:**
 ```javascript
 const clientIp = request.headers.get('CF-Connecting-IP') || '0.0.0.0';
-proxyHeaders.set('X-Real-IP', clientIp);
+proxyHeaders.set('X-Forwarded-For', clientIp);
 ```
 
 ---
@@ -218,29 +218,54 @@ proxyHeaders.set('X-Real-IP', clientIp);
 
 **Symptoms:**
 - `/analytics/track` returns `200 OK`
-- Events do not appear in the normal analytics dashboard
-- Bot logs or older responses say the event was not tracked because a bot was detected
-- The bot reason mentions `bot asn`
-- Geolocation points to your CDN or proxy region, such as a Cloudflare Worker or AWS CloudFront edge location
+- Events do not appear in the normal analytics dashboard (only under bot traffic)
+- Tracking works fine when the script talks to Rybbit directly, without the proxy
 
-**Cause:** Rybbit is seeing the proxy IP instead of the original visitor IP. This is common when a first-party proxy is hosted on CDN or cloud infrastructure. Those networks use hosting/datacenter ASNs, so traffic can look like bot infrastructure if the visitor IP is not passed in a trusted way.
+There are two independent causes, and server-side proxies often hit **both**. Work through them in order.
 
-Set `X-Forwarded-For` (or `X-Real-IP`) to the original visitor IP before forwarding the request to Rybbit. Rybbit reads both before the connecting edge IP. `X-Real-IP` wins if both are present, but `X-Forwarded-For` is fully supported — use it on AWS CloudFront, which cannot forward `X-Real-IP`.
+#### Cause 1: Your proxy strips the browser's headers
+
+Rybbit's bot detection scores requests on headers that every real browser sends: `Accept`, `Accept-Language`, `Accept-Encoding` (with `gzip`), and the `Sec-Fetch-*` headers that all Chromium browsers attach. A proxy that forwards only `User-Agent` and the visitor IP produces requests indistinguishable from a script — they are accepted with `200 OK` but classified as bots.
+
+**Fix:** forward **all** incoming request headers, minus `Host` and hop-by-hop headers (`Connection`, `Content-Length`). Hand-picking headers is the most common mistake in PHP/WordPress-style proxies.
+
+```php
+// PHP example — forward everything except Host/hop-by-hop
+$headers = [];
+foreach (getallheaders() as $name => $value) {
+    if (!in_array(strtolower($name), ['host', 'connection', 'content-length'])) {
+        $headers[] = "$name: $value";
+    }
+}
+$headers[] = 'X-Forwarded-For: ' . $_SERVER['REMOTE_ADDR'];
+```
+
+#### Cause 2: Rybbit sees your proxy's IP instead of the visitor's
+
+First-party proxies typically run on hosting/datacenter infrastructure, so if the visitor IP is not forwarded (or not trusted), traffic carries a datacenter ASN and reinforces bot classification — and geolocation points at your proxy's region.
+
+**Fix:**
+
+1. Set `X-Forwarded-For` to the original visitor IP before forwarding to Rybbit.
+2. Enable the **First-Party Proxy** toggle in **Site Settings → Privacy & Security** so Rybbit trusts the forwarded IP unconditionally.
+
+<Callout type="warn">
+Use `X-Forwarded-For`, not `X-Real-IP`. On Rybbit Cloud, `X-Real-IP` never reaches the backend (our edge network consumes it), and AWS CloudFront cannot send it at all.
+</Callout>
 
 **Cloudflare Workers:**
 
 ```javascript
 const clientIp = request.headers.get('CF-Connecting-IP') || '0.0.0.0';
 
-const proxyHeaders = new Headers(request.headers);
-proxyHeaders.set('X-Real-IP', clientIp);
+const proxyHeaders = new Headers(request.headers); // preserves all browser headers
 proxyHeaders.set('X-Forwarded-For', clientIp);
 ```
 
 **AWS CloudFront:**
 
-- Set `X-Forwarded-For` to the viewer IP from a CloudFront Function/Lambda@Edge (CloudFront cannot forward `X-Real-IP`)
-- Forward `User-Agent`, `Referer`, and `Accept-Language`
+- Set `X-Forwarded-For` to the viewer IP from a CloudFront Function/Lambda@Edge
+- Configure the origin request policy to forward all viewer headers
 
 ```javascript
 // CloudFront Function (viewer-request)
@@ -615,7 +640,9 @@ When troubleshooting, work through this checklist:
 - [ ] Script loads successfully (200 status, correct Content-Type)
 - [ ] Tracking endpoint is proxied (`/analytics/track`)
 - [ ] POST requests preserve method and body
-- [ ] Client IP is forwarded (`X-Forwarded-For`, `X-Real-IP`)
+- [ ] Client IP is forwarded in `X-Forwarded-For` (not just `X-Real-IP` — that header doesn't survive Rybbit Cloud's edge)
+- [ ] **First-Party Proxy** toggle is enabled in Site Settings → Privacy & Security
+- [ ] Full browser header set is forwarded (`Accept`, `Accept-Language`, `Accept-Encoding`, `Sec-Fetch-*`) — not just `User-Agent`
 - [ ] User-Agent header is preserved
 - [ ] CORS headers are preserved (check response headers)
 - [ ] Request size limits allow tracking data (1MB minimum)

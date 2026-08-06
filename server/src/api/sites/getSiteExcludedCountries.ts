@@ -45,7 +45,7 @@ export async function getSiteExcludedCountries(request: FastifyRequest, reply: F
       excludedCountries,
     });
   } catch (error) {
-    console.error("Error getting excluded countries:", error);
+    request.log.error({ err: error }, "Error getting excluded countries");
     return reply.status(500).send({
       success: false,
       error: "Failed to get excluded countries",

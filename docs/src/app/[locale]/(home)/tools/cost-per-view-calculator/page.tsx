@@ -140,7 +140,7 @@ const educationalContent = (
     <h3 className="text-xl font-semibold text-neutral-900 dark:text-white mb-3">Why CPV Matters</h3>
     <ul className="space-y-2 mb-6">
       <li className="text-neutral-700 dark:text-neutral-300">
-        <strong>Measure engagement:</strong> Views indicate actual interest, not just ad exposure
+        <strong>Measure engagement:</strong> Views indicate actual interest; impressions only measure exposure
       </li>
       <li className="text-neutral-700 dark:text-neutral-300">
         <strong>Platform comparison:</strong> Identify which platforms deliver the most cost-effective video engagement
@@ -189,7 +189,8 @@ const educationalContent = (
         <strong>Choose cost-effective platforms:</strong> Match platforms to your target demographic and budget
       </li>
       <li>
-        <strong>Use captions:</strong> 85% of Facebook video is watched without sound—make content accessible
+        <strong>Use captions:</strong> 85% of Facebook video is watched without sound, so make content work without
+        audio
       </li>
     </ol>
 

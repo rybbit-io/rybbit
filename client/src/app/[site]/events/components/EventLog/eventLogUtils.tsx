@@ -1,7 +1,7 @@
 "use client";
 
 import { Event } from "../../../../../api/analytics/endpoints";
-import { EVENT_TYPE_CONFIG, EventDisplayNameFormatter, TranslationFunction } from "../../../../../lib/events";
+import { EVENT_TYPE_CONFIG, EventDisplayNameFormatter } from "../../../../../lib/events";
 
 export function getEventKey(event: Event) {
   return `${event.timestamp}-${event.session_id}-${event.user_id}-${event.type}-${event.event_name ?? ""}-${event.pathname}`;
@@ -18,12 +18,12 @@ export function parseEventProperties(event: Event): Record<string, any> {
   return {};
 }
 
-export function getEventTypeLabel(type: string, t?: TranslationFunction, isApp?: boolean) {
+// EVENT_TYPE_CONFIG labels are display strings ("Pageview", "Input Change"), not
+// message keys, so they must not be passed to t() — doing so throws MISSING_MESSAGE
+// and breaks the events page. Return them as-is.
+export function getEventTypeLabel(type: string, isMobileSite?: boolean) {
   const label = EVENT_TYPE_CONFIG.find(item => item.value === type)?.label ?? "Event";
-  if (isApp && label === "Pageview") {
-    return t ? t("Screenview") : "Screenview";
-  }
-  return t ? t(label) : label;
+  return isMobileSite && label === "Pageview" ? "Screenview" : label;
 }
 
 export function buildEventPath(event: Event) {
@@ -33,8 +33,7 @@ export function buildEventPath(event: Event) {
 export function getMainData(
   event: Event,
   props: Record<string, any>,
-  getEventDisplayName: EventDisplayNameFormatter,
-  t?: TranslationFunction
+  getEventDisplayName: EventDisplayNameFormatter
 ) {
   const isPageview = event.type === "pageview";
   const isOutbound = event.type === "outbound";
@@ -64,6 +63,6 @@ export function getMainData(
   }
 
   return {
-    label: event.event_name || (t ? t("Event") : "Event"),
+    label: event.event_name || "Event",
   };
 }

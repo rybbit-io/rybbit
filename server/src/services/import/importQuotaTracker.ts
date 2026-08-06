@@ -160,19 +160,23 @@ export class ImportQuotaTracker {
    * @returns Array of indices indicating which events can be imported
    */
   canImportBatch(timestamps: string[]): number[] {
-    if (this.monthlyLimit === Infinity) {
-      return timestamps.map((_, i) => i);
-    }
-
     const allowedIndices: number[] = [];
     const monthlyIncrements = new Map<string, number>();
     const now = DateTime.utc();
+    const unlimited = this.monthlyLimit === Infinity;
 
     for (let i = 0; i < timestamps.length; i++) {
       const timestamp = timestamps[i];
       const dt = DateTime.fromFormat(timestamp, "yyyy-MM-dd HH:mm:ss", { zone: "utc" });
 
       if (!dt.isValid || dt > now) {
+        continue;
+      }
+
+      if (unlimited) {
+        // Self-hosted: no quota accounting and no tier-based historical window,
+        // but malformed and future timestamps are still rejected.
+        allowedIndices.push(i);
         continue;
       }
 

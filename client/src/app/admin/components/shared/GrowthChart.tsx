@@ -11,11 +11,10 @@ import { ChartTooltip } from "@/components/charts/ChartTooltip";
 
 interface GrowthChartProps {
   data?: Array<{ createdAt: string }>;
-  color?: string;
   title: string;
 }
 
-export function GrowthChart({ data, color = "#3b82f6", title }: GrowthChartProps) {
+export function GrowthChart({ data, title }: GrowthChartProps) {
   const { width } = useWindowSize();
   const maxTicks = Math.round((width ?? Infinity) / 200);
   const nivoTheme = useNivoTheme();
@@ -111,8 +110,9 @@ export function GrowthChart({ data, color = "#3b82f6", title }: GrowthChartProps
         useMesh={true}
         animate={false}
         enableSlices={"x"}
-        colors={[color]}
-        enableArea={false}
+        colors={["hsl(var(--dataviz))"]}
+        enableArea={true}
+        areaOpacity={0.1}
         sliceTooltip={({ slice }: any) => {
           const point = slice.points[0];
 

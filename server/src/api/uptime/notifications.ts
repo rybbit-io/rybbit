@@ -277,7 +277,7 @@ export const notificationRoutes = async (server: FastifyInstance) => {
           message: `Test notification sent to ${channel.type} channel: ${channel.name}`,
         });
       } catch (error) {
-        console.error("Failed to send test notification:", error);
+        request.log.error({ err: error }, "Failed to send test notification");
         return reply.code(500).send({
           success: false,
           message: "Failed to send test notification",

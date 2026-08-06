@@ -1,3 +1,4 @@
+import { LegalPageShell } from "@/components/LegalPageShell";
 import { createMetadata, createOGImageUrl } from "@/lib/metadata";
 
 export const metadata = createMetadata({
@@ -13,14 +14,7 @@ export const metadata = createMetadata({
 
 export default function DataProcessingAgreement() {
   return (
-    <div className="max-w-4xl mx-auto px-4 py-12">
-      <h1 className="text-3xl md:text-4xl font-bold mb-8">Data Processing Agreement</h1>
-
-      <div className="prose prose-invert max-w-none">
-        <p className="text-lg">
-          Last updated: June 25, 2026
-        </p>
-
+    <LegalPageShell title="Data Processing Agreement" lastUpdated="June 25, 2026">
         <h2 className="text-2xl font-semibold mt-8 mb-4">1. Introduction</h2>
         <p>
           This Data Processing Agreement (&quot;DPA&quot;) forms part of the agreement between Rybbit
@@ -137,8 +131,8 @@ export default function DataProcessingAgreement() {
         <h2 className="text-2xl font-semibold mt-8 mb-4">10. Data Retention</h2>
         <p>
           Rybbit retains Personal Data for the retention period associated with the Controller&apos;s plan, as set out in
-          our Privacy Policy — currently 3 years for Standard plans and 5 years for Pro plans, and indefinitely for
-          Enterprise plans — or for such other period as agreed with the Controller. Upon termination of the Services,
+          our Privacy Policy (currently 3 years for Standard plans and 5 years for Pro plans, and indefinitely for
+          Enterprise plans), or for such other period as agreed with the Controller. Upon termination of the Services,
           Personal Data will be deleted or returned as requested by the Controller within 30 days.
         </p>
 
@@ -158,11 +152,10 @@ export default function DataProcessingAgreement() {
         <h2 className="text-2xl font-semibold mt-8 mb-4">13. Contact</h2>
         <p>
           For questions about this DPA or to exercise any rights, please contact us at:
-          <a href="mailto:hello@rybbit.com" className="text-emerald-400 hover:text-emerald-300 ml-1">
+          <a href="mailto:hello@rybbit.com" className="ml-1">
             hello@rybbit.com
           </a>
         </p>
-      </div>
-    </div>
+    </LegalPageShell>
   );
 }

@@ -69,7 +69,7 @@ export async function submitCancellationFeedback(
 
     return reply.send({ success: true });
   } catch (error: any) {
-    console.error("Cancellation Feedback Error:", error);
+    request.log.error({ err: error }, "Cancellation Feedback Error");
     return reply.status(500).send({
       error: "Failed to submit cancellation feedback",
     });

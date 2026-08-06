@@ -85,19 +85,19 @@ export default function UserProfilesPage() {
       <FeaturePage
         featureName="user-profiles"
         headline="Know who your users are"
-        subtitle="Identify users, attach custom traits, and view their complete activity history — from first visit to latest session. Privacy-first, always opt-in."
+        subtitle="Identify users, attach custom traits, and view their complete activity history, from first visit to latest session. Privacy-first, always opt-in."
         badgeText="User Profiles"
         demoUrl="https://demo.rybbit.com/81/users"
-        demoCaption="Live user profiles demo — real user data and traits"
+        demoCaption="Live user profiles demo: real user data and traits"
         introParagraphs={[
           <>
-            Aggregate analytics tell you what&apos;s happening across your site. User profiles tell you <strong className="text-neutral-900 dark:text-white">who is doing what</strong>. When a customer reaches out for support, you can pull up their profile and see every page they visited, every event they triggered, and every session they had — no questions needed.
+            Aggregate analytics tell you what&apos;s happening across your site. User profiles tell you <strong className="text-neutral-900 dark:text-white">who is doing what</strong>. When a customer reaches out for support, you can pull up their profile and see every page they visited, every event they triggered, and every session they had, no questions needed.
           </>,
           <>
-            Identification is <strong className="text-neutral-900 dark:text-white">completely opt-in and privacy-first</strong>. Users are only identified when you explicitly call <code className="bg-neutral-200 dark:bg-neutral-800 px-1.5 py-0.5 rounded text-sm">rybbit.identify()</code>. There&apos;s no fingerprinting, no cross-site tracking, and no passive data collection. You decide exactly what information to attach — plan type, company, role, or any custom trait.
+            Identification is <strong className="text-neutral-900 dark:text-white">completely opt-in and privacy-first</strong>. Users are only identified when you explicitly call <code className="bg-neutral-200 dark:bg-neutral-800 px-1.5 py-0.5 rounded text-sm">rybbit.identify()</code>. There&apos;s no fingerprinting, no cross-site tracking, and no passive data collection. You decide exactly what information to attach: plan type, company, role, or any custom trait.
           </>,
           <>
-            The <strong className="text-neutral-900 dark:text-white">Traits explorer</strong> lets you browse the distribution of user properties across your entire user base. How many users are on the free plan vs. pro? Which companies have the most active users? Combined with session replay and event tracking, user profiles give your team <strong className="text-neutral-900 dark:text-white">complete visibility</strong> into individual user behavior without compromising privacy.
+            The <strong className="text-neutral-900 dark:text-white">Traits explorer</strong> lets you browse the distribution of user properties across your entire user base. How many users are on the free plan vs. pro? Which companies have the most active users? Combined with session replay and event tracking, user profiles give your team <strong className="text-neutral-900 dark:text-white">the full picture</strong> of individual user behavior without compromising privacy.
           </>,
         ]}
         capabilities={capabilities}
@@ -105,7 +105,7 @@ export default function UserProfilesPage() {
         whoUses={whoUses}
         faqItems={faqItems}
         relatedFeatures={relatedFeatures}
-        ctaTitle="Understand your users deeply"
+        ctaTitle="Understand your users"
         ctaDescription="Privacy-first user profiles with traits, timelines, and session history. You control the data."
       />
     </>

@@ -1,11 +1,11 @@
 import { FastifyReply, FastifyRequest } from "fastify";
-import { clickhouse } from "../../../db/clickhouse/clickhouse.js";
-import { getTimeStatement, processResults, TimeBucketToFn, bucketIntervalMap } from "../utils/utils.js";
+import { getTimeStatement, TimeBucketToFn, bucketIntervalMap } from "../utils/utils.js";
 import SqlString from "sqlstring";
 import { validateTimeStatementFillParams } from "../utils/query-validation.js";
 import { TimeBucket, PerformanceTimeSeriesPoint } from "../types.js";
 import { FilterParams } from "@rybbit/shared";
 import { getFilterStatement } from "../utils/getFilterStatement.js";
+import { analyticsRoute, runAnalyticsQuery } from "../utils/analyticsQuery.js";
 
 function getTimeStatementFill(params: FilterParams, bucket: TimeBucket) {
   const { params: validatedParams, bucket: validatedBucket } = validateTimeStatementFillParams(params, bucket);
@@ -81,7 +81,7 @@ function getTimeStatementFill(params: FilterParams, bucket: TimeBucket) {
   return "";
 }
 
-const getQuery = (params: FilterParams<{ bucket: TimeBucket }>, siteId: number) => {
+export const buildPerformanceTimeSeriesQuery = (params: FilterParams<{ bucket: TimeBucket }>, siteId: number) => {
   const {
     start_date,
     end_date,
@@ -101,7 +101,7 @@ const getQuery = (params: FilterParams<{ bucket: TimeBucket }>, siteId: number) 
 
   const query = `
 SELECT
-    toDateTime(${TimeBucketToFn[bucket]}(toTimeZone(timestamp, ${SqlString.escape(time_zone)}))) AS time,
+    toDateTime(${TimeBucketToFn[bucket]}(toTimeZone(timestamp, ${SqlString.escape(time_zone || "UTC")}))) AS time,
     quantile(0.5)(lcp) AS lcp_p50,
     quantile(0.75)(lcp) AS lcp_p75,
     quantile(0.9)(lcp) AS lcp_p90,
@@ -134,34 +134,25 @@ GROUP BY time ORDER BY time ${isAllTime ? "" : getTimeStatementFill(params, buck
   return query;
 };
 
-export async function getPerformanceTimeSeries(
-  req: FastifyRequest<{
-    Params: {
-      siteId: string;
-    };
-    Querystring: FilterParams<{
-      bucket: TimeBucket;
-    }>;
-  }>,
-  res: FastifyReply
-) {
-  const site = req.params.siteId;
+interface GetPerformanceTimeSeriesRequest {
+  Params: {
+    siteId: string;
+  };
+  Querystring: FilterParams<{
+    bucket: TimeBucket;
+  }>;
+}
 
-  const query = getQuery(req.query, Number(site));
+export const getPerformanceTimeSeries = analyticsRoute<GetPerformanceTimeSeriesRequest>(
+  "performance time series",
+  async (req: FastifyRequest<GetPerformanceTimeSeriesRequest>, res: FastifyReply) => {
+    const siteId = Number(req.params.siteId);
 
-  try {
-    const result = await clickhouse.query({
-      query,
-      format: "JSONEachRow",
-      query_params: {
-        siteId: Number(site),
-      },
+    const data = await runAnalyticsQuery<PerformanceTimeSeriesPoint>({
+      query: buildPerformanceTimeSeriesQuery(req.query, siteId),
+      params: { siteId },
     });
 
-    const data = await processResults<PerformanceTimeSeriesPoint>(result);
     return res.send({ data });
-  } catch (error) {
-    console.error("Error fetching performance time series:", error);
-    return res.status(500).send({ error: "Failed to fetch performance time series" });
   }
-}
+);

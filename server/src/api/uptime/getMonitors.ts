@@ -139,7 +139,7 @@ export async function getMonitors(request: FastifyRequest<GetMonitorsRequest>, r
           });
         });
       } catch (error) {
-        console.error("Error calculating uptime percentages:", error);
+        request.log.error({ err: error }, "Error calculating uptime percentages");
         // Continue without uptime data rather than failing the entire request
       }
     }
@@ -165,7 +165,7 @@ export async function getMonitors(request: FastifyRequest<GetMonitorsRequest>, r
         details: zodError.errors,
       });
     }
-    console.error("Error retrieving monitors:", error);
+    request.log.error({ err: error }, "Error retrieving monitors");
     return reply.status(500).send({ error: "Internal server error" });
   }
 }

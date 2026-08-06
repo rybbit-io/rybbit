@@ -1,13 +1,7 @@
 import { eq, and, inArray } from "drizzle-orm";
 import { FastifyReply, FastifyRequest } from "fastify";
 import { db } from "../../db/postgres/postgres.js";
-import {
-  team,
-  teamMember,
-  teamSiteAccess,
-  member,
-  sites,
-} from "../../db/postgres/schema.js";
+import { team, teamMember, teamSiteAccess, member, sites } from "../../db/postgres/schema.js";
 import { invalidateSitesAccessCache } from "../../lib/auth-utils.js";
 
 interface CreateTeamBody {
@@ -36,14 +30,9 @@ export async function createTeam(
       const orgMembers = await db
         .select({ userId: member.userId })
         .from(member)
-        .where(
-          and(
-            eq(member.organizationId, organizationId),
-            inArray(member.userId, memberUserIds)
-          )
-        );
-      const validUserIds = new Set(orgMembers.map((m) => m.userId));
-      const invalidUserIds = memberUserIds.filter((id) => !validUserIds.has(id));
+        .where(and(eq(member.organizationId, organizationId), inArray(member.userId, memberUserIds)));
+      const validUserIds = new Set(orgMembers.map(m => m.userId));
+      const invalidUserIds = memberUserIds.filter(id => !validUserIds.has(id));
       if (invalidUserIds.length > 0) {
         return reply.status(400).send({
           error: `Users not in organization: ${invalidUserIds.join(", ")}`,
@@ -56,14 +45,9 @@ export async function createTeam(
       const orgSites = await db
         .select({ siteId: sites.siteId })
         .from(sites)
-        .where(
-          and(
-            eq(sites.organizationId, organizationId),
-            inArray(sites.siteId, siteIds)
-          )
-        );
-      const validSiteIds = new Set(orgSites.map((s) => s.siteId));
-      const invalidSiteIds = siteIds.filter((id) => !validSiteIds.has(id));
+        .where(and(eq(sites.organizationId, organizationId), inArray(sites.siteId, siteIds)));
+      const validSiteIds = new Set(orgSites.map(s => s.siteId));
+      const invalidSiteIds = siteIds.filter(id => !validSiteIds.has(id));
       if (invalidSiteIds.length > 0) {
         return reply.status(400).send({
           error: `Sites not in organization: ${invalidSiteIds.join(", ")}`,
@@ -74,7 +58,7 @@ export async function createTeam(
     const teamId = crypto.randomUUID();
     const now = new Date().toISOString();
 
-    await db.transaction(async (tx) => {
+    await db.transaction(async tx => {
       // Insert team
       await tx.insert(team).values({
         id: teamId,
@@ -87,7 +71,7 @@ export async function createTeam(
       // Insert team members
       if (memberUserIds && memberUserIds.length > 0) {
         await tx.insert(teamMember).values(
-          memberUserIds.map((userId) => ({
+          memberUserIds.map(userId => ({
             id: crypto.randomUUID(),
             teamId,
             userId,
@@ -99,7 +83,7 @@ export async function createTeam(
       // Insert team site access
       if (siteIds && siteIds.length > 0) {
         await tx.insert(teamSiteAccess).values(
-          siteIds.map((siteId) => ({
+          siteIds.map(siteId => ({
             teamId,
             siteId,
           }))
@@ -124,7 +108,7 @@ export async function createTeam(
       siteIds: siteIds || [],
     });
   } catch (error) {
-    console.error("Error creating team:", error);
+    request.log.error({ err: error }, "Error creating team");
     return reply.status(500).send({ error: "Failed to create team" });
   }
 }

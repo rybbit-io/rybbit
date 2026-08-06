@@ -72,11 +72,16 @@ export async function updateSubscription(
     }
     const subscriptionItem = subscription.items.data[0];
 
-    // 4. Validate the new price exists
+    // 4. Validate the new price exists. Only Stripe's missing-resource error means the
+    // price ID is invalid; anything else (outage, rate limit, network) falls through to
+    // the 500 path below without mutating the subscription.
     try {
       await (stripe as Stripe).prices.retrieve(newPriceId);
     } catch (error) {
-      return reply.status(400).send({ error: "Invalid price ID" });
+      if (error instanceof Stripe.errors.StripeInvalidRequestError && error.code === "resource_missing") {
+        return reply.status(400).send({ error: "Invalid price ID" });
+      }
+      throw error;
     }
 
     // 5. Update the subscription with the new price
@@ -111,7 +116,7 @@ export async function updateSubscription(
       },
     });
   } catch (error: any) {
-    console.error("Subscription Update Error:", error);
+    request.log.error({ err: error }, "Subscription Update Error");
     return reply.status(500).send({
       error: "Failed to update subscription",
       details: error.message,

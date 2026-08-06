@@ -1,10 +1,33 @@
 # Caddyfile
+{
+    servers {
+        # Caddy discards incoming X-Forwarded-For from untrusted clients and
+        # replaces it with the connecting address. When Cloudflare fronts this
+        # deployment, that connecting address is a Cloudflare edge server — so
+        # without trusting Cloudflare's ranges, the backend geolocates visitors
+        # to Cloudflare colos and first-party proxy customers (CloudFront etc.)
+        # lose the visitor IP their proxy forwarded. These are Cloudflare's
+        # published ranges (https://www.cloudflare.com/ips/); harmless when
+        # Cloudflare is not in front, since nothing else connects from them.
+        trusted_proxies static 173.245.48.0/20 103.21.244.0/22 103.22.200.0/22 103.31.4.0/22 141.101.64.0/18 108.162.192.0/18 190.93.240.0/20 188.114.96.0/20 197.234.240.0/22 198.41.128.0/17 162.158.0.0/15 104.16.0.0/13 104.24.0.0/14 172.64.0.0/13 131.0.72.0/22 2400:cb00::/32 2606:4700::/32 2803:f800::/32 2405:b500::/32 2405:8100::/32 2a06:98c0::/29 2c0f:f248::/32
+    }
+}
+
 {$DOMAIN_NAME} {
     # Enable compression
     encode zstd gzip
 
     request_body max_size 10MB
     handle /api/* {
+        reverse_proxy backend:3001
+    }
+
+    # OAuth/OIDC discovery documents for MCP clients (RFC 8414/9728) are
+    # served by the backend but must live at the domain root.
+    handle /.well-known/oauth-* {
+        reverse_proxy backend:3001
+    }
+    handle /.well-known/openid-configuration* {
         reverse_proxy backend:3001
     }
 

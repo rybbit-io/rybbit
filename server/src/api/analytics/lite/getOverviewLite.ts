@@ -1,8 +1,7 @@
 import { FilterParams } from "@rybbit/shared";
 import { FastifyReply, FastifyRequest } from "fastify";
-import { clickhouse } from "../../../db/clickhouse/clickhouse.js";
 import { getOverview } from "../getOverview.js";
-import { processResults } from "../utils/utils.js";
+import { analyticsRoute, runAnalyticsQuery } from "../utils/analyticsQuery.js";
 import { getLiteSessionFilter, getLiteTimeStatement, hasLiteFilters } from "./utils.js";
 
 type GetOverviewLiteResponse = {
@@ -14,29 +13,19 @@ type GetOverviewLiteResponse = {
   session_duration: number;
 };
 
-export async function getOverviewLite(
-  req: FastifyRequest<{
-    Params: { siteId: string };
-    Querystring: FilterParams;
-  }>,
-  res: FastifyReply
-) {
-  const site = Number(req.params.siteId);
-  const filtersPresent = hasLiteFilters(req.query.filters);
+interface GetOverviewLiteRequest {
+  Params: { siteId: string };
+  Querystring: FilterParams;
+}
 
-  // Filtered queries read sessions_mv_target (one row per session) so any
-  // session-column filter — country, device_type, etc. — stays on the MVs.
-  // Filters that touch columns the session rollup doesn't carry (pathname,
-  // utm, …) fall back to the raw-events query.
-  let query: string;
-  if (filtersPresent) {
-    const filter = getLiteSessionFilter(req.query.filters);
-    if (!filter.supported) {
-      return getOverview(req, res);
-    }
-
-    const sessionsTime = getLiteTimeStatement(req.query, "start_time");
-    query = `
+// Filtered queries read sessions_mv_target (one row per session) so any
+// session-column filter — country, device_type, etc. — stays on the MVs.
+// Pass `filterSql: null` for the unfiltered single-read of the refreshable
+// session_hourly_mv_target.
+export const buildOverviewLiteQuery = (query: GetOverviewLiteRequest["Querystring"], filterSql: string | null) => {
+  if (filterSql !== null) {
+    const sessionsTime = getLiteTimeStatement(query, "start_time");
+    return `
       SELECT
         sessions,
         pageviews,
@@ -61,23 +50,24 @@ export async function getOverviewLite(
           FROM sessions_mv_target
           WHERE site_id = {siteId:Int32}
             ${sessionsTime}
-            ${filter.sql}
+            ${filterSql}
           GROUP BY session_id
         )
       )
     `;
-  } else {
-    const timeStatement = getLiteTimeStatement(req.query, "session_hour");
+  }
 
-    // Single read of the refreshable session_hourly_mv_target — ~720 rows/month
-    // per site instead of millions of session rows. All 6 metrics derive from
-    // pre-computed sums and one HLL state.
-    //
-    // Aggregations run in the inner subquery; divisions compose plain values in
-    // the outer SELECT. Don't alias `sum(sessions) AS sessions` at this level —
-    // ClickHouse will resolve the column name to the aggregate and reject as
-    // nested aggregation.
-    query = `
+  const timeStatement = getLiteTimeStatement(query, "session_hour");
+
+  // Single read of the refreshable session_hourly_mv_target — ~720 rows/month
+  // per site instead of millions of session rows. All 6 metrics derive from
+  // pre-computed sums and one HLL state.
+  //
+  // Aggregations run in the inner subquery; divisions compose plain values in
+  // the outer SELECT. Don't alias `sum(sessions) AS sessions` at this level —
+  // ClickHouse will resolve the column name to the aggregate and reject as
+  // nested aggregation.
+  return `
       SELECT
         sessions,
         pageviews,
@@ -97,18 +87,32 @@ export async function getOverviewLite(
           ${timeStatement}
       )
     `;
-  }
+};
 
-  try {
-    const result = await clickhouse.query({
+export const getOverviewLite = analyticsRoute<GetOverviewLiteRequest>(
+  "overview",
+  async (req: FastifyRequest<GetOverviewLiteRequest>, res: FastifyReply) => {
+    const site = Number(req.params.siteId);
+    const filtersPresent = hasLiteFilters(req.query.filters);
+
+    // Filters that touch columns the session rollup doesn't carry (pathname,
+    // utm, …) fall back to the raw-events query.
+    let query: string;
+    if (filtersPresent) {
+      const filter = getLiteSessionFilter(req.query.filters);
+      if (!filter.supported) {
+        return getOverview(req, res);
+      }
+      query = buildOverviewLiteQuery(req.query, filter.sql);
+    } else {
+      query = buildOverviewLiteQuery(req.query, null);
+    }
+
+    const data = await runAnalyticsQuery<GetOverviewLiteResponse>({
       query,
-      format: "JSONEachRow",
-      query_params: { siteId: site },
+      params: { siteId: site },
     });
-    const data = await processResults<GetOverviewLiteResponse>(result);
+
     return res.send({ data: data[0] });
-  } catch (error) {
-    console.error("Error fetching lite overview:", error);
-    return res.status(500).send({ error: "Failed to fetch overview" });
   }
-}
+);

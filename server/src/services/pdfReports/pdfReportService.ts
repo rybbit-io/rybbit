@@ -6,6 +6,7 @@ import { db } from "../../db/postgres/postgres.js";
 import { sites } from "../../db/postgres/schema.js";
 import { clickhouse } from "../../db/clickhouse/clickhouse.js";
 import { getTimeStatement, processResults } from "../../api/analytics/utils/utils.js";
+import { effectiveUserId } from "../../api/analytics/utils/effectiveUserId.js";
 import { getFilterStatement } from "../../api/analytics/utils/getFilterStatement.js";
 import { createServiceLogger } from "../../lib/logger/logger.js";
 import { PdfReportTemplate } from "./templates/PdfReportTemplate.js";
@@ -42,10 +43,13 @@ class PdfReportService {
       throw new Error(`Site not found: ${siteId}`);
     }
 
-    // Calculate previous period (same duration before startDate)
+    // Calculate previous period (same duration before startDate). The current
+    // window is inclusive of both boundary dates (getTimeStatement makes the end
+    // exclusive at end_date + 1 day), so an N-day range spans floor(diff)+1 days.
+    // The previous window must match that length, else every growth % is biased.
     const start = DateTime.fromISO(startDate, { zone: timeZone });
     const end = DateTime.fromISO(endDate, { zone: timeZone });
-    const durationDays = Math.ceil(end.diff(start, "days").days) || 1;
+    const durationDays = Math.floor(end.diff(start, "days").days) + 1;
 
     const previousEnd = start.minus({ days: 1 });
     const previousStart = previousEnd.minus({ days: durationDays - 1 });
@@ -159,7 +163,7 @@ class PdfReportService {
 
       return await processResults<ChartDataPoint>(result);
     } catch (error) {
-      this.logger.error({ error, siteId }, "Error fetching chart data");
+      this.logger.error({ err: error, siteId }, "Error fetching chart data");
       return [];
     }
   }
@@ -203,7 +207,7 @@ class PdfReportService {
           (
               SELECT
                   COUNT(*)                   AS pageviews,
-                  COUNT(DISTINCT user_id)    AS users
+                  COUNT(DISTINCT ${effectiveUserId()}) AS users
               FROM events
               WHERE
                   site_id = {siteId:Int32}
@@ -223,7 +227,7 @@ class PdfReportService {
       const data = await processResults<OverviewData>(result);
       return data[0] || null;
     } catch (error) {
-      this.logger.error({ error, siteId }, "Error fetching overview data");
+      this.logger.error({ err: error, siteId }, "Error fetching overview data");
       return null;
     }
   }
@@ -451,7 +455,7 @@ class PdfReportService {
 
       return await processResults<MetricData>(result);
     } catch (error) {
-      this.logger.error({ error, siteId, parameter }, "Error fetching top N data");
+      this.logger.error({ err: error, siteId, parameter }, "Error fetching top N data");
       return [];
     }
   }

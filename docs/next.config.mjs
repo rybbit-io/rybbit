@@ -42,6 +42,33 @@ const config = {
       },
     ],
   },
+  async redirects() {
+    // Tools retired 2026-07-18 (off-brand / no organic traffic). Redirect the old URLs to the
+    // tools index so residual links and SERP clicks land somewhere useful instead of a 404.
+    const logoPlatforms = [
+      'instagram', 'x', 'tiktok', 'linkedin', 'youtube', 'facebook', 'pinterest', 'discord', 'twitch',
+      'snapchat', 'reddit', 'threads', 'bluesky', 'mastodon', 'github', 'medium', 'substack', 'spotify',
+      'telegram', 'whatsapp',
+    ];
+    const hashtagPlatforms = ['instagram', 'tiktok', 'x', 'linkedin', 'facebook', 'youtube', 'pinterest', 'threads', 'tumblr'];
+    const retiredSlugs = [
+      ...logoPlatforms.map(p => `${p}-logo-generator`),
+      ...hashtagPlatforms.map(p => `${p}-hashtag-generator`),
+      ...['nostr', 'lemmy', 'warpcast', 'dribbble', 'mastodon'].map(p => `${p}-font-generator`),
+      ...['nostr', 'lemmy', 'warpcast', 'dribbble', 'mastodon', 'vk'].map(p => `${p}-comment-generator`),
+      'medium-page-name-generator',
+      'medium-post-generator',
+      'medium-username-generator',
+      'mastodon-character-counter',
+      ...['mastodon', 'medium'].map(p => `${p}-bio-generator`),
+      ...['nostr', 'lemmy', 'warpcast', 'dribbble', 'mastodon', 'medium', 'vk', 'tumblr'].map(p => `${p}-photo-resizer`),
+    ];
+    return retiredSlugs.map(slug => ({
+      source: `/tools/${slug}`,
+      destination: '/tools',
+      permanent: true,
+    }));
+  },
   async rewrites() {
     return [
       {

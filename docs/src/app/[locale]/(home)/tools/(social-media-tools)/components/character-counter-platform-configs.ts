@@ -288,6 +288,8 @@ The platform attracts users seeking Twitter-like interactions without centralize
   },
 };
 
-export const characterCounterPlatformList = Object.values(
-  characterCounterPlatformConfigs
+// Retired 2026-07-18 (off-brand / no organic traffic) — pages 301 → /tools via next.config.mjs.
+const RETIRED_PLATFORMS = ["mastodon"];
+export const characterCounterPlatformList = Object.values(characterCounterPlatformConfigs).filter(
+  p => !RETIRED_PLATFORMS.includes(p.id)
 );

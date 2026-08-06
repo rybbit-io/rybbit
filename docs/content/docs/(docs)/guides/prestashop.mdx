@@ -11,31 +11,36 @@ PrestaShop is a popular open-source e-commerce platform. Here's how to add Rybbi
 
 ## How to Add Rybbit to PrestaShop
 
-<Tabs items={['Back Office Settings', 'Theme Files']}>
+<Tabs items={['Custom Code Module', 'Theme Files']}>
 <Tab>
-### Using Back Office Settings
+### Using a Custom Code Module
 
-PrestaShop allows adding custom code through the back office.
+PrestaShop's back office has no native option for injecting custom code into the
+`<head>`. To add the tracking script without editing template files, install a
+custom-code / header-injection module.
 
 <Steps>
 <Step>
-### Access Theme Settings
+### Install a Custom Code Module
 
 1. Log in to your PrestaShop Back Office
-2. Go to **Design** > **Theme & Logo**
-3. Scroll down to **Advanced customization** or click on **Pages Configuration**
+2. Go to **Modules** > **Module Catalog** (or **Module Manager**)
+3. Install a module that injects custom code into the page header — for example
+   a "Custom HTML" or "Header/Head code" module from the
+   [PrestaShop Addons marketplace](https://addons.prestashop.com/)
+
+<Callout type="info">
+PrestaShop does not ship a built-in head-injection UI, so a third-party module is
+required for this method. If you prefer not to install one, use the **Theme Files**
+tab instead.
+</Callout>
 </Step>
 
 <Step>
-### Add Custom Code
+### Add the Tracking Script
 
-Depending on your PrestaShop version:
-
-**PrestaShop 1.7+:**
-1. Go to **Design** > **Theme & Logo** > **Advanced customization**
-2. Click on **Add a new HTML element**
-3. Select position: `head` or `displayHeader`
-4. Add the following code:
+Open the module's configuration and paste the following into its head / header
+code field:
 
 ```html
 <script>
@@ -49,18 +54,14 @@ Depending on your PrestaShop version:
 </script>
 ```
 
-**PrestaShop 8.x:**
-1. Go to **Design** > **Theme & Logo** > **Pages Configuration**
-2. Select **displayHead** hook
-3. Add a custom HTML module with the script above
-
 Replace `YOUR_SITE_ID` with your actual Site ID.
 </Step>
 
 <Step>
 ### Save Changes
 
-Click **Save** to apply the tracking code to your store.
+Save the module configuration and clear the cache under **Advanced Parameters** >
+**Performance** to apply the tracking code to your store.
 </Step>
 </Steps>
 </Tab>

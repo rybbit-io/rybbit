@@ -75,14 +75,14 @@ Returns all saved funnels for a site.
 <Tabs items={['cURL', 'JavaScript', 'Python', 'PHP', 'Ruby', 'Go', 'Rust', 'Java', '.NET']}>
   <Tab value="cURL">
 ```bash title="Request"
-curl -X GET "https://app.rybbit.io/api/sites/1/funnels23" \
+curl -X GET "https://app.rybbit.io/api/sites/1/funnels" \
   -H "Authorization: Bearer your_api_key_here"
 ```
   </Tab>
   <Tab value="JavaScript">
 ```javascript title="Request"
 const response = await fetch(
-  'https://app.rybbit.io/api/sites/1/funnels23',
+  'https://app.rybbit.io/api/sites/1/funnels',
   {
     headers: {
       'Authorization': 'Bearer your_api_key_here'
@@ -98,7 +98,7 @@ const data = await response.json();
 import requests
 
 response = requests.get(
-    'https://app.rybbit.io/api/sites/1/funnels23',
+    'https://app.rybbit.io/api/sites/1/funnels',
     headers={
         'Authorization': 'Bearer your_api_key_here'
     }
@@ -110,7 +110,7 @@ data = response.json()
   <Tab value="PHP">
 ```php title="Request"
 $ch = curl_init();
-curl_setopt($ch, CURLOPT_URL, 'https://app.rybbit.io/api/sites/1/funnels23');
+curl_setopt($ch, CURLOPT_URL, 'https://app.rybbit.io/api/sites/1/funnels');
 curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
 curl_setopt($ch, CURLOPT_HTTPHEADER, [
     'Authorization: Bearer your_api_key_here'
@@ -127,7 +127,7 @@ $data = json_decode($response, true);
 require 'net/http'
 require 'json'
 
-uri = URI('https://app.rybbit.io/api/sites/1/funnels23')
+uri = URI('https://app.rybbit.io/api/sites/1/funnels')
 request = Net::HTTP::Get.new(uri)
 request['Authorization'] = 'Bearer your_api_key_here'
 
@@ -150,7 +150,7 @@ import (
 
 func main() {
     client := &http.Client{}
-    req, _ := http.NewRequest("GET", "https://app.rybbit.io/api/sites/1/funnels23", nil)
+    req, _ := http.NewRequest("GET", "https://app.rybbit.io/api/sites/1/funnels", nil)
     req.Header.Set("Authorization", "Bearer your_api_key_here")
 
     resp, _ := client.Do(req)
@@ -171,7 +171,7 @@ use serde_json::Value;
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let client = reqwest::Client::new();
     let response = client
-        .get("https://app.rybbit.io/api/sites/1/funnels23")
+        .get("https://app.rybbit.io/api/sites/1/funnels")
         .header("Authorization", "Bearer your_api_key_here")
         .send()
         .await?;
@@ -190,7 +190,7 @@ import java.net.http.HttpResponse;
 
 HttpClient client = HttpClient.newHttpClient();
 HttpRequest request = HttpRequest.newBuilder()
-    .uri(URI.create("https://app.rybbit.io/api/sites/1/funnels23"))
+    .uri(URI.create("https://app.rybbit.io/api/sites/1/funnels"))
     .header("Authorization", "Bearer your_api_key_here")
     .GET()
     .build();
@@ -210,7 +210,7 @@ client.DefaultRequestHeaders.Authorization =
     new AuthenticationHeaderValue("Bearer", "your_api_key_here");
 
 var response = await client.GetAsync(
-    "https://app.rybbit.io/api/sites/1/funnels23");
+    "https://app.rybbit.io/api/sites/1/funnels");
 var data = await response.Content.ReadAsStringAsync();
 ```
   </Tab>

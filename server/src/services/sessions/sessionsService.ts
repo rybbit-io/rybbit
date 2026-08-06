@@ -1,3 +1,4 @@
+import crypto from "crypto";
 import { nanoid } from "nanoid";
 import { createServiceLogger } from "../../lib/logger/logger.js";
 import { sessionRedis, sessionGetOrCreate } from "../../db/redis/redis.js";
@@ -8,9 +9,9 @@ import { sessionRedis, sessionGetOrCreate } from "../../db/redis/redis.js";
 const SESSION_TTL_MS = 30 * 60 * 1000;
 
 // Bounded in-process mirror of the last session id Redis handed back for each
-// (siteId, userId). It exists purely so a transient Redis failure can reuse the
-// user's *real* session id instead of inventing a divergent one — otherwise a
-// single timed-out command fractures one visitor into multiple sessions (events
+// (siteId, session identity). It exists purely so a transient Redis failure can
+// reuse the user's *real* session id instead of inventing a divergent one;
+// otherwise a single timed-out command fractures one visitor into multiple sessions (events
 // that reached Redis keep the real id while the failed event mints a new one).
 // Entries slide on every touch and the map is capped LRU-style, so memory stays
 // bounded by the active-user count.
@@ -25,17 +26,39 @@ export class SessionsService {
   private logger = createServiceLogger("sessions");
   private fallbackCache = new Map<string, CachedSession>();
 
-  private getSessionKey(userId: string, siteId: number): string {
+  private getSessionKey(userId: string, siteId: number, identifiedUserId?: string): string {
+    if (identifiedUserId) {
+      // Do not expose custom user IDs in Redis keys. The anonymous fingerprint
+      // remains part of the digest so identified sessions stay fingerprint-scoped,
+      // while different identified users behind one proxy cannot share a session.
+      const identityHash = crypto
+        .createHash("sha256")
+        .update(userId)
+        .update("\0")
+        .update(identifiedUserId)
+        .digest("hex");
+      return `session:${siteId}:identified:${identityHash}`;
+    }
+
     return `session:${siteId}:${userId}`;
   }
 
   /**
-   * Get the active session id for a (userId, siteId) pair, creating one if none
-   * exists, and refresh its sliding 30-minute TTL. Backed by Redis, with an
-   * in-process fallback so a Redis blip never drops — or splits — a session.
+   * Get the active session id for an anonymous or identified visitor identity,
+   * creating one if none exists, and refresh its sliding 30-minute TTL. Backed
+   * by Redis, with an in-process fallback so a Redis blip never drops — or
+   * splits — a session.
    */
-  async updateSession({ userId, siteId }: { userId: string; siteId: number }): Promise<{ sessionId: string }> {
-    const key = this.getSessionKey(userId, siteId);
+  async updateSession({
+    userId,
+    identifiedUserId,
+    siteId,
+  }: {
+    userId: string;
+    identifiedUserId?: string;
+    siteId: number;
+  }): Promise<{ sessionId: string }> {
+    const key = this.getSessionKey(userId, siteId, identifiedUserId);
     const candidate = nanoid(14);
 
     try {

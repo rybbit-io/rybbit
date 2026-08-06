@@ -52,7 +52,7 @@ Accepts all [Common Parameters](/docs/api/getting-started#common-parameters) (ti
     type: {
       description: 'Step type',
       type: 'string',
-      typeDescription: '"page" | "event"',
+      typeDescription: '"page" | "event" | "outbound" | "button_click" | "form_submit" | "copy"',
       required: true,
     },
     value: {
@@ -106,12 +106,16 @@ Accepts all [Common Parameters](/docs/api/getting-started#common-parameters) (ti
       description: 'Step name',
       type: 'string',
     },
-    visitors: {
+    sessions: {
       description: 'Number of sessions that reached this step',
       type: 'number',
     },
+    visitors: {
+      description: 'Deprecated alias of `sessions`, kept for backwards compatibility',
+      type: 'number',
+    },
     conversion_rate: {
-      description: 'Percentage of step 1 visitors who reached this step',
+      description: 'Percentage of step 1 sessions that reached this step',
       type: 'number',
       typeDescription: 'Range: 0-100',
     },
@@ -382,28 +386,28 @@ var data = await response.Content.ReadAsStringAsync();
     {
       "step_number": 1,
       "step_name": "Homepage",
-      "visitors": 10000,
+      "sessions": 10000,
       "conversion_rate": 100,
       "dropoff_rate": 0
     },
     {
       "step_number": 2,
       "step_name": "Pricing",
-      "visitors": 4500,
+      "sessions": 4500,
       "conversion_rate": 45,
       "dropoff_rate": 55
     },
     {
       "step_number": 3,
       "step_name": "Signup",
-      "visitors": 1800,
+      "sessions": 1800,
       "conversion_rate": 18,
       "dropoff_rate": 60
     },
     {
       "step_number": 4,
       "step_name": "Complete",
-      "visitors": 720,
+      "sessions": 720,
       "conversion_rate": 7.2,
       "dropoff_rate": 60
     }

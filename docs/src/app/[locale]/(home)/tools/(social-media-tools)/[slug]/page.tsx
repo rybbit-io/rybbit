@@ -9,34 +9,23 @@ import { HashtagGenerator } from "../components/HashtagGenerator";
 import { CharacterCounter } from "../components/CharacterCounter";
 import { BioGenerator } from "../components/BioGenerator";
 import { LogoGenerator } from "../components/LogoGenerator";
-import { platformConfigs, platformList } from "../components/platform-configs";
-import { commentPlatformConfigs, commentPlatformList } from "../components/comment-platform-configs";
-import { pageNamePlatformConfigs, pageNamePlatformList } from "../components/page-name-platform-configs";
-import {
-  postGeneratorPlatformConfigs,
-  postGeneratorPlatformList,
-} from "../components/post-generator-platform-configs";
-import {
-  usernameGeneratorPlatformConfigs,
-  usernameGeneratorPlatformList,
-} from "../components/username-generator-platform-configs";
-import {
-  hashtagGeneratorPlatformConfigs,
-  hashtagGeneratorPlatformList,
-} from "../components/hashtag-generator-platform-configs";
-import {
-  characterCounterPlatformConfigs,
-  characterCounterPlatformList,
-} from "../components/character-counter-platform-configs";
-import { bioGeneratorPlatformConfigs, bioGeneratorPlatformList } from "../components/bio-generator-platform-configs";
-import { imageResizerPlatformConfigs, imageResizerPlatformList } from "../components/image-resizer-platform-configs";
-import {
-  logoGeneratorPlatformConfigs,
-  logoGeneratorPlatformList,
-} from "../components/logo-generator-platform-configs";
+import { platformConfigs } from "../components/platform-configs";
+import { commentPlatformConfigs } from "../components/comment-platform-configs";
+import { pageNamePlatformConfigs } from "../components/page-name-platform-configs";
+import { postGeneratorPlatformConfigs } from "../components/post-generator-platform-configs";
+import { usernameGeneratorPlatformConfigs } from "../components/username-generator-platform-configs";
+import { hashtagGeneratorPlatformConfigs } from "../components/hashtag-generator-platform-configs";
+import { characterCounterPlatformConfigs } from "../components/character-counter-platform-configs";
+import { bioGeneratorPlatformConfigs } from "../components/bio-generator-platform-configs";
+import { imageResizerPlatformConfigs } from "../components/image-resizer-platform-configs";
+import { logoGeneratorPlatformConfigs } from "../components/logo-generator-platform-configs";
+import { socialMediaToolSlugs } from "../components/social-tool-slugs";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { Hash, Palette, Type, User } from "lucide-react";
+
+// Only build slugs returned by generateStaticParams; retired tool slugs 404 (then 301 via next.config.mjs).
+export const dynamicParams = false;
 
 interface PageProps {
   params: Promise<{
@@ -46,58 +35,7 @@ interface PageProps {
 
 // Generate static params for all platforms at build time
 export async function generateStaticParams() {
-  const fontGenerators = platformList.map(platform => ({
-    slug: `${platform.id}-font-generator`,
-  }));
-
-  const commentGenerators = commentPlatformList.map(platform => ({
-    slug: `${platform.id}-comment-generator`,
-  }));
-
-  const pageNameGenerators = pageNamePlatformList.map(platform => ({
-    slug: `${platform.id}-page-name-generator`,
-  }));
-
-  const postGenerators = postGeneratorPlatformList.map(platform => ({
-    slug: `${platform.id}-post-generator`,
-  }));
-
-  const usernameGenerators = usernameGeneratorPlatformList.map(platform => ({
-    slug: `${platform.id}-username-generator`,
-  }));
-
-  const hashtagGenerators = hashtagGeneratorPlatformList.map(platform => ({
-    slug: `${platform.id}-hashtag-generator`,
-  }));
-
-  const characterCounters = characterCounterPlatformList.map(platform => ({
-    slug: `${platform.id}-character-counter`,
-  }));
-
-  const bioGenerators = bioGeneratorPlatformList.map(platform => ({
-    slug: `${platform.id}-bio-generator`,
-  }));
-
-  const imageResizers = imageResizerPlatformList.map(platform => ({
-    slug: `${platform.id}-photo-resizer`,
-  }));
-
-  const logoGenerators = logoGeneratorPlatformList.map(platform => ({
-    slug: `${platform.id}-logo-generator`,
-  }));
-
-  return [
-    ...fontGenerators,
-    ...commentGenerators,
-    ...pageNameGenerators,
-    ...postGenerators,
-    ...usernameGenerators,
-    ...hashtagGenerators,
-    ...characterCounters,
-    ...bioGenerators,
-    ...imageResizers,
-    ...logoGenerators,
-  ];
+  return socialMediaToolSlugs.map(slug => ({ slug }));
 }
 
 // Generate metadata dynamically based on slug
@@ -491,7 +429,7 @@ export default async function PlatformToolPage({ params }: PageProps) {
       {
         question: "Is my image uploaded to a server?",
         answer:
-          "No! All processing happens locally in your browser. Your images never leave your device, ensuring complete privacy and security.",
+          "No. All processing happens locally in your browser. Your images never leave your device.",
       },
     ];
 
@@ -615,8 +553,7 @@ export default async function PlatformToolPage({ params }: PageProps) {
             <div>
               <div className="text-sm font-medium text-neutral-900 dark:text-white mb-1">Character Limit</div>
               <div className="text-sm text-neutral-600 dark:text-neutral-400">
-                {platform.name} {platform.bioType}s have a maximum of {platform.characterLimit} characters. Make every
-                character count!
+                {platform.name} {platform.bioType}s have a maximum of {platform.characterLimit} characters.
               </div>
             </div>
           </div>
@@ -645,7 +582,7 @@ export default async function PlatformToolPage({ params }: PageProps) {
       {
         question: "Should I edit the generated bios?",
         answer:
-          "Yes! Generated bios are starting points. Customize them with specific details, achievements, or personality quirks that make you unique. The best bios combine AI efficiency with your authentic voice.",
+          "Yes. Generated bios are starting points. Customize them with specific details, achievements, or personality quirks that make you unique. The best bios combine AI efficiency with your authentic voice.",
       },
       {
         question: "How many bios can I generate?",
@@ -798,12 +735,12 @@ export default async function PlatformToolPage({ params }: PageProps) {
         question: "What happens if I exceed the character limit?",
         answer: `If your text exceeds ${platform.characterLimit.toLocaleString()} characters, ${
           platform.name
-        } will either truncate it or prevent you from posting. The tool alerts you when you're over the limit so you can edit before posting.`,
+        } will either truncate it or prevent you from posting. The tool alerts you as soon as you go over the limit.`,
       },
       {
         question: "Is my text stored or sent anywhere?",
         answer:
-          "No! This tool works entirely in your browser. Your text is never sent to any server or stored anywhere. It's completely private and secure.",
+          "No. This tool works entirely in your browser. Your text is never sent to any server or stored anywhere.",
       },
       {
         question: "How can Rybbit help me track my social media performance?",
@@ -967,7 +904,7 @@ export default async function PlatformToolPage({ params }: PageProps) {
           ", "
         )}. Each strategy is optimized for ${
           platform.name
-        } and designed to help you achieve different goals like viral reach, niche engagement, or community building.`,
+        } and aimed at a different goal: viral reach, niche engagement, or community building.`,
       },
       {
         question: "Should I use all the generated hashtags?",
@@ -980,7 +917,7 @@ export default async function PlatformToolPage({ params }: PageProps) {
       {
         question: "Can I edit the generated hashtags?",
         answer:
-          "Absolutely! Use the generated hashtags as a starting point and customize them to better fit your content. Combining AI-generated hashtags with your own research often yields the best results.",
+          "Yes. Use the generated hashtags as a starting point and customize them to better fit your content. Combining AI-generated hashtags with your own research often yields the best results.",
       },
       {
         question: "How can Rybbit help me track hashtag performance?",
@@ -1134,7 +1071,7 @@ export default async function PlatformToolPage({ params }: PageProps) {
       {
         question: "Can I modify the generated usernames?",
         answer:
-          "Absolutely! Use the generated usernames as inspiration and modify them to better fit your preferences. Combining elements from different suggestions often works well.",
+          "Yes. Use the generated usernames as inspiration and modify them to better fit your preferences. Combining elements from different suggestions often works well.",
       },
       {
         question: "Should I include numbers in my username?",
@@ -1287,7 +1224,7 @@ export default async function PlatformToolPage({ params }: PageProps) {
       {
         question: "Should I edit the generated posts?",
         answer:
-          "Yes! Generated posts are starting points. Always personalize them with your unique voice, specific details, and brand personality. The best posts combine AI efficiency with human authenticity.",
+          "Yes. Generated posts are starting points. Always personalize them with your unique voice, specific details, and brand personality. The best posts combine AI efficiency with human authenticity.",
       },
       {
         question: "How many posts can I generate?",
@@ -1296,7 +1233,7 @@ export default async function PlatformToolPage({ params }: PageProps) {
       },
       {
         question: "Will the posts sound natural?",
-        answer: `Yes! The AI is trained to create authentic, engaging content that matches ${platform.name}'s tone and style. However, adding your personal touch makes posts even more effective and genuine.`,
+        answer: `Yes. The AI is trained to create authentic, engaging content that matches ${platform.name}'s tone and style. However, adding your personal touch makes posts even more effective and genuine.`,
       },
       {
         question: "How can Rybbit help me measure post performance?",
@@ -1426,7 +1363,7 @@ export default async function PlatformToolPage({ params }: PageProps) {
       {
         question: "Can I customize the generated names?",
         answer:
-          "Absolutely! The generated names are starting points. Feel free to modify them, combine elements from different suggestions, or use them as inspiration for your own variations.",
+          "Yes. The generated names are starting points. Feel free to modify them, combine elements from different suggestions, or use them as inspiration for your own variations.",
       },
       {
         question: "What makes a good name?",
@@ -1565,7 +1502,7 @@ export default async function PlatformToolPage({ params }: PageProps) {
       {
         question: "Can I edit the generated comments before posting?",
         answer:
-          "Absolutely! We encourage you to personalize any generated comment to match your voice and add specific details. The generated comments are starting points—your personal touch makes them truly authentic.",
+          "Yes. Personalize any generated comment to match your voice and add specific details. The generated comments are starting points.",
       },
       {
         question: "What tones are available?",
@@ -1583,7 +1520,7 @@ export default async function PlatformToolPage({ params }: PageProps) {
       },
       {
         question: "Will the comments sound natural?",
-        answer: `Yes! The AI is trained to create authentic, platform-appropriate comments that match ${platform.name}'s culture and style. However, adding your personal touch will make them even more genuine and effective.`,
+        answer: `Yes. The AI is trained to create authentic, platform-appropriate comments that match ${platform.name}'s culture and style. However, adding your personal touch will make them even more genuine and effective.`,
       },
       {
         question: "How can Rybbit help me track comment engagement?",
@@ -1728,7 +1665,7 @@ export default async function PlatformToolPage({ params }: PageProps) {
       {
         question: "Can I use these logos commercially?",
         answer:
-          "Yes! The logos generated are yours to use for commercial purposes. However, we recommend having a designer review and refine your logo for professional use, and always conduct a trademark search before finalizing.",
+          "Yes. The logos generated are yours to use for commercial purposes. However, we recommend having a designer review and refine your logo for professional use, and always conduct a trademark search before finalizing.",
       },
       {
         question: "What file format is the logo?",
@@ -1843,17 +1780,17 @@ export default async function PlatformToolPage({ params }: PageProps) {
     },
     {
       question: "Can I use these fonts in my bio or username?",
-      answer: `Yes! These Unicode fonts work in most text fields on ${platform.name}, including bios, usernames (where special characters are allowed), posts, comments, and messages. However, some platforms may have restrictions on special characters in certain fields.`,
+      answer: `Yes. These Unicode fonts work in most text fields on ${platform.name}, including bios, usernames (where special characters are allowed), posts, comments, and messages. However, some platforms may have restrictions on special characters in certain fields.`,
     },
     {
       question: "Are these fonts safe to use?",
       answer:
-        "Absolutely! These fonts use standard Unicode characters that are part of the official character encoding system. They're completely safe and won't harm your device or account. However, use them appropriately and avoid excessive styling that might reduce readability.",
+        "Yes. These fonts use standard Unicode characters that are part of the official character encoding system. They're completely safe and won't harm your device or account. However, use them appropriately and avoid excessive styling that might reduce readability.",
     },
     {
       question: "Do I need to install anything?",
       answer:
-        "No installation required! This is a web-based tool that works directly in your browser. Simply type your text, copy the style you like, and paste it wherever you want to use it. The Unicode characters are supported natively by most systems.",
+        "No installation required. This is a web-based tool that works directly in your browser. Type your text, copy the style you like, and paste it wherever you want to use it. The Unicode characters are supported natively by most systems.",
     },
     {
       question: "How can Rybbit help me track my social media performance?",

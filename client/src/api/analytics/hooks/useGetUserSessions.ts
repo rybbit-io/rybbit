@@ -1,5 +1,5 @@
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
-import { SESSION_PAGE_FILTERS } from "../../../lib/filterGroups";
+import { SESSION_PAGE_FILTERS, USER_DETAIL_PAGE_FILTERS } from "../../../lib/filterGroups";
 import { getFilteredFilters, getTimezone, useStore } from "../../../lib/store";
 import { buildApiParams } from "../../utils";
 import {
@@ -8,9 +8,11 @@ import {
   fetchUserSessionCount,
   GetSessionsResponse,
   SessionPageviewsAndEvents,
+  SessionsParams,
   UserSessionCountResponse,
 } from "../endpoints";
 import { Time } from "../../../components/DateSelector/types";
+import { useAnalyticsQuery } from "../useAnalyticsQuery";
 
 export function useGetSessions({
   userId,
@@ -31,31 +33,18 @@ export function useGetSessions({
   minEvents?: number;
   minDuration?: number;
 }) {
-  const { time, site, timezone } = useStore();
-
   const filteredFilters = getFilteredFilters(SESSION_PAGE_FILTERS);
 
-  // When filtering by userId, we fetch all sessions for that user (no time filter)
-  // Otherwise use buildApiParams which handles past-minutes mode
-  const params = userId
-    ? { startDate: "", endDate: "", timeZone: getTimezone(), filters: filteredFilters }
-    : buildApiParams(timeOverride || time, { filters: filteredFilters });
-
-  return useQuery<{ data: GetSessionsResponse }>({
-    queryKey: ["sessions", timeOverride || time, site, filteredFilters, userId, page, limit, identifiedOnly, timezone, minPageviews, minEvents, minDuration],
-    queryFn: () => {
-      return fetchSessions(site, {
-        ...params,
-        page,
-        limit,
-        userId,
-        identifiedOnly,
-        minPageviews,
-        minEvents,
-        minDuration,
-      });
-    },
+  return useAnalyticsQuery<{ data: GetSessionsResponse }, SessionsParams>({
+    key: "sessions",
+    overrideTime: timeOverride,
+    // customFilters fall back to the store filters when empty; disable filters
+    // entirely instead so an empty page-filter set stays unfiltered.
+    useFilters: filteredFilters.length > 0,
+    customFilters: filteredFilters,
+    extraParams: { page, limit, userId, identifiedOnly, minPageviews, minEvents, minDuration },
     staleTime: Infinity,
+    fetch: (site, params) => fetchSessions(site, params),
   });
 }
 
@@ -100,6 +89,10 @@ export function useGetSessionsInfinite({
     },
     staleTime: Infinity,
     refetchInterval,
+    // Without this the hook fires while the store's site is still empty, requesting
+    // /api/sites//sessions (400). LiveUserCount renders on every [site] page, so
+    // this ran on every page load.
+    enabled: !!site,
   });
 }
 
@@ -139,13 +132,17 @@ export function useGetSessionDetailsInfinite(sessionId: string | null) {
 
 export function useGetUserSessionCount(userId: string) {
   const { site, timezone } = useStore();
+  // The calendar always spans the user's full history, so it only takes the
+  // dimension filters, not the selected time range.
+  const filteredFilters = getFilteredFilters(USER_DETAIL_PAGE_FILTERS);
 
   return useQuery<{ data: UserSessionCountResponse[] }>({
-    queryKey: ["user-session-count", userId, site, timezone],
+    queryKey: ["user-session-count", userId, site, timezone, filteredFilters],
     queryFn: () => {
       return fetchUserSessionCount(site, {
         userId,
         timeZone: getTimezone(),
+        filters: filteredFilters,
       });
     },
     staleTime: Infinity,

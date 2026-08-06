@@ -1,0 +1,61 @@
+---
+title: opencode
+description: Connect opencode to Rybbit's MCP server with OAuth or an API key
+---
+
+Connecting opencode to Rybbit lets it pull analytics into your terminal workflow — verifying an error fix in production, checking a route's traffic before removing it, or wiring up goals and funnels as you ship.
+
+This page covers client setup only. The [MCP overview](/docs/mcp) covers the endpoint, API keys and scopes, the full tool list, and troubleshooting.
+
+## Connect with OAuth
+
+Add the server to `opencode.json` at your project root (or your global opencode config):
+
+```json
+{
+  "$schema": "https://opencode.ai/config.json",
+  "mcp": {
+    "rybbit": {
+      "type": "remote",
+      "url": "https://app.rybbit.io/api/mcp",
+      "enabled": true
+    }
+  }
+}
+```
+
+For a self-hosted installation, replace the host with your configured `BASE_URL`.
+
+Then authenticate:
+
+```bash
+opencode mcp auth rybbit
+```
+
+Your browser opens Rybbit's [OAuth flow](/docs/mcp#or-connect-with-oauth) — log in and approve access. The connection acts with your user's role, and the committed config carries no secret. `opencode mcp logout rybbit` removes the stored credential.
+
+## Connect with an API key
+
+To use an [API key](/docs/mcp#1-create-an-api-key) instead — for non-interactive runs or a narrower, scoped credential — add a headers block that reads the key from the environment, so the config stays committable:
+
+```json
+{
+  "$schema": "https://opencode.ai/config.json",
+  "mcp": {
+    "rybbit": {
+      "type": "remote",
+      "url": "https://app.rybbit.io/api/mcp",
+      "enabled": true,
+      "headers": {
+        "Authorization": "Bearer {env:RYBBIT_API_KEY}"
+      }
+    }
+  }
+}
+```
+
+## Verify
+
+Run `opencode mcp list` to see the server and its authentication status (`opencode mcp debug rybbit` gives detailed diagnostics), then try:
+
+> List my Rybbit sites and summarize last week's traffic for each.

@@ -87,7 +87,7 @@ export async function updateMonitor(request: FastifyRequest<UpdateMonitorRequest
         details: zodError.errors,
       });
     }
-    console.error("Error updating monitor:", error);
+    request.log.error({ err: error }, "Error updating monitor");
     return reply.status(500).send({ error: "Internal server error" });
   }
 }

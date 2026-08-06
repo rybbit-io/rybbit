@@ -1,8 +1,8 @@
 import { FastifyReply, FastifyRequest } from "fastify";
-import { clickhouse } from "../../../db/clickhouse/clickhouse.js";
-import { getTimeStatement, processResults } from "../utils/utils.js";
+import { getTimeStatement } from "../utils/utils.js";
 import { FilterParams } from "@rybbit/shared";
 import { getFilterStatement } from "../utils/getFilterStatement.js";
+import { analyticsRoute, runAnalyticsQuery } from "../utils/analyticsQuery.js";
 
 export type GetOutboundLinksResponse = {
   url: string;
@@ -17,14 +17,13 @@ export interface GetOutboundLinksRequest {
   Querystring: FilterParams<{}>;
 }
 
-export async function getOutboundLinks(req: FastifyRequest<GetOutboundLinksRequest>, res: FastifyReply) {
-  const { filters } = req.query;
-  const site = req.params.siteId;
+export const buildOutboundLinksQuery = (query: GetOutboundLinksRequest["Querystring"], siteId: number) => {
+  const { filters } = query;
 
-  const timeStatement = getTimeStatement(req.query);
-  const filterStatement = filters ? getFilterStatement(filters, Number(site), timeStatement) : "";
+  const timeStatement = getTimeStatement(query);
+  const filterStatement = filters ? getFilterStatement(filters, siteId, timeStatement) : "";
 
-  const query = `
+  return `
     SELECT
       JSONExtractString(toString(props), 'url') AS url,
       COUNT(*) AS count,
@@ -39,21 +38,18 @@ export async function getOutboundLinks(req: FastifyRequest<GetOutboundLinksReque
     ORDER BY count DESC
     LIMIT 1000
   `;
+};
 
-  try {
-    const result = await clickhouse.query({
-      query,
-      format: "JSONEachRow",
-      query_params: {
-        siteId: Number(site),
-      },
+export const getOutboundLinks = analyticsRoute<GetOutboundLinksRequest>(
+  "outbound links",
+  async (req: FastifyRequest<GetOutboundLinksRequest>, res: FastifyReply) => {
+    const site = req.params.siteId;
+
+    const data = await runAnalyticsQuery<GetOutboundLinksResponse[number]>({
+      query: buildOutboundLinksQuery(req.query, Number(site)),
+      params: { siteId: Number(site) },
     });
 
-    const data = await processResults<GetOutboundLinksResponse[number]>(result);
     return res.send({ data });
-  } catch (error) {
-    console.error("Generated Query:", query);
-    console.error("Error fetching outbound links:", error);
-    return res.status(500).send({ error: "Failed to fetch outbound links" });
   }
-}
+);

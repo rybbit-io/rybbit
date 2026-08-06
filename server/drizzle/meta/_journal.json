@@ -71,6 +71,41 @@
       "when": 1781895152210,
       "tag": "0009_ambiguous_gabe_jones",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1784070943021,
+      "tag": "0010_tiny_diamondback",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1784173607652,
+      "tag": "0011_neat_starhawk",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1784511287442,
+      "tag": "0012_perfect_nebula",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1784659838680,
+      "tag": "0013_square_bloodaxe",
+      "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1784659838681,
+      "tag": "0014_site_icon",
+      "breakpoints": true
     }
   ]
 }

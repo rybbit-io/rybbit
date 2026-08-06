@@ -222,7 +222,7 @@ export function BioGenerator({ platform }: BioGeneratorProps) {
                     {copiedIndex === index ? (
                       <>
                         <Check className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-                        Copied!
+                        Copied
                       </>
                     ) : (
                       <>

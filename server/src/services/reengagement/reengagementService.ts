@@ -70,7 +70,7 @@ class ReengagementService {
       // No sites have events - return the first site for the dashboard link
       return { hasEvents: false, siteId: userSites[0].siteId, domain: userSites[0].domain };
     } catch (error) {
-      this.logger.error({ error, userId }, "Error checking user sites for events");
+      this.logger.error({ err: error, userId }, "Error checking user sites for events");
       return { hasEvents: true, siteId: null, domain: null }; // On error, assume they have events (don't send email)
     }
   }
@@ -129,7 +129,7 @@ class ReengagementService {
         break;
       }
     } catch (error) {
-      this.logger.error({ error, targetDay }, "Error processing re-engagement emails");
+      this.logger.error({ err: error, targetDay }, "Error processing re-engagement emails");
     }
   }
 

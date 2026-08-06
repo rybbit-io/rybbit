@@ -14,7 +14,7 @@ import {
   STANDARD_MEMBER_LIMIT,
   STANDARD_SITE_LIMIT,
 } from "../../lib/const.js";
-import { getBestSubscription, SubscriptionInfo } from "../../lib/subscriptionUtils.js";
+import { getBestSubscription, subscriptionIncludesReplay, SubscriptionInfo } from "../../lib/subscriptionUtils.js";
 
 function getStartOfMonth() {
   return DateTime.now().startOf("month").toJSDate();
@@ -28,7 +28,7 @@ function getStartOfNextMonth() {
  * Computes memberLimit and siteLimit from a subscription.
  * null = unlimited.
  */
-function computeLimits(
+export function computeLimits(
   subscription: SubscriptionInfo,
   stripeCreatedAt?: Date
 ): { memberLimit: number | null; siteLimit: number | null } {
@@ -58,8 +58,8 @@ function computeLimits(
     return { memberLimit: BASIC_MEMBER_LIMIT, siteLimit: BASIC_SITE_LIMIT };
   }
 
-  // AppSumo tiers (e.g. "appsumo-1" through "appsumo-6")
-  const appsumoMatch = planName.match(/^appsumo-([123456])$/);
+  // AppSumo tiers (e.g. "appsumo-1" through "appsumo-7")
+  const appsumoMatch = planName.match(/^appsumo-([1-7])$/);
   if (appsumoMatch) {
     const tier = appsumoMatch[1];
     return {
@@ -99,6 +99,7 @@ export async function getSubscriptionInner(organizationId: string) {
 
   // Get the best subscription (highest event limit from AppSumo or Stripe)
   const subscription = await getBestSubscription(organizationId, org.stripeCustomerId);
+  const includesReplay = subscriptionIncludesReplay(subscription);
 
   // Compute member/site limits
   const stripeCreatedAt = subscription.source === "stripe" ? subscription.createdAt : undefined;
@@ -116,6 +117,7 @@ export async function getSubscriptionInner(organizationId: string) {
       monthlyEventCount: org.monthlyEventCount || 0,
       interval: subscription.interval,
       cancelAtPeriodEnd: subscription.cancelAtPeriodEnd,
+      includesReplay,
       ...limits,
     };
   }
@@ -132,6 +134,7 @@ export async function getSubscriptionInner(organizationId: string) {
       interval: subscription.interval,
       cancelAtPeriodEnd: subscription.cancelAtPeriodEnd,
       isOverride: true,
+      includesReplay,
       ...limits,
     };
   }
@@ -147,6 +150,7 @@ export async function getSubscriptionInner(organizationId: string) {
       monthlyEventCount: org.monthlyEventCount || 0,
       interval: subscription.interval,
       cancelAtPeriodEnd: subscription.cancelAtPeriodEnd,
+      includesReplay,
       ...limits,
     };
   }
@@ -169,6 +173,7 @@ export async function getSubscriptionInner(organizationId: string) {
         interval: subscription.interval,
         isTrial: true,
         trialDaysRemaining,
+        includesReplay,
         ...limits,
       };
     }
@@ -183,6 +188,7 @@ export async function getSubscriptionInner(organizationId: string) {
       eventLimit: subscription.eventLimit,
       monthlyEventCount: org.monthlyEventCount || 0,
       interval: subscription.interval,
+      includesReplay,
       ...limits,
     };
   }
@@ -197,6 +203,7 @@ export async function getSubscriptionInner(organizationId: string) {
     eventLimit: subscription.eventLimit,
     monthlyEventCount: org.monthlyEventCount || 0,
     trialDaysRemaining: 0,
+    includesReplay,
     ...limits,
   };
 }
@@ -235,7 +242,7 @@ export async function getSubscription(
     const responseData = await getSubscriptionInner(organizationId);
     return reply.send(responseData);
   } catch (error: any) {
-    console.error("Get Subscription Error:", error);
+    request.log.error({ err: error }, "Get Subscription Error");
     // Handle specific Stripe errors if necessary
     if (error instanceof Stripe.errors.StripeError) {
       return reply.status(error.statusCode || 500).send({ error: error.message });

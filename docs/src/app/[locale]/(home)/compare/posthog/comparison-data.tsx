@@ -1,4 +1,5 @@
-import { ComparisonSection, FAQItem, PricingInfo, RelatedResource } from "../components/ComparisonPage";
+import Link from "next/link";
+import { ComparisonSection, DeepDive, FAQItem, PricingInfo, RelatedResource } from "../components/ComparisonPage";
 
 export const posthogComparisonData: ComparisonSection[] = [
   {
@@ -50,8 +51,8 @@ export const posthogExtendedData = {
 
   introHeading: "Why consider Rybbit over PostHog?",
   introParagraphs: [
-    "PostHog is an ambitious all-in-one product analytics platform that bundles analytics, session replay, feature flags, A/B testing, and surveys into a single tool. It's powerful, but that power comes with significant complexity. Teams often find themselves spending more time configuring PostHog than actually using it, and the ~60KB script can noticeably impact page performance.",
-    "Rybbit takes the opposite approach: do web analytics exceptionally well instead of doing everything adequately. The single-page dashboard gives your entire team instant access to the metrics that matter, with no training required. Non-technical team members can understand user behavior, track conversions, and watch session replays without learning a complex query language or navigating dozens of menus.",
+    "PostHog is a product analytics platform that bundles analytics, session replay, feature flags, A/B testing, and surveys into a single tool. That breadth comes with significant complexity, and teams often spend more time configuring PostHog than using it. The ~60KB script can also weigh on page performance.",
+    "Rybbit takes the opposite approach: do web analytics well instead of doing everything adequately. The single-page dashboard gives your whole team the metrics they need, with no training required. Non-technical team members can understand user behavior, track conversions, and watch session replays without learning a query language or navigating dozens of menus.",
     "Privacy is another key difference. Rybbit is cookie-free by default and never collects personal data, with no configuration needed. PostHog uses cookies by default and requires setup to achieve privacy compliance. Self-hosting is also dramatically simpler: Rybbit runs on TypeScript and ClickHouse, while PostHog requires Kafka, Redis, PostgreSQL, and ClickHouse. If you need focused, privacy-first web analytics that your whole team can use from day one, Rybbit is the better fit.",
   ],
 
@@ -70,7 +71,7 @@ export const posthogExtendedData = {
     "You need a SQL query interface for custom analysis",
     "You want surveys integrated with your analytics",
     "You need a mobile app for on-the-go analytics",
-    "You prefer an all-in-one product analytics platform",
+    "You want analytics, flags, A/B testing, and surveys in one platform",
   ],
 
   rybbitPricing: {
@@ -78,7 +79,7 @@ export const posthogExtendedData = {
     model: "Events-based pricing",
     startingPrice: "$19/mo",
     highlights: [
-      "7-day free trial, no credit card required",
+      "7-day free trial, card charged after the trial",
       "All features included, no add-on costs",
       "Session replay available on Pro plan",
       "Predictable billing with no overages",
@@ -97,18 +98,92 @@ export const posthogExtendedData = {
     ],
   } satisfies PricingInfo,
 
+  deepDive: {
+    title: "PostHog vs Rybbit, in depth",
+    sections: [
+      {
+        heading: "Two different products in the same category",
+        paragraphs: [
+          <>
+            Let&apos;s be clear: PostHog is genuinely excellent at what it does. It isn&apos;t really an analytics tool.
+            It&apos;s a full product platform: product analytics, session replay, feature flags, experiments,
+            surveys, and a SQL-queryable event warehouse, with 2026&apos;s headline push being agentic AI that works
+            toward &ldquo;self-driving&rdquo; product decisions. For an engineering-led product team that wants all of
+            that in one place, it&apos;s one of the best tools on the market.
+          </>,
+          <>
+            The cost of that breadth is complexity in the same class as GA4: insights, query builders, a SQL layer, and
+            a lot of menus between you and &ldquo;how much traffic did we get this week?&rdquo; Rybbit makes the
+            opposite bet: web analytics your whole team actually opens. One dashboard covers traffic,{" "}
+            <Link href="/features/funnels">funnels</Link>,{" "}
+            <Link href="/features/session-replay">session replay</Link>, user journeys, error tracking, Web Vitals, and
+            user profiles, from an ~18KB script, with nothing to configure and no query language to learn.
+          </>,
+        ],
+      },
+      {
+        heading: "Flat subscription vs per-event metering",
+        paragraphs: [
+          <>
+            PostHog&apos;s free tier is genuinely huge: 1 million events per month, no card required, one project, one
+            year of data retention, unlimited team members, and the free allowance keeps applying after you
+            upgrade. If you&apos;re a small site, you may pay nothing for a long time, and that&apos;s a real point in
+            PostHog&apos;s favor.
+          </>,
+          <>
+            Past the free tier, web analytics is billed together with product analytics on usage-based pricing: from
+            $0.0000500 per event on the 1&ndash;2M tier, scaling down to $0.0000090 per event at 250M+. Per-event
+            metering means the invoice moves with your traffic: a launch spike, a viral post, or
+            autocapture-heavy pages all show up on the bill, so teams at scale end up watching billing limits alongside
+            their dashboards. Rybbit&apos;s <Link href="/pricing">pricing</Link>{" "}
+            is a flat subscription from $19/mo for
+            100k events, every feature on every plan, with a 7-day trial. And if you&apos;d rather pay nothing,
+            the open-source version is <Link href="/docs/self-hosting">free to self-host</Link>.
+          </>,
+        ],
+      },
+      {
+        heading: "Privacy: defaults matter",
+        paragraphs: [
+          <>
+            Both tools are open source, but their out-of-the-box privacy postures differ. Rybbit is cookieless by
+            default: no consent banner needed, no persistent identifiers, and visitor hashes rotate with a daily salt.
+            PostHog can be configured for cookieless tracking, but its default configuration generally needs a consent
+            banner in the EU, and every visitor who declines is a session your product data never sees. If
+            &ldquo;accurate traffic numbers without a banner&rdquo; is the goal, the tool that does it with zero
+            configuration wins by default.
+          </>,
+        ],
+      },
+      {
+        heading: "Running PostHog and Rybbit together",
+        paragraphs: [
+          <>
+            This doesn&apos;t have to be an either/or decision. A setup we see often: keep PostHog for what it&apos;s
+            uniquely good at (feature flags, experiments, and SQL access to raw events) and run Rybbit as
+            the source of truth for traffic. Marketing, founders, and support get a dashboard they can read without
+            training, with cookieless numbers that aren&apos;t gated behind consent, while the product team keeps its
+            full PostHog toolkit. The two scripts don&apos;t conflict, and Rybbit&apos;s flat plan means the second
+            tool doesn&apos;t add a second metered bill. For a wider look at the landscape, see our{" "}
+            <Link href="/blog/best-web-analytics-tools">guide to the best web analytics tools</Link>.
+          </>,
+        ],
+      },
+    ],
+  } satisfies DeepDive,
+
   faqItems: [
     {
       question: "How is Rybbit different from PostHog?",
-      answer: "Rybbit focuses exclusively on web analytics with a clean, simple interface. PostHog is an all-in-one product suite with analytics, feature flags, A/B testing, surveys, and more. If you primarily need web analytics, Rybbit delivers a faster, simpler experience.",
+      answer: "Rybbit focuses exclusively on web analytics with a clean, simple interface. PostHog is a full product suite with analytics, feature flags, A/B testing, surveys, and more. If you primarily need web analytics, Rybbit delivers a faster, simpler experience.",
     },
     {
       question: "Is Rybbit really simpler than PostHog?",
-      answer: "Yes. Rybbit provides a single-page dashboard where all essential metrics are visible at a glance. PostHog's extensive feature set means more menus, more configuration, and a steeper learning curve, especially for non-technical team members.",
+      answer: "Yes. Rybbit provides a single-page dashboard where all essential metrics are visible on one screen. PostHog's extensive feature set means more menus, more configuration, and a steeper learning curve, especially for non-technical team members.",
     },
     {
       question: "Does PostHog have features Rybbit doesn't?",
-      answer: "Yes, PostHog offers feature flags, A/B testing, surveys, heatmaps, and a SQL query interface that Rybbit doesn't have. These are powerful tools for product teams, but they add complexity. Rybbit intentionally focuses on doing web analytics well.",
+      answer: "Yes, PostHog offers feature flags, A/B testing, surveys, heatmaps, and a SQL query interface that Rybbit doesn't have. These are useful tools for product teams, but they add complexity. Rybbit intentionally focuses on doing web analytics well.",
     },
     {
       question: "How does self-hosting compare?",

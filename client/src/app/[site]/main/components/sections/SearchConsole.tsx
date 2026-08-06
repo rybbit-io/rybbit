@@ -3,6 +3,7 @@ import round from "lodash/round";
 import { Expand, Info, SquareArrowOutUpRight } from "lucide-react";
 import { useExtracted } from "next-intl";
 import { useState } from "react";
+import { useCurrentSite } from "../../../../../api/admin/hooks/useSites";
 import { GSCDimension } from "../../../../../api/gsc/endpoints";
 import { useConnectGSC } from "../../../../../api/gsc/hooks/useConnectGSC";
 import { useGetGSCConnection } from "../../../../../api/gsc/hooks/useGetGSCConnection";
@@ -21,17 +22,29 @@ type Tab = "queries" | "pages" | "countries" | "devices";
 
 function ConnectPrompt() {
   const { mutate: connect, isPending } = useConnectGSC();
+  const { site } = useCurrentSite();
   const t = useExtracted();
+
+  // Connecting completes an OAuth flow that requires site admin access on the
+  // server. Members would be stranded on a 403 after Google consent, so show
+  // them an explanation instead of a button they can't complete.
+  const canConnect = site?.isOwner ?? false;
 
   return (
     <div className="flex flex-col items-center justify-center mt-12 gap-4">
       <div className="text-sm text-neutral-600 dark:text-neutral-400 text-center max-w-sm">
         {t("Connect your Google Search Console account to view search performance data including top keywords and pages.")}
       </div>
-      <Button onClick={() => connect()} disabled={isPending}>
-        <SiGoogle />
-        {isPending ? t("Connecting...") : t("Connect Google Search Console")}
-      </Button>
+      {canConnect ? (
+        <Button onClick={() => connect()} disabled={isPending}>
+          <SiGoogle />
+          {isPending ? t("Connecting...") : t("Connect Google Search Console")}
+        </Button>
+      ) : (
+        <div className="text-sm text-neutral-500 text-center max-w-sm">
+          {t("Ask a site admin to connect Google Search Console.")}
+        </div>
+      )}
     </div>
   );
 }

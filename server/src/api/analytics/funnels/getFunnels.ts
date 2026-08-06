@@ -39,7 +39,7 @@ export async function getFunnels(
 
     return reply.send({ data: funnels });
   } catch (error) {
-    console.error("Error fetching funnels:", error);
+    request.log.error({ err: error }, "Error fetching funnels");
     return reply.status(500).send({ error: "Failed to fetch funnels" });
   }
 }

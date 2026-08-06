@@ -1,3 +1,4 @@
+import type { AutocaptureTargetType } from "../../../lib/events";
 import { authedFetch } from "../../utils";
 import {
   BucketedParams,
@@ -9,23 +10,30 @@ import {
 } from "./types";
 import type { GetSessionsResponse } from "./sessions";
 
+// Goal types: page paths, custom events, and autocaptured event types
+export type GoalType = "path" | "event" | AutocaptureTargetType;
+
+export interface GoalConfig {
+  pathPattern?: string;
+  eventName?: string;
+  // Optional wildcard pattern for autocapture goals (URL, button text, form name/id, copied text)
+  valuePattern?: string;
+  // Deprecated fields - kept for backwards compatibility
+  eventPropertyKey?: string;
+  eventPropertyValue?: string | number | boolean;
+  // New field for multiple property filters
+  propertyFilters?: Array<{
+    key: string;
+    value: string | number | boolean;
+  }>;
+}
+
 // Goal type
 export interface Goal {
   goalId: number;
   name: string | null;
-  goalType: "path" | "event";
-  config: {
-    pathPattern?: string;
-    eventName?: string;
-    // Deprecated fields - kept for backwards compatibility
-    eventPropertyKey?: string;
-    eventPropertyValue?: string | number | boolean;
-    // New field for multiple property filters
-    propertyFilters?: Array<{
-      key: string;
-      value: string | number | boolean;
-    }>;
-  };
+  goalType: GoalType;
+  config: GoalConfig;
   createdAt: string;
   total_conversions: number;
   total_sessions: number;
@@ -70,17 +78,8 @@ export interface GoalSessionsParams extends CommonApiParams, PaginationParams {
 
 export interface CreateGoalParams {
   name?: string;
-  goalType: "path" | "event";
-  config: {
-    pathPattern?: string;
-    eventName?: string;
-    eventPropertyKey?: string;
-    eventPropertyValue?: string | number | boolean;
-    propertyFilters?: Array<{
-      key: string;
-      value: string | number | boolean;
-    }>;
-  };
+  goalType: GoalType;
+  config: GoalConfig;
 }
 
 export interface UpdateGoalParams extends CreateGoalParams {

@@ -7,6 +7,7 @@ method: GET
 
 import { TypeTable } from 'fumadocs-ui/components/type-table';
 import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+import { Callout } from 'fumadocs-ui/components/callout';
 
 <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
 <div>
@@ -16,6 +17,8 @@ GET /api/organizations
 ```
 
 Returns all organizations the authenticated user is a member of, including all members for each organization. Excludes subscription and billing information. Supports both session cookies and API key (Bearer token) authentication.
+
+<Callout type="warn">The `members` roster is only populated for session-cookie (dashboard) requests. API key / Bearer callers receive `members: []` for every organization — use [GET /organizations/:id/members](/docs/api/organizations/members) to retrieve member data with a key.</Callout>
 
 ### Response
 

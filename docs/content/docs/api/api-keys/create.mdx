@@ -16,9 +16,9 @@ import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
 POST /api/user/api-keys
 ```
 
-Creates a new API key scoped to your user account (and its organizations).
+Creates a new API key scoped to your user account (and its organizations). To create a key owned by an organization instead, see [Create Organization API Key](/docs/api/api-keys/create-org).
 
-<Callout type="warn">This endpoint authenticates with your logged-in dashboard **session**, not an API key — it is how you mint your first key, so you cannot bootstrap a key using another key. Send your session cookie with the request.</Callout>
+<Callout type="warn">This endpoint accepts your logged-in dashboard **session** or an **unrestricted (full-access) user API key**. Scoped keys and organization keys are rejected — so a scoped key cannot mint new keys, but a session or full-access key can. Send your session cookie or `Authorization: Bearer` header with the request.</Callout>
 
 ### Request Body
 

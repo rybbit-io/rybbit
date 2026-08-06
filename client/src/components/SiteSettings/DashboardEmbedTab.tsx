@@ -5,12 +5,29 @@ import { useExtracted } from "next-intl";
 import { useState } from "react";
 
 import { SiteResponse } from "@/api/admin/endpoints";
-import { useGeneratePrivateLinkKey, useGetPrivateLinkConfig } from "@/api/admin/hooks/usePrivateLink";
+import {
+  useGeneratePrivateLinkKey,
+  useGetPrivateLinkConfig,
+  useRevokePrivateLinkKey,
+} from "@/api/admin/hooks/usePrivateLink";
 import { CodeSnippet } from "@/components/CodeSnippet";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
 import { toast } from "@/components/ui/sonner";
 import { Switch } from "@/components/ui/switch";
+import { cn } from "@/lib/utils";
+
+import { SettingRow, SettingsSection, SettingsSections } from "./SettingsSection";
 
 interface DashboardEmbedTabProps {
   siteMetadata: SiteResponse;
@@ -45,7 +62,9 @@ export function DashboardEmbedTab({ siteMetadata, disabled = false }: DashboardE
     data: generatedPrivateLink,
     mutate: generatePrivateLinkKey,
     isPending: isGeneratingPrivateLink,
+    reset: resetGeneratedPrivateLink,
   } = useGeneratePrivateLinkKey();
+  const { mutate: revokePrivateLinkKey, isPending: isRevokingPrivateLink } = useRevokePrivateLinkKey();
   const privateLinkKey = privateLink?.privateLinkKey ?? generatedPrivateLink?.privateLinkKey ?? null;
   const hasPrivateLink = !!privateLinkKey;
   const dashboardEmbedAvailable = hasPrivateLink;
@@ -86,158 +105,163 @@ export function DashboardEmbedTab({ siteMetadata, disabled = false }: DashboardE
     });
   };
 
-  return (
-    <div className="min-w-0 space-y-6 overflow-x-hidden">
-      <section className="min-w-0 space-y-4">
-        <div>
-          <h5 className="text-xs font-semibold text-foreground uppercase tracking-wide">{t("Dashboard Embed")}</h5>
-          <p className="text-xs text-muted-foreground mt-1">
-            {t("Embed the main analytics dashboard on another site using a private link.")}
-          </p>
-        </div>
+  const handleRevokePrivateLink = () => {
+    revokePrivateLinkKey(siteId, {
+      onSuccess: () => {
+        resetGeneratedPrivateLink();
+        toast.success(t("Dashboard embed disabled"));
+      },
+      onError: error => {
+        toast.error(error instanceof Error ? error.message : t("Failed to disable dashboard embed"));
+      },
+    });
+  };
 
+  return (
+    <SettingsSections className="min-w-0 overflow-x-hidden">
+      <SettingsSection description={t("Embed the main analytics dashboard on another site using a private link.")}>
         <fieldset
           disabled={disabled}
-          className={`space-y-4 transition-opacity ${disabled ? "opacity-50 pointer-events-none select-none" : ""}`}
+          className={cn("space-y-4 transition-opacity", disabled && "opacity-50 pointer-events-none select-none")}
           aria-disabled={disabled}
         >
-          <div className="flex min-w-0 flex-col gap-3">
-            <div>
-              <Label className="text-sm font-medium text-foreground">{t("Private link")}</Label>
-              <p className="text-xs text-muted-foreground mt-1">
-                {t(
-                  "Dashboard embeds require a private link. Anyone with the iframe URL can view the read-only dashboard."
-                )}
-              </p>
-            </div>
-            <div className="flex min-w-0 flex-wrap gap-2">
-              {hasPrivateLink ? (
-                <div className="rounded-md border border-neutral-200 bg-neutral-50 px-2 py-1.5 text-xs text-muted-foreground dark:border-neutral-800 dark:bg-neutral-950">
+          <SettingRow
+            label={t("Private link")}
+            description={t(
+              "Dashboard embeds require a private link. Anyone with the iframe URL can view the read-only dashboard."
+            )}
+          >
+            {hasPrivateLink ? (
+              <>
+                <span className="inline-flex items-center gap-1.5 rounded-md border border-neutral-150 bg-neutral-50 px-2 py-1 text-xs text-muted-foreground dark:border-neutral-800 dark:bg-neutral-900">
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" aria-hidden />
                   {t("Private link enabled")}
-                </div>
-              ) : !isLoadingPrivateLink ? (
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="outline"
-                  disabled={isGeneratingPrivateLink}
-                  onClick={handleGeneratePrivateLink}
-                >
-                  {isGeneratingPrivateLink ? t("Generating...") : t("Generate Private Link")}
-                </Button>
-              ) : (
-                <div className="rounded-md border border-neutral-200 bg-neutral-50 px-2 py-1.5 text-xs text-muted-foreground dark:border-neutral-800 dark:bg-neutral-950">
-                  {t("Loading...")}
-                </div>
-              )}
-            </div>
-          </div>
+                </span>
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button type="button" size="sm" variant="outline" disabled={isRevokingPrivateLink}>
+                      {isRevokingPrivateLink ? t("Disabling...") : t("Disable")}
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>{t("Disable dashboard embed?")}</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        {t(
+                          "This revokes the private link for this site. Any embedded dashboards and shared dashboard links using it will stop working immediately. You can generate a new private link later, but it will have a different URL."
+                        )}
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>{t("Cancel")}</AlertDialogCancel>
+                      <AlertDialogAction onClick={handleRevokePrivateLink} disabled={isRevokingPrivateLink}>
+                        {isRevokingPrivateLink ? t("Disabling...") : t("Yes, disable embed")}
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              </>
+            ) : !isLoadingPrivateLink ? (
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                disabled={isGeneratingPrivateLink}
+                onClick={handleGeneratePrivateLink}
+              >
+                {isGeneratingPrivateLink ? t("Generating...") : t("Generate Private Link")}
+              </Button>
+            ) : (
+              <span className="inline-flex items-center rounded-md border border-neutral-150 bg-neutral-50 px-2 py-1 text-xs text-muted-foreground dark:border-neutral-800 dark:bg-neutral-900">
+                {t("Loading...")}
+              </span>
+            )}
+          </SettingRow>
 
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <Label className="text-sm font-medium text-foreground">{t("Theme")}</Label>
-              <p className="text-xs text-muted-foreground mt-1">
-                {t("Choose how the embedded dashboard is displayed.")}
-              </p>
-            </div>
-            <div className="flex flex-wrap gap-2 sm:justify-end">
-              {themes.map(theme => (
-                <Button
-                  key={theme.value}
-                  type="button"
-                  size="sm"
-                  variant={dashboardTheme === theme.value ? "default" : "outline"}
-                  onClick={() => setDashboardTheme(theme.value)}
-                >
-                  {theme.label}
-                </Button>
-              ))}
-            </div>
-          </div>
+          <SettingRow label={t("Theme")} description={t("Choose how the embedded dashboard is displayed.")}>
+            {themes.map(theme => (
+              <Button
+                key={theme.value}
+                type="button"
+                size="sm"
+                variant={dashboardTheme === theme.value ? "success" : "outline"}
+                onClick={() => setDashboardTheme(theme.value)}
+              >
+                {theme.label}
+              </Button>
+            ))}
+          </SettingRow>
 
-          <div className="flex items-center justify-between gap-4">
-            <div>
-              <Label htmlFor="dashboard-hide-sidebar" className="text-sm font-medium text-foreground">
-                {t("Hide sidebar")}
-              </Label>
-              <p className="text-xs text-muted-foreground mt-1">
-                {t("Only the main dashboard page can be viewed from this embed.")}
-              </p>
-            </div>
+          <SettingRow
+            label={t("Hide sidebar")}
+            htmlFor="dashboard-hide-sidebar"
+            description={t("Only the main dashboard page can be viewed from this embed.")}
+          >
             <Switch
               id="dashboard-hide-sidebar"
               checked={hideDashboardSidebar}
               onCheckedChange={setHideDashboardSidebar}
             />
-          </div>
+          </SettingRow>
         </fieldset>
+      </SettingsSection>
 
-        <div className="space-y-2">
-          <h5 className="text-xs font-semibold text-foreground uppercase tracking-wide">{t("Try It Out")}</h5>
-          <div
-            className={`rounded-md border border-neutral-200 dark:border-neutral-800 p-3 flex min-w-0 flex-col gap-3 transition-opacity ${
-              !dashboardEmbedAvailable ? "opacity-50" : ""
-            }`}
+      <SettingsSection title={t("Try It Out")} description={dashboardTryMessage}>
+        <div className={cn("flex min-w-0 items-center gap-2", !dashboardEmbedAvailable && "opacity-50")}>
+          <div className="min-w-0 flex-1 overflow-hidden text-ellipsis whitespace-nowrap rounded-md border border-neutral-150 bg-neutral-50 px-2 py-1.5 font-mono text-xs text-neutral-700 dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-300">
+            {dashboardUrlString}
+          </div>
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            disabled={!dashboardEmbedAvailable}
+            onClick={() => window.open(dashboardUrlString, "_blank", "noopener,noreferrer")}
+            className="shrink-0"
           >
-            <div className="w-full min-w-0 flex-1 overflow-hidden">
-              <p className="text-xs text-muted-foreground">{dashboardTryMessage}</p>
-              <div className="mt-2 max-w-full overflow-hidden text-ellipsis whitespace-nowrap rounded-md border border-neutral-200 bg-neutral-50 px-2 py-1.5 font-mono text-xs text-neutral-700 dark:border-neutral-800 dark:bg-neutral-950 dark:text-neutral-300">
-                {dashboardUrlString}
-              </div>
-            </div>
-            <Button
-              type="button"
-              size="sm"
-              disabled={!dashboardEmbedAvailable}
-              onClick={() => window.open(dashboardUrlString, "_blank", "noopener,noreferrer")}
-              className="shrink-0 self-start"
+            <ExternalLink className="h-3.5 w-3.5" />
+            {t("Open")}
+          </Button>
+        </div>
+      </SettingsSection>
+
+      <SettingsSection title={t("Preview")}>
+        <div className="rounded-lg border border-neutral-150 bg-neutral-100 p-2 dark:border-neutral-800 dark:bg-neutral-900/50">
+          {dashboardEmbedAvailable ? (
+            <div
+              className="mx-auto overflow-hidden rounded-sm bg-white dark:bg-neutral-950"
+              style={{
+                width: dashboardPreviewWidth,
+                maxWidth: "100%",
+                height: dashboardPreviewHeight,
+              }}
             >
-              <ExternalLink className="h-3.5 w-3.5" />
-              {t("Open")}
-            </Button>
-          </div>
-        </div>
-
-        <div className="space-y-2">
-          <h5 className="text-xs font-semibold text-foreground uppercase tracking-wide">{t("Preview")}</h5>
-          <div className="rounded-md border border-neutral-200 dark:border-neutral-800 p-2 bg-neutral-100 dark:bg-neutral-950">
-            {dashboardEmbedAvailable ? (
-              <div
-                className="mx-auto overflow-hidden rounded-sm bg-white dark:bg-neutral-950"
+              <iframe
+                key={dashboardUrlString}
+                src={dashboardUrlString}
+                width={DASHBOARD_PREVIEW_WIDTH}
+                height={DASHBOARD_PREVIEW_HEIGHT}
                 style={{
-                  width: dashboardPreviewWidth,
-                  maxWidth: "100%",
-                  height: dashboardPreviewHeight,
+                  border: 0,
+                  width: DASHBOARD_PREVIEW_WIDTH,
+                  height: DASHBOARD_PREVIEW_HEIGHT,
+                  transform: `scale(${DASHBOARD_PREVIEW_SCALE})`,
+                  transformOrigin: "top left",
                 }}
-              >
-                <iframe
-                  key={dashboardUrlString}
-                  src={dashboardUrlString}
-                  width={DASHBOARD_PREVIEW_WIDTH}
-                  height={DASHBOARD_PREVIEW_HEIGHT}
-                  style={{
-                    border: 0,
-                    width: DASHBOARD_PREVIEW_WIDTH,
-                    height: DASHBOARD_PREVIEW_HEIGHT,
-                    transform: `scale(${DASHBOARD_PREVIEW_SCALE})`,
-                    transformOrigin: "top left",
-                  }}
-                  title="Dashboard preview"
-                />
-              </div>
-            ) : (
-              <div className="h-[220px] rounded-md border border-dashed border-neutral-300 dark:border-neutral-700 flex items-center justify-center text-xs text-muted-foreground">
-                {t("Generate a private link to preview")}
-              </div>
-            )}
-          </div>
+                title="Dashboard preview"
+              />
+            </div>
+          ) : (
+            <div className="flex h-[220px] items-center justify-center rounded-md border border-dashed border-neutral-300 text-xs text-muted-foreground dark:border-neutral-700">
+              {t("Generate a private link to preview")}
+            </div>
+          )}
         </div>
+      </SettingsSection>
 
-        <div className="space-y-2">
-          <h5 className="text-xs font-semibold text-foreground uppercase tracking-wide">{t("Embed Code")}</h5>
-          <CodeSnippet language="HTML" code={dashboardIframeCode} />
-        </div>
-      </section>
-    </div>
+      <SettingsSection title={t("Embed Code")}>
+        <CodeSnippet language="HTML" code={dashboardIframeCode} />
+      </SettingsSection>
+    </SettingsSections>
   );
 }

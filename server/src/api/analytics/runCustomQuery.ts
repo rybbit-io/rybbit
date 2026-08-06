@@ -9,6 +9,9 @@ const MAX_RESULT_ROWS = 1000;
 
 const requestBodySchema = z.object({
   query: z.string().trim().min(1).max(MAX_CUSTOM_QUERY_LENGTH),
+  // When provided, scope scoped_events to this single site (the per-site Query
+  // page). Omitted → query spans every site the caller can access in the org.
+  siteId: z.number().int().positive().optional(),
 });
 
 export async function runCustomQuery(
@@ -31,12 +34,20 @@ export async function runCustomQuery(
   }
 
   const userSites = await getSitesUserHasAccessTo(request);
-  const siteIds = userSites
+  const accessibleSiteIds = userSites
     .filter(site => site.organizationId === request.params.organizationId)
     .map(site => site.siteId);
 
-  if (siteIds.length === 0) {
+  if (accessibleSiteIds.length === 0) {
     return reply.status(403).send({ error: "No access to organization or no sites found" });
+  }
+
+  let siteIds = accessibleSiteIds;
+  if (body.data.siteId !== undefined) {
+    if (!accessibleSiteIds.includes(body.data.siteId)) {
+      return reply.status(403).send({ error: "No access to the requested site" });
+    }
+    siteIds = [body.data.siteId];
   }
 
   const query = `

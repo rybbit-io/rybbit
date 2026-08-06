@@ -1,12 +1,14 @@
 "use client";
 
 import { Input } from "@/components/ui/input";
+import { formatter } from "@/lib/utils";
 import * as React from "react";
 import { createPortal } from "react-dom";
 
 export interface SuggestionOption {
   value: string;
   label?: string;
+  count?: number;
 }
 
 interface InputWithSuggestionsProps extends React.InputHTMLAttributes<HTMLInputElement> {
@@ -41,7 +43,7 @@ export const InputWithSuggestions = React.forwardRef<HTMLInputElement, InputWith
     const value = controlledValue !== undefined ? controlledValue : internalValue;
 
     const filteredSuggestions = suggestions.filter(suggestion =>
-      suggestion.value.toLowerCase().includes(String(value).toLowerCase())
+      String(suggestion.value).toLowerCase().includes(String(value).toLowerCase())
     );
 
     const updateDropdownPosition = React.useCallback(() => {
@@ -144,11 +146,16 @@ export const InputWithSuggestions = React.forwardRef<HTMLInputElement, InputWith
               {filteredSuggestions.map(suggestion => (
                 <div
                   key={suggestion.value}
-                  className="relative cursor-pointer mx-1 p-2 text-sm hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-md"
+                  className="relative flex cursor-pointer items-center justify-between gap-2 mx-1 p-2 text-sm hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-md"
                   onMouseDown={e => e.preventDefault()}
-                  onClick={() => handleSuggestionClick(suggestion.value)}
+                  onClick={() => handleSuggestionClick(String(suggestion.value))}
                 >
-                  {suggestion.label || suggestion.value}
+                  <span className="truncate">{suggestion.label || suggestion.value}</span>
+                  {suggestion.count !== undefined && (
+                    <span className="shrink-0 text-xs tabular-nums text-neutral-400 dark:text-neutral-500">
+                      {formatter(suggestion.count)}
+                    </span>
+                  )}
                 </div>
               ))}
             </div>,

@@ -49,7 +49,7 @@ class UptimeService {
       this.initialized = true;
       this.logger.info("BullMQ uptime monitoring service initialized successfully");
     } catch (error) {
-      this.logger.error(error, "Failed to initialize uptime service");
+      this.logger.error({ err: error }, "Failed to initialize uptime service");
       this.initializationPromise = null; // Reset on failure
       throw error;
     }
@@ -71,7 +71,7 @@ class UptimeService {
       this.initialized = false;
       this.logger.info("BullMQ uptime monitoring service shut down successfully");
     } catch (error) {
-      this.logger.error(error, "Error during uptime service shutdown");
+      this.logger.error({ err: error }, "Error during uptime service shutdown");
     }
   }
 

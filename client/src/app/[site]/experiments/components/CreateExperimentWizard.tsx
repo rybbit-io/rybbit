@@ -1,6 +1,6 @@
 "use client";
 
-import type { Experiment, FeatureFlagVariant } from "@/api/analytics/endpoints";
+import type { Experiment, FeatureFlagVariant, GoalType as AnyGoalType } from "@/api/analytics/endpoints";
 import { useCreateExperiment, useUpdateExperiment } from "@/api/analytics/hooks/experiments/useExperiments";
 import { useCreateFeatureFlag, useFeatureFlags } from "@/api/analytics/hooks/featureFlags/useFeatureFlags";
 import { useCreateGoal } from "@/api/analytics/hooks/goals/useCreateGoal";
@@ -55,7 +55,7 @@ type ImplementationState = {
   flagKey: string;
   variants: string[];
   goalMode: GoalMode;
-  goalType?: GoalType;
+  goalType?: AnyGoalType;
   goalLabel?: string;
 };
 
@@ -131,7 +131,7 @@ function initialForm(experiment?: Experiment): WizardForm {
       goalMode: experiment.primaryGoalId ? "existing" : "none",
       existingGoalId: experiment.primaryGoalId ? String(experiment.primaryGoalId) : "",
       goalName: primaryGoal?.name || "",
-      goalType: primaryGoal?.goalType || "path",
+      goalType: primaryGoal?.goalType === "event" ? "event" : "path",
       pathPattern: primaryGoal?.config.pathPattern || "",
       eventName: primaryGoal?.config.eventName || "",
     };
@@ -156,6 +156,19 @@ function initialForm(experiment?: Experiment): WizardForm {
     pathPattern: "",
     eventName: "",
   };
+}
+
+// The pattern a goal matches against, regardless of its type (path/event/autocapture)
+function goalDisplayPattern(
+  goal?: {
+    goalType: AnyGoalType;
+    config: { pathPattern?: string; eventName?: string; valuePattern?: string };
+  } | null
+): string | undefined {
+  if (!goal) return undefined;
+  if (goal.goalType === "path") return goal.config.pathPattern;
+  if (goal.goalType === "event") return goal.config.eventName;
+  return goal.config.valuePattern;
 }
 
 function getVariantKeys(flag: VariantSourceFlag) {
@@ -356,10 +369,12 @@ export function CreateExperimentWizard({
   const pathSuggestions: SuggestionOption[] = (pathsData?.data || []).map(item => ({
     value: item.value,
     label: item.value,
+    count: item.count,
   }));
   const eventSuggestions: SuggestionOption[] = (eventsData?.data || []).map(item => ({
     value: item.value,
     label: item.value,
+    count: item.count,
   }));
   const selectedGoal =
     goals.find(goal => String(goal.goalId) === form.existingGoalId) ||
@@ -502,9 +517,7 @@ export function CreateExperimentWizard({
       form.goalMode === "existing" ? selectedGoal?.goalType : form.goalMode === "new" ? form.goalType : undefined;
     const goalLabel =
       form.goalMode === "existing"
-        ? selectedGoal?.goalType === "path"
-          ? selectedGoal.config.pathPattern
-          : selectedGoal?.config.eventName
+        ? goalDisplayPattern(selectedGoal)
         : form.goalMode === "new"
           ? form.goalType === "path"
             ? form.pathPattern.trim()
@@ -570,15 +583,8 @@ export function CreateExperimentWizard({
       }
 
       let primaryGoalId: number | null = form.goalMode === "existing" ? Number(form.existingGoalId) : null;
-      let goalType: GoalType | undefined = selectedGoal?.goalType;
-      let goalLabel =
-        selectedGoal?.goalType === "path"
-          ? selectedGoal.config.pathPattern
-          : selectedGoal?.goalType === "event"
-            ? selectedGoal.config.eventName
-            : form.goalMode === "none"
-              ? undefined
-              : form.goalName.trim();
+      let goalType: AnyGoalType | undefined = selectedGoal?.goalType;
+      let goalLabel = form.goalMode === "none" ? undefined : (goalDisplayPattern(selectedGoal) ?? form.goalName.trim());
 
       if (form.goalMode === "new") {
         const createdGoal = await createGoalMutation.mutateAsync({
@@ -665,15 +671,8 @@ export function CreateExperimentWizard({
       }
 
       let primaryGoalId: number | null = form.goalMode === "existing" ? Number(form.existingGoalId) : null;
-      let goalType: GoalType | undefined = selectedGoal?.goalType;
-      let goalLabel =
-        selectedGoal?.goalType === "path"
-          ? selectedGoal.config.pathPattern
-          : selectedGoal?.goalType === "event"
-            ? selectedGoal.config.eventName
-            : form.goalMode === "none"
-              ? undefined
-              : form.goalName.trim();
+      let goalType: AnyGoalType | undefined = selectedGoal?.goalType;
+      let goalLabel = form.goalMode === "none" ? undefined : (goalDisplayPattern(selectedGoal) ?? form.goalName.trim());
 
       if (form.goalMode === "new") {
         const createdGoal = await createGoalMutation.mutateAsync({
@@ -1084,6 +1083,10 @@ window.rybbit.onReady((rybbit) => {
                 goalLabel: implementationState.goalLabel || "",
               }
             )}
+          </p>
+        ) : implementationState.goalType && implementationState.goalType !== "event" ? (
+          <p className="rounded-md border border-neutral-150 bg-neutral-50 p-3 text-sm text-neutral-600 dark:border-neutral-800 dark:bg-neutral-900/40 dark:text-neutral-300">
+            {t("No conversion event code is needed for this goal. Rybbit tracks it automatically based on user behavior.")}
           </p>
         ) : (
           <p className="rounded-md border border-neutral-150 bg-neutral-50 p-3 text-sm text-neutral-600 dark:border-neutral-800 dark:bg-neutral-900/40 dark:text-neutral-300">

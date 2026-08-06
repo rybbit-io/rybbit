@@ -136,7 +136,12 @@ export async function createBasePayload(
   siteConfiguration: SiteConfigData,
   trustedServerSideIngestion = false
 ): Promise<TotalTrackingPayload> {
-  const { ipAddress, userAgent } = resolveTrackingIdentity(request, validatedBody, trustedServerSideIngestion);
+  const { ipAddress, userAgent } = resolveTrackingIdentity(
+    request,
+    validatedBody,
+    trustedServerSideIngestion,
+    siteConfiguration.firstPartyProxy
+  );
   const { ip_address: _ipAddressOverride, user_agent: _userAgentOverride, ...payloadBody } = validatedBody;
 
   const anonymousId = validatedBody.anonymous_id

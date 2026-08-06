@@ -1,4 +1,5 @@
 import { FastifyReply, FastifyRequest } from "fastify";
+import SqlString from "sqlstring";
 import { z } from "zod";
 import { clickhouse } from "../../db/clickhouse/clickhouse.js";
 import { MAX_CUSTOM_QUERY_LENGTH, normalizeCustomQuery, validateScopedQuery } from "./utils/customQueryValidation.js";
@@ -8,6 +9,7 @@ const MAX_EXECUTION_TIME_SECONDS = 10;
 const MAX_RESULT_ROWS = 1000;
 
 const BUCKET_TOKEN = /\{\{\s*bucket\s*\}\}/gi;
+const TZ_TOKEN = /\{\{\s*tz\s*\}\}/gi;
 
 const requestBodySchema = z.object({
   query: z.string().trim().min(1).max(MAX_CUSTOM_QUERY_LENGTH),
@@ -42,11 +44,17 @@ export async function runDashboardCardQuery(
     return reply.status(400).send({ error: body.error.errors[0]?.message ?? "Invalid request body" });
   }
 
-  // Substitute {{bucket}} BEFORE validation so the validator never sees the
-  // template token. The value comes from an allowlisted enum mapped to a
-  // constant interval string, so this is injection-safe.
+  // Substitute {{bucket}} and {{tz}} BEFORE validation so the validator never
+  // sees the template tokens. {{bucket}} comes from an allowlisted enum mapped
+  // to a constant interval string; {{tz}} is SqlString-escaped to a quoted
+  // literal — both injection-safe. {{tz}} lets time-series cards bucket in the
+  // viewer's timezone (e.g. toStartOfInterval(toTimeZone(timestamp, {{tz}}), ...))
+  // so day buckets align to local calendar days, matching the standard charts.
   const bucketInterval = bucketIntervalMap[body.data.bucket ?? "hour"];
-  const substitutedQuery = body.data.query.replace(BUCKET_TOKEN, bucketInterval);
+  const timeZoneLiteral = SqlString.escape(body.data.timeZone || "UTC");
+  const substitutedQuery = body.data.query
+    .replace(BUCKET_TOKEN, bucketInterval)
+    .replace(TZ_TOKEN, timeZoneLiteral);
 
   const validationError = validateScopedQuery(substitutedQuery);
   if (validationError) {

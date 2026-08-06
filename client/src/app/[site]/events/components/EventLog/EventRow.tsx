@@ -37,7 +37,7 @@ export function EventRow({ event, site, onClick }: EventRowProps) {
   const pagePath = buildEventPath(event);
   const pageUrl = `https://${event.hostname}${pagePath}`;
   const isPageview = event.type === "pageview";
-  const eventData = isPageview ? null : getMainData(event, eventProperties, getEventDisplayName, t);
+  const eventData = isPageview ? null : getMainData(event, eventProperties, getEventDisplayName);
   const userProfileId = event.identified_user_id || event.user_id;
   const displayName = getUserDisplayName({
     identified_user_id: event.identified_user_id || undefined,
@@ -58,7 +58,7 @@ export function EventRow({ event, site, onClick }: EventRowProps) {
             </div>
           </TooltipTrigger>
           <TooltipContent>
-            <span>{getEventTypeLabel(event.type, t, isApp)}</span>
+            <span>{getEventTypeLabel(event.type, isApp)}</span>
           </TooltipContent>
         </Tooltip>
       </div>

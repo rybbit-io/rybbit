@@ -178,58 +178,26 @@ describe("siteConfig.getConfig", () => {
       { column: "site_id", value: 123 },
     ]);
   });
-});
 
-describe("siteConfig exclusion matchers", () => {
-  it("matches excluded paths with glob wildcards, case-insensitively", async () => {
-    dbMock.rows.push(createSiteRow({ siteId: 1, excludedPaths: ["/admin/*", "/preview"] }));
-
-    expect(await siteConfig.isPathExcluded("/admin/users", 1)).toBe(true);
-    expect(await siteConfig.isPathExcluded("/ADMIN/users", 1)).toBe(true);
-    expect(await siteConfig.isPathExcluded("/preview", 1)).toBe(true);
-    expect(await siteConfig.isPathExcluded("/admin", 1)).toBe(false); // no trailing segment
-    expect(await siteConfig.isPathExcluded("/blog", 1)).toBe(false);
-    expect(await siteConfig.isPathExcluded(undefined, 1)).toBe(false);
-  });
-
-  it("matches patterns with multiple and consecutive wildcards, bounded against backtracking", async () => {
+  it("invalidates every identifier for one site without evicting other sites", async () => {
     dbMock.rows.push(
-      createSiteRow({ siteId: 5, excludedPaths: ["/a/*/b/*", "/x**y"] }),
-      createSiteRow({ siteId: 6, excludedPaths: ["/" + "*a".repeat(30) + "b"] })
+      createSiteRow({ id: "abcdef123456", siteId: 123, domain: "before.example" }),
+      createSiteRow({ id: "fedcba654321", siteId: 456, domain: "other.example" })
     );
 
-    expect(await siteConfig.isPathExcluded("/a/1/b/2", 5)).toBe(true);
-    expect(await siteConfig.isPathExcluded("/a//b/", 5)).toBe(true); // wildcards may match empty
-    expect(await siteConfig.isPathExcluded("/a/1/c/2", 5)).toBe(false);
-    expect(await siteConfig.isPathExcluded("/xANYTHINGy", 5)).toBe(true); // consecutive wildcards
+    await siteConfig.getConfig(123);
+    await siteConfig.getConfig("123");
+    await siteConfig.getConfig("abcdef123456");
+    await siteConfig.getConfig(456);
+    const queriesBeforeInvalidation = dbMock.queries.length;
 
-    // A pathological pattern must still resolve promptly (no catastrophic backtracking).
-    expect(await siteConfig.isPathExcluded("/" + "a".repeat(2000), 6)).toBe(false);
-  });
+    dbMock.rows[0].domain = "after.example";
+    siteConfig.invalidate({ id: "abcdef123456", siteId: 123 });
 
-  it("matches excluded hostnames with glob wildcards", async () => {
-    dbMock.rows.push(createSiteRow({ siteId: 2, excludedHostnames: ["localhost", "*.vercel.app"] }));
-
-    expect(await siteConfig.isHostnameExcluded("localhost", 2)).toBe(true);
-    expect(await siteConfig.isHostnameExcluded("my-app.vercel.app", 2)).toBe(true);
-    expect(await siteConfig.isHostnameExcluded("vercel.app", 2)).toBe(false);
-    expect(await siteConfig.isHostnameExcluded("example.com", 2)).toBe(false);
-  });
-
-  it("matches excluded user agents as case-insensitive substrings", async () => {
-    dbMock.rows.push(createSiteRow({ siteId: 3, excludedUserAgents: ["HeadlessChrome", "MyMonitor"] }));
-
-    expect(await siteConfig.isUserAgentExcluded("Mozilla/5.0 HeadlessChrome/120", 3)).toBe(true);
-    expect(await siteConfig.isUserAgentExcluded("mozilla/5.0 headlesschrome/120", 3)).toBe(true);
-    expect(await siteConfig.isUserAgentExcluded("Mozilla/5.0 (real browser)", 3)).toBe(false);
-    expect(await siteConfig.isUserAgentExcluded(undefined, 3)).toBe(false);
-  });
-
-  it("returns false when no exclusions are configured", async () => {
-    dbMock.rows.push(createSiteRow({ siteId: 4 }));
-
-    expect(await siteConfig.isPathExcluded("/admin", 4)).toBe(false);
-    expect(await siteConfig.isHostnameExcluded("localhost", 4)).toBe(false);
-    expect(await siteConfig.isUserAgentExcluded("HeadlessChrome", 4)).toBe(false);
+    expect((await siteConfig.getConfig(123))?.domain).toBe("after.example");
+    expect((await siteConfig.getConfig("123"))?.domain).toBe("after.example");
+    expect((await siteConfig.getConfig("abcdef123456"))?.domain).toBe("after.example");
+    expect((await siteConfig.getConfig(456))?.domain).toBe("other.example");
+    expect(dbMock.queries).toHaveLength(queriesBeforeInvalidation + 4);
   });
 });

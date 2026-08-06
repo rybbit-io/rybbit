@@ -1,8 +1,8 @@
 import { FastifyReply, FastifyRequest } from "fastify";
-import { clickhouse } from "../../db/clickhouse/clickhouse.js";
-import { getTimeStatement, processResults } from "./utils/utils.js";
+import { getTimeStatement } from "./utils/utils.js";
 import { FilterParams } from "@rybbit/shared";
 import { getFilterStatement } from "./utils/getFilterStatement.js";
+import { analyticsRoute, getPaginationStatements, runAnalyticsQuery, runPaginatedQuery } from "./utils/analyticsQuery.js";
 
 interface GetErrorNamesRequest {
   Params: {
@@ -29,31 +29,18 @@ type ErrorNamesPaginatedResponse = {
   totalCount: number;
 };
 
-const getErrorNamesQuery = (request: FastifyRequest<GetErrorNamesRequest>, isCountQuery: boolean = false) => {
-  const { filters, limit, page } = request.query;
+export const buildErrorNamesQuery = (
+  query: GetErrorNamesRequest["Querystring"],
+  siteId: number,
+  isCountQuery: boolean = false
+) => {
+  const { filters } = query;
 
-  const timeStatement = getTimeStatement(request.query);
-  const filterStatement = getFilterStatement(filters, Number(request.params.siteId), timeStatement);
+  const timeStatement = getTimeStatement(query);
+  const filterStatement = getFilterStatement(filters, siteId, timeStatement);
 
-  let validatedLimit: number | null = null;
-  if (!isCountQuery && limit !== undefined) {
-    const parsedLimit = parseInt(String(limit), 10);
-    if (!isNaN(parsedLimit) && parsedLimit > 0) {
-      validatedLimit = parsedLimit;
-    }
-  }
   // Default to 10 for non-paginated use
-  const limitStatement = !isCountQuery && validatedLimit ? `LIMIT ${validatedLimit}` : isCountQuery ? "" : "LIMIT 10";
-
-  let validatedOffset: number | null = null;
-  if (!isCountQuery && page !== undefined) {
-    const parsedPage = parseInt(String(page), 10);
-    if (!isNaN(parsedPage) && parsedPage >= 1) {
-      const pageOffset = (parsedPage - 1) * (validatedLimit || 10);
-      validatedOffset = pageOffset;
-    }
-  }
-  const offsetStatement = !isCountQuery && validatedOffset ? `OFFSET ${validatedOffset}` : "";
+  const { limitStatement, offsetStatement } = getPaginationStatements(query, 10, isCountQuery);
 
   // For errors, we want to count total occurrences and unique sessions affected
   // Group by error message instead of error name
@@ -103,47 +90,23 @@ const getErrorNamesQuery = (request: FastifyRequest<GetErrorNamesRequest>, isCou
   `;
 };
 
-export async function getErrorNames(req: FastifyRequest<GetErrorNamesRequest>, res: FastifyReply) {
-  const site = req.params.siteId;
-  const { page } = req.query;
+export const getErrorNames = analyticsRoute<GetErrorNamesRequest>(
+  "error names",
+  async (req: FastifyRequest<GetErrorNamesRequest>, res: FastifyReply) => {
+    const siteId = Number(req.params.siteId);
+    const params = { siteId };
+    const dataSpec = { query: buildErrorNamesQuery(req.query, siteId, false), params };
 
-  const isPaginatedRequest = page !== undefined; // True if page is present
-
-  const dataQuery = getErrorNamesQuery(req, false);
-
-  try {
-    const dataResult = await clickhouse.query({
-      query: dataQuery,
-      format: "JSONEachRow",
-      query_params: {
-        siteId: Number(site),
-      },
-    });
-    const items = await processResults<ErrorNameItem>(dataResult);
-
-    if (isPaginatedRequest) {
-      const countQuery = getErrorNamesQuery(req, true);
-      const countResult = await clickhouse.query({
-        query: countQuery,
-        format: "JSONEachRow",
-        query_params: {
-          siteId: Number(site),
-        },
+    if (req.query.page !== undefined) {
+      const result = await runPaginatedQuery<ErrorNameItem>(dataSpec, {
+        query: buildErrorNamesQuery(req.query, siteId, true),
+        params,
       });
-      const countData = await processResults<{ totalCount: number }>(countResult);
-      const totalCount = countData.length > 0 ? countData[0].totalCount : 0;
-      return res.send({ data: { data: items, totalCount } });
-    } else {
-      // For non-paginated (StandardSection default) use, return the simpler structure
-      return res.send({ data: items });
+      return res.send({ data: result });
     }
-  } catch (error) {
-    console.error(`Error fetching error names:`, error);
-    console.error("Failed dataQuery:", dataQuery);
-    if (isPaginatedRequest) {
-      const countQuery = getErrorNamesQuery(req, true);
-      console.error("Failed countQuery:", countQuery);
-    }
-    return res.status(500).send({ error: `Failed to fetch error names` });
+
+    // For non-paginated (StandardSection default) use, return the simpler structure
+    const items = await runAnalyticsQuery<ErrorNameItem>(dataSpec);
+    return res.send({ data: items });
   }
-}
+);

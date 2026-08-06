@@ -2,99 +2,64 @@
 
 import { useExtracted } from "next-intl";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContentFullScreen, DialogTrigger } from "@/components/ui/dialog";
 import { Plus } from "lucide-react";
 import { useState } from "react";
 import { toast } from "@/components/ui/sonner";
 import { useGetFunnel, useSaveFunnel } from "../../../../api/analytics/hooks/funnels/useGetFunnel";
-import { FunnelStep } from "../../../../api/analytics/endpoints";
+import { FunnelStep, hasIncompleteSteps } from "../../../../api/analytics/endpoints";
 import { FunnelForm } from "./FunnelForm";
+
+const buildDefaultSteps = (): FunnelStep[] => [
+  { type: "page", value: "/", name: "Homepage" },
+  { type: "page", value: "", name: "" },
+];
 
 export function CreateFunnelDialog() {
   const t = useExtracted();
   const [open, setOpen] = useState(false);
 
   // Funnel steps state
-  const [steps, setSteps] = useState<FunnelStep[]>([
-    { type: "page", value: "/", name: "Homepage" },
-    { type: "page", value: "", name: "" },
-  ]);
+  const [steps, setSteps] = useState<FunnelStep[]>(buildDefaultSteps);
 
   // Funnel name
   const [name, setName] = useState("New Funnel");
 
-  // Funnel analysis query
+  // Funnel analysis query (drives the live preview)
   const {
     data,
     isError,
     error,
     isLoading: isPending,
-  } = useGetFunnel(
-    steps.some(step => !step.value)
-      ? undefined
-      : {
-          steps,
-        },
-    true
-  );
+  } = useGetFunnel(hasIncompleteSteps(steps) ? undefined : { steps }, true);
 
   // Funnel save mutation
-  const { mutate: saveFunnel, isPending: isSaving, error: saveError } = useSaveFunnel();
+  const { mutate: saveFunnel, isPending: isSaving } = useSaveFunnel();
 
-  // Query funnel without saving
-  const handleQueryFunnel = () => {
-    // Validate steps have values
-    const hasEmptySteps = steps.some(step => !step.value);
-    if (hasEmptySteps) {
-      alert(t("All steps must have values"));
-      return;
-    }
-  };
-
-  // Save funnel configuration
+  // Save funnel configuration (the save button is disabled while invalid)
   const handleSaveFunnel = () => {
-    // Validate name
-    if (!name.trim()) {
-      alert(t("Please enter a funnel name"));
-      return;
-    }
+    if (!name.trim() || hasIncompleteSteps(steps)) return;
 
-    // Validate steps have values
-    const hasEmptySteps = steps.some(step => !step.value);
-    if (hasEmptySteps) {
-      alert(t("All steps must have values"));
-      return;
-    }
-
-    // Save funnel directly without analyzing
     saveFunnel(
-      {
-        steps,
-        name,
-      },
+      { steps, name },
       {
         onSuccess: () => {
-          // Close dialog on successful save
           setOpen(false);
-          // Optional: Show success message
           toast?.success(t("Funnel saved successfully"));
         },
         onError: error => {
-          // Show error but don't close dialog
+          // Show error but don't close the editor
           toast?.error(t("Failed to save funnel: {message}", { message: error.message }));
         },
       }
     );
   };
 
-  // Reset form when dialog closes
+  // Reset form when the editor closes
   const handleOpenChange = (open: boolean) => {
     setOpen(open);
     if (!open) {
-      setSteps([
-        { type: "page", value: "/", name: "Homepage" },
-        { type: "page", value: "", name: "" },
-      ]);
+      setSteps(buildDefaultSteps());
       setName("New Funnel");
     }
   };
@@ -106,28 +71,29 @@ export function CreateFunnelDialog() {
           <Plus className="w-4 h-4" /> {t("Create Funnel")}
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-[95vw]">
-        <DialogHeader>
-          <DialogTitle>{t("Create Funnel")}</DialogTitle>
-        </DialogHeader>
-
+      <DialogContentFullScreen
+        aria-describedby={undefined}
+        onOpenAutoFocus={e => {
+          e.preventDefault();
+          document.getElementById("funnel-name-input")?.focus();
+        }}
+      >
         <FunnelForm
+          title={t("Create Funnel")}
           name={name}
           setName={setName}
           steps={steps}
           setSteps={setSteps}
           onSave={handleSaveFunnel}
           onCancel={() => setOpen(false)}
-          onQuery={handleQueryFunnel}
           saveButtonText={t("Save Funnel")}
           isSaving={isSaving}
           isError={isError}
           isPending={isPending}
           error={error}
-          saveError={saveError}
           funnelData={data}
         />
-      </DialogContent>
+      </DialogContentFullScreen>
     </Dialog>
   );
 }

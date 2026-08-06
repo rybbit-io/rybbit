@@ -54,7 +54,7 @@ export async function getSiteExcludedIPs(request: FastifyRequest, reply: Fastify
       excludedIPs,
     });
   } catch (error) {
-    console.error("Error getting excluded IPs:", error);
+    request.log.error({ err: error }, "Error getting excluded IPs");
     return reply.status(500).send({
       success: false,
       error: "Failed to get excluded IPs",

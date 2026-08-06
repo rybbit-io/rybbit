@@ -1,25 +1,21 @@
 import { FilterParams } from "@rybbit/shared";
 import { FastifyReply, FastifyRequest } from "fastify";
-import { clickhouse } from "../../../db/clickhouse/clickhouse.js";
-import { getTimeStatement, processResults } from "../utils/utils.js";
+import { getTimeStatement } from "../utils/utils.js";
 import { getFilterStatement } from "../utils/getFilterStatement.js";
+import { analyticsRoute, runAnalyticsQuery } from "../utils/analyticsQuery.js";
 
-export async function getSessionLocations(
-  req: FastifyRequest<{
-    Params: {
-      siteId: string;
-    };
-    Querystring: FilterParams<{}>;
-  }>,
-  res: FastifyReply
-) {
-  const { siteId } = req.params;
+export interface GetSessionLocationsRequest {
+  Params: {
+    siteId: string;
+  };
+  Querystring: FilterParams<{}>;
+}
 
-  const timeStatement = getTimeStatement(req.query);
-  const filterStatement = getFilterStatement(req.query.filters, Number(siteId), timeStatement);
+export const buildSessionLocationsQuery = (query: GetSessionLocationsRequest["Querystring"], siteId: number) => {
+  const timeStatement = getTimeStatement(query);
+  const filterStatement = getFilterStatement(query.filters, siteId, timeStatement);
 
-  const result = await clickhouse.query({
-    query: `
+  return `
 WITH stuff AS (
     SELECT
         session_id,
@@ -48,19 +44,26 @@ GROUP BY
     lat,
     lon,
     city,
-    country`,
-    query_params: {
-      site: siteId,
-    },
-    format: "JSONEachRow",
-  });
+    country`;
+};
 
-  const data = await processResults<{
-    lat: number;
-    lon: number;
-    count: number;
-    city: string;
-  }>(result);
+export const getSessionLocations = analyticsRoute<GetSessionLocationsRequest>(
+  "session locations",
+  async (req: FastifyRequest<GetSessionLocationsRequest>, res: FastifyReply) => {
+    const { siteId } = req.params;
 
-  return res.status(200).send({ data });
-}
+    const data = await runAnalyticsQuery<{
+      lat: number;
+      lon: number;
+      count: number;
+      city: string;
+    }>({
+      query: buildSessionLocationsQuery(req.query, Number(siteId)),
+      params: {
+        site: siteId,
+      },
+    });
+
+    return res.status(200).send({ data });
+  }
+);

@@ -140,7 +140,7 @@ export async function createPortalSession(request: FastifyRequest<{ Body: Portal
     // 4. Return the Billing Portal Session URL
     return reply.send({ portalUrl: portalSession.url });
   } catch (error: any) {
-    console.error("Stripe Portal Session Error:", error);
+    request.log.error({ err: error }, "Stripe Portal Session Error");
     return reply.status(500).send({
       error: "Failed to create Stripe portal session",
       details: error.message,

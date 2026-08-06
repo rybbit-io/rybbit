@@ -55,7 +55,7 @@ export async function deleteGoal(
 
     return reply.send({ success: true });
   } catch (error) {
-    console.error("Error deleting goal:", error);
+    request.log.error({ err: error }, "Error deleting goal");
     return reply.status(500).send({ error: "Failed to delete goal" });
   }
 }

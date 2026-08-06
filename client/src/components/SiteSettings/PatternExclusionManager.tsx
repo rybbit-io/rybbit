@@ -6,11 +6,8 @@ import React, { useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 
 interface PatternExclusionManagerProps {
-  label: string;
-  description: string;
   placeholder: string;
   addLabel: string;
   loadingLabel: string;
@@ -25,11 +22,10 @@ interface PatternExclusionManagerProps {
 
 /**
  * Generic list editor for string-pattern exclusions (paths, hostnames, user agents).
- * Owns the unsaved-changes editing state; the parent wires up the fetch/update hooks.
+ * Owns the unsaved-changes editing state; the parent wires up the fetch/update hooks
+ * and renders the section header around it.
  */
 export function PatternExclusionManager({
-  label,
-  description,
   placeholder,
   addLabel,
   loadingLabel,
@@ -94,11 +90,6 @@ export function PatternExclusionManager({
 
   return (
     <div className="space-y-4">
-      <div>
-        <Label className="text-sm font-medium text-foreground block">{label}</Label>
-        <p className="text-xs text-muted-foreground mt-1">{description}</p>
-      </div>
-
       <div className="space-y-2">
         {list.map((value, index) => (
           <div key={index} className="flex items-center space-x-2">

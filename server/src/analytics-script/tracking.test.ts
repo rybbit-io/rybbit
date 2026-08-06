@@ -50,6 +50,7 @@ describe("Tracker", () => {
       pathname: mockLocation.pathname,
       search: mockLocation.search,
       hash: mockLocation.hash,
+      searchParams: { entries: () => [["query", "test"]] },
     })) as any;
 
     Object.defineProperty(screen, "width", {
@@ -104,6 +105,7 @@ describe("Tracker", () => {
       trackCopy: false,
       trackFormInteractions: false,
       tag: "",
+      featureFlagsEnabled: false,
       featureFlags: {},
     };
 
@@ -461,11 +463,19 @@ describe("Tracker", () => {
     });
 
     it("should clear user ID", () => {
+      const updateReplayUserId = vi.fn();
+      (
+        tracker as unknown as { sessionReplayRecorder: { updateUserId: (userId: string) => void } }
+      ).sessionReplayRecorder = {
+        updateUserId: updateReplayUserId,
+      };
+
       tracker.identify("user-789");
       tracker.clearUserId();
 
       expect(window.localStorage.removeItem).toHaveBeenCalledWith(`${config.namespace}-user-id`);
       expect(tracker.getUserId()).toBeNull();
+      expect(updateReplayUserId).toHaveBeenLastCalledWith("");
     });
 
     it("should handle localStorage errors", () => {
@@ -478,6 +488,26 @@ describe("Tracker", () => {
       expect(consoleSpy).toHaveBeenCalledWith("Could not persist user ID to localStorage");
 
       consoleSpy.mockRestore();
+    });
+  });
+
+  describe("feature flag refresh", () => {
+    it("does not evaluate flags on page changes when the site has no flags", () => {
+      tracker.onPageChange();
+
+      expect(global.fetch).not.toHaveBeenCalled();
+    });
+
+    it("evaluates flags on page changes when feature flags are enabled", () => {
+      config.featureFlagsEnabled = true;
+      tracker = new Tracker(config);
+
+      tracker.onPageChange();
+
+      expect(global.fetch).toHaveBeenCalledWith(
+        "https://analytics.example.com/site/123/feature-flags/evaluate",
+        expect.objectContaining({ method: "POST", signal: expect.any(AbortSignal) })
+      );
     });
   });
 });

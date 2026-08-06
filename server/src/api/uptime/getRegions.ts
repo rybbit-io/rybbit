@@ -39,7 +39,7 @@ export async function getRegions(request: FastifyRequest, reply: FastifyReply) {
       regions: formattedRegions,
     });
   } catch (error) {
-    console.error("Error fetching regions:", error);
+    request.log.error({ err: error }, "Error fetching regions");
     return reply.status(500).send({ error: "Failed to fetch regions" });
   }
 }

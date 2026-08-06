@@ -154,11 +154,17 @@ export function buildWideData(rows: CustomQueryRow[], mapping: DashboardCardMapp
 
 const TICK_TARGET = 8;
 
-/** Parse a ClickHouse date/datetime string ("yyyy-MM-dd[ HH:mm:ss]"). */
+/**
+ * Parse a ClickHouse date/datetime string ("yyyy-MM-dd[ HH:mm:ss]"). Time-series
+ * cards bucket in the viewer's timezone (toTimeZone(..., {{tz}})), so the bucket
+ * start is a local wall-clock value — interpret it in that same timezone, exactly
+ * as the main analytics charts do (Chart.tsx: fromSQL(time, { zone: timezone })).
+ */
 export function parseChartDate(value: unknown): DateTime | null {
   if (typeof value !== "string" || value === "") return null;
-  let dt = DateTime.fromSQL(value, { zone: "utc" });
-  if (!dt.isValid) dt = DateTime.fromISO(value, { zone: "utc" });
+  const zone = getTimezone();
+  let dt = DateTime.fromSQL(value, { zone });
+  if (!dt.isValid) dt = DateTime.fromISO(value, { zone });
   return dt.isValid ? dt : null;
 }
 

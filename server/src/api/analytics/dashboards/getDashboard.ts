@@ -37,7 +37,7 @@ export async function getDashboard(
 
     return reply.send(dashboard);
   } catch (error) {
-    console.error("Error fetching dashboard:", error);
+    request.log.error({ err: error }, "Error fetching dashboard");
     return reply.status(500).send({ error: "Failed to fetch dashboard" });
   }
 }

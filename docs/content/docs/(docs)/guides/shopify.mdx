@@ -169,49 +169,79 @@ document.addEventListener('DOMContentLoaded', function() {
 </script>{% endraw %}
 ```
 
+<Callout type="warn">
+  Rybbit limits an event's `properties` to **2048 characters** once serialized to
+  JSON, and events that exceed the limit are rejected (not truncated). A full
+  per-item `items` array can blow past this on large carts. For carts with many
+  line items, send a compact payload — trimmed item fields (e.g. id, quantity,
+  price only) or just the aggregate `value`, `currency`, and `transaction_id`.
+</Callout>
+
 ### 4. Purchase (`purchase`)
 
-Track completed purchases on the Shopify "Order status" page (also known as the "Thank You" page).
+Track completed purchases on the Shopify "Thank You" / order status page.
 
-**1. Navigate to Checkout Settings:**
-- Go to **Settings** (bottom left in Admin).
-- Click on **Checkout** (or **Checkout and accounts** depending on your Admin version).
+<Callout type="warn">
+  The old **Order status page > Additional scripts** field has been deprecated. As
+  of August 28, 2025 it is view-only (Shopify Plus migration deadline), non-Plus
+  stores must migrate by August 26, 2026, and automatic upgrades that began in
+  January 2026 remove any remaining `checkout.liquid` / Additional-scripts
+  customizations. The supported path for tracking purchases is now
+  [Checkout Extensibility](https://help.shopify.com/en/manual/checkout-settings/customize-checkout-configurations)
+  via a **custom web pixel**.
+</Callout>
 
-**2. Add the Script:**
-- Scroll down to the **Order status page** section.
-- In the **Additional scripts** box, paste the following:
+Custom web pixels run in a sandboxed environment, so they **cannot access
+`window.rybbit`** on the storefront. Instead, subscribe to the standard
+`checkout_completed` event and send the purchase directly to Rybbit's tracking
+endpoint with `fetch`.
 
-```liquid
-{% raw %}{% if first_time_accessed %}
-<script type="text/javascript">
-  if (typeof window.rybbit !== 'undefined' && {{ checkout | json }}) {
-    const rybbitCheckout = {{ checkout | json }};
-    let items = [];
-    rybbitCheckout.line_items.forEach(function(item) {
-      items.push({
-        item_id: item.sku || item.variant_id,
-        item_name: item.product.title, // Access product title via item.product
-        item_variant: item.variant_title === 'Default Title' ? null : item.variant_title,
-        price: parseFloat(item.price), // item.price should be line item price
-        quantity: item.quantity
-      });
-    });
+**1. Create a custom pixel:**
+- In your Shopify Admin, go to **Settings > Customer events**.
+- Click **Add custom pixel**, give it a name (e.g. `Rybbit`), and click **Add pixel**.
 
-    window.rybbit.event('purchase', {
-      transaction_id: rybbitCheckout.order_number,
-      value: parseFloat(rybbitCheckout.total_price),
-      tax: parseFloat(rybbitCheckout.tax_price),
-      shipping: parseFloat(rybbitCheckout.shipping_price),
-      currency: rybbitCheckout.currency,
-      items: items
-    });
-  }
-</script>
-{% endif %}{% endraw %}
+**2. Add the pixel code:**
+- Paste the following into the code editor, replacing `YOUR_SITE_ID` with your Site ID, then **Save** and **Connect** the pixel.
+
+```javascript
+analytics.subscribe("checkout_completed", (event) => {
+  const checkout = event.data.checkout;
+
+  // Keep the payload small — Rybbit rejects event properties over 2048 chars
+  // (serialized JSON). Send compact per-item data for large carts.
+  const items = (checkout.lineItems || []).map((li) => ({
+    id: li.variant?.sku || li.variant?.id,
+    qty: li.quantity,
+    price: li.variant?.price?.amount,
+  }));
+
+  fetch("https://app.rybbit.io/api/track", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    keepalive: true,
+    body: JSON.stringify({
+      type: "custom_event",
+      site_id: "YOUR_SITE_ID",
+      event_name: "purchase",
+      // `properties` must be a JSON string (max 2048 chars).
+      properties: JSON.stringify({
+        transaction_id: checkout.order?.id || checkout.token,
+        value: checkout.totalPrice?.amount,
+        currency: checkout.currencyCode,
+        items: items,
+      }),
+    }),
+  });
+});
 ```
+
 **Explanation:**
-- `{% raw %}{% if first_time_accessed %}{% endraw %}`: Ensures the script runs only once when the order status page is first loaded, preventing duplicate tracking on page refresh.
-- `{{ checkout | json }}`: Provides access to checkout and order data.
+- `analytics.subscribe("checkout_completed", ...)` fires once when an order is
+  successfully placed, so purchases are tracked without editing `checkout.liquid`.
+- The pixel POSTs a `custom_event` straight to Rybbit's `/api/track` endpoint
+  because the sandbox has no access to the storefront's `window.rybbit`.
+- `properties` is sent as a JSON **string** and must stay under 2048 characters —
+  see the note above about trimming large carts.
 
 ## Important Considerations
 *   **Theme Differences**: Shopify themes can vary significantly. You may need to adjust Liquid object paths (e.g., `product.selected_or_first_available_variant` vs. `current_variant`) and JavaScript selectors based on your specific theme's structure.

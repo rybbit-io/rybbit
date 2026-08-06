@@ -1,7 +1,6 @@
 import { FastifyReply, FastifyRequest } from "fastify";
 import { ConnectGSCRequest } from "./types.js";
-import { getSessionFromReq, getUserHasAccessToSite } from "../../lib/auth-utils.js";
-import { logger } from "../../lib/logger/logger.js";
+import { getSessionFromReq, getUserHasAdminAccessToSite } from "../../lib/auth-utils.js";
 import { signGSCState } from "./utils.js";
 
 /**
@@ -17,8 +16,10 @@ export async function connectGSC(req: FastifyRequest<ConnectGSCRequest>, res: Fa
       return res.status(400).send({ error: "Invalid site ID" });
     }
 
-    // Check if user has access to this site
-    const hasAccess = await getUserHasAccessToSite(req, numericSiteId);
+    // Require admin access to match the callback, which writes OAuth tokens and
+    // demands admin. A member who could start the flow would be stranded on a
+    // 403 after Google consent.
+    const hasAccess = await getUserHasAdminAccessToSite(req, numericSiteId);
     if (!hasAccess) {
       return res.status(403).send({ error: "Access denied" });
     }
@@ -52,7 +53,7 @@ export async function connectGSC(req: FastifyRequest<ConnectGSCRequest>, res: Fa
 
     return res.send({ authUrl: authUrl.toString() });
   } catch (error) {
-    logger.error(error, "Error initiating GSC OAuth");
+    req.log.error(error, "Error initiating GSC OAuth");
     return res.status(500).send({ error: "Failed to initiate OAuth" });
   }
 }

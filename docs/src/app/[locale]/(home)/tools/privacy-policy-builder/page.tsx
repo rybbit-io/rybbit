@@ -102,9 +102,9 @@ const educationalContent = (
       Why Your Website Needs a Privacy Policy
     </h2>
     <p className="text-neutral-700 dark:text-neutral-300 leading-relaxed mb-4">
-      A privacy policy is more than just a legal requirement—it's a critical document that establishes trust with your
-      visitors and demonstrates your commitment to protecting their data. Whether you collect customer information, use
-      analytics tools, or deploy cookies on your site, a clear and transparent privacy policy is essential.
+      A privacy policy is a legal requirement in many jurisdictions. It is also how you show visitors what data you
+      collect and how you protect it. If you collect customer information, use analytics tools, or set cookies on your
+      site, you need a clear privacy policy.
     </p>
 
     <h3 className="text-xl font-semibold text-neutral-900 dark:text-white mb-3 mt-8">

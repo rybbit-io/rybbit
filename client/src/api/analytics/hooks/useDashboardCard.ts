@@ -1,7 +1,7 @@
-import { useQuery } from "@tanstack/react-query";
 import { useStore } from "../../../lib/store";
-import { buildApiParams } from "../../utils";
-import { runDashboardCard } from "../endpoints/dashboards";
+import { RunCustomQueryResponse } from "../endpoints/customQuery";
+import { runDashboardCard, RunDashboardCardBody } from "../endpoints/dashboards";
+import { useAnalyticsQuery } from "../useAnalyticsQuery";
 
 /**
  * Executes a dashboard card's SQL against the time-aware run-card endpoint.
@@ -17,14 +17,15 @@ export function useDashboardCard(
   sql: string,
   enabled = true
 ) {
-  const time = useStore(state => state.time);
   const bucket = useStore(state => state.bucket);
-  const apiParams = buildApiParams(time);
 
-  return useQuery({
-    queryKey: ["dashboard-card", siteId, cardId, sql, apiParams, bucket],
-    queryFn: () => runDashboardCard(siteId!, { query: sql, bucket, ...apiParams }),
+  return useAnalyticsQuery<RunCustomQueryResponse, RunDashboardCardBody>({
+    key: ["dashboard-card", cardId],
+    site: siteId,
+    useFilters: false,
+    extraParams: { query: sql, bucket },
     enabled: enabled && !!siteId && !!sql.trim(),
-    retry: false,
+    props: { retry: false },
+    fetch: (site, params) => runDashboardCard(site, params),
   });
 }

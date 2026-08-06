@@ -1,5 +1,5 @@
 import { FastifyRequest } from "fastify";
-import { resolveClientIp } from "./resolveClientIp.js";
+import { collectCandidateClientIps, resolveClientIp } from "./resolveClientIp.js";
 
 interface TrackingIdentityPayload {
   ip_address?: string;
@@ -9,6 +9,8 @@ interface TrackingIdentityPayload {
 interface TrackingIdentity {
   ipAddress: string;
   userAgent: string;
+  /** All plausible client IPs for this request — exclusion matching only. */
+  candidateIps: string[];
 }
 
 export function getRequestUserAgent(request: FastifyRequest): string {
@@ -22,13 +24,17 @@ export function getRequestUserAgent(request: FastifyRequest): string {
 export function resolveTrackingIdentity(
   request: FastifyRequest,
   payload: TrackingIdentityPayload,
-  trustedServerSideIngestion: boolean
+  trustedServerSideIngestion: boolean,
+  firstPartyProxy = false
 ): TrackingIdentity {
-  const requestIpAddress = resolveClientIp(request);
+  const requestIpAddress = resolveClientIp(request, { firstPartyProxy });
   const requestUserAgent = getRequestUserAgent(request);
 
+  const ipAddress = trustedServerSideIngestion ? payload.ip_address || requestIpAddress : requestIpAddress;
+
   return {
-    ipAddress: trustedServerSideIngestion ? payload.ip_address || requestIpAddress : requestIpAddress,
+    ipAddress,
     userAgent: trustedServerSideIngestion ? payload.user_agent || requestUserAgent : requestUserAgent,
+    candidateIps: collectCandidateClientIps(request, [ipAddress, requestIpAddress]),
   };
 }

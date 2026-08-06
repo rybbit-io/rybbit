@@ -64,7 +64,7 @@ export class MonitorExecutor {
   }
 
   async start(): Promise<void> {
-    this.logger.info(`Starting BullMQ monitor executor with concurrency: ${this.concurrency}`);
+    this.logger.info({ concurrency: this.concurrency }, "Starting BullMQ monitor executor");
 
     // Create worker to process jobs
     this.worker = new Worker(
@@ -91,11 +91,11 @@ export class MonitorExecutor {
     // });
 
     this.worker.on("failed", (job, err) => {
-      this.logger.error(err as Error, `Job ${job?.id} failed`);
+      this.logger.error({ err, jobId: job?.id }, "Monitor job failed");
     });
 
     this.worker.on("error", err => {
-      this.logger.error(err as Error, "Worker error");
+      this.logger.error({ err }, "Monitor worker error");
     });
 
     this.worker.on("ready", () => {
@@ -122,7 +122,7 @@ export class MonitorExecutor {
     const { monitorId } = jobData;
 
     try {
-      this.logger.debug(`🔍 Starting to process monitor check for monitor ID: ${monitorId}`);
+      this.logger.debug({ monitorId }, "Processing monitor check");
 
       // Fetch monitor configuration
       const monitor = await db.query.uptimeMonitors.findFirst({
@@ -130,7 +130,7 @@ export class MonitorExecutor {
       });
 
       if (!monitor || !monitor.enabled) {
-        this.logger.debug(`Monitor ${monitorId} not found or disabled`);
+        this.logger.debug({ monitorId }, "Monitor not found or disabled");
         return;
       }
 
@@ -193,9 +193,12 @@ export class MonitorExecutor {
       // Update monitor status in PostgreSQL
       await this.updateMonitorStatus(monitor.id, result);
 
-      this.logger.info(`✅ Monitor check completed: ${monitorId} - ${result.status} (${result.responseTimeMs}ms`);
+      this.logger.info(
+        { monitorId, monitorStatus: result.status, responseTimeMs: result.responseTimeMs },
+        "Monitor check completed"
+      );
     } catch (error) {
-      this.logger.error(error as Error, `Error processing monitor check ${monitorId}`);
+      this.logger.error({ err: error, monitorId }, "Error processing monitor check");
 
       // Try to store the error event
       try {
@@ -221,7 +224,7 @@ export class MonitorExecutor {
           await this.updateMonitorStatus(monitor.id, errorResult);
         }
       } catch (innerError) {
-        this.logger.error(innerError as Error, "Failed to store error event");
+        this.logger.error({ err: innerError, monitorId }, "Failed to store monitor error event");
       }
     }
   }
@@ -232,7 +235,7 @@ export class MonitorExecutor {
       const globalRegions = monitor.selectedRegions.filter((r: string) => r !== "local");
 
       if (globalRegions.length === 0) {
-        this.logger.debug(`Monitor ${monitor.id} has no global regions selected`);
+        this.logger.debug({ monitorId: monitor.id }, "Monitor has no global regions selected");
         return;
       }
 
@@ -246,14 +249,17 @@ export class MonitorExecutor {
       });
 
       if (regions.length === 0) {
-        this.logger.warn(`No healthy regions found for monitor ${monitor.id}`);
+        this.logger.warn({ monitorId: monitor.id }, "No healthy regions found for monitor");
         return;
       }
 
       // Execute checks in parallel across all regions
       const regionPromises = regions.map(region =>
         this.executeAgentCheck(monitor, region).catch(error => {
-          this.logger.error(error as Error, `Error executing check in region ${region.code}`);
+          this.logger.error(
+            { err: error, monitorId: monitor.id, regionCode: region.code },
+            "Error executing regional monitor check"
+          );
           return {
             region: region.code,
             result: {
@@ -307,10 +313,11 @@ export class MonitorExecutor {
       await this.updateMonitorStatus(monitor.id, aggregatedResult);
 
       this.logger.info(
-        `✅ Global monitor check completed: ${monitor.id} - ${overallStatus} (${regionResults.length} regions)`
+        { monitorId: monitor.id, monitorStatus: overallStatus, regionCount: regionResults.length },
+        "Global monitor check completed"
       );
     } catch (error) {
-      this.logger.error(error as Error, `Error processing global monitor check ${monitor.id}`);
+      this.logger.error({ err: error, monitorId: monitor.id }, "Error processing global monitor check");
     }
   }
 
@@ -366,7 +373,10 @@ export class MonitorExecutor {
 
       return { region: region.code, result };
     } catch (error) {
-      this.logger.error(error as Error, `Failed to execute check via agent ${region.code}`);
+      this.logger.error(
+        { err: error, monitorId: monitor.id, regionCode: region.code },
+        "Failed to execute monitor check through agent"
+      );
       throw error;
     }
   }
@@ -413,7 +423,7 @@ export class MonitorExecutor {
         format: "JSONEachRow",
       });
     } catch (error) {
-      this.logger.error(error as Error, "Failed to store monitor event in ClickHouse");
+      this.logger.error({ err: error, monitorId: monitor.id, regionCode }, "Failed to store monitor event");
     }
   }
 
@@ -472,7 +482,7 @@ export class MonitorExecutor {
         consecutiveSuccesses
       );
     } catch (error) {
-      this.logger.error(error as Error, "Failed to update monitor status");
+      this.logger.error({ err: error, monitorId }, "Failed to update monitor status");
     }
   }
 
@@ -491,7 +501,7 @@ export class MonitorExecutor {
       });
 
       if (!monitor) {
-        this.logger.error(`Monitor ${monitorId} not found for incident management`);
+        this.logger.error({ monitorId }, "Monitor not found for incident management");
         return;
       }
 
@@ -519,7 +529,7 @@ export class MonitorExecutor {
             failureCount: 1,
           })
           .returning();
-        this.logger.info(`Created new incident for monitor ${monitorId} (${monitor.name})`);
+        this.logger.info({ incidentId: newIncident.id, monitorId }, "Created monitor incident");
 
         // Send notifications for new incident
         await this.notificationService.sendIncidentNotifications(monitor, newIncident, "down");
@@ -535,7 +545,7 @@ export class MonitorExecutor {
             resolvedAt: now,
           })
           .where(eq(uptimeIncidents.id, activeIncident.id));
-        this.logger.info(`Resolved incident ${activeIncident.id} for monitor ${monitorId} (${monitor.name})`);
+        this.logger.info({ incidentId: activeIncident.id, monitorId }, "Resolved monitor incident");
 
         // Send recovery notifications
         await this.notificationService.sendIncidentNotifications(
@@ -556,7 +566,7 @@ export class MonitorExecutor {
           .where(eq(uptimeIncidents.id, activeIncident.id));
       }
     } catch (error) {
-      this.logger.error(error as Error, "Failed to manage incident");
+      this.logger.error({ err: error, monitorId }, "Failed to manage monitor incident");
     }
   }
 
@@ -633,7 +643,10 @@ export class MonitorExecutor {
             failureCount: 1,
           })
           .returning();
-        this.logger.info(`Created new incident for monitor ${monitor.id} (${monitor.name}) in region ${region}`);
+        this.logger.info(
+          { incidentId: newIncident.id, monitorId: monitor.id, regionCode: region },
+          "Created regional monitor incident"
+        );
 
         // Send notifications for new regional incident
         await this.notificationService.sendIncidentNotifications(monitor, newIncident, "down");
@@ -651,7 +664,8 @@ export class MonitorExecutor {
           })
           .where(eq(uptimeIncidents.id, activeIncident.id));
         this.logger.info(
-          `Resolved incident ${activeIncident.id} for monitor ${monitor.id} (${monitor.name}) in region ${region}`
+          { incidentId: activeIncident.id, monitorId: monitor.id, regionCode: region },
+          "Resolved regional monitor incident"
         );
 
         // Send recovery notifications for regional incident
@@ -673,7 +687,10 @@ export class MonitorExecutor {
           .where(eq(uptimeIncidents.id, activeIncident.id));
       }
     } catch (error) {
-      this.logger.error(error as Error, `Failed to manage regional incident for region ${region}`);
+      this.logger.error(
+        { err: error, monitorId: monitor.id, regionCode: region },
+        "Failed to manage regional monitor incident"
+      );
     }
   }
 
@@ -690,7 +707,7 @@ export class MonitorExecutor {
         ]);
         this.logger.info("BullMQ monitor executor shut down successfully");
       } catch (error) {
-        this.logger.error(error as Error, "Error closing worker");
+        this.logger.error({ err: error }, "Error closing monitor worker");
         // Force close if needed
         this.worker = null;
       }

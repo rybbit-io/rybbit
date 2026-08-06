@@ -1,17 +1,9 @@
 import { FastifyRequest, FastifyReply } from "fastify";
 import { db } from "../../db/postgres/postgres.js";
-import { and, eq, inArray } from "drizzle-orm";
-import {
-  member,
-  memberSiteAccess,
-  organization,
-  sites,
-  team,
-  teamMember,
-  teamSiteAccess,
-  user,
-} from "../../db/postgres/schema.js";
-import { getUserIdFromRequest } from "../../lib/auth-utils.js";
+import { and, eq } from "drizzle-orm";
+import { member, organization, sites, user } from "../../db/postgres/schema.js";
+import { getSessionFromReq, getUserIdFromRequest } from "../../lib/auth-utils.js";
+import { filterSitesByMemberAccess } from "../../lib/siteAccess.js";
 
 export const getMyOrganizations = async (request: FastifyRequest, reply: FastifyReply) => {
   try {
@@ -19,6 +11,14 @@ export const getMyOrganizations = async (request: FastifyRequest, reply: Fastify
     if (!userId) {
       return reply.status(401).send({ error: "Unauthorized" });
     }
+
+    // This route is scope-exempt so any credential can resolve site/org IDs
+    // (it backs the MCP list_sites entry tool). The member roster carries names
+    // and emails, though, so only cookie-session dashboard requests get it —
+    // bearer credentials (API keys, OAuth tokens) use the org:read-gated
+    // /organizations/:id/members route for member data.
+    const session = await getSessionFromReq(request);
+    const includeMembers = !!session?.user;
 
     // First, get all organizations the user is a member of
     const userOrganizations = await db
@@ -79,50 +79,19 @@ export const getMyOrganizations = async (request: FastifyRequest, reply: Fastify
             .limit(1),
         ]);
 
-        // Filter sites based on the caller's per-member access restrictions.
-        // Admins/owners see everything; restricted members see only their granted
-        // sites; regular members are still filtered by team-gated sites.
+        // Filter sites based on the caller's per-member access restrictions
+        // and teams. Admins/owners see everything.
         let organizationSites = allOrgSites;
         const callerMemberRecord = callerMember[0];
 
         if (callerMemberRecord?.role === "member") {
-          if (callerMemberRecord.hasRestrictedSiteAccess) {
-            const accessibleSites = await db
-              .select({ siteId: memberSiteAccess.siteId })
-              .from(memberSiteAccess)
-              .where(eq(memberSiteAccess.memberId, callerMemberRecord.id));
-            const accessibleSiteIds = new Set(accessibleSites.map(s => s.siteId));
-            organizationSites = organizationSites.filter(s => accessibleSiteIds.has(s.siteId));
-          }
-
-          const teamGated = await db
-            .select({ siteId: teamSiteAccess.siteId })
-            .from(teamSiteAccess)
-            .innerJoin(team, eq(teamSiteAccess.teamId, team.id))
-            .where(eq(team.organizationId, org.id));
-          const teamGatedSiteIds = new Set(teamGated.map(s => s.siteId));
-
-          if (teamGatedSiteIds.size > 0) {
-            const userTeams = await db
-              .select({ teamId: teamMember.teamId })
-              .from(teamMember)
-              .innerJoin(team, eq(teamMember.teamId, team.id))
-              .where(and(eq(teamMember.userId, userId), eq(team.organizationId, org.id)));
-            const userTeamIds = userTeams.map(t => t.teamId);
-
-            const userTeamSiteIds = new Set<number>();
-            if (userTeamIds.length > 0) {
-              const userTeamSites = await db
-                .select({ siteId: teamSiteAccess.siteId })
-                .from(teamSiteAccess)
-                .where(inArray(teamSiteAccess.teamId, userTeamIds));
-              for (const s of userTeamSites) userTeamSiteIds.add(s.siteId);
-            }
-
-            organizationSites = organizationSites.filter(
-              s => !teamGatedSiteIds.has(s.siteId) || userTeamSiteIds.has(s.siteId)
-            );
-          }
+          organizationSites = await filterSitesByMemberAccess(
+            allOrgSites,
+            org.id,
+            userId,
+            callerMemberRecord.id,
+            callerMemberRecord.hasRestrictedSiteAccess
+          );
         }
 
         return {
@@ -132,17 +101,19 @@ export const getMyOrganizations = async (request: FastifyRequest, reply: Fastify
           logo: org.logo,
           createdAt: org.createdAt,
           role: org.role,
-          members: organizationMembers.map(m => ({
-            id: m.id,
-            role: m.role,
-            userId: m.userId,
-            createdAt: m.createdAt,
-            user: {
-              id: m.userActualId,
-              name: m.userName,
-              email: m.userEmail,
-            },
-          })),
+          members: includeMembers
+            ? organizationMembers.map(m => ({
+                id: m.id,
+                role: m.role,
+                userId: m.userId,
+                createdAt: m.createdAt,
+                user: {
+                  id: m.userActualId,
+                  name: m.userName,
+                  email: m.userEmail,
+                },
+              }))
+            : [],
           sites: organizationSites.map(site => ({
             id: String(site.siteId ?? site.siteUuid),
             domain: site.domain,
@@ -160,7 +131,7 @@ export const getMyOrganizations = async (request: FastifyRequest, reply: Fastify
 
     return reply.send(organizationsWithMembersAndSites);
   } catch (error) {
-    console.error("Error fetching organizations with members:", error);
+    request.log.error({ err: error }, "Error fetching organizations with members");
     return reply.status(500).send({ error: "Failed to fetch organizations" });
   }
 };

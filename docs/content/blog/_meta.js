@@ -1,4 +1,8 @@
 export default {
+  "best-google-analytics-alternatives":
+    "The 9 Best Google Analytics Alternatives in 2026 (Free & Paid)",
+  "best-web-analytics-tools":
+    "The 10 Best Web Analytics Tools in 2026, Compared by Use Case",
   "5k-stars":
     "How my open source SaaS got 5,000 Github stars in 9 days with zero marketing effort",
   "website-traffic-drop":

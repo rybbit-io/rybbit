@@ -164,7 +164,11 @@ export default function QueryPage() {
     updateTab(tab.id, { resultError: null });
 
     try {
-      const result = await runMutation.mutateAsync({ organizationId, query: tab.query });
+      const result = await runMutation.mutateAsync({
+        organizationId,
+        query: tab.query,
+        siteId: Number.isFinite(siteId) ? siteId : undefined,
+      });
       updateTab(tab.id, { rows: result.data, hasRun: true, resultError: null });
     } catch (error) {
       updateTab(tab.id, {

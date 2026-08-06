@@ -37,7 +37,7 @@ export async function collectTelemetry(
 
     return reply.send({ success: true });
   } catch (error) {
-    console.error("Error collecting telemetry:", error);
+    request.log.error({ err: error }, "Error collecting telemetry");
     return reply.status(500).send({ error: "Failed to collect telemetry" });
   }
 }

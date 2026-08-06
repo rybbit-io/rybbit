@@ -48,31 +48,17 @@ export function GSCManager({ disabled = false }: GSCManagerProps) {
   };
 
   if (isLoading) {
-    return (
-      <div className="space-y-3">
-        <div>
-          <h4 className="text-sm font-semibold text-foreground">{t("Google Search Console")}</h4>
-          <p className="text-xs text-muted-foreground">{t("Loading...")}</p>
-        </div>
-      </div>
-    );
+    return <p className="text-sm text-muted-foreground">{t("Loading...")}</p>;
   }
 
   const isConnected = connection?.connected;
 
   return (
     <div className="space-y-3">
-      <div>
-        <h4 className="text-sm font-semibold text-foreground">{t("Google Search Console")}</h4>
-        <p className="text-xs text-muted-foreground">
-          {t("Connect your Google Search Console account to view search performance data")}
-        </p>
-      </div>
-
       {isConnected ? (
         <div className="space-y-3">
           <div className="flex items-center gap-2 text-sm">
-            <span className="text-green-500">●</span>
+            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" aria-hidden />
             <span className="text-muted-foreground">{t("Connected to:")}</span>
             <a
               href={connection.gscPropertyUrl || "#"}

@@ -28,7 +28,7 @@ export const capabilities: FeatureCapability[] = [
     icon: <MousePointerClick className="w-5 h-5" />,
     title: "Track any interaction",
     description:
-      "Button clicks, form submissions, signups, purchases, video plays, file downloads — track any user action with a single function call.",
+      "Button clicks, form submissions, signups, purchases, video plays, file downloads: track any user action with a single function call.",
   },
   {
     icon: <Tag className="w-5 h-5" />,
@@ -103,7 +103,7 @@ export const howItWorks: HowItWorksStep[] = [
     step: 4,
     title: "Use events across features",
     description:
-      "Your custom events power funnels, goals, and filters throughout Rybbit. One line of tracking code unlocks insights everywhere.",
+      "Your custom events power funnels, goals, and filters throughout Rybbit. Track an event once and it works everywhere.",
   },
 ];
 
@@ -136,13 +136,13 @@ export const whoUses: WhoUsesItem[] = [
     icon: <Code className="w-6 h-6" />,
     title: "Developers",
     description:
-      "Simple API — one function call to track anything. No tag managers, no complex configuration, no vendor lock-in.",
+      "One function call to track anything. No tag managers, no complex configuration, no vendor lock-in.",
   },
   {
     icon: <Rocket className="w-6 h-6" />,
     title: "Startup founders",
     description:
-      "Track the events that matter most in your early days — signups, activations, and key feature usage — with minimal code.",
+      "Track the events that matter most in your early days (signups, activations, key feature usage) with minimal code.",
   },
 ];
 
@@ -150,12 +150,12 @@ export const faqItems: FAQItem[] = [
   {
     question: "How do I track a custom event?",
     answer:
-      "Call rybbit.event('event_name') or rybbit.event('event_name', { key: 'value' }) from anywhere in your JavaScript code. That's it — the event will appear in your dashboard immediately.",
+      "Call rybbit.event('event_name') or rybbit.event('event_name', { key: 'value' }) from anywhere in your JavaScript code. That's it. The event will appear in your dashboard immediately.",
   },
   {
     question: "What's the difference between pageviews and custom events?",
     answer:
-      "Pageviews are tracked automatically whenever a user navigates to a new page. Custom events are user-defined actions — signups, purchases, button clicks, or any interaction you choose to track explicitly.",
+      "Pageviews are tracked automatically whenever a user navigates to a new page. Custom events are user-defined actions: signups, purchases, button clicks, or any interaction you choose to track explicitly.",
   },
   {
     question: "Can I track events without writing code?",

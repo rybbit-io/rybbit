@@ -134,7 +134,7 @@ If any filter matches, the event is accepted with a `200` response but is not tr
 To test country filtering locally, send a public IP through the `X-Real-IP` header:
 
 ```bash
-curl -X POST http://localhost:3000/track \
+curl -X POST http://localhost:3001/api/track \
   -H "Content-Type: application/json" \
   -H "X-Real-IP: 8.8.8.8" \
   -d '{

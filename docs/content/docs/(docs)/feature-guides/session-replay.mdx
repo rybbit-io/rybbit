@@ -9,16 +9,7 @@ Session replay lets you watch anonymized recordings of real user sessions, showi
 
 ## Enabling Session Replay
 
-Enable session replay in your [site settings](/docs/site-settings), or add the attribute to your tracking script:
-
-```html
-<script
-  src="https://your-rybbit-instance.com/api/script.js"
-  data-site-id="YOUR_SITE_ID"
-  data-session-replay="true"
-  defer
-></script>
-```
+Enable session replay in your [site settings](/docs/site-settings). The tracking script picks the setting up automatically — no script tag changes are needed. (Script-tag attributes like `data-replay-batch-size` and the `data-replay-mask-*` options only tune replay behavior; the on/off switch lives in site settings.)
 
 ## What You'll See
 

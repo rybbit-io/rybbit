@@ -176,7 +176,7 @@ function RowActions({ flag }: { flag: FeatureFlag }) {
   return (
     <>
       <DropdownMenu>
-        <DropdownMenuTrigger size="smIcon" variant="ghost" asChild>
+        <DropdownMenuTrigger asChild>
           <Button size="smIcon" variant="ghost" aria-label={t("Actions")}>
             <MoreHorizontal className="h-4 w-4" />
           </Button>

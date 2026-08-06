@@ -1,11 +1,11 @@
 import { FilterParams } from "@rybbit/shared";
 import { FastifyReply, FastifyRequest } from "fastify";
 import SqlString from "sqlstring";
-import { clickhouse } from "../../db/clickhouse/clickhouse.js";
 import { validateTimeStatementFillParams } from "./utils/query-validation.js";
-import { getTimeStatement, TimeBucketToFn, bucketIntervalMap, processResults } from "./utils/utils.js";
+import { getTimeStatement, TimeBucketToFn, bucketIntervalMap } from "./utils/utils.js";
 import { TimeBucket } from "./types.js";
 import { getFilterStatement } from "./utils/getFilterStatement.js";
+import { AnalyticsQueryError, runAnalyticsQuery } from "./utils/analyticsQuery.js";
 
 function getTimeStatementFill(params: FilterParams, bucket: TimeBucket) {
   const { params: validatedParams, bucket: validatedBucket } = validateTimeStatementFillParams(params, bucket);
@@ -58,21 +58,13 @@ export type GetErrorBucketedResponse = {
   error_count: number;
 }[];
 
-export async function getErrorBucketed(req: FastifyRequest<GetErrorBucketedRequest>, res: FastifyReply) {
-  const site = req.params.siteId;
-  const { bucket, errorMessage } = req.query;
+export const buildErrorBucketedQuery = (query: GetErrorBucketedRequest["Querystring"], siteId: number) => {
+  const { bucket } = query;
+  const timeStatement = getTimeStatement(query);
+  const filterStatement = getFilterStatement(query.filters, siteId, timeStatement);
+  const timeStatementFill = getTimeStatementFill(query, bucket);
 
-  if (!errorMessage) {
-    return res.status(400).send({ error: "errorMessage parameter is required" });
-  }
-
-  const numericSiteId = Number(site);
-  const timeStatement = getTimeStatement(req.query);
-  const filterStatement = getFilterStatement(req.query.filters, numericSiteId, timeStatement);
-  const timeStatementFill = getTimeStatementFill(req.query, bucket);
-
-  try {
-    const query = `
+  return `
       SELECT
         ${TimeBucketToFn[bucket]}(toTimeZone(timestamp, {timeZone:String})) AS time,
         COUNT(*) AS error_count
@@ -87,25 +79,37 @@ export async function getErrorBucketed(req: FastifyRequest<GetErrorBucketedReque
       ORDER BY time
       ${timeStatementFill}
     `;
+};
 
-    const result = await clickhouse.query({
-      query,
-      format: "JSONEachRow",
-      query_params: {
+export async function getErrorBucketed(req: FastifyRequest<GetErrorBucketedRequest>, res: FastifyReply) {
+  const site = req.params.siteId;
+  const { errorMessage } = req.query;
+
+  if (!errorMessage) {
+    return res.status(400).send({ error: "errorMessage parameter is required" });
+  }
+
+  const numericSiteId = Number(site);
+
+  try {
+    const data = await runAnalyticsQuery<GetErrorBucketedResponse[number]>({
+      query: buildErrorBucketedQuery(req.query, numericSiteId),
+      params: {
         siteId: numericSiteId,
         errorMessage: errorMessage,
         timeZone: req.query.time_zone || "UTC",
       },
     });
 
-    const data = await processResults<GetErrorBucketedResponse>(result);
-
     return res.send({
       success: true,
       data: data,
     });
   } catch (error) {
-    console.error("Error getting error bucketed data:", error);
+    req.log.error(
+      { err: error instanceof AnalyticsQueryError ? error.original : error },
+      "Error getting error bucketed data"
+    );
     return res.status(500).send({
       success: false,
       error: "Failed to get error data",

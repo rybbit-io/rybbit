@@ -31,9 +31,7 @@ export async function deleteTeam(
       .where(eq(teamMember.teamId, teamId));
 
     // Delete team (cascades to teamMember and teamSiteAccess)
-    await db
-      .delete(team)
-      .where(and(eq(team.id, teamId), eq(team.organizationId, organizationId)));
+    await db.delete(team).where(and(eq(team.id, teamId), eq(team.organizationId, organizationId)));
 
     // Invalidate cache for affected users
     for (const m of affectedMembers) {
@@ -42,7 +40,7 @@ export async function deleteTeam(
 
     return reply.status(200).send({ success: true });
   } catch (error) {
-    console.error("Error deleting team:", error);
+    request.log.error({ err: error }, "Error deleting team");
     return reply.status(500).send({ error: "Failed to delete team" });
   }
 }

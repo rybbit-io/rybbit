@@ -1,12 +1,13 @@
 import { FastifyReply, FastifyRequest } from "fastify";
 import { db } from "../../../db/postgres/postgres.js";
 import { goals } from "../../../db/postgres/schema.js";
-import { clickhouse } from "../../../db/clickhouse/clickhouse.js";
 import { eq, desc, asc, sql } from "drizzle-orm";
-import { getTimeStatement, processResults, patternToRegex } from "../utils/utils.js";
+import { getTimeStatement } from "../utils/utils.js";
 import SqlString from "sqlstring";
 import { FilterParams } from "@rybbit/shared";
 import { getFilterStatement } from "../utils/getFilterStatement.js";
+import { analyticsRoute, runAnalyticsQuery } from "../utils/analyticsQuery.js";
+import { buildGoalCondition } from "./goalConditions.js";
 
 // Types for the response
 interface GoalWithConversions {
@@ -30,36 +31,92 @@ interface GetGoalsResponse {
   };
 }
 
-export async function getGoals(
-  request: FastifyRequest<{
-    Params: {
-      siteId: string;
-    };
-    Querystring: FilterParams<{
-      page?: string;
-      page_size?: string;
-      sort?: string;
-      order?: "asc" | "desc";
-    }>;
-  }>,
-  reply: FastifyReply
-) {
-  const { siteId } = request.params;
-  const { filters, page = "1", page_size: pageSize = "10", sort = "createdAt", order = "desc" } = request.query;
+interface GetGoalsRequest {
+  Params: {
+    siteId: string;
+  };
+  Querystring: FilterParams<{
+    page?: string;
+    page_size?: string;
+    sort?: string;
+    order?: "asc" | "desc";
+  }>;
+}
 
-  const pageNumber = parseInt(page, 10);
-  const pageSizeNumber = parseInt(pageSize, 10);
+export const buildGoalsTotalSessionsQuery = (query: GetGoalsRequest["Querystring"], siteId: number) => {
+  const timeStatement = getTimeStatement(query);
+  const filterStatement = query.filters ? getFilterStatement(query.filters, siteId, timeStatement) : "";
 
-  // Validate page and pageSize
-  if (isNaN(pageNumber) || pageNumber < 1) {
-    return reply.status(400).send({ error: "Invalid page number" });
+  return `
+      SELECT COUNT(DISTINCT session_id) AS total_sessions
+      FROM events
+      WHERE site_id = ${SqlString.escape(siteId)}
+      ${timeStatement}
+      ${filterStatement}
+    `;
+};
+
+/**
+ * Returns null when none of the goals produces a valid conversion condition —
+ * the handler responds with zero-conversion goals in that case.
+ */
+export const buildGoalsConversionsQuery = (
+  query: GetGoalsRequest["Querystring"],
+  siteId: number,
+  siteGoals: (typeof goals.$inferSelect)[]
+): string | null => {
+  const timeStatement = getTimeStatement(query);
+  const filterStatement = query.filters ? getFilterStatement(query.filters, siteId, timeStatement) : "";
+
+  // Build a single query that calculates all goal conversions at once using conditional aggregation
+  // This is more efficient than separate queries for each goal
+  let conditionalClauses: string[] = [];
+
+  for (const goal of siteGoals) {
+    const goalCondition = buildGoalCondition(goal);
+    if (!goalCondition) continue;
+
+    conditionalClauses.push(`
+        COUNT(DISTINCT IF(
+          ${goalCondition},
+          session_id,
+          NULL
+        )) AS goal_${goal.goalId}_conversions
+      `);
   }
 
-  if (isNaN(pageSizeNumber) || pageSizeNumber < 1 || pageSizeNumber > 100) {
-    return reply.status(400).send({ error: "Invalid page size, must be between 1 and 100" });
+  if (conditionalClauses.length === 0) {
+    return null;
   }
 
-  try {
+  return `
+      SELECT
+        ${conditionalClauses.join(", ")}
+      FROM events
+      WHERE site_id = ${SqlString.escape(siteId)}
+      ${timeStatement}
+      ${filterStatement}
+    `;
+};
+
+export const getGoals = analyticsRoute<GetGoalsRequest>(
+  "goals data",
+  async (request: FastifyRequest<GetGoalsRequest>, reply: FastifyReply) => {
+    const { siteId } = request.params;
+    const { page = "1", page_size: pageSize = "10", sort = "createdAt", order = "desc" } = request.query;
+
+    const pageNumber = parseInt(page, 10);
+    const pageSizeNumber = parseInt(pageSize, 10);
+
+    // Validate page and pageSize
+    if (isNaN(pageNumber) || pageNumber < 1) {
+      return reply.status(400).send({ error: "Invalid page number" });
+    }
+
+    if (isNaN(pageSizeNumber) || pageSizeNumber < 1 || pageSizeNumber > 100) {
+      return reply.status(400).send({ error: "Invalid page size, must be between 1 and 100" });
+    }
+
     // Count total goals for pagination metadata
     const totalGoalsResult = await db
       .select({ count: sql<number>`count(*)` })
@@ -122,98 +179,15 @@ export async function getGoals(
       });
     }
 
-    // Build filter and time clauses for ClickHouse queries
-    const timeStatement = getTimeStatement(request.query);
-    const filterStatement = filters ? getFilterStatement(filters, Number(siteId), timeStatement) : "";
-
     // First, get the total number of unique sessions (denominator for conversion rate)
-    const totalSessionsQuery = `
-      SELECT COUNT(DISTINCT session_id) AS total_sessions
-      FROM events
-      WHERE site_id = ${SqlString.escape(Number(siteId))}
-      ${timeStatement}
-      ${filterStatement}
-    `;
-
-    const totalSessionsResult = await clickhouse.query({
-      query: totalSessionsQuery,
-      format: "JSONEachRow",
+    const totalSessionsData = await runAnalyticsQuery<{ total_sessions: number }>({
+      query: buildGoalsTotalSessionsQuery(request.query, Number(siteId)),
     });
-
-    const totalSessionsData = await processResults<{ total_sessions: number }>(totalSessionsResult);
     const totalSessions = totalSessionsData[0]?.total_sessions || 0;
 
-    // Build a single query that calculates all goal conversions at once using conditional aggregation
-    // This is more efficient than separate queries for each goal
-    let conditionalClauses: string[] = [];
+    const conversionQuery = buildGoalsConversionsQuery(request.query, Number(siteId), siteGoals);
 
-    for (const goal of siteGoals) {
-      if (goal.goalType === "path") {
-        const pathPattern = goal.config.pathPattern;
-        if (!pathPattern) continue;
-
-        const regex = patternToRegex(pathPattern);
-        let pathClause = `type = 'pageview' AND match(pathname, ${SqlString.escape(regex)})`;
-
-        // Support both new propertyFilters array and legacy single property
-        const filters = goal.config.propertyFilters || (
-          goal.config.eventPropertyKey && goal.config.eventPropertyValue !== undefined
-            ? [{ key: goal.config.eventPropertyKey, value: goal.config.eventPropertyValue }]
-            : []
-        );
-
-        // Add property matching for page goals (URL parameters)
-        for (const filter of filters) {
-          // Access URL parameters from the url_parameters map
-          const propValueAccessor = `url_parameters[${SqlString.escape(filter.key)}]`;
-
-          // URL parameters are stored as strings in the Map
-          pathClause += ` AND ${propValueAccessor} = ${SqlString.escape(String(filter.value))}`;
-        }
-
-        conditionalClauses.push(`
-          COUNT(DISTINCT IF(
-            ${pathClause},
-            session_id,
-            NULL
-          )) AS goal_${goal.goalId}_conversions
-        `);
-      } else if (goal.goalType === "event") {
-        const eventName = goal.config.eventName;
-
-        if (!eventName) continue;
-
-        let eventClause = `type = 'custom_event' AND event_name = ${SqlString.escape(eventName)}`;
-
-        // Support both new propertyFilters array and legacy single property
-        const filters = goal.config.propertyFilters || (
-          goal.config.eventPropertyKey && goal.config.eventPropertyValue !== undefined
-            ? [{ key: goal.config.eventPropertyKey, value: goal.config.eventPropertyValue }]
-            : []
-        );
-
-        // Add property matching if needed
-        for (const filter of filters) {
-          if (typeof filter.value === "string") {
-            eventClause += ` AND JSONExtractString(toString(props), ${SqlString.escape(filter.key)}) = ${SqlString.escape(filter.value)}`;
-          } else if (typeof filter.value === "number") {
-            eventClause += ` AND toFloat64(JSONExtractString(toString(props), ${SqlString.escape(filter.key)})) = ${SqlString.escape(filter.value)}`;
-          } else if (typeof filter.value === "boolean") {
-            eventClause += ` AND JSONExtractString(toString(props), ${SqlString.escape(filter.key)}) = ${SqlString.escape(filter.value ? 'true' : 'false')}`;
-          }
-        }
-
-        conditionalClauses.push(`
-          COUNT(DISTINCT IF(
-            ${eventClause},
-            session_id,
-            NULL
-          )) AS goal_${goal.goalId}_conversions
-        `);
-      }
-    }
-
-    if (conditionalClauses.length === 0) {
+    if (conversionQuery === null) {
       // If no valid goals to calculate, return the goals without conversion data
       const goalsWithZeroConversions = siteGoals.map(goal => ({
         ...goal,
@@ -234,21 +208,7 @@ export async function getGoals(
     }
 
     // Execute the comprehensive query
-    const conversionQuery = `
-      SELECT
-        ${conditionalClauses.join(", ")}
-      FROM events
-      WHERE site_id = ${SqlString.escape(Number(siteId))}
-      ${timeStatement}
-      ${filterStatement}
-    `;
-
-    const conversionResult = await clickhouse.query({
-      query: conversionQuery,
-      format: "JSONEachRow",
-    });
-
-    const conversionData = await processResults<Record<string, number>>(conversionResult);
+    const conversionData = await runAnalyticsQuery<Record<string, number>>({ query: conversionQuery });
 
     // If we didn't get any results, use zeros
     const conversions = conversionData[0] || {};
@@ -275,8 +235,5 @@ export async function getGoals(
         totalPages,
       },
     });
-  } catch (error) {
-    console.error("Error fetching goals:", error);
-    return reply.status(500).send({ error: "Failed to fetch goals data" });
   }
-}
+);

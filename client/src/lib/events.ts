@@ -34,6 +34,42 @@ export const EVENT_TYPE_CONFIG: EventTypeConfig[] = [
   { value: "error", label: "Error", colorClass: "text-red-400" },
 ];
 
+// Autocaptured event types that goals and funnel steps can target directly
+export const AUTOCAPTURE_TARGET_TYPES = ["outbound", "button_click", "form_submit", "copy"] as const;
+
+export type AutocaptureTargetType = (typeof AUTOCAPTURE_TARGET_TYPES)[number];
+
+export function isAutocaptureTargetType(type: string): type is AutocaptureTargetType {
+  return (AUTOCAPTURE_TARGET_TYPES as readonly string[]).includes(type);
+}
+
+// Maps goal types ("path"/"event") and funnel step types ("page"/"event")
+// onto event types for icon and color display
+export function targetTypeToEventType(type: string): EventType {
+  if (type === "path" || type === "page") return "pageview";
+  if (type === "event") return "custom_event";
+  return EVENT_TYPE_CONFIG.some(config => config.value === type) ? (type as EventType) : "custom_event";
+}
+
+export type PropertyFilter = { key: string; value: string | number | boolean };
+
+type LegacyPropertyConfig = {
+  propertyFilters?: PropertyFilter[];
+  eventPropertyKey?: string;
+  eventPropertyValue?: string | number | boolean;
+};
+
+// Support both the propertyFilters array and the legacy single-property fields,
+// for goals and funnel steps of any type.
+export function resolvePropertyFilters(config: LegacyPropertyConfig): PropertyFilter[] {
+  return (
+    config.propertyFilters ||
+    (config.eventPropertyKey && config.eventPropertyValue !== undefined
+      ? [{ key: config.eventPropertyKey, value: config.eventPropertyValue }]
+      : [])
+  );
+}
+
 // ============================================================================
 // Event Display Utilities
 // ============================================================================

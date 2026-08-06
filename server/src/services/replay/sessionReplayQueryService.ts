@@ -8,6 +8,7 @@ import { processResults, getTimeStatement } from "../../api/analytics/utils/util
 import { FilterParams } from "@rybbit/shared";
 import { r2Storage } from "../storage/r2StorageService.js";
 import { getFilterStatement } from "../../api/analytics/utils/getFilterStatement.js";
+import { matchesUser } from "../../api/analytics/utils/effectiveUserId.js";
 
 /**
  * Service responsible for querying/retrieving session replay data
@@ -33,7 +34,7 @@ export class SessionReplayQueryService {
     const queryParams: any = { siteId, limit, offset };
 
     if (userId) {
-      whereConditions.push(`(user_id = {userId:String} OR identified_user_id = {userId:String})`);
+      whereConditions.push(matchesUser("{userId:String}"));
       queryParams.userId = userId;
     }
 

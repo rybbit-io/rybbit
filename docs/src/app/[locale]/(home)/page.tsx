@@ -5,12 +5,22 @@ import { useExtracted } from "next-intl";
 export const metadata = createMetadata({
   title: "Rybbit - Cookieless Google Analytics Replacement",
   description:
-    "Next-gen, open source, lightweight, cookieless web & product analytics for everyone — GDPR/CCPA compliant.",
+    "Open source, cookieless web & product analytics with an 18 KB script and one readable dashboard. GDPR/CCPA compliant, no cookie banner needed.",
   openGraph: {
-    images: [createOGImageUrl("Rybbit - Cookieless Google Analytics Replacement", "Next-gen, open source, lightweight, cookieless web & product analytics for everyone — GDPR/CCPA compliant.")],
+    images: [
+      createOGImageUrl(
+        "Rybbit - Cookieless Google Analytics Replacement",
+        "Open source, cookieless web & product analytics with an 18 KB script and one readable dashboard. GDPR/CCPA compliant, no cookie banner needed."
+      ),
+    ],
   },
   twitter: {
-    images: [createOGImageUrl("Rybbit - Cookieless Google Analytics Replacement", "Next-gen, open source, lightweight, cookieless web & product analytics for everyone — GDPR/CCPA compliant.")],
+    images: [
+      createOGImageUrl(
+        "Rybbit - Cookieless Google Analytics Replacement",
+        "Open source, cookieless web & product analytics with an 18 KB script and one readable dashboard. GDPR/CCPA compliant, no cookie banner needed."
+      ),
+    ],
   },
 });
 
@@ -20,7 +30,9 @@ export default function HomePage() {
   return (
     <LandingPageTemplate
       title={t("The Modern Google Analytics Replacement")}
-      subtitle={t("Rybbit is powerful, lightweight, and super easy to use analytics. Cookieless and GDPR compliant. Hosted on EU infrastructure in Germany ")}
+      subtitle={t(
+        "Rybbit is open-source, cookieless analytics: one readable dashboard and an 18 KB script. No consent banner needed, GDPR and CCPA compliant."
+      )}
       showEUFlag
     />
   );

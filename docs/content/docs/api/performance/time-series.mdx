@@ -36,10 +36,11 @@ Accepts all [Common Parameters](/docs/api/getting-started#common-parameters) plu
 <TypeTable
   type={{
     bucket: {
-      description: 'Time bucket size for grouping data',
+      description: 'Time bucket size for grouping data. Defaults to "hour" when omitted.',
       type: 'TimeBucket',
-      typeDescription: '"minute" | "five_minutes" | "hour" | "day" | "week" | "month"',
-      required: true,
+      typeDescription: '"minute" | "five_minutes" | "ten_minutes" | "fifteen_minutes" | "hour" | "day" | "week" | "month" | "year"',
+      default: 'hour',
+      required: false,
     },
   }}
 />

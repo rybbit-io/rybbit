@@ -1,5 +1,6 @@
 import { Filter, FilterParameter, FilterType, TimeBucket } from "@rybbit/shared";
 import { createParser, parseAsBoolean, parseAsInteger, parseAsJson, parseAsString, parseAsStringEnum } from "nuqs";
+import { DASHBOARD_DEFAULT_TIME_RANGES } from "./defaultTimeRange";
 import { StatType } from "./store";
 import { Time } from "@/components/DateSelector/types";
 
@@ -40,28 +41,8 @@ const timeModeValues: string[] = ["day", "range", "week", "month", "year", "all-
 
 export const parseAsTimeMode = parseAsStringEnum(timeModeValues);
 
-// Well-known preset parser
-const wellKnownValues: string[] = [
-  "today",
-  "yesterday",
-  "last-3-days",
-  "last-7-days",
-  "last-14-days",
-  "last-30-days",
-  "last-60-days",
-  "this-week",
-  "last-week",
-  "this-month",
-  "last-month",
-  "this-year",
-  "last-30-minutes",
-  "last-1-hour",
-  "last-6-hours",
-  "last-24-hours",
-  "all-time",
-];
-
-export const parseAsWellKnown = parseAsStringEnum(wellKnownValues);
+// Well-known preset parser — the preset list lives in defaultTimeRange.ts.
+export const parseAsWellKnown = parseAsStringEnum<string>([...DASHBOARD_DEFAULT_TIME_RANGES]);
 
 // ISO date string parser (for dates like "2024-01-01")
 export const parseAsIsoDate = parseAsString;

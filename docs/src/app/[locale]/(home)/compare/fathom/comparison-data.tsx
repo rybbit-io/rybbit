@@ -1,4 +1,5 @@
-import { ComparisonSection, FAQItem, PricingInfo, RelatedResource } from "../components/ComparisonPage";
+import Link from "next/link";
+import { ComparisonSection, DeepDive, FAQItem, PricingInfo, RelatedResource } from "../components/ComparisonPage";
 
 export const fathomComparisonData: ComparisonSection[] = [
   {
@@ -51,8 +52,8 @@ export const fathomExtendedData = {
   introHeading: "Why consider Rybbit over Fathom?",
   introParagraphs: [
     "Fathom Analytics is a well-respected privacy-first analytics tool known for its clean interface and cookie-free tracking. It's a solid choice for websites that need simple traffic metrics without the complexity of Google Analytics. But Fathom is intentionally limited to basic web analytics: no session replay, no funnel analysis, no user journey visualization, and it's entirely closed-source with no self-hosting option.",
-    "Rybbit shares Fathom's commitment to privacy and simplicity but extends far beyond basic web metrics. You get session replay to see exactly how users interact with your site, funnel analysis to identify conversion bottlenecks, user journey visualization with Sankey diagrams, Web Vitals monitoring, and error tracking. This means you can understand not just how many visitors you get, but how they convert, where they drop off, and what issues they encounter.",
-    "Transparency is another major difference. Rybbit is fully open source under the AGPL v3 license, so you can inspect every line of code and self-host on your own infrastructure. Fathom is proprietary and cloud-only, so you're trusting their claims about data handling without the ability to verify. If you love Fathom's privacy-first approach but need deeper analytics, code transparency, and the freedom to self-host, Rybbit gives you all of that.",
+    "Rybbit shares Fathom's commitment to privacy and simplicity but extends far beyond basic web metrics. You get session replay to see exactly how users interact with your site, funnel analysis to identify conversion bottlenecks, user journey visualization with Sankey diagrams, Web Vitals monitoring, and error tracking. This means you can see how visitors convert, where they drop off, and what issues they encounter, on top of the raw visit counts.",
+    "Transparency is another major difference. Rybbit is fully open source under the AGPL v3 license: you can inspect every line of code and self-host on your own infrastructure. Fathom is proprietary and cloud-only, so you're trusting their claims about data handling without the ability to verify. If you love Fathom's privacy-first approach but need deeper analytics, code transparency, and the freedom to self-host, Rybbit gives you all of that.",
   ],
 
   chooseRybbit: [
@@ -76,7 +77,7 @@ export const fathomExtendedData = {
     model: "Events-based pricing",
     startingPrice: "$19/mo",
     highlights: [
-      "7-day free trial, no credit card required",
+      "7-day free trial, card charged after the trial",
       "Session replay available on Pro plan",
       "Funnels, user journeys, and error tracking included",
       "Self-hosting option available (free)",
@@ -94,6 +95,98 @@ export const fathomExtendedData = {
       "Cloud-only, no self-hosting option",
     ],
   } satisfies PricingInfo,
+
+  deepDive: {
+    title: "Fathom vs Rybbit, in depth",
+    sections: [
+      {
+        heading: "Two privacy-first tools, two philosophies",
+        paragraphs: [
+          <>
+            Fathom deserves real credit: it&apos;s one of the founders of the privacy-analytics category, and it has
+            run as a profitable, independent company for years while bigger players came and went. If you&apos;re
+            leaving Google Analytics for something cookieless and simple, Fathom is a legitimate destination.
+            We&apos;ve said as much in our roundup of{" "}
+            <Link href="/blog/best-google-analytics-alternatives">the best Google Analytics alternatives</Link>.
+          </>,
+          <>
+            The two products just make different bets. Fathom bets that most site owners want one clean page of
+            traffic numbers from the most stable, boring vendor possible, and deliberately stops there. Rybbit
+            starts from the same privacy foundation (cookieless tracking, no personal data, visitor hashes rotated
+            daily) but bets that once you see the numbers move, you&apos;ll want to know <em>why</em>. Which bet is
+            right depends on you, not on either product being wrong.
+          </>,
+        ],
+      },
+      {
+        heading: "Deliberate simplicity vs. behavioral depth",
+        paragraphs: [
+          <>
+            Fathom&apos;s simplicity is a feature, not a gap: pageviews, referrers, UTM tracking, and
+            conversion goals on a single screen, with a tracking script around 2KB. If that&apos;s the whole job,
+            Fathom does it very well.
+          </>,
+          <>
+            Rybbit covers the same dashboard basics, then adds the layer Fathom deliberately leaves out:{" "}
+            <Link href="/features/session-replay">session replay</Link> to watch real sessions, funnels to find where
+            signups stall, user journey (Sankey) visualization, <Link href="/features/error-tracking">error
+            tracking</Link>, Web Vitals monitoring, and user profiles. Rybbit&apos;s script is bigger (~18KB) because
+            it does more. That&apos;s the honest trade. There&apos;s also an ownership difference with no
+            trade-off attached: Rybbit is open source and can be{" "}
+            <Link href="/docs/self-hosting">self-hosted for free</Link>, while Fathom is closed-source and
+            SaaS-only: there is no way to run it on your own infrastructure.
+          </>,
+        ],
+      },
+      {
+        heading: "Pricing shape: a pageview slider vs. events with everything included",
+        paragraphs: [
+          <>
+            Fathom prices on a pageview slider: you pick a monthly pageview tier and pay more as traffic grows.
+            At 500k pageviews it&apos;s $45/month. There&apos;s a 7-day trial but explicitly no free tier
+            (&ldquo;Do you have a lower/free option? Nope&rdquo; is a real answer on their FAQ). The generous parts are
+            real, too: every plan includes at least 50 sites (extra sites are $10/month per 50), data is retained
+            forever, and paying annually gets you two months free. For an agency running dozens of low-traffic sites,
+            that 50-site allowance is genuinely hard to beat.
+          </>,
+          <>
+            Rybbit prices on events instead, starting at{" "}
+            <Link href="/pricing">$19/month for 100k events</Link> with a 7-day trial. Every feature,
+            including session replay, funnels, and error tracking, is on every plan, so you never move up a tier to
+            get a capability. And if the subscription ever stops making sense, the open-source version is a real
+            exit: self-host it and pay nothing. Fathom, being closed-source, can&apos;t offer that pressure valve.
+          </>,
+        ],
+      },
+      {
+        heading: "Switching from Fathom to Rybbit",
+        paragraphs: [
+          <>
+            Rybbit&apos;s historical-data importers currently cover Plausible, Umami, and Simple Analytics;
+            there is no Fathom importer yet. So the switch is the classic parallel run:
+          </>,
+          <ol>
+            <li>
+              Add the Rybbit <Link href="/docs/script">tracking script</Link> alongside Fathom&apos;s. The two
+              don&apos;t conflict, and data appears in minutes.
+            </li>
+            <li>
+              Recreate your Fathom events and conversions as Rybbit <Link href="/docs/goals">goals</Link> and{" "}
+              <Link href="/docs/track-events">custom events</Link>.
+            </li>
+            <li>
+              Compare a few weeks of numbers. Since both tools are cookieless and resistant to ad blockers, expect
+              them to track closely. This is mostly a sanity check, not a reconciliation project.
+            </li>
+            <li>
+              Remove the Fathom script when you&apos;re confident. Your history stays in your Fathom account for
+              reference as long as you keep it.
+            </li>
+          </ol>,
+        ],
+      },
+    ],
+  } satisfies DeepDive,
 
   faqItems: [
     {

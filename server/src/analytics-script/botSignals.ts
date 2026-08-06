@@ -17,6 +17,7 @@ export const CLIENT_BOT_SIGNAL_MASKS = {
   impossibleDimensions: 1 << 7,
   outerDimensionsWeird: 1 << 8,
   pluginApiAbsence: 1 << 9,
+  defaultViewport1280x1200: 1 << 10,
 } as const;
 
 interface BotSignalResult {
@@ -36,7 +37,17 @@ export function getBotSignalMask(): number {
   return getBotSignals().mask;
 }
 
+function isPrerendering(): boolean {
+  return (document as { prerendering?: boolean }).prerendering === true;
+}
+
 function getBotSignals(): BotSignalResult {
+  // A prerendered page reports zero outer dimensions and other non-representative
+  // state. Never cache a score computed before activation — recompute fresh so
+  // post-activation events see the real environment.
+  if (isPrerendering()) {
+    return calculateBotSignals();
+  }
   cachedBotSignals ??= calculateBotSignals();
   return cachedBotSignals;
 }
@@ -89,8 +100,9 @@ function calculateBotSignals(): BotSignalResult {
       addSignal(CLIENT_BOT_SIGNAL_MASKS.automationApi, 3);
     }
 
-    // 2. Zero outer dimensions — common in headless/browserless environments
-    if (outerHeight === 0 || outerWidth === 0) {
+    // 2. Zero outer dimensions — common in headless/browserless environments.
+    //    Skipped while prerendering: Chrome legitimately reports 0 there.
+    if ((outerHeight === 0 || outerWidth === 0) && !isPrerendering()) {
       addSignal(CLIENT_BOT_SIGNAL_MASKS.zeroOuterDimensions, 2);
     }
 
@@ -106,12 +118,19 @@ function calculateBotSignals(): BotSignalResult {
       addSignal(CLIENT_BOT_SIGNAL_MASKS.impossibleDimensions, 3);
     }
 
-    // 4. Default automation/display server viewport sizes
+    // 4. Default automation/display server viewport sizes. 1280x1200 is not a
+    //    panel size any desktop ships; it is a headless window geometry, and in
+    //    production it appears essentially only on scraper fleets (27M events in
+    //    one week from a single crawler, against a few hundred from everything
+    //    else combined).
     if (isDesktopUA && screenWidth === 800 && screenHeight === 600) {
       addSignal(CLIENT_BOT_SIGNAL_MASKS.defaultViewport800x600, 3);
     }
     if (isDesktopUA && screenWidth === 1024 && screenHeight === 768) {
       addSignal(CLIENT_BOT_SIGNAL_MASKS.defaultViewport1024x768, 3);
+    }
+    if (isDesktopUA && screenWidth === 1280 && screenHeight === 1200) {
+      addSignal(CLIENT_BOT_SIGNAL_MASKS.defaultViewport1280x1200, 3);
     }
 
     // 5. Outer dimensions smaller than inner dimensions should not happen in normal desktop browsers
@@ -142,25 +161,29 @@ function calculateBotSignals(): BotSignalResult {
       const canvas = document.createElement("canvas");
       const gl = (canvas.getContext("webgl") || canvas.getContext("experimental-webgl")) as WebGLRenderingContext | null;
       if (gl) {
-        const rendererParts: string[] = [];
-        const rendererRaw = gl.getParameter(gl.RENDERER);
-        if (typeof rendererRaw === "string") {
-          rendererParts.push(rendererRaw);
-        }
         try {
-          type WebGlDebugRendererInfo = {UNMASKED_RENDERER_WEBGL:number};
-          const debugInfo = gl.getExtension("WEBGL_debug_renderer_info") as WebGlDebugRendererInfo | null;
-          if (debugInfo) {
-            const unmaskedRaw = gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL);
-            if (typeof unmaskedRaw === "string") {
-              rendererParts.push(unmaskedRaw);
-            }
+          const rendererParts: string[] = [];
+          const rendererRaw = gl.getParameter(gl.RENDERER);
+          if (typeof rendererRaw === "string") {
+            rendererParts.push(rendererRaw);
           }
-        } catch {
-          // Firefox Privacy
-        }
-        if (rendererParts.join(" ").toLowerCase().includes("swiftshader")) {
-          addSignal(CLIENT_BOT_SIGNAL_MASKS.swiftShader, 1);
+          try {
+            type WebGlDebugRendererInfo = {UNMASKED_RENDERER_WEBGL:number};
+            const debugInfo = gl.getExtension("WEBGL_debug_renderer_info") as WebGlDebugRendererInfo | null;
+            if (debugInfo) {
+              const unmaskedRaw = gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL);
+              if (typeof unmaskedRaw === "string") {
+                rendererParts.push(unmaskedRaw);
+              }
+            }
+          } catch {
+            // Firefox Privacy
+          }
+          if (rendererParts.join(" ").toLowerCase().includes("swiftshader")) {
+            addSignal(CLIENT_BOT_SIGNAL_MASKS.swiftShader, 1);
+          }
+        } finally {
+          releaseWebGlContext(canvas, gl);
         }
       }
     } catch {
@@ -184,6 +207,22 @@ function calculateBotSignals(): BotSignalResult {
     score: Math.min(score, MAX_BOT_SCORE),
     mask,
   };
+}
+
+/**
+ * Chrome caps live WebGL contexts per page (~16) and evicts the oldest when
+ * exceeded, so the probe context must be released eagerly rather than left
+ * to lazy GC — leaking it can break or crash host pages that use WebGL.
+ */
+function releaseWebGlContext(canvas: HTMLCanvasElement, gl: WebGLRenderingContext) {
+  try {
+    const loseContextExt = gl.getExtension("WEBGL_lose_context") as { loseContext?: () => void } | null;
+    loseContextExt?.loseContext?.();
+  } catch {
+    // best-effort cleanup
+  }
+  canvas.width = 0;
+  canvas.height = 0;
 }
 
 export function resetBotScoreCacheForTests() {

@@ -2,31 +2,28 @@
 
 import { StandardPage } from "@/components/StandardPage";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useState } from "react";
-import { Sites } from "./components/sites/Sites";
-import { Users } from "./components/users/Users";
-import { Organizations } from "./components/organizations/Organizations";
-import { AdminLayout } from "./components/shared/AdminLayout";
-import { Database } from "./components/database/Database";
+import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
+import { Menu } from "lucide-react";
+import { useExtracted } from "next-intl";
+import { notFound } from "next/navigation";
+import { parseAsStringLiteral, useQueryState } from "nuqs";
 import { AppSidebar } from "../../components/AppSidebar";
-
-import { usePathname } from "next/navigation";
-import { useGetSite } from "../../api/admin/hooks/useSites";
 import { Button } from "../../components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "../../components/ui/sheet";
+import { DEPLOYMENT, IS_CLOUD } from "../../lib/const";
+import { Database } from "./components/database/Database";
+import { Organizations } from "./components/organizations/Organizations";
+import { AdminLayout } from "./components/shared/AdminLayout";
+import { Sites } from "./components/sites/Sites";
+import { Users } from "./components/users/Users";
 
-import { Menu } from "lucide-react";
-import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
-import { Favicon } from "../../components/Favicon";
-import { useExtracted } from "next-intl";
+const ADMIN_TABS = ["organizations", "sites", "users", "database"] as const;
 
 function MobileSidebar() {
-  const pathname = usePathname();
-  const { data: site } = useGetSite(Number(pathname.split("/")[1]));
   const t = useExtracted();
 
   return (
-    <div className="md:hidden flex items-center gap-2">
+    <div className="md:hidden">
       <Sheet>
         <SheetTrigger asChild>
           <Button size="icon" variant="outline">
@@ -42,13 +39,14 @@ function MobileSidebar() {
           <AppSidebar />
         </SheetContent>
       </Sheet>
-      {site && <Favicon domain={site.domain} className="w-6 h-6" />}
     </div>
   );
 }
 
 export default function AdminPage() {
-  const [activeTab, setActiveTab] = useState("organizations");
+  // if (!IS_CLOUD && !DEPLOYMENT) notFound();
+
+  const [activeTab, setActiveTab] = useQueryState("tab", parseAsStringLiteral(ADMIN_TABS).withDefault("organizations"));
   const t = useExtracted();
 
   return (
@@ -57,34 +55,36 @@ export default function AdminPage() {
         <AppSidebar />
       </div>
       <StandardPage showSidebar={false} fullWidth>
-        <div className="mb-2">
-          <MobileSidebar />
-        </div>
-        <div className="text-2xl font-bold mb-4">{t("Admin Dashboard")}</div>
-        <Tabs defaultValue="organizations" value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="mb-4">
-            <TabsTrigger value="organizations">Organizations</TabsTrigger>
-            <TabsTrigger value="sites">Sites</TabsTrigger>
-            <TabsTrigger value="users">Users</TabsTrigger>
-            <TabsTrigger value="settings">Database</TabsTrigger>
-          </TabsList>
+        <AdminLayout>
+          <div className="mb-4 flex items-center gap-3">
+            <MobileSidebar />
+            <h1 className="text-xl font-semibold tracking-tight">{t("Admin")}</h1>
+          </div>
+          <Tabs value={activeTab} onValueChange={value => setActiveTab(value as (typeof ADMIN_TABS)[number])}>
+            <TabsList className="mb-4">
+              <TabsTrigger value="organizations">{t("Organizations")}</TabsTrigger>
+              <TabsTrigger value="sites">{t("Sites")}</TabsTrigger>
+              <TabsTrigger value="users">{t("Users")}</TabsTrigger>
+              <TabsTrigger value="database">{t("Database")}</TabsTrigger>
+            </TabsList>
 
-          <TabsContent value="users">
-            <Users />
-          </TabsContent>
+            <TabsContent value="organizations">
+              <Organizations />
+            </TabsContent>
 
-          <TabsContent value="organizations">
-            <Organizations />
-          </TabsContent>
+            <TabsContent value="sites">
+              <Sites />
+            </TabsContent>
 
-          <TabsContent value="sites">
-            <Sites />
-          </TabsContent>
+            <TabsContent value="users">
+              <Users />
+            </TabsContent>
 
-          <TabsContent value="settings">
-            <Database />
-          </TabsContent>
-        </Tabs>
+            <TabsContent value="database">
+              <Database />
+            </TabsContent>
+          </Tabs>
+        </AdminLayout>
       </StandardPage>
     </div>
   );

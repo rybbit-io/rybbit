@@ -7,7 +7,6 @@ import { toast } from "@/components/ui/sonner";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 
 import { useGetExcludedIPs, useUpdateExcludedIPs } from "@/api/admin/hooks/useExcludedIPs";
 import { validateIPPattern } from "@/lib/ipValidation";
@@ -106,13 +105,6 @@ export function IPExclusionManager({ siteId, disabled = false }: IPExclusionMana
 
   return (
     <div className="space-y-4">
-      <div>
-        <Label className="text-sm font-medium text-foreground block">{t("IP Exclusions")}</Label>
-        <p className="text-xs text-muted-foreground mt-1">
-          {t("Exclude traffic from specific IP addresses or ranges. Supports single IPs (192.168.1.1), CIDR notation (192.168.1.0/24), and ranges (192.168.1.1-192.168.1.10).")}
-        </p>
-      </div>
-
       <div className="space-y-2">
         {ipList.map((ip, index) => (
           <div key={index} className="flex items-center space-x-2">
@@ -121,7 +113,7 @@ export function IPExclusionManager({ siteId, disabled = false }: IPExclusionMana
               onChange={e => updateIPField(index, e.target.value)}
               placeholder="e.g., 192.168.1.1 or 10.0.0.0/24"
               disabled={disabled}
-              className={!validateIPPattern(ip).valid && ip.trim() !== "" ? "border-red-500" : ""}
+              className={!validateIPPattern(ip).valid && ip.trim() !== "" ? "border-red-500 dark:border-red-400" : ""}
             />
             {ipList.length > 1 && (
               <Button

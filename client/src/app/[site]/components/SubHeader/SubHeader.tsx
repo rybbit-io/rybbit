@@ -6,16 +6,13 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Filters } from "./Filters/Filters";
 
 import { DateSelector } from "../../../../components/DateSelector/DateSelector";
-import { authClient } from "../../../../lib/auth";
 import { MobileSidebar } from "../Sidebar/MobileSidebar";
-import { ExportButton } from "./Export";
 import { NewFilterButton } from "./Filters/NewFilterButton";
 import { LiveUserCount } from "./LiveUserCount";
-import { ShareSite } from "./ShareSite";
+import { ShareExportButton } from "./ShareExportButton";
 
 export function SubHeader({ availableFilters }: { availableFilters?: FilterParameter[] }) {
   const { time, setTime } = useStore();
-  const session = authClient.useSession();
 
   return (
     <div>
@@ -28,10 +25,7 @@ export function SubHeader({ availableFilters }: { availableFilters?: FilterParam
         </div>
         <div className="flex items-center gap-2">
           <LiveUserCount />
-          {session.data && <ShareSite />}
-          <div className="hidden md:block">
-            <ExportButton />
-          </div>
+          <ShareExportButton />
           <DateSelector time={time} setTime={setTime} />
           <div className="flex items-center">
             <Button

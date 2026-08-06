@@ -129,7 +129,7 @@ export async function getMonitorStatus(request: FastifyRequest<GetMonitorStatusR
       recentChecks,
     });
   } catch (error) {
-    console.error("Error retrieving monitor status:", error);
+    request.log.error({ err: error }, "Error retrieving monitor status");
     return reply.status(500).send({ error: "Internal server error" });
   }
 }

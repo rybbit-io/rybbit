@@ -37,10 +37,7 @@ interface CreateUserInOrganization {
  * better-auth's internal adapter so password hashing and account linking match
  * the admin plugin exactly.
  */
-export async function createUserInOrganization(
-  request: FastifyRequest<CreateUserInOrganization>,
-  reply: FastifyReply
-) {
+export async function createUserInOrganization(request: FastifyRequest<CreateUserInOrganization>, reply: FastifyReply) {
   try {
     const { organizationId } = request.params;
     const { email: rawEmail, name, password, role } = request.body;
@@ -121,7 +118,7 @@ export async function createUserInOrganization(
 
     return reply.status(201).send({ message: "User created and added to organization successfully" });
   } catch (error: any) {
-    console.error(String(error));
+    request.log.error({ err: error }, "Error creating user in organization");
     return reply.status(500).send({ error: String(error) });
   }
 }

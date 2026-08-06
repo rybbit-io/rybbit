@@ -137,6 +137,9 @@ function allFilters(...arrays: FilterParameter[][]): FilterParameter[] {
   return [...new Set(arrays.flat())];
 }
 export const SESSION_PAGE_FILTERS: FilterParameter[] = allFilters(getSessionPageFilters(false), getSessionPageFilters(true));
+// Single-user detail page: the page is already scoped to one user, so the
+// user_id filter is excluded.
+export const USER_DETAIL_PAGE_FILTERS: FilterParameter[] = SESSION_PAGE_FILTERS.filter(f => f !== "user_id");
 export const EVENT_FILTERS: FilterParameter[] = allFilters(getEventFilters(false), getEventFilters(true));
 export const GOALS_PAGE_FILTERS: FilterParameter[] = allFilters(getGoalsPageFilters(false), getGoalsPageFilters(true));
 export const FUNNEL_PAGE_FILTERS: FilterParameter[] = allFilters(getFunnelPageFilters(false), getFunnelPageFilters(true));

@@ -127,7 +127,7 @@ export async function createCheckoutSession(
     // 6. Return the client secret for embedded checkout
     return reply.send({ clientSecret: session.client_secret });
   } catch (error: any) {
-    console.error("Stripe Checkout Session Error:", error);
+    request.log.error({ err: error }, "Stripe Checkout Session Error");
     return reply.status(500).send({
       error: "Failed to create Stripe checkout session",
       details: error.message,

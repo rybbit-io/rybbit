@@ -35,7 +35,7 @@ export async function getSitePrivateLinkConfig(
       },
     });
   } catch (error) {
-    console.error("Error getting site private link configuration:", error);
+    request.log.error({ err: error }, "Error getting site private link configuration");
     return reply.status(500).send({
       success: false,
       error: "Failed to get site private link configuration",

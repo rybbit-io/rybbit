@@ -6,7 +6,6 @@
   "pages": [
     "index",
     "comparison",
-    "architecture",
     "self-host-vs-cloud",
     "---Usage---",
     "script",
@@ -18,6 +17,7 @@
     "guides",
     "proxy-guide",
     "sdks",
+    "mcp",
     "hiding-own-traffic",
     "filter-traffic",
     "bot-detection",

@@ -1,14 +1,11 @@
-import { BackgroundGrid } from "@/components/BackgroundGrid";
 import { CTASection } from "@/components/CTASection";
-import { TrackedButton } from "@/components/TrackedButton";
-import { DEFAULT_EVENT_LIMIT } from "@/lib/const";
+import { InteriorPageHero } from "@/components/InteriorPageHero";
 import { useExtracted } from "next-intl";
 import {
   Activity,
   AlertTriangle,
   ArrowLeftRight,
   Bot,
-  CheckCircle,
   Cookie,
   Database,
   Eye,
@@ -47,12 +44,12 @@ import { createMetadata, createOGImageUrl } from "@/lib/metadata";
 export const metadata: Metadata = createMetadata({
   title: "Features - Rybbit Analytics",
   description:
-    "Powerful, privacy-friendly analytics features to help you understand your audience and grow your business. Real-time data, session replay, web vitals, and more.",
+    "Privacy-friendly analytics from one cookieless script: real-time traffic, session replay, funnels, web vitals, error tracking, and more.",
   openGraph: {
-    images: [createOGImageUrl("Features - Rybbit Analytics", "Powerful, privacy-friendly analytics features to help you understand your audience and grow your business.", "Features")],
+    images: [createOGImageUrl("Features - Rybbit Analytics", "Real-time traffic, session replay, funnels, web vitals, and error tracking, from one cookieless script.", "Features")],
   },
   twitter: {
-    images: [createOGImageUrl("Features - Rybbit Analytics", "Powerful, privacy-friendly analytics features to help you understand your audience and grow your business.", "Features")],
+    images: [createOGImageUrl("Features - Rybbit Analytics", "Real-time traffic, session replay, funnels, web vitals, and error tracking, from one cookieless script.", "Features")],
   },
 });
 
@@ -69,24 +66,21 @@ interface FeatureGridProps {
 
 function FeatureGrid({ title, description, features }: FeatureGridProps) {
   return (
-    <section className="py-12 md:py-16 w-full relative z-10">
-      <div className="max-w-[1200px] mx-auto px-4">
-        <div className="mb-12">
-          <h2 className="text-3xl md:text-4xl font-bold tracking-tight mb-4">{title}</h2>
-          <p className="text-lg text-neutral-600 dark:text-neutral-400">{description}</p>
+    <section className="border-b border-neutral-200 dark:border-neutral-800">
+      <div className="mx-auto grid max-w-[1200px] border-x border-neutral-200 dark:border-neutral-800 lg:grid-cols-12">
+        <div className="border-b border-neutral-200 px-5 py-12 dark:border-neutral-800 sm:px-8 lg:col-span-4 lg:border-b-0 lg:border-r lg:px-10 lg:py-16">
+          <div className="lg:sticky lg:top-24">
+            <h2 className="text-3xl font-semibold tracking-[-0.03em] md:text-4xl">{title}</h2>
+            <p className="mt-5 max-w-sm text-base leading-7 text-neutral-600 dark:text-neutral-400">{description}</p>
+          </div>
         </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-          {features.map((feature, index) => (
-            <div key={index} className="bg-neutral-100/50 dark:bg-neutral-800/20 border border-neutral-300/50 dark:border-neutral-800/50 rounded-lg p-5 transition-colors">
-              <div>
-                <h3 className="font-semibold mb-2 flex items-center gap-2">
-                  <div className="text-neutral-600 dark:text-neutral-400">{feature.icon}</div>
-                  {feature.title}
-                </h3>
-                <p className="text-sm text-neutral-600 dark:text-neutral-400 leading-relaxed">{feature.description}</p>
-              </div>
-            </div>
+        <div className="grid gap-px bg-neutral-200 dark:bg-neutral-800 lg:col-span-8 md:grid-cols-2">
+          {features.map((feature) => (
+            <article key={feature.title} className="bg-white px-5 py-9 dark:bg-neutral-950 sm:px-8 lg:px-10">
+              <div className="mb-5 text-neutral-500 dark:text-neutral-400">{feature.icon}</div>
+              <h3 className="font-semibold tracking-tight">{feature.title}</h3>
+              <p className="mt-2 max-w-md text-sm leading-6 text-neutral-600 dark:text-neutral-400">{feature.description}</p>
+            </article>
           ))}
         </div>
       </div>
@@ -136,12 +130,12 @@ export default function FeaturesPage() {
     {
       icon: <ListFilter className="w-5 h-5" />,
       title: t("Filtering"),
-      description: t("Slice and dice your data to uncover patterns and actionable insights."),
+      description: t("Stack filters on any dimension (country, referrer, page, event) to narrow to the exact segment."),
     },
     {
       icon: <Activity className="w-5 h-5" />,
       title: t("Realtime data"),
-      description: t("Instant analytics updates—see what's happening on your site right now."),
+      description: t("See visitors, pageviews, and events the moment they happen. No sampling, no delay."),
     },
     {
       icon: <MousePointerClick className="w-5 h-5" />,
@@ -199,7 +193,7 @@ export default function FeaturesPage() {
     {
       icon: <Globe2 className="w-5 h-5" />,
       title: t("Globe views"),
-      description: t("Watch traffic flow across the world with stunning 3D globe visualizations."),
+      description: t("Watch live visits land on a 3D globe, down to the city."),
     },
     {
       icon: <AlertTriangle className="w-5 h-5" />,
@@ -237,12 +231,12 @@ export default function FeaturesPage() {
     {
       icon: <Users className="w-5 h-5" />,
       title: t("Organizations"),
-      description: t("Organize websites and share access across your team seamlessly."),
+      description: t("Group your sites and manage team access from one place."),
     },
     {
       icon: <Globe2 className="w-5 h-5" />,
       title: t("Public dashboards"),
-      description: t("Make your dashboards publicly accessible with a single click—no login required."),
+      description: t("Make your dashboards publicly accessible with a single click. No login required."),
     },
     {
       icon: <Lock className="w-5 h-5" />,
@@ -260,22 +254,22 @@ export default function FeaturesPage() {
     {
       icon: <ShieldCheck className="w-5 h-5" />,
       title: t("GDPR & CCPA"),
-      description: t("Privacy-first design means you're compliant out of the box. No personal data collected."),
+      description: t("No cookies and no personal data collected, so there's nothing for visitors to consent to."),
     },
     {
       icon: <UserX className="w-5 h-5" />,
       title: t("Data anonymization"),
-      description: t("Every visitor is anonymous by default—privacy without compromising insights."),
+      description: t("Every visitor is anonymous by default, and IDs are re-salted daily so no one is tracked across days."),
     },
     {
       icon: <Cookie className="w-5 h-5" />,
       title: t("No cookies"),
-      description: t("Zero cookies, zero cookie banners. Cleaner, faster experiences for visitors."),
+      description: t("Nothing stored on a visitor's device, so you never owe them a cookie banner."),
     },
     {
       icon: <Database className="w-5 h-5" />,
       title: t("Data ownership"),
-      description: t("Your data, your rules. Self-host or use our cloud—you're always in control."),
+      description: t("Your data, your rules. Self-host or use our cloud; you're always in control."),
     },
   ];
 
@@ -283,28 +277,18 @@ export default function FeaturesPage() {
     {
       icon: <Settings className="w-5 h-5" />,
       title: t("Fully managed"),
-      description: t("We handle infrastructure, updates, and scaling—you focus on growth."),
+      description: t("We handle infrastructure, updates, and scaling. You add the script."),
     },
     {
       icon: <Zap className="w-5 h-5" />,
       title: t("High performance"),
-      description: t("Handle millions of events effortlessly. Queries stay fast at any scale."),
+      description: t("Queries stay fast whether your site gets thousands of events a day or millions."),
     },
     {
       icon: <MapPin className="w-5 h-5" />,
       title: t("Hosted in EU"),
       description: t("GDPR-compliant infrastructure hosted in European data centers for data sovereignty."),
     },
-    // {
-    //   icon: <Upload className="w-5 h-5" />,
-    //   title: "Data import",
-    //   description: "Migrate from other platforms seamlessly with built-in import tools.",
-    // },
-    // {
-    //   icon: <Download className="w-5 h-5" />,
-    //   title: "Data export",
-    //   description: "Export complete raw data anytime. No lock-in, no summaries—just your data.",
-    // },
     {
       icon: <Mail className="w-5 h-5" />,
       title: t("Email reports"),
@@ -323,79 +307,46 @@ export default function FeaturesPage() {
   ];
 
   return (
-    <div className="flex flex-col items-center justify-center overflow-x-hidden">
-      <BackgroundGrid />
-      {/* Hero Section */}
-      <section className="py-16 md:py-24 w-full relative z-10">
-        <div className="max-w-7xl mx-auto px-4">
-          <div className="text-center max-w-4xl mx-auto">
-            <h1 className="text-4xl md:text-6xl font-bold tracking-tight mb-6">
-              {t("Everything you need to understand your audience")}
-            </h1>
-            <p className="text-lg md:text-xl text-neutral-600 dark:text-neutral-300 mb-8 font-light">
-              {t("Powerful analytics without the complexity. Track, analyze, and optimize your website with privacy-friendly tools that just work.")}
-            </p>
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-4 text-base md:text-lg">
-              <TrackedButton
-                href="https://app.rybbit.io/signup"
-                eventName="signup"
-                eventProps={{ location: "features_hero", button_text: "Get started for free" }}
-                className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-500 text-white font-medium px-6 py-3 rounded-lg shadow-lg shadow-emerald-900/20 transform hover:-translate-y-0.5 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-opacity-50 cursor-pointer"
-              >
-                {t("Start for $0")}
-              </TrackedButton>
-              <TrackedButton
-                href="https://demo.rybbit.com/81"
-                eventName="demo"
-                target="_blank"
-                rel="noopener noreferrer"
-                eventProps={{ location: "features_hero", button_text: "View live demo" }}
-                className="w-full sm:w-auto bg-neutral-200 dark:bg-neutral-800 hover:bg-neutral-300 dark:hover:bg-neutral-700 text-neutral-900 dark:text-white font-medium px-6 py-3 rounded-lg transform hover:-translate-y-0.5 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-neutral-400 focus:ring-opacity-50 cursor-pointer"
-              >
-                {t("Live demo")}
-              </TrackedButton>
-            </div>
-            <p className="text-neutral-500 dark:text-neutral-400 text-sm flex items-center justify-center gap-2 mt-6">
-              <CheckCircle className="w-4 h-4" />
-              {t("7-day free trial. Cancel anytime.")}
-            </p>
-          </div>
-        </div>
-      </section>
+    <div className="overflow-x-clip">
+      <InteriorPageHero
+        title={t("See what's happening on your site")}
+        description={t("Traffic, sessions, funnels, replay, and errors, all behind one cookieless script tag.")}
+        eventLocation="features_hero"
+      />
 
       <FeatureGrid
         title={t("Core Web Analytics")}
-        description={t("Track every metric that matters. Make data-driven decisions with comprehensive analytics designed for clarity.")}
+        description={t("The metrics you check first (visitors, pages, sources, devices) in real time and clickable to filter.")}
         features={coreWebAnalyticsFeatures}
       />
 
       <FeatureGrid
         title={t("Advanced Analytics")}
-        description={t("Go deeper with powerful tools for session replay, funnels, comparisons, and advanced user behavior analysis.")}
+        description={t("Go past the top-line numbers: replay sessions, chart funnels, and follow the paths users actually take.")}
         features={advancedAnalyticsFeatures}
       />
 
       <FeatureGrid
         title={t("Access")}
-        description={t("Flexible sharing and collaboration tools to get insights into the right hands, securely.")}
+        description={t("Share a dashboard, invite your team, and set who can see what.")}
         features={accessFeatures}
       />
 
       <FeatureGrid
         title={t("Privacy")}
-        description={t("Privacy isn't a feature—it's the foundation. Analytics that respect your users and comply with regulations automatically.")}
+        description={t("Cookieless by default: no consent banner, no personal data collected, GDPR and CCPA covered.")}
         features={privacyFeatures}
       />
 
       <FeatureGrid
         title={t("Cloud")}
-        description={t("Enterprise-grade infrastructure without the enterprise headache. Reliable, fast, and fully managed.")}
+        description={t("We run the infrastructure (updates, scaling, backups) so you only ever read the dashboard.")}
         features={cloudFeatures}
       />
 
       <CTASection
         title={t("Ready to get started?")}
-        description={t("Join thousands of companies using Rybbit to understand their audience")}
+        description={t("Add the script and start understanding your traffic in minutes.")}
         eventLocation="features_bottom_cta"
       />
     </div>

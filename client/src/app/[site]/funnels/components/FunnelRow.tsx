@@ -10,11 +10,12 @@ import { useState } from "react";
 import { toast } from "@/components/ui/sonner";
 import { useDeleteFunnel } from "../../../../api/analytics/hooks/funnels/useDeleteFunnel";
 import { useGetFunnel } from "../../../../api/analytics/hooks/funnels/useGetFunnel";
-import { SavedFunnel } from "../../../../api/analytics/endpoints";
+import { FunnelStepType, SavedFunnel } from "../../../../api/analytics/endpoints";
 import { ThreeDotLoader } from "../../../../components/Loaders";
 import { EditFunnelDialog } from "./EditFunnel";
 import { Funnel } from "./Funnel";
-import { EventIcon, PageviewIcon } from "../../../../components/EventIcons";
+import { EventTypeIcon } from "../../../../components/EventIcons";
+import { resolvePropertyFilters, targetTypeToEventType } from "../../../../lib/events";
 
 interface FunnelRowProps {
   funnel: SavedFunnel;
@@ -23,6 +24,15 @@ interface FunnelRowProps {
 
 export function FunnelRow({ funnel, index }: FunnelRowProps) {
   const t = useExtracted();
+
+  const stepTypeLabels: Record<FunnelStepType, string> = {
+    page: t("Page"),
+    event: t("Event"),
+    outbound: t("Outbound"),
+    button_click: t("Button"),
+    form_submit: t("Form"),
+    copy: t("Copy"),
+  };
   const [expanded, setExpanded] = useState(index === 0);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -71,44 +81,42 @@ export function FunnelRow({ funnel, index }: FunnelRowProps) {
             {/* Steps visualization */}
             <div className="flex flex-wrap gap-1">
               <h3 className="font-medium text-neutral-900 dark:text-neutral-100 text-base mr-2">{funnel.name}</h3>
-              {funnel.steps.map((step, index) => (
-                <div key={index} className="flex items-center">
-                  {index > 0 && <ArrowRight className="h-3 w-3 mx-1 text-neutral-400" />}
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <span className="rounded bg-neutral-100 dark:bg-neutral-800 px-1.5 py-0.5 whitespace-nowrap overflow-hidden text-ellipsis flex items-center cursor-default">
-                        {step.type === "page" ? (
-                          <PageviewIcon className="h-3 w-3 mr-1" />
-                        ) : (
-                          <EventIcon className="h-3 w-3 mr-1" />
-                        )}
-                        <span className="max-w-[120px] overflow-hidden text-ellipsis inline-block">
-                          {step.name || step.value}
-                          {step.type === "event" && step.eventPropertyKey && (
-                            <span className="text-xs text-yellow-400 ml-1">*</span>
-                          )}
+              {funnel.steps.map((step, index) => {
+                const propertyFilters = resolvePropertyFilters(step);
+                return (
+                  <div key={index} className="flex items-center">
+                    {index > 0 && <ArrowRight className="h-3 w-3 mx-1 text-neutral-400" />}
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <span className="rounded bg-neutral-100 dark:bg-neutral-800 px-1.5 py-0.5 whitespace-nowrap overflow-hidden text-ellipsis flex items-center cursor-default">
+                          <EventTypeIcon type={targetTypeToEventType(step.type)} className="h-3 w-3 mr-1" />
+                          <span className="max-w-[120px] overflow-hidden text-ellipsis inline-block">
+                            {step.name || step.value || stepTypeLabels[step.type] || t("Event")}
+                            {propertyFilters.length > 0 && <span className="text-xs text-yellow-400 ml-1">*</span>}
+                          </span>
                         </span>
-                      </span>
-                    </TooltipTrigger>
-                    <TooltipContent side="bottom" className="text-xs">
-                      <div>
-                        <span className="font-semibold">{step.type === "page" ? t("Page") : t("Event")}:</span> {step.value}
-                      </div>
-                      {step.name && (
+                      </TooltipTrigger>
+                      <TooltipContent side="bottom" className="text-xs">
                         <div>
-                          <span className="font-semibold">{t("Label")}:</span> {step.name}
+                          <span className="font-semibold">{stepTypeLabels[step.type] || t("Event")}:</span>{" "}
+                          {step.value || t("Any")}
                         </div>
-                      )}
-                      {step.type === "event" && step.eventPropertyKey && step.eventPropertyValue !== undefined && (
-                        <div>
-                          <span className="font-semibold">{t("Property")}:</span> {step.eventPropertyKey} ={" "}
-                          {String(step.eventPropertyValue)}
-                        </div>
-                      )}
-                    </TooltipContent>
-                  </Tooltip>
-                </div>
-              ))}
+                        {step.name && (
+                          <div>
+                            <span className="font-semibold">{t("Label")}:</span> {step.name}
+                          </div>
+                        )}
+                        {propertyFilters.length > 0 && (
+                          <div>
+                            <span className="font-semibold">{t("Property")}:</span>{" "}
+                            {propertyFilters.map(f => `${f.key} = ${f.value}`).join(", ")}
+                          </div>
+                        )}
+                      </TooltipContent>
+                    </Tooltip>
+                  </div>
+                );
+              })}
             </div>
           </div>
         </div>

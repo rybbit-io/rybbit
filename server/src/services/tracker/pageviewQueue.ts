@@ -1,8 +1,10 @@
 import { DateTime } from "luxon";
 import { clickhouse } from "../../db/clickhouse/clickhouse.js";
+import { lookupAsn } from "../../db/geolocation/asn.js";
 import { getLocation } from "../../db/geolocation/geolocation.js";
 import { createServiceLogger } from "../../lib/logger/logger.js";
 import { getDeviceType, parseSDKUserAgent } from "../../utils.js";
+import { isDatacenterAsn } from "./botBlocking/datacenterAsns.js";
 import { getChannel } from "./getChannel.js";
 import { clearSelfReferrer, getAllUrlParams, TotalTrackingPayload } from "./utils.js";
 
@@ -64,6 +66,12 @@ class PageviewQueue {
       const timezone = dataForIp?.timeZone || "";
       const sdkUA = parseSDKUserAgent(pv.ua.ua || "");
 
+      // Same MaxMind lookup already used to decide identity bucketing
+      // (bucketIpForIdentity) and bot-detection eligibility; stored here purely
+      // for debugging identity-splitting reports, treated like geo data
+      // (independent of storeIp) since it identifies a network, not a device.
+      const asnInfo = lookupAsn(pv.ipAddress);
+
       // Check if referrer is from the same domain and clear it if so
       let referrer = clearSelfReferrer(pv.referrer || "", pv.hostname || "");
 
@@ -104,23 +112,29 @@ class PageviewQueue {
         event_name: pv.event_name || "",
         props: getParsedProperties(pv.properties),
         url_parameters: allUrlParams,
-        // Performance metrics (only included for performance events)
-        lcp: pv.lcp || null,
-        cls: pv.cls || null,
-        inp: pv.inp || null,
-        fcp: pv.fcp || null,
-        ttfb: pv.ttfb || null,
+        // Performance metrics (only included for performance events).
+        // ?? not ||: 0 is a legitimate measurement (a perfect CLS score is 0)
+        // and must not be coerced to NULL, which would skew percentiles.
+        lcp: pv.lcp ?? null,
+        cls: pv.cls ?? null,
+        inp: pv.inp ?? null,
+        fcp: pv.fcp ?? null,
+        ttfb: pv.ttfb ?? null,
         ip: pv.storeIp ? pv.ipAddress : null,
         timezone: timezone,
         tag: pv.tag || "",
         feature_flags: pv.feature_flags || {},
         import_id: null,
+        // MaxMind is the primary ASN source; the IP-intel provider only fills
+        // the gaps it leaves, so both deployments agree on asn/asn_org.
+        asn: asnInfo?.asn ?? dataForIp?.asn?.asn ?? null,
+        asn_org: asnInfo?.organization || dataForIp?.asn?.org || "",
+        is_datacenter_asn: asnInfo && isDatacenterAsn(asnInfo.asn) ? 1 : 0,
+        // Fields below have no MaxMind equivalent — cloud-only IP intel.
         company: dataForIp?.company?.name || "",
         company_domain: dataForIp?.company?.domain || "",
         company_type: dataForIp?.company?.type || "",
         company_abuse_score: dataForIp?.company?.abuseScore ?? null,
-        asn: dataForIp?.asn?.asn || null,
-        asn_org: dataForIp?.asn?.org || "",
         asn_domain: dataForIp?.asn?.domain || "",
         asn_type: dataForIp?.asn?.type || "",
         asn_abuse_score: dataForIp?.asn?.abuseScore ?? null,
@@ -144,7 +158,7 @@ class PageviewQueue {
         format: "JSONEachRow",
       });
     } catch (error) {
-      this.logger.error(error, "Error processing pageview queue");
+      this.logger.error({ err: error }, "Error processing pageview queue");
     } finally {
       this.processing = false;
     }

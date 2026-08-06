@@ -1,6 +1,13 @@
 import { ScriptConfig } from "./types.js";
 import { parseJsonSafely } from "./utils.js";
 
+const FEATURE_FLAG_REQUEST_TIMEOUT_MS = 2000;
+
+type FeatureFlagFetchResult = {
+  enabled: boolean;
+  flags: ScriptConfig["featureFlags"];
+};
+
 function createVisitorId(): string {
   try {
     if (crypto?.randomUUID) {
@@ -49,7 +56,10 @@ async function fetchFeatureFlags(
   siteId: string,
   namespace: string,
   visitorId: string
-): Promise<ScriptConfig["featureFlags"]> {
+): Promise<FeatureFlagFetchResult> {
+  const controller = new AbortController();
+  const timeout = window.setTimeout(() => controller.abort(), FEATURE_FLAG_REQUEST_TIMEOUT_MS);
+
   try {
     const url = new URL(window.location.href);
     const response = await fetch(`${analyticsHost}/site/${siteId}/feature-flags/evaluate`, {
@@ -58,6 +68,7 @@ async function fetchFeatureFlags(
         "Content-Type": "application/json",
       },
       credentials: "omit",
+      signal: controller.signal,
       body: JSON.stringify({
         anonymousId: visitorId,
         identifiedUserId: getIdentifiedUserId(namespace),
@@ -73,13 +84,18 @@ async function fetchFeatureFlags(
     });
 
     if (!response.ok) {
-      return {};
+      return { enabled: true, flags: {} };
     }
 
     const data = await response.json();
-    return data?.flags && typeof data.flags === "object" ? data.flags : {};
+    return {
+      enabled: data?.featureFlagsEnabled !== false,
+      flags: data?.flags && typeof data.flags === "object" ? data.flags : {},
+    };
   } catch (e) {
-    return {};
+    return { enabled: true, flags: {} };
+  } finally {
+    window.clearTimeout(timeout);
   }
 }
 
@@ -184,6 +200,7 @@ export async function parseScriptConfig(scriptTag: HTMLScriptElement): Promise<S
     trackCopy: false,
     trackFormInteractions: false,
     tag,
+    featureFlagsEnabled: false,
     featureFlags: {},
     // rrweb session replay options (undefined means use rrweb defaults)
     sessionReplayBlockClass,
@@ -227,6 +244,7 @@ export async function parseScriptConfig(scriptTag: HTMLScriptElement): Promise<S
         trackButtonClicks: apiConfig.trackButtonClicks ?? defaultConfig.trackButtonClicks,
         trackCopy: apiConfig.trackCopy ?? defaultConfig.trackCopy,
         trackFormInteractions: apiConfig.trackFormInteractions ?? defaultConfig.trackFormInteractions,
+        featureFlagsEnabled: apiConfig.featureFlagsEnabled === true,
       };
     } else {
       // If API call fails, log warning and use defaults
@@ -237,6 +255,10 @@ export async function parseScriptConfig(scriptTag: HTMLScriptElement): Promise<S
     console.warn("Error fetching tracking config:", error);
   }
 
-  resolvedConfig.featureFlags = await fetchFeatureFlags(analyticsHost, siteId, namespace, visitorId);
+  if (resolvedConfig.featureFlagsEnabled) {
+    const result = await fetchFeatureFlags(analyticsHost, siteId, namespace, visitorId);
+    resolvedConfig.featureFlagsEnabled = result.enabled;
+    resolvedConfig.featureFlags = result.flags;
+  }
   return resolvedConfig;
 }

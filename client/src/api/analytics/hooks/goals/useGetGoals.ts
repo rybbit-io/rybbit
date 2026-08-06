@@ -1,8 +1,7 @@
-import { useQuery } from "@tanstack/react-query";
 import { GOALS_PAGE_FILTERS } from "../../../../lib/filterGroups";
-import { getFilteredFilters, useStore } from "../../../../lib/store";
-import { buildApiParams } from "../../../utils";
-import { fetchGoals } from "../../endpoints";
+import { getFilteredFilters } from "../../../../lib/store";
+import { fetchGoals, GoalsParams, GoalsResponse } from "../../endpoints";
+import { useAnalyticsQuery } from "../../useAnalyticsQuery";
 
 export function useGetGoals({
   page = 1,
@@ -15,22 +14,15 @@ export function useGetGoals({
   sort?: "goalId" | "name" | "goalType" | "createdAt";
   order?: "asc" | "desc";
 }) {
-  const { site, time, timezone } = useStore();
+  // Only the goals page's filter parameters apply; an empty subset means no
+  // filters at all (not the store's full filter list).
   const filteredFilters = getFilteredFilters(GOALS_PAGE_FILTERS);
 
-  const params = buildApiParams(time, { filters: filteredFilters });
-
-  return useQuery({
-    queryKey: ["goals", site, time, filteredFilters, page, pageSize, sort, order, timezone],
-    queryFn: async () => {
-      return fetchGoals(site, {
-        ...params,
-        page,
-        pageSize,
-        sort,
-        order,
-      });
-    },
-    enabled: !!site,
+  return useAnalyticsQuery<GoalsResponse, GoalsParams>({
+    key: "goals",
+    useFilters: filteredFilters.length > 0,
+    customFilters: filteredFilters,
+    extraParams: { page, pageSize, sort, order },
+    fetch: (site, params) => fetchGoals(site, params),
   });
 }

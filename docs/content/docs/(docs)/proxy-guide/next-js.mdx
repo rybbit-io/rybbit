@@ -9,6 +9,10 @@ import { Tabs, Tab } from 'fumadocs-ui/components/tabs';
 
 Next.js provides a powerful [rewrites](https://nextjs.org/docs/app/api-reference/next-config-js/rewrites) feature that makes it easy to proxy Rybbit tracking through your own domain. This guide works with both the App Router (Next.js 13+) and Pages Router.
 
+<Callout type="info">
+Enable **First-Party Proxy** in your Rybbit **Site Settings → Privacy & Security**. Rewrites on this platform automatically forward the browser's headers and set `X-Forwarded-For` to the visitor IP — the toggle tells Rybbit to trust that forwarded IP directly.
+</Callout>
+
 ## Overview
 
 Next.js rewrites allow you to map incoming request paths to different destination URLs transparently. This is perfect for proxying analytics since the browser sees requests to your domain while Next.js forwards them to Rybbit's servers behind the scenes.
@@ -377,9 +381,9 @@ Next.js automatically caches responses when possible, but you can optimize furth
 If deployed on Vercel, your rewrites benefit from the global Edge Network, which caches static scripts close to users worldwide.
 
 **Custom caching headers:**
-The Rybbit server sets appropriate cache headers, which Next.js respects:
-- Scripts (`.js` files): Cached for 1 hour
-- Configuration: Cached for 5 minutes
+The Rybbit server sets cache headers on its scripts, which Next.js respects:
+- Scripts (`.js` files): Cached for 1 hour (`script.js`) to 1 day (`replay.js`, `metrics.js`)
+- Configuration: Not cached by the server (you may cache it for ~5 minutes at your proxy if desired)
 - Tracking POSTs: Not cached
 
 ### Server Load

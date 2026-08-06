@@ -84,19 +84,19 @@ export default function ErrorTrackingPage() {
       <FeaturePage
         featureName="error-tracking"
         headline="Catch errors before users report them"
-        subtitle="Automatic JavaScript error monitoring built right into your analytics. See what's breaking, how often, and for whom — without adding another tool."
+        subtitle="Automatic JavaScript error monitoring built into your analytics. See what's breaking, how often, and for whom, without adding another tool."
         badgeText="Error Tracking"
         demoUrl="https://demo.rybbit.com/81/errors"
-        demoCaption="Live error tracking demo — real JavaScript error data"
+        demoCaption="Live error tracking demo: real JavaScript error data"
         introParagraphs={[
           <>
-            Your users aren&apos;t going to report every error they encounter. Most will just leave. <strong className="text-neutral-900 dark:text-white">Error tracking catches what your users don&apos;t tell you</strong> — unhandled exceptions, failed API calls, and broken UI states that silently erode trust and conversion rates.
+            Your users aren&apos;t going to report every error they encounter. Most will just leave. <strong className="text-neutral-900 dark:text-white">Error tracking catches what your users don&apos;t tell you</strong>: unhandled exceptions, failed API calls, and broken UI states that silently erode trust and conversion rates.
           </>,
           <>
-            Rybbit captures JavaScript errors automatically and <strong className="text-neutral-900 dark:text-white">aggregates them by type</strong> so you see the signal, not the noise. Each error type shows its frequency trend as a sparkline, making it instantly clear whether an error is new, growing, or being resolved. Click into any error for full details and context.
+            Rybbit captures JavaScript errors automatically and <strong className="text-neutral-900 dark:text-white">aggregates them by type</strong> so you see the signal, not the noise. Each error type shows its frequency trend as a sparkline, making it clear whether an error is new, growing, or being resolved. Click into any error for full details and context.
           </>,
           <>
-            The real power is the <strong className="text-neutral-900 dark:text-white">integration with session replay</strong>. When you spot an error, you can watch the exact user session where it occurred — see what the user was doing, what they clicked, and what happened after the error. No more &ldquo;works on my machine&rdquo; — just full context, instantly.
+            Where this pays off is the <strong className="text-neutral-900 dark:text-white">integration with session replay</strong>. When you spot an error, you can watch the exact user session where it occurred: what the user was doing, what they clicked, and what happened after the error. No more &ldquo;works on my machine&rdquo;, just the full context.
           </>,
         ]}
         capabilities={capabilities}
@@ -105,7 +105,7 @@ export default function ErrorTrackingPage() {
         faqItems={faqItems}
         relatedFeatures={relatedFeatures}
         ctaTitle="Stop errors from going unnoticed"
-        ctaDescription="JavaScript error monitoring built into your analytics. Catch, aggregate, and debug — all in one place."
+        ctaDescription="JavaScript error monitoring built into your analytics. Catch, aggregate, and debug in one place."
       />
     </>
   );

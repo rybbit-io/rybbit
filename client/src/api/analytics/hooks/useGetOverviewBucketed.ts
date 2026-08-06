@@ -1,10 +1,10 @@
 import { Filter, TimeBucket } from "@rybbit/shared";
-import { UseQueryOptions, UseQueryResult, useQuery } from "@tanstack/react-query";
+import { UseQueryOptions, UseQueryResult } from "@tanstack/react-query";
 import { Time } from "../../../components/DateSelector/types";
-import { useStore } from "../../../lib/store";
 import { APIResponse } from "../../types";
-import { buildApiParams } from "../../utils";
 import { fetchOverviewBucketed, fetchOverviewBucketedLite, GetOverviewBucketedResponse } from "../endpoints";
+import { BucketedParams } from "../endpoints/types";
+import { useAnalyticsQuery } from "../useAnalyticsQuery";
 
 type PeriodTime = "current" | "previous";
 
@@ -25,56 +25,22 @@ export function useGetOverviewBucketed({
   dynamicFilters?: Filter[];
   refetchInterval?: number;
   overrideTime?: Time;
-  props?: Partial<UseQueryOptions<APIResponse<GetOverviewBucketedResponse>>>;
+  props?: Partial<UseQueryOptions<APIResponse<GetOverviewBucketedResponse>, Error>>;
   useFilters?: boolean;
   // Read the MV-backed lite endpoint instead of the raw-events one.
   lite?: boolean;
 }): UseQueryResult<APIResponse<GetOverviewBucketedResponse>> {
-  const { time, previousTime, filters: globalFilters, timezone } = useStore();
-
-  // Use overrideTime if provided, otherwise use store time
-  const baseTime = overrideTime || time;
-  const timeToUse = periodTime === "previous" ? previousTime : baseTime;
-  const combinedFilters = useFilters ? [...globalFilters, ...dynamicFilters] : undefined;
-
-  // Generate appropriate query key based on whether we're using past minutes or regular time
-  const queryKey =
-    timeToUse.mode === "past-minutes"
-      ? [
-          "overview-bucketed-past-minutes",
-          timeToUse.pastMinutesStart,
-          timeToUse.pastMinutesEnd,
-          site,
-          bucket,
-          combinedFilters,
-          useFilters,
-          timezone,
-          lite,
-        ]
-      : ["overview-bucketed", timeToUse, bucket, site, combinedFilters, useFilters, timezone, lite];
-
-  const params = buildApiParams(timeToUse, { filters: combinedFilters });
-
-  return useQuery({
-    queryKey,
-    queryFn: () => {
-      const fetcher = lite ? fetchOverviewBucketedLite : fetchOverviewBucketed;
-      return fetcher(site, { ...params, bucket }).then(data => ({ data }));
-    },
+  return useAnalyticsQuery<APIResponse<GetOverviewBucketedResponse>, BucketedParams>({
+    key: "overview-bucketed",
+    site,
+    periodTime,
+    overrideTime,
+    useFilters,
+    additionalFilters: dynamicFilters,
+    extraParams: { bucket },
+    keyExtras: [lite],
     refetchInterval,
-    placeholderData: (_, query: any) => {
-      if (!query?.queryKey) return undefined;
-      const queryKeyArray = query.queryKey as any[];
-
-      // Find site in query key (position varies based on query type)
-      const siteIndex = queryKeyArray.findIndex(item => item === site);
-      if (siteIndex !== -1) {
-        return query.state.data;
-      }
-      return undefined;
-    },
-    staleTime: 60_000,
-    enabled: !!site,
-    ...props,
+    props,
+    fetch: (site, params) => (lite ? fetchOverviewBucketedLite : fetchOverviewBucketed)(site, params).then(data => ({ data })),
   });
 }

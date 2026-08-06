@@ -80,19 +80,19 @@ export class MonitorScheduler {
             try {
               await job.remove();
             } catch (err) {
-              this.logger.warn({ jobId: job.id, error: err }, "Failed to remove job");
+              this.logger.warn({ jobId: job.id, err }, "Failed to remove job");
             }
           }
 
           this.logger.info("Cleared stale jobs");
         } catch (err) {
-          this.logger.warn({ error: err }, "Could not clear all job types");
+          this.logger.warn({ err }, "Could not clear all job types");
         }
       } else {
         this.logger.debug("No stale jobs to clear");
       }
     } catch (error) {
-      this.logger.error(error, "Error clearing stale jobs");
+      this.logger.error({ err: error }, "Error clearing stale jobs");
       // Continue anyway - this is not critical for startup
     }
   }
@@ -109,7 +109,7 @@ export class MonitorScheduler {
         await this.scheduleMonitor(monitor.id, monitor.intervalSeconds);
       }
     } catch (error) {
-      this.logger.error(error, "Error loading monitors");
+      this.logger.error({ err: error }, "Error loading monitors");
     }
   }
 
@@ -136,7 +136,7 @@ export class MonitorScheduler {
 
       this.logger.info({ monitorId, intervalSeconds, jobId: job.id }, "Scheduled monitor");
     } catch (error) {
-      this.logger.error({ monitorId, error }, "Error scheduling monitor");
+      this.logger.error({ monitorId, err: error }, "Error scheduling monitor");
     }
   }
 
@@ -163,14 +163,14 @@ export class MonitorScheduler {
             await job.remove();
           } catch (err) {
             // Ignore errors for jobs that can't be removed (e.g., repeat jobs)
-            this.logger.warn({ jobId: job.id, error: err }, "Could not remove job");
+            this.logger.warn({ jobId: job.id, err }, "Could not remove job");
           }
         })
       );
 
       this.logger.info({ monitorId }, "Removed schedule for monitor");
     } catch (error) {
-      this.logger.error({ monitorId, error }, "Error removing monitor schedule");
+      this.logger.error({ monitorId, err: error }, "Error removing monitor schedule");
     }
   }
 
@@ -196,7 +196,7 @@ export class MonitorScheduler {
 
       this.logger.info({ monitorId, jobId: job.id }, "Triggered immediate check for monitor");
     } catch (error) {
-      this.logger.error({ monitorId, error }, "Error triggering immediate check for monitor");
+      this.logger.error({ monitorId, err: error }, "Error triggering immediate check for monitor");
     }
   }
 
@@ -210,16 +210,16 @@ export class MonitorScheduler {
         Promise.race([
           this.queueEvents.close(),
           new Promise((_, reject) => setTimeout(() => reject(new Error("Queue events close timeout")), 3000)),
-        ]).catch(err => this.logger.error(err, "Queue events close error")),
+        ]).catch(err => this.logger.error({ err }, "Queue events close error")),
         Promise.race([
           this.queue.close(),
           new Promise((_, reject) => setTimeout(() => reject(new Error("Queue close timeout")), 3000)),
-        ]).catch(err => this.logger.error(err, "Queue close error")),
+        ]).catch(err => this.logger.error({ err }, "Queue close error")),
       ]);
 
       this.logger.info("BullMQ monitor scheduler shut down successfully");
     } catch (error) {
-      this.logger.error(error, "Error during scheduler shutdown");
+      this.logger.error({ err: error }, "Error during scheduler shutdown");
     }
   }
 

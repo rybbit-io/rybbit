@@ -39,7 +39,15 @@ const identifyPayloadSchema = z.object({
 // Anonymous events older than this are unlikely to belong to the identifying user.
 const BACKFILL_DAYS = 30;
 
-async function backfillIdentifiedUserId(siteId: number, anonymousId: string, userId: string) {
+// days: null backfills the device's full history — only for explicit admin
+// actions (dashboard identify), where the operator asserts the whole history
+// belongs to this user and the unbounded partition scan is a one-off.
+export async function backfillIdentifiedUserId(
+  siteId: number,
+  anonymousId: string,
+  userId: string,
+  days: number | null = BACKFILL_DAYS
+) {
   try {
     // session_replay_metadata has no `timestamp` column; its time column is
     // `start_time`. Using `timestamp` there throws ClickHouse error 47
@@ -51,13 +59,15 @@ async function backfillIdentifiedUserId(siteId: number, anonymousId: string, use
     ];
     for (const { name, timeColumn } of tables) {
       await clickhouse.command({
-        query: `ALTER TABLE ${name} UPDATE identified_user_id = {userId: String} WHERE site_id = {siteId: UInt16} AND user_id = {anonymousId: String} AND identified_user_id = '' AND ${timeColumn} >= now() - INTERVAL {days: UInt16} DAY`,
-        query_params: { userId, siteId, anonymousId, days: BACKFILL_DAYS },
+        query: `ALTER TABLE ${name} UPDATE identified_user_id = {userId: String} WHERE site_id = {siteId: UInt16} AND user_id = {anonymousId: String} AND identified_user_id = ''${
+          days !== null ? ` AND ${timeColumn} >= now() - INTERVAL {days: UInt16} DAY` : ""
+        }`,
+        query_params: { userId, siteId, anonymousId, ...(days !== null ? { days } : {}) },
       });
     }
     logger.info({ siteId, anonymousId, userId }, "Backfilled identified_user_id in ClickHouse");
   } catch (error) {
-    logger.error({ siteId, anonymousId, userId, error }, "Error backfilling identified_user_id");
+    logger.error({ siteId, anonymousId, userId, err: error }, "Error backfilling identified_user_id");
   }
 }
 
@@ -89,7 +99,7 @@ export async function handleIdentify(request: FastifyRequest, reply: FastifyRepl
     const anonymousId = anonymous_id
       ? await userIdService.generateUserIdFromClientId(anonymous_id, siteId)
       : await userIdService.generateUserId(
-          ip_address || resolveClientIp(request),
+          ip_address || resolveClientIp(request, { firstPartyProxy: siteConfiguration.firstPartyProxy }),
           user_agent || request.headers["user-agent"] || "",
           siteId
         );
@@ -102,7 +112,7 @@ export async function handleIdentify(request: FastifyRequest, reply: FastifyRepl
       try {
         await db.insert(userProfiles).values({ siteId, userId: user_id }).onConflictDoNothing();
       } catch (error) {
-        logger.error({ siteId, userId: user_id, error }, "Error creating user profile shell");
+        logger.error({ siteId, userId: user_id, err: error }, "Error creating user profile shell");
       }
 
       try {
@@ -131,7 +141,7 @@ export async function handleIdentify(request: FastifyRequest, reply: FastifyRepl
         }
       } catch (error) {
         // Handle unique constraint violation gracefully (race condition)
-        logger.debug({ siteId, anonymousId, userId: user_id, error }, "Alias may already exist");
+        logger.debug({ siteId, anonymousId, userId: user_id, err: error }, "Alias may already exist");
       }
     }
 
@@ -161,7 +171,7 @@ export async function handleIdentify(request: FastifyRequest, reply: FastifyRepl
             },
           });
       } catch (error) {
-        logger.error({ siteId, userId: user_id, error }, "Error updating user profile");
+        logger.error({ siteId, userId: user_id, err: error }, "Error updating user profile");
       }
     }
 
@@ -169,7 +179,7 @@ export async function handleIdentify(request: FastifyRequest, reply: FastifyRepl
       success: true,
     });
   } catch (error) {
-    logger.error(error, "Error handling identify");
+    logger.error({ err: error }, "Error handling identify");
     return reply.status(500).send({
       success: false,
       error: "Failed to process identify",

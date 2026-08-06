@@ -1,4 +1,9 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+
+vi.mock("./definitions.js", () => ({
+  getFeatureFlagDefinitions: vi.fn(),
+}));
+
 import { bucketPercentage, evaluateFeatureFlag, matchesFeatureFlagRule } from "./evaluator.js";
 import { precompileFeatureFlagRegexPattern } from "./regex.js";
 

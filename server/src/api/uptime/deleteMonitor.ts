@@ -53,7 +53,7 @@ export async function deleteMonitor(request: FastifyRequest<DeleteMonitorParams>
 
     return reply.status(204).send();
   } catch (error) {
-    console.error("Error deleting monitor:", error);
+    request.log.error({ err: error }, "Error deleting monitor");
     return reply.status(500).send({ error: "Internal server error" });
   }
 }

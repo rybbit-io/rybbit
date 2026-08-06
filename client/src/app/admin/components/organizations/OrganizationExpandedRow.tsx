@@ -1,164 +1,204 @@
 "use client";
 
-import { useCallback } from "react";
-import { useRouter } from "next/navigation";
+import { ReactNode, useState } from "react";
 import { AdminOrganizationData } from "@/api/admin/endpoints";
 import { Badge } from "@/components/ui/badge";
-import { formatDistanceToNow } from "date-fns";
-import { formatter } from "@/lib/utils";
-import { User, Building2, CreditCard, UserCheck, ExternalLink } from "lucide-react";
-import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { toast } from "@/components/ui/sonner";
 import { authClient } from "@/lib/auth";
 import { userStore } from "@/lib/userStore";
-import { CopyText } from "../../../../components/CopyText";
+import { cn, formatter } from "@/lib/utils";
+import { DateTime } from "luxon";
+import { UserCheck } from "lucide-react";
+import Link from "next/link";
 import { useExtracted } from "next-intl";
+import { CopyText } from "../../../../components/CopyText";
+import { Favicon } from "../../../../components/Favicon";
 
 interface OrganizationExpandedRowProps {
   organization: AdminOrganizationData;
 }
 
-export function OrganizationExpandedRow({ organization }: OrganizationExpandedRowProps) {
-  const router = useRouter();
-  const t = useExtracted();
+function SectionLabel({ children }: { children: ReactNode }) {
+  return <h4 className="mb-2 text-xs font-medium text-neutral-500 dark:text-neutral-400">{children}</h4>;
+}
 
-  const handleImpersonate = useCallback(
-    async (userId: string) => {
-      try {
-        await authClient.admin.impersonateUser({
-          userId,
-        });
-        window.location.reload();
-        router.push("/");
-        return true;
-      } catch (err) {
-        const errorMessage = err instanceof Error ? err.message : "Unknown error occurred";
-        console.error(`Failed to impersonate user: ${errorMessage}`);
-        return false;
-      }
-    },
-    [router]
+function Fact({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <div>
+      <dt className="text-xs text-neutral-500 dark:text-neutral-400">{label}</dt>
+      <dd className="mt-0.5 text-sm font-medium">{children}</dd>
+    </div>
   );
+}
+
+const ROLE_RANK: Record<string, number> = { owner: 0, admin: 1, member: 2 };
+
+export function OrganizationExpandedRow({ organization }: OrganizationExpandedRowProps) {
+  const t = useExtracted();
+  const [impersonatingId, setImpersonatingId] = useState<string | null>(null);
+  const currentUserId = userStore.getState().user?.id;
+
+  const subscription = organization.subscription;
+  const periodEnd = subscription.currentPeriodEnd
+    ? DateTime.fromJSDate(new Date(subscription.currentPeriodEnd))
+    : null;
+
+  const statusClass =
+    subscription.status === "canceled"
+      ? "text-red-500 dark:text-red-400"
+      : subscription.status === "active" || subscription.status === "trialing"
+        ? ""
+        : "text-yellow-600 dark:text-yellow-500";
+
+  const sites = [...organization.sites].sort((a, b) => b.eventsLast30Days - a.eventsLast30Days);
+  const members = [...organization.members].sort((a, b) => {
+    const rankDiff =
+      (ROLE_RANK[a.role?.toLowerCase()] ?? 3) - (ROLE_RANK[b.role?.toLowerCase()] ?? 3);
+    return rankDiff !== 0 ? rankDiff : (a.name || a.email).localeCompare(b.name || b.email);
+  });
+
+  const handleImpersonate = async (userId: string) => {
+    try {
+      setImpersonatingId(userId);
+      await authClient.admin.impersonateUser({ userId });
+      window.location.href = "/";
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : t("Failed to impersonate user"));
+      setImpersonatingId(null);
+    }
+  };
 
   return (
-    <div className="space-y-6">
-      <CopyText text={organization.id}></CopyText>
+    <div className="grid gap-x-8 gap-y-6 lg:grid-cols-[260px_minmax(0,1fr)]">
+      <section>
+        <SectionLabel>{t("Subscription")}</SectionLabel>
+        <dl className="grid grid-cols-2 gap-x-4 gap-y-3 lg:grid-cols-1">
+          <Fact label={t("Plan")}>
+            {subscription.planName}
+            {subscription.interval && (
+              <span className="ml-1.5 text-xs font-normal text-neutral-500 dark:text-neutral-400">
+                {subscription.interval}
+              </span>
+            )}
+          </Fact>
+          <Fact label={t("Status")}>
+            <span className={statusClass}>{subscription.status}</span>
+            {subscription.cancelAtPeriodEnd && (
+              <div className="mt-0.5 text-xs font-normal text-yellow-600 dark:text-yellow-500">
+                {t("Cancels at period end")}
+              </div>
+            )}
+          </Fact>
+          <Fact label={t("Event limit")}>
+            <span className="tabular-nums">
+              {subscription.eventLimit ? formatter(subscription.eventLimit) : t("Unlimited")}
+            </span>
+          </Fact>
+          {periodEnd?.isValid && (
+            <Fact label={subscription.cancelAtPeriodEnd ? t("Ends") : t("Renews")}>
+              <span className="tabular-nums">{periodEnd.toLocaleString(DateTime.DATE_MED)}</span>
+              <span className="ml-1.5 text-xs font-normal text-neutral-500 dark:text-neutral-400">
+                {periodEnd.toRelative()}
+              </span>
+            </Fact>
+          )}
+          <Fact label={t("Organization ID")}>
+            <CopyText
+              text={organization.id}
+              maxLength={16}
+              className="text-neutral-600 dark:text-neutral-300 [&>span]:text-xs"
+              tooltipText={t("Copy organization ID")}
+            />
+          </Fact>
+        </dl>
+      </section>
 
-      {/* Subscription Details */}
-      <div>
-        <div className="flex items-center gap-2 text-sm font-semibold mb-3">
-          <CreditCard className="h-4 w-4" />
-          {t("Subscription Details")}
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 p-4 border border-neutral-100 dark:border-neutral-800 rounded">
-          <div>
-            <div className="text-xs text-neutral-500 dark:text-neutral-400 uppercase tracking-wide">{t("Plan")}</div>
-            <div className="font-medium">{organization.subscription.planName}</div>
-          </div>
-          <div>
-            <div className="text-xs text-neutral-500 dark:text-neutral-400 uppercase tracking-wide">{t("Status")}</div>
-            <div className="font-medium">{organization.subscription.status}</div>
-          </div>
-          <div>
-            <div className="text-xs text-neutral-500 dark:text-neutral-400 uppercase tracking-wide">{t("Event Limit")}</div>
-            <div className="font-medium">
-              {organization.subscription.eventLimit ? formatter(organization.subscription.eventLimit) : t("Unlimited")}
-            </div>
-          </div>
-          {organization.subscription.currentPeriodEnd && (
-            <div>
-              <div className="text-xs text-neutral-500 dark:text-neutral-400 uppercase tracking-wide">{t("Period End")}</div>
-              <div className="font-medium">
-                {formatDistanceToNow(new Date(organization.subscription.currentPeriodEnd), {
-                  addSuffix: true,
-                })}
+      <div className="min-w-0 space-y-5">
+        <section>
+          <SectionLabel>
+            {t("Sites")} <span className="tabular-nums">· {sites.length}</span>
+          </SectionLabel>
+          {sites.length > 0 ? (
+            <div className="overflow-hidden rounded-md border border-neutral-100 bg-white dark:border-neutral-800 dark:bg-neutral-900">
+              <div className="max-h-60 divide-y divide-neutral-100 overflow-y-auto dark:divide-neutral-800">
+                {sites.map(site => (
+                  <div key={site.siteId} className="flex items-center justify-between gap-3 px-3 py-2">
+                    <div className="flex min-w-0 items-center gap-2">
+                      <Favicon domain={site.domain} className="h-4 w-4 shrink-0" />
+                      <Link
+                        href={`/${site.siteId}`}
+                        target="_blank"
+                        className="truncate text-sm font-medium hover:underline"
+                      >
+                        {site.name || site.domain}
+                      </Link>
+                    </div>
+                    <div className="flex shrink-0 items-center gap-3 text-sm tabular-nums">
+                      <span className="w-24 text-right">
+                        {formatter(site.eventsLast24Hours)}
+                        <span className="ml-1 text-xs text-neutral-500 dark:text-neutral-400">24h</span>
+                      </span>
+                      <span className="w-24 text-right">
+                        {formatter(site.eventsLast30Days)}
+                        <span className="ml-1 text-xs text-neutral-500 dark:text-neutral-400">30d</span>
+                      </span>
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
+          ) : (
+            <div className="text-sm text-neutral-500 dark:text-neutral-400">{t("No sites")}</div>
           )}
-          {organization.subscription.cancelAtPeriodEnd && (
-            <div>
-              <div className="text-xs text-neutral-500 dark:text-neutral-400 uppercase tracking-wide">{t("Cancellation")}</div>
-              <div className="font-medium text-orange-400">{t("Cancels at period end")}</div>
-            </div>
-          )}
-        </div>
-      </div>
+        </section>
 
-      {/* Sites */}
-      <div>
-        <div className="flex items-center gap-2 text-sm font-semibold mb-3">
-          <Building2 className="h-4 w-4" />
-          {t("Sites ({count})", { count: String(organization.sites.length) })}
-        </div>
-        {organization.sites.length > 0 ? (
-          <div className="flex flex-wrap gap-2">
-            {organization.sites.map(site => (
-              <Link
-                key={site.siteId}
-                href={`/${site.siteId}`}
-                target="_blank"
-                className="inline-flex items-center gap-2 px-3 py-2 bg-neutral-100 dark:bg-neutral-800 hover:bg-neutral-200 dark:hover:bg-neutral-700 border border-neutral-200 dark:border-neutral-700 rounded-md text-sm transition-colors"
-              >
-                <div className="flex flex-col">
-                  <span className="font-medium">{site.name}</span>
-                  <span className="text-xs text-neutral-500 dark:text-neutral-400">
-                    {t("{events24h} events (24h)", { events24h: formatter(site.eventsLast24Hours) })} · {t("{events30d} (30d)", { events30d: formatter(site.eventsLast30Days) })}
-                  </span>
-                </div>
-                <ExternalLink className="h-3 w-3" />
-              </Link>
-            ))}
-          </div>
-        ) : (
-          <div className="text-neutral-500 dark:text-neutral-400 p-4 border border-neutral-100 dark:border-neutral-800 rounded">
-            {t("No sites")}
-          </div>
-        )}
-      </div>
-
-      {/* Members */}
-      <div>
-        <div className="flex items-center gap-2 text-sm font-semibold mb-3">
-          <User className="h-4 w-4" />
-          {t("Members ({count})", { count: String(organization.members.length) })}
-        </div>
-        {organization.members.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-            {organization.members.map(member => (
-              <div
-                key={member.userId}
-                className="p-3 border border-neutral-100 dark:border-neutral-800 rounded flex items-center justify-between"
-              >
-                <div className="flex flex-col gap-1">
-                  <div className="font-medium flex items-center gap-2">
-                    {member.name}{" "}
-                    <Badge variant="outline" className="text-xs">
-                      {member.role}
-                    </Badge>
+        <section>
+          <SectionLabel>
+            {t("Members")} <span className="tabular-nums">· {members.length}</span>
+          </SectionLabel>
+          {members.length > 0 ? (
+            <div className="overflow-hidden rounded-md border border-neutral-100 bg-white dark:border-neutral-800 dark:bg-neutral-900">
+              <div className="max-h-60 divide-y divide-neutral-100 overflow-y-auto dark:divide-neutral-800">
+                {members.map(member => (
+                  <div key={member.userId} className="flex flex-wrap items-center gap-x-3 gap-y-2 px-3 py-2">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2">
+                        <span className="truncate text-sm font-medium">{member.name || member.email}</span>
+                        <Badge
+                          variant={member.role?.toLowerCase() === "owner" ? "default" : "outline"}
+                          className="shrink-0"
+                        >
+                          {member.role}
+                        </Badge>
+                      </div>
+                      <div className="mt-0.5 truncate text-xs text-neutral-500 dark:text-neutral-400">
+                        {member.email}
+                      </div>
+                    </div>
+                    <CopyText
+                      text={member.userId}
+                      maxLength={10}
+                      className={cn("hidden text-neutral-500 dark:text-neutral-400 sm:flex", "[&>span]:text-xs")}
+                      tooltipText={t("Copy user ID")}
+                    />
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handleImpersonate(member.userId)}
+                      disabled={member.userId === currentUserId || impersonatingId !== null}
+                    >
+                      <UserCheck className="h-3.5 w-3.5" />
+                      {impersonatingId === member.userId ? t("Impersonating...") : t("Impersonate")}
+                    </Button>
                   </div>
-                  <div className="text-sm text-neutral-700 dark:text-neutral-200">{member.email}</div>
-                  <div className="text-xs text-neutral-500 dark:text-neutral-400">
-                    <CopyText text={member.userId} className="text-xs"></CopyText>
-                  </div>
-                  <Button
-                    onClick={() => handleImpersonate(member.userId)}
-                    size="sm"
-                    variant="outline"
-                    className="flex items-center gap-1"
-                    disabled={member.userId === userStore.getState().user?.id}
-                  >
-                    <UserCheck className="h-3 w-3" />
-                    {t("Impersonate")}
-                  </Button>
-                </div>
+                ))}
               </div>
-            ))}
-          </div>
-        ) : (
-          <div className="text-neutral-500 dark:text-neutral-400 p-4 border border-neutral-100 dark:border-neutral-800 rounded">
-            {t("No members")}
-          </div>
-        )}
+            </div>
+          ) : (
+            <div className="text-sm text-neutral-500 dark:text-neutral-400">{t("No members")}</div>
+          )}
+        </section>
       </div>
     </div>
   );

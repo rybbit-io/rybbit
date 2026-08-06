@@ -1,7 +1,16 @@
 import type { FastifyReply, FastifyRequest } from "fastify";
 
 const corsMethods = ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"];
-const corsAllowedHeaders = ["Content-Type", "Authorization", "X-Requested-With", "x-captcha-response", "x-private-key"];
+const corsAllowedHeaders = [
+  "Content-Type",
+  "Authorization",
+  "X-Requested-With",
+  "x-captcha-response",
+  "x-private-key",
+  "MCP-Protocol-Version",
+  "MCP-Session-Id",
+  "Last-Event-ID",
+];
 
 type CorsOptions = {
   origin: boolean;
@@ -84,6 +93,10 @@ export function isPublicCorsPath(path: string): boolean {
     path === "/api/track" ||
     path === "/api/identify" ||
     path === "/api/version" ||
+    // OAuth/OIDC discovery documents (RFC 8414/9728) are public metadata that
+    // browser-based MCP clients fetch cross-origin.
+    path.startsWith("/.well-known/oauth-") ||
+    path.startsWith("/.well-known/openid-configuration") ||
     path.startsWith("/api/session-replay/record/") ||
     path.startsWith("/api/site/tracking-config/") ||
     /^\/api\/sites\/[^/]+\/sessions$/.test(path) ||
@@ -92,10 +105,7 @@ export function isPublicCorsPath(path: string): boolean {
   );
 }
 
-export function getCorsOptionsForRequest(
-  request: FastifyRequest,
-  env: NodeJS.ProcessEnv = process.env
-): CorsOptions {
+export function getCorsOptionsForRequest(request: FastifyRequest, env: NodeJS.ProcessEnv = process.env): CorsOptions {
   const requestOrigin = normalizeCorsOrigin(request.headers.origin);
   if (!requestOrigin) {
     return {
@@ -125,17 +135,19 @@ export function getCorsOptionsForRequest(
   };
 }
 
-export function shouldRejectUntrustedOrigin(
-  request: FastifyRequest,
-  env: NodeJS.ProcessEnv = process.env
-): boolean {
+export function shouldRejectUntrustedOrigin(request: FastifyRequest, env: NodeJS.ProcessEnv = process.env): boolean {
   if (!unsafeMethods.has(request.method)) {
     return false;
   }
 
-  const requestOrigin = normalizeCorsOrigin(request.headers.origin);
-  if (!requestOrigin || isPublicCorsPath(getRequestPath(request))) {
+  const path = getRequestPath(request);
+  if (request.headers.origin === undefined || isPublicCorsPath(path)) {
     return false;
+  }
+
+  const requestOrigin = normalizeCorsOrigin(request.headers.origin);
+  if (!requestOrigin) {
+    return true;
   }
 
   return !getTrustedCorsOrigins(env).includes(requestOrigin);

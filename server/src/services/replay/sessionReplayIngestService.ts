@@ -39,12 +39,14 @@ export class SessionReplayIngestService {
     const identifiedUserId =
       trimmedClientUserId && trimmedClientUserId !== deviceFingerprint ? trimmedClientUserId : "";
 
-    // Use device fingerprint as the primary user_id for session tracking
+    // Keep the device fingerprint as the stored user_id. The identified ID only
+    // scopes session assignment so stored user identity semantics stay unchanged.
     const userId = deviceFingerprint;
 
     // Get or create a session ID from the sessions service
     const { sessionId } = await sessionsService.updateSession({
       userId,
+      identifiedUserId,
       siteId,
     });
 

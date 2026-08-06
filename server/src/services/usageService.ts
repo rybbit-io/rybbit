@@ -6,7 +6,7 @@ import { processResults } from "../api/analytics/utils/utils.js";
 import { clickhouse } from "../db/clickhouse/clickhouse.js";
 import { db } from "../db/postgres/postgres.js";
 import { member, organization, sites, user } from "../db/postgres/schema.js";
-import { IS_CLOUD } from "../lib/const.js";
+import { IS_CLOUD, USAGE_COUNTED_EVENT_TYPES } from "../lib/const.js";
 import { sendApproachingLimitEmail, sendLimitExceededEmail } from "../lib/email/email.js";
 import { createServiceLogger } from "../lib/logger/logger.js";
 import {
@@ -126,7 +126,7 @@ class UsageService {
 
       return owners.map(owner => owner.email);
     } catch (error) {
-      this.logger.error(error as Error, `Error getting owner emails for organization ${organizationId}`);
+      this.logger.error({ err: error, organizationId }, "Error getting organization owner emails");
       return [];
     }
   }
@@ -198,13 +198,14 @@ class UsageService {
             site_id,
             COUNT(*) as count
           FROM events
-          WHERE type IN ('pageview', 'custom_event', 'performance', 'outbound', 'button_click', 'copy', 'form_submit', 'input_change')
+          WHERE type IN {types:Array(String)}
             AND timestamp >= toDate({periodStart:String})
           GROUP BY site_id
         `,
         format: "JSONEachRow",
         query_params: {
           periodStart: periodStart,
+          types: [...USAGE_COUNTED_EVENT_TYPES],
         },
       });
 
@@ -332,7 +333,8 @@ class UsageService {
           const isOverLimit = eventCount > eventLimit;
 
           const replayCount = orgStats?.replayCount || 0;
-          const replayBlocked = !subscriptionIncludesReplay(subscription) || replayCount >= getReplayLimit(subscription);
+          const replayBlocked =
+            !subscriptionIncludesReplay(subscription) || replayCount >= getReplayLimit(subscription);
 
           let sendApproaching = false;
           if (!alreadyNotifiedApproaching && !isOverLimit && Number.isFinite(eventLimit) && daysRemaining >= 2) {
@@ -361,16 +363,19 @@ class UsageService {
               for (const ownerEmail of ownerEmails) {
                 try {
                   await sendLimitExceededEmail(ownerEmail, orgData.name, eventCount, eventLimit);
-                  this.logger.info(`Sent limit exceeded email to owner ${ownerEmail} for organization ${orgData.name}`);
+                  this.logger.info({ organizationId: orgData.id }, "Sent limit-exceeded email to organization owner");
                 } catch (error) {
                   this.logger.error(
-                    error as Error,
-                    `Failed to send limit exceeded email to owner ${ownerEmail} for organization ${orgData.name}`
+                    { err: error, organizationId: orgData.id },
+                    "Failed to send limit-exceeded email to organization owner"
                   );
                 }
               }
             } else {
-              this.logger.warn(`No owners found for organization ${orgData.name}, skipping limit exceeded email`);
+              this.logger.warn(
+                { organizationId: orgData.id },
+                "No organization owners found; skipping limit-exceeded email"
+              );
             }
           }
 
@@ -381,17 +386,21 @@ class UsageService {
                 try {
                   await sendApproachingLimitEmail(ownerEmail, orgData.name, eventCount, eventLimit);
                   this.logger.info(
-                    `Sent approaching-limit email to owner ${ownerEmail} for organization ${orgData.name}`
+                    { organizationId: orgData.id },
+                    "Sent approaching-limit email to organization owner"
                   );
                 } catch (error) {
                   this.logger.error(
-                    error as Error,
-                    `Failed to send approaching-limit email to owner ${ownerEmail} for organization ${orgData.name}`
+                    { err: error, organizationId: orgData.id },
+                    "Failed to send approaching-limit email to organization owner"
                   );
                 }
               }
             } else {
-              this.logger.warn(`No owners found for organization ${orgData.name}, skipping approaching-limit email`);
+              this.logger.warn(
+                { organizationId: orgData.id },
+                "No organization owners found; skipping approaching-limit email"
+              );
             }
           }
 

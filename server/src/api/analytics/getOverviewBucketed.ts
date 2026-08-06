@@ -1,17 +1,17 @@
 import { FilterParams } from "@rybbit/shared";
 import { FastifyReply, FastifyRequest } from "fastify";
 import SqlString from "sqlstring";
-import { clickhouse } from "../../db/clickhouse/clickhouse.js";
 import { validateTimeStatementFillParams } from "./utils/query-validation.js";
 import {
   getTimeStatement,
   normalizeDatetimeForClickhouse,
-  processResults,
   TimeBucketToFn,
   bucketIntervalMap,
 } from "./utils/utils.js";
 import { getFilterStatement } from "./utils/getFilterStatement.js";
 import { TimeBucket } from "./types.js";
+import { analyticsRoute, runAnalyticsQuery } from "./utils/analyticsQuery.js";
+import { effectiveUserId } from "./utils/effectiveUserId.js";
 
 function getTimeStatementFill(params: FilterParams, bucket: TimeBucket) {
   const { params: validatedParams, bucket: validatedBucket } = validateTimeStatementFillParams(params, bucket);
@@ -89,7 +89,7 @@ function getTimeStatementFill(params: FilterParams, bucket: TimeBucket) {
   return "";
 }
 
-const getQuery = (params: FilterParams<{ bucket: TimeBucket }>, siteId: number) => {
+export const buildOverviewBucketedQuery = (params: FilterParams<{ bucket: TimeBucket }>, siteId: number) => {
   const {
     start_date,
     end_date,
@@ -110,7 +110,7 @@ const getQuery = (params: FilterParams<{ bucket: TimeBucket }>, siteId: number) 
 
   const isAllTime = !start_date && !end_date && !start_datetime && !end_datetime && !pastMinutesRange;
   const fillClause = isAllTime ? "" : getTimeStatementFill(params, bucket);
-  const tzEscaped = SqlString.escape(time_zone);
+  const tzEscaped = SqlString.escape(time_zone || "UTC");
 
   return `
 WITH
@@ -169,7 +169,7 @@ FULL JOIN
     SELECT
         toDateTime(${TimeBucketToFn[bucket]}(toTimeZone(timestamp, ${tzEscaped}))) AS time,
         countIf(type = 'pageview') AS pageviews,
-        COUNT(DISTINCT user_id) AS users
+        COUNT(DISTINCT ${effectiveUserId()}) AS users
     FROM events
     WHERE
         site_id = {siteId:Int32}
@@ -183,32 +183,19 @@ ORDER BY time`;
 
 type getOverviewBucketed = { time: string; pageviews: number }[];
 
-export async function getOverviewBucketed(
-  req: FastifyRequest<{
-    Params: {
-      siteId: string;
-    };
-    Querystring: FilterParams<{
-      bucket: TimeBucket;
-    }>;
-  }>,
-  res: FastifyReply
-) {
-  const {
-    start_date,
-    end_date,
-    time_zone,
-    bucket,
-    filters,
-    start_datetime,
-    end_datetime,
-    past_minutes_start,
-    past_minutes_end,
-  } = req.query;
-  const site = req.params.siteId;
+interface GetOverviewBucketedRequest {
+  Params: {
+    siteId: string;
+  };
+  Querystring: FilterParams<{
+    bucket: TimeBucket;
+  }>;
+}
 
-  const query = getQuery(
-    {
+export const getOverviewBucketed = analyticsRoute<GetOverviewBucketedRequest>(
+  "pageviews",
+  async (req: FastifyRequest<GetOverviewBucketedRequest>, res: FastifyReply) => {
+    const {
       start_date,
       end_date,
       time_zone,
@@ -218,23 +205,27 @@ export async function getOverviewBucketed(
       end_datetime,
       past_minutes_start,
       past_minutes_end,
-    },
-    Number(site)
-  );
+    } = req.query;
+    const site = req.params.siteId;
 
-  try {
-    const result = await clickhouse.query({
-      query,
-      format: "JSONEachRow",
-      query_params: {
-        siteId: Number(site),
-      },
+    const data = await runAnalyticsQuery<getOverviewBucketed[number]>({
+      query: buildOverviewBucketedQuery(
+        {
+          start_date,
+          end_date,
+          time_zone,
+          bucket,
+          filters,
+          start_datetime,
+          end_datetime,
+          past_minutes_start,
+          past_minutes_end,
+        },
+        Number(site)
+      ),
+      params: { siteId: Number(site) },
     });
 
-    const data = await processResults<getOverviewBucketed[number]>(result);
     return res.send({ data });
-  } catch (error) {
-    console.error("Error fetching pageviews:", error);
-    return res.status(500).send({ error: "Failed to fetch pageviews" });
   }
-}
+);

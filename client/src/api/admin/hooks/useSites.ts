@@ -7,6 +7,7 @@ import {
   fetchSiteHasData,
   fetchSiteIsPublic,
   fetchSitesFromOrg,
+  fetchSiteUsage,
   GetSitesFromOrgResponse,
 } from "../endpoints";
 
@@ -52,6 +53,15 @@ export function useGetSite(siteId?: string | number) {
     },
     staleTime: 60000,
     enabled: !!siteIdToUse,
+  });
+}
+
+export function useGetSiteUsage(siteId?: number) {
+  return useQuery({
+    queryKey: ["get-site-usage", siteId],
+    queryFn: () => fetchSiteUsage(siteId!),
+    staleTime: 60000,
+    enabled: !!siteId,
   });
 }
 

@@ -4,21 +4,21 @@ import type { Metadata } from "next";
 import { createOGImageUrl } from "@/lib/metadata";
 
 export const metadata: Metadata = {
-  title: "Rybbit vs PostHog: Simple Analytics Alternative",
+  title: "Rybbit vs PostHog: The Lightweight PostHog Alternative",
   description:
-    "Compare Rybbit and PostHog. See why Rybbit's focused web analytics beats PostHog's complex product suite for teams wanting simplicity without sacrificing power.",
+    "Looking for a lighter PostHog alternative? Rybbit focuses on web analytics done well: simple setup, session replay, funnels, no product-suite bloat.",
   openGraph: {
     title: "Rybbit vs PostHog: Focused Analytics vs Feature Bloat",
-    description: "PostHog does everything. Rybbit does web analytics perfectly. Compare the approaches.",
+    description: "PostHog does everything. Rybbit focuses on web analytics. Compare the approaches.",
     type: "website",
     url: "https://rybbit.com/compare/posthog",
-    images: [createOGImageUrl("Rybbit vs PostHog: Focused Analytics vs Feature Bloat", "PostHog does everything. Rybbit does web analytics perfectly. Compare the approaches.", "Compare")],
+    images: [createOGImageUrl("Rybbit vs PostHog: Focused Analytics vs Feature Bloat", "PostHog does everything. Rybbit focuses on web analytics. Compare the approaches.", "Compare")],
   },
   twitter: {
     card: "summary_large_image",
     title: "Rybbit vs PostHog Comparison",
-    description: "Focused web analytics vs all-in-one platform. Which approach fits your needs?",
-    images: [createOGImageUrl("Rybbit vs PostHog Comparison", "Focused web analytics vs all-in-one platform. Which approach fits your needs?", "Compare")],
+    description: "Focused web analytics vs a full product suite. Which approach fits your needs?",
+    images: [createOGImageUrl("Rybbit vs PostHog Comparison", "Focused web analytics vs a full product suite. Which approach fits your needs?", "Compare")],
   },
   alternates: {
     canonical: "https://rybbit.com/compare/posthog",
@@ -48,7 +48,7 @@ const structuredData = {
           name: "How is Rybbit different from PostHog?",
           acceptedAnswer: {
             "@type": "Answer",
-            text: "Rybbit focuses exclusively on web analytics with a clean, simple interface. PostHog is an all-in-one product suite with analytics, feature flags, A/B testing, surveys, and more. If you primarily need web analytics, Rybbit delivers a faster, simpler experience.",
+            text: "Rybbit focuses exclusively on web analytics with a clean, simple interface. PostHog is a full product suite with analytics, feature flags, A/B testing, surveys, and more. If you primarily need web analytics, Rybbit delivers a faster, simpler experience.",
           },
         },
         {
@@ -56,7 +56,7 @@ const structuredData = {
           name: "Is Rybbit really simpler than PostHog?",
           acceptedAnswer: {
             "@type": "Answer",
-            text: "Yes. Rybbit provides a single-page dashboard where all essential metrics are visible at a glance. PostHog's extensive feature set means more menus, more configuration, and a steeper learning curve, especially for non-technical team members.",
+            text: "Yes. Rybbit provides a single-page dashboard where all essential metrics are visible on one screen. PostHog's extensive feature set means more menus, more configuration, and a steeper learning curve, especially for non-technical team members.",
           },
         },
         {
@@ -64,7 +64,7 @@ const structuredData = {
           name: "Does PostHog have features Rybbit doesn't?",
           acceptedAnswer: {
             "@type": "Answer",
-            text: "Yes, PostHog offers feature flags, A/B testing, surveys, heatmaps, and a SQL query interface that Rybbit doesn't have. These are powerful tools for product teams, but they add complexity. Rybbit intentionally focuses on doing web analytics well.",
+            text: "Yes, PostHog offers feature flags, A/B testing, surveys, heatmaps, and a SQL query interface that Rybbit doesn't have. These are useful tools for product teams, but they add complexity. Rybbit intentionally focuses on doing web analytics well.",
           },
         },
         {
@@ -102,6 +102,7 @@ export default function PostHog() {
         chooseCompetitor={posthogExtendedData.chooseCompetitor}
         rybbitPricing={posthogExtendedData.rybbitPricing}
         competitorPricing={posthogExtendedData.competitorPricing}
+        deepDive={posthogExtendedData.deepDive}
         faqItems={posthogExtendedData.faqItems}
         relatedResources={posthogExtendedData.relatedResources}
       />

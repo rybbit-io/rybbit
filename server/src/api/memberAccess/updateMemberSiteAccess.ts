@@ -70,10 +70,7 @@ export async function updateMemberSiteAccess(
     }
 
     // Update member's hasRestrictedSiteAccess flag
-    await db
-      .update(member)
-      .set({ hasRestrictedSiteAccess })
-      .where(eq(member.id, memberId));
+    await db.update(member).set({ hasRestrictedSiteAccess }).where(eq(member.id, memberId));
 
     // Delete existing site access entries
     await db.delete(memberSiteAccess).where(eq(memberSiteAccess.memberId, memberId));
@@ -113,7 +110,7 @@ export async function updateMemberSiteAccess(
       })),
     });
   } catch (error) {
-    console.error("Error updating member site access:", error);
+    request.log.error({ err: error }, "Error updating member site access");
     return reply.status(500).send({ error: "Failed to update member site access" });
   }
 }

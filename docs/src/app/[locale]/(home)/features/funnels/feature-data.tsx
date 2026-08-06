@@ -31,7 +31,7 @@ export const capabilities: FeatureCapability[] = [
     icon: <BarChart3 className="w-5 h-5" />,
     title: "Conversion rates at every step",
     description:
-      "Get precise conversion and drop-off percentages between each step. No sampling — every single event is counted.",
+      "Get precise conversion and drop-off percentages between each step. No sampling: every single event is counted.",
   },
   {
     icon: <Filter className="w-5 h-5" />,
@@ -97,13 +97,13 @@ export const whoUses: WhoUsesItem[] = [
     icon: <Target className="w-6 h-6" />,
     title: "Marketing teams",
     description:
-      "Track campaign-to-conversion funnels. See which traffic sources produce the highest-converting users, not just the most clicks.",
+      "Track campaign-to-conversion funnels. See which traffic sources produce users who actually convert, rather than just the most clicks.",
   },
   {
     icon: <Rocket className="w-6 h-6" />,
     title: "Founders & operators",
     description:
-      "Get a clear picture of your core conversion metrics without hiring a data team. Simple setup, instant insights.",
+      "Get a clear picture of your core conversion metrics without hiring a data team.",
   },
   {
     icon: <ShoppingCart className="w-6 h-6" />,
@@ -129,12 +129,12 @@ export const faqItems: FAQItem[] = [
   {
     question: "Do I need to set up funnels separately from events?",
     answer:
-      "No. Funnels are built on top of the events you're already tracking. If you're tracking pageviews (automatic) or custom events, you can create funnels from them immediately — no additional instrumentation needed.",
+      "No. Funnels are built on top of the events you're already tracking. If you're tracking pageviews (automatic) or custom events, you can create funnels from them immediately, with no additional instrumentation.",
   },
   {
     question: "Can I filter funnels by user property or segment?",
     answer:
-      "Yes. You can apply any filter — country, device, browser, referrer, UTM parameters, or custom event properties — to see how different segments perform through your funnel.",
+      "Yes. You can apply any filter (country, device, browser, referrer, UTM parameters, or custom event properties) to see how different segments perform through your funnel.",
   },
   {
     question: "How is funnel data calculated?",
@@ -144,7 +144,7 @@ export const faqItems: FAQItem[] = [
   {
     question: "Can I use page paths and custom events in the same funnel?",
     answer:
-      "Yes. Each funnel step can be either a page path or a custom event. You can mix and match freely — for example, landing page visit → signup event → onboarding page → activation event.",
+      "Yes. Each funnel step can be either a page path or a custom event. You can mix and match freely: for example, landing page visit, then signup event, then onboarding page, then activation event.",
   },
   {
     question: "How many funnels can I create?",
