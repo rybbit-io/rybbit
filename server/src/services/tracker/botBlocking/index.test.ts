@@ -535,4 +535,133 @@ describe("checkBotBlocking", () => {
     expect(result?.detections.map(detection => detection.layer)).toEqual(["rate_anomaly"]);
     expect(result?.detections[0].anomalyReasons?.map(reason => reason.rule)).toContain("tuple_events_10s");
   });
+
+  it("convicts a browser release too old to have run the tracker", async () => {
+    const userAgent =
+      "Mozilla/5.0 (Linux; Android 8.0; SM-G930F) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/40.0.0.0 Mobile Safari/537.36";
+
+    const result = await checkBotBlocking({
+      request: requestWithHeaders({ ...browserHeaders, "user-agent": userAgent }),
+      blockBots: true,
+      payload: {
+        ...basePayload,
+        userAgent,
+        clientBotScore: 0,
+        clientBotSignalMask: 0,
+        screenWidth: 375,
+        screenHeight: 812,
+      },
+    });
+
+    expect(result).toMatchObject({
+      isBot: true,
+      message: "Bot detected using ua-pattern",
+      eventProperties: {
+        detectedUaPattern: true,
+        botCategory: "stale_version",
+        matchedUaPattern: "Chrome/40",
+      },
+    });
+    expect(result?.detections.map(detection => detection.layer)).toEqual(["ua_pattern"]);
+  });
+
+  it("keeps a stale version from overriding a more specific UA pattern match", async () => {
+    const userAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) HeadlessChrome/40.0.0.0 Safari/537.36";
+
+    const result = await checkBotBlocking({
+      request: requestWithHeaders({ ...browserHeaders, "user-agent": userAgent }),
+      blockBots: true,
+      payload: { ...basePayload, userAgent, clientBotScore: 0, clientBotSignalMask: 0 },
+    });
+
+    expect(result).toMatchObject({
+      eventProperties: { botCategory: "headless", matchedUaPattern: "headlesschrome" },
+    });
+  });
+
+  it("skips the stale-version rule for mobile sites, where native SDK traffic is not browser-shaped", async () => {
+    const userAgent =
+      "Mozilla/5.0 (Linux; Android 8.0; SM-G930F) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/40.0.0.0 Mobile Safari/537.36";
+
+    const result = await checkBotBlocking({
+      request: requestWithHeaders({ ...browserHeaders, "user-agent": userAgent }),
+      blockBots: true,
+      isMobileSite: true,
+      payload: { ...basePayload, userAgent, clientBotScore: 0, clientBotSignalMask: 0 },
+    });
+
+    expect(result).toBeNull();
+  });
+
+  it("convicts a square screen, which no shipping display reports", async () => {
+    const result = await checkBotBlocking({
+      request: requestWithHeaders(browserHeaders),
+      blockBots: true,
+      payload: {
+        ...basePayload,
+        clientBotScore: 0,
+        clientBotSignalMask: 0,
+        screenWidth: 2000,
+        screenHeight: 2000,
+      },
+    });
+
+    expect(result).toMatchObject({
+      isBot: true,
+      message: "Bot detected using client signals",
+      eventProperties: { detectedClientSignals: true },
+    });
+    expect(result?.detections[0]).toMatchObject({ clientSignals: ["squareScreen"] });
+  });
+
+  it("convicts a square screen on a mobile UA too", async () => {
+    // The square fleets claim Android and iOS as well as desktop, so unlike the
+    // default-viewport rules this one is not gated on a desktop user-agent.
+    const result = await checkBotBlocking({
+      request: requestWithHeaders({
+        ...browserHeaders,
+        "user-agent":
+          "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/150.0.0.0 Mobile Safari/537.36",
+      }),
+      blockBots: true,
+      payload: { ...basePayload, clientBotScore: 0, clientBotSignalMask: 0, screenWidth: 2000, screenHeight: 2000 },
+    });
+
+    expect(result?.detections[0]).toMatchObject({ clientSignals: ["squareScreen"] });
+  });
+
+  it("convicts screen dimensions outside the range a real display reports", async () => {
+    for (const [screenWidth, screenHeight] of [
+      [1, 1],
+      [16384, 16384],
+      [1920, 10000],
+    ]) {
+      resetBotDetectionStatsForTests();
+      const result = await checkBotBlocking({
+        request: requestWithHeaders(browserHeaders),
+        blockBots: true,
+        payload: { ...basePayload, clientBotScore: 0, clientBotSignalMask: 0, screenWidth, screenHeight },
+      });
+
+      expect(result?.detections[0], `${screenWidth}x${screenHeight}`).toMatchObject({
+        clientSignals: ["impossibleDimensions"],
+      });
+    }
+  });
+
+  it("leaves real displays at the edges of the plausible range alone", async () => {
+    for (const [screenWidth, screenHeight] of [
+      [320, 480], // smallest phones
+      [7680, 4320], // 8K desktop
+      [1920, 1080],
+    ]) {
+      const result = await checkBotBlocking({
+        request: requestWithHeaders(browserHeaders),
+        blockBots: true,
+        payload: { ...basePayload, clientBotScore: 0, clientBotSignalMask: 0, screenWidth, screenHeight },
+      });
+
+      expect(result, `${screenWidth}x${screenHeight}`).toBeNull();
+    }
+  });
 });

@@ -483,8 +483,14 @@
     impossibleDimensions: 1 << 7,
     outerDimensionsWeird: 1 << 8,
     pluginApiAbsence: 1 << 9,
-    defaultViewport1280x1200: 1 << 10
+    defaultViewport1280x1200: 1 << 10,
+    squareScreen: 1 << 11
   };
+  var MIN_PLAUSIBLE_SCREEN_DIMENSION = 200;
+  var MAX_PLAUSIBLE_SCREEN_DIMENSION = 8192;
+  function isPlausibleScreenDimensions(width, height) {
+    return Number.isFinite(width) && Number.isFinite(height) && width >= MIN_PLAUSIBLE_SCREEN_DIMENSION && height >= MIN_PLAUSIBLE_SCREEN_DIMENSION && width <= MAX_PLAUSIBLE_SCREEN_DIMENSION && height <= MAX_PLAUSIBLE_SCREEN_DIMENSION;
+  }
   var cachedBotSignals = null;
   var MAX_BOT_SCORE = 10;
   function getBotScore() {
@@ -548,8 +554,10 @@
       if ((outerHeight === 0 || outerWidth === 0) && !isPrerendering()) {
         addSignal(CLIENT_BOT_SIGNAL_MASKS.zeroOuterDimensions, 2);
       }
-      if (!Number.isFinite(screenWidth) || !Number.isFinite(screenHeight) || screenWidth <= 0 || screenHeight <= 0 || screenWidth > 1e5 || screenHeight > 1e5) {
+      if (!isPlausibleScreenDimensions(screenWidth, screenHeight)) {
         addSignal(CLIENT_BOT_SIGNAL_MASKS.impossibleDimensions, 3);
+      } else if (screenWidth === screenHeight) {
+        addSignal(CLIENT_BOT_SIGNAL_MASKS.squareScreen, 3);
       }
       if (isDesktopUA && screenWidth === 800 && screenHeight === 600) {
         addSignal(CLIENT_BOT_SIGNAL_MASKS.defaultViewport800x600, 3);

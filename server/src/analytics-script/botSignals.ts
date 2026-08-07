@@ -18,7 +18,30 @@ export const CLIENT_BOT_SIGNAL_MASKS = {
   outerDimensionsWeird: 1 << 8,
   pluginApiAbsence: 1 << 9,
   defaultViewport1280x1200: 1 << 10,
+  squareScreen: 1 << 11,
 } as const;
+
+/**
+ * Plausible bounds for `screen.width`/`screen.height` — the physical display,
+ * not the window, so neither a resized window nor a zoomed page moves them.
+ * The smallest real phone screens report ~240 CSS px; the largest single
+ * display (8K) reports 7680. Values outside this range come from synthetic
+ * renderers: production traffic outside it is 1x1, 16384x16384, and
+ * 1920x10000-style screenshot viewports on cloud ASNs, with no engagement.
+ */
+const MIN_PLAUSIBLE_SCREEN_DIMENSION = 200;
+const MAX_PLAUSIBLE_SCREEN_DIMENSION = 8192;
+
+function isPlausibleScreenDimensions(width: number, height: number): boolean {
+  return (
+    Number.isFinite(width) &&
+    Number.isFinite(height) &&
+    width >= MIN_PLAUSIBLE_SCREEN_DIMENSION &&
+    height >= MIN_PLAUSIBLE_SCREEN_DIMENSION &&
+    width <= MAX_PLAUSIBLE_SCREEN_DIMENSION &&
+    height <= MAX_PLAUSIBLE_SCREEN_DIMENSION
+  );
+}
 
 interface BotSignalResult {
   score: number;
@@ -106,16 +129,20 @@ function calculateBotSignals(): BotSignalResult {
       addSignal(CLIENT_BOT_SIGNAL_MASKS.zeroOuterDimensions, 2);
     }
 
-    // 3. Impossible screen dimensions — invalid values from a browser-side payload
-    if (
-      !Number.isFinite(screenWidth) ||
-      !Number.isFinite(screenHeight) ||
-      screenWidth <= 0 ||
-      screenHeight <= 0 ||
-      screenWidth > 100000 ||
-      screenHeight > 100000
-    ) {
+    // 3. Screen dimensions outside the range any real display reports
+    if (!isPlausibleScreenDimensions(screenWidth, screenHeight)) {
       addSignal(CLIENT_BOT_SIGNAL_MASKS.impossibleDimensions, 3);
+    }
+
+    // 3b. Square screen. No shipping display is square, and every square value
+    //     in production traffic belongs to a renderer default — 2000x2000 on
+    //     Facebook/Amazon/Google infrastructure, 1024x1024 and 1280x1280 on
+    //     Google's, 1366x1366 and 1600x1600 on proxy fleets. Over a full day of
+    //     traffic, square-screen visitors fired interaction events on 0.5% of
+    //     their events against 6.1% for current-version traffic, so this
+    //     convicts rather than corroborates.
+    else if (screenWidth === screenHeight) {
+      addSignal(CLIENT_BOT_SIGNAL_MASKS.squareScreen, 3);
     }
 
     // 4. Default automation/display server viewport sizes. 1280x1200 is not a

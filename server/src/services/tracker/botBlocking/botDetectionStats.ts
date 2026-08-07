@@ -49,6 +49,8 @@ const CLIENT_BOT_SIGNAL_COMPONENTS = [
   ["impossibleDimensions", 1 << 7],
   ["outerDimensionsWeird", 1 << 8],
   ["pluginApiAbsence", 1 << 9],
+  ["defaultViewport1280x1200", 1 << 10],
+  ["squareScreen", 1 << 11],
 ] as const;
 
 type ClientBotSignalComponent = (typeof CLIENT_BOT_SIGNAL_COMPONENTS)[number][0];
@@ -68,6 +70,8 @@ const clientBotSignalTotals: Record<ClientBotSignalTotal, number> = {
   impossibleDimensions: 0,
   outerDimensionsWeird: 0,
   pluginApiAbsence: 0,
+  defaultViewport1280x1200: 0,
+  squareScreen: 0,
   unknownMaskBits: 0,
 };
 

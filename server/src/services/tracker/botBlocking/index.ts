@@ -8,6 +8,7 @@ import { recordBotBlockingRequest, recordBotDetections } from "./botDetectionSta
 import { classifyBotAsn } from "./botProviderAsns.js";
 import { CLIENT_BOT_SCORE_THRESHOLD } from "./config.js";
 import { detectBot } from "./headerHeuristics.js";
+import { classifyStaleBrowserVersion } from "./staleBrowserVersion.js";
 import { classifyUA } from "./uaBots/index.js";
 
 // Per-detection logging is verbose and costly at high traffic; off by default.
@@ -60,6 +61,7 @@ const CLIENT_SIGNAL_MASKS = {
   outerDimensionsWeird: 1 << 8,
   pluginApiAbsence: 1 << 9,
   defaultViewport1280x1200: 1 << 10,
+  squareScreen: 1 << 11,
 } as const;
 
 type ClientSignalName = keyof typeof CLIENT_SIGNAL_MASKS;
@@ -79,6 +81,7 @@ const CLIENT_SIGNAL_WEIGHTS: Record<ClientSignalName, number> = {
   outerDimensionsWeird: 2,
   pluginApiAbsence: 0,
   defaultViewport1280x1200: 3,
+  squareScreen: 3,
 };
 
 // Signals that are automation-specific enough to convict on their own. The
@@ -91,7 +94,8 @@ const STRONG_CLIENT_SIGNAL_BITS =
   CLIENT_SIGNAL_MASKS.impossibleDimensions |
   CLIENT_SIGNAL_MASKS.defaultViewport800x600 |
   CLIENT_SIGNAL_MASKS.defaultViewport1024x768 |
-  CLIENT_SIGNAL_MASKS.defaultViewport1280x1200;
+  CLIENT_SIGNAL_MASKS.defaultViewport1280x1200 |
+  CLIENT_SIGNAL_MASKS.squareScreen;
 
 function sumClientSignalWeights(mask: number): number {
   return Object.entries(CLIENT_SIGNAL_MASKS).reduce(
@@ -169,6 +173,23 @@ function isFiniteDimension(value: unknown): value is number {
   return typeof value === "number" && Number.isFinite(value);
 }
 
+// Mirrors MIN/MAX_PLAUSIBLE_SCREEN_DIMENSION in analytics-script/botSignals.ts.
+// The payload carries screen.width/height — the physical display, not the
+// window — so no amount of resizing or zoom moves a real value outside these.
+const MIN_PLAUSIBLE_SCREEN_DIMENSION = 200;
+const MAX_PLAUSIBLE_SCREEN_DIMENSION = 8192;
+
+function isPlausibleScreenDimensions(width: unknown, height: unknown): boolean {
+  return (
+    isFiniteDimension(width) &&
+    isFiniteDimension(height) &&
+    width >= MIN_PLAUSIBLE_SCREEN_DIMENSION &&
+    height >= MIN_PLAUSIBLE_SCREEN_DIMENSION &&
+    width <= MAX_PLAUSIBLE_SCREEN_DIMENSION &&
+    height <= MAX_PLAUSIBLE_SCREEN_DIMENSION
+  );
+}
+
 function isDesktopUserAgent(userAgent: string) {
   return /Windows NT|Macintosh|X11|Linux x86_64/.test(userAgent) && !/Mobile|Android|iPhone|iPad/.test(userAgent);
 }
@@ -197,27 +218,30 @@ function getClientSignalResult(payload: BotBlockingPayload, userAgent: string) {
     }
   }
 
+  // Re-derived server-side rather than trusted from the client mask, so the
+  // rules apply to every hit regardless of which tracker version sent it.
   const { screenWidth, screenHeight } = payload;
   const hasScreenDimensions = screenWidth !== undefined || screenHeight !== undefined;
-  if (
-    hasScreenDimensions &&
-    (!isFiniteDimension(screenWidth) ||
-      !isFiniteDimension(screenHeight) ||
-      screenWidth <= 0 ||
-      screenHeight <= 0 ||
-      screenWidth > 100000 ||
-      screenHeight > 100000)
-  ) {
+  if (hasScreenDimensions && !isPlausibleScreenDimensions(screenWidth, screenHeight)) {
     addInferredSignal("impossibleDimensions", 3);
-  } else if (isFiniteDimension(screenWidth) && isFiniteDimension(screenHeight) && isDesktopUserAgent(userAgent)) {
-    if (screenWidth === 800 && screenHeight === 600) {
-      addInferredSignal("defaultViewport800x600", 3);
+  } else if (isFiniteDimension(screenWidth) && isFiniteDimension(screenHeight)) {
+    // No shipping display is square; every square value in production traffic
+    // is a renderer default (2000x2000, 1024x1024, 1280x1280, 1366x1366).
+    // Not gated on a desktop UA — the square fleets also claim Android and iOS.
+    if (screenWidth === screenHeight) {
+      addInferredSignal("squareScreen", 3);
     }
-    if (screenWidth === 1024 && screenHeight === 768) {
-      addInferredSignal("defaultViewport1024x768", 3);
-    }
-    if (screenWidth === 1280 && screenHeight === 1200) {
-      addInferredSignal("defaultViewport1280x1200", 3);
+
+    if (isDesktopUserAgent(userAgent)) {
+      if (screenWidth === 800 && screenHeight === 600) {
+        addInferredSignal("defaultViewport800x600", 3);
+      }
+      if (screenWidth === 1024 && screenHeight === 768) {
+        addInferredSignal("defaultViewport1024x768", 3);
+      }
+      if (screenWidth === 1280 && screenHeight === 1200) {
+        addInferredSignal("defaultViewport1280x1200", 3);
+      }
     }
   }
 
@@ -276,6 +300,18 @@ export async function checkBotBlocking({
         botCategory: uaClassification.category,
         matchedPattern: uaClassification.matchedPattern,
       });
+    } else {
+      // Layer 1b: a browser release too old to have run the tracker that
+      // reported the hit. Shares the ua_pattern layer so it lands in the
+      // existing bot_category/matched_ua_pattern columns for auditing.
+      const staleBrowser = classifyStaleBrowserVersion(userAgent);
+      if (staleBrowser.isStale) {
+        addDetection("Bot detected using ua-pattern", {
+          layer: "ua_pattern",
+          botCategory: "stale_version",
+          matchedPattern: staleBrowser.matchedVersion,
+        });
+      }
     }
 
     // Layer 2: Header heuristic bot detection
