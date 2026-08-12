@@ -47,7 +47,7 @@ Updates mutable fields on an existing API key. The key is identified by its `key
       required: false,
     },
     rateLimitEnabled: {
-      description: 'Enable or disable rate limiting on the key',
+      description: 'Legacy per-key rate limit toggle. Has no effect — [rate limits](/docs/api/getting-started#rate-limits-cloud-only) are enforced per credential owner and follow that owner\'s plan',
       type: 'boolean',
       required: false,
     },
@@ -97,15 +97,15 @@ Returns the updated API key object (without the secret key value).
       type: 'string',
     },
     rateLimitEnabled: {
-      description: 'Whether rate limiting is enabled',
+      description: 'Unused legacy field. Per-key rate limiting is off; limits apply per credential owner (see [Rate Limits](/docs/api/getting-started#rate-limits-cloud-only))',
       type: 'boolean',
     },
     rateLimitMax: {
-      description: 'Requests allowed per window',
+      description: 'Unused legacy field. It is ignored — see [Rate Limits](/docs/api/getting-started#rate-limits-cloud-only) for the limits that actually apply',
       type: 'number | null',
     },
     rateLimitTimeWindow: {
-      description: 'Window length in milliseconds',
+      description: 'Unused legacy field. It is ignored — see [Rate Limits](/docs/api/getting-started#rate-limits-cloud-only) for the limits that actually apply',
       type: 'number | null',
     },
   }}
@@ -284,9 +284,9 @@ var data = await response.Content.ReadAsStringAsync();
   "expiresAt": "2026-07-25T12:00:00.000Z",
   "createdAt": "2026-06-25T12:00:00.000Z",
   "updatedAt": "2026-06-26T12:00:00.000Z",
-  "rateLimitEnabled": true,
-  "rateLimitMax": 200,
-  "rateLimitTimeWindow": 60000
+  "rateLimitEnabled": false,
+  "rateLimitMax": 10,
+  "rateLimitTimeWindow": 86400000
 }
 ```
 

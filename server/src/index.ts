@@ -150,6 +150,7 @@ import {
   createUserApiKey,
   createUserInOrganization,
   getMyOrganizations,
+  getOrgApiUsage,
   getUserOrganizations,
   listOrganizationMembers,
   oneClickUnsubscribeMarketing,
@@ -489,6 +490,7 @@ async function userRoutes(fastify: FastifyInstance) {
   fastify.post("/user/unsubscribe-marketing-oneclick", oneClickUnsubscribeMarketing); // Public - for List-Unsubscribe header
   fastify.post("/user/api-keys", authOnlyNoScopedKeys, createUserApiKey);
   fastify.post("/organizations/:organizationId/api-keys", orgAdminNoScopedKeys, createOrgApiKey);
+  fastify.get("/organizations/:organizationId/api-usage", orgOrgRead, getOrgApiUsage);
 }
 
 async function gscRoutes(fastify: FastifyInstance) {

@@ -1,5 +1,6 @@
 import { Redis } from "ioredis";
 import { createServiceLogger } from "../../lib/logger/logger.js";
+import { API_RATE_LIMIT_LUA } from "./apiRateLimitLua.js";
 import { STICKY_RESOLVE_LUA } from "./stickyResolveLua.js";
 
 const logger = createServiceLogger("redis");
@@ -154,6 +155,61 @@ export function stickyResolve(input: StickyResolveInput): Promise<[string, Stick
     input.aliasKeyPrefix,
     input.maxCandidates
   );
+}
+
+// Dedicated connection for API-key rate limiting, isolated for the same reason
+// as `sessionRedis`: every authenticated API request runs this script, and a
+// shared connection would put it behind the heavier anomaly Lua call.
+export const apiRateLimitRedis = createRedisClient("api-rate-limit");
+
+apiRateLimitRedis.defineCommand("apiRateLimit", {
+  numberOfKeys: 2,
+  lua: API_RATE_LIMIT_LUA,
+});
+
+interface ApiRateLimitRedis extends Redis {
+  apiRateLimit(...args: (string | number)[]): Promise<[number, number, number, number, number]>;
+}
+
+export interface ApiRateLimitInput {
+  burstKey: string;
+  dailyKey: string;
+  burstCapacity: number;
+  /** Tokens restored per second; capacity/refillPerSecond is the drain time. */
+  burstRefillPerSecond: number;
+  /** 0 = unlimited (self-hosted). */
+  dailyLimit: number;
+  dailyTtlSeconds: number;
+  observeOnly: boolean;
+}
+
+export interface ApiRateLimitResult {
+  allowed: boolean;
+  /** 0 = within limits, 1 = burst tier, 2 = daily tier. */
+  scope: number;
+  burstRemaining: number;
+  /** -1 when the daily tier is unlimited. */
+  dailyRemaining: number;
+  retryAfterMs: number;
+}
+
+/**
+ * Charge one request against an owner's burst bucket and daily quota. Atomic
+ * across all workers and replicas; one round-trip.
+ */
+export async function apiRateLimitConsume(input: ApiRateLimitInput): Promise<ApiRateLimitResult> {
+  const [allowed, scope, burstRemaining, dailyRemaining, retryAfterMs] = await (
+    apiRateLimitRedis as ApiRateLimitRedis
+  ).apiRateLimit(
+    input.burstKey,
+    input.dailyKey,
+    input.burstCapacity,
+    input.burstRefillPerSecond,
+    input.dailyLimit,
+    input.dailyTtlSeconds,
+    input.observeOnly ? 1 : 0
+  );
+  return { allowed: allowed === 1, scope, burstRemaining, dailyRemaining, retryAfterMs };
 }
 
 // Rolling-window counters for the bot anomaly scorer. Each counter is a sorted

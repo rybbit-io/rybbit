@@ -16,7 +16,7 @@ import { invitation, member, memberSiteAccess, sites, user } from "../db/postgre
 import { apiKeyLimitForPlan, countApiKeysForReference } from "./apiKeyLimits.js";
 import { invalidateSitesAccessCache } from "./auth-utils.js";
 import { ORG_API_KEY_CONFIG_ID } from "./bearerAuth.js";
-import { API_RATE_LIMIT_WINDOW, DISABLE_SIGNUP, IS_CLOUD, STANDARD_API_RATE_LIMIT } from "./const.js";
+import { DISABLE_SIGNUP, IS_CLOUD } from "./const.js";
 import {
   addContactToAudience,
   sendChangeEmailVerification,
@@ -48,14 +48,16 @@ const orgRoles = {
   member: orgAccessControl.newRole({ ...memberAc.statements }),
 };
 
-// Default per-key rate limits; the create endpoints override them per plan.
-const apiKeyRateLimit = IS_CLOUD
-  ? {
-      enabled: true,
-      timeWindow: API_RATE_LIMIT_WINDOW,
-      maxRequests: STANDARD_API_RATE_LIMIT,
-    }
-  : { maxRequests: 10000, timeWindow: 86400000 };
+// Rate limiting moved out of the plugin and into lib/apiRateLimit.ts, which
+// enforces a burst tier and a daily quota per credential *owner* rather than a
+// fixed window per key — the plugin's limiter is keyed on the key row, so an
+// org could multiply its budget by minting more keys.
+//
+// Disabling it drops the read-modify-write on `requestCount`, but not every
+// write: the plugin still stamps `lastRequest` on each verification (it takes
+// the "skip" branch with a fresh timestamp), which is also what makes key
+// last-used times work.
+const apiKeyRateLimit = { enabled: false };
 
 const pluginList = [
   admin(),

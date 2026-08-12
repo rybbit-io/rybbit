@@ -37,10 +37,26 @@ export const BASIC_MEMBER_LIMIT = 1;
 export const STANDARD_SITE_LIMIT = 5;
 export const STANDARD_MEMBER_LIMIT = 3;
 
-// API key rate limits per plan (requests per window)
-export const API_RATE_LIMIT_WINDOW = 60_000; // 1 minute
-export const STANDARD_API_RATE_LIMIT = 20; // 20 req/min
-export const PRO_API_RATE_LIMIT = 200; // 200 req/min
+// API rate limits. Two tiers with distinct jobs:
+//
+//   burst — identical for every plan, because this is the infrastructure guard.
+//           It bounds instantaneous request rate per credential owner so no
+//           single caller can stampede ClickHouse. A full bucket drains in one
+//           spike; it then refills continuously at capacity/window (5 req/s).
+//   daily — the plan lever, on a UTC calendar day so it resets predictably and
+//           reads like the monthly event quota users already understand.
+//
+// Enforced per *owner* (the organization for org keys, the user for user keys),
+// not per key, so minting extra keys cannot multiply an org's budget.
+export const API_BURST_LIMIT = 50; // 50 requests
+export const API_BURST_WINDOW_MS = 10_000; // per 10s => 5 req/s sustained, 50 in one spike
+export const STANDARD_API_DAILY_LIMIT = 5_000;
+export const PRO_API_DAILY_LIMIT = 25_000;
+
+// Count usage and report what would have been blocked, but let every request
+// through. Deploy in this mode first to size the daily limits against real
+// traffic before they start rejecting anyone.
+export const API_RATE_LIMIT_OBSERVE_ONLY = process.env.API_RATE_LIMIT_OBSERVE_ONLY === "true";
 
 // Maximum number of API keys per owner (a user or an organization)
 export const STANDARD_API_KEY_LIMIT = 5;

@@ -12,4 +12,5 @@ export { unsubscribeMarketing, oneClickUnsubscribeMarketing } from "./unsubscrib
 // API Keys
 export { createUserApiKey } from "./createApiKey.js";
 export { createOrgApiKey } from "./createOrgApiKey.js";
+export { getOrgApiUsage } from "./getOrgApiUsage.js";
 

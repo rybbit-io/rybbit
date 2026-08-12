@@ -107,8 +107,8 @@ export { getSiteImports, createSiteImport, deleteSiteImport } from "./import";
 export type { GetSiteImportsResponse, CreateSiteImportResponse } from "./import";
 
 // Auth endpoints
-export { getOrganizationMembers } from "./auth";
-export type { GetOrganizationMembersResponse } from "./auth";
+export { getOrganizationMembers, getOrgApiUsage } from "./auth";
+export type { GetOrganizationMembersResponse, GetOrgApiUsageResponse } from "./auth";
 
 // Teams endpoints
 export {

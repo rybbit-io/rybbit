@@ -3,7 +3,10 @@ import { FastifyRequest } from "fastify";
 import NodeCache from "node-cache";
 import { db } from "../db/postgres/postgres.js";
 import { member, memberSiteAccess, sites, user, team, teamMember, teamSiteAccess } from "../db/postgres/schema.js";
+import type { RateLimitDecision } from "./apiRateLimit.js";
+import { consumeRateLimitForIdentity } from "./apiRateLimitPolicy.js";
 import { auth } from "./auth.js";
+import { IS_CLOUD } from "./const.js";
 import {
   consumeBearerHandoff,
   extractBearerToken,
@@ -20,6 +23,56 @@ const bearerResolverDeps: BearerResolverDeps = {
   verifyApiKey: apiKey => auth.api.verifyApiKey({ body: { key: apiKey } }),
   getOAuthSession: token => auth.api.getMcpSession({ headers: new Headers({ authorization: `Bearer ${token}` }) }),
 };
+
+// Several guards resolve the same credential more than once per HTTP request:
+// a guard runs checkApiKey and then its session fallback (or the handler's
+// getUserIdFromRequest) runs it again. Budget is denominated in API requests,
+// not in internal resolutions, so the charge is memoized on the request object
+// and every later resolution reuses that one decision.
+const REQUEST_RATE_LIMIT = Symbol.for("rybbit.rateLimitDecision");
+
+type RateLimitedRequest = FastifyRequest & { [REQUEST_RATE_LIMIT]?: RateLimitDecision };
+
+function getRequestRateLimit(req: FastifyRequest): RateLimitDecision | undefined {
+  return (req as RateLimitedRequest)[REQUEST_RATE_LIMIT];
+}
+
+function setRequestRateLimit(req: FastifyRequest, decision: RateLimitDecision): void {
+  (req as RateLimitedRequest)[REQUEST_RATE_LIMIT] = decision;
+}
+
+/**
+ * Whether this request was refused by the rate limiter. For handlers that
+ * resolve credentials without a guard and would otherwise report a throttled
+ * request as unauthenticated.
+ */
+export function wasRateLimited(req: FastifyRequest): RateLimitDecision | undefined {
+  const decision = getRequestRateLimit(req);
+  return decision && !decision.allowed ? decision : undefined;
+}
+
+/**
+ * Per-request resolver dependencies. Rate limiting is cloud-only: self-hosted
+ * instances have no plans, no shared infrastructure to protect, and must not
+ * gain a Redis dependency on the authentication path.
+ */
+function resolverDepsFor(req: FastifyRequest): BearerResolverDeps {
+  if (!IS_CLOUD) {
+    return bearerResolverDeps;
+  }
+  return {
+    ...bearerResolverDeps,
+    consumeRateLimit: async identity => {
+      const memoized = getRequestRateLimit(req);
+      if (memoized) {
+        return memoized;
+      }
+      const decision = await consumeRateLimitForIdentity(identity);
+      setRequestRateLimit(req, decision);
+      return decision;
+    },
+  };
+}
 
 function resolveBearerTokenFromRequest(req: FastifyRequest): string | null {
   // Priority: Authorization: Bearer header (recommended), then ?api_key= (testing).
@@ -362,6 +415,8 @@ export interface BearerAuthResult {
   /** Set instead of userId when the credential is an organization-owned key. */
   organizationId?: string;
   rateLimited?: boolean;
+  /** Budget state for this request, when a bearer credential was resolved. */
+  rateLimit?: RateLimitDecision;
   /**
    * Scope statements carried by the credential. null = unrestricted (legacy
    * key with no permissions, or OAuth token with no custom scopes). Guards
@@ -385,13 +440,17 @@ export async function checkApiKey(
   }
 
   // Reuse the MCP gate's verification when this is an in-process proxy call, so
-  // a tool call doesn't verify (and rate-limit) the key a second time.
-  const identity =
-    consumeBearerHandoff(req.headers[INTERNAL_BEARER_HANDOFF_HEADER], apiKey) ??
-    (await resolveBearerIdentity(apiKey, bearerResolverDeps));
+  // a tool call doesn't verify (and rate-limit) the key a second time. The
+  // gate's charge covers this call; recording it here keeps a second resolution
+  // within the same request from charging again.
+  const handoffIdentity = consumeBearerHandoff(req.headers[INTERNAL_BEARER_HANDOFF_HEADER], apiKey);
+  if (handoffIdentity?.rateLimit) {
+    setRequestRateLimit(req, handoffIdentity.rateLimit);
+  }
+  const identity = handoffIdentity ?? (await resolveBearerIdentity(apiKey, resolverDepsFor(req)));
 
   if (identity.status === "rate_limited") {
-    return { valid: false, role: null, rateLimited: true, statements: null };
+    return { valid: false, role: null, rateLimited: true, rateLimit: identity.rateLimit, statements: null };
   }
   if (identity.status === "valid" && identity.organizationId) {
     // Organization-owned key: valid only against its own organization (or a
@@ -403,14 +462,15 @@ export async function checkApiKey(
         valid: true,
         role: "admin",
         organizationId: identity.organizationId,
+        rateLimit: identity.rateLimit,
         statements: identity.statements,
       };
     }
-    return { valid: false, role: null, statements: null };
+    return { valid: false, role: null, rateLimit: identity.rateLimit, statements: null };
   }
   if (identity.status === "valid" && identity.userId) {
     const membership = await resolveBearerUserOrgRole(identity.userId, options);
-    return { ...membership, statements: identity.statements };
+    return { ...membership, rateLimit: identity.rateLimit, statements: identity.statements };
   }
   return { valid: false, role: null, statements: null };
 }

@@ -16,7 +16,7 @@ import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
 POST /api/organizations/:organizationId/api-keys
 ```
 
-Creates an API key **owned by the organization itself**, rather than by your user account. The key authenticates as the organization (org-admin authority over its sites), so it survives member departures, and its plan gating, rate limits, and key-count limit all follow the owning organization's subscription. Organization keys are issued with the `rb_org_` prefix.
+Creates an API key **owned by the organization itself**, rather than by your user account. The key authenticates as the organization (org-admin authority over its sites), so it survives member departures, and its plan gating, [rate limits](/docs/api/getting-started#rate-limits-cloud-only), and key-count limit all follow the owning organization's subscription. Organization keys are issued with the `rb_org_` prefix.
 
 <Callout type="warn">You must be an **owner or admin** of the target organization. This endpoint accepts your dashboard **session** or an **unrestricted (full-access) user API key** — scoped keys and organization keys are rejected, so an organization key cannot mint other keys.</Callout>
 
@@ -105,15 +105,15 @@ Returns the created API key object. The full `key` value carries the `rb_org_` p
       type: 'string',
     },
     rateLimitEnabled: {
-      description: 'Whether rate limiting is enabled for the key',
+      description: 'Unused legacy field. Per-key rate limiting is off; limits apply per credential owner (see [Rate Limits](/docs/api/getting-started#rate-limits-cloud-only))',
       type: 'boolean',
     },
     rateLimitMax: {
-      description: 'Requests allowed per window',
+      description: 'Unused legacy field. It is ignored — see [Rate Limits](/docs/api/getting-started#rate-limits-cloud-only) for the limits that actually apply',
       type: 'number',
     },
     rateLimitTimeWindow: {
-      description: 'Window length in milliseconds',
+      description: 'Unused legacy field. It is ignored — see [Rate Limits](/docs/api/getting-started#rate-limits-cloud-only) for the limits that actually apply',
       type: 'number',
     },
   }}
@@ -290,9 +290,9 @@ var data = await response.Content.ReadAsStringAsync();
   "expiresAt": "2026-07-25T12:00:00.000Z",
   "createdAt": "2026-06-25T12:00:00.000Z",
   "updatedAt": "2026-06-25T12:00:00.000Z",
-  "rateLimitEnabled": true,
-  "rateLimitMax": 200,
-  "rateLimitTimeWindow": 60000
+  "rateLimitEnabled": false,
+  "rateLimitMax": 10,
+  "rateLimitTimeWindow": 86400000
 }
 ```
 

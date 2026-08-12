@@ -79,15 +79,62 @@ Both kinds support restricting a key to specific permissions when you create it 
 
 ### Rate Limits (Cloud Only)
 
-API key rate limits depend on your plan:
+Requests are limited in two ways: a **burst** limit that is the same on every plan, and a **daily quota** that depends on your plan.
 
-| Plan | Limit |
-|------|-------|
-| **Free / Basic** | API keys not available |
-| **Standard** | 20 requests per minute |
-| **Pro** | 200 requests per minute |
+| Plan | Burst | Daily quota |
+|------|-------|-------------|
+| **Free / Basic** | API keys not available | — |
+| **Standard** | 50 requests per 10 seconds | 5,000 requests per day |
+| **Pro** | 50 requests per 10 seconds | 25,000 requests per day |
 
-Self-hosted instances have no rate limits.
+The burst limit is a bucket of 50 requests that refills continuously at 5 requests per second. You can spend all 50 at once, then keep going at 5 per second — so short spikes are fine and there is no window boundary to line up with.
+
+The daily quota resets at **00:00 UTC**.
+
+Requests refused by the burst limit don't count against your daily quota.
+
+#### Which budget a request is charged to
+
+Limits apply per **credential owner**, never per key — creating more keys splits an existing budget rather than adding to it:
+
+| Credential | Budget |
+|------------|--------|
+| **Organization key** (`rb_org_`) | The organization's. All of an organization's keys share it. |
+| **Personal key** | Yours. All of your personal keys share one budget, across every organization you belong to. |
+| **OAuth token** (MCP) | Yours, the same budget as your personal keys. |
+
+A personal key's quota follows the most generous plan among the organizations you belong to.
+
+Self-hosted instances are not rate limited at all — neither tier applies, and no rate limit headers are sent.
+
+#### Reading your remaining budget
+
+Analytics and management endpoints report your current budget on every response, so you can pace a client without waiting to be rejected:
+
+| Header | Meaning |
+|--------|---------|
+| `X-RateLimit-Burst-Limit` / `-Remaining` | Burst bucket size and tokens left |
+| `X-RateLimit-Burst-Reset` | Seconds until the bucket is full again |
+| `X-RateLimit-Daily-Limit` / `-Remaining` | Daily quota and requests left today |
+| `X-RateLimit-Daily-Reset` | Seconds until 00:00 UTC |
+| `RateLimit-Limit` / `-Remaining` / `-Reset` | Whichever of the two is closest to running out |
+
+Treat these as advisory: a few endpoints resolve credentials outside the standard path and omit them. `Retry-After` on a `429` is always present.
+
+#### When you hit a limit
+
+A `429` names the limit you hit and tells you how long to wait, in seconds:
+
+```json
+{
+  "error": "Rate limit exceeded",
+  "scope": "daily",
+  "limit": 5000,
+  "retryAfter": 34200
+}
+```
+
+`scope` is `burst` or `daily`, and the same value is in the `Retry-After` header. The difference matters: a `burst` rejection clears in about a second, while a `daily` one lasts until the quota resets. Back off accordingly rather than retrying straight away.
 
 ---
 

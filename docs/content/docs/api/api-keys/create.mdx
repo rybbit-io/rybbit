@@ -84,15 +84,15 @@ Returns the created API key object.
       type: 'string',
     },
     rateLimitEnabled: {
-      description: 'Whether rate limiting is enabled for the key',
+      description: 'Unused legacy field. Per-key rate limiting is off; limits apply per credential owner (see [Rate Limits](/docs/api/getting-started#rate-limits-cloud-only))',
       type: 'boolean',
     },
     rateLimitMax: {
-      description: 'Requests allowed per window',
+      description: 'Unused legacy field. It is ignored — see [Rate Limits](/docs/api/getting-started#rate-limits-cloud-only) for the limits that actually apply',
       type: 'number',
     },
     rateLimitTimeWindow: {
-      description: 'Window length in milliseconds',
+      description: 'Unused legacy field. It is ignored — see [Rate Limits](/docs/api/getting-started#rate-limits-cloud-only) for the limits that actually apply',
       type: 'number',
     },
   }}
@@ -268,13 +268,13 @@ var data = await response.Content.ReadAsStringAsync();
   "expiresAt": "2026-07-25T12:00:00.000Z",
   "createdAt": "2026-06-25T12:00:00.000Z",
   "updatedAt": "2026-06-25T12:00:00.000Z",
-  "rateLimitEnabled": true,
-  "rateLimitMax": 200,
-  "rateLimitTimeWindow": 60000
+  "rateLimitEnabled": false,
+  "rateLimitMax": 10,
+  "rateLimitTimeWindow": 86400000
 }
 ```
 
-<Callout>On Rybbit Cloud, API keys require a Standard or Pro plan; free/basic plans receive HTTP 403. Rate limits are applied automatically based on your plan.</Callout>
+<Callout>On Rybbit Cloud, API keys require a Standard or Pro plan; free/basic plans receive HTTP 403. [Rate limits](/docs/api/getting-started#rate-limits-cloud-only) are charged to **you**, the owning user, and are shared by every personal key you hold across every organization you belong to — creating a key does not add budget, and a plan change applies to keys you already have. For a budget that belongs to the organization instead, create an [organization key](/docs/api/api-keys/create-org).</Callout>
 
 </div>
 </div>

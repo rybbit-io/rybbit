@@ -144,7 +144,7 @@ export const faqItems: FAQItem[] = [
   {
     question: "What are the rate limits?",
     answer:
-      "On Rybbit Cloud, Standard plans get 20 requests per minute and Pro plans get 200. Self-hosted instances have no rate limits. API keys aren't available on the free tier.",
+      "On Rybbit Cloud, every plan can burst 50 requests per 10 seconds, and the daily quota depends on your plan: 5,000 requests a day on Standard, 25,000 on Pro. Limits apply per credential owner — an organization key draws on the organization's budget, and all of your personal keys share yours — so extra keys don't add budget. Self-hosted instances have no rate limits. API keys aren't available on the free tier.",
   },
   {
     question: "Is the API stable?",

@@ -51,11 +51,68 @@ const getOrganizationIdFromParams = (request: FastifyRequest): string | undefine
   return params?.organizationId;
 };
 
+/**
+ * Report the remaining budget on every bearer-authenticated response, not just
+ * on rejections — a client can only pace itself if it can see the budget before
+ * it runs out. `RateLimit-*` describes whichever tier is closest to exhaustion
+ * (per the IETF draft); the per-tier `X-RateLimit-*` headers always describe
+ * both, so a client never has to guess which one it just read.
+ */
+const applyRateLimitHeaders = (reply: FastifyReply, apiKeyResult: BearerAuthResult) => {
+  const limit = apiKeyResult.rateLimit;
+  if (!limit) {
+    return;
+  }
+
+  reply.header("X-RateLimit-Burst-Limit", limit.burstLimit);
+  reply.header("X-RateLimit-Burst-Remaining", limit.burstRemaining);
+  reply.header("X-RateLimit-Burst-Reset", limit.burstResetSeconds);
+
+  const dailyEnabled = limit.dailyLimit > 0;
+  if (dailyEnabled) {
+    reply.header("X-RateLimit-Daily-Limit", limit.dailyLimit);
+    reply.header("X-RateLimit-Daily-Remaining", limit.dailyRemaining);
+    reply.header("X-RateLimit-Daily-Reset", limit.dailyResetSeconds);
+  }
+
+  // When the limiter named a binding tier, report that one — otherwise a
+  // request denied on the daily quota (both tiers at zero, so neither ratio is
+  // smaller) would advertise a 10-second reset next to a Retry-After of hours.
+  const dailyIsTighter = limit.scope
+    ? limit.scope === "daily"
+    : dailyEnabled && limit.dailyRemaining / limit.dailyLimit < limit.burstRemaining / limit.burstLimit;
+  reply.header("RateLimit-Limit", dailyIsTighter ? limit.dailyLimit : limit.burstLimit);
+  reply.header("RateLimit-Remaining", dailyIsTighter ? limit.dailyRemaining : limit.burstRemaining);
+  reply.header("RateLimit-Reset", dailyIsTighter ? limit.dailyResetSeconds : limit.burstResetSeconds);
+};
+
+const sendRateLimited = (reply: FastifyReply, apiKeyResult: BearerAuthResult) => {
+  const limit = apiKeyResult.rateLimit;
+  applyRateLimitHeaders(reply, apiKeyResult);
+  if (limit) {
+    reply.header("Retry-After", limit.retryAfterSeconds);
+  }
+  return reply.status(429).send({
+    error: "Rate limit exceeded",
+    // Naming the tier is the difference between "back off for two seconds" and
+    // "you are done until tomorrow" — a client cannot tell them apart from a
+    // bare 429.
+    ...(limit?.scope
+      ? {
+          scope: limit.scope,
+          limit: limit.scope === "daily" ? limit.dailyLimit : limit.burstLimit,
+          retryAfter: limit.retryAfterSeconds,
+        }
+      : {}),
+  });
+};
+
 // Attach the authenticated bearer principal. User keys become request.user
 // like a session; org keys have no user (handlers that attribute a creator
 // record null) — they set apiKeyOrganizationId instead, which the site-access
 // resolver (getSitesUserHasAccessTo) maps to the org's full site set.
-const attachApiKeyUser = (request: FastifyRequest, apiKeyResult: BearerAuthResult) => {
+const attachApiKeyUser = (request: FastifyRequest, reply: FastifyReply, apiKeyResult: BearerAuthResult) => {
+  applyRateLimitHeaders(reply, apiKeyResult);
   if (apiKeyResult.userId) {
     request.user = { id: apiKeyResult.userId };
   } else if (apiKeyResult.organizationId) {
@@ -99,12 +156,12 @@ export function requireAuth(scope?: RouteScope): AuthMiddleware {
       if (!bearerScopeOk(apiKeyResult, scope)) {
         return sendInsufficientScope(reply, scope!);
       }
-      attachApiKeyUser(request, apiKeyResult);
+      attachApiKeyUser(request, reply, apiKeyResult);
       return;
     }
 
     if (apiKeyResult.rateLimited) {
-      return reply.status(429).send({ error: "Rate limit exceeded" });
+      return sendRateLimited(reply, apiKeyResult);
     }
 
     return reply.status(401).send({ error: "Unauthorized" });
@@ -138,7 +195,7 @@ export function requireSiteAccess(scope?: RouteScope): AuthMiddleware {
     const apiKeyResult = await checkApiKey(request, { siteId });
     if (apiKeyResult.valid) {
       if (bearerScopeOk(apiKeyResult, scope)) {
-        attachApiKeyUser(request, apiKeyResult);
+        attachApiKeyUser(request, reply, apiKeyResult);
         return;
       }
       scopeDenied = true;
@@ -153,7 +210,7 @@ export function requireSiteAccess(scope?: RouteScope): AuthMiddleware {
     }
 
     if (apiKeyResult.rateLimited) {
-      return reply.status(429).send({ error: "Rate limit exceeded" });
+      return sendRateLimited(reply, apiKeyResult);
     }
     if (scopeDenied) {
       return sendInsufficientScope(reply, scope!);
@@ -178,7 +235,7 @@ export function requireSiteAdminAccess(scope?: RouteScope): AuthMiddleware {
     const apiKeyResult = await checkApiKey(request, { siteId });
     if (apiKeyResult.valid && (apiKeyResult.role === "admin" || apiKeyResult.role === "owner")) {
       if (bearerScopeOk(apiKeyResult, scope)) {
-        attachApiKeyUser(request, apiKeyResult);
+        attachApiKeyUser(request, reply, apiKeyResult);
         return;
       }
       scopeDenied = true;
@@ -202,7 +259,7 @@ export function requireSiteAdminAccess(scope?: RouteScope): AuthMiddleware {
     }
 
     if (apiKeyResult.rateLimited) {
-      return reply.status(429).send({ error: "Rate limit exceeded" });
+      return sendRateLimited(reply, apiKeyResult);
     }
     if (scopeDenied) {
       return sendInsufficientScope(reply, scope!);
@@ -227,7 +284,7 @@ export function allowPublicSiteAccess(scope?: RouteScope): AuthMiddleware {
     const apiKeyResult = await checkApiKey(request, { siteId });
     if (apiKeyResult.valid) {
       if (bearerScopeOk(apiKeyResult, scope)) {
-        attachApiKeyUser(request, apiKeyResult);
+        attachApiKeyUser(request, reply, apiKeyResult);
         return;
       }
       scopeDenied = true;
@@ -244,7 +301,7 @@ export function allowPublicSiteAccess(scope?: RouteScope): AuthMiddleware {
     }
 
     if (apiKeyResult.rateLimited) {
-      return reply.status(429).send({ error: "Rate limit exceeded" });
+      return sendRateLimited(reply, apiKeyResult);
     }
     if (scopeDenied) {
       return sendInsufficientScope(reply, scope!);
@@ -270,7 +327,7 @@ export function requireOrgMember(scope?: RouteScope): AuthMiddleware {
     const apiKeyResult = await checkApiKey(request, { organizationId });
     if (apiKeyResult.valid) {
       if (bearerScopeOk(apiKeyResult, scope)) {
-        attachApiKeyUser(request, apiKeyResult);
+        attachApiKeyUser(request, reply, apiKeyResult);
         return;
       }
       scopeDenied = true;
@@ -284,7 +341,7 @@ export function requireOrgMember(scope?: RouteScope): AuthMiddleware {
     }
 
     if (apiKeyResult.rateLimited) {
-      return reply.status(429).send({ error: "Rate limit exceeded" });
+      return sendRateLimited(reply, apiKeyResult);
     }
     if (scopeDenied) {
       return sendInsufficientScope(reply, scope!);
@@ -313,7 +370,7 @@ export function requireOrgAdminFromParams(scope?: RouteScope): AuthMiddleware {
     const apiKeyResult = await checkApiKey(request, { organizationId });
     if (apiKeyResult.valid && (apiKeyResult.role === "admin" || apiKeyResult.role === "owner")) {
       if (bearerScopeOk(apiKeyResult, scope)) {
-        attachApiKeyUser(request, apiKeyResult);
+        attachApiKeyUser(request, reply, apiKeyResult);
         return;
       }
       scopeDenied = true;
@@ -323,7 +380,7 @@ export function requireOrgAdminFromParams(scope?: RouteScope): AuthMiddleware {
     const session = await getSessionFromReq(request);
     if (!session?.user?.id) {
       if (apiKeyResult.rateLimited) {
-        return reply.status(429).send({ error: "Rate limit exceeded" });
+        return sendRateLimited(reply, apiKeyResult);
       }
       if (scopeDenied) {
         return sendInsufficientScope(reply, scope!);

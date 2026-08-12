@@ -2,13 +2,25 @@ import { FastifyRequest, FastifyReply } from "fastify";
 import { db } from "../../db/postgres/postgres.js";
 import { and, eq } from "drizzle-orm";
 import { member, organization, sites, user } from "../../db/postgres/schema.js";
-import { getSessionFromReq, getUserIdFromRequest } from "../../lib/auth-utils.js";
+import { getSessionFromReq, getUserIdFromRequest, wasRateLimited } from "../../lib/auth-utils.js";
 import { filterSitesByMemberAccess } from "../../lib/siteAccess.js";
 
 export const getMyOrganizations = async (request: FastifyRequest, reply: FastifyReply) => {
   try {
     const userId = await getUserIdFromRequest(request);
     if (!userId) {
+      // This route has no auth pre-handler, so a throttled credential resolves
+      // to no user. Reporting that as 401 would tell a caller their key is
+      // invalid when it is merely out of budget.
+      const throttled = wasRateLimited(request);
+      if (throttled) {
+        reply.header("Retry-After", throttled.retryAfterSeconds);
+        return reply.status(429).send({
+          error: "Rate limit exceeded",
+          scope: throttled.scope,
+          retryAfter: throttled.retryAfterSeconds,
+        });
+      }
       return reply.status(401).send({ error: "Unauthorized" });
     }
 

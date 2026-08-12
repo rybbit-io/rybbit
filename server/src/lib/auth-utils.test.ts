@@ -13,6 +13,25 @@ vi.mock("./auth.js", () => ({
   },
 }));
 
+// The bearer resolver charges every verification against the rate limiter,
+// which would reach for Redis (and a plan lookup) on each of these tests. Stub
+// it out — the limiter has its own tests, and these are about scope carrying
+// and org resolution.
+vi.mock("./apiRateLimitPolicy.js", () => ({
+  consumeRateLimitForIdentity: vi.fn(async () => ({
+    allowed: true,
+    wouldHaveDenied: false,
+    scope: null,
+    burstLimit: 50,
+    burstRemaining: 49,
+    burstResetSeconds: 1,
+    dailyLimit: 5_000,
+    dailyRemaining: 4_999,
+    dailyResetSeconds: 3_600,
+    retryAfterSeconds: 0,
+  })),
+}));
+
 // Replace the postgres-js connection with an in-memory PGlite database so the
 // real drizzle queries in auth-utils run against real SQL.
 vi.mock("../db/postgres/postgres.js", async () => {
