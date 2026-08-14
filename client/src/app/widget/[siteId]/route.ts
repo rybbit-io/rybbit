@@ -8,11 +8,6 @@ const MINUTES_LABEL: Record<number, string> = {
   10080: "LAST 7 DAYS",
 };
 
-function getBackendUrl() {
-  const raw = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:3001";
-  return raw === "http://localhost:3001" ? "http://localhost:3001/api" : `${raw}/api`;
-}
-
 interface Config {
   siteId: string;
   minutes: number;
@@ -21,7 +16,6 @@ interface Config {
   theme: "dark" | "light";
   accent: string;
   variant: "card" | "inline";
-  backendUrl: string;
   windowLabel: string;
 }
 
@@ -154,7 +148,6 @@ function renderHTML(c: Config) {
     minutes: c.minutes,
     chart: c.chart,
     countries: c.countries,
-    backendUrl: c.backendUrl,
   });
   const accentColor = c.theme === "dark" ? c.accent : c.accent;
 
@@ -271,7 +264,7 @@ ${body}
   }
 
   function fetchData() {
-    var url = cfg.backendUrl + "/sites/" + encodeURIComponent(cfg.siteId) +
+    var url = window.location.origin + "/api/sites/" + encodeURIComponent(cfg.siteId) +
       "/embed-stats?minutes=" + cfg.minutes +
       "&chart=" + cfg.chart +
       "&countries=" + cfg.countries;
@@ -320,7 +313,6 @@ export async function GET(
     theme,
     accent,
     variant,
-    backendUrl: getBackendUrl(),
     windowLabel: MINUTES_LABEL[minutes],
   });
 
