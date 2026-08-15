@@ -32,7 +32,6 @@ src/
 │   ├── analytics/          # Analytics endpoints + React Query hooks
 │   ├── admin/              # Admin endpoints + hooks
 │   ├── gsc/                # Google Search Console
-│   ├── uptime/             # Uptime monitoring
 │   ├── types.ts            # Shared types (CommonApiParams, Filter, etc.)
 │   └── utils.ts            # authedFetch, buildApiParams
 ├── app/                    # Next.js App Router pages
@@ -40,7 +39,6 @@ src/
 │   ├── admin/              # Admin panel
 │   ├── auth/               # Auth flows
 │   ├── settings/           # User settings
-│   ├── uptime/             # Uptime dashboard
 │   ├── layout.tsx          # Root layout
 │   └── Providers.tsx       # Provider stack
 ├── components/
@@ -122,7 +120,6 @@ Only `timezone` is persisted; everything else is session-only.
 - `/admin` – admin panel
 - `/login`, `/signup` – auth pages
 - `/settings` – user settings
-- `/uptime` – uptime monitoring
 
 Middleware in `proxy.ts` handles redirects and OAuth callbacks (`/auth/callback/github`, `/auth/callback/google`).
 

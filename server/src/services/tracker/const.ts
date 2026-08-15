@@ -1,9 +1,3 @@
-/**
- * Set to true to disable origin checking for tracking requests
- * This should only be enabled in development or testing environments
- */
-export const DISABLE_ORIGIN_CHECK = process.env.DISABLE_ORIGIN_CHECK === "true";
-
 const searchDomains = [
   // Google and variants
   "google.com",
