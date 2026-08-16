@@ -43,7 +43,6 @@ export async function proxy(request: NextRequest) {
       "admin",
       "organization",
       "account",
-      "uptime",
       "settings",
       "rollup",
       "as",

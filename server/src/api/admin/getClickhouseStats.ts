@@ -50,7 +50,7 @@ export async function getClickhouseStats(request: FastifyRequest<{ Querystring: 
           count() as parts_count
         FROM system.parts
         WHERE database = currentDatabase() AND active = 1
-          AND table IN ('events', 'session_replay_events', 'session_replay_metadata', 'monitor_events')
+          AND table IN ('events', 'session_replay_events', 'session_replay_metadata')
         GROUP BY table
         ORDER BY total_rows DESC
       `,

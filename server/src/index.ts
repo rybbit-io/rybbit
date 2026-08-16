@@ -586,19 +586,6 @@ const start = async () => {
         }
       });
     }
-
-    // if (process.env.NODE_ENV === "production") {
-    //   // Initialize uptime monitoring service in the background (non-blocking)
-    //   uptimeService
-    //     .initialize()
-    //     .then(() => {
-    //       server.log.info("Uptime monitoring service initialized successfully");
-    //     })
-    //     .catch((error) => {
-    //       server.log.error("Failed to initialize uptime service:", error);
-    //       // Continue running without uptime monitoring
-    //     });
-    // }
   } catch (err) {
     server.log.error(err);
     process.exit(1);
@@ -629,10 +616,6 @@ const shutdown = async (signal: string) => {
     // Stop accepting new connections
     await server.close();
     server.log.info("Server closed");
-
-    // Shutdown uptime service
-    // await uptimeService.shutdown();
-    // server.log.info("Uptime service shut down");
 
     // Clear the timeout since we're done
     clearTimeout(forceExitTimeout);

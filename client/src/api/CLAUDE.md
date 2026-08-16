@@ -14,7 +14,6 @@ api/
 │   └── hooks/       # React Query hooks
 ├── gsc/             # Google Search Console integration
 ├── stripe/          # Stripe billing integration
-├── uptime/          # Uptime monitoring
 ├── types.ts         # Shared API types (APIResponse)
 └── utils.ts         # Shared utilities (authedFetch, buildApiParams)
 ```

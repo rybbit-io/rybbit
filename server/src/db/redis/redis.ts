@@ -42,8 +42,7 @@ function createRedisClient(label: string): Redis {
 }
 
 // Shared request/response client for bot detection (anomaly scoring + stats) and
-// general use. Distinct from the BullMQ connections used by the uptime service
-// (those have their own settings).
+// general use.
 export const redis = createRedisClient("main");
 
 // Dedicated connection for per-event session resolution. Isolated from `redis`
