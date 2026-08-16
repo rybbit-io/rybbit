@@ -3,7 +3,13 @@ import SqlString from "sqlstring";
 import { z } from "zod";
 import { clickhouse } from "../../db/clickhouse/clickhouse.js";
 import { MAX_CUSTOM_QUERY_LENGTH, normalizeCustomQuery, validateScopedQuery } from "./utils/customQueryValidation.js";
-import { bucketIntervalMap, getTimeStatement } from "./utils/utils.js";
+import {
+  bucketIntervalMap,
+  dateRegex,
+  dateTimeRegex,
+  getTimeStatement,
+  isValidTimeZone,
+} from "./utils/timeWindow.js";
 
 const MAX_EXECUTION_TIME_SECONDS = 10;
 const MAX_RESULT_ROWS = 1000;
@@ -11,15 +17,19 @@ const MAX_RESULT_ROWS = 1000;
 const BUCKET_TOKEN = /\{\{\s*bucket\s*\}\}/gi;
 const TZ_TOKEN = /\{\{\s*tz\s*\}\}/gi;
 
+// The time bounds arrive in the body, so validateHttpTimeParams — a query-param
+// preHandler — never sees them. Validated to the same formats here, or a
+// malformed bound would be dropped by the time window and silently widen the
+// card to all time.
 const requestBodySchema = z.object({
   query: z.string().trim().min(1).max(MAX_CUSTOM_QUERY_LENGTH),
-  startDate: z.string().optional(),
-  endDate: z.string().optional(),
-  timeZone: z.string().optional(),
-  startDateTime: z.string().optional(),
-  endDateTime: z.string().optional(),
-  pastMinutesStart: z.number().optional(),
-  pastMinutesEnd: z.number().optional(),
+  startDate: z.string().regex(dateRegex).optional().or(z.literal("")),
+  endDate: z.string().regex(dateRegex).optional().or(z.literal("")),
+  timeZone: z.string().refine(isValidTimeZone).optional().or(z.literal("")),
+  startDateTime: z.string().regex(dateTimeRegex).optional(),
+  endDateTime: z.string().regex(dateTimeRegex).optional(),
+  pastMinutesStart: z.number().nonnegative().optional(),
+  pastMinutesEnd: z.number().nonnegative().optional(),
   bucket: z
     .enum(["minute", "five_minutes", "ten_minutes", "fifteen_minutes", "hour", "day", "week", "month", "year"])
     .optional(),

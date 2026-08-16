@@ -3,7 +3,8 @@ import { FastifyReply, FastifyRequest } from "fastify";
 import SqlString from "sqlstring";
 import { z } from "zod";
 import { getFilterStatement } from "./utils/getFilterStatement.js";
-import { getTimeStatement, patternToRegex } from "./utils/utils.js";
+import { patternToRegex } from "./utils/utils.js";
+import { getTimeStatement } from "./utils/timeWindow.js";
 import { AnalyticsQueryError, runAnalyticsQuery } from "./utils/analyticsQuery.js";
 
 // stepFilters arrives as a JSON object mapping a (numeric) step index to a path

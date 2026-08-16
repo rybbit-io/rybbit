@@ -1,7 +1,7 @@
 import { FilterParams } from "@rybbit/shared";
 import { FastifyReply, FastifyRequest } from "fastify";
 import SqlString from "sqlstring";
-import { getTimeStatement } from "../utils/utils.js";
+import { getTimeStatement } from "../utils/timeWindow.js";
 import { getFilterStatement } from "../utils/getFilterStatement.js";
 import { AnalyticsQueryError, runAnalyticsQuery } from "../utils/analyticsQuery.js";
 import { buildFunnelStepCondition, FunnelStep } from "./funnelSteps.js";

@@ -1,7 +1,7 @@
 import { FilterParams } from "@rybbit/shared";
 import { EFFECTIVE_SESSION_USER_ID } from "../../api/analytics/utils/effectiveUserId.js";
 import { getFilterStatement } from "../../api/analytics/utils/getFilterStatement.js";
-import { getTimeStatement } from "../../api/analytics/utils/utils.js";
+import { getTimeStatement } from "../../api/analytics/utils/timeWindow.js";
 
 /**
  * The definition of a Site's headline metrics — sessions, pageviews, users,

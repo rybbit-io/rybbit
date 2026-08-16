@@ -23,12 +23,22 @@ export class AnalyticsQueryError extends Error {
   }
 }
 
+/**
+ * Every analytics query used to run uncapped while the two custom-SQL endpoints
+ * capped at 10 seconds — an all-time query on a large Site could hold a
+ * ClickHouse slot indefinitely. This bound is deliberately far above the 10s the
+ * user-authored endpoints allow: these queries are first-party and a legitimate
+ * all-time range on a busy Site is slow, not runaway.
+ */
+const MAX_EXECUTION_TIME_SECONDS = 60;
+
 export async function runAnalyticsQuery<T>(spec: QuerySpec): Promise<T[]> {
   try {
     const result = await clickhouse.query({
       query: spec.query,
       format: "JSONEachRow",
       query_params: spec.params,
+      clickhouse_settings: { max_execution_time: MAX_EXECUTION_TIME_SECONDS },
     });
     return await processResults<T>(result);
   } catch (error) {

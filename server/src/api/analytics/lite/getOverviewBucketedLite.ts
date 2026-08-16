@@ -1,11 +1,10 @@
 import { FilterParams } from "@rybbit/shared";
 import { FastifyReply, FastifyRequest } from "fastify";
-import SqlString from "sqlstring";
 import { getOverviewBucketed } from "../getOverviewBucketed.js";
 import { TimeBucket } from "../types.js";
-import { TimeBucketToFn } from "../utils/utils.js";
+import { getTimeStatement, resolveTimeWindow } from "../utils/timeWindow.js";
 import { analyticsRoute, runAnalyticsQuery } from "../utils/analyticsQuery.js";
-import { getLiteFillClause, getLiteSessionFilter, getLiteTimeStatement, hasLiteFilters, liteBucket } from "./utils.js";
+import { getLiteSessionFilter, hasLiteDatetimeRange, hasLiteFilters, liteBucket } from "./utils.js";
 
 type GetOverviewBucketedLiteResponse = {
   time: string;
@@ -26,13 +25,12 @@ type GetOverviewBucketedLiteResponse = {
 // bucketing is negligible (sessions rarely cross day boundaries), and we get
 // all 6 metrics from a single small table.
 function buildHourBucketQuery(args: {
-  fn: string;
-  tz: string;
+  bucketed: (column: string) => string;
   overviewTime: string;
   sessionsTime: string;
   fill: string;
 }) {
-  const { fn, tz, overviewTime, sessionsTime, fill } = args;
+  const { bucketed, overviewTime, sessionsTime, fill } = args;
   return `
     SELECT
       coalesce(p.time, s.time) AS time,
@@ -44,7 +42,7 @@ function buildHourBucketQuery(args: {
       coalesce(s.session_duration, 0) AS session_duration
     FROM (
       SELECT
-        toDateTime(${fn}(toTimeZone(event_hour, ${tz}))) AS time,
+        ${bucketed("event_hour")} AS time,
         sum(pageviews) AS pageviews,
         uniqMerge(users) AS users
       FROM overview_hourly_mv_target
@@ -55,7 +53,7 @@ function buildHourBucketQuery(args: {
     ) p
     FULL JOIN (
       SELECT
-        toDateTime(${fn}(toTimeZone(session_start, ${tz}))) AS time,
+        ${bucketed("session_start")} AS time,
         count() AS sessions,
         avg(session_pageviews) AS pages_per_session,
         countIf(session_pageviews = 1) / count() * 100 AS bounce_rate,
@@ -79,12 +77,11 @@ function buildHourBucketQuery(args: {
 }
 
 function buildDayBucketQuery(args: {
-  fn: string;
-  tz: string;
+  bucketed: (column: string) => string;
   sessionTime: string;
   fill: string;
 }) {
-  const { fn, tz, sessionTime, fill } = args;
+  const { bucketed, sessionTime, fill } = args;
   // Aggregate in the inner GROUP BY, then compose ratios in the outer SELECT.
   // Aliasing `sum(sessions) AS sessions` would shadow the column inside the
   // div-by-zero guard and trigger ILLEGAL_AGGREGATION.
@@ -99,7 +96,7 @@ function buildDayBucketQuery(args: {
       if(sessions > 0, total_session_duration_seconds / sessions, 0) AS session_duration
     FROM (
       SELECT
-        toDateTime(${fn}(toTimeZone(session_hour, ${tz}))) AS time,
+        ${bucketed("session_hour")} AS time,
         sum(sessions) AS sessions,
         sum(pageviews) AS pageviews,
         uniqMerge(users) AS users,
@@ -121,13 +118,12 @@ function buildDayBucketQuery(args: {
 // MVs. Bucketing by session-start instead of event-time is the same negligible
 // approximation the day-bucket path already makes.
 function buildSessionMvFilteredQuery(args: {
-  fn: string;
-  tz: string;
+  bucketed: (column: string) => string;
   sessionsTime: string;
   fill: string;
   filterSql: string;
 }) {
-  const { fn, tz, sessionsTime, fill, filterSql } = args;
+  const { bucketed, sessionsTime, fill, filterSql } = args;
   return `
     SELECT
       time,
@@ -139,7 +135,7 @@ function buildSessionMvFilteredQuery(args: {
       if(sessions > 0, total_session_duration_seconds / sessions, 0) AS session_duration
     FROM (
       SELECT
-        toDateTime(${fn}(toTimeZone(session_start, ${tz}))) AS time,
+        ${bucketed("session_start")} AS time,
         count() AS sessions,
         sum(session_pageviews) AS pageviews,
         uniqExact(user_id) AS users,
@@ -174,16 +170,19 @@ export const getOverviewBucketedLite = analyticsRoute<GetOverviewBucketedLiteReq
   "overview",
   async (req: FastifyRequest<GetOverviewBucketedLiteRequest>, res: FastifyReply) => {
     const site = Number(req.params.siteId);
-    const bucket = liteBucket(req.query.bucket);
-    const fn = TimeBucketToFn[bucket];
-    const tz = SqlString.escape(req.query.time_zone || "UTC");
 
-    const isAllTime =
-      !req.query.start_date &&
-      !req.query.end_date &&
-      req.query.past_minutes_start === undefined &&
-      req.query.past_minutes_end === undefined;
-    const fill = isAllTime ? "" : getLiteFillClause(req.query, bucket);
+    // The hourly rollups can't express a sub-hour window.
+    if (hasLiteDatetimeRange(req.query)) {
+      return getOverviewBucketed(req, res);
+    }
+
+    const bucket = liteBucket(req.query.bucket);
+    const window = resolveTimeWindow(req.query);
+    // The rollups name their time column differently per table, so the window
+    // renders the bucket expression per column instead of each builder
+    // reassembling it from a function name and a timezone.
+    const bucketed = (column: string) => window.bucketed(column, bucket);
+    const fill = window.fill(bucket);
 
     const filtersPresent = hasLiteFilters(req.query.filters);
 
@@ -196,9 +195,8 @@ export const getOverviewBucketedLite = analyticsRoute<GetOverviewBucketedLiteReq
         return getOverviewBucketed(req, res);
       }
       query = buildSessionMvFilteredQuery({
-        fn,
-        tz,
-        sessionsTime: getLiteTimeStatement(req.query, "start_time"),
+        bucketed,
+        sessionsTime: getTimeStatement(req.query, "start_time"),
         fill,
         filterSql: filter.sql,
       });
@@ -207,16 +205,14 @@ export const getOverviewBucketedLite = analyticsRoute<GetOverviewBucketedLiteReq
 
       query = useDayBucket
         ? buildDayBucketQuery({
-            fn,
-            tz,
-            sessionTime: getLiteTimeStatement(req.query, "session_hour"),
+            bucketed,
+            sessionTime: getTimeStatement(req.query, "session_hour"),
             fill,
           })
         : buildHourBucketQuery({
-            fn,
-            tz,
-            overviewTime: getLiteTimeStatement(req.query, "event_hour"),
-            sessionsTime: getLiteTimeStatement(req.query, "start_time"),
+            bucketed,
+            overviewTime: getTimeStatement(req.query, "event_hour"),
+            sessionsTime: getTimeStatement(req.query, "start_time"),
             fill,
           });
     }

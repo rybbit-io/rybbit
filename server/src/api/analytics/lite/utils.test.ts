@@ -2,9 +2,8 @@ import { FilterParams } from "@rybbit/shared";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { TimeBucket } from "../types.js";
 import {
-  getLiteFillClause,
   getLiteSessionFilter,
-  getLiteTimeStatement,
+  hasLiteDatetimeRange,
   hasLiteFilters,
   liteBucket,
   wrapLiteLikeValue,
@@ -175,108 +174,18 @@ describe("getLiteSessionFilter", () => {
   });
 });
 
-describe("getLiteTimeStatement", () => {
-  afterEach(() => {
-    vi.useRealTimers();
-  });
-
-  it("should build a timezone-aware day range against the given column", () => {
-    const result = getLiteTimeStatement(
-      { start_date: "2024-01-01", end_date: "2024-01-31", time_zone: "America/New_York" },
-      "event_hour"
-    );
-
-    expect(normalize(result)).toBe(
-      normalize(`AND event_hour >= toTimeZone(
-        toStartOfDay(toDateTime('2024-01-01', 'America/New_York')),
-        'UTC'
-      )
-      AND event_hour < if(
-        toDate('2024-01-31') = toDate(now(), 'America/New_York'),
-        toTimeZone(now(), 'UTC'),
-        toTimeZone(
-          toStartOfDay(toDateTime('2024-01-31', 'America/New_York')) + INTERVAL 1 DAY,
-          'UTC'
-        )
-      )`)
-    );
-  });
-
-  it("should default a missing time_zone to UTC", () => {
-    const result = getLiteTimeStatement(params({ start_date: "2024-01-01", end_date: "2024-01-31" }), "event_hour");
-    expect(result).toContain("toDateTime('2024-01-01', 'UTC')");
-    expect(result).not.toBe("");
-  });
-
-  it("should compute exact timestamps for past minutes", () => {
-    vi.useFakeTimers();
-    vi.setSystemTime(new Date("2024-06-15T12:00:00Z"));
-
-    const result = getLiteTimeStatement(params({ past_minutes_start: 120, past_minutes_end: 0 }), "start_time");
-
-    expect(result).toBe(
-      "AND start_time > toDateTime('2024-06-15 10:00:00') AND start_time <= toDateTime('2024-06-15 12:00:00')"
-    );
-  });
-
-  it("should return empty string with no time params", () => {
-    expect(getLiteTimeStatement(params({}), "event_hour")).toBe("");
-  });
-
-  it("should return empty string when only one date bound is provided", () => {
-    expect(getLiteTimeStatement(params({ start_date: "2024-01-01" }), "event_hour")).toBe("");
-  });
-});
-
-describe("getLiteFillClause", () => {
-  afterEach(() => {
-    vi.useRealTimers();
-  });
-
-  it("should build a date-range fill clause with the bucket fn and interval", () => {
-    const result = getLiteFillClause(
-      params({ start_date: "2024-01-01", end_date: "2024-01-31", time_zone: "UTC" }),
-      "day"
-    );
-
-    expect(normalize(result)).toBe(
-      normalize(`WITH FILL FROM toTimeZone(
-        toDateTime(toStartOfDay(toDateTime('2024-01-01', 'UTC'))),
-        'UTC'
-      )
-      TO if(
-        toDate('2024-01-31') = toDate(now(), 'UTC'),
-        toTimeZone(now(), 'UTC'),
-        toTimeZone(
-          toDateTime(toStartOfDay(toDateTime('2024-01-31', 'UTC'))) + INTERVAL 1 DAY,
-          'UTC'
-        )
-      ) STEP INTERVAL 1 DAY`)
-    );
-  });
-
-  it("should default a missing time_zone to UTC", () => {
-    const result = getLiteFillClause(params({ start_date: "2024-01-01", end_date: "2024-01-31" }), "hour");
-    expect(result).toContain("toDateTime('2024-01-01', 'UTC')");
-    expect(result).toContain("toStartOfHour");
-    expect(result).toContain("STEP INTERVAL 1 HOUR");
-  });
-
-  it("should build a past-minutes fill clause with exact timestamps", () => {
-    vi.useFakeTimers();
-    vi.setSystemTime(new Date("2024-06-15T12:00:00Z"));
-
-    const result = getLiteFillClause(params({ past_minutes_start: 120, past_minutes_end: 0 }), "hour");
-
-    expect(normalize(result)).toBe(
-      normalize(`WITH FILL FROM toStartOfHour(toDateTime('2024-06-15 10:00:00'))
-        TO toStartOfHour(toDateTime('2024-06-15 12:00:00')) + INTERVAL 1 HOUR
-        STEP INTERVAL 1 HOUR`)
-    );
-  });
-
-  it("should return empty string with no time params", () => {
-    expect(getLiteFillClause(params({}), "hour")).toBe("");
+describe("hasLiteDatetimeRange", () => {
+  // The hourly rollups can't answer a sub-hour question, so a datetime range
+  // sends the request to the raw-events endpoints. Both the lite time statement
+  // and the lite fill used to ignore these params outright, answering with
+  // all-time data and a 200.
+  it("should be true only when both datetime bounds are present", () => {
+    expect(hasLiteDatetimeRange(params({ start_datetime: "2024-01-01 10:30:00", end_datetime: "2024-01-01 14:45:00" })))
+      .toBe(true);
+    expect(hasLiteDatetimeRange(params({ start_datetime: "2024-01-01 10:30:00" }))).toBe(false);
+    expect(hasLiteDatetimeRange(params({ end_datetime: "2024-01-01 14:45:00" }))).toBe(false);
+    expect(hasLiteDatetimeRange(params({ start_date: "2024-01-01", end_date: "2024-01-31" }))).toBe(false);
+    expect(hasLiteDatetimeRange(params({}))).toBe(false);
   });
 });
 

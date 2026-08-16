@@ -1,6 +1,6 @@
 import { FastifyReply, FastifyRequest } from "fastify";
 import { FilterParameter } from "./types.js";
-import { getTimeStatement } from "./utils/utils.js";
+import { getTimeStatement } from "./utils/timeWindow.js";
 import { getFilterStatement, getSqlParam } from "./utils/getFilterStatement.js";
 import { SESSION_CHANNEL_AGG } from "./utils/sessionAttribution.js";
 import { FilterParams } from "@rybbit/shared";
