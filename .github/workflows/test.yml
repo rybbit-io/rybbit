@@ -1,0 +1,82 @@
+name: Tests
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+    branches:
+      - master
+    paths-ignore:
+      - "docs/**"
+      - "**.md"
+
+# A newer push to the same branch makes an in-flight run obsolete.
+concurrency:
+  group: tests-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+# Pinned so a run never depends on the runner's default zone. The suites are
+# timezone-independent (verified across UTC, US, EU, IN and NZ zones); this keeps
+# an accidental system-zone dependency from passing here and failing elsewhere.
+env:
+  TZ: UTC
+
+jobs:
+  server:
+    name: Server
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: |
+            shared/package-lock.json
+            server/package-lock.json
+
+      # server depends on @rybbit/shared via `file:../shared`, which resolves to
+      # the package's built `dist/` — so shared must be built before install.
+      - name: Install and build shared
+        working-directory: shared
+        run: |
+          npm ci
+          npm run build
+
+      - name: Install server dependencies
+        working-directory: server
+        run: npm ci --legacy-peer-deps
+
+      - name: Run server tests
+        working-directory: server
+        run: npm run test:run
+
+  client:
+    name: Client
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: |
+            shared/package-lock.json
+            client/package-lock.json
+
+      - name: Install and build shared
+        working-directory: shared
+        run: |
+          npm ci
+          npm run build
+
+      - name: Install client dependencies
+        working-directory: client
+        run: npm ci --legacy-peer-deps
+
+      - name: Run client tests
+        working-directory: client
+        run: npm test
