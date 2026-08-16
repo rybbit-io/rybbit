@@ -1,3 +1,4 @@
+import { ALL_CLIENT_BOT_SIGNAL_BITS, MAX_CLIENT_BOT_SCORE } from "@rybbit/shared";
 import type { FastifyReply, FastifyRequest } from "fastify";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -122,6 +123,71 @@ describe("trackEvent session identity", () => {
         sessionId: "session-alice",
         userId: "shared-fingerprint",
         identifiedUserId: "employee-alice",
+      })
+    );
+  });
+
+  // The tracker's 12th signal bit (squareScreen = 2048) once exceeded a
+  // hard-coded `_bsm` bound, so every event carrying it failed validation and
+  // was dropped with a 400 — the whole event, not just the signal.
+  it("accepts a bot signal mask carrying every bit the contract defines", async () => {
+    const request = {
+      body: {
+        type: "pageview",
+        site_id: "site_abc",
+        _bs: MAX_CLIENT_BOT_SCORE,
+        _bsm: ALL_CLIENT_BOT_SIGNAL_BITS,
+      },
+      headers: {},
+      ip: "198.51.100.10",
+    } as unknown as FastifyRequest;
+    const reply = replyStub();
+
+    await trackEvent(request, reply);
+
+    expect(reply.status).not.toHaveBeenCalledWith(400);
+    expect(mocks.checkBotBlocking).toHaveBeenCalledWith(
+      expect.objectContaining({
+        payload: expect.objectContaining({ clientBotSignalMask: ALL_CLIENT_BOT_SIGNAL_BITS }),
+      })
+    );
+  });
+
+  it("rejects a bot signal mask carrying bits the contract does not define", async () => {
+    const request = {
+      body: {
+        type: "pageview",
+        site_id: "site_abc",
+        _bsm: ALL_CLIENT_BOT_SIGNAL_BITS + 1,
+      },
+      headers: {},
+      ip: "198.51.100.10",
+    } as unknown as FastifyRequest;
+    const reply = replyStub();
+
+    await trackEvent(request, reply);
+
+    expect(reply.status).toHaveBeenCalledWith(400);
+  });
+
+  // Anomaly counters are namespaced by this id. Passing the incoming identifier
+  // instead split one Site across two namespaces — the text id the UI emits and
+  // the legacy numeric id still accepted — each seeing half the traffic.
+  it("namespaces bot blocking by the numeric Site id, not the incoming identifier", async () => {
+    const request = {
+      body: {
+        type: "pageview",
+        site_id: "site_abc",
+      },
+      headers: {},
+      ip: "198.51.100.10",
+    } as unknown as FastifyRequest;
+
+    await trackEvent(request, replyStub());
+
+    expect(mocks.checkBotBlocking).toHaveBeenCalledWith(
+      expect.objectContaining({
+        payload: expect.objectContaining({ siteId: siteConfiguration.siteId }),
       })
     );
   });

@@ -75,7 +75,13 @@ export interface AnomalyCounters {
 const INTERACTION_EVENT_TYPES = new Set(["button_click", "input_change", "copy"]);
 
 export interface AnomalyInput {
-  siteId: string;
+  /**
+   * Numeric Site id. Counters are namespaced by it, so it must be the id the
+   * rest of ingestion uses — a Site addressed by its text id in one request and
+   * its legacy numeric id in another would otherwise occupy two namespaces and
+   * each would see half the traffic.
+   */
+  siteId: number;
   ipAddress: string;
   userAgent: string;
   hostname?: string;

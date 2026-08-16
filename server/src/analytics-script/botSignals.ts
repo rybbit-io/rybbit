@@ -4,44 +4,21 @@
  * Checks browser environment characteristics that distinguish real browsers
  * from headless/automated ones. Returns a single weighted integer score.
  * The tracker sends the score plus a compact signal bitmask for aggregate diagnostics.
+ *
+ * The bit layout, the weights and the screen-geometry rules are the wire
+ * contract with the server and live in @rybbit/shared/botSignalContract, which
+ * both sides import. Nothing about the mask is defined here.
  */
-export const CLIENT_BOT_SIGNAL_MASKS = {
-  automationApi: 1 << 0,
-  webdriver: 1 << 0,
-  zeroOuterDimensions: 1 << 1,
-  missingChrome: 1 << 2,
-  swiftShader: 1 << 3,
-  emptyPlugins: 1 << 4,
-  defaultViewport800x600: 1 << 5,
-  defaultViewport1024x768: 1 << 6,
-  impossibleDimensions: 1 << 7,
-  outerDimensionsWeird: 1 << 8,
-  pluginApiAbsence: 1 << 9,
-  defaultViewport1280x1200: 1 << 10,
-  squareScreen: 1 << 11,
-} as const;
-
-/**
- * Plausible bounds for `screen.width`/`screen.height` — the physical display,
- * not the window, so neither a resized window nor a zoomed page moves them.
- * The smallest real phone screens report ~240 CSS px; the largest single
- * display (8K) reports 7680. Values outside this range come from synthetic
- * renderers: production traffic outside it is 1x1, 16384x16384, and
- * 1920x10000-style screenshot viewports on cloud ASNs, with no engagement.
- */
-const MIN_PLAUSIBLE_SCREEN_DIMENSION = 200;
-const MAX_PLAUSIBLE_SCREEN_DIMENSION = 8192;
-
-function isPlausibleScreenDimensions(width: number, height: number): boolean {
-  return (
-    Number.isFinite(width) &&
-    Number.isFinite(height) &&
-    width >= MIN_PLAUSIBLE_SCREEN_DIMENSION &&
-    height >= MIN_PLAUSIBLE_SCREEN_DIMENSION &&
-    width <= MAX_PLAUSIBLE_SCREEN_DIMENSION &&
-    height <= MAX_PLAUSIBLE_SCREEN_DIMENSION
-  );
-}
+// Imported from the contract module rather than the package barrel: this is a
+// browser bundle, and the barrel would drag unrelated shared runtime code
+// (the scope tables) onto every tracked page.
+import {
+  CLIENT_BOT_SIGNAL_MASKS,
+  CLIENT_BOT_SIGNAL_WEIGHTS,
+  ClientBotSignalName,
+  getScreenDimensionSignals,
+  MAX_CLIENT_BOT_SCORE,
+} from "@rybbit/shared/dist/botSignalContract.js";
 
 interface BotSignalResult {
   score: number;
@@ -49,8 +26,6 @@ interface BotSignalResult {
 }
 
 let cachedBotSignals: BotSignalResult | null = null;
-
-const MAX_BOT_SCORE = 10;
 
 export function getBotScore(): number {
   return getBotSignals().score;
@@ -79,19 +54,18 @@ function calculateBotSignals(): BotSignalResult {
   let score = 0;
   let mask = 0;
 
-  function addSignal(signalMask: number, weight: number) {
+  function addSignal(name: ClientBotSignalName) {
+    const signalMask = CLIENT_BOT_SIGNAL_MASKS[name];
     if ((mask & signalMask) !== 0) {
       return;
     }
     mask |= signalMask;
-    score += weight;
+    score += CLIENT_BOT_SIGNAL_WEIGHTS[name];
   }
 
   try {
     const userAgent = navigator.userAgent;
     const isChromeLike = /Chrome\//.test(userAgent) && !/\bwv\b|; wv\)/.test(userAgent);
-    const isDesktopUA =
-      /Windows NT|Macintosh|X11|Linux x86_64/.test(userAgent) && !/Mobile|Android|iPhone|iPad/.test(userAgent);
     const screenWidth = Number(window.screen?.width);
     const screenHeight = Number(window.screen?.height);
     const outerWidth = Number(window.outerWidth);
@@ -120,47 +94,24 @@ function calculateBotSignals(): BotSignalResult {
     ];
     const hasAutomationGlobal = automationGlobalNames.some(name => name in window || name in document);
     if ((navigator as any).webdriver === true || hasAutomationGlobal) {
-      addSignal(CLIENT_BOT_SIGNAL_MASKS.automationApi, 3);
+      addSignal("automationApi");
     }
 
     // 2. Zero outer dimensions — common in headless/browserless environments.
     //    Skipped while prerendering: Chrome legitimately reports 0 there.
     if ((outerHeight === 0 || outerWidth === 0) && !isPrerendering()) {
-      addSignal(CLIENT_BOT_SIGNAL_MASKS.zeroOuterDimensions, 2);
+      addSignal("zeroOuterDimensions");
     }
 
-    // 3. Screen dimensions outside the range any real display reports
-    if (!isPlausibleScreenDimensions(screenWidth, screenHeight)) {
-      addSignal(CLIENT_BOT_SIGNAL_MASKS.impossibleDimensions, 3);
+    // 3. Screen geometry — displays outside the range any real one reports,
+    //    square screens, and default automation viewports. The rules are the
+    //    contract's, so the server derives the same signals from the reported
+    //    dimensions regardless of which tracker version sent them.
+    for (const signal of getScreenDimensionSignals(screenWidth, screenHeight, userAgent)) {
+      addSignal(signal);
     }
 
-    // 3b. Square screen. No shipping display is square, and every square value
-    //     in production traffic belongs to a renderer default — 2000x2000 on
-    //     Facebook/Amazon/Google infrastructure, 1024x1024 and 1280x1280 on
-    //     Google's, 1366x1366 and 1600x1600 on proxy fleets. Over a full day of
-    //     traffic, square-screen visitors fired interaction events on 0.5% of
-    //     their events against 6.1% for current-version traffic, so this
-    //     convicts rather than corroborates.
-    else if (screenWidth === screenHeight) {
-      addSignal(CLIENT_BOT_SIGNAL_MASKS.squareScreen, 3);
-    }
-
-    // 4. Default automation/display server viewport sizes. 1280x1200 is not a
-    //    panel size any desktop ships; it is a headless window geometry, and in
-    //    production it appears essentially only on scraper fleets (27M events in
-    //    one week from a single crawler, against a few hundred from everything
-    //    else combined).
-    if (isDesktopUA && screenWidth === 800 && screenHeight === 600) {
-      addSignal(CLIENT_BOT_SIGNAL_MASKS.defaultViewport800x600, 3);
-    }
-    if (isDesktopUA && screenWidth === 1024 && screenHeight === 768) {
-      addSignal(CLIENT_BOT_SIGNAL_MASKS.defaultViewport1024x768, 3);
-    }
-    if (isDesktopUA && screenWidth === 1280 && screenHeight === 1200) {
-      addSignal(CLIENT_BOT_SIGNAL_MASKS.defaultViewport1280x1200, 3);
-    }
-
-    // 5. Outer dimensions smaller than inner dimensions should not happen in normal desktop browsers
+    // 4. Outer dimensions smaller than inner dimensions should not happen in normal desktop browsers
     if (
       Number.isFinite(outerWidth) &&
       Number.isFinite(outerHeight) &&
@@ -172,18 +123,18 @@ function calculateBotSignals(): BotSignalResult {
       innerHeight > 0 &&
       (outerWidth + 8 < innerWidth || outerHeight + 8 < innerHeight)
     ) {
-      addSignal(CLIENT_BOT_SIGNAL_MASKS.outerDimensionsWeird, 2);
+      addSignal("outerDimensionsWeird");
     }
 
-    // 6. Missing window.chrome on a Chrome UA — real Chrome usually exposes this object
+    // 5. Missing window.chrome on a Chrome UA — real Chrome usually exposes this object
     //    Only flag for non-WebView Chrome UAs; Android WebView doesn't expose window.chrome
     let hasPluginOrApiAbsence = false;
     if (!(window as any).chrome && isChromeLike) {
-      addSignal(CLIENT_BOT_SIGNAL_MASKS.missingChrome, 1);
+      addSignal("missingChrome");
       hasPluginOrApiAbsence = true;
     }
 
-    // 7. WebGL renderer check — headless/containerized Chrome often uses Google SwiftShader
+    // 6. WebGL renderer check — headless/containerized Chrome often uses Google SwiftShader
     try {
       const canvas = document.createElement("canvas");
       const gl = (canvas.getContext("webgl") || canvas.getContext("experimental-webgl")) as WebGLRenderingContext | null;
@@ -207,7 +158,7 @@ function calculateBotSignals(): BotSignalResult {
             // Firefox Privacy
           }
           if (rendererParts.join(" ").toLowerCase().includes("swiftshader")) {
-            addSignal(CLIENT_BOT_SIGNAL_MASKS.swiftShader, 1);
+            addSignal("swiftShader");
           }
         } finally {
           releaseWebGlContext(canvas, gl);
@@ -217,21 +168,21 @@ function calculateBotSignals(): BotSignalResult {
       // WebGL not available — not a bot signal by itself
     }
 
-    // 8. No plugins — weak supporting signal for Chrome-like UAs only
+    // 7. No plugins — weak supporting signal for Chrome-like UAs only
     if ((!navigator.plugins || navigator.plugins.length === 0) && isChromeLike) {
-      addSignal(CLIENT_BOT_SIGNAL_MASKS.emptyPlugins, 1);
+      addSignal("emptyPlugins");
       hasPluginOrApiAbsence = true;
     }
 
     if (hasPluginOrApiAbsence) {
-      addSignal(CLIENT_BOT_SIGNAL_MASKS.pluginApiAbsence, 0);
+      addSignal("pluginApiAbsence");
     }
   } catch (e) {
     // If any top-level access fails, return whatever we've accumulated
   }
 
   return {
-    score: Math.min(score, MAX_BOT_SCORE),
+    score: Math.min(score, MAX_CLIENT_BOT_SCORE),
     mask,
   };
 }

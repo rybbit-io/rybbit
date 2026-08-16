@@ -1,3 +1,4 @@
+import { CLIENT_BOT_SIGNAL_MASKS as clientBotSignalMasks } from "@rybbit/shared";
 import { FastifyRequest } from "fastify";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { lookupAsn } from "../../../db/geolocation/asn.js";
@@ -21,7 +22,7 @@ function requestWithHeaders(headers: Record<string, string | string[]>): Fastify
 }
 
 const basePayload = {
-  siteId: "site_123",
+  siteId: 123,
   ipAddress: "203.0.113.10",
 };
 
@@ -31,12 +32,6 @@ const browserHeaders = {
   "accept-language": "en-US,en;q=0.9",
   "sec-fetch-site": "cross-site",
   "user-agent": "Mozilla/5.0 Chrome/120 Safari/537.36",
-};
-
-const clientBotSignalMasks = {
-  automationApi: 1 << 0,
-  zeroOuterDimensions: 1 << 1,
-  swiftShader: 1 << 3,
 };
 
 describe("checkBotBlocking", () => {

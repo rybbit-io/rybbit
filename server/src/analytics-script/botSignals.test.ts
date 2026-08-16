@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { CLIENT_BOT_SIGNAL_MASKS, getBotScore, getBotSignalMask, resetBotScoreCacheForTests } from "./botSignals.js";
+import { CLIENT_BOT_SIGNAL_MASKS } from "@rybbit/shared";
+import { getBotScore, getBotSignalMask, resetBotScoreCacheForTests } from "./botSignals.js";
 
 function setNavigatorProperty(name: string, value: unknown) {
   Object.defineProperty(navigator, name, {

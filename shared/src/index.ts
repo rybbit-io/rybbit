@@ -1,3 +1,4 @@
+export * from "./botSignalContract";
 export * from "./dashboards";
 export * from "./filters";
 export * from "./params";
