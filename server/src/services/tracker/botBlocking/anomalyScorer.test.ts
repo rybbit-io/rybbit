@@ -10,6 +10,7 @@ vi.mock("../../../db/redis/redis.js", () => ({
 }));
 
 import {
+  BucketedCounter,
   observeTrackingAnomaly,
   resetAnomalyScorerForTests,
   setRedisAnomalyEnabledForTests,
@@ -130,6 +131,54 @@ describe("observeTrackingAnomaly (in-process fallback)", () => {
     const result = await observeTrackingAnomaly({ ...baseInput, nowMs: baseInput.nowMs + 70_000 });
     expect(result.isAnomalous).toBe(false);
     expect(result.counters.tupleEvents10s).toBe(1);
+  });
+});
+
+describe("BucketedCounter key bound", () => {
+  // `cleanup` only frees an entry once its window has passed, and the actor
+  // counter's window is a day — so without a key bound a Redis outage would
+  // leave it holding an entry for every address seen all day.
+  const WINDOW = 60_000;
+
+  it("stops admitting new keys at the cap and reports them as zero", () => {
+    const counter = new BucketedCounter();
+
+    expect(counter.observe("a", 0, WINDOW, 2)).toBe(1);
+    expect(counter.observe("b", 0, WINDOW, 2)).toBe(1);
+    // At capacity: "c" is never held, so it counts as nothing rather than
+    // displacing someone. Under-reporting is the safe direction — this evidence
+    // can only ever raise a score, so a suppressed count cannot accuse anyone.
+    expect(counter.observe("c", 0, WINDOW, 2)).toBe(0);
+    expect(counter.observe("c", 0, WINDOW, 2)).toBe(0);
+  });
+
+  it("keeps counting the keys it already holds", () => {
+    const counter = new BucketedCounter();
+
+    counter.observe("a", 0, WINDOW, 1);
+    counter.observe("b", 0, WINDOW, 1);
+
+    expect(counter.observe("a", 0, WINDOW, 1)).toBe(2);
+  });
+
+  it("rolls an existing key into a new window even at capacity", () => {
+    // A rollover replaces an entry rather than adding one, so refusing it would
+    // freeze the counter at its first window's membership forever.
+    const counter = new BucketedCounter();
+    counter.observe("a", 0, WINDOW, 1);
+
+    expect(counter.observe("a", WINDOW, WINDOW, 1)).toBe(1);
+  });
+
+  it("readmits keys once cleanup has freed the window", () => {
+    const counter = new BucketedCounter();
+    counter.observe("a", 0, WINDOW, 1);
+
+    expect(counter.observe("b", 0, WINDOW, 1)).toBe(0);
+
+    counter.cleanup(WINDOW * 3, WINDOW);
+
+    expect(counter.observe("b", WINDOW * 3, WINDOW, 1)).toBe(1);
   });
 });
 

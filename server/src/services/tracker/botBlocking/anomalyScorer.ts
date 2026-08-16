@@ -18,6 +18,9 @@ const MAX_DISTRIBUTION_FIELDS = 128;
 // Only bounds the in-process fallback's distinct sets; Redis uses HyperLogLog,
 // which has no equivalent limit.
 const MAX_LOCAL_DISTINCT_VALUES = 4096;
+// Bounds how many keys the in-process fallback's plain counters hold at once.
+// Redis needs no equivalent, since it expires each key on its own window.
+const MAX_LOCAL_COUNTER_KEYS = 100_000;
 
 /**
  * Cohort-uniformity rule. A cohort is one exact device fingerprint on a site —
@@ -267,14 +270,29 @@ class BucketedDistributionCounter {
  * Plain count inside a fixed time bucket, mirroring the Redis `counter` kind.
  * Tumbling like the distribution counter above: the bucket index is part of the
  * caller's key, so a new bucket simply starts a new entry.
+ *
+ * Bounded by key count, which is the dimension that actually runs away here.
+ * `cleanup` only frees an entry once its window has passed, and `actorEvents1d`
+ * is keyed per actor address on a one-day window — so during a Redis outage an
+ * unbounded map would hold an entry for every address seen all day.
+ *
+ * Past the cap a new key counts as zero rather than evicting an existing one.
+ * Both halves of that are deliberate: eviction would let a heavy actor clear its
+ * own count by cycling keys, and zero keeps the fallback failing towards saying
+ * nothing, the same direction as the distinct-value cap below.
  */
-class BucketedCounter {
+export class BucketedCounter {
   private buckets = new Map<string, { startMs: number; count: number }>();
 
-  observe(key: string, nowMs: number, windowMs: number): number {
+  observe(key: string, nowMs: number, windowMs: number, maxKeys: number): number {
     const bucketStartMs = Math.floor(nowMs / windowMs) * windowMs;
     let bucket = this.buckets.get(key);
     if (!bucket || bucket.startMs !== bucketStartMs) {
+      // A key already present is being rolled over, not added, so it is let
+      // through at capacity — only a genuinely new key can grow the map.
+      if (!bucket && this.buckets.size >= maxKeys) {
+        return 0;
+      }
       bucket = { startMs: bucketStartMs, count: 0 };
       this.buckets.set(key, bucket);
     }
@@ -674,7 +692,7 @@ function buildCounterPlan(input: AnomalyInput, nowMs: number): AnomalyPlan {
       member: "",
       windowMs: DAY,
       maxSize: 0,
-      observeLocal: now => actorEvents1d.observe(ipKey, now, DAY),
+      observeLocal: now => actorEvents1d.observe(ipKey, now, DAY, MAX_LOCAL_COUNTER_KEYS),
     },
     {
       name: "enumerationEvents15m",
@@ -684,7 +702,7 @@ function buildCounterPlan(input: AnomalyInput, nowMs: number): AnomalyPlan {
       member: "",
       windowMs: ENUMERATION_BUCKET_MS,
       maxSize: 0,
-      observeLocal: now => enumerationEvents15m.observe(cohortKey, now, ENUMERATION_BUCKET_MS),
+      observeLocal: now => enumerationEvents15m.observe(cohortKey, now, ENUMERATION_BUCKET_MS, MAX_LOCAL_COUNTER_KEYS),
     },
     {
       // A sorted set cannot hold this: a crawler's cohort reaches tens of
@@ -719,7 +737,7 @@ function buildCounterPlan(input: AnomalyInput, nowMs: number): AnomalyPlan {
       member: "",
       windowMs: ENUMERATION_BUCKET_MS,
       maxSize: 0,
-      observeLocal: now => enumerationDirectEvents15m.observe(cohortKey, now, ENUMERATION_BUCKET_MS),
+      observeLocal: now => enumerationDirectEvents15m.observe(cohortKey, now, ENUMERATION_BUCKET_MS, MAX_LOCAL_COUNTER_KEYS),
     },
   ];
 
