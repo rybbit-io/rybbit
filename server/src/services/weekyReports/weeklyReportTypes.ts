@@ -1,17 +1,9 @@
-export interface OverviewData {
-  sessions: number;
-  pageviews: number;
-  users: number;
-  pages_per_session: number | null;
-  bounce_rate: number | null;
-  session_duration: number;
-}
+import type { BreakdownRow, OverviewRow } from "../siteMetrics/siteMetrics.js";
 
-export interface MetricData {
-  value: string;
-  count: number;
-  percentage: number | null;
-}
+// The email renders exactly what the Site Metrics module returns; naming the
+// rows here keeps the template's imports stable.
+export type OverviewData = OverviewRow;
+export type MetricData = BreakdownRow;
 
 export interface SiteReport {
   siteId: number;
