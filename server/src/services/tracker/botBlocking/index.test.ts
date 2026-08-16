@@ -37,14 +37,39 @@ describe("checkBotBlocking", () => {
     vi.mocked(lookupAsn).mockReturnValue(null);
   });
 
-  it("does nothing when bot blocking is disabled", async () => {
+  it("still detects when bot blocking is disabled, but does not enforce", async () => {
     const result = await checkBotBlocking({
       headers: {},
       blockBots: false,
       payload: basePayload,
     });
 
-    expect(result).toBeNull();
+    // The detection is made either way; `enforced` is what changes. A Site that
+    // has opted out of blocking used to be skipped before any layer ran, which
+    // left it with no record at all of what it was receiving.
+    expect(result).toMatchObject({ isBot: true, enforced: false });
+  });
+
+  it("marks the same detection as enforced when bot blocking is enabled", async () => {
+    const result = await checkBotBlocking({
+      headers: {},
+      blockBots: true,
+      payload: basePayload,
+    });
+
+    expect(result).toMatchObject({ isBot: true, enforced: true });
+  });
+
+  it("returns null for a clean request whether or not blocking is enabled", async () => {
+    for (const blockBots of [true, false]) {
+      const result = await checkBotBlocking({
+        headers: browserHeaders,
+        blockBots,
+        payload: { ...basePayload, screenWidth: 1512, screenHeight: 982, clientBotScore: 0, clientBotSignalMask: 0 },
+      });
+
+      expect(result).toBeNull();
+    }
   });
 
   it("skips verified trusted server-side ingestion requests", async () => {
@@ -71,31 +96,60 @@ describe("checkBotBlocking", () => {
     });
   });
 
-  it("counts requests before bot-blocking bypasses for percentage stats", async () => {
-    await checkBotBlocking({
-      headers: {},
-      blockBots: false,
-      payload: basePayload,
-    });
+  it("counts requests before the trusted-ingestion bypass for percentage stats", async () => {
     await checkBotBlocking({
       headers: {},
       blockBots: true,
       trustedServerSideIngestion: true,
-      payload: { ...basePayload, clientBotScore: 0, clientBotSignalMask: 0 },
+      payload: { ...basePayload, screenWidth: 1512, screenHeight: 982, clientBotScore: 0, clientBotSignalMask: 0 },
     });
 
     expect(getBotDetectionStats()).toMatchObject({
-      totalRequests: 2,
+      totalRequests: 1,
       totalBotRequests: 0,
+      totalEnforcedBotRequests: 0,
       botRequestPercentage: 0,
-      clientBotScoreHistogram: {
-        missing: 1,
-        score0: 1,
-      },
-      clientBotSignalTotals: {
-        missingMask: 1,
-      },
+      clientBotScoreHistogram: { score0: 1 },
     });
+  });
+
+  it("separates what was detected from what was enforced", async () => {
+    await checkBotBlocking({ headers: {}, blockBots: true, payload: basePayload });
+    await checkBotBlocking({ headers: {}, blockBots: false, payload: basePayload });
+
+    // Detection now runs for every Site, so these two numbers are no longer the
+    // same one. The gap is what Sites with blocking disabled are absorbing.
+    expect(getBotDetectionStats()).toMatchObject({
+      totalRequests: 2,
+      totalBotRequests: 2,
+      totalEnforcedBotRequests: 1,
+    });
+  });
+
+  it("records missing screen dimensions without ever convicting on them", async () => {
+    const result = await checkBotBlocking({
+      headers: browserHeaders,
+      blockBots: true,
+      payload: { ...basePayload, clientBotScore: 0, clientBotSignalMask: 0 },
+    });
+
+    // Weight 1 and never strong, so it cannot reach the threshold alone. The
+    // point is that a hit reporting no display leaves a trace instead of the
+    // geometry rules silently having nothing to say about it.
+    expect(result).toBeNull();
+    expect(getBotDetectionStats().clientBotSignalTotals.missingScreenDimensions).toBe(1);
+  });
+
+  it("does not raise missing screen dimensions for mobile sites", async () => {
+    // A native SDK has no screen to report, and is not a bot for it.
+    await checkBotBlocking({
+      headers: {},
+      blockBots: true,
+      isMobileSite: true,
+      payload: { ...basePayload, clientBotScore: 0, clientBotSignalMask: 0 },
+    });
+
+    expect(getBotDetectionStats().clientBotSignalTotals.missingScreenDimensions).toBe(0);
   });
 
   it("returns bot event properties for detected bots", async () => {
@@ -174,27 +228,30 @@ describe("checkBotBlocking", () => {
 
   it("records client bot score and signal aggregates for inspected requests", async () => {
     const headers = browserHeaders;
+    // Plausible dimensions, so the aggregates reflect what the client reported
+    // rather than picking up server-inferred geometry signals as well.
+    const webPayload = { ...basePayload, screenWidth: 1512, screenHeight: 982 };
 
     await checkBotBlocking({
       headers,
       blockBots: true,
-      payload: basePayload,
+      payload: webPayload,
     });
     await checkBotBlocking({
       headers,
       blockBots: true,
-      payload: { ...basePayload, clientBotScore: 0, clientBotSignalMask: 0 },
+      payload: { ...webPayload, clientBotScore: 0, clientBotSignalMask: 0 },
     });
     await checkBotBlocking({
       headers,
       blockBots: true,
-      payload: { ...basePayload, clientBotScore: 1, clientBotSignalMask: clientBotSignalMasks.swiftShader },
+      payload: { ...webPayload, clientBotScore: 1, clientBotSignalMask: clientBotSignalMasks.swiftShader },
     });
     await checkBotBlocking({
       headers,
       blockBots: true,
       payload: {
-        ...basePayload,
+        ...webPayload,
         clientBotScore: 2,
         clientBotSignalMask: clientBotSignalMasks.zeroOuterDimensions,
       },
@@ -202,7 +259,7 @@ describe("checkBotBlocking", () => {
     await checkBotBlocking({
       headers,
       blockBots: true,
-      payload: { ...basePayload, clientBotScore: 3, clientBotSignalMask: clientBotSignalMasks.automationApi },
+      payload: { ...webPayload, clientBotScore: 3, clientBotSignalMask: clientBotSignalMasks.automationApi },
     });
 
     expect(getBotDetectionStats()).toMatchObject({
@@ -377,6 +434,10 @@ describe("checkBotBlocking", () => {
       blockBots: true,
       payload: {
         ...basePayload,
+        // Real dimensions, so this stays a test about weak client signals and
+        // does not also pick up the missing-dimensions signal.
+        screenWidth: 1512,
+        screenHeight: 982,
         clientBotScore: 3,
         clientBotSignalMask: clientBotSignalMasks.zeroOuterDimensions | clientBotSignalMasks.swiftShader,
       },
@@ -524,6 +585,23 @@ describe("checkBotBlocking", () => {
     });
     expect(result?.detections.map(detection => detection.layer)).toEqual(["rate_anomaly"]);
     expect(result?.detections[0].anomalyReasons?.map(reason => reason.rule)).toContain("tuple_events_10s");
+    // The audit row has to carry which rules fired, not just that the layer
+    // did: "rate anomaly" spans a dozen rules, and a row that only records the
+    // layer cannot be argued with after the fact.
+    expect(result?.eventProperties.anomalyReasons).toContain("tuple_events_10s");
+    expect(result?.eventProperties.anomalyScore).toBeGreaterThan(0);
+  });
+
+  it("leaves the anomaly audit fields empty when another layer convicted", async () => {
+    const userAgent = "Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)";
+
+    const result = await checkBotBlocking({
+      headers: { ...browserHeaders, "user-agent": userAgent },
+      blockBots: true,
+      payload: { ...basePayload, userAgent },
+    });
+
+    expect(result?.eventProperties).toMatchObject({ anomalyReasons: "", anomalyScore: 0 });
   });
 
   it("convicts a browser release too old to have run the tracker", async () => {

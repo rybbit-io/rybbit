@@ -1,5 +1,11 @@
 import { anomalyObserve, type AnomalyCounterSpec } from "../../../db/redis/redis.js";
 import { createServiceLogger } from "../../../lib/logger/logger.js";
+import {
+  ENUMERATION_BUCKET_MS,
+  observeEnumeration,
+  resetEnumerationObserverForTests,
+  type EnumerationObservation,
+} from "./enumerationObserver.js";
 
 const SECOND = 1000;
 const MINUTE = 60 * SECOND;
@@ -9,6 +15,9 @@ const CLEANUP_INTERVAL_MS = 60 * SECOND;
 const MAX_COUNTER_BUCKET_SIZE = 512;
 const MAX_DISTINCT_BUCKET_SIZE = 512;
 const MAX_DISTRIBUTION_FIELDS = 128;
+// Only bounds the in-process fallback's distinct sets; Redis uses HyperLogLog,
+// which has no equivalent limit.
+const MAX_LOCAL_DISTINCT_VALUES = 4096;
 
 /**
  * Cohort-uniformity rule. A cohort is one exact device fingerprint on a site —
@@ -32,6 +41,32 @@ const MAX_DISTRIBUTION_FIELDS = 128;
 const COHORT_MIN_EVENTS_60S = 300;
 const COHORT_MIN_DISTINCT_VERSIONS = 8;
 const COHORT_MAX_MODAL_SHARE = 0.25;
+
+/**
+ * Long-window per-actor volume. Every other rate rule here works in 10- and
+ * 60-second windows, which a crawler paced at one hit every few seconds slips
+ * under indefinitely: 4,000 pageviews a day from a single datacenter address
+ * never trips any of them. Measured over production, events per (site, actor,
+ * day) has p99.99 = 303 and only 69 actors out of 1.03M exceed 1,000.
+ *
+ * It is supporting-only, and permanently so. The actor is the exact request IP —
+ * note this is NOT the identity actor, which buckets datacenter egress to a /24
+ * and would merge far more aggressively. Even at exact-IP granularity an office
+ * or a carrier NAT is one address shared by hundreds of people, and a four-figure
+ * daily count from one is unremarkable. A rule that convicts on this number
+ * convicts an office.
+ *
+ * The guard below drops it for actors showing many user agents, which is what
+ * shared egress usually looks like. It is a weak test, deliberately: a managed
+ * fleet where everyone runs the same browser build defeats it, which is another
+ * reason the score is 1 and the rule can only ever corroborate. Scoring it
+ * higher would let it combine with `missing_client_score_60s` and one crowd rule
+ * to reach the threshold on evidence that is entirely shared-dimension.
+ */
+const ACTOR_EVENTS_1D_THRESHOLD = 1000;
+const ACTOR_EVENTS_1D_SCORE = 1;
+const PROXY_MERGE_MAX_USER_AGENTS = 3;
+const DAY = 24 * 60 * MINUTE;
 
 const logger = createServiceLogger("anomaly-scorer");
 
@@ -63,6 +98,11 @@ export interface AnomalyCounters {
   cohortEvents60s: number;
   cohortTopVersionEvents60s: number;
   cohortDistinctVersions60s: number;
+  actorEvents1d: number;
+  enumerationEvents15m: number;
+  enumerationDistinctPaths15m: number;
+  enumerationDistinctActors15m: number;
+  enumerationDirectEvents15m: number;
 }
 
 /**
@@ -87,6 +127,13 @@ export interface AnomalyInput {
   hostname?: string;
   pathname?: string;
   eventType?: string;
+  /**
+   * The referrer as it arrived, NOT the stored value. Self-referrers are cleared
+   * before storage, so a stored empty referrer means "direct or internal
+   * navigation" — two very different populations. The enumeration observer needs
+   * the raw distinction.
+   */
+  referrer?: string;
   hasClientBotScore: boolean;
   /** Cohort dimensions; the cohort rule is skipped unless all three resolve. */
   screenWidth?: number;
@@ -98,8 +145,28 @@ export interface AnomalyInput {
 export interface AnomalyResult {
   isAnomalous: boolean;
   score: number;
+  /**
+   * Rules describing a single actor. Only these can open a conviction, and the
+   * split is the point: keeping the two kinds of evidence in one list left the
+   * invariant resting on how the scores happened to add up, one threshold edit
+   * away from letting shared-dimension evidence convict on its own.
+   */
+  convictingReasons: AnomalyReason[];
+  /**
+   * Rules keyed on dimensions real visitors share — an IP, a popular browser on
+   * a busy site — plus long-window volume, where the actor may be an entire
+   * office behind one egress. These raise a score that convicting evidence has
+   * already opened, and can never open one themselves.
+   */
+  supportingReasons: AnomalyReason[];
+  /** Both lists, in that order, for the audit record written to ClickHouse. */
   reasons: AnomalyReason[];
   counters: AnomalyCounters;
+  /**
+   * Shadow-mode enumeration reading. Recorded, never scored — nothing in this
+   * module reads it back into `score`.
+   */
+  enumeration?: EnumerationObservation;
 }
 
 class RollingCounter {
@@ -196,6 +263,74 @@ class BucketedDistributionCounter {
   }
 }
 
+/**
+ * Plain count inside a fixed time bucket, mirroring the Redis `counter` kind.
+ * Tumbling like the distribution counter above: the bucket index is part of the
+ * caller's key, so a new bucket simply starts a new entry.
+ */
+class BucketedCounter {
+  private buckets = new Map<string, { startMs: number; count: number }>();
+
+  observe(key: string, nowMs: number, windowMs: number): number {
+    const bucketStartMs = Math.floor(nowMs / windowMs) * windowMs;
+    let bucket = this.buckets.get(key);
+    if (!bucket || bucket.startMs !== bucketStartMs) {
+      bucket = { startMs: bucketStartMs, count: 0 };
+      this.buckets.set(key, bucket);
+    }
+    bucket.count++;
+    return bucket.count;
+  }
+
+  cleanup(nowMs: number, windowMs: number) {
+    for (const [key, bucket] of this.buckets) {
+      if (bucket.startMs + windowMs < nowMs) {
+        this.buckets.delete(key);
+      }
+    }
+  }
+
+  clear() {
+    this.buckets.clear();
+  }
+}
+
+/**
+ * Distinct-value count inside a fixed time bucket, mirroring the Redis
+ * `cardinality` kind. Where Redis uses a HyperLogLog, this holds the values, so
+ * it is capped — above the cap it undercounts. That direction is deliberate: a
+ * suppressed distinct count lowers path novelty, so the fallback can only fail
+ * towards saying nothing, never towards a false accusation.
+ */
+class BucketedDistinctCounter {
+  private buckets = new Map<string, { startMs: number; values: Set<string> }>();
+
+  observe(key: string, value: string, nowMs: number, windowMs: number, maxValues: number): number {
+    const bucketStartMs = Math.floor(nowMs / windowMs) * windowMs;
+    let bucket = this.buckets.get(key);
+    if (!bucket || bucket.startMs !== bucketStartMs) {
+      bucket = { startMs: bucketStartMs, values: new Set<string>() };
+      this.buckets.set(key, bucket);
+    }
+    if (bucket.values.size < maxValues) {
+      bucket.values.add(value);
+    }
+    return bucket.values.size;
+  }
+
+  cleanup(nowMs: number, windowMs: number) {
+    for (const [key, bucket] of this.buckets) {
+      if (bucket.startMs + windowMs < nowMs) {
+        this.buckets.delete(key);
+      }
+    }
+  }
+
+  clear() {
+    this.buckets.clear();
+  }
+}
+
 interface AnomalyDistributionReading {
   total: number;
   top: number;
@@ -215,19 +350,51 @@ const ipDistinctHosts60s = new RollingDistinctCounter();
 
 const cohortBrowserVersions60s = new BucketedDistributionCounter();
 
+const actorEvents1d = new BucketedCounter();
+const enumerationEvents15m = new BucketedCounter();
+const enumerationDirectEvents15m = new BucketedCounter();
+const enumerationDistinctPaths15m = new BucketedDistinctCounter();
+const enumerationDistinctActors15m = new BucketedDistinctCounter();
+
 let lastCleanupMs = 0;
 
+const BRANDED_BROWSER_PATTERN = /(Edg|EdgA|EdgiOS|OPR|SamsungBrowser|Firefox|FxiOS|CriOS|Chrome)\/(\d{1,4})/;
+const GENERIC_VERSION_PATTERN = /Version\/(\d{1,4})/;
+
 /**
- * Major version of the reported browser engine, used as the cohort rule's
- * distribution dimension. A deliberately loose parse: the rule only cares that
- * rotating user agents map to different values and stable ones map to the same
- * value, so any token that moves with the browser release works.
+ * The browser family and major version behind a user agent, used as the cohort
+ * rule's grouping key and distribution dimension respectively. A deliberately
+ * loose parse: the rule only cares that rotating user agents map to different
+ * versions and stable ones map to the same version, so any token that moves with
+ * the browser release works.
+ *
+ * Both come out of the same match, which is the point — a version number is only
+ * comparable within its own family. Chrome 120 and Safari 17 are not two points
+ * on one distribution, and pooling them is what made a mixed-browser cohort look
+ * flat (see the cohort key below).
+ *
+ * Chromium derivatives that put their own token AFTER `Chrome/` — Edge (`Edg`)
+ * and Opera (`OPR`) — resolve to `chrome`, because the leftmost match wins.
+ * That is the behaviour we want and not an accident of the regex: their
+ * `Chrome/` token carries the Chromium version they actually ship, so Edge 120
+ * and Chrome 120 genuinely belong on one distribution and both peak together.
+ * Derivatives whose token comes first — Samsung Internet, Chrome and Firefox on
+ * iOS — get their own family, which is also right, since their version numbers
+ * move independently. `anomalyScorer.test.ts` pins all of these against real
+ * user agents.
  */
-function getBrowserMajorVersion(userAgent: string): string {
-  const match =
-    /(?:Edg|EdgA|EdgiOS|OPR|SamsungBrowser|Firefox|FxiOS|CriOS|Chrome)\/(\d{1,4})/.exec(userAgent) ??
-    /Version\/(\d{1,4})/.exec(userAgent);
-  return match ? match[1] : "";
+function getBrowserIdentity(userAgent: string): { family: string; majorVersion: string } {
+  const branded = BRANDED_BROWSER_PATTERN.exec(userAgent);
+  if (branded) {
+    return { family: branded[1].toLowerCase(), majorVersion: branded[2] };
+  }
+
+  const generic = GENERIC_VERSION_PATTERN.exec(userAgent);
+  if (generic) {
+    return { family: "safari", majorVersion: generic[1] };
+  }
+
+  return { family: "", majorVersion: "" };
 }
 
 // Unique-per-event token so each observation is a distinct sorted-set member in
@@ -308,6 +475,11 @@ function maybeCleanup(nowMs: number) {
   ipDistinctUserAgents5m.cleanup(nowMs, 5 * MINUTE);
   ipDistinctHosts60s.cleanup(nowMs, MINUTE);
   cohortBrowserVersions60s.cleanup(nowMs, MINUTE);
+  actorEvents1d.cleanup(nowMs, DAY);
+  enumerationEvents15m.cleanup(nowMs, ENUMERATION_BUCKET_MS);
+  enumerationDirectEvents15m.cleanup(nowMs, ENUMERATION_BUCKET_MS);
+  enumerationDistinctPaths15m.cleanup(nowMs, ENUMERATION_BUCKET_MS);
+  enumerationDistinctActors15m.cleanup(nowMs, ENUMERATION_BUCKET_MS);
 }
 
 // A single counter described once for both backends: its Redis key/member and an
@@ -316,7 +488,7 @@ function maybeCleanup(nowMs: number) {
 interface CounterPlan {
   name: keyof AnomalyCounters;
   enabled: boolean;
-  kind?: "rolling" | "distribution";
+  kind?: AnomalyCounterSpec["kind"];
   redisKey: string;
   member: string;
   windowMs: number;
@@ -331,7 +503,28 @@ interface CounterPlan {
   observeLocalDistribution?: (nowMs: number) => AnomalyDistributionReading;
 }
 
-function buildCounterPlan(input: AnomalyInput, nowMs: number): CounterPlan[] {
+/**
+ * The cohort bucket the enumeration observer reads, carried out of the plan so
+ * the observer does not have to re-derive the cohort key. Null when the event
+ * has no cohort or no path, which is when there is nothing to measure.
+ */
+interface EnumerationPlan {
+  cohortKey: string;
+  bucket: number;
+  /**
+   * Whether this hit arrived with no referrer at all, judged on the raw value
+   * before self-referrers are cleared for storage. Only a direct hit increments
+   * the direct counter, so only a direct hit can read a meaningful share.
+   */
+  isDirect: boolean;
+}
+
+interface AnomalyPlan {
+  counters: CounterPlan[];
+  enumeration: EnumerationPlan | null;
+}
+
+function buildCounterPlan(input: AnomalyInput, nowMs: number): AnomalyPlan {
   const siteId = input.siteId;
   const ipAddress = normalizeDimension(input.ipAddress);
   const userAgentHash = hashValue(input.userAgent || "");
@@ -347,17 +540,37 @@ function buildCounterPlan(input: AnomalyInput, nowMs: number): CounterPlan[] {
   // The cohort's time bucket lives in the key, so the Redis hash expires instead
   // of needing its own pruning. Skipped unless every dimension resolves —
   // a partial fingerprint would merge unrelated visitors into one cohort.
-  const browserMajorVersion = getBrowserMajorVersion(input.userAgent || "");
+  //
+  // The browser family is part of the key, not just the measured dimension.
+  // Without it, one cohort pooled Chrome, Safari, Firefox and Edge version
+  // numbers into a single distribution, which inflates the distinct-version
+  // count and depresses the modal share — the exact two conditions this rule
+  // convicts on. On a large site with a common screen and language that is a
+  // false-positive path into a convicting rule, so the key must separate them.
+  // Language is required for the same reason: an unset language would merge
+  // every locale on the site into one cohort.
+  const language = normalizeDimension(input.language);
+  const { family: browserFamily, majorVersion: browserMajorVersion } = getBrowserIdentity(input.userAgent || "");
   const hasCohort =
+    browserFamily !== "" &&
     browserMajorVersion !== "" &&
+    language !== "" &&
     typeof input.screenWidth === "number" &&
     typeof input.screenHeight === "number" &&
     input.screenWidth > 0 &&
     input.screenHeight > 0;
-  const cohortKey = `${siteId}:${input.screenWidth}x${input.screenHeight}:${normalizeDimension(input.language)}`;
+  const cohortKey = `${siteId}:${input.screenWidth}x${input.screenHeight}:${language}:${browserFamily}`;
   const cohortBucket = Math.floor(nowMs / MINUTE);
 
-  return [
+  // Enumeration shape is measured over the same cohort, on a much longer bucket:
+  // a crawler paced at one hit per identity produces nothing legible in a
+  // minute. It needs a path, since path novelty is the whole measurement.
+  const hasEnumerationCohort = hasCohort && pathname !== "";
+  const enumerationBucket = Math.floor(nowMs / ENUMERATION_BUCKET_MS);
+  const isDirect = normalizeDimension(input.referrer) === "";
+  const dayBucket = Math.floor(nowMs / DAY);
+
+  const counters: CounterPlan[] = [
     {
       name: "tupleEvents10s",
       enabled: !isInteraction,
@@ -453,7 +666,67 @@ function buildCounterPlan(input: AnomalyInput, nowMs: number): CounterPlan[] {
       observeLocalDistribution: now =>
         cohortBrowserVersions60s.observe(cohortKey, browserMajorVersion, now, MINUTE, MAX_DISTRIBUTION_FIELDS),
     },
+    {
+      name: "actorEvents1d",
+      enabled: true,
+      kind: "counter",
+      redisKey: `bot:a:av:${ipKey}:${dayBucket}`,
+      member: "",
+      windowMs: DAY,
+      maxSize: 0,
+      observeLocal: now => actorEvents1d.observe(ipKey, now, DAY),
+    },
+    {
+      name: "enumerationEvents15m",
+      enabled: hasEnumerationCohort,
+      kind: "counter",
+      redisKey: `bot:e:ev:${cohortKey}:${enumerationBucket}`,
+      member: "",
+      windowMs: ENUMERATION_BUCKET_MS,
+      maxSize: 0,
+      observeLocal: now => enumerationEvents15m.observe(cohortKey, now, ENUMERATION_BUCKET_MS),
+    },
+    {
+      // A sorted set cannot hold this: a crawler's cohort reaches tens of
+      // thousands of distinct paths in a bucket, which is what HyperLogLog is
+      // for. The count is approximate; every threshold reading it has margin.
+      name: "enumerationDistinctPaths15m",
+      enabled: hasEnumerationCohort,
+      kind: "cardinality",
+      redisKey: `bot:e:pa:${cohortKey}:${enumerationBucket}`,
+      member: pathname,
+      windowMs: ENUMERATION_BUCKET_MS,
+      maxSize: 0,
+      observeLocal: now =>
+        enumerationDistinctPaths15m.observe(cohortKey, pathname, now, ENUMERATION_BUCKET_MS, MAX_LOCAL_DISTINCT_VALUES),
+    },
+    {
+      name: "enumerationDistinctActors15m",
+      enabled: hasEnumerationCohort,
+      kind: "cardinality",
+      redisKey: `bot:e:ac:${cohortKey}:${enumerationBucket}`,
+      member: ipAddress,
+      windowMs: ENUMERATION_BUCKET_MS,
+      maxSize: 0,
+      observeLocal: now =>
+        enumerationDistinctActors15m.observe(cohortKey, ipAddress, now, ENUMERATION_BUCKET_MS, MAX_LOCAL_DISTINCT_VALUES),
+    },
+    {
+      name: "enumerationDirectEvents15m",
+      enabled: hasEnumerationCohort && isDirect,
+      kind: "counter",
+      redisKey: `bot:e:di:${cohortKey}:${enumerationBucket}`,
+      member: "",
+      windowMs: ENUMERATION_BUCKET_MS,
+      maxSize: 0,
+      observeLocal: now => enumerationDirectEvents15m.observe(cohortKey, now, ENUMERATION_BUCKET_MS),
+    },
   ];
+
+  return {
+    counters,
+    enumeration: hasEnumerationCohort ? { cohortKey, bucket: enumerationBucket, isDirect } : null,
+  };
 }
 
 function emptyCounters(): AnomalyCounters {
@@ -470,6 +743,11 @@ function emptyCounters(): AnomalyCounters {
     cohortEvents60s: 0,
     cohortTopVersionEvents60s: 0,
     cohortDistinctVersions60s: 0,
+    actorEvents1d: 0,
+    enumerationEvents15m: 0,
+    enumerationDistinctPaths15m: 0,
+    enumerationDistinctActors15m: 0,
+    enumerationDirectEvents15m: 0,
   };
 }
 
@@ -523,15 +801,15 @@ function observeViaLocal(plan: CounterPlan[], nowMs: number): AnomalyCounters {
 }
 
 function computeAnomalyResult(counters: AnomalyCounters): AnomalyResult {
-  // Individual rules are keyed on (site, ip, ua) — they describe a single actor
+  // Convicting rules are keyed on (site, ip, ua) — they describe a single actor
   // and may convict on their own. The interaction-burst threshold is set beyond
   // human clicking speed (10/s sustained); ordinary widget bursts stay below it.
-  const individualReasons: AnomalyReason[] = [];
-  addReason(individualReasons, "tuple_events_10s", 4, counters.tupleEvents10s, 30, 10);
-  addReason(individualReasons, "tuple_events_60s", 4, counters.tupleEvents60s, 120, 60);
-  addReason(individualReasons, "tuple_interaction_events_10s", 4, counters.tupleInteractionEvents10s, 100, 10);
-  addReason(individualReasons, "tuple_distinct_paths_60s", 4, counters.tupleDistinctPaths60s, 25, 60);
-  addReason(individualReasons, "missing_client_score_60s", 1, counters.missingClientScore60s, 20, 60);
+  const convictingReasons: AnomalyReason[] = [];
+  addReason(convictingReasons, "tuple_events_10s", 4, counters.tupleEvents10s, 30, 10);
+  addReason(convictingReasons, "tuple_events_60s", 4, counters.tupleEvents60s, 120, 60);
+  addReason(convictingReasons, "tuple_interaction_events_10s", 4, counters.tupleInteractionEvents10s, 100, 10);
+  addReason(convictingReasons, "tuple_distinct_paths_60s", 4, counters.tupleDistinctPaths60s, 25, 60);
+  addReason(convictingReasons, "missing_client_score_60s", 1, counters.missingClientScore60s, 20, 60);
 
   // Cohort uniformity. Not a crowd rule: a crowd rule blames a visitor for a
   // dimension real people share (an IP, a popular browser), whereas this fires
@@ -544,7 +822,7 @@ function computeAnomalyResult(counters: AnomalyCounters): AnomalyResult {
     counters.cohortDistinctVersions60s >= COHORT_MIN_DISTINCT_VERSIONS &&
     counters.cohortTopVersionEvents60s < counters.cohortEvents60s * COHORT_MAX_MODAL_SHARE
   ) {
-    individualReasons.push({
+    convictingReasons.push({
       rule: "cohort_version_uniformity_60s",
       score: 4,
       value: Math.round((counters.cohortTopVersionEvents60s / counters.cohortEvents60s) * 100),
@@ -553,25 +831,46 @@ function computeAnomalyResult(counters: AnomalyCounters): AnomalyResult {
     });
   }
 
-  // Crowd rules are keyed on shared dimensions (ip, site+ua) that many real
+  // Supporting rules are keyed on shared dimensions (ip, site+ua) that many real
   // visitors legitimately share — one busy CGNAT IP or a popular browser on a
   // busy site exceeds them with zero per-visitor evidence. Like generic hosting
-  // ASNs in the layer above, they corroborate but never convict: their scores
-  // count only when at least one individual rule also fired.
-  const crowdReasons: AnomalyReason[] = [];
-  addReason(crowdReasons, "ip_events_60s", 3, counters.ipEvents60s, 200, 60);
-  addReason(crowdReasons, "ip_distinct_user_agents_5m", 3, counters.ipDistinctUserAgents5m, 10, 300);
-  addReason(crowdReasons, "ip_distinct_hosts_60s", 2, counters.ipDistinctHosts60s, 6, 60);
-  addReason(crowdReasons, "site_user_agent_events_60s", 1, counters.siteUserAgentEvents60s, 300, 60);
+  // ASNs in the layer above, they corroborate but never convict.
+  const supportingReasons: AnomalyReason[] = [];
+  addReason(supportingReasons, "ip_events_60s", 3, counters.ipEvents60s, 200, 60);
+  addReason(supportingReasons, "ip_distinct_user_agents_5m", 3, counters.ipDistinctUserAgents5m, 10, 300);
+  addReason(supportingReasons, "ip_distinct_hosts_60s", 2, counters.ipDistinctHosts60s, 6, 60);
+  addReason(supportingReasons, "site_user_agent_events_60s", 1, counters.siteUserAgentEvents60s, 300, 60);
 
-  const individualScore = individualReasons.reduce((total, reason) => total + reason.score, 0);
-  const crowdScore = crowdReasons.reduce((total, reason) => total + reason.score, 0);
-  const score = individualScore + (individualReasons.length > 0 ? crowdScore : 0);
+  // Long-window volume, skipped entirely for an actor showing many user agents.
+  // That is the signature of shared egress — a corporate SASE or VPN gateway,
+  // where one address is hundreds of real people and a four-figure daily count
+  // is unremarkable. A single scraper presents one user agent, so the guard
+  // costs nothing against the traffic this rule exists for.
+  if (counters.ipDistinctUserAgents5m <= PROXY_MERGE_MAX_USER_AGENTS) {
+    addReason(
+      supportingReasons,
+      "actor_events_1d",
+      ACTOR_EVENTS_1D_SCORE,
+      counters.actorEvents1d,
+      ACTOR_EVENTS_1D_THRESHOLD,
+      86400
+    );
+  }
+
+  // The invariant, stated once: supporting evidence is only ever added to a
+  // score that convicting evidence has already opened. With the two lists
+  // separate this cannot be broken by retuning a threshold — only by editing
+  // this line, which is the point.
+  const convictingScore = convictingReasons.reduce((total, reason) => total + reason.score, 0);
+  const supportingScore = supportingReasons.reduce((total, reason) => total + reason.score, 0);
+  const score = convictingReasons.length === 0 ? 0 : convictingScore + supportingScore;
 
   return {
     isAnomalous: score >= ANOMALY_SCORE_THRESHOLD,
     score,
-    reasons: [...individualReasons, ...crowdReasons],
+    convictingReasons,
+    supportingReasons,
+    reasons: [...convictingReasons, ...supportingReasons],
     counters,
   };
 }
@@ -581,21 +880,49 @@ export async function observeTrackingAnomaly(input: AnomalyInput): Promise<Anoma
   const plan = buildCounterPlan(input, nowMs);
 
   let counters: AnomalyCounters;
+  let usedLocalCounters = !redisAnomalyEnabled;
   if (redisAnomalyEnabled) {
     try {
-      counters = await observeViaRedis(plan, nowMs);
+      counters = await observeViaRedis(plan.counters, nowMs);
     } catch (error) {
+      usedLocalCounters = true;
       // A Redis blip must never break ingestion. Fall back to the in-process
       // counters — accuracy degrades under clustering, but detection keeps working
       // and recovers automatically once Redis is back.
       logger.error({ err: error }, "Redis anomaly counters failed; using in-process fallback");
-      counters = observeViaLocal(plan, nowMs);
+      counters = observeViaLocal(plan.counters, nowMs);
     }
   } else {
-    counters = observeViaLocal(plan, nowMs);
+    counters = observeViaLocal(plan.counters, nowMs);
   }
 
-  return computeAnomalyResult(counters);
+  const result = computeAnomalyResult(counters);
+
+  // Only a direct hit can read a meaningful direct share, since only a direct
+  // hit incremented that counter. The observation is attached to the result and
+  // deliberately goes no further — it is evidence being gathered, not a verdict.
+  if (plan.enumeration?.isDirect) {
+    const enumeration = await observeEnumeration(
+      plan.enumeration.cohortKey,
+      plan.enumeration.bucket,
+      {
+        events: counters.enumerationEvents15m,
+        distinctPaths: counters.enumerationDistinctPaths15m,
+        distinctActors: counters.enumerationDistinctActors15m,
+        directEvents: counters.enumerationDirectEvents15m,
+      },
+      // Follow the counters' own backend: reaching for Redis to mark a streak
+      // while the counters are in-process would pay a connection timeout per
+      // qualifying bucket during exactly the outage the fallback exists for.
+      usedLocalCounters
+    );
+
+    if (enumeration) {
+      result.enumeration = enumeration;
+    }
+  }
+
+  return result;
 }
 
 export function resetAnomalyScorerForTests() {
@@ -609,6 +936,12 @@ export function resetAnomalyScorerForTests() {
   ipDistinctUserAgents5m.clear();
   ipDistinctHosts60s.clear();
   cohortBrowserVersions60s.clear();
+  actorEvents1d.clear();
+  enumerationEvents15m.clear();
+  enumerationDirectEvents15m.clear();
+  enumerationDistinctPaths15m.clear();
+  enumerationDistinctActors15m.clear();
+  resetEnumerationObserverForTests();
   lastCleanupMs = 0;
   eventSeq = 0;
 }

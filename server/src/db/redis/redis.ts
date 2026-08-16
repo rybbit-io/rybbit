@@ -232,10 +232,21 @@ export async function apiRateLimitConsume(input: ApiRateLimitInput): Promise<Api
 // top/total is the modal share, which separates an organic population (one
 // dominant browser version) from a fleet rotating a fixed list of user agents.
 //
+// Two further kinds serve aggregate rules that ask about a whole cohort rather
+// than one visitor, where per-member bookkeeping would be far too expensive to
+// keep. Both live inside a fixed time bucket encoded in the key by the caller,
+// exactly like a distribution, so the key simply expires. "counter" is a plain
+// monotonic INCR — the cheapest possible answer to "how many events did this
+// cohort produce this bucket?" — and ignores the member entirely. "cardinality"
+// is a HyperLogLog: an approximate distinct count for dimensions such as distinct
+// paths or distinct actors, where the true cardinality can reach tens of
+// thousands and a sorted set holding every member would be far too large.
+//
 // numberOfKeys is omitted so the key count can be passed per call. KEYS holds the
 // counter keys; ARGV is [nowMs, then (kind, member, windowMs, maxSize) per key].
-// Every key yields three results — [count, 0, 0] for rolling counters and
-// [total, top, distinct] for distributions — so the caller can index by position.
+// Every key yields three results — [count, 0, 0] for rolling counters, plain
+// counters and cardinality estimates, and [total, top, distinct] for
+// distributions — so the caller can index by position.
 redis.defineCommand("anomalyObserve", {
   lua: `
     local now = tonumber(ARGV[1])
@@ -266,6 +277,21 @@ redis.defineCommand("anomalyObserve", {
         results[out + 1] = total
         results[out + 2] = top
         results[out + 3] = #values
+      elseif kind == 'c' then
+        -- Plain monotonic counter inside the caller-encoded bucket; member unused.
+        results[out + 1] = redis.call('INCR', key)
+        redis.call('PEXPIRE', key, windowMs)
+        results[out + 2] = 0
+        results[out + 3] = 0
+      elseif kind == 'p' then
+        -- HyperLogLog: an approximate distinct count for dimensions whose true
+        -- cardinality can reach tens of thousands (distinct paths, distinct
+        -- actors), where a sorted set holding every member would be far too large.
+        redis.call('PFADD', key, member)
+        redis.call('PEXPIRE', key, windowMs)
+        results[out + 1] = redis.call('PFCOUNT', key)
+        results[out + 2] = 0
+        results[out + 3] = 0
       else
         redis.call('ZADD', key, now, member)
         redis.call('ZREMRANGEBYSCORE', key, '-inf', '(' .. (now - windowMs))
@@ -286,15 +312,25 @@ export interface AnomalyCounterSpec {
   /** Fully-namespaced Redis key for this counter. */
   key: string;
   /**
-   * Rolling sorted-set counter (default) or fixed-bucket value distribution. A
-   * distribution key must already encode its time bucket.
+   * How this counter stores its observations:
+   * - `rolling` (default) — sorted set over a sliding `windowMs`; reports exact
+   *   cardinality.
+   * - `distribution` — hash of value -> count; reports total, top and distinct.
+   * - `counter` — plain monotonic INCR; reports the incremented value. `member`
+   *   and `maxSize` are unused.
+   * - `cardinality` — HyperLogLog; reports an approximate distinct count.
+   *   `maxSize` is unused.
+   *
+   * `rolling` manages its own window, so its key may be stable. The other three
+   * kinds are fixed-bucket: the key must already encode its time bucket, since
+   * they only expire rather than trim.
    */
-  kind?: "rolling" | "distribution";
-  /** Unique per-event token (rate counters) or observed value (distinct/distribution counters). */
+  kind?: "rolling" | "distribution" | "counter" | "cardinality";
+  /** Unique per-event token (rate counters) or observed value (distinct/distribution/cardinality counters). */
   member: string;
-  /** Rolling window for `rolling`; key TTL for `distribution`. */
+  /** Rolling window for `rolling`; key TTL for the fixed-bucket kinds. */
   windowMs: number;
-  /** Hard cap on stored members/fields; 0 disables trimming. */
+  /** Hard cap on stored members/fields; 0 disables trimming. Unused by `counter` and `cardinality`. */
   maxSize: number;
 }
 
@@ -309,17 +345,27 @@ interface AnomalyRedis extends Redis {
   anomalyObserve(...args: (string | number)[]): Promise<number[]>;
 }
 
+// Wire codes the Lua script dispatches on. Written as an exhaustive map rather
+// than a ternary so a new kind cannot silently fall through to a rolling counter.
+const ANOMALY_KIND_CODES: Record<NonNullable<AnomalyCounterSpec["kind"]>, string> = {
+  rolling: "z",
+  distribution: "h",
+  counter: "c",
+  cardinality: "p",
+};
+
 /**
  * Observe one event against a batch of counters and return each counter's
  * current reading, in the same order as `specs`. Atomic across all workers; a
- * single round-trip regardless of how many counters are passed. Rolling counters
- * report cardinality in `total`; distributions fill all three fields.
+ * single round-trip regardless of how many counters are passed. Distributions
+ * fill all three fields; every other kind reports its single number in `total`
+ * and leaves `top`/`distinct` at zero.
  */
 export async function anomalyObserve(nowMs: number, specs: AnomalyCounterSpec[]): Promise<AnomalyDistribution[]> {
   const keys = specs.map(spec => spec.key);
   const args: (string | number)[] = [specs.length, ...keys, nowMs];
   for (const spec of specs) {
-    args.push(spec.kind === "distribution" ? "h" : "z", spec.member, spec.windowMs, spec.maxSize);
+    args.push(ANOMALY_KIND_CODES[spec.kind ?? "rolling"], spec.member, spec.windowMs, spec.maxSize);
   }
   const flat = await (redis as AnomalyRedis).anomalyObserve(...args);
   return specs.map((_, index) => ({

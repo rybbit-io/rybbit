@@ -2,7 +2,7 @@ import { createServiceLogger } from "../../lib/logger/logger.js";
 import { sessionsService } from "../sessions/sessionsService.js";
 import { decideSiteExclusion, type SiteExclusionDecision } from "../sites/siteExclusionDecision.js";
 import { usageService } from "../usageService.js";
-import { botEventQueue } from "./botBlocking/botEventQueue.js";
+import { botEventQueue, botObservationQueue } from "./botBlocking/botEventQueue.js";
 import { checkBotBlocking } from "./botBlocking/index.js";
 import { pageviewQueue } from "./pageviewQueue.js";
 import type { TrackingRequest } from "./trackingRequest.js";
@@ -36,9 +36,12 @@ export type IngestOutcome =
  *      still moved every anomaly counter for the Site.
  *   2. Over-limit — before any Redis or ClickHouse work, since the event is
  *      going to be dropped regardless.
- *   3. Bot detection — needs a real event; charges a Redis round-trip.
+ *   3. Bot detection — needs a real event; charges a Redis round-trip. It runs
+ *      for every Site, whether or not the Site blocks bots; `blockBots` decides
+ *      only where a detection is sent, at stage 5.
  *   4. Identity and session — the only stage that hashes a fingerprint.
- *   5. Enqueue.
+ *   5. Enqueue — to `bot_events` if the detection is enforced, otherwise to
+ *      `events` plus, when something was detected, `bot_observations`.
  */
 export async function ingestEvent(trackingRequest: TrackingRequest): Promise<IngestOutcome> {
   const { payload, site } = trackingRequest;
@@ -80,13 +83,14 @@ export async function ingestEvent(trackingRequest: TrackingRequest): Promise<Ing
       hostname: payload.hostname,
       pathname: payload.pathname,
       eventType: payload.type,
+      referrer: payload.referrer,
       ipAddress: trackingRequest.ipAddress,
     },
   });
 
   const eventPayload = await createBasePayload(trackingRequest);
 
-  if (botDetectionResult) {
+  if (botDetectionResult?.enforced) {
     await botEventQueue.add({
       ...eventPayload,
       ...botDetectionResult.eventProperties,
@@ -106,6 +110,19 @@ export async function ingestEvent(trackingRequest: TrackingRequest): Promise<Ing
     ...eventPayload,
     sessionId,
   });
+
+  // The Site has bot blocking turned off, so this hit is tracked like any other
+  // — but it was detected, and the detection is worth keeping. Mirroring it to
+  // bot_observations is what lets the Site's owner see what turning blocking on
+  // would have removed, which is otherwise unanswerable: before this, a Site
+  // that opted out was never evaluated at all.
+  if (botDetectionResult) {
+    await botObservationQueue.add({
+      ...eventPayload,
+      ...botDetectionResult.eventProperties,
+      sessionId,
+    });
+  }
 
   return { status: "tracked", sessionId };
 }

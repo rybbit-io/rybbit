@@ -1,8 +1,24 @@
 # Bot Blocking
 
-This directory owns tracker-side bot detection for public `/track` ingestion. `trackEvent.ts` validates the payload, resolves the request IP, and calls `checkBotBlocking()`. If any bot method matches, the event is stored in ClickHouse `bot_events` with per-layer bot metadata.
+This directory owns tracker-side bot detection for public `/track` ingestion. `trackEvent.ts` validates the payload, resolves the request IP, and calls `checkBotBlocking()`.
 
-Detected bot requests are not inserted into the normal `events` table, so dashboard, report, replay-list, and usage queries do not need a bot filter.
+## Detection and enforcement are separate
+
+Detection runs for **every** site. Only trusted server-side ingestion skips it, because it is authenticated first-party traffic reporting its own IP and user agent, which several layers would convict outright.
+
+Site-level `blockBots` decides what happens to a detection, not whether one is looked for. `checkBotBlocking()` returns `enforced` alongside the detection, and ingestion routes on it:
+
+| detection | `blockBots` | event lands in | audit row |
+| --- | --- | --- | --- |
+| yes | on | — (kept out of `events`) | `bot_events` |
+| yes | off | `events`, as normal | `bot_observations` |
+| no | either | `events`, as normal | — |
+
+Enforced detections are still not inserted into `events`, so dashboard, report, replay-list, and usage queries need no bot filter.
+
+A site that has turned blocking off previously returned before any layer ran, which left it with neither protection nor any record of what it was receiving. `bot_observations` is that record — a forensic sample of the traffic each layer would have acted on, collected without changing a single number the site owner sees today.
+
+It is a sample and not a ledger, so do not treat a count from it as "what blocking would have removed". The queue drops a batch on ClickHouse failure rather than retrying (the same as `bot_events` — an audit row must never cost an ingest), and it is written after the event itself, so a crash between the two loses the row and keeps the event. Compare shapes and ratios in it; do not reconcile its count against `events`.
 
 ## Entry Point
 
@@ -29,7 +45,9 @@ Current methods:
 - `bot_asn`: detects curated bot/scanner/AI provider ASNs as a standalone layer. Generic ipverse `hosting` ASNs are supporting evidence only and are recorded when another layer also matched.
 - `rate_anomaly`: detects request bursts and crawl-shaped behavior using in-memory sliding-window counters.
 
-The client-side `_bs` value is a cached, weighted score computed once per page lifecycle. Strong signals such as automation APIs, impossible dimensions, or default automation viewport sizes can reach the blocking threshold alone; weaker signals such as SwiftShader, missing Chrome globals, and empty plugin lists only add supporting weight. The client also sends `_bsm`, a compact bitmask used for aggregate component counters. The server supplements that mask from validated screen dimensions so older scripts can still move `800x600`, `1024x768`, and impossible dimensions into the `client_signals` layer.
+The client-side `_bs` value is a cached, weighted score computed once per page lifecycle. Strong signals such as automation APIs, impossible dimensions, or default automation viewport sizes can reach the blocking threshold alone; weaker signals such as SwiftShader, missing Chrome globals, and empty plugin lists only add supporting weight. The client also sends `_bsm`, a compact bitmask used for aggregate component counters. The server supplements that mask from validated screen dimensions so older scripts can still move `800x600`, `1024x768`, `1280x1200`, square screens, and impossible dimensions into the `client_signals` layer.
+
+One signal is server-only: `missingScreenDimensions`. A browser always has `window.screen`, so only the server can observe that a hit arrived carrying no dimensions at all. It is weak (weight 1, never strong) and skipped for mobile sites, where a native SDK has no screen to report. It exists so the geometry rules — which are skipped outright when nothing is reported — leave a trace of having been skipped rather than the hit passing silently.
 
 ## Logging
 
@@ -48,17 +66,20 @@ Each detection object contains compact method-specific details such as matched U
 `botDetectionStats.ts` also logs process-lifetime totals for tracker requests that reach the bot-blocking entry point every 5 seconds:
 
 - `totalRequests`
-- `totalBotRequests`
+- `totalBotRequests` — what was **detected**
+- `totalEnforcedBotRequests` — the subset that was actually diverted out of `events`. The gap between the two is what sites with blocking disabled are absorbing.
 - `botRequestPercentage`
 - `botDetectionTotals` by method
 - `clientBotScoreHistogram` with buckets for missing, `0`, `1`, `2`, and `3+`
-- `clientBotSignalTotals` for `_bsm` components: missing mask, automation API, zero outer dimensions, missing Chrome global, SwiftShader, empty plugins, default `800x600` viewport, default `1024x768` viewport, impossible dimensions, outer dimension anomalies, plugin/API absence, and unknown mask bits
+- `clientBotSignalTotals` for `_bsm` components: missing mask, automation API, zero outer dimensions, missing Chrome global, SwiftShader, empty plugins, default `800x600` viewport, default `1024x768` viewport, default `1280x1200` viewport, square screen, missing screen dimensions, impossible dimensions, outer dimension anomalies, plugin/API absence, and unknown mask bits
+
+`missingMask` and the histogram's `missing` bucket follow what the **client** reported, so they measure tracker adoption. The per-signal totals count every bit we ended up with, inferred server-side or not — which is what makes a newly defined bit appearing in production the proof that a deploy actually took.
 
 A request can increment multiple method totals if multiple methods detected it, so method totals can sum higher than `totalBotRequests`.
 
 ## Storage
 
-`botEventQueue.ts` enriches detected bot requests with the same browser, device, and geolocation basics as normal events, then inserts a compact audit row into `bot_events`.
+`botEventQueue.ts` enriches detected bot requests with the same browser, device, and geolocation basics as normal events, then inserts a compact audit row. It exports two queues over one implementation: `botEventQueue` writes to `bot_events` (enforced), and `botObservationQueue` writes to `bot_observations` (detected but not enforced). The schemas are identical on purpose, so the same forensic query runs against either.
 
 The table keeps only the columns needed to inspect bot traffic:
 
@@ -67,8 +88,12 @@ The table keeps only the columns needed to inspect bot traffic:
 - ASN fields: `asn`, `asn_org`
 - one boolean column for each detection layer
 - UA classification fields: `matched_ua_pattern`, `bot_category`
+- client evidence: `client_bot_score`, `client_signal_mask`
+- anomaly evidence: `anomaly_reasons` (the rules that fired, comma-separated) and `anomaly_score`. The boolean layer columns say *that* the anomaly layer convicted; these say which of its dozen rules did, which is the only form in which the row can be argued with.
 
-`bot_events` has a 3-month TTL. The main `events` table has no bot-specific columns or bot-specific TTL.
+Both tables are healed by `ensureBotEventsColumns` at init, so a column added here reaches tables created by earlier versions.
+
+`bot_events` has a 3-month TTL; `bot_observations` has a 30-day TTL, since it exists to answer a current question rather than to hold long-term history. The main `events` table has no bot-specific columns or bot-specific TTL — any such columns present on a production `events` table are drift, and nothing writes them.
 
 ## ASN Data
 
@@ -84,19 +109,30 @@ npm run update:datacenter-asns
 
 ## Rate Anomaly Layer
 
-`anomalyScorer.ts` uses per-process memory only. It tracks short rolling windows for:
+`anomalyScorer.ts` keeps its counters in Redis, so every worker and replica shares one view; an in-process fallback takes over automatically if Redis is unavailable, and `DISABLE_REDIS_ANOMALY=true` pins scoring to it. All of a request's counters ride one Lua round-trip.
 
-- events per `siteId + IP + UA hash`
-- events per `siteId + IP`
+It tracks:
+
+- events per `siteId + IP + UA hash`, over 10s and 60s
+- interaction-event bursts per visitor tuple, on their own beyond-human threshold
 - distinct paths per visitor tuple
-- distinct UAs per IP
-- distinct hostnames per IP
+- events, distinct UAs, and distinct hostnames per IP
 - site-wide volume for a UA hash
 - missing client bot score volume
+- browser-version spread within a cohort (`siteId + screen + language + browser family`)
+- events per actor per day
+- enumeration shape per cohort, in 15-minute buckets
 
-The layer is score-based. Strong rules, such as more than 30 events in 10 seconds for one visitor tuple or more than 25 distinct paths in 60 seconds, can block alone. Weak rules, such as missing client score, only add context unless paired with stronger behavior.
+Reasons come back in two lists, and the distinction is structural rather than a matter of how the scores happen to add up:
 
-This catches obvious floods and fast crawlers, but it is local to a Node process. If the signal is useful in production, move the same keys and thresholds to Redis so counters are shared across workers and containers.
+- **convicting** — keyed on a single actor, or on a distribution no organic population produces. These can open a conviction.
+- **supporting** — keyed on dimensions real visitors share (an IP, a popular browser), plus long-window volume, where one address may be an entire office behind a SASE gateway. These are only ever added to a score convicting evidence has already opened.
+
+Three rules deserve their own note:
+
+- **Cohort version uniformity** convicts, and is the only rule that can catch a paced distributed crawler — one that stays under every per-identity threshold by design. Its key must carry the browser family: without it, Chrome, Safari and Firefox version numbers pool into one distribution, which inflates the distinct-version count and depresses the modal share, i.e. manufactures exactly the two conditions the rule fires on.
+- **Events per actor per day** is supporting-only and scores 1. Its actor is the exact request IP, deliberately *not* the /24 identity bucket the per-visitor rules use — bucketing merges a datacenter range or a SASE egress pool into one actor, and a day is long enough for that to reach any threshold on legitimate traffic. It is additionally dropped outright for an address showing more than three user agents in five minutes, which is what a shared gateway looks like.
+- **Enumeration** (`enumerationObserver.ts`) is in shadow mode: it measures path novelty, events per actor, and direct share per cohort, requires two consecutive qualifying buckets, and **never scores**. It logs. Promoting it should follow from reading those logs, not from a threshold nudge. Its direct share is measured on the raw referrer, before self-referrers are cleared for storage — a stored empty referrer means "direct *or* internal navigation", which most ordinary browsing satisfies.
 
 ## Trust Boundaries
 

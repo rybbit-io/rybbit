@@ -63,6 +63,7 @@ const SIGNAL_KEYS = Object.keys(clientBotSignalTotals) as ClientBotSignalTotal[]
 
 let totalRequests = 0;
 let totalBotRequests = 0;
+let totalEnforcedBotRequests = 0;
 
 function getBotRequestPercentage(requests = totalRequests, botRequests = totalBotRequests) {
   if (requests === 0) {
@@ -71,10 +72,29 @@ function getBotRequestPercentage(requests = totalRequests, botRequests = totalBo
   return Number(((botRequests / requests) * 100).toFixed(2));
 }
 
-export function recordBotBlockingRequest(clientBotScore: number | undefined, clientBotSignalMask: number | undefined) {
+/**
+ * `hasClientScore`/`hasClientMask` are whether the CLIENT reported them, which
+ * is a different question from whether we have them: the server infers signals
+ * of its own, so a request from a tracker too old to report anything can still
+ * arrive here with a score and a mask. These two counters measure tracker
+ * adoption, so they follow the client.
+ *
+ * The histogram still partitions every request, but its buckets mean two
+ * different things by design: `missing` is "the client reported nothing", while
+ * the numbered buckets hold the score we ended up with, inferred contributions
+ * included. The per-signal totals follow the same rule — they count every bit we
+ * ended up with, which is what makes a new bit appearing in production the proof
+ * that a deploy actually took.
+ */
+export function recordBotBlockingRequest(
+  clientBotScore: number | undefined,
+  clientBotSignalMask: number | undefined,
+  hasClientMask = clientBotSignalMask !== undefined,
+  hasClientScore = clientBotScore !== undefined
+) {
   totalRequests++;
 
-  if (typeof clientBotScore !== "number" || !Number.isFinite(clientBotScore)) {
+  if (!hasClientScore || typeof clientBotScore !== "number" || !Number.isFinite(clientBotScore)) {
     clientBotScoreHistogram.missing++;
   } else if (clientBotScore === 0) {
     clientBotScoreHistogram.score0++;
@@ -86,9 +106,11 @@ export function recordBotBlockingRequest(clientBotScore: number | undefined, cli
     clientBotScoreHistogram.score3Plus++;
   }
 
-  if (typeof clientBotSignalMask !== "number" || !Number.isFinite(clientBotSignalMask)) {
+  if (!hasClientMask) {
     clientBotSignalTotals.missingMask++;
-  } else {
+  }
+
+  if (typeof clientBotSignalMask === "number" && Number.isFinite(clientBotSignalMask)) {
     for (const name of CLIENT_BOT_SIGNAL_NAMES) {
       if ((clientBotSignalMask & CLIENT_BOT_SIGNAL_MASKS[name]) !== 0) {
         clientBotSignalTotals[name]++;
@@ -101,8 +123,19 @@ export function recordBotBlockingRequest(clientBotScore: number | undefined, cli
   }
 }
 
-export function recordBotDetections(methods: readonly BotDetectionMethod[]) {
+/**
+ * `enforced` is whether the detection was acted on. Detection now runs for every
+ * site, including those with bot blocking turned off, so the detection totals
+ * and the blocked total are no longer the same number: `totalBotRequests`
+ * counts what was detected, `totalEnforcedBotRequests` the subset that was
+ * actually diverted out of `events`. The gap between them is what sites with
+ * blocking disabled are absorbing.
+ */
+export function recordBotDetections(methods: readonly BotDetectionMethod[], enforced: boolean) {
   totalBotRequests++;
+  if (enforced) {
+    totalEnforcedBotRequests++;
+  }
   for (const method of methods) {
     totals[method]++;
   }
@@ -112,6 +145,7 @@ export function getBotDetectionStats() {
   return {
     totalRequests,
     totalBotRequests,
+    totalEnforcedBotRequests,
     botRequestPercentage: getBotRequestPercentage(),
     totals: { ...totals },
     clientBotScoreHistogram: { ...clientBotScoreHistogram },
@@ -122,6 +156,7 @@ export function getBotDetectionStats() {
 export function resetBotDetectionStatsForTests() {
   totalRequests = 0;
   totalBotRequests = 0;
+  totalEnforcedBotRequests = 0;
   for (const method of BOT_DETECTION_METHODS) {
     totals[method] = 0;
   }
@@ -139,6 +174,7 @@ function flattenLocalCounters(): Record<string, number> {
   const flat: Record<string, number> = {
     totalRequests,
     totalBotRequests,
+    totalEnforcedBotRequests,
   };
   for (const method of BOT_DETECTION_METHODS) {
     flat[`m:${method}`] = totals[method];
@@ -177,6 +213,7 @@ function structureAggregate(hash: Record<string, string>) {
   return {
     totalRequests: requests,
     totalBotRequests: botRequests,
+    totalEnforcedBotRequests: num("totalEnforcedBotRequests"),
     botRequestPercentage: getBotRequestPercentage(requests, botRequests),
     botDetectionTotals: aggregateTotals,
     clientBotScoreHistogram: histogram,
