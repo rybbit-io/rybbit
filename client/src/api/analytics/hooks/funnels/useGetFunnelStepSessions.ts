@@ -1,12 +1,7 @@
 import { Time } from "../../../../components/DateSelector/types";
 import { FUNNEL_PAGE_FILTERS } from "../../../../lib/filterGroups";
 import { getFilteredFilters } from "../../../../lib/store";
-import {
-  fetchFunnelStepSessions,
-  FunnelStep,
-  FunnelStepSessionsParams,
-  GetSessionsResponse,
-} from "../../endpoints";
+import { FunnelStep, GetSessionsResponse } from "../../endpoints";
 import { useAnalyticsQuery } from "../../useAnalyticsQuery";
 
 export function useGetFunnelStepSessions({
@@ -32,14 +27,15 @@ export function useGetFunnelStepSessions({
   // filters at all (not the store's full filter list).
   const filteredFilters = getFilteredFilters(FUNNEL_PAGE_FILTERS);
 
-  return useAnalyticsQuery<{ data: GetSessionsResponse }, FunnelStepSessionsParams>({
-    key: "funnel-step-sessions",
+  return useAnalyticsQuery<GetSessionsResponse>({
+    key: ["funnel-step-sessions", stepNumber],
+    path: `funnels/${stepNumber}/sessions`,
     site: siteId,
     overrideTime: time,
     useFilters: filteredFilters.length > 0,
     customFilters: filteredFilters,
-    extraParams: { steps, stepNumber, mode, page, limit },
+    params: { mode, page, limit },
+    body: () => ({ steps }),
     enabled: !!steps && steps.length >= 2 && enabled,
-    fetch: (site, params) => fetchFunnelStepSessions(site, params),
   });
 }

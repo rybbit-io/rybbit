@@ -34,7 +34,7 @@ export function MainSectionLite() {
 
   const { data, isFetching } = useGetOverviewBucketed({ site, bucket, lite: true });
 
-  const max = Math.max(...(data?.data?.map((d: any) => d[selectedStat]) ?? []));
+  const max = Math.max(...(data?.map((d: any) => d[selectedStat]) ?? []));
 
   return (
     <>

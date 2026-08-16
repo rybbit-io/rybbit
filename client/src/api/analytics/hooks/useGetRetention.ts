@@ -1,12 +1,17 @@
-import { useQuery } from "@tanstack/react-query";
-import { useStore } from "../../../lib/store";
-import { fetchRetention, ProcessedRetentionData, RetentionMode } from "../endpoints";
+import { ProcessedRetentionData, RetentionMode } from "../endpoints";
+import { useAnalyticsQuery } from "../useAnalyticsQuery";
 
 export function useGetRetention(mode: RetentionMode = "week", range: number = 90) {
-  const { site } = useStore();
-  return useQuery<ProcessedRetentionData>({
-    queryKey: ["retention", site, mode, range],
-    queryFn: () => fetchRetention(site, { mode, range }),
-    enabled: !!site,
+  return useAnalyticsQuery<ProcessedRetentionData>({
+    key: "retention",
+    path: "retention",
+    // Retention spans its own cohort range, not the selected period.
+    useTime: false,
+    useFilters: false,
+    params: { mode, range },
+    // Keyed by mode/range: refetch on mount and don't show the previous
+    // cohort grid while the new one loads.
+    staleTime: 0,
+    placeholder: false,
   });
 }

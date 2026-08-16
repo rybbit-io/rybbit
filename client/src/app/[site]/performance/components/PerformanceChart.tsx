@@ -109,7 +109,7 @@ export function PerformanceChart() {
       PERCENTILES.map(percentile => [percentile, []])
     );
 
-    timeSeriesData?.data?.forEach(item => {
+    timeSeriesData?.forEach(item => {
       const timestamp = DateTime.fromSQL(item.time, { zone: timezone }).toUTC();
       if (timestamp > now) return;
       const timestampMs = timestamp.toMillis();

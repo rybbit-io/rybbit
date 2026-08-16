@@ -68,7 +68,7 @@ export default function UserPage() {
     limit: LIMIT + 1,
   });
 
-  const allSessions = sessionsData?.data || [];
+  const allSessions = sessionsData || [];
   const hasNextPage = allSessions.length > LIMIT;
   const sessions = allSessions.slice(0, LIMIT);
   const hasPrevPage = page > 1;
@@ -184,7 +184,7 @@ export default function UserPage() {
         <UserSidebar
           data={data}
           isLoading={isLoading}
-          sessionCount={sessionCount?.data ?? []}
+          sessionCount={sessionCount ?? []}
           isLoadingCalendar={isLoadingCalendar}
           getRegionName={getRegionName}
         />

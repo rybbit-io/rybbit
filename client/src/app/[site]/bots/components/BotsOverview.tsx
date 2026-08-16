@@ -116,7 +116,7 @@ export function BotsOverview() {
   const { site } = useStore();
   const { selectedLayer, setSelectedLayer } = useBotsStore();
   const { data, isLoading, isFetching } = useGetBotOverview({ site });
-  const overview = data?.data;
+  const overview = data;
 
   return (
     <Card>

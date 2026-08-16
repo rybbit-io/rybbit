@@ -103,8 +103,8 @@ export function PerformanceOverview() {
 
   const isLoading = isOverviewLoading || isOverviewLoadingPrevious;
 
-  const currentData = overviewData?.data ?? {};
-  const previousData = overviewDataPrevious?.data ?? {};
+  const currentData = overviewData ?? {};
+  const previousData = overviewDataPrevious ?? {};
 
   // Helper function to get metric value for selected percentile
   const getMetricValue = (data: any, metric: PerformanceMetric): number => {

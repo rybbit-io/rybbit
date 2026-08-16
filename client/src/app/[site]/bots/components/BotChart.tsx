@@ -38,7 +38,7 @@ export function BotChart() {
     const upperBoundMs = (boundsMax ?? now.toJSDate()).getTime();
     const points: BotPoint[] = [];
 
-    timeSeriesData?.data?.forEach(item => {
+    timeSeriesData?.forEach(item => {
       const timestamp = DateTime.fromSQL(item.time, { zone: timezone }).toUTC();
       if (timestamp > now) return;
       const timestampMs = timestamp.toMillis();

@@ -1,5 +1,5 @@
 import { UseQueryResult } from "@tanstack/react-query";
-import { fetchPageTitles, PageTitlesParams, PageTitlesPaginatedResponse } from "../endpoints";
+import { PageTitlesPaginatedResponse } from "../endpoints";
 import { useAnalyticsQuery } from "../useAnalyticsQuery";
 
 type PeriodTime = "current" | "previous";
@@ -17,13 +17,13 @@ export function useGetPageTitlesPaginated({
   page = 1,
   useFilters = true,
   periodTime = "current",
-}: UseGetPageTitlesOptions): UseQueryResult<{ data: PageTitlesPaginatedResponse }> {
-  return useAnalyticsQuery<{ data: PageTitlesPaginatedResponse }, PageTitlesParams>({
+}: UseGetPageTitlesOptions): UseQueryResult<PageTitlesPaginatedResponse> {
+  return useAnalyticsQuery<PageTitlesPaginatedResponse>({
     key: "page-titles",
+    path: "page-titles",
     periodTime,
     useFilters,
-    extraParams: { limit, page },
+    params: { limit, page },
     staleTime: Infinity,
-    fetch: (site, params) => fetchPageTitles(site, params).then(data => ({ data })),
   });
 }

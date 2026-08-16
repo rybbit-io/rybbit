@@ -4,7 +4,6 @@ import { DateTime } from "luxon";
 import { useMemo } from "react";
 
 import type { GetOverviewBucketedResponse } from "../../../../../api/analytics/endpoints";
-import type { APIResponse } from "../../../../../api/types";
 import { ChartTooltip } from "../../../../../components/charts/ChartTooltip";
 import { TimeSeriesChart } from "../../../../../components/charts/TimeSeriesChart";
 import type { TimeSeriesChartPoint } from "../../../../../components/charts/TimeSeriesChart";
@@ -34,8 +33,8 @@ export function Chart({
   max,
   chartXMax,
 }: {
-  data: APIResponse<GetOverviewBucketedResponse> | undefined;
-  previousData: APIResponse<GetOverviewBucketedResponse> | undefined;
+  data: GetOverviewBucketedResponse | undefined;
+  previousData: GetOverviewBucketedResponse | undefined;
   max: number;
   chartXMax: Date | undefined;
 }) {
@@ -53,7 +52,7 @@ export function Chart({
     // Filter against strict period bounds so stale transition data does not
     // bleed onto the new x-axis during goBack/goForward.
     const currentPoints: Point[] = [];
-    data?.data?.forEach(e => {
+    data?.forEach(e => {
       const ts = DateTime.fromSQL(e.time, { zone: timezone }).toUTC();
       if (ts > now) return;
       const tsMs = ts.toMillis();
@@ -86,7 +85,7 @@ export function Chart({
     const { min: prevMin } = getChartTimeBounds(previousTime, bucket, timezone);
     const offsetMs = cMin && prevMin ? cMin.getTime() - prevMin.getTime() : 0;
     const previousPoints: PrevPoint[] = [];
-    previousData?.data?.forEach(e => {
+    previousData?.forEach(e => {
       const prevTs = DateTime.fromSQL(e.time, { zone: timezone }).toUTC();
       const mappedMs = prevTs.toMillis() + offsetMs;
       if (lowerBoundMs !== undefined && mappedMs < lowerBoundMs) return;

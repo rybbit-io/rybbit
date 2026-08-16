@@ -1,12 +1,7 @@
 import { Filter } from "@rybbit/shared";
 import { UseQueryResult } from "@tanstack/react-query";
 import { usePerformanceStore } from "../../../../app/[site]/performance/performanceStore";
-import {
-  fetchPerformanceByDimension,
-  PaginatedPerformanceResponse,
-  PerformanceByDimensionItem,
-  PerformanceByDimensionParams,
-} from "../../endpoints";
+import { PaginatedPerformanceResponse, PerformanceByDimensionItem } from "../../endpoints";
 import { useAnalyticsQuery } from "../../useAnalyticsQuery";
 
 // Keep the old type for backward compatibility
@@ -37,13 +32,20 @@ export function useGetPerformanceByDimension({
 }: UseGetPerformanceByDimensionOptions): UseQueryResult<PaginatedPerformanceResponse> {
   const { selectedPercentile } = usePerformanceStore();
 
-  return useAnalyticsQuery<PaginatedPerformanceResponse, PerformanceByDimensionParams>({
+  return useAnalyticsQuery<PaginatedPerformanceResponse>({
     key: "performance-by-dimension",
+    path: "performance/by-dimension",
     site,
     useFilters,
     additionalFilters,
-    extraParams: { dimension, limit, page, percentile: selectedPercentile, sortBy, sortOrder },
+    params: {
+      dimension,
+      limit,
+      page,
+      percentile: selectedPercentile,
+      sort_by: sortBy,
+      sort_order: sortOrder,
+    },
     staleTime: Infinity,
-    fetch: (site, params) => fetchPerformanceByDimension(site, params),
   });
 }

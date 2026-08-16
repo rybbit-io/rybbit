@@ -34,11 +34,11 @@ export function SessionDetails({ session, userId, highlightedEventTimestamp }: S
   // Flatten all events into a single array
   const allEvents = useMemo(() => {
     if (!sessionDetailsData?.pages) return [];
-    return sessionDetailsData.pages.flatMap((page) => page.data?.events || []);
+    return sessionDetailsData.pages.flatMap((page) => page?.events || []);
   }, [sessionDetailsData?.pages]);
 
   // Get session details from the first page
-  const sessionDetails = sessionDetailsData?.pages[0]?.data?.session;
+  const sessionDetails = sessionDetailsData?.pages[0]?.session;
 
   // Event type filter state
   const [visibleEventTypes, setVisibleEventTypes] = useState<Set<string>>(
@@ -86,7 +86,7 @@ export function SessionDetails({ session, userId, highlightedEventTimestamp }: S
             {t("Error loading session details. Please try again.")}
           </AlertDescription>
         </Alert>
-      ) : sessionDetailsData?.pages[0]?.data ? (
+      ) : sessionDetailsData?.pages[0] ? (
         <Tabs defaultValue="timeline" className="mt-4">
           <div className="flex justify-between items-center mb-6">
             <TabsList>
@@ -117,7 +117,7 @@ export function SessionDetails({ session, userId, highlightedEventTimestamp }: S
               hasNextPage={hasNextPage ?? false}
               isFetchingNextPage={isFetchingNextPage}
               fetchNextPage={fetchNextPage}
-              totalEvents={sessionDetailsData.pages[0]?.data?.pagination?.total ?? 0}
+              totalEvents={sessionDetailsData.pages[0]?.pagination?.total ?? 0}
             />
           </TabsContent>
 

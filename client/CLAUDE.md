@@ -65,7 +65,17 @@ messages/                   # Translation files (en.json, de.json, etc.)
 
 ## API Layer Pattern
 
-Every data domain has two layers:
+**Analytics reads** go through one query module. A hook declares a descriptor — what differs between endpoints — and nothing else:
+
+```ts
+export function useGetEventNames() {
+  return useAnalyticsQuery<EventName[]>({ key: "event-names", path: "events/names" });
+}
+```
+
+`useAnalyticsQuery` / `useAnalyticsInfiniteQuery` (`api/analytics/useAnalyticsQuery.ts`) resolve the store context through selectors, serialise the time window, build the queryKey from the same request object they send (so key and request cannot drift), unwrap the `{ data }` envelope, and own the same-site placeholder policy, `staleTime`, and `enabled: !!site`. Non-React callers (CSV export, `useQueries` fan-outs) use `buildAnalyticsRequest` / `fetchAnalytics` from `api/analytics/analyticsRequest.ts` directly. Never hand-assemble a queryKey listing store inputs, and never call `authedFetch` for an analytics read.
+
+**Everything else** (admin, gsc, stripe — and analytics *writes*) keeps two layers:
 
 **1. Endpoints** (`api/[domain]/endpoints/*.ts`) – pure async functions, no React:
 ```ts
@@ -85,16 +95,14 @@ export function useGetSomething(siteId?: string) {
 }
 ```
 
-**`authedFetch<T>(url, options?)`** (`api/utils.ts`):
+**`authedFetch<T>(url, params?, config?)`** (`api/utils.ts`):
 - Prepends `BACKEND_URL`
 - Sends `credentials: "include"`
-- Adds `x-private-key` header if present
+- Adds `x-private-key` header if present — resolved via `api/requestContext.ts`, so the HTTP layer imports neither the store nor routing
 - Converts array params to JSON strings
 - Extracts and throws backend errors from `response.data.error`
 
-**`buildApiParams(time, { filters? })`** (`api/utils.ts`) returns a plain `CommonApiParams` object; the free functions `toQueryParams` / `toBucketedQueryParams` / `toMetricQueryParams` (`api/analytics/endpoints/types.ts`) convert it to snake_case wire params inside endpoint functions.
-
-**`useAnalyticsQuery` / `useAnalyticsInfiniteQuery`** (`api/analytics/useAnalyticsQuery.ts`) — the standard way to build analytics hooks. Reads site/time/filters/timezone from the store once, derives the wire params, and builds the queryKey from the same params object so key and request cannot drift. Handles the same-site placeholder policy, `staleTime`, and `enabled: !!site`. Per-endpoint hooks only declare their key prefix, endpoint-specific `extraParams`, and fetcher. Never hand-assemble a queryKey listing store inputs in an analytics hook.
+**`buildApiParams(time, { timeZone, filters? })`** (`api/utils.ts`) is a pure function returning a `CommonApiParams` object; `toQueryParams` (`api/analytics/endpoints/types.ts`) converts it to snake_case wire params. The timezone is injected, never read from the store — use `useTimezone()` in components, `getTimezone()` outside React.
 
 ## State Management
 

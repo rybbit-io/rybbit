@@ -1,6 +1,5 @@
 import { FilterParameter, TimeBucket } from "@rybbit/shared";
-import { authedFetch } from "../../utils";
-import { CommonApiParams, PaginationParams, toQueryParams } from "./types";
+import { CommonApiParams, PaginationParams } from "./types";
 
 export type BotLayerKey = "ua_pattern" | "header_heuristics" | "client_signals" | "bot_asn" | "rate_anomaly";
 
@@ -43,41 +42,4 @@ export interface BotDimensionParams extends CommonApiParams, PaginationParams {
 export interface PaginatedBotDimensionResponse {
   data: BotDimensionItem[];
   totalCount: number;
-}
-
-export async function fetchBotOverview(
-  site: string | number,
-  params: BotOverviewParams
-): Promise<GetBotOverviewResponse> {
-  const response = await authedFetch<{ data: GetBotOverviewResponse }>(`/sites/${site}/bots/overview`, {
-    ...toQueryParams(params),
-    layer: params.layer || undefined,
-  });
-  return response.data;
-}
-
-export async function fetchBotTimeSeries(
-  site: string | number,
-  params: BotTimeSeriesParams
-): Promise<GetBotTimeSeriesResponse> {
-  const response = await authedFetch<{ data: GetBotTimeSeriesResponse }>(`/sites/${site}/bots/time-series`, {
-    ...toQueryParams(params),
-    bucket: params.bucket,
-    layer: params.layer || undefined,
-  });
-  return response.data;
-}
-
-export async function fetchBotDimension(
-  site: string | number,
-  params: BotDimensionParams
-): Promise<PaginatedBotDimensionResponse> {
-  const response = await authedFetch<{ data: PaginatedBotDimensionResponse }>(`/sites/${site}/bots/by-dimension`, {
-    ...toQueryParams(params),
-    dimension: params.dimension,
-    limit: params.limit,
-    page: params.page,
-    layer: params.layer || undefined,
-  });
-  return response.data;
 }
