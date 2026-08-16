@@ -9,9 +9,9 @@ import {
   getUserIsInOrg,
   type BearerAuthResult,
 } from "./auth-utils.js";
+import { getOrgMembership, isOrgAdmin } from "./access.js";
 import { hasScope, scopeToString, type ScopeRequirement } from "./scopes.js";
 import { resolveNumericSiteId } from "../utils.js";
-import { db } from "../db/postgres/postgres.js";
 
 type AuthMiddleware = (request: FastifyRequest, reply: FastifyReply) => Promise<void>;
 
@@ -389,16 +389,13 @@ export function requireOrgAdminFromParams(scope?: RouteScope): AuthMiddleware {
     }
 
     // Check org membership and role
-    const member = await db.query.member.findFirst({
-      where: (member, { and, eq }) =>
-        and(eq(member.userId, session.user.id), eq(member.organizationId, organizationId)),
-    });
+    const membership = await getOrgMembership(session.user.id, organizationId);
 
-    if (!member) {
+    if (!membership) {
       return reply.status(403).send({ error: "You are not a member of this organization" });
     }
 
-    if (member.role !== "admin" && member.role !== "owner") {
+    if (!isOrgAdmin(membership)) {
       return reply.status(403).send({ error: "You must be an admin or owner" });
     }
 

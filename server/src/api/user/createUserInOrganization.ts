@@ -4,6 +4,7 @@ import { randomBytes } from "crypto";
 import { db } from "../../db/postgres/postgres.js";
 import { member } from "../../db/postgres/schema.js";
 import { auth } from "../../lib/auth.js";
+import { getOrgMembership, isOrgAdmin } from "../../lib/access.js";
 import { getIsUserAdmin } from "../../lib/auth-utils.js";
 
 function generateId(len = 32) {
@@ -50,10 +51,8 @@ export async function createUserInOrganization(request: FastifyRequest<CreateUse
       if (!userId) {
         return reply.status(401).send({ error: "Unauthorized" });
       }
-      callerMembership = await db.query.member.findFirst({
-        where: and(eq(member.userId, userId), eq(member.organizationId, organizationId)),
-      });
-      if (!callerMembership || (callerMembership.role !== "admin" && callerMembership.role !== "owner")) {
+      callerMembership = await getOrgMembership(userId, organizationId);
+      if (!isOrgAdmin(callerMembership)) {
         return reply.status(401).send({ error: "Unauthorized" });
       }
     }

@@ -1,7 +1,8 @@
-import { eq, and } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { FastifyReply, FastifyRequest } from "fastify";
 import { db } from "../../db/postgres/postgres.js";
-import { organization, member } from "../../db/postgres/schema.js";
+import { organization } from "../../db/postgres/schema.js";
+import { getOrgMembership, isOrgOwner } from "../../lib/access.js";
 import { stripe } from "../../lib/stripe.js";
 
 export async function getInvoices(
@@ -29,13 +30,9 @@ export async function getInvoices(
 
   try {
     // Verify user has permission to manage billing for this organization
-    const memberResult = await db
-      .select({ role: member.role })
-      .from(member)
-      .where(and(eq(member.userId, userId), eq(member.organizationId, organizationId)))
-      .limit(1);
+    const membership = await getOrgMembership(userId, organizationId);
 
-    if (!memberResult.length || memberResult[0].role !== "owner") {
+    if (!isOrgOwner(membership)) {
       return reply.status(403).send({ error: "Only organization owners can manage billing" });
     }
 

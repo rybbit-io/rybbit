@@ -1,8 +1,9 @@
-import { and, eq, inArray } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { FastifyReply, FastifyRequest } from "fastify";
 
 import { db } from "../../db/postgres/postgres.js";
 import { member, memberSiteAccess, sites, user } from "../../db/postgres/schema.js";
+import { siteIdsInOrganization } from "../../lib/access.js";
 import { invalidateSitesAccessCache } from "../../lib/auth-utils.js";
 
 interface UpdateMemberSiteAccessParams {
@@ -54,12 +55,7 @@ export async function updateMemberSiteAccess(
 
     // Validate that all siteIds belong to this organization
     if (siteIds && siteIds.length > 0) {
-      const validSites = await db
-        .select({ siteId: sites.siteId })
-        .from(sites)
-        .where(and(eq(sites.organizationId, organizationId), inArray(sites.siteId, siteIds)));
-
-      const validSiteIds = new Set(validSites.map(s => s.siteId));
+      const validSiteIds = new Set(await siteIdsInOrganization(siteIds, organizationId));
       const invalidSiteIds = siteIds.filter(id => !validSiteIds.has(id));
 
       if (invalidSiteIds.length > 0) {
