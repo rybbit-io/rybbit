@@ -4,6 +4,7 @@ import type { TrackingRequest } from "./trackingRequest.js";
 
 const mocks = vi.hoisted(() => ({
   addBotEvent: vi.fn(),
+  addBotObservation: vi.fn(),
   addPageview: vi.fn(),
   checkBotBlocking: vi.fn(),
   decideSiteExclusion: vi.fn(),
@@ -31,6 +32,7 @@ vi.mock("./botBlocking/index.js", () => ({
 
 vi.mock("./botBlocking/botEventQueue.js", () => ({
   botEventQueue: { add: mocks.addBotEvent },
+  botObservationQueue: { add: mocks.addBotObservation },
 }));
 
 vi.mock("../sites/siteExclusionDecision.js", () => ({
@@ -185,8 +187,9 @@ describe("ingestEvent", () => {
     expect(mocks.addPageview).not.toHaveBeenCalled();
   });
 
-  it("routes detected bots to the bot queue instead of a session", async () => {
+  it("routes enforced bot detections to the bot queue instead of a session", async () => {
     mocks.checkBotBlocking.mockResolvedValue({
+      enforced: true,
       eventProperties: { bot_layer: "ua_pattern" },
     });
 
@@ -201,6 +204,36 @@ describe("ingestEvent", () => {
     );
     expect(mocks.updateSession).not.toHaveBeenCalled();
     expect(mocks.addPageview).not.toHaveBeenCalled();
+    expect(mocks.addBotObservation).not.toHaveBeenCalled();
+  });
+
+  it("tracks an unenforced bot detection normally and records the observation", async () => {
+    // A Site with bot blocking turned off. The visitor's event must reach
+    // `events` exactly as it would have before detection ran for these Sites at
+    // all — the detection is recorded alongside it, and changes nothing.
+    mocks.checkBotBlocking.mockResolvedValue({
+      enforced: false,
+      eventProperties: { bot_layer: "ua_pattern" },
+    });
+
+    const outcome = await ingestEvent(trackingRequest());
+
+    expect(outcome).toEqual({ status: "tracked", sessionId: "session-alice" });
+    expect(mocks.addPageview).toHaveBeenCalledTimes(1);
+    expect(mocks.addBotEvent).not.toHaveBeenCalled();
+    expect(mocks.addBotObservation).toHaveBeenCalledWith(
+      expect.objectContaining({
+        bot_layer: "ua_pattern",
+        // The real session, not a synthetic bot one: the event is in `events`.
+        sessionId: "session-alice",
+      })
+    );
+  });
+
+  it("records no observation when nothing was detected", async () => {
+    await ingestEvent(trackingRequest());
+
+    expect(mocks.addBotObservation).not.toHaveBeenCalled();
   });
 
   it("hands bot detection the request's own headers and ASN resolver", async () => {

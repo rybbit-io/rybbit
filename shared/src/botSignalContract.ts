@@ -28,6 +28,7 @@ export const CLIENT_BOT_SIGNAL_MASKS = {
   pluginApiAbsence: 1 << 9,
   defaultViewport1280x1200: 1 << 10,
   squareScreen: 1 << 11,
+  missingScreenDimensions: 1 << 12,
 } as const;
 
 export type ClientBotSignalName = keyof typeof CLIENT_BOT_SIGNAL_MASKS;
@@ -52,6 +53,7 @@ export const CLIENT_BOT_SIGNAL_WEIGHTS: Record<ClientBotSignalName, number> = {
   pluginApiAbsence: 0,
   defaultViewport1280x1200: 3,
   squareScreen: 3,
+  missingScreenDimensions: 1,
 };
 
 /**
@@ -68,9 +70,11 @@ export const ALL_CLIENT_BOT_SIGNAL_BITS = CLIENT_BOT_SIGNAL_NAMES.reduce(
 /**
  * Signals automation-specific enough to convict on their own. The remaining
  * (weak) signals — empty plugins, SwiftShader, zero outer dimensions, missing
- * window.chrome — all occur on real devices (Android Chrome ships empty
- * plugins; low-end GPUs fall back to SwiftShader; prerendered pages report zero
- * outer dimensions), so they corroborate other layers but never convict.
+ * window.chrome, absent screen dimensions — all occur on real devices (Android
+ * Chrome ships empty plugins; low-end GPUs fall back to SwiftShader;
+ * prerendered pages report zero outer dimensions; a server-side or native
+ * integration has no screen to report), so they corroborate other layers but
+ * never convict.
  */
 export const STRONG_CLIENT_BOT_SIGNAL_BITS =
   CLIENT_BOT_SIGNAL_MASKS.automationApi |
@@ -111,6 +115,15 @@ export const IMPLAUSIBLE_DESKTOP_VIEWPORTS: readonly {
   { width: 1280, height: 1200, signal: "defaultViewport1280x1200" },
 ];
 
+/**
+ * `missingScreenDimensions` is the one signal the tracker never sets: a browser
+ * always has `window.screen`, so only the server can observe that a hit arrived
+ * carrying no dimensions at all. It is deliberately weak (weight 1, never
+ * strong) and web-only — a native SDK or a server-side integration has no
+ * screen, and neither is a bot. It exists so that the geometry rules, which are
+ * skipped outright when nothing is reported, leave a trace of having been
+ * skipped rather than silently passing the hit.
+ */
 export function isPlausibleScreenDimensions(width: number, height: number): boolean {
   return (
     Number.isFinite(width) &&

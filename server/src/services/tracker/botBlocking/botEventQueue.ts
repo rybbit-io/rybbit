@@ -19,9 +19,12 @@ class BotEventQueue {
   private batchSize = BOT_EVENT_BATCH_SIZE;
   private interval = BOT_EVENT_FLUSH_INTERVAL_MS;
   private processing = false;
-  private logger = createServiceLogger("bot-event-queue");
+  private table: string;
+  private logger: ReturnType<typeof createServiceLogger>;
 
-  constructor() {
+  constructor(table: string, loggerName: string) {
+    this.table = table;
+    this.logger = createServiceLogger(loggerName);
     setInterval(() => this.processQueue(), this.interval);
   }
 
@@ -77,12 +80,14 @@ class BotEventQueue {
         bot_category: event.botCategory || "",
         client_bot_score: event.clientBotScore ?? null,
         client_signal_mask: event.clientSignalMask ?? 0,
+        anomaly_reasons: event.anomalyReasons || "",
+        anomaly_score: event.anomalyScore ?? 0,
       };
     });
 
     try {
       await clickhouse.insert({
-        table: "bot_events",
+        table: this.table,
         values: processedBotEvents,
         format: "JSONEachRow",
       });
@@ -94,4 +99,10 @@ class BotEventQueue {
   }
 }
 
-export const botEventQueue = new BotEventQueue();
+export const botEventQueue = new BotEventQueue("bot_events", "bot-event-queue");
+
+// Detections that were NOT enforced: on a site with bot blocking disabled the
+// event is tracked as normal, so this row is the only evidence that detection
+// fired. The bot_observations schema deliberately mirrors bot_events
+// column-for-column so the same analysis queries work against either table.
+export const botObservationQueue = new BotEventQueue("bot_observations", "bot-observation-queue");
