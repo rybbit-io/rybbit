@@ -8,7 +8,7 @@ import { processResults } from "../../api/analytics/utils/utils.js";
 import { effectiveUserId } from "../../api/analytics/utils/effectiveUserId.js";
 import { createServiceLogger } from "../../lib/logger/logger.js";
 import { sendWeeklyReportEmail } from "../../lib/email/email.js";
-import { filterSitesByMemberAccess } from "../../lib/siteAccess.js";
+import { filterSitesByMemberAccess } from "../../lib/access.js";
 import { IS_CLOUD } from "../../lib/const.js";
 import type { OverviewData, MetricData, SiteReport, OrganizationReport } from "./weeklyReportTypes.js";
 

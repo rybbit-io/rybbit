@@ -1,9 +1,10 @@
-import { eq, and } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { FastifyReply, FastifyRequest } from "fastify";
 import { DateTime } from "luxon";
 import Stripe from "stripe";
 import { db } from "../../db/postgres/postgres.js";
-import { organization, member } from "../../db/postgres/schema.js";
+import { organization } from "../../db/postgres/schema.js";
+import { getOrgMembership } from "../../lib/access.js";
 import {
   APPSUMO_MEMBER_LIMITS,
   APPSUMO_SITE_LIMITS,
@@ -228,13 +229,9 @@ export async function getSubscription(
   }
 
   // Verify user is a member of this organization
-  const memberResult = await db
-    .select({ role: member.role })
-    .from(member)
-    .where(and(eq(member.userId, userId), eq(member.organizationId, organizationId)))
-    .limit(1);
+  const membership = await getOrgMembership(userId, organizationId);
 
-  if (!memberResult.length) {
+  if (!membership) {
     return reply.status(403).send({ error: "You do not have access to this organization" });
   }
 

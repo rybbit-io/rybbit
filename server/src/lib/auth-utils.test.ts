@@ -54,8 +54,16 @@ import {
   getUserIdFromRequest,
   invalidateSitesAccessCache,
 } from "./auth-utils.js";
+import {
+  filterSitesByMemberAccess,
+  getOrgMembership,
+  isOrgAdmin,
+  isOrgOwner,
+  memberCanAccessSite,
+  resolveMemberSiteGrants,
+  restrictedMemberSiteIds,
+} from "./access.js";
 import { INTERNAL_BEARER_HANDOFF_HEADER, registerBearerHandoff, releaseBearerHandoff } from "./bearerAuth.js";
-import { filterSitesByMemberAccess } from "./siteAccess.js";
 
 // Only the tables getSitesUserHasAccessTo touches. Column names must match the
 // drizzle schema exactly (unnamed columns use their TS property name verbatim).
@@ -232,6 +240,36 @@ describe("getSitesUserHasAccessTo — team-based access", () => {
   });
 });
 
+describe("getOrgMembership", () => {
+  it("returns the membership row with the role and restriction flag", async () => {
+    const membership = await getOrgMembership("user_peer", ORG);
+
+    expect(membership).toMatchObject({
+      id: "member_peer",
+      userId: "user_peer",
+      organizationId: ORG,
+      role: "member",
+      hasRestrictedSiteAccess: false,
+    });
+    expect(isOrgAdmin(membership)).toBe(false);
+    expect(isOrgOwner(membership)).toBe(false);
+  });
+
+  it("classifies owners as both admin and owner", async () => {
+    const membership = await getOrgMembership("user_owner", ORG);
+
+    expect(isOrgAdmin(membership)).toBe(true);
+    expect(isOrgOwner(membership)).toBe(true);
+  });
+
+  it("returns null for a non-member, and for a missing user or organization", async () => {
+    expect(await getOrgMembership("user_stranger", ORG)).toBeNull();
+    expect(await getOrgMembership("user_peer", "org_other")).toBeNull();
+    expect(await getOrgMembership(undefined, ORG)).toBeNull();
+    expect(await getOrgMembership("user_peer", undefined)).toBeNull();
+  });
+});
+
 // Shared filter used by getSitesFromOrg, getMyOrganizations, and weekly reports
 describe("filterSitesByMemberAccess", () => {
   const orgSites = Array.from({ length: 13 }, (_, i) => ({ siteId: i + 1 }));
@@ -258,6 +296,93 @@ describe("filterSitesByMemberAccess", () => {
   it("restricted member with no team and no grants sees nothing", async () => {
     await db.delete(teamMember);
     expect(await filteredIdsFor(true)).toEqual([]);
+  });
+});
+
+// restrictedMemberSiteIds lets the resolver load a restricted member's sites by
+// id instead of reading a whole organization. It is only safe while it names
+// exactly the ids the predicate would admit.
+describe("restrictedMemberSiteIds matches the restricted branch of memberCanAccessSite", () => {
+  const universe = Array.from({ length: 13 }, (_, i) => i + 1);
+
+  async function grantsFor(restricted: boolean) {
+    return resolveMemberSiteGrants({
+      userId: "user_peer",
+      organizationIds: [ORG],
+      grantedMemberIds: restricted ? ["member_peer"] : [],
+    });
+  }
+
+  it("enumerates exactly the sites the predicate admits, for a member on a team", async () => {
+    await db.insert(memberSiteAccess).values({ memberId: "member_peer", siteId: 12 });
+    const grants = await grantsFor(true);
+
+    const enumerated = restrictedMemberSiteIds(grants).sort((a, b) => a - b);
+    const admitted = universe.filter(siteId => memberCanAccessSite(grants, siteId, true));
+
+    expect(enumerated).toEqual(admitted);
+    expect(enumerated.length).toBeGreaterThan(0);
+  });
+
+  it("enumerates nothing when the predicate admits nothing", async () => {
+    await db.delete(teamMember);
+    const grants = await grantsFor(true);
+
+    expect(restrictedMemberSiteIds(grants)).toEqual([]);
+    expect(universe.filter(siteId => memberCanAccessSite(grants, siteId, true))).toEqual([]);
+  });
+});
+
+// The policy used to be written out twice — once inside getSitesUserHasAccessTo
+// and once in filterSitesByMemberAccess — with nothing forcing them to move
+// together. They now share one rule; this is the test that keeps them there.
+describe("the two Site Access entry points agree", () => {
+  const orgSites = Array.from({ length: 13 }, (_, i) => ({ siteId: i + 1 }));
+
+  async function bothAnswersFor(restricted: boolean): Promise<{ resolver: number[]; filter: number[] }> {
+    await db.update(member).set({ hasRestrictedSiteAccess: restricted }).where(eq(member.id, "member_peer"));
+
+    const filtered = await filterSitesByMemberAccess(orgSites, ORG, "user_peer", "member_peer", restricted);
+    return {
+      resolver: await siteIdsFor("user_peer"),
+      filter: filtered.map(s => s.siteId).sort((a, b) => a - b),
+    };
+  }
+
+  it("agree for an unrestricted member on a team", async () => {
+    const { resolver, filter } = await bothAnswersFor(false);
+    expect(resolver).toEqual(filter);
+  });
+
+  it("agree for an unrestricted member on no team", async () => {
+    await db.delete(teamMember);
+    const { resolver, filter } = await bothAnswersFor(false);
+    expect(resolver).toEqual(filter);
+  });
+
+  it("agree for a restricted member whose grant is not team-gated", async () => {
+    await db.insert(memberSiteAccess).values({ memberId: "member_peer", siteId: 13 });
+    const { resolver, filter } = await bothAnswersFor(true);
+    expect(resolver).toEqual(filter);
+  });
+
+  it("agree for a restricted member granted a site gated by another team", async () => {
+    await db.insert(memberSiteAccess).values({ memberId: "member_peer", siteId: 12 });
+    const { resolver, filter } = await bothAnswersFor(true);
+    expect(resolver).toEqual(filter);
+  });
+
+  it("agree for a restricted member with no team and no grants", async () => {
+    await db.delete(teamMember);
+    const { resolver, filter } = await bothAnswersFor(true);
+    expect(resolver).toEqual([]);
+    expect(filter).toEqual([]);
+  });
+
+  it("agree when no site in the organization is team-gated", async () => {
+    await db.delete(teamSiteAccess);
+    const { resolver, filter } = await bothAnswersFor(false);
+    expect(resolver).toEqual(filter);
   });
 });
 
