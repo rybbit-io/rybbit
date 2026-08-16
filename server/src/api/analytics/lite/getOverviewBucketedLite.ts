@@ -2,7 +2,7 @@ import { FilterParams } from "@rybbit/shared";
 import { FastifyReply, FastifyRequest } from "fastify";
 import { getOverviewBucketed } from "../getOverviewBucketed.js";
 import { TimeBucket } from "../types.js";
-import { getTimeStatement, resolveTimeWindow } from "../utils/timeWindow.js";
+import { resolveTimeWindow } from "../utils/timeWindow.js";
 import { analyticsRoute, runAnalyticsQuery } from "../utils/analyticsQuery.js";
 import { getLiteSessionFilter, hasLiteDatetimeRange, hasLiteFilters, liteBucket } from "./utils.js";
 
@@ -183,6 +183,11 @@ export const getOverviewBucketedLite = analyticsRoute<GetOverviewBucketedLiteReq
     // reassembling it from a function name and a timezone.
     const bucketed = (column: string) => window.bucketed(column, bucket);
     const fill = window.fill(bucket);
+    // Every predicate in the query comes off this one window. Resolving it per
+    // column re-read now(), so a past-minutes request built across an hour
+    // boundary could bound the pageview rollup and the session rollup to
+    // different windows and join two different questions together.
+    const where = (column: string) => window.where(column);
 
     const filtersPresent = hasLiteFilters(req.query.filters);
 
@@ -196,7 +201,7 @@ export const getOverviewBucketedLite = analyticsRoute<GetOverviewBucketedLiteReq
       }
       query = buildSessionMvFilteredQuery({
         bucketed,
-        sessionsTime: getTimeStatement(req.query, "start_time"),
+        sessionsTime: where("start_time"),
         fill,
         filterSql: filter.sql,
       });
@@ -206,13 +211,13 @@ export const getOverviewBucketedLite = analyticsRoute<GetOverviewBucketedLiteReq
       query = useDayBucket
         ? buildDayBucketQuery({
             bucketed,
-            sessionTime: getTimeStatement(req.query, "session_hour"),
+            sessionTime: where("session_hour"),
             fill,
           })
         : buildHourBucketQuery({
             bucketed,
-            overviewTime: getTimeStatement(req.query, "event_hour"),
-            sessionsTime: getTimeStatement(req.query, "start_time"),
+            overviewTime: where("event_hour"),
+            sessionsTime: where("start_time"),
             fill,
           });
     }

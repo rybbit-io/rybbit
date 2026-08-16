@@ -331,15 +331,20 @@ function fillClause(window: ResolvedWindow, bucket: TimeBucket): string {
   }
 
   const from = alignInstant(window.start, bucket, window.timeZone);
+  const end = `toDateTime(${SqlString.escape(window.end)}, 'UTC')`;
+  const alignedEnd = alignInstant(window.end, bucket, window.timeZone);
 
-  // `TO` is exclusive. A datetime range's upper bound is exclusive too, so the
-  // bucket it lands on holds no rows and is not filled. A past-minutes window
-  // ends at `now`, mid-bucket, so its final bucket does hold rows — one step
-  // past the aligned end is what makes that bucket appear when it is empty.
-  const to =
-    window.kind === "datetime"
-      ? alignInstant(window.end, bucket, window.timeZone)
-      : `${alignInstant(window.end, bucket, window.timeZone)} + INTERVAL ${step}`;
+  // `TO` is exclusive, so the last bucket it generates is the one before it.
+  //
+  // Whether that is right depends on where the upper bound falls. On a bucket
+  // boundary the bound is the first instant of a bucket the window excludes, so
+  // that bucket holds no rows and stopping short of it is correct — extending
+  // would invent a trailing zero. Mid-bucket, the bucket the bound lands in
+  // does hold rows (the window covers its beginning), so the fill has to reach
+  // one step past it or an empty final bucket is silently dropped and the chart
+  // ends early. A past-minutes window ends at `now` and so is almost always the
+  // second case; a datetime range can be either.
+  const to = `if(${alignedEnd} = ${end}, ${alignedEnd}, ${alignedEnd} + INTERVAL ${step})`;
 
   return `WITH FILL FROM ${from} TO ${to} STEP INTERVAL ${step}`;
 }

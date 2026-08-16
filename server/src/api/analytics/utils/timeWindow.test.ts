@@ -214,9 +214,12 @@ describe("fill()", () => {
 
   describe("datetime range", () => {
     it("should bucket-align both bounds in the window's timezone", () => {
+      const alignedEnd = "toDateTime(toStartOfHour(toTimeZone(toDateTime('2024-01-02 06:45:00', 'UTC'), 'UTC')))";
+
       expect(fillOf({ ...DATETIME_RANGE, time_zone: "UTC" }, "hour")).toBe(
         "WITH FILL FROM toDateTime(toStartOfHour(toTimeZone(toDateTime('2024-01-01 05:30:00', 'UTC'), 'UTC'))) " +
-          "TO toDateTime(toStartOfHour(toTimeZone(toDateTime('2024-01-02 06:45:00', 'UTC'), 'UTC'))) " +
+          `TO if(${alignedEnd} = toDateTime('2024-01-02 06:45:00', 'UTC'), ` +
+          `${alignedEnd}, ${alignedEnd} + INTERVAL 1 HOUR) ` +
           "STEP INTERVAL 1 HOUR"
       );
     });
@@ -236,12 +239,28 @@ describe("fill()", () => {
       expect(result).not.toContain("+02:00");
     });
 
-    // TO is exclusive and so is the datetime range's upper bound, so the bucket
-    // the end lands on holds no rows and must not be filled.
-    it("should not fill past the exclusive upper bound", () => {
-      expect(fillOf({ start_datetime: "2024-01-01 00:00:00", end_datetime: "2024-01-01 04:00:00" }, "hour")).not.toMatch(
-        /\+ INTERVAL/
-      );
+    // TO is exclusive. Where the upper bound falls decides whether stopping at
+    // it is right: on a boundary it names a bucket the window excludes, so the
+    // fill must stop short of it; mid-bucket it names a bucket the window
+    // partly covers, so the fill must reach one step past it or an empty final
+    // bucket is dropped and the chart ends early. The clause resolves that in
+    // SQL rather than assuming one case, which is what it used to do.
+    // Regression (found in review): the fill used to stop at the truncated end
+    // unconditionally for a datetime range. For [10:30, 14:45) at hour buckets
+    // the rows from 14:00–14:45 are inside the window and bucket to 14:00, but
+    // TO 14:00 is exclusive — so the 14:00 bucket appeared only when it had
+    // real rows, and an empty one silently ended the chart an hour early.
+    it("should reach the bucket a mid-bucket upper bound falls in", () => {
+      const result = fillOf({ start_datetime: "2024-01-01 10:30:00", end_datetime: "2024-01-01 14:45:00" }, "hour");
+
+      expect(result).toContain("+ INTERVAL 1 HOUR)");
+      expect(result).toContain("'2024-01-01 14:45:00'");
+    });
+
+    it("should not fill past an upper bound already on a bucket boundary", () => {
+      expect(
+        fillOf({ start_datetime: "2024-01-01 00:00:00", end_datetime: "2024-01-01 04:00:00" }, "hour")
+      ).toContain("TO if(");
     });
   });
 
@@ -259,9 +278,12 @@ describe("fill()", () => {
     // not on a bucket boundary, so filled rows landed at :34 between real rows
     // at :00 instead of on top of them.
     it("should align the lower bound to a bucket boundary", () => {
+      const alignedEnd = "toDateTime(toStartOfHour(toTimeZone(toDateTime('2024-06-15 12:34:00', 'UTC'), 'UTC')))";
+
       expect(fillOf(PAST_MINUTES, "hour")).toBe(
         "WITH FILL FROM toDateTime(toStartOfHour(toTimeZone(toDateTime('2024-06-15 10:34:00', 'UTC'), 'UTC'))) " +
-          "TO toDateTime(toStartOfHour(toTimeZone(toDateTime('2024-06-15 12:34:00', 'UTC'), 'UTC'))) + INTERVAL 1 HOUR " +
+          `TO if(${alignedEnd} = toDateTime('2024-06-15 12:34:00', 'UTC'), ` +
+          `${alignedEnd}, ${alignedEnd} + INTERVAL 1 HOUR) ` +
           "STEP INTERVAL 1 HOUR"
       );
     });
@@ -278,7 +300,7 @@ describe("fill()", () => {
     // The window ends mid-bucket, so the final bucket does hold rows: one step
     // past the aligned end is what makes it appear when it is empty.
     it("should extend one step past the aligned upper bound", () => {
-      expect(fillOf(PAST_MINUTES, "five_minutes")).toContain("+ INTERVAL 5 MINUTES STEP INTERVAL 5 MINUTES");
+      expect(fillOf(PAST_MINUTES, "five_minutes")).toContain("+ INTERVAL 5 MINUTES) STEP INTERVAL 5 MINUTES");
     });
 
     it("should read now() once for the predicate and the fill", () => {

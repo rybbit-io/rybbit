@@ -3,13 +3,8 @@ import SqlString from "sqlstring";
 import { z } from "zod";
 import { clickhouse } from "../../db/clickhouse/clickhouse.js";
 import { MAX_CUSTOM_QUERY_LENGTH, normalizeCustomQuery, validateScopedQuery } from "./utils/customQueryValidation.js";
-import {
-  bucketIntervalMap,
-  dateRegex,
-  dateTimeRegex,
-  getTimeStatement,
-  isValidTimeZone,
-} from "./utils/timeWindow.js";
+import { validateHttpTimeParams } from "./utils/query-validation.js";
+import { bucketIntervalMap, getTimeStatement } from "./utils/timeWindow.js";
 
 const MAX_EXECUTION_TIME_SECONDS = 10;
 const MAX_RESULT_ROWS = 1000;
@@ -17,19 +12,20 @@ const MAX_RESULT_ROWS = 1000;
 const BUCKET_TOKEN = /\{\{\s*bucket\s*\}\}/gi;
 const TZ_TOKEN = /\{\{\s*tz\s*\}\}/gi;
 
-// The time bounds arrive in the body, so validateHttpTimeParams — a query-param
-// preHandler — never sees them. Validated to the same formats here, or a
-// malformed bound would be dropped by the time window and silently widen the
-// card to all time.
+// Only the two fields the time window doesn't own. The bounds are checked by
+// validateHttpTimeParams below rather than re-described here: a second schema
+// that merely looked similar would accept an unpaired, reversed or impossible
+// bound (`25:00:00` matches the format), which the window then drops — silently
+// widening the card to all time.
 const requestBodySchema = z.object({
   query: z.string().trim().min(1).max(MAX_CUSTOM_QUERY_LENGTH),
-  startDate: z.string().regex(dateRegex).optional().or(z.literal("")),
-  endDate: z.string().regex(dateRegex).optional().or(z.literal("")),
-  timeZone: z.string().refine(isValidTimeZone).optional().or(z.literal("")),
-  startDateTime: z.string().regex(dateTimeRegex).optional(),
-  endDateTime: z.string().regex(dateTimeRegex).optional(),
-  pastMinutesStart: z.number().nonnegative().optional(),
-  pastMinutesEnd: z.number().nonnegative().optional(),
+  startDate: z.string().optional(),
+  endDate: z.string().optional(),
+  timeZone: z.string().optional(),
+  startDateTime: z.string().optional(),
+  endDateTime: z.string().optional(),
+  pastMinutesStart: z.number().optional(),
+  pastMinutesEnd: z.number().optional(),
   bucket: z
     .enum(["minute", "five_minutes", "ten_minutes", "fifteen_minutes", "hour", "day", "week", "month", "year"])
     .optional(),
@@ -54,6 +50,23 @@ export async function runDashboardCardQuery(
     return reply.status(400).send({ error: body.error.errors[0]?.message ?? "Invalid request body" });
   }
 
+  // The bounds arrive in the body, so validateTimeParams — a query-param
+  // preHandler — never sees them. Run the same validator the routes run, on the
+  // same param names, so this endpoint rejects exactly what they reject.
+  const timeParams = {
+    start_date: body.data.startDate,
+    end_date: body.data.endDate,
+    time_zone: body.data.timeZone,
+    start_datetime: body.data.startDateTime,
+    end_datetime: body.data.endDateTime,
+    past_minutes_start: body.data.pastMinutesStart,
+    past_minutes_end: body.data.pastMinutesEnd,
+  };
+  const timeError = validateHttpTimeParams(timeParams);
+  if (timeError) {
+    return reply.status(400).send({ error: timeError });
+  }
+
   // Substitute {{bucket}} and {{tz}} BEFORE validation so the validator never
   // sees the template tokens. {{bucket}} comes from an allowlisted enum mapped
   // to a constant interval string; {{tz}} is SqlString-escaped to a quoted
@@ -74,15 +87,7 @@ export async function runDashboardCardQuery(
   // Auto-scope the timestamp to the global time range. getTimeStatement returns
   // an "AND timestamp >= ... AND timestamp < ..." fragment (or "" for all-time),
   // with all values Zod-sanitized and SqlString-escaped internally.
-  const timeStatement = getTimeStatement({
-    start_date: body.data.startDate ?? "",
-    end_date: body.data.endDate ?? "",
-    time_zone: body.data.timeZone ?? "",
-    start_datetime: body.data.startDateTime,
-    end_datetime: body.data.endDateTime,
-    past_minutes_start: body.data.pastMinutesStart,
-    past_minutes_end: body.data.pastMinutesEnd,
-  });
+  const timeStatement = getTimeStatement(timeParams);
 
   const query = `
     WITH scoped_events AS (
