@@ -1,3 +1,13 @@
+import {
+  CLIENT_BOT_SIGNAL_MASKS,
+  CLIENT_BOT_SIGNAL_WEIGHTS,
+  ClientBotSignalName,
+  getClientBotSignalNames,
+  getScreenDimensionSignals,
+  MAX_CLIENT_BOT_SCORE,
+  scoreFromMask,
+  STRONG_CLIENT_BOT_SIGNAL_BITS,
+} from "@rybbit/shared";
 import type { IncomingHttpHeaders } from "http";
 import { lookupAsn, type AsnInfo, type AsnLookup } from "../../../db/geolocation/asn.js";
 import { logger } from "../../../lib/logger/logger.js";
@@ -15,7 +25,8 @@ import { classifyUA } from "./uaBots/index.js";
 const LOG_BOT_DETECTIONS = false;
 
 interface BotBlockingPayload {
-  siteId: string;
+  /** Numeric Site id — the one ingestion uses everywhere else. */
+  siteId: number;
   userAgent?: string;
   clientBotScore?: number;
   clientBotSignalMask?: number;
@@ -56,61 +67,6 @@ interface AnomalyReason {
   windowSeconds: number;
 }
 
-const CLIENT_SIGNAL_MASKS = {
-  automationApi: 1 << 0,
-  zeroOuterDimensions: 1 << 1,
-  missingChrome: 1 << 2,
-  swiftShader: 1 << 3,
-  emptyPlugins: 1 << 4,
-  defaultViewport800x600: 1 << 5,
-  defaultViewport1024x768: 1 << 6,
-  impossibleDimensions: 1 << 7,
-  outerDimensionsWeird: 1 << 8,
-  pluginApiAbsence: 1 << 9,
-  defaultViewport1280x1200: 1 << 10,
-  squareScreen: 1 << 11,
-} as const;
-
-type ClientSignalName = keyof typeof CLIENT_SIGNAL_MASKS;
-
-// Must mirror the weights in analytics-script/botSignals.ts — the client sends
-// one cached score, and the server recomputes it from the signal mask to split
-// it into convicting vs. corroborating evidence.
-const CLIENT_SIGNAL_WEIGHTS: Record<ClientSignalName, number> = {
-  automationApi: 3,
-  zeroOuterDimensions: 2,
-  missingChrome: 1,
-  swiftShader: 1,
-  emptyPlugins: 1,
-  defaultViewport800x600: 3,
-  defaultViewport1024x768: 3,
-  impossibleDimensions: 3,
-  outerDimensionsWeird: 2,
-  pluginApiAbsence: 0,
-  defaultViewport1280x1200: 3,
-  squareScreen: 3,
-};
-
-// Signals that are automation-specific enough to convict on their own. The
-// remaining (weak) signals — empty plugins, SwiftShader, zero outer dimensions,
-// missing window.chrome — all occur on real devices (Android Chrome ships empty
-// plugins; low-end GPUs fall back to SwiftShader; prerendered pages report zero
-// outer dimensions), so they corroborate other layers but never convict.
-const STRONG_CLIENT_SIGNAL_BITS =
-  CLIENT_SIGNAL_MASKS.automationApi |
-  CLIENT_SIGNAL_MASKS.impossibleDimensions |
-  CLIENT_SIGNAL_MASKS.defaultViewport800x600 |
-  CLIENT_SIGNAL_MASKS.defaultViewport1024x768 |
-  CLIENT_SIGNAL_MASKS.defaultViewport1280x1200 |
-  CLIENT_SIGNAL_MASKS.squareScreen;
-
-function sumClientSignalWeights(mask: number): number {
-  return Object.entries(CLIENT_SIGNAL_MASKS).reduce(
-    (total, [name, bit]) => ((mask & bit) !== 0 ? total + CLIENT_SIGNAL_WEIGHTS[name as ClientSignalName] : total),
-    0
-  );
-}
-
 export interface BotBlockingDetection {
   layer: BotDetectionMethod;
   botCategory?: string | null;
@@ -119,7 +75,7 @@ export interface BotBlockingDetection {
   score?: number;
   clientBotScore?: number;
   clientBotSignalMask?: number;
-  clientSignals?: ClientSignalName[];
+  clientSignals?: ClientBotSignalName[];
   ip?: string;
   asn?: number;
   asnOrg?: string;
@@ -176,37 +132,6 @@ function buildBotEventProperties(
   };
 }
 
-function isFiniteDimension(value: unknown): value is number {
-  return typeof value === "number" && Number.isFinite(value);
-}
-
-// Mirrors MIN/MAX_PLAUSIBLE_SCREEN_DIMENSION in analytics-script/botSignals.ts.
-// The payload carries screen.width/height — the physical display, not the
-// window — so no amount of resizing or zoom moves a real value outside these.
-const MIN_PLAUSIBLE_SCREEN_DIMENSION = 200;
-const MAX_PLAUSIBLE_SCREEN_DIMENSION = 8192;
-
-function isPlausibleScreenDimensions(width: unknown, height: unknown): boolean {
-  return (
-    isFiniteDimension(width) &&
-    isFiniteDimension(height) &&
-    width >= MIN_PLAUSIBLE_SCREEN_DIMENSION &&
-    height >= MIN_PLAUSIBLE_SCREEN_DIMENSION &&
-    width <= MAX_PLAUSIBLE_SCREEN_DIMENSION &&
-    height <= MAX_PLAUSIBLE_SCREEN_DIMENSION
-  );
-}
-
-function isDesktopUserAgent(userAgent: string) {
-  return /Windows NT|Macintosh|X11|Linux x86_64/.test(userAgent) && !/Mobile|Android|iPhone|iPad/.test(userAgent);
-}
-
-function getClientSignalNames(mask: number): ClientSignalName[] {
-  return Object.entries(CLIENT_SIGNAL_MASKS).flatMap(([name, bit]) =>
-    (mask & bit) !== 0 ? [name as ClientSignalName] : []
-  );
-}
-
 function getClientSignalResult(payload: BotBlockingPayload, userAgent: string) {
   const hasClientScore = typeof payload.clientBotScore === "number" && Number.isFinite(payload.clientBotScore);
   const hasClientMask = typeof payload.clientBotSignalMask === "number" && Number.isFinite(payload.clientBotSignalMask);
@@ -214,56 +139,39 @@ function getClientSignalResult(payload: BotBlockingPayload, userAgent: string) {
   let mask = rawMask;
   let inferredScore = 0;
 
-  function addInferredSignal(name: ClientSignalName, weight: number) {
-    const bit = CLIENT_SIGNAL_MASKS[name];
+  function addInferredSignal(name: ClientBotSignalName) {
+    const bit = CLIENT_BOT_SIGNAL_MASKS[name];
     if ((mask & bit) === 0) {
       mask |= bit;
     }
 
     if (!hasClientScore || (rawMask & bit) === 0) {
-      inferredScore += weight;
+      inferredScore += CLIENT_BOT_SIGNAL_WEIGHTS[name];
     }
   }
 
   // Re-derived server-side rather than trusted from the client mask, so the
-  // rules apply to every hit regardless of which tracker version sent it.
+  // rules apply to every hit regardless of which tracker version sent it. An
+  // event that reports no dimensions at all says nothing about its display.
   const { screenWidth, screenHeight } = payload;
-  const hasScreenDimensions = screenWidth !== undefined || screenHeight !== undefined;
-  if (hasScreenDimensions && !isPlausibleScreenDimensions(screenWidth, screenHeight)) {
-    addInferredSignal("impossibleDimensions", 3);
-  } else if (isFiniteDimension(screenWidth) && isFiniteDimension(screenHeight)) {
-    // No shipping display is square; every square value in production traffic
-    // is a renderer default (2000x2000, 1024x1024, 1280x1280, 1366x1366).
-    // Not gated on a desktop UA — the square fleets also claim Android and iOS.
-    if (screenWidth === screenHeight) {
-      addInferredSignal("squareScreen", 3);
-    }
-
-    if (isDesktopUserAgent(userAgent)) {
-      if (screenWidth === 800 && screenHeight === 600) {
-        addInferredSignal("defaultViewport800x600", 3);
-      }
-      if (screenWidth === 1024 && screenHeight === 768) {
-        addInferredSignal("defaultViewport1024x768", 3);
-      }
-      if (screenWidth === 1280 && screenHeight === 1200) {
-        addInferredSignal("defaultViewport1280x1200", 3);
-      }
+  if (screenWidth !== undefined || screenHeight !== undefined) {
+    for (const signal of getScreenDimensionSignals(screenWidth ?? NaN, screenHeight ?? NaN, userAgent)) {
+      addInferredSignal(signal);
     }
   }
 
-  const score = Math.min((hasClientScore ? payload.clientBotScore! : 0) + inferredScore, 10);
+  const score = Math.min((hasClientScore ? payload.clientBotScore! : 0) + inferredScore, MAX_CLIENT_BOT_SCORE);
 
   // Score contributed by strong (convicting) signals only. Derived from the
   // mask, not the client's opaque score — a score sent without a mask cannot be
   // decomposed, so it can only ever corroborate.
-  const strongScore = sumClientSignalWeights(mask & STRONG_CLIENT_SIGNAL_BITS);
+  const strongScore = scoreFromMask(mask & STRONG_CLIENT_BOT_SIGNAL_BITS);
 
   return {
     score,
     strongScore,
     mask,
-    signalNames: getClientSignalNames(mask),
+    signalNames: getClientBotSignalNames(mask),
     scoreForStats: hasClientScore || inferredScore > 0 ? score : undefined,
     maskForStats: hasClientMask || mask !== 0 ? mask : undefined,
   };

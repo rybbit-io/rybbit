@@ -1,3 +1,4 @@
+import { ALL_CLIENT_BOT_SIGNAL_BITS, MAX_CLIENT_BOT_SCORE } from "@rybbit/shared";
 import { z } from "zod";
 
 // Shared fields for all event types
@@ -17,8 +18,11 @@ const baseEventFields = {
   feature_flags: z.record(z.string().max(100), z.string().max(2048)).optional(),
   ip_address: z.string().ip().optional(),
   user_agent: z.string().max(512).optional(),
-  _bs: z.number().int().min(0).max(10).optional(),
-  _bsm: z.number().int().min(0).max(2047).optional(),
+  // Bounds come from the Bot Signal contract, so appending a signal bit widens
+  // the accepted mask with it. Hard-coding the bound is how the 12th bit
+  // (squareScreen = 2048) came to fail validation and drop the whole event.
+  _bs: z.number().int().min(0).max(MAX_CLIENT_BOT_SCORE).optional(),
+  _bsm: z.number().int().min(0).max(ALL_CLIENT_BOT_SIGNAL_BITS).optional(),
 };
 
 // Default event_name and properties used by pageview and performance

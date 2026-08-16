@@ -222,6 +222,19 @@ describe("ingestEvent", () => {
     );
   });
 
+  // Anomaly counters are namespaced by this id. Passing the incoming identifier
+  // instead split one Site across two namespaces — the text id the UI emits and
+  // the legacy numeric id still accepted — each seeing half the traffic.
+  it("namespaces bot detection by the numeric Site id, not the incoming identifier", async () => {
+    await ingestEvent(trackingRequest());
+
+    expect(mocks.checkBotBlocking).toHaveBeenCalledWith(
+      expect.objectContaining({
+        payload: expect.objectContaining({ siteId: 42 }),
+      })
+    );
+  });
+
   it("reuses the request's Site Configuration for identity instead of re-reading it", async () => {
     await ingestEvent(
       trackingRequest({

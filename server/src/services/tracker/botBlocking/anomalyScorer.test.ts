@@ -16,7 +16,7 @@ import {
 } from "./anomalyScorer.js";
 
 const baseInput = {
-  siteId: "site_123",
+  siteId: 123,
   ipAddress: "203.0.113.10",
   userAgent: "Mozilla/5.0 Chrome/120 Safari/537.36",
   hostname: "example.com",
