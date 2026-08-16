@@ -62,6 +62,7 @@ import {
   memberCanAccessSite,
   resolveMemberSiteGrants,
   restrictedMemberSiteIds,
+  siteIdsInOrganization,
 } from "./access.js";
 import { INTERNAL_BEARER_HANDOFF_HEADER, registerBearerHandoff, releaseBearerHandoff } from "./bearerAuth.js";
 
@@ -296,6 +297,30 @@ describe("filterSitesByMemberAccess", () => {
   it("restricted member with no team and no grants sees nothing", async () => {
     await db.delete(teamMember);
     expect(await filteredIdsFor(true)).toEqual([]);
+  });
+});
+
+// Every write into memberSiteAccess passes its ids through this — an invitation
+// accepted after one of its sites moved organizations must not become a grant.
+describe("siteIdsInOrganization", () => {
+  it("keeps only the ids the organization currently owns", async () => {
+    await db.insert(sites).values({
+      id: "hex_moved",
+      siteId: 700,
+      name: "moved-site",
+      domain: "moved.example.com",
+      organizationId: "org_elsewhere",
+    });
+
+    expect((await siteIdsInOrganization([1, 700, 13], ORG)).sort((a, b) => a - b)).toEqual([1, 13]);
+  });
+
+  it("drops ids for sites that no longer exist", async () => {
+    expect(await siteIdsInOrganization([1, 9999], ORG)).toEqual([1]);
+  });
+
+  it("returns nothing for an empty list without querying", async () => {
+    expect(await siteIdsInOrganization([], ORG)).toEqual([]);
   });
 });
 

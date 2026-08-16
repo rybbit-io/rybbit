@@ -13,6 +13,7 @@ import { apiKey } from "@better-auth/api-key"
 import { db } from "../db/postgres/postgres.js";
 import * as schema from "../db/postgres/schema.js";
 import { invitation, member, memberSiteAccess, sites, user } from "../db/postgres/schema.js";
+import { siteIdsInOrganization } from "./access.js";
 import { apiKeyLimitForPlan, countApiKeysForReference } from "./apiKeyLimits.js";
 import { invalidateSitesAccessCache } from "./auth-utils.js";
 import { ORG_API_KEY_CONFIG_ID } from "./bearerAuth.js";
@@ -150,11 +151,7 @@ const pluginList = [
           });
         }
 
-        const validSites = await db
-          .select({ siteId: sites.siteId })
-          .from(sites)
-          .where(and(eq(sites.organizationId, invite.organizationId), inArray(sites.siteId, uniqueSiteIds)));
-        const validSiteIds = new Set(validSites.map(site => site.siteId));
+        const validSiteIds = new Set(await siteIdsInOrganization(uniqueSiteIds, invite.organizationId));
         const invalidSiteIds = uniqueSiteIds.filter(siteId => !validSiteIds.has(siteId));
 
         if (invalidSiteIds.length > 0) {
@@ -538,10 +535,28 @@ export const auth = betterAuth({
           // org access) on any failure.
           await db.update(member).set({ hasRestrictedSiteAccess: true }).where(eq(member.id, memberId));
 
-          const siteIdArray = (siteIds || []) as number[];
-          if (siteIdArray.length > 0) {
+          // The ids were validated when the invitation was written, but a site
+          // can move organizations or be deleted while the invite sits pending
+          // (applySiteMove clears live grants for a moved site; it cannot reach
+          // into unaccepted invitations). Re-check against the organization as
+          // it stands now, so acceptance can only grant sites it still owns.
+          const invitedSiteIds = (siteIds || []) as number[];
+          const grantableSiteIds = await siteIdsInOrganization(invitedSiteIds, organizationId);
+
+          if (grantableSiteIds.length !== invitedSiteIds.length) {
+            authLogger.warn(
+              {
+                organizationId,
+                memberId,
+                droppedSiteIds: invitedSiteIds.filter(siteId => !grantableSiteIds.includes(siteId)),
+              },
+              "Invitation named sites the organization no longer owns; those grants were dropped"
+            );
+          }
+
+          if (grantableSiteIds.length > 0) {
             await db.insert(memberSiteAccess).values(
-              siteIdArray.map(siteId => ({
+              grantableSiteIds.map(siteId => ({
                 memberId,
                 siteId,
               }))

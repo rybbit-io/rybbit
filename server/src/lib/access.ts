@@ -1,6 +1,6 @@
 import { and, eq, inArray } from "drizzle-orm";
 import { db } from "../db/postgres/postgres.js";
-import { member, memberSiteAccess, team, teamMember, teamSiteAccess } from "../db/postgres/schema.js";
+import { member, memberSiteAccess, sites, team, teamMember, teamSiteAccess } from "../db/postgres/schema.js";
 
 /**
  * Access — the one answer to "may this user touch this organization, or this
@@ -65,6 +65,28 @@ export function isOrgAdmin(membership: OrgMembership | null | undefined): boolea
 /** Owner of the organization — the only role that may manage billing. */
 export function isOrgOwner(membership: OrgMembership | null | undefined): boolean {
   return membership?.role === "owner";
+}
+
+/**
+ * Which of these site ids currently belong to the organization.
+ *
+ * Every write into memberSiteAccess must pass its ids through here: a site can
+ * move organizations (applySiteMove) or be deleted between the moment a grant
+ * is authored and the moment it is stored, and a grant naming a site the
+ * organization no longer owns is not a grant anybody authorized. Callers that
+ * report the rejects derive them from the complement.
+ */
+export async function siteIdsInOrganization(siteIds: number[], organizationId: string): Promise<number[]> {
+  if (siteIds.length === 0) {
+    return [];
+  }
+
+  const rows = await db
+    .select({ siteId: sites.siteId })
+    .from(sites)
+    .where(and(eq(sites.organizationId, organizationId), inArray(sites.siteId, siteIds)));
+
+  return rows.map(row => row.siteId);
 }
 
 /**
