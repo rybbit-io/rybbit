@@ -13,12 +13,20 @@ const mocks = vi.hoisted(() => ({
   applySiteMove: vi.fn(async () => {}),
 }));
 
+// The membership check now goes through the shared Site Access module.
+vi.mock("../../lib/access.js", async importOriginal => {
+  const actual = await importOriginal<typeof import("../../lib/access.js")>();
+  return {
+    ...actual,
+    getOrgMembership: vi.fn(async () => state.targetMembership as any),
+  };
+});
+
 vi.mock("../../db/postgres/postgres.js", () => ({
   db: {
     query: {
       sites: { findFirst: vi.fn(async () => state.site) },
       organization: { findFirst: vi.fn(async () => state.targetOrg) },
-      member: { findFirst: vi.fn(async () => state.targetMembership) },
     },
     // Only used to count the target organization's existing sites.
     select: vi.fn(() => ({

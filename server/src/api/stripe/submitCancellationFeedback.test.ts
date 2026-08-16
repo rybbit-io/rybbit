@@ -15,7 +15,7 @@ import { sql } from "../../db/postgres/postgres.js";
 import { submitCancellationFeedback } from "./submitCancellationFeedback.js";
 
 const DDL = `
-CREATE TABLE "member" ("id" text PRIMARY KEY, "organizationId" text NOT NULL, "userId" text NOT NULL, "role" text NOT NULL, "createdAt" timestamp DEFAULT now());
+CREATE TABLE "member" ("id" text PRIMARY KEY, "organizationId" text NOT NULL, "userId" text NOT NULL, "role" text NOT NULL, "createdAt" timestamp DEFAULT now(), "has_restricted_site_access" boolean NOT NULL DEFAULT false);
 CREATE TABLE "cancellation_feedback" (
   "id" serial PRIMARY KEY,
   "organization_id" text NOT NULL,

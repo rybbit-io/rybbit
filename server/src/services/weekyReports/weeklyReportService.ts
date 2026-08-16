@@ -7,7 +7,7 @@ import { clickhouse } from "../../db/clickhouse/clickhouse.js";
 import { getTimeStatement, processResults } from "../../api/analytics/utils/utils.js";
 import { createServiceLogger } from "../../lib/logger/logger.js";
 import { sendWeeklyReportEmail } from "../../lib/email/email.js";
-import { filterSitesByMemberAccess } from "../../lib/siteAccess.js";
+import { filterSitesByMemberAccess } from "../../lib/access.js";
 import { IS_CLOUD } from "../../lib/const.js";
 import {
   BreakdownDimension,

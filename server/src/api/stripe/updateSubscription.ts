@@ -1,8 +1,9 @@
 import { FastifyReply, FastifyRequest } from "fastify";
 import { stripe } from "../../lib/stripe.js";
 import { db } from "../../db/postgres/postgres.js";
-import { organization, member } from "../../db/postgres/schema.js";
-import { eq, and } from "drizzle-orm";
+import { organization } from "../../db/postgres/schema.js";
+import { eq } from "drizzle-orm";
+import { getOrgMembership, isOrgOwner } from "../../lib/access.js";
 import Stripe from "stripe";
 import { invalidateStripeSubscriptionCache } from "../../lib/subscriptionUtils.js";
 
@@ -30,15 +31,9 @@ export async function updateSubscription(
 
   try {
     // 1. Verify user has permission to manage billing for this organization
-    const memberResult = await db
-      .select({
-        role: member.role,
-      })
-      .from(member)
-      .where(and(eq(member.userId, userId), eq(member.organizationId, organizationId)))
-      .limit(1);
+    const membership = await getOrgMembership(userId, organizationId);
 
-    if (!memberResult.length || memberResult[0].role !== "owner") {
+    if (!isOrgOwner(membership)) {
       return reply.status(403).send({
         error: "Only organization owners can manage billing",
       });
