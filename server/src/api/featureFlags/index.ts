@@ -8,9 +8,8 @@ import { getLocation } from "../../db/geolocation/geolocation.js";
 import { db } from "../../db/postgres/postgres.js";
 import { featureFlags, userProfiles } from "../../db/postgres/schema.js";
 import { siteConfig } from "../../lib/siteConfig.js";
-import { getRequestUserAgent } from "../../services/tracker/requestIdentity.js";
 import { processResults } from "../analytics/utils/utils.js";
-import { getDeviceType } from "../../utils.js";
+import { getDeviceType, getRequestUserAgent } from "../../utils.js";
 import { resolveClientIp } from "../../services/tracker/resolveClientIp.js";
 import {
   getFeatureFlagDefinitionsForRuntime,
@@ -324,7 +323,7 @@ async function evaluateFeatureFlagsForRuntime(
     ]);
 
     const location = locationByIp[ipAddress];
-    const ua = userAgentParser(getRequestUserAgent(request));
+    const ua = userAgentParser(getRequestUserAgent(request.headers));
     const deviceType = getDeviceType(body.screenWidth || 0, body.screenHeight || 0, ua);
 
     const assignments = evaluateFeatureFlagDefinitions(

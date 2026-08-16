@@ -287,3 +287,13 @@ export const getIpAddress = (request: FastifyRequest): string => {
 
   return request.ip;
 };
+
+// The request's user agent as a single string. Node exposes a repeated header as
+// an array; take the first rather than the joined form so parsing sees one UA.
+export const getRequestUserAgent = (headers: FastifyRequest["headers"]): string => {
+  const userAgentHeader = headers["user-agent"];
+  if (Array.isArray(userAgentHeader)) {
+    return userAgentHeader[0] || "";
+  }
+  return userAgentHeader || "";
+};

@@ -1,4 +1,3 @@
-import { FastifyRequest } from "fastify";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { lookupAsn } from "../../../db/geolocation/asn.js";
 import { resetAnomalyScorerForTests, setRedisAnomalyEnabledForTests } from "./anomalyScorer.js";
@@ -15,10 +14,6 @@ vi.mock("../../../db/redis/redis.js", () => ({
   redis: {},
   anomalyObserve: vi.fn(),
 }));
-
-function requestWithHeaders(headers: Record<string, string | string[]>): FastifyRequest {
-  return { headers } as unknown as FastifyRequest;
-}
 
 const basePayload = {
   siteId: "site_123",
@@ -49,7 +44,7 @@ describe("checkBotBlocking", () => {
 
   it("does nothing when bot blocking is disabled", async () => {
     const result = await checkBotBlocking({
-      request: requestWithHeaders({}),
+      headers: {},
       blockBots: false,
       payload: basePayload,
     });
@@ -59,7 +54,7 @@ describe("checkBotBlocking", () => {
 
   it("skips verified trusted server-side ingestion requests", async () => {
     const result = await checkBotBlocking({
-      request: requestWithHeaders({}),
+      headers: {},
       blockBots: true,
       trustedServerSideIngestion: true,
       payload: basePayload,
@@ -70,7 +65,7 @@ describe("checkBotBlocking", () => {
 
   it("does not bypass bot blocking for an unverified bearer header", async () => {
     const result = await checkBotBlocking({
-      request: requestWithHeaders({ authorization: "Bearer token" }),
+      headers: { authorization: "Bearer token" },
       blockBots: true,
       payload: basePayload,
     });
@@ -83,12 +78,12 @@ describe("checkBotBlocking", () => {
 
   it("counts requests before bot-blocking bypasses for percentage stats", async () => {
     await checkBotBlocking({
-      request: requestWithHeaders({}),
+      headers: {},
       blockBots: false,
       payload: basePayload,
     });
     await checkBotBlocking({
-      request: requestWithHeaders({}),
+      headers: {},
       blockBots: true,
       trustedServerSideIngestion: true,
       payload: { ...basePayload, clientBotScore: 0, clientBotSignalMask: 0 },
@@ -110,7 +105,7 @@ describe("checkBotBlocking", () => {
 
   it("returns bot event properties for detected bots", async () => {
     const result = await checkBotBlocking({
-      request: requestWithHeaders({}),
+      headers: {},
       blockBots: true,
       payload: basePayload,
     });
@@ -145,7 +140,7 @@ describe("checkBotBlocking", () => {
     // Android React Native ships requests through okhttp with no browser headers.
     // On a web site this trips both the UA-pattern and header-heuristic layers...
     const asWeb = await checkBotBlocking({
-      request: requestWithHeaders({ "user-agent": "okhttp/4.12.0" }),
+      headers: { "user-agent": "okhttp/4.12.0" },
       blockBots: true,
       payload: { ...basePayload, userAgent: "okhttp/4.12.0", clientBotScore: 0, clientBotSignalMask: 0 },
     });
@@ -153,7 +148,7 @@ describe("checkBotBlocking", () => {
 
     // ...but a mobile/app site treats it as legitimate first-party traffic.
     const asMobile = await checkBotBlocking({
-      request: requestWithHeaders({ "user-agent": "okhttp/4.12.0" }),
+      headers: { "user-agent": "okhttp/4.12.0" },
       blockBots: true,
       isMobileSite: true,
       payload: { ...basePayload, userAgent: "okhttp/4.12.0", clientBotScore: 0, clientBotSignalMask: 0 },
@@ -163,7 +158,7 @@ describe("checkBotBlocking", () => {
 
   it("still flags mobile traffic through client signals, ASN, and rate anomaly", async () => {
     const result = await checkBotBlocking({
-      request: requestWithHeaders({ "user-agent": "okhttp/4.12.0" }),
+      headers: { "user-agent": "okhttp/4.12.0" },
       blockBots: true,
       isMobileSite: true,
       payload: {
@@ -183,25 +178,25 @@ describe("checkBotBlocking", () => {
   });
 
   it("records client bot score and signal aggregates for inspected requests", async () => {
-    const request = requestWithHeaders(browserHeaders);
+    const headers = browserHeaders;
 
     await checkBotBlocking({
-      request,
+      headers,
       blockBots: true,
       payload: basePayload,
     });
     await checkBotBlocking({
-      request,
+      headers,
       blockBots: true,
       payload: { ...basePayload, clientBotScore: 0, clientBotSignalMask: 0 },
     });
     await checkBotBlocking({
-      request,
+      headers,
       blockBots: true,
       payload: { ...basePayload, clientBotScore: 1, clientBotSignalMask: clientBotSignalMasks.swiftShader },
     });
     await checkBotBlocking({
-      request,
+      headers,
       blockBots: true,
       payload: {
         ...basePayload,
@@ -210,7 +205,7 @@ describe("checkBotBlocking", () => {
       },
     });
     await checkBotBlocking({
-      request,
+      headers,
       blockBots: true,
       payload: { ...basePayload, clientBotScore: 3, clientBotSignalMask: clientBotSignalMasks.automationApi },
     });
@@ -245,10 +240,10 @@ describe("checkBotBlocking", () => {
 
   it("collects every matching bot signal before returning", async () => {
     const result = await checkBotBlocking({
-      request: requestWithHeaders({
+      headers: {
         "user-agent":
           "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/120.0.0.0 Safari/537.36",
-      }),
+      },
       blockBots: true,
       payload: {
         ...basePayload,
@@ -279,10 +274,10 @@ describe("checkBotBlocking", () => {
 
   it("moves default viewport fingerprints into client signals", async () => {
     const result = await checkBotBlocking({
-      request: requestWithHeaders({
+      headers: {
         ...browserHeaders,
         "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120 Safari/537.36",
-      }),
+      },
       blockBots: true,
       payload: {
         ...basePayload,
@@ -308,10 +303,10 @@ describe("checkBotBlocking", () => {
 
   it("convicts the 1280x1200 headless window geometry on a desktop UA", async () => {
     const result = await checkBotBlocking({
-      request: requestWithHeaders({
+      headers: {
         ...browserHeaders,
         "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/116 Safari/537.36",
-      }),
+      },
       blockBots: true,
       payload: {
         ...basePayload,
@@ -330,11 +325,11 @@ describe("checkBotBlocking", () => {
 
   it("leaves 1280x1200 alone on a mobile UA, where it is not a headless tell", async () => {
     const result = await checkBotBlocking({
-      request: requestWithHeaders({
+      headers: {
         ...browserHeaders,
         "user-agent":
           "Mozilla/5.0 (iPhone; CPU iPhone OS 18_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.5 Mobile/15E148 Safari/604.1",
-      }),
+      },
       blockBots: true,
       payload: {
         ...basePayload,
@@ -353,7 +348,7 @@ describe("checkBotBlocking", () => {
     // but both occur on real devices (prerendering, low-end GPUs) — weak
     // signals corroborate, never convict.
     const result = await checkBotBlocking({
-      request: requestWithHeaders(browserHeaders),
+      headers: browserHeaders,
       blockBots: true,
       payload: {
         ...basePayload,
@@ -369,7 +364,7 @@ describe("checkBotBlocking", () => {
     // Without the mask the score cannot be decomposed into strong vs. weak
     // signals, so it can only ever corroborate.
     const result = await checkBotBlocking({
-      request: requestWithHeaders(browserHeaders),
+      headers: browserHeaders,
       blockBots: true,
       payload: { ...basePayload, clientBotScore: 5 },
     });
@@ -379,11 +374,11 @@ describe("checkBotBlocking", () => {
 
   it("uses weak client signals as supporting evidence when another layer matched", async () => {
     const result = await checkBotBlocking({
-      request: requestWithHeaders({
+      headers: {
         ...browserHeaders,
         "user-agent":
           "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/120.0.0.0 Safari/537.36",
-      }),
+      },
       blockBots: true,
       payload: {
         ...basePayload,
@@ -414,7 +409,7 @@ describe("checkBotBlocking", () => {
     });
 
     const result = await checkBotBlocking({
-      request: requestWithHeaders(browserHeaders),
+      headers: browserHeaders,
       blockBots: true,
       payload: {
         ...basePayload,
@@ -434,7 +429,7 @@ describe("checkBotBlocking", () => {
     });
 
     const result = await checkBotBlocking({
-      request: requestWithHeaders(browserHeaders),
+      headers: browserHeaders,
       blockBots: true,
       payload: {
         ...basePayload,
@@ -461,7 +456,7 @@ describe("checkBotBlocking", () => {
     });
 
     const result = await checkBotBlocking({
-      request: requestWithHeaders(browserHeaders),
+      headers: browserHeaders,
       blockBots: true,
       payload: {
         ...basePayload,
@@ -490,7 +485,7 @@ describe("checkBotBlocking", () => {
     });
 
     const result = await checkBotBlocking({
-      request: requestWithHeaders(browserHeaders),
+      headers: browserHeaders,
       blockBots: true,
       payload: {
         ...basePayload,
@@ -512,12 +507,12 @@ describe("checkBotBlocking", () => {
   });
 
   it("adds a rate anomaly layer after a request burst", async () => {
-    const request = requestWithHeaders(browserHeaders);
+    const headers = browserHeaders;
 
     let result: Awaited<ReturnType<typeof checkBotBlocking>> = null;
     for (let i = 0; i < 31; i++) {
       result = await checkBotBlocking({
-        request,
+        headers,
         blockBots: true,
         payload: {
           ...basePayload,
@@ -541,7 +536,7 @@ describe("checkBotBlocking", () => {
       "Mozilla/5.0 (Linux; Android 8.0; SM-G930F) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/40.0.0.0 Mobile Safari/537.36";
 
     const result = await checkBotBlocking({
-      request: requestWithHeaders({ ...browserHeaders, "user-agent": userAgent }),
+      headers: { ...browserHeaders, "user-agent": userAgent },
       blockBots: true,
       payload: {
         ...basePayload,
@@ -569,7 +564,7 @@ describe("checkBotBlocking", () => {
     const userAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) HeadlessChrome/40.0.0.0 Safari/537.36";
 
     const result = await checkBotBlocking({
-      request: requestWithHeaders({ ...browserHeaders, "user-agent": userAgent }),
+      headers: { ...browserHeaders, "user-agent": userAgent },
       blockBots: true,
       payload: { ...basePayload, userAgent, clientBotScore: 0, clientBotSignalMask: 0 },
     });
@@ -584,7 +579,7 @@ describe("checkBotBlocking", () => {
       "Mozilla/5.0 (Linux; Android 8.0; SM-G930F) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/40.0.0.0 Mobile Safari/537.36";
 
     const result = await checkBotBlocking({
-      request: requestWithHeaders({ ...browserHeaders, "user-agent": userAgent }),
+      headers: { ...browserHeaders, "user-agent": userAgent },
       blockBots: true,
       isMobileSite: true,
       payload: { ...basePayload, userAgent, clientBotScore: 0, clientBotSignalMask: 0 },
@@ -595,7 +590,7 @@ describe("checkBotBlocking", () => {
 
   it("convicts a square screen, which no shipping display reports", async () => {
     const result = await checkBotBlocking({
-      request: requestWithHeaders(browserHeaders),
+      headers: browserHeaders,
       blockBots: true,
       payload: {
         ...basePayload,
@@ -618,11 +613,11 @@ describe("checkBotBlocking", () => {
     // The square fleets claim Android and iOS as well as desktop, so unlike the
     // default-viewport rules this one is not gated on a desktop user-agent.
     const result = await checkBotBlocking({
-      request: requestWithHeaders({
+      headers: {
         ...browserHeaders,
         "user-agent":
           "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/150.0.0.0 Mobile Safari/537.36",
-      }),
+      },
       blockBots: true,
       payload: { ...basePayload, clientBotScore: 0, clientBotSignalMask: 0, screenWidth: 2000, screenHeight: 2000 },
     });
@@ -638,7 +633,7 @@ describe("checkBotBlocking", () => {
     ]) {
       resetBotDetectionStatsForTests();
       const result = await checkBotBlocking({
-        request: requestWithHeaders(browserHeaders),
+        headers: browserHeaders,
         blockBots: true,
         payload: { ...basePayload, clientBotScore: 0, clientBotSignalMask: 0, screenWidth, screenHeight },
       });
@@ -656,7 +651,7 @@ describe("checkBotBlocking", () => {
       [1920, 1080],
     ]) {
       const result = await checkBotBlocking({
-        request: requestWithHeaders(browserHeaders),
+        headers: browserHeaders,
         blockBots: true,
         payload: { ...basePayload, clientBotScore: 0, clientBotSignalMask: 0, screenWidth, screenHeight },
       });

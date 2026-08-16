@@ -1,5 +1,5 @@
-import { FastifyRequest } from "fastify";
-import { lookupAsn, type AsnInfo } from "../../../db/geolocation/asn.js";
+import type { IncomingHttpHeaders } from "http";
+import { lookupAsn, type AsnInfo, type AsnLookup } from "../../../db/geolocation/asn.js";
 import { logger } from "../../../lib/logger/logger.js";
 import type { AnomalyCounters } from "./anomalyScorer.js";
 import { observeTrackingAnomaly } from "./anomalyScorer.js";
@@ -29,7 +29,12 @@ interface BotBlockingPayload {
 }
 
 interface BotBlockingInput {
-  request: FastifyRequest;
+  /**
+   * The request's headers. Header heuristics are the only thing this needs from
+   * the HTTP request, so it takes headers rather than a `FastifyRequest` —
+   * ingestion can then be driven from a plain value.
+   */
+  headers: IncomingHttpHeaders;
   blockBots: boolean;
   trustedServerSideIngestion?: boolean;
   /**
@@ -39,6 +44,8 @@ interface BotBlockingInput {
    */
   isMobileSite?: boolean;
   payload: BotBlockingPayload;
+  /** Request-scoped ASN resolver, shared with the rest of the ingestion path. */
+  lookupAsn?: AsnLookup;
 }
 
 interface AnomalyReason {
@@ -263,13 +270,14 @@ function getClientSignalResult(payload: BotBlockingPayload, userAgent: string) {
 }
 
 export async function checkBotBlocking({
-  request,
+  headers,
   blockBots,
   trustedServerSideIngestion = false,
   isMobileSite = false,
   payload,
+  lookupAsn: asnLookup = lookupAsn,
 }: BotBlockingInput): Promise<BotDetectionResult | null> {
-  const userAgent = payload.userAgent || (request.headers["user-agent"] as string) || "";
+  const userAgent = payload.userAgent || (headers["user-agent"] as string) || "";
   const clientSignalResult = getClientSignalResult(payload, userAgent);
   recordBotBlockingRequest(clientSignalResult.scoreForStats, clientSignalResult.maskForStats);
 
@@ -315,7 +323,7 @@ export async function checkBotBlocking({
     }
 
     // Layer 2: Header heuristic bot detection
-    const detection = detectBot(request, userAgent);
+    const detection = detectBot(headers, userAgent);
     if (detection.isBot) {
       addDetection("Bot detected using header heuristics", {
         layer: "header_heuristics",
@@ -350,7 +358,7 @@ export async function checkBotBlocking({
   let asnInfo: AsnInfo | null = null;
   let supportingHostingAsnDetection: BotBlockingDetection | null = null;
   if (ipForAsn) {
-    asnInfo = lookupAsn(ipForAsn);
+    asnInfo = asnLookup(ipForAsn);
     const botAsnMatch = classifyBotAsn(asnInfo?.asn);
     if (asnInfo && botAsnMatch.isBotInfrastructure) {
       const asnDetection: BotBlockingDetection = {
