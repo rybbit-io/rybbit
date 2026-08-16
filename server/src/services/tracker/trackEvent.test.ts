@@ -2,75 +2,25 @@ import type { FastifyReply, FastifyRequest } from "fastify";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
-  addBotEvent: vi.fn(),
-  addPageview: vi.fn(),
-  checkBotBlocking: vi.fn(),
-  createBasePayload: vi.fn(),
-  decideSiteExclusion: vi.fn(),
-  getConfig: vi.fn(),
-  isSiteOverLimit: vi.fn(),
-  updateSession: vi.fn(),
+  resolveTrackingRequest: vi.fn(),
+  ingestEvent: vi.fn(),
 }));
 
-vi.mock("../../lib/siteConfig.js", () => ({
-  siteConfig: {
-    getConfig: mocks.getConfig,
-  },
+vi.mock("./trackingRequest.js", () => ({
+  resolveTrackingRequest: mocks.resolveTrackingRequest,
 }));
 
-vi.mock("../usageService.js", () => ({
-  usageService: {
-    isSiteOverLimit: mocks.isSiteOverLimit,
-  },
-}));
-
-vi.mock("./pageviewQueue.js", () => ({
-  pageviewQueue: {
-    add: mocks.addPageview,
-  },
-}));
-
-vi.mock("../sessions/sessionsService.js", () => ({
-  sessionsService: {
-    updateSession: mocks.updateSession,
-  },
-}));
-
-vi.mock("./botBlocking/index.js", () => ({
-  checkBotBlocking: mocks.checkBotBlocking,
-}));
-
-vi.mock("./botBlocking/botEventQueue.js", () => ({
-  botEventQueue: {
-    add: mocks.addBotEvent,
-  },
-}));
-
-vi.mock("../../lib/auth-utils.js", () => ({
-  checkApiKey: vi.fn(),
-}));
-
-vi.mock("./utils.js", () => ({
-  createBasePayload: mocks.createBasePayload,
-}));
-
-vi.mock("../sites/siteExclusionDecision.js", () => ({
-  decideSiteExclusion: mocks.decideSiteExclusion,
+vi.mock("./ingestEvent.js", () => ({
+  ingestEvent: mocks.ingestEvent,
 }));
 
 import { trackEvent } from "./trackEvent.js";
 
-const siteConfiguration = {
-  id: "site_abc",
-  siteId: 42,
-  type: "web",
-  blockBots: false,
-  excludedIPs: [],
-  excludedCountries: [],
-  excludedPaths: [],
-  excludedHostnames: [],
-  excludedUserAgents: [],
-};
+const resolvedRequest = { payload: { site_id: "site_abc" }, site: { siteId: 42 } };
+
+function requestWithBody(body: unknown): FastifyRequest {
+  return { body, headers: {}, ip: "198.51.100.10" } as unknown as FastifyRequest;
+}
 
 function replyStub(): FastifyReply {
   const reply = {
@@ -84,80 +34,87 @@ function replyStub(): FastifyReply {
   return reply as unknown as FastifyReply;
 }
 
-describe("trackEvent session identity", () => {
+describe("trackEvent", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mocks.getConfig.mockResolvedValue(siteConfiguration);
-    mocks.isSiteOverLimit.mockReturnValue(false);
-    mocks.checkBotBlocking.mockResolvedValue(null);
-    mocks.decideSiteExclusion.mockResolvedValue({ excluded: false });
-    mocks.createBasePayload.mockResolvedValue({
-      site_id: 42,
-      userId: "shared-fingerprint",
-      identifiedUserId: "employee-alice",
-    });
-    mocks.updateSession.mockResolvedValue({ sessionId: "session-alice" });
-    mocks.addPageview.mockResolvedValue(undefined);
+    mocks.resolveTrackingRequest.mockResolvedValue(resolvedRequest);
+    mocks.ingestEvent.mockResolvedValue({ status: "tracked", sessionId: "session-alice" });
   });
 
-  it("passes the identified user into session assignment", async () => {
-    const request = {
-      body: {
-        type: "pageview",
-        site_id: "site_abc",
-      },
-      headers: {},
-      ip: "198.51.100.10",
-    } as unknown as FastifyRequest;
+  it("rejects a payload that fails validation without resolving anything", async () => {
+    const reply = replyStub();
 
-    await trackEvent(request, replyStub());
+    await trackEvent(requestWithBody({ type: "pageview" }), reply);
 
-    expect(mocks.updateSession).toHaveBeenCalledWith({
-      userId: "shared-fingerprint",
-      identifiedUserId: "employee-alice",
-      siteId: 42,
-    });
-    expect(mocks.addPageview).toHaveBeenCalledWith(
-      expect.objectContaining({
-        sessionId: "session-alice",
-        userId: "shared-fingerprint",
-        identifiedUserId: "employee-alice",
-      })
-    );
+    expect(reply.status).toHaveBeenCalledWith(400);
+    expect(mocks.resolveTrackingRequest).not.toHaveBeenCalled();
+    expect(mocks.ingestEvent).not.toHaveBeenCalled();
+  });
+
+  it("answers 404 when the Site is unknown", async () => {
+    mocks.resolveTrackingRequest.mockResolvedValue(null);
+    const reply = replyStub();
+
+    await trackEvent(requestWithBody({ type: "pageview", site_id: "nope" }), reply);
+
+    expect(reply.status).toHaveBeenCalledWith(404);
+    expect(reply.send).toHaveBeenCalledWith({ success: false, error: "Site not found" });
+    expect(mocks.ingestEvent).not.toHaveBeenCalled();
+  });
+
+  it("hands the resolved Tracking Request to ingestion and reports success", async () => {
+    const reply = replyStub();
+
+    await trackEvent(requestWithBody({ type: "pageview", site_id: "site_abc" }), reply);
+
+    expect(mocks.ingestEvent).toHaveBeenCalledWith(resolvedRequest);
+    expect(reply.status).toHaveBeenCalledWith(200);
+    expect(reply.send).toHaveBeenCalledWith({ success: true });
   });
 
   it("maps a Site Exclusion Decision to the event skip response", async () => {
-    mocks.decideSiteExclusion.mockResolvedValue({
-      excluded: true,
-      reason: "path",
-      label: "path",
-      value: "/admin/users",
+    mocks.ingestEvent.mockResolvedValue({
+      status: "excluded",
+      exclusion: { excluded: true, reason: "path", label: "path", value: "/admin/users" },
     });
-    const request = {
-      body: {
-        type: "pageview",
-        site_id: "site_abc",
-        pathname: "/admin/users",
-        hostname: "example.com",
-      },
-      headers: { "user-agent": "Mozilla/5.0" },
-      ip: "198.51.100.10",
-    } as unknown as FastifyRequest;
     const reply = replyStub();
 
-    await trackEvent(request, reply);
+    await trackEvent(requestWithBody({ type: "pageview", site_id: "site_abc" }), reply);
 
-    expect(mocks.decideSiteExclusion).toHaveBeenCalledWith(siteConfiguration, {
-      ipAddress: "198.51.100.10",
-      candidateIps: ["198.51.100.10"],
-      pathname: "/admin/users",
-      hostname: "example.com",
-      userAgent: "Mozilla/5.0",
-    });
+    expect(reply.status).toHaveBeenCalledWith(200);
     expect(reply.send).toHaveBeenCalledWith({
       success: true,
       message: "Event not tracked - path excluded",
     });
-    expect(mocks.createBasePayload).not.toHaveBeenCalled();
+  });
+
+  it("reports the monthly limit without failing the request", async () => {
+    mocks.ingestEvent.mockResolvedValue({ status: "over_limit" });
+    const reply = replyStub();
+
+    await trackEvent(requestWithBody({ type: "pageview", site_id: "site_abc" }), reply);
+
+    expect(reply.status).toHaveBeenCalledWith(200);
+    expect(reply.send).toHaveBeenCalledWith("Site over monthly limit, event not tracked");
+  });
+
+  it("answers a detected bot with the same success shape as a tracked event", async () => {
+    mocks.ingestEvent.mockResolvedValue({ status: "bot" });
+    const reply = replyStub();
+
+    await trackEvent(requestWithBody({ type: "pageview", site_id: "site_abc" }), reply);
+
+    expect(reply.status).toHaveBeenCalledWith(200);
+    expect(reply.send).toHaveBeenCalledWith({ success: true });
+  });
+
+  it("turns an ingestion failure into a 500", async () => {
+    mocks.ingestEvent.mockRejectedValue(new Error("ClickHouse unavailable"));
+    const reply = replyStub();
+
+    await trackEvent(requestWithBody({ type: "pageview", site_id: "site_abc" }), reply);
+
+    expect(reply.status).toHaveBeenCalledWith(500);
+    expect(reply.send).toHaveBeenCalledWith({ success: false, error: "Failed to track event" });
   });
 });
