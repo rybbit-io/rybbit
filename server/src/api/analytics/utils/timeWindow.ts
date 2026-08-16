@@ -90,6 +90,30 @@ export type TimeWindowParams = Partial<
   >
 >;
 
+/**
+ * The columns a window can bound. Unlike every other value the module emits,
+ * the column is an SQL identifier and cannot be escaped as a literal, so the
+ * set is closed rather than free-form: a surface that needs another column adds
+ * it here, where it is checked, instead of passing a string into the query.
+ */
+export type TimeWindowColumn = "timestamp" | "event_hour" | "session_hour" | "start_time";
+
+const TIME_WINDOW_COLUMNS = new Set<string>([
+  "timestamp", // events, bot_events
+  "event_hour", // the hourly event rollups
+  "session_hour", // the hourly session rollup
+  "start_time", // sessions_mv_target, session_replay_metadata
+]);
+
+// The type keeps honest callers right; this keeps a cast or an `any` from
+// reaching the query text.
+function assertTimeWindowColumn(column: string): string {
+  if (!TIME_WINDOW_COLUMNS.has(column)) {
+    throw new Error(`Unknown time window column: ${column}`);
+  }
+  return column;
+}
+
 export type TimeWindow =
   | { kind: "all_time" }
   | { kind: "date"; startDate: string; endDate: string; timeZone: string }
@@ -101,9 +125,15 @@ const ALL_TIME: TimeWindow = { kind: "all_time" };
 /**
  * Parse the six wire params into a resolved window. Precedence is date range,
  * then datetime range, then past-minutes — the order the surfaces have always
- * used. Params that are present but invalid degrade to all-time rather than
- * throwing; `validateHttpTimeParams` rejects those at the route so they never
- * reach here over HTTP.
+ * used.
+ *
+ * Params that are present but invalid degrade to all-time rather than throwing,
+ * because no time params at all is itself a legitimate request and the non-HTTP
+ * callers (the report jobs) supply their own partial params. Note what that
+ * means for a caller that builds params programmatically: a malformed value
+ * doesn't fail, it widens the query to every event ever recorded. Over HTTP
+ * `validateHttpTimeParams` rejects those at the route, so they never reach here;
+ * a new non-HTTP caller should validate its own input the same way.
  */
 export function parseTimeWindow(params: TimeWindowParams): TimeWindow {
   const { start_date, end_date, time_zone, start_datetime, end_datetime, past_minutes_start, past_minutes_end } =
@@ -165,7 +195,9 @@ export function parseTimeWindow(params: TimeWindowParams): TimeWindow {
  *   `event_hour`/`session_hour` on the hourly materialized views, `start_time`
  *   on session metadata.
  */
-export function timeWindowWhere(window: TimeWindow, column: string = "timestamp"): string {
+export function timeWindowWhere(window: TimeWindow, columnName: TimeWindowColumn = "timestamp"): string {
+  const column = assertTimeWindowColumn(columnName);
+
   switch (window.kind) {
     case "date": {
       const { startDate, endDate, timeZone } = window;
@@ -268,6 +300,6 @@ export function timeWindowFill(window: TimeWindow, bucket: TimeBucket): string {
  * nothing else from the window. Callers that also fill, or that bound more than
  * one column, should hold the parsed window instead.
  */
-export function getTimeStatement(params: TimeWindowParams, column: string = "timestamp"): string {
+export function getTimeStatement(params: TimeWindowParams, column: TimeWindowColumn = "timestamp"): string {
   return timeWindowWhere(parseTimeWindow(params), column);
 }

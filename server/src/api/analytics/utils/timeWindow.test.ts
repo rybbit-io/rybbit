@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   normalizeDatetimeForClickhouse,
   parseTimeWindow,
+  TimeWindowColumn,
   TimeWindowParams,
   getTimeStatement,
   timeWindowFill,
@@ -12,7 +13,8 @@ import {
 const normalize = (sql: string) => sql.replace(/\s+/g, " ").trim();
 
 const params = (p: Partial<TimeWindowParams>) => p as TimeWindowParams;
-const where = (p: Partial<TimeWindowParams>, column?: string) => timeWindowWhere(parseTimeWindow(params(p)), column);
+const where = (p: Partial<TimeWindowParams>, column?: TimeWindowColumn) =>
+  timeWindowWhere(parseTimeWindow(params(p)), column);
 const fill = (p: Partial<TimeWindowParams>, bucket: TimeBucket) => timeWindowFill(parseTimeWindow(params(p)), bucket);
 
 describe("parseTimeWindow", () => {
@@ -201,18 +203,44 @@ describe("timeWindowWhere", () => {
   // replay metadata table bound their own column instead of rewriting the
   // generated SQL with a regex.
   describe("column parameter", () => {
-    it("should bound the named column in every mode", () => {
-      expect(where({ start_date: "2024-01-01", end_date: "2024-01-31", time_zone: "UTC" }, "event_hour")).toContain(
-        "AND event_hour >="
+    // Both bounds, in every mode: a regression that moved only the lower bound
+    // to the named column and left the upper one on `timestamp` would still
+    // produce plausible-looking SQL, and would silently scan the wrong column.
+    it("should bound both ends of the named column in every mode", () => {
+      const dateWhere = where({ start_date: "2024-01-01", end_date: "2024-01-31", time_zone: "UTC" }, "event_hour");
+      expect(dateWhere).toContain("AND event_hour >=");
+      expect(dateWhere).toContain("AND event_hour <");
+      expect(dateWhere).not.toContain("timestamp");
+
+      const datetimeWhere = where(
+        { start_datetime: "2024-01-01 00:00:00", end_datetime: "2024-01-02 00:00:00" },
+        "start_time"
       );
-      expect(
-        where({ start_datetime: "2024-01-01 00:00:00", end_datetime: "2024-01-02 00:00:00" }, "start_time")
-      ).toContain("AND start_time >=");
-      expect(where({ past_minutes_start: 60, past_minutes_end: 0 }, "session_hour")).toContain("AND session_hour >");
+      expect(datetimeWhere).toContain("AND start_time >=");
+      expect(datetimeWhere).toContain("AND start_time <");
+      expect(datetimeWhere).not.toContain("timestamp");
+
+      const pastMinutesWhere = where({ past_minutes_start: 60, past_minutes_end: 0 }, "session_hour");
+      expect(pastMinutesWhere).toContain("AND session_hour >");
+      expect(pastMinutesWhere).toContain("AND session_hour <=");
+      expect(pastMinutesWhere).not.toContain("timestamp");
     });
 
     it("should default to the events timestamp column", () => {
-      expect(where({ past_minutes_start: 60, past_minutes_end: 0 })).toContain("AND timestamp >");
+      const statement = where({ past_minutes_start: 60, past_minutes_end: 0 });
+      expect(statement).toContain("AND timestamp >");
+      expect(statement).toContain("AND timestamp <=");
+    });
+
+    // The column is an SQL identifier, not an escapable literal, so it is
+    // checked against a closed set rather than interpolated as given.
+    it("should reject a column outside the allowlist", () => {
+      expect(() => where({ past_minutes_start: 60, past_minutes_end: 0 }, "timestamp) OR 1=1 --" as never)).toThrow(
+        "Unknown time window column"
+      );
+      expect(() => where({ start_date: "2024-01-01", end_date: "2024-01-31", time_zone: "UTC" }, "" as never)).toThrow(
+        "Unknown time window column"
+      );
     });
   });
 });
