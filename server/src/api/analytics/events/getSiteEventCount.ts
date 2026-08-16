@@ -2,7 +2,7 @@ import { FilterParams } from "@rybbit/shared";
 import { FastifyReply, FastifyRequest } from "fastify";
 import { TimeBucket } from "../types.js";
 import { getFilterStatement } from "../utils/getFilterStatement.js";
-import { getTimeStatement, TimeBucketToFn } from "../utils/utils.js";
+import { getTimeStatement, TimeBucketToFn } from "../utils/timeWindow.js";
 import { analyticsRoute, runAnalyticsQuery } from "../utils/analyticsQuery.js";
 
 export type GetSiteEventCountResponse = {

@@ -190,6 +190,10 @@ import { handleAppSumoWebhook, activateAppSumoLicense } from "./api/as/index.js"
 // Reject requests whose shared time query params are present but invalid.
 // Historically they were silently dropped, so endpoints ran over all time and
 // returned wrong data with a 200. Absent params (all-time mode) stay valid.
+//
+// This runs on every authenticated chain, not just the site-scoped ones: the
+// Time Window is the same value everywhere, so an org-scoped or admin read of
+// it must reject the same malformed input a site-scoped read does.
 const validateTimeParams = async (request: FastifyRequest, reply: FastifyReply) => {
   const error = validateHttpTimeParams(request.query);
   if (error) {
@@ -210,16 +214,16 @@ const authSiteScoped = (resource: ScopeResource, action: ScopeAction) => ({
   preHandler: [resolveSiteId, requireSiteAccess({ resource, action }), validateTimeParams] as any,
 });
 const adminSiteScoped = (resource: ScopeResource, action: ScopeAction) => ({
-  preHandler: [resolveSiteId, requireSiteAdminAccess({ resource, action })] as any,
+  preHandler: [resolveSiteId, requireSiteAdminAccess({ resource, action }), validateTimeParams] as any,
 });
 const orgMemberScoped = (resource: ScopeResource, action: ScopeAction) => ({
-  preHandler: [requireOrgMember({ resource, action })] as any,
+  preHandler: [requireOrgMember({ resource, action }), validateTimeParams] as any,
 });
 const orgAdminScoped = (resource: ScopeResource, action: ScopeAction) => ({
-  preHandler: [requireOrgAdminFromParams({ resource, action })] as any,
+  preHandler: [requireOrgAdminFromParams({ resource, action }), validateTimeParams] as any,
 });
 const authOnlyScoped = (resource: ScopeResource, action: ScopeAction) => ({
-  preHandler: [requireAuth({ resource, action })] as any,
+  preHandler: [requireAuth({ resource, action }), validateTimeParams] as any,
 });
 
 // Reused scoped chains
@@ -258,7 +262,7 @@ const authOrgWrite = authOnlyScoped("org", "write");
 
 // Scope-exempt / non-bearer chains. "deny-scoped" rejects scoped credentials
 // on surfaces with no taxonomy resource (account settings, billing).
-const adminOnly = { preHandler: [requireAdmin] as any };
+const adminOnly = { preHandler: [requireAdmin, validateTimeParams] as any };
 const authOnlyNoScopedKeys = { preHandler: [requireAuth("deny-scoped")] as any };
 const orgAdminNoScopedKeys = { preHandler: [requireOrgAdminFromParams("deny-scoped")] as any };
 

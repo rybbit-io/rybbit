@@ -3,7 +3,7 @@ import {
   filterParamSchema,
   validateFilters,
   validateHttpTimeParams,
-  validateTimeStatementFillParams,
+  validateTimeBucket,
   validateTimeStatementParams,
 } from "./query-validation.js";
 
@@ -226,9 +226,9 @@ describe("validateTimeStatementParams", () => {
     });
 
     it("date object missing required time_zone is swallowed", () => {
-      expect(
-        validateTimeStatementParams({ date: { start_date: "2025-01-01", end_date: "2025-01-31" } })
-      ).toEqual(ALL_UNDEFINED);
+      expect(validateTimeStatementParams({ date: { start_date: "2025-01-01", end_date: "2025-01-31" } })).toEqual(
+        ALL_UNDEFINED
+      );
     });
 
     it("malformed date strings are swallowed", () => {
@@ -257,74 +257,6 @@ describe("validateTimeStatementParams", () => {
 });
 
 // =============================================================================
-// validateTimeStatementFillParams (bucket enum + fill params schema)
-// =============================================================================
-
-describe("validateTimeStatementFillParams", () => {
-  // Cast: validateTimeStatementFillParams is typed for full FilterParams, but
-  // the schema only reads the time-related fields, so partial objects are fine.
-  const validDateParams = { start_date: "2025-01-01", end_date: "2025-01-31", time_zone: "UTC" } as never;
-
-  describe("bucket enum", () => {
-    it.each(["minute", "five_minutes", "ten_minutes", "fifteen_minutes", "hour", "day", "week", "month", "year"])(
-      "accepts bucket %s",
-      bucket => {
-        const result = validateTimeStatementFillParams(validDateParams, bucket);
-        expect(result.bucket).toBe(bucket);
-      }
-    );
-
-    it("rejects unknown bucket values", () => {
-      expect(() => validateTimeStatementFillParams(validDateParams, "quarter")).toThrow();
-      expect(() => validateTimeStatementFillParams(validDateParams, undefined)).toThrow();
-    });
-  });
-
-  it("defaults a missing time_zone to UTC instead of dropping the range", () => {
-    const result = validateTimeStatementFillParams(
-      { start_date: "2025-01-01", end_date: "2025-01-31" } as never,
-      "day"
-    );
-    expect(result.params.time_zone).toBe("UTC");
-    expect(result.params.start_date).toBe("2025-01-01");
-  });
-
-  it("coerces string past_minutes params to numbers", () => {
-    const result = validateTimeStatementFillParams(
-      { past_minutes_start: "60", past_minutes_end: "0" } as never,
-      "minute"
-    );
-    expect(result.params.past_minutes_start).toBe(60);
-    expect(result.params.past_minutes_end).toBe(0);
-  });
-
-  it("throws when past_minutes_start is not greater than past_minutes_end", () => {
-    expect(() =>
-      validateTimeStatementFillParams({ past_minutes_start: "0", past_minutes_end: "60" } as never, "minute")
-    ).toThrow(/greater than/);
-  });
-
-  it("throws when no complete time param group is provided", () => {
-    expect(() => validateTimeStatementFillParams({} as never, "day")).toThrow(/must be provided/);
-    // start_date alone (no end_date) is not a complete group
-    expect(() => validateTimeStatementFillParams({ start_date: "2025-01-01" } as never, "day")).toThrow(
-      /must be provided/
-    );
-  });
-
-  it("silently turns a non-numeric past_minutes string into undefined, then fails the group check", () => {
-    // PINNED: the transform maps NaN to undefined rather than erroring, so the
-    // failure surfaces as the "must be provided" refinement, not a type error.
-    expect(() =>
-      validateTimeStatementFillParams({ past_minutes_start: "abc", past_minutes_end: "0" } as never, "minute")
-    ).toThrow(/must be provided/);
-  });
-});
-
-// =============================================================================
-// validateFilters
-// =============================================================================
-
 describe("validateFilters", () => {
   it("parses a valid filters array", () => {
     const filters = [{ parameter: "browser", type: "equals", value: ["Chrome"] }];
@@ -350,9 +282,7 @@ describe("validateFilters", () => {
   });
 
   it("throws on an unknown filter parameter", () => {
-    expect(() =>
-      validateFilters(JSON.stringify([{ parameter: "password", type: "equals", value: ["x"] }]))
-    ).toThrow();
+    expect(() => validateFilters(JSON.stringify([{ parameter: "password", type: "equals", value: ["x"] }]))).toThrow();
   });
 
   it("throws on an unknown filter type", () => {
@@ -360,10 +290,10 @@ describe("validateFilters", () => {
   });
 
   it("throws when value is not an array of strings/numbers", () => {
-    expect(() => validateFilters(JSON.stringify([{ parameter: "browser", type: "equals", value: "Chrome" }]))).toThrow();
     expect(() =>
-      validateFilters(JSON.stringify([{ parameter: "browser", type: "equals", value: [true] }]))
+      validateFilters(JSON.stringify([{ parameter: "browser", type: "equals", value: "Chrome" }]))
     ).toThrow();
+    expect(() => validateFilters(JSON.stringify([{ parameter: "browser", type: "equals", value: [true] }]))).toThrow();
   });
 
   it("accepts feature_flag filter parameters", () => {

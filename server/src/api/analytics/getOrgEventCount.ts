@@ -2,6 +2,7 @@ import { FastifyReply, FastifyRequest } from "fastify";
 import SqlString from "sqlstring";
 import { getSitesUserHasAccessTo } from "../../lib/auth-utils.js";
 import { analyticsRoute, runAnalyticsQuery } from "./utils/analyticsQuery.js";
+import { parseTimeWindow, timeWindowFill, timeWindowWhere } from "./utils/timeWindow.js";
 
 type OrgEventCountResponse = {
   event_date: string;
@@ -29,51 +30,16 @@ interface GetOrgEventCountRequest {
 }
 
 export const buildOrgEventCountQuery = (query: GetOrgEventCountRequest["Querystring"], siteIds: number[]) => {
-  const { start_date, end_date, time_zone = "UTC" } = query;
+  const { time_zone = "UTC" } = query;
+  const timeWindow = parseTimeWindow(query);
 
-  // Build time filter for the query
-  let timeFilter = "";
-  let fillFromDate = "";
-  let fillToDate = "";
-
-  if (start_date && end_date) {
-    timeFilter = `AND event_hour >= toTimeZone(
-        toStartOfDay(toDateTime(${SqlString.escape(start_date)}, ${SqlString.escape(time_zone)})),
-        'UTC'
-      )
-      AND event_hour < if(
-        toDate(${SqlString.escape(end_date)}) = toDate(now(), ${SqlString.escape(time_zone)}),
-        now(),
-        toTimeZone(
-          toStartOfDay(toDateTime(${SqlString.escape(end_date)}, ${SqlString.escape(time_zone)})) + INTERVAL 1 DAY,
-          'UTC'
-        )
-      )`;
-
-    // Set up WITH FILL parameters
-    fillFromDate = `FROM toTimeZone(
-        toStartOfDay(toDateTime(${SqlString.escape(start_date)}, ${SqlString.escape(time_zone)})),
-        'UTC'
-      )`;
-
-    fillToDate = `TO if(
-        toDate(${SqlString.escape(end_date)}) = toDate(now(), ${SqlString.escape(time_zone)}),
-        toStartOfDay(now()) + INTERVAL 1 DAY,
-        toTimeZone(
-          toStartOfDay(toDateTime(${SqlString.escape(end_date)}, ${SqlString.escape(time_zone)})) + INTERVAL 1 DAY,
-          'UTC'
-        )
-      )`;
-  } else {
-    // No date range: return all data without WITH FILL
-    timeFilter = "";
-    fillFromDate = "";
-    fillToDate = "";
-  }
-
+  // The daily buckets are cut in the caller's time zone, so the fill bounds —
+  // which the Time Window cuts the same way — line up with them. Bucketing in
+  // UTC while filling in the caller's zone produced a second, offset row per
+  // day for every non-UTC organization.
   return `
       SELECT
-        toStartOfDay(timestamp) as event_date,
+        toDateTime(toStartOfDay(toTimeZone(timestamp, ${SqlString.escape(time_zone)}))) as event_date,
         countIf(type = 'pageview') as pageview_count,
         countIf(type = 'custom_event') as custom_event_count,
         countIf(type = 'performance') as performance_count,
@@ -87,10 +53,10 @@ export const buildOrgEventCountQuery = (query: GetOrgEventCountRequest["Querystr
       FROM events
       WHERE site_id IN (${siteIds.map((id: number) => SqlString.escape(id)).join(", ")})
         AND type IN ('pageview', 'custom_event', 'performance', 'outbound', 'error', 'button_click', 'copy', 'form_submit', 'input_change')
-        ${timeFilter.replace(/event_hour/g, "timestamp")}
+        ${timeWindowWhere(timeWindow)}
       GROUP BY event_date
       ORDER BY event_date
-      ${fillFromDate ? `WITH FILL ${fillFromDate} ${fillToDate} STEP INTERVAL 1 DAY` : ""}
+      ${timeWindowFill(timeWindow, "day")}
     `;
 };
 

@@ -2,7 +2,8 @@ import { FilterParams } from "@rybbit/shared";
 import { FastifyReply, FastifyRequest } from "fastify";
 import { getMetric } from "../getMetric.js";
 import { analyticsRoute, runAnalyticsQuery } from "../utils/analyticsQuery.js";
-import { getLiteSessionFilter, getLiteTimeStatement, hasLiteFilters } from "./utils.js";
+import { parseTimeWindow, TimeWindow, timeWindowWhere } from "../utils/timeWindow.js";
+import { getLiteSessionFilter, hasLiteFilters, liteWindowFitsHourlyMv } from "./utils.js";
 
 // Lite metric supports only dimensions backed by MVs:
 //   - pathname → pathname_hourly_mv_target
@@ -43,7 +44,7 @@ const getLitePagination = (query: GetMetricLiteRequest["Querystring"]) => {
 export const buildMetricLiteSessionQuery = (query: GetMetricLiteRequest["Querystring"], filterSql: string) => {
   const { parameter } = query;
   const { limit, offsetStatement } = getLitePagination(query);
-  const sessionsTime = getLiteTimeStatement(query, "start_time");
+  const sessionsTime = timeWindowWhere(parseTimeWindow(query), "start_time");
   const nonEmpty = parameter === "device_type" ? `AND ${parameter} <> ''` : "";
   return `
       SELECT
@@ -80,10 +81,16 @@ export const buildMetricLiteSessionQuery = (query: GetMetricLiteRequest["Queryst
 
 // Unfiltered lists read the dimensioned hourly MVs directly. Returns null for
 // parameters lite mode doesn't support — the handler responds 400.
-export const buildMetricLiteQuery = (query: GetMetricLiteRequest["Querystring"]): string | null => {
+export const buildMetricLiteQuery = (
+  query: GetMetricLiteRequest["Querystring"],
+  // Taken from the caller when it has already parsed the window, so a
+  // past-minutes request resolves `now()` once for both the fallback decision
+  // and the predicate.
+  timeWindow: TimeWindow = parseTimeWindow(query)
+): string | null => {
   const { parameter } = query;
   const { limit, offsetStatement } = getLitePagination(query);
-  const timeStatement = getLiteTimeStatement(query, "event_hour");
+  const timeStatement = timeWindowWhere(timeWindow, "event_hour");
 
   // Percentages are computed in an outer pass so the window function
   // operates on already-grouped rows. `sum(sum(...)) OVER ()` is illegal
@@ -200,9 +207,17 @@ export const getMetricLite = analyticsRoute<GetMetricLiteRequest>(
       return sendMetric(data);
     }
 
-    const query = buildMetricLiteQuery(req.query);
+    const timeWindow = parseTimeWindow(req.query);
+    const query = buildMetricLiteQuery(req.query, timeWindow);
     if (query === null) {
       return res.status(400).send({ error: "Lite mode does not support this parameter" });
+    }
+
+    // Unfiltered lists read the dimensioned hourly rollups, which can't answer a
+    // window that opens or closes mid-hour. Decided after the parameter check so
+    // an unsupported parameter is still a 400 either way.
+    if (!liteWindowFitsHourlyMv(timeWindow)) {
+      return getMetric(req as unknown as Parameters<typeof getMetric>[0], res);
     }
 
     const data = await runAnalyticsQuery<LiteMetricItem>({

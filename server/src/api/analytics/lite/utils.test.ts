@@ -1,12 +1,12 @@
 import { FilterParams } from "@rybbit/shared";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { TimeBucket } from "../types.js";
+import { parseTimeWindow } from "../utils/timeWindow.js";
 import {
-  getLiteFillClause,
   getLiteSessionFilter,
-  getLiteTimeStatement,
   hasLiteFilters,
   liteBucket,
+  liteWindowFitsHourlyMv,
   wrapLiteLikeValue,
 } from "./utils.js";
 
@@ -175,111 +175,6 @@ describe("getLiteSessionFilter", () => {
   });
 });
 
-describe("getLiteTimeStatement", () => {
-  afterEach(() => {
-    vi.useRealTimers();
-  });
-
-  it("should build a timezone-aware day range against the given column", () => {
-    const result = getLiteTimeStatement(
-      { start_date: "2024-01-01", end_date: "2024-01-31", time_zone: "America/New_York" },
-      "event_hour"
-    );
-
-    expect(normalize(result)).toBe(
-      normalize(`AND event_hour >= toTimeZone(
-        toStartOfDay(toDateTime('2024-01-01', 'America/New_York')),
-        'UTC'
-      )
-      AND event_hour < if(
-        toDate('2024-01-31') = toDate(now(), 'America/New_York'),
-        toTimeZone(now(), 'UTC'),
-        toTimeZone(
-          toStartOfDay(toDateTime('2024-01-31', 'America/New_York')) + INTERVAL 1 DAY,
-          'UTC'
-        )
-      )`)
-    );
-  });
-
-  it("should default a missing time_zone to UTC", () => {
-    const result = getLiteTimeStatement(params({ start_date: "2024-01-01", end_date: "2024-01-31" }), "event_hour");
-    expect(result).toContain("toDateTime('2024-01-01', 'UTC')");
-    expect(result).not.toBe("");
-  });
-
-  it("should compute exact timestamps for past minutes", () => {
-    vi.useFakeTimers();
-    vi.setSystemTime(new Date("2024-06-15T12:00:00Z"));
-
-    const result = getLiteTimeStatement(params({ past_minutes_start: 120, past_minutes_end: 0 }), "start_time");
-
-    expect(result).toBe(
-      "AND start_time > toDateTime('2024-06-15 10:00:00') AND start_time <= toDateTime('2024-06-15 12:00:00')"
-    );
-  });
-
-  it("should return empty string with no time params", () => {
-    expect(getLiteTimeStatement(params({}), "event_hour")).toBe("");
-  });
-
-  it("should return empty string when only one date bound is provided", () => {
-    expect(getLiteTimeStatement(params({ start_date: "2024-01-01" }), "event_hour")).toBe("");
-  });
-});
-
-describe("getLiteFillClause", () => {
-  afterEach(() => {
-    vi.useRealTimers();
-  });
-
-  it("should build a date-range fill clause with the bucket fn and interval", () => {
-    const result = getLiteFillClause(
-      params({ start_date: "2024-01-01", end_date: "2024-01-31", time_zone: "UTC" }),
-      "day"
-    );
-
-    expect(normalize(result)).toBe(
-      normalize(`WITH FILL FROM toTimeZone(
-        toDateTime(toStartOfDay(toDateTime('2024-01-01', 'UTC'))),
-        'UTC'
-      )
-      TO if(
-        toDate('2024-01-31') = toDate(now(), 'UTC'),
-        toTimeZone(now(), 'UTC'),
-        toTimeZone(
-          toDateTime(toStartOfDay(toDateTime('2024-01-31', 'UTC'))) + INTERVAL 1 DAY,
-          'UTC'
-        )
-      ) STEP INTERVAL 1 DAY`)
-    );
-  });
-
-  it("should default a missing time_zone to UTC", () => {
-    const result = getLiteFillClause(params({ start_date: "2024-01-01", end_date: "2024-01-31" }), "hour");
-    expect(result).toContain("toDateTime('2024-01-01', 'UTC')");
-    expect(result).toContain("toStartOfHour");
-    expect(result).toContain("STEP INTERVAL 1 HOUR");
-  });
-
-  it("should build a past-minutes fill clause with exact timestamps", () => {
-    vi.useFakeTimers();
-    vi.setSystemTime(new Date("2024-06-15T12:00:00Z"));
-
-    const result = getLiteFillClause(params({ past_minutes_start: 120, past_minutes_end: 0 }), "hour");
-
-    expect(normalize(result)).toBe(
-      normalize(`WITH FILL FROM toStartOfHour(toDateTime('2024-06-15 10:00:00'))
-        TO toStartOfHour(toDateTime('2024-06-15 12:00:00')) + INTERVAL 1 HOUR
-        STEP INTERVAL 1 HOUR`)
-    );
-  });
-
-  it("should return empty string with no time params", () => {
-    expect(getLiteFillClause(params({}), "hour")).toBe("");
-  });
-});
-
 describe("liteBucket", () => {
   it("should default undefined to hour", () => {
     expect(liteBucket(undefined)).toBe("hour");
@@ -295,6 +190,38 @@ describe("liteBucket", () => {
     for (const bucket of ["hour", "day", "week", "month", "year"] as TimeBucket[]) {
       expect(liteBucket(bucket)).toBe(bucket);
     }
+  });
+});
+
+describe("liteWindowFitsHourlyMv", () => {
+  const window = (params: Parameters<typeof parseTimeWindow>[0]) => parseTimeWindow(params);
+
+  it("should accept a datetime range that lands on hour boundaries", () => {
+    expect(
+      liteWindowFitsHourlyMv(window({ start_datetime: "2024-03-10T10:00:00Z", end_datetime: "2024-03-10T12:00:00Z" }))
+    ).toBe(true);
+  });
+
+  // event_hour is toStartOfHour-truncated: `>= 10:30` drops the whole 10:00
+  // aggregate and `< 10:30` keeps all of it, so neither bound can be honoured.
+  it("should reject a datetime range bounded mid-hour", () => {
+    expect(
+      liteWindowFitsHourlyMv(window({ start_datetime: "2024-03-10T10:30:00Z", end_datetime: "2024-03-10T12:00:00Z" }))
+    ).toBe(false);
+    expect(
+      liteWindowFitsHourlyMv(window({ start_datetime: "2024-03-10T10:00:00Z", end_datetime: "2024-03-10T12:15:00Z" }))
+    ).toBe(false);
+    expect(
+      liteWindowFitsHourlyMv(window({ start_datetime: "2024-03-10T10:00:00Z", end_datetime: "2024-03-10T12:00:30Z" }))
+    ).toBe(false);
+  });
+
+  it("should accept the modes that don't carry a sub-hour bound", () => {
+    expect(liteWindowFitsHourlyMv(window({ start_date: "2024-03-10", end_date: "2024-03-12", time_zone: "UTC" }))).toBe(
+      true
+    );
+    expect(liteWindowFitsHourlyMv(window({ past_minutes_start: 60, past_minutes_end: 0 }))).toBe(true);
+    expect(liteWindowFitsHourlyMv(window({}))).toBe(true);
   });
 });
 

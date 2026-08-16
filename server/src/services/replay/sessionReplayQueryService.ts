@@ -4,7 +4,8 @@ import {
   SessionReplayListItem,
   GetSessionReplayEventsResponse,
 } from "../../types/sessionReplay.js";
-import { processResults, getTimeStatement } from "../../api/analytics/utils/utils.js";
+import { processResults } from "../../api/analytics/utils/utils.js";
+import { getTimeStatement } from "../../api/analytics/utils/timeWindow.js";
 import { FilterParams } from "@rybbit/shared";
 import { r2Storage } from "../storage/r2StorageService.js";
 import { getFilterStatement } from "../../api/analytics/utils/getFilterStatement.js";
@@ -26,7 +27,7 @@ export class SessionReplayQueryService {
   ): Promise<SessionReplayListItem[]> {
     const { limit = 50, offset = 0, userId, minDuration } = options;
 
-    const timeStatement = getTimeStatement(options).replace(/timestamp/g, "start_time");
+    const timeStatement = getTimeStatement(options, "start_time");
 
     const filterStatement = getFilterStatement(options.filters || "");
 

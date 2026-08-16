@@ -5,7 +5,8 @@ import { z } from "zod";
 import { clickhouse } from "../../db/clickhouse/clickhouse.js";
 import { buildGoalCondition } from "../analytics/goals/goalConditions.js";
 import { getFilterStatement } from "../analytics/utils/getFilterStatement.js";
-import { getTimeStatement, processResults } from "../analytics/utils/utils.js";
+import { processResults } from "../analytics/utils/utils.js";
+import { getTimeStatement } from "../analytics/utils/timeWindow.js";
 import type { ExperimentResultRow } from "./types.js";
 import {
   buildExperimentResults,

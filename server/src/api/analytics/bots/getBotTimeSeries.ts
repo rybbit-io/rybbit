@@ -2,9 +2,9 @@ import { FilterParams } from "@rybbit/shared";
 import { FastifyReply, FastifyRequest } from "fastify";
 import SqlString from "sqlstring";
 import { TimeBucket } from "../types.js";
-import { getTimeStatement, TimeBucketToFn } from "../utils/utils.js";
+import { parseTimeWindow, TimeBucketToFn, timeWindowFill, timeWindowWhere } from "../utils/timeWindow.js";
 import { analyticsRoute, runAnalyticsQuery } from "../utils/analyticsQuery.js";
-import { type BotLayerKey, getBotFilterStatement, getBotLayerStatement, getBotTimeStatementFill } from "./utils.js";
+import { type BotLayerKey, getBotFilterStatement, getBotLayerStatement } from "./utils.js";
 
 type BotTimeSeriesPoint = {
   time: string;
@@ -23,14 +23,11 @@ export interface BotTimeSeriesRequest {
 
 export const buildBotTimeSeriesQuery = (query: BotTimeSeriesRequest["Querystring"]) => {
   const { bucket = "hour", time_zone } = query;
-  const timeStatement = getTimeStatement(query);
+  const timeWindow = parseTimeWindow(query);
+  const timeStatement = timeWindowWhere(timeWindow);
   const filterStatement = getBotFilterStatement(query.filters);
   const layerStatement = getBotLayerStatement(query.layer);
-  const hasBoundedTime =
-    Boolean(query.start_date && query.end_date) ||
-    Boolean(query.start_datetime && query.end_datetime) ||
-    (query.past_minutes_start !== undefined && query.past_minutes_end !== undefined);
-  const fillClause = hasBoundedTime ? getBotTimeStatementFill(query, bucket) : "";
+  const fillClause = timeWindowFill(timeWindow, bucket);
   const timezone = SqlString.escape(time_zone || "UTC");
 
   return `

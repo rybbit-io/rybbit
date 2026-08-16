@@ -1,8 +1,13 @@
 import { FastifyReply, FastifyRequest } from "fastify";
-import { getTimeStatement } from "./utils/utils.js";
+import { getTimeStatement } from "./utils/timeWindow.js";
 import { FilterParams } from "@rybbit/shared";
 import { getFilterStatement } from "./utils/getFilterStatement.js";
-import { analyticsRoute, getPaginationStatements, runAnalyticsQuery, runPaginatedQuery } from "./utils/analyticsQuery.js";
+import {
+  analyticsRoute,
+  getPaginationStatements,
+  runAnalyticsQuery,
+  runPaginatedQuery,
+} from "./utils/analyticsQuery.js";
 
 interface GetErrorNamesRequest {
   Params: {

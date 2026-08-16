@@ -1,6 +1,7 @@
 import { FastifyReply, FastifyRequest } from "fastify";
 import SqlString from "sqlstring";
 import { clickhouse } from "../../db/clickhouse/clickhouse.js";
+import { parseTimeWindow, timeWindowFill, timeWindowWhere } from "../analytics/utils/timeWindow.js";
 import { processResults } from "../analytics/utils/utils.js";
 
 type ServiceEventCountResponse = {
@@ -17,6 +18,24 @@ type ServiceEventCountResponse = {
   event_count: number;
 }[];
 
+// The 30 calendar days ending today, as seen from `timeZone` — "today" is a
+// different date either side of midnight, so the range has to be cut in the
+// caller's zone rather than the server's. An unusable zone degrades to UTC;
+// the range still has to be a range.
+const DEFAULT_RANGE_DAYS = 30;
+export function defaultDateRange(timeZone: string): { start_date: string; end_date: string } {
+  const today = (zone: string) => new Intl.DateTimeFormat("en-CA", { timeZone: zone }).format(new Date());
+  let end_date: string;
+  try {
+    end_date = today(timeZone);
+  } catch {
+    end_date = today("UTC");
+  }
+  const start = new Date(`${end_date}T00:00:00Z`);
+  start.setUTCDate(start.getUTCDate() - DEFAULT_RANGE_DAYS);
+  return { start_date: start.toISOString().slice(0, 10), end_date };
+}
+
 export async function getAdminServiceEventCount(
   req: FastifyRequest<{
     Querystring: {
@@ -30,39 +49,26 @@ export async function getAdminServiceEventCount(
   const { start_date, end_date, time_zone = "UTC" } = req.query;
 
   try {
-    // Build time filter for the query
-    let timeFilter = "";
-    let fillFromDate = "";
-    let fillToDate = "";
-
-    if (start_date && end_date) {
-      timeFilter = `AND event_hour >= toTimeZone(
-        toStartOfDay(toDateTime(${SqlString.escape(start_date)}, ${SqlString.escape(time_zone)})),
-        'UTC'
-      )
-      AND event_hour < if(
-        toDate(${SqlString.escape(end_date)}) = toDate(now(), ${SqlString.escape(time_zone)}),
-        now(),
-        toTimeZone(
-          toStartOfDay(toDateTime(${SqlString.escape(end_date)}, ${SqlString.escape(time_zone)})) + INTERVAL 1 DAY,
-          'UTC'
-        )
-      )`;
-
-      // Set up WITH FILL parameters - use UTC midnight boundaries
-      fillFromDate = `FROM toStartOfDay(toDateTime(${SqlString.escape(start_date)}))`;
-
-      fillToDate = `TO toStartOfDay(toDateTime(${SqlString.escape(end_date)})) + INTERVAL 1 DAY`;
-    } else {
-      // Default to last 30 days if no date range provided
-      timeFilter = "AND event_hour >= toStartOfDay(now()) - INTERVAL 30 DAY";
-      fillFromDate = "FROM toStartOfDay(now()) - INTERVAL 30 DAY";
-      fillToDate = "TO toStartOfDay(now()) + INTERVAL 1 DAY";
-    }
+    // No date range means the last 30 days here, not all time — the service-wide
+    // count over every event ever recorded is not a useful default. Those are 30
+    // calendar days, not the last 720 hours: the rows are daily buckets, so a
+    // window that opens mid-day would return a first bucket holding only part of
+    // its day.
+    //
+    // The days are cut in the caller's zone, which is where the SELECT below
+    // cuts its buckets. The default range used to be cut in the ClickHouse
+    // server's zone while an explicitly requested range was cut in the caller's
+    // — one endpoint answering in two different zones depending on whether the
+    // caller named a range. In a non-UTC zone this default now opens up to a day
+    // earlier than it used to.
+    const timeWindow =
+      start_date && end_date
+        ? parseTimeWindow(req.query)
+        : parseTimeWindow({ ...defaultDateRange(time_zone), time_zone });
 
     const query = `
       SELECT
-        toStartOfDay(timestamp) as event_date,
+        toDateTime(toStartOfDay(toTimeZone(timestamp, ${SqlString.escape(time_zone)}))) as event_date,
         countIf(type = 'pageview') as pageview_count,
         countIf(type = 'custom_event') as custom_event_count,
         countIf(type = 'performance') as performance_count,
@@ -75,10 +81,10 @@ export async function getAdminServiceEventCount(
         count() as event_count
       FROM events
       WHERE type IN ('pageview', 'custom_event', 'performance', 'outbound', 'error', 'button_click', 'copy', 'form_submit', 'input_change')
-        ${timeFilter.replace(/event_hour/g, "timestamp")}
+        ${timeWindowWhere(timeWindow)}
       GROUP BY event_date
       ORDER BY event_date
-      WITH FILL ${fillFromDate} ${fillToDate} STEP INTERVAL 1 DAY
+      ${timeWindowFill(timeWindow, "day")}
     `;
 
     const result = await clickhouse.query({

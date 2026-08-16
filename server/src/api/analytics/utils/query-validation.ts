@@ -1,4 +1,4 @@
-import { FilterParameter, FilterParams } from "@rybbit/shared";
+import { FilterParameter, TimeBucket } from "@rybbit/shared";
 import { z } from "zod";
 
 // =============================================================================
@@ -99,118 +99,6 @@ const timeStatementParamsSchema = z
     pastMinutesRange: undefined,
   });
 
-/**
- * Schema for FilterParams used in getTimeStatementFill() function
- */
-const filterParamsTimeStatementFillSchema = z
-  .object({
-    start_date: z
-      .string()
-      .regex(dateRegex, { message: "Invalid date format. Use YYYY-MM-DD" })
-      .optional()
-      .refine(date => !date || !isNaN(Date.parse(date)), {
-        message: "Invalid date value",
-      }),
-    end_date: z
-      .string()
-      .regex(dateRegex, { message: "Invalid date format. Use YYYY-MM-DD" })
-      .optional()
-      .refine(date => !date || !isNaN(Date.parse(date)), {
-        message: "Invalid date value",
-      }),
-    time_zone: z
-      .string()
-      .min(1, { message: "Time zone cannot be empty" })
-      .optional()
-      .refine(
-        tz => {
-          if (!tz) return true;
-          try {
-            // Test if time zone is valid by attempting to format a date with it
-            Intl.DateTimeFormat(undefined, { timeZone: tz });
-            return true;
-          } catch (e) {
-            return false;
-          }
-        },
-        { message: "Invalid time zone" }
-      )
-      // A missing time_zone must not disable the requested range (all-time
-      // fallback) or leak NULL into toTimeZone() SQL; default to UTC.
-      .default("UTC"),
-    start_datetime: z
-      .string()
-      .regex(dateTimeRegex, { message: "Invalid datetime format. Use YYYY-MM-DD HH:mm:ss" })
-      .optional()
-      .refine(date => !date || !isNaN(parseDateTimeMs(date)), {
-        message: "Invalid datetime value",
-      }),
-    end_datetime: z
-      .string()
-      .regex(dateTimeRegex, { message: "Invalid datetime format. Use YYYY-MM-DD HH:mm:ss" })
-      .optional()
-      .refine(date => !date || !isNaN(parseDateTimeMs(date)), {
-        message: "Invalid datetime value",
-      }),
-    past_minutes_start: z
-      .union([z.string(), z.number()])
-      .optional()
-      .transform(val => {
-        if (val === undefined) return undefined;
-        const num = typeof val === "string" ? Number(val) : val;
-        return isNaN(num) ? undefined : num;
-      })
-      .refine(val => val === undefined || val >= 0, {
-        message: "past_minutes_start must be non-negative",
-      }),
-    past_minutes_end: z
-      .union([z.string(), z.number()])
-      .optional()
-      .transform(val => {
-        if (val === undefined) return undefined;
-        const num = typeof val === "string" ? Number(val) : val;
-        return isNaN(num) ? undefined : num;
-      })
-      .refine(val => val === undefined || val >= 0, {
-        message: "past_minutes_end must be non-negative",
-      }),
-    filters: z.string().optional(),
-  })
-  .refine(
-    data => {
-      const hasDateParams = data.start_date && data.end_date && data.time_zone;
-      const hasDateTimeParams = data.start_datetime && data.end_datetime && data.time_zone;
-      const hasPastMinutesParams = data.past_minutes_start !== undefined && data.past_minutes_end !== undefined;
-      return hasDateParams || hasDateTimeParams || hasPastMinutesParams;
-    },
-    {
-      message:
-        "Either (start_date, end_date, time_zone), (start_datetime, end_datetime, time_zone), or (past_minutes_start, past_minutes_end) must be provided",
-    }
-  )
-  .refine(
-    data => {
-      if (data.start_datetime && data.end_datetime) {
-        return parseDateTimeMs(data.start_datetime) < parseDateTimeMs(data.end_datetime);
-      }
-      return true;
-    },
-    {
-      message: "start_datetime must be before end_datetime",
-    }
-  )
-  .refine(
-    data => {
-      if (data.past_minutes_start !== undefined && data.past_minutes_end !== undefined) {
-        return data.past_minutes_start > data.past_minutes_end;
-      }
-      return true;
-    },
-    {
-      message: "past_minutes_start must be greater than past_minutes_end (start = older, end = newer)",
-    }
-  );
-
 // =============================================================================
 // BUCKET RELATED SCHEMAS
 // =============================================================================
@@ -308,7 +196,7 @@ const filterSchema = z.object({
 // =============================================================================
 
 /**
- * Validates and sanitizes parameters for getTimeStatement()
+ * Validates and sanitizes the time params of a Time Window.
  * @param params Raw input parameters
  * @returns Validated parameters
  */
@@ -317,19 +205,12 @@ export function validateTimeStatementParams(params: unknown) {
 }
 
 /**
- * Validates and sanitizes FilterParams for getTimeStatementFill()
- * @param params FilterParams object
- * @param bucket Raw bucket parameter
- * @returns Validated parameters and bucket
+ * Narrows an unvalidated bucket from the wire to a TimeBucket, throwing on
+ * anything else — a bucket names a ClickHouse truncation function, so it must
+ * never reach SQL unchecked.
  */
-export function validateTimeStatementFillParams(params: FilterParams, bucket: unknown) {
-  const validatedBucket = timeBucketSchema.parse(bucket);
-  const validatedParams = filterParamsTimeStatementFillSchema.parse(params);
-
-  return {
-    params: validatedParams,
-    bucket: validatedBucket,
-  };
+export function validateTimeBucket(bucket: unknown): TimeBucket {
+  return timeBucketSchema.parse(bucket);
 }
 
 // =============================================================================

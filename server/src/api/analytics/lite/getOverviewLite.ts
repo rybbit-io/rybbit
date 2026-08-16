@@ -2,7 +2,8 @@ import { FilterParams } from "@rybbit/shared";
 import { FastifyReply, FastifyRequest } from "fastify";
 import { getOverview } from "../getOverview.js";
 import { analyticsRoute, runAnalyticsQuery } from "../utils/analyticsQuery.js";
-import { getLiteSessionFilter, getLiteTimeStatement, hasLiteFilters } from "./utils.js";
+import { parseTimeWindow, TimeWindow, timeWindowWhere } from "../utils/timeWindow.js";
+import { getLiteSessionFilter, hasLiteFilters, liteWindowFitsHourlyMv } from "./utils.js";
 
 type GetOverviewLiteResponse = {
   sessions: number;
@@ -22,9 +23,16 @@ interface GetOverviewLiteRequest {
 // session-column filter — country, device_type, etc. — stays on the MVs.
 // Pass `filterSql: null` for the unfiltered single-read of the refreshable
 // session_hourly_mv_target.
-export const buildOverviewLiteQuery = (query: GetOverviewLiteRequest["Querystring"], filterSql: string | null) => {
+export const buildOverviewLiteQuery = (
+  query: GetOverviewLiteRequest["Querystring"],
+  filterSql: string | null,
+  // Taken from the caller when it has already parsed the window, so a
+  // past-minutes request resolves `now()` once for both the fallback decision
+  // and the predicate.
+  timeWindow: TimeWindow = parseTimeWindow(query)
+) => {
   if (filterSql !== null) {
-    const sessionsTime = getLiteTimeStatement(query, "start_time");
+    const sessionsTime = timeWindowWhere(timeWindow, "start_time");
     return `
       SELECT
         sessions,
@@ -57,7 +65,7 @@ export const buildOverviewLiteQuery = (query: GetOverviewLiteRequest["Querystrin
     `;
   }
 
-  const timeStatement = getLiteTimeStatement(query, "session_hour");
+  const timeStatement = timeWindowWhere(timeWindow, "session_hour");
 
   // Single read of the refreshable session_hourly_mv_target — ~720 rows/month
   // per site instead of millions of session rows. All 6 metrics derive from
@@ -97,15 +105,23 @@ export const getOverviewLite = analyticsRoute<GetOverviewLiteRequest>(
 
     // Filters that touch columns the session rollup doesn't carry (pathname,
     // utm, …) fall back to the raw-events query.
+    const timeWindow = parseTimeWindow(req.query);
+
     let query: string;
     if (filtersPresent) {
       const filter = getLiteSessionFilter(req.query.filters);
       if (!filter.supported) {
         return getOverview(req, res);
       }
-      query = buildOverviewLiteQuery(req.query, filter.sql);
+      query = buildOverviewLiteQuery(req.query, filter.sql, timeWindow);
     } else {
-      query = buildOverviewLiteQuery(req.query, null);
+      // The filtered read above bounds `start_time`, an exact per-session
+      // timestamp. The unfiltered one bounds the hourly session rollup, which
+      // can't answer a window that opens or closes mid-hour.
+      if (!liteWindowFitsHourlyMv(timeWindow)) {
+        return getOverview(req, res);
+      }
+      query = buildOverviewLiteQuery(req.query, null, timeWindow);
     }
 
     const data = await runAnalyticsQuery<GetOverviewLiteResponse>({

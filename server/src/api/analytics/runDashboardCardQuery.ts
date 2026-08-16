@@ -3,7 +3,7 @@ import SqlString from "sqlstring";
 import { z } from "zod";
 import { clickhouse } from "../../db/clickhouse/clickhouse.js";
 import { MAX_CUSTOM_QUERY_LENGTH, normalizeCustomQuery, validateScopedQuery } from "./utils/customQueryValidation.js";
-import { bucketIntervalMap, getTimeStatement } from "./utils/utils.js";
+import { bucketIntervalMap, getTimeStatement } from "./utils/timeWindow.js";
 
 const MAX_EXECUTION_TIME_SECONDS = 10;
 const MAX_RESULT_ROWS = 1000;
@@ -52,9 +52,7 @@ export async function runDashboardCardQuery(
   // so day buckets align to local calendar days, matching the standard charts.
   const bucketInterval = bucketIntervalMap[body.data.bucket ?? "hour"];
   const timeZoneLiteral = SqlString.escape(body.data.timeZone || "UTC");
-  const substitutedQuery = body.data.query
-    .replace(BUCKET_TOKEN, bucketInterval)
-    .replace(TZ_TOKEN, timeZoneLiteral);
+  const substitutedQuery = body.data.query.replace(BUCKET_TOKEN, bucketInterval).replace(TZ_TOKEN, timeZoneLiteral);
 
   const validationError = validateScopedQuery(substitutedQuery);
   if (validationError) {

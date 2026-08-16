@@ -3,9 +3,9 @@ import { FastifyReply, FastifyRequest } from "fastify";
 import SqlString from "sqlstring";
 import { getOverviewBucketed } from "../getOverviewBucketed.js";
 import { TimeBucket } from "../types.js";
-import { TimeBucketToFn } from "../utils/utils.js";
+import { parseTimeWindow, TimeBucketToFn, timeWindowFill, timeWindowWhere } from "../utils/timeWindow.js";
 import { analyticsRoute, runAnalyticsQuery } from "../utils/analyticsQuery.js";
-import { getLiteFillClause, getLiteSessionFilter, getLiteTimeStatement, hasLiteFilters, liteBucket } from "./utils.js";
+import { getLiteSessionFilter, hasLiteFilters, liteBucket, liteWindowFitsHourlyMv } from "./utils.js";
 
 type GetOverviewBucketedLiteResponse = {
   time: string;
@@ -78,12 +78,7 @@ function buildHourBucketQuery(args: {
   `;
 }
 
-function buildDayBucketQuery(args: {
-  fn: string;
-  tz: string;
-  sessionTime: string;
-  fill: string;
-}) {
+function buildDayBucketQuery(args: { fn: string; tz: string; sessionTime: string; fill: string }) {
   const { fn, tz, sessionTime, fill } = args;
   // Aggregate in the inner GROUP BY, then compose ratios in the outer SELECT.
   // Aliasing `sum(sessions) AS sessions` would shadow the column inside the
@@ -178,12 +173,11 @@ export const getOverviewBucketedLite = analyticsRoute<GetOverviewBucketedLiteReq
     const fn = TimeBucketToFn[bucket];
     const tz = SqlString.escape(req.query.time_zone || "UTC");
 
-    const isAllTime =
-      !req.query.start_date &&
-      !req.query.end_date &&
-      req.query.past_minutes_start === undefined &&
-      req.query.past_minutes_end === undefined;
-    const fill = isAllTime ? "" : getLiteFillClause(req.query, bucket);
+    // Parsed once: the predicate bounds up to two MV columns and the fill
+    // bounds the series, and a past-minutes window must resolve to the same
+    // instant in all of them.
+    const timeWindow = parseTimeWindow(req.query);
+    const fill = timeWindowFill(timeWindow, bucket);
 
     const filtersPresent = hasLiteFilters(req.query.filters);
 
@@ -198,25 +192,32 @@ export const getOverviewBucketedLite = analyticsRoute<GetOverviewBucketedLiteReq
       query = buildSessionMvFilteredQuery({
         fn,
         tz,
-        sessionsTime: getLiteTimeStatement(req.query, "start_time"),
+        sessionsTime: timeWindowWhere(timeWindow, "start_time"),
         fill,
         filterSql: filter.sql,
       });
     } else {
+      // The filtered read above bounds `start_time`, an exact per-session
+      // timestamp. Both unfiltered shapes bound hourly rollups, which can't
+      // answer a window that opens or closes mid-hour.
+      if (!liteWindowFitsHourlyMv(timeWindow)) {
+        return getOverviewBucketed(req, res);
+      }
+
       const useDayBucket = bucket === "day" || bucket === "week" || bucket === "month" || bucket === "year";
 
       query = useDayBucket
         ? buildDayBucketQuery({
             fn,
             tz,
-            sessionTime: getLiteTimeStatement(req.query, "session_hour"),
+            sessionTime: timeWindowWhere(timeWindow, "session_hour"),
             fill,
           })
         : buildHourBucketQuery({
             fn,
             tz,
-            overviewTime: getLiteTimeStatement(req.query, "event_hour"),
-            sessionsTime: getLiteTimeStatement(req.query, "start_time"),
+            overviewTime: timeWindowWhere(timeWindow, "event_hour"),
+            sessionsTime: timeWindowWhere(timeWindow, "start_time"),
             fill,
           });
     }
