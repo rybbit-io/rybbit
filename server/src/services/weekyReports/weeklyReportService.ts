@@ -4,12 +4,17 @@ import { eq } from "drizzle-orm";
 import { db } from "../../db/postgres/postgres.js";
 import { organization, member, user, sites } from "../../db/postgres/schema.js";
 import { clickhouse } from "../../db/clickhouse/clickhouse.js";
-import { processResults } from "../../api/analytics/utils/utils.js";
-import { effectiveUserId } from "../../api/analytics/utils/effectiveUserId.js";
+import { getTimeStatement, processResults } from "../../api/analytics/utils/utils.js";
 import { createServiceLogger } from "../../lib/logger/logger.js";
 import { sendWeeklyReportEmail } from "../../lib/email/email.js";
 import { filterSitesByMemberAccess } from "../../lib/siteAccess.js";
 import { IS_CLOUD } from "../../lib/const.js";
+import {
+  BreakdownDimension,
+  buildBreakdownQuery,
+  buildOverviewQuery,
+  SiteMetricsSpec,
+} from "../siteMetrics/siteMetrics.js";
 import type { OverviewData, MetricData, SiteReport, OrganizationReport } from "./weeklyReportTypes.js";
 
 const MAX_SITE_REPORTS_PER_ORG = 10;
@@ -20,61 +25,12 @@ class WeeklyReportService {
 
   constructor() {}
 
-  private async fetchOverviewData(siteId: number, startDate: string, endDate: string): Promise<OverviewData | null> {
+  private async fetchOverviewData(siteId: number, spec: SiteMetricsSpec): Promise<OverviewData | null> {
     try {
-      const query = `SELECT
-        session_stats.sessions,
-        session_stats.pages_per_session,
-        session_stats.bounce_rate * 100 AS bounce_rate,
-        session_stats.session_duration,
-        page_stats.pageviews,
-        page_stats.users
-      FROM
-      (
-          -- Session-level metrics
-          SELECT
-              COUNT() AS sessions,
-              AVG(pages_in_session) AS pages_per_session,
-              sumIf(1, pages_in_session = 1) / COUNT() AS bounce_rate,
-              AVG(end_time - start_time) AS session_duration
-          FROM
-              (
-                  -- One row per session
-                  SELECT
-                      session_id,
-                      MIN(timestamp) AS start_time,
-                      MAX(timestamp) AS end_time,
-                      COUNT(CASE WHEN type = 'pageview' THEN 1 END) AS pages_in_session
-                  FROM events
-                  WHERE
-                      site_id = {siteId:Int32}
-                      AND timestamp >= toDateTime({startDate:String})
-                      AND timestamp < toDateTime({endDate:String})
-                  GROUP BY session_id
-              )
-          ) AS session_stats
-          CROSS JOIN
-          (
-              -- Page-level and user-level metrics
-              SELECT
-                  COUNT(*)                   AS pageviews,
-                  COUNT(DISTINCT ${effectiveUserId()}) AS users
-              FROM events
-              WHERE
-                  site_id = {siteId:Int32}
-                  AND timestamp >= toDateTime({startDate:String})
-                  AND timestamp < toDateTime({endDate:String})
-                  AND type = 'pageview'
-          ) AS page_stats`;
-
       const result = await clickhouse.query({
-        query,
+        query: buildOverviewQuery(spec),
         format: "JSONEachRow",
-        query_params: {
-          siteId,
-          startDate,
-          endDate,
-        },
+        query_params: { siteId },
       });
 
       const data = await processResults<OverviewData>(result);
@@ -87,138 +43,20 @@ class WeeklyReportService {
 
   private async fetchTopN(
     siteId: number,
-    parameter: string,
-    startDate: string,
-    endDate: string,
+    dimension: BreakdownDimension,
+    spec: SiteMetricsSpec,
     limit: number = 5
   ): Promise<MetricData[]> {
     try {
-      let query = "";
-
-      if (parameter === "country") {
-        query = `
-          WITH PageStats AS (
-            SELECT
-              country as value,
-              COUNT(distinct(session_id)) as unique_sessions,
-              COUNT() as pageviews
-            FROM events
-            WHERE
-                site_id = {siteId:Int32}
-                AND country IS NOT NULL
-                AND country <> ''
-                AND timestamp >= toDateTime({startDate:String})
-                AND timestamp < toDateTime({endDate:String})
-            GROUP BY value
-          )
-          SELECT
-            value,
-            unique_sessions as count,
-            round((unique_sessions / sum(unique_sessions) OVER ()) * 100, 2) as percentage
-          FROM PageStats
-          ORDER BY count desc
-          LIMIT {limit:Int32}`;
-      } else if (parameter === "pathname") {
-        query = `
-          WITH EventTimes AS (
-              SELECT
-                  session_id,
-                  pathname,
-                  timestamp,
-                  leadInFrame(timestamp) OVER (PARTITION BY session_id ORDER BY timestamp ROWS BETWEEN CURRENT ROW AND 1 FOLLOWING) as next_timestamp
-              FROM events
-              WHERE
-                site_id = {siteId:Int32}
-                AND type = 'pageview'
-                AND timestamp >= toDateTime({startDate:String})
-                AND timestamp < toDateTime({endDate:String})
-          ),
-          PageDurations AS (
-              SELECT
-                  session_id,
-                  pathname,
-                  timestamp,
-                  next_timestamp,
-                  if(isNull(next_timestamp), 0, dateDiff('second', timestamp, next_timestamp)) as time_diff_seconds
-              FROM EventTimes
-          ),
-          PathStats AS (
-              SELECT
-                  pathname,
-                  count() as visits,
-                  count(DISTINCT session_id) as unique_sessions
-              FROM PageDurations
-              GROUP BY pathname
-          )
-          SELECT
-              pathname as value,
-              unique_sessions as count,
-              round((unique_sessions / sum(unique_sessions) OVER ()) * 100, 2) as percentage
-          FROM PathStats
-          ORDER BY unique_sessions DESC
-          LIMIT {limit:Int32}`;
-      } else if (parameter === "referrer") {
-        query = `
-          WITH PageStats AS (
-            SELECT
-              domainWithoutWWW(referrer) as value,
-              COUNT(distinct(session_id)) as unique_sessions,
-              COUNT() as pageviews
-            FROM events
-            WHERE
-                site_id = {siteId:Int32}
-                AND domainWithoutWWW(referrer) IS NOT NULL
-                AND domainWithoutWWW(referrer) <> ''
-                AND timestamp >= toDateTime({startDate:String})
-                AND timestamp < toDateTime({endDate:String})
-            GROUP BY value
-          )
-          SELECT
-            value,
-            unique_sessions as count,
-            round((unique_sessions / sum(unique_sessions) OVER ()) * 100, 2) as percentage
-          FROM PageStats
-          ORDER BY count desc
-          LIMIT {limit:Int32}`;
-      } else if (parameter === "device_type") {
-        query = `
-          WITH PageStats AS (
-            SELECT
-              device_type as value,
-              COUNT(distinct(session_id)) as unique_sessions,
-              COUNT() as pageviews
-            FROM events
-            WHERE
-                site_id = {siteId:Int32}
-                AND device_type IS NOT NULL
-                AND device_type <> ''
-                AND timestamp >= toDateTime({startDate:String})
-                AND timestamp < toDateTime({endDate:String})
-            GROUP BY value
-          )
-          SELECT
-            value,
-            unique_sessions as count,
-            round((unique_sessions / sum(unique_sessions) OVER ()) * 100, 2) as percentage
-          FROM PageStats
-          ORDER BY count desc
-          LIMIT {limit:Int32}`;
-      }
-
       const result = await clickhouse.query({
-        query,
+        query: buildBreakdownQuery(dimension, spec),
         format: "JSONEachRow",
-        query_params: {
-          siteId,
-          startDate,
-          endDate,
-          limit,
-        },
+        query_params: { siteId, limit },
       });
 
       return await processResults<MetricData>(result);
     } catch (error) {
-      this.logger.error({ err: error, siteId, parameter }, "Error fetching top N data");
+      this.logger.error({ err: error, siteId, dimension }, "Error fetching top N data");
       return [];
     }
   }
@@ -236,16 +74,28 @@ class WeeklyReportService {
       const previousWeekEnd = currentWeekStart;
       const previousWeekStart = currentWeekStart.minus({ days: 7 });
 
-      // Format dates for ClickHouse (YYYY-MM-DD HH:mm:ss)
+      // Format dates for ClickHouse (YYYY-MM-DD HH:mm:ss). The windows above are
+      // UTC, and getTimeStatement anchors the comparison in UTC too — the bound
+      // `toDateTime({date:String})` this replaced was interpreted in the
+      // ClickHouse server's timezone, so a non-UTC server shifted the week.
       const formatDate = (date: DateTime) => date.toFormat("yyyy-MM-dd HH:mm:ss");
+      const specFor = (from: DateTime, to: DateTime): SiteMetricsSpec => ({
+        timeStatement: getTimeStatement({
+          start_datetime: formatDate(from),
+          end_datetime: formatDate(to),
+        }),
+      });
+
+      const currentSpec = specFor(currentWeekStart, currentWeekEnd);
+      const previousSpec = specFor(previousWeekStart, previousWeekEnd);
 
       const [currentWeek, previousWeek, topCountries, topPages, topReferrers, deviceBreakdown] = await Promise.all([
-        this.fetchOverviewData(siteId, formatDate(currentWeekStart), formatDate(currentWeekEnd)),
-        this.fetchOverviewData(siteId, formatDate(previousWeekStart), formatDate(previousWeekEnd)),
-        this.fetchTopN(siteId, "country", formatDate(currentWeekStart), formatDate(currentWeekEnd), 5),
-        this.fetchTopN(siteId, "pathname", formatDate(currentWeekStart), formatDate(currentWeekEnd), 5),
-        this.fetchTopN(siteId, "referrer", formatDate(currentWeekStart), formatDate(currentWeekEnd), 5),
-        this.fetchTopN(siteId, "device_type", formatDate(currentWeekStart), formatDate(currentWeekEnd), 5),
+        this.fetchOverviewData(siteId, currentSpec),
+        this.fetchOverviewData(siteId, previousSpec),
+        this.fetchTopN(siteId, "country", currentSpec),
+        this.fetchTopN(siteId, "pathname", currentSpec),
+        this.fetchTopN(siteId, "referrer", currentSpec),
+        this.fetchTopN(siteId, "device_type", currentSpec),
       ]);
 
       if (!currentWeek) {

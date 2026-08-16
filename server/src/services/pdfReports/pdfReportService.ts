@@ -6,9 +6,14 @@ import { db } from "../../db/postgres/postgres.js";
 import { sites } from "../../db/postgres/schema.js";
 import { clickhouse } from "../../db/clickhouse/clickhouse.js";
 import { getTimeStatement, processResults } from "../../api/analytics/utils/utils.js";
-import { effectiveUserId } from "../../api/analytics/utils/effectiveUserId.js";
-import { getFilterStatement } from "../../api/analytics/utils/getFilterStatement.js";
 import { createServiceLogger } from "../../lib/logger/logger.js";
+import {
+  BreakdownDimension,
+  buildBreakdownQuery,
+  buildMetricsSpecForWindow,
+  buildOverviewQuery,
+  SiteMetricsSpec,
+} from "../siteMetrics/siteMetrics.js";
 import { PdfReportTemplate } from "./templates/PdfReportTemplate.js";
 import type { PdfReportParams, PdfReportData, OverviewData, MetricData, ChartDataPoint } from "./pdfReportTypes.js";
 
@@ -67,7 +72,14 @@ class PdfReportService {
       time_zone: timeZone,
     });
 
-    const filterStatement = filters ? getFilterStatement(JSON.stringify(filters), siteId) : "";
+    // Each period gets its own filter statement: session-level filters compile to
+    // a subquery that is bounded by the time statement passed here, so reusing the
+    // current period's filters for the previous one would compare a correctly
+    // scoped window against a mis-scoped one and bias every growth percentage.
+    const filtersJson = filters ? JSON.stringify(filters) : "";
+    const spec = buildMetricsSpecForWindow(filtersJson, siteId, timeStatement);
+    const previousSpec = buildMetricsSpecForWindow(filtersJson, siteId, previousTimeStatement);
+    const filterStatement = spec.filterStatement ?? "";
 
     // Determine bucket size based on date range
     const bucket = durationDays <= 1 ? "hour" : durationDays <= 60 ? "day" : "week";
@@ -86,17 +98,17 @@ class PdfReportService {
       topBrowsers,
       topOperatingSystems,
     ] = await Promise.all([
-      this.fetchOverviewData(siteId, timeStatement, filterStatement),
-      this.fetchOverviewData(siteId, previousTimeStatement, filterStatement),
+      this.fetchOverviewData(siteId, spec),
+      this.fetchOverviewData(siteId, previousSpec),
       this.fetchChartData(siteId, startDate, endDate, timeZone, bucket, filterStatement),
-      this.fetchTopN(siteId, "country", timeStatement, 13, filterStatement),
-      this.fetchTopN(siteId, "region", timeStatement, 13, filterStatement),
-      this.fetchTopN(siteId, "city", timeStatement, 13, filterStatement),
-      this.fetchTopN(siteId, "pathname", timeStatement, 13, filterStatement),
-      this.fetchTopN(siteId, "referrer", timeStatement, 13, filterStatement),
-      this.fetchTopN(siteId, "device_type", timeStatement, 13, filterStatement),
-      this.fetchTopN(siteId, "browser", timeStatement, 13, filterStatement),
-      this.fetchTopN(siteId, "operating_system", timeStatement, 13, filterStatement),
+      this.fetchTopN(siteId, "country", spec),
+      this.fetchTopN(siteId, "region", spec),
+      this.fetchTopN(siteId, "city", spec),
+      this.fetchTopN(siteId, "pathname", spec),
+      this.fetchTopN(siteId, "referrer", spec),
+      this.fetchTopN(siteId, "device_type", spec),
+      this.fetchTopN(siteId, "browser", spec),
+      this.fetchTopN(siteId, "operating_system", spec),
     ]);
 
     if (!overview) {
@@ -168,60 +180,12 @@ class PdfReportService {
     }
   }
 
-  private async fetchOverviewData(
-    siteId: number,
-    timeStatement: string,
-    filterStatement: string
-  ): Promise<OverviewData | null> {
+  private async fetchOverviewData(siteId: number, spec: SiteMetricsSpec): Promise<OverviewData | null> {
     try {
-      const query = `SELECT
-        session_stats.sessions,
-        session_stats.pages_per_session,
-        session_stats.bounce_rate * 100 AS bounce_rate,
-        session_stats.session_duration,
-        page_stats.pageviews,
-        page_stats.users
-      FROM
-      (
-          SELECT
-              COUNT() AS sessions,
-              AVG(pages_in_session) AS pages_per_session,
-              sumIf(1, pages_in_session = 1) / COUNT() AS bounce_rate,
-              AVG(end_time - start_time) AS session_duration
-          FROM
-              (
-                  SELECT
-                      session_id,
-                      MIN(timestamp) AS start_time,
-                      MAX(timestamp) AS end_time,
-                      COUNT(CASE WHEN type = 'pageview' THEN 1 END) AS pages_in_session
-                  FROM events
-                  WHERE
-                      site_id = {siteId:Int32}
-                      ${timeStatement}
-                      ${filterStatement}
-                  GROUP BY session_id
-              )
-          ) AS session_stats
-          CROSS JOIN
-          (
-              SELECT
-                  COUNT(*)                   AS pageviews,
-                  COUNT(DISTINCT ${effectiveUserId()}) AS users
-              FROM events
-              WHERE
-                  site_id = {siteId:Int32}
-                  ${timeStatement}
-                  AND type = 'pageview'
-                  ${filterStatement}
-          ) AS page_stats`;
-
       const result = await clickhouse.query({
-        query,
+        query: buildOverviewQuery(spec),
         format: "JSONEachRow",
-        query_params: {
-          siteId,
-        },
+        query_params: { siteId },
       });
 
       const data = await processResults<OverviewData>(result);
@@ -234,228 +198,20 @@ class PdfReportService {
 
   private async fetchTopN(
     siteId: number,
-    parameter: string,
-    timeStatement: string,
-    limit: number = 10,
-    filterStatement: string
+    dimension: BreakdownDimension,
+    spec: SiteMetricsSpec,
+    limit: number = 13
   ): Promise<MetricData[]> {
     try {
-      let query = "";
-
-      if (parameter === "country") {
-        query = `
-          WITH PageStats AS (
-            SELECT
-              country as value,
-              COUNT(distinct(session_id)) as unique_sessions,
-              COUNT() as pageviews
-            FROM events
-            WHERE
-                site_id = {siteId:Int32}
-                AND country IS NOT NULL
-                AND country <> ''
-                ${timeStatement}
-                ${filterStatement}
-            GROUP BY value
-          )
-          SELECT
-            value,
-            unique_sessions as count,
-            round((unique_sessions / sum(unique_sessions) OVER ()) * 100, 2) as percentage
-          FROM PageStats
-          ORDER BY count desc
-          LIMIT {limit:Int32}`;
-      } else if (parameter === "pathname") {
-        query = `
-          WITH EventTimes AS (
-              SELECT
-                  session_id,
-                  pathname,
-                  timestamp,
-                  leadInFrame(timestamp) OVER (PARTITION BY session_id ORDER BY timestamp ROWS BETWEEN CURRENT ROW AND 1 FOLLOWING) as next_timestamp
-              FROM events
-              WHERE
-                site_id = {siteId:Int32}
-                AND type = 'pageview'
-                ${timeStatement}
-                ${filterStatement}
-          ),
-          PageDurations AS (
-              SELECT
-                  session_id,
-                  pathname,
-                  timestamp,
-                  next_timestamp,
-                  if(isNull(next_timestamp), 0, dateDiff('second', timestamp, next_timestamp)) as time_diff_seconds
-              FROM EventTimes
-          ),
-          PathStats AS (
-              SELECT
-                  pathname,
-                  count() as visits,
-                  count(DISTINCT session_id) as unique_sessions
-              FROM PageDurations
-              GROUP BY pathname
-          )
-          SELECT
-              pathname as value,
-              unique_sessions as count,
-              round((unique_sessions / sum(unique_sessions) OVER ()) * 100, 2) as percentage
-          FROM PathStats
-          ORDER BY unique_sessions DESC
-          LIMIT {limit:Int32}`;
-      } else if (parameter === "referrer") {
-        query = `
-          WITH PageStats AS (
-            SELECT
-              domainWithoutWWW(referrer) as value,
-              COUNT(distinct(session_id)) as unique_sessions,
-              COUNT() as pageviews
-            FROM events
-            WHERE
-                site_id = {siteId:Int32}
-                AND domainWithoutWWW(referrer) IS NOT NULL
-                AND domainWithoutWWW(referrer) <> ''
-                ${timeStatement}
-                ${filterStatement}
-            GROUP BY value
-          )
-          SELECT
-            value,
-            unique_sessions as count,
-            round((unique_sessions / sum(unique_sessions) OVER ()) * 100, 2) as percentage
-          FROM PageStats
-          ORDER BY count desc
-          LIMIT {limit:Int32}`;
-      } else if (parameter === "device_type") {
-        query = `
-          WITH PageStats AS (
-            SELECT
-              device_type as value,
-              COUNT(distinct(session_id)) as unique_sessions,
-              COUNT() as pageviews
-            FROM events
-            WHERE
-                site_id = {siteId:Int32}
-                AND device_type IS NOT NULL
-                AND device_type <> ''
-                ${timeStatement}
-                ${filterStatement}
-            GROUP BY value
-          )
-          SELECT
-            value,
-            unique_sessions as count,
-            round((unique_sessions / sum(unique_sessions) OVER ()) * 100, 2) as percentage
-          FROM PageStats
-          ORDER BY count desc
-          LIMIT {limit:Int32}`;
-      } else if (parameter === "browser") {
-        query = `
-          WITH PageStats AS (
-            SELECT
-              browser as value,
-              COUNT(distinct(session_id)) as unique_sessions,
-              COUNT() as pageviews
-            FROM events
-            WHERE
-                site_id = {siteId:Int32}
-                AND browser IS NOT NULL
-                AND browser <> ''
-                ${timeStatement}
-                ${filterStatement}
-            GROUP BY value
-          )
-          SELECT
-            value,
-            unique_sessions as count,
-            round((unique_sessions / sum(unique_sessions) OVER ()) * 100, 2) as percentage
-          FROM PageStats
-          ORDER BY count desc
-          LIMIT {limit:Int32}`;
-      } else if (parameter === "operating_system") {
-        query = `
-          WITH PageStats AS (
-            SELECT
-              operating_system as value,
-              COUNT(distinct(session_id)) as unique_sessions,
-              COUNT() as pageviews
-            FROM events
-            WHERE
-                site_id = {siteId:Int32}
-                AND operating_system IS NOT NULL
-                AND operating_system <> ''
-                ${timeStatement}
-                ${filterStatement}
-            GROUP BY value
-          )
-          SELECT
-            value,
-            unique_sessions as count,
-            round((unique_sessions / sum(unique_sessions) OVER ()) * 100, 2) as percentage
-          FROM PageStats
-          ORDER BY count desc
-          LIMIT {limit:Int32}`;
-      } else if (parameter === "region") {
-        query = `
-          WITH PageStats AS (
-            SELECT
-              region as value,
-              COUNT(distinct(session_id)) as unique_sessions,
-              COUNT() as pageviews
-            FROM events
-            WHERE
-                site_id = {siteId:Int32}
-                AND region IS NOT NULL
-                AND region <> ''
-                ${timeStatement}
-                ${filterStatement}
-            GROUP BY value
-          )
-          SELECT
-            value,
-            unique_sessions as count,
-            round((unique_sessions / sum(unique_sessions) OVER ()) * 100, 2) as percentage
-          FROM PageStats
-          ORDER BY count desc
-          LIMIT {limit:Int32}`;
-      } else if (parameter === "city") {
-        query = `
-          WITH PageStats AS (
-            SELECT
-              city as value,
-              COUNT(distinct(session_id)) as unique_sessions,
-              COUNT() as pageviews
-            FROM events
-            WHERE
-                site_id = {siteId:Int32}
-                AND city IS NOT NULL
-                AND city <> ''
-                ${timeStatement}
-                ${filterStatement}
-            GROUP BY value
-          )
-          SELECT
-            value,
-            unique_sessions as count,
-            round((unique_sessions / sum(unique_sessions) OVER ()) * 100, 2) as percentage
-          FROM PageStats
-          ORDER BY count desc
-          LIMIT {limit:Int32}`;
-      }
-
       const result = await clickhouse.query({
-        query,
+        query: buildBreakdownQuery(dimension, spec),
         format: "JSONEachRow",
-        query_params: {
-          siteId,
-          limit,
-        },
+        query_params: { siteId, limit },
       });
 
       return await processResults<MetricData>(result);
     } catch (error) {
-      this.logger.error({ err: error, siteId, parameter }, "Error fetching top N data");
+      this.logger.error({ err: error, siteId, dimension }, "Error fetching top N data");
       return [];
     }
   }
