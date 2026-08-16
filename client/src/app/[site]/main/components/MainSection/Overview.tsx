@@ -79,7 +79,7 @@ const Stat = ({
 
   // Filter and format sparklines data
   const sparklinesData =
-    data?.data
+    data
       ?.filter(d => {
         // For past-minutes mode, ensure we only show data within the specified time range
         if (time.mode === "past-minutes") {
@@ -175,23 +175,23 @@ export function Overview() {
 
   const isLoading = isOverviewLoading || isOverviewLoadingPrevious;
 
-  const currentUsers = overviewData?.data?.users ?? 0;
-  const previousUsers = overviewDataPrevious?.data?.users ?? 0;
+  const currentUsers = overviewData?.users ?? 0;
+  const previousUsers = overviewDataPrevious?.users ?? 0;
 
-  const currentSessions = overviewData?.data?.sessions ?? 0;
-  const previousSessions = overviewDataPrevious?.data?.sessions ?? 0;
+  const currentSessions = overviewData?.sessions ?? 0;
+  const previousSessions = overviewDataPrevious?.sessions ?? 0;
 
-  const currentPageviews = overviewData?.data?.pageviews ?? 0;
-  const previousPageviews = overviewDataPrevious?.data?.pageviews ?? 0;
+  const currentPageviews = overviewData?.pageviews ?? 0;
+  const previousPageviews = overviewDataPrevious?.pageviews ?? 0;
 
-  const currentPagesPerSession = overviewData?.data?.pages_per_session ?? 0;
-  const previousPagesPerSession = overviewDataPrevious?.data?.pages_per_session ?? 0;
+  const currentPagesPerSession = overviewData?.pages_per_session ?? 0;
+  const previousPagesPerSession = overviewDataPrevious?.pages_per_session ?? 0;
 
-  const currentBounceRate = overviewData?.data?.bounce_rate ?? 0;
-  const previousBounceRate = overviewDataPrevious?.data?.bounce_rate ?? 0;
+  const currentBounceRate = overviewData?.bounce_rate ?? 0;
+  const previousBounceRate = overviewDataPrevious?.bounce_rate ?? 0;
 
-  const currentSessionDuration = overviewData?.data?.session_duration ?? 0;
-  const previousSessionDuration = overviewDataPrevious?.data?.session_duration ?? 0;
+  const currentSessionDuration = overviewData?.session_duration ?? 0;
+  const previousSessionDuration = overviewDataPrevious?.session_duration ?? 0;
 
   return (
     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-0 items-center">

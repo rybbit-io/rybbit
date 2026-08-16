@@ -91,12 +91,12 @@ function FunnelStepComponent({ step, index, steps, chartData, firstStep, siteId 
     enabled: isExpanded && currentTab === "dropped" && !isFirstStep,
   });
 
-  const allReachedSessions = reachedData?.data || [];
+  const allReachedSessions = reachedData || [];
   const hasNextReached = allReachedSessions.length > LIMIT;
   const reachedSessions = allReachedSessions.slice(0, LIMIT);
   const hasPrevReached = reachedPage > 1;
 
-  const allDroppedSessions = droppedData?.data || [];
+  const allDroppedSessions = droppedData || [];
   const hasNextDropped = allDroppedSessions.length > LIMIT;
   const droppedSessions = allDroppedSessions.slice(0, LIMIT);
   const hasPrevDropped = droppedPage > 1;

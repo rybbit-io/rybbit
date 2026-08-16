@@ -141,6 +141,12 @@ export const getTimezone = () => {
   return timezone === "system" ? getSystemTimezone() : timezone;
 };
 
+// Reactive form of getTimezone: re-renders when the user switches timezone.
+export const useTimezone = () => {
+  const timezone = useStore(state => state.timezone);
+  return timezone === "system" ? getSystemTimezone() : timezone;
+};
+
 // Helper to convert a DateTime to the user's selected timezone
 export const toUserTimezone = (dt: DateTime): DateTime => {
   return dt.setZone(getTimezone());

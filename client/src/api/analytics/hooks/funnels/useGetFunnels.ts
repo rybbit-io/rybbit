@@ -1,15 +1,15 @@
-import { useQuery } from "@tanstack/react-query";
-import { fetchFunnels, SavedFunnel } from "../../endpoints";
+import { SavedFunnel } from "../../endpoints";
+import { useAnalyticsQuery } from "../../useAnalyticsQuery";
 
 export function useGetFunnels(siteId?: string | number) {
-  return useQuery<SavedFunnel[]>({
-    queryKey: ["funnels", siteId],
-    queryFn: async () => {
-      if (!siteId) {
-        return [];
-      }
-      return fetchFunnels(siteId);
-    },
-    enabled: !!siteId,
+  return useAnalyticsQuery<SavedFunnel[]>({
+    key: "funnels",
+    path: "funnels",
+    site: siteId,
+    // The saved funnel list is not scoped to the selected period.
+    useTime: false,
+    useFilters: false,
+    staleTime: 0,
+    placeholder: false,
   });
 }

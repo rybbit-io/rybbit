@@ -1,6 +1,5 @@
 import { useStore } from "../../../lib/store";
 import { RunCustomQueryResponse } from "../endpoints/customQuery";
-import { runDashboardCard, RunDashboardCardBody } from "../endpoints/dashboards";
 import { useAnalyticsQuery } from "../useAnalyticsQuery";
 
 /**
@@ -11,21 +10,19 @@ import { useAnalyticsQuery } from "../useAnalyticsQuery";
  * changes. Pass the (possibly unsaved) SQL directly so the card editor preview
  * can reuse the same hook.
  */
-export function useDashboardCard(
-  siteId: string | number | undefined,
-  cardId: string,
-  sql: string,
-  enabled = true
-) {
+export function useDashboardCard(siteId: string | number | undefined, cardId: string, sql: string, enabled = true) {
   const bucket = useStore(state => state.bucket);
 
-  return useAnalyticsQuery<RunCustomQueryResponse, RunDashboardCardBody>({
+  return useAnalyticsQuery<RunCustomQueryResponse>({
     key: ["dashboard-card", cardId],
+    path: "dashboards/run-card",
+    unwrap: false,
     site: siteId,
     useFilters: false,
-    extraParams: { query: sql, bucket },
+    // The window is sent as camelCase JSON in the body (the server schema
+    // matches); filters aren't used by card execution.
+    body: ({ filters: _filters, ...window }) => ({ ...window, query: sql, bucket }),
     enabled: enabled && !!siteId && !!sql.trim(),
     props: { retry: false },
-    fetch: (site, params) => runDashboardCard(site, params),
   });
 }

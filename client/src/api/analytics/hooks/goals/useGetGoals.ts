@@ -1,6 +1,6 @@
 import { GOALS_PAGE_FILTERS } from "../../../../lib/filterGroups";
 import { getFilteredFilters } from "../../../../lib/store";
-import { fetchGoals, GoalsParams, GoalsResponse } from "../../endpoints";
+import { GoalsResponse } from "../../endpoints";
 import { useAnalyticsQuery } from "../../useAnalyticsQuery";
 
 export function useGetGoals({
@@ -18,11 +18,12 @@ export function useGetGoals({
   // filters at all (not the store's full filter list).
   const filteredFilters = getFilteredFilters(GOALS_PAGE_FILTERS);
 
-  return useAnalyticsQuery<GoalsResponse, GoalsParams>({
+  return useAnalyticsQuery<GoalsResponse>({
     key: "goals",
+    path: "goals",
+    unwrap: false,
     useFilters: filteredFilters.length > 0,
     customFilters: filteredFilters,
-    extraParams: { page, pageSize, sort, order },
-    fetch: (site, params) => fetchGoals(site, params),
+    params: { page, page_size: pageSize, sort, order },
   });
 }

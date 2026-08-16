@@ -44,8 +44,8 @@ export default function Errors() {
     page: pageNumber,
   });
 
-  const errorsDataArray: ErrorNameItem[] | undefined = apiResponse?.data?.data;
-  const totalCount: number | undefined = apiResponse?.data?.totalCount;
+  const errorsDataArray: ErrorNameItem[] | undefined = apiResponse?.data;
+  const totalCount: number | undefined = apiResponse?.totalCount;
 
   const isLoading = isLoadingErrors || isFetching;
 

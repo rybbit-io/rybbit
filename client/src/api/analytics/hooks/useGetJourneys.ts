@@ -2,7 +2,7 @@ import { Filter } from "@rybbit/shared";
 import { Time } from "../../../components/DateSelector/types";
 import { JOURNEY_PAGE_FILTERS } from "../../../lib/filterGroups";
 import { getFilteredFilters } from "../../../lib/store";
-import { fetchJourneys, JourneysParams as JourneysApiParams, JourneysResponse } from "../endpoints";
+import { JourneysResponse } from "../endpoints";
 import { useAnalyticsQuery } from "../useAnalyticsQuery";
 
 export interface JourneyParams {
@@ -20,16 +20,21 @@ export const useJourneys = ({ siteId, steps = 3, time, limit = 100, stepFilters,
   const filteredFilters = getFilteredFilters(JOURNEY_PAGE_FILTERS);
   const combinedFilters = additionalFilters?.length ? [...filteredFilters, ...additionalFilters] : filteredFilters;
 
-  return useAnalyticsQuery<JourneysResponse, JourneysApiParams>({
+  return useAnalyticsQuery<JourneysResponse>({
     key: "journeys",
+    path: "journeys",
+    unwrap: false,
     site: siteId,
     overrideTime: time,
     // customFilters fall back to the store filters when empty; disable filters
     // entirely instead so an empty page-filter set stays unfiltered.
     useFilters: combinedFilters.length > 0,
     customFilters: combinedFilters,
-    extraParams: { steps, limit, stepFilters },
+    params: {
+      steps,
+      limit,
+      stepFilters: stepFilters && Object.keys(stepFilters).length > 0 ? JSON.stringify(stepFilters) : undefined,
+    },
     enabled: siteId !== undefined,
-    fetch: (site, params) => fetchJourneys(site, params),
   });
 };

@@ -1,12 +1,8 @@
 import { TimeBucket } from "@rybbit/shared";
 import { useQueries } from "@tanstack/react-query";
-import {
-  fetchOverviewBucketed,
-  fetchOverviewBucketedLite,
-  GetOverviewBucketedResponse,
-} from "@/api/analytics/endpoints";
-import { buildApiParams } from "@/api/utils";
-import { useStore } from "@/lib/store";
+import { buildAnalyticsRequest, fetchAnalytics } from "@/api/analytics/analyticsRequest";
+import { GetOverviewBucketedResponse } from "@/api/analytics/endpoints";
+import { useAnalyticsContext } from "@/api/analytics/useAnalyticsQuery";
 
 export type RollupSeries = {
   siteId: number;
@@ -29,26 +25,18 @@ export function useRollupBucketed({
   bucket: TimeBucket;
   lite?: boolean;
 }): UseRollupBucketedResult {
-  const { time, filters, timezone } = useStore();
   // Lite endpoints don't accept filters; drop them so the request and the
   // query key stay clean.
-  const effectiveFilters = lite ? undefined : filters;
-  const params = buildApiParams(time, { filters: effectiveFilters });
+  const { context } = useAnalyticsContext({ useFilters: !lite });
+  const request = buildAnalyticsRequest(
+    { path: lite ? "overview-bucketed-lite" : "overview/time-series", params: { bucket } },
+    context
+  );
 
   const queries = useQueries({
     queries: siteIds.map((siteId) => ({
-      queryKey: [
-        lite ? "rollup-overview-bucketed-lite" : "rollup-overview-bucketed",
-        siteId,
-        time,
-        bucket,
-        effectiveFilters,
-        timezone,
-      ],
-      queryFn: () => {
-        const fetcher = lite ? fetchOverviewBucketedLite : fetchOverviewBucketed;
-        return fetcher(siteId, { ...params, bucket });
-      },
+      queryKey: ["rollup-overview-bucketed", siteId, request.path, request.params],
+      queryFn: () => fetchAnalytics<GetOverviewBucketedResponse>(siteId, request),
       staleTime: 60_000,
     })),
   });

@@ -143,7 +143,7 @@ function useBotSectionData(dimension: BotDimensionKey) {
   });
 
   const items =
-    data?.data?.data.map(item => ({
+    data?.data.map(item => ({
       ...item,
       value: item.value == null ? "" : String(item.value),
       hostname: item.hostname == null ? undefined : String(item.hostname),

@@ -185,7 +185,7 @@ export default function GoalCard({ goal, siteId, timeSeries, isLoadingTimeSeries
 
   const propertyFilters = resolvePropertyFilters(goal.config);
 
-  const allSessions = sessionsData?.data || [];
+  const allSessions = sessionsData || [];
   const hasNextPage = allSessions.length > LIMIT;
   const sessions = allSessions.slice(0, LIMIT);
   const hasPrevPage = page > 1;
