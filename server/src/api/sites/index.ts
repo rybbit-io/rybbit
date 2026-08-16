@@ -14,9 +14,9 @@ export { updateSiteConfig } from "./updateSiteConfig.js";
 export { getTrackingConfig } from "./getTrackingConfig.js";
 export { getSitePrivateLinkConfig } from "./getSitePrivateLinkConfig.js";
 export { updateSitePrivateLinkConfig } from "./updateSitePrivateLinkConfig.js";
-export { getSiteExcludedIPs } from "./getSiteExcludedIPs.js";
-export { getSiteExcludedCountries } from "./getSiteExcludedCountries.js";
 export {
+  getSiteExcludedIPs,
+  getSiteExcludedCountries,
   getSiteExcludedPaths,
   getSiteExcludedHostnames,
   getSiteExcludedUserAgents,

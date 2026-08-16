@@ -11,7 +11,7 @@ import {
 } from "./auth-utils.js";
 import { getOrgMembership, isOrgAdmin } from "./access.js";
 import { hasScope, scopeToString, type ScopeRequirement } from "./scopes.js";
-import { resolveNumericSiteId } from "../utils.js";
+import { siteConfig } from "./siteConfig.js";
 
 type AuthMiddleware = (request: FastifyRequest, reply: FastifyReply) => Promise<void>;
 
@@ -128,12 +128,20 @@ export const resolveSiteId: AuthMiddleware = async (request, reply) => {
   const params = request.params as Record<string, string>;
   const siteId = getSiteIdFromParams(request);
 
-  if (siteId && String(siteId).length > 4) {
-    const numericId = await resolveNumericSiteId(siteId);
-    if (!numericId) {
-      return reply.status(404).send({ error: "Site not found" });
-    }
+  if (!siteId || String(siteId).length <= 4) {
+    return;
+  }
+
+  const numericId = await siteConfig.resolveSiteId(siteId);
+  if (numericId !== null) {
     params.siteId = String(numericId);
+    return;
+  }
+
+  // A digit-only identifier is already in the shape the handlers expect; leave
+  // it alone and let the access check below produce the 404/403, as before.
+  if (!/^\d+$/.test(siteId)) {
+    return reply.status(404).send({ error: "Site not found" });
   }
 };
 
