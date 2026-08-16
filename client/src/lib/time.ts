@@ -199,8 +199,10 @@ export const shiftTimeForward = (time: Time, zone: string, now: DateTime = DateT
       return toRangeWithTimes(proposedStart, proposedEnd > zonedNow ? zonedNow : proposedEnd);
     }
 
-    const startDate = DateTime.fromISO(time.startDate);
-    const endDate = DateTime.fromISO(time.endDate);
+    // Parsed in `zone` for the same reason as canGoForward: both are compared against `now`
+    // below, so a system-zone parse shifts the future-edge check by the offset.
+    const startDate = DateTime.fromISO(time.startDate, { zone });
+    const endDate = DateTime.fromISO(time.endDate, { zone });
 
     const daysBetweenStartAndEnd = endDate.diff(startDate, "days").days;
     if (daysBetweenStartAndEnd === 0) {
@@ -250,10 +252,14 @@ export const shiftTimeForward = (time: Time, zone: string, now: DateTime = DateT
 };
 
 export const canGoForward = (time: Time, zone: string, now: DateTime = DateTime.now()): boolean => {
-  const currentDay = now.startOf("day");
+  // Both sides of every comparison below must be resolved in `zone`: the stored dates are
+  // bare `yyyy-MM-dd` strings with no offset, and callers pass the *site's* timezone while
+  // `now` defaults to the browser's. Parsing either side in the system zone silently offsets
+  // the comparison and enables the forward arrow on today for anyone east of the site.
+  const currentDay = now.setZone(zone).startOf("day");
 
   if (time.mode === "day") {
-    return !(DateTime.fromISO(time.day).startOf("day") >= currentDay);
+    return !(DateTime.fromISO(time.day, { zone }).startOf("day") >= currentDay);
   }
 
   if (time.mode === "range") {
@@ -261,19 +267,19 @@ export const canGoForward = (time: Time, zone: string, now: DateTime = DateTime.
       return !(getRangeDateTimeBounds(time, zone).end >= now.setZone(zone));
     }
 
-    return !(DateTime.fromISO(time.endDate).startOf("day") >= currentDay);
+    return !(DateTime.fromISO(time.endDate, { zone }).startOf("day") >= currentDay);
   }
 
   if (time.mode === "week") {
-    return !(DateTime.fromISO(time.week).startOf("week") >= currentDay);
+    return !(DateTime.fromISO(time.week, { zone }).startOf("week") >= currentDay);
   }
 
   if (time.mode === "month") {
-    return !(DateTime.fromISO(time.month).startOf("month") >= currentDay);
+    return !(DateTime.fromISO(time.month, { zone }).startOf("month") >= currentDay);
   }
 
   if (time.mode === "year") {
-    return !(DateTime.fromISO(time.year).startOf("year") >= currentDay);
+    return !(DateTime.fromISO(time.year, { zone }).startOf("year") >= currentDay);
   }
 
   return false;
