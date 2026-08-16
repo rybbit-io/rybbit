@@ -2,8 +2,17 @@ import { and, eq, inArray } from "drizzle-orm";
 import { FastifyRequest } from "fastify";
 import NodeCache from "node-cache";
 import { db } from "../db/postgres/postgres.js";
-import { member, memberSiteAccess, sites, user, team, teamMember, teamSiteAccess } from "../db/postgres/schema.js";
+import { member, sites, user } from "../db/postgres/schema.js";
+import {
+  getOrgMembership,
+  memberCanAccessSite,
+  resolveMemberSiteGrants,
+  restrictedMemberSiteIds,
+} from "./access.js";
+import type { RateLimitDecision } from "./apiRateLimit.js";
+import { consumeRateLimitForIdentity } from "./apiRateLimitPolicy.js";
 import { auth } from "./auth.js";
+import { IS_CLOUD } from "./const.js";
 import {
   consumeBearerHandoff,
   extractBearerToken,
@@ -20,6 +29,56 @@ const bearerResolverDeps: BearerResolverDeps = {
   verifyApiKey: apiKey => auth.api.verifyApiKey({ body: { key: apiKey } }),
   getOAuthSession: token => auth.api.getMcpSession({ headers: new Headers({ authorization: `Bearer ${token}` }) }),
 };
+
+// Several guards resolve the same credential more than once per HTTP request:
+// a guard runs checkApiKey and then its session fallback (or the handler's
+// getUserIdFromRequest) runs it again. Budget is denominated in API requests,
+// not in internal resolutions, so the charge is memoized on the request object
+// and every later resolution reuses that one decision.
+const REQUEST_RATE_LIMIT = Symbol.for("rybbit.rateLimitDecision");
+
+type RateLimitedRequest = FastifyRequest & { [REQUEST_RATE_LIMIT]?: RateLimitDecision };
+
+function getRequestRateLimit(req: FastifyRequest): RateLimitDecision | undefined {
+  return (req as RateLimitedRequest)[REQUEST_RATE_LIMIT];
+}
+
+function setRequestRateLimit(req: FastifyRequest, decision: RateLimitDecision): void {
+  (req as RateLimitedRequest)[REQUEST_RATE_LIMIT] = decision;
+}
+
+/**
+ * Whether this request was refused by the rate limiter. For handlers that
+ * resolve credentials without a guard and would otherwise report a throttled
+ * request as unauthenticated.
+ */
+export function wasRateLimited(req: FastifyRequest): RateLimitDecision | undefined {
+  const decision = getRequestRateLimit(req);
+  return decision && !decision.allowed ? decision : undefined;
+}
+
+/**
+ * Per-request resolver dependencies. Rate limiting is cloud-only: self-hosted
+ * instances have no plans, no shared infrastructure to protect, and must not
+ * gain a Redis dependency on the authentication path.
+ */
+function resolverDepsFor(req: FastifyRequest): BearerResolverDeps {
+  if (!IS_CLOUD) {
+    return bearerResolverDeps;
+  }
+  return {
+    ...bearerResolverDeps,
+    consumeRateLimit: async identity => {
+      const memoized = getRequestRateLimit(req);
+      if (memoized) {
+        return memoized;
+      }
+      const decision = await consumeRateLimitForIdentity(identity);
+      setRequestRateLimit(req, decision);
+      return decision;
+    },
+  };
+}
 
 function resolveBearerTokenFromRequest(req: FastifyRequest): string | null {
   // Priority: Authorization: Bearer header (recommended), then ?api_key= (testing).
@@ -139,12 +198,12 @@ export async function getSitesUserHasAccessTo(req: FastifyRequest, adminOnly = f
         return [];
       }
 
-      // Separate members by access type
-      // 1. Admin/owner members - full access to their orgs
-      // 2. Unrestricted members - full access to their orgs
-      // 3. Restricted members - only access to specific sites via member_site_access
+      // Two kinds of membership:
+      //  - admin/owner (and any non-"member" role): every site of the org, no
+      //    team gating
+      //  - "member": the org's sites filtered by the shared Site Access rule
       const fullAccessOrgIds: string[] = [];
-      const restrictedMemberIds: string[] = [];
+      const memberRowByOrgId = new Map<string, (typeof memberRecords)[0]>();
 
       for (const record of memberRecords) {
         // If adminOnly is true, skip members with "member" role
@@ -152,135 +211,74 @@ export async function getSitesUserHasAccessTo(req: FastifyRequest, adminOnly = f
           continue;
         }
 
-        // Admin/owner roles always have full access
-        if (record.role === "admin" || record.role === "owner") {
-          fullAccessOrgIds.push(record.organizationId);
-        }
-        // Member role with hasRestrictedSiteAccess = true - only specific sites
-        else if (record.role === "member" && record.hasRestrictedSiteAccess) {
-          restrictedMemberIds.push(record.id);
-        }
-        // Member role with hasRestrictedSiteAccess = false - full org access
-        else {
+        if (record.role === "member") {
+          memberRowByOrgId.set(record.organizationId, record);
+        } else {
           fullAccessOrgIds.push(record.organizationId);
         }
       }
 
-      // Fetch sites in parallel
-      const [orgSites, restrictedSites] = await Promise.all([
-        // Get all sites from orgs with full access
-        fullAccessOrgIds.length > 0
-          ? db.select().from(sites).where(inArray(sites.organizationId, fullAccessOrgIds))
+      const memberOrgIds = Array.from(memberRowByOrgId.keys());
+      const restrictedMembers = Array.from(memberRowByOrgId.values()).filter(
+        record => record.hasRestrictedSiteAccess
+      );
+      const restrictedOrgIds = restrictedMembers.map(record => record.organizationId);
+
+      // A restricted membership reaches a closed set of sites, so its
+      // organization is loaded by id below rather than read in full and
+      // discarded — an org can hold far more sites than one member is granted.
+      const restrictedOrgIdSet = new Set(restrictedOrgIds);
+      const eagerOrgIds = Array.from(
+        new Set([...fullAccessOrgIds, ...memberOrgIds.filter(id => !restrictedOrgIdSet.has(id))])
+      );
+
+      if (eagerOrgIds.length === 0 && restrictedOrgIds.length === 0) {
+        return [];
+      }
+
+      const [eagerSites, grants] = await Promise.all([
+        eagerOrgIds.length > 0
+          ? db.select().from(sites).where(inArray(sites.organizationId, eagerOrgIds))
           : Promise.resolve([]),
-        // Get specific sites for restricted members
-        restrictedMemberIds.length > 0
-          ? (async () => {
-              const siteAccess = await db
-                .select({ siteId: memberSiteAccess.siteId })
-                .from(memberSiteAccess)
-                .where(inArray(memberSiteAccess.memberId, restrictedMemberIds));
-              const siteIds = siteAccess.map(s => s.siteId);
-              if (siteIds.length === 0) return [];
-              return db.select().from(sites).where(inArray(sites.siteId, siteIds));
-            })()
-          : Promise.resolve([]),
+        memberOrgIds.length > 0
+          ? resolveMemberSiteGrants({
+              userId,
+              organizationIds: memberOrgIds,
+              grantedMemberIds: restrictedMembers.map(record => record.id),
+            })
+          : null,
       ]);
 
-      // Combine and dedupe by siteId
-      const siteMap = new Map<number, (typeof orgSites)[0]>();
-      for (const site of orgSites) {
-        siteMap.set(site.siteId, site);
+      if (!grants) {
+        return eagerSites;
       }
-      for (const site of restrictedSites) {
-        if (!siteMap.has(site.siteId)) {
-          siteMap.set(site.siteId, site);
+
+      const accessible = eagerSites.filter(site => {
+        const memberRow = site.organizationId ? memberRowByOrgId.get(site.organizationId) : undefined;
+        // No member row for the org means admin/owner authority over it.
+        if (!memberRow) {
+          return true;
         }
-      }
+        return memberCanAccessSite(grants, site.siteId, memberRow.hasRestrictedSiteAccess);
+      });
 
-      // Apply team-based filtering for non-admin/owner members
-      // Members who have full org access (not restricted) still need team filtering
-      const memberOrgIds = memberRecords.filter(r => r.role === "member").map(r => r.organizationId);
-
-      if (memberOrgIds.length > 0) {
-        // Find all team-gated sites in the member's orgs
-        const allTeamSites = await db
-          .select({ siteId: teamSiteAccess.siteId })
-          .from(teamSiteAccess)
-          .innerJoin(team, eq(teamSiteAccess.teamId, team.id))
-          .where(inArray(team.organizationId, memberOrgIds));
-
-        const teamGatedSiteIds = new Set(allTeamSites.map(s => s.siteId));
-
-        if (teamGatedSiteIds.size > 0) {
-          // Find teams the user belongs to
-          const userTeams = await db
-            .select({ teamId: teamMember.teamId })
-            .from(teamMember)
-            .where(eq(teamMember.userId, userId));
-
-          const userTeamSiteIds = new Set<number>();
-          if (userTeams.length > 0) {
-            const userTeamSites = await db
-              .select({ siteId: teamSiteAccess.siteId })
-              .from(teamSiteAccess)
-              .where(
-                inArray(
-                  teamSiteAccess.teamId,
-                  userTeams.map(t => t.teamId)
-                )
-              );
-            for (const s of userTeamSites) {
-              userTeamSiteIds.add(s.siteId);
-            }
-          }
-
-          // Team access is additive: a restricted member's siteMap only has
-          // their explicit grants, so team-granted sites must be added back
-          const memberOrgIdSet = new Set(memberOrgIds);
-          const missingTeamSiteIds = Array.from(userTeamSiteIds).filter(id => !siteMap.has(id));
-          if (missingTeamSiteIds.length > 0) {
-            const teamSites = await db.select().from(sites).where(inArray(sites.siteId, missingTeamSiteIds));
-            for (const site of teamSites) {
-              if (site.organizationId && memberOrgIdSet.has(site.organizationId)) {
-                siteMap.set(site.siteId, site);
-              }
-            }
-          }
-
-          // For sites from admin/owner orgs, keep all (no team filtering)
-          // For sites from member orgs, apply team filtering
-          const adminOrgSiteIds = new Set<number>();
-          if (fullAccessOrgIds.length > 0) {
-            // Sites from orgs where user is admin/owner should not be team-filtered
-            for (const record of memberRecords) {
-              if (record.role === "admin" || record.role === "owner") {
-                for (const [siteId, site] of siteMap) {
-                  if (site.organizationId === record.organizationId) {
-                    adminOrgSiteIds.add(siteId);
-                  }
-                }
-              }
-            }
-          }
-
-          // Explicit per-member grants always win over team gating
-          const explicitGrantSiteIds = new Set(restrictedSites.map(s => s.siteId));
-
-          // Remove team-gated sites the user can't access (only for member-role orgs)
-          for (const [siteId] of siteMap) {
-            if (
-              teamGatedSiteIds.has(siteId) &&
-              !userTeamSiteIds.has(siteId) &&
-              !adminOrgSiteIds.has(siteId) &&
-              !explicitGrantSiteIds.has(siteId)
-            ) {
-              siteMap.delete(siteId);
+      if (restrictedOrgIds.length > 0) {
+        const candidateSiteIds = restrictedMemberSiteIds(grants);
+        if (candidateSiteIds.length > 0) {
+          const grantedSites = await db
+            .select()
+            .from(sites)
+            .where(and(inArray(sites.siteId, candidateSiteIds), inArray(sites.organizationId, restrictedOrgIds)));
+          const seen = new Set(accessible.map(site => site.siteId));
+          for (const site of grantedSites) {
+            if (!seen.has(site.siteId)) {
+              accessible.push(site);
             }
           }
         }
       }
 
-      return Array.from(siteMap.values());
+      return accessible;
     } catch (error) {
       console.error("Error getting sites user has access to:", error);
       // Remove from cache on error so it can be retried
@@ -362,6 +360,8 @@ export interface BearerAuthResult {
   /** Set instead of userId when the credential is an organization-owned key. */
   organizationId?: string;
   rateLimited?: boolean;
+  /** Budget state for this request, when a bearer credential was resolved. */
+  rateLimit?: RateLimitDecision;
   /**
    * Scope statements carried by the credential. null = unrestricted (legacy
    * key with no permissions, or OAuth token with no custom scopes). Guards
@@ -385,13 +385,17 @@ export async function checkApiKey(
   }
 
   // Reuse the MCP gate's verification when this is an in-process proxy call, so
-  // a tool call doesn't verify (and rate-limit) the key a second time.
-  const identity =
-    consumeBearerHandoff(req.headers[INTERNAL_BEARER_HANDOFF_HEADER], apiKey) ??
-    (await resolveBearerIdentity(apiKey, bearerResolverDeps));
+  // a tool call doesn't verify (and rate-limit) the key a second time. The
+  // gate's charge covers this call; recording it here keeps a second resolution
+  // within the same request from charging again.
+  const handoffIdentity = consumeBearerHandoff(req.headers[INTERNAL_BEARER_HANDOFF_HEADER], apiKey);
+  if (handoffIdentity?.rateLimit) {
+    setRequestRateLimit(req, handoffIdentity.rateLimit);
+  }
+  const identity = handoffIdentity ?? (await resolveBearerIdentity(apiKey, resolverDepsFor(req)));
 
   if (identity.status === "rate_limited") {
-    return { valid: false, role: null, rateLimited: true, statements: null };
+    return { valid: false, role: null, rateLimited: true, rateLimit: identity.rateLimit, statements: null };
   }
   if (identity.status === "valid" && identity.organizationId) {
     // Organization-owned key: valid only against its own organization (or a
@@ -403,14 +407,15 @@ export async function checkApiKey(
         valid: true,
         role: "admin",
         organizationId: identity.organizationId,
+        rateLimit: identity.rateLimit,
         statements: identity.statements,
       };
     }
-    return { valid: false, role: null, statements: null };
+    return { valid: false, role: null, rateLimit: identity.rateLimit, statements: null };
   }
   if (identity.status === "valid" && identity.userId) {
     const membership = await resolveBearerUserOrgRole(identity.userId, options);
-    return { ...membership, statements: identity.statements };
+    return { ...membership, rateLimit: identity.rateLimit, statements: identity.statements };
   }
   return { valid: false, role: null, statements: null };
 }
@@ -485,17 +490,7 @@ export async function getUserHasAdminAccessToSite(req: FastifyRequest, siteId: s
   return sites.some(site => site.siteId === Number(siteId));
 }
 
-export async function getUserIsInOrg(req: FastifyRequest, organizationId: string) {
-  const session = await getSessionFromReq(req);
-
-  if (!session?.user.id) {
-    return false;
-  }
-
-  // Check if user is a member of this organization
-  const userMembership = await db.query.member.findFirst({
-    where: and(eq(member.userId, session.user.id), eq(member.organizationId, organizationId)),
-  });
-
-  return userMembership;
+export async function getUserIsInOrg(req: FastifyRequest, organizationId: string): Promise<boolean> {
+  const userId = req.user?.id ?? (await getSessionFromReq(req))?.user.id;
+  return (await getOrgMembership(userId, organizationId)) !== null;
 }

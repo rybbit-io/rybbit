@@ -3,7 +3,7 @@ import { z } from "zod";
 import { apiKeyLimitForPlan, createApiKeyWithinLimit } from "../../lib/apiKeyLimits.js";
 import { auth } from "../../lib/auth.js";
 import { ORG_API_KEY_CONFIG_ID } from "../../lib/bearerAuth.js";
-import { API_RATE_LIMIT_WINDOW, IS_CLOUD, PRO_API_RATE_LIMIT, STANDARD_API_RATE_LIMIT } from "../../lib/const.js";
+import { IS_CLOUD } from "../../lib/const.js";
 import { apiKeyPermissionsSchema } from "../../lib/scopes.js";
 import { getSubscriptionInner } from "../stripe/getSubscription.js";
 
@@ -49,9 +49,6 @@ export async function createOrgApiKey(
   const { name, expiresIn, permissions } = parsed.data;
 
   let planName: string | null = null;
-  let rateLimitEnabled = false;
-  let rateLimitMax: number | undefined;
-  let rateLimitTimeWindow: number | undefined;
 
   if (IS_CLOUD) {
     const subscription = await getSubscriptionInner(organizationId);
@@ -62,10 +59,6 @@ export async function createOrgApiKey(
         error: "API keys require a Standard or Pro plan. Please upgrade to create API keys.",
       });
     }
-
-    rateLimitEnabled = true;
-    rateLimitTimeWindow = API_RATE_LIMIT_WINDOW;
-    rateLimitMax = planName.includes("pro") || planName === "custom" ? PRO_API_RATE_LIMIT : STANDARD_API_RATE_LIMIT;
   }
 
   const keyLimit = apiKeyLimitForPlan(planName);
@@ -80,9 +73,6 @@ export async function createOrgApiKey(
           organizationId,
           userId,
           metadata: { createdBy: userId },
-          rateLimitEnabled,
-          rateLimitTimeWindow,
-          rateLimitMax,
           ...(permissions ? { permissions: permissions as Record<string, string[]> } : {}),
         },
       })

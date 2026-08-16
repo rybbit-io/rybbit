@@ -1,7 +1,6 @@
 "use client";
 
 import { GetOverviewBucketedResponse } from "@/api/analytics/endpoints";
-import { APIResponse } from "@/api/types";
 import { ChartTooltip } from "@/components/charts/ChartTooltip";
 import { hour12, userLocale } from "@/lib/dateTimeUtils";
 import { useNivoTheme } from "@/lib/nivo";
@@ -10,7 +9,7 @@ import { ResponsiveLine } from "@nivo/line";
 import { DateTime } from "luxon";
 
 interface PageSparklineChartProps {
-  data: APIResponse<GetOverviewBucketedResponse> | undefined;
+  data: GetOverviewBucketedResponse | undefined;
   isHovering: boolean;
   pageTitle: string;
   isLoading: boolean;
@@ -29,7 +28,7 @@ export function PageSparklineChart({ data, isHovering, pageTitle, isLoading }: P
   }
 
   // Format the chart data
-  const sparklineData = data?.data
+  const sparklineData = data
     ?.filter(e => {
       // Filter out dates from the future
       return DateTime.fromSQL(e.time, { zone: timezone }).toUTC() <= DateTime.now();

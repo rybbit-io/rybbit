@@ -15,7 +15,7 @@ vi.mock("./auth-utils.js", () => mocks);
 vi.mock("../db/postgres/postgres.js", () => ({
   db: { query: { member: { findFirst: vi.fn(async () => null) } } },
 }));
-vi.mock("../utils.js", () => ({ resolveNumericSiteId: vi.fn(async () => null) }));
+vi.mock("./siteConfig.js", () => ({ siteConfig: { resolveSiteId: vi.fn(async () => null) } }));
 
 import {
   allowPublicSiteAccess,
@@ -192,5 +192,101 @@ describe("auth middleware scope enforcement", () => {
     const response = await app.inject({ method: "GET", url: "/sites/5/goals", headers: bearer });
 
     expect(response.statusCode).toBe(429);
+  });
+});
+
+describe("auth middleware rate limit reporting", () => {
+  let app: FastifyInstance;
+
+  const limit = (overrides: Record<string, unknown> = {}) => ({
+    allowed: true,
+    wouldHaveDenied: false,
+    scope: null,
+    burstLimit: 50,
+    burstRemaining: 40,
+    burstResetSeconds: 2,
+    dailyLimit: 5000,
+    dailyRemaining: 4000,
+    dailyResetSeconds: 3600,
+    retryAfterSeconds: 0,
+    ...overrides,
+  });
+
+  beforeEach(async () => {
+    vi.clearAllMocks();
+    mocks.getSessionFromReq.mockResolvedValue(null);
+    mocks.getUserHasAccessToSite.mockResolvedValue(false);
+    mocks.getIsUserAdmin.mockResolvedValue(false);
+
+    app = Fastify();
+    app.get("/sites/:siteId/goals", { preHandler: [requireSiteAccess()] as any }, async () => ({ ok: true }));
+    await app.ready();
+  });
+
+  afterEach(async () => {
+    await app.close();
+  });
+
+  it("reports the remaining budget on a successful request", async () => {
+    mocks.checkApiKey.mockResolvedValue({ ...bearerResult(null), rateLimit: limit() });
+
+    const response = await app.inject({ method: "GET", url: "/sites/5/goals", headers: bearer });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.headers["x-ratelimit-burst-remaining"]).toBe("40");
+    expect(response.headers["x-ratelimit-daily-limit"]).toBe("5000");
+    expect(response.headers["x-ratelimit-daily-remaining"]).toBe("4000");
+  });
+
+  it("points RateLimit-* at whichever tier is closest to exhaustion", async () => {
+    // 100/5000 daily left vs 40/50 burst: daily is the tier a client needs to
+    // pace itself against.
+    mocks.checkApiKey.mockResolvedValue({ ...bearerResult(null), rateLimit: limit({ dailyRemaining: 100 }) });
+
+    const response = await app.inject({ method: "GET", url: "/sites/5/goals", headers: bearer });
+
+    expect(response.headers["ratelimit-limit"]).toBe("5000");
+    expect(response.headers["ratelimit-remaining"]).toBe("100");
+    expect(response.headers["ratelimit-reset"]).toBe("3600");
+  });
+
+  it("names the tier and the wait on a daily rejection", async () => {
+    mocks.checkApiKey.mockResolvedValue({
+      valid: false,
+      role: null,
+      rateLimited: true,
+      statements: null,
+      rateLimit: limit({ allowed: false, scope: "daily", dailyRemaining: 0, retryAfterSeconds: 3600 }),
+    });
+
+    const response = await app.inject({ method: "GET", url: "/sites/5/goals", headers: bearer });
+
+    expect(response.statusCode).toBe(429);
+    expect(response.headers["retry-after"]).toBe("3600");
+    expect(response.json()).toMatchObject({ scope: "daily", limit: 5000, retryAfter: 3600 });
+  });
+
+  it("omits the daily headers when the quota is unlimited", async () => {
+    mocks.checkApiKey.mockResolvedValue({
+      ...bearerResult(null),
+      rateLimit: limit({ dailyLimit: 0, dailyRemaining: 0 }),
+    });
+
+    const response = await app.inject({ method: "GET", url: "/sites/5/goals", headers: bearer });
+
+    // Self-hosted has no quota; advertising "0 remaining" would read as blocked.
+    expect(response.headers["x-ratelimit-daily-limit"]).toBeUndefined();
+    expect(response.headers["ratelimit-limit"]).toBe("50");
+  });
+
+  it("sends no rate limit headers for session-authenticated requests", async () => {
+    mocks.checkApiKey.mockResolvedValue(invalidResult);
+    mocks.getUserHasAccessToSite.mockResolvedValue(true);
+    mocks.getSessionFromReq.mockResolvedValue({ user: { id: "user_1" } });
+
+    const response = await app.inject({ method: "GET", url: "/sites/5/goals" });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.headers["ratelimit-limit"]).toBeUndefined();
   });
 });

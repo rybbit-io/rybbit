@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { CLIENT_BOT_SIGNAL_MASKS, getBotScore, getBotSignalMask, resetBotScoreCacheForTests } from "./botSignals.js";
+import { CLIENT_BOT_SIGNAL_MASKS } from "@rybbit/shared";
+import { getBotScore, getBotSignalMask, resetBotScoreCacheForTests } from "./botSignals.js";
 
 function setNavigatorProperty(name: string, value: unknown) {
   Object.defineProperty(navigator, name, {
@@ -88,6 +89,42 @@ describe("getBotScore", () => {
 
     expect(getBotScore()).toBe(3);
     expect(getBotSignalMask()).toBe(CLIENT_BOT_SIGNAL_MASKS.impossibleDimensions);
+  });
+
+  it("treats dimensions outside the plausible display range as impossible", () => {
+    for (const screen of [
+      { width: 1, height: 1 },
+      { width: 16384, height: 16384 },
+      { width: 1920, height: 10000 },
+      { width: 199, height: 800 },
+    ]) {
+      resetBotScoreCacheForTests();
+      setWindowProperty("screen", screen);
+
+      expect(getBotSignalMask(), `${screen.width}x${screen.height}`).toBe(
+        CLIENT_BOT_SIGNAL_MASKS.impossibleDimensions
+      );
+    }
+  });
+
+  it("leaves real displays at the edges of the plausible range alone", () => {
+    for (const screen of [
+      { width: 200, height: 320 },
+      { width: 320, height: 480 },
+      { width: 7680, height: 4320 },
+    ]) {
+      resetBotScoreCacheForTests();
+      setWindowProperty("screen", screen);
+
+      expect(getBotSignalMask(), `${screen.width}x${screen.height}`).toBe(0);
+    }
+  });
+
+  it("weights a square screen as a blocking-strength signal", () => {
+    setWindowProperty("screen", { width: 2000, height: 2000 });
+
+    expect(getBotScore()).toBe(3);
+    expect(getBotSignalMask()).toBe(CLIENT_BOT_SIGNAL_MASKS.squareScreen);
   });
 
   it("counts outer dimension anomalies as a supporting signal", () => {

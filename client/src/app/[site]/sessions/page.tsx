@@ -37,7 +37,7 @@ export default function SessionsPage() {
     minEvents,
     minDuration,
   });
-  const allSessions = data?.data || [];
+  const allSessions = data || [];
   const hasNextPage = allSessions.length > LIMIT;
   const sessions = allSessions.slice(0, LIMIT);
   const hasPrevPage = page > 1;

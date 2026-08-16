@@ -1,12 +1,19 @@
 import { Filter, FilterParameter } from "@rybbit/shared";
 import { InfiniteData, UseInfiniteQueryResult, UseQueryResult } from "@tanstack/react-query";
 import { Time } from "../../../components/DateSelector/types";
-import { APIResponse } from "../../types";
-import { fetchMetric, fetchMetricLite, MetricResponse } from "../endpoints";
-import { MetricParams } from "../endpoints/types";
-import { useAnalyticsQuery, useAnalyticsInfiniteQuery } from "../useAnalyticsQuery";
+import { MetricResponse } from "../endpoints";
+import { nextPageByTotalCount, useAnalyticsInfiniteQuery, useAnalyticsQuery } from "../useAnalyticsQuery";
 
 type PeriodTime = "current" | "previous";
+
+type PaginatedResponse = {
+  data: MetricResponse[];
+  totalCount: number;
+};
+
+// Lite endpoints forward filters too — the server falls back to raw events
+// when a filter is active. `lite` only selects the endpoint, not the filters.
+const metricPath = (lite: boolean) => (lite ? "metric-lite" : "metric");
 
 export function useMetric({
   parameter,
@@ -18,21 +25,16 @@ export function useMetric({
   limit?: number;
   periodTime?: PeriodTime;
   useFilters?: boolean;
-}): UseQueryResult<APIResponse<MetricResponse[]>> {
-  return useAnalyticsQuery<APIResponse<MetricResponse[]>, MetricParams>({
+}): UseQueryResult<PaginatedResponse> {
+  return useAnalyticsQuery<PaginatedResponse>({
     key: parameter,
+    path: metricPath(false),
     periodTime,
     doublePastMinutesForPrevious: true,
     useFilters,
-    extraParams: { parameter, limit },
-    fetch: (site, params) => fetchMetric(site, params).then(result => ({ data: result.data })),
+    params: { parameter, limit },
   });
 }
-
-type PaginatedResponse = {
-  data: MetricResponse[];
-  totalCount: number;
-};
 
 export function usePaginatedMetric({
   parameter,
@@ -54,17 +56,14 @@ export function usePaginatedMetric({
   customTime?: Time;
   lite?: boolean;
 }): UseQueryResult<PaginatedResponse> {
-  // Lite endpoints forward filters too — the server falls back to raw events
-  // when a filter is active. `lite` only selects the fetcher, not the filters.
-  return useAnalyticsQuery<PaginatedResponse, MetricParams>({
+  return useAnalyticsQuery<PaginatedResponse>({
     key: parameter,
+    path: metricPath(lite),
     overrideTime: customTime,
     useFilters,
     additionalFilters,
     customFilters,
-    extraParams: { parameter, limit, page },
-    keyExtras: [lite],
-    fetch: (site, params) => (lite ? fetchMetricLite : fetchMetric)(site, params),
+    params: { parameter, limit, page },
   });
 }
 
@@ -85,16 +84,16 @@ export function useInfiniteMetric({
   customTime?: Time;
   lite?: boolean;
 }): UseInfiniteQueryResult<InfiniteData<PaginatedResponse>> {
-  // Lite endpoints forward filters too — the server falls back to raw events
-  // when a filter is active. `lite` only selects the fetcher, not the filters.
-  return useAnalyticsInfiniteQuery<PaginatedResponse, MetricParams>({
+  return useAnalyticsInfiniteQuery<PaginatedResponse>({
     key: parameter,
+    path: metricPath(lite),
     overrideTime: customTime,
     useFilters,
     additionalFilters,
     customFilters,
-    extraParams: { parameter, limit },
-    keyExtras: [lite],
-    fetchPage: (site, params, page) => (lite ? fetchMetricLite : fetchMetric)(site, { ...params, page }),
+    params: { parameter, limit },
+    initialPageParam: 1,
+    pageParams: page => ({ page }),
+    getNextPageParam: nextPageByTotalCount,
   });
 }

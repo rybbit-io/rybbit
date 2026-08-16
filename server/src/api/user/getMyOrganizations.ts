@@ -1,14 +1,26 @@
 import { FastifyRequest, FastifyReply } from "fastify";
 import { db } from "../../db/postgres/postgres.js";
-import { and, eq } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { member, organization, sites, user } from "../../db/postgres/schema.js";
-import { getSessionFromReq, getUserIdFromRequest } from "../../lib/auth-utils.js";
-import { filterSitesByMemberAccess } from "../../lib/siteAccess.js";
+import { getSessionFromReq, getUserIdFromRequest, wasRateLimited } from "../../lib/auth-utils.js";
+import { filterSitesByMemberAccess, getOrgMembership } from "../../lib/access.js";
 
 export const getMyOrganizations = async (request: FastifyRequest, reply: FastifyReply) => {
   try {
     const userId = await getUserIdFromRequest(request);
     if (!userId) {
+      // This route has no auth pre-handler, so a throttled credential resolves
+      // to no user. Reporting that as 401 would tell a caller their key is
+      // invalid when it is merely out of budget.
+      const throttled = wasRateLimited(request);
+      if (throttled) {
+        reply.header("Retry-After", throttled.retryAfterSeconds);
+        return reply.status(429).send({
+          error: "Rate limit exceeded",
+          scope: throttled.scope,
+          retryAfter: throttled.retryAfterSeconds,
+        });
+      }
       return reply.status(401).send({ error: "Unauthorized" });
     }
 
@@ -37,7 +49,7 @@ export const getMyOrganizations = async (request: FastifyRequest, reply: Fastify
     // For each organization, get all members with user details and sites
     const organizationsWithMembersAndSites = await Promise.all(
       userOrganizations.map(async org => {
-        const [organizationMembers, allOrgSites, callerMember] = await Promise.all([
+        const [organizationMembers, allOrgSites, callerMemberRecord] = await Promise.all([
           db
             .select({
               id: member.id,
@@ -68,21 +80,12 @@ export const getMyOrganizations = async (request: FastifyRequest, reply: Fastify
             })
             .from(sites)
             .where(eq(sites.organizationId, org.id)),
-          db
-            .select({
-              id: member.id,
-              role: member.role,
-              hasRestrictedSiteAccess: member.hasRestrictedSiteAccess,
-            })
-            .from(member)
-            .where(and(eq(member.organizationId, org.id), eq(member.userId, userId)))
-            .limit(1),
+          getOrgMembership(userId, org.id),
         ]);
 
         // Filter sites based on the caller's per-member access restrictions
         // and teams. Admins/owners see everything.
         let organizationSites = allOrgSites;
-        const callerMemberRecord = callerMember[0];
 
         if (callerMemberRecord?.role === "member") {
           organizationSites = await filterSitesByMemberAccess(

@@ -1,7 +1,5 @@
-import { useInfiniteQuery } from "@tanstack/react-query";
-import { useStore } from "../../../../lib/store";
-import { buildApiParams } from "../../../utils";
-import { fetchSessionReplays } from "../../endpoints";
+import { SessionReplayListResponse } from "../../endpoints";
+import { useAnalyticsInfiniteQuery } from "../../useAnalyticsQuery";
 
 type UseGetSessionReplaysOptions = {
   limit?: number;
@@ -9,26 +7,16 @@ type UseGetSessionReplaysOptions = {
 };
 
 export function useGetSessionReplays({ limit = 20, minDuration = 30 }: UseGetSessionReplaysOptions = {}) {
-  const { time, site, filters, timezone } = useStore();
-  const params = buildApiParams(time, { filters });
-
-  return useInfiniteQuery({
-    queryKey: ["session-replays", site, time, filters, limit, minDuration, timezone],
-    queryFn: async ({ pageParam = 0 }) => {
-      return fetchSessionReplays(site, {
-        ...params,
-        limit,
-        offset: pageParam,
-        minDuration,
-      });
-    },
+  return useAnalyticsInfiniteQuery<SessionReplayListResponse>({
+    key: "session-replays",
+    path: "session-replay/list",
+    unwrap: false,
+    params: { limit, minDuration },
     initialPageParam: 0,
-    getNextPageParam: (lastPage, allPages) => {
-      const totalFetched = allPages.reduce((acc, page) => acc + (page.data?.length || 0), 0);
-      return lastPage.data?.length === limit ? totalFetched : undefined;
-    },
+    pageParams: offset => ({ offset }),
+    getNextPageParam: (lastPage, allPages) =>
+      lastPage.data?.length === limit ? allPages.reduce((total, page) => total + (page.data?.length || 0), 0) : undefined,
     staleTime: 1000 * 60 * 5, // 5 minutes
     refetchOnWindowFocus: false,
-    enabled: !!site,
   });
 }

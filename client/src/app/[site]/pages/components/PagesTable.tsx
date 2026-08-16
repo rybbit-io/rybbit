@@ -109,12 +109,12 @@ export function PagesTable() {
     periodTime: "previous",
   });
 
-  const currentItems = currentResp?.data?.data ?? [];
-  const totalCount = currentResp?.data?.totalCount ?? 0;
+  const currentItems = currentResp?.data ?? [];
+  const totalCount = currentResp?.totalCount ?? 0;
 
   const previousByValue = useMemo(() => {
     const map = new Map<string, PageTitleItem>();
-    for (const item of previousResp?.data?.data ?? []) {
+    for (const item of previousResp?.data ?? []) {
       map.set(item.value, item);
     }
     return map;

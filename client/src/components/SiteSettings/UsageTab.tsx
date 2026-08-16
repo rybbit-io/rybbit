@@ -7,7 +7,7 @@ import { ReactNode, useState } from "react";
 import { EventCountRow } from "@/api/admin/endpoints/adminServiceEventCount";
 import { useGetSiteUsage } from "@/api/admin/hooks/useSites";
 import { SiteEventCountPoint } from "@/api/analytics/endpoints";
-import { useGetSiteEventCount } from "@/api/analytics/hooks/useGetSiteEventCount";
+import { useGetSiteEventCountRange } from "@/api/analytics/hooks/useGetSiteEventCountRange";
 import { EventUsageChart } from "@/components/EventUsageChart";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -126,7 +126,7 @@ export function UsageTab({ siteId }: UsageTabProps) {
     data: eventCounts,
     isLoading: chartLoading,
     error: chartError,
-  } = useGetSiteEventCount({ siteId, startDate, endDate });
+  } = useGetSiteEventCountRange({ siteId, startDate, endDate });
 
   const dayOfMonth = usage ? Math.min(Math.floor(usage.daysElapsed) + 1, usage.daysInMonth) : null;
 

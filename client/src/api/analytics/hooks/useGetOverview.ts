@@ -1,5 +1,5 @@
 import { Time } from "../../../components/DateSelector/types";
-import { fetchOverview, fetchOverviewLite } from "../endpoints";
+import { GetOverviewResponse } from "../endpoints";
 import { useAnalyticsQuery } from "../useAnalyticsQuery";
 
 type PeriodTime = "current" | "previous";
@@ -13,14 +13,19 @@ type UseGetOverviewOptions = {
   lite?: boolean;
 };
 
-export function useGetOverview({ periodTime, site, overrideTime, useFilters = true, lite = false }: UseGetOverviewOptions) {
-  return useAnalyticsQuery({
+export function useGetOverview({
+  periodTime,
+  site,
+  overrideTime,
+  useFilters = true,
+  lite = false,
+}: UseGetOverviewOptions) {
+  return useAnalyticsQuery<GetOverviewResponse>({
     key: "overview",
+    path: lite ? "overview-lite" : "overview",
     site,
     periodTime,
     overrideTime,
     useFilters,
-    keyExtras: [lite],
-    fetch: (site, params) => (lite ? fetchOverviewLite : fetchOverview)(site, params).then(data => ({ data })),
   });
 }

@@ -67,8 +67,8 @@ export function MainSection() {
   });
 
   const maxOfDataAndPreviousData = Math.max(
-    Math.max(...(data?.data?.map((d: any) => d[selectedStat]) ?? [])),
-    Math.max(...(previousData?.data?.map((d: any) => d[selectedStat]) ?? []))
+    Math.max(...(data?.map((d: any) => d[selectedStat]) ?? [])),
+    Math.max(...(previousData?.map((d: any) => d[selectedStat]) ?? []))
   );
 
   // For range mode (Last 7 / 14 / 30 Days, custom range) anchor both charts'
@@ -80,7 +80,7 @@ export function MainSection() {
   const chartXMax = (() => {
     if (isPlaceholderData) return undefined;
     if (time.mode !== "range") return undefined;
-    const points = data?.data;
+    const points = data;
     if (!points?.length) return undefined;
     const now = DateTime.now();
     for (let i = points.length - 1; i >= 0; i--) {

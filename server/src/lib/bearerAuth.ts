@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import type { RateLimitDecision } from "./apiRateLimit.js";
 import { parseOAuthScopes, statementsFromApiKeyPermissions, type ScopeStatements } from "./scopes.js";
 
 /**
@@ -40,6 +41,16 @@ export type OAuthTokenLookup = {
 export interface BearerResolverDeps {
   verifyApiKey: (token: string) => Promise<ApiKeyVerification>;
   getOAuthSession: (token: string) => Promise<OAuthTokenLookup>;
+  /**
+   * Charge one request against the owner's burst bucket and daily quota.
+   * Optional so tests and the MCP layer can resolve identities without a
+   * limiter; when absent, no request is charged. Returning null means the
+   * deployment is not metered (self-hosted), which is not a denial.
+   */
+  consumeRateLimit?: (identity: {
+    userId?: string;
+    organizationId?: string;
+  }) => Promise<RateLimitDecision | null>;
 }
 
 export type BearerIdentityStatus = "valid" | "invalid" | "rate_limited" | "verify_error";
@@ -53,6 +64,12 @@ export interface BearerIdentity {
   organizationId?: string;
   /** null = unrestricted (legacy key / full OAuth grant); enforced by callers. */
   statements: ScopeStatements | null;
+  /**
+   * The rate-limit outcome for this request, carried so callers can report the
+   * remaining budget in response headers. Present on rate_limited identities
+   * too — that is where the retry-after comes from.
+   */
+  rateLimit?: RateLimitDecision;
 }
 
 export function isUsableOAuthToken(token: OAuthTokenLookup): token is NonNullable<OAuthTokenLookup> {
@@ -69,6 +86,30 @@ export function isUsableOAuthToken(token: OAuthTokenLookup): token is NonNullabl
  * cheap DB query the caller does per route, and it never touches the rate
  * limiter, so it does not need deduplicating.
  */
+/**
+ * Charge a resolved identity against its owner's budget, converting a denial
+ * into a rate_limited result. A limiter failure is never fatal: the identity
+ * passes through uncharged rather than locking out a valid credential.
+ */
+async function applyRateLimit(identity: BearerIdentity, deps: BearerResolverDeps): Promise<BearerIdentity> {
+  if (!deps.consumeRateLimit) {
+    return identity;
+  }
+  let decision: RateLimitDecision | null;
+  try {
+    decision = await deps.consumeRateLimit({ userId: identity.userId, organizationId: identity.organizationId });
+  } catch {
+    return identity;
+  }
+  if (!decision) {
+    return identity;
+  }
+  if (!decision.allowed) {
+    return { status: "rate_limited", statements: null, rateLimit: decision };
+  }
+  return { ...identity, rateLimit: decision };
+}
+
 export async function resolveBearerIdentity(token: string, deps: BearerResolverDeps): Promise<BearerIdentity> {
   let verifyError = false;
   let verification: ApiKeyVerification | null = null;
@@ -83,9 +124,9 @@ export async function resolveBearerIdentity(token: string, deps: BearerResolverD
     // referenceId is a user id or an organization id depending on which key
     // configuration minted the key (legacy keys have a NULL configId = user).
     if (verification.key.configId === ORG_API_KEY_CONFIG_ID) {
-      return { status: "valid", organizationId: verification.key.referenceId, statements };
+      return applyRateLimit({ status: "valid", organizationId: verification.key.referenceId, statements }, deps);
     }
-    return { status: "valid", userId: verification.key.referenceId, statements };
+    return applyRateLimit({ status: "valid", userId: verification.key.referenceId, statements }, deps);
   }
 
   if (verification?.error?.code === "RATE_LIMITED") {
@@ -102,11 +143,14 @@ export async function resolveBearerIdentity(token: string, deps: BearerResolverD
   }
 
   if (isUsableOAuthToken(oauth)) {
-    return {
-      status: "valid",
-      userId: oauth.userId as string,
-      statements: parseOAuthScopes(typeof oauth.scopes === "string" ? oauth.scopes : null),
-    };
+    return applyRateLimit(
+      {
+        status: "valid",
+        userId: oauth.userId as string,
+        statements: parseOAuthScopes(typeof oauth.scopes === "string" ? oauth.scopes : null),
+      },
+      deps
+    );
   }
 
   return { status: verifyError ? "verify_error" : "invalid", statements: null };
@@ -128,12 +172,14 @@ export const INTERNAL_BEARER_HANDOFF_HEADER = "x-rybbit-mcp-bearer";
 interface HandoffEntry {
   token: string;
   identity: BearerIdentity;
+  /** A handoff covers exactly one REST call — see consumeBearerHandoff. */
+  spent: boolean;
 }
 const handoffs = new Map<string, HandoffEntry>();
 
 export function registerBearerHandoff(token: string, identity: BearerIdentity): string {
   const nonce = randomUUID();
-  handoffs.set(nonce, { token, identity });
+  handoffs.set(nonce, { token, identity, spent: false });
   return nonce;
 }
 
@@ -154,5 +200,14 @@ export function consumeBearerHandoff(
   if (!entry || entry.token !== token) {
     return null;
   }
+  // One handoff covers one REST call. The MCP request already paid for that
+  // call at the gate, but a single HTTP request can carry a whole JSON-RPC
+  // batch — reusing the nonce for all of them would let a client run any
+  // number of tool calls on one unit of budget. Later calls fall through to
+  // normal verification, which charges them.
+  if (entry.spent) {
+    return null;
+  }
+  entry.spent = true;
   return entry.identity;
 }

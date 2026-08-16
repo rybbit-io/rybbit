@@ -1,11 +1,7 @@
 import { useQueries } from "@tanstack/react-query";
-import {
-  fetchOverview,
-  fetchOverviewLite,
-  GetOverviewResponse,
-} from "@/api/analytics/endpoints";
-import { buildApiParams } from "@/api/utils";
-import { useStore } from "@/lib/store";
+import { buildAnalyticsRequest, fetchAnalytics } from "@/api/analytics/analyticsRequest";
+import { GetOverviewResponse } from "@/api/analytics/endpoints";
+import { useAnalyticsContext } from "@/api/analytics/useAnalyticsQuery";
 
 export type RollupOverview = {
   siteId: number;
@@ -36,25 +32,15 @@ export function useRollupOverview({
   siteIds: number[];
   lite?: boolean;
 }): UseRollupOverviewResult {
-  const { time, filters, timezone } = useStore();
   // Lite endpoints don't accept filters; drop them so the request and the
   // query key stay clean.
-  const effectiveFilters = lite ? undefined : filters;
-  const params = buildApiParams(time, { filters: effectiveFilters });
+  const { context } = useAnalyticsContext({ useFilters: !lite });
+  const request = buildAnalyticsRequest({ path: lite ? "overview-lite" : "overview" }, context);
 
   const queries = useQueries({
     queries: siteIds.map((siteId) => ({
-      queryKey: [
-        lite ? "rollup-overview-lite" : "rollup-overview",
-        siteId,
-        time,
-        effectiveFilters,
-        timezone,
-      ],
-      queryFn: () => {
-        const fetcher = lite ? fetchOverviewLite : fetchOverview;
-        return fetcher(siteId, params);
-      },
+      queryKey: ["rollup-overview", siteId, request.path, request.params],
+      queryFn: () => fetchAnalytics<GetOverviewResponse>(siteId, request),
       staleTime: 60_000,
     })),
   });

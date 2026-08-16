@@ -1,5 +1,5 @@
 import { UseQueryResult } from "@tanstack/react-query";
-import { ErrorNamesParams, ErrorNamesPaginatedResponse, fetchErrorNames } from "../../endpoints";
+import { ErrorNamesPaginatedResponse } from "../../endpoints";
 import { useAnalyticsQuery } from "../../useAnalyticsQuery";
 
 type UseGetErrorNamesOptions = {
@@ -13,13 +13,13 @@ export function useGetErrorNamesPaginated({
   limit = 10,
   page = 1,
   useFilters = true,
-}: UseGetErrorNamesOptions): UseQueryResult<{ data: ErrorNamesPaginatedResponse }> {
-  return useAnalyticsQuery<{ data: ErrorNamesPaginatedResponse }, ErrorNamesParams>({
+}: UseGetErrorNamesOptions): UseQueryResult<ErrorNamesPaginatedResponse> {
+  return useAnalyticsQuery<ErrorNamesPaginatedResponse>({
     key: "error-names",
+    path: "errors/names",
     useFilters,
-    extraParams: { limit, page },
+    params: { limit, page },
     staleTime: Infinity,
-    fetch: (site, params) => fetchErrorNames(site, params).then(data => ({ data })),
   });
 }
 
@@ -27,12 +27,12 @@ export function useGetErrorNamesPaginated({
 export function useGetErrorNames({
   limit = 10,
   useFilters = true,
-}: Omit<UseGetErrorNamesOptions, "page">): UseQueryResult<{ data: ErrorNamesPaginatedResponse }> {
-  return useAnalyticsQuery<{ data: ErrorNamesPaginatedResponse }, ErrorNamesParams>({
+}: Omit<UseGetErrorNamesOptions, "page">): UseQueryResult<ErrorNamesPaginatedResponse> {
+  return useAnalyticsQuery<ErrorNamesPaginatedResponse>({
     key: "error-names",
+    path: "errors/names",
     useFilters,
-    extraParams: { limit },
+    params: { limit },
     staleTime: Infinity,
-    fetch: (site, params) => fetchErrorNames(site, params).then(data => ({ data })),
   });
 }

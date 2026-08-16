@@ -1,16 +1,7 @@
 // Types
 export * from "./types";
 
-// Overview endpoints
-export {
-  fetchOverview,
-  fetchOverviewBucketed,
-  fetchMetric,
-  fetchLiveUserCount,
-  fetchOverviewLite,
-  fetchOverviewBucketedLite,
-  fetchMetricLite,
-} from "./overview";
+// Overview types
 export type {
   GetOverviewResponse,
   GetOverviewBucketedResponse,
@@ -19,17 +10,7 @@ export type {
 } from "./overview";
 
 // Events endpoints
-export {
-  fetchEventBucketed,
-  fetchNewEvents,
-  fetchEventsCursor,
-  fetchEventNames,
-  fetchEventProperties,
-  fetchAutocaptureEvents,
-  fetchAutocaptureValues,
-  fetchOutboundLinks,
-  fetchSiteEventCount,
-} from "./events";
+export { fetchSiteEventCount } from "./events";
 export type {
   Event,
   EventBucketedPoint,
@@ -47,14 +28,7 @@ export type {
 } from "./events";
 
 // Dashboards endpoints
-export {
-  fetchDashboards,
-  fetchDashboard,
-  createDashboard,
-  updateDashboard,
-  deleteDashboard,
-  runDashboardCard,
-} from "./dashboards";
+export { fetchDashboards, fetchDashboard, createDashboard, updateDashboard, deleteDashboard } from "./dashboards";
 export type { RunDashboardCardBody } from "./dashboards";
 
 // Custom query endpoints
@@ -67,8 +41,7 @@ export type {
   RunCustomQueryResponse,
 } from "./customQuery";
 
-// Errors endpoints
-export { fetchErrorNames, fetchErrorEvents, fetchErrorBucketed } from "./errors";
+// Errors types
 export type {
   ErrorNameItem,
   ErrorNamesPaginatedResponse,
@@ -83,7 +56,7 @@ export type {
 } from "./errors";
 
 // Goals endpoints
-export { fetchGoals, fetchGoalTimeSeries, fetchGoalSessions, createGoal, updateGoal, deleteGoal } from "./goals";
+export { createGoal, updateGoal, deleteGoal } from "./goals";
 export type {
   Goal,
   GoalType,
@@ -114,13 +87,7 @@ export type {
 } from "./featureFlags";
 
 // Experiment endpoints
-export {
-  createExperiment,
-  deleteExperiment,
-  fetchExperimentResults,
-  fetchExperiments,
-  updateExperiment,
-} from "./experiments";
+export { createExperiment, deleteExperiment, fetchExperiments, updateExperiment } from "./experiments";
 export type {
   Experiment,
   ExperimentFeatureFlag,
@@ -133,15 +100,7 @@ export type {
 } from "./experiments";
 
 // Funnels endpoints
-export {
-  fetchFunnels,
-  analyzeFunnel,
-  fetchFunnelStepSessions,
-  saveFunnel,
-  deleteFunnel,
-  stepRequiresValue,
-  hasIncompleteSteps,
-} from "./funnels";
+export { saveFunnel, deleteFunnel, stepRequiresValue, hasIncompleteSteps } from "./funnels";
 export type {
   SavedFunnel,
   FunnelStep,
@@ -154,8 +113,7 @@ export type {
   SaveFunnelParams,
 } from "./funnels";
 
-// Performance endpoints
-export { fetchPerformanceOverview, fetchPerformanceTimeSeries, fetchPerformanceByDimension } from "./performance";
+// Performance types
 export type {
   GetPerformanceOverviewResponse,
   GetPerformanceTimeSeriesResponse,
@@ -166,8 +124,7 @@ export type {
   PaginatedPerformanceResponse,
 } from "./performance";
 
-// Bots endpoints
-export { fetchBotDimension, fetchBotOverview, fetchBotTimeSeries } from "./bots";
+// Bots types
 export type {
   BotDimensionKey,
   BotDimensionItem,
@@ -182,7 +139,7 @@ export type {
 } from "./bots";
 
 // Sessions endpoints
-export { fetchSessions, fetchSession, fetchSessionLocations } from "./sessions";
+export { fetchSessions } from "./sessions";
 export type {
   GetSessionsResponse,
   SessionDetails,
@@ -195,14 +152,7 @@ export type {
 } from "./sessions";
 
 // Users endpoints
-export {
-  fetchUsers,
-  fetchUserSessionCount,
-  fetchUserInfo,
-  identifyUser,
-  updateUserTraits,
-  deleteUser,
-} from "./users";
+export { fetchUsers, identifyUser, updateUserTraits, deleteUser } from "./users";
 export type {
   UsersResponse,
   UserInfo,
@@ -219,7 +169,7 @@ export type {
 } from "./users";
 
 // Misc endpoints (retention, journeys, page titles, org event count)
-export { fetchRetention, fetchJourneys, fetchPageTitles, fetchOrgEventCount } from "./misc";
+export { fetchOrgEventCount } from "./misc";
 export type {
   ProcessedRetentionData,
   RetentionMode,
@@ -237,7 +187,7 @@ export type {
 } from "./misc";
 
 // Session Replay endpoints
-export { fetchSessionReplays, fetchSessionReplayEvents, deleteSessionReplay } from "./sessionReplay";
+export { deleteSessionReplay } from "./sessionReplay";
 export type {
   SessionReplayListItem,
   SessionReplayListResponse,
@@ -247,8 +197,7 @@ export type {
   SessionReplaysParams,
 } from "./sessionReplay";
 
-// User Traits endpoints
-export { fetchUserTraitKeys, fetchUserTraitValues, fetchUserTraitValueUsers } from "./userTraits";
+// User Traits types
 export type {
   TraitKey,
   TraitKeysResponse,

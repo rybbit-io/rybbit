@@ -24,7 +24,9 @@ export interface McpAuthContext {
 export class McpAuthenticationError extends Error {
   constructor(
     message: string,
-    public readonly statusCode: 401 | 429 | 503
+    public readonly statusCode: 401 | 429 | 503,
+    /** Seconds to wait before retrying; drives Retry-After on 429/503. */
+    public readonly retryAfterSeconds?: number
   ) {
     super(message);
     this.name = "McpAuthenticationError";
@@ -41,6 +43,15 @@ const defaultDependencies: McpAuthenticatorDependencies = {
   getOAuthSession: async bearerToken => {
     const { auth } = await import("../lib/auth.js");
     return auth.api.getMcpSession({ headers: new Headers({ authorization: `Bearer ${bearerToken}` }) });
+  },
+  consumeRateLimit: async identity => {
+    const { IS_CLOUD } = await import("../lib/const.js");
+    // Self-hosted is not metered, and the auth path must not depend on Redis.
+    if (!IS_CLOUD) {
+      return null;
+    }
+    const { consumeRateLimitForIdentity } = await import("../lib/apiRateLimitPolicy.js");
+    return consumeRateLimitForIdentity(identity);
   },
 };
 
@@ -71,8 +82,19 @@ export function createMcpAuthenticator(dependencies: McpAuthenticatorDependencie
           scopes: identity.statements,
           identity,
         };
-      case "rate_limited":
-        throw new McpAuthenticationError("API key rate limit exceeded", 429);
+      case "rate_limited": {
+        const limit = identity.rateLimit;
+        // A daily-quota rejection is not retriable for hours; telling a client
+        // to come back in 60s would just have it hammer a closed door.
+        const detail = limit?.scope
+          ? ` (${limit.scope} limit${limit.scope === "daily" ? ` of ${limit.dailyLimit}/day` : ""})`
+          : "";
+        throw new McpAuthenticationError(
+          `API key rate limit exceeded${detail}`,
+          429,
+          limit?.retryAfterSeconds
+        );
+      }
       case "verify_error":
         throw new McpAuthenticationError("Rybbit could not verify the API key", 503);
       default:

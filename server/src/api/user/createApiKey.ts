@@ -5,7 +5,7 @@ import { auth } from "../../lib/auth.js";
 import { getSessionFromReq } from "../../lib/auth-utils.js";
 import { apiKeyPermissionsSchema } from "../../lib/scopes.js";
 import { getSubscriptionInner } from "../stripe/getSubscription.js";
-import { API_RATE_LIMIT_WINDOW, IS_CLOUD, PRO_API_RATE_LIMIT, STANDARD_API_RATE_LIMIT } from "../../lib/const.js";
+import { IS_CLOUD } from "../../lib/const.js";
 
 const createApiKeyBodySchema = z.object({
   name: z.string().trim().min(1, "Name is required"),
@@ -16,9 +16,10 @@ const createApiKeyBodySchema = z.object({
 });
 
 /**
- * Creates an API key with plan-appropriate rate limits and optional scoped
- * permissions. On cloud: blocks free/basic, sets standard or pro limits.
- * On self-hosted: uses standard limits as default.
+ * Creates an API key with optional scoped permissions. On cloud: blocks
+ * free/basic plans. Rate limits are not stamped onto the key — they are
+ * resolved from the owner's current plan on every request (lib/apiRateLimit.ts),
+ * so an upgrade applies to keys that already exist.
  */
 export async function createUserApiKey(
   request: FastifyRequest<{ Body: { name: string; expiresIn?: number; permissions?: Record<string, string[]> } }>,
@@ -36,9 +37,6 @@ export async function createUserApiKey(
   const { name, expiresIn, permissions } = parsed.data;
 
   let planName: string | null = null;
-  let rateLimitEnabled = false;
-  let rateLimitMax: number | undefined;
-  let rateLimitTimeWindow: number | undefined;
 
   if (IS_CLOUD) {
     const activeOrgId = (session.session as any).activeOrganizationId;
@@ -54,10 +52,6 @@ export async function createUserApiKey(
         error: "API keys require a Standard or Pro plan. Please upgrade to create API keys.",
       });
     }
-
-    rateLimitEnabled = true;
-    rateLimitTimeWindow = API_RATE_LIMIT_WINDOW;
-    rateLimitMax = planName.includes("pro") || planName === "custom" ? PRO_API_RATE_LIMIT : STANDARD_API_RATE_LIMIT;
   }
 
   const keyLimit = apiKeyLimitForPlan(planName);
@@ -68,9 +62,6 @@ export async function createUserApiKey(
         body: {
           name,
           expiresIn: expiresIn ?? undefined,
-          rateLimitEnabled,
-          rateLimitTimeWindow,
-          rateLimitMax,
           userId: session.user.id,
           ...(permissions ? { permissions: permissions as Record<string, string[]> } : {}),
         },

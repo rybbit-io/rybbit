@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { trackingPayloadSchema } from "./trackEvent.js";
+import { trackingPayloadSchema } from "./trackingPayload.js";
 
 // The payload schema is strict, so app_version/device_model only survive
 // because baseEventFields declares them. Native SDKs send both on every event;

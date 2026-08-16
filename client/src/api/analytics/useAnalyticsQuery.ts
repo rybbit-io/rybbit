@@ -8,9 +8,14 @@ import {
   UseQueryResult,
 } from "@tanstack/react-query";
 import { Time } from "../../components/DateSelector/types";
-import { useStore } from "../../lib/store";
-import { buildApiParams } from "../utils";
-import { CommonApiParams } from "./endpoints/types";
+import { useStore, useTimezone } from "../../lib/store";
+import {
+  AnalyticsContext,
+  AnalyticsDescriptor,
+  AnalyticsRequest,
+  buildAnalyticsRequest,
+  fetchAnalytics,
+} from "./analyticsRequest";
 
 type PeriodTime = "current" | "previous";
 
@@ -23,6 +28,9 @@ export interface AnalyticsContextOptions {
   overrideTime?: Time;
   // Previous period in past-minutes mode means [2x .. 1x] minutes ago.
   doublePastMinutesForPrevious?: boolean;
+  // Endpoints that are not scoped to the selected period (trait keys, saved
+  // funnels) send no window and do not refetch when the date selector moves.
+  useTime?: boolean;
   useFilters?: boolean;
   // Appended to the store filters.
   additionalFilters?: Filter[];
@@ -32,13 +40,24 @@ export interface AnalyticsContextOptions {
 
 /**
  * Resolves the analytics request context (site, time period, filters) from the
- * store once and derives the wire params from it. The queryKey is built from
- * the same params object that is sent to the endpoint, so it is in sync with
- * the request by construction — a hook can no longer forget to list an input
- * and silently serve stale data.
+ * store once and derives the request from it — path plus the exact params that
+ * go on the wire. The queryKey is built from that same request, so it is in
+ * sync with what is sent by construction: a hook can no longer forget to list
+ * an input and silently serve stale data.
+ *
+ * The store is read through selectors so a `selectedStat` or `bucket` change
+ * does not re-render every analytics hook on the page.
  */
-function useAnalyticsParams(options: AnalyticsContextOptions & { extraParams?: Record<string, unknown> }) {
-  const { time, previousTime, site: storeSite, filters } = useStore();
+export function useAnalyticsContext(options: AnalyticsContextOptions = {}): {
+  site: number | string;
+  context: AnalyticsContext;
+} {
+  const storeSite = useStore(state => state.site);
+  const time = useStore(state => state.time);
+  const previousTime = useStore(state => state.previousTime);
+  const filters = useStore(state => state.filters);
+  const timeZone = useTimezone();
+
   const site = options.site ?? storeSite;
 
   const baseTime = options.overrideTime ?? time;
@@ -61,22 +80,25 @@ function useAnalyticsParams(options: AnalyticsContextOptions & { extraParams?: R
         ? [...filters, ...options.additionalFilters]
         : filters;
 
-  const params = { ...buildApiParams(timeToUse, { filters: combinedFilters }), ...options.extraParams };
-  return { site, params };
+  return {
+    site,
+    context: {
+      time: (options.useTime ?? true) ? timeToUse : null,
+      timeZone,
+      filters: combinedFilters,
+    },
+  };
 }
 
-export interface AnalyticsQueryOptions<TData, TParams extends CommonApiParams = CommonApiParams>
-  extends AnalyticsContextOptions {
+function useAnalyticsRequest(options: AnalyticsContextOptions & AnalyticsDescriptor) {
+  const { site, context } = useAnalyticsContext(options);
+  return { site, request: buildAnalyticsRequest(options, context) };
+}
+
+export interface AnalyticsQueryOptions<TData> extends AnalyticsContextOptions, AnalyticsDescriptor {
   // First element(s) of the queryKey. Keep the historical name — mutations
   // invalidate by this prefix (e.g. ["users"], ["user-info", userId]).
   key: string | readonly unknown[];
-  fetch: (site: number | string, params: TParams) => Promise<TData>;
-  // Endpoint params beyond the shared time/filter context (bucket, parameter,
-  // limit, page, ...). Spread into the wire params AND the queryKey.
-  extraParams?: Omit<TParams, keyof CommonApiParams>;
-  // ONLY for values that change the fetcher itself rather than its params
-  // (e.g. the `lite` flag). Everything else is already in the key via params.
-  keyExtras?: readonly unknown[];
   staleTime?: number;
   refetchInterval?: number;
   enabled?: boolean;
@@ -89,19 +111,15 @@ export interface AnalyticsQueryOptions<TData, TParams extends CommonApiParams = 
 const buildQueryKey = (
   key: string | readonly unknown[],
   site: number | string | undefined,
-  params: unknown,
-  keyExtras?: readonly unknown[]
-) => [...(Array.isArray(key) ? key : [key]), site, params, ...(keyExtras ?? [])];
+  request: AnalyticsRequest
+) => [...(Array.isArray(key) ? key : [key]), site, request.path, request.params, request.body];
 
-export function useAnalyticsQuery<TData, TParams extends CommonApiParams = CommonApiParams>(
-  options: AnalyticsQueryOptions<TData, TParams>
-): UseQueryResult<TData> {
-  const { site, params } = useAnalyticsParams(options);
-  const queryKey = buildQueryKey(options.key, site, params, options.keyExtras);
+export function useAnalyticsQuery<TData>(options: AnalyticsQueryOptions<TData>): UseQueryResult<TData> {
+  const { site, request } = useAnalyticsRequest(options);
 
   return useQuery<TData, Error>({
-    queryKey,
-    queryFn: () => options.fetch(site!, params as TParams),
+    queryKey: buildQueryKey(options.key, site, request),
+    queryFn: () => fetchAnalytics<TData>(site!, request),
     staleTime: options.staleTime ?? 60_000,
     refetchInterval: options.refetchInterval,
     placeholderData:
@@ -114,34 +132,45 @@ export function useAnalyticsQuery<TData, TParams extends CommonApiParams = Commo
   });
 }
 
-export interface AnalyticsInfiniteQueryOptions<
-  TPage extends { data: unknown[]; totalCount: number },
-  TParams extends CommonApiParams = CommonApiParams,
-> extends AnalyticsContextOptions {
+export interface AnalyticsInfiniteQueryOptions<TPage, TCursor> extends AnalyticsContextOptions, AnalyticsDescriptor {
   key: string | readonly unknown[];
-  fetchPage: (site: number | string, params: TParams, page: number) => Promise<TPage>;
-  extraParams?: Omit<TParams, keyof CommonApiParams>;
-  keyExtras?: readonly unknown[];
+  initialPageParam: TCursor;
+  // Params that position the request at `cursor` (a page number, an offset, a
+  // timestamp) — merged into the descriptor params for that page.
+  pageParams: (cursor: TCursor) => Record<string, unknown>;
+  getNextPageParam: (lastPage: TPage, allPages: TPage[]) => TCursor | undefined;
   staleTime?: number;
+  refetchInterval?: number;
   enabled?: boolean;
+  refetchOnWindowFocus?: boolean;
 }
 
-export function useAnalyticsInfiniteQuery<
-  TPage extends { data: unknown[]; totalCount: number },
-  TParams extends CommonApiParams = CommonApiParams,
->(options: AnalyticsInfiniteQueryOptions<TPage, TParams>): UseInfiniteQueryResult<InfiniteData<TPage>> {
-  const { site, params } = useAnalyticsParams(options);
-  const queryKey = [...buildQueryKey(options.key, site, params, options.keyExtras), "infinite"];
+export function useAnalyticsInfiniteQuery<TPage, TCursor = number>(
+  options: AnalyticsInfiniteQueryOptions<TPage, TCursor>
+): UseInfiniteQueryResult<InfiniteData<TPage>> {
+  const { site, request } = useAnalyticsRequest(options);
 
-  return useInfiniteQuery({
-    queryKey,
-    queryFn: ({ pageParam }) => options.fetchPage(site!, params as TParams, pageParam as number),
-    initialPageParam: 1,
-    getNextPageParam: (lastPage, allPages) => {
-      const fetchedItemCount = allPages.reduce((acc, page) => acc + page.data.length, 0);
-      return fetchedItemCount >= lastPage.totalCount ? undefined : allPages.length + 1;
-    },
+  return useInfiniteQuery<TPage, Error, InfiniteData<TPage>, readonly unknown[], TCursor>({
+    queryKey: [...buildQueryKey(options.key, site, request), "infinite"],
+    queryFn: ({ pageParam }) =>
+      fetchAnalytics<TPage>(site!, {
+        ...request,
+        params: { ...request.params, ...options.pageParams(pageParam as TCursor) },
+      }),
+    initialPageParam: options.initialPageParam,
+    getNextPageParam: options.getNextPageParam,
     staleTime: options.staleTime ?? 60_000,
+    refetchInterval: options.refetchInterval,
+    refetchOnWindowFocus: options.refetchOnWindowFocus,
     enabled: (options.enabled ?? true) && !!site,
   });
 }
+
+/** Page-numbered pagination over an endpoint that reports a `totalCount`. */
+export const nextPageByTotalCount = <TPage extends { data: unknown[]; totalCount: number }>(
+  lastPage: TPage,
+  allPages: TPage[]
+): number | undefined => {
+  const fetched = allPages.reduce((total, page) => total + page.data.length, 0);
+  return fetched >= lastPage.totalCount ? undefined : allPages.length + 1;
+};

@@ -15,26 +15,27 @@ export async function getTrackingConfig(request: FastifyRequest<{ Params: { site
     // Report replay as off when the plan doesn't include it so the tracking script
     // never loads the recorder (replay payloads would be dropped at ingest anyway)
     const sessionReplay =
-      config.type === "mobile"
-        ? false
-        : (config.sessionReplay && !usageService.isSiteWithoutReplay(config.siteId)) || false;
+      config.type === "mobile" ? false : config.sessionReplay && !usageService.isSiteWithoutReplay(config.siteId);
     const featureFlagsEnabled = await hasFeatureFlagsForRuntime(config.siteId, "client");
 
     // Return tracking configuration
     // This endpoint is public since the analytics script needs to fetch it
+    // Every field below the plan/type overrides arrives already defaulted from
+    // the Site Configuration module — re-applying `?? true` / `|| false` here
+    // would only hide it if that ever stopped being true.
     return reply.send({
       type: config.type,
       featureFlagsEnabled,
       sessionReplay,
-      webVitals: config.type === "mobile" ? false : config.webVitals || false,
-      trackErrors: config.trackErrors || false,
-      trackOutbound: config.trackOutbound ?? true,
-      trackUrlParams: config.trackUrlParams ?? true,
-      trackInitialPageView: config.trackInitialPageView ?? true,
-      trackSpaNavigation: config.trackSpaNavigation ?? true,
-      trackButtonClicks: config.trackButtonClicks || false,
-      trackCopy: config.trackCopy || false,
-      trackFormInteractions: config.trackFormInteractions || false,
+      webVitals: config.type === "mobile" ? false : config.webVitals,
+      trackErrors: config.trackErrors,
+      trackOutbound: config.trackOutbound,
+      trackUrlParams: config.trackUrlParams,
+      trackInitialPageView: config.trackInitialPageView,
+      trackSpaNavigation: config.trackSpaNavigation,
+      trackButtonClicks: config.trackButtonClicks,
+      trackCopy: config.trackCopy,
+      trackFormInteractions: config.trackFormInteractions,
     });
   } catch (error) {
     request.log.error({ err: error }, "Error getting tracking config");

@@ -1,6 +1,6 @@
 import { FastifyReply, FastifyRequest } from "fastify";
 import SqlString from "sqlstring";
-import { getTimeStatement } from "../utils/utils.js";
+import { getTimeStatement } from "../utils/timeWindow.js";
 import { getFilterStatement } from "../utils/getFilterStatement.js";
 import { FilterParams } from "@rybbit/shared";
 import { AUTOCAPTURE_PATTERN_PROPS, AutocaptureTargetType, isAutocaptureTargetType } from "../utils/eventConditions.js";

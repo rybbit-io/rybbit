@@ -42,7 +42,7 @@ export function LiveUserCount() {
 
   const sessions = useMemo(() => {
     if (!sessionsData) return [];
-    return sessionsData.pages.flatMap(page => page.data || []);
+    return sessionsData.pages.flatMap(page => page || []);
   }, [sessionsData]);
 
   // Fetch next page when intersection observer detects the target is visible

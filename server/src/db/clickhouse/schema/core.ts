@@ -32,26 +32,30 @@ const BOT_EVENTS_COLUMNS_TO_ENSURE: ColumnDefinition[] = [
   // Null = the client sent no score and the server inferred nothing.
   { name: "client_bot_score", definition: "client_bot_score Nullable(UInt8)" },
   { name: "client_signal_mask", definition: "client_signal_mask UInt16 DEFAULT 0" },
+  // Which anomaly rules fired and what they summed to. "Rate anomaly" is a
+  // dozen rules with different meanings, so without these an audit row cannot
+  // say why the request was convicted.
+  { name: "anomaly_reasons", definition: "anomaly_reasons String DEFAULT ''" },
+  { name: "anomaly_score", definition: "anomaly_score UInt8 DEFAULT 0" },
 ];
 
-async function ensureBotEventsColumns() {
-  const existingColumns = await getTableColumns("bot_events");
+// Runs against both audit tables: they carry the same columns on purpose, so a
+// column added to one has to reach the other or the shared queries stop working.
+async function ensureBotEventsColumns(table: "bot_events" | "bot_observations") {
+  const existingColumns = await getTableColumns(table);
   const missingColumns = BOT_EVENTS_COLUMNS_TO_ENSURE.filter(column => !existingColumns.has(column.name));
 
   if (missingColumns.length === 0) {
-    logger.debug("Bot events table columns are up to date");
+    logger.debug({ table }, "Bot events table columns are up to date");
     return;
   }
 
-  logger.info(
-    { missingColumns: missingColumns.map(column => column.name) },
-    "Adding missing bot events table columns"
-  );
+  logger.info({ table, missingColumns: missingColumns.map(column => column.name) }, "Adding missing bot table columns");
 
   await execClickhouseInitStep(
-    "add missing bot events columns",
+    `add missing ${table} columns`,
     `
-      ALTER TABLE bot_events
+      ALTER TABLE ${table}
         ${missingColumns.map(column => `ADD COLUMN IF NOT EXISTS ${column.definition}`).join(",\n        ")}
       `,
     { lockAcquireTimeoutSeconds: 15 }
@@ -174,7 +178,9 @@ export async function initializeCoreTables() {
         matched_ua_pattern String DEFAULT '',
         bot_category LowCardinality(String) DEFAULT '',
         client_bot_score Nullable(UInt8),
-        client_signal_mask UInt16 DEFAULT 0
+        client_signal_mask UInt16 DEFAULT 0,
+        anomaly_reasons String DEFAULT '',
+        anomaly_score UInt8 DEFAULT 0
       )
       ENGINE = MergeTree()
       PARTITION BY toYYYYMM(timestamp)
@@ -183,7 +189,59 @@ export async function initializeCoreTables() {
       `
   );
 
-  await ensureBotEventsColumns();
+  await ensureBotEventsColumns("bot_events");
+
+  // Forensic mirror of bot_events for sites with bot blocking turned OFF: the
+  // event is still tracked normally, and this row is the only trace that
+  // detection fired. Columns match bot_events exactly so the same analysis
+  // queries run against either table; only the TTL is shorter.
+  await execClickhouseInitStep(
+    "create bot observations table",
+    `
+      CREATE TABLE IF NOT EXISTS bot_observations (
+        site_id UInt16,
+        timestamp DateTime,
+        session_id String,
+        user_id String,
+        hostname String,
+        pathname String,
+        querystring String,
+        referrer String,
+        browser LowCardinality(String),
+        browser_version LowCardinality(String),
+        operating_system LowCardinality(String),
+        operating_system_version LowCardinality(String),
+        country LowCardinality(FixedString(2)),
+        region LowCardinality(String),
+        city String,
+        lat Float64,
+        lon Float64,
+        screen_width UInt16,
+        screen_height UInt16,
+        device_type LowCardinality(String),
+        type LowCardinality(String) DEFAULT 'pageview',
+        asn Nullable(UInt32),
+        asn_org String DEFAULT '',
+        detected_ua_pattern Bool DEFAULT false,
+        detected_header_heuristics Bool DEFAULT false,
+        detected_client_signals Bool DEFAULT false,
+        detected_bot_asn Bool DEFAULT false,
+        detected_rate_anomaly Bool DEFAULT false,
+        matched_ua_pattern String DEFAULT '',
+        bot_category LowCardinality(String) DEFAULT '',
+        client_bot_score Nullable(UInt8),
+        client_signal_mask UInt16 DEFAULT 0,
+        anomaly_reasons String DEFAULT '',
+        anomaly_score UInt8 DEFAULT 0
+      )
+      ENGINE = MergeTree()
+      PARTITION BY toYYYYMM(timestamp)
+      ORDER BY (site_id, timestamp)
+      TTL timestamp + INTERVAL 30 DAY
+      `
+  );
+
+  await ensureBotEventsColumns("bot_observations");
 
   await execClickhouseInitStep(
     "create session replay events table",
@@ -265,52 +323,5 @@ export async function initializeCoreTables() {
       ALTER TABLE session_replay_metadata
         ADD COLUMN IF NOT EXISTS identified_user_id String DEFAULT ''
       `
-  );
-
-  await execClickhouseInitStep(
-    "create monitor events table",
-    `
-      CREATE TABLE IF NOT EXISTS monitor_events (
-        monitor_id UInt32,
-        organization_id String,
-        timestamp DateTime,
-
-        -- Monitor metadata
-        monitor_type LowCardinality(String), -- 'http', 'tcp'
-        monitor_url String,
-        monitor_name String,
-        region LowCardinality(String) DEFAULT 'local',
-
-        -- Response data
-        status LowCardinality(String), -- 'success', 'failure', 'timeout'
-        status_code Nullable(UInt16), -- HTTP status code
-        response_time_ms UInt32,
-
-        -- HTTP timing breakdown (all in milliseconds)
-        dns_time_ms Nullable(UInt32),
-        tcp_time_ms Nullable(UInt32),
-        tls_time_ms Nullable(UInt32),
-        ttfb_ms Nullable(UInt32), -- Time to first byte
-        transfer_time_ms Nullable(UInt32),
-
-        -- Validation results
-        validation_errors Array(String), -- Array of failed validation rules
-
-        -- Response metadata (for HTTP)
-        response_headers Map(String, String),
-        response_size_bytes Nullable(UInt32),
-
-        -- TCP specific
-        port Nullable(UInt16),
-
-        -- Error information
-        error_message Nullable(String),
-        error_type Nullable(String) -- 'dns_failure', 'connection_timeout', 'ssl_error', etc.
-      )
-      ENGINE = MergeTree()
-      PARTITION BY toYYYYMM(timestamp)
-      ORDER BY (organization_id, monitor_id, timestamp)
-      SETTINGS ttl_only_drop_parts = 1
-    `
   );
 }

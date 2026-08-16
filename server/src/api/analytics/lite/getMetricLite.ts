@@ -2,7 +2,8 @@ import { FilterParams } from "@rybbit/shared";
 import { FastifyReply, FastifyRequest } from "fastify";
 import { getMetric } from "../getMetric.js";
 import { analyticsRoute, runAnalyticsQuery } from "../utils/analyticsQuery.js";
-import { getLiteSessionFilter, getLiteTimeStatement, hasLiteFilters } from "./utils.js";
+import { getTimeStatement } from "../utils/timeWindow.js";
+import { getLiteSessionFilter, hasLiteDatetimeRange, hasLiteFilters } from "./utils.js";
 
 // Lite metric supports only dimensions backed by MVs:
 //   - pathname → pathname_hourly_mv_target
@@ -43,7 +44,7 @@ const getLitePagination = (query: GetMetricLiteRequest["Querystring"]) => {
 export const buildMetricLiteSessionQuery = (query: GetMetricLiteRequest["Querystring"], filterSql: string) => {
   const { parameter } = query;
   const { limit, offsetStatement } = getLitePagination(query);
-  const sessionsTime = getLiteTimeStatement(query, "start_time");
+  const sessionsTime = getTimeStatement(query, "start_time");
   const nonEmpty = parameter === "device_type" ? `AND ${parameter} <> ''` : "";
   return `
       SELECT
@@ -83,7 +84,7 @@ export const buildMetricLiteSessionQuery = (query: GetMetricLiteRequest["Queryst
 export const buildMetricLiteQuery = (query: GetMetricLiteRequest["Querystring"]): string | null => {
   const { parameter } = query;
   const { limit, offsetStatement } = getLitePagination(query);
-  const timeStatement = getLiteTimeStatement(query, "event_hour");
+  const timeStatement = getTimeStatement(query, "event_hour");
 
   // Percentages are computed in an outer pass so the window function
   // operates on already-grouped rows. `sum(sum(...)) OVER ()` is illegal
@@ -170,6 +171,12 @@ export const getMetricLite = analyticsRoute<GetMetricLiteRequest>(
   "metric",
   async (req: FastifyRequest<GetMetricLiteRequest>, res: FastifyReply) => {
     const site = Number(req.params.siteId);
+
+    // The hourly rollups can't express a sub-hour window.
+    if (hasLiteDatetimeRange(req.query)) {
+      return getMetric(req as unknown as Parameters<typeof getMetric>[0], res);
+    }
+
     const filtersPresent = hasLiteFilters(req.query.filters);
 
     // Pull totalCount off the window column and drop it from the returned rows so

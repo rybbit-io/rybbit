@@ -1,8 +1,9 @@
-import { and, eq } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { FastifyReply, FastifyRequest } from "fastify";
 import { z } from "zod";
 import { db } from "../../db/postgres/postgres.js";
-import { member, organization, sites } from "../../db/postgres/schema.js";
+import { organization, sites } from "../../db/postgres/schema.js";
+import { getOrgMembership, isOrgAdmin } from "../../lib/access.js";
 import { IS_CLOUD } from "../../lib/const.js";
 import { getSubscriptionInner } from "../stripe/getSubscription.js";
 import { applySiteMove } from "./applySiteMove.js";
@@ -52,13 +53,11 @@ export async function moveSite(
     // Caller must be an admin/owner of the target organization. This runs BEFORE the
     // org-existence check so a caller without target-org access gets the same 403
     // whether or not the org exists — no org-ID existence oracle.
-    const targetMembership = await db.query.member.findFirst({
-      where: and(eq(member.userId, userId), eq(member.organizationId, targetOrganizationId)),
-    });
+    const targetMembership = await getOrgMembership(userId, targetOrganizationId);
     if (!targetMembership) {
       return reply.status(403).send({ error: "You are not a member of the target organization" });
     }
-    if (targetMembership.role !== "admin" && targetMembership.role !== "owner") {
+    if (!isOrgAdmin(targetMembership)) {
       return reply.status(403).send({ error: "You must be an admin or owner of the target organization" });
     }
 

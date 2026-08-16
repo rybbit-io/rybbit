@@ -32,7 +32,7 @@ export function getPdfDateRange(time: Time, timeZone: string): { startDate: stri
     return { startDate: time.startDate, endDate: time.endDate };
   }
 
-  const { startDate, endDate } = getStartAndEndDate(time);
+  const { startDate, endDate } = getStartAndEndDate(time, timeZone);
   return {
     startDate: startDate ?? today.toISODate() ?? "",
     endDate: endDate ?? today.toISODate() ?? "",

@@ -1,5 +1,15 @@
-import { FastifyRequest } from "fastify";
-import { lookupAsn, type AsnInfo } from "../../../db/geolocation/asn.js";
+import {
+  CLIENT_BOT_SIGNAL_MASKS,
+  CLIENT_BOT_SIGNAL_WEIGHTS,
+  ClientBotSignalName,
+  getClientBotSignalNames,
+  getScreenDimensionSignals,
+  MAX_CLIENT_BOT_SCORE,
+  scoreFromMask,
+  STRONG_CLIENT_BOT_SIGNAL_BITS,
+} from "@rybbit/shared";
+import type { IncomingHttpHeaders } from "http";
+import { lookupAsn, type AsnInfo, type AsnLookup } from "../../../db/geolocation/asn.js";
 import { logger } from "../../../lib/logger/logger.js";
 import type { AnomalyCounters } from "./anomalyScorer.js";
 import { observeTrackingAnomaly } from "./anomalyScorer.js";
@@ -8,13 +18,15 @@ import { recordBotBlockingRequest, recordBotDetections } from "./botDetectionSta
 import { classifyBotAsn } from "./botProviderAsns.js";
 import { CLIENT_BOT_SCORE_THRESHOLD } from "./config.js";
 import { detectBot } from "./headerHeuristics.js";
+import { classifyStaleBrowserVersion } from "./staleBrowserVersion.js";
 import { classifyUA } from "./uaBots/index.js";
 
 // Per-detection logging is verbose and costly at high traffic; off by default.
 const LOG_BOT_DETECTIONS = false;
 
 interface BotBlockingPayload {
-  siteId: string;
+  /** Numeric Site id — the one ingestion uses everywhere else. */
+  siteId: number;
   userAgent?: string;
   clientBotScore?: number;
   clientBotSignalMask?: number;
@@ -24,11 +36,18 @@ interface BotBlockingPayload {
   hostname?: string;
   pathname?: string;
   eventType?: string;
+  /** As it arrived, before self-referrers are cleared for storage. */
+  referrer?: string;
   ipAddress: string;
 }
 
 interface BotBlockingInput {
-  request: FastifyRequest;
+  /**
+   * The request's headers. Header heuristics are the only thing this needs from
+   * the HTTP request, so it takes headers rather than a `FastifyRequest` —
+   * ingestion can then be driven from a plain value.
+   */
+  headers: IncomingHttpHeaders;
   blockBots: boolean;
   trustedServerSideIngestion?: boolean;
   /**
@@ -38,6 +57,8 @@ interface BotBlockingInput {
    */
   isMobileSite?: boolean;
   payload: BotBlockingPayload;
+  /** Request-scoped ASN resolver, shared with the rest of the ingestion path. */
+  lookupAsn?: AsnLookup;
 }
 
 interface AnomalyReason {
@@ -48,58 +69,6 @@ interface AnomalyReason {
   windowSeconds: number;
 }
 
-const CLIENT_SIGNAL_MASKS = {
-  automationApi: 1 << 0,
-  zeroOuterDimensions: 1 << 1,
-  missingChrome: 1 << 2,
-  swiftShader: 1 << 3,
-  emptyPlugins: 1 << 4,
-  defaultViewport800x600: 1 << 5,
-  defaultViewport1024x768: 1 << 6,
-  impossibleDimensions: 1 << 7,
-  outerDimensionsWeird: 1 << 8,
-  pluginApiAbsence: 1 << 9,
-  defaultViewport1280x1200: 1 << 10,
-} as const;
-
-type ClientSignalName = keyof typeof CLIENT_SIGNAL_MASKS;
-
-// Must mirror the weights in analytics-script/botSignals.ts — the client sends
-// one cached score, and the server recomputes it from the signal mask to split
-// it into convicting vs. corroborating evidence.
-const CLIENT_SIGNAL_WEIGHTS: Record<ClientSignalName, number> = {
-  automationApi: 3,
-  zeroOuterDimensions: 2,
-  missingChrome: 1,
-  swiftShader: 1,
-  emptyPlugins: 1,
-  defaultViewport800x600: 3,
-  defaultViewport1024x768: 3,
-  impossibleDimensions: 3,
-  outerDimensionsWeird: 2,
-  pluginApiAbsence: 0,
-  defaultViewport1280x1200: 3,
-};
-
-// Signals that are automation-specific enough to convict on their own. The
-// remaining (weak) signals — empty plugins, SwiftShader, zero outer dimensions,
-// missing window.chrome — all occur on real devices (Android Chrome ships empty
-// plugins; low-end GPUs fall back to SwiftShader; prerendered pages report zero
-// outer dimensions), so they corroborate other layers but never convict.
-const STRONG_CLIENT_SIGNAL_BITS =
-  CLIENT_SIGNAL_MASKS.automationApi |
-  CLIENT_SIGNAL_MASKS.impossibleDimensions |
-  CLIENT_SIGNAL_MASKS.defaultViewport800x600 |
-  CLIENT_SIGNAL_MASKS.defaultViewport1024x768 |
-  CLIENT_SIGNAL_MASKS.defaultViewport1280x1200;
-
-function sumClientSignalWeights(mask: number): number {
-  return Object.entries(CLIENT_SIGNAL_MASKS).reduce(
-    (total, [name, bit]) => ((mask & bit) !== 0 ? total + CLIENT_SIGNAL_WEIGHTS[name as ClientSignalName] : total),
-    0
-  );
-}
-
 export interface BotBlockingDetection {
   layer: BotDetectionMethod;
   botCategory?: string | null;
@@ -108,7 +77,7 @@ export interface BotBlockingDetection {
   score?: number;
   clientBotScore?: number;
   clientBotSignalMask?: number;
-  clientSignals?: ClientSignalName[];
+  clientSignals?: ClientBotSignalName[];
   ip?: string;
   asn?: number;
   asnOrg?: string;
@@ -132,10 +101,27 @@ export interface BotEventProperties {
   botCategory: string;
   clientBotScore?: number;
   clientSignalMask?: number;
+  /**
+   * Which anomaly rules fired, comma-separated, and what they summed to. The
+   * other layers name themselves — a UA pattern or an ASN is its own
+   * explanation — but "rate anomaly" covers a dozen rules with very different
+   * meanings, and without these an audit row cannot answer why the request was
+   * convicted. That question is the entire reason `bot_observations` exists.
+   */
+  anomalyReasons: string;
+  anomalyScore: number;
 }
 
 export interface BotDetectionResult {
   isBot: true;
+  /**
+   * Whether this detection is acted on. Detection and enforcement are separate
+   * concerns: every site is evaluated, but only a site with bot blocking on has
+   * its bot traffic diverted out of `events`. A detection with `enforced: false`
+   * is recorded to `bot_observations` and the event is tracked as normal, so a
+   * site that has opted out still produces evidence of what it is receiving.
+   */
+  enforced: boolean;
   message: string;
   detections: BotBlockingDetection[];
   eventProperties: BotEventProperties;
@@ -148,6 +134,7 @@ function buildBotEventProperties(
 ): BotEventProperties {
   const detectionLayers = new Set(detections.map(detection => detection.layer));
   const uaDetection = detections.find(detection => detection.layer === "ua_pattern");
+  const anomalyDetection = detections.find(detection => detection.layer === "rate_anomaly");
 
   return {
     isBot: true,
@@ -162,94 +149,96 @@ function buildBotEventProperties(
     botCategory: uaDetection?.botCategory ?? "",
     clientBotScore: clientSignalResult.scoreForStats,
     clientSignalMask: clientSignalResult.maskForStats,
+    anomalyReasons: (anomalyDetection?.anomalyReasons ?? []).map(reason => reason.rule).join(","),
+    anomalyScore: anomalyDetection?.score ?? 0,
   };
 }
 
-function isFiniteDimension(value: unknown): value is number {
-  return typeof value === "number" && Number.isFinite(value);
-}
-
-function isDesktopUserAgent(userAgent: string) {
-  return /Windows NT|Macintosh|X11|Linux x86_64/.test(userAgent) && !/Mobile|Android|iPhone|iPad/.test(userAgent);
-}
-
-function getClientSignalNames(mask: number): ClientSignalName[] {
-  return Object.entries(CLIENT_SIGNAL_MASKS).flatMap(([name, bit]) =>
-    (mask & bit) !== 0 ? [name as ClientSignalName] : []
-  );
-}
-
-function getClientSignalResult(payload: BotBlockingPayload, userAgent: string) {
+function getClientSignalResult(
+  payload: BotBlockingPayload,
+  userAgent: string,
+  hasReportableScreen: boolean
+) {
   const hasClientScore = typeof payload.clientBotScore === "number" && Number.isFinite(payload.clientBotScore);
   const hasClientMask = typeof payload.clientBotSignalMask === "number" && Number.isFinite(payload.clientBotSignalMask);
   const rawMask = hasClientMask ? payload.clientBotSignalMask! : 0;
   let mask = rawMask;
   let inferredScore = 0;
 
-  function addInferredSignal(name: ClientSignalName, weight: number) {
-    const bit = CLIENT_SIGNAL_MASKS[name];
+  function addInferredSignal(name: ClientBotSignalName) {
+    const bit = CLIENT_BOT_SIGNAL_MASKS[name];
     if ((mask & bit) === 0) {
       mask |= bit;
     }
 
     if (!hasClientScore || (rawMask & bit) === 0) {
-      inferredScore += weight;
+      inferredScore += CLIENT_BOT_SIGNAL_WEIGHTS[name];
     }
   }
 
+  // Re-derived server-side rather than trusted from the client mask, so the
+  // rules apply to every hit regardless of which tracker version sent it. An
+  // event that reports no dimensions at all says nothing about its display, so
+  // the geometry rules are skipped — but the skip itself is recorded, weakly, so
+  // that "no dimensions" is visible in the mask instead of passing silently. It
+  // is only raised where a screen was expected: a native SDK and a trusted
+  // server-side integration both legitimately have none, and counting them would
+  // make the signal useless for reading adoption or confirming a deploy.
   const { screenWidth, screenHeight } = payload;
-  const hasScreenDimensions = screenWidth !== undefined || screenHeight !== undefined;
-  if (
-    hasScreenDimensions &&
-    (!isFiniteDimension(screenWidth) ||
-      !isFiniteDimension(screenHeight) ||
-      screenWidth <= 0 ||
-      screenHeight <= 0 ||
-      screenWidth > 100000 ||
-      screenHeight > 100000)
-  ) {
-    addInferredSignal("impossibleDimensions", 3);
-  } else if (isFiniteDimension(screenWidth) && isFiniteDimension(screenHeight) && isDesktopUserAgent(userAgent)) {
-    if (screenWidth === 800 && screenHeight === 600) {
-      addInferredSignal("defaultViewport800x600", 3);
+  if (screenWidth !== undefined || screenHeight !== undefined) {
+    for (const signal of getScreenDimensionSignals(screenWidth ?? NaN, screenHeight ?? NaN, userAgent)) {
+      addInferredSignal(signal);
     }
-    if (screenWidth === 1024 && screenHeight === 768) {
-      addInferredSignal("defaultViewport1024x768", 3);
-    }
-    if (screenWidth === 1280 && screenHeight === 1200) {
-      addInferredSignal("defaultViewport1280x1200", 3);
-    }
+  } else if (hasReportableScreen) {
+    addInferredSignal("missingScreenDimensions");
   }
 
-  const score = Math.min((hasClientScore ? payload.clientBotScore! : 0) + inferredScore, 10);
+  const score = Math.min((hasClientScore ? payload.clientBotScore! : 0) + inferredScore, MAX_CLIENT_BOT_SCORE);
 
   // Score contributed by strong (convicting) signals only. Derived from the
   // mask, not the client's opaque score — a score sent without a mask cannot be
   // decomposed, so it can only ever corroborate.
-  const strongScore = sumClientSignalWeights(mask & STRONG_CLIENT_SIGNAL_BITS);
+  const strongScore = scoreFromMask(mask & STRONG_CLIENT_BOT_SIGNAL_BITS);
 
   return {
     score,
     strongScore,
     mask,
-    signalNames: getClientSignalNames(mask),
+    signalNames: getClientBotSignalNames(mask),
     scoreForStats: hasClientScore || inferredScore > 0 ? score : undefined,
     maskForStats: hasClientMask || mask !== 0 ? mask : undefined,
+    hasClientMask,
+    hasClientScore,
   };
 }
 
 export async function checkBotBlocking({
-  request,
+  headers,
   blockBots,
   trustedServerSideIngestion = false,
   isMobileSite = false,
   payload,
+  lookupAsn: asnLookup = lookupAsn,
 }: BotBlockingInput): Promise<BotDetectionResult | null> {
-  const userAgent = payload.userAgent || (request.headers["user-agent"] as string) || "";
-  const clientSignalResult = getClientSignalResult(payload, userAgent);
-  recordBotBlockingRequest(clientSignalResult.scoreForStats, clientSignalResult.maskForStats);
+  const userAgent = payload.userAgent || (headers["user-agent"] as string) || "";
+  const clientSignalResult = getClientSignalResult(payload, userAgent, !isMobileSite && !trustedServerSideIngestion);
+  recordBotBlockingRequest(
+    clientSignalResult.scoreForStats,
+    clientSignalResult.maskForStats,
+    clientSignalResult.hasClientMask,
+    clientSignalResult.hasClientScore
+  );
 
-  if (!blockBots || trustedServerSideIngestion) {
+  // Trusted server-side ingestion is authenticated first-party traffic that
+  // reports its own IP and user agent: none of the layers below are meaningful
+  // against it, and several would convict it outright. It is the only traffic
+  // that skips detection.
+  //
+  // `blockBots` deliberately does NOT skip detection. It decides what happens to
+  // a detection, not whether one is looked for — a site that has turned blocking
+  // off used to get no evaluation at all, which left it with neither protection
+  // nor any record of what it was receiving.
+  if (trustedServerSideIngestion) {
     return null;
   }
 
@@ -276,10 +265,22 @@ export async function checkBotBlocking({
         botCategory: uaClassification.category,
         matchedPattern: uaClassification.matchedPattern,
       });
+    } else {
+      // Layer 1b: a browser release too old to have run the tracker that
+      // reported the hit. Shares the ua_pattern layer so it lands in the
+      // existing bot_category/matched_ua_pattern columns for auditing.
+      const staleBrowser = classifyStaleBrowserVersion(userAgent);
+      if (staleBrowser.isStale) {
+        addDetection("Bot detected using ua-pattern", {
+          layer: "ua_pattern",
+          botCategory: "stale_version",
+          matchedPattern: staleBrowser.matchedVersion,
+        });
+      }
     }
 
     // Layer 2: Header heuristic bot detection
-    const detection = detectBot(request, userAgent);
+    const detection = detectBot(headers, userAgent);
     if (detection.isBot) {
       addDetection("Bot detected using header heuristics", {
         layer: "header_heuristics",
@@ -314,7 +315,7 @@ export async function checkBotBlocking({
   let asnInfo: AsnInfo | null = null;
   let supportingHostingAsnDetection: BotBlockingDetection | null = null;
   if (ipForAsn) {
-    asnInfo = lookupAsn(ipForAsn);
+    asnInfo = asnLookup(ipForAsn);
     const botAsnMatch = classifyBotAsn(asnInfo?.asn);
     if (asnInfo && botAsnMatch.isBotInfrastructure) {
       const asnDetection: BotBlockingDetection = {
@@ -343,6 +344,7 @@ export async function checkBotBlocking({
     hostname: payload.hostname,
     pathname: payload.pathname,
     eventType: payload.eventType,
+    referrer: payload.referrer,
     hasClientBotScore: typeof payload.clientBotScore === "number",
     screenWidth: payload.screenWidth,
     screenHeight: payload.screenHeight,
@@ -383,10 +385,14 @@ export async function checkBotBlocking({
     );
   }
 
-  recordBotDetections(detections.map(detection => detection.layer));
+  recordBotDetections(
+    detections.map(detection => detection.layer),
+    blockBots
+  );
 
   return {
     isBot: true,
+    enforced: blockBots,
     message: blockMessage ?? "Bot detected",
     detections,
     eventProperties: buildBotEventProperties(detections, asnInfo, clientSignalResult),

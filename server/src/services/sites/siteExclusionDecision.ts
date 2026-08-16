@@ -1,4 +1,4 @@
-import { lookupAsn } from "../../db/geolocation/asn.js";
+import { lookupAsn, type AsnLookup } from "../../db/geolocation/asn.js";
 import { getLocation } from "../../db/geolocation/geolocation.js";
 import { matchesCIDR, matchesRange } from "../../lib/ipUtils.js";
 import { logger } from "../../lib/logger/logger.js";
@@ -29,6 +29,12 @@ export type SiteExclusionRequest = {
   querystring?: string;
   hostname?: string;
   userAgent?: string;
+  /**
+   * ASN resolver for ASN exclusions. Tracking ingestion passes its
+   * request-scoped one so candidate IPs already looked up elsewhere in the
+   * request aren't resolved a second time.
+   */
+  lookupAsn?: AsnLookup;
 };
 
 export type SiteExclusionReason = "ip" | "asn" | "country" | "path" | "query_param" | "hostname" | "user_agent";
@@ -167,8 +173,9 @@ export async function decideSiteExclusion(
       configuration.excludedASNs.map(parseAsnPattern).filter((asn): asn is number => asn !== null)
     );
 
+    const asnLookup = request.lookupAsn ?? lookupAsn;
     for (const ip of ipsToCheck) {
-      const asnInfo = lookupAsn(ip);
+      const asnInfo = asnLookup(ip);
       if (asnInfo && excludedAsnNumbers.has(asnInfo.asn)) {
         return excluded("asn", "ASN", `AS${asnInfo.asn}`);
       }

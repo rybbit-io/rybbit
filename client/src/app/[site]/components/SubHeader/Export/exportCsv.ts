@@ -1,18 +1,13 @@
-import { FilterParameter } from "@rybbit/shared";
-import {
-  fetchEventNames,
-  fetchMetric,
-  fetchOutboundLinks,
-  fetchOverviewBucketed,
-} from "../../../../../api/analytics/endpoints";
-import { getStartAndEndDate } from "../../../../../api/utils";
+import { Filter, FilterParameter } from "@rybbit/shared";
+import { buildAnalyticsRequest, fetchAnalytics } from "../../../../../api/analytics/analyticsRequest";
 import { fetchGSCConnectionStatus, fetchGSCData, GSCDimension } from "../../../../../api/gsc/endpoints";
-import { CSVFile, downloadZip, formatDateForFilename } from "../../../../../lib/export";
+import { getGSCDateRange } from "../../../../../api/gsc/gscDateRange";
 import { Time } from "../../../../../components/DateSelector/types";
-import { Filter } from "@rybbit/shared";
+import { CSVFile, downloadZip, formatDateForFilename } from "../../../../../lib/export";
 
-// Metric parameters for each section
-const REFERRER_METRICS: { param: FilterParameter; filename: string }[] = [
+// One row per exported file: the analytics read that produces it.
+const METRIC_FILES: { param: FilterParameter; filename: string }[] = [
+  // Referrers
   { param: "referrer", filename: "referrers.csv" },
   { param: "channel", filename: "channels.csv" },
   { param: "utm_source", filename: "utm-source.csv" },
@@ -20,31 +15,46 @@ const REFERRER_METRICS: { param: FilterParameter; filename: string }[] = [
   { param: "utm_campaign", filename: "utm-campaign.csv" },
   { param: "utm_term", filename: "utm-term.csv" },
   { param: "utm_content", filename: "utm-content.csv" },
-];
-
-const PAGE_METRICS: { param: FilterParameter; filename: string }[] = [
+  // Pages
   { param: "pathname", filename: "pages.csv" },
   { param: "page_title", filename: "page-titles.csv" },
   { param: "entry_page", filename: "entry-pages.csv" },
   { param: "exit_page", filename: "exit-pages.csv" },
   { param: "hostname", filename: "hostnames.csv" },
-];
-
-const DEVICE_METRICS: { param: FilterParameter; filename: string }[] = [
+  // Devices
   { param: "browser", filename: "browsers.csv" },
   { param: "device_type", filename: "devices.csv" },
   { param: "device_model", filename: "device-models.csv" },
   { param: "app_version", filename: "app-versions.csv" },
   { param: "operating_system", filename: "operating-systems.csv" },
   { param: "dimensions", filename: "screen-dimensions.csv" },
-];
-
-const COUNTRY_METRICS: { param: FilterParameter; filename: string }[] = [
+  // Locations
   { param: "country", filename: "countries.csv" },
   { param: "region", filename: "regions.csv" },
   { param: "city", filename: "cities.csv" },
   { param: "language", filename: "languages.csv" },
   { param: "timezone", filename: "timezones.csv" },
+];
+
+type ExportDescriptor = {
+  filename: string;
+  path: string;
+  params?: Record<string, unknown>;
+  // Metric responses are `{ data, totalCount }`; the rest are plain rows.
+  rows?: (payload: any) => Record<string, unknown>[];
+};
+
+const EXPORTS: ExportDescriptor[] = [
+  ...METRIC_FILES.map(({ param, filename }) => ({
+    filename,
+    path: "metric",
+    params: { parameter: param },
+    rows: (payload: { data: Record<string, unknown>[] }) => payload.data,
+  })),
+  { filename: "overview-timeseries.csv", path: "overview/time-series", params: { bucket: "day" } },
+  { filename: "weekdays-heatmap.csv", path: "overview/time-series", params: { bucket: "hour" } },
+  { filename: "events.csv", path: "events/names" },
+  { filename: "outbound-links.csv", path: "events/outbound" },
 ];
 
 const GSC_DIMENSIONS: { dimension: GSCDimension; filename: string }[] = [
@@ -62,156 +72,58 @@ interface ExportCsvParams {
 }
 
 export async function exportCsv({ site, time, filters, timeZone }: ExportCsvParams): Promise<number> {
-  const csvFiles: CSVFile[] = [];
+  // Same request builder the dashboard uses, so the export covers every time
+  // mode — including past-minutes and exact-datetime ranges.
+  const context = { time, timeZone, filters };
 
-  // Convert time to API params
-  const { startDate, endDate } = getStartAndEndDate(time);
-  const commonParams = {
-    startDate: startDate ?? "",
-    endDate: endDate ?? "",
-    timeZone,
-    filters,
-  };
-
-  // Fetch all metrics in parallel
-  const allMetrics = [
-    ...REFERRER_METRICS,
-    ...PAGE_METRICS,
-    ...DEVICE_METRICS,
-    ...COUNTRY_METRICS,
-  ];
-
-  const metricPromises = allMetrics.map(async ({ param, filename }) => {
+  const analyticsFiles = EXPORTS.map(async ({ filename, path, params, rows }) => {
     try {
-      const result = await fetchMetric(site, { ...commonParams, parameter: param });
-      return { filename, data: result.data as Record<string, unknown>[] };
+      const payload = await fetchAnalytics<unknown>(site, buildAnalyticsRequest({ path, params }, context));
+      return { filename, data: rows ? rows(payload) : (payload as Record<string, unknown>[]) };
     } catch {
-      console.warn(`Failed to fetch ${param}`);
+      console.warn(`Failed to fetch ${filename}`);
       return { filename, data: [] };
     }
   });
 
-  // Fetch overview bucketed data
-  const overviewPromise = (async () => {
-    try {
-      const data = await fetchOverviewBucketed(site, { ...commonParams, bucket: "day" });
-      return {
-        filename: "overview-timeseries.csv",
-        data: data as unknown as Record<string, unknown>[],
-      };
-    } catch {
-      console.warn("Failed to fetch overview bucketed");
-      return { filename: "overview-timeseries.csv", data: [] };
-    }
-  })();
-
-  // Fetch weekdays heatmap data (hourly bucketed)
-  const weekdaysPromise = (async () => {
-    try {
-      const data = await fetchOverviewBucketed(site, { ...commonParams, bucket: "hour" });
-      return {
-        filename: "weekdays-heatmap.csv",
-        data: data as unknown as Record<string, unknown>[],
-      };
-    } catch {
-      console.warn("Failed to fetch weekdays data");
-      return { filename: "weekdays-heatmap.csv", data: [] };
-    }
-  })();
-
-  // Fetch events data
-  const eventsPromise = (async () => {
-    try {
-      const data = await fetchEventNames(site, commonParams);
-      return {
-        filename: "events.csv",
-        data: data as unknown as Record<string, unknown>[],
-      };
-    } catch {
-      console.warn("Failed to fetch events");
-      return { filename: "events.csv", data: [] };
-    }
-  })();
-
-  // Fetch outbound links
-  const outboundPromise = (async () => {
-    try {
-      const data = await fetchOutboundLinks(site, commonParams);
-      return {
-        filename: "outbound-links.csv",
-        data: data as unknown as Record<string, unknown>[],
-      };
-    } catch {
-      console.warn("Failed to fetch outbound links");
-      return { filename: "outbound-links.csv", data: [] };
-    }
-  })();
-
-  // Check GSC connection and fetch if connected
-  const gscPromises = (async () => {
+  const gscFiles = (async (): Promise<CSVFile[]> => {
     try {
       const status = await fetchGSCConnectionStatus(site);
       if (!status.connected) {
         return [];
       }
 
-      const gscResults = await Promise.all(
+      // GSC only serves whole-day ranges, so the dashboard window is widened
+      // the same way the GSC dashboard section widens it.
+      const { startDate, endDate } = getGSCDateRange(time, timeZone);
+
+      return await Promise.all(
         GSC_DIMENSIONS.map(async ({ dimension, filename }) => {
           try {
-            const { startDate, endDate } = getStartAndEndDate(time);
-            const data = await fetchGSCData(site, {
-              dimension,
-              startDate: startDate ?? "",
-              endDate: endDate ?? "",
-              timeZone,
-            });
-            return {
-              filename,
-              data: data as unknown as Record<string, unknown>[],
-            };
+            const data = await fetchGSCData(site, { dimension, startDate, endDate, timeZone });
+            return { filename, data: data as unknown as Record<string, unknown>[] };
           } catch {
             console.warn(`Failed to fetch GSC ${dimension}`);
             return { filename, data: [] };
           }
         })
       );
-      return gscResults;
     } catch {
       console.warn("Failed to check GSC connection");
       return [];
     }
   })();
 
-  // Wait for all fetches to complete
-  const [metricResults, overview, weekdays, events, outbound, gscResults] = await Promise.all([
-    Promise.all(metricPromises),
-    overviewPromise,
-    weekdaysPromise,
-    eventsPromise,
-    outboundPromise,
-    gscPromises,
-  ]);
+  const [analyticsResults, gscResults] = await Promise.all([Promise.all(analyticsFiles), gscFiles]);
 
-  // Collect all CSV files
-  csvFiles.push(...metricResults);
-  csvFiles.push(overview);
-  csvFiles.push(weekdays);
-  csvFiles.push(events);
-  csvFiles.push(outbound);
-  csvFiles.push(...gscResults);
-
-  // Filter out empty files
+  const csvFiles: CSVFile[] = [...analyticsResults, ...gscResults];
   const nonEmptyFiles = csvFiles.filter(f => f.data.length > 0);
 
   if (nonEmptyFiles.length === 0) {
     throw new Error("No data to export");
   }
 
-  // Generate ZIP filename
-  const dateStr = formatDateForFilename();
-  const zipFilename = `rybbit-export-${site}-${dateStr}.zip`;
-
-  // Download the ZIP
+  const zipFilename = `rybbit-export-${site}-${formatDateForFilename()}.zip`;
   await downloadZip(nonEmptyFiles, zipFilename);
 
   return nonEmptyFiles.length;

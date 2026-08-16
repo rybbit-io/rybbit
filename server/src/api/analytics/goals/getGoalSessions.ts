@@ -2,7 +2,7 @@ import { FastifyReply, FastifyRequest } from "fastify";
 import { db } from "../../../db/postgres/postgres.js";
 import { goals } from "../../../db/postgres/schema.js";
 import { eq } from "drizzle-orm";
-import { getTimeStatement } from "../utils/utils.js";
+import { getTimeStatement } from "../utils/timeWindow.js";
 import { FilterParams } from "@rybbit/shared";
 import { GetSessionsResponse } from "../sessions/getSessions.js";
 import { analyticsRoute, runAnalyticsQuery } from "../utils/analyticsQuery.js";

@@ -1,7 +1,8 @@
-import { eq, and, inArray } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 import { FastifyReply, FastifyRequest } from "fastify";
 import { db } from "../../db/postgres/postgres.js";
-import { team, teamMember, teamSiteAccess, sites, member, user } from "../../db/postgres/schema.js";
+import { team, teamMember, teamSiteAccess, sites, user } from "../../db/postgres/schema.js";
+import { getOrgMembership, isOrgAdmin } from "../../lib/access.js";
 import { getUserIdFromRequest } from "../../lib/auth-utils.js";
 
 export async function listTeams(
@@ -15,16 +16,7 @@ export async function listTeams(
     const userId = request.user?.id ?? (await getUserIdFromRequest(request));
 
     // Get user's membership in this org
-    const memberRecord = userId
-      ? await db
-          .select({ id: member.id, role: member.role })
-          .from(member)
-          .where(and(eq(member.organizationId, organizationId), eq(member.userId, userId)))
-          .limit(1)
-      : [];
-
-    const isAdminOrOwner =
-      memberRecord.length > 0 && (memberRecord[0].role === "admin" || memberRecord[0].role === "owner");
+    const isAdminOrOwner = isOrgAdmin(await getOrgMembership(userId, organizationId));
 
     // Get all teams in the org
     let teamsData = await db.select().from(team).where(eq(team.organizationId, organizationId));
