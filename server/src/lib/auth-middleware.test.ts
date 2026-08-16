@@ -15,7 +15,7 @@ vi.mock("./auth-utils.js", () => mocks);
 vi.mock("../db/postgres/postgres.js", () => ({
   db: { query: { member: { findFirst: vi.fn(async () => null) } } },
 }));
-vi.mock("../utils.js", () => ({ resolveNumericSiteId: vi.fn(async () => null) }));
+vi.mock("./siteConfig.js", () => ({ siteConfig: { resolveSiteId: vi.fn(async () => null) } }));
 
 import {
   allowPublicSiteAccess,
