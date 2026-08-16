@@ -12,8 +12,14 @@ export const normalizeDatetimeForClickhouse = (value: string) => {
   return new Date(withZone).toISOString().slice(0, 19).replace("T", " ");
 };
 
-export function getTimeStatement(
-  params: Pick<
+/**
+ * Every field is optional: a date range, a datetime range and a past-minutes
+ * window are three alternative ways to say the same thing, and callers outside
+ * HTTP (the report jobs) supply only one of them. No time params at all is a
+ * legitimate all-time query and yields an empty statement.
+ */
+type TimeParams = Partial<
+  Pick<
     FilterParams,
     | "start_date"
     | "end_date"
@@ -23,7 +29,9 @@ export function getTimeStatement(
     | "past_minutes_start"
     | "past_minutes_end"
   >
-) {
+>;
+
+export function getTimeStatement(params: TimeParams) {
   const { start_date, end_date, time_zone, start_datetime, end_datetime, past_minutes_start, past_minutes_end } =
     params;
 

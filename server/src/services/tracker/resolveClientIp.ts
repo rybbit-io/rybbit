@@ -1,5 +1,5 @@
 import { FastifyRequest } from "fastify";
-import { lookupAsn } from "../../db/geolocation/asn.js";
+import { lookupAsn, type AsnLookup } from "../../db/geolocation/asn.js";
 import { getIpAddress } from "../../utils.js";
 import { isDatacenterAsn } from "./botBlocking/datacenterAsns.js";
 
@@ -79,10 +79,9 @@ const CF_WORKER_SUBREQUEST_IP = "2a06:98c0:3600::103";
  * to `true` on a null lookup instead (favouring proxied correctness over
  * direct-path anti-spoofing).
  */
-function isProxiedEdge(ip: string): boolean {
+function isProxiedEdge(ip: string, asnLookup: AsnLookup): boolean {
   if (ip.toLowerCase() === CF_WORKER_SUBREQUEST_IP) return true;
-  const asn = lookupAsn(ip);
-  return isDatacenterAsn(asn?.asn);
+  return isDatacenterAsn(asnLookup(ip)?.asn);
 }
 
 export interface ResolveClientIpOptions {
@@ -92,12 +91,18 @@ export interface ResolveClientIpOptions {
    * unconditionally, exactly like the pre-ASN `getIpAddress` precedence.
    */
   firstPartyProxy?: boolean;
+  /**
+   * ASN resolver to infer the topology with. Tracking ingestion passes the
+   * request-scoped one so the edge IP is looked up once for the whole request.
+   */
+  lookupAsn?: AsnLookup;
   /** Injectable for tests so branching can be exercised without the MaxMind DB. */
   proxiedEdge?: (ip: string) => boolean;
 }
 
 export function resolveClientIp(request: FastifyRequest, options: ResolveClientIpOptions = {}): string {
-  const proxiedEdge = options.proxiedEdge ?? isProxiedEdge;
+  const asnLookup = options.lookupAsn ?? lookupAsn;
+  const proxiedEdge = options.proxiedEdge ?? (ip => isProxiedEdge(ip, asnLookup));
   const realIp = realIpHeader(request);
   const xffFirst = firstForwardedFor(request);
   const cfIp = cfConnectingIp(request);
