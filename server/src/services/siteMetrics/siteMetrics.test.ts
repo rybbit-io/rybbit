@@ -8,7 +8,7 @@ vi.mock("../../db/postgres/postgres.js", () => ({
 }));
 
 import { FilterParams } from "@rybbit/shared";
-import { getTimeStatement } from "../../api/analytics/utils/utils.js";
+import { getTimeStatement } from "../../api/analytics/utils/timeWindow.js";
 import { buildOverviewQuery as buildDashboardOverviewQuery } from "../../api/analytics/getOverview.js";
 import {
   BreakdownDimension,

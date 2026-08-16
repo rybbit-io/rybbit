@@ -5,7 +5,8 @@ import { eq } from "drizzle-orm";
 import { db } from "../../db/postgres/postgres.js";
 import { sites } from "../../db/postgres/schema.js";
 import { clickhouse } from "../../db/clickhouse/clickhouse.js";
-import { getTimeStatement, processResults } from "../../api/analytics/utils/utils.js";
+import { processResults } from "../../api/analytics/utils/utils.js";
+import { getTimeStatement } from "../../api/analytics/utils/timeWindow.js";
 import { createServiceLogger } from "../../lib/logger/logger.js";
 import {
   BreakdownDimension,

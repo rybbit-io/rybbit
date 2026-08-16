@@ -2,7 +2,8 @@ import { FilterParams } from "@rybbit/shared";
 import { FastifyReply, FastifyRequest } from "fastify";
 import { getOverview } from "../getOverview.js";
 import { analyticsRoute, runAnalyticsQuery } from "../utils/analyticsQuery.js";
-import { getLiteSessionFilter, getLiteTimeStatement, hasLiteFilters } from "./utils.js";
+import { getTimeStatement } from "../utils/timeWindow.js";
+import { getLiteSessionFilter, hasLiteDatetimeRange, hasLiteFilters } from "./utils.js";
 
 type GetOverviewLiteResponse = {
   sessions: number;
@@ -24,7 +25,7 @@ interface GetOverviewLiteRequest {
 // session_hourly_mv_target.
 export const buildOverviewLiteQuery = (query: GetOverviewLiteRequest["Querystring"], filterSql: string | null) => {
   if (filterSql !== null) {
-    const sessionsTime = getLiteTimeStatement(query, "start_time");
+    const sessionsTime = getTimeStatement(query, "start_time");
     return `
       SELECT
         sessions,
@@ -57,7 +58,7 @@ export const buildOverviewLiteQuery = (query: GetOverviewLiteRequest["Querystrin
     `;
   }
 
-  const timeStatement = getLiteTimeStatement(query, "session_hour");
+  const timeStatement = getTimeStatement(query, "session_hour");
 
   // Single read of the refreshable session_hourly_mv_target — ~720 rows/month
   // per site instead of millions of session rows. All 6 metrics derive from
@@ -93,6 +94,12 @@ export const getOverviewLite = analyticsRoute<GetOverviewLiteRequest>(
   "overview",
   async (req: FastifyRequest<GetOverviewLiteRequest>, res: FastifyReply) => {
     const site = Number(req.params.siteId);
+
+    // The hourly rollups can't express a sub-hour window.
+    if (hasLiteDatetimeRange(req.query)) {
+      return getOverview(req, res);
+    }
+
     const filtersPresent = hasLiteFilters(req.query.filters);
 
     // Filters that touch columns the session rollup doesn't carry (pathname,

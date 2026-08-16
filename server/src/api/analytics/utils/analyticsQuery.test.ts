@@ -83,8 +83,19 @@ describe("runAnalyticsQuery", () => {
       query: "SELECT 1",
       format: "JSONEachRow",
       query_params: { siteId: 1 },
+      clickhouse_settings: { max_execution_time: 60 },
     });
     expect(rows).toEqual([{ value: "Chrome", count: 42 }]);
+  });
+
+  // Analytics queries used to run with no settings at all, so a runaway all-time
+  // query could hold a ClickHouse slot indefinitely.
+  it("caps execution time", async () => {
+    mockQuery.mockResolvedValueOnce(resultSet([]));
+
+    await runAnalyticsQuery({ query: "SELECT 1" });
+
+    expect(mockQuery.mock.calls[0][0].clickhouse_settings?.max_execution_time).toBe(60);
   });
 
   it("wraps failures in AnalyticsQueryError carrying the SQL", async () => {

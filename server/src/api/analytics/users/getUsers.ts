@@ -1,7 +1,8 @@
 import { FastifyReply, FastifyRequest } from "fastify";
 import { sql, SQL } from "drizzle-orm";
 import { db } from "../../../db/postgres/postgres.js";
-import { enrichWithTraits, getTimeStatement } from "../utils/utils.js";
+import { enrichWithTraits } from "../utils/utils.js";
+import { getTimeStatement } from "../utils/timeWindow.js";
 import { FilterParams } from "@rybbit/shared";
 import { getFilterStatement } from "../utils/getFilterStatement.js";
 import { SESSION_CHANNEL_AGG, SESSION_REFERRER_AGG } from "../utils/sessionAttribution.js";

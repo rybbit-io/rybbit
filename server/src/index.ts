@@ -203,6 +203,11 @@ const validateTimeParams = async (request: FastifyRequest, reply: FastifyReply) 
 // Each scoped chain names the resource:action a BEARER credential (API key or
 // OAuth token) must be granted; unrestricted legacy credentials and cookie
 // sessions always pass. See lib/scopes.ts for the taxonomy.
+//
+// validateTimeParams is on every chain rather than only the ones that currently
+// host a time-taking route: absent params always pass, and the two chains that
+// went without it were how /org-event-count and /admin/service-event-count came
+// to answer a malformed date with all-time data and a 200.
 const publicSiteScoped = (resource: ScopeResource, action: ScopeAction) => ({
   preHandler: [resolveSiteId, allowPublicSiteAccess({ resource, action }), validateTimeParams] as any,
 });
@@ -210,16 +215,16 @@ const authSiteScoped = (resource: ScopeResource, action: ScopeAction) => ({
   preHandler: [resolveSiteId, requireSiteAccess({ resource, action }), validateTimeParams] as any,
 });
 const adminSiteScoped = (resource: ScopeResource, action: ScopeAction) => ({
-  preHandler: [resolveSiteId, requireSiteAdminAccess({ resource, action })] as any,
+  preHandler: [resolveSiteId, requireSiteAdminAccess({ resource, action }), validateTimeParams] as any,
 });
 const orgMemberScoped = (resource: ScopeResource, action: ScopeAction) => ({
-  preHandler: [requireOrgMember({ resource, action })] as any,
+  preHandler: [requireOrgMember({ resource, action }), validateTimeParams] as any,
 });
 const orgAdminScoped = (resource: ScopeResource, action: ScopeAction) => ({
-  preHandler: [requireOrgAdminFromParams({ resource, action })] as any,
+  preHandler: [requireOrgAdminFromParams({ resource, action }), validateTimeParams] as any,
 });
 const authOnlyScoped = (resource: ScopeResource, action: ScopeAction) => ({
-  preHandler: [requireAuth({ resource, action })] as any,
+  preHandler: [requireAuth({ resource, action }), validateTimeParams] as any,
 });
 
 // Reused scoped chains
@@ -258,7 +263,7 @@ const authOrgWrite = authOnlyScoped("org", "write");
 
 // Scope-exempt / non-bearer chains. "deny-scoped" rejects scoped credentials
 // on surfaces with no taxonomy resource (account settings, billing).
-const adminOnly = { preHandler: [requireAdmin] as any };
+const adminOnly = { preHandler: [requireAdmin, validateTimeParams] as any };
 const authOnlyNoScopedKeys = { preHandler: [requireAuth("deny-scoped")] as any };
 const orgAdminNoScopedKeys = { preHandler: [requireOrgAdminFromParams("deny-scoped")] as any };
 

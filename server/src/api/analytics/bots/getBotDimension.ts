@@ -1,6 +1,6 @@
 import { FilterParams } from "@rybbit/shared";
 import { FastifyReply, FastifyRequest } from "fastify";
-import { getTimeStatement } from "../utils/utils.js";
+import { getTimeStatement } from "../utils/timeWindow.js";
 import { analyticsRoute, getPaginationStatements, runPaginatedQuery } from "../utils/analyticsQuery.js";
 import {
   BOT_DIMENSIONS,
