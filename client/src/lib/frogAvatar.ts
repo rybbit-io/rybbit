@@ -216,6 +216,28 @@ function frogFeatures(r: Rng): FrogFeatures {
   };
 }
 
+/**
+ * The disc has to stay visible against whatever it sits on. The app's dark
+ * background is 8% lightness and its light background is 97%, so a ground
+ * outside this band merges with the page and the icon stops reading as a
+ * circle — what is left is a frog-shaped silhouette.
+ */
+const GROUND_MIN_L = 28;
+const GROUND_MAX_L = 80;
+
+/** A ground lightness inside that band, still a clear step away from the frog. */
+function groundLightness(preferred: number, frogL: number): number {
+  const bg = clamp(preferred, GROUND_MIN_L, GROUND_MAX_L);
+  if (Math.abs(bg - frogL) >= 24) return bg;
+  // Keep the ground on the side it was already heading for, unless the band
+  // leaves no room there.
+  const darker = clamp(frogL - 34, GROUND_MIN_L, GROUND_MAX_L);
+  const lighter = clamp(frogL + 34, GROUND_MIN_L, GROUND_MAX_L);
+  const preferredSide = bg < frogL ? darker : lighter;
+  const otherSide = bg < frogL ? lighter : darker;
+  return Math.abs(preferredSide - frogL) >= 24 ? preferredSide : otherSide;
+}
+
 function frogPalette(f: FrogFeatures): FrogPalette {
   const h = f.species.h;
   let s = f.species.s;
@@ -238,18 +260,18 @@ function frogPalette(f: FrogFeatures): FrogPalette {
   if (f.ground === "pale") {
     bgH = h + 6;
     bgS = 36 + f.jitter[1] * 26;
-    bgL = 83 + f.jitter[2] * 7;
+    bgL = 69 + f.jitter[2] * 11;
   } else if (f.ground === "contrast") {
     bgH = h + 152 + f.jitter[1] * 30;
     bgS = 26 + f.jitter[1] * 22;
-    bgL = 15 + f.jitter[2] * 13;
+    bgL = 31 + f.jitter[2] * 13;
   } else {
     bgH = h + 20;
     bgS = 20 + f.jitter[1] * 18;
-    bgL = 12 + f.jitter[2] * 12;
+    bgL = 29 + f.jitter[2] * 10;
   }
   // The frog and the ground it sits on never share a value.
-  if (Math.abs(bgL - l) < 24) bgL = l > 50 ? clamp(l - 34, 7, 93) : clamp(l + 34, 7, 93);
+  bgL = groundLightness(bgL, l);
 
   const bright = hsl(h, Math.min(s + 18, 94), 64);
   const deep = hsl(h + 8, Math.min(s * 0.85, 74), clamp(l - 32, 8, 40));
@@ -262,7 +284,7 @@ function frogPalette(f: FrogFeatures): FrogPalette {
     line: f.morph === "dart" ? bright : deep,
     mark: f.morph === "dart" ? bright : hsl(h + 4, s * 0.95, clamp(l > 66 ? l - 26 : l - 22, 6, 92)),
     bg: hsl(bgH, bgS, bgL),
-    bgAlt: hsl(bgH + 20, bgS + 10, clamp(bgL > 60 ? bgL - 16 : bgL + 21, 6, 95)),
+    bgAlt: hsl(bgH + 20, bgS + 10, clamp(bgL > 60 ? bgL - 16 : bgL + 21, GROUND_MIN_L, GROUND_MAX_L)),
     cream: hsl(h - 12, 38, 88),
     contrast: hsl(h + 148, 42, 72),
     bright,
@@ -412,6 +434,6 @@ export function frogAvatarMarkup(id: string): string {
 export function frogAvatarSVG(id: string, size: number): string {
   return (
     `<svg width="${size}" height="${size}" viewBox="0 0 100 100" role="img"` +
-    ` xmlns="http://www.w3.org/2000/svg" style="display:block">${frogAvatarMarkup(id)}</svg>`
+    ` xmlns="http://www.w3.org/2000/svg" style="display:block;border-radius:50%">${frogAvatarMarkup(id)}</svg>`
   );
 }
