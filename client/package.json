@@ -107,7 +107,7 @@
     "@types/lodash": "4.17.16",
     "@types/luxon": "3.6.2",
     "@types/mapbox-gl": "^3.4.1",
-    "@types/node": "^20.14.8",
+    "@types/node": "^24.13.3",
     "@types/react": "19.2.7",
     "@types/react-dom": "^19.2.3",
     "@types/react-grid-layout": "^1.3.6",
