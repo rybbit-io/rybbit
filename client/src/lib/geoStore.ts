@@ -88,6 +88,8 @@ export const useGeoStore = create<GeoStore>((set, get) => ({
   },
 
   getRegionName: (region: string) => {
+    if (!region) return "";
+
     const { subdivisions } = get();
     return subdivisions?.features.find(feature => feature.properties.iso_3166_2 === region)?.properties.name ?? "";
   },
