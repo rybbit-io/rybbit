@@ -69,8 +69,8 @@ server {
     add_header X-Content-Type-Options "nosniff" always;
     add_header X-XSS-Protection "1; mode=block" always;
 
-    # API requests
-    location /api/ {
+    # Backend service
+    location ~ ^/(api|\.well-known)/.*$ {
         proxy_pass http://localhost:3001;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
@@ -84,7 +84,7 @@ server {
         proxy_read_timeout 60s;
     }
 
-    # Client app
+    # Client service
     location / {
         proxy_pass http://localhost:3002;
         proxy_set_header Host $host;
