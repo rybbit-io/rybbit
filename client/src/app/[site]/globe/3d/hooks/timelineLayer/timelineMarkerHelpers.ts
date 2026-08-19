@@ -1,22 +1,9 @@
-import BoringAvatar from "boring-avatars";
 import { createElement } from "react";
 // @ts-ignore - React 19 has built-in types
 import { renderToStaticMarkup } from "react-dom/server";
 import * as CountryFlags from "country-flag-icons/react/3x2";
 import { Monitor, Smartphone } from "lucide-react";
-import { AVATAR_COLORS } from "../../../../../../components/Avatar";
 import { getChannelIconComponent } from "../../../../../../components/Channel";
-
-// Generate avatar SVG using boring-avatars
-export function generateAvatarSVG(userId: string, size: number): string {
-  const avatarElement = createElement(BoringAvatar, {
-    size,
-    name: userId,
-    variant: "beam",
-    colors: AVATAR_COLORS,
-  });
-  return renderToStaticMarkup(avatarElement);
-}
 
 // Render country flag to static SVG
 export function renderCountryFlag(countryCode: string): string {

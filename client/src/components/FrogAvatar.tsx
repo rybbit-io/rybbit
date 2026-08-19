@@ -1,6 +1,6 @@
-import { frogAvatarMarkup } from "@/lib/frogAvatar";
+import { frogAvatarMarkup } from "../lib/frogAvatar";
 
-export function Avatar({ id, size = 20 }: { id: string; size?: number }) {
+export function FrogAvatar({ id, size = 20 }: { id: string; size?: number }) {
   return (
     <svg
       width={size}

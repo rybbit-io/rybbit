@@ -9,6 +9,7 @@ import { useEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import type { GetSessionsResponse } from "../api/analytics/endpoints";
 import { useConfigs } from "../lib/configs";
+import { frogAvatarSVG } from "../lib/frogAvatar";
 import "../app/[site]/globe/globe.css";
 
 // Constants
@@ -22,23 +23,6 @@ const MIN_CLUSTER_SIZE = 20;
 const CLUSTERING_THRESHOLD = 500;
 const SPREAD_START_ZOOM = 8;
 const SPREAD_RADIUS_DEGREES = 0.006;
-
-// Import avatar generation
-import BoringAvatar from "boring-avatars";
-import { createElement } from "react";
-// @ts-ignore - React 19 has built-in types
-import { renderToStaticMarkup } from "react-dom/server";
-import { AVATAR_COLORS } from "./Avatar";
-
-function generateAvatarSVG(userId: string, size: number): string {
-  const avatarElement = createElement(BoringAvatar, {
-    size,
-    name: userId,
-    variant: "beam",
-    colors: AVATAR_COLORS,
-  });
-  return renderToStaticMarkup(avatarElement);
-}
 
 // Hash function for deterministic spreading
 function hashStringToNumber(str: string): number {
@@ -489,7 +473,7 @@ export function SpinningGlobe() {
           avatarContainer.className = "timeline-avatar-marker";
           avatarContainer.style.cssText =
             "cursor: pointer; border-radius: 50%; overflow: hidden; width: 32px; height: 32px; box-shadow: 0 2px 8px rgba(0,0,0,0.3);";
-          avatarContainer.innerHTML = generateAvatarSVG(session.user_id, 32);
+          avatarContainer.innerHTML = frogAvatarSVG(session.user_id, 32);
 
           const marker = new mapboxgl.Marker({
             element: avatarContainer,
