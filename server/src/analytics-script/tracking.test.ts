@@ -210,6 +210,19 @@ describe("Tracker", () => {
   });
 
   describe("tracking methods", () => {
+    it("stops replay when the server reports that recording is disabled", async () => {
+      const disableRecording = vi.fn();
+      (tracker as any).sessionReplayRecorder = { disableRecording };
+      vi.mocked(global.fetch).mockResolvedValue({
+        ok: true,
+        json: async () => ({ success: true, stopRecording: true }),
+      } as Response);
+
+      await (tracker as any).sendSessionReplayBatch({ userId: "", events: [] });
+
+      expect(disableRecording).toHaveBeenCalledOnce();
+    });
+
     it("should track pageview", async () => {
       tracker.trackPageview();
 

@@ -4,12 +4,14 @@ import type { RecordSessionReplayRequest } from "../../types/sessionReplay.js";
 const mocks = vi.hoisted(() => ({
   generateUserId: vi.fn(),
   insert: vi.fn(),
+  query: vi.fn(),
   updateSession: vi.fn(),
 }));
 
 vi.mock("../../db/clickhouse/clickhouse.js", () => ({
   clickhouse: {
     insert: mocks.insert,
+    query: mocks.query,
   },
 }));
 
@@ -61,6 +63,7 @@ describe("SessionReplayIngestService identity", () => {
       })
     );
     mocks.insert.mockResolvedValue(undefined);
+    mocks.query.mockResolvedValue({ json: async () => [] });
   });
 
   it("separates identified replay users behind a shared proxy", async () => {
@@ -98,6 +101,53 @@ describe("SessionReplayIngestService identity", () => {
       userId: "shared-fingerprint",
       identifiedUserId: "",
       siteId: 42,
+    });
+  });
+
+  it("rolls replay metadata forward without rescanning raw replay events", async () => {
+    mocks.query.mockResolvedValue({
+      json: async () => [
+        {
+          start_time: "2023-11-14 22:13:20",
+          end_time: "2023-11-14 22:13:21",
+          event_count: 10,
+          compressed_size_bytes: 1000,
+          screen_width: 1280,
+          screen_height: 720,
+        },
+      ],
+    });
+
+    const service = new SessionReplayIngestService();
+    await service.recordEvents(
+      42,
+      {
+        userId: "employee-alice",
+        events: [
+          { type: 2, data: { value: "first" }, timestamp: 1_700_000_002_000 },
+          { type: 3, data: { value: "second" }, timestamp: 1_700_000_003_000 },
+        ],
+        metadata: {
+          pageUrl: "https://internal.example/page",
+          viewportWidth: 1920,
+          viewportHeight: 1080,
+          language: "en-US",
+        },
+      },
+      { ...requestMeta, userAgent: "" }
+    );
+
+    expect(mocks.query).toHaveBeenCalledTimes(1);
+    const metadataQuery = mocks.query.mock.calls[0][0].query;
+    expect(metadataQuery).toContain("FROM session_replay_metadata FINAL");
+    expect(metadataQuery).not.toContain("FROM session_replay_events");
+
+    const metadataInsert = mocks.insert.mock.calls.find(call => call[0].table === "session_replay_metadata");
+    expect(metadataInsert?.[0].values[0]).toMatchObject({
+      event_count: 12,
+      compressed_size_bytes: 1035,
+      screen_width: 1920,
+      screen_height: 1080,
     });
   });
 });

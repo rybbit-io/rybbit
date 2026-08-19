@@ -284,6 +284,9 @@
     constructor(config, userId, sendBatch) {
       this.isRecording = false;
       this.eventBuffer = [];
+      this.flushInProgress = false;
+      this.flushRequested = false;
+      this.isDisabled = false;
       this.config = config;
       this.userId = userId;
       this.sendBatch = sendBatch;
@@ -316,7 +319,7 @@
       });
     }
     startRecording() {
-      if (this.isRecording || !window.rrweb || !this.config.enableSessionReplay) {
+      if (this.isDisabled || this.isRecording || !window.rrweb || !this.config.enableSessionReplay) {
         return;
       }
       try {
@@ -406,6 +409,22 @@
     isActive() {
       return this.isRecording;
     }
+    /**
+     * Permanently stop replay for this page after the server reports that replay
+     * is disabled or the visitor is excluded. Queued events are intentionally
+     * discarded because the server has already said it will not store them.
+     */
+    disableRecording() {
+      if (this.stopRecordingFn) {
+        this.stopRecordingFn();
+        this.stopRecordingFn = void 0;
+      }
+      this.isDisabled = true;
+      this.isRecording = false;
+      this.clearBatchTimer();
+      this.eventBuffer = [];
+      this.flushRequested = false;
+    }
     addEvent(event) {
       this.eventBuffer.push(event);
       if (this.eventBuffer.length >= this.config.sessionReplayBatchSize) {
@@ -430,6 +449,12 @@
       if (this.eventBuffer.length === 0) {
         return;
       }
+      if (this.flushInProgress) {
+        this.flushRequested = true;
+        return;
+      }
+      this.flushInProgress = true;
+      this.flushRequested = false;
       const events = [...this.eventBuffer];
       this.eventBuffer = [];
       const batch = {
@@ -442,10 +467,17 @@
           language: navigator.language
         }
       };
+      let batchSent = false;
       try {
         await this.sendBatch(batch);
+        batchSent = true;
       } catch (error) {
         this.eventBuffer.unshift(...events);
+      } finally {
+        this.flushInProgress = false;
+        if (batchSent && this.eventBuffer.length > 0 && (this.flushRequested || this.eventBuffer.length >= this.config.sessionReplayBatchSize)) {
+          void this.flushEvents();
+        }
       }
     }
     // Update user ID when it changes
@@ -483,7 +515,8 @@
     outerDimensionsWeird: 1 << 8,
     pluginApiAbsence: 1 << 9,
     defaultViewport1280x1200: 1 << 10,
-    squareScreen: 1 << 11
+    squareScreen: 1 << 11,
+    missingScreenDimensions: 1 << 12
   };
   var CLIENT_BOT_SIGNAL_NAMES = Object.keys(CLIENT_BOT_SIGNAL_MASKS);
   var CLIENT_BOT_SIGNAL_WEIGHTS = {
@@ -498,7 +531,8 @@
     outerDimensionsWeird: 2,
     pluginApiAbsence: 0,
     defaultViewport1280x1200: 3,
-    squareScreen: 3
+    squareScreen: 3,
+    missingScreenDimensions: 1
   };
   var ALL_CLIENT_BOT_SIGNAL_BITS = CLIENT_BOT_SIGNAL_NAMES.reduce(
     (mask, name) => mask | CLIENT_BOT_SIGNAL_MASKS[name],
@@ -763,7 +797,7 @@
     }
     async sendSessionReplayBatch(batch) {
       try {
-        await fetch(`${this.config.analyticsHost}/session-replay/record/${this.config.siteId}`, {
+        const response = await fetch(`${this.config.analyticsHost}/session-replay/record/${this.config.siteId}`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json"
@@ -773,6 +807,13 @@
           keepalive: false
           // Disable keepalive for large session replay requests
         });
+        if (!response.ok) {
+          throw new Error(`Session replay endpoint returned ${response.status}`);
+        }
+        const result = await response.json().catch(() => null);
+        if (result?.stopRecording) {
+          this.sessionReplayRecorder?.disableRecording();
+        }
       } catch (error) {
         console.error("Failed to send session replay batch:", error);
         throw error;

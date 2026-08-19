@@ -15,6 +15,13 @@ export interface RequestMetadata {
   referrer: string;
 }
 
+type ReplayBatchEvent = {
+  timestamp: number;
+  event_size_bytes: number;
+  viewport_width: number | null;
+  viewport_height: number | null;
+};
+
 /**
  * Service responsible for ingesting session replay data
  * Handles recording events and updating metadata
@@ -121,7 +128,15 @@ export class SessionReplayIngestService {
 
     // Update or insert metadata
     if (metadata) {
-      await this.updateSessionMetadata(siteId, sessionId, userId, identifiedUserId, metadata, requestMeta);
+      await this.updateSessionMetadata(
+        siteId,
+        sessionId,
+        userId,
+        identifiedUserId,
+        metadata,
+        eventsToInsert,
+        requestMeta
+      );
     }
   }
 
@@ -131,21 +146,25 @@ export class SessionReplayIngestService {
     userId: string,
     identifiedUserId: string,
     metadata: any,
+    replayBatch: ReplayBatchEvent[],
     requestMeta?: RequestMetadata
   ): Promise<void> {
-    // Get existing session info from events table
-    const sessionInfo = await clickhouse.query({
+    // Read the latest rollup instead of rescanning every raw replay event after
+    // each batch. The previous query made replay ingestion O(n^2) over a long
+    // session and allowed overlapping batches to saturate ClickHouse.
+    const existingMetadata = await clickhouse.query({
       query: `
-        SELECT 
-          MIN(timestamp) as start_time,
-          MAX(timestamp) as end_time,
-          COUNT() as event_count,
-          SUM(event_size_bytes) as compressed_size_bytes,
-          MAX(viewport_width) as screen_width,
-          MAX(viewport_height) as screen_height
-        FROM session_replay_events
-        WHERE site_id = {siteId:UInt16} 
+        SELECT
+          start_time,
+          end_time,
+          event_count,
+          compressed_size_bytes,
+          screen_width,
+          screen_height
+        FROM session_replay_metadata FINAL
+        WHERE site_id = {siteId:UInt16}
           AND session_id = {sessionId:String}
+        LIMIT 1
       `,
       query_params: { siteId, sessionId },
       format: "JSONEachRow",
@@ -160,11 +179,42 @@ export class SessionReplayIngestService {
       screen_height: number | null;
     };
 
-    const sessionResults = await processResults<SessionInfoResult>(sessionInfo);
+    const existingResults = await processResults<SessionInfoResult>(existingMetadata);
+    const existing = existingResults[0];
 
-    if (!sessionResults || sessionResults.length === 0) return;
+    const batchTimestamps = replayBatch.map(event => event.timestamp).filter(Number.isFinite);
+    if (!existing && batchTimestamps.length === 0) return;
 
-    const sessionReplayData = sessionResults[0];
+    const batchStartTime = batchTimestamps.length > 0 ? new Date(Math.min(...batchTimestamps)) : null;
+    const batchEndTime = batchTimestamps.length > 0 ? new Date(Math.max(...batchTimestamps)) : null;
+    const existingStartTime = existing?.start_time ? new Date(existing.start_time) : null;
+    const existingEndTime = existing?.end_time ? new Date(existing.end_time) : null;
+
+    const startTime =
+      existingStartTime && batchStartTime
+        ? new Date(Math.min(existingStartTime.getTime(), batchStartTime.getTime()))
+        : existingStartTime || batchStartTime;
+    const endTime =
+      existingEndTime && batchEndTime
+        ? new Date(Math.max(existingEndTime.getTime(), batchEndTime.getTime()))
+        : existingEndTime || batchEndTime;
+
+    if (!startTime) return;
+
+    const eventCount = Number(existing?.event_count || 0) + replayBatch.length;
+    const compressedSizeBytes =
+      Number(existing?.compressed_size_bytes || 0) +
+      replayBatch.reduce((sum, event) => sum + event.event_size_bytes, 0);
+    const screenWidth = Math.max(
+      Number(existing?.screen_width || 0),
+      Number(metadata.viewportWidth || 0),
+      ...replayBatch.map(event => Number(event.viewport_width || 0))
+    );
+    const screenHeight = Math.max(
+      Number(existing?.screen_height || 0),
+      Number(metadata.viewportHeight || 0),
+      ...replayBatch.map(event => Number(event.viewport_height || 0))
+    );
 
     // Parse tracking data from request metadata
     let trackingData: any = {};
@@ -181,8 +231,8 @@ export class SessionReplayIngestService {
           urlObj.search || "", // querystring from URL
           hostname,
           metadata.language || "", // language from client
-          sessionReplayData.screen_width || metadata.viewportWidth || 0,
-          sessionReplayData.screen_height || metadata.viewportHeight || 0
+          screenWidth,
+          screenHeight
         );
       } catch (error) {
         console.error("Error parsing tracking data for session replay:", error);
@@ -190,8 +240,6 @@ export class SessionReplayIngestService {
     }
 
     // Calculate duration
-    const startTime = new Date(sessionReplayData.start_time);
-    const endTime = sessionReplayData.end_time ? new Date(sessionReplayData.end_time) : null;
     const durationMs = endTime ? endTime.getTime() - startTime.getTime() : null;
 
     // Insert or update metadata
@@ -206,8 +254,8 @@ export class SessionReplayIngestService {
           start_time: DateTime.fromJSDate(startTime).toFormat("yyyy-MM-dd HH:mm:ss"),
           end_time: endTime ? DateTime.fromJSDate(endTime).toFormat("yyyy-MM-dd HH:mm:ss") : null,
           duration_ms: durationMs,
-          event_count: sessionReplayData.event_count || 0,
-          compressed_size_bytes: sessionReplayData.compressed_size_bytes || 0,
+          event_count: eventCount,
+          compressed_size_bytes: compressedSizeBytes,
           page_url: metadata.pageUrl || "",
           country: trackingData.country || "",
           region: trackingData.region || "",
@@ -219,8 +267,8 @@ export class SessionReplayIngestService {
           operating_system: trackingData.operatingSystem || "",
           operating_system_version: trackingData.operatingSystemVersion || "",
           language: trackingData.language || "",
-          screen_width: sessionReplayData.screen_width || metadata?.viewportWidth || 0,
-          screen_height: sessionReplayData.screen_height || metadata?.viewportHeight || 0,
+          screen_width: screenWidth,
+          screen_height: screenHeight,
           device_type: trackingData.deviceType || "",
           channel: trackingData.channel || "",
           hostname: trackingData.hostname || "",

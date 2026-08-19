@@ -61,6 +61,9 @@ export class SessionReplayRecorder {
   private userId: string;
   private eventBuffer: SessionReplayEvent[] = [];
   private batchTimer?: number;
+  private flushInProgress: boolean = false;
+  private flushRequested: boolean = false;
+  private isDisabled: boolean = false;
   private sendBatch: (batch: SessionReplayBatch) => Promise<void>;
 
   constructor(config: ScriptConfig, userId: string, sendBatch: (batch: SessionReplayBatch) => Promise<void>) {
@@ -105,7 +108,7 @@ export class SessionReplayRecorder {
   }
 
   public startRecording(): void {
-    if (this.isRecording || !window.rrweb || !this.config.enableSessionReplay) {
+    if (this.isDisabled || this.isRecording || !window.rrweb || !this.config.enableSessionReplay) {
       return;
     }
 
@@ -204,6 +207,24 @@ export class SessionReplayRecorder {
     return this.isRecording;
   }
 
+  /**
+   * Permanently stop replay for this page after the server reports that replay
+   * is disabled or the visitor is excluded. Queued events are intentionally
+   * discarded because the server has already said it will not store them.
+   */
+  public disableRecording(): void {
+    if (this.stopRecordingFn) {
+      this.stopRecordingFn();
+      this.stopRecordingFn = undefined;
+    }
+
+    this.isDisabled = true;
+    this.isRecording = false;
+    this.clearBatchTimer();
+    this.eventBuffer = [];
+    this.flushRequested = false;
+  }
+
   private addEvent(event: SessionReplayEvent): void {
     this.eventBuffer.push(event);
 
@@ -234,6 +255,14 @@ export class SessionReplayRecorder {
       return;
     }
 
+    if (this.flushInProgress) {
+      this.flushRequested = true;
+      return;
+    }
+
+    this.flushInProgress = true;
+    this.flushRequested = false;
+
     const events = [...this.eventBuffer];
     this.eventBuffer = [];
 
@@ -248,11 +277,28 @@ export class SessionReplayRecorder {
       },
     };
 
+    let batchSent = false;
+
     try {
       await this.sendBatch(batch);
+      batchSent = true;
     } catch (error) {
       // Re-queue the events for retry since this batch failed
       this.eventBuffer.unshift(...events);
+    } finally {
+      this.flushInProgress = false;
+
+      // A busy page can fill the next batch while the previous request is in
+      // flight. Drain queued batches sequentially instead of launching overlap.
+      // Failed batches remain queued for the normal timer retry, avoiding a
+      // tight retry loop when the endpoint is unavailable.
+      if (
+        batchSent &&
+        this.eventBuffer.length > 0 &&
+        (this.flushRequested || this.eventBuffer.length >= this.config.sessionReplayBatchSize)
+      ) {
+        void this.flushEvents();
+      }
     }
   }
 
