@@ -71,6 +71,7 @@ export function Footer() {
     {
       title: t("Company"),
       links: [
+        { href: "/company", label: t("Company information") },
         { href: "/contact", label: t("Contact") },
         { href: "/privacy", label: t("Privacy Policy") },
         { href: "/terms-and-conditions", label: t("Terms and Conditions") },
