@@ -4,6 +4,7 @@ import { SECRET } from "../../lib/const.js";
 import { siteConfig } from "../../lib/siteConfig.js";
 import { isDatacenterAsn } from "../tracker/botBlocking/datacenterAsns.js";
 import { bucketIpForIdentity } from "./identityIpBucket.js";
+import { normalizeUserAgentForIdentity } from "./normalizeUserAgent.js";
 import { resolveStickyUserId } from "./stickyUserId.js";
 
 export interface UserIdOptions {
@@ -80,6 +81,12 @@ class UserIdService {
    * Generate a user ID based on IP and user agent
    * If the site has salting enabled, also includes a daily rotating salt
    *
+   * The user agent is version-stripped before hashing, so a browser or app
+   * update doesn't mint a new identity for the same machine — see
+   * `normalizeUserAgentForIdentity`. The raw string is still what reporting
+   * parses, and still what sticky re-attachment matches on, so only the
+   * fingerprint changes.
+   *
    * @param ip User's IP address
    * @param userAgent User's user agent string
    * @param siteId The site ID to check for salting configuration
@@ -94,12 +101,17 @@ class UserIdService {
     // between requests; hash a coarse bucket so one visitor stays one user.
     const identityIp = bucketIpForIdentity(ip, isDatacenterEgress);
 
+    // Version tokens change under the user on every browser or app update, so
+    // they are stripped before hashing — otherwise an update splits one visitor
+    // into two, all at once when the update is a synchronised app rollout.
+    const identityUserAgent = normalizeUserAgentForIdentity(userAgent);
+
     // The event's own day, fixed before anything is hashed against it.
     const saltDay = utcDayOf(options.receivedAt ?? new Date());
     const salted = await this.isSalted(siteId, options);
     const rawUserId = crypto
       .createHash("sha256")
-      .update(identityIp + userAgent + (salted ? this.getDailySalt(saltDay) : ""))
+      .update(identityIp + identityUserAgent + (salted ? this.getDailySalt(saltDay) : ""))
       .digest("hex")
       .substring(0, 12);
 

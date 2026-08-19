@@ -130,4 +130,56 @@ describe("userIdService", () => {
 
     expect(dayTwo).toBe(dayOne);
   });
+
+  // A browser or app update changes the version tokens in the user agent. Those
+  // are stripped before hashing, so the same machine keeps its identity instead
+  // of being counted as a second visitor.
+  it("keeps one identity across a browser update", async () => {
+    const before = await userIdService.generateUserId(
+      "198.51.100.10",
+      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/150.0.0.0 Safari/537.36",
+      42,
+      { saltUserIds: false }
+    );
+    const after = await userIdService.generateUserId(
+      "198.51.100.10",
+      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36",
+      42,
+      { saltUserIds: false }
+    );
+
+    expect(after).toBe(before);
+  });
+
+  it("still separates different browsers on one IP", async () => {
+    const chrome = await userIdService.generateUserId(
+      "198.51.100.10",
+      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36",
+      42,
+      { saltUserIds: false }
+    );
+    const firefox = await userIdService.generateUserId(
+      "198.51.100.10",
+      "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:153.0) Gecko/20100101 Firefox/153.0",
+      42,
+      { saltUserIds: false }
+    );
+
+    expect(firefox).not.toBe(chrome);
+  });
+
+  // Sticky re-attachment keys its candidate pool on the user agent it is given,
+  // and it keeps receiving the raw string. Handing it the normalized one would
+  // pool every version variant together, which cuts both ways: a pool that was
+  // empty can become a single candidate (a new, unreviewed re-attachment) just
+  // as easily as a single candidate can become several (an abstention). Sticky
+  // is a separate merge decision with its own evidence bar, so it stays on the
+  // exact string it was designed and measured against.
+  it("hands sticky re-attachment the raw user agent, not the normalized one", async () => {
+    const userAgent =
+      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36";
+    await userIdService.generateUserId("198.51.100.10", userAgent, 42, { saltUserIds: false });
+
+    expect(mocks.resolveStickyUserId).toHaveBeenCalledWith(expect.objectContaining({ userAgent }));
+  });
 });
