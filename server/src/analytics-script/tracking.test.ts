@@ -211,14 +211,22 @@ describe("Tracker", () => {
 
   describe("tracking methods", () => {
     it("stops replay when the server reports that recording is disabled", async () => {
+      type ReplayTestTracker = {
+        sessionReplayRecorder: {
+          disableRecording: () => void;
+        };
+        sendSessionReplayBatch: (batch: { userId: string; events: never[] }) => Promise<void>;
+      };
+
       const disableRecording = vi.fn();
-      (tracker as any).sessionReplayRecorder = { disableRecording };
+      const replayTracker = tracker as unknown as ReplayTestTracker;
+      replayTracker.sessionReplayRecorder = { disableRecording };
       vi.mocked(global.fetch).mockResolvedValue({
         ok: true,
         json: async () => ({ success: true, stopRecording: true }),
       } as Response);
 
-      await (tracker as any).sendSessionReplayBatch({ userId: "", events: [] });
+      await replayTracker.sendSessionReplayBatch({ userId: "", events: [] });
 
       expect(disableRecording).toHaveBeenCalledOnce();
     });

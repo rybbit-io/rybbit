@@ -427,6 +427,9 @@
     }
     addEvent(event) {
       this.eventBuffer.push(event);
+      if (this.flushInProgress) {
+        this.flushRequested = true;
+      }
       if (this.eventBuffer.length >= this.config.sessionReplayBatchSize) {
         this.flushEvents();
       }

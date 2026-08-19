@@ -94,6 +94,32 @@ describe("SessionReplayRecorder identity", () => {
     expect(sendBatch.mock.calls[1][0].events).toHaveLength(config.sessionReplayBatchSize);
   });
 
+  it("queues a partial follow-up batch captured during an active send", async () => {
+    let resolveFirstSend!: () => void;
+    sendBatch.mockImplementationOnce(
+      () =>
+        new Promise<void>(resolve => {
+          resolveFirstSend = resolve;
+        })
+    );
+
+    for (let index = 0; index < config.sessionReplayBatchSize; index++) {
+      emit({ type: 2, data: { index }, timestamp: 1_700_000_000_000 + index });
+    }
+
+    expect(sendBatch).toHaveBeenCalledTimes(1);
+
+    emit({
+      type: 2,
+      data: { index: config.sessionReplayBatchSize },
+      timestamp: 1_700_000_000_000 + config.sessionReplayBatchSize,
+    });
+    resolveFirstSend();
+
+    await vi.waitFor(() => expect(sendBatch).toHaveBeenCalledTimes(2));
+    expect(sendBatch.mock.calls[1][0].events).toHaveLength(1);
+  });
+
   it("leaves a failed replay batch queued for the timer instead of retrying immediately", async () => {
     sendBatch.mockRejectedValueOnce(new Error("endpoint unavailable"));
 

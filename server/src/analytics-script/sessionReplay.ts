@@ -159,11 +159,11 @@ export class SessionReplayRecorder {
         checkoutEveryNms: 60000, // Checkout every 60 seconds
         checkoutEveryNth: 500, // Checkout every 500 events
         // Use config values with fallbacks to defaults
-        blockClass: this.config.sessionReplayBlockClass ?? 'rr-block',
+        blockClass: this.config.sessionReplayBlockClass ?? "rr-block",
         blockSelector: this.config.sessionReplayBlockSelector ?? null,
-        ignoreClass: this.config.sessionReplayIgnoreClass ?? 'rr-ignore',
+        ignoreClass: this.config.sessionReplayIgnoreClass ?? "rr-ignore",
         ignoreSelector: this.config.sessionReplayIgnoreSelector ?? null,
-        maskTextClass: this.config.sessionReplayMaskTextClass ?? 'rr-mask',
+        maskTextClass: this.config.sessionReplayMaskTextClass ?? "rr-mask",
         maskAllInputs: this.config.sessionReplayMaskAllInputs ?? true,
         maskInputOptions: this.config.sessionReplayMaskInputOptions ?? { password: true, email: true },
         collectFonts: this.config.sessionReplayCollectFonts ?? true,
@@ -173,7 +173,7 @@ export class SessionReplayRecorder {
 
       // Add custom text masking selectors if configured
       if (this.config.sessionReplayMaskTextSelectors && this.config.sessionReplayMaskTextSelectors.length > 0) {
-        recordingOptions.maskTextSelector = this.config.sessionReplayMaskTextSelectors.join(', ');
+        recordingOptions.maskTextSelector = this.config.sessionReplayMaskTextSelectors.join(", ");
       }
 
       this.stopRecordingFn = window.rrweb.record(recordingOptions);
@@ -227,6 +227,12 @@ export class SessionReplayRecorder {
 
   private addEvent(event: SessionReplayEvent): void {
     this.eventBuffer.push(event);
+
+    // An event captured while a batch is in flight must trigger a sequential
+    // follow-up send even when the new buffer has not reached the batch size.
+    if (this.flushInProgress) {
+      this.flushRequested = true;
+    }
 
     // Auto-flush if buffer is full
     if (this.eventBuffer.length >= this.config.sessionReplayBatchSize) {
