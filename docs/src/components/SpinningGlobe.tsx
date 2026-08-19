@@ -4,9 +4,9 @@ import { isNil, round, throttle } from "lodash";
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 import { useEffect, useRef, useState } from "react";
-import BoringAvatar from "boring-avatars";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
+import { frogAvatarSVG } from "@/lib/frogAvatar";
 import * as CountryFlags from "country-flag-icons/react/3x2";
 import {
   Bot,
@@ -29,30 +29,6 @@ import {
   MousePointerClick,
 } from "lucide-react";
 import { DateTime } from "luxon";
-
-// Avatar colors from client
-const AVATAR_COLORS = [
-  "#ec4899",
-  "#be185d",
-  "#f97316",
-  "#c2410c",
-  "#eab308",
-  "#a16207",
-  "#10b981",
-  "#059669",
-  "#14b8a6",
-  "#0d9488",
-  "#06b6d4",
-  "#0e7490",
-  "#3b82f6",
-  "#1d4ed8",
-  "#6366f1",
-  "#8b5cf6",
-  "#475569",
-  "#6b7280",
-  "#9ca3af",
-  "#d1d5db",
-];
 
 // Session type (full version for tooltip)
 type Session = {
@@ -155,16 +131,6 @@ function generateName(userId: string): string {
   const colorIndex = hash % colors.length;
   const animalIndex = Math.floor(hash / colors.length) % animals.length;
   return `${colors[colorIndex]} ${animals[animalIndex]}`;
-}
-
-function generateAvatarSVG(userId: string, size: number): string {
-  const avatarElement = createElement(BoringAvatar, {
-    size,
-    name: userId,
-    variant: "beam",
-    colors: AVATAR_COLORS,
-  });
-  return renderToStaticMarkup(avatarElement);
 }
 
 // Hash function for deterministic spreading
@@ -335,7 +301,7 @@ function getDisplayName(hostname: string): string {
 
 // Build tooltip HTML
 function buildTooltipHTML(session: Session): string {
-  const avatarSVG = generateAvatarSVG(session.user_id, 36);
+  const avatarSVG = frogAvatarSVG(session.user_id, 36);
   const countryCode = session.country?.length === 2 ? session.country : "";
   const flagSVG = renderCountryFlag(countryCode);
   const deviceIconSVG = renderDeviceIcon(session.device_type || "");
@@ -962,7 +928,7 @@ export function SpinningGlobe() {
           avatarContainer.style.height = "32px";
           avatarContainer.style.boxShadow = "0 2px 8px rgba(0,0,0,0.3)";
           avatarContainer.style.transition = "transform 0.15s ease";
-          avatarContainer.innerHTML = generateAvatarSVG(session.user_id, 32);
+          avatarContainer.innerHTML = frogAvatarSVG(session.user_id, 32);
 
           markerContainer.appendChild(avatarContainer);
 

@@ -6,10 +6,10 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { Eye, MousePointerClick } from "lucide-react";
 import { generateName } from "../../../../components/Avatar";
 import { formatShortDuration, hour12, userLocale } from "../../../../lib/dateTimeUtils";
+import { frogAvatarSVG } from "../../../../lib/frogAvatar";
 import type { GetSessionsResponse } from "../../../../api/analytics/endpoints";
 import { extractDomain, getDisplayName } from "../../../../components/Channel";
 import {
-  generateAvatarSVG,
   renderCountryFlag,
   renderDeviceIcon,
   renderChannelIcon,
@@ -21,7 +21,7 @@ import {
  * Build the HTML content for a session tooltip
  */
 export function buildTooltipHTML(session: GetSessionsResponse[number], lng: number, lat: number): string {
-  const avatarSVG = generateAvatarSVG(session.user_id, 36);
+  const avatarSVG = frogAvatarSVG(session.user_id, 36);
   const countryCode = session.country?.length === 2 ? session.country : "";
   const flagSVG = renderCountryFlag(countryCode);
   const deviceIconSVG = renderDeviceIcon(session.device_type || "");
