@@ -70,7 +70,7 @@ server {
     add_header X-XSS-Protection "1; mode=block" always;
 
     # Backend service
-    # the `.well-known` path is for OIDC Discovery
+    # The /.well-known/ path is for OIDC discovery
     location ~ ^/(api|\.well-known)/.*$ {
         proxy_pass http://localhost:3001;
         proxy_set_header Host $host;
