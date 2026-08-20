@@ -55,7 +55,7 @@ class TelemetryService {
 
   // Get table row counts from ClickHouse
   private async getTableCounts() {
-    const tables = ["events", "session_replay_events", "session_replay_metadata"];
+    const tables = ["events", "session_replay_events", "session_replay_metadata_v2"];
 
     const counts: Record<string, number> = {};
 

@@ -31,8 +31,17 @@ export function useSiteHasData(siteId: string) {
       }
       return fetchSiteHasData(siteId).then(data => data.hasData);
     },
-    refetchInterval: 5000,
+    // Poll only until the site reports data. Once it flips true it can never
+    // flip back, so continuing to poll re-asks a settled question every 5 s for
+    // as long as the tab stays open — which is where the bulk of this
+    // endpoint's call volume came from.
+    //
+    // A site that genuinely has no data yet never stops polling, so that case
+    // sets the floor: 30 s is still well inside the "paste the script, watch it
+    // light up" loop this powers, at a sixth of the requests.
+    refetchInterval: query => (query.state.data === true ? false : 30_000),
     staleTime: Infinity,
+    enabled: !!siteId,
   });
 }
 

@@ -50,7 +50,7 @@ export async function getClickhouseStats(request: FastifyRequest<{ Querystring: 
           count() as parts_count
         FROM system.parts
         WHERE database = currentDatabase() AND active = 1
-          AND table IN ('events', 'session_replay_events', 'session_replay_metadata')
+          AND table IN ('events', 'session_replay_events', 'session_replay_metadata_v2')
         GROUP BY table
         ORDER BY total_rows DESC
       `,
@@ -79,7 +79,7 @@ export async function getClickhouseStats(request: FastifyRequest<{ Querystring: 
           GROUP BY date
           UNION ALL
           SELECT toDate(start_time) as date, 'session_replay_metadata' as table, count() as rows_inserted
-          FROM session_replay_metadata
+          FROM session_replay_metadata_v2
           ${dateFilterStartTime}
           GROUP BY date
         )

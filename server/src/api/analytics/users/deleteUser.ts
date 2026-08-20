@@ -63,7 +63,7 @@ export async function deleteUser(req: FastifyRequest<DeleteUserRequest>, res: Fa
     }
 
     await Promise.all(
-      ["events", "session_replay_events", "session_replay_metadata"].map(table =>
+      ["events", "session_replay_events", "session_replay_metadata_v2"].map(table =>
         clickhouse.command({
           query: `DELETE FROM ${table} WHERE ${userCondition}`,
           query_params: queryParams,

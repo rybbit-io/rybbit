@@ -238,7 +238,7 @@ class UsageService {
           SELECT
             site_id,
             uniq(session_id) as count
-          FROM session_replay_metadata
+          FROM session_replay_metadata_v2
           WHERE start_time >= toDate({periodStart:String})
           GROUP BY site_id
         `,

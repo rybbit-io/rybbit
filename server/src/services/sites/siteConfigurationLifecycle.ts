@@ -375,7 +375,7 @@ class SiteConfigurationLifecycle {
         query_params: { id: siteId },
       }),
       clickhouse.command({
-        query: "DELETE FROM session_replay_metadata WHERE site_id = {id:UInt32}",
+        query: "DELETE FROM session_replay_metadata_v2 WHERE site_id = {id:UInt32}",
         query_params: { id: siteId },
       }),
     ]);
