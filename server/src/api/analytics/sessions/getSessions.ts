@@ -162,7 +162,7 @@ export const buildSessionsQuery = (query: GetSessionsRequest["Querystring"], sit
   ),
   ReplaySessions AS (
       SELECT DISTINCT session_id
-      FROM session_replay_metadata
+      FROM session_replay_metadata_v2
       FINAL
       WHERE site_id = {siteId:Int32}
         AND event_count >= 2

@@ -319,4 +319,76 @@ export async function initializeCoreTables() {
         ADD COLUMN IF NOT EXISTS identified_user_id String DEFAULT ''
       `
   );
+
+  // Successor to session_replay_metadata. The old table is a
+  // ReplacingMergeTree holding one cumulative row per session, so every replay
+  // batch had to re-derive that row: SELECT MIN/MAX/COUNT/SUM over the whole
+  // session, then rewrite it. That read scanned 818 B rows in six days — 76% of
+  // everything the cluster read — and the rewrites left 2.5 M single-row parts.
+  //
+  // Aggregating the columns instead lets each batch insert only what it
+  // observed, and the engine does the combining. Nothing reads back during
+  // ingest. Every column keeps its name and its post-merge meaning, so readers
+  // only need FINAL, which they already used.
+  //
+  // duration_ms and created_at are deliberately absent: duration is derived
+  // from the merged bounds at read time, and there is no version column to
+  // order by any more.
+  await execClickhouseInitStep(
+    "create session replay metadata v2 table",
+    `
+      CREATE TABLE IF NOT EXISTS session_replay_metadata_v2 (
+        site_id UInt16,
+        session_id String,
+        user_id SimpleAggregateFunction(anyLast, String),
+        -- Rows arrive with '' until the visitor identifies, and max() over a
+        -- String makes any real id win over the empty one.
+        identified_user_id SimpleAggregateFunction(max, String),
+        start_time SimpleAggregateFunction(min, DateTime),
+        end_time SimpleAggregateFunction(max, Nullable(DateTime)),
+        event_count SimpleAggregateFunction(sum, UInt64),
+        compressed_size_bytes SimpleAggregateFunction(sum, UInt64),
+        -- KNOWN LIMITATION. These merge independently, so a session whose
+        -- batches disagreed can assemble a row from more than one of them —
+        -- the old ReplacingMergeTree always returned one whole batch's
+        -- snapshot. Measured over 30 days of production, of the 423 sessions
+        -- that had more than one metadata version: page_url differed in 62,
+        -- region/city/lat in 18, country in 11, language in 13; browser,
+        -- operating_system, device_type, channel, hostname, referrer and
+        -- user_id never differed at all.
+        --
+        -- The geo group is the one that matters, because those fields are only
+        -- meaningful together: ~4% of multi-version sessions could show a city
+        -- and a country drawn from different batches. Making them coherent
+        -- needs one versioned snapshot (a max() over a leading-version tuple,
+        -- or argMaxState + GROUP BY), which changes every read site.
+        --
+        -- Weighed and accepted, 2026-08: the exposure is narrow and the fix
+        -- costs more than the defect. Don't re-open it without new evidence
+        -- that mixed geo is actually misleading someone.
+        page_url SimpleAggregateFunction(anyLast, String),
+        country SimpleAggregateFunction(anyLast, LowCardinality(FixedString(2))),
+        region SimpleAggregateFunction(anyLast, LowCardinality(String)),
+        city SimpleAggregateFunction(anyLast, String),
+        lat SimpleAggregateFunction(anyLast, Float64),
+        lon SimpleAggregateFunction(anyLast, Float64),
+        browser SimpleAggregateFunction(anyLast, LowCardinality(String)),
+        browser_version SimpleAggregateFunction(anyLast, LowCardinality(String)),
+        operating_system SimpleAggregateFunction(anyLast, LowCardinality(String)),
+        operating_system_version SimpleAggregateFunction(anyLast, LowCardinality(String)),
+        language SimpleAggregateFunction(anyLast, LowCardinality(String)),
+        screen_width SimpleAggregateFunction(max, UInt16),
+        screen_height SimpleAggregateFunction(max, UInt16),
+        device_type SimpleAggregateFunction(anyLast, LowCardinality(String)),
+        channel SimpleAggregateFunction(anyLast, String),
+        hostname SimpleAggregateFunction(anyLast, String),
+        referrer SimpleAggregateFunction(anyLast, String),
+        has_replay_data SimpleAggregateFunction(max, UInt8)
+      )
+      ENGINE = AggregatingMergeTree()
+      PARTITION BY toYYYYMM(start_time)
+      ORDER BY (site_id, session_id)
+      TTL start_time + INTERVAL 30 DAY
+      `
+  );
 }
