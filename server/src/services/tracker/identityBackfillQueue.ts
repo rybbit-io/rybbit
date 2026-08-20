@@ -20,6 +20,12 @@ const FLUSH_INTERVAL_MS = 5 * 60 * 1000;
 // identify faster than this flush early instead of growing the statement.
 const MAX_PENDING_PER_WINDOW = 5000;
 
+// A mutation that fails is retried on later flushes. Re-running a partially
+// applied backfill is harmless — the `identified_user_id = ''` guard makes the
+// tables that already succeeded a no-op — but a permanently failing assignment
+// must not circulate forever.
+const MAX_ATTEMPTS = 3;
+
 type BackfillTable = { name: string; timeColumn: string };
 
 // session_replay_metadata has no `timestamp` column; its time column is
@@ -37,12 +43,20 @@ export type IdentityAssignment = {
   userId: string;
 };
 
+type PendingIdentity = IdentityAssignment & { attempts: number };
+
 class IdentityBackfillQueue {
   // Grouped by backfill window, because the window is part of the mutation's
   // WHERE clause: folding a `days: null` admin backfill in with the routine
   // 30-day ones would widen every assignment to a full-history partition scan.
-  private pending = new Map<number | null, Map<string, IdentityAssignment>>();
-  private flushing = false;
+  private pending = new Map<number | null, Map<string, PendingIdentity>>();
+
+  // Flushes are serialised by chaining rather than by a boolean guard. A guard
+  // would make a concurrent flush() a silent no-op, which loses two things: a
+  // size-triggered flush during a slow one would never run, and shutdown's
+  // `await flush()` would return while work was still in flight.
+  private chain: Promise<void> = Promise.resolve();
+
   private logger = createServiceLogger("identity-backfill-queue");
 
   constructor() {
@@ -52,6 +66,15 @@ class IdentityBackfillQueue {
   }
 
   enqueue(assignment: IdentityAssignment, days: number | null) {
+    this.add({ ...assignment, attempts: 0 }, days);
+
+    const group = this.pending.get(days);
+    if (group && group.size >= MAX_PENDING_PER_WINDOW) {
+      void this.flush();
+    }
+  }
+
+  private add(entry: PendingIdentity, days: number | null) {
     let group = this.pending.get(days);
     if (!group) {
       group = new Map();
@@ -62,35 +85,30 @@ class IdentityBackfillQueue {
     // only touches rows where identified_user_id is still empty, so a second
     // identify for the same device in the same window used to find nothing left
     // to update.
-    const key = `${assignment.siteId}:${assignment.anonymousId}`;
+    const key = `${entry.siteId}:${entry.anonymousId}`;
     if (!group.has(key)) {
-      group.set(key, assignment);
-    }
-
-    if (group.size >= MAX_PENDING_PER_WINDOW) {
-      void this.flush();
+      group.set(key, entry);
     }
   }
 
-  async flush() {
-    if (this.flushing) return;
+  /** Resolves once everything queued at call time has been attempted. */
+  flush(): Promise<void> {
+    this.chain = this.chain.then(() => this.drain());
+    return this.chain;
+  }
 
+  private async drain() {
     const groups = [...this.pending.entries()].filter(([, assignments]) => assignments.size > 0);
     if (groups.length === 0) return;
 
-    this.flushing = true;
     this.pending = new Map();
 
-    try {
-      for (const [days, assignments] of groups) {
-        await this.runBackfill(days, [...assignments.values()]);
-      }
-    } finally {
-      this.flushing = false;
+    for (const [days, assignments] of groups) {
+      await this.runBackfill(days, [...assignments.values()]);
     }
   }
 
-  private async runBackfill(days: number | null, assignments: IdentityAssignment[]) {
+  private async runBackfill(days: number | null, assignments: PendingIdentity[]) {
     // Anonymous ids are salted per site, so a bare `user_id IN (…)` would be
     // correct in practice — but it would also let one site's list match another
     // site's rows. Pairing the two into a single key keeps the mutation exact,
@@ -99,6 +117,8 @@ class IdentityBackfillQueue {
     const keys = assignments.map(a => `${a.siteId}:${a.anonymousId}`);
     const userIds = assignments.map(a => a.userId);
     const siteIds = [...new Set(assignments.map(a => a.siteId))];
+
+    const failedTables: string[] = [];
 
     for (const { name, timeColumn } of TABLES) {
       try {
@@ -120,6 +140,7 @@ class IdentityBackfillQueue {
           query_params: { keys, userIds, siteIds, ...(days !== null ? { days } : {}) },
         });
       } catch (error) {
+        failedTables.push(name);
         this.logger.error(
           { table: name, identities: assignments.length, days, err: error },
           "Error backfilling identified_user_id"
@@ -127,7 +148,34 @@ class IdentityBackfillQueue {
       }
     }
 
-    this.logger.info({ identities: assignments.length, days }, "Flushed identity backfill");
+    if (failedTables.length === 0) {
+      this.logger.info({ identities: assignments.length, days }, "Flushed identity backfill");
+      return;
+    }
+
+    // Requeue rather than drop: the queue is the only thing that knows about
+    // these assignments. The alias row in Postgres already exists, so a later
+    // identify for the same device takes the "alias unchanged" path and never
+    // schedules another backfill — a dropped failure leaves those rows
+    // anonymous permanently.
+    const retryable = assignments.filter(a => a.attempts + 1 < MAX_ATTEMPTS);
+    const exhausted = assignments.length - retryable.length;
+
+    for (const assignment of retryable) {
+      this.add({ ...assignment, attempts: assignment.attempts + 1 }, days);
+    }
+
+    this.logger.warn(
+      { failedTables, requeued: retryable.length, dropped: exhausted, days },
+      "Identity backfill partially failed"
+    );
+
+    if (exhausted > 0) {
+      this.logger.error(
+        { dropped: exhausted, days, maxAttempts: MAX_ATTEMPTS },
+        "Giving up on identity backfill; those rows stay anonymous"
+      );
+    }
   }
 }
 
