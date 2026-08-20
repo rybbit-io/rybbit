@@ -3,21 +3,6 @@ import { DateTime } from "luxon";
 
 import type { Time } from "@/components/DateSelector/types";
 
-const bucketEndOffsetMinutes = (bucket: TimeBucket): number => {
-  switch (bucket) {
-    case "hour":
-      return 59;
-    case "fifteen_minutes":
-      return 14;
-    case "ten_minutes":
-      return 9;
-    case "five_minutes":
-      return 4;
-    default:
-      return 0;
-  }
-};
-
 export const stepBucket = (dt: DateTime, bucket: TimeBucket, direction: 1 | -1): DateTime => {
   const n = direction;
   switch (bucket) {
@@ -157,10 +142,27 @@ export type ChartTimeBounds = {
   max: Date | undefined;
 };
 
+// ClickHouse's `toStartOfWeek` floors to Sunday where Luxon's `startOf("week")`
+// floors to Monday, so weekly buckets land on Sundays. Flooring with Luxon would
+// put the axis max *before* the final bucket of a period that ends on a Sunday,
+// and consumers drop points past the max.
+const floorToBucketStart = (dt: DateTime, bucket: TimeBucket): DateTime =>
+  bucket === "week" ? dt.startOf("day").minus({ days: dt.weekday % 7 }) : floorToBucket(dt, bucket);
+
+/**
+ * The start of the final bucket in `[start, endExclusive)`. Bounds end there
+ * rather than at the period's last millisecond so the closing tick sits on the
+ * right edge instead of a whole bucket short of it.
+ */
+const lastBucketStart = (start: DateTime, endExclusive: DateTime, bucket: TimeBucket): Date => {
+  const lastInstant = endExclusive.minus({ milliseconds: 1 });
+  const last = floorToBucketStart(lastInstant, bucket);
+  // A period holding a single bucket would otherwise collapse the x domain.
+  return (last > start ? last : lastInstant).toJSDate();
+};
+
 // Returns full-period x-scale bounds so related charts share a congruent scale.
 export const getChartTimeBounds = (time: Time, bucket: TimeBucket, timezone: string): ChartTimeBounds => {
-  const offset = bucketEndOffsetMinutes(bucket);
-
   if (time.mode === "past-minutes") {
     const startUnit = time.pastMinutesStart < 360 ? "minute" : "hour";
     const min = DateTime.now()
@@ -176,10 +178,10 @@ export const getChartTimeBounds = (time: Time, bucket: TimeBucket, timezone: str
   }
 
   if (time.mode === "day") {
-    const day = DateTime.fromISO(time.day, { zone: timezone });
+    const day = DateTime.fromISO(time.day, { zone: timezone }).startOf("day");
     return {
-      min: day.startOf("day").toJSDate(),
-      max: day.endOf("day").minus({ minutes: offset }).toJSDate(),
+      min: day.toJSDate(),
+      max: lastBucketStart(day, day.plus({ days: 1 }), bucket),
     };
   }
 
@@ -187,7 +189,7 @@ export const getChartTimeBounds = (time: Time, bucket: TimeBucket, timezone: str
     const week = DateTime.fromISO(time.week, { zone: timezone }).startOf("week");
     return {
       min: week.toJSDate(),
-      max: week.endOf("week").minus({ minutes: offset }).toJSDate(),
+      max: lastBucketStart(week, week.plus({ weeks: 1 }), bucket),
     };
   }
 
@@ -197,7 +199,7 @@ export const getChartTimeBounds = (time: Time, bucket: TimeBucket, timezone: str
     }).startOf("month");
     return {
       min: month.toJSDate(),
-      max: month.endOf("month").minus({ minutes: offset }).toJSDate(),
+      max: lastBucketStart(month, month.plus({ months: 1 }), bucket),
     };
   }
 
@@ -205,7 +207,7 @@ export const getChartTimeBounds = (time: Time, bucket: TimeBucket, timezone: str
     const year = DateTime.fromISO(time.year, { zone: timezone }).startOf("year");
     return {
       min: year.toJSDate(),
-      max: year.endOf("year").minus({ minutes: offset }).toJSDate(),
+      max: lastBucketStart(year, year.plus({ years: 1 }), bucket),
     };
   }
 
@@ -215,16 +217,17 @@ export const getChartTimeBounds = (time: Time, bucket: TimeBucket, timezone: str
         zone: timezone,
       });
       const endExclusive = DateTime.fromISO(`${time.endDate}T${time.endTime}`, { zone: timezone });
-      const displayEnd = stepBucket(endExclusive, bucket, -1);
       return {
         min: start.toJSDate(),
-        max: (displayEnd > start ? displayEnd : endExclusive).toJSDate(),
+        max: lastBucketStart(start, endExclusive, bucket),
       };
     }
 
+    const start = DateTime.fromISO(time.startDate, { zone: timezone }).startOf("day");
+    const endExclusive = DateTime.fromISO(time.endDate, { zone: timezone }).startOf("day").plus({ days: 1 });
     return {
-      min: DateTime.fromISO(time.startDate, { zone: timezone }).startOf("day").toJSDate(),
-      max: DateTime.fromISO(time.endDate, { zone: timezone }).endOf("day").minus({ minutes: offset }).toJSDate(),
+      min: start.toJSDate(),
+      max: lastBucketStart(start, endExclusive, bucket),
     };
   }
 
