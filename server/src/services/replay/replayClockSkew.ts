@@ -17,6 +17,20 @@ export const MAX_FUTURE_SKEW_MS = 24 * 60 * 60 * 1000;
 // there is nothing to preserve by keeping its original date.
 export const MAX_PAST_SKEW_MS = 30 * 24 * 60 * 60 * 1000;
 
+// A browser can put a non-finite value on the wire: JSON `1e400` parses as
+// Infinity and `z.number()` admits it. Left alone it poisons the median and
+// then every corrected timestamp with NaN — which ClickHouse cannot encode, so
+// one bad event would fail the whole batch and the recorder would retry it
+// forever. Treat it as the most extreme possible skew and let the clamp below
+// pull it back to a bound, the same as any other unusable clock.
+function sanitize(timestamp: number, nowMs: number, lowerBound: number, upperBound: number): number {
+  if (Number.isFinite(timestamp)) return timestamp;
+  if (timestamp === Infinity) return upperBound;
+  if (timestamp === -Infinity) return lowerBound;
+  // NaN carries no ordering at all, so there is no bound to prefer.
+  return nowMs;
+}
+
 function median(values: number[]): number {
   const sorted = [...values].sort((a, b) => a - b);
   const mid = Math.floor(sorted.length / 2);
@@ -44,22 +58,27 @@ export function correctReplayClockSkew<T extends { timestamp: number }>(
 ): ClockSkewCorrection<T> {
   if (events.length === 0) return { events, skewMs: 0 };
 
-  const anchor = median(events.map(event => event.timestamp));
   const upperBound = nowMs + MAX_FUTURE_SKEW_MS;
   const lowerBound = nowMs - MAX_PAST_SKEW_MS;
+
+  const timestamps = events.map(event => sanitize(event.timestamp, nowMs, lowerBound, upperBound));
+  const anchor = median(timestamps);
 
   let skewMs = 0;
   if (anchor > upperBound) skewMs = anchor - nowMs;
   else if (anchor < lowerBound) skewMs = anchor - nowMs;
 
-  if (skewMs === 0 && events.every(event => event.timestamp <= upperBound && event.timestamp >= lowerBound)) {
+  // Returning the original array is only safe when nothing needed sanitizing;
+  // otherwise the caller would get the non-finite values straight back.
+  const allFinite = events.every(event => Number.isFinite(event.timestamp));
+  if (skewMs === 0 && allFinite && timestamps.every(t => t <= upperBound && t >= lowerBound)) {
     return { events, skewMs: 0 };
   }
 
   return {
-    events: events.map(event => ({
+    events: events.map((event, index) => ({
       ...event,
-      timestamp: Math.min(Math.max(event.timestamp - skewMs, lowerBound), upperBound),
+      timestamp: Math.min(Math.max(timestamps[index] - skewMs, lowerBound), upperBound),
     })),
     skewMs,
   };

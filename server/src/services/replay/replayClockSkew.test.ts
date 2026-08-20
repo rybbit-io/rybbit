@@ -57,4 +57,33 @@ describe("correctReplayClockSkew", () => {
   it("handles an empty batch", () => {
     expect(correctReplayClockSkew([], NOW)).toEqual({ events: [], skewMs: 0 });
   });
+
+  // Non-finite timestamps land on the bound they were heading for, never NaN.
+  it("clamps a lone Infinity timestamp instead of returning NaN", () => {
+    const { events, skewMs } = correctReplayClockSkew([{ timestamp: Infinity }], NOW);
+
+    expect(events[0].timestamp).toBe(NOW + MAX_FUTURE_SKEW_MS);
+    expect(Number.isFinite(skewMs)).toBe(true);
+  });
+
+  it("clamps a lone -Infinity timestamp", () => {
+    const { events } = correctReplayClockSkew([{ timestamp: -Infinity }], NOW);
+
+    expect(events[0].timestamp).toBe(NOW - MAX_PAST_SKEW_MS);
+  });
+
+  it("does not let one non-finite timestamp shift its healthy neighbours", () => {
+    const { events } = correctReplayClockSkew(
+      [{ timestamp: NOW }, { timestamp: NOW + 100 }, { timestamp: Infinity }, { timestamp: NOW + 300 }],
+      NOW
+    );
+
+    expect(events.map(event => event.timestamp)).toEqual([NOW, NOW + 100, NOW + MAX_FUTURE_SKEW_MS, NOW + 300]);
+  });
+
+  it("falls back to now for a NaN timestamp", () => {
+    const { events } = correctReplayClockSkew([{ timestamp: NaN }], NOW);
+
+    expect(events[0].timestamp).toBe(NOW);
+  });
 });
