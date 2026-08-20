@@ -152,4 +152,47 @@ describe("identityBackfillQueue", () => {
 
     expect(shutdownDone).toBe(true);
   });
+
+  it("splits an oversized backlog across several mutations", async () => {
+    const inFlight = deferred();
+    mocks.command.mockReturnValueOnce(inFlight.promise);
+
+    identityBackfillQueue.enqueue({ siteId: 7, anonymousId: "held", userId: "u" }, 30);
+    const first = identityBackfillQueue.flush();
+
+    // Everything below arrives while that flush is stuck, so it all lands in
+    // one backlog rather than being spread over separate windows.
+    for (let i = 0; i < 5001; i++) {
+      identityBackfillQueue.enqueue({ siteId: 7, anonymousId: `anon-${i}`, userId: `user-${i}` }, 30);
+    }
+
+    inFlight.resolve();
+    await first;
+    // Joins the end of the chain, including the drains the size trigger queued.
+    await identityBackfillQueue.flush();
+
+    const mutations = mocks.command.mock.calls.map(([{ query_params }]) => query_params.keys);
+    expect(mutations.every(keys => keys.length <= 5000)).toBe(true);
+
+    const covered = new Set(mutations.flat());
+    for (let i = 0; i < 5001; i++) {
+      expect(covered.has(`7:anon-${i}`)).toBe(true);
+    }
+    expect(covered.has("7:held")).toBe(true);
+  });
+
+  it("retries a shutdown failure instead of exiting on top of it", async () => {
+    mocks.command.mockRejectedValueOnce(new Error("ClickHouse blip"));
+
+    identityBackfillQueue.enqueue({ siteId: 7, anonymousId: "anon-a", userId: "user-a" }, 30);
+    await identityBackfillQueue.drainCompletely();
+
+    // One failed table, then a clean retry round: nothing is left behind.
+    expect(mocks.command).toHaveBeenCalledTimes(TABLE_COUNT * 2);
+
+    mocks.command.mockReset();
+    mocks.command.mockResolvedValue(undefined);
+    await identityBackfillQueue.flush();
+    expect(mocks.command).not.toHaveBeenCalled();
+  });
 });

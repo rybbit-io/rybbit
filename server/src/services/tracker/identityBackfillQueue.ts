@@ -15,10 +15,11 @@ import { createServiceLogger } from "../../lib/logger/logger.js";
 // stay uncontended in between.
 const FLUSH_INTERVAL_MS = 5 * 60 * 1000;
 
-// A flush interpolates one array element per pending identity, so an
-// unbounded buffer would eventually build an unbounded query. Sites that
-// identify faster than this flush early instead of growing the statement.
-const MAX_PENDING_PER_WINDOW = 5000;
+// A mutation interpolates one array element per identity, so this bounds the
+// statement rather than the buffer: crossing it triggers an early flush, and a
+// flush that finds more than this — identifies that arrived while the previous
+// one was in flight — splits into several mutations rather than one huge one.
+const MAX_IDENTITIES_PER_MUTATION = 5000;
 
 // A mutation that fails is retried on later flushes. Re-running a partially
 // applied backfill is harmless — the `identified_user_id = ''` guard makes the
@@ -69,7 +70,7 @@ class IdentityBackfillQueue {
     this.add({ ...assignment, attempts: 0 }, days);
 
     const group = this.pending.get(days);
-    if (group && group.size >= MAX_PENDING_PER_WINDOW) {
+    if (group && group.size >= MAX_IDENTITIES_PER_MUTATION) {
       void this.flush();
     }
   }
@@ -97,6 +98,20 @@ class IdentityBackfillQueue {
     return this.chain;
   }
 
+  /**
+   * Drains repeatedly until nothing is left to retry. Only for shutdown: during
+   * normal operation a failed assignment should wait for the next interval
+   * rather than hot-looping against a ClickHouse that is already struggling,
+   * but at shutdown there is no next interval, so a requeued retry would be
+   * thrown away by process exit.
+   */
+  async drainCompletely(): Promise<void> {
+    for (let round = 0; round < MAX_ATTEMPTS; round++) {
+      await this.flush();
+      if (this.pending.size === 0) return;
+    }
+  }
+
   private async drain() {
     const groups = [...this.pending.entries()].filter(([, assignments]) => assignments.size > 0);
     if (groups.length === 0) return;
@@ -104,7 +119,10 @@ class IdentityBackfillQueue {
     this.pending = new Map();
 
     for (const [days, assignments] of groups) {
-      await this.runBackfill(days, [...assignments.values()]);
+      const queued = [...assignments.values()];
+      for (let start = 0; start < queued.length; start += MAX_IDENTITIES_PER_MUTATION) {
+        await this.runBackfill(days, queued.slice(start, start + MAX_IDENTITIES_PER_MUTATION));
+      }
     }
   }
 

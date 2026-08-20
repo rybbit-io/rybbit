@@ -625,7 +625,7 @@ const shutdown = async (signal: string) => {
 
     // Identity backfills are buffered for several minutes to keep mutation
     // submissions rare; without this, a deploy drops whatever is still pending.
-    await identityBackfillQueue.flush();
+    await identityBackfillQueue.drainCompletely();
 
     // Clear the timeout since we're done
     clearTimeout(forceExitTimeout);
