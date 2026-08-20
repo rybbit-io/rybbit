@@ -30,9 +30,11 @@ describe("getChartTimeBounds", () => {
     });
   });
 
-  it("month: weekly buckets land on Sunday, including a month ending on one", () => {
-    expect(boundsIso({ mode: "month", month: "2026-08-01" }, "week").max).toBe("2026-08-30T00:00:00.000-04:00");
-    // January 2027 ends on a Sunday: flooring to Monday would drop that bucket.
+  it("month: weekly buckets clear both the Sunday and the Monday convention", () => {
+    // August 2026 ends on a Monday, which `toStartOfInterval(.., 1 WEEK)` buckets
+    // a day after `toStartOfWeek` does; stopping on the Sunday would clip it.
+    expect(boundsIso({ mode: "month", month: "2026-08-01" }, "week").max).toBe("2026-08-31T00:00:00.000-04:00");
+    // January 2027 ends on a Sunday, where the Sunday floor is the later one.
     expect(boundsIso({ mode: "month", month: "2027-01-01" }, "week").max).toBe("2027-01-31T00:00:00.000-05:00");
   });
 

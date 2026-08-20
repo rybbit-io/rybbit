@@ -19,9 +19,11 @@ export function getPdfDateRange(time: Time, timeZone: string): { startDate: stri
   const today = DateTime.now().setZone(timeZone);
 
   if (time.mode === "past-minutes") {
+    // The newer edge is only "now" until the window is stepped back, after which
+    // ending on today would widen the report past what the dashboard shows.
     return {
       startDate: today.minus({ minutes: time.pastMinutesStart }).toISODate() ?? "",
-      endDate: today.toISODate() ?? "",
+      endDate: today.minus({ minutes: time.pastMinutesEnd }).toISODate() ?? "",
     };
   }
   if (time.mode === "all-time") {

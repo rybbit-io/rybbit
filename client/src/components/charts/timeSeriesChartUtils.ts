@@ -142,12 +142,21 @@ export type ChartTimeBounds = {
   max: Date | undefined;
 };
 
-// ClickHouse's `toStartOfWeek` floors to Sunday where Luxon's `startOf("week")`
-// floors to Monday, so weekly buckets land on Sundays. Flooring with Luxon would
-// put the axis max *before* the final bucket of a period that ends on a Sunday,
-// and consumers drop points past the max.
+// Weekly buckets follow two conventions at once: the analytics queries floor
+// with ClickHouse's `toStartOfWeek` (Sunday) and the dashboard cards with
+// `toStartOfInterval(..., INTERVAL 1 WEEK)` (Monday) — verified, they differ by
+// a day. Luxon's `startOf("week")` is Monday. Take the later of the two floors
+// so neither convention's final bucket lands past the max, where consumers drop
+// it and the axis clips it; the cost is at most a day of trailing gutter.
+const floorToWeekStart = (dt: DateTime): DateTime => {
+  const day = dt.startOf("day");
+  const sunday = day.minus({ days: dt.weekday % 7 }); // Luxon weekday: 1 = Monday, 7 = Sunday
+  const monday = day.minus({ days: dt.weekday - 1 });
+  return sunday > monday ? sunday : monday;
+};
+
 const floorToBucketStart = (dt: DateTime, bucket: TimeBucket): DateTime =>
-  bucket === "week" ? dt.startOf("day").minus({ days: dt.weekday % 7 }) : floorToBucket(dt, bucket);
+  bucket === "week" ? floorToWeekStart(dt) : floorToBucket(dt, bucket);
 
 /**
  * The start of the final bucket in `[start, endExclusive)`. Bounds end there
