@@ -344,8 +344,11 @@ export async function initializeCoreTables() {
         -- Rows arrive with '' until the visitor identifies, and max() over a
         -- String makes any real id win over the empty one.
         identified_user_id SimpleAggregateFunction(max, String),
-        start_time SimpleAggregateFunction(min, DateTime),
-        end_time SimpleAggregateFunction(max, Nullable(DateTime)),
+        -- Millisecond resolution, matching session_replay_events.timestamp:
+        -- duration is now derived from these bounds instead of being stored,
+        -- and second-resolution columns would floor a 900ms replay to 0.
+        start_time SimpleAggregateFunction(min, DateTime64(3)),
+        end_time SimpleAggregateFunction(max, Nullable(DateTime64(3))),
         event_count SimpleAggregateFunction(sum, UInt64),
         compressed_size_bytes SimpleAggregateFunction(sum, UInt64),
         -- KNOWN LIMITATION. These merge independently, so a session whose
@@ -388,7 +391,7 @@ export async function initializeCoreTables() {
       ENGINE = AggregatingMergeTree()
       PARTITION BY toYYYYMM(start_time)
       ORDER BY (site_id, session_id)
-      TTL start_time + INTERVAL 30 DAY
+      TTL toDateTime(start_time) + INTERVAL 30 DAY
       `
   );
 }

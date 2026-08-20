@@ -58,7 +58,9 @@ Two columns are gone:
 
 - `duration_ms` — derived at read time as
   `dateDiff('millisecond', start_time, end_time)`, because a single batch only
-  knows its own slice of the session.
+  knows its own slice of the session. `start_time`/`end_time` are
+  `DateTime64(3)` for exactly this reason: at second resolution a 900 ms replay
+  would derive a duration of 0.
 - `created_at` — there is no version column to order by any more.
 
 The application creates the new table on boot. The steps below move the
@@ -81,7 +83,14 @@ Run once, after the deploy:
 INSERT INTO session_replay_metadata_v2
 SELECT
   site_id, session_id, user_id, identified_user_id,
-  start_time, end_time, event_count, compressed_size_bytes,
+  start_time,
+  -- The old bounds are second-resolution but the old `duration_ms` was exact,
+  -- so rebuild `end_time` from it rather than copying the rounded column —
+  -- otherwise every historical replay's duration is re-derived to the second.
+  if(duration_ms IS NULL,
+     CAST(toDateTime64(end_time, 3) AS Nullable(DateTime64(3))),
+     CAST(toDateTime64(start_time, 3) + toIntervalMillisecond(assumeNotNull(duration_ms)) AS Nullable(DateTime64(3)))) AS end_time,
+  event_count, compressed_size_bytes,
   page_url, country, region, city, lat, lon,
   browser, browser_version, operating_system, operating_system_version,
   language, screen_width, screen_height, device_type,
@@ -90,6 +99,10 @@ FROM session_replay_metadata
 FINAL
 WHERE start_time >= now() - INTERVAL 30 DAY;
 ```
+
+`start_time` still lands on a whole second for backfilled rows, because that is
+all the old table recorded. Rows written after the deploy carry true
+millisecond bounds on both ends.
 
 `FINAL` matters: without it the old table's superseded versions are copied too,
 and because the new engine **sums** `event_count` rather than replacing it,
@@ -154,7 +167,7 @@ the rollback path.
 
 Replay event timestamps come from the browser, so devices with broken clocks
 wrote rows dated 2032, 2035, 2064, 2076 and 2090. Those partitions grow the
-partition list permanently and, because the TTL is `start_time + 30 DAY`, they
+partition list permanently and, because the TTL is `toDateTime(start_time) + 30 DAY`, they
 never expire.
 
 Ingest now corrects this (`server/src/services/replay/replayClockSkew.ts`): a
