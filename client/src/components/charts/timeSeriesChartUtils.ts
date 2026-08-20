@@ -142,12 +142,21 @@ export type ChartTimeBounds = {
   max: Date | undefined;
 };
 
-// ClickHouse's `toStartOfWeek` floors to Sunday where Luxon's `startOf("week")`
-// floors to Monday, so weekly buckets land on Sundays. Flooring with Luxon would
-// put the axis max *before* the final bucket of a period that ends on a Sunday,
-// and consumers drop points past the max.
+// Weekly buckets follow two conventions at once: the analytics queries floor
+// with ClickHouse's `toStartOfWeek` (Sunday) and the dashboard cards with
+// `toStartOfInterval(..., INTERVAL 1 WEEK)` (Monday) — verified, they differ by
+// a day. Luxon's `startOf("week")` is Monday. Take the later of the two floors
+// so neither convention's final bucket lands past the max, where consumers drop
+// it and the axis clips it; the cost is at most a day of trailing gutter.
+const floorToWeekStart = (dt: DateTime): DateTime => {
+  const day = dt.startOf("day");
+  const sunday = day.minus({ days: dt.weekday % 7 }); // Luxon weekday: 1 = Monday, 7 = Sunday
+  const monday = day.minus({ days: dt.weekday - 1 });
+  return sunday > monday ? sunday : monday;
+};
+
 const floorToBucketStart = (dt: DateTime, bucket: TimeBucket): DateTime =>
-  bucket === "week" ? dt.startOf("day").minus({ days: dt.weekday % 7 }) : floorToBucket(dt, bucket);
+  bucket === "week" ? floorToWeekStart(dt) : floorToBucket(dt, bucket);
 
 /**
  * The start of the final bucket in `[start, endExclusive)`. Bounds end there
@@ -164,14 +173,16 @@ const lastBucketStart = (start: DateTime, endExclusive: DateTime, bucket: TimeBu
 // Returns full-period x-scale bounds so related charts share a congruent scale.
 export const getChartTimeBounds = (time: Time, bucket: TimeBucket, timezone: string): ChartTimeBounds => {
   if (time.mode === "past-minutes") {
-    // Floored to the bucket rather than a fixed unit: a window stepped back
-    // keeps its own length, so "30 minutes" can start 6+ hours ago and an
-    // hour-floored left edge would open a gap the data never fills.
-    const now = DateTime.now().setZone(timezone);
-    const min = floorToBucketStart(now.minus({ minutes: time.pastMinutesStart }), bucket).toJSDate();
-    // Only the hour bucket pins the right edge: a finer floor advances between
-    // refetches, so the axis would creep away from the last point it has.
-    const max = bucket === "hour" ? now.minus({ minutes: time.pastMinutesEnd }).startOf("hour").toJSDate() : undefined;
+    const startUnit = time.pastMinutesStart < 360 ? "minute" : "hour";
+    const min = DateTime.now()
+      .setZone(timezone)
+      .minus({ minutes: time.pastMinutesStart })
+      .startOf(startUnit)
+      .toJSDate();
+    const max =
+      bucket === "hour"
+        ? DateTime.now().setZone(timezone).minus({ minutes: time.pastMinutesEnd }).startOf("hour").toJSDate()
+        : undefined;
     return { min, max };
   }
 
