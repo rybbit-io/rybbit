@@ -1,6 +1,6 @@
 "use client";
 import { Button } from "@/components/ui/button";
-import { canGoForward, goBack, goForward, useStore } from "@/lib/store";
+import { canGoBack, canGoForward, goBack, goForward, useStore } from "@/lib/store";
 import { FilterParameter } from "@rybbit/shared";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Filters } from "./Filters/Filters";
@@ -32,7 +32,7 @@ export function SubHeader({ availableFilters }: { availableFilters?: FilterParam
               variant="secondary"
               size="icon"
               onClick={goBack}
-              disabled={time.mode === "past-minutes"}
+              disabled={!canGoBack(time)}
               className="rounded-r-none h-8 w-8"
             >
               <ChevronLeft />

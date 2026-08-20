@@ -26,7 +26,7 @@ import { Skeleton } from "../../../../components/ui/skeleton";
 import { toast } from "../../../../components/ui/sonner";
 import { cn } from "../../../../lib/utils";
 import { useSetPageTitle } from "../../../../hooks/useSetPageTitle";
-import { canGoForward, goBack, goForward, useStore } from "../../../../lib/store";
+import { canGoBack, canGoForward, goBack, goForward, useStore } from "../../../../lib/store";
 import { DashboardCardEditor } from "../components/DashboardCardEditor";
 import { DashboardCardView } from "../components/DashboardCardView";
 import { NewCardDialog } from "../components/NewCardDialog";
@@ -346,7 +346,7 @@ export default function DashboardDetailPage() {
               variant="secondary"
               size="icon"
               onClick={goBack}
-              disabled={time.mode === "past-minutes"}
+              disabled={!canGoBack(time)}
               className="h-8 w-8 rounded-r-none"
               aria-label="Previous date range"
             >

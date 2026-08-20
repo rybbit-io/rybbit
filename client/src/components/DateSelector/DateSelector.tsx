@@ -137,6 +137,18 @@ export function DateSelector({
     }
 
     if (time.mode === "past-minutes") {
+      // A window stepped back no longer ends at now, so name the stretch it
+      // covers — "Last 30 minutes" would read as live when it isn't.
+      if (time.pastMinutesEnd > 0) {
+        const start = now.minus({ minutes: time.pastMinutesStart });
+        const end = now.minus({ minutes: time.pastMinutesEnd });
+        const clock = hour12 ? "h:mm a" : "HH:mm";
+        const withDate = `MMM d, ${clock}`;
+        const startFormatted = start.hasSame(now, "day") ? start.toFormat(clock) : start.toFormat(withDate);
+        const endFormatted = end.hasSame(start, "day") ? end.toFormat(clock) : end.toFormat(withDate);
+        return `${startFormatted} - ${endFormatted}`;
+      }
+
       if (time.pastMinutesStart >= 60) {
         const hours = Math.floor(time.pastMinutesStart / 60);
         return t("Last {hours} hours", { hours: String(hours) });
