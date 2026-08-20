@@ -164,16 +164,14 @@ const lastBucketStart = (start: DateTime, endExclusive: DateTime, bucket: TimeBu
 // Returns full-period x-scale bounds so related charts share a congruent scale.
 export const getChartTimeBounds = (time: Time, bucket: TimeBucket, timezone: string): ChartTimeBounds => {
   if (time.mode === "past-minutes") {
-    const startUnit = time.pastMinutesStart < 360 ? "minute" : "hour";
-    const min = DateTime.now()
-      .setZone(timezone)
-      .minus({ minutes: time.pastMinutesStart })
-      .startOf(startUnit)
-      .toJSDate();
-    const max =
-      bucket === "hour"
-        ? DateTime.now().setZone(timezone).minus({ minutes: time.pastMinutesEnd }).startOf("hour").toJSDate()
-        : undefined;
+    // Floored to the bucket rather than a fixed unit: a window stepped back
+    // keeps its own length, so "30 minutes" can start 6+ hours ago and an
+    // hour-floored left edge would open a gap the data never fills.
+    const now = DateTime.now().setZone(timezone);
+    const min = floorToBucketStart(now.minus({ minutes: time.pastMinutesStart }), bucket).toJSDate();
+    // Only the hour bucket pins the right edge: a finer floor advances between
+    // refetches, so the axis would creep away from the last point it has.
+    const max = bucket === "hour" ? now.minus({ minutes: time.pastMinutesEnd }).startOf("hour").toJSDate() : undefined;
     return { min, max };
   }
 

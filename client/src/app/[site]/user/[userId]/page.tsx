@@ -10,7 +10,7 @@ import { useUserInfo } from "../../../../api/analytics/hooks/userGetInfo";
 import { useGetSessions, useGetUserSessionCount } from "../../../../api/analytics/hooks/useGetUserSessions";
 import { DateSelector } from "../../../../components/DateSelector/DateSelector";
 import { Button } from "../../../../components/ui/button";
-import { canGoForward, goBack, goForward, useStore } from "../../../../lib/store";
+import { canGoBack, canGoForward, goBack, goForward, useStore } from "../../../../lib/store";
 import { USER_DETAIL_PAGE_FILTERS } from "../../../../lib/filterGroups";
 import { Filters } from "../../components/SubHeader/Filters/Filters";
 import { NewFilterButton } from "../../components/SubHeader/Filters/NewFilterButton";
@@ -118,7 +118,7 @@ export default function UserPage() {
               variant="secondary"
               size="icon"
               onClick={goBack}
-              disabled={time.mode === "past-minutes"}
+              disabled={!canGoBack(time)}
               className="rounded-r-none h-8 w-8"
             >
               <ChevronLeft />
