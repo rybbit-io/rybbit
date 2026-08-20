@@ -182,6 +182,30 @@ export function getDashboardTimeForRange(value: string, timezone: string): Time 
   }
 }
 
+// Some pages cannot afford an all-time default. The users list aggregates every
+// event a site has ever recorded — the count query behind it scanned 5.6 B rows
+// over six days — which is an expensive way to answer a question the visitor has
+// not asked yet.
+//
+// This caps the *default* only, and it belongs here rather than on the page:
+// every caller below already skips the stored default when the URL carries a
+// time, and an explicit selection is written to the URL. So picking All time
+// from the selector still works and still survives leaving and returning; what
+// no longer happens is landing on it unasked.
+const DEFAULT_RANGE_CAPS: { appliesTo: (pathname: string) => boolean; cap: DashboardDefaultTimeRange }[] = [
+  { appliesTo: pathname => pathname.endsWith("/users"), cap: "last-30-days" },
+];
+
+export function capDashboardDefaultRange(
+  range: DashboardDefaultTimeRange,
+  pathname: string
+): DashboardDefaultTimeRange {
+  if (range !== "all-time") return range;
+  return DEFAULT_RANGE_CAPS.find(rule => rule.appliesTo(pathname))?.cap ?? range;
+}
+
 export function getStoredDashboardDefaultTime(timezone: string): Time {
-  return getDashboardTimeForRange(getStoredDashboardDefaultTimeRange(), timezone);
+  const stored = getStoredDashboardDefaultTimeRange();
+  const range = typeof window === "undefined" ? stored : capDashboardDefaultRange(stored, window.location.pathname);
+  return getDashboardTimeForRange(range, timezone);
 }
