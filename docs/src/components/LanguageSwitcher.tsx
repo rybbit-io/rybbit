@@ -13,6 +13,7 @@ const LOCALE_OPTIONS = [
   { value: "zh", label: "简体中文", country: "CN" },
   { value: "es", label: "Español", country: "ES" },
   { value: "pl", label: "Polski", country: "PL" },
+  { value: "cs", label: "Čeština", country: "CZ" },
   { value: "it", label: "Italiano", country: "IT" },
   { value: "ko", label: "한국어", country: "KR" },
   { value: "pt", label: "Português", country: "BR" },
