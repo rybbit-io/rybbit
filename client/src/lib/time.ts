@@ -116,8 +116,33 @@ export const deriveTimeState = (time: Time, zone: string): { previousTime: Time;
   return { previousTime, bucket };
 };
 
-/** One step back in time. Null when the mode doesn't navigate (all-time, past-minutes). */
+/**
+ * A past-minutes window steps by its own length and stays relative to now, so
+ * the presets keep auto-refreshing: {30, 0} back is {60, 30}, and forward from
+ * there clamps the newer edge at 0 to land back on the live window.
+ */
+const shiftPastMinutes = (time: Extract<Time, { mode: "past-minutes" }>, direction: 1 | -1): Time | null => {
+  const windowLength = time.pastMinutesStart - time.pastMinutesEnd;
+
+  if (direction === -1) {
+    return {
+      mode: "past-minutes",
+      pastMinutesStart: time.pastMinutesStart + windowLength,
+      pastMinutesEnd: time.pastMinutesEnd + windowLength,
+    };
+  }
+
+  if (time.pastMinutesEnd === 0) return null;
+  const pastMinutesEnd = Math.max(0, time.pastMinutesEnd - windowLength);
+  return { mode: "past-minutes", pastMinutesStart: pastMinutesEnd + windowLength, pastMinutesEnd };
+};
+
+/** One step back in time. Null when the mode doesn't navigate (all-time). */
 export const shiftTimeBackward = (time: Time, zone: string): Time | null => {
+  if (time.mode === "past-minutes") {
+    return shiftPastMinutes(time, -1);
+  }
+
   if (time.mode === "day") {
     return {
       mode: "day",
@@ -177,6 +202,10 @@ export const shiftTimeBackward = (time: Time, zone: string): Time | null => {
  * would land entirely in the future (ranges clamp against `now`).
  */
 export const shiftTimeForward = (time: Time, zone: string, now: DateTime = DateTime.now()): Time | null => {
+  if (time.mode === "past-minutes") {
+    return shiftPastMinutes(time, 1);
+  }
+
   if (time.mode === "day") {
     return {
       mode: "day",
@@ -280,6 +309,11 @@ export const canGoForward = (time: Time, zone: string, now: DateTime = DateTime.
 
   if (time.mode === "year") {
     return !(DateTime.fromISO(time.year, { zone }).startOf("year") >= currentDay);
+  }
+
+  // A past-minutes window that already ends at now has nowhere newer to go.
+  if (time.mode === "past-minutes") {
+    return time.pastMinutesEnd > 0;
   }
 
   return false;

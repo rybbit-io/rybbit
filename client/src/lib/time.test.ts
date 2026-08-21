@@ -134,13 +134,21 @@ describe("shiftTimeBackward / shiftTimeForward", () => {
       endDate: "2024-03-08",
     });
     expect(
-      shiftTimeForward({ mode: "range", startDate: "2024-03-01", endDate: "2024-03-07" }, ZONE, dt("2024-03-20T00:00:00"))
+      shiftTimeForward(
+        { mode: "range", startDate: "2024-03-01", endDate: "2024-03-07" },
+        ZONE,
+        dt("2024-03-20T00:00:00")
+      )
     ).toEqual({ mode: "range", startDate: "2024-03-07", endDate: "2024-03-13" });
   });
 
   it("range: forward is blocked when the whole range would be in the future", () => {
     expect(
-      shiftTimeForward({ mode: "range", startDate: "2024-03-10", endDate: "2024-03-16" }, ZONE, dt("2024-03-14T00:00:00"))
+      shiftTimeForward(
+        { mode: "range", startDate: "2024-03-10", endDate: "2024-03-16" },
+        ZONE,
+        dt("2024-03-14T00:00:00")
+      )
     ).toBeNull();
   });
 
@@ -192,10 +200,34 @@ describe("shiftTimeBackward / shiftTimeForward", () => {
     ).toBeNull();
   });
 
-  it("all-time and past-minutes do not navigate", () => {
+  it("all-time does not navigate", () => {
     expect(shiftTimeBackward({ mode: "all-time" }, ZONE)).toBeNull();
     expect(shiftTimeForward({ mode: "all-time" }, ZONE)).toBeNull();
-    expect(shiftTimeBackward({ mode: "past-minutes", pastMinutesStart: 30, pastMinutesEnd: 0 }, ZONE)).toBeNull();
+  });
+
+  it("past-minutes: steps by the window length, staying relative to now", () => {
+    const live: Time = { mode: "past-minutes", pastMinutesStart: 30, pastMinutesEnd: 0 };
+    const oneBack = shiftTimeBackward(live, ZONE);
+    expect(oneBack).toEqual({ mode: "past-minutes", pastMinutesStart: 60, pastMinutesEnd: 30 });
+    expect(shiftTimeBackward(oneBack!, ZONE)).toEqual({
+      mode: "past-minutes",
+      pastMinutesStart: 90,
+      pastMinutesEnd: 60,
+    });
+    expect(shiftTimeForward(oneBack!, ZONE)).toEqual(live);
+  });
+
+  it("past-minutes: forward stops at the live window instead of the future", () => {
+    expect(shiftTimeForward({ mode: "past-minutes", pastMinutesStart: 30, pastMinutesEnd: 0 }, ZONE)).toBeNull();
+  });
+
+  it("past-minutes: forward clamps a partial step onto the live window", () => {
+    // A 6h window whose newer edge sits 2h out: the step lands on 0, not -4h.
+    expect(shiftTimeForward({ mode: "past-minutes", pastMinutesStart: 480, pastMinutesEnd: 120 }, ZONE)).toEqual({
+      mode: "past-minutes",
+      pastMinutesStart: 360,
+      pastMinutesEnd: 0,
+    });
   });
 });
 
@@ -233,9 +265,13 @@ describe("canGoForward", () => {
     expect(canGoForward({ mode: "year", year: "2025-01-01" }, ZONE, now)).toBe(false);
   });
 
-  it("all-time and past-minutes: never", () => {
+  it("all-time: never", () => {
     expect(canGoForward({ mode: "all-time" }, ZONE, now)).toBe(false);
+  });
+
+  it("past-minutes: gated by the newer edge of the window", () => {
     expect(canGoForward({ mode: "past-minutes", pastMinutesStart: 30, pastMinutesEnd: 0 }, ZONE, now)).toBe(false);
+    expect(canGoForward({ mode: "past-minutes", pastMinutesStart: 60, pastMinutesEnd: 30 }, ZONE, now)).toBe(true);
   });
 });
 

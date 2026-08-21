@@ -2,9 +2,9 @@ import { FastifyReply, FastifyRequest } from "fastify";
 import { eq, and, sql } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "../../db/postgres/postgres.js";
-import { clickhouse } from "../../db/clickhouse/clickhouse.js";
 import { userProfiles, userAliases } from "../../db/postgres/schema.js";
 import { siteConfig } from "../../lib/siteConfig.js";
+import { identityBackfillQueue } from "./identityBackfillQueue.js";
 import { userIdService } from "../userId/userIdService.js";
 import { resolveClientIp } from "./resolveClientIp.js";
 import { createServiceLogger } from "../../lib/logger/logger.js";
@@ -42,33 +42,18 @@ const BACKFILL_DAYS = 30;
 // days: null backfills the device's full history — only for explicit admin
 // actions (dashboard identify), where the operator asserts the whole history
 // belongs to this user and the unbounded partition scan is a one-off.
-export async function backfillIdentifiedUserId(
+// Queues the assignment rather than mutating immediately. Each mutation
+// submission takes the MergeTree parts lock, and at production identify rates
+// that lock was being taken every ~12 seconds per table, stalling concurrent
+// inserts and selects. The queue collapses an interval's worth of identities
+// into one mutation per table; see identityBackfillQueue.ts.
+export function backfillIdentifiedUserId(
   siteId: number,
   anonymousId: string,
   userId: string,
   days: number | null = BACKFILL_DAYS
 ) {
-  try {
-    // session_replay_metadata has no `timestamp` column; its time column is
-    // `start_time`. Using `timestamp` there throws ClickHouse error 47
-    // (UNKNOWN_IDENTIFIER), so map each table to its actual time column.
-    const tables: Array<{ name: string; timeColumn: string }> = [
-      { name: "events", timeColumn: "timestamp" },
-      { name: "session_replay_events", timeColumn: "timestamp" },
-      { name: "session_replay_metadata", timeColumn: "start_time" },
-    ];
-    for (const { name, timeColumn } of tables) {
-      await clickhouse.command({
-        query: `ALTER TABLE ${name} UPDATE identified_user_id = {userId: String} WHERE site_id = {siteId: UInt16} AND user_id = {anonymousId: String} AND identified_user_id = ''${
-          days !== null ? ` AND ${timeColumn} >= now() - INTERVAL {days: UInt16} DAY` : ""
-        }`,
-        query_params: { userId, siteId, anonymousId, ...(days !== null ? { days } : {}) },
-      });
-    }
-    logger.info({ siteId, anonymousId, userId }, "Backfilled identified_user_id in ClickHouse");
-  } catch (error) {
-    logger.error({ siteId, anonymousId, userId, err: error }, "Error backfilling identified_user_id");
-  }
+  identityBackfillQueue.enqueue({ siteId, anonymousId, userId }, days);
 }
 
 export async function handleIdentify(request: FastifyRequest, reply: FastifyReply) {

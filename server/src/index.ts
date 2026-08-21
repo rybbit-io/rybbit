@@ -179,6 +179,7 @@ import { createCorsOptionsDelegate, createRejectUntrustedOriginHook } from "./li
 import { IS_CLOUD } from "./lib/const.js";
 import { logger } from "./lib/logger/logger.js";
 import { registerRequestLogging } from "./lib/logger/requestLogging.js";
+import { identityBackfillQueue } from "./services/tracker/identityBackfillQueue.js";
 import { reengagementService } from "./services/reengagement/reengagementService.js";
 import { telemetryService } from "./services/telemetryService.js";
 import { handleIdentify } from "./services/tracker/identifyService.js";
@@ -621,6 +622,10 @@ const shutdown = async (signal: string) => {
     // Stop accepting new connections
     await server.close();
     server.log.info("Server closed");
+
+    // Identity backfills are buffered for several minutes to keep mutation
+    // submissions rare; without this, a deploy drops whatever is still pending.
+    await identityBackfillQueue.drainCompletely();
 
     // Clear the timeout since we're done
     clearTimeout(forceExitTimeout);

@@ -104,12 +104,37 @@ describe("processResults", () => {
     expect(rows).toEqual([{ browser: "Chrome", date: "2024-01-01", version: "1.2.3", word: "true" }]);
   });
 
-  // Number(" ") === 0, and only the exact empty string is excluded, so
-  // whitespace-only strings collapse to 0. Pinning current behavior.
-  it("should coerce whitespace-only strings to 0", async () => {
-    const rows = await processResults<Record<string, unknown>>(makeResultSet([{ blank: " " }]));
+  it("should leave whitespace-only strings untouched", async () => {
+    const rows = await processResults<Record<string, unknown>>(makeResultSet([{ blank: " ", tab: "\t" }]));
 
-    expect(rows).toEqual([{ blank: 0 }]);
+    expect(rows).toEqual([{ blank: " ", tab: "\t" }]);
+  });
+
+  // An 18-digit Meta campaign ID exceeds Number.MAX_SAFE_INTEGER: coercing it
+  // rounded 120248430174340693 to 120248430174340690 and corrupted the value
+  // shown for utm_campaign, utm_content and every other text column.
+  it("should not coerce numeric strings that a double cannot represent exactly", async () => {
+    const rows = await processResults<Record<string, unknown>>(
+      makeResultSet([{ value: "120248430174340693", count: "42" }])
+    );
+
+    expect(rows).toEqual([{ value: "120248430174340693", count: 42 }]);
+  });
+
+  it("should not coerce numeric strings whose text would not round-trip", async () => {
+    const rows = await processResults<Record<string, unknown>>(
+      makeResultSet([{ leadingZeros: "007", plus: "+5", trailingZero: "1.50", exponent: "1e5" }])
+    );
+
+    expect(rows).toEqual([{ leadingZeros: "007", plus: "+5", trailingZero: "1.50", exponent: "1e5" }]);
+  });
+
+  it("should not coerce strings named after non-finite numbers", async () => {
+    const rows = await processResults<Record<string, unknown>>(
+      makeResultSet([{ a: "NaN", b: "Infinity", c: "-Infinity" }])
+    );
+
+    expect(rows).toEqual([{ a: "NaN", b: "Infinity", c: "-Infinity" }]);
   });
 
   it("should process every row independently", async () => {

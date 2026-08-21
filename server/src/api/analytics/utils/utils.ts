@@ -3,26 +3,37 @@ import { and, eq, inArray } from "drizzle-orm";
 import { db } from "../../../db/postgres/postgres.js";
 import { userProfiles } from "../../../db/postgres/schema.js";
 
+/**
+ * ClickHouse serialises 64-bit integers (and Decimals) as JSON strings, so
+ * numeric-looking string columns are coerced back to numbers here.
+ *
+ * The coercion is lossless-only: a string becomes a number solely when
+ * `String(Number(v))` reproduces the original text exactly. Anything a double
+ * cannot represent — an 18-digit ad-platform campaign ID like
+ * `120248430174340693`, an identifier with leading zeros — stays text instead of
+ * being silently rounded to the nearest representable value. Counts and
+ * percentages round-trip cleanly and are unaffected.
+ */
+function coerceNumericString(value: unknown): unknown {
+  if (typeof value !== "string") return value;
+
+  const asNumber = Number(value);
+  // Rejects NaN and Infinity, which would otherwise round-trip through String()
+  // and turn values literally named "NaN" or "Infinity" into numbers.
+  if (!Number.isFinite(asNumber)) return value;
+
+  return String(asNumber) === value ? asNumber : value;
+}
+
 export async function processResults<T>(results: ResultSet<"JSONEachRow">): Promise<T[]> {
   const data: T[] = await results.json();
   for (const row of data) {
     for (const key in row) {
-      // Only convert to number if the value is not null/undefined and is a valid number
-      if (
-        key !== "session_id" &&
-        key !== "user_id" &&
-        key !== "identified_user_id" &&
-        key !== "effective_user_id" &&
-        row[key] !== null &&
-        row[key] !== undefined &&
-        row[key] !== "" &&
-        row[key] !== true &&
-        row[key] !== false &&
-        !Array.isArray(row[key]) &&
-        !isNaN(Number(row[key]))
-      ) {
-        row[key] = Number(row[key]) as any;
+      // Identifiers are opaque text even when they look numeric.
+      if (key === "session_id" || key === "user_id" || key === "identified_user_id" || key === "effective_user_id") {
+        continue;
       }
+      row[key] = coerceNumericString(row[key]) as any;
     }
   }
   return data;
