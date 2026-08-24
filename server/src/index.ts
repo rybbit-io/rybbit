@@ -171,6 +171,7 @@ import {
   resolveSiteId,
 } from "./lib/auth-middleware.js";
 import { mapHeaders } from "./lib/auth-utils.js";
+import { registerApiErrorResponses } from "./lib/api-errors.js";
 import type { ScopeAction, ScopeResource } from "./lib/scopes.js";
 import { auth } from "./lib/auth.js";
 import { mcpRoutes } from "./mcp/index.js";
@@ -280,6 +281,7 @@ const server = Fastify({
 });
 
 registerRequestLogging(server);
+registerApiErrorResponses(server);
 
 server.register(cors, {
   delegator: createCorsOptionsDelegate(),

@@ -3,9 +3,11 @@
   "version": "0.0.0",
   "private": true,
   "scripts": {
-    "build": "next build",
+    "build": "next build --webpack",
     "dev": "next dev --turbo --port 3003",
     "start": "next start",
+    "test:agent-readiness": "jiti src/lib/agent-readiness.test.ts",
+    "test:agent-http": "node scripts/test-agent-http.mjs",
     "postinstall": "fumadocs-mdx",
     "extract": "node scripts/extract-messages.mjs"
   },
@@ -32,6 +34,7 @@
     "next": "^16.2.9",
     "next-intl": "^4.13.0",
     "next-themes": "^0.4.6",
+    "parse5": "^7.3.0",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
     "react-easy-crop": "^6.0.2",
@@ -50,6 +53,7 @@
     "@types/react-dom": "^19.2.2",
     "eslint": "^9.39.4",
     "eslint-config-next": "16.2.9",
+    "jiti": "^2.7.0",
     "postcss": "^8.5.15",
     "tailwindcss": "^4.3.1",
     "typescript": "^6.0.3"

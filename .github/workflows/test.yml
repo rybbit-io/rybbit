@@ -8,7 +8,6 @@ on:
     branches:
       - master
     paths-ignore:
-      - "docs/**"
       - "**.md"
 
 # A newer push to the same branch makes an in-flight run obsolete.
@@ -23,6 +22,34 @@ env:
   TZ: UTC
 
 jobs:
+  docs:
+    name: Docs and agent HTTP
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: docs/package-lock.json
+
+      - name: Install docs dependencies
+        working-directory: docs
+        run: npm ci
+
+      - name: Run agent-readiness tests
+        working-directory: docs
+        run: npm run test:agent-readiness
+
+      - name: Build docs
+        working-directory: docs
+        run: npm run build
+
+      - name: Verify production HTTP behavior
+        working-directory: docs
+        run: npm run test:agent-http
+
   server:
     name: Server
     runs-on: ubuntu-latest
