@@ -114,6 +114,7 @@ import {
   createSiteImport,
   deleteSite,
   deleteSiteImport,
+  deleteSiteIcon,
   getEmbedStats,
   getSite,
   getSiteExcludedCountries,
@@ -124,6 +125,7 @@ import {
   getSiteExcludedASNs,
   getSiteExcludedQueryParams,
   getSiteHasData,
+  getSiteIcon,
   getSiteImports,
   getSiteIsPublic,
   getSiteUsage,
@@ -133,6 +135,7 @@ import {
   moveSite,
   updateSiteConfig,
   updateSitePrivateLinkConfig,
+  uploadSiteIcon,
 } from "./api/sites/index.js";
 import {
   createCheckoutSession,
@@ -454,6 +457,11 @@ async function sitesRoutes(fastify: FastifyInstance) {
 
   // Site Usage
   fastify.get("/sites/:siteId/usage", authSitesRead, getSiteUsage);
+
+  // Site Icon (GET is fully public - it's just a favicon)
+  fastify.get("/sites/:siteId/icon", { preHandler: [resolveSiteId] as any }, getSiteIcon);
+  fastify.put("/sites/:siteId/icon", adminSitesWrite, uploadSiteIcon);
+  fastify.delete("/sites/:siteId/icon", adminSitesWrite, deleteSiteIcon);
 
   // Site Imports
   fastify.get("/sites/:siteId/imports", adminSitesRead, getSiteImports);

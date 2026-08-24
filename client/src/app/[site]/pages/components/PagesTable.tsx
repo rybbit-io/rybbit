@@ -129,7 +129,8 @@ export function PagesTable() {
         const item = info.row.original;
         const title = item.value;
         const pathname = item.pathname;
-        const pageUrl = siteMetadata?.domain ? `https://${siteMetadata.domain}${pathname}` : "";
+        const isApp = (siteMetadata?.type ?? "web") !== "web";
+        const pageUrl = isApp ? "" : siteMetadata?.domain ? `https://${siteMetadata.domain}${pathname}` : "";
 
         return (
           <div className="min-w-0 max-w-[420px]">

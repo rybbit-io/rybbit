@@ -138,7 +138,8 @@ CREATE TABLE "sites" (
   "trackFormInteractions" boolean DEFAULT false,
   "api_key" text,
   "private_link_key" text,
-  "tags" jsonb DEFAULT '[]'
+  "tags" jsonb DEFAULT '[]',
+  "icon" bytea
 );
 `;
 

@@ -2,6 +2,7 @@
 export {
   addSite,
   deleteSite,
+  deleteSiteIcon,
   moveSite,
   updateSiteConfig,
   fetchSite,
@@ -9,6 +10,7 @@ export {
   fetchSiteHasData,
   fetchSiteIsPublic,
   fetchSiteUsage,
+  uploadSiteIcon,
 } from "./sites";
 export type { SiteResponse, GetSitesFromOrgResponse, SiteUsageResponse } from "./sites";
 

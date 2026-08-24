@@ -29,3 +29,6 @@ export { getSiteImports } from "./getSiteImports.js";
 export { createSiteImport } from "./createSiteImport.js";
 export { batchImportEvents } from "./batchImportEvents.js";
 export { deleteSiteImport } from "./deleteSiteImport.js";
+
+// Site Icon
+export { getSiteIcon, uploadSiteIcon, deleteSiteIcon } from "./siteIcon.js";

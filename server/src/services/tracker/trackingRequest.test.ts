@@ -32,9 +32,14 @@ import { resolveTrackingRequest } from "./trackingRequest.js";
 const site = {
   id: "site_abc",
   siteId: 42,
+  type: "web",
   firstPartyProxy: false,
   saltUserIds: false,
 };
+
+const mobileSite = { ...site, type: "mobile" };
+
+const SDK_USER_AGENT = "MyApp/1.4.2 (cz.nkshub.myapp; Android 14; SM-G991B) RybbitFlutter/0.2.5";
 
 function request(headers: Record<string, string | string[]>, ip = "198.51.100.10"): FastifyRequest {
   return { headers, ip } as unknown as FastifyRequest;
@@ -79,6 +84,46 @@ describe("resolveTrackingRequest", () => {
       // Exclusion candidates still include everything the request presented.
       candidateIps: ["198.51.100.20", "10.0.0.1", "198.51.100.10"],
     });
+  });
+
+  it("accepts a native SDK's declared user agent on a mobile Site, but not its IP", async () => {
+    // The header belongs to the HTTP client library, not to the app: Dart, OkHttp
+    // and friends send their own, and a browser will not let the SDK set one at
+    // all. Without this the platform, OS version and device model never arrive.
+    mocks.getConfig.mockResolvedValue(mobileSite);
+
+    const resolved = await resolveTrackingRequest(
+      request({ "user-agent": "Dart/3.9 (dart:io)", "x-forwarded-for": "198.51.100.20" }),
+      payload({ ip_address: "203.0.113.10", user_agent: SDK_USER_AGENT })
+    );
+
+    expect(resolved).toMatchObject({
+      ipAddress: "198.51.100.20",
+      userAgent: SDK_USER_AGENT,
+      trustedServerSideIngestion: false,
+    });
+  });
+
+  it("ignores an SDK-shaped user agent on a web Site", async () => {
+    // Otherwise a page script could dress up as a phone and take the user agent
+    // out of bot detection's hands.
+    const resolved = await resolveTrackingRequest(
+      request({ "user-agent": "Mozilla/5.0 Chrome/120 Safari/537.36" }),
+      payload({ user_agent: SDK_USER_AGENT })
+    );
+
+    expect(resolved).toMatchObject({ userAgent: "Mozilla/5.0 Chrome/120 Safari/537.36" });
+  });
+
+  it("keeps the header on a mobile Site when the payload user agent is not in SDK format", async () => {
+    mocks.getConfig.mockResolvedValue(mobileSite);
+
+    const resolved = await resolveTrackingRequest(
+      request({ "user-agent": "Mozilla/5.0 Chrome/120 Safari/537.36" }),
+      payload({ user_agent: "Mozilla/5.0 (Linux; Android 14) Chrome/120 Mobile Safari/537.36" })
+    );
+
+    expect(resolved).toMatchObject({ userAgent: "Mozilla/5.0 Chrome/120 Safari/537.36" });
   });
 
   it("allows payload IP and user-agent overrides for trusted server-side ingestion", async () => {

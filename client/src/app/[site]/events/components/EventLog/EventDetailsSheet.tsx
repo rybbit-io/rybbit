@@ -18,6 +18,7 @@ import { CountryFlag } from "../../../components/shared/icons/CountryFlag";
 import { DeviceIcon } from "../../../components/shared/icons/Device";
 import { OperatingSystem } from "../../../components/shared/icons/OperatingSystem";
 import { buildEventPath, getEventTypeLabel, parseEventProperties } from "./eventLogUtils";
+import { useGetSite } from "../../../../../api/admin/hooks/useSites";
 
 interface EventDetailsSheetProps {
   open: boolean;
@@ -28,6 +29,8 @@ interface EventDetailsSheetProps {
 
 export function EventDetailsSheet({ open, onOpenChange, event, site }: EventDetailsSheetProps) {
   const t = useExtracted();
+  const { data: siteMetadata } = useGetSite();
+  const isApp = siteMetadata?.type === "mobile";
   const selectedEventProperties = event ? parseEventProperties(event) : {};
 
   const sessionQuery = useQuery({
@@ -61,7 +64,7 @@ export function EventDetailsSheet({ open, onOpenChange, event, site }: EventDeta
           <SheetTitle>
             <div className="flex items-center gap-2">
               <EventTypeIcon type={event?.type || ""} className="w-5 h-5" />
-              <span className="font-medium">{getEventTypeLabel(event?.type || "")}</span>
+              <span className="font-medium">{getEventTypeLabel(event?.type || "", isApp)}</span>
             </div>
           </SheetTitle>
         </SheetHeader>
@@ -100,41 +103,60 @@ export function EventDetailsSheet({ open, onOpenChange, event, site }: EventDeta
                     <span className="text-neutral-500 dark:text-neutral-400">{t("Session ID")}</span>
                     {truncateString(event.session_id, 24)}
                   </div>
+                  {!isApp && (
+                    <div className="flex items-center justify-between border-b border-neutral-50 dark:border-neutral-850 pb-1.5">
+                      <span className="text-neutral-500 dark:text-neutral-400">{t("Hostname")}</span>
+                      <span className="truncate max-w-[280px]">{event.hostname || "-"}</span>
+                    </div>
+                  )}
                   <div className="flex items-center justify-between border-b border-neutral-50 dark:border-neutral-850 pb-1.5">
-                    <span className="text-neutral-500 dark:text-neutral-400">{t("Hostname")}</span>
-                    <span className="truncate max-w-[280px]">{event.hostname || "-"}</span>
-                  </div>
-                  <div className="flex items-center justify-between border-b border-neutral-50 dark:border-neutral-850 pb-1.5">
-                    <span className="text-neutral-500 dark:text-neutral-400">{t("Path")}</span>
+                    <span className="text-neutral-500 dark:text-neutral-400">{isApp ? t("Screen") : t("Path")}</span>
                     <span className="truncate max-w-[280px]">{buildEventPath(event) || "-"}</span>
                   </div>
-                  <div className="flex items-center justify-between border-b border-neutral-50 dark:border-neutral-850 pb-1.5">
-                    <span className="text-neutral-500 dark:text-neutral-400">{t("Referrer")}</span>
-                    <span className="truncate max-w-[280px]">{event.referrer || "-"}</span>
-                  </div>
+                  {!isApp && (
+                    <div className="flex items-center justify-between border-b border-neutral-50 dark:border-neutral-850 pb-1.5">
+                      <span className="text-neutral-500 dark:text-neutral-400">{t("Referrer")}</span>
+                      <span className="truncate max-w-[280px]">{event.referrer || "-"}</span>
+                    </div>
+                  )}
                 </div>
               </div>
               <div className="space-y-3 flex-1">
                 <div className="grid grid-cols-1 gap-1 text-sm">
-                  <div className="flex items-center justify-between border-b border-neutral-50 dark:border-neutral-850 pb-1.5">
-                    <span className="text-neutral-500 dark:text-neutral-400">{t("Browser")}</span>
-                    <span className="flex items-center gap-1">
-                      <Browser browser={event.browser || "Unknown"} />
-                      {event.browser || t("Unknown")}{event.browser_version ? ` ${event.browser_version}` : ""}
-                    </span>
-                  </div>
+                  {isApp ? (
+                    <>
+                      <div className="flex items-center justify-between border-b border-neutral-50 dark:border-neutral-850 pb-1.5">
+                        <span className="text-neutral-500 dark:text-neutral-400">{t("Device Model")}</span>
+                        <span>{event.device_model || "-"}</span>
+                      </div>
+                      <div className="flex items-center justify-between border-b border-neutral-50 dark:border-neutral-850 pb-1.5">
+                        <span className="text-neutral-500 dark:text-neutral-400">{t("App Version")}</span>
+                        <span>{event.app_version ? `v${event.app_version}` : "-"}</span>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div className="flex items-center justify-between border-b border-neutral-50 dark:border-neutral-850 pb-1.5">
+                        <span className="text-neutral-500 dark:text-neutral-400">{t("Browser")}</span>
+                        <span className="flex items-center gap-1">
+                          <Browser browser={event.browser || "Unknown"} />
+                          {event.browser || t("Unknown")}{event.browser_version ? ` ${event.browser_version}` : ""}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between border-b border-neutral-50 dark:border-neutral-850 pb-1.5">
+                        <span className="text-neutral-500 dark:text-neutral-400">{t("Device")}</span>
+                        <span className="flex items-center gap-1">
+                          <DeviceIcon deviceType={event.device_type || ""} />
+                          {event.device_type || t("Unknown")}
+                        </span>
+                      </div>
+                    </>
+                  )}
                   <div className="flex items-center justify-between border-b border-neutral-50 dark:border-neutral-850 pb-1.5">
                     <span className="text-neutral-500 dark:text-neutral-400">{t("Operating System")}</span>
                     <span className="flex items-center gap-1">
                       <OperatingSystem os={event.operating_system || ""} />
                       {event.operating_system || t("Unknown")}{event.operating_system_version ? ` ${event.operating_system_version}` : ""}
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between border-b border-neutral-50 dark:border-neutral-850 pb-1.5">
-                    <span className="text-neutral-500 dark:text-neutral-400">{t("Device")}</span>
-                    <span className="flex items-center gap-1">
-                      <DeviceIcon deviceType={event.device_type || ""} />
-                      {event.device_type || t("Unknown")}
                     </span>
                   </div>
                   <div className="flex items-center justify-between border-b border-neutral-50 dark:border-neutral-850 pb-1.5">

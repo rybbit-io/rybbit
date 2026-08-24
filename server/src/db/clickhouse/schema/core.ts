@@ -20,6 +20,9 @@ const EVENTS_COLUMNS_TO_ENSURE: ColumnDefinition[] = [
   { name: "asn", definition: "asn Nullable(UInt32)" },
   { name: "asn_org", definition: "asn_org LowCardinality(String) DEFAULT ''" },
   { name: "is_datacenter_asn", definition: "is_datacenter_asn UInt8 DEFAULT 0" },
+  // Reported by native SDKs on mobile sites; empty for browser traffic.
+  { name: "app_version", definition: "app_version LowCardinality(String) DEFAULT ''" },
+  { name: "device_model", definition: "device_model LowCardinality(String) DEFAULT ''" },
 ];
 
 const BOT_EVENTS_COLUMNS_TO_ENSURE: ColumnDefinition[] = [
@@ -125,7 +128,9 @@ export async function initializeCoreTables() {
         feature_flags Map(String, String) DEFAULT map(),
         asn Nullable(UInt32),
         asn_org LowCardinality(String) DEFAULT '',
-        is_datacenter_asn UInt8 DEFAULT 0
+        is_datacenter_asn UInt8 DEFAULT 0,
+        app_version LowCardinality(String) DEFAULT '',
+        device_model LowCardinality(String) DEFAULT ''
       )
       ENGINE = MergeTree()
       PARTITION BY toYYYYMM(timestamp)

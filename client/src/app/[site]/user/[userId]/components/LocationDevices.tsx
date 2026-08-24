@@ -2,6 +2,7 @@
 
 import { useExtracted } from "next-intl";
 import { ReactNode, useState } from "react";
+import { useGetSite } from "../../../../../api/admin/hooks/useSites";
 import { UserDeviceBreakdown, UserInfo, UserLocationBreakdown } from "../../../../../api/analytics/endpoints";
 import { getCountryName, getLanguageName } from "../../../../../lib/utils";
 import { Browser } from "../../../components/shared/icons/Browser";
@@ -97,6 +98,8 @@ export function LocationDevices({
   getRegionName: (region: string) => string;
 }) {
   const t = useExtracted();
+  const { data: siteMetadata } = useGetSite();
+  const isMobileSite = siteMetadata?.type === "mobile";
 
   if (isLoading) {
     return (
@@ -199,6 +202,24 @@ export function LocationDevices({
             />
           )}
         />
+      ) : isMobileSite ? (
+        <>
+          <InfoRow label={t("Device Model")} value={data?.device_model || "—"} />
+          <InfoRow label={t("App Version")} value={data?.app_version ? `v${data.app_version}` : "—"} />
+          <InfoRow
+            icon={<OperatingSystem os={data?.operating_system || ""} size={13} />}
+            label={t("OS")}
+            value={
+              data?.operating_system
+                ? `${data.operating_system}${data.operating_system_version ? ` v${data.operating_system_version}` : ""}`
+                : "—"
+            }
+          />
+          <InfoRow
+            label={t("Screen")}
+            value={data?.screen_width && data?.screen_height ? `${data.screen_width}×${data.screen_height}` : "—"}
+          />
+        </>
       ) : (
         <>
           <InfoRow

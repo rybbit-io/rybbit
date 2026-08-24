@@ -11,7 +11,8 @@ import { NothingFound } from "../../../components/NothingFound";
 import { Pagination } from "../../../components/pagination";
 import { useSetPageTitle } from "../../../hooks/useSetPageTitle";
 import { useStore } from "../../../lib/store";
-import { GOALS_PAGE_FILTERS } from "../../../lib/filterGroups";
+import { getGoalsPageFilters } from "../../../lib/filterGroups";
+import { useGetSite } from "../../../api/admin/hooks/useSites";
 import { SubHeader } from "../components/SubHeader/SubHeader";
 import CreateGoalButton from "./components/CreateGoalButton";
 import GoalsList from "./components/GoalsList";
@@ -69,6 +70,8 @@ const GoalCardSkeleton = () => (
 export default function GoalsPage() {
   const t = useExtracted();
   useSetPageTitle("Goals");
+  const { data: siteMetadata } = useGetSite();
+  const isApp = siteMetadata?.type === "mobile";
 
   const { site } = useStore();
   const [searchQuery, setSearchQuery] = useState("");
@@ -169,7 +172,7 @@ export default function GoalsPage() {
   return (
     <DisabledOverlay message="Goals" featurePath="goals" requiredPlan="basic">
       <div className="p-2 md:p-4 max-w-[1400px] mx-auto space-y-3">
-        <SubHeader availableFilters={GOALS_PAGE_FILTERS} />
+        <SubHeader availableFilters={getGoalsPageFilters(isApp)} />
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-2">
             <Input

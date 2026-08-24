@@ -1,10 +1,12 @@
 import { authedFetch } from "../../utils";
 
+export type SiteType = "web" | "mobile";
+
 export type SiteResponse = {
   id: string | null;
   siteId: number;
   name: string;
-  type: "web" | "mobile" | null;
+  type: SiteType | null;
   domain: string;
   createdAt: string;
   updatedAt: string;
@@ -47,7 +49,7 @@ export type GetSitesFromOrgResponse = {
     id: string | null;
     siteId: number;
     name: string;
-    type: "web" | "mobile" | null;
+    type: SiteType | null;
     domain: string;
     createdAt: string;
     updatedAt: string;
@@ -79,7 +81,7 @@ export function addSite(
   name: string,
   organizationId: string,
   settings?: {
-    type?: "web" | "mobile";
+    type?: SiteType;
     isPublic?: boolean;
     saltUserIds?: boolean;
     blockBots?: boolean;
@@ -141,7 +143,7 @@ export function updateSiteConfig(
   siteId: number,
   config: {
     name?: string;
-    type?: "web" | "mobile" | null;
+    type?: SiteType | null;
     domain?: string;
     public?: boolean;
     embedEnabled?: boolean;
@@ -205,4 +207,29 @@ export function fetchSiteHasData(siteId: string) {
 
 export function fetchSiteIsPublic(siteId: string | number) {
   return authedFetch<{ isPublic: boolean }>(`/sites/${siteId}/is-public`);
+}
+
+export interface VerifyScriptResponse {
+  scriptTagFound: boolean;
+  scriptExecuted: boolean;
+  siteIdMatch: boolean;
+  issues: string[];
+}
+
+export function verifyScript(siteId: number | string) {
+  return authedFetch<VerifyScriptResponse>(`/sites/${siteId}/verify-script`);
+}
+
+export function uploadSiteIcon(siteId: number, icon: string) {
+  return authedFetch<{ success: boolean }>(`/sites/${siteId}/icon`, undefined, {
+    method: "PUT",
+    data: { icon },
+    headers: { "Content-Type": "application/json" },
+  });
+}
+
+export function deleteSiteIcon(siteId: number) {
+  return authedFetch<{ success: boolean }>(`/sites/${siteId}/icon`, undefined, {
+    method: "DELETE",
+  });
 }

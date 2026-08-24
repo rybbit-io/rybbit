@@ -6,6 +6,7 @@ import { useExtracted } from "next-intl";
 import Link from "next/link";
 import { useGetOverview } from "../../../../../api/analytics/hooks/useGetOverview";
 import { useGetOverviewBucketed } from "../../../../../api/analytics/hooks/useGetOverviewBucketed";
+import { useGetSite } from "../../../../../api/admin/hooks/useSites";
 import { BucketSelection } from "../../../../../components/BucketSelection";
 import { RybbitTextLogo } from "../../../../../components/RybbitLogo";
 import { useWhiteLabel } from "../../../../../hooks/useIsWhiteLabel";
@@ -25,14 +26,16 @@ export function MainSection() {
   const { isWhiteLabel } = useWhiteLabel();
   const session = authClient.useSession();
   const t = useExtracted();
+  const { data: siteMetadata } = useGetSite();
+  const isApp = siteMetadata?.type === "mobile";
 
   const { selectedStat, time, site, bucket } = useStore();
 
   const getSelectedStatLabel = () => {
     switch (selectedStat) {
-      case "pageviews": return t("Pageviews");
+      case "pageviews": return isApp ? t("Screenviews") : t("Pageviews");
       case "sessions": return t("Sessions");
-      case "pages_per_session": return t("Pages per Session");
+      case "pages_per_session": return isApp ? t("Screens per Session") : t("Pages per Session");
       case "bounce_rate": return t("Bounce Rate");
       case "session_duration": return t("Session Duration");
       case "users": return t("Users");

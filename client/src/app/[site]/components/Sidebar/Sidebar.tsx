@@ -92,7 +92,7 @@ function SidebarContent() {
         />
         {IS_CLOUD && (
           <SidebarComponents.Item
-            label={t("Pages")}
+            label={isMobileSite ? t("Screens") : t("Pages")}
             active={isActiveTab("pages")}
             href={getTabPath("pages")}
             icon={<File className="w-4 h-4" />}

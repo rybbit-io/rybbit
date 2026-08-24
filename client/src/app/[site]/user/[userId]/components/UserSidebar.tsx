@@ -24,6 +24,7 @@ import { EditTraitsDialog } from "../../../../../components/EditTraitsDialog";
 import { LocationDevices } from "./LocationDevices";
 import { InfoRow, InfoRowSkeleton, SidebarCard, SidebarHeader } from "./SidebarPrimitives";
 import { UserLocationMap } from "./UserLocationMap";
+import { useGetSite } from "../../../../../api/admin/hooks/useSites";
 
 interface UserSidebarProps {
   data: UserInfo | undefined;
@@ -37,6 +38,8 @@ const VITALS_ORDER: PerformanceMetric[] = ["lcp", "cls", "inp", "fcp", "ttfb"];
 
 export function UserSidebar({ data, isLoading, sessionCount, isLoadingCalendar, getRegionName }: UserSidebarProps) {
   const t = useExtracted();
+  const { data: siteMetadata } = useGetSite();
+  const isApp = siteMetadata?.type === "mobile";
   const { configs } = useConfigs();
   const { user } = userStore();
   const [traitsOpen, setTraitsOpen] = useState(false);
@@ -57,7 +60,9 @@ export function UserSidebar({ data, isLoading, sessionCount, isLoadingCalendar, 
 
   return (
     <div className="w-full lg:w-[300px] lg:shrink-0 space-y-3">
-      {/* Acquisition (first-touch attribution) */}
+      {/* Acquisition (first-touch attribution). Channels, referrers and landing
+          pages are web concepts — native app traffic has none of them. */}
+      {!isApp && (
       <SidebarCard>
         <SidebarHeader title={t("Acquisition")} />
         {isLoading ? (
@@ -118,6 +123,7 @@ export function UserSidebar({ data, isLoading, sessionCount, isLoadingCalendar, 
           </div>
         )}
       </SidebarCard>
+      )}
 
       {/* Location & Device Info */}
       <SidebarCard>
@@ -158,7 +164,7 @@ export function UserSidebar({ data, isLoading, sessionCount, isLoadingCalendar, 
       </SidebarCard>
 
       {/* Web Vitals (p75 across this user's performance events) */}
-      {vitals && vitalsToShow.length > 0 && (
+      {!isApp && vitals && vitalsToShow.length > 0 && (
         <SidebarCard>
           <SidebarHeader
             title={t("Web Vitals")}

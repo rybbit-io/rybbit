@@ -3,7 +3,7 @@ import { clickhouse } from "../../db/clickhouse/clickhouse.js";
 import { lookupAsn } from "../../db/geolocation/asn.js";
 import { getLocation } from "../../db/geolocation/geolocation.js";
 import { createServiceLogger } from "../../lib/logger/logger.js";
-import { getDeviceType } from "../../utils.js";
+import { getDeviceType, parseSDKUserAgent } from "../../utils.js";
 import { isDatacenterAsn } from "./botBlocking/datacenterAsns.js";
 import { getChannel } from "./getChannel.js";
 import { clearSelfReferrer, getAllUrlParams, TotalTrackingPayload } from "./utils.js";
@@ -64,6 +64,7 @@ class PageviewQueue {
       const longitude = dataForIp?.longitude || 0;
       const city = dataForIp?.city || "";
       const timezone = dataForIp?.timeZone || "";
+      const sdkUA = parseSDKUserAgent(pv.ua.ua || "");
 
       // Same MaxMind lookup already used to decide identity bucketing
       // (bucketIpForIdentity) and bot-detection eligibility; stored here purely
@@ -90,14 +91,18 @@ class PageviewQueue {
         page_title: pv.page_title || "",
         referrer: referrer,
         channel: getChannel(referrer, pv.querystring, pv.hostname),
-        browser: pv.ua.browser.name || "",
-        browser_version: pv.ua.browser.major || "",
-        operating_system: pv.ua.os.name || "",
-        operating_system_version: pv.ua.os.version || "",
+        browser: sdkUA ? sdkUA.browser : (pv.ua.browser.name || ""),
+        browser_version: sdkUA ? sdkUA.browserVersion : (pv.ua.browser.major || ""),
+        operating_system: sdkUA ? sdkUA.os : (pv.ua.os.name || ""),
+        operating_system_version: sdkUA ? sdkUA.osVersion : (pv.ua.os.version || ""),
         language: pv.language || "",
         screen_width: pv.screenWidth || 0,
         screen_height: pv.screenHeight || 0,
-        device_type: getDeviceType(pv.screenWidth, pv.screenHeight, pv.ua),
+        device_type: getDeviceType(
+          pv.screenWidth,
+          pv.screenHeight,
+          sdkUA ? { ...pv.ua, os: { ...pv.ua.os, name: sdkUA.os } } : pv.ua
+        ),
         country: countryCode,
         region: countryCode && regionCode ? countryCode + "-" + regionCode : "",
         city: city || "",
@@ -123,6 +128,8 @@ class PageviewQueue {
         asn: asnInfo?.asn ?? null,
         asn_org: asnInfo?.organization || "",
         is_datacenter_asn: asnInfo && isDatacenterAsn(asnInfo.asn) ? 1 : 0,
+        app_version: pv.app_version || "",
+        device_model: pv.device_model || sdkUA?.deviceModel || "",
       };
     });
 
