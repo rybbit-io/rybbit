@@ -63,7 +63,7 @@ export function buildTooltipHTML(session: GetSessionsResponse[number], lng: numb
   return `
     <div class="flex flex-col gap-3 p-3 bg-neutral-850 border border-neutral-750 rounded-lg">
       <div class="flex items-start gap-2.5">
-        <div class="shrink-0 w-9 h-9 rounded-full overflow-hidden">
+        <div class="shrink-0 w-9 h-9">
           ${avatarSVG}
         </div>
         <div class="flex-1 min-w-0">

@@ -474,8 +474,6 @@ const tooltipStyles = `
     flex-shrink: 0;
     width: 36px;
     height: 36px;
-    border-radius: 50%;
-    overflow: hidden;
   }
   .tooltip-info {
     flex: 1;
@@ -922,11 +920,9 @@ export function SpinningGlobe() {
 
           const avatarContainer = document.createElement("div");
           avatarContainer.className = "timeline-avatar-marker";
-          avatarContainer.style.borderRadius = "50%";
-          avatarContainer.style.overflow = "hidden";
           avatarContainer.style.width = "32px";
           avatarContainer.style.height = "32px";
-          avatarContainer.style.boxShadow = "0 2px 8px rgba(0,0,0,0.3)";
+          avatarContainer.style.filter = "drop-shadow(0 1px 2px rgba(0,0,0,0.55))";
           avatarContainer.style.transition = "transform 0.15s ease";
           avatarContainer.innerHTML = frogAvatarSVG(session.user_id, 32);
 
