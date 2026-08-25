@@ -26,7 +26,7 @@ export function createAvatarMarker(
   const avatarContainer = document.createElement("div");
   avatarContainer.className = "timeline-avatar-marker";
   avatarContainer.style.cssText =
-    "cursor: pointer; border-radius: 50%; overflow: hidden; width: 32px; height: 32px; box-shadow: 0 2px 8px rgba(0,0,0,0.3);";
+    "cursor: pointer; width: 32px; height: 32px; filter: drop-shadow(0 1px 2px rgba(0,0,0,0.55));";
 
   const avatarSVG = frogAvatarSVG(session.user_id, 32);
   avatarContainer.innerHTML = avatarSVG;

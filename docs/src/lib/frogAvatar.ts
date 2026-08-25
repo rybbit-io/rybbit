@@ -5,6 +5,11 @@
  * in, one stable image out — but drawn here so the palette and the features are
  * ours. Everything is derived from a hash of the id; the only values that reach
  * the markup are numbers and `hsl()` strings, so the result is safe to inject.
+ *
+ * The frog is drawn as a free-standing silhouette on a transparent ground, so
+ * every shape has to fit inside the viewBox on its own — nothing is hidden by a
+ * disc any more — and the frog's own colour is what has to stay legible against
+ * both the dark and the light app background.
  */
 
 type Rng = () => number;
@@ -48,7 +53,6 @@ const SPECIES: Species[] = [
 ];
 
 type Morph = "classic" | "dusk" | "dart" | "chalk";
-type Ground = "deep" | "contrast" | "pale" | "duo";
 type Pupil = "round" | "slit" | "wide" | "pin";
 type Iris = "paper" | "cream" | "mist" | "shell";
 type Belly = "none" | "light" | "cream" | "contrast";
@@ -58,7 +62,6 @@ type Mouth = "smile" | "wide" | "open" | "smirk";
 interface FrogFeatures {
   species: Species;
   morph: Morph;
-  ground: Ground;
   /** Spare jitter, reused wherever a shape needs a nudge that nothing else owns. */
   jitter: [number, number, number, number];
   headRx: number;
@@ -79,18 +82,19 @@ interface FrogFeatures {
   marks: Marks;
   mouth: Mouth;
   mouthY: number;
+  /** Half-width of the head at the mouth's height — every mouth is sized from this. */
+  mouthReach: number;
   mouthCurve: number;
 }
 
 interface FrogPalette {
   lightness: number;
   skin: string;
+  edge: string;
   dark: string;
   light: string;
   line: string;
   mark: string;
-  bg: string;
-  bgAlt: string;
   cream: string;
   contrast: string;
   bright: string;
@@ -151,28 +155,44 @@ function smile(cx: number, y: number, width: number, curve: number, color: strin
   );
 }
 
+/**
+ * Geometry is chained rather than drawn independently: with no disc to clip
+ * against, a head and a pair of eye domes rolled separately can drift apart or
+ * off the edge of the viewBox. Sizing the domes and the mouth off the head
+ * keeps the silhouette one connected blob inside `0 0 100 100`, whatever the
+ * seed rolls.
+ */
 function frogFeatures(r: Rng): FrogFeatures {
+  const species = pick(r, SPECIES);
+  const morph = weighted<Morph>(r, [
+    ["classic", 54],
+    ["dusk", 16],
+    ["dart", 15],
+    ["chalk", 15],
+  ]);
+  const jitter: [number, number, number, number] = [r(), r(), r(), r()];
+  const headRx = 33 + r() * 5;
+  const headRy = 30 + r() * 6;
+  const headCy = 58 + r() * 3;
+  // Under 0.72 of the head's width, so the domes always straddle skin, never air.
+  const domeOffset = headRx * (0.58 + r() * 0.12);
+  const domeRadius = 15 + r() * 4;
+  // Above the head's centre by more than the ellipse's own height at that x, so
+  // the domes sit proud of the skull while still overlapping it.
+  const domeY = headCy - headRy * (0.72 + r() * 0.18);
+  const mouthY = headCy + headRy * (0.12 + r() * 0.22);
+  const mouthReach = headRx * Math.sqrt(Math.max(0, 1 - ((mouthY - headCy) / headRy) ** 2));
+
   return {
-    species: pick(r, SPECIES),
-    morph: weighted<Morph>(r, [
-      ["classic", 54],
-      ["dusk", 16],
-      ["dart", 15],
-      ["chalk", 15],
-    ]),
-    ground: weighted<Ground>(r, [
-      ["deep", 38],
-      ["contrast", 24],
-      ["pale", 21],
-      ["duo", 17],
-    ]),
-    jitter: [r(), r(), r(), r()],
-    headRx: 41 + r() * 6,
-    headRy: 36 + r() * 6,
-    headCy: 65 + r() * 5,
-    domeOffset: 20 + r() * 5,
-    domeY: 29 + r() * 11,
-    domeRadius: 16.5 + r() * 5,
+    species,
+    morph,
+    jitter,
+    headRx,
+    headRy,
+    headCy,
+    domeOffset,
+    domeY,
+    domeRadius,
     eyeScale: 0.56 + r() * 0.13,
     gazeX: pick(r, [-1, 0, 0, 1]),
     gazeY: pick(r, [-1, 0, 0, 1]),
@@ -211,32 +231,21 @@ function frogFeatures(r: Rng): FrogFeatures {
       ["open", 22],
       ["smirk", 18],
     ]),
-    mouthY: 67 + r() * 6,
-    mouthCurve: 9 + r() * 12,
+    mouthY,
+    mouthReach,
+    mouthCurve: headRy * (0.26 + r() * 0.32),
   };
 }
 
 /**
- * The disc has to stay visible against whatever it sits on. The app's dark
- * background is 8% lightness and its light background is 97%, so a ground
- * outside this band merges with the page and the icon stops reading as a
- * circle — what is left is a frog-shaped silhouette.
+ * With the ground gone, the skin is the only thing standing between the frog
+ * and the page. The app's dark background is 8% lightness and its light
+ * background is 97%, so a frog outside this band disappears into one theme or
+ * the other. The morphs express themselves through saturation and markings
+ * instead of running to the ends of the lightness scale.
  */
-const GROUND_MIN_L = 28;
-const GROUND_MAX_L = 80;
-
-/** A ground lightness inside that band, still a clear step away from the frog. */
-function groundLightness(preferred: number, frogL: number): number {
-  const bg = clamp(preferred, GROUND_MIN_L, GROUND_MAX_L);
-  if (Math.abs(bg - frogL) >= 24) return bg;
-  // Keep the ground on the side it was already heading for, unless the band
-  // leaves no room there.
-  const darker = clamp(frogL - 34, GROUND_MIN_L, GROUND_MAX_L);
-  const lighter = clamp(frogL + 34, GROUND_MIN_L, GROUND_MAX_L);
-  const preferredSide = bg < frogL ? darker : lighter;
-  const otherSide = bg < frogL ? lighter : darker;
-  return Math.abs(preferredSide - frogL) >= 24 ? preferredSide : otherSide;
-}
+const SKIN_MIN_L = 40;
+const SKIN_MAX_L = 68;
 
 function frogPalette(f: FrogFeatures): FrogPalette {
   const h = f.species.h;
@@ -244,34 +253,16 @@ function frogPalette(f: FrogFeatures): FrogPalette {
   let l = f.species.l;
 
   if (f.morph === "dart") {
-    l = 20 + f.jitter[0] * 6;
-    s = Math.min(s * 0.9, 66);
+    l = 43 + f.jitter[0] * 4;
+    s = Math.min(s * 1.15, 92);
   } else if (f.morph === "chalk") {
-    l = 79 + f.jitter[0] * 8;
-    s = s * 0.36;
+    l = 63 + f.jitter[0] * 5;
+    s = s * 0.38;
   } else if (f.morph === "dusk") {
-    l = l * 0.72;
-    s = s * 0.42;
+    l = 46 + f.jitter[0] * 5;
+    s = s * 0.5;
   }
-
-  let bgH: number;
-  let bgS: number;
-  let bgL: number;
-  if (f.ground === "pale") {
-    bgH = h + 6;
-    bgS = 36 + f.jitter[1] * 26;
-    bgL = 69 + f.jitter[2] * 11;
-  } else if (f.ground === "contrast") {
-    bgH = h + 152 + f.jitter[1] * 30;
-    bgS = 26 + f.jitter[1] * 22;
-    bgL = 31 + f.jitter[2] * 13;
-  } else {
-    bgH = h + 20;
-    bgS = 20 + f.jitter[1] * 18;
-    bgL = 29 + f.jitter[2] * 10;
-  }
-  // The frog and the ground it sits on never share a value.
-  bgL = groundLightness(bgL, l);
+  l = clamp(l, SKIN_MIN_L, SKIN_MAX_L);
 
   const bright = hsl(h, Math.min(s + 18, 94), 64);
   const deep = hsl(h + 8, Math.min(s * 0.85, 74), clamp(l - 32, 8, 40));
@@ -279,12 +270,13 @@ function frogPalette(f: FrogFeatures): FrogPalette {
   return {
     lightness: l,
     skin: hsl(h, s, l),
+    // Reads as shading on the dark theme and as the outline that keeps a pale
+    // frog from dissolving into the page on the light one.
+    edge: hsl(h + 8, Math.min(s * 0.9, 80), clamp(l - 22, 24, 48)),
     dark: hsl(h + 4, s * 0.95, clamp(l - 15, 6, 92)),
     light: hsl(h - 6, s * 0.78, clamp(l + 16, 20, 92)),
     line: f.morph === "dart" ? bright : deep,
     mark: f.morph === "dart" ? bright : hsl(h + 4, s * 0.95, clamp(l > 66 ? l - 26 : l - 22, 6, 92)),
-    bg: hsl(bgH, bgS, bgL),
-    bgAlt: hsl(bgH + 20, bgS + 10, clamp(bgL > 60 ? bgL - 16 : bgL + 21, GROUND_MIN_L, GROUND_MAX_L)),
     cream: hsl(h - 12, 38, 88),
     contrast: hsl(h + 148, 42, 72),
     bright,
@@ -317,7 +309,7 @@ function drawEyes(f: FrogFeatures, c: FrogPalette): string {
     for (const x of xs) {
       o +=
         `<path d="M${r2(x - f.domeRadius * 0.8)} ${r2(f.domeY - f.domeRadius * 0.55)}` +
-        ` Q ${r2(x)} ${r2(f.domeY - f.domeRadius * 1.15)} ${r2(x + f.domeRadius * 0.8)} ${r2(f.domeY - f.domeRadius * 0.55)}"` +
+        ` Q ${r2(x)} ${r2(f.domeY - f.domeRadius * 1.1)} ${r2(x + f.domeRadius * 0.8)} ${r2(f.domeY - f.domeRadius * 0.55)}"` +
         ` fill="none" stroke="${c.dark}" stroke-width="3.2" stroke-linecap="round"/>`;
     }
   }
@@ -350,18 +342,17 @@ function drawFrog(f: FrogFeatures, clipId: string): string {
   const c = frogPalette(f);
   const x1 = 50 - f.domeOffset;
   const x2 = 50 + f.domeOffset;
-  const headClipId = `${clipId}h`;
 
   const head =
     `<ellipse cx="50" cy="${r2(f.headCy)}" rx="${r2(f.headRx)}" ry="${r2(f.headRy)}"/>` +
     `<circle cx="${r2(x1)}" cy="${r2(f.domeY)}" r="${r2(f.domeRadius)}"/>` +
     `<circle cx="${r2(x2)}" cy="${r2(f.domeY)}" r="${r2(f.domeRadius)}"/>`;
 
-  let o = `<circle cx="50" cy="50" r="50" fill="${c.bg}"/>`;
-  if (f.ground === "duo") {
-    o += `<polygon points="-2,102 -2,${r2(28 + f.jitter[3] * 34)} 102,${r2(8 + f.jitter[3] * 44)} 102,102" fill="${c.bgAlt}"/>`;
-  }
-  o += `<defs><clipPath id="${headClipId}">${head}</clipPath></defs>`;
+  // Stroke the three shapes, then lay the fills over the top: the seams where
+  // the domes cross the head are covered and only the outward half of the
+  // stroke survives, which outlines the union without tracing its parts.
+  let o = `<defs><clipPath id="${clipId}">${head}</clipPath></defs>`;
+  o += `<g fill="${c.edge}" stroke="${c.edge}" stroke-width="3" stroke-linejoin="round">${head}</g>`;
   o += `<g fill="${c.skin}">${head}</g>`;
 
   // Markings and belly, clipped to the frog's own silhouette.
@@ -389,23 +380,32 @@ function drawFrog(f: FrogFeatures, clipId: string): string {
     inner += `<ellipse cx="${r2(50 - f.headRx * 0.74)}" cy="${r2(f.headCy + 2)}" rx="10" ry="8" fill="${c.light}" opacity=".45"/>`;
     inner += `<ellipse cx="${r2(50 + f.headRx * 0.74)}" cy="${r2(f.headCy + 2)}" rx="10" ry="8" fill="${c.light}" opacity=".45"/>`;
   }
-  if (inner) o += `<g clip-path="url(#${headClipId})">${inner}</g>`;
+  if (inner) o += `<g clip-path="url(#${clipId})">${inner}</g>`;
 
   o += drawEyes(f, c);
-  o += `<circle cx="44" cy="${r2(f.mouthY - 13)}" r="2" fill="${c.line}" opacity=".5"/>`;
-  o += `<circle cx="56" cy="${r2(f.mouthY - 13)}" r="2" fill="${c.line}" opacity=".5"/>`;
 
+  const nostrilY = f.mouthY - f.headRy * 0.38;
+  o += `<circle cx="${r2(50 - f.headRx * 0.17)}" cy="${r2(nostrilY)}" r="2" fill="${c.line}" opacity=".5"/>`;
+  o += `<circle cx="${r2(50 + f.headRx * 0.17)}" cy="${r2(nostrilY)}" r="2" fill="${c.line}" opacity=".5"/>`;
+
+  // Every mouth is scaled to the head's width at its own height, so nothing
+  // runs past the jawline now that there is no disc to hide the overshoot.
   if (f.mouth === "open") {
-    o += `<path d="M24,${r2(f.mouthY)} Q50,${r2(f.mouthY + 24)} 76,${r2(f.mouthY)} Z" fill="${c.line}"/>`;
-    o += `<ellipse cx="50" cy="${r2(f.mouthY + 13)}" rx="9" ry="5.5" fill="hsl(348 62% 60%)"/>`;
+    const half = f.mouthReach * 0.74;
+    const depth = f.mouthCurve * 1.3;
+    o +=
+      `<path d="M${r2(50 - half)},${r2(f.mouthY)} Q50,${r2(f.mouthY + depth)} ${r2(50 + half)},${r2(f.mouthY)} Z"` +
+      ` fill="${c.line}"/>`;
+    o += `<ellipse cx="50" cy="${r2(f.mouthY + depth * 0.42)}" rx="${r2(half * 0.34)}" ry="${r2(half * 0.21)}" fill="hsl(348 62% 60%)"/>`;
   } else if (f.mouth === "wide") {
-    o += smile(50, f.mouthY, 68, f.mouthCurve * 0.35, c.line, 4.2);
+    o += smile(50, f.mouthY, f.mouthReach * 1.8, f.mouthCurve * 0.35, c.line, 4.2);
   } else if (f.mouth === "smirk") {
     o +=
-      `<path d="M${r2(23)} ${r2(f.mouthY + 4)} Q 50 ${r2(f.mouthY + f.mouthCurve)} ${r2(77)} ${r2(f.mouthY - 6)}"` +
+      `<path d="M${r2(50 - f.mouthReach * 0.82)} ${r2(f.mouthY + f.headRy * 0.11)}` +
+      ` Q 50 ${r2(f.mouthY + f.mouthCurve)} ${r2(50 + f.mouthReach * 0.82)} ${r2(f.mouthY - f.headRy * 0.17)}"` +
       ` fill="none" stroke="${c.line}" stroke-width="4.4" stroke-linecap="round"/>`;
   } else {
-    o += smile(50, f.mouthY, 56, f.mouthCurve, c.line, 4.4);
+    o += smile(50, f.mouthY, f.mouthReach * 1.5, f.mouthCurve, c.line, 4.4);
   }
   return o;
 }
@@ -413,18 +413,14 @@ function drawFrog(f: FrogFeatures, clipId: string): string {
 /**
  * The contents of a `0 0 100 100` viewBox, ready for dangerouslySetInnerHTML.
  *
- * The clip-path ids are derived from the id rather than from useId or a
- * counter, so the same visitor produces byte-identical markup everywhere —
- * server and client render the same string, and the same frog drawn twice on
- * one page shares a mask it would have duplicated anyway.
+ * The clip-path id is derived from the id rather than from useId or a counter,
+ * so the same visitor produces byte-identical markup everywhere — server and
+ * client render the same string, and the same frog drawn twice on one page
+ * shares a mask it would have duplicated anyway.
  */
 export function frogAvatarMarkup(id: string): string {
   const clipId = `frog${hashCode(`${id}clip`).toString(36)}`;
-  const features = frogFeatures(makeRng(hashCode(id)));
-  return (
-    `<defs><clipPath id="${clipId}"><circle cx="50" cy="50" r="50"/></clipPath></defs>` +
-    `<g clip-path="url(#${clipId})">${drawFrog(features, clipId)}</g>`
-  );
+  return drawFrog(frogFeatures(makeRng(hashCode(id))), clipId);
 }
 
 /**
@@ -434,6 +430,6 @@ export function frogAvatarMarkup(id: string): string {
 export function frogAvatarSVG(id: string, size: number): string {
   return (
     `<svg width="${size}" height="${size}" viewBox="0 0 100 100" role="img"` +
-    ` xmlns="http://www.w3.org/2000/svg" style="display:block;border-radius:50%">${frogAvatarMarkup(id)}</svg>`
+    ` xmlns="http://www.w3.org/2000/svg" style="display:block">${frogAvatarMarkup(id)}</svg>`
   );
 }

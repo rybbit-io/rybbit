@@ -19,7 +19,7 @@ import { buildTooltipHTML } from "../../utils/timelineTooltipBuilder";
 // OpenLayers-specific clustering constants
 const CLUSTER_RADIUS = 50; // pixels (OpenLayers specific)
 const AVATAR_MARKER_STYLE =
-  "cursor: pointer; border-radius: 50%; overflow: hidden; width: 32px; height: 32px; box-shadow: 0 2px 8px rgba(0,0,0,0.3); transform: translate(-50%, -50%);";
+  "cursor: pointer; width: 32px; height: 32px; filter: drop-shadow(0 1px 2px rgba(0,0,0,0.55)); transform: translate(-50%, -50%);";
 
 interface TimelineLayerProps {
   mapInstanceRef: React.RefObject<OLMap | null>;
