@@ -8,6 +8,7 @@ import { sessionsService } from "../sessions/sessionsService.js";
 import { userIdService } from "../userId/userIdService.js";
 import { r2Storage } from "../storage/r2StorageService.js";
 import { siteConfig } from "../../lib/siteConfig.js";
+import { withReplayMetadataLock } from "./replayMetadataLock.js";
 
 const logger = createServiceLogger("session-replay-ingest");
 
@@ -26,6 +27,20 @@ export interface RequestMetadata {
   ipAddress: string;
   origin: string;
   referrer: string;
+}
+
+type ReplayBatchEvent = {
+  timestamp: number;
+  event_size_bytes: number;
+  viewport_width: number | null;
+  viewport_height: number | null;
+};
+
+export class SessionReplayMetadataUpdateError extends Error {
+  constructor(siteId: number, sessionId: string) {
+    super(`Failed to update replay metadata for site ${siteId}, session ${sessionId}`);
+    this.name = "SessionReplayMetadataUpdateError";
+  }
 }
 
 /**
@@ -160,6 +175,7 @@ export class SessionReplayIngestService {
         userId,
         identifiedUserId,
         metadata,
+        eventsToInsert,
         batchStats,
         requestMeta
       );
@@ -172,6 +188,116 @@ export class SessionReplayIngestService {
     userId: string,
     identifiedUserId: string,
     metadata: any,
+    replayBatch: ReplayBatchEvent[],
+    requestMeta?: RequestMetadata
+  ): Promise<void> {
+    try {
+      await withReplayMetadataLock(siteId, sessionId, () =>
+        this.updateSessionMetadataLocked(
+          siteId,
+          sessionId,
+          userId,
+          identifiedUserId,
+          metadata,
+          replayBatch,
+          requestMeta
+        )
+      );
+    } catch (error) {
+      console.error("Failed to update session replay metadata", { siteId, sessionId, error });
+      throw new SessionReplayMetadataUpdateError(siteId, sessionId);
+    }
+  }
+
+  private async updateSessionMetadataLocked(
+    siteId: number,
+    sessionId: string,
+    userId: string,
+    identifiedUserId: string,
+    metadata: any,
+    replayBatch: ReplayBatchEvent[],
+    requestMeta?: RequestMetadata
+  ): Promise<void> {
+    // Read the latest rollup instead of rescanning every raw replay event after
+    // each batch. The previous query made replay ingestion O(n^2) over a long
+    // session and allowed overlapping batches to saturate ClickHouse.
+    const existingMetadata = await clickhouse.query({
+      query: `
+        SELECT
+          start_time,
+          end_time,
+          event_count,
+          compressed_size_bytes,
+          screen_width,
+          screen_height,
+          created_at
+        FROM session_replay_metadata FINAL
+        WHERE site_id = {siteId:UInt16}
+          AND session_id = {sessionId:String}
+        LIMIT 1
+      `,
+      query_params: { siteId, sessionId },
+      format: "JSONEachRow",
+    });
+
+    type SessionInfoResult = {
+      start_time: string;
+      end_time: string | null;
+      event_count: number;
+      compressed_size_bytes: number;
+      screen_width: number | null;
+      screen_height: number | null;
+      created_at: string;
+    };
+
+    const existingResults = await processResults<SessionInfoResult>(existingMetadata);
+    const existing = existingResults[0];
+
+    // ReplacingMergeTree uses created_at as its version. The column has
+    // one-second precision, so advance beyond the prior row when necessary;
+    // otherwise two batches in the same second can tie and retain either row.
+    const nowVersion = DateTime.utc().startOf("second");
+    const existingVersion = existing?.created_at ? DateTime.fromSQL(existing.created_at, { zone: "utc" }) : null;
+    const metadataVersion =
+      existingVersion?.isValid && existingVersion.toMillis() >= nowVersion.toMillis()
+        ? existingVersion.plus({ seconds: 1 })
+        : nowVersion;
+
+    const batchTimestamps = replayBatch.map(event => event.timestamp).filter(Number.isFinite);
+    if (!existing && batchTimestamps.length === 0) return;
+
+    const batchStartTime = batchTimestamps.length > 0 ? new Date(Math.min(...batchTimestamps)) : null;
+    const batchEndTime = batchTimestamps.length > 0 ? new Date(Math.max(...batchTimestamps)) : null;
+    const existingStartTime = existing?.start_time ? new Date(existing.start_time) : null;
+    const existingEndTime = existing?.end_time ? new Date(existing.end_time) : null;
+
+    const startTime =
+      existingStartTime && batchStartTime
+        ? new Date(Math.min(existingStartTime.getTime(), batchStartTime.getTime()))
+        : existingStartTime || batchStartTime;
+    const endTime =
+      existingEndTime && batchEndTime
+        ? new Date(Math.max(existingEndTime.getTime(), batchEndTime.getTime()))
+        : existingEndTime || batchEndTime;
+
+    if (!startTime) return;
+
+    const eventCount = Number(existing?.event_count || 0) + replayBatch.length;
+    const compressedSizeBytes =
+      Number(existing?.compressed_size_bytes || 0) +
+      replayBatch.reduce((sum, event) => sum + event.event_size_bytes, 0);
+    const screenWidth = Math.max(
+      Number(existing?.screen_width || 0),
+      Number(metadata.viewportWidth || 0),
+      ...replayBatch.map(event => Number(event.viewport_width || 0))
+    );
+    const screenHeight = Math.max(
+      Number(existing?.screen_height || 0),
+      Number(metadata.viewportHeight || 0),
+      ...replayBatch.map(event => Number(event.viewport_height || 0))
+    );
+
+    // Parse tracking data from request metadata
     batchStats: BatchStats,
     requestMeta?: RequestMetadata
   ): Promise<void> {
@@ -231,6 +357,7 @@ export class SessionReplayIngestService {
           hostname: trackingData.hostname || "",
           referrer: trackingData.referrer || "",
           has_replay_data: 1,
+          created_at: metadataVersion.toFormat("yyyy-MM-dd HH:mm:ss"),
         },
       ],
       format: "JSONEachRow",

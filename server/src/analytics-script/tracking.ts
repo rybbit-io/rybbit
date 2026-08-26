@@ -129,7 +129,7 @@ export class Tracker {
 
   private async sendSessionReplayBatch(batch: SessionReplayBatch): Promise<void> {
     try {
-      await fetch(`${this.config.analyticsHost}/session-replay/record/${this.config.siteId}`, {
+      const response = await fetch(`${this.config.analyticsHost}/session-replay/record/${this.config.siteId}`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -138,6 +138,15 @@ export class Tracker {
         mode: "cors",
         keepalive: false, // Disable keepalive for large session replay requests
       });
+
+      if (!response.ok) {
+        throw new Error(`Session replay endpoint returned ${response.status}`);
+      }
+
+      const result = (await response.json().catch(() => null)) as { stopRecording?: boolean } | null;
+      if (result?.stopRecording) {
+        this.sessionReplayRecorder?.disableRecording();
+      }
     } catch (error) {
       console.error("Failed to send session replay batch:", error);
       throw error;

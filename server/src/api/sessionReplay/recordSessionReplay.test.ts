@@ -164,6 +164,7 @@ describe("recordSessionReplay exclusions", () => {
     expect(mocks.recordEvents).not.toHaveBeenCalled();
     expect(reply.sentPayload).toEqual({
       success: true,
+      stopRecording: true,
       message: "Session replay not recorded - IP excluded",
     });
   });
@@ -191,6 +192,7 @@ describe("recordSessionReplay exclusions", () => {
     expect(reply.status).toHaveBeenCalledWith(200);
     expect(reply.sentPayload).toEqual({
       success: true,
+      stopRecording: true,
       message: "Session replay not recorded - path excluded",
     });
   });
@@ -227,6 +229,7 @@ describe("recordSessionReplay exclusions", () => {
     expect(mocks.recordEvents).not.toHaveBeenCalled();
     expect(reply.sentPayload).toEqual({
       success: true,
+      stopRecording: true,
       message: "Session replay not recorded - hostname excluded",
     });
   });
@@ -253,6 +256,7 @@ describe("recordSessionReplay exclusions", () => {
     expect(mocks.recordEvents).not.toHaveBeenCalled();
     expect(reply.sentPayload).toEqual({
       success: true,
+      stopRecording: true,
       message: "Session replay not recorded - user agent excluded",
     });
   });

@@ -61,6 +61,9 @@ export class SessionReplayRecorder {
   private userId: string;
   private eventBuffer: SessionReplayEvent[] = [];
   private batchTimer?: number;
+  private flushInProgress: boolean = false;
+  private flushRequested: boolean = false;
+  private isDisabled: boolean = false;
   private sendBatch: (batch: SessionReplayBatch) => Promise<void>;
 
   constructor(config: ScriptConfig, userId: string, sendBatch: (batch: SessionReplayBatch) => Promise<void>) {
@@ -105,7 +108,7 @@ export class SessionReplayRecorder {
   }
 
   public startRecording(): void {
-    if (this.isRecording || !window.rrweb || !this.config.enableSessionReplay) {
+    if (this.isDisabled || this.isRecording || !window.rrweb || !this.config.enableSessionReplay) {
       return;
     }
 
@@ -156,11 +159,11 @@ export class SessionReplayRecorder {
         checkoutEveryNms: 60000, // Checkout every 60 seconds
         checkoutEveryNth: 500, // Checkout every 500 events
         // Use config values with fallbacks to defaults
-        blockClass: this.config.sessionReplayBlockClass ?? 'rr-block',
+        blockClass: this.config.sessionReplayBlockClass ?? "rr-block",
         blockSelector: this.config.sessionReplayBlockSelector ?? null,
-        ignoreClass: this.config.sessionReplayIgnoreClass ?? 'rr-ignore',
+        ignoreClass: this.config.sessionReplayIgnoreClass ?? "rr-ignore",
         ignoreSelector: this.config.sessionReplayIgnoreSelector ?? null,
-        maskTextClass: this.config.sessionReplayMaskTextClass ?? 'rr-mask',
+        maskTextClass: this.config.sessionReplayMaskTextClass ?? "rr-mask",
         maskAllInputs: this.config.sessionReplayMaskAllInputs ?? true,
         maskInputOptions: this.config.sessionReplayMaskInputOptions ?? { password: true, email: true },
         collectFonts: this.config.sessionReplayCollectFonts ?? true,
@@ -170,7 +173,7 @@ export class SessionReplayRecorder {
 
       // Add custom text masking selectors if configured
       if (this.config.sessionReplayMaskTextSelectors && this.config.sessionReplayMaskTextSelectors.length > 0) {
-        recordingOptions.maskTextSelector = this.config.sessionReplayMaskTextSelectors.join(', ');
+        recordingOptions.maskTextSelector = this.config.sessionReplayMaskTextSelectors.join(", ");
       }
 
       this.stopRecordingFn = window.rrweb.record(recordingOptions);
@@ -204,8 +207,32 @@ export class SessionReplayRecorder {
     return this.isRecording;
   }
 
+  /**
+   * Permanently stop replay for this page after the server reports that replay
+   * is disabled or the visitor is excluded. Queued events are intentionally
+   * discarded because the server has already said it will not store them.
+   */
+  public disableRecording(): void {
+    if (this.stopRecordingFn) {
+      this.stopRecordingFn();
+      this.stopRecordingFn = undefined;
+    }
+
+    this.isDisabled = true;
+    this.isRecording = false;
+    this.clearBatchTimer();
+    this.eventBuffer = [];
+    this.flushRequested = false;
+  }
+
   private addEvent(event: SessionReplayEvent): void {
     this.eventBuffer.push(event);
+
+    // An event captured while a batch is in flight must trigger a sequential
+    // follow-up send even when the new buffer has not reached the batch size.
+    if (this.flushInProgress) {
+      this.flushRequested = true;
+    }
 
     // Auto-flush if buffer is full
     if (this.eventBuffer.length >= this.config.sessionReplayBatchSize) {
@@ -234,6 +261,14 @@ export class SessionReplayRecorder {
       return;
     }
 
+    if (this.flushInProgress) {
+      this.flushRequested = true;
+      return;
+    }
+
+    this.flushInProgress = true;
+    this.flushRequested = false;
+
     const events = [...this.eventBuffer];
     this.eventBuffer = [];
 
@@ -248,11 +283,28 @@ export class SessionReplayRecorder {
       },
     };
 
+    let batchSent = false;
+
     try {
       await this.sendBatch(batch);
+      batchSent = true;
     } catch (error) {
       // Re-queue the events for retry since this batch failed
       this.eventBuffer.unshift(...events);
+    } finally {
+      this.flushInProgress = false;
+
+      // A busy page can fill the next batch while the previous request is in
+      // flight. Drain queued batches sequentially instead of launching overlap.
+      // Failed batches remain queued for the normal timer retry, avoiding a
+      // tight retry loop when the endpoint is unavailable.
+      if (
+        batchSent &&
+        this.eventBuffer.length > 0 &&
+        (this.flushRequested || this.eventBuffer.length >= this.config.sessionReplayBatchSize)
+      ) {
+        void this.flushEvents();
+      }
     }
   }
 
