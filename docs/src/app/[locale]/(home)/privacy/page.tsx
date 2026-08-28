@@ -49,12 +49,9 @@ export default function PrivacyPolicy() {
         <h2 className="text-2xl font-semibold mt-8 mb-4">How We Process IPs</h2>
         <p>
           When processing visitor data, IP addresses are only used temporarily to determine geographic location (country
-          and region) using{" "}
-          <a href="https://www.maxmind.com/" target="_blank" rel="noopener noreferrer">
-            Maxmind
-          </a>
-          . The actual IP addresses are never stored in our database, preserving visitor anonymity while still providing
-          geographic insights to website owners.
+          and region) using a locally hosted MaxMind GeoLite2 database. IP addresses are not sent to MaxMind. The actual
+          IP addresses are never stored in our database, preserving visitor anonymity while still providing geographic
+          insights to website owners.
         </p>
 
         <h2 className="text-2xl font-semibold mt-8 mb-4">User and Session IDs</h2>
