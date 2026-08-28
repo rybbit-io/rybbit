@@ -6,9 +6,11 @@ import {
   resetEnumerationObserverForTests,
   type EnumerationObservation,
 } from "./enumerationObserver.js";
+import { getSiteBaseline, type SiteBaseline } from "./siteBaseline.js";
 
 const SECOND = 1000;
 const MINUTE = 60 * SECOND;
+const HOUR = 60 * MINUTE;
 
 const ANOMALY_SCORE_THRESHOLD = 4;
 const CLEANUP_INTERVAL_MS = 60 * SECOND;
@@ -25,7 +27,7 @@ const MAX_LOCAL_COUNTER_KEYS = 100_000;
 /**
  * Cohort-uniformity rule. A cohort is one exact device fingerprint on a site —
  * (screen, language, browser) — and the rule measures how its traffic is spread
- * across browser major versions inside a fixed one-minute bucket.
+ * across browser major versions inside a fixed one-hour bucket.
  *
  * An organic cohort is steeply peaked: browsers auto-update, so one current
  * version holds most of it (measured 0.52-0.98 modal share, and >=0.74 for every
@@ -40,8 +42,15 @@ const MAX_LOCAL_COUNTER_KEYS = 100_000;
  * to any single-visitor view because the evidence only exists in aggregate.
  * Thresholds are set with a wide margin — over 24h of production traffic across
  * every site, only the crawler's own cohort satisfied all three.
+ *
+ * The bucket is an hour, not a minute. The crawler paces itself: its busiest
+ * cohort peaked at 19 events in any one minute against a 300-event gate, and
+ * over 14 days of production the minute-bucket version never fired once. Over
+ * an hour the same cohort holds 3,000+ events with a modal share of 0.1, and
+ * with a 100-event gate it was the only cohort platform-wide to qualify in 22
+ * of 24 hours. The window was wrong; the shape test was not.
  */
-const COHORT_MIN_EVENTS_60S = 300;
+const COHORT_MIN_EVENTS_1H = 100;
 const COHORT_MIN_DISTINCT_VERSIONS = 8;
 const COHORT_MAX_MODAL_SHARE = 0.25;
 
@@ -71,6 +80,56 @@ const ACTOR_EVENTS_1D_SCORE = 1;
 const PROXY_MERGE_MAX_USER_AGENTS = 3;
 const DAY = 24 * 60 * MINUTE;
 
+/**
+ * Site-flood rules. The failure these exist for: a fleet of disposable
+ * identities — one event each, a fresh IP and user agent per hit, spread over
+ * thousands of residential ASNs, running a real browser — lands on a site that
+ * normally sees four events an hour and pushes it to four thousand. Every rule
+ * above is keyed on an actor and sees one well-behaved event per actor; nothing
+ * fires. Measured across production, detection caught 14% of traffic in such
+ * hours against 48% at rest — worst exactly where the site owner is looking.
+ *
+ * What the fleet cannot hide is the site's aggregate: the rate against the
+ * site's own baseline (`siteBaseline.ts`), and, within the flood, a single
+ * device cohort that is nearly all distinct actors, nearly all direct, and a
+ * large share of the site's traffic. A launch or a press bump is the mirror
+ * image — many devices, several events per visitor, referrers set — so the
+ * flood gate alone never convicts; a cohort or an actor still has to show a
+ * shape no organic audience produces.
+ *
+ * The gate is the site's 10-minute volume at twenty times its padded weekly
+ * median and at least 100 events. Sites without a baseline, or younger than a
+ * week, never pass it.
+ */
+const FLOOD_MULTIPLE = 20;
+const FLOOD_MIN_EVENTS_10M = 100;
+const FLOOD_COHORT_MIN_EVENTS_10M = 50;
+const FLOOD_COHORT_MIN_ACTOR_RATIO = 0.6;
+const FLOOD_COHORT_MIN_DIRECT_SHARE = 0.95;
+const FLOOD_COHORT_MIN_SITE_SHARE = 0.25;
+const FLOOD_ACTOR_EVENTS_1D_HOSTING = 200;
+const FLOOD_ACTOR_EVENTS_1D_THRESHOLD = ACTOR_EVENTS_1D_THRESHOLD;
+const TEN_MINUTES = 10 * MINUTE;
+
+/**
+ * Long-window volume from a hosting address convicts on its own. The
+ * supporting-only `actor_events_1d` above exists because one residential or
+ * office address can be hundreds of people; a datacenter address is not. The
+ * Azure-hosted fleet this targets ran ~300 events per address per day across
+ * 3,000 sites and was caught under half the time, because the hosting ASN is
+ * only ever corroborating and nothing corroborated it.
+ *
+ * SASE egress is the exception a hosting flag cannot see — Cato, Zscaler and
+ * Netskope route whole companies through cloud addresses — so those are
+ * exempt outright, in addition to the many-user-agents guard.
+ */
+const HOSTING_ACTOR_EVENTS_1D_THRESHOLD = 1000;
+const SASE_EGRESS_ASNS: ReadonlySet<number> = new Set([
+  13150, // Cato Networks
+  22616, // Zscaler
+  55256, // Netskope
+]);
+
 const logger = createServiceLogger("anomaly-scorer");
 
 // Counters live in Redis so every worker/replica shares one view; an in-process
@@ -98,10 +157,15 @@ export interface AnomalyCounters {
   ipDistinctHosts60s: number;
   siteUserAgentEvents60s: number;
   missingClientScore60s: number;
-  cohortEvents60s: number;
-  cohortTopVersionEvents60s: number;
-  cohortDistinctVersions60s: number;
+  cohortEvents1h: number;
+  cohortTopVersionEvents1h: number;
+  cohortDistinctVersions1h: number;
   actorEvents1d: number;
+  siteEvents10m: number;
+  siteDistinctActors10m: number;
+  cohortEvents10m: number;
+  cohortDistinctActors10m: number;
+  cohortDirectEvents10m: number;
   enumerationEvents15m: number;
   enumerationDistinctPaths15m: number;
   enumerationDistinctActors15m: number;
@@ -142,6 +206,11 @@ export interface AnomalyInput {
   screenWidth?: number;
   screenHeight?: number;
   language?: string;
+  /** Whether the request address resolved to hosting/datacenter or bot-provider space. */
+  isHostingAsn?: boolean;
+  asn?: number;
+  /** Overrides the site baseline lookup; tests only. */
+  siteBaseline?: SiteBaseline | null;
   nowMs?: number;
 }
 
@@ -366,9 +435,14 @@ const tupleDistinctPaths60s = new RollingDistinctCounter();
 const ipDistinctUserAgents5m = new RollingDistinctCounter();
 const ipDistinctHosts60s = new RollingDistinctCounter();
 
-const cohortBrowserVersions60s = new BucketedDistributionCounter();
+const cohortBrowserVersions1h = new BucketedDistributionCounter();
 
 const actorEvents1d = new BucketedCounter();
+const siteEvents10m = new BucketedCounter();
+const cohortEvents10m = new BucketedCounter();
+const cohortDirectEvents10m = new BucketedCounter();
+const siteDistinctActors10m = new BucketedDistinctCounter();
+const cohortDistinctActors10m = new BucketedDistinctCounter();
 const enumerationEvents15m = new BucketedCounter();
 const enumerationDirectEvents15m = new BucketedCounter();
 const enumerationDistinctPaths15m = new BucketedDistinctCounter();
@@ -492,8 +566,13 @@ function maybeCleanup(nowMs: number) {
   tupleDistinctPaths60s.cleanup(nowMs, MINUTE);
   ipDistinctUserAgents5m.cleanup(nowMs, 5 * MINUTE);
   ipDistinctHosts60s.cleanup(nowMs, MINUTE);
-  cohortBrowserVersions60s.cleanup(nowMs, MINUTE);
+  cohortBrowserVersions1h.cleanup(nowMs, HOUR);
   actorEvents1d.cleanup(nowMs, DAY);
+  siteEvents10m.cleanup(nowMs, TEN_MINUTES);
+  cohortEvents10m.cleanup(nowMs, TEN_MINUTES);
+  cohortDirectEvents10m.cleanup(nowMs, TEN_MINUTES);
+  siteDistinctActors10m.cleanup(nowMs, TEN_MINUTES);
+  cohortDistinctActors10m.cleanup(nowMs, TEN_MINUTES);
   enumerationEvents15m.cleanup(nowMs, ENUMERATION_BUCKET_MS);
   enumerationDirectEvents15m.cleanup(nowMs, ENUMERATION_BUCKET_MS);
   enumerationDistinctPaths15m.cleanup(nowMs, ENUMERATION_BUCKET_MS);
@@ -578,7 +657,9 @@ function buildCounterPlan(input: AnomalyInput, nowMs: number): AnomalyPlan {
     input.screenWidth > 0 &&
     input.screenHeight > 0;
   const cohortKey = `${siteId}:${input.screenWidth}x${input.screenHeight}:${language}:${browserFamily}`;
-  const cohortBucket = Math.floor(nowMs / MINUTE);
+  const cohortBucket = Math.floor(nowMs / HOUR);
+  const floodBucket = Math.floor(nowMs / TEN_MINUTES);
+  const siteKey = String(siteId);
 
   // Enumeration shape is measured over the same cohort, on a much longer bucket:
   // a crawler paced at one hit per identity produces nothing legible in a
@@ -671,18 +752,18 @@ function buildCounterPlan(input: AnomalyInput, nowMs: number): AnomalyPlan {
       observeLocal: now => missingClientScore60s.observe(tupleKey, now, MINUTE),
     },
     {
-      name: "cohortEvents60s",
+      name: "cohortEvents1h",
       enabled: hasCohort,
       kind: "distribution",
       redisKey: `bot:a:cbv:${cohortKey}:${cohortBucket}`,
       member: browserMajorVersion,
-      windowMs: 2 * MINUTE,
+      windowMs: 2 * HOUR,
       maxSize: MAX_DISTRIBUTION_FIELDS,
       observeLocal: () => 0,
-      topCounterName: "cohortTopVersionEvents60s",
-      distinctCounterName: "cohortDistinctVersions60s",
+      topCounterName: "cohortTopVersionEvents1h",
+      distinctCounterName: "cohortDistinctVersions1h",
       observeLocalDistribution: now =>
-        cohortBrowserVersions60s.observe(cohortKey, browserMajorVersion, now, MINUTE, MAX_DISTRIBUTION_FIELDS),
+        cohortBrowserVersions1h.observe(cohortKey, browserMajorVersion, now, HOUR, MAX_DISTRIBUTION_FIELDS),
     },
     {
       name: "actorEvents1d",
@@ -693,6 +774,60 @@ function buildCounterPlan(input: AnomalyInput, nowMs: number): AnomalyPlan {
       windowMs: DAY,
       maxSize: 0,
       observeLocal: now => actorEvents1d.observe(ipKey, now, DAY, MAX_LOCAL_COUNTER_KEYS),
+    },
+    // Site-flood counters, all on one fixed 10-minute bucket. The actor here is
+    // the visitor tuple (ip + user agent), the identity a fleet mints per hit.
+    {
+      name: "siteEvents10m",
+      enabled: true,
+      kind: "counter",
+      redisKey: `bot:f:se:${siteKey}:${floodBucket}`,
+      member: "",
+      windowMs: 2 * TEN_MINUTES,
+      maxSize: 0,
+      observeLocal: now => siteEvents10m.observe(siteKey, now, TEN_MINUTES, MAX_LOCAL_COUNTER_KEYS),
+    },
+    {
+      name: "siteDistinctActors10m",
+      enabled: true,
+      kind: "cardinality",
+      redisKey: `bot:f:sa:${siteKey}:${floodBucket}`,
+      member: tupleKey,
+      windowMs: 2 * TEN_MINUTES,
+      maxSize: 0,
+      observeLocal: now =>
+        siteDistinctActors10m.observe(siteKey, tupleKey, now, TEN_MINUTES, MAX_LOCAL_DISTINCT_VALUES),
+    },
+    {
+      name: "cohortEvents10m",
+      enabled: hasCohort,
+      kind: "counter",
+      redisKey: `bot:f:ce:${cohortKey}:${floodBucket}`,
+      member: "",
+      windowMs: 2 * TEN_MINUTES,
+      maxSize: 0,
+      observeLocal: now => cohortEvents10m.observe(cohortKey, now, TEN_MINUTES, MAX_LOCAL_COUNTER_KEYS),
+    },
+    {
+      name: "cohortDistinctActors10m",
+      enabled: hasCohort,
+      kind: "cardinality",
+      redisKey: `bot:f:ca:${cohortKey}:${floodBucket}`,
+      member: tupleKey,
+      windowMs: 2 * TEN_MINUTES,
+      maxSize: 0,
+      observeLocal: now =>
+        cohortDistinctActors10m.observe(cohortKey, tupleKey, now, TEN_MINUTES, MAX_LOCAL_DISTINCT_VALUES),
+    },
+    {
+      name: "cohortDirectEvents10m",
+      enabled: hasCohort && isDirect,
+      kind: "counter",
+      redisKey: `bot:f:cd:${cohortKey}:${floodBucket}`,
+      member: "",
+      windowMs: 2 * TEN_MINUTES,
+      maxSize: 0,
+      observeLocal: now => cohortDirectEvents10m.observe(cohortKey, now, TEN_MINUTES, MAX_LOCAL_COUNTER_KEYS),
     },
     {
       name: "enumerationEvents15m",
@@ -727,7 +862,13 @@ function buildCounterPlan(input: AnomalyInput, nowMs: number): AnomalyPlan {
       windowMs: ENUMERATION_BUCKET_MS,
       maxSize: 0,
       observeLocal: now =>
-        enumerationDistinctActors15m.observe(cohortKey, ipAddress, now, ENUMERATION_BUCKET_MS, MAX_LOCAL_DISTINCT_VALUES),
+        enumerationDistinctActors15m.observe(
+          cohortKey,
+          ipAddress,
+          now,
+          ENUMERATION_BUCKET_MS,
+          MAX_LOCAL_DISTINCT_VALUES
+        ),
     },
     {
       name: "enumerationDirectEvents15m",
@@ -737,7 +878,8 @@ function buildCounterPlan(input: AnomalyInput, nowMs: number): AnomalyPlan {
       member: "",
       windowMs: ENUMERATION_BUCKET_MS,
       maxSize: 0,
-      observeLocal: now => enumerationDirectEvents15m.observe(cohortKey, now, ENUMERATION_BUCKET_MS, MAX_LOCAL_COUNTER_KEYS),
+      observeLocal: now =>
+        enumerationDirectEvents15m.observe(cohortKey, now, ENUMERATION_BUCKET_MS, MAX_LOCAL_COUNTER_KEYS),
     },
   ];
 
@@ -758,10 +900,15 @@ function emptyCounters(): AnomalyCounters {
     ipDistinctHosts60s: 0,
     siteUserAgentEvents60s: 0,
     missingClientScore60s: 0,
-    cohortEvents60s: 0,
-    cohortTopVersionEvents60s: 0,
-    cohortDistinctVersions60s: 0,
+    cohortEvents1h: 0,
+    cohortTopVersionEvents1h: 0,
+    cohortDistinctVersions1h: 0,
     actorEvents1d: 0,
+    siteEvents10m: 0,
+    siteDistinctActors10m: 0,
+    cohortEvents10m: 0,
+    cohortDistinctActors10m: 0,
+    cohortDirectEvents10m: 0,
     enumerationEvents15m: 0,
     enumerationDistinctPaths15m: 0,
     enumerationDistinctActors15m: 0,
@@ -818,7 +965,25 @@ function observeViaLocal(plan: CounterPlan[], nowMs: number): AnomalyCounters {
   return counters;
 }
 
-function computeAnomalyResult(counters: AnomalyCounters): AnomalyResult {
+interface AnomalyContext {
+  siteBaseline: SiteBaseline | undefined;
+  isHostingAsn: boolean;
+  asn: number | undefined;
+}
+
+/**
+ * Whether the site is currently in flood: its 10-minute volume is at least
+ * FLOOD_MULTIPLE times its own padded weekly median and at least
+ * FLOOD_MIN_EVENTS_10M. A site with no baseline, or one too young for its
+ * baseline to mean anything, is never in flood.
+ */
+function isSiteInFlood(counters: AnomalyCounters, baseline: SiteBaseline | undefined): boolean {
+  if (!baseline || !baseline.eligible) return false;
+  const gate = Math.max(FLOOD_MULTIPLE * baseline.events10m, FLOOD_MIN_EVENTS_10M);
+  return counters.siteEvents10m >= gate;
+}
+
+function computeAnomalyResult(counters: AnomalyCounters, context: AnomalyContext): AnomalyResult {
   // Convicting rules are keyed on (site, ip, ua) — they describe a single actor
   // and may convict on their own. The interaction-burst threshold is set beyond
   // human clicking speed (10/s sustained); ordinary widget bursts stay below it.
@@ -836,17 +1001,64 @@ function computeAnomalyResult(counters: AnomalyCounters): AnomalyResult {
   // one. It convicts because the alternative is not convicting at all: a paced
   // distributed crawler leaves no per-identity evidence to corroborate.
   if (
-    counters.cohortEvents60s >= COHORT_MIN_EVENTS_60S &&
-    counters.cohortDistinctVersions60s >= COHORT_MIN_DISTINCT_VERSIONS &&
-    counters.cohortTopVersionEvents60s < counters.cohortEvents60s * COHORT_MAX_MODAL_SHARE
+    counters.cohortEvents1h >= COHORT_MIN_EVENTS_1H &&
+    counters.cohortDistinctVersions1h >= COHORT_MIN_DISTINCT_VERSIONS &&
+    counters.cohortTopVersionEvents1h < counters.cohortEvents1h * COHORT_MAX_MODAL_SHARE
   ) {
     convictingReasons.push({
-      rule: "cohort_version_uniformity_60s",
+      rule: "cohort_version_uniformity_1h",
       score: 4,
-      value: Math.round((counters.cohortTopVersionEvents60s / counters.cohortEvents60s) * 100),
+      value: Math.round((counters.cohortTopVersionEvents1h / counters.cohortEvents1h) * 100),
       threshold: COHORT_MAX_MODAL_SHARE * 100,
-      windowSeconds: 60,
+      windowSeconds: 3600,
     });
+  }
+
+  const sharedEgressGuard = counters.ipDistinctUserAgents5m <= PROXY_MERGE_MAX_USER_AGENTS;
+  const saseExempt = context.asn !== undefined && SASE_EGRESS_ASNS.has(context.asn);
+
+  // Site flood. See the constants' comment for the design; in short, the gate
+  // is the site against its own baseline, and the conviction is a cohort or an
+  // actor inside the flood showing a shape an organic surge does not.
+  if (isSiteInFlood(counters, context.siteBaseline)) {
+    const cohortEvents = counters.cohortEvents10m;
+    if (
+      cohortEvents >= FLOOD_COHORT_MIN_EVENTS_10M &&
+      counters.cohortDistinctActors10m >= cohortEvents * FLOOD_COHORT_MIN_ACTOR_RATIO &&
+      counters.cohortDirectEvents10m >= cohortEvents * FLOOD_COHORT_MIN_DIRECT_SHARE &&
+      cohortEvents >= counters.siteEvents10m * FLOOD_COHORT_MIN_SITE_SHARE
+    ) {
+      convictingReasons.push({
+        rule: "site_flood_oneshot_cohort_10m",
+        score: 4,
+        value: Math.round((counters.cohortDistinctActors10m / cohortEvents) * 100),
+        threshold: FLOOD_COHORT_MIN_ACTOR_RATIO * 100,
+        windowSeconds: 600,
+      });
+    }
+
+    if (sharedEgressGuard && !saseExempt) {
+      addReason(
+        convictingReasons,
+        "site_flood_actor_1d",
+        4,
+        counters.actorEvents1d,
+        context.isHostingAsn ? FLOOD_ACTOR_EVENTS_1D_HOSTING : FLOOD_ACTOR_EVENTS_1D_THRESHOLD,
+        86400
+      );
+    }
+  }
+
+  // Hosting-address volume convicts outside a flood too; see the constant.
+  if (context.isHostingAsn && sharedEgressGuard && !saseExempt) {
+    addReason(
+      convictingReasons,
+      "hosting_actor_events_1d",
+      4,
+      counters.actorEvents1d,
+      HOSTING_ACTOR_EVENTS_1D_THRESHOLD,
+      86400
+    );
   }
 
   // Supporting rules are keyed on shared dimensions (ip, site+ua) that many real
@@ -864,7 +1076,7 @@ function computeAnomalyResult(counters: AnomalyCounters): AnomalyResult {
   // where one address is hundreds of real people and a four-figure daily count
   // is unremarkable. A single scraper presents one user agent, so the guard
   // costs nothing against the traffic this rule exists for.
-  if (counters.ipDistinctUserAgents5m <= PROXY_MERGE_MAX_USER_AGENTS) {
+  if (sharedEgressGuard) {
     addReason(
       supportingReasons,
       "actor_events_1d",
@@ -914,7 +1126,11 @@ export async function observeTrackingAnomaly(input: AnomalyInput): Promise<Anoma
     counters = observeViaLocal(plan.counters, nowMs);
   }
 
-  const result = computeAnomalyResult(counters);
+  const result = computeAnomalyResult(counters, {
+    siteBaseline: input.siteBaseline === undefined ? getSiteBaseline(input.siteId) : (input.siteBaseline ?? undefined),
+    isHostingAsn: input.isHostingAsn === true,
+    asn: input.asn,
+  });
 
   // Only a direct hit can read a meaningful direct share, since only a direct
   // hit incremented that counter. The observation is attached to the result and
@@ -953,8 +1169,13 @@ export function resetAnomalyScorerForTests() {
   tupleDistinctPaths60s.clear();
   ipDistinctUserAgents5m.clear();
   ipDistinctHosts60s.clear();
-  cohortBrowserVersions60s.clear();
+  cohortBrowserVersions1h.clear();
   actorEvents1d.clear();
+  siteEvents10m.clear();
+  cohortEvents10m.clear();
+  cohortDirectEvents10m.clear();
+  siteDistinctActors10m.clear();
+  cohortDistinctActors10m.clear();
   enumerationEvents15m.clear();
   enumerationDirectEvents15m.clear();
   enumerationDistinctPaths15m.clear();

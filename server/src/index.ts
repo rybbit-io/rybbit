@@ -185,6 +185,7 @@ import { reengagementService } from "./services/reengagement/reengagementService
 import { telemetryService } from "./services/telemetryService.js";
 import { handleIdentify } from "./services/tracker/identifyService.js";
 import { trackEvent } from "./services/tracker/trackEvent.js";
+import { startSiteBaselineRefresh } from "./services/tracker/botBlocking/siteBaseline.js";
 import { usageService } from "./services/usageService.js";
 import { weeklyReportService } from "./services/weekyReports/weeklyReportService.js";
 import { handleAppSumoWebhook, activateAppSumoLicense } from "./api/as/index.js";
@@ -567,6 +568,10 @@ const start = async () => {
     if (!cluster.isWorker) {
       await Promise.all([initializeClickhouse(), initPostgres()]);
     }
+
+    // Every process runs this: the ClickHouse refresh is elected through Redis,
+    // and each worker mirrors the shared result for the site-flood rules.
+    startSiteBaselineRefresh();
 
     // Cron jobs should only run on the primary process (or in single-process mode)
     if (!cluster.isWorker) {

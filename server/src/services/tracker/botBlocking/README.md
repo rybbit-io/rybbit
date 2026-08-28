@@ -63,7 +63,7 @@ Detected bot requests emit one consolidated log line:
 
 Each detection object contains compact method-specific details such as matched UA pattern, header score, ASN metadata, or anomaly counters.
 
-`botDetectionStats.ts` also logs process-lifetime totals for tracker requests that reach the bot-blocking entry point every 5 seconds:
+`botDetectionStats.ts` also logs process-lifetime totals for tracker requests that reach the bot-blocking entry point every 60 seconds:
 
 - `totalRequests`
 - `totalBotRequests` — what was **detected**
@@ -119,8 +119,9 @@ It tracks:
 - events, distinct UAs, and distinct hostnames per IP
 - site-wide volume for a UA hash
 - missing client bot score volume
-- browser-version spread within a cohort (`siteId + screen + language + browser family`)
+- browser-version spread within a cohort (`siteId + screen + language + browser family`), in one-hour buckets
 - events per actor per day
+- site volume and distinct actors, and per-cohort volume, distinct actors and direct hits, in 10-minute buckets (the site-flood rules)
 - enumeration shape per cohort, in 15-minute buckets
 
 Reasons come back in two lists, and the distinction is structural rather than a matter of how the scores happen to add up:
@@ -128,9 +129,11 @@ Reasons come back in two lists, and the distinction is structural rather than a 
 - **convicting** — keyed on a single actor, or on a distribution no organic population produces. These can open a conviction.
 - **supporting** — keyed on dimensions real visitors share (an IP, a popular browser), plus long-window volume, where one address may be an entire office behind a SASE gateway. These are only ever added to a score convicting evidence has already opened.
 
-Three rules deserve their own note:
+Five rules deserve their own note:
 
-- **Cohort version uniformity** convicts, and is the only rule that can catch a paced distributed crawler — one that stays under every per-identity threshold by design. Its key must carry the browser family: without it, Chrome, Safari and Firefox version numbers pool into one distribution, which inflates the distinct-version count and depresses the modal share, i.e. manufactures exactly the two conditions the rule fires on.
+- **Site flood** (`site_flood_oneshot_cohort_10m`, `site_flood_actor_1d`) is the only site-relative logic in the layer. Every other threshold is absolute, so a fleet of disposable identities — one event each, a fresh address per hit, a real browser — can push a four-events-an-hour site to four thousand and trip nothing (measured: 14% caught in such hours versus 48% at rest). The gate is the site's 10-minute volume against its own padded weekly median, computed every 15 minutes from ClickHouse by `siteBaseline.ts` and shared through Redis; a site with no baseline or under a week old is never in flood. The gate alone never convicts. Inside a flood, a device cohort convicts when it is at least a quarter of the site's traffic, at least 60% distinct actors, and at least 95% direct — a launch is many devices, several events per visitor and referrers set, and a campaign spreads over real devices so no cohort reaches a quarter. An actor convicts inside a flood at 200 events a day from a hosting address, 1,000 otherwise.
+- **Hosting actor volume** (`hosting_actor_events_1d`) convicts a hosting/datacenter address at 1,000 events a day on its own. The supporting-only daily rule below exists because a residential or office address can be hundreds of people; a datacenter address is not. SASE egress (Cato, Zscaler, Netskope) is exempt by ASN, on top of the many-user-agents guard.
+- **Cohort version uniformity** convicts, and is the only rule that can catch a paced distributed crawler — one that stays under every per-identity threshold by design. Its key must carry the browser family: without it, Chrome, Safari and Firefox version numbers pool into one distribution, which inflates the distinct-version count and depresses the modal share, i.e. manufactures exactly the two conditions the rule fires on. Its bucket is an hour: the crawler paces itself, and in a one-minute bucket its busiest cohort never came near the volume gate, so the rule did not fire once in two weeks of production.
 - **Events per actor per day** is supporting-only and scores 1. Its actor is the exact request IP, deliberately *not* the /24 identity bucket the per-visitor rules use — bucketing merges a datacenter range or a SASE egress pool into one actor, and a day is long enough for that to reach any threshold on legitimate traffic. It is additionally dropped outright for an address showing more than three user agents in five minutes, which is what a shared gateway looks like.
 - **Enumeration** (`enumerationObserver.ts`) is in shadow mode: it measures path novelty, events per actor, and direct share per cohort, requires two consecutive qualifying buckets, and **never scores**. It logs. Promoting it should follow from reading those logs, not from a threshold nudge. Its direct share is measured on the raw referrer, before self-referrers are cleared for storage — a stored empty referrer means "direct *or* internal navigation", which most ordinary browsing satisfies.
 

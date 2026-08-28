@@ -483,7 +483,8 @@
     outerDimensionsWeird: 1 << 8,
     pluginApiAbsence: 1 << 9,
     defaultViewport1280x1200: 1 << 10,
-    squareScreen: 1 << 11
+    squareScreen: 1 << 11,
+    missingScreenDimensions: 1 << 12
   };
   var CLIENT_BOT_SIGNAL_NAMES = Object.keys(CLIENT_BOT_SIGNAL_MASKS);
   var CLIENT_BOT_SIGNAL_WEIGHTS = {
@@ -498,7 +499,8 @@
     outerDimensionsWeird: 2,
     pluginApiAbsence: 0,
     defaultViewport1280x1200: 3,
-    squareScreen: 3
+    squareScreen: 3,
+    missingScreenDimensions: 1
   };
   var ALL_CLIENT_BOT_SIGNAL_BITS = CLIENT_BOT_SIGNAL_NAMES.reduce(
     (mask, name) => mask | CLIENT_BOT_SIGNAL_MASKS[name],

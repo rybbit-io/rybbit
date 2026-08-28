@@ -224,8 +224,8 @@ describe("cohort version uniformity (in-process fallback)", () => {
     const result = await driveCohort(versions);
 
     expect(result.isAnomalous).toBe(true);
-    expect(result.reasons.map(reason => reason.rule)).toContain("cohort_version_uniformity_60s");
-    expect(result.counters.cohortDistinctVersions60s).toBe(16);
+    expect(result.reasons.map(reason => reason.rule)).toContain("cohort_version_uniformity_1h");
+    expect(result.counters.cohortDistinctVersions1h).toBe(16);
   });
 
   it("leaves an equally busy organic cohort alone (one dominant current version)", async () => {
@@ -236,23 +236,23 @@ describe("cohort version uniformity (in-process fallback)", () => {
     const result = await driveCohort(versions);
 
     expect(result.isAnomalous).toBe(false);
-    expect(result.reasons.map(reason => reason.rule)).not.toContain("cohort_version_uniformity_60s");
+    expect(result.reasons.map(reason => reason.rule)).not.toContain("cohort_version_uniformity_1h");
   });
 
   it("ignores a flat cohort that is too small to be a fleet", async () => {
-    const versions = Array.from({ length: 100 }, (_, index) => 103 + (index % 16));
+    const versions = Array.from({ length: 60 }, (_, index) => 103 + (index % 16));
 
     const result = await driveCohort(versions);
 
     expect(result.isAnomalous).toBe(false);
-    expect(result.counters.cohortEvents60s).toBeLessThan(300);
+    expect(result.counters.cohortEvents1h).toBeLessThan(100);
   });
 
   it("skips the cohort counter when the fingerprint is incomplete", async () => {
     const result = await observeTrackingAnomaly({ ...baseInput, screenWidth: undefined });
 
-    expect(result.counters.cohortEvents60s).toBe(0);
-    expect(result.counters.cohortDistinctVersions60s).toBe(0);
+    expect(result.counters.cohortEvents1h).toBe(0);
+    expect(result.counters.cohortDistinctVersions1h).toBe(0);
   });
 
   it("skips the cohort counter when the language is unset", async () => {
@@ -260,7 +260,7 @@ describe("cohort version uniformity (in-process fallback)", () => {
     // cohort, which is the same defect as merging every browser.
     const result = await observeTrackingAnomaly({ ...cohortInput, language: undefined });
 
-    expect(result.counters.cohortEvents60s).toBe(0);
+    expect(result.counters.cohortEvents1h).toBe(0);
   });
 
   /**
@@ -278,7 +278,8 @@ describe("cohort version uniformity (in-process fallback)", () => {
   it("does not convict a mixed-browser population sharing one screen and language", async () => {
     const families = [
       (version: number) => desktopChrome(version),
-      (version: number) => `Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:${version}.0) Gecko/20100101 Firefox/${version}.0`,
+      (version: number) =>
+        `Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:${version}.0) Gecko/20100101 Firefox/${version}.0`,
       (version: number) =>
         `Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/${version}.0 Safari/605.1.15`,
       (version: number) =>
@@ -304,10 +305,10 @@ describe("cohort version uniformity (in-process fallback)", () => {
       }
     }
 
-    expect(result?.reasons.map(reason => reason.rule)).not.toContain("cohort_version_uniformity_60s");
+    expect(result?.reasons.map(reason => reason.rule)).not.toContain("cohort_version_uniformity_1h");
     expect(result?.isAnomalous).toBe(false);
     // The last family's cohort saw only its own traffic, not all 1,280 events.
-    expect(result?.counters.cohortEvents60s).toBe(320);
+    expect(result?.counters.cohortEvents1h).toBe(320);
   });
 
   /**
@@ -351,7 +352,7 @@ describe("cohort version uniformity (in-process fallback)", () => {
           });
           index++;
         }
-        sizes.push(result!.counters.cohortEvents60s);
+        sizes.push(result!.counters.cohortEvents1h);
       }
       return sizes;
     }
@@ -371,7 +372,7 @@ describe("cohort version uniformity (in-process fallback)", () => {
       await cohortSizesPerAgent([chrome120, edge120, opera120]);
       const result = await observeTrackingAnomaly({ ...cohortInput, userAgent: edge120 });
 
-      expect(result.counters.cohortDistinctVersions60s).toBe(1);
+      expect(result.counters.cohortDistinctVersions1h).toBe(1);
     });
 
     it("separates families whose version numbers move independently", async () => {
@@ -393,7 +394,7 @@ describe("cohort version uniformity (in-process fallback)", () => {
 
     const result = await driveCohort(versions);
 
-    expect(result.reasons.map(reason => reason.rule)).toContain("cohort_version_uniformity_60s");
+    expect(result.reasons.map(reason => reason.rule)).toContain("cohort_version_uniformity_1h");
   });
 });
 
@@ -468,6 +469,223 @@ describe("enumeration observer (shadow mode)", () => {
   });
 });
 
+describe("site flood (in-process fallback)", () => {
+  beforeEach(() => {
+    resetAnomalyScorerForTests();
+    setRedisAnomalyEnabledForTests(false);
+  });
+
+  // A 10-minute bucket boundary, so a run of events stays inside one bucket.
+  const bucketStart = 1_200_000;
+  const quietSite = { events10m: 0, eligible: true };
+  const desktopChrome = (version: number) =>
+    `Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/${version}.0.0.0 Safari/537.36`;
+
+  /**
+   * The measured shape of the site-7650 flood: one screen size, one language,
+   * a fresh IP and a user agent drawn from a short list per hit, no referrer,
+   * one event per identity, at a rate hundreds of times the site's normal.
+   */
+  async function driveOneShotFleet(count: number, overrides: Partial<AnomalyInputForTest> = {}) {
+    let result;
+    for (let index = 0; index < count; index++) {
+      result = await observeTrackingAnomaly({
+        ...baseInput,
+        siteBaseline: quietSite,
+        ipAddress: `203.0.${Math.floor(index / 250)}.${index % 250}`,
+        userAgent: desktopChrome(118 + (index % 4)),
+        screenWidth: 1920,
+        screenHeight: 1080,
+        language: "en-US",
+        pathname: `/showcase/${index % 70}`,
+        referrer: undefined,
+        nowMs: bucketStart + index * 1_000,
+        ...overrides,
+      });
+    }
+    return result!;
+  }
+
+  type AnomalyInputForTest = Parameters<typeof observeTrackingAnomaly>[0];
+
+  it("convicts a one-shot fleet flooding a quiet site", async () => {
+    const result = await driveOneShotFleet(120);
+
+    expect(result.isAnomalous).toBe(true);
+    expect(result.convictingReasons.map(reason => reason.rule)).toContain("site_flood_oneshot_cohort_10m");
+    expect(result.counters.siteEvents10m).toBe(120);
+    expect(result.counters.cohortDistinctActors10m).toBe(120);
+  });
+
+  it("stays quiet below the flood gate", async () => {
+    const result = await driveOneShotFleet(90);
+
+    expect(result.isAnomalous).toBe(false);
+  });
+
+  it("never fires for a site with no baseline", async () => {
+    const result = await driveOneShotFleet(200, { siteBaseline: null });
+
+    expect(result.isAnomalous).toBe(false);
+  });
+
+  it("never fires for a site too young to have a baseline", async () => {
+    const result = await driveOneShotFleet(200, { siteBaseline: { events10m: 0, eligible: false } });
+
+    expect(result.isAnomalous).toBe(false);
+  });
+
+  it("scales the gate with the site's own baseline", async () => {
+    // A site that normally does 30 events per 10 minutes needs 600 to be in flood.
+    const result = await driveOneShotFleet(300, { siteBaseline: { events10m: 30, eligible: true } });
+
+    expect(result.isAnomalous).toBe(false);
+  });
+
+  it("leaves a launch-shaped surge alone", async () => {
+    // Many devices, several events per visitor, arrivals carrying a referrer:
+    // the mirror image of the fleet, at the same rate on the same quiet site.
+    const screens = [
+      [390, 844],
+      [393, 852],
+      [430, 932],
+      [1920, 1080],
+      [1536, 864],
+      [1366, 768],
+      [412, 915],
+      [1440, 900],
+    ];
+    let result;
+    for (let index = 0; index < 300; index++) {
+      const visitor = Math.floor(index / 3);
+      const [screenWidth, screenHeight] = screens[visitor % screens.length];
+      result = await observeTrackingAnomaly({
+        ...baseInput,
+        siteBaseline: quietSite,
+        ipAddress: `198.51.${Math.floor(visitor / 250)}.${visitor % 250}`,
+        userAgent: desktopChrome(150),
+        screenWidth,
+        screenHeight,
+        language: "en-US",
+        pathname: `/launch/${index % 5}`,
+        referrer: "https://news.ycombinator.com/",
+        nowMs: bucketStart + index * 1_000,
+      });
+    }
+
+    expect(result!.counters.siteEvents10m).toBe(300);
+    expect(result!.isAnomalous).toBe(false);
+  });
+
+  it("leaves a one-shot campaign alone when devices are diverse", async () => {
+    // Email/push campaign: one hit per recipient, no referrer — but real devices,
+    // so no single cohort holds a quarter of the site's traffic.
+    const screens = [
+      [390, 844],
+      [393, 852],
+      [430, 932],
+      [1920, 1080],
+      [1536, 864],
+      [1366, 768],
+      [412, 915],
+      [1440, 900],
+    ];
+    let result;
+    for (let index = 0; index < 300; index++) {
+      const [screenWidth, screenHeight] = screens[index % screens.length];
+      result = await observeTrackingAnomaly({
+        ...baseInput,
+        siteBaseline: quietSite,
+        ipAddress: `198.51.${Math.floor(index / 250)}.${index % 250}`,
+        userAgent: desktopChrome(150),
+        screenWidth,
+        screenHeight,
+        language: "en-US",
+        pathname: "/promo",
+        referrer: undefined,
+        nowMs: bucketStart + index * 1_000,
+      });
+    }
+
+    expect(result!.isAnomalous).toBe(false);
+  });
+
+  it("convicts a hosting address carrying a flood on its own", async () => {
+    // The Azure archetype: one datacenter address, ~300 events a day, paced
+    // under every short-window rule, on a site it has pushed into flood.
+    let result;
+    for (let index = 0; index < 250; index++) {
+      result = await observeTrackingAnomaly({
+        ...baseInput,
+        siteBaseline: quietSite,
+        ipAddress: "20.0.0.5",
+        isHostingAsn: true,
+        asn: 8075,
+        screenWidth: 1920,
+        screenHeight: 1080,
+        language: "en-US",
+        pathname: "/",
+        nowMs: bucketStart + index * 2_000,
+      });
+    }
+
+    expect(result!.isAnomalous).toBe(true);
+    expect(result!.convictingReasons.map(reason => reason.rule)).toContain("site_flood_actor_1d");
+  });
+
+  it("holds a residential address to the ordinary daily threshold inside a flood", async () => {
+    let result;
+    for (let index = 0; index < 250; index++) {
+      result = await observeTrackingAnomaly({
+        ...baseInput,
+        siteBaseline: quietSite,
+        ipAddress: "203.0.113.77",
+        isHostingAsn: false,
+        pathname: "/",
+        nowMs: bucketStart + index * 2_000,
+      });
+    }
+
+    expect(result!.reasons.map(reason => reason.rule)).not.toContain("site_flood_actor_1d");
+    expect(result!.isAnomalous).toBe(false);
+  });
+});
+
+describe("hosting actor volume (Redis-backed)", () => {
+  beforeEach(() => {
+    resetAnomalyScorerForTests();
+    setRedisAnomalyEnabledForTests(true);
+    mocks.anomalyObserve.mockReset();
+  });
+
+  // Spec order for baseInput: te10, te60, tdp, ie60, idua, idh, sue, av, se, sa.
+  it("convicts a hosting address on long-window volume alone", async () => {
+    mocks.anomalyObserve.mockResolvedValue(rollingReadings(1, 2, 1, 10, 1, 1, 5, 1500, 20, 20));
+
+    const result = await observeTrackingAnomaly({ ...baseInput, isHostingAsn: true, asn: 8075 });
+
+    expect(result.isAnomalous).toBe(true);
+    expect(result.convictingReasons.map(reason => reason.rule)).toEqual(["hosting_actor_events_1d"]);
+  });
+
+  it("exempts SASE egress from the hosting rule", async () => {
+    mocks.anomalyObserve.mockResolvedValue(rollingReadings(1, 2, 1, 10, 1, 1, 5, 1500, 20, 20));
+
+    const result = await observeTrackingAnomaly({ ...baseInput, isHostingAsn: true, asn: 13150 });
+
+    expect(result.isAnomalous).toBe(false);
+    expect(result.reasons.map(reason => reason.rule)).not.toContain("hosting_actor_events_1d");
+  });
+
+  it("drops the hosting rule for an address showing many user agents", async () => {
+    mocks.anomalyObserve.mockResolvedValue(rollingReadings(1, 2, 1, 10, 12, 1, 5, 1500, 20, 20));
+
+    const result = await observeTrackingAnomaly({ ...baseInput, isHostingAsn: true, asn: 8075 });
+
+    expect(result.isAnomalous).toBe(false);
+  });
+});
+
 describe("observeTrackingAnomaly (Redis-backed)", () => {
   beforeEach(() => {
     resetAnomalyScorerForTests();
@@ -476,16 +694,17 @@ describe("observeTrackingAnomaly (Redis-backed)", () => {
   });
 
   it("sends one spec per enabled counter and maps results back by counter name", async () => {
-    // 9 counters (path + host present, no client score). The cohort and
-    // enumeration counters stay out: this input has no screen dimensions.
-    mocks.anomalyObserve.mockResolvedValue(rollingReadings(31, 5, 2, 9, 3, 1, 4, 7, 12));
+    // 11 counters (path + host present, no client score, plus the two site-flood
+    // counters). The cohort and enumeration counters stay out: this input has
+    // no screen dimensions.
+    mocks.anomalyObserve.mockResolvedValue(rollingReadings(31, 5, 2, 9, 3, 1, 4, 7, 12, 1, 1));
 
     const result = await observeTrackingAnomaly({ ...baseInput, hasClientBotScore: false });
 
     expect(mocks.anomalyObserve).toHaveBeenCalledTimes(1);
     const [nowMs, specs] = mocks.anomalyObserve.mock.calls[0];
     expect(nowMs).toBe(baseInput.nowMs);
-    expect(specs).toHaveLength(9);
+    expect(specs).toHaveLength(11);
     expect(specs.map((spec: { key: string }) => spec.key)).toEqual([
       expect.stringContaining("bot:a:te10:"),
       expect.stringContaining("bot:a:te60:"),
@@ -496,6 +715,8 @@ describe("observeTrackingAnomaly (Redis-backed)", () => {
       expect.stringContaining("bot:a:sue:"),
       expect.stringContaining("bot:a:mcs:"),
       expect.stringContaining("bot:a:av:"),
+      expect.stringContaining("bot:f:se:"),
+      expect.stringContaining("bot:f:sa:"),
     ]);
 
     expect(result.counters.tupleEvents10s).toBe(31);
@@ -505,7 +726,7 @@ describe("observeTrackingAnomaly (Redis-backed)", () => {
   });
 
   // Spec order for baseInput (client score present, so no `mcs`):
-  // te10, te60, tdp, ie60, idua, idh, sue, av.
+  // te10, te60, tdp, ie60, idua, idh, sue, av, se, sa.
   it("never convicts on long-window volume alone", async () => {
     // 1,500 events in a day from one actor — five times the measured p99.99 —
     // and nothing else. A scraper looks like this; so does a single office
@@ -545,7 +766,7 @@ describe("observeTrackingAnomaly (Redis-backed)", () => {
 
   it("omits conditional counters that don't apply and reports them as zero", async () => {
     // No pathname, no hostname, client score present → 3 counters dropped.
-    mocks.anomalyObserve.mockResolvedValue(rollingReadings(1, 1, 1, 1, 1, 1));
+    mocks.anomalyObserve.mockResolvedValue(rollingReadings(1, 1, 1, 1, 1, 1, 1, 1));
 
     const result = await observeTrackingAnomaly({
       ...baseInput,
@@ -555,7 +776,7 @@ describe("observeTrackingAnomaly (Redis-backed)", () => {
     });
 
     const [, specs] = mocks.anomalyObserve.mock.calls[0];
-    expect(specs).toHaveLength(6);
+    expect(specs).toHaveLength(8);
     expect(result.counters.tupleDistinctPaths60s).toBe(0);
     expect(result.counters.ipDistinctHosts60s).toBe(0);
     expect(result.counters.missingClientScore60s).toBe(0);
