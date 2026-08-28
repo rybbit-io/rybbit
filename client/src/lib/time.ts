@@ -26,6 +26,43 @@ export const toRangeWithTimes = (start: DateTime, end: DateTime): RangeWithTimes
   endTime: end.toFormat("HH:mm:ss"),
 });
 
+/**
+ * The absolute instants a Time covers, with an **exclusive** end — the one
+ * shape every mode can be compared in. `null` for all-time, which has no
+ * bounds to resolve.
+ *
+ * The date picker needs this to seed a calendar and a pair of date/time fields
+ * from whatever mode the dashboard is currently in, and to describe the
+ * comparison window it is about to apply.
+ */
+export const getAbsoluteBounds = (time: Time, zone: string): { start: DateTime; end: DateTime } | null => {
+  const startOfDay = (iso: string) => DateTime.fromISO(iso, { zone }).startOf("day");
+
+  switch (time.mode) {
+    case "all-time":
+      return null;
+    case "day":
+      return { start: startOfDay(time.day), end: startOfDay(time.day).plus({ days: 1 }) };
+    case "week":
+      return { start: startOfDay(time.week), end: startOfDay(time.week).plus({ weeks: 1 }) };
+    case "month":
+      return { start: startOfDay(time.month), end: startOfDay(time.month).plus({ months: 1 }) };
+    case "year":
+      return { start: startOfDay(time.year), end: startOfDay(time.year).plus({ years: 1 }) };
+    case "past-minutes": {
+      const now = DateTime.now().setZone(zone);
+      return {
+        start: now.minus({ minutes: time.pastMinutesStart }),
+        end: now.minus({ minutes: time.pastMinutesEnd }),
+      };
+    }
+    case "range":
+      return hasRangeTimes(time)
+        ? getRangeDateTimeBounds(time, zone)
+        : { start: startOfDay(time.startDate), end: startOfDay(time.endDate).plus({ days: 1 }) };
+  }
+};
+
 export const getBucketForDateTimeRange = (start: DateTime, end: DateTime): TimeBucket => {
   const minutes = end.diff(start, "minutes").minutes;
 

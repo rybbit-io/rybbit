@@ -5,6 +5,7 @@ import { getDashboardTimeForRange } from "./defaultTimeRange";
 import {
   canGoForward,
   deriveTimeState,
+  getAbsoluteBounds,
   getBucketForDateTimeRange,
   recalculateTimeForTimezone,
   shiftTimeBackward,
@@ -339,5 +340,58 @@ describe("URL serialization", () => {
     expect(params.day).toBeNull();
     expect(params.startDate).toBeNull();
     expect(params.past_minutes_start).toBeNull();
+  });
+});
+
+describe("getAbsoluteBounds", () => {
+  const iso = (bounds: { start: DateTime; end: DateTime } | null) =>
+    bounds && [bounds.start.toISO({ suppressMilliseconds: true }), bounds.end.toISO({ suppressMilliseconds: true })];
+
+  it("day spans midnight to midnight in the given zone", () => {
+    expect(iso(getAbsoluteBounds({ mode: "day", day: "2024-03-15" }, ZONE))).toEqual([
+      "2024-03-15T00:00:00-04:00",
+      "2024-03-16T00:00:00-04:00",
+    ]);
+  });
+
+  it("a date-only range ends at the midnight after its last day", () => {
+    expect(iso(getAbsoluteBounds({ mode: "range", startDate: "2024-03-08", endDate: "2024-03-14" }, ZONE))).toEqual([
+      "2024-03-08T00:00:00-05:00",
+      "2024-03-15T00:00:00-04:00",
+    ]);
+  });
+
+  it("a range with times keeps the exact instants it was given", () => {
+    const bounds = getAbsoluteBounds(
+      { mode: "range", startDate: "2024-03-08", startTime: "09:30:00", endDate: "2024-03-08", endTime: "17:00:00" },
+      ZONE
+    );
+    expect(iso(bounds)).toEqual(["2024-03-08T09:30:00-05:00", "2024-03-08T17:00:00-05:00"]);
+  });
+
+  it("week, month and year span exactly one of their unit", () => {
+    expect(iso(getAbsoluteBounds({ mode: "week", week: "2024-03-11" }, ZONE))![1]).toBe("2024-03-18T00:00:00-04:00");
+    expect(iso(getAbsoluteBounds({ mode: "month", month: "2024-02-01" }, ZONE))![1]).toBe("2024-03-01T00:00:00-05:00");
+    expect(iso(getAbsoluteBounds({ mode: "year", year: "2024-01-01" }, ZONE))![1]).toBe("2025-01-01T00:00:00-05:00");
+  });
+
+  it("month arithmetic handles a leap February", () => {
+    const bounds = getAbsoluteBounds({ mode: "month", month: "2024-02-01" }, ZONE)!;
+    expect(bounds.end.diff(bounds.start, "days").days).toBe(29);
+  });
+
+  it("past-minutes resolves against now", () => {
+    const bounds = getAbsoluteBounds({ mode: "past-minutes", pastMinutesStart: 60, pastMinutesEnd: 0 }, ZONE)!;
+    expect(Math.round(bounds.end.diff(bounds.start, "minutes").minutes)).toBe(60);
+  });
+
+  it("all-time has no bounds to resolve", () => {
+    expect(getAbsoluteBounds({ mode: "all-time" }, ZONE)).toBeNull();
+  });
+
+  it("the same day in two zones is two different instants", () => {
+    const ny = getAbsoluteBounds({ mode: "day", day: "2024-03-15" }, "America/New_York")!;
+    const tokyo = getAbsoluteBounds({ mode: "day", day: "2024-03-15" }, "Asia/Tokyo")!;
+    expect(ny.start.toMillis()).not.toBe(tokyo.start.toMillis());
   });
 });
