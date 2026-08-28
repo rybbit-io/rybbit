@@ -54,7 +54,7 @@
     "@tanstack/react-table": "8.21.3",
     "@tanstack/react-virtual": "3.13.18",
     "@types/country-flag-icons": "1.2.2",
-    "@types/papaparse": "^5.5.0",
+    "@types/papaparse": "^5.5.2",
     "@uidotdev/usehooks": "2.4.1",
     "axios": "^1.13.5",
     "better-auth": "1.6.25",
