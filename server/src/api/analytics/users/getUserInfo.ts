@@ -3,8 +3,8 @@ import { FastifyReply, FastifyRequest } from "fastify";
 import { eq, and } from "drizzle-orm";
 import { db } from "../../../db/postgres/postgres.js";
 import { userProfiles, userAliases } from "../../../db/postgres/schema.js";
-import { getFilterStatement } from "../utils/getFilterStatement.js";
 import { SESSION_CHANNEL_AGG, SESSION_REFERRER_AGG } from "../utils/sessionAttribution.js";
+import { buildFilteredSessionsCTE } from "../utils/sessionFilters.js";
 import { getTimeStatement } from "../utils/timeWindow.js";
 import { matchesUser } from "../utils/effectiveUserId.js";
 import { runAnalyticsQuery } from "../utils/analyticsQuery.js";
@@ -89,24 +89,26 @@ export const buildUserInfoQueries = (query: FilterParams, siteId: number) => {
   // Optional time range + dimension filters; both empty when the page is on
   // all-time with no filters, which keeps the original full-history behavior.
   const timeStatement = getTimeStatement(query);
-  const filterStatement = getFilterStatement(query.filters, siteId, timeStatement);
+  const filteredSessionsCTE = buildFilteredSessionsCTE(query.filters, siteId, timeStatement);
+  const filteredSessionsJoin = filteredSessionsCTE ? "INNER JOIN FilteredSessions USING (session_id)" : "";
+  const withFilteredSessions = filteredSessionsCTE ? `WITH ${filteredSessionsCTE}` : "";
 
-  // Filters run in a subquery below each aggregation: the aggregate SELECTs
-  // alias argMax(...) to the same names as raw columns (browser_version, …),
-  // and ClickHouse resolves unqualified WHERE references at that level to the
-  // aliases, throwing ILLEGAL_AGGREGATION.
+  // Filters select sessions first. Every panel then reads all events in those
+  // sessions, keeping the summary, vitals, locations, devices, and session list
+  // on the same session-scoped semantics.
   const scopedEvents = `(
-        SELECT *
-        FROM events
+        SELECT source_events.*
+        FROM events AS source_events
+        ${filteredSessionsJoin}
         WHERE
-            ${matchesUser("{userId:String}", "events")}
-            AND site_id = {site:Int32}
+            ${matchesUser("{userId:String}", "source_events")}
+            AND source_events.site_id = {site:Int32}
             ${timeStatement}
-            ${filterStatement}
     ) AS events`;
 
   const sessionsQuery = `
-    WITH sessions AS (
+    WITH ${filteredSessionsCTE ? `${filteredSessionsCTE},` : ""}
+    sessions AS (
         SELECT
             session_id,
             argMax(user_id, timestamp) AS user_id,
@@ -180,6 +182,7 @@ export const buildUserInfoQueries = (query: FilterParams, siteId: number) => {
   // Separate query: the sessions CTE collapses rows per session, which
   // would turn an event-level quantile into a quantile of session picks.
   const vitalsQuery = `
+    ${withFilteredSessions}
     SELECT
         quantile(0.75)(lcp) AS lcp_p75,
         quantile(0.75)(cls) AS cls_p75,
@@ -194,6 +197,7 @@ export const buildUserInfoQueries = (query: FilterParams, siteId: number) => {
   // Every location this user was seen in, by session share. A session that
   // moves between cities counts once per city, so shares are approximate.
   const locationsQuery = `
+    ${withFilteredSessions}
     SELECT
         country,
         region,
@@ -213,6 +217,7 @@ export const buildUserInfoQueries = (query: FilterParams, siteId: number) => {
   // browser update doesn't split one physical device into many rows;
   // versions and screen are argMax'd to the latest sighting instead.
   const devicesQuery = `
+    ${withFilteredSessions}
     SELECT
         device_type,
         browser,

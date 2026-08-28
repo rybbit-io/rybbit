@@ -4,8 +4,8 @@ import { db } from "../../../db/postgres/postgres.js";
 import { enrichWithTraits } from "../utils/utils.js";
 import { getTimeStatement } from "../utils/timeWindow.js";
 import { FilterParams } from "@rybbit/shared";
-import { getFilterStatement } from "../utils/getFilterStatement.js";
 import { SESSION_CHANNEL_AGG, SESSION_REFERRER_AGG } from "../utils/sessionAttribution.js";
+import { buildFilteredSessionsCTE } from "../utils/sessionFilters.js";
 import { analyticsRoute, runAnalyticsQuery } from "../utils/analyticsQuery.js";
 import { effectiveUserId } from "../utils/effectiveUserId.js";
 
@@ -64,48 +64,47 @@ export const buildUsersQuery = (
   const actualSortBy = validSortFields.includes(sortBy) ? sortBy : "last_seen";
   const actualSortOrder = sortOrder === "asc" ? "ASC" : "DESC";
 
-  // Generate filter statement and time statement
+  // Dimension filters qualify sessions. User aggregates then consume every
+  // event in those sessions, so an acquisition value on the landing event does
+  // not discard later pageviews or custom events from the same session.
   const timeStatement = getTimeStatement(query);
-  // Applied against raw events (same placement as the count queries): the
-  // aggregate doesn't project every filterable column (pathname, querystring,
-  // utm_*, …), and event-level placement keeps the returned rows consistent
-  // with totalCount.
-  const filterStatement = getFilterStatement(filters, siteId, timeStatement);
+  const filteredSessionsCTE = buildFilteredSessionsCTE(filters, siteId, timeStatement);
+  const filteredSessionsJoin = filteredSessionsCTE ? "INNER JOIN FilteredSessions USING (session_id)" : "";
+  const withFilteredSessions = filteredSessionsCTE ? `WITH ${filteredSessionsCTE}` : "";
 
   // Query to get total count
   if (isCountQuery) {
     return filterIdentified
       ? `
+${withFilteredSessions}
 SELECT count(*) AS total_count
 FROM (
     SELECT DISTINCT identified_user_id
     FROM events
+    ${filteredSessionsJoin}
     WHERE
         site_id = {siteId:Int32}
         AND identified_user_id != ''
         ${timeStatement}
-        ${filterStatement}
         ${matchingUserIds ? "AND events.identified_user_id IN ({matchingUserIds:Array(String)})" : ""}
 )
 `
       : `
+${withFilteredSessions}
 SELECT
     count(DISTINCT ${effectiveUserId("events")}) AS total_count
 FROM events
+${filteredSessionsJoin}
 WHERE
     site_id = {siteId:Int32}
-    ${filterStatement}
     ${timeStatement}
     ${matchingUserIds ? "AND events.identified_user_id IN ({matchingUserIds:Array(String)})" : ""}
   `;
   }
 
-  // Filters must run in a subquery below the aggregation: the aggregate SELECT
-  // aliases argMax(...) to the same names as the raw columns (country, browser,
-  // …), and ClickHouse resolves unqualified WHERE references at that level to
-  // the aliases, throwing ILLEGAL_AGGREGATION.
   return `
-WITH AggregatedUsers AS (
+WITH ${filteredSessionsCTE ? `${filteredSessionsCTE},` : ""}
+AggregatedUsers AS (
     SELECT
         -- Group by effective user: identified_user_id for identified users, user_id (device) for anonymous
         ${effectiveUserId("events")} AS effective_user_id,
@@ -134,10 +133,10 @@ WITH AggregatedUsers AS (
     FROM (
         SELECT *
         FROM events
+        ${filteredSessionsJoin}
         WHERE
             site_id = {siteId:Int32}
             ${timeStatement}
-            ${filterStatement}
             ${matchingUserIds ? "AND events.identified_user_id IN ({matchingUserIds:Array(String)})" : ""}
     ) AS events
     GROUP BY
@@ -180,7 +179,7 @@ export const getUsers = analyticsRoute<GetUsersRequest>(
         LIMIT ${MAX_MATCHING_USER_IDS}
       `);
 
-      matchingUserIds = searchResult.map((r) => r.user_id);
+      matchingUserIds = searchResult.map(r => r.user_id);
       if (matchingUserIds.length === 0) {
         return res.send({
           data: [],

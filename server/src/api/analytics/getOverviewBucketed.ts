@@ -1,51 +1,35 @@
 import { FilterParams } from "@rybbit/shared";
 import { FastifyReply, FastifyRequest } from "fastify";
 import { resolveTimeWindow } from "./utils/timeWindow.js";
-import { getFilterStatement } from "./utils/getFilterStatement.js";
 import { TimeBucket } from "./types.js";
 import { analyticsRoute, runAnalyticsQuery } from "./utils/analyticsQuery.js";
 import { effectiveUserId } from "./utils/effectiveUserId.js";
+import { buildFilteredSessionsCTE } from "./utils/sessionFilters.js";
 
 export const buildOverviewBucketedQuery = (params: FilterParams<{ bucket: TimeBucket }>, siteId: number) => {
   const { bucket = "hour", filters } = params;
 
   const window = resolveTimeWindow(params);
   const timeStatement = window.where();
-  const filterStatement = getFilterStatement(filters, siteId, timeStatement);
+  const filteredSessionsCTE = buildFilteredSessionsCTE(filters, siteId, timeStatement);
+  const sessionJoin = filteredSessionsCTE ? "INNER JOIN FilteredSessions USING (session_id)" : "";
   const fillClause = window.fill(bucket);
 
   return `
 WITH
-AllSessionPageviews AS (
-    SELECT
-        session_id,
-        countIf(type = 'pageview') AS total_pageviews_in_session
-    FROM events
-    WHERE
-        site_id = {siteId:Int32}
-        ${timeStatement}
-    GROUP BY session_id
-),
-FilteredSessions AS (
+${filteredSessionsCTE ? `${filteredSessionsCTE},` : ""}
+SessionsWithStats AS (
     SELECT
         session_id,
         MIN(timestamp) AS start_time,
-        MAX(timestamp) AS end_time
+        MAX(timestamp) AS end_time,
+        countIf(type = 'pageview') AS total_pageviews_in_session
     FROM events
+    ${sessionJoin}
     WHERE
         site_id = {siteId:Int32}
-        ${filterStatement}
         ${timeStatement}
     GROUP BY session_id
-),
-SessionsWithPageviews AS (
-    SELECT
-        fs.session_id,
-        fs.start_time,
-        fs.end_time,
-        asp.total_pageviews_in_session
-    FROM FilteredSessions fs
-    LEFT JOIN AllSessionPageviews asp ON fs.session_id = asp.session_id
 )
 SELECT
     session_stats.time AS time,
@@ -63,7 +47,7 @@ FROM
         AVG(total_pageviews_in_session) AS pages_per_session,
         sumIf(1, total_pageviews_in_session = 1) / COUNT() AS bounce_rate,
         AVG(end_time - start_time) AS session_duration
-    FROM SessionsWithPageviews
+    FROM SessionsWithStats
     GROUP BY time ORDER BY time ${fillClause}
 ) AS session_stats
 FULL JOIN
@@ -73,9 +57,9 @@ FULL JOIN
         countIf(type = 'pageview') AS pageviews,
         COUNT(DISTINCT ${effectiveUserId()}) AS users
     FROM events
+    ${sessionJoin}
     WHERE
         site_id = {siteId:Int32}
-        ${filterStatement}
         ${timeStatement}
     GROUP BY time ORDER BY time ${fillClause}
 ) AS page_stats

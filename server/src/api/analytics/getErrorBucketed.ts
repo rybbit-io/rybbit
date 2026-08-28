@@ -2,8 +2,8 @@ import { FilterParams } from "@rybbit/shared";
 import { FastifyReply, FastifyRequest } from "fastify";
 import { resolveTimeWindow } from "./utils/timeWindow.js";
 import { TimeBucket } from "./types.js";
-import { getFilterStatement } from "./utils/getFilterStatement.js";
 import { AnalyticsQueryError, runAnalyticsQuery } from "./utils/analyticsQuery.js";
+import { buildSessionAndRowFilterFragments, TARGET_EVENT_ROW_LEVEL_PARAMS } from "./utils/sessionFilters.js";
 
 interface GetErrorBucketedRequest {
   Params: {
@@ -24,19 +24,27 @@ export const buildErrorBucketedQuery = (query: GetErrorBucketedRequest["Querystr
   const { bucket } = query;
   const window = resolveTimeWindow(query);
   const timeStatement = window.where();
-  const filterStatement = getFilterStatement(query.filters, siteId, timeStatement);
+  const { filteredSessionsCTE, rowFilterStatement } = buildSessionAndRowFilterFragments(
+    query.filters,
+    siteId,
+    timeStatement,
+    TARGET_EVENT_ROW_LEVEL_PARAMS
+  );
+  const sessionJoin = filteredSessionsCTE ? "INNER JOIN FilteredSessions USING (session_id)" : "";
   const timeStatementFill = window.fill(bucket);
 
   return `
+      ${filteredSessionsCTE ? `WITH ${filteredSessionsCTE}` : ""}
       SELECT
         ${window.bucketed("timestamp", bucket)} AS time,
         COUNT(*) AS error_count
       FROM events
+      ${sessionJoin}
       WHERE
         site_id = {siteId:Int32}
         AND type = 'error'
         AND JSONExtractString(toString(props), 'message') = {errorMessage:String}
-        ${filterStatement}
+        ${rowFilterStatement}
         ${timeStatement}
       GROUP BY time
       ORDER BY time

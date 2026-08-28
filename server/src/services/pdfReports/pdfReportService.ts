@@ -11,6 +11,7 @@ import { createServiceLogger } from "../../lib/logger/logger.js";
 import {
   BreakdownDimension,
   buildBreakdownQuery,
+  buildChartQuery,
   buildMetricsSpecForWindow,
   buildOverviewQuery,
   SiteMetricsSpec,
@@ -73,14 +74,12 @@ class PdfReportService {
       time_zone: timeZone,
     });
 
-    // Each period gets its own filter statement: session-level filters compile to
-    // a subquery that is bounded by the time statement passed here, so reusing the
-    // current period's filters for the previous one would compare a correctly
-    // scoped window against a mis-scoped one and bias every growth percentage.
+    // Each period gets its own qualifying-session CTE, bounded by that period's
+    // time statement. Reusing the current cohort for the previous period would
+    // bias every growth percentage.
     const filtersJson = filters ? JSON.stringify(filters) : "";
     const spec = buildMetricsSpecForWindow(filtersJson, siteId, timeStatement);
     const previousSpec = buildMetricsSpecForWindow(filtersJson, siteId, previousTimeStatement);
-    const filterStatement = spec.filterStatement ?? "";
 
     // Determine bucket size based on date range
     const bucket = durationDays <= 1 ? "hour" : durationDays <= 60 ? "day" : "week";
@@ -101,7 +100,7 @@ class PdfReportService {
     ] = await Promise.all([
       this.fetchOverviewData(siteId, spec),
       this.fetchOverviewData(siteId, previousSpec),
-      this.fetchChartData(siteId, startDate, endDate, timeZone, bucket, filterStatement),
+      this.fetchChartData(siteId, timeZone, bucket, spec),
       this.fetchTopN(siteId, "country", spec),
       this.fetchTopN(siteId, "region", spec),
       this.fetchTopN(siteId, "city", spec),
@@ -140,36 +139,20 @@ class PdfReportService {
 
   private async fetchChartData(
     siteId: number,
-    startDate: string,
-    endDate: string,
     timeZone: string,
     bucket: "hour" | "day" | "week",
-    filterStatement: string
+    spec: SiteMetricsSpec
   ): Promise<ChartDataPoint[]> {
     try {
       const bucketFn = bucket === "hour" ? "toStartOfHour" : bucket === "day" ? "toStartOfDay" : "toStartOfWeek";
 
-      const query = `
-        SELECT
-          toString(toTimeZone(${bucketFn}(toTimeZone(timestamp, {timeZone:String})), {timeZone:String})) AS time,
-          COUNT(DISTINCT session_id) AS sessions,
-          countIf(type = 'pageview') AS pageviews
-        FROM events
-        WHERE
-          site_id = {siteId:Int32}
-          AND timestamp >= toDateTime({startDate:String}, {timeZone:String})
-          AND timestamp < toDateTime({endDate:String}, {timeZone:String}) + INTERVAL 1 DAY
-          ${filterStatement}
-        GROUP BY time
-        ORDER BY time`;
+      const query = buildChartQuery(spec, bucketFn);
 
       const result = await clickhouse.query({
         query,
         format: "JSONEachRow",
         query_params: {
           siteId,
-          startDate,
-          endDate,
           timeZone,
         },
       });

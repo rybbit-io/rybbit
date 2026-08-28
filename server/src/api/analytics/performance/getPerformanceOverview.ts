@@ -2,14 +2,21 @@ import { FastifyReply, FastifyRequest } from "fastify";
 import { getTimeStatement } from "../utils/timeWindow.js";
 import { PerformanceOverviewMetrics } from "../types.js";
 import { FilterParams } from "@rybbit/shared";
-import { getFilterStatement } from "../utils/getFilterStatement.js";
 import { analyticsRoute, runAnalyticsQuery } from "../utils/analyticsQuery.js";
+import { buildSessionAndRowFilterFragments, TARGET_EVENT_ROW_LEVEL_PARAMS } from "../utils/sessionFilters.js";
 
 export const buildPerformanceOverviewQuery = (query: FilterParams, siteId: number) => {
   const timeStatement = getTimeStatement(query);
-  const filterStatement = getFilterStatement(query.filters, siteId, timeStatement);
+  const { filteredSessionsCTE, rowFilterStatement } = buildSessionAndRowFilterFragments(
+    query.filters,
+    siteId,
+    timeStatement,
+    TARGET_EVENT_ROW_LEVEL_PARAMS
+  );
+  const sessionJoin = filteredSessionsCTE ? "INNER JOIN FilteredSessions USING (session_id)" : "";
 
-  return `SELECT
+  return `${filteredSessionsCTE ? `WITH ${filteredSessionsCTE}` : ""}
+    SELECT
       quantile(0.5)(lcp) AS lcp_p50,
       quantile(0.75)(lcp) AS lcp_p75,
       quantile(0.9)(lcp) AS lcp_p90,
@@ -32,10 +39,11 @@ export const buildPerformanceOverviewQuery = (query: FilterParams, siteId: numbe
       quantile(0.99)(ttfb) AS ttfb_p99,
       COUNT(*) AS total_performance_events
     FROM events
+    ${sessionJoin}
     WHERE
         site_id = {siteId:Int32}
         AND type = 'performance'
-        ${filterStatement}
+        ${rowFilterStatement}
         ${timeStatement}`;
 };
 

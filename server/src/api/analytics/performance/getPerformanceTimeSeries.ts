@@ -2,17 +2,24 @@ import { FastifyReply, FastifyRequest } from "fastify";
 import { resolveTimeWindow } from "../utils/timeWindow.js";
 import { TimeBucket, PerformanceTimeSeriesPoint } from "../types.js";
 import { FilterParams } from "@rybbit/shared";
-import { getFilterStatement } from "../utils/getFilterStatement.js";
 import { analyticsRoute, runAnalyticsQuery } from "../utils/analyticsQuery.js";
+import { buildSessionAndRowFilterFragments, TARGET_EVENT_ROW_LEVEL_PARAMS } from "../utils/sessionFilters.js";
 
 export const buildPerformanceTimeSeriesQuery = (params: FilterParams<{ bucket: TimeBucket }>, siteId: number) => {
   const { bucket = "hour", filters } = params;
 
   const window = resolveTimeWindow(params);
   const timeStatement = window.where();
-  const filterStatement = getFilterStatement(filters, siteId, timeStatement);
+  const { filteredSessionsCTE, rowFilterStatement } = buildSessionAndRowFilterFragments(
+    filters,
+    siteId,
+    timeStatement,
+    TARGET_EVENT_ROW_LEVEL_PARAMS
+  );
+  const sessionJoin = filteredSessionsCTE ? "INNER JOIN FilteredSessions USING (session_id)" : "";
 
   const query = `
+${filteredSessionsCTE ? `WITH ${filteredSessionsCTE}` : ""}
 SELECT
     ${window.bucketed("timestamp", bucket)} AS time,
     quantile(0.5)(lcp) AS lcp_p50,
@@ -37,10 +44,11 @@ SELECT
     quantile(0.99)(ttfb) AS ttfb_p99,
     COUNT(*) AS event_count
 FROM events
+${sessionJoin}
 WHERE
     site_id = {siteId:Int32}
     AND type = 'performance'
-    ${filterStatement}
+    ${rowFilterStatement}
     ${timeStatement}
 GROUP BY time ORDER BY time ${window.fill(bucket)}`;
 

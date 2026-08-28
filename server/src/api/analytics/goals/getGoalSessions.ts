@@ -6,6 +6,7 @@ import { getTimeStatement } from "../utils/timeWindow.js";
 import { FilterParams } from "@rybbit/shared";
 import { GetSessionsResponse } from "../sessions/getSessions.js";
 import { analyticsRoute, runAnalyticsQuery } from "../utils/analyticsQuery.js";
+import { buildFilteredSessionsCTE } from "../utils/sessionFilters.js";
 import { buildGoalCondition } from "./goalConditions.js";
 
 export interface GetGoalSessionsRequest {
@@ -25,13 +26,16 @@ export const buildGoalSessionsQuery = (
   goalCondition: string
 ) => {
   const timeStatement = getTimeStatement(query);
+  const filteredSessionsCTE = buildFilteredSessionsCTE(query.filters, siteId, timeStatement);
 
   // Build query to find sessions that match the goal
   // First, find all session_ids that have at least one event matching the goal
   return `
-    WITH GoalSessions AS (
+    WITH ${filteredSessionsCTE ? `${filteredSessionsCTE},` : ""}
+    GoalSessions AS (
       SELECT DISTINCT session_id
       FROM events
+      ${filteredSessionsCTE ? "INNER JOIN FilteredSessions USING (session_id)" : ""}
       WHERE
         site_id = {siteId:Int32}
         AND (${goalCondition})

@@ -13,6 +13,7 @@ import { buildOverviewQuery as buildDashboardOverviewQuery } from "../../api/ana
 import {
   BreakdownDimension,
   buildBreakdownQuery,
+  buildChartQuery,
   buildMetricsSpec,
   buildMetricsSpecForWindow,
   buildOverviewQuery,
@@ -32,7 +33,6 @@ const DASHBOARD_PARAMS = {
 /** How the PDF report expresses its window: the same builder, no HTTP request. */
 const pdfSpec: SiteMetricsSpec = {
   timeStatement: getTimeStatement({ start_date: "2026-07-17", end_date: "2026-07-23", time_zone: "UTC" }),
-  filterStatement: "",
 };
 
 /** How the weekly email expresses its window: an exact UTC datetime range. */
@@ -94,20 +94,21 @@ describe("site metrics", () => {
     });
 
     it("reports bounce rate as a percentage of the session's full pageview count", () => {
-      const sql = buildOverviewQuery({ timeStatement: "", filterStatement: "AND browser = 'Chrome'" });
+      const filters = JSON.stringify([{ parameter: "browser", type: "equals", value: ["Chrome"] }]);
+      const sql = buildOverviewQuery(buildMetricsSpecForWindow(filters, SITE_ID, ""));
 
-      // A session that saw three pages is not a bounce because a filter hid two
-      // of them, so the bounce test reads the unfiltered CTE.
-      expect(sql).toContain("sumIf(1, asp.total_pageviews_in_session = 1) / COUNT() * 100 AS bounce_rate");
-      const unfilteredCte = sql.split("AllSessionPageviews AS (")[1].split(")")[0];
-      expect(unfilteredCte).not.toContain("browser = 'Chrome'");
+      expect(sql).toContain("sumIf(1, f.pageviews = 1) / COUNT() * 100 AS bounce_rate");
+      expect(sql).toContain("INNER JOIN FilteredSessions USING (session_id)");
     });
 
-    it("applies the filter to the session, pageview and user counts", () => {
-      const sql = buildOverviewQuery({ timeStatement: "", filterStatement: "AND browser = 'Chrome'" });
+    it("qualifies sessions before calculating complete session stats", () => {
+      const filters = JSON.stringify([{ parameter: "browser", type: "equals", value: ["Chrome"] }]);
+      const sql = buildOverviewQuery(buildMetricsSpecForWindow(filters, SITE_ID, ""));
       const filteredCte = sql.split("FilteredSessionsWithStats AS (")[1];
 
-      expect(filteredCte).toContain("browser = 'Chrome'");
+      expect(sql).toContain("browser = 'Chrome'");
+      expect(filteredCte).toContain("INNER JOIN FilteredSessions USING (session_id)");
+      expect(filteredCte).not.toContain("browser = 'Chrome'");
     });
   });
 
@@ -145,9 +146,25 @@ describe("site metrics", () => {
     });
 
     it("carries the caller's filters into the breakdown", () => {
-      const sql = buildBreakdownQuery("country", { timeStatement: "", filterStatement: "AND browser = 'Chrome'" });
+      const filters = JSON.stringify([{ parameter: "browser", type: "equals", value: ["Chrome"] }]);
+      const sql = buildBreakdownQuery("country", buildMetricsSpecForWindow(filters, SITE_ID, ""));
 
       expect(sql).toContain("browser = 'Chrome'");
+      expect(sql).toContain("INNER JOIN FilteredSessions USING (session_id)");
+    });
+  });
+
+  describe("buildChartQuery", () => {
+    it("counts each qualifying session in its start bucket while retaining all pageviews", () => {
+      const filters = JSON.stringify([{ parameter: "utm_campaign", type: "equals", value: ["launch"] }]);
+      const sql = buildChartQuery(buildMetricsSpecForWindow(filters, SITE_ID, pdfSpec.timeStatement), "toStartOfDay");
+
+      expect(sql).toContain("SessionStarts AS (");
+      expect(sql).toContain("min(timestamp) AS session_start");
+      expect(sql).toContain("FROM SessionStarts");
+      expect(sql).toContain("count() AS sessions");
+      expect(sql.match(/INNER JOIN FilteredSessions USING \(session_id\)/g)).toHaveLength(2);
+      expect(sql).toContain("countIf(type = 'pageview') AS pageviews");
     });
   });
 
@@ -159,7 +176,7 @@ describe("site metrics", () => {
       );
 
       expect(spec.timeStatement).toContain("2026-07-17");
-      expect(spec.filterStatement).toContain("Chrome");
+      expect(spec.filteredSessionsCTE).toContain("Chrome");
     });
 
     it("bounds a session-level filter's subquery to the spec's own window", () => {
@@ -169,8 +186,8 @@ describe("site metrics", () => {
       const eventFilter = JSON.stringify([{ parameter: "event_name", type: "equals", value: ["signup"] }]);
       const spec = buildMetricsSpecForWindow(eventFilter, SITE_ID, pdfSpec.timeStatement);
 
-      expect(spec.filterStatement).toContain("session_id IN (");
-      expect(spec.filterStatement).toContain("2026-07-17");
+      expect(spec.filteredSessionsCTE).toContain("session_id IN (");
+      expect(spec.filteredSessionsCTE).toContain("2026-07-17");
     });
 
     it("scopes each period's filters to that period, so growth comparisons are fair", () => {
@@ -182,9 +199,9 @@ describe("site metrics", () => {
         getTimeStatement({ start_date: "2026-07-10", end_date: "2026-07-16", time_zone: "UTC" })
       );
 
-      expect(current.filterStatement).toContain("2026-07-17");
-      expect(previous.filterStatement).toContain("2026-07-10");
-      expect(previous.filterStatement).not.toContain("2026-07-23");
+      expect(current.filteredSessionsCTE).toContain("2026-07-17");
+      expect(previous.filteredSessionsCTE).toContain("2026-07-10");
+      expect(previous.filteredSessionsCTE).not.toContain("2026-07-23");
     });
   });
 });

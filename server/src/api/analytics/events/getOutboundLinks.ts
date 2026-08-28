@@ -21,7 +21,9 @@ export const buildOutboundLinksQuery = (query: GetOutboundLinksRequest["Querystr
   const { filters } = query;
 
   const timeStatement = getTimeStatement(query);
-  const filterStatement = filters ? getFilterStatement(filters, siteId, timeStatement) : "";
+  const filterStatement = filters
+    ? getFilterStatement(filters, siteId, timeStatement, { sessionLevelParams: ["channel"] })
+    : "";
 
   return `
     SELECT

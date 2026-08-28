@@ -2,7 +2,7 @@ import { FilterParams } from "@rybbit/shared";
 import { FastifyReply, FastifyRequest } from "fastify";
 import SqlString from "sqlstring";
 import { z } from "zod";
-import { getFilterStatement } from "./utils/getFilterStatement.js";
+import { buildFilteredSessionsCTE } from "./utils/sessionFilters.js";
 import { patternToRegex } from "./utils/utils.js";
 import { getTimeStatement } from "./utils/timeWindow.js";
 import { AnalyticsQueryError, runAnalyticsQuery } from "./utils/analyticsQuery.js";
@@ -37,7 +37,8 @@ export const buildJourneysQuery = (
 ) => {
   // Time conditions using getTimeStatement
   const timeStatement = getTimeStatement(query);
-  const filterStatement = getFilterStatement(query.filters, siteId, timeStatement);
+  const filteredSessionsCTE = buildFilteredSessionsCTE(query.filters, siteId, timeStatement);
+  const filteredSessionsJoin = filteredSessionsCTE ? "INNER JOIN FilteredSessions USING (session_id)" : "";
 
   // Build step filter conditions for the HAVING clause
   // Supports wildcard patterns: * matches single segment, ** matches multiple segments
@@ -57,7 +58,8 @@ export const buildJourneysQuery = (
 
   // Query to find sequences of events (journeys) for each user
   return `
-        WITH user_paths AS (
+        WITH ${filteredSessionsCTE ? `${filteredSessionsCTE},` : ""}
+        user_paths AS (
           SELECT
             session_id,
             arrayCompact(groupArray(pathname)) AS path_sequence
@@ -67,10 +69,10 @@ export const buildJourneysQuery = (
               pathname,
               timestamp
             FROM events
+            ${filteredSessionsJoin}
             WHERE
               site_id = {siteId:Int32}
               ${timeStatement || ""}
-              ${filterStatement || ""}
               AND type = 'pageview'
             ORDER BY session_id, timestamp
           )
@@ -93,11 +95,14 @@ export const buildJourneysQuery = (
           journey,
           sessions_count,
           sessions_count * 100 / (
-            SELECT count(DISTINCT session_id)
-            FROM events
-            WHERE site_id = {siteId:Int32}
-            ${timeStatement || ""}
-            ${filterStatement || ""}
+            ${
+              filteredSessionsCTE
+                ? "SELECT count() FROM FilteredSessions"
+                : `SELECT count(DISTINCT session_id)
+                   FROM events
+                   WHERE site_id = {siteId:Int32}
+                   ${timeStatement || ""}`
+            }
           ) AS percentage
         FROM journey_segments
       `;

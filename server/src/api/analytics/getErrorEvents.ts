@@ -1,8 +1,13 @@
 import { FastifyReply, FastifyRequest } from "fastify";
 import { getTimeStatement } from "./utils/timeWindow.js";
 import { FilterParams } from "@rybbit/shared";
-import { getFilterStatement } from "./utils/getFilterStatement.js";
-import { analyticsRoute, getPaginationStatements, runAnalyticsQuery, runPaginatedQuery } from "./utils/analyticsQuery.js";
+import {
+  analyticsRoute,
+  getPaginationStatements,
+  runAnalyticsQuery,
+  runPaginatedQuery,
+} from "./utils/analyticsQuery.js";
+import { buildSessionAndRowFilterFragments, TARGET_EVENT_ROW_LEVEL_PARAMS } from "./utils/sessionFilters.js";
 
 interface GetErrorEventsRequest {
   Params: {
@@ -54,25 +59,34 @@ export const buildErrorEventsQuery = (
   const { filters } = query;
 
   const timeStatement = getTimeStatement(query);
-  const filterStatement = getFilterStatement(filters, siteId, timeStatement);
+  const { filteredSessionsCTE, rowFilterStatement } = buildSessionAndRowFilterFragments(
+    filters,
+    siteId,
+    timeStatement,
+    TARGET_EVENT_ROW_LEVEL_PARAMS
+  );
+  const sessionJoin = filteredSessionsCTE ? "INNER JOIN FilteredSessions USING (session_id)" : "";
 
   // Default to 20 for error events
   const { limitStatement, offsetStatement } = getPaginationStatements(query, 20, isCountQuery);
 
   if (isCountQuery) {
     return `
+      ${filteredSessionsCTE ? `WITH ${filteredSessionsCTE}` : ""}
       SELECT COUNT(*) as totalCount
       FROM events
+      ${sessionJoin}
       WHERE
         site_id = {siteId:Int32}
         AND type = 'error'
         AND JSONExtractString(toString(props), 'message') = {errorMessage:String}
-        ${filterStatement}
+        ${rowFilterStatement}
         ${timeStatement}
     `;
   }
 
   return `
+    ${filteredSessionsCTE ? `WITH ${filteredSessionsCTE}` : ""}
     SELECT
         timestamp,
         session_id,
@@ -106,11 +120,12 @@ export const buildErrorEventsQuery = (
           ELSE NULL
         END as columnNumber
     FROM events
+    ${sessionJoin}
     WHERE
       site_id = {siteId:Int32}
       AND type = 'error'
       AND JSONExtractString(toString(props), 'message') = {errorMessage:String}
-      ${filterStatement}
+      ${rowFilterStatement}
       ${timeStatement}
     ORDER BY timestamp DESC
     ${limitStatement}

@@ -1,8 +1,13 @@
 import { FastifyReply, FastifyRequest } from "fastify";
 import { getTimeStatement } from "./utils/timeWindow.js";
 import { FilterParams } from "@rybbit/shared";
-import { getFilterStatement } from "./utils/getFilterStatement.js";
-import { analyticsRoute, getPaginationStatements, runAnalyticsQuery, runPaginatedQuery } from "./utils/analyticsQuery.js";
+import {
+  analyticsRoute,
+  getPaginationStatements,
+  runAnalyticsQuery,
+  runPaginatedQuery,
+} from "./utils/analyticsQuery.js";
+import { buildSessionAndRowFilterFragments, TARGET_EVENT_ROW_LEVEL_PARAMS } from "./utils/sessionFilters.js";
 
 interface GetErrorNamesRequest {
   Params: {
@@ -37,7 +42,13 @@ export const buildErrorNamesQuery = (
   const { filters } = query;
 
   const timeStatement = getTimeStatement(query);
-  const filterStatement = getFilterStatement(filters, siteId, timeStatement);
+  const { filteredSessionsCTE, rowFilterStatement } = buildSessionAndRowFilterFragments(
+    filters,
+    siteId,
+    timeStatement,
+    TARGET_EVENT_ROW_LEVEL_PARAMS
+  );
+  const sessionJoin = filteredSessionsCTE ? "INNER JOIN FilteredSessions USING (session_id)" : "";
 
   // Default to 10 for non-paginated use
   const { limitStatement, offsetStatement } = getPaginationStatements(query, 10, isCountQuery);
@@ -52,6 +63,7 @@ export const buildErrorNamesQuery = (
             count(*) as total_occurrences,
             count(DISTINCT session_id) as unique_sessions
         FROM events
+        ${sessionJoin}
         WHERE
           site_id = {siteId:Int32}
           AND type = 'error'
@@ -59,7 +71,7 @@ export const buildErrorNamesQuery = (
           AND event_name <> ''
           AND JSONHas(toString(props), 'message')
           AND JSONExtractString(toString(props), 'message') <> ''
-          ${filterStatement}
+          ${rowFilterStatement}
           ${timeStatement}
         GROUP BY value
     )
@@ -67,13 +79,13 @@ export const buildErrorNamesQuery = (
 
   if (isCountQuery) {
     return `
-    WITH ${baseCteQuery}
+    WITH ${filteredSessionsCTE ? `${filteredSessionsCTE},` : ""} ${baseCteQuery}
     SELECT COUNT(*) as totalCount FROM ErrorStats;
     `;
   }
 
   return `
-    WITH ${baseCteQuery}
+    WITH ${filteredSessionsCTE ? `${filteredSessionsCTE},` : ""} ${baseCteQuery}
     SELECT
         value,
         errorName,

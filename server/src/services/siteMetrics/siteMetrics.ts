@@ -1,6 +1,6 @@
 import { FilterParams } from "@rybbit/shared";
 import { EFFECTIVE_SESSION_USER_ID } from "../../api/analytics/utils/effectiveUserId.js";
-import { getFilterStatement } from "../../api/analytics/utils/getFilterStatement.js";
+import { buildFilteredSessionsCTE } from "../../api/analytics/utils/sessionFilters.js";
 import { getTimeStatement } from "../../api/analytics/utils/timeWindow.js";
 
 /**
@@ -38,18 +38,19 @@ export interface BreakdownRow {
   percentage: number | null;
 }
 
+export type ChartBucketFunction = "toStartOfHour" | "toStartOfDay" | "toStartOfWeek";
+
 /**
  * The window and filters a metrics query runs over.
  *
- * Both fields are SQL fragments that already begin with `AND` (or are empty), so
- * they drop straight into a `WHERE`. Callers build the time statement however
- * suits them — {@link buildMetricsSpec} from HTTP query params, or
- * `getTimeStatement` directly from a datetime range — and bind `siteId` (and
- * `limit`, for breakdowns) as query parameters at execution time.
+ * Callers build the time statement however suits them — {@link buildMetricsSpec}
+ * from HTTP query params, or `getTimeStatement` directly from a datetime range.
+ * When filters are present, `filteredSessionsCTE` identifies the qualifying
+ * sessions so every metric can use the session's complete activity.
  */
 export interface SiteMetricsSpec {
   timeStatement: string;
-  filterStatement?: string;
+  filteredSessionsCTE?: string;
 }
 
 /**
@@ -67,7 +68,7 @@ export interface SiteMetricsSpec {
 export function buildMetricsSpecForWindow(filters: string, siteId: number, timeStatement: string): SiteMetricsSpec {
   return {
     timeStatement,
-    filterStatement: getFilterStatement(filters, siteId, timeStatement),
+    filteredSessionsCTE: buildFilteredSessionsCTE(filters, siteId, timeStatement) ?? undefined,
   };
 }
 
@@ -80,25 +81,17 @@ export function buildMetricsSpec(params: FilterParams, siteId: number): SiteMetr
  * Sessions, pageviews, users, pages per session, bounce rate and session duration
  * for one window. Binds `{siteId:Int32}`.
  *
- * Pages per session and bounce rate deliberately read from `AllSessionPageviews`,
- * which is *not* filtered: a session that landed on three pages is not a bounce
- * just because a filter narrowed the view to one of them.
+ * Filters qualify session IDs first: a session that landed on three pages is not
+ * a bounce, and does not lose duration or pageviews, because its acquisition
+ * filter happened to match only the landing event.
  */
 export function buildOverviewQuery(spec: SiteMetricsSpec): string {
-  const { timeStatement, filterStatement = "" } = spec;
+  const { timeStatement, filteredSessionsCTE } = spec;
+  const sessionJoin = filteredSessionsCTE ? "INNER JOIN FilteredSessions USING (session_id)" : "";
 
   return `
     WITH
-    AllSessionPageviews AS (
-        SELECT
-            session_id,
-            countIf(type = 'pageview') AS total_pageviews_in_session
-        FROM events
-        WHERE
-            site_id = {siteId:Int32}
-            ${timeStatement}
-        GROUP BY session_id
-    ),
+    ${filteredSessionsCTE ? `${filteredSessionsCTE},` : ""}
     FilteredSessionsWithStats AS (
         SELECT
             session_id,
@@ -107,35 +100,27 @@ export function buildOverviewQuery(spec: SiteMetricsSpec): string {
             ${EFFECTIVE_SESSION_USER_ID} AS effective_user_id,
             MIN(timestamp) AS start_time,
             MAX(timestamp) AS end_time,
-            countIf(type = 'pageview') AS filtered_pageviews
+            countIf(type = 'pageview') AS pageviews
         FROM events
+        ${sessionJoin}
         WHERE
             site_id = {siteId:Int32}
-            ${filterStatement}
             ${timeStatement}
         GROUP BY session_id
     )
     SELECT
         COUNT() AS sessions,
-        AVG(asp.total_pageviews_in_session) AS pages_per_session,
-        sumIf(1, asp.total_pageviews_in_session = 1) / COUNT() * 100 AS bounce_rate,
+        AVG(f.pageviews) AS pages_per_session,
+        sumIf(1, f.pageviews = 1) / COUNT() * 100 AS bounce_rate,
         AVG(f.end_time - f.start_time) AS session_duration,
-        SUM(f.filtered_pageviews) AS pageviews,
+        SUM(f.pageviews) AS pageviews,
         COUNT(DISTINCT f.effective_user_id) AS users
-    FROM FilteredSessionsWithStats f
-    LEFT JOIN AllSessionPageviews asp ON f.session_id = asp.session_id`;
+    FROM FilteredSessionsWithStats f`;
 }
 
 /** The dimensions a report can be broken down by. */
 export type BreakdownDimension =
-  | "browser"
-  | "city"
-  | "country"
-  | "device_type"
-  | "operating_system"
-  | "pathname"
-  | "referrer"
-  | "region";
+  "browser" | "city" | "country" | "device_type" | "operating_system" | "pathname" | "referrer" | "region";
 
 interface DimensionDefinition {
   /** The expression rows are grouped by and reported as `value`. */
@@ -170,21 +155,22 @@ const DIMENSIONS: Record<BreakdownDimension, DimensionDefinition> = {
  */
 export function buildBreakdownQuery(dimension: BreakdownDimension, spec: SiteMetricsSpec): string {
   const { expression, restriction = "" } = DIMENSIONS[dimension];
-  const { timeStatement, filterStatement = "" } = spec;
+  const { timeStatement, filteredSessionsCTE } = spec;
+  const sessionJoin = filteredSessionsCTE ? "INNER JOIN FilteredSessions USING (session_id)" : "";
 
   return `
-    WITH BreakdownStats AS (
+    WITH ${filteredSessionsCTE ? `${filteredSessionsCTE},` : ""} BreakdownStats AS (
       SELECT
         ${expression} AS value,
         COUNT(DISTINCT session_id) AS unique_sessions
       FROM events
+      ${sessionJoin}
       WHERE
         site_id = {siteId:Int32}
         AND ${expression} IS NOT NULL
         AND ${expression} <> ''
         ${restriction}
         ${timeStatement}
-        ${filterStatement}
       GROUP BY value
     )
     SELECT
@@ -194,4 +180,52 @@ export function buildBreakdownQuery(dimension: BreakdownDimension, spec: SiteMet
     FROM BreakdownStats
     ORDER BY count DESC, value ASC
     LIMIT {limit:Int32}`;
+}
+
+/** Sessions bucketed by session start, alongside pageviews bucketed by event time. */
+export function buildChartQuery(spec: SiteMetricsSpec, bucketFn: ChartBucketFunction): string {
+  const { timeStatement, filteredSessionsCTE } = spec;
+  const sessionJoin = filteredSessionsCTE ? "INNER JOIN FilteredSessions USING (session_id)" : "";
+  const bucket = (column: string) =>
+    `toString(toTimeZone(${bucketFn}(toTimeZone(${column}, {timeZone:String})), {timeZone:String}))`;
+
+  return `
+    WITH
+    ${filteredSessionsCTE ? `${filteredSessionsCTE},` : ""}
+    SessionStarts AS (
+      SELECT
+        session_id,
+        min(timestamp) AS session_start
+      FROM events
+      ${sessionJoin}
+      WHERE
+        site_id = {siteId:Int32}
+        ${timeStatement}
+      GROUP BY session_id
+    ),
+    SessionStats AS (
+      SELECT
+        ${bucket("session_start")} AS time,
+        count() AS sessions
+      FROM SessionStarts
+      GROUP BY time
+    ),
+    PageStats AS (
+      SELECT
+        ${bucket("timestamp")} AS time,
+        countIf(type = 'pageview') AS pageviews
+      FROM events
+      ${sessionJoin}
+      WHERE
+        site_id = {siteId:Int32}
+        ${timeStatement}
+      GROUP BY time
+    )
+    SELECT
+      time,
+      coalesce(sessions, 0) AS sessions,
+      coalesce(pageviews, 0) AS pageviews
+    FROM SessionStats
+    FULL JOIN PageStats USING (time)
+    ORDER BY time`;
 }

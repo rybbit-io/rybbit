@@ -49,13 +49,13 @@ describe("getSqlParam", () => {
 
     it("should handle entry_page", () => {
       expect(getSqlParam("entry_page")).toBe(
-        "(SELECT argMin(pathname, timestamp) FROM events WHERE session_id = events.session_id)"
+        "(SELECT argMinIf(pathname, timestamp, type = 'pageview') FROM events WHERE session_id = events.session_id)"
       );
     });
 
     it("should handle exit_page", () => {
       expect(getSqlParam("exit_page")).toBe(
-        "(SELECT argMax(pathname, timestamp) FROM events WHERE session_id = events.session_id)"
+        "(SELECT argMaxIf(pathname, timestamp, type = 'pageview') FROM events WHERE session_id = events.session_id)"
       );
     });
 
@@ -239,9 +239,7 @@ describe("getFilterStatement", () => {
     it("matches an identified user, or a device only while it is still anonymous", () => {
       const filters = JSON.stringify([{ parameter: "user_id", type: "equals", value: ["user123"] }]);
       const result = getFilterStatement(filters);
-      expect(result).toBe(
-        "AND (identified_user_id = 'user123' OR (user_id = 'user123' AND identified_user_id = ''))"
-      );
+      expect(result).toBe("AND (identified_user_id = 'user123' OR (user_id = 'user123' AND identified_user_id = ''))");
     });
 
     it("negates exactly the equals predicate for not_equals", () => {
@@ -329,6 +327,7 @@ describe("getFilterStatement", () => {
       const result = getFilterStatement(filters);
       expect(result).toContain("session_id IN");
       expect(result).toContain("argMin(pathname, timestamp) AS entry_pathname");
+      expect(result).toContain("type = 'pageview'");
       expect(result).toContain("entry_pathname = '/home'");
     });
 
@@ -353,6 +352,7 @@ describe("getFilterStatement", () => {
       const result = getFilterStatement(filters);
       expect(result).toContain("session_id IN");
       expect(result).toContain("argMax(pathname, timestamp) AS exit_pathname");
+      expect(result).toContain("type = 'pageview'");
       expect(result).toContain("exit_pathname = '/checkout'");
     });
 
@@ -575,20 +575,26 @@ describe("getFilterStatement", () => {
     });
 
     it("should handle negated filters inside the session subquery", () => {
-      // Note the semantics: this selects sessions containing at least one event
-      // whose hostname differs, not sessions with no matching event.
       const filters = JSON.stringify([{ parameter: "hostname", type: "not_equals", value: ["bad.example.com"] }]);
       const result = getFilterStatement(filters, undefined, undefined, { sessionLevelParams: ["hostname"] });
       expect(normalize(result)).toBe(
-        "AND session_id IN ( SELECT DISTINCT session_id FROM events WHERE hostname != 'bad.example.com' )"
+        "AND session_id NOT IN ( SELECT DISTINCT session_id FROM events WHERE hostname = 'bad.example.com' )"
       );
     });
 
-    it("should AND-join multi-value not_contains inside the session subquery", () => {
+    it("excludes sessions containing any negatively filtered value", () => {
       const filters = JSON.stringify([{ parameter: "pathname", type: "not_contains", value: ["/admin", "/debug"] }]);
       const result = getFilterStatement(filters, undefined, undefined, { sessionLevelParams: ["pathname"] });
       expect(normalize(result)).toBe(
-        "AND session_id IN ( SELECT DISTINCT session_id FROM events WHERE (pathname NOT LIKE '%/admin%' AND pathname NOT LIKE '%/debug%') )"
+        "AND session_id NOT IN ( SELECT DISTINCT session_id FROM events WHERE (pathname LIKE '%/admin%' OR pathname LIKE '%/debug%') )"
+      );
+    });
+
+    it("treats is_null as no non-empty value anywhere in the session", () => {
+      const filters = JSON.stringify([{ parameter: "event_name", type: "is_null", value: [] }]);
+      const result = getFilterStatement(filters, undefined, undefined, { sessionLevelParams: ["event_name"] });
+      expect(normalize(result)).toBe(
+        "AND session_id NOT IN ( SELECT DISTINCT session_id FROM events WHERE (event_name IS NOT NULL AND event_name != '') )"
       );
     });
 

@@ -1,7 +1,7 @@
 import { FastifyReply, FastifyRequest } from "fastify";
-import { getFilterStatement } from "../utils/getFilterStatement.js";
 import { analyticsRoute, runAnalyticsQuery } from "../utils/analyticsQuery.js";
 import { matchesUser } from "../utils/effectiveUserId.js";
+import { buildFilteredSessionsCTE } from "../utils/sessionFilters.js";
 import SqlString from "sqlstring";
 
 export interface GetUserSessionCountRequest {
@@ -25,17 +25,26 @@ export const buildUserSessionCountQuery = (query: GetUserSessionCountRequest["Qu
 
   // The calendar spans the user's full history, so dimension filters apply
   // but no time range does.
-  const filterStatement = getFilterStatement(filters ?? "", siteId);
+  const filteredSessionsCTE = buildFilteredSessionsCTE(filters, siteId, "");
+  const filteredSessionsJoin = filteredSessionsCTE ? "INNER JOIN FilteredSessions USING (session_id)" : "";
 
   return `
+    WITH ${filteredSessionsCTE ? `${filteredSessionsCTE},` : ""}
+    UserSessions AS (
+      SELECT
+        session_id,
+        min(timestamp) AS session_start
+      FROM events
+      ${filteredSessionsJoin}
+      WHERE
+        site_id = {siteId:Int32}
+        AND ${matchesUser("{userId:String}")}
+      GROUP BY session_id
+    )
     SELECT
-      toDate(timestamp, ${SqlString.escape(timeZone)}) as date,
-      count(DISTINCT session_id) as sessions
-    FROM events
-    WHERE
-      site_id = {siteId:Int32}
-      AND ${matchesUser("{userId:String}")}
-      ${filterStatement}
+      toDate(session_start, ${SqlString.escape(timeZone)}) as date,
+      count() as sessions
+    FROM UserSessions
     GROUP BY date
     ORDER BY date ASC
   `;

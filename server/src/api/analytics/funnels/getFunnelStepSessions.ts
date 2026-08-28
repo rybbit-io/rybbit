@@ -3,8 +3,9 @@ import { FastifyReply, FastifyRequest } from "fastify";
 import { enrichWithTraits } from "../utils/utils.js";
 import { getTimeStatement } from "../utils/timeWindow.js";
 import { GetSessionsResponse } from "../sessions/getSessions.js";
-import { getFilterStatement } from "../utils/getFilterStatement.js";
 import { analyticsRoute, runAnalyticsQuery } from "../utils/analyticsQuery.js";
+import { SESSION_CHANNEL_AGG, SESSION_REFERRER_AGG } from "../utils/sessionAttribution.js";
+import { buildFilteredSessionsCTE } from "../utils/sessionFilters.js";
 import { buildFunnelStepCondition, FunnelStep } from "./funnelSteps.js";
 
 type Funnel = {
@@ -32,12 +33,7 @@ export const buildFunnelStepSessionsQuery = (
 ) => {
   const { mode } = query;
   const timeStatement = getTimeStatement(query);
-
-  // Applied once, in the SessionActions CTE against raw events (same as the
-  // funnel analyze endpoint), where every filter parameter's column exists.
-  // Re-applying it to the aggregated outer query breaks on parameters the
-  // aggregate doesn't project (utm_*, pathname, timezone → unknown identifier).
-  const filterStatement = getFilterStatement(query.filters, siteId, timeStatement);
+  const filteredSessionsCTE = buildFilteredSessionsCTE(query.filters, siteId, timeStatement);
 
   // Build conditional statements for each step we need
   const stepsToCheck = mode === "reached" ? stepNumber : stepNumber + 1;
@@ -46,6 +42,7 @@ export const buildFunnelStepSessionsQuery = (
   // Build CTEs for each funnel step to identify qualifying sessions
   const stepCTEs = [
     `
+    ${filteredSessionsCTE ? `${filteredSessionsCTE},` : ""}
     SessionActions AS (
       SELECT
         session_id,
@@ -58,10 +55,10 @@ export const buildFunnelStepSessionsQuery = (
         url_parameters,
         tag
       FROM events
+      ${filteredSessionsCTE ? "INNER JOIN FilteredSessions USING (session_id)" : ""}
       WHERE
         site_id = {siteId:Int32}
         ${timeStatement}
-        ${filterStatement}
     ),
     Step1 AS (
       SELECT DISTINCT
@@ -134,8 +131,8 @@ export const buildFunnelStepSessionsQuery = (
         argMax(e.operating_system_version, e.timestamp) AS operating_system_version,
         argMax(e.screen_width, e.timestamp) AS screen_width,
         argMax(e.screen_height, e.timestamp) AS screen_height,
-        argMin(e.referrer, e.timestamp) AS referrer,
-        argMin(e.channel, e.timestamp) AS channel,
+        ${SESSION_REFERRER_AGG} AS referrer,
+        ${SESSION_CHANNEL_AGG} AS channel,
         argMin(e.hostname, e.timestamp) AS hostname,
         argMin(e.page_title, e.timestamp) AS page_title,
         argMin(e.querystring, e.timestamp) AS querystring,

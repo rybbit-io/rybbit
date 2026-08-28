@@ -5,8 +5,8 @@ import { eq, desc, asc, sql } from "drizzle-orm";
 import { getTimeStatement } from "../utils/timeWindow.js";
 import SqlString from "sqlstring";
 import { FilterParams } from "@rybbit/shared";
-import { getFilterStatement } from "../utils/getFilterStatement.js";
 import { analyticsRoute, runAnalyticsQuery } from "../utils/analyticsQuery.js";
+import { buildFilteredSessionsCTE } from "../utils/sessionFilters.js";
 import { buildGoalCondition } from "./goalConditions.js";
 
 // Types for the response
@@ -45,14 +45,21 @@ interface GetGoalsRequest {
 
 export const buildGoalsTotalSessionsQuery = (query: GetGoalsRequest["Querystring"], siteId: number) => {
   const timeStatement = getTimeStatement(query);
-  const filterStatement = query.filters ? getFilterStatement(query.filters, siteId, timeStatement) : "";
+  const filteredSessionsCTE = buildFilteredSessionsCTE(query.filters, siteId, timeStatement);
+
+  if (filteredSessionsCTE) {
+    return `
+      WITH ${filteredSessionsCTE}
+      SELECT COUNT(*) AS total_sessions
+      FROM FilteredSessions
+    `;
+  }
 
   return `
       SELECT COUNT(DISTINCT session_id) AS total_sessions
       FROM events
       WHERE site_id = ${SqlString.escape(siteId)}
       ${timeStatement}
-      ${filterStatement}
     `;
 };
 
@@ -66,7 +73,7 @@ export const buildGoalsConversionsQuery = (
   siteGoals: (typeof goals.$inferSelect)[]
 ): string | null => {
   const timeStatement = getTimeStatement(query);
-  const filterStatement = query.filters ? getFilterStatement(query.filters, siteId, timeStatement) : "";
+  const filteredSessionsCTE = buildFilteredSessionsCTE(query.filters, siteId, timeStatement);
 
   // Build a single query that calculates all goal conversions at once using conditional aggregation
   // This is more efficient than separate queries for each goal
@@ -90,12 +97,13 @@ export const buildGoalsConversionsQuery = (
   }
 
   return `
+      ${filteredSessionsCTE ? `WITH ${filteredSessionsCTE}` : ""}
       SELECT
         ${conditionalClauses.join(", ")}
       FROM events
+      ${filteredSessionsCTE ? "INNER JOIN FilteredSessions USING (session_id)" : ""}
       WHERE site_id = ${SqlString.escape(siteId)}
       ${timeStatement}
-      ${filterStatement}
     `;
 };
 

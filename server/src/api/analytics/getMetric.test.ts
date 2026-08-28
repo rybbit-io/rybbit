@@ -57,6 +57,19 @@ describe("buildMetricQuery", () => {
       const sql = buildMetricQuery(baseQuery({ parameter: "event_name" }), SITE_ID, true);
       expect(sql).toContain("COUNT(DISTINCT event_name) as totalCount");
     });
+
+    it("keeps event names row-scoped inside a session-qualified campaign", () => {
+      const filters = JSON.stringify([
+        { parameter: "utm_campaign", type: "equals", value: ["launch"] },
+        { parameter: "event_name", type: "equals", value: ["signup"] },
+      ]);
+      const sql = buildMetricQuery(baseQuery({ parameter: "event_name", filters }), SITE_ID);
+
+      expect(sql).toContain("FilteredSessions AS (");
+      expect(sql).toContain("INNER JOIN FilteredSessions USING (session_id)");
+      expect(sql).toContain("AND event_name = 'signup'");
+      expect(sql.slice(sql.lastIndexOf("FROM events"))).not.toContain("url_parameters['utm_campaign']");
+    });
   });
 
   describe("page_title", () => {
@@ -96,6 +109,15 @@ describe("buildMetricQuery", () => {
       const sql = buildMetricQuery(baseQuery({ parameter: "pathname" }), SITE_ID);
       expect(sql).toContain("anyHeavy(hostname) as top_hostname");
       expect(sql).toContain("GROUP BY pathname");
+    });
+
+    it("builds paths from all pageviews in campaign-qualified sessions", () => {
+      const filters = JSON.stringify([{ parameter: "utm_campaign", type: "equals", value: ["launch"] }]);
+      const sql = buildMetricQuery(baseQuery({ parameter: "pathname", filters }), SITE_ID);
+
+      expect(sql).toContain("FilteredSessions AS (");
+      expect(sql).toContain("INNER JOIN FilteredSessions fs ON e.session_id = fs.session_id");
+      expect(sql.slice(sql.indexOf("EventTimes AS (")).lastIndexOf("url_parameters['utm_campaign']")).toBe(-1);
     });
   });
 

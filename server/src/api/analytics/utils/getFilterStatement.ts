@@ -150,10 +150,10 @@ export const getSqlParam = (parameter: FilterParameter) => {
     return "domainWithoutWWW(referrer)";
   }
   if (parameter === "entry_page") {
-    return "(SELECT argMin(pathname, timestamp) FROM events WHERE session_id = events.session_id)";
+    return "(SELECT argMinIf(pathname, timestamp, type = 'pageview') FROM events WHERE session_id = events.session_id)";
   }
   if (parameter === "exit_page") {
-    return "(SELECT argMax(pathname, timestamp) FROM events WHERE session_id = events.session_id)";
+    return "(SELECT argMaxIf(pathname, timestamp, type = 'pageview') FROM events WHERE session_id = events.session_id)";
   }
   if (parameter === "dimensions") {
     return "concat(toString(screen_width), 'x', toString(screen_height))";
@@ -214,11 +214,19 @@ export function getFilterStatement(
     // inside the subquery. fieldMappings deliberately do NOT apply here: the
     // subquery selects from the raw events table, where the caller's CTE
     // aliases don't exist.
-    const condition = buildStringFilterCondition(getSqlParam(param), filterType, values);
+    const negatedSessionFilterTypes: Partial<Record<FilterType, FilterType>> = {
+      not_equals: "equals",
+      not_contains: "contains",
+      not_regex: "regex",
+      is_null: "is_not_null",
+    };
+    const positiveFilterType = negatedSessionFilterTypes[filterType] ?? filterType;
+    const condition = buildStringFilterCondition(getSqlParam(param), positiveFilterType, values);
+    const membershipOperator = negatedSessionFilterTypes[filterType] ? "NOT IN" : "IN";
 
     const finalWhere = whereClause ? `WHERE ${whereClause} AND ${condition}` : `WHERE ${condition}`;
 
-    return `session_id IN (
+    return `session_id ${membershipOperator} (
             SELECT DISTINCT session_id
             FROM events
             ${finalWhere}
@@ -262,7 +270,7 @@ export function getFilterStatement(
         }
 
         if (filter.parameter === "entry_page") {
-          const whereClause = [siteIdFilter, timeFilter].filter(Boolean).join(" AND ");
+          const whereClause = [siteIdFilter, timeFilter, "type = 'pageview'"].filter(Boolean).join(" AND ");
           const whereStatement = whereClause ? `WHERE ${whereClause}` : "";
           const condition = buildStringFilterCondition("entry_pathname", filter.type, filter.value);
 
@@ -281,7 +289,7 @@ export function getFilterStatement(
         }
 
         if (filter.parameter === "exit_page") {
-          const whereClause = [siteIdFilter, timeFilter].filter(Boolean).join(" AND ");
+          const whereClause = [siteIdFilter, timeFilter, "type = 'pageview'"].filter(Boolean).join(" AND ");
           const whereStatement = whereClause ? `WHERE ${whereClause}` : "";
           const condition = buildStringFilterCondition("exit_pathname", filter.type, filter.value);
 

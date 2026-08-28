@@ -8,6 +8,13 @@ vi.mock("../../../db/postgres/postgres.js", () => ({
 }));
 
 import { buildEventsQuery } from "./getEvents.js";
+import { buildEventBucketedQuery } from "./getEventBucketed.js";
+import { buildEventNamesQuery } from "./getEventNames.js";
+import { buildSiteEventCountQuery } from "./getSiteEventCount.js";
+import { buildEventPropertiesQuery } from "./getEventProperties.js";
+import { buildAutocaptureEventsQuery } from "./getAutocaptureEvents.js";
+import { buildAutocaptureValuesQuery } from "./getAutocaptureValues.js";
+import { buildOutboundLinksQuery } from "./getOutboundLinks.js";
 
 const SITE_ID = 1;
 
@@ -43,5 +50,49 @@ describe("buildEventsQuery filters", () => {
 
     expect(query).not.toContain("session_id IN");
     expect(params).toEqual({ siteId: SITE_ID, limit: 50 });
+  });
+});
+
+describe("event summary filter consistency", () => {
+  const eventNameFilter = JSON.stringify([{ parameter: "event_name", type: "equals", value: ["signup"] }]);
+
+  it.each([
+    ["names", () => buildEventNamesQuery({ ...baseQuery({ filters: eventNameFilter }), event_name: "" }, SITE_ID)],
+    [
+      "time series",
+      () => buildEventBucketedQuery({ ...baseQuery({ filters: eventNameFilter }), bucket: "day" }, SITE_ID),
+    ],
+    [
+      "site count",
+      () => buildSiteEventCountQuery({ ...baseQuery({ filters: eventNameFilter }), bucket: "day" }, SITE_ID),
+    ],
+    [
+      "properties",
+      () => buildEventPropertiesQuery({ ...baseQuery({ filters: eventNameFilter }), event_name: "signup" }, SITE_ID),
+    ],
+    [
+      "autocapture",
+      () =>
+        buildAutocaptureEventsQuery(
+          { ...baseQuery({ filters: eventNameFilter }), type: "form_submit" },
+          SITE_ID,
+          "form_submit"
+        ),
+    ],
+    [
+      "autocapture values",
+      () =>
+        buildAutocaptureValuesQuery(
+          { ...baseQuery({ filters: eventNameFilter }), type: "form_submit" },
+          SITE_ID,
+          "form_submit"
+        ),
+    ],
+    ["outbound", () => buildOutboundLinksQuery(baseQuery({ filters: eventNameFilter }), SITE_ID)],
+  ])("keeps event_name row-scoped in the %s query", (_name, buildQuery) => {
+    const query = buildQuery();
+
+    expect(query).toContain("AND event_name = 'signup'");
+    expect(query).not.toContain("SELECT DISTINCT session_id");
   });
 });

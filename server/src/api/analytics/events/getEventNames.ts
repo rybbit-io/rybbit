@@ -23,7 +23,9 @@ export const buildEventNamesQuery = (query: GetEventNamesRequest["Querystring"],
 
   const timeStatement = getTimeStatement(query);
 
-  const filterStatement = filters ? getFilterStatement(filters, siteId, timeStatement) : "";
+  const filterStatement = filters
+    ? getFilterStatement(filters, siteId, timeStatement, { sessionLevelParams: ["channel"] })
+    : "";
 
   return `
     SELECT

@@ -2,8 +2,8 @@ import { FilterParams } from "@rybbit/shared";
 import { FastifyReply, FastifyRequest } from "fastify";
 import SqlString from "sqlstring";
 import { getTimeStatement } from "../utils/timeWindow.js";
-import { getFilterStatement } from "../utils/getFilterStatement.js";
 import { AnalyticsQueryError, runAnalyticsQuery } from "../utils/analyticsQuery.js";
+import { buildFilteredSessionsCTE } from "../utils/sessionFilters.js";
 import { buildFunnelStepCondition, FunnelStep } from "./funnelSteps.js";
 
 type Funnel = {
@@ -21,7 +21,7 @@ type FunnelResponse = {
 
 export const buildFunnelQuery = (query: FilterParams<{}>, siteId: number, steps: FunnelStep[]) => {
   const timeStatement = getTimeStatement(query);
-  const filterStatement = getFilterStatement(query.filters, siteId, timeStatement);
+  const filteredSessionsCTE = buildFilteredSessionsCTE(query.filters, siteId, timeStatement);
 
   // Build conditional statements for each step
   const stepConditions = steps.map(step => buildFunnelStepCondition(step));
@@ -29,6 +29,7 @@ export const buildFunnelQuery = (query: FilterParams<{}>, siteId: number, steps:
   // Build the funnel query - session-based tracking
   return `
     WITH
+    ${filteredSessionsCTE ? `${filteredSessionsCTE},` : ""}
     -- Get all session actions in the time period
     SessionActions AS (
       SELECT
@@ -41,10 +42,10 @@ export const buildFunnelQuery = (query: FilterParams<{}>, siteId: number, steps:
         hostname,
         url_parameters
       FROM events
+      ${filteredSessionsCTE ? "INNER JOIN FilteredSessions USING (session_id)" : ""}
       WHERE
         site_id = {siteId:Int32}
         ${timeStatement}
-        ${filterStatement}
     ),
     -- Initial step (all sessions who completed step 1)
     Step1 AS (

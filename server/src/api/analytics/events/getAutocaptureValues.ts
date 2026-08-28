@@ -28,7 +28,9 @@ export const buildAutocaptureValuesQuery = (
   const { filters } = query;
 
   const timeStatement = getTimeStatement(query);
-  const filterStatement = filters ? getFilterStatement(filters, siteId, timeStatement) : "";
+  const filterStatement = filters
+    ? getFilterStatement(filters, siteId, timeStatement, { sessionLevelParams: ["channel"] })
+    : "";
 
   const propExtracts = AUTOCAPTURE_PATTERN_PROPS[type]
     .map(prop => `JSONExtractString(toString(props), ${SqlString.escape(prop)})`)

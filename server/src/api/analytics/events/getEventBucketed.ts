@@ -33,7 +33,9 @@ export const buildEventBucketedQuery = (query: GetEventBucketedRequest["Querystr
   const { bucket = "hour" } = query;
 
   const timeStatement = getTimeStatement(query);
-  const filterStatement = getFilterStatement(query.filters, siteId, timeStatement);
+  const filterStatement = getFilterStatement(query.filters, siteId, timeStatement, {
+    sessionLevelParams: ["channel"],
+  });
 
   return `
     WITH top_events AS (

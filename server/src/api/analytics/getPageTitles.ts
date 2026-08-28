@@ -1,8 +1,13 @@
 import { FastifyReply, FastifyRequest } from "fastify";
 import { getTimeStatement } from "./utils/timeWindow.js";
 import { FilterParams } from "@rybbit/shared";
-import { getFilterStatement } from "./utils/getFilterStatement.js";
-import { analyticsRoute, getPaginationStatements, runAnalyticsQuery, runPaginatedQuery } from "./utils/analyticsQuery.js";
+import {
+  analyticsRoute,
+  getPaginationStatements,
+  runAnalyticsQuery,
+  runPaginatedQuery,
+} from "./utils/analyticsQuery.js";
+import { buildFilteredSessionsCTE } from "./utils/sessionFilters.js";
 
 interface GetPageTitlesRequest {
   Params: {
@@ -39,7 +44,8 @@ export const buildPageTitlesQuery = (
   const { filters } = query;
 
   const timeStatement = getTimeStatement(query);
-  const filterStatement = getFilterStatement(filters, siteId, timeStatement);
+  const filteredSessionsCTE = buildFilteredSessionsCTE(filters, siteId, timeStatement);
+  const sessionJoin = filteredSessionsCTE ? "INNER JOIN FilteredSessions USING (session_id)" : "";
 
   // StandardSection usually shows a small number, e.g., 7 or 10. Default to 10 for non-paginated use.
   const { limitStatement, offsetStatement } = getPaginationStatements(query, 10, isCountQuery);
@@ -53,6 +59,7 @@ export const buildPageTitlesQuery = (
             session_id,
             COUNT() as pageviews_in_session
         FROM events
+        ${sessionJoin}
         WHERE
             site_id = {siteId:Int32}
             AND type = 'pageview'
@@ -67,10 +74,10 @@ export const buildPageTitlesQuery = (
             timestamp,
             leadInFrame(timestamp) OVER (PARTITION BY session_id ORDER BY timestamp ROWS BETWEEN CURRENT ROW AND 1 FOLLOWING) as next_timestamp
         FROM events
+        ${sessionJoin}
         WHERE
           site_id = {siteId:Int32}
           AND type = 'pageview'
-          ${filterStatement}
           ${timeStatement}
     ),
     PageDurations AS (
@@ -102,13 +109,13 @@ export const buildPageTitlesQuery = (
 
   if (isCountQuery) {
     return `
-    WITH ${baseCteQuery}
+    WITH ${filteredSessionsCTE ? `${filteredSessionsCTE},` : ""} ${baseCteQuery}
     SELECT COUNT(*) as totalCount FROM PageTitleStats;
     `;
   }
 
   return `
-    WITH ${baseCteQuery}
+    WITH ${filteredSessionsCTE ? `${filteredSessionsCTE},` : ""} ${baseCteQuery}
     SELECT
         value,
         pathname,

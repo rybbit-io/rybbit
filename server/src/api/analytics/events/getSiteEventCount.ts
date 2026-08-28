@@ -32,7 +32,9 @@ export const buildSiteEventCountQuery = (query: GetSiteEventCountRequest["Querys
   const { bucket = "day" } = query;
 
   const timeStatement = getTimeStatement(query);
-  const filterStatement = getFilterStatement(query.filters, siteId, timeStatement);
+  const filterStatement = getFilterStatement(query.filters, siteId, timeStatement, {
+    sessionLevelParams: ["channel"],
+  });
 
   return `
     SELECT

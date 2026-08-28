@@ -1,10 +1,11 @@
 import { FastifyReply, FastifyRequest } from "fastify";
 import { FilterParameter } from "./types.js";
 import { getTimeStatement } from "./utils/timeWindow.js";
-import { getFilterStatement, getSqlParam } from "./utils/getFilterStatement.js";
+import { getSqlParam } from "./utils/getFilterStatement.js";
 import { SESSION_CHANNEL_AGG } from "./utils/sessionAttribution.js";
 import { FilterParams } from "@rybbit/shared";
 import { analyticsRoute, getPaginationStatements, runPaginatedQuery } from "./utils/analyticsQuery.js";
+import { buildSessionAndRowFilterFragments } from "./utils/sessionFilters.js";
 
 interface GetMetricRequest {
   Params: {
@@ -62,35 +63,49 @@ export const buildMetricQuery = (
 
   const timeStatement = getTimeStatement(query);
 
-  const filterStatement = getFilterStatement(filters, siteId, timeStatement);
+  const { filteredSessionsCTE, rowFilterStatement } = buildSessionAndRowFilterFragments(
+    filters,
+    siteId,
+    timeStatement,
+    parameter === "event_name" ? ["event_name"] : []
+  );
+  const sessionJoin = filteredSessionsCTE ? "INNER JOIN FilteredSessions USING (session_id)" : "";
+  const aliasedSessionJoin = filteredSessionsCTE
+    ? "INNER JOIN FilteredSessions fs ON e.session_id = fs.session_id"
+    : "";
+  const withFilteredSessions = filteredSessionsCTE ? `WITH ${filteredSessionsCTE}` : "";
 
   const { limitStatement, offsetStatement } = getPaginationStatements(query, 100, isCountQuery);
 
   if (parameter === "event_name") {
     if (isCountQuery) {
       return `
+      ${withFilteredSessions}
       SELECT COUNT(DISTINCT event_name) as totalCount
       FROM events
+      ${sessionJoin}
       WHERE
         site_id = {siteId:Int32}
         AND event_name IS NOT NULL 
         AND event_name <> ''
-        ${filterStatement}
+        ${rowFilterStatement}
         ${timeStatement}
         AND type = 'custom_event';
       `;
     }
     return `
+    ${withFilteredSessions}
     SELECT
       event_name as value,
       COUNT(*) as count,
       ROUND(COUNT(distinct(session_id)) * 100.0 / SUM(COUNT(distinct(session_id))) OVER (), 2) as percentage
     FROM events
+    ${sessionJoin}
     WHERE
       site_id = {siteId:Int32}
       AND event_name IS NOT NULL 
       AND event_name <> ''
-      ${filterStatement}
+      ${rowFilterStatement}
       ${timeStatement}
       AND type = 'custom_event'
     GROUP BY event_name ORDER BY count desc, event_name asc
@@ -106,22 +121,22 @@ export const buildMetricQuery = (
           argMax(pathname, timestamp) as pathname,
           COUNT(DISTINCT session_id) as unique_sessions
       FROM events
+      ${sessionJoin}
       WHERE
           site_id = {siteId:Int32}
           AND page_title IS NOT NULL
           AND page_title <> ''
-          -- AND type = 'pageview'
-          ${filterStatement}
+          AND type = 'pageview'
           ${timeStatement}
       GROUP BY page_title
     `;
 
     if (isCountQuery) {
-      return `SELECT COUNT(*) as totalCount FROM (${corePageTitleLogic});`;
+      return `${withFilteredSessions} SELECT COUNT(*) as totalCount FROM (${corePageTitleLogic});`;
     }
 
     return `
-      WITH SessionPageCounts AS (
+      WITH ${filteredSessionsCTE ? `${filteredSessionsCTE},` : ""} SessionPageCounts AS (
           SELECT
               session_id,
               COUNT() as pageviews_in_session
@@ -136,15 +151,16 @@ export const buildMetricQuery = (
           SELECT
               e.page_title as value,
               e.pathname as pathname,
-              e.session_id,
+              e.session_id AS session_id,
               spc.pageviews_in_session
           FROM events e
+          ${aliasedSessionJoin}
           LEFT JOIN SessionPageCounts spc ON e.session_id = spc.session_id
           WHERE
               e.site_id = {siteId:Int32}
               AND e.page_title IS NOT NULL
               AND e.page_title <> ''
-              ${filterStatement}
+              AND e.type = 'pageview'
               ${timeStatement}
       )
       SELECT
@@ -185,14 +201,17 @@ export const buildMetricQuery = (
       ),
       RelevantEvents AS (
           SELECT
-              e.*,
+              e.session_id AS session_id,
+              e.pathname AS pathname,
+              e.hostname AS hostname,
+              e.timestamp AS timestamp,
               spc.pageviews_in_session
           FROM events e
+          ${aliasedSessionJoin}
           LEFT JOIN SessionPageCounts spc ON e.session_id = spc.session_id
           WHERE
               e.site_id = {siteId:Int32}
-              -- AND type = 'pageview'
-              ${filterStatement}
+              AND e.type = 'pageview'
               ${timeStatement}
       ),
       EventTimes AS (
@@ -239,13 +258,13 @@ export const buildMetricQuery = (
 
     if (isCountQuery) {
       return `
-      WITH ${baseCteQuery}
+      WITH ${filteredSessionsCTE ? `${filteredSessionsCTE},` : ""} ${baseCteQuery}
       SELECT COUNT(DISTINCT pathname) as totalCount FROM PathStats;
       `;
     }
 
     return `
-    WITH ${baseCteQuery}
+    WITH ${filteredSessionsCTE ? `${filteredSessionsCTE},` : ""} ${baseCteQuery}
     SELECT
         pathname as value,
         top_hostname as hostname,
@@ -276,18 +295,18 @@ export const buildMetricQuery = (
       ),
       EventTimes AS (
           SELECT
-              e.session_id,
+              e.session_id AS session_id,
               e.pathname,
               e.hostname,
               e.timestamp,
               spc.pageviews_in_session,
               leadInFrame(e.timestamp) OVER (PARTITION BY e.session_id ORDER BY e.timestamp ROWS BETWEEN CURRENT ROW AND 1 FOLLOWING) as next_timestamp
           FROM events e
+          ${aliasedSessionJoin}
           LEFT JOIN SessionPageCounts spc ON e.session_id = spc.session_id
           WHERE
             e.site_id = {siteId:Int32}
-            -- AND type = 'pageview'
-            ${filterStatement}
+            AND e.type = 'pageview'
             ${timeStatement}
       ),
       PageDurations AS (
@@ -315,12 +334,12 @@ export const buildMetricQuery = (
     `;
     if (isCountQuery) {
       return `
-      WITH ${baseCteQuery}
+      WITH ${filteredSessionsCTE ? `${filteredSessionsCTE},` : ""} ${baseCteQuery}
       SELECT COUNT(DISTINCT pathname) as totalCount FROM PathStats;
       `;
     }
     return `
-    WITH ${baseCteQuery}
+    WITH ${filteredSessionsCTE ? `${filteredSessionsCTE},` : ""} ${baseCteQuery}
     SELECT
         pathname as value,
         top_hostname as hostname,
@@ -346,16 +365,17 @@ export const buildMetricQuery = (
 
   if (isCountQuery) {
     return `
+    ${withFilteredSessions}
     SELECT COUNT(DISTINCT value) as totalCount
     FROM (
         SELECT
             ${valueExpression} as value
         FROM events e
+        ${aliasedSessionJoin}
         WHERE
             e.site_id = {siteId:Int32}
             AND ${sqlParam} IS NOT NULL
             AND ${sqlParam} <> ''
-            ${filterStatement}
             ${timeStatement}
         GROUP BY e.session_id
     );
@@ -363,7 +383,7 @@ export const buildMetricQuery = (
   }
 
   return `
-    WITH SessionPageCounts AS (
+    WITH ${filteredSessionsCTE ? `${filteredSessionsCTE},` : ""} SessionPageCounts AS (
         SELECT
             session_id,
             COUNT() as pageviews_in_session
@@ -377,15 +397,15 @@ export const buildMetricQuery = (
     SessionData AS (
         SELECT
             ${valueExpression} as value,
-            e.session_id,
+            e.session_id AS session_id,
             any(spc.pageviews_in_session) as pageviews_in_session
         FROM events e
+        ${aliasedSessionJoin}
         LEFT JOIN SessionPageCounts spc ON e.session_id = spc.session_id
         WHERE
             e.site_id = {siteId:Int32}
             AND ${sqlParam} IS NOT NULL
             AND ${sqlParam} <> ''
-            ${filterStatement}
             ${timeStatement}
         GROUP BY e.session_id
     )

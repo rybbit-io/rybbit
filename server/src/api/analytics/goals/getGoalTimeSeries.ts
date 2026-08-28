@@ -5,7 +5,7 @@ import SqlString from "sqlstring";
 import { db } from "../../../db/postgres/postgres.js";
 import { goals } from "../../../db/postgres/schema.js";
 import { TimeBucket } from "../types.js";
-import { getFilterStatement } from "../utils/getFilterStatement.js";
+import { buildFilteredSessionsCTE } from "../utils/sessionFilters.js";
 import { getTimeStatement, TimeBucketToFn } from "../utils/timeWindow.js";
 import { analyticsRoute, runAnalyticsQuery } from "../utils/analyticsQuery.js";
 import { buildGoalCondition } from "./goalConditions.js";
@@ -58,7 +58,8 @@ export const buildGoalTimeSeriesQuery = (
 ): string | null => {
   const { bucket = "hour" } = query;
   const timeStatement = getTimeStatement(query);
-  const filterStatement = getFilterStatement(query.filters, siteId, timeStatement);
+  const filteredSessionsCTE = buildFilteredSessionsCTE(query.filters, siteId, timeStatement);
+  const filteredSessionsJoin = filteredSessionsCTE ? "INNER JOIN FilteredSessions USING (session_id)" : "";
   const bucketFn = TimeBucketToFn[bucket];
 
   const conversionQueries = siteGoals
@@ -72,11 +73,11 @@ export const buildGoalTimeSeriesQuery = (
             ${SqlString.escape(goal.goalId)} AS goal_id,
             COUNT(DISTINCT session_id) AS conversions
           FROM events
+          ${filteredSessionsJoin}
           WHERE
             site_id = {siteId:Int32}
             AND (${goalCondition})
             ${timeStatement}
-            ${filterStatement}
           GROUP BY time, goal_id
         `;
     })
@@ -89,15 +90,16 @@ export const buildGoalTimeSeriesQuery = (
   const validGoalIds = siteGoals.map(goal => goal.goalId).join(", ");
   return `
       WITH
+        ${filteredSessionsCTE ? `${filteredSessionsCTE},` : ""}
         sessions_by_bucket AS (
           SELECT
             toDateTime(${bucketFn}(toTimeZone(timestamp, {timeZone:String}))) AS time,
             COUNT(DISTINCT session_id) AS total_sessions
           FROM events
+          ${filteredSessionsJoin}
           WHERE
             site_id = {siteId:Int32}
             ${timeStatement}
-            ${filterStatement}
           GROUP BY time
         ),
         goal_ids AS (

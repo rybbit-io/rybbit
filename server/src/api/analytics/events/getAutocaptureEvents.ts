@@ -41,7 +41,9 @@ export const buildAutocaptureEventsQuery = (
   const { filters } = query;
 
   const timeStatement = getTimeStatement(query);
-  const filterStatement = filters ? getFilterStatement(filters, siteId, timeStatement) : "";
+  const filterStatement = filters
+    ? getFilterStatement(filters, siteId, timeStatement, { sessionLevelParams: ["channel"] })
+    : "";
   const valueExpression = VALUE_EXPRESSIONS[type];
 
   return `
