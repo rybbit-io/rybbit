@@ -539,12 +539,14 @@ export function CreateExperimentWizard({
 
   const implementationState = savedImplementationState || (isEditing ? buildImplementationState("updated") : null);
 
-  const submitExperiment = async () => {
+  const authorExperiment = async (mode: ImplementationState["mode"]) => {
     const validationError = validateExperimentConfiguration();
     if (validationError) {
       toast.error(validationError);
       return;
     }
+
+    if (mode === "updated" && !experiment) return;
 
     try {
       let featureFlagId = Number(form.existingFlagId);
@@ -600,108 +602,35 @@ export function CreateExperimentWizard({
         goalLabel = form.goalType === "path" ? form.pathPattern.trim() : form.eventName.trim();
       }
 
-      const createdExperiment = await createExperimentMutation.mutateAsync({
-        name: form.name.trim(),
-        description: form.description.trim() || null,
-        hypothesis: form.hypothesis.trim() || null,
-        featureFlagId,
-        primaryGoalId,
-        status: "draft",
-      });
+      let savedExperiment: Experiment;
 
-      setSavedImplementationState({
-        mode: "created",
-        experiment: createdExperiment.data,
-        flagKey,
-        variants: variantKeys,
-        goalMode: form.goalMode,
-        goalType,
-        goalLabel,
-      });
-      setStep("implementation");
-      toast.success(t("Experiment created"));
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : t("Failed to save experiment"));
-    }
-  };
-
-  const saveExperiment = async () => {
-    const validationError = validateExperimentConfiguration();
-    if (validationError) {
-      toast.error(validationError);
-      return;
-    }
-
-    if (!experiment) return;
-
-    try {
-      let featureFlagId = Number(form.existingFlagId);
-      let flagKey = selectedFlag?.key || form.flagKey.trim();
-      let variantKeys = selectedFlag ? getVariantKeys(selectedFlag) : form.variants.map(variant => variant.key.trim());
-
-      if (form.assignmentMode === "new") {
-        const variants: FeatureFlagVariant[] = form.variants.map(variant => ({
-          key: variant.key.trim(),
-          name: variant.name.trim() || undefined,
-          rolloutPercentage: Number(variant.rolloutPercentage),
-        }));
-
-        const createdFlag = await createFeatureFlagMutation.mutateAsync({
-          key: form.flagKey.trim(),
-          description: form.flagDescription.trim() || `Assignment flag for ${form.name.trim()}`,
-          enabled: true,
-          runtime: "client",
-          flagType: "multivariate",
-          payload: null,
-          variants: [],
-          rolloutPercentage: 100,
-          rules: [],
-          conditionSets: [
-            {
-              name: "Default",
-              rules: [],
-              variants,
-            },
-          ],
-        });
-
-        featureFlagId = createdFlag.data.flagId;
-        flagKey = createdFlag.data.key;
-        variantKeys = getVariantKeys(createdFlag.data);
-      }
-
-      let primaryGoalId: number | null = form.goalMode === "existing" ? Number(form.existingGoalId) : null;
-      let goalType: AnyGoalType | undefined = selectedGoal?.goalType;
-      let goalLabel = form.goalMode === "none" ? undefined : (goalDisplayPattern(selectedGoal) ?? form.goalName.trim());
-
-      if (form.goalMode === "new") {
-        const createdGoal = await createGoalMutation.mutateAsync({
-          siteId: Number(site),
-          name: form.goalName.trim() || `${form.name.trim()} conversion`,
-          goalType: form.goalType,
-          config:
-            form.goalType === "path" ? { pathPattern: form.pathPattern.trim() } : { eventName: form.eventName.trim() },
-        });
-
-        primaryGoalId = createdGoal.goalId;
-        goalType = form.goalType;
-        goalLabel = form.goalType === "path" ? form.pathPattern.trim() : form.eventName.trim();
-      }
-
-      const updatedExperiment = await updateExperimentMutation.mutateAsync({
-        experimentId: experiment.experimentId,
-        payload: {
+      if (mode === "created") {
+        const createdExperiment = await createExperimentMutation.mutateAsync({
           name: form.name.trim(),
           description: form.description.trim() || null,
           hypothesis: form.hypothesis.trim() || null,
           featureFlagId,
           primaryGoalId,
-        },
-      });
+          status: "draft",
+        });
+        savedExperiment = createdExperiment.data;
+      } else {
+        const updatedExperiment = await updateExperimentMutation.mutateAsync({
+          experimentId: experiment!.experimentId,
+          payload: {
+            name: form.name.trim(),
+            description: form.description.trim() || null,
+            hypothesis: form.hypothesis.trim() || null,
+            featureFlagId,
+            primaryGoalId,
+          },
+        });
+        savedExperiment = updatedExperiment.data;
+      }
 
       setSavedImplementationState({
-        mode: "updated",
-        experiment: updatedExperiment.data,
+        mode,
+        experiment: savedExperiment,
         flagKey,
         variants: variantKeys,
         goalMode: form.goalMode,
@@ -709,11 +638,14 @@ export function CreateExperimentWizard({
         goalLabel,
       });
       setStep("implementation");
-      toast.success(t("Experiment updated"));
+      toast.success(mode === "created" ? t("Experiment created") : t("Experiment updated"));
     } catch (error) {
       toast.error(error instanceof Error ? error.message : t("Failed to save experiment"));
     }
   };
+
+  const submitExperiment = () => authorExperiment("created");
+  const saveExperiment = () => authorExperiment("updated");
 
   const renderStep = () => {
     if (step === "basics") {
@@ -1086,7 +1018,9 @@ window.rybbit.onReady((rybbit) => {
           </p>
         ) : implementationState.goalType && implementationState.goalType !== "event" ? (
           <p className="rounded-md border border-neutral-150 bg-neutral-50 p-3 text-sm text-neutral-600 dark:border-neutral-800 dark:bg-neutral-900/40 dark:text-neutral-300">
-            {t("No conversion event code is needed for this goal. Rybbit tracks it automatically based on user behavior.")}
+            {t(
+              "No conversion event code is needed for this goal. Rybbit tracks it automatically based on user behavior."
+            )}
           </p>
         ) : (
           <p className="rounded-md border border-neutral-150 bg-neutral-50 p-3 text-sm text-neutral-600 dark:border-neutral-800 dark:bg-neutral-900/40 dark:text-neutral-300">

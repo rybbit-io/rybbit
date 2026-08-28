@@ -170,11 +170,11 @@ export function ReplayBreadcrumbs() {
   const params = useParams();
   const siteId = Number(params.site);
   const [showTechnical, setShowTechnical] = useState(false);
-  const { sessionId, player, setCurrentTime } = useReplayStore(
+  const { sessionId, playerReady, seekTo } = useReplayStore(
     useShallow(s => ({
       sessionId: s.sessionId,
-      player: s.player,
-      setCurrentTime: s.setCurrentTime,
+      playerReady: s.playerReady,
+      seekTo: s.seekTo,
     }))
   );
 
@@ -185,11 +185,10 @@ export function ReplayBreadcrumbs() {
 
   const handleSeek = useCallback(
     (offset: number) => {
-      if (!player) return;
-      player.goto(offset);
-      setCurrentTime(offset);
+      if (!playerReady) return;
+      seekTo(offset);
     },
-    [player, setCurrentTime]
+    [playerReady, seekTo]
   );
 
   // Resolve labels here, where `t` is the real useExtracted() binding, so the
@@ -472,4 +471,3 @@ function TechnicalRow({
     </div>
   );
 }
-

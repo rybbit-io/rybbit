@@ -1,6 +1,13 @@
 import { afterAll, describe, expect, it, vi } from "vitest";
 import { getStripePrices, STRIPE_TIERS } from "../stripe";
-import { EVENT_TIERS, findPriceForTier, formatDate, formatEventTier, planIncludesReplay } from "./planUtils";
+import {
+  EVENT_TIERS,
+  findPriceForTier,
+  formatDate,
+  formatEventTier,
+  planIncludesReplay,
+  planIncludesStandardFeatures,
+} from "./planUtils";
 
 // formatDate parses a bare "yyyy-MM-dd" as UTC midnight and then renders it in
 // the machine's timezone, so the zone has to be pinned for these assertions to
@@ -157,5 +164,21 @@ describe("planIncludesReplay", () => {
 
   it("treats a trial with no event limit as small", () => {
     expect(planIncludesReplay({ planName: "pro100k", isTrial: true })).toBe(true);
+  });
+});
+
+describe("planIncludesStandardFeatures", () => {
+  it("includes every paid plan family that grants Standard tracking features", () => {
+    for (const planName of ["standard100k", "standard1m-annual", "pro100k", "custom", "appsumo-1"]) {
+      expect(planIncludesStandardFeatures({ planName }), planName).toBe(true);
+    }
+  });
+
+  it("excludes plans without Standard tracking features", () => {
+    for (const planName of ["free", "basic100k", "hobby"]) {
+      expect(planIncludesStandardFeatures({ planName }), planName).toBe(false);
+    }
+    expect(planIncludesStandardFeatures(null)).toBe(false);
+    expect(planIncludesStandardFeatures(undefined)).toBe(false);
   });
 });

@@ -57,7 +57,7 @@ type PersistedStore = Pick<Store, "timezone">;
 
 const getUrlParams = () => (typeof window !== "undefined" ? new URLSearchParams(globalThis.location.search) : null);
 
-const getDefaultTime = (): Time => getStoredDashboardDefaultTime(getSystemTimezone());
+const getDefaultTime = (): Time => getStoredDashboardDefaultTime(getTimezone());
 
 const getDefaultTimeState = () => getTimeState(getDefaultTime());
 

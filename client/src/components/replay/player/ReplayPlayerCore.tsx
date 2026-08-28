@@ -1,16 +1,21 @@
+import type { SessionReplayEvent } from "@/api/analytics/endpoints";
+import { useShallow } from "zustand/react/shallow";
+
+import { useReplayStore } from "../replayStore";
 import { useReplayPlayer } from "./hooks/useReplayPlayer";
 import { ReplayPlayerOverlay } from "./ReplayPlayerOverlay";
 
 interface ReplayPlayerCoreProps {
-  data: { events: any[] } | undefined;
+  data: { events: SessionReplayEvent[] } | undefined;
   width: number;
   height: number;
-  onPlayPause: () => void;
-  isPlaying: boolean;
 }
 
-export function ReplayPlayerCore({ data, width, height, onPlayPause, isPlaying }: ReplayPlayerCoreProps) {
+export function ReplayPlayerCore({ data, width, height }: ReplayPlayerCoreProps) {
   const { playerContainerRef } = useReplayPlayer({ data, width, height });
+  const { isPlaying, togglePlayback } = useReplayStore(
+    useShallow(state => ({ isPlaying: state.isPlaying, togglePlayback: state.togglePlayback }))
+  );
 
   return (
     <div className="flex-1 flex items-center justify-center overflow-hidden relative">
@@ -22,7 +27,7 @@ export function ReplayPlayerCore({ data, width, height, onPlayPause, isPlaying }
         }}
       />
 
-      <ReplayPlayerOverlay onPlayPause={onPlayPause} isPlaying={isPlaying} />
+      <ReplayPlayerOverlay onPlayPause={togglePlayback} isPlaying={isPlaying} />
     </div>
   );
 }

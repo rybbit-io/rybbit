@@ -15,7 +15,11 @@ import useMediaQuery from "@/components/ui/hooks/useMediaQuery";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { timezones } from "@/lib/dateTimeUtils";
-import { getDashboardTimeForRange, type DashboardDefaultTimeRange } from "@/lib/defaultTimeRange";
+import {
+  DASHBOARD_TIME_PRESET_GROUPS,
+  getDashboardTimeForRange,
+  type DashboardDefaultTimeRange,
+} from "@/lib/defaultTimeRange";
 import { deriveTimeState, getAbsoluteBounds } from "@/lib/time";
 import { cn } from "@/lib/utils";
 import { DateTime } from "luxon";
@@ -23,7 +27,7 @@ import { Check, Globe } from "lucide-react";
 import { useExtracted } from "next-intl";
 import { Fragment, useState } from "react";
 import { DateRange } from "react-day-picker";
-import { PRESET_GROUPS, usePresetLabels } from "./presets";
+import { usePresetLabels } from "./presets";
 import {
   describeBounds,
   rangeFieldsForTime,
@@ -118,7 +122,7 @@ export function RangePanel({
       return { time: next, fields: rangeFieldsForTime(next, zone) };
     });
 
-  const groups = PRESET_GROUPS.filter(group => pastMinutesEnabled || group.id !== "realtime");
+  const groups = DASHBOARD_TIME_PRESET_GROUPS.filter(group => pastMinutesEnabled || !group.pastMinutesOnly);
 
   const bounds = getAbsoluteBounds(draft.time, zone);
   const selected: DateRange | undefined = bounds
@@ -154,10 +158,10 @@ export function RangePanel({
                   their contents, and cmdk drops the rules automatically while a
                   search is filtering across them. */}
               {groups.map((group, index) => (
-                <Fragment key={group.id}>
+                <Fragment key={group.key}>
                   {index > 0 && <CommandSeparator />}
                   <CommandGroup>
-                    {group.presets.map(preset => (
+                    {group.ranges.map(preset => (
                       <CommandItem
                         key={preset}
                         value={presetLabels[preset]}

@@ -24,8 +24,9 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 
-import { deleteSite, moveSite, updateSiteConfig, SiteResponse } from "@/api/admin/endpoints";
+import { deleteSite, moveSite, SiteResponse } from "@/api/admin/endpoints";
 import { adminMoveSite } from "@/api/admin/endpoints/adminSites";
+import { useUpdateSiteConfiguration } from "@/api/admin/hooks/useSiteConfiguration";
 import { useUserOrganizations } from "@/api/admin/hooks/useOrganizations";
 import { useGetSitesFromOrg } from "@/api/admin/hooks/useSites";
 import { RemoteOrganizationCombobox } from "@/app/admin/components/shared/RemoteOrganizationCombobox";
@@ -62,6 +63,7 @@ export function GeneralTab({
 }: GeneralTabProps) {
   const t = useExtracted();
   const { refetch } = useGetSitesFromOrg(siteMetadata?.organizationId ?? "", { enabled: !adminMode });
+  const { mutateAsync: updateSiteConfiguration } = useUpdateSiteConfiguration();
   const { data: userOrganizations } = useUserOrganizations();
   const queryClient = useQueryClient();
   const router = useRouter();
@@ -108,7 +110,7 @@ export function GeneralTab({
     ) => {
       setLoadingStates(prev => ({ ...prev, [key]: true }));
       try {
-        await updateSiteConfig(siteMetadata.siteId, { [key]: checked });
+        await updateSiteConfiguration({ siteId: siteMetadata.siteId, config: { [key]: checked } });
         setToggleStates(prev => ({ ...prev, [key]: checked }));
         if (key === "public") {
           onPublicChange?.(checked);
@@ -119,7 +121,6 @@ export function GeneralTab({
             : successMessage.disabled
           : `${key.replace(/([A-Z])/g, " $1").toLowerCase()} ${checked ? "enabled" : "disabled"}`;
         toast.success(message);
-        refreshSiteLists();
       } catch (error) {
         console.error(`Error updating ${key}:`, error);
         toast.error(`Failed to update ${key.replace(/([A-Z])/g, " $1").toLowerCase()}`);
@@ -128,7 +129,7 @@ export function GeneralTab({
         setLoadingStates(prev => ({ ...prev, [key]: false }));
       }
     },
-    [siteMetadata.siteId, onPublicChange, refreshSiteLists]
+    [siteMetadata.siteId, onPublicChange, updateSiteConfiguration]
   );
 
   const handleNameChange = async () => {
@@ -139,10 +140,9 @@ export function GeneralTab({
 
     try {
       setIsChangingName(true);
-      await updateSiteConfig(siteMetadata.siteId, { name: newName.trim() });
+      await updateSiteConfiguration({ siteId: siteMetadata.siteId, config: { name: newName.trim() } });
       toast.success(t("Name updated successfully"));
       router.refresh();
-      refreshSiteLists();
     } catch (error) {
       console.error("Error changing name:", error);
       toast.error(t("Failed to update name"));
@@ -160,10 +160,9 @@ export function GeneralTab({
     try {
       setIsChangingDomain(true);
       const normalizedDomain = isMobileSite ? newDomain.trim() : normalizeDomain(newDomain);
-      await updateSiteConfig(siteMetadata.siteId, { domain: normalizedDomain });
+      await updateSiteConfiguration({ siteId: siteMetadata.siteId, config: { domain: normalizedDomain } });
       toast.success(isMobileSite ? t("App identifier updated successfully") : t("Domain updated successfully"));
       router.refresh();
-      refreshSiteLists();
     } catch (error) {
       console.error("Error changing domain:", error);
       toast.error(t("Failed to update domain"));

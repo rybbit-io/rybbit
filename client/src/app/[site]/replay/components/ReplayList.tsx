@@ -14,10 +14,10 @@ import { cn, formatter } from "../../../../lib/utils";
 
 export function ReplayList({ onSelect }: { onSelect?: () => void }) {
   const t = useExtracted();
-  const { sessionId, setSessionId, minDuration, setMinDuration } = useReplayStore(
+  const { sessionId, openSession, minDuration, setMinDuration } = useReplayStore(
     useShallow(s => ({
       sessionId: s.sessionId,
-      setSessionId: s.setSessionId,
+      openSession: s.openSession,
       minDuration: s.minDuration,
       setMinDuration: s.setMinDuration,
     }))
@@ -42,9 +42,9 @@ export function ReplayList({ onSelect }: { onSelect?: () => void }) {
 
   useEffect(() => {
     if (flattenedData.length > 0 && !sessionId) {
-      setSessionId(flattenedData[0].session_id);
+      openSession(flattenedData[0].session_id);
     }
-  }, [flattenedData]);
+  }, [flattenedData, openSession, sessionId]);
 
   useEffect(() => {
     if (entry?.isIntersecting && hasNextPage && !isFetchingNextPage && !isLoading) {
@@ -95,7 +95,6 @@ export function ReplayList({ onSelect }: { onSelect?: () => void }) {
       <div className="rounded-lg border border-neutral-100 dark:border-neutral-800 bg-white dark:bg-neutral-900 flex flex-col flex-1 min-h-0 overflow-hidden">
         {/* [&>div]:!block forces Radix's display:table viewport wrapper to block so card truncate is bounded */}
         <ScrollArea className="h-full" viewportClassName="[&>div]:!block">
-
           {isLoading ? (
             Array.from({ length: 20 }).map((_, index) => <ReplayCardSkeleton key={`loading-${index}`} />)
           ) : flattenedData.length === 0 ? (

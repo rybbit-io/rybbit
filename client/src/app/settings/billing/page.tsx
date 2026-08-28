@@ -7,6 +7,7 @@ import { useStripeSubscription } from "../../../lib/subscription/useStripeSubscr
 import { NoOrganization } from "../../../components/NoOrganization";
 import { ExpiredTrialPlan } from "../../../components/subscription/ExpiredTrialPlan";
 import { useSetPageTitle } from "../../../hooks/useSetPageTitle";
+import { useOrganizationAccess } from "../../../hooks/useOrganizationAccess";
 import { FreePlan } from "../../../components/subscription/FreePlan";
 import { OverridePlan } from "../../../components/subscription/OverridePlan";
 import { CustomPlan } from "../../../components/subscription/CustomPlan";
@@ -23,6 +24,7 @@ export default function OrganizationBillingPage() {
 
   const { data: activeOrg, isPending } = authClient.useActiveOrganization();
   const { data: session } = authClient.useSession();
+  const access = useOrganizationAccess();
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -30,10 +32,6 @@ export default function OrganizationBillingPage() {
       window.rewardful?.("convert", { email: session.user.email });
     }
   }, [session?.user?.email]);
-
-  // Check if the current user is an owner by looking at the members in the active organization
-  const currentUserMember = activeOrg?.members?.find(member => member.userId === session?.user?.id);
-  const isOwner = currentUserMember?.role === "owner";
 
   const isLoading = isLoadingSubscription || isPending;
 
@@ -43,7 +41,7 @@ export default function OrganizationBillingPage() {
       return <NoOrganization message={t("You need to select an organization to manage your subscription.")} />;
     }
 
-    if (!isOwner) {
+    if (!access.decisions.manageSubscription.allowed) {
       return (
         <Card className="p-6 flex flex-col items-center text-center w-full">
           <div className="mx-auto w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mb-4">

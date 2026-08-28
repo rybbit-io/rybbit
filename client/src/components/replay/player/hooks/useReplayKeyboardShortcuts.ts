@@ -1,22 +1,34 @@
 import { useEffect } from "react";
 
 interface UseReplayKeyboardShortcutsProps {
-  player: any;
+  enabled: boolean;
   onSkipBack: () => void;
   onSkipForward: () => void;
   onPlayPause: () => void;
 }
 
+// Replay players can stack when the fullscreen drawer opens over the page
+// player. Only the most recently mounted player should own document shortcuts.
+const keyboardShortcutOwners: symbol[] = [];
+
 export const useReplayKeyboardShortcuts = ({
-  player,
+  enabled,
   onSkipBack,
   onSkipForward,
   onPlayPause,
 }: UseReplayKeyboardShortcutsProps) => {
   useEffect(() => {
+    if (!enabled) return;
+
+    const owner = Symbol("replay-keyboard-shortcuts");
+    keyboardShortcutOwners.push(owner);
+
     const handleKeyDown = (event: KeyboardEvent) => {
-      // Only handle hotkeys when the player exists and focus is not on an input/textarea
-      if (!player || event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement) {
+      if (
+        keyboardShortcutOwners.at(-1) !== owner ||
+        event.target instanceof HTMLInputElement ||
+        event.target instanceof HTMLTextAreaElement
+      ) {
         return;
       }
 
@@ -40,6 +52,8 @@ export const useReplayKeyboardShortcuts = ({
 
     return () => {
       document.removeEventListener("keydown", handleKeyDown);
+      const ownerIndex = keyboardShortcutOwners.lastIndexOf(owner);
+      if (ownerIndex !== -1) keyboardShortcutOwners.splice(ownerIndex, 1);
     };
-  }, [player, onSkipBack, onSkipForward, onPlayPause]);
+  }, [enabled, onSkipBack, onSkipForward, onPlayPause]);
 };
