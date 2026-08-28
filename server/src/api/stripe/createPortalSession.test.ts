@@ -12,8 +12,8 @@ vi.mock("../../lib/stripe.js", () => ({
   },
 }));
 
-// Real Drizzle queries against PGlite so the inline membership check — the SOLE
-// authorization gate on this route — is exercised for real.
+// Real Drizzle queries against PGlite exercise the Organization Billing owner
+// gate through the route's public Interface.
 vi.mock("../../db/postgres/postgres.js", async () => {
   const { PGlite } = await import("@electric-sql/pglite");
   const { drizzle } = await import("drizzle-orm/pglite");
@@ -24,6 +24,7 @@ vi.mock("../../db/postgres/postgres.js", async () => {
 });
 
 import { sql } from "../../db/postgres/postgres.js";
+import { invalidateCurrentStripeSubscription } from "../../services/billing/organizationBilling.js";
 import { createPortalSession } from "./createPortalSession.js";
 
 const DDL = `
@@ -56,6 +57,7 @@ beforeAll(async () => {
 
 beforeEach(async () => {
   vi.clearAllMocks();
+  invalidateCurrentStripeSubscription("cus_1");
   await (sql as any).exec(`TRUNCATE "organization", "member"`);
   await (sql as any).exec(`
     INSERT INTO "organization" ("id","name","slug","stripeCustomerId") VALUES
@@ -66,9 +68,9 @@ beforeEach(async () => {
       ('m_member','org_1','u_member','member'),
       ('m_outsider','org_2','u_outsider','owner');
   `);
-  mocks.subscriptionsList.mockImplementation(async ({ status }: any) =>
-    status === "active" ? { data: [{ id: "sub_1", cancel_at_period_end: false }] } : { data: [] }
-  );
+  mocks.subscriptionsList.mockResolvedValue({
+    data: [{ id: "sub_1", status: "active", created: 1, cancel_at_period_end: false }],
+  });
   mocks.portalSessionsCreate.mockResolvedValue({ url: "https://billing.stripe.com/session/xyz" });
 });
 
@@ -151,10 +153,10 @@ describe("createPortalSession — flow types", () => {
     });
   });
 
-  it("falls back to the trialing subscription when no active one exists", async () => {
-    mocks.subscriptionsList.mockImplementation(async ({ status }: any) =>
-      status === "trialing" ? { data: [{ id: "sub_trial", cancel_at_period_end: false }] } : { data: [] }
-    );
+  it("targets a trialing subscription when no active one exists", async () => {
+    mocks.subscriptionsList.mockResolvedValue({
+      data: [{ id: "sub_trial", status: "trialing", created: 1, cancel_at_period_end: false }],
+    });
     const reply = replyStub();
 
     await createPortalSession(requestStub("u_owner", { ...validBody, flowType: "subscription_update" }), reply);
@@ -162,6 +164,24 @@ describe("createPortalSession — flow types", () => {
     expect(mocks.portalSessionsCreate).toHaveBeenCalledWith(
       expect.objectContaining({
         flow_data: { type: "subscription_update", subscription_update: { subscription: "sub_trial" } },
+      })
+    );
+  });
+
+  it("preserves active-first selection when a newer trialing subscription also exists", async () => {
+    mocks.subscriptionsList.mockResolvedValue({
+      data: [
+        { id: "sub_active", status: "active", created: 1, cancel_at_period_end: false },
+        { id: "sub_trial", status: "trialing", created: 2, cancel_at_period_end: false },
+      ],
+    });
+    const reply = replyStub();
+
+    await createPortalSession(requestStub("u_owner", { ...validBody, flowType: "subscription_update" }), reply);
+
+    expect(mocks.portalSessionsCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        flow_data: { type: "subscription_update", subscription_update: { subscription: "sub_active" } },
       })
     );
   });
@@ -190,9 +210,9 @@ describe("createPortalSession — flow types", () => {
   });
 
   it("opens the plain portal when the subscription is already set to cancel at period end", async () => {
-    mocks.subscriptionsList.mockImplementation(async ({ status }: any) =>
-      status === "active" ? { data: [{ id: "sub_1", cancel_at_period_end: true }] } : { data: [] }
-    );
+    mocks.subscriptionsList.mockResolvedValue({
+      data: [{ id: "sub_1", status: "active", created: 1, cancel_at_period_end: true }],
+    });
     const reply = replyStub();
 
     await createPortalSession(requestStub("u_owner", { ...validBody, flowType: "subscription_cancel" }), reply);

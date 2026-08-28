@@ -1,7 +1,7 @@
 import { FastifyReply, FastifyRequest } from "fastify";
 import SqlString from "sqlstring";
 import { getTimeStatement } from "../utils/timeWindow.js";
-import { getFilterStatement } from "../utils/getFilterStatement.js";
+import { EVENT_FILTER_STATEMENT_OPTIONS, getFilterStatement } from "../utils/getFilterStatement.js";
 import { FilterParams } from "@rybbit/shared";
 import { AUTOCAPTURE_PATTERN_PROPS, AutocaptureTargetType, isAutocaptureTargetType } from "../utils/eventConditions.js";
 import { analyticsRoute, runAnalyticsQuery } from "../utils/analyticsQuery.js";
@@ -29,7 +29,7 @@ export const buildAutocaptureValuesQuery = (
 
   const timeStatement = getTimeStatement(query);
   const filterStatement = filters
-    ? getFilterStatement(filters, siteId, timeStatement, { sessionLevelParams: ["channel"] })
+    ? getFilterStatement(filters, siteId, timeStatement, EVENT_FILTER_STATEMENT_OPTIONS)
     : "";
 
   const propExtracts = AUTOCAPTURE_PATTERN_PROPS[type]

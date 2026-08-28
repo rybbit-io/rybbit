@@ -1,7 +1,7 @@
 import { FastifyReply, FastifyRequest } from "fastify";
 import { db } from "../../db/postgres/postgres.js";
 import { cancellationFeedback } from "../../db/postgres/schema.js";
-import { getOrgMembership, isOrgOwner } from "../../lib/access.js";
+import { getOrganizationBillingAccount } from "../../services/billing/organizationBilling.js";
 
 interface CancellationFeedbackBody {
   organizationId: string;
@@ -42,13 +42,14 @@ export async function submitCancellationFeedback(
   }
 
   try {
-    // Verify user has permission (owner only)
-    const membership = await getOrgMembership(userId, organizationId);
-
-    if (!isOrgOwner(membership)) {
+    const billingAccount = await getOrganizationBillingAccount(userId, organizationId);
+    if (!billingAccount.ok && billingAccount.reason === "not_owner") {
       return reply.status(403).send({
         error: "Only organization owners can submit cancellation feedback",
       });
+    }
+    if (!billingAccount.ok) {
+      return reply.status(404).send({ error: "Organization not found" });
     }
 
     await db.insert(cancellationFeedback).values({

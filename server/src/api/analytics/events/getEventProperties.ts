@@ -1,7 +1,7 @@
 import { FastifyReply, FastifyRequest } from "fastify";
 import { getTimeStatement } from "../utils/timeWindow.js";
 import { FilterParams } from "@rybbit/shared";
-import { getFilterStatement } from "../utils/getFilterStatement.js";
+import { EVENT_FILTER_STATEMENT_OPTIONS, getFilterStatement } from "../utils/getFilterStatement.js";
 import { analyticsRoute, runAnalyticsQuery } from "../utils/analyticsQuery.js";
 
 export type GetEventPropertiesResponse = {
@@ -25,7 +25,7 @@ export const buildEventPropertiesQuery = (query: GetEventPropertiesRequest["Quer
   const timeStatement = getTimeStatement(query);
 
   const filterStatement = filters
-    ? getFilterStatement(filters, siteId, timeStatement, { sessionLevelParams: ["channel"] })
+    ? getFilterStatement(filters, siteId, timeStatement, EVENT_FILTER_STATEMENT_OPTIONS)
     : "";
 
   return `

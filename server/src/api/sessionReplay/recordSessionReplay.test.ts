@@ -4,19 +4,18 @@ import type { RecordSessionReplayRequest } from "../../types/sessionReplay.js";
 import { recordSessionReplay } from "./recordSessionReplay.js";
 
 const mocks = vi.hoisted(() => ({
-  getConfig: vi.fn(),
   decideSiteExclusion: vi.fn(),
   isSiteOverLimit: vi.fn(),
   isSiteWithoutReplay: vi.fn(),
+  lookupAsn: vi.fn(),
   recordEvents: vi.fn(),
+  resolveSiteIngestionContext: vi.fn(),
   loggerInfo: vi.fn(),
   loggerError: vi.fn(),
 }));
 
-vi.mock("../../lib/siteConfig.js", () => ({
-  siteConfig: {
-    getConfig: mocks.getConfig,
-  },
+vi.mock("../../services/tracker/siteIngestionContext.js", () => ({
+  resolveSiteIngestionContext: mocks.resolveSiteIngestionContext,
 }));
 
 vi.mock("../../services/sites/siteExclusionDecision.js", () => ({
@@ -56,12 +55,28 @@ type RequestOverrides = {
 const baseConfig = {
   siteId: 42,
   sessionReplay: true,
-  excludedIPs: [],
-  excludedCountries: [],
-  excludedPaths: [],
-  excludedHostnames: [],
-  excludedUserAgents: [],
+  excludedIPs: [] as string[],
+  excludedCountries: [] as string[],
+  excludedPaths: [] as string[],
+  excludedHostnames: [] as string[],
+  excludedUserAgents: [] as string[],
+  saltUserIds: true,
 };
+
+const receivedAt = new Date("2026-08-28T23:59:59.999Z");
+
+function ingestionContext(site = baseConfig) {
+  return {
+    candidateIps: ["198.51.100.10", "203.0.113.10"],
+    headers: {},
+    ipAddress: "198.51.100.10",
+    lookupAsn: mocks.lookupAsn,
+    receivedAt,
+    site,
+    trustedServerSideIngestion: false,
+    userAgent: "Mozilla/5.0 HeadlessChrome/120",
+  };
+}
 
 const baseBody: RecordSessionReplayRequest = {
   userId: "user-1",
@@ -113,7 +128,7 @@ function createReply(): ReplyStub {
 describe("recordSessionReplay exclusions", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mocks.getConfig.mockResolvedValue(baseConfig);
+    mocks.resolveSiteIngestionContext.mockResolvedValue(ingestionContext());
     mocks.decideSiteExclusion.mockResolvedValue({ excluded: false });
     mocks.isSiteOverLimit.mockReturnValue(false);
     mocks.isSiteWithoutReplay.mockReturnValue(false);
@@ -122,24 +137,35 @@ describe("recordSessionReplay exclusions", () => {
 
   it("records the replay when the Site Exclusion Decision accepts the request", async () => {
     const reply = createReply();
+    const bodyWithUntrustedIdentityOverrides = {
+      ...baseBody,
+      ip_address: "203.0.113.99",
+      user_agent: "SpoofedBrowser/1.0",
+    } as RecordSessionReplayRequest;
 
-    await recordSessionReplay(createRequest(), reply);
+    await recordSessionReplay(createRequest({ body: bodyWithUntrustedIdentityOverrides }), reply);
 
     expect(mocks.decideSiteExclusion).toHaveBeenCalledOnce();
     expect(mocks.recordEvents).toHaveBeenCalledWith(42, baseBody, {
-      userAgent: "Mozilla/5.0 HeadlessChrome/120",
       ipAddress: "198.51.100.10",
+      lookupAsn: mocks.lookupAsn,
       origin: "https://example.com",
+      receivedAt,
       referrer: "https://example.com/admin/users",
+      saltUserIds: true,
+      userAgent: "Mozilla/5.0 HeadlessChrome/120",
     });
+    expect(mocks.resolveSiteIngestionContext).toHaveBeenCalledWith(expect.anything(), { site_id: "site_abc" });
     expect(reply.sentPayload).toEqual({ success: true });
   });
 
   it("maps an IP Site Exclusion Decision to the replay skip response", async () => {
-    mocks.getConfig.mockResolvedValue({
-      ...baseConfig,
-      excludedIPs: ["198.51.100.0/24"],
-    });
+    mocks.resolveSiteIngestionContext.mockResolvedValue(
+      ingestionContext({
+        ...baseConfig,
+        excludedIPs: ["198.51.100.0/24"],
+      })
+    );
     mocks.decideSiteExclusion.mockResolvedValue({
       excluded: true,
       reason: "ip",
@@ -169,10 +195,12 @@ describe("recordSessionReplay exclusions", () => {
   });
 
   it("does not record replay batches for excluded page paths", async () => {
-    mocks.getConfig.mockResolvedValue({
-      ...baseConfig,
-      excludedPaths: ["/admin/*"],
-    });
+    mocks.resolveSiteIngestionContext.mockResolvedValue(
+      ingestionContext({
+        ...baseConfig,
+        excludedPaths: ["/admin/*"],
+      })
+    );
     mocks.decideSiteExclusion.mockResolvedValue({
       excluded: true,
       reason: "path",
@@ -196,10 +224,12 @@ describe("recordSessionReplay exclusions", () => {
   });
 
   it("does not record replay batches for excluded hostnames", async () => {
-    mocks.getConfig.mockResolvedValue({
-      ...baseConfig,
-      excludedHostnames: ["*.vercel.app"],
-    });
+    mocks.resolveSiteIngestionContext.mockResolvedValue(
+      ingestionContext({
+        ...baseConfig,
+        excludedHostnames: ["*.vercel.app"],
+      })
+    );
     mocks.decideSiteExclusion.mockResolvedValue({
       excluded: true,
       reason: "hostname",
@@ -232,10 +262,12 @@ describe("recordSessionReplay exclusions", () => {
   });
 
   it("does not record replay batches for excluded user agents", async () => {
-    mocks.getConfig.mockResolvedValue({
-      ...baseConfig,
-      excludedUserAgents: ["HeadlessChrome"],
-    });
+    mocks.resolveSiteIngestionContext.mockResolvedValue(
+      ingestionContext({
+        ...baseConfig,
+        excludedUserAgents: ["HeadlessChrome"],
+      })
+    );
     mocks.decideSiteExclusion.mockResolvedValue({
       excluded: true,
       reason: "user_agent",

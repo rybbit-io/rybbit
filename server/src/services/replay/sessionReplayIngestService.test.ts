@@ -31,17 +31,16 @@ vi.mock("../storage/r2StorageService.js", () => ({
   },
 }));
 
-vi.mock("../../lib/siteConfig.js", () => ({
-  siteConfig: {},
-}));
-
 import { SessionReplayIngestService } from "./sessionReplayIngestService.js";
 
 const requestMeta = {
   ipAddress: "198.51.100.10",
+  lookupAsn: vi.fn().mockReturnValue(null),
   userAgent: "Standardized Corporate Browser/1.0",
   origin: "https://internal.example",
+  receivedAt: new Date("2026-08-28T23:59:59.999Z"),
   referrer: "",
+  saltUserIds: true,
 };
 
 function replayRequest(identifiedUserId: string): RecordSessionReplayRequest {
@@ -93,7 +92,11 @@ describe("SessionReplayIngestService identity", () => {
 
     await service.recordEvents(42, replayRequest(""), requestMeta);
 
-    expect(mocks.generateUserId).toHaveBeenCalledWith(requestMeta.ipAddress, requestMeta.userAgent, 42);
+    expect(mocks.generateUserId).toHaveBeenCalledWith(requestMeta.ipAddress, requestMeta.userAgent, 42, {
+      lookupAsn: requestMeta.lookupAsn,
+      receivedAt: requestMeta.receivedAt,
+      saltUserIds: true,
+    });
     expect(mocks.updateSession).toHaveBeenCalledWith({
       userId: "shared-fingerprint",
       identifiedUserId: "",

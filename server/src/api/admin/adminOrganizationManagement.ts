@@ -5,7 +5,7 @@ import { z } from "zod";
 import { db } from "../../db/postgres/postgres.js";
 import { member, memberSiteAccess, organization, sites, user } from "../../db/postgres/schema.js";
 import { siteIdsInOrganization } from "../../lib/access.js";
-import { invalidateSitesAccessCache } from "../../lib/auth-utils.js";
+import { invalidateSitesAccessCache } from "../../services/sites/siteAccessCache.js";
 import { APPSUMO_TIER_LIMITS, getStripePrices } from "../../lib/const.js";
 
 const organizationOptionsQuerySchema = z.object({

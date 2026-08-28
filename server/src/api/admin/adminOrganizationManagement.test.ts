@@ -10,7 +10,7 @@ vi.mock("../../db/postgres/postgres.js", async () => {
   return { db: drizzle(client, { schema }), sql: client };
 });
 
-vi.mock("../../lib/auth-utils.js", () => ({
+vi.mock("../../services/sites/siteAccessCache.js", () => ({
   invalidateSitesAccessCache: mocks.invalidateSitesAccessCache,
 }));
 

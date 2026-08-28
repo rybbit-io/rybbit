@@ -175,6 +175,27 @@ describe("ImportQuotaTracker", () => {
       const tracker = makeTracker({}, Infinity, "202401");
       expect(tracker.canImportBatch(["2020-01-01 00:00:00"])).toEqual([0]);
     });
+
+    it("restores reserved quota when a write fails", () => {
+      const tracker = makeTracker({}, 1, "202312");
+      const reservation = tracker.reserveBatch(["2024-06-01 10:00:00"]);
+
+      expect(reservation.allowedIndices).toEqual([0]);
+      expect(tracker.canImportBatch(["2024-06-02 10:00:00"])).toEqual([]);
+
+      reservation.rollback();
+      expect(tracker.canImportBatch(["2024-06-02 10:00:00"])).toEqual([0]);
+    });
+
+    it("rolls a reservation back at most once", () => {
+      const tracker = makeTracker({ "202406": 1 }, 2, "202312");
+      const reservation = tracker.reserveBatch(["2024-06-01 10:00:00"]);
+
+      reservation.rollback();
+      reservation.rollback();
+
+      expect(tracker.canImportBatch(["2024-06-02 10:00:00", "2024-06-03 10:00:00"])).toEqual([0]);
+    });
   });
 
   describe("getHistoricalWindowMonths (via create)", () => {

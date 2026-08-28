@@ -1,11 +1,6 @@
 import type { FastifyRequest } from "fastify";
-import { createAsnLookup, type AsnLookup } from "../../db/geolocation/asn.js";
-import { checkApiKey } from "../../lib/auth-utils.js";
-import { hasScope } from "../../lib/scopes.js";
-import { siteConfig, type SiteConfigData } from "../../lib/siteConfig.js";
-import { getRequestUserAgent } from "../../utils.js";
-import { collectCandidateClientIps, resolveClientIp } from "./resolveClientIp.js";
 import type { ValidatedTrackingPayload } from "./trackingPayload.js";
+import { resolveSiteIngestionContext, type SiteIngestionContext } from "./siteIngestionContext.js";
 
 /**
  * One tracking request, fully resolved.
@@ -20,55 +15,9 @@ import type { ValidatedTrackingPayload } from "./trackingPayload.js";
  * passed by value. It carries no Fastify types, so ingestion can be exercised
  * directly with an object literal.
  */
-export interface TrackingRequest {
+export interface TrackingRequest extends SiteIngestionContext {
   /** The event body, already validated. */
   payload: ValidatedTrackingPayload;
-  /** Site Configuration for `payload.site_id`, fetched once for the request. */
-  site: SiteConfigData;
-  /**
-   * The authoritative client IP: identity, geolocation and bot detection all
-   * use this one. Never re-resolve it from headers downstream.
-   */
-  ipAddress: string;
-  /** The authoritative user agent, under the same rule as `ipAddress`. */
-  userAgent: string;
-  /**
-   * Every plausible client IP for this request (edge, forwarded hops, socket).
-   * Exclusion matching only — over-matching is the safe failure mode there.
-   */
-  candidateIps: string[];
-  /**
-   * A bearer token with `ingest:write` scope for this Site let the payload
-   * override IP and user agent. Bot detection is skipped for these.
-   */
-  trustedServerSideIngestion: boolean;
-  /** Request headers, for the layers that read beyond the user agent. */
-  headers: FastifyRequest["headers"];
-  /** Request-scoped ASN resolver: each IP is looked up at most once per event. */
-  lookupAsn: AsnLookup;
-  /**
-   * When the request arrived. This is the event's timestamp *and* the instant
-   * that decides which UTC day its salted fingerprint belongs to, so the two can
-   * never disagree about the day.
-   */
-  receivedAt: Date;
-}
-
-/**
- * Whether a bearer token authorises this request to declare its own client IP
- * and user agent.
- *
- * An under-scoped bearer degrades to untrusted client-side traffic (no 4xx) —
- * this is a public ingestion endpoint, not an authenticated API.
- */
-async function isTrustedServerSideIngestion(request: FastifyRequest, siteId: number): Promise<boolean> {
-  const authHeader = request.headers["authorization"];
-  if (typeof authHeader !== "string" || !authHeader.startsWith("Bearer ")) {
-    return false;
-  }
-
-  const apiKeyResult = await checkApiKey(request, { siteId });
-  return apiKeyResult.valid && hasScope(apiKeyResult.statements, { resource: "ingest", action: "write" });
 }
 
 /**
@@ -81,33 +30,11 @@ export async function resolveTrackingRequest(
   request: FastifyRequest,
   payload: ValidatedTrackingPayload
 ): Promise<TrackingRequest | null> {
-  // Stamped before the first await: a cold Site Configuration read or a slow
-  // API-key check must not push the event's time forward into another bucket.
-  const receivedAt = new Date();
-
-  const site = await siteConfig.getConfig(payload.site_id);
-  if (!site) return null;
-
-  const lookupAsn = createAsnLookup();
-  const trustedServerSideIngestion = await isTrustedServerSideIngestion(request, site.siteId);
-
-  const requestIpAddress = resolveClientIp(request, { firstPartyProxy: site.firstPartyProxy, lookupAsn });
-  const requestUserAgent = getRequestUserAgent(request.headers);
-
-  // Only a trusted bearer may speak for someone else; for everyone else the
-  // payload's ip_address/user_agent are ignored rather than trusted.
-  const ipAddress = trustedServerSideIngestion ? payload.ip_address || requestIpAddress : requestIpAddress;
-  const userAgent = trustedServerSideIngestion ? payload.user_agent || requestUserAgent : requestUserAgent;
+  const context = await resolveSiteIngestionContext(request, payload);
+  if (!context) return null;
 
   return {
+    ...context,
     payload,
-    site,
-    ipAddress,
-    userAgent,
-    candidateIps: collectCandidateClientIps(request, [ipAddress, requestIpAddress]),
-    trustedServerSideIngestion,
-    headers: request.headers,
-    lookupAsn,
-    receivedAt,
   };
 }

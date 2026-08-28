@@ -1,7 +1,7 @@
 import { FilterParams } from "@rybbit/shared";
 import { FastifyReply, FastifyRequest } from "fastify";
 import { TimeBucket } from "../types.js";
-import { getFilterStatement } from "../utils/getFilterStatement.js";
+import { EVENT_FILTER_STATEMENT_OPTIONS, getFilterStatement } from "../utils/getFilterStatement.js";
 import { getTimeStatement, TimeBucketToFn } from "../utils/timeWindow.js";
 import { analyticsRoute, runAnalyticsQuery } from "../utils/analyticsQuery.js";
 
@@ -32,9 +32,7 @@ export const buildSiteEventCountQuery = (query: GetSiteEventCountRequest["Querys
   const { bucket = "day" } = query;
 
   const timeStatement = getTimeStatement(query);
-  const filterStatement = getFilterStatement(query.filters, siteId, timeStatement, {
-    sessionLevelParams: ["channel"],
-  });
+  const filterStatement = getFilterStatement(query.filters, siteId, timeStatement, EVENT_FILTER_STATEMENT_OPTIONS);
 
   return `
     SELECT

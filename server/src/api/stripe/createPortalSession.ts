@@ -1,10 +1,10 @@
 import { FastifyReply, FastifyRequest } from "fastify";
 import { stripe } from "../../lib/stripe.js";
-import { db } from "../../db/postgres/postgres.js";
-import { organization } from "../../db/postgres/schema.js";
-import { eq } from "drizzle-orm";
-import { getOrgMembership, isOrgOwner } from "../../lib/access.js";
 import Stripe from "stripe";
+import {
+  getCurrentStripeSubscription,
+  getOrganizationBillingAccount,
+} from "../../services/billing/organizationBilling.js";
 
 interface PortalRequestBody {
   returnUrl: string;
@@ -27,89 +27,50 @@ export async function createPortalSession(request: FastifyRequest<{ Body: Portal
   }
 
   try {
-    // 1. Verify user has permission to manage billing for this organization
-    const membership = await getOrgMembership(userId, organizationId);
-
-    if (!isOrgOwner(membership)) {
+    const billingAccount = await getOrganizationBillingAccount(userId, organizationId);
+    if (!billingAccount.ok && billingAccount.reason === "not_owner") {
       return reply.status(403).send({
         error: "Only organization owners can manage billing",
       });
     }
-
-    // 2. Find the organization and its Stripe customer ID
-    const orgResult = await db
-      .select({
-        stripeCustomerId: organization.stripeCustomerId,
-      })
-      .from(organization)
-      .where(eq(organization.id, organizationId))
-      .limit(1);
-
-    const org = orgResult[0];
-
-    if (!org || !org.stripeCustomerId) {
+    if (!billingAccount.ok || !billingAccount.account.stripeCustomerId) {
       return reply.status(404).send({ error: "Organization or Stripe customer ID not found" });
     }
+    const stripeCustomerId = billingAccount.account.stripeCustomerId;
 
     // 3. Create a Stripe Billing Portal Session, with optional direct flow
     const sessionConfig: Stripe.BillingPortal.SessionCreateParams = {
-      customer: org.stripeCustomerId,
+      customer: stripeCustomerId,
       return_url: returnUrl, // The user will be redirected here after managing their billing
     };
 
     // If a specific flow is requested, add it to the configuration
     if (flowType) {
       if (flowType === "subscription_update") {
-        // For subscription_update flow, we need to fetch the subscription ID first
-        // Check both active and trialing statuses (trials have status "trialing")
-        let subscriptions = await (stripe as Stripe).subscriptions.list({
-          customer: org.stripeCustomerId,
-          status: "active",
-          limit: 1,
+        const subscription = await getCurrentStripeSubscription(stripeCustomerId, {
+          throwOnError: true,
+          fresh: true,
+          selection: "active_first",
         });
-
-        if (subscriptions.data.length === 0) {
-          subscriptions = await (stripe as Stripe).subscriptions.list({
-            customer: org.stripeCustomerId,
-            status: "trialing",
-            limit: 1,
-          });
-        }
-
-        if (subscriptions.data.length === 0) {
+        if (!subscription) {
           return reply.status(404).send({ error: "No active subscription found" });
         }
-
-        const subscriptionId = subscriptions.data[0].id;
 
         sessionConfig.flow_data = {
           type: "subscription_update",
           subscription_update: {
-            subscription: subscriptionId,
+            subscription: subscription.id,
           },
         };
       } else if (flowType === "subscription_cancel") {
-        // For subscription_cancel flow, we need to fetch the subscription ID first
-        // Check both active and trialing statuses (trials have status "trialing")
-        let subscriptions = await (stripe as Stripe).subscriptions.list({
-          customer: org.stripeCustomerId,
-          status: "active",
-          limit: 1,
+        const subscription = await getCurrentStripeSubscription(stripeCustomerId, {
+          throwOnError: true,
+          fresh: true,
+          selection: "active_first",
         });
-
-        if (subscriptions.data.length === 0) {
-          subscriptions = await (stripe as Stripe).subscriptions.list({
-            customer: org.stripeCustomerId,
-            status: "trialing",
-            limit: 1,
-          });
-        }
-
-        if (subscriptions.data.length === 0) {
+        if (!subscription) {
           return reply.status(404).send({ error: "No active subscription found" });
         }
-
-        const subscription = subscriptions.data[0];
 
         // Stripe rejects a subscription_cancel flow when the subscription is already scheduled
         // to cancel at period end ("already set to be canceled at period end"). In that case,

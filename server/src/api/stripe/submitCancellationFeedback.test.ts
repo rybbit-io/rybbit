@@ -1,7 +1,7 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
-// Real Drizzle queries against PGlite so the inline membership check — the SOLE
-// authorization gate on this route — and the feedback insert are exercised for real.
+// Real Drizzle queries against PGlite exercise the Organization Billing owner
+// gate and feedback insert through the route's public Interface.
 vi.mock("../../db/postgres/postgres.js", async () => {
   const { PGlite } = await import("@electric-sql/pglite");
   const { drizzle } = await import("drizzle-orm/pglite");
@@ -15,6 +15,7 @@ import { sql } from "../../db/postgres/postgres.js";
 import { submitCancellationFeedback } from "./submitCancellationFeedback.js";
 
 const DDL = `
+CREATE TABLE "organization" ("id" text PRIMARY KEY, "name" text NOT NULL, "slug" text, "createdAt" timestamp DEFAULT now(), "stripeCustomerId" text);
 CREATE TABLE "member" ("id" text PRIMARY KEY, "organizationId" text NOT NULL, "userId" text NOT NULL, "role" text NOT NULL, "createdAt" timestamp DEFAULT now(), "has_restricted_site_access" boolean NOT NULL DEFAULT false);
 CREATE TABLE "cancellation_feedback" (
   "id" serial PRIMARY KEY,
@@ -61,8 +62,11 @@ beforeAll(async () => {
 
 beforeEach(async () => {
   vi.clearAllMocks();
-  await (sql as any).exec(`TRUNCATE "member", "cancellation_feedback"`);
+  await (sql as any).exec(`TRUNCATE "organization", "member", "cancellation_feedback"`);
   await (sql as any).exec(`
+    INSERT INTO "organization" ("id","name","slug","stripeCustomerId") VALUES
+      ('org_1','Acme','acme','cus_1'),
+      ('org_2','Rival','rival','cus_2');
     INSERT INTO "member" ("id","organizationId","userId","role") VALUES
       ('m_owner','org_1','u_owner','owner'),
       ('m_member','org_1','u_member','member'),

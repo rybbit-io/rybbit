@@ -3,8 +3,7 @@ import { and, eq, or } from "drizzle-orm";
 import { clickhouse } from "../../../db/clickhouse/clickhouse.js";
 import { db } from "../../../db/postgres/postgres.js";
 import { userAliases, userProfiles } from "../../../db/postgres/schema.js";
-import { r2Storage } from "../../../services/storage/r2StorageService.js";
-import { processResults } from "../utils/utils.js";
+import { replayPayloadStorage } from "../../../services/replay/replayPayloadStorage.js";
 
 export interface DeleteUserRequest {
   Params: {
@@ -41,29 +40,12 @@ export async function deleteUser(req: FastifyRequest<DeleteUserRequest>, res: Fa
       )`;
     const queryParams = { siteId, userId, deviceIds };
 
-    // Delete R2-stored replay payloads first (cloud deployments); best-effort —
-    // proceed with ClickHouse deletion even if R2 cleanup fails.
-    if (r2Storage.isEnabled()) {
-      try {
-        const r2KeysResult = await clickhouse.query({
-          query: `
-            SELECT DISTINCT event_data_key
-            FROM session_replay_events
-            WHERE ${userCondition}
-              AND event_data_key IS NOT NULL
-          `,
-          query_params: queryParams,
-          format: "JSONEachRow",
-        });
-        const r2Keys = await processResults<{ event_data_key: string }>(r2KeysResult);
-        await Promise.all(r2Keys.map(row => r2Storage.deleteBatch(row.event_data_key)));
-      } catch (error) {
-        req.log.error({ err: error }, `Failed to delete R2 replay data for user ${userId}:`);
-      }
-    }
+    // Replay payload cleanup must finish before deleting its only object keys.
+    // If object storage is unavailable, retain all replay rows for a safe retry.
+    await replayPayloadStorage.deleteUserEvents(siteId, userId, deviceIds);
 
     await Promise.all(
-      ["events", "session_replay_events", "session_replay_metadata_v2"].map(table =>
+      ["events", "session_replay_metadata_v2"].map(table =>
         clickhouse.command({
           query: `DELETE FROM ${table} WHERE ${userCondition}`,
           query_params: queryParams,

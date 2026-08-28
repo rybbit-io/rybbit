@@ -1,5 +1,4 @@
 import { FastifyReply, FastifyRequest } from "fastify";
-import { invalidateSitesAccessCache } from "../../lib/auth-utils.js";
 import {
   type CreateSiteInput,
   SiteLifecycleError,
@@ -21,10 +20,6 @@ export async function addSite(
       organizationId: request.params.organizationId,
       createdBy: request.user?.id,
     });
-
-    if (request.user?.id) {
-      invalidateSitesAccessCache(request.user.id);
-    }
 
     return reply.status(201).send(newSite);
   } catch (error) {

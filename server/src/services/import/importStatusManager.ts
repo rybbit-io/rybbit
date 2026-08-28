@@ -6,6 +6,7 @@ import { DateTime } from "luxon";
 export type SelectImportStatus = typeof importStatus.$inferSelect;
 
 export async function createImport(data: {
+  importId: string;
   siteId: number;
   organizationId: string;
   platform: (typeof importPlatforms)[number];
@@ -13,6 +14,7 @@ export async function createImport(data: {
   const [result] = await db
     .insert(importStatus)
     .values({
+      importId: data.importId,
       siteId: data.siteId,
       organizationId: data.organizationId,
       platform: data.platform,
@@ -22,11 +24,12 @@ export async function createImport(data: {
   return result;
 }
 
-export async function updateImportProgress(
+export async function recordImportBatch(
   importId: string,
   importedEvents: number,
   skippedEvents: number,
-  invalidEvents: number
+  invalidEvents: number,
+  isLastBatch: boolean
 ): Promise<void> {
   await db
     .update(importStatus)
@@ -34,15 +37,7 @@ export async function updateImportProgress(
       importedEvents: sql`${importStatus.importedEvents} + ${importedEvents}`,
       skippedEvents: sql`${importStatus.skippedEvents} + ${skippedEvents}`,
       invalidEvents: sql`${importStatus.invalidEvents} + ${invalidEvents}`,
-    })
-    .where(eq(importStatus.importId, importId));
-}
-
-export async function completeImport(importId: string): Promise<void> {
-  await db
-    .update(importStatus)
-    .set({
-      completedAt: DateTime.utc().toISO(),
+      ...(isLastBatch ? { completedAt: DateTime.utc().toISO() } : {}),
     })
     .where(eq(importStatus.importId, importId));
 }

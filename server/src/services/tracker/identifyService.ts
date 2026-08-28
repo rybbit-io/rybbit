@@ -3,11 +3,10 @@ import { eq, and, sql } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "../../db/postgres/postgres.js";
 import { userProfiles, userAliases } from "../../db/postgres/schema.js";
-import { siteConfig } from "../../lib/siteConfig.js";
 import { identityBackfillQueue } from "./identityBackfillQueue.js";
 import { userIdService } from "../userId/userIdService.js";
-import { resolveClientIp } from "./resolveClientIp.js";
 import { createServiceLogger } from "../../lib/logger/logger.js";
+import { resolveSiteIngestionContext } from "./siteIngestionContext.js";
 
 const logger = createServiceLogger("identify-service");
 
@@ -70,24 +69,42 @@ export async function handleIdentify(request: FastifyRequest, reply: FastifyRepl
 
     const { site_id, anonymous_id, user_id, traits, is_new_identify, ip_address, user_agent } = validationResult.data;
 
-    // Get site configuration
-    const siteConfiguration = await siteConfig.getConfig(site_id);
-    if (!siteConfiguration) {
+    const ingestionContext = await resolveSiteIngestionContext(request, {
+      site_id,
+      ip_address,
+      user_agent,
+    });
+    if (!ingestionContext) {
       return reply.status(404).send({
         success: false,
         error: "Site not found",
       });
     }
 
-    const siteId = siteConfiguration.siteId;
+    const { site, ipAddress, userAgent, lookupAsn, receivedAt, trustedServerSideIngestion } = ingestionContext;
+    const siteId = site.siteId;
+
+    if (!trustedServerSideIngestion && (ip_address !== undefined || user_agent !== undefined)) {
+      logger.warn(
+        {
+          siteId,
+          ignoredIpAddressOverride: ip_address !== undefined,
+          ignoredUserAgentOverride: user_agent !== undefined,
+        },
+        "Ignored untrusted identity overrides; an ingest:write bearer is required"
+      );
+    }
 
     const anonymousId = anonymous_id
-      ? await userIdService.generateUserIdFromClientId(anonymous_id, siteId)
-      : await userIdService.generateUserId(
-          ip_address || resolveClientIp(request, { firstPartyProxy: siteConfiguration.firstPartyProxy }),
-          user_agent || request.headers["user-agent"] || "",
-          siteId
-        );
+      ? await userIdService.generateUserIdFromClientId(anonymous_id, siteId, {
+          saltUserIds: site.saltUserIds,
+          receivedAt,
+        })
+      : await userIdService.generateUserId(ipAddress, userAgent, siteId, {
+          saltUserIds: site.saltUserIds,
+          lookupAsn,
+          receivedAt,
+        });
 
     // Create alias if this is a new identify call (links anonymous_id to user_id)
     if (is_new_identify) {

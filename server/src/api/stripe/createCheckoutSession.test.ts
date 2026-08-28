@@ -12,8 +12,8 @@ vi.mock("../../lib/stripe.js", () => ({
   },
 }));
 
-// Real Drizzle queries against PGlite so the inline membership check — the SOLE
-// authorization gate on this route — is exercised for real.
+// Real Drizzle queries against PGlite exercise Organization Billing's owner
+// gate and Stripe-customer linkage through the route's public Interface.
 vi.mock("../../db/postgres/postgres.js", async () => {
   const { PGlite } = await import("@electric-sql/pglite");
   const { drizzle } = await import("drizzle-orm/pglite");
@@ -24,6 +24,7 @@ vi.mock("../../db/postgres/postgres.js", async () => {
 });
 
 import { sql } from "../../db/postgres/postgres.js";
+import { getOrCreateOrganizationStripeCustomer } from "../../services/billing/organizationBilling.js";
 import { createCheckoutSession } from "./createCheckoutSession.js";
 
 const DDL = `
@@ -152,6 +153,18 @@ describe("createCheckoutSession — authorization", () => {
 });
 
 describe("createCheckoutSession — customer creation and referral wiring", () => {
+  it("reuses the customer linked by a concurrent checkout instead of creating a duplicate", async () => {
+    const stripeCustomerId = await getOrCreateOrganizationStripeCustomer({
+      // Simulate a context resolved before another checkout linked cus_1.
+      account: { id: "org_1", name: "Acme", stripeCustomerId: null },
+      createdByUserId: "u_owner",
+      email: "owner@acme.com",
+    });
+
+    expect(stripeCustomerId).toBe("cus_1");
+    expect(mocks.customersCreate).not.toHaveBeenCalled();
+  });
+
   it("creates a Stripe customer and persists it when the org has none", async () => {
     await (sql as any).exec(`UPDATE "organization" SET "stripeCustomerId" = NULL WHERE "id" = 'org_1'`);
     const reply = replyStub();

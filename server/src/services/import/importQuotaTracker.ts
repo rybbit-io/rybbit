@@ -151,15 +151,7 @@ export class ImportQuotaTracker {
     }
   }
 
-  /**
-   * Atomically check and reserve quota for a batch of events.
-   * This method prevents race conditions by checking all events in a batch
-   * and atomically updating usage counts for all months at once.
-   *
-   * @param timestamps - Array of event timestamps to check
-   * @returns Array of indices indicating which events can be imported
-   */
-  canImportBatch(timestamps: string[]): number[] {
+  reserveBatch(timestamps: string[]): { allowedIndices: number[]; rollback: () => void } {
     const allowedIndices: number[] = [];
     const monthlyIncrements = new Map<string, number>();
     const now = DateTime.utc();
@@ -201,7 +193,27 @@ export class ImportQuotaTracker {
       this.monthlyUsage.set(month, current + increment);
     }
 
-    return allowedIndices;
+    let rolledBack = false;
+
+    return {
+      allowedIndices,
+      rollback: () => {
+        if (rolledBack) return;
+        rolledBack = true;
+
+        for (const [month, increment] of monthlyIncrements) {
+          const current = this.monthlyUsage.get(month) || 0;
+          this.monthlyUsage.set(month, Math.max(0, current - increment));
+        }
+      },
+    };
+  }
+
+  /**
+   * Check and consume quota for callers that do not need failure rollback.
+   */
+  canImportBatch(timestamps: string[]): number[] {
+    return this.reserveBatch(timestamps).allowedIndices;
   }
 
   getOldestAllowedMonth(): string {

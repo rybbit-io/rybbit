@@ -1,14 +1,15 @@
 import { and, eq, inArray } from "drizzle-orm";
 import { FastifyRequest } from "fastify";
-import NodeCache from "node-cache";
 import { db } from "../db/postgres/postgres.js";
 import { member, sites, user } from "../db/postgres/schema.js";
 import {
-  getOrgMembership,
-  memberCanAccessSite,
-  resolveMemberSiteGrants,
-  restrictedMemberSiteIds,
-} from "./access.js";
+  invalidateOrganizationSitesAccessCache,
+  invalidateSitesAccessCache,
+  readSiteAccessCache,
+  removeSiteAccessCacheEntry,
+  writeSiteAccessCache,
+} from "../services/sites/siteAccessCache.js";
+import { getOrgMembership, memberCanAccessSite, resolveMemberSiteGrants, restrictedMemberSiteIds } from "./access.js";
 import type { RateLimitDecision } from "./apiRateLimit.js";
 import { consumeRateLimitForIdentity } from "./apiRateLimitPolicy.js";
 import { auth } from "./auth.js";
@@ -22,7 +23,8 @@ import {
 } from "./bearerAuth.js";
 import { hasScope, type ScopeRequirement, type ScopeStatements } from "./scopes.js";
 import { siteConfig } from "./siteConfig.js";
-import { logger } from "./logger/logger.js";
+
+export { invalidateOrganizationSitesAccessCache, invalidateSitesAccessCache };
 
 // The MCP gate injects fakes; the REST layer always uses better-auth.
 const bearerResolverDeps: BearerResolverDeps = {
@@ -119,18 +121,12 @@ export async function getIsUserAdmin(req: FastifyRequest) {
   return userRecord.length > 0 && userRecord[0].role === "admin";
 }
 
-const sitesAccessCache = new NodeCache({
-  stdTTL: 15,
-  checkperiod: 30,
-  useClones: false, // Don't clone objects for better performance with promises
-});
-
 // All sites of an organization, for org-owned API keys. Cached under an
 // "org:"-prefixed key (org and user ids never collide, the prefix is hygiene).
 async function getSitesForOrganization(organizationId: string) {
   const cacheKey = `org:${organizationId}`;
 
-  const cached = sitesAccessCache.get<Promise<any[]>>(cacheKey);
+  const cached = readSiteAccessCache<Promise<any[]>>(cacheKey);
   if (cached) {
     return cached;
   }
@@ -140,12 +136,12 @@ async function getSitesForOrganization(organizationId: string) {
       return await db.select().from(sites).where(eq(sites.organizationId, organizationId));
     } catch (error) {
       console.error("Error getting sites for organization:", error);
-      sitesAccessCache.del(cacheKey);
+      removeSiteAccessCacheEntry(cacheKey);
       return [];
     }
   })();
 
-  sitesAccessCache.set(cacheKey, promise);
+  writeSiteAccessCache(cacheKey, promise);
   return promise;
 }
 
@@ -168,7 +164,7 @@ export async function getSitesUserHasAccessTo(req: FastifyRequest, adminOnly = f
   const cacheKey = `${userId}:${adminOnly}`;
 
   // Check if we have a cached promise
-  const cached = sitesAccessCache.get<Promise<any[]>>(cacheKey);
+  const cached = readSiteAccessCache<Promise<any[]>>(cacheKey);
   if (cached) {
     return cached;
   }
@@ -219,9 +215,7 @@ export async function getSitesUserHasAccessTo(req: FastifyRequest, adminOnly = f
       }
 
       const memberOrgIds = Array.from(memberRowByOrgId.keys());
-      const restrictedMembers = Array.from(memberRowByOrgId.values()).filter(
-        record => record.hasRestrictedSiteAccess
-      );
+      const restrictedMembers = Array.from(memberRowByOrgId.values()).filter(record => record.hasRestrictedSiteAccess);
       const restrictedOrgIds = restrictedMembers.map(record => record.organizationId);
 
       // A restricted membership reaches a closed set of sites, so its
@@ -282,21 +276,15 @@ export async function getSitesUserHasAccessTo(req: FastifyRequest, adminOnly = f
     } catch (error) {
       console.error("Error getting sites user has access to:", error);
       // Remove from cache on error so it can be retried
-      sitesAccessCache.del(cacheKey);
+      removeSiteAccessCacheEntry(cacheKey);
       return [];
     }
   })();
 
   // Cache the promise
-  sitesAccessCache.set(cacheKey, promise);
+  writeSiteAccessCache(cacheKey, promise);
 
   return promise;
-}
-
-// Cache invalidation helper - call this when member site access changes
-export function invalidateSitesAccessCache(userId: string) {
-  sitesAccessCache.del(`${userId}:true`);
-  sitesAccessCache.del(`${userId}:false`);
 }
 
 /**

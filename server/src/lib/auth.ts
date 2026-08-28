@@ -15,7 +15,7 @@ import * as schema from "../db/postgres/schema.js";
 import { invitation, member, memberSiteAccess, sites, user } from "../db/postgres/schema.js";
 import { siteIdsInOrganization } from "./access.js";
 import { apiKeyLimitForPlan, countApiKeysForReference } from "./apiKeyLimits.js";
-import { invalidateSitesAccessCache } from "./auth-utils.js";
+import { invalidateSitesAccessCache } from "../services/sites/siteAccessCache.js";
 import { ORG_API_KEY_CONFIG_ID } from "./bearerAuth.js";
 import { DISABLE_SIGNUP, IS_CLOUD } from "./const.js";
 import {
