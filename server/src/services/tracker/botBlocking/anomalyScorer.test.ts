@@ -633,9 +633,12 @@ describe("site flood (in-process fallback)", () => {
     expect(result!.convictingReasons.map(reason => reason.rule)).toContain("site_flood_actor_1d");
   });
 
-  it("holds a residential address to the ordinary daily threshold inside a flood", async () => {
+  it("never convicts a residential address on volume inside a flood", async () => {
+    // A power user of a small internal tool: one home address, all day, a
+    // few events a minute, and the site's entire "flood" against a near-zero
+    // baseline. Two real people were blocked this way on the rule's first day.
     let result;
-    for (let index = 0; index < 250; index++) {
+    for (let index = 0; index < 1200; index++) {
       result = await observeTrackingAnomaly({
         ...baseInput,
         siteBaseline: quietSite,

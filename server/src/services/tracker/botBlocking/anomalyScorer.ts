@@ -97,6 +97,14 @@ const DAY = 24 * 60 * MINUTE;
  * flood gate alone never convicts; a cohort or an actor still has to show a
  * shape no organic audience produces.
  *
+ * The actor rule inside a flood is hosting-only. On the first day in
+ * production a residential version of it (1,000 events a day) convicted two
+ * real people: power users of small internal tools, clicking and typing
+ * through edit pages at a few events a minute, who *were* their site's whole
+ * "flood" against a near-zero baseline. A human at a keyboard can produce a
+ * thousand events a day on a site they work in; a datacenter address cannot
+ * be one.
+ *
  * The gate is the site's 10-minute volume at twenty times its padded weekly
  * median and at least 100 events. Sites without a baseline, or younger than a
  * week, never pass it.
@@ -108,7 +116,6 @@ const FLOOD_COHORT_MIN_ACTOR_RATIO = 0.6;
 const FLOOD_COHORT_MIN_DIRECT_SHARE = 0.95;
 const FLOOD_COHORT_MIN_SITE_SHARE = 0.25;
 const FLOOD_ACTOR_EVENTS_1D_HOSTING = 200;
-const FLOOD_ACTOR_EVENTS_1D_THRESHOLD = ACTOR_EVENTS_1D_THRESHOLD;
 const TEN_MINUTES = 10 * MINUTE;
 
 /**
@@ -1037,13 +1044,13 @@ function computeAnomalyResult(counters: AnomalyCounters, context: AnomalyContext
       });
     }
 
-    if (sharedEgressGuard && !saseExempt) {
+    if (context.isHostingAsn && sharedEgressGuard && !saseExempt) {
       addReason(
         convictingReasons,
         "site_flood_actor_1d",
         4,
         counters.actorEvents1d,
-        context.isHostingAsn ? FLOOD_ACTOR_EVENTS_1D_HOSTING : FLOOD_ACTOR_EVENTS_1D_THRESHOLD,
+        FLOOD_ACTOR_EVENTS_1D_HOSTING,
         86400
       );
     }
