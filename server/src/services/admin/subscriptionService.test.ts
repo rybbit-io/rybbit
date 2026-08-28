@@ -119,6 +119,7 @@ describe("getOrganizationSubscriptions — free fallback", () => {
 
     expect(result.get("org_1")).toEqual({
       id: "",
+      source: "free",
       planName: "free",
       status: "free",
       eventLimit: DEFAULT_EVENT_LIMIT,
@@ -224,6 +225,7 @@ describe("getOrganizationSubscriptions — AppSumo licenses", () => {
 
     expect(result.get("org_1")).toEqual({
       id: "",
+      source: "appsumo",
       planName: "appsumo-3",
       status: "active",
       eventLimit: APPSUMO_TIER_LIMITS["3"],
@@ -241,6 +243,7 @@ describe("getOrganizationSubscriptions — AppSumo licenses", () => {
 
     expect(result.get("org_1")).toEqual({
       id: "",
+      source: "appsumo",
       planName: "appsumo-3",
       status: "active",
       eventLimit: APPSUMO_TIER_LIMITS["3"],
@@ -284,7 +287,7 @@ describe("getOrganizationSubscriptions — AppSumo licenses", () => {
 });
 
 describe("getOrganizationSubscriptions — Stripe versus AppSumo", () => {
-  it("prefers the Stripe plan when it allows at least as many events", async () => {
+  it("prefers the Stripe subscription when both sources exist", async () => {
     const plan = planByName("pro1m");
     snapshot({ cus_1: stripeSub({ priceId: plan.priceId }) });
     state.licenses = [{ organization_id: "org_1", tier: "1" }];
@@ -294,17 +297,14 @@ describe("getOrganizationSubscriptions — Stripe versus AppSumo", () => {
     expect(result.get("org_1")).toMatchObject({ planName: plan.name, eventLimit: plan.limits.events });
   });
 
-  it("prefers the AppSumo license when it allows more events", async () => {
+  it("keeps the Stripe subscription even when AppSumo allows more events", async () => {
     const plan = planByName("standard100k");
     snapshot({ cus_1: stripeSub({ priceId: plan.priceId }) });
     state.licenses = [{ organization_id: "org_1", tier: "7" }];
 
     const result = await getOrganizationSubscriptions([{ id: "org_1", stripeCustomerId: "cus_1" }], true);
 
-    expect(result.get("org_1")).toMatchObject({
-      planName: "appsumo-7",
-      eventLimit: APPSUMO_TIER_LIMITS["7"],
-    });
+    expect(result.get("org_1")).toMatchObject({ planName: plan.name, eventLimit: plan.limits.events });
   });
 
   it("keeps the Stripe plan on an exact tie", async () => {
@@ -319,15 +319,13 @@ describe("getOrganizationSubscriptions — Stripe versus AppSumo", () => {
     expect(result.get("org_1")?.planName).toBe(plan.name);
   });
 
-  it("lets any AppSumo license win in summary mode, where Stripe limits are not resolved", async () => {
-    // Pinned current behavior: without full details the Stripe row has no eventLimit, so it
-    // compares as 0 and even the smallest AppSumo tier outranks a large Stripe plan.
+  it("keeps Stripe precedence in summary mode", async () => {
     snapshot({ cus_1: stripeSub({ priceId: planByName("pro10m").priceId }) });
     state.licenses = [{ organization_id: "org_1", tier: "1" }];
 
     const result = await getOrganizationSubscriptions([{ id: "org_1", stripeCustomerId: "cus_1" }], false);
 
-    expect(result.get("org_1")).toMatchObject({ planName: "appsumo-1" });
+    expect(result.get("org_1")).toMatchObject({ planName: "pro10m", source: "stripe" });
   });
 
   it("resolves each organization independently", async () => {
@@ -360,5 +358,55 @@ describe("getOrganizationSubscriptions — Stripe versus AppSumo", () => {
     );
 
     expect(mocks.getAllStripeSubscriptionsByCustomer).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("getOrganizationSubscriptions — admin overrides", () => {
+  it("gives a valid preset override precedence over Stripe and AppSumo", async () => {
+    snapshot({ cus_1: stripeSub({ priceId: planByName("pro10m").priceId }) });
+    state.licenses = [{ organization_id: "org_1", tier: "7" }];
+
+    const result = await getOrganizationSubscriptions(
+      [{ id: "org_1", stripeCustomerId: "cus_1", planOverride: "appsumo-3" }],
+      true
+    );
+
+    expect(result.get("org_1")).toMatchObject({
+      source: "override",
+      planName: "appsumo-3",
+      eventLimit: APPSUMO_TIER_LIMITS["3"],
+      interval: "lifetime",
+    });
+  });
+
+  it("gives custom limits precedence over a preset override", async () => {
+    const result = await getOrganizationSubscriptions(
+      [
+        {
+          id: "org_1",
+          planOverride: "pro10m",
+          customPlan: { events: 12_000_000, members: 40, websites: null },
+        },
+      ],
+      true
+    );
+
+    expect(result.get("org_1")).toMatchObject({
+      source: "custom",
+      planName: "custom",
+      eventLimit: 12_000_000,
+      memberLimit: 40,
+      siteLimit: null,
+    });
+  });
+
+  it("ignores an invalid preset override and falls through to the real subscription", async () => {
+    snapshot({ cus_1: stripeSub({ priceId: planByName("standard250k").priceId }) });
+
+    const result = await getOrganizationSubscriptions([
+      { id: "org_1", stripeCustomerId: "cus_1", planOverride: "not-a-plan" },
+    ]);
+
+    expect(result.get("org_1")).toMatchObject({ source: "stripe", planName: "standard250k" });
   });
 });

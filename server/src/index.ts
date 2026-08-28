@@ -8,11 +8,17 @@ import { fileURLToPath } from "url";
 import {
   adminMoveSite,
   collectTelemetry,
+  deleteAdminOrganizationMember,
+  getAdminOrganizationMember,
+  getAdminOrganizationOptions,
   getAdminOrganizations,
+  getAdminSubscriptionPlans,
   getAdminServiceEventCount,
   getAdminSites,
   getClickhouseStats,
   getClickhouseQueryLog,
+  updateAdminOrganizationMember,
+  updateAdminSubscriptionOverride,
 } from "./api/admin/index.js";
 import {
   createDashboard,
@@ -519,6 +525,12 @@ async function stripeAdminRoutes(fastify: FastifyInstance) {
   fastify.get("/admin/sites", adminOnly, getAdminSites);
   fastify.put("/admin/sites/:siteId/move", adminOnly, adminMoveSite);
   fastify.get("/admin/organizations", adminOnly, getAdminOrganizations);
+  fastify.get("/admin/organization-options", adminOnly, getAdminOrganizationOptions);
+  fastify.get("/admin/subscription-plans", adminOnly, getAdminSubscriptionPlans);
+  fastify.put("/admin/organizations/:organizationId/subscription-override", adminOnly, updateAdminSubscriptionOverride);
+  fastify.get("/admin/organizations/:organizationId/members/:memberId", adminOnly, getAdminOrganizationMember);
+  fastify.patch("/admin/organizations/:organizationId/members/:memberId", adminOnly, updateAdminOrganizationMember);
+  fastify.delete("/admin/organizations/:organizationId/members/:memberId", adminOnly, deleteAdminOrganizationMember);
   fastify.get("/admin/service-event-count", adminOnly, getAdminServiceEventCount);
   fastify.post("/admin/telemetry", collectTelemetry); // Public - telemetry collection
 

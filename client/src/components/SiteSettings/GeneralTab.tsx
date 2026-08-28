@@ -25,8 +25,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch";
 
 import { deleteSite, moveSite, updateSiteConfig, SiteResponse } from "@/api/admin/endpoints";
+import { adminMoveSite } from "@/api/admin/endpoints/adminSites";
 import { useUserOrganizations } from "@/api/admin/hooks/useOrganizations";
 import { useGetSitesFromOrg } from "@/api/admin/hooks/useSites";
+import { RemoteOrganizationCombobox } from "@/app/admin/components/shared/RemoteOrganizationCombobox";
 import { normalizeDomain } from "@/lib/utils";
 
 import { SettingRow, SettingsSection, SettingsSections } from "./SettingsSection";
@@ -36,6 +38,7 @@ interface GeneralTabProps {
   disabled?: boolean;
   onClose?: () => void;
   onPublicChange?: (checked: boolean) => void;
+  adminMode?: boolean;
 }
 
 interface ToggleConfig {
@@ -50,9 +53,15 @@ interface ToggleConfig {
   badge?: ReactNode;
 }
 
-export function GeneralTab({ siteMetadata, disabled = false, onClose, onPublicChange }: GeneralTabProps) {
+export function GeneralTab({
+  siteMetadata,
+  disabled = false,
+  onClose,
+  onPublicChange,
+  adminMode = false,
+}: GeneralTabProps) {
   const t = useExtracted();
-  const { refetch } = useGetSitesFromOrg(siteMetadata?.organizationId ?? "");
+  const { refetch } = useGetSitesFromOrg(siteMetadata?.organizationId ?? "", { enabled: !adminMode });
   const { data: userOrganizations } = useUserOrganizations();
   const queryClient = useQueryClient();
   const router = useRouter();
@@ -65,6 +74,7 @@ export function GeneralTab({ siteMetadata, disabled = false, onClose, onPublicCh
   const [isChangingDomain, setIsChangingDomain] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [targetOrgId, setTargetOrgId] = useState("");
+  const [targetOrgName, setTargetOrgName] = useState("");
   const [isMoving, setIsMoving] = useState(false);
 
   // Organizations the user can move the site into: those they administer,
@@ -82,6 +92,13 @@ export function GeneralTab({ siteMetadata, disabled = false, onClose, onPublicCh
   });
 
   const [loadingStates, setLoadingStates] = useState<Record<string, boolean>>({});
+  const refreshSiteLists = useCallback(() => {
+    if (adminMode) {
+      queryClient.invalidateQueries({ queryKey: ["admin-organizations"] });
+    } else {
+      refetch();
+    }
+  }, [adminMode, queryClient, refetch]);
 
   const handleToggle = useCallback(
     async (
@@ -102,7 +119,7 @@ export function GeneralTab({ siteMetadata, disabled = false, onClose, onPublicCh
             : successMessage.disabled
           : `${key.replace(/([A-Z])/g, " $1").toLowerCase()} ${checked ? "enabled" : "disabled"}`;
         toast.success(message);
-        refetch();
+        refreshSiteLists();
       } catch (error) {
         console.error(`Error updating ${key}:`, error);
         toast.error(`Failed to update ${key.replace(/([A-Z])/g, " $1").toLowerCase()}`);
@@ -111,7 +128,7 @@ export function GeneralTab({ siteMetadata, disabled = false, onClose, onPublicCh
         setLoadingStates(prev => ({ ...prev, [key]: false }));
       }
     },
-    [siteMetadata.siteId, refetch, onPublicChange]
+    [siteMetadata.siteId, onPublicChange, refreshSiteLists]
   );
 
   const handleNameChange = async () => {
@@ -125,7 +142,7 @@ export function GeneralTab({ siteMetadata, disabled = false, onClose, onPublicCh
       await updateSiteConfig(siteMetadata.siteId, { name: newName.trim() });
       toast.success(t("Name updated successfully"));
       router.refresh();
-      refetch();
+      refreshSiteLists();
     } catch (error) {
       console.error("Error changing name:", error);
       toast.error(t("Failed to update name"));
@@ -146,7 +163,7 @@ export function GeneralTab({ siteMetadata, disabled = false, onClose, onPublicCh
       await updateSiteConfig(siteMetadata.siteId, { domain: normalizedDomain });
       toast.success(isMobileSite ? t("App identifier updated successfully") : t("Domain updated successfully"));
       router.refresh();
-      refetch();
+      refreshSiteLists();
     } catch (error) {
       console.error("Error changing domain:", error);
       toast.error(t("Failed to update domain"));
@@ -162,7 +179,7 @@ export function GeneralTab({ siteMetadata, disabled = false, onClose, onPublicCh
       toast.success(t("Site deleted successfully"));
       router.push("/");
       onClose?.();
-      refetch();
+      refreshSiteLists();
     } catch (error) {
       console.error("Error deleting site:", error);
       toast.error(t("Failed to delete site"));
@@ -178,13 +195,17 @@ export function GeneralTab({ siteMetadata, disabled = false, onClose, onPublicCh
 
     try {
       setIsMoving(true);
-      await moveSite(siteMetadata.siteId, targetOrgId);
+      await (adminMode ? adminMoveSite(siteMetadata.siteId, targetOrgId) : moveSite(siteMetadata.siteId, targetOrgId));
       toast.success(t("Site moved successfully"));
       queryClient.invalidateQueries({ queryKey: ["get-sites-from-org"] });
       queryClient.invalidateQueries({ queryKey: ["get-site", siteMetadata.siteId] });
       setTargetOrgId("");
+      setTargetOrgName("");
       router.refresh();
-      refetch();
+      refreshSiteLists();
+      if (adminMode) {
+        onClose?.();
+      }
     } catch (error) {
       console.error("Error moving site:", error);
       toast.error(error instanceof Error ? error.message : t("Failed to move site"));
@@ -318,7 +339,7 @@ export function GeneralTab({ siteMetadata, disabled = false, onClose, onPublicCh
         ))}
       </SettingsSection>
 
-      {!disabled && moveTargets.length > 0 && (
+      {!disabled && (adminMode || moveTargets.length > 0) && (
         <SettingsSection
           title={t("Move to Organization")}
           description={t(
@@ -326,18 +347,32 @@ export function GeneralTab({ siteMetadata, disabled = false, onClose, onPublicCh
           )}
         >
           <div className="flex gap-2">
-            <Select value={targetOrgId} onValueChange={setTargetOrgId}>
-              <SelectTrigger className="flex-1">
-                <SelectValue placeholder={t("Select an organization")} />
-              </SelectTrigger>
-              <SelectContent>
-                {moveTargets.map(org => (
-                  <SelectItem key={org.id} value={org.id}>
-                    {org.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <div className="min-w-0 flex-1">
+              {adminMode ? (
+                <RemoteOrganizationCombobox
+                  value={targetOrgId}
+                  selectedName={targetOrgName}
+                  excludeId={siteMetadata.organizationId ?? undefined}
+                  onSelect={organization => {
+                    setTargetOrgId(organization.id);
+                    setTargetOrgName(organization.name);
+                  }}
+                />
+              ) : (
+                <Select value={targetOrgId} onValueChange={setTargetOrgId}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder={t("Select an organization")} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {moveTargets.map(org => (
+                      <SelectItem key={org.id} value={org.id}>
+                        {org.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            </div>
             <AlertDialog>
               <AlertDialogTrigger asChild>
                 <Button variant="outline" disabled={!targetOrgId || isMoving}>
@@ -352,7 +387,7 @@ export function GeneralTab({ siteMetadata, disabled = false, onClose, onPublicCh
                       'This will move "{siteName}" to {orgName}. Team and restricted member access for this site will be reset, and members of the current organization may lose access.',
                       {
                         siteName: siteMetadata.name,
-                        orgName: moveTargets.find(org => org.id === targetOrgId)?.name ?? "",
+                        orgName: targetOrgName || moveTargets.find(org => org.id === targetOrgId)?.name || targetOrgId,
                       }
                     )}
                   </AlertDialogDescription>

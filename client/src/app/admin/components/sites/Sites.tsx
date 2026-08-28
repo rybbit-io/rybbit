@@ -1,7 +1,6 @@
 "use client";
 
 import { adminMoveSite, AdminSiteData } from "@/api/admin/endpoints";
-import { useAdminOrganizations } from "@/api/admin/hooks/useAdminOrganizations";
 import { useAdminSites } from "@/api/admin/hooks/useAdminSites";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -14,7 +13,6 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "@/components/ui/sonner";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -41,6 +39,7 @@ import { GrowthChart } from "../shared/GrowthChart";
 import { Panel, TableShell } from "../shared/Panel";
 import { SearchInput } from "../shared/SearchInput";
 import { SortableHeader } from "../shared/SortableHeader";
+import { RemoteOrganizationCombobox } from "../shared/RemoteOrganizationCombobox";
 
 type ColumnAlignMeta = { align?: "right" };
 
@@ -62,12 +61,10 @@ const SKELETON_CELLS: Array<{ width: string; right?: boolean }> = [
 function MoveSiteCell({ site }: { site: AdminSiteData }) {
   const t = useExtracted();
   const queryClient = useQueryClient();
-  const { data: organizations } = useAdminOrganizations();
   const [open, setOpen] = useState(false);
   const [targetOrgId, setTargetOrgId] = useState("");
+  const [targetOrgName, setTargetOrgName] = useState("");
   const [isMoving, setIsMoving] = useState(false);
-
-  const targets = (organizations ?? []).filter(org => org.id !== site.organizationId);
 
   const handleMove = async () => {
     if (!targetOrgId) return;
@@ -78,6 +75,7 @@ function MoveSiteCell({ site }: { site: AdminSiteData }) {
       queryClient.invalidateQueries({ queryKey: ["admin-sites"] });
       queryClient.invalidateQueries({ queryKey: ["admin-organizations"] });
       setTargetOrgId("");
+      setTargetOrgName("");
       setOpen(false);
     } catch (error) {
       console.error("Error moving site:", error);
@@ -104,18 +102,15 @@ function MoveSiteCell({ site }: { site: AdminSiteData }) {
             )}
           </DialogDescription>
         </DialogHeader>
-        <Select value={targetOrgId} onValueChange={setTargetOrgId}>
-          <SelectTrigger>
-            <SelectValue placeholder={t("Select an organization")} />
-          </SelectTrigger>
-          <SelectContent>
-            {targets.map(org => (
-              <SelectItem key={org.id} value={org.id}>
-                {org.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <RemoteOrganizationCombobox
+          value={targetOrgId}
+          selectedName={targetOrgName}
+          excludeId={site.organizationId ?? undefined}
+          onSelect={organization => {
+            setTargetOrgId(organization.id);
+            setTargetOrgName(organization.name);
+          }}
+        />
         <DialogFooter>
           <Button variant="outline" onClick={() => setOpen(false)} disabled={isMoving}>
             {t("Cancel")}
@@ -195,11 +190,7 @@ export function Sites() {
         accessorKey: "public",
         header: ({ column }) => <SortableHeader column={column}>{t("Public")}</SortableHeader>,
         cell: ({ row }) =>
-          row.getValue("public") ? (
-            <Badge>{t("Public")}</Badge>
-          ) : (
-            <Badge variant="outline">{t("Private")}</Badge>
-          ),
+          row.getValue("public") ? <Badge>{t("Public")}</Badge> : <Badge variant="outline">{t("Private")}</Badge>,
       },
       {
         accessorKey: "eventsLast24Hours",
@@ -256,9 +247,7 @@ export function Sites() {
         accessorKey: "organizationOwnerEmail",
         header: ({ column }) => <SortableHeader column={column}>{t("Owner Email")}</SortableHeader>,
         cell: ({ row }) => (
-          <div className="text-neutral-600 dark:text-neutral-300">
-            {row.getValue("organizationOwnerEmail") || "-"}
-          </div>
+          <div className="text-neutral-600 dark:text-neutral-300">{row.getValue("organizationOwnerEmail") || "-"}</div>
         ),
       },
       {
@@ -329,8 +318,7 @@ export function Sites() {
                     <TableHead
                       key={header.id}
                       className={cn(
-                        (header.column.columnDef.meta as ColumnAlignMeta | undefined)?.align === "right" &&
-                          "text-right"
+                        (header.column.columnDef.meta as ColumnAlignMeta | undefined)?.align === "right" && "text-right"
                       )}
                     >
                       {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
@@ -365,8 +353,7 @@ export function Sites() {
                       <TableCell
                         key={cell.id}
                         className={cn(
-                          (cell.column.columnDef.meta as ColumnAlignMeta | undefined)?.align === "right" &&
-                            "text-right"
+                          (cell.column.columnDef.meta as ColumnAlignMeta | undefined)?.align === "right" && "text-right"
                         )}
                       >
                         {flexRender(cell.column.columnDef.cell, cell.getContext())}

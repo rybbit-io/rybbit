@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { AdminUser } from "@/types/admin";
-import { Check, ChevronsUpDown, MoreVertical, User, UserMinus, UserPlus } from "lucide-react";
+import { MoreVertical, User, UserMinus, UserPlus } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -43,14 +43,12 @@ import { useDateTimeFormat } from "../../../../hooks/useDateTimeFormat";
 import { parseUtcTimestamp } from "../../../../lib/dateTimeUtils";
 import { AddToOrganizationDialog } from "./AddToOrganizationDialog";
 import { useRemoveUserFromOrganization } from "@/api/admin/hooks/useOrganizations";
-import { useAdminOrganizations } from "@/api/admin/hooks/useAdminOrganizations";
 import { toast } from "@/components/ui/sonner";
 import { Label } from "@/components/ui/label";
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { CopyText } from "../../../../components/CopyText";
 import { cn } from "@/lib/utils";
 import { useExtracted } from "next-intl";
+import { RemoteOrganizationCombobox } from "../shared/RemoteOrganizationCombobox";
 
 interface UsersTableProps {
   data: { users: AdminUser[]; total: number } | undefined;
@@ -85,9 +83,8 @@ export function UsersTable({
   const [showAddToOrgDialog, setShowAddToOrgDialog] = useState(false);
   const [showRemoveConfirmDialog, setShowRemoveConfirmDialog] = useState(false);
   const [selectedOrganizationId, setSelectedOrganizationId] = useState<string>("");
-  const [removeOrgComboboxOpen, setRemoveOrgComboboxOpen] = useState(false);
+  const [selectedOrganizationName, setSelectedOrganizationName] = useState<string>("");
 
-  const { data: organizations } = useAdminOrganizations();
   const removeUserFromOrganization = useRemoveUserFromOrganization();
   const t = useExtracted();
   const { formatRelative } = useDateTimeFormat();
@@ -104,6 +101,7 @@ export function UsersTable({
       setShowRemoveConfirmDialog(false);
       setSelectedUser(null);
       setSelectedOrganizationId("");
+      setSelectedOrganizationName("");
     } catch (error: any) {
       toast.error(error.message || t("Failed to remove user from organization"));
     }
@@ -303,59 +301,22 @@ export function UsersTable({
           </AlertDialogHeader>
           <div className="py-4">
             <Label htmlFor="remove-org">{t("Organization")}</Label>
-            <Popover open={removeOrgComboboxOpen} onOpenChange={setRemoveOrgComboboxOpen}>
-              <PopoverTrigger asChild>
-                <Button
-                  variant="outline"
-                  role="combobox"
-                  aria-expanded={removeOrgComboboxOpen}
-                  className="w-full justify-between mt-2"
-                >
-                  {selectedOrganizationId
-                    ? organizations?.find(org => org.id === selectedOrganizationId)?.name
-                    : t("Select an organization...")}
-                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-full p-0" align="start">
-                <Command
-                  filter={(value, search) => {
-                    if (value.toLowerCase().includes(search.toLowerCase())) return 1;
-                    return 0;
-                  }}
-                >
-                  <CommandInput placeholder={t("Search organizations...")} />
-                  <CommandList>
-                    <CommandEmpty>{t("No organization found.")}</CommandEmpty>
-                    <CommandGroup>
-                      {organizations?.map(org => (
-                        <CommandItem
-                          key={org.id}
-                          value={`${org.name} ${org.id}`}
-                          onSelect={() => {
-                            setSelectedOrganizationId(org.id);
-                            setRemoveOrgComboboxOpen(false);
-                          }}
-                        >
-                          <Check
-                            className={cn(
-                              "mr-2 h-4 w-4",
-                              selectedOrganizationId === org.id ? "opacity-100" : "opacity-0"
-                            )}
-                          />
-                          {org.name}
-                        </CommandItem>
-                      ))}
-                    </CommandGroup>
-                  </CommandList>
-                </Command>
-              </PopoverContent>
-            </Popover>
+            <div className="mt-2">
+              <RemoteOrganizationCombobox
+                value={selectedOrganizationId}
+                selectedName={selectedOrganizationName}
+                onSelect={organization => {
+                  setSelectedOrganizationId(organization.id);
+                  setSelectedOrganizationName(organization.name);
+                }}
+              />
+            </div>
           </div>
           <AlertDialogFooter>
             <AlertDialogCancel
               onClick={() => {
                 setSelectedOrganizationId("");
+                setSelectedOrganizationName("");
               }}
             >
               {t("Cancel")}

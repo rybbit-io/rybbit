@@ -7,9 +7,10 @@ import { SettingsSection, SettingsSections } from "./SettingsSection";
 
 interface IntegrationsTabProps {
   disabled?: boolean;
+  siteId?: number;
 }
 
-export function IntegrationsTab({ disabled = false }: IntegrationsTabProps) {
+export function IntegrationsTab({ disabled = false, siteId }: IntegrationsTabProps) {
   const t = useExtracted();
 
   return (
@@ -18,7 +19,7 @@ export function IntegrationsTab({ disabled = false }: IntegrationsTabProps) {
         title={t("Google Search Console")}
         description={t("Connect your Google Search Console account to view search performance data")}
       >
-        <GSCManager disabled={disabled} />
+        <GSCManager disabled={disabled} siteId={siteId} />
       </SettingsSection>
     </SettingsSections>
   );

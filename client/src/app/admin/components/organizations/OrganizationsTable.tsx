@@ -47,7 +47,7 @@ export function OrganizationsTable({ organizations, isLoading, searchQuery }: Or
   const t = useExtracted();
   const { formatRelative } = useDateTimeFormat();
   const [expandedOrgs, setExpandedOrgs] = useState<Set<string>>(new Set());
-  const [sorting, setSorting] = useState<SortingState>([{ id: "monthlyEventCount", desc: true }]);
+  const [sorting, setSorting] = useState<SortingState>([{ id: "createdAt", desc: true }]);
   const [pagination, setPagination] = useState({
     pageIndex: 0,
     pageSize: 50,
@@ -72,7 +72,21 @@ export function OrganizationsTable({ organizations, isLoading, searchQuery }: Or
         : subscription.status === "active" || subscription.status === "trialing"
           ? ("default" as const)
           : ("secondary" as const);
-    return <Badge variant={variant}>{subscription.planName}</Badge>;
+    const source = {
+      custom: t("Custom"),
+      override: t("Override"),
+      stripe: "Stripe",
+      appsumo: "AppSumo",
+      free: t("Free"),
+    }[subscription.source];
+    return (
+      <div className="flex items-center gap-1.5">
+        <Badge variant={variant}>{subscription.planName}</Badge>
+        <Badge variant="outline" className="font-normal text-muted-foreground">
+          {source}
+        </Badge>
+      </div>
+    );
   };
 
   const columns = useMemo<ColumnDef<AdminOrganizationData>[]>(
@@ -253,8 +267,7 @@ export function OrganizationsTable({ organizations, isLoading, searchQuery }: Or
                       <TableCell
                         key={cell.id}
                         className={cn(
-                          (cell.column.columnDef.meta as ColumnAlignMeta | undefined)?.align === "right" &&
-                            "text-right"
+                          (cell.column.columnDef.meta as ColumnAlignMeta | undefined)?.align === "right" && "text-right"
                         )}
                       >
                         {flexRender(cell.column.columnDef.cell, cell.getContext())}
@@ -263,10 +276,7 @@ export function OrganizationsTable({ organizations, isLoading, searchQuery }: Or
                   </TableRow>
                   {expandedOrgs.has(row.original.id) && (
                     <TableRow className="hover:bg-transparent dark:hover:bg-transparent">
-                      <TableCell
-                        colSpan={columns.length}
-                        className="bg-neutral-50 px-8 py-4 dark:bg-neutral-950/40"
-                      >
+                      <TableCell colSpan={columns.length} className="bg-neutral-50 px-8 py-4 dark:bg-neutral-950/40">
                         <OrganizationExpandedRow organization={row.original} />
                       </TableCell>
                     </TableRow>

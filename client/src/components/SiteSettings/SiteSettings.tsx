@@ -37,14 +37,46 @@ import { useGetSitesFromOrg } from "../../api/admin/hooks/useSites";
 import { SiteResponse, updateSiteConfig } from "../../api/admin/endpoints";
 import { IS_CLOUD } from "../../lib/const";
 
-export function SiteSettings({ siteId, trigger }: { siteId: number; trigger?: React.ReactNode }) {
-  const { data: siteMetadata, isLoading, error } = useGetSite(siteId);
+interface SiteSettingsProps {
+  siteId: number;
+  trigger?: React.ReactNode;
+  lazy?: boolean;
+  adminOrganization?: {
+    id: string;
+    subscription: { planName: string; eventLimit?: number };
+  };
+}
 
-  if (isLoading || !siteMetadata || error) {
+export function SiteSettings({ siteId, trigger, adminOrganization, lazy = false }: SiteSettingsProps) {
+  const [loadRequested, setLoadRequested] = useState(!lazy);
+  const { data: siteMetadata, isLoading, error } = useGetSite(siteId, { enabled: loadRequested });
+
+  const defaultTrigger = trigger ?? (
+    <Button variant="ghost" size="icon">
+      <Settings className="h-4 w-4" />
+    </Button>
+  );
+
+  if (!loadRequested || isLoading) {
+    return (
+      <span className="contents" onClick={() => setLoadRequested(true)}>
+        {defaultTrigger}
+      </span>
+    );
+  }
+
+  if (!siteMetadata || error) {
     return null;
   }
 
-  return <SiteSettingsInner siteMetadata={siteMetadata} trigger={trigger} />;
+  return (
+    <SiteSettingsInner
+      siteMetadata={siteMetadata}
+      trigger={trigger}
+      adminOrganization={adminOrganization}
+      initialOpen={lazy}
+    />
+  );
 }
 
 type TabKey =
@@ -58,19 +90,32 @@ type TabKey =
   | "dashboard-embed"
   | "usage";
 
-function SiteSettingsInner({ siteMetadata, trigger }: { siteMetadata: SiteResponse; trigger?: React.ReactNode }) {
+function SiteSettingsInner({
+  siteMetadata,
+  trigger,
+  adminOrganization,
+  initialOpen = false,
+}: {
+  siteMetadata: SiteResponse;
+  trigger?: React.ReactNode;
+  adminOrganization?: SiteSettingsProps["adminOrganization"];
+  initialOpen?: boolean;
+}) {
   const t = useExtracted();
   const { data: session } = authClient.useSession();
   const { data: userOrganizationsData } = useUserOrganizations();
   const siteOrgMembership = userOrganizationsData?.find(org => org.id === siteMetadata.organizationId);
   const disabled = session?.user.role !== "admin" && (!siteOrgMembership?.role || siteOrgMembership.role === "member");
 
-  const [dialogOpen, setDialogOpen] = useState(false);
+  const [dialogOpen, setDialogOpen] = useState(initialOpen);
   const [activeTab, setActiveTab] = useState<TabKey>("general");
   const [embedEnabled, setEmbedEnabled] = useState(!!siteMetadata.embedEnabled);
   const [togglingEmbed, setTogglingEmbed] = useState(false);
   const [sitePublic, setSitePublic] = useState(!!siteMetadata.public);
-  const { refetch: refetchOrgSites } = useGetSitesFromOrg(siteMetadata?.organizationId ?? "");
+  const adminMode = !!adminOrganization;
+  const { refetch: refetchOrgSites } = useGetSitesFromOrg(siteMetadata?.organizationId ?? "", {
+    enabled: !adminMode,
+  });
 
   useEffect(() => {
     setEmbedEnabled(!!siteMetadata.embedEnabled);
@@ -84,7 +129,9 @@ function SiteSettingsInner({ siteMetadata, trigger }: { siteMetadata: SiteRespon
         await updateSiteConfig(siteMetadata.siteId, { embedEnabled: checked });
         setEmbedEnabled(checked);
         toast.success(checked ? t("Embed widget enabled") : t("Embed widget disabled"));
-        refetchOrgSites();
+        if (!adminMode) {
+          refetchOrgSites();
+        }
       } catch (error) {
         console.error("Error toggling embed:", error);
         toast.error(t("Failed to update embed setting"));
@@ -92,7 +139,7 @@ function SiteSettingsInner({ siteMetadata, trigger }: { siteMetadata: SiteRespon
         setTogglingEmbed(false);
       }
     },
-    [siteMetadata.siteId, refetchOrgSites, t]
+    [siteMetadata.siteId, refetchOrgSites, t, adminMode]
   );
 
   if (!siteMetadata) {
@@ -179,11 +226,21 @@ function SiteSettingsInner({ siteMetadata, trigger }: { siteMetadata: SiteRespon
                   disabled={disabled}
                   onClose={() => setDialogOpen(false)}
                   onPublicChange={setSitePublic}
+                  adminMode={adminMode}
                 />
               )}
-              {activeTab === "tracking" && <TrackingTab siteMetadata={currentSiteMetadata} disabled={disabled} />}
+              {activeTab === "tracking" && (
+                <TrackingTab
+                  siteMetadata={currentSiteMetadata}
+                  disabled={disabled}
+                  adminMode={adminMode}
+                  adminSubscription={adminOrganization?.subscription}
+                />
+              )}
               {activeTab === "exclusions" && <ExclusionsTab siteId={siteMetadata.siteId} disabled={disabled} />}
-              {activeTab === "integrations" && IS_CLOUD && <IntegrationsTab disabled={disabled} />}
+              {activeTab === "integrations" && IS_CLOUD && (
+                <IntegrationsTab disabled={disabled} siteId={siteMetadata.siteId} />
+              )}
               {activeTab === "script" && (
                 <ScriptBuilder
                   siteId={siteMetadata.id ?? String(siteMetadata.siteId)}

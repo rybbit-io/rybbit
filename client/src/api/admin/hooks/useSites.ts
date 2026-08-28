@@ -11,14 +11,14 @@ import {
   GetSitesFromOrgResponse,
 } from "../endpoints";
 
-export function useGetSitesFromOrg(organizationId?: string) {
+export function useGetSitesFromOrg(organizationId?: string, options?: { enabled?: boolean }) {
   return useQuery<GetSitesFromOrgResponse>({
     queryKey: ["get-sites-from-org", organizationId],
     queryFn: () => {
       return fetchSitesFromOrg(organizationId!);
     },
     staleTime: 60000, // 1 minute
-    enabled: !!organizationId,
+    enabled: !!organizationId && options?.enabled !== false,
   });
 }
 
@@ -45,7 +45,7 @@ export function useSiteHasData(siteId: string) {
   });
 }
 
-export function useGetSite(siteId?: string | number) {
+export function useGetSite(siteId?: string | number, options?: { enabled?: boolean }) {
   const { site: storeSelectedSite } = useStore();
 
   const siteIdToUse = siteId ?? storeSelectedSite;
@@ -61,7 +61,7 @@ export function useGetSite(siteId?: string | number) {
       return data;
     },
     staleTime: 60000,
-    enabled: !!siteIdToUse,
+    enabled: !!siteIdToUse && options?.enabled !== false,
   });
 }
 

@@ -19,6 +19,8 @@ import { SettingRow, SettingsSection, SettingsSections } from "./SettingsSection
 interface TrackingTabProps {
   siteMetadata: SiteResponse;
   disabled?: boolean;
+  adminSubscription?: { planName: string; eventLimit?: number };
+  adminMode?: boolean;
 }
 
 interface ToggleConfig {
@@ -33,10 +35,15 @@ interface ToggleConfig {
   badge?: ReactNode;
 }
 
-export function TrackingTab({ siteMetadata, disabled = false }: TrackingTabProps) {
+export function TrackingTab({
+  siteMetadata,
+  disabled = false,
+  adminSubscription,
+  adminMode = false,
+}: TrackingTabProps) {
   const t = useExtracted();
   const queryClient = useQueryClient();
-  const { refetch } = useGetSitesFromOrg(siteMetadata?.organizationId ?? "");
+  const { refetch } = useGetSitesFromOrg(siteMetadata?.organizationId ?? "", { enabled: !adminMode });
   const isMobileSite = siteMetadata.type === "mobile";
 
   const [toggleStates, setToggleStates] = useState({
@@ -70,7 +77,11 @@ export function TrackingTab({ siteMetadata, disabled = false }: TrackingTabProps
             : successMessage.disabled
           : `${key.replace(/([A-Z])/g, " $1").toLowerCase()} ${checked ? "enabled" : "disabled"}`;
         toast.success(message);
-        refetch();
+        if (!adminMode) {
+          refetch();
+        } else {
+          queryClient.invalidateQueries({ queryKey: ["admin-organizations"] });
+        }
         // Prefix match so both string- and number-keyed useGetSite instances update
         queryClient.invalidateQueries({ queryKey: ["get-site"] });
       } catch (error) {
@@ -81,25 +92,27 @@ export function TrackingTab({ siteMetadata, disabled = false }: TrackingTabProps
         setLoadingStates(prev => ({ ...prev, [key]: false }));
       }
     },
-    [siteMetadata.siteId, refetch, queryClient]
+    [siteMetadata.siteId, refetch, queryClient, adminMode]
   );
 
   const { data: subscription, isLoading: isSubscriptionLoading } = useStripeSubscription();
+  const effectiveSubscription = adminSubscription ?? subscription;
+  const subscriptionLoading = adminMode ? false : isSubscriptionLoading;
 
-  const sessionReplayDisabled = !planIncludesReplay(subscription) && IS_CLOUD;
+  const sessionReplayDisabled = !planIncludesReplay(effectiveSubscription) && IS_CLOUD;
 
   const standardFeaturesDisabled =
-    !subscription?.planName.includes("custom") &&
-    !subscription?.planName.includes("standard") &&
-    !subscription?.planName.includes("pro") &&
-    !subscription?.planName.includes("appsumo") &&
+    !effectiveSubscription?.planName.includes("custom") &&
+    !effectiveSubscription?.planName.includes("standard") &&
+    !effectiveSubscription?.planName.includes("pro") &&
+    !effectiveSubscription?.planName.includes("appsumo") &&
     IS_CLOUD;
 
   const analyticsToggles: ToggleConfig[] = [
     // Hide the replay toggle for AppSumo tiers without replays (1-3); tiers 4-7 include them
     ...(!isMobileSite &&
-    !isSubscriptionLoading &&
-    (!subscription?.planName?.startsWith("appsumo") || planIncludesReplay(subscription))
+    !subscriptionLoading &&
+    (!effectiveSubscription?.planName?.startsWith("appsumo") || planIncludesReplay(effectiveSubscription))
       ? [
           {
             id: "sessionReplay",
