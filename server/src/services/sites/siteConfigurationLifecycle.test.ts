@@ -11,6 +11,7 @@ const state = vi.hoisted(() => ({
 const mocks = vi.hoisted(() => ({
   clickhouseCommand: vi.fn(),
   invalidate: vi.fn(),
+  invalidateOrganizationSitesAccessCache: vi.fn(),
   getConfig: vi.fn(),
 }));
 
@@ -44,6 +45,10 @@ vi.mock("../../db/clickhouse/clickhouse.js", () => ({
 
 vi.mock("../../lib/siteConfig.js", () => ({
   siteConfig: { invalidate: mocks.invalidate, getConfig: mocks.getConfig },
+}));
+
+vi.mock("./siteAccessCache.js", () => ({
+  invalidateOrganizationSitesAccessCache: mocks.invalidateOrganizationSitesAccessCache,
 }));
 
 vi.mock("../../api/stripe/getSubscription.js", () => ({
@@ -108,6 +113,7 @@ describe("siteConfigurationLifecycle", () => {
     expect(mocks.clickhouseCommand).toHaveBeenCalledTimes(2);
     expect(state.deletes).toBe(1);
     expect(mocks.invalidate).toHaveBeenCalledWith(state.site);
+    expect(mocks.invalidateOrganizationSitesAccessCache).toHaveBeenCalledWith("org_1");
   });
 
   it("does not report deletion when replay cleanup fails", async () => {

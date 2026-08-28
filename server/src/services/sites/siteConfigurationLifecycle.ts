@@ -7,6 +7,7 @@ import { sites } from "../../db/postgres/schema.js";
 import { IS_CLOUD } from "../../lib/const.js";
 import { validateIPPattern } from "../../lib/ipUtils.js";
 import { siteConfig, type SiteConfigData } from "../../lib/siteConfig.js";
+import { invalidateOrganizationSitesAccessCache } from "./siteAccessCache.js";
 
 type SiteRow = typeof sites.$inferSelect;
 type SiteInsert = typeof sites.$inferInsert;
@@ -273,6 +274,7 @@ class SiteConfigurationLifecycle {
         throw new Error("Site insert returned no row");
       }
 
+      await invalidateOrganizationSitesAccessCache(input.organizationId);
       return createdSite;
     } catch (error) {
       if (isUniqueConstraintViolation(error)) {
@@ -382,6 +384,9 @@ class SiteConfigurationLifecycle {
 
     await db.delete(sites).where(eq(sites.siteId, siteId));
     siteConfig.invalidate(site);
+    if (site.organizationId) {
+      await invalidateOrganizationSitesAccessCache(site.organizationId);
+    }
   }
 }
 

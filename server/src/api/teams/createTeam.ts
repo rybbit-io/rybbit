@@ -2,7 +2,7 @@ import { eq, and, inArray } from "drizzle-orm";
 import { FastifyReply, FastifyRequest } from "fastify";
 import { db } from "../../db/postgres/postgres.js";
 import { team, teamMember, teamSiteAccess, member, sites } from "../../db/postgres/schema.js";
-import { invalidateSitesAccessCache } from "../../lib/auth-utils.js";
+import { invalidateOrganizationSitesAccessCache } from "../../services/sites/siteAccessCache.js";
 
 interface CreateTeamBody {
   name: string;
@@ -91,12 +91,7 @@ export async function createTeam(
       }
     });
 
-    // Invalidate cache for affected users
-    if (memberUserIds) {
-      for (const userId of memberUserIds) {
-        invalidateSitesAccessCache(userId);
-      }
-    }
+    await invalidateOrganizationSitesAccessCache(organizationId);
 
     return reply.status(201).send({
       id: teamId,

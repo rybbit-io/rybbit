@@ -24,8 +24,8 @@ vi.mock("../../lib/subscriptionUtils.js", () => ({
   invalidateStripeSubscriptionCache: mocks.invalidateStripeSubscriptionCache,
 }));
 
-// Real Drizzle queries against PGlite so the inline membership check — the SOLE
-// authorization gate on this route — is exercised for real.
+// Real Drizzle queries against PGlite exercise the Organization Billing owner
+// gate through the route's public Interface.
 vi.mock("../../db/postgres/postgres.js", async () => {
   const { PGlite } = await import("@electric-sql/pglite");
   const { drizzle } = await import("drizzle-orm/pglite");
@@ -36,6 +36,10 @@ vi.mock("../../db/postgres/postgres.js", async () => {
 });
 
 import { sql } from "../../db/postgres/postgres.js";
+import {
+  getCurrentStripeSubscription,
+  invalidateCurrentStripeSubscription,
+} from "../../services/billing/organizationBilling.js";
 import { updateSubscription } from "./updateSubscription.js";
 
 const DDL = `
@@ -68,6 +72,7 @@ function fakeSubscription(status: "active" | "trialing", overrides: Record<strin
   return {
     id: "sub_1",
     status,
+    created: 1,
     trial_end: null,
     items: { data: [{ id: "si_1", price: { id: "price_old" }, current_period_end: 1760000000 }] },
     ...overrides,
@@ -85,6 +90,7 @@ beforeAll(async () => {
 
 beforeEach(async () => {
   vi.clearAllMocks();
+  invalidateCurrentStripeSubscription("cus_1");
   await (sql as any).exec(`TRUNCATE "organization", "member"`);
   await (sql as any).exec(`
     INSERT INTO "organization" ("id","name","slug","stripeCustomerId") VALUES
@@ -95,9 +101,7 @@ beforeEach(async () => {
       ('m_member','org_1','u_member','member'),
       ('m_outsider','org_2','u_outsider','owner');
   `);
-  mocks.subscriptionsList.mockImplementation(async ({ status }: any) =>
-    status === "active" ? { data: [fakeSubscription("active")] } : { data: [] }
-  );
+  mocks.subscriptionsList.mockResolvedValue({ data: [fakeSubscription("active")] });
   mocks.subscriptionsUpdate.mockResolvedValue({ id: "sub_1" });
   mocks.subscriptionsRetrieve.mockResolvedValue({
     id: "sub_1",
@@ -122,7 +126,12 @@ describe("updateSubscription — authorization", () => {
         currentPeriodEnd: new Date(1760000000 * 1000).toISOString(),
       },
     });
-    expect(mocks.subscriptionsList).toHaveBeenCalledWith({ customer: "cus_1", status: "active", limit: 1 });
+    expect(mocks.subscriptionsList).toHaveBeenCalledWith({
+      customer: "cus_1",
+      status: "all",
+      limit: 100,
+      expand: ["data.plan.product"],
+    });
     expect(mocks.subscriptionsUpdate).toHaveBeenCalledWith("sub_1", {
       items: [{ id: "si_1", price: "price_new" }],
       proration_behavior: "always_invoice",
@@ -173,10 +182,27 @@ describe("updateSubscription — authorization", () => {
 });
 
 describe("updateSubscription — plan-change branches", () => {
+  it("bypasses a stale trial cache before choosing mutation and proration inputs", async () => {
+    mocks.subscriptionsList.mockResolvedValueOnce({
+      data: [fakeSubscription("trialing", { trial_end: 1765000000 })],
+    });
+    await getCurrentStripeSubscription("cus_1");
+    mocks.subscriptionsList.mockResolvedValueOnce({ data: [fakeSubscription("active")] });
+    const reply = replyStub();
+
+    await updateSubscription(requestStub("u_owner", { organizationId: "org_1", newPriceId: "price_new" }), reply);
+
+    expect(mocks.subscriptionsList).toHaveBeenCalledTimes(2);
+    expect(mocks.subscriptionsUpdate).toHaveBeenCalledWith("sub_1", {
+      items: [{ id: "si_1", price: "price_new" }],
+      proration_behavior: "always_invoice",
+    });
+  });
+
   it("preserves the trial when swapping plans on a trialing subscription", async () => {
-    mocks.subscriptionsList.mockImplementation(async ({ status }: any) =>
-      status === "trialing" ? { data: [fakeSubscription("trialing", { trial_end: 1765000000 })] } : { data: [] }
-    );
+    mocks.subscriptionsList.mockResolvedValue({
+      data: [fakeSubscription("trialing", { trial_end: 1765000000 })],
+    });
     const reply = replyStub();
 
     await updateSubscription(requestStub("u_owner", { organizationId: "org_1", newPriceId: "price_new" }), reply);

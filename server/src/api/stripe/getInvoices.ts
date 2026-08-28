@@ -1,9 +1,6 @@
-import { eq } from "drizzle-orm";
 import { FastifyReply, FastifyRequest } from "fastify";
-import { db } from "../../db/postgres/postgres.js";
-import { organization } from "../../db/postgres/schema.js";
-import { getOrgMembership, isOrgOwner } from "../../lib/access.js";
 import { stripe } from "../../lib/stripe.js";
+import { getOrganizationBillingAccount } from "../../services/billing/organizationBilling.js";
 
 export async function getInvoices(
   request: FastifyRequest<{
@@ -29,27 +26,16 @@ export async function getInvoices(
   }
 
   try {
-    // Verify user has permission to manage billing for this organization
-    const membership = await getOrgMembership(userId, organizationId);
-
-    if (!isOrgOwner(membership)) {
+    const billingAccount = await getOrganizationBillingAccount(userId, organizationId);
+    if (!billingAccount.ok && billingAccount.reason === "not_owner") {
       return reply.status(403).send({ error: "Only organization owners can manage billing" });
     }
-
-    // Get the organization's Stripe customer ID
-    const orgResult = await db
-      .select({ stripeCustomerId: organization.stripeCustomerId })
-      .from(organization)
-      .where(eq(organization.id, organizationId))
-      .limit(1);
-
-    const org = orgResult[0];
-    if (!org?.stripeCustomerId) {
+    if (!billingAccount.ok || !billingAccount.account.stripeCustomerId) {
       return reply.send([]);
     }
 
     const invoices = await stripe.invoices.list({
-      customer: org.stripeCustomerId,
+      customer: billingAccount.account.stripeCustomerId,
       limit: 100,
     });
 

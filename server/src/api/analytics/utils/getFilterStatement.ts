@@ -31,6 +31,11 @@ export interface FilterStatementOptions {
   dualUserIdColumns?: boolean;
 }
 
+/** Event-reporting surfaces resolve channel at session acquisition level. */
+export const EVENT_FILTER_STATEMENT_OPTIONS = {
+  sessionLevelParams: ["channel"],
+} satisfies FilterStatementOptions;
+
 const DEFAULT_SESSION_LEVEL_PARAMS: FilterParameter[] = ["event_name", "channel"];
 
 const filterTypeToOperator = (type: FilterType) => {

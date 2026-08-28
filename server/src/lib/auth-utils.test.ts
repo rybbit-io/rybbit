@@ -52,6 +52,7 @@ import {
   getUserHasAccessToSite,
   getUserHasAdminAccessToSite,
   getUserIdFromRequest,
+  invalidateOrganizationSitesAccessCache,
   invalidateSitesAccessCache,
 } from "./auth-utils.js";
 import {
@@ -160,9 +161,7 @@ beforeAll(async () => {
 });
 
 beforeEach(async () => {
-  await (sql as any).exec(
-    `TRUNCATE "member", "member_site_access", "team", "teamMember", "team_site_access", "sites"`
-  );
+  await (sql as any).exec(`TRUNCATE "member", "member_site_access", "team", "teamMember", "team_site_access", "sites"`);
 
   // Org with 13 sites:
   //   1-11 gated by team "bbc", 12 gated by team "other", 13 not team-gated
@@ -179,10 +178,12 @@ beforeEach(async () => {
     { id: "team_bbc", name: "BBC", organizationId: ORG, createdAt: NOW },
     { id: "team_other", name: "Other", organizationId: ORG, createdAt: NOW },
   ]);
-  await db.insert(teamSiteAccess).values([
-    ...Array.from({ length: 11 }, (_, i) => ({ teamId: "team_bbc", siteId: i + 1 })),
-    { teamId: "team_other", siteId: 12 },
-  ]);
+  await db
+    .insert(teamSiteAccess)
+    .values([
+      ...Array.from({ length: 11 }, (_, i) => ({ teamId: "team_bbc", siteId: i + 1 })),
+      { teamId: "team_other", siteId: 12 },
+    ]);
 
   // Peer: member role, on team BBC
   await db.insert(member).values({
@@ -193,6 +194,7 @@ beforeEach(async () => {
     createdAt: NOW,
     hasRestrictedSiteAccess: false,
   });
+
   await db.insert(teamMember).values({ id: "tm_1", teamId: "team_bbc", userId: "user_peer" });
 
   // An owner for the admin-path sanity check
@@ -204,6 +206,8 @@ beforeEach(async () => {
     createdAt: NOW,
     hasRestrictedSiteAccess: false,
   });
+
+  await invalidateOrganizationSitesAccessCache(ORG);
 });
 
 describe("getSitesUserHasAccessTo — team-based access", () => {
@@ -635,6 +639,37 @@ describe("getSitesUserHasAccessTo — organization-owned keys", () => {
     );
   });
 
+  it("invalidates the Organization-owned key and every member user key together", async () => {
+    const memberRequest = reqFor("user_peer");
+    const organizationRequest = orgKeyRequest(ORG);
+
+    await getSitesUserHasAccessTo(memberRequest);
+    await getSitesUserHasAccessTo(organizationRequest);
+    await db.insert(sites).values({
+      id: "hex99",
+      siteId: 99,
+      name: "new-site",
+      domain: "new.example.com",
+      organizationId: ORG,
+    });
+
+    expect((await getSitesUserHasAccessTo(memberRequest)).some((site: { siteId: number }) => site.siteId === 99)).toBe(
+      false
+    );
+    expect(
+      (await getSitesUserHasAccessTo(organizationRequest)).some((site: { siteId: number }) => site.siteId === 99)
+    ).toBe(false);
+
+    await invalidateOrganizationSitesAccessCache(ORG);
+
+    expect((await getSitesUserHasAccessTo(memberRequest)).some((site: { siteId: number }) => site.siteId === 99)).toBe(
+      true
+    );
+    expect(
+      (await getSitesUserHasAccessTo(organizationRequest)).some((site: { siteId: number }) => site.siteId === 99)
+    ).toBe(true);
+  });
+
   it("passes internal re-checks for the org's sites and only those", async () => {
     await db.insert(sites).values({
       id: "hex_foreign",
@@ -662,4 +697,3 @@ describe("getSitesUserHasAccessTo — organization-owned keys", () => {
     ]);
   });
 });
-

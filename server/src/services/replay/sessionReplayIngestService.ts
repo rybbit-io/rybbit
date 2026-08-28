@@ -1,13 +1,13 @@
 import { DateTime } from "luxon";
+import type { AsnLookup } from "../../db/geolocation/asn.js";
 import { clickhouse } from "../../db/clickhouse/clickhouse.js";
-import { RecordSessionReplayRequest } from "../../types/sessionReplay.js";
 import { createServiceLogger } from "../../lib/logger/logger.js";
+import { RecordSessionReplayRequest } from "../../types/sessionReplay.js";
 import { correctReplayClockSkew } from "./replayClockSkew.js";
+import { replayPayloadStorage } from "./replayPayloadStorage.js";
 import { parseTrackingData } from "./trackingUtils.js";
 import { sessionsService } from "../sessions/sessionsService.js";
 import { userIdService } from "../userId/userIdService.js";
-import { r2Storage } from "../storage/r2StorageService.js";
-import { siteConfig } from "../../lib/siteConfig.js";
 
 const logger = createServiceLogger("session-replay-ingest");
 
@@ -22,10 +22,13 @@ type BatchStats = {
 };
 
 export interface RequestMetadata {
-  userAgent: string;
   ipAddress: string;
+  lookupAsn: AsnLookup;
   origin: string;
+  receivedAt: Date;
   referrer: string;
+  saltUserIds: boolean;
+  userAgent: string;
 }
 
 /**
@@ -33,26 +36,22 @@ export interface RequestMetadata {
  * Handles recording events and updating metadata
  */
 export class SessionReplayIngestService {
-  async recordEvents(
-    siteId: number,
-    request: RecordSessionReplayRequest,
-    requestMeta?: RequestMetadata
-  ): Promise<void> {
+  async recordEvents(siteId: number, request: RecordSessionReplayRequest, requestMeta: RequestMetadata): Promise<void> {
     const { userId: clientUserId, events: rawEvents, metadata } = request;
 
     // Device clocks, not ours. Correct the whole batch onto server time before
     // anything downstream partitions or TTLs on these values.
-    const { events, skewMs } = correctReplayClockSkew(rawEvents, Date.now());
+    const { events, skewMs } = correctReplayClockSkew(rawEvents, requestMeta.receivedAt.getTime());
     if (skewMs !== 0) {
       logger.warn({ siteId, skewMs, eventCount: events.length }, "Corrected replay clock skew");
     }
 
     // Always generate device fingerprint (anonymous user ID) server-side
-    const deviceFingerprint = await userIdService.generateUserId(
-      requestMeta?.ipAddress || "",
-      requestMeta?.userAgent || "",
-      siteId
-    );
+    const deviceFingerprint = await userIdService.generateUserId(requestMeta.ipAddress, requestMeta.userAgent, siteId, {
+      lookupAsn: requestMeta.lookupAsn,
+      receivedAt: requestMeta.receivedAt,
+      saltUserIds: requestMeta.saltUserIds,
+    });
 
     // Check if client provided an identified user ID (different from device fingerprint)
     const trimmedClientUserId = clientUserId?.trim() || "";
@@ -70,99 +69,32 @@ export class SessionReplayIngestService {
       siteId,
     });
 
-    // Check if R2 storage is enabled for cloud deployments
-    let r2BatchKey: string | null = null;
-    let eventDataArray: any[] = [];
-
-    if (r2Storage.isEnabled()) {
-      // Extract event data for R2 storage
-      eventDataArray = events.map(event => event.data);
-
-      try {
-        // Store event data batch in R2
-        r2BatchKey = await r2Storage.storeBatch(siteId, sessionId, eventDataArray);
-      } catch (error) {
-        console.error("Failed to store in R2, falling back to ClickHouse:", error);
-        r2BatchKey = null;
-      }
-    }
-
-    // Prepare events for batch insert
-    const eventsToInsert = events.map((event, index) => {
-      const serializedData = JSON.stringify(event.data);
-
-      if (r2BatchKey) {
-        // R2 storage: store metadata only in ClickHouse
-        return {
-          site_id: siteId,
-          session_id: sessionId,
-          user_id: userId,
-          identified_user_id: identifiedUserId,
-          timestamp: event.timestamp,
-          event_type: event.type,
-          event_data: "", // Empty string when using R2
-          event_data_key: r2BatchKey,
-          batch_index: index,
-          sequence_number: index,
-          event_size_bytes: serializedData.length,
-          viewport_width: metadata?.viewportWidth || null,
-          viewport_height: metadata?.viewportHeight || null,
-          is_complete: 0,
-        };
-      } else {
-        // Traditional storage: store everything in ClickHouse
-        return {
-          site_id: siteId,
-          session_id: sessionId,
-          user_id: userId,
-          identified_user_id: identifiedUserId,
-          timestamp: event.timestamp,
-          event_type: event.type,
-          event_data: serializedData,
-          event_data_key: null,
-          batch_index: null,
-          sequence_number: index,
-          event_size_bytes: serializedData.length,
-          viewport_width: metadata?.viewportWidth || null,
-          viewport_height: metadata?.viewportHeight || null,
-          is_complete: 0,
-        };
-      }
+    const storedEvents = await replayPayloadStorage.storeEvents({
+      events,
+      identifiedUserId,
+      sessionId,
+      siteId,
+      userId,
+      viewportHeight: metadata?.viewportHeight,
+      viewportWidth: metadata?.viewportWidth,
     });
-
-    // Batch insert events
-    if (eventsToInsert.length > 0) {
-      await clickhouse.insert({
-        table: "session_replay_events",
-        values: eventsToInsert,
-        format: "JSONEachRow",
-      });
-    }
 
     // Update or insert metadata
     if (metadata) {
       // An events-free batch still carries metadata worth recording, but it has
       // no timestamps to bound it — anchor those on server time rather than
       // letting Math.min of nothing produce an epoch-dated row.
-      const timestamps = events.length > 0 ? events.map(event => event.timestamp) : [Date.now()];
+      const timestamps = events.length > 0 ? events.map(event => event.timestamp) : [requestMeta.receivedAt.getTime()];
       const batchStats: BatchStats = {
         startTime: new Date(Math.min(...timestamps)),
         endTime: new Date(Math.max(...timestamps)),
-        eventCount: eventsToInsert.length,
-        compressedSizeBytes: eventsToInsert.reduce((total, event) => total + event.event_size_bytes, 0),
+        eventCount: storedEvents.eventCount,
+        compressedSizeBytes: storedEvents.payloadSizeBytes,
         screenWidth: metadata.viewportWidth || 0,
         screenHeight: metadata.viewportHeight || 0,
       };
 
-      await this.updateSessionMetadata(
-        siteId,
-        sessionId,
-        userId,
-        identifiedUserId,
-        metadata,
-        batchStats,
-        requestMeta
-      );
+      await this.updateSessionMetadata(siteId, sessionId, userId, identifiedUserId, metadata, batchStats, requestMeta);
     }
   }
 
@@ -173,14 +105,14 @@ export class SessionReplayIngestService {
     identifiedUserId: string,
     metadata: any,
     batchStats: BatchStats,
-    requestMeta?: RequestMetadata
+    requestMeta: RequestMetadata
   ): Promise<void> {
     // Append-only. This used to read the session back first — MIN/MAX/COUNT/SUM
     // across every row the session had ever written, on every batch — purely to
     // recompute a cumulative row. The aggregating table does that combining at
     // merge time, so a batch now writes only what it saw.
     let trackingData: any = {};
-    if (requestMeta?.userAgent) {
+    if (requestMeta.userAgent) {
       try {
         // Extract hostname from the page URL
         const urlObj = new URL(metadata.pageUrl);

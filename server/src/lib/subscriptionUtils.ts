@@ -12,6 +12,10 @@ import {
 } from "./const.js";
 import { stripe } from "./stripe.js";
 import { logger } from "./logger/logger.js";
+import {
+  getCurrentStripeSubscription,
+  invalidateCurrentStripeSubscription,
+} from "../services/billing/organizationBilling.js";
 
 export interface AppSumoSubscriptionInfo {
   source: "appsumo";
@@ -181,25 +185,11 @@ export async function getOverrideSubscription(organizationId: string): Promise<O
 }
 
 /**
- * Short-lived in-process cache for Stripe subscription lookups, keyed by customer ID.
- *
- * Subscription data is read on hot paths (e.g. listing sites on every dashboard load)
- * but changes rarely, so caching it for a short window collapses repeated reads into a
- * single Stripe API call and keeps us well under Stripe's request rate limits. Each
- * worker process keeps its own cache; staleness is bounded by the TTL, and mutations
- * (plan changes, new checkouts) call invalidateStripeSubscriptionCache to refresh early.
- */
-const STRIPE_SUBSCRIPTION_CACHE_TTL_MS = 60_000;
-const stripeSubscriptionCache = new Map<string, { value: StripeSubscriptionInfo | null; expiresAt: number }>();
-
-/**
  * Drops the cached subscription for a customer so the next read fetches fresh data.
  * Call this after any mutation that changes a customer's subscription.
  */
 export function invalidateStripeSubscriptionCache(stripeCustomerId: string | null): void {
-  if (stripeCustomerId) {
-    stripeSubscriptionCache.delete(stripeCustomerId);
-  }
+  invalidateCurrentStripeSubscription(stripeCustomerId);
   // Also drop the account-wide snapshot so admin/cron reads pick up the change promptly.
   allStripeSubscriptionsCache = null;
 }
@@ -313,60 +303,16 @@ export async function getStripeSubscription(
     return null;
   }
 
-  const cached = stripeSubscriptionCache.get(stripeCustomerId);
-  if (cached && cached.expiresAt > Date.now()) {
-    return cached.value;
-  }
-
   try {
-    const value = await fetchStripeSubscription(stripeCustomerId);
-    stripeSubscriptionCache.set(stripeCustomerId, {
-      value,
-      expiresAt: Date.now() + STRIPE_SUBSCRIPTION_CACHE_TTL_MS,
-    });
-    return value;
+    const subscription = await getCurrentStripeSubscription(stripeCustomerId, { throwOnError });
+    return subscription ? buildStripeSubscriptionInfo(subscription) : null;
   } catch (error) {
     console.error("Error fetching Stripe subscription:", error);
-    // Prefer the last known value (even if expired) over treating the org as having
-    // no subscription — that would silently downgrade a paying customer. A cached
-    // `null` is also trustworthy: it means we previously confirmed there was no sub.
-    if (cached) {
-      return cached.value;
-    }
-    // No cached value at all, so we genuinely don't know this customer's status.
-    // Callers that must not mistake a transient Stripe failure for "no subscription"
-    // (e.g. the usage cron) opt into throwing so they can preserve the org's existing
-    // state instead of downgrading it to free.
     if (throwOnError) {
       throw error;
     }
     return null;
   }
-}
-
-/**
- * Performs the actual Stripe API lookup for a customer's best subscription.
- * Uses a single list call (status "all") to halve request volume versus separate
- * active/trialing queries.
- */
-async function fetchStripeSubscription(stripeCustomerId: string): Promise<StripeSubscriptionInfo | null> {
-  // Fetch active + trialing in a single request and filter locally.
-  const subs = await (stripe as Stripe).subscriptions.list({
-    customer: stripeCustomerId,
-    status: "all",
-    limit: 100,
-    expand: ["data.plan.product"],
-  });
-
-  const allSubs = subs.data.filter(sub => sub.status === "active" || sub.status === "trialing");
-
-  if (allSubs.length === 0) {
-    return null;
-  }
-
-  // Pick the most recently created subscription across both active and trialing
-  const subscription = allSubs.sort((a, b) => b.created - a.created)[0];
-  return buildStripeSubscriptionInfo(subscription);
 }
 
 /**

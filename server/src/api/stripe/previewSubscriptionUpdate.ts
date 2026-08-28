@@ -1,10 +1,10 @@
 import { FastifyReply, FastifyRequest } from "fastify";
 import { stripe } from "../../lib/stripe.js";
-import { db } from "../../db/postgres/postgres.js";
-import { organization } from "../../db/postgres/schema.js";
-import { eq } from "drizzle-orm";
-import { getOrgMembership, isOrgOwner } from "../../lib/access.js";
 import Stripe from "stripe";
+import {
+  getCurrentStripeSubscription,
+  getOrganizationBillingAccount,
+} from "../../services/billing/organizationBilling.js";
 
 interface PreviewSubscriptionBody {
   organizationId: string;
@@ -29,37 +29,22 @@ export async function previewSubscriptionUpdate(
   }
 
   try {
-    // 1. Verify user has permission to manage billing for this organization
-    const membership = await getOrgMembership(userId, organizationId);
-
-    if (!isOrgOwner(membership)) {
+    const billingAccount = await getOrganizationBillingAccount(userId, organizationId);
+    if (!billingAccount.ok && billingAccount.reason === "not_owner") {
       return reply.status(403).send({
         error: "Only organization owners can manage billing",
       });
     }
-
-    // 2. Find the organization and its Stripe customer ID
-    const orgResult = await db
-      .select({
-        stripeCustomerId: organization.stripeCustomerId,
-      })
-      .from(organization)
-      .where(eq(organization.id, organizationId))
-      .limit(1);
-
-    const org = orgResult[0];
-
-    if (!org || !org.stripeCustomerId) {
+    if (!billingAccount.ok || !billingAccount.account.stripeCustomerId) {
       return reply.status(404).send({ error: "Organization or Stripe customer ID not found" });
     }
+    const stripeCustomerId = billingAccount.account.stripeCustomerId;
 
-    // 3. Get the active or trialing subscription
-    const [activeSubscriptions, trialingSubscriptions] = await Promise.all([
-      stripe!.subscriptions.list({ customer: org.stripeCustomerId, status: "active", limit: 1 }),
-      stripe!.subscriptions.list({ customer: org.stripeCustomerId, status: "trialing", limit: 1 }),
-    ]);
-
-    const subscription = activeSubscriptions.data[0] ?? trialingSubscriptions.data[0];
+    const subscription = await getCurrentStripeSubscription(stripeCustomerId, {
+      throwOnError: true,
+      fresh: true,
+      selection: "active_first",
+    });
 
     if (!subscription) {
       return reply.status(404).send({ error: "No active subscription found" });
@@ -103,7 +88,7 @@ export async function previewSubscriptionUpdate(
 
     // 6. Create a preview of the upcoming invoice with proration
     const upcomingInvoice = await (stripe as Stripe).invoices.createPreview({
-      customer: org.stripeCustomerId,
+      customer: stripeCustomerId,
       subscription: subscription.id,
       subscription_details: {
         items: [

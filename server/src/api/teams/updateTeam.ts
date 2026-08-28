@@ -2,7 +2,7 @@ import { eq, and, inArray } from "drizzle-orm";
 import { FastifyReply, FastifyRequest } from "fastify";
 import { db } from "../../db/postgres/postgres.js";
 import { team, teamMember, teamSiteAccess, member, sites } from "../../db/postgres/schema.js";
-import { invalidateSitesAccessCache } from "../../lib/auth-utils.js";
+import { invalidateOrganizationSitesAccessCache } from "../../services/sites/siteAccessCache.js";
 
 interface UpdateTeamBody {
   name?: string;
@@ -31,13 +31,6 @@ export async function updateTeam(
     if (teamRecord.length === 0) {
       return reply.status(404).send({ error: "Team not found" });
     }
-
-    // Get existing members before update (for cache invalidation)
-    const existingMembers = await db
-      .select({ userId: teamMember.userId })
-      .from(teamMember)
-      .where(eq(teamMember.teamId, teamId));
-    const existingUserIds = existingMembers.map(m => m.userId);
 
     // Validate memberUserIds are org members
     if (memberUserIds && memberUserIds.length > 0) {
@@ -108,11 +101,7 @@ export async function updateTeam(
       }
     });
 
-    // Invalidate cache for all affected users (old + new members)
-    const allAffectedUserIds = new Set([...existingUserIds, ...(memberUserIds || [])]);
-    for (const userId of allAffectedUserIds) {
-      invalidateSitesAccessCache(userId);
-    }
+    await invalidateOrganizationSitesAccessCache(organizationId);
 
     return reply.status(200).send({ success: true });
   } catch (error) {

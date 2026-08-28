@@ -1,10 +1,4 @@
-import {
-  S3Client,
-  PutObjectCommand,
-  GetObjectCommand,
-  DeleteObjectCommand,
-  GetObjectCommandOutput,
-} from "@aws-sdk/client-s3";
+import { DeleteObjectCommand, GetObjectCommand, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import { NodeHttpHandler } from "@smithy/node-http-handler";
 import { Readable } from "stream";
 import { gunzipSync } from "zlib";
@@ -186,7 +180,7 @@ class R2StorageService {
    */
   async deleteBatch(key: string): Promise<void> {
     if (!this.enabled || !this.client) {
-      return;
+      throw new Error("R2 storage is not enabled");
     }
 
     try {
@@ -197,8 +191,8 @@ class R2StorageService {
         })
       );
     } catch (error) {
-      console.error("[R2Storage] Failed to delete batch:", error);
-      // Non-critical error, log but don't throw
+      this.logger.error({ err: error, key }, "Failed to delete R2 batch");
+      throw error;
     }
   }
 }

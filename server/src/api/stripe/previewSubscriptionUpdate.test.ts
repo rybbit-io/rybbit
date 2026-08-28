@@ -14,8 +14,8 @@ vi.mock("../../lib/stripe.js", () => ({
   },
 }));
 
-// Real Drizzle queries against PGlite so the inline membership check — the SOLE
-// authorization gate on this route — is exercised for real.
+// Real Drizzle queries against PGlite exercise the Organization Billing owner
+// gate through the route's public Interface.
 vi.mock("../../db/postgres/postgres.js", async () => {
   const { PGlite } = await import("@electric-sql/pglite");
   const { drizzle } = await import("drizzle-orm/pglite");
@@ -26,6 +26,7 @@ vi.mock("../../db/postgres/postgres.js", async () => {
 });
 
 import { sql } from "../../db/postgres/postgres.js";
+import { invalidateCurrentStripeSubscription } from "../../services/billing/organizationBilling.js";
 import { previewSubscriptionUpdate } from "./previewSubscriptionUpdate.js";
 
 const DDL = `
@@ -56,6 +57,7 @@ function fakeSubscription(status: "active" | "trialing") {
   return {
     id: "sub_1",
     status,
+    created: 1,
     items: { data: [{ id: "si_1", price: { id: "price_old" }, current_period_end: PERIOD_END }] },
   };
 }
@@ -68,6 +70,7 @@ beforeAll(async () => {
 
 beforeEach(async () => {
   vi.clearAllMocks();
+  invalidateCurrentStripeSubscription("cus_1");
   await (sql as any).exec(`TRUNCATE "organization", "member"`);
   await (sql as any).exec(`
     INSERT INTO "organization" ("id","name","slug","stripeCustomerId") VALUES
@@ -78,9 +81,7 @@ beforeEach(async () => {
       ('m_member','org_1','u_member','member'),
       ('m_outsider','org_2','u_outsider','owner');
   `);
-  mocks.subscriptionsList.mockImplementation(async ({ status }: any) =>
-    status === "active" ? { data: [fakeSubscription("active")] } : { data: [] }
-  );
+  mocks.subscriptionsList.mockResolvedValue({ data: [fakeSubscription("active")] });
   mocks.pricesRetrieve.mockImplementation(async (priceId: string) => ({
     id: priceId,
     unit_amount: priceId === "price_new" ? 4900 : 1900,
@@ -173,9 +174,7 @@ describe("previewSubscriptionUpdate — authorization", () => {
 
 describe("previewSubscriptionUpdate — branches", () => {
   it("returns a zero-proration preview for trialing subscriptions without hitting the invoice API", async () => {
-    mocks.subscriptionsList.mockImplementation(async ({ status }: any) =>
-      status === "trialing" ? { data: [fakeSubscription("trialing")] } : { data: [] }
-    );
+    mocks.subscriptionsList.mockResolvedValue({ data: [fakeSubscription("trialing")] });
     const reply = replyStub();
 
     await previewSubscriptionUpdate(requestStub("u_owner", validBody), reply);

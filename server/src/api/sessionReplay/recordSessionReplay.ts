@@ -1,11 +1,10 @@
 import { FastifyReply, FastifyRequest } from "fastify";
 import { z } from "zod";
-import { siteConfig } from "../../lib/siteConfig.js";
 import { SessionReplayIngestService } from "../../services/replay/sessionReplayIngestService.js";
 import { usageService } from "../../services/usageService.js";
 import { RecordSessionReplayRequest } from "../../types/sessionReplay.js";
-import { collectCandidateClientIps, resolveClientIp } from "../../services/tracker/resolveClientIp.js";
 import { decideSiteExclusion } from "../../services/sites/siteExclusionDecision.js";
+import { resolveSiteIngestionContext } from "../../services/tracker/siteIngestionContext.js";
 
 const recordSessionReplaySchema = z.object({
   userId: z.string(),
@@ -62,21 +61,19 @@ export async function recordSessionReplay(
   reply: FastifyReply
 ) {
   try {
-    // Get the site configuration to get the numeric siteId
-    const siteConfiguration = await siteConfig.getConfig(request.params.siteId);
-    const { siteId, sessionReplay } = siteConfiguration ?? {};
+    const ingestionContext = await resolveSiteIngestionContext(request, {
+      site_id: request.params.siteId,
+    });
+    if (!ingestionContext) {
+      throw new Error(`Site configuration not found: ${request.params.siteId}`);
+    }
+
+    const { candidateIps, ipAddress, lookupAsn, receivedAt, site: siteConfiguration, userAgent } = ingestionContext;
+    const { siteId, sessionReplay } = siteConfiguration;
 
     if (!sessionReplay) {
       request.log.info({ siteId }, "Skipping session replay event because replay is not enabled");
       return reply.status(200).send({ success: true, message: "Session replay not enabled" });
-    }
-
-    if (!siteId) {
-      throw new Error(`Site not found: ${request.params.siteId}`);
-    }
-
-    if (!siteConfiguration) {
-      throw new Error(`Site configuration not found: ${request.params.siteId}`);
     }
 
     // Check if the site has exceeded its monthly limit
@@ -94,17 +91,15 @@ export async function recordSessionReplay(
 
     const body = recordSessionReplaySchema.parse(request.body) as RecordSessionReplayRequest;
 
-    const requestIP = resolveClientIp(request, { firstPartyProxy: siteConfiguration.firstPartyProxy });
     const { hostname, pathname, querystring } = parseReplayPageUrl(body.metadata?.pageUrl);
-    const userAgent = request.headers["user-agent"] || "";
 
     const exclusionDecision = await decideSiteExclusion(siteConfiguration, {
-      ipAddress: requestIP,
-      candidateIps: collectCandidateClientIps(request, [requestIP]),
+      ipAddress,
+      candidateIps,
       pathname,
       querystring,
       hostname,
-      userAgent: String(userAgent),
+      userAgent,
     });
 
     if (exclusionDecision.excluded) {
@@ -123,10 +118,13 @@ export async function recordSessionReplay(
 
     const sessionReplayService = new SessionReplayIngestService();
     await sessionReplayService.recordEvents(siteId, body, {
+      ipAddress,
+      lookupAsn,
+      origin: String(origin),
+      receivedAt,
+      referrer: String(referrer),
+      saltUserIds: siteConfiguration.saltUserIds,
       userAgent,
-      ipAddress: requestIP,
-      origin,
-      referrer,
     });
 
     return reply.send({ success: true });

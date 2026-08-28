@@ -2,9 +2,12 @@ import { eq } from "drizzle-orm";
 import { FastifyReply, FastifyRequest } from "fastify";
 import Stripe from "stripe";
 import { db } from "../../db/postgres/postgres.js";
-import { organization, user as userSchema } from "../../db/postgres/schema.js";
-import { getOrgMembership, isOrgOwner } from "../../lib/access.js";
+import { user as userSchema } from "../../db/postgres/schema.js";
 import { stripe } from "../../lib/stripe.js";
+import {
+  getOrganizationBillingAccount,
+  getOrCreateOrganizationStripeCustomer,
+} from "../../services/billing/organizationBilling.js";
 
 interface CheckoutRequestBody {
   priceId: string;
@@ -31,61 +34,38 @@ export async function createCheckoutSession(
   }
 
   try {
-    // 1. Verify user has permission to manage billing for this organization
-    const membership = await getOrgMembership(userId, organizationId);
-
-    if (!isOrgOwner(membership)) {
+    const billingAccount = await getOrganizationBillingAccount(userId, organizationId);
+    if (!billingAccount.ok && billingAccount.reason === "not_owner") {
       return reply.status(403).send({
         error: "Only organization owners can manage billing",
       });
     }
-
-    // 2. Get user and organization details
-    const [userResult, orgResult] = await Promise.all([
-      db
-        .select({
-          id: userSchema.id,
-          email: userSchema.email,
-        })
-        .from(userSchema)
-        .where(eq(userSchema.id, userId))
-        .limit(1),
-      db
-        .select({
-          id: organization.id,
-          name: organization.name,
-          stripeCustomerId: organization.stripeCustomerId,
-        })
-        .from(organization)
-        .where(eq(organization.id, organizationId))
-        .limit(1),
-    ]);
-
-    const user = userResult[0];
-    const org = orgResult[0];
-
-    if (!user || !org) {
+    if (!billingAccount.ok) {
       return reply.status(404).send({ error: "User or organization not found" });
     }
 
-    let stripeCustomerId = org.stripeCustomerId;
+    const userResult = await db
+      .select({
+        id: userSchema.id,
+        email: userSchema.email,
+      })
+      .from(userSchema)
+      .where(eq(userSchema.id, userId))
+      .limit(1);
 
-    // 3. If the organization doesn't have a Stripe Customer ID, create one
-    if (!stripeCustomerId) {
-      const customer = await (stripe as Stripe).customers.create({
-        email: user.email,
-        name: org.name,
-        metadata: {
-          organizationId: org.id,
-          createdByUserId: userId, // For audit trail
-          ...(referral && { referral }),
-        },
-      });
-      stripeCustomerId = customer.id;
+    const user = userResult[0];
+    const org = billingAccount.account;
 
-      // 4. Update the organization with the new Stripe Customer ID
-      await db.update(organization).set({ stripeCustomerId }).where(eq(organization.id, organizationId));
+    if (!user) {
+      return reply.status(404).send({ error: "User or organization not found" });
     }
+
+    const stripeCustomerId = await getOrCreateOrganizationStripeCustomer({
+      account: org,
+      createdByUserId: userId,
+      email: user.email,
+      referral,
+    });
 
     // 5. Create a Stripe Checkout Session
     const session = await (stripe as Stripe).checkout.sessions.create({

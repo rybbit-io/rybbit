@@ -4,7 +4,7 @@ import { FastifyReply, FastifyRequest } from "fastify";
 import { db } from "../../db/postgres/postgres.js";
 import { member, memberSiteAccess, sites, user } from "../../db/postgres/schema.js";
 import { siteIdsInOrganization } from "../../lib/access.js";
-import { invalidateSitesAccessCache } from "../../lib/auth-utils.js";
+import { invalidateSitesAccessCache } from "../../services/sites/siteAccessCache.js";
 
 interface UpdateMemberSiteAccessParams {
   organizationId: string;
@@ -65,22 +65,20 @@ export async function updateMemberSiteAccess(
       }
     }
 
-    // Update member's hasRestrictedSiteAccess flag
-    await db.update(member).set({ hasRestrictedSiteAccess }).where(eq(member.id, memberId));
+    await db.transaction(async tx => {
+      await tx.update(member).set({ hasRestrictedSiteAccess }).where(eq(member.id, memberId));
+      await tx.delete(memberSiteAccess).where(eq(memberSiteAccess.memberId, memberId));
 
-    // Delete existing site access entries
-    await db.delete(memberSiteAccess).where(eq(memberSiteAccess.memberId, memberId));
-
-    // Insert new site access entries if restricted and has site IDs
-    if (hasRestrictedSiteAccess && siteIds && siteIds.length > 0) {
-      await db.insert(memberSiteAccess).values(
-        siteIds.map(siteId => ({
-          memberId: memberId,
-          siteId: siteId,
-          createdBy: currentUserId || null,
-        }))
-      );
-    }
+      if (hasRestrictedSiteAccess && siteIds && siteIds.length > 0) {
+        await tx.insert(memberSiteAccess).values(
+          siteIds.map(siteId => ({
+            memberId,
+            siteId,
+            createdBy: currentUserId || null,
+          }))
+        );
+      }
+    });
 
     // Invalidate the cache for this user
     invalidateSitesAccessCache(memberData.userId);
