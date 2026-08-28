@@ -37,6 +37,7 @@ export { getPerformanceOverview } from "./performance/getPerformanceOverview.js"
 export { getPerformanceTimeSeries } from "./performance/getPerformanceTimeSeries.js";
 
 // Bots
+export { getBotAiSummary } from "./bots/getBotAiSummary.js";
 export { getBotDimension } from "./bots/getBotDimension.js";
 export { getBotOverview } from "./bots/getBotOverview.js";
 export { getBotTimeSeries } from "./bots/getBotTimeSeries.js";

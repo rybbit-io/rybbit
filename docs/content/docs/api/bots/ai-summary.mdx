@@ -1,0 +1,162 @@
+---
+title: Get AI Summary
+description: Returns crawls and referrals per AI operator, side by side.
+full: true
+method: GET
+---
+
+import { TypeTable } from 'fumadocs-ui/components/type-table';
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+import { Callout } from 'fumadocs-ui/components/callout';
+
+<div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
+<div>
+
+```
+GET /api/sites/:site/bots/ai-summary
+```
+
+Returns one row per AI operator: how much of your site it read, and how many visits it sent back.
+
+The two numbers come from different places. Reads are bot events whose user agent names the operator; visits back are sessions in your normal analytics that arrived from that company's product (the `AI` acquisition channel). Neither is very interesting alone — "OpenAI read 4,120 pages and sent 12 visits" is the sentence this endpoint exists to produce.
+
+Operators that only read, and operators that only referred, both appear; the missing side reads `0`.
+
+### Path Parameters
+
+<TypeTable
+  type={{
+    site: {
+      description: 'Site ID or site identifier',
+      type: 'string | number',
+      required: true,
+    },
+  }}
+/>
+
+### Query Parameters
+
+Accepts all [Common Parameters](/docs/api/getting-started#common-parameters) (time and filters).
+
+Filters apply to both halves, using the bot filter subset described in [Get Bots by Dimension](/docs/api/bots/by-dimension).
+
+### Response
+
+<TypeTable
+  type={{
+    data: {
+      description: 'Array of operator rows, ordered by reads descending',
+      type: 'AiSummaryRow[]',
+    },
+  }}
+/>
+
+#### AiSummaryRow Object
+
+<TypeTable
+  type={{
+    operator: {
+      description: 'Who runs the bot, e.g. "OpenAI"',
+      type: 'string',
+    },
+    crawls: {
+      description: 'Total AI requests from this operator',
+      type: 'number',
+    },
+    training_crawls: {
+      description: 'Requests with purpose ai_training',
+      type: 'number',
+    },
+    search_crawls: {
+      description: 'Requests with purpose ai_search',
+      type: 'number',
+    },
+    agent_requests: {
+      description: 'Requests with purpose ai_agent',
+      type: 'number',
+    },
+    referrals: {
+      description: 'Sessions that arrived from this operator\'s product',
+      type: 'number',
+    },
+    crawls_per_referral: {
+      description: 'Reads per visit sent back. 0 when the operator sent nobody back — there is no rate to report.',
+      type: 'number',
+    },
+  }}
+/>
+
+<Callout>
+Only bots that execute JavaScript reach Rybbit. Crawlers that fetch HTML and run nothing — which includes most training crawlers — are absent unless your server reports them. See [Bot detection](/docs/bot-detection#reporting-crawlers-that-never-run-javascript).
+</Callout>
+
+</div>
+<div className="flex flex-col gap-4">
+
+<Tabs items={['cURL', 'JavaScript', 'Python']}>
+  <Tab value="cURL">
+```bash title="Request"
+curl -X GET "https://app.rybbit.io/api/sites/123/bots/ai-summary?start_date=2024-01-01&end_date=2024-01-31&time_zone=America/New_York" \
+  -H "Authorization: Bearer your_api_key_here"
+```
+  </Tab>
+  <Tab value="JavaScript">
+```javascript title="Request"
+const response = await fetch(
+  'https://app.rybbit.io/api/sites/123/bots/ai-summary?start_date=2024-01-01&end_date=2024-01-31&time_zone=America/New_York',
+  {
+    headers: {
+      'Authorization': 'Bearer your_api_key_here'
+    }
+  }
+);
+
+const data = await response.json();
+```
+  </Tab>
+  <Tab value="Python">
+```python title="Request"
+import requests
+
+response = requests.get(
+    'https://app.rybbit.io/api/sites/123/bots/ai-summary',
+    params={
+        'start_date': '2024-01-01',
+        'end_date': '2024-01-31',
+        'time_zone': 'America/New_York',
+    },
+    headers={'Authorization': 'Bearer your_api_key_here'},
+)
+
+data = response.json()
+```
+  </Tab>
+</Tabs>
+
+```json title="Response"
+{
+  "data": [
+    {
+      "operator": "OpenAI",
+      "crawls": 6120,
+      "training_crawls": 4400,
+      "search_crawls": 900,
+      "agent_requests": 820,
+      "referrals": 214,
+      "crawls_per_referral": 28.6
+    },
+    {
+      "operator": "Perplexity",
+      "crawls": 1904,
+      "training_crawls": 0,
+      "search_crawls": 1300,
+      "agent_requests": 604,
+      "referrals": 341,
+      "crawls_per_referral": 5.6
+    }
+  ]
+}
+```
+
+</div>
+</div>

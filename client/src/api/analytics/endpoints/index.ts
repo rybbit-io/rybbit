@@ -126,13 +126,16 @@ export type {
 
 // Bots types
 export type {
+  BotAiSummaryRow,
   BotDimensionKey,
   BotDimensionItem,
   BotDimensionParams,
   BotLayerKey,
   BotOverviewParams,
+  BotPurpose,
   BotTimeSeriesParams,
   BotTimeSeriesPoint,
+  GetBotAiSummaryResponse,
   GetBotOverviewResponse,
   GetBotTimeSeriesResponse,
   PaginatedBotDimensionResponse,

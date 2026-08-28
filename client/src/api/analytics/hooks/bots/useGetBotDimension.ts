@@ -7,11 +7,14 @@ import { BOT_AVAILABLE_FILTERS } from "./constants";
 export function useGetBotDimension({
   site,
   dimension,
+  purpose,
   limit = 100,
   page = 1,
 }: {
   site?: number | string;
   dimension: BotDimensionKey;
+  /** A single purpose, or "ai" / "ai_crawler" for the grouped families. */
+  purpose?: string;
   limit?: number;
   page?: number;
 }) {
@@ -26,6 +29,6 @@ export function useGetBotDimension({
     // Only bot-relevant filters go on the wire; when none apply, send no filters.
     useFilters: botFilters.length > 0,
     customFilters: botFilters,
-    params: { dimension, limit, page, layer: selectedLayer || undefined },
+    params: { dimension, limit, page, purpose, layer: selectedLayer || undefined },
   });
 }

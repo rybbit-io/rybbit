@@ -1,4 +1,9 @@
 {
   "title": "Bots",
-  "pages": ["overview", "time-series", "by-dimension"]
+  "pages": [
+    "overview",
+    "time-series",
+    "by-dimension",
+    "ai-summary"
+  ]
 }
