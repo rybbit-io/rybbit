@@ -89,13 +89,14 @@ describe("buildMetricQuery", () => {
   describe("entry_page / exit_page", () => {
     it("orders sessions ascending for entry pages", () => {
       const sql = buildMetricQuery(baseQuery({ parameter: "entry_page" }), SITE_ID);
-      expect(sql).toContain("ORDER BY timestamp ASC) as row_num");
+      expect(sql).toContain("timestamp_ms AS timestamp");
+      expect(sql).toContain("ORDER BY timestamp_ms ASC) as row_num");
       expect(sql).toContain("WHERE row_num = 1");
     });
 
     it("orders sessions descending for exit pages", () => {
       const sql = buildMetricQuery(baseQuery({ parameter: "exit_page" }), SITE_ID);
-      expect(sql).toContain("ORDER BY timestamp DESC) as row_num");
+      expect(sql).toContain("ORDER BY timestamp_ms DESC) as row_num");
     });
 
     it("caps time-on-page at 30 minutes", () => {

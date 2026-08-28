@@ -6,6 +6,10 @@ type ColumnDefinition = {
 };
 
 const EVENTS_COLUMNS_TO_ENSURE: ColumnDefinition[] = [
+  // `timestamp` is part of the MergeTree key and ClickHouse forbids widening a
+  // key column in place. Keep it for partition pruning; use this additive
+  // column wherever event order matters. Old rows read as whole-second values.
+  { name: "timestamp_ms", definition: "timestamp_ms DateTime64(3) DEFAULT toDateTime64(timestamp, 3) AFTER timestamp" },
   { name: "lcp", definition: "lcp Nullable(Float64)" },
   { name: "cls", definition: "cls Nullable(Float64)" },
   { name: "inp", definition: "inp Nullable(Float64)" },
@@ -87,6 +91,7 @@ export async function initializeCoreTables() {
       CREATE TABLE IF NOT EXISTS events (
         site_id UInt16,
         timestamp DateTime,
+        timestamp_ms DateTime64(3) DEFAULT toDateTime64(timestamp, 3),
         session_id String,
         user_id String,
         hostname String,

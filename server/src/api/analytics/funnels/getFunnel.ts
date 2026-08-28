@@ -34,7 +34,7 @@ export const buildFunnelQuery = (query: FilterParams<{}>, siteId: number, steps:
     SessionActions AS (
       SELECT
         session_id,
-        timestamp,
+        timestamp_ms AS timestamp,
         pathname,
         event_name,
         type,

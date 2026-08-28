@@ -49,13 +49,13 @@ describe("getSqlParam", () => {
 
     it("should handle entry_page", () => {
       expect(getSqlParam("entry_page")).toBe(
-        "(SELECT argMinIf(pathname, timestamp, type = 'pageview') FROM events WHERE session_id = events.session_id)"
+        "(SELECT argMinIf(pathname, timestamp_ms, type = 'pageview') FROM events WHERE session_id = events.session_id)"
       );
     });
 
     it("should handle exit_page", () => {
       expect(getSqlParam("exit_page")).toBe(
-        "(SELECT argMaxIf(pathname, timestamp, type = 'pageview') FROM events WHERE session_id = events.session_id)"
+        "(SELECT argMaxIf(pathname, timestamp_ms, type = 'pageview') FROM events WHERE session_id = events.session_id)"
       );
     });
 
@@ -326,7 +326,7 @@ describe("getFilterStatement", () => {
       const filters = JSON.stringify([{ parameter: "entry_page", type: "equals", value: ["/home"] }]);
       const result = getFilterStatement(filters);
       expect(result).toContain("session_id IN");
-      expect(result).toContain("argMin(pathname, timestamp) AS entry_pathname");
+      expect(result).toContain("argMin(pathname, timestamp_ms) AS entry_pathname");
       expect(result).toContain("type = 'pageview'");
       expect(result).toContain("entry_pathname = '/home'");
     });
@@ -351,7 +351,7 @@ describe("getFilterStatement", () => {
       const filters = JSON.stringify([{ parameter: "exit_page", type: "equals", value: ["/checkout"] }]);
       const result = getFilterStatement(filters);
       expect(result).toContain("session_id IN");
-      expect(result).toContain("argMax(pathname, timestamp) AS exit_pathname");
+      expect(result).toContain("argMax(pathname, timestamp_ms) AS exit_pathname");
       expect(result).toContain("type = 'pageview'");
       expect(result).toContain("exit_pathname = '/checkout'");
     });

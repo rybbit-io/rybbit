@@ -290,10 +290,10 @@ function whereClause(window: ResolvedWindow, column: string): string {
       toStartOfDay(toDateTime(${SqlString.escape(startDate)}, ${tz})),
       'UTC'
       )
-      AND ${column} < if(
+      AND if(
         toDate(${SqlString.escape(endDate)}) = toDate(now(), ${tz}),
-        toTimeZone(now(), 'UTC'),
-        toTimeZone(
+        ${column} <= toTimeZone(now64(3), 'UTC'),
+        ${column} < toTimeZone(
           toStartOfDay(toDateTime(${SqlString.escape(endDate)}, ${tz})) + INTERVAL 1 DAY,
           'UTC'
         )
