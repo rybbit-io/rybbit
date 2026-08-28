@@ -81,6 +81,7 @@
     "next-themes": "0.4.6",
     "nuqs": "^2.8.8",
     "ol": "^10.6.1",
+    "ol-mapbox-style": "^13.4.3",
     "papaparse": "^5.5.3",
     "react": "^19.2.4",
     "react-day-picker": "^10.0.1",
