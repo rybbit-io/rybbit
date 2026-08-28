@@ -124,6 +124,57 @@ describe("timeFromRangeFields", () => {
     ).toBeNull();
   });
 
+  it("refuses a bound past the maximum the calendar enforces", () => {
+    const future = fields({ startDate: "2024-03-08", endDate: "2024-03-20" });
+    expect(timeFromRangeFields(future, ZONE)).not.toBeNull();
+    expect(timeFromRangeFields(future, ZONE, "2024-03-14")).toBeNull();
+    expect(
+      timeFromRangeFields(fields({ startDate: "2024-03-20", endDate: "2024-03-25" }), ZONE, "2024-03-14")
+    ).toBeNull();
+  });
+
+  it("accepts a bound landing exactly on the maximum", () => {
+    expect(timeFromRangeFields(fields({ startDate: "2024-03-08", endDate: "2024-03-14" }), ZONE, "2024-03-14")).toEqual(
+      {
+        mode: "range",
+        startDate: "2024-03-08",
+        endDate: "2024-03-14",
+      }
+    );
+  });
+
+  it("refuses a wall time DST skipped rather than silently shifting it", () => {
+    // 02:30 does not exist in New York on 2024-03-10; Luxon would resolve it to
+    // 03:30, leaving the field showing an hour the query never used
+    expect(
+      timeFromRangeFields(
+        fields({ startDate: "2024-03-10", startTime: "02:30", endDate: "2024-03-10", endTime: "17:00" }),
+        ZONE
+      )
+    ).toBeNull();
+    // the hour either side of the gap is fine
+    expect(
+      timeFromRangeFields(
+        fields({ startDate: "2024-03-10", startTime: "01:30", endDate: "2024-03-10", endTime: "17:00" }),
+        ZONE
+      )
+    ).not.toBeNull();
+    // and the same wall time is real in a zone without that transition
+    expect(
+      timeFromRangeFields(
+        fields({ startDate: "2024-03-10", startTime: "02:30", endDate: "2024-03-10", endTime: "17:00" }),
+        "UTC"
+      )
+    ).not.toBeNull();
+  });
+
+  it("still spans a whole day across a DST transition", () => {
+    const spring = timeFromRangeFields(fields({ startDate: "2024-03-10", endDate: "2024-03-10" }), ZONE);
+    expect(spring).toEqual({ mode: "range", startDate: "2024-03-10", endDate: "2024-03-10" });
+    const bounds = getAbsoluteBounds(spring!, ZONE)!;
+    expect(bounds.end.diff(bounds.start, "hours").hours).toBe(23);
+  });
+
   it("round-trips: fields to time to fields is stable", () => {
     const cases: Time[] = [
       { mode: "range", startDate: "2024-03-08", endDate: "2024-03-14" },

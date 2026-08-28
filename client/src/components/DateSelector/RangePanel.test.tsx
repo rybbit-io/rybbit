@@ -1,4 +1,5 @@
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { DateTime } from "luxon";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { RangePanel } from "./RangePanel";
@@ -199,6 +200,65 @@ describe("RangePanel draft", () => {
       endDate: "2024-03-25",
       endTime: "17:00:00",
     });
+  });
+
+  it("keeps an overnight clock through the first of the two clicks", () => {
+    // 17:00 -> 09:00 is inverted on a single day, so collapsing the selection to
+    // the anchor day would have thrown the clocks away before the second click
+    renderPanel({
+      mode: "range",
+      startDate: "2024-03-08",
+      startTime: "17:00:00",
+      endDate: "2024-03-09",
+      endTime: "09:00:00",
+    });
+
+    fireEvent.click(day("3/20/2024"));
+    fireEvent.click(day("3/25/2024"));
+    fireEvent.click(screen.getByRole("button", { name: "Apply" }));
+
+    expect(onApply).toHaveBeenCalledWith({
+      mode: "range",
+      startDate: "2024-03-20",
+      startTime: "17:00:00",
+      endDate: "2024-03-25",
+      endTime: "09:00:00",
+    });
+  });
+
+  it("refuses to apply while the fields do not describe a window", () => {
+    renderPanel(DATE_RANGE);
+
+    // an end before the start: the previous draft is still what Apply would send
+    fireEvent.change(screen.getByLabelText("End date"), { target: { value: "2024-03-01" } });
+
+    const apply = screen.getByRole("button", { name: "Apply" }) as HTMLButtonElement;
+    expect(apply.disabled).toBe(true);
+    fireEvent.click(apply);
+    expect(onApply).not.toHaveBeenCalled();
+
+    // and it recovers once the range makes sense again
+    fireEvent.change(screen.getByLabelText("End date"), { target: { value: "2024-03-12" } });
+    expect((screen.getByRole("button", { name: "Apply" }) as HTMLButtonElement).disabled).toBe(false);
+    fireEvent.click(screen.getByRole("button", { name: "Apply" }));
+    expect(onApply).toHaveBeenCalledWith({ mode: "range", startDate: "2024-03-08", endDate: "2024-03-12" });
+  });
+
+  it("refuses a typed date past today, which the calendar already disables", () => {
+    renderPanel(DATE_RANGE);
+
+    const future = DateTime.now().plus({ years: 1 }).toISODate()!;
+    fireEvent.change(screen.getByLabelText("End date"), { target: { value: future } });
+
+    expect((screen.getByRole("button", { name: "Apply" }) as HTMLButtonElement).disabled).toBe(true);
+  });
+
+  it("refuses a wall time that daylight saving skipped", () => {
+    renderPanel({ mode: "range", startDate: "2024-03-10", endDate: "2024-03-10" });
+
+    fireEvent.change(screen.getByLabelText("Start time"), { target: { value: "02:30" } });
+
+    expect((screen.getByRole("button", { name: "Apply" }) as HTMLButtonElement).disabled).toBe(true);
   });
 
   it("Cancel discards the draft", () => {

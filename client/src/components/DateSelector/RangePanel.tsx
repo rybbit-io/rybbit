@@ -59,36 +59,56 @@ export function RangePanel({
   const isWide = useMediaQuery("(min-width: 768px)");
   const [timezoneOpen, setTimezoneOpen] = useState(false);
 
-  // The draft. Nothing here reaches the dashboard until Apply, so a two-click
-  // range no longer navigates — and refires every query — between its clicks.
-  //
-  // `anchor` is the first of those two clicks. Selection is driven from
-  // `onDayClick` rather than react-day-picker's own range algebra, which
-  // *extends* an already-complete range instead of starting a fresh one — so
-  // clicking a new start date would have silently kept the old one.
-  const [draft, setDraft] = useState<{ time: Time; fields: RangeFields; anchor?: string }>(() => ({
-    time,
-    fields: rangeFieldsForTime(time, zone),
-  }));
+  // "Today" is the dashboard's today, not the browser's — the picker used to
+  // disable future days against the machine clock, which is off by one for
+  // anyone whose machine and dashboard disagree.
+  const todayHere = DateTime.now().setZone(zone).toISODate() ?? "";
+
+  /**
+   * The draft. Nothing here reaches the dashboard until Apply, so a two-click
+   * range no longer navigates — and refires every query — between its clicks.
+   *
+   * `pending` holds the first of those two clicks together with the window that
+   * was showing when the sequence began, because the two clicks arrive as two
+   * renders and the first one collapses the selection to a single day. Reading
+   * the clocks back off `base` rather than off that collapsed day is what keeps
+   * an overnight range (17:00 → 09:00) from losing its times on the way through.
+   *
+   * `invalid` means the fields no longer describe a usable window. The last good
+   * draft stays put so the calendar keeps rendering, but Apply is refused —
+   * otherwise a typo would quietly re-commit the previous range as if the edit
+   * had been accepted.
+   */
+  const [draft, setDraft] = useState<{
+    time: Time;
+    fields: RangeFields;
+    pending?: { anchor: string; base: Time };
+    invalid?: boolean;
+  }>(() => ({ time, fields: rangeFieldsForTime(time, zone) }));
 
   const setDraftTime = (next: Time) => setDraft({ time: next, fields: rangeFieldsForTime(next, zone) });
 
   const editField = (key: keyof RangeFields, value: string) =>
     setDraft(prev => {
       const fields = { ...prev.fields, [key]: value };
-      return { time: timeFromRangeFields(fields, zone) ?? prev.time, fields };
+      const parsed = timeFromRangeFields(fields, zone, todayHere);
+      return { time: parsed ?? prev.time, fields, invalid: parsed === null };
     });
 
   const pickDay = (clicked: string) =>
     setDraft(prev => {
-      const [from, to] =
-        prev.anchor === undefined
-          ? [clicked, clicked]
-          : prev.anchor <= clicked
-            ? [prev.anchor, clicked]
-            : [clicked, prev.anchor];
-      const next = timeFromSelectedDays(from, to, prev.time, zone);
-      return { time: next, fields: rangeFieldsForTime(next, zone), anchor: prev.anchor ? undefined : clicked };
+      if (!prev.pending) {
+        const next = timeFromSelectedDays(clicked, clicked, prev.time, zone);
+        return {
+          time: next,
+          fields: rangeFieldsForTime(next, zone),
+          pending: { anchor: clicked, base: prev.time },
+        };
+      }
+      const { anchor, base } = prev.pending;
+      const [from, to] = anchor <= clicked ? [anchor, clicked] : [clicked, anchor];
+      const next = timeFromSelectedDays(from, to, base, zone);
+      return { time: next, fields: rangeFieldsForTime(next, zone) };
     });
 
   const groups = PRESET_GROUPS.filter(group => pastMinutesEnabled || group.id !== "realtime");
@@ -101,10 +121,6 @@ export function RangePanel({
       }
     : undefined;
 
-  // "Today" is the dashboard's today, not the browser's — the picker used to
-  // disable future days against the machine clock, which is off by one for
-  // anyone whose machine and dashboard disagree.
-  const todayHere = DateTime.now().setZone(zone).toISODate() ?? "";
   const maxDate = toCalendarDate(todayHere);
   const months = isWide === false ? 1 : 2;
   const lastMonth = DateTime.fromISO(todayHere).startOf("month");
@@ -187,8 +203,17 @@ export function RangePanel({
       </div>
 
       <div className="flex flex-wrap items-center gap-2 border-t border-neutral-150 px-3 py-2 dark:border-neutral-800">
-        <span className="mr-auto text-xs text-neutral-500 dark:text-neutral-400">
-          {comparison ? t("Compares against {range}", { range: comparison }) : t("No comparison period")}
+        <span
+          className={cn(
+            "mr-auto text-xs text-neutral-500 dark:text-neutral-400",
+            draft.invalid && "text-red-500 dark:text-red-400"
+          )}
+        >
+          {draft.invalid
+            ? t("Enter a date range that ends after it starts, on or before today")
+            : comparison
+              ? t("Compares against {range}", { range: comparison })
+              : t("No comparison period")}
         </span>
 
         <Popover open={timezoneOpen} onOpenChange={setTimezoneOpen}>
@@ -227,7 +252,7 @@ export function RangePanel({
         <Button variant="ghost" size="sm" onClick={onCancel}>
           {t("Cancel")}
         </Button>
-        <Button variant="accent" size="sm" onClick={() => onApply(draft.time)}>
+        <Button variant="accent" size="sm" disabled={draft.invalid} onClick={() => onApply(draft.time)}>
           {t("Apply")}
         </Button>
       </div>

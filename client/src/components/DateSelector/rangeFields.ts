@@ -33,19 +33,45 @@ export function rangeFieldsForTime(time: Time, zone: string): RangeFields {
 }
 
 /**
- * `null` for anything that isn't yet a usable window — a half-filled row, an
- * unparseable date, an end at or before the start. The caller keeps the last
- * good draft in that case rather than committing a broken one.
+ * A day boundary. `startOf("day")` is DST-safe: in the rare zones whose clocks
+ * jump at midnight it lands on the first instant the day actually has.
  */
-export function timeFromRangeFields(fields: RangeFields, zone: string): Time | null {
+function parseDay(date: string, zone: string): DateTime | null {
+  const parsed = DateTime.fromISO(date, { zone }).startOf("day");
+  return parsed.isValid && parsed.toISODate() === date ? parsed : null;
+}
+
+/**
+ * A named wall time, rejected unless it round-trips.
+ *
+ * Luxon resolves a wall time that DST skipped by shifting it forward — 02:30 on
+ * a spring-forward morning in New York silently becomes 03:30. Accepting that
+ * would leave the field showing an hour the query does not use.
+ */
+function parseInstant(date: string, clock: string, zone: string): DateTime | null {
+  const parsed = DateTime.fromISO(`${date}T${clock}`, { zone });
+  if (!parsed.isValid) return null;
+  return parsed.toISODate() === date && parsed.toFormat("HH:mm") === clock ? parsed : null;
+}
+
+/**
+ * `null` for anything that isn't yet a usable window — a half-filled row, an
+ * unparseable or DST-skipped value, an end at or before the start, or a bound
+ * past `maxDate` (the calendar disables future days, so typed values have to
+ * agree). The caller keeps its last good draft and refuses to apply.
+ */
+export function timeFromRangeFields(fields: RangeFields, zone: string, maxDate?: string): Time | null {
   if (!fields.startDate || !fields.endDate) return null;
+  if (maxDate && (fields.startDate > maxDate || fields.endDate > maxDate)) return null;
 
-  const start = DateTime.fromISO(`${fields.startDate}T${fields.startTime || "00:00"}`, { zone });
+  const start = fields.startTime
+    ? parseInstant(fields.startDate, fields.startTime, zone)
+    : parseDay(fields.startDate, zone);
   const end = fields.endTime
-    ? DateTime.fromISO(`${fields.endDate}T${fields.endTime}`, { zone })
-    : DateTime.fromISO(fields.endDate, { zone }).startOf("day").plus({ days: 1 });
+    ? parseInstant(fields.endDate, fields.endTime, zone)
+    : parseDay(fields.endDate, zone)?.plus({ days: 1 });
 
-  if (!start.isValid || !end.isValid || end <= start) return null;
+  if (!start || !end || end <= start) return null;
 
   // Naming no clock on either end keeps this a plain date range, which is the
   // cheaper `start_date`/`end_date` shape on the wire.

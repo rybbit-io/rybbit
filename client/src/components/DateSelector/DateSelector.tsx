@@ -146,6 +146,10 @@ export function DateSelector({
       </PopoverTrigger>
       <PopoverContent align="end" className="w-auto max-w-[calc(100vw-2rem)] p-0">
         <RangePanel
+          // Switching timezone re-resolves a preset in the store (Today becomes
+          // a different day), so the panel has to re-seed its draft from that
+          // new value — keeping the old one would apply yesterday's date.
+          key={timezone}
           time={time}
           zone={zone}
           timezone={timezone}
