@@ -101,9 +101,6 @@ export default function DataProcessingAgreement() {
           <li>
             <strong>Resend:</strong> Email delivery
           </li>
-          <li>
-            <strong>Maxmind:</strong> IP geolocation (IP addresses are processed but not stored)
-          </li>
         </ul>
 
         <h2 className="text-2xl font-semibold mt-8 mb-4">7. Security Measures</h2>
