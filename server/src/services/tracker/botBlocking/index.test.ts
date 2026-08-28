@@ -72,7 +72,7 @@ describe("checkBotBlocking", () => {
     }
   });
 
-  it("skips verified trusted server-side ingestion requests", async () => {
+  it("skips the browser-shaped layers for verified trusted server-side ingestion", async () => {
     const result = await checkBotBlocking({
       headers: {},
       blockBots: true,
@@ -81,6 +81,59 @@ describe("checkBotBlocking", () => {
     });
 
     expect(result).toBeNull();
+  });
+
+  it("does not convict trusted server-side ingestion reporting a browser user agent", async () => {
+    // Empty headers and a datacenter IP would convict ordinary traffic on the
+    // header and ASN layers. Neither belongs to the visitor being reported.
+    const result = await checkBotBlocking({
+      headers: {},
+      blockBots: true,
+      trustedServerSideIngestion: true,
+      payload: { ...basePayload, userAgent: "Mozilla/5.0 Chrome/120 Safari/537.36" },
+    });
+
+    expect(result).toBeNull();
+  });
+
+  it("classifies a crawler user agent reported through trusted server-side ingestion", async () => {
+    const result = await checkBotBlocking({
+      headers: {},
+      blockBots: true,
+      trustedServerSideIngestion: true,
+      payload: {
+        ...basePayload,
+        userAgent: "Mozilla/5.0 AppleWebKit/537.36 (KHTML, like Gecko); compatible; GPTBot/1.2; +https://openai.com/gptbot",
+      },
+    });
+
+    expect(result).toMatchObject({
+      isBot: true,
+      enforced: true,
+      detections: [{ layer: "ua_pattern" }],
+      eventProperties: {
+        detectedUaPattern: true,
+        detectedHeaderHeuristics: false,
+        detectedBotAsn: false,
+        detectedRateAnomaly: false,
+        botName: "GPTBot",
+        botOperator: "OpenAI",
+        botPurpose: "ai_training",
+        // The reporting server's address is not the bot's.
+        asnProvider: "",
+      },
+    });
+  });
+
+  it("leaves enforcement to blockBots for trusted server-side ingestion", async () => {
+    const result = await checkBotBlocking({
+      headers: {},
+      blockBots: false,
+      trustedServerSideIngestion: true,
+      payload: { ...basePayload, userAgent: "ClaudeBot/1.0" },
+    });
+
+    expect(result).toMatchObject({ isBot: true, enforced: false });
   });
 
   it("does not bypass bot blocking for an unverified bearer header", async () => {

@@ -1,14 +1,29 @@
-import { ALL_BOT_PATTERNS, BotCategory } from "./patterns.js";
+import { ALL_BOT_PATTERNS, BotCategory, BotPurpose } from "./patterns.js";
 
-export type { BotCategory } from "./patterns.js";
+export type { BotCategory, BotPurpose } from "./patterns.js";
 
 export interface BotClassification {
   isBot: boolean;
   category: BotCategory | null;
   matchedPattern: string | null;
+  /**
+   * Human-readable identity, present only for the curated patterns. A match on
+   * a generic upstream rule ("crawl", "spider") is a bot without a name, and
+   * saying so is more useful than inventing one from the regex.
+   */
+  name: string | null;
+  operator: string | null;
+  purpose: BotPurpose | null;
 }
 
-const NON_BOT: BotClassification = { isBot: false, category: null, matchedPattern: null };
+const NON_BOT: BotClassification = {
+  isBot: false,
+  category: null,
+  matchedPattern: null,
+  name: null,
+  operator: null,
+  purpose: null,
+};
 
 // classifyUA runs on every event (when bot blocking is enabled) and, for bot
 // user-agents, scans every compiled pattern. User-agent strings repeat heavily,
@@ -23,12 +38,21 @@ const COMBINED_REGEX = new RegExp(ALL_BOT_PATTERNS.map(p => p.pattern).join("|")
 
 // Per-pattern compiled regexes for category lookup. Iterated in source order
 // so first match wins — patterns are authored most-specific-first in patterns.ts.
-const COMPILED_PATTERNS: ReadonlyArray<{ regex: RegExp; category: BotCategory; pattern: string }> =
-  ALL_BOT_PATTERNS.map(p => ({
-    regex: new RegExp(p.pattern, "i"),
-    category: p.category,
-    pattern: p.pattern,
-  }));
+const COMPILED_PATTERNS: ReadonlyArray<{
+  regex: RegExp;
+  category: BotCategory;
+  pattern: string;
+  name: string | null;
+  operator: string | null;
+  purpose: BotPurpose | null;
+}> = ALL_BOT_PATTERNS.map(p => ({
+  regex: new RegExp(p.pattern, "i"),
+  category: p.category,
+  pattern: p.pattern,
+  name: p.name ?? null,
+  operator: p.operator ?? null,
+  purpose: p.purpose ?? null,
+}));
 
 /**
  * Classify a user-agent string. Returns the first matching bot pattern, or
@@ -64,13 +88,13 @@ function computeClassification(userAgent: string): BotClassification {
   if (!COMBINED_REGEX.test(userAgent)) {
     return NON_BOT;
   }
-  for (const { regex, category, pattern } of COMPILED_PATTERNS) {
+  for (const { regex, category, pattern, name, operator, purpose } of COMPILED_PATTERNS) {
     if (regex.test(userAgent)) {
-      return { isBot: true, category, matchedPattern: pattern };
+      return { isBot: true, category, matchedPattern: pattern, name, operator, purpose };
     }
   }
   // Combined regex matched but no individual pattern did — should be unreachable.
-  return { isBot: true, category: "generic", matchedPattern: null };
+  return { isBot: true, category: "generic", matchedPattern: null, name: null, operator: null, purpose: null };
 }
 
 /**

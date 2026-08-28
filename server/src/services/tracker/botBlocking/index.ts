@@ -73,6 +73,9 @@ export interface BotBlockingDetection {
   layer: BotDetectionMethod;
   botCategory?: string | null;
   matchedPattern?: string | null;
+  botName?: string | null;
+  botOperator?: string | null;
+  botPurpose?: string | null;
   reason?: string;
   score?: number;
   clientBotScore?: number;
@@ -99,6 +102,22 @@ export interface BotEventProperties {
   detectedRateAnomaly: boolean;
   matchedUaPattern: string;
   botCategory: string;
+  /**
+   * Published identity of the bot, when the matched pattern is one of the
+   * curated ones. `matchedUaPattern` is the evidence (a regex source); these
+   * are the answer to "who is this and what do they want" — which is the only
+   * form in which crawl volume can be attributed to an operator or split into
+   * training, answer-engine indexing, and user-triggered agent fetches.
+   * Empty for a bot matched only by a generic upstream pattern.
+   */
+  botName: string;
+  botOperator: string;
+  botPurpose: string;
+  /**
+   * Curated provider behind the request's ASN. A user agent can claim any
+   * name, so this is the independent half of an attribution claim.
+   */
+  asnProvider: string;
   clientBotScore?: number;
   clientSignalMask?: number;
   /**
@@ -135,6 +154,7 @@ function buildBotEventProperties(
   const detectionLayers = new Set(detections.map(detection => detection.layer));
   const uaDetection = detections.find(detection => detection.layer === "ua_pattern");
   const anomalyDetection = detections.find(detection => detection.layer === "rate_anomaly");
+  const asnDetection = detections.find(detection => detection.layer === "bot_asn");
 
   return {
     isBot: true,
@@ -147,6 +167,10 @@ function buildBotEventProperties(
     detectedRateAnomaly: detectionLayers.has("rate_anomaly"),
     matchedUaPattern: uaDetection?.matchedPattern ?? "",
     botCategory: uaDetection?.botCategory ?? "",
+    botName: uaDetection?.botName ?? "",
+    botOperator: uaDetection?.botOperator ?? "",
+    botPurpose: uaDetection?.botPurpose ?? "",
+    asnProvider: asnDetection?.asnProvider ?? "",
     clientBotScore: clientSignalResult.scoreForStats,
     clientSignalMask: clientSignalResult.maskForStats,
     anomalyReasons: (anomalyDetection?.anomalyReasons ?? []).map(reason => reason.rule).join(","),
@@ -212,6 +236,52 @@ function getClientSignalResult(
   };
 }
 
+/**
+ * Bot detection for trusted server-side ingestion: the user-agent layer alone.
+ *
+ * The stale-browser-version sub-rule is left out too. It convicts a UA claiming
+ * Chrome older than the tracker that reported the hit — sound reasoning for a
+ * browser, meaningless for a server relaying someone else's user agent, and it
+ * would start convicting traffic that existing API users are sending today.
+ *
+ * Enforcement is not special-cased: the result goes back as an ordinary
+ * detection, so `blockBots` decides its fate exactly as it does for browser
+ * traffic and the row lands in `bot_events` or `bot_observations` accordingly.
+ */
+function classifyTrustedIngestion(
+  userAgent: string,
+  blockBots: boolean,
+  clientSignalResult: ReturnType<typeof getClientSignalResult>
+): BotDetectionResult | null {
+  const uaClassification = classifyUA(userAgent);
+  if (!uaClassification.isBot) {
+    return null;
+  }
+
+  const detections: BotBlockingDetection[] = [
+    {
+      layer: "ua_pattern",
+      botCategory: uaClassification.category,
+      matchedPattern: uaClassification.matchedPattern,
+      botName: uaClassification.name,
+      botOperator: uaClassification.operator,
+      botPurpose: uaClassification.purpose,
+    },
+  ];
+
+  recordBotDetections(["ua_pattern"], blockBots);
+
+  return {
+    isBot: true,
+    enforced: blockBots,
+    message: "Bot detected using ua-pattern",
+    detections,
+    // No ASN: the address belongs to the reporting server, not to the bot, so
+    // attributing it would be worse than leaving it empty.
+    eventProperties: buildBotEventProperties(detections, null, clientSignalResult),
+  };
+}
+
 export async function checkBotBlocking({
   headers,
   blockBots,
@@ -230,16 +300,27 @@ export async function checkBotBlocking({
   );
 
   // Trusted server-side ingestion is authenticated first-party traffic that
-  // reports its own IP and user agent: none of the layers below are meaningful
-  // against it, and several would convict it outright. It is the only traffic
-  // that skips detection.
+  // reports its own IP and user agent on someone else's behalf. Four of the
+  // five layers are meaningless against it and several would convict it
+  // outright: header heuristics read the reporting server's headers, client
+  // signals require a browser that never ran, the ASN belongs to whoever is
+  // doing the reporting, and rate anomaly would see one origin standing in for
+  // its entire audience.
+  //
+  // The UA layer is the exception, and the only way Rybbit can see a crawler
+  // that does not execute JavaScript. `POST /api/track` is the sole ingestion
+  // path, so a training crawler that fetches HTML and runs nothing is invisible
+  // unless the origin forwards it — and a forwarded `GPTBot` used to land in
+  // `events` as a human, because detection was skipped wholesale. Classifying
+  // the reported user agent routes it to `bot_events` with full identity
+  // instead.
   //
   // `blockBots` deliberately does NOT skip detection. It decides what happens to
   // a detection, not whether one is looked for — a site that has turned blocking
   // off used to get no evaluation at all, which left it with neither protection
   // nor any record of what it was receiving.
   if (trustedServerSideIngestion) {
-    return null;
+    return classifyTrustedIngestion(userAgent, blockBots, clientSignalResult);
   }
 
   const detections: BotBlockingDetection[] = [];
@@ -264,6 +345,9 @@ export async function checkBotBlocking({
         layer: "ua_pattern",
         botCategory: uaClassification.category,
         matchedPattern: uaClassification.matchedPattern,
+        botName: uaClassification.name,
+        botOperator: uaClassification.operator,
+        botPurpose: uaClassification.purpose,
       });
     } else {
       // Layer 1b: a browser release too old to have run the tracker that

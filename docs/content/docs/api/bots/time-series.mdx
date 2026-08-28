@@ -43,6 +43,12 @@ Bot filtering supports a subset of filter parameters: `browser`, `browser_versio
       typeDescription: '"minute" | "five_minutes" | "ten_minutes" | "fifteen_minutes" | "hour" | "day" | "week" | "month" | "year"',
       default: 'hour',
     },
+    purpose: {
+      description: 'Restrict results to one bot purpose. "ai" covers all three AI purposes; "ai_crawler" covers training and answer-engine crawling but not agents.',
+      type: 'string',
+      typeDescription: '"ai" | "ai_crawler" | "ai_training" | "ai_search" | "ai_agent" | "search" | "social_preview" | "seo" | "monitoring" | "security" | "scripted" | "headless"',
+      required: false,
+    },
     layer: {
       description: 'Restrict results to a single detection layer',
       type: 'string',
@@ -73,6 +79,14 @@ Bot filtering supports a subset of filter parameters: `browser`, `browser_versio
     },
     bot_requests: {
       description: 'Number of bot requests in this bucket',
+      type: 'number',
+    },
+    ai_agent_requests: {
+      description: 'Requests in this bucket from user-triggered AI agents',
+      type: 'number',
+    },
+    ai_crawler_requests: {
+      description: 'Requests in this bucket from AI training crawlers and answer-engine indexers',
       type: 'number',
     },
   }}

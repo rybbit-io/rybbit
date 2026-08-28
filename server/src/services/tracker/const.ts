@@ -1,3 +1,5 @@
+import { AI_CHAT_DOMAINS } from "@rybbit/shared";
+
 const searchDomains = [
   // Google and variants
   "google.com",
@@ -294,35 +296,10 @@ const shoppingDomains = [
   "foodpanda.com",
 ];
 
-// AI chat domains
-const aiChatDomains = [
-  "chatgpt.com",
-  "chat.openai.com",
-  "claude.ai",
-  "gemini.google.com",
-  "copilot.microsoft.com",
-  "deepseek.com",
-  "chat.deepseek.com",
-  "chat.mistral.ai",
-  "mistral.ai",
-  "meta.ai",
-  "poe.com",
-  "grok.com",
-  "pi.ai",
-  "heypi.com",
-  "coral.cohere.com",
-  "character.ai",
-  "qwen.ai",
-  "jasper.ai",
-  "writesonic.com",
-  "chatsonic.com",
-  "perplexity.ai",
-  "you.com",
-  "phind.com",
-  "andi.com",
-  "cursor.com",
-  "codeium.com",
-];
+// AI chat domains. Sourced from shared/ so that channel classification and the
+// bots dashboard's crawl-vs-referral comparison cannot drift apart — the
+// dashboard has to spell an operator's name the same way the bot patterns do.
+const aiChatDomains = AI_CHAT_DOMAINS;
 
 // AI chat sources (utm_source values)
 const aiChatSources = [

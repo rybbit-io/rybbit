@@ -5,7 +5,13 @@ vi.mock("../../../db/postgres/postgres.js", () => ({
   sql: {},
 }));
 
-import { buildStringFilterCondition, getBotFilterStatement, getBotLayerStatement, getBotSqlParam } from "./utils.js";
+import {
+  buildStringFilterCondition,
+  getBotFilterStatement,
+  getBotLayerStatement,
+  getBotPurposeStatement,
+  getBotSqlParam,
+} from "./utils.js";
 
 describe("getBotLayerStatement", () => {
   it("should return empty string for undefined layer", () => {
@@ -283,3 +289,33 @@ describe("getBotFilterStatement", () => {
   });
 });
 
+
+describe("getBotPurposeStatement", () => {
+  it("returns nothing when no purpose is selected", () => {
+    expect(getBotPurposeStatement()).toBe("");
+    expect(getBotPurposeStatement(null)).toBe("");
+    expect(getBotPurposeStatement("")).toBe("");
+  });
+
+  it("expands the ai family to all three AI purposes", () => {
+    expect(getBotPurposeStatement("ai")).toBe("AND bot_purpose IN ('ai_training', 'ai_search', 'ai_agent')");
+  });
+
+  it("expands ai_crawler to the two non-agent AI purposes", () => {
+    // Agents are a person's fetch, not background crawling — the whole point of
+    // the split is that they do not belong in a crawler total.
+    expect(getBotPurposeStatement("ai_crawler")).toBe("AND bot_purpose IN ('ai_training', 'ai_search')");
+  });
+
+  it("matches a single known purpose", () => {
+    expect(getBotPurposeStatement("ai_agent")).toBe("AND bot_purpose = 'ai_agent'");
+    expect(getBotPurposeStatement("seo")).toBe("AND bot_purpose = 'seo'");
+  });
+
+  it("ignores an unknown purpose rather than interpolating it", () => {
+    // The value reaches SQL by interpolation, so anything not on the allowlist
+    // must produce no clause at all.
+    expect(getBotPurposeStatement("'; DROP TABLE bot_events; --")).toBe("");
+    expect(getBotPurposeStatement("nonsense")).toBe("");
+  });
+});

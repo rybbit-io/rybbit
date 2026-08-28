@@ -2,8 +2,9 @@
 
 import { truncateString } from "../../../../../lib/utils";
 import { BotSectionTabs, type BotSectionTab } from "../BotSectionTabs";
+import { formatBotPurpose } from "../ai/aiLabels";
 
-type Tab = "asn_orgs" | "bot_categories" | "ua_patterns";
+type Tab = "bots" | "operators" | "purposes" | "asn_orgs" | "bot_categories" | "ua_patterns";
 
 function formatBotCategory(value: string) {
   if (!value) return "Uncategorized";
@@ -16,6 +17,45 @@ function formatBotCategory(value: string) {
 
 export function BotMetadata() {
   const tabs: BotSectionTab<Tab>[] = [
+    {
+      value: "bots",
+      label: "Bots",
+      section: {
+        dimension: "bot_name",
+        title: "Bots",
+        getValue: item => item.value,
+        getKey: item => item.value || "unnamed",
+        // Only the curated patterns carry a name. A hit on a generic rule is a
+        // bot nobody has identified, and rows written before identity shipped
+        // land here too.
+        getLabel: item => item.value || "Unnamed",
+        filterable: false,
+      },
+    },
+    {
+      value: "operators",
+      label: "Operators",
+      section: {
+        dimension: "bot_operator",
+        title: "Operators",
+        getValue: item => item.value,
+        getKey: item => item.value || "unknown",
+        getLabel: item => item.value || "Unknown",
+        filterable: false,
+      },
+    },
+    {
+      value: "purposes",
+      label: "Purpose",
+      section: {
+        dimension: "bot_purpose",
+        title: "Purpose",
+        getValue: item => item.value,
+        getKey: item => item.value || "unclassified",
+        getLabel: item => formatBotPurpose(item.value),
+        filterable: false,
+      },
+    },
     {
       value: "asn_orgs",
       label: "ASN Orgs",
@@ -54,5 +94,5 @@ export function BotMetadata() {
     },
   ];
 
-  return <BotSectionTabs defaultValue="asn_orgs" tabs={tabs} />;
+  return <BotSectionTabs defaultValue="bots" tabs={tabs} />;
 }

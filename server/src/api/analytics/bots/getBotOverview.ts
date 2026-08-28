@@ -2,12 +2,21 @@ import { FilterParams } from "@rybbit/shared";
 import { FastifyReply, FastifyRequest } from "fastify";
 import { getTimeStatement } from "../utils/timeWindow.js";
 import { analyticsRoute, runAnalyticsQuery } from "../utils/analyticsQuery.js";
-import { type BotLayerKey, getBotFilterStatement, getBotLayerStatement } from "./utils.js";
+import {
+  AI_CRAWLER_PURPOSE_SQL_LIST,
+  AI_PURPOSE_SQL_LIST,
+  type BotLayerKey,
+  getBotFilterStatement,
+  getBotLayerStatement,
+} from "./utils.js";
 
 type BotOverviewResponse = {
   bot_requests: number;
   total_events: number;
   bot_percentage: number;
+  ai_requests: number;
+  ai_agent_requests: number;
+  ai_crawler_requests: number;
   ua_pattern: number;
   header_heuristics: number;
   client_signals: number;
@@ -38,7 +47,12 @@ export const buildBotOverviewQuery = (query: BotOverviewRequest["Querystring"]) 
           countIf(detected_header_heuristics) AS header_heuristics,
           countIf(detected_client_signals) AS client_signals,
           countIf(detected_bot_asn) AS bot_asn,
-          countIf(detected_rate_anomaly) AS rate_anomaly
+          countIf(detected_rate_anomaly) AS rate_anomaly,
+          -- Purpose is only set on rows written since bot identity shipped, so
+          -- these read 0 for older windows rather than being wrong.
+          countIf(bot_purpose IN (${AI_PURPOSE_SQL_LIST})) AS ai_requests,
+          countIf(bot_purpose = 'ai_agent') AS ai_agent_requests,
+          countIf(bot_purpose IN (${AI_CRAWLER_PURPOSE_SQL_LIST})) AS ai_crawler_requests
         FROM bot_events
         WHERE site_id = {siteId:Int32}
           ${filterStatement}
@@ -71,7 +85,10 @@ export const buildBotOverviewQuery = (query: BotOverviewRequest["Querystring"]) 
       header_heuristics,
       client_signals,
       bot_asn,
-      rate_anomaly
+      rate_anomaly,
+      ai_requests,
+      ai_agent_requests,
+      ai_crawler_requests
     FROM bot_stats
     CROSS JOIN all_bot_stats
     CROSS JOIN event_stats

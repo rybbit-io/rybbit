@@ -40,7 +40,7 @@ Bot filtering supports a subset of filter parameters: `browser`, `browser_versio
     dimension: {
       description: 'The dimension to group by',
       type: 'string',
-      typeDescription: '"browser" | "browser_version" | "operating_system" | "operating_system_version" | "country" | "region" | "city" | "device_type" | "referrer" | "hostname" | "pathname" | "dimensions" | "asn_org" | "bot_category" | "matched_ua_pattern"',
+      typeDescription: '"browser" | "browser_version" | "operating_system" | "operating_system_version" | "country" | "region" | "city" | "device_type" | "referrer" | "hostname" | "pathname" | "dimensions" | "asn_org" | "asn_provider" | "bot_category" | "bot_name" | "bot_operator" | "bot_purpose" | "matched_ua_pattern"',
       required: true,
     },
     limit: {
@@ -53,8 +53,14 @@ Bot filtering supports a subset of filter parameters: `browser`, `browser_versio
       type: 'number',
       default: 1,
     },
+    purpose: {
+      description: 'Restrict results to one bot purpose. "ai" covers all three AI purposes; "ai_crawler" covers training and answer-engine crawling but not agents.',
+      type: 'string',
+      typeDescription: '"ai" | "ai_crawler" | "ai_training" | "ai_search" | "ai_agent" | "search" | "social_preview" | "seo" | "monitoring" | "security" | "scripted" | "headless"',
+      required: false,
+    },
     layer: {
-      description: 'Restrict results to a single detection layer',
+      description: 'Restrict results to a single detection layer
       type: 'string',
       typeDescription: '"ua_pattern" | "header_heuristics" | "client_signals" | "bot_asn" | "rate_anomaly"',
       required: false,
