@@ -1,11 +1,17 @@
 import { FastifyReply, FastifyRequest } from "fastify";
 import SqlString from "sqlstring";
 import { z } from "zod";
-import { clickhouse } from "../../db/clickhouse/clickhouse.js";
-import { MAX_CUSTOM_QUERY_LENGTH, normalizeCustomQuery, validateScopedQuery } from "./utils/customQueryValidation.js";
+import { clickhouseQuery } from "../../db/clickhouse/clickhouse.js";
+import {
+  MAX_CUSTOM_QUERY_LENGTH,
+  normalizeCustomQuery,
+  sanitizeClickhouseError,
+  validateScopedQuery,
+} from "./utils/customQueryValidation.js";
 import { validateHttpTimeParams } from "./utils/query-validation.js";
 import { bucketIntervalMap, getTimeStatement } from "./utils/timeWindow.js";
 
+// Mirrors the rybbit_query ClickHouse profile (docker-compose clickhouse_user_settings).
 const MAX_EXECUTION_TIME_SECONDS = 10;
 const MAX_RESULT_ROWS = 1000;
 
@@ -104,19 +110,16 @@ export async function runDashboardCardQuery(
   `;
 
   try {
-    const result = await clickhouse.query({
+    const result = await clickhouseQuery.query({
       query,
       format: "JSONEachRow",
       query_params: {
         siteIds: [siteId],
         limit: MAX_RESULT_ROWS,
       },
-      clickhouse_settings: {
-        max_execution_time: MAX_EXECUTION_TIME_SECONDS,
-        max_result_rows: String(MAX_RESULT_ROWS),
-        result_overflow_mode: "break",
-        readonly: "2",
-      },
+      // Execution limits (readonly, max_execution_time, max_memory_usage,
+      // max_result_rows, …) come from the rybbit_query settings profile and are
+      // pinned there with constraints; sending them here would be rejected.
     });
 
     const data = await result.json<Record<string, unknown>>();
@@ -131,7 +134,6 @@ export async function runDashboardCardQuery(
     });
   } catch (error) {
     request.log.error(error, "Failed to run dashboard card query");
-    const message = error instanceof Error && error.message ? error.message : "Failed to run query";
-    return reply.status(400).send({ error: message });
+    return reply.status(400).send({ error: sanitizeClickhouseError(error) });
   }
 }

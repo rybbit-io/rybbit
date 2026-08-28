@@ -3,7 +3,7 @@ import {
   collectInTableReferences,
   collectTableReferences,
   getCteNames,
-  hasQuotedIdentifierSyntax,
+  hasUnsupportedSyntax,
   normalizeCustomQuery,
   stripSqlLiteralsAndComments,
 } from "./customQueryValidation.js";
@@ -221,36 +221,36 @@ describe("collectInTableReferences", () => {
 });
 
 // =============================================================================
-// hasQuotedIdentifierSyntax
+// hasUnsupportedSyntax
 // =============================================================================
 
-describe("hasQuotedIdentifierSyntax", () => {
+describe("hasUnsupportedSyntax", () => {
   it("detects a double-quoted identifier", () => {
-    expect(hasQuotedIdentifierSyntax('SELECT "x" FROM t')).toBe(true);
+    expect(hasUnsupportedSyntax('SELECT "x" FROM t')).toBe(true);
   });
 
   it("detects a backtick-quoted identifier", () => {
-    expect(hasQuotedIdentifierSyntax("SELECT `x` FROM t")).toBe(true);
+    expect(hasUnsupportedSyntax("SELECT `x` FROM t")).toBe(true);
   });
 
   it("does NOT flag a double quote or backtick that lives inside a string literal", () => {
-    expect(hasQuotedIdentifierSyntax("SELECT 'has \" quote'")).toBe(false);
-    expect(hasQuotedIdentifierSyntax("SELECT 'has ` tick'")).toBe(false);
+    expect(hasUnsupportedSyntax("SELECT 'has \" quote'")).toBe(false);
+    expect(hasUnsupportedSyntax("SELECT 'has ` tick'")).toBe(false);
   });
 
   it("does NOT flag a double quote inside a line or block comment", () => {
-    expect(hasQuotedIdentifierSyntax("SELECT 1 -- a \" b\nFROM t")).toBe(false);
-    expect(hasQuotedIdentifierSyntax('SELECT 1 /* a " b */ FROM t')).toBe(false);
+    expect(hasUnsupportedSyntax("SELECT 1 -- a \" b\nFROM t")).toBe(false);
+    expect(hasUnsupportedSyntax('SELECT 1 /* a " b */ FROM t')).toBe(false);
   });
 
   it("respects doubled-quote and backslash escapes when tracking string state", () => {
     // The '' keeps us inside the string, so the later " is still inside it.
-    expect(hasQuotedIdentifierSyntax(`SELECT 'it''s a \" test'`)).toBe(false);
-    expect(hasQuotedIdentifierSyntax(`SELECT 'a\\' \" b'`)).toBe(false);
+    expect(hasUnsupportedSyntax(`SELECT 'it''s a \" test'`)).toBe(false);
+    expect(hasUnsupportedSyntax(`SELECT 'a\\' \" b'`)).toBe(false);
   });
 
   it("returns false for a clean query with no quoting", () => {
-    expect(hasQuotedIdentifierSyntax("SELECT count(*) FROM scoped_events")).toBe(false);
+    expect(hasUnsupportedSyntax("SELECT count(*) FROM scoped_events")).toBe(false);
   });
 });
 
