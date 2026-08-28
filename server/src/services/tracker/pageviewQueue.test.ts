@@ -95,4 +95,13 @@ describe("pageviewQueue ASN enrichment", () => {
     const row = mocks.insert.mock.calls[0][0].values[0];
     expect(row.is_datacenter_asn).toBe(0);
   });
+
+  it("preserves the request's millisecond timestamp for event ordering", async () => {
+    await pageviewQueue.add(makePayload({ timestamp: "2026-08-28T12:34:56.789Z" }));
+    await vi.advanceTimersByTimeAsync(1000);
+
+    const row = mocks.insert.mock.calls[0][0].values[0];
+    expect(row.timestamp).toBe("2026-08-28 12:34:56");
+    expect(row.timestamp_ms).toBe("2026-08-28 12:34:56.789");
+  });
 });

@@ -133,8 +133,8 @@ export const buildUserInfoQueries = (query: FilterParams, siteId: number) => {
             MAX(timestamp) AS session_end,
             MIN(timestamp) AS session_start,
             dateDiff('second', MIN(timestamp), MAX(timestamp)) AS session_duration,
-            argMinIf(pathname, timestamp, type = 'pageview') AS entry_page,
-            argMaxIf(pathname, timestamp, type = 'pageview') AS exit_page,
+            argMinIf(pathname, timestamp_ms, type = 'pageview') AS entry_page,
+            argMaxIf(pathname, timestamp_ms, type = 'pageview') AS exit_page,
             countIf(type = 'pageview') AS pageviews,
             countIf(type = 'custom_event') AS events,
             argMax(ip, timestamp) AS ip

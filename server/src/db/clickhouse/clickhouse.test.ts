@@ -72,6 +72,17 @@ describe("session hourly materialized view initialization", () => {
     expect(executedQueries()).not.toContainEqual(expect.stringMatching(/DROP VIEW/));
   });
 
+  it("creates and heals the millisecond event-ordering column", async () => {
+    await initializeClickhouse();
+
+    const queries = executedQueries();
+    const createEvents = queries.find(query => /CREATE TABLE IF NOT EXISTS events\b/.test(query));
+    const alterEvents = queries.find(query => /ALTER TABLE events\b/.test(query));
+
+    expect(createEvents).toContain("timestamp_ms DateTime64(3)");
+    expect(alterEvents).toContain("timestamp_ms DateTime64(3) DEFAULT toDateTime64(timestamp, 3)");
+  });
+
   it("replaces the old five-minute raw-events definition", async () => {
     state.existingSessionHourlyView = `
       CREATE MATERIALIZED VIEW analytics.session_hourly_mv

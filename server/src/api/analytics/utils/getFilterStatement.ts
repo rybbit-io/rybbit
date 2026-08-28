@@ -150,10 +150,10 @@ export const getSqlParam = (parameter: FilterParameter) => {
     return "domainWithoutWWW(referrer)";
   }
   if (parameter === "entry_page") {
-    return "(SELECT argMinIf(pathname, timestamp, type = 'pageview') FROM events WHERE session_id = events.session_id)";
+    return "(SELECT argMinIf(pathname, timestamp_ms, type = 'pageview') FROM events WHERE session_id = events.session_id)";
   }
   if (parameter === "exit_page") {
-    return "(SELECT argMaxIf(pathname, timestamp, type = 'pageview') FROM events WHERE session_id = events.session_id)";
+    return "(SELECT argMaxIf(pathname, timestamp_ms, type = 'pageview') FROM events WHERE session_id = events.session_id)";
   }
   if (parameter === "dimensions") {
     return "concat(toString(screen_width), 'x', toString(screen_height))";
@@ -279,7 +279,7 @@ export function getFilterStatement(
             FROM (
               SELECT
                 session_id,
-                argMin(pathname, timestamp) AS entry_pathname
+                argMin(pathname, timestamp_ms) AS entry_pathname
               FROM events
               ${whereStatement}
               GROUP BY session_id
@@ -298,7 +298,7 @@ export function getFilterStatement(
             FROM (
               SELECT
                 session_id,
-                argMax(pathname, timestamp) AS exit_pathname
+                argMax(pathname, timestamp_ms) AS exit_pathname
               FROM events
               ${whereStatement}
               GROUP BY session_id

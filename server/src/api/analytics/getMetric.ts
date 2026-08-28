@@ -219,10 +219,10 @@ export const buildMetricQuery = (
               session_id,
               pathname,
               hostname,
-              timestamp,
+              timestamp_ms AS timestamp,
               pageviews_in_session,
-              leadInFrame(timestamp) OVER (PARTITION BY session_id ORDER BY timestamp ROWS BETWEEN CURRENT ROW AND 1 FOLLOWING) as next_timestamp,
-              row_number() OVER (PARTITION BY session_id ORDER BY timestamp ${orderDirection}) as row_num
+              leadInFrame(timestamp_ms) OVER (PARTITION BY session_id ORDER BY timestamp_ms ROWS BETWEEN CURRENT ROW AND 1 FOLLOWING) as next_timestamp,
+              row_number() OVER (PARTITION BY session_id ORDER BY timestamp_ms ${orderDirection}) as row_num
           FROM RelevantEvents
       ),
       PageDurations AS (
