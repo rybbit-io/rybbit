@@ -1,23 +1,16 @@
 "use client";
 
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuSub,
-  DropdownMenuSubContent,
-  DropdownMenuSubTrigger,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { getTimezoneLabel, hour12, timezones } from "@/lib/dateTimeUtils";
+import { Button } from "@/components/ui/button";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { hour12 } from "@/lib/dateTimeUtils";
 import { setStoredDashboardDefaultTimeRange } from "@/lib/defaultTimeRange";
-import { getTimezone, useStore } from "@/lib/store";
-import { cn } from "@/lib/utils";
+import { useStore, useTimezone } from "@/lib/store";
 import { Calendar } from "lucide-react";
 import { DateTime } from "luxon";
 import { useExtracted } from "next-intl";
-import { CustomDateRangePicker } from "./CustomDateRangePicker";
+import { useState } from "react";
+import { RangePanel } from "./RangePanel";
+import { usePresetLabels } from "./presets";
 import { Time } from "./types";
 import { TimeBucket } from "@rybbit/shared";
 
@@ -55,7 +48,10 @@ export function DateSelector({
   pastMinutesEnabled?: boolean;
 }) {
   const { timezone, setTimezone, bucket } = useStore();
+  const zone = useTimezone();
   const t = useExtracted();
+  const presetLabels = usePresetLabels();
+  const [open, setOpen] = useState(false);
 
   const setTime = (nextTime: Time) => {
     if (nextTime.wellKnown) {
@@ -65,59 +61,17 @@ export function DateSelector({
     setSelectedTime(nextTime);
   };
 
-  const getWellKnownLabel = (wellKnown: string): string => {
-    switch (wellKnown) {
-      case "today":
-        return t("Today");
-      case "yesterday":
-        return t("Yesterday");
-      case "last-3-days":
-        return t("Last 3 Days");
-      case "last-7-days":
-        return t("Last 7 Days");
-      case "last-14-days":
-        return t("Last 14 Days");
-      case "last-30-days":
-        return t("Last 30 Days");
-      case "last-60-days":
-        return t("Last 60 Days");
-      case "last-30-minutes":
-        return t("Last 30 Minutes");
-      case "last-1-hour":
-        return t("Last 1 Hour");
-      case "last-6-hours":
-        return t("Last 6 Hours");
-      case "last-24-hours":
-        return t("Last 24 Hours");
-      case "this-week":
-        return t("This Week");
-      case "last-week":
-        return t("Last Week");
-      case "this-month":
-        return t("This Month");
-      case "last-month":
-        return t("Last Month");
-      case "this-year":
-        return t("This Year");
-      case "all-time":
-        return t("All Time");
-      default:
-        return wellKnown;
-    }
-  };
-
   const getLabel = (time: Time) => {
     if (time.wellKnown) {
-      return getWellKnownLabel(time.wellKnown);
+      return presetLabels[time.wellKnown];
     }
 
-    const tz = getTimezone();
-    const now = DateTime.now().setZone(tz);
+    const now = DateTime.now().setZone(zone);
 
     if (time.mode === "range") {
       if (time.startTime && time.endTime) {
-        const start = DateTime.fromISO(`${time.startDate}T${time.startTime}`, { zone: tz });
-        const endExclusive = DateTime.fromISO(`${time.endDate}T${time.endTime}`, { zone: tz });
+        const start = DateTime.fromISO(`${time.startDate}T${time.startTime}`, { zone });
+        const endExclusive = DateTime.fromISO(`${time.endDate}T${time.endTime}`, { zone });
         const displayEnd = stepDateTimeBucket(endExclusive, bucket, -1);
         const end = displayEnd > start ? displayEnd : endExclusive;
         const startFormatted = start.toFormat(hour12 ? "MMM d, h:mm a" : "MMM d, HH:mm");
@@ -183,244 +137,31 @@ export function DateSelector({
   };
 
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger size={"sm"}>
-        <Calendar className="hidden sm:block w-4 h-4" />
-        {getLabel(time)}
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-52">
-        <DropdownMenuItem
-          onClick={() => {
-            const tz = getTimezone();
-            const now = DateTime.now().setZone(tz);
-            setTime({
-              mode: "day",
-              day: now.toISODate()!,
-              wellKnown: "today",
-            });
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button size="sm">
+          <Calendar className="hidden sm:block w-4 h-4" />
+          {getLabel(time)}
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent align="end" className="w-auto max-w-[calc(100vw-2rem)] p-0">
+        <RangePanel
+          // Switching timezone re-resolves a preset in the store (Today becomes
+          // a different day), so the panel has to re-seed its draft from that
+          // new value — keeping the old one would apply yesterday's date.
+          key={timezone}
+          time={time}
+          zone={zone}
+          timezone={timezone}
+          setTimezone={setTimezone}
+          pastMinutesEnabled={pastMinutesEnabled}
+          onApply={nextTime => {
+            setTime(nextTime);
+            setOpen(false);
           }}
-          className={cn(time.wellKnown === "today" && "bg-neutral-50 dark:bg-neutral-800 font-medium")}
-        >
-          {t("Today")}
-        </DropdownMenuItem>
-        <DropdownMenuItem
-          onClick={() => {
-            const tz = getTimezone();
-            const now = DateTime.now().setZone(tz);
-            setTime({
-              mode: "day",
-              day: now.minus({ days: 1 }).toISODate()!,
-              wellKnown: "yesterday",
-            });
-          }}
-          className={cn(time.wellKnown === "yesterday" && "bg-neutral-50 dark:bg-neutral-800 font-medium")}
-        >
-          {t("Yesterday")}
-        </DropdownMenuItem>
-        <DropdownMenuItem
-          onClick={() => {
-            const tz = getTimezone();
-            const now = DateTime.now().setZone(tz);
-            setTime({
-              mode: "range",
-              startDate: now.minus({ days: 2 }).toISODate()!,
-              endDate: now.toISODate()!,
-              wellKnown: "last-3-days",
-            });
-          }}
-          className={cn(time.wellKnown === "last-3-days" && "bg-neutral-50 dark:bg-neutral-800 font-medium")}
-        >
-          {t("Last 3 Days")}
-        </DropdownMenuItem>
-        <DropdownMenuItem
-          onClick={() => {
-            const tz = getTimezone();
-            const now = DateTime.now().setZone(tz);
-            setTime({
-              mode: "range",
-              startDate: now.minus({ days: 6 }).toISODate()!,
-              endDate: now.toISODate()!,
-              wellKnown: "last-7-days",
-            });
-          }}
-          className={cn(time.wellKnown === "last-7-days" && "bg-neutral-50 dark:bg-neutral-800 font-medium")}
-        >
-          {t("Last 7 Days")}
-        </DropdownMenuItem>
-        <DropdownMenuItem
-          onClick={() => {
-            const tz = getTimezone();
-            const now = DateTime.now().setZone(tz);
-            setTime({
-              mode: "range",
-              startDate: now.minus({ days: 13 }).toISODate()!,
-              endDate: now.toISODate()!,
-              wellKnown: "last-14-days",
-            });
-          }}
-          className={cn(time.wellKnown === "last-14-days" && "bg-neutral-50 dark:bg-neutral-800 font-medium")}
-        >
-          {t("Last 14 Days")}
-        </DropdownMenuItem>
-        <DropdownMenuItem
-          onClick={() => {
-            const tz = getTimezone();
-            const now = DateTime.now().setZone(tz);
-            setTime({
-              mode: "range",
-              startDate: now.minus({ days: 29 }).toISODate()!,
-              endDate: now.toISODate()!,
-              wellKnown: "last-30-days",
-            });
-          }}
-          className={cn(time.wellKnown === "last-30-days" && "bg-neutral-50 dark:bg-neutral-800 font-medium")}
-        >
-          {t("Last 30 Days")}
-        </DropdownMenuItem>
-        <DropdownMenuItem
-          onClick={() => {
-            const tz = getTimezone();
-            const now = DateTime.now().setZone(tz);
-            setTime({
-              mode: "range",
-              startDate: now.minus({ days: 59 }).toISODate()!,
-              endDate: now.toISODate()!,
-              wellKnown: "last-60-days",
-            });
-          }}
-          className={cn(time.wellKnown === "last-60-days" && "bg-neutral-50 dark:bg-neutral-800 font-medium")}
-        >
-          {t("Last 60 Days")}
-        </DropdownMenuItem>
-        {pastMinutesEnabled && (
-          <>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem
-              onClick={() =>
-                setTime({
-                  mode: "past-minutes",
-                  pastMinutesStart: 30,
-                  pastMinutesEnd: 0,
-                  wellKnown: "last-30-minutes",
-                })
-              }
-              className={cn(time.wellKnown === "last-30-minutes" && "bg-neutral-50 dark:bg-neutral-800 font-medium")}
-            >
-              {t("Last 30 Minutes")}
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              onClick={() =>
-                setTime({
-                  mode: "past-minutes",
-                  pastMinutesStart: 60,
-                  pastMinutesEnd: 0,
-                  wellKnown: "last-1-hour",
-                })
-              }
-              className={cn(time.wellKnown === "last-1-hour" && "bg-neutral-50 dark:bg-neutral-800 font-medium")}
-            >
-              {t("Last 1 Hour")}
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              onClick={() =>
-                setTime({
-                  mode: "past-minutes",
-                  pastMinutesStart: 360,
-                  pastMinutesEnd: 0,
-                  wellKnown: "last-6-hours",
-                })
-              }
-              className={cn(time.wellKnown === "last-6-hours" && "bg-neutral-50 dark:bg-neutral-800 font-medium")}
-            >
-              {t("Last 6 Hours")}
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              onClick={() =>
-                setTime({
-                  mode: "past-minutes",
-                  pastMinutesStart: 1440,
-                  pastMinutesEnd: 0,
-                  wellKnown: "last-24-hours",
-                })
-              }
-              className={cn(time.wellKnown === "last-24-hours" && "bg-neutral-50 dark:bg-neutral-800 font-medium")}
-            >
-              {t("Last 24 Hours")}
-            </DropdownMenuItem>
-          </>
-        )}
-        <DropdownMenuSeparator />
-        <DropdownMenuItem
-          onClick={() => {
-            const tz = getTimezone();
-            const now = DateTime.now().setZone(tz);
-            setTime({
-              mode: "week",
-              week: now.startOf("week").toISODate()!,
-              wellKnown: "this-week",
-            });
-          }}
-          className={cn(time.wellKnown === "this-week" && "bg-neutral-50 dark:bg-neutral-800 font-medium")}
-        >
-          {t("This Week")}
-        </DropdownMenuItem>
-        <DropdownMenuItem
-          onClick={() => {
-            const tz = getTimezone();
-            const now = DateTime.now().setZone(tz);
-            setTime({
-              mode: "month",
-              month: now.startOf("month").toISODate()!,
-              wellKnown: "this-month",
-            });
-          }}
-          className={cn(time.wellKnown === "this-month" && "bg-neutral-50 dark:bg-neutral-800 font-medium")}
-        >
-          {t("This Month")}
-        </DropdownMenuItem>
-        <DropdownMenuItem
-          onClick={() => {
-            const tz = getTimezone();
-            const now = DateTime.now().setZone(tz);
-            setTime({
-              mode: "year",
-              year: now.startOf("year").toISODate()!,
-              wellKnown: "this-year",
-            });
-          }}
-          className={cn(time.wellKnown === "this-year" && "bg-neutral-50 dark:bg-neutral-800 font-medium")}
-        >
-          {t("This Year")}
-        </DropdownMenuItem>
-        <DropdownMenuItem
-          onClick={() =>
-            setTime({
-              mode: "all-time",
-              wellKnown: "all-time",
-            })
-          }
-          className={cn(time.wellKnown === "all-time" && "bg-neutral-50 dark:bg-neutral-800 font-medium")}
-        >
-          {t("All Time")}
-        </DropdownMenuItem>
-        <DropdownMenuSeparator />
-        <CustomDateRangePicker setTime={setTime} time={time} />
-        <DropdownMenuSeparator />
-        <DropdownMenuSub>
-          <DropdownMenuSubTrigger>{getTimezoneLabel(timezone)}</DropdownMenuSubTrigger>
-          <DropdownMenuSubContent>
-            {timezones.map(tz => (
-              <DropdownMenuItem
-                key={tz.value}
-                onClick={() => setTimezone(tz.value)}
-                className={cn(timezone === tz.value && "bg-neutral-50 dark:bg-neutral-800 font-medium")}
-              >
-                {tz.label}
-              </DropdownMenuItem>
-            ))}
-          </DropdownMenuSubContent>
-        </DropdownMenuSub>
-      </DropdownMenuContent>
-    </DropdownMenu>
+          onCancel={() => setOpen(false)}
+        />
+      </PopoverContent>
+    </Popover>
   );
 }
