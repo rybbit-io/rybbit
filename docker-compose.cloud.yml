@@ -42,6 +42,9 @@ services:
       - CLICKHOUSE_DB=${CLICKHOUSE_DB:-analytics}
       - CLICKHOUSE_USER=${CLICKHOUSE_USER:-default}
       - CLICKHOUSE_PASSWORD=${CLICKHOUSE_PASSWORD:-frog}
+      # Lets the backend provision the least-privilege `rybbit_query` user
+      # (custom SQL queries / dashboards) with SQL at startup.
+      - CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT=1
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8123/ping"]
       interval: 3s
@@ -110,6 +113,7 @@ services:
       - CLICKHOUSE_HOST=${CLICKHOUSE_HOST:-http://clickhouse:8123}
       - CLICKHOUSE_DB=${CLICKHOUSE_DB:-analytics}
       - CLICKHOUSE_PASSWORD=${CLICKHOUSE_PASSWORD:-frog}
+      - CLICKHOUSE_QUERY_PASSWORD=${CLICKHOUSE_QUERY_PASSWORD:-${CLICKHOUSE_PASSWORD:-frog}}
       - POSTGRES_HOST=postgres
       - POSTGRES_PORT=5432
       - POSTGRES_DB=${POSTGRES_DB:-analytics}

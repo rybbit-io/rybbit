@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { validateScopedQuery } from "./customQueryValidation.js";
+import { sanitizeClickhouseError, validateScopedQuery } from "./customQueryValidation.js";
 
 const SCOPED_ONLY_ERROR = "Queries can only read from scoped_events";
-const QUOTED_IDENTIFIER_ERROR = "Quoted identifiers are not allowed in custom analytics queries";
+const QUOTED_IDENTIFIER_ERROR = "Quoted identifiers, # and // comments, and $$ strings are not allowed in custom analytics queries";
 
 describe("validateScopedQuery — table reference scoping", () => {
   it("allows reading from scoped_events", () => {
@@ -111,5 +111,91 @@ describe("validateScopedQuery — table reference scoping", () => {
 
   it("requires the query to reference scoped_events at all", () => {
     expect(validateScopedQuery("SELECT 1")).toBe("Query must read from scoped_events");
+  });
+});
+
+// Lexer-mismatch bypasses: syntax ClickHouse understands but the literal
+// stripper doesn't. Each of these read another site's rows before the fix.
+describe("validateScopedQuery lexer-mismatch bypasses", () => {
+  const UNSUPPORTED = "Quoted identifiers, # and // comments, and $$ strings are not allowed in custom analytics queries";
+
+  it("rejects # line comments used to hide a UNION", () => {
+    expect(
+      validateScopedQuery("SELECT * FROM scoped_events WHERE 1=1 # '\nUNION ALL SELECT * FROM events WHERE site_id = 2 -- '")
+    ).toBe(UNSUPPORTED);
+  });
+
+  it("rejects #! line comments", () => {
+    expect(validateScopedQuery("SELECT * FROM scoped_events #! '\nUNION ALL SELECT * FROM events -- '")).toBe(UNSUPPORTED);
+  });
+
+  it("rejects // line comments", () => {
+    expect(validateScopedQuery("SELECT * FROM scoped_events WHERE 1=1 // '\nUNION ALL SELECT * FROM events -- '")).toBe(
+      UNSUPPORTED
+    );
+  });
+
+  it("rejects $$ heredoc strings", () => {
+    expect(
+      validateScopedQuery("SELECT * FROM scoped_events WHERE pathname = $$'$$ UNION ALL SELECT * FROM events -- '")
+    ).toBe(UNSUPPORTED);
+  });
+
+  it("rejects $tag$ heredoc strings", () => {
+    expect(validateScopedQuery("SELECT $x$'$x$ AS a FROM scoped_events UNION ALL SELECT * FROM events -- '")).toBe(
+      UNSUPPORTED
+    );
+  });
+
+  it("still allows # and $ inside single-quoted literals", () => {
+    expect(validateScopedQuery("SELECT count() FROM scoped_events WHERE pathname LIKE '%#top%' OR pathname = '$x$'")).toBeNull();
+  });
+
+  it("rejects suffixed external-storage table functions", () => {
+    expect(validateScopedQuery("SELECT * FROM icebergS3('http://x'), scoped_events")).toMatch(/icebergS3\(\) is not allowed/);
+    expect(validateScopedQuery("SELECT * FROM deltaLakeLocal('/tmp'), scoped_events")).toMatch(/deltaLakeLocal\(\) is not allowed/);
+  });
+
+  it("rejects server-introspection and sleep functions", () => {
+    expect(validateScopedQuery("SELECT hostName() FROM scoped_events")).toBe("hostName() is not allowed in custom analytics queries");
+    expect(validateScopedQuery("SELECT currentUser() FROM scoped_events")).toBe("currentUser() is not allowed in custom analytics queries");
+    expect(validateScopedQuery("SELECT sleepEachRow(1) FROM scoped_events")).toBe("sleepEachRow() is not allowed in custom analytics queries");
+    expect(validateScopedQuery("SELECT * FROM mergeTreeProjection('a','events','p'), scoped_events")).toBe(
+      "mergeTreeProjection() is not allowed in custom analytics queries"
+    );
+  });
+});
+
+describe("sanitizeClickhouseError", () => {
+  it("strips version, table UUIDs and stack traces", () => {
+    const message =
+      "Code: 47. DB::Exception: Unknown expression identifier 'foo' (table default.events (072583d3-1467-4d46-89ff-3f6981180a16)). (UNKNOWN_IDENTIFIER) (version 26.7.4.58 (official build))";
+    expect(sanitizeClickhouseError(new Error(message))).toBe(
+      "Code: 47. DB::Exception: Unknown expression identifier 'foo' (table default.events). (UNKNOWN_IDENTIFIER)"
+    );
+  });
+
+  it("maps privilege errors to a generic message", () => {
+    expect(
+      sanitizeClickhouseError(new Error("Code: 497. DB::Exception: rybbit_query: Not enough privileges. (ACCESS_DENIED)"))
+    ).toBe("Query references data outside scoped_events");
+  });
+
+  it("falls back for non-Error values", () => {
+    expect(sanitizeClickhouseError("boom")).toBe("Failed to run query");
+  });
+
+  it("collapses non-user-facing error classes to the code only", () => {
+    expect(
+      sanitizeClickhouseError(
+        new Error("Code: 1. DB::Exception: user rybbit_query failed reading /var/lib/clickhouse/store/x.bin on host ch-1")
+      )
+    ).toBe("Query failed (ClickHouse error 1)");
+  });
+
+  it("strips the (from ip) suffix on user-facing errors", () => {
+    expect(sanitizeClickhouseError(new Error("Code: 62. DB::Exception: Syntax error: failed at position 5 (from 10.0.0.1:1234)"))).toBe(
+      "Code: 62. DB::Exception: Syntax error: failed at position 5"
+    );
   });
 });

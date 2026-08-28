@@ -79,6 +79,9 @@ POSTGRES_USER=frog
 POSTGRES_PASSWORD=frog
 POSTGRES_DB=analytics
 CLICKHOUSE_DB=analytics
+# Password for the least-privilege `rybbit_query` ClickHouse user that runs
+# custom SQL queries and dashboards (defaults to CLICKHOUSE_PASSWORD)
+CLICKHOUSE_QUERY_PASSWORD=frog
 
 # Custom image tags
 IMAGE_TAG=latest
@@ -87,3 +90,31 @@ IMAGE_TAG=latest
 HOST_BACKEND_PORT="3001:3001"
 HOST_CLIENT_PORT="3002:3002"
 ```
+
+## Custom SQL queries and dashboards
+
+User-authored SQL (the Query page and dashboard cards) runs as a dedicated least-privilege ClickHouse user, `rybbit_query`, never as the main ClickHouse account. The backend creates and maintains this user at startup with `CREATE USER` / `GRANT` statements: SELECT on the events table only, `readonly = 2`, and pinned execution-time, memory, thread and row limits. That needs the main ClickHouse user to have `access_management` enabled — the bundled compose files set `CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT=1` on the `clickhouse` service (existing installs pick it up when the container is recreated with `docker compose up -d clickhouse`).
+
+`CLICKHOUSE_QUERY_PASSWORD` sets that user's password (defaults to `CLICKHOUSE_PASSWORD`); `CLICKHOUSE_QUERY_USER` overrides the name.
+
+If your ClickHouse admin account cannot manage access (some managed offerings), the backend logs an error at startup and custom queries fail closed until you create the user yourself:
+
+```sql
+CREATE SETTINGS PROFILE IF NOT EXISTS rybbit_query
+  SETTINGS readonly = 2 READONLY,
+           max_execution_time = 10 READONLY,
+           max_memory_usage = 4000000000 READONLY,
+           max_threads = 4 READONLY,
+           max_result_rows = 1000 READONLY,
+           result_overflow_mode = 'break' READONLY,
+           max_concurrent_queries_for_user = 8 READONLY,
+           enable_json_type = 1;
+
+CREATE USER IF NOT EXISTS rybbit_query
+  IDENTIFIED WITH sha256_password BY '<CLICKHOUSE_QUERY_PASSWORD>'
+  SETTINGS PROFILE 'rybbit_query';
+
+GRANT SELECT ON analytics.events TO rybbit_query;
+```
+
+Grant nothing else: the absence of table-function and `system.*` privileges is what keeps user SQL contained.
