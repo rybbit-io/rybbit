@@ -22,6 +22,8 @@ import { SortableHeader } from "../shared/SortableHeader";
 import { TableShell } from "../shared/Panel";
 import { OrganizationExpandedRow } from "./OrganizationExpandedRow";
 import { useExtracted } from "next-intl";
+import { SiStripe } from "@icons-pack/react-simple-icons";
+import { Favicon } from "@/components/Favicon";
 
 interface OrganizationsTableProps {
   organizations: AdminOrganizationData[];
@@ -72,19 +74,23 @@ export function OrganizationsTable({ organizations, isLoading, searchQuery }: Or
         : subscription.status === "active" || subscription.status === "trialing"
           ? ("default" as const)
           : ("secondary" as const);
-    const source = {
-      custom: t("Custom"),
-      override: t("Override"),
-      stripe: "Stripe",
-      appsumo: "AppSumo",
-      free: t("Free"),
-    }[subscription.source];
+    const sourceIndicator =
+      subscription.source === "stripe" ? (
+        <SiStripe title="Stripe" size={16} className="shrink-0 text-[#635BFF]" />
+      ) : subscription.source === "appsumo" ? (
+        <span title="AppSumo" className="inline-flex size-4 shrink-0 items-center justify-center">
+          <Favicon domain="appsumo.com" className="size-4 rounded-sm" />
+        </span>
+      ) : subscription.source === "custom" || subscription.source === "override" ? (
+        <Badge variant="outline" className="font-normal text-muted-foreground">
+          {subscription.source === "custom" ? t("Custom") : t("Override")}
+        </Badge>
+      ) : null;
+
     return (
       <div className="flex items-center gap-1.5">
         <Badge variant={variant}>{subscription.planName}</Badge>
-        <Badge variant="outline" className="font-normal text-muted-foreground">
-          {source}
-        </Badge>
+        {sourceIndicator}
       </div>
     );
   };
