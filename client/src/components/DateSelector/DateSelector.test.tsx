@@ -103,10 +103,10 @@ describe("DateSelector", () => {
     render(<DateSelector time={{ mode: "range", startDate: "2024-03-08", endDate: "2024-03-14" }} setTime={setTime} />);
 
     fireEvent.click(screen.getByRole("button", { name: /Mar 8/ }));
-    expect(screen.getByText("Realtime")).toBeTruthy();
+    expect(screen.getByPlaceholderText("Search ranges")).toBeTruthy();
 
     fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
-    expect(screen.queryByText("Realtime")).toBeNull();
+    expect(screen.queryByPlaceholderText("Search ranges")).toBeNull();
   });
 
   it("hides the realtime presets when a caller disables them", () => {
@@ -119,6 +119,7 @@ describe("DateSelector", () => {
     );
 
     fireEvent.click(screen.getByRole("button", { name: /Mar 8/ }));
-    expect(screen.queryByText("Realtime")).toBeNull();
+    expect(screen.queryByText("Last 30 Minutes")).toBeNull();
+    expect(screen.getByText("Today")).toBeTruthy();
   });
 });
