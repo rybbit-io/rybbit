@@ -136,7 +136,12 @@ export function RangePanel({
         <div className="w-full border-b border-neutral-150 md:w-[190px] md:shrink-0 md:border-b-0 md:border-r dark:border-neutral-800">
           <Command defaultValue={draft.time.wellKnown ? presetLabels[draft.time.wellKnown] : undefined}>
             <CommandInput placeholder={t("Search ranges")} />
-            <CommandList className="max-h-[180px] md:max-h-[440px]">
+            {/* Capped so the rail ends level with the calendar column beside it
+                (two months + the bound rows + the pane's padding, less this
+                list's own 36px search row). Left to its natural height the
+                seventeen presets stretched the panel and left a block of dead
+                space under the calendar. */}
+            <CommandList className="max-h-[180px] md:max-h-[384px]">
               <CommandEmpty>{t("No matching range")}</CommandEmpty>
               {groups.map(group => (
                 <CommandGroup key={group.id} heading={groupLabels[group.id]}>
@@ -157,8 +162,13 @@ export function RangePanel({
           </Command>
         </div>
 
-        <div className="p-3">
+        <div className="flex flex-col p-3">
           <Calendar
+            // `useMediaQuery` resolves in an effect, so `months` flips from 2 to
+            // 1 after mount. `defaultMonth` is only read on mount, which left a
+            // phone opening one month to the left of the selection — remount so
+            // it is read again once the breakpoint is known.
+            key={months}
             mode="range"
             selected={selected}
             onDayClick={(date, modifiers) => {
@@ -174,10 +184,11 @@ export function RangePanel({
             startMonth={lastMonth.minus({ years: 6 }).toJSDate()}
             endMonth={lastMonth.toJSDate()}
             disabled={{ after: maxDate }}
-            className="p-0"
+            // the calendar is `w-fit`; centre it when it is alone in a full-width column
+            className="mx-auto p-0 md:mx-0"
           />
 
-          <div className="mt-3 flex flex-col gap-2 border-t border-neutral-150 pt-3 dark:border-neutral-800">
+          <div className="mt-3 hidden flex-col gap-2 border-t border-neutral-150 pt-3 md:flex dark:border-neutral-800">
             <BoundRow
               label={t("From")}
               date={draft.fields.startDate}
