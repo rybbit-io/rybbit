@@ -1,3 +1,4 @@
+import type { SessionReplayEvent } from "@/api/analytics/endpoints";
 import { ActivitySlider } from "@/components/ui/activity-slider";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -10,29 +11,37 @@ import { useReplayStore } from "../replayStore";
 import { formatTime, PLAYBACK_SPEEDS } from "./utils/replayUtils";
 
 interface ReplayPlayerControlsProps {
-  events: any[];
-  onPlayPause: () => void;
-  onSliderChange: (value: number[]) => void;
-  onSpeedChange: (speed: string) => void;
+  events: SessionReplayEvent[];
   isDrawer?: boolean;
 }
 
 export const ReplayPlayerControls = memo(function ReplayPlayerControls({
   events,
-  onPlayPause,
-  onSliderChange,
-  onSpeedChange,
   isDrawer,
 }: ReplayPlayerControlsProps) {
-  const { sessionId, player, isPlaying, currentTime, duration, playbackSpeed, activityPeriods } = useReplayStore(
+  const {
+    sessionId,
+    playerReady,
+    isPlaying,
+    currentTime,
+    duration,
+    playbackSpeed,
+    activityPeriods,
+    togglePlayback,
+    scrubTo,
+    changePlaybackSpeed,
+  } = useReplayStore(
     useShallow(s => ({
       sessionId: s.sessionId,
-      player: s.player,
+      playerReady: s.playerReady,
       isPlaying: s.isPlaying,
       currentTime: s.currentTime,
       duration: s.duration,
       playbackSpeed: s.playbackSpeed,
       activityPeriods: s.activityPeriods,
+      togglePlayback: s.togglePlayback,
+      scrubTo: s.scrubTo,
+      changePlaybackSpeed: s.changePlaybackSpeed,
     }))
   );
   const [replayDrawerOpen, setReplayDrawerOpen] = useState(false);
@@ -40,7 +49,7 @@ export const ReplayPlayerControls = memo(function ReplayPlayerControls({
   return (
     <div className="border border-neutral-100 dark:border-neutral-800 p-2 pb-3 bg-white dark:bg-neutral-900 rounded-b-lg pt-6">
       <div className="flex items-center">
-        <Button variant="ghost" size="smIcon" onClick={onPlayPause} disabled={!player}>
+        <Button variant="ghost" size="smIcon" onClick={togglePlayback} disabled={!playerReady}>
           {isPlaying ? (
             <Pause className="w-4 h-4" fill="currentColor" />
           ) : (
@@ -50,7 +59,7 @@ export const ReplayPlayerControls = memo(function ReplayPlayerControls({
         <div className="flex-1 mx-2 -mt-8">
           <ActivitySlider
             value={[duration > 0 ? (currentTime / duration) * 100 : 0]}
-            onValueChange={onSliderChange}
+            onValueChange={value => scrubTo(value[0])}
             max={100}
             step={0.1}
             activityPeriods={activityPeriods}
@@ -63,7 +72,7 @@ export const ReplayPlayerControls = memo(function ReplayPlayerControls({
           {formatTime(currentTime)} / {formatTime(duration)}
         </div>
 
-        <Select value={playbackSpeed} onValueChange={onSpeedChange}>
+        <Select value={String(playbackSpeed)} onValueChange={speed => changePlaybackSpeed(Number(speed))}>
           <SelectTrigger size="sm" className="w-14 mx-2">
             <SelectValue />
           </SelectTrigger>
@@ -76,11 +85,18 @@ export const ReplayPlayerControls = memo(function ReplayPlayerControls({
           </SelectContent>
         </Select>
         {!isDrawer && (
-          <Button variant="ghost" size="smIcon" onClick={() => setReplayDrawerOpen(true)}>
-            <Maximize2 className="w-4 h-4" />
-          </Button>
+          <>
+            <Button variant="ghost" size="smIcon" onClick={() => setReplayDrawerOpen(true)}>
+              <Maximize2 className="w-4 h-4" />
+            </Button>
+            <ReplayDrawer
+              sessionId={sessionId}
+              open={replayDrawerOpen}
+              onOpenChange={setReplayDrawerOpen}
+              resetPlaybackOnClose={false}
+            />
+          </>
         )}
-        <ReplayDrawer sessionId={sessionId} open={replayDrawerOpen} onOpenChange={setReplayDrawerOpen} />
       </div>
     </div>
   );

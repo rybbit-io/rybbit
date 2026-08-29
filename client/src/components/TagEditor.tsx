@@ -3,7 +3,7 @@
 import { Plus, X } from "lucide-react";
 import { useExtracted } from "next-intl";
 import { ReactNode, useState } from "react";
-import { updateSiteConfig } from "../api/admin/endpoints/sites";
+import { useUpdateSiteConfiguration } from "../api/admin/hooks/useSiteConfiguration";
 import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
 import {
@@ -31,6 +31,7 @@ export function TagEditor({ siteId, currentTags, allTags, onTagsUpdated, trigger
   const [tags, setTags] = useState<string[]>(currentTags);
   const [newTagInput, setNewTagInput] = useState("");
   const [isSaving, setIsSaving] = useState(false);
+  const { mutateAsync: updateSiteConfiguration } = useUpdateSiteConfiguration();
 
   // Get suggestions - existing tags that aren't already selected
   const suggestions = allTags.filter(tag => !tags.includes(tag));
@@ -57,7 +58,7 @@ export function TagEditor({ siteId, currentTags, allTags, onTagsUpdated, trigger
   const handleSave = async () => {
     setIsSaving(true);
     try {
-      await updateSiteConfig(siteId, { tags });
+      await updateSiteConfiguration({ siteId, config: { tags } });
       onTagsUpdated();
       setOpen(false);
     } catch (error) {
@@ -120,11 +121,7 @@ export function TagEditor({ siteId, currentTags, allTags, onTagsUpdated, trigger
               onKeyDown={handleKeyDown}
               maxLength={50}
             />
-            <Button
-              variant="outline"
-              onClick={() => handleAddTag(newTagInput)}
-              disabled={!newTagInput.trim()}
-            >
+            <Button variant="outline" onClick={() => handleAddTag(newTagInput)} disabled={!newTagInput.trim()}>
               {t("Add")}
             </Button>
           </div>

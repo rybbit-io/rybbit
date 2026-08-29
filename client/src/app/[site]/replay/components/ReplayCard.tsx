@@ -65,11 +65,11 @@ function cleanUrl(url: string) {
 export function ReplayCard({ replay, onSelect }: { replay: SessionReplayListItem; onSelect?: () => void }) {
   const t = useExtracted();
   const { formatRelative } = useDateTimeFormat();
-  const { sessionId, setSessionId, resetPlayerState } = useReplayStore(
+  const { sessionId, openSession, closeSession } = useReplayStore(
     useShallow(s => ({
       sessionId: s.sessionId,
-      setSessionId: s.setSessionId,
-      resetPlayerState: s.resetPlayerState,
+      openSession: s.openSession,
+      closeSession: s.closeSession,
     }))
   );
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -81,9 +81,7 @@ export function ReplayCard({ replay, onSelect }: { replay: SessionReplayListItem
   const handleDelete = async () => {
     try {
       await deleteSessionReplay.mutateAsync({ sessionId: replay.session_id });
-      if (sessionId === replay.session_id) {
-        resetPlayerState();
-      }
+      closeSession(replay.session_id);
       setIsDialogOpen(false);
     } catch (error) {
       console.error("Failed to delete session replay:", error);
@@ -102,13 +100,13 @@ export function ReplayCard({ replay, onSelect }: { replay: SessionReplayListItem
         isSelected && "bg-neutral-100 dark:bg-neutral-800/70"
       )}
       onClick={() => {
-        setSessionId(replay.session_id);
+        openSession(replay.session_id);
         onSelect?.();
       }}
       onKeyDown={e => {
         if (e.key === "Enter" || e.key === " ") {
           e.preventDefault();
-          setSessionId(replay.session_id);
+          openSession(replay.session_id);
           onSelect?.();
         }
       }}
@@ -190,7 +188,10 @@ export function ReplayCard({ replay, onSelect }: { replay: SessionReplayListItem
           screen_height={replay.screen_height}
         />
         <div className="ml-auto flex items-center gap-2 text-[11px] tabular-nums">
-          <span className="flex items-center gap-1" title={t("{count} events", { count: formatter(replay.event_count) })}>
+          <span
+            className="flex items-center gap-1"
+            title={t("{count} events", { count: formatter(replay.event_count) })}
+          >
             <MousePointerClick className="w-3 h-3" />
             {formatter(replay.event_count)}
           </span>

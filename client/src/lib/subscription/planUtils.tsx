@@ -54,6 +54,14 @@ export function planIncludesReplay(
   return subscription.planName.includes("pro") && !isLargeTrial;
 }
 
+// Whether a plan includes the Standard tracking features. Kept separate from
+// replay because the product tiers grant these capabilities differently.
+export function planIncludesStandardFeatures(subscription: { planName: string } | null | undefined): boolean {
+  if (!subscription) return false;
+
+  return ["custom", "standard", "pro", "appsumo"].some(planFamily => subscription.planName.includes(planFamily));
+}
+
 // Format event tier for display
 export function formatEventTier(tier: number | string): string {
   if (typeof tier === "string") {

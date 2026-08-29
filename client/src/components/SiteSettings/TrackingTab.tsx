@@ -1,15 +1,14 @@
 "use client";
 
-import { useQueryClient } from "@tanstack/react-query";
 import { useExtracted } from "next-intl";
 import { useState, useCallback, ReactNode } from "react";
 import { toast } from "@/components/ui/sonner";
 
 import { Switch } from "@/components/ui/switch";
 
-import { updateSiteConfig, SiteResponse } from "@/api/admin/endpoints";
-import { useGetSitesFromOrg } from "@/api/admin/hooks/useSites";
-import { planIncludesReplay } from "@/lib/subscription/planUtils";
+import { SiteResponse } from "@/api/admin/endpoints";
+import { useUpdateSiteConfiguration } from "@/api/admin/hooks/useSiteConfiguration";
+import { planIncludesReplay, planIncludesStandardFeatures } from "@/lib/subscription/planUtils";
 import { useStripeSubscription } from "@/lib/subscription/useStripeSubscription";
 import { Badge } from "@/components/ui/badge";
 import { IS_CLOUD } from "@/lib/const";
@@ -42,8 +41,7 @@ export function TrackingTab({
   adminMode = false,
 }: TrackingTabProps) {
   const t = useExtracted();
-  const queryClient = useQueryClient();
-  const { refetch } = useGetSitesFromOrg(siteMetadata?.organizationId ?? "", { enabled: !adminMode });
+  const { mutateAsync: updateSiteConfiguration } = useUpdateSiteConfiguration();
   const isMobileSite = siteMetadata.type === "mobile";
 
   const [toggleStates, setToggleStates] = useState({
@@ -69,7 +67,7 @@ export function TrackingTab({
     ) => {
       setLoadingStates(prev => ({ ...prev, [key]: true }));
       try {
-        await updateSiteConfig(siteMetadata.siteId, { [key]: checked });
+        await updateSiteConfiguration({ siteId: siteMetadata.siteId, config: { [key]: checked } });
         setToggleStates(prev => ({ ...prev, [key]: checked }));
         const message = successMessage
           ? checked
@@ -77,13 +75,6 @@ export function TrackingTab({
             : successMessage.disabled
           : `${key.replace(/([A-Z])/g, " $1").toLowerCase()} ${checked ? "enabled" : "disabled"}`;
         toast.success(message);
-        if (!adminMode) {
-          refetch();
-        } else {
-          queryClient.invalidateQueries({ queryKey: ["admin-organizations"] });
-        }
-        // Prefix match so both string- and number-keyed useGetSite instances update
-        queryClient.invalidateQueries({ queryKey: ["get-site"] });
       } catch (error) {
         console.error(`Error updating ${key}:`, error);
         toast.error(`Failed to update ${key.replace(/([A-Z])/g, " $1").toLowerCase()}`);
@@ -92,7 +83,7 @@ export function TrackingTab({
         setLoadingStates(prev => ({ ...prev, [key]: false }));
       }
     },
-    [siteMetadata.siteId, refetch, queryClient, adminMode]
+    [siteMetadata.siteId, updateSiteConfiguration]
   );
 
   const { data: subscription, isLoading: isSubscriptionLoading } = useStripeSubscription();
@@ -101,12 +92,7 @@ export function TrackingTab({
 
   const sessionReplayDisabled = !planIncludesReplay(effectiveSubscription) && IS_CLOUD;
 
-  const standardFeaturesDisabled =
-    !effectiveSubscription?.planName.includes("custom") &&
-    !effectiveSubscription?.planName.includes("standard") &&
-    !effectiveSubscription?.planName.includes("pro") &&
-    !effectiveSubscription?.planName.includes("appsumo") &&
-    IS_CLOUD;
+  const standardFeaturesDisabled = !planIncludesStandardFeatures(effectiveSubscription) && IS_CLOUD;
 
   const analyticsToggles: ToggleConfig[] = [
     // Hide the replay toggle for AppSumo tiers without replays (1-3); tiers 4-7 include them

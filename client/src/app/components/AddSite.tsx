@@ -26,7 +26,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "../../components/ui/too
 import { authClient } from "../../lib/auth";
 import { IS_CLOUD } from "../../lib/const";
 import { resetStore, useStore } from "../../lib/store";
-import { planIncludesReplay } from "../../lib/subscription/planUtils";
+import { planIncludesReplay, planIncludesStandardFeatures } from "../../lib/subscription/planUtils";
 import { useStripeSubscription } from "../../lib/subscription/useStripeSubscription";
 import { isValidDomain, normalizeDomain } from "../../lib/utils";
 
@@ -89,12 +89,7 @@ export function AddSite({ trigger, disabled }: { trigger?: React.ReactNode; disa
   const setToggle = (key: ToggleKey, checked: boolean) => setToggles(prev => ({ ...prev, [key]: checked }));
 
   const sessionReplayDisabled = !planIncludesReplay(subscription) && IS_CLOUD;
-  const standardFeaturesDisabled =
-    !subscription?.planName.includes("custom") &&
-    !subscription?.planName.includes("standard") &&
-    !subscription?.planName.includes("pro") &&
-    !subscription?.planName.includes("appsumo") &&
-    IS_CLOUD;
+  const standardFeaturesDisabled = !planIncludesStandardFeatures(subscription) && IS_CLOUD;
 
   const privacyToggles: CreateToggle[] = [
     {

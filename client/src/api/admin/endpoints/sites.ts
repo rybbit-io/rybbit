@@ -70,6 +70,36 @@ export type GetSitesFromOrgResponse = {
   };
 };
 
+export type SiteConfig = {
+  name?: string;
+  type?: "web" | "mobile" | null;
+  domain?: string;
+  public?: boolean;
+  embedEnabled?: boolean;
+  saltUserIds?: boolean;
+  blockBots?: boolean;
+  firstPartyProxy?: boolean;
+  excludedIPs?: string[];
+  excludedCountries?: string[];
+  excludedPaths?: string[];
+  excludedHostnames?: string[];
+  excludedUserAgents?: string[];
+  excludedASNs?: string[];
+  excludedQueryParams?: string[];
+  sessionReplay?: boolean;
+  webVitals?: boolean;
+  trackErrors?: boolean;
+  trackOutbound?: boolean;
+  trackUrlParams?: boolean;
+  trackInitialPageView?: boolean;
+  trackSpaNavigation?: boolean;
+  trackIp?: boolean;
+  trackButtonClicks?: boolean;
+  trackCopy?: boolean;
+  trackFormInteractions?: boolean;
+  tags?: string[];
+};
+
 export function fetchSitesFromOrg(organizationId: string) {
   return authedFetch<GetSitesFromOrgResponse>(`/organizations/${organizationId}/sites`);
 }
@@ -136,39 +166,7 @@ export function moveSite(siteId: number, organizationId: string) {
   });
 }
 
-// Consolidated function to update any site configuration
-export function updateSiteConfig(
-  siteId: number,
-  config: {
-    name?: string;
-    type?: "web" | "mobile" | null;
-    domain?: string;
-    public?: boolean;
-    embedEnabled?: boolean;
-    saltUserIds?: boolean;
-    blockBots?: boolean;
-    firstPartyProxy?: boolean;
-    excludedIPs?: string[];
-    excludedCountries?: string[];
-    excludedPaths?: string[];
-    excludedHostnames?: string[];
-    excludedUserAgents?: string[];
-    excludedASNs?: string[];
-    excludedQueryParams?: string[];
-    sessionReplay?: boolean;
-    webVitals?: boolean;
-    trackErrors?: boolean;
-    trackOutbound?: boolean;
-    trackUrlParams?: boolean;
-    trackInitialPageView?: boolean;
-    trackSpaNavigation?: boolean;
-    trackIp?: boolean;
-    trackButtonClicks?: boolean;
-    trackCopy?: boolean;
-    trackFormInteractions?: boolean;
-    tags?: string[];
-  }
-) {
+export function updateSiteConfig(siteId: number, config: SiteConfig) {
   return authedFetch(`/sites/${siteId}/config`, undefined, {
     method: "PUT",
     data: config,

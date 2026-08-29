@@ -4,7 +4,7 @@ import { Video } from "lucide-react";
 import { useExtracted } from "next-intl";
 import { useParams } from "next/navigation";
 import { toast } from "@/components/ui/sonner";
-import { updateSiteConfig } from "../../../../api/admin/endpoints";
+import { useUpdateSiteConfiguration } from "../../../../api/admin/hooks/useSiteConfiguration";
 import { useGetSite } from "../../../../api/admin/hooks/useSites";
 import { Alert, AlertDescription, AlertTitle } from "../../../../components/ui/alert";
 import { Button } from "../../../../components/ui/button";
@@ -16,7 +16,8 @@ export function EnableSessionReplay() {
   const t = useExtracted();
   const params = useParams();
   const siteId = Number(params.site);
-  const { data: siteMetadata, isLoading, refetch } = useGetSite(siteId);
+  const { data: siteMetadata, isLoading } = useGetSite(siteId);
+  const { mutateAsync: updateSiteConfiguration } = useUpdateSiteConfiguration();
   const { data: subscription } = useStripeSubscription();
 
   const canEnableReplay = !IS_CLOUD || planIncludesReplay(subscription);
@@ -41,9 +42,8 @@ export function EnableSessionReplay() {
               size="sm"
               variant="success"
               onClick={async () => {
-                await updateSiteConfig(siteId, { sessionReplay: true });
+                await updateSiteConfiguration({ siteId, config: { sessionReplay: true } });
                 toast.success(t("Session replay enabled"));
-                refetch();
               }}
             >
               {t("Enable")}

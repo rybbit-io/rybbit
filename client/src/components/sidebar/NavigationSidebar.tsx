@@ -2,8 +2,7 @@
 import { AppWindow, Building2, Combine, CreditCard, UserCircle, Users } from "lucide-react";
 import { useExtracted } from "next-intl";
 import { usePathname } from "next/navigation";
-import { useUserOrganizations } from "../../api/admin/hooks/useOrganizations";
-import { authClient } from "../../lib/auth";
+import { useOrganizationAccess } from "../../hooks/useOrganizationAccess";
 import { IS_CLOUD } from "../../lib/const";
 import { OrganizationSelector } from "../OrganizationSelector";
 import { Sidebar } from "./Sidebar";
@@ -11,14 +10,7 @@ import { Sidebar } from "./Sidebar";
 export function NavigationSidebar() {
   const t = useExtracted();
   const pathname = usePathname();
-  const { data: activeOrganization } = authClient.useActiveOrganization();
-  const { data: userOrganizations } = useUserOrganizations();
-
-  const currentMember = userOrganizations?.find(
-    (org) => org.id === activeOrganization?.id
-  );
-  const isAdminOrOwner =
-    currentMember?.role === "admin" || currentMember?.role === "owner";
+  const access = useOrganizationAccess();
 
   return (
     <Sidebar.Root>
@@ -44,29 +36,29 @@ export function NavigationSidebar() {
           href="/settings/account"
           icon={<UserCircle className="w-4 h-4" />}
         />
-        {isAdminOrOwner && (
-          <>
-            <Sidebar.Item
-              label={t("Organization")}
-              active={pathname === "/settings/organization"}
-              href="/settings/organization"
-              icon={<Building2 className="w-4 h-4" />}
-            />
-            <Sidebar.Item
-              label={t("Teams")}
-              active={pathname.startsWith("/settings/teams")}
-              href="/settings/teams"
-              icon={<Users className="w-4 h-4" />}
-            />
-            {IS_CLOUD && (
-              <Sidebar.Item
-                label={t("Billing")}
-                active={pathname.startsWith("/settings/billing")}
-                href="/settings/billing"
-                icon={<CreditCard className="w-4 h-4" />}
-              />
-            )}
-          </>
+        {access.decisions.manageOrganizationSettings.allowed && (
+          <Sidebar.Item
+            label={t("Organization")}
+            active={pathname === "/settings/organization"}
+            href="/settings/organization"
+            icon={<Building2 className="w-4 h-4" />}
+          />
+        )}
+        {access.decisions.manageTeams.allowed && (
+          <Sidebar.Item
+            label={t("Teams")}
+            active={pathname.startsWith("/settings/teams")}
+            href="/settings/teams"
+            icon={<Users className="w-4 h-4" />}
+          />
+        )}
+        {IS_CLOUD && access.decisions.viewSubscriptionSettings.allowed && (
+          <Sidebar.Item
+            label={t("Billing")}
+            active={pathname.startsWith("/settings/billing")}
+            href="/settings/billing"
+            icon={<CreditCard className="w-4 h-4" />}
+          />
         )}
       </Sidebar.Items>
     </Sidebar.Root>

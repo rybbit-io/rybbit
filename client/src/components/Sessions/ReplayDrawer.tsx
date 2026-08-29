@@ -11,26 +11,30 @@ interface ReplayDrawerProps {
   sessionId: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  resetPlaybackOnClose?: boolean;
 }
 
-export function ReplayDrawer({ sessionId, open, onOpenChange }: ReplayDrawerProps) {
-  const { setSessionId, resetPlayerState } = useReplayStore();
+export function ReplayDrawer({ sessionId, open, onOpenChange, resetPlaybackOnClose = true }: ReplayDrawerProps) {
+  const { openSession, resetPlayback } = useReplayStore();
   const containerRef = useRef<HTMLDivElement>(null);
+  const wasOpenRef = useRef(open);
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
 
   // Set sessionId in store when drawer opens
   useEffect(() => {
     if (open && sessionId) {
-      setSessionId(sessionId);
+      openSession(sessionId);
     }
-  }, [open, sessionId, setSessionId]);
+  }, [open, sessionId, openSession]);
 
-  // Reset player state when drawer closes
+  // Standalone drawers restart when closed. The fullscreen drawer opts out so
+  // disconnecting it restores the underlying Replay Session player in place.
   useEffect(() => {
-    if (!open) {
-      resetPlayerState();
+    if (resetPlaybackOnClose && wasOpenRef.current && !open) {
+      resetPlayback();
     }
-  }, [open, resetPlayerState]);
+    wasOpenRef.current = open;
+  }, [open, resetPlayback, resetPlaybackOnClose]);
 
   // Measure container dimensions using getBoundingClientRect for more reliable sizing
   useEffect(() => {

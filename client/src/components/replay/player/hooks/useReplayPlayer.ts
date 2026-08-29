@@ -1,154 +1,137 @@
+import type { SessionReplayEvent } from "@/api/analytics/endpoints";
 import { useEffect, useRef } from "react";
 import rrwebPlayer from "rrweb-player";
 import { useShallow } from "zustand/react/shallow";
-import { useReplayStore } from "../../replayStore";
+
+import { type ReplayPlayerAdapter, type ReplayPlayerUpdate, useReplayStore } from "../../replayStore";
 import { CONTROLS_HEIGHT } from "../utils/replayUtils";
 
 interface UseReplayPlayerProps {
-  data: { events: any[] } | undefined;
+  data: { events: SessionReplayEvent[] } | undefined;
   width: number;
   height: number;
 }
 
+interface RrwebPlayerEvent {
+  payload?: unknown;
+}
+
+interface RrwebPlayerInstance {
+  $set: (dimensions: { width: number; height: number }) => void;
+  addEventListener: (event: string, listener: (event: RrwebPlayerEvent) => void) => void;
+  getMetaData: () => { totalTime?: number };
+  goto: (time: number) => void;
+  pause: () => void;
+  play: () => void;
+  setSpeed: (speed: number) => void;
+  triggerResize: () => void;
+}
+
+function numericPayload(event: RrwebPlayerEvent): number | undefined {
+  return typeof event.payload === "number" && Number.isFinite(event.payload) ? event.payload : undefined;
+}
+
+function createPlayerAdapter(player: RrwebPlayerInstance): ReplayPlayerAdapter {
+  return {
+    play: () => player.play(),
+    pause: () => player.pause(),
+    seek: time => player.goto(time),
+    setSpeed: speed => player.setSpeed(speed),
+    getDuration: () => player.getMetaData().totalTime ?? 0,
+    subscribe: listener => {
+      let subscribed = true;
+      const emit = (update: ReplayPlayerUpdate) => {
+        if (subscribed) listener(update);
+      };
+
+      player.addEventListener("ui-update-current-time", event => {
+        const value = numericPayload(event);
+        if (value !== undefined) emit({ type: "current-time", value });
+      });
+      player.addEventListener("ui-update-player-state", event => {
+        if (event.payload === "playing" || event.payload === "paused") {
+          emit({ type: "playback-state", value: event.payload });
+        }
+      });
+      player.addEventListener("ui-update-duration", event => {
+        const value = numericPayload(event);
+        if (value !== undefined) emit({ type: "duration", value });
+      });
+
+      // rrweb can initialize its metadata after its first duration event, so
+      // perform one delayed synchronization through the same Adapter stream.
+      const durationTimeout = window.setTimeout(() => {
+        const duration = player.getMetaData().totalTime;
+        if (duration) emit({ type: "duration", value: duration });
+      }, 100);
+
+      return () => {
+        subscribed = false;
+        window.clearTimeout(durationTimeout);
+      };
+    },
+  };
+}
+
 export const useReplayPlayer = ({ data, width, height }: UseReplayPlayerProps) => {
   const playerContainerRef = useRef<HTMLDivElement>(null);
-  const playerRef = useRef<any>(null);
-  const { setPlayer, setCurrentTime, setIsPlaying, setDuration } = useReplayStore(
-    useShallow(s => ({
-      setPlayer: s.setPlayer,
-      setCurrentTime: s.setCurrentTime,
-      setIsPlaying: s.setIsPlaying,
-      setDuration: s.setDuration,
+  const playerRef = useRef<RrwebPlayerInstance | null>(null);
+  const { connectPlayer, setPlayerVisibility } = useReplayStore(
+    useShallow(state => ({
+      connectPlayer: state.connectPlayer,
+      setPlayerVisibility: state.setPlayerVisibility,
     }))
   );
 
-  // Store width/height in refs for the resize effect
   const widthRef = useRef(width);
   const heightRef = useRef(height);
   widthRef.current = width;
   heightRef.current = height;
 
-  // Initialize player when data changes
   useEffect(() => {
-    if (data?.events && playerContainerRef.current) {
-      // Clear any existing content first
-      playerContainerRef.current.innerHTML = "";
+    const events = data?.events;
+    const playerContainer = playerContainerRef.current;
+    if (!events || !playerContainer) return;
 
-      let newPlayer: any = null;
-      let handleVisibilityChange: (() => void) | null = null;
+    playerContainer.innerHTML = "";
+    let player: RrwebPlayerInstance;
 
-      try {
-        // Initialize rrweb player
-        newPlayer = new rrwebPlayer({
-          target: playerContainerRef.current,
-          props: {
-            events: data.events as any, // Cast to any to handle type compatibility with rrweb
-            width: widthRef.current,
-            // subtract for the custom controls
-            height: heightRef.current - CONTROLS_HEIGHT,
-            autoPlay: false,
-            showController: false, // We'll use custom controls
-          },
-        });
-
-        playerRef.current = newPlayer;
-        setPlayer(newPlayer);
-
-        // Set up event listeners
-        newPlayer.addEventListener("ui-update-current-time", (event: any) => {
-          // Validate that current time doesn't exceed duration
-          const currentTime = event.payload;
-          const playerDuration = newPlayer.getMetaData().totalTime;
-
-          if (playerDuration && currentTime > playerDuration) {
-            // If we've exceeded duration, pause and set to end
-            newPlayer.pause();
-            setCurrentTime(playerDuration);
-            setIsPlaying(false);
-          } else {
-            setCurrentTime(currentTime);
-          }
-        });
-
-        newPlayer.addEventListener("ui-update-player-state", (event: any) => {
-          setIsPlaying(event.payload === "playing");
-        });
-
-        newPlayer.addEventListener("ui-update-duration", (event: any) => {
-          setDuration(event.payload);
-        });
-
-        // Get the initial duration from the player
-        setTimeout(() => {
-          const playerDuration = newPlayer.getMetaData().totalTime;
-          if (playerDuration) {
-            setDuration(playerDuration);
-          }
-        }, 100);
-
-        // Handle page visibility changes to prevent tab-switching issues
-        let wasPlayingBeforeHidden = false;
-
-        handleVisibilityChange = () => {
-          if (document.hidden) {
-            // Tab became hidden - pause if playing and remember state
-            if (newPlayer && setIsPlaying) {
-              const playerState = newPlayer.getMetaData();
-              wasPlayingBeforeHidden = playerState?.isPlaying || false;
-              if (wasPlayingBeforeHidden) {
-                newPlayer.pause();
-                setIsPlaying(false);
-              }
-            }
-          } else {
-            // Tab became visible - resume if it was playing before
-            if (newPlayer && wasPlayingBeforeHidden) {
-              // Re-sync duration in case it got corrupted
-              const playerDuration = newPlayer.getMetaData().totalTime;
-              if (playerDuration) {
-                setDuration(playerDuration);
-              }
-
-              // Resume playback
-              newPlayer.play();
-              setIsPlaying(true);
-              wasPlayingBeforeHidden = false;
-            }
-          }
-        };
-
-        document.addEventListener("visibilitychange", handleVisibilityChange);
-      } catch (error) {
-        console.error("Failed to initialize rrweb player:", error);
-        return;
-      }
-
-      return () => {
-        // Proper cleanup
-        if (newPlayer) {
-          newPlayer.pause();
-        }
-        if (playerContainerRef.current) {
-          playerContainerRef.current.innerHTML = "";
-        }
-        if (handleVisibilityChange) {
-          document.removeEventListener("visibilitychange", handleVisibilityChange);
-        }
-        playerRef.current = null;
-        setPlayer(null);
-      };
+    try {
+      player = new rrwebPlayer({
+        target: playerContainer,
+        props: {
+          events: events as unknown as ConstructorParameters<typeof rrwebPlayer>[0]["props"]["events"],
+          width: widthRef.current,
+          height: heightRef.current - CONTROLS_HEIGHT,
+          autoPlay: false,
+          showController: false,
+        },
+      }) as unknown as RrwebPlayerInstance;
+    } catch (error) {
+      console.error("Failed to initialize rrweb player:", error);
+      return;
     }
-  }, [data, setPlayer, setCurrentTime, setIsPlaying, setDuration]);
 
-  // Update dimensions without recreating the player
+    playerRef.current = player;
+    const disconnectPlayer = connectPlayer(createPlayerAdapter(player), events);
+    const handleVisibilityChange = () => setPlayerVisibility(document.hidden);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      disconnectPlayer();
+      playerContainer.innerHTML = "";
+      playerRef.current = null;
+    };
+  }, [connectPlayer, data?.events, setPlayerVisibility]);
+
   useEffect(() => {
-    if (playerRef.current) {
-      playerRef.current.$set({
-        width,
-        height: height - CONTROLS_HEIGHT,
-      });
-      playerRef.current.triggerResize();
-    }
+    if (!playerRef.current) return;
+    playerRef.current.$set({
+      width,
+      height: height - CONTROLS_HEIGHT,
+    });
+    playerRef.current.triggerResize();
   }, [width, height]);
 
   return { playerContainerRef };

@@ -10,7 +10,7 @@ export {
   fetchSiteIsPublic,
   fetchSiteUsage,
 } from "./sites";
-export type { SiteResponse, GetSitesFromOrgResponse, SiteUsageResponse } from "./sites";
+export type { SiteConfig, SiteResponse, GetSitesFromOrgResponse, SiteUsageResponse } from "./sites";
 
 // Organizations endpoints
 export {

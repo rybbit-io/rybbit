@@ -19,7 +19,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogClose, DialogContent, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "@/components/ui/sonner";
-import { authClient } from "@/lib/auth";
+import { useOrganizationAccess } from "@/hooks/useOrganizationAccess";
 import { cn } from "@/lib/utils";
 
 import { ScriptBuilder } from "./ScriptBuilder";
@@ -32,9 +32,8 @@ import { EmbedTab } from "./EmbedTab";
 import { DashboardEmbedTab } from "./DashboardEmbedTab";
 import { UsageTab } from "./UsageTab";
 import { useGetSite } from "../../api/admin/hooks/useSites";
-import { useUserOrganizations } from "../../api/admin/hooks/useOrganizations";
-import { useGetSitesFromOrg } from "../../api/admin/hooks/useSites";
-import { SiteResponse, updateSiteConfig } from "../../api/admin/endpoints";
+import { useUpdateSiteConfiguration } from "../../api/admin/hooks/useSiteConfiguration";
+import { SiteResponse } from "../../api/admin/endpoints";
 import { IS_CLOUD } from "../../lib/const";
 
 interface SiteSettingsProps {
@@ -102,10 +101,8 @@ function SiteSettingsInner({
   initialOpen?: boolean;
 }) {
   const t = useExtracted();
-  const { data: session } = authClient.useSession();
-  const { data: userOrganizationsData } = useUserOrganizations();
-  const siteOrgMembership = userOrganizationsData?.find(org => org.id === siteMetadata.organizationId);
-  const disabled = session?.user.role !== "admin" && (!siteOrgMembership?.role || siteOrgMembership.role === "member");
+  const organizationAccess = useOrganizationAccess(siteMetadata.organizationId);
+  const disabled = !organizationAccess.decisions.manageSiteConfiguration.allowed;
 
   const [dialogOpen, setDialogOpen] = useState(initialOpen);
   const [activeTab, setActiveTab] = useState<TabKey>("general");
@@ -113,9 +110,7 @@ function SiteSettingsInner({
   const [togglingEmbed, setTogglingEmbed] = useState(false);
   const [sitePublic, setSitePublic] = useState(!!siteMetadata.public);
   const adminMode = !!adminOrganization;
-  const { refetch: refetchOrgSites } = useGetSitesFromOrg(siteMetadata?.organizationId ?? "", {
-    enabled: !adminMode,
-  });
+  const { mutateAsync: updateSiteConfiguration } = useUpdateSiteConfiguration();
 
   useEffect(() => {
     setEmbedEnabled(!!siteMetadata.embedEnabled);
@@ -126,12 +121,9 @@ function SiteSettingsInner({
     async (checked: boolean) => {
       setTogglingEmbed(true);
       try {
-        await updateSiteConfig(siteMetadata.siteId, { embedEnabled: checked });
+        await updateSiteConfiguration({ siteId: siteMetadata.siteId, config: { embedEnabled: checked } });
         setEmbedEnabled(checked);
         toast.success(checked ? t("Embed widget enabled") : t("Embed widget disabled"));
-        if (!adminMode) {
-          refetchOrgSites();
-        }
       } catch (error) {
         console.error("Error toggling embed:", error);
         toast.error(t("Failed to update embed setting"));
@@ -139,7 +131,7 @@ function SiteSettingsInner({
         setTogglingEmbed(false);
       }
     },
-    [siteMetadata.siteId, refetchOrgSites, t, adminMode]
+    [siteMetadata.siteId, t, updateSiteConfiguration]
   );
 
   if (!siteMetadata) {

@@ -5,56 +5,45 @@ export type DashboardDefaultTimeRange = NonNullable<Time["wellKnown"]>;
 
 export const DASHBOARD_DEFAULT_TIME_RANGE_STORAGE_KEY = "rybbit-default-time-range";
 
-export const DASHBOARD_DEFAULT_TIME_RANGES = [
-  "today",
-  "yesterday",
-  "last-3-days",
-  "last-7-days",
-  "last-14-days",
-  "last-30-days",
-  "last-60-days",
-  "this-week",
-  "last-week",
-  "this-month",
-  "last-month",
-  "this-year",
-  "last-30-minutes",
-  "last-1-hour",
-  "last-6-hours",
-  "last-24-hours",
-  "all-time",
-] as const satisfies readonly DashboardDefaultTimeRange[];
+export const DASHBOARD_TIME_PRESET_GROUPS = [
+  {
+    key: "past-minutes",
+    pastMinutesOnly: true,
+    ranges: ["last-30-minutes", "last-1-hour", "last-6-hours", "last-24-hours"],
+  },
+  {
+    key: "recent-days",
+    pastMinutesOnly: false,
+    ranges: ["today", "yesterday", "last-3-days", "last-7-days", "last-14-days", "last-30-days", "last-60-days"],
+  },
+  {
+    key: "calendar-periods",
+    pastMinutesOnly: false,
+    ranges: ["this-week", "last-week", "this-month", "last-month", "this-year", "all-time"],
+  },
+] as const satisfies readonly {
+  key: string;
+  pastMinutesOnly: boolean;
+  ranges: readonly DashboardDefaultTimeRange[];
+}[];
+
+export const DASHBOARD_DEFAULT_TIME_RANGES: readonly DashboardDefaultTimeRange[] = DASHBOARD_TIME_PRESET_GROUPS.flatMap(
+  group => group.ranges
+);
 
 const DEFAULT_DASHBOARD_TIME_RANGE: DashboardDefaultTimeRange = "today";
 
 const DEFAULT_TIME_RANGE_ALIASES: Record<string, DashboardDefaultTimeRange> = {
-  today: "today",
-  yesterday: "yesterday",
-  "last-3-days": "last-3-days",
   "last-3d": "last-3-days",
-  "last-7-days": "last-7-days",
   "last-7d": "last-7-days",
-  "last-14-days": "last-14-days",
   "last-14d": "last-14-days",
-  "last-30-days": "last-30-days",
   "last-30d": "last-30-days",
-  "last-60-days": "last-60-days",
   "last-60d": "last-60-days",
-  "this-week": "this-week",
-  "last-week": "last-week",
-  "this-month": "this-month",
-  "last-month": "last-month",
-  "this-year": "this-year",
-  "last-30-minutes": "last-30-minutes",
   "last-30m": "last-30-minutes",
-  "last-1-hour": "last-1-hour",
   "last-1h": "last-1-hour",
   "last-hour": "last-1-hour",
-  "last-6-hours": "last-6-hours",
   "last-6h": "last-6-hours",
-  "last-24-hours": "last-24-hours",
   "last-24h": "last-24-hours",
-  "all-time": "all-time",
   all: "all-time",
 };
 
@@ -63,7 +52,8 @@ export function normalizeDashboardDefaultTimeRange(
   fallback: DashboardDefaultTimeRange = DEFAULT_DASHBOARD_TIME_RANGE
 ): DashboardDefaultTimeRange {
   const key = value?.trim().toLowerCase().replace(/_/g, "-");
-  return (key && DEFAULT_TIME_RANGE_ALIASES[key]) || fallback;
+  const canonicalRange = DASHBOARD_DEFAULT_TIME_RANGES.find(range => range === key);
+  return canonicalRange || (key && DEFAULT_TIME_RANGE_ALIASES[key]) || fallback;
 }
 
 export function getStoredDashboardDefaultTimeRange(): DashboardDefaultTimeRange {

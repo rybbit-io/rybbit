@@ -6,18 +6,14 @@ import { useState } from "react";
 import { CreateOrganizationDialog } from "../../../components/CreateOrganizationDialog";
 import { OrganizationSelector } from "../../../components/OrganizationSelector";
 import { Button } from "../../../components/ui/button";
-import { authClient } from "../../../lib/auth";
+import { useOrganizationAccess } from "../../../hooks/useOrganizationAccess";
+import { OrganizationAccessGate } from "../components/OrganizationAccessGate";
 
 export default function OrganizationLayout({ children }: { children: React.ReactNode }) {
   const [createOrgDialogOpen, setCreateOrgDialogOpen] = useState(false);
 
   const t = useExtracted();
-  const { data: session } = authClient.useSession();
-  const { data: activeOrg } = authClient.useActiveOrganization();
-  const currentMember = activeOrg?.members?.find(
-    (m) => m.userId === session?.user?.id
-  );
-  const isMember = currentMember?.role === "member";
+  const access = useOrganizationAccess();
 
   return (
     <>
@@ -40,15 +36,17 @@ export default function OrganizationLayout({ children }: { children: React.React
           />
         </div>
 
-        {isMember ? (
-          <div className="rounded-lg border border-neutral-200 dark:border-neutral-800 p-6 text-center text-neutral-500 dark:text-neutral-400">
-            {t("You don't have permission to view organization settings.")}
-          </div>
-        ) : (
-          <>
-            <div className="mt-6">{children}</div>
-          </>
-        )}
+        <OrganizationAccessGate
+          decision={access.decisions.manageOrganizationSettings}
+          deniedMessage={t("You don't have permission to view organization settings.")}
+          errorMessage={t("Failed to load organizations data. Please try again later.")}
+          loadingMessage={t("Loading organization...")}
+          noOrganizationMessage={t("You need to create or be added to an organization before you can manage members.")}
+          onRetry={access.retry}
+          retryLabel={t("Try Again")}
+        >
+          <div className="mt-6">{children}</div>
+        </OrganizationAccessGate>
       </div>
     </>
   );

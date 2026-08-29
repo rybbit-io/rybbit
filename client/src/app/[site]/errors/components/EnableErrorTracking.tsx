@@ -4,7 +4,7 @@ import { useExtracted } from "next-intl";
 import { AlertTriangle } from "lucide-react";
 import { useParams } from "next/navigation";
 import { toast } from "@/components/ui/sonner";
-import { updateSiteConfig } from "../../../../api/admin/endpoints";
+import { useUpdateSiteConfiguration } from "../../../../api/admin/hooks/useSiteConfiguration";
 import { useGetSite } from "../../../../api/admin/hooks/useSites";
 import { Alert, AlertDescription, AlertTitle } from "../../../../components/ui/alert";
 import { Button } from "../../../../components/ui/button";
@@ -13,7 +13,8 @@ export function EnableErrorTracking() {
   const t = useExtracted();
   const params = useParams();
   const siteId = Number(params.site);
-  const { data: siteMetadata, refetch } = useGetSite(siteId);
+  const { data: siteMetadata } = useGetSite(siteId);
+  const { mutateAsync: updateSiteConfiguration } = useUpdateSiteConfiguration();
 
   if (siteMetadata?.trackErrors) return null;
 
@@ -27,15 +28,15 @@ export function EnableErrorTracking() {
           </AlertTitle>
           <AlertDescription className="text-sm text-neutral-700/80 dark:text-neutral-300/80">
             <div className="mb-2">
-              {t("Error tracking captures JavaScript errors and exceptions from your application.")} <b>{t("Note:")}</b> {t("Enabling error tracking will increase your event usage.")}
+              {t("Error tracking captures JavaScript errors and exceptions from your application.")} <b>{t("Note:")}</b>{" "}
+              {t("Enabling error tracking will increase your event usage.")}
             </div>
             <Button
               size="sm"
               variant="success"
               onClick={async () => {
-                await updateSiteConfig(siteId, { trackErrors: true });
+                await updateSiteConfiguration({ siteId, config: { trackErrors: true } });
                 toast.success(t("Error tracking enabled"));
-                refetch();
               }}
             >
               {t("Enable")}
