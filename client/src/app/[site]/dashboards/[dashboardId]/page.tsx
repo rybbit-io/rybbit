@@ -200,20 +200,28 @@ export default function DashboardDetailPage() {
     [guardedRun, router, siteId]
   );
 
-  const handleSave = useCallback(async () => {
-    try {
-      await updateDashboard.mutateAsync({
-        siteId,
-        dashboardId,
-        name: workingName,
-        config: { cards: workingCards },
-      });
-      toast.success("Dashboard saved");
-      resetWorkingCopy();
-      setEditMode(false);
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Couldn't save dashboard");
-    }
+  // The mutation writes the edit into the query cache up front, so leave edit
+  // mode right away rather than holding the user on a spinner. If the request
+  // fails the cache rolls back and we put the working copy (and edit mode) back
+  // exactly as it was, so nothing typed is lost.
+  const handleSave = useCallback(() => {
+    const savedName = workingName;
+    const savedCards = workingCards;
+    resetWorkingCopy();
+    setEditMode(false);
+    updateDashboard.mutate(
+      { siteId, dashboardId, name: savedName, config: { cards: savedCards } },
+      {
+        onSuccess: () => toast.success("Dashboard saved"),
+        onError: error => {
+          setName(savedName);
+          setCards(savedCards);
+          setDirty(true);
+          setEditMode(true);
+          toast.error(error instanceof Error ? error.message : "Couldn't save dashboard");
+        },
+      }
+    );
   }, [updateDashboard, siteId, dashboardId, workingName, workingCards, resetWorkingCopy]);
 
   // Warn before a full reload / tab close with unsaved edits.
@@ -280,14 +288,14 @@ export default function DashboardDetailPage() {
     const handler = (event: KeyboardEvent) => {
       if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "s") {
         event.preventDefault();
-        if (dirty && !updateDashboard.isPending) handleSave();
+        if (dirty) handleSave();
       } else if (event.key === "Escape" && !confirmExit && !editingCardId && !addingCard) {
         handleCancel();
       }
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [editMode, dirty, confirmExit, editingCardId, addingCard, updateDashboard.isPending, handleSave, handleCancel]);
+  }, [editMode, dirty, confirmExit, editingCardId, addingCard, handleSave, handleCancel]);
 
   if (isLoading) {
     return (
@@ -380,12 +388,8 @@ export default function DashboardDetailPage() {
               <Button variant="ghost" size="sm" onClick={handleCancel}>
                 Cancel
               </Button>
-              <Button size="sm" onClick={handleSave} disabled={!dirty || updateDashboard.isPending}>
-                {updateDashboard.isPending ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <Check className="h-4 w-4" />
-                )}
+              <Button size="sm" onClick={handleSave} disabled={!dirty}>
+                <Check className="h-4 w-4" />
                 Save
               </Button>
             </>
