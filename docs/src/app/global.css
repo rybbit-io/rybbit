@@ -128,6 +128,20 @@ pre {
   background-color: color-mix(in oklab, #0a0a0a 94%, #34d399);
 }
 
+/* ── Landing redesign candidates (/lp/a, /lp/b, /lp/c) ───────────────────
+   Those variants drop the 1200px vertical container rules from the page body.
+   The shared site header draws the same pair, which would otherwise leave two
+   orphaned hairlines hanging above a page that has none. A variant opts the
+   header out by rendering `data-lp-bare-chrome` on its root; `:has()` is needed
+   because the header is a sibling of <main>, not an ancestor of the page. */
+body:has([data-lp-bare-chrome]) header nav,
+body:has([data-lp-bare-chrome]) footer > div {
+  border-inline-color: transparent;
+}
+body:has([data-lp-bare-chrome]) footer > div > [aria-hidden="true"]:first-child {
+  display: none;
+}
+
 /* ── Marketing data-line decoration ──────────────────────────────────────
    The plotted line draws itself on load via a left→right clip-path wipe.
    Not stroke-dasharray: with vector-effect: non-scaling-stroke, Chromium

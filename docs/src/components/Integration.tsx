@@ -34,6 +34,7 @@ import {
   SiWoocommerce,
   SiWordpress,
 } from "@icons-pack/react-simple-icons";
+import { cn } from "@/lib/utils";
 import { ComponentType, CSSProperties } from "react";
 
 type IconProps = {
@@ -88,12 +89,15 @@ const platforms: Platform[] = [
   { name: "WordPress", icon: SiWordpress, path: "/docs/guides/wordpress", color: "#21759B", darkColor: "#5da9cc" },
 ];
 
-const PlatformLogo = ({ name, icon: Icon, path, color, darkColor }: Platform) => {
+const PlatformLogo = ({ name, icon: Icon, path, color, darkColor, bare }: Platform & { bare?: boolean }) => {
   return (
     <Link
       href={path}
       style={{ "--brand": color, "--brand-dark": darkColor ?? color } as CSSProperties}
-      className="group flex min-h-20 items-center gap-3 bg-white px-4 text-neutral-600 transition-colors duration-200 hover:bg-neutral-50 hover:text-neutral-950 focus-visible:z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 dark:bg-neutral-950 dark:text-neutral-400 dark:hover:bg-neutral-900 dark:hover:text-white"
+      className={cn(
+        "group flex items-center gap-3 bg-white text-neutral-600 transition-colors duration-200 hover:bg-neutral-50 hover:text-neutral-950 focus-visible:z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 dark:bg-neutral-950 dark:text-neutral-400 dark:hover:bg-neutral-900 dark:hover:text-white",
+        bare ? "min-h-14 rounded-md px-3" : "min-h-20 px-4"
+      )}
     >
       <Icon className="size-5 shrink-0 transition-colors duration-200 group-hover:text-[var(--brand)] group-focus-visible:text-[var(--brand)] dark:group-hover:text-[var(--brand-dark)] dark:group-focus-visible:text-[var(--brand-dark)]" />
       <span className="text-sm font-medium">{name}</span>
@@ -101,11 +105,21 @@ const PlatformLogo = ({ name, icon: Icon, path, color, darkColor }: Platform) =>
   );
 };
 
-export function IntegrationsGrid() {
+/**
+ * `bare` drops the hairline seams the production landing page uses (a `gap-px`
+ * grid over a neutral backdrop) in favour of plain spacing, for the /lp/*
+ * redesign candidates that remove structural rules from the page.
+ */
+export function IntegrationsGrid({ bare = false }: { bare?: boolean }) {
   return (
-    <div className="grid min-h-full grid-cols-2 gap-px bg-neutral-200 dark:bg-neutral-800 sm:grid-cols-3 xl:grid-cols-4">
+    <div
+      className={cn(
+        "grid min-h-full grid-cols-2 sm:grid-cols-3 xl:grid-cols-4",
+        bare ? "gap-x-2 gap-y-1" : "gap-px bg-neutral-200 dark:bg-neutral-800"
+      )}
+    >
       {platforms.map((platform) => (
-        <PlatformLogo key={platform.name} {...platform} />
+        <PlatformLogo key={platform.name} {...platform} bare={bare} />
       ))}
     </div>
   );
