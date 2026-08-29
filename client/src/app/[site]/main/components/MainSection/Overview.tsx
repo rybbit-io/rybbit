@@ -9,7 +9,7 @@ import { useExtracted } from "next-intl";
 import { useState } from "react";
 import { useGetOverview } from "../../../../../api/analytics/hooks/useGetOverview";
 import { useGetOverviewBucketed } from "../../../../../api/analytics/hooks/useGetOverviewBucketed";
-import { StatType, useStore } from "../../../../../lib/store";
+import { StatType, useComparisonEnabled, useStore } from "../../../../../lib/store";
 import { SparklinesChart } from "./SparklinesChart";
 
 export const ChangePercentage = ({
@@ -21,7 +21,12 @@ export const ChangePercentage = ({
   previous: number;
   reverseColor?: boolean;
 }) => {
+  const comparisonEnabled = useComparisonEnabled();
   const change = ((current - previous) / previous) * 100;
+
+  // Nothing to compare against: a delta here would be a percentage of a period
+  // the user has explicitly stopped asking for.
+  if (!comparisonEnabled) return null;
 
   if (previous === 0) {
     if (current === 0) {

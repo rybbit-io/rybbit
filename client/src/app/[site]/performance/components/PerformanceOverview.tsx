@@ -7,13 +7,16 @@ import NumberFlow from "@number-flow/react";
 import { TrendingDown, TrendingUp } from "lucide-react";
 import { useGetPerformanceOverview } from "../../../../api/analytics/hooks/performance/useGetPerformanceOverview";
 import { Card, CardContent, CardLoader } from "../../../../components/ui/card";
-import { useStore } from "../../../../lib/store";
+import { useComparisonEnabled, useStore } from "../../../../lib/store";
 import { PerformanceMetric, usePerformanceStore } from "../performanceStore";
 import { formatMetricValue, getMetricColor, getMetricUnit } from "../utils/performanceUtils";
 import { PercentileSelector } from "./PercentileSelector";
 import { MetricTooltip } from "./shared/MetricTooltip";
 
 const ChangePercentage = ({ current, previous }: { current: number; previous: number }) => {
+  const comparisonEnabled = useComparisonEnabled();
+  if (!comparisonEnabled) return null;
+
   const change = ((current - previous) / previous) * 100;
 
   if (previous === 0) {

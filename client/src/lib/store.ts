@@ -2,14 +2,15 @@ import { Filter, FilterParameter, TimeBucket } from "@rybbit/shared";
 import { DateTime } from "luxon";
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import { Time } from "../components/DateSelector/types";
+import { Comparison, DEFAULT_COMPARISON, Time } from "../components/DateSelector/types";
 import { LITE_DASHBOARD } from "./const";
 import { getDashboardTimeForRange, getStoredDashboardDefaultTime } from "./defaultTimeRange";
 import {
   canGoForward as canGoForwardFrom,
-  deriveTimeState,
+  getBucketForTime,
   hasRangeTimes,
   recalculateTimeForTimezone,
+  resolveComparison,
   shiftTimeBackward,
   shiftTimeForward,
 } from "./time";
@@ -26,12 +27,19 @@ const getSystemTimezone = () =>
 
 export type StatType = "pageviews" | "sessions" | "users" | "pages_per_session" | "bounce_rate" | "session_duration";
 
-const getTimeState = (time: Time): Pick<Store, "time" | "previousTime" | "bucket"> => {
+const getTimeState = (
+  time: Time,
+  comparison: Comparison = DEFAULT_COMPARISON
+): Pick<Store, "time" | "previousTime" | "bucket" | "comparison"> => {
   // Resolve the zone lazily: this runs during store creation (before useStore
   // exists), and only range-with-times values actually need the zone.
   const zone = hasRangeTimes(time) ? getTimezone() : "UTC";
-  const { previousTime, bucket } = deriveTimeState(time, zone);
-  return { time, previousTime, bucket: clampBucketForLite(bucket) };
+  return {
+    time,
+    comparison,
+    previousTime: resolveComparison(time, comparison, zone),
+    bucket: clampBucketForLite(getBucketForTime(time, zone)),
+  };
 };
 
 type Store = {
@@ -41,8 +49,11 @@ type Store = {
   setPrivateKey: (privateKey: string | null) => void;
   setSiteContext: (site: string, privateKey: string | null) => void;
   time: Time;
-  previousTime: Time;
+  /** The window the comparison line is drawn from; null when comparison is off. */
+  previousTime: Time | null;
   setTime: (time: Time, changeBucket?: boolean) => void;
+  comparison: Comparison;
+  setComparison: (comparison: Comparison) => void;
   bucket: TimeBucket;
   setBucket: (bucket: TimeBucket) => void;
   selectedStat: StatType;
@@ -79,6 +90,7 @@ const getSiteStateForUrl = (state: Store, site: string, privateKey?: string | nu
     ...(privateKey !== undefined ? { privateKey } : {}),
     time: hasTimeInUrl ? state.time : defaultTimeState.time,
     previousTime: hasTimeInUrl ? state.previousTime : defaultTimeState.previousTime,
+    comparison: hasTimeInUrl ? state.comparison : defaultTimeState.comparison,
     bucket: hasBucketInUrl ? state.bucket : defaultTimeState.bucket,
     selectedStat: hasStatInUrl ? state.selectedStat : "users",
     filters: hasFiltersInUrl ? state.filters : [],
@@ -99,7 +111,7 @@ export const useStore = create<Store, [["zustand/persist", PersistedStore]]>(
       },
       ...getInitialTimeState(),
       setTime: (time, changeBucket = true) => {
-        const nextTimeState = getTimeState(time);
+        const nextTimeState = getTimeState(time, get().comparison);
 
         if (changeBucket) {
           set(nextTimeState);
@@ -107,6 +119,10 @@ export const useStore = create<Store, [["zustand/persist", PersistedStore]]>(
           set({ time, previousTime: nextTimeState.previousTime });
         }
       },
+      // A comparison is stored as the choice, not as the window it resolves to,
+      // so stepping the date selector carries it along instead of stranding the
+      // dashboard on the period it was picked in.
+      setComparison: comparison => set(getTimeState(get().time, comparison)),
       setBucket: bucket => set({ bucket }),
       selectedStat: "users",
       setSelectedStat: stat => set({ selectedStat: stat }),
@@ -147,15 +163,20 @@ export const useTimezone = () => {
   return timezone === "system" ? getSystemTimezone() : timezone;
 };
 
+// Whether a comparison window exists at all — false only when the user has
+// turned the comparison off, which is what hides every delta and dotted line.
+export const useComparisonEnabled = () => useStore(state => state.previousTime !== null);
+
 // Helper to convert a DateTime to the user's selected timezone
 export const toUserTimezone = (dt: DateTime): DateTime => {
   return dt.setZone(getTimezone());
 };
 
 export const resetStore = () => {
-  const { setSite, setPrivateKey, setTime, setSelectedStat, setFilters } = useStore.getState();
+  const { setSite, setPrivateKey, setTime, setSelectedStat, setFilters, setComparison } = useStore.getState();
   setSite("");
   setPrivateKey(null);
+  setComparison(DEFAULT_COMPARISON);
   setTime(getDefaultTime());
   setSelectedStat("users");
   setFilters([]);

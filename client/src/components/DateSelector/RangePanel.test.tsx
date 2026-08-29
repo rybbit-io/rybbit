@@ -3,7 +3,7 @@ import { DateTime } from "luxon";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { RangePanel } from "./RangePanel";
-import { Time } from "./types";
+import { Comparison, DEFAULT_COMPARISON, Time } from "./types";
 
 vi.mock("next-intl", () => ({
   useExtracted: () => (message: string, values?: Record<string, string>) =>
@@ -16,10 +16,11 @@ const onApply = vi.fn();
 const onCancel = vi.fn();
 const setTimezone = vi.fn();
 
-const renderPanel = (time: Time, props: { pastMinutesEnabled?: boolean } = {}) =>
+const renderPanel = (time: Time, props: { pastMinutesEnabled?: boolean; comparison?: Comparison } = {}) =>
   render(
     <RangePanel
       time={time}
+      comparison={props.comparison ?? DEFAULT_COMPARISON}
       zone={ZONE}
       timezone="America/New_York"
       setTimezone={setTimezone}
@@ -127,7 +128,10 @@ describe("RangePanel draft", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Apply" }));
 
-    expect(onApply).toHaveBeenCalledWith({ mode: "range", startDate: "2024-03-20", endDate: "2024-03-25" });
+    expect(onApply).toHaveBeenCalledWith(
+      { mode: "range", startDate: "2024-03-20", endDate: "2024-03-25" },
+      DEFAULT_COMPARISON
+    );
   });
 
   it("a fresh click starts a new range rather than extending the old one", () => {
@@ -146,7 +150,7 @@ describe("RangePanel draft", () => {
     fireEvent.click(day("3/20/2024"));
     fireEvent.click(screen.getByRole("button", { name: "Apply" }));
 
-    expect(onApply).toHaveBeenCalledWith({ mode: "day", day: "2024-03-20" });
+    expect(onApply).toHaveBeenCalledWith({ mode: "day", day: "2024-03-20" }, DEFAULT_COMPARISON);
   });
 
   it("typing a clock promotes the window to an exact datetime range", () => {
@@ -156,13 +160,16 @@ describe("RangePanel draft", () => {
     fireEvent.change(screen.getByLabelText("End time"), { target: { value: "17:00" } });
     fireEvent.click(screen.getByRole("button", { name: "Apply" }));
 
-    expect(onApply).toHaveBeenCalledWith({
-      mode: "range",
-      startDate: "2024-03-08",
-      startTime: "09:30:00",
-      endDate: "2024-03-14",
-      endTime: "17:00:00",
-    });
+    expect(onApply).toHaveBeenCalledWith(
+      {
+        mode: "range",
+        startDate: "2024-03-08",
+        startTime: "09:30:00",
+        endDate: "2024-03-14",
+        endTime: "17:00:00",
+      },
+      DEFAULT_COMPARISON
+    );
   });
 
   it("typing a date is not clobbered mid-edit by an unparseable intermediate value", () => {
@@ -176,7 +183,10 @@ describe("RangePanel draft", () => {
     expect(endDate.value).toBe("2024-03-11");
 
     fireEvent.click(screen.getByRole("button", { name: "Apply" }));
-    expect(onApply).toHaveBeenCalledWith({ mode: "range", startDate: "2024-03-08", endDate: "2024-03-11" });
+    expect(onApply).toHaveBeenCalledWith(
+      { mode: "range", startDate: "2024-03-08", endDate: "2024-03-11" },
+      DEFAULT_COMPARISON
+    );
   });
 
   it("keeps the clocks when the days move under them", () => {
@@ -192,13 +202,16 @@ describe("RangePanel draft", () => {
     fireEvent.click(day("3/25/2024"));
     fireEvent.click(screen.getByRole("button", { name: "Apply" }));
 
-    expect(onApply).toHaveBeenCalledWith({
-      mode: "range",
-      startDate: "2024-03-20",
-      startTime: "09:30:00",
-      endDate: "2024-03-25",
-      endTime: "17:00:00",
-    });
+    expect(onApply).toHaveBeenCalledWith(
+      {
+        mode: "range",
+        startDate: "2024-03-20",
+        startTime: "09:30:00",
+        endDate: "2024-03-25",
+        endTime: "17:00:00",
+      },
+      DEFAULT_COMPARISON
+    );
   });
 
   it("keeps an overnight clock through the first of the two clicks", () => {
@@ -216,13 +229,16 @@ describe("RangePanel draft", () => {
     fireEvent.click(day("3/25/2024"));
     fireEvent.click(screen.getByRole("button", { name: "Apply" }));
 
-    expect(onApply).toHaveBeenCalledWith({
-      mode: "range",
-      startDate: "2024-03-20",
-      startTime: "17:00:00",
-      endDate: "2024-03-25",
-      endTime: "09:00:00",
-    });
+    expect(onApply).toHaveBeenCalledWith(
+      {
+        mode: "range",
+        startDate: "2024-03-20",
+        startTime: "17:00:00",
+        endDate: "2024-03-25",
+        endTime: "09:00:00",
+      },
+      DEFAULT_COMPARISON
+    );
   });
 
   it("refuses to apply while the fields do not describe a window", () => {
@@ -240,7 +256,10 @@ describe("RangePanel draft", () => {
     fireEvent.change(screen.getByLabelText("End date"), { target: { value: "2024-03-12" } });
     expect((screen.getByRole("button", { name: "Apply" }) as HTMLButtonElement).disabled).toBe(false);
     fireEvent.click(screen.getByRole("button", { name: "Apply" }));
-    expect(onApply).toHaveBeenCalledWith({ mode: "range", startDate: "2024-03-08", endDate: "2024-03-12" });
+    expect(onApply).toHaveBeenCalledWith(
+      { mode: "range", startDate: "2024-03-08", endDate: "2024-03-12" },
+      DEFAULT_COMPARISON
+    );
   });
 
   it("refuses a typed date past today, which the calendar already disables", () => {
@@ -282,6 +301,57 @@ describe("RangePanel footer", () => {
     renderPanel({ mode: "all-time" });
 
     expect(screen.getByText("No comparison period")).toBeTruthy();
+  });
+
+  it("changes what the dashboard compares against, and applies it with the period", () => {
+    renderPanel(DATE_RANGE);
+
+    fireEvent.click(screen.getByRole("button", { name: /Compares against/ }));
+    fireEvent.click(screen.getByRole("button", { name: /Same period last year/ }));
+
+    // drafted, not applied: the dashboard does not move until Apply
+    expect(onApply).not.toHaveBeenCalled();
+    expect(screen.getByText("Compares against Mar 8 – Mar 14, 2023")).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: "Apply" }));
+    expect(onApply).toHaveBeenCalledWith(DATE_RANGE, { mode: "year" });
+  });
+
+  it("turns the comparison off entirely", () => {
+    renderPanel(DATE_RANGE);
+
+    fireEvent.click(screen.getByRole("button", { name: /Compares against/ }));
+    fireEvent.click(screen.getByRole("button", { name: /No comparison/ }));
+
+    expect(screen.getByText("No comparison period")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Apply" }));
+    expect(onApply).toHaveBeenCalledWith(DATE_RANGE, { mode: "none" });
+  });
+
+  it("offers only the comparisons a realtime window can answer", () => {
+    renderPanel({ mode: "past-minutes", pastMinutesStart: 30, pastMinutesEnd: 0 });
+
+    fireEvent.click(screen.getByRole("button", { name: /Compares against/ }));
+
+    expect(screen.getByRole("button", { name: /Previous period/ })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: /Same period last year/ })).toBeNull();
+    expect(screen.queryByRole("button", { name: /Matching weekdays/ })).toBeNull();
+  });
+
+  it("compares against a window typed by hand", () => {
+    renderPanel(DATE_RANGE);
+
+    fireEvent.click(screen.getByRole("button", { name: /Compares against/ }));
+    fireEvent.click(screen.getByRole("button", { name: /Custom range/ }));
+
+    fireEvent.change(screen.getByLabelText("Comparison start date"), { target: { value: "2023-12-01" } });
+    fireEvent.change(screen.getByLabelText("Comparison end date"), { target: { value: "2023-12-07" } });
+
+    fireEvent.click(screen.getByRole("button", { name: "Apply" }));
+    expect(onApply).toHaveBeenCalledWith(DATE_RANGE, {
+      mode: "custom",
+      customTime: { mode: "range", startDate: "2023-12-01", endDate: "2023-12-07" },
+    });
   });
 
   it("surfaces the timezone and lets it be searched", async () => {

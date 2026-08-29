@@ -51,6 +51,8 @@ export interface AnalyticsContextOptions {
 export function useAnalyticsContext(options: AnalyticsContextOptions = {}): {
   site: number | string;
   context: AnalyticsContext;
+  /** False when the request has no window to ask for — comparison turned off. */
+  hasPeriod: boolean;
 } {
   const storeSite = useStore(state => state.site);
   const time = useStore(state => state.time);
@@ -61,9 +63,11 @@ export function useAnalyticsContext(options: AnalyticsContextOptions = {}): {
   const site = options.site ?? storeSite;
 
   const baseTime = options.overrideTime ?? time;
+  // A comparison of "none" leaves previousTime null: there is no window to ask
+  // about, so the query is disabled rather than falling through to all-time.
   let timeToUse = options.periodTime === "previous" ? previousTime : baseTime;
 
-  if (options.doublePastMinutesForPrevious && options.periodTime === "previous" && timeToUse.mode === "past-minutes") {
+  if (options.doublePastMinutesForPrevious && options.periodTime === "previous" && timeToUse?.mode === "past-minutes") {
     timeToUse = {
       ...timeToUse,
       pastMinutesStart: timeToUse.pastMinutesStart * 2,
@@ -82,8 +86,9 @@ export function useAnalyticsContext(options: AnalyticsContextOptions = {}): {
 
   return {
     site,
+    hasPeriod: timeToUse !== null,
     context: {
-      time: (options.useTime ?? true) ? timeToUse : null,
+      time: (options.useTime ?? true) && timeToUse ? timeToUse : null,
       timeZone,
       filters: combinedFilters,
     },
@@ -91,8 +96,8 @@ export function useAnalyticsContext(options: AnalyticsContextOptions = {}): {
 }
 
 function useAnalyticsRequest(options: AnalyticsContextOptions & AnalyticsDescriptor) {
-  const { site, context } = useAnalyticsContext(options);
-  return { site, request: buildAnalyticsRequest(options, context) };
+  const { site, context, hasPeriod } = useAnalyticsContext(options);
+  return { site, hasPeriod, request: buildAnalyticsRequest(options, context) };
 }
 
 export interface AnalyticsQueryOptions<TData> extends AnalyticsContextOptions, AnalyticsDescriptor {
@@ -115,7 +120,7 @@ const buildQueryKey = (
 ) => [...(Array.isArray(key) ? key : [key]), site, request.path, request.params, request.body];
 
 export function useAnalyticsQuery<TData>(options: AnalyticsQueryOptions<TData>): UseQueryResult<TData> {
-  const { site, request } = useAnalyticsRequest(options);
+  const { site, request, hasPeriod } = useAnalyticsRequest(options);
 
   return useQuery<TData, Error>({
     queryKey: buildQueryKey(options.key, site, request),
@@ -127,7 +132,7 @@ export function useAnalyticsQuery<TData>(options: AnalyticsQueryOptions<TData>):
         ? (previousData, previousQuery) =>
             site !== undefined && previousQuery?.queryKey?.includes(site) ? previousData : undefined
         : undefined,
-    enabled: (options.enabled ?? true) && !!site,
+    enabled: (options.enabled ?? true) && !!site && hasPeriod,
     ...options.props,
   });
 }
@@ -148,7 +153,7 @@ export interface AnalyticsInfiniteQueryOptions<TPage, TCursor> extends Analytics
 export function useAnalyticsInfiniteQuery<TPage, TCursor = number>(
   options: AnalyticsInfiniteQueryOptions<TPage, TCursor>
 ): UseInfiniteQueryResult<InfiniteData<TPage>> {
-  const { site, request } = useAnalyticsRequest(options);
+  const { site, request, hasPeriod } = useAnalyticsRequest(options);
 
   return useInfiniteQuery<TPage, Error, InfiniteData<TPage>, readonly unknown[], TCursor>({
     queryKey: [...buildQueryKey(options.key, site, request), "infinite"],
@@ -162,7 +167,7 @@ export function useAnalyticsInfiniteQuery<TPage, TCursor = number>(
     staleTime: options.staleTime ?? 60_000,
     refetchInterval: options.refetchInterval,
     refetchOnWindowFocus: options.refetchOnWindowFocus,
-    enabled: (options.enabled ?? true) && !!site,
+    enabled: (options.enabled ?? true) && !!site && hasPeriod,
   });
 }
 

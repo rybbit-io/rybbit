@@ -47,7 +47,7 @@ export function DateSelector({
   setTime: (time: Time) => void;
   pastMinutesEnabled?: boolean;
 }) {
-  const { timezone, setTimezone, bucket } = useStore();
+  const { timezone, setTimezone, bucket, comparison, setComparison } = useStore();
   const zone = useTimezone();
   const t = useExtracted();
   const presetLabels = usePresetLabels();
@@ -154,8 +154,10 @@ export function DateSelector({
           zone={zone}
           timezone={timezone}
           setTimezone={setTimezone}
+          comparison={comparison}
           pastMinutesEnabled={pastMinutesEnabled}
-          onApply={nextTime => {
+          onApply={(nextTime, nextComparison) => {
+            setComparison(nextComparison);
             setTime(nextTime);
             setOpen(false);
           }}

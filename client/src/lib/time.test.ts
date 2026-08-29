@@ -3,14 +3,18 @@ import { describe, expect, it } from "vitest";
 import { Time } from "../components/DateSelector/types";
 import { getDashboardTimeForRange } from "./defaultTimeRange";
 import {
+  availableComparisonModes,
   canGoForward,
+  comparisonToUrlParams,
   deriveTimeState,
   getAbsoluteBounds,
   getBucketForDateTimeRange,
   recalculateTimeForTimezone,
+  resolveComparison,
   shiftTimeBackward,
   shiftTimeForward,
   timeToUrlParams,
+  urlParamsToComparison,
   urlParamsToTime,
 } from "./time";
 
@@ -393,5 +397,129 @@ describe("getAbsoluteBounds", () => {
     const ny = getAbsoluteBounds({ mode: "day", day: "2024-03-15" }, "America/New_York")!;
     const tokyo = getAbsoluteBounds({ mode: "day", day: "2024-03-15" }, "Asia/Tokyo")!;
     expect(ny.start.toMillis()).not.toBe(tokyo.start.toMillis());
+  });
+});
+
+describe("resolveComparison", () => {
+  const LAST_30: Time = { mode: "range", startDate: "2026-07-31", endDate: "2026-08-29" };
+
+  it("previous: the period immediately before, matching deriveTimeState", () => {
+    expect(resolveComparison(LAST_30, { mode: "previous" }, ZONE)).toEqual(deriveTimeState(LAST_30, ZONE).previousTime);
+  });
+
+  it("none: no window at all", () => {
+    expect(resolveComparison(LAST_30, { mode: "none" }, ZONE)).toBeNull();
+  });
+
+  it("custom: the named window, untouched by the selected period", () => {
+    const customTime: Time = { mode: "range", startDate: "2026-03-02", endDate: "2026-03-31" };
+
+    expect(resolveComparison(LAST_30, { mode: "custom", customTime }, ZONE)).toEqual(customTime);
+    expect(resolveComparison({ mode: "day", day: "2026-08-29" }, { mode: "custom", customTime }, ZONE)).toEqual(
+      customTime
+    );
+  });
+
+  it("custom: falls back to the previous period when no window has been named yet", () => {
+    expect(resolveComparison(LAST_30, { mode: "custom" }, ZONE)).toEqual(deriveTimeState(LAST_30, ZONE).previousTime);
+  });
+
+  it("weekday: steps back whole weeks so the days of the week line up", () => {
+    // 30 days rounds to 4 weeks back — Jul 31 (a Friday) is read against Jul 3,
+    // also a Friday.
+    const previous = resolveComparison(LAST_30, { mode: "weekday" }, ZONE);
+
+    expect(previous).toEqual({
+      mode: "range",
+      startDate: "2026-07-03",
+      startTime: "00:00:00",
+      endDate: "2026-08-02",
+      endTime: "00:00:00",
+    });
+    expect(dt("2026-07-03").weekday).toBe(dt("2026-07-31").weekday);
+  });
+
+  it("weekday: a single day is read against the same weekday a week earlier", () => {
+    expect(resolveComparison({ mode: "day", day: "2026-08-29" }, { mode: "weekday" }, ZONE)).toEqual({
+      mode: "day",
+      day: "2026-08-22",
+    });
+  });
+
+  it("year: the same dates a year earlier, keeping calendar modes calendar-shaped", () => {
+    expect(resolveComparison({ mode: "month", month: "2026-08-01" }, { mode: "year" }, ZONE)).toEqual({
+      mode: "month",
+      month: "2025-08-01",
+    });
+    expect(resolveComparison(LAST_30, { mode: "year" }, ZONE)).toEqual({
+      mode: "range",
+      startDate: "2025-07-31",
+      startTime: "00:00:00",
+      endDate: "2025-08-30",
+      endTime: "00:00:00",
+    });
+  });
+
+  it("falls back to the previous period where a mode cannot be expressed", () => {
+    const realtime: Time = { mode: "past-minutes", pastMinutesStart: 30, pastMinutesEnd: 0 };
+    const previous = deriveTimeState(realtime, ZONE).previousTime;
+
+    expect(resolveComparison(realtime, { mode: "year" }, ZONE)).toEqual(previous);
+    expect(resolveComparison(realtime, { mode: "weekday" }, ZONE)).toEqual(previous);
+    // Weekday alignment across whole months is meaningless.
+    expect(resolveComparison({ mode: "month", month: "2026-08-01" }, { mode: "weekday" }, ZONE)).toEqual({
+      mode: "month",
+      month: "2026-07-01",
+    });
+  });
+
+  it("all-time keeps its historical self-comparison for the default mode", () => {
+    expect(resolveComparison({ mode: "all-time" }, { mode: "previous" }, ZONE)).toEqual({ mode: "all-time" });
+    expect(resolveComparison({ mode: "all-time" }, { mode: "none" }, ZONE)).toBeNull();
+  });
+});
+
+describe("availableComparisonModes", () => {
+  it("offers only what a realtime window can answer", () => {
+    expect(availableComparisonModes({ mode: "past-minutes", pastMinutesStart: 30, pastMinutesEnd: 0 })).toEqual([
+      "previous",
+      "none",
+    ]);
+  });
+
+  it("drops weekday alignment for whole months and years", () => {
+    expect(availableComparisonModes({ mode: "month", month: "2026-08-01" })).not.toContain("weekday");
+    expect(availableComparisonModes({ mode: "range", startDate: "2026-07-31", endDate: "2026-08-29" })).toContain(
+      "weekday"
+    );
+  });
+});
+
+describe("comparison URL serialization", () => {
+  it("writes nothing for the default, so existing links are untouched", () => {
+    expect(comparisonToUrlParams({ mode: "previous" })).toEqual({
+      compare: null,
+      compareStart: null,
+      compareEnd: null,
+    });
+  });
+
+  it("round-trips a named mode", () => {
+    expect(urlParamsToComparison(comparisonToUrlParams({ mode: "year" }))).toEqual({ mode: "year" });
+  });
+
+  it("round-trips a custom window", () => {
+    const comparison = {
+      mode: "custom" as const,
+      customTime: { mode: "range" as const, startDate: "2026-03-02", endDate: "2026-03-31" },
+    };
+
+    expect(urlParamsToComparison(comparisonToUrlParams(comparison))).toEqual(comparison);
+  });
+
+  it("ignores a custom mode with no window and an unknown mode", () => {
+    expect(urlParamsToComparison({ compare: "custom" })).toBeNull();
+    expect(urlParamsToComparison({ compare: "sideways" })).toBeNull();
+    expect(urlParamsToComparison({})).toBeNull();
   });
 });

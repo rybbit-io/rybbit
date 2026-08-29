@@ -17,7 +17,7 @@ import { useGetPageTitlesPaginated } from "@/api/analytics/hooks/useGetPageTitle
 import { PageTitleItem } from "@/api/analytics/endpoints";
 import { ErrorState } from "@/components/ErrorState";
 import { Pagination } from "@/components/pagination";
-import { useStore } from "@/lib/store";
+import { useComparisonEnabled, useStore } from "@/lib/store";
 import { formatShortDuration } from "@/lib/dateTimeUtils";
 import { cn, truncateString } from "@/lib/utils";
 import { PageSparklineChart } from "./PageSparklineChart";
@@ -29,6 +29,9 @@ const MAX_TITLE_LENGTH = 80;
 const columnHelper = createColumnHelper<PageTitleItem>();
 
 function ChangePercentage({ current, previous }: { current: number; previous: number }) {
+  const comparisonEnabled = useComparisonEnabled();
+  if (!comparisonEnabled) return null;
+
   if (previous === 0) {
     if (current === 0) return null;
     return <span className="text-xs text-green-400">+999%</span>;
