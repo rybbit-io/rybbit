@@ -24,6 +24,12 @@ export interface PricingCardProps {
    * of the seamed `gap-px` plan grid, where the grid supplies the hairlines.
    */
   framed?: boolean;
+  /**
+   * Drop the recommended card's plate tint and graph texture, keeping only its
+   * emerald edge and badge. Used by the chrome="bare" pricing band, where the
+   * texture would reintroduce a surface the layout deliberately removed.
+   */
+  plain?: boolean;
   className?: string;
   featuresClassName?: string;
   eventLocation?: string;
@@ -39,6 +45,7 @@ export function PricingCard({
   features,
   recommended = false,
   framed = false,
+  plain = false,
   className,
   featuresClassName,
   eventLocation,
@@ -60,7 +67,7 @@ export function PricingCard({
     <div
       className={cn(
         "relative h-full overflow-hidden",
-        recommended ? "bg-plate-accent" : "bg-white dark:bg-neutral-950",
+        recommended && !plain ? "bg-plate-accent" : "bg-white dark:bg-neutral-950",
         framed
           ? cn(
               "rounded-lg border",
@@ -72,7 +79,7 @@ export function PricingCard({
         className
       )}
     >
-      {recommended && (
+      {recommended && !plain && (
         <div
           aria-hidden="true"
           className="pointer-events-none absolute inset-0 bg-graph-accent [mask-image:linear-gradient(to_bottom,black,transparent_92%),linear-gradient(to_left,transparent,black_40px)] [mask-composite:intersect]"
