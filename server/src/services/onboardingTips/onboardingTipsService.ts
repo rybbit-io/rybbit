@@ -13,7 +13,7 @@ class OnboardingTipsService {
 
     for (const tip of ONBOARDING_TIPS) {
       // Schedule email for day N at 9am UTC
-      const scheduledAt = now.plus({ days: tip.day }).set({ hour: 9, minute: 0, second: 0 }).toISO();
+      const scheduledAt = now.plus({ days: tip.day }).set({ hour: 9, minute: 0, second: 0, millisecond: 0 }).toISO();
 
       if (!scheduledAt) continue;
 
