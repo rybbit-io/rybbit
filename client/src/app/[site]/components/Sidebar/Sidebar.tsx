@@ -6,8 +6,6 @@ import {
   Code,
   Database,
   File,
-  Flag,
-  FlaskConical,
   Funnel,
   Gauge,
   Globe2,
@@ -27,12 +25,12 @@ import { Suspense } from "react";
 import { useGetSite } from "../../../../api/admin/hooks/useSites";
 import { Sidebar as SidebarComponents } from "../../../../components/sidebar/Sidebar";
 import { SiteSettings } from "../../../../components/SiteSettings/SiteSettings";
-import { DEMO_HOSTNAME, IS_CLOUD } from "../../../../lib/const";
+import { useAppEnv } from "../../../../hooks/useIsProduction";
+import { DEPLOYMENT, IS_CLOUD } from "../../../../lib/const";
 import { getSiteRouteContext } from "../../../../lib/siteRoute";
+import { useStripeSubscription } from "../../../../lib/subscription/useStripeSubscription";
 import { useEmbedPageOptions } from "../../utils";
 import { SiteSelector } from "./SiteSelector";
-import { useStripeSubscription } from "../../../../lib/subscription/useStripeSubscription";
-import { useAppEnv } from "../../../../hooks/useIsProduction";
 
 function SidebarContent() {
   const t = useExtracted();
@@ -128,7 +126,7 @@ function SidebarContent() {
             icon={<Code className="w-4 h-4" />}
           />
         </div>
-        {!IS_CLOUD && (
+        {(IS_CLOUD || DEPLOYMENT) && (
           <>
             <SidebarComponents.Item
               label={t("Query")}
